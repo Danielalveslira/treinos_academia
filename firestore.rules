@@ -1,0 +1,44 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    function isValidExercise(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 60
+        && data.muscleGroup is string && data.muscleGroup.size() > 0
+        && data.active is bool
+        && (!('note' in data) || data.note is string && data.note.size() <= 300);
+    }
+
+    function isValidWorkout(data) {
+      return data.exerciseId is string && data.exerciseId.size() > 0
+        && data.weight is number && data.weight >= 0
+        && data.sets is int && data.sets > 0
+        && data.reps is int && data.reps > 0
+        && data.date is timestamp
+        && (!('note' in data) || data.note is string && data.note.size() <= 300);
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /exercises/{exerciseId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidExercise(request.resource.data);
+      }
+
+      match /workouts/{workoutId} {
+        allow read, delete: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidWorkout(request.resource.data);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
