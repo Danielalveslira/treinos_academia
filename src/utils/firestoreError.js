@@ -1,8 +1,10 @@
 const MESSAGES = {
-  'permission-denied': 'Você não tem permissão para acessar esses dados. Verifique se as regras de segurança do Firestore foram publicadas.',
+  'permission-denied':
+    'Você não tem permissão para acessar esses dados. Verifique se as regras de segurança do Firestore foram publicadas.',
   unauthenticated: 'Sua sessão expirou. Faça login novamente.',
   unavailable: 'Sem conexão com o servidor. Verifique sua internet e tente novamente.',
-  'resource-exhausted': 'Limite gratuito do Firestore atingido no momento. Tente novamente em alguns minutos.',
+  'resource-exhausted':
+    'Limite gratuito do Firestore atingido no momento. Tente novamente em alguns minutos.',
   'deadline-exceeded': 'O servidor demorou demais para responder. Tente novamente.',
   cancelled: 'A operação foi cancelada. Tente novamente.',
 }

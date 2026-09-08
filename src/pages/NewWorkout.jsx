@@ -47,7 +47,9 @@ export default function NewWorkout() {
             <PlusCircleIcon size={24} />
           </Blankslate.Visual>
           <Blankslate.Heading>Nenhum exercício ativo</Blankslate.Heading>
-          <Blankslate.Description>Cadastre um exercício antes de registrar um treino.</Blankslate.Description>
+          <Blankslate.Description>
+            Cadastre um exercício antes de registrar um treino.
+          </Blankslate.Description>
           <Blankslate.PrimaryAction onClick={() => navigate('/exercicios')}>
             Cadastrar exercício
           </Blankslate.PrimaryAction>

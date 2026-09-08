@@ -43,7 +43,9 @@ export function ExerciseForm({ initialValue, onSubmit, onCancel }) {
             block
             autoFocus
           />
-          {errors.name && <FormControl.Validation variant="error">{errors.name}</FormControl.Validation>}
+          {errors.name && (
+            <FormControl.Validation variant="error">{errors.name}</FormControl.Validation>
+          )}
         </FormControl>
 
         <FormControl required>
@@ -85,11 +87,23 @@ export function ExerciseForm({ initialValue, onSubmit, onCancel }) {
           </FormControl>
         )}
 
-        <Box sx={{ display: 'flex', flexDirection: ['column-reverse', 'row'], gap: 2, justifyContent: ['stretch', 'flex-end'] }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: ['column-reverse', 'row'],
+            gap: 2,
+            justifyContent: ['stretch', 'flex-end'],
+          }}
+        >
           <Button type="button" onClick={onCancel} sx={{ width: ['100%', 'auto'] }}>
             Cancelar
           </Button>
-          <Button type="submit" variant="primary" loading={submitting} sx={{ width: ['100%', 'auto'] }}>
+          <Button
+            type="submit"
+            variant="primary"
+            loading={submitting}
+            sx={{ width: ['100%', 'auto'] }}
+          >
             Salvar
           </Button>
         </Box>

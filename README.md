@@ -64,6 +64,12 @@ Casos sem histórico anterior ou carga anterior igual a zero retornam `null` (ex
 - Indicadores de exercício limitam a leitura às últimas 30 sessões daquele exercício.
 - Dashboard usa uma janela de 50 treinos recentes para volume/frequência e `getCountFromServer` (contagem agregada, custo mínimo) para o total de treinos — evita ler o histórico inteiro.
 
+## Performance
+
+- Cada página é carregada sob demanda (`React.lazy` em `App.jsx`) — quem abre a tela de login não baixa o código do dashboard, dos gráficos ou do Firestore.
+- `vite.config.js` separa `firebase`, `@primer/react`+`styled-components` e `recharts` em chunks próprios, para o navegador cachear esse código entre deploys (ele só muda quando a dependência muda, não a cada alteração no app).
+- Formatação padronizada com Prettier (`npm run format` / `npm run format:check`) — sem isso não há garantia de indentação consistente conforme o projeto cresce.
+
 ## Configuração
 
 1. Crie um projeto no [console do Firebase](https://console.firebase.google.com/).

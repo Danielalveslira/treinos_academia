@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
-import { Box, Heading, Text, Link, Spinner } from '@primer/react'
+import { Box, Heading, Text, Link, Spinner, Flash } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { ChevronLeftIcon, HistoryIcon } from '@primer/octicons-react'
 import { useExercises } from '../hooks/useExercises'
@@ -25,7 +25,11 @@ export default function ExerciseDetail() {
 
   return (
     <Box>
-      <Link as={RouterLink} to="/exercicios" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mb: 2, fontSize: 1 }}>
+      <Link
+        as={RouterLink}
+        to="/exercicios"
+        sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mb: 2, fontSize: 1 }}
+      >
         <ChevronLeftIcon /> Exercícios
       </Link>
       <Heading as="h1" sx={{ fontSize: 3 }}>
@@ -44,7 +48,9 @@ export default function ExerciseDetail() {
             <HistoryIcon size={24} />
           </Blankslate.Visual>
           <Blankslate.Heading>Nenhum treino registrado</Blankslate.Heading>
-          <Blankslate.Description>Registre um treino para acompanhar a evolução deste exercício.</Blankslate.Description>
+          <Blankslate.Description>
+            Registre um treino para acompanhar a evolução deste exercício.
+          </Blankslate.Description>
           <Blankslate.PrimaryAction onClick={() => navigate(`/novo-treino?exercicio=${id}`)}>
             Registrar treino
           </Blankslate.PrimaryAction>
@@ -53,6 +59,11 @@ export default function ExerciseDetail() {
 
       {!loading && !error && workouts.length > 0 && (
         <>
+          {indicators.isPersonalRecord && (
+            <Flash variant="success" sx={{ mb: 3 }}>
+              🏆 Novo recorde de carga neste exercício!
+            </Flash>
+          )}
           <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 4 }}>
             <IndicatorCard label="Carga atual" value={formatWeight(indicators.currentLoad)} />
             <IndicatorCard label="Maior carga" value={formatWeight(indicators.maxLoad)} />

@@ -27,11 +27,26 @@ export default function Login() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 3,
+      }}
+    >
       <Box
         as="form"
         onSubmit={handleSubmit}
-        sx={{ width: '100%', maxWidth: '360px', border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 4 }}
+        sx={{
+          width: '100%',
+          maxWidth: '360px',
+          border: '1px solid',
+          borderColor: 'border.default',
+          borderRadius: 2,
+          p: 4,
+        }}
       >
         <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
           Entrar

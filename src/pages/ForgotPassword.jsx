@@ -1,6 +1,16 @@
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Button, FormControl, TextInput, Heading, Link, Flash, Text, Stack } from '@primer/react'
+import {
+  Box,
+  Button,
+  FormControl,
+  TextInput,
+  Heading,
+  Link,
+  Flash,
+  Text,
+  Stack,
+} from '@primer/react'
 import { resetPassword } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
 
@@ -26,11 +36,26 @@ export default function ForgotPassword() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 3,
+      }}
+    >
       <Box
         as="form"
         onSubmit={handleSubmit}
-        sx={{ width: '100%', maxWidth: '360px', border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 4 }}
+        sx={{
+          width: '100%',
+          maxWidth: '360px',
+          border: '1px solid',
+          borderColor: 'border.default',
+          borderRadius: 2,
+          p: 4,
+        }}
       >
         <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
           Recuperar senha
