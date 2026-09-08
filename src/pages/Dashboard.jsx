@@ -54,7 +54,7 @@ export default function Dashboard() {
   if (error) {
     return (
       <Box>
-        <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
+        <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
           Dashboard
         </Heading>
         <ErrorState error={error} onRetry={refresh} />
@@ -65,7 +65,7 @@ export default function Dashboard() {
   if (recentWorkouts.length === 0) {
     return (
       <Box>
-        <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
+        <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
           Dashboard
         </Heading>
         <Blankslate>
@@ -85,7 +85,7 @@ export default function Dashboard() {
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Heading as="h1" sx={{ fontSize: 4 }}>
+        <Heading as="h1" sx={{ fontSize: 3 }}>
           Dashboard
         </Heading>
         <Button as={RouterLink} to="/novo-treino" leadingVisual={PlusCircleIcon} variant="primary">

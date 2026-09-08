@@ -34,7 +34,7 @@ export default function NewWorkout() {
   return (
     <Box>
       <ToastFlash toasts={toasts} />
-      <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
+      <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
         Novo treino
       </Heading>
 

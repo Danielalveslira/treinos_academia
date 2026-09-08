@@ -85,14 +85,14 @@ export function ExerciseForm({ initialValue, onSubmit, onCancel }) {
           </FormControl>
         )}
 
-        <Stack direction="horizontal" justify="end" gap="condensed">
-          <Button type="button" onClick={onCancel}>
+        <Box sx={{ display: 'flex', flexDirection: ['column-reverse', 'row'], gap: 2, justifyContent: ['stretch', 'flex-end'] }}>
+          <Button type="button" onClick={onCancel} sx={{ width: ['100%', 'auto'] }}>
             Cancelar
           </Button>
-          <Button type="submit" variant="primary" loading={submitting}>
+          <Button type="submit" variant="primary" loading={submitting} sx={{ width: ['100%', 'auto'] }}>
             Salvar
           </Button>
-        </Stack>
+        </Box>
       </Stack>
     </Box>
   )

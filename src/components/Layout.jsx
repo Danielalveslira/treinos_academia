@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Header, Box, Text } from '@primer/react'
+import { Header, Box, Text, IconButton } from '@primer/react'
 import { HomeIcon, PlusCircleIcon, HistoryIcon, ListUnorderedIcon, SignOutIcon } from '@primer/octicons-react'
 import { logoutUser } from '../services/authService'
 
@@ -26,7 +26,7 @@ const bottomNavLinkStyle = ({ isActive }) => ({
 export function Layout() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <Header sx={{ position: 'sticky', top: 0, zIndex: 10, py: 2 }}>
+      <Header sx={{ position: 'sticky', top: 0, zIndex: 10, py: 1, minHeight: '52px' }}>
         <Header.Item>
           <Text sx={{ fontSize: 2, fontWeight: 'bold', color: 'inherit' }}>Treinos</Text>
         </Header.Item>
@@ -40,10 +40,13 @@ export function Layout() {
           </Box>
         </Header.Item>
         <Header.Item>
-          <Header.Link as="button" onClick={logoutUser} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <SignOutIcon />
-            Sair
-          </Header.Link>
+          <IconButton
+            icon={SignOutIcon}
+            aria-label="Sair"
+            variant="invisible"
+            onClick={logoutUser}
+            sx={{ color: 'rgba(255, 255, 255, 0.7)', '&:hover': { color: '#ffffff', bg: 'rgba(255, 255, 255, 0.1)' } }}
+          />
         </Header.Item>
       </Header>
 
