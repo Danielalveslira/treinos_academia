@@ -19,6 +19,9 @@ export function validateWorkout({ exerciseId, weight, sets, reps, date }) {
     errors.reps = 'Número de repetições inválido'
   }
   if (!date) errors.date = 'Data é obrigatória'
+  else if (date > new Date().toISOString().slice(0, 10)) {
+    errors.date = 'A data não pode ser no futuro'
+  }
   return errors
 }
 

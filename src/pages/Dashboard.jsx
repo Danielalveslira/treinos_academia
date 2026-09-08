@@ -127,9 +127,12 @@ export default function Dashboard() {
         <IndicatorCard label="Volume acumulado" value={accumulatedVolume} />
       </Box>
 
-      <Heading as="h2" sx={{ fontSize: 2, mb: 2 }}>
-        Volume por treino
+      <Heading as="h2" sx={{ fontSize: 2, mb: 1 }}>
+        Volume levantado por dia
       </Heading>
+      <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block', mb: 2 }}>
+        Peso × séries × repetições somado de cada dia de treino.
+      </Text>
       <Box sx={{ mb: 4 }}>
         <VolumeChart data={volumeChartData} />
       </Box>

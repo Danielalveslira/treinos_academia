@@ -125,6 +125,7 @@ export function WorkoutForm({ exercises, initialValue, defaultExerciseId, onSubm
             type="date"
             value={values.date}
             onChange={(e) => setField('date', e.target.value)}
+            max={todayString()}
             block
           />
           {errors.date && (
