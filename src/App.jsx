@@ -13,6 +13,7 @@ const Exercises = lazy(() => import('./pages/Exercises'))
 const ExerciseDetail = lazy(() => import('./pages/ExerciseDetail'))
 const NewWorkout = lazy(() => import('./pages/NewWorkout'))
 const History = lazy(() => import('./pages/History'))
+const Pricing = lazy(() => import('./pages/Pricing'))
 
 function PageFallback() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro" element={<Register />} />
             <Route path="/esqueci-senha" element={<ForgotPassword />} />
+            <Route path="/planos" element={<Pricing />} />
 
             <Route
               element={
