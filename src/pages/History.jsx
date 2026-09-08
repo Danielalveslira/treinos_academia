@@ -1,13 +1,17 @@
 import { useMemo, useState } from 'react'
+import { Box, Button, Heading, Text, Spinner, FormControl, Select, TextInput, Stack } from '@primer/react'
+import { Blankslate } from '@primer/react/experimental'
+import { HistoryIcon } from '@primer/octicons-react'
 import { useWorkouts } from '../hooks/useWorkouts'
 import { useExercises } from '../hooks/useExercises'
 import { useToast } from '../hooks/useToast'
+import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { WorkoutForm } from '../components/WorkoutForm'
-import { ConfirmDialog } from '../components/ConfirmDialog'
-import { EmptyState } from '../components/EmptyState'
-import { Spinner } from '../components/Spinner'
-import { ToastContainer } from '../components/ToastContainer'
+import { ErrorState } from '../components/ErrorState'
+import { RowActionsMenu } from '../components/RowActionsMenu'
+import { ToastFlash } from '../components/ToastFlash'
 import { calculateVolume } from '../utils/calculations'
+import { formatWeight } from '../utils/format'
 
 function toEditableWorkout(workout) {
   const date = workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)
@@ -26,15 +30,15 @@ export default function History() {
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [editingWorkout, setEditingWorkout] = useState(null)
-  const [pendingDelete, setPendingDelete] = useState(null)
 
   const { exercises } = useExercises()
-  const { workouts, loading, error, hasMore, loadMore, edit, remove } = useWorkouts({
+  const { workouts, loading, error, hasMore, loadMore, edit, remove, refresh } = useWorkouts({
     exerciseId: exerciseFilter || undefined,
     startDate: startDate || undefined,
     endDate: endDate || undefined,
   })
   const { toasts, showToast } = useToast()
+  const confirmDelete = useConfirmDelete()
 
   const exerciseNameById = useMemo(() => {
     const map = new Map()
@@ -47,97 +51,129 @@ export default function History() {
       await edit(editingWorkout.id, values)
       setEditingWorkout(null)
       showToast('Registro atualizado.')
-    } catch {
-      showToast('Erro ao atualizar registro.', 'error')
+    } catch (err) {
+      console.error('[History] update:', err)
+      showToast('Erro ao atualizar registro.', 'danger')
     }
   }
 
-  async function handleDelete() {
+  async function handleDeleteRequest(workout) {
+    const confirmed = await confirmDelete({
+      title: 'Excluir registro de treino?',
+      content: 'Esta ação não pode ser desfeita.',
+    })
+    if (!confirmed) return
+
     try {
-      await remove(pendingDelete.id)
-      setPendingDelete(null)
+      await remove(workout.id)
       showToast('Registro excluído.')
-    } catch {
-      showToast('Erro ao excluir registro.', 'error')
+    } catch (err) {
+      console.error('[History] delete:', err)
+      showToast('Erro ao excluir registro.', 'danger')
     }
   }
 
   return (
-    <div className="page">
-      <ToastContainer toasts={toasts} />
-      <h1>Histórico</h1>
+    <Box>
+      <ToastFlash toasts={toasts} />
+      <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
+        Histórico
+      </Heading>
 
-      <div className="filters">
-        <select value={exerciseFilter} onChange={(e) => setExerciseFilter(e.target.value)}>
-          <option value="">Todos os exercícios</option>
-          {exercises.map((ex) => (
-            <option key={ex.id} value={ex.id}>
-              {ex.name}
-            </option>
-          ))}
-        </select>
-        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-      </div>
+      <Stack direction="horizontal" wrap="wrap" gap="condensed" sx={{ mb: 3 }}>
+        <Box sx={{ flex: '1 1 160px' }}>
+          <FormControl>
+            <FormControl.Label visuallyHidden>Exercício</FormControl.Label>
+            <Select value={exerciseFilter} onChange={(e) => setExerciseFilter(e.target.value)} block>
+              <Select.Option value="">Todos os exercícios</Select.Option>
+              {exercises.map((ex) => (
+                <Select.Option key={ex.id} value={ex.id}>
+                  {ex.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+        <Box sx={{ flex: '1 1 130px' }}>
+          <FormControl>
+            <FormControl.Label visuallyHidden>De</FormControl.Label>
+            <TextInput type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} block />
+          </FormControl>
+        </Box>
+        <Box sx={{ flex: '1 1 130px' }}>
+          <FormControl>
+            <FormControl.Label visuallyHidden>Até</FormControl.Label>
+            <TextInput type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} block />
+          </FormControl>
+        </Box>
+      </Stack>
 
       {editingWorkout && (
-        <WorkoutForm
-          exercises={exercises}
-          initialValue={toEditableWorkout(editingWorkout)}
-          onSubmit={handleUpdate}
-          onCancel={() => setEditingWorkout(null)}
-        />
+        <Box sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3 }}>
+          <WorkoutForm
+            exercises={exercises}
+            initialValue={toEditableWorkout(editingWorkout)}
+            onSubmit={handleUpdate}
+            onCancel={() => setEditingWorkout(null)}
+          />
+        </Box>
       )}
 
-      {loading && <Spinner />}
-      {error && <p className="form-error">{error}</p>}
+      {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+      <ErrorState error={error} onRetry={refresh} />
 
       {!loading && !error && workouts.length === 0 && (
-        <EmptyState message="Nenhum registro encontrado para os filtros selecionados." />
+        <Blankslate>
+          <Blankslate.Visual>
+            <HistoryIcon size={24} />
+          </Blankslate.Visual>
+          <Blankslate.Heading>Nenhum registro encontrado</Blankslate.Heading>
+          <Blankslate.Description>Ajuste os filtros ou registre um novo treino.</Blankslate.Description>
+        </Blankslate>
       )}
 
-      <ul className="workout-list">
-        {workouts.map((workout) => (
-          <li key={workout.id} className="workout-list__item">
-            <div>
-              <strong>{exerciseNameById.get(workout.exerciseId) || 'Exercício removido'}</strong>
-              <div className="workout-list__meta">
-                {workout.weight}kg · {workout.sets}x{workout.reps} · volume{' '}
+      <Stack gap="none" sx={{ border: workouts.length ? '1px solid' : 'none', borderColor: 'border.default', borderRadius: 2, overflow: 'hidden' }}>
+        {workouts.map((workout, index) => (
+          <Box
+            key={workout.id}
+            sx={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 2,
+              px: 3,
+              py: 3,
+              borderTop: index === 0 ? 'none' : '1px solid',
+              borderColor: 'border.default',
+            }}
+          >
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Text sx={{ fontWeight: 'bold', display: 'block' }}>
+                {exerciseNameById.get(workout.exerciseId) || 'Exercício removido'}
+              </Text>
+              <Text sx={{ fontSize: 1, color: 'fg.muted', display: 'block' }}>
+                {formatWeight(workout.weight)} · {workout.sets}x{workout.reps} · volume{' '}
                 {calculateVolume(workout.weight, workout.sets, workout.reps)}
-              </div>
-              <div className="workout-list__date">
+              </Text>
+              <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block' }}>
                 {(workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)).toLocaleDateString('pt-BR')}
-              </div>
-              {workout.note && <div className="workout-list__note">{workout.note}</div>}
-            </div>
-            <div className="workout-list__actions">
-              <button className="link-button" onClick={() => setEditingWorkout(workout)}>
-                Editar
-              </button>
-              <button
-                className="link-button link-button--danger"
-                onClick={() => setPendingDelete(workout)}
-              >
-                Excluir
-              </button>
-            </div>
-          </li>
+              </Text>
+              {workout.note && (
+                <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block', mt: 1 }}>{workout.note}</Text>
+              )}
+            </Box>
+            <RowActionsMenu
+              onEdit={() => setEditingWorkout(workout)}
+              onDelete={() => handleDeleteRequest(workout)}
+            />
+          </Box>
         ))}
-      </ul>
+      </Stack>
 
       {hasMore && (
-        <button className="button" onClick={loadMore}>
+        <Button sx={{ mt: 3, width: '100%' }} onClick={loadMore}>
           Carregar mais
-        </button>
+        </Button>
       )}
-
-      <ConfirmDialog
-        open={!!pendingDelete}
-        title="Excluir registro"
-        message="Tem certeza que deseja excluir este registro de treino?"
-        onConfirm={handleDelete}
-        onCancel={() => setPendingDelete(null)}
-      />
-    </div>
+    </Box>
   )
 }

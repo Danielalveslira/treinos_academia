@@ -1,19 +1,21 @@
 import { useMemo } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import { Box, Heading, Text, Link, Spinner } from '@primer/react'
+import { Blankslate } from '@primer/react/experimental'
+import { ChevronLeftIcon, HistoryIcon } from '@primer/octicons-react'
 import { useExercises } from '../hooks/useExercises'
 import { useExerciseHistory } from '../hooks/useExerciseHistory'
 import { getExerciseIndicators, buildLoadHistory } from '../utils/calculations'
 import { formatPercent, formatWeight, formatDate } from '../utils/format'
 import { IndicatorCard } from '../components/IndicatorCard'
 import { LoadChart } from '../components/LoadChart'
-import { Spinner } from '../components/Spinner'
-import { EmptyState } from '../components/EmptyState'
+import { ErrorState } from '../components/ErrorState'
 
 export default function ExerciseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { exercises, loading: loadingExercises } = useExercises()
-  const { workouts, loading: loadingWorkouts, error } = useExerciseHistory(id)
+  const { workouts, loading: loadingWorkouts, error, refresh } = useExerciseHistory(id)
 
   const exercise = exercises.find((e) => e.id === id)
   const indicators = useMemo(() => getExerciseIndicators(workouts), [workouts])
@@ -22,39 +24,50 @@ export default function ExerciseDetail() {
   const loading = loadingExercises || loadingWorkouts
 
   return (
-    <div className="page">
-      <Link to="/exercicios" className="back-link">
-        ← Exercícios
+    <Box>
+      <Link as={RouterLink} to="/exercicios" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mb: 2, fontSize: 1 }}>
+        <ChevronLeftIcon /> Exercícios
       </Link>
-      <h1>{exercise?.name || 'Exercício'}</h1>
-      {exercise?.muscleGroup && <p className="muted">{exercise.muscleGroup}</p>}
-
-      {loading && <Spinner />}
-      {error && <p className="form-error">{error}</p>}
-
-      {!loading && !error && workouts.length === 0 && (
-        <EmptyState
-          message="Nenhum treino registrado para este exercício ainda."
-          actionLabel="Registrar treino"
-          onAction={() => navigate(`/novo-treino?exercicio=${id}`)}
-        />
+      <Heading as="h1" sx={{ fontSize: 4 }}>
+        {exercise?.name || 'Exercício'}
+      </Heading>
+      {exercise?.muscleGroup && (
+        <Text sx={{ color: 'fg.muted', display: 'block', mb: 3 }}>{exercise.muscleGroup}</Text>
       )}
 
-      {!loading && workouts.length > 0 && (
+      {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+      <ErrorState error={error} onRetry={refresh} />
+
+      {!loading && !error && workouts.length === 0 && (
+        <Blankslate>
+          <Blankslate.Visual>
+            <HistoryIcon size={24} />
+          </Blankslate.Visual>
+          <Blankslate.Heading>Nenhum treino registrado</Blankslate.Heading>
+          <Blankslate.Description>Registre um treino para acompanhar a evolução deste exercício.</Blankslate.Description>
+          <Blankslate.PrimaryAction onClick={() => navigate(`/novo-treino?exercicio=${id}`)}>
+            Registrar treino
+          </Blankslate.PrimaryAction>
+        </Blankslate>
+      )}
+
+      {!loading && !error && workouts.length > 0 && (
         <>
-          <div className="indicator-grid">
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 4 }}>
             <IndicatorCard label="Carga atual" value={formatWeight(indicators.currentLoad)} />
             <IndicatorCard label="Maior carga" value={formatWeight(indicators.maxLoad)} />
             <IndicatorCard label="Carga anterior" value={formatWeight(indicators.previousLoad)} />
             <IndicatorCard label="Evolução" value={formatPercent(indicators.evolutionPercent)} />
             <IndicatorCard label="Sessões" value={indicators.sessionCount} />
             <IndicatorCard label="Último treino" value={formatDate(indicators.lastWorkoutDate)} />
-          </div>
+          </Box>
 
-          <h2>Evolução da carga</h2>
+          <Heading as="h2" sx={{ fontSize: 2, mb: 2 }}>
+            Evolução da carga
+          </Heading>
           <LoadChart data={chartData} />
         </>
       )}
-    </div>
+    </Box>
   )
 }
