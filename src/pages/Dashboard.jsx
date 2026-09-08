@@ -2,7 +2,14 @@ import { useMemo } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Box, Button, Heading, Text, Spinner, Link } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { PlusCircleIcon, GraphIcon } from '@primer/octicons-react'
+import {
+  PlusCircleIcon,
+  GraphIcon,
+  RocketIcon,
+  ChecklistIcon,
+  FlameIcon,
+  ZapIcon,
+} from '@primer/octicons-react'
 import { useDashboard } from '../hooks/useDashboard'
 import { useExercises } from '../hooks/useExercises'
 import {
@@ -94,11 +101,20 @@ export default function Dashboard() {
       </Box>
 
       <Box
-        sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3 }}
+        sx={{
+          border: '1px solid',
+          borderColor: 'border.default',
+          borderLeft: '4px solid',
+          borderLeftColor: 'accent.emphasis',
+          borderRadius: 2,
+          p: 3,
+          mb: 3,
+        }}
       >
-        <Text sx={{ fontSize: 1, color: 'fg.muted', display: 'block', mb: 1 }}>
-          Treino mais recente
-        </Text>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+          <RocketIcon size={16} fill="var(--fgColor-accent)" />
+          <Text sx={{ fontSize: 1, color: 'fg.muted' }}>Treino mais recente</Text>
+        </Box>
         <Text sx={{ fontWeight: 'bold', display: 'block' }}>
           {exerciseNameById.get(lastWorkout.exerciseId) || 'Exercício'} ·{' '}
           {formatWeight(lastWorkout.weight)} · {lastWorkout.sets}x{lastWorkout.reps}
@@ -121,10 +137,10 @@ export default function Dashboard() {
           )}
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: ['1fr 1fr', '1fr 1fr 1fr'], gap: 2, mb: 4 }}>
-        <IndicatorCard label="Total de treinos" value={totalWorkouts} />
-        <IndicatorCard label="Frequência semanal" value={`${weeklyFrequency}x`} />
-        <IndicatorCard label="Volume acumulado" value={accumulatedVolume} />
+      <Box sx={{ display: 'grid', gridTemplateColumns: ['1fr 1fr', '1fr 1fr 1fr'], gap: 2, mb: 3 }}>
+        <IndicatorCard icon={ChecklistIcon} label="Total de treinos" value={totalWorkouts} />
+        <IndicatorCard icon={FlameIcon} label="Frequência semanal" value={`${weeklyFrequency}x`} />
+        <IndicatorCard icon={ZapIcon} label="Volume acumulado" value={accumulatedVolume} />
       </Box>
 
       <Heading as="h2" sx={{ fontSize: 2, mb: 1 }}>
@@ -133,7 +149,15 @@ export default function Dashboard() {
       <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block', mb: 2 }}>
         Peso × séries × repetições somado de cada dia de treino.
       </Text>
-      <Box sx={{ mb: 4 }}>
+      <Box
+        sx={{
+          border: '1px solid',
+          borderColor: 'border.default',
+          borderRadius: 2,
+          p: 3,
+          mb: 3,
+        }}
+      >
         <VolumeChart data={volumeChartData} />
       </Box>
 

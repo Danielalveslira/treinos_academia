@@ -2,7 +2,14 @@ import { useMemo } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import { Box, Heading, Text, Link, Spinner, Flash } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { ChevronLeftIcon, HistoryIcon } from '@primer/octicons-react'
+import {
+  ChevronLeftIcon,
+  HistoryIcon,
+  TrophyIcon,
+  GraphBarVerticalIcon,
+  ChecklistIcon,
+  CalendarIcon,
+} from '@primer/octicons-react'
 import { useExercises } from '../hooks/useExercises'
 import { useExerciseHistory } from '../hooks/useExerciseHistory'
 import { getExerciseIndicators, buildLoadHistory } from '../utils/calculations'
@@ -64,19 +71,33 @@ export default function ExerciseDetail() {
               🏆 Novo recorde de carga neste exercício!
             </Flash>
           )}
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 4 }}>
-            <IndicatorCard label="Carga atual" value={formatWeight(indicators.currentLoad)} />
-            <IndicatorCard label="Maior carga" value={formatWeight(indicators.maxLoad)} />
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
+            <IndicatorCard
+              icon={GraphBarVerticalIcon}
+              label="Carga atual"
+              value={formatWeight(indicators.currentLoad)}
+            />
+            <IndicatorCard
+              icon={TrophyIcon}
+              label="Maior carga"
+              value={formatWeight(indicators.maxLoad)}
+            />
             <IndicatorCard label="Carga anterior" value={formatWeight(indicators.previousLoad)} />
             <IndicatorCard label="Evolução" value={formatPercent(indicators.evolutionPercent)} />
-            <IndicatorCard label="Sessões" value={indicators.sessionCount} />
-            <IndicatorCard label="Último treino" value={formatDate(indicators.lastWorkoutDate)} />
+            <IndicatorCard icon={ChecklistIcon} label="Sessões" value={indicators.sessionCount} />
+            <IndicatorCard
+              icon={CalendarIcon}
+              label="Último treino"
+              value={formatDate(indicators.lastWorkoutDate)}
+            />
           </Box>
 
           <Heading as="h2" sx={{ fontSize: 2, mb: 2 }}>
             Evolução da carga
           </Heading>
-          <LoadChart data={chartData} />
+          <Box sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3 }}>
+            <LoadChart data={chartData} />
+          </Box>
         </>
       )}
     </Box>
