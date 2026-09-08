@@ -89,6 +89,10 @@ export default function Login() {
               Criar conta
             </Link>
           </Stack>
+
+          <Link as={RouterLink} to="/planos" sx={{ textAlign: 'center', fontSize: 1 }}>
+            Ver planos
+          </Link>
         </Stack>
       </Box>
     </Box>
