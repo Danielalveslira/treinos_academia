@@ -78,7 +78,9 @@ export function WorkoutForm({ exercises, initialValue, defaultExerciseId, onSubm
                 onChange={(e) => setField('weight', e.target.value)}
                 block
               />
-              {errors.weight && <FormControl.Validation variant="error">{errors.weight}</FormControl.Validation>}
+              {errors.weight && (
+                <FormControl.Validation variant="error">{errors.weight}</FormControl.Validation>
+              )}
             </FormControl>
           </Box>
 
@@ -93,7 +95,9 @@ export function WorkoutForm({ exercises, initialValue, defaultExerciseId, onSubm
                 onChange={(e) => setField('sets', e.target.value)}
                 block
               />
-              {errors.sets && <FormControl.Validation variant="error">{errors.sets}</FormControl.Validation>}
+              {errors.sets && (
+                <FormControl.Validation variant="error">{errors.sets}</FormControl.Validation>
+              )}
             </FormControl>
           </Box>
 
@@ -108,7 +112,9 @@ export function WorkoutForm({ exercises, initialValue, defaultExerciseId, onSubm
                 onChange={(e) => setField('reps', e.target.value)}
                 block
               />
-              {errors.reps && <FormControl.Validation variant="error">{errors.reps}</FormControl.Validation>}
+              {errors.reps && (
+                <FormControl.Validation variant="error">{errors.reps}</FormControl.Validation>
+              )}
             </FormControl>
           </Box>
         </Stack>
@@ -121,7 +127,9 @@ export function WorkoutForm({ exercises, initialValue, defaultExerciseId, onSubm
             onChange={(e) => setField('date', e.target.value)}
             block
           />
-          {errors.date && <FormControl.Validation variant="error">{errors.date}</FormControl.Validation>}
+          {errors.date && (
+            <FormControl.Validation variant="error">{errors.date}</FormControl.Validation>
+          )}
         </FormControl>
 
         <FormControl>
@@ -134,11 +142,23 @@ export function WorkoutForm({ exercises, initialValue, defaultExerciseId, onSubm
           />
         </FormControl>
 
-        <Box sx={{ display: 'flex', flexDirection: ['column-reverse', 'row'], gap: 2, justifyContent: ['stretch', 'flex-end'] }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: ['column-reverse', 'row'],
+            gap: 2,
+            justifyContent: ['stretch', 'flex-end'],
+          }}
+        >
           <Button type="button" onClick={onCancel} sx={{ width: ['100%', 'auto'] }}>
             Cancelar
           </Button>
-          <Button type="submit" variant="primary" loading={submitting} sx={{ width: ['100%', 'auto'] }}>
+          <Button
+            type="submit"
+            variant="primary"
+            loading={submitting}
+            sx={{ width: ['100%', 'auto'] }}
+          >
             Salvar treino
           </Button>
         </Box>

@@ -1,9 +1,21 @@
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from 'recharts'
 import { Text } from '@primer/react'
 
 export function LoadChart({ data, dataKey = 'weight', label = 'Carga (kg)' }) {
   if (data.length < 2) {
-    return <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Registre ao menos 2 treinos para ver a evolução.</Text>
+    return (
+      <Text sx={{ color: 'fg.muted', fontSize: 1 }}>
+        Registre ao menos 2 treinos para ver a evolução.
+      </Text>
+    )
   }
 
   return (
@@ -13,7 +25,13 @@ export function LoadChart({ data, dataKey = 'weight', label = 'Carga (kg)' }) {
         <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="var(--fgColor-muted)" />
         <YAxis tick={{ fontSize: 12 }} stroke="var(--fgColor-muted)" />
         <Tooltip formatter={(value) => [value, label]} />
-        <Line type="monotone" dataKey={dataKey} stroke="var(--fgColor-accent)" strokeWidth={2} dot={{ r: 3 }} />
+        <Line
+          type="monotone"
+          dataKey={dataKey}
+          stroke="var(--fgColor-accent)"
+          strokeWidth={2}
+          dot={{ r: 3 }}
+        />
       </LineChart>
     </ResponsiveContainer>
   )

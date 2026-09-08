@@ -1,5 +1,15 @@
 import { useMemo, useState } from 'react'
-import { Box, Button, Heading, Text, Spinner, FormControl, Select, TextInput, Stack } from '@primer/react'
+import {
+  Box,
+  Button,
+  Heading,
+  Text,
+  Spinner,
+  FormControl,
+  Select,
+  TextInput,
+  Stack,
+} from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { HistoryIcon } from '@primer/octicons-react'
 import { useWorkouts } from '../hooks/useWorkouts'
@@ -107,13 +117,23 @@ export default function History() {
           <Box sx={{ flex: 1 }}>
             <FormControl>
               <FormControl.Label sx={{ fontSize: 0, color: 'fg.muted' }}>De</FormControl.Label>
-              <TextInput type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} block />
+              <TextInput
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                block
+              />
             </FormControl>
           </Box>
           <Box sx={{ flex: 1 }}>
             <FormControl>
               <FormControl.Label sx={{ fontSize: 0, color: 'fg.muted' }}>Até</FormControl.Label>
-              <TextInput type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} block />
+              <TextInput
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                block
+              />
             </FormControl>
           </Box>
         </Stack>
@@ -126,7 +146,9 @@ export default function History() {
       </Box>
 
       {editingWorkout && (
-        <Box sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3 }}>
+        <Box
+          sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3 }}
+        >
           <WorkoutForm
             exercises={exercises}
             initialValue={toEditableWorkout(editingWorkout)}
@@ -145,11 +167,21 @@ export default function History() {
             <HistoryIcon size={24} />
           </Blankslate.Visual>
           <Blankslate.Heading>Nenhum registro encontrado</Blankslate.Heading>
-          <Blankslate.Description>Ajuste os filtros ou registre um novo treino.</Blankslate.Description>
+          <Blankslate.Description>
+            Ajuste os filtros ou registre um novo treino.
+          </Blankslate.Description>
         </Blankslate>
       )}
 
-      <Stack gap="none" sx={{ border: workouts.length ? '1px solid' : 'none', borderColor: 'border.default', borderRadius: 2, overflow: 'hidden' }}>
+      <Stack
+        gap="none"
+        sx={{
+          border: workouts.length ? '1px solid' : 'none',
+          borderColor: 'border.default',
+          borderRadius: 2,
+          overflow: 'hidden',
+        }}
+      >
         {workouts.map((workout, index) => (
           <Box
             key={workout.id}
@@ -172,10 +204,15 @@ export default function History() {
                 {calculateVolume(workout.weight, workout.sets, workout.reps)}
               </Text>
               <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block' }}>
-                {(workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)).toLocaleDateString('pt-BR')}
+                {(workout.date?.toDate
+                  ? workout.date.toDate()
+                  : new Date(workout.date)
+                ).toLocaleDateString('pt-BR')}
               </Text>
               {workout.note && (
-                <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block', mt: 1 }}>{workout.note}</Text>
+                <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block', mt: 1 }}>
+                  {workout.note}
+                </Text>
               )}
             </Box>
             <RowActionsMenu

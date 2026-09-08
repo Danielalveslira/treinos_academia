@@ -1,6 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { Header, Box, Text, IconButton } from '@primer/react'
-import { HomeIcon, PlusCircleIcon, HistoryIcon, ListUnorderedIcon, SignOutIcon } from '@primer/octicons-react'
+import {
+  HomeIcon,
+  PlusCircleIcon,
+  HistoryIcon,
+  ListUnorderedIcon,
+  SignOutIcon,
+} from '@primer/octicons-react'
 import { logoutUser } from '../services/authService'
 
 const NAV_ITEMS = [
@@ -45,7 +51,10 @@ export function Layout() {
             aria-label="Sair"
             variant="invisible"
             onClick={logoutUser}
-            sx={{ color: 'rgba(255, 255, 255, 0.7)', '&:hover': { color: '#ffffff', bg: 'rgba(255, 255, 255, 0.1)' } }}
+            sx={{
+              color: 'rgba(255, 255, 255, 0.7)',
+              '&:hover': { color: '#ffffff', bg: 'rgba(255, 255, 255, 0.1)' },
+            }}
           />
         </Header.Item>
       </Header>
@@ -82,7 +91,15 @@ export function Layout() {
       >
         {NAV_ITEMS.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} style={bottomNavLinkStyle}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', py: 2 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '2px',
+                py: 2,
+              }}
+            >
               <item.icon size={20} />
               <Text sx={{ fontSize: 0, display: 'block' }}>{item.label}</Text>
             </Box>

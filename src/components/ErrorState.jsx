@@ -11,7 +11,12 @@ export function ErrorState({ error, onRetry }) {
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Text sx={{ display: 'block' }}>{error.message}</Text>
           {error.actionHref && (
-            <Link href={error.actionHref} target="_blank" rel="noreferrer" sx={{ display: 'inline-block', mt: 1 }}>
+            <Link
+              href={error.actionHref}
+              target="_blank"
+              rel="noreferrer"
+              sx={{ display: 'inline-block', mt: 1 }}
+            >
               {error.actionLabel}
             </Link>
           )}

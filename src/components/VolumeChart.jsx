@@ -3,7 +3,11 @@ import { Text } from '@primer/react'
 
 export function VolumeChart({ data }) {
   if (data.length < 2) {
-    return <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Registre treinos em datas diferentes para ver o volume.</Text>
+    return (
+      <Text sx={{ color: 'fg.muted', fontSize: 1 }}>
+        Registre treinos em datas diferentes para ver o volume.
+      </Text>
+    )
   }
 
   return (

@@ -93,20 +93,32 @@ export default function Dashboard() {
         </Button>
       </Box>
 
-      <Box sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3 }}>
-        <Text sx={{ fontSize: 1, color: 'fg.muted', display: 'block', mb: 1 }}>Treino mais recente</Text>
+      <Box
+        sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3 }}
+      >
+        <Text sx={{ fontSize: 1, color: 'fg.muted', display: 'block', mb: 1 }}>
+          Treino mais recente
+        </Text>
         <Text sx={{ fontWeight: 'bold', display: 'block' }}>
-          {exerciseNameById.get(lastWorkout.exerciseId) || 'Exercício'} · {formatWeight(lastWorkout.weight)} ·{' '}
-          {lastWorkout.sets}x{lastWorkout.reps}
+          {exerciseNameById.get(lastWorkout.exerciseId) || 'Exercício'} ·{' '}
+          {formatWeight(lastWorkout.weight)} · {lastWorkout.sets}x{lastWorkout.reps}
         </Text>
         <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block' }}>
-          {formatDate(lastWorkout.date?.toDate ? lastWorkout.date.toDate() : new Date(lastWorkout.date))}
+          {formatDate(
+            lastWorkout.date?.toDate ? lastWorkout.date.toDate() : new Date(lastWorkout.date)
+          )}
         </Text>
-        {lastExerciseIndicators?.evolutionPercent != null && (
+        {lastExerciseIndicators?.isPersonalRecord && (
           <Text sx={{ color: 'success.fg', fontWeight: 'bold', display: 'block', mt: 2 }}>
-            Evolução nesse exercício: {formatPercent(lastExerciseIndicators.evolutionPercent)}
+            🏆 Novo recorde de carga!
           </Text>
         )}
+        {!lastExerciseIndicators?.isPersonalRecord &&
+          lastExerciseIndicators?.evolutionPercent != null && (
+            <Text sx={{ color: 'success.fg', fontWeight: 'bold', display: 'block', mt: 2 }}>
+              Evolução nesse exercício: {formatPercent(lastExerciseIndicators.evolutionPercent)}
+            </Text>
+          )}
       </Box>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: ['1fr 1fr', '1fr 1fr 1fr'], gap: 2, mb: 4 }}>
@@ -130,7 +142,14 @@ export default function Dashboard() {
           Ver tudo
         </Link>
       </Box>
-      <Box sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, overflow: 'hidden' }}>
+      <Box
+        sx={{
+          border: '1px solid',
+          borderColor: 'border.default',
+          borderRadius: 2,
+          overflow: 'hidden',
+        }}
+      >
         {recentWorkouts.slice(0, 5).map((workout, index) => (
           <Box
             key={workout.id}

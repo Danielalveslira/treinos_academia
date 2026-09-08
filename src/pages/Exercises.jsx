@@ -110,12 +110,19 @@ export default function Exercises() {
 
       {grouped.map(([muscleGroup, list]) => (
         <Box key={muscleGroup} sx={{ mb: 3 }}>
-          <Text sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', display: 'block', mb: 2 }}>
+          <Text
+            sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', display: 'block', mb: 2 }}
+          >
             {muscleGroup}
           </Text>
           <Stack
             gap="none"
-            sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, overflow: 'hidden' }}
+            sx={{
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2,
+              overflow: 'hidden',
+            }}
           >
             {list.map((exercise, index) => (
               <Box
@@ -148,7 +155,13 @@ export default function Exercises() {
                     color: 'fg.default',
                   }}
                 >
-                  <Text sx={{ opacity: exercise.active ? 1 : 0.6, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <Text
+                    sx={{
+                      opacity: exercise.active ? 1 : 0.6,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
                     {exercise.name}
                   </Text>
                   {!exercise.active && <Label>Inativo</Label>}

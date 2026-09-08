@@ -16,9 +16,5 @@ export function AuthProvider({ children }) {
     return unsubscribe
   }, [])
 
-  return (
-    <AuthContext.Provider value={{ user, loading }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={{ user, loading }}>{children}</AuthContext.Provider>
 }

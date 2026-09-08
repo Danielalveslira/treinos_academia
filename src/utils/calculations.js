@@ -37,15 +37,18 @@ export function getExerciseIndicators(workouts) {
     0
   )
 
+  const maxLoad = Math.max(...sorted.map((w) => w.weight))
+
   return {
     currentLoad: latest.weight,
     previousLoad: previous ? previous.weight : null,
-    maxLoad: Math.max(...sorted.map((w) => w.weight)),
+    maxLoad,
     evolutionPercent: calculateEvolutionPercent(latest.weight, previous?.weight),
     lastVolume: calculateVolume(latest.weight, latest.sets, latest.reps),
     accumulatedVolume,
     sessionCount: sorted.length,
     lastWorkoutDate: toDate(latest.date),
+    isPersonalRecord: sorted.length > 1 && latest.weight >= maxLoad,
   }
 }
 
@@ -57,9 +60,7 @@ export function getWeeklyFrequency(workouts) {
   sevenDaysAgo.setDate(now.getDate() - 7)
 
   const uniqueDays = new Set(
-    workouts
-      .filter((w) => toDate(w.date) >= sevenDaysAgo)
-      .map((w) => toDate(w.date).toDateString())
+    workouts.filter((w) => toDate(w.date) >= sevenDaysAgo).map((w) => toDate(w.date).toDateString())
   )
 
   return uniqueDays.size
