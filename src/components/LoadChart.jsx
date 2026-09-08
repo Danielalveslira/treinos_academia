@@ -46,7 +46,20 @@ export function LoadChart({ data, dataKey = 'weight', label = 'Carga (kg)' }) {
           axisLine={false}
           tickLine={false}
         />
-        <Tooltip labelFormatter={formatDateLabel} formatter={(value) => [value, label]} />
+        <Tooltip
+          labelFormatter={formatDateLabel}
+          formatter={(value) => [value, label]}
+          contentStyle={{
+            background: 'var(--bgColor-default)',
+            border: '1px solid var(--borderColor-default)',
+            borderRadius: 6,
+            boxShadow: 'var(--shadow-resting-medium)',
+            fontSize: 12,
+            padding: '6px 10px',
+          }}
+          labelStyle={{ color: 'var(--fgColor-muted)', marginBottom: 2 }}
+          itemStyle={{ color: 'var(--fgColor-default)', padding: 0 }}
+        />
         <Area
           type="monotone"
           dataKey={dataKey}

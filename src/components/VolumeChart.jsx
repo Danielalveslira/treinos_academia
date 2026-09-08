@@ -47,7 +47,17 @@ export function VolumeChart({ data }) {
         <Tooltip
           cursor={{ fill: 'var(--bgColor-neutral-muted)' }}
           labelFormatter={formatDateLabel}
-          formatter={(value) => [value, 'Volume (kg levantados no dia)']}
+          formatter={(value) => [value, 'Volume']}
+          contentStyle={{
+            background: 'var(--bgColor-default)',
+            border: '1px solid var(--borderColor-default)',
+            borderRadius: 6,
+            boxShadow: 'var(--shadow-resting-medium)',
+            fontSize: 12,
+            padding: '6px 10px',
+          }}
+          labelStyle={{ color: 'var(--fgColor-muted)', marginBottom: 2 }}
+          itemStyle={{ color: 'var(--fgColor-default)', padding: 0 }}
         />
         <Bar dataKey="volume" fill="var(--fgColor-accent)" radius={[6, 6, 0, 0]} maxBarSize={56}>
           <LabelList
