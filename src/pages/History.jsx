@@ -86,7 +86,7 @@ export default function History() {
   return (
     <Box>
       <ToastFlash toasts={toasts} />
-      <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
+      <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
         Histórico
       </Heading>
 
@@ -158,7 +158,7 @@ export default function History() {
               alignItems: 'flex-start',
               gap: 2,
               px: 3,
-              py: 3,
+              py: 2,
               borderTop: index === 0 ? 'none' : '1px solid',
               borderColor: 'border.default',
             }}

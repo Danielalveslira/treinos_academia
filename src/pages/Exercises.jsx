@@ -71,7 +71,7 @@ export default function Exercises() {
     <Box>
       <ToastFlash toasts={toasts} />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Heading as="h1" sx={{ fontSize: 4 }}>
+        <Heading as="h1" sx={{ fontSize: 3 }}>
           Exercícios
         </Heading>
         {!formOpen && !editingExercise && (
@@ -109,7 +109,7 @@ export default function Exercises() {
       )}
 
       {grouped.map(([muscleGroup, list]) => (
-        <Box key={muscleGroup} sx={{ mb: 4 }}>
+        <Box key={muscleGroup} sx={{ mb: 3 }}>
           <Text sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', display: 'block', mb: 2 }}>
             {muscleGroup}
           </Text>
@@ -125,7 +125,7 @@ export default function Exercises() {
                   alignItems: 'center',
                   gap: 2,
                   px: 3,
-                  py: 3,
+                  py: 2,
                   borderTop: index === 0 ? 'none' : '1px solid',
                   borderColor: 'border.default',
                 }}

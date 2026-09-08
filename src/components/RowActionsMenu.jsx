@@ -9,7 +9,6 @@ export function RowActionsMenu({ onEdit, onDelete }) {
           icon={KebabHorizontalIcon}
           variant="invisible"
           aria-label="Mais ações"
-          size="large"
           sx={{ color: 'fg.muted' }}
         />
       </ActionMenu.Anchor>

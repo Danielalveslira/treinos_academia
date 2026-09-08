@@ -89,7 +89,7 @@ export function ExerciseForm({ initialValue, onSubmit, onCancel }) {
           <Button type="button" onClick={onCancel} sx={{ width: ['100%', 'auto'] }}>
             Cancelar
           </Button>
-          <Button type="submit" variant="primary" loading={submitting} size="large" sx={{ width: ['100%', 'auto'] }}>
+          <Button type="submit" variant="primary" loading={submitting} sx={{ width: ['100%', 'auto'] }}>
             Salvar
           </Button>
         </Box>

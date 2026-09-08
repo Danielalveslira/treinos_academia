@@ -28,7 +28,7 @@ export default function ExerciseDetail() {
       <Link as={RouterLink} to="/exercicios" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mb: 2, fontSize: 1 }}>
         <ChevronLeftIcon /> Exercícios
       </Link>
-      <Heading as="h1" sx={{ fontSize: 4 }}>
+      <Heading as="h1" sx={{ fontSize: 3 }}>
         {exercise?.name || 'Exercício'}
       </Heading>
       {exercise?.muscleGroup && (
