@@ -90,9 +90,19 @@ export default function Login() {
             </Link>
           </Stack>
 
-          <Link as={RouterLink} to="/planos" sx={{ textAlign: 'center', fontSize: 1 }}>
-            Ver planos
-          </Link>
+          <Box
+            sx={{
+              borderTop: '1px solid',
+              borderColor: 'border.muted',
+              pt: 3,
+              mt: 1,
+              textAlign: 'center',
+            }}
+          >
+            <Link as={RouterLink} to="/planos" sx={{ fontSize: 1 }}>
+              Ver planos
+            </Link>
+          </Box>
         </Stack>
       </Box>
     </Box>

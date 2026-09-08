@@ -53,25 +53,36 @@ export default function Pricing() {
             <Box
               key={plan.id}
               sx={{
+                display: 'flex',
+                flexDirection: 'column',
                 border: '1px solid',
                 borderColor: plan.highlight ? 'accent.emphasis' : 'border.default',
-                borderRadius: 3,
+                borderRadius: 2,
                 p: 4,
-                position: 'relative',
                 bg: 'canvas.default',
               }}
             >
-              {plan.highlight && (
-                <Label variant="accent" sx={{ position: 'absolute', top: 3, right: 3 }}>
-                  Melhor custo-benefício
-                </Label>
-              )}
-
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                <plan.icon size={20} fill="var(--fgColor-accent)" />
-                <Heading as="h2" sx={{ fontSize: 3 }}>
-                  {plan.name}
-                </Heading>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 2,
+                  mb: 2,
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <plan.icon size={20} fill="var(--fgColor-accent)" />
+                  <Heading as="h2" sx={{ fontSize: 3 }}>
+                    {plan.name}
+                  </Heading>
+                </Box>
+                {plan.highlight && (
+                  <Label variant="accent" sx={{ whiteSpace: 'nowrap' }}>
+                    Melhor custo-benefício
+                  </Label>
+                )}
               </Box>
 
               <Box sx={{ mb: 2 }}>
@@ -83,7 +94,7 @@ export default function Pricing() {
                 {plan.description}
               </Text>
 
-              <Box as="ul" sx={{ listStyle: 'none', p: 0, m: 0, mb: 4 }}>
+              <Box as="ul" sx={{ listStyle: 'none', p: 0, m: 0, mb: 4, flex: 1 }}>
                 {plan.features.map((feature) => (
                   <Box
                     key={feature}
