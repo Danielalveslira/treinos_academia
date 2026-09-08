@@ -5,6 +5,7 @@ Aplicação web para acompanhar evolução em treinos de academia: exercícios, 
 ## Stack
 
 - **Frontend:** React + Vite
+- **UI:** [GitHub Primer React](https://primer.style/) — todos os elementos de interface (botões, formulários, listas, diálogos, feedback) usam componentes do Primer; não há biblioteca de estilo concorrente
 - **Autenticação:** Firebase Authentication
 - **Banco de dados:** Firebase Firestore (plano gratuito)
 - **Hospedagem:** Firebase Hosting (compatível com Vercel/Netlify, ajustando o passo de deploy)
@@ -26,6 +27,10 @@ src/
 ```
 
 Regra geral: **components/pages não falam com o Firestore diretamente** — sempre passam por um hook, que por sua vez usa um service. Cálculos de indicadores (volume, evolução %, frequência) ficam isolados em `utils/calculations.js`, puros e testáveis.
+
+Componentes próprios em `components/` existem apenas quando o Primer não tem equivalente direto (ex.: `WorkoutForm`, `ExerciseForm`, `RowActionsMenu`, `LoadChart`/`VolumeChart`) — e mesmo esses são compostos internamente com peças do Primer (`Box`, `FormControl`, `Stack`, `ActionMenu`). Erros de leitura do Firestore nunca são escondidos atrás de uma mensagem genérica: `utils/firestoreError.js` loga o erro real no console e, quando a causa é um índice composto ausente, expõe o link de criação direto na tela (ver `components/ErrorState.jsx`).
+
+**Nota sobre a versão do Primer:** `@primer/react` está fixado em `^37.x` (não `^38`). A v38 removeu `Box` e a prop `sx` do pacote principal em favor de CSS Modules — uma mudança de arquitetura grande demais para este estágio do projeto, e a v37 ainda é a versão com toda a documentação e exemplos oficiais do Primer. Não faça upgrade para v38 sem reescrever a camada de layout.
 
 ## Modelo de dados (Firestore)
 

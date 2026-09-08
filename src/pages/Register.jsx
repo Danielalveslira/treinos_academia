@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Box, Button, FormControl, TextInput, Heading, Link, Flash, Stack } from '@primer/react'
 import { registerUser } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
-import { FormField } from '../components/FormField'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -19,6 +19,7 @@ export default function Register() {
       await registerUser(email, password)
       navigate('/')
     } catch (err) {
+      console.error('[Auth] register:', err)
       setError(translateAuthError(err))
     } finally {
       setSubmitting(false)
@@ -26,36 +27,52 @@ export default function Register() {
   }
 
   return (
-    <div className="auth-page">
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <h1>Criar conta</h1>
-        {error && <p className="form-error">{error}</p>}
-        <FormField label="E-mail">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-        </FormField>
-        <FormField label="Senha">
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            autoComplete="new-password"
-          />
-        </FormField>
-        <button type="submit" className="button button--primary" disabled={submitting}>
-          {submitting ? 'Criando...' : 'Criar conta'}
-        </button>
-        <div className="auth-links">
-          <Link to="/login">Já tenho conta</Link>
-        </div>
-      </form>
-    </div>
+    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
+      <Box
+        as="form"
+        onSubmit={handleSubmit}
+        sx={{ width: '100%', maxWidth: '360px', border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 4 }}
+      >
+        <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
+          Criar conta
+        </Heading>
+
+        <Stack gap="condensed">
+          {error && <Flash variant="danger">{error}</Flash>}
+
+          <FormControl required>
+            <FormControl.Label>E-mail</FormControl.Label>
+            <TextInput
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              block
+            />
+          </FormControl>
+
+          <FormControl required>
+            <FormControl.Label>Senha</FormControl.Label>
+            <TextInput
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              minLength={6}
+              block
+            />
+            <FormControl.Caption>Mínimo de 6 caracteres.</FormControl.Caption>
+          </FormControl>
+
+          <Button type="submit" variant="primary" block loading={submitting}>
+            Criar conta
+          </Button>
+
+          <Link as={RouterLink} to="/login">
+            Já tenho conta
+          </Link>
+        </Stack>
+      </Box>
+    </Box>
   )
 }

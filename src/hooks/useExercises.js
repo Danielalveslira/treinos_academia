@@ -6,21 +6,22 @@ import {
   updateExercise,
   deleteExercise,
 } from '../services/exercisesService'
+import { describeFirestoreError } from '../utils/firestoreError'
 
 export function useExercises() {
   const { user } = useAuth()
   const [exercises, setExercises] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
-    setError('')
+    setError(null)
     try {
       const data = await listExercises(user.uid)
       setExercises(data)
-    } catch {
-      setError('Não foi possível carregar os exercícios.')
+    } catch (err) {
+      setError(describeFirestoreError(err, 'listExercises'))
     } finally {
       setLoading(false)
     }

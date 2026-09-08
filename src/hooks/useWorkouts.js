@@ -6,6 +6,7 @@ import {
   updateWorkout,
   deleteWorkout,
 } from '../services/workoutsService'
+import { describeFirestoreError } from '../utils/firestoreError'
 
 export function useWorkouts(filters = {}) {
   const { user } = useAuth()
@@ -13,13 +14,13 @@ export function useWorkouts(filters = {}) {
   const [cursor, setCursor] = useState(null)
   const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
 
   const { exerciseId, startDate, endDate } = filters
 
   const refresh = useCallback(async () => {
     setLoading(true)
-    setError('')
+    setError(null)
     try {
       const { items, nextCursor } = await listWorkoutsPage(user.uid, {
         exerciseId,
@@ -29,8 +30,8 @@ export function useWorkouts(filters = {}) {
       setWorkouts(items)
       setCursor(nextCursor)
       setHasMore(!!nextCursor)
-    } catch {
-      setError('Não foi possível carregar o histórico.')
+    } catch (err) {
+      setError(describeFirestoreError(err, 'listWorkoutsPage'))
     } finally {
       setLoading(false)
     }
@@ -52,8 +53,8 @@ export function useWorkouts(filters = {}) {
       setWorkouts((prev) => [...prev, ...items])
       setCursor(nextCursor)
       setHasMore(!!nextCursor)
-    } catch {
-      setError('Não foi possível carregar mais registros.')
+    } catch (err) {
+      setError(describeFirestoreError(err, 'loadMore'))
     }
   }
 

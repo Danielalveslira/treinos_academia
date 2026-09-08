@@ -11,11 +11,15 @@
     "emulators": "firebase emulators:start --only auth,firestore"
   },
   "dependencies": {
+    "@primer/octicons-react": "^19.35.0",
+    "@primer/primitives": "^11.10.0",
+    "@primer/react": "^37.31.0",
     "firebase": "^11.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
-    "recharts": "^2.13.3"
+    "recharts": "^2.13.3",
+    "styled-components": "^5.3.11"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",

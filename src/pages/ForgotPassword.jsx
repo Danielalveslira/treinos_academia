@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
+import { Box, Button, FormControl, TextInput, Heading, Link, Flash, Text, Stack } from '@primer/react'
 import { resetPassword } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
-import { FormField } from '../components/FormField'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -18,6 +18,7 @@ export default function ForgotPassword() {
       await resetPassword(email)
       setSent(true)
     } catch (err) {
+      console.error('[Auth] resetPassword:', err)
       setError(translateAuthError(err))
     } finally {
       setSubmitting(false)
@@ -25,32 +26,45 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="auth-page">
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <h1>Recuperar senha</h1>
-        {error && <p className="form-error">{error}</p>}
-        {sent ? (
-          <p>Se o e-mail existir, enviamos um link de recuperação.</p>
-        ) : (
-          <>
-            <FormField label="E-mail">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
-            </FormField>
-            <button type="submit" className="button button--primary" disabled={submitting}>
-              {submitting ? 'Enviando...' : 'Enviar link'}
-            </button>
-          </>
-        )}
-        <div className="auth-links">
-          <Link to="/login">Voltar ao login</Link>
-        </div>
-      </form>
-    </div>
+    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
+      <Box
+        as="form"
+        onSubmit={handleSubmit}
+        sx={{ width: '100%', maxWidth: '360px', border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 4 }}
+      >
+        <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
+          Recuperar senha
+        </Heading>
+
+        <Stack gap="condensed">
+          {error && <Flash variant="danger">{error}</Flash>}
+
+          {sent ? (
+            <Text>Se o e-mail existir, enviamos um link de recuperação.</Text>
+          ) : (
+            <>
+              <FormControl required>
+                <FormControl.Label>E-mail</FormControl.Label>
+                <TextInput
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  block
+                />
+              </FormControl>
+
+              <Button type="submit" variant="primary" block loading={submitting}>
+                Enviar link
+              </Button>
+            </>
+          )}
+
+          <Link as={RouterLink} to="/login">
+            Voltar ao login
+          </Link>
+        </Stack>
+      </Box>
+    </Box>
   )
 }

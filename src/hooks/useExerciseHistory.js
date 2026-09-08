@@ -1,21 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from './useAuth'
 import { listWorkoutsForExercise } from '../services/workoutsService'
+import { describeFirestoreError } from '../utils/firestoreError'
 
 export function useExerciseHistory(exerciseId) {
   const { user } = useAuth()
   const [workouts, setWorkouts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
-    setError('')
+    setError(null)
     try {
       const data = await listWorkoutsForExercise(user.uid, exerciseId)
       setWorkouts(data)
-    } catch {
-      setError('Não foi possível carregar o histórico do exercício.')
+    } catch (err) {
+      setError(describeFirestoreError(err, 'useExerciseHistory'))
     } finally {
       setLoading(false)
     }

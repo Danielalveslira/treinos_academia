@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Box, Button, FormControl, TextInput, Heading, Link, Flash, Stack } from '@primer/react'
 import { loginUser } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
-import { FormField } from '../components/FormField'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -19,6 +19,7 @@ export default function Login() {
       await loginUser(email, password)
       navigate('/')
     } catch (err) {
+      console.error('[Auth] login:', err)
       setError(translateAuthError(err))
     } finally {
       setSubmitting(false)
@@ -26,36 +27,55 @@ export default function Login() {
   }
 
   return (
-    <div className="auth-page">
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <h1>Entrar</h1>
-        {error && <p className="form-error">{error}</p>}
-        <FormField label="E-mail">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
-        </FormField>
-        <FormField label="Senha">
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-        </FormField>
-        <button type="submit" className="button button--primary" disabled={submitting}>
-          {submitting ? 'Entrando...' : 'Entrar'}
-        </button>
-        <div className="auth-links">
-          <Link to="/esqueci-senha">Esqueci minha senha</Link>
-          <Link to="/cadastro">Criar conta</Link>
-        </div>
-      </form>
-    </div>
+    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 3 }}>
+      <Box
+        as="form"
+        onSubmit={handleSubmit}
+        sx={{ width: '100%', maxWidth: '360px', border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 4 }}
+      >
+        <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
+          Entrar
+        </Heading>
+
+        <Stack gap="condensed">
+          {error && <Flash variant="danger">{error}</Flash>}
+
+          <FormControl required>
+            <FormControl.Label>E-mail</FormControl.Label>
+            <TextInput
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              block
+            />
+          </FormControl>
+
+          <FormControl required>
+            <FormControl.Label>Senha</FormControl.Label>
+            <TextInput
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              block
+            />
+          </FormControl>
+
+          <Button type="submit" variant="primary" block loading={submitting}>
+            Entrar
+          </Button>
+
+          <Stack direction="horizontal" justify="space-between">
+            <Link as={RouterLink} to="/esqueci-senha">
+              Esqueci minha senha
+            </Link>
+            <Link as={RouterLink} to="/cadastro">
+              Criar conta
+            </Link>
+          </Stack>
+        </Stack>
+      </Box>
+    </Box>
   )
 }

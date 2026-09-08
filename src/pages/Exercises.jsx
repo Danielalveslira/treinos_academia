@@ -1,19 +1,23 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { Box, Button, Heading, Text, Label, Spinner, Stack } from '@primer/react'
+import { Blankslate } from '@primer/react/experimental'
+import { TasklistIcon, PlusIcon } from '@primer/octicons-react'
 import { useExercises } from '../hooks/useExercises'
 import { useToast } from '../hooks/useToast'
 import { ExerciseForm } from '../components/ExerciseForm'
-import { ConfirmDialog } from '../components/ConfirmDialog'
-import { EmptyState } from '../components/EmptyState'
-import { Spinner } from '../components/Spinner'
-import { ToastContainer } from '../components/ToastContainer'
+import { ErrorState } from '../components/ErrorState'
+import { RowActionsMenu } from '../components/RowActionsMenu'
+import { ToastFlash } from '../components/ToastFlash'
+import { useConfirmDelete } from '../hooks/useConfirmDelete'
 
 export default function Exercises() {
-  const { exercises, loading, error, add, edit, remove } = useExercises()
+  const navigate = useNavigate()
+  const { exercises, loading, error, add, edit, remove, refresh } = useExercises()
   const { toasts, showToast } = useToast()
+  const confirmDelete = useConfirmDelete()
   const [formOpen, setFormOpen] = useState(false)
   const [editingExercise, setEditingExercise] = useState(null)
-  const [pendingDelete, setPendingDelete] = useState(null)
 
   const grouped = useMemo(() => {
     const groups = new Map()
@@ -30,8 +34,9 @@ export default function Exercises() {
       await add(values)
       setFormOpen(false)
       showToast('Exercício cadastrado.')
-    } catch {
-      showToast('Erro ao cadastrar exercício.', 'error')
+    } catch (err) {
+      console.error('[Exercises] create:', err)
+      showToast('Erro ao cadastrar exercício.', 'danger')
     }
   }
 
@@ -40,37 +45,43 @@ export default function Exercises() {
       await edit(editingExercise.id, values)
       setEditingExercise(null)
       showToast('Exercício atualizado.')
-    } catch {
-      showToast('Erro ao atualizar exercício.', 'error')
+    } catch (err) {
+      console.error('[Exercises] update:', err)
+      showToast('Erro ao atualizar exercício.', 'danger')
     }
   }
 
-  async function handleDelete() {
+  async function handleDeleteRequest(exercise) {
+    const confirmed = await confirmDelete({
+      title: `Excluir "${exercise.name}"?`,
+      content: 'Os registros de treino associados não serão excluídos.',
+    })
+    if (!confirmed) return
+
     try {
-      await remove(pendingDelete.id)
-      setPendingDelete(null)
+      await remove(exercise.id)
       showToast('Exercício excluído.')
-    } catch {
-      showToast('Erro ao excluir exercício.', 'error')
+    } catch (err) {
+      console.error('[Exercises] delete:', err)
+      showToast('Erro ao excluir exercício.', 'danger')
     }
   }
 
   return (
-    <div className="page">
-      <ToastContainer toasts={toasts} />
-      <div className="page__header">
-        <h1>Exercícios</h1>
+    <Box>
+      <ToastFlash toasts={toasts} />
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+        <Heading as="h1" sx={{ fontSize: 4 }}>
+          Exercícios
+        </Heading>
         {!formOpen && !editingExercise && (
-          <button className="button button--primary" onClick={() => setFormOpen(true)}>
-            Novo exercício
-          </button>
+          <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
+            Novo
+          </Button>
         )}
-      </div>
+      </Box>
 
-      {formOpen && (
-        <ExerciseForm onSubmit={handleCreate} onCancel={() => setFormOpen(false)} />
-      )}
-
+      {formOpen && <ExerciseForm onSubmit={handleCreate} onCancel={() => setFormOpen(false)} />}
       {editingExercise && (
         <ExerciseForm
           initialValue={editingExercise}
@@ -79,51 +90,78 @@ export default function Exercises() {
         />
       )}
 
-      {loading && <Spinner />}
-      {error && <p className="form-error">{error}</p>}
+      {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+      <ErrorState error={error} onRetry={refresh} />
 
       {!loading && !error && exercises.length === 0 && (
-        <EmptyState
-          message="Nenhum exercício cadastrado ainda."
-          actionLabel="Cadastrar primeiro exercício"
-          onAction={() => setFormOpen(true)}
-        />
+        <Blankslate>
+          <Blankslate.Visual>
+            <TasklistIcon size={24} />
+          </Blankslate.Visual>
+          <Blankslate.Heading>Nenhum exercício cadastrado</Blankslate.Heading>
+          <Blankslate.Description>
+            Cadastre seu primeiro exercício para começar a registrar treinos.
+          </Blankslate.Description>
+          <Blankslate.PrimaryAction onClick={() => setFormOpen(true)}>
+            Cadastrar exercício
+          </Blankslate.PrimaryAction>
+        </Blankslate>
       )}
 
       {grouped.map(([muscleGroup, list]) => (
-        <section key={muscleGroup} className="exercise-group">
-          <h2>{muscleGroup}</h2>
-          <ul className="exercise-list">
-            {list.map((exercise) => (
-              <li key={exercise.id} className={exercise.active ? '' : 'exercise-list__inactive'}>
-                <Link to={`/exercicios/${exercise.id}`} className="exercise-list__name">
-                  {exercise.name}
-                </Link>
-                {!exercise.active && <span className="badge">Inativo</span>}
-                <div className="exercise-list__actions">
-                  <button className="link-button" onClick={() => setEditingExercise(exercise)}>
-                    Editar
-                  </button>
-                  <button
-                    className="link-button link-button--danger"
-                    onClick={() => setPendingDelete(exercise)}
-                  >
-                    Excluir
-                  </button>
-                </div>
-              </li>
+        <Box key={muscleGroup} sx={{ mb: 4 }}>
+          <Text sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', display: 'block', mb: 2 }}>
+            {muscleGroup}
+          </Text>
+          <Stack
+            gap="none"
+            sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, overflow: 'hidden' }}
+          >
+            {list.map((exercise, index) => (
+              <Box
+                key={exercise.id}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  px: 3,
+                  py: 3,
+                  borderTop: index === 0 ? 'none' : '1px solid',
+                  borderColor: 'border.default',
+                }}
+              >
+                <Box
+                  as="button"
+                  type="button"
+                  onClick={() => navigate(`/exercicios/${exercise.id}`)}
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    textAlign: 'left',
+                    bg: 'transparent',
+                    border: 0,
+                    p: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    cursor: 'pointer',
+                    color: 'fg.default',
+                  }}
+                >
+                  <Text sx={{ opacity: exercise.active ? 1 : 0.6, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {exercise.name}
+                  </Text>
+                  {!exercise.active && <Label>Inativo</Label>}
+                </Box>
+                <RowActionsMenu
+                  onEdit={() => setEditingExercise(exercise)}
+                  onDelete={() => handleDeleteRequest(exercise)}
+                />
+              </Box>
             ))}
-          </ul>
-        </section>
+          </Stack>
+        </Box>
       ))}
-
-      <ConfirmDialog
-        open={!!pendingDelete}
-        title="Excluir exercício"
-        message={`Tem certeza que deseja excluir "${pendingDelete?.name}"? Os registros de treino associados não serão excluídos.`}
-        onConfirm={handleDelete}
-        onCancel={() => setPendingDelete(null)}
-      />
-    </div>
+    </Box>
   )
 }

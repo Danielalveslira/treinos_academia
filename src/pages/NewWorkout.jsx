@@ -1,18 +1,20 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Box, Heading, Spinner } from '@primer/react'
+import { Blankslate } from '@primer/react/experimental'
+import { PlusCircleIcon } from '@primer/octicons-react'
 import { useExercises } from '../hooks/useExercises'
 import { useWorkouts } from '../hooks/useWorkouts'
 import { useToast } from '../hooks/useToast'
 import { WorkoutForm } from '../components/WorkoutForm'
-import { Spinner } from '../components/Spinner'
-import { EmptyState } from '../components/EmptyState'
-import { ToastContainer } from '../components/ToastContainer'
+import { ErrorState } from '../components/ErrorState'
+import { ToastFlash } from '../components/ToastFlash'
 
 export default function NewWorkout() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const defaultExerciseId = searchParams.get('exercicio') || ''
 
-  const { exercises, loading } = useExercises()
+  const { exercises, loading, error, refresh } = useExercises()
   const { add } = useWorkouts()
   const { toasts, showToast } = useToast()
 
@@ -21,27 +23,38 @@ export default function NewWorkout() {
       await add(values)
       showToast('Treino registrado.')
       navigate('/historico')
-    } catch {
-      showToast('Erro ao registrar treino.', 'error')
+    } catch (err) {
+      console.error('[NewWorkout] create:', err)
+      showToast('Erro ao registrar treino.', 'danger')
     }
   }
 
+  const activeExercises = exercises.filter((e) => e.active)
+
   return (
-    <div className="page">
-      <ToastContainer toasts={toasts} />
-      <h1>Novo treino</h1>
+    <Box>
+      <ToastFlash toasts={toasts} />
+      <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
+        Novo treino
+      </Heading>
 
-      {loading && <Spinner />}
+      {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+      <ErrorState error={error} onRetry={refresh} />
 
-      {!loading && exercises.filter((e) => e.active).length === 0 && (
-        <EmptyState
-          message="Cadastre um exercício antes de registrar um treino."
-          actionLabel="Cadastrar exercício"
-          onAction={() => navigate('/exercicios')}
-        />
+      {!loading && !error && activeExercises.length === 0 && (
+        <Blankslate>
+          <Blankslate.Visual>
+            <PlusCircleIcon size={24} />
+          </Blankslate.Visual>
+          <Blankslate.Heading>Nenhum exercício ativo</Blankslate.Heading>
+          <Blankslate.Description>Cadastre um exercício antes de registrar um treino.</Blankslate.Description>
+          <Blankslate.PrimaryAction onClick={() => navigate('/exercicios')}>
+            Cadastrar exercício
+          </Blankslate.PrimaryAction>
+        </Blankslate>
       )}
 
-      {!loading && exercises.filter((e) => e.active).length > 0 && (
+      {!loading && !error && activeExercises.length > 0 && (
         <WorkoutForm
           exercises={exercises}
           defaultExerciseId={defaultExerciseId}
@@ -49,6 +62,6 @@ export default function NewWorkout() {
           onCancel={() => navigate(-1)}
         />
       )}
-    </div>
+    </Box>
   )
 }
