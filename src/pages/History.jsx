@@ -25,11 +25,21 @@ function toEditableWorkout(workout) {
   }
 }
 
+const NO_FILTERS = { exerciseFilter: '', startDate: '', endDate: '' }
+
 export default function History() {
-  const [exerciseFilter, setExerciseFilter] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [exerciseFilter, setExerciseFilter] = useState(NO_FILTERS.exerciseFilter)
+  const [startDate, setStartDate] = useState(NO_FILTERS.startDate)
+  const [endDate, setEndDate] = useState(NO_FILTERS.endDate)
   const [editingWorkout, setEditingWorkout] = useState(null)
+
+  const hasActiveFilters = Boolean(exerciseFilter || startDate || endDate)
+
+  function clearFilters() {
+    setExerciseFilter(NO_FILTERS.exerciseFilter)
+    setStartDate(NO_FILTERS.startDate)
+    setEndDate(NO_FILTERS.endDate)
+  }
 
   const { exercises } = useExercises()
   const { workouts, loading, error, hasMore, loadMore, edit, remove, refresh } = useWorkouts({
@@ -80,33 +90,40 @@ export default function History() {
         Histórico
       </Heading>
 
-      <Stack direction="horizontal" wrap="wrap" gap="condensed" sx={{ mb: 3 }}>
-        <Box sx={{ flex: '1 1 160px' }}>
-          <FormControl>
-            <FormControl.Label visuallyHidden>Exercício</FormControl.Label>
-            <Select value={exerciseFilter} onChange={(e) => setExerciseFilter(e.target.value)} block>
-              <Select.Option value="">Todos os exercícios</Select.Option>
-              {exercises.map((ex) => (
-                <Select.Option key={ex.id} value={ex.id}>
-                  {ex.name}
-                </Select.Option>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-        <Box sx={{ flex: '1 1 130px' }}>
-          <FormControl>
-            <FormControl.Label visuallyHidden>De</FormControl.Label>
-            <TextInput type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} block />
-          </FormControl>
-        </Box>
-        <Box sx={{ flex: '1 1 130px' }}>
-          <FormControl>
-            <FormControl.Label visuallyHidden>Até</FormControl.Label>
-            <TextInput type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} block />
-          </FormControl>
-        </Box>
-      </Stack>
+      <Box sx={{ mb: 3 }}>
+        <FormControl sx={{ mb: 2 }}>
+          <FormControl.Label visuallyHidden>Exercício</FormControl.Label>
+          <Select value={exerciseFilter} onChange={(e) => setExerciseFilter(e.target.value)} block>
+            <Select.Option value="">Todos os exercícios</Select.Option>
+            {exercises.map((ex) => (
+              <Select.Option key={ex.id} value={ex.id}>
+                {ex.name}
+              </Select.Option>
+            ))}
+          </Select>
+        </FormControl>
+
+        <Stack direction="horizontal" gap="condensed">
+          <Box sx={{ flex: 1 }}>
+            <FormControl>
+              <FormControl.Label sx={{ fontSize: 0, color: 'fg.muted' }}>De</FormControl.Label>
+              <TextInput type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} block />
+            </FormControl>
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            <FormControl>
+              <FormControl.Label sx={{ fontSize: 0, color: 'fg.muted' }}>Até</FormControl.Label>
+              <TextInput type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} block />
+            </FormControl>
+          </Box>
+        </Stack>
+
+        {hasActiveFilters && (
+          <Button size="small" onClick={clearFilters} sx={{ mt: 2 }}>
+            Limpar filtros
+          </Button>
+        )}
+      </Box>
 
       {editingWorkout && (
         <Box sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3 }}>

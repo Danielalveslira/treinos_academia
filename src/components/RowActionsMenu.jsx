@@ -5,7 +5,13 @@ export function RowActionsMenu({ onEdit, onDelete }) {
   return (
     <ActionMenu>
       <ActionMenu.Anchor>
-        <IconButton icon={KebabHorizontalIcon} variant="invisible" aria-label="Mais ações" size="small" />
+        <IconButton
+          icon={KebabHorizontalIcon}
+          variant="invisible"
+          aria-label="Mais ações"
+          size="large"
+          sx={{ color: 'fg.muted' }}
+        />
       </ActionMenu.Anchor>
       <ActionMenu.Overlay align="end">
         <ActionList>

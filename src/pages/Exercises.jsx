@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Box, Button, Heading, Text, Label, Spinner, Stack } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { TasklistIcon, PlusIcon } from '@primer/octicons-react'
+import { TasklistIcon, PlusIcon, ChevronRightIcon } from '@primer/octicons-react'
 import { useExercises } from '../hooks/useExercises'
 import { useToast } from '../hooks/useToast'
 import { ExerciseForm } from '../components/ExerciseForm'
@@ -152,6 +152,9 @@ export default function Exercises() {
                     {exercise.name}
                   </Text>
                   {!exercise.active && <Label>Inativo</Label>}
+                  <Box sx={{ ml: 'auto', color: 'fg.muted', display: 'flex' }}>
+                    <ChevronRightIcon size={16} />
+                  </Box>
                 </Box>
                 <RowActionsMenu
                   onEdit={() => setEditingExercise(exercise)}
