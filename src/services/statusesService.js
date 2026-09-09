@@ -13,6 +13,7 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { validateAchievement } from '../utils/achievements'
 
 const FEED_PAGE_SIZE = 30
 const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
@@ -120,4 +121,24 @@ export function joinWorkout(statusId, userId) {
 
 export function leaveWorkout(statusId, userId) {
   return deleteDoc(doc(db, 'statuses', statusId, 'participants', userId))
+}
+
+export function createAchievementStatus(communityId, author, values) {
+  const error = validateAchievement(values)
+  if (error) throw new Error(error)
+  const achievement = {
+    day: values.day,
+    text: values.text.trim(),
+    entries: values.entries,
+    sets: values.sets,
+  }
+  return addDoc(statusesRef(), {
+    communityId,
+    authorId: author.id,
+    authorUsername: author.username || null,
+    type: 'achievement',
+    achievement,
+    createdAt: serverTimestamp(),
+    expiresAt: expiresAtValue(),
+  })
 }

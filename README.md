@@ -169,3 +169,35 @@ Para disponibilizar a instalação aos usuários, publique o build no Firebase
 Hosting do projeto. `firebase.json` já define HTTPS via Hosting, rotas da SPA e
 cabeçalhos de revalidação do worker/manifesto. A publicação não faz parte do build.
 Os ícones podem ser regenerados com `python3 scripts/generate-icons.py`.
+
+### Perfis públicos e conquistas
+
+- `/perfil` edita nome, descrição e visibilidade das estatísticas. As alterações são
+  gravadas atomicamente no perfil privado e em `publicProfiles/{uid}`. A reserva de
+  nome continua transacional; editar apenas a descrição não consulta nomes.
+- O `@` das publicações abre `/comunidades/perfil/{uid}`. Apenas usuários autenticados
+  podem consultar esse documento público por ID; ele admite somente `username`, `bio`
+  e `shareStatistics`. E-mail, papel administrativo e histórico ficam no documento privado.
+- Perfis antigos ganham o documento público no próximo acesso, com estatísticas ocultas.
+  Antes disso, o visitante vê um estado de perfil indisponível.
+- Ao habilitar estatísticas, o app publica um resumo de registros de exercícios e séries
+  via agregação no servidor. O botão **Atualizar estatísticas** atualiza esse retrato;
+  a página pública informa a data da atualização. Cada registro representa um exercício,
+  não necessariamente um dia ou uma sessão completa de treino.
+- Desabilitar a opção exclui o resumo e bloqueia sua leitura nas regras. O histórico de
+  exercícios nunca é liberado a visitantes, mesmo quando os totais estão visíveis.
+- **Compartilhar conquista do dia**, dentro de uma comunidade, consulta apenas os totais
+  do dia local e apresenta uma prévia. A mensagem e esses totais são publicados mediante
+  confirmação no botão, por 24 horas. Essa publicação é independente da visibilidade
+  do perfil e pode ser excluída pelo autor. Os totais são compartilhados pelo cliente,
+  não constituem certificação de resultados esportivos.
+
+Antes de disponibilizar esta versão, publique `firestore.rules` e `firestore.indexes.json`
+no mesmo projeto Firebase do app (`firebase deploy --only firestore:rules,firestore:indexes`).
+O novo índice `workouts(date, sets)` atende à agregação das conquistas do dia. A versão
+anterior das regras não permite criar os documentos públicos.
+
+Validação: `npm test` cobre cálculos e datas das conquistas. Com o emulador Firestore
+ativo em `127.0.0.1:8080`, `npm run test:rules` verifica leitura pública, bloqueio de dados
+privados, ativação/desativação dos totais, agregação e publicação/exclusão de conquistas.
+Os testes usam exclusivamente o projeto local `demo-treinos`.

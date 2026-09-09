@@ -42,6 +42,31 @@ service cloud.firestore {
         || (data.bio is string && data.bio.size() <= 300);
     }
 
+    // Documento público separado: nunca liberar leitura do perfil privado para visitantes.
+    match /publicProfiles/{userId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create, update: if isOwner(userId)
+        && request.resource.data.keys().hasAll(['username', 'bio', 'shareStatistics'])
+        && request.resource.data.keys().hasOnly(['username', 'bio', 'shareStatistics'])
+        && isValidUsernameField(request.resource.data)
+        && isValidBioField(request.resource.data)
+        && request.resource.data.shareStatistics is bool;
+
+      match /statistics/{summaryId} {
+        allow get: if isSignedIn()
+          && get(/databases/$(database)/documents/publicProfiles/$(userId)).data.shareStatistics == true;
+        allow list: if false;
+        allow create, update: if isOwner(userId) && summaryId == 'summary'
+          && getAfter(/databases/$(database)/documents/publicProfiles/$(userId)).data.shareStatistics == true
+          && request.resource.data.keys().hasOnly(['entries', 'sets', 'updatedAt'])
+          && request.resource.data.entries is int && request.resource.data.entries >= 0
+          && request.resource.data.sets is number && request.resource.data.sets >= 0
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if isOwner(userId);
+      }
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId) || isSuperAdmin();
       // Perfil sempre nasce como "user"; virar superadmin exige edição manual
@@ -140,7 +165,7 @@ service cloud.firestore {
       // para absorver a latência entre o cliente montar o valor e o servidor processar.
       return data.communityId is string && data.communityId.size() > 0
         && data.authorId is string
-        && data.type in ['text', 'poll', 'workout']
+        && data.type in ['text', 'poll', 'workout', 'achievement']
         && data.createdAt == request.time
         && data.expiresAt > request.time + duration.value(1435, 'm')
         && data.expiresAt < request.time + duration.value(1445, 'm');
@@ -155,7 +180,15 @@ service cloud.firestore {
         || (data.type == 'workout' &&
           data.workout.title is string && data.workout.title.size() > 0
           && data.workout.date is timestamp
-          && data.workout.location is string);
+          && data.workout.location is string)
+        || (data.type == 'achievement' &&
+          data.achievement.keys().hasOnly(['day', 'text', 'entries', 'sets'])
+          && data.achievement.day is string
+          && data.achievement.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && data.achievement.text is string && data.achievement.text.size() <= 300
+          && data.achievement.entries is int && data.achievement.entries >= 0
+          && data.achievement.sets is number && data.achievement.sets >= 0
+          && (data.achievement.entries > 0 || data.achievement.text.size() > 0));
     }
 
     match /statuses/{statusId} {

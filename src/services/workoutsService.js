@@ -1,5 +1,8 @@
 import {
   collection,
+  getAggregateFromServer,
+  count,
+  sum,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -100,4 +103,21 @@ export async function listDashboardWorkouts(userId) {
   )
   const snapshot = await getDocs(q)
   return snapshot.docs.map(toDoc)
+}
+
+// Agrégats no servidor: não transfere o histórico para exibir dois totais.
+export async function getWorkoutStatistics(userId, day = null) {
+  let source = workoutsRef(userId)
+  if (day) {
+    const start = new Date(`${day}T00:00:00`)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 1)
+    source = query(
+      source,
+      where('date', '>=', Timestamp.fromDate(start)),
+      where('date', '<', Timestamp.fromDate(end))
+    )
+  }
+  const result = await getAggregateFromServer(source, { entries: count(), sets: sum('sets') })
+  return result.data()
 }

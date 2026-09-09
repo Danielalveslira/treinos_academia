@@ -31,6 +31,14 @@
         { "fieldPath": "communityId", "order": "ASCENDING" },
         { "fieldPath": "expiresAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "workouts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "date", "order": "ASCENDING" },
+        { "fieldPath": "sets", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

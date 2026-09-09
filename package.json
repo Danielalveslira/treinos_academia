@@ -11,7 +11,8 @@
     "test": "node --test src/**/*.test.js",
     "format": "prettier --write \"src/**/*.{js,jsx}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx}\"",
-    "emulators": "firebase emulators:start --only auth,firestore"
+    "emulators": "firebase emulators:start --only auth,firestore",
+    "test:rules": "node --test tests/profile-rules.test.mjs"
   },
   "dependencies": {
     "@primer/octicons-react": "^19.35.0",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { Box, Spinner } from '@primer/react'
 import { AuthProvider } from './contexts/AuthContext'
 import { ExercisesProvider } from './contexts/ExercisesContext'
@@ -19,6 +19,7 @@ const Pricing = lazy(() => import('./pages/Pricing'))
 const Communities = lazy(() => import('./pages/Communities'))
 const CommunityDetail = lazy(() => import('./pages/CommunityDetail'))
 const AdminCommunities = lazy(() => import('./pages/AdminCommunities'))
+const PublicProfile = lazy(() => import('./pages/PublicProfile'))
 const Profile = lazy(() => import('./pages/Profile'))
 
 function PageFallback() {
@@ -45,19 +46,26 @@ export default function App() {
             <Route
               element={
                 <ProtectedRoute>
-                  <ExercisesProvider>
-                    <Layout />
-                  </ExercisesProvider>
+                  <Layout />
                 </ProtectedRoute>
               }
             >
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/exercicios" element={<Exercises />} />
-              <Route path="/exercicios/:id" element={<ExerciseDetail />} />
-              <Route path="/novo-treino" element={<NewWorkout />} />
-              <Route path="/historico" element={<History />} />
+              <Route
+                element={
+                  <ExercisesProvider>
+                    <Outlet />
+                  </ExercisesProvider>
+                }
+              >
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/exercicios" element={<Exercises />} />
+                <Route path="/exercicios/:id" element={<ExerciseDetail />} />
+                <Route path="/novo-treino" element={<NewWorkout />} />
+                <Route path="/historico" element={<History />} />
+              </Route>
               <Route path="/perfil" element={<Profile />} />
               <Route path="/comunidades" element={<Communities />} />
+              <Route path="/comunidades/perfil/:userId" element={<PublicProfile />} />
               <Route path="/comunidades/:id" element={<CommunityDetail />} />
               <Route
                 path="/admin/comunidades"

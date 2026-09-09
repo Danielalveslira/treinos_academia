@@ -10,11 +10,13 @@ import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { getCommunity } from '../services/communitiesService'
 import { isMember, joinCommunity, leaveCommunity } from '../services/communityMembersService'
 import {
+  createAchievementStatus,
   createTextStatus,
   createPollStatus,
   createWorkoutStatus,
 } from '../services/statusesService'
 import { describeFirestoreError } from '../utils/firestoreError'
+import { AchievementForm } from '../components/AchievementForm'
 import { StatusForm } from '../components/StatusForm'
 import { StatusCard } from '../components/StatusCard'
 import { ErrorState } from '../components/ErrorState'
@@ -86,7 +88,18 @@ export default function CommunityDetail() {
   async function handleCreateStatus(values) {
     const author = { id: user.uid, username: profile?.username || null }
     try {
-      if (values.type === 'text') {
+      if (values.type === 'achievement') {
+        const ref = await createAchievementStatus(id, author, values.achievement)
+        addStatusLocally({
+          id: ref.id,
+          communityId: id,
+          authorId: author.id,
+          authorUsername: author.username,
+          type: 'achievement',
+          achievement: values.achievement,
+          createdAt: new Date(),
+        })
+      } else if (values.type === 'text') {
         const ref = await createTextStatus(id, author, values.text)
         addStatusLocally({
           id: ref.id,
@@ -132,6 +145,7 @@ export default function CommunityDetail() {
     } catch (err) {
       console.error('[CommunityDetail] createStatus:', err)
       showToast('Erro ao publicar.', 'danger')
+      throw err
     }
   }
 
@@ -204,16 +218,26 @@ export default function CommunityDetail() {
           {member && (
             <>
               {!formOpen && (
-                <Button
-                  leadingVisual={PlusIcon}
-                  variant="primary"
-                  onClick={() => setFormOpen(true)}
-                  sx={{ mb: 3 }}
-                >
-                  Publicar
-                </Button>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+                  <Button
+                    leadingVisual={PlusIcon}
+                    variant="primary"
+                    onClick={() => setFormOpen('status')}
+                  >
+                    Publicar
+                  </Button>
+                  <Button onClick={() => setFormOpen('achievement')}>
+                    Compartilhar conquista do dia
+                  </Button>
+                </Box>
               )}
-              {formOpen && (
+              {formOpen === 'achievement' && (
+                <AchievementForm
+                  onSubmit={handleCreateStatus}
+                  onCancel={() => setFormOpen(false)}
+                />
+              )}
+              {formOpen === 'status' && (
                 <StatusForm onSubmit={handleCreateStatus} onCancel={() => setFormOpen(false)} />
               )}
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   Box,
+  Flash,
   Button,
   FormControl,
   TextInput,
@@ -50,6 +51,7 @@ export function StatusForm({ onSubmit, onCancel }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (submitting) return
 
     let validationErrors = {}
     if (type === 'text') validationErrors = validateTextStatus({ text })
@@ -77,6 +79,8 @@ export function StatusForm({ onSubmit, onCancel }) {
           location: workoutLocation,
         })
       }
+    } catch {
+      setErrors({ form: 'Não foi possível publicar. Tente novamente.' })
     } finally {
       setSubmitting(false)
     }
@@ -89,6 +93,11 @@ export function StatusForm({ onSubmit, onCancel }) {
       sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3 }}
     >
       <Stack gap="condensed">
+        {errors.form && (
+          <Flash variant="danger" role="alert">
+            {errors.form}
+          </Flash>
+        )}
         <FormControl>
           <FormControl.Label>Tipo de publicação</FormControl.Label>
           <Select value={type} onChange={(e) => setType(e.target.value)} block>

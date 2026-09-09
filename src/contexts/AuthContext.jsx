@@ -1,7 +1,7 @@
 import { createContext, useEffect, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../firebase/config'
-import { ensureUserProfile, setUsername } from '../services/usersService'
+import { ensureUserProfile, setUsername, updateUserProfile } from '../services/usersService'
 
 export const AuthContext = createContext(null)
 
@@ -12,8 +12,12 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let active = true
+    let revision = 0
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      const current = ++revision
       setUser(firebaseUser)
+      setProfile(null)
+      setLoading(true)
       if (!firebaseUser) {
         if (active) {
           setProfile(null)
@@ -23,11 +27,11 @@ export function AuthProvider({ children }) {
       }
       try {
         const userProfile = await ensureUserProfile(firebaseUser.uid)
-        if (active) setProfile(userProfile)
+        if (active && current === revision) setProfile(userProfile)
       } catch (err) {
         console.error('[Auth] ensureUserProfile:', err)
       } finally {
-        if (active) setLoading(false)
+        if (active && current === revision) setLoading(false)
       }
     })
     return () => {
@@ -38,9 +42,17 @@ export function AuthProvider({ children }) {
 
   const isSuperAdmin = profile?.role === 'superadmin'
 
+  async function saveProfile(changes) {
+    const userId = user.uid
+    const patch = await updateUserProfile(userId, changes)
+    setProfile((prev) => (prev?.id === userId ? { ...prev, ...patch } : prev))
+    return patch
+  }
+
   async function claimUsername(rawUsername) {
-    const username = await setUsername(user.uid, rawUsername)
-    setProfile((prev) => ({ ...prev, username }))
+    const userId = user.uid
+    const username = await setUsername(userId, rawUsername)
+    setProfile((prev) => (prev?.id === userId ? { ...prev, username } : prev))
     return username
   }
 
@@ -49,13 +61,13 @@ export function AuthProvider({ children }) {
   // função relê o documento e sincroniza o estado do contexto sem depender dessa corrida.
   async function refreshProfile(userId) {
     const userProfile = await ensureUserProfile(userId)
-    setProfile(userProfile)
+    if (auth.currentUser?.uid === userId) setProfile(userProfile)
     return userProfile
   }
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, isSuperAdmin, loading, claimUsername, refreshProfile }}
+      value={{ user, profile, isSuperAdmin, loading, claimUsername, refreshProfile, saveProfile }}
     >
       {children}
     </AuthContext.Provider>

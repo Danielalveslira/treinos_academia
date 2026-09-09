@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Box, Text, Button, IconButton } from '@primer/react'
 import { TrashIcon, PersonIcon, LocationIcon, ClockIcon } from '@primer/octicons-react'
 import {
@@ -8,7 +9,7 @@ import {
   joinWorkout,
   leaveWorkout,
 } from '../services/statusesService'
-import { formatDateTime } from '../utils/format'
+import { formatDate, formatDateTime } from '../utils/format'
 
 function toDate(value) {
   return value?.toDate ? value.toDate() : new Date(value)
@@ -18,9 +19,9 @@ function AuthorLine({ status, canDelete, onDelete }) {
   return (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
       <Box sx={{ minWidth: 0 }}>
-        <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block' }}>
+        <Link className="community-author-link" to={`/comunidades/perfil/${status.authorId}`}>
           {status.authorUsername ? `@${status.authorUsername}` : 'Membro'}
-        </Text>
+        </Link>
         <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
           {formatDateTime(toDate(status.createdAt))}
         </Text>
@@ -202,6 +203,22 @@ export function StatusCard({ status, currentUserId, canDelete, onDelete }) {
       <AuthorLine status={status} canDelete={canDelete} onDelete={onDelete} />
 
       {status.type === 'text' && <Text sx={{ whiteSpace: 'pre-wrap' }}>{status.text}</Text>}
+
+      {status.type === 'achievement' && (
+        <section className="achievement-card">
+          <span className="profile-eyebrow">CONQUISTA DO DIA</span>
+          <h3>{formatDate(new Date(`${status.achievement.day}T12:00:00`))}</h3>
+          {status.achievement.text && <p>{status.achievement.text}</p>}
+          <div className="achievement-totals">
+            <span>
+              <strong>{status.achievement.entries}</strong> registros de exercícios
+            </span>
+            <span>
+              <strong>{status.achievement.sets}</strong> séries realizadas
+            </span>
+          </div>
+        </section>
+      )}
 
       {status.type === 'poll' && <PollStatus status={status} currentUserId={currentUserId} />}
 
