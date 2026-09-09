@@ -4,6 +4,10 @@ body,
   min-height: 100%;
   margin: 0;
 }
+html {
+  background: var(--bgColor-default, #fff);
+  color-scheme: light dark;
+}
 * {
   box-sizing: border-box;
 }
