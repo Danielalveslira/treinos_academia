@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Box, Spinner } from '@primer/react'
 import { AuthProvider } from './contexts/AuthContext'
+import { ExercisesProvider } from './contexts/ExercisesContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
 
@@ -39,7 +40,9 @@ export default function App() {
             <Route
               element={
                 <ProtectedRoute>
-                  <Layout />
+                  <ExercisesProvider>
+                    <Layout />
+                  </ExercisesProvider>
                 </ProtectedRoute>
               }
             >
