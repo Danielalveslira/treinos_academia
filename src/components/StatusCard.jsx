@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom'
 import { Box, Text, Button, IconButton } from '@primer/react'
 import { TrashIcon, PersonIcon, LocationIcon, ClockIcon } from '@primer/octicons-react'
 import {
-  listVotes,
+  getMyVote,
+  getPollResults,
   voteOnPoll,
-  listParticipants,
+  amIParticipant,
+  countParticipants,
   joinWorkout,
   leaveWorkout,
 } from '../services/statusesService'
@@ -66,28 +68,38 @@ function StatusHeader({ status, now, canDelete, onDelete }) {
 }
 
 function PollStatus({ status, currentUserId }) {
-  const [votes, setVotes] = useState(null)
+  // counts/myOptionId em vez da lista de votos: nunca baixa a subcoleção inteira (uma
+  // enquete popular pode ter milhares de votos) — só contagens agregadas por opção
+  // (no máximo 6, teto do schema) e o meu próprio voto, 1 leitura direta pelo id.
+  const [counts, setCounts] = useState(null)
+  const [myOptionId, setMyOptionId] = useState(null)
   const [voting, setVoting] = useState(false)
+  const optionIds = status.poll.options.map((option) => option.id)
 
   useEffect(() => {
     let active = true
-    listVotes(status.id).then((data) => {
-      if (active) setVotes(data)
-    })
+    Promise.all([getPollResults(status.id, optionIds), getMyVote(status.id, currentUserId)]).then(
+      ([results, myVote]) => {
+        if (!active) return
+        setCounts(results)
+        setMyOptionId(myVote?.optionId ?? null)
+      }
+    )
     return () => {
       active = false
     }
-  }, [status.id])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status.id, currentUserId])
 
-  const myVote = votes?.find((v) => v.userId === currentUserId)
-  const total = votes?.length || 0
+  const total = counts ? Object.values(counts).reduce((sum, n) => sum + n, 0) : 0
 
   async function handleVote(optionId) {
-    if (myVote || voting) return
+    if (myOptionId || voting) return
     setVoting(true)
     try {
       await voteOnPoll(status.id, currentUserId, optionId)
-      setVotes((prev) => [...(prev || []), { userId: currentUserId, optionId }])
+      setCounts((prev) => ({ ...prev, [optionId]: (prev?.[optionId] || 0) + 1 }))
+      setMyOptionId(optionId)
     } finally {
       setVoting(false)
     }
@@ -100,15 +112,15 @@ function PollStatus({ status, currentUserId }) {
       </Text>
       <Box sx={{ display: 'grid', gap: 2 }}>
         {status.poll.options.map((option) => {
-          const count = votes?.filter((v) => v.optionId === option.id).length || 0
+          const count = counts?.[option.id] || 0
           const percent = total > 0 ? Math.round((count / total) * 100) : 0
-          const isMine = myVote?.optionId === option.id
+          const isMine = myOptionId === option.id
           return (
             <Box
               key={option.id}
-              as={votes && !myVote ? 'button' : 'div'}
-              type={votes && !myVote ? 'button' : undefined}
-              onClick={votes && !myVote ? () => handleVote(option.id) : undefined}
+              as={counts && !myOptionId ? 'button' : 'div'}
+              type={counts && !myOptionId ? 'button' : undefined}
+              onClick={counts && !myOptionId ? () => handleVote(option.id) : undefined}
               sx={{
                 position: 'relative',
                 textAlign: 'left',
@@ -119,11 +131,11 @@ function PollStatus({ status, currentUserId }) {
                 p: 2,
                 bg: 'canvas.default',
                 color: 'fg.default',
-                cursor: votes && !myVote ? 'pointer' : 'default',
+                cursor: counts && !myOptionId ? 'pointer' : 'default',
                 overflow: 'hidden',
               }}
             >
-              {votes && (
+              {counts && (
                 <Box
                   sx={{
                     position: 'absolute',
@@ -136,7 +148,7 @@ function PollStatus({ status, currentUserId }) {
               )}
               <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'space-between' }}>
                 <Text sx={{ fontSize: 0 }}>{option.label}</Text>
-                {votes && (
+                {counts && (
                   <Text sx={{ fontSize: 0, color: 'fg.muted', flexShrink: 0, ml: 2 }}>
                     {percent}% ({count})
                   </Text>
@@ -146,7 +158,7 @@ function PollStatus({ status, currentUserId }) {
           )
         })}
       </Box>
-      {votes && (
+      {counts && (
         <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block', mt: 2 }}>
           {total} {total === 1 ? 'voto' : 'votos'}
         </Text>
@@ -156,30 +168,37 @@ function PollStatus({ status, currentUserId }) {
 }
 
 function WorkoutStatus({ status, currentUserId }) {
-  const [participants, setParticipants] = useState(null)
+  // Contagem agregada + 1 leitura direta pelo id (não a lista inteira de participantes)
+  // — mesmo raciocínio da enquete: nunca escala com o número de pessoas confirmadas.
+  const [count, setCount] = useState(null)
+  const [amParticipant, setAmParticipant] = useState(false)
   const [pending, setPending] = useState(false)
 
   useEffect(() => {
     let active = true
-    listParticipants(status.id).then((data) => {
-      if (active) setParticipants(data)
-    })
+    Promise.all([countParticipants(status.id), amIParticipant(status.id, currentUserId)]).then(
+      ([total, mine]) => {
+        if (!active) return
+        setCount(total)
+        setAmParticipant(mine)
+      }
+    )
     return () => {
       active = false
     }
-  }, [status.id])
-
-  const amParticipant = participants?.some((p) => p.userId === currentUserId)
+  }, [status.id, currentUserId])
 
   async function toggle() {
     setPending(true)
     try {
       if (amParticipant) {
         await leaveWorkout(status.id, currentUserId)
-        setParticipants((prev) => prev.filter((p) => p.userId !== currentUserId))
+        setCount((prev) => prev - 1)
+        setAmParticipant(false)
       } else {
         await joinWorkout(status.id, currentUserId)
-        setParticipants((prev) => [...(prev || []), { userId: currentUserId }])
+        setCount((prev) => prev + 1)
+        setAmParticipant(true)
       }
     } finally {
       setPending(false)
@@ -206,14 +225,14 @@ function WorkoutStatus({ status, currentUserId }) {
           size="small"
           variant={amParticipant ? 'default' : 'primary'}
           onClick={toggle}
-          disabled={!participants || pending}
+          disabled={count === null || pending}
           leadingVisual={PersonIcon}
         >
           {amParticipant ? 'Cancelar participação' : 'Participar'}
         </Button>
-        {participants && (
+        {count !== null && (
           <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-            {participants.length} {participants.length === 1 ? 'confirmado' : 'confirmados'}
+            {count} {count === 1 ? 'confirmado' : 'confirmados'}
           </Text>
         )}
       </Box>
