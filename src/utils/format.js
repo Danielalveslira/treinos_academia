@@ -6,7 +6,8 @@ export function formatPercent(value) {
 
 export function formatWeight(value) {
   if (value == null) return '—'
-  return `${value}kg`
+  const rounded = Math.round(value * 100) / 100
+  return `${rounded.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}kg`
 }
 
 export function formatDate(value) {
