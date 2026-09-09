@@ -11,15 +11,15 @@ const PIX_KEY_TYPE_LABELS = {
   random: 'Chave aleatória',
 }
 
-function whatsappLink(whatsapp, plan, profile) {
+function whatsappLink(whatsapp, plan, profile, email) {
   const digits = (whatsapp || '').replace(/\D/g, '')
   const message = `Olá! Realizei o pagamento da assinatura.\nPlano: ${plan?.name || ''}\nUsuário: ${
     profile?.username || ''
-  }\nE-mail: ${profile?.email || ''}`
+  }\nE-mail: ${email || ''}`
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
 }
 
-export function SubscriptionPanel({ profile, accessState, billingConfig }) {
+export function SubscriptionPanel({ profile, email, accessState, billingConfig }) {
   const plans = billingConfig.plans || []
   const [planId, setPlanId] = useState(profile?.subscription?.planId || plans[0]?.id)
   const [copied, setCopied] = useState(false)
@@ -71,6 +71,9 @@ export function SubscriptionPanel({ profile, accessState, billingConfig }) {
               flex: 1,
               textAlign: 'left',
               cursor: 'pointer',
+              appearance: 'none',
+              font: 'inherit',
+              color: 'fg.default',
               border: '1px solid',
               borderColor: p.id === planId ? 'accent.emphasis' : 'border.default',
               borderRadius: 2,
@@ -132,7 +135,7 @@ export function SubscriptionPanel({ profile, accessState, billingConfig }) {
         </Text>
         <Button
           as="a"
-          href={whatsappLink(billingConfig.whatsapp, plan, profile)}
+          href={whatsappLink(billingConfig.whatsapp, plan, profile, email)}
           target="_blank"
           rel="noreferrer"
           variant="primary"

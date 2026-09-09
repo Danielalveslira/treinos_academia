@@ -5,7 +5,7 @@ import { useBillingConfig } from '../hooks/useBillingConfig'
 import { getUserAccessState } from '../utils/billing'
 
 export default function Payment() {
-  const { profile } = useAuth()
+  const { user, profile } = useAuth()
   const { config, loading } = useBillingConfig()
   const accessState = getUserAccessState(profile)
 
@@ -17,7 +17,12 @@ export default function Payment() {
       {loading ? (
         <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
       ) : (
-        <SubscriptionPanel profile={profile} accessState={accessState} billingConfig={config} />
+        <SubscriptionPanel
+          profile={profile}
+          email={user?.email}
+          accessState={accessState}
+          billingConfig={config}
+        />
       )}
     </Box>
   )

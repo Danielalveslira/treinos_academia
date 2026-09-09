@@ -9,7 +9,7 @@ import { logoutUser } from '../services/authService'
 // Prioridade de acesso (ver arquitetura de assinatura): conta desativada bloqueia
 // independentemente da assinatura; só depois disso avalia trial/vencimento/tolerância.
 export function SubscriptionGate({ children }) {
-  const { profile } = useAuth()
+  const { user, profile } = useAuth()
   const { config, loading } = useBillingConfig()
   const accessState = getUserAccessState(profile)
 
@@ -39,7 +39,12 @@ export function SubscriptionGate({ children }) {
         {loading ? (
           <Spinner aria-label="Carregando informações de pagamento" />
         ) : (
-          <SubscriptionPanel profile={profile} accessState={accessState} billingConfig={config} />
+          <SubscriptionPanel
+            profile={profile}
+            email={user?.email}
+            accessState={accessState}
+            billingConfig={config}
+          />
         )}
         <Button onClick={logoutUser} sx={{ mt: 3 }}>
           Sair da conta
