@@ -11,6 +11,14 @@ function usernameRef(username) {
   return doc(db, 'usernames', username)
 }
 
+// Checagem somente-leitura, usada para bloquear o cadastro antes de criar a conta no
+// Authentication. Não reserva o nome — a reserva definitiva e à prova de corrida
+// continua acontecendo dentro da transação de setUsername.
+export async function isUsernameAvailable(username) {
+  const snapshot = await getDoc(usernameRef(username.trim().toLowerCase()))
+  return !snapshot.exists()
+}
+
 export async function ensureUserProfile(userId) {
   const ref = userRef(userId)
   const snapshot = await getDoc(ref)

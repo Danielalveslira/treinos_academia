@@ -63,7 +63,10 @@ service cloud.firestore {
     // Impede duplicidade (dois usuários com o mesmo @) sem precisar de Cloud Function —
     // o cliente sempre lê aqui dentro de uma transação antes de reivindicar um nome.
     match /usernames/{username} {
-      allow read: if isSignedIn();
+      // Leitura pública: o cadastro precisa checar disponibilidade do @ antes de criar
+      // a conta no Authentication (usuário ainda não está autenticado nesse momento).
+      // O documento só expõe uid + createdAt, então não há dado sensível aqui.
+      allow read: if true;
       allow create: if isSignedIn()
         && username.matches('^[a-z0-9_]{3,20}$')
         && request.resource.data.uid == request.auth.uid
