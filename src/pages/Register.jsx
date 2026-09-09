@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { registerUser } from '../services/authService'
-import { ensureUserProfile, setUsername } from '../services/usersService'
+import { ensureUserProfile, setUsername, isUsernameAvailable } from '../services/usersService'
 import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../utils/authErrors'
 import { validateUsername, hasErrors } from '../utils/validators'
@@ -28,18 +28,30 @@ export default function Register() {
 
     setSubmitting(true)
     try {
+      // Valida o @ antes de criar a conta no Authentication: assim uma tentativa
+      // inválida nunca chega a existir como conta órfã.
+      const available = await isUsernameAvailable(username)
+      if (!available) {
+        setFieldErrors({ username: 'Esse nome de usuário já está em uso' })
+        return
+      }
+
       const credential = await registerUser(email, password)
       const uid = credential.user.uid
-      await ensureUserProfile(uid)
       try {
+        await ensureUserProfile(uid)
         await setUsername(uid, username)
-      } catch (usernameErr) {
-        if (usernameErr.message === 'USERNAME_TAKEN') {
+      } catch (postCreateErr) {
+        // A conta no Authentication já existe nesse ponto: sem isso o e-mail ficaria
+        // órfão e bloqueado para novas tentativas. Desfaz para deixar o e-mail livre.
+        await credential.user.delete().catch((cleanupErr) => {
+          console.error('[Auth] register rollback failed:', cleanupErr)
+        })
+        if (postCreateErr.message === 'USERNAME_TAKEN') {
           setFieldErrors({ username: 'Esse nome de usuário já está em uso' })
-          setSubmitting(false)
           return
         }
-        throw usernameErr
+        throw postCreateErr
       }
       await refreshProfile(uid)
       navigate('/')

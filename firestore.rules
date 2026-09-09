@@ -37,16 +37,23 @@ service cloud.firestore {
         || (data.username is string && data.username.matches('^[a-z0-9_]{3,20}$'));
     }
 
+    function isValidBioField(data) {
+      return !('bio' in data) || data.bio == null
+        || (data.bio is string && data.bio.size() <= 300);
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId) || isSuperAdmin();
       // Perfil sempre nasce como "user"; virar superadmin exige edição manual
       // (console/Admin SDK), nunca uma escrita vinda do cliente.
       allow create: if isOwner(userId)
         && request.resource.data.role == 'user'
-        && isValidUsernameField(request.resource.data);
+        && isValidUsernameField(request.resource.data)
+        && isValidBioField(request.resource.data);
       allow update: if isOwner(userId)
         && request.resource.data.role == resource.data.role
-        && isValidUsernameField(request.resource.data);
+        && isValidUsernameField(request.resource.data)
+        && isValidBioField(request.resource.data);
 
       match /exercises/{exerciseId} {
         allow read, delete: if isOwner(userId);
@@ -63,7 +70,10 @@ service cloud.firestore {
     // Impede duplicidade (dois usuários com o mesmo @) sem precisar de Cloud Function —
     // o cliente sempre lê aqui dentro de uma transação antes de reivindicar um nome.
     match /usernames/{username} {
-      allow read: if isSignedIn();
+      // Leitura pública: o cadastro precisa checar disponibilidade do @ antes de criar
+      // a conta no Authentication (usuário ainda não está autenticado nesse momento).
+      // O documento só expõe uid + createdAt, então não há dado sensível aqui.
+      allow read: if true;
       allow create: if isSignedIn()
         && username.matches('^[a-z0-9_]{3,20}$')
         && request.resource.data.uid == request.auth.uid

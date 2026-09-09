@@ -6,6 +6,7 @@ import {
   HistoryIcon,
   ListUnorderedIcon,
   PeopleIcon,
+  PersonIcon,
   ShieldLockIcon,
   SignOutIcon,
   GraphIcon,
@@ -63,6 +64,7 @@ export function Layout() {
             </>
           )}
           <div className="header-actions">
+            <IconButton as={Link} to="/perfil" icon={PersonIcon} aria-label="Meu perfil" />
             {isSuperAdmin && (
               <IconButton
                 as={Link}
