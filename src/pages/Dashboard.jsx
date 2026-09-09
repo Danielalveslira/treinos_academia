@@ -21,7 +21,7 @@ import { ErrorState } from '../components/ErrorState'
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { recentWorkouts, allWorkouts, totalWorkouts, loading, error, refresh } = useDashboard()
+  const { recentWorkouts, allWorkouts, loading, error, refresh } = useDashboard()
   const { exercises } = useExercises()
 
   const exerciseNameById = useMemo(() => buildExerciseNameMap(exercises), [exercises])
@@ -137,7 +137,7 @@ export default function Dashboard() {
       </Box>
 
       <Box className="stats-grid">
-        <IndicatorCard icon={ChecklistIcon} label="Total de treinos" value={totalWorkouts} />
+        <IndicatorCard icon={ChecklistIcon} label="Dias treinados" value={consistency.total} />
         <IndicatorCard
           icon={CalendarIcon}
           label="Frequência semanal"
@@ -151,8 +151,8 @@ export default function Dashboard() {
       </Box>
 
       <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: -2, mb: 3 }}>
-        Frequência da semana atual. A sequência continua se você treinou na semana passada e ainda
-        não treinou nesta.
+        Um dia com vários exercícios conta como um só dia treinado. A sequência continua se você
+        treinou na semana passada e ainda não treinou nesta.
       </Text>
       <div className="dashboard-columns">
         <section className="panel chart-panel">

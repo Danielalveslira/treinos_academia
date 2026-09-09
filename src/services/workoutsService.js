@@ -11,7 +11,6 @@ import {
   limit,
   startAfter,
   Timestamp,
-  getCountFromServer,
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
 
@@ -57,11 +56,6 @@ export async function listWorkoutsForExercise(userId, exerciseId, pageSize = 30)
   )
   const snapshot = await getDocs(q)
   return snapshot.docs.map(toDoc)
-}
-
-export async function countWorkouts(userId) {
-  const snapshot = await getCountFromServer(workoutsRef(userId))
-  return snapshot.data().count
 }
 
 export function createWorkout(userId, workout) {
