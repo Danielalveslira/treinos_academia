@@ -37,16 +37,23 @@ service cloud.firestore {
         || (data.username is string && data.username.matches('^[a-z0-9_]{3,20}$'));
     }
 
+    function isValidBioField(data) {
+      return !('bio' in data) || data.bio == null
+        || (data.bio is string && data.bio.size() <= 300);
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId) || isSuperAdmin();
       // Perfil sempre nasce como "user"; virar superadmin exige edição manual
       // (console/Admin SDK), nunca uma escrita vinda do cliente.
       allow create: if isOwner(userId)
         && request.resource.data.role == 'user'
-        && isValidUsernameField(request.resource.data);
+        && isValidUsernameField(request.resource.data)
+        && isValidBioField(request.resource.data);
       allow update: if isOwner(userId)
         && request.resource.data.role == resource.data.role
-        && isValidUsernameField(request.resource.data);
+        && isValidUsernameField(request.resource.data)
+        && isValidBioField(request.resource.data);
 
       match /exercises/{exerciseId} {
         allow read, delete: if isOwner(userId);

@@ -4,6 +4,7 @@ import {
   Button,
   FormControl,
   TextInput,
+  Textarea,
   Heading,
   Text,
   Flash,
@@ -14,14 +15,16 @@ import { PersonIcon, ShieldLockIcon, CalendarIcon, MailIcon } from '@primer/octi
 import { useAuth } from '../hooks/useAuth'
 import { formatDate } from '../utils/format'
 import { validateUsername, hasErrors } from '../utils/validators'
+import { updateBio, BIO_MAX_LENGTH } from '../services/usersService'
 
 function toDate(value) {
   return value?.toDate ? value.toDate() : value ? new Date(value) : null
 }
 
 export default function Profile() {
-  const { user, profile, isSuperAdmin, claimUsername } = useAuth()
+  const { user, profile, isSuperAdmin, claimUsername, refreshProfile } = useAuth()
   const [username, setUsername] = useState(profile?.username || '')
+  const [bio, setBio] = useState(profile?.bio || '')
   const [fieldErrors, setFieldErrors] = useState({})
   const [success, setSuccess] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -31,18 +34,23 @@ export default function Profile() {
     setSuccess(false)
 
     const validationErrors = validateUsername(username)
+    if (bio.trim().length > BIO_MAX_LENGTH) {
+      validationErrors.bio = `Máximo de ${BIO_MAX_LENGTH} caracteres`
+    }
     setFieldErrors(validationErrors)
     if (hasErrors(validationErrors)) return
 
     setSubmitting(true)
     try {
       await claimUsername(username)
+      await updateBio(user.uid, bio)
+      await refreshProfile(user.uid)
       setSuccess(true)
     } catch (err) {
       if (err.message === 'USERNAME_TAKEN') {
         setFieldErrors({ username: 'Esse nome de usuário já está em uso' })
       } else {
-        console.error('[Profile] setUsername:', err)
+        console.error('[Profile] save:', err)
         setFieldErrors({ username: 'Não foi possível salvar. Tente novamente.' })
       }
     } finally {
@@ -108,12 +116,8 @@ export default function Profile() {
       </Box>
 
       <Heading as="h2" sx={{ fontSize: 2, mb: 2 }}>
-        Nome de usuário
+        Editar perfil
       </Heading>
-      <Text sx={{ color: 'fg.muted', display: 'block', mb: 2 }}>
-        Aparece nas comunidades no lugar do seu e-mail. Publicações feitas antes de trocar o nome de
-        usuário continuam mostrando o valor antigo (ou "Membro") até expirarem.
-      </Text>
 
       <Box
         as="form"
@@ -128,7 +132,7 @@ export default function Profile() {
         }}
       >
         <Stack gap="condensed">
-          {success && <Flash variant="success">Nome de usuário salvo.</Flash>}
+          {success && <Flash variant="success">Perfil salvo.</Flash>}
 
           <FormControl required>
             <FormControl.Label>Nome de usuário</FormControl.Label>
@@ -147,6 +151,23 @@ export default function Profile() {
               <FormControl.Validation variant="error">
                 {fieldErrors.username}
               </FormControl.Validation>
+            )}
+          </FormControl>
+
+          <FormControl>
+            <FormControl.Label>Descrição</FormControl.Label>
+            <Textarea
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Fale um pouco sobre você"
+              rows={4}
+              block
+            />
+            <FormControl.Caption>
+              {bio.trim().length}/{BIO_MAX_LENGTH} caracteres
+            </FormControl.Caption>
+            {fieldErrors.bio && (
+              <FormControl.Validation variant="error">{fieldErrors.bio}</FormControl.Validation>
             )}
           </FormControl>
 

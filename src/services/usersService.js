@@ -11,6 +11,17 @@ function usernameRef(username) {
   return doc(db, 'usernames', username)
 }
 
+export const BIO_MAX_LENGTH = 300
+
+export async function updateBio(userId, rawBio) {
+  const bio = (rawBio || '').trim()
+  if (bio.length > BIO_MAX_LENGTH) {
+    throw new Error('BIO_TOO_LONG')
+  }
+  await setDoc(userRef(userId), { bio: bio || null }, { merge: true })
+  return bio
+}
+
 // Checagem somente-leitura, usada para bloquear o cadastro antes de criar a conta no
 // Authentication. Não reserva o nome — a reserva definitiva e à prova de corrida
 // continua acontecendo dentro da transação de setUsername.
