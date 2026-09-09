@@ -18,7 +18,8 @@ Não há backend Node.js dedicado nesta primeira versão: Firebase Authenticatio
 src/
   components/   componentes visuais reutilizáveis (forms, cards, dialogs)
   pages/        telas da aplicação (uma por rota)
-  hooks/        acesso a dados + estado (useAuth, useExercises, useWorkouts...)
+  hooks/        acesso a dados + estado (useAuth, useWorkouts...)
+  contexts/     estado compartilhado (AuthContext, ExercisesContext — cache de exercícios)
   services/     acesso direto ao Firebase (Auth e Firestore), sem lógica de UI
   utils/        cálculos puros (volume, evolução %) e validações
   constants/    valores fixos (grupos musculares)

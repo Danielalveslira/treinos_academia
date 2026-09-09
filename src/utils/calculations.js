@@ -2,7 +2,7 @@ export function calculateVolume(weight, sets, reps) {
   return weight * sets * reps
 }
 
-export function calculateEvolutionPercent(currentLoad, previousLoad) {
+function calculateEvolutionPercent(currentLoad, previousLoad) {
   if (previousLoad == null || previousLoad === 0) return null
   return ((currentLoad - previousLoad) / previousLoad) * 100
 }

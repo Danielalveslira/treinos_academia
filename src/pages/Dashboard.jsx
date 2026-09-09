@@ -11,14 +11,14 @@ import {
   ZapIcon,
 } from '@primer/octicons-react'
 import { useDashboard } from '../hooks/useDashboard'
-import { useExercises } from '../hooks/useExercises'
+import { useExercises } from '../contexts/ExercisesContext'
 import {
   calculateVolume,
   getExerciseIndicators,
   getWeeklyFrequency,
   groupVolumeByDate,
 } from '../utils/calculations'
-import { formatPercent, formatWeight, formatDate } from '../utils/format'
+import { formatPercent, formatWeight, formatDate, buildExerciseNameMap } from '../utils/format'
 import { IndicatorCard } from '../components/IndicatorCard'
 import { VolumeChart } from '../components/VolumeChart'
 import { ErrorState } from '../components/ErrorState'
@@ -28,11 +28,7 @@ export default function Dashboard() {
   const { recentWorkouts, totalWorkouts, loading, error, refresh } = useDashboard()
   const { exercises } = useExercises()
 
-  const exerciseNameById = useMemo(() => {
-    const map = new Map()
-    exercises.forEach((ex) => map.set(ex.id, ex.name))
-    return map
-  }, [exercises])
+  const exerciseNameById = useMemo(() => buildExerciseNameMap(exercises), [exercises])
 
   const lastWorkout = recentWorkouts[0]
 

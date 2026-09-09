@@ -13,7 +13,7 @@ import {
 import { Blankslate } from '@primer/react/experimental'
 import { HistoryIcon } from '@primer/octicons-react'
 import { useWorkouts } from '../hooks/useWorkouts'
-import { useExercises } from '../hooks/useExercises'
+import { useExercises } from '../contexts/ExercisesContext'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { WorkoutForm } from '../components/WorkoutForm'
@@ -21,7 +21,7 @@ import { ErrorState } from '../components/ErrorState'
 import { RowActionsMenu } from '../components/RowActionsMenu'
 import { ToastFlash } from '../components/ToastFlash'
 import { calculateVolume } from '../utils/calculations'
-import { formatWeight } from '../utils/format'
+import { formatWeight, buildExerciseNameMap } from '../utils/format'
 
 function toEditableWorkout(workout) {
   const date = workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)
@@ -60,11 +60,7 @@ export default function History() {
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
 
-  const exerciseNameById = useMemo(() => {
-    const map = new Map()
-    exercises.forEach((ex) => map.set(ex.id, ex.name))
-    return map
-  }, [exercises])
+  const exerciseNameById = useMemo(() => buildExerciseNameMap(exercises), [exercises])
 
   async function handleUpdate(values) {
     try {

@@ -10,7 +10,7 @@ import {
   ChecklistIcon,
   CalendarIcon,
 } from '@primer/octicons-react'
-import { useExercises } from '../hooks/useExercises'
+import { useExercises } from '../contexts/ExercisesContext'
 import { useExerciseHistory } from '../hooks/useExerciseHistory'
 import { getExerciseIndicators, buildLoadHistory } from '../utils/calculations'
 import { formatPercent, formatWeight, formatDate } from '../utils/format'

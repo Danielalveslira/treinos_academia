@@ -25,7 +25,7 @@ function toDoc(d) {
   return { id: d.id, ...d.data() }
 }
 
-export function toTimestamp(dateString) {
+function toTimestamp(dateString) {
   return Timestamp.fromDate(new Date(`${dateString}T12:00:00`))
 }
 

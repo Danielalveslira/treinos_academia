@@ -70,7 +70,7 @@ export function useWorkouts(filters = {}) {
 
   async function remove(workoutId) {
     await deleteWorkout(user.uid, workoutId)
-    await refresh()
+    setWorkouts((prev) => prev.filter((w) => w.id !== workoutId))
   }
 
   return { workouts, loading, error, hasMore, loadMore, add, edit, remove, refresh }

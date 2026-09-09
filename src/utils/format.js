@@ -13,3 +13,9 @@ export function formatDate(value) {
   if (!value) return '—'
   return value.toLocaleDateString('pt-BR')
 }
+
+export function buildExerciseNameMap(exercises) {
+  const map = new Map()
+  exercises.forEach((ex) => map.set(ex.id, ex.name))
+  return map
+}
