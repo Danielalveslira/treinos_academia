@@ -121,35 +121,6 @@ export const acceptLegalDocuments = onCall(options, async (request) => {
   return { version: manifest.version }
 })
 
-// TEMPORARY: one-time publish of the bundled legal manifest to legalPolicy/current
-// (mirrors functions/publish-legal.js, which needs local Admin SDK credentials this
-// environment doesn't have). Remove once legalPolicy/current reflects manifest.version
-// in production.
-export const publishLegalPolicy = onCall(options, async (request) => {
-  await requireSuperAdmin(requireUser(request))
-  if (!manifest.published || !manifest.controllerName || !manifest.contactEmail) {
-    throw new HttpsError(
-      'failed-precondition',
-      'Complete published/controllerName/contactEmail no manifesto antes de publicar.'
-    )
-  }
-  await db.runTransaction(async (tx) => {
-    const ref = db.doc(`legalVersions/${manifest.version}`)
-    const existing = await tx.get(ref)
-    if (existing.exists && existing.data().digest !== digest)
-      throw new HttpsError('failed-precondition', 'Esta versão já existe com outro conteúdo.')
-    if (!existing.exists)
-      tx.create(ref, { manifest, documents, digest, createdAt: FieldValue.serverTimestamp() })
-    tx.set(db.doc('legalPolicy/current'), {
-      version: manifest.version,
-      published: true,
-      digest,
-      publishedAt: FieldValue.serverTimestamp(),
-    })
-  })
-  return { version: manifest.version, digest }
-})
-
 export const submitSupportRequest = onCall(options, async (request) => {
   const uid = requireUser(request)
   const error = validateSupportRequest(request.data)

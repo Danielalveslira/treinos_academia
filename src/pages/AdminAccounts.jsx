@@ -27,7 +27,7 @@ import {
 } from '@primer/octicons-react'
 import { useAdminAccounts } from '../hooks/useAdminAccounts'
 import { useBillingConfig } from '../hooks/useBillingConfig'
-import { saveBillingConfig, publishLegalPolicy } from '../services/billingService'
+import { saveBillingConfig } from '../services/billingService'
 import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
@@ -314,48 +314,6 @@ function BillingConfigForm({ config, onSaved, showToast }) {
   )
 }
 
-// TEMPORARY: one-time control to publish the legal manifest. Remove alongside
-// publishLegalPolicy (functions + service) once applied in production.
-function LegalPublishPanel() {
-  const [result, setResult] = useState(null)
-  const [running, setRunning] = useState(false)
-  const [publishError, setPublishError] = useState('')
-
-  async function run() {
-    setRunning(true)
-    setPublishError('')
-    try {
-      setResult(await publishLegalPolicy())
-    } catch (err) {
-      setPublishError(err.message)
-    } finally {
-      setRunning(false)
-    }
-  }
-
-  return (
-    <Box sx={{ mb: 3, p: 3, border: '1px solid', borderColor: 'attention.emphasis', borderRadius: 2 }}>
-      <Heading as="h2" sx={{ fontSize: 2 }}>
-        Publicar manifesto legal (ação única)
-      </Heading>
-      <Text as="p" sx={{ fontSize: 1, mb: 2 }}>
-        Grava a versão atual dos documentos legais como vigente. Confira o conteúdo em
-        functions/legal antes de publicar.
-      </Text>
-      <Button onClick={run} disabled={running} variant="danger">
-        Publicar
-      </Button>
-      {running && <Spinner />}
-      {publishError && (
-        <Text as="p" role="alert" sx={{ color: 'danger.fg' }}>
-          {publishError}
-        </Text>
-      )}
-      {result && <Text as="p">Publicado: versão {result.version}.</Text>}
-    </Box>
-  )
-}
-
 export default function AdminAccounts() {
   const [params] = useSearchParams()
   const [search, setSearch] = useState(params.get('usuario') || '')
@@ -443,8 +401,6 @@ export default function AdminAccounts() {
       <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
         Contas e assinaturas
       </Heading>
-
-      <LegalPublishPanel />
 
       {configError && (
         <Text as="p" role="alert" sx={{ color: 'danger.fg' }}>

@@ -91,9 +91,3 @@ export async function listAccountsPage(filters = {}) {
 export async function listDeletionJobs() {
   return (await httpsCallable(functions, 'listDeletionJobs')()).data.jobs
 }
-
-// TEMPORARY: publishes the bundled legal manifest to legalPolicy/current. Remove
-// alongside the publishLegalPolicy function once applied in production.
-export async function publishLegalPolicy() {
-  return (await httpsCallable(functions, 'publishLegalPolicy')()).data
-}
