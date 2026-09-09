@@ -23,7 +23,7 @@ import { ToastFlash } from '../components/ToastFlash'
 export default function CommunityDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, isSuperAdmin } = useAuth()
+  const { user, profile, isSuperAdmin } = useAuth()
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
 
@@ -84,7 +84,7 @@ export default function CommunityDetail() {
   }
 
   async function handleCreateStatus(values) {
-    const author = { id: user.uid, email: user.email }
+    const author = { id: user.uid, username: profile?.username || null }
     try {
       if (values.type === 'text') {
         const ref = await createTextStatus(id, author, values.text)
@@ -92,7 +92,7 @@ export default function CommunityDetail() {
           id: ref.id,
           communityId: id,
           authorId: author.id,
-          authorEmail: author.email,
+          authorUsername: author.username,
           type: 'text',
           text: values.text.trim(),
           createdAt: new Date(),
@@ -103,7 +103,7 @@ export default function CommunityDetail() {
           id: ref.id,
           communityId: id,
           authorId: author.id,
-          authorEmail: author.email,
+          authorUsername: author.username,
           type: 'poll',
           poll: {
             question: values.question.trim(),
@@ -117,7 +117,7 @@ export default function CommunityDetail() {
           id: ref.id,
           communityId: id,
           authorId: author.id,
-          authorEmail: author.email,
+          authorUsername: author.username,
           type: 'workout',
           workout: {
             title: values.title.trim(),

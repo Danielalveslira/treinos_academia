@@ -1,3 +1,15 @@
+const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
+
+export function validateUsername(rawUsername) {
+  const errors = {}
+  const username = (rawUsername || '').trim().toLowerCase()
+  if (!username) errors.username = 'Escolha um nome de usuário'
+  else if (!USERNAME_PATTERN.test(username)) {
+    errors.username = 'Use de 3 a 20 letras minúsculas, números ou _ (sem espaços ou acentos)'
+  }
+  return errors
+}
+
 export function validateExercise({ name, muscleGroup }) {
   const errors = {}
   if (!name || !name.trim()) errors.name = 'Nome é obrigatório'

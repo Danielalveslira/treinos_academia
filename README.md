@@ -36,18 +36,21 @@ Componentes próprios em `components/` existem apenas quando o Primer não tem e
 ## Modelo de dados (Firestore)
 
 ```
-users/{userId}                          { role: 'user' | 'superadmin', createdAt }
+users/{userId}                          { role: 'user' | 'superadmin', createdAt, username? }
 users/{userId}/exercises/{exerciseId}   { name, muscleGroup, note, active }
 users/{userId}/workouts/{workoutId}     { exerciseId, weight, sets, reps, date, note }
 
+usernames/{username}                    { uid, createdAt }
 communities/{communityId}               { name, description, imageUrl, isActive, createdBy, createdAt }
 communityMembers/{communityId}_{userId} { communityId, userId, joinedAt }
-statuses/{statusId}                     { communityId, authorId, authorEmail, type, createdAt, expiresAt, ... }
+statuses/{statusId}                     { communityId, authorId, authorUsername, type, createdAt, expiresAt, ... }
 statuses/{statusId}/votes/{userId}          { optionId, createdAt }        (type: poll)
 statuses/{statusId}/participants/{userId}   { joinedAt }                  (type: workout)
 ```
 
 Estrutura escolhida por ser a mais simples que atende aos requisitos: subcoleções por usuário isolam os dados naturalmente (cada leitura já é escopada ao usuário autenticado) e evitam junções complexas. Não há coleção separada de "grupos musculares" (é um campo simples no exercício) nem relacionamentos adicionais — não são necessários no estágio atual.
+
+`usernames/{username}` reserva o @ de forma única sem precisar de Cloud Function: `usersService.setUsername` lê esse documento dentro de uma transação do Firestore antes de reivindicar um nome — se dois usuários tentarem o mesmo @ ao mesmo tempo, o Firestore garante que só um vence (a transação perdedora relê o estado e é rejeitada). O e-mail nunca é gravado em `statuses` — só o @ (denormalizado, pelo mesmo motivo de custo explicado abaixo), com "Membro" como texto de exibição para quem ainda não escolheu um.
 
 `communityMembers` usa `{communityId}_{userId}` como ID do documento — o mesmo padrão de `statuses/{statusId}/votes/{userId}` (ID = uid) — para impedir naturalmente duplicidade (entrar duas vezes, votar duas vezes) sem precisar de uma query extra para checar antes de escrever.
 

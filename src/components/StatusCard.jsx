@@ -19,7 +19,7 @@ function AuthorLine({ status, canDelete, onDelete }) {
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
       <Box sx={{ minWidth: 0 }}>
         <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block' }}>
-          {status.authorEmail || 'Membro'}
+          {status.authorUsername ? `@${status.authorUsername}` : 'Membro'}
         </Text>
         <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
           {formatDateTime(toDate(status.createdAt))}

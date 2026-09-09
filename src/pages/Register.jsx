@@ -3,21 +3,45 @@ import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { registerUser } from '../services/authService'
+import { ensureUserProfile, setUsername } from '../services/usersService'
+import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../utils/authErrors'
+import { validateUsername, hasErrors } from '../utils/validators'
 
 export default function Register() {
   const navigate = useNavigate()
+  const { refreshProfile } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [username, setUsernameField] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+
+    const validationErrors = validateUsername(username)
+    setFieldErrors(validationErrors)
+    if (hasErrors(validationErrors)) return
+
     setSubmitting(true)
     try {
-      await registerUser(email, password)
+      const credential = await registerUser(email, password)
+      const uid = credential.user.uid
+      await ensureUserProfile(uid)
+      try {
+        await setUsername(uid, username)
+      } catch (usernameErr) {
+        if (usernameErr.message === 'USERNAME_TAKEN') {
+          setFieldErrors({ username: 'Esse nome de usuário já está em uso' })
+          setSubmitting(false)
+          return
+        }
+        throw usernameErr
+      }
+      await refreshProfile(uid)
       navigate('/')
     } catch (err) {
       console.error('[Auth] register:', err)
@@ -47,6 +71,28 @@ export default function Register() {
               {error}
             </Flash>
           )}
+
+          <FormControl required>
+            <FormControl.Label>Nome de usuário</FormControl.Label>
+            <TextInput
+              leadingVisual="@"
+              value={username}
+              onChange={(e) => setUsernameField(e.target.value)}
+              placeholder="seu_usuario"
+              autoComplete="username"
+              size="large"
+              block
+            />
+            <FormControl.Caption>
+              3 a 20 caracteres: letras minúsculas, números ou _. É o que aparece nas comunidades —
+              nunca seu e-mail.
+            </FormControl.Caption>
+            {fieldErrors.username && (
+              <FormControl.Validation variant="error">
+                {fieldErrors.username}
+              </FormControl.Validation>
+            )}
+          </FormControl>
 
           <FormControl required>
             <FormControl.Label>E-mail</FormControl.Label>
