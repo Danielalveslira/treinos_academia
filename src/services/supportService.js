@@ -32,3 +32,7 @@ export async function submitSupportRequest(values) {
 export async function decideSupportRequest(values) {
   return (await httpsCallable(functions, 'decideSupportRequest')(values)).data
 }
+
+export async function cancelSupportRequest(requestId) {
+  return (await httpsCallable(functions, 'cancelSupportRequest')({ requestId })).data
+}

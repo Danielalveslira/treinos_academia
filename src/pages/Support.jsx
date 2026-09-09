@@ -12,11 +12,12 @@ import {
   Text,
   Textarea,
   TextInput,
+  useConfirm,
 } from '@primer/react'
 import { PublicLayout } from '../components/PublicLayout'
 import { useAuth } from '../hooks/useAuth'
 import { useSupport } from '../hooks/useSupport'
-import { submitSupportRequest } from '../services/supportService'
+import { submitSupportRequest, cancelSupportRequest } from '../services/supportService'
 import { LEGAL_MANIFEST } from '../utils/legal'
 import { formatDateTime } from '../utils/format'
 
@@ -34,7 +35,9 @@ const STATE_LABELS = {
 
 export default function Support() {
   const { user } = useAuth()
+  const confirm = useConfirm()
   const [params] = useSearchParams()
+  const [cancelingId, setCancelingId] = useState(null)
   const [kind, setKind] = useState(
     Object.hasOwn(KINDS, params.get('tipo')) ? params.get('tipo') : 'report'
   )
@@ -54,6 +57,26 @@ export default function Support() {
     error: loadError,
     refresh,
   } = useSupport(user?.uid)
+
+  async function handleCancel(item) {
+    const confirmed = await confirm({
+      title: 'Cancelar este pedido?',
+      content: 'O pedido será encerrado e não poderá mais ser analisado.',
+      confirmButtonContent: 'Cancelar pedido',
+      confirmButtonType: 'danger',
+      cancelButtonContent: 'Voltar',
+    })
+    if (!confirmed) return
+    setCancelingId(item.id)
+    try {
+      await cancelSupportRequest(item.id)
+      await refresh()
+    } catch {
+      setError('Não foi possível cancelar o pedido. Tente novamente.')
+    } finally {
+      setCancelingId(null)
+    }
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -314,6 +337,17 @@ export default function Support() {
                     <Text as="p" sx={{ m: 0, fontSize: 0, color: 'fg.muted' }}>
                       Ainda sem resposta. Você será avisado aqui assim que a administração decidir.
                     </Text>
+                  )}
+                  {item.state === 'open' && (
+                    <Button
+                      variant="danger"
+                      size="small"
+                      sx={{ alignSelf: 'flex-start' }}
+                      disabled={cancelingId === item.id}
+                      onClick={() => handleCancel(item)}
+                    >
+                      Cancelar pedido
+                    </Button>
                   )}
                 </Box>
               ))}

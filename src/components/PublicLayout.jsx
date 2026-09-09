@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom'
 import { IconButton, useTheme } from '@primer/react'
 import { LegalLinks } from './LegalLinks'
+import { useAuth } from '../hooks/useAuth'
 import {
   GraphIcon,
   SunIcon,
@@ -12,6 +13,7 @@ import {
 
 export function PublicLayout({ children }) {
   const { resolvedColorMode, setColorMode } = useTheme()
+  const { user } = useAuth()
   const dark = resolvedColorMode === 'night'
   return (
     <div className="public-shell">
@@ -19,7 +21,7 @@ export function PublicLayout({ children }) {
         Pular para o conteúdo
       </a>
       <header className="public-header">
-        <Link to="/login" className="brand">
+        <Link to={user ? '/' : '/login'} className="brand">
           <span className="brand-mark">
             <GraphIcon size={22} />
           </span>
@@ -27,7 +29,11 @@ export function PublicLayout({ children }) {
         </Link>
         <nav aria-label="Navegação">
           <NavLink to="/planos">Planos</NavLink>
-          <NavLink to="/login">Entrar</NavLink>
+          {user ? (
+            <NavLink to="/">Ir para o app</NavLink>
+          ) : (
+            <NavLink to="/login">Entrar</NavLink>
+          )}
           <IconButton
             icon={dark ? SunIcon : MoonIcon}
             aria-label={dark ? 'Ativar tema claro' : 'Ativar tema escuro'}

@@ -1,16 +1,20 @@
 import { AuthLayout } from '../components/PublicLayout'
 import { useState } from 'react'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, Navigate } from 'react-router-dom'
 import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { loginUser } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
+import { useAuth } from '../hooks/useAuth'
 
 export default function Login() {
   const navigate = useNavigate()
+  const { user, loading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  if (!loading && user) return <Navigate to="/" replace />
 
   async function handleSubmit(e) {
     e.preventDefault()

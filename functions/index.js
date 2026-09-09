@@ -171,6 +171,28 @@ export const submitSupportRequest = onCall(options, async (request) => {
   return { id: ref.id }
 })
 
+// Só o autor cancela, e só enquanto o pedido segue aberto — depois de decidido,
+// o histórico (e a eventual medida já aplicada) fica intacto.
+export const cancelSupportRequest = onCall(options, async (request) => {
+  const uid = requireUser(request)
+  const requestId = request.data?.requestId
+  if (!validId(requestId)) throw new HttpsError('invalid-argument', 'Pedido inválido.')
+  const ref = db.doc(`supportRequests/${requestId}`)
+  await db.runTransaction(async (tx) => {
+    const support = await tx.get(ref)
+    if (!support.exists || support.data().userId !== uid)
+      throw new HttpsError('not-found', 'Pedido não encontrado.')
+    if (support.data().state !== 'open')
+      throw new HttpsError('failed-precondition', 'Este pedido já foi concluído.')
+    tx.update(ref, {
+      state: 'closed',
+      response: 'Cancelado pelo usuário.',
+      decidedAt: FieldValue.serverTimestamp(),
+    })
+  })
+  return { ok: true }
+})
+
 export const decideSupportRequest = onCall(options, async (request) => {
   const adminId = requireUser(request)
   const error = validateDecision(request.data)
