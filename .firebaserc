@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-treinos"
+    "default": "academia-9745a",
+    "demo": "demo-treinos"
   }
 }
