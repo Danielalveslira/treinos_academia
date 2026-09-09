@@ -137,7 +137,7 @@ export default function Dashboard() {
       </Box>
 
       <Box className="stats-grid">
-        <IndicatorCard icon={ChecklistIcon} label="Total de treinos" value={totalWorkouts} />
+        <IndicatorCard icon={ChecklistIcon} label="Registros de treino" value={totalWorkouts} />
         <IndicatorCard
           icon={CalendarIcon}
           label="Frequência semanal"
@@ -151,8 +151,9 @@ export default function Dashboard() {
       </Box>
 
       <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: -2, mb: 3 }}>
-        Frequência da semana atual. A sequência continua se você treinou na semana passada e ainda
-        não treinou nesta.
+        Registros conta cada exercício lançado (mais de um no mesmo dia soma mais de um registro).
+        Frequência e sequência contam dias distintos: a sequência continua se você treinou na semana
+        passada e ainda não treinou nesta.
       </Text>
       <div className="dashboard-columns">
         <section className="panel chart-panel">
