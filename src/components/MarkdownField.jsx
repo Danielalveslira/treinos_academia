@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { Box, FormControl, IconButton, SegmentedControl, Text, Textarea } from '@primer/react'
 import {
   BoldIcon,
@@ -26,10 +26,8 @@ const TOOLBAR_ACTIONS = [
   { action: 'checklist', icon: TasklistIcon, label: 'Checklist' },
 ]
 
-// Campo de texto com formatação Markdown: toolbar insere sintaxe no textarea (sem
-// nenhuma lib de editor pesada) e uma aba de pré-visualização reaproveita o mesmo
-// MarkdownViewer usado para exibir o conteúdo já publicado — a prévia é exatamente
-// o que vai aparecer depois. Controlado: todo o estado vive em quem usa o campo.
+const CONTENT_MIN_HEIGHT = ['240px', '320px']
+
 export function MarkdownField({
   label,
   value,
@@ -40,15 +38,19 @@ export function MarkdownField({
   error,
   caption,
   maxLength = 500,
-  rows = 5,
+  rows = 10,
 }) {
+  const id = useId()
   const [mode, setMode] = useState('edit')
+  const [toolbarError, setToolbarError] = useState('')
   const textareaRef = useRef(null)
   const text = typeof value === 'string' ? value : ''
+  const validation = error || toolbarError
+  const describedBy = `${id}-caption${validation ? ` ${id}-validationMessage` : ''}`
 
   function runAction(action) {
     const el = textareaRef.current
-    if (!el) return
+    if (!el || disabled || mode !== 'edit') return
     const {
       value: nextValue,
       selectionStart,
@@ -59,22 +61,30 @@ export function MarkdownField({
       el.selectionStart ?? text.length,
       el.selectionEnd ?? text.length
     )
-    onChange(nextValue.slice(0, maxLength))
+    if (nextValue.length > maxLength) {
+      setToolbarError(`A formatação ultrapassa o limite de ${maxLength} caracteres.`)
+      el.focus()
+      return
+    }
+    setToolbarError('')
+    onChange(nextValue)
     requestAnimationFrame(() => {
+      if (!el.isConnected) return
       el.focus()
       el.setSelectionRange(selectionStart, selectionEnd)
     })
   }
 
   return (
-    <FormControl required={required} disabled={disabled}>
-      {label && <FormControl.Label>{label}</FormControl.Label>}
+    <FormControl id={id} required={required} disabled={disabled} sx={{ minWidth: 0 }}>
+      <FormControl.Label visuallyHidden={!label}>{label || 'Conteúdo Markdown'}</FormControl.Label>
       <Box
         sx={{
           border: '1px solid',
-          borderColor: error ? 'danger.emphasis' : 'border.default',
+          borderColor: validation ? 'danger.emphasis' : 'border.default',
           borderRadius: 2,
-          overflow: 'hidden',
+          width: '100%',
+          minWidth: 0,
         }}
       >
         <Box
@@ -90,14 +100,18 @@ export function MarkdownField({
             bg: 'canvas.subtle',
           }}
         >
-          <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>
+          <Box
+            role="group"
+            aria-label="Formatação do texto"
+            sx={{ display: 'flex', flexWrap: 'wrap' }}
+          >
             {TOOLBAR_ACTIONS.map(({ action, icon, label: actionLabel }) => (
               <IconButton
                 key={action}
                 type="button"
                 icon={icon}
                 variant="invisible"
-                size="small"
+                size="medium"
                 aria-label={actionLabel}
                 disabled={disabled || mode === 'preview'}
                 onClick={() => runAction(action)}
@@ -109,10 +123,20 @@ export function MarkdownField({
             size="small"
             onChange={(index) => setMode(index === 0 ? 'edit' : 'preview')}
           >
-            <SegmentedControl.Button selected={mode === 'edit'} leadingIcon={PencilIcon}>
+            <SegmentedControl.Button
+              type="button"
+              disabled={disabled}
+              selected={mode === 'edit'}
+              leadingIcon={PencilIcon}
+            >
               Editar
             </SegmentedControl.Button>
-            <SegmentedControl.Button selected={mode === 'preview'} leadingIcon={EyeIcon}>
+            <SegmentedControl.Button
+              type="button"
+              disabled={disabled}
+              selected={mode === 'preview'}
+              leadingIcon={EyeIcon}
+            >
               Prévia
             </SegmentedControl.Button>
           </SegmentedControl>
@@ -120,18 +144,37 @@ export function MarkdownField({
 
         {mode === 'edit' ? (
           <Textarea
+            id={id}
             ref={textareaRef}
             value={text}
-            onChange={(e) => onChange(e.target.value.slice(0, maxLength))}
+            onChange={(e) => {
+              setToolbarError('')
+              onChange(e.target.value)
+            }}
+            required={required}
+            validationStatus={validation ? 'error' : undefined}
+            aria-describedby={describedBy}
             placeholder={placeholder}
             rows={rows}
             maxLength={maxLength}
             disabled={disabled}
+            resize="vertical"
             block
-            sx={{ border: 0, borderRadius: 0, resize: 'vertical' }}
+            sx={{
+              border: 0,
+              borderRadius: 0,
+              '& textarea': { minHeight: CONTENT_MIN_HEIGHT, fontSize: '16px' },
+            }}
           />
         ) : (
-          <Box sx={{ p: 2, minHeight: `${rows * 1.6}em` }}>
+          <Box
+            id={id}
+            role="region"
+            aria-label={`Prévia: ${label || 'Conteúdo Markdown'}`}
+            aria-describedby={describedBy}
+            tabIndex={0}
+            sx={{ p: 2, minHeight: CONTENT_MIN_HEIGHT }}
+          >
             {text.trim() ? (
               <MarkdownViewer value={text} />
             ) : (
@@ -142,14 +185,17 @@ export function MarkdownField({
       </Box>
 
       <FormControl.Caption>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+        <Box
+          as="span"
+          sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 2 }}
+        >
           <span>{caption || 'Aceita **negrito**, _itálico_, listas, links e tabelas.'}</span>
           <Text sx={{ flexShrink: 0, color: text.length >= maxLength ? 'danger.fg' : 'fg.muted' }}>
             {text.length}/{maxLength}
           </Text>
         </Box>
       </FormControl.Caption>
-      {error && <FormControl.Validation variant="error">{error}</FormControl.Validation>}
+      {validation && <FormControl.Validation variant="error">{validation}</FormControl.Validation>}
     </FormControl>
   )
 }

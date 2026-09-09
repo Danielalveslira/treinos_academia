@@ -18,6 +18,7 @@ import { logoutUser } from '../services/authService'
 import { useAuth } from '../hooks/useAuth'
 import { preloadRoute } from '../routeLoaders'
 import { PageFallback } from './PageFallback'
+import { LegalLinks } from './LegalLinks'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Início', icon: HomeIcon, end: true },
@@ -126,6 +127,7 @@ export function Layout() {
       <footer className="app-footer">
         <span>Treinos</span>
         <span>Seu progresso, um treino de cada vez.</span>
+        <LegalLinks />
       </footer>
       <nav className="mobile-nav" aria-label="Navegação principal mobile">
         {NAV_ITEMS.map((item) => (

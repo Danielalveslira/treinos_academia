@@ -1,7 +1,3 @@
-// Lógica pura de inserção de sintaxe Markdown num textarea controlado (sem DOM aqui,
-// só string + índices de seleção) — testável isoladamente e reutilizável pelo
-// MarkdownField independente de qualquer biblioteca de editor.
-
 function wrapSelection(value, start, end, marker, placeholder) {
   const before = value.slice(0, start)
   const selected = value.slice(start, end)
@@ -26,15 +22,19 @@ function wrapLink(value, start, end) {
 // Aplica um prefixo a cada linha tocada pela seleção (citação, listas) — se nada
 // estiver selecionado, prefixa só a linha do cursor.
 function prefixLines(value, start, end, prefix) {
-  let lineStart = value.lastIndexOf('\n', start - 1) + 1
-  let lineEnd = value.indexOf('\n', end)
+  const lineStart = start === 0 ? 0 : value.lastIndexOf('\n', start - 1) + 1
+  // A seleção termina antes do caractere em `end`, inclusive quando é outra linha.
+  const lastSelected = end > start && value[end - 1] === '\n' ? end - 1 : end
+  let lineEnd = value.indexOf('\n', lastSelected)
   if (lineEnd === -1) lineEnd = value.length
 
   const block = value.slice(lineStart, lineEnd)
   const lines = block.split('\n')
-  const alreadyPrefixed = lines.every((line) => line.startsWith(prefix) || line.length === 0)
+  const alreadyPrefixed =
+    lines.some((line) => line.startsWith(prefix)) &&
+    lines.every((line) => line.startsWith(prefix) || line.length === 0)
   const nextLines = lines.map((line) => {
-    if (!line) return line
+    if (!line) return lines.length === 1 && !alreadyPrefixed ? prefix : line
     return alreadyPrefixed ? line.slice(prefix.length) : `${prefix}${line}`
   })
   const nextBlock = nextLines.join('\n')

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Box, Heading, Text, Button, Spinner, Label } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PeopleIcon, PlusIcon } from '@primer/octicons-react'
@@ -67,6 +68,9 @@ export default function AdminCommunities() {
 
   return (
     <Box>
+      <Button as={Link} to="/admin/moderacao" sx={{ mb: 3 }}>
+        Atendimento e moderação
+      </Button>
       <ToastFlash toasts={toasts} />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Heading as="h1" sx={{ fontSize: 3 }}>

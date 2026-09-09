@@ -7,6 +7,9 @@ import { ensureUserProfile, setUsername, isUsernameAvailable } from '../services
 import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../utils/authErrors'
 import { validateUsername, hasErrors } from '../utils/validators'
+import { LegalConsent } from '../components/LegalConsent'
+import { LEGAL_MANIFEST } from '../utils/legal'
+import { acceptLegalDocuments } from '../services/legalService'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -17,10 +20,21 @@ export default function Register() {
   const [fieldErrors, setFieldErrors] = useState({})
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [createdAccount, setCreatedAccount] = useState(null)
+  const [confirmed, setConfirmed] = useState({
+    accepted: false,
+    healthDataConsent: false,
+    ageConfirmed: false,
+  })
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (submitting) return
     setError('')
+    if (LEGAL_MANIFEST.published && !Object.values(confirmed).every(Boolean)) {
+      setError('Confirme os documentos, a autorização para seus dados de treino e a idade mínima.')
+      return
+    }
 
     const validationErrors = validateUsername(username)
     setFieldErrors(validationErrors)
@@ -28,6 +42,12 @@ export default function Register() {
 
     setSubmitting(true)
     try {
+      if (createdAccount) {
+        await acceptLegalDocuments(confirmed)
+        await refreshProfile(createdAccount)
+        navigate('/')
+        return
+      }
       // Valida o @ antes de criar a conta no Authentication: assim uma tentativa
       // inválida nunca chega a existir como conta órfã.
       const available = await isUsernameAvailable(username)
@@ -53,11 +73,17 @@ export default function Register() {
         }
         throw postCreateErr
       }
+      setCreatedAccount(uid)
+      if (LEGAL_MANIFEST.published) await acceptLegalDocuments(confirmed)
       await refreshProfile(uid)
       navigate('/')
     } catch (err) {
       console.error('[Auth] register:', err)
-      setError(translateAuthError(err))
+      setError(
+        err.code?.startsWith('functions/')
+          ? 'Sua conta foi criada, mas o aceite não foi registrado. Tente novamente ou entre na conta para concluir.'
+          : translateAuthError(err)
+      )
     } finally {
       setSubmitting(false)
     }
@@ -96,8 +122,7 @@ export default function Register() {
               block
             />
             <FormControl.Caption>
-              3 a 20 caracteres: letras minúsculas, números ou _. É o que aparece nas comunidades —
-              nunca seu e-mail.
+              3 a 20 caracteres: letras minúsculas, números ou _. É o que aparece nas comunidades.
             </FormControl.Caption>
             {fieldErrors.username && (
               <FormControl.Validation variant="error">
@@ -131,6 +156,10 @@ export default function Register() {
             />
             <FormControl.Caption>Mínimo de 6 caracteres.</FormControl.Caption>
           </FormControl>
+
+          {LEGAL_MANIFEST.published && (
+            <LegalConsent value={confirmed} onChange={setConfirmed} disabled={submitting} />
+          )}
 
           <Button
             type="submit"

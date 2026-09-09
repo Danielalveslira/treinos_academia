@@ -13,6 +13,9 @@
     "ui": {
       "enabled": true,
       "port": 4000
+    },
+    "functions": {
+      "port": 5001
     }
   },
   "hosting": {
@@ -61,5 +64,8 @@
         ]
       }
     ]
+  },
+  "functions": {
+    "source": "functions"
   }
 }

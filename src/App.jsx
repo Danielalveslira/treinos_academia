@@ -22,6 +22,9 @@ const CommunityDetail = lazy(() => import('./pages/CommunityDetail'))
 const AdminCommunities = lazy(() => import('./pages/AdminCommunities'))
 const PublicProfile = lazy(() => import('./pages/PublicProfile'))
 const Profile = lazy(() => import('./pages/Profile'))
+const LegalDocument = lazy(() => import('./pages/LegalDocument'))
+const Support = lazy(() => import('./pages/Support'))
+const AdminModeration = lazy(() => import('./pages/AdminModeration'))
 
 export default function App() {
   return (
@@ -39,6 +42,16 @@ export default function App() {
             <Route path="/cadastro" element={<Register />} />
             <Route path="/esqueci-senha" element={<ForgotPassword />} />
             <Route path="/planos" element={<Pricing />} />
+            <Route
+              path="/regras-da-comunidade"
+              element={<LegalDocument documentId="community" />}
+            />
+            <Route path="/termos-de-uso" element={<LegalDocument documentId="terms" />} />
+            <Route
+              path="/politica-de-privacidade"
+              element={<LegalDocument documentId="privacy" />}
+            />
+            <Route path="/atendimento" element={<Support />} />
           </Route>
 
           <Route
@@ -56,6 +69,14 @@ export default function App() {
             <Route path="/novo-treino" element={<NewWorkout />} />
             <Route path="/historico" element={<History />} />
             <Route path="/perfil" element={<Profile />} />
+            <Route
+              path="/admin/moderacao"
+              element={
+                <SuperAdminRoute>
+                  <AdminModeration />
+                </SuperAdminRoute>
+              }
+            />
             <Route path="/comunidades" element={<Communities />} />
             <Route path="/comunidades/perfil/:userId" element={<PublicProfile />} />
             <Route path="/comunidades/:id" element={<CommunityDetail />} />

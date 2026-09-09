@@ -1,5 +1,6 @@
 import { Link, NavLink } from 'react-router-dom'
 import { IconButton, useTheme } from '@primer/react'
+import { LegalLinks } from './LegalLinks'
 import {
   GraphIcon,
   SunIcon,
@@ -39,6 +40,7 @@ export function PublicLayout({ children }) {
       </main>
       <footer className="public-footer">
         <span>Treinos · Seu diário de evolução</span>
+        <LegalLinks />
         <Link to="/planos">
           Conheça os planos <ArrowUpRightIcon size={12} />
         </Link>

@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom'
 import { Box, Spinner } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
+import { LegalGate } from './LegalGate'
 
 export function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -16,5 +17,5 @@ export function ProtectedRoute({ children }) {
   }
   if (!user) return <Navigate to="/login" replace />
 
-  return children
+  return <LegalGate key={user.uid}>{children}</LegalGate>
 }

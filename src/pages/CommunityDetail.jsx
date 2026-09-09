@@ -186,6 +186,14 @@ export default function CommunityDetail() {
       <Link as={RouterLink} to="/comunidades" className="community-back">
         <ChevronLeftIcon /> Comunidades
       </Link>
+      <nav className="community-legal-links" aria-label="Convivência na comunidade">
+        <Link as={RouterLink} to="/regras-da-comunidade">
+          Regras da Comunidade
+        </Link>
+        <Link as={RouterLink} to={`/atendimento?tipo=report&comunidade=${encodeURIComponent(id)}`}>
+          Denunciar violação
+        </Link>
+      </nav>
 
       {loadingCommunity && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
       <ErrorState error={communityError} onRetry={loadCommunity} />

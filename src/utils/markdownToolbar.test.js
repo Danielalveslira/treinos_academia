@@ -38,3 +38,32 @@ test('prefix with no selection only affects the current line', () => {
   const result = applyMarkdownAction('quote', value, cursor, cursor)
   assert.equal(result.value, 'primeira\n> segunda\nterceira')
 })
+
+test('italic and code preserve surrounding text and select the formatted text', () => {
+  for (const [action, marker] of [
+    ['italic', '_'],
+    ['code', '`'],
+  ]) {
+    const result = applyMarkdownAction(action, 'oi mundo!', 3, 8)
+    assert.equal(result.value, `oi ${marker}mundo${marker}!`)
+    assert.equal(result.value.slice(result.selectionStart, result.selectionEnd), 'mundo')
+  }
+})
+
+test('line actions insert syntax into an empty editor or blank current line', () => {
+  for (const [action, prefix] of [
+    ['quote', '> '],
+    ['unorderedList', '- '],
+    ['orderedList', '1. '],
+    ['checklist', '- [ ] '],
+  ]) {
+    assert.equal(applyMarkdownAction(action, '', 0, 0).value, prefix)
+    assert.equal(applyMarkdownAction(action, '\ntexto', 0, 0).value, `${prefix}\ntexto`)
+    assert.equal(applyMarkdownAction(action, 'texto\n', 6, 6).value, `texto\n${prefix}`)
+  }
+})
+
+test('line actions leave the next line untouched when selection ends at its start', () => {
+  const result = applyMarkdownAction('quote', 'primeira\nsegunda', 0, 9)
+  assert.equal(result.value, '> primeira\nsegunda')
+})

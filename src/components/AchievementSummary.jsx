@@ -1,8 +1,13 @@
 import { TrophyIcon } from '@primer/octicons-react'
 import { formatDate } from '../utils/format'
+import { MarkdownViewer } from './MarkdownViewer'
 
 // A prévia e a publicação usam o mesmo resumo.
 export function AchievementSummary({ achievement }) {
+  const hasRecords = achievement?.entries > 0
+  const hasText = typeof achievement?.text === 'string' && achievement.text.trim().length > 0
+  if (!hasRecords && !hasText) return null
+
   return (
     <section className="achievement-summary" aria-label="Conquista do dia">
       <div className="achievement-heading">
@@ -15,18 +20,20 @@ export function AchievementSummary({ achievement }) {
         </time>
       </div>
 
-      {achievement.text && <p className="achievement-message">{achievement.text}</p>}
+      <MarkdownViewer value={achievement.text} sx={{ mt: 2 }} />
 
-      <dl className="achievement-stats">
-        <div>
-          <dt>Registros de exercícios</dt>
-          <dd>{achievement.entries}</dd>
-        </div>
-        <div>
-          <dt>Séries realizadas</dt>
-          <dd>{achievement.sets}</dd>
-        </div>
-      </dl>
+      {hasRecords && (
+        <dl className="achievement-stats">
+          <div>
+            <dt>Registros de exercícios</dt>
+            <dd>{achievement.entries}</dd>
+          </div>
+          <div>
+            <dt>Séries realizadas</dt>
+            <dd>{achievement.sets}</dd>
+          </div>
+        </dl>
+      )}
     </section>
   )
 }

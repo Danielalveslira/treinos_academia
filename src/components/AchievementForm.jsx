@@ -1,19 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  Box,
-  Button,
-  Flash,
-  FormControl,
-  Heading,
-  Text,
-  Spinner,
-  Stack,
-  Textarea,
-} from '@primer/react'
+import { Box, Button, Flash, Heading, Text, Spinner, Stack } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { getWorkoutStatistics } from '../services/workoutsService'
 import { localDayKey, validateAchievement } from '../utils/achievements'
 import { AchievementSummary } from './AchievementSummary'
+import { MarkdownField } from './MarkdownField'
 
 export function AchievementForm({ onSubmit, onCancel }) {
   const { user } = useAuth()
@@ -67,9 +58,11 @@ export function AchievementForm({ onSubmit, onCancel }) {
     <Box as="form" className="community-form" onSubmit={submit}>
       <Stack gap="condensed">
         <Box>
-          <Heading as="h2" sx={{ fontSize: 2, mb: 1 }}>
-            Sua conquista de hoje
-          </Heading>
+          {preview?.entries > 0 && (
+            <Heading as="h2" sx={{ fontSize: 2, mb: 1 }}>
+              Sua conquista de hoje
+            </Heading>
+          )}
           <Text sx={{ color: 'fg.muted', fontSize: 1, display: 'block' }}>
             Compartilhe um passo importante da sua jornada.
           </Text>
@@ -81,26 +74,20 @@ export function AchievementForm({ onSubmit, onCancel }) {
           </Flash>
         )}
         {!preview && !error && <Spinner aria-label="Carregando conquistas" />}
-        {preview && (
-          <Box aria-label="Prévia da conquista">
-            <AchievementSummary achievement={{ ...preview, text }} />
-          </Box>
-        )}
-        <FormControl disabled={submitting}>
-          <FormControl.Label>Qual foi sua conquista?</FormControl.Label>
-          <Textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Ex.: Voltei a treinar depois de uma semana!"
-            rows={3}
-            maxLength={300}
-            block
-          />
-          <FormControl.Caption>{text.length}/300 caracteres</FormControl.Caption>
-        </FormControl>
+        {preview?.entries > 0 && <AchievementSummary achievement={preview} />}
+        <MarkdownField
+          label="Qual foi sua conquista?"
+          value={text}
+          onChange={setText}
+          disabled={submitting}
+          placeholder="Ex.: Voltei a treinar depois de uma semana!"
+          maxLength={300}
+        />
         <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-          A mensagem e os totais acima ficarão visíveis nesta comunidade por 24 horas, mesmo com as
-          estatísticas do perfil privadas. Você pode excluir a publicação depois.
+          {preview?.entries > 0
+            ? 'A mensagem e os totais acima ficarão visíveis nesta comunidade por 24 horas, mesmo com as estatísticas do perfil privadas.'
+            : 'A mensagem ficará visível nesta comunidade por 24 horas.'}{' '}
+          Você pode excluir a publicação depois.
         </Text>
         <Box className="community-form-actions">
           <Button

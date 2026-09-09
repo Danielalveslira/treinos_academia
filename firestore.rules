@@ -11,6 +11,55 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function hasCurrentAcceptance() {
+      let policy = /databases/$(database)/documents/legalPolicy/current;
+      return !exists(policy) || get(policy).data.published != true
+        || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.legalAcceptance.version == get(policy).data.version
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.legalAcceptance.digest == get(policy).data.digest);
+    }
+
+    function hasAppAccess() {
+      let restriction = /databases/$(database)/documents/accountRestrictions/$(request.auth.uid);
+      return isSignedIn() && hasCurrentAcceptance()
+        && (!exists(restriction)
+          || (get(restriction).data.action == 'temporary_suspension'
+            && get(restriction).data.until <= request.time));
+    }
+
+    function communityAccessAllowed(communityId) {
+      return !exists(/databases/$(database)/documents/communityRestrictions/$(communityId + '_' + request.auth.uid));
+    }
+
+    match /legalPolicy/{policyId} {
+      allow get: if true;
+      allow write: if false;
+    }
+
+    match /legalVersions/{version} {
+      allow get: if true;
+      allow write: if false;
+    }
+
+    match /accountRestrictions/{userId} {
+      allow get: if isOwner(userId) || isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /communityRestrictions/{restrictionId} {
+      allow read: if isSuperAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false;
+    }
+
+    match /supportRequests/{requestId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+      allow write: if false;
+    }
+
+    match /moderationDecisions/{decisionId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
     function isSuperAdmin() {
       return isSignedIn() &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
@@ -73,21 +122,33 @@ service cloud.firestore {
       // (console/Admin SDK), nunca uma escrita vinda do cliente.
       allow create: if isOwner(userId)
         && request.resource.data.role == 'user'
+        && !request.resource.data.keys().hasAny(['legalAcceptance'])
         && isValidUsernameField(request.resource.data)
         && isValidBioField(request.resource.data);
       allow update: if isOwner(userId)
         && request.resource.data.role == resource.data.role
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['legalAcceptance'])
         && isValidUsernameField(request.resource.data)
         && isValidBioField(request.resource.data);
 
       match /exercises/{exerciseId} {
-        allow read, delete: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidExercise(request.resource.data);
+        allow read, delete: if isOwner(userId) && hasAppAccess();
+        allow create, update: if isOwner(userId) && hasAppAccess() && isValidExercise(request.resource.data);
       }
 
       match /workouts/{workoutId} {
-        allow read, delete: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidWorkout(request.resource.data);
+        allow read, delete: if isOwner(userId) && hasAppAccess();
+        allow create, update: if isOwner(userId) && hasAppAccess() && isValidWorkout(request.resource.data);
+      }
+
+      match /legalAcceptances/{version} {
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow write: if false;
+      }
+
+      match /notices/{noticeId} {
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow write: if false;
       }
     }
 
@@ -121,7 +182,7 @@ service cloud.firestore {
     }
 
     match /communities/{communityId} {
-      allow read: if isSignedIn();
+      allow read: if hasAppAccess();
       allow create: if isSuperAdmin()
         && isValidCommunity(request.resource.data)
         && request.resource.data.createdBy == request.auth.uid;
@@ -144,17 +205,19 @@ service cloud.firestore {
       // nega com permission-denied em vez de simplesmente não encontrar nada.
       allow read: if isSignedIn()
         && (resource == null || resource.data.userId == request.auth.uid || isSuperAdmin());
-      allow create: if isSignedIn()
+      allow create: if hasAppAccess()
         && request.resource.data.userId == request.auth.uid
         && membershipId == expectedMembershipId(request.resource.data)
         && request.resource.data.joinedAt is timestamp
-        && communityIsActive(request.resource.data.communityId);
+        && communityIsActive(request.resource.data.communityId)
+        && communityAccessAllowed(request.resource.data.communityId);
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow update: if false;
     }
 
     function isMember(communityId) {
-      return exists(/databases/$(database)/documents/communityMembers/$(communityId + '_' + request.auth.uid));
+      return hasAppAccess() && communityAccessAllowed(communityId)
+        && exists(/databases/$(database)/documents/communityMembers/$(communityId + '_' + request.auth.uid));
     }
 
     function isValidStatusBase(data) {
@@ -201,6 +264,7 @@ service cloud.firestore {
         && isValidStatusContent(request.resource.data);
       allow update: if isSignedIn()
         && resource.data.authorId == request.auth.uid
+        && isMember(resource.data.communityId)
         && request.resource.data.authorId == resource.data.authorId
         && request.resource.data.communityId == resource.data.communityId
         && request.resource.data.createdAt == resource.data.createdAt

@@ -237,6 +237,12 @@ export function StatusCard({ status, currentUserId, canDelete, onDelete, now }) 
           <WorkoutStatus status={status} currentUserId={currentUserId} />
         )}
       </div>
+      <Link
+        className="status-report-link"
+        to={`/atendimento?tipo=report&publicacao=${encodeURIComponent(status.id)}&comunidade=${encodeURIComponent(status.communityId)}`}
+      >
+        Denunciar violação
+      </Link>
     </article>
   )
 }

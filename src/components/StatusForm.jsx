@@ -111,7 +111,7 @@ export function StatusForm({ onSubmit, onCancel }) {
             value={text}
             onChange={setText}
             required
-            rows={4}
+            disabled={submitting}
             maxLength={500}
             error={errors.text}
           />
