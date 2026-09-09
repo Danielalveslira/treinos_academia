@@ -5,12 +5,12 @@ import {
   Button,
   FormControl,
   TextInput,
-  Textarea,
   Select,
   Stack,
   IconButton,
 } from '@primer/react'
 import { XIcon, PlusIcon } from '@primer/octicons-react'
+import { MarkdownField } from './MarkdownField'
 import {
   validateTextStatus,
   validatePollStatus,
@@ -106,13 +106,15 @@ export function StatusForm({ onSubmit, onCancel }) {
         </FormControl>
 
         {type === 'text' && (
-          <FormControl required>
-            <FormControl.Label>O que você quer compartilhar?</FormControl.Label>
-            <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} block />
-            {errors.text && (
-              <FormControl.Validation variant="error">{errors.text}</FormControl.Validation>
-            )}
-          </FormControl>
+          <MarkdownField
+            label="O que você quer compartilhar?"
+            value={text}
+            onChange={setText}
+            required
+            rows={4}
+            maxLength={500}
+            error={errors.text}
+          />
         )}
 
         {type === 'poll' && (

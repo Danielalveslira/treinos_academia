@@ -11,6 +11,7 @@ import {
 } from '../services/statusesService'
 import { ExpiryBadge } from './ExpiryBadge'
 import { AchievementSummary } from './AchievementSummary'
+import { MarkdownViewer } from './MarkdownViewer'
 import { formatDateTime } from '../utils/format'
 
 function toDate(value) {
@@ -226,11 +227,7 @@ export function StatusCard({ status, currentUserId, canDelete, onDelete, now }) 
       <StatusHeader status={status} now={now} canDelete={canDelete} onDelete={onDelete} />
 
       <div className="status-content">
-        {status.type === 'text' && (
-          <Text sx={{ fontSize: 1, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-            {status.text}
-          </Text>
-        )}
+        {status.type === 'text' && <MarkdownViewer value={status.text} />}
 
         {status.type === 'achievement' && <AchievementSummary achievement={status.achievement} />}
 
