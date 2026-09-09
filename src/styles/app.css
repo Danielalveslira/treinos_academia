@@ -838,7 +838,7 @@ button:focus-visible {
   color: var(--fgColor-muted);
   line-height: 1.6;
 }
-body:has(.pwa-offline) #root > div > .app-shell {
+body:has(.pwa-offline) .app-shell {
   pointer-events: none;
 }
 .public-footer,

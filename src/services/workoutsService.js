@@ -59,12 +59,6 @@ export async function listWorkoutsForExercise(userId, exerciseId, pageSize = 30)
   return snapshot.docs.map(toDoc)
 }
 
-export async function listRecentWorkouts(userId, pageSize = RECENT_PAGE_SIZE) {
-  const q = query(workoutsRef(userId), orderBy('date', 'desc'), limit(pageSize))
-  const snapshot = await getDocs(q)
-  return snapshot.docs.map(toDoc)
-}
-
 export async function countWorkouts(userId) {
   const snapshot = await getCountFromServer(workoutsRef(userId))
   return snapshot.data().count
@@ -96,8 +90,20 @@ export function deleteWorkout(userId, workoutId) {
   return deleteDoc(doc(db, 'users', userId, 'workouts', workoutId))
 }
 
-// Consistency metrics need complete history: a document limit can truncate a week or streak.
+// Janela e teto para as métricas de constância (streak/frequência semanal) sem ler a
+// coleção inteira: cobre folgas realistas (~1 ano) e limita o custo mesmo para quem
+// registra várias séries por dia. Sequências mais longas que isso aparecem "capadas".
+const DASHBOARD_HISTORY_DAYS = 371
+const DASHBOARD_SAFETY_LIMIT = 500
+
 export async function listDashboardWorkouts(userId) {
-  const snapshot = await getDocs(query(workoutsRef(userId), orderBy('date', 'desc')))
+  const since = Timestamp.fromDate(new Date(Date.now() - DASHBOARD_HISTORY_DAYS * 86400000))
+  const q = query(
+    workoutsRef(userId),
+    where('date', '>=', since),
+    orderBy('date', 'desc'),
+    limit(DASHBOARD_SAFETY_LIMIT)
+  )
+  const snapshot = await getDocs(q)
   return snapshot.docs.map(toDoc)
 }
