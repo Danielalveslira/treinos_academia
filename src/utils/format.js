@@ -14,6 +14,11 @@ export function formatDate(value) {
   return value.toLocaleDateString('pt-BR')
 }
 
+export function formatDateTime(value) {
+  if (!value) return '—'
+  return value.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
 export function buildExerciseNameMap(exercises) {
   const map = new Map()
   exercises.forEach((ex) => map.set(ex.id, ex.name))
