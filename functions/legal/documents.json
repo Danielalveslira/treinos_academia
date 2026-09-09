@@ -29,10 +29,10 @@
         "table": {
           "headers": ["Gravidade", "Exemplo", "Medida"],
           "rows": [
-            ["Leve", "Fora do tema, spam isolado", "Remoção do conteúdo ou advertência"],
-            ["Moderada", "Reincidência ou provocação", "Suspensão temporária, com prazo"],
-            ["Grave", "Assédio, discriminação, fraude", "Banimento da comunidade"],
-            ["Crítica", "Ameaça, exploração de menores, ataque ao sistema", "Suspensão e banimento de toda a conta"]
+            { "cells": ["Leve", "Fora do tema, spam isolado", "Remoção do conteúdo ou advertência"] },
+            { "cells": ["Moderada", "Reincidência ou provocação", "Suspensão temporária, com prazo"] },
+            { "cells": ["Grave", "Assédio, discriminação, fraude", "Banimento da comunidade"] },
+            { "cells": ["Crítica", "Ameaça, exploração de menores, ataque ao sistema", "Suspensão e banimento de toda a conta"] }
           ]
         }
       },
@@ -131,11 +131,11 @@
         "table": {
           "headers": ["Dados", "Para quê"],
           "rows": [
-            ["E-mail e credenciais", "Criar sua conta e permitir login"],
-            ["Nome de usuário e descrição", "Montar seu perfil"],
-            ["Exercícios, cargas, séries e notas", "Seu diário de treino — pode conter dados de saúde"],
-            ["Publicações, votos e filiações", "Fazer as comunidades funcionarem"],
-            ["Pedidos de atendimento e denúncias", "Responder você e apurar violações"]
+            { "cells": ["E-mail e credenciais", "Criar sua conta e permitir login"] },
+            { "cells": ["Nome de usuário e descrição", "Montar seu perfil"] },
+            { "cells": ["Exercícios, cargas, séries e notas", "Seu diário de treino — pode conter dados de saúde"] },
+            { "cells": ["Publicações, votos e filiações", "Fazer as comunidades funcionarem"] },
+            { "cells": ["Pedidos de atendimento e denúncias", "Responder você e apurar violações"] }
           ]
         }
       },
