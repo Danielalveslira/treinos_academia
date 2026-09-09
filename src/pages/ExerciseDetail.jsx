@@ -1,7 +1,7 @@
 import { formatWorkoutSets, getWorkoutLoad } from '../utils/workoutSets'
 import { useMemo } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
-import { Box, Heading, Text, Label, Link, Spinner, Flash } from '@primer/react'
+import { Box, Button, Heading, Text, Label, Link, Spinner, Flash } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import {
   ChevronLeftIcon,
@@ -64,33 +64,49 @@ export default function ExerciseDetail() {
       >
         <ChevronLeftIcon /> Exercícios
       </Link>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 48,
-            height: 48,
-            flexShrink: 0,
-            borderRadius: '50%',
-            bg: 'accent.subtle',
-            color: 'accent.fg',
-          }}
-        >
-          <GraphBarVerticalIcon size={24} />
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 3,
+          mb: 3,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 48,
+              height: 48,
+              flexShrink: 0,
+              borderRadius: '50%',
+              bg: 'accent.subtle',
+              color: 'accent.fg',
+            }}
+          >
+            <GraphBarVerticalIcon size={24} />
+          </Box>
+          <Box>
+            <Heading as="h1" sx={{ fontSize: 3 }}>
+              {exercise?.name || 'Exercício'}
+            </Heading>
+            {exercise?.muscleGroup && (
+              <Text sx={{ color: 'fg.muted', display: 'block' }}>{exercise.muscleGroup}</Text>
+            )}
+          </Box>
         </Box>
-        <Box>
-          <Heading as="h1" sx={{ fontSize: 3 }}>
-            {exercise?.name || 'Exercício'}
-          </Heading>
-          {exercise?.muscleGroup && (
-            <Text sx={{ color: 'fg.muted', display: 'block' }}>{exercise.muscleGroup}</Text>
-          )}
-        </Box>
+        <Button onClick={refresh} loading={loadingWorkouts} disabled={loadingWorkouts}>
+          Atualizar
+        </Button>
       </Box>
 
-      {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+      {loading && workouts.length === 0 && (
+        <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
+      )}
       <ErrorState error={error} onRetry={refresh} />
 
       {!loading && !error && workouts.length === 0 && (
@@ -108,7 +124,7 @@ export default function ExerciseDetail() {
         </Blankslate>
       )}
 
-      {!loading && !error && workouts.length > 0 && (
+      {!error && workouts.length > 0 && (
         <>
           {indicators.isPersonalRecord && (
             <Flash variant="success" sx={{ mb: 3 }}>

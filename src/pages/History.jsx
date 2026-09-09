@@ -96,9 +96,23 @@ export default function History() {
   return (
     <Box>
       <ToastFlash toasts={toasts} />
-      <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
-        Histórico
-      </Heading>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 2,
+          mb: 1,
+        }}
+      >
+        <Heading as="h1" sx={{ fontSize: 3 }}>
+          Histórico
+        </Heading>
+        <Button onClick={refresh} loading={loading} disabled={loading}>
+          Atualizar
+        </Button>
+      </Box>
       <p className="page-description">
         Consulte seus registros e encontre cada etapa da sua evolução.
       </p>
@@ -162,7 +176,9 @@ export default function History() {
         </Box>
       )}
 
-      {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+      {loading && workouts.length === 0 && (
+        <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
+      )}
       <ErrorState error={error} onRetry={refresh} />
 
       {!loading && !error && workouts.length === 0 && (

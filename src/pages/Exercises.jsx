@@ -76,9 +76,14 @@ export default function Exercises() {
         </Heading>
 
         {!formOpen && !editingExercise && (
-          <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
-            Novo
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button onClick={refresh} loading={loading} disabled={loading}>
+              Atualizar
+            </Button>
+            <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
+              Novo
+            </Button>
+          </Box>
         )}
       </Box>
 
@@ -93,7 +98,9 @@ export default function Exercises() {
         />
       )}
 
-      {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+      {loading && exercises.length === 0 && (
+        <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
+      )}
       <ErrorState error={error} onRetry={refresh} />
 
       {!loading && !error && exercises.length === 0 && (

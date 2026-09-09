@@ -7,12 +7,15 @@ import {
   leaveCommunity,
 } from '../services/communityMembersService'
 import { describeFirestoreError } from '../utils/firestoreError'
+import { getCached, setCached } from '../utils/pageCache'
 
 export function useCommunities() {
   const { user } = useAuth()
-  const [communities, setCommunities] = useState([])
-  const [myCommunityIds, setMyCommunityIds] = useState(new Set())
-  const [loading, setLoading] = useState(true)
+  const cacheKey = `communities:${user.uid}`
+  const cached = getCached(cacheKey)
+  const [communities, setCommunities] = useState(cached?.communities || [])
+  const [myCommunityIds, setMyCommunityIds] = useState(new Set(cached?.myCommunityIds || []))
+  const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState(null)
 
   const refresh = useCallback(async () => {
@@ -25,15 +28,18 @@ export function useCommunities() {
       ])
       setCommunities(communityList)
       setMyCommunityIds(new Set(myIds))
+      setCached(cacheKey, { communities: communityList, myCommunityIds: myIds })
     } catch (err) {
       setError(describeFirestoreError(err, 'useCommunities'))
     } finally {
       setLoading(false)
     }
-  }, [user.uid])
+     
+  }, [user.uid, cacheKey])
 
   useEffect(() => {
-    refresh()
+    if (!cached) refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refresh])
 
   const myCommunities = useMemo(
@@ -47,7 +53,11 @@ export function useCommunities() {
 
   async function join(communityId) {
     await joinCommunity(communityId, user.uid)
-    setMyCommunityIds((prev) => new Set(prev).add(communityId))
+    setMyCommunityIds((prev) => {
+      const next = new Set(prev).add(communityId)
+      setCached(cacheKey, { communities, myCommunityIds: [...next] })
+      return next
+    })
   }
 
   async function leave(communityId) {
@@ -55,6 +65,7 @@ export function useCommunities() {
     setMyCommunityIds((prev) => {
       const next = new Set(prev)
       next.delete(communityId)
+      setCached(cacheKey, { communities, myCommunityIds: [...next] })
       return next
     })
   }

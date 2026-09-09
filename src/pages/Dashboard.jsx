@@ -11,6 +11,7 @@ import {
   ChecklistIcon,
   FlameIcon,
   CalendarIcon,
+  SyncIcon,
 } from '@primer/octicons-react'
 import { useDashboard } from '../hooks/useDashboard'
 import { useExercises } from '../contexts/ExercisesContext'
@@ -37,7 +38,7 @@ export default function Dashboard() {
 
   const consistency = useMemo(() => getTrainingConsistency(allWorkouts), [allWorkouts])
 
-  if (loading) {
+  if (loading && recentWorkouts.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
         <Spinner />
@@ -86,9 +87,19 @@ export default function Dashboard() {
           <Heading as="h1">Visão geral</Heading>
           <p className="page-description">Acompanhe sua constância e a evolução de cada treino.</p>
         </div>
-        <Button as={RouterLink} to="/novo-treino" leadingVisual={PlusCircleIcon} variant="primary">
-          Novo treino
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            leadingVisual={SyncIcon}
+            onClick={refresh}
+            loading={loading}
+            disabled={loading}
+          >
+            Atualizar
+          </Button>
+          <Button as={RouterLink} to="/novo-treino" leadingVisual={PlusCircleIcon} variant="primary">
+            Novo treino
+          </Button>
+        </Box>
       </Box>
 
       <Box

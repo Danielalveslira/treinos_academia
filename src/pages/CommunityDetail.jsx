@@ -239,6 +239,9 @@ export default function CommunityDetail() {
                 <Box className="community-toolbar">
                   <Heading as="h2">Publicações</Heading>
                   <Box className="community-publish-actions">
+                    <Button onClick={refreshFeed} loading={loadingFeed} disabled={loadingFeed}>
+                      Atualizar
+                    </Button>
                     <Button
                       leadingVisual={PlusIcon}
                       variant="primary"
@@ -262,7 +265,9 @@ export default function CommunityDetail() {
                 <StatusForm onSubmit={handleCreateStatus} onCancel={() => setFormOpen(false)} />
               )}
 
-              {loadingFeed && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+              {loadingFeed && statuses.length === 0 && (
+                <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
+              )}
               <ErrorState error={feedError} onRetry={refreshFeed} />
 
               {!loadingFeed && !feedError && statuses.length === 0 && (
@@ -278,17 +283,16 @@ export default function CommunityDetail() {
               )}
 
               <div className="community-feed">
-                {!loadingFeed &&
-                  statuses.map((status) => (
-                    <StatusCard
-                      key={status.id}
-                      status={status}
-                      currentUserId={user.uid}
-                      canDelete={status.authorId === user.uid || isSuperAdmin}
-                      onDelete={handleDeleteStatus}
-                      now={now}
-                    />
-                  ))}
+                {statuses.map((status) => (
+                  <StatusCard
+                    key={status.id}
+                    status={status}
+                    currentUserId={user.uid}
+                    canDelete={status.authorId === user.uid || isSuperAdmin}
+                    onDelete={handleDeleteStatus}
+                    now={now}
+                  />
+                ))}
               </div>
             </>
           )}

@@ -131,14 +131,30 @@ export default function Communities() {
   return (
     <Box className="community-page">
       <ToastFlash toasts={toasts} />
-      <Heading as="h1" sx={{ mb: 3 }}>
-        Comunidades
-      </Heading>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 2,
+          mb: 3,
+        }}
+      >
+        <Heading as="h1" sx={{ m: 0 }}>
+          Comunidades
+        </Heading>
+        <Button onClick={refresh} loading={loading} disabled={loading}>
+          Atualizar
+        </Button>
+      </Box>
 
-      {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+      {loading && myCommunities.length === 0 && exploreCommunities.length === 0 && (
+        <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
+      )}
       <ErrorState error={error} onRetry={refresh} />
 
-      {!loading && !error && (
+      {!error && (myCommunities.length > 0 || exploreCommunities.length > 0 || !loading) && (
         <>
           <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
             Minhas comunidades

@@ -7,16 +7,18 @@ import {
   deleteWorkout,
 } from '../services/workoutsService'
 import { describeFirestoreError } from '../utils/firestoreError'
+import { getCached, setCached } from '../utils/pageCache'
 
 export function useWorkouts(filters = {}) {
   const { user } = useAuth()
-  const [workouts, setWorkouts] = useState([])
-  const [cursor, setCursor] = useState(null)
-  const [hasMore, setHasMore] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
   const { exerciseId, startDate, endDate } = filters
+  const cacheKey = `workouts:${user.uid}:${exerciseId || ''}:${startDate || ''}:${endDate || ''}`
+  const cached = getCached(cacheKey)
+  const [workouts, setWorkouts] = useState(cached?.items || [])
+  const [cursor, setCursor] = useState(cached?.nextCursor || null)
+  const [hasMore, setHasMore] = useState(!!cached?.nextCursor)
+  const [loading, setLoading] = useState(!cached)
+  const [error, setError] = useState(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -30,15 +32,18 @@ export function useWorkouts(filters = {}) {
       setWorkouts(items)
       setCursor(nextCursor)
       setHasMore(!!nextCursor)
+      setCached(cacheKey, { items, nextCursor })
     } catch (err) {
       setError(describeFirestoreError(err, 'listWorkoutsPage'))
     } finally {
       setLoading(false)
     }
-  }, [user.uid, exerciseId, startDate, endDate])
+     
+  }, [user.uid, exerciseId, startDate, endDate, cacheKey])
 
   useEffect(() => {
-    refresh()
+    if (!cached) refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refresh])
 
   async function loadMore() {
@@ -50,7 +55,11 @@ export function useWorkouts(filters = {}) {
         endDate,
         cursor,
       })
-      setWorkouts((prev) => [...prev, ...items])
+      setWorkouts((prev) => {
+        const combined = [...prev, ...items]
+        setCached(cacheKey, { items: combined, nextCursor })
+        return combined
+      })
       setCursor(nextCursor)
       setHasMore(!!nextCursor)
     } catch (err) {
@@ -70,7 +79,11 @@ export function useWorkouts(filters = {}) {
 
   async function remove(workoutId) {
     await deleteWorkout(user.uid, workoutId)
-    setWorkouts((prev) => prev.filter((w) => w.id !== workoutId))
+    setWorkouts((prev) => {
+      const next = prev.filter((w) => w.id !== workoutId)
+      setCached(cacheKey, { items: next, nextCursor: cursor })
+      return next
+    })
   }
 
   return { workouts, loading, error, hasMore, loadMore, add, edit, remove, refresh }

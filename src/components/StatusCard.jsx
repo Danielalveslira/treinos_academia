@@ -15,6 +15,7 @@ import { ExpiryBadge } from './ExpiryBadge'
 import { AchievementSummary } from './AchievementSummary'
 import { MarkdownViewer } from './MarkdownViewer'
 import { formatDateTime } from '../utils/format'
+import { getCached, setCached } from '../utils/pageCache'
 
 function toDate(value) {
   return value?.toDate ? value.toDate() : new Date(value)
@@ -71,18 +72,23 @@ function PollStatus({ status, currentUserId }) {
   // counts/myOptionId em vez da lista de votos: nunca baixa a subcoleção inteira (uma
   // enquete popular pode ter milhares de votos) — só contagens agregadas por opção
   // (no máximo 6, teto do schema) e o meu próprio voto, 1 leitura direta pelo id.
-  const [counts, setCounts] = useState(null)
-  const [myOptionId, setMyOptionId] = useState(null)
+  const cacheKey = `pollStatus:${status.id}:${currentUserId}`
+  const cached = getCached(cacheKey)
+  const [counts, setCounts] = useState(cached?.counts ?? null)
+  const [myOptionId, setMyOptionId] = useState(cached?.myOptionId ?? null)
   const [voting, setVoting] = useState(false)
   const optionIds = status.poll.options.map((option) => option.id)
 
   useEffect(() => {
+    if (cached) return
     let active = true
     Promise.all([getPollResults(status.id, optionIds), getMyVote(status.id, currentUserId)]).then(
       ([results, myVote]) => {
         if (!active) return
+        const myOptionId = myVote?.optionId ?? null
         setCounts(results)
-        setMyOptionId(myVote?.optionId ?? null)
+        setMyOptionId(myOptionId)
+        setCached(cacheKey, { counts: results, myOptionId })
       }
     )
     return () => {
@@ -98,7 +104,11 @@ function PollStatus({ status, currentUserId }) {
     setVoting(true)
     try {
       await voteOnPoll(status.id, currentUserId, optionId)
-      setCounts((prev) => ({ ...prev, [optionId]: (prev?.[optionId] || 0) + 1 }))
+      setCounts((prev) => {
+        const next = { ...prev, [optionId]: (prev?.[optionId] || 0) + 1 }
+        setCached(cacheKey, { counts: next, myOptionId: optionId })
+        return next
+      })
       setMyOptionId(optionId)
     } finally {
       setVoting(false)
@@ -170,22 +180,27 @@ function PollStatus({ status, currentUserId }) {
 function WorkoutStatus({ status, currentUserId }) {
   // Contagem agregada + 1 leitura direta pelo id (não a lista inteira de participantes)
   // — mesmo raciocínio da enquete: nunca escala com o número de pessoas confirmadas.
-  const [count, setCount] = useState(null)
-  const [amParticipant, setAmParticipant] = useState(false)
+  const cacheKey = `workoutStatus:${status.id}:${currentUserId}`
+  const cached = getCached(cacheKey)
+  const [count, setCount] = useState(cached?.count ?? null)
+  const [amParticipant, setAmParticipant] = useState(cached?.amParticipant ?? false)
   const [pending, setPending] = useState(false)
 
   useEffect(() => {
+    if (cached) return
     let active = true
     Promise.all([countParticipants(status.id), amIParticipant(status.id, currentUserId)]).then(
       ([total, mine]) => {
         if (!active) return
         setCount(total)
         setAmParticipant(mine)
+        setCached(cacheKey, { count: total, amParticipant: mine })
       }
     )
     return () => {
       active = false
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status.id, currentUserId])
 
   async function toggle() {
@@ -193,11 +208,19 @@ function WorkoutStatus({ status, currentUserId }) {
     try {
       if (amParticipant) {
         await leaveWorkout(status.id, currentUserId)
-        setCount((prev) => prev - 1)
+        setCount((prev) => {
+          const next = prev - 1
+          setCached(cacheKey, { count: next, amParticipant: false })
+          return next
+        })
         setAmParticipant(false)
       } else {
         await joinWorkout(status.id, currentUserId)
-        setCount((prev) => prev + 1)
+        setCount((prev) => {
+          const next = prev + 1
+          setCached(cacheKey, { count: next, amParticipant: true })
+          return next
+        })
         setAmParticipant(true)
       }
     } finally {
