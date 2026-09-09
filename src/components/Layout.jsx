@@ -33,6 +33,16 @@ export function Layout() {
   const contextLabel = activePage?.label || (pathname.startsWith('/admin') ? 'Admin' : '')
   const dark = resolvedColorMode === 'night'
 
+  function toggleColorMode() {
+    const next = dark ? 'day' : 'night'
+    setColorMode(next)
+    try {
+      localStorage.setItem('colorMode', next)
+    } catch {
+      // localStorage indisponível (modo privado etc.) — só não persiste entre sessões
+    }
+  }
+
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
@@ -64,7 +74,7 @@ export function Layout() {
             <IconButton
               icon={dark ? SunIcon : MoonIcon}
               aria-label={dark ? 'Ativar tema claro' : 'Ativar tema escuro'}
-              onClick={() => setColorMode(dark ? 'day' : 'night')}
+              onClick={toggleColorMode}
             />
             <span className="action-divider" />
             <Button leadingVisual={SignOutIcon} variant="invisible" onClick={logoutUser}>
@@ -74,7 +84,7 @@ export function Layout() {
         </div>
         <nav className="desktop-nav" aria-label="Navegação principal">
           {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className="nav-link">
+            <NavLink key={item.to} to={item.to} end={item.end} replace className="nav-link">
               <item.icon size={16} />
               {item.label}
             </NavLink>
@@ -94,7 +104,7 @@ export function Layout() {
       </footer>
       <nav className="mobile-nav" aria-label="Navegação principal mobile">
         {NAV_ITEMS.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end} className="nav-link">
+          <NavLink key={item.to} to={item.to} end={item.end} replace className="nav-link">
             <item.icon size={20} />
             <span>{item.label}</span>
           </NavLink>
