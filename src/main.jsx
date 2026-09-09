@@ -7,9 +7,17 @@ import '@primer/primitives/dist/css/functional/themes/light.css'
 import '@primer/primitives/dist/css/functional/themes/dark.css'
 import './styles/app.css'
 
+function getInitialColorMode() {
+  try {
+    return localStorage.getItem('colorMode') || 'auto'
+  } catch {
+    return 'auto'
+  }
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <ThemeProvider colorMode="auto" dayScheme="light" nightScheme="dark">
+    <ThemeProvider colorMode={getInitialColorMode()} dayScheme="light" nightScheme="dark">
       <BaseStyles>
         <div id="app-content" style={{ display: 'contents' }}>
           <App />
