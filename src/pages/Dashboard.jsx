@@ -1,3 +1,4 @@
+import { formatWorkoutSets } from '../utils/workoutSets'
 import { useMemo } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Box, Button, Heading, Text, Spinner, Link } from '@primer/react'
@@ -14,7 +15,7 @@ import {
 import { useDashboard } from '../hooks/useDashboard'
 import { useExercises } from '../contexts/ExercisesContext'
 import { getExerciseIndicators, getTrainingConsistency } from '../utils/calculations'
-import { formatPercent, formatWeight, formatDate, buildExerciseNameMap } from '../utils/format'
+import { formatPercent, formatDate, buildExerciseNameMap } from '../utils/format'
 import { IndicatorCard } from '../components/IndicatorCard'
 import { FrequencyChart } from '../components/FrequencyChart'
 import { ErrorState } from '../components/ErrorState'
@@ -109,7 +110,7 @@ export default function Dashboard() {
         </Box>
         <Text sx={{ fontWeight: 'bold', display: 'block' }}>
           {exerciseNameById.get(lastWorkout.exerciseId) || 'Exercício'} ·{' '}
-          {formatWeight(lastWorkout.weight)} · {lastWorkout.sets} séries × {lastWorkout.reps} reps
+          {formatWorkoutSets(lastWorkout)}
         </Text>
         <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block' }}>
           {formatDate(
@@ -212,9 +213,7 @@ export default function Dashboard() {
                   <Text sx={{ fontWeight: 'bold', display: 'block' }}>
                     {exerciseNameById.get(workout.exerciseId) || 'Exercício'}
                   </Text>
-                  <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-                    {formatWeight(workout.weight)} · {workout.sets} × {workout.reps} reps
-                  </Text>
+                  <Text sx={{ fontSize: 0, color: 'fg.muted' }}>{formatWorkoutSets(workout)}</Text>
                 </Box>
                 <Text sx={{ fontSize: 0, color: 'fg.muted', whiteSpace: 'nowrap' }}>
                   {formatDate(

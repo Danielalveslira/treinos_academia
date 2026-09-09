@@ -111,11 +111,35 @@ service cloud.firestore {
         && (!('note' in data) || data.note is string && data.note.size() <= 300);
     }
 
+    function validSet(set) {
+      let weight = set.weight;
+      let reps = set.reps;
+      return set.keys().hasOnly(['weight', 'reps'])
+        && weight is number && weight >= 0 && weight <= 10000
+        && reps is int && reps > 0 && reps <= 100000;
+    }
+
+    function validSetAt(sets, index) {
+      return sets.size() <= index || validSet(sets[index]);
+    }
+
+    // Rules cannot iterate lists. Validate all positions up to MAX_WORKOUT_SETS (10).
     function isValidWorkout(data) {
-      return data.exerciseId is string && data.exerciseId.size() > 0
-        && data.weight is number && data.weight >= 0
-        && data.sets is int && data.sets > 0
-        && data.reps is int && data.reps > 0
+      let sets = data.setDetails;
+      return data.keys().hasOnly(['exerciseId', 'setDetails', 'sets', 'date', 'note'])
+        && data.exerciseId is string && data.exerciseId.size() > 0
+        && data.setDetails is list && data.setDetails.size() > 0 && data.setDetails.size() <= 10
+        && data.sets is int && data.sets == data.setDetails.size()
+        && validSetAt(sets, 0)
+        && validSetAt(sets, 1)
+        && validSetAt(sets, 2)
+        && validSetAt(sets, 3)
+        && validSetAt(sets, 4)
+        && validSetAt(sets, 5)
+        && validSetAt(sets, 6)
+        && validSetAt(sets, 7)
+        && validSetAt(sets, 8)
+        && validSetAt(sets, 9)
         && data.date is timestamp
         && (!('note' in data) || data.note is string && data.note.size() <= 300);
     }

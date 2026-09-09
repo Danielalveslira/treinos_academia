@@ -1,3 +1,4 @@
+import { MAX_WORKOUT_SETS } from '../src/utils/workoutSets.js'
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
@@ -36,6 +37,7 @@ before(async () => {
       rules: await readFile(new URL('../firestore.rules', import.meta.url), 'utf8'),
     },
   })
+  await env.clearFirestore()
   owner = env.authenticatedContext('owner').firestore()
   visitor = env.authenticatedContext('visitor').firestore()
   await env.withSecurityRulesDisabled(async (context) => {
@@ -44,8 +46,12 @@ before(async () => {
       role: 'user',
       email: 'private@example.com',
       username: 'owner',
+      subscription: { paidAt: null, trialEndsAt: Timestamp.fromMillis(Date.now() + 86400000) },
     })
-    await setDoc(doc(db, 'users/visitor'), { role: 'user' })
+    await setDoc(doc(db, 'users/visitor'), {
+      role: 'user',
+      subscription: { paidAt: null, trialEndsAt: Timestamp.fromMillis(Date.now() + 86400000) },
+    })
     await setDoc(doc(db, 'publicProfiles/owner'), {
       username: 'owner',
       bio: 'Treino com constância',
@@ -148,5 +154,85 @@ test('achievement publication requires membership and safe payload; author may d
   const outsider = env.authenticatedContext('outsider').firestore()
   await assertFails(setDoc(doc(outsider, 'statuses/outsider'), status({ authorId: 'outsider' })))
   await assertFails(deleteDoc(doc(visitor, 'statuses/achievement')))
+  await assertSucceeds(deleteDoc(ref))
+})
+
+test('individual workout sets are validated at every position and preserve aggregate counts', async () => {
+  const ref = doc(owner, 'users/owner/workouts/individual')
+  const workout = {
+    exerciseId: 'squat',
+    setDetails: [
+      { weight: 0, reps: 12 },
+      { weight: 35.25, reps: 8 },
+    ],
+    sets: 2,
+    date: Timestamp.fromDate(new Date('2025-01-01T12:00:00Z')),
+    note: '',
+  }
+  await assertSucceeds(setDoc(ref, workout))
+  await assertFails(getDoc(doc(visitor, 'users/owner/workouts/individual')))
+  await assertFails(setDoc(doc(visitor, 'users/owner/workouts/individual'), workout))
+  await assertSucceeds(updateDoc(ref, { setDetails: [...workout.setDetails].reverse() }))
+  assert.deepEqual((await getDoc(ref)).data().setDetails, [...workout.setDetails].reverse())
+  await assertFails(updateDoc(ref, { sets: 3 }))
+  await assertFails(updateDoc(ref, { setDetails: [], sets: 0 }))
+  await assertFails(updateDoc(ref, { weight: 30, reps: 12 }))
+  await assertFails(
+    updateDoc(ref, {
+      setDetails: Array(MAX_WORKOUT_SETS + 1).fill({ weight: 1, reps: 1 }),
+      sets: MAX_WORKOUT_SETS + 1,
+    })
+  )
+  await assertSucceeds(
+    updateDoc(ref, {
+      setDetails: Array(MAX_WORKOUT_SETS).fill({ weight: 1, reps: 1 }),
+      sets: MAX_WORKOUT_SETS,
+    })
+  )
+  for (let index = 0; index < MAX_WORKOUT_SETS; index++) {
+    const setDetails = Array.from({ length: MAX_WORKOUT_SETS }, () => ({ weight: 1, reps: 1 }))
+    setDetails[index].weight = -1
+    await assertFails(updateDoc(ref, { setDetails, sets: MAX_WORKOUT_SETS }))
+  }
+  for (const set of [
+    { weight: NaN, reps: 1 },
+    { weight: Infinity, reps: 1 },
+    { weight: 1, reps: 0 },
+    { weight: 1, reps: 1.5 },
+    { weight: '1', reps: 1 },
+    { weight: 1, reps: 1, extra: true },
+    { weight: 1 },
+    null,
+  ]) {
+    await assertFails(updateDoc(ref, { setDetails: [set], sets: 1 }))
+  }
+  await assertSucceeds(updateDoc(ref, { setDetails: [workout.setDetails[0]], sets: 1 }))
+  const total = await getAggregateFromServer(collection(owner, 'users/owner/workouts'), {
+    sets: sum('sets'),
+  })
+  assert.equal(total.data().sets, 4)
+  await assertSucceeds(deleteDoc(ref))
+})
+
+test('legacy workouts remain readable and can be converted on edit', async () => {
+  const ref = doc(owner, 'users/owner/workouts/legacy-edit')
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), ref.path), {
+      exerciseId: 'squat',
+      weight: 30,
+      sets: 3,
+      reps: 12,
+      date: Timestamp.now(),
+    })
+  })
+  assert.equal((await assertSucceeds(getDoc(ref))).data().sets, 3)
+  await assertSucceeds(
+    setDoc(ref, {
+      exerciseId: 'squat',
+      sets: 3,
+      setDetails: Array(3).fill({ weight: 30, reps: 12 }),
+      date: Timestamp.now(),
+    })
+  )
   await assertSucceeds(deleteDoc(ref))
 })

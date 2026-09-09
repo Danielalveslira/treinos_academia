@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -21,15 +22,15 @@ import { ErrorState } from '../components/ErrorState'
 import { RowActionsMenu } from '../components/RowActionsMenu'
 import { ToastFlash } from '../components/ToastFlash'
 import { calculateVolume } from '../utils/calculations'
-import { formatWeight, buildExerciseNameMap } from '../utils/format'
+import { buildExerciseNameMap } from '../utils/format'
+
+import { getWorkoutSets, formatWorkoutSets } from '../utils/workoutSets'
 
 function toEditableWorkout(workout) {
   const date = workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)
   return {
     exerciseId: workout.exerciseId,
-    weight: String(workout.weight),
-    sets: String(workout.sets),
-    reps: String(workout.reps),
+    setDetails: getWorkoutSets(workout),
     date: date.toISOString().slice(0, 10),
     note: workout.note || '',
   }
@@ -38,7 +39,10 @@ function toEditableWorkout(workout) {
 const NO_FILTERS = { exerciseFilter: '', startDate: '', endDate: '' }
 
 export default function History() {
-  const [exerciseFilter, setExerciseFilter] = useState(NO_FILTERS.exerciseFilter)
+  const [searchParams] = useSearchParams()
+  const [exerciseFilter, setExerciseFilter] = useState(
+    searchParams.get('exercicio') || NO_FILTERS.exerciseFilter
+  )
   const [startDate, setStartDate] = useState(NO_FILTERS.startDate)
   const [endDate, setEndDate] = useState(NO_FILTERS.endDate)
   const [editingWorkout, setEditingWorkout] = useState(null)
@@ -149,6 +153,7 @@ export default function History() {
           sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3 }}
         >
           <WorkoutForm
+            key={editingWorkout.id}
             exercises={exercises}
             initialValue={toEditableWorkout(editingWorkout)}
             onSubmit={handleUpdate}
@@ -199,8 +204,8 @@ export default function History() {
                 {exerciseNameById.get(workout.exerciseId) || 'Exercício removido'}
               </Text>
               <Text sx={{ fontSize: 1, color: 'fg.muted', display: 'block' }}>
-                {formatWeight(workout.weight)} · {workout.sets}x{workout.reps} · volume{' '}
-                {calculateVolume(workout.weight, workout.sets, workout.reps)}
+                {formatWorkoutSets(workout)} · volume{' '}
+                {calculateVolume(workout).toLocaleString('pt-BR')} kg
               </Text>
               <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block' }}>
                 {(workout.date?.toDate

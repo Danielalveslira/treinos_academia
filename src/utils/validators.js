@@ -1,3 +1,5 @@
+import { isValidSet, MAX_WORKOUT_SETS } from './workoutSets.js'
+
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 
 export function validateUsername(rawUsername) {
@@ -18,22 +20,29 @@ export function validateExercise({ name, muscleGroup }) {
   return errors
 }
 
-export function validateWorkout({ exerciseId, weight, sets, reps, date }) {
+export function validateWorkout({ exerciseId, setDetails, date, note }) {
   const errors = {}
-  if (!exerciseId) errors.exerciseId = 'Selecione um exercício'
-  if (weight === '' || weight === null || Number(weight) < 0) {
-    errors.weight = 'Peso inválido'
-  }
-  if (!sets || Number(sets) <= 0 || !Number.isInteger(Number(sets))) {
-    errors.sets = 'Número de séries inválido'
-  }
-  if (!reps || Number(reps) <= 0 || !Number.isInteger(Number(reps))) {
-    errors.reps = 'Número de repetições inválido'
+  if (!exerciseId || typeof exerciseId !== 'string') errors.exerciseId = 'Selecione um exercício'
+  if (!Array.isArray(setDetails) || setDetails.length < 1 || setDetails.length > MAX_WORKOUT_SETS) {
+    errors.setDetails = `Informe de 1 a ${MAX_WORKOUT_SETS} séries válidas`
+  } else {
+    setDetails.forEach((set, index) => {
+      if (!isValidSet(set))
+        errors[`set${index}`] = 'Informe peso de 0 a 10.000 kg e repetições inteiras de 1 a 100.000'
+    })
   }
   if (!date) errors.date = 'Data é obrigatória'
-  else if (date > new Date().toISOString().slice(0, 10)) {
+  else if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    !Number.isFinite(new Date(date).getTime()) ||
+    new Date(date).toISOString().slice(0, 10) !== date
+  ) {
+    errors.date = 'Data inválida'
+  } else if (date > new Date().toISOString().slice(0, 10)) {
     errors.date = 'A data não pode ser no futuro'
   }
+  if (note != null && (typeof note !== 'string' || note.trim().length > 300))
+    errors.note = 'Use até 300 caracteres'
   return errors
 }
 

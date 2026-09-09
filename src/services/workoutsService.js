@@ -5,6 +5,7 @@ import {
   sum,
   addDoc,
   updateDoc,
+  deleteField,
   deleteDoc,
   doc,
   getDocs,
@@ -17,6 +18,9 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
 
+import { normalizeWorkout } from '../utils/workoutSets'
+import { validateWorkout, hasErrors } from '../utils/validators'
+
 const RECENT_PAGE_SIZE = 20
 
 function workoutsRef(userId) {
@@ -24,7 +28,7 @@ function workoutsRef(userId) {
 }
 
 function toDoc(d) {
-  return { id: d.id, ...d.data() }
+  return normalizeWorkout({ id: d.id, ...d.data() })
 }
 
 function toTimestamp(dateString) {
@@ -61,25 +65,31 @@ export async function listWorkoutsForExercise(userId, exerciseId, pageSize = 30)
   return snapshot.docs.map(toDoc)
 }
 
-export function createWorkout(userId, workout) {
-  return addDoc(workoutsRef(userId), {
+function workoutPayload(workout) {
+  if (hasErrors(validateWorkout(workout))) throw new Error('Registro de treino inválido')
+  const setDetails = workout.setDetails.map(({ weight, reps }) => ({
+    weight: Number(weight),
+    reps: Number(reps),
+  }))
+  return {
     exerciseId: workout.exerciseId,
-    weight: Number(workout.weight),
-    sets: Number(workout.sets),
-    reps: Number(workout.reps),
+    setDetails,
+    sets: setDetails.length,
     date: toTimestamp(workout.date),
     note: workout.note?.trim() || '',
-  })
+  }
+}
+
+export function createWorkout(userId, workout) {
+  return addDoc(workoutsRef(userId), workoutPayload(workout))
 }
 
 export function updateWorkout(userId, workoutId, workout) {
   return updateDoc(doc(db, 'users', userId, 'workouts', workoutId), {
-    exerciseId: workout.exerciseId,
-    weight: Number(workout.weight),
-    sets: Number(workout.sets),
-    reps: Number(workout.reps),
-    date: toTimestamp(workout.date),
-    note: workout.note?.trim() || '',
+    ...workoutPayload(workout),
+    weight: deleteField(),
+    reps: deleteField(),
+    repetitions: deleteField(),
   })
 }
 

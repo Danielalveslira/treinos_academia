@@ -1,5 +1,10 @@
-export function calculateVolume(weight, sets, reps) {
-  return weight * sets * reps
+import { getWorkoutSets, getWorkoutLoad } from './workoutSets.js'
+
+export function calculateVolume(workout) {
+  return getWorkoutSets(workout).reduce(
+    (total, set) => total + Number(set.weight) * Number(set.reps),
+    0
+  )
 }
 
 function calculateEvolutionPercent(currentLoad, previousLoad) {
@@ -32,23 +37,23 @@ export function getExerciseIndicators(workouts) {
   const sorted = sortByDateDesc(workouts)
   const [latest, previous] = sorted
 
-  const accumulatedVolume = sorted.reduce(
-    (sum, w) => sum + calculateVolume(w.weight, w.sets, w.reps),
-    0
-  )
+  const accumulatedVolume = sorted.reduce((sum, w) => sum + calculateVolume(w), 0)
 
-  const maxLoad = Math.max(...sorted.map((w) => w.weight))
+  const maxLoad = Math.max(...sorted.map((w) => getWorkoutLoad(w)))
 
   return {
-    currentLoad: latest.weight,
-    previousLoad: previous ? previous.weight : null,
+    currentLoad: getWorkoutLoad(latest),
+    previousLoad: previous ? getWorkoutLoad(previous) : null,
     maxLoad,
-    evolutionPercent: calculateEvolutionPercent(latest.weight, previous?.weight),
-    lastVolume: calculateVolume(latest.weight, latest.sets, latest.reps),
+    evolutionPercent: calculateEvolutionPercent(
+      getWorkoutLoad(latest),
+      previous ? getWorkoutLoad(previous) : null
+    ),
+    lastVolume: calculateVolume(latest),
     accumulatedVolume,
     sessionCount: sorted.length,
     lastWorkoutDate: toDate(latest.date),
-    isPersonalRecord: sorted.length > 1 && latest.weight >= maxLoad,
+    isPersonalRecord: sorted.length > 1 && getWorkoutLoad(latest) >= maxLoad,
   }
 }
 
@@ -71,7 +76,7 @@ export function groupVolumeByDate(workouts) {
 
   for (const w of workouts) {
     const key = toDate(w.date).toISOString().slice(0, 10)
-    const volume = calculateVolume(w.weight, w.sets, w.reps)
+    const volume = calculateVolume(w)
     totals.set(key, (totals.get(key) || 0) + volume)
   }
 
@@ -86,7 +91,7 @@ export function buildLoadHistory(workouts) {
     .reverse()
     .map((w) => ({
       date: toDate(w.date).toISOString().slice(0, 10),
-      weight: w.weight,
+      weight: getWorkoutLoad(w),
     }))
 }
 
