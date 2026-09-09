@@ -8,10 +8,15 @@ import {
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
   getCountFromServer,
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
+
+// Teto de defesa: bem acima do número de comunidades que existem no app (ver
+// MAX_COMMUNITIES em communitiesService.js), então nunca deveria cortar uso real.
+const MAX_MEMBERSHIPS = 200
 
 function membersRef() {
   return collection(db, 'communityMembers')
@@ -22,7 +27,12 @@ function membershipId(communityId, userId) {
 }
 
 export async function listMyCommunityIds(userId) {
-  const q = query(membersRef(), where('userId', '==', userId), orderBy('joinedAt', 'desc'))
+  const q = query(
+    membersRef(),
+    where('userId', '==', userId),
+    orderBy('joinedAt', 'desc'),
+    limit(MAX_MEMBERSHIPS)
+  )
   const snapshot = await getDocs(q)
   return snapshot.docs.map((d) => d.data().communityId)
 }

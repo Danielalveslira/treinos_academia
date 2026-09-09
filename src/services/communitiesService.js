@@ -9,9 +9,14 @@ import {
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
+
+// Teto de defesa: comunidades só são criadas pelo superadmin pelo painel, mas sem isso
+// a leitura escala com o tamanho da coleção — bem acima de qualquer uso real do app.
+const MAX_COMMUNITIES = 200
 
 function communitiesRef() {
   return collection(db, 'communities')
@@ -22,13 +27,18 @@ function toDoc(d) {
 }
 
 export async function listActiveCommunities() {
-  const q = query(communitiesRef(), where('isActive', '==', true), orderBy('name'))
+  const q = query(
+    communitiesRef(),
+    where('isActive', '==', true),
+    orderBy('name'),
+    limit(MAX_COMMUNITIES)
+  )
   const snapshot = await getDocs(q)
   return snapshot.docs.map(toDoc)
 }
 
 export async function listAllCommunities() {
-  const q = query(communitiesRef(), orderBy('name'))
+  const q = query(communitiesRef(), orderBy('name'), limit(MAX_COMMUNITIES))
   const snapshot = await getDocs(q)
   return snapshot.docs.map(toDoc)
 }

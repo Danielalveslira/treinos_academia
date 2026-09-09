@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app'
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check'
 import { connectAuthEmulator, getAuth } from 'firebase/auth'
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions'
@@ -22,4 +23,21 @@ if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
   connectFirestoreEmulator(db, '127.0.0.1', 8080)
   connectFunctionsEmulator(functions, '127.0.0.1', 5001)
+}
+
+// Sem chave configurada, o app continua funcionando normalmente (sem token de App
+// Check) — assim isso nunca quebra ambientes onde o reCAPTCHA ainda não foi cadastrado
+// no console do Firebase. Enforcement (recusar quem não manda token) é ligado à parte,
+// manualmente, só depois que o site key estiver publicado e gerando tokens de verdade.
+const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
+if (recaptchaSiteKey) {
+  if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true' || import.meta.env.DEV) {
+    // Debug token: gerado uma vez no console, registra o navegador local/CI como
+    // confiável sem depender do reCAPTCHA real (que não funciona contra localhost/emulador).
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true
+  }
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(recaptchaSiteKey),
+    isTokenAutoRefreshEnabled: true,
+  })
 }

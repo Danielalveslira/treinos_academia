@@ -3,7 +3,9 @@ import {
   addDoc,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
+  getCountFromServer,
   setDoc,
   query,
   where,
@@ -96,9 +98,24 @@ export function deleteStatus(statusId) {
   return deleteDoc(doc(db, 'statuses', statusId))
 }
 
-export async function listVotes(statusId) {
-  const snapshot = await getDocs(collection(db, 'statuses', statusId, 'votes'))
-  return snapshot.docs.map((d) => ({ userId: d.id, ...d.data() }))
+// O documento de voto tem o próprio userId como id, então "meu voto" é 1 leitura direta —
+// nunca precisa baixar a subcoleção inteira pra saber se (e em quê) alguém votou.
+export async function getMyVote(statusId, userId) {
+  const snapshot = await getDoc(doc(db, 'statuses', statusId, 'votes', userId))
+  return snapshot.exists() ? snapshot.data() : null
+}
+
+// Contagem por opção via agregação no servidor: custa 1 leitura fixa por opção
+// (no máximo 6, teto do schema da enquete), nunca escala com o número de votos.
+export async function getPollResults(statusId, optionIds) {
+  const votesRef = collection(db, 'statuses', statusId, 'votes')
+  const counts = await Promise.all(
+    optionIds.map(async (optionId) => {
+      const snapshot = await getCountFromServer(query(votesRef, where('optionId', '==', optionId)))
+      return [optionId, snapshot.data().count]
+    })
+  )
+  return Object.fromEntries(counts)
 }
 
 export function voteOnPoll(statusId, userId, optionId) {
@@ -108,9 +125,15 @@ export function voteOnPoll(statusId, userId, optionId) {
   })
 }
 
-export async function listParticipants(statusId) {
-  const snapshot = await getDocs(collection(db, 'statuses', statusId, 'participants'))
-  return snapshot.docs.map((d) => ({ userId: d.id, ...d.data() }))
+// Mesma ideia: id do documento é o userId, então "eu participo?" é 1 leitura direta.
+export async function amIParticipant(statusId, userId) {
+  const snapshot = await getDoc(doc(db, 'statuses', statusId, 'participants', userId))
+  return snapshot.exists()
+}
+
+export async function countParticipants(statusId) {
+  const snapshot = await getCountFromServer(collection(db, 'statuses', statusId, 'participants'))
+  return snapshot.data().count
 }
 
 export function joinWorkout(statusId, userId) {
