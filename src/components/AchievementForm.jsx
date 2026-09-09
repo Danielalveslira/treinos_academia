@@ -64,11 +64,7 @@ export function AchievementForm({ onSubmit, onCancel }) {
     }
   }
   return (
-    <Box
-      as="form"
-      onSubmit={submit}
-      sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 4 }}
-    >
+    <Box as="form" className="community-form" onSubmit={submit}>
       <Stack gap="condensed">
         <Box>
           <Heading as="h2" sx={{ fontSize: 2, mb: 1 }}>
@@ -106,28 +102,17 @@ export function AchievementForm({ onSubmit, onCancel }) {
           A mensagem e os totais acima ficarão visíveis nesta comunidade por 24 horas, mesmo com as
           estatísticas do perfil privadas. Você pode excluir a publicação depois.
         </Text>
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: ['column-reverse', 'row'],
-            gap: 2,
-            justifyContent: ['stretch', 'flex-end'],
-          }}
-        >
+        <Box className="community-form-actions">
           <Button
             type="button"
             onClick={reload}
             disabled={submitting}
-            sx={{ width: ['100%', 'auto'] }}
+            variant="invisible"
+            className="community-preview-refresh"
           >
             Atualizar prévia
           </Button>
-          <Button
-            type="button"
-            onClick={onCancel}
-            disabled={submitting}
-            sx={{ width: ['100%', 'auto'] }}
-          >
+          <Button type="button" onClick={onCancel} disabled={submitting}>
             Cancelar
           </Button>
           <Button
@@ -135,9 +120,8 @@ export function AchievementForm({ onSubmit, onCancel }) {
             variant="primary"
             loading={submitting}
             disabled={!preview || submitting}
-            sx={{ width: ['100%', 'auto'] }}
           >
-            Compartilhar conquista
+            Compartilhar
           </Button>
         </Box>
       </Stack>

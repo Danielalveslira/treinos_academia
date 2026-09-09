@@ -2,7 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import { Box, Heading, Text, Button, Spinner, Link } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { ChevronLeftIcon, MegaphoneIcon, PlusIcon, PeopleIcon } from '@primer/octicons-react'
+import {
+  ChevronLeftIcon,
+  MegaphoneIcon,
+  PlusIcon,
+  PeopleIcon,
+  TrophyIcon,
+} from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunityFeed } from '../hooks/useCommunityFeed'
 import { useToast } from '../hooks/useToast'
@@ -175,13 +181,9 @@ export default function CommunityDetail() {
   const loading = loadingCommunity || loadingFeed
 
   return (
-    <Box sx={{ maxWidth: '680px', mx: 'auto' }}>
+    <Box className="community-page">
       <ToastFlash toasts={toasts} />
-      <Link
-        as={RouterLink}
-        to="/comunidades"
-        sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mb: 3, fontSize: 1 }}
-      >
+      <Link as={RouterLink} to="/comunidades" className="community-back">
         <ChevronLeftIcon /> Comunidades
       </Link>
 
@@ -190,21 +192,11 @@ export default function CommunityDetail() {
 
       {!loadingCommunity && !communityError && community && (
         <>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'space-between',
-              gap: 3,
-              mb: 4,
-            }}
-          >
+          <Box className="community-heading">
             <Box sx={{ minWidth: 0 }}>
-              <Heading as="h1" sx={{ fontSize: 4, mb: community.description ? 1 : 0 }}>
-                {community.name}
-              </Heading>
+              <Heading as="h1">{community.name}</Heading>
               {community.description && (
-                <Text sx={{ color: 'fg.muted', fontSize: 1, display: 'block' }}>
+                <Text as="p" className="community-description">
                   {community.description}
                 </Text>
               )}
@@ -236,17 +228,20 @@ export default function CommunityDetail() {
           {member && (
             <>
               {!formOpen && (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 4 }}>
-                  <Button
-                    leadingVisual={PlusIcon}
-                    variant="primary"
-                    onClick={() => setFormOpen('status')}
-                  >
-                    Publicar
-                  </Button>
-                  <Button onClick={() => setFormOpen('achievement')}>
-                    Compartilhar conquista do dia
-                  </Button>
+                <Box className="community-toolbar">
+                  <Heading as="h2">Publicações</Heading>
+                  <Box className="community-publish-actions">
+                    <Button
+                      leadingVisual={PlusIcon}
+                      variant="primary"
+                      onClick={() => setFormOpen('status')}
+                    >
+                      Publicar
+                    </Button>
+                    <Button leadingVisual={TrophyIcon} onClick={() => setFormOpen('achievement')}>
+                      Conquista do dia
+                    </Button>
+                  </Box>
                 </Box>
               )}
               {formOpen === 'achievement' && (
@@ -274,17 +269,19 @@ export default function CommunityDetail() {
                 </Blankslate>
               )}
 
-              {!loadingFeed &&
-                statuses.map((status) => (
-                  <StatusCard
-                    key={status.id}
-                    status={status}
-                    currentUserId={user.uid}
-                    canDelete={status.authorId === user.uid || isSuperAdmin}
-                    onDelete={handleDeleteStatus}
-                    now={now}
-                  />
-                ))}
+              <div className="community-feed">
+                {!loadingFeed &&
+                  statuses.map((status) => (
+                    <StatusCard
+                      key={status.id}
+                      status={status}
+                      currentUserId={user.uid}
+                      canDelete={status.authorId === user.uid || isSuperAdmin}
+                      onDelete={handleDeleteStatus}
+                      now={now}
+                    />
+                  ))}
+              </div>
             </>
           )}
         </>

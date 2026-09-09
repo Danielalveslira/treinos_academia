@@ -56,7 +56,7 @@ export function Layout() {
         <div className="header-top">
           <Link to="/" className="brand" aria-label="Treinos — início">
             <span className="brand-mark">
-              <GraphIcon size={22} />
+              <GraphIcon size={18} />
             </span>
             <span>Treinos</span>
           </Link>
@@ -81,10 +81,12 @@ export function Layout() {
               aria-label={dark ? 'Ativar tema claro' : 'Ativar tema escuro'}
               onClick={toggleColorMode}
             />
-            <span className="action-divider" />
-            <Button leadingVisual={SignOutIcon} variant="invisible" onClick={logoutUser}>
-              Sair
-            </Button>
+            <IconButton
+              icon={SignOutIcon}
+              variant="invisible"
+              aria-label="Sair"
+              onClick={logoutUser}
+            />
           </div>
         </div>
         <nav className="desktop-nav" aria-label="Navegação principal">
@@ -135,7 +137,7 @@ export function Layout() {
             className="nav-link"
             onTouchStart={() => preloadRoute(item.to)}
           >
-            <item.icon size={20} />
+            <item.icon size={18} />
             <span>{item.label}</span>
           </NavLink>
         ))}
