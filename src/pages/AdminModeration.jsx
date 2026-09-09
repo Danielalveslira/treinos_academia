@@ -1,9 +1,22 @@
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
-import { Button, Flash, FormControl, Select, Spinner, Textarea, TextInput } from '@primer/react'
+import {
+  Box,
+  Button,
+  Flash,
+  FormControl,
+  Heading,
+  Label,
+  Select,
+  Spinner,
+  Text,
+  Textarea,
+  TextInput,
+} from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { useSupport } from '../hooks/useSupport'
 import { decideSupportRequest } from '../services/supportService'
+import { formatDateTime } from '../utils/format'
 
 const ACTIONS = {
   no_action: 'Responder sem penalidade',
@@ -13,6 +26,18 @@ const ACTIONS = {
   community_ban: 'Banimento da comunidade',
   system_ban: 'Banimento do sistema',
   restore: 'Revogar restrição',
+}
+
+const KIND_LABELS = {
+  report: 'Denúncia',
+  appeal: 'Recurso',
+  privacy: 'Privacidade/exclusão',
+  billing: 'Pagamento',
+}
+
+const STATE_LABELS = {
+  open: { text: 'Em análise', variant: 'attention' },
+  closed: { text: 'Respondido', variant: 'success' },
 }
 
 export default function AdminModeration() {
@@ -55,8 +80,16 @@ export default function AdminModeration() {
       await decideSupportRequest({ requestId: selected.id, ...draft, days: Number(draft.days) })
       setSelected(null)
       await refresh()
-    } catch {
-      setError('Não foi possível registrar a decisão. Confira os dados e tente novamente.')
+    } catch (err) {
+      setError(
+        [
+          'functions/failed-precondition',
+          'functions/invalid-argument',
+          'functions/not-found',
+        ].includes(err?.code)
+          ? err.message
+          : 'Não foi possível registrar a decisão. Confira os dados e tente novamente.'
+      )
     } finally {
       setSaving(false)
     }
@@ -69,7 +102,7 @@ export default function AdminModeration() {
         confirmar o formulário.
       </p>
       {!selected && (
-        <FormControl>
+        <FormControl sx={{ mb: 3 }}>
           <FormControl.Label>Mostrar pedidos</FormControl.Label>
           <Select value={state} onChange={(event) => setState(event.target.value)}>
             <Select.Option value="open">Em análise</Select.Option>
@@ -80,24 +113,78 @@ export default function AdminModeration() {
       )}
       {loading && <Spinner aria-label="Carregando pedidos" />}
       {loadError && (
-        <Flash variant="danger">
+        <Flash variant="danger" sx={{ mb: 3 }}>
           {loadError} <Button onClick={refresh}>Tentar novamente</Button>
         </Flash>
       )}
       {!selected &&
         requests.map((item) => (
-          <article className="support-card" key={item.id}>
-            <h2>Pedido {item.id}</h2>
+          <Box
+            as="article"
+            key={item.id}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2,
+              p: 3,
+              mb: 3,
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: 2,
+              }}
+            >
+              <Box>
+                <Heading as="h2" sx={{ fontSize: 1 }}>
+                  {KIND_LABELS[item.kind] || item.kind}
+                </Heading>
+                <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
+                  Protocolo {item.id} · {formatDateTime(item.createdAt?.toDate())}
+                </Text>
+              </Box>
+              <Label variant={STATE_LABELS[item.state]?.variant}>
+                {STATE_LABELS[item.state]?.text || item.state}
+              </Label>
+            </Box>
             <Link to={`/admin/contas?usuario=${encodeURIComponent(item.userId)}`}>
               Ver conta do solicitante
             </Link>
-            <p>
-              Tipo: {item.kind} · {item.state === 'open' ? 'Em análise' : 'Respondido'}
-            </p>
-            <p className="support-message">{item.message}</p>
-            {item.response && <p>Decisão: {item.response}</p>}
-            {item.state === 'open' && <Button onClick={() => select(item)}>Analisar pedido</Button>}
-          </article>
+            <Text as="p" className="support-message" sx={{ m: 0 }}>
+              {item.message}
+            </Text>
+            {item.response && (
+              <Box
+                sx={{
+                  borderLeft: '3px solid',
+                  borderColor: 'success.emphasis',
+                  bg: 'success.subtle',
+                  borderRadius: 1,
+                  p: 2,
+                }}
+              >
+                <Text as="p" sx={{ fontWeight: 'bold', fontSize: 0, m: 0 }}>
+                  Resposta enviada
+                  {item.decidedAt ? ` em ${formatDateTime(item.decidedAt.toDate())}` : ''}
+                </Text>
+                <Text as="p" className="support-message" sx={{ m: 0 }}>
+                  {item.response}
+                </Text>
+              </Box>
+            )}
+            {item.state === 'open' && (
+              <Button onClick={() => select(item)} sx={{ alignSelf: 'flex-start' }}>
+                Analisar pedido
+              </Button>
+            )}
+          </Box>
         ))}
       {!selected && hasMore && (
         <Button onClick={loadMore} disabled={loading}>

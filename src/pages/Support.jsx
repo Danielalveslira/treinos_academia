@@ -1,6 +1,18 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Button, Flash, FormControl, Select, Spinner, Textarea, TextInput } from '@primer/react'
+import {
+  Box,
+  Button,
+  Flash,
+  FormControl,
+  Heading,
+  Label,
+  Select,
+  Spinner,
+  Text,
+  Textarea,
+  TextInput,
+} from '@primer/react'
 import { PublicLayout } from '../components/PublicLayout'
 import { useAuth } from '../hooks/useAuth'
 import { useSupport } from '../hooks/useSupport'
@@ -13,6 +25,11 @@ const KINDS = {
   appeal: 'Recorrer de uma decisão',
   privacy: 'Privacidade ou exclusão da conta',
   billing: 'Cancelamento ou pagamento',
+}
+
+const STATE_LABELS = {
+  open: { text: 'Em análise', variant: 'attention' },
+  closed: { text: 'Respondido', variant: 'success' },
 }
 
 export default function Support() {
@@ -98,15 +115,41 @@ export default function Support() {
               <section aria-labelledby="notices-title">
                 <h2 id="notices-title">Decisões sobre sua conta</h2>
                 {notices.map((notice) => (
-                  <article className="support-card" key={notice.id}>
-                    <h3>Protocolo {notice.id}</h3>
-                    <p>
+                  <Box
+                    as="article"
+                    key={notice.id}
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2,
+                      border: '1px solid',
+                      borderColor: 'border.default',
+                      borderRadius: 2,
+                      p: 3,
+                      mb: 3,
+                    }}
+                  >
+                    <Heading as="h3" sx={{ fontSize: 1 }}>
+                      Protocolo {notice.id}
+                    </Heading>
+                    <Text as="p" sx={{ m: 0 }}>
                       <strong>Regra:</strong> {notice.rule}
-                    </p>
-                    <p>{notice.reason}</p>
-                    {notice.communityId && <p>Comunidade: {notice.communityId}</p>}
-                    {notice.until && <p>Prazo: {formatDateTime(notice.until.toDate())}</p>}
+                    </Text>
+                    <Text as="p" className="support-message" sx={{ m: 0 }}>
+                      {notice.reason}
+                    </Text>
+                    {notice.communityId && (
+                      <Text as="p" sx={{ m: 0, fontSize: 0, color: 'fg.muted' }}>
+                        Comunidade: {notice.communityId}
+                      </Text>
+                    )}
+                    {notice.until && (
+                      <Text as="p" sx={{ m: 0, fontSize: 0, color: 'fg.muted' }}>
+                        Prazo: {formatDateTime(notice.until.toDate())}
+                      </Text>
+                    )}
                     <Button
+                      sx={{ alignSelf: 'flex-start' }}
                       onClick={() => {
                         setKind('appeal')
                         setDecisionId(notice.id)
@@ -115,7 +158,7 @@ export default function Support() {
                     >
                       Recorrer desta decisão
                     </Button>
-                  </article>
+                  </Box>
                 ))}
               </section>
             )}
@@ -211,18 +254,68 @@ export default function Support() {
               )}
               {!loading && !loadError && requests.length === 0 && <p>Nenhum pedido registrado.</p>}
               {requests.map((item) => (
-                <article className="support-card" key={item.id}>
-                  <h3>
-                    {KINDS[item.kind]} · {item.state === 'open' ? 'Em análise' : 'Respondido'}
-                  </h3>
-                  <p>Protocolo: {item.id}</p>
-                  <p className="support-message">{item.message}</p>
-                  {item.response && (
-                    <p>
-                      <strong>Resposta:</strong> {item.response}
-                    </p>
+                <Box
+                  as="article"
+                  key={item.id}
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                    border: '1px solid',
+                    borderColor: 'border.default',
+                    borderRadius: 2,
+                    p: 3,
+                    mb: 3,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      flexWrap: 'wrap',
+                      gap: 2,
+                    }}
+                  >
+                    <Box>
+                      <Heading as="h3" sx={{ fontSize: 1 }}>
+                        {KINDS[item.kind]}
+                      </Heading>
+                      <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
+                        Protocolo {item.id} · {formatDateTime(item.createdAt?.toDate())}
+                      </Text>
+                    </Box>
+                    <Label variant={STATE_LABELS[item.state]?.variant}>
+                      {STATE_LABELS[item.state]?.text || item.state}
+                    </Label>
+                  </Box>
+                  <Text as="p" className="support-message" sx={{ m: 0 }}>
+                    {item.message}
+                  </Text>
+                  {item.response ? (
+                    <Box
+                      sx={{
+                        borderLeft: '3px solid',
+                        borderColor: 'success.emphasis',
+                        bg: 'success.subtle',
+                        borderRadius: 1,
+                        p: 2,
+                      }}
+                    >
+                      <Text as="p" sx={{ fontWeight: 'bold', fontSize: 0, m: 0 }}>
+                        Resposta da administração
+                        {item.decidedAt ? ` · ${formatDateTime(item.decidedAt.toDate())}` : ''}
+                      </Text>
+                      <Text as="p" className="support-message" sx={{ m: 0 }}>
+                        {item.response}
+                      </Text>
+                    </Box>
+                  ) : (
+                    <Text as="p" sx={{ m: 0, fontSize: 0, color: 'fg.muted' }}>
+                      Ainda sem resposta. Você será avisado aqui assim que a administração decidir.
+                    </Text>
                   )}
-                </article>
+                </Box>
               ))}
               {hasMore && (
                 <Button onClick={loadMore} disabled={loading}>
