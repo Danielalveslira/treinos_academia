@@ -18,9 +18,26 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.legalAcceptance.digest == get(policy).data.digest);
     }
 
+    function isAccountDisabled() {
+      let me = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(me) && get(me).data.get('accountStatus', 'active') == 'disabled';
+    }
+
+    // Deriva o acesso à assinatura só a partir de carimbos do servidor (trialEndsAt,
+    // graceEndsAt) em vez de um campo de status mutável — assim não depende de um job
+    // periódico para "virar" o estado no momento exato em que o tempo passa.
+    function subscriptionAllowsAccess() {
+      let me = /databases/$(database)/documents/users/$(request.auth.uid);
+      let sub = get(me).data.get('subscription', null);
+      return sub != null
+        && ((sub.paidAt == null && request.time < sub.trialEndsAt)
+          || (sub.paidAt != null && sub.graceEndsAt != null && request.time < sub.graceEndsAt));
+    }
+
     function hasAppAccess() {
       let restriction = /databases/$(database)/documents/accountRestrictions/$(request.auth.uid);
       return isSignedIn() && hasCurrentAcceptance()
+        && (isSuperAdmin() || (!isAccountDisabled() && subscriptionAllowsAccess()))
         && (!exists(restriction)
           || (get(restriction).data.action == 'temporary_suspension'
             && get(restriction).data.until <= request.time));
@@ -56,6 +73,20 @@ service cloud.firestore {
     }
 
     match /moderationDecisions/{decisionId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    // Preço dos planos e dados de PIX: leitura pública (a página de planos é
+    // acessível a visitantes deslogados); escrita só pelo SUPERADMIN.
+    match /appConfig/{configId} {
+      allow get: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // Histórico de pagamentos confirmados: só o SUPERADMIN lê; escrita apenas
+    // pela Cloud Function confirmPayment (Admin SDK, ignora estas regras).
+    match /payments/{paymentId} {
       allow read: if isSuperAdmin();
       allow write: if false;
     }
@@ -122,12 +153,13 @@ service cloud.firestore {
       // (console/Admin SDK), nunca uma escrita vinda do cliente.
       allow create: if isOwner(userId)
         && request.resource.data.role == 'user'
-        && !request.resource.data.keys().hasAny(['legalAcceptance'])
+        && !request.resource.data.keys().hasAny(['legalAcceptance', 'accountStatus', 'subscription'])
         && isValidUsernameField(request.resource.data)
         && isValidBioField(request.resource.data);
       allow update: if isOwner(userId)
         && request.resource.data.role == resource.data.role
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['legalAcceptance'])
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['legalAcceptance', 'accountStatus', 'disabledAt', 'disabledBy', 'disabledReason', 'subscription'])
         && isValidUsernameField(request.resource.data)
         && isValidBioField(request.resource.data);
 

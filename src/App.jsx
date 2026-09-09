@@ -25,6 +25,8 @@ const Profile = lazy(() => import('./pages/Profile'))
 const LegalDocument = lazy(() => import('./pages/LegalDocument'))
 const Support = lazy(() => import('./pages/Support'))
 const AdminModeration = lazy(() => import('./pages/AdminModeration'))
+const AdminAccounts = lazy(() => import('./pages/AdminAccounts'))
+const Payment = lazy(() => import('./pages/Payment'))
 
 export default function App() {
   return (
@@ -69,11 +71,20 @@ export default function App() {
             <Route path="/novo-treino" element={<NewWorkout />} />
             <Route path="/historico" element={<History />} />
             <Route path="/perfil" element={<Profile />} />
+            <Route path="/pagamento" element={<Payment />} />
             <Route
               path="/admin/moderacao"
               element={
                 <SuperAdminRoute>
                   <AdminModeration />
+                </SuperAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/contas"
+              element={
+                <SuperAdminRoute>
+                  <AdminAccounts />
                 </SuperAdminRoute>
               }
             />

@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom'
 import { Box, Spinner } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { LegalGate } from './LegalGate'
+import { SubscriptionGate } from './SubscriptionGate'
 
 export function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -17,5 +18,9 @@ export function ProtectedRoute({ children }) {
   }
   if (!user) return <Navigate to="/login" replace />
 
-  return <LegalGate key={user.uid}>{children}</LegalGate>
+  return (
+    <SubscriptionGate key={user.uid}>
+      <LegalGate>{children}</LegalGate>
+    </SubscriptionGate>
+  )
 }

@@ -4,6 +4,7 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { registerUser } from '../services/authService'
 import { ensureUserProfile, setUsername, isUsernameAvailable } from '../services/usersService'
+import { initializeTrial } from '../services/billingService'
 import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../utils/authErrors'
 import { validateUsername, hasErrors } from '../utils/validators'
@@ -43,6 +44,7 @@ export default function Register() {
     setSubmitting(true)
     try {
       if (createdAccount) {
+        await initializeTrial()
         await acceptLegalDocuments(confirmed)
         await refreshProfile(createdAccount)
         navigate('/')
@@ -74,6 +76,7 @@ export default function Register() {
         throw postCreateErr
       }
       setCreatedAccount(uid)
+      await initializeTrial()
       if (LEGAL_MANIFEST.published) await acceptLegalDocuments(confirmed)
       await refreshProfile(uid)
       navigate('/')
