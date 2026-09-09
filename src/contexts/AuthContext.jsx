@@ -2,6 +2,7 @@ import { createContext, useEffect, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../firebase/config'
 import { ensureUserProfile, setUsername, updateUserProfile } from '../services/usersService'
+import { initializeTrial } from '../services/billingService'
 
 export const AuthContext = createContext(null)
 
@@ -26,7 +27,19 @@ export function AuthProvider({ children }) {
         return
       }
       try {
-        const userProfile = await ensureUserProfile(firebaseUser.uid)
+        let userProfile = await ensureUserProfile(firebaseUser.uid)
+        // Contas que existiam antes do sistema de assinatura ainda não têm
+        // `subscription` — sem isso, hasAppAccess() nas regras nega tudo (ver
+        // firestore.rules). Concede o trial nessa hora, uma única vez (a function é
+        // idempotente), pra ninguém ficar trancado fora por uma migração de dados.
+        if (userProfile.role !== 'superadmin' && !userProfile.subscription) {
+          try {
+            await initializeTrial()
+            userProfile = await ensureUserProfile(firebaseUser.uid)
+          } catch (trialErr) {
+            console.error('[Auth] initializeTrial:', trialErr)
+          }
+        }
         if (active && current === revision) setProfile(userProfile)
       } catch (err) {
         console.error('[Auth] ensureUserProfile:', err)

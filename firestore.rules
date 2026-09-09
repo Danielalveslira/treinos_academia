@@ -77,10 +77,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Preço dos planos e dados de PIX: leitura pública (a página de planos é
-    // acessível a visitantes deslogados); escrita só pelo SUPERADMIN.
-    match /appConfig/{configId} {
+    // Nomes/preços dos planos: leitura pública (a página de planos é acessível a
+    // visitantes deslogados). Escrita só pelo SUPERADMIN.
+    match /appConfig/plans {
       allow get: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // Chave PIX, WhatsApp e nome do recebedor: dado pessoal do dono do negócio, não
+    // precisa (nem deveria) ficar raspável por qualquer bot da internet — só quem tem
+    // conta enxerga, o suficiente pra ver a tela de pagamento depois de logar.
+    match /appConfig/billing {
+      allow get: if isSignedIn();
       allow write: if isSuperAdmin();
     }
 
