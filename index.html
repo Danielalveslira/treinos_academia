@@ -10,6 +10,18 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Treinos" />
     <title>Treinos</title>
+    <script>
+      // Bloqueante e síncrono, de propósito: aplica o tema salvo em localStorage direto no
+      // <html> antes do primeiro paint. O ThemeProvider do Primer só escreve esses mesmos
+      // atributos no seu próprio wrapper depois que o React monta — sem isso, a página pinta
+      // uma vez com o tema padrão do SO e "pisca" para o tema escolhido um instante depois.
+      try {
+        var mode = localStorage.getItem('colorMode') || 'auto'
+        document.documentElement.setAttribute('data-color-mode', mode)
+        document.documentElement.setAttribute('data-light-theme', 'light')
+        document.documentElement.setAttribute('data-dark-theme', 'dark')
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

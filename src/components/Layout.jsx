@@ -1,4 +1,5 @@
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
+import { Suspense } from 'react'
 import { Button, IconButton, Flash, useTheme } from '@primer/react'
 import {
   HomeIcon,
@@ -15,6 +16,8 @@ import {
 } from '@primer/octicons-react'
 import { logoutUser } from '../services/authService'
 import { useAuth } from '../hooks/useAuth'
+import { preloadRoute } from '../routeLoaders'
+import { PageFallback } from './PageFallback'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Início', icon: HomeIcon, end: true },
@@ -86,7 +89,15 @@ export function Layout() {
         </div>
         <nav className="desktop-nav" aria-label="Navegação principal">
           {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} replace className="nav-link">
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              replace
+              className="nav-link"
+              onMouseEnter={() => preloadRoute(item.to)}
+              onFocus={() => preloadRoute(item.to)}
+            >
               <item.icon size={16} />
               {item.label}
             </NavLink>
@@ -106,7 +117,9 @@ export function Layout() {
             </Button>
           </Flash>
         )}
-        <Outlet />
+        <Suspense fallback={<PageFallback />}>
+          <Outlet />
+        </Suspense>
       </main>
       <footer className="app-footer">
         <span>Treinos</span>
@@ -114,7 +127,14 @@ export function Layout() {
       </footer>
       <nav className="mobile-nav" aria-label="Navegação principal mobile">
         {NAV_ITEMS.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end} replace className="nav-link">
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            replace
+            className="nav-link"
+            onTouchStart={() => preloadRoute(item.to)}
+          >
             <item.icon size={20} />
             <span>{item.label}</span>
           </NavLink>
