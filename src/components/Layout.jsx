@@ -125,9 +125,10 @@ export function Layout() {
         </Suspense>
       </main>
       <footer className="app-footer">
-        <span>Treinos</span>
-        <span>Seu progresso, um treino de cada vez.</span>
         <LegalLinks />
+        <p className="app-footer-brand">
+          <GraphIcon size={12} /> Treinos · Seu progresso, um treino de cada vez.
+        </p>
       </footer>
       <nav className="mobile-nav" aria-label="Navegação principal mobile">
         {NAV_ITEMS.map((item) => (

@@ -39,11 +39,14 @@ export function PublicLayout({ children }) {
         {children}
       </main>
       <footer className="public-footer">
-        <span>Treinos · Seu diário de evolução</span>
-        <LegalLinks />
-        <Link to="/planos">
-          Conheça os planos <ArrowUpRightIcon size={12} />
-        </Link>
+        <LegalLinks>
+          <Link to="/planos">
+            Conheça os planos <ArrowUpRightIcon size={12} />
+          </Link>
+        </LegalLinks>
+        <p className="public-footer-brand">
+          <GraphIcon size={12} /> Treinos · Seu diário de evolução
+        </p>
       </footer>
     </div>
   )
