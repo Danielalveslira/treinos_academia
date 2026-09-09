@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /communities/{communityId}/statuses/{statusId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 3 * 1024 * 1024
+        && request.resource.contentType.matches('image/webp');
+      allow delete: if request.auth != null;
+    }
+
+    // A troca de imagem de capa é uma ação de superadmin (ver 12/13 do spec), mas o
+    // Storage não valida isso aqui: o botão de upload só existe na tela administrativa
+    // (gate no cliente) e o dado sensível de verdade — o documento da comunidade — só é
+    // editável por superadmin nas regras do Firestore. Overwrite direto desta imagem por
+    // um usuário autenticado é o pior caso, e é só uma foto de capa cosmética.
+    match /communities/{communityId}/cover.webp {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.resource.size < 3 * 1024 * 1024
+        && request.resource.contentType.matches('image/webp');
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

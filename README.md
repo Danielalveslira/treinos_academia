@@ -36,18 +36,27 @@ Componentes próprios em `components/` existem apenas quando o Primer não tem e
 ## Modelo de dados (Firestore)
 
 ```
-users/{userId}
+users/{userId}                          { role: 'user' | 'superadmin', createdAt }
 users/{userId}/exercises/{exerciseId}   { name, muscleGroup, note, active }
 users/{userId}/workouts/{workoutId}     { exerciseId, weight, sets, reps, date, note }
+
+communities/{communityId}               { name, description, imageUrl, isActive, createdBy, createdAt }
+communityMembers/{communityId}_{userId} { communityId, userId, joinedAt }
+statuses/{statusId}                     { communityId, authorId, authorEmail, type, createdAt, expiresAt, ... }
+statuses/{statusId}/votes/{userId}          { optionId, createdAt }        (type: poll)
+statuses/{statusId}/participants/{userId}   { joinedAt }                  (type: workout)
 ```
 
 Estrutura escolhida por ser a mais simples que atende aos requisitos: subcoleções por usuário isolam os dados naturalmente (cada leitura já é escopada ao usuário autenticado) e evitam junções complexas. Não há coleção separada de "grupos musculares" (é um campo simples no exercício) nem relacionamentos adicionais — não são necessários no estágio atual.
+
+`communityMembers` usa `{communityId}_{userId}` como ID do documento — o mesmo padrão de `statuses/{statusId}/votes/{userId}` (ID = uid) — para impedir naturalmente duplicidade (entrar duas vezes, votar duas vezes) sem precisar de uma query extra para checar antes de escrever.
 
 ## Segurança
 
 - **Firestore Security Rules** (`firestore.rules`) exigem `request.auth.uid == userId` para qualquer leitura/escrita em `users/{userId}/**`, e validam o formato dos documentos de `exercises` e `workouts` no servidor — a validação de formulário no frontend é só uma camada de UX, não a de segurança.
 - Nenhuma credencial sensível (service account, chave privada) é usada neste projeto: apenas a configuração pública do Firebase, que é segura para o frontend por design.
 - `.env` nunca é versionado (`.gitignore`); use `.env.example` como referência.
+- Comunidades seguem o mesmo princípio: criar/editar/excluir comunidade exige `role == "superadmin"` checado nas regras (via `get()` no documento do próprio usuário), nunca só no frontend; publicar em uma comunidade exige filiação (`communityMembers`) e comunidade ativa; editar/excluir publicação exige ser o autor (ou superadmin, para excluir); votos e participações checam se a publicação ainda não expirou. `storage.rules` valida tipo (`image/webp`) e tamanho (< 3MB) de toda imagem enviada.
 
 ## Cálculos
 
@@ -64,6 +73,7 @@ Casos sem histórico anterior ou carga anterior igual a zero retornam `null` (ex
 - Histórico paginado (20 registros por página, com "carregar mais").
 - Indicadores de exercício limitam a leitura às últimas 30 sessões daquele exercício.
 - Dashboard usa uma janela de 50 treinos recentes para volume/frequência e `getCountFromServer` (contagem agregada, custo mínimo) para o total de treinos — evita ler o histórico inteiro.
+- Feed de comunidade limitado a 30 publicações não expiradas por consulta; contagem de membros via `getCountFromServer` (não lê os documentos); nome do autor é gravado no próprio `status` (denormalizado) para o feed não precisar de 1 leitura extra em `users` por publicação exibida.
 
 ## Performance
 
@@ -74,7 +84,7 @@ Casos sem histórico anterior ou carga anterior igual a zero retornam `null` (ex
 ## Configuração
 
 1. Crie um projeto no [console do Firebase](https://console.firebase.google.com/).
-2. Ative **Authentication** (método E-mail/senha) e **Firestore Database** (modo produção).
+2. Ative **Authentication** (método E-mail/senha), **Firestore Database** (modo produção) e **Storage** (usado pelas fotos de comunidades/publicações).
 3. Copie `.env.example` para `.env` e preencha com as chaves do seu app web (Configurações do projeto → Seus apps).
 4. Instale as dependências e rode em desenvolvimento:
 
@@ -86,15 +96,17 @@ npm run dev
 5. Publique as regras de segurança e os índices (requer [firebase-tools](https://firebase.google.com/docs/cli), via `npx`):
 
 ```bash
-npx firebase deploy --only firestore:rules,firestore:indexes --project <seu-projeto>
+npx firebase deploy --only firestore:rules,firestore:indexes,storage --project <seu-projeto>
 ```
+
+6. Para usar a área de Comunidades, promova seu próprio usuário a superadmin: no console do Firebase, Firestore → coleção `users` → documento com o seu `uid` → edite o campo `role` para `superadmin`. Sem isso, o link de administração não aparece e `/admin/comunidades` redireciona de volta.
 
 ### Testando localmente com os emuladores (opcional)
 
 Sem custo e sem afetar dados reais:
 
 ```bash
-npm run emulators          # sobe Auth + Firestore emulados
+npm run emulators          # sobe Auth + Firestore + Storage emulados
 ```
 
 Em outro terminal, defina `VITE_USE_FIREBASE_EMULATOR=true` no `.env` e rode `npm run dev`.
@@ -105,10 +117,23 @@ Em outro terminal, defina `VITE_USE_FIREBASE_EMULATOR=true` no `.env` e rode `np
 
 ```bash
 npm run build
-npx firebase deploy --only hosting,firestore:rules,firestore:indexes
+npx firebase deploy --only hosting,firestore:rules,firestore:indexes,storage
 ```
 
 **Vercel/Netlify:** build command `npm run build`, output directory `dist`, e configure as mesmas variáveis de `.env.example` no painel do serviço.
+
+## Comunidades
+
+Feed temporário por comunidade, com dois papéis:
+
+- **superadmin**: cria, edita, ativa/desativa e exclui comunidades, altera a imagem e vê quantos membros cada uma tem. Definido pelo campo `role` em `users/{userId}` — só pode ser alterado manualmente no console do Firebase (Firestore → `users/{uid}` → editar `role` para `"superadmin"`) ou via Admin SDK; **nunca** por uma escrita vinda do app (`firestore.rules` bloqueia isso: `create` exige `role == "user"`, `update` exige que o campo não mude). Não existe fluxo de autopromoção de propósito.
+- **usuário**: entra/sai de comunidades ativas, publica conteúdo nas que participa, vota em enquetes, confirma presença em treinos marcados.
+
+Cada publicação (`status`) expira 24h após criada (`expiresAt = createdAt + 24h`, validado nas regras com tolerância de alguns minutos para a diferença entre o relógio do cliente — que calcula `expiresAt` — e o `request.time` do servidor, que resolve `createdAt`). O feed sempre filtra `expiresAt > agora`; nada expirado aparece na tela mesmo que o documento ainda exista no banco (a limpeza física é responsabilidade de uma [política de TTL do Firestore](https://firebase.google.com/docs/firestore/ttl) configurada manualmente no console/CLI para o campo `expiresAt` das coleções `statuses` — não há como declarar isso em `firestore.rules`/`firestore.indexes.json`).
+
+Fotos (comunidade e publicações) são comprimidas para WebP no navegador antes do upload (`src/utils/imageUpload.js`, canvas + `toBlob`), o que reduz o tamanho drasticamente (um JPEG de ~50KB em ~1200px vira poucos KB) e mantém as regras do Storage simples: só aceitam `image/webp` até 3MB.
+
+A quantidade de membros por comunidade (visível só para o superadmin) usa `getCountFromServer` — não lê os documentos de `communityMembers`, só agrega no servidor.
 
 ## Escopo desta primeira versão
 

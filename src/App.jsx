@@ -4,6 +4,7 @@ import { Box, Spinner } from '@primer/react'
 import { AuthProvider } from './contexts/AuthContext'
 import { ExercisesProvider } from './contexts/ExercisesContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { SuperAdminRoute } from './components/SuperAdminRoute'
 import { Layout } from './components/Layout'
 
 const Login = lazy(() => import('./pages/Login'))
@@ -15,6 +16,9 @@ const ExerciseDetail = lazy(() => import('./pages/ExerciseDetail'))
 const NewWorkout = lazy(() => import('./pages/NewWorkout'))
 const History = lazy(() => import('./pages/History'))
 const Pricing = lazy(() => import('./pages/Pricing'))
+const Communities = lazy(() => import('./pages/Communities'))
+const CommunityDetail = lazy(() => import('./pages/CommunityDetail'))
+const AdminCommunities = lazy(() => import('./pages/AdminCommunities'))
 
 function PageFallback() {
   return (
@@ -51,6 +55,16 @@ export default function App() {
               <Route path="/exercicios/:id" element={<ExerciseDetail />} />
               <Route path="/novo-treino" element={<NewWorkout />} />
               <Route path="/historico" element={<History />} />
+              <Route path="/comunidades" element={<Communities />} />
+              <Route path="/comunidades/:id" element={<CommunityDetail />} />
+              <Route
+                path="/admin/comunidades"
+                element={
+                  <SuperAdminRoute>
+                    <AdminCommunities />
+                  </SuperAdminRoute>
+                }
+              />
             </Route>
           </Routes>
         </Suspense>

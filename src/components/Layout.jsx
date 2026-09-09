@@ -5,26 +5,32 @@ import {
   PlusCircleIcon,
   HistoryIcon,
   ListUnorderedIcon,
+  PeopleIcon,
+  ShieldLockIcon,
   SignOutIcon,
   GraphIcon,
   SunIcon,
   MoonIcon,
 } from '@primer/octicons-react'
 import { logoutUser } from '../services/authService'
+import { useAuth } from '../hooks/useAuth'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Início', icon: HomeIcon, end: true },
   { to: '/novo-treino', label: 'Registrar', icon: PlusCircleIcon },
   { to: '/historico', label: 'Histórico', icon: HistoryIcon },
   { to: '/exercicios', label: 'Exercícios', icon: ListUnorderedIcon },
+  { to: '/comunidades', label: 'Comunidades', icon: PeopleIcon },
 ]
 
 export function Layout() {
   const { resolvedColorMode, setColorMode } = useTheme()
+  const { isSuperAdmin } = useAuth()
   const { pathname } = useLocation()
   const activePage = NAV_ITEMS.find((item) =>
     item.end ? pathname === item.to : pathname.startsWith(item.to)
   )
+  const contextLabel = activePage?.label || (pathname.startsWith('/admin') ? 'Admin' : '')
   const dark = resolvedColorMode === 'night'
 
   return (
@@ -40,9 +46,21 @@ export function Layout() {
             </span>
             <span>Treinos</span>
           </Link>
-          <span className="header-divider">/</span>
-          <span className="header-context">{activePage?.label || 'Exercício'}</span>
+          {contextLabel && (
+            <>
+              <span className="header-divider">/</span>
+              <span className="header-context">{contextLabel}</span>
+            </>
+          )}
           <div className="header-actions">
+            {isSuperAdmin && (
+              <IconButton
+                as={Link}
+                to="/admin/comunidades"
+                icon={ShieldLockIcon}
+                aria-label="Administrar comunidades"
+              />
+            )}
             <IconButton
               icon={dark ? SunIcon : MoonIcon}
               aria-label={dark ? 'Ativar tema claro' : 'Ativar tema escuro'}

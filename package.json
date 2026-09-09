@@ -11,7 +11,7 @@
     "test": "node --test src/**/*.test.js",
     "format": "prettier --write \"src/**/*.{js,jsx}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx}\"",
-    "emulators": "firebase emulators:start --only auth,firestore"
+    "emulators": "firebase emulators:start --only auth,firestore,storage"
   },
   "dependencies": {
     "@primer/octicons-react": "^19.35.0",
