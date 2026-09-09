@@ -19,6 +19,7 @@ const Pricing = lazy(() => import('./pages/Pricing'))
 const Communities = lazy(() => import('./pages/Communities'))
 const CommunityDetail = lazy(() => import('./pages/CommunityDetail'))
 const AdminCommunities = lazy(() => import('./pages/AdminCommunities'))
+const Profile = lazy(() => import('./pages/Profile'))
 
 function PageFallback() {
   return (
@@ -55,6 +56,7 @@ export default function App() {
               <Route path="/exercicios/:id" element={<ExerciseDetail />} />
               <Route path="/novo-treino" element={<NewWorkout />} />
               <Route path="/historico" element={<History />} />
+              <Route path="/perfil" element={<Profile />} />
               <Route path="/comunidades" element={<Communities />} />
               <Route path="/comunidades/:id" element={<CommunityDetail />} />
               <Route

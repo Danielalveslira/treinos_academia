@@ -45,13 +45,14 @@ export async function listCommunityFeed(communityId, pageSize = FEED_PAGE_SIZE) 
   return snapshot.docs.map(toDoc)
 }
 
-// authorEmail é gravado no próprio status (denormalizado) para o feed poder mostrar quem
-// publicou sem precisar de 1 leitura extra em "users" por item exibido.
+// authorUsername é gravado no próprio status (denormalizado) para o feed poder mostrar
+// quem publicou sem precisar de 1 leitura extra em "users" por item exibido. Nunca o
+// e-mail: é um dado sensível e não deveria aparecer publicamente na comunidade.
 export function createTextStatus(communityId, author, text) {
   return addDoc(statusesRef(), {
     communityId,
     authorId: author.id,
-    authorEmail: author.email,
+    authorUsername: author.username || null,
     type: 'text',
     text: text.trim(),
     createdAt: serverTimestamp(),
@@ -63,7 +64,7 @@ export function createPollStatus(communityId, author, question, options) {
   return addDoc(statusesRef(), {
     communityId,
     authorId: author.id,
-    authorEmail: author.email,
+    authorUsername: author.username || null,
     type: 'poll',
     poll: {
       question: question.trim(),
@@ -78,7 +79,7 @@ export function createWorkoutStatus(communityId, author, workout) {
   return addDoc(statusesRef(), {
     communityId,
     authorId: author.id,
-    authorEmail: author.email,
+    authorUsername: author.username || null,
     type: 'workout',
     workout: {
       title: workout.title.trim(),

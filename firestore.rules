@@ -32,14 +32,21 @@ service cloud.firestore {
         && (!('note' in data) || data.note is string && data.note.size() <= 300);
     }
 
+    function isValidUsernameField(data) {
+      return !('username' in data) || data.username == null
+        || (data.username is string && data.username.matches('^[a-z0-9_]{3,20}$'));
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId) || isSuperAdmin();
       // Perfil sempre nasce como "user"; virar superadmin exige edição manual
       // (console/Admin SDK), nunca uma escrita vinda do cliente.
       allow create: if isOwner(userId)
-        && request.resource.data.role == 'user';
+        && request.resource.data.role == 'user'
+        && isValidUsernameField(request.resource.data);
       allow update: if isOwner(userId)
-        && request.resource.data.role == resource.data.role;
+        && request.resource.data.role == resource.data.role
+        && isValidUsernameField(request.resource.data);
 
       match /exercises/{exerciseId} {
         allow read, delete: if isOwner(userId);
@@ -50,6 +57,19 @@ service cloud.firestore {
         allow read, delete: if isOwner(userId);
         allow create, update: if isOwner(userId) && isValidWorkout(request.resource.data);
       }
+    }
+
+    // Reserva de @usuário: um documento por nome de usuário, apontando para o dono.
+    // Impede duplicidade (dois usuários com o mesmo @) sem precisar de Cloud Function —
+    // o cliente sempre lê aqui dentro de uma transação antes de reivindicar um nome.
+    match /usernames/{username} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && username.matches('^[a-z0-9_]{3,20}$')
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAt is timestamp;
+      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      allow update: if false;
     }
 
     function isValidCommunity(data) {

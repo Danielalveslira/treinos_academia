@@ -1,5 +1,5 @@
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
-import { Button, IconButton, useTheme } from '@primer/react'
+import { Button, IconButton, Flash, useTheme } from '@primer/react'
 import {
   HomeIcon,
   PlusCircleIcon,
@@ -25,7 +25,7 @@ const NAV_ITEMS = [
 
 export function Layout() {
   const { resolvedColorMode, setColorMode } = useTheme()
-  const { isSuperAdmin } = useAuth()
+  const { profile, isSuperAdmin } = useAuth()
   const { pathname } = useLocation()
   const activePage = NAV_ITEMS.find((item) =>
     item.end ? pathname === item.to : pathname.startsWith(item.to)
@@ -96,6 +96,14 @@ export function Layout() {
         tabIndex={-1}
         className={`main-content${pathname === '/novo-treino' ? ' main-content-form' : ''}`}
       >
+        {profile && !profile.username && pathname !== '/perfil' && (
+          <Flash sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
+            Defina um nome de usuário para aparecer nas comunidades no lugar do seu e-mail.
+            <Button as={Link} to="/perfil" size="small" sx={{ ml: 'auto', flexShrink: 0 }}>
+              Definir agora
+            </Button>
+          </Flash>
+        )}
         <Outlet />
       </main>
       <footer className="app-footer">
