@@ -19,6 +19,7 @@ import { useAuth } from '../hooks/useAuth'
 import { preloadRoute } from '../routeLoaders'
 import { PageFallback } from './PageFallback'
 import { LegalLinks } from './LegalLinks'
+import { SubscriptionBanner } from './SubscriptionBanner'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Início', icon: HomeIcon, end: true },
@@ -112,6 +113,7 @@ export function Layout() {
         tabIndex={-1}
         className={`main-content${pathname === '/novo-treino' ? ' main-content-form' : ''}`}
       >
+        <SubscriptionBanner profile={profile} />
         {profile && !profile.username && pathname !== '/perfil' && (
           <Flash sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 3 }}>
             Defina um nome de usuário para aparecer nas comunidades no lugar do seu e-mail.

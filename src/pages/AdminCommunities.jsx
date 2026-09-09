@@ -68,9 +68,14 @@ export default function AdminCommunities() {
 
   return (
     <Box>
-      <Button as={Link} to="/admin/moderacao" sx={{ mb: 3 }}>
-        Atendimento e moderação
-      </Button>
+      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+        <Button as={Link} to="/admin/moderacao">
+          Atendimento e moderação
+        </Button>
+        <Button as={Link} to="/admin/contas">
+          Contas e assinaturas
+        </Button>
+      </Box>
       <ToastFlash toasts={toasts} />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Heading as="h1" sx={{ fontSize: 3 }}>
