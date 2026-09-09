@@ -74,12 +74,15 @@ export default function Exercises() {
         <Heading as="h1" sx={{ fontSize: 3 }}>
           Exercícios
         </Heading>
+
         {!formOpen && !editingExercise && (
           <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
             Novo
           </Button>
         )}
       </Box>
+
+      <p className="page-description">Organize seus exercícios por grupo muscular.</p>
 
       {formOpen && <ExerciseForm onSubmit={handleCreate} onCancel={() => setFormOpen(false)} />}
       {editingExercise && (

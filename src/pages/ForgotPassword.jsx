@@ -1,16 +1,7 @@
+import { AuthLayout } from '../components/PublicLayout'
 import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import {
-  Box,
-  Button,
-  FormControl,
-  TextInput,
-  Heading,
-  Link,
-  Flash,
-  Text,
-  Stack,
-} from '@primer/react'
+import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { resetPassword } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
 
@@ -36,36 +27,29 @@ export default function ForgotPassword() {
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        p: 3,
-      }}
+    <AuthLayout
+      title="Recuperar senha"
+      description="Informe o e-mail da sua conta para receber um link de recuperação."
+      footer={
+        <>
+          <Link as={RouterLink} to="/login">
+            Voltar para entrar
+          </Link>
+        </>
+      }
     >
-      <Box
-        as="form"
-        onSubmit={handleSubmit}
-        sx={{
-          width: '100%',
-          maxWidth: '360px',
-          border: '1px solid',
-          borderColor: 'border.default',
-          borderRadius: 2,
-          p: 4,
-        }}
-      >
-        <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
-          Recuperar senha
-        </Heading>
-
-        <Stack gap="condensed">
-          {error && <Flash variant="danger">{error}</Flash>}
+      <form onSubmit={handleSubmit} className="public-form">
+        <Stack gap="normal">
+          {error && (
+            <Flash role="alert" variant="danger">
+              {error}
+            </Flash>
+          )}
 
           {sent ? (
-            <Text>Se o e-mail existir, enviamos um link de recuperação.</Text>
+            <Flash variant="success" role="status">
+              Se o e-mail existir, enviamos um link de recuperação. Confira também a caixa de spam.
+            </Flash>
           ) : (
             <>
               <FormControl required>
@@ -75,21 +59,25 @@ export default function ForgotPassword() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
+                  size="large"
                   block
                 />
               </FormControl>
 
-              <Button type="submit" variant="primary" block loading={submitting}>
+              <Button
+                type="submit"
+                variant="primary"
+                size="large"
+                block
+                loading={submitting}
+                disabled={submitting}
+              >
                 Enviar link
               </Button>
             </>
           )}
-
-          <Link as={RouterLink} to="/login">
-            Voltar ao login
-          </Link>
         </Stack>
-      </Box>
-    </Box>
+      </form>
+    </AuthLayout>
   )
 }

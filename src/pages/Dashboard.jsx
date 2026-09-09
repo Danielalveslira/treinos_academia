@@ -6,26 +6,22 @@ import {
   PlusCircleIcon,
   GraphIcon,
   RocketIcon,
+  TrophyIcon,
   ChecklistIcon,
   FlameIcon,
-  ZapIcon,
+  CalendarIcon,
 } from '@primer/octicons-react'
 import { useDashboard } from '../hooks/useDashboard'
 import { useExercises } from '../contexts/ExercisesContext'
-import {
-  calculateVolume,
-  getExerciseIndicators,
-  getWeeklyFrequency,
-  groupVolumeByDate,
-} from '../utils/calculations'
+import { getExerciseIndicators, getTrainingConsistency } from '../utils/calculations'
 import { formatPercent, formatWeight, formatDate, buildExerciseNameMap } from '../utils/format'
 import { IndicatorCard } from '../components/IndicatorCard'
-import { VolumeChart } from '../components/VolumeChart'
+import { FrequencyChart } from '../components/FrequencyChart'
 import { ErrorState } from '../components/ErrorState'
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { recentWorkouts, totalWorkouts, loading, error, refresh } = useDashboard()
+  const { recentWorkouts, allWorkouts, loading, error, refresh } = useDashboard()
   const { exercises } = useExercises()
 
   const exerciseNameById = useMemo(() => buildExerciseNameMap(exercises), [exercises])
@@ -38,13 +34,7 @@ export default function Dashboard() {
     return getExerciseIndicators(sameExercise)
   }, [recentWorkouts, lastWorkout])
 
-  const accumulatedVolume = useMemo(
-    () => recentWorkouts.reduce((sum, w) => sum + calculateVolume(w.weight, w.sets, w.reps), 0),
-    [recentWorkouts]
-  )
-
-  const weeklyFrequency = useMemo(() => getWeeklyFrequency(recentWorkouts), [recentWorkouts])
-  const volumeChartData = useMemo(() => groupVolumeByDate(recentWorkouts), [recentWorkouts])
+  const consistency = useMemo(() => getTrainingConsistency(allWorkouts), [allWorkouts])
 
   if (loading) {
     return (
@@ -86,18 +76,22 @@ export default function Dashboard() {
   }
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Heading as="h1" sx={{ fontSize: 3 }}>
-          Dashboard
-        </Heading>
+    <Box className="dashboard">
+      <Box className="page-heading">
+        <div>
+          <span className="eyebrow">SEU PAINEL DE TREINOS</span>
+          <Heading as="h1">Visão geral</Heading>
+          <p className="page-description">Acompanhe sua constância e a evolução de cada treino.</p>
+        </div>
         <Button as={RouterLink} to="/novo-treino" leadingVisual={PlusCircleIcon} variant="primary">
           Novo treino
         </Button>
       </Box>
 
       <Box
+        className="latest-workout"
         sx={{
+          bg: 'canvas.subtle',
           border: '1px solid',
           borderColor: 'border.default',
           borderLeft: '4px solid',
@@ -113,7 +107,7 @@ export default function Dashboard() {
         </Box>
         <Text sx={{ fontWeight: 'bold', display: 'block' }}>
           {exerciseNameById.get(lastWorkout.exerciseId) || 'Exercício'} ·{' '}
-          {formatWeight(lastWorkout.weight)} · {lastWorkout.sets}x{lastWorkout.reps}
+          {formatWeight(lastWorkout.weight)} · {lastWorkout.sets} séries × {lastWorkout.reps} reps
         </Text>
         <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block' }}>
           {formatDate(
@@ -122,85 +116,114 @@ export default function Dashboard() {
         </Text>
         {lastExerciseIndicators?.isPersonalRecord && (
           <Text sx={{ color: 'success.fg', fontWeight: 'bold', display: 'block', mt: 2 }}>
-            🏆 Novo recorde de carga!
+            <TrophyIcon size={16} /> Novo recorde de carga!
           </Text>
         )}
         {!lastExerciseIndicators?.isPersonalRecord &&
           lastExerciseIndicators?.evolutionPercent != null && (
-            <Text sx={{ color: 'success.fg', fontWeight: 'bold', display: 'block', mt: 2 }}>
+            <Text
+              sx={{
+                color: lastExerciseIndicators.evolutionPercent > 0 ? 'success.fg' : 'fg.muted',
+                fontWeight: 'bold',
+                display: 'block',
+                mt: 2,
+              }}
+            >
               Evolução nesse exercício: {formatPercent(lastExerciseIndicators.evolutionPercent)}
             </Text>
           )}
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: ['1fr 1fr', '1fr 1fr 1fr'], gap: 2, mb: 3 }}>
-        <IndicatorCard icon={ChecklistIcon} label="Total de treinos" value={totalWorkouts} />
-        <IndicatorCard icon={FlameIcon} label="Frequência semanal" value={`${weeklyFrequency}x`} />
-        <IndicatorCard icon={ZapIcon} label="Volume acumulado" value={accumulatedVolume} />
+      <Box className="stats-grid">
+        <IndicatorCard icon={ChecklistIcon} label="Total de treinos" value={consistency.total} />
+        <IndicatorCard
+          icon={CalendarIcon}
+          label="Frequência semanal"
+          value={`${consistency.frequency}x`}
+        />
+        <IndicatorCard
+          icon={FlameIcon}
+          label="Sequência atual"
+          value={`${consistency.streak} ${consistency.streak === 1 ? 'semana' : 'semanas'}`}
+        />
       </Box>
 
-      <Heading as="h2" sx={{ fontSize: 2, mb: 1 }}>
-        Volume levantado por dia
-      </Heading>
-      <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block', mb: 2 }}>
-        Peso × séries × repetições somado de cada dia de treino.
+      <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: -2, mb: 3 }}>
+        Frequência da semana atual. A sequência continua se você treinou na semana passada e ainda
+        não treinou nesta.
       </Text>
-      <Box
-        sx={{
-          border: '1px solid',
-          borderColor: 'border.default',
-          borderRadius: 2,
-          p: 3,
-          mb: 3,
-        }}
-      >
-        <VolumeChart data={volumeChartData} />
-      </Box>
-
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Heading as="h2" sx={{ fontSize: 2 }}>
-          Últimos registros
-        </Heading>
-        <Link as={RouterLink} to="/historico" sx={{ fontSize: 1 }}>
-          Ver tudo
-        </Link>
-      </Box>
-      <Box
-        sx={{
-          border: '1px solid',
-          borderColor: 'border.default',
-          borderRadius: 2,
-          overflow: 'hidden',
-        }}
-      >
-        {recentWorkouts.slice(0, 5).map((workout, index) => (
+      <div className="dashboard-columns">
+        <section className="panel chart-panel">
+          <Heading as="h2" sx={{ fontSize: 2, mb: 1 }}>
+            Frequência de treinos
+          </Heading>
+          <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block', mb: 2 }}>
+            Últimas 8 semanas · segunda a domingo · um treino por dia com registros.
+          </Text>
           <Box
-            key={workout.id}
             sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: 2,
-              px: 3,
-              py: 2,
-              borderTop: index === 0 ? 'none' : '1px solid',
+              border: '1px solid',
               borderColor: 'border.default',
+              borderRadius: 2,
+              p: 3,
+              mb: 3,
             }}
           >
-            <Box sx={{ minWidth: 0 }}>
-              <Text sx={{ fontWeight: 'bold', display: 'block' }}>
-                {exerciseNameById.get(workout.exerciseId) || 'Exercício'}
-              </Text>
-              <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-                {formatWeight(workout.weight)} · {workout.sets}x{workout.reps}
-              </Text>
-            </Box>
-            <Text sx={{ fontSize: 0, color: 'fg.muted', whiteSpace: 'nowrap' }}>
-              {formatDate(workout.date?.toDate ? workout.date.toDate() : new Date(workout.date))}
-            </Text>
+            <FrequencyChart data={consistency.chartData} />
           </Box>
-        ))}
-      </Box>
+        </section>
+        <section className="panel recent-panel">
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}
+          >
+            <Heading as="h2" sx={{ fontSize: 2 }}>
+              Últimos registros
+            </Heading>
+            <Link as={RouterLink} to="/historico" sx={{ fontSize: 1 }}>
+              Ver tudo
+            </Link>
+          </Box>
+          <Box
+            sx={{
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2,
+              overflow: 'hidden',
+            }}
+          >
+            {recentWorkouts.slice(0, 5).map((workout, index) => (
+              <Box
+                key={workout.id}
+                className="workout-row"
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: 2,
+                  px: 3,
+                  py: 2,
+                  borderTop: index === 0 ? 'none' : '1px solid',
+                  borderColor: 'border.default',
+                }}
+              >
+                <Box sx={{ minWidth: 0 }}>
+                  <Text sx={{ fontWeight: 'bold', display: 'block' }}>
+                    {exerciseNameById.get(workout.exerciseId) || 'Exercício'}
+                  </Text>
+                  <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+                    {formatWeight(workout.weight)} · {workout.sets} × {workout.reps} reps
+                  </Text>
+                </Box>
+                <Text sx={{ fontSize: 0, color: 'fg.muted', whiteSpace: 'nowrap' }}>
+                  {formatDate(
+                    workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)
+                  )}
+                </Text>
+              </Box>
+            ))}
+          </Box>
+        </section>
+      </div>
     </Box>
   )
 }

@@ -95,3 +95,9 @@ export function updateWorkout(userId, workoutId, workout) {
 export function deleteWorkout(userId, workoutId) {
   return deleteDoc(doc(db, 'users', userId, 'workouts', workoutId))
 }
+
+// Consistency metrics need complete history: a document limit can truncate a week or streak.
+export async function listDashboardWorkouts(userId) {
+  const snapshot = await getDocs(query(workoutsRef(userId), orderBy('date', 'desc')))
+  return snapshot.docs.map(toDoc)
+}

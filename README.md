@@ -113,3 +113,31 @@ npx firebase deploy --only hosting,firestore:rules,firestore:indexes
 ## Escopo desta primeira versão
 
 Autenticação (cadastro, login, logout, recuperação de senha), CRUD de exercícios, registro/edição/exclusão de treinos, histórico com filtros por exercício e período, dashboard com indicadores essenciais e gráfico de evolução de carga por exercício, e regras de segurança do Firestore. Funcionalidades adicionais (mais gráficos, exportação, etc.) devem ser avaliadas somente depois que essa base estiver validada em uso real.
+
+## Aplicativo instalável (PWA)
+
+O build gera `dist/sw.js`, o manifesto e os ícones. A instalação funciona em HTTPS
+ou localhost; o service worker é registrado apenas no build de produção.
+
+```bash
+npm run build
+npm run preview
+```
+
+Abra o endereço exibido pelo preview. O botão **Instalar app** usa a confirmação
+nativa quando o navegador a disponibiliza; caso contrário, apresenta instruções.
+No iPhone/iPad, use Safari → Compartilhar → Adicionar à Tela de Início.
+
+O cache contém somente arquivos estáticos da interface. Dados do Firebase e
+requisições de autenticação não são armazenados pelo service worker. Sem conexão,
+uma tela impede o uso dos formulários; ao reconectar, um formulário já aberto
+permanece preenchido. Registrar/sincronizar treinos offline não está implementado.
+
+Novas versões são verificadas ao abrir o app e ao voltar à janela. O aviso permite
+adiar a atualização ou confirmar o recarregamento. Caches de versões anteriores
+são preservados para as abas abertas continuarem carregando seus arquivos.
+
+Para disponibilizar a instalação aos usuários, publique o build no Firebase
+Hosting do projeto. `firebase.json` já define HTTPS via Hosting, rotas da SPA e
+cabeçalhos de revalidação do worker/manifesto. A publicação não faz parte do build.
+Os ícones podem ser regenerados com `python3 scripts/generate-icons.py`.

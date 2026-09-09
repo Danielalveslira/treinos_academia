@@ -89,3 +89,62 @@ export function buildLoadHistory(workouts) {
       weight: w.weight,
     }))
 }
+
+function localDayKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function startOfWeek(date) {
+  const start = new Date(date)
+  start.setHours(0, 0, 0, 0)
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7))
+  return start
+}
+
+export function getTrainingConsistency(workouts, now = new Date(), weekCount = 8) {
+  const today = new Date(now)
+  today.setHours(23, 59, 59, 999)
+  const currentWeek = startOfWeek(now)
+  const days = new Set()
+  const weeks = new Map()
+
+  for (const workout of workouts) {
+    const date = toDate(workout.date)
+    if (Number.isNaN(date.getTime()) || date > today) continue
+    const day = localDayKey(date)
+    if (days.has(day)) continue
+    days.add(day)
+    const week = localDayKey(startOfWeek(date))
+    weeks.set(week, (weeks.get(week) || 0) + 1)
+  }
+
+  const chartData = Array.from({ length: weekCount }, (_, index) => {
+    const start = new Date(currentWeek)
+    start.setDate(start.getDate() - (weekCount - 1 - index) * 7)
+    const end = new Date(start)
+    end.setDate(end.getDate() + 6)
+    const week = localDayKey(start)
+    return {
+      week,
+      label: start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      range: `${start.toLocaleDateString('pt-BR')} a ${end.toLocaleDateString('pt-BR')}`,
+      count: weeks.get(week) || 0,
+      isCurrent: index === weekCount - 1,
+    }
+  })
+
+  let streak = 0
+  const cursor = new Date(currentWeek)
+  if (!weeks.has(localDayKey(cursor))) cursor.setDate(cursor.getDate() - 7)
+  while (weeks.has(localDayKey(cursor))) {
+    streak += 1
+    cursor.setDate(cursor.getDate() - 7)
+  }
+
+  return {
+    total: days.size,
+    frequency: weeks.get(localDayKey(currentWeek)) || 0,
+    streak,
+    chartData,
+  }
+}

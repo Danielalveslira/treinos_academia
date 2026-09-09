@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from './useAuth'
-import { listRecentWorkouts, countWorkouts } from '../services/workoutsService'
+import { listDashboardWorkouts } from '../services/workoutsService'
 import { describeFirestoreError } from '../utils/firestoreError'
-
-const RECENT_WINDOW_SIZE = 50
 
 export function useDashboard() {
   const { user } = useAuth()
   const [recentWorkouts, setRecentWorkouts] = useState([])
-  const [totalWorkouts, setTotalWorkouts] = useState(0)
+  const [allWorkouts, setAllWorkouts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -16,12 +14,9 @@ export function useDashboard() {
     setLoading(true)
     setError(null)
     try {
-      const [workouts, total] = await Promise.all([
-        listRecentWorkouts(user.uid, RECENT_WINDOW_SIZE),
-        countWorkouts(user.uid),
-      ])
-      setRecentWorkouts(workouts)
-      setTotalWorkouts(total)
+      const workouts = await listDashboardWorkouts(user.uid)
+      setRecentWorkouts(workouts.slice(0, 50))
+      setAllWorkouts(workouts)
     } catch (err) {
       setError(describeFirestoreError(err, 'useDashboard'))
     } finally {
@@ -33,5 +28,5 @@ export function useDashboard() {
     refresh()
   }, [refresh])
 
-  return { recentWorkouts, totalWorkouts, loading, error, refresh }
+  return { recentWorkouts, allWorkouts, loading, error, refresh }
 }

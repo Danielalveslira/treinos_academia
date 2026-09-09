@@ -1,11 +1,14 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import { Header, Box, Text, IconButton } from '@primer/react'
+import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
+import { Button, IconButton, useTheme } from '@primer/react'
 import {
   HomeIcon,
   PlusCircleIcon,
   HistoryIcon,
   ListUnorderedIcon,
   SignOutIcon,
+  GraphIcon,
+  SunIcon,
+  MoonIcon,
 } from '@primer/octicons-react'
 import { logoutUser } from '../services/authService'
 
@@ -16,96 +19,69 @@ const NAV_ITEMS = [
   { to: '/exercicios', label: 'Exercícios', icon: ListUnorderedIcon },
 ]
 
-const headerLinkStyle = ({ isActive }) => ({
-  color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.7)',
-  fontWeight: isActive ? 600 : 400,
-  textDecoration: 'none',
-  fontSize: '14px',
-})
-
-const bottomNavLinkStyle = ({ isActive }) => ({
-  flex: 1,
-  textDecoration: 'none',
-  color: isActive ? 'var(--fgColor-accent)' : 'var(--fgColor-muted)',
-})
-
 export function Layout() {
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <Header sx={{ position: 'sticky', top: 0, zIndex: 10, py: 1, minHeight: '52px' }}>
-        <Header.Item>
-          <Text sx={{ fontSize: 2, fontWeight: 'bold', color: 'inherit' }}>Treinos</Text>
-        </Header.Item>
-        <Header.Item full>
-          <Box sx={{ display: ['none', 'none', 'flex'], gap: 4 }}>
-            {NAV_ITEMS.map((item) => (
-              <NavLink key={item.to} to={item.to} end={item.end} style={headerLinkStyle}>
-                {item.label}
-              </NavLink>
-            ))}
-          </Box>
-        </Header.Item>
-        <Header.Item>
-          <IconButton
-            icon={SignOutIcon}
-            aria-label="Sair"
-            variant="invisible"
-            onClick={logoutUser}
-            sx={{
-              color: 'rgba(255, 255, 255, 0.7)',
-              '&:hover': { color: '#ffffff', bg: 'rgba(255, 255, 255, 0.1)' },
-            }}
-          />
-        </Header.Item>
-      </Header>
+  const { resolvedColorMode, setColorMode } = useTheme()
+  const { pathname } = useLocation()
+  const activePage = NAV_ITEMS.find((item) =>
+    item.end ? pathname === item.to : pathname.startsWith(item.to)
+  )
+  const dark = resolvedColorMode === 'night'
 
-      <Box
-        as="main"
-        sx={{
-          flex: 1,
-          width: '100%',
-          maxWidth: '640px',
-          mx: 'auto',
-          px: 3,
-          py: 3,
-          pb: ['88px', '88px', 3],
-        }}
+  return (
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Pular para o conteúdo
+      </a>
+      <header className="app-header">
+        <div className="header-top">
+          <Link to="/" className="brand" aria-label="Treinos — início">
+            <span className="brand-mark">
+              <GraphIcon size={22} />
+            </span>
+            <span>Treinos</span>
+          </Link>
+          <span className="header-divider">/</span>
+          <span className="header-context">{activePage?.label || 'Exercício'}</span>
+          <div className="header-actions">
+            <IconButton
+              icon={dark ? SunIcon : MoonIcon}
+              aria-label={dark ? 'Ativar tema claro' : 'Ativar tema escuro'}
+              onClick={() => setColorMode(dark ? 'day' : 'night')}
+            />
+            <span className="action-divider" />
+            <Button leadingVisual={SignOutIcon} variant="invisible" onClick={logoutUser}>
+              Sair
+            </Button>
+          </div>
+        </div>
+        <nav className="desktop-nav" aria-label="Navegação principal">
+          {NAV_ITEMS.map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.end} className="nav-link">
+              <item.icon size={16} />
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+      </header>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={`main-content${pathname === '/novo-treino' ? ' main-content-form' : ''}`}
       >
         <Outlet />
-      </Box>
-
-      <Box
-        as="nav"
-        sx={{
-          display: ['flex', 'flex', 'none'],
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          bg: 'canvas.default',
-          borderTop: '1px solid',
-          borderColor: 'border.default',
-          pb: 'env(safe-area-inset-bottom)',
-          zIndex: 10,
-        }}
-      >
+      </main>
+      <footer className="app-footer">
+        <span>Treinos</span>
+        <span>Seu progresso, um treino de cada vez.</span>
+      </footer>
+      <nav className="mobile-nav" aria-label="Navegação principal mobile">
         {NAV_ITEMS.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end} style={bottomNavLinkStyle}>
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '2px',
-                py: 2,
-              }}
-            >
-              <item.icon size={20} />
-              <Text sx={{ fontSize: 0, display: 'block' }}>{item.label}</Text>
-            </Box>
+          <NavLink key={item.to} to={item.to} end={item.end} className="nav-link">
+            <item.icon size={20} />
+            <span>{item.label}</span>
           </NavLink>
         ))}
-      </Box>
-    </Box>
+      </nav>
+    </div>
   )
 }

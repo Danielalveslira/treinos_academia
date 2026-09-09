@@ -1,6 +1,7 @@
+import { AuthLayout } from '../components/PublicLayout'
 import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { Box, Button, FormControl, TextInput, Heading, Link, Flash, Stack } from '@primer/react'
+import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { loginUser } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
 
@@ -27,33 +28,25 @@ export default function Login() {
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        p: 3,
-      }}
+    <AuthLayout
+      title="Boas-vindas de volta"
+      description="Entre na sua conta para continuar acompanhando sua evolução."
+      footer={
+        <>
+          Ainda não tem conta?{' '}
+          <Link as={RouterLink} to="/cadastro">
+            Criar conta
+          </Link>
+        </>
+      }
     >
-      <Box
-        as="form"
-        onSubmit={handleSubmit}
-        sx={{
-          width: '100%',
-          maxWidth: '360px',
-          border: '1px solid',
-          borderColor: 'border.default',
-          borderRadius: 2,
-          p: 4,
-        }}
-      >
-        <Heading as="h1" sx={{ fontSize: 4, mb: 3 }}>
-          Entrar
-        </Heading>
-
-        <Stack gap="condensed">
-          {error && <Flash variant="danger">{error}</Flash>}
+      <form onSubmit={handleSubmit} className="public-form">
+        <Stack gap="normal">
+          {error && (
+            <Flash role="alert" variant="danger">
+              {error}
+            </Flash>
+          )}
 
           <FormControl required>
             <FormControl.Label>E-mail</FormControl.Label>
@@ -62,6 +55,7 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
+              size="large"
               block
             />
           </FormControl>
@@ -73,38 +67,27 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
+              size="large"
               block
             />
           </FormControl>
 
-          <Button type="submit" variant="primary" block loading={submitting}>
+          <Button
+            type="submit"
+            variant="primary"
+            size="large"
+            block
+            loading={submitting}
+            disabled={submitting}
+          >
             Entrar
           </Button>
 
-          <Stack direction="horizontal" justify="space-between">
-            <Link as={RouterLink} to="/esqueci-senha">
-              Esqueci minha senha
-            </Link>
-            <Link as={RouterLink} to="/cadastro">
-              Criar conta
-            </Link>
-          </Stack>
-
-          <Box
-            sx={{
-              borderTop: '1px solid',
-              borderColor: 'border.muted',
-              pt: 3,
-              mt: 1,
-              textAlign: 'center',
-            }}
-          >
-            <Link as={RouterLink} to="/planos" sx={{ fontSize: 1 }}>
-              Ver planos
-            </Link>
-          </Box>
+          <Link as={RouterLink} to="/esqueci-senha" className="auth-recovery">
+            Esqueci minha senha
+          </Link>
         </Stack>
-      </Box>
-    </Box>
+      </form>
+    </AuthLayout>
   )
 }

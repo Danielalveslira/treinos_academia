@@ -1,5 +1,6 @@
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Button, Heading, Text, Label, Link } from '@primer/react'
+import { Button, Label } from '@primer/react'
+import { PublicLayout } from '../components/PublicLayout'
 import { CheckCircleFillIcon, ZapIcon, RocketIcon } from '@primer/octicons-react'
 
 const PLANS = [
@@ -21,7 +22,7 @@ const PLANS = [
     id: 'vitalicio',
     name: 'Vitalício',
     icon: RocketIcon,
-    price: 'R$ 49,90',
+    price: 'R$ 149,90',
     period: 'pagamento único',
     description: 'Pague uma vez, use para sempre.',
     features: ['Tudo do plano mensal', 'Acesso ilimitado para sempre', 'Sem cobranças recorrentes'],
@@ -31,98 +32,61 @@ const PLANS = [
 
 export default function Pricing() {
   return (
-    <Box sx={{ minHeight: '100vh', px: 3, py: 5 }}>
-      <Box sx={{ maxWidth: '720px', mx: 'auto' }}>
-        <Box sx={{ textAlign: 'center', mb: 5 }}>
-          <Heading as="h1" sx={{ fontSize: 5, mb: 2 }}>
-            Planos Treinos
-          </Heading>
-          <Text sx={{ color: 'fg.muted', fontSize: 2, display: 'block' }}>
-            Escolha como quer acompanhar sua evolução na academia.
-          </Text>
-        </Box>
-
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: ['1fr', '1fr', '1fr 1fr'],
-            gap: 3,
-          }}
-        >
+    <PublicLayout>
+      <section className="pricing-layout" aria-labelledby="pricing-title">
+        <div className="pricing-heading">
+          <span className="public-eyebrow">PLANOS TREINOS</span>
+          <h1 id="pricing-title">Invista na sua constância.</h1>
+          <p>
+            Escolha como acompanhar sua evolução.
+            <br />
+            Seus exercícios, registros e progresso em um só lugar.
+          </p>
+          <Label>Assinaturas em breve</Label>
+        </div>
+        <div className="pricing-grid">
           {PLANS.map((plan) => (
-            <Box
+            <article
               key={plan.id}
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                border: '1px solid',
-                borderColor: plan.highlight ? 'accent.emphasis' : 'border.default',
-                borderRadius: 2,
-                p: 4,
-                bg: 'canvas.default',
-              }}
+              className={`plan-card${plan.highlight ? ' plan-highlight' : ''}`}
             >
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: 2,
-                  mb: 2,
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <plan.icon size={20} fill="var(--fgColor-accent)" />
-                  <Heading as="h2" sx={{ fontSize: 3 }}>
-                    {plan.name}
-                  </Heading>
-                </Box>
-                {plan.highlight && (
-                  <Label variant="accent" sx={{ whiteSpace: 'nowrap' }}>
-                    Melhor custo-benefício
-                  </Label>
-                )}
-              </Box>
-
-              <Box sx={{ mb: 2 }}>
-                <Text sx={{ fontSize: 6, fontWeight: 'bold' }}>{plan.price}</Text>
-                <Text sx={{ color: 'fg.muted', fontSize: 1, ml: 1 }}>{plan.period}</Text>
-              </Box>
-
-              <Text sx={{ color: 'fg.muted', fontSize: 1, display: 'block', mb: 3 }}>
-                {plan.description}
-              </Text>
-
-              <Box as="ul" sx={{ listStyle: 'none', p: 0, m: 0, mb: 4, flex: 1 }}>
-                {plan.features.map((feature) => (
-                  <Box
-                    key={feature}
-                    as="li"
-                    sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}
-                  >
-                    <CheckCircleFillIcon size={16} fill="var(--fgColor-success)" />
-                    <Text sx={{ fontSize: 1 }}>{feature}</Text>
-                  </Box>
-                ))}
-              </Box>
-
-              <Button variant={plan.highlight ? 'primary' : 'default'} block disabled>
-                Em breve
+              <div className="plan-topline">
+                <span className="benefit-icon">
+                  <plan.icon size={22} />
+                </span>
+                {plan.highlight && <Label variant="accent">Melhor custo-benefício</Label>}
+              </div>
+              <h2>{plan.name}</h2>
+              <p className="plan-description">{plan.description}</p>
+              <div className="plan-price">
+                {plan.price}
+                <span>{plan.period}</span>
+              </div>
+              <div className="plan-features">
+                <span>O QUE ESTÁ INCLUÍDO</span>
+                <ul>
+                  {plan.features.map((feature) => (
+                    <li key={feature}>
+                      <CheckCircleFillIcon size={16} />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <Button variant={plan.highlight ? 'primary' : 'default'} size="large" block disabled>
+                Disponível em breve
               </Button>
-            </Box>
+            </article>
           ))}
-        </Box>
-
-        <Box sx={{ textAlign: 'center', mt: 5 }}>
-          <Text sx={{ color: 'fg.muted', fontSize: 1 }}>
-            Já tem uma conta?{' '}
-            <Link as={RouterLink} to="/login">
-              Entrar
-            </Link>
-          </Text>
-        </Box>
-      </Box>
-    </Box>
+        </div>
+        <div className="pricing-note">
+          <h2>Seu próximo treino começa aqui.</h2>
+          <p>Já tem uma conta? Acesse seu diário de treinos.</p>
+          <Button as={RouterLink} to="/login">
+            Entrar na minha conta
+          </Button>
+        </div>
+      </section>
+    </PublicLayout>
   )
 }

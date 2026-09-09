@@ -95,8 +95,11 @@ export default function History() {
       <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
         Histórico
       </Heading>
+      <p className="page-description">
+        Consulte seus registros e encontre cada etapa da sua evolução.
+      </p>
 
-      <Box sx={{ mb: 3 }}>
+      <Box className="panel filters-panel" sx={{ mb: 3 }}>
         <FormControl sx={{ mb: 2 }}>
           <FormControl.Label visuallyHidden>Exercício</FormControl.Label>
           <Select value={exerciseFilter} onChange={(e) => setExerciseFilter(e.target.value)} block>

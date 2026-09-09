@@ -37,6 +37,7 @@ export default function NewWorkout() {
       <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
         Novo treino
       </Heading>
+      <p className="page-description">Registre a carga, as séries e as repetições do seu treino.</p>
 
       {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
       <ErrorState error={error} onRetry={refresh} />
