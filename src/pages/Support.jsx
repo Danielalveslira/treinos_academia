@@ -251,7 +251,7 @@ export default function Support() {
                 <Textarea
                   block
                   required
-                  rows={8}
+                  rows={5}
                   resize="vertical"
                   minLength={10}
                   maxLength={3000}
@@ -259,8 +259,7 @@ export default function Support() {
                   onChange={(e) => setMessage(e.target.value)}
                 />
                 <FormControl.Caption>
-                  Inclua fatos, regra violada e referências úteis. Não envie senhas nem material
-                  ilegal envolvendo menores. {message.length}/3000 caracteres.
+                  Inclua os fatos principais. Não envie senhas. {message.length}/3000 caracteres.
                 </FormControl.Caption>
               </FormControl>
               <Button type="submit" variant="primary" disabled={saving} loading={saving}>

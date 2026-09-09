@@ -7,99 +7,43 @@
     "summary": [
       "Respeite as pessoas. Assédio, discriminação, ameaças e exposição de dados não são aceitos.",
       "Não publique golpes, conteúdo sexual, práticas perigosas ou links maliciosos.",
-      "Denúncias são analisadas com evidências. Toda penalidade deve ter motivo e possibilidade de recurso."
+      "Denúncias são analisadas com evidências. Toda penalidade tem motivo e direito de recurso."
     ],
     "sections": [
       {
-        "id": "objetivo",
-        "title": "1. Objetivo da comunidade",
-        "paragraphs": [
-          "A comunidade do Treinos reúne pessoas que querem compartilhar treinos e evolução pessoal, conquistas, dúvidas, experiências e incentivo respeitoso. Mantenha as publicações relacionadas à atividade física e ao bem-estar.",
-          "Experiências pessoais não substituem avaliação, diagnóstico ou orientação de médicos, nutricionistas e profissionais de educação física. Não prescreva tratamentos nem apresente resultados individuais como garantia para outras pessoas."
-        ]
-      },
-      {
         "id": "condutas",
-        "title": "2. Condutas proibidas",
+        "title": "Não é permitido",
         "items": [
-          "Assédio, intimidação, perseguição, humilhação e ataques pessoais.",
-          "Discriminação e discurso de ódio, inclusive por raça, origem, gênero, orientação sexual, religião, deficiência ou condição social.",
-          "Ameaças e incentivo à violência.",
-          "Conteúdo sexual, exploração ou sexualização de menores de idade.",
-          "Divulgação de dados pessoais de terceiros e publicação de imagens de outras pessoas sem autorização.",
-          "Fraudes, golpes, falsidade ideológica e uso da identidade de outra pessoa.",
-          "Spam e publicidade não autorizada.",
-          "Venda de medicamentos, substâncias ilegais ou anabolizantes.",
-          "Incentivo a práticas perigosas de treino ou alimentação, incluindo desafios que coloquem a saúde em risco.",
-          "Manipulação de curtidas, conquistas, votos ou outras formas de engajamento.",
-          "Contas falsas, automação abusiva e criação de contas para contornar um banimento.",
-          "Links maliciosos, malware, acesso indevido e exploração de falhas do sistema.",
-          "Publicação de conteúdo que viole direitos autorais ou outros direitos de terceiros.",
-          "Denúncias conscientemente falsas para prejudicar outra pessoa. Uma denúncia de boa-fé que não seja confirmada não é, por si só, uma infração."
+          "Assédio, discriminação, ameaças ou discurso de ódio.",
+          "Conteúdo sexual ou qualquer forma de exploração de menores.",
+          "Golpes, fraudes, contas falsas ou uso da identidade de outra pessoa.",
+          "Venda de substâncias ilegais/anabolizantes e incentivo a práticas perigosas de treino.",
+          "Spam, publicidade não autorizada, links maliciosos ou manipulação de engajamento.",
+          "Divulgar dados ou imagens de terceiros sem autorização.",
+          "Denúncias feitas de má-fé, sabendo que são falsas."
         ]
       },
       {
         "id": "penalidades",
-        "title": "3. Níveis de penalidade",
-        "paragraphs": [
-          "A decisão considera a conduta comprovada, o dano ou risco concreto, a intenção quando demonstrável e a reincidência. A administração pode aplicar diretamente uma medida mais grave quando houver risco às pessoas ou ao sistema; isso deve ser fundamentado no registro da decisão."
-        ],
+        "title": "Penalidades",
         "table": {
-          "headers": [
-            "Gravidade",
-            "Exemplos",
-            "Medida possível"
-          ],
+          "headers": ["Gravidade", "Exemplo", "Medida"],
           "rows": [
-            [
-              "Leve",
-              "Conteúdo fora do tema ou spam isolado",
-              "Remoção de conteúdo ou advertência"
-            ],
-            [
-              "Moderada",
-              "Reincidência, provocação ou publicidade abusiva",
-              "Suspensão temporária, com prazo informado"
-            ],
-            [
-              "Grave",
-              "Assédio, discriminação, fraude ou exposição de dados",
-              "Banimento da comunidade"
-            ],
-            [
-              "Crítica",
-              "Ameaça, exploração de menores, golpe ou ataque ao sistema",
-              "Suspensão imediata e possível banimento de todo o sistema"
-            ]
+            ["Leve", "Fora do tema, spam isolado", "Remoção do conteúdo ou advertência"],
+            ["Moderada", "Reincidência ou provocação", "Suspensão temporária, com prazo"],
+            ["Grave", "Assédio, discriminação, fraude", "Banimento da comunidade"],
+            ["Crítica", "Ameaça, exploração de menores, ataque ao sistema", "Suspensão e banimento de toda a conta"]
           ]
         }
       },
       {
         "id": "moderacao",
-        "title": "4. Como funciona a moderação",
+        "title": "Como funciona",
         "items": [
-          "Use “Denunciar violação” e informe a publicação ou comunidade, o fato e os elementos necessários para a análise. Não envie senhas nem reproduza material ilegal envolvendo menores.",
-          "O registro reúne conteúdo disponível, regra apontada, evidências, responsável pela análise, data e decisão. Uma denúncia não produz banimento automático.",
-          "O usuário atingido recebe o motivo, o alcance e, quando aplicável, o prazo da penalidade na área de atendimento.",
-          "O recurso pode ser apresentado eletronicamente pelo atendimento, indicando o protocolo e os fatos que devem ser reavaliados. A revisão e seu resultado ficam registrados.",
-          "Situações de risco podem exigir suspensão imediata enquanto os fatos são apurados. A restrição deve ser revista conforme a evolução da apuração.",
-          "Evidências podem ser preservadas com acesso restrito quando necessárias à apuração, defesa de direitos ou cumprimento de obrigação legal. Informações são encaminhadas às autoridades quando houver obrigação legal ou ordem válida."
-        ]
-      },
-      {
-        "id": "banimento",
-        "title": "5. Banimento completo",
-        "paragraphs": [
-          "Violações graves que comprometam a segurança de pessoas, dados, pagamentos ou infraestrutura poderão resultar na suspensão imediata e no encerramento definitivo da conta em todo o sistema. A medida poderá incluir a remoção de conteúdo e o bloqueio de novas contas relacionadas ao infrator, respeitada a legislação aplicável.",
-          "A relação entre contas deve ser sustentada por evidências; um IP compartilhado, sozinho, não comprova que contas pertencem à mesma pessoa. O bloqueio não impede o exercício dos direitos de privacidade nem o envio de recurso pelo canal eletrônico."
-        ]
-      },
-      {
-        "id": "direitos",
-        "title": "6. Pagamentos e privacidade",
-        "paragraphs": [
-          "Uma penalidade não elimina direitos obrigatórios do consumidor. As condições de cancelamento e reembolso estão nos Termos de Uso.",
-          "A coleta e o uso de dados de denúncias, evidências e aceites são explicados na Política de Privacidade. Não exponha dados pessoais em uma discussão pública para tentar resolver um conflito."
+          "Denuncie pelo botão “Denunciar violação”, informando o fato e as evidências.",
+          "Toda decisão é registrada com motivo, regra aplicada e possibilidade de recurso.",
+          "Uma denúncia isolada não gera banimento automático — cada caso é analisado.",
+          "Casos de risco imediato podem gerar suspensão enquanto os fatos são apurados."
         ]
       }
     ],
@@ -116,81 +60,46 @@
     "title": "Termos de Uso",
     "description": "O que você precisa saber sobre sua conta, o serviço e seus direitos.",
     "summary": [
-      "Você mantém os direitos sobre o conteúdo que publica e deve respeitar os direitos de outras pessoas.",
-      "O Treinos organiza registros e experiências; não oferece diagnóstico nem garante resultados físicos.",
-      "Assinaturas ainda não estão disponíveis. Quando houver contratação, seus direitos de cancelamento e reembolso serão preservados."
+      "Você mantém os direitos sobre o conteúdo que publica.",
+      "O Treinos organiza seus registros de treino; não substitui orientação médica.",
+      "Quando houver cobrança, você pode cancelar quando quiser e tem 7 dias de arrependimento."
     ],
     "sections": [
       {
-        "id": "servico",
-        "title": "1. O serviço e o responsável",
-        "paragraphs": [
-          "O Treinos é um diário de exercícios e registros de treino, com histórico, indicadores de evolução, perfis e comunidades. As informações de identificação e contato do responsável constam ao final deste documento.",
-          "Estes Termos, as Regras da Comunidade e a Política de Privacidade têm funções diferentes e devem ser lidos em conjunto. Você pode consultá-los sem entrar na conta e salvar uma cópia usando a impressão do navegador."
-        ]
-      },
-      {
         "id": "conta",
-        "title": "2. Conta e acesso",
-        "paragraphs": [
-          "O cadastro exige e-mail, senha e nome de usuário disponível. Forneça informações corretas, mantenha suas credenciais protegidas e comunique suspeitas de acesso indevido pelo atendimento.",
-          "Esta minuta propõe acesso a partir de 18 anos. A política de idade deve ser confirmada antes da entrada em vigor. Não há fluxo de autorização de responsáveis por menores nesta versão.",
-          "Você deve aceitar expressamente os Termos e as Regras e confirmar a leitura da Política de Privacidade. O aceite não autoriza publicidade, venda de dados ou qualquer tratamento que exija consentimento específico."
+        "title": "Sua conta",
+        "items": [
+          "Cadastro com e-mail, senha e nome de usuário — mantenha seus dados corretos e sua senha protegida.",
+          "Uso a partir de 18 anos.",
+          "Você aceita estes Termos, as Regras da Comunidade e confirma a leitura da Política de Privacidade."
         ]
       },
       {
         "id": "planos",
-        "title": "3. Assinaturas e pagamentos",
-        "paragraphs": [
-          "A tela de planos apresenta opções futuras, mas a contratação e a cobrança ainda não estão habilitadas. Criar uma conta ou aceitar estes documentos não contrata uma assinatura nem autoriza cobrança.",
-          "Antes de qualquer contratação futura, a oferta deverá informar preço total, periodicidade, duração, recursos, renovação, forma de pagamento, identificação do fornecedor e procedimento de cancelamento. A confirmação e uma cópia conservável das condições devem ser disponibilizadas ao consumidor.",
-          "Não será iniciada cobrança recorrente sem contratação expressa. Condições anunciadas integram a oferta, inclusive promessas de duração de acesso; mudanças posteriores não podem retirar direitos já contratados de forma unilateral."
-        ]
-      },
-      {
-        "id": "cancelamento",
-        "title": "4. Cancelamento e reembolso",
-        "paragraphs": [
-          "Quando houver assinatura, o cancelamento poderá ser solicitado pelo canal eletrônico de atendimento. O pedido deve receber confirmação e informação clara sobre a data de encerramento e cobranças eventualmente pendentes.",
-          "Nas contratações online, o consumidor pode exercer o direito de arrependimento no prazo legal de sete dias, contado na forma do art. 49 do Código de Defesa do Consumidor. Nesse caso, os valores pagos devem ser restituídos conforme a legislação, sem penalidade pelo exercício do direito.",
-          "O encerramento da conta por violação comprovada não gera reembolso automático pelos períodos já utilizados. Eventuais valores relativos a períodos futuros serão analisados conforme o plano contratado, a gravidade da infração e os direitos obrigatórios previstos na legislação brasileira.",
-          "A análise deve ser fundamentada, não autoriza retenção arbitrária de valores nem afasta restituições devidas por falha do serviço. Nenhuma cláusula deste documento limita direitos obrigatórios ou impõe renúncia ao reembolso previsto em lei."
+        "title": "Assinaturas e cancelamento",
+        "items": [
+          "A cobrança, quando ativada, só começa após você confirmar preço, periodicidade e forma de pagamento.",
+          "Cancele quando quiser pelo atendimento — sem multa.",
+          "Nas contratações online você tem 7 dias de arrependimento (art. 49 do CDC), com devolução integral."
         ]
       },
       {
         "id": "conteudo",
-        "title": "5. Conteúdo e direitos autorais",
-        "paragraphs": [
-          "Você mantém seus direitos sobre relatos, textos e outros conteúdos próprios. Ao publicar, autoriza o Treinos, sem exclusividade, a armazenar, formatar e exibir esse conteúdo apenas na medida necessária ao funcionamento da comunidade e à moderação.",
-          "Publique apenas o que você tem direito de usar e respeite a privacidade e a imagem de terceiros. Essa autorização não permite vender seu conteúdo ou usá-lo em campanhas publicitárias sem uma autorização separada.",
-          "Publicações deixam o feed após 24 horas. Isso não equivale a exclusão instantânea de todas as cópias: a Política de Privacidade explica armazenamento, evidências e pedidos de exclusão."
+        "title": "Seu conteúdo",
+        "items": [
+          "Você mantém os direitos sobre o que publica; o Treinos só armazena e exibe o necessário para o app funcionar.",
+          "Publicações saem do feed em 24 horas.",
+          "Respeite os direitos autorais e a privacidade de outras pessoas ao publicar."
         ]
       },
       {
-        "id": "suspensao",
-        "title": "6. Suspensão e encerramento",
-        "paragraphs": [
-          "As medidas de moderação seguem os critérios verificáveis e níveis descritos nas Regras da Comunidade. Violações graves de segurança podem levar à suspensão imediata e ao encerramento definitivo em todo o sistema, com motivo registrado e possibilidade de recurso.",
-          "O usuário pode solicitar a exclusão da conta pelo atendimento. Após verificação proporcional da identidade, o pedido será tratado conforme a Política de Privacidade, com indicação das informações que precisem ser conservadas por fundamento legal.",
-          "Uma medida de segurança não afasta atendimento para recurso, privacidade ou direitos relacionados a pagamentos."
-        ]
-      },
-      {
-        "id": "responsabilidades",
-        "title": "7. Responsabilidades e limites do serviço",
-        "paragraphs": [
-          "Registros, indicadores e relatos são informativos. Não constituem prescrição de exercício, tratamento ou dieta e não substituem orientação profissional. Resultados dependem de fatores individuais e não são garantidos.",
-          "O usuário responde por suas condutas e pelo uso lícito da conta. O Treinos deve adotar medidas de segurança e tratar falhas e denúncias dentro de suas responsabilidades legais; estes Termos não excluem responsabilidade por defeitos do serviço nem transferem ao usuário riscos que a lei atribua ao fornecedor.",
-          "Manutenções e falhas técnicas podem afetar o acesso. Alterações ou encerramento do serviço devem ser comunicados de forma clara, respeitando contratos e direitos legais. Links de terceiros estão sujeitos também às condições desses serviços."
-        ]
-      },
-      {
-        "id": "alteracoes",
-        "title": "8. Alterações e novo aceite",
-        "paragraphs": [
-          "Cada edição informa versão, data e resumo das alterações. Mudanças relevantes exigem novo aceite antes da continuidade do uso das funcionalidades da conta. O usuário pode ler os documentos e procurar atendimento antes de decidir.",
-          "O registro de aceite identifica usuário, versão dos documentos, data do servidor e IP da solicitação. Correções meramente editoriais devem ser identificadas no histórico, sem apagar versões anteriores. Alterações não produzem renúncia retroativa a direitos.",
-          "Aplicam-se as leis brasileiras. Eventuais controvérsias podem ser levadas aos órgãos de proteção do consumidor e ao juízo competente, preservado o foro assegurado por lei ao consumidor."
+        "id": "avisos",
+        "title": "Avisos importantes",
+        "items": [
+          "Registros e indicadores são informativos — não são prescrição médica, de treino ou de dieta.",
+          "Violações graves das Regras da Comunidade podem levar à suspensão ou encerramento da conta.",
+          "Mudanças relevantes nestes Termos exigem um novo aceite antes de continuar usando o app.",
+          "Aplicam-se as leis brasileiras, com os direitos do consumidor sempre preservados."
         ]
       }
     ],
@@ -212,124 +121,58 @@
     "description": "Quais dados usamos, para quê e como você pode exercer seus direitos.",
     "summary": [
       "Seus registros detalhados de treino não são publicados automaticamente.",
-      "Você escolhe se compartilha estatísticas. Uma conquista publicada compartilha o resumo daquele dia mesmo com as estatísticas do perfil privadas.",
-      "Você pode solicitar acesso, correção, exclusão e esclarecimentos pelo atendimento. Não publique dados de saúde de outras pessoas."
+      "Você escolhe se compartilha estatísticas do seu perfil.",
+      "Você pode pedir acesso, correção ou exclusão dos seus dados pelo atendimento, a qualquer momento."
     ],
     "sections": [
       {
-        "id": "responsavel",
-        "title": "1. Responsável e princípios",
-        "paragraphs": [
-          "O responsável pelo Treinos, identificado no contato desta página, determina as finalidades do tratamento. O serviço deve limitar a coleta ao necessário, informar o uso dos dados e adotar medidas de segurança proporcionais aos riscos.",
-          "Esta política descreve o código e o fluxo previstos nesta versão. A configuração de fornecedores, prazos operacionais e identificação do responsável precisa ser confirmada na revisão anterior à publicação."
-        ]
-      },
-      {
         "id": "dados",
-        "title": "2. Dados coletados e finalidades",
+        "title": "O que coletamos",
         "table": {
-          "headers": [
-            "Dados",
-            "Finalidade",
-            "Fundamento previsto"
-          ],
+          "headers": ["Dados", "Para quê"],
           "rows": [
-            [
-              "E-mail, identificador da conta e credenciais geridas pelo Firebase Authentication",
-              "Criar a conta, autenticar e recuperar acesso",
-              "Execução do contrato; segurança conforme fundamento aplicável"
-            ],
-            [
-              "Nome de usuário, descrição e preferência de compartilhamento",
-              "Identificar o perfil e respeitar suas escolhas de visibilidade",
-              "Execução do contrato; opção expressa de publicação"
-            ],
-            [
-              "Exercícios, carga, séries, repetições, datas e notas",
-              "Manter o diário e calcular indicadores",
-              "Execução do contrato para dados comuns; consentimento específico e destacado quando houver dados de saúde"
-            ],
-            [
-              "Publicações, conquistas, filiações, votos e participações",
-              "Operar as comunidades e exibir as interações solicitadas",
-              "Execução do contrato; dados sensíveis dependem de fundamento próprio"
-            ],
-            [
-              "Versão aceita, usuário, data e IP do aceite",
-              "Comprovar a manifestação e proteger direitos",
-              "Exercício regular de direitos; obrigação legal quando aplicável"
-            ],
-            [
-              "Pedidos de atendimento, conteúdo denunciado, evidências e decisões",
-              "Apurar condutas, responder a recursos e atender direitos",
-              "Exercício regular de direitos e cumprimento de obrigações legais, conforme o caso"
-            ]
+            ["E-mail e credenciais", "Criar sua conta e permitir login"],
+            ["Nome de usuário e descrição", "Montar seu perfil"],
+            ["Exercícios, cargas, séries e notas", "Seu diário de treino — pode conter dados de saúde"],
+            ["Publicações, votos e filiações", "Fazer as comunidades funcionarem"],
+            ["Pedidos de atendimento e denúncias", "Responder você e apurar violações"]
           ]
         }
       },
       {
         "id": "saude",
-        "title": "3. Informações de saúde e treino",
-        "paragraphs": [
-          "Um registro de treino pode revelar informações de saúde, especialmente quando inclui lesões, limitações físicas ou condições médicas. Esses dados exigem proteção adicional. Evite inserir diagnósticos, laudos e detalhes clínicos desnecessários nas notas ou publicações.",
-          "O consentimento específico para registrar e analisar informações de saúde deve ser separado do aceite dos Termos, identificado por versão e finalidade e passível de revogação pelo atendimento. A revogação não invalida automaticamente tratamentos anteriores lícitos; usos futuros que dependam desse consentimento devem cessar.",
-          "O consentimento para o diário privado não autoriza divulgação de dados de saúde na comunidade, publicidade, pesquisa ou compartilhamento comercial. Não publique informações clínicas suas ou de terceiros; esta versão não oferece um fluxo específico de consentimento para essa divulgação."
+        "title": "Dados de saúde",
+        "items": [
+          "Notas de treino podem revelar lesões ou condições de saúde — evite detalhes clínicos desnecessários.",
+          "Esse tipo de dado exige seu consentimento específico, separado do aceite geral, e pode ser revogado a qualquer momento pelo atendimento."
         ]
       },
       {
         "id": "visibilidade",
-        "title": "4. Quem pode ver seus dados",
-        "paragraphs": [
-          "O diário detalhado é restrito à sua conta pelas regras de acesso do aplicativo. Perfis com nome de usuário e descrição podem ser consultados por outros usuários autenticados. A reserva de nome de usuário pode ser consultada durante o cadastro e associa o nome a um identificador interno, sem e-mail.",
-          "O compartilhamento de estatísticas do perfil começa desativado. Ao ativá-lo, ficam visíveis totais de registros e séries. Você pode desativá-lo no perfil. Cargas, notas, e-mail e histórico detalhado não são incluídos nesse resumo.",
-          "Ao publicar uma conquista, a mensagem e, quando existirem, os totais daquele dia ficam visíveis aos membros da comunidade por 24 horas, independentemente da preferência do perfil. Desativar a preferência não apaga uma conquista já publicada; use a exclusão da publicação.",
-          "Denúncias e evidências não são públicas. O atendimento limita o acesso ao solicitante e à administração autorizada; o usuário penalizado recebe a fundamentação da decisão, sem exposição automática dos dados de quem denunciou."
-        ]
-      },
-      {
-        "id": "fornecedores",
-        "title": "5. Fornecedores e compartilhamento",
-        "paragraphs": [
-          "O aplicativo utiliza Google Firebase para autenticação, banco de dados, hospedagem e funções de servidor. Esses serviços podem tratar dados técnicos necessários à operação e segurança. A região do banco, as condições contratuais e eventuais transferências internacionais devem ser documentadas antes da entrada em vigor.",
-          "O Treinos não possui integração de cobrança ou ferramentas de publicidade e analytics nesta versão. Um futuro provedor de pagamento ou novo uso de dados deverá ser informado antes da ativação, com finalidade e fundamento próprios.",
-          "Dados podem ser fornecidos para cumprir obrigação legal, ordem válida ou exercício regular de direitos, com minimização e controle de acesso. A publicação voluntária na comunidade não autoriza redistribuição irrestrita por terceiros.",
-          "Imagens e links externos inseridos em Markdown podem envolver serviços de terceiros. Ao carregar uma imagem externa ou abrir um link, o navegador pode transmitir IP e dados técnicos ao respectivo servidor."
-        ]
-      },
-      {
-        "id": "armazenamento",
-        "title": "6. Armazenamento e exclusão",
-        "paragraphs": [
-          "Os dados da conta e do diário permanecem enquanto necessários à prestação do serviço. Você pode excluir registros e publicações disponíveis na interface ou pedir a exclusão da conta e dos dados pelo atendimento.",
-          "As publicações expiram no feed em 24 horas. A remoção física depende da rotina de limpeza do banco e não é instantânea; subcoleções e cópias de evidência exigem tratamento próprio. Não se deve interpretar o prazo do feed como prazo máximo de conservação.",
-          "Registros de aceite, atendimentos e evidências podem ser conservados após o encerramento quando necessários a obrigações legais ou defesa de direitos. A retenção deve ter justificativa, prazo e revisão; após sua finalidade, os dados devem ser eliminados ou anonimizados de forma adequada.",
-          "Registros de acesso à aplicação, quando a hipótese legal do Marco Civil exigir sua guarda, devem observar o prazo legal de seis meses e eventual determinação válida de preservação. O IP do aceite é uma evidência específica e não substitui todo o registro de acesso.",
-          "Os prazos operacionais de remoção, cópias de segurança e retenção por categoria devem ser definidos pelo responsável antes da publicação desta minuta. Uma resposta ao pedido de exclusão deve explicar exceções e prazos aplicáveis ao caso."
+        "title": "Quem vê seus dados",
+        "items": [
+          "Seu diário de treino é privado — só você vê cargas, séries e notas.",
+          "Nome de usuário e descrição do perfil ficam visíveis a outros usuários logados.",
+          "Estatísticas do perfil só aparecem para outros se você ativar o compartilhamento.",
+          "Conquistas publicadas na comunidade ficam visíveis por 24 horas."
         ]
       },
       {
         "id": "direitos",
-        "title": "7. Seus direitos e o canal de atendimento",
-        "paragraphs": [
-          "Pelo atendimento, você pode pedir confirmação e acesso aos dados, correção, informações sobre compartilhamento, portabilidade quando aplicável, anonimização, bloqueio ou eliminação de dados tratados de forma desnecessária ou irregular, além de revogar consentimentos.",
-          "Selecione “Privacidade ou exclusão da conta”, descreva seu pedido e guarde o protocolo. Não envie senha ou documentos completos sem solicitação justificada. A verificação de identidade deve ser proporcional ao pedido.",
-          "O atendimento informará providências e eventuais restrições legais. Os prazos legais são preservados, inclusive o de até 15 dias para declaração completa de acesso na hipótese do art. 19 da LGPD. Você também pode procurar a ANPD e os órgãos de defesa do consumidor."
+        "title": "Seus direitos",
+        "items": [
+          "Acessar, corrigir ou excluir seus dados a qualquer momento.",
+          "Revogar consentimentos dados anteriormente.",
+          "Tudo isso pelo atendimento, escolhendo “Privacidade ou exclusão da conta”."
         ]
       },
       {
         "id": "seguranca",
-        "title": "8. Segurança e armazenamento no dispositivo",
-        "paragraphs": [
-          "O aplicativo utiliza autenticação, regras de acesso por usuário e restrição das operações administrativas. Aceites e decisões não podem ser alterados diretamente pelo navegador. Nenhuma medida elimina todos os riscos; incidentes devem ser avaliados e comunicados quando exigido pela legislação.",
-          "A sessão é gerida pelo Firebase Authentication. A preferência de tema pode ser salva localmente. O aplicativo instalável guarda arquivos estáticos da interface para carregamento; isso não é uma autorização para guardar dados pessoais em caches públicos.",
-          "Não há cookies de publicidade nesta implementação. Mudanças de finalidade ou inclusão de tecnologias de rastreamento exigem avaliação e informação prévia, com consentimento quando necessário."
-        ]
-      },
-      {
-        "id": "atualizacoes",
-        "title": "9. Atualizações",
-        "paragraphs": [
-          "A versão e a data desta política aparecem no início da página. Alterações relevantes devem ser destacadas e apresentadas novamente ao usuário. A confirmação de leitura da política não equivale a um consentimento genérico para qualquer tratamento."
+        "title": "Segurança e retenção",
+        "items": [
+          "Usamos o Google Firebase para autenticação, banco de dados e hospedagem.",
+          "Seus dados ficam guardados enquanto sua conta existir, ou até você pedir a exclusão.",
+          "Registros de aceite e atendimento podem ser mantidos além disso quando exigido por lei."
         ]
       }
     ],
