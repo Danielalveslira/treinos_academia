@@ -11,6 +11,7 @@ import {
 } from '../services/statusesService'
 import { ExpiryBadge } from './ExpiryBadge'
 import { AchievementSummary } from './AchievementSummary'
+import { MarkdownViewer } from './MarkdownViewer'
 import { formatDateTime } from '../utils/format'
 
 function toDate(value) {
@@ -20,7 +21,7 @@ function toDate(value) {
 function StatusHeader({ status, now, canDelete, onDelete }) {
   const initial = (status.authorUsername || 'M')[0].toUpperCase()
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+    <header className="status-header">
       <Box
         aria-hidden="true"
         sx={{
@@ -28,11 +29,11 @@ function StatusHeader({ status, now, canDelete, onDelete }) {
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          width: 36,
-          height: 36,
-          borderRadius: '10px',
-          bg: 'accent.emphasis',
-          color: 'fg.onEmphasis',
+          width: 32,
+          height: 32,
+          borderRadius: '50%',
+          bg: 'canvas.subtle',
+          color: 'fg.muted',
           fontSize: 1,
           fontWeight: 'bold',
         }}
@@ -40,17 +41,14 @@ function StatusHeader({ status, now, canDelete, onDelete }) {
         {initial}
       </Box>
       <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Link
-          to={`/comunidades/perfil/${status.authorId}`}
-          style={{ display: 'block', fontWeight: 600, fontSize: 14, overflowWrap: 'anywhere' }}
-        >
+        <Link to={`/comunidades/perfil/${status.authorId}`} className="status-author">
           {status.authorUsername ? `@${status.authorUsername}` : 'Membro'}
         </Link>
-        <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+        <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted' }}>
           {formatDateTime(toDate(status.createdAt))}
         </Text>
       </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: 1 }}>
         <ExpiryBadge expiresAt={status.expiresAt} now={now} />
         {canDelete && (
           <IconButton
@@ -63,7 +61,7 @@ function StatusHeader({ status, now, canDelete, onDelete }) {
           />
         )}
       </Box>
-    </Box>
+    </header>
   )
 }
 
@@ -225,24 +223,11 @@ function WorkoutStatus({ status, currentUserId }) {
 
 export function StatusCard({ status, currentUserId, canDelete, onDelete, now }) {
   return (
-    <Box
-      sx={{
-        border: '1px solid',
-        borderColor: 'border.default',
-        borderRadius: 2,
-        p: 3,
-        mb: 3,
-        '&:hover': { bg: 'canvas.subtle' },
-      }}
-    >
+    <article className="status-card">
       <StatusHeader status={status} now={now} canDelete={canDelete} onDelete={onDelete} />
 
-      <Box sx={{ pl: [0, '44px'] }}>
-        {status.type === 'text' && (
-          <Text sx={{ fontSize: 1, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-            {status.text}
-          </Text>
-        )}
+      <div className="status-content">
+        {status.type === 'text' && <MarkdownViewer value={status.text} />}
 
         {status.type === 'achievement' && <AchievementSummary achievement={status.achievement} />}
 
@@ -251,7 +236,7 @@ export function StatusCard({ status, currentUserId, canDelete, onDelete, now }) 
         {status.type === 'workout' && (
           <WorkoutStatus status={status} currentUserId={currentUserId} />
         )}
-      </Box>
-    </Box>
+      </div>
+    </article>
   )
 }

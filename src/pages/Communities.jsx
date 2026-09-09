@@ -11,12 +11,11 @@ function CommunityAvatar({ community }) {
   return (
     <Box
       sx={{
-        width: 40,
-        height: 40,
+        width: 32,
+        height: 32,
         borderRadius: 2,
         bg: 'canvas.subtle',
-        border: '1px solid',
-        borderColor: 'border.default',
+        color: 'fg.muted',
         flexShrink: 0,
         overflow: 'hidden',
         display: 'flex',
@@ -41,16 +40,18 @@ function CommunityAvatar({ community }) {
 function CommunityNameBlock({ community }) {
   return (
     <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Text sx={{ fontWeight: 'bold', display: 'block' }}>{community.name}</Text>
+      <Text sx={{ fontWeight: 600, fontSize: 1, display: 'block', overflowWrap: 'anywhere' }}>
+        {community.name}
+      </Text>
       {community.description && (
         <Text
           sx={{
             fontSize: 0,
             color: 'fg.muted',
             display: 'block',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
+            overflowWrap: 'anywhere',
+            lineHeight: 1.5,
+            mt: 1,
           }}
         >
           {community.description}
@@ -66,11 +67,12 @@ function CommunityRow({ community, action, linkTo }) {
       sx={{
         display: 'flex',
         alignItems: 'center',
-        gap: 3,
+        gap: 2,
         px: 3,
-        py: 2,
+        py: '12px',
         borderTop: '1px solid',
-        borderColor: 'border.default',
+        borderColor: 'border.muted',
+        '& > button': { flexShrink: 0 },
         '&:first-of-type': { borderTop: 'none' },
       }}
     >
@@ -81,7 +83,7 @@ function CommunityRow({ community, action, linkTo }) {
           sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 3,
+            gap: 2,
             flex: 1,
             minWidth: 0,
             color: 'fg.default',
@@ -127,9 +129,9 @@ export default function Communities() {
   }
 
   return (
-    <Box>
+    <Box className="community-page">
       <ToastFlash toasts={toasts} />
-      <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
+      <Heading as="h1" sx={{ mb: 3 }}>
         Comunidades
       </Heading>
 
@@ -138,7 +140,7 @@ export default function Communities() {
 
       {!loading && !error && (
         <>
-          <Heading as="h2" sx={{ fontSize: 2, mb: 2 }}>
+          <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
             Minhas comunidades
           </Heading>
           {myCommunities.length === 0 ? (
@@ -170,7 +172,7 @@ export default function Communities() {
             </Box>
           )}
 
-          <Heading as="h2" sx={{ fontSize: 2, mb: 2 }}>
+          <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
             Explorar
           </Heading>
           {exploreCommunities.length === 0 ? (

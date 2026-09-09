@@ -5,12 +5,12 @@ import {
   Button,
   FormControl,
   TextInput,
-  Textarea,
   Select,
   Stack,
   IconButton,
 } from '@primer/react'
 import { XIcon, PlusIcon } from '@primer/octicons-react'
+import { MarkdownField } from './MarkdownField'
 import {
   validateTextStatus,
   validatePollStatus,
@@ -87,11 +87,7 @@ export function StatusForm({ onSubmit, onCancel }) {
   }
 
   return (
-    <Box
-      as="form"
-      onSubmit={handleSubmit}
-      sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 4 }}
-    >
+    <Box as="form" className="community-form" onSubmit={handleSubmit}>
       <Stack gap="condensed">
         {errors.form && (
           <Flash variant="danger" role="alert">
@@ -110,13 +106,15 @@ export function StatusForm({ onSubmit, onCancel }) {
         </FormControl>
 
         {type === 'text' && (
-          <FormControl required>
-            <FormControl.Label>O que você quer compartilhar?</FormControl.Label>
-            <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} block />
-            {errors.text && (
-              <FormControl.Validation variant="error">{errors.text}</FormControl.Validation>
-            )}
-          </FormControl>
+          <MarkdownField
+            label="O que você quer compartilhar?"
+            value={text}
+            onChange={setText}
+            required
+            rows={4}
+            maxLength={500}
+            error={errors.text}
+          />
         )}
 
         {type === 'poll' && (
@@ -209,23 +207,11 @@ export function StatusForm({ onSubmit, onCancel }) {
           </>
         )}
 
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: ['column-reverse', 'row'],
-            gap: 2,
-            justifyContent: ['stretch', 'flex-end'],
-          }}
-        >
-          <Button type="button" onClick={onCancel} sx={{ width: ['100%', 'auto'] }}>
+        <Box className="community-form-actions">
+          <Button type="button" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            loading={submitting}
-            sx={{ width: ['100%', 'auto'] }}
-          >
+          <Button type="submit" variant="primary" loading={submitting}>
             Publicar
           </Button>
         </Box>
