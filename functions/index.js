@@ -328,16 +328,17 @@ export const confirmPayment = onCall(options, async (request) => {
   const userRef = db.doc(`users/${userId}`)
   const paymentRef = db.collection('payments').doc()
   await db.runTransaction(async (tx) => {
-    const [admin, user, config] = await tx.getAll(
+    const [admin, user, plansDoc, config] = await tx.getAll(
       db.doc(`users/${adminId}`),
       userRef,
+      db.doc('appConfig/plans'),
       db.doc('appConfig/billing')
     )
     if (admin.data()?.role !== 'superadmin') {
       throw new HttpsError('permission-denied', 'Apenas administradores podem confirmar pagamentos.')
     }
     if (!user.exists) throw new HttpsError('not-found', 'Conta não encontrada.')
-    const plan = (config.data()?.plans || DEFAULT_BILLING.plans).find((p) => p.id === planId)
+    const plan = (plansDoc.data()?.plans || DEFAULT_BILLING.plans).find((p) => p.id === planId)
     if (!plan) throw new HttpsError('invalid-argument', 'Plano não encontrado na configuração atual.')
     const graceBusinessDays = config.data()?.graceBusinessDays ?? DEFAULT_BILLING.graceBusinessDays
     const now = Date.now()
