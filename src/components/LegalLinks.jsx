@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { LEGAL_DOCUMENTS } from '../utils/legal'
 
-export function LegalLinks() {
+export function LegalLinks({ children }) {
   return (
     <nav className="legal-links" aria-label="Documentos e atendimento">
       {LEGAL_DOCUMENTS.map((document) => (
@@ -10,6 +10,7 @@ export function LegalLinks() {
         </Link>
       ))}
       <Link to="/atendimento">Atendimento</Link>
+      {children}
     </nav>
   )
 }
