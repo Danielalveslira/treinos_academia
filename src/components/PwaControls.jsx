@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button } from '@primer/react'
+import { Button, useConfirm } from '@primer/react'
 import { DownloadIcon, XIcon } from '@primer/octicons-react'
 
 export function PwaControls() {
+  const confirm = useConfirm()
   const [installPrompt, setInstallPrompt] = useState(null)
   const [installed, setInstalled] = useState(
     () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true
@@ -123,17 +124,17 @@ export function PwaControls() {
     }
   }
 
-  function update() {
-    if (
-      !window.confirm(
-        'Atualizar o app agora? Salve seus registros antes de continuar; a página será recarregada.'
-      )
-    )
-      return
+  async function update() {
+    const confirmed = await confirm({
+      title: 'Atualizar o app agora?',
+      content: 'Salve seus registros antes de continuar; a página será recarregada.',
+      confirmButtonContent: 'Atualizar',
+      cancelButtonContent: 'Cancelar',
+    })
+    if (!confirmed) return
     shouldReload.current = true
     setUpdating(true)
-    if (waiting?.state === 'activated') window.location.reload()
-    else waiting?.postMessage({ type: 'ACTIVATE_UPDATE' })
+    waiting?.postMessage({ type: 'ACTIVATE_UPDATE' })
   }
 
   return (

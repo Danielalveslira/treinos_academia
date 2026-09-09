@@ -21,7 +21,7 @@ import { ErrorState } from '../components/ErrorState'
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { recentWorkouts, allWorkouts, loading, error, refresh } = useDashboard()
+  const { recentWorkouts, allWorkouts, totalWorkouts, loading, error, refresh } = useDashboard()
   const { exercises } = useExercises()
 
   const exerciseNameById = useMemo(() => buildExerciseNameMap(exercises), [exercises])
@@ -47,8 +47,9 @@ export default function Dashboard() {
   if (error) {
     return (
       <Box>
-        <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
-          Dashboard
+        <span className="eyebrow">SEU PAINEL DE TREINOS</span>
+        <Heading as="h1" sx={{ mb: 3 }}>
+          Visão geral
         </Heading>
         <ErrorState error={error} onRetry={refresh} />
       </Box>
@@ -58,8 +59,9 @@ export default function Dashboard() {
   if (recentWorkouts.length === 0) {
     return (
       <Box>
-        <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
-          Dashboard
+        <span className="eyebrow">SEU PAINEL DE TREINOS</span>
+        <Heading as="h1" sx={{ mb: 3 }}>
+          Visão geral
         </Heading>
         <Blankslate>
           <Blankslate.Visual>
@@ -135,7 +137,7 @@ export default function Dashboard() {
       </Box>
 
       <Box className="stats-grid">
-        <IndicatorCard icon={ChecklistIcon} label="Total de treinos" value={consistency.total} />
+        <IndicatorCard icon={ChecklistIcon} label="Total de treinos" value={totalWorkouts} />
         <IndicatorCard
           icon={CalendarIcon}
           label="Frequência semanal"
