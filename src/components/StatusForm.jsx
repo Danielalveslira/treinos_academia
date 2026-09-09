@@ -90,7 +90,7 @@ export function StatusForm({ onSubmit, onCancel }) {
     <Box
       as="form"
       onSubmit={handleSubmit}
-      sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3 }}
+      sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 4 }}
     >
       <Stack gap="condensed">
         {errors.form && (

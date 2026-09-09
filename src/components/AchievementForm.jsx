@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Flash, FormControl, Spinner, Textarea } from '@primer/react'
+import {
+  Box,
+  Button,
+  Flash,
+  FormControl,
+  Heading,
+  Text,
+  Spinner,
+  Stack,
+  Textarea,
+} from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { getWorkoutStatistics } from '../services/workoutsService'
 import { localDayKey, validateAchievement } from '../utils/achievements'
+import { AchievementSummary } from './AchievementSummary'
 
 export function AchievementForm({ onSubmit, onCancel }) {
   const { user } = useAuth()
@@ -53,66 +64,83 @@ export function AchievementForm({ onSubmit, onCancel }) {
     }
   }
   return (
-    <form onSubmit={submit} className="profile-card profile-form">
-      <div>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Sua conquista de hoje</h2>
-        <p>Compartilhe um passo importante da sua jornada.</p>
-      </div>
-      {error && (
-        <Flash variant="danger" role="alert">
-          {error}
-        </Flash>
-      )}
-      {!preview && !error && <Spinner aria-label="Carregando conquistas" />}
-      {preview && (
-        <section className="achievement-card" aria-label="Prévia da conquista">
-          <span className="profile-eyebrow">
-            {new Date(`${preview.day}T12:00:00`).toLocaleDateString('pt-BR')}
-          </span>
-          <div className="achievement-totals">
-            <span>
-              <strong>{preview.entries}</strong> registros de exercícios
-            </span>
-            <span>
-              <strong>{preview.sets}</strong> séries realizadas
-            </span>
-          </div>
-          {text && <p>{text}</p>}
-        </section>
-      )}
-      <FormControl disabled={submitting}>
-        <FormControl.Label>Qual foi sua conquista?</FormControl.Label>
-        <Textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Ex.: Voltei a treinar depois de uma semana!"
-          rows={3}
-          maxLength={300}
-          block
-          sx={{ fontSize: 2 }}
-        />
-        <FormControl.Caption>{text.length}/300 caracteres</FormControl.Caption>
-      </FormControl>
-      <p style={{ margin: 0, fontSize: 12 }}>
-        A mensagem e os totais acima ficarão visíveis nesta comunidade por 24 horas, mesmo com as
-        estatísticas do perfil privadas. Você pode excluir a publicação depois.
-      </p>
-      <div className="profile-form-footer">
-        <Button type="button" onClick={reload} disabled={submitting}>
-          Atualizar prévia
-        </Button>
-        <Button type="button" onClick={onCancel} disabled={submitting}>
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          loading={submitting}
-          disabled={!preview || submitting}
+    <Box
+      as="form"
+      onSubmit={submit}
+      sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 4 }}
+    >
+      <Stack gap="condensed">
+        <Box>
+          <Heading as="h2" sx={{ fontSize: 2, mb: 1 }}>
+            Sua conquista de hoje
+          </Heading>
+          <Text sx={{ color: 'fg.muted', fontSize: 1, display: 'block' }}>
+            Compartilhe um passo importante da sua jornada.
+          </Text>
+        </Box>
+
+        {error && (
+          <Flash variant="danger" role="alert">
+            {error}
+          </Flash>
+        )}
+        {!preview && !error && <Spinner aria-label="Carregando conquistas" />}
+        {preview && (
+          <Box aria-label="Prévia da conquista">
+            <AchievementSummary achievement={{ ...preview, text }} />
+          </Box>
+        )}
+        <FormControl disabled={submitting}>
+          <FormControl.Label>Qual foi sua conquista?</FormControl.Label>
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Ex.: Voltei a treinar depois de uma semana!"
+            rows={3}
+            maxLength={300}
+            block
+          />
+          <FormControl.Caption>{text.length}/300 caracteres</FormControl.Caption>
+        </FormControl>
+        <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+          A mensagem e os totais acima ficarão visíveis nesta comunidade por 24 horas, mesmo com as
+          estatísticas do perfil privadas. Você pode excluir a publicação depois.
+        </Text>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: ['column-reverse', 'row'],
+            gap: 2,
+            justifyContent: ['stretch', 'flex-end'],
+          }}
         >
-          Compartilhar conquista
-        </Button>
-      </div>
-    </form>
+          <Button
+            type="button"
+            onClick={reload}
+            disabled={submitting}
+            sx={{ width: ['100%', 'auto'] }}
+          >
+            Atualizar prévia
+          </Button>
+          <Button
+            type="button"
+            onClick={onCancel}
+            disabled={submitting}
+            sx={{ width: ['100%', 'auto'] }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            loading={submitting}
+            disabled={!preview || submitting}
+            sx={{ width: ['100%', 'auto'] }}
+          >
+            Compartilhar conquista
+          </Button>
+        </Box>
+      </Stack>
+    </Box>
   )
 }
