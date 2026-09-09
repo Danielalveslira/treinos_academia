@@ -22,6 +22,8 @@ import { StatusCard } from '../components/StatusCard'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 
+const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
+
 export default function CommunityDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -42,6 +44,7 @@ export default function CommunityDetail() {
     refresh: refreshFeed,
     addStatusLocally,
     remove,
+    now,
   } = useCommunityFeed(id)
 
   const loadCommunity = useCallback(async () => {
@@ -87,6 +90,7 @@ export default function CommunityDetail() {
 
   async function handleCreateStatus(values) {
     const author = { id: user.uid, username: profile?.username || null }
+    const expiresAt = new Date(Date.now() + STATUS_LIFETIME_MS)
     try {
       if (values.type === 'achievement') {
         const ref = await createAchievementStatus(id, author, values.achievement)
@@ -98,6 +102,7 @@ export default function CommunityDetail() {
           type: 'achievement',
           achievement: values.achievement,
           createdAt: new Date(),
+          expiresAt,
         })
       } else if (values.type === 'text') {
         const ref = await createTextStatus(id, author, values.text)
@@ -109,6 +114,7 @@ export default function CommunityDetail() {
           type: 'text',
           text: values.text.trim(),
           createdAt: new Date(),
+          expiresAt,
         })
       } else if (values.type === 'poll') {
         const ref = await createPollStatus(id, author, values.question, values.options)
@@ -123,6 +129,7 @@ export default function CommunityDetail() {
             options: values.options.map((label, index) => ({ id: String(index), label })),
           },
           createdAt: new Date(),
+          expiresAt,
         })
       } else if (values.type === 'workout') {
         const ref = await createWorkoutStatus(id, author, values)
@@ -138,6 +145,7 @@ export default function CommunityDetail() {
             location: values.location.trim(),
           },
           createdAt: new Date(),
+          expiresAt,
         })
       }
       setFormOpen(false)
@@ -167,12 +175,12 @@ export default function CommunityDetail() {
   const loading = loadingCommunity || loadingFeed
 
   return (
-    <Box>
+    <Box sx={{ maxWidth: '680px', mx: 'auto' }}>
       <ToastFlash toasts={toasts} />
       <Link
         as={RouterLink}
         to="/comunidades"
-        sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mb: 2, fontSize: 1 }}
+        sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, mb: 3, fontSize: 1 }}
       >
         <ChevronLeftIcon /> Comunidades
       </Link>
@@ -183,24 +191,34 @@ export default function CommunityDetail() {
       {!loadingCommunity && !communityError && community && (
         <>
           <Box
-            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}
+            sx={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 3,
+              mb: 4,
+            }}
           >
-            <Heading as="h1" sx={{ fontSize: 3 }}>
-              {community.name}
-            </Heading>
+            <Box sx={{ minWidth: 0 }}>
+              <Heading as="h1" sx={{ fontSize: 4, mb: community.description ? 1 : 0 }}>
+                {community.name}
+              </Heading>
+              {community.description && (
+                <Text sx={{ color: 'fg.muted', fontSize: 1, display: 'block' }}>
+                  {community.description}
+                </Text>
+              )}
+            </Box>
             {member ? (
-              <Button size="small" onClick={handleLeave}>
+              <Button onClick={handleLeave} sx={{ flexShrink: 0 }}>
                 Sair
               </Button>
             ) : (
-              <Button size="small" variant="primary" onClick={handleJoin}>
+              <Button variant="primary" onClick={handleJoin} sx={{ flexShrink: 0 }}>
                 Entrar
               </Button>
             )}
           </Box>
-          {community.description && (
-            <Text sx={{ color: 'fg.muted', display: 'block', mb: 3 }}>{community.description}</Text>
-          )}
 
           {!member && (
             <Blankslate>
@@ -218,7 +236,7 @@ export default function CommunityDetail() {
           {member && (
             <>
               {!formOpen && (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 4 }}>
                   <Button
                     leadingVisual={PlusIcon}
                     variant="primary"
@@ -264,6 +282,7 @@ export default function CommunityDetail() {
                     currentUserId={user.uid}
                     canDelete={status.authorId === user.uid || isSuperAdmin}
                     onDelete={handleDeleteStatus}
+                    now={now}
                   />
                 ))}
             </>
