@@ -125,8 +125,10 @@ export function Layout() {
         </Suspense>
       </main>
       <footer className="app-footer">
-        <span>Treinos</span>
-        <span>Seu progresso, um treino de cada vez.</span>
+        <div className="app-footer-brand">
+          <span>Treinos</span>
+          <span>Seu progresso, um treino de cada vez.</span>
+        </div>
         <LegalLinks />
       </footer>
       <nav className="mobile-nav" aria-label="Navegação principal mobile">
