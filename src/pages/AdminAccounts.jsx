@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { validateBillingConfig } from '../utils/billingConfig'
 import {
   Box,
   Heading,
@@ -41,34 +42,52 @@ const STATUS_LABELS = {
   NONE: { text: 'Sem assinatura', variant: 'secondary' },
 }
 
+function actionError(error, fallback) {
+  return [
+    'functions/failed-precondition',
+    'functions/invalid-argument',
+    'functions/already-exists',
+    'functions/not-found',
+  ].includes(error?.code)
+    ? error.message
+    : fallback
+}
+
 function DisableDialog({ account, onClose, onConfirm }) {
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   return (
     <Dialog
       title={`Desativar conta de ${account.username || account.email || account.id}`}
-      onClose={onClose}
+      onClose={saving ? () => {} : onClose}
       footerButtons={[
-        { content: 'Cancelar', onClick: onClose },
+        { content: 'Cancelar', onClick: onClose, disabled: saving },
         {
           content: 'Desativar conta',
           buttonType: 'danger',
           disabled: reason.trim().length < 5 || saving,
           onClick: async () => {
             setSaving(true)
-            await onConfirm(reason)
+            setError((await onConfirm(reason)) || '')
             setSaving(false)
           },
         },
       ]}
     >
       <Box sx={{ p: 3 }}>
+        {error && (
+          <Text as="p" role="alert" sx={{ color: 'danger.fg' }}>
+            {error}
+          </Text>
+        )}
         <FormControl required>
           <FormControl.Label>Motivo</FormControl.Label>
           <Textarea
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={3}
+            maxLength={500}
             block
             placeholder="Descreva o motivo da desativação"
           />
@@ -81,25 +100,31 @@ function DisableDialog({ account, onClose, onConfirm }) {
 function ConfirmPaymentDialog({ account, plans, onClose, onConfirm }) {
   const [planId, setPlanId] = useState(account.subscription?.planId || plans[0]?.id)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   return (
     <Dialog
       title={`Confirmar pagamento de ${account.username || account.email || account.id}`}
-      onClose={onClose}
+      onClose={saving ? () => {} : onClose}
       footerButtons={[
-        { content: 'Cancelar', onClick: onClose },
+        { content: 'Cancelar', onClick: onClose, disabled: saving },
         {
           content: 'Pagamento efetivado',
           buttonType: 'primary',
           disabled: !planId || saving,
           onClick: async () => {
             setSaving(true)
-            await onConfirm(planId)
+            setError((await onConfirm(planId)) || '')
             setSaving(false)
           },
         },
       ]}
     >
       <Box sx={{ p: 3 }}>
+        {error && (
+          <Text as="p" role="alert" sx={{ color: 'danger.fg' }}>
+            {error}
+          </Text>
+        )}
         <FormControl required>
           <FormControl.Label>Plano</FormControl.Label>
           <Select value={planId} onChange={(e) => setPlanId(e.target.value)} block>
@@ -118,19 +143,20 @@ function ConfirmPaymentDialog({ account, plans, onClose, onConfirm }) {
 function DeleteAccountDialog({ account, onClose, onConfirm }) {
   const [confirmation, setConfirmation] = useState('')
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   return (
     <Dialog
       title={`Excluir permanentemente ${account.username || account.email || account.id}`}
-      onClose={onClose}
+      onClose={saving ? () => {} : onClose}
       footerButtons={[
-        { content: 'Cancelar', onClick: onClose },
+        { content: 'Cancelar', onClick: onClose, disabled: saving },
         {
           content: 'Excluir permanentemente',
           buttonType: 'danger',
           disabled: confirmation !== 'EXCLUIR' || saving,
           onClick: async () => {
             setSaving(true)
-            await onConfirm()
+            setError((await onConfirm()) || '')
             setSaving(false)
           },
         },
@@ -138,8 +164,14 @@ function DeleteAccountDialog({ account, onClose, onConfirm }) {
     >
       <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Text sx={{ fontWeight: 'bold', color: 'danger.fg' }}>
-          Esta ação não poderá ser desfeita e removerá os dados associados ao usuário.
+          A conta será bloqueada agora e excluída em etapas. Pagamentos e registros de atendimento
+          preservados não serão apagados. Esta ação não pode ser desfeita.
         </Text>
+        {error && (
+          <Text as="p" role="alert" sx={{ color: 'danger.fg' }}>
+            {error}
+          </Text>
+        )}
         <FormControl>
           <FormControl.Label>Digite EXCLUIR para confirmar</FormControl.Label>
           <TextInput value={confirmation} onChange={(e) => setConfirmation(e.target.value)} block />
@@ -161,6 +193,11 @@ function BillingConfigForm({ config, onSaved, showToast }) {
   }
 
   async function handleSave() {
+    const error = validateBillingConfig(form)
+    if (error) {
+      showToast(error, 'danger')
+      return
+    }
     setSaving(true)
     try {
       await saveBillingConfig(form)
@@ -278,31 +315,43 @@ function BillingConfigForm({ config, onSaved, showToast }) {
 }
 
 export default function AdminAccounts() {
-  const { accounts, loading, error, refresh, disable, enable, confirm, remove } = useAdminAccounts()
-  const { config, loading: configLoading } = useBillingConfig()
+  const [params] = useSearchParams()
+  const [search, setSearch] = useState(params.get('usuario') || '')
+  const {
+    accounts,
+    jobs,
+    loading,
+    error,
+    busy,
+    hasMore,
+    loadMore,
+    refresh,
+    disable,
+    enable,
+    confirm,
+    remove,
+  } = useAdminAccounts(search)
+  const {
+    config,
+    loading: configLoading,
+    error: configError,
+    refresh: refreshConfig,
+  } = useBillingConfig()
   const [localConfig, setLocalConfig] = useState(null)
   const { toasts, showToast } = useToast()
   const [dialog, setDialog] = useState(null) // { type: 'disable'|'confirm'|'delete', account }
-  const [search, setSearch] = useState('')
 
   const effectiveConfig = localConfig || config
-  const filtered = accounts.filter((account) => {
-    const term = search.trim().toLowerCase()
-    if (!term) return true
-    return (
-      account.username?.toLowerCase().includes(term) || account.email?.toLowerCase().includes(term)
-    )
-  })
+  const filtered = accounts
 
   async function handleDisable(reason) {
     try {
       await disable(dialog.account.id, reason)
+      setDialog(null)
       showToast('Conta desativada.')
     } catch (err) {
       console.error('[AdminAccounts] disable:', err)
-      showToast('Erro ao desativar conta.', 'danger')
-    } finally {
-      setDialog(null)
+      return actionError(err, 'Erro ao desativar conta.')
     }
   }
 
@@ -319,30 +368,28 @@ export default function AdminAccounts() {
   async function handleConfirmPayment(planId) {
     try {
       await confirm(dialog.account.id, planId)
+      setDialog(null)
       showToast('Pagamento confirmado.')
     } catch (err) {
       console.error('[AdminAccounts] confirmPayment:', err)
-      showToast('Erro ao confirmar pagamento.', 'danger')
-    } finally {
-      setDialog(null)
+      return actionError(err, 'Erro ao confirmar pagamento.')
     }
   }
 
   async function handleDelete() {
     try {
       await remove(dialog.account.id)
-      showToast('Conta excluída permanentemente.')
+      setDialog(null)
+      showToast('Exclusão agendada. A conta já está bloqueada.')
     } catch (err) {
       console.error('[AdminAccounts] delete:', err)
-      showToast('Erro ao excluir conta.', 'danger')
-    } finally {
-      setDialog(null)
+      return actionError(err, 'Erro ao excluir conta.')
     }
   }
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Button as={Link} to="/admin/comunidades">
           Administrar comunidades
         </Button>
@@ -355,8 +402,14 @@ export default function AdminAccounts() {
         Contas e assinaturas
       </Heading>
 
-      {!configLoading && (
+      {configError && (
+        <Text as="p" role="alert" sx={{ color: 'danger.fg' }}>
+          Erro ao carregar a configuração. <Button onClick={refreshConfig}>Tentar novamente</Button>
+        </Text>
+      )}
+      {!configLoading && !configError && (
         <BillingConfigForm
+          key={JSON.stringify(effectiveConfig)}
           config={effectiveConfig}
           onSaved={setLocalConfig}
           showToast={showToast}
@@ -366,13 +419,29 @@ export default function AdminAccounts() {
       <FormControl sx={{ mb: 3 }}>
         <FormControl.Label visuallyHidden>Buscar conta</FormControl.Label>
         <TextInput
-          placeholder="Buscar por @usuário ou e-mail"
+          placeholder="Início do @usuário, e-mail completo ou UID"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           block
         />
       </FormControl>
 
+      <Button onClick={refresh} disabled={loading || !!busy} sx={{ mb: 3 }}>
+        Atualizar lista
+      </Button>
+      {jobs.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Heading as="h2" sx={{ fontSize: 2 }}>
+            Exclusões em andamento
+          </Heading>
+          {jobs.map((job) => (
+            <Text as="p" key={job.id} sx={{ fontSize: 1, overflowWrap: 'anywhere' }}>
+              {job.kind}: {job.targetId} —{' '}
+              {job.lastError ? 'Nova tentativa automática pendente' : 'Em processamento'}
+            </Text>
+          ))}
+        </Box>
+      )}
       {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
       <ErrorState error={error} onRetry={refresh} />
 
@@ -385,7 +454,7 @@ export default function AdminAccounts() {
         </Blankslate>
       )}
 
-      {!loading && !error && filtered.length > 0 && (
+      {filtered.length > 0 && (
         <Box
           sx={{
             border: '1px solid',
@@ -405,6 +474,7 @@ export default function AdminAccounts() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 2,
+                  flexWrap: 'wrap',
                   px: 3,
                   py: 2,
                   borderTop: index === 0 ? 'none' : '1px solid',
@@ -417,7 +487,11 @@ export default function AdminAccounts() {
                       {account.username ? `@${account.username}` : account.email || account.id}
                     </Text>
                     <Label variant={account.accountStatus === 'disabled' ? 'danger' : 'success'}>
-                      {account.accountStatus === 'disabled' ? 'Desativada' : 'Ativa'}
+                      {account.accountStatus === 'deleting'
+                        ? 'Em exclusão'
+                        : account.accountStatus === 'disabled'
+                          ? 'Desativada'
+                          : 'Ativa'}
                     </Label>
                     <Label variant={statusInfo.variant}>{statusInfo.text}</Label>
                     {plan && <Label>{plan.name}</Label>}
@@ -429,57 +503,70 @@ export default function AdminAccounts() {
                   </Text>
                 </Box>
 
-                {account.accountStatus === 'disabled' ? (
-                  <Button
-                    size="small"
-                    leadingVisual={CheckIcon}
-                    onClick={() => handleEnable(account)}
-                  >
-                    Ativar
-                  </Button>
-                ) : (
-                  <Button
-                    size="small"
-                    leadingVisual={BlockedIcon}
-                    onClick={() => setDialog({ type: 'disable', account })}
-                  >
-                    Desativar
-                  </Button>
-                )}
-
-                <ActionMenu>
-                  <ActionMenu.Anchor>
-                    <IconButton
-                      icon={KebabHorizontalIcon}
-                      variant="invisible"
-                      aria-label="Mais ações"
-                      sx={{ color: 'fg.muted' }}
-                    />
-                  </ActionMenu.Anchor>
-                  <ActionMenu.Overlay align="end">
-                    <ActionList>
-                      <ActionList.Item onSelect={() => setDialog({ type: 'confirm', account })}>
-                        <ActionList.LeadingVisual>
-                          <CheckIcon />
-                        </ActionList.LeadingVisual>
-                        Confirmar pagamento
-                      </ActionList.Item>
-                      <ActionList.Item
-                        variant="danger"
-                        onSelect={() => setDialog({ type: 'delete', account })}
+                {account.role !== 'superadmin' && account.accountStatus !== 'deleting' && (
+                  <Box sx={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                    {account.accountStatus === 'disabled' ? (
+                      <Button
+                        size="small"
+                        disabled={!!busy}
+                        leadingVisual={CheckIcon}
+                        onClick={() => handleEnable(account)}
                       >
-                        <ActionList.LeadingVisual>
-                          <TrashIcon />
-                        </ActionList.LeadingVisual>
-                        Excluir permanentemente
-                      </ActionList.Item>
-                    </ActionList>
-                  </ActionMenu.Overlay>
-                </ActionMenu>
+                        Ativar
+                      </Button>
+                    ) : (
+                      <Button
+                        size="small"
+                        disabled={!!busy}
+                        leadingVisual={BlockedIcon}
+                        onClick={() => setDialog({ type: 'disable', account })}
+                      >
+                        Desativar
+                      </Button>
+                    )}
+
+                    <ActionMenu>
+                      <ActionMenu.Anchor>
+                        <IconButton
+                          disabled={!!busy}
+                          icon={KebabHorizontalIcon}
+                          variant="invisible"
+                          aria-label="Mais ações"
+                          sx={{ color: 'fg.muted' }}
+                        />
+                      </ActionMenu.Anchor>
+                      <ActionMenu.Overlay align="end">
+                        <ActionList>
+                          <ActionList.Item onSelect={() => setDialog({ type: 'confirm', account })}>
+                            <ActionList.LeadingVisual>
+                              <CheckIcon />
+                            </ActionList.LeadingVisual>
+                            Confirmar pagamento
+                          </ActionList.Item>
+                          <ActionList.Item
+                            variant="danger"
+                            onSelect={() => setDialog({ type: 'delete', account })}
+                          >
+                            <ActionList.LeadingVisual>
+                              <TrashIcon />
+                            </ActionList.LeadingVisual>
+                            Excluir permanentemente
+                          </ActionList.Item>
+                        </ActionList>
+                      </ActionMenu.Overlay>
+                    </ActionMenu>
+                  </Box>
+                )}
               </Box>
             )
           })}
         </Box>
+      )}
+
+      {hasMore && (
+        <Button onClick={loadMore} disabled={loading} sx={{ mt: 3 }}>
+          Carregar mais contas
+        </Button>
       )}
 
       {dialog?.type === 'disable' && (

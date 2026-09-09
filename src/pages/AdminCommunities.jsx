@@ -12,8 +12,19 @@ import { ToastFlash } from '../components/ToastFlash'
 import { RowActionsMenu } from '../components/RowActionsMenu'
 
 export default function AdminCommunities() {
-  const { communities, memberCounts, loading, error, refresh, add, edit, toggleActive, remove } =
-    useAdminCommunities()
+  const {
+    communities,
+    memberCounts,
+    hasMore,
+    loadMore,
+    loading,
+    error,
+    refresh,
+    add,
+    edit,
+    toggleActive,
+    remove,
+  } = useAdminCommunities()
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
   const [formOpen, setFormOpen] = useState(false)
@@ -54,12 +65,12 @@ export default function AdminCommunities() {
   async function handleDelete(community) {
     const confirmed = await confirmDelete({
       title: `Excluir "${community.name}"?`,
-      content: 'As publicações e filiações desta comunidade não serão excluídas automaticamente.',
+      content: 'A comunidade será bloqueada e seus dados serão excluídos em etapas.',
     })
     if (!confirmed) return
     try {
       await remove(community.id)
-      showToast('Comunidade excluída.')
+      showToast('Exclusão da comunidade agendada.')
     } catch (err) {
       console.error('[AdminCommunities] delete:', err)
       showToast('Erro ao excluir comunidade.', 'danger')
@@ -68,7 +79,7 @@ export default function AdminCommunities() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Button as={Link} to="/admin/moderacao">
           Atendimento e moderação
         </Button>
@@ -112,7 +123,7 @@ export default function AdminCommunities() {
         </Blankslate>
       )}
 
-      {!loading && !error && communities.length > 0 && (
+      {communities.length > 0 && (
         <Box
           sx={{
             border: '1px solid',
@@ -163,7 +174,11 @@ export default function AdminCommunities() {
                 </Text>
               </Box>
 
-              <Button size="small" onClick={() => handleToggleActive(community)}>
+              <Button
+                size="small"
+                disabled={community.deletionStatus === 'pending'}
+                onClick={() => handleToggleActive(community)}
+              >
                 {community.isActive ? 'Desativar' : 'Ativar'}
               </Button>
               <RowActionsMenu
@@ -173,6 +188,11 @@ export default function AdminCommunities() {
             </Box>
           ))}
         </Box>
+      )}
+      {hasMore && (
+        <Button onClick={loadMore} disabled={loading} sx={{ mt: 3 }}>
+          Carregar mais comunidades
+        </Button>
       )}
     </Box>
   )

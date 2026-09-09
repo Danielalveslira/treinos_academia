@@ -1,6 +1,12 @@
+import { createAccountsService } from './accounts-service.js'
+import { onSchedule } from 'firebase-functions/v2/scheduler'
+import { onDocumentDeleted } from 'firebase-functions/v2/firestore'
+import { createDeletionService } from './deletion-service.js'
+import { validId } from './legal-core.js'
+import { accountView } from './admin-core.js'
 import { readFileSync } from 'node:fs'
 import { initializeApp } from 'firebase-admin/app'
-import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore'
+import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore'
 import { getAuth } from 'firebase-admin/auth'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import {
@@ -49,6 +55,12 @@ async function requireSuperAdmin(uid) {
   }
 }
 
+async function assertWritableAccount(tx, uid) {
+  if ((await tx.get(db.doc(`deletionJobs/account_${uid}`))).exists) {
+    throw new HttpsError('failed-precondition', 'A conta está em exclusão.')
+  }
+}
+
 export const acceptLegalDocuments = onCall(options, async (request) => {
   const uid = requireUser(request)
   const error = validateAcceptance(request.data, manifest)
@@ -63,6 +75,7 @@ export const acceptLegalDocuments = onCall(options, async (request) => {
   const archive = db.doc(`legalVersions/${manifest.version}`)
   const profile = db.doc(`users/${uid}`)
   await db.runTransaction(async (tx) => {
+    await assertWritableAccount(tx, uid)
     const [previous, version, user, policy] = await tx.getAll(
       acceptance,
       archive,
@@ -116,6 +129,7 @@ export const submitSupportRequest = onCall(options, async (request) => {
   const ref = db.collection('supportRequests').doc()
   const throttle = db.doc(`supportLimits/${uid}`)
   await db.runTransaction(async (tx) => {
+    await assertWritableAccount(tx, uid)
     const limit = await tx.get(throttle)
     const now = Date.now()
     if (limit.exists && now - limit.data().lastRequestAt.toMillis() < 60000) {
@@ -174,6 +188,9 @@ export const decideSupportRequest = onCall(options, async (request) => {
   const ref = db.doc(`supportRequests/${requestId}`)
   const decisionRef = db.collection('moderationDecisions').doc()
   await db.runTransaction(async (tx) => {
+    if (communityId && (await tx.get(db.doc(`deletionJobs/community_${communityId}`))).exists) {
+      throw new HttpsError('failed-precondition', 'A comunidade está em exclusão.')
+    }
     const [admin, support] = await tx.getAll(db.doc(`users/${adminId}`), ref)
     if (admin.data()?.role !== 'superadmin')
       throw new HttpsError('permission-denied', 'Apenas administradores podem decidir.')
@@ -187,6 +204,7 @@ export const decideSupportRequest = onCall(options, async (request) => {
       )
     }
     if (targetUserId) {
+      await assertWritableAccount(tx, targetUserId)
       const target = await tx.get(db.doc(`users/${targetUserId}`))
       if (!target.exists || target.data().role === 'superadmin' || targetUserId === adminId) {
         throw new HttpsError('failed-precondition', 'Usuário inválido para esta medida.')
@@ -255,36 +273,10 @@ export const decideSupportRequest = onCall(options, async (request) => {
   return { id: decisionRef.id }
 })
 
-// O transporte do onCall serializa objetos genéricos em JSON simples, então um Timestamp
-// do Admin SDK não chega ao cliente como o Timestamp do SDK web (com .toMillis()) — vira
-// ISO string aqui para que utils/billing.js leia igual em qualquer origem dos dados.
-function serializeTimestamps(value) {
-  if (value?.toDate) return value.toDate().toISOString()
-  if (Array.isArray(value)) return value.map(serializeTimestamps)
-  if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, serializeTimestamps(v)]))
-  }
-  return value
-}
-
-// E-mail só existe no Authentication, não no Firestore — o painel admin precisa dele
-// para identificar contas (o @usuário pode ainda não ter sido definido).
+const accountsService = createAccountsService({ db, auth: authAdmin, FieldPath, HttpsError })
 export const listAccountsForAdmin = onCall(options, async (request) => {
-  const adminId = requireUser(request)
-  await requireSuperAdmin(adminId)
-  const snapshot = await db.collection('users').orderBy('createdAt', 'desc').get()
-  const accounts = await Promise.all(
-    snapshot.docs.map(async (docSnap) => {
-      let email = null
-      try {
-        email = (await authAdmin.getUser(docSnap.id)).email ?? null
-      } catch {
-        email = null
-      }
-      return { id: docSnap.id, ...serializeTimestamps(docSnap.data()), email }
-    })
-  )
-  return { accounts }
+  await requireSuperAdmin(requireUser(request))
+  return accountsService(request.data || {})
 })
 
 // Concede o trial uma única vez, com carimbos do servidor (nunca o relógio do
@@ -294,12 +286,14 @@ export const initializeTrial = onCall(options, async (request) => {
   const ref = db.doc(`users/${uid}`)
   const config = await db.doc('appConfig/billing').get()
   const trialDays = config.data()?.trialDays ?? DEFAULT_BILLING.trialDays
+  if (!Number.isInteger(trialDays) || trialDays < 0 || trialDays > 365)
+    throw new HttpsError('failed-precondition', 'Configuração de trial inválida.')
   await db.runTransaction(async (tx) => {
+    await assertWritableAccount(tx, uid)
     const user = await tx.get(ref)
     if (!user.exists) throw new HttpsError('failed-precondition', 'Finalize seu cadastro antes.')
     if (user.data().subscription) return
     tx.update(ref, {
-      accountStatus: 'active',
       subscription: {
         planId: null,
         trialStartedAt: FieldValue.serverTimestamp(),
@@ -324,23 +318,48 @@ export const confirmPayment = onCall(options, async (request) => {
   const adminId = requireUser(request)
   const error = validateConfirmPayment(request.data)
   if (error) throw new HttpsError('invalid-argument', error)
-  const { userId, planId } = request.data
+  const { userId, planId, operationId } = request.data
   const userRef = db.doc(`users/${userId}`)
-  const paymentRef = db.collection('payments').doc()
+  const paymentRef = db.doc(`payments/${operationId}`)
   await db.runTransaction(async (tx) => {
-    const [admin, user, plansDoc, config] = await tx.getAll(
+    await assertWritableAccount(tx, userId)
+    const [admin, user, plansDoc, config, previousPayment] = await tx.getAll(
       db.doc(`users/${adminId}`),
       userRef,
       db.doc('appConfig/plans'),
-      db.doc('appConfig/billing')
+      db.doc('appConfig/billing'),
+      paymentRef
     )
     if (admin.data()?.role !== 'superadmin') {
-      throw new HttpsError('permission-denied', 'Apenas administradores podem confirmar pagamentos.')
+      throw new HttpsError(
+        'permission-denied',
+        'Apenas administradores podem confirmar pagamentos.'
+      )
     }
     if (!user.exists) throw new HttpsError('not-found', 'Conta não encontrada.')
+    if (previousPayment.exists) {
+      const previous = previousPayment.data()
+      if (
+        previous.userId !== userId ||
+        previous.planId !== planId ||
+        previous.confirmedBy !== adminId
+      )
+        throw new HttpsError('already-exists', 'Identificador já utilizado em outro pagamento.')
+      return
+    }
     const plan = (plansDoc.data()?.plans || DEFAULT_BILLING.plans).find((p) => p.id === planId)
-    if (!plan) throw new HttpsError('invalid-argument', 'Plano não encontrado na configuração atual.')
+    if (!plan)
+      throw new HttpsError('invalid-argument', 'Plano não encontrado na configuração atual.')
     const graceBusinessDays = config.data()?.graceBusinessDays ?? DEFAULT_BILLING.graceBusinessDays
+    if (
+      !Number.isFinite(plan.price) ||
+      plan.price < 0 ||
+      plan.price > 100000 ||
+      !Number.isInteger(graceBusinessDays) ||
+      graceBusinessDays < 0 ||
+      graceBusinessDays > 30
+    )
+      throw new HttpsError('failed-precondition', 'Configuração de pagamento inválida.')
     const now = Date.now()
     const subscription = user.data().subscription || {}
     const anchorDay = subscription.billingAnchorDay ?? new Date(now).getUTCDate()
@@ -351,9 +370,10 @@ export const confirmPayment = onCall(options, async (request) => {
     const nextPaymentAtMillis = computeNextPaymentDate(anchorFrom, anchorDay)
     const graceEndsAtMillis = addBusinessDays(nextPaymentAtMillis, graceBusinessDays)
     tx.update(userRef, {
-      accountStatus: 'active',
       subscription: {
         ...subscription,
+        trialEndsAt: subscription.trialEndsAt || Timestamp.fromMillis(now),
+        billingCycle: 'monthly',
         planId,
         billingAnchorDay: anchorDay,
         paidAt: FieldValue.serverTimestamp(),
@@ -375,7 +395,7 @@ export const confirmPayment = onCall(options, async (request) => {
       referenceDueDate: Timestamp.fromMillis(nextPaymentAtMillis),
     })
   })
-  return { id: paymentRef.id }
+  return { id: paymentRef.id, account: accountView(userId, (await userRef.get()).data()) }
 })
 
 // Ativar/desativar é um estado administrativo separado do estado de assinatura (ver
@@ -387,6 +407,7 @@ export const setAccountStatus = onCall(options, async (request) => {
   const { userId, disabled, reason = '' } = request.data
   const userRef = db.doc(`users/${userId}`)
   await db.runTransaction(async (tx) => {
+    await assertWritableAccount(tx, userId)
     const [admin, user] = await tx.getAll(db.doc(`users/${adminId}`), userRef)
     if (admin.data()?.role !== 'superadmin') {
       throw new HttpsError('permission-denied', 'Apenas administradores podem alterar contas.')
@@ -407,52 +428,67 @@ export const setAccountStatus = onCall(options, async (request) => {
         : { accountStatus: 'active', disabledAt: null, disabledBy: null, disabledReason: null }
     )
   })
-  return { ok: true }
+  return { account: accountView(userId, (await userRef.get()).data()) }
 })
 
-// Exclusão permanente: operação crítica, só pelo SUPERADMIN, nunca resolvida
-// apenas no frontend. Remove a conta da autenticação e todos os dados relacionados
-// mapeados nas regras (subcoleções de users/ e publicProfiles/, reserva de @usuário,
-// restrições, filiações a comunidades e publicações do próprio usuário) para não
-// deixar documentos órfãos. Histórico financeiro (payments) é preservado por exigência
-// contábil, como decisões de moderação — mesma lógica já aplicada a esses registros.
+const deletions = createDeletionService({ db, auth: authAdmin, FieldValue, Timestamp, HttpsError })
+
 export const deleteAccountPermanently = onCall(options, async (request) => {
   const adminId = requireUser(request)
   const error = validateDeleteAccount(request.data)
   if (error) throw new HttpsError('invalid-argument', error)
-  const { userId } = request.data
-  if (userId === adminId) {
-    throw new HttpsError('failed-precondition', 'Você não pode excluir a própria conta.')
+  return deletions.queue('account', request.data.userId, adminId)
+})
+
+export const deleteCommunityPermanently = onCall(options, async (request) => {
+  const adminId = requireUser(request)
+  if (!validId(request.data?.communityId))
+    throw new HttpsError('invalid-argument', 'Comunidade inválida.')
+  return deletions.queue('community', request.data.communityId, adminId)
+})
+
+export const cleanupDeletedStatus = onDocumentDeleted(
+  { ...options, document: 'statuses/{id}', retry: true },
+  (event) => deletions.queueDeleted('status', event.params.id)
+)
+export const cleanupDeletedCommunity = onDocumentDeleted(
+  { ...options, document: 'communities/{id}', retry: true },
+  (event) => deletions.queueDeleted('community', event.params.id)
+)
+
+export const processDeletionJobs = onSchedule(
+  { ...options, schedule: 'every 1 minutes', timeoutSeconds: 300 },
+  async () => {
+    const jobs = await db
+      .collection('deletionJobs')
+      .where('state', '==', 'pending')
+      .orderBy('updatedAt')
+      .limit(10)
+      .get()
+    for (const job of jobs.docs) {
+      try {
+        await deletions.step(job.ref)
+      } catch (error) {
+        console.error('Deletion job failed', job.id, error.code)
+      }
+    }
   }
-  await requireSuperAdmin(adminId)
-  const userRef = db.doc(`users/${userId}`)
-  const userSnap = await userRef.get()
-  if (!userSnap.exists) throw new HttpsError('not-found', 'Conta não encontrada.')
-  if (userSnap.data().role === 'superadmin') {
-    throw new HttpsError('failed-precondition', 'Não é possível excluir outro administrador.')
+)
+
+export const listDeletionJobs = onCall(options, async (request) => {
+  await requireSuperAdmin(requireUser(request))
+  const jobs = await db
+    .collection('deletionJobs')
+    .where('state', '==', 'pending')
+    .orderBy('updatedAt')
+    .limit(50)
+    .get()
+  return {
+    jobs: jobs.docs.map((job) => ({
+      id: job.id,
+      kind: job.data().kind,
+      targetId: job.data().targetId,
+      lastError: job.data().lastError || null,
+    })),
   }
-
-  const username = userSnap.data().username
-  const batch = db.batch()
-  if (username) batch.delete(db.doc(`usernames/${username}`))
-  batch.delete(db.doc(`accountRestrictions/${userId}`))
-  batch.delete(db.doc(`supportLimits/${userId}`))
-  await batch.commit()
-
-  const [memberships, statuses] = await Promise.all([
-    db.collection('communityMembers').where('userId', '==', userId).get(),
-    db.collection('statuses').where('authorId', '==', userId).get(),
-  ])
-  await Promise.all(memberships.docs.map((doc) => db.recursiveDelete(doc.ref)))
-  await Promise.all(statuses.docs.map((doc) => db.recursiveDelete(doc.ref)))
-  await db.recursiveDelete(db.doc(`publicProfiles/${userId}`))
-  await db.recursiveDelete(userRef)
-
-  try {
-    await authAdmin.deleteUser(userId)
-  } catch (err) {
-    if (err.code !== 'auth/user-not-found') throw err
-  }
-
-  return { ok: true }
 })

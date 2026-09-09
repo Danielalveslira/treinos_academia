@@ -56,6 +56,7 @@ export function getSubscriptionState(subscription, nowMillis = Date.now()) {
 export function validateConfirmPayment(data) {
   if (!validId(data?.userId)) return 'Usuário inválido.'
   if (!validId(data?.planId)) return 'Selecione um plano válido.'
+  if (!validId(data?.operationId)) return 'Identificador da operação inválido.'
   return null
 }
 

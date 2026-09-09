@@ -81,14 +81,14 @@ export async function ensureUserProfile(userId) {
   const ref = userRef(userId)
   const snapshot = await getDoc(ref)
   if (snapshot.exists() && snapshot.data().publicProfileVersion === 1) {
-    return { id: snapshot.id, ...snapshot.data() }
+    return { ...snapshot.data(), id: snapshot.id }
   }
   // Cadastro e listener de autenticação podem chegar juntos: reler na transação
   // impede que uma inicialização atrasada sobrescreva um nome ou preferência novos.
   return runTransaction(db, async (tx) => {
     const current = await tx.get(ref)
     const data = current.exists() ? current.data() : { role: 'user', createdAt: serverTimestamp() }
-    if (data.publicProfileVersion === 1) return { id: userId, ...data }
+    if (data.publicProfileVersion === 1) return { ...data, id: userId }
     const profile = { ...data, publicProfileVersion: 1, shareStatistics: false }
     tx.set(ref, profile)
     tx.set(doc(db, 'publicProfiles', userId), {
@@ -96,7 +96,7 @@ export async function ensureUserProfile(userId) {
       bio: data.bio || null,
       shareStatistics: false,
     })
-    return { id: userId, ...profile }
+    return { ...profile, id: userId }
   })
 }
 

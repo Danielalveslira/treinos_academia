@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { Button, Flash, FormControl, Select, Spinner, Textarea, TextInput } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
@@ -16,7 +17,15 @@ const ACTIONS = {
 
 export default function AdminModeration() {
   const { user } = useAuth()
-  const { requests, loading, error: loadError, refresh } = useSupport(user.uid, true)
+  const [state, setState] = useState('open')
+  const {
+    requests,
+    loading,
+    hasMore,
+    loadMore,
+    error: loadError,
+    refresh,
+  } = useSupport(user.uid, true, state)
   const [selected, setSelected] = useState(null)
   const [draft, setDraft] = useState({})
   const [saving, setSaving] = useState(false)
@@ -59,6 +68,16 @@ export default function AdminModeration() {
         Decisões exigem regra, evidências e fundamentação. Remoções e restrições são aplicadas ao
         confirmar o formulário.
       </p>
+      {!selected && (
+        <FormControl>
+          <FormControl.Label>Mostrar pedidos</FormControl.Label>
+          <Select value={state} onChange={(event) => setState(event.target.value)}>
+            <Select.Option value="open">Em análise</Select.Option>
+            <Select.Option value="closed">Respondidos</Select.Option>
+            <Select.Option value="">Todos</Select.Option>
+          </Select>
+        </FormControl>
+      )}
       {loading && <Spinner aria-label="Carregando pedidos" />}
       {loadError && (
         <Flash variant="danger">
@@ -69,6 +88,9 @@ export default function AdminModeration() {
         requests.map((item) => (
           <article className="support-card" key={item.id}>
             <h2>Pedido {item.id}</h2>
+            <Link to={`/admin/contas?usuario=${encodeURIComponent(item.userId)}`}>
+              Ver conta do solicitante
+            </Link>
             <p>
               Tipo: {item.kind} · {item.state === 'open' ? 'Em análise' : 'Respondido'}
             </p>
@@ -77,6 +99,11 @@ export default function AdminModeration() {
             {item.state === 'open' && <Button onClick={() => select(item)}>Analisar pedido</Button>}
           </article>
         ))}
+      {!selected && hasMore && (
+        <Button onClick={loadMore} disabled={loading}>
+          Carregar mais pedidos
+        </Button>
+      )}
       {selected && (
         <form className="support-form" onSubmit={submit}>
           <h2>Decisão do pedido {selected.id}</h2>

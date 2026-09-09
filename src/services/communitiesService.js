@@ -2,7 +2,6 @@ import {
   collection,
   addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -11,8 +10,10 @@ import {
   orderBy,
   limit,
   serverTimestamp,
+  startAfter,
 } from 'firebase/firestore'
-import { db } from '../firebase/config'
+import { db, functions } from '../firebase/config'
+import { httpsCallable } from 'firebase/functions'
 
 // Teto de defesa: comunidades só são criadas pelo superadmin pelo painel, mas sem isso
 // a leitura escala com o tamanho da coleção — bem acima de qualquer uso real do app.
@@ -37,10 +38,14 @@ export async function listActiveCommunities() {
   return snapshot.docs.map(toDoc)
 }
 
-export async function listAllCommunities() {
-  const q = query(communitiesRef(), orderBy('name'), limit(MAX_COMMUNITIES))
-  const snapshot = await getDocs(q)
-  return snapshot.docs.map(toDoc)
+export async function listCommunitiesPage(cursor = null, pageSize = 25) {
+  const constraints = [orderBy('name')]
+  if (cursor) constraints.push(startAfter(cursor))
+  const snapshot = await getDocs(query(communitiesRef(), ...constraints, limit(pageSize)))
+  return {
+    items: snapshot.docs.map(toDoc),
+    nextCursor: snapshot.size === pageSize ? snapshot.docs.at(-1) : null,
+  }
 }
 
 export async function getCommunity(communityId) {
@@ -74,5 +79,5 @@ export function setCommunityActive(communityId, isActive) {
 }
 
 export function deleteCommunity(communityId) {
-  return deleteDoc(doc(db, 'communities', communityId))
+  return httpsCallable(functions, 'deleteCommunityPermanently')({ communityId })
 }

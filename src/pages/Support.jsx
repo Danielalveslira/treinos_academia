@@ -28,7 +28,15 @@ export default function Support() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [saving, setSaving] = useState(false)
-  const { requests, notices, loading, error: loadError, refresh } = useSupport(user?.uid)
+  const {
+    requests,
+    notices,
+    hasMore,
+    loadMore,
+    loading,
+    error: loadError,
+    refresh,
+  } = useSupport(user?.uid)
 
   async function submit(e) {
     e.preventDefault()
@@ -216,11 +224,10 @@ export default function Support() {
                   )}
                 </article>
               ))}
-              {requests.length === 50 && (
-                <p>
-                  Exibindo os 50 pedidos mais recentes. Informe o protocolo no atendimento para
-                  consultar um pedido anterior.
-                </p>
+              {hasMore && (
+                <Button onClick={loadMore} disabled={loading}>
+                  Carregar mais pedidos
+                </Button>
               )}
             </section>
           </>

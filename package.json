@@ -12,7 +12,7 @@
     "format": "prettier --write \"src/**/*.{js,jsx}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx}\"",
     "emulators": "firebase emulators:start --only auth,firestore --project demo",
-    "test:rules": "node --test tests/profile-rules.test.mjs"
+    "test:rules": "node --test tests/*rules.test.mjs"
   },
   "dependencies": {
     "@primer/octicons-react": "^19.35.0",

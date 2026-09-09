@@ -121,6 +121,7 @@ export async function getPollResults(statusId, optionIds) {
 export function voteOnPoll(statusId, userId, optionId) {
   return setDoc(doc(db, 'statuses', statusId, 'votes', userId), {
     optionId,
+    userId,
     createdAt: serverTimestamp(),
   })
 }
@@ -138,6 +139,7 @@ export async function countParticipants(statusId) {
 
 export function joinWorkout(statusId, userId) {
   return setDoc(doc(db, 'statuses', statusId, 'participants', userId), {
+    userId,
     joinedAt: serverTimestamp(),
   })
 }

@@ -83,7 +83,117 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "deletionJobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "state",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "supportRequests",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "state",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "votes",
+      "fieldPath": "userId",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "participants",
+      "fieldPath": "userId",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "supportRequests",
+      "fieldPath": "message",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "supportRequests",
+      "fieldPath": "response",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "supportRequests",
+      "fieldPath": "contentSnapshot",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "moderationDecisions",
+      "fieldPath": "reason",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "moderationDecisions",
+      "fieldPath": "evidence",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "moderationDecisions",
+      "fieldPath": "rule",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "users",
+      "fieldPath": "bio",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "users",
+      "fieldPath": "disabledReason",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "statuses",
+      "fieldPath": "text",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "workouts",
+      "fieldPath": "note",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "workouts",
+      "fieldPath": "setDetails",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "deletionJobs",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    }
+  ]
 }

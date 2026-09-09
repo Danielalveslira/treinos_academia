@@ -70,7 +70,7 @@ test('getSubscriptionState after payment: active, due, grace, then blocked', () 
 test('validateConfirmPayment requires a valid userId and planId', () => {
   assert.match(validateConfirmPayment({}), /Usuário inválido/)
   assert.match(validateConfirmPayment({ userId: 'u1' }), /plano/)
-  assert.equal(validateConfirmPayment({ userId: 'u1', planId: 'basico' }), null)
+  assert.equal(validateConfirmPayment({ userId: 'u1', planId: 'basico', operationId: 'op1' }), null)
 })
 
 test('validateSetAccountStatus requires a reason only when disabling', () => {

@@ -1,0 +1,203 @@
+// Durable deletion jobs double as write fences. Completed account jobs remain as
+// tombstones so an old authentication token cannot recreate the deleted profile.
+export function createDeletionService({ db, auth, FieldValue, Timestamp, HttpsError }) {
+  const jobRef = (kind, id) => db.doc(`deletionJobs/${kind}_${id}`)
+  const batchSize = 100
+
+  async function queue(kind, id, adminId) {
+    const job = jobRef(kind, id)
+    await db.runTransaction(async (tx) => {
+      const target = db.doc(`${kind === 'account' ? 'users' : 'communities'}/${id}`)
+      const [admin, previous, entity, migration] = await tx.getAll(
+        db.doc(`users/${adminId}`),
+        job,
+        target,
+        db.doc('maintenance/adminV1')
+      )
+      if (admin.data()?.role !== 'superadmin')
+        throw new HttpsError('permission-denied', 'Acesso administrativo necessário.')
+      if (kind === 'account' && id === adminId)
+        throw new HttpsError('failed-precondition', 'Você não pode excluir a própria conta.')
+      if (entity.data()?.role === 'superadmin')
+        throw new HttpsError('failed-precondition', 'Não é possível excluir um administrador.')
+      if (previous.exists) return
+      if (!entity.exists && kind !== 'account')
+        throw new HttpsError('not-found', 'Registro não encontrado.')
+      if (kind === 'account' && migration.data()?.interactionsVersion !== 1) {
+        throw new HttpsError(
+          'failed-precondition',
+          'A preparação dos dados antigos ainda não foi concluída.'
+        )
+      }
+      tx.create(job, {
+        kind,
+        targetId: id,
+        requestedBy: adminId,
+        state: 'pending',
+        stage: 0,
+        updatedAt: FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+      })
+      if (entity.exists)
+        tx.update(
+          target,
+          kind === 'account'
+            ? { accountStatus: 'deleting' }
+            : { isActive: false, deletionStatus: 'pending' }
+        )
+    })
+    return { pending: true, id: job.id }
+  }
+
+  async function eraseQuery(query) {
+    const page = await query.limit(batchSize).get()
+    if (page.empty) return true
+    const batch = db.batch()
+    page.docs.forEach((item) => batch.delete(item.ref))
+    await batch.commit()
+    return false
+  }
+
+  // A status is removed first; its deletion trigger queues a job that drains its
+  // children. Child writes require the parent to exist and cannot race cleanup.
+  async function removeStatuses(query) {
+    const page = await query.limit(batchSize).get()
+    if (page.empty) return true
+    const batch = db.batch()
+    page.docs.forEach((item) => {
+      batch.delete(item.ref)
+      batch.set(
+        jobRef('status', item.id),
+        {
+          kind: 'status',
+          targetId: item.id,
+          state: 'pending',
+          stage: 0,
+          updatedAt: FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      )
+    })
+    await batch.commit()
+    return false
+  }
+
+  async function step(ref) {
+    const token = db.collection('deletionJobs').doc().id
+    const job = await db.runTransaction(async (tx) => {
+      const snapshot = await tx.get(ref)
+      const data = snapshot.data()
+      if (!data || data.state === 'complete' || data.leaseUntil?.toMillis() > Date.now())
+        return null
+      tx.update(ref, { leaseToken: token, leaseUntil: Timestamp.fromMillis(Date.now() + 120000) })
+      return data
+    })
+    if (!job) return
+    try {
+      const uid = job.targetId
+      let tasks
+      if (job.kind === 'account') {
+        tasks = [
+          async () => {
+            try {
+              await auth.updateUser(uid, { disabled: true })
+              await auth.revokeRefreshTokens(uid)
+            } catch (error) {
+              if (error.code !== 'auth/user-not-found') throw error
+            }
+            return true
+          },
+          () => eraseQuery(db.collection('communityMembers').where('userId', '==', uid)),
+          () => eraseQuery(db.collection('communityRestrictions').where('userId', '==', uid)),
+          () => eraseQuery(db.collectionGroup('votes').where('userId', '==', uid)),
+          () => eraseQuery(db.collectionGroup('participants').where('userId', '==', uid)),
+          () => removeStatuses(db.collection('statuses').where('authorId', '==', uid)),
+          () => eraseQuery(db.collection('usernames').where('uid', '==', uid)),
+          ...['workouts', 'exercises', 'legalAcceptances', 'notices'].map(
+            (name) => () => eraseQuery(db.collection(`users/${uid}/${name}`))
+          ),
+          () => eraseQuery(db.collection(`publicProfiles/${uid}/statistics`)),
+          async () => {
+            try {
+              await auth.deleteUser(uid)
+            } catch (error) {
+              if (error.code !== 'auth/user-not-found') throw error
+            }
+            return true
+          },
+          async () => {
+            const batch = db.batch()
+            for (const path of [
+              `users/${uid}`,
+              `publicProfiles/${uid}`,
+              `accountRestrictions/${uid}`,
+              `supportLimits/${uid}`,
+            ])
+              batch.delete(db.doc(path))
+            await batch.commit()
+            return true
+          },
+        ]
+      } else if (job.kind === 'community') {
+        tasks = [
+          () => eraseQuery(db.collection('communityMembers').where('communityId', '==', uid)),
+          () => eraseQuery(db.collection('communityRestrictions').where('communityId', '==', uid)),
+          () => removeStatuses(db.collection('statuses').where('communityId', '==', uid)),
+          async () => {
+            await db.doc(`communities/${uid}`).delete()
+            return true
+          },
+        ]
+      } else {
+        tasks = ['votes', 'participants'].map(
+          (name) => () => eraseQuery(db.collection(`statuses/${uid}/${name}`))
+        )
+      }
+      let stage = job.stage || 0
+      // Bound each invocation to one nonempty batch, while skipping empty stages.
+      while (stage < tasks.length && (await tasks[stage]())) stage++
+      await db.runTransaction(async (tx) => {
+        const current = await tx.get(ref)
+        if (current.data()?.leaseToken !== token) return
+        tx.update(ref, {
+          stage,
+          state: stage === tasks.length ? 'complete' : 'pending',
+          leaseUntil: Timestamp.fromMillis(0),
+          lastError: null,
+          ...(stage === tasks.length && job.kind !== 'account'
+            ? { expireAt: Timestamp.fromMillis(Date.now() + 7 * 86400000) }
+            : {}),
+          updatedAt: FieldValue.serverTimestamp(),
+        })
+      })
+    } catch (error) {
+      await db.runTransaction(async (tx) => {
+        const current = await tx.get(ref)
+        if (current.data()?.leaseToken !== token) return
+        tx.update(ref, {
+          leaseUntil: Timestamp.fromMillis(0),
+          lastError: String(error.code || 'internal'),
+          updatedAt: FieldValue.serverTimestamp(),
+        })
+      })
+      throw error
+    }
+  }
+
+  async function queueDeleted(kind, id) {
+    const ref = jobRef(kind, id)
+    await db.runTransaction(async (tx) => {
+      if ((await tx.get(ref)).exists) return
+      tx.create(ref, {
+        kind,
+        targetId: id,
+        state: 'pending',
+        stage: 0,
+        updatedAt: FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+      })
+    })
+  }
+  return { queue, step, queueDeleted }
+}
