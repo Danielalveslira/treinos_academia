@@ -38,6 +38,10 @@ export function LegalGate({ children }) {
   const outdated =
     access &&
     (access.policy?.version !== LEGAL_MANIFEST.version || access.policy?.published !== true)
+  // Superadmin nunca fica trancado por uma versão ainda não publicada em
+  // legalPolicy/current: precisa sempre poder chegar ao painel para publicá-la. Uma
+  // vez publicada, o aceite normal continua exigido (regra em firestore.rules).
+  if (outdated && profile?.role === 'superadmin') return children
   if (
     access &&
     !restricted &&
