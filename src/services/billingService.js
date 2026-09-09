@@ -91,3 +91,9 @@ export async function listAccountsPage(filters = {}) {
 export async function listDeletionJobs() {
   return (await httpsCallable(functions, 'listDeletionJobs')()).data.jobs
 }
+
+// TEMPORARY: drives the one-time migration in docs/admin-maintenance.md. Remove
+// alongside the runAdminMigration function once it is applied in production.
+export async function runAdminMigration(apply = false) {
+  return (await httpsCallable(functions, 'runAdminMigration')({ apply })).data
+}

@@ -2,6 +2,7 @@ import { createAccountsService } from './accounts-service.js'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { onDocumentDeleted } from 'firebase-functions/v2/firestore'
 import { createDeletionService } from './deletion-service.js'
+import { migrateAdmin } from './admin-migration.js'
 import { validId } from './legal-core.js'
 import { accountView } from './admin-core.js'
 import { readFileSync } from 'node:fs'
@@ -472,6 +473,17 @@ export const processDeletionJobs = onSchedule(
         console.error('Deletion job failed', job.id, error.code)
       }
     }
+  }
+)
+
+// TEMPORARY: one-time maintenance endpoint for the interactions migration in
+// docs/admin-maintenance.md. Remove this function once maintenance/adminV1
+// .interactionsVersion is set to 1 in production.
+export const runAdminMigration = onCall(
+  { ...options, timeoutSeconds: 300 },
+  async (request) => {
+    await requireSuperAdmin(requireUser(request))
+    return migrateAdmin({ db, FieldPath, FieldValue, apply: !!request.data?.apply })
   }
 )
 
