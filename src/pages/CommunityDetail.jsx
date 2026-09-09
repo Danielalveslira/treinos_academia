@@ -95,7 +95,8 @@ export default function CommunityDetail() {
   }
 
   async function handleCreateStatus(values) {
-    const author = { id: user.uid, username: profile?.username || null }
+    const author = { id: user.uid, username: profile?.username || null, role: profile?.role }
+    const authorIsSuperAdmin = author.role === 'superadmin'
     const expiresAt = new Date(Date.now() + STATUS_LIFETIME_MS)
     try {
       if (values.type === 'achievement') {
@@ -105,6 +106,7 @@ export default function CommunityDetail() {
           communityId: id,
           authorId: author.id,
           authorUsername: author.username,
+          authorIsSuperAdmin,
           type: 'achievement',
           achievement: values.achievement,
           createdAt: new Date(),
@@ -117,6 +119,7 @@ export default function CommunityDetail() {
           communityId: id,
           authorId: author.id,
           authorUsername: author.username,
+          authorIsSuperAdmin,
           type: 'text',
           text: values.text.trim(),
           createdAt: new Date(),
@@ -129,6 +132,7 @@ export default function CommunityDetail() {
           communityId: id,
           authorId: author.id,
           authorUsername: author.username,
+          authorIsSuperAdmin,
           type: 'poll',
           poll: {
             question: values.question.trim(),
@@ -144,6 +148,7 @@ export default function CommunityDetail() {
           communityId: id,
           authorId: author.id,
           authorUsername: author.username,
+          authorIsSuperAdmin,
           type: 'workout',
           workout: {
             title: values.title.trim(),
@@ -179,6 +184,7 @@ export default function CommunityDetail() {
   }
 
   const loading = loadingCommunity || loadingFeed
+  const canPost = isSuperAdmin || community?.postAccess !== 'admins'
 
   return (
     <Box className="community-page">
@@ -242,26 +248,38 @@ export default function CommunityDetail() {
                     <Button onClick={refreshFeed} loading={loadingFeed} disabled={loadingFeed}>
                       Atualizar
                     </Button>
-                    <Button
-                      leadingVisual={PlusIcon}
-                      variant="primary"
-                      onClick={() => setFormOpen('status')}
-                    >
-                      Publicar
-                    </Button>
-                    <Button leadingVisual={TrophyIcon} onClick={() => setFormOpen('achievement')}>
-                      Conquista do dia
-                    </Button>
+                    {canPost && (
+                      <>
+                        <Button
+                          leadingVisual={PlusIcon}
+                          variant="primary"
+                          onClick={() => setFormOpen('status')}
+                        >
+                          Publicar
+                        </Button>
+                        <Button
+                          leadingVisual={TrophyIcon}
+                          onClick={() => setFormOpen('achievement')}
+                        >
+                          Conquista do dia
+                        </Button>
+                      </>
+                    )}
                   </Box>
                 </Box>
               )}
-              {formOpen === 'achievement' && (
+              {!canPost && (
+                <Text sx={{ display: 'block', color: 'fg.muted', fontSize: 1, mb: 3 }}>
+                  Somente o superadmin pode publicar nesta comunidade.
+                </Text>
+              )}
+              {canPost && formOpen === 'achievement' && (
                 <AchievementForm
                   onSubmit={handleCreateStatus}
                   onCancel={() => setFormOpen(false)}
                 />
               )}
-              {formOpen === 'status' && (
+              {canPost && formOpen === 'status' && (
                 <StatusForm onSubmit={handleCreateStatus} onCancel={() => setFormOpen(false)} />
               )}
 

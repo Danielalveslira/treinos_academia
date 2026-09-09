@@ -28,6 +28,7 @@ import {
 let env
 let owner
 let visitor
+let admin
 before(async () => {
   env = await initializeTestEnvironment({
     projectId: 'demo-treinos',
@@ -40,6 +41,7 @@ before(async () => {
   await env.clearFirestore()
   owner = env.authenticatedContext('owner').firestore()
   visitor = env.authenticatedContext('visitor').firestore()
+  admin = env.authenticatedContext('admin').firestore()
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore()
     await setDoc(doc(db, 'users/owner'), {
@@ -52,12 +54,20 @@ before(async () => {
       role: 'user',
       subscription: { paidAt: null, trialEndsAt: Timestamp.fromMillis(Date.now() + 86400000) },
     })
+    await setDoc(doc(db, 'users/admin'), {
+      role: 'superadmin',
+      subscription: { paidAt: null, trialEndsAt: Timestamp.fromMillis(Date.now() + 86400000) },
+    })
     await setDoc(doc(db, 'publicProfiles/owner'), {
       username: 'owner',
       bio: 'Treino com constância',
       shareStatistics: false,
     })
     await setDoc(doc(db, 'communities/gym'), { isActive: true })
+    await setDoc(doc(db, 'communities/announcements'), {
+      isActive: true,
+      postAccess: 'admins',
+    })
     await setDoc(doc(db, 'communityMembers/gym_owner'), {
       userId: 'owner',
       communityId: 'gym',
@@ -66,6 +76,21 @@ before(async () => {
     await setDoc(doc(db, 'communityMembers/gym_visitor'), {
       userId: 'visitor',
       communityId: 'gym',
+      joinedAt: Timestamp.now(),
+    })
+    await setDoc(doc(db, 'communityMembers/gym_admin'), {
+      userId: 'admin',
+      communityId: 'gym',
+      joinedAt: Timestamp.now(),
+    })
+    await setDoc(doc(db, 'communityMembers/announcements_owner'), {
+      userId: 'owner',
+      communityId: 'announcements',
+      joinedAt: Timestamp.now(),
+    })
+    await setDoc(doc(db, 'communityMembers/announcements_admin'), {
+      userId: 'admin',
+      communityId: 'announcements',
       joinedAt: Timestamp.now(),
     })
     await setDoc(doc(db, 'users/owner/workouts/a'), {
@@ -133,6 +158,7 @@ test('achievement publication requires membership and safe payload; author may d
     communityId: 'gym',
     authorId: 'owner',
     authorUsername: 'owner',
+    authorIsSuperAdmin: false,
     type: 'achievement',
     achievement,
     createdAt: serverTimestamp(),
@@ -155,6 +181,66 @@ test('achievement publication requires membership and safe payload; author may d
   await assertFails(setDoc(doc(outsider, 'statuses/outsider'), status({ authorId: 'outsider' })))
   await assertFails(deleteDoc(doc(visitor, 'statuses/achievement')))
   await assertSucceeds(deleteDoc(ref))
+})
+
+test('the superadmin badge is stamped by the server, never by the client payload', async () => {
+  const status = (overrides = {}) => ({
+    communityId: 'gym',
+    authorId: 'owner',
+    authorUsername: 'owner',
+    authorIsSuperAdmin: false,
+    type: 'text',
+    text: 'Bom treino hoje!',
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+    ...overrides,
+  })
+  // A regular user claiming the badge for themselves is rejected outright.
+  await assertFails(setDoc(doc(owner, 'statuses/fakebadge'), status({ authorIsSuperAdmin: true })))
+  // Omitting the field entirely is just as invalid as lying about it.
+  const { authorIsSuperAdmin: _omit, ...withoutBadge } = status()
+  await assertFails(setDoc(doc(owner, 'statuses/nobadge'), withoutBadge))
+  // The real superadmin must claim the badge (false would misrepresent who posted).
+  await assertFails(
+    setDoc(
+      doc(admin, 'statuses/underclaim'),
+      status({ authorId: 'admin', authorUsername: 'admin', authorIsSuperAdmin: false })
+    )
+  )
+  await assertSucceeds(
+    setDoc(
+      doc(admin, 'statuses/realbadge'),
+      status({ authorId: 'admin', authorUsername: 'admin', authorIsSuperAdmin: true })
+    )
+  )
+  assert.equal((await getDoc(doc(admin, 'statuses/realbadge'))).data().authorIsSuperAdmin, true)
+})
+
+test('community postAccess restricts who may publish, enforced server-side', async () => {
+  const status = (authorId, authorIsSuperAdmin, overrides = {}) => ({
+    communityId: 'announcements',
+    authorId,
+    authorUsername: authorId,
+    authorIsSuperAdmin,
+    type: 'text',
+    text: 'Aviso oficial.',
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+    ...overrides,
+  })
+  // A member who isn't superadmin cannot post in a restricted community...
+  await assertFails(setDoc(doc(owner, 'statuses/blocked'), status('owner', false)))
+  // ...not even by lying about the badge to sneak past the check.
+  await assertFails(setDoc(doc(owner, 'statuses/blockedlie'), status('owner', true)))
+  // The superadmin can.
+  await assertSucceeds(setDoc(doc(admin, 'statuses/allowed'), status('admin', true)))
+  // A community without postAccess (legacy/default) stays open to every member.
+  await assertSucceeds(
+    setDoc(
+      doc(owner, 'statuses/opengym'),
+      { ...status('owner', false), communityId: 'gym' }
+    )
+  )
 })
 
 test('individual workout sets are validated at every position and preserve aggregate counts', async () => {

@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Box, Text, Button, IconButton } from '@primer/react'
-import { TrashIcon, PersonIcon, LocationIcon, ClockIcon } from '@primer/octicons-react'
+import {
+  TrashIcon,
+  PersonIcon,
+  LocationIcon,
+  ClockIcon,
+  ShieldCheckIcon,
+} from '@primer/octicons-react'
 import {
   getMyVote,
   getPollResults,
@@ -19,6 +25,27 @@ import { getCached, setCached } from '../utils/pageCache'
 
 function toDate(value) {
   return value?.toDate ? value.toDate() : new Date(value)
+}
+
+// Selo dourado e discreto — o valor vem de authorIsSuperAdmin, gravado no status e
+// conferido pelo servidor no momento da publicação (ver firestore.rules e
+// statusesService.js), nunca de um campo que o próprio cliente poderia forjar.
+function SuperAdminBadge() {
+  return (
+    <Box
+      as="span"
+      title="Superadmin"
+      aria-label="Superadmin"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        flexShrink: 0,
+        color: 'attention.fg',
+      }}
+    >
+      <ShieldCheckIcon size={14} />
+    </Box>
+  )
 }
 
 function StatusHeader({ status, now, canDelete, onDelete }) {
@@ -44,9 +71,12 @@ function StatusHeader({ status, now, canDelete, onDelete }) {
         {initial}
       </Box>
       <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Link to={`/comunidades/perfil/${status.authorId}`} className="status-author">
-          {status.authorUsername ? `@${status.authorUsername}` : 'Membro'}
-        </Link>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Link to={`/comunidades/perfil/${status.authorId}`} className="status-author">
+            {status.authorUsername ? `@${status.authorUsername}` : 'Membro'}
+          </Link>
+          {status.authorIsSuperAdmin && <SuperAdminBadge />}
+        </Box>
         <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted' }}>
           {formatDateTime(toDate(status.createdAt))}
         </Text>

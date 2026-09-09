@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { Box, Button, FormControl, TextInput, Select, Textarea, Stack } from '@primer/react'
 import { validateCommunity, hasErrors } from '../utils/validators'
 
-const EMPTY = { name: '', description: '' }
+const EMPTY = { name: '', description: '', postAccess: 'everyone' }
 
 export function CommunityForm({ initialValue, onSubmit, onCancel }) {
-  const [values, setValues] = useState(initialValue || EMPTY)
+  const [values, setValues] = useState(initialValue ? { ...EMPTY, ...initialValue } : EMPTY)
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -58,6 +58,22 @@ export function CommunityForm({ initialValue, onSubmit, onCancel }) {
           {errors.description && (
             <FormControl.Validation variant="error">{errors.description}</FormControl.Validation>
           )}
+        </FormControl>
+
+        <FormControl>
+          <FormControl.Label>Quem pode publicar</FormControl.Label>
+          <Select
+            value={values.postAccess}
+            onChange={(e) => setField('postAccess', e.target.value)}
+            block
+          >
+            <Select.Option value="everyone">Todos os membros</Select.Option>
+            <Select.Option value="admins">Somente superadmin</Select.Option>
+          </Select>
+          <FormControl.Caption>
+            Com "Somente superadmin", membros comuns só podem visualizar as publicações
+            (ex: uma comunidade de avisos oficiais).
+          </FormControl.Caption>
         </FormControl>
 
         {initialValue && (

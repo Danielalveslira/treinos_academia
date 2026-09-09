@@ -163,11 +163,14 @@ export default function AdminCommunities() {
               </Box>
 
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                   <Text sx={{ fontWeight: 'bold' }}>{community.name}</Text>
                   <Label variant={community.isActive ? 'success' : 'secondary'}>
                     {community.isActive ? 'Ativa' : 'Inativa'}
                   </Label>
+                  {community.postAccess === 'admins' && (
+                    <Label variant="attention">Publicação restrita</Label>
+                  )}
                 </Box>
                 <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
                   {memberCounts[community.id] ?? 0} membros

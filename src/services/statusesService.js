@@ -51,11 +51,15 @@ export async function listCommunityFeed(communityId, pageSize = FEED_PAGE_SIZE) 
 // authorUsername é gravado no próprio status (denormalizado) para o feed poder mostrar
 // quem publicou sem precisar de 1 leitura extra em "users" por item exibido. Nunca o
 // e-mail: é um dado sensível e não deveria aparecer publicamente na comunidade.
+// authorIsSuperAdmin (selo dourado) é só a conveniência de exibição — o valor real é
+// conferido pelo servidor (firestore.rules: authorIsSuperAdmin == isSuperAdmin()),
+// então um usuário comum nunca consegue gravar esse campo como true.
 export function createTextStatus(communityId, author, text) {
   return addDoc(statusesRef(), {
     communityId,
     authorId: author.id,
     authorUsername: author.username || null,
+    authorIsSuperAdmin: author.role === 'superadmin',
     type: 'text',
     text: text.trim(),
     createdAt: serverTimestamp(),
@@ -68,6 +72,7 @@ export function createPollStatus(communityId, author, question, options) {
     communityId,
     authorId: author.id,
     authorUsername: author.username || null,
+    authorIsSuperAdmin: author.role === 'superadmin',
     type: 'poll',
     poll: {
       question: question.trim(),
@@ -83,6 +88,7 @@ export function createWorkoutStatus(communityId, author, workout) {
     communityId,
     authorId: author.id,
     authorUsername: author.username || null,
+    authorIsSuperAdmin: author.role === 'superadmin',
     type: 'workout',
     workout: {
       title: workout.title.trim(),
@@ -161,6 +167,7 @@ export function createAchievementStatus(communityId, author, values) {
     communityId,
     authorId: author.id,
     authorUsername: author.username || null,
+    authorIsSuperAdmin: author.role === 'superadmin',
     type: 'achievement',
     achievement,
     createdAt: serverTimestamp(),

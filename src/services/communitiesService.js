@@ -59,6 +59,7 @@ export function createCommunity(userId, community) {
     description: community.description?.trim() || '',
     imageUrl: community.imageUrl || null,
     isActive: true,
+    postAccess: community.postAccess === 'admins' ? 'admins' : 'everyone',
     createdBy: userId,
     createdAt: serverTimestamp(),
   })
@@ -71,6 +72,7 @@ export function updateCommunity(communityId, community) {
     name: community.name.trim(),
     description: community.description?.trim() || '',
     isActive: community.isActive,
+    postAccess: community.postAccess === 'admins' ? 'admins' : 'everyone',
   })
 }
 
