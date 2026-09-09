@@ -1,12 +1,10 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Box, Heading, Text, Button, Spinner, Label } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { PeopleIcon, PlusIcon, ImageIcon } from '@primer/octicons-react'
+import { PeopleIcon, PlusIcon } from '@primer/octicons-react'
 import { useAdminCommunities } from '../hooks/useAdminCommunities'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
-import { updateCommunityImage } from '../services/communitiesService'
-import { uploadCommunityCoverImage } from '../utils/imageUpload'
 import { CommunityForm } from '../components/CommunityForm'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
@@ -19,9 +17,6 @@ export default function AdminCommunities() {
   const confirmDelete = useConfirmDelete()
   const [formOpen, setFormOpen] = useState(false)
   const [editingCommunity, setEditingCommunity] = useState(null)
-  const [uploadingId, setUploadingId] = useState(null)
-  const fileInputRef = useRef(null)
-  const uploadTargetId = useRef(null)
 
   async function handleCreate(values) {
     try {
@@ -70,41 +65,9 @@ export default function AdminCommunities() {
     }
   }
 
-  function triggerImageUpload(communityId) {
-    uploadTargetId.current = communityId
-    fileInputRef.current?.click()
-  }
-
-  async function handleImageSelected(e) {
-    const file = e.target.files?.[0]
-    const communityId = uploadTargetId.current
-    e.target.value = ''
-    if (!file || !communityId) return
-
-    setUploadingId(communityId)
-    try {
-      const imageUrl = await uploadCommunityCoverImage(communityId, file)
-      await updateCommunityImage(communityId, imageUrl)
-      await refresh()
-      showToast('Imagem atualizada.')
-    } catch (err) {
-      console.error('[AdminCommunities] upload image:', err)
-      showToast('Erro ao enviar imagem.', 'danger')
-    } finally {
-      setUploadingId(null)
-    }
-  }
-
   return (
     <Box>
       <ToastFlash toasts={toasts} />
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={handleImageSelected}
-      />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Heading as="h1" sx={{ fontSize: 3 }}>
           Administrar comunidades
@@ -163,11 +126,6 @@ export default function AdminCommunities() {
               }}
             >
               <Box
-                as="button"
-                type="button"
-                onClick={() => triggerImageUpload(community.id)}
-                disabled={uploadingId === community.id}
-                aria-label={`Alterar imagem de ${community.name}`}
                 sx={{
                   width: 40,
                   height: 40,
@@ -176,26 +134,12 @@ export default function AdminCommunities() {
                   border: '1px solid',
                   borderColor: 'border.default',
                   flexShrink: 0,
-                  overflow: 'hidden',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer',
-                  p: 0,
                 }}
               >
-                {uploadingId === community.id ? (
-                  <Spinner size="small" />
-                ) : community.imageUrl ? (
-                  <Box
-                    as="img"
-                    src={community.imageUrl}
-                    alt=""
-                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <ImageIcon size={16} />
-                )}
+                <PeopleIcon size={16} />
               </Box>
 
               <Box sx={{ flex: 1, minWidth: 0 }}>

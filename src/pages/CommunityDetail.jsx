@@ -10,13 +10,10 @@ import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { getCommunity } from '../services/communitiesService'
 import { isMember, joinCommunity, leaveCommunity } from '../services/communityMembersService'
 import {
-  newStatusId,
   createTextStatus,
-  createPhotoStatus,
   createPollStatus,
   createWorkoutStatus,
 } from '../services/statusesService'
-import { uploadStatusImage } from '../utils/imageUpload'
 import { describeFirestoreError } from '../utils/firestoreError'
 import { StatusForm } from '../components/StatusForm'
 import { StatusCard } from '../components/StatusCard'
@@ -98,20 +95,6 @@ export default function CommunityDetail() {
           authorEmail: author.email,
           type: 'text',
           text: values.text.trim(),
-          createdAt: new Date(),
-        })
-      } else if (values.type === 'photo') {
-        const statusId = newStatusId()
-        const imageUrl = await uploadStatusImage(id, statusId, values.photoFile)
-        await createPhotoStatus(statusId, id, author, imageUrl, values.text)
-        addStatusLocally({
-          id: statusId,
-          communityId: id,
-          authorId: author.id,
-          authorEmail: author.email,
-          type: 'photo',
-          imageUrl,
-          text: values.text?.trim() || '',
           createdAt: new Date(),
         })
       } else if (values.type === 'poll') {

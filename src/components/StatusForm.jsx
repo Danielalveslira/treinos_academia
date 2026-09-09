@@ -19,7 +19,6 @@ import {
 
 const TYPES = [
   { value: 'text', label: 'Texto' },
-  { value: 'photo', label: 'Foto' },
   { value: 'poll', label: 'Enquete' },
   { value: 'workout', label: 'Treino marcado' },
 ]
@@ -29,7 +28,6 @@ const EMPTY_OPTIONS = ['', '']
 export function StatusForm({ onSubmit, onCancel }) {
   const [type, setType] = useState('text')
   const [text, setText] = useState('')
-  const [photoFile, setPhotoFile] = useState(null)
   const [question, setQuestion] = useState('')
   const [options, setOptions] = useState(EMPTY_OPTIONS)
   const [workoutTitle, setWorkoutTitle] = useState('')
@@ -55,7 +53,6 @@ export function StatusForm({ onSubmit, onCancel }) {
 
     let validationErrors = {}
     if (type === 'text') validationErrors = validateTextStatus({ text })
-    else if (type === 'photo' && !photoFile) validationErrors = { photo: 'Escolha uma imagem' }
     else if (type === 'poll') validationErrors = validatePollStatus({ question, options })
     else if (type === 'workout') {
       validationErrors = validateWorkoutStatus({
@@ -70,7 +67,6 @@ export function StatusForm({ onSubmit, onCancel }) {
     setSubmitting(true)
     try {
       if (type === 'text') await onSubmit({ type, text })
-      else if (type === 'photo') await onSubmit({ type, photoFile, text })
       else if (type === 'poll') {
         await onSubmit({ type, question, options: options.filter((o) => o.trim()) })
       } else if (type === 'workout') {
@@ -112,26 +108,6 @@ export function StatusForm({ onSubmit, onCancel }) {
               <FormControl.Validation variant="error">{errors.text}</FormControl.Validation>
             )}
           </FormControl>
-        )}
-
-        {type === 'photo' && (
-          <>
-            <FormControl required>
-              <FormControl.Label>Imagem</FormControl.Label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-              />
-              {errors.photo && (
-                <FormControl.Validation variant="error">{errors.photo}</FormControl.Validation>
-              )}
-            </FormControl>
-            <FormControl>
-              <FormControl.Label>Legenda (opcional)</FormControl.Label>
-              <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} block />
-            </FormControl>
-          </>
         )}
 
         {type === 'poll' && (

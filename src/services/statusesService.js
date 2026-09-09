@@ -59,26 +59,6 @@ export function createTextStatus(communityId, author, text) {
   })
 }
 
-// A imagem precisa de um caminho no Storage antes do documento existir, então o ID é
-// gerado no cliente (doc() sem argumentos só aloca um ID, não escreve nada) e reutilizado
-// tanto para o caminho do arquivo quanto para o documento em statuses.
-export function newStatusId() {
-  return doc(statusesRef()).id
-}
-
-export function createPhotoStatus(statusId, communityId, author, imageUrl, text) {
-  return setDoc(doc(db, 'statuses', statusId), {
-    communityId,
-    authorId: author.id,
-    authorEmail: author.email,
-    type: 'photo',
-    imageUrl,
-    text: text?.trim() || '',
-    createdAt: serverTimestamp(),
-    expiresAt: expiresAtValue(),
-  })
-}
-
 export function createPollStatus(communityId, author, question, options) {
   return addDoc(statusesRef(), {
     communityId,

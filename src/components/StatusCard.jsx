@@ -203,18 +203,6 @@ export function StatusCard({ status, currentUserId, canDelete, onDelete }) {
 
       {status.type === 'text' && <Text sx={{ whiteSpace: 'pre-wrap' }}>{status.text}</Text>}
 
-      {status.type === 'photo' && (
-        <Box>
-          <Box
-            as="img"
-            src={status.imageUrl}
-            alt=""
-            sx={{ width: '100%', borderRadius: 2, mb: status.text ? 2 : 0, display: 'block' }}
-          />
-          {status.text && <Text sx={{ whiteSpace: 'pre-wrap' }}>{status.text}</Text>}
-        </Box>
-      )}
-
       {status.type === 'poll' && <PollStatus status={status} currentUserId={currentUserId} />}
 
       {status.type === 'workout' && <WorkoutStatus status={status} currentUserId={currentUserId} />}

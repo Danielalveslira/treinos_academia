@@ -110,7 +110,7 @@ service cloud.firestore {
       // para absorver a latência entre o cliente montar o valor e o servidor processar.
       return data.communityId is string && data.communityId.size() > 0
         && data.authorId is string
-        && data.type in ['text', 'photo', 'poll', 'workout']
+        && data.type in ['text', 'poll', 'workout']
         && data.createdAt == request.time
         && data.expiresAt > request.time + duration.value(1435, 'm')
         && data.expiresAt < request.time + duration.value(1445, 'm');
@@ -119,9 +119,6 @@ service cloud.firestore {
     function isValidStatusContent(data) {
       return (data.type == 'text' &&
           data.text is string && data.text.size() > 0 && data.text.size() <= 500)
-        || (data.type == 'photo' &&
-          data.imageUrl is string && data.imageUrl.size() > 0
-          && (!('text' in data) || (data.text is string && data.text.size() <= 500)))
         || (data.type == 'poll' &&
           data.poll.question is string && data.poll.question.size() > 0
           && data.poll.options is list && data.poll.options.size() >= 2 && data.poll.options.size() <= 6)

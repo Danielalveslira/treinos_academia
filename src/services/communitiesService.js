@@ -59,10 +59,6 @@ export function updateCommunity(communityId, community) {
   })
 }
 
-export function updateCommunityImage(communityId, imageUrl) {
-  return updateDoc(doc(db, 'communities', communityId), { imageUrl })
-}
-
 export function setCommunityActive(communityId, isActive) {
   return updateDoc(doc(db, 'communities', communityId), { isActive })
 }
