@@ -27,7 +27,7 @@ import {
 } from '@primer/octicons-react'
 import { useAdminAccounts } from '../hooks/useAdminAccounts'
 import { useBillingConfig } from '../hooks/useBillingConfig'
-import { saveBillingConfig, runAdminMigration } from '../services/billingService'
+import { saveBillingConfig } from '../services/billingService'
 import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
@@ -314,57 +314,6 @@ function BillingConfigForm({ config, onSaved, showToast }) {
   )
 }
 
-// TEMPORARY: one-time control for the migration in docs/admin-maintenance.md.
-// Remove alongside runAdminMigration (functions + service) once applied in production.
-function AdminMigrationPanel() {
-  const [result, setResult] = useState(null)
-  const [running, setRunning] = useState(false)
-  const [migrationError, setMigrationError] = useState('')
-
-  async function run(apply) {
-    setRunning(true)
-    setMigrationError('')
-    try {
-      setResult({ apply, ...(await runAdminMigration(apply)) })
-    } catch (err) {
-      setMigrationError(err.message)
-    } finally {
-      setRunning(false)
-    }
-  }
-
-  return (
-    <Box sx={{ mb: 3, p: 3, border: '1px solid', borderColor: 'attention.emphasis', borderRadius: 2 }}>
-      <Heading as="h2" sx={{ fontSize: 2 }}>
-        Migração de interações antigas (manutenção única)
-      </Heading>
-      <Text as="p" sx={{ fontSize: 1, mb: 2 }}>
-        Simule primeiro. Só aplique quando os números fizerem sentido.
-      </Text>
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <Button onClick={() => run(false)} disabled={running}>
-          Simular
-        </Button>
-        <Button onClick={() => run(true)} disabled={running} variant="danger">
-          Aplicar
-        </Button>
-      </Box>
-      {running && <Spinner />}
-      {migrationError && (
-        <Text as="p" role="alert" sx={{ color: 'danger.fg' }}>
-          {migrationError}
-        </Text>
-      )}
-      {result && (
-        <Text as="p">
-          {result.apply ? 'Aplicado' : 'Simulação'}: {result.interactions} interações,{' '}
-          {result.cleanupJobs} trabalhos de limpeza enfileirados.
-        </Text>
-      )}
-    </Box>
-  )
-}
-
 export default function AdminAccounts() {
   const [params] = useSearchParams()
   const [search, setSearch] = useState(params.get('usuario') || '')
@@ -452,8 +401,6 @@ export default function AdminAccounts() {
       <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
         Contas e assinaturas
       </Heading>
-
-      <AdminMigrationPanel />
 
       {configError && (
         <Text as="p" role="alert" sx={{ color: 'danger.fg' }}>
