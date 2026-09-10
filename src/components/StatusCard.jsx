@@ -106,7 +106,7 @@ function StatusHeader({ status, now, canDelete, onDelete, showToast }) {
   )
 }
 
-function PollStatus({ status, currentUserId }) {
+function PollStatus({ status, currentUserId, showToast }) {
   // counts/myOptionId em vez da lista de votos: nunca baixa a subcoleção inteira (uma
   // enquete popular pode ter milhares de votos) — só contagens agregadas por opção
   // (no máximo 6, teto do schema) e o meu próprio voto, 1 leitura direta pelo id.
@@ -115,6 +115,12 @@ function PollStatus({ status, currentUserId }) {
   const [counts, setCounts] = useState(cached?.counts ?? null)
   const [myOptionId, setMyOptionId] = useState(cached?.myOptionId ?? null)
   const [voting, setVoting] = useState(false)
+  // Sem isto, uma falha de rede ou de permissão (publicação removida, acesso
+  // revogado) deixava counts para sempre null: a enquete ficava sem contagens e sem
+  // nenhum aviso, e o usuário não tinha como saber se ainda estava carregando ou se
+  // já tinha falhado de vez. loadError + o botão "Tentar novamente" abaixo cobrem isso.
+  const [loadError, setLoadError] = useState(false)
+  const [retryToken, setRetryToken] = useState(0)
   // As regras exigem que cada opção seja {id, label} (ver firestore.rules), mas o
   // mesmo raciocínio do authorUsername acima vale aqui: um item inesperado (ex.:
   // null) não deveria quebrar a renderização de toda a enquete, só ser ignorado.
@@ -126,20 +132,25 @@ function PollStatus({ status, currentUserId }) {
   useEffect(() => {
     if (cached) return
     let active = true
-    Promise.all([getPollResults(status.id, optionIds), getMyVote(status.id, currentUserId)]).then(
-      ([results, myVote]) => {
+    setLoadError(false)
+    Promise.all([getPollResults(status.id, optionIds), getMyVote(status.id, currentUserId)])
+      .then(([results, myVote]) => {
         if (!active) return
         const myOptionId = myVote?.optionId ?? null
         setCounts(results)
         setMyOptionId(myOptionId)
         setCached(cacheKey, { counts: results, myOptionId })
-      }
-    )
+      })
+      .catch((error) => {
+        if (!active) return
+        console.error('[PollStatus] getPollResults/getMyVote:', error)
+        setLoadError(true)
+      })
     return () => {
       active = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status.id, currentUserId])
+  }, [status.id, currentUserId, retryToken])
 
   const total = counts ? Object.values(counts).reduce((sum, n) => sum + n, 0) : 0
 
@@ -154,9 +165,23 @@ function PollStatus({ status, currentUserId }) {
         return next
       })
       setMyOptionId(optionId)
+    } catch (error) {
+      console.error('[PollStatus] voteOnPoll:', error)
+      showToast?.('Não foi possível registrar seu voto. Tente novamente.', 'danger')
     } finally {
       setVoting(false)
     }
+  }
+
+  if (loadError && !counts) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+        <Text sx={{ fontSize: 0, color: 'danger.fg' }}>Não foi possível carregar a enquete.</Text>
+        <Button size="small" onClick={() => setRetryToken((token) => token + 1)}>
+          Tentar novamente
+        </Button>
+      </Box>
+    )
   }
 
   return (
@@ -221,7 +246,7 @@ function PollStatus({ status, currentUserId }) {
   )
 }
 
-function WorkoutStatus({ status, currentUserId }) {
+function WorkoutStatus({ status, currentUserId, showToast }) {
   // Contagem agregada + 1 leitura direta pelo id (não a lista inteira de participantes)
   // — mesmo raciocínio da enquete: nunca escala com o número de pessoas confirmadas.
   const cacheKey = `workoutStatus:${status.id}:${currentUserId}`
@@ -229,23 +254,32 @@ function WorkoutStatus({ status, currentUserId }) {
   const [count, setCount] = useState(cached?.count ?? null)
   const [amParticipant, setAmParticipant] = useState(cached?.amParticipant ?? false)
   const [pending, setPending] = useState(false)
+  // Mesmo raciocínio da enquete: sem isso, uma falha de rede/permissão deixava o botão
+  // desabilitado (count === null) pra sempre, sem nenhuma explicação de por quê.
+  const [loadError, setLoadError] = useState(false)
+  const [retryToken, setRetryToken] = useState(0)
 
   useEffect(() => {
     if (cached) return
     let active = true
-    Promise.all([countParticipants(status.id), amIParticipant(status.id, currentUserId)]).then(
-      ([total, mine]) => {
+    setLoadError(false)
+    Promise.all([countParticipants(status.id), amIParticipant(status.id, currentUserId)])
+      .then(([total, mine]) => {
         if (!active) return
         setCount(total)
         setAmParticipant(mine)
         setCached(cacheKey, { count: total, amParticipant: mine })
-      }
-    )
+      })
+      .catch((error) => {
+        if (!active) return
+        console.error('[WorkoutStatus] countParticipants/amIParticipant:', error)
+        setLoadError(true)
+      })
     return () => {
       active = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status.id, currentUserId])
+  }, [status.id, currentUserId, retryToken])
 
   async function toggle() {
     setPending(true)
@@ -267,6 +301,9 @@ function WorkoutStatus({ status, currentUserId }) {
         })
         setAmParticipant(true)
       }
+    } catch (error) {
+      console.error('[WorkoutStatus] joinWorkout/leaveWorkout:', error)
+      showToast?.('Não foi possível atualizar sua participação. Tente novamente.', 'danger')
     } finally {
       setPending(false)
     }
@@ -287,22 +324,31 @@ function WorkoutStatus({ status, currentUserId }) {
           <Text sx={{ fontSize: 0 }}>{status.workout.location}</Text>
         </Box>
       </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-        <Button
-          size="small"
-          variant={amParticipant ? 'default' : 'primary'}
-          onClick={toggle}
-          disabled={count === null || pending}
-          leadingVisual={PersonIcon}
-        >
-          {amParticipant ? 'Cancelar participação' : 'Participar'}
-        </Button>
-        {count !== null && (
-          <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-            {count} {count === 1 ? 'confirmado' : 'confirmados'}
-          </Text>
-        )}
-      </Box>
+      {loadError && count === null ? (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Text sx={{ fontSize: 0, color: 'danger.fg' }}>Não foi possível carregar participantes.</Text>
+          <Button size="small" onClick={() => setRetryToken((token) => token + 1)}>
+            Tentar novamente
+          </Button>
+        </Box>
+      ) : (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+          <Button
+            size="small"
+            variant={amParticipant ? 'default' : 'primary'}
+            onClick={toggle}
+            disabled={count === null || pending}
+            leadingVisual={PersonIcon}
+          >
+            {amParticipant ? 'Cancelar participação' : 'Participar'}
+          </Button>
+          {count !== null && (
+            <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+              {count} {count === 1 ? 'confirmado' : 'confirmados'}
+            </Text>
+          )}
+        </Box>
+      )}
     </Box>
   )
 }
@@ -323,10 +369,12 @@ export function StatusCard({ status, currentUserId, canDelete, onDelete, now, sh
 
         {status.type === 'achievement' && <AchievementSummary achievement={status.achievement} />}
 
-        {status.type === 'poll' && <PollStatus status={status} currentUserId={currentUserId} />}
+        {status.type === 'poll' && (
+          <PollStatus status={status} currentUserId={currentUserId} showToast={showToast} />
+        )}
 
         {status.type === 'workout' && (
-          <WorkoutStatus status={status} currentUserId={currentUserId} />
+          <WorkoutStatus status={status} currentUserId={currentUserId} showToast={showToast} />
         )}
 
         {status.type === 'photo' && (
