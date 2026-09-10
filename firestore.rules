@@ -365,7 +365,7 @@ service cloud.firestore {
         && data.authorIsSuperAdmin == isSuperAdmin();
     }
 
-    function isValidStatusContent(data) {
+    function isValidStatusContent(data, statusId) {
       return (data.type == 'text' &&
           data.text is string && data.text.size() > 0 && data.text.size() <= 500)
         || (data.type == 'poll' &&
@@ -383,12 +383,15 @@ service cloud.firestore {
           && data.achievement.entries is int && data.achievement.entries >= 0
           && data.achievement.sets is number && data.achievement.sets >= 0
           && (data.achievement.entries > 0 || data.achievement.text.size() > 0))
-        // photoPath precisa apontar para a mesma comunidade da publicação e para um
-        // nome de arquivo gerado pelo servidor (ver storage.rules: só aceita upload
-        // com esse formato de nome, nunca o nome original do arquivo do usuário).
+        // photoPath precisa ser EXATAMENTE statusPhotos/{communityId}/{statusId}.webp —
+        // o próprio id deste documento, nunca o de outra publicação. Antes disso, o
+        // padrão só exigia "20 caracteres alfanuméricos" sem comparar com statusId: uma
+        // publicação podia apontar photoPath para a foto de outra publicação da mesma
+        // comunidade e, ao ser excluída, a limpeza (deletion-service.js) apagava do
+        // Storage o arquivo que ainda pertencia à publicação alheia, ainda existente.
         || (data.type == 'photo' &&
           data.photoPath is string
-          && data.photoPath.matches('^statusPhotos/' + data.communityId + '/[A-Za-z0-9]{20}\\.webp$')
+          && data.photoPath == 'statusPhotos/' + data.communityId + '/' + statusId + '.webp'
           && (!('caption' in data) || (data.caption is string && data.caption.size() <= 280)));
     }
 
@@ -400,7 +403,7 @@ service cloud.firestore {
         && communityIsActive(request.resource.data.communityId)
         && communityAllowsPosting(request.resource.data.communityId)
         && isValidStatusBase(request.resource.data)
-        && isValidStatusContent(request.resource.data);
+        && isValidStatusContent(request.resource.data, statusId);
       allow update: if isSignedIn()
         && resource.data.authorId == request.auth.uid
         && isMember(resource.data.communityId)
@@ -409,7 +412,7 @@ service cloud.firestore {
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.type == resource.data.type
         && request.resource.data.authorIsSuperAdmin == resource.data.authorIsSuperAdmin
-        && isValidStatusContent(request.resource.data);
+        && isValidStatusContent(request.resource.data, statusId);
       allow delete: if isSignedIn()
         && (resource.data.authorId == request.auth.uid || isSuperAdmin());
 

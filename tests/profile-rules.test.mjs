@@ -182,8 +182,9 @@ test('achievement publication requires membership and safe payload; author may d
   await assertSucceeds(deleteDoc(ref))
 })
 
-test('photo publication requires photoPath scoped to the community and a bounded caption', async () => {
+test('photo publication requires photoPath scoped to this exact document, never another publication\'s file', async () => {
   const FILE_ID = 'AAAAAAAAAAAAAAAAAAAA' // 20 chars — mesmo formato do id gerado pelo Firestore
+  const OTHER_FILE_ID = 'BBBBBBBBBBBBBBBBBBBB'
   const status = (overrides = {}) => ({
     communityId: 'gym',
     authorId: 'owner',
@@ -196,35 +197,51 @@ test('photo publication requires photoPath scoped to the community and a bounded
     expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
     ...overrides,
   })
-  const ref = doc(owner, 'statuses/photo')
+  const ref = doc(owner, `statuses/${FILE_ID}`)
   await assertSucceeds(setDoc(ref, status()))
-  await assertSucceeds(getDoc(doc(visitor, 'statuses/photo')))
+  await assertSucceeds(getDoc(doc(visitor, `statuses/${FILE_ID}`)))
+  // photoPath precisa ser exatamente statusPhotos/{communityId}/{o próprio id do
+  // documento}.webp — nunca o de outra publicação, mesmo com formato e comunidade
+  // corretos. Sem isso, uma publicação podia "sequestrar" a foto de outra: ao ser
+  // excluída, a limpeza no backend apagava do Storage um arquivo que ainda pertencia
+  // a uma publicação alheia, ainda existente.
+  await assertFails(
+    setDoc(
+      doc(owner, `statuses/${OTHER_FILE_ID}`),
+      status({ photoPath: `statusPhotos/gym/${FILE_ID}.webp` })
+    )
+  )
   // photoPath precisa apontar para a mesma comunidade do status, nunca para outra.
   await assertFails(
     setDoc(
-      doc(owner, 'statuses/wrongcommunity'),
+      doc(owner, `statuses/${FILE_ID}`),
       status({ photoPath: `statusPhotos/announcements/${FILE_ID}.webp` })
     )
   )
   // Nome de arquivo tem que bater com o formato gerado pelo servidor — nunca o nome
   // original de um arquivo do usuário, nem um caminho tentando escapar da pasta.
   await assertFails(
-    setDoc(doc(owner, 'statuses/badname'), status({ photoPath: 'statusPhotos/gym/foto.webp' }))
+    setDoc(doc(owner, `statuses/${FILE_ID}`), status({ photoPath: 'statusPhotos/gym/foto.webp' }))
   )
   await assertFails(
     setDoc(
-      doc(owner, 'statuses/traversal'),
+      doc(owner, `statuses/${FILE_ID}`),
       status({ photoPath: `statusPhotos/gym/../other/${FILE_ID}.webp` })
     )
   )
   const { photoPath: _omitPath, ...withoutPath } = status()
-  await assertFails(setDoc(doc(owner, 'statuses/nopath'), withoutPath))
+  await assertFails(setDoc(doc(owner, `statuses/${FILE_ID}`), withoutPath))
   await assertFails(
-    setDoc(doc(owner, 'statuses/longcaption'), status({ caption: 'x'.repeat(281) }))
+    setDoc(doc(owner, `statuses/${FILE_ID}`), status({ caption: 'x'.repeat(281) }))
   )
   const { caption: _omitCaption, ...withoutCaption } = status()
-  await assertSucceeds(setDoc(doc(owner, 'statuses/nocaption'), withoutCaption))
-  await assertFails(deleteDoc(doc(visitor, 'statuses/photo')))
+  await assertSucceeds(
+    setDoc(doc(owner, `statuses/${OTHER_FILE_ID}`), {
+      ...withoutCaption,
+      photoPath: `statusPhotos/gym/${OTHER_FILE_ID}.webp`,
+    })
+  )
+  await assertFails(deleteDoc(doc(visitor, `statuses/${FILE_ID}`)))
   await assertSucceeds(deleteDoc(ref))
 })
 
