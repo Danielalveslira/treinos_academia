@@ -11,36 +11,41 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function hasCurrentAcceptance() {
-      let policy = /databases/$(database)/documents/legalPolicy/current;
-      return !exists(policy) || get(policy).data.published != true
-        || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.legalAcceptance.version == get(policy).data.version
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.legalAcceptance.digest == get(policy).data.digest);
-    }
-
-    function isAccountDisabled() {
-      let me = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(me) && get(me).data.get('accountStatus', 'active') == 'disabled';
-    }
-
-    // Deriva o acesso à assinatura só a partir de carimbos do servidor (trialEndsAt,
-    // graceEndsAt) em vez de um campo de status mutável — assim não depende de um job
-    // periódico para "virar" o estado no momento exato em que o tempo passa.
-    function subscriptionAllowsAccess() {
-      let me = /databases/$(database)/documents/users/$(request.auth.uid);
-      let sub = get(me).data.get('subscription', null);
-      return sub != null
+    // hasAppAccess() costumava se dividir em hasCurrentAcceptance()/isAccountDisabled()/
+    // subscriptionAllowsAccess()/isSuperAdmin(), cada uma com seu próprio get() do mesmo
+    // documento users/{uid} (e legalPolicy/current sendo lido com get() mais de uma vez
+    // dentro da mesma função). Empilhadas numa única avaliação (isMember -> hasAppAccess,
+    // no mesmo allow create de statuses), isso multiplicava a mesma leitura várias vezes
+    // e estourava o limite de expressões do Firestore em produção (confirmado no
+    // emulador com termos publicados: toda criação de publicação passou a ser negada com
+    // "maximum of 1000 expressions"). Consolidada numa função só: users/{uid} e
+    // accountRestrictions são lidos exatamente uma vez cada, e isAdmin entra como
+    // parâmetro pra não precisar perguntar de novo quem já sabe (ver
+    // statusAccountOk/canCreateStatus, que usam a mesma ideia para o caminho mais
+    // pesado — criar uma publicação).
+    function hasAppAccess(isAdmin) {
+      let uid = request.auth.uid;
+      let me = get(/databases/$(database)/documents/users/$(uid)).data;
+      let policyRef = /databases/$(database)/documents/legalPolicy/current;
+      let policyExists = exists(policyRef);
+      // {} em vez de null no ramo "sem termos publicados": o Firestore rejeita um `let`
+      // cujos dois ramos do ternário não têm o mesmo tipo (map vs null não compila).
+      // policy.get(...) com padrão cobre o caso de policyExists == false sem nunca
+      // acessar um campo que não existe.
+      let policy = policyExists ? get(policyRef).data : {};
+      let restrictionRef = /databases/$(database)/documents/accountRestrictions/$(uid);
+      let restrictionExists = exists(restrictionRef);
+      let sub = me.get('subscription', null);
+      let subscriptionOk = sub != null
         && ((sub.paidAt == null && request.time < sub.trialEndsAt)
           || (sub.paidAt != null && sub.graceEndsAt != null && request.time < sub.graceEndsAt));
-    }
-
-    function hasAppAccess() {
-      let restriction = /databases/$(database)/documents/accountRestrictions/$(request.auth.uid);
-      return isSignedIn() && hasCurrentAcceptance()
-        && (isSuperAdmin() || (!isAccountDisabled() && subscriptionAllowsAccess()))
-        && (!exists(restriction)
-          || (get(restriction).data.action == 'temporary_suspension'
-            && get(restriction).data.until <= request.time));
+      return isSignedIn()
+        && (!policyExists || policy.published != true
+          || (me.legalAcceptance.version == policy.version && me.legalAcceptance.digest == policy.digest))
+        && (isAdmin || (me.get('accountStatus', 'active') != 'disabled' && subscriptionOk))
+        && (!restrictionExists
+          || (get(restrictionRef).data.action == 'temporary_suspension'
+            && get(restrictionRef).data.until <= request.time));
     }
 
     function communityAccessAllowed(communityId) {
@@ -283,21 +288,21 @@ service cloud.firestore {
         && request.time < resource.data.createdAt + duration.value(10, 'm');
 
       match /exercises/{exerciseId} {
-        allow read, delete: if isOwner(userId) && hasAppAccess();
-        allow create, update: if isOwner(userId) && hasAppAccess() && isValidExercise(request.resource.data);
+        allow read, delete: if isOwner(userId) && hasAppAccess(isSuperAdmin());
+        allow create, update: if isOwner(userId) && hasAppAccess(isSuperAdmin()) && isValidExercise(request.resource.data);
       }
 
       match /workouts/{workoutId} {
-        allow read, delete: if isOwner(userId) && hasAppAccess();
+        allow read, delete: if isOwner(userId) && hasAppAccess(isSuperAdmin());
         // createdAt desempata registros do mesmo dia (o usuário escolhe só a data, não a
         // hora) na ordenação "mais recente primeiro" — sem isso, dois treinos no mesmo
         // dia ficam em ordem arbitrária (critério interno do Firestore, não a ordem real
         // de criação), o que já produziu "evolução" e gráfico invertidos na prática.
         // Exigido e travado como request.time na criação, e imutável na edição — igual
         // ao padrão já usado em statuses/supportRequests.
-        allow create: if isOwner(userId) && hasAppAccess() && isValidWorkout(request.resource.data)
+        allow create: if isOwner(userId) && hasAppAccess(isSuperAdmin()) && isValidWorkout(request.resource.data)
           && request.resource.data.createdAt == request.time;
-        allow update: if isOwner(userId) && hasAppAccess() && isValidWorkout(request.resource.data)
+        allow update: if isOwner(userId) && hasAppAccess(isSuperAdmin()) && isValidWorkout(request.resource.data)
           && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null);
       }
 
@@ -349,15 +354,8 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/communities/$(communityId)).data.isActive == true;
     }
 
-    // Só bloqueia quando a comunidade exige 'admins' e quem publica não é superadmin —
-    // ausência do campo (comunidades antigas) sempre libera, igual ao default do cliente.
-    function communityAllowsPosting(communityId) {
-      return get(/databases/$(database)/documents/communities/$(communityId)).data.get('postAccess', 'everyone') != 'admins'
-        || isSuperAdmin();
-    }
-
     match /communities/{communityId} {
-      allow read: if hasAppAccess();
+      allow read: if hasAppAccess(isSuperAdmin());
       allow create: if isSuperAdmin()
         && isValidCommunity(request.resource.data)
         && request.resource.data.createdBy == request.auth.uid;
@@ -381,7 +379,7 @@ service cloud.firestore {
       // nega com permission-denied em vez de simplesmente não encontrar nada.
       allow read: if isSignedIn()
         && (resource == null || resource.data.userId == request.auth.uid || isSuperAdmin());
-      allow create: if hasAppAccess()
+      allow create: if hasAppAccess(isSuperAdmin())
         && request.resource.data.userId == request.auth.uid
         && membershipId == expectedMembershipId(request.resource.data)
         && request.resource.data.joinedAt is timestamp
@@ -391,34 +389,15 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    function isMember(communityId) {
-      return hasAppAccess() && communityAccessAllowed(communityId)
+    // isAdmin como parâmetro (em vez de chamar isSuperAdmin() aqui dentro) porque quem
+    // usa isMember() para criar/validar uma publicação (match /statuses abaixo) também
+    // precisa do mesmo isAdmin em communityAllowsPosting()/isValidStatusBase() — calcular
+    // uma vez só no ponto de entrada e repassar evita reler users/{uid} várias vezes na
+    // mesma avaliação (é exatamente essa repetição que já estourou o limite de expressões
+    // do Firestore em produção; ver o comentário em hasAppAccess()).
+    function isMember(communityId, isAdmin) {
+      return hasAppAccess(isAdmin) && communityAccessAllowed(communityId)
         && exists(/databases/$(database)/documents/communityMembers/$(communityId + '_' + request.auth.uid));
-    }
-
-    function isValidStatusBase(data) {
-      // createdAt precisa ser o carimbo do servidor (serverTimestamp()) — comparado aqui
-      // com request.time, que é para o que ele resolve durante a validação da regra.
-      // expiresAt é calculado no cliente (createdAt ainda não existe de fato na hora do
-      // envio), então aceitamos uma janela de tolerância de 10 minutos ao redor de +24h
-      // para absorver a latência entre o cliente montar o valor e o servidor processar.
-      return data.communityId is string && data.communityId.size() > 0
-        && data.authorId is string
-        // authorUsername é sempre gravado (string ou null — ver baseStatusFields em
-        // statusesService.js), nunca outro tipo. Sem essa checagem, um valor como
-        // number passava aqui e quebrava a renderização do card no cliente
-        // (StatusHeader faz .charAt/.toUpperCase esperando string ou null).
-        // Também precisa bater com a reserva real do autor em /usernames — sem isso,
-        // qualquer um podia publicar com o @ de outra conta (personificação visual no
-        // feed, mesmo sem ganhar nenhum privilégio de fato).
-        && (data.authorUsername == null || usernameIsReservedBy(data.authorId, data.authorUsername))
-        && data.type in ['text', 'poll', 'workout', 'achievement', 'photo']
-        && data.createdAt == request.time
-        && data.expiresAt > request.time + duration.value(1435, 'm')
-        && data.expiresAt < request.time + duration.value(1445, 'm')
-        // O selo de superadmin nunca vem do cliente: precisa bater com o role real de
-        // quem está autenticado, nunca com o que o payload alega.
-        && data.authorIsSuperAdmin == isSuperAdmin();
     }
 
     // Cada opção precisa ser {id, label}, do mesmo jeito que o cliente sempre monta
@@ -470,18 +449,109 @@ service cloud.firestore {
           && (!('caption' in data) || (data.caption is string && data.caption.size() <= 280)));
     }
 
+    // Nenhuma chamada a hasAppAccess()/isMember() aqui dentro — cada uma delas
+    // re-executaria get()/exists() em documentos que esta função já leu. Essa pilha de
+    // chamadas independentes (cada camada relendo os mesmos documentos) foi o que
+    // estourou o limite de expressões do Firestore em produção assim que os termos
+    // ficaram publicados (confirmado reproduzindo no emulador com
+    // legalPolicy/current.published = true — o cenário que nenhum teste anterior
+    // cobria). Dividida em duas funções (em vez de uma só) porque o Firestore também
+    // limita a no máximo 10 variáveis "let" por função.
+    // me: dados de users/{uid} já lidos por quem chamou (canCreateStatus), pra não gastar
+    // outra leitura pedindo de novo o mesmo documento. Também por isso a checagem de
+    // "conta em exclusão" aqui não é !exists(deletionJobs/account_{uid}) (como em
+    // isSignedIn()) — seria mais um documento distinto lido, e o Firestore limita o total
+    // de chamadas get()/exists() por avaliação (confirmado no emulador: com os quatro
+    // documentos de statusCommunityOk mais os daqui, o total passava do limite e toda
+    // criação de publicação era negada). queue() em deletion-service.js grava
+    // accountStatus: 'deleting' na MESMA transação que cria o job de exclusão, então o
+    // campo que já está em `me` é equivalente e não custa uma leitura a mais.
+    function statusAccountOk(uid, me, isAdmin) {
+      let policyRef = /databases/$(database)/documents/legalPolicy/current;
+      let policyExists = exists(policyRef);
+      let policy = policyExists ? get(policyRef).data : {};
+      let restrictionRef = /databases/$(database)/documents/accountRestrictions/$(uid);
+      let restrictionExists = exists(restrictionRef);
+      let sub = me.get('subscription', null);
+      let subscriptionOk = sub != null
+        && ((sub.paidAt == null && request.time < sub.trialEndsAt)
+          || (sub.paidAt != null && sub.graceEndsAt != null && request.time < sub.graceEndsAt));
+      return me.get('accountStatus', 'active') != 'deleting'
+        && (!policyExists || policy.published != true
+          || (me.legalAcceptance.version == policy.version && me.legalAcceptance.digest == policy.digest))
+        && (isAdmin || (me.get('accountStatus', 'active') != 'disabled' && subscriptionOk))
+        && (!restrictionExists
+          || (get(restrictionRef).data.action == 'temporary_suspension'
+            && get(restrictionRef).data.until <= request.time));
+    }
+
+    function statusCommunityOk(uid, communityId, isAdmin) {
+      let community = get(/databases/$(database)/documents/communities/$(communityId)).data;
+      return !exists(/databases/$(database)/documents/deletionJobs/$('community_' + communityId))
+        && !exists(/databases/$(database)/documents/communityRestrictions/$(communityId + '_' + uid))
+        && exists(/databases/$(database)/documents/communityMembers/$(communityId + '_' + uid))
+        && community.isActive == true
+        && (community.get('postAccess', 'everyone') != 'admins' || isAdmin);
+    }
+
+    function canCreateStatus(data, statusId) {
+      let uid = request.auth.uid;
+      let me = get(/databases/$(database)/documents/users/$(uid)).data;
+      let isAdmin = me.get('role', 'user') == 'superadmin';
+      let usernameOk = data.authorUsername == null
+        || (exists(/databases/$(database)/documents/usernames/$(data.authorUsername))
+          && get(/databases/$(database)/documents/usernames/$(data.authorUsername)).data.uid == data.authorId);
+      return request.auth != null
+        && data.authorId == uid
+        && statusAccountOk(uid, me, isAdmin)
+        && statusCommunityOk(uid, data.communityId, isAdmin)
+        && usernameOk
+        && data.communityId is string && data.communityId.size() > 0
+        && data.authorId is string
+        && data.type in ['text', 'poll', 'workout', 'achievement', 'photo']
+        && data.createdAt == request.time
+        && data.expiresAt > request.time + duration.value(1435, 'm')
+        && data.expiresAt < request.time + duration.value(1445, 'm')
+        && data.authorIsSuperAdmin == isAdmin
+        && isValidStatusContent(data, statusId);
+    }
+
+    // Mesma ideia para votes/participants: cada documento (status pai + users/{uid} para
+    // saber se sou admin) lido uma única vez, em vez de isMember()/isSuperAdmin() cada
+    // uma relendo por conta própria.
+    function canVote(statusId, userId, voteData) {
+      let status = get(/databases/$(database)/documents/statuses/$(statusId)).data;
+      let uid = request.auth.uid;
+      let isAdmin = get(/databases/$(database)/documents/users/$(uid)).data.get('role', 'user') == 'superadmin';
+      return isSignedIn()
+        && userId == uid
+        && voteData.userId == uid
+        && voteData.optionId is string
+        && voteData.createdAt is timestamp
+        && status.type == 'poll'
+        && status.expiresAt > request.time
+        && isMember(status.communityId, isAdmin);
+    }
+
+    function canJoinWorkout(statusId, userId, participantData) {
+      let status = get(/databases/$(database)/documents/statuses/$(statusId)).data;
+      let uid = request.auth.uid;
+      let isAdmin = get(/databases/$(database)/documents/users/$(uid)).data.get('role', 'user') == 'superadmin';
+      return isSignedIn()
+        && userId == uid
+        && participantData.userId == uid
+        && participantData.joinedAt is timestamp
+        && status.type == 'workout'
+        && status.expiresAt > request.time
+        && isMember(status.communityId, isAdmin);
+    }
+
     match /statuses/{statusId} {
-      allow read: if isSignedIn() && isMember(resource.data.communityId);
-      allow create: if isSignedIn()
-        && request.resource.data.authorId == request.auth.uid
-        && isMember(request.resource.data.communityId)
-        && communityIsActive(request.resource.data.communityId)
-        && communityAllowsPosting(request.resource.data.communityId)
-        && isValidStatusBase(request.resource.data)
-        && isValidStatusContent(request.resource.data, statusId);
+      allow read: if isSignedIn() && isMember(resource.data.communityId, isSuperAdmin());
+      allow create: if canCreateStatus(request.resource.data, statusId);
       allow update: if isSignedIn()
         && resource.data.authorId == request.auth.uid
-        && isMember(resource.data.communityId)
+        && isMember(resource.data.communityId, isSuperAdmin())
         && request.resource.data.authorId == resource.data.authorId
         && request.resource.data.communityId == resource.data.communityId
         && request.resource.data.createdAt == resource.data.createdAt
@@ -493,27 +563,16 @@ service cloud.firestore {
         && (resource.data.authorId == request.auth.uid || isSuperAdmin());
 
       match /votes/{userId} {
-        allow read: if isSignedIn() && isMember(get(/databases/$(database)/documents/statuses/$(statusId)).data.communityId);
-        allow create: if isSignedIn()
-          && userId == request.auth.uid
-          && request.resource.data.userId == request.auth.uid
-          && request.resource.data.optionId is string
-          && request.resource.data.createdAt is timestamp
-          && get(/databases/$(database)/documents/statuses/$(statusId)).data.type == 'poll'
-          && get(/databases/$(database)/documents/statuses/$(statusId)).data.expiresAt > request.time
-          && isMember(get(/databases/$(database)/documents/statuses/$(statusId)).data.communityId);
+        allow read: if isSignedIn()
+          && isMember(get(/databases/$(database)/documents/statuses/$(statusId)).data.communityId, isSuperAdmin());
+        allow create: if canVote(statusId, userId, request.resource.data);
         allow update, delete: if false;
       }
 
       match /participants/{userId} {
-        allow read: if isSignedIn() && isMember(get(/databases/$(database)/documents/statuses/$(statusId)).data.communityId);
-        allow create: if isSignedIn()
-          && userId == request.auth.uid
-          && request.resource.data.userId == request.auth.uid
-          && request.resource.data.joinedAt is timestamp
-          && get(/databases/$(database)/documents/statuses/$(statusId)).data.type == 'workout'
-          && get(/databases/$(database)/documents/statuses/$(statusId)).data.expiresAt > request.time
-          && isMember(get(/databases/$(database)/documents/statuses/$(statusId)).data.communityId);
+        allow read: if isSignedIn()
+          && isMember(get(/databases/$(database)/documents/statuses/$(statusId)).data.communityId, isSuperAdmin());
+        allow create: if canJoinWorkout(statusId, userId, request.resource.data);
         allow delete: if isSignedIn() && userId == request.auth.uid;
         allow update: if false;
       }
