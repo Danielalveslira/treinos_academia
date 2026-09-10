@@ -33,6 +33,7 @@ async function service() {
           export const where = (...args) => args
           export const limit = (...args) => args
           export const startAfter = (...args) => args
+          export const serverTimestamp = () => 'SERVER_TIMESTAMP'
           export const Timestamp = { fromDate: (date) => date }
           export const count = () => 'count'
           export const sum = (field) => field

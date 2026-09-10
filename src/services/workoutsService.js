@@ -14,6 +14,7 @@ import {
   where,
   limit,
   startAfter,
+  serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
@@ -30,6 +31,26 @@ function workoutsRef(userId) {
 
 function toDoc(d) {
   return normalizeWorkout({ id: d.id, ...d.data() })
+}
+
+function millisOf(value) {
+  return value?.toMillis ? value.toMillis() : new Date(value).getTime()
+}
+
+// date guarda só o dia escolhido pelo usuário (sempre meio-dia, ver toTimestamp) — dois
+// treinos no mesmo dia empatam nesse campo, e a query só ordena por "date". Desempatar
+// aqui, no cliente, por createdAt (carimbo real do servidor) em vez de orderBy('createdAt')
+// na própria query: um orderBy em createdAt excluiria da resposta qualquer treino
+// registrado antes desse campo existir (Firestore nunca retorna documento sem o campo
+// usado em orderBy). Registros antigos sem createdAt ficam no critério de desempate
+// anterior (ordem do Firestore), só os novos ganham a ordem cronológica real.
+function sortSameDayByCreation(workouts) {
+  return [...workouts].sort((a, b) => {
+    const byDate = millisOf(b.date) - millisOf(a.date)
+    if (byDate !== 0) return byDate
+    if (!a.createdAt || !b.createdAt) return 0
+    return millisOf(b.createdAt) - millisOf(a.createdAt)
+  })
 }
 
 function toTimestamp(dateString) {
@@ -50,7 +71,7 @@ export async function listWorkoutsPage(
 
   const snapshot = await getDocs(query(workoutsRef(userId), ...constraints))
   return {
-    items: snapshot.docs.map(toDoc),
+    items: sortSameDayByCreation(snapshot.docs.map(toDoc)),
     nextCursor: snapshot.docs.length === pageSize ? snapshot.docs[snapshot.docs.length - 1] : null,
   }
 }
@@ -63,7 +84,7 @@ export async function listWorkoutsForExercise(userId, exerciseId, pageSize = 30)
     limit(pageSize)
   )
   const snapshot = await getDocs(q)
-  return snapshot.docs.map(toDoc)
+  return sortSameDayByCreation(snapshot.docs.map(toDoc))
 }
 
 function workoutPayload(workout) {
@@ -82,7 +103,10 @@ function workoutPayload(workout) {
 }
 
 export function createWorkout(userId, workout) {
-  return addDoc(workoutsRef(userId), workoutPayload(workout)).then((result) => {
+  return addDoc(workoutsRef(userId), {
+    ...workoutPayload(workout),
+    createdAt: serverTimestamp(),
+  }).then((result) => {
     invalidateWorkoutCache(userId)
     return result
   })
@@ -122,7 +146,7 @@ export async function listDashboardWorkouts(userId) {
     limit(DASHBOARD_SAFETY_LIMIT)
   )
   const snapshot = await getDocs(q)
-  return snapshot.docs.map(toDoc)
+  return sortSameDayByCreation(snapshot.docs.map(toDoc))
 }
 
 // Agrégats no servidor: não transfere o histórico para exibir dois totais.

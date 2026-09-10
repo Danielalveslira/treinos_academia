@@ -65,6 +65,40 @@ test('volume, charts, evolution and records use all sets in mixed histories', ()
   assert.match(formatWorkoutSets(mixed), /Série 2: 35,25 kg × 10 reps/)
 })
 
+test('same-day records are ordered by createdAt, not by array/insertion order', () => {
+  // Reproduz o relato do usuário: 23kg registrado primeiro, depois 33kg, os dois no
+  // mesmo dia. "date" sozinho empata (só guarda o dia, não a hora) — sem o desempate
+  // por createdAt, "atual" podia sair como o registro mais antigo (evolução negativa
+  // quando na verdade a carga subiu).
+  const first = {
+    exerciseId: 'squat',
+    date: '2025-02-01',
+    createdAt: { toMillis: () => 1000 },
+    setDetails: [{ weight: 23, reps: 4 }],
+  }
+  const second = {
+    exerciseId: 'squat',
+    date: '2025-02-01',
+    createdAt: { toMillis: () => 2000 },
+    setDetails: [{ weight: 33, reps: 4 }],
+  }
+  // A ordem em que os registros chegam do Firestore não é garantida para o mesmo
+  // "date" — o resultado deve ser o mesmo não importa a ordem de entrada aqui.
+  for (const pair of [
+    [first, second],
+    [second, first],
+  ]) {
+    const indicators = getExerciseIndicators(pair)
+    assert.equal(indicators.currentLoad, 33)
+    assert.equal(indicators.previousLoad, 23)
+    assert.ok(indicators.evolutionPercent > 0)
+  }
+  assert.deepEqual(
+    buildLoadHistory([second, first]).map((row) => row.weight),
+    [23, 33]
+  )
+})
+
 test('validation accepts zero load, decimal loads and numeric form strings', () => {
   assert.deepEqual(validateWorkout(mixed), {})
   assert.deepEqual(validateWorkout({ ...mixed, setDetails: [{ weight: '0', reps: '1' }] }), {})
