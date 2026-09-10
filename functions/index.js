@@ -574,11 +574,10 @@ export const purgeExpiredPhotos = onSchedule(
   }
 )
 
-// Rede de segurança contra órfãos: se o upload para o Storage teve sucesso mas o
-// setDoc do status em statusesService.js nunca chegou a acontecer (aba fechada,
-// queda de conexão, erro), sobra um arquivo sem nenhum documento em statuses/{id}
-// (o nome do arquivo é sempre esse id — ver createPhotoStatus). A folga de 1h evita
-// disputar com um upload legítimo que ainda está em andamento.
+// Rede de segurança para arquivos legados ou inconsistências excepcionais. O fluxo
+// atual cria statuses/{id} antes do upload e remove o documento se o envio falhar;
+// ainda assim, arquivos antigos ou uma falha durante a limpeza podem deixar bytes sem
+// documento correspondente. A folga de 1h evita disputar com uma operação legítima.
 const ORPHAN_GRACE_MS = 60 * 60 * 1000
 // db.getAll() lê em lote em vez de 1 get() por arquivo, num loop sequencial — antes
 // eram N idas ao Firestore (uma por arquivo do bucket); agora são ceil(N/300).

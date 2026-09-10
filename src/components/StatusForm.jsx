@@ -144,7 +144,7 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
           location: workoutLocation,
         })
       } else if (type === 'photo') {
-        const { task, done } = createPhotoStatus(
+        const { task, done } = await createPhotoStatus(
           communityId,
           author,
           { blob: photoBlob, caption },

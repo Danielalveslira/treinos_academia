@@ -101,17 +101,27 @@ export function createWorkoutStatus(communityId, author, workout) {
   })
 }
 
-// A foto é enviada direto ao Storage pelo cliente (mais simples e mais barato do que
-// fazer uma Cloud Function retransmitir os bytes) — o que garante que ela não fica
-// órfã lá é a combinação de dois fatores: o nome do arquivo é sempre o id do próprio
-// status (nunca o nome original do arquivo do usuário, ver storage.rules) e, se o
-// setDoc abaixo nunca chegar a acontecer, purgeOrphanedPhotos (functions/index.js)
-// apaga qualquer arquivo sem documento correspondente depois de uma folga de 1h.
+// O documento nasce antes do upload. A criação dele passa pelas regras completas do
+// Firestore (assinatura, termos, restrições, filiação e configuração da comunidade),
+// e o Storage precisa consultar somente esse documento para autorizar os bytes. Isso
+// mantém as regras do Storage dentro do limite de duas consultas cruzadas por operação.
+// Se o envio falhar ou for cancelado, removemos o documento; o gatilho de exclusão e a
+// varredura de órfãos continuam sendo a rede de segurança para falhas de rede.
 // uploadBytesResumable (em vez de uploadBytes) é o que permite progresso e cancelamento
 // reais no formulário, em vez de só um spinner indeterminado.
-export function createPhotoStatus(communityId, author, { blob, caption }, { onProgress } = {}) {
+export async function createPhotoStatus(
+  communityId,
+  author,
+  { blob, caption },
+  { onProgress } = {}
+) {
   const statusRef = doc(statusesRef())
   const photoPath = `statusPhotos/${communityId}/${statusRef.id}.webp`
+  await setDoc(statusRef, {
+    ...baseStatusFields(communityId, author, 'photo'),
+    photoPath,
+    caption: caption ? caption.trim() : '',
+  })
   const task = uploadBytesResumable(storageRef(storage, photoPath), blob, {
     contentType: 'image/webp',
   })
@@ -119,16 +129,15 @@ export function createPhotoStatus(communityId, author, { blob, caption }, { onPr
     task.on(
       'state_changed',
       (snapshot) => onProgress?.(snapshot.bytesTransferred / snapshot.totalBytes),
-      reject,
-      () => {
-        setDoc(statusRef, {
-          ...baseStatusFields(communityId, author, 'photo'),
-          photoPath,
-          caption: caption ? caption.trim() : '',
-        })
-          .then(() => resolve(statusRef))
-          .catch(reject)
-      }
+      async (error) => {
+        try {
+          await deleteDoc(statusRef)
+        } catch {
+          // O job de expiração remove qualquer documento residual em até 24h.
+        }
+        reject(error)
+      },
+      () => resolve(statusRef)
     )
   })
   return { task, done }

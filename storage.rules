@@ -1,109 +1,83 @@
 rules_version = '2';
 
-// Fotos de publicações de comunidade. O nome do arquivo nunca vem do usuário: o
-// cliente sempre envia para "{communityId}/{20 caracteres alfanuméricos}.webp",
-// o mesmo formato de ID que o Firestore gera para o documento do status (ver
-// createPhotoStatus em statusesService.js e isValidStatusContent no
-// firestore.rules, que exige que photoPath bata com esse padrão).
-//
-// As checagens abaixo espelham exatamente as mesmas de firestore.rules — pertencer à
-// comunidade (isMember) nunca foi suficiente sozinho: assinatura vencida, conta
-// desativada, suspensão de conta, banimento na comunidade, aceite legal pendente e
-// publicação restrita a admins (postAccess) bloqueiam a publicação no Firestore, e
-// precisam bloquear o arquivo em si também — senão o Storage vira uma porta lateral
-// para ler e enviar fotos sem passar por nenhuma dessas regras.
-//
-// IMPORTANTE sobre custo: firestore.get()/firestore.exists() em Storage Rules contam
-// contra um limite total de chamadas por avaliação, igual ao get()/exists() do
-// Firestore — e cada chamada é contada por SITE de chamada, não por documento (chamar
-// firestore.get() duas vezes no mesmo caminho conta duas vezes). Uma primeira versão
-// destas regras (cada checagem em sua própria função, cada uma relendo users/{uid} e
-// legalPolicy/current por conta própria) estourava esse limite assim que os termos
-// ficavam publicados — reproduzido no emulador com legalPolicy/current.published =
-// true (o cenário que as validações manuais anteriores nunca cobriram): toda leitura e
-// todo envio de foto passavam a ser negados, mesmo para quem tinha acesso de verdade.
-// Por isso tudo abaixo é uma função só por operação (allow read / allow create), com
-// cada documento (users/{uid}, legalPolicy/current, accountRestrictions/{uid},
-// deletionJobs/community_{id}, communityRestrictions/{id}_{uid},
-// communityMembers/{id}_{uid}, e communities/{id} só na criação) lido exatamente uma
-// vez — nunca reconstruído por uma segunda função que já foi chamada por outra.
-//
-// Validado manualmente (dois ambientes @firebase/rules-unit-testing — um só de
-// Firestore para semear dados driblando as regras, outro só de Storage para testar —
-// já que configurar `storage` e `firestore.rules` no MESMO initializeTestEnvironment
-// quebra a ponte firestore.exists()/firestore.get(), limitação da ferramenta de teste
-// local documentada em versões anteriores deste comentário): com termos publicados e
-// assinatura válida, leitura e envio funcionam; assinatura vencida, conta desativada,
-// suspensão vigente, banimento na comunidade, aceite legal pendente e postAccess:
-// 'admins' (para não-superadmin) negam os dois. Fora do formato de nome, tipo diferente
-// de image/webp, acima de 4MB e reenvio para um caminho já existente (resource == null)
-// também negam a criação. update e delete nunca são permitidos ao cliente. Não entrou
-// em tests/*rules.test.mjs pela mesma limitação da ferramenta — revisitar se a
-// dependência for atualizada.
+// O Storage permite no máximo duas consultas a documentos distintos do Firestore por
+// avaliação. A autorização completa da publicação acontece ao criar statuses/{id}; o
+// upload apenas confirma esse documento já autorizado. A leitura confirma o status e
+// a filiação do leitor, totalizando exatamente duas consultas.
 service firebase.storage {
   match /b/{bucket}/o {
     match /statusPhotos/{communityId}/{fileName} {
-      // me e isAdmin: computados pela função chamadora (uma única leitura de
-      // users/{uid}) e passados por parâmetro — Storage também limita a no máximo 10
-      // variáveis "let" por função, então a versão "tudo numa função só" nem chegava a
-      // compilar.
-      function accountOk(uid, me, isAdmin) {
-        let policyRef = /databases/(default)/documents/legalPolicy/current;
-        let policyExists = firestore.exists(policyRef);
-        let policy = policyExists ? firestore.get(policyRef).data : {};
-        let restrictionRef = /databases/(default)/documents/accountRestrictions/$(uid);
-        let restrictionExists = firestore.exists(restrictionRef);
+      function statusId() {
+        return fileName.replace('[.]webp$', '');
+      }
+
+      function statusPath() {
+        return /databases/(default)/documents/statuses/$(statusId());
+      }
+
+      function validPhotoStatus(status) {
+        return status.type == 'photo'
+          && status.communityId == communityId
+          && status.photoPath == 'statusPhotos/' + communityId + '/' + fileName
+          && status.expiresAt > request.time;
+      }
+
+      function canReadPhoto() {
+        let status = firestore.get(statusPath()).data;
+        return validPhotoStatus(status)
+          && firestore.exists(
+            /databases/(default)/documents/communityMembers/$(communityId + '_' + request.auth.uid)
+          );
+      }
+
+      function canCreatePhoto() {
+        let status = firestore.get(statusPath()).data;
+        return validPhotoStatus(status)
+          && status.authorId == request.auth.uid
+          && request.time < status.createdAt + duration.value(10, 'm');
+      }
+
+      // Compatibilidade temporária com versões instaladas antes da mudança de ordem do
+      // fluxo. Elas enviam os bytes antes de criar statuses/{id}. O Firestore ainda faz
+      // a autorização completa logo depois do upload; se negar ou o cliente desaparecer,
+      // purgeOrphanedPhotos remove o arquivo sem status. Esta alternativa usa apenas os
+      // dois documentos permitidos pelo Storage e mantém assinatura/conta bloqueada fora.
+      function canLegacyCreatePhoto() {
+        let me = firestore.get(
+          /databases/(default)/documents/users/$(request.auth.uid)
+        ).data;
         let sub = me.get('subscription', null);
         let subscriptionOk = sub != null
           && ((sub.paidAt == null && request.time < sub.trialEndsAt)
             || (sub.paidAt != null && sub.graceEndsAt != null && request.time < sub.graceEndsAt));
-        return (!policyExists || policy.published != true
-            || (me.legalAcceptance.version == policy.version && me.legalAcceptance.digest == policy.digest))
-          && (isAdmin || (me.get('accountStatus', 'active') != 'disabled' && subscriptionOk))
-          && (!restrictionExists
-            || (firestore.get(restrictionRef).data.action == 'temporary_suspension'
-              && firestore.get(restrictionRef).data.until <= request.time));
+        return firestore.exists(
+            /databases/(default)/documents/communityMembers/$(communityId + '_' + request.auth.uid)
+          )
+          && me.get('accountStatus', 'active') != 'disabled'
+          && me.get('accountStatus', 'active') != 'deleting'
+          && (me.get('role', 'user') == 'superadmin' || subscriptionOk);
       }
 
-      function canReadPhoto() {
-        let uid = request.auth.uid;
-        let me = firestore.get(/databases/(default)/documents/users/$(uid)).data;
-        let isAdmin = me.get('role', 'user') == 'superadmin';
-        return request.auth != null
-          && accountOk(uid, me, isAdmin)
-          && !firestore.exists(/databases/(default)/documents/deletionJobs/$('community_' + communityId))
-          && !firestore.exists(/databases/(default)/documents/communityRestrictions/$(communityId + '_' + uid))
-          && firestore.exists(/databases/(default)/documents/communityMembers/$(communityId + '_' + uid));
-      }
+      allow read: if request.auth != null
+        && fileName.matches('^[A-Za-z0-9]{20}\\.webp$')
+        && canReadPhoto();
 
-      function canCreatePhoto() {
-        let uid = request.auth.uid;
-        let me = firestore.get(/databases/(default)/documents/users/$(uid)).data;
-        let isAdmin = me.get('role', 'user') == 'superadmin';
-        let community = firestore.get(/databases/(default)/documents/communities/$(communityId)).data;
-        return request.auth != null
-          && accountOk(uid, me, isAdmin)
-          && !firestore.exists(/databases/(default)/documents/deletionJobs/$('community_' + communityId))
-          && !firestore.exists(/databases/(default)/documents/communityRestrictions/$(communityId + '_' + uid))
-          && firestore.exists(/databases/(default)/documents/communityMembers/$(communityId + '_' + uid))
-          && (community.get('postAccess', 'everyone') != 'admins' || isAdmin);
-      }
-
-      allow read: if canReadPhoto();
-
-      // Só cria; nunca sobrescreve nem apaga. resource == null é o que de fato torna
-      // isso um "só cria": no Storage, reenviar bytes para um caminho que já tem um
-      // arquivo passa pela mesma regra de "create" (não existe update de conteúdo,
-      // só de metadata) — sem essa checagem, um reenvio para o mesmo nome de arquivo
-      // seria aceito como se fosse a primeira vez. A limpeza (exclusão manual,
-      // decisão de moderação ou expiração em 24h) é sempre feita pelo Admin SDK nas
-      // Cloud Functions — nunca pelo próprio cliente, mesmo o autor original.
-      allow create: if canCreatePhoto()
+      allow create: if request.auth != null
         && resource == null
         && fileName.matches('^[A-Za-z0-9]{20}\\.webp$')
         && request.resource.size > 0
         && request.resource.size <= 4 * 1024 * 1024
-        && request.resource.contentType == 'image/webp';
+        && request.resource.contentType == 'image/webp'
+        && canCreatePhoto();
+
+      allow create: if request.auth != null
+        && resource == null
+        && fileName.matches('^[A-Za-z0-9]{20}\\.webp$')
+        && request.resource.size > 0
+        && request.resource.size <= 4 * 1024 * 1024
+        && request.resource.contentType == 'image/webp'
+        && canLegacyCreatePhoto();
+
       allow update, delete: if false;
     }
 
