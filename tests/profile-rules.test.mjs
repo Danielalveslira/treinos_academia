@@ -182,6 +182,29 @@ test('achievement publication requires membership and safe payload; author may d
   await assertSucceeds(deleteDoc(ref))
 })
 
+test('expiresAt is immutable on update, so a publication cannot postpone its own expiration', async () => {
+  const status = (overrides = {}) => ({
+    communityId: 'gym',
+    authorId: 'owner',
+    authorUsername: 'owner',
+    authorIsSuperAdmin: false,
+    type: 'text',
+    text: 'oi',
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+    ...overrides,
+  })
+  const ref = doc(owner, 'statuses/expiry')
+  await assertSucceeds(setDoc(ref, status()))
+  const original = (await getDoc(ref)).data().expiresAt
+  await assertFails(
+    updateDoc(ref, { expiresAt: Timestamp.fromMillis(Date.now() + 1000 * 60 * 60 * 24 * 365 * 70) })
+  )
+  await assertSucceeds(updateDoc(ref, { text: 'oi editado' }))
+  assert.deepEqual((await getDoc(ref)).data().expiresAt, original)
+  await assertSucceeds(deleteDoc(ref))
+})
+
 test('photo publication requires photoPath scoped to this exact document, never another publication\'s file', async () => {
   const FILE_ID = 'AAAAAAAAAAAAAAAAAAAA' // 20 chars — mesmo formato do id gerado pelo Firestore
   const OTHER_FILE_ID = 'BBBBBBBBBBBBBBBBBBBB'

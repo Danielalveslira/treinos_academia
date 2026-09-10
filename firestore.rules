@@ -434,6 +434,7 @@ service cloud.firestore {
         && request.resource.data.authorId == resource.data.authorId
         && request.resource.data.communityId == resource.data.communityId
         && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.expiresAt == resource.data.expiresAt
         && request.resource.data.type == resource.data.type
         && request.resource.data.authorIsSuperAdmin == resource.data.authorIsSuperAdmin
         && isValidStatusContent(request.resource.data, statusId);
