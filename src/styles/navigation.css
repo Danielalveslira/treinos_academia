@@ -55,7 +55,14 @@
 }
 
 .account-menu-overlay {
-  max-width: calc(100vw - 24px);
+  /* 100vw inclui a largura da barra de rolagem em navegadores com scrollbar
+     classica (Windows/Linux) -- isso deixava a caixa "vazar" alguns pixels pra
+     fora da area visivel de fato. % resolve contra o bloco de contencao (o
+     documento, ja que o overlay e' um portal sem ancestral posicionado), que
+     exclui a barra de rolagem. !important garante que isso vença o
+     `max-width: calc(100vw - 2rem)` que o proprio Overlay do Primer já aplica
+     por padrao, independente da ordem de carregamento dos CSS-in-JS dele. */
+  max-width: min(360px, calc(100% - 24px)) !important;
   max-height: calc(100dvh - 88px - env(safe-area-inset-top));
   overflow-y: auto;
   overscroll-behavior: contain;
