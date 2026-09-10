@@ -1,6 +1,6 @@
 import { createAccountsService } from './accounts-service.js'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
-import { onDocumentDeleted } from 'firebase-functions/v2/firestore'
+import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore'
 import { createDeletionService } from './deletion-service.js'
 import { validId } from './legal-core.js'
 import { accountView } from './admin-core.js'
@@ -512,6 +512,33 @@ export const cleanupDeletedCommunity = onDocumentDeleted(
   (event) => deletions.queueDeleted('community', event.params.id)
 )
 
+// memberCount denormalizado em communities/{id}, mantido por gatilho — o painel admin
+// (useAdminCommunities) lê esse campo direto em vez de rodar uma aggregation query por
+// comunidade exibida. Só a Admin SDK grava este campo (o cliente nunca escreve nele
+// diretamente), então não há necessidade de regra especial nem risco de manipulação.
+async function bumpMemberCount(communityId, delta) {
+  if (!communityId) return
+  try {
+    await db.doc(`communities/${communityId}`).update({ memberCount: FieldValue.increment(delta) })
+  } catch (error) {
+    // Comunidade já pode ter sido excluída (corrida com cleanupDeletedCommunity) —
+    // nesse caso o documento não existe mais e não há contagem para manter.
+    console.error('bumpMemberCount', communityId, error.code)
+  }
+}
+// Sem retry, de propósito: FieldValue.increment não é idempotente — uma nova tentativa
+// depois de um "sucesso não confirmado" contaria a mesma entrada/saída duas vezes. Uma
+// falha isolada aqui só deixa o contador levemente desatualizado (cosmético, no painel
+// admin), o que é preferível a um valor sistematicamente errado.
+export const onCommunityMemberJoin = onDocumentCreated(
+  { ...options, document: 'communityMembers/{membershipId}' },
+  (event) => bumpMemberCount(event.data?.data()?.communityId, 1)
+)
+export const onCommunityMemberLeave = onDocumentDeleted(
+  { ...options, document: 'communityMembers/{membershipId}' },
+  (event) => bumpMemberCount(event.data?.data()?.communityId, -1)
+)
+
 export const processDeletionJobs = onSchedule(
   { ...options, schedule: 'every 1 minutes', timeoutSeconds: 300 },
   async () => {
@@ -560,19 +587,29 @@ export const purgeExpiredPhotos = onSchedule(
 // (o nome do arquivo é sempre esse id — ver createPhotoStatus). A folga de 1h evita
 // disputar com um upload legítimo que ainda está em andamento.
 const ORPHAN_GRACE_MS = 60 * 60 * 1000
+// db.getAll() lê em lote em vez de 1 get() por arquivo, num loop sequencial — antes
+// eram N idas ao Firestore (uma por arquivo do bucket); agora são ceil(N/300).
+const ORPHAN_CHECK_CHUNK = 300
 export const purgeOrphanedPhotos = onSchedule(
   { ...options, schedule: 'every 30 minutes', timeoutSeconds: 300 },
   async () => {
     const [files] = await bucket.getFiles({ prefix: 'statusPhotos/' })
-    for (const file of files) {
-      const createdAt = new Date(file.metadata.timeCreated).getTime()
-      if (Date.now() - createdAt < ORPHAN_GRACE_MS) continue
-      const statusId = file.name
-        .split('/')
-        .pop()
-        .replace(/\.webp$/, '')
-      const status = await db.doc(`statuses/${statusId}`).get()
-      if (!status.exists) await file.delete({ ignoreNotFound: true })
+    const now = Date.now()
+    const candidates = files
+      .map((file) => ({
+        file,
+        statusId: file.name.split('/').pop().replace(/\.webp$/, ''),
+        createdAt: new Date(file.metadata.timeCreated).getTime(),
+      }))
+      .filter((candidate) => now - candidate.createdAt >= ORPHAN_GRACE_MS)
+    for (let i = 0; i < candidates.length; i += ORPHAN_CHECK_CHUNK) {
+      const chunk = candidates.slice(i, i + ORPHAN_CHECK_CHUNK)
+      const docs = await db.getAll(...chunk.map((c) => db.doc(`statuses/${c.statusId}`)))
+      await Promise.all(
+        chunk
+          .filter((_, index) => !docs[index].exists)
+          .map((c) => c.file.delete({ ignoreNotFound: true }))
+      )
     }
   }
 )

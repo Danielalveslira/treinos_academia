@@ -4,11 +4,23 @@ import {
   createCommunity,
   updateCommunity,
   setCommunityActive,
+  setMemberCount,
   deleteCommunity,
 } from '../services/communitiesService'
 import { countMembers } from '../services/communityMembersService'
 import { describeFirestoreError } from '../utils/firestoreError'
 import { useAuth } from './useAuth'
+
+// memberCount é mantido no servidor (gatilho em communityMembers) — na maioria das
+// vezes isto é uma leitura de campo já trazida junto da comunidade, sem nenhuma query
+// extra. Só comunidades criadas antes desse campo existir caem no fallback: uma
+// aggregation query (1x, nunca mais depois que o valor é regravado).
+async function resolveMemberCount(community) {
+  if (typeof community.memberCount === 'number') return community.memberCount
+  const count = await countMembers(community.id)
+  setMemberCount(community.id, count).catch(() => {})
+  return count
+}
 
 export function useAdminCommunities() {
   const { user } = useAuth()
@@ -26,7 +38,7 @@ export function useAdminCommunities() {
       const list = page.items
       setCursor(page.nextCursor)
       setCommunities(list)
-      const counts = await Promise.all(list.map((c) => countMembers(c.id)))
+      const counts = await Promise.all(list.map(resolveMemberCount))
       setMemberCounts(Object.fromEntries(list.map((c, i) => [c.id, counts[i]])))
     } catch (err) {
       setError(describeFirestoreError(err, 'useAdminCommunities'))
@@ -44,7 +56,7 @@ export function useAdminCommunities() {
     setLoading(true)
     try {
       const page = await listCommunitiesPage(cursor)
-      const counts = await Promise.all(page.items.map((community) => countMembers(community.id)))
+      const counts = await Promise.all(page.items.map(resolveMemberCount))
       setCommunities((previous) => [...previous, ...page.items])
       setMemberCounts((previous) => ({
         ...previous,

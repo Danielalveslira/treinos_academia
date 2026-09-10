@@ -60,9 +60,17 @@ export function createCommunity(userId, community) {
     imageUrl: community.imageUrl || null,
     isActive: true,
     postAccess: community.postAccess === 'admins' ? 'admins' : 'everyone',
+    memberCount: 0,
     createdBy: userId,
     createdAt: serverTimestamp(),
   })
+}
+
+// Preenche memberCount em comunidades criadas antes desse campo existir — chamado pelo
+// painel admin só na primeira vez que uma comunidade aparece sem o campo (ver
+// useAdminCommunities). Depois disso, o valor é mantido por gatilho no servidor.
+export function setMemberCount(communityId, memberCount) {
+  return updateDoc(doc(db, 'communities', communityId), { memberCount })
 }
 
 // imageUrl não é tocado aqui de propósito — updateDoc só altera os campos enviados, então
