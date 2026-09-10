@@ -280,7 +280,12 @@ service cloud.firestore {
         && data.createdAt is timestamp
         // Ausente = 'everyone' (comunidades criadas antes deste campo existir continuam
         // válidas sem precisar de migração).
-        && (!('postAccess' in data) || data.postAccess in ['everyone', 'admins']);
+        && (!('postAccess' in data) || data.postAccess in ['everyone', 'admins'])
+        // memberCount é mantido pela Cloud Function (gatilho em communityMembers) e,
+        // como fallback de leitura, recalculado e regravado pelo próprio painel admin
+        // quando ainda não existe — nunca gravado pelo cliente com valor arbitrário
+        // além de refletir uma contagem real já lida do servidor.
+        && (!('memberCount' in data) || (data.memberCount is int && data.memberCount >= 0));
     }
 
     function communityIsActive(communityId) {
