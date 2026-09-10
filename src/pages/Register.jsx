@@ -3,7 +3,12 @@ import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { registerUser } from '../services/authService'
-import { ensureUserProfile, setUsername, isUsernameAvailable } from '../services/usersService'
+import {
+  ensureUserProfile,
+  setUsername,
+  isUsernameAvailable,
+  deleteFreshProfile,
+} from '../services/usersService'
 import { initializeTrial } from '../services/billingService'
 import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../utils/authErrors'
@@ -64,8 +69,16 @@ export default function Register() {
         await ensureUserProfile(uid)
         await setUsername(uid, username)
       } catch (postCreateErr) {
-        // A conta no Authentication já existe nesse ponto: sem isso o e-mail ficaria
-        // órfão e bloqueado para novas tentativas. Desfaz para deixar o e-mail livre.
+        // A conta no Authentication já existe nesse ponto, e ensureUserProfile()/
+        // setUsername() podem já ter escrito o perfil (e reservado o @) no Firestore
+        // antes de falhar. Desfaz os dois: primeiro os documentos (as regras só
+        // permitem isso nos minutos seguintes à criação), depois a conta em si — sem
+        // isso, o e-mail ficaria bloqueado E o perfil ficaria órfão no banco pra sempre.
+        // setUsername() normaliza (trim + minúsculas) antes de gravar/reservar — a
+        // limpeza precisa mirar o mesmo valor, não o texto bruto do campo.
+        await deleteFreshProfile(uid, username.trim().toLowerCase()).catch((cleanupErr) => {
+          console.error('[Auth] register rollback failed (profile):', cleanupErr)
+        })
         await credential.user.delete().catch((cleanupErr) => {
           console.error('[Auth] register rollback failed:', cleanupErr)
         })

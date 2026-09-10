@@ -7,10 +7,10 @@ Aplicação web para acompanhar evolução em treinos de academia: exercícios, 
 - **Frontend:** React + Vite
 - **UI:** [GitHub Primer React](https://primer.style/) — todos os elementos de interface (botões, formulários, listas, diálogos, feedback) usam componentes do Primer; não há biblioteca de estilo concorrente
 - **Autenticação:** Firebase Authentication
-- **Banco de dados:** Firebase Firestore (plano gratuito)
+- **Banco de dados:** Firebase Firestore
+- **Backend:** Cloud Functions (`functions/`, Node) — pagamentos/assinatura, moderação, exclusão de conta/comunidade (jobs em lote), publicação de documentos legais e manutenção de contadores denormalizados. Só existe onde a lógica não pode ser confiada ao cliente (ex.: confirmar um pagamento, aplicar uma penalidade); tudo que Firestore Security Rules conseguem validar sozinhas continua sem passar por uma function.
+- **Arquivos:** Firebase Storage — hoje só fotos de publicações de comunidade (`statusPhotos/{communityId}/{statusId}.webp`), com regras próprias em `storage.rules`.
 - **Hospedagem:** Firebase Hosting (compatível com Vercel/Netlify, ajustando o passo de deploy)
-
-Não há backend Node.js dedicado nesta primeira versão: Firebase Authentication + Firestore + Security Rules cobrem todas as necessidades (autorização por usuário, validação de dados, persistência). Um backend só seria adicionado se surgisse lógica que não pudesse ser confiada ao cliente (ex.: operações administrativas).
 
 ## Arquitetura
 
@@ -72,7 +72,7 @@ Casos sem histórico anterior ou carga anterior igual a zero retornam `null` (ex
 
 ## Uso consciente do plano gratuito
 
-- Sem listeners em tempo real (`onSnapshot`) — todas as leituras são pontuais (`getDocs`), sob demanda.
+- A maioria das leituras é pontual (`getDocs`), sob demanda; a única exceção é o perfil do usuário autenticado (`users/{uid}`), que usa um listener (`onSnapshot`) para refletir na hora ações administrativas feitas em outra sessão (confirmar pagamento, desativar conta) — ver `AuthContext.jsx`.
 - Histórico paginado (20 registros por página, com "carregar mais").
 - Indicadores de exercício limitam a leitura às últimas 30 sessões daquele exercício.
 - Dashboard usa uma janela de 50 treinos recentes para volume/frequência e `getCountFromServer` (contagem agregada, custo mínimo) para o total de treinos — evita ler o histórico inteiro.
@@ -87,7 +87,7 @@ Casos sem histórico anterior ou carga anterior igual a zero retornam `null` (ex
 ## Configuração
 
 1. Crie um projeto no [console do Firebase](https://console.firebase.google.com/).
-2. Ative **Authentication** (método E-mail/senha) e **Firestore Database** (modo produção).
+2. Ative **Authentication** (método E-mail/senha), **Firestore Database** (modo produção), **Storage** e **Cloud Functions** (as duas últimas exigem o plano Blaze).
 3. Copie `.env.example` para `.env` e preencha com as chaves do seu app web (Configurações do projeto → Seus apps).
 4. Instale as dependências e rode em desenvolvimento:
 
@@ -96,10 +96,10 @@ npm install
 npm run dev
 ```
 
-5. Publique as regras de segurança e os índices (requer [firebase-tools](https://firebase.google.com/docs/cli), via `npx`):
+5. Publique as regras de segurança, os índices, as Cloud Functions e as regras de Storage (requer [firebase-tools](https://firebase.google.com/docs/cli), via `npx`, e o plano Blaze do projeto para Functions/Storage):
 
 ```bash
-npx firebase deploy --only firestore:rules,firestore:indexes --project <seu-projeto>
+npx firebase deploy --only firestore:rules,firestore:indexes,storage,functions --project <seu-projeto>
 ```
 
 6. Para usar a área de Comunidades, promova seu próprio usuário a superadmin: no console do Firebase, Firestore → coleção `users` → documento com o seu `uid` → edite o campo `role` para `superadmin`. Sem isso, o link de administração não aparece e `/admin/comunidades` redireciona de volta.
@@ -120,7 +120,7 @@ Em outro terminal, defina `VITE_USE_FIREBASE_EMULATOR=true` no `.env` e rode `np
 
 ```bash
 npm run build
-npx firebase deploy --only hosting,firestore:rules,firestore:indexes
+npx firebase deploy --only hosting,firestore:rules,firestore:indexes,storage,functions
 ```
 
 **Vercel/Netlify:** build command `npm run build`, output directory `dist`, e configure as mesmas variáveis de `.env.example` no painel do serviço.
@@ -134,7 +134,7 @@ Feed temporário por comunidade, com dois papéis:
 
 Cada publicação (`status`) expira 24h após criada (`expiresAt = createdAt + 24h`, validado nas regras com tolerância de alguns minutos para a diferença entre o relógio do cliente — que calcula `expiresAt` — e o `request.time` do servidor, que resolve `createdAt`). O feed sempre filtra `expiresAt > agora`; nada expirado aparece na tela mesmo que o documento ainda exista no banco (a limpeza física é responsabilidade de uma [política de TTL do Firestore](https://firebase.google.com/docs/firestore/ttl) configurada manualmente no console/CLI para o campo `expiresAt` das coleções `statuses` — não há como declarar isso em `firestore.rules`/`firestore.indexes.json`).
 
-Publicações são de três tipos — texto, enquete e treino marcado. Não há upload de foto: o Firebase Storage passou a exigir o plano pago (Blaze) para ser ativado, e usar outro provedor (ex.: Supabase) exigiria uma ponte de autenticação com Cloud Functions (backend que este projeto propositalmente não tem) ou um bucket público sem checagem de usuário — nenhuma das duas opções valeria a pena só para fotos num MVP. Se decidir ativar mais tarde, o Storage cobre isso normalmente dentro da cota gratuita do Blaze.
+Publicações são de quatro tipos — texto, enquete, treino marcado e foto. Fotos vão para o Firebase Storage (`statusPhotos/{communityId}/{statusId}.webp`, um arquivo por publicação, nunca sobrescrito); `storage.rules` replica as mesmas checagens de acesso das regras do Firestore (filiação, assinatura em dia, conta/comunidade sem restrição, publicação restrita a admins quando aplicável) — ver `storage.rules` para o detalhe de cada checagem. A limpeza do arquivo ao excluir a publicação (ou a conta/comunidade inteira) é feita pelo backend (`functions/deletion-service.js`), nunca pelo cliente.
 
 A quantidade de membros por comunidade (visível só para o superadmin) usa `getCountFromServer` — não lê os documentos de `communityMembers`, só agrega no servidor.
 

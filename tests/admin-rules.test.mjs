@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore'
 import { createDeletionService } from '../functions/deletion-service.js'
 import { createAccountsService } from '../functions/accounts-service.js'
+import { createBumpMemberCount } from '../functions/community-members-service.js'
 import { DEFAULT_BILLING_CONFIG } from '../src/utils/billing.js'
 
 let env,
@@ -304,6 +305,34 @@ test('community deletion cleans memberships, restrictions and nested status data
     'statuses/gympost/participants/owner',
   ])
     assert.equal((await db.doc(path).get()).exists, false)
+})
+
+test('bumping the member count of a community without one yet counts for real, not from an assumed zero', async () => {
+  const bumpMemberCount = createBumpMemberCount({ db, FieldValue })
+  // Comunidade "antiga": já tem membros de verdade, mas nunca foi tocada por este
+  // gatilho, então memberCount nunca foi inicializado — exatamente o estado real de
+  // qualquer comunidade criada antes desse campo existir.
+  await db.doc('communities/oldgym').set({ isActive: true })
+  await db.doc('communityMembers/oldgym_a').set({ communityId: 'oldgym', userId: 'a' })
+  await db.doc('communityMembers/oldgym_b').set({ communityId: 'oldgym', userId: 'b' })
+  // O gatilho só roda depois que o documento já existe (onDocumentCreated) — simula
+  // isso criando o terceiro membro antes de chamar bumpMemberCount, como já teria
+  // acontecido de verdade.
+  await db.doc('communityMembers/oldgym_c').set({ communityId: 'oldgym', userId: 'c' })
+  await bumpMemberCount('oldgym', 1)
+  // Incrementar de um "0" assumido daria 1 (a antiga falha) — o total real é 3.
+  assert.equal((await db.doc('communities/oldgym').get()).data().memberCount, 3)
+
+  // Uma vez inicializado, chamadas seguintes voltam a ser incrementos simples.
+  await db.doc('communityMembers/oldgym_d').set({ communityId: 'oldgym', userId: 'd' })
+  await bumpMemberCount('oldgym', 1)
+  assert.equal((await db.doc('communities/oldgym').get()).data().memberCount, 4)
+  await db.doc('communityMembers/oldgym_d').delete()
+  await bumpMemberCount('oldgym', -1)
+  assert.equal((await db.doc('communities/oldgym').get()).data().memberCount, 3)
+
+  // Comunidade já excluída (corrida com cleanupDeletedCommunity): não deve lançar.
+  await assert.doesNotReject(bumpMemberCount('does-not-exist', 1))
 })
 
 test('votes and participation require immutable owner attribution for indexed cleanup', async () => {

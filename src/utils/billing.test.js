@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { getSubscriptionState, getUserAccessState, canAccessApp } from './billing.js'
+import { getSubscriptionState, getUserAccessState } from './billing.js'
 
 test('getSubscriptionState mirrors the trial/blocked timeline', () => {
   const subscription = { trialEndsAt: new Date(2026, 8, 12), paidAt: null }
@@ -36,21 +36,22 @@ test('getUserAccessState blocks a disabled account regardless of subscription', 
 
 test('getUserAccessState never blocks a superadmin', () => {
   const profile = { role: 'superadmin', accountStatus: 'disabled', subscription: null }
-  assert.equal(canAccessApp(profile), true)
+  assert.equal(getUserAccessState(profile).canAccess, true)
 })
 
-test('canAccessApp allows trial/active/due/grace and blocks BLOCKED/NONE', () => {
+test('getUserAccessState allows trial/active/due/grace and blocks BLOCKED/NONE', () => {
   const base = { role: 'user', accountStatus: 'active' }
   assert.equal(
-    canAccessApp({ ...base, subscription: { trialEndsAt: new Date(2099, 0, 1), paidAt: null } }),
+    getUserAccessState({ ...base, subscription: { trialEndsAt: new Date(2099, 0, 1), paidAt: null } })
+      .canAccess,
     true
   )
-  assert.equal(canAccessApp({ ...base, subscription: null }), false)
+  assert.equal(getUserAccessState({ ...base, subscription: null }).canAccess, false)
   assert.equal(
-    canAccessApp({
+    getUserAccessState({
       ...base,
       subscription: { trialEndsAt: new Date(2000, 0, 1), paidAt: null },
-    }),
+    }).canAccess,
     false
   )
 })

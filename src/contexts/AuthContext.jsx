@@ -2,7 +2,7 @@ import { createContext, useEffect, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { auth, db } from '../firebase/config'
-import { ensureUserProfile, setUsername, updateUserProfile } from '../services/usersService'
+import { ensureUserProfile, updateUserProfile } from '../services/usersService'
 import { initializeTrial } from '../services/billingService'
 import { clearPageCache } from '../utils/pageCache'
 
@@ -80,13 +80,6 @@ export function AuthProvider({ children }) {
     return patch
   }
 
-  async function claimUsername(rawUsername) {
-    const userId = user.uid
-    const username = await setUsername(userId, rawUsername)
-    setProfile((prev) => (prev?.id === userId ? { ...prev, username } : prev))
-    return username
-  }
-
   // Usado logo após o cadastro: nesse momento o listener de onAuthStateChanged já pode ter
   // buscado o perfil (ainda sem @usuário, criado uma fração de segundo antes), então essa
   // função relê o documento e sincroniza o estado do contexto sem depender dessa corrida.
@@ -98,7 +91,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, profile, isSuperAdmin, loading, claimUsername, refreshProfile, saveProfile }}
+      value={{ user, profile, isSuperAdmin, loading, refreshProfile, saveProfile }}
     >
       {children}
     </AuthContext.Provider>

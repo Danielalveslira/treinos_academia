@@ -157,6 +157,37 @@ test('@ exclusivity is enforced by the server, not just the client transaction',
   await assertSucceeds(setDoc(doc(owner, 'statuses/realname'), status({ authorUsername: 'owner' })))
 })
 
+test('a freshly created profile can self-delete to roll back a failed registration, an established one cannot', async () => {
+  const newbie = env.authenticatedContext('newbie').firestore()
+  await assertSucceeds(
+    setDoc(doc(newbie, 'users/newbie'), {
+      role: 'user',
+      createdAt: serverTimestamp(),
+      publicProfileVersion: 1,
+      bio: null,
+      shareStatistics: false,
+    })
+  )
+  await assertSucceeds(
+    setDoc(doc(newbie, 'publicProfiles/newbie'), {
+      username: null,
+      bio: null,
+      shareStatistics: false,
+    })
+  )
+  // Register.jsx: ensureUserProfile()/setUsername() succeeded, but something right
+  // after failed (e.g. acceptLegalDocuments/initializeTrial) — the rollback deletes
+  // what was already written, right in this same window.
+  await assertSucceeds(deleteDoc(doc(newbie, 'publicProfiles/newbie')))
+  await assertSucceeds(deleteDoc(doc(newbie, 'users/newbie')))
+
+  // owner/visitor/admin (seeded in before(), no createdAt at all — same shape as any
+  // real, established account) can never self-delete their own profile this way; that
+  // always goes through deleteAccountPermanently instead.
+  await assertFails(deleteDoc(doc(owner, 'users/owner')))
+  await assertFails(deleteDoc(doc(owner, 'publicProfiles/owner')))
+})
+
 test('opt-in publishes totals atomically; opt-out blocks direct reads and stale summary writes', async () => {
   const summary = (db) => doc(db, 'publicProfiles/owner/statistics/summary')
   await assertFails(getDoc(summary(visitor)))

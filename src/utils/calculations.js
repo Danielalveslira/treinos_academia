@@ -75,20 +75,6 @@ export function getExerciseIndicators(workouts) {
   }
 }
 
-export function getWeeklyFrequency(workouts) {
-  if (!workouts || workouts.length === 0) return 0
-
-  const now = new Date()
-  const sevenDaysAgo = new Date(now)
-  sevenDaysAgo.setDate(now.getDate() - 7)
-
-  const uniqueDays = new Set(
-    workouts.filter((w) => toDate(w.date) >= sevenDaysAgo).map((w) => toDate(w.date).toDateString())
-  )
-
-  return uniqueDays.size
-}
-
 export function groupVolumeByDate(workouts) {
   const totals = new Map()
 

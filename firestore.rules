@@ -231,6 +231,16 @@ service cloud.firestore {
           || ownsUsernameField(userId, request.resource.data))
         && isValidBioField(request.resource.data)
         && request.resource.data.shareStatistics is bool;
+      // Só permite ao próprio usuário apagar o perfil nos minutos seguintes à criação —
+      // nunca é uma forma geral de "excluir minha conta" (isso sempre passa por
+      // deleteAccountPermanently, com job de exclusão auditável). Existe só para desfazer
+      // um cadastro que falhou depois de criar o documento (ver setUsername em
+      // Register.jsx): sem isso, uma falha de rede bem depois de ensureUserProfile()
+      // deixava o perfil órfão no Firestore pra sempre, mesmo com a conta do
+      // Authentication já desfeita.
+      allow delete: if isOwner(userId)
+        && get(/databases/$(database)/documents/users/$(userId)).data.createdAt is timestamp
+        && request.time < get(/databases/$(database)/documents/users/$(userId)).data.createdAt + duration.value(10, 'm');
 
       match /statistics/{summaryId} {
         allow get: if isSignedIn()
@@ -266,6 +276,11 @@ service cloud.firestore {
         && (request.resource.data.get('username', null) == resource.data.get('username', null)
           || ownsUsernameField(userId, request.resource.data))
         && isValidBioField(request.resource.data);
+      // Mesma janela e mesmo motivo de publicProfiles acima: só para desfazer um
+      // cadastro recém-criado que falhou depois deste documento existir.
+      allow delete: if isOwner(userId)
+        && resource.data.createdAt is timestamp
+        && request.time < resource.data.createdAt + duration.value(10, 'm');
 
       match /exercises/{exerciseId} {
         allow read, delete: if isOwner(userId) && hasAppAccess();

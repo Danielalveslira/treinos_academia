@@ -2,6 +2,7 @@ import { createAccountsService } from './accounts-service.js'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore'
 import { createDeletionService, statusPhotoExtra } from './deletion-service.js'
+import { createBumpMemberCount } from './community-members-service.js'
 import { validId } from './legal-core.js'
 import { accountView } from './admin-core.js'
 import { readFileSync } from 'node:fs'
@@ -517,20 +518,7 @@ export const cleanupDeletedCommunity = onDocumentDeleted(
   (event) => deletions.queueDeleted('community', event.params.id)
 )
 
-// memberCount denormalizado em communities/{id}, mantido por gatilho — o painel admin
-// (useAdminCommunities) lê esse campo direto em vez de rodar uma aggregation query por
-// comunidade exibida. Só a Admin SDK grava este campo (o cliente nunca escreve nele
-// diretamente), então não há necessidade de regra especial nem risco de manipulação.
-async function bumpMemberCount(communityId, delta) {
-  if (!communityId) return
-  try {
-    await db.doc(`communities/${communityId}`).update({ memberCount: FieldValue.increment(delta) })
-  } catch (error) {
-    // Comunidade já pode ter sido excluída (corrida com cleanupDeletedCommunity) —
-    // nesse caso o documento não existe mais e não há contagem para manter.
-    console.error('bumpMemberCount', communityId, error.code)
-  }
-}
+const bumpMemberCount = createBumpMemberCount({ db, FieldValue })
 // Sem retry, de propósito: FieldValue.increment não é idempotente — uma nova tentativa
 // depois de um "sucesso não confirmado" contaria a mesma entrada/saída duas vezes. Uma
 // falha isolada aqui só deixa o contador levemente desatualizado (cosmético, no painel

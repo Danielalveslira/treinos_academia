@@ -1,4 +1,4 @@
-import { doc, getDoc, writeBatch, runTransaction, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, deleteDoc, writeBatch, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { getWorkoutStatistics } from './workoutsService'
 
@@ -83,6 +83,19 @@ export async function updateUserProfile(userId, changes) {
   }
   await batch.commit()
   return patch
+}
+
+// Desfaz um cadastro que falhou depois de ensureUserProfile()/setUsername() já terem
+// escrito algo (ver Register.jsx) — sem isso, uma falha de rede nesse meio-tempo deixava
+// o perfil (e o @ reservado) órfãos no Firestore pra sempre, mesmo com a conta do
+// Authentication já desfeita logo em seguida. As regras só permitem esse delete nos
+// minutos seguintes à criação (ver firestore.rules), então isto nunca vira uma forma
+// geral de "excluir minha conta" fora desse fluxo. Best-effort de propósito: cada
+// remoção é tentada mesmo se outra falhar (ex.: username nunca chegou a ser reservado).
+export async function deleteFreshProfile(userId, username) {
+  const attempts = [deleteDoc(doc(db, 'publicProfiles', userId)), deleteDoc(userRef(userId))]
+  if (username) attempts.push(deleteDoc(usernameRef(username)))
+  await Promise.allSettled(attempts)
 }
 
 // Checagem somente-leitura, usada para bloquear o cadastro antes de criar a conta no
