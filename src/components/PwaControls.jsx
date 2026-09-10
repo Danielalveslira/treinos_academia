@@ -10,13 +10,12 @@ export function PwaControls() {
   )
   const [help, setHelp] = useState(false)
   const [offline, setOffline] = useState(!navigator.onLine)
-  const [waiting, setWaiting] = useState(null)
+  const [updateAvailable, setUpdateAvailable] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [installing, setInstalling] = useState(false)
   const [updating, setUpdating] = useState(false)
   const dialog = useRef(null)
   const offlinePanel = useRef(null)
-  const shouldReload = useRef(false)
   const ios =
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
@@ -49,22 +48,23 @@ export function PwaControls() {
     }
   }, [])
 
+  // O service worker agora ativa sozinho assim que termina de instalar (ver
+  // scripts/service-worker.js) — não fica mais esperando um clique para não deixar um
+  // hard refresh preso numa versão antiga. Por isso essa tela não manda mais nenhuma
+  // mensagem para "ativar": só escuta 'controllerchange' e, se esta aba já tinha um
+  // controller antes (ou seja, não é a primeira ativação), avisa que uma versão nova
+  // assumiu e oferece recarregar — sem nunca recarregar sozinho.
   useEffect(() => {
     if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return
     let active = true
     let registration
-    const checkWaiting = () => {
-      if (active && registration?.waiting) {
-        setWaiting(registration.waiting)
+    let hadController = Boolean(navigator.serviceWorker.controller)
+    const changed = () => {
+      if (active && hadController) {
+        setUpdateAvailable(true)
         setDismissed(false)
       }
-    }
-    const updateFound = () => {
-      const worker = registration.installing
-      worker?.addEventListener('statechange', checkWaiting)
-    }
-    const changed = () => {
-      if (shouldReload.current) window.location.reload()
+      hadController = true
     }
     const checkUpdate = () => {
       if (navigator.onLine) registration?.update().catch(() => {})
@@ -73,16 +73,12 @@ export function PwaControls() {
     navigator.serviceWorker
       .register('/sw.js', { updateViaCache: 'none' })
       .then((result) => {
-        if (!active) return
-        registration = result
-        checkWaiting()
-        registration.addEventListener('updatefound', updateFound)
+        if (active) registration = result
       })
       .catch((error) => console.error('[PWA] Registro indisponível:', error))
     window.addEventListener('focus', checkUpdate)
     return () => {
       active = false
-      registration?.removeEventListener('updatefound', updateFound)
       navigator.serviceWorker.removeEventListener('controllerchange', changed)
       window.removeEventListener('focus', checkUpdate)
     }
@@ -124,6 +120,10 @@ export function PwaControls() {
     }
   }
 
+  // A versão nova já está ativa em segundo plano (ver efeito acima); recarregar só faz
+  // esta aba passar a executar o código dela. window.location.reload() é intencional e
+  // seguro aqui: é a única forma de trocar o bundle JS de uma aba já aberta, e só roda
+  // depois de confirmação explícita — nunca automaticamente.
   async function update() {
     const confirmed = await confirm({
       title: 'Atualizar o app agora?',
@@ -132,9 +132,8 @@ export function PwaControls() {
       cancelButtonContent: 'Cancelar',
     })
     if (!confirmed) return
-    shouldReload.current = true
     setUpdating(true)
-    waiting?.postMessage({ type: 'ACTIVATE_UPDATE' })
+    window.location.reload()
   }
 
   return (
@@ -186,7 +185,7 @@ export function PwaControls() {
           Entendi
         </Button>
       </dialog>
-      {waiting && !offline && (
+      {updateAvailable && !offline && (
         <aside className="pwa-update" aria-label="Atualização do aplicativo" hidden={dismissed}>
           <span>Uma nova versão do Treinos está disponível.</span>
           <Button size="small" variant="primary" onClick={update} disabled={updating}>
