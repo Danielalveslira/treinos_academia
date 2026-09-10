@@ -1,9 +1,9 @@
-import { Box, Spinner, Text } from '@primer/react'
+import { Box, Spinner, Text, Link as PrimerLink } from '@primer/react'
 import { AlertIcon, ImageIcon } from '@primer/octicons-react'
 import { useStatusPhoto } from '../hooks/useStatusPhoto'
 
 export function PhotoStatus({ status, preloadedBlob }) {
-  const { url, loading, error } = useStatusPhoto(status.photoPath, preloadedBlob)
+  const { url, loading, error, retry } = useStatusPhoto(status.photoPath, preloadedBlob)
 
   return (
     <Box>
@@ -24,6 +24,9 @@ export function PhotoStatus({ status, preloadedBlob }) {
           <Box className="status-photo-state">
             <AlertIcon size={16} />
             <Text sx={{ fontSize: 0 }}>Não foi possível carregar a foto.</Text>
+            <PrimerLink as="button" type="button" onClick={retry} sx={{ fontSize: 0 }}>
+              Tentar novamente
+            </PrimerLink>
           </Box>
         )}
         {!url && !loading && !error && (
