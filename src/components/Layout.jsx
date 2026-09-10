@@ -34,6 +34,13 @@ function Navigation({ mobile = false }) {
           key={item.to}
           to={item.to}
           end={item.end}
+          // Troca de seção (Início/Exercícios/Progresso/Comunidades) substitui a entrada
+          // atual do histórico em vez de empilhar uma nova — sem isso, alternar entre
+          // abas repetidamente faz o botão voltar do navegador/celular ter que passar por
+          // cada aba visitada antes de sair do app de verdade. "Treinar" fica de fora
+          // (é uma ação, não uma aba) porque o Cancelar de NewWorkout.jsx depende de
+          // navigate(-1) para voltar exatamente para onde o usuário estava.
+          replace={!item.action}
           className={`nav-link${item.action ? ' nav-link-action' : ''}`}
           onMouseEnter={() => preloadRoute(item.to)}
           onFocus={() => preloadRoute(item.to)}
@@ -72,7 +79,7 @@ export function Layout() {
       </a>
       <header className="app-header">
         <div className="header-top">
-          <Link to="/" className="brand" aria-label="Evolutus — início">
+          <Link to="/" replace className="brand" aria-label="Evolutus — início">
             <span className="brand-mark">
               <BrandMark size={25} />
             </span>

@@ -44,7 +44,9 @@ export function AccountMenu({ onLogout, signingOut }) {
       </ActionMenu.Anchor>
       <ActionMenu.Overlay align="end" width="small" className="account-menu-overlay">
         <ActionList>
-          <ActionList.LinkItem as={Link} to="/perfil" onClick={() => setOpen(false)}>
+          {/* replace: mesmo motivo do menu inferior em Layout.jsx — esses links trocam de
+              seção do app, não deveriam empilhar histórico. */}
+          <ActionList.LinkItem as={Link} to="/perfil" replace onClick={() => setOpen(false)}>
             <ActionList.LeadingVisual>
               <PersonIcon />
             </ActionList.LeadingVisual>
@@ -52,19 +54,29 @@ export function AccountMenu({ onLogout, signingOut }) {
           </ActionList.LinkItem>
           {isSuperAdmin && (
             <ActionList.Group title="Administração">
-              <ActionList.LinkItem as={Link} to="/admin/comunidades" onClick={() => setOpen(false)}>
+              <ActionList.LinkItem
+                as={Link}
+                to="/admin/comunidades"
+                replace
+                onClick={() => setOpen(false)}
+              >
                 <ActionList.LeadingVisual>
                   <PeopleIcon />
                 </ActionList.LeadingVisual>
                 Comunidades
               </ActionList.LinkItem>
-              <ActionList.LinkItem as={Link} to="/admin/contas" onClick={() => setOpen(false)}>
+              <ActionList.LinkItem as={Link} to="/admin/contas" replace onClick={() => setOpen(false)}>
                 <ActionList.LeadingVisual>
                   <PersonIcon />
                 </ActionList.LeadingVisual>
                 Contas
               </ActionList.LinkItem>
-              <ActionList.LinkItem as={Link} to="/admin/moderacao" onClick={() => setOpen(false)}>
+              <ActionList.LinkItem
+                as={Link}
+                to="/admin/moderacao"
+                replace
+                onClick={() => setOpen(false)}
+              >
                 <ActionList.LeadingVisual>
                   <ShieldLockIcon />
                 </ActionList.LeadingVisual>
@@ -77,7 +89,7 @@ export function AccountMenu({ onLogout, signingOut }) {
             <ActionList.LeadingVisual>{dark ? <SunIcon /> : <MoonIcon />}</ActionList.LeadingVisual>
             {dark ? 'Ativar tema claro' : 'Ativar tema escuro'}
           </ActionList.Item>
-          <ActionList.LinkItem as={Link} to="/atendimento" onClick={() => setOpen(false)}>
+          <ActionList.LinkItem as={Link} to="/atendimento" replace onClick={() => setOpen(false)}>
             <ActionList.LeadingVisual>
               <QuestionIcon />
             </ActionList.LeadingVisual>
