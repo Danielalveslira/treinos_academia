@@ -19,6 +19,7 @@ import {
 } from '@primer/octicons-react'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useExerciseHistory } from '../hooks/useExerciseHistory'
+import { EXERCISE_HISTORY_PAGE_SIZE } from '../services/workoutsService'
 import {
   getExerciseIndicators,
   buildLoadHistory,
@@ -176,6 +177,12 @@ export default function ExerciseDetail() {
               value={formatDate(indicators.lastWorkoutDate)}
             />
           </Box>
+          {workouts.length >= EXERCISE_HISTORY_PAGE_SIZE && (
+            <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted', mb: 3 }}>
+              Os indicadores acima consideram apenas os {EXERCISE_HISTORY_PAGE_SIZE} treinos mais
+              recentes deste exercício — um recorde de carga mais antigo pode não aparecer.
+            </Text>
+          )}
 
           <Heading as="h2" sx={{ fontSize: 2, mb: 2 }}>
             Evolução da carga

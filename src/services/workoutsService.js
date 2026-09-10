@@ -76,7 +76,12 @@ export async function listWorkoutsPage(
   }
 }
 
-export async function listWorkoutsForExercise(userId, exerciseId, pageSize = 30) {
+// Exportado para a UI poder avisar o recorte real nos indicadores (ver ExerciseDetail.jsx)
+// em vez de apresentar "Maior carga"/"Volume acumulado" como se fossem o histórico
+// completo — um recorde de carga mais antigo que essa página some da comparação.
+export const EXERCISE_HISTORY_PAGE_SIZE = 30
+
+export async function listWorkoutsForExercise(userId, exerciseId, pageSize = EXERCISE_HISTORY_PAGE_SIZE) {
   const q = query(
     workoutsRef(userId),
     where('exerciseId', '==', exerciseId),
@@ -134,8 +139,10 @@ export function deleteWorkout(userId, workoutId) {
 // Janela e teto para as métricas de constância (streak/frequência semanal) sem ler a
 // coleção inteira: cobre folgas realistas (~1 ano) e limita o custo mesmo para quem
 // registra várias séries por dia. Sequências mais longas que isso aparecem "capadas".
-const DASHBOARD_HISTORY_DAYS = 371
-const DASHBOARD_SAFETY_LIMIT = 500
+// Exportados para a UI avisar esse recorte nos indicadores que dependem dele (ver
+// Dashboard.jsx) — "Melhor carga"/"dias ativos" não cobrem o histórico completo.
+export const DASHBOARD_HISTORY_DAYS = 371
+export const DASHBOARD_SAFETY_LIMIT = 500
 
 export async function listDashboardWorkouts(userId) {
   const since = Timestamp.fromDate(new Date(Date.now() - DASHBOARD_HISTORY_DAYS * 86400000))

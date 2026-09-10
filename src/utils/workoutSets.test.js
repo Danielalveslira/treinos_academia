@@ -65,6 +65,22 @@ test('volume, charts, evolution and records use all sets in mixed histories', ()
   assert.match(formatWorkoutSets(mixed), /Série 2: 35,25 kg × 10 reps/)
 })
 
+test('tying the previous best load is not a new record', () => {
+  // maxLoad sempre inclui o próprio treino mais recente — comparar currentLoad com
+  // maxLoad geral (em vez do máximo das sessões ANTERIORES) fazia até um empate disparar
+  // "Novo recorde de carga", já que o treino mais recente sempre é, no mínimo, igual ao
+  // próprio máximo do conjunto que ele integra.
+  const first = { exerciseId: 'squat', date: '2025-01-01', setDetails: [{ weight: 40, reps: 5 }] }
+  const tie = { exerciseId: 'squat', date: '2025-01-05', setDetails: [{ weight: 40, reps: 5 }] }
+  assert.equal(getExerciseIndicators([first, tie]).isPersonalRecord, false)
+  const heavier = {
+    exerciseId: 'squat',
+    date: '2025-01-05',
+    setDetails: [{ weight: 41, reps: 5 }],
+  }
+  assert.equal(getExerciseIndicators([first, heavier]).isPersonalRecord, true)
+})
+
 test('same-day records are ordered by createdAt, not by array/insertion order', () => {
   // Reproduz o relato do usuário: 23kg registrado primeiro, depois 33kg, os dois no
   // mesmo dia. "date" sozinho empata (só guarda o dia, não a hora) — sem o desempate
