@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { Box, Button, Heading, Spinner, IconButton, Text } from '@primer/react'
+import { Box, Button, Heading, Spinner, Text } from '@primer/react'
 import {
   ArrowRightIcon,
   CalendarIcon,
@@ -8,7 +8,6 @@ import {
   GraphIcon,
   PlayIcon,
   PulseIcon,
-  SyncIcon,
   TrophyIcon,
 } from '@primer/octicons-react'
 import { useDashboard } from '../hooks/useDashboard'
@@ -121,14 +120,6 @@ export default function Dashboard() {
           <span className="eyebrow">{greeting.eyebrow}</span>
           <Heading as="h1">{greeting.heading}</Heading>
         </div>
-        <IconButton
-          className="refresh-button"
-          icon={SyncIcon}
-          onClick={refresh}
-          disabled={loading}
-          aria-label="Atualizar dados"
-          variant="invisible"
-        />
       </header>
 
       <section className="workout-hero" aria-labelledby="next-workout-title">
