@@ -16,6 +16,7 @@ import {
   validateSupportRequest,
   validateDecision,
 } from './legal-core.js'
+import { isProtectedRole, REPORT_PROTECTED_AUTHOR_ERROR } from './moderation-core.js'
 import {
   computeNextPaymentDate,
   addBusinessDays,
@@ -148,6 +149,14 @@ export const submitSupportRequest = onCall(options, async (request) => {
       const membership = await tx.get(db.doc(`communityMembers/${relatedCommunity}_${uid}`))
       if (!membership.exists)
         throw new HttpsError('permission-denied', 'Você não tem acesso a essa publicação.')
+      // O papel do autor é sempre conferido agora, na fonte (users/{authorId}), nunca
+      // no selo authorIsSuperAdmin gravado na publicação — isso vale mesmo que o
+      // pedido não tenha vindo do botão "Denunciar" (alguém chamando a function
+      // direto com um statusId manipulado cai na mesma checagem).
+      const author = await tx.get(db.doc(`users/${status.data().authorId}`))
+      if (isProtectedRole(author.data()?.role)) {
+        throw new HttpsError('permission-denied', REPORT_PROTECTED_AUTHOR_ERROR)
+      }
       snapshot = status.data()
     }
     if (kind === 'appeal') {
@@ -228,7 +237,7 @@ export const decideSupportRequest = onCall(options, async (request) => {
     if (targetUserId) {
       await assertWritableAccount(tx, targetUserId)
       const target = await tx.get(db.doc(`users/${targetUserId}`))
-      if (!target.exists || target.data().role === 'superadmin' || targetUserId === adminId) {
+      if (!target.exists || isProtectedRole(target.data()?.role) || targetUserId === adminId) {
         throw new HttpsError('failed-precondition', 'Usuário inválido para esta medida.')
       }
       const expectedTarget = data.contentSnapshot?.authorId

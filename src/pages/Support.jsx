@@ -100,11 +100,17 @@ export default function Support() {
       setMessage('')
       await refresh()
     } catch (err) {
-      setError(
-        err.code === 'functions/resource-exhausted'
-          ? 'Aguarde um minuto antes de enviar outro pedido.'
-          : 'Não foi possível registrar o pedido. O texto foi mantido. Tente novamente ou utilize o e-mail de contato.'
-      )
+      if (err.code === 'functions/resource-exhausted') {
+        setError('Aguarde um minuto antes de enviar outro pedido.')
+      } else if (err.code === 'functions/permission-denied' && err.message) {
+        // Mensagens de permission-denied do submitSupportRequest já são seguras para
+        // exibir (ex.: sem acesso à publicação, autor administrativo não denunciável).
+        setError(err.message)
+      } else {
+        setError(
+          'Não foi possível registrar o pedido. O texto foi mantido. Tente novamente ou utilize o e-mail de contato.'
+        )
+      }
     } finally {
       setSaving(false)
     }

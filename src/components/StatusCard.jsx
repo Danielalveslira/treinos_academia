@@ -22,6 +22,7 @@ import { AchievementSummary } from './AchievementSummary'
 import { MarkdownViewer } from './MarkdownViewer'
 import { formatDateTime } from '../utils/format'
 import { getCached, setCached } from '../utils/pageCache'
+import { isReportableAuthor } from '../utils/moderation'
 
 function toDate(value) {
   return value?.toDate ? value.toDate() : new Date(value)
@@ -309,12 +310,14 @@ export function StatusCard({ status, currentUserId, canDelete, onDelete, now }) 
           <WorkoutStatus status={status} currentUserId={currentUserId} />
         )}
       </div>
-      <Link
-        className="status-report-link"
-        to={`/atendimento?tipo=report&publicacao=${encodeURIComponent(status.id)}&comunidade=${encodeURIComponent(status.communityId)}`}
-      >
-        Denunciar violação
-      </Link>
+      {isReportableAuthor(status) && (
+        <Link
+          className="status-report-link"
+          to={`/atendimento?tipo=report&publicacao=${encodeURIComponent(status.id)}&comunidade=${encodeURIComponent(status.communityId)}`}
+        >
+          Denunciar violação
+        </Link>
+      )}
     </article>
   )
 }
