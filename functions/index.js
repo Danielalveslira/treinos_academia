@@ -1,7 +1,7 @@
 import { createAccountsService } from './accounts-service.js'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore'
-import { createDeletionService } from './deletion-service.js'
+import { createDeletionService, statusPhotoExtra } from './deletion-service.js'
 import { validId } from './legal-core.js'
 import { accountView } from './admin-core.js'
 import { readFileSync } from 'node:fs'
@@ -509,13 +509,7 @@ export const deleteCommunityPermanently = onCall(options, async (request) => {
 export const cleanupDeletedStatus = onDocumentDeleted(
   { ...options, document: 'statuses/{id}', retry: true },
   (event) => {
-    const deleted = event.data?.data()
-    // photoPath só existe (e só importa) para publicações do tipo foto — é o único
-    // dado extra que o job de limpeza de status precisa além do id, então é a única
-    // coisa que copiamos do documento apagado para dentro do job.
-    const extra =
-      deleted?.type === 'photo' && deleted.photoPath ? { photoPath: deleted.photoPath } : {}
-    return deletions.queueDeleted('status', event.params.id, extra)
+    return deletions.queueDeleted('status', event.params.id, statusPhotoExtra(event.data?.data()))
   }
 )
 export const cleanupDeletedCommunity = onDocumentDeleted(

@@ -30,7 +30,8 @@ let env,
   FieldPath,
   HttpsError,
   deletion,
-  authCalls
+  authCalls,
+  bucketDeletes
 before(async () => {
   process.env.GCLOUD_PROJECT = 'demo-admin-rules'
   process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080'
@@ -55,6 +56,7 @@ before(async () => {
   client = env.authenticatedContext('owner').firestore()
   adminClient = env.authenticatedContext('admin').firestore()
   authCalls = []
+  bucketDeletes = []
   deletion = createDeletionService({
     db,
     FieldValue,
@@ -64,6 +66,13 @@ before(async () => {
       updateUser: async (id) => authCalls.push(['disable', id]),
       revokeRefreshTokens: async (id) => authCalls.push(['revoke', id]),
       deleteUser: async (id) => authCalls.push(['delete', id]),
+    },
+    bucket: {
+      file: (path) => ({
+        delete: async () => {
+          bucketDeletes.push(path)
+        },
+      }),
     },
   })
 })
@@ -226,6 +235,24 @@ test('account deletion fences writes, drains bounded batches, cleans foreign int
     authCalls.filter(([, id]) => id === 'erase').map(([op]) => op),
     ['disable', 'revoke', 'delete']
   )
+})
+
+test('account deletion carries photoPath into the status cleanup job it creates, so the file is not orphaned', async () => {
+  await db.doc('users/photoowner').set({ role: 'user' })
+  await db.doc('statuses/photopost').set({
+    authorId: 'photoowner',
+    type: 'photo',
+    photoPath: 'statusPhotos/gym/photopost.webp',
+  })
+  await deletion.queue('account', 'photoowner', 'admin')
+  await drain(db.doc('deletionJobs/account_photoowner'))
+  // The job removeStatuses() creates must already carry photoPath — the deletion
+  // trigger that would otherwise supply it finds the job pre-existing and gives up
+  // (queueDeleted only creates when absent), so this is the only chance to set it.
+  const statusJob = await db.doc('deletionJobs/status_photopost').get()
+  assert.equal(statusJob.data().photoPath, 'statusPhotos/gym/photopost.webp')
+  await drain(statusJob.ref)
+  assert.deepEqual(bucketDeletes, ['statusPhotos/gym/photopost.webp'])
 })
 
 test('failed Auth deletion can resume after a missing profile; concurrent workers do not advance twice', async () => {
