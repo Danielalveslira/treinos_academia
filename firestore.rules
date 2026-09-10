@@ -342,7 +342,7 @@ service cloud.firestore {
       // para absorver a latência entre o cliente montar o valor e o servidor processar.
       return data.communityId is string && data.communityId.size() > 0
         && data.authorId is string
-        && data.type in ['text', 'poll', 'workout', 'achievement']
+        && data.type in ['text', 'poll', 'workout', 'achievement', 'photo']
         && data.createdAt == request.time
         && data.expiresAt > request.time + duration.value(1435, 'm')
         && data.expiresAt < request.time + duration.value(1445, 'm')
@@ -368,7 +368,14 @@ service cloud.firestore {
           && data.achievement.text is string && data.achievement.text.size() <= 300
           && data.achievement.entries is int && data.achievement.entries >= 0
           && data.achievement.sets is number && data.achievement.sets >= 0
-          && (data.achievement.entries > 0 || data.achievement.text.size() > 0));
+          && (data.achievement.entries > 0 || data.achievement.text.size() > 0))
+        // photoPath precisa apontar para a mesma comunidade da publicação e para um
+        // nome de arquivo gerado pelo servidor (ver storage.rules: só aceita upload
+        // com esse formato de nome, nunca o nome original do arquivo do usuário).
+        || (data.type == 'photo' &&
+          data.photoPath is string
+          && data.photoPath.matches('^statusPhotos/' + data.communityId + '/[A-Za-z0-9]{20}\\.webp$')
+          && (!('caption' in data) || (data.caption is string && data.caption.size() <= 280)));
     }
 
     match /statuses/{statusId} {

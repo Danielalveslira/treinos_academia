@@ -158,6 +158,24 @@ export default function CommunityDetail() {
           createdAt: new Date(),
           expiresAt,
         })
+      } else if (values.type === 'photo') {
+        // O upload e a criação do documento já aconteceram dentro do StatusForm (é
+        // quem controla o progresso/cancelamento) — aqui só sobra atualizar o feed
+        // local. _localPhotoBlob deixa o StatusCard mostrar a própria foto na hora,
+        // sem baixar de novo algo que o navegador já tem em memória.
+        addStatusLocally({
+          id: values.ref.id,
+          communityId: id,
+          authorId: author.id,
+          authorUsername: author.username,
+          authorIsSuperAdmin,
+          type: 'photo',
+          photoPath: `statusPhotos/${id}/${values.ref.id}.webp`,
+          caption: values.caption ? values.caption.trim() : '',
+          _localPhotoBlob: values.blob,
+          createdAt: new Date(),
+          expiresAt,
+        })
       }
       setFormOpen(false)
       showToast('Publicado na comunidade.')
@@ -280,7 +298,16 @@ export default function CommunityDetail() {
                 />
               )}
               {canPost && formOpen === 'status' && (
-                <StatusForm onSubmit={handleCreateStatus} onCancel={() => setFormOpen(false)} />
+                <StatusForm
+                  communityId={id}
+                  author={{
+                    id: user.uid,
+                    username: profile?.username || null,
+                    role: profile?.role,
+                  }}
+                  onSubmit={handleCreateStatus}
+                  onCancel={() => setFormOpen(false)}
+                />
               )}
 
               {loadingFeed && statuses.length === 0 && (
@@ -309,6 +336,7 @@ export default function CommunityDetail() {
                     canDelete={status.authorId === user.uid || isSuperAdmin}
                     onDelete={handleDeleteStatus}
                     now={now}
+                    showToast={showToast}
                   />
                 ))}
               </div>

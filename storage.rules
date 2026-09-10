@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// Fotos de publicações de comunidade. O nome do arquivo nunca vem do usuário: o
+// cliente sempre envia para "{communityId}/{20 caracteres alfanuméricos}.webp",
+// o mesmo formato de ID que o Firestore gera para o documento do status (ver
+// createPhotoStatus em statusesService.js e isValidStatusContent no
+// firestore.rules, que exige que photoPath bata com esse padrão).
+//
+// Validado manualmente (scripts isolados de @firebase/rules-unit-testing, fora da
+// suíte automatizada): sem auth nega; sem filiação na comunidade do caminho nega;
+// nome de arquivo fora do formato nega; tipo diferente de image/webp nega; acima de
+// 4MB nega; reenvio para um caminho já existente nega (resource == null); update e
+// delete nunca são permitidos ao cliente. Não entrou em tests/*rules.test.mjs
+// porque, nesta versão do @firebase/rules-unit-testing, configurar `storage` e
+// `firestore.rules` no mesmo initializeTestEnvironment quebra de forma reprodutível
+// a ponte firestore.exists() usada por isMember() abaixo (toda checagem de
+// filiação passa a negar, mesmo com o documento certo no lugar certo) — uma
+// limitação da ferramenta de teste local, não das regras em si. Revisitar se a
+// dependência for atualizada.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /statusPhotos/{communityId}/{fileName} {
+      function isMember() {
+        return request.auth != null
+          && firestore.exists(
+            /databases/(default)/documents/communityMembers/$(communityId + '_' + request.auth.uid)
+          );
+      }
+
+      allow read: if isMember();
+
+      // Só cria; nunca sobrescreve nem apaga. resource == null é o que de fato torna
+      // isso um "só cria": no Storage, reenviar bytes para um caminho que já tem um
+      // arquivo passa pela mesma regra de "create" (não existe update de conteúdo,
+      // só de metadata) — sem essa checagem, um reenvio para o mesmo nome de arquivo
+      // seria aceito como se fosse a primeira vez. A limpeza (exclusão manual,
+      // decisão de moderação ou expiração em 24h) é sempre feita pelo Admin SDK nas
+      // Cloud Functions — nunca pelo próprio cliente, mesmo o autor original.
+      allow create: if isMember()
+        && resource == null
+        && fileName.matches('^[A-Za-z0-9]{20}\\.webp$')
+        && request.resource.size > 0
+        && request.resource.size <= 4 * 1024 * 1024
+        && request.resource.contentType == 'image/webp';
+      allow update, delete: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

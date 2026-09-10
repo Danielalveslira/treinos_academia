@@ -47,6 +47,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expiresAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "statuses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "communityId",
           "order": "ASCENDING"
         },
@@ -177,6 +191,11 @@
     {
       "collectionGroup": "statuses",
       "fieldPath": "text",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "statuses",
+      "fieldPath": "caption",
       "indexes": []
     },
     {

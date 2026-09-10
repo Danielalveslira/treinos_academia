@@ -80,3 +80,10 @@ export function validateWorkoutStatus({ title, date, location }) {
   if (!location || !location.trim()) errors.location = 'Local é obrigatório'
   return errors
 }
+
+export function validatePhotoStatus({ blob, caption }) {
+  const errors = {}
+  if (!blob) errors.photo = 'Escolha uma foto para publicar'
+  if (caption && caption.trim().length > 280) errors.caption = 'Legenda muito longa'
+  return errors
+}
