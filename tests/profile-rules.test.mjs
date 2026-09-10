@@ -278,6 +278,48 @@ test('the superadmin badge is stamped by the server, never by the client payload
   assert.equal((await getDoc(doc(admin, 'statuses/realbadge'))).data().authorIsSuperAdmin, true)
 })
 
+test('malformed payloads that used to crash the feed on render are rejected server-side', async () => {
+  const base = (overrides = {}) => ({
+    communityId: 'gym',
+    authorId: 'owner',
+    authorIsSuperAdmin: false,
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+    ...overrides,
+  })
+  // authorUsername precisa ser string ou null — outro tipo (ex.: number) quebrava
+  // StatusHeader (.charAt/.toUpperCase esperando string).
+  await assertFails(
+    setDoc(
+      doc(owner, 'statuses/badusername'),
+      base({ authorUsername: 123, type: 'text', text: 'oi' })
+    )
+  )
+  await assertSucceeds(
+    setDoc(
+      doc(owner, 'statuses/nullusername'),
+      base({ authorUsername: null, type: 'text', text: 'oi' })
+    )
+  )
+  // Cada opção da enquete precisa ser {id, label} — um item nulo (ou faltando algum
+  // dos dois campos) quebrava PollStatus (option.id/option.label direto).
+  const poll = (options) =>
+    base({ authorUsername: 'owner', type: 'poll', poll: { question: 'Treinou hoje?', options } })
+  await assertFails(setDoc(doc(owner, 'statuses/nulloption'), poll([null, null])))
+  await assertFails(
+    setDoc(doc(owner, 'statuses/missingfield'), poll([{ id: '0' }, { id: '1', label: 'Sim' }]))
+  )
+  await assertSucceeds(
+    setDoc(
+      doc(owner, 'statuses/validpoll'),
+      poll([
+        { id: '0', label: 'Sim' },
+        { id: '1', label: 'Não' },
+      ])
+    )
+  )
+})
+
 test('community postAccess restricts who may publish, enforced server-side', async () => {
   const status = (authorId, authorIsSuperAdmin, overrides = {}) => ({
     communityId: 'announcements',

@@ -52,7 +52,11 @@ function SuperAdminBadge() {
 }
 
 function StatusHeader({ status, now, canDelete, onDelete, showToast }) {
-  const initial = (status.authorUsername || 'M')[0].toUpperCase()
+  // As regras exigem authorUsername nulo ou string (ver firestore.rules), mas nunca
+  // custa nada tratar dado inesperado com cuidado aqui também — um valor de outro
+  // tipo (ex.: number) não deveria derrubar o card inteiro, só cair no "M" padrão.
+  const authorUsername = typeof status.authorUsername === 'string' ? status.authorUsername : null
+  const initial = (authorUsername || 'M').charAt(0).toUpperCase() || 'M'
   return (
     <header className="status-header">
       <Box
@@ -76,7 +80,7 @@ function StatusHeader({ status, now, canDelete, onDelete, showToast }) {
       <Box sx={{ minWidth: 0, flex: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Link to={`/comunidades/perfil/${status.authorId}`} className="status-author">
-            {status.authorUsername ? `@${status.authorUsername}` : 'Membro'}
+            {authorUsername ? `@${authorUsername}` : 'Membro'}
           </Link>
           {status.authorIsSuperAdmin && <SuperAdminBadge />}
         </Box>
@@ -111,7 +115,13 @@ function PollStatus({ status, currentUserId }) {
   const [counts, setCounts] = useState(cached?.counts ?? null)
   const [myOptionId, setMyOptionId] = useState(cached?.myOptionId ?? null)
   const [voting, setVoting] = useState(false)
-  const optionIds = status.poll.options.map((option) => option.id)
+  // As regras exigem que cada opção seja {id, label} (ver firestore.rules), mas o
+  // mesmo raciocínio do authorUsername acima vale aqui: um item inesperado (ex.:
+  // null) não deveria quebrar a renderização de toda a enquete, só ser ignorado.
+  const options = (status.poll?.options || []).filter(
+    (option) => option && typeof option.id === 'string' && typeof option.label === 'string'
+  )
+  const optionIds = options.map((option) => option.id)
 
   useEffect(() => {
     if (cached) return
@@ -152,10 +162,10 @@ function PollStatus({ status, currentUserId }) {
   return (
     <Box>
       <Text sx={{ fontWeight: 'bold', fontSize: 1, display: 'block', mb: 2 }}>
-        {status.poll.question}
+        {status.poll?.question}
       </Text>
       <Box sx={{ display: 'grid', gap: 2 }}>
-        {status.poll.options.map((option) => {
+        {options.map((option) => {
           const count = counts?.[option.id] || 0
           const percent = total > 0 ? Math.round((count / total) * 100) : 0
           const isMine = myOptionId === option.id

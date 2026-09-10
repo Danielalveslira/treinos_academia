@@ -356,6 +356,11 @@ service cloud.firestore {
       // para absorver a latência entre o cliente montar o valor e o servidor processar.
       return data.communityId is string && data.communityId.size() > 0
         && data.authorId is string
+        // authorUsername é sempre gravado (string ou null — ver baseStatusFields em
+        // statusesService.js), nunca outro tipo. Sem essa checagem, um valor como
+        // number passava aqui e quebrava a renderização do card no cliente
+        // (StatusHeader faz .charAt/.toUpperCase esperando string ou null).
+        && (data.authorUsername == null || data.authorUsername is string)
         && data.type in ['text', 'poll', 'workout', 'achievement', 'photo']
         && data.createdAt == request.time
         && data.expiresAt > request.time + duration.value(1435, 'm')
@@ -365,12 +370,31 @@ service cloud.firestore {
         && data.authorIsSuperAdmin == isSuperAdmin();
     }
 
+    // Cada opção precisa ser {id, label}, do mesmo jeito que o cliente sempre monta
+    // (ver createPollStatus em statusesService.js) — sem isso, um item malformado
+    // (ex.: null) passava na regra e quebrava a renderização da enquete no cliente
+    // (PollStatus acessa option.id/option.label direto). Mesmo padrão de
+    // "validar até um índice máximo fixo" já usado para setDetails (validSetAt acima).
+    function isValidPollOption(option) {
+      return option.id is string && option.id.size() > 0
+        && option.label is string && option.label.size() > 0;
+    }
+    function validPollOptionAt(options, index) {
+      return options.size() <= index || isValidPollOption(options[index]);
+    }
+
     function isValidStatusContent(data, statusId) {
       return (data.type == 'text' &&
           data.text is string && data.text.size() > 0 && data.text.size() <= 500)
         || (data.type == 'poll' &&
           data.poll.question is string && data.poll.question.size() > 0
-          && data.poll.options is list && data.poll.options.size() >= 2 && data.poll.options.size() <= 6)
+          && data.poll.options is list && data.poll.options.size() >= 2 && data.poll.options.size() <= 6
+          && validPollOptionAt(data.poll.options, 0)
+          && validPollOptionAt(data.poll.options, 1)
+          && validPollOptionAt(data.poll.options, 2)
+          && validPollOptionAt(data.poll.options, 3)
+          && validPollOptionAt(data.poll.options, 4)
+          && validPollOptionAt(data.poll.options, 5))
         || (data.type == 'workout' &&
           data.workout.title is string && data.workout.title.size() > 0
           && data.workout.date is timestamp
