@@ -1033,6 +1033,69 @@ body:has(.pwa-offline) .app-shell {
   font-size: 14px;
   line-height: 1.5;
 }
+
+/* Linha de comunidade ("Minhas comunidades"/"Explorar"): a área clicável (avatar+nome)
+   e o botão de ação (Sair/Entrar) precisam ser visualmente distintos e consistentes
+   entre todas as linhas — antes disso dependia só da cor/sublinhado padrão do link,
+   sutil demais para diferenciar duas comunidades lado a lado. */
+.community-row {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--borderColor-muted);
+}
+.community-row:first-of-type { border-top: none; }
+
+.community-row-link,
+.community-row-static {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+  padding: 12px 16px;
+  color: var(--fgColor-default);
+  text-decoration: none;
+}
+.community-row-link {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.community-row-link:hover,
+.community-row-link:focus-visible {
+  background: var(--bgColor-muted);
+}
+.community-row-link:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: -2px;
+}
+.community-row-chevron {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--fgColor-muted);
+}
+.community-row-name {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 600;
+}
+.community-row-description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.community-row-action {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 0 16px 0 12px;
+  border-left: 1px solid var(--borderColor-muted);
+}
 .main-content .community-page h1 {
   margin-top: 0;
   font-size: 24px;

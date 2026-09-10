@@ -1,7 +1,7 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Heading, Text, Button, Spinner, Link } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { PeopleIcon } from '@primer/octicons-react'
+import { ChevronRightIcon, PeopleIcon } from '@primer/octicons-react'
 import { useCommunities } from '../hooks/useCommunities'
 import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
@@ -40,65 +40,39 @@ function CommunityAvatar({ community }) {
 function CommunityNameBlock({ community }) {
   return (
     <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Text sx={{ fontWeight: 600, fontSize: 1, display: 'block', overflowWrap: 'anywhere' }}>
-        {community.name}
-      </Text>
+      <Text className="community-row-name">{community.name}</Text>
       {community.description && (
-        <Text
-          sx={{
-            fontSize: 0,
-            color: 'fg.muted',
-            display: 'block',
-            overflowWrap: 'anywhere',
-            lineHeight: 1.5,
-            mt: 1,
-          }}
-        >
-          {community.description}
-        </Text>
+        <Text className="community-row-description">{community.description}</Text>
       )}
     </Box>
   )
 }
 
+// Uma linha inteira precisa deixar claro, de cara, se ela é "toque para abrir" ou só
+// uma linha informativa com um botão — antes disso dependia inteiramente do link do
+// nome ter (ou não) a cor/sublinhado padrão do Primer, algo sutil demais para
+// diferenciar duas comunidades na mesma lista (o motivo do usuário relatar confusão).
+// Agora todo item com linkTo ganha o mesmo tratamento visível (fundo ao passar o mouse/
+// focar, seta no fim) e o botão de ação fica visualmente separado por um divisor, nunca
+// dentro da área clicável de navegação.
 function CommunityRow({ community, action, linkTo }) {
+  const content = (
+    <>
+      <CommunityAvatar community={community} />
+      <CommunityNameBlock community={community} />
+    </>
+  )
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2,
-        px: 3,
-        py: '12px',
-        borderTop: '1px solid',
-        borderColor: 'border.muted',
-        '& > button': { flexShrink: 0 },
-        '&:first-of-type': { borderTop: 'none' },
-      }}
-    >
+    <Box className="community-row">
       {linkTo ? (
-        <Link
-          as={RouterLink}
-          to={linkTo}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            flex: 1,
-            minWidth: 0,
-            color: 'fg.default',
-          }}
-        >
-          <CommunityAvatar community={community} />
-          <CommunityNameBlock community={community} />
+        <Link as={RouterLink} to={linkTo} className="community-row-link">
+          {content}
+          <ChevronRightIcon size={16} className="community-row-chevron" />
         </Link>
       ) : (
-        <>
-          <CommunityAvatar community={community} />
-          <CommunityNameBlock community={community} />
-        </>
+        <Box className="community-row-static">{content}</Box>
       )}
-      {action}
+      {action && <Box className="community-row-action">{action}</Box>}
     </Box>
   )
 }
