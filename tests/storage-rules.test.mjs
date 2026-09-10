@@ -55,13 +55,7 @@ before(async () => {
   await storageEnv.clearStorage()
   memberStorage = storageEnv.authenticatedContext('member').storage()
   outsiderStorage = storageEnv.authenticatedContext('outsider').storage()
-  await seed('users/member', {
-    role: 'user',
-    subscription: {
-      paidAt: null,
-      trialEndsAt: Timestamp.fromMillis(Date.now() + 60 * 60 * 1000),
-    },
-  })
+  await seed('users/member', { role: 'user' })
   await seed(`communityMembers/${COMMUNITY_ID}_member`, {
     communityId: COMMUNITY_ID,
     userId: 'member',

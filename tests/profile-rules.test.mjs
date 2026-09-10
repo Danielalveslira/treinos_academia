@@ -47,16 +47,9 @@ before(async () => {
       role: 'user',
       email: 'private@example.com',
       username: 'owner',
-      subscription: { paidAt: null, trialEndsAt: Timestamp.fromMillis(Date.now() + 86400000) },
     })
-    await setDoc(doc(db, 'users/visitor'), {
-      role: 'user',
-      subscription: { paidAt: null, trialEndsAt: Timestamp.fromMillis(Date.now() + 86400000) },
-    })
-    await setDoc(doc(db, 'users/admin'), {
-      role: 'superadmin',
-      subscription: { paidAt: null, trialEndsAt: Timestamp.fromMillis(Date.now() + 86400000) },
-    })
+    await setDoc(doc(db, 'users/visitor'), { role: 'user' })
+    await setDoc(doc(db, 'users/admin'), { role: 'superadmin' })
     await setDoc(doc(db, 'publicProfiles/owner'), {
       username: 'owner',
       bio: 'Treino com constância',
@@ -458,7 +451,6 @@ test('publishing still works once legal terms are published and accepted (regres
       role: 'user',
       username: uid,
       legalAcceptance: { version: 'v1', digest: 'abc123' },
-      subscription: { paidAt: null, trialEndsAt: Timestamp.fromMillis(Date.now() + 86400000) },
     })
     await setDoc(doc(db, `usernames/${uid}`), { uid, createdAt: Timestamp.now() })
     await setDoc(doc(db, `communityMembers/gym_${uid}`), {

@@ -12,7 +12,6 @@ import { logoutUser } from '../services/authService'
 import { useAuth } from '../hooks/useAuth'
 import { preloadRoute } from '../routeLoaders'
 import { PageFallback } from './PageFallback'
-import { SubscriptionBanner } from './SubscriptionBanner'
 import { BrandMark } from './BrandMark'
 import { AccountMenu } from './AccountMenu'
 
@@ -95,7 +94,6 @@ export function Layout() {
             {logoutError}
           </Flash>
         )}
-        <SubscriptionBanner profile={profile} />
         {profile && !profile.username && pathname !== '/perfil' && (
           <Flash className="profile-reminder">
             Defina um nome de usuário para aparecer nas comunidades no lugar do seu e-mail.

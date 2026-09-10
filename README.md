@@ -8,7 +8,7 @@ Aplicação web para acompanhar evolução em treinos de academia: exercícios, 
 - **UI:** [GitHub Primer React](https://primer.style/) — todos os elementos de interface (botões, formulários, listas, diálogos, feedback) usam componentes do Primer; não há biblioteca de estilo concorrente
 - **Autenticação:** Firebase Authentication
 - **Banco de dados:** Firebase Firestore
-- **Backend:** Cloud Functions (`functions/`, Node) — pagamentos/assinatura, moderação, exclusão de conta/comunidade (jobs em lote), publicação de documentos legais e manutenção de contadores denormalizados. Só existe onde a lógica não pode ser confiada ao cliente (ex.: confirmar um pagamento, aplicar uma penalidade); tudo que Firestore Security Rules conseguem validar sozinhas continua sem passar por uma function.
+- **Backend:** Cloud Functions (`functions/`, Node) — moderação, exclusão de conta/comunidade (jobs em lote), publicação de documentos legais e manutenção de contadores denormalizados. Só existe onde a lógica não pode ser confiada ao cliente (ex.: aplicar uma penalidade); tudo que Firestore Security Rules conseguem validar sozinhas continua sem passar por uma function.
 - **Arquivos:** Firebase Storage — hoje só fotos de publicações de comunidade (`statusPhotos/{communityId}/{statusId}.webp`), com regras próprias em `storage.rules`.
 - **Hospedagem:** Firebase Hosting (compatível com Vercel/Netlify, ajustando o passo de deploy)
 
@@ -72,7 +72,7 @@ Casos sem histórico anterior ou carga anterior igual a zero retornam `null` (ex
 
 ## Uso consciente do plano gratuito
 
-- A maioria das leituras é pontual (`getDocs`), sob demanda; a única exceção é o perfil do usuário autenticado (`users/{uid}`), que usa um listener (`onSnapshot`) para refletir na hora ações administrativas feitas em outra sessão (confirmar pagamento, desativar conta) — ver `AuthContext.jsx`.
+- A maioria das leituras é pontual (`getDocs`), sob demanda; a única exceção é o perfil do usuário autenticado (`users/{uid}`), que usa um listener (`onSnapshot`) para refletir na hora ações administrativas feitas em outra sessão (desativar conta, aplicar restrição) — ver `AuthContext.jsx`.
 - Histórico paginado (20 registros por página, com "carregar mais").
 - Indicadores de exercício limitam a leitura às últimas 30 sessões daquele exercício.
 - Dashboard usa uma janela de 50 treinos recentes para volume/frequência e `getCountFromServer` (contagem agregada, custo mínimo) para o total de treinos — evita ler o histórico inteiro.

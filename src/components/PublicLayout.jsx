@@ -3,14 +3,7 @@ import { IconButton } from '@primer/react'
 import { useColorMode } from '../hooks/useColorMode'
 import { LegalLinks } from './LegalLinks'
 import { useAuth } from '../hooks/useAuth'
-import {
-  GraphIcon,
-  SunIcon,
-  MoonIcon,
-  ChecklistIcon,
-  HistoryIcon,
-  ArrowUpRightIcon,
-} from '@primer/octicons-react'
+import { GraphIcon, SunIcon, MoonIcon, ChecklistIcon, HistoryIcon } from '@primer/octicons-react'
 import { BrandMark } from './BrandMark'
 
 export function PublicLayout({ children }) {
@@ -30,7 +23,6 @@ export function PublicLayout({ children }) {
           Evolutus
         </Link>
         <nav aria-label="Navegação">
-          <NavLink to="/planos">Planos</NavLink>
           {user ? <NavLink to="/">Ir para o app</NavLink> : <NavLink to="/login">Entrar</NavLink>}
           <IconButton
             icon={dark ? SunIcon : MoonIcon}
@@ -43,11 +35,7 @@ export function PublicLayout({ children }) {
         {children}
       </main>
       <footer className="public-footer">
-        <LegalLinks>
-          <Link to="/planos">
-            Conheça os planos <ArrowUpRightIcon size={12} />
-          </Link>
-        </LegalLinks>
+        <LegalLinks />
         <p className="public-footer-brand">
           <BrandMark size={14} /> Evolutus · Seu diário de evolução
         </p>

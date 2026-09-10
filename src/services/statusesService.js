@@ -102,8 +102,8 @@ export function createWorkoutStatus(communityId, author, workout) {
 }
 
 // O documento nasce antes do upload. A criação dele passa pelas regras completas do
-// Firestore (assinatura, termos, restrições, filiação e configuração da comunidade),
-// e o Storage precisa consultar somente esse documento para autorizar os bytes. Isso
+// Firestore (termos, restrições, filiação e configuração da comunidade), e o Storage
+// precisa consultar somente esse documento para autorizar os bytes. Isso
 // mantém as regras do Storage dentro do limite de duas consultas cruzadas por operação.
 // Se o envio falhar ou for cancelado, removemos o documento; o gatilho de exclusão e a
 // varredura de órfãos continuam sendo a rede de segurança para falhas de rede.

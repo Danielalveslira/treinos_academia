@@ -3,7 +3,6 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { auth, db } from '../firebase/config'
 import { ensureUserProfile, updateUserProfile } from '../services/usersService'
-import { initializeTrial } from '../services/billingService'
 import { clearPageCache } from '../utils/pageCache'
 
 export const AuthContext = createContext(null)
@@ -33,26 +32,13 @@ export function AuthProvider({ children }) {
         return
       }
       try {
-        let userProfile = await ensureUserProfile(firebaseUser.uid)
-        // Contas que existiam antes do sistema de assinatura ainda não têm
-        // `subscription` — sem isso, hasAppAccess() nas regras nega tudo (ver
-        // firestore.rules). Concede o trial nessa hora, uma única vez (a function é
-        // idempotente), pra ninguém ficar trancado fora por uma migração de dados.
-        if (userProfile.role !== 'superadmin' && !userProfile.subscription) {
-          try {
-            await initializeTrial()
-            userProfile = await ensureUserProfile(firebaseUser.uid)
-          } catch (trialErr) {
-            console.error('[Auth] initializeTrial:', trialErr)
-          }
-        }
+        const userProfile = await ensureUserProfile(firebaseUser.uid)
         if (active && current === revision) {
           setProfile(userProfile)
-          // Uma ação administrativa (confirmar pagamento, desativar conta, aplicar
-          // restrição) grava direto em users/{uid} de outra sessão — sem um listener
-          // aqui, a sessão afetada só veria o efeito num próximo refreshProfile/reload
-          // manual, mesmo já bloqueada no servidor (as regras já negam na hora; isto é
-          // só a UI refletir o motivo em vez de ficar com "Assinatura pendente" obsoleto).
+          // Uma ação administrativa (desativar conta, aplicar restrição) grava direto em
+          // users/{uid} de outra sessão — sem um listener aqui, a sessão afetada só veria
+          // o efeito num próximo refreshProfile/reload manual, mesmo já bloqueada no
+          // servidor (as regras já negam na hora; isto é só a UI refletir o motivo).
           unsubscribeProfile = onSnapshot(doc(db, 'users', firebaseUser.uid), (snapshot) => {
             if (!active || current !== revision || !snapshot.exists()) return
             setProfile((prev) => ({ ...prev, ...snapshot.data(), id: firebaseUser.uid }))

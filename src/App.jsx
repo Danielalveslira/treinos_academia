@@ -11,7 +11,6 @@ import { routeLoaders } from './routeLoaders'
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
-const Pricing = lazy(() => import('./pages/Pricing'))
 const Dashboard = lazy(routeLoaders['/'])
 const Exercises = lazy(routeLoaders['/exercicios'])
 const ExerciseDetail = lazy(() => import('./pages/ExerciseDetail'))
@@ -26,7 +25,6 @@ const LegalDocument = lazy(() => import('./pages/LegalDocument'))
 const Support = lazy(() => import('./pages/Support'))
 const AdminModeration = lazy(() => import('./pages/AdminModeration'))
 const AdminAccounts = lazy(() => import('./pages/AdminAccounts'))
-const Payment = lazy(() => import('./pages/Payment'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 export default function App() {
@@ -44,7 +42,6 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro" element={<Register />} />
             <Route path="/esqueci-senha" element={<ForgotPassword />} />
-            <Route path="/planos" element={<Pricing />} />
             <Route
               path="/regras-da-comunidade"
               element={<LegalDocument documentId="community" />}
@@ -73,7 +70,6 @@ export default function App() {
             <Route path="/novo-treino" element={<NewWorkout />} />
             <Route path="/historico" element={<History />} />
             <Route path="/perfil" element={<Profile />} />
-            <Route path="/pagamento" element={<Payment />} />
             <Route
               path="/admin/moderacao"
               element={

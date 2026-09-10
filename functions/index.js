@@ -4,7 +4,7 @@ import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/fire
 import { createDeletionService, statusPhotoExtra } from './deletion-service.js'
 import { createBumpMemberCount } from './community-members-service.js'
 import { validId } from './legal-core.js'
-import { accountView } from './admin-core.js'
+import { accountView, validateSetAccountStatus, validateDeleteAccount } from './admin-core.js'
 import { readFileSync } from 'node:fs'
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore'
@@ -25,14 +25,6 @@ import {
   REPORT_PROTECTED_AUTHOR_ERROR,
   REPORT_OWN_STATUS_ERROR,
 } from './moderation-core.js'
-import {
-  computeNextPaymentDate,
-  addBusinessDays,
-  validateConfirmPayment,
-  validateSetAccountStatus,
-  validateDeleteAccount,
-} from './billing-core.js'
-
 initializeApp()
 const db = getFirestore()
 const authAdmin = getAuth()
@@ -49,17 +41,6 @@ const manifest = JSON.parse(readFileSync(new URL('./legal/manifest.json', import
 const documents = JSON.parse(readFileSync(new URL('./legal/documents.json', import.meta.url)))
 const digest = legalDigest(manifest, documents)
 const options = { region: 'southamerica-east1', maxInstances: 5 }
-// Espelha DEFAULT_BILLING_CONFIG de src/utils/billing.js — o appConfig/billing só existe
-// no Firestore depois que um SUPERADMIN salva algo pela primeira vez pelo painel admin;
-// até lá, tanto o cliente quanto as functions usam este mesmo default.
-const DEFAULT_BILLING = {
-  trialDays: 3,
-  graceBusinessDays: 1,
-  plans: [
-    { id: 'basico', name: 'Básico', price: 25.9, billingCycle: 'monthly' },
-    { id: 'plus', name: 'Plus', price: 39.9, billingCycle: 'monthly' },
-  ],
-}
 
 function requireUser(request) {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Entre na sua conta.')
@@ -262,10 +243,7 @@ export const decideSupportRequest = onCall(options, async (request) => {
       throw new HttpsError('failed-precondition', 'O pedido já foi concluído ou não existe.')
     const data = support.data()
     if (!['report', 'appeal'].includes(data.kind) && action !== 'no_action') {
-      throw new HttpsError(
-        'invalid-argument',
-        'Pedidos de privacidade e cobrança não aplicam penalidades.'
-      )
+      throw new HttpsError('invalid-argument', 'Pedidos de privacidade não aplicam penalidades.')
     }
     if (targetUserId) {
       await assertWritableAccount(tx, targetUserId)
@@ -343,127 +321,8 @@ export const listAccountsForAdmin = onCall(options, async (request) => {
   return accountsService(request.data || {})
 })
 
-// Concede o trial uma única vez, com carimbos do servidor (nunca o relógio do
-// dispositivo). Idempotente: chamadas repetidas após o cadastro não reiniciam o trial.
-export const initializeTrial = onCall(options, async (request) => {
-  const uid = requireUser(request)
-  const ref = db.doc(`users/${uid}`)
-  const config = await db.doc('appConfig/billing').get()
-  const trialDays = config.data()?.trialDays ?? DEFAULT_BILLING.trialDays
-  if (!Number.isInteger(trialDays) || trialDays < 0 || trialDays > 365)
-    throw new HttpsError('failed-precondition', 'Configuração de trial inválida.')
-  await db.runTransaction(async (tx) => {
-    await assertWritableAccount(tx, uid)
-    const user = await tx.get(ref)
-    if (!user.exists) throw new HttpsError('failed-precondition', 'Finalize seu cadastro antes.')
-    if (user.data().subscription) return
-    tx.update(ref, {
-      subscription: {
-        planId: null,
-        trialStartedAt: FieldValue.serverTimestamp(),
-        trialEndsAt: Timestamp.fromMillis(Date.now() + trialDays * 86400000),
-        billingCycle: 'monthly',
-        billingAnchorDay: null,
-        paidAt: null,
-        lastPaymentConfirmedAt: null,
-        nextPaymentAt: null,
-        graceEndsAt: null,
-        blockedAt: null,
-        confirmedBy: null,
-      },
-    })
-  })
-  return { ok: true }
-})
-
-// Único ponto que ativa/renova uma assinatura — só o SUPERADMIN confirma, após checar
-// o comprovante enviado por fora (WhatsApp). Preserva o billingAnchorDay entre renovações.
-export const confirmPayment = onCall(options, async (request) => {
-  const adminId = requireUser(request)
-  const error = validateConfirmPayment(request.data)
-  if (error) throw new HttpsError('invalid-argument', error)
-  const { userId, planId, operationId } = request.data
-  const userRef = db.doc(`users/${userId}`)
-  const paymentRef = db.doc(`payments/${operationId}`)
-  await db.runTransaction(async (tx) => {
-    await assertWritableAccount(tx, userId)
-    const [admin, user, plansDoc, config, previousPayment] = await tx.getAll(
-      db.doc(`users/${adminId}`),
-      userRef,
-      db.doc('appConfig/plans'),
-      db.doc('appConfig/billing'),
-      paymentRef
-    )
-    if (admin.data()?.role !== 'superadmin') {
-      throw new HttpsError(
-        'permission-denied',
-        'Apenas administradores podem confirmar pagamentos.'
-      )
-    }
-    if (!user.exists) throw new HttpsError('not-found', 'Conta não encontrada.')
-    if (previousPayment.exists) {
-      const previous = previousPayment.data()
-      if (
-        previous.userId !== userId ||
-        previous.planId !== planId ||
-        previous.confirmedBy !== adminId
-      )
-        throw new HttpsError('already-exists', 'Identificador já utilizado em outro pagamento.')
-      return
-    }
-    const plan = (plansDoc.data()?.plans || DEFAULT_BILLING.plans).find((p) => p.id === planId)
-    if (!plan)
-      throw new HttpsError('invalid-argument', 'Plano não encontrado na configuração atual.')
-    const graceBusinessDays = config.data()?.graceBusinessDays ?? DEFAULT_BILLING.graceBusinessDays
-    if (
-      !Number.isFinite(plan.price) ||
-      plan.price < 0 ||
-      plan.price > 100000 ||
-      !Number.isInteger(graceBusinessDays) ||
-      graceBusinessDays < 0 ||
-      graceBusinessDays > 30
-    )
-      throw new HttpsError('failed-precondition', 'Configuração de pagamento inválida.')
-    const now = Date.now()
-    const subscription = user.data().subscription || {}
-    const anchorDay = subscription.billingAnchorDay ?? new Date(now).getUTCDate()
-    // Pagamento adiantado não deve "roubar" dias do ciclo seguinte: se o vencimento
-    // anterior ainda está no futuro, o próximo ciclo conta a partir dele, não de agora.
-    const previousNext = subscription.nextPaymentAt?.toMillis?.()
-    const anchorFrom = previousNext && previousNext > now ? previousNext : now
-    const nextPaymentAtMillis = computeNextPaymentDate(anchorFrom, anchorDay)
-    const graceEndsAtMillis = addBusinessDays(nextPaymentAtMillis, graceBusinessDays)
-    tx.update(userRef, {
-      subscription: {
-        ...subscription,
-        trialEndsAt: subscription.trialEndsAt || Timestamp.fromMillis(now),
-        billingCycle: 'monthly',
-        planId,
-        billingAnchorDay: anchorDay,
-        paidAt: FieldValue.serverTimestamp(),
-        lastPaymentConfirmedAt: FieldValue.serverTimestamp(),
-        nextPaymentAt: Timestamp.fromMillis(nextPaymentAtMillis),
-        graceEndsAt: Timestamp.fromMillis(graceEndsAtMillis),
-        blockedAt: null,
-        confirmedBy: adminId,
-      },
-    })
-    tx.create(paymentRef, {
-      userId,
-      planId,
-      amount: plan.price,
-      method: 'pix',
-      status: 'confirmed',
-      confirmedAt: FieldValue.serverTimestamp(),
-      confirmedBy: adminId,
-      referenceDueDate: Timestamp.fromMillis(nextPaymentAtMillis),
-    })
-  })
-  return { id: paymentRef.id, account: accountView(userId, (await userRef.get()).data()) }
-})
-
-// Ativar/desativar é um estado administrativo separado do estado de assinatura (ver
-// firestore.rules: hasAppAccess exige os dois). Desativar sempre exige um motivo.
+// Ativar/desativar é um estado administrativo independente, usado para moderação
+// (ver firestore.rules: hasAppAccess). Desativar sempre exige um motivo.
 export const setAccountStatus = onCall(options, async (request) => {
   const adminId = requireUser(request)
   const error = validateSetAccountStatus(request.data)

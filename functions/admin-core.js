@@ -1,16 +1,32 @@
+import { validId } from './legal-core.js'
+
 // Never spread user-controlled profile fields into an administrative identity.
 export function accountView(id, data = {}, email = null) {
-  const fields = [
-    'username',
-    'role',
-    'accountStatus',
-    'disabledReason',
-    'createdAt',
-    'subscription',
-  ]
+  const fields = ['username', 'role', 'accountStatus', 'disabledReason', 'createdAt']
   const result = { id, email }
   for (const key of fields) if (data[key] !== undefined) result[key] = serialize(data[key])
   return result
+}
+
+export function validateSetAccountStatus(data) {
+  if (!validId(data?.userId)) return 'Usuário inválido.'
+  if (typeof data?.disabled !== 'boolean') return 'Informe o novo estado da conta.'
+  if (data.disabled) {
+    if (
+      typeof data.reason !== 'string' ||
+      data.reason.trim().length < 5 ||
+      data.reason.length > 500
+    ) {
+      return 'Informe o motivo da desativação (5 a 500 caracteres).'
+    }
+  }
+  return null
+}
+
+export function validateDeleteAccount(data) {
+  if (!validId(data?.userId)) return 'Usuário inválido.'
+  if (data?.confirmation !== 'EXCLUIR') return 'Digite EXCLUIR para confirmar.'
+  return null
 }
 
 function serialize(value) {

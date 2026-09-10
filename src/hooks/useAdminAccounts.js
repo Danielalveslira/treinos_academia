@@ -2,10 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   listAccountsPage,
   setAccountStatus,
-  confirmPayment,
   deleteAccountPermanently,
   listDeletionJobs,
-} from '../services/billingService'
+} from '../services/adminAccountsService'
 import { describeFirestoreError } from '../utils/firestoreError'
 
 export function useAdminAccounts(search = '') {
@@ -90,7 +89,6 @@ export function useAdminAccounts(search = '') {
   }
   const disable = (uid, reason) => change(uid, () => setAccountStatus(uid, true, reason))
   const enable = (uid) => change(uid, () => setAccountStatus(uid, false))
-  const confirm = (uid, planId) => change(uid, () => confirmPayment(uid, planId))
   const remove = (uid) => change(uid, () => deleteAccountPermanently(uid, 'EXCLUIR'))
   return {
     accounts,
@@ -103,7 +101,6 @@ export function useAdminAccounts(search = '') {
     refresh,
     disable,
     enable,
-    confirm,
     remove,
   }
 }

@@ -41,21 +41,16 @@ service firebase.storage {
       // fluxo. Elas enviam os bytes antes de criar statuses/{id}. O Firestore ainda faz
       // a autorização completa logo depois do upload; se negar ou o cliente desaparecer,
       // purgeOrphanedPhotos remove o arquivo sem status. Esta alternativa usa apenas os
-      // dois documentos permitidos pelo Storage e mantém assinatura/conta bloqueada fora.
+      // dois documentos permitidos pelo Storage e mantém conta bloqueada/em exclusão fora.
       function canLegacyCreatePhoto() {
         let me = firestore.get(
           /databases/(default)/documents/users/$(request.auth.uid)
         ).data;
-        let sub = me.get('subscription', null);
-        let subscriptionOk = sub != null
-          && ((sub.paidAt == null && request.time < sub.trialEndsAt)
-            || (sub.paidAt != null && sub.graceEndsAt != null && request.time < sub.graceEndsAt));
         return firestore.exists(
             /databases/(default)/documents/communityMembers/$(communityId + '_' + request.auth.uid)
           )
           && me.get('accountStatus', 'active') != 'disabled'
-          && me.get('accountStatus', 'active') != 'deleting'
-          && (me.get('role', 'user') == 'superadmin' || subscriptionOk);
+          && me.get('accountStatus', 'active') != 'deleting';
       }
 
       allow read: if request.auth != null

@@ -25,7 +25,6 @@ const KINDS = {
   report: 'Denunciar violação',
   appeal: 'Recorrer de uma decisão',
   privacy: 'Privacidade ou exclusão da conta',
-  billing: 'Cancelamento ou pagamento',
 }
 
 const STATE_LABELS = {
@@ -120,7 +119,7 @@ export default function Support() {
     <PublicLayout>
       <div className="support-page">
         <h1>Atendimento</h1>
-        <p>Denúncias, recursos, privacidade e dúvidas sobre pagamentos em um canal privado.</p>
+        <p>Denúncias, recursos e privacidade em um canal privado.</p>
         {LEGAL_MANIFEST.contactEmail && (
           <p>
             Você também pode escrever para{' '}

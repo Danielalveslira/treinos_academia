@@ -12,10 +12,9 @@ test('administrative identity comes from document path, never profile data', () 
     { id: 'real', email: 'real@example.com', username: 'alice' }
   )
 })
-test('account view serializes subscription timestamps', () => {
+test('account view serializes Firestore timestamps', () => {
   assert.equal(
-    accountView('real', { subscription: { paidAt: { toDate: () => new Date('2026-01-01') } } })
-      .subscription.paidAt,
+    accountView('real', { createdAt: { toDate: () => new Date('2026-01-01') } }).createdAt,
     '2026-01-01T00:00:00.000Z'
   )
 })

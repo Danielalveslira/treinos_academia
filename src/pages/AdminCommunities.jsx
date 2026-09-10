@@ -84,7 +84,7 @@ export default function AdminCommunities() {
           Atendimento e moderação
         </Button>
         <Button as={Link} to="/admin/contas">
-          Contas e assinaturas
+          Contas
         </Button>
       </Box>
       <ToastFlash toasts={toasts} />

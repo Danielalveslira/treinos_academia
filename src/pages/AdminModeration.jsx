@@ -32,7 +32,6 @@ const KIND_LABELS = {
   report: 'Denúncia',
   appeal: 'Recurso',
   privacy: 'Privacidade/exclusão',
-  billing: 'Pagamento',
 }
 
 const STATE_LABELS = {

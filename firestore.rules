@@ -35,14 +35,10 @@ service cloud.firestore {
       let policy = policyExists ? get(policyRef).data : {};
       let restrictionRef = /databases/$(database)/documents/accountRestrictions/$(uid);
       let restrictionExists = exists(restrictionRef);
-      let sub = me.get('subscription', null);
-      let subscriptionOk = sub != null
-        && ((sub.paidAt == null && request.time < sub.trialEndsAt)
-          || (sub.paidAt != null && sub.graceEndsAt != null && request.time < sub.graceEndsAt));
       return isSignedIn()
         && (!policyExists || policy.published != true
           || (me.legalAcceptance.version == policy.version && me.legalAcceptance.digest == policy.digest))
-        && (isAdmin || (me.get('accountStatus', 'active') != 'disabled' && subscriptionOk))
+        && (isAdmin || me.get('accountStatus', 'active') != 'disabled')
         && (!restrictionExists
           || (get(restrictionRef).data.action == 'temporary_suspension'
             && get(restrictionRef).data.until <= request.time));
@@ -79,65 +75,6 @@ service cloud.firestore {
     }
 
     match /moderationDecisions/{decisionId} {
-      allow read: if isSuperAdmin();
-      allow write: if false;
-    }
-
-    function validPlan(plan) {
-      return plan.keys().hasOnly(['id', 'name', 'price', 'billingCycle', 'highlight'])
-        && plan.id is string && plan.id.matches('^[a-zA-Z0-9_-]{1,128}$')
-        && plan.name is string && plan.name.size() > 0 && plan.name.size() <= 60
-        && plan.price is number && plan.price >= 0 && plan.price <= 100000
-        && plan.billingCycle == 'monthly'
-        && (!('highlight' in plan) || plan.highlight is bool);
-    }
-    function validPlanAt(plans, index) {
-      return plans.size() <= index || validPlan(plans[index]);
-    }
-    function validPlans(data) {
-      let plans = data.plans;
-      return data.keys().hasOnly(['plans']) && plans is list && plans.size() > 0 && plans.size() <= 10
-        && validPlanAt(plans, 0)
-        && validPlanAt(plans, 1)
-        && validPlanAt(plans, 2)
-        && validPlanAt(plans, 3)
-        && validPlanAt(plans, 4)
-        && validPlanAt(plans, 5)
-        && validPlanAt(plans, 6)
-        && validPlanAt(plans, 7)
-        && validPlanAt(plans, 8)
-        && validPlanAt(plans, 9)
-      ;
-    }
-    function validBilling(data) {
-      return data.keys().hasOnly(['pixKey', 'pixKeyType', 'receiverName', 'whatsapp', 'trialDays', 'warningDaysBeforeDue', 'graceBusinessDays'])
-        && data.pixKey is string && data.pixKey.size() <= 200
-        && data.receiverName is string && data.receiverName.size() <= 200
-        && data.whatsapp is string && data.whatsapp.size() <= 200
-        && data.pixKeyType in ['email', 'cpf', 'cnpj', 'phone', 'random']
-        && data.trialDays is int && data.trialDays >= 0 && data.trialDays <= 365
-        && data.warningDaysBeforeDue is int && data.warningDaysBeforeDue >= 0 && data.warningDaysBeforeDue <= 30
-        && data.graceBusinessDays is int && data.graceBusinessDays >= 0 && data.graceBusinessDays <= 30;
-    }
-
-    // Nomes/preços dos planos: leitura pública (a página de planos é acessível a
-    // visitantes deslogados). Escrita só pelo SUPERADMIN.
-    match /appConfig/plans {
-      allow get: if true;
-      allow create, update: if isSuperAdmin() && validPlans(request.resource.data);
-    }
-
-    // Chave PIX, WhatsApp e nome do recebedor: dado pessoal do dono do negócio, não
-    // precisa (nem deveria) ficar raspável por qualquer bot da internet — só quem tem
-    // conta enxerga, o suficiente pra ver a tela de pagamento depois de logar.
-    match /appConfig/billing {
-      allow get: if isSignedIn();
-      allow create, update: if isSuperAdmin() && validBilling(request.resource.data);
-    }
-
-    // Histórico de pagamentos confirmados: só o SUPERADMIN lê; escrita apenas
-    // pela Cloud Function confirmPayment (Admin SDK, ignora estas regras).
-    match /payments/{paymentId} {
       allow read: if isSuperAdmin();
       allow write: if false;
     }
@@ -496,14 +433,10 @@ service cloud.firestore {
       let policy = policyExists ? get(policyRef).data : {};
       let restrictionRef = /databases/$(database)/documents/accountRestrictions/$(uid);
       let restrictionExists = exists(restrictionRef);
-      let sub = me.get('subscription', null);
-      let subscriptionOk = sub != null
-        && ((sub.paidAt == null && request.time < sub.trialEndsAt)
-          || (sub.paidAt != null && sub.graceEndsAt != null && request.time < sub.graceEndsAt));
       return me.get('accountStatus', 'active') != 'deleting'
         && (!policyExists || policy.published != true
           || (me.legalAcceptance.version == policy.version && me.legalAcceptance.digest == policy.digest))
-        && (isAdmin || (me.get('accountStatus', 'active') != 'disabled' && subscriptionOk))
+        && (isAdmin || me.get('accountStatus', 'active') != 'disabled')
         && (!restrictionExists
           || (get(restrictionRef).data.action == 'temporary_suspension'
             && get(restrictionRef).data.until <= request.time));

@@ -43,7 +43,7 @@ export function validId(value) {
 }
 
 export function validateSupportRequest(data) {
-  if (!['report', 'appeal', 'privacy', 'billing'].includes(data?.kind)) return 'Tipo inválido.'
+  if (!['report', 'appeal', 'privacy'].includes(data?.kind)) return 'Tipo inválido.'
   if (
     typeof data.message !== 'string' ||
     data.message.trim().length < 10 ||

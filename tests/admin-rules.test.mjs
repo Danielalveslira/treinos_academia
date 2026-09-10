@@ -20,7 +20,6 @@ import { createDeletionService } from '../functions/deletion-service.js'
 import { createAccountsService } from '../functions/accounts-service.js'
 import { createBumpMemberCount } from '../functions/community-members-service.js'
 import { legalDigest } from '../functions/legal-core.js'
-import { DEFAULT_BILLING_CONFIG } from '../src/utils/billing.js'
 
 let env,
   db,
@@ -192,58 +191,6 @@ test('acceptLegalDocuments verifies the minimum age from dataNascimento on the s
   }
 })
 
-test('billing configuration requires bounded values even for an administrator', async () => {
-  const { plans, ...billing } = DEFAULT_BILLING_CONFIG
-  await assertSucceeds(setDoc(doc(adminClient, 'appConfig/plans'), { plans }))
-  await assertSucceeds(setDoc(doc(adminClient, 'appConfig/billing'), billing))
-  await assertFails(setDoc(doc(client, 'appConfig/plans'), { plans }))
-  await assertFails(updateDoc(doc(adminClient, 'appConfig/billing'), { graceBusinessDays: 1.5 }))
-  await assertFails(
-    updateDoc(doc(adminClient, 'appConfig/billing'), { graceBusinessDays: Infinity })
-  )
-  for (let index = 0; index < 10; index++) {
-    const values = Array.from({ length: 10 }, (_, id) => ({ ...plans[0], id: `plan${id}` }))
-    await assertSucceeds(setDoc(doc(adminClient, 'appConfig/plans'), { plans: values }))
-    values[index].price = -1
-    await assertFails(setDoc(doc(adminClient, 'appConfig/plans'), { plans: values }))
-  }
-  await assertSucceeds(setDoc(doc(adminClient, 'appConfig/plans'), { plans }))
-})
-
-test('concurrent payment retries create one payment and preserve administrative disablement', async () => {
-  await db.doc('users/payee').set({ role: 'user', accountStatus: 'disabled' })
-  const req = {
-    auth: { uid: 'admin' },
-    data: { userId: 'payee', planId: 'basico', operationId: 'payment-once' },
-  }
-  const results = await Promise.all([api.confirmPayment.run(req), api.confirmPayment.run(req)])
-  assert.equal(results[0].id, results[1].id)
-  const user = (await db.doc('users/payee').get()).data()
-  assert.equal(user.accountStatus, 'disabled')
-  assert.ok(user.subscription.trialEndsAt)
-  const due = user.subscription.nextPaymentAt.toMillis()
-  await api.confirmPayment.run(req)
-  assert.equal(
-    (await db.doc('users/payee').get()).data().subscription.nextPaymentAt.toMillis(),
-    due
-  )
-  assert.equal((await db.collection('payments').get()).size, 1)
-  await assert.rejects(
-    api.confirmPayment.run({ ...req, auth: { uid: 'owner' } }),
-    (error) => error.code === 'permission-denied'
-  )
-  await assert.rejects(
-    api.confirmPayment.run({ ...req, data: { ...req.data, planId: 'plus' } }),
-    (error) => error.code === 'already-exists'
-  )
-  await db.doc('appConfig/plans').set({ plans: [{ id: 'basico', price: -50 }] })
-  await assert.rejects(
-    api.confirmPayment.run({ ...req, data: { ...req.data, operationId: 'bad-price' } }),
-    (error) => error.code === 'failed-precondition'
-  )
-  assert.equal((await db.doc('payments/bad-price').get()).exists, false)
-})
-
 test('account listing uses one Auth batch per page and includes profiles missing createdAt', async () => {
   const batch = db.batch()
   for (let i = 0; i < 56; i++)
@@ -287,7 +234,7 @@ async function drain(ref) {
   assert.fail('job did not complete')
 }
 
-test('account deletion fences writes, drains bounded batches, cleans foreign interactions and retains payments', async () => {
+test('account deletion fences writes, drains bounded batches and cleans foreign interactions', async () => {
   const batch = db.batch()
   batch.set(db.doc('users/erase'), { role: 'user', username: 'erase' })
   for (let i = 0; i < 205; i++) batch.set(db.doc(`users/erase/workouts/${i}`), { weight: 1 })
@@ -301,14 +248,16 @@ test('account deletion fences writes, drains bounded batches, cleans foreign int
   batch.set(db.doc('statuses/own'), { authorId: 'erase' })
   batch.set(db.doc('statuses/own/votes/another'), { userId: 'another' })
   batch.set(db.doc('usernames/erase'), { uid: 'erase' })
-  batch.set(db.doc('payments/retained'), { userId: 'erase' })
   await batch.commit()
   await deletion.queue('account', 'erase', 'admin')
   const ref = db.doc('deletionJobs/account_erase')
   const erasedClient = env.authenticatedContext('erase').firestore()
   await assertFails(updateDoc(doc(erasedClient, 'users/erase'), { bio: 'race' }))
   await assert.rejects(
-    api.initializeTrial.run({ auth: { uid: 'erase' }, data: {} }),
+    api.setAccountStatus.run({
+      auth: { uid: 'admin' },
+      data: { userId: 'erase', disabled: true, reason: 'racing the deletion job' },
+    }),
     (error) => error.code === 'failed-precondition'
   )
   await drain(ref)
@@ -318,7 +267,6 @@ test('account deletion fences writes, drains bounded batches, cleans foreign int
   assert.equal((await db.doc('statuses/foreign/votes/erase').get()).exists, false)
   assert.equal((await db.doc('statuses/own/votes/another').get()).exists, false)
   assert.equal((await db.doc('communityRestrictions/gym_erase').get()).exists, false)
-  assert.equal((await db.doc('payments/retained').get()).exists, true)
   await assertFails(
     setDoc(doc(erasedClient, 'users/erase'), { role: 'user', createdAt: serverTimestamp() })
   )
@@ -427,9 +375,6 @@ test('bumping the member count of a community without one yet counts for real, n
 })
 
 test('votes and participation require immutable owner attribution for indexed cleanup', async () => {
-  await db.doc('users/owner').update({
-    subscription: { paidAt: null, trialEndsAt: Timestamp.fromMillis(Date.now() + 86400000) },
-  })
   await db.doc('communities/votegym').set({ isActive: true })
   await db.doc('communityMembers/votegym_owner').set({ userId: 'owner', communityId: 'votegym' })
   await db.doc('statuses/poll').set({
