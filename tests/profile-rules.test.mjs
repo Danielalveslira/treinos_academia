@@ -439,6 +439,70 @@ test('community postAccess restricts who may publish, enforced server-side', asy
   )
 })
 
+test('publishing still works once legal terms are published and accepted (regression: this exact branch briefly took down all posting in production)', async () => {
+  // Nenhum outro teste deste arquivo semeia legalPolicy/current — hasCurrentAcceptance()
+  // sempre tomava o atalho barato (!exists(policy), 1 única leitura) e nunca o ramo caro
+  // (termos publicados: exige comparar legalAcceptance com a política, mais chamadas a
+  // get()/exists()). Uma consolidação anterior das funções de permissão (hasAppAccess,
+  // isMember, communityAllowsPosting, isValidStatusBase, cada uma relendo os mesmos
+  // documentos) só estourava o limite de expressões/chamadas do Firestore nesse ramo —
+  // e como nenhum teste cobria "termos publicados", isso foi parar em produção: toda
+  // criação de publicação (e leitura/envio de foto no Storage, que espelha a mesma
+  // lógica) passou a ser negada assim que os termos da plataforma foram publicados.
+  const uid = 'termsuser'
+  const client = env.authenticatedContext(uid).firestore()
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore()
+    await setDoc(doc(db, 'legalPolicy/current'), { published: true, version: 'v1', digest: 'abc123' })
+    await setDoc(doc(db, `users/${uid}`), {
+      role: 'user',
+      username: uid,
+      legalAcceptance: { version: 'v1', digest: 'abc123' },
+      subscription: { paidAt: null, trialEndsAt: Timestamp.fromMillis(Date.now() + 86400000) },
+    })
+    await setDoc(doc(db, `usernames/${uid}`), { uid, createdAt: Timestamp.now() })
+    await setDoc(doc(db, `communityMembers/gym_${uid}`), {
+      userId: uid,
+      communityId: 'gym',
+      joinedAt: Timestamp.now(),
+    })
+  })
+  try {
+    const base = (overrides = {}) => ({
+      communityId: 'gym',
+      authorId: uid,
+      authorUsername: uid,
+      authorIsSuperAdmin: false,
+      createdAt: serverTimestamp(),
+      expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+      ...overrides,
+    })
+    await assertSucceeds(setDoc(doc(client, 'statuses/termstext'), base({ type: 'text', text: 'oi' })))
+    await assertSucceeds(
+      setDoc(
+        doc(client, 'statuses/termspoll'),
+        base({
+          type: 'poll',
+          poll: { question: 'Treinou?', options: [{ id: '0', label: 'Sim' }, { id: '1', label: 'Não' }] },
+        })
+      )
+    )
+    // Stale acceptance (terms published, but this user's version/digest is out of date)
+    // must still be denied — the fix must not have loosened this.
+    await env.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), `users/${uid}`), { legalAcceptance: { version: 'old', digest: 'x' } }, { merge: true })
+    })
+    await assertFails(setDoc(doc(client, 'statuses/termsstale'), base({ type: 'text', text: 'oi' })))
+  } finally {
+    // Nunca deixar legalPolicy/current publicado depois deste teste — outros testes no
+    // arquivo assumem o atalho barato (sem termos publicados) para owner/visitor/admin,
+    // que não têm legalAcceptance.
+    await env.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'legalPolicy/current'), { published: false })
+    })
+  }
+})
+
 test('individual workout sets are validated at every position and preserve aggregate counts', async () => {
   const ref = doc(owner, 'users/owner/workouts/individual')
   const workout = {
