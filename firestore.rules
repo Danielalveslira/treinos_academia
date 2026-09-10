@@ -164,7 +164,7 @@ service cloud.firestore {
     // Rules cannot iterate lists. Validate all positions up to MAX_WORKOUT_SETS (10).
     function isValidWorkout(data) {
       let sets = data.setDetails;
-      return data.keys().hasOnly(['exerciseId', 'setDetails', 'sets', 'date', 'note'])
+      return data.keys().hasOnly(['exerciseId', 'setDetails', 'sets', 'date', 'note', 'createdAt'])
         && data.exerciseId is string && data.exerciseId.size() > 0
         && data.setDetails is list && data.setDetails.size() > 0 && data.setDetails.size() <= 10
         && data.sets is int && data.sets == data.setDetails.size()
@@ -241,7 +241,16 @@ service cloud.firestore {
 
       match /workouts/{workoutId} {
         allow read, delete: if isOwner(userId) && hasAppAccess();
-        allow create, update: if isOwner(userId) && hasAppAccess() && isValidWorkout(request.resource.data);
+        // createdAt desempata registros do mesmo dia (o usuário escolhe só a data, não a
+        // hora) na ordenação "mais recente primeiro" — sem isso, dois treinos no mesmo
+        // dia ficam em ordem arbitrária (critério interno do Firestore, não a ordem real
+        // de criação), o que já produziu "evolução" e gráfico invertidos na prática.
+        // Exigido e travado como request.time na criação, e imutável na edição — igual
+        // ao padrão já usado em statuses/supportRequests.
+        allow create: if isOwner(userId) && hasAppAccess() && isValidWorkout(request.resource.data)
+          && request.resource.data.createdAt == request.time;
+        allow update: if isOwner(userId) && hasAppAccess() && isValidWorkout(request.resource.data)
+          && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null);
       }
 
       match /legalAcceptances/{version} {

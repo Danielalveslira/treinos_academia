@@ -296,10 +296,17 @@ test('individual workout sets are validated at every position and preserve aggre
     sets: 2,
     date: Timestamp.fromDate(new Date('2025-01-01T12:00:00Z')),
     note: '',
+    createdAt: serverTimestamp(),
   }
+  // createdAt precisa ser o carimbo do servidor no momento da criação — outro valor
+  // (inclusive omitido) é rejeitado, e é imutável depois (ver teste abaixo, update).
+  await assertFails(setDoc(ref, { ...workout, createdAt: Timestamp.now() }))
+  const { createdAt: _omit, ...withoutCreatedAt } = workout
+  await assertFails(setDoc(ref, withoutCreatedAt))
   await assertSucceeds(setDoc(ref, workout))
   await assertFails(getDoc(doc(visitor, 'users/owner/workouts/individual')))
   await assertFails(setDoc(doc(visitor, 'users/owner/workouts/individual'), workout))
+  await assertFails(updateDoc(ref, { createdAt: Timestamp.now() }))
   await assertSucceeds(updateDoc(ref, { setDetails: [...workout.setDetails].reverse() }))
   assert.deepEqual((await getDoc(ref)).data().setDetails, [...workout.setDetails].reverse())
   await assertFails(updateDoc(ref, { sets: 3 }))

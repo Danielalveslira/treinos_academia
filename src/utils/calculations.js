@@ -16,8 +16,20 @@ function toDate(value) {
   return value?.toDate ? value.toDate() : new Date(value)
 }
 
+// Dois treinos no mesmo dia (date só guarda o dia, não a hora) são desempatados pelo
+// carimbo real de criação (createdAt) quando disponível — sem isso, "mais recente"
+// podia sair trocado (evolução e gráfico invertidos) em registros feitos no mesmo dia.
+// Registros antigos sem createdAt mantêm o comportamento anterior nesse empate.
+function millisOf(value) {
+  return value?.toMillis ? value.toMillis() : new Date(value).getTime()
+}
 function sortByDateDesc(workouts) {
-  return [...workouts].sort((a, b) => toDate(b.date) - toDate(a.date))
+  return [...workouts].sort((a, b) => {
+    const byDate = toDate(b.date) - toDate(a.date)
+    if (byDate !== 0) return byDate
+    if (!a.createdAt || !b.createdAt) return 0
+    return millisOf(b.createdAt) - millisOf(a.createdAt)
+  })
 }
 
 export function getExerciseIndicators(workouts) {
