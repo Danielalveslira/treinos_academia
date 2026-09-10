@@ -12,5 +12,8 @@ export const routeLoaders = {
 }
 
 export function preloadRoute(path) {
-  routeLoaders[path]?.()
+  const connection = globalThis.navigator?.connection
+  if (connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || '')) return
+  // Import failures are retried by the route itself; hover must not cause an unhandled rejection.
+  routeLoaders[path]?.().catch(() => {})
 }

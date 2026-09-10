@@ -20,6 +20,7 @@ import { db } from '../firebase/config'
 
 import { normalizeWorkout } from '../utils/workoutSets'
 import { validateWorkout, hasErrors } from '../utils/validators'
+import { invalidateWorkoutCache } from '../utils/pageCache'
 
 const RECENT_PAGE_SIZE = 20
 
@@ -81,7 +82,10 @@ function workoutPayload(workout) {
 }
 
 export function createWorkout(userId, workout) {
-  return addDoc(workoutsRef(userId), workoutPayload(workout))
+  return addDoc(workoutsRef(userId), workoutPayload(workout)).then((result) => {
+    invalidateWorkoutCache(userId)
+    return result
+  })
 }
 
 export function updateWorkout(userId, workoutId, workout) {
@@ -90,11 +94,17 @@ export function updateWorkout(userId, workoutId, workout) {
     weight: deleteField(),
     reps: deleteField(),
     repetitions: deleteField(),
+  }).then((result) => {
+    invalidateWorkoutCache(userId)
+    return result
   })
 }
 
 export function deleteWorkout(userId, workoutId) {
-  return deleteDoc(doc(db, 'users', userId, 'workouts', workoutId))
+  return deleteDoc(doc(db, 'users', userId, 'workouts', workoutId)).then((result) => {
+    invalidateWorkoutCache(userId)
+    return result
+  })
 }
 
 // Janela e teto para as métricas de constância (streak/frequência semanal) sem ler a

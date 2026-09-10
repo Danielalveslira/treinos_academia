@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import {
   listExercises,
@@ -6,7 +6,9 @@ import {
   updateExercise,
   deleteExercise,
 } from '../services/exercisesService'
-import { describeFirestoreError } from '../utils/firestoreError'
+import { useCachedQuery } from '../hooks/useCachedQuery'
+
+const EMPTY = []
 
 const ExercisesContext = createContext(null)
 
@@ -24,37 +26,23 @@ function normalize(exercise) {
 
 export function ExercisesProvider({ children }) {
   const { user } = useAuth()
-  const [exercises, setExercises] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await listExercises(user.uid)
-      setExercises(data)
-    } catch (err) {
-      setError(describeFirestoreError(err, 'listExercises'))
-    } finally {
-      setLoading(false)
-    }
-  }, [user.uid])
-
-  useEffect(() => {
-    refresh()
-  }, [refresh])
+  const fetchValue = useCallback(() => listExercises(user.uid), [user.uid])
+  const { data, loading, error, refresh, setData } = useCachedQuery(
+    `exercises:${user.uid}`,
+    fetchValue
+  )
+  const exercises = data || EMPTY
 
   async function add(exercise) {
     const docRef = await createExercise(user.uid, exercise)
     const created = { id: docRef.id, ...normalize(exercise), active: true }
-    setExercises((prev) => [...prev, created].sort(byName))
+    setData([...exercises, created].sort(byName))
   }
 
   async function edit(exerciseId, exercise) {
     await updateExercise(user.uid, exerciseId, exercise)
-    setExercises((prev) =>
-      prev
+    setData(
+      exercises
         .map((ex) =>
           ex.id === exerciseId ? { ...ex, ...normalize(exercise), active: exercise.active } : ex
         )
@@ -64,7 +52,7 @@ export function ExercisesProvider({ children }) {
 
   async function remove(exerciseId) {
     await deleteExercise(user.uid, exerciseId)
-    setExercises((prev) => prev.filter((ex) => ex.id !== exerciseId))
+    setData(exercises.filter((ex) => ex.id !== exerciseId))
   }
 
   return (

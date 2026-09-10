@@ -121,8 +121,8 @@ export default function History() {
           </Select>
         </FormControl>
 
-        <Stack direction="horizontal" gap="condensed">
-          <Box sx={{ flex: 1 }}>
+        <div className="history-date-filters">
+          <Box sx={{ minWidth: 0 }}>
             <FormControl>
               <FormControl.Label sx={{ fontSize: 0, color: 'fg.muted' }}>De</FormControl.Label>
               <TextInput
@@ -133,7 +133,7 @@ export default function History() {
               />
             </FormControl>
           </Box>
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ minWidth: 0 }}>
             <FormControl>
               <FormControl.Label sx={{ fontSize: 0, color: 'fg.muted' }}>Até</FormControl.Label>
               <TextInput
@@ -144,7 +144,7 @@ export default function History() {
               />
             </FormControl>
           </Box>
-        </Stack>
+        </div>
 
         {hasActiveFilters && (
           <Button size="small" onClick={clearFilters} sx={{ mt: 2 }}>
@@ -242,7 +242,7 @@ export default function History() {
       </Stack>
 
       {hasMore && (
-        <Button sx={{ mt: 3, width: '100%' }} onClick={loadMore}>
+        <Button sx={{ mt: 3, width: '100%' }} onClick={loadMore} disabled={loading}>
           Carregar mais
         </Button>
       )}
