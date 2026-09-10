@@ -1,6 +1,6 @@
 // Durable deletion jobs double as write fences. Completed account jobs remain as
 // tombstones so an old authentication token cannot recreate the deleted profile.
-export function createDeletionService({ db, auth, FieldValue, Timestamp, HttpsError }) {
+export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp, HttpsError }) {
   const jobRef = (kind, id) => db.doc(`deletionJobs/${kind}_${id}`)
   const batchSize = 100
 
@@ -153,6 +153,16 @@ export function createDeletionService({ db, auth, FieldValue, Timestamp, HttpsEr
         tasks = ['votes', 'participants'].map(
           (name) => () => eraseQuery(db.collection(`statuses/${uid}/${name}`))
         )
+        // Só publicações do tipo foto carregam esse campo (ver queueDeleted em
+        // index.js, que copia photoPath do documento apagado para o job). Apagar o
+        // arquivo é sempre a última etapa, e ignoreNotFound cobre tanto uma nova
+        // tentativa deste mesmo job quanto o caso raro de já ter sido removido.
+        if (job.photoPath) {
+          tasks.push(async () => {
+            await bucket.file(job.photoPath).delete({ ignoreNotFound: true })
+            return true
+          })
+        }
       }
       let stage = job.stage || 0
       // Bound each invocation to one nonempty batch, while skipping empty stages.
@@ -185,7 +195,7 @@ export function createDeletionService({ db, auth, FieldValue, Timestamp, HttpsEr
     }
   }
 
-  async function queueDeleted(kind, id) {
+  async function queueDeleted(kind, id, extra = {}) {
     const ref = jobRef(kind, id)
     await db.runTransaction(async (tx) => {
       if ((await tx.get(ref)).exists) return
@@ -196,6 +206,7 @@ export function createDeletionService({ db, auth, FieldValue, Timestamp, HttpsEr
         stage: 0,
         updatedAt: FieldValue.serverTimestamp(),
         createdAt: FieldValue.serverTimestamp(),
+        ...extra,
       })
     })
   }

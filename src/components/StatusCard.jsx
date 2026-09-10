@@ -20,6 +20,8 @@ import {
 import { ExpiryBadge } from './ExpiryBadge'
 import { AchievementSummary } from './AchievementSummary'
 import { MarkdownViewer } from './MarkdownViewer'
+import { PhotoStatus } from './PhotoStatus'
+import { ShareMenu } from './ShareMenu'
 import { formatDateTime } from '../utils/format'
 import { getCached, setCached } from '../utils/pageCache'
 import { isReportableAuthor } from '../utils/moderation'
@@ -49,7 +51,7 @@ function SuperAdminBadge() {
   )
 }
 
-function StatusHeader({ status, now, canDelete, onDelete }) {
+function StatusHeader({ status, now, canDelete, onDelete, showToast }) {
   const initial = (status.authorUsername || 'M')[0].toUpperCase()
   return (
     <header className="status-header">
@@ -84,6 +86,7 @@ function StatusHeader({ status, now, canDelete, onDelete }) {
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: 1 }}>
         <ExpiryBadge expiresAt={status.expiresAt} now={now} />
+        <ShareMenu status={status} showToast={showToast} />
         {canDelete && (
           <IconButton
             icon={TrashIcon}
@@ -294,10 +297,16 @@ function WorkoutStatus({ status, currentUserId }) {
   )
 }
 
-export function StatusCard({ status, currentUserId, canDelete, onDelete, now }) {
+export function StatusCard({ status, currentUserId, canDelete, onDelete, now, showToast }) {
   return (
     <article className="status-card">
-      <StatusHeader status={status} now={now} canDelete={canDelete} onDelete={onDelete} />
+      <StatusHeader
+        status={status}
+        now={now}
+        canDelete={canDelete}
+        onDelete={onDelete}
+        showToast={showToast}
+      />
 
       <div className="status-content">
         {status.type === 'text' && <MarkdownViewer value={status.text} />}
@@ -308,6 +317,10 @@ export function StatusCard({ status, currentUserId, canDelete, onDelete, now }) 
 
         {status.type === 'workout' && (
           <WorkoutStatus status={status} currentUserId={currentUserId} />
+        )}
+
+        {status.type === 'photo' && (
+          <PhotoStatus status={status} preloadedBlob={status._localPhotoBlob} />
         )}
       </div>
       {isReportableAuthor(status) && (

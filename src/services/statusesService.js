@@ -14,11 +14,16 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
-import { db } from '../firebase/config'
+import { ref as storageRef, uploadBytesResumable, getBytes } from 'firebase/storage'
+import { db, storage } from '../firebase/config'
 import { validateAchievement } from '../utils/achievements'
 
 const FEED_PAGE_SIZE = 30
 const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
+// Um pouco acima de MAX_OUTPUT_BYTES (utils/imageCompression.js) só de folga — nunca
+// deveria ter um objeto maior que isso em statusPhotos/, pois storage.rules recusa
+// qualquer upload além desse teto.
+const MAX_PHOTO_DOWNLOAD_BYTES = 5 * 1024 * 1024
 
 function statusesRef() {
   return collection(db, 'statuses')
@@ -30,6 +35,26 @@ function toDoc(d) {
 
 function expiresAtValue() {
   return Timestamp.fromMillis(Date.now() + STATUS_LIFETIME_MS)
+}
+
+// Campos comuns a toda publicação de comunidade, para não repetir o mesmo bloco em
+// cada create*Status abaixo (texto, enquete, treino marcado, conquista e foto).
+// authorUsername é gravado no próprio status (denormalizado) para o feed poder mostrar
+// quem publicou sem precisar de 1 leitura extra em "users" por item exibido. Nunca o
+// e-mail: é um dado sensível e não deveria aparecer publicamente na comunidade.
+// authorIsSuperAdmin (selo dourado) é só a conveniência de exibição — o valor real é
+// conferido pelo servidor (firestore.rules: authorIsSuperAdmin == isSuperAdmin()),
+// então um usuário comum nunca consegue gravar esse campo como true.
+function baseStatusFields(communityId, author, type) {
+  return {
+    communityId,
+    authorId: author.id,
+    authorUsername: author.username || null,
+    authorIsSuperAdmin: author.role === 'superadmin',
+    type,
+    createdAt: serverTimestamp(),
+    expiresAt: expiresAtValue(),
+  }
 }
 
 export async function listCommunityFeed(communityId, pageSize = FEED_PAGE_SIZE) {
@@ -48,56 +73,70 @@ export async function listCommunityFeed(communityId, pageSize = FEED_PAGE_SIZE) 
   return snapshot.docs.map(toDoc)
 }
 
-// authorUsername é gravado no próprio status (denormalizado) para o feed poder mostrar
-// quem publicou sem precisar de 1 leitura extra em "users" por item exibido. Nunca o
-// e-mail: é um dado sensível e não deveria aparecer publicamente na comunidade.
-// authorIsSuperAdmin (selo dourado) é só a conveniência de exibição — o valor real é
-// conferido pelo servidor (firestore.rules: authorIsSuperAdmin == isSuperAdmin()),
-// então um usuário comum nunca consegue gravar esse campo como true.
 export function createTextStatus(communityId, author, text) {
   return addDoc(statusesRef(), {
-    communityId,
-    authorId: author.id,
-    authorUsername: author.username || null,
-    authorIsSuperAdmin: author.role === 'superadmin',
-    type: 'text',
+    ...baseStatusFields(communityId, author, 'text'),
     text: text.trim(),
-    createdAt: serverTimestamp(),
-    expiresAt: expiresAtValue(),
   })
 }
 
 export function createPollStatus(communityId, author, question, options) {
   return addDoc(statusesRef(), {
-    communityId,
-    authorId: author.id,
-    authorUsername: author.username || null,
-    authorIsSuperAdmin: author.role === 'superadmin',
-    type: 'poll',
+    ...baseStatusFields(communityId, author, 'poll'),
     poll: {
       question: question.trim(),
       options: options.map((label, index) => ({ id: String(index), label: label.trim() })),
     },
-    createdAt: serverTimestamp(),
-    expiresAt: expiresAtValue(),
   })
 }
 
 export function createWorkoutStatus(communityId, author, workout) {
   return addDoc(statusesRef(), {
-    communityId,
-    authorId: author.id,
-    authorUsername: author.username || null,
-    authorIsSuperAdmin: author.role === 'superadmin',
-    type: 'workout',
+    ...baseStatusFields(communityId, author, 'workout'),
     workout: {
       title: workout.title.trim(),
       date: Timestamp.fromDate(new Date(workout.date)),
       location: workout.location.trim(),
     },
-    createdAt: serverTimestamp(),
-    expiresAt: expiresAtValue(),
   })
+}
+
+// A foto é enviada direto ao Storage pelo cliente (mais simples e mais barato do que
+// fazer uma Cloud Function retransmitir os bytes) — o que garante que ela não fica
+// órfã lá é a combinação de dois fatores: o nome do arquivo é sempre o id do próprio
+// status (nunca o nome original do arquivo do usuário, ver storage.rules) e, se o
+// setDoc abaixo nunca chegar a acontecer, purgeOrphanedPhotos (functions/index.js)
+// apaga qualquer arquivo sem documento correspondente depois de uma folga de 1h.
+// uploadBytesResumable (em vez de uploadBytes) é o que permite progresso e cancelamento
+// reais no formulário, em vez de só um spinner indeterminado.
+export function createPhotoStatus(communityId, author, { blob, caption }, { onProgress } = {}) {
+  const statusRef = doc(statusesRef())
+  const photoPath = `statusPhotos/${communityId}/${statusRef.id}.webp`
+  const task = uploadBytesResumable(storageRef(storage, photoPath), blob, {
+    contentType: 'image/webp',
+  })
+  const done = new Promise((resolve, reject) => {
+    task.on(
+      'state_changed',
+      (snapshot) => onProgress?.(snapshot.bytesTransferred / snapshot.totalBytes),
+      reject,
+      () => {
+        setDoc(statusRef, {
+          ...baseStatusFields(communityId, author, 'photo'),
+          photoPath,
+          caption: caption ? caption.trim() : '',
+        })
+          .then(() => resolve(statusRef))
+          .catch(reject)
+      }
+    )
+  })
+  return { task, done }
+}
+
+export async function getStatusPhotoBlob(photoPath) {
+  const bytes = await getBytes(storageRef(storage, photoPath), MAX_PHOTO_DOWNLOAD_BYTES)
+  return new Blob([bytes], { type: 'image/webp' })
 }
 
 export function deleteStatus(statusId) {
@@ -164,13 +203,7 @@ export function createAchievementStatus(communityId, author, values) {
     sets: values.sets,
   }
   return addDoc(statusesRef(), {
-    communityId,
-    authorId: author.id,
-    authorUsername: author.username || null,
-    authorIsSuperAdmin: author.role === 'superadmin',
-    type: 'achievement',
+    ...baseStatusFields(communityId, author, 'achievement'),
     achievement,
-    createdAt: serverTimestamp(),
-    expiresAt: expiresAtValue(),
   })
 }

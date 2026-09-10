@@ -24,7 +24,6 @@ import {
   count,
   sum,
 } from 'firebase/firestore'
-
 let env
 let owner
 let visitor
@@ -183,6 +182,52 @@ test('achievement publication requires membership and safe payload; author may d
   await assertSucceeds(deleteDoc(ref))
 })
 
+test('photo publication requires photoPath scoped to the community and a bounded caption', async () => {
+  const FILE_ID = 'AAAAAAAAAAAAAAAAAAAA' // 20 chars — mesmo formato do id gerado pelo Firestore
+  const status = (overrides = {}) => ({
+    communityId: 'gym',
+    authorId: 'owner',
+    authorUsername: 'owner',
+    authorIsSuperAdmin: false,
+    type: 'photo',
+    photoPath: `statusPhotos/gym/${FILE_ID}.webp`,
+    caption: 'Treino de hoje',
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+    ...overrides,
+  })
+  const ref = doc(owner, 'statuses/photo')
+  await assertSucceeds(setDoc(ref, status()))
+  await assertSucceeds(getDoc(doc(visitor, 'statuses/photo')))
+  // photoPath precisa apontar para a mesma comunidade do status, nunca para outra.
+  await assertFails(
+    setDoc(
+      doc(owner, 'statuses/wrongcommunity'),
+      status({ photoPath: `statusPhotos/announcements/${FILE_ID}.webp` })
+    )
+  )
+  // Nome de arquivo tem que bater com o formato gerado pelo servidor — nunca o nome
+  // original de um arquivo do usuário, nem um caminho tentando escapar da pasta.
+  await assertFails(
+    setDoc(doc(owner, 'statuses/badname'), status({ photoPath: 'statusPhotos/gym/foto.webp' }))
+  )
+  await assertFails(
+    setDoc(
+      doc(owner, 'statuses/traversal'),
+      status({ photoPath: `statusPhotos/gym/../other/${FILE_ID}.webp` })
+    )
+  )
+  const { photoPath: _omitPath, ...withoutPath } = status()
+  await assertFails(setDoc(doc(owner, 'statuses/nopath'), withoutPath))
+  await assertFails(
+    setDoc(doc(owner, 'statuses/longcaption'), status({ caption: 'x'.repeat(281) }))
+  )
+  const { caption: _omitCaption, ...withoutCaption } = status()
+  await assertSucceeds(setDoc(doc(owner, 'statuses/nocaption'), withoutCaption))
+  await assertFails(deleteDoc(doc(visitor, 'statuses/photo')))
+  await assertSucceeds(deleteDoc(ref))
+})
+
 test('the superadmin badge is stamped by the server, never by the client payload', async () => {
   const status = (overrides = {}) => ({
     communityId: 'gym',
@@ -236,10 +281,7 @@ test('community postAccess restricts who may publish, enforced server-side', asy
   await assertSucceeds(setDoc(doc(admin, 'statuses/allowed'), status('admin', true)))
   // A community without postAccess (legacy/default) stays open to every member.
   await assertSucceeds(
-    setDoc(
-      doc(owner, 'statuses/opengym'),
-      { ...status('owner', false), communityId: 'gym' }
-    )
+    setDoc(doc(owner, 'statuses/opengym'), { ...status('owner', false), communityId: 'gym' })
   )
 })
 

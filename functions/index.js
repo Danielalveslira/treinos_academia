@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs'
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore'
 import { getAuth } from 'firebase-admin/auth'
+import { getStorage } from 'firebase-admin/storage'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import {
   legalDigest,
@@ -28,6 +29,15 @@ import {
 initializeApp()
 const db = getFirestore()
 const authAdmin = getAuth()
+// getStorage().bucket() precisa que o app tenha um bucket padrão resolvível, o que
+// não é verdade em todo ambiente que importa este módulo (ex.: os testes de
+// tests/admin-rules.test.mjs, que rodam fora do runtime real das Cloud Functions e
+// nunca chegam a mexer com fotos). Resolver só na hora do uso evita quebrar esses
+// ambientes por causa de um recurso que eles nunca exercitam.
+const bucket = {
+  file: (path) => getStorage().bucket().file(path),
+  getFiles: (query) => getStorage().bucket().getFiles(query),
+}
 const manifest = JSON.parse(readFileSync(new URL('./legal/manifest.json', import.meta.url)))
 const documents = JSON.parse(readFileSync(new URL('./legal/documents.json', import.meta.url)))
 const digest = legalDigest(manifest, documents)
@@ -462,7 +472,14 @@ export const setAccountStatus = onCall(options, async (request) => {
   return { account: accountView(userId, (await userRef.get()).data()) }
 })
 
-const deletions = createDeletionService({ db, auth: authAdmin, FieldValue, Timestamp, HttpsError })
+const deletions = createDeletionService({
+  db,
+  auth: authAdmin,
+  bucket,
+  FieldValue,
+  Timestamp,
+  HttpsError,
+})
 
 export const deleteAccountPermanently = onCall(options, async (request) => {
   const adminId = requireUser(request)
@@ -480,7 +497,15 @@ export const deleteCommunityPermanently = onCall(options, async (request) => {
 
 export const cleanupDeletedStatus = onDocumentDeleted(
   { ...options, document: 'statuses/{id}', retry: true },
-  (event) => deletions.queueDeleted('status', event.params.id)
+  (event) => {
+    const deleted = event.data?.data()
+    // photoPath só existe (e só importa) para publicações do tipo foto — é o único
+    // dado extra que o job de limpeza de status precisa além do id, então é a única
+    // coisa que copiamos do documento apagado para dentro do job.
+    const extra =
+      deleted?.type === 'photo' && deleted.photoPath ? { photoPath: deleted.photoPath } : {}
+    return deletions.queueDeleted('status', event.params.id, extra)
+  }
 )
 export const cleanupDeletedCommunity = onDocumentDeleted(
   { ...options, document: 'communities/{id}', retry: true },
@@ -502,6 +527,52 @@ export const processDeletionJobs = onSchedule(
       } catch (error) {
         console.error('Deletion job failed', job.id, error.code)
       }
+    }
+  }
+)
+
+// Publicações de texto/enquete/treino/conquista já ficam escondidas do feed pelo
+// filtro expiresAt > now na própria query (useCommunityFeed) e nunca carregam
+// nenhum arquivo — deixá-las no Firestore depois de expiradas não tem custo real.
+// Fotos são diferentes: cada uma é um arquivo no Storage, então só escondê-las não
+// basta, elas precisam ser apagadas de verdade. Apagar o documento aqui é só o
+// gatilho — quem realmente cuida do arquivo é cleanupDeletedStatus + o job de
+// deletionJobs (mesmo caminho usado por exclusão manual e por remove_content).
+export const purgeExpiredPhotos = onSchedule(
+  { ...options, schedule: 'every 15 minutes', timeoutSeconds: 300 },
+  async () => {
+    const expired = await db
+      .collection('statuses')
+      .where('type', '==', 'photo')
+      .where('expiresAt', '<=', Timestamp.now())
+      .limit(200)
+      .get()
+    if (expired.empty) return
+    const batch = db.batch()
+    expired.docs.forEach((item) => batch.delete(item.ref))
+    await batch.commit()
+  }
+)
+
+// Rede de segurança contra órfãos: se o upload para o Storage teve sucesso mas o
+// setDoc do status em statusesService.js nunca chegou a acontecer (aba fechada,
+// queda de conexão, erro), sobra um arquivo sem nenhum documento em statuses/{id}
+// (o nome do arquivo é sempre esse id — ver createPhotoStatus). A folga de 1h evita
+// disputar com um upload legítimo que ainda está em andamento.
+const ORPHAN_GRACE_MS = 60 * 60 * 1000
+export const purgeOrphanedPhotos = onSchedule(
+  { ...options, schedule: 'every 30 minutes', timeoutSeconds: 300 },
+  async () => {
+    const [files] = await bucket.getFiles({ prefix: 'statusPhotos/' })
+    for (const file of files) {
+      const createdAt = new Date(file.metadata.timeCreated).getTime()
+      if (Date.now() - createdAt < ORPHAN_GRACE_MS) continue
+      const statusId = file.name
+        .split('/')
+        .pop()
+        .replace(/\.webp$/, '')
+      const status = await db.doc(`statuses/${statusId}`).get()
+      if (!status.exists) await file.delete({ ignoreNotFound: true })
     }
   }
 )
