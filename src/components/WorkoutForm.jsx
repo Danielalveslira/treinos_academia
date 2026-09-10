@@ -11,6 +11,7 @@ import {
   TrophyIcon,
 } from '@primer/octicons-react'
 import { MUSCLE_GROUPS } from '../constants/muscleGroups'
+import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
 import { validateWorkout, hasErrors } from '../utils/validators'
 import { getWorkoutSets, getWorkoutLoad, MAX_WORKOUT_SETS, isValidSet } from '../utils/workoutSets'
 import { calculateVolume } from '../utils/calculations'
@@ -235,24 +236,27 @@ export function WorkoutForm({
             <p>Escolha uma região para ver somente os exercícios dela.</p>
           </div>
           <div className="muscle-group-grid">
-            {groups.map((group) => (
-              <button
-                className={`muscle-group-card${selectedGroup === group ? ' is-selected' : ''}`}
-                type="button"
-                key={group}
-                aria-pressed={selectedGroup === group}
-                onClick={() => chooseGroup(group)}
-              >
-                <span className="muscle-group-mark" aria-hidden="true">
-                  {group.charAt(0)}
-                </span>
-                <span>
-                  <strong>{group}</strong>
-                  <small>{groupCounts.get(group)} exercícios</small>
-                </span>
-                <ChevronRightIcon size={16} />
-              </button>
-            ))}
+            {groups.map((group) => {
+              const GroupIcon = getMuscleGroupIcon(group)
+              return (
+                <button
+                  className={`muscle-group-card${selectedGroup === group ? ' is-selected' : ''}`}
+                  type="button"
+                  key={group}
+                  aria-pressed={selectedGroup === group}
+                  onClick={() => chooseGroup(group)}
+                >
+                  <span className="muscle-group-mark" aria-hidden="true">
+                    <GroupIcon size={20} strokeWidth={2} />
+                  </span>
+                  <span>
+                    <strong>{group}</strong>
+                    <small>{groupCounts.get(group)} exercícios</small>
+                  </span>
+                  <ChevronRightIcon size={16} />
+                </button>
+              )
+            })}
           </div>
           <Button type="button" className="workout-step-cancel" onClick={onCancel}>
             Cancelar
