@@ -14,10 +14,12 @@ import {
   ActionMenu,
   ActionList,
   IconButton,
+  useConfirm,
 } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PersonIcon, KebabHorizontalIcon, TrashIcon, BlockedIcon, CheckIcon } from '@primer/octicons-react'
 import { useAdminAccounts } from '../hooks/useAdminAccounts'
+import { purgePaymentData } from '../services/adminAccountsService'
 import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
@@ -125,8 +127,32 @@ export default function AdminAccounts() {
     useAdminAccounts(search)
   const { toasts, showToast } = useToast()
   const [dialog, setDialog] = useState(null) // { type: 'disable'|'delete', account }
+  const [purging, setPurging] = useState(false)
+  const confirm = useConfirm()
 
   const filtered = accounts
+
+  async function handlePurgePaymentData() {
+    const ok = await confirm({
+      title: 'Apagar dados de pagamento?',
+      content:
+        'Remove o campo subscription de todos os usuários e apaga as coleções payments e appConfig/plans+billing. Ação irreversível. Rode só uma vez.',
+      confirmButtonType: 'danger',
+    })
+    if (!ok) return
+    setPurging(true)
+    try {
+      const result = await purgePaymentData()
+      showToast(
+        `Concluído: ${result.updatedUsers} usuários limpos, ${result.deletedPayments} pagamentos removidos.`
+      )
+    } catch (err) {
+      console.error('[AdminAccounts] purgePaymentData:', err)
+      showToast('Erro ao limpar dados de pagamento.', 'danger')
+    } finally {
+      setPurging(false)
+    }
+  }
 
   async function handleDisable(reason) {
     try {
@@ -185,8 +211,19 @@ export default function AdminAccounts() {
         />
       </FormControl>
 
-      <Button onClick={refresh} disabled={loading || !!busy} sx={{ mb: 3 }}>
+      <Button onClick={refresh} disabled={loading || !!busy} sx={{ mb: 3, mr: 2 }}>
         Atualizar lista
+      </Button>
+      {/* Utilitário de uma única execução — remover junto da function purgePaymentData
+          (functions/index.js) depois de rodado com sucesso em produção. */}
+      <Button
+        variant="danger"
+        onClick={handlePurgePaymentData}
+        loading={purging}
+        disabled={purging}
+        sx={{ mb: 3 }}
+      >
+        Limpar dados de pagamento (uma vez)
       </Button>
       {jobs.length > 0 && (
         <Box sx={{ mb: 3 }}>
