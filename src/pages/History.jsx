@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -12,7 +12,7 @@ import {
   Stack,
 } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { HistoryIcon } from '@primer/octicons-react'
+import { CalendarIcon, GraphIcon, HistoryIcon, PlayIcon, SyncIcon } from '@primer/octicons-react'
 import { useWorkouts } from '../hooks/useWorkouts'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useToast } from '../hooks/useToast'
@@ -39,6 +39,7 @@ function toEditableWorkout(workout) {
 const NO_FILTERS = { exerciseFilter: '', startDate: '', endDate: '' }
 
 export default function History() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [exerciseFilter, setExerciseFilter] = useState(
     searchParams.get('exercicio') || NO_FILTERS.exerciseFilter
@@ -94,30 +95,20 @@ export default function History() {
   }
 
   return (
-    <Box>
+    <Box className="history-page">
       <ToastFlash toasts={toasts} />
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          flexWrap: 'wrap',
-          gap: 2,
-          mb: 1,
-        }}
-      >
-        <Heading as="h1" sx={{ fontSize: 3 }}>
-          Histórico
-        </Heading>
-        <Button onClick={refresh} loading={loading} disabled={loading}>
+      <header className="page-title-row">
+        <div>
+          <span className="eyebrow">SUA EVOLUÇÃO</span>
+          <Heading as="h1">Histórico</Heading>
+          <p>Reveja sessões, cargas e volume sem perder o ritmo.</p>
+        </div>
+        <Button leadingVisual={SyncIcon} onClick={refresh} loading={loading} disabled={loading}>
           Atualizar
         </Button>
-      </Box>
-      <p className="page-description">
-        Consulte seus registros e encontre cada etapa da sua evolução.
-      </p>
+      </header>
 
-      <Box className="panel filters-panel" sx={{ mb: 3 }}>
+      <Box className="history-filters">
         <FormControl sx={{ mb: 2 }}>
           <FormControl.Label visuallyHidden>Exercício</FormControl.Label>
           <Select value={exerciseFilter} onChange={(e) => setExerciseFilter(e.target.value)} block>
@@ -176,65 +167,72 @@ export default function History() {
         </Box>
       )}
 
-      {loading && workouts.length === 0 && (
-        <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
-      )}
+      {loading && workouts.length === 0 && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
       <ErrorState error={error} onRetry={refresh} />
 
       {!loading && !error && workouts.length === 0 && (
-        <Blankslate>
-          <Blankslate.Visual>
-            <HistoryIcon size={24} />
-          </Blankslate.Visual>
-          <Blankslate.Heading>Nenhum registro encontrado</Blankslate.Heading>
-          <Blankslate.Description>
-            Ajuste os filtros ou registre um novo treino.
-          </Blankslate.Description>
-        </Blankslate>
+        <div className="history-empty">
+          <Blankslate>
+            <Blankslate.Visual>
+              <HistoryIcon size={24} />
+            </Blankslate.Visual>
+            <Blankslate.Heading>Nenhum registro encontrado</Blankslate.Heading>
+            <Blankslate.Description>
+              {hasActiveFilters
+                ? 'Ajuste os filtros para encontrar outros treinos.'
+                : 'Seu histórico começa depois da primeira série.'}
+            </Blankslate.Description>
+            {hasActiveFilters ? (
+              <Blankslate.PrimaryAction onClick={clearFilters}>
+                Limpar filtros
+              </Blankslate.PrimaryAction>
+            ) : (
+              <Blankslate.PrimaryAction
+                leadingVisual={PlayIcon}
+                onClick={() => navigate('/novo-treino')}
+              >
+                Iniciar treino
+              </Blankslate.PrimaryAction>
+            )}
+          </Blankslate>
+        </div>
       )}
 
-      <Stack
-        gap="none"
-        sx={{
-          border: workouts.length ? '1px solid' : 'none',
-          borderColor: 'border.default',
-          borderRadius: 2,
-          overflow: 'hidden',
-        }}
-      >
-        {workouts.map((workout, index) => (
-          <Box
-            key={workout.id}
-            sx={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 2,
-              px: 3,
-              py: 2,
-              borderTop: index === 0 ? 'none' : '1px solid',
-              borderColor: 'border.default',
-            }}
-          >
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Text sx={{ fontWeight: 'bold', display: 'block' }}>
-                {exerciseNameById.get(workout.exerciseId) || 'Exercício removido'}
-              </Text>
-              <Text sx={{ fontSize: 1, color: 'fg.muted', display: 'block' }}>
-                {formatWorkoutSets(workout)} · volume{' '}
-                {calculateVolume(workout).toLocaleString('pt-BR')} kg
-              </Text>
-              <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block' }}>
+      <Stack gap="none" className={`history-list${workouts.length ? '' : ' is-empty'}`}>
+        {workouts.map((workout) => (
+          <Box key={workout.id} className="history-row">
+            <div
+              className="history-date"
+              aria-label={(workout.date?.toDate
+                ? workout.date.toDate()
+                : new Date(workout.date)
+              ).toLocaleDateString('pt-BR')}
+            >
+              <CalendarIcon size={15} />
+              <strong>
                 {(workout.date?.toDate
                   ? workout.date.toDate()
                   : new Date(workout.date)
-                ).toLocaleDateString('pt-BR')}
+                ).toLocaleDateString('pt-BR', { day: '2-digit' })}
+              </strong>
+              <span>
+                {(workout.date?.toDate ? workout.date.toDate() : new Date(workout.date))
+                  .toLocaleDateString('pt-BR', { month: 'short' })
+                  .replace('.', '')}
+              </span>
+            </div>
+            <Box className="history-row-content">
+              <Text className="history-exercise-name">
+                {exerciseNameById.get(workout.exerciseId) || 'Exercício removido'}
               </Text>
-              {workout.note && (
-                <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block', mt: 1 }}>
-                  {workout.note}
-                </Text>
-              )}
+              <Text className="history-sets">{formatWorkoutSets(workout)}</Text>
+              {workout.note && <Text className="history-note">{workout.note}</Text>}
             </Box>
+            <div className="history-volume">
+              <GraphIcon size={14} />
+              <span>VOLUME</span>
+              <strong>{calculateVolume(workout).toLocaleString('pt-BR')} kg</strong>
+            </div>
             <RowActionsMenu
               onEdit={() => setEditingWorkout(workout)}
               onDelete={() => handleDeleteRequest(workout)}

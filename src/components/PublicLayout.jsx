@@ -10,11 +10,24 @@ import {
   HistoryIcon,
   ArrowUpRightIcon,
 } from '@primer/octicons-react'
+import { BrandMark } from './BrandMark'
 
 export function PublicLayout({ children }) {
   const { resolvedColorMode, setColorMode } = useTheme()
   const { user } = useAuth()
   const dark = resolvedColorMode === 'night'
+
+  function toggleColorMode() {
+    const next = dark ? 'day' : 'night'
+    setColorMode(next)
+    document.documentElement.setAttribute('data-color-mode', next)
+    try {
+      localStorage.setItem('colorMode', next)
+    } catch {
+      // O tema continua funcionando durante a sessão quando o armazenamento está indisponível.
+    }
+  }
+
   return (
     <div className="public-shell">
       <a className="skip-link" href="#public-content">
@@ -23,21 +36,17 @@ export function PublicLayout({ children }) {
       <header className="public-header">
         <Link to={user ? '/' : '/login'} className="brand">
           <span className="brand-mark">
-            <GraphIcon size={22} />
+            <BrandMark size={28} />
           </span>
-          Treinos
+          FORÇA
         </Link>
         <nav aria-label="Navegação">
           <NavLink to="/planos">Planos</NavLink>
-          {user ? (
-            <NavLink to="/">Ir para o app</NavLink>
-          ) : (
-            <NavLink to="/login">Entrar</NavLink>
-          )}
+          {user ? <NavLink to="/">Ir para o app</NavLink> : <NavLink to="/login">Entrar</NavLink>}
           <IconButton
             icon={dark ? SunIcon : MoonIcon}
             aria-label={dark ? 'Ativar tema claro' : 'Ativar tema escuro'}
-            onClick={() => setColorMode(dark ? 'day' : 'night')}
+            onClick={toggleColorMode}
           />
         </nav>
       </header>
@@ -51,7 +60,7 @@ export function PublicLayout({ children }) {
           </Link>
         </LegalLinks>
         <p className="public-footer-brand">
-          <GraphIcon size={12} /> Treinos · Seu diário de evolução
+          <BrandMark size={14} /> FORÇA · Seu diário de evolução
         </p>
       </footer>
     </div>
@@ -63,43 +72,54 @@ export function AuthLayout({ children, title, description, footer }) {
     <PublicLayout>
       <div className="auth-layout">
         <section className="auth-intro" aria-label="Sobre o Treinos">
-          <span className="public-eyebrow">
-            <span /> CADA TREINO CONTA
-          </span>
-          <h2>
-            Seu esforço merece
-            <br />
-            <span>ser acompanhado.</span>
-          </h2>
-          <p>
-            Um espaço para organizar seus treinos, acompanhar suas cargas e enxergar sua evolução.
-          </p>
-          <div className="auth-benefits">
-            <div>
-              <span className="benefit-icon">
-                <ChecklistIcon size={20} />
-              </span>
+          <img
+            className="auth-cover"
+            src="/capa.png"
+            alt=""
+            width="1145"
+            height="1374"
+            loading="eager"
+            fetchPriority="high"
+          />
+          <div className="auth-intro-content">
+            <span className="public-eyebrow">
+              <span /> CADA TREINO CONTA
+            </span>
+            <h2>
+              Seu esforço merece
+              <br />
+              <span>ser acompanhado.</span>
+            </h2>
+            <p>
+              Um espaço para organizar seus treinos, acompanhar suas cargas e enxergar sua evolução.
+            </p>
+            <div className="auth-benefits">
               <div>
-                <h3>Registre com simplicidade</h3>
-                <p>Exercícios, séries e repetições em um só lugar.</p>
+                <span className="benefit-icon">
+                  <ChecklistIcon size={20} />
+                </span>
+                <div>
+                  <h3>Registre com simplicidade</h3>
+                  <p>Exercícios, séries e repetições em um só lugar.</p>
+                </div>
               </div>
-            </div>
-            <div>
-              <span className="benefit-icon">
-                <GraphIcon size={20} />
-              </span>
               <div>
-                <h3>Visualize seu progresso</h3>
-                <p>Acompanhe o volume e a evolução das cargas.</p>
+                <span className="benefit-icon">
+                  <GraphIcon size={20} />
+                </span>
+                <div>
+                  <h3>Visualize seu progresso</h3>
+                  <p>Acompanhe o volume e a evolução das cargas.</p>
+                </div>
               </div>
-            </div>
-            <div>
-              <span className="benefit-icon">
-                <HistoryIcon size={20} />
-              </span>
               <div>
-                <h3>Construa sua constância</h3>
-                <p>Consulte seu histórico a cada novo treino.</p>
+                <span className="benefit-icon">
+                  <HistoryIcon size={20} />
+                </span>
+                <div>
+                  <h3>Construa sua constância</h3>
+                  <p>Consulte seu histórico a cada novo treino.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -107,7 +127,7 @@ export function AuthLayout({ children, title, description, footer }) {
         <section className="auth-form-section" aria-labelledby="auth-title">
           <div className="auth-form-card">
             <span className="auth-heading-icon">
-              <GraphIcon size={24} />
+              <BrandMark size={26} />
             </span>
             <h1 id="auth-title">{title}</h1>
             <p className="auth-description">{description}</p>

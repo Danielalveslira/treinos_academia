@@ -15,6 +15,7 @@ import {
   ArrowRightIcon,
   ZapIcon,
   DatabaseIcon,
+  PlayIcon,
 } from '@primer/octicons-react'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useExerciseHistory } from '../hooks/useExerciseHistory'
@@ -56,7 +57,7 @@ export default function ExerciseDetail() {
   const loading = loadingExercises || loadingWorkouts
 
   return (
-    <Box>
+    <Box className="exercise-detail-page">
       <Link
         as={RouterLink}
         to="/exercicios"
@@ -99,14 +100,21 @@ export default function ExerciseDetail() {
             )}
           </Box>
         </Box>
-        <Button onClick={refresh} loading={loadingWorkouts} disabled={loadingWorkouts}>
-          Atualizar
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button onClick={refresh} loading={loadingWorkouts} disabled={loadingWorkouts}>
+            Atualizar
+          </Button>
+          <Button
+            variant="primary"
+            leadingVisual={PlayIcon}
+            onClick={() => navigate(`/novo-treino?exercicio=${id}`)}
+          >
+            Treinar
+          </Button>
+        </Box>
       </Box>
 
-      {loading && workouts.length === 0 && (
-        <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
-      )}
+      {loading && workouts.length === 0 && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
       <ErrorState error={error} onRetry={refresh} />
 
       {!loading && !error && workouts.length === 0 && (
@@ -172,13 +180,13 @@ export default function ExerciseDetail() {
           <Heading as="h2" sx={{ fontSize: 2, mb: 2 }}>
             Evolução da carga
           </Heading>
-          <Box sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3 }}>
+          <Box className="chart-surface">
             <LoadChart data={chartData} label="Maior carga por treino (kg)" />
           </Box>
           <Heading as="h2" sx={{ fontSize: 2, mt: 3, mb: 2 }}>
             Volume por dia
           </Heading>
-          <Box sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3 }}>
+          <Box className="chart-surface">
             <VolumeChart data={volumeData} />
           </Box>
           <Heading as="h2" sx={{ fontSize: 2, mt: 3, mb: 2 }}>
@@ -188,20 +196,7 @@ export default function ExerciseDetail() {
             const date = workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)
             const isRecord = getWorkoutLoad(workout) === indicators.maxLoad
             return (
-              <Box
-                as="article"
-                key={workout.id}
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 1,
-                  border: '1px solid',
-                  borderColor: 'border.default',
-                  borderRadius: 2,
-                  p: 3,
-                  mb: 2,
-                }}
-              >
+              <Box as="article" key={workout.id} className="exercise-session-row">
                 <Box
                   sx={{
                     display: 'flex',
@@ -223,7 +218,9 @@ export default function ExerciseDetail() {
                       {isRecord && <TrophyIcon size={12} />} {formatWeight(getWorkoutLoad(workout))}{' '}
                       máx
                     </Label>
-                    <Label variant="secondary">{formatWeight(calculateVolume(workout))} volume</Label>
+                    <Label variant="secondary">
+                      {formatWeight(calculateVolume(workout))} volume
+                    </Label>
                   </Box>
                 </Box>
                 <Text as="p" sx={{ fontSize: 1, color: 'fg.muted', m: 0 }}>

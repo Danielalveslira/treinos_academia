@@ -1,7 +1,7 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Box, Heading, Spinner } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { PlusCircleIcon } from '@primer/octicons-react'
+import { PlayIcon, PulseIcon } from '@primer/octicons-react'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useWorkouts } from '../hooks/useWorkouts'
 import { useToast } from '../hooks/useToast'
@@ -15,7 +15,7 @@ export default function NewWorkout() {
   const defaultExerciseId = searchParams.get('exercicio') || ''
 
   const { exercises, loading, error, refresh } = useExercises()
-  const { add } = useWorkouts()
+  const { workouts, add } = useWorkouts()
   const { toasts, showToast } = useToast()
 
   async function handleSubmit(values) {
@@ -32,12 +32,18 @@ export default function NewWorkout() {
   const activeExercises = exercises.filter((e) => e.active)
 
   return (
-    <Box>
+    <Box className="workout-session-page">
       <ToastFlash toasts={toasts} />
-      <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
-        Novo treino
-      </Heading>
-      <p className="page-description">Registre a carga, as séries e as repetições do seu treino.</p>
+      <header className="session-heading">
+        <span className="session-icon">
+          <PulseIcon size={20} />
+        </span>
+        <div>
+          <span className="eyebrow">SESSÃO DE TREINO</span>
+          <Heading as="h1">Vamos treinar</Heading>
+          <p>Registre uma série em poucos segundos. Uma mão é o bastante.</p>
+        </div>
+      </header>
 
       {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
       <ErrorState error={error} onRetry={refresh} />
@@ -45,7 +51,7 @@ export default function NewWorkout() {
       {!loading && !error && activeExercises.length === 0 && (
         <Blankslate>
           <Blankslate.Visual>
-            <PlusCircleIcon size={24} />
+            <PlayIcon size={24} />
           </Blankslate.Visual>
           <Blankslate.Heading>Nenhum exercício ativo</Blankslate.Heading>
           <Blankslate.Description>
@@ -60,6 +66,7 @@ export default function NewWorkout() {
       {!loading && !error && activeExercises.length > 0 && (
         <WorkoutForm
           exercises={exercises}
+          history={workouts}
           defaultExerciseId={defaultExerciseId}
           onSubmit={handleSubmit}
           onCancel={() => navigate(-1)}

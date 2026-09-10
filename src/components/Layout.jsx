@@ -3,14 +3,13 @@ import { Suspense } from 'react'
 import { Button, IconButton, Flash, useTheme } from '@primer/react'
 import {
   HomeIcon,
-  PlusCircleIcon,
   HistoryIcon,
   ListUnorderedIcon,
   PeopleIcon,
   PersonIcon,
   ShieldLockIcon,
   SignOutIcon,
-  GraphIcon,
+  PlayIcon,
   SunIcon,
   MoonIcon,
 } from '@primer/octicons-react'
@@ -18,14 +17,14 @@ import { logoutUser } from '../services/authService'
 import { useAuth } from '../hooks/useAuth'
 import { preloadRoute } from '../routeLoaders'
 import { PageFallback } from './PageFallback'
-import { LegalLinks } from './LegalLinks'
 import { SubscriptionBanner } from './SubscriptionBanner'
+import { BrandMark } from './BrandMark'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Início', icon: HomeIcon, end: true },
-  { to: '/novo-treino', label: 'Registrar', icon: PlusCircleIcon },
-  { to: '/historico', label: 'Histórico', icon: HistoryIcon },
   { to: '/exercicios', label: 'Exercícios', icon: ListUnorderedIcon },
+  { to: '/novo-treino', label: 'Treinar', icon: PlayIcon, action: true },
+  { to: '/historico', label: 'Progresso', icon: HistoryIcon },
   { to: '/comunidades', label: 'Comunidades', icon: PeopleIcon },
 ]
 
@@ -42,6 +41,7 @@ export function Layout() {
   function toggleColorMode() {
     const next = dark ? 'day' : 'night'
     setColorMode(next)
+    document.documentElement.setAttribute('data-color-mode', next)
     try {
       localStorage.setItem('colorMode', next)
     } catch {
@@ -58,9 +58,9 @@ export function Layout() {
         <div className="header-top">
           <Link to="/" className="brand" aria-label="Treinos — início">
             <span className="brand-mark">
-              <GraphIcon size={18} />
+              <BrandMark size={25} />
             </span>
-            <span>Treinos</span>
+            <span>FORÇA</span>
           </Link>
           {contextLabel && (
             <>
@@ -98,7 +98,7 @@ export function Layout() {
               to={item.to}
               end={item.end}
               replace
-              className="nav-link"
+              className={`nav-link${item.action ? ' nav-link-action' : ''}`}
               onMouseEnter={() => preloadRoute(item.to)}
               onFocus={() => preloadRoute(item.to)}
             >
@@ -126,12 +126,6 @@ export function Layout() {
           <Outlet />
         </Suspense>
       </main>
-      <footer className="app-footer">
-        <LegalLinks />
-        <p className="app-footer-brand">
-          <GraphIcon size={12} /> Treinos · Seu progresso, um treino de cada vez.
-        </p>
-      </footer>
       <nav className="mobile-nav" aria-label="Navegação principal mobile">
         {NAV_ITEMS.map((item) => (
           <NavLink
@@ -139,7 +133,7 @@ export function Layout() {
             to={item.to}
             end={item.end}
             replace
-            className="nav-link"
+            className={`nav-link${item.action ? ' nav-link-action' : ''}`}
             onTouchStart={() => preloadRoute(item.to)}
           >
             <item.icon size={18} />
