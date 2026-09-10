@@ -187,6 +187,22 @@ service cloud.firestore {
         || (data.username is string && data.username.matches('^[a-z0-9_]{3,20}$'));
     }
 
+    // A reserva em /usernames/{username} (uid do dono) é a fonte da verdade da
+    // exclusividade do @ — o cliente normalmente a respeita dentro de uma transação
+    // (setUsername/updateUserProfile em usersService.js), mas isso é só convenção: nada
+    // impedia uma escrita direta em users/publicProfiles/statuses com um @ que aponta
+    // para outra conta (ou para nenhuma reserva), permitindo personificação visual no
+    // perfil público e nas publicações. Sem isso, o servidor nunca validava o vínculo.
+    function usernameIsReservedBy(userId, username) {
+      let ref = /databases/$(database)/documents/usernames/$(username);
+      return exists(ref) && get(ref).data.uid == userId;
+    }
+
+    function ownsUsernameField(userId, data) {
+      return !('username' in data) || data.username == null
+        || usernameIsReservedBy(userId, data.username);
+    }
+
     function isValidBioField(data) {
       return !('bio' in data) || data.bio == null
         || (data.bio is string && data.bio.size() <= 300);
@@ -196,10 +212,23 @@ service cloud.firestore {
     match /publicProfiles/{userId} {
       allow get: if isSignedIn();
       allow list: if false;
-      allow create, update: if isOwner(userId)
+      allow create: if isOwner(userId)
         && request.resource.data.keys().hasAll(['username', 'bio', 'shareStatistics'])
         && request.resource.data.keys().hasOnly(['username', 'bio', 'shareStatistics'])
         && isValidUsernameField(request.resource.data)
+        && ownsUsernameField(userId, request.resource.data)
+        && isValidBioField(request.resource.data)
+        && request.resource.data.shareStatistics is bool;
+      // Reexige a posse do @ só quando o valor muda: dados legados já podem ter um
+      // username sem reserva correspondente (de antes desta amarração existir), e não
+      // faz sentido travar edições não relacionadas (ex.: bio) por causa disso — só a
+      // troca de fato precisa passar pela checagem.
+      allow update: if isOwner(userId)
+        && request.resource.data.keys().hasAll(['username', 'bio', 'shareStatistics'])
+        && request.resource.data.keys().hasOnly(['username', 'bio', 'shareStatistics'])
+        && isValidUsernameField(request.resource.data)
+        && (request.resource.data.get('username', null) == resource.data.get('username', null)
+          || ownsUsernameField(userId, request.resource.data))
         && isValidBioField(request.resource.data)
         && request.resource.data.shareStatistics is bool;
 
@@ -226,12 +255,16 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['role', 'createdAt', 'username', 'bio', 'shareStatistics', 'publicProfileVersion'])
         && request.resource.data.createdAt == request.time
         && isValidUsernameField(request.resource.data)
+        && ownsUsernameField(userId, request.resource.data)
         && isValidBioField(request.resource.data);
+      // Mesmo raciocínio de publicProfiles: só reexige a posse do @ quando ele muda.
       allow update: if isOwner(userId)
         && request.resource.data.role == resource.data.role
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['username', 'bio', 'shareStatistics', 'publicProfileVersion'])
         && isValidUsernameField(request.resource.data)
+        && (request.resource.data.get('username', null) == resource.data.get('username', null)
+          || ownsUsernameField(userId, request.resource.data))
         && isValidBioField(request.resource.data);
 
       match /exercises/{exerciseId} {
@@ -360,7 +393,10 @@ service cloud.firestore {
         // statusesService.js), nunca outro tipo. Sem essa checagem, um valor como
         // number passava aqui e quebrava a renderização do card no cliente
         // (StatusHeader faz .charAt/.toUpperCase esperando string ou null).
-        && (data.authorUsername == null || data.authorUsername is string)
+        // Também precisa bater com a reserva real do autor em /usernames — sem isso,
+        // qualquer um podia publicar com o @ de outra conta (personificação visual no
+        // feed, mesmo sem ganhar nenhum privilégio de fato).
+        && (data.authorUsername == null || usernameIsReservedBy(data.authorId, data.authorUsername))
         && data.type in ['text', 'poll', 'workout', 'achievement', 'photo']
         && data.createdAt == request.time
         && data.expiresAt > request.time + duration.value(1435, 'm')

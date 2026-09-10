@@ -62,6 +62,8 @@ before(async () => {
       bio: 'Treino com constância',
       shareStatistics: false,
     })
+    await setDoc(doc(db, 'usernames/owner'), { uid: 'owner', createdAt: Timestamp.now() })
+    await setDoc(doc(db, 'usernames/admin'), { uid: 'admin', createdAt: Timestamp.now() })
     await setDoc(doc(db, 'communities/gym'), { isActive: true })
     await setDoc(doc(db, 'communities/announcements'), {
       isActive: true,
@@ -114,6 +116,45 @@ test('public profile exposes only the allowed fields; private profile/history re
   await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'publicProfiles/owner')))
   await assertFails(updateDoc(doc(owner, 'publicProfiles/owner'), { email: 'leak@example.com' }))
   await assertFails(updateDoc(doc(visitor, 'publicProfiles/owner'), { bio: 'overwrite' }))
+})
+
+test('@ exclusivity is enforced by the server, not just the client transaction', async () => {
+  // Neither "owner" nor "visitor" have reserved the @admin handle (only the "admin"
+  // account did, in the suite setup) — a direct write bypassing setUsername's
+  // transaction must not be able to adopt it anyway.
+  await assertFails(updateDoc(doc(owner, 'users/owner'), { username: 'admin' }))
+  await assertFails(updateDoc(doc(owner, 'publicProfiles/owner'), { username: 'admin' }))
+  await assertFails(updateDoc(doc(visitor, 'users/visitor'), { username: 'admin' }))
+  // A name nobody reserved at all is equally forbidden.
+  await assertFails(updateDoc(doc(visitor, 'users/visitor'), { username: 'nobodyreservedthis' }))
+  // Reserving it first (as the transaction would) makes the same write legitimate.
+  await assertSucceeds(
+    setDoc(doc(visitor, 'usernames/freshhandle'), { uid: 'visitor', createdAt: serverTimestamp() })
+  )
+  await assertSucceeds(updateDoc(doc(visitor, 'users/visitor'), { username: 'freshhandle' }))
+  await assertSucceeds(
+    setDoc(
+      doc(visitor, 'publicProfiles/visitor'),
+      { username: 'freshhandle', bio: null, shareStatistics: false },
+      { merge: true }
+    )
+  )
+  // A status cannot claim an authorUsername the real author never reserved either —
+  // this is what the feed and profile link actually render, so it's the surface that
+  // matters for visual impersonation.
+  const status = (overrides = {}) => ({
+    communityId: 'gym',
+    authorId: 'owner',
+    authorUsername: 'admin',
+    authorIsSuperAdmin: false,
+    type: 'text',
+    text: 'oi',
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+    ...overrides,
+  })
+  await assertFails(setDoc(doc(owner, 'statuses/impersonate'), status()))
+  await assertSucceeds(setDoc(doc(owner, 'statuses/realname'), status({ authorUsername: 'owner' })))
 })
 
 test('opt-in publishes totals atomically; opt-out blocks direct reads and stale summary writes', async () => {
