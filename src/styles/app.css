@@ -2026,6 +2026,166 @@ body {
   background: transparent;
 }
 
+.workout-progress {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 22px;
+}
+
+.workout-progress span {
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: var(--fitness-surface);
+  color: var(--fgColor-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.workout-progress span.is-current {
+  background: var(--fitness-accent);
+  color: #11170b;
+}
+
+.workout-progress span.is-done {
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+}
+
+.workout-step { animation: workout-step-in .18s ease-out; }
+
+@keyframes workout-step-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.workout-step-heading { margin-bottom: 18px; }
+.workout-step-heading > span {
+  color: var(--fitness-accent-strong);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .09em;
+}
+.workout-step-heading h2 { margin: 5px 0 4px; font-size: 24px; letter-spacing: -.025em; }
+.workout-step-heading p { margin: 0; color: var(--fgColor-muted); font-size: 13px; }
+
+.muscle-group-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.muscle-group-card,
+.workout-exercise-card {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 15px;
+  background: var(--fitness-surface);
+  color: var(--fgColor-default);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s ease, background-color .15s ease, transform .15s ease;
+}
+
+.muscle-group-card {
+  gap: 11px;
+  min-height: 70px;
+  padding: 11px 12px;
+}
+
+.muscle-group-card:hover,
+.workout-exercise-card:hover { transform: translateY(-1px); border-color: var(--borderColor-default); }
+.muscle-group-card:focus-visible,
+.workout-exercise-card:focus-visible,
+.workout-back:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 2px; }
+.muscle-group-card.is-selected,
+.workout-exercise-card.is-selected {
+  border-color: var(--fitness-accent-strong);
+  background: var(--fitness-accent-soft);
+}
+
+.muscle-group-mark {
+  display: grid;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--bgColor-default);
+  color: var(--fitness-accent-strong);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.muscle-group-card > span:nth-child(2),
+.workout-exercise-card > span { display: grid; min-width: 0; gap: 2px; }
+.muscle-group-card strong,
+.workout-exercise-card strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.muscle-group-card small,
+.workout-exercise-card small { overflow: hidden; color: var(--fgColor-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.muscle-group-card > svg,
+.workout-exercise-card > svg { flex: 0 0 auto; margin-left: auto; color: var(--fgColor-muted); }
+
+.workout-step-cancel { margin-top: 18px; }
+.workout-back {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  min-height: 38px;
+  margin: -4px 0 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fgColor-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.exercise-search {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 46px;
+  margin-bottom: 10px;
+  padding: 0 13px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 13px;
+  background: var(--bgColor-default);
+  color: var(--fgColor-muted);
+}
+.exercise-search:focus-within { outline: 2px solid var(--focus-outlineColor); outline-offset: -1px; }
+.exercise-search input {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fgColor-default);
+  font: inherit;
+  font-size: 14px;
+}
+
+.workout-exercise-list { display: grid; gap: 8px; }
+.workout-exercise-card { width: 100%; min-height: 58px; padding: 11px 14px; }
+.workout-no-results { display: block; padding: 26px 12px; color: var(--fgColor-muted); text-align: center; }
+
+.selected-workout-context {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+}
+.selected-workout-context > div:first-child { display: grid; gap: 3px; min-width: 0; }
+.selected-workout-context > div:first-child span { color: var(--fitness-accent-strong); font-size: 11px; font-weight: 750; }
+.selected-workout-context > div:first-child strong { overflow: hidden; font-size: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.selected-workout-context > div:last-child { display: flex; flex: 0 0 auto; gap: 5px; }
+
 .exercise-picker {
   padding: 22px;
   border-radius: var(--fitness-radius-md);
@@ -2365,6 +2525,15 @@ body {
   .session-heading { gap: 12px; margin-bottom: 22px; }
   .session-heading p { font-size: 12px; }
   .session-icon { width: 40px; height: 40px; }
+  .workout-progress { position: sticky; top: 0; z-index: 4; margin-inline: -4px; padding: 4px; background: color-mix(in srgb, var(--bgColor-default) 94%, transparent); backdrop-filter: blur(10px); }
+  .workout-progress span { padding-inline: 6px; font-size: 10px; }
+  .workout-step-heading h2 { font-size: 22px; }
+  .muscle-group-grid { gap: 8px; }
+  .muscle-group-card { min-height: 66px; padding: 9px; }
+  .muscle-group-mark { width: 34px; height: 34px; }
+  .muscle-group-card strong { font-size: 13px; }
+  .selected-workout-context { align-items: flex-start; }
+  .selected-workout-context > div:last-child { flex-direction: column; align-items: flex-end; }
   .exercise-picker { margin-inline: -4px; padding: 16px; }
   .workout-reference { grid-template-columns: 1fr; gap: 12px; }
   .set-column-headings,
