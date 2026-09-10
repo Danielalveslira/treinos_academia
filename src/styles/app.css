@@ -842,8 +842,8 @@ body:has(.pwa-offline) .app-shell {
 }
 @media (max-width: 767px) {
   .pwa-install {
-    bottom: calc(68px + env(safe-area-inset-bottom));
-    right: 16px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    right: 12px;
   }
   .pwa-update {
     bottom: calc(116px + env(safe-area-inset-bottom));
@@ -2603,19 +2603,50 @@ body {
   .recent-workout-row time { display: none; }
 
   .mobile-nav {
-    align-items: end;
-    min-height: 68px;
-    padding: 5px 8px calc(5px + env(safe-area-inset-bottom));
-    border-color: var(--borderColor-muted);
-    background: color-mix(in srgb, var(--bgColor-default) 96%, transparent);
-    box-shadow: 0 -8px 30px rgb(0 0 0 / 6%);
-    backdrop-filter: blur(14px);
+    right: 10px;
+    bottom: max(6px, env(safe-area-inset-bottom));
+    left: 10px;
+    align-items: center;
+    min-height: 50px;
+    padding: 2px 4px;
+    border: 1px solid color-mix(in srgb, var(--borderColor-default) 82%, transparent);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--bgColor-default) 94%, transparent);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 16%);
+    backdrop-filter: blur(18px) saturate(130%);
   }
-  .mobile-nav .nav-link { min-height: 52px; border-radius: 12px; color: var(--fgColor-muted); }
-  .mobile-nav .nav-link.active { background: transparent; color: var(--fitness-accent-strong); }
-  .mobile-nav .nav-link-action { transform: translateY(-10px); }
-  .mobile-nav .nav-link-action svg { box-sizing: content-box; width: 21px; height: 21px; padding: 12px; border-radius: 15px; background: var(--fitness-accent); color: #11170b; box-shadow: 0 8px 22px color-mix(in srgb, var(--fitness-accent) 32%, transparent); }
-  .mobile-nav .nav-link-action span { margin-top: -1px; color: var(--fgColor-default); font-weight: 750; }
+  .mobile-nav .nav-link {
+    min-height: 44px;
+    padding: 3px 2px 2px;
+    border-radius: 9px;
+    color: var(--fgColor-muted);
+    font-size: 9px;
+    line-height: 1.1;
+  }
+  .mobile-nav .nav-link svg { width: 16px; height: 16px; color: currentColor; }
+  .mobile-nav .nav-link.active {
+    background: transparent;
+    color: var(--fitness-accent-strong);
+  }
+  .mobile-nav .nav-link.active:not(.nav-link-action) svg {
+    box-sizing: content-box;
+    padding: 3px;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--fitness-accent) 12%, transparent);
+  }
+  .mobile-nav .nav-link-action { transform: none; color: var(--fgColor-default); font-weight: 700; }
+  .mobile-nav .nav-link-action svg {
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    padding: 2px;
+    border: 1.5px solid var(--fitness-accent);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--fitness-accent);
+    box-shadow: none;
+  }
+  .mobile-nav .nav-link-action span { margin-top: 0; color: inherit; font-weight: 700; }
 
   .session-heading { gap: 12px; margin-bottom: 22px; }
   .session-heading p { font-size: 12px; }
