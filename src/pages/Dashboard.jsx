@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { Box, Button, Heading, Spinner, IconButton } from '@primer/react'
+import { Box, Button, Heading, Spinner, IconButton, Text } from '@primer/react'
 import {
   ArrowRightIcon,
   CalendarIcon,
@@ -14,6 +14,7 @@ import {
 import { useDashboard } from '../hooks/useDashboard'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useAuth } from '../hooks/useAuth'
+import { DASHBOARD_HISTORY_DAYS, DASHBOARD_SAFETY_LIMIT } from '../services/workoutsService'
 import { calculateVolume, getTrainingConsistency } from '../utils/calculations'
 import { formatDate, buildExerciseNameMap } from '../utils/format'
 import { formatWorkoutSets, getWorkoutLoad } from '../utils/workoutSets'
@@ -172,6 +173,10 @@ export default function Dashboard() {
           <strong>{bestLoad.toLocaleString('pt-BR')} kg</strong>
         </div>
       </section>
+      <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted', mt: 2, mb: 3 }}>
+        "Melhor carga" e "dias ativos" consideram os últimos {DASHBOARD_HISTORY_DAYS} dias (até{' '}
+        {DASHBOARD_SAFETY_LIMIT} registros) — um recorde mais antigo pode não aparecer.
+      </Text>
 
       <div className="dashboard-flow">
         <section className="progress-section" aria-labelledby="frequency-title">

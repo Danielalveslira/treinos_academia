@@ -1,7 +1,8 @@
 import { createAccountsService } from './accounts-service.js'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore'
-import { createDeletionService } from './deletion-service.js'
+import { createDeletionService, statusPhotoExtra } from './deletion-service.js'
+import { createBumpMemberCount } from './community-members-service.js'
 import { validId } from './legal-core.js'
 import { accountView } from './admin-core.js'
 import { readFileSync } from 'node:fs'
@@ -509,13 +510,7 @@ export const deleteCommunityPermanently = onCall(options, async (request) => {
 export const cleanupDeletedStatus = onDocumentDeleted(
   { ...options, document: 'statuses/{id}', retry: true },
   (event) => {
-    const deleted = event.data?.data()
-    // photoPath só existe (e só importa) para publicações do tipo foto — é o único
-    // dado extra que o job de limpeza de status precisa além do id, então é a única
-    // coisa que copiamos do documento apagado para dentro do job.
-    const extra =
-      deleted?.type === 'photo' && deleted.photoPath ? { photoPath: deleted.photoPath } : {}
-    return deletions.queueDeleted('status', event.params.id, extra)
+    return deletions.queueDeleted('status', event.params.id, statusPhotoExtra(event.data?.data()))
   }
 )
 export const cleanupDeletedCommunity = onDocumentDeleted(
@@ -523,20 +518,7 @@ export const cleanupDeletedCommunity = onDocumentDeleted(
   (event) => deletions.queueDeleted('community', event.params.id)
 )
 
-// memberCount denormalizado em communities/{id}, mantido por gatilho — o painel admin
-// (useAdminCommunities) lê esse campo direto em vez de rodar uma aggregation query por
-// comunidade exibida. Só a Admin SDK grava este campo (o cliente nunca escreve nele
-// diretamente), então não há necessidade de regra especial nem risco de manipulação.
-async function bumpMemberCount(communityId, delta) {
-  if (!communityId) return
-  try {
-    await db.doc(`communities/${communityId}`).update({ memberCount: FieldValue.increment(delta) })
-  } catch (error) {
-    // Comunidade já pode ter sido excluída (corrida com cleanupDeletedCommunity) —
-    // nesse caso o documento não existe mais e não há contagem para manter.
-    console.error('bumpMemberCount', communityId, error.code)
-  }
-}
+const bumpMemberCount = createBumpMemberCount({ db, FieldValue })
 // Sem retry, de propósito: FieldValue.increment não é idempotente — uma nova tentativa
 // depois de um "sucesso não confirmado" contaria a mesma entrada/saída duas vezes. Uma
 // falha isolada aqui só deixa o contador levemente desatualizado (cosmético, no painel

@@ -1,4 +1,4 @@
-import { doc, getDoc, writeBatch, runTransaction, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, deleteDoc, writeBatch, runTransaction, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { getWorkoutStatistics } from './workoutsService'
 
@@ -13,6 +13,26 @@ function usernameRef(username) {
 }
 
 export const BIO_MAX_LENGTH = 300
+
+// Reserva o @ (ou confirma que já é seu) numa transação isolada, só com o documento
+// usernames/{username} — sem tocar em users/publicProfiles nela. Isso é o que garante
+// exclusividade sob corrida (duas reservas concorrentes do mesmo nome novo: o Firestore
+// detecta o conflito de leitura/escrita e reexecuta a perdedora). Ficar só nesse
+// documento também é necessário para as regras: elas agora exigem que users/publicProfiles
+// só gravem um username se a reserva correspondente já existir e apontar pro mesmo uid
+// (ver ownsUsernameField em firestore.rules) — e regras nunca enxergam a escrita de OUTRO
+// documento feita na mesma transação, só o que já está confirmado no banco. Por isso a
+// reserva precisa ser seu próprio commit, sempre antes de gravar o perfil.
+async function reserveUsername(userId, username) {
+  await runTransaction(db, async (tx) => {
+    const reserved = await tx.get(usernameRef(username))
+    if (reserved.exists()) {
+      if (reserved.data().uid !== userId) throw new Error('USERNAME_TAKEN')
+      return
+    }
+    tx.set(usernameRef(username), { uid: userId, createdAt: serverTimestamp() })
+  })
+}
 
 // Recebe apenas campos alterados. Descrição não precisa consultar a reserva de nomes.
 export async function updateUserProfile(userId, changes) {
@@ -49,24 +69,33 @@ export async function updateUserProfile(userId, changes) {
     await batch.commit()
     return patch
   }
-  await runTransaction(db, async (tx) => {
-    const profileSnap = await tx.get(userRef(userId))
-    if (!profileSnap.exists()) throw new Error('PROFILE_NOT_FOUND')
-    const previousUsername = profileSnap.data().username
-    if (previousUsername !== patch.username) {
-      const reserved = await tx.get(usernameRef(patch.username))
-      if (reserved.exists() && reserved.data().uid !== userId) {
-        throw new Error('USERNAME_TAKEN')
-      }
-      if (previousUsername) tx.delete(usernameRef(previousUsername))
-      if (!reserved.exists()) {
-        tx.set(usernameRef(patch.username), { uid: userId, createdAt: serverTimestamp() })
-      }
-    }
-    tx.update(userRef(userId), patch)
-    writePublic(tx)
-  })
+  const profileSnap = await getDoc(userRef(userId))
+  if (!profileSnap.exists()) throw new Error('PROFILE_NOT_FOUND')
+  const previousUsername = profileSnap.data().username
+  if (previousUsername !== patch.username) {
+    await reserveUsername(userId, patch.username)
+  }
+  const batch = writeBatch(db)
+  batch.update(userRef(userId), patch)
+  writePublic(batch)
+  if (previousUsername && previousUsername !== patch.username) {
+    batch.delete(usernameRef(previousUsername))
+  }
+  await batch.commit()
   return patch
+}
+
+// Desfaz um cadastro que falhou depois de ensureUserProfile()/setUsername() já terem
+// escrito algo (ver Register.jsx) — sem isso, uma falha de rede nesse meio-tempo deixava
+// o perfil (e o @ reservado) órfãos no Firestore pra sempre, mesmo com a conta do
+// Authentication já desfeita logo em seguida. As regras só permitem esse delete nos
+// minutos seguintes à criação (ver firestore.rules), então isto nunca vira uma forma
+// geral de "excluir minha conta" fora desse fluxo. Best-effort de propósito: cada
+// remoção é tentada mesmo se outra falhar (ex.: username nunca chegou a ser reservado).
+export async function deleteFreshProfile(userId, username) {
+  const attempts = [deleteDoc(doc(db, 'publicProfiles', userId)), deleteDoc(userRef(userId))]
+  if (username) attempts.push(deleteDoc(usernameRef(username)))
+  await Promise.allSettled(attempts)
 }
 
 // Checagem somente-leitura, usada para bloquear o cadastro antes de criar a conta no
@@ -100,37 +129,33 @@ export async function ensureUserProfile(userId) {
   })
 }
 
-// Reserva um @usuário único via transação: lê o ponteiro em "usernames" e o perfil atual
-// antes de escrever, então uma corrida entre dois usuários escolhendo o mesmo nome nunca
-// deixa os dois "ganharem" — o Firestore aborta e reexecuta a transação perdedora.
+// Reserva o @ (own transação, ver reserveUsername acima) e só então grava o perfil —
+// nessa ordem porque as regras do servidor agora exigem que a reserva já exista e
+// aponte pro mesmo uid antes de aceitar um username em users/publicProfiles.
 export async function setUsername(userId, rawUsername) {
   const username = rawUsername.trim().toLowerCase()
   if (!USERNAME_PATTERN.test(username)) {
     throw new Error('INVALID_USERNAME')
   }
 
-  await runTransaction(db, async (tx) => {
-    const usernameSnap = await tx.get(usernameRef(username))
-    if (usernameSnap.exists() && usernameSnap.data().uid !== userId) {
-      throw new Error('USERNAME_TAKEN')
-    }
+  const profileSnap = await getDoc(userRef(userId))
+  const previousUsername = profileSnap.data()?.username
 
-    const profileSnap = await tx.get(userRef(userId))
-    const previousUsername = profileSnap.data()?.username
+  if (previousUsername !== username) {
+    await reserveUsername(userId, username)
+  }
 
-    if (previousUsername && previousUsername !== username) {
-      tx.delete(usernameRef(previousUsername))
-    }
-    if (!usernameSnap.exists()) {
-      tx.set(usernameRef(username), { uid: userId, createdAt: serverTimestamp() })
-    }
-    tx.set(userRef(userId), { username }, { merge: true })
-    tx.set(doc(db, 'publicProfiles', userId), {
-      username,
-      bio: profileSnap.data()?.bio || null,
-      shareStatistics: profileSnap.data()?.shareStatistics === true,
-    })
+  const batch = writeBatch(db)
+  batch.set(userRef(userId), { username }, { merge: true })
+  batch.set(doc(db, 'publicProfiles', userId), {
+    username,
+    bio: profileSnap.data()?.bio || null,
+    shareStatistics: profileSnap.data()?.shareStatistics === true,
   })
+  if (previousUsername && previousUsername !== username) {
+    batch.delete(usernameRef(previousUsername))
+  }
+  await batch.commit()
 
   return username
 }

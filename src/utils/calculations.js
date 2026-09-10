@@ -52,6 +52,12 @@ export function getExerciseIndicators(workouts) {
   const accumulatedVolume = sorted.reduce((sum, w) => sum + calculateVolume(w), 0)
 
   const maxLoad = Math.max(...sorted.map((w) => getWorkoutLoad(w)))
+  // maxLoad já inclui o próprio treino mais recente, então comparar currentLoad >= maxLoad
+  // é sempre verdadeiro quando ele é o mais pesado — inclusive empatando com uma sessão
+  // anterior, o que não é um recorde *novo*. isPersonalRecord precisa superar o máximo das
+  // sessões ANTERIORES, não o máximo geral (que sempre inclui a própria sessão atual).
+  const previousMaxLoad =
+    sorted.length > 1 ? Math.max(...sorted.slice(1).map((w) => getWorkoutLoad(w))) : null
 
   return {
     currentLoad: getWorkoutLoad(latest),
@@ -65,22 +71,8 @@ export function getExerciseIndicators(workouts) {
     accumulatedVolume,
     sessionCount: sorted.length,
     lastWorkoutDate: toDate(latest.date),
-    isPersonalRecord: sorted.length > 1 && getWorkoutLoad(latest) >= maxLoad,
+    isPersonalRecord: previousMaxLoad != null && getWorkoutLoad(latest) > previousMaxLoad,
   }
-}
-
-export function getWeeklyFrequency(workouts) {
-  if (!workouts || workouts.length === 0) return 0
-
-  const now = new Date()
-  const sevenDaysAgo = new Date(now)
-  sevenDaysAgo.setDate(now.getDate() - 7)
-
-  const uniqueDays = new Set(
-    workouts.filter((w) => toDate(w.date) >= sevenDaysAgo).map((w) => toDate(w.date).toDateString())
-  )
-
-  return uniqueDays.size
 }
 
 export function groupVolumeByDate(workouts) {

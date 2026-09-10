@@ -62,6 +62,8 @@ before(async () => {
       bio: 'Treino com constância',
       shareStatistics: false,
     })
+    await setDoc(doc(db, 'usernames/owner'), { uid: 'owner', createdAt: Timestamp.now() })
+    await setDoc(doc(db, 'usernames/admin'), { uid: 'admin', createdAt: Timestamp.now() })
     await setDoc(doc(db, 'communities/gym'), { isActive: true })
     await setDoc(doc(db, 'communities/announcements'), {
       isActive: true,
@@ -114,6 +116,76 @@ test('public profile exposes only the allowed fields; private profile/history re
   await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'publicProfiles/owner')))
   await assertFails(updateDoc(doc(owner, 'publicProfiles/owner'), { email: 'leak@example.com' }))
   await assertFails(updateDoc(doc(visitor, 'publicProfiles/owner'), { bio: 'overwrite' }))
+})
+
+test('@ exclusivity is enforced by the server, not just the client transaction', async () => {
+  // Neither "owner" nor "visitor" have reserved the @admin handle (only the "admin"
+  // account did, in the suite setup) — a direct write bypassing setUsername's
+  // transaction must not be able to adopt it anyway.
+  await assertFails(updateDoc(doc(owner, 'users/owner'), { username: 'admin' }))
+  await assertFails(updateDoc(doc(owner, 'publicProfiles/owner'), { username: 'admin' }))
+  await assertFails(updateDoc(doc(visitor, 'users/visitor'), { username: 'admin' }))
+  // A name nobody reserved at all is equally forbidden.
+  await assertFails(updateDoc(doc(visitor, 'users/visitor'), { username: 'nobodyreservedthis' }))
+  // Reserving it first (as the transaction would) makes the same write legitimate.
+  await assertSucceeds(
+    setDoc(doc(visitor, 'usernames/freshhandle'), { uid: 'visitor', createdAt: serverTimestamp() })
+  )
+  await assertSucceeds(updateDoc(doc(visitor, 'users/visitor'), { username: 'freshhandle' }))
+  await assertSucceeds(
+    setDoc(
+      doc(visitor, 'publicProfiles/visitor'),
+      { username: 'freshhandle', bio: null, shareStatistics: false },
+      { merge: true }
+    )
+  )
+  // A status cannot claim an authorUsername the real author never reserved either —
+  // this is what the feed and profile link actually render, so it's the surface that
+  // matters for visual impersonation.
+  const status = (overrides = {}) => ({
+    communityId: 'gym',
+    authorId: 'owner',
+    authorUsername: 'admin',
+    authorIsSuperAdmin: false,
+    type: 'text',
+    text: 'oi',
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+    ...overrides,
+  })
+  await assertFails(setDoc(doc(owner, 'statuses/impersonate'), status()))
+  await assertSucceeds(setDoc(doc(owner, 'statuses/realname'), status({ authorUsername: 'owner' })))
+})
+
+test('a freshly created profile can self-delete to roll back a failed registration, an established one cannot', async () => {
+  const newbie = env.authenticatedContext('newbie').firestore()
+  await assertSucceeds(
+    setDoc(doc(newbie, 'users/newbie'), {
+      role: 'user',
+      createdAt: serverTimestamp(),
+      publicProfileVersion: 1,
+      bio: null,
+      shareStatistics: false,
+    })
+  )
+  await assertSucceeds(
+    setDoc(doc(newbie, 'publicProfiles/newbie'), {
+      username: null,
+      bio: null,
+      shareStatistics: false,
+    })
+  )
+  // Register.jsx: ensureUserProfile()/setUsername() succeeded, but something right
+  // after failed (e.g. acceptLegalDocuments/initializeTrial) — the rollback deletes
+  // what was already written, right in this same window.
+  await assertSucceeds(deleteDoc(doc(newbie, 'publicProfiles/newbie')))
+  await assertSucceeds(deleteDoc(doc(newbie, 'users/newbie')))
+
+  // owner/visitor/admin (seeded in before(), no createdAt at all — same shape as any
+  // real, established account) can never self-delete their own profile this way; that
+  // always goes through deleteAccountPermanently instead.
+  await assertFails(deleteDoc(doc(owner, 'users/owner')))
+  await assertFails(deleteDoc(doc(owner, 'publicProfiles/owner')))
 })
 
 test('opt-in publishes totals atomically; opt-out blocks direct reads and stale summary writes', async () => {
@@ -182,8 +254,32 @@ test('achievement publication requires membership and safe payload; author may d
   await assertSucceeds(deleteDoc(ref))
 })
 
-test('photo publication requires photoPath scoped to the community and a bounded caption', async () => {
+test('expiresAt is immutable on update, so a publication cannot postpone its own expiration', async () => {
+  const status = (overrides = {}) => ({
+    communityId: 'gym',
+    authorId: 'owner',
+    authorUsername: 'owner',
+    authorIsSuperAdmin: false,
+    type: 'text',
+    text: 'oi',
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+    ...overrides,
+  })
+  const ref = doc(owner, 'statuses/expiry')
+  await assertSucceeds(setDoc(ref, status()))
+  const original = (await getDoc(ref)).data().expiresAt
+  await assertFails(
+    updateDoc(ref, { expiresAt: Timestamp.fromMillis(Date.now() + 1000 * 60 * 60 * 24 * 365 * 70) })
+  )
+  await assertSucceeds(updateDoc(ref, { text: 'oi editado' }))
+  assert.deepEqual((await getDoc(ref)).data().expiresAt, original)
+  await assertSucceeds(deleteDoc(ref))
+})
+
+test('photo publication requires photoPath scoped to this exact document, never another publication\'s file', async () => {
   const FILE_ID = 'AAAAAAAAAAAAAAAAAAAA' // 20 chars — mesmo formato do id gerado pelo Firestore
+  const OTHER_FILE_ID = 'BBBBBBBBBBBBBBBBBBBB'
   const status = (overrides = {}) => ({
     communityId: 'gym',
     authorId: 'owner',
@@ -196,35 +292,51 @@ test('photo publication requires photoPath scoped to the community and a bounded
     expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
     ...overrides,
   })
-  const ref = doc(owner, 'statuses/photo')
+  const ref = doc(owner, `statuses/${FILE_ID}`)
   await assertSucceeds(setDoc(ref, status()))
-  await assertSucceeds(getDoc(doc(visitor, 'statuses/photo')))
+  await assertSucceeds(getDoc(doc(visitor, `statuses/${FILE_ID}`)))
+  // photoPath precisa ser exatamente statusPhotos/{communityId}/{o próprio id do
+  // documento}.webp — nunca o de outra publicação, mesmo com formato e comunidade
+  // corretos. Sem isso, uma publicação podia "sequestrar" a foto de outra: ao ser
+  // excluída, a limpeza no backend apagava do Storage um arquivo que ainda pertencia
+  // a uma publicação alheia, ainda existente.
+  await assertFails(
+    setDoc(
+      doc(owner, `statuses/${OTHER_FILE_ID}`),
+      status({ photoPath: `statusPhotos/gym/${FILE_ID}.webp` })
+    )
+  )
   // photoPath precisa apontar para a mesma comunidade do status, nunca para outra.
   await assertFails(
     setDoc(
-      doc(owner, 'statuses/wrongcommunity'),
+      doc(owner, `statuses/${FILE_ID}`),
       status({ photoPath: `statusPhotos/announcements/${FILE_ID}.webp` })
     )
   )
   // Nome de arquivo tem que bater com o formato gerado pelo servidor — nunca o nome
   // original de um arquivo do usuário, nem um caminho tentando escapar da pasta.
   await assertFails(
-    setDoc(doc(owner, 'statuses/badname'), status({ photoPath: 'statusPhotos/gym/foto.webp' }))
+    setDoc(doc(owner, `statuses/${FILE_ID}`), status({ photoPath: 'statusPhotos/gym/foto.webp' }))
   )
   await assertFails(
     setDoc(
-      doc(owner, 'statuses/traversal'),
+      doc(owner, `statuses/${FILE_ID}`),
       status({ photoPath: `statusPhotos/gym/../other/${FILE_ID}.webp` })
     )
   )
   const { photoPath: _omitPath, ...withoutPath } = status()
-  await assertFails(setDoc(doc(owner, 'statuses/nopath'), withoutPath))
+  await assertFails(setDoc(doc(owner, `statuses/${FILE_ID}`), withoutPath))
   await assertFails(
-    setDoc(doc(owner, 'statuses/longcaption'), status({ caption: 'x'.repeat(281) }))
+    setDoc(doc(owner, `statuses/${FILE_ID}`), status({ caption: 'x'.repeat(281) }))
   )
   const { caption: _omitCaption, ...withoutCaption } = status()
-  await assertSucceeds(setDoc(doc(owner, 'statuses/nocaption'), withoutCaption))
-  await assertFails(deleteDoc(doc(visitor, 'statuses/photo')))
+  await assertSucceeds(
+    setDoc(doc(owner, `statuses/${OTHER_FILE_ID}`), {
+      ...withoutCaption,
+      photoPath: `statusPhotos/gym/${OTHER_FILE_ID}.webp`,
+    })
+  )
+  await assertFails(deleteDoc(doc(visitor, `statuses/${FILE_ID}`)))
   await assertSucceeds(deleteDoc(ref))
 })
 
@@ -259,6 +371,48 @@ test('the superadmin badge is stamped by the server, never by the client payload
     )
   )
   assert.equal((await getDoc(doc(admin, 'statuses/realbadge'))).data().authorIsSuperAdmin, true)
+})
+
+test('malformed payloads that used to crash the feed on render are rejected server-side', async () => {
+  const base = (overrides = {}) => ({
+    communityId: 'gym',
+    authorId: 'owner',
+    authorIsSuperAdmin: false,
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+    ...overrides,
+  })
+  // authorUsername precisa ser string ou null — outro tipo (ex.: number) quebrava
+  // StatusHeader (.charAt/.toUpperCase esperando string).
+  await assertFails(
+    setDoc(
+      doc(owner, 'statuses/badusername'),
+      base({ authorUsername: 123, type: 'text', text: 'oi' })
+    )
+  )
+  await assertSucceeds(
+    setDoc(
+      doc(owner, 'statuses/nullusername'),
+      base({ authorUsername: null, type: 'text', text: 'oi' })
+    )
+  )
+  // Cada opção da enquete precisa ser {id, label} — um item nulo (ou faltando algum
+  // dos dois campos) quebrava PollStatus (option.id/option.label direto).
+  const poll = (options) =>
+    base({ authorUsername: 'owner', type: 'poll', poll: { question: 'Treinou hoje?', options } })
+  await assertFails(setDoc(doc(owner, 'statuses/nulloption'), poll([null, null])))
+  await assertFails(
+    setDoc(doc(owner, 'statuses/missingfield'), poll([{ id: '0' }, { id: '1', label: 'Sim' }]))
+  )
+  await assertSucceeds(
+    setDoc(
+      doc(owner, 'statuses/validpoll'),
+      poll([
+        { id: '0', label: 'Sim' },
+        { id: '1', label: 'Não' },
+      ])
+    )
+  )
 })
 
 test('community postAccess restricts who may publish, enforced server-side', async () => {

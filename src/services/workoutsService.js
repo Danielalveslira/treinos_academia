@@ -57,6 +57,11 @@ function toTimestamp(dateString) {
   return Timestamp.fromDate(new Date(`${dateString}T12:00:00`))
 }
 
+// Teto de segurança para o dia que fica no corte da página (ver abaixo) — nenhum uso
+// real registra tantos treinos separados num único dia, então isso nunca é atingido na
+// prática; existe só pra nunca deixar essa busca extra crescer sem limite.
+const SAME_DAY_OVERFLOW_LIMIT = 50
+
 export async function listWorkoutsPage(
   userId,
   { exerciseId, startDate, endDate, cursor, pageSize = RECENT_PAGE_SIZE } = {}
@@ -70,13 +75,44 @@ export async function listWorkoutsPage(
   constraints.push(limit(pageSize))
 
   const snapshot = await getDocs(query(workoutsRef(userId), ...constraints))
+  let docs = snapshot.docs
+
+  // "date" só guarda o dia (sempre meio-dia, ver toTimestamp), então o próprio banco
+  // ordena registros do mesmo dia só pelo id do documento — sem relação com a hora real
+  // de criação. Se o limite da página cortar bem no meio de um dia, o restante desse
+  // dia cai na página seguinte, e reordenar cada página separadamente (sortSameDayByCreation)
+  // não resolve: um registro mais novo por createdAt pode ficar "depois" na paginação só
+  // por ter ficado do outro lado do corte. Busca o resto desse dia agora — nunca mais
+  // que isso — e junta ao grupo antes de reordenar, pra ele nunca ficar dividido entre
+  // duas páginas.
+  if (docs.length === pageSize) {
+    const boundaryDoc = docs[docs.length - 1]
+    const boundaryDate = boundaryDoc.data().date
+    const overflow = await getDocs(
+      query(
+        workoutsRef(userId),
+        ...(exerciseId ? [where('exerciseId', '==', exerciseId)] : []),
+        where('date', '==', boundaryDate),
+        orderBy('date', 'desc'),
+        startAfter(boundaryDoc),
+        limit(SAME_DAY_OVERFLOW_LIMIT)
+      )
+    )
+    docs = docs.concat(overflow.docs)
+  }
+
   return {
-    items: sortSameDayByCreation(snapshot.docs.map(toDoc)),
-    nextCursor: snapshot.docs.length === pageSize ? snapshot.docs[snapshot.docs.length - 1] : null,
+    items: sortSameDayByCreation(docs.map(toDoc)),
+    nextCursor: snapshot.docs.length === pageSize ? docs[docs.length - 1] : null,
   }
 }
 
-export async function listWorkoutsForExercise(userId, exerciseId, pageSize = 30) {
+// Exportado para a UI poder avisar o recorte real nos indicadores (ver ExerciseDetail.jsx)
+// em vez de apresentar "Maior carga"/"Volume acumulado" como se fossem o histórico
+// completo — um recorde de carga mais antigo que essa página some da comparação.
+export const EXERCISE_HISTORY_PAGE_SIZE = 30
+
+export async function listWorkoutsForExercise(userId, exerciseId, pageSize = EXERCISE_HISTORY_PAGE_SIZE) {
   const q = query(
     workoutsRef(userId),
     where('exerciseId', '==', exerciseId),
@@ -134,8 +170,10 @@ export function deleteWorkout(userId, workoutId) {
 // Janela e teto para as métricas de constância (streak/frequência semanal) sem ler a
 // coleção inteira: cobre folgas realistas (~1 ano) e limita o custo mesmo para quem
 // registra várias séries por dia. Sequências mais longas que isso aparecem "capadas".
-const DASHBOARD_HISTORY_DAYS = 371
-const DASHBOARD_SAFETY_LIMIT = 500
+// Exportados para a UI avisar esse recorte nos indicadores que dependem dele (ver
+// Dashboard.jsx) — "Melhor carga"/"dias ativos" não cobrem o histórico completo.
+export const DASHBOARD_HISTORY_DAYS = 371
+export const DASHBOARD_SAFETY_LIMIT = 500
 
 export async function listDashboardWorkouts(userId) {
   const since = Timestamp.fromDate(new Date(Date.now() - DASHBOARD_HISTORY_DAYS * 86400000))

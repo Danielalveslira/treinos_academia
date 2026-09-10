@@ -49,10 +49,6 @@ export function getUserAccessState(profile, nowMillis = Date.now()) {
   return { canAccess, reason: 'subscription', status }
 }
 
-export function canAccessApp(profile, nowMillis = Date.now()) {
-  return getUserAccessState(profile, nowMillis).canAccess
-}
-
 export function formatCurrency(value) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }

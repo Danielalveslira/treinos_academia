@@ -1,3 +1,15 @@
+// Só publicações do tipo foto carregam esse campo. Extraída como função própria e
+// usada tanto aqui (removeStatuses, que apaga o status em lote durante a exclusão de
+// uma conta/comunidade) quanto no gatilho onDocumentDeleted de statuses/{id} em
+// index.js, que trata a exclusão direta de uma publicação pelo próprio autor — as duas
+// formas de chegar à exclusão de um status precisam copiar o mesmo dado pro job de
+// limpeza, senão a foto fica sem referência (ver queueDeleted: um job "sem foto" criado
+// primeiro vence e o gatilho, chegando depois com o dado certo, encontra o job já
+// existente e desiste).
+export function statusPhotoExtra(data) {
+  return data?.type === 'photo' && data.photoPath ? { photoPath: data.photoPath } : {}
+}
+
 // Durable deletion jobs double as write fences. Completed account jobs remain as
 // tombstones so an old authentication token cannot recreate the deleted profile.
 export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp, HttpsError }) {
@@ -60,6 +72,13 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
 
   // A status is removed first; its deletion trigger queues a job that drains its
   // children. Child writes require the parent to exist and cannot race cleanup.
+  //
+  // Este batch.set (merge: true) e o queueDeleted() chamado pelo gatilho de exclusão de
+  // statuses/{id} competem pelo mesmo job: quem chegar primeiro vence, e queueDeleted
+  // desiste silenciosamente se o job já existir. Por isso photoPath precisa ser copiado
+  // aqui também (usando o mesmo item.data() já lido nesta página) — sem isso, quando
+  // este código ganha a corrida, o job de limpeza do status nasce sem saber que existe
+  // uma foto pra apagar, e o arquivo só é removido bem depois, pela varredura de órfãos.
   async function removeStatuses(query) {
     const page = await query.limit(batchSize).get()
     if (page.empty) return true
@@ -75,6 +94,7 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
           stage: 0,
           updatedAt: FieldValue.serverTimestamp(),
           createdAt: FieldValue.serverTimestamp(),
+          ...statusPhotoExtra(item.data()),
         },
         { merge: true }
       )

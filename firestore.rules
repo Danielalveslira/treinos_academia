@@ -187,6 +187,22 @@ service cloud.firestore {
         || (data.username is string && data.username.matches('^[a-z0-9_]{3,20}$'));
     }
 
+    // A reserva em /usernames/{username} (uid do dono) é a fonte da verdade da
+    // exclusividade do @ — o cliente normalmente a respeita dentro de uma transação
+    // (setUsername/updateUserProfile em usersService.js), mas isso é só convenção: nada
+    // impedia uma escrita direta em users/publicProfiles/statuses com um @ que aponta
+    // para outra conta (ou para nenhuma reserva), permitindo personificação visual no
+    // perfil público e nas publicações. Sem isso, o servidor nunca validava o vínculo.
+    function usernameIsReservedBy(userId, username) {
+      let ref = /databases/$(database)/documents/usernames/$(username);
+      return exists(ref) && get(ref).data.uid == userId;
+    }
+
+    function ownsUsernameField(userId, data) {
+      return !('username' in data) || data.username == null
+        || usernameIsReservedBy(userId, data.username);
+    }
+
     function isValidBioField(data) {
       return !('bio' in data) || data.bio == null
         || (data.bio is string && data.bio.size() <= 300);
@@ -196,12 +212,35 @@ service cloud.firestore {
     match /publicProfiles/{userId} {
       allow get: if isSignedIn();
       allow list: if false;
-      allow create, update: if isOwner(userId)
+      allow create: if isOwner(userId)
         && request.resource.data.keys().hasAll(['username', 'bio', 'shareStatistics'])
         && request.resource.data.keys().hasOnly(['username', 'bio', 'shareStatistics'])
         && isValidUsernameField(request.resource.data)
+        && ownsUsernameField(userId, request.resource.data)
         && isValidBioField(request.resource.data)
         && request.resource.data.shareStatistics is bool;
+      // Reexige a posse do @ só quando o valor muda: dados legados já podem ter um
+      // username sem reserva correspondente (de antes desta amarração existir), e não
+      // faz sentido travar edições não relacionadas (ex.: bio) por causa disso — só a
+      // troca de fato precisa passar pela checagem.
+      allow update: if isOwner(userId)
+        && request.resource.data.keys().hasAll(['username', 'bio', 'shareStatistics'])
+        && request.resource.data.keys().hasOnly(['username', 'bio', 'shareStatistics'])
+        && isValidUsernameField(request.resource.data)
+        && (request.resource.data.get('username', null) == resource.data.get('username', null)
+          || ownsUsernameField(userId, request.resource.data))
+        && isValidBioField(request.resource.data)
+        && request.resource.data.shareStatistics is bool;
+      // Só permite ao próprio usuário apagar o perfil nos minutos seguintes à criação —
+      // nunca é uma forma geral de "excluir minha conta" (isso sempre passa por
+      // deleteAccountPermanently, com job de exclusão auditável). Existe só para desfazer
+      // um cadastro que falhou depois de criar o documento (ver setUsername em
+      // Register.jsx): sem isso, uma falha de rede bem depois de ensureUserProfile()
+      // deixava o perfil órfão no Firestore pra sempre, mesmo com a conta do
+      // Authentication já desfeita.
+      allow delete: if isOwner(userId)
+        && get(/databases/$(database)/documents/users/$(userId)).data.createdAt is timestamp
+        && request.time < get(/databases/$(database)/documents/users/$(userId)).data.createdAt + duration.value(10, 'm');
 
       match /statistics/{summaryId} {
         allow get: if isSignedIn()
@@ -226,13 +265,22 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['role', 'createdAt', 'username', 'bio', 'shareStatistics', 'publicProfileVersion'])
         && request.resource.data.createdAt == request.time
         && isValidUsernameField(request.resource.data)
+        && ownsUsernameField(userId, request.resource.data)
         && isValidBioField(request.resource.data);
+      // Mesmo raciocínio de publicProfiles: só reexige a posse do @ quando ele muda.
       allow update: if isOwner(userId)
         && request.resource.data.role == resource.data.role
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['username', 'bio', 'shareStatistics', 'publicProfileVersion'])
         && isValidUsernameField(request.resource.data)
+        && (request.resource.data.get('username', null) == resource.data.get('username', null)
+          || ownsUsernameField(userId, request.resource.data))
         && isValidBioField(request.resource.data);
+      // Mesma janela e mesmo motivo de publicProfiles acima: só para desfazer um
+      // cadastro recém-criado que falhou depois deste documento existir.
+      allow delete: if isOwner(userId)
+        && resource.data.createdAt is timestamp
+        && request.time < resource.data.createdAt + duration.value(10, 'm');
 
       match /exercises/{exerciseId} {
         allow read, delete: if isOwner(userId) && hasAppAccess();
@@ -356,6 +404,14 @@ service cloud.firestore {
       // para absorver a latência entre o cliente montar o valor e o servidor processar.
       return data.communityId is string && data.communityId.size() > 0
         && data.authorId is string
+        // authorUsername é sempre gravado (string ou null — ver baseStatusFields em
+        // statusesService.js), nunca outro tipo. Sem essa checagem, um valor como
+        // number passava aqui e quebrava a renderização do card no cliente
+        // (StatusHeader faz .charAt/.toUpperCase esperando string ou null).
+        // Também precisa bater com a reserva real do autor em /usernames — sem isso,
+        // qualquer um podia publicar com o @ de outra conta (personificação visual no
+        // feed, mesmo sem ganhar nenhum privilégio de fato).
+        && (data.authorUsername == null || usernameIsReservedBy(data.authorId, data.authorUsername))
         && data.type in ['text', 'poll', 'workout', 'achievement', 'photo']
         && data.createdAt == request.time
         && data.expiresAt > request.time + duration.value(1435, 'm')
@@ -365,12 +421,31 @@ service cloud.firestore {
         && data.authorIsSuperAdmin == isSuperAdmin();
     }
 
-    function isValidStatusContent(data) {
+    // Cada opção precisa ser {id, label}, do mesmo jeito que o cliente sempre monta
+    // (ver createPollStatus em statusesService.js) — sem isso, um item malformado
+    // (ex.: null) passava na regra e quebrava a renderização da enquete no cliente
+    // (PollStatus acessa option.id/option.label direto). Mesmo padrão de
+    // "validar até um índice máximo fixo" já usado para setDetails (validSetAt acima).
+    function isValidPollOption(option) {
+      return option.id is string && option.id.size() > 0
+        && option.label is string && option.label.size() > 0;
+    }
+    function validPollOptionAt(options, index) {
+      return options.size() <= index || isValidPollOption(options[index]);
+    }
+
+    function isValidStatusContent(data, statusId) {
       return (data.type == 'text' &&
           data.text is string && data.text.size() > 0 && data.text.size() <= 500)
         || (data.type == 'poll' &&
           data.poll.question is string && data.poll.question.size() > 0
-          && data.poll.options is list && data.poll.options.size() >= 2 && data.poll.options.size() <= 6)
+          && data.poll.options is list && data.poll.options.size() >= 2 && data.poll.options.size() <= 6
+          && validPollOptionAt(data.poll.options, 0)
+          && validPollOptionAt(data.poll.options, 1)
+          && validPollOptionAt(data.poll.options, 2)
+          && validPollOptionAt(data.poll.options, 3)
+          && validPollOptionAt(data.poll.options, 4)
+          && validPollOptionAt(data.poll.options, 5))
         || (data.type == 'workout' &&
           data.workout.title is string && data.workout.title.size() > 0
           && data.workout.date is timestamp
@@ -383,12 +458,15 @@ service cloud.firestore {
           && data.achievement.entries is int && data.achievement.entries >= 0
           && data.achievement.sets is number && data.achievement.sets >= 0
           && (data.achievement.entries > 0 || data.achievement.text.size() > 0))
-        // photoPath precisa apontar para a mesma comunidade da publicação e para um
-        // nome de arquivo gerado pelo servidor (ver storage.rules: só aceita upload
-        // com esse formato de nome, nunca o nome original do arquivo do usuário).
+        // photoPath precisa ser EXATAMENTE statusPhotos/{communityId}/{statusId}.webp —
+        // o próprio id deste documento, nunca o de outra publicação. Antes disso, o
+        // padrão só exigia "20 caracteres alfanuméricos" sem comparar com statusId: uma
+        // publicação podia apontar photoPath para a foto de outra publicação da mesma
+        // comunidade e, ao ser excluída, a limpeza (deletion-service.js) apagava do
+        // Storage o arquivo que ainda pertencia à publicação alheia, ainda existente.
         || (data.type == 'photo' &&
           data.photoPath is string
-          && data.photoPath.matches('^statusPhotos/' + data.communityId + '/[A-Za-z0-9]{20}\\.webp$')
+          && data.photoPath == 'statusPhotos/' + data.communityId + '/' + statusId + '.webp'
           && (!('caption' in data) || (data.caption is string && data.caption.size() <= 280)));
     }
 
@@ -400,16 +478,17 @@ service cloud.firestore {
         && communityIsActive(request.resource.data.communityId)
         && communityAllowsPosting(request.resource.data.communityId)
         && isValidStatusBase(request.resource.data)
-        && isValidStatusContent(request.resource.data);
+        && isValidStatusContent(request.resource.data, statusId);
       allow update: if isSignedIn()
         && resource.data.authorId == request.auth.uid
         && isMember(resource.data.communityId)
         && request.resource.data.authorId == resource.data.authorId
         && request.resource.data.communityId == resource.data.communityId
         && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.expiresAt == resource.data.expiresAt
         && request.resource.data.type == resource.data.type
         && request.resource.data.authorIsSuperAdmin == resource.data.authorIsSuperAdmin
-        && isValidStatusContent(request.resource.data);
+        && isValidStatusContent(request.resource.data, statusId);
       allow delete: if isSignedIn()
         && (resource.data.authorId == request.auth.uid || isSuperAdmin());
 
