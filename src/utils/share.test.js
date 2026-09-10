@@ -11,7 +11,7 @@ test('buildCommunityLink points to the public community route, nothing else', ()
 
 test('buildShareText embeds only the app name and the community link', () => {
   const text = buildShareText('gym', 'https://app.example.com')
-  assert.match(text, /FORÇA/)
+  assert.match(text, /Evolutus/)
   assert.match(text, /https:\/\/app\.example\.com\/comunidades\/gym/)
   assert.doesNotMatch(text, /firestore|statuses\/|token/i)
 })

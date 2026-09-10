@@ -42,7 +42,7 @@ export function PublicLayout({ children }) {
           <span className="brand-mark">
             <BrandMark size={28} />
           </span>
-          FORÇA
+          Evolutus
         </Link>
         <nav aria-label="Navegação">
           <NavLink to="/planos">Planos</NavLink>
@@ -64,7 +64,7 @@ export function PublicLayout({ children }) {
           </Link>
         </LegalLinks>
         <p className="public-footer-brand">
-          <BrandMark size={14} /> FORÇA · Seu diário de evolução
+          <BrandMark size={14} /> Evolutus · Seu diário de evolução
         </p>
       </footer>
     </div>
