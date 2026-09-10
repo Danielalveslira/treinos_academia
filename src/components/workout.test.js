@@ -74,8 +74,25 @@ test('editing legacy and individual sets preserves values and inactive exercise 
       initialValue,
     })
     assert.equal((html.match(/type="number"/g) || []).length, 4)
-    assert.match(html, /<option value="squat" selected="">Agachamento<\/option>/)
+    // Um exercício inativo só continua selecionável quando é o próprio initialValue
+    // (edição de um registro existente) — o passo de registro abre direto nele, sem
+    // passar pelos passos de grupo/exercício, mostrando o nome no cabeçalho da etapa.
+    assert.match(html, /<strong>Agachamento<\/strong>/)
     assert.match(html, /aria-label="Peso \(kg\), série 2"/)
     assert.match(html, /value="30"/)
   }
+})
+
+test('with no exercise pre-selected, the form opens on the muscle group step, not the set fields', () => {
+  const html = render({
+    exercises: [
+      { id: 'squat', name: 'Agachamento', muscleGroup: 'Pernas', active: true },
+      { id: 'bench', name: 'Supino', muscleGroup: 'Peito', active: true },
+    ],
+  })
+  assert.match(html, /Qual grupo você vai treinar\?/)
+  assert.match(html, /Pernas/)
+  assert.match(html, /Peito/)
+  assert.equal((html.match(/type="number"/g) || []).length, 0)
+  assert.doesNotMatch(html, /Adicionar série/)
 })

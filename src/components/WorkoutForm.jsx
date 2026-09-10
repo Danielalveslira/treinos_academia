@@ -81,7 +81,7 @@ export function WorkoutForm({
     }
   })
   const [step, setStep] = useState(() => (initialExercise ? 'register' : 'group'))
-  const [selectedGroup, setSelectedGroup] = useState(initialExercise?.muscleGroup || '')
+  const [selectedGroup, setSelectedGroup] = useState(initialExercise?.muscleGroup || 'Outros')
   const [search, setSearch] = useState('')
   const [completed, setCompleted] = useState(() => new Set())
   const drafts = useRef(new Map())
