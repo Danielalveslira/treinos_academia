@@ -1,6 +1,6 @@
 import { Link, NavLink } from 'react-router-dom'
-import { useEffect } from 'react'
-import { IconButton, useTheme } from '@primer/react'
+import { IconButton } from '@primer/react'
+import { useColorMode } from '../hooks/useColorMode'
 import { LegalLinks } from './LegalLinks'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -14,23 +14,8 @@ import {
 import { BrandMark } from './BrandMark'
 
 export function PublicLayout({ children }) {
-  const { resolvedColorMode, setColorMode } = useTheme()
   const { user } = useAuth()
-  const dark = resolvedColorMode === 'night'
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-color-mode', resolvedColorMode)
-  }, [resolvedColorMode])
-
-  function toggleColorMode() {
-    const next = dark ? 'day' : 'night'
-    setColorMode(next)
-    try {
-      localStorage.setItem('colorMode', next)
-    } catch {
-      // O tema continua funcionando durante a sessão quando o armazenamento está indisponível.
-    }
-  }
+  const { dark, toggleColorMode } = useColorMode()
 
   return (
     <div className="public-shell">

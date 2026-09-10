@@ -3,6 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../firebase/config'
 import { ensureUserProfile, setUsername, updateUserProfile } from '../services/usersService'
 import { initializeTrial } from '../services/billingService'
+import { clearPageCache } from '../utils/pageCache'
 
 export const AuthContext = createContext(null)
 
@@ -15,6 +16,7 @@ export function AuthProvider({ children }) {
     let active = true
     let revision = 0
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      clearPageCache()
       const current = ++revision
       setUser(firebaseUser)
       setProfile(null)

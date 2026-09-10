@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from './useAuth'
+import { useCachedQuery } from './useCachedQuery'
 import {
   listWorkoutsPage,
   createWorkout,
@@ -7,84 +8,77 @@ import {
   deleteWorkout,
 } from '../services/workoutsService'
 import { describeFirestoreError } from '../utils/firestoreError'
-import { getCached, setCached } from '../utils/pageCache'
 
+const EMPTY = []
 export function useWorkouts(filters = {}) {
   const { user } = useAuth()
   const { exerciseId, startDate, endDate } = filters
-  const cacheKey = `workouts:${user.uid}:${exerciseId || ''}:${startDate || ''}:${endDate || ''}`
-  const cached = getCached(cacheKey)
-  const [workouts, setWorkouts] = useState(cached?.items || [])
-  const [cursor, setCursor] = useState(cached?.nextCursor || null)
-  const [hasMore, setHasMore] = useState(!!cached?.nextCursor)
-  const [loading, setLoading] = useState(!cached)
-  const [error, setError] = useState(null)
-
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const { items, nextCursor } = await listWorkoutsPage(user.uid, {
-        exerciseId,
-        startDate,
-        endDate,
-      })
-      setWorkouts(items)
-      setCursor(nextCursor)
-      setHasMore(!!nextCursor)
-      setCached(cacheKey, { items, nextCursor })
-    } catch (err) {
-      setError(describeFirestoreError(err, 'listWorkoutsPage'))
-    } finally {
-      setLoading(false)
-    }
-     
-  }, [user.uid, exerciseId, startDate, endDate, cacheKey])
-
-  useEffect(() => {
-    if (!cached) refresh()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refresh])
+  const key = `workouts:${user.uid}:${exerciseId || ''}:${startDate || ''}:${endDate || ''}`
+  const fetchValue = useCallback(
+    () => listWorkoutsPage(user.uid, { exerciseId, startDate, endDate }),
+    [user.uid, exerciseId, startDate, endDate]
+  )
+  const query = useCachedQuery(key, fetchValue)
+  const [pagination, setPagination] = useState({ key, loading: false, error: null })
+  const pending = useRef(null)
+  useEffect(
+    () => () => {
+      pending.current = null
+    },
+    [key]
+  )
 
   async function loadMore() {
-    if (!cursor) return
+    if (!query.data?.nextCursor || query.loading || pending.current) return
+    const request = {}
+    pending.current = request
+    setPagination({ key, loading: true, error: null })
     try {
-      const { items, nextCursor } = await listWorkoutsPage(user.uid, {
+      const page = await listWorkoutsPage(user.uid, {
         exerciseId,
         startDate,
         endDate,
-        cursor,
+        cursor: query.data.nextCursor,
       })
-      setWorkouts((prev) => {
-        const combined = [...prev, ...items]
-        setCached(cacheKey, { items: combined, nextCursor })
-        return combined
-      })
-      setCursor(nextCursor)
-      setHasMore(!!nextCursor)
-    } catch (err) {
-      setError(describeFirestoreError(err, 'loadMore'))
+      if (pending.current !== request) return
+      const items = [
+        ...new Map([...query.data.items, ...page.items].map((item) => [item.id, item])).values(),
+      ]
+      query.setData({ items, nextCursor: page.nextCursor })
+      setPagination({ key, loading: false, error: null })
+    } catch (error) {
+      if (pending.current === request)
+        setPagination({ key, loading: false, error: describeFirestoreError(error, 'loadMore') })
+    } finally {
+      if (pending.current === request) pending.current = null
     }
   }
 
-  async function add(workout) {
-    await createWorkout(user.uid, workout)
+  async function refresh() {
+    pending.current = null
+    setPagination({ key, loading: false, error: null })
+    await query.refresh()
+  }
+  async function edit(id, workout) {
+    pending.current = null
+    await updateWorkout(user.uid, id, workout)
     await refresh()
   }
-
-  async function edit(workoutId, workout) {
-    await updateWorkout(user.uid, workoutId, workout)
-    await refresh()
+  async function remove(id) {
+    pending.current = null
+    await deleteWorkout(user.uid, id)
+    query.setData({ ...query.data, items: query.data.items.filter((item) => item.id !== id) })
+    setPagination({ key, loading: false, error: null })
   }
-
-  async function remove(workoutId) {
-    await deleteWorkout(user.uid, workoutId)
-    setWorkouts((prev) => {
-      const next = prev.filter((w) => w.id !== workoutId)
-      setCached(cacheKey, { items: next, nextCursor: cursor })
-      return next
-    })
+  return {
+    workouts: query.data?.items || EMPTY,
+    loading: query.loading || (pagination.key === key && pagination.loading),
+    error: query.error || (pagination.key === key ? pagination.error : null),
+    hasMore: !!query.data?.nextCursor,
+    loadMore,
+    refresh,
+    add: (workout) => createWorkout(user.uid, workout),
+    edit,
+    remove,
   }
-
-  return { workouts, loading, error, hasMore, loadMore, add, edit, remove, refresh }
 }

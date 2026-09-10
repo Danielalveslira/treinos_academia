@@ -14,25 +14,6 @@ html {
 body {
   overscroll-behavior-y: none;
 }
-.app-shell {
-  background: var(--bgColor-default);
-  color: var(--fgColor-default);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-.app-header {
-  background: var(--bgColor-inset);
-  border-bottom: 1px solid var(--borderColor-default);
-}
-.header-top {
-  max-width: 1280px;
-  margin: auto;
-  padding: 10px 32px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
 .brand {
   display: inline-flex;
   align-items: center;
@@ -50,74 +31,6 @@ body {
   border: 1px solid var(--borderColor-default);
   background: var(--bgColor-default);
   border-radius: 8px;
-}
-.app-header .brand {
-  gap: 8px;
-  font-size: 16px;
-}
-.app-header .brand-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-}
-.header-divider {
-  color: var(--fgColor-muted);
-  opacity: 0.6;
-}
-.header-context {
-  font-size: 14px;
-}
-.header-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.header-actions-desktop {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.header-menu-trigger {
-  display: none;
-}
-.desktop-nav {
-  max-width: 1280px;
-  margin: auto;
-  display: flex;
-  gap: 8px;
-  padding: 0 24px;
-}
-.nav-link {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--fgColor-default);
-  text-decoration: none;
-  font-size: 14px;
-  padding: 10px 12px;
-  border-radius: 6px 6px 0 0;
-}
-.nav-link svg {
-  color: var(--fgColor-muted);
-}
-.nav-link:hover {
-  background: var(--bgColor-neutral-muted);
-  text-decoration: none;
-}
-.nav-link.active {
-  font-weight: 600;
-}
-.nav-link.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  height: 3px;
-  background: var(--underlineNav-borderColor-active, #fd8c73);
-  left: 8px;
-  right: 8px;
-  border-radius: 3px;
 }
 .main-content {
   flex: 1;
@@ -246,9 +159,6 @@ body {
 .filters-panel {
   background: var(--bgColor-muted);
 }
-.mobile-nav {
-  display: none;
-}
 .skip-link {
   position: fixed;
   left: 16px;
@@ -272,18 +182,6 @@ button:focus-visible {
   }
 }
 @media (max-width: 767px) {
-  .header-top {
-    padding: 8px 16px;
-    gap: 8px;
-  }
-  .header-context,
-  .header-divider,
-  .desktop-nav {
-    display: none;
-  }
-  .header-actions {
-    gap: 4px;
-  }
   .main-content {
     padding: 24px 20px 32px;
   }
@@ -314,39 +212,6 @@ button:focus-visible {
   }
   .recent-panel {
     padding: 18px 0 0;
-  }
-  .mobile-nav {
-    display: flex;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 10;
-    background: var(--bgColor-default);
-    border-top: 1px solid var(--borderColor-default);
-    padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
-  }
-  .mobile-nav .nav-link {
-    flex: 1 1 0;
-    justify-content: center;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-    min-height: 48px;
-    padding: 4px 2px;
-    font-size: 11px;
-    line-height: 1.3;
-  }
-  .mobile-nav .nav-link.active {
-    color: var(--fgColor-accent);
-    background: var(--bgColor-accent-muted);
-    border-radius: 6px;
-  }
-  .mobile-nav .nav-link.active svg {
-    color: inherit;
-  }
-  .mobile-nav .nav-link.active::after {
-    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -865,7 +730,6 @@ body:has(.pwa-offline) .app-shell {
   }
 }
 @media (display-mode: standalone) {
-  .app-header,
   .public-header {
     padding-top: env(safe-area-inset-top);
   }
@@ -1169,9 +1033,6 @@ body:has(.pwa-offline) .app-shell {
   font-size: 14px;
   line-height: 1.5;
 }
-.main-content:has(.community-page) {
-  padding-top: 24px;
-}
 .main-content .community-page h1 {
   margin-top: 0;
   font-size: 24px;
@@ -1394,9 +1255,6 @@ body:has(.pwa-offline) .app-shell {
   margin-right: auto;
 }
 @media (max-width: 767px) {
-  .main-content:has(.community-page) {
-    padding: 16px 16px 24px;
-  }
   .main-content .community-page h1 {
     font-size: 22px;
   }
@@ -1422,11 +1280,6 @@ body:has(.pwa-offline) .app-shell {
   .community-form-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 359px) {
-  .mobile-nav .nav-link {
-    font-size: 10px;
   }
 }
 
@@ -1735,37 +1588,6 @@ body {
   font-feature-settings: "ss01", "cv02", "cv03";
 }
 
-.app-shell {
-  min-height: 100dvh;
-  background:
-    radial-gradient(circle at 85% -10%, color-mix(in srgb, var(--fitness-accent) 8%, transparent), transparent 30rem),
-    var(--bgColor-default);
-}
-
-.app-header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  border: 0;
-  border-bottom: 1px solid var(--borderColor-muted);
-  background: color-mix(in srgb, var(--bgColor-default) 92%, transparent);
-  backdrop-filter: blur(16px);
-}
-
-.header-top {
-  min-height: 60px;
-  max-width: 1180px;
-  padding: 9px 28px;
-}
-
-.app-header .brand {
-  gap: 9px;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: .12em;
-}
-
-.app-header .brand-mark,
 .public-header .brand-mark {
   width: 30px;
   height: 30px;
@@ -1780,75 +1602,6 @@ body {
 .brand-bar-one,
 .brand-bar-two { fill: var(--fitness-blue); }
 .brand-bar-three { fill: var(--fitness-accent); }
-
-.header-divider,
-.header-context {
-  display: none;
-}
-
-.desktop-nav {
-  position: absolute;
-  inset: 0 auto 0 50%;
-  width: max-content;
-  padding: 0;
-  transform: translateX(-50%);
-  align-items: center;
-  gap: 4px;
-  pointer-events: none;
-}
-
-.desktop-nav .nav-link {
-  min-height: 34px;
-  padding: 7px 10px;
-  border-radius: 9px;
-  font-size: 12px;
-  color: var(--fgColor-muted);
-  font-weight: 550;
-  pointer-events: auto;
-}
-
-.desktop-nav .nav-link:hover {
-  background: var(--fitness-surface);
-  color: var(--fgColor-default);
-}
-
-.desktop-nav .nav-link.active {
-  background: var(--fitness-accent-soft);
-  color: var(--fitness-accent-strong);
-}
-
-.desktop-nav .nav-link.active:hover {
-  background: var(--fitness-accent-soft);
-  color: var(--fitness-accent-strong);
-}
-
-.desktop-nav .nav-link.active::after {
-  display: none;
-}
-
-.desktop-nav .nav-link-action {
-  margin-inline: 4px;
-  border: 1px solid var(--borderColor-muted);
-  background: transparent;
-  color: var(--fgColor-muted);
-}
-
-.desktop-nav .nav-link-action svg,
-.desktop-nav .nav-link-action:hover {
-  color: var(--fitness-accent-strong);
-}
-
-.desktop-nav .nav-link-action.active {
-  border-color: var(--fitness-accent);
-  background: var(--fitness-accent);
-  color: #08110a;
-}
-
-.desktop-nav .nav-link-action.active svg { color: #08110a; }
-
-.header-actions { gap: 3px; }
-.header-actions button,
-.header-actions a { width: 32px; height: 32px; min-width: 32px; }
 
 .public-header {
   max-width: 1180px;
@@ -1897,6 +1650,7 @@ body {
 .page-title-row,
 .dashboard-greeting {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-end;
   gap: 24px;
@@ -2454,6 +2208,8 @@ body {
 }
 
 .history-filters > div:first-child { margin-bottom: 0 !important; }
+.history-date-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+.history-date-filters input { width: 100%; min-width: 0; }
 .history-filters button { margin-top: 0 !important; min-height: 32px; }
 .history-list { border-top: 1px solid var(--borderColor-muted); }
 .history-list.is-empty { border-top: 0; }
@@ -2568,9 +2324,6 @@ body {
 }
 
 @media (max-width: 900px) {
-  .desktop-nav { left: 47%; }
-  .desktop-nav .nav-link { padding-inline: 9px; font-size: 13px; }
-  .desktop-nav .nav-link svg { display: none; }
   .dashboard-flow { grid-template-columns: 1fr; gap: 38px; }
   .exercise-detail-page .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .exercise-detail-page .indicator-card:nth-child(odd) { border-left: 0; }
@@ -2578,20 +2331,12 @@ body {
 }
 
 @media (max-width: 767px) {
-  .app-header { position: static; background: var(--bgColor-default); backdrop-filter: none; }
-  .header-top { min-height: 58px; padding: 10px 16px; }
-  .app-header .brand-mark { width: 32px; height: 32px; }
-  .header-actions-desktop { display: none; }
-  .header-menu-trigger { display: inline-grid; }
   .main-content { padding: 22px 16px calc(90px + env(safe-area-inset-bottom)); }
   .main-content h1 { font-size: 29px; }
   .page-title-row,
   .dashboard-greeting { align-items: center; margin-bottom: 22px; }
   .page-title-row p { max-width: 260px; font-size: 12px; }
-  .page-title-row > button,
-  .refresh-button { width: 42px; min-width: 42px; height: 42px; overflow: hidden; color: transparent; }
-  .page-title-row > button svg,
-  .refresh-button svg { color: var(--fgColor-default); }
+  .refresh-button { width: 44px; min-width: 44px; height: 44px; }
 
   .workout-hero { min-height: 410px; border-radius: 20px; }
   .workout-hero > img { inset: 0; width: 100%; object-position: center 22%; opacity: .84; }
@@ -2609,52 +2354,6 @@ body {
   .performance-strip small { right: 8px; bottom: 15px; }
   .recent-workout-row { grid-template-columns: 26px minmax(0, 1fr); }
   .recent-workout-row time { display: none; }
-
-  .mobile-nav {
-    right: 10px;
-    bottom: max(6px, env(safe-area-inset-bottom));
-    left: 10px;
-    align-items: center;
-    min-height: 50px;
-    padding: 2px 4px;
-    border: 1px solid color-mix(in srgb, var(--borderColor-default) 82%, transparent);
-    border-radius: 14px;
-    background: color-mix(in srgb, var(--bgColor-default) 94%, transparent);
-    box-shadow: 0 10px 30px rgb(0 0 0 / 16%);
-    backdrop-filter: blur(18px) saturate(130%);
-  }
-  .mobile-nav .nav-link {
-    min-height: 44px;
-    padding: 3px 2px 2px;
-    border-radius: 9px;
-    color: var(--fgColor-muted);
-    font-size: 9px;
-    line-height: 1.1;
-  }
-  .mobile-nav .nav-link svg { width: 16px; height: 16px; color: currentColor; }
-  .mobile-nav .nav-link.active {
-    background: transparent;
-    color: var(--fitness-accent-strong);
-  }
-  .mobile-nav .nav-link.active:not(.nav-link-action) svg {
-    box-sizing: content-box;
-    padding: 3px;
-    border-radius: 7px;
-    background: color-mix(in srgb, var(--fitness-accent) 12%, transparent);
-  }
-  .mobile-nav .nav-link-action { transform: none; color: var(--fgColor-default); font-weight: 700; }
-  .mobile-nav .nav-link-action svg {
-    box-sizing: border-box;
-    width: 18px;
-    height: 18px;
-    padding: 2px;
-    border: 1.5px solid var(--fitness-accent);
-    border-radius: 50%;
-    background: transparent;
-    color: var(--fitness-accent);
-    box-shadow: none;
-  }
-  .mobile-nav .nav-link-action span { margin-top: 0; color: inherit; font-weight: 700; }
 
   .session-heading { gap: 12px; margin-bottom: 22px; }
   .session-heading p { font-size: 12px; }
