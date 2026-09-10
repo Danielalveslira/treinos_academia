@@ -67,7 +67,14 @@
      a caixa (ou o texto dentro dela) além do limite calculado acima. */
   box-sizing: border-box !important;
   max-width: min(280px, calc(100% - 24px)) !important;
-  max-height: calc(100dvh - 88px - env(safe-area-inset-top));
+  /* O Overlay do Primer já cai com uns 4px de folga do botão (anchorOffset
+     interno, sem prop pública pra ajustar via ActionMenu.Overlay nesta versão)
+     — margin-top soma mais 8px por cima disso, porque a caixa é posicionada com
+     `top` absoluto e margin ainda desloca sua posição final normalmente. Some
+     esses 8px ao teto de altura também, senão o fim da lista ficaria empurrado
+     pra fora da área reservada. */
+  margin-top: 8px;
+  max-height: calc(100dvh - 96px - env(safe-area-inset-top));
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
