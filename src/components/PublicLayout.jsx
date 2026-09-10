@@ -1,4 +1,5 @@
 import { Link, NavLink } from 'react-router-dom'
+import { useEffect } from 'react'
 import { IconButton, useTheme } from '@primer/react'
 import { LegalLinks } from './LegalLinks'
 import { useAuth } from '../hooks/useAuth'
@@ -17,10 +18,13 @@ export function PublicLayout({ children }) {
   const { user } = useAuth()
   const dark = resolvedColorMode === 'night'
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-color-mode', resolvedColorMode)
+  }, [resolvedColorMode])
+
   function toggleColorMode() {
     const next = dark ? 'day' : 'night'
     setColorMode(next)
-    document.documentElement.setAttribute('data-color-mode', next)
     try {
       localStorage.setItem('colorMode', next)
     } catch {

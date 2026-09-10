@@ -1068,6 +1068,17 @@ body:has(.pwa-offline) .app-shell {
   }
 }
 
+.profile-account .legal-links {
+  justify-content: flex-start;
+  padding: 20px 24px 24px;
+  border-top: 1px solid var(--borderColor-muted);
+}
+@media (max-width: 767px) {
+  .profile-account .legal-links {
+    padding: 20px 20px 24px;
+  }
+}
+
 .profile-privacy {
   padding: 16px;
   background: var(--bgColor-muted);
