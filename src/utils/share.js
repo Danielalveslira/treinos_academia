@@ -1,6 +1,6 @@
 // Sempre compartilha o link da comunidade (uma rota pública já existente), nunca o
 // id interno da publicação nem qualquer outro dado da conta de quem compartilha.
-const APP_NAME = 'FORÇA'
+const APP_NAME = 'Evolutus'
 
 export function buildCommunityLink(communityId, origin = window.location.origin) {
   return `${origin}/comunidades/${communityId}`

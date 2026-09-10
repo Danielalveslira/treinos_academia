@@ -1,6 +1,6 @@
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
 import { Suspense, useEffect } from 'react'
-import { Button, IconButton, Flash, useTheme } from '@primer/react'
+import { ActionList, ActionMenu, Button, IconButton, Flash, useTheme } from '@primer/react'
 import {
   HomeIcon,
   HistoryIcon,
@@ -12,6 +12,7 @@ import {
   PlayIcon,
   SunIcon,
   MoonIcon,
+  ThreeBarsIcon,
 } from '@primer/octicons-react'
 import { logoutUser } from '../services/authService'
 import { useAuth } from '../hooks/useAuth'
@@ -59,11 +60,11 @@ export function Layout() {
       </a>
       <header className="app-header">
         <div className="header-top">
-          <Link to="/" className="brand" aria-label="Treinos — início">
+          <Link to="/" className="brand" aria-label="Evolutus — início">
             <span className="brand-mark">
               <BrandMark size={25} />
             </span>
-            <span>FORÇA</span>
+            <span>Evolutus</span>
           </Link>
           {contextLabel && (
             <>
@@ -72,26 +73,56 @@ export function Layout() {
             </>
           )}
           <div className="header-actions">
-            <IconButton as={Link} to="/perfil" icon={PersonIcon} aria-label="Meu perfil" />
-            {isSuperAdmin && (
+            <div className="header-actions-desktop">
+              <IconButton as={Link} to="/perfil" icon={PersonIcon} aria-label="Meu perfil" />
+              {isSuperAdmin && (
+                <IconButton
+                  as={Link}
+                  to="/admin/comunidades"
+                  icon={ShieldLockIcon}
+                  aria-label="Administrar comunidades"
+                />
+              )}
               <IconButton
-                as={Link}
-                to="/admin/comunidades"
-                icon={ShieldLockIcon}
-                aria-label="Administrar comunidades"
+                icon={dark ? SunIcon : MoonIcon}
+                aria-label={dark ? 'Ativar tema claro' : 'Ativar tema escuro'}
+                onClick={toggleColorMode}
               />
-            )}
-            <IconButton
-              icon={dark ? SunIcon : MoonIcon}
-              aria-label={dark ? 'Ativar tema claro' : 'Ativar tema escuro'}
-              onClick={toggleColorMode}
-            />
-            <IconButton
-              icon={SignOutIcon}
-              variant="invisible"
-              aria-label="Sair"
-              onClick={logoutUser}
-            />
+              <IconButton
+                icon={SignOutIcon}
+                variant="invisible"
+                aria-label="Sair"
+                onClick={logoutUser}
+              />
+            </div>
+            <ActionMenu>
+              <ActionMenu.Anchor>
+                <IconButton
+                  icon={ThreeBarsIcon}
+                  aria-label="Abrir menu"
+                  className="header-menu-trigger"
+                />
+              </ActionMenu.Anchor>
+              <ActionMenu.Overlay align="end">
+                <ActionList>
+                  <ActionList.LinkItem as={Link} to="/perfil">
+                    Meu perfil
+                  </ActionList.LinkItem>
+                  {isSuperAdmin && (
+                    <ActionList.LinkItem as={Link} to="/admin/comunidades">
+                      Administrar comunidades
+                    </ActionList.LinkItem>
+                  )}
+                  <ActionList.Item onSelect={toggleColorMode}>
+                    {dark ? 'Ativar tema claro' : 'Ativar tema escuro'}
+                  </ActionList.Item>
+                  <ActionList.Divider />
+                  <ActionList.Item variant="danger" onSelect={logoutUser}>
+                    Sair
+                  </ActionList.Item>
+                </ActionList>
+              </ActionMenu.Overlay>
+            </ActionMenu>
           </div>
         </div>
         <nav className="desktop-nav" aria-label="Navegação principal">

@@ -73,6 +73,14 @@ body {
   align-items: center;
   gap: 6px;
 }
+.header-actions-desktop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.header-menu-trigger {
+  display: none;
+}
 .desktop-nav {
   max-width: 1280px;
   margin: auto;
@@ -2573,8 +2581,8 @@ body {
   .app-header { position: static; background: var(--bgColor-default); backdrop-filter: none; }
   .header-top { min-height: 58px; padding: 10px 16px; }
   .app-header .brand-mark { width: 32px; height: 32px; }
-  .header-actions > :first-child { display: inline-grid; }
-  .header-actions > :nth-last-child(-n + 2) { display: none; }
+  .header-actions-desktop { display: none; }
+  .header-menu-trigger { display: inline-grid; }
   .main-content { padding: 22px 16px calc(90px + env(safe-area-inset-bottom)); }
   .main-content h1 { font-size: 29px; }
   .page-title-row,
