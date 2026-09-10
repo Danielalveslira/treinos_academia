@@ -1,6 +1,39 @@
 import { isValidSet, MAX_WORKOUT_SETS } from './workoutSets.js'
+import { calculateAge } from './age.js'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
+export const SEXO_OPTIONS = ['masculino', 'feminino', 'nao_informar']
+const MAX_PLAUSIBLE_AGE = 120
+
+// Mesmo padrão de validateWorkout abaixo (formato + volta por toISOString para
+// rejeitar datas de calendário inexistentes, ex.: 2025-02-30) — replicado aqui em vez
+// de reaproveitado porque as duas mensagens de erro e a regra de idade mínima são
+// específicas de data de nascimento.
+export function validateBirthDate(dateString, { minimumAge } = {}) {
+  const errors = {}
+  if (!dateString) {
+    errors.birthDate = 'Data de nascimento é obrigatória'
+  } else if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(dateString) ||
+    !Number.isFinite(new Date(dateString).getTime()) ||
+    new Date(dateString).toISOString().slice(0, 10) !== dateString
+  ) {
+    errors.birthDate = 'Data de nascimento inválida'
+  } else if (dateString > new Date().toISOString().slice(0, 10)) {
+    errors.birthDate = 'A data de nascimento não pode ser no futuro'
+  } else if (calculateAge(dateString) > MAX_PLAUSIBLE_AGE) {
+    errors.birthDate = 'Data de nascimento inválida'
+  } else if (minimumAge != null && calculateAge(dateString) < minimumAge) {
+    errors.birthDate = `É necessário ter pelo menos ${minimumAge} anos para se cadastrar`
+  }
+  return errors
+}
+
+export function validateSexo(value) {
+  const errors = {}
+  if (value != null && !SEXO_OPTIONS.includes(value)) errors.sexo = 'Opção inválida'
+  return errors
+}
 
 export function validateUsername(rawUsername) {
   const errors = {}

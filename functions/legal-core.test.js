@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   legalDigest,
   validateAcceptance,
+  calculateAge,
   requestIp,
   validId,
   validateSupportRequest,
@@ -41,19 +42,27 @@ test('validateAcceptance requires the current version and every confirmation', (
     /versão mudou/i
   )
   assert.equal(
-    validateAcceptance(
-      { version: '1.0.0', accepted: true, healthDataConsent: true, ageConfirmed: true },
-      publishedManifest
-    ),
+    validateAcceptance({ version: '1.0.0', accepted: true, healthDataConsent: true }, publishedManifest),
     null
   )
   assert.match(
     validateAcceptance(
-      { version: '1.0.0', accepted: true, healthDataConsent: false, ageConfirmed: true },
+      { version: '1.0.0', accepted: true, healthDataConsent: false },
       publishedManifest
     ),
     /Confirme/
   )
+})
+
+// A idade mínima não é mais checada aqui (nem por um "ageConfirmed" autodeclarado) —
+// isso agora vive em acceptLegalDocuments (index.js), a partir de users/{uid}.dataNascimento
+// já gravado, calculado por esta mesma calculateAge. Ver também src/utils/age.js
+// (mesma lógica, runtime do navegador — sem pacote compartilhado entre os dois).
+test('calculateAge counts full years, only crediting the birthday once it has actually passed, and reads Firestore Timestamps', () => {
+  const now = new Date(2026, 8, 10) // 2026-09-10
+  assert.equal(calculateAge('2000-09-10', now), 26)
+  assert.equal(calculateAge('2000-09-11', now), 25)
+  assert.equal(calculateAge({ toDate: () => new Date(2008, 0, 1) }, now), 18)
 })
 
 test('requestIp reads the IP resolved by the Firebase infrastructure, never from the payload', () => {

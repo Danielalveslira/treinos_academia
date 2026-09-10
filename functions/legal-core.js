@@ -10,10 +10,25 @@ export function validateAcceptance(data, manifest) {
     return 'Os documentos ainda estão em revisão.'
   }
   if (data?.version !== manifest.version) return 'A versão mudou. Releia os documentos.'
-  if (data.accepted !== true || data.healthDataConsent !== true || data.ageConfirmed !== true) {
-    return 'Confirme os documentos, a idade e a autorização específica para os dados de treino.'
+  if (data.accepted !== true || data.healthDataConsent !== true) {
+    return 'Confirme os documentos e a autorização específica para os dados de treino.'
   }
   return null
+}
+
+// Espelha calculateAge em src/utils/age.js (runtimes diferentes, sem um pacote
+// compartilhado entre functions/ e src/ — replicado, não importado, mesmo padrão já
+// usado por outras validações client/server deste projeto). Nunca confia num
+// "ageConfirmed" que o cliente poderia mandar: calcula a idade de verdade a partir da
+// data de nascimento já gravada em users/{uid} (ver acceptLegalDocuments em index.js).
+export function calculateAge(birthDateValue, now = new Date()) {
+  const birth = birthDateValue?.toDate ? birthDateValue.toDate() : new Date(birthDateValue)
+  let age = now.getFullYear() - birth.getFullYear()
+  const hadBirthdayThisYear =
+    now.getMonth() > birth.getMonth() ||
+    (now.getMonth() === birth.getMonth() && now.getDate() >= birth.getDate())
+  if (!hadBirthdayThisYear) age -= 1
+  return age
 }
 
 export function requestIp(request) {

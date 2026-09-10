@@ -42,15 +42,6 @@ export function LegalConsent({ value, onChange, disabled }) {
           ou publicidade.
         </span>
       </label>
-      <label>
-        <input
-          type="checkbox"
-          required
-          checked={value.ageConfirmed}
-          onChange={(e) => onChange({ ...value, ageConfirmed: e.target.checked })}
-        />
-        <span>Confirmo que tenho {LEGAL_MANIFEST.minimumAge} anos ou mais.</span>
-      </label>
     </fieldset>
   )
 }

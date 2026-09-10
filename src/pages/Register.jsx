@@ -1,21 +1,26 @@
 import { AuthLayout } from '../components/PublicLayout'
 import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
+import { Button, FormControl, TextInput, Select, Link, Flash, Stack } from '@primer/react'
 import { registerUser } from '../services/authService'
 import {
   ensureUserProfile,
   setUsername,
+  setBirthInfo,
   isUsernameAvailable,
   deleteFreshProfile,
 } from '../services/usersService'
 import { initializeTrial } from '../services/billingService'
 import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../utils/authErrors'
-import { validateUsername, hasErrors } from '../utils/validators'
+import { validateUsername, validateBirthDate, validateSexo, hasErrors } from '../utils/validators'
 import { LegalConsent } from '../components/LegalConsent'
 import { LEGAL_MANIFEST } from '../utils/legal'
 import { acceptLegalDocuments } from '../services/legalService'
+
+function todayString() {
+  return new Date().toISOString().slice(0, 10)
+}
 
 export default function Register() {
   const navigate = useNavigate()
@@ -23,6 +28,8 @@ export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsernameField] = useState('')
+  const [sexo, setSexo] = useState('nao_informar')
+  const [birthDate, setBirthDate] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -30,7 +37,6 @@ export default function Register() {
   const [confirmed, setConfirmed] = useState({
     accepted: false,
     healthDataConsent: false,
-    ageConfirmed: false,
   })
 
   async function handleSubmit(e) {
@@ -38,11 +44,20 @@ export default function Register() {
     if (submitting) return
     setError('')
     if (LEGAL_MANIFEST.published && !Object.values(confirmed).every(Boolean)) {
-      setError('Confirme os documentos, a autorização para seus dados de treino e a idade mínima.')
+      setError('Confirme os documentos e a autorização para seus dados de treino.')
       return
     }
 
-    const validationErrors = validateUsername(username)
+    // A idade mínima só é exigida junto do aceite legal (mesma condição de antes, só
+    // que agora calculada de verdade a partir da data — nunca mais uma caixinha de
+    // autodeclaração). O campo em si (formato, não pode ser futura) sempre é validado.
+    const validationErrors = {
+      ...validateUsername(username),
+      ...validateBirthDate(birthDate, {
+        minimumAge: LEGAL_MANIFEST.published ? LEGAL_MANIFEST.minimumAge : undefined,
+      }),
+      ...validateSexo(sexo),
+    }
     setFieldErrors(validationErrors)
     if (hasErrors(validationErrors)) return
 
@@ -68,12 +83,13 @@ export default function Register() {
       try {
         await ensureUserProfile(uid)
         await setUsername(uid, username)
+        await setBirthInfo(uid, { sexo, dataNascimento: birthDate })
       } catch (postCreateErr) {
-        // A conta no Authentication já existe nesse ponto, e ensureUserProfile()/
-        // setUsername() podem já ter escrito o perfil (e reservado o @) no Firestore
-        // antes de falhar. Desfaz os dois: primeiro os documentos (as regras só
-        // permitem isso nos minutos seguintes à criação), depois a conta em si — sem
-        // isso, o e-mail ficaria bloqueado E o perfil ficaria órfão no banco pra sempre.
+        // A conta no Authentication já existe nesse ponto, e os passos acima podem já
+        // ter escrito o perfil (e reservado o @) no Firestore antes de falhar. Desfaz
+        // tudo: primeiro os documentos (as regras só permitem isso nos minutos
+        // seguintes à criação), depois a conta em si — sem isso, o e-mail ficaria
+        // bloqueado E o perfil ficaria órfão no banco pra sempre.
         // setUsername() normaliza (trim + minúsculas) antes de gravar/reservar — a
         // limpeza precisa mirar o mesmo valor, não o texto bruto do campo.
         await deleteFreshProfile(uid, username.trim().toLowerCase()).catch((cleanupErr) => {
@@ -171,6 +187,32 @@ export default function Register() {
               block
             />
             <FormControl.Caption>Mínimo de 6 caracteres.</FormControl.Caption>
+          </FormControl>
+
+          <FormControl required>
+            <FormControl.Label>Data de nascimento</FormControl.Label>
+            <TextInput
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
+              max={todayString()}
+              size="large"
+              block
+            />
+            {fieldErrors.birthDate && (
+              <FormControl.Validation variant="error">
+                {fieldErrors.birthDate}
+              </FormControl.Validation>
+            )}
+          </FormControl>
+
+          <FormControl>
+            <FormControl.Label>Sexo</FormControl.Label>
+            <Select value={sexo} onChange={(e) => setSexo(e.target.value)} block>
+              <Select.Option value="nao_informar">Não informar</Select.Option>
+              <Select.Option value="masculino">Masculino</Select.Option>
+              <Select.Option value="feminino">Feminino</Select.Option>
+            </Select>
           </FormControl>
 
           {LEGAL_MANIFEST.published && (

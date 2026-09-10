@@ -1,0 +1,35 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { validateBirthDate, validateSexo, hasErrors } from './validators.js'
+
+test('validateBirthDate requires a real calendar date, never in the future', () => {
+  assert.deepEqual(validateBirthDate(''), { birthDate: 'Data de nascimento é obrigatória' })
+  assert.ok(validateBirthDate('2020-02-30').birthDate) // Feb 30 does not exist
+  assert.ok(validateBirthDate('not-a-date').birthDate)
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  assert.match(validateBirthDate(tomorrow).birthDate, /futuro/)
+  assert.deepEqual(validateBirthDate('2000-01-01'), {})
+})
+
+test('validateBirthDate rejects implausibly old dates', () => {
+  assert.ok(validateBirthDate('1850-01-01').birthDate)
+})
+
+test('validateBirthDate enforces a minimum age only when one is given', () => {
+  const seventeenYearsAgo = new Date()
+  seventeenYearsAgo.setFullYear(seventeenYearsAgo.getFullYear() - 17)
+  const dateString = seventeenYearsAgo.toISOString().slice(0, 10)
+
+  assert.match(validateBirthDate(dateString, { minimumAge: 18 }).birthDate, /pelo menos 18/)
+  assert.deepEqual(validateBirthDate(dateString, { minimumAge: undefined }), {})
+  assert.deepEqual(validateBirthDate(dateString), {})
+})
+
+test('validateSexo accepts the three known options, null/undefined, and rejects anything else', () => {
+  assert.equal(hasErrors(validateSexo('masculino')), false)
+  assert.equal(hasErrors(validateSexo('feminino')), false)
+  assert.equal(hasErrors(validateSexo('nao_informar')), false)
+  assert.equal(hasErrors(validateSexo(null)), false)
+  assert.equal(hasErrors(validateSexo(undefined)), false)
+  assert.equal(hasErrors(validateSexo('outro-valor-qualquer')), true)
+})

@@ -213,6 +213,23 @@ service cloud.firestore {
         || (data.bio is string && data.bio.size() <= 300);
     }
 
+    function isValidSexoField(data) {
+      return !('sexo' in data) || data.sexo == null
+        || data.sexo in ['masculino', 'feminino', 'nao_informar'];
+    }
+
+    // A idade mínima em si (manifest.minimumAge) é conferida pela Cloud Function
+    // acceptLegalDocuments, a única que conhece o valor atual do manifesto legal — aqui
+    // só se garante o formato: um timestamp plausível, nunca no futuro nem
+    // implausivelmente antigo (mais de 120 anos), igual à validação client-side em
+    // src/utils/validators.js (validateBirthDate), nunca confiando só nela.
+    function isValidBirthDateField(data) {
+      return !('dataNascimento' in data) || data.dataNascimento == null
+        || (data.dataNascimento is timestamp
+          && data.dataNascimento <= request.time
+          && data.dataNascimento > request.time - duration.value(120 * 365, 'd'));
+    }
+
     // Documento público separado: nunca liberar leitura do perfil privado para visitantes.
     match /publicProfiles/{userId} {
       allow get: if isSignedIn();
@@ -267,20 +284,27 @@ service cloud.firestore {
       // (console/Admin SDK), nunca uma escrita vinda do cliente.
       allow create: if isOwner(userId)
         && request.resource.data.role == 'user'
-        && request.resource.data.keys().hasOnly(['role', 'createdAt', 'username', 'bio', 'shareStatistics', 'publicProfileVersion'])
+        && request.resource.data.keys().hasOnly(['role', 'createdAt', 'username', 'bio', 'shareStatistics', 'publicProfileVersion', 'sexo', 'dataNascimento'])
         && request.resource.data.createdAt == request.time
         && isValidUsernameField(request.resource.data)
         && ownsUsernameField(userId, request.resource.data)
-        && isValidBioField(request.resource.data);
+        && isValidBioField(request.resource.data)
+        && isValidSexoField(request.resource.data)
+        && isValidBirthDateField(request.resource.data);
       // Mesmo raciocínio de publicProfiles: só reexige a posse do @ quando ele muda.
+      // sexo/dataNascimento entram aqui (não só no create) porque Register.jsx grava os
+      // dois com um merge separado, logo depois de ensureUserProfile() já ter criado o
+      // documento — na prática, sempre um update (ver setBirthInfo em usersService.js).
       allow update: if isOwner(userId)
         && request.resource.data.role == resource.data.role
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['username', 'bio', 'shareStatistics', 'publicProfileVersion'])
+          .hasOnly(['username', 'bio', 'shareStatistics', 'publicProfileVersion', 'sexo', 'dataNascimento'])
         && isValidUsernameField(request.resource.data)
         && (request.resource.data.get('username', null) == resource.data.get('username', null)
           || ownsUsernameField(userId, request.resource.data))
-        && isValidBioField(request.resource.data);
+        && isValidBioField(request.resource.data)
+        && isValidSexoField(request.resource.data)
+        && isValidBirthDateField(request.resource.data);
       // Mesma janela e mesmo motivo de publicProfiles acima: só para desfazer um
       // cadastro recém-criado que falhou depois deste documento existir.
       allow delete: if isOwner(userId)

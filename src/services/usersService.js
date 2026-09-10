@@ -1,4 +1,13 @@
-import { doc, getDoc, deleteDoc, writeBatch, runTransaction, serverTimestamp } from 'firebase/firestore'
+import {
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  writeBatch,
+  runTransaction,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { getWorkoutStatistics } from './workoutsService'
 
@@ -13,6 +22,29 @@ function usernameRef(username) {
 }
 
 export const BIO_MAX_LENGTH = 300
+
+// Meio-dia local, mesmo padrão de toTimestamp em workoutsService.js — data de
+// nascimento não tem hora de verdade, e isso evita que o fuso horário jogue o dia
+// gravado para o dia anterior/seguinte perto da virada da meia-noite.
+function toBirthTimestamp(dateString) {
+  return Timestamp.fromDate(new Date(`${dateString}T12:00:00`))
+}
+
+// Usado no cadastro (ver Register.jsx, que sempre manda os dois) e, com só
+// dataNascimento, no aceite de termos de uma conta anterior a este campo (ver
+// LegalGate.jsx) — só grava as chaves explicitamente passadas, nunca zera um sexo já
+// definido quando só a data está sendo completada. sexo/dataNascimento nunca vão para
+// publicProfiles: são dados privados, o documento público só expõe
+// username/bio/shareStatistics (ver firestore.rules).
+export async function setBirthInfo(userId, { sexo, dataNascimento } = {}) {
+  const patch = {}
+  if (sexo !== undefined) patch.sexo = sexo || null
+  if (dataNascimento !== undefined) {
+    patch.dataNascimento = dataNascimento ? toBirthTimestamp(dataNascimento) : null
+  }
+  if (!Object.keys(patch).length) return
+  await setDoc(userRef(userId), patch, { merge: true })
+}
 
 // Reserva o @ (ou confirma que já é seu) numa transação isolada, só com o documento
 // usernames/{username} — sem tocar em users/publicProfiles nela. Isso é o que garante

@@ -19,6 +19,7 @@ import {
 import { createDeletionService } from '../functions/deletion-service.js'
 import { createAccountsService } from '../functions/accounts-service.js'
 import { createBumpMemberCount } from '../functions/community-members-service.js'
+import { legalDigest } from '../functions/legal-core.js'
 import { DEFAULT_BILLING_CONFIG } from '../src/utils/billing.js'
 
 let env,
@@ -99,6 +100,96 @@ test('profile rules prevent administrative identity injection and creation-date 
       publicProfileVersion: 1,
     })
   )
+})
+
+test('sexo/dataNascimento are validated on write, optional, and never require re-sending them together', async () => {
+  const fresh = env.authenticatedContext('withbirth').firestore()
+  await assertSucceeds(
+    setDoc(doc(fresh, 'users/withbirth'), {
+      role: 'user',
+      createdAt: serverTimestamp(),
+      publicProfileVersion: 1,
+    })
+  )
+  // Formato: só os três valores aceitos para sexo, e dataNascimento precisa ser um
+  // timestamp plausível (nunca no futuro, nunca implausivelmente antigo).
+  await assertFails(updateDoc(doc(fresh, 'users/withbirth'), { sexo: 'outro' }))
+  await assertFails(
+    updateDoc(doc(fresh, 'users/withbirth'), {
+      dataNascimento: WebTimestamp.fromMillis(Date.now() + 86400000),
+    })
+  )
+  await assertFails(
+    updateDoc(doc(fresh, 'users/withbirth'), {
+      dataNascimento: WebTimestamp.fromDate(new Date('1850-01-01')),
+    })
+  )
+  await assertSucceeds(
+    updateDoc(doc(fresh, 'users/withbirth'), {
+      sexo: 'feminino',
+      dataNascimento: WebTimestamp.fromDate(new Date('2000-06-15T12:00:00')),
+    })
+  )
+  // Editar outro campo depois não exige reenviar sexo/dataNascimento — igual a
+  // username/bio, eles só são revalidados quando o próprio write os toca.
+  await assertSucceeds(updateDoc(doc(fresh, 'users/withbirth'), { bio: 'oi' }))
+
+  // Conta antiga, sem os dois campos (nunca existiram): compatível, sem nenhuma
+  // migração — mesmo raciocínio de qualquer campo opcional adicionado depois.
+  const legacy = env.authenticatedContext('legacybirth').firestore()
+  await assertSucceeds(
+    setDoc(doc(legacy, 'users/legacybirth'), {
+      role: 'user',
+      createdAt: serverTimestamp(),
+      publicProfileVersion: 1,
+    })
+  )
+  await assertSucceeds(getDoc(doc(legacy, 'users/legacybirth')))
+})
+
+test('acceptLegalDocuments verifies the minimum age from dataNascimento on the server, never trusting a client-sent flag', async () => {
+  const legalRequire = createRequire(new URL('../functions/package.json', import.meta.url))
+  const manifest = legalRequire('./legal/manifest.json')
+  const documents = legalRequire('./legal/documents.json')
+  const digest = legalDigest(manifest, documents)
+  // legalPolicy/current publicado ativa o ramo caro de hasCurrentAcceptance() nas
+  // regras (ver firestore.rules) para o resto deste arquivo, que compartilha o mesmo
+  // db/env entre todos os testes — precisa ser desfeito no final, senão os testes
+  // seguintes (cujos usuários não têm legalAcceptance) passam a falhar por causa
+  // disto, não do que eles realmente testam.
+  await db.doc('legalPolicy/current').set({ version: manifest.version, digest, published: true })
+  try {
+    const req = (uid) => ({
+      auth: { uid },
+      rawRequest: { ip: '203.0.113.10' },
+      data: { version: manifest.version, accepted: true, healthDataConsent: true },
+    })
+
+    // Conta anterior a este campo: sem dataNascimento nenhuma.
+    await db.doc('users/nobirth').set({ role: 'user' })
+    await assert.rejects(
+      api.acceptLegalDocuments.run(req('nobirth')),
+      (error) => error.code === 'failed-precondition'
+    )
+
+    // Abaixo da idade mínima do manifesto — nunca um "ageConfirmed" enviado pelo
+    // cliente, sempre a data já gravada no próprio documento.
+    const under18 = new Date()
+    under18.setFullYear(under18.getFullYear() - (manifest.minimumAge - 1))
+    await db.doc('users/under18').set({ role: 'user', dataNascimento: Timestamp.fromDate(under18) })
+    await assert.rejects(
+      api.acceptLegalDocuments.run(req('under18')),
+      (error) => error.code === 'failed-precondition'
+    )
+
+    // Idade suficiente: aceita normalmente.
+    const adult = new Date()
+    adult.setFullYear(adult.getFullYear() - (manifest.minimumAge + 5))
+    await db.doc('users/adult').set({ role: 'user', dataNascimento: Timestamp.fromDate(adult) })
+    await assert.doesNotReject(api.acceptLegalDocuments.run(req('adult')))
+  } finally {
+    await db.doc('legalPolicy/current').delete()
+  }
 })
 
 test('billing configuration requires bounded values even for an administrator', async () => {

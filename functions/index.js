@@ -15,6 +15,7 @@ import {
   legalDigest,
   requestIp,
   validateAcceptance,
+  calculateAge,
   validateSupportRequest,
   validateDecision,
 } from './legal-core.js'
@@ -101,6 +102,17 @@ export const acceptLegalDocuments = onCall(options, async (request) => {
     )
     if (!user.exists)
       throw new HttpsError('failed-precondition', 'Finalize seu perfil antes do aceite.')
+    // Nunca confia num "ageConfirmed" enviado pelo cliente (removido do formulário —
+    // ver LegalConsent.jsx): a idade mínima é sempre calculada aqui, a partir da data
+    // de nascimento já gravada no próprio documento (setBirthInfo em usersService.js,
+    // chamado antes deste passo no fluxo de cadastro em Register.jsx).
+    const birthDate = user.data().dataNascimento
+    if (!birthDate || calculateAge(birthDate) < manifest.minimumAge) {
+      throw new HttpsError(
+        'failed-precondition',
+        `É necessário ter pelo menos ${manifest.minimumAge} anos para aceitar os documentos.`
+      )
+    }
     if (policy.data()?.version !== manifest.version || policy.data()?.digest !== digest) {
       throw new HttpsError(
         'failed-precondition',
@@ -125,7 +137,6 @@ export const acceptLegalDocuments = onCall(options, async (request) => {
       ip,
       accepted: true,
       healthDataConsent: true,
-      ageConfirmed: true,
     })
     tx.update(profile, {
       legalAcceptance: {

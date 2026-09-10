@@ -1,12 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, Flash, Spinner } from '@primer/react'
+import { Button, FormControl, TextInput, Flash, Spinner } from '@primer/react'
 import { PublicLayout } from './PublicLayout'
 import { LegalConsent } from './LegalConsent'
 import { useAuth } from '../hooks/useAuth'
 import { getLegalAccess, acceptLegalDocuments } from '../services/legalService'
+import { setBirthInfo } from '../services/usersService'
 import { logoutUser } from '../services/authService'
 import { isAccountRestricted, LEGAL_MANIFEST, needsLegalAcceptance } from '../utils/legal'
+import { validateBirthDate, hasErrors } from '../utils/validators'
+
+function todayString() {
+  return new Date().toISOString().slice(0, 10)
+}
 
 // Sobrevive a um F5 (ao contrário do pageCache.js, que é só em memória) para quem já
 // passou por essa checagem nesta aba não ver o spinner "Documentos para continuar" de
@@ -45,8 +51,13 @@ export function LegalGate({ children }) {
   const [confirmed, setConfirmed] = useState({
     accepted: false,
     healthDataConsent: false,
-    ageConfirmed: false,
   })
+  // Contas que existiam antes deste campo ainda não têm data de nascimento —
+  // acceptLegalDocuments (index.js) agora exige essa data pra confirmar a idade
+  // mínima no servidor, então quem chega aqui sem ela precisa informar antes de
+  // conseguir aceitar uma versão nova dos documentos. Quem já tem, não vê o campo.
+  const [birthDate, setBirthDate] = useState('')
+  const [birthDateError, setBirthDateError] = useState('')
   useEffect(() => {
     if (!LEGAL_MANIFEST.published) return
     let active = true
@@ -80,12 +91,20 @@ export function LegalGate({ children }) {
   )
     return children
 
+  const needsBirthDate = !profile?.dataNascimento
+
   async function accept(e) {
     e.preventDefault()
     if (saving || !Object.values(confirmed).every(Boolean)) return
+    if (needsBirthDate) {
+      const errors = validateBirthDate(birthDate, { minimumAge: LEGAL_MANIFEST.minimumAge })
+      setBirthDateError(errors.birthDate || '')
+      if (hasErrors(errors)) return
+    }
     setSaving(true)
     setError('')
     try {
+      if (needsBirthDate) await setBirthInfo(user.uid, { dataNascimento: birthDate })
       await acceptLegalDocuments(confirmed)
       await refreshProfile(user.uid)
     } catch {
@@ -142,6 +161,28 @@ export function LegalGate({ children }) {
                 <li key={change}>{change}</li>
               ))}
             </ul>
+            {needsBirthDate && (
+              <FormControl required disabled={saving}>
+                <FormControl.Label>Data de nascimento</FormControl.Label>
+                <TextInput
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => {
+                    setBirthDate(e.target.value)
+                    setBirthDateError('')
+                  }}
+                  max={todayString()}
+                  block
+                />
+                <FormControl.Caption>
+                  Necessária para confirmar a idade mínima ({LEGAL_MANIFEST.minimumAge} anos) —
+                  sua conta ainda não tinha essa informação.
+                </FormControl.Caption>
+                {birthDateError && (
+                  <FormControl.Validation variant="error">{birthDateError}</FormControl.Validation>
+                )}
+              </FormControl>
+            )}
             <LegalConsent value={confirmed} onChange={setConfirmed} disabled={saving} />
             <Button type="submit" variant="primary" loading={saving} disabled={saving}>
               Aceitar e continuar
