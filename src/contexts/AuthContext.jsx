@@ -1,6 +1,7 @@
 import { createContext, useEffect, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
-import { auth } from '../firebase/config'
+import { doc, onSnapshot } from 'firebase/firestore'
+import { auth, db } from '../firebase/config'
 import { ensureUserProfile, setUsername, updateUserProfile } from '../services/usersService'
 import { initializeTrial } from '../services/billingService'
 import { clearPageCache } from '../utils/pageCache'
@@ -15,9 +16,12 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let active = true
     let revision = 0
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubscribeProfile = null
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       clearPageCache()
       const current = ++revision
+      unsubscribeProfile?.()
+      unsubscribeProfile = null
       setUser(firebaseUser)
       setProfile(null)
       setLoading(true)
@@ -42,7 +46,18 @@ export function AuthProvider({ children }) {
             console.error('[Auth] initializeTrial:', trialErr)
           }
         }
-        if (active && current === revision) setProfile(userProfile)
+        if (active && current === revision) {
+          setProfile(userProfile)
+          // Uma ação administrativa (confirmar pagamento, desativar conta, aplicar
+          // restrição) grava direto em users/{uid} de outra sessão — sem um listener
+          // aqui, a sessão afetada só veria o efeito num próximo refreshProfile/reload
+          // manual, mesmo já bloqueada no servidor (as regras já negam na hora; isto é
+          // só a UI refletir o motivo em vez de ficar com "Assinatura pendente" obsoleto).
+          unsubscribeProfile = onSnapshot(doc(db, 'users', firebaseUser.uid), (snapshot) => {
+            if (!active || current !== revision || !snapshot.exists()) return
+            setProfile((prev) => ({ ...prev, ...snapshot.data(), id: firebaseUser.uid }))
+          })
+        }
       } catch (err) {
         console.error('[Auth] ensureUserProfile:', err)
       } finally {
@@ -51,7 +66,8 @@ export function AuthProvider({ children }) {
     })
     return () => {
       active = false
-      unsubscribe()
+      unsubscribeProfile?.()
+      unsubscribeAuth()
     }
   }, [])
 
