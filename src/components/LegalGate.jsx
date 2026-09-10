@@ -8,9 +8,37 @@ import { getLegalAccess, acceptLegalDocuments } from '../services/legalService'
 import { logoutUser } from '../services/authService'
 import { isAccountRestricted, LEGAL_MANIFEST, needsLegalAcceptance } from '../utils/legal'
 
+// Sobrevive a um F5 (ao contrário do pageCache.js, que é só em memória) para quem já
+// passou por essa checagem nesta aba não ver o spinner "Documentos para continuar" de
+// novo a cada reload — a verificação real ainda roda em segundo plano a cada
+// montagem (fetchAndCacheAccess abaixo), então uma restrição ou versão nova aplicada
+// no meio da sessão continua sendo pega, só não paga o custo de mostrar o gate vazio
+// primeiro quando o resultado de antes ainda é válido.
+function cacheKey(uid) {
+  return `legalAccess:${uid}`
+}
+
+function readCachedAccess(uid) {
+  try {
+    const raw = sessionStorage.getItem(cacheKey(uid))
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function writeCachedAccess(uid, access) {
+  try {
+    sessionStorage.setItem(cacheKey(uid), JSON.stringify(access))
+  } catch {
+    // sessionStorage indisponível (modo privado etc.) — só não evita o spinner na
+    // próxima vez, a verificação em si continua funcionando normalmente.
+  }
+}
+
 export function LegalGate({ children }) {
   const { user, profile, refreshProfile } = useAuth()
-  const [access, setAccess] = useState(null)
+  const [access, setAccess] = useState(() => readCachedAccess(user.uid))
   const [attempt, setAttempt] = useState(0)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -24,7 +52,9 @@ export function LegalGate({ children }) {
     let active = true
     getLegalAccess(user.uid)
       .then((data) => {
-        if (active) setAccess(data)
+        if (!active) return
+        setAccess(data)
+        writeCachedAccess(user.uid, data)
       })
       .catch(() => {
         if (active) setError('Não foi possível verificar os documentos. Tente novamente.')
