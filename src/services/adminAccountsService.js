@@ -18,9 +18,3 @@ export async function listAccountsPage(filters = {}) {
 export async function listDeletionJobs() {
   return (await httpsCallable(functions, 'listDeletionJobs')()).data.jobs
 }
-
-// Utilitário de uma única execução — ver comentário em functions/index.js. Remover
-// junto do botão em AdminAccounts.jsx depois de rodado com sucesso em produção.
-export async function purgePaymentData() {
-  return (await httpsCallable(functions, 'purgePaymentData')()).data
-}

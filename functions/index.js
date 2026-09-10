@@ -321,49 +321,6 @@ export const listAccountsForAdmin = onCall(options, async (request) => {
   return accountsService(request.data || {})
 })
 
-// UTILITÁRIO DE UMA ÚNICA EXECUÇÃO — remover esta function (e o botão que a chama em
-// AdminAccounts.jsx) depois de rodada com sucesso em produção. Limpa o que sobrou no
-// banco da remoção do sistema de pagamentos: o campo `subscription` (órfão) nos perfis
-// de usuário, e as coleções `payments`/`appConfig/plans`/`appConfig/billing`, que já
-// não têm nenhuma regra de leitura/escrita associada desde essa remoção.
-export const purgePaymentData = onCall(options, async (request) => {
-  await requireSuperAdmin(requireUser(request))
-  await Promise.all([
-    db.doc('appConfig/plans').delete(),
-    db.doc('appConfig/billing').delete(),
-  ])
-  let deletedPayments = 0
-  while (true) {
-    const snapshot = await db.collection('payments').limit(400).get()
-    if (snapshot.empty) break
-    const batch = db.batch()
-    snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref))
-    await batch.commit()
-    deletedPayments += snapshot.size
-  }
-  let updatedUsers = 0
-  let cursor = null
-  while (true) {
-    let query = db.collection('users').orderBy('__name__').limit(400)
-    if (cursor) query = query.startAfter(cursor)
-    const snapshot = await query.get()
-    if (snapshot.empty) break
-    const batch = db.batch()
-    let hasWrites = false
-    for (const docSnap of snapshot.docs) {
-      if (docSnap.data().subscription !== undefined) {
-        batch.update(docSnap.ref, { subscription: FieldValue.delete() })
-        hasWrites = true
-        updatedUsers++
-      }
-    }
-    if (hasWrites) await batch.commit()
-    cursor = snapshot.docs[snapshot.docs.length - 1]
-    if (snapshot.size < 400) break
-  }
-  return { deletedPayments, updatedUsers }
-})
-
 // Ativar/desativar é um estado administrativo independente, usado para moderação
 // (ver firestore.rules: hasAppAccess). Desativar sempre exige um motivo.
 export const setAccountStatus = onCall(options, async (request) => {
