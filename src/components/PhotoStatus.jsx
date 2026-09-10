@@ -13,6 +13,7 @@ export function PhotoStatus({ status, preloadedBlob }) {
             src={url}
             alt={status.caption?.trim() || 'Foto publicada na comunidade'}
             loading="lazy"
+            decoding="async"
           />
         )}
         {loading && (

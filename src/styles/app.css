@@ -1131,7 +1131,11 @@ body:has(.pwa-offline) .app-shell {
   display: block;
   width: 100%;
   max-height: 480px;
-  object-fit: cover;
+  /* contain preserva a proporção original (nunca corta); a prévia do formulário
+     (.photo-preview img) já usa contain — cover aqui fazia o feed cortar fotos em
+     retrato de um jeito que a prévia nunca mostrou antes de publicar. O fundo
+     (.status-photo, acima) preenche o espaço sobrando quando a proporção não bate. */
+  object-fit: contain;
 }
 .status-photo-state {
   position: absolute;
@@ -1265,6 +1269,9 @@ body:has(.pwa-offline) .app-shell {
   .status-card,
   .main-content .community-form {
     padding: 12px;
+  }
+  .status-photo img {
+    max-height: 360px;
   }
 }
 @media (max-width: 543px) {
