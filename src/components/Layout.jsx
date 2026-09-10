@@ -1,5 +1,5 @@
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import { Button, IconButton, Flash, useTheme } from '@primer/react'
 import {
   HomeIcon,
@@ -38,10 +38,13 @@ export function Layout() {
   const contextLabel = activePage?.label || (pathname.startsWith('/admin') ? 'Admin' : '')
   const dark = resolvedColorMode === 'night'
 
+  useEffect(() => {
+    document.documentElement.setAttribute('data-color-mode', resolvedColorMode)
+  }, [resolvedColorMode])
+
   function toggleColorMode() {
     const next = dark ? 'day' : 'night'
     setColorMode(next)
-    document.documentElement.setAttribute('data-color-mode', next)
     try {
       localStorage.setItem('colorMode', next)
     } catch {

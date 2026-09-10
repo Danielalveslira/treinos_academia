@@ -40,6 +40,7 @@ export function WorkoutForm({
   const [completed, setCompleted] = useState(() => new Set())
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
 
   const exerciseHistory = useMemo(
     () => history.filter((workout) => workout.exerciseId === values.exerciseId),
@@ -87,6 +88,7 @@ export function WorkoutForm({
     event.preventDefault()
     const validationErrors = validateWorkout(values)
     setErrors(validationErrors)
+    if (validationErrors.date || validationErrors.note) setDetailsOpen(true)
     if (hasErrors(validationErrors)) return
 
     setSubmitting(true)
@@ -176,6 +178,7 @@ export function WorkoutForm({
                     value={set.weight}
                     aria-label={`Peso (kg), série ${index + 1}`}
                     aria-invalid={!!errors[`set${index}`]}
+                    aria-describedby={errors[`set${index}`] ? `set-error-${set.key}` : undefined}
                     onChange={(event) => updateSet(set.key, 'weight', event.target.value)}
                     placeholder="0"
                     block
@@ -192,6 +195,7 @@ export function WorkoutForm({
                     value={set.reps}
                     aria-label={`Repetições, série ${index + 1}`}
                     aria-invalid={!!errors[`set${index}`]}
+                    aria-describedby={errors[`set${index}`] ? `set-error-${set.key}` : undefined}
                     onChange={(event) => updateSet(set.key, 'reps', event.target.value)}
                     placeholder="0"
                     block
@@ -265,7 +269,11 @@ export function WorkoutForm({
         </div>
       </div>
 
-      <details className="workout-details">
+      <details
+        className="workout-details"
+        open={detailsOpen}
+        onToggle={(event) => setDetailsOpen(event.target.open)}
+      >
         <summary>Data e observações</summary>
         <div className="workout-details-fields">
           <FormControl required>

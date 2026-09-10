@@ -1068,6 +1068,17 @@ body:has(.pwa-offline) .app-shell {
   }
 }
 
+.profile-account .legal-links {
+  justify-content: flex-start;
+  padding: 20px 24px 24px;
+  border-top: 1px solid var(--borderColor-muted);
+}
+@media (max-width: 767px) {
+  .profile-account .legal-links {
+    padding: 20px 20px 24px;
+  }
+}
+
 .profile-privacy {
   padding: 16px;
   background: var(--bgColor-muted);
@@ -2574,19 +2585,20 @@ body {
   .empty-workout {
     display: grid;
     grid-template-columns: 1fr;
-    min-height: min(540px, calc(100dvh - 160px));
+    min-height: calc(100dvh - 170px);
     box-shadow: none;
   }
   .empty-workout > img {
     position: absolute;
+    grid-column: 1;
     inset: 0;
     width: 100%;
     object-position: center 20%;
-    opacity: .8;
+    opacity: 1;
   }
   .empty-workout::after {
     inset: 0;
-    background: linear-gradient(0deg, #090d09f5 3%, #090d09b8 48%, transparent 82%);
+    background: linear-gradient(0deg, rgb(9 13 9 / 92%) 8%, rgb(9 13 9 / 55%) 42%, rgb(9 13 9 / 8%) 72%, transparent 92%);
   }
   .empty-workout-content {
     grid-column: 1;
