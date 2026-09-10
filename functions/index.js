@@ -17,7 +17,12 @@ import {
   validateSupportRequest,
   validateDecision,
 } from './legal-core.js'
-import { isProtectedRole, REPORT_PROTECTED_AUTHOR_ERROR } from './moderation-core.js'
+import {
+  isProtectedRole,
+  isSelfReport,
+  REPORT_PROTECTED_AUTHOR_ERROR,
+  REPORT_OWN_STATUS_ERROR,
+} from './moderation-core.js'
 import {
   computeNextPaymentDate,
   addBusinessDays,
@@ -159,6 +164,12 @@ export const submitSupportRequest = onCall(options, async (request) => {
       const membership = await tx.get(db.doc(`communityMembers/${relatedCommunity}_${uid}`))
       if (!membership.exists)
         throw new HttpsError('permission-denied', 'Você não tem acesso a essa publicação.')
+      // Quem publicou já pode excluir a própria publicação diretamente — denunciá-la
+      // não é uma denúncia de verdade. Checado antes do papel do autor de propósito:
+      // evita uma leitura extra em users/ quando já dá pra recusar só com o statusId.
+      if (isSelfReport(status.data().authorId, uid)) {
+        throw new HttpsError('permission-denied', REPORT_OWN_STATUS_ERROR)
+      }
       // O papel do autor é sempre conferido agora, na fonte (users/{authorId}), nunca
       // no selo authorIsSuperAdmin gravado na publicação — isso vale mesmo que o
       // pedido não tenha vindo do botão "Denunciar" (alguém chamando a function

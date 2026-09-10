@@ -323,7 +323,7 @@ export function StatusCard({ status, currentUserId, canDelete, onDelete, now, sh
           <PhotoStatus status={status} preloadedBlob={status._localPhotoBlob} />
         )}
       </div>
-      {isReportableAuthor(status) && (
+      {isReportableAuthor(status, currentUserId) && (
         <Link
           className="status-report-link"
           to={`/atendimento?tipo=report&publicacao=${encodeURIComponent(status.id)}&comunidade=${encodeURIComponent(status.communityId)}`}

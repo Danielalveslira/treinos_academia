@@ -11,3 +11,14 @@ export function isProtectedRole(role) {
 
 export const REPORT_PROTECTED_AUTHOR_ERROR =
   'Publicações e interações de administradores não podem ser denunciadas.'
+
+// O autor de uma publicação já pode excluí-la diretamente (sem passar pela fila de
+// moderação) — denunciar a própria publicação não tem nenhum uso legítimo e só
+// gastaria tempo de análise do superadmin com pedidos que não são denúncias de
+// verdade. Ver isReportableAuthor em src/utils/moderation.js: mesma regra, espelhada
+// no cliente só para esconder o botão; a decisão de verdade é sempre esta aqui.
+export const REPORT_OWN_STATUS_ERROR = 'Você não pode denunciar sua própria publicação.'
+
+export function isSelfReport(authorId, reporterId) {
+  return authorId === reporterId
+}
