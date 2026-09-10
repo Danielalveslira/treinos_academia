@@ -39,6 +39,7 @@ export default function CommunityDetail() {
 
   const [community, setCommunity] = useState(null)
   const [member, setMember] = useState(false)
+  const [membershipPending, setMembershipPending] = useState(false)
   const [loadingCommunity, setLoadingCommunity] = useState(true)
   const [communityError, setCommunityError] = useState(null)
   const [formOpen, setFormOpen] = useState(false)
@@ -71,7 +72,13 @@ export default function CommunityDetail() {
     loadCommunity()
   }, [loadCommunity])
 
+  // A guarda contra clique duplo evita dois efeitos: uma segunda escrita inútil (a
+  // regra do Firestore já recusa update em communityMembers, então isso nunca corrompe
+  // dado nenhum) e, principalmente, o falso "Erro ao entrar/sair" que aparecia quando
+  // o segundo clique chegava depois do primeiro já ter concluído.
   async function handleJoin() {
+    if (membershipPending) return
+    setMembershipPending(true)
     try {
       await joinCommunity(id, user.uid)
       setMember(true)
@@ -80,10 +87,14 @@ export default function CommunityDetail() {
     } catch (err) {
       console.error('[CommunityDetail] join:', err)
       showToast('Erro ao entrar na comunidade.', 'danger')
+    } finally {
+      setMembershipPending(false)
     }
   }
 
   async function handleLeave() {
+    if (membershipPending) return
+    setMembershipPending(true)
     try {
       await leaveCommunity(id, user.uid)
       setMember(false)
@@ -91,6 +102,8 @@ export default function CommunityDetail() {
     } catch (err) {
       console.error('[CommunityDetail] leave:', err)
       showToast('Erro ao sair da comunidade.', 'danger')
+    } finally {
+      setMembershipPending(false)
     }
   }
 
@@ -234,11 +247,16 @@ export default function CommunityDetail() {
               )}
             </Box>
             {member ? (
-              <Button onClick={handleLeave} sx={{ flexShrink: 0 }}>
+              <Button onClick={handleLeave} disabled={membershipPending} sx={{ flexShrink: 0 }}>
                 Sair
               </Button>
             ) : (
-              <Button variant="primary" onClick={handleJoin} sx={{ flexShrink: 0 }}>
+              <Button
+                variant="primary"
+                onClick={handleJoin}
+                disabled={membershipPending}
+                sx={{ flexShrink: 0 }}
+              >
                 Entrar
               </Button>
             )}
@@ -253,7 +271,9 @@ export default function CommunityDetail() {
               <Blankslate.Description>
                 Só membros podem ver e publicar conteúdos nesta comunidade.
               </Blankslate.Description>
-              <Blankslate.PrimaryAction onClick={handleJoin}>Entrar</Blankslate.PrimaryAction>
+              <Blankslate.PrimaryAction onClick={handleJoin} disabled={membershipPending}>
+                Entrar
+              </Blankslate.PrimaryAction>
             </Blankslate>
           )}
 
