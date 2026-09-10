@@ -16,6 +16,7 @@ import { useExercises } from '../contexts/ExercisesContext'
 import { useAuth } from '../hooks/useAuth'
 import { DASHBOARD_HISTORY_DAYS, DASHBOARD_SAFETY_LIMIT } from '../services/workoutsService'
 import { calculateVolume, getTrainingConsistency } from '../utils/calculations'
+import { getDashboardGreeting } from '../utils/greeting'
 import { formatDate, buildExerciseNameMap } from '../utils/format'
 import { formatWorkoutSets, getWorkoutLoad } from '../utils/workoutSets'
 import { FrequencyChart } from '../components/FrequencyChart'
@@ -61,6 +62,16 @@ export default function Dashboard() {
     profile?.username ||
     user?.displayName?.trim().split(/\s+/)[0] ||
     'atleta'
+  // allWorkouts já está carregado pelo useDashboard (janela de DASHBOARD_HISTORY_DAYS
+  // dias, sempre inclui hoje) — nenhuma consulta nova só para saber se já treinou hoje.
+  // useMemo evita recalcular (e reamostrar a frase) a cada render que não muda esses
+  // dados; "now" só entra no cálculo quando ele roda, então a frase fica estável entre
+  // renders do mesmo carregamento, mas ainda reflete o dia/horário reais quando os
+  // dados mudam (ex.: após registrar um treino e o dashboard recarregar).
+  const greeting = useMemo(
+    () => getDashboardGreeting({ firstName, workouts: allWorkouts, uid: user?.uid }),
+    [firstName, allWorkouts, user?.uid]
+  )
 
   if (loading && recentWorkouts.length === 0) {
     return (
@@ -107,8 +118,8 @@ export default function Dashboard() {
     <div className="dashboard fitness-dashboard">
       <header className="dashboard-greeting">
         <div>
-          <span className="eyebrow">BOM TREINO, {firstName.toLocaleUpperCase('pt-BR')}</span>
-          <Heading as="h1">Pronto para evoluir?</Heading>
+          <span className="eyebrow">{greeting.eyebrow}</span>
+          <Heading as="h1">{greeting.heading}</Heading>
         </div>
         <IconButton
           className="refresh-button"
