@@ -1555,10 +1555,9 @@ body {
   transform: none;
 }
 
-.brand-bars { display: block; overflow: visible; }
-.brand-bar-one,
-.brand-bar-two { fill: var(--fitness-blue); }
-.brand-bar-three { fill: var(--fitness-accent); }
+.brand-mark-svg { display: block; overflow: visible; }
+.brand-mark-arrow { fill: var(--fitness-accent); }
+.brand-mark-letter { fill: var(--fitness-ink); }
 
 .public-header {
   max-width: 1180px;
