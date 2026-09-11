@@ -46,16 +46,20 @@ service cloud.firestore {
     }
 
     // Espelha EMAIL_VERIFICATION_CUTOFF/requiresEmailVerification em
-    // src/utils/emailVerification.js — mesma data, mesma fonte de dado
-    // (users/{uid}.createdAt), pra nunca o cliente liberar algo que o servidor nega ou
-    // vice-versa. Contas de antes do corte nunca precisaram verificar o e-mail (decisão
-    // de produto, não é retroativo); createdAt ausente cai no lado "não exige", pelo
-    // mesmo motivo defensivo do lado do cliente. Chamada como função (não guardada em
-    // `let`) de propósito: hasAppAccess/statusAccountOk já estão perto do teto de 10
-    // variáveis por função que já causou incidente em produção (ver comentário acima).
+    // src/utils/emailVerification.js — timestamp.value() em milissegundos (não
+    // timestamp.date(), que só tem granularidade de dia) pra bater exatamente com o
+    // `new Date(...)` do lado do cliente; um descompasso de dia inteiro entre as duas
+    // camadas deixaria uma janela de contas que o cliente considera isentas mas o
+    // servidor já bloqueia (ou vice-versa), sem nenhum aviso na tela. Mesma fonte de
+    // dado (users/{uid}.createdAt) nas duas camadas. Contas de antes do corte nunca
+    // precisaram verificar o e-mail (decisão de produto, não é retroativo); createdAt
+    // ausente cai no lado "não exige", pelo mesmo motivo defensivo do lado do cliente.
+    // Chamada como função (não guardada em `let`) de propósito: hasAppAccess/
+    // statusAccountOk já estão perto do teto de 10 variáveis por função que já causou
+    // incidente em produção (ver comentário acima).
     function emailVerifiedOk(me) {
-      return me.get('createdAt', timestamp.date(1970, 1, 1)) < timestamp.date(2026, 9, 12)
-        || request.auth.token.email_verified == true;
+      return me.get('createdAt', timestamp.value(0)) < timestamp.value(1789136100000)
+        || request.auth.token.get('email_verified', false) == true;
     }
 
     function communityAccessAllowed(communityId) {

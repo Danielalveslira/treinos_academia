@@ -54,7 +54,12 @@ before(async () => {
   await db.doc('users/admin').set({ role: 'superadmin' })
   await db.doc('users/owner').set({ role: 'user', username: 'owner', createdAt: Timestamp.now() })
   await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
-  client = env.authenticatedContext('owner').firestore()
+  // email_verified: true -- este é o usuário genérico usado por praticamente todo o
+  // arquivo, para features que não têm nada a ver com verificação de e-mail (o teste
+  // dedicado a essa regra fica em profile-rules.test.mjs). Sem isso, criar/atualizar
+  // owner com Timestamp.now() (linha acima) o deixaria sempre "depois do corte" e sem
+  // token verificado, quebrando testes que não têm relação nenhuma com esse assunto.
+  client = env.authenticatedContext('owner', { email_verified: true }).firestore()
   adminClient = env.authenticatedContext('admin').firestore()
   authCalls = []
   bucketDeletes = []
