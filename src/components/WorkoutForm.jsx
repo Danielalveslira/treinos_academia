@@ -15,6 +15,14 @@ import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
 import { validateWorkout, hasErrors } from '../utils/validators'
 import { getWorkoutSets, getWorkoutLoad, MAX_WORKOUT_SETS, isValidSet } from '../utils/workoutSets'
 import { calculateVolume } from '../utils/calculations'
+import { useFocusWithinBodyClass } from '../hooks/useFocusWithinBodyClass'
+
+// Enquanto o teclado virtual está provavelmente aberto (um campo do formulário tem
+// foco), CSS esconde a barra de navegação inferior e o botão flutuante de instalar o
+// app (ver navigation.css/app.css) — nenhum dos dois serve pra nada durante a
+// digitação, e liberar esse espaço é o que evita o footer de ações brigando com o
+// teclado por altura de tela.
+const KEYBOARD_ACTIVE_CLASS = 'keyboard-active'
 
 function todayString() {
   const today = new Date()
@@ -217,9 +225,10 @@ export function WorkoutForm({
   }
 
   const validSetCount = values.setDetails.filter(isValidSet).length
+  const formRef = useFocusWithinBodyClass(KEYBOARD_ACTIVE_CLASS)
 
   return (
-    <Box as="form" className="workout-form" onSubmit={handleSubmit}>
+    <Box as="form" ref={formRef} className="workout-form" onSubmit={handleSubmit}>
       <nav className="workout-progress" aria-label="Etapas do treino">
         <span className={step === 'group' ? 'is-current' : 'is-done'}>1 Grupo</span>
         <span className={step === 'exercise' ? 'is-current' : step === 'register' ? 'is-done' : ''}>

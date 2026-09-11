@@ -215,6 +215,15 @@ body:has(.account-menu-overlay) .pwa-install {
   .workout-form-actions {
     bottom: var(--bottom-navigation-space);
   }
+  /* Teclado provavelmente aberto (ver useFocusWithinBodyClass em WorkoutForm.jsx):
+     a navegação inferior não serve pra nada durante a digitação, então some — e o
+     footer de ações reocupa o espaço que ela deixou, em vez de flutuar acima dele. */
+  body.keyboard-active .mobile-nav {
+    display: none;
+  }
+  body.keyboard-active .workout-form-actions {
+    bottom: 0;
+  }
 }
 
 @media print {

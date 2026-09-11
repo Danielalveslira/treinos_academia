@@ -600,6 +600,12 @@ body:has(.pwa-offline) .app-shell {
   body:has(.public-shell) .pwa-update {
     bottom: calc(64px + env(safe-area-inset-bottom));
   }
+  /* Mesmo motivo do .mobile-nav em navigation.css: nada disso serve durante a
+     digitação, e some pra abrir espaço pro footer de ações do formulário. */
+  body.keyboard-active .pwa-install,
+  body.keyboard-active .pwa-update {
+    display: none;
+  }
 }
 @media (display-mode: standalone) {
   .public-header {
@@ -2288,14 +2294,16 @@ body {
   z-index: 5;
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 24px;
-  padding: 14px 0 calc(14px + env(safe-area-inset-bottom));
+  gap: 8px;
+  margin-top: 18px;
+  padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
   background: color-mix(in srgb, var(--bgColor-default) 94%, transparent);
   backdrop-filter: blur(12px);
 }
 
-.workout-form-actions button { min-height: 48px; border-radius: 14px; }
+/* 44px é o mínimo recomendado de alvo de toque (WCAG 2.5.5) — reduzido dos 48px
+   originais pra ocupar menos altura sem ficar abaixo desse piso de acessibilidade. */
+.workout-form-actions button { min-height: 44px; border-radius: 12px; }
 
 /* History */
 .history-filters {
@@ -2477,7 +2485,9 @@ body {
   .set-number { width: 30px; height: 30px; }
   .remove-set { opacity: 1; }
   .session-summary { justify-content: space-between; gap: 14px; }
-  .workout-form-actions { bottom: calc(66px + env(safe-area-inset-bottom)); margin-inline: -16px; padding-inline: 16px; }
+  /* bottom vem de navigation.css (--bottom-navigation-space) -- carrega depois deste
+     arquivo, então uma segunda declaração aqui só ficaria morta/confusa. */
+  .workout-form-actions { margin-inline: -16px; padding-inline: 16px; }
   .workout-form-actions button:first-child { flex: .7; }
   .workout-form-actions button:last-child { flex: 1.3; }
 
