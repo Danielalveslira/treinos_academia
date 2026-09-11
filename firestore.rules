@@ -218,6 +218,14 @@ service cloud.firestore {
           && data.dataNascimento > request.time - duration.value(120 * 365, 'd'));
     }
 
+    // Altura muda raramente (diferente de peso/%gordura, que têm histórico próprio em
+    // bodyMeasurements) — fica como campo único no perfil, mesmo padrão de sexo/
+    // dataNascimento: opcional, nulo pra limpar, faixa plausível quando presente.
+    function isValidHeightField(data) {
+      return !('heightCm' in data) || data.heightCm == null
+        || (data.heightCm is number && data.heightCm >= 50 && data.heightCm <= 250);
+    }
+
     // Documento público separado: nunca liberar leitura do perfil privado para visitantes.
     match /publicProfiles/{userId} {
       allow get: if isSignedIn();
@@ -272,13 +280,14 @@ service cloud.firestore {
       // (console/Admin SDK), nunca uma escrita vinda do cliente.
       allow create: if isOwner(userId)
         && request.resource.data.role == 'user'
-        && request.resource.data.keys().hasOnly(['role', 'createdAt', 'username', 'bio', 'shareStatistics', 'publicProfileVersion', 'sexo', 'dataNascimento'])
+        && request.resource.data.keys().hasOnly(['role', 'createdAt', 'username', 'bio', 'shareStatistics', 'publicProfileVersion', 'sexo', 'dataNascimento', 'heightCm'])
         && request.resource.data.createdAt == request.time
         && isValidUsernameField(request.resource.data)
         && ownsUsernameField(userId, request.resource.data)
         && isValidBioField(request.resource.data)
         && isValidSexoField(request.resource.data)
-        && isValidBirthDateField(request.resource.data);
+        && isValidBirthDateField(request.resource.data)
+        && isValidHeightField(request.resource.data);
       // Mesmo raciocínio de publicProfiles: só reexige a posse do @ quando ele muda.
       // sexo/dataNascimento entram aqui (não só no create) porque Register.jsx grava os
       // dois com um merge separado, logo depois de ensureUserProfile() já ter criado o
@@ -286,13 +295,14 @@ service cloud.firestore {
       allow update: if isOwner(userId)
         && request.resource.data.role == resource.data.role
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['username', 'bio', 'shareStatistics', 'publicProfileVersion', 'sexo', 'dataNascimento'])
+          .hasOnly(['username', 'bio', 'shareStatistics', 'publicProfileVersion', 'sexo', 'dataNascimento', 'heightCm'])
         && isValidUsernameField(request.resource.data)
         && (request.resource.data.get('username', null) == resource.data.get('username', null)
           || ownsUsernameField(userId, request.resource.data))
         && isValidBioField(request.resource.data)
         && isValidSexoField(request.resource.data)
-        && isValidBirthDateField(request.resource.data);
+        && isValidBirthDateField(request.resource.data)
+        && isValidHeightField(request.resource.data);
       // Mesma janela e mesmo motivo de publicProfiles acima: só para desfazer um
       // cadastro recém-criado que falhou depois deste documento existir.
       allow delete: if isOwner(userId)
@@ -321,6 +331,32 @@ service cloud.firestore {
         allow update: if isOwner(userId) && hasAppAccess(isSuperAdmin()) && isValidWorkout(request.resource.data)
           && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null)
           && request.resource.data.get('type', 'strength') == resource.data.get('type', 'strength');
+      }
+
+      // App não tem balança de bioimpedância — cada campo é um input manual opcional,
+      // sempre um documento novo por check-in (nunca sobrescreve o anterior), pra dar
+      // pra calcular tendência depois (ver bodyComposition.js, calculado no cliente
+      // sobre uma janela limitada, não aqui). Pelo menos um dos campos de medida real
+      // precisa estar presente — um check-in inteiramente vazio não serve pra nada.
+      function isValidBodyMeasurement(data) {
+        return data.keys().hasOnly(['date', 'weightKg', 'bodyFatPercent', 'waistCm', 'hipCm', 'leanMassKg', 'note', 'createdAt'])
+          && data.date is timestamp
+          && (!('weightKg' in data) || (data.weightKg is number && data.weightKg > 0 && data.weightKg <= 400))
+          && (!('bodyFatPercent' in data) || (data.bodyFatPercent is number && data.bodyFatPercent > 0 && data.bodyFatPercent <= 70))
+          && (!('waistCm' in data) || (data.waistCm is number && data.waistCm > 0 && data.waistCm <= 200))
+          && (!('hipCm' in data) || (data.hipCm is number && data.hipCm > 0 && data.hipCm <= 200))
+          && (!('leanMassKg' in data) || (data.leanMassKg is number && data.leanMassKg > 0 && data.leanMassKg <= 300))
+          && (!('note' in data) || (data.note is string && data.note.size() <= 300))
+          && ('weightKg' in data || 'bodyFatPercent' in data || 'waistCm' in data
+            || 'hipCm' in data || 'leanMassKg' in data);
+      }
+
+      match /bodyMeasurements/{measurementId} {
+        allow read, delete: if isOwner(userId) && hasAppAccess(isSuperAdmin());
+        allow create: if isOwner(userId) && hasAppAccess(isSuperAdmin()) && isValidBodyMeasurement(request.resource.data)
+          && request.resource.data.createdAt == request.time;
+        allow update: if isOwner(userId) && hasAppAccess(isSuperAdmin()) && isValidBodyMeasurement(request.resource.data)
+          && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null);
       }
 
       match /legalAcceptances/{version} {

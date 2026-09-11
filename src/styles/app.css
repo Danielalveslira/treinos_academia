@@ -1853,6 +1853,15 @@ body {
   min-width: 0;
 }
 
+.body-composition-card {
+  margin-top: 44px;
+}
+
+.body-stats-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.body-stats-grid .indicator-value { font-size: clamp(15px, 1.8vw, 20px); }
+
 .section-heading {
   display: flex;
   align-items: flex-end;

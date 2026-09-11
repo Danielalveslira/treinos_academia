@@ -5,6 +5,7 @@ import {
   validateSexo,
   validateExercise,
   validateWorkout,
+  validateBodyMeasurement,
   hasErrors,
 } from './validators.js'
 
@@ -91,4 +92,25 @@ test('validateWorkout branches by type: strength needs setDetails, cardio needs 
     validateWorkout({ type: 'cardio', durationMinutes: 30, date: '2026-01-01' }).exerciseId,
     /Selecione/
   )
+})
+
+test('validateBodyMeasurement: every field is optional, only format/range is checked', () => {
+  assert.equal(hasErrors(validateBodyMeasurement({})), false)
+  assert.equal(
+    hasErrors(validateBodyMeasurement({ weightKg: '', bodyFatPercent: '', note: '' })),
+    false
+  )
+  assert.equal(
+    hasErrors(validateBodyMeasurement({ heightCm: 178, weightKg: 80.5, bodyFatPercent: 18 })),
+    false
+  )
+  assert.match(validateBodyMeasurement({ heightCm: 49 }).heightCm, /Altura/)
+  assert.match(validateBodyMeasurement({ heightCm: 251 }).heightCm, /Altura/)
+  assert.match(validateBodyMeasurement({ weightKg: 0 }).weightKg, /Peso/)
+  assert.match(validateBodyMeasurement({ weightKg: 401 }).weightKg, /Peso/)
+  assert.match(validateBodyMeasurement({ bodyFatPercent: 71 }).bodyFatPercent, /gordura/)
+  assert.match(validateBodyMeasurement({ waistCm: -5 }).waistCm, /Cintura/)
+  assert.match(validateBodyMeasurement({ hipCm: 'abc' }).hipCm, /Quadril/)
+  assert.match(validateBodyMeasurement({ leanMassKg: 301 }).leanMassKg, /Massa magra/)
+  assert.match(validateBodyMeasurement({ note: 'x'.repeat(301) }).note, /300 caracteres/)
 })

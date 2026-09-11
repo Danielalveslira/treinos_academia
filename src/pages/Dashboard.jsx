@@ -22,6 +22,7 @@ import { formatWorkoutSets, getWorkoutLoad } from '../utils/workoutSets'
 import { isCardioWorkout, formatCardioSession } from '../utils/cardioSessions'
 import { FrequencyChart } from '../components/FrequencyChart'
 import { StreakCard } from '../components/StreakCard'
+import { BodyCompositionCard } from '../components/BodyCompositionCard'
 import { ErrorState } from '../components/ErrorState'
 
 function getVolumeTrend(workouts) {
@@ -284,6 +285,8 @@ export default function Dashboard() {
           </div>
         </section>
       </div>
+
+      <BodyCompositionCard />
     </div>
   )
 }

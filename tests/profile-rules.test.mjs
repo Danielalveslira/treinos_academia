@@ -744,6 +744,54 @@ test('exercise type is optional (legacy defaults to strength) and limited to the
   await assertFails(setDoc(doc(owner, 'users/owner/exercises/bad-type'), exercise({ type: 'yoga' })))
 })
 
+test('heightCm on the profile is optional, nullable, and bounded to a plausible range', async () => {
+  await assertFails(updateDoc(doc(owner, 'users/owner'), { heightCm: 49 }))
+  await assertFails(updateDoc(doc(owner, 'users/owner'), { heightCm: 251 }))
+  await assertSucceeds(updateDoc(doc(owner, 'users/owner'), { heightCm: 178 }))
+  assert.equal((await getDoc(doc(owner, 'users/owner'))).data().heightCm, 178)
+  await assertSucceeds(updateDoc(doc(owner, 'users/owner'), { heightCm: null }))
+})
+
+test('body measurements are a time series (each check-in its own document), every field optional but at least one required', async () => {
+  const measurement = (overrides = {}) => ({
+    date: Timestamp.now(),
+    createdAt: serverTimestamp(),
+    ...overrides,
+  })
+  // Vazio (só date/createdAt, nenhuma medida real) é rejeitado.
+  await assertFails(setDoc(doc(owner, 'users/owner/bodyMeasurements/empty'), measurement()))
+  // Um único campo já basta — "só o que sabe".
+  await assertSucceeds(
+    setDoc(doc(owner, 'users/owner/bodyMeasurements/weight-only'), measurement({ weightKg: 82.4 }))
+  )
+  await assertSucceeds(
+    setDoc(
+      doc(owner, 'users/owner/bodyMeasurements/full'),
+      measurement({
+        weightKg: 80,
+        bodyFatPercent: 18.5,
+        waistCm: 85,
+        hipCm: 100,
+        leanMassKg: 65.2,
+        note: 'Em jejum',
+      })
+    )
+  )
+  // Faixas implausíveis são recusadas campo a campo.
+  await assertFails(
+    setDoc(doc(owner, 'users/owner/bodyMeasurements/bad1'), measurement({ weightKg: 0 }))
+  )
+  await assertFails(
+    setDoc(doc(owner, 'users/owner/bodyMeasurements/bad2'), measurement({ bodyFatPercent: 71 }))
+  )
+  const ref = doc(owner, 'users/owner/bodyMeasurements/edit-me')
+  await assertSucceeds(setDoc(ref, measurement({ weightKg: 79 })))
+  await assertFails(updateDoc(ref, { createdAt: Timestamp.now() }))
+  await assertSucceeds(updateDoc(ref, { weightKg: 78.5, note: 'Corrigido' }))
+  await assertFails(getDoc(doc(visitor, 'users/owner/bodyMeasurements/edit-me')))
+  await assertSucceeds(deleteDoc(ref))
+})
+
 test('exercise name and muscleGroup are capped, so a custom group typed by hand cannot inflate the document', async () => {
   const exercise = (overrides = {}) => ({ name: 'Supino', muscleGroup: 'Peito', active: true, ...overrides })
   await assertFails(setDoc(doc(owner, 'users/owner/exercises/e1'), exercise({ name: 'x'.repeat(61) })))

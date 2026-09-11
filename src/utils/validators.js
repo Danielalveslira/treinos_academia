@@ -145,3 +145,31 @@ export function validatePhotoStatus({ blob, caption }) {
   if (caption && caption.trim().length > 280) errors.caption = 'Legenda muito longa'
   return errors
 }
+
+// Tudo opcional — só valida formato/faixa plausível de quem preencheu (mesmos limites de
+// isValidBodyMeasurement/isValidHeightField em firestore.rules), nunca obrigatoriedade.
+export function validateBodyMeasurement({
+  heightCm,
+  weightKg,
+  bodyFatPercent,
+  waistCm,
+  hipCm,
+  leanMassKg,
+  note,
+}) {
+  const errors = {}
+  function inRange(value, min, max, inclusiveMin = false) {
+    if (value === '' || value == null) return true
+    const n = Number(value)
+    if (!Number.isFinite(n)) return false
+    return inclusiveMin ? n >= min && n <= max : n > min && n <= max
+  }
+  if (!inRange(heightCm, 50, 250, true)) errors.heightCm = 'Altura entre 50 e 250 cm'
+  if (!inRange(weightKg, 0, 400)) errors.weightKg = 'Peso até 400 kg'
+  if (!inRange(bodyFatPercent, 0, 70)) errors.bodyFatPercent = '% de gordura até 70'
+  if (!inRange(waistCm, 0, 200)) errors.waistCm = 'Cintura até 200 cm'
+  if (!inRange(hipCm, 0, 200)) errors.hipCm = 'Quadril até 200 cm'
+  if (!inRange(leanMassKg, 0, 300)) errors.leanMassKg = 'Massa magra até 300 kg'
+  if (note && note.trim().length > 300) errors.note = 'Use até 300 caracteres'
+  return errors
+}
