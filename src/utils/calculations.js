@@ -110,6 +110,12 @@ function startOfWeek(date) {
   return start
 }
 
+// Além de "dias ativos" (a métrica original, que dá nome à função), acumula por semana
+// o volume de força (kg) e a distância/duração de cardio — mesmas semanas, mesmo laço,
+// pra alimentar o seletor de indicador do gráfico do Dashboard (Treinos/Peso/Corrida)
+// sem precisar de três passadas separadas pelos treinos. calculateVolume/distanceKm/
+// durationMinutes retornam 0 pra um treino que não tem esse campo (força não tem
+// distância, cardio não tem série), então somar sem checar o tipo é seguro.
 export function getTrainingConsistency(workouts, now = new Date(), weekCount = 8) {
   const today = new Date(now)
   today.setHours(23, 59, 59, 999)
@@ -121,24 +127,35 @@ export function getTrainingConsistency(workouts, now = new Date(), weekCount = 8
     const date = toDate(workout.date)
     if (Number.isNaN(date.getTime()) || date > today) continue
     const day = localDayKey(date)
-    if (days.has(day)) continue
-    days.add(day)
     const week = localDayKey(startOfWeek(date))
-    weeks.set(week, (weeks.get(week) || 0) + 1)
+    const bucket = weeks.get(week) || { count: 0, volumeKg: 0, distanceKm: 0, durationMinutes: 0 }
+    if (!days.has(day)) {
+      days.add(day)
+      bucket.count += 1
+    }
+    bucket.volumeKg += calculateVolume(workout)
+    bucket.distanceKm += Number(workout.distanceKm) || 0
+    bucket.durationMinutes += Number(workout.durationMinutes) || 0
+    weeks.set(week, bucket)
   }
 
+  const emptyBucket = { count: 0, volumeKg: 0, distanceKm: 0, durationMinutes: 0 }
   const chartData = Array.from({ length: weekCount }, (_, index) => {
     const start = new Date(currentWeek)
     start.setDate(start.getDate() - (weekCount - 1 - index) * 7)
     const end = new Date(start)
     end.setDate(end.getDate() + 6)
     const week = localDayKey(start)
+    const bucket = weeks.get(week) || emptyBucket
     return {
       week,
       label: start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
       range: `${start.toLocaleDateString('pt-BR')} a ${end.toLocaleDateString('pt-BR')}`,
-      count: weeks.get(week) || 0,
       isCurrent: index === weekCount - 1,
+      count: bucket.count,
+      volumeKg: Math.round(bucket.volumeKg),
+      distanceKm: Math.round(bucket.distanceKm * 10) / 10,
+      durationMinutes: Math.round(bucket.durationMinutes),
     }
   })
 
@@ -152,8 +169,11 @@ export function getTrainingConsistency(workouts, now = new Date(), weekCount = 8
 
   return {
     total: days.size,
-    frequency: weeks.get(localDayKey(currentWeek)) || 0,
+    frequency: weeks.get(localDayKey(currentWeek))?.count || 0,
     streak,
+    totalVolumeKg: chartData.reduce((sum, w) => sum + w.volumeKg, 0),
+    totalDistanceKm: Math.round(chartData.reduce((sum, w) => sum + w.distanceKm, 0) * 10) / 10,
+    totalDurationMinutes: chartData.reduce((sum, w) => sum + w.durationMinutes, 0),
     chartData,
   }
 }

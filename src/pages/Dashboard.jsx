@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { Box, Button, Heading, Spinner, Text } from '@primer/react'
+import { Box, Button, Heading, Spinner } from '@primer/react'
 import {
   ArrowRightIcon,
   CalendarIcon,
@@ -14,7 +14,6 @@ import { useDashboard } from '../hooks/useDashboard'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useAuth } from '../hooks/useAuth'
 import { getProfileHeroImage } from '../constants/profileHeroImage'
-import { DASHBOARD_HISTORY_DAYS, DASHBOARD_SAFETY_LIMIT } from '../services/workoutsService'
 import { calculateVolume, getTrainingConsistency } from '../utils/calculations'
 import { getDashboardGreeting } from '../utils/greeting'
 import { formatDate, buildExerciseNameMap } from '../utils/format'
@@ -43,8 +42,19 @@ function getVolumeTrend(workouts) {
   return { current, percent }
 }
 
+// Os três indicadores que dão pra acompanhar semana a semana no mesmo gráfico — cada um
+// já tinha seu número isolado em algum lugar da tela (dias ativos, volume, e agora
+// cardio); juntar num seletor evita um gráfico por indicador, que seria mais poluição,
+// não menos.
+const INDICATORS = [
+  { key: 'trainings', label: 'Treinos', heading: 'Consistência' },
+  { key: 'volume', label: 'Peso', heading: 'Volume de treino' },
+  { key: 'cardio', label: 'Corrida', heading: 'Corrida' },
+]
+
 export default function Dashboard() {
   const navigate = useNavigate()
+  const [indicator, setIndicator] = useState('trainings')
   const { recentWorkouts, allWorkouts, loading, error, refresh } = useDashboard()
   const { exercises } = useExercises()
   const { profile, user } = useAuth()
@@ -54,6 +64,27 @@ export default function Dashboard() {
   // deveria depender de ter levantado peso. Volume e melhor carga continuam só de força:
   // cardio não tem peso×repetição, então entraria como 0 e sub-representaria os dois.
   const consistency = useMemo(() => getTrainingConsistency(allWorkouts), [allWorkouts])
+  // Nem toda corrida tem distância (é opcional no registro) — se ninguém informou,
+  // mostrar duração em vez de "0 km" toda semana.
+  const preferredCardioField = consistency.totalDistanceKm > 0 ? 'distanceKm' : 'durationMinutes'
+  const chartMetric = indicator === 'cardio' ? preferredCardioField : indicator
+  const indicatorMeta = INDICATORS.find((item) => item.key === indicator)
+  const indicatorSummary =
+    indicator === 'volume'
+      ? { value: consistency.totalVolumeKg.toLocaleString('pt-BR'), unit: 'kg no período' }
+      : indicator === 'cardio'
+        ? preferredCardioField === 'distanceKm'
+          ? {
+              value: consistency.totalDistanceKm.toLocaleString('pt-BR', {
+                maximumFractionDigits: 1,
+              }),
+              unit: 'km no período',
+            }
+          : { value: consistency.totalDurationMinutes.toLocaleString('pt-BR'), unit: 'min no período' }
+        : {
+            value: consistency.total,
+            unit: consistency.total === 1 ? 'dia ativo' : 'dias ativos',
+          }
   const strengthWorkouts = useMemo(
     () => allWorkouts.filter((w) => !isCardioWorkout(w)),
     [allWorkouts]
@@ -142,9 +173,7 @@ export default function Dashboard() {
           <Heading as="h2" id="next-workout-title">
             Supere sua última sessão
           </Heading>
-          <p>
-            Continue por {lastExercise}. Seu histórico já está pronto para servir de referência.
-          </p>
+          <p>Continue por {lastExercise}.</p>
           <Button
             as={RouterLink}
             to={`/novo-treino?exercicio=${lastWorkout.exerciseId}`}
@@ -185,10 +214,6 @@ export default function Dashboard() {
           <strong>{bestLoad.toLocaleString('pt-BR')} kg</strong>
         </div>
       </section>
-      <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted', mt: 2, mb: 3 }}>
-        "Melhor carga" e "dias ativos" consideram os últimos {DASHBOARD_HISTORY_DAYS} dias (até{' '}
-        {DASHBOARD_SAFETY_LIMIT} registros) — um recorde mais antigo pode não aparecer.
-      </Text>
 
       <div className="dashboard-flow">
         <section className="progress-section" aria-labelledby="frequency-title">
@@ -196,14 +221,28 @@ export default function Dashboard() {
             <div>
               <span className="eyebrow">RITMO DE TREINO</span>
               <Heading as="h2" id="frequency-title">
-                Consistência
+                {indicatorMeta.heading}
               </Heading>
             </div>
             <span className="section-summary">
-              <strong>{consistency.total}</strong> dias ativos
+              <strong>{indicatorSummary.value}</strong> {indicatorSummary.unit}
             </span>
           </div>
-          <FrequencyChart data={consistency.chartData} />
+          <div className="metric-tabs" role="tablist" aria-label="Indicador do gráfico">
+            {INDICATORS.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                role="tab"
+                aria-selected={indicator === item.key}
+                className={indicator === item.key ? 'is-active' : ''}
+                onClick={() => setIndicator(item.key)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <FrequencyChart data={consistency.chartData} metric={chartMetric} />
         </section>
 
         <section className="recent-section" aria-labelledby="recent-title">

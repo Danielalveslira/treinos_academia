@@ -1812,6 +1812,29 @@ body {
   font-size: 18px;
 }
 
+.metric-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.metric-tabs button {
+  padding: 5px 12px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.metric-tabs button.is-active {
+  border-color: var(--fitness-accent);
+  color: var(--fitness-accent-strong);
+  background: var(--fitness-accent-soft);
+}
+
 .text-link {
   display: inline-flex;
   align-items: center;

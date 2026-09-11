@@ -56,3 +56,32 @@ test('does not truncate streaks at the chart window or 50 records', () => {
   assert.equal(result.total, 70)
   assert.equal(result.chartData.length, 8)
 })
+
+test('aggregates volume and cardio distance/duration per week, alongside the day count', () => {
+  const strength = (day, weight, reps) => ({
+    date: new Date(2026, 8, day, 12),
+    setDetails: [{ weight, reps }],
+  })
+  const cardio = (day, durationMinutes, distanceKm) => ({
+    date: new Date(2026, 8, day, 12),
+    type: 'cardio',
+    durationMinutes,
+    distanceKm,
+  })
+  const result = getTrainingConsistency(
+    [
+      strength(7, 40, 10), // segunda-feira da semana atual: 400 kg
+      strength(7, 20, 5), // mesmo dia, outra série: +100 kg — soma, mesmo dia já contado em count
+      cardio(8, 30, 5), // corrida no dia seguinte, com distância
+      cardio(8), // segunda corrida no mesmo dia, sem distância informada (opcional)
+    ],
+    now
+  )
+  const currentWeek = result.chartData.at(-1)
+  assert.equal(currentWeek.count, 2) // 2 dias distintos, não 4 registros
+  assert.equal(currentWeek.volumeKg, 500)
+  assert.equal(currentWeek.distanceKm, 5)
+  assert.equal(result.totalVolumeKg, 500)
+  assert.equal(result.totalDistanceKm, 5)
+  assert.equal(result.totalDurationMinutes, 30)
+})
