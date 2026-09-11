@@ -15,11 +15,13 @@ import { useExercises } from '../contexts/ExercisesContext'
 import { useAuth } from '../hooks/useAuth'
 import { getProfileHeroImage } from '../constants/profileHeroImage'
 import { calculateVolume, getTrainingConsistency } from '../utils/calculations'
+import { getDailyStreak } from '../utils/streak'
 import { getDashboardGreeting } from '../utils/greeting'
 import { formatDate, buildExerciseNameMap } from '../utils/format'
 import { formatWorkoutSets, getWorkoutLoad } from '../utils/workoutSets'
 import { isCardioWorkout, formatCardioSession } from '../utils/cardioSessions'
 import { FrequencyChart } from '../components/FrequencyChart'
+import { StreakCard } from '../components/StreakCard'
 import { ErrorState } from '../components/ErrorState'
 
 function getVolumeTrend(workouts) {
@@ -64,6 +66,7 @@ export default function Dashboard() {
   // deveria depender de ter levantado peso. Volume e melhor carga continuam só de força:
   // cardio não tem peso×repetição, então entraria como 0 e sub-representaria os dois.
   const consistency = useMemo(() => getTrainingConsistency(allWorkouts), [allWorkouts])
+  const dailyStreak = useMemo(() => getDailyStreak(allWorkouts), [allWorkouts])
   // Nem toda corrida tem distância (é opcional no registro) — se ninguém informou,
   // mostrar duração em vez de "0 km" toda semana.
   const preferredCardioField = consistency.totalDistanceKm > 0 ? 'distanceKm' : 'durationMinutes'
@@ -186,10 +189,12 @@ export default function Dashboard() {
         </div>
       </section>
 
+      <StreakCard streak={dailyStreak} />
+
       <section className="performance-strip" aria-label="Resumo do progresso">
         <div>
           <FlameIcon size={18} />
-          <span>Sequência</span>
+          <span>Sequência semanal</span>
           <strong>{consistency.streak} sem</strong>
         </div>
         <div>

@@ -1778,6 +1778,70 @@ body {
 .trend-up { color: var(--fitness-accent-strong); }
 .trend-down { color: var(--fgColor-danger); }
 
+.streak-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 20px 20px 24px;
+  padding: 16px 20px;
+  border-radius: var(--fitness-radius-md);
+  background: var(--fitness-surface);
+}
+
+.streak-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.streak-flame {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+}
+
+.streak-summary strong { display: block; font-size: 22px; line-height: 1.1; }
+.streak-summary > div > span { color: var(--fgColor-muted); font-size: 12px; }
+
+.streak-days {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.streak-pip {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--bgColor-default);
+  border: 1px solid var(--borderColor-muted);
+}
+
+.streak-pip.is-trained {
+  border-color: transparent;
+  background: var(--fitness-accent);
+}
+
+.streak-pip.is-today:not(.is-trained) {
+  border-color: var(--fitness-accent);
+  border-style: dashed;
+}
+
+.streak-alert {
+  width: 100%;
+  margin-top: 4px;
+}
+
 .dashboard-flow {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
