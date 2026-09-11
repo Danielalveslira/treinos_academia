@@ -1,13 +1,26 @@
 import { useState } from 'react'
-import { Box, Button, FormControl, TextInput, Select, Textarea, Stack, Link } from '@primer/react'
+import {
+  Box,
+  Button,
+  FormControl,
+  TextInput,
+  Select,
+  Textarea,
+  Stack,
+  Link,
+  Text,
+} from '@primer/react'
 import { MUSCLE_GROUPS, mergeCustomGroups, resolveMuscleGroup } from '../constants/muscleGroups'
 import { validateExercise, hasErrors } from '../utils/validators'
+import { EXERCISE_TYPE_LABELS, getExerciseType } from '../utils/exerciseType'
 
-const EMPTY = { name: '', muscleGroup: MUSCLE_GROUPS[0], note: '', active: true }
+const EMPTY = { name: '', muscleGroup: MUSCLE_GROUPS[0], type: 'strength', note: '', active: true }
 const NEW_GROUP_OPTION = '__new__'
 
 export function ExerciseForm({ initialValue, exercises, onSubmit, onCancel }) {
-  const [values, setValues] = useState(initialValue || EMPTY)
+  const [values, setValues] = useState(() =>
+    initialValue ? { ...initialValue, type: getExerciseType(initialValue) } : EMPTY
+  )
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [creatingGroup, setCreatingGroup] = useState(false)
@@ -33,7 +46,10 @@ export function ExerciseForm({ initialValue, exercises, onSubmit, onCancel }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    const finalValues = { ...values, muscleGroup: resolveMuscleGroup(values.muscleGroup, muscleGroups) }
+    const finalValues = {
+      ...values,
+      muscleGroup: resolveMuscleGroup(values.muscleGroup, muscleGroups),
+    }
     const validationErrors = validateExercise(finalValues)
     setErrors(validationErrors)
     if (hasErrors(validationErrors)) return
@@ -67,6 +83,23 @@ export function ExerciseForm({ initialValue, exercises, onSubmit, onCancel }) {
         </FormControl>
 
         <FormControl required>
+          <FormControl.Label>Tipo</FormControl.Label>
+          {initialValue ? (
+            <>
+              <Text sx={{ display: 'block' }}>{EXERCISE_TYPE_LABELS[values.type]}</Text>
+              <FormControl.Caption>
+                O tipo não pode ser alterado depois de criado.
+              </FormControl.Caption>
+            </>
+          ) : (
+            <Select value={values.type} onChange={(e) => setField('type', e.target.value)} block>
+              <Select.Option value="strength">Força (séries de peso e repetições)</Select.Option>
+              <Select.Option value="cardio">Cardio (duração e distância)</Select.Option>
+            </Select>
+          )}
+        </FormControl>
+
+        <FormControl required>
           <FormControl.Label>Grupo muscular</FormControl.Label>
           {creatingGroup ? (
             <>
@@ -84,7 +117,11 @@ export function ExerciseForm({ initialValue, exercises, onSubmit, onCancel }) {
               </FormControl.Caption>
             </>
           ) : (
-            <Select value={values.muscleGroup} onChange={(e) => handleGroupSelect(e.target.value)} block>
+            <Select
+              value={values.muscleGroup}
+              onChange={(e) => handleGroupSelect(e.target.value)}
+              block
+            >
               {muscleGroups.map((group) => (
                 <Select.Option key={group} value={group}>
                   {group}

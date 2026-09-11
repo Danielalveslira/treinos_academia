@@ -1,5 +1,7 @@
 import { isValidSet, MAX_WORKOUT_SETS } from './workoutSets.js'
 import { calculateAge } from './age.js'
+import { EXERCISE_TYPES } from './exerciseType.js'
+import { isValidCardioSession, MAX_DURATION_MINUTES, MAX_DISTANCE_KM } from './cardioSessions.js'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 export const SEXO_OPTIONS = ['masculino', 'feminino', 'nao_informar']
@@ -45,19 +47,36 @@ export function validateUsername(rawUsername) {
   return errors
 }
 
-export function validateExercise({ name, muscleGroup }) {
+export function validateExercise({ name, muscleGroup, type }) {
   const errors = {}
   if (!name || !name.trim()) errors.name = 'Nome é obrigatório'
   else if (name.trim().length > 60) errors.name = 'Nome muito longo'
   if (!muscleGroup || !muscleGroup.trim()) errors.muscleGroup = 'Grupo muscular é obrigatório'
   else if (muscleGroup.trim().length > 30) errors.muscleGroup = 'Nome do grupo muito longo'
+  if (type != null && !EXERCISE_TYPES.includes(type)) errors.type = 'Tipo inválido'
   return errors
 }
 
-export function validateWorkout({ exerciseId, setDetails, date, note }) {
+export function validateWorkout({
+  exerciseId,
+  type = 'strength',
+  setDetails,
+  durationMinutes,
+  distanceKm,
+  date,
+  note,
+}) {
   const errors = {}
   if (!exerciseId || typeof exerciseId !== 'string') errors.exerciseId = 'Selecione um exercício'
-  if (!Array.isArray(setDetails) || setDetails.length < 1 || setDetails.length > MAX_WORKOUT_SETS) {
+  if (type === 'cardio') {
+    if (!isValidCardioSession({ durationMinutes, distanceKm })) {
+      errors.durationMinutes = `Informe a duração (até ${MAX_DURATION_MINUTES} min) e, se quiser, a distância (até ${MAX_DISTANCE_KM} km)`
+    }
+  } else if (
+    !Array.isArray(setDetails) ||
+    setDetails.length < 1 ||
+    setDetails.length > MAX_WORKOUT_SETS
+  ) {
     errors.setDetails = `Informe de 1 a ${MAX_WORKOUT_SETS} séries válidas`
   } else {
     setDetails.forEach((set, index) => {
@@ -105,7 +124,8 @@ export function validatePollStatus({ question, options }) {
   else if (question.trim().length > 200) errors.question = 'Pergunta muito longa'
   const filled = options.filter((o) => o.trim())
   if (filled.length < 2) errors.options = 'Adicione pelo menos 2 opções'
-  else if (filled.some((o) => o.trim().length > 80)) errors.options = 'Uma das opções está muito longa'
+  else if (filled.some((o) => o.trim().length > 80))
+    errors.options = 'Uma das opções está muito longa'
   return errors
 }
 

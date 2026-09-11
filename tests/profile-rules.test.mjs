@@ -670,6 +670,80 @@ test('legacy workouts remain readable and can be converted on edit', async () =>
   await assertSucceeds(deleteDoc(ref))
 })
 
+test('cardio workouts are validated by duration/distance instead of sets, and type is immutable on edit', async () => {
+  const cardio = (overrides = {}) => ({
+    exerciseId: 'run',
+    type: 'cardio',
+    durationMinutes: 32,
+    distanceKm: 5.2,
+    date: Timestamp.now(),
+    createdAt: serverTimestamp(),
+    ...overrides,
+  })
+  const ref = doc(owner, 'users/owner/workouts/cardio1')
+  await assertFails(setDoc(ref, cardio({ durationMinutes: 0 })))
+  await assertFails(setDoc(ref, cardio({ durationMinutes: 601 })))
+  await assertFails(setDoc(ref, cardio({ distanceKm: 0 })))
+  await assertFails(setDoc(ref, cardio({ distanceKm: 501 })))
+  // Campo de força (setDetails) não é permitido numa sessão de cardio.
+  await assertFails(
+    setDoc(ref, { ...cardio(), setDetails: [{ weight: 1, reps: 1 }] })
+  )
+  await assertSucceeds(setDoc(ref, cardio()))
+  // distanceKm é opcional — nem toda corrida em esteira mede distância.
+  const { distanceKm: _omitDistance, ...withoutDistance } = cardio()
+  await assertSucceeds(setDoc(doc(owner, 'users/owner/workouts/cardio2'), withoutDistance))
+  // type é imutável na edição — virar 'strength' (mesmo mandando setDetails válido
+  // junto) é rejeitado, só o valor de dentro do tipo já escolhido pode mudar.
+  await assertFails(
+    updateDoc(ref, { type: 'strength', setDetails: [{ weight: 1, reps: 1 }], sets: 1 })
+  )
+  await assertSucceeds(updateDoc(ref, { durationMinutes: 40 }))
+  assert.equal((await getDoc(ref)).data().durationMinutes, 40)
+  await assertSucceeds(deleteDoc(ref))
+  await assertSucceeds(deleteDoc(doc(owner, 'users/owner/workouts/cardio2')))
+})
+
+test('a strength workout may say type: "strength" explicitly; a legacy one without the field stays that way and cannot become cardio', async () => {
+  const strength = (overrides = {}) => ({
+    exerciseId: 'squat',
+    type: 'strength',
+    setDetails: [{ weight: 40, reps: 10 }],
+    sets: 1,
+    date: Timestamp.now(),
+    createdAt: serverTimestamp(),
+    ...overrides,
+  })
+  const ref = doc(owner, 'users/owner/workouts/explicit-strength')
+  await assertSucceeds(setDoc(ref, strength()))
+  await assertSucceeds(deleteDoc(ref))
+
+  const legacyRef = doc(owner, 'users/owner/workouts/legacy-no-type')
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), legacyRef.path), {
+      exerciseId: 'squat',
+      setDetails: [{ weight: 40, reps: 10 }],
+      sets: 1,
+      date: Timestamp.now(),
+    })
+  })
+  await assertFails(updateDoc(legacyRef, { type: 'cardio', durationMinutes: 20 }))
+  await assertSucceeds(updateDoc(legacyRef, { note: 'ainda força' }))
+  await assertSucceeds(deleteDoc(legacyRef))
+})
+
+test('exercise type is optional (legacy defaults to strength) and limited to the known values', async () => {
+  const exercise = (overrides = {}) => ({ name: 'Corrida', muscleGroup: 'Cardio', active: true, ...overrides })
+  await assertSucceeds(setDoc(doc(owner, 'users/owner/exercises/legacy-type'), exercise()))
+  await assertSucceeds(
+    setDoc(doc(owner, 'users/owner/exercises/explicit-strength'), exercise({ type: 'strength' }))
+  )
+  await assertSucceeds(
+    setDoc(doc(owner, 'users/owner/exercises/explicit-cardio'), exercise({ type: 'cardio' }))
+  )
+  await assertFails(setDoc(doc(owner, 'users/owner/exercises/bad-type'), exercise({ type: 'yoga' })))
+})
+
 test('exercise name and muscleGroup are capped, so a custom group typed by hand cannot inflate the document', async () => {
   const exercise = (overrides = {}) => ({ name: 'Supino', muscleGroup: 'Peito', active: true, ...overrides })
   await assertFails(setDoc(doc(owner, 'users/owner/exercises/e1'), exercise({ name: 'x'.repeat(61) })))

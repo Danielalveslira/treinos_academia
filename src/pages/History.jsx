@@ -25,15 +25,24 @@ import { calculateVolume } from '../utils/calculations'
 import { buildExerciseNameMap } from '../utils/format'
 
 import { getWorkoutSets, formatWorkoutSets } from '../utils/workoutSets'
+import { isCardioWorkout, formatCardioSession } from '../utils/cardioSessions'
 
 function toEditableWorkout(workout) {
   const date = workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)
-  return {
+  const base = {
     exerciseId: workout.exerciseId,
-    setDetails: getWorkoutSets(workout),
     date: date.toISOString().slice(0, 10),
     note: workout.note || '',
   }
+  if (isCardioWorkout(workout)) {
+    return {
+      ...base,
+      type: 'cardio',
+      durationMinutes: workout.durationMinutes,
+      distanceKm: workout.distanceKm ?? '',
+    }
+  }
+  return { ...base, setDetails: getWorkoutSets(workout) }
 }
 
 const NO_FILTERS = { exerciseFilter: '', startDate: '', endDate: '' }
@@ -225,14 +234,20 @@ export default function History() {
               <Text className="history-exercise-name">
                 {exerciseNameById.get(workout.exerciseId) || 'Exercício removido'}
               </Text>
-              <Text className="history-sets">{formatWorkoutSets(workout)}</Text>
+              <Text className="history-sets">
+                {isCardioWorkout(workout)
+                  ? formatCardioSession(workout)
+                  : formatWorkoutSets(workout)}
+              </Text>
               {workout.note && <Text className="history-note">{workout.note}</Text>}
             </Box>
-            <div className="history-volume">
-              <GraphIcon size={14} />
-              <span>VOLUME</span>
-              <strong>{calculateVolume(workout).toLocaleString('pt-BR')} kg</strong>
-            </div>
+            {!isCardioWorkout(workout) && (
+              <div className="history-volume">
+                <GraphIcon size={14} />
+                <span>VOLUME</span>
+                <strong>{calculateVolume(workout).toLocaleString('pt-BR')} kg</strong>
+              </div>
+            )}
             <RowActionsMenu
               onEdit={() => setEditingWorkout(workout)}
               onDelete={() => handleDeleteRequest(workout)}

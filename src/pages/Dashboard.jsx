@@ -19,6 +19,7 @@ import { calculateVolume, getTrainingConsistency } from '../utils/calculations'
 import { getDashboardGreeting } from '../utils/greeting'
 import { formatDate, buildExerciseNameMap } from '../utils/format'
 import { formatWorkoutSets, getWorkoutLoad } from '../utils/workoutSets'
+import { isCardioWorkout, formatCardioSession } from '../utils/cardioSessions'
 import { FrequencyChart } from '../components/FrequencyChart'
 import { ErrorState } from '../components/ErrorState'
 
@@ -49,14 +50,21 @@ export default function Dashboard() {
   const { profile, user } = useAuth()
   const heroImage = getProfileHeroImage(profile?.sexo)
   const exerciseNameById = useMemo(() => buildExerciseNameMap(exercises), [exercises])
+  // Sequência/constância conta qualquer treino (inclusive cardio) — "dia ativo" não
+  // deveria depender de ter levantado peso. Volume e melhor carga continuam só de força:
+  // cardio não tem peso×repetição, então entraria como 0 e sub-representaria os dois.
   const consistency = useMemo(() => getTrainingConsistency(allWorkouts), [allWorkouts])
-  const volume = useMemo(() => getVolumeTrend(allWorkouts), [allWorkouts])
+  const strengthWorkouts = useMemo(
+    () => allWorkouts.filter((w) => !isCardioWorkout(w)),
+    [allWorkouts]
+  )
+  const volume = useMemo(() => getVolumeTrend(strengthWorkouts), [strengthWorkouts])
   const lastWorkout = recentWorkouts[0]
   const lastExercise = lastWorkout
     ? exerciseNameById.get(lastWorkout.exerciseId) || 'seu último exercício'
     : null
-  const bestLoad = allWorkouts.length
-    ? Math.max(...allWorkouts.map((workout) => getWorkoutLoad(workout)))
+  const bestLoad = strengthWorkouts.length
+    ? Math.max(...strengthWorkouts.map((workout) => getWorkoutLoad(workout)))
     : 0
   const firstName =
     profile?.displayName?.trim().split(/\s+/)[0] ||
@@ -216,7 +224,11 @@ export default function Dashboard() {
                 <span className="workout-index">{String(index + 1).padStart(2, '0')}</span>
                 <div>
                   <strong>{exerciseNameById.get(workout.exerciseId) || 'Exercício'}</strong>
-                  <span>{formatWorkoutSets(workout)}</span>
+                  <span>
+                    {isCardioWorkout(workout)
+                      ? formatCardioSession(workout)
+                      : formatWorkoutSets(workout)}
+                  </span>
                 </div>
                 <time>
                   {formatDate(

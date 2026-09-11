@@ -7,6 +7,7 @@ import {
   deleteExercise,
 } from '../services/exercisesService'
 import { useCachedQuery } from '../hooks/useCachedQuery'
+import { getExerciseType } from '../utils/exerciseType'
 
 const EMPTY = []
 
@@ -20,6 +21,7 @@ function normalize(exercise) {
   return {
     name: exercise.name.trim(),
     muscleGroup: exercise.muscleGroup.trim(),
+    type: getExerciseType(exercise),
     note: exercise.note?.trim() || '',
   }
 }

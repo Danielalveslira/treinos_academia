@@ -1,6 +1,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { validateBirthDate, validateSexo, validateExercise, hasErrors } from './validators.js'
+import {
+  validateBirthDate,
+  validateSexo,
+  validateExercise,
+  validateWorkout,
+  hasErrors,
+} from './validators.js'
 
 test('validateBirthDate requires a real calendar date, never in the future', () => {
   assert.deepEqual(validateBirthDate(''), { birthDate: 'Data de nascimento é obrigatória' })
@@ -43,6 +49,46 @@ test('validateExercise requires name and muscleGroup, and bounds both lengths', 
   // Grupo personalizado (digitado no formulário, não escolhido de uma lista fixa) —
   // mesmo teto aplicado nas firestore.rules (isValidExercise), pra nunca aceitar no
   // cliente o que o servidor recusaria.
-  assert.match(validateExercise({ name: 'Supino', muscleGroup: 'x'.repeat(31) }).muscleGroup, /longo/)
+  assert.match(
+    validateExercise({ name: 'Supino', muscleGroup: 'x'.repeat(31) }).muscleGroup,
+    /longo/
+  )
   assert.equal(hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'x'.repeat(30) })), false)
+  // type é opcional (exercícios de antes deste campo existir não o têm) e só aceita os
+  // dois valores conhecidos quando presente.
+  assert.equal(hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'Peito' })), false)
+  assert.equal(
+    hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'Peito', type: 'cardio' })),
+    false
+  )
+  assert.match(
+    validateExercise({ name: 'Supino', muscleGroup: 'Peito', type: 'yoga' }).type,
+    /inválido/
+  )
+})
+
+test('validateWorkout branches by type: strength needs setDetails, cardio needs duration', () => {
+  const base = { exerciseId: 'squat', date: '2026-01-01' }
+  // Sem type (default 'strength'), continua exigindo setDetails como sempre.
+  assert.match(validateWorkout(base).setDetails, /séries/)
+  assert.equal(
+    hasErrors(validateWorkout({ ...base, setDetails: [{ weight: 10, reps: 5 }] })),
+    false
+  )
+  // Cardio não exige (nem aceita relevância a) setDetails — exige duração.
+  assert.match(validateWorkout({ ...base, type: 'cardio' }).durationMinutes, /duração/)
+  assert.equal(hasErrors(validateWorkout({ ...base, type: 'cardio', durationMinutes: 30 })), false)
+  assert.equal(
+    hasErrors(validateWorkout({ ...base, type: 'cardio', durationMinutes: 30, distanceKm: 5.2 })),
+    false
+  )
+  assert.match(
+    validateWorkout({ ...base, type: 'cardio', durationMinutes: 0 }).durationMinutes,
+    /duração/
+  )
+  // exerciseId, data e nota continuam validados igual, independente do tipo.
+  assert.match(
+    validateWorkout({ type: 'cardio', durationMinutes: 30, date: '2026-01-01' }).exerciseId,
+    /Selecione/
+  )
 })

@@ -31,6 +31,17 @@ import { IndicatorCard } from '../components/IndicatorCard'
 import { LoadChart } from '../components/LoadChart'
 import { VolumeChart } from '../components/VolumeChart'
 import { ErrorState } from '../components/ErrorState'
+import { isCardioExercise } from '../utils/exerciseType'
+import { formatCardioSession } from '../utils/cardioSessions'
+
+// Duração/distância totais não fazem parte do sistema de volume/carga/recorde de força
+// (fora de escopo para cardio nesta primeira versão, ver getExerciseIndicators) — soma
+// simples, própria de cardio, só pra dar algum contexto agregado na lista de sessões.
+function getCardioSummary(workouts) {
+  const totalMinutes = workouts.reduce((total, w) => total + (Number(w.durationMinutes) || 0), 0)
+  const totalDistanceKm = workouts.reduce((total, w) => total + (Number(w.distanceKm) || 0), 0)
+  return { sessionCount: workouts.length, totalMinutes, totalDistanceKm }
+}
 
 function EvolutionValue({ percent }) {
   if (percent == null) return <Text sx={{ color: 'fg.muted' }}>—</Text>
@@ -50,10 +61,11 @@ export default function ExerciseDetail() {
   const { workouts, loading: loadingWorkouts, error, refresh } = useExerciseHistory(id)
 
   const exercise = exercises.find((e) => e.id === id)
+  const cardio = isCardioExercise(exercise)
   const indicators = useMemo(() => getExerciseIndicators(workouts), [workouts])
   const chartData = useMemo(() => buildLoadHistory(workouts), [workouts])
-
   const volumeData = useMemo(() => groupVolumeByDate(workouts), [workouts])
+  const cardioSummary = useMemo(() => getCardioSummary(workouts), [workouts])
 
   const loading = loadingExercises || loadingWorkouts
 
@@ -133,7 +145,77 @@ export default function ExerciseDetail() {
         </Blankslate>
       )}
 
-      {!error && workouts.length > 0 && (
+      {!error && workouts.length > 0 && cardio && (
+        <>
+          <Box className="stats-grid" sx={{ mb: 3 }}>
+            <IndicatorCard
+              icon={ChecklistIcon}
+              label="Sessões"
+              value={cardioSummary.sessionCount}
+            />
+            <IndicatorCard
+              icon={ZapIcon}
+              label="Duração total"
+              value={`${cardioSummary.totalMinutes.toLocaleString('pt-BR')} min`}
+            />
+            {cardioSummary.totalDistanceKm > 0 && (
+              <IndicatorCard
+                icon={GraphBarVerticalIcon}
+                label="Distância total"
+                value={`${cardioSummary.totalDistanceKm.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} km`}
+              />
+            )}
+            <IndicatorCard
+              icon={CalendarIcon}
+              label="Último treino"
+              value={formatDate(
+                workouts[0].date?.toDate ? workouts[0].date.toDate() : new Date(workouts[0].date)
+              )}
+            />
+          </Box>
+          {workouts.length >= EXERCISE_HISTORY_PAGE_SIZE && (
+            <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted', mb: 3 }}>
+              Os totais acima consideram apenas as {EXERCISE_HISTORY_PAGE_SIZE} sessões mais
+              recentes deste exercício.
+            </Text>
+          )}
+          <Heading as="h2" sx={{ fontSize: 2, mb: 2 }}>
+            Sessões
+          </Heading>
+          {workouts.map((workout) => {
+            const date = workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)
+            return (
+              <Box as="article" key={workout.id} className="exercise-session-row">
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 2,
+                  }}
+                >
+                  <Link
+                    as={RouterLink}
+                    to={`/historico?exercicio=${id}`}
+                    sx={{ fontWeight: 'bold' }}
+                  >
+                    {formatDate(date)}
+                  </Link>
+                  <Label variant="accent">{formatCardioSession(workout)}</Label>
+                </Box>
+                {workout.note && (
+                  <Text as="p" sx={{ fontSize: 1, fontStyle: 'italic', m: 0 }}>
+                    “{workout.note}”
+                  </Text>
+                )}
+              </Box>
+            )
+          })}
+        </>
+      )}
+
+      {!error && workouts.length > 0 && !cardio && (
         <>
           {indicators.isPersonalRecord && (
             <Flash variant="success" sx={{ mb: 3 }}>

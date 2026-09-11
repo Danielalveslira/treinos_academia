@@ -112,7 +112,11 @@ export async function listWorkoutsPage(
 // completo — um recorde de carga mais antigo que essa página some da comparação.
 export const EXERCISE_HISTORY_PAGE_SIZE = 30
 
-export async function listWorkoutsForExercise(userId, exerciseId, pageSize = EXERCISE_HISTORY_PAGE_SIZE) {
+export async function listWorkoutsForExercise(
+  userId,
+  exerciseId,
+  pageSize = EXERCISE_HISTORY_PAGE_SIZE
+) {
   const q = query(
     workoutsRef(userId),
     where('exerciseId', '==', exerciseId),
@@ -125,17 +129,26 @@ export async function listWorkoutsForExercise(userId, exerciseId, pageSize = EXE
 
 function workoutPayload(workout) {
   if (hasErrors(validateWorkout(workout))) throw new Error('Registro de treino inválido')
+  const base = {
+    exerciseId: workout.exerciseId,
+    date: toTimestamp(workout.date),
+    note: workout.note?.trim() || '',
+  }
+  if (workout.type === 'cardio') {
+    return {
+      ...base,
+      type: 'cardio',
+      durationMinutes: Number(workout.durationMinutes),
+      ...(workout.distanceKm === '' || workout.distanceKm == null
+        ? {}
+        : { distanceKm: Number(workout.distanceKm) }),
+    }
+  }
   const setDetails = workout.setDetails.map(({ weight, reps }) => ({
     weight: Number(weight),
     reps: Number(reps),
   }))
-  return {
-    exerciseId: workout.exerciseId,
-    setDetails,
-    sets: setDetails.length,
-    date: toTimestamp(workout.date),
-    note: workout.note?.trim() || '',
-  }
+  return { ...base, type: 'strength', setDetails, sets: setDetails.length }
 }
 
 export function createWorkout(userId, workout) {

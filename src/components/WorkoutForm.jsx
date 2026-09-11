@@ -16,6 +16,8 @@ import { validateWorkout, hasErrors } from '../utils/validators'
 import { getWorkoutSets, getWorkoutLoad, MAX_WORKOUT_SETS, isValidSet } from '../utils/workoutSets'
 import { calculateVolume } from '../utils/calculations'
 import { useFocusWithinBodyClass } from '../hooks/useFocusWithinBodyClass'
+import { getExerciseType, isCardioExercise } from '../utils/exerciseType'
+import { formatCardioSession } from '../utils/cardioSessions'
 
 // Enquanto o teclado virtual está provavelmente aberto (um campo do formulário tem
 // foco), CSS esconde a barra de navegação inferior e o botão flutuante de instalar o
@@ -31,10 +33,16 @@ function todayString() {
   ).padStart(2, '0')}`
 }
 
+// setDetails e durationMinutes/distanceKm coexistem aqui sempre, os dois tipos — só o
+// tipo do exercício selecionado (selectedExercise, via getExerciseType) decide qual
+// metade é validada, renderizada e enviada (ver handleSubmit). Mais simples do que
+// trocar a forma do objeto a cada troca de exercício.
 function buildEmpty(defaultExerciseId) {
   return {
     exerciseId: defaultExerciseId || '',
     setDetails: [{ weight: '', reps: '' }],
+    durationMinutes: '',
+    distanceKm: '',
     date: todayString(),
     note: '',
   }
@@ -59,26 +67,39 @@ export function WorkoutForm({
   onCancel,
 }) {
   const nextSetId = useRef(0)
+  // Editando, o tipo do treino já existente trava qual exercício dá pra escolher —
+  // trocar pra um exercício de outro tipo faria a checagem de imutabilidade de type
+  // nas firestore.rules recusar o salvamento (ver isValidWorkout/allow update). Mais
+  // simples barrar isso aqui, na lista de opções, do que deixar o usuário chegar até
+  // "Finalizar treino" pra só então descobrir que não pode.
+  const editingType = initialValue ? getExerciseType(initialValue) : null
   const availableExercises = useMemo(() => {
     const active = exercises.filter(
       (exercise) => exercise.active || exercise.id === initialValue?.exerciseId
     )
+    const scoped = editingType
+      ? active.filter(
+          (exercise) =>
+            exercise.id === initialValue.exerciseId || getExerciseType(exercise) === editingType
+        )
+      : active
     if (
       initialValue?.exerciseId &&
-      !active.some((exercise) => exercise.id === initialValue.exerciseId)
+      !scoped.some((exercise) => exercise.id === initialValue.exerciseId)
     ) {
       return [
-        ...active,
+        ...scoped,
         {
           id: initialValue.exerciseId,
           name: 'Exercício removido',
           muscleGroup: 'Outros',
+          type: editingType || 'strength',
           active: false,
         },
       ]
     }
-    return active
-  }, [exercises, initialValue?.exerciseId])
+    return scoped
+  }, [exercises, initialValue?.exerciseId, editingType])
   const initialExerciseId = initialValue?.exerciseId || defaultExerciseId || ''
   const initialExercise = availableExercises.find((exercise) => exercise.id === initialExerciseId)
   const [values, setValues] = useState(() => {
@@ -112,6 +133,7 @@ export function WorkoutForm({
     () => availableExercises.find((exercise) => exercise.id === values.exerciseId),
     [availableExercises, values.exerciseId]
   )
+  const cardio = isCardioExercise(selectedExercise)
   const exercisesInGroup = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('pt-BR')
     return availableExercises.filter(
@@ -211,14 +233,15 @@ export function WorkoutForm({
   async function handleSubmit(event) {
     event.preventDefault()
     if (step !== 'register') return
-    const validationErrors = validateWorkout(values)
+    const payload = { ...values, type: getExerciseType(selectedExercise) }
+    const validationErrors = validateWorkout(payload)
     setErrors(validationErrors)
     if (validationErrors.date || validationErrors.note) setDetailsOpen(true)
     if (hasErrors(validationErrors)) return
 
     setSubmitting(true)
     try {
-      await onSubmit(values)
+      await onSubmit(payload)
     } finally {
       setSubmitting(false)
     }
@@ -234,7 +257,7 @@ export function WorkoutForm({
         <span className={step === 'exercise' ? 'is-current' : step === 'register' ? 'is-done' : ''}>
           2 Exercício
         </span>
-        <span className={step === 'register' ? 'is-current' : ''}>3 Séries</span>
+        <span className={step === 'register' ? 'is-current' : ''}>3 {cardio ? 'Sessão' : 'Séries'}</span>
       </nav>
 
       {step === 'group' && (
@@ -343,147 +366,200 @@ export function WorkoutForm({
               <div>
                 <span>Última sessão</span>
                 <strong>
-                  {lastWorkout
-                    ? getWorkoutSets(lastWorkout)
-                        .map((set) => `${set.weight} kg × ${set.reps}`)
-                        .join('  ·  ')
-                    : 'Primeiro registro'}
+                  {!lastWorkout
+                    ? 'Primeiro registro'
+                    : cardio
+                      ? formatCardioSession(lastWorkout)
+                      : getWorkoutSets(lastWorkout)
+                          .map((set) => `${set.weight} kg × ${set.reps}`)
+                          .join('  ·  ')}
                 </strong>
               </div>
-              <div>
-                <TrophyIcon size={15} />
-                <span>Melhor carga</span>
-                <strong>{bestLoad == null ? '—' : `${bestLoad.toLocaleString('pt-BR')} kg`}</strong>
-              </div>
+              {/* Cardio ainda não tem noção de recorde nesta primeira versão — ver
+                  ExerciseDetail.jsx, mesmo motivo (sem carga, "melhor" não se aplica). */}
+              {!cardio && (
+                <div>
+                  <TrophyIcon size={15} />
+                  <span>Melhor carga</span>
+                  <strong>
+                    {bestLoad == null ? '—' : `${bestLoad.toLocaleString('pt-BR')} kg`}
+                  </strong>
+                </div>
+              )}
             </div>
           </section>
 
-          <fieldset className="sets-fieldset" disabled={submitting}>
-            <div className="sets-heading">
-              <legend>Séries</legend>
-              <span>
-                {completed.size}/{values.setDetails.length} concluídas
-              </span>
-            </div>
-            <div className="set-column-headings" aria-hidden="true">
-              <span>SÉRIE</span>
-              <span>PESO (KG)</span>
-              <span>REPS</span>
-              <span>FEITO</span>
-            </div>
-            <div className="set-list">
-              {values.setDetails.map((set, index) => {
-                const isComplete = completed.has(set.key)
-                return (
-                  <div className={`set-row${isComplete ? ' is-complete' : ''}`} key={set.key}>
-                    <span className="set-number">{index + 1}</span>
-                    <label>
-                      <span className="sr-only">Peso em kg, série {index + 1}</span>
-                      <TextInput
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        max={10000}
-                        step="any"
-                        value={set.weight}
-                        aria-label={`Peso (kg), série ${index + 1}`}
-                        aria-invalid={!!errors[`set${index}`]}
-                        aria-describedby={
-                          errors[`set${index}`] ? `set-error-${set.key}` : undefined
-                        }
-                        onChange={(event) => updateSet(set.key, 'weight', event.target.value)}
-                        placeholder="0"
-                        block
-                      />
-                    </label>
-                    <label>
-                      <span className="sr-only">Repetições, série {index + 1}</span>
-                      <TextInput
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        max={100000}
-                        step={1}
-                        value={set.reps}
-                        aria-label={`Repetições, série ${index + 1}`}
-                        aria-invalid={!!errors[`set${index}`]}
-                        aria-describedby={
-                          errors[`set${index}`] ? `set-error-${set.key}` : undefined
-                        }
-                        onChange={(event) => updateSet(set.key, 'reps', event.target.value)}
-                        placeholder="0"
-                        block
-                      />
-                    </label>
-                    <button
-                      className="complete-set"
-                      type="button"
-                      disabled={!isValidSet(set)}
-                      aria-label={`${isComplete ? 'Reabrir' : 'Concluir'} série ${index + 1}`}
-                      aria-pressed={isComplete}
-                      onClick={() => toggleComplete(set.key)}
-                    >
-                      <CheckIcon size={20} />
-                    </button>
-                    <button
-                      className="remove-set"
-                      type="button"
-                      aria-label={`Remover série ${index + 1}`}
-                      disabled={values.setDetails.length === 1}
-                      onClick={() =>
-                        changeSets((sets) => sets.filter((item) => item.key !== set.key))
-                      }
-                    >
-                      <TrashIcon size={14} />
-                    </button>
-                    {errors[`set${index}`] && (
-                      <Text className="set-error" id={`set-error-${set.key}`} role="alert">
-                        {errors[`set${index}`]}
-                      </Text>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-            {errors.setDetails && (
-              <Text role="alert" className="form-error">
-                {errors.setDetails}
-              </Text>
-            )}
-            <div className="set-actions">
-              <Button
-                type="button"
-                leadingVisual={PlusIcon}
-                disabled={values.setDetails.length >= MAX_WORKOUT_SETS}
-                onClick={() => addSet()}
-              >
-                Adicionar série
-              </Button>
-              <Button
-                type="button"
-                leadingVisual={CopyIcon}
-                disabled={!values.setDetails.length || values.setDetails.length >= MAX_WORKOUT_SETS}
-                onClick={() => addSet(true)}
-              >
-                Repetir série
-              </Button>
-            </div>
-          </fieldset>
+          {cardio && (
+            <fieldset className="cardio-fieldset" disabled={submitting}>
+              <legend>Sessão</legend>
+              <FormControl required>
+                <FormControl.Label>Duração (min)</FormControl.Label>
+                <TextInput
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={600}
+                  step={1}
+                  value={values.durationMinutes}
+                  onChange={(event) => setField('durationMinutes', event.target.value)}
+                  placeholder="0"
+                  block
+                />
+              </FormControl>
+              <FormControl>
+                <FormControl.Label>Distância (km, opcional)</FormControl.Label>
+                <TextInput
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={500}
+                  step="any"
+                  value={values.distanceKm}
+                  onChange={(event) => setField('distanceKm', event.target.value)}
+                  placeholder="0"
+                  block
+                />
+              </FormControl>
+              {errors.durationMinutes && (
+                <Text role="alert" className="form-error">
+                  {errors.durationMinutes}
+                </Text>
+              )}
+            </fieldset>
+          )}
 
-          <div className="session-summary" aria-live="polite">
-            <div>
-              <span>Séries válidas</span>
-              <strong>{validSetCount}</strong>
+          {!cardio && (
+            <fieldset className="sets-fieldset" disabled={submitting}>
+              <div className="sets-heading">
+                <legend>Séries</legend>
+                <span>
+                  {completed.size}/{values.setDetails.length} concluídas
+                </span>
+              </div>
+              <div className="set-column-headings" aria-hidden="true">
+                <span>SÉRIE</span>
+                <span>PESO (KG)</span>
+                <span>REPS</span>
+                <span>FEITO</span>
+              </div>
+              <div className="set-list">
+                {values.setDetails.map((set, index) => {
+                  const isComplete = completed.has(set.key)
+                  return (
+                    <div className={`set-row${isComplete ? ' is-complete' : ''}`} key={set.key}>
+                      <span className="set-number">{index + 1}</span>
+                      <label>
+                        <span className="sr-only">Peso em kg, série {index + 1}</span>
+                        <TextInput
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          max={10000}
+                          step="any"
+                          value={set.weight}
+                          aria-label={`Peso (kg), série ${index + 1}`}
+                          aria-invalid={!!errors[`set${index}`]}
+                          aria-describedby={
+                            errors[`set${index}`] ? `set-error-${set.key}` : undefined
+                          }
+                          onChange={(event) => updateSet(set.key, 'weight', event.target.value)}
+                          placeholder="0"
+                          block
+                        />
+                      </label>
+                      <label>
+                        <span className="sr-only">Repetições, série {index + 1}</span>
+                        <TextInput
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={100000}
+                          step={1}
+                          value={set.reps}
+                          aria-label={`Repetições, série ${index + 1}`}
+                          aria-invalid={!!errors[`set${index}`]}
+                          aria-describedby={
+                            errors[`set${index}`] ? `set-error-${set.key}` : undefined
+                          }
+                          onChange={(event) => updateSet(set.key, 'reps', event.target.value)}
+                          placeholder="0"
+                          block
+                        />
+                      </label>
+                      <button
+                        className="complete-set"
+                        type="button"
+                        disabled={!isValidSet(set)}
+                        aria-label={`${isComplete ? 'Reabrir' : 'Concluir'} série ${index + 1}`}
+                        aria-pressed={isComplete}
+                        onClick={() => toggleComplete(set.key)}
+                      >
+                        <CheckIcon size={20} />
+                      </button>
+                      <button
+                        className="remove-set"
+                        type="button"
+                        aria-label={`Remover série ${index + 1}`}
+                        disabled={values.setDetails.length === 1}
+                        onClick={() =>
+                          changeSets((sets) => sets.filter((item) => item.key !== set.key))
+                        }
+                      >
+                        <TrashIcon size={14} />
+                      </button>
+                      {errors[`set${index}`] && (
+                        <Text className="set-error" id={`set-error-${set.key}`} role="alert">
+                          {errors[`set${index}`]}
+                        </Text>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {errors.setDetails && (
+                <Text role="alert" className="form-error">
+                  {errors.setDetails}
+                </Text>
+              )}
+              <div className="set-actions">
+                <Button
+                  type="button"
+                  leadingVisual={PlusIcon}
+                  disabled={values.setDetails.length >= MAX_WORKOUT_SETS}
+                  onClick={() => addSet()}
+                >
+                  Adicionar série
+                </Button>
+                <Button
+                  type="button"
+                  leadingVisual={CopyIcon}
+                  disabled={
+                    !values.setDetails.length || values.setDetails.length >= MAX_WORKOUT_SETS
+                  }
+                  onClick={() => addSet(true)}
+                >
+                  Repetir série
+                </Button>
+              </div>
+            </fieldset>
+          )}
+
+          {!cardio && (
+            <div className="session-summary" aria-live="polite">
+              <div>
+                <span>Séries válidas</span>
+                <strong>{validSetCount}</strong>
+              </div>
+              <div>
+                <span>Volume estimado</span>
+                <strong>
+                  {values.setDetails.every(isValidSet)
+                    ? `${calculateVolume(values).toLocaleString('pt-BR')} kg`
+                    : '—'}
+                </strong>
+              </div>
             </div>
-            <div>
-              <span>Volume estimado</span>
-              <strong>
-                {values.setDetails.every(isValidSet)
-                  ? `${calculateVolume(values).toLocaleString('pt-BR')} kg`
-                  : '—'}
-              </strong>
-            </div>
-          </div>
+          )}
 
           <details
             className="workout-details"
