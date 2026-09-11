@@ -39,9 +39,23 @@ service cloud.firestore {
         && (!policyExists || policy.published != true
           || (me.legalAcceptance.version == policy.version && me.legalAcceptance.digest == policy.digest))
         && (isAdmin || me.get('accountStatus', 'active') != 'disabled')
+        && (isAdmin || emailVerifiedOk(me))
         && (!restrictionExists
           || (get(restrictionRef).data.action == 'temporary_suspension'
             && get(restrictionRef).data.until <= request.time));
+    }
+
+    // Espelha EMAIL_VERIFICATION_CUTOFF/requiresEmailVerification em
+    // src/utils/emailVerification.js — mesma data, mesma fonte de dado
+    // (users/{uid}.createdAt), pra nunca o cliente liberar algo que o servidor nega ou
+    // vice-versa. Contas de antes do corte nunca precisaram verificar o e-mail (decisão
+    // de produto, não é retroativo); createdAt ausente cai no lado "não exige", pelo
+    // mesmo motivo defensivo do lado do cliente. Chamada como função (não guardada em
+    // `let`) de propósito: hasAppAccess/statusAccountOk já estão perto do teto de 10
+    // variáveis por função que já causou incidente em produção (ver comentário acima).
+    function emailVerifiedOk(me) {
+      return me.get('createdAt', timestamp.date(1970, 1, 1)) < timestamp.date(2026, 9, 12)
+        || request.auth.token.email_verified == true;
     }
 
     function communityAccessAllowed(communityId) {
@@ -437,6 +451,7 @@ service cloud.firestore {
         && (!policyExists || policy.published != true
           || (me.legalAcceptance.version == policy.version && me.legalAcceptance.digest == policy.digest))
         && (isAdmin || me.get('accountStatus', 'active') != 'disabled')
+        && (isAdmin || emailVerifiedOk(me))
         && (!restrictionExists
           || (get(restrictionRef).data.action == 'temporary_suspension'
             && get(restrictionRef).data.until <= request.time));

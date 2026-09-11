@@ -581,3 +581,22 @@ test('legacy workouts remain readable and can be converted on edit', async () =>
   )
   await assertSucceeds(deleteDoc(ref))
 })
+
+test('accounts created after the email verification cutoff need a verified token; earlier accounts are grandfathered', async () => {
+  const AFTER_CUTOFF = Timestamp.fromDate(new Date('2026-09-13T00:00:00Z'))
+  const BEFORE_CUTOFF = Timestamp.fromDate(new Date('2026-09-01T00:00:00Z'))
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore()
+    await setDoc(doc(db, 'users/newbie2'), { role: 'user', createdAt: AFTER_CUTOFF })
+    await setDoc(doc(db, 'users/veteran'), { role: 'user', createdAt: BEFORE_CUTOFF })
+  })
+  const unverifiedNew = env.authenticatedContext('newbie2', { email_verified: false }).firestore()
+  const verifiedNew = env.authenticatedContext('newbie2', { email_verified: true }).firestore()
+  const unverifiedVeteran = env.authenticatedContext('veteran', { email_verified: false }).firestore()
+
+  const exercise = { name: 'Supino', muscleGroup: 'Peito', active: true }
+  await assertFails(setDoc(doc(unverifiedNew, 'users/newbie2/exercises/bench'), exercise))
+  await assertSucceeds(setDoc(doc(verifiedNew, 'users/newbie2/exercises/bench'), exercise))
+  // Conta anterior ao corte: passa mesmo sem email_verified no token.
+  await assertSucceeds(setDoc(doc(unverifiedVeteran, 'users/veteran/exercises/bench'), exercise))
+})

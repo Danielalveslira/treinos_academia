@@ -1432,6 +1432,12 @@ body:has(.pwa-offline) .app-shell {
   overflow-wrap: anywhere;
   line-height: 1.7;
 }
+.email-verify-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
 .support-form {
   display: grid;
   gap: 20px;

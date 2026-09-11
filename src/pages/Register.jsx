@@ -2,7 +2,7 @@ import { AuthLayout } from '../components/PublicLayout'
 import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Button, FormControl, TextInput, Select, Link, Flash, Stack } from '@primer/react'
-import { registerUser } from '../services/authService'
+import { registerUser, setDisplayName, sendVerificationEmail } from '../services/authService'
 import {
   ensureUserProfile,
   setUsername,
@@ -84,6 +84,7 @@ export default function Register() {
         await ensureUserProfile(uid)
         await setUsername(uid, username)
         await setBirthInfo(uid, { sexo, dataNascimento: birthDate })
+        await setDisplayName(credential.user, username)
       } catch (postCreateErr) {
         // A conta no Authentication já existe nesse ponto, e os passos acima podem já
         // ter escrito o perfil (e reservado o @) no Firestore antes de falhar. Desfaz
@@ -105,6 +106,12 @@ export default function Register() {
         throw postCreateErr
       }
       setCreatedAccount(uid)
+      // Best-effort: um problema aqui não deve desfazer a conta que acabou de ser criada
+      // (diferente do bloco acima) — o usuário ainda consegue reenviar pelo próprio
+      // EmailVerificationGate assim que cair na tela de bloqueio.
+      sendVerificationEmail(credential.user).catch((sendErr) => {
+        console.error('[Auth] sendVerificationEmail:', sendErr)
+      })
       if (LEGAL_MANIFEST.published) await acceptLegalDocuments(confirmed)
       await refreshProfile(uid)
       // replace: mesmo motivo do Login — depois de autenticado, cadastro/login não devem
