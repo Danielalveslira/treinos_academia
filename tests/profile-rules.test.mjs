@@ -408,6 +408,79 @@ test('malformed payloads that used to crash the feed on render are rejected serv
   )
 })
 
+test('poll and workout statuses are capped in size like every other status type', async () => {
+  const base = (overrides = {}) => ({
+    communityId: 'gym',
+    authorId: 'owner',
+    authorUsername: 'owner',
+    authorIsSuperAdmin: false,
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+    ...overrides,
+  })
+  // poll.question e poll.options[].label não tinham teto de tamanho — diferente de
+  // text (500), achievement.text (300) e caption (280) — permitindo inflar o
+  // documento até perto do limite de 1MiB do Firestore.
+  await assertFails(
+    setDoc(
+      doc(owner, 'statuses/pollbigquestion'),
+      base({
+        type: 'poll',
+        poll: {
+          question: 'x'.repeat(201),
+          options: [{ id: '0', label: 'Sim' }, { id: '1', label: 'Não' }],
+        },
+      })
+    )
+  )
+  await assertFails(
+    setDoc(
+      doc(owner, 'statuses/pollbiglabel'),
+      base({
+        type: 'poll',
+        poll: {
+          question: 'Treinou?',
+          options: [{ id: '0', label: 'x'.repeat(81) }, { id: '1', label: 'Não' }],
+        },
+      })
+    )
+  )
+  await assertSucceeds(
+    setDoc(
+      doc(owner, 'statuses/pollmaxsize'),
+      base({
+        type: 'poll',
+        poll: {
+          question: 'x'.repeat(200),
+          options: [{ id: '0', label: 'x'.repeat(80) }, { id: '1', label: 'Não' }],
+        },
+      })
+    )
+  )
+  // Mesmo bug em workout.title/workout.location — confirmado ao vivo aceitando
+  // strings de até 100.000 caracteres antes desta correção.
+  const workout = (overrides = {}) =>
+    base({
+      type: 'workout',
+      workout: {
+        title: 'Peito',
+        date: Timestamp.now(),
+        location: 'Academia X',
+        ...overrides,
+      },
+    })
+  await assertFails(setDoc(doc(owner, 'statuses/workoutbigtitle'), workout({ title: 'x'.repeat(101) })))
+  await assertFails(
+    setDoc(doc(owner, 'statuses/workoutbiglocation'), workout({ location: 'x'.repeat(151) }))
+  )
+  await assertSucceeds(
+    setDoc(
+      doc(owner, 'statuses/workoutmaxsize'),
+      workout({ title: 'x'.repeat(100), location: 'x'.repeat(150) })
+    )
+  )
+})
+
 test('community postAccess restricts who may publish, enforced server-side', async () => {
   const status = (authorId, authorIsSuperAdmin, overrides = {}) => ({
     communityId: 'announcements',

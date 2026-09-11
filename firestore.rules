@@ -385,8 +385,8 @@ service cloud.firestore {
     // (PollStatus acessa option.id/option.label direto). Mesmo padrão de
     // "validar até um índice máximo fixo" já usado para setDetails (validSetAt acima).
     function isValidPollOption(option) {
-      return option.id is string && option.id.size() > 0
-        && option.label is string && option.label.size() > 0;
+      return option.id is string && option.id.size() > 0 && option.id.size() <= 20
+        && option.label is string && option.label.size() > 0 && option.label.size() <= 80;
     }
     function validPollOptionAt(options, index) {
       return options.size() <= index || isValidPollOption(options[index]);
@@ -396,7 +396,7 @@ service cloud.firestore {
       return (data.type == 'text' &&
           data.text is string && data.text.size() > 0 && data.text.size() <= 500)
         || (data.type == 'poll' &&
-          data.poll.question is string && data.poll.question.size() > 0
+          data.poll.question is string && data.poll.question.size() > 0 && data.poll.question.size() <= 200
           && data.poll.options is list && data.poll.options.size() >= 2 && data.poll.options.size() <= 6
           && validPollOptionAt(data.poll.options, 0)
           && validPollOptionAt(data.poll.options, 1)
@@ -405,9 +405,9 @@ service cloud.firestore {
           && validPollOptionAt(data.poll.options, 4)
           && validPollOptionAt(data.poll.options, 5))
         || (data.type == 'workout' &&
-          data.workout.title is string && data.workout.title.size() > 0
+          data.workout.title is string && data.workout.title.size() > 0 && data.workout.title.size() <= 100
           && data.workout.date is timestamp
-          && data.workout.location is string)
+          && data.workout.location is string && data.workout.location.size() <= 150)
         || (data.type == 'achievement' &&
           data.achievement.keys().hasOnly(['day', 'text', 'entries', 'sets'])
           && data.achievement.day is string

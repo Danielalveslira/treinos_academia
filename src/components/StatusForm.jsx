@@ -202,7 +202,12 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
           <>
             <FormControl required>
               <FormControl.Label>Pergunta</FormControl.Label>
-              <TextInput value={question} onChange={(e) => setQuestion(e.target.value)} block />
+              <TextInput
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                maxLength={200}
+                block
+              />
               {errors.question && (
                 <FormControl.Validation variant="error">{errors.question}</FormControl.Validation>
               )}
@@ -216,6 +221,7 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
                       value={option}
                       onChange={(e) => updateOption(index, e.target.value)}
                       placeholder={`Opção ${index + 1}`}
+                      maxLength={80}
                       block
                     />
                     {options.length > 2 && (
@@ -255,6 +261,7 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
                 value={workoutTitle}
                 onChange={(e) => setWorkoutTitle(e.target.value)}
                 placeholder="Ex.: Peito + Tríceps"
+                maxLength={100}
                 block
               />
               {errors.title && (
@@ -279,6 +286,7 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
                 value={workoutLocation}
                 onChange={(e) => setWorkoutLocation(e.target.value)}
                 placeholder="Ex.: Academia X"
+                maxLength={150}
                 block
               />
               {errors.location && (

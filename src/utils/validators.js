@@ -101,16 +101,20 @@ export function validateTextStatus({ text }) {
 export function validatePollStatus({ question, options }) {
   const errors = {}
   if (!question || !question.trim()) errors.question = 'Pergunta é obrigatória'
+  else if (question.trim().length > 200) errors.question = 'Pergunta muito longa'
   const filled = options.filter((o) => o.trim())
   if (filled.length < 2) errors.options = 'Adicione pelo menos 2 opções'
+  else if (filled.some((o) => o.trim().length > 80)) errors.options = 'Uma das opções está muito longa'
   return errors
 }
 
 export function validateWorkoutStatus({ title, date, location }) {
   const errors = {}
   if (!title || !title.trim()) errors.title = 'Título é obrigatório'
+  else if (title.trim().length > 100) errors.title = 'Título muito longo'
   if (!date) errors.date = 'Data é obrigatória'
   if (!location || !location.trim()) errors.location = 'Local é obrigatório'
+  else if (location.trim().length > 150) errors.location = 'Local muito longo'
   return errors
 }
 
