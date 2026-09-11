@@ -28,8 +28,18 @@ export function setDisplayName(user, displayName) {
 // estado atual do próprio Firebase Auth e atualiza o objeto `user` (inclusive
 // emailVerified) in place; é isso que EmailVerificationGate chama tanto ao montar quanto
 // no botão "Já verifiquei".
+//
+// reload() sozinho NÃO é suficiente: ele atualiza o objeto `user` local, mas o token de
+// ID que o Firestore/Storage/Functions realmente anexam em cada requisição só é
+// reemitido quando expira sozinho (até 1h) ou quando alguém força — email_verified é uma
+// claim gravada DENTRO desse token, não relida a cada chamada. Sem o getIdToken(true)
+// abaixo, o app mostra o conteúdo liberado (o objeto local diz emailVerified: true) mas
+// toda consulta ao Firestore continua sendo negada pelas regras, que leem o token antigo,
+// não o objeto local — foi exatamente esse o bug relatado (permissão negada mesmo depois
+// de verificar).
 export async function refreshEmailVerified(user) {
   await user.reload()
+  if (user.emailVerified) await user.getIdToken(true)
   return user.emailVerified
 }
 
