@@ -22,7 +22,10 @@ export default function NewWorkout() {
     try {
       await add(values)
       showToast('Treino registrado.')
-      navigate('/historico')
+      // replace: depois de enviado, o formulário não deve continuar no histórico — voltar
+      // não deve reabrir /novo-treino já usado, e sim a página de onde o usuário veio antes
+      // dele (Dashboard, Exercícios ou Histórico).
+      navigate('/historico', { replace: true })
     } catch (err) {
       console.error('[NewWorkout] create:', err)
       showToast('Erro ao registrar treino.', 'danger')
