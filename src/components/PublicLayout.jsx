@@ -59,7 +59,7 @@ export function AuthLayout({ children, title, description, footer }) {
         <section className="auth-intro" aria-label="Sobre o Treinos">
           <img
             className="auth-cover"
-            src="/capa.png"
+            src="/capa_principal.png"
             alt=""
             width="1145"
             height="1374"

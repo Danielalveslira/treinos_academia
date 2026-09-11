@@ -13,6 +13,7 @@ import {
 import { useDashboard } from '../hooks/useDashboard'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useAuth } from '../hooks/useAuth'
+import { getProfileHeroImage } from '../constants/profileHeroImage'
 import { DASHBOARD_HISTORY_DAYS, DASHBOARD_SAFETY_LIMIT } from '../services/workoutsService'
 import { calculateVolume, getTrainingConsistency } from '../utils/calculations'
 import { getDashboardGreeting } from '../utils/greeting'
@@ -46,6 +47,7 @@ export default function Dashboard() {
   const { recentWorkouts, allWorkouts, loading, error, refresh } = useDashboard()
   const { exercises } = useExercises()
   const { profile, user } = useAuth()
+  const heroImage = getProfileHeroImage(profile?.sexo)
   const exerciseNameById = useMemo(() => buildExerciseNameMap(exercises), [exercises])
   const consistency = useMemo(() => getTrainingConsistency(allWorkouts), [allWorkouts])
   const volume = useMemo(() => getVolumeTrend(allWorkouts), [allWorkouts])
@@ -93,7 +95,7 @@ export default function Dashboard() {
   if (recentWorkouts.length === 0) {
     return (
       <section className="empty-workout" aria-labelledby="empty-workout-title">
-        <img src="/capa.png" alt="Atleta fazendo barra fixa em uma academia" />
+        <img src={heroImage.src} alt={heroImage.alt} />
         <div className="empty-workout-content">
           <span className="eyebrow">COMECE HOJE</span>
           <Heading as="h1" id="empty-workout-title">
@@ -123,7 +125,7 @@ export default function Dashboard() {
       </header>
 
       <section className="workout-hero" aria-labelledby="next-workout-title">
-        <img src="/capa.png" alt="Atleta fazendo barra fixa em uma academia" />
+        <img src={heroImage.src} alt={heroImage.alt} />
         <div className="workout-hero-shade" />
         <div className="workout-hero-content">
           <span className="hero-kicker">
