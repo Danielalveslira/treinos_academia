@@ -371,7 +371,7 @@ export default function CommunityDetail() {
             <PeopleIcon size={24} />
           </Blankslate.Visual>
           <Blankslate.Heading>Comunidade não encontrada</Blankslate.Heading>
-          <Blankslate.PrimaryAction onClick={() => navigate('/comunidades')}>
+          <Blankslate.PrimaryAction onClick={() => navigate('/comunidades', { replace: true })}>
             Voltar
           </Blankslate.PrimaryAction>
         </Blankslate>

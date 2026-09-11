@@ -16,14 +16,22 @@ export function PublicLayout({ children }) {
         Pular para o conteúdo
       </a>
       <header className="public-header">
-        <Link to={user ? '/' : '/login'} className="brand">
+        <Link to={user ? '/' : '/login'} replace className="brand">
           <span className="brand-mark">
             <BrandMark size={28} />
           </span>
           Evolutus
         </Link>
         <nav aria-label="Navegação">
-          {user ? <NavLink to="/">Ir para o app</NavLink> : <NavLink to="/login">Entrar</NavLink>}
+          {user ? (
+            <NavLink to="/" replace>
+              Ir para o app
+            </NavLink>
+          ) : (
+            <NavLink to="/login" replace>
+              Entrar
+            </NavLink>
+          )}
           <IconButton
             icon={dark ? SunIcon : MoonIcon}
             aria-label={dark ? 'Ativar tema claro' : 'Ativar tema escuro'}

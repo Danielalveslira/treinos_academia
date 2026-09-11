@@ -80,10 +80,10 @@ export default function AdminCommunities() {
   return (
     <Box>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-        <Button as={Link} to="/admin/moderacao">
+        <Button as={Link} to="/admin/moderacao" replace>
           Atendimento e moderação
         </Button>
-        <Button as={Link} to="/admin/contas">
+        <Button as={Link} to="/admin/contas" replace>
           Contas
         </Button>
       </Box>

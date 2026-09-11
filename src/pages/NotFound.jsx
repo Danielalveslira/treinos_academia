@@ -19,7 +19,7 @@ export default function NotFound() {
           Página não encontrada
         </Heading>
         <Text sx={{ color: 'fg.muted' }}>O endereço acessado não existe ou foi movido.</Text>
-        <Button as={Link} to="/" variant="primary">
+        <Button as={Link} to="/" replace variant="primary">
           Voltar ao início
         </Button>
       </Box>

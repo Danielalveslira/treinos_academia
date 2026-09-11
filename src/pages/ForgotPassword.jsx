@@ -32,7 +32,7 @@ export default function ForgotPassword() {
       description="Informe o e-mail da sua conta para receber um link de recuperação."
       footer={
         <>
-          <Link as={RouterLink} to="/login">
+          <Link as={RouterLink} to="/login" replace>
             Voltar para entrar
           </Link>
         </>
