@@ -44,7 +44,6 @@ export default function NewWorkout() {
         <div>
           <span className="eyebrow">SESSÃO DE TREINO</span>
           <Heading as="h1">Vamos treinar</Heading>
-          <p>Registre uma série em poucos segundos. Uma mão é o bastante.</p>
         </div>
       </header>
 

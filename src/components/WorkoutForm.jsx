@@ -263,9 +263,7 @@ export function WorkoutForm({
       {step === 'group' && (
         <section className="workout-step" aria-labelledby="muscle-group-title">
           <div className="workout-step-heading">
-            <span>ETAPA 1 DE 3</span>
             <h2 id="muscle-group-title">Qual grupo você vai treinar?</h2>
-            <p>Escolha uma região para ver somente os exercícios dela.</p>
           </div>
           <div className="muscle-group-grid">
             {groups.map((group) => {
@@ -302,9 +300,7 @@ export function WorkoutForm({
             <ChevronLeftIcon size={16} /> Trocar grupo
           </button>
           <div className="workout-step-heading">
-            <span>ETAPA 2 DE 3 · {selectedGroup.toLocaleUpperCase('pt-BR')}</span>
             <h2 id="exercise-choice-title">Escolha o exercício</h2>
-            <p>Seus dados permanecem salvos enquanto você troca de opção.</p>
           </div>
           {groupCounts.get(selectedGroup) > 6 && (
             <label className="exercise-search">

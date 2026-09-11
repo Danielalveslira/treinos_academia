@@ -1954,7 +1954,6 @@ body {
 }
 
 .session-heading h1 { margin: 0; }
-.session-heading p { margin: 7px 0 0; color: var(--fgColor-muted); font-size: 14px; }
 
 .session-icon,
 .muscle-icon {
@@ -1978,28 +1977,30 @@ body {
 .workout-progress {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  margin-bottom: 22px;
+  gap: 4px;
+  margin-bottom: 16px;
 }
 
 .workout-progress span {
-  padding: 8px 10px;
+  padding: 5px 8px;
   border-radius: 999px;
-  background: var(--fitness-surface);
+  background: transparent;
   color: var(--fgColor-muted);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 10px;
+  font-weight: 600;
   text-align: center;
+  border: 1px solid var(--borderColor-muted);
 }
 
 .workout-progress span.is-current {
-  background: var(--fitness-accent);
-  color: #11170b;
+  border-color: var(--fitness-accent);
+  color: var(--fitness-accent-strong);
+  font-weight: 700;
 }
 
 .workout-progress span.is-done {
-  background: var(--fitness-accent-soft);
-  color: var(--fitness-accent-strong);
+  border-color: transparent;
+  background: var(--fitness-surface);
 }
 
 .workout-step { animation: workout-step-in .18s ease-out; }
@@ -2010,14 +2011,7 @@ body {
 }
 
 .workout-step-heading { margin-bottom: 18px; }
-.workout-step-heading > span {
-  color: var(--fitness-accent-strong);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .09em;
-}
-.workout-step-heading h2 { margin: 5px 0 4px; font-size: 24px; letter-spacing: -.025em; }
-.workout-step-heading p { margin: 0; color: var(--fgColor-muted); font-size: 13px; }
+.workout-step-heading h2 { margin: 0; font-size: 24px; letter-spacing: -.025em; }
 
 .muscle-group-grid {
   display: grid;
@@ -2483,7 +2477,6 @@ body {
   .recent-workout-row time { display: none; }
 
   .session-heading { gap: 12px; margin-bottom: 22px; }
-  .session-heading p { font-size: 12px; }
   .session-icon { width: 40px; height: 40px; }
   .workout-progress { position: sticky; top: 0; z-index: 4; margin-inline: -4px; padding: 4px; background: color-mix(in srgb, var(--bgColor-default) 94%, transparent); backdrop-filter: blur(10px); }
   .workout-progress span { padding-inline: 6px; font-size: 10px; }
