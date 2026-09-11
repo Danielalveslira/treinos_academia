@@ -11,6 +11,7 @@ export function EmailVerificationGate({ children }) {
   const [checking, setChecking] = useState(true)
   const [verified, setVerified] = useState(user.emailVerified)
   const [error, setError] = useState('')
+  const [pending, setPending] = useState(false)
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
   const [cooldown, setCooldown] = useState(0)
@@ -23,12 +24,20 @@ export function EmailVerificationGate({ children }) {
     }
   }, [])
 
-  async function checkStatus() {
+  // manual: true só quando vem do clique em "Já verifiquei" — aí, se ainda não estiver
+  // verificado, avisamos explicitamente (em vez de deixar o botão parecer que não fez
+  // nada). As checagens automáticas (montar/voltar à aba) continuam silenciosas nesse
+  // caso, porque "ainda não verificado" é o estado normal na maior parte do tempo.
+  async function checkStatus(manual = false) {
     setChecking(true)
     setError('')
+    if (manual) setPending(false)
     try {
       const isVerified = await refreshEmailVerified(user)
-      if (mounted.current) setVerified(isVerified)
+      if (mounted.current) {
+        setVerified(isVerified)
+        if (manual && !isVerified) setPending(true)
+      }
       return isVerified
     } catch {
       if (mounted.current) setError('Não foi possível checar agora. Tente novamente.')
@@ -40,8 +49,13 @@ export function EmailVerificationGate({ children }) {
 
   // Primeira checagem ao montar (cobre reabrir o app depois de verificar em outro
   // momento) e de novo sempre que a aba volta a ficar visível (cobre verificar em
-  // outra aba/dispositivo e voltar para esta sem precisar clicar em nada).
+  // outra aba/dispositivo e voltar para esta sem precisar clicar em nada). Para de
+  // checar sozinho assim que confirma a verificação — sem o guard, o listener ficava
+  // vivo pelo resto da sessão (este componente nunca desmonta depois de liberar o
+  // acesso, só passa a renderizar `children`), renovando o token à toa a cada troca de
+  // aba mesmo já tendo verificado há muito tempo.
   useEffect(() => {
+    if (verified) return undefined
     checkStatus()
     function onVisible() {
       if (document.visibilityState === 'visible') checkStatus()
@@ -49,7 +63,7 @@ export function EmailVerificationGate({ children }) {
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
+  }, [user, verified])
 
   // Contagem regressiva do cooldown de reenvio — só cosmética (o Firebase já recusa
   // reenvios em excesso com auth/too-many-requests de qualquer forma); evita o usuário
@@ -67,6 +81,7 @@ export function EmailVerificationGate({ children }) {
     setResending(true)
     setError('')
     setResent(false)
+    setPending(false)
     try {
       await sendVerificationEmail(user)
       if (mounted.current) {
@@ -99,11 +114,22 @@ export function EmailVerificationGate({ children }) {
             {error}
           </Flash>
         )}
-        {resent && !error && (
+        {!error && pending && (
+          <Flash variant="attention">
+            Ainda não identificamos a verificação. Confira sua caixa de entrada (e o spam) — o
+            link pode levar alguns instantes para ser processado depois do clique.
+          </Flash>
+        )}
+        {resent && !error && !pending && (
           <Flash variant="success">E-mail reenviado para {user.email}.</Flash>
         )}
         <div className="email-verify-actions">
-          <Button variant="primary" onClick={checkStatus} loading={checking} disabled={checking}>
+          <Button
+            variant="primary"
+            onClick={() => checkStatus(true)}
+            loading={checking}
+            disabled={checking}
+          >
             Já verifiquei
           </Button>
           <Button onClick={handleResend} loading={resending} disabled={resending || cooldown > 0}>
