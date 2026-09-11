@@ -22,7 +22,10 @@ export default function Login() {
     setSubmitting(true)
     try {
       await loginUser(email, password)
-      navigate('/')
+      // replace: a tela de login não deve continuar no histórico depois de autenticado —
+      // sem isso, o botão voltar reabre /login, que se redireciona de volta pra "/" (linha
+      // acima), exigindo dois toques do voltar para sair de fato da tela de login.
+      navigate('/', { replace: true })
     } catch (err) {
       console.error('[Auth] login:', err)
       setError(translateAuthError(err))
@@ -38,7 +41,7 @@ export default function Login() {
       footer={
         <>
           Ainda não tem conta?{' '}
-          <Link as={RouterLink} to="/cadastro">
+          <Link as={RouterLink} to="/cadastro" replace>
             Criar conta
           </Link>
         </>
@@ -87,7 +90,7 @@ export default function Login() {
             Entrar
           </Button>
 
-          <Link as={RouterLink} to="/esqueci-senha" className="auth-recovery">
+          <Link as={RouterLink} to="/esqueci-senha" className="auth-recovery" replace>
             Esqueci minha senha
           </Link>
         </Stack>

@@ -65,7 +65,9 @@ export default function Register() {
       if (createdAccount) {
         await acceptLegalDocuments(confirmed)
         await refreshProfile(createdAccount)
-        navigate('/')
+        // replace: mesmo motivo do Login — depois de autenticado, cadastro/login não devem
+        // continuar acessíveis pelo botão voltar.
+        navigate('/', { replace: true })
         return
       }
       // Valida o @ antes de criar a conta no Authentication: assim uma tentativa
@@ -105,7 +107,9 @@ export default function Register() {
       setCreatedAccount(uid)
       if (LEGAL_MANIFEST.published) await acceptLegalDocuments(confirmed)
       await refreshProfile(uid)
-      navigate('/')
+      // replace: mesmo motivo do Login — depois de autenticado, cadastro/login não devem
+      // continuar acessíveis pelo botão voltar.
+      navigate('/', { replace: true })
     } catch (err) {
       console.error('[Auth] register:', err)
       setError(
@@ -125,7 +129,7 @@ export default function Register() {
       footer={
         <>
           Já tem uma conta?{' '}
-          <Link as={RouterLink} to="/login">
+          <Link as={RouterLink} to="/login" replace>
             Entrar
           </Link>
         </>
