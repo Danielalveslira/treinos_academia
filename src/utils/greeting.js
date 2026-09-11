@@ -40,7 +40,12 @@ function stableIndex(key, length) {
   return hash % length
 }
 
-const TRAINED_EYEBROW = 'TREINO CONCLUÍDO'
+// Frase de impacto fixa: substitui as antigas variações de eyebrow por período do dia
+// ("BOM DIA"/"BOA TARDE"/"BOA NOITE") e pós-treino ("TREINO CONCLUÍDO"), que repetiam a
+// mesma saudação do heading logo acima dela (ex.: "BOM DIA" + "Bom dia, fulano...").
+// Sempre a mesma, em qualquer estado — não é mais parte da variação por período/trained.
+export const IMPACT_EYEBROW = 'SEM PROGRESSÃO.\nSEM RESULTADOS.'
+
 const TRAINED_MESSAGES = [
   (name) => `Treino de hoje concluído, ${name}. Boa.`,
   (name) => `Mandou bem hoje, ${name}.`,
@@ -50,28 +55,19 @@ const TRAINED_MESSAGES = [
   (name) => `Boa, ${name}. Treino registrado hoje.`,
 ]
 
-const PERIODS = {
-  morning: {
-    eyebrow: 'BOM DIA',
-    messages: [
-      (name) => `Bom dia, ${name}. Pronto para treinar?`,
-      (name) => `Começando o dia treinando, ${name}?`,
-    ],
-  },
-  afternoon: {
-    eyebrow: 'BOA TARDE',
-    messages: [
-      (name) => `Boa tarde, ${name}. Pronto para evoluir?`,
-      (name) => `Vamos treinar, ${name}?`,
-    ],
-  },
-  night: {
-    eyebrow: 'BOA NOITE',
-    messages: [
-      (name) => `Boa noite, ${name}. Ainda dá tempo de treinar.`,
-      (name) => `Fechar o dia com um treino, ${name}?`,
-    ],
-  },
+const PERIOD_MESSAGES = {
+  morning: [
+    (name) => `Bom dia, ${name}. Pronto para treinar?`,
+    (name) => `Começando o dia treinando, ${name}?`,
+  ],
+  afternoon: [
+    (name) => `Boa tarde, ${name}. Pronto para evoluir?`,
+    (name) => `Vamos treinar, ${name}?`,
+  ],
+  night: [
+    (name) => `Boa noite, ${name}. Ainda dá tempo de treinar.`,
+    (name) => `Fechar o dia com um treino, ${name}?`,
+  ],
 }
 
 // now: injetável para teste; em produção é sempre a hora local de verdade (new Date()).
@@ -81,10 +77,10 @@ export function getDashboardGreeting({ firstName, workouts, now = new Date(), ui
 
   if (trainedToday) {
     const index = stableIndex(`${uid}:${dayKey}:trained`, TRAINED_MESSAGES.length)
-    return { eyebrow: TRAINED_EYEBROW, heading: TRAINED_MESSAGES[index](firstName), trainedToday }
+    return { eyebrow: IMPACT_EYEBROW, heading: TRAINED_MESSAGES[index](firstName), trainedToday }
   }
 
-  const period = PERIODS[periodOfDay(now.getHours())]
-  const index = stableIndex(`${uid}:${dayKey}:${periodOfDay(now.getHours())}`, period.messages.length)
-  return { eyebrow: period.eyebrow, heading: period.messages[index](firstName), trainedToday }
+  const messages = PERIOD_MESSAGES[periodOfDay(now.getHours())]
+  const index = stableIndex(`${uid}:${dayKey}:${periodOfDay(now.getHours())}`, messages.length)
+  return { eyebrow: IMPACT_EYEBROW, heading: messages[index](firstName), trainedToday }
 }
