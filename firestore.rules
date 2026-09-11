@@ -104,7 +104,12 @@ service cloud.firestore {
 
     function isValidExercise(data) {
       return data.name is string && data.name.size() > 0 && data.name.size() <= 60
-        && data.muscleGroup is string && data.muscleGroup.size() > 0
+        // Sem teto até aqui — o formulário só oferecia uma lista fixa de grupos, então
+        // nada gravava um valor arbitrariamente grande, mas o campo sempre foi texto
+        // livre nesta regra. Agora que o formulário deixa criar grupos personalizados
+        // (digitar texto de verdade), o mesmo campo passa a receber entrada direta do
+        // usuário — precisa do mesmo teto que os demais campos de texto do app.
+        && data.muscleGroup is string && data.muscleGroup.size() > 0 && data.muscleGroup.size() <= 30
         && data.active is bool
         && (!('note' in data) || data.note is string && data.note.size() <= 300);
     }

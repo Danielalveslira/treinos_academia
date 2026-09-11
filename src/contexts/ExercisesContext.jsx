@@ -19,7 +19,7 @@ function byName(a, b) {
 function normalize(exercise) {
   return {
     name: exercise.name.trim(),
-    muscleGroup: exercise.muscleGroup,
+    muscleGroup: exercise.muscleGroup.trim(),
     note: exercise.note?.trim() || '',
   }
 }

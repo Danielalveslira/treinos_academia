@@ -145,9 +145,12 @@ export default function Exercises() {
         )}
       </header>
 
-      {formOpen && <ExerciseForm onSubmit={handleCreate} onCancel={() => setFormOpen(false)} />}
+      {formOpen && (
+        <ExerciseForm exercises={exercises} onSubmit={handleCreate} onCancel={() => setFormOpen(false)} />
+      )}
       {editingExercise && (
         <ExerciseForm
+          exercises={exercises}
           initialValue={editingExercise}
           onSubmit={handleUpdate}
           onCancel={() => setEditingExercise(null)}

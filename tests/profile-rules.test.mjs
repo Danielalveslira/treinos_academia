@@ -670,6 +670,26 @@ test('legacy workouts remain readable and can be converted on edit', async () =>
   await assertSucceeds(deleteDoc(ref))
 })
 
+test('exercise name and muscleGroup are capped, so a custom group typed by hand cannot inflate the document', async () => {
+  const exercise = (overrides = {}) => ({ name: 'Supino', muscleGroup: 'Peito', active: true, ...overrides })
+  await assertFails(setDoc(doc(owner, 'users/owner/exercises/e1'), exercise({ name: 'x'.repeat(61) })))
+  await assertSucceeds(setDoc(doc(owner, 'users/owner/exercises/e1'), exercise({ name: 'x'.repeat(60) })))
+  // muscleGroup nunca teve teto de tamanho nesta regra — antes só o formulário travava
+  // numa lista fixa de opções; agora que dá pra digitar um grupo novo, o mesmo campo
+  // recebe entrada direta do usuário e precisa do mesmo tipo de teto que os outros
+  // campos de texto do app.
+  await assertFails(
+    setDoc(doc(owner, 'users/owner/exercises/e2'), exercise({ muscleGroup: 'x'.repeat(31) }))
+  )
+  await assertSucceeds(
+    setDoc(doc(owner, 'users/owner/exercises/e2'), exercise({ muscleGroup: 'x'.repeat(30) }))
+  )
+  // Grupo personalizado de verdade (fora da lista fixa) continua livre, só respeitando o teto.
+  await assertSucceeds(
+    setDoc(doc(owner, 'users/owner/exercises/e3'), exercise({ muscleGroup: 'Explosão' }))
+  )
+})
+
 test('accounts created after the email verification cutoff need a verified token; earlier accounts are grandfathered', async () => {
   const AFTER_CUTOFF = Timestamp.fromDate(new Date('2026-09-13T00:00:00Z'))
   const BEFORE_CUTOFF = Timestamp.fromDate(new Date('2026-09-01T00:00:00Z'))

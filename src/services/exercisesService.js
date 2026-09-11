@@ -28,7 +28,7 @@ export async function listExercises(userId) {
 export function createExercise(userId, exercise) {
   return addDoc(exercisesRef(userId), {
     name: exercise.name.trim(),
-    muscleGroup: exercise.muscleGroup,
+    muscleGroup: exercise.muscleGroup.trim(),
     note: exercise.note?.trim() || '',
     active: true,
   })
@@ -37,7 +37,7 @@ export function createExercise(userId, exercise) {
 export function updateExercise(userId, exerciseId, exercise) {
   return updateDoc(doc(db, 'users', userId, 'exercises', exerciseId), {
     name: exercise.name.trim(),
-    muscleGroup: exercise.muscleGroup,
+    muscleGroup: exercise.muscleGroup.trim(),
     note: exercise.note?.trim() || '',
     active: exercise.active,
   })

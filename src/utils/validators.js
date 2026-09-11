@@ -49,7 +49,8 @@ export function validateExercise({ name, muscleGroup }) {
   const errors = {}
   if (!name || !name.trim()) errors.name = 'Nome é obrigatório'
   else if (name.trim().length > 60) errors.name = 'Nome muito longo'
-  if (!muscleGroup) errors.muscleGroup = 'Grupo muscular é obrigatório'
+  if (!muscleGroup || !muscleGroup.trim()) errors.muscleGroup = 'Grupo muscular é obrigatório'
+  else if (muscleGroup.trim().length > 30) errors.muscleGroup = 'Nome do grupo muito longo'
   return errors
 }
 

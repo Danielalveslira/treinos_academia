@@ -1,28 +1,46 @@
 import { useState } from 'react'
-import { Box, Button, FormControl, TextInput, Select, Textarea, Stack } from '@primer/react'
-import { MUSCLE_GROUPS } from '../constants/muscleGroups'
+import { Box, Button, FormControl, TextInput, Select, Textarea, Stack, Link } from '@primer/react'
+import { MUSCLE_GROUPS, mergeCustomGroups, resolveMuscleGroup } from '../constants/muscleGroups'
 import { validateExercise, hasErrors } from '../utils/validators'
 
 const EMPTY = { name: '', muscleGroup: MUSCLE_GROUPS[0], note: '', active: true }
+const NEW_GROUP_OPTION = '__new__'
 
-export function ExerciseForm({ initialValue, onSubmit, onCancel }) {
+export function ExerciseForm({ initialValue, exercises, onSubmit, onCancel }) {
   const [values, setValues] = useState(initialValue || EMPTY)
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
+  const [creatingGroup, setCreatingGroup] = useState(false)
+  const muscleGroups = mergeCustomGroups(exercises)
 
   function setField(field, value) {
     setValues((prev) => ({ ...prev, [field]: value }))
   }
 
+  function handleGroupSelect(value) {
+    if (value === NEW_GROUP_OPTION) {
+      setCreatingGroup(true)
+      setField('muscleGroup', '')
+    } else {
+      setField('muscleGroup', value)
+    }
+  }
+
+  function cancelNewGroup() {
+    setCreatingGroup(false)
+    setField('muscleGroup', muscleGroups[0])
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
-    const validationErrors = validateExercise(values)
+    const finalValues = { ...values, muscleGroup: resolveMuscleGroup(values.muscleGroup, muscleGroups) }
+    const validationErrors = validateExercise(finalValues)
     setErrors(validationErrors)
     if (hasErrors(validationErrors)) return
 
     setSubmitting(true)
     try {
-      await onSubmit(values)
+      await onSubmit(finalValues)
     } finally {
       setSubmitting(false)
     }
@@ -50,17 +68,34 @@ export function ExerciseForm({ initialValue, onSubmit, onCancel }) {
 
         <FormControl required>
           <FormControl.Label>Grupo muscular</FormControl.Label>
-          <Select
-            value={values.muscleGroup}
-            onChange={(e) => setField('muscleGroup', e.target.value)}
-            block
-          >
-            {MUSCLE_GROUPS.map((group) => (
-              <Select.Option key={group} value={group}>
-                {group}
-              </Select.Option>
-            ))}
-          </Select>
+          {creatingGroup ? (
+            <>
+              <TextInput
+                value={values.muscleGroup}
+                onChange={(e) => setField('muscleGroup', e.target.value)}
+                placeholder="Nome do novo grupo"
+                block
+                autoFocus
+              />
+              <FormControl.Caption>
+                <Link as="button" type="button" onClick={cancelNewGroup}>
+                  Escolher um grupo existente
+                </Link>
+              </FormControl.Caption>
+            </>
+          ) : (
+            <Select value={values.muscleGroup} onChange={(e) => handleGroupSelect(e.target.value)} block>
+              {muscleGroups.map((group) => (
+                <Select.Option key={group} value={group}>
+                  {group}
+                </Select.Option>
+              ))}
+              <Select.Option value={NEW_GROUP_OPTION}>+ Criar novo grupo…</Select.Option>
+            </Select>
+          )}
+          {errors.muscleGroup && (
+            <FormControl.Validation variant="error">{errors.muscleGroup}</FormControl.Validation>
+          )}
         </FormControl>
 
         <FormControl>

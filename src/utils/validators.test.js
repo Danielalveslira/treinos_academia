@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { validateBirthDate, validateSexo, hasErrors } from './validators.js'
+import { validateBirthDate, validateSexo, validateExercise, hasErrors } from './validators.js'
 
 test('validateBirthDate requires a real calendar date, never in the future', () => {
   assert.deepEqual(validateBirthDate(''), { birthDate: 'Data de nascimento é obrigatória' })
@@ -32,4 +32,17 @@ test('validateSexo accepts the three known options, null/undefined, and rejects 
   assert.equal(hasErrors(validateSexo(null)), false)
   assert.equal(hasErrors(validateSexo(undefined)), false)
   assert.equal(hasErrors(validateSexo('outro-valor-qualquer')), true)
+})
+
+test('validateExercise requires name and muscleGroup, and bounds both lengths', () => {
+  assert.equal(hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'Peito' })), false)
+  assert.match(validateExercise({ name: '', muscleGroup: 'Peito' }).name, /obrigatório/)
+  assert.match(validateExercise({ name: 'x'.repeat(61), muscleGroup: 'Peito' }).name, /longo/)
+  assert.match(validateExercise({ name: 'Supino', muscleGroup: '' }).muscleGroup, /obrigatório/)
+  assert.match(validateExercise({ name: 'Supino', muscleGroup: '   ' }).muscleGroup, /obrigatório/)
+  // Grupo personalizado (digitado no formulário, não escolhido de uma lista fixa) —
+  // mesmo teto aplicado nas firestore.rules (isValidExercise), pra nunca aceitar no
+  // cliente o que o servidor recusaria.
+  assert.match(validateExercise({ name: 'Supino', muscleGroup: 'x'.repeat(31) }).muscleGroup, /longo/)
+  assert.equal(hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'x'.repeat(30) })), false)
 })
