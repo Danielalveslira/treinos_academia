@@ -88,8 +88,13 @@ export function validateDecision(data) {
   ) {
     return 'Informe uma suspensão entre 1 e 30 dias.'
   }
-  if (data.action === 'community_ban' && !validId(data.communityId)) return 'Informe a comunidade.'
-  if (data.action === 'restore' && data.communityId && !validId(data.communityId))
+  // Formato validado sempre que presente (não só para community_ban/restore) — o
+  // valor é interpolado num caminho do Firestore (deletionJobs/community_${communityId})
+  // antes de qualquer checagem específica de ação, em decideSupportRequest. Sem isso,
+  // um valor malformado em qualquer outra ação batia num erro interno feio do
+  // db.doc() em vez de cair aqui como mensagem de validação limpa.
+  if (data.communityId != null && data.communityId !== '' && !validId(data.communityId))
     return 'Comunidade inválida.'
+  if (data.action === 'community_ban' && !data.communityId) return 'Informe a comunidade.'
   return null
 }

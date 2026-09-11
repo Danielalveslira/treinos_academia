@@ -241,6 +241,21 @@ test('achievement publication requires membership and safe payload; author may d
   await assertFails(
     setDoc(doc(owner, 'statuses/negative'), status({ achievement: { ...achievement, sets: -1 } }))
   )
+  // Mês/dia fora da faixa de calendário (13, 40) eram aceitos pelo formato antigo
+  // (só checava dígitos, sem faixa) — o cliente nunca envia isso (day vem de
+  // localDayKey(), sempre uma data real), mas o servidor não devia depender só disso.
+  await assertFails(
+    setDoc(
+      doc(owner, 'statuses/badmonth'),
+      status({ achievement: { ...achievement, day: '2026-13-01' } })
+    )
+  )
+  await assertFails(
+    setDoc(
+      doc(owner, 'statuses/badday'),
+      status({ achievement: { ...achievement, day: '2026-01-40' } })
+    )
+  )
   const outsider = env.authenticatedContext('outsider').firestore()
   await assertFails(setDoc(doc(outsider, 'statuses/outsider'), status({ authorId: 'outsider' })))
   await assertFails(deleteDoc(doc(visitor, 'statuses/achievement')))

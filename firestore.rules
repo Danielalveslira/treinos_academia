@@ -411,7 +411,10 @@ service cloud.firestore {
         || (data.type == 'achievement' &&
           data.achievement.keys().hasOnly(['day', 'text', 'entries', 'sets'])
           && data.achievement.day is string
-          && data.achievement.day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          // Mês 01-12 e dia 01-31 (sem checar dias por mês/ano bissexto — regras não
+          // fazem aritmética de calendário; isso já barra valores impossíveis como
+          // mês 13 ou dia 40, que o formato antigo aceitava).
+          && data.achievement.day.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
           && data.achievement.text is string && data.achievement.text.size() <= 300
           && data.achievement.entries is int && data.achievement.entries >= 0
           && data.achievement.sets is number && data.achievement.sets >= 0

@@ -144,3 +144,28 @@ test('validateDecision bounds temporary_suspension to 1-30 days and requires com
     null
   )
 })
+
+test('validateDecision rejects a malformed communityId regardless of action, before it reaches a Firestore path', () => {
+  const base = {
+    requestId: 'req-1',
+    reason: 'motivo detalhado aqui',
+    rule: 'regra 2',
+    evidence: 'print anexado',
+  }
+  // communityId com "/" (ou outro formato inválido) usado num caminho do Firestore
+  // (deletionJobs/community_${communityId}) antes de qualquer checagem específica de
+  // ação, em decideSupportRequest — precisa ser barrado aqui, não só para
+  // community_ban/restore, senão vira um erro interno do db.doc() em vez de uma
+  // mensagem de validação limpa.
+  assert.match(
+    validateDecision({ ...base, action: 'no_action', communityId: 'gym/evil' }),
+    /Comunidade inválida/
+  )
+  assert.match(
+    validateDecision({ ...base, action: 'remove_content', communityId: 'gym/evil' }),
+    /Comunidade inválida/
+  )
+  // communityId ausente ou vazio continua permitido para ações que não o exigem.
+  assert.equal(validateDecision({ ...base, action: 'no_action' }), null)
+  assert.equal(validateDecision({ ...base, action: 'no_action', communityId: '' }), null)
+})
