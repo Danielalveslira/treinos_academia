@@ -110,7 +110,6 @@ export default function History() {
         <div>
           <span className="eyebrow">SUA EVOLUÇÃO</span>
           <Heading as="h1">Histórico</Heading>
-          <p>Reveja sessões, cargas e volume sem perder o ritmo.</p>
         </div>
         <Button leadingVisual={SyncIcon} onClick={refresh} loading={loading} disabled={loading}>
           Atualizar

@@ -121,7 +121,6 @@ export default function Exercises() {
         <div>
           <span className="eyebrow">SUA BIBLIOTECA</span>
           <Heading as="h1">Exercícios</Heading>
-          <p>Organize movimentos e acompanhe a evolução de cada grupo muscular.</p>
           {hasAnyExercise && (
             <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: 1, mb: 0 }}>
               {exercises.length} exercício{exercises.length === 1 ? '' : 's'} em {grouped.length}{' '}

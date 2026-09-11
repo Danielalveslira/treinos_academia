@@ -1618,12 +1618,6 @@ body {
   margin: 0;
 }
 
-.page-title-row p {
-  margin: 8px 0 0;
-  color: var(--fgColor-muted);
-  font-size: 14px;
-}
-
 .page-title-row > button,
 .dashboard-greeting > button {
   min-height: 34px;
@@ -2457,7 +2451,6 @@ body {
   .main-content h1 { font-size: 29px; }
   .page-title-row,
   .dashboard-greeting { align-items: center; margin-bottom: 22px; }
-  .page-title-row p { max-width: 260px; font-size: 12px; }
 
   .workout-hero { min-height: 410px; border-radius: 20px; }
   .workout-hero > img { inset: 0; width: 100%; object-position: center 22%; opacity: .84; }
