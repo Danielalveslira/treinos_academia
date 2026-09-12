@@ -4,6 +4,7 @@ import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/fire
 import { createDeletionService, statusPhotoExtra } from './deletion-service.js'
 import { createBumpMemberCount } from './community-members-service.js'
 import { createSyncUserCommunityIds } from './user-communities-sync.js'
+import { createEnforcePostRateLimit } from './rate-limit-service.js'
 import { validId } from './legal-core.js'
 import { accountView, validateSetAccountStatus, validateDeleteAccount } from './admin-core.js'
 import { readFileSync } from 'node:fs'
@@ -415,6 +416,15 @@ export const onCommunityMemberLeave = onDocumentDeleted(
       syncUserCommunityIds(data?.userId, data?.communityId, 'leave'),
     ])
   }
+)
+
+// Achado #3 da auditoria de segurança: rate limit de publicações. Roda depois da escrita
+// já ter acontecido (onCreate, não bloqueia o primeiro post de um flood) de propósito —
+// ver rate-limit-service.js para por que não entrou nas regras de canCreateStatus().
+const enforcePostRateLimit = createEnforcePostRateLimit({ db, FieldValue, Timestamp })
+export const onStatusCreate = onDocumentCreated(
+  { ...options, document: 'statuses/{statusId}' },
+  (event) => enforcePostRateLimit(event.data?.data()?.authorId)
 )
 
 export const processDeletionJobs = onSchedule(
