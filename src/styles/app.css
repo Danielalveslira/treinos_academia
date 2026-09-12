@@ -1036,6 +1036,57 @@ body:has(.pwa-offline) .app-shell {
   border-radius: 8px;
   background: var(--bgColor-default);
 }
+.sponsored-ad-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--fitness-accent);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: var(--fitness-accent-soft);
+}
+.sponsored-ad-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  color: var(--fitness-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sponsored-ad-image {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.sponsored-ad-partner {
+  display: block;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+}
+.sponsored-ad-title {
+  display: block;
+  margin-top: 2px;
+  font-size: 15px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.sponsored-ad-description {
+  display: block;
+  margin-top: 6px;
+  color: var(--fgColor-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.sponsored-ad-cta {
+  margin-top: 12px;
+}
+
 .status-header {
   display: flex;
   align-items: flex-start;

@@ -11,6 +11,7 @@ import {
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunityFeed } from '../hooks/useCommunityFeed'
+import { useSponsoredAds } from '../hooks/useSponsoredAds'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { getCommunity } from '../services/communitiesService'
@@ -25,6 +26,7 @@ import { describeFirestoreError } from '../utils/firestoreError'
 import { AchievementForm } from '../components/AchievementForm'
 import { StatusForm } from '../components/StatusForm'
 import { StatusCard } from '../components/StatusCard'
+import { SponsoredAdCard } from '../components/SponsoredAdCard'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 
@@ -53,6 +55,11 @@ export default function CommunityDetail() {
     remove,
     now,
   } = useCommunityFeed(id)
+
+  // enabled=member: só busca depois de confirmar participação, nunca antes -- ver
+  // comentário em useSponsoredAds.js sobre por que isso é obrigatório, não só uma
+  // otimização.
+  const { feedAds } = useSponsoredAds(id, member)
 
   const loadCommunity = useCallback(async () => {
     setLoadingCommunity(true)
@@ -348,6 +355,9 @@ export default function CommunityDetail() {
               )}
 
               <div className="community-feed">
+                {feedAds.map((ad) => (
+                  <SponsoredAdCard key={ad.id} ad={ad} />
+                ))}
                 {statuses.map((status) => (
                   <StatusCard
                     key={status.id}
