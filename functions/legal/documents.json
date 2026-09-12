@@ -61,8 +61,7 @@
     "description": "O que você precisa saber sobre sua conta, o serviço e seus direitos.",
     "summary": [
       "Você mantém os direitos sobre o conteúdo que publica.",
-      "O Treinos organiza seus registros de treino; não substitui orientação médica.",
-      "Quando houver cobrança, você pode cancelar quando quiser e tem 7 dias de arrependimento."
+      "O Treinos organiza seus registros de treino; não substitui orientação médica."
     ],
     "sections": [
       {
@@ -72,15 +71,6 @@
           "Cadastro com e-mail, senha e nome de usuário — mantenha seus dados corretos e sua senha protegida.",
           "Uso a partir de 18 anos.",
           "Você aceita estes Termos, as Regras da Comunidade e confirma a leitura da Política de Privacidade."
-        ]
-      },
-      {
-        "id": "planos",
-        "title": "Assinaturas e cancelamento",
-        "items": [
-          "A cobrança, quando ativada, só começa após você confirmar preço, periodicidade e forma de pagamento.",
-          "Cancele quando quiser pelo atendimento — sem multa.",
-          "Nas contratações online você tem 7 dias de arrependimento (art. 49 do CDC), com devolução integral."
         ]
       },
       {
@@ -105,12 +95,8 @@
     ],
     "sources": [
       {
-        "label": "Código de Defesa do Consumidor — arts. 46, 49 e 51",
+        "label": "Código de Defesa do Consumidor — arts. 46 e 51",
         "href": "https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm"
-      },
-      {
-        "label": "Decreto nº 7.962/2013 — comércio eletrônico",
-        "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm"
       }
     ]
   },

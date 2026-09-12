@@ -1,9 +1,9 @@
 {
-  "version": "1.0.0",
-  "date": "2026-09-09",
+  "version": "1.1.0",
+  "date": "2026-09-12",
   "published": true,
   "controllerName": "Wellington Daniel Alves de Lira",
   "contactEmail": "dnllira1@gmail.com",
   "minimumAge": 18,
-  "changes": ["Primeira edição: regras da comunidade, termos de uso e política de privacidade em documentos separados."]
+  "changes": ["Termos de Uso: removida a seção sobre assinaturas e cobrança — o app não tem sistema de pagamento no momento."]
 }
