@@ -1720,7 +1720,7 @@ body {
 
 .performance-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: -1px 20px 44px;
   overflow: hidden;
   border-radius: 0 0 var(--fitness-radius-md) var(--fitness-radius-md);
@@ -1820,16 +1820,16 @@ body {
 
 .streak-pip {
   display: block;
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
   background: var(--bgColor-default);
   border: 1px solid var(--borderColor-muted);
 }
 
 .streak-pip.is-trained {
-  border-color: transparent;
-  background: var(--fitness-accent);
+  border-color: var(--fitness-accent);
+  background: var(--fitness-accent-soft);
 }
 
 .streak-pip.is-today:not(.is-trained) {
@@ -2595,9 +2595,8 @@ body {
   .start-workout-button[data-variant='primary'] { width: 100%; justify-content: center; min-height: 52px; }
   .performance-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 8px 34px; border-radius: 0 0 16px 16px; }
   .performance-strip > div { padding: 16px 12px; }
-  .performance-strip > div:nth-child(3)::before { inset: 0 10px auto; width: auto; height: 1px; }
-  .performance-strip > div:nth-child(3),
-  .performance-strip > div:nth-child(4) { border-top: 1px solid transparent; }
+  .performance-strip > div:last-child { grid-column: 1 / -1; border-top: 1px solid transparent; }
+  .performance-strip > div:last-child::before { inset: 0 10px auto; width: auto; height: 1px; }
   .performance-strip strong { font-size: 15px; }
   .performance-strip small { right: 8px; bottom: 15px; }
   .recent-workout-row { grid-template-columns: 26px minmax(0, 1fr); }

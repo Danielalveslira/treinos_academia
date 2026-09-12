@@ -4,7 +4,6 @@ import { Box, Button, Heading, Spinner } from '@primer/react'
 import {
   ArrowRightIcon,
   CalendarIcon,
-  FlameIcon,
   GraphIcon,
   PlayIcon,
   PulseIcon,
@@ -194,11 +193,6 @@ export default function Dashboard() {
       <StreakCard streak={dailyStreak} />
 
       <section className="performance-strip" aria-label="Resumo do progresso">
-        <div>
-          <FlameIcon size={18} />
-          <span>Sequência semanal</span>
-          <strong>{consistency.streak} sem</strong>
-        </div>
         <div>
           <CalendarIcon size={18} />
           <span>Esta semana</span>
