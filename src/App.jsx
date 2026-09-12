@@ -19,6 +19,7 @@ const History = lazy(routeLoaders['/historico'])
 const Communities = lazy(routeLoaders['/comunidades'])
 const CommunityDetail = lazy(() => import('./pages/CommunityDetail'))
 const AdminCommunities = lazy(() => import('./pages/AdminCommunities'))
+const AdminSponsoredAds = lazy(() => import('./pages/AdminSponsoredAds'))
 const PublicProfile = lazy(() => import('./pages/PublicProfile'))
 const Profile = lazy(() => import('./pages/Profile'))
 const LegalDocument = lazy(() => import('./pages/LegalDocument'))
@@ -94,6 +95,14 @@ export default function App() {
               element={
                 <SuperAdminRoute>
                   <AdminCommunities />
+                </SuperAdminRoute>
+              }
+            />
+            <Route
+              path="/admin/parcerias"
+              element={
+                <SuperAdminRoute>
+                  <AdminSponsoredAds />
                 </SuperAdminRoute>
               }
             />

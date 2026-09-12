@@ -166,6 +166,9 @@ export default function AdminAccounts() {
         <Button as={Link} to="/admin/comunidades" replace>
           Administrar comunidades
         </Button>
+        <Button as={Link} to="/admin/parcerias" replace>
+          Anúncios e parcerias
+        </Button>
         <Button as={Link} to="/admin/moderacao" replace>
           Atendimento e moderação
         </Button>

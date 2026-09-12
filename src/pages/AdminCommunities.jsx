@@ -87,6 +87,9 @@ export default function AdminCommunities() {
         <Button as={Link} to="/admin/contas" replace>
           Contas
         </Button>
+        <Button as={Link} to="/admin/parcerias" replace>
+          Anúncios e parcerias
+        </Button>
       </Box>
       <ToastFlash toasts={toasts} />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>

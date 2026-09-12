@@ -5,6 +5,7 @@ import {
   PersonIcon,
   ShieldLockIcon,
   PeopleIcon,
+  MegaphoneIcon,
   SunIcon,
   MoonIcon,
   SignOutIcon,
@@ -64,6 +65,17 @@ export function AccountMenu({ onLogout, signingOut }) {
                   <PeopleIcon />
                 </ActionList.LeadingVisual>
                 Comunidades
+              </ActionList.LinkItem>
+              <ActionList.LinkItem
+                as={Link}
+                to="/admin/parcerias"
+                replace
+                onClick={() => setOpen(false)}
+              >
+                <ActionList.LeadingVisual>
+                  <MegaphoneIcon />
+                </ActionList.LeadingVisual>
+                Anúncios e parcerias
               </ActionList.LinkItem>
               <ActionList.LinkItem as={Link} to="/admin/contas" replace onClick={() => setOpen(false)}>
                 <ActionList.LeadingVisual>
