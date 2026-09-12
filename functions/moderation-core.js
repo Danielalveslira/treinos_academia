@@ -22,3 +22,39 @@ export const REPORT_OWN_STATUS_ERROR = 'Você não pode denunciar sua própria p
 export function isSelfReport(authorId, reporterId) {
   return authorId === reporterId
 }
+
+// Mesmo formato de decisão/aviso/restrição que decideSupportRequest grava em index.js —
+// reaproveitado para que uma restrição automática (rate-limit-service.js) também apareça
+// com protocolo em /atendimento e aceite recurso (submitSupportRequest valida contra
+// moderationDecisions). Sem isso, a restrição bloquearia a conta de verdade mas de forma
+// muda, sem explicação e sem caminho de recurso.
+//
+// Puro de propósito (sem Timestamp/FieldValue do Admin SDK): quem chama decide o
+// `until`/`createdAt` e anexa nos três objetos antes de gravar, o que deixa a montagem
+// da decisão testável sem emulador.
+export function buildAutomatedSuspension({ authorId, decisionId, windowCount, windowMinutes }) {
+  const reason = `${windowCount} publicações em menos de ${windowMinutes} minutos.`
+  return {
+    decision: {
+      requestId: '',
+      adminId: 'system',
+      automated: true,
+      targetUserId: authorId,
+      action: 'temporary_suspension',
+      communityId: '',
+      rule: 'Limite automático de publicações',
+      reason,
+      evidence: '',
+    },
+    notice: {
+      action: 'temporary_suspension',
+      rule: 'Limite automático de publicações',
+      reason,
+      communityId: '',
+    },
+    restriction: {
+      action: 'temporary_suspension',
+      decisionId,
+    },
+  }
+}
