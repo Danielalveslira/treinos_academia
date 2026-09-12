@@ -11,6 +11,7 @@ import {
   validatePollStatus,
   validateWorkoutStatus,
   validatePhotoStatus,
+  validateSponsoredAd,
   hasErrors,
 } from './validators.js'
 
@@ -180,4 +181,104 @@ test('validatePhotoStatus requires a photo and bounds caption length', () => {
   assert.equal(hasErrors(validatePhotoStatus({ blob: {}, caption: '' })), false)
   assert.equal(hasErrors(validatePhotoStatus({ blob: {}, caption: 'x'.repeat(280) })), false)
   assert.match(validatePhotoStatus({ blob: {}, caption: 'x'.repeat(281) }).caption, /longa/)
+})
+
+function baseSponsoredAd(overrides = {}) {
+  return {
+    partnerName: 'Academia Parceira',
+    title: 'Desconto de 20% no plano anual',
+    communityIds: ['comm1'],
+    displayMode: ['feed'],
+    ...overrides,
+  }
+}
+
+test('validateSponsoredAd requires partnerName, title, communityIds and displayMode', () => {
+  assert.equal(hasErrors(validateSponsoredAd(baseSponsoredAd())), false)
+  assert.match(validateSponsoredAd(baseSponsoredAd({ partnerName: '' })).partnerName, /obrigatório/)
+  assert.match(
+    validateSponsoredAd(baseSponsoredAd({ partnerName: 'x'.repeat(61) })).partnerName,
+    /longo/
+  )
+  assert.match(validateSponsoredAd(baseSponsoredAd({ title: '' })).title, /obrigatório/)
+  assert.match(validateSponsoredAd(baseSponsoredAd({ title: 'x'.repeat(101) })).title, /longo/)
+  assert.match(
+    validateSponsoredAd(baseSponsoredAd({ communityIds: [] })).communityIds,
+    /pelo menos uma/
+  )
+  assert.match(
+    validateSponsoredAd(baseSponsoredAd({ communityIds: Array(51).fill('c') })).communityIds,
+    /no máximo/
+  )
+  assert.match(
+    validateSponsoredAd(baseSponsoredAd({ displayMode: [] })).displayMode,
+    /ao menos uma/
+  )
+  assert.match(
+    validateSponsoredAd(baseSponsoredAd({ displayMode: ['invalid'] })).displayMode,
+    /ao menos uma/
+  )
+  assert.equal(
+    hasErrors(validateSponsoredAd(baseSponsoredAd({ displayMode: ['feed', 'banner'] }))),
+    false
+  )
+})
+
+test('validateSponsoredAd: description/imageUrl/ctaLabel are optional but bounded', () => {
+  assert.equal(hasErrors(validateSponsoredAd(baseSponsoredAd())), false)
+  assert.match(
+    validateSponsoredAd(baseSponsoredAd({ description: 'x'.repeat(501) })).description,
+    /longa/
+  )
+  assert.match(
+    validateSponsoredAd(baseSponsoredAd({ imageUrl: 'x'.repeat(501) })).imageUrl,
+    /longo/
+  )
+  assert.match(
+    validateSponsoredAd(baseSponsoredAd({ ctaLabel: 'x'.repeat(31) })).ctaLabel,
+    /longo/
+  )
+})
+
+test('validateSponsoredAd: ctaType/ctaTarget are only required when ctaLabel is filled', () => {
+  assert.equal(hasErrors(validateSponsoredAd(baseSponsoredAd())), false)
+  assert.match(
+    validateSponsoredAd(baseSponsoredAd({ ctaLabel: 'Saiba mais' })).ctaType,
+    /Selecione/
+  )
+  assert.match(
+    validateSponsoredAd(baseSponsoredAd({ ctaLabel: 'Saiba mais', ctaType: 'external' }))
+      .ctaTarget,
+    /Informe o destino/
+  )
+  assert.equal(
+    hasErrors(
+      validateSponsoredAd(
+        baseSponsoredAd({
+          ctaLabel: 'Saiba mais',
+          ctaType: 'external',
+          ctaTarget: 'https://exemplo.com',
+        })
+      )
+    ),
+    false
+  )
+  assert.match(
+    validateSponsoredAd(
+      baseSponsoredAd({ ctaLabel: 'Saiba mais', ctaType: 'not-real', ctaTarget: '/x' })
+    ).ctaType,
+    /Selecione/
+  )
+})
+
+test('validateSponsoredAd: expiresAt is optional but must be a parseable date when given', () => {
+  assert.equal(hasErrors(validateSponsoredAd(baseSponsoredAd())), false)
+  assert.equal(
+    hasErrors(validateSponsoredAd(baseSponsoredAd({ expiresAt: '2026-12-31' }))),
+    false
+  )
+  assert.match(
+    validateSponsoredAd(baseSponsoredAd({ expiresAt: 'not-a-date' })).expiresAt,
+    /inválida/
+  )
 })

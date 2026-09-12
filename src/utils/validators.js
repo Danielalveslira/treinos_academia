@@ -198,3 +198,96 @@ export function validateBodyMeasurement({
   if (noteError) errors.note = noteError
   return errors
 }
+
+export const SPONSORED_AD_CTA_TYPES = ['external', 'internal']
+export const SPONSORED_AD_DISPLAY_MODES = ['feed', 'banner']
+// Teto de forma do próprio documento (quantas comunidades um anúncio pode listar) —
+// puramente sobre o shape, não exige consultar o Firestore, então cabe neste arquivo.
+const MAX_SPONSORED_AD_COMMUNITIES = 50
+
+// Quantos anúncios podem mirar a MESMA comunidade ao mesmo tempo — a checagem em si
+// (contar quantos já existem) precisa do Firestore e mora em sponsoredAdsService.js,
+// mas o número e a classe de erro ficam aqui: são valores puros que tanto o service
+// quanto o formulário admin (SponsoredAdForm) precisam, e mantê-los aqui evita o
+// formulário importar de um arquivo que carrega toda a inicialização do Firebase só
+// para ler uma constante.
+export const MAX_ACTIVE_ADS_PER_COMMUNITY = 6
+
+export class SponsoredAdCapError extends Error {
+  constructor(communityId) {
+    super(`Esta comunidade já atingiu o limite de ${MAX_ACTIVE_ADS_PER_COMMUNITY} anúncios.`)
+    this.name = 'SponsoredAdCapError'
+    this.communityId = communityId
+  }
+}
+
+export function validateSponsoredAd({
+  partnerName,
+  title,
+  description,
+  imageUrl,
+  ctaLabel,
+  ctaType,
+  ctaTarget,
+  expiresAt,
+  communityIds,
+  displayMode,
+}) {
+  const errors = {}
+
+  const partnerNameError = requiredText(
+    partnerName,
+    60,
+    'Nome do parceiro é obrigatório',
+    'Nome do parceiro muito longo'
+  )
+  if (partnerNameError) errors.partnerName = partnerNameError
+
+  const titleError = requiredText(title, 100, 'Título é obrigatório', 'Título muito longo')
+  if (titleError) errors.title = titleError
+
+  const descriptionError = optionalText(description, 500, 'Descrição muito longa')
+  if (descriptionError) errors.description = descriptionError
+
+  const imageUrlError = optionalText(imageUrl, 500, 'Link da imagem muito longo')
+  if (imageUrlError) errors.imageUrl = imageUrlError
+
+  const ctaLabelError = optionalText(ctaLabel, 30, 'Texto do botão muito longo')
+  if (ctaLabelError) errors.ctaLabel = ctaLabelError
+
+  // ctaType/ctaTarget só existem em função de ctaLabel — sem texto de botão, não faz
+  // sentido exigir pra onde ele levaria.
+  if (ctaLabel && ctaLabel.trim()) {
+    if (!SPONSORED_AD_CTA_TYPES.includes(ctaType)) {
+      errors.ctaType = 'Selecione o tipo de destino do botão'
+    }
+    const ctaTargetError = requiredText(
+      ctaTarget,
+      300,
+      'Informe o destino do botão',
+      'Destino do botão muito longo'
+    )
+    if (ctaTargetError) errors.ctaTarget = ctaTargetError
+  }
+
+  if (expiresAt) {
+    const date = new Date(expiresAt)
+    if (Number.isNaN(date.getTime())) errors.expiresAt = 'Data de expiração inválida'
+  }
+
+  if (!Array.isArray(communityIds) || communityIds.length < 1) {
+    errors.communityIds = 'Selecione pelo menos uma comunidade'
+  } else if (communityIds.length > MAX_SPONSORED_AD_COMMUNITIES) {
+    errors.communityIds = `Selecione no máximo ${MAX_SPONSORED_AD_COMMUNITIES} comunidades`
+  }
+
+  if (
+    !Array.isArray(displayMode) ||
+    displayMode.length < 1 ||
+    !displayMode.every((mode) => SPONSORED_AD_DISPLAY_MODES.includes(mode))
+  ) {
+    errors.displayMode = 'Selecione ao menos uma forma de exibição (feed e/ou banner)'
+  }
+
+  return errors
+}
