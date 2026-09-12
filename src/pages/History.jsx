@@ -12,7 +12,15 @@ import {
   Stack,
 } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { CalendarIcon, GraphIcon, HistoryIcon, PlayIcon, SyncIcon } from '@primer/octicons-react'
+import {
+  CalendarIcon,
+  GraphIcon,
+  HistoryIcon,
+  PlayIcon,
+  SyncIcon,
+  PencilIcon,
+  TrashIcon,
+} from '@primer/octicons-react'
 import { useWorkouts } from '../hooks/useWorkouts'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useToast } from '../hooks/useToast'
@@ -243,8 +251,21 @@ export default function History() {
               </div>
             )}
             <RowActionsMenu
-              onEdit={() => setEditingWorkout(workout)}
-              onDelete={() => handleDeleteRequest(workout)}
+              actions={[
+                {
+                  key: 'edit',
+                  label: 'Editar',
+                  icon: PencilIcon,
+                  onSelect: () => setEditingWorkout(workout),
+                },
+                {
+                  key: 'delete',
+                  label: 'Excluir',
+                  icon: TrashIcon,
+                  variant: 'danger',
+                  onSelect: () => handleDeleteRequest(workout),
+                },
+              ]}
             />
           </Box>
         ))}

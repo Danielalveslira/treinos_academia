@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Box, Heading, Text, Button, Spinner, Label } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { PeopleIcon, PlusIcon } from '@primer/octicons-react'
+import { PeopleIcon, PlusIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
 import { useAdminCommunities } from '../hooks/useAdminCommunities'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
@@ -171,8 +171,21 @@ export default function AdminCommunities() {
                 {community.isActive ? 'Desativar' : 'Ativar'}
               </Button>
               <RowActionsMenu
-                onEdit={() => setEditingCommunity(community)}
-                onDelete={() => handleDelete(community)}
+                actions={[
+                  {
+                    key: 'edit',
+                    label: 'Editar',
+                    icon: PencilIcon,
+                    onSelect: () => setEditingCommunity(community),
+                  },
+                  {
+                    key: 'delete',
+                    label: 'Excluir',
+                    icon: TrashIcon,
+                    variant: 'danger',
+                    onSelect: () => handleDelete(community),
+                  },
+                ]}
               />
             </Box>
           ))}

@@ -10,6 +10,8 @@ import {
   SyncIcon,
   EyeIcon,
   EyeClosedIcon,
+  PencilIcon,
+  TrashIcon,
 } from '@primer/octicons-react'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useDashboard } from '../hooks/useDashboard'
@@ -257,8 +259,21 @@ export default function Exercises() {
                         </Box>
                       </Box>
                       <RowActionsMenu
-                        onEdit={() => setEditingExercise(exercise)}
-                        onDelete={() => handleDeleteRequest(exercise)}
+                        actions={[
+                          {
+                            key: 'edit',
+                            label: 'Editar',
+                            icon: PencilIcon,
+                            onSelect: () => setEditingExercise(exercise),
+                          },
+                          {
+                            key: 'delete',
+                            label: 'Excluir',
+                            icon: TrashIcon,
+                            variant: 'danger',
+                            onSelect: () => handleDeleteRequest(exercise),
+                          },
+                        ]}
                       />
                     </Box>
                   )

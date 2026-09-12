@@ -1,7 +1,7 @@
 import { ActionMenu, ActionList, IconButton } from '@primer/react'
-import { KebabHorizontalIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
+import { KebabHorizontalIcon } from '@primer/octicons-react'
 
-export function RowActionsMenu({ onEdit, onDelete }) {
+export function RowActionsMenu({ actions }) {
   return (
     <ActionMenu>
       <ActionMenu.Anchor>
@@ -14,18 +14,17 @@ export function RowActionsMenu({ onEdit, onDelete }) {
       </ActionMenu.Anchor>
       <ActionMenu.Overlay align="end">
         <ActionList>
-          <ActionList.Item onSelect={onEdit}>
-            <ActionList.LeadingVisual>
-              <PencilIcon />
-            </ActionList.LeadingVisual>
-            Editar
-          </ActionList.Item>
-          <ActionList.Item variant="danger" onSelect={onDelete}>
-            <ActionList.LeadingVisual>
-              <TrashIcon />
-            </ActionList.LeadingVisual>
-            Excluir
-          </ActionList.Item>
+          {actions.map((action) => {
+            const Icon = action.icon
+            return (
+              <ActionList.Item key={action.key} variant={action.variant} onSelect={action.onSelect}>
+                <ActionList.LeadingVisual>
+                  <Icon />
+                </ActionList.LeadingVisual>
+                {action.label}
+              </ActionList.Item>
+            )
+          })}
         </ActionList>
       </ActionMenu.Overlay>
     </ActionMenu>
