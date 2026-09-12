@@ -26,6 +26,16 @@ async function seed(path, data) {
   )
 }
 
+// Usado só para preparar cenários de leitura inválida (status malformado/expirado) sem
+// passar pelas regras de create — agora que não há mais caminho legado, a única forma de
+// colocar bytes num caminho cujo status ainda não existe (ou nunca vai bater com
+// validPhotoStatus) é com as regras desligadas, igual já fazemos para o Firestore.
+async function seedPhoto(path, bytes = new Uint8Array([1])) {
+  await storageEnv.withSecurityRulesDisabled((context) =>
+    uploadBytes(ref(context.storage(), path), bytes, { contentType: 'image/webp' })
+  )
+}
+
 function photoStatus(overrides = {}) {
   return {
     type: 'photo',
@@ -81,16 +91,11 @@ test('author uploads after an authorized photo status exists', async () => {
   )
 })
 
-test('an older installed app may upload before creating its status', async () => {
+test('uploading before creating the status is rejected now that the legacy path is gone', async () => {
   const legacyId = randomId()
   const legacyPath = `statusPhotos/${COMMUNITY_ID}/${legacyId}.webp`
-  await assertSucceeds(
-    uploadBytes(ref(memberStorage, legacyPath), new Uint8Array([1]), {
-      contentType: 'image/webp',
-    })
-  )
   await assertFails(
-    uploadBytes(ref(outsiderStorage, legacyPath), new Uint8Array([1]), {
+    uploadBytes(ref(memberStorage, legacyPath), new Uint8Array([1]), {
       contentType: 'image/webp',
     })
   )
@@ -115,11 +120,7 @@ test('reading rejects a mismatched path, type or expired status', async () => {
   ]
   for (const [id, overrides] of cases) {
     const path = `statusPhotos/${COMMUNITY_ID}/${id}.webp`
-    await assertSucceeds(
-      uploadBytes(ref(memberStorage, path), new Uint8Array([1]), {
-        contentType: 'image/webp',
-      })
-    )
+    await seedPhoto(path)
     await seed(`statuses/${id}`, photoStatus({ photoPath: path, ...overrides }))
     await assertFails(getBytes(ref(memberStorage, path)))
   }

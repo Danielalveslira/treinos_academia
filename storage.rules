@@ -37,22 +37,6 @@ service firebase.storage {
           && request.time < status.createdAt + duration.value(10, 'm');
       }
 
-      // Compatibilidade temporária com versões instaladas antes da mudança de ordem do
-      // fluxo. Elas enviam os bytes antes de criar statuses/{id}. O Firestore ainda faz
-      // a autorização completa logo depois do upload; se negar ou o cliente desaparecer,
-      // purgeOrphanedPhotos remove o arquivo sem status. Esta alternativa usa apenas os
-      // dois documentos permitidos pelo Storage e mantém conta bloqueada/em exclusão fora.
-      function canLegacyCreatePhoto() {
-        let me = firestore.get(
-          /databases/(default)/documents/users/$(request.auth.uid)
-        ).data;
-        return firestore.exists(
-            /databases/(default)/documents/communityMembers/$(communityId + '_' + request.auth.uid)
-          )
-          && me.get('accountStatus', 'active') != 'disabled'
-          && me.get('accountStatus', 'active') != 'deleting';
-      }
-
       allow read: if request.auth != null
         && fileName.matches('^[A-Za-z0-9]{20}\\.webp$')
         && canReadPhoto();
@@ -64,14 +48,6 @@ service firebase.storage {
         && request.resource.size <= 4 * 1024 * 1024
         && request.resource.contentType == 'image/webp'
         && canCreatePhoto();
-
-      allow create: if request.auth != null
-        && resource == null
-        && fileName.matches('^[A-Za-z0-9]{20}\\.webp$')
-        && request.resource.size > 0
-        && request.resource.size <= 4 * 1024 * 1024
-        && request.resource.contentType == 'image/webp'
-        && canLegacyCreatePhoto();
 
       allow update, delete: if false;
     }
