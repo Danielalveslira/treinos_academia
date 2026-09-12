@@ -7,6 +7,10 @@ import {
   validateWorkout,
   validateBodyMeasurement,
   validateCommunity,
+  validateTextStatus,
+  validatePollStatus,
+  validateWorkoutStatus,
+  validatePhotoStatus,
   hasErrors,
 } from './validators.js'
 
@@ -56,6 +60,7 @@ test('validateExercise requires name and muscleGroup, and bounds both lengths', 
     /longo/
   )
   assert.equal(hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'x'.repeat(30) })), false)
+  assert.equal(hasErrors(validateExercise({ name: 'x'.repeat(60), muscleGroup: 'Peito' })), false)
   // type é opcional (exercícios de antes deste campo existir não o têm) e só aceita os
   // dois valores conhecidos quando presente.
   assert.equal(hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'Peito' })), false)
@@ -113,6 +118,7 @@ test('validateBodyMeasurement: every field is optional, only format/range is che
   assert.match(validateBodyMeasurement({ waistCm: -5 }).waistCm, /Cintura/)
   assert.match(validateBodyMeasurement({ hipCm: 'abc' }).hipCm, /Quadril/)
   assert.match(validateBodyMeasurement({ leanMassKg: 301 }).leanMassKg, /Massa magra/)
+  assert.equal(hasErrors(validateBodyMeasurement({ note: 'x'.repeat(300) })), false)
   assert.match(validateBodyMeasurement({ note: 'x'.repeat(301) }).note, /300 caracteres/)
 })
 
@@ -123,4 +129,55 @@ test('validateCommunity requires a name and only accepts an iconName from the kn
   assert.match(validateCommunity({ name: 'Academia X', iconName: 'not-real' }).iconName, /inválido/)
   // Comunidades de antes desse campo existir não mandam iconName nenhum — não é erro.
   assert.equal(hasErrors(validateCommunity({ name: 'Academia X', iconName: undefined })), false)
+  assert.equal(
+    hasErrors(validateCommunity({ name: 'Academia X', description: 'x'.repeat(300) })),
+    false
+  )
+  assert.match(
+    validateCommunity({ name: 'Academia X', description: 'x'.repeat(301) }).description,
+    /longa/
+  )
+})
+
+test('validateTextStatus requires text and bounds its length', () => {
+  assert.match(validateTextStatus({ text: '' }).text, /Escreva algo/)
+  assert.match(validateTextStatus({ text: '   ' }).text, /Escreva algo/)
+  assert.equal(hasErrors(validateTextStatus({ text: 'x'.repeat(500) })), false)
+  assert.match(validateTextStatus({ text: 'x'.repeat(501) }).text, /longo/)
+})
+
+test('validatePollStatus requires a question, at least 2 filled options, and bounds lengths', () => {
+  assert.match(validatePollStatus({ question: '', options: ['a', 'b'] }).question, /obrigatória/)
+  assert.equal(
+    hasErrors(validatePollStatus({ question: 'x'.repeat(200), options: ['a', 'b'] })),
+    false
+  )
+  assert.match(
+    validatePollStatus({ question: 'x'.repeat(201), options: ['a', 'b'] }).question,
+    /longa/
+  )
+  assert.match(validatePollStatus({ question: 'Q?', options: ['a'] }).options, /pelo menos 2/)
+  assert.match(
+    validatePollStatus({ question: 'Q?', options: ['a', 'x'.repeat(81)] }).options,
+    /muito longa/
+  )
+})
+
+test('validateWorkoutStatus requires title, date and location, and bounds text lengths', () => {
+  const base = { title: 'Treino em grupo', date: '2026-01-01', location: 'Academia X' }
+  assert.equal(hasErrors(validateWorkoutStatus(base)), false)
+  assert.match(validateWorkoutStatus({ ...base, title: '' }).title, /obrigatório/)
+  assert.equal(hasErrors(validateWorkoutStatus({ ...base, title: 'x'.repeat(100) })), false)
+  assert.match(validateWorkoutStatus({ ...base, title: 'x'.repeat(101) }).title, /longo/)
+  assert.match(validateWorkoutStatus({ ...base, date: '' }).date, /obrigatória/)
+  assert.match(validateWorkoutStatus({ ...base, location: '' }).location, /obrigatório/)
+  assert.equal(hasErrors(validateWorkoutStatus({ ...base, location: 'x'.repeat(150) })), false)
+  assert.match(validateWorkoutStatus({ ...base, location: 'x'.repeat(151) }).location, /longo/)
+})
+
+test('validatePhotoStatus requires a photo and bounds caption length', () => {
+  assert.match(validatePhotoStatus({ blob: null, caption: '' }).photo, /Escolha uma foto/)
+  assert.equal(hasErrors(validatePhotoStatus({ blob: {}, caption: '' })), false)
+  assert.equal(hasErrors(validatePhotoStatus({ blob: {}, caption: 'x'.repeat(280) })), false)
+  assert.match(validatePhotoStatus({ blob: {}, caption: 'x'.repeat(281) }).caption, /longa/)
 })
