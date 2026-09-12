@@ -830,3 +830,34 @@ test('accounts created after the email verification cutoff need a verified token
   // Conta anterior ao corte: passa mesmo sem email_verified no token.
   await assertSucceeds(setDoc(doc(unverifiedVeteran, 'users/veteran/exercises/bench'), exercise))
 })
+
+test('community iconName defaults to none but only accepts a name from the icon grid, never an arbitrary string', async () => {
+  const community = (overrides = {}) => ({
+    name: 'Academia Teste',
+    description: '',
+    imageUrl: null,
+    isActive: true,
+    postAccess: 'everyone',
+    memberCount: 0,
+    createdBy: 'admin',
+    createdAt: Timestamp.now(),
+    ...overrides,
+  })
+  // Ausente: comunidades de antes deste campo existir continuam válidas — o padrão
+  // (getCommunityIcon) é resolvido só na leitura, sem migração.
+  await assertSucceeds(setDoc(doc(admin, 'communities/iconless'), community()))
+  await assertSucceeds(
+    setDoc(doc(admin, 'communities/iconvalid'), community({ iconName: 'dumbbell' }))
+  )
+  await assertFails(
+    setDoc(doc(admin, 'communities/iconbad'), community({ iconName: 'not-a-real-icon' }))
+  )
+  // Nunca aceita o que vier do cliente sem checar contra a lista — inclusive tentativas
+  // de injetar algo além de um nome de ícone conhecido.
+  await assertFails(
+    setDoc(
+      doc(admin, 'communities/iconxss'),
+      community({ iconName: '<script>alert(1)</script>' })
+    )
+  )
+})

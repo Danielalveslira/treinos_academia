@@ -2,6 +2,7 @@ import { isValidSet, MAX_WORKOUT_SETS } from './workoutSets.js'
 import { calculateAge } from './age.js'
 import { EXERCISE_TYPES } from './exerciseType.js'
 import { isValidCardioSession, MAX_DURATION_MINUTES, MAX_DISTANCE_KM } from './cardioSessions.js'
+import { COMMUNITY_ICON_NAMES } from '../constants/communityIcons.js'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 export const SEXO_OPTIONS = ['masculino', 'feminino', 'nao_informar']
@@ -103,11 +104,16 @@ export function hasErrors(errors) {
   return Object.keys(errors).length > 0
 }
 
-export function validateCommunity({ name, description }) {
+export function validateCommunity({ name, description, iconName }) {
   const errors = {}
   if (!name || !name.trim()) errors.name = 'Nome é obrigatório'
   else if (name.trim().length > 60) errors.name = 'Nome muito longo'
   if (description && description.trim().length > 300) errors.description = 'Descrição muito longa'
+  // Defesa em profundidade: a grade do seletor já só oferece esses valores, e o
+  // servidor recusa qualquer outro (isValidCommunity em firestore.rules) — checar aqui
+  // também evita gastar uma escrita com algo que a regra vai rejeitar de qualquer jeito.
+  if (iconName != null && !COMMUNITY_ICON_NAMES.includes(iconName))
+    errors.iconName = 'Ícone inválido'
   return errors
 }
 

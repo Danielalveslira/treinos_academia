@@ -7,6 +7,7 @@ import { useAdminCommunities } from '../hooks/useAdminCommunities'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { CommunityForm } from '../components/CommunityForm'
+import { CommunityIcon } from '../components/CommunityIcon'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { RowActionsMenu } from '../components/RowActionsMenu'
@@ -145,22 +146,7 @@ export default function AdminCommunities() {
                 borderColor: 'border.default',
               }}
             >
-              <Box
-                sx={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 2,
-                  bg: 'canvas.subtle',
-                  border: '1px solid',
-                  borderColor: 'border.default',
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <PeopleIcon size={16} />
-              </Box>
+              <CommunityIcon community={community} size={40} />
 
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>

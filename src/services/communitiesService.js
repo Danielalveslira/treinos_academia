@@ -14,6 +14,11 @@ import {
 } from 'firebase/firestore'
 import { db, functions } from '../firebase/config'
 import { httpsCallable } from 'firebase/functions'
+import { COMMUNITY_ICON_NAMES, DEFAULT_COMMUNITY_ICON_NAME } from '../constants/communityIcons'
+
+function resolveIconName(iconName) {
+  return COMMUNITY_ICON_NAMES.includes(iconName) ? iconName : DEFAULT_COMMUNITY_ICON_NAME
+}
 
 // Teto de defesa: comunidades só são criadas pelo superadmin pelo painel, mas sem isso
 // a leitura escala com o tamanho da coleção — bem acima de qualquer uso real do app.
@@ -58,6 +63,7 @@ export function createCommunity(userId, community) {
     name: community.name.trim(),
     description: community.description?.trim() || '',
     imageUrl: community.imageUrl || null,
+    iconName: resolveIconName(community.iconName),
     isActive: true,
     postAccess: community.postAccess === 'admins' ? 'admins' : 'everyone',
     memberCount: 0,
@@ -79,6 +85,7 @@ export function updateCommunity(communityId, community) {
   return updateDoc(doc(db, 'communities', communityId), {
     name: community.name.trim(),
     description: community.description?.trim() || '',
+    iconName: resolveIconName(community.iconName),
     isActive: community.isActive,
     postAccess: community.postAccess === 'admins' ? 'admins' : 'everyone',
   })

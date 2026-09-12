@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Box, Button, FormControl, TextInput, Select, Textarea, Stack } from '@primer/react'
 import { validateCommunity, hasErrors } from '../utils/validators'
+import { DEFAULT_COMMUNITY_ICON_NAME } from '../constants/communityIcons'
+import { CommunityIconPicker } from './CommunityIconPicker'
 
-const EMPTY = { name: '', description: '', postAccess: 'everyone' }
+const EMPTY = { name: '', description: '', postAccess: 'everyone', iconName: DEFAULT_COMMUNITY_ICON_NAME }
 
 export function CommunityForm({ initialValue, onSubmit, onCancel }) {
   const [values, setValues] = useState(initialValue ? { ...EMPTY, ...initialValue } : EMPTY)
@@ -57,6 +59,18 @@ export function CommunityForm({ initialValue, onSubmit, onCancel }) {
           />
           {errors.description && (
             <FormControl.Validation variant="error">{errors.description}</FormControl.Validation>
+          )}
+        </FormControl>
+
+        <FormControl>
+          <FormControl.Label>Ícone</FormControl.Label>
+          <CommunityIconPicker
+            value={values.iconName}
+            onChange={(iconName) => setField('iconName', iconName)}
+            name={values.name}
+          />
+          {errors.iconName && (
+            <FormControl.Validation variant="error">{errors.iconName}</FormControl.Validation>
           )}
         </FormControl>
 

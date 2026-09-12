@@ -400,7 +400,16 @@ service cloud.firestore {
         // como fallback de leitura, recalculado e regravado pelo próprio painel admin
         // quando ainda não existe — nunca gravado pelo cliente com valor arbitrário
         // além de refletir uma contagem real já lida do servidor.
-        && (!('memberCount' in data) || (data.memberCount is int && data.memberCount >= 0));
+        && (!('memberCount' in data) || (data.memberCount is int && data.memberCount >= 0))
+        // Ausente = ícone padrão na leitura (getCommunityIcon em communityIcons.js, sem
+        // precisar migrar comunidades antigas) — mas nunca aceita string arbitrária do
+        // cliente aqui: só um dos nomes da grade do seletor. Lista espelhada manualmente
+        // de COMMUNITY_ICON_NAMES em src/constants/communityIcons.js (regras não importam
+        // JS) — mudar um lado exige mudar o outro.
+        && (!('iconName' in data) || data.iconName in [
+          'users', 'dumbbell', 'heart-pulse', 'flame', 'trophy', 'target',
+          'zap', 'star', 'rocket', 'mountain', 'bike', 'footprints'
+        ]);
     }
 
     function communityIsActive(communityId) {

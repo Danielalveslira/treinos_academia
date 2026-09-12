@@ -1,50 +1,50 @@
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Heading, Text, Button, Spinner, Link } from '@primer/react'
+import { Box, Heading, Text, Button, Spinner, Link, ActionMenu, ActionList, IconButton } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { ChevronRightIcon, PeopleIcon } from '@primer/octicons-react'
+import { ChevronRightIcon, KebabHorizontalIcon, PeopleIcon, SignOutIcon } from '@primer/octicons-react'
 import { useCommunities } from '../hooks/useCommunities'
 import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
-
-function CommunityAvatar({ community }) {
-  return (
-    <Box
-      sx={{
-        width: 32,
-        height: 32,
-        borderRadius: 2,
-        bg: 'canvas.subtle',
-        color: 'fg.muted',
-        flexShrink: 0,
-        overflow: 'hidden',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      {community.imageUrl ? (
-        <Box
-          as="img"
-          src={community.imageUrl}
-          alt=""
-          sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-        />
-      ) : (
-        <PeopleIcon size={18} />
-      )}
-    </Box>
-  )
-}
+import { CommunityIcon } from '../components/CommunityIcon'
 
 function CommunityNameBlock({ community }) {
   return (
     <Box sx={{ flex: 1, minWidth: 0 }}>
       <Text className="community-row-name">{community.name}</Text>
-      {community.description && (
-        <Text className="community-row-description">{community.description}</Text>
-      )}
+      <Text className="community-row-description">
+        {community.memberCount ?? 0} {community.memberCount === 1 ? 'membro' : 'membros'}
+      </Text>
     </Box>
+  )
+}
+
+// "Sair" fica atrás do ⋯ (em vez de um botão sempre visível ao lado de cada linha) —
+// mesmo padrão de RowActionsMenu (Exercícios/Histórico): um único gatilho visível,
+// funciona igual em toque ou clique, sem precisar de gesto novo (toque longo/botão
+// direito) que não existe em nenhum outro lugar do app.
+function LeaveCommunityMenu({ onLeave }) {
+  return (
+    <ActionMenu>
+      <ActionMenu.Anchor>
+        <IconButton
+          icon={KebabHorizontalIcon}
+          variant="invisible"
+          aria-label="Mais ações"
+          sx={{ color: 'fg.muted' }}
+        />
+      </ActionMenu.Anchor>
+      <ActionMenu.Overlay align="end">
+        <ActionList>
+          <ActionList.Item variant="danger" onSelect={onLeave}>
+            <ActionList.LeadingVisual>
+              <SignOutIcon />
+            </ActionList.LeadingVisual>
+            Sair da comunidade
+          </ActionList.Item>
+        </ActionList>
+      </ActionMenu.Overlay>
+    </ActionMenu>
   )
 }
 
@@ -53,12 +53,12 @@ function CommunityNameBlock({ community }) {
 // nome ter (ou não) a cor/sublinhado padrão do Primer, algo sutil demais para
 // diferenciar duas comunidades na mesma lista (o motivo do usuário relatar confusão).
 // Agora todo item com linkTo ganha o mesmo tratamento visível (fundo ao passar o mouse/
-// focar, seta no fim) e o botão de ação fica visualmente separado por um divisor, nunca
-// dentro da área clicável de navegação.
+// focar, seta no fim) e o botão/menu de ação fica visualmente separado por um divisor,
+// nunca dentro da área clicável de navegação.
 function CommunityRow({ community, action, linkTo }) {
   const content = (
     <>
-      <CommunityAvatar community={community} />
+      <CommunityIcon community={community} />
       <CommunityNameBlock community={community} />
     </>
   )
@@ -152,11 +152,7 @@ export default function Communities() {
                   key={community.id}
                   community={community}
                   linkTo={`/comunidades/${community.id}`}
-                  action={
-                    <Button size="small" onClick={() => handleLeave(community)}>
-                      Sair
-                    </Button>
-                  }
+                  action={<LeaveCommunityMenu onLeave={() => handleLeave(community)} />}
                 />
               ))}
             </Box>
@@ -166,15 +162,23 @@ export default function Communities() {
             Explorar
           </Heading>
           {exploreCommunities.length === 0 ? (
-            <Blankslate>
-              <Blankslate.Visual>
-                <PeopleIcon size={24} />
-              </Blankslate.Visual>
-              <Blankslate.Heading>Nenhuma comunidade nova</Blankslate.Heading>
-              <Blankslate.Description>
-                Você já está em todas as comunidades disponíveis.
-              </Blankslate.Description>
-            </Blankslate>
+            <Box
+              sx={{
+                border: '1px dashed',
+                borderColor: 'border.muted',
+                borderRadius: 2,
+              }}
+            >
+              <Blankslate>
+                <Blankslate.Visual>
+                  <PeopleIcon size={24} />
+                </Blankslate.Visual>
+                <Blankslate.Heading>Você já está em todas</Blankslate.Heading>
+                <Blankslate.Description>
+                  Não há novas comunidades no momento.
+                </Blankslate.Description>
+              </Blankslate>
+            </Box>
           ) : (
             <Box
               sx={{

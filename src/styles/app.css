@@ -922,7 +922,7 @@ body:has(.pwa-offline) .app-shell {
 .community-row {
   display: flex;
   align-items: stretch;
-  border-top: 1px solid var(--borderColor-muted);
+  border-top: 0.5px solid var(--borderColor-muted);
 }
 .community-row:first-of-type { border-top: none; }
 
@@ -2046,7 +2046,8 @@ body {
 .session-heading h1 { margin: 0; }
 
 .session-icon,
-.muscle-icon {
+.muscle-icon,
+.community-icon {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
@@ -2056,6 +2057,45 @@ body {
 }
 
 .session-icon { width: 46px; height: 46px; }
+
+.community-icon { overflow: hidden; }
+.community-icon-image { width: 100%; height: 100%; object-fit: cover; }
+
+.community-icon-picker-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: var(--fgColor-muted);
+  font-size: 13px;
+}
+
+.community-icon-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.community-icon-option {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fgColor-muted);
+  cursor: pointer;
+}
+
+.community-icon-option.is-selected {
+  border-color: var(--fitness-accent);
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+}
+
+@media (max-width: 420px) {
+  .community-icon-grid { grid-template-columns: repeat(4, 1fr); }
+}
 
 .main-content .workout-form {
   padding: 0;
