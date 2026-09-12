@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Box, Button, FormControl, TextInput, Textarea, Text, Link } from '@primer/react'
 import {
+  CheckCircleFillIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -17,6 +18,12 @@ import { calculateVolume } from '../utils/calculations'
 import { useFocusWithinBodyClass } from '../hooks/useFocusWithinBodyClass'
 import { getExerciseType, isCardioExercise } from '../utils/exerciseType'
 import { formatCardioSession } from '../utils/cardioSessions'
+import {
+  loadDoneExerciseIds,
+  saveDoneExerciseIds,
+  cleanupStaleDoneExerciseKeys,
+} from '../utils/doneExercisesStorage'
+import { nextStepAfterFinishing } from '../utils/workoutSessionFlow'
 
 // Enquanto o teclado virtual está provavelmente aberto (um campo do formulário tem
 // foco), CSS esconde a barra de navegação inferior e o botão flutuante de instalar o
@@ -115,6 +122,19 @@ export function WorkoutForm({
   const [completed, setCompleted] = useState(() => new Set())
   const drafts = useRef(new Map())
   const completionDrafts = useRef(new Map())
+  // Exercícios finalizados HOJE, neste aparelho (localStorage, sem sync com Firestore --
+  // ver doneExercisesStorage.js). Diferente de `completed` acima: aquele é por SÉRIE,
+  // dentro do exercício atual; este é por EXERCÍCIO, através de todo o fluxo de sessão
+  // (grupo -> exercício -> séries), e é o que decide a navegação ao finalizar (ver
+  // handleSubmit/nextStepAfterFinishing). Não se aplica a edição avulsa vinda de
+  // History.jsx (initialValue setado) -- editar um registro já existente fecha o
+  // formulário sozinho, sem o conceito de "próximo exercício do grupo".
+  const [doneExerciseIds, setDoneExerciseIds] = useState(() => {
+    if (initialValue) return new Set()
+    const today = todayString()
+    cleanupStaleDoneExerciseKeys(today)
+    return loadDoneExerciseIds(today)
+  })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -133,14 +153,19 @@ export function WorkoutForm({
     [availableExercises, values.exerciseId]
   )
   const cardio = isCardioExercise(selectedExercise)
+  // Sem o filtro de busca -- é a lista "de verdade" do grupo, usada por
+  // nextStepAfterFinishing pra saber se sobra exercício não concluído. exercisesInGroup
+  // (abaixo) é só a versão filtrada exibida na tela.
+  const allExercisesInGroup = useMemo(
+    () => availableExercises.filter((exercise) => (exercise.muscleGroup || 'Outros') === selectedGroup),
+    [availableExercises, selectedGroup]
+  )
   const exercisesInGroup = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('pt-BR')
-    return availableExercises.filter(
-      (exercise) =>
-        (exercise.muscleGroup || 'Outros') === selectedGroup &&
-        (!term || exercise.name.toLocaleLowerCase('pt-BR').includes(term))
+    return allExercisesInGroup.filter(
+      (exercise) => !term || exercise.name.toLocaleLowerCase('pt-BR').includes(term)
     )
-  }, [availableExercises, search, selectedGroup])
+  }, [allExercisesInGroup, search])
   const exerciseHistory = useMemo(
     () => history.filter((workout) => workout.exerciseId === values.exerciseId),
     [history, values.exerciseId]
@@ -241,9 +266,25 @@ export function WorkoutForm({
     setSubmitting(true)
     try {
       await onSubmit(payload)
+    } catch {
+      // onSubmit (NewWorkout.jsx/History.jsx) já mostrou o toast de erro e relança --
+      // não marca o exercício como concluído nem avança de aba num salvamento que falhou.
+      return
     } finally {
       setSubmitting(false)
     }
+
+    if (initialValue) return // edição avulsa -- sem fluxo de sessão pra navegar.
+
+    const { doneExerciseIds: nextDone, step: nextStep } = nextStepAfterFinishing({
+      allExercisesInGroup,
+      doneExerciseIds,
+      finishedExerciseId: values.exerciseId,
+    })
+    setDoneExerciseIds(nextDone)
+    saveDoneExerciseIds(todayString(), nextDone)
+    setSearch('')
+    setStep(nextStep)
   }
 
   const validSetCount = values.setDetails.filter(isValidSet).length
@@ -315,23 +356,34 @@ export function WorkoutForm({
             </label>
           )}
           <div className="workout-exercise-list">
-            {exercisesInGroup.map((exercise) => (
-              <button
-                className={`workout-exercise-card${
-                  values.exerciseId === exercise.id ? ' is-selected' : ''
-                }`}
-                type="button"
-                key={exercise.id}
-                aria-pressed={values.exerciseId === exercise.id}
-                onClick={() => chooseExercise(exercise)}
-              >
-                <span>
-                  <strong>{exercise.name}</strong>
-                  {exercise.note && <small>{exercise.note}</small>}
-                </span>
-                <ChevronRightIcon size={18} />
-              </button>
-            ))}
+            {exercisesInGroup.map((exercise) => {
+              const isDone = doneExerciseIds.has(exercise.id)
+              return (
+                <button
+                  className={`workout-exercise-card${
+                    values.exerciseId === exercise.id ? ' is-selected' : ''
+                  }`}
+                  type="button"
+                  key={exercise.id}
+                  aria-pressed={values.exerciseId === exercise.id}
+                  onClick={() => chooseExercise(exercise)}
+                >
+                  <span>
+                    <strong>{exercise.name}</strong>
+                    {exercise.note && <small>{exercise.note}</small>}
+                    {isDone && <span className="sr-only">, concluído hoje</span>}
+                  </span>
+                  {isDone && (
+                    <CheckCircleFillIcon
+                      size={18}
+                      className="workout-exercise-done-icon"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <ChevronRightIcon size={18} />
+                </button>
+              )
+            })}
           </div>
           {exercisesInGroup.length === 0 && (
             <Text className="workout-no-results">Nenhum exercício encontrado.</Text>

@@ -22,13 +22,15 @@ export default function NewWorkout() {
     try {
       await add(values)
       showToast('Treino registrado.')
-      // replace: depois de enviado, o formulário não deve continuar no histórico — voltar
-      // não deve reabrir /novo-treino já usado, e sim a página de onde o usuário veio antes
-      // dele (Dashboard, Exercícios ou Histórico).
-      navigate('/historico', { replace: true })
     } catch (err) {
       console.error('[NewWorkout] create:', err)
       showToast('Erro ao registrar treino.', 'danger')
+      // Relançado de propósito: WorkoutForm precisa distinguir sucesso de falha pra não
+      // marcar o exercício como concluído nem avançar de aba num salvamento que falhou
+      // (ver handleSubmit em WorkoutForm.jsx). A navegação pra fora do fluxo de treino
+      // (ex.: /historico) não acontece mais aqui -- ver nextStepAfterFinishing, que
+      // mantém o usuário dentro do fluxo por abas (grupo -> exercício -> séries).
+      throw err
     }
   }
 

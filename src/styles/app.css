@@ -2314,6 +2314,14 @@ body {
 .workout-exercise-card small { overflow: hidden; color: var(--fgColor-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .muscle-group-card > svg,
 .workout-exercise-card > svg { flex: 0 0 auto; margin-left: auto; color: var(--fgColor-muted); }
+/* Mais específico que a regra genérica acima -- mantém o margin-left: auto (senão o
+   ícone gruda no texto em vez de ficar do lado do chevron), só troca a cor pra verde.
+   Ícone, não fundo/borda: .is-selected já usa fundo+borda verdes pro exercício ATUAL, e
+   os dois estados podem coexistir sem se confundir. */
+.workout-exercise-card > .workout-exercise-done-icon {
+  margin-right: 4px;
+  color: var(--fitness-accent-strong);
+}
 
 .workout-step-cancel { margin-top: 18px; }
 .workout-back {

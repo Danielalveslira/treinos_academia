@@ -93,6 +93,10 @@ export default function History() {
     } catch (err) {
       console.error('[History] update:', err)
       showToast('Erro ao atualizar registro.', 'danger')
+      // Relançado por consistência com o contrato de onSubmit em WorkoutForm.jsx (ver
+      // NewWorkout.jsx) -- aqui não muda o comportamento visível, já que a edição fecha
+      // o formulário sozinha e não usa a lógica de "próximo exercício do grupo".
+      throw err
     }
   }
 
