@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Box, Button, FormControl, TextInput, Textarea, Text } from '@primer/react'
+import { Box, Button, FormControl, TextInput, Textarea, Text, Link } from '@primer/react'
 import {
   CheckIcon,
   ChevronLeftIcon,
@@ -8,7 +8,6 @@ import {
   PlusIcon,
   SearchIcon,
   TrashIcon,
-  TrophyIcon,
 } from '@primer/octicons-react'
 import { MUSCLE_GROUPS } from '../constants/muscleGroups'
 import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
@@ -71,7 +70,7 @@ export function WorkoutForm({
   // trocar pra um exercício de outro tipo faria a checagem de imutabilidade de type
   // nas firestore.rules recusar o salvamento (ver isValidWorkout/allow update). Mais
   // simples barrar isso aqui, na lista de opções, do que deixar o usuário chegar até
-  // "Finalizar treino" pra só então descobrir que não pode.
+  // "Finalizar exercício" pra só então descobrir que não pode.
   const editingType = initialValue ? getExerciseType(initialValue) : null
   const availableExercises = useMemo(() => {
     const active = exercises.filter(
@@ -352,37 +351,33 @@ export function WorkoutForm({
                 <Button size="small" type="button" onClick={showExercises}>
                   Trocar exercício
                 </Button>
-                <Button size="small" type="button" variant="invisible" onClick={showGroups}>
+                <Link as="button" type="button" onClick={showGroups} sx={{ fontSize: 0 }}>
                   Trocar grupo
-                </Button>
+                </Link>
               </div>
             </div>
 
-            <div className="workout-reference" aria-live="polite">
-              <div>
-                <span>Última sessão</span>
-                <strong>
-                  {!lastWorkout
-                    ? 'Primeiro registro'
-                    : cardio
+            <p className="workout-reference" aria-live="polite">
+              {!lastWorkout
+                ? 'Primeiro registro'
+                : `Última: ${
+                    cardio
                       ? formatCardioSession(lastWorkout)
                       : getWorkoutSets(lastWorkout)
-                          .map((set) => `${set.weight} kg × ${set.reps}`)
-                          .join('  ·  ')}
-                </strong>
-              </div>
+                          .map((set) => `${set.weight}kg×${set.reps}`)
+                          .join(' · ')
+                  }`}
               {/* Cardio ainda não tem noção de recorde nesta primeira versão — ver
                   ExerciseDetail.jsx, mesmo motivo (sem carga, "melhor" não se aplica). */}
-              {!cardio && (
-                <div>
-                  <TrophyIcon size={15} />
-                  <span>Melhor carga</span>
-                  <strong>
-                    {bestLoad == null ? '—' : `${bestLoad.toLocaleString('pt-BR')} kg`}
-                  </strong>
-                </div>
+              {!cardio && bestLoad != null && (
+                <>
+                  {' · '}
+                  <span className="workout-reference-best">
+                    Melhor {bestLoad.toLocaleString('pt-BR')}kg
+                  </span>
+                </>
               )}
-            </div>
+            </p>
           </section>
 
           {cardio && (
@@ -604,7 +599,7 @@ export function WorkoutForm({
               loading={submitting}
               disabled={submitting}
             >
-              Finalizar treino
+              Finalizar exercício
             </Button>
           </div>
         </div>
