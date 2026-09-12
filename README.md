@@ -60,6 +60,7 @@ Estrutura escolhida por ser a mais simples que atende aos requisitos: subcoleç�
 - Nenhuma credencial sensível (service account, chave privada) é usada neste projeto: apenas a configuração pública do Firebase, que é segura para o frontend por design.
 - `.env` nunca é versionado (`.gitignore`); use `.env.example` como referência.
 - Comunidades seguem o mesmo princípio: criar/editar/excluir comunidade exige `role == "superadmin"` checado nas regras (via `get()` no documento do próprio usuário), nunca só no frontend; publicar em uma comunidade exige filiação (`communityMembers`) e comunidade ativa; editar/excluir publicação exige ser o autor (ou superadmin, para excluir); votos e participações checam se a publicação ainda não expirou.
+- Ver [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) para o retrato das pendências de segurança conhecidas e aceitas conscientemente (o que ficou em aberto e por quê), mantido como referência única para revisão pós-lançamento.
 
 ## Cálculos
 
