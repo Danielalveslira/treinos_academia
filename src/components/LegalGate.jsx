@@ -15,7 +15,7 @@ function todayString() {
 }
 
 // Sobrevive a um F5 (ao contrário do pageCache.js, que é só em memória) para quem já
-// passou por essa checagem nesta aba não ver o spinner "Documentos para continuar" de
+// passou por essa checagem nesta aba não ver o spinner "Antes de continuar" de
 // novo a cada reload — a verificação real ainda roda em segundo plano a cada
 // montagem (fetchAndCacheAccess abaixo), então uma restrição ou versão nova aplicada
 // no meio da sessão continua sendo pega, só não paga o custo de mostrar o gate vazio
@@ -130,7 +130,7 @@ export function LegalGate({ children }) {
     <PublicLayout>
       <section className="support-page" aria-labelledby="legal-gate-title">
         <h1 id="legal-gate-title">
-          {restricted ? 'Acesso restrito' : 'Documentos para continuar'}
+          {restricted ? 'Acesso restrito' : 'Antes de continuar'}
         </h1>
         {error && (
           <Flash variant="danger" role="alert">

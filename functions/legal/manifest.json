@@ -1,9 +1,9 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "date": "2026-09-12",
   "published": true,
   "controllerName": "Wellington Daniel Alves de Lira",
   "contactEmail": "dnllira1@gmail.com",
-  "minimumAge": 18,
-  "changes": ["Termos de Uso: removida a seção sobre assinaturas e cobrança — o app não tem sistema de pagamento no momento."]
+  "minimumAge": 12,
+  "changes": ["Termos de Uso: idade mínima de uso alterada de 18 para 12 anos."]
 }

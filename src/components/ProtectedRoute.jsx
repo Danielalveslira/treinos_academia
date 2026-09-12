@@ -12,7 +12,7 @@ export function ProtectedRoute({ children }) {
   // Enquanto o AuthContext confirma se um permission-denied significa conta excluída
   // (getIdToken(true), ver handlePossibleGhostSession), nenhuma tela protegida deve
   // renderizar — nem LegalGate, que trataria o perfil ainda ausente como "falta aceitar
-  // os termos" e mostraria "Documentos para continuar" pra uma conta que o servidor já
+  // os termos" e mostraria "Antes de continuar" pra uma conta que o servidor já
   // considera inexistente.
   if (loading || verifyingSession) {
     return (
