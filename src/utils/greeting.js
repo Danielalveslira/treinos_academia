@@ -42,7 +42,7 @@ function stableIndex(key, length) {
 // ("BOM DIA"/"BOA TARDE"/"BOA NOITE") e pós-treino ("TREINO CONCLUÍDO"), que repetiam a
 // mesma saudação do heading logo acima dela (ex.: "BOM DIA" + "Bom dia, fulano...").
 // Sempre a mesma, em qualquer estado — não é mais parte da variação por período/trained.
-export const IMPACT_EYEBROW = 'SEM PROGRESSÃO.\nSEM RESULTADOS.'
+export const IMPACT_EYEBROW = 'SEM PROGRESSÃO. SEM RESULTADOS.'
 
 const TRAINED_MESSAGES = [
   (name) => `Treino de hoje concluído, ${name}. Boa.`,

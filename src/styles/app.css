@@ -66,9 +66,6 @@ body {
   letter-spacing: 1.3px;
   color: var(--fgColor-muted);
   margin-bottom: 8px;
-  /* Sem efeito em texto de uma linha só (a maioria dos usos) -- só entra em ação na
-     saudação do dashboard, cujo eyebrow tem uma quebra de linha literal (\n). */
-  white-space: pre-line;
 }
 .page-description {
   font-size: 14px;
