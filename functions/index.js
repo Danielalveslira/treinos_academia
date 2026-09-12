@@ -3,6 +3,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore'
 import { createDeletionService, statusPhotoExtra } from './deletion-service.js'
 import { createBumpMemberCount } from './community-members-service.js'
+import { createSyncUserCommunityIds } from './user-communities-sync.js'
 import { validId } from './legal-core.js'
 import { accountView, validateSetAccountStatus, validateDeleteAccount } from './admin-core.js'
 import { readFileSync } from 'node:fs'
@@ -389,17 +390,31 @@ export const cleanupDeletedCommunity = onDocumentDeleted(
 )
 
 const bumpMemberCount = createBumpMemberCount({ db, FieldValue })
+const syncUserCommunityIds = createSyncUserCommunityIds({ db, FieldValue })
 // Sem retry, de propósito: FieldValue.increment não é idempotente — uma nova tentativa
 // depois de um "sucesso não confirmado" contaria a mesma entrada/saída duas vezes. Uma
 // falha isolada aqui só deixa o contador levemente desatualizado (cosmético, no painel
-// admin), o que é preferível a um valor sistematicamente errado.
+// admin), o que é preferível a um valor sistematicamente errado. syncUserCommunityIds
+// usa arrayUnion/arrayRemove (idempotente por natureza), então não tem o mesmo problema.
 export const onCommunityMemberJoin = onDocumentCreated(
   { ...options, document: 'communityMembers/{membershipId}' },
-  (event) => bumpMemberCount(event.data?.data()?.communityId, 1)
+  (event) => {
+    const data = event.data?.data()
+    return Promise.all([
+      bumpMemberCount(data?.communityId, 1),
+      syncUserCommunityIds(data?.userId, data?.communityId, 'join'),
+    ])
+  }
 )
 export const onCommunityMemberLeave = onDocumentDeleted(
   { ...options, document: 'communityMembers/{membershipId}' },
-  (event) => bumpMemberCount(event.data?.data()?.communityId, -1)
+  (event) => {
+    const data = event.data?.data()
+    return Promise.all([
+      bumpMemberCount(data?.communityId, -1),
+      syncUserCommunityIds(data?.userId, data?.communityId, 'leave'),
+    ])
+  }
 )
 
 export const processDeletionJobs = onSchedule(
