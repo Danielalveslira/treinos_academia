@@ -107,7 +107,17 @@ export function LegalGate({ children }) {
       if (needsBirthDate) await setBirthInfo(user.uid, { dataNascimento: birthDate })
       await acceptLegalDocuments(confirmed)
       await refreshProfile(user.uid)
-    } catch {
+    } catch (err) {
+      // A própria Cloud Function já identifica esse caso com precisão (assertWritableAccount
+      // em functions/index.js) — normalmente o AuthContext já teria encerrado a sessão
+      // sozinho antes de chegar aqui (ver handlePossibleGhostSession), mas se a conta foi
+      // excluída bem no meio dessa tentativa de aceite, é mais honesto avisar e sair do
+      // que insistir num "tente novamente" que nunca vai funcionar.
+      if (err?.message === 'A conta está em exclusão.') {
+        setError('Sua sessão não é mais válida. Você será desconectado.')
+        await logoutUser().catch(() => {})
+        return
+      }
       setError(
         'Não foi possível salvar o aceite. Suas confirmações foram mantidas; tente novamente.'
       )

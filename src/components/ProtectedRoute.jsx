@@ -6,9 +6,14 @@ import { EmailVerificationGate } from './EmailVerificationGate'
 import { requiresEmailVerification } from '../utils/emailVerification'
 
 export function ProtectedRoute({ children }) {
-  const { user, profile, loading } = useAuth()
+  const { user, profile, loading, verifyingSession } = useAuth()
 
-  if (loading) {
+  // Enquanto o AuthContext confirma se um permission-denied significa conta excluída
+  // (getIdToken(true), ver handlePossibleGhostSession), nenhuma tela protegida deve
+  // renderizar — nem LegalGate, que trataria o perfil ainda ausente como "falta aceitar
+  // os termos" e mostraria "Documentos para continuar" pra uma conta que o servidor já
+  // considera inexistente.
+  if (loading || verifyingSession) {
     return (
       <Box
         sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}
