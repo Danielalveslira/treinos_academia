@@ -23,7 +23,7 @@ import {
   saveDoneExerciseIds,
   cleanupStaleDoneExerciseKeys,
 } from '../utils/doneExercisesStorage'
-import { nextStepAfterFinishing } from '../utils/workoutSessionFlow'
+import { nextStepAfterFinishing, valuesForNextExercise } from '../utils/workoutSessionFlow'
 
 // Enquanto o teclado virtual está provavelmente aberto (um campo do formulário tem
 // foco), CSS esconde a barra de navegação inferior e o botão flutuante de instalar o
@@ -283,6 +283,10 @@ export function WorkoutForm({
     })
     setDoneExerciseIds(nextDone)
     saveDoneExerciseIds(todayString(), nextDone)
+    setValues((previous) => ({
+      ...valuesForNextExercise(previous),
+      setDetails: [{ weight: '', reps: '', key: nextSetId.current++ }],
+    }))
     setSearch('')
     setStep(nextStep)
   }
