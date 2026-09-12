@@ -13,7 +13,12 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
-import { MAX_ACTIVE_ADS_PER_COMMUNITY, SponsoredAdCapError } from '../utils/validators'
+import {
+  MAX_ACTIVE_ADS_PER_COMMUNITY,
+  SponsoredAdCapError,
+  MAX_ACTIVE_GLOBAL_ADS,
+  SponsoredAdGlobalCapError,
+} from '../utils/validators'
 
 // Um anúncio só aparece nas comunidades listadas em communityIds — NUNCA em todas por
 // padrão. A ausência de uma comunidade nessa lista não é um bug a corrigir; é o
@@ -55,11 +60,29 @@ export async function listSponsoredAdsForCommunity(communityId) {
   return snapshot.docs.map(toDoc)
 }
 
+// Consulta usada pelo banner rotativo da Home: anúncios globais, sem relação com
+// comunidades do usuário. Mesmo padrão de listSponsoredAdsForCommunity — expiresAt e
+// displayMode ficam de fora do filtro do servidor (ver comentário acima) e são
+// filtrados no client (ver useGlobalSponsoredAds.js).
+export async function listGlobalSponsoredAds() {
+  const q = query(sponsoredAdsRef(), where('isGlobal', '==', true))
+  const snapshot = await getDocs(q)
+  return snapshot.docs.map(toDoc)
+}
+
 // Não filtra por expiresAt de propósito: um anúncio vencido que ninguém excluiu ainda
 // continua "ocupando vaga" no teto — isso empurra o admin a limpar o que não vale mais,
 // em vez de deixar anúncios vencidos se acumularem sem limite.
 async function countAdsTargeting(communityId, excludeAdId) {
   const q = query(sponsoredAdsRef(), where('communityIds', 'array-contains', communityId))
+  const snapshot = await getDocs(q)
+  return snapshot.docs.filter((d) => d.id !== excludeAdId).length
+}
+
+// Mesmo raciocínio de countAdsTargeting, mas para o teto global (MAX_ACTIVE_GLOBAL_ADS)
+// — não filtra por expiresAt de propósito, pelo mesmo motivo.
+async function countActiveGlobalAds(excludeAdId) {
+  const q = query(sponsoredAdsRef(), where('isGlobal', '==', true))
   const snapshot = await getDocs(q)
   return snapshot.docs.filter((d) => d.id !== excludeAdId).length
 }
@@ -92,6 +115,23 @@ export async function assertUnderActiveAdsCap(communityIds, { excludeAdId } = {}
   }
 }
 
+// Mesma decisão consciente de assertUnderActiveAdsCap acima, não uma trava diferente:
+// leitura (contagem) seguida de escrita separada, sem transação — dois superadmins (ou
+// um duplo clique) marcando "Exibir na Home" ao mesmo tempo podem cada um ler a
+// contagem antes do outro terminar de escrever, furando MAX_ACTIVE_GLOBAL_ADS por 1-2
+// unidades. Aceitável pelo mesmo motivo: autocorrige na próxima tentativa de criar ou
+// editar um anúncio global, e o cenário exige dois admins agindo no mesmo instante. Só
+// existe aqui, não em firestore.rules (regras não conseguem rodar uma contagem) — um
+// client que chamasse addDoc direto, pulando este arquivo, ignoraria o teto (mas ainda
+// cai na validação de forma de isValidSponsoredAd, que independe deste teto).
+export async function assertUnderActiveGlobalAdsCap(isGlobal, { excludeAdId } = {}) {
+  if (!isGlobal) return
+  const count = await countActiveGlobalAds(excludeAdId)
+  if (count >= MAX_ACTIVE_GLOBAL_ADS) {
+    throw new SponsoredAdGlobalCapError()
+  }
+}
+
 function sponsoredAdFields(ad) {
   const hasCta = Boolean(ad.ctaLabel?.trim())
   return {
@@ -104,12 +144,14 @@ function sponsoredAdFields(ad) {
     ctaTarget: hasCta ? ad.ctaTarget.trim() : null,
     expiresAt: toTimestampOrNull(ad.expiresAt),
     communityIds: ad.communityIds,
+    isGlobal: Boolean(ad.isGlobal),
     displayMode: ad.displayMode,
   }
 }
 
 export async function createSponsoredAd(userId, ad) {
   await assertUnderActiveAdsCap(ad.communityIds)
+  await assertUnderActiveGlobalAdsCap(ad.isGlobal)
   return addDoc(sponsoredAdsRef(), {
     ...sponsoredAdFields(ad),
     createdBy: userId,
@@ -119,6 +161,7 @@ export async function createSponsoredAd(userId, ad) {
 
 export async function updateSponsoredAd(adId, ad) {
   await assertUnderActiveAdsCap(ad.communityIds, { excludeAdId: adId })
+  await assertUnderActiveGlobalAdsCap(ad.isGlobal, { excludeAdId: adId })
   return updateDoc(doc(db, 'sponsoredAds', adId), sponsoredAdFields(ad))
 }
 
