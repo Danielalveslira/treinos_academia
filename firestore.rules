@@ -656,6 +656,20 @@ service cloud.firestore {
     // contagem/aggregation, então esse teto não é (e não pode ser) reforçado aqui. Ver o
     // comentário em assertUnderActiveAdsCap() para as duas lacunas conhecidas e aceitas
     // dessa decisão.
+    // Sem allowlist de esquema, ctaTarget era texto livre renderizado direto como href
+    // no client — um valor 'javascript:...' executava no clique, na origem real do app,
+    // contra qualquer membro das comunidades do anúncio (achado #1 da auditoria de
+    // segurança). Espelha EXTERNAL_CTA_TARGET_PATTERN/INTERNAL_CTA_TARGET_PATTERN em
+    // validators.js — nunca confiar só na regra nem só no client.
+    function isValidCtaTarget(data) {
+      return data.ctaType == 'external'
+        ? data.ctaTarget.matches('^https://.+$')
+        // Uma barra só (não duas): "//evil.com" é uma URL "protocol-relative" válida
+        // que o navegador resolve para outro domínio, e "/\\evil.com" corre o mesmo
+        // risco por normalização de barra invertida em alguns navegadores.
+        : data.ctaTarget.matches('^/([^/\\\\].*)?$');
+    }
+
     function isValidSponsoredAd(data) {
       return data.partnerName is string && data.partnerName.size() > 0 && data.partnerName.size() <= 60
         && data.title is string && data.title.size() > 0 && data.title.size() <= 100
@@ -667,7 +681,8 @@ service cloud.firestore {
         && (data.ctaLabel != null) == (data.ctaType != null)
         && (data.ctaType == null || data.ctaType in ['external', 'internal'])
         && (data.ctaLabel != null) == (data.ctaTarget != null)
-        && (data.ctaTarget == null || (data.ctaTarget is string && data.ctaTarget.size() <= 300))
+        && (data.ctaTarget == null
+          || (data.ctaTarget is string && data.ctaTarget.size() <= 300 && isValidCtaTarget(data)))
         && (data.expiresAt == null || data.expiresAt is timestamp)
         && data.communityIds is list && data.communityIds.size() >= 1 && data.communityIds.size() <= 50
         && data.displayMode is list && data.displayMode.size() >= 1

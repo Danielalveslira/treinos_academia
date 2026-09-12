@@ -74,6 +74,35 @@ test('create rejects a malformed ad even from an admin', async () => {
   )
 })
 
+// Achado #1 da auditoria de segurança: ctaTarget era texto livre sem checagem de esquema,
+// renderizado direto como href no client -- 'javascript:...' executava no clique.
+test('create rejects a ctaTarget with an unsafe scheme, even from an admin', async () => {
+  const cta = (ctaType, ctaTarget) => baseAd({ ctaLabel: 'Saiba mais', ctaType, ctaTarget })
+
+  await assertSucceeds(
+    setDoc(doc(admin, 'sponsoredAds/cta-external-ok'), cta('external', 'https://exemplo.com'))
+  )
+  for (const malicious of [
+    'javascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'http://exemplo.com',
+    '//evil.com',
+  ]) {
+    await assertFails(
+      setDoc(doc(admin, 'sponsoredAds/cta-external-bad'), cta('external', malicious))
+    )
+  }
+
+  await assertSucceeds(
+    setDoc(doc(admin, 'sponsoredAds/cta-internal-ok'), cta('internal', '/comunidades'))
+  )
+  for (const malicious of ['//evil.com', '/\\evil.com', 'javascript:alert(1)', 'comunidades']) {
+    await assertFails(
+      setDoc(doc(admin, 'sponsoredAds/cta-internal-bad'), cta('internal', malicious))
+    )
+  }
+})
+
 test('a member reads ads targeting their own community', async () => {
   await env.withSecurityRulesDisabled(async (context) => {
     await setDoc(

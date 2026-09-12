@@ -201,6 +201,18 @@ export function validateBodyMeasurement({
 
 export const SPONSORED_AD_CTA_TYPES = ['external', 'internal']
 export const SPONSORED_AD_DISPLAY_MODES = ['feed', 'banner']
+// Sem allowlist de esquema, ctaTarget era texto livre renderizado direto como href —
+// um ctaTarget do tipo 'javascript:...' executava no clique, na origem real do app,
+// contra qualquer membro das comunidades do anúncio (achado #1 da auditoria de
+// segurança). https-only (não http) por simplicidade: um só esquema aceito, sem
+// ambiguidade. Espelhada em isValidSponsoredAd() em firestore.rules -- nunca confiar só
+// nesta camada.
+const EXTERNAL_CTA_TARGET_PATTERN = /^https:\/\/.+$/
+// Precisa começar com uma única barra (não duas) -- "//evil.com" é uma URL válida
+// "protocol-relative" que o navegador resolveria para outro domínio, e "/\evil.com"
+// sofre o mesmo risco por normalização de barra invertida em alguns navegadores. Só a
+// barra raiz sozinha ("/") também é aceita.
+const INTERNAL_CTA_TARGET_PATTERN = /^\/([^/\\].*)?$/
 // Teto de forma do próprio documento (quantas comunidades um anúncio pode listar) —
 // puramente sobre o shape, não exige consultar o Firestore, então cabe neste arquivo.
 const MAX_SPONSORED_AD_COMMUNITIES = 50
@@ -267,7 +279,13 @@ export function validateSponsoredAd({
       'Informe o destino do botão',
       'Destino do botão muito longo'
     )
-    if (ctaTargetError) errors.ctaTarget = ctaTargetError
+    if (ctaTargetError) {
+      errors.ctaTarget = ctaTargetError
+    } else if (ctaType === 'external' && !EXTERNAL_CTA_TARGET_PATTERN.test(ctaTarget.trim())) {
+      errors.ctaTarget = 'Links externos devem começar com https://'
+    } else if (ctaType === 'internal' && !INTERNAL_CTA_TARGET_PATTERN.test(ctaTarget.trim())) {
+      errors.ctaTarget = 'Rotas internas devem começar com uma única barra (ex.: /comunidades)'
+    }
   }
 
   if (expiresAt) {

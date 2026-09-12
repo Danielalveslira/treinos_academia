@@ -271,6 +271,41 @@ test('validateSponsoredAd: ctaType/ctaTarget are only required when ctaLabel is 
   )
 })
 
+// Achado #1 da auditoria de segurança: ctaTarget era texto livre renderizado direto
+// como href, sem checagem de esquema — um valor 'javascript:...' executava no clique.
+test('validateSponsoredAd: ctaTarget is restricted to a safe scheme per ctaType', () => {
+  function ctaErrors(overrides) {
+    return validateSponsoredAd(baseSponsoredAd({ ctaLabel: 'Saiba mais', ...overrides }))
+  }
+
+  // external: só https://, nunca http:// puro, javascript:, data: ou protocol-relative.
+  assert.equal(hasErrors(ctaErrors({ ctaType: 'external', ctaTarget: 'https://exemplo.com' })), false)
+  for (const malicious of [
+    'javascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'http://exemplo.com',
+    '//evil.com',
+  ]) {
+    assert.match(
+      ctaErrors({ ctaType: 'external', ctaTarget: malicious }).ctaTarget,
+      /https:\/\//,
+      `deveria rejeitar: ${malicious}`
+    )
+  }
+
+  // internal: uma barra só (rota relativa de verdade); nunca duas barras (URL
+  // "protocol-relative") nem barra invertida (bypass de normalização de navegador).
+  assert.equal(hasErrors(ctaErrors({ ctaType: 'internal', ctaTarget: '/comunidades' })), false)
+  assert.equal(hasErrors(ctaErrors({ ctaType: 'internal', ctaTarget: '/' })), false)
+  for (const malicious of ['//evil.com', '/\\evil.com', 'javascript:alert(1)', 'comunidades']) {
+    assert.match(
+      ctaErrors({ ctaType: 'internal', ctaTarget: malicious }).ctaTarget,
+      /barra/,
+      `deveria rejeitar: ${malicious}`
+    )
+  }
+})
+
 test('validateSponsoredAd: expiresAt is optional but must be a parseable date when given', () => {
   assert.equal(hasErrors(validateSponsoredAd(baseSponsoredAd())), false)
   assert.equal(
