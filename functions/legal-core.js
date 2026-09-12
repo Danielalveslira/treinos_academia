@@ -58,7 +58,7 @@ export function validateSupportRequest(data) {
   return null
 }
 
-export const ACTIONS = [
+const ACTIONS = [
   'no_action',
   'warning',
   'remove_content',
