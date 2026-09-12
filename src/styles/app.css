@@ -1087,6 +1087,64 @@ body:has(.pwa-offline) .app-shell {
   margin-top: 12px;
 }
 
+.sponsored-ad-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--fitness-accent);
+  border-radius: 8px;
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+}
+.sponsored-ad-banner-content {
+  flex: 1;
+  min-width: 0;
+}
+.sponsored-ad-banner-partner {
+  display: block;
+  color: var(--fgColor-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.sponsored-ad-banner-title {
+  display: block;
+  overflow: hidden;
+  color: var(--fgColor-default);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sponsored-ad-banner-cta {
+  flex-shrink: 0;
+  color: var(--fitness-accent-strong);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sponsored-ad-banner-cta:hover {
+  text-decoration: underline;
+}
+.sponsored-ad-banner-dots {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.sponsored-ad-banner-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--fitness-accent);
+  opacity: 0.35;
+}
+.sponsored-ad-banner-dot.is-active {
+  opacity: 1;
+}
+
 .status-header {
   display: flex;
   align-items: flex-start;

@@ -27,6 +27,7 @@ import { AchievementForm } from '../components/AchievementForm'
 import { StatusForm } from '../components/StatusForm'
 import { StatusCard } from '../components/StatusCard'
 import { SponsoredAdCard } from '../components/SponsoredAdCard'
+import { SponsoredAdBanner } from '../components/SponsoredAdBanner'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 
@@ -59,7 +60,7 @@ export default function CommunityDetail() {
   // enabled=member: só busca depois de confirmar participação, nunca antes -- ver
   // comentário em useSponsoredAds.js sobre por que isso é obrigatório, não só uma
   // otimização.
-  const { feedAds } = useSponsoredAds(id, member)
+  const { feedAds, bannerAds } = useSponsoredAds(id, member)
 
   const loadCommunity = useCallback(async () => {
     setLoadingCommunity(true)
@@ -286,6 +287,7 @@ export default function CommunityDetail() {
 
           {member && (
             <>
+              <SponsoredAdBanner ads={bannerAds} />
               {!formOpen && (
                 <Box className="community-toolbar">
                   <Heading as="h2">Publicações</Heading>
