@@ -204,7 +204,7 @@ test('validateSponsoredAd requires partnerName, title, communityIds and displayM
   assert.match(validateSponsoredAd(baseSponsoredAd({ title: 'x'.repeat(101) })).title, /longo/)
   assert.match(
     validateSponsoredAd(baseSponsoredAd({ communityIds: [] })).communityIds,
-    /pelo menos uma/
+    /ao menos uma comunidade/
   )
   assert.match(
     validateSponsoredAd(baseSponsoredAd({ communityIds: Array(51).fill('c') })).communityIds,
@@ -221,6 +221,25 @@ test('validateSponsoredAd requires partnerName, title, communityIds and displayM
   assert.equal(
     hasErrors(validateSponsoredAd(baseSponsoredAd({ displayMode: ['feed', 'banner'] }))),
     false
+  )
+})
+
+test('validateSponsoredAd: communityIds and isGlobal are orthogonal, not mutually exclusive', () => {
+  // Só comunidade, sem isGlobal -- já coberto pelo teste acima (baseSponsoredAd()).
+  // Só global, sem comunidade nenhuma.
+  assert.equal(
+    hasErrors(validateSponsoredAd(baseSponsoredAd({ communityIds: [], isGlobal: true }))),
+    false
+  )
+  // Os dois ao mesmo tempo.
+  assert.equal(
+    hasErrors(validateSponsoredAd(baseSponsoredAd({ communityIds: ['comm1'], isGlobal: true }))),
+    false
+  )
+  // Nenhum dos dois -- o único estado de fato inválido (não apareceria em lugar nenhum).
+  assert.match(
+    validateSponsoredAd(baseSponsoredAd({ communityIds: [], isGlobal: false })).communityIds,
+    /Home/
   )
 })
 

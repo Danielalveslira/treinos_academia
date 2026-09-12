@@ -684,7 +684,12 @@ service cloud.firestore {
         && (data.ctaTarget == null
           || (data.ctaTarget is string && data.ctaTarget.size() <= 300 && isValidCtaTarget(data)))
         && (data.expiresAt == null || data.expiresAt is timestamp)
-        && data.communityIds is list && data.communityIds.size() >= 1 && data.communityIds.size() <= 50
+        // isGlobal e communityIds são ortogonais, não mutuamente exclusivos: um anúncio
+        // pode mirar só comunidades específicas, só a Home (isGlobal), ou os dois ao
+        // mesmo tempo — o único estado inválido é não aparecer em lugar nenhum.
+        && data.isGlobal is bool
+        && data.communityIds is list && data.communityIds.size() <= 50
+        && (data.communityIds.size() >= 1 || data.isGlobal == true)
         && data.displayMode is list && data.displayMode.size() >= 1
         && data.displayMode.hasOnly(['feed', 'banner'])
         && data.createdBy is string
@@ -693,9 +698,15 @@ service cloud.firestore {
 
     match /sponsoredAds/{adId} {
       // Um anúncio só é visível pra quem participa de pelo menos uma das comunidades
-      // listadas em communityIds — nunca liberado geral, mesmo pra usuário autenticado.
-      // isSuperAdmin() entra primeiro porque o painel admin precisa listar/editar TODOS
-      // os anúncios, não só os das comunidades de que o próprio admin participa.
+      // listadas em communityIds, OU pra qualquer usuário autenticado quando isGlobal é
+      // true (banner da Home, sem relação com comunidades) — nunca liberado geral por
+      // padrão. isSuperAdmin() entra primeiro porque o painel admin precisa listar/editar
+      // TODOS os anúncios, não só os das comunidades de que o próprio admin participa.
+      //
+      // isGlobal vem ANTES de communityIds.hasAny(...) no || de propósito: CEL faz
+      // short-circuit, então consultar anúncios globais (Home) nunca chega a avaliar
+      // myCommunityIds() (que faz um get() extra em users/{uid}) — mais barato, não mais
+      // caro, que a consulta por comunidade.
       //
       // IMPORTANTE pra quem for consumir esta coleção no client: como esta regra depende
       // de um get() que não faz parte do filtro da própria query, o Firestore nega a
@@ -706,8 +717,12 @@ service cloud.firestore {
       // isMember() == true) — nesse caso, o próprio filtro array-contains da query já
       // garante a interseção com myCommunityIds(). NUNCA consultar communityIds de uma
       // comunidade não confirmada antes — o pedido inteiro seria negado, não filtrado.
+      // A consulta global (where isGlobal == true) não tem esse risco: todo resultado
+      // possível já bate com o primeiro branch do ||, para qualquer usuário autenticado.
       allow read: if isSuperAdmin()
-        || (isSignedIn() && resource.data.communityIds.hasAny(myCommunityIds()));
+        || (isSignedIn()
+          && (resource.data.get('isGlobal', false) == true
+            || resource.data.communityIds.hasAny(myCommunityIds())));
       allow create: if isSuperAdmin()
         && isValidSponsoredAd(request.resource.data)
         && request.resource.data.createdBy == request.auth.uid;

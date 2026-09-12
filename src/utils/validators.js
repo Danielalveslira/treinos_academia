@@ -233,6 +233,18 @@ export class SponsoredAdCapError extends Error {
   }
 }
 
+// Mesmo raciocínio do teto por comunidade, mas para o banner da Home (isGlobal): sem um
+// teto análogo, um anúncio global a mais nunca "esbarra" em lugar nenhum (não há uma
+// lista de comunidades pra mostrar "cheia") e a Home acumularia anúncios indefinidamente.
+export const MAX_ACTIVE_GLOBAL_ADS = 6
+
+export class SponsoredAdGlobalCapError extends Error {
+  constructor() {
+    super(`A Home já atingiu o limite de ${MAX_ACTIVE_GLOBAL_ADS} anúncios globais.`)
+    this.name = 'SponsoredAdGlobalCapError'
+  }
+}
+
 export function validateSponsoredAd({
   partnerName,
   title,
@@ -243,6 +255,7 @@ export function validateSponsoredAd({
   ctaTarget,
   expiresAt,
   communityIds,
+  isGlobal,
   displayMode,
 }) {
   const errors = {}
@@ -293,10 +306,14 @@ export function validateSponsoredAd({
     if (Number.isNaN(date.getTime())) errors.expiresAt = 'Data de expiração inválida'
   }
 
-  if (!Array.isArray(communityIds) || communityIds.length < 1) {
+  // communityIds e isGlobal são ortogonais: o único estado inválido é não aparecer em
+  // lugar nenhum (nem em comunidade nenhuma, nem na Home).
+  if (!Array.isArray(communityIds)) {
     errors.communityIds = 'Selecione pelo menos uma comunidade'
   } else if (communityIds.length > MAX_SPONSORED_AD_COMMUNITIES) {
     errors.communityIds = `Selecione no máximo ${MAX_SPONSORED_AD_COMMUNITIES} comunidades`
+  } else if (communityIds.length < 1 && !isGlobal) {
+    errors.communityIds = 'Selecione ao menos uma comunidade ou marque "Exibir na Home"'
   }
 
   if (
