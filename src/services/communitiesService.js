@@ -62,7 +62,6 @@ export function createCommunity(userId, community) {
   return addDoc(communitiesRef(), {
     name: community.name.trim(),
     description: community.description?.trim() || '',
-    imageUrl: community.imageUrl || null,
     iconName: resolveIconName(community.iconName),
     isActive: true,
     postAccess: community.postAccess === 'admins' ? 'admins' : 'everyone',
