@@ -1,6 +1,4 @@
-function toDate(value) {
-  return value?.toDate ? value.toDate() : new Date(value)
-}
+import { toDate } from './date.js'
 
 export function calculateBMI(weightKg, heightCm) {
   if (!weightKg || !heightCm) return null

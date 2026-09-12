@@ -1,4 +1,5 @@
 import { formatWorkoutSets, getWorkoutLoad } from '../utils/workoutSets'
+import { toDate } from '../utils/date.js'
 import { useMemo } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import { Box, Button, Heading, Text, Label, Link, Spinner, Flash } from '@primer/react'
@@ -168,9 +169,7 @@ export default function ExerciseDetail() {
             <IndicatorCard
               icon={CalendarIcon}
               label="Último treino"
-              value={formatDate(
-                workouts[0].date?.toDate ? workouts[0].date.toDate() : new Date(workouts[0].date)
-              )}
+              value={formatDate(toDate(workouts[0].date))}
             />
           </Box>
           {workouts.length >= EXERCISE_HISTORY_PAGE_SIZE && (
@@ -183,7 +182,7 @@ export default function ExerciseDetail() {
             Sessões
           </Heading>
           {workouts.map((workout) => {
-            const date = workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)
+            const date = toDate(workout.date)
             return (
               <Box as="article" key={workout.id} className="exercise-session-row">
                 <Box
@@ -282,7 +281,7 @@ export default function ExerciseDetail() {
             Séries por treino
           </Heading>
           {workouts.map((workout) => {
-            const date = workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)
+            const date = toDate(workout.date)
             const isRecord = getWorkoutLoad(workout) === indicators.maxLoad
             return (
               <Box as="article" key={workout.id} className="exercise-session-row">

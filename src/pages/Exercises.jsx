@@ -21,14 +21,11 @@ import { ToastFlash } from '../components/ToastFlash'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
 import { formatDate } from '../utils/format'
+import { toDate } from '../utils/date.js'
 
 // Busca só aparece a partir daqui — mesmo limiar usado em WorkoutForm.jsx para a busca
 // por grupo, por consistência: com poucos exercícios ela é só ruído na tela.
 const SEARCH_THRESHOLD = 6
-
-function toDate(value) {
-  return value?.toDate ? value.toDate() : new Date(value)
-}
 
 // Primeira ocorrência por exerciseId já é a mais recente: allWorkouts (useDashboard)
 // vem ordenado por data decrescente.

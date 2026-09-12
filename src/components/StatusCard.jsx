@@ -25,10 +25,7 @@ import { ShareMenu } from './ShareMenu'
 import { formatDateTime } from '../utils/format'
 import { getCached, setCached } from '../utils/pageCache'
 import { isReportableAuthor } from '../utils/moderation'
-
-function toDate(value) {
-  return value?.toDate ? value.toDate() : new Date(value)
-}
+import { toDate } from '../utils/date.js'
 
 // Selo dourado e discreto — o valor vem de authorIsSuperAdmin, gravado no status e
 // conferido pelo servidor no momento da publicação (ver firestore.rules e

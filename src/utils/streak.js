@@ -1,10 +1,8 @@
+import { toDate } from './date.js'
+
 // A partir daqui, "hoje" já passou da hora que consideramos "reta final" — mostra o
 // aviso de urgência só quando o dia ainda não foi treinado.
 const URGENT_HOUR = 18
-
-function toDate(value) {
-  return value?.toDate ? value.toDate() : new Date(value)
-}
 
 // Sempre hora local do dispositivo (getFullYear/getMonth/getDate, nunca getUTC*) — é o
 // que evita a sequência zerar errado perto da meia-noite em fusos diferentes de UTC.

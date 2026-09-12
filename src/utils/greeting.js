@@ -1,11 +1,9 @@
+import { toDate } from './date.js'
+
 // A saudação do Dashboard prioriza, nessa ordem: 1) se o usuário já treinou hoje
 // (reconhecimento, sem "vamos treinar"), 2) o período do dia (se ainda não treinou),
 // 3) uma variação estável de frase dentro desse contexto — nunca aleatória a cada
 // render, senão a mensagem trocaria sozinha a cada F5 sem nenhum motivo real.
-
-function toDate(value) {
-  return value?.toDate ? value.toDate() : new Date(value)
-}
 
 function isSameLocalDay(a, b) {
   return (

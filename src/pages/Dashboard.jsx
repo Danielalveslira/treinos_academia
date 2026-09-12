@@ -18,6 +18,7 @@ import { calculateVolume, getTrainingConsistency } from '../utils/calculations'
 import { getDailyStreak } from '../utils/streak'
 import { getDashboardGreeting } from '../utils/greeting'
 import { formatDate, buildExerciseNameMap } from '../utils/format'
+import { toDate } from '../utils/date.js'
 import { formatWorkoutSets, getWorkoutLoad } from '../utils/workoutSets'
 import { isCardioWorkout, formatCardioSession } from '../utils/cardioSessions'
 import { FrequencyChart } from '../components/FrequencyChart'
@@ -36,7 +37,7 @@ function getVolumeTrend(workouts) {
   let previous = 0
 
   workouts.forEach((workout) => {
-    const date = workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)
+    const date = toDate(workout.date)
     if (date >= startCurrent) current += calculateVolume(workout)
     else if (date >= startPrevious) previous += calculateVolume(workout)
   })
@@ -275,11 +276,7 @@ export default function Dashboard() {
                       : formatWorkoutSets(workout)}
                   </span>
                 </div>
-                <time>
-                  {formatDate(
-                    workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)
-                  )}
-                </time>
+                <time>{formatDate(toDate(workout.date))}</time>
               </article>
             ))}
           </div>

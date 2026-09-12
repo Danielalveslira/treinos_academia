@@ -1,4 +1,5 @@
 import { getWorkoutSets, getWorkoutLoad } from './workoutSets.js'
+import { toDate } from './date.js'
 
 export function calculateVolume(workout) {
   return getWorkoutSets(workout).reduce(
@@ -10,10 +11,6 @@ export function calculateVolume(workout) {
 function calculateEvolutionPercent(currentLoad, previousLoad) {
   if (previousLoad == null || previousLoad === 0) return null
   return ((currentLoad - previousLoad) / previousLoad) * 100
-}
-
-function toDate(value) {
-  return value?.toDate ? value.toDate() : new Date(value)
 }
 
 // Dois treinos no mesmo dia (date só guarda o dia, não a hora) são desempatados pelo

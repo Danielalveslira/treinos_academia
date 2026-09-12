@@ -26,9 +26,10 @@ import { buildExerciseNameMap } from '../utils/format'
 
 import { getWorkoutSets, formatWorkoutSets } from '../utils/workoutSets'
 import { isCardioWorkout, formatCardioSession } from '../utils/cardioSessions'
+import { toDate } from '../utils/date.js'
 
 function toEditableWorkout(workout) {
-  const date = workout.date?.toDate ? workout.date.toDate() : new Date(workout.date)
+  const date = toDate(workout.date)
   const base = {
     exerciseId: workout.exerciseId,
     date: date.toISOString().slice(0, 10),
@@ -211,20 +212,14 @@ export default function History() {
           <Box key={workout.id} className="history-row">
             <div
               className="history-date"
-              aria-label={(workout.date?.toDate
-                ? workout.date.toDate()
-                : new Date(workout.date)
-              ).toLocaleDateString('pt-BR')}
+              aria-label={toDate(workout.date).toLocaleDateString('pt-BR')}
             >
               <CalendarIcon size={15} />
               <strong>
-                {(workout.date?.toDate
-                  ? workout.date.toDate()
-                  : new Date(workout.date)
-                ).toLocaleDateString('pt-BR', { day: '2-digit' })}
+                {toDate(workout.date).toLocaleDateString('pt-BR', { day: '2-digit' })}
               </strong>
               <span>
-                {(workout.date?.toDate ? workout.date.toDate() : new Date(workout.date))
+                {toDate(workout.date)
                   .toLocaleDateString('pt-BR', { month: 'short' })
                   .replace('.', '')}
               </span>
