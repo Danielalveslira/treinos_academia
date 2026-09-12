@@ -102,6 +102,17 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
     }
 
+    // Espelho de users/{uid}.communityIds (mantido só pela Admin SDK — ver
+    // user-communities-sync.js). Existe unicamente pra sponsoredAds/{adId} poder checar
+    // filiação com list.hasAny(list) em vez de iterar communityIds do próprio anúncio,
+    // algo que a linguagem de regras não suporta (só permite get()/exists() em caminhos
+    // fixos, nunca por elemento de um array armazenado). Chamada como função, não como
+    // `let`, pelo mesmo motivo do comentário em emailVerifiedOk() — perto do teto de
+    // variáveis por função que já causou incidente (ver hasAppAccess()).
+    function myCommunityIds() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('communityIds', []);
+    }
+
     function isValidExercise(data) {
       return data.name is string && data.name.size() > 0 && data.name.size() <= 60
         // Sem teto até aqui — o formulário só oferecia uma lista fixa de grupos, então
@@ -638,6 +649,58 @@ service cloud.firestore {
         allow delete: if isSignedIn() && userId == request.auth.uid;
         allow update: if false;
       }
+    }
+
+    // MAX_ACTIVE_ADS_PER_COMMUNITY (quantos anúncios podem mirar a mesma comunidade) só
+    // existe em sponsoredAdsService.js, de propósito — regras não conseguem rodar uma
+    // contagem/aggregation, então esse teto não é (e não pode ser) reforçado aqui. Ver o
+    // comentário em assertUnderActiveAdsCap() para as duas lacunas conhecidas e aceitas
+    // dessa decisão.
+    function isValidSponsoredAd(data) {
+      return data.partnerName is string && data.partnerName.size() > 0 && data.partnerName.size() <= 60
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 100
+        && data.description is string && data.description.size() <= 500
+        && (data.imageUrl == null || (data.imageUrl is string && data.imageUrl.size() <= 500))
+        && (data.ctaLabel == null || (data.ctaLabel is string && data.ctaLabel.size() <= 30))
+        // ctaType/ctaTarget existem se e somente se ctaLabel existe — mesma regra
+        // condicional de validateSponsoredAd() em validators.js.
+        && (data.ctaLabel != null) == (data.ctaType != null)
+        && (data.ctaType == null || data.ctaType in ['external', 'internal'])
+        && (data.ctaLabel != null) == (data.ctaTarget != null)
+        && (data.ctaTarget == null || (data.ctaTarget is string && data.ctaTarget.size() <= 300))
+        && (data.expiresAt == null || data.expiresAt is timestamp)
+        && data.communityIds is list && data.communityIds.size() >= 1 && data.communityIds.size() <= 50
+        && data.displayMode is list && data.displayMode.size() >= 1
+        && data.displayMode.hasOnly(['feed', 'banner'])
+        && data.createdBy is string
+        && data.createdAt is timestamp;
+    }
+
+    match /sponsoredAds/{adId} {
+      // Um anúncio só é visível pra quem participa de pelo menos uma das comunidades
+      // listadas em communityIds — nunca liberado geral, mesmo pra usuário autenticado.
+      // isSuperAdmin() entra primeiro porque o painel admin precisa listar/editar TODOS
+      // os anúncios, não só os das comunidades de que o próprio admin participa.
+      //
+      // IMPORTANTE pra quem for consumir esta coleção no client: como esta regra depende
+      // de um get() que não faz parte do filtro da própria query, o Firestore nega a
+      // consulta INTEIRA (não filtra documento a documento) se QUALQUER resultado
+      // possível não bater com a regra pro usuário atual. Isso é seguro e correto desde
+      // que a query só seja feita com um communityId que o usuário já confirmou
+      // participar (mesmo padrão de CommunityDetail.jsx, que só busca o feed depois de
+      // isMember() == true) — nesse caso, o próprio filtro array-contains da query já
+      // garante a interseção com myCommunityIds(). NUNCA consultar communityIds de uma
+      // comunidade não confirmada antes — o pedido inteiro seria negado, não filtrado.
+      allow read: if isSuperAdmin()
+        || (isSignedIn() && resource.data.communityIds.hasAny(myCommunityIds()));
+      allow create: if isSuperAdmin()
+        && isValidSponsoredAd(request.resource.data)
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isSuperAdmin()
+        && isValidSponsoredAd(request.resource.data)
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isSuperAdmin();
     }
 
     match /{document=**} {
