@@ -1,0 +1,84 @@
+import { after, before, test } from 'node:test'
+import assert from 'node:assert/strict'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { createRequire } from 'node:module'
+import { build } from 'esbuild'
+
+let directory
+let render
+before(async () => {
+  directory = await mkdtemp(join(tmpdir(), 'protected-route-tests-'))
+  const outfile = join(directory, 'route.cjs')
+  await build({
+    stdin: {
+      contents: `
+        import { createElement } from 'react'
+        import { renderToStaticMarkup } from 'react-dom/server'
+        import { MemoryRouter } from 'react-router-dom'
+        import { ThemeProvider, BaseStyles } from '@primer/react'
+        import { AuthContext } from '../contexts/AuthContext.jsx'
+        import { ProtectedRoute } from './ProtectedRoute.jsx'
+        export const render = (authValue) => renderToStaticMarkup(createElement(ThemeProvider, null,
+          createElement(BaseStyles, null, createElement(MemoryRouter, null,
+            createElement(AuthContext.Provider, { value: authValue },
+              createElement(ProtectedRoute, null, createElement('div', null, 'CONTEUDO_PROTEGIDO')))))))
+      `,
+      resolveDir: new URL('.', import.meta.url).pathname,
+    },
+    outfile,
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    jsx: 'automatic',
+    loader: { '.css': 'empty' },
+    logLevel: 'silent',
+    // ProtectedRoute -> LegalGate -> legalService.js -> firebase/config.js, que lê
+    // import.meta.env.VITE_* (só existe via Vite em dev/build real). getLegalAccess()
+    // nunca chega a ser chamado num renderToStaticMarkup (useEffect não roda em SSR) --
+    // só initializeApp() precisa não explodir na hora de montar o módulo.
+    define: {
+      'import.meta.env': JSON.stringify({
+        VITE_FIREBASE_API_KEY: 'test',
+        VITE_FIREBASE_AUTH_DOMAIN: 'test',
+        VITE_FIREBASE_PROJECT_ID: 'test',
+        VITE_FIREBASE_STORAGE_BUCKET: 'test',
+        VITE_FIREBASE_MESSAGING_SENDER_ID: 'test',
+        VITE_FIREBASE_APP_ID: 'test',
+        VITE_USE_FIREBASE_EMULATOR: 'false',
+        DEV: false,
+      }),
+    },
+  })
+  ;({ render } = createRequire(import.meta.url)(outfile))
+})
+after(async () => {
+  if (directory) await rm(directory, { recursive: true, force: true })
+})
+
+const baseAuth = {
+  user: { uid: 'u1', emailVerified: true },
+  profile: { role: 'user', createdAt: { toDate: () => new Date('2020-01-01') } },
+  loading: false,
+  verifyingSession: false,
+}
+
+// Achado #2 da auditoria de segurança: setAccountStatus (Cloud Function) só grava
+// accountStatus:'disabled' no Firestore, nunca revoga o token do Auth -- sem este gate,
+// o usuário via os próprios children normalmente (a única coisa que de fato bloqueava
+// era cada leitura subsequente falhando com um erro genérico, sem nunca dizer o motivo).
+test('a disabled account sees the disabled-account gate, never the protected content', () => {
+  const html = render({
+    ...baseAuth,
+    profile: { ...baseAuth.profile, accountStatus: 'disabled', disabledReason: 'Spam' },
+  })
+  assert.match(html, /Conta desativada/)
+  assert.match(html, /Spam/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('an active account never sees the disabled-account gate', () => {
+  const html = render(baseAuth)
+  assert.doesNotMatch(html, /Conta desativada/)
+})
