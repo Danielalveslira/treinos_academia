@@ -1,4 +1,5 @@
 import { before, test } from 'node:test'
+import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
 import { doc, setDoc, updateDoc, deleteDoc, getDocs, collection, query, where, Timestamp } from 'firebase/firestore'
@@ -19,6 +20,7 @@ function baseAd(overrides = {}) {
     ctaTarget: null,
     expiresAt: null,
     communityIds: ['comm1'],
+    isGlobal: false,
     displayMode: ['feed'],
     createdBy: 'admin',
     createdAt: Timestamp.now(),
@@ -65,12 +67,51 @@ test('create rejects a malformed ad even from an admin', async () => {
   await assertFails(
     setDoc(doc(admin, 'sponsoredAds/ad-invalid'), baseAd({ partnerName: '' }))
   )
+  // Nem comunidade nem isGlobal: não apareceria em lugar nenhum.
   await assertFails(
-    setDoc(doc(admin, 'sponsoredAds/ad-invalid2'), baseAd({ communityIds: [] }))
+    setDoc(doc(admin, 'sponsoredAds/ad-invalid2'), baseAd({ communityIds: [], isGlobal: false }))
   )
   // ctaLabel presente sem ctaType/ctaTarget viola a regra condicional.
   await assertFails(
     setDoc(doc(admin, 'sponsoredAds/ad-invalid3'), baseAd({ ctaLabel: 'Saiba mais' }))
+  )
+})
+
+// Extensão da feature de anúncios/parcerias: banner rotativo global na Home, ortogonal ao
+// direcionamento por comunidade já existente. Um anúncio pode ser só de comunidade, só
+// global, ou os dois.
+test('isGlobal and communityIds are independent targeting dimensions on write', async () => {
+  // Só global, sem comunidade nenhuma -- o caso novo que este item introduz.
+  await assertSucceeds(
+    setDoc(
+      doc(admin, 'sponsoredAds/global-only'),
+      baseAd({ communityIds: [], isGlobal: true, displayMode: ['banner'] })
+    )
+  )
+  // Comunidade e global ao mesmo tempo.
+  await assertSucceeds(
+    setDoc(
+      doc(admin, 'sponsoredAds/global-and-community'),
+      baseAd({ communityIds: ['comm1'], isGlobal: true })
+    )
+  )
+  // isGlobal precisa ser bool -- não aceita ausente nem tipo errado.
+  const { isGlobal: _isGlobal, ...withoutIsGlobal } = baseAd()
+  await assertFails(setDoc(doc(admin, 'sponsoredAds/global-missing'), withoutIsGlobal))
+  await assertFails(
+    setDoc(doc(admin, 'sponsoredAds/global-wrong-type'), baseAd({ isGlobal: 'true' }))
+  )
+})
+
+// validateSponsoredAd (src/utils/validators.js) só protege quem passa pelo formulário
+// admin -- um client malicioso pode chamar setDoc/addDoc direto no SDK do Firestore,
+// pulando a UI (e a validação) por completo. Este teste chama a regra do servidor
+// diretamente, sem qualquer camada de client no meio, para confirmar que o "nem
+// comunidade nem global" continua bloqueado mesmo assim -- não só quando alguém passa
+// pelo formulário.
+test('the server rejects an ad with neither communityIds nor isGlobal, even bypassing the admin form entirely', async () => {
+  await assertFails(
+    setDoc(doc(admin, 'sponsoredAds/ad-nowhere'), baseAd({ communityIds: [], isGlobal: false }))
   )
 })
 
@@ -133,6 +174,62 @@ test('a non-member is denied outright when querying a community they do not belo
 
 test('admin reads every ad regardless of their own community membership', async () => {
   await assertSucceeds(getDocs(collection(admin, 'sponsoredAds')))
+})
+
+// O ponto central desta extensão: isGlobal precisa ficar visível pra QUALQUER usuário
+// autenticado, mesmo sem nenhuma relação com as comunidades listadas em communityIds --
+// diferente do banner por comunidade, que nunca sai do círculo de membros.
+test('a global ad is readable by any signed-in user, even a non-member of its communities', async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(
+      doc(context.firestore(), 'sponsoredAds/ad-global'),
+      baseAd({ communityIds: [], isGlobal: true, displayMode: ['banner'] })
+    )
+  })
+
+  // outsider não participa de comm1 nem de comunidade nenhuma -- exatamente o cenário
+  // que a consulta por comunidade (teste acima) nega por inteiro.
+  const snapshot = await assertSucceeds(
+    getDocs(query(collection(outsider, 'sponsoredAds'), where('isGlobal', '==', true)))
+  )
+  assert.ok(snapshot.docs.some((d) => d.id === 'ad-global'))
+})
+
+// Cobre o meio-termo entre os dois testes acima (só global, só comunidade): um anúncio
+// com isGlobal:true E communityIds apontando pra uma comunidade da qual o leitor NÃO
+// participa. isGlobal sozinho já deveria autorizar a leitura -- communityIds não pode
+// bloquear nem interferir quando isGlobal é true, exercitando o short-circuit do ||
+// justamente no caso em que as duas condições coexistem no mesmo documento (não só
+// isoladas, como nos dois testes acima).
+test('a global ad targeting a community the reader is not part of is still readable via isGlobal', async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(
+      doc(context.firestore(), 'sponsoredAds/ad-global-and-comm1'),
+      baseAd({ communityIds: ['comm1'], isGlobal: true, displayMode: ['banner'] })
+    )
+  })
+
+  // outsider não participa de comm1 -- se o short-circuit não funcionasse, essa consulta
+  // cairia no mesmo caminho negado do teste "a non-member is denied outright...".
+  const snapshot = await assertSucceeds(
+    getDocs(query(collection(outsider, 'sponsoredAds'), where('isGlobal', '==', true)))
+  )
+  assert.ok(snapshot.docs.some((d) => d.id === 'ad-global-and-comm1'))
+})
+
+// Um anúncio isGlobal:false continua tão fechado quanto antes -- a nova checagem de
+// isGlobal não pode virar um jeito indireto de ler tudo.
+test('a non-global ad is still denied to a non-member, even querying isGlobal == false', async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(
+      doc(context.firestore(), 'sponsoredAds/ad-not-global'),
+      baseAd({ communityIds: ['comm1'], isGlobal: false })
+    )
+  })
+
+  await assertFails(
+    getDocs(query(collection(outsider, 'sponsoredAds'), where('isGlobal', '==', false)))
+  )
 })
 
 test('only admin can update or delete', async () => {
