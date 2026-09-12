@@ -5,7 +5,9 @@ import {
   SPONSORED_AD_CTA_TYPES,
   SPONSORED_AD_DISPLAY_MODES,
   MAX_ACTIVE_ADS_PER_COMMUNITY,
+  MAX_ACTIVE_GLOBAL_ADS,
   SponsoredAdCapError,
+  SponsoredAdGlobalCapError,
 } from '../utils/validators'
 import { useFormState } from '../hooks/useFormState'
 import { FormShell } from './FormShell'
@@ -20,6 +22,7 @@ const EMPTY = {
   ctaTarget: '',
   expiresAt: '',
   communityIds: [],
+  isGlobal: false,
   displayMode: [],
 }
 
@@ -32,21 +35,28 @@ export function SponsoredAdForm({
   initialValue,
   communities,
   adCountByCommunityId,
+  globalAdCount,
   onSubmit,
   onCancel,
 }) {
   const [capErrorCommunityId, setCapErrorCommunityId] = useState(null)
+  const [globalCapError, setGlobalCapError] = useState(false)
 
   const { values, setField, setValues, errors, submitting, handleSubmit } = useFormState({
     initialValues: () => (initialValue ? { ...EMPTY, ...initialValue } : EMPTY),
     validate: validateSponsoredAd,
     onSubmit: async (finalValues) => {
       setCapErrorCommunityId(null)
+      setGlobalCapError(false)
       try {
         await onSubmit(finalValues)
       } catch (err) {
         if (err instanceof SponsoredAdCapError) {
           setCapErrorCommunityId(err.communityId)
+          return
+        }
+        if (err instanceof SponsoredAdGlobalCapError) {
+          setGlobalCapError(true)
           return
         }
         throw err
@@ -192,7 +202,24 @@ export function SponsoredAdForm({
         )}
       </FormControl>
 
-      <FormControl required>
+      <FormControl>
+        <Checkbox
+          checked={values.isGlobal}
+          onChange={(e) => setField('isGlobal', e.target.checked)}
+        />
+        <FormControl.Label>Exibir na Home (global)</FormControl.Label>
+        <FormControl.Caption>
+          Aparece no banner rotativo do topo da Home de todos os usuários, sem relação com
+          comunidades. {globalAdCount || 0}/{MAX_ACTIVE_GLOBAL_ADS} anúncios globais.
+        </FormControl.Caption>
+        {globalCapError && (
+          <FormControl.Validation variant="error">
+            A Home já atingiu o limite de {MAX_ACTIVE_GLOBAL_ADS} anúncios globais.
+          </FormControl.Validation>
+        )}
+      </FormControl>
+
+      <FormControl required={!values.isGlobal}>
         <FormControl.Label>Comunidades onde aparece</FormControl.Label>
         <Box
           sx={{
@@ -230,6 +257,11 @@ export function SponsoredAdForm({
             )
           })}
         </Box>
+        <FormControl.Caption>
+          {values.isGlobal
+            ? 'Opcional: além da Home, o anúncio também pode aparecer em comunidades específicas.'
+            : 'Selecione ao menos uma comunidade, ou marque "Exibir na Home" acima.'}
+        </FormControl.Caption>
         {communityIdsError && (
           <FormControl.Validation variant="error">{communityIdsError}</FormControl.Validation>
         )}

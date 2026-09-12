@@ -12,6 +12,8 @@ import {
 import { useDashboard } from '../hooks/useDashboard'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useAuth } from '../hooks/useAuth'
+import { useGlobalSponsoredAds } from '../hooks/useGlobalSponsoredAds'
+import { SponsoredAdBanner } from '../components/SponsoredAdBanner'
 import { getProfileHeroImage } from '../constants/profileHeroImage'
 import { calculateVolume, getTrainingConsistency } from '../utils/calculations'
 import { getDailyStreak } from '../utils/streak'
@@ -61,6 +63,7 @@ export default function Dashboard() {
   const { recentWorkouts, allWorkouts, loading, error, refresh } = useDashboard()
   const { exercises } = useExercises()
   const { profile, user } = useAuth()
+  const { bannerAds } = useGlobalSponsoredAds(Boolean(user))
   const heroImage = getProfileHeroImage(profile?.sexo)
   const exerciseNameById = useMemo(() => buildExerciseNameMap(exercises), [exercises])
   // Sequência/constância conta qualquer treino (inclusive cardio) — "dia ativo" não
@@ -166,6 +169,8 @@ export default function Dashboard() {
           <Heading as="h1">{greeting.heading}</Heading>
         </div>
       </header>
+
+      <SponsoredAdBanner ads={bannerAds} />
 
       <section className="workout-hero" aria-labelledby="next-workout-title">
         <img src={heroImage.src} alt={heroImage.alt} />

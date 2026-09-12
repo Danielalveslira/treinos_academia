@@ -12,7 +12,7 @@ import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { RowActionsMenu } from '../components/RowActionsMenu'
 import { toMillis } from '../utils/expiry'
-import { SponsoredAdCapError } from '../utils/validators'
+import { SponsoredAdCapError, SponsoredAdGlobalCapError } from '../utils/validators'
 
 function isExpired(ad, now) {
   return Boolean(ad.expiresAt) && toMillis(ad.expiresAt) < now
@@ -42,17 +42,24 @@ export default function AdminSponsoredAds() {
     return counts
   }, [ads, editingAd])
 
-  // SponsoredAdCapError é relançado de propósito, sem toast: SponsoredAdForm já captura
-  // esse erro específico e marca o campo de comunidades em vez de mostrar um toast
-  // genérico (ver a resposta do teto de anúncios ativos). Qualquer outro erro é tratado
-  // aqui mesmo, igual ao restante do painel admin.
+  // Mesmo raciocínio de adCountByCommunityId, mas para o teto global (isGlobal) — uma
+  // única contagem, não um mapa por comunidade.
+  const globalAdCount = useMemo(
+    () => ads.filter((ad) => ad.isGlobal && ad.id !== editingAd?.id).length,
+    [ads, editingAd]
+  )
+
+  // SponsoredAdCapError/SponsoredAdGlobalCapError são relançados de propósito, sem toast:
+  // SponsoredAdForm já captura esses erros específicos e marca o campo correspondente em
+  // vez de mostrar um toast genérico (ver a resposta dos tetos de anúncios ativos).
+  // Qualquer outro erro é tratado aqui mesmo, igual ao restante do painel admin.
   async function handleCreate(values) {
     try {
       await add(values)
       setFormOpen(false)
       showToast('Anúncio criado.')
     } catch (err) {
-      if (err instanceof SponsoredAdCapError) throw err
+      if (err instanceof SponsoredAdCapError || err instanceof SponsoredAdGlobalCapError) throw err
       console.error('[AdminSponsoredAds] create:', err)
       showToast('Erro ao criar anúncio.', 'danger')
     }
@@ -64,7 +71,7 @@ export default function AdminSponsoredAds() {
       setEditingAd(null)
       showToast('Anúncio atualizado.')
     } catch (err) {
-      if (err instanceof SponsoredAdCapError) throw err
+      if (err instanceof SponsoredAdCapError || err instanceof SponsoredAdGlobalCapError) throw err
       console.error('[AdminSponsoredAds] update:', err)
       showToast('Erro ao atualizar anúncio.', 'danger')
     }
@@ -116,6 +123,7 @@ export default function AdminSponsoredAds() {
         <SponsoredAdForm
           communities={communities}
           adCountByCommunityId={adCountByCommunityId}
+          globalAdCount={globalAdCount}
           onSubmit={handleCreate}
           onCancel={() => setFormOpen(false)}
         />
@@ -125,6 +133,7 @@ export default function AdminSponsoredAds() {
           initialValue={editingAd}
           communities={communities}
           adCountByCommunityId={adCountByCommunityId}
+          globalAdCount={globalAdCount}
           onSubmit={handleUpdate}
           onCancel={() => setEditingAd(null)}
         />
@@ -170,11 +179,13 @@ export default function AdminSponsoredAds() {
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                   <Text sx={{ fontWeight: 'bold' }}>{ad.title}</Text>
+                  {ad.isGlobal && <Label variant="accent">Home</Label>}
                   {isExpired(ad, now) && <Label variant="danger">Expirado</Label>}
                 </Box>
                 <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-                  {ad.partnerName} · {ad.communityIds.length}{' '}
-                  {ad.communityIds.length === 1 ? 'comunidade' : 'comunidades'}
+                  {ad.partnerName}
+                  {ad.communityIds.length > 0 &&
+                    ` · ${ad.communityIds.length} ${ad.communityIds.length === 1 ? 'comunidade' : 'comunidades'}`}
                 </Text>
               </Box>
               <RowActionsMenu
