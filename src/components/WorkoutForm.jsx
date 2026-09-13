@@ -24,6 +24,7 @@ import {
   cleanupStaleDoneExerciseKeys,
 } from '../utils/doneExercisesStorage'
 import { nextStepAfterFinishing, valuesForNextExercise } from '../utils/workoutSessionFlow'
+import { sortExercisesInGroup } from '../utils/exerciseOrder'
 
 // Enquanto o teclado virtual está provavelmente aberto (um campo do formulário tem
 // foco), CSS esconde a barra de navegação inferior e o botão flutuante de instalar o
@@ -157,7 +158,10 @@ export function WorkoutForm({
   // nextStepAfterFinishing pra saber se sobra exercício não concluído. exercisesInGroup
   // (abaixo) é só a versão filtrada exibida na tela.
   const allExercisesInGroup = useMemo(
-    () => availableExercises.filter((exercise) => (exercise.muscleGroup || 'Outros') === selectedGroup),
+    () =>
+      sortExercisesInGroup(
+        availableExercises.filter((exercise) => (exercise.muscleGroup || 'Outros') === selectedGroup)
+      ),
     [availableExercises, selectedGroup]
   )
   const exercisesInGroup = useMemo(() => {
@@ -174,6 +178,11 @@ export function WorkoutForm({
   const bestLoad = exerciseHistory.length
     ? Math.max(...exerciseHistory.map((workout) => getWorkoutLoad(workout)))
     : null
+  // Só oferece "Repetir última sessão" enquanto o registro atual está intocado -- um tap
+  // nunca deve sobrescrever peso/reps (ou duração/distância) que o usuário já digitou.
+  const isEntryPristine = cardio
+    ? !values.durationMinutes && !values.distanceKm
+    : values.setDetails.every((set) => !set.weight && !set.reps)
 
   function rememberDraft() {
     if (!values.exerciseId) return
@@ -234,6 +243,22 @@ export function WorkoutForm({
 
   function setField(field, value) {
     setValues((previous) => ({ ...previous, [field]: value }))
+  }
+
+  function repeatLastWorkout() {
+    if (!lastWorkout) return
+    if (cardio) {
+      setField('durationMinutes', String(lastWorkout.durationMinutes ?? ''))
+      setField('distanceKm', lastWorkout.distanceKm != null ? String(lastWorkout.distanceKm) : '')
+    } else {
+      const sets = getWorkoutSets(lastWorkout).map((set) => ({
+        weight: String(set.weight),
+        reps: String(set.reps),
+        key: nextSetId.current++,
+      }))
+      setValues((previous) => ({ ...previous, setDetails: sets }))
+    }
+    setErrors({})
   }
 
   function updateSet(key, field, value) {
@@ -297,11 +322,21 @@ export function WorkoutForm({
   return (
     <Box as="form" ref={formRef} className="workout-form" onSubmit={handleSubmit}>
       <nav className="workout-progress" aria-label="Etapas do treino">
-        <span className={step === 'group' ? 'is-current' : 'is-done'}>1 Grupo</span>
-        <span className={step === 'exercise' ? 'is-current' : step === 'register' ? 'is-done' : ''}>
-          2 Exercício
+        {step === 'group' ? (
+          <span className="is-current" aria-current="step">1 Grupo</span>
+        ) : (
+          <button type="button" className="is-done" onClick={showGroups}>1 Grupo</button>
+        )}
+        {step === 'register' ? (
+          <button type="button" className="is-done" onClick={showExercises}>2 Exercício</button>
+        ) : (
+          <span className={step === 'exercise' ? 'is-current' : ''} aria-current={step === 'exercise' ? 'step' : undefined}>
+            2 Exercício
+          </span>
+        )}
+        <span className={step === 'register' ? 'is-current' : ''} aria-current={step === 'register' ? 'step' : undefined}>
+          3 {cardio ? 'Sessão' : 'Séries'}
         </span>
-        <span className={step === 'register' ? 'is-current' : ''}>3 {cardio ? 'Sessão' : 'Séries'}</span>
       </nav>
 
       {step === 'group' && (
@@ -434,6 +469,11 @@ export function WorkoutForm({
                 </>
               )}
             </p>
+            {lastWorkout && isEntryPristine && (
+              <Button size="small" type="button" leadingVisual={CopyIcon} onClick={repeatLastWorkout}>
+                Repetir última sessão
+              </Button>
+            )}
           </section>
 
           {cardio && (
@@ -645,7 +685,7 @@ export function WorkoutForm({
           </details>
 
           <div className="workout-form-actions">
-            <Button type="button" onClick={onCancel}>
+            <Button type="button" onClick={initialValue ? onCancel : showExercises}>
               Cancelar
             </Button>
             <Button

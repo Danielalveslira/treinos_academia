@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Box, Button, Heading, Text, Label, Spinner, Stack } from '@primer/react'
+import { Box, Button, Heading, Text, Label, Spinner, Stack, IconButton } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import {
   TasklistIcon,
@@ -12,6 +12,11 @@ import {
   EyeClosedIcon,
   PencilIcon,
   TrashIcon,
+  ListOrderedIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+  CheckIcon,
+  XIcon,
 } from '@primer/octicons-react'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useDashboard } from '../hooks/useDashboard'
@@ -24,6 +29,7 @@ import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
 import { formatDate } from '../utils/format'
 import { toDate } from '../utils/date.js'
+import { sortExercisesInGroup, moveExerciseOrder } from '../utils/exerciseOrder'
 
 // Busca só aparece a partir daqui — mesmo limiar usado em WorkoutForm.jsx para a busca
 // por grupo, por consistência: com poucos exercícios ela é só ruído na tela.
@@ -41,7 +47,7 @@ function buildLastLoggedMap(allWorkouts) {
 
 export default function Exercises() {
   const navigate = useNavigate()
-  const { exercises, loading, error, add, edit, remove, refresh } = useExercises()
+  const { exercises, loading, error, add, edit, remove, reorder, refresh } = useExercises()
   const { allWorkouts } = useDashboard()
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
@@ -49,6 +55,11 @@ export default function Exercises() {
   const [editingExercise, setEditingExercise] = useState(null)
   const [search, setSearch] = useState('')
   const [showInactive, setShowInactive] = useState(false)
+  // Grupo atualmente em modo "Reordenar" (um por vez) e o rascunho de ids na nova
+  // ordem, só gravado no Firestore ao confirmar em "Salvar ordem" (ver saveReorder).
+  const [reorderGroup, setReorderGroup] = useState(null)
+  const [reorderIds, setReorderIds] = useState([])
+  const [savingOrder, setSavingOrder] = useState(false)
 
   const lastLoggedMap = useMemo(() => buildLastLoggedMap(allWorkouts), [allWorkouts])
   const inactiveCount = useMemo(() => exercises.filter((ex) => !ex.active).length, [exercises])
@@ -69,8 +80,53 @@ export default function Exercises() {
       list.push(exercise)
       groups.set(exercise.muscleGroup, list)
     }
-    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
+    return [...groups.entries()]
+      .map(([group, list]) => [group, sortExercisesInGroup(list)])
+      .sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
   }, [visibleExercises])
+
+  // Conta o grupo inteiro (ativos e inativos, sem o filtro de busca) -- "Reordenar"
+  // ordena o grupo completo, então o botão só aparece quando isso de fato envolve
+  // mais de um exercício, independente do que a busca/"mostrar inativos" esconde.
+  const groupSizeAll = useMemo(() => {
+    const counts = new Map()
+    for (const exercise of exercises) {
+      counts.set(exercise.muscleGroup, (counts.get(exercise.muscleGroup) || 0) + 1)
+    }
+    return counts
+  }, [exercises])
+
+  function startReorder(muscleGroup) {
+    const ids = sortExercisesInGroup(exercises.filter((ex) => ex.muscleGroup === muscleGroup)).map(
+      (ex) => ex.id
+    )
+    setReorderGroup(muscleGroup)
+    setReorderIds(ids)
+  }
+
+  function cancelReorder() {
+    setReorderGroup(null)
+    setReorderIds([])
+  }
+
+  function moveReorderRow(exerciseId, direction) {
+    setReorderIds((ids) => moveExerciseOrder(ids, exerciseId, direction))
+  }
+
+  async function saveReorder() {
+    setSavingOrder(true)
+    try {
+      await reorder(reorderIds)
+      showToast('Ordem salva.')
+      setReorderGroup(null)
+      setReorderIds([])
+    } catch (err) {
+      console.error('[Exercises] reorder:', err)
+      showToast('Erro ao salvar a ordem.', 'danger')
+    } finally {
+      setSavingOrder(false)
+    }
+  }
 
   async function handleCreate(values) {
     try {
@@ -209,6 +265,9 @@ export default function Exercises() {
       <div className="exercise-groups">
         {grouped.map(([muscleGroup, list]) => {
           const GroupIcon = getMuscleGroupIcon(muscleGroup)
+          const isReordering = reorderGroup === muscleGroup
+          const canReorder =
+            !reorderGroup && !formOpen && !editingExercise && groupSizeAll.get(muscleGroup) >= 2
           return (
             <section className="exercise-group" key={muscleGroup}>
               <div className="exercise-group-heading">
@@ -216,8 +275,66 @@ export default function Exercises() {
                   <GroupIcon size={16} strokeWidth={2} />
                 </span>
                 <Heading as="h2">{muscleGroup}</Heading>
-                <span>{list.length}</span>
+                <span className="exercise-group-count">{list.length}</span>
+                {canReorder && (
+                  <Button
+                    size="small"
+                    leadingVisual={ListOrderedIcon}
+                    onClick={() => startReorder(muscleGroup)}
+                    sx={{ ml: 2 }}
+                  >
+                    Reordenar
+                  </Button>
+                )}
               </div>
+
+              {isReordering && (
+                <Stack gap="none" className="exercise-list exercise-list-reorder">
+                  {reorderIds.map((exerciseId, index) => {
+                    const exercise = exercises.find((ex) => ex.id === exerciseId)
+                    if (!exercise) return null
+                    return (
+                      <Box key={exerciseId} className="exercise-row exercise-row-reorder">
+                        <Text className={exercise.active ? '' : 'is-inactive'} sx={{ flex: 1 }}>
+                          {exercise.name}
+                        </Text>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <IconButton
+                            size="small"
+                            icon={ArrowUpIcon}
+                            aria-label={`Mover ${exercise.name} para cima`}
+                            disabled={index === 0 || savingOrder}
+                            onClick={() => moveReorderRow(exerciseId, -1)}
+                          />
+                          <IconButton
+                            size="small"
+                            icon={ArrowDownIcon}
+                            aria-label={`Mover ${exercise.name} para baixo`}
+                            disabled={index === reorderIds.length - 1 || savingOrder}
+                            onClick={() => moveReorderRow(exerciseId, 1)}
+                          />
+                        </Box>
+                      </Box>
+                    )
+                  })}
+                  <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                    <Button
+                      variant="primary"
+                      leadingVisual={CheckIcon}
+                      loading={savingOrder}
+                      disabled={savingOrder}
+                      onClick={saveReorder}
+                    >
+                      Salvar ordem
+                    </Button>
+                    <Button leadingVisual={XIcon} disabled={savingOrder} onClick={cancelReorder}>
+                      Cancelar
+                    </Button>
+                  </Box>
+                </Stack>
+              )}
+
+              {!isReordering && (
               <Stack gap="none" className="exercise-list">
                 {list.map((exercise) => {
                   const lastLogged = lastLoggedMap.get(exercise.id)
@@ -279,6 +396,7 @@ export default function Exercises() {
                   )
                 })}
               </Stack>
+              )}
             </section>
           )
         })}

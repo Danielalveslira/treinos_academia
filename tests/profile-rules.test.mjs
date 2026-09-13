@@ -15,6 +15,7 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  deleteField,
   writeBatch,
   serverTimestamp,
   Timestamp,
@@ -810,6 +811,21 @@ test('exercise name and muscleGroup are capped, so a custom group typed by hand 
   await assertSucceeds(
     setDoc(doc(owner, 'users/owner/exercises/e3'), exercise({ muscleGroup: 'Explosão' }))
   )
+})
+
+test('exercise order is optional, bounded, and can be cleared (ex.: ao trocar de grupo muscular)', async () => {
+  const exercise = (overrides = {}) => ({ name: 'Supino', muscleGroup: 'Peito', active: true, ...overrides })
+  await assertSucceeds(setDoc(doc(owner, 'users/owner/exercises/ordered'), exercise({ order: 0 })))
+  await assertFails(setDoc(doc(owner, 'users/owner/exercises/bad1'), exercise({ order: -1 })))
+  await assertFails(setDoc(doc(owner, 'users/owner/exercises/bad2'), exercise({ order: 1.5 })))
+  await assertFails(setDoc(doc(owner, 'users/owner/exercises/bad3'), exercise({ order: 300 })))
+  await assertSucceeds(setDoc(doc(owner, 'users/owner/exercises/bad3'), exercise({ order: 299 })))
+  // Trocar de grupo muscular remove o order anterior (ver ExercisesContext.edit) --
+  // o update sem o campo precisa continuar válido, e o documento não deve mais ter
+  // o campo depois.
+  const ref = doc(owner, 'users/owner/exercises/ordered')
+  await assertSucceeds(updateDoc(ref, { muscleGroup: 'Costas', order: deleteField() }))
+  assert.equal((await getDoc(ref)).data().order, undefined)
 })
 
 test('accounts created after the email verification cutoff need a verified token; earlier accounts are grandfathered', async () => {

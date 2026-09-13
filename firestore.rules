@@ -131,7 +131,13 @@ service cloud.firestore {
         // corrompe dado real — não compensa o custo de separar create/update só pra
         // travar isso aqui também.
         && (!('type' in data) || data.type in ['strength', 'cardio'])
-        && (!('note' in data) || data.note is string && data.note.size() <= 300);
+        && (!('note' in data) || data.note is string && data.note.size() <= 300)
+        // Posição do exercício dentro do próprio muscleGroup (ver "Reordenar
+        // exercícios" em Exercises.jsx) -- opcional pelo mesmo motivo de type/note:
+        // a maioria dos exercícios nunca é reordenada manualmente, e um exercício
+        // que muda de grupo perde esse valor de propósito (ExercisesContext.edit),
+        // caindo no fim do grupo novo até o usuário reordenar de novo.
+        && (!('order' in data) || (data.order is int && data.order >= 0 && data.order < 300));
     }
 
     function validSet(set) {
