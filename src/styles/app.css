@@ -2438,110 +2438,171 @@ body {
 }
 .cardio-fieldset legend { padding: 0; font-size: 20px; font-weight: 750; letter-spacing: -.02em; }
 
-.sets-heading {
+.form-error { display: block; margin-top: 8px; color: var(--fgColor-danger); }
+
+/* Card de série única (SetCard.jsx) -- substitui a antiga tabela de séries. */
+.set-card {
+  padding: 20px;
+  border-radius: var(--fitness-radius-md);
+  background: var(--fitness-surface);
+}
+
+.set-card-header {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 13px;
-}
-
-.sets-heading legend { padding: 0; font-size: 20px; font-weight: 750; letter-spacing: -.02em; }
-.sets-heading span { color: var(--fgColor-muted); font-size: 12px; }
-
-.set-column-headings,
-.set-row {
-  display: grid;
-  grid-template-columns: 48px minmax(80px, 1fr) minmax(70px, .8fr) 52px;
-  gap: 10px;
   align-items: center;
+  margin-bottom: 12px;
 }
 
-.set-column-headings {
-  padding: 0 14px 8px;
-  color: var(--fgColor-muted);
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: .08em;
-  text-align: center;
-}
+.set-card-header-text { display: flex; align-items: baseline; gap: 16px; font-size: 13px; }
+.set-card-header-text > span:first-child { font-weight: 750; }
+.set-card-header-text > span:last-child { color: var(--fgColor-muted); }
 
-.set-list { display: grid; gap: 8px; }
-
-.set-row {
-  position: relative;
-  min-height: 64px;
-  padding: 8px 14px;
-  border-radius: 14px;
-  background: var(--fitness-surface);
-  transition: background-color .15s ease, opacity .15s ease;
-}
-
-.set-row.is-complete { background: var(--fitness-accent-soft); }
-.set-row.is-complete input { opacity: .68; }
-
-.set-number {
+/* Discreto de propósito -- não deve competir com o CTA "concluir série" no rodapé. */
+.set-card-remove {
   display: grid;
-  width: 34px;
-  height: 34px;
+  flex-shrink: 0;
   place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
-  background: var(--bgColor-default);
-  font-size: 13px;
-  font-weight: 750;
-}
-
-.set-row input {
-  height: 46px;
-  border: 0;
-  background: var(--bgColor-default);
-  font-size: 17px;
-  font-weight: 700;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  box-shadow: inset 0 0 0 1px var(--borderColor-muted);
-}
-
-.complete-set,
-.remove-set {
-  display: grid;
-  place-items: center;
-  border: 0;
+  background: transparent;
+  color: var(--fgColor-muted);
   cursor: pointer;
 }
+.set-card-remove:disabled { cursor: not-allowed; opacity: .35; }
+.set-card-remove.is-confirming { background: var(--fgColor-danger); color: #fff; }
 
-.complete-set {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
+.set-card-progress { display: flex; gap: 4px; margin-bottom: 20px; }
+
+.set-card-segment {
+  flex: 1;
+  height: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--borderColor-muted);
+  cursor: pointer;
+  transition: background-color .15s ease;
+}
+.set-card-segment.is-active { background: var(--fitness-blue); }
+.set-card-segment.is-complete { background: var(--fitness-accent); }
+
+.set-card-segment-add {
+  flex: 0 0 26px;
+  display: grid;
+  place-items: center;
+  height: 20px;
+  color: var(--fgColor-muted);
+  background: var(--bgColor-default);
+  box-shadow: inset 0 0 0 1px var(--borderColor-default);
+}
+.set-card-segment-add:disabled { cursor: not-allowed; opacity: .4; }
+
+.set-card-body {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 8px;
+}
+
+.set-card-nav {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  box-shadow: inset 0 0 0 1px var(--borderColor-default);
+  cursor: pointer;
+}
+.set-card-nav:disabled { cursor: not-allowed; opacity: .35; }
+
+.set-card-fields { display: grid; gap: 14px; min-width: 0; }
+.set-card-field { display: grid; justify-items: center; gap: 10px; }
+.set-card-field-label { color: var(--fgColor-muted); font-size: 13px; }
+
+.set-card-stepper { display: flex; align-items: center; justify-content: center; gap: 22px; }
+
+.set-card-step {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  box-shadow: inset 0 0 0 1px var(--borderColor-default);
+  cursor: pointer;
+}
+.set-card-step:disabled { cursor: not-allowed; opacity: .35; }
+
+.set-card-value {
+  min-width: 64px;
+  font-size: 38px;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.set-card-chips { display: flex; justify-content: center; gap: 8px; }
+
+.set-card-chip {
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
   background: var(--bgColor-default);
   color: var(--fgColor-muted);
   box-shadow: inset 0 0 0 1px var(--borderColor-default);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.set-card-chip.is-active {
+  box-shadow: inset 0 0 0 1px var(--fitness-accent);
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
 }
 
-.complete-set:disabled { cursor: not-allowed; opacity: .45; }
-.set-row.is-complete .complete-set { background: var(--fitness-accent); color: #11170b; box-shadow: none; }
+.set-card-divider { height: 1px; background: var(--borderColor-muted); }
 
-.remove-set {
-  position: absolute;
-  top: -7px;
-  right: -7px;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--bgColor-default);
+.set-card-complete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  margin-top: 20px;
+  border: 0;
+  border-radius: var(--fitness-radius-sm);
+  background: var(--fitness-accent);
+  color: #08110a;
+  font-size: 15px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.set-card-complete:disabled { cursor: not-allowed; opacity: .45; }
+.set-card-complete.is-complete {
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+  box-shadow: inset 0 0 0 1px var(--fitness-accent);
+}
+
+.set-card-footer {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--borderColor-muted);
   color: var(--fgColor-muted);
-  box-shadow: 0 2px 10px rgb(0 0 0 / 12%);
-  opacity: 0;
+  font-size: 12px;
+  text-align: center;
 }
-
-.set-row:hover .remove-set,
-.remove-set:focus-visible { opacity: 1; }
-
-.set-error { grid-column: 2 / -1; color: var(--fgColor-danger); font-size: 11px; }
-.form-error { display: block; margin-top: 8px; color: var(--fgColor-danger); }
-
-.set-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.set-actions button { min-height: 42px; border-radius: 12px; }
 
 .session-summary {
   display: flex;
@@ -2754,12 +2815,9 @@ body {
   .muscle-group-card strong { font-size: 13px; }
   .selected-workout-context { align-items: flex-start; }
   .exercise-picker { margin-inline: -4px; padding: 16px; }
-  .set-column-headings,
-  .set-row { grid-template-columns: 36px minmax(76px, 1fr) minmax(66px, .75fr) 48px; gap: 7px; }
-  .set-column-headings { padding-inline: 8px; }
-  .set-row { padding-inline: 8px; }
-  .set-number { width: 30px; height: 30px; }
-  .remove-set { opacity: 1; }
+  .set-card { padding: 16px; }
+  .set-card-value { font-size: 32px; }
+  .set-card-stepper { gap: 16px; }
   .session-summary { justify-content: space-between; gap: 14px; }
   /* bottom vem de navigation.css (--bottom-navigation-space) -- carrega depois deste
      arquivo, então uma segunda declaração aqui só ficaria morta/confusa. */
@@ -2812,9 +2870,11 @@ body {
   .workout-hero-content h2 { font-size: 28px; }
   .performance-strip { margin-inline: 4px; }
   .performance-strip > div { padding-inline: 9px; }
-  .set-column-headings,
-  .set-row { grid-template-columns: 31px minmax(68px, 1fr) minmax(58px, .7fr) 44px; gap: 5px; }
-  .set-row input { font-size: 15px; }
+  .set-card { padding: 14px; }
+  .set-card-value { font-size: 28px; min-width: 52px; }
+  .set-card-stepper { gap: 12px; }
+  .set-card-body { grid-template-columns: 34px minmax(0, 1fr) 34px; }
+  .set-card-nav { width: 34px; height: 34px; }
   .workout-form-actions { margin-inline: -12px; padding-inline: 12px; }
 }
 

@@ -42,30 +42,49 @@ const props = {
   defaultExerciseId: 'squat',
 }
 
-test('new form creates one labelled set with numeric constraints and accessible actions', () => {
+// Séries agora são um card por vez (SetCard.jsx), não uma tabela com um <input
+// type="number"> por campo -- o peso/reps mudam por steppers +/-. Sem input nenhum,
+// "0 ocorrências de type=number" passa a ser o sinal de que a etapa "Séries" está de
+// pé (contra a etapa "Data" logo abaixo, que ainda usa <input type="date">).
+test('new form creates one set card with accessible steppers, disabled at the empty/zero boundary', () => {
   const html = render(props)
-  assert.equal((html.match(/type="number"/g) || []).length, 2)
-  assert.match(html, /aria-label="Peso \(kg\), série 1"/)
-  assert.match(html, /aria-label="Repetições, série 1"/)
-  assert.match(html, /step="any"/)
-  assert.match(html, /min="0"/)
-  assert.match(html, /min="1"/)
-  assert.match(html, /aria-label="Remover série 1"[^>]*disabled=""/)
-  assert.match(html, /Repetir série/)
-  assert.match(html, /Adicionar série/)
+  assert.equal((html.match(/type="number"/g) || []).length, 0)
+  assert.match(html, /aria-label="Série 1"/)
+  assert.match(html, /aria-label="Adicionar nova série"/)
+  // Peso e reps nascem em 0 (set vazio) -- os botões "diminuir" ficam desabilitados no
+  // piso, os "aumentar" não.
+  assert.match(html, /aria-label="Diminuir peso em 2,5 kg" disabled=""/)
+  assert.match(html, /aria-label="Aumentar peso em 2,5 kg"(?! disabled)/)
+  assert.match(html, /aria-label="Diminuir repetições" disabled=""/)
+  // Granularidade padrão é 2,5kg (chip ativo).
+  assert.match(html, /set-card-chip is-active"[^>]*>±2,5/)
+  // Set vazio não passa em isValidSet -- "concluir série" nasce desabilitado.
+  assert.match(html, /class="set-card-complete" disabled=""/)
+  assert.doesNotMatch(html, /Adicionar série</)
+  assert.doesNotMatch(html, /Repetir série</)
+  // Com uma única série, "Remover série" existe mas nasce desabilitado -- nunca dá pra
+  // ficar sem nenhuma série (mesma regra do antigo botão de remover na tabela).
+  assert.match(html, /aria-label="Remover série 1" disabled=""/)
 })
 
-test('editing legacy and individual sets preserves values and inactive exercise selection', () => {
-  for (const initialValue of [
-    { exerciseId: 'squat', weight: 30, sets: 2, reps: 12, date: '2025-01-01', note: '' },
+test('editing legacy and individual sets preserves every set (not just the visible one) and inactive exercise selection', () => {
+  for (const { initialValue, expectedVolume } of [
     {
-      exerciseId: 'squat',
-      setDetails: [
-        { weight: 30, reps: 12 },
-        { weight: 40, reps: 8 },
-      ],
-      date: '2025-01-01',
-      note: '',
+      initialValue: { exerciseId: 'squat', weight: 30, sets: 2, reps: 12, date: '2025-01-01', note: '' },
+      expectedVolume: '720 kg', // 30x12 duas vezes -- forma legada, mesmo peso/reps pras duas séries.
+    },
+    {
+      initialValue: {
+        exerciseId: 'squat',
+        setDetails: [
+          { weight: 30, reps: 12 },
+          { weight: 40, reps: 8 },
+        ],
+        date: '2025-01-01',
+        note: '',
+      },
+      expectedVolume: '680 kg', // 30x12 + 40x8 -- só dá pra bater esse número se a SEGUNDA
+      // série (não visível, já que o card mostra uma de cada vez) sobreviveu intacta.
     },
   ]) {
     const html = render({
@@ -73,13 +92,24 @@ test('editing legacy and individual sets preserves values and inactive exercise 
       exercises: [{ ...props.exercises[0], active: false }],
       initialValue,
     })
-    assert.equal((html.match(/type="number"/g) || []).length, 4)
+    assert.equal((html.match(/type="number"/g) || []).length, 0)
     // Um exercício inativo só continua selecionável quando é o próprio initialValue
     // (edição de um registro existente) — o passo de registro abre direto nele, sem
     // passar pelos passos de grupo/exercício, mostrando o nome no cabeçalho da etapa.
     assert.match(html, /<strong>Agachamento<\/strong>/)
-    assert.match(html, /aria-label="Peso \(kg\), série 2"/)
-    assert.match(html, /value="30"/)
+    // As duas séries geram dois segmentos clicáveis na barra de progresso do card.
+    assert.match(html, /aria-label="Série 1"/)
+    assert.match(html, /aria-label="Série 2"/)
+    // Com mais de uma série, "Remover série" fica habilitado.
+    assert.match(html, /aria-label="Remover série 1"(?! disabled)/)
+    // Card abre na primeira série (30kg x 12).
+    assert.match(html, /class="set-card-value">30</)
+    assert.match(html, /class="set-card-value">12</)
+    // "Séries válidas: 2" e o volume batendo só provam que a SEGUNDA série (fora de
+    // vista) preservou seu próprio peso/reps -- não dá pra ver isso direto na página
+    // renderizada, já que só a série ativa aparece.
+    assert.match(html, /Séries válidas<\/span><strong>2<\/strong>/)
+    assert.match(html, new RegExp(`Volume estimado</span><strong>${expectedVolume}`))
   }
 })
 

@@ -6,14 +6,13 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CopyIcon,
-  PlusIcon,
   SearchIcon,
-  TrashIcon,
 } from '@primer/octicons-react'
 import { MUSCLE_GROUPS } from '../constants/muscleGroups'
 import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
 import { validateWorkout, hasErrors } from '../utils/validators'
 import { getWorkoutSets, getWorkoutLoad, MAX_WORKOUT_SETS, isValidSet } from '../utils/workoutSets'
+import { SetCard } from './SetCard'
 import { calculateVolume } from '../utils/calculations'
 import { useFocusWithinBodyClass } from '../hooks/useFocusWithinBodyClass'
 import { getExerciseType, isCardioExercise } from '../utils/exerciseType'
@@ -25,6 +24,7 @@ import {
 } from '../utils/doneExercisesStorage'
 import { nextStepAfterFinishing, valuesForNextExercise } from '../utils/workoutSessionFlow'
 import { sortExercisesInGroup } from '../utils/exerciseOrder'
+import { nextActiveSetIndexAfterRemoval } from '../utils/setCardFlow'
 
 // Enquanto o teclado virtual está provavelmente aberto (um campo do formulário tem
 // foco), CSS esconde a barra de navegação inferior e o botão flutuante de instalar o
@@ -139,6 +139,10 @@ export function WorkoutForm({
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  // Qual série o SetCard mostra agora -- sempre resetada pra 0 quando setDetails é
+  // trocado por inteiro (novo exercício, repetir última sessão, avançar depois de
+  // finalizar); ao adicionar uma série, aponta pra ela (ver handleAddSet).
+  const [activeSetIndex, setActiveSetIndex] = useState(0)
 
   const groups = useMemo(() => orderedGroups(availableExercises), [availableExercises])
   const groupCounts = useMemo(() => {
@@ -211,6 +215,7 @@ export function WorkoutForm({
         }
       )
       setCompleted(completionDrafts.current.get(exercise.id) || new Set())
+      setActiveSetIndex(0)
     }
     setSelectedGroup(exercise.muscleGroup || 'Outros')
     setSearch('')
@@ -257,6 +262,7 @@ export function WorkoutForm({
         key: nextSetId.current++,
       }))
       setValues((previous) => ({ ...previous, setDetails: sets }))
+      setActiveSetIndex(0)
     }
     setErrors({})
   }
@@ -277,6 +283,35 @@ export function WorkoutForm({
       else next.add(key)
       return next
     })
+  }
+
+  // Repete a última série (mesmo peso/reps) e navega o SetCard direto pra ela --
+  // equivalente ao antigo botão "Repetir série" + já escolher a nova série.
+  function handleAddSet() {
+    const newIndex = values.setDetails.length
+    addSet(true)
+    setActiveSetIndex(newIndex)
+  }
+
+  // Ao concluir (não ao reabrir) a série ativa, avança pro próximo pendente -- se não
+  // sobrar nenhum, fica onde está (ver requisito do SetCard).
+  function handleToggleComplete(key) {
+    const willComplete = !completed.has(key)
+    toggleComplete(key)
+    if (!willComplete) return
+    const nextCompleted = new Set(completed)
+    nextCompleted.add(key)
+    const nextPendingIndex = values.setDetails.findIndex((set) => !nextCompleted.has(set.key))
+    if (nextPendingIndex !== -1) setActiveSetIndex(nextPendingIndex)
+  }
+
+  // Remove a série ativa (botão discreto em SetCard.jsx, com confirmação de dois
+  // toques em vez de dialog). Só existe enquanto sobra mais de uma série -- o próprio
+  // SetCard já desabilita o botão nesse caso.
+  function handleRemoveSet(key) {
+    const previousLength = values.setDetails.length
+    changeSets((sets) => sets.filter((item) => item.key !== key))
+    setActiveSetIndex((current) => nextActiveSetIndexAfterRemoval(current, previousLength))
   }
 
   async function handleSubmit(event) {
@@ -312,6 +347,7 @@ export function WorkoutForm({
       ...valuesForNextExercise(previous),
       setDetails: [{ weight: '', reps: '', key: nextSetId.current++ }],
     }))
+    setActiveSetIndex(0)
     setSearch('')
     setStep(nextStep)
   }
@@ -517,117 +553,24 @@ export function WorkoutForm({
 
           {!cardio && (
             <fieldset className="sets-fieldset" disabled={submitting}>
-              <div className="sets-heading">
-                <legend>Séries</legend>
-                <span>
-                  {completed.size}/{values.setDetails.length} concluídas
-                </span>
-              </div>
-              <div className="set-column-headings" aria-hidden="true">
-                <span>SÉRIE</span>
-                <span>PESO (KG)</span>
-                <span>REPS</span>
-                <span>FEITO</span>
-              </div>
-              <div className="set-list">
-                {values.setDetails.map((set, index) => {
-                  const isComplete = completed.has(set.key)
-                  return (
-                    <div className={`set-row${isComplete ? ' is-complete' : ''}`} key={set.key}>
-                      <span className="set-number">{index + 1}</span>
-                      <label>
-                        <span className="sr-only">Peso em kg, série {index + 1}</span>
-                        <TextInput
-                          type="number"
-                          inputMode="decimal"
-                          min={0}
-                          max={10000}
-                          step="any"
-                          value={set.weight}
-                          aria-label={`Peso (kg), série ${index + 1}`}
-                          aria-invalid={!!errors[`set${index}`]}
-                          aria-describedby={
-                            errors[`set${index}`] ? `set-error-${set.key}` : undefined
-                          }
-                          onChange={(event) => updateSet(set.key, 'weight', event.target.value)}
-                          placeholder="0"
-                          block
-                        />
-                      </label>
-                      <label>
-                        <span className="sr-only">Repetições, série {index + 1}</span>
-                        <TextInput
-                          type="number"
-                          inputMode="numeric"
-                          min={1}
-                          max={100000}
-                          step={1}
-                          value={set.reps}
-                          aria-label={`Repetições, série ${index + 1}`}
-                          aria-invalid={!!errors[`set${index}`]}
-                          aria-describedby={
-                            errors[`set${index}`] ? `set-error-${set.key}` : undefined
-                          }
-                          onChange={(event) => updateSet(set.key, 'reps', event.target.value)}
-                          placeholder="0"
-                          block
-                        />
-                      </label>
-                      <button
-                        className="complete-set"
-                        type="button"
-                        disabled={!isValidSet(set)}
-                        aria-label={`${isComplete ? 'Reabrir' : 'Concluir'} série ${index + 1}`}
-                        aria-pressed={isComplete}
-                        onClick={() => toggleComplete(set.key)}
-                      >
-                        <CheckIcon size={20} />
-                      </button>
-                      <button
-                        className="remove-set"
-                        type="button"
-                        aria-label={`Remover série ${index + 1}`}
-                        disabled={values.setDetails.length === 1}
-                        onClick={() =>
-                          changeSets((sets) => sets.filter((item) => item.key !== set.key))
-                        }
-                      >
-                        <TrashIcon size={14} />
-                      </button>
-                      {errors[`set${index}`] && (
-                        <Text className="set-error" id={`set-error-${set.key}`} role="alert">
-                          {errors[`set${index}`]}
-                        </Text>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+              <legend className="sr-only">Séries</legend>
+              <SetCard
+                sets={values.setDetails.map((set) => ({ ...set, completed: completed.has(set.key) }))}
+                activeIndex={activeSetIndex}
+                onNavigate={setActiveSetIndex}
+                onUpdate={updateSet}
+                onToggleComplete={handleToggleComplete}
+                onAdd={values.setDetails.length < MAX_WORKOUT_SETS ? handleAddSet : undefined}
+                onRemove={handleRemoveSet}
+                lastWorkout={lastWorkout}
+                bestLoad={bestLoad}
+                disabled={submitting}
+              />
               {errors.setDetails && (
                 <Text role="alert" className="form-error">
                   {errors.setDetails}
                 </Text>
               )}
-              <div className="set-actions">
-                <Button
-                  type="button"
-                  leadingVisual={PlusIcon}
-                  disabled={values.setDetails.length >= MAX_WORKOUT_SETS}
-                  onClick={() => addSet()}
-                >
-                  Adicionar série
-                </Button>
-                <Button
-                  type="button"
-                  leadingVisual={CopyIcon}
-                  disabled={
-                    !values.setDetails.length || values.setDetails.length >= MAX_WORKOUT_SETS
-                  }
-                  onClick={() => addSet(true)}
-                >
-                  Repetir série
-                </Button>
-              </div>
             </fieldset>
           )}
 
