@@ -22,7 +22,7 @@ const MAX_WEIGHT = 10000
 const MIN_REPS = 1
 const MAX_REPS = 100000
 
-const WEIGHT_GRANULARITIES = [1.25, 2.5, 5]
+const WEIGHT_GRANULARITIES = [1, 1.25, 2.5, 5]
 const DEFAULT_GRANULARITY = 2.5
 
 function clamp(value, min, max) {
@@ -147,15 +147,6 @@ export function SetCard({
             onClick={() => onNavigate(index)}
           />
         ))}
-        <button
-          type="button"
-          className="set-card-segment set-card-segment-add"
-          aria-label="Adicionar nova série"
-          disabled={!canAdd}
-          onClick={() => canAdd && onAdd()}
-        >
-          <PlusIcon size={12} />
-        </button>
       </div>
 
       <div className="set-card-body">

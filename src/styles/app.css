@@ -2491,29 +2491,20 @@ body {
 .set-card-segment.is-active { background: var(--fitness-blue); }
 .set-card-segment.is-complete { background: var(--fitness-accent); }
 
-.set-card-segment-add {
-  flex: 0 0 26px;
-  display: grid;
-  place-items: center;
-  height: 20px;
-  color: var(--fgColor-muted);
-  background: var(--bgColor-default);
-  box-shadow: inset 0 0 0 1px var(--borderColor-default);
-}
-.set-card-segment-add:disabled { cursor: not-allowed; opacity: .4; }
-
 .set-card-body {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
   gap: 8px;
 }
 
+/* 44x44 -- alvo de toque mínimo recomendado, igual em todas as larguras (ver overrides
+   removidos de <359px, que encolhiam pra 34px). */
 .set-card-nav {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 50%;
   background: var(--bgColor-default);
@@ -2524,16 +2515,17 @@ body {
 .set-card-nav:disabled { cursor: not-allowed; opacity: .35; }
 
 .set-card-fields { display: grid; gap: 14px; min-width: 0; }
-.set-card-field { display: grid; justify-items: center; gap: 10px; }
+.set-card-field { display: grid; justify-items: center; gap: 10px; min-width: 0; }
 .set-card-field-label { color: var(--fgColor-muted); font-size: 13px; }
 
-.set-card-stepper { display: flex; align-items: center; justify-content: center; gap: 22px; }
+.set-card-stepper { display: flex; align-items: center; justify-content: center; gap: 22px; min-width: 0; }
 
+/* Mesmo alvo de 44x44 dos botões ‹ › -- ver comentário em .set-card-nav. */
 .set-card-step {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 50%;
   background: var(--bgColor-default);
@@ -2551,7 +2543,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.set-card-chips { display: flex; justify-content: center; gap: 8px; }
+.set-card-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 
 .set-card-chip {
   padding: 6px 12px;
@@ -2815,13 +2807,45 @@ body {
   .muscle-group-card strong { font-size: 13px; }
   .selected-workout-context { align-items: flex-start; }
   .exercise-picker { margin-inline: -4px; padding: 16px; }
-  .set-card { padding: 16px; }
-  .set-card-value { font-size: 32px; }
-  .set-card-stepper { gap: 16px; }
+  /* Respiro vertical bem mais apertado que o padrão (pensado pra telas largas) -- em
+     ~360-390px de largura por ~600px de altura, isso aproxima "concluir série" do
+     fim da tela sem rolar (não elimina 100% a rolagem em todo aparelho: o cabeçalho
+     fixo da página + "Vamos treinar" + as 3 abas + o cartão do exercício, tudo FORA
+     do SetCard, já somam ~370px antes do card começar -- reduzir isso está fora do
+     escopo deste componente). Os alvos de toque de 44x44 (nav/steppers) não encolhem
+     junto -- só a folga ao redor deles. */
+  .set-card { padding: 10px 12px; }
+  .set-card-header { margin-bottom: 4px; }
+  .set-card-progress { margin-bottom: 6px; }
+  /* Peso e Repetições lado a lado (duas colunas) em vez de empilhados -- é isso que
+     aproxima "concluir série" de caber em 360x600 sem rolar (ver comentário grande
+     abaixo, no breakpoint de 359px, sobre o porquê do fallback ser ali e não em
+     340px). Os chips de granularidade ficam só na largura da coluna de peso, por já
+     estarem dentro de .set-card-field -- com 4 chips, eles quebram pra 2 linhas
+     mesmo nessa largura (medido, não é bug), só não podem quebrar pra 3. */
+  .set-card-fields { grid-template-columns: 1fr 1px 1fr; align-items: start; gap: 8px; }
+  .set-card-divider { width: 1px; height: auto; align-self: stretch; }
+  .set-card-value { min-width: 0; font-size: 22px; }
+  .set-card-stepper { gap: 4px; }
+  .set-card-field { gap: 2px; }
+  .set-card-field-label { font-size: 12px; }
+  .set-card-chips { margin-top: 0; gap: 6px; }
+  .set-card-chip { padding: 4px 8px; }
+  .set-card-complete { min-height: 48px; margin-top: 6px; }
+  .set-card-footer { margin-top: 6px; padding-top: 6px; }
   .session-summary { justify-content: space-between; gap: 14px; }
   /* bottom vem de navigation.css (--bottom-navigation-space) -- carrega depois deste
      arquivo, então uma segunda declaração aqui só ficaria morta/confusa. */
-  .workout-form-actions { margin-inline: -16px; padding-inline: 16px; }
+  /* .workout-form-actions é sticky (sempre visível no fim da tela, mesmo raciocínio de
+     .set-card-complete acima) -- em telas curtas ele reserva essa faixa o tempo todo,
+     então "concluir série" precisa terminar ANTES dela, não só antes do fim da tela.
+     Reduzido aqui pra sobrar mais altura pro conteúdo por trás. */
+  .workout-form-actions {
+    margin-inline: -16px;
+    padding-inline: 16px;
+    margin-top: 6px;
+    padding-block: 8px calc(8px + env(safe-area-inset-bottom));
+  }
   .workout-form-actions button:first-child { flex: .7; }
   .workout-form-actions button:last-child { flex: 1.3; }
 
@@ -2871,11 +2895,19 @@ body {
   .performance-strip { margin-inline: 4px; }
   .performance-strip > div { padding-inline: 9px; }
   .set-card { padding: 14px; }
+  .workout-form-actions { margin-inline: -12px; padding-inline: 12px; }
+  /* Fallback do layout de Peso/Repetições lado a lado (ver @media 767px acima).
+     Medido de verdade (Playwright, não estimado): com 4 chips de granularidade, a
+     coluna já não cabe todos numa linha só nem a ~390px -- 2 linhas de chips (56px)
+     é o estado normal e não é problema. O que realmente quebra é a coluna ficar
+     estreita demais pros PRÓPRIOS chips, forçando uma 3ª linha (88px): isso só
+     acontece abaixo de ~357px de largura, não nos 340px estimados originalmente --
+     por isso o fallback empilhado usa este breakpoint (359px, já existente) em vez
+     de um novo em 340px. */
+  .set-card-fields { grid-template-columns: 1fr; gap: 10px; }
+  .set-card-divider { width: auto; height: 1px; align-self: auto; }
   .set-card-value { font-size: 28px; min-width: 52px; }
   .set-card-stepper { gap: 12px; }
-  .set-card-body { grid-template-columns: 34px minmax(0, 1fr) 34px; }
-  .set-card-nav { width: 34px; height: 34px; }
-  .workout-form-actions { margin-inline: -12px; padding-inline: 12px; }
 }
 
 /* Authentication artwork: shared by login, registration and password recovery. */

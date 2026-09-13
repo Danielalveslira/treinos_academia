@@ -50,14 +50,24 @@ test('new form creates one set card with accessible steppers, disabled at the em
   const html = render(props)
   assert.equal((html.match(/type="number"/g) || []).length, 0)
   assert.match(html, /aria-label="Série 1"/)
+  // Único controle de "criar nova série" é a seta › (que, na última, assume esse papel)
+  // -- o segmento "+" redundante na barra de progresso foi removido.
   assert.match(html, /aria-label="Adicionar nova série"/)
+  assert.doesNotMatch(html, /set-card-segment-add/)
   // Peso e reps nascem em 0 (set vazio) -- os botões "diminuir" ficam desabilitados no
   // piso, os "aumentar" não.
   assert.match(html, /aria-label="Diminuir peso em 2,5 kg" disabled=""/)
   assert.match(html, /aria-label="Aumentar peso em 2,5 kg"(?! disabled)/)
   assert.match(html, /aria-label="Diminuir repetições" disabled=""/)
-  // Granularidade padrão é 2,5kg (chip ativo).
+  // Granularidade padrão continua 2,5kg (chip ativo), agora com ±1 como opção extra
+  // pra pesos livres não-olímpicos, chips em ordem crescente.
   assert.match(html, /set-card-chip is-active"[^>]*>±2,5/)
+  assert.match(html, />±1</)
+  const order = ['±1<', '±1,25<', '±2,5<', '±5<'].map((chip) => html.indexOf(chip))
+  assert.ok(
+    order.every((index, i) => i === 0 || index > order[i - 1]),
+    'chips de granularidade devem aparecer em ordem crescente'
+  )
   // Set vazio não passa em isValidSet -- "concluir série" nasce desabilitado.
   assert.match(html, /class="set-card-complete" disabled=""/)
   assert.doesNotMatch(html, /Adicionar série</)
@@ -97,9 +107,12 @@ test('editing legacy and individual sets preserves every set (not just the visib
     // (edição de um registro existente) — o passo de registro abre direto nele, sem
     // passar pelos passos de grupo/exercício, mostrando o nome no cabeçalho da etapa.
     assert.match(html, /<strong>Agachamento<\/strong>/)
-    // As duas séries geram dois segmentos clicáveis na barra de progresso do card.
+    // As duas séries geram dois segmentos clicáveis na barra de progresso do card --
+    // nunca um terceiro segmento "+" (removido, ver primeiro teste) inflando a contagem.
     assert.match(html, /aria-label="Série 1"/)
     assert.match(html, /aria-label="Série 2"/)
+    assert.doesNotMatch(html, /set-card-segment-add/)
+    assert.match(html, /Série 1 de 2/)
     // Com mais de uma série, "Remover série" fica habilitado.
     assert.match(html, /aria-label="Remover série 1"(?! disabled)/)
     // Card abre na primeira série (30kg x 12).
