@@ -2122,10 +2122,15 @@ body {
 
 .empty-workout-content {
   position: relative;
-  /* 0, não 1 -- só precisa vencer a imagem/gradiente de fundo (z-index: auto), e um
-     empate em z-index: 1 com o overlay de menus do Primer (ver .workout-progress)
-     se resolve por ordem no DOM, não é garantia de ficar por baixo. */
-  z-index: 0;
+  /* Precisa ser positivo mesmo -- diferente de .workout-progress/.workout-form-actions
+     (onde 0 já bastava), aqui o "concorrente" é .empty-workout::after (o gradiente
+     escuro, position:absolute, z-index:auto), gerado depois de .empty-workout-content
+     na árvore (::after é sempre o último). z-index:0 e z-index:auto entram na MESMA
+     camada de pintura (CSS2.1 §E, passo 6), e o desempate aí é só ordem no DOM -- o
+     ::after vencia e cobria o conteúdo, deixando a tela escura e os botões inclicáveis
+     (bug relatado em produção logo depois do commit anterior). Só um z-index positivo
+     (passo 7) garante ficar acima do ::after, independente de ordem no DOM. */
+  z-index: 1;
   display: flex;
   grid-column: 1;
   grid-row: 1;
