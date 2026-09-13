@@ -2122,7 +2122,10 @@ body {
 
 .empty-workout-content {
   position: relative;
-  z-index: 1;
+  /* 0, não 1 -- só precisa vencer a imagem/gradiente de fundo (z-index: auto), e um
+     empate em z-index: 1 com o overlay de menus do Primer (ver .workout-progress)
+     se resolve por ordem no DOM, não é garantia de ficar por baixo. */
+  z-index: 0;
   display: flex;
   grid-column: 1;
   grid-row: 1;
@@ -2555,7 +2558,12 @@ body {
 .workout-form-actions {
   position: sticky;
   bottom: 0;
-  z-index: 5;
+  /* Baixo de propósito: só precisa ficar acima do conteúdo estático da própria página
+     (séries/campos rolando por baixo) -- qualquer valor >= 1 aqui já sobrepõe o overlay
+     de menus do Primer (AccountMenu, RowActionsMenu etc.), que roda em z-index: 1 na
+     própria árvore da página (sem portal pra fora dela). Mesmo raciocínio em
+     .workout-progress, mais abaixo. */
+  z-index: 0;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -2729,7 +2737,10 @@ body {
 
   .session-heading { gap: 12px; margin-bottom: 22px; }
   .session-icon { width: 40px; height: 40px; }
-  .workout-progress { position: sticky; top: 0; z-index: 4; margin-inline: -4px; padding: 4px; background: color-mix(in srgb, var(--bgColor-default) 94%, transparent); backdrop-filter: blur(10px); }
+  /* z-index: 0, não um número mais alto -- ver o comentário em .workout-form-actions:
+     acima de 0 já sobrepõe o menu da conta e outros ActionMenu do Primer, que aqui
+     não usam portal pra fora da página (ficam em z-index: 1 na própria árvore). */
+  .workout-progress { position: sticky; top: 0; z-index: 0; margin-inline: -4px; padding: 4px; background: color-mix(in srgb, var(--bgColor-default) 94%, transparent); backdrop-filter: blur(10px); }
   .workout-progress span, .workout-progress button { padding-inline: 6px; font-size: 10px; }
   .workout-step-heading h2 { font-size: 22px; }
   .muscle-group-grid { gap: 8px; }
