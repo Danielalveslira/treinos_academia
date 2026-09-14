@@ -151,79 +151,9 @@ test('@ exclusivity is enforced by the server, not just the client transaction',
   await assertSucceeds(setDoc(doc(owner, 'statuses/realname'), status({ authorUsername: 'owner' })))
 })
 
-// AUD-010: reproduz explicitamente o bypass que a Cloud Function renameUsername foi
-// criada para fechar -- o cliente reconstruindo o fluxo antigo (reservar
-// usernames/{novo} num write, depois trocar users/publicProfiles noutro) sem passar
-// pela transação atômica. "owner" já tem um @ definido desde o setup (não é cadastro
-// inicial), então toda tentativa de troca feita por escrita direta precisa falhar,
-// mesmo quando a reserva do nome novo é legítima e aponta para o próprio uid.
-test('AUD-010: a client cannot rename an existing @ with direct writes, even holding a valid reservation', async () => {
-  // Passo 1 do bypass antigo: reservar o novo nome direto -- ainda permitido em si
-  // (é indistinguível de um cadastro em andamento só de olhar para usernames/{x}),
-  // mas deixa de servir para nada sozinho.
-  await assertSucceeds(
-    setDoc(doc(owner, 'usernames/ownernew'), { uid: 'owner', createdAt: serverTimestamp() })
-  )
-  // Passo 2, o que o AUD-010 original explorava: usar a reserva recém-criada para
-  // sobrescrever o @ já existente direto em users/publicProfiles, sem Cloud Function.
-  // Precisa falhar mesmo com reserva válida, porque "owner" já tinha um @ antes.
-  await assertFails(updateDoc(doc(owner, 'users/owner'), { username: 'ownernew' }))
-  await assertFails(updateDoc(doc(owner, 'publicProfiles/owner'), { username: 'ownernew' }))
-  // Tentar zerar o @ existente direto (para depois reclamar um novo como se fosse a
-  // primeira vez) também precisa falhar -- não é só a troca direta que é bloqueada,
-  // é qualquer mudança a partir de um @ já definido.
-  await assertFails(updateDoc(doc(owner, 'users/owner'), { username: null }))
-  await assertFails(updateDoc(doc(owner, 'publicProfiles/owner'), { username: null }))
-  // O estado no banco continua intocado depois de todas as tentativas.
-  assert.equal((await getDoc(doc(admin, 'users/owner'))).data().username, 'owner')
-})
-
-// Fecha a outra ponta do mesmo bypass: mesmo a RESERVA (usernames/{novo}), sozinha,
-// só é aceita direto do cliente enquanto o próprio usuário ainda não tem @ nenhum.
-// Sem isso, dava para acumular reservas de nomes arbitrários mesmo sem conseguir
-// usá-las (squatting) -- inofensivo para outros usuários, mas não deveria ser
-// possível pelas regras já que não serve a nenhum fluxo legítimo.
-test('AUD-010: a client who already has a @ cannot reserve a new username directly either', async () => {
-  await assertFails(
-    setDoc(doc(owner, 'usernames/somethingelse'), { uid: 'owner', createdAt: serverTimestamp() })
-  )
-})
-
-// A única transição que o cliente ainda faz direto é a reivindicação inicial (@
-// ausente -> primeiro @), exatamente o que Register.jsx faz uma vez só. Prova que a
-// correção do AUD-010 não quebrou o cadastro.
-test('AUD-010: initial username claim (registration) still works entirely with direct client writes', async () => {
-  await env.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(context.firestore(), 'users/newbie'), { role: 'user' })
-    await setDoc(doc(context.firestore(), 'publicProfiles/newbie'), {
-      username: null,
-      bio: null,
-      shareStatistics: false,
-    })
-  })
-  const newbie = env.authenticatedContext('newbie').firestore()
-  await assertSucceeds(
-    setDoc(doc(newbie, 'usernames/newbiehandle'), { uid: 'newbie', createdAt: serverTimestamp() })
-  )
-  await assertSucceeds(updateDoc(doc(newbie, 'users/newbie'), { username: 'newbiehandle' }))
-  await assertSucceeds(
-    setDoc(
-      doc(newbie, 'publicProfiles/newbie'),
-      { username: 'newbiehandle', bio: null, shareStatistics: false },
-      { merge: true }
-    )
-  )
-  // E, a partir daqui, "newbie" também já não consegue mais trocar de @ sozinho --
-  // vira exatamente o mesmo caso de "owner" testado acima.
-  await assertSucceeds(
-    setDoc(doc(newbie, 'usernames/newbiesecond'), { uid: 'newbie', createdAt: serverTimestamp() })
-  )
-  await assertFails(updateDoc(doc(newbie, 'users/newbie'), { username: 'newbiesecond' }))
-})
-
-// A Cloud Function (Admin SDK, fora do alcance destas regras) continua sendo o único
-// jeito de trocar um @ já existente -- exercida de fato em admin-rules.test.mjs
-// ('renameUsername moves the reservation atomically...'), não simulada aqui.
+// AUD-010: ver tests/username-rename-rules.test.mjs (suíte própria, seed mínimo) --
+// movida para lá só por organização (mesmo assunto de usernames/username, não
+// exclusividade de perfil), sem relação com os testes deste arquivo.
 
 test('a freshly created profile can self-delete to roll back a failed registration, an established one cannot', async () => {
   const newbie = env.authenticatedContext('newbie').firestore()
