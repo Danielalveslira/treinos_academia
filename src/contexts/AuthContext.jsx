@@ -6,6 +6,7 @@ import { ensureUserProfile, updateUserProfile } from '../services/usersService'
 import { logoutUser } from '../services/authService'
 import { isAccountGoneError } from '../utils/authErrors'
 import { clearPageCache } from '../utils/pageCache'
+import { clearPhotoCache } from '../utils/photoBlobCache'
 
 export const AuthContext = createContext(null)
 
@@ -54,6 +55,10 @@ export function AuthProvider({ children }) {
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       clearPageCache()
+      // AUD-018: mesmo motivo do clearPageCache acima -- sem isso, as object URLs de
+      // fotos baixadas pela sessão anterior ficavam vivas em memória até o teto de
+      // MAX_ENTRIES ou um reload, mesmo depois do logout/troca de usuário.
+      clearPhotoCache()
       const current = ++revision
       unsubscribeProfile?.()
       unsubscribeProfile = null

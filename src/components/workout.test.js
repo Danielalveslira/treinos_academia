@@ -42,10 +42,7 @@ const props = {
   defaultExerciseId: 'squat',
 }
 
-// Séries agora são um card por vez (SetCard.jsx), não uma tabela com um <input
-// type="number"> por campo -- o peso/reps mudam por steppers +/-. Sem input nenhum,
-// "0 ocorrências de type=number" passa a ser o sinal de que a etapa "Séries" está de
-// pé (contra a etapa "Data" logo abaixo, que ainda usa <input type="date">).
+// Text inputs with numeric inputMode accept the Portuguese decimal separator.
 test('new form creates one set card with accessible steppers, disabled at the empty/zero boundary', () => {
   const html = render(props)
   assert.equal((html.match(/type="number"/g) || []).length, 0)
@@ -59,11 +56,9 @@ test('new form creates one set card with accessible steppers, disabled at the em
   assert.match(html, /aria-label="Diminuir peso em 2,5 kg" disabled=""/)
   assert.match(html, /aria-label="Aumentar peso em 2,5 kg"(?! disabled)/)
   assert.match(html, /aria-label="Diminuir repetições" disabled=""/)
-  // Granularidade padrão continua 2,5kg (chip ativo), agora com ±1 como opção extra
-  // pra pesos livres não-olímpicos, chips em ordem crescente.
-  assert.match(html, /set-card-chip is-active"[^>]*>±2,5/)
-  assert.match(html, />±1</)
-  const order = ['±1<', '±1,25<', '±2,5<', '±5<'].map((chip) => html.indexOf(chip))
+  assert.match(html, /inputMode="decimal"/)
+  assert.match(html, /inputMode="numeric"/)
+  const order = ['>-2,5<', '>-1,25<', '>+1,25<', '>+2,5<'].map((chip) => html.indexOf(chip))
   assert.ok(
     order.every((index, i) => i === 0 || index > order[i - 1]),
     'chips de granularidade devem aparecer em ordem crescente'
@@ -80,7 +75,14 @@ test('new form creates one set card with accessible steppers, disabled at the em
 test('editing legacy and individual sets preserves every set (not just the visible one) and inactive exercise selection', () => {
   for (const { initialValue, expectedVolume } of [
     {
-      initialValue: { exerciseId: 'squat', weight: 30, sets: 2, reps: 12, date: '2025-01-01', note: '' },
+      initialValue: {
+        exerciseId: 'squat',
+        weight: 30,
+        sets: 2,
+        reps: 12,
+        date: '2025-01-01',
+        note: '',
+      },
       expectedVolume: '720 kg', // 30x12 duas vezes -- forma legada, mesmo peso/reps pras duas séries.
     },
     {
@@ -116,14 +118,34 @@ test('editing legacy and individual sets preserves every set (not just the visib
     // Com mais de uma série, "Remover série" fica habilitado.
     assert.match(html, /aria-label="Remover série 1"(?! disabled)/)
     // Card abre na primeira série (30kg x 12).
-    assert.match(html, /class="set-card-value">30</)
-    assert.match(html, /class="set-card-value">12</)
+    assert.match(html, /id="set-weight"[^>]*value="30"/)
+    assert.match(html, /id="set-reps"[^>]*value="12"/)
     // "Séries válidas: 2" e o volume batendo só provam que a SEGUNDA série (fora de
     // vista) preservou seu próprio peso/reps -- não dá pra ver isso direto na página
     // renderizada, já que só a série ativa aparece.
     assert.match(html, /Séries válidas<\/span><strong>2<\/strong>/)
     assert.match(html, new RegExp(`Volume estimado</span><strong>${expectedVolume}`))
   }
+})
+
+test('history opens with suggested values and an enabled one-touch completion', () => {
+  const html = render({
+    ...props,
+    history: [
+      {
+        exerciseId: 'squat',
+        setDetails: [
+          { weight: 17.5, reps: 8 },
+          { weight: 20, reps: 6 },
+        ],
+      },
+    ],
+  })
+  assert.match(html, /Série 1 de 2/)
+  assert.match(html, /id="set-weight"[^>]*value="17,5"/)
+  assert.match(html, /id="set-reps"[^>]*value="8"/)
+  assert.match(html, /class="set-card-complete" aria-pressed="false"/)
+  assert.match(html, /Último treino/)
 })
 
 test('with no exercise pre-selected, the form opens on the muscle group step, not the set fields', () => {
@@ -138,4 +160,51 @@ test('with no exercise pre-selected, the form opens on the muscle group step, no
   assert.match(html, /Peito/)
   assert.equal((html.match(/type="number"/g) || []).length, 0)
   assert.doesNotMatch(html, /Adicionar série/)
+})
+
+test('previous sessions are collapsed, exercise-scoped and show dates, sets, volume and notes', () => {
+  const html = render({
+    ...props,
+    history: [
+      {
+        id: 'recent',
+        exerciseId: 'squat',
+        date: new Date(2026, 8, 14, 12),
+        setDetails: [{ weight: 12.5, reps: 10 }],
+        note: 'Boa execução',
+      },
+      {
+        id: 'legacy',
+        exerciseId: 'squat',
+        date: { toDate: () => new Date(2026, 8, 10, 12) },
+        weight: 10,
+        reps: 8,
+        sets: 2,
+      },
+      { id: 'other', exerciseId: 'bench', note: 'Não mostrar' },
+    ],
+  })
+  assert.doesNotMatch(html, /Última sessão:|Melhor nos registros carregados:|workout-reference/)
+  assert.match(html, /<details class="workout-past-sessions"><summary>Sessões anteriores \(2\)/)
+  assert.match(html, /14\/09\/2026/)
+  assert.match(html, /10\/09\/2026/)
+  assert.match(html, /Volume total: 125 kg/)
+  assert.match(html, /Volume total: 160 kg/)
+  assert.match(html, /12,5kg × 10/)
+  assert.match(html, /Boa execução/)
+  assert.doesNotMatch(html, /Não mostrar/)
+  assert.ok(html.indexOf('workout-past-sessions') > html.indexOf('Finalizar exercício'))
+})
+
+test('previous sessions provide an empty state and support cardio history', () => {
+  assert.match(render(props), /Nenhuma sessão anterior deste exercício nos registros carregados/)
+  const html = render({
+    exercises: [{ id: 'run', name: 'Corrida', active: true, type: 'cardio' }],
+    defaultExerciseId: 'run',
+    history: [{ exerciseId: 'run', type: 'cardio', durationMinutes: 20, distanceKm: 3 }],
+  })
+  assert.match(html, /Sessões anteriores \(1\)/)
+  assert.match(html, /20 min/)
+  assert.match(html, /3 km/)
+  assert.doesNotMatch(html, /Volume total:/)
 })

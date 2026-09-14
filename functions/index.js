@@ -9,7 +9,7 @@ import { validId } from './legal-core.js'
 import { accountView, validateSetAccountStatus, validateDeleteAccount } from './admin-core.js'
 import { readFileSync } from 'node:fs'
 import { initializeApp } from 'firebase-admin/app'
-import { getFirestore, FieldValue, FieldPath, Timestamp } from 'firebase-admin/firestore'
+import { getFirestore, FieldValue, FieldPath, Timestamp, AggregateField } from 'firebase-admin/firestore'
 import { getAuth } from 'firebase-admin/auth'
 import { getStorage } from 'firebase-admin/storage'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
@@ -43,6 +43,22 @@ const manifest = JSON.parse(readFileSync(new URL('./legal/manifest.json', import
 const documents = JSON.parse(readFileSync(new URL('./legal/documents.json', import.meta.url)))
 const digest = legalDigest(manifest, documents)
 const options = { region: 'southamerica-east1', maxInstances: 5 }
+
+// AUD-007: política de retenção da cópia de evidência (moderationEvidence/*.webp).
+// Ligada ao ciclo de vida do próprio chamado, não a um prazo fixo desde a criação:
+//   - enquanto o pedido segue aberto, a evidência precisa sobreviver até alguém
+//     decidir -- por isso o prazo abaixo é só uma rede de segurança (pedido
+//     esquecido/nunca decidido), generoso o bastante para não apagar evidência de
+//     um caso em análise.
+//   - cancelado pelo próprio autor ou decidido como no_action: nenhuma medida foi
+//     baseada nela, não há motivo de auditoria para guardar por mais tempo.
+//   - decidido com alguma penalidade real (suspensão, banimento, remoção de
+//     conteúdo): a evidência passa a sustentar um moderationDecision permanente
+//     (essa coleção já não é apagada por nenhum job) -- aqui a retenção indefinida é
+//     uma decisão deliberada e documentada, não um esquecimento. evidenceExpiresAt
+//     fica null nesse caso, e purgeExpiredModerationEvidence nunca a seleciona.
+const EVIDENCE_PENDING_RETENTION_MS = 30 * 86400000
+const EVIDENCE_NO_ACTION_RETENTION_MS = 7 * 86400000
 
 function requireUser(request) {
   if (!request.auth) throw new HttpsError('unauthenticated', 'Entre na sua conta.')
@@ -139,6 +155,10 @@ export const submitSupportRequest = onCall(options, async (request) => {
   const { kind, message, statusId = '', communityId = '', decisionId = '' } = request.data
   const ref = db.collection('supportRequests').doc()
   const throttle = db.doc(`supportLimits/${uid}`)
+  // AUD-007: precisa sobreviver à transação (a cópia da foto de evidência, mais
+  // abaixo, roda depois dela) -- reatribuída a cada tentativa da transação, mas só a
+  // da tentativa que de fato commitar importa.
+  let snapshot = null
   await db.runTransaction(async (tx) => {
     await assertWritableAccount(tx, uid)
     const limit = await tx.get(throttle)
@@ -146,7 +166,6 @@ export const submitSupportRequest = onCall(options, async (request) => {
     if (limit.exists && now - limit.data().lastRequestAt.toMillis() < 60000) {
       throw new HttpsError('resource-exhausted', 'Aguarde um minuto antes de enviar outro pedido.')
     }
-    let snapshot = null
     let relatedCommunity = communityId
     if (statusId && kind === 'report') {
       const status = await tx.get(db.doc(`statuses/${statusId}`))
@@ -193,6 +212,29 @@ export const submitSupportRequest = onCall(options, async (request) => {
     })
     tx.set(throttle, { lastRequestAt: Timestamp.fromMillis(now) })
   })
+  // AUD-007: a denúncia de uma foto guardava só photoPath (um ponteiro) no
+  // contentSnapshot -- quando a publicação expirava (24h) ou era excluída, o arquivo
+  // no Storage ia junto, e a evidência sumia antes de um moderador conseguir vê-la.
+  // Copiamos o arquivo para um local fora do ciclo de vida da publicação, fora da
+  // transação (Storage não participa de transações do Firestore). Best-effort: o
+  // relato já foi criado e é válido mesmo se esta cópia falhar (ex.: o arquivo já
+  // tinha sido apagado no intervalo entre o clique em "Denunciar" e esta chamada).
+  if (snapshot?.type === 'photo' && snapshot.photoPath) {
+    try {
+      const evidencePath = `moderationEvidence/${ref.id}.webp`
+      await bucket.file(snapshot.photoPath).copy(bucket.file(evidencePath))
+      await ref.update({
+        evidencePath,
+        evidenceExpiresAt: Timestamp.fromMillis(Date.now() + EVIDENCE_PENDING_RETENTION_MS),
+      })
+    } catch (copyError) {
+      console.error(
+        'Failed to preserve report photo evidence',
+        ref.id,
+        copyError.code || copyError.message
+      )
+    }
+  }
   return { id: ref.id }
 })
 
@@ -213,6 +255,11 @@ export const cancelSupportRequest = onCall(options, async (request) => {
       state: 'closed',
       response: 'Cancelado pelo usuário.',
       decidedAt: FieldValue.serverTimestamp(),
+      // AUD-007: cancelado pelo próprio autor -- nenhuma medida foi tomada com base
+      // nesta evidência, não há motivo de auditoria para guardá-la pelo prazo cheio.
+      ...(support.data().evidencePath
+        ? { evidenceExpiresAt: Timestamp.fromMillis(Date.now() + EVIDENCE_NO_ACTION_RETENTION_MS) }
+        : {}),
     })
   })
   return { ok: true }
@@ -285,6 +332,20 @@ export const decideSupportRequest = onCall(options, async (request) => {
       response: reason.trim(),
       decisionId: decisionRef.id,
       decidedAt: FieldValue.serverTimestamp(),
+      // AUD-007: uma penalidade real (suspensão/banimento/remoção) transforma a
+      // evidência em sustentação de um moderationDecision permanente -- retenção
+      // indefinida aqui é deliberada, não um esquecimento (ver comentário na
+      // constante EVIDENCE_PENDING_RETENTION_MS). no_action/restore não aplicaram
+      // nenhuma medida com base nela, então volta a ter prazo curto.
+      ...(data.evidencePath
+        ? {
+            evidenceExpiresAt: ['temporary_suspension', 'system_ban', 'community_ban', 'remove_content'].includes(
+              action
+            )
+              ? null
+              : Timestamp.fromMillis(Date.now() + EVIDENCE_NO_ACTION_RETENTION_MS),
+          }
+        : {}),
     })
     if (targetUserId)
       tx.set(db.doc(`users/${targetUserId}/notices/${decisionRef.id}`), {
@@ -501,6 +562,36 @@ export const purgeOrphanedPhotos = onSchedule(
   }
 )
 
+// AUD-007: aplica a política de retenção definida em submitSupportRequest/
+// cancelSupportRequest/decideSupportRequest (ver EVIDENCE_PENDING_RETENTION_MS
+// acima) -- nunca decide reter ou apagar por conta própria, só executa o prazo já
+// calculado em evidenceExpiresAt. Documentos com penalidade real (evidenceExpiresAt:
+// null) nunca entram nesta consulta: uma comparação "<=" do Firestore não seleciona
+// campo nulo nem ausente, então ficam de fora automaticamente, sem checagem extra.
+export const purgeExpiredModerationEvidence = onSchedule(
+  { ...options, schedule: 'every 24 hours', timeoutSeconds: 300 },
+  async () => {
+    const expired = await db
+      .collection('supportRequests')
+      .where('evidenceExpiresAt', '<=', Timestamp.now())
+      .limit(200)
+      .get()
+    if (expired.empty) return
+    await Promise.all(
+      expired.docs.map(async (item) => {
+        const { evidencePath } = item.data()
+        if (evidencePath) await bucket.file(evidencePath).delete({ ignoreNotFound: true })
+        // O chamado em si (mensagem, decisão, resposta) permanece -- só os bytes da
+        // foto e o prazo já cumprido saem do documento.
+        await item.ref.update({
+          evidencePath: FieldValue.delete(),
+          evidenceExpiresAt: FieldValue.delete(),
+        })
+      })
+    )
+  }
+)
+
 export const listDeletionJobs = onCall(options, async (request) => {
   await requireSuperAdmin(requireUser(request))
   const jobs = await db
@@ -517,4 +608,82 @@ export const listDeletionJobs = onCall(options, async (request) => {
       lastError: job.data().lastError || null,
     })),
   }
+})
+
+// AUD-006: o resumo público (entries/sets) era calculado E gravado pelo próprio
+// cliente (publicProfilesService.refreshPublicStatistics fazia um setDoc direto);
+// firestore.rules só validava "números não negativos", nunca que os valores batiam
+// com o diário de treino real — um cliente modificado podia forjar qualquer total.
+// Agora o cálculo roda aqui, com Admin SDK, sobre a mesma agregação que o cliente já
+// usava (count/sum via getAggregateFromServer) — só que sem o cliente poder escolher
+// o resultado. firestore.rules passa a bloquear create/update client-side nesse
+// documento (só leitura e delete continuam liberados ao dono).
+export const refreshPublicStatistics = onCall(options, async (request) => {
+  const uid = requireUser(request)
+  const profile = await db.doc(`publicProfiles/${uid}`).get()
+  if (!profile.exists || profile.data().shareStatistics !== true) {
+    throw new HttpsError(
+      'failed-precondition',
+      'Ative o compartilhamento de estatísticas antes de atualizar.'
+    )
+  }
+  const aggregate = await db
+    .collection(`users/${uid}/workouts`)
+    .aggregate({ entries: AggregateField.count(), sets: AggregateField.sum('sets') })
+    .get()
+  const entries = aggregate.data().entries
+  const sets = aggregate.data().sets || 0
+  await db.doc(`publicProfiles/${uid}/statistics/summary`).set({
+    entries,
+    sets,
+    updatedAt: FieldValue.serverTimestamp(),
+  })
+  return { entries, sets }
+})
+
+// AUD-010: a troca de @ do cliente (usersService.updateUserProfile) precisa de DOIS
+// commits distintos — reservar usernames/{novo} primeiro, só então atualizar
+// users/publicProfiles — porque firestore.rules exige que a reserva já exista antes
+// de aceitar o novo username (ownsUsernameField) e regras nunca enxergam escritas
+// irmãs ainda pendentes na mesma transação do cliente. Uma falha de rede entre os
+// dois commits deixava o novo @ reservado sem nunca virar o username de ninguém —
+// indisponível para todo mundo, inclusive para o próprio dono pretendido, até ele
+// tentar de novo com o mesmo valor. Com Admin SDK (sem essa restrição de regras) os
+// três documentos mudam numa única transação, atômica de verdade.
+export const renameUsername = onCall(options, async (request) => {
+  const uid = requireUser(request)
+  const username = String(request.data?.username || '')
+    .trim()
+    .toLowerCase()
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+    throw new HttpsError('invalid-argument', 'Nome de usuário inválido.')
+  }
+  await db.runTransaction(async (tx) => {
+    await assertWritableAccount(tx, uid)
+    const userRef = db.doc(`users/${uid}`)
+    const publicRef = db.doc(`publicProfiles/${uid}`)
+    const newReservationRef = db.doc(`usernames/${username}`)
+    const [user, publicProfile, reservation] = await tx.getAll(
+      userRef,
+      publicRef,
+      newReservationRef
+    )
+    if (!user.exists) throw new HttpsError('failed-precondition', 'Perfil não encontrado.')
+    const previousUsername = user.data().username
+    if (previousUsername === username) return
+    if (reservation.exists && reservation.data().uid !== uid) {
+      throw new HttpsError('already-exists', 'Esse nome de usuário já está em uso.')
+    }
+    if (!reservation.exists) {
+      tx.set(newReservationRef, { uid, createdAt: FieldValue.serverTimestamp() })
+    }
+    tx.update(userRef, { username })
+    if (publicProfile.exists) {
+      tx.update(publicRef, { username })
+    } else {
+      tx.set(publicRef, { username, bio: null, shareStatistics: false })
+    }
+    if (previousUsername) tx.delete(db.doc(`usernames/${previousUsername}`))
+  })
+  return { username }
 })

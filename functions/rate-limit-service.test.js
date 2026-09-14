@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import process from 'node:process'
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore'
 import { createEnforcePostRateLimit, RATE_LIMIT_WINDOW_MS } from './rate-limit-service.js'

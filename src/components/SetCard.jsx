@@ -1,49 +1,87 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  PlusIcon,
-  DashIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   TrashIcon,
+  PencilIcon,
+  HistoryIcon,
 } from '@primer/octicons-react'
 import { getWorkoutSets, isValidSet } from '../utils/workoutSets'
+import { adjustSetValue, parseSetInput } from '../utils/setSuggestions'
 
-// Quanto tempo o ícone de "Remover série" fica em estado de confirmação depois do
-// primeiro toque, antes de voltar ao normal -- ver handleRemoveClick. Sem dialog (ação
-// de baixo risco, só mexe em campos ainda não salvos), mas dois toques evitam remover
-// por engano com um único tap acidental.
-const REMOVE_CONFIRM_MS = 2000
-
-// Mesmos limites de isValidSet (workoutSets.js) -- não revalida nada aqui, só trava o
-// stepper pra nunca produzir um valor que o próprio isValidSet recusaria depois.
-const MIN_WEIGHT = 0
-const MAX_WEIGHT = 10000
-const MIN_REPS = 1
-const MAX_REPS = 100000
-
-const WEIGHT_GRANULARITIES = [1, 1.25, 2.5, 5]
-const DEFAULT_GRANULARITY = 2.5
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value))
+function NumberControl({ field, value, disabled, onChange }) {
+  const weight = field === 'weight'
+  const label = weight ? 'Peso (kg)' : 'Repetições'
+  const deltas = weight ? [-2.5, -1.25, 1.25, 2.5] : [-1, 1]
+  const max = weight ? 10000 : 100000
+  const min = weight ? 0 : 1
+  const step = weight ? 2.5 : 1
+  const adjust = (delta) => onChange(adjustSetValue(field, value, delta))
+  return (
+    <div className="set-card-field">
+      <label className="set-card-field-label" htmlFor={`set-${field}`}>
+        {label}
+      </label>
+      <div className="set-card-stepper">
+        <button
+          type="button"
+          className="set-card-step"
+          aria-label={weight ? 'Diminuir peso em 2,5 kg' : 'Diminuir repetições'}
+          disabled={disabled || Number(value) <= min}
+          onClick={() => adjust(-step)}
+        >
+          −
+        </button>
+        <div className="set-card-input-wrap">
+          <input
+            id={`set-${field}`}
+            className="set-card-value"
+            style={String(value).length > 4 ? { fontSize: 'clamp(16px, 2.5vw, 28px)' } : undefined}
+            type="text"
+            inputMode={weight ? 'decimal' : 'numeric'}
+            autoComplete="off"
+            value={String(value).replace('.', ',')}
+            placeholder="0"
+            disabled={disabled}
+            aria-describedby={`set-${field}-hint`}
+            onChange={(event) => {
+              const parsed = parseSetInput(field, event.target.value)
+              if (parsed !== null) onChange(parsed)
+            }}
+          />
+          <PencilIcon size={16} aria-hidden="true" />
+        </div>
+        <button
+          type="button"
+          className="set-card-step is-positive"
+          aria-label={weight ? 'Aumentar peso em 2,5 kg' : 'Aumentar repetições'}
+          disabled={disabled || Number(value) >= max}
+          onClick={() => adjust(step)}
+        >
+          +
+        </button>
+      </div>
+      <div className="set-card-chips">
+        {deltas.map((delta) => (
+          <button
+            key={delta}
+            type="button"
+            className={`set-card-chip${delta > 0 ? ' is-positive' : ''}`}
+            disabled={disabled || (delta < 0 ? Number(value) <= min : Number(value) >= max)}
+            aria-label={`${delta > 0 ? 'Somar' : 'Subtrair'} ${Math.abs(delta).toLocaleString('pt-BR')} ${weight ? 'kg' : 'repetição'}`}
+            onClick={() => adjust(delta)}
+          >
+            {delta > 0 ? '+' : ''}
+            {delta.toLocaleString('pt-BR')}
+          </button>
+        ))}
+      </div>
+      <small id={`set-${field}-hint`}>Toque no valor para digitar</small>
+    </div>
+  )
 }
 
-// Duas casas basta pra qualquer granularidade oferecida (1.25/2.5/5) -- evita que somas
-// repetidas de incrementos fracionários acumulem ruído de ponto flutuante (ex.: 0.1 + 0.2).
-function round2(value) {
-  return Math.round(value * 100) / 100
-}
-
-function formatKg(value) {
-  return value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
-}
-
-// Uma série por vez, navegável por abas/segmentos ou setas laterais -- ver o pedido de
-// redesenho da etapa "Séries" do WorkoutForm.jsx. `sets` já vem com `completed` (bool)
-// projetado por WorkoutForm a partir do seu próprio estado `completed` (Set de keys);
-// este componente não guarda nenhum estado de progresso, só a granularidade do peso
-// (preferência de UI, não faz parte do treino em si).
 export function SetCard({
   sets,
   activeIndex,
@@ -53,213 +91,142 @@ export function SetCard({
   onAdd,
   onRemove,
   lastWorkout,
-  bestLoad,
+  validSetCount,
+  volume,
   disabled,
 }) {
-  const [granularity, setGranularity] = useState(DEFAULT_GRANULARITY)
   const [confirmingRemove, setConfirmingRemove] = useState(false)
-  const removeTimeoutRef = useRef(null)
-
-  // Trocar de série cancela uma confirmação de remoção pendente da série anterior --
-  // "toque de novo pra confirmar" só deve valer para a MESMA série que o usuário
-  // acabou de tocar, nunca para a que ele navegar em seguida.
+  const timer = useRef(null)
+  const activeSet = sets[activeIndex]
   useEffect(() => {
     setConfirmingRemove(false)
-  }, [activeIndex])
-
-  useEffect(() => () => clearTimeout(removeTimeoutRef.current), [])
-
-  const activeSet = sets[activeIndex]
+    clearTimeout(timer.current)
+  }, [activeSet?.key])
+  useEffect(() => () => clearTimeout(timer.current), [])
   if (!activeSet) return null
-
-  const completedCount = sets.filter((set) => set.completed).length
-  const isFirst = activeIndex === 0
   const isLast = activeIndex === sets.length - 1
-  const canAdd = Boolean(onAdd)
-  const canRemove = sets.length > 1
-  const weightValue = Number(activeSet.weight) || 0
-  const repsValue = Number(activeSet.reps) || 0
-  const validSet = isValidSet(activeSet)
-
-  function handleRemoveClick() {
-    if (!confirmingRemove) {
-      setConfirmingRemove(true)
-      removeTimeoutRef.current = setTimeout(() => setConfirmingRemove(false), REMOVE_CONFIRM_MS)
-      return
-    }
-    clearTimeout(removeTimeoutRef.current)
-    setConfirmingRemove(false)
-    onRemove(activeSet.key)
-  }
-
-  function stepWeight(delta) {
-    onUpdate(activeSet.key, 'weight', clamp(round2(weightValue + delta), MIN_WEIGHT, MAX_WEIGHT))
-  }
-
-  function stepReps(delta) {
-    onUpdate(activeSet.key, 'reps', clamp(repsValue + delta, MIN_REPS, MAX_REPS))
-  }
-
-  function goNext() {
-    if (isLast) {
-      if (canAdd) onAdd()
-      return
-    }
-    onNavigate(activeIndex + 1)
-  }
-
+  const lastSets = lastWorkout ? getWorkoutSets(lastWorkout) : []
   return (
     <div className="set-card">
       <div className="set-card-header">
-        <div className="set-card-header-text">
+        <div className="set-card-header-text" aria-live="polite">
           <span>
             Série {activeIndex + 1} de {sets.length}
           </span>
           <span>
-            {completedCount} concluída{completedCount === 1 ? '' : 's'}
+            {activeSet.completed
+              ? 'Série concluída — valores registrados'
+              : activeSet.source === 'history'
+                ? 'Valores sugeridos com base no último treino'
+                : activeSet.source === 'inherited'
+                  ? 'Valores herdados da série anterior'
+                  : 'Confirme ou ajuste os valores da série'}
           </span>
         </div>
-        <button
-          type="button"
-          className={`set-card-remove${confirmingRemove ? ' is-confirming' : ''}`}
-          aria-label={
-            confirmingRemove
-              ? `Confirmar remoção da série ${activeIndex + 1}`
-              : `Remover série ${activeIndex + 1}`
-          }
-          disabled={disabled || !canRemove}
-          onClick={handleRemoveClick}
-        >
-          <TrashIcon size={16} />
-        </button>
+        <div className="set-card-navigation">
+          <button
+            type="button"
+            className="set-card-nav"
+            aria-label="Série anterior"
+            disabled={disabled || activeIndex === 0}
+            onClick={() => onNavigate(activeIndex - 1)}
+          >
+            <ChevronLeftIcon size={20} />
+          </button>
+          <button
+            type="button"
+            className="set-card-nav"
+            aria-label={isLast ? 'Adicionar nova série' : 'Próxima série'}
+            disabled={disabled || (isLast && !onAdd)}
+            onClick={() => (isLast ? onAdd?.() : onNavigate(activeIndex + 1))}
+          >
+            <ChevronRightIcon size={20} />
+          </button>
+          <button
+            type="button"
+            className={`set-card-remove${confirmingRemove ? ' is-confirming' : ''}`}
+            aria-label={`${confirmingRemove ? 'Confirmar remoção da' : 'Remover'} série ${activeIndex + 1}`}
+            disabled={disabled || sets.length === 1}
+            onClick={() => {
+              if (confirmingRemove) {
+                onRemove(activeSet.key)
+                setConfirmingRemove(false)
+                return
+              }
+              setConfirmingRemove(true)
+              timer.current = setTimeout(() => setConfirmingRemove(false), 2000)
+            }}
+          >
+            <TrashIcon size={16} />
+          </button>
+        </div>
       </div>
-
-      <div className="set-card-progress">
+      <div className="set-card-progress" aria-label="Navegar entre séries">
         {sets.map((set, index) => (
           <button
             key={set.key}
             type="button"
-            className={`set-card-segment${set.completed ? ' is-complete' : ''}${
-              index === activeIndex ? ' is-active' : ''
-            }`}
+            className={`set-card-segment${set.completed ? ' is-complete' : ''}${index === activeIndex ? ' is-active' : ''}`}
             aria-current={index === activeIndex ? 'true' : undefined}
             aria-label={`Série ${index + 1}${set.completed ? ', concluída' : ''}`}
+            disabled={disabled}
             onClick={() => onNavigate(index)}
+          >
+            {set.completed ? <CheckIcon size={14} /> : index + 1}
+          </button>
+        ))}
+        <span aria-live="polite">{sets.filter((set) => set.completed).length} concluídas</span>
+      </div>
+      <div className="set-card-fields">
+        {['weight', 'reps'].map((field) => (
+          <NumberControl
+            key={field}
+            field={field}
+            value={activeSet[field]}
+            disabled={disabled}
+            onChange={(value) => onUpdate(activeSet.key, field, value)}
           />
         ))}
       </div>
-
-      <div className="set-card-body">
-        <button
-          type="button"
-          className="set-card-nav"
-          aria-label="Série anterior"
-          disabled={disabled || isFirst}
-          onClick={() => onNavigate(activeIndex - 1)}
-        >
-          <ChevronLeftIcon size={18} />
-        </button>
-
-        <div className="set-card-fields">
-          <div className="set-card-field">
-            <span className="set-card-field-label">Peso (kg)</span>
-            <div className="set-card-stepper">
-              <button
-                type="button"
-                className="set-card-step"
-                aria-label={`Diminuir peso em ${formatKg(granularity)} kg`}
-                disabled={disabled || weightValue <= MIN_WEIGHT}
-                onClick={() => stepWeight(-granularity)}
-              >
-                <DashIcon size={16} />
-              </button>
-              <span className="set-card-value">{formatKg(weightValue)}</span>
-              <button
-                type="button"
-                className="set-card-step"
-                aria-label={`Aumentar peso em ${formatKg(granularity)} kg`}
-                disabled={disabled || weightValue >= MAX_WEIGHT}
-                onClick={() => stepWeight(granularity)}
-              >
-                <PlusIcon size={16} />
-              </button>
-            </div>
-            <div className="set-card-chips">
-              {WEIGHT_GRANULARITIES.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={`set-card-chip${value === granularity ? ' is-active' : ''}`}
-                  aria-pressed={value === granularity}
-                  disabled={disabled}
-                  onClick={() => setGranularity(value)}
-                >
-                  ±{formatKg(value)}
-                </button>
-              ))}
-            </div>
+      <section className="set-card-history" aria-label="Último treino">
+        <strong>
+          <HistoryIcon size={20} /> Último treino
+        </strong>
+        {lastSets.length ? (
+          <div>
+            {lastSets.map((set, index) => (
+              <span key={index}>
+                <b>S{index + 1}</b> {Number(set.weight).toLocaleString('pt-BR')}kg × {set.reps}
+              </span>
+            ))}
           </div>
-
-          <div className="set-card-divider" />
-
-          <div className="set-card-field">
-            <span className="set-card-field-label">Repetições</span>
-            <div className="set-card-stepper">
-              <button
-                type="button"
-                className="set-card-step"
-                aria-label="Diminuir repetições"
-                disabled={disabled || repsValue <= MIN_REPS}
-                onClick={() => stepReps(-1)}
-              >
-                <DashIcon size={16} />
-              </button>
-              <span className="set-card-value">{repsValue.toLocaleString('pt-BR')}</span>
-              <button
-                type="button"
-                className="set-card-step"
-                aria-label="Aumentar repetições"
-                disabled={disabled || repsValue >= MAX_REPS}
-                onClick={() => stepReps(1)}
-              >
-                <PlusIcon size={16} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="set-card-nav"
-          aria-label={isLast ? 'Adicionar nova série' : 'Próxima série'}
-          disabled={disabled || (isLast && !canAdd)}
-          onClick={goNext}
-        >
-          <ChevronRightIcon size={18} />
-        </button>
-      </div>
-
+        ) : (
+          <p>Sem histórico nos registros carregados. Informe seus valores.</p>
+        )}
+      </section>
       <button
         type="button"
         className={`set-card-complete${activeSet.completed ? ' is-complete' : ''}`}
-        disabled={disabled || !validSet}
+        disabled={disabled || !isValidSet(activeSet)}
         aria-pressed={activeSet.completed}
         onClick={() => onToggleComplete(activeSet.key)}
       >
-        <CheckIcon size={18} />
-        {activeSet.completed ? 'série concluída' : 'concluir série'}
+        <CheckIcon size={24} />
+        {activeSet.completed ? 'Série concluída · Reabrir' : 'Concluir série'}
       </button>
-
-      {(lastWorkout || bestLoad != null) && (
-        <p className="set-card-footer">
-          {lastWorkout &&
-            `última vez: ${getWorkoutSets(lastWorkout)
-              .map((set) => `${set.weight}kg × ${set.reps}`)
-              .join(' · ')}`}
-          {lastWorkout && bestLoad != null && ' · '}
-          {bestLoad != null && `melhor: ${formatKg(bestLoad)}kg`}
-        </p>
-      )}
+      <p className="set-card-inheritance">
+        A próxima série usa seu histórico ou herda estes valores. Edições são mantidas.
+      </p>
+      <div className="session-summary" aria-live="polite">
+        <div>
+          <span>Séries válidas</span>
+          <strong>{validSetCount}</strong>
+        </div>
+        <div>
+          <span>Volume estimado</span>
+          <strong>{volume == null ? '—' : `${volume.toLocaleString('pt-BR')} kg`}</strong>
+        </div>
+      </div>
     </div>
   )
 }

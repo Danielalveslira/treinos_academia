@@ -27,7 +27,7 @@ src/
   firebase/     inicialização e configuração do SDK
 ```
 
-Regra geral: **components/pages não falam com o Firestore diretamente** — sempre passam por um hook, que por sua vez usa um service. Cálculos de indicadores (volume, evolução %, frequência) ficam isolados em `utils/calculations.js`, puros e testáveis.
+Regra geral: **components/pages não falam com o Firestore/Storage diretamente** — sempre passam por um service (`src/services/`), que é quem importa `firebase/config`. Um hook (`src/hooks/`) entra no meio quando há estado para gerenciar (loading, paginação, cache, listener) — para uma chamada pontual sem estado próprio (ex.: um botão de "salvar" chamando `updateUserProfile`), a página chama o service diretamente. Cálculos de indicadores (volume, evolução %, frequência) ficam isolados em `utils/calculations.js`, puros e testáveis.
 
 Componentes próprios em `components/` existem apenas quando o Primer não tem equivalente direto (ex.: `WorkoutForm`, `ExerciseForm`, `RowActionsMenu`, `LoadChart`/`VolumeChart`) — e mesmo esses são compostos internamente com peças do Primer (`Box`, `FormControl`, `Stack`, `ActionMenu`). Erros de leitura do Firestore nunca são escondidos atrás de uma mensagem genérica: `utils/firestoreError.js` loga o erro real no console e, quando a causa é um índice composto ausente, expõe o link de criação direto na tela (ver `components/ErrorState.jsx`).
 
@@ -36,16 +36,50 @@ Componentes próprios em `components/` existem apenas quando o Primer não tem e
 ## Modelo de dados (Firestore)
 
 ```
-users/{userId}                          { role: 'user' | 'superadmin', createdAt, username? }
-users/{userId}/exercises/{exerciseId}   { name, muscleGroup, note, active }
-users/{userId}/workouts/{workoutId}     { exerciseId, weight, sets, reps, date, note }
+users/{userId}                          { role: 'user' | 'superadmin', createdAt, username?, bio?,
+                                           shareStatistics?, sexo?, dataNascimento?, heightCm?,
+                                           accountStatus? }
+users/{userId}/exercises/{exerciseId}   { name, muscleGroup, note, active, order? }
+users/{userId}/workouts/{workoutId}     { exerciseId, setDetails | (weight, sets, reps), date, note,
+                                           type: 'strength' | 'cardio', createdAt }
+users/{userId}/bodyMeasurements/{id}    { date, weightKg?, bodyFatPercent?, waistCm?, hipCm?,
+                                           leanMassKg?, note?, createdAt }  (time series — cada
+                                           check-in é um documento novo, nunca sobrescreve o anterior)
+users/{userId}/legalAcceptances/{version} { userId, version, digest, acceptedAt }
+users/{userId}/notices/{noticeId}       aviso de uma restrição/decisão de moderação aplicada à conta
 
 usernames/{username}                    { uid, createdAt }
-communities/{communityId}               { name, description, imageUrl, isActive, createdBy, createdAt }
+publicProfiles/{userId}                 { username, bio, shareStatistics }
+publicProfiles/{userId}/statistics/summary  { entries, sets, updatedAt } — só existe com
+                                           shareStatistics == true; calculado e gravado por uma
+                                           Cloud Function (refreshPublicStatistics), nunca pelo
+                                           cliente diretamente
+
+communities/{communityId}               { name, description, imageUrl?, isActive, createdBy,
+                                           createdAt, postAccess?, memberCount?, iconName? }
 communityMembers/{communityId}_{userId} { communityId, userId, joinedAt }
-statuses/{statusId}                     { communityId, authorId, authorUsername, type, createdAt, expiresAt, ... }
+communityRestrictions/{communityId}_{userId}  restrição aplicada a um usuário numa comunidade
+statuses/{statusId}                     { communityId, authorId, authorUsername, authorIsSuperAdmin,
+                                           type: 'text' | 'poll' | 'workout' | 'achievement' | 'photo',
+                                           createdAt, expiresAt, ... }  — expira em 24h, imutável
+                                           depois de criado (só create/delete, nunca update)
 statuses/{statusId}/votes/{userId}          { optionId, createdAt }        (type: poll)
 statuses/{statusId}/participants/{userId}   { joinedAt }                  (type: workout)
+
+sponsoredAds/{adId}                     anúncio de parceiro, alvo por comunidade e/ou global (Home)
+accountRestrictions/{userId}            restrição ativa na conta inteira (suspensão/banimento)
+rateLimitCounters/{userId}              janela deslizante de publicações recentes (anti-spam)
+
+supportRequests/{requestId}             pedido de atendimento — denúncia, recurso ou privacidade/
+                                           exclusão; guarda um contentSnapshot da publicação
+                                           denunciada e, se for uma foto, evidencePath (cópia do
+                                           arquivo preservada fora do ciclo de vida da publicação)
+moderationDecisions/{decisionId}        decisão de moderação (manual ou automática) e sua justificativa
+deletionJobs/{kind}_{id}                fila de exclusão em lote (conta/comunidade/publicação) —
+                                           processada por uma Cloud Function agendada
+legalPolicy/current, legalVersions/{version}  versão vigente dos documentos legais (Termos,
+                                           Regras da Comunidade, Política de Privacidade) e seu
+                                           histórico publicado
 ```
 
 Estrutura escolhida por ser a mais simples que atende aos requisitos: subcoleções por usuário isolam os dados naturalmente (cada leitura já é escopada ao usuário autenticado) e evitam junções complexas. Não há coleção separada de "grupos musculares" (é um campo simples no exercício) nem relacionamentos adicionais — não são necessários no estágio atual.
@@ -56,10 +90,12 @@ Estrutura escolhida por ser a mais simples que atende aos requisitos: subcoleç�
 
 ## Segurança
 
-- **Firestore Security Rules** (`firestore.rules`) exigem `request.auth.uid == userId` para qualquer leitura/escrita em `users/{userId}/**`, e validam o formato dos documentos de `exercises` e `workouts` no servidor — a validação de formulário no frontend é só uma camada de UX, não a de segurança.
-- Nenhuma credencial sensível (service account, chave privada) é usada neste projeto: apenas a configuração pública do Firebase, que é segura para o frontend por design.
+- **Firestore Security Rules** (`firestore.rules`) exigem `request.auth.uid == userId` para qualquer leitura/escrita em `users/{userId}/**`, e validam o formato dos documentos de `exercises`, `workouts` e `bodyMeasurements` no servidor — a validação de formulário no frontend é só uma camada de UX, não a de segurança. Cada schema usa `keys().hasOnly([...])` para rejeitar campos fora do esperado, não só validar o formato dos campos previstos.
+- Nenhuma credencial sensível (service account, chave privada) é usada no frontend: apenas a configuração pública do Firebase, que é segura para o cliente por design. Cloud Functions (Admin SDK) usam as credenciais padrão do ambiente do Google Cloud, nunca uma chave versionada no repositório.
+- **App Check** (reCAPTCHA v3) é opcional em desenvolvimento mas esperado em produção — `scripts/check-production-config.mjs` roda antes de todo `firebase deploy --only hosting` (`firebase.json`, `hosting.predeploy`) e falha o deploy se `VITE_RECAPTCHA_SITE_KEY` não estiver configurada, com um escape hatch explícito (`SKIP_APPCHECK_CHECK=true`) para quem precisa publicar sem ela deliberadamente.
 - `.env` nunca é versionado (`.gitignore`); use `.env.example` como referência.
-- Comunidades seguem o mesmo princípio: criar/editar/excluir comunidade exige `role == "superadmin"` checado nas regras (via `get()` no documento do próprio usuário), nunca só no frontend; publicar em uma comunidade exige filiação (`communityMembers`) e comunidade ativa; editar/excluir publicação exige ser o autor (ou superadmin, para excluir); votos e participações checam se a publicação ainda não expirou.
+- Comunidades seguem o mesmo princípio: criar/editar/excluir comunidade exige `role == "superadmin"` checado nas regras (via `get()` no documento do próprio usuário), nunca só no frontend; publicar em uma comunidade exige filiação (`communityMembers`) e comunidade ativa; votos exigem que a opção escolhida exista de fato na enquete. Uma publicação (`status`) é imutável depois de criada — as regras só permitem `create` e `delete` (pelo autor ou superadmin), nunca `update`, nem pelo próprio autor.
+- Operações que exigem uma transação atômica entre vários documentos onde as regras não bastam (ex.: trocar de @ mexendo em `usernames/`, `users/` e `publicProfiles/` ao mesmo tempo; calcular estatísticas públicas a partir do diário de treino real) passam por uma Cloud Function com Admin SDK, não por um `writeBatch` do cliente — ver `functions/index.js` (`renameUsername`, `refreshPublicStatistics`).
 - Ver [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) para o retrato das pendências de segurança conhecidas e aceitas conscientemente (o que ficou em aberto e por quê), mantido como referência única para revisão pós-lançamento.
 
 ## Cálculos
@@ -135,9 +171,17 @@ Feed temporário por comunidade, com dois papéis:
 
 Cada publicação (`status`) expira 24h após criada (`expiresAt = createdAt + 24h`, validado nas regras com tolerância de alguns minutos para a diferença entre o relógio do cliente — que calcula `expiresAt` — e o `request.time` do servidor, que resolve `createdAt`). O feed sempre filtra `expiresAt > agora`; nada expirado aparece na tela mesmo que o documento ainda exista no banco (a limpeza física é responsabilidade de uma [política de TTL do Firestore](https://firebase.google.com/docs/firestore/ttl) configurada manualmente no console/CLI para o campo `expiresAt` das coleções `statuses` — não há como declarar isso em `firestore.rules`/`firestore.indexes.json`).
 
-Publicações são de quatro tipos — texto, enquete, treino marcado e foto. Fotos vão para o Firebase Storage (`statusPhotos/{communityId}/{statusId}.webp`, um arquivo por publicação, nunca sobrescrito). O documento da foto é criado primeiro e passa por todas as regras do Firestore; só então `storage.rules` aceita os bytes vinculados a esse documento. Na leitura, o Storage confere o status e a filiação à comunidade. Esse encadeamento mantém cada operação dentro do limite de duas consultas cruzadas imposto pelo Storage. A limpeza do arquivo ao excluir a publicação (ou a conta/comunidade inteira) é feita pelo backend (`functions/deletion-service.js`), nunca pelo cliente.
+Publicações são de cinco tipos — texto, enquete, treino marcado, conquista do dia (compartilhada a partir do Dashboard, ver "Perfis públicos e conquistas" abaixo) e foto. Fotos vão para o Firebase Storage (`statusPhotos/{communityId}/{statusId}.webp`, um arquivo por publicação, nunca sobrescrito). O documento da foto é criado primeiro e passa por todas as regras do Firestore; só então `storage.rules` aceita os bytes vinculados a esse documento. Na leitura, o Storage confere o status e a filiação à comunidade. Esse encadeamento mantém cada operação dentro do limite de duas consultas cruzadas imposto pelo Storage. A limpeza do arquivo ao excluir a publicação (ou a conta/comunidade inteira) é feita pelo backend (`functions/deletion-service.js`), nunca pelo cliente. O documento de status em si é imutável depois de criado — as regras só permitem `create` e `delete`, nunca `update` (evita reescrever o conteúdo, ou o autor, de uma publicação já vista/votada).
 
 A quantidade de membros por comunidade (visível só para o superadmin) usa `getCountFromServer` — não lê os documentos de `communityMembers`, só agrega no servidor.
+
+## Moderação, atendimento e exclusão de dados
+
+Denúncias, recursos e pedidos de privacidade/exclusão passam por `supportRequests/{id}`, sempre criado por uma Cloud Function (`submitSupportRequest`) — nunca escrito direto pelo cliente. Denunciar uma publicação guarda um retrato do conteúdo (`contentSnapshot`) no momento da denúncia; se for uma foto, a function também copia o arquivo para `moderationEvidence/{requestId}.webp` no Storage, fora do ciclo de vida da publicação original — a evidência sobrevive à expiração/exclusão da publicação (leitura restrita a `superadmin`). Decisões (`decideSupportRequest`) ficam em `moderationDecisions/{id}` e, quando aplicam uma penalidade, também gravam um aviso em `users/{uid}/notices/{id}` e, se for uma suspensão/banimento, em `accountRestrictions/{uid}` ou `communityRestrictions/{communityId}_{uid}`. Publicar em excesso (mais de 8 publicações em 10 minutos) é detectado por um gatilho (`functions/rate-limit-service.js`) — hoje em modo só-log (`RATE_LIMIT_ENFORCE = false`, ver [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md)).
+
+Excluir uma conta ou comunidade nunca apaga na hora: o pedido cria um `deletionJobs/{kind}_{id}` (bloqueando a conta/comunidade imediatamente pelas regras) e uma Cloud Function agendada (`processDeletionJobs`) drena a limpeza em lotes — perfil, diário de treino, medidas corporais, aceites/notificações, filiações, restrições, interações e o nome de usuário reservado. `supportRequests` e `moderationDecisions` nunca são apagados por essa limpeza (histórico de moderação permanece, mesmo depois da conta denunciante ou denunciada deixar de existir). Detalhes operacionais (ordem de publicação de uma mudança de contrato, verificação local) ficam em [docs/admin-maintenance.md](docs/admin-maintenance.md).
+
+Os documentos legais (Termos de Uso, Regras da Comunidade, Política de Privacidade — `functions/legal/documents.json`) são versionados: mudar o conteúdo exige subir a versão em `functions/legal/manifest.json`, o que força todo usuário a um novo aceite (`acceptLegalDocuments`) antes de continuar publicando ou treinando. A idade mínima e o consentimento específico para dados de saúde (notas de treino, medidas corporais) também são checados nesse fluxo, nunca só confiando num campo enviado pelo cliente.
 
 ## Escopo desta primeira versão
 

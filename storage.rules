@@ -52,6 +52,18 @@ service firebase.storage {
       allow update, delete: if false;
     }
 
+    // AUD-007: cópia da foto denunciada, feita pela Cloud Function submitSupportRequest
+    // (Admin SDK, sem passar por estas regras) no momento da denúncia -- sobrevive
+    // independente do que acontece depois com a publicação original (expiração,
+    // exclusão pelo autor, exclusão da conta/comunidade). Só a moderação (superadmin)
+    // lê; nenhum cliente escreve aqui diretamente.
+    match /moderationEvidence/{fileName} {
+      allow read: if request.auth != null
+        && fileName.matches('^[A-Za-z0-9]{20}\\.webp$')
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+      allow write: if false;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

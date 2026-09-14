@@ -154,3 +154,24 @@ test('upload still validates file name, content type and size', async () => {
     })
   )
 })
+
+// AUD-007: só a moderação (superadmin) lê a cópia de evidência -- nenhum cliente
+// escreve nela (só a Cloud Function, via Admin SDK, fora do alcance destas regras).
+test('only a superadmin can read moderation evidence; nobody can write it from the client', async () => {
+  await seed('users/moderator', { role: 'superadmin' })
+  const moderatorStorage = storageEnv.authenticatedContext('moderator').storage()
+  const evidenceId = 'IIIIIIIIIIIIIIIIIIII'
+  const evidencePath = `moderationEvidence/${evidenceId}.webp`
+  await storageEnv.withSecurityRulesDisabled((context) =>
+    uploadBytes(ref(context.storage(), evidencePath), new Uint8Array([1]), {
+      contentType: 'image/webp',
+    })
+  )
+  await assertSucceeds(getBytes(ref(moderatorStorage, evidencePath)))
+  await assertFails(getBytes(ref(memberStorage, evidencePath)))
+  await assertFails(
+    uploadBytes(ref(moderatorStorage, evidencePath), new Uint8Array([2]), {
+      contentType: 'image/webp',
+    })
+  )
+})

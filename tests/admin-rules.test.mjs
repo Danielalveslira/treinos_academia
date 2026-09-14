@@ -253,6 +253,11 @@ test('account deletion fences writes, drains bounded batches and cleans foreign 
   batch.set(db.doc('statuses/own'), { authorId: 'erase' })
   batch.set(db.doc('statuses/own/votes/another'), { userId: 'another' })
   batch.set(db.doc('usernames/erase'), { uid: 'erase' })
+  // AUD-001/AUD-002: bodyMeasurements (subcoleção por usuário) e rateLimitCounters/{uid}
+  // (documento à parte, fora de users/{uid}) ficavam de fora da lista de limpeza —
+  // dados sensíveis/vinculados ao UID sobreviviam à exclusão "permanente" da conta.
+  batch.set(db.doc('users/erase/bodyMeasurements/m1'), { weightKg: 80, date: new Date() })
+  batch.set(db.doc('rateLimitCounters/erase'), { postedAt: [Date.now()] })
   await batch.commit()
   await deletion.queue('account', 'erase', 'admin')
   const ref = db.doc('deletionJobs/account_erase')
@@ -269,6 +274,8 @@ test('account deletion fences writes, drains bounded batches and cleans foreign 
   await drain(db.doc('deletionJobs/status_own'))
   assert.equal((await db.doc('users/erase').get()).exists, false)
   assert.equal((await db.collection('users/erase/workouts').get()).size, 0)
+  assert.equal((await db.collection('users/erase/bodyMeasurements').get()).size, 0)
+  assert.equal((await db.doc('rateLimitCounters/erase').get()).exists, false)
   assert.equal((await db.doc('statuses/foreign/votes/erase').get()).exists, false)
   assert.equal((await db.doc('statuses/own/votes/another').get()).exists, false)
   assert.equal((await db.doc('communityRestrictions/gym_erase').get()).exists, false)
@@ -385,6 +392,11 @@ test('votes and participation require immutable owner attribution for indexed cl
   await db.doc('statuses/poll').set({
     communityId: 'votegym',
     type: 'poll',
+    // AUD-011: canVote() agora confere optionId contra as opções reais da enquete
+    // (pollOptionExists em firestore.rules) -- sem isso, este teste (que é sobre
+    // atribuição de dono, não sobre o formato da enquete) quebraria mesmo no voto
+    // legítimo (userId: 'owner').
+    poll: { options: [{ id: '0', label: 'Opção 0' }] },
     expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
   })
   await assertFails(
@@ -427,4 +439,200 @@ test('legacy migration is read-only by default, attributes ownership and queues 
   const repeated = await migrateAdmin({ db, FieldPath, FieldValue, apply: true })
   assert.equal(repeated.interactions, 0)
   assert.equal(repeated.cleanupJobs, 0)
+})
+
+// AUD-006: entries/sets não podem mais ser escolhidos pelo cliente -- só a agregação
+// real sobre users/{uid}/workouts, calculada aqui com Admin SDK.
+test('refreshPublicStatistics requires shareStatistics to be true and computes real totals server-side', async () => {
+  await db.doc('users/statsuser').set({ role: 'user' })
+  await db
+    .doc('publicProfiles/statsuser')
+    .set({ username: 'statsuser', bio: null, shareStatistics: false })
+  await assert.rejects(
+    api.refreshPublicStatistics.run({ auth: { uid: 'statsuser' }, data: {} }),
+    (error) => error.code === 'failed-precondition'
+  )
+  await db.doc('publicProfiles/statsuser').update({ shareStatistics: true })
+  await db.doc('users/statsuser/workouts/w1').set({ sets: 3 })
+  await db.doc('users/statsuser/workouts/w2').set({ sets: 5 })
+  const result = await api.refreshPublicStatistics.run({ auth: { uid: 'statsuser' }, data: {} })
+  assert.deepEqual(result, { entries: 2, sets: 8 })
+  const summary = await db.doc('publicProfiles/statsuser/statistics/summary').get()
+  assert.equal(summary.data().entries, 2)
+  assert.equal(summary.data().sets, 8)
+})
+
+// AUD-010: reserva do novo @, users/{uid} e publicProfiles/{uid} mudam numa única
+// transação Admin SDK -- nunca fica um @ reservado sem virar o username de ninguém.
+test('renameUsername moves the reservation atomically; a taken name is rejected without side effects', async () => {
+  await db.doc('users/renamer').set({ role: 'user', username: 'oldhandle' })
+  await db
+    .doc('publicProfiles/renamer')
+    .set({ username: 'oldhandle', bio: null, shareStatistics: false })
+  await db.doc('usernames/oldhandle').set({ uid: 'renamer', createdAt: Timestamp.now() })
+  await db.doc('users/rival').set({ role: 'user', username: 'taken' })
+  await db.doc('usernames/taken').set({ uid: 'rival', createdAt: Timestamp.now() })
+
+  await assert.rejects(
+    api.renameUsername.run({ auth: { uid: 'renamer' }, data: { username: 'taken' } }),
+    (error) => error.code === 'already-exists'
+  )
+  assert.equal((await db.doc('users/renamer').get()).data().username, 'oldhandle')
+  assert.equal((await db.doc('usernames/oldhandle').get()).exists, true)
+
+  await api.renameUsername.run({ auth: { uid: 'renamer' }, data: { username: 'newhandle' } })
+  assert.equal((await db.doc('users/renamer').get()).data().username, 'newhandle')
+  assert.equal((await db.doc('publicProfiles/renamer').get()).data().username, 'newhandle')
+  assert.equal((await db.doc('usernames/newhandle').get()).data().uid, 'renamer')
+  assert.equal((await db.doc('usernames/oldhandle').get()).exists, false)
+})
+
+// AUD-007: reportar uma foto tenta preservar uma cópia da evidência fora do ciclo de
+// vida da publicação original (ver o passo best-effort logo após a transação em
+// submitSupportRequest). Este harness não tem um bucket de Storage real configurado
+// (sem projeto Firebase de verdade por trás), então a cópia sempre falha aqui --
+// exatamente o cenário que o try/catch precisa absorver sem derrubar o pedido de
+// suporte em si. A cópia funcionando de fato (bucket.file().copy(), API padrão do
+// Admin SDK) não tem cobertura automatizada neste harness; verificado por leitura de
+// código e manualmente contra o emulador de Storage.
+test('submitSupportRequest preserves the reported photo reference and never fails the report itself if evidence copying errors', async () => {
+  await db.doc('communities/evidencegym').set({ isActive: true })
+  await db.doc('users/reporter').set({ role: 'user' })
+  await db
+    .doc('communityMembers/evidencegym_reporter')
+    .set({ userId: 'reporter', communityId: 'evidencegym' })
+  await db.doc('users/photoauthor').set({ role: 'user' })
+  await db.doc('statuses/reportedphoto').set({
+    communityId: 'evidencegym',
+    authorId: 'photoauthor',
+    type: 'photo',
+    photoPath: 'statusPhotos/evidencegym/reportedphoto.webp',
+    expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+  })
+  const result = await api.submitSupportRequest.run({
+    auth: { uid: 'reporter' },
+    data: { kind: 'report', message: 'Conteúdo impróprio.', statusId: 'reportedphoto' },
+  })
+  const saved = await db.doc(`supportRequests/${result.id}`).get()
+  assert.equal(saved.data().kind, 'report')
+  assert.equal(saved.data().contentSnapshot.photoPath, 'statusPhotos/evidencegym/reportedphoto.webp')
+})
+
+// AUD-007: retenção da evidência não é indefinida -- é decidida no fecho do chamado.
+// Os três testes abaixo semeiam o documento já com evidencePath/evidenceExpiresAt
+// (o estado que a cópia bem-sucedida deixaria, sem depender de um bucket real, mesma
+// limitação de harness do teste acima) e conferem a transição de prazo em cada saída
+// possível do chamado.
+test('cancelSupportRequest shortens evidence retention -- no decision was ever made on it', async () => {
+  await db.doc('users/selfcancel').set({ role: 'user' })
+  await db.doc('supportRequests/toCancel').set({
+    userId: 'selfcancel',
+    kind: 'report',
+    state: 'open',
+    evidencePath: 'moderationEvidence/toCancel.webp',
+    evidenceExpiresAt: Timestamp.fromMillis(Date.now() + 30 * 86400000),
+    createdAt: Timestamp.now(),
+  })
+  await api.cancelSupportRequest.run({ auth: { uid: 'selfcancel' }, data: { requestId: 'toCancel' } })
+  const after = (await db.doc('supportRequests/toCancel').get()).data()
+  assert.equal(after.state, 'closed')
+  const daysLeft = (after.evidenceExpiresAt.toMillis() - Date.now()) / 86400000
+  assert.ok(daysLeft > 0 && daysLeft <= 7, `expected <= 7 days left, got ${daysLeft}`)
+})
+
+test('decideSupportRequest with no_action shortens evidence retention -- nothing was substantiated', async () => {
+  await db.doc('supportRequests/noAction').set({
+    userId: 'someuser',
+    kind: 'report',
+    state: 'open',
+    evidencePath: 'moderationEvidence/noAction.webp',
+    evidenceExpiresAt: Timestamp.fromMillis(Date.now() + 30 * 86400000),
+    createdAt: Timestamp.now(),
+  })
+  await api.decideSupportRequest.run({
+    auth: { uid: 'admin' },
+    data: {
+      requestId: 'noAction',
+      action: 'no_action',
+      reason: 'Sem violação encontrada.',
+      rule: 'Nenhuma regra violada',
+      evidence: 'Revisado manualmente.',
+    },
+  })
+  const after = (await db.doc('supportRequests/noAction').get()).data()
+  const daysLeft = (after.evidenceExpiresAt.toMillis() - Date.now()) / 86400000
+  assert.ok(daysLeft > 0 && daysLeft <= 7, `expected <= 7 days left, got ${daysLeft}`)
+})
+
+test('decideSupportRequest with a real penalty keeps evidence indefinitely -- a deliberate, documented exception, not an accident', async () => {
+  await db.doc('users/penalized').set({ role: 'user' })
+  await db.doc('statuses/toRemove').set({
+    communityId: 'evidencegym',
+    authorId: 'penalized',
+    type: 'text',
+    text: 'conteúdo removido',
+    createdAt: Timestamp.now(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
+  })
+  await db.doc('supportRequests/penalty').set({
+    userId: 'someuser',
+    kind: 'report',
+    state: 'open',
+    statusId: 'toRemove',
+    contentSnapshot: { authorId: 'penalized' },
+    evidencePath: 'moderationEvidence/penalty.webp',
+    evidenceExpiresAt: Timestamp.fromMillis(Date.now() + 30 * 86400000),
+    createdAt: Timestamp.now(),
+  })
+  await api.decideSupportRequest.run({
+    auth: { uid: 'admin' },
+    data: {
+      requestId: 'penalty',
+      action: 'remove_content',
+      targetUserId: 'penalized',
+      reason: 'Viola as diretrizes da comunidade.',
+      rule: 'Regra 3',
+      evidence: 'Print anexado no chamado.',
+    },
+  })
+  const after = (await db.doc('supportRequests/penalty').get()).data()
+  assert.equal(after.evidenceExpiresAt, null)
+})
+
+// A função agendada só executa o prazo já decidido -- nunca decide reter/apagar por
+// conta própria. Sem evidencePath (o mesmo estado usado nos testes acima logo após a
+// falha de cópia, harness sem bucket real) ela ainda limpa o documento normalmente,
+// só pula a chamada ao Storage.
+test('purgeExpiredModerationEvidence clears only documents whose retention window has actually passed', async () => {
+  await db.doc('supportRequests/expiredNoFile').set({
+    userId: 'someuser',
+    kind: 'report',
+    state: 'closed',
+    evidenceExpiresAt: Timestamp.fromMillis(Date.now() - 1000),
+    createdAt: Timestamp.now(),
+  })
+  await db.doc('supportRequests/stillPending').set({
+    userId: 'someuser',
+    kind: 'report',
+    state: 'open',
+    evidencePath: 'moderationEvidence/stillPending.webp',
+    evidenceExpiresAt: Timestamp.fromMillis(Date.now() + 30 * 86400000),
+    createdAt: Timestamp.now(),
+  })
+  await db.doc('supportRequests/keptForever').set({
+    userId: 'someuser',
+    kind: 'report',
+    state: 'closed',
+    evidencePath: 'moderationEvidence/keptForever.webp',
+    evidenceExpiresAt: null,
+    createdAt: Timestamp.now(),
+  })
+  await api.purgeExpiredModerationEvidence.run()
+  const expired = (await db.doc('supportRequests/expiredNoFile').get()).data()
+  assert.equal('evidencePath' in expired, false)
+  assert.equal('evidenceExpiresAt' in expired, false)
+  const pending = (await db.doc('supportRequests/stillPending').get()).data()
+  assert.equal(pending.evidencePath, 'moderationEvidence/stillPending.webp')
+  const forever = (await db.doc('supportRequests/keptForever').get()).data()
+  assert.equal(forever.evidencePath, 'moderationEvidence/keptForever.webp')
 })

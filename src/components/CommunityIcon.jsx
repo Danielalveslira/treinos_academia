@@ -14,7 +14,16 @@ export function CommunityIcon({ community, size = 40 }) {
       aria-hidden="true"
     >
       {community?.imageUrl ? (
-        <img src={community.imageUrl} alt="" className="community-icon-image" />
+        // AUD-013: mesmo raciocínio de SponsoredAdCard -- imageUrl é um domínio
+        // externo (legado, nem coletado pelo formulário atual), sem motivo pra
+        // vazar de onde a imagem foi vista.
+        <img
+          src={community.imageUrl}
+          alt=""
+          className="community-icon-image"
+          referrerPolicy="no-referrer"
+          loading="lazy"
+        />
       ) : (
         <Icon size={Math.round(size * 0.5)} strokeWidth={2} />
       )}

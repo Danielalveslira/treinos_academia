@@ -1,9 +1,11 @@
 {
-  "version": "1.2.0",
-  "date": "2026-09-12",
+  "version": "1.3.0",
+  "date": "2026-09-14",
   "published": true,
   "controllerName": "Wellington Daniel Alves de Lira",
   "contactEmail": "dnllira1@gmail.com",
   "minimumAge": 12,
-  "changes": ["Termos de Uso: idade mínima de uso alterada de 18 para 12 anos."]
+  "changes": [
+    "Política de Privacidade: passa a listar explicitamente as medidas corporais (peso, % de gordura, cintura, quadril, massa magra, altura) entre os dados de saúde coletados."
+  ]
 }

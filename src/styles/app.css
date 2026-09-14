@@ -1570,6 +1570,14 @@ body:has(.pwa-offline) .app-shell {
   overflow-x: auto;
   font-size: 12px;
 }
+.support-evidence-photo {
+  display: block;
+  max-width: 320px;
+  max-height: 320px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  object-fit: cover;
+}
 @media (max-width: 767px) {
   .legal-page {
     padding: 24px 16px 40px;

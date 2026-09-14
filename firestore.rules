@@ -213,6 +213,23 @@ service cloud.firestore {
         || usernameIsReservedBy(userId, data.username);
     }
 
+    // AUD-010: a troca de um @ já existente por outro precisa acontecer inteira numa
+    // única transação (ver renameUsername em functions/index.js) -- reservar
+    // usernames/{novo} e só depois atualizar users/publicProfiles em escritas
+    // separadas é exatamente a falha original (rede caindo entre as duas deixava o
+    // novo @ reservado sem dono). ownsUsernameField() sozinha não bastava: ela só
+    // confere que a posse do valor NOVO é legítima, nunca impede a troca em si de
+    // acontecer fora de uma transação. Esta função isola a única transição que o
+    // cliente ainda pode fazer direto: sair de "sem @" (username ausente/null, o
+    // estado inicial gravado por ensureUserProfile) para um @ com reserva própria --
+    // é exatamente o que Register.jsx faz uma única vez, não existe caminho de troca
+    // aqui. Uma vez com @ definido, qualquer mudança (inclusive zerar o campo) só
+    // passa pela Cloud Function, que ignora estas regras via Admin SDK.
+    function isInitialUsernameClaim(userId, before, after) {
+      return before.get('username', null) == null
+        && ownsUsernameField(userId, after);
+    }
+
     function isValidBioField(data) {
       return !('bio' in data) || data.bio == null
         || (data.bio is string && data.bio.size() <= 300);
@@ -254,16 +271,17 @@ service cloud.firestore {
         && ownsUsernameField(userId, request.resource.data)
         && isValidBioField(request.resource.data)
         && request.resource.data.shareStatistics is bool;
-      // Reexige a posse do @ só quando o valor muda: dados legados já podem ter um
-      // username sem reserva correspondente (de antes desta amarração existir), e não
-      // faz sentido travar edições não relacionadas (ex.: bio) por causa disso — só a
-      // troca de fato precisa passar pela checagem.
+      // AUD-010: só dois casos de @ são aceitos direto do cliente -- sem mudança
+      // nenhuma, ou a primeira reivindicação (username ainda ausente/null neste
+      // documento, ver isInitialUsernameClaim). Qualquer troca de um @ já definido
+      // por outro (inclusive zerar) é rejeitada aqui e só acontece via a Cloud
+      // Function renameUsername, atômica, Admin SDK.
       allow update: if isOwner(userId)
         && request.resource.data.keys().hasAll(['username', 'bio', 'shareStatistics'])
         && request.resource.data.keys().hasOnly(['username', 'bio', 'shareStatistics'])
         && isValidUsernameField(request.resource.data)
         && (request.resource.data.get('username', null) == resource.data.get('username', null)
-          || ownsUsernameField(userId, request.resource.data))
+          || isInitialUsernameClaim(userId, resource.data, request.resource.data))
         && isValidBioField(request.resource.data)
         && request.resource.data.shareStatistics is bool;
       // Só permite ao próprio usuário apagar o perfil nos minutos seguintes à criação —
@@ -281,12 +299,14 @@ service cloud.firestore {
         allow get: if isSignedIn()
           && get(/databases/$(database)/documents/publicProfiles/$(userId)).data.shareStatistics == true;
         allow list: if false;
-        allow create, update: if isOwner(userId) && summaryId == 'summary'
-          && getAfter(/databases/$(database)/documents/publicProfiles/$(userId)).data.shareStatistics == true
-          && request.resource.data.keys().hasOnly(['entries', 'sets', 'updatedAt'])
-          && request.resource.data.entries is int && request.resource.data.entries >= 0
-          && request.resource.data.sets is number && request.resource.data.sets >= 0
-          && request.resource.data.updatedAt == request.time;
+        // AUD-006: create/update só pela Cloud Function refreshPublicStatistics
+        // (functions/index.js), via Admin SDK — o valor precisa vir de uma agregação
+        // real sobre users/{uid}/workouts, e regras não têm como conferir isso contra
+        // o diário do próprio usuário sem reler a coleção inteira (inviável no custo
+        // de uma avaliação de regra). Antes disso, qualquer client-side conseguia
+        // forjar entries/sets com qualquer número não negativo. delete continua do
+        // dono: apagar o próprio resumo é sempre seguro.
+        allow create, update: if false;
         allow delete: if isOwner(userId);
       }
     }
@@ -305,17 +325,19 @@ service cloud.firestore {
         && isValidSexoField(request.resource.data)
         && isValidBirthDateField(request.resource.data)
         && isValidHeightField(request.resource.data);
-      // Mesmo raciocínio de publicProfiles: só reexige a posse do @ quando ele muda.
       // sexo/dataNascimento entram aqui (não só no create) porque Register.jsx grava os
       // dois com um merge separado, logo depois de ensureUserProfile() já ter criado o
       // documento — na prática, sempre um update (ver setBirthInfo em usersService.js).
+      // AUD-010: mesmo raciocínio de publicProfiles acima -- só a primeira reivindicação
+      // do @ (isInitialUsernameClaim) passa direto; qualquer troca de um @ já existente
+      // exige a Cloud Function renameUsername.
       allow update: if isOwner(userId)
         && request.resource.data.role == resource.data.role
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['username', 'bio', 'shareStatistics', 'publicProfileVersion', 'sexo', 'dataNascimento', 'heightCm'])
         && isValidUsernameField(request.resource.data)
         && (request.resource.data.get('username', null) == resource.data.get('username', null)
-          || ownsUsernameField(userId, request.resource.data))
+          || isInitialUsernameClaim(userId, resource.data, request.resource.data))
         && isValidBioField(request.resource.data)
         && isValidSexoField(request.resource.data)
         && isValidBirthDateField(request.resource.data)
@@ -395,10 +417,18 @@ service cloud.firestore {
       // a conta no Authentication (usuário ainda não está autenticado nesse momento).
       // O documento só expõe uid + createdAt, então não há dado sensível aqui.
       allow read: if true;
+      // AUD-010: reservar um @ novo direto do cliente só é aceito enquanto o próprio
+      // usuário ainda não tem username nenhum em users/{uid} -- é exatamente a janela
+      // do cadastro inicial (ensureUserProfile cria o perfil com username: null antes
+      // de Register.jsx chamar setUsername). Quem já tem @ não consegue mais reservar
+      // um nome novo por aqui: mesmo que reservasse, a atualização de
+      // users/publicProfiles pra usá-lo já é bloqueada (ver isInitialUsernameClaim),
+      // então isto fecha a reserva "solta" também, não só o passo seguinte.
       allow create: if isSignedIn()
         && username.matches('^[a-z0-9_]{3,20}$')
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.createdAt is timestamp;
+        && request.resource.data.createdAt is timestamp
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('username', null) == null;
       allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
       allow update: if false;
     }
@@ -492,11 +522,25 @@ service cloud.firestore {
       return options.size() <= index || isValidPollOption(options[index]);
     }
 
+    // AUD-005: cada branch abaixo trava as chaves de NÍVEL SUPERIOR do documento
+    // (identidade + o único campo de conteúdo daquele tipo), além do formato do
+    // conteúdo em si já validado linha a linha. keys().hasOnly() não custa nenhuma
+    // leitura extra (não é get()/exists()), então não entra no teto de expressões
+    // por avaliação de regra documentado nos comentários de canCreateStatus() acima —
+    // só a validação de formato (poll.options[i], achievement.*) tinha esse cuidado
+    // até aqui; campos inteiros fora do esquema esperado (ex.: um "poll" pendurado
+    // numa publicação type == 'text') não eram rejeitados antes desta mudança.
+    function statusBaseKeys() {
+      return ['communityId', 'authorId', 'authorUsername', 'authorIsSuperAdmin', 'type', 'createdAt', 'expiresAt'];
+    }
+
     function isValidStatusContent(data, statusId) {
       return (data.type == 'text' &&
-          data.text is string && data.text.size() > 0 && data.text.size() <= 500)
+          data.keys().hasOnly(statusBaseKeys().concat(['text']))
+          && data.text is string && data.text.size() > 0 && data.text.size() <= 500)
         || (data.type == 'poll' &&
-          data.poll.question is string && data.poll.question.size() > 0 && data.poll.question.size() <= 200
+          data.keys().hasOnly(statusBaseKeys().concat(['poll']))
+          && data.poll.question is string && data.poll.question.size() > 0 && data.poll.question.size() <= 200
           && data.poll.options is list && data.poll.options.size() >= 2 && data.poll.options.size() <= 6
           && validPollOptionAt(data.poll.options, 0)
           && validPollOptionAt(data.poll.options, 1)
@@ -505,11 +549,13 @@ service cloud.firestore {
           && validPollOptionAt(data.poll.options, 4)
           && validPollOptionAt(data.poll.options, 5))
         || (data.type == 'workout' &&
-          data.workout.title is string && data.workout.title.size() > 0 && data.workout.title.size() <= 100
+          data.keys().hasOnly(statusBaseKeys().concat(['workout']))
+          && data.workout.title is string && data.workout.title.size() > 0 && data.workout.title.size() <= 100
           && data.workout.date is timestamp
           && data.workout.location is string && data.workout.location.size() <= 150)
         || (data.type == 'achievement' &&
-          data.achievement.keys().hasOnly(['day', 'text', 'entries', 'sets'])
+          data.keys().hasOnly(statusBaseKeys().concat(['achievement']))
+          && data.achievement.keys().hasOnly(['day', 'text', 'entries', 'sets'])
           && data.achievement.day is string
           // Mês 01-12 e dia 01-31 (sem checar dias por mês/ano bissexto — regras não
           // fazem aritmética de calendário; isso já barra valores impossíveis como
@@ -526,7 +572,8 @@ service cloud.firestore {
         // comunidade e, ao ser excluída, a limpeza (deletion-service.js) apagava do
         // Storage o arquivo que ainda pertencia à publicação alheia, ainda existente.
         || (data.type == 'photo' &&
-          data.photoPath is string
+          data.keys().hasOnly(statusBaseKeys().concat(['photoPath', 'caption']))
+          && data.photoPath is string
           && data.photoPath == 'statusPhotos/' + data.communityId + '/' + statusId + '.webp'
           && (!('caption' in data) || (data.caption is string && data.caption.size() <= 280)));
     }
@@ -595,6 +642,22 @@ service cloud.firestore {
         && isValidStatusContent(data, statusId);
     }
 
+    // AUD-011: optionId só era validado como string, nunca conferido contra as opções
+    // reais da enquete — um cliente podia gravar qualquer valor arbitrário, gerando
+    // votos que nunca aparecem na contagem (getPollResults filtra por optionId
+    // conhecido) mas seguem contando como "voto existente" pra impedir o usuário de
+    // votar de novo. Mesmo padrão de validPollOptionAt (índice fixo até 6, o teto já
+    // imposto na criação da enquete): sem custo de leitura extra, já que status já foi
+    // lido acima.
+    function pollOptionExists(options, optionId) {
+      return (options.size() > 0 && options[0].id == optionId)
+        || (options.size() > 1 && options[1].id == optionId)
+        || (options.size() > 2 && options[2].id == optionId)
+        || (options.size() > 3 && options[3].id == optionId)
+        || (options.size() > 4 && options[4].id == optionId)
+        || (options.size() > 5 && options[5].id == optionId);
+    }
+
     // Mesma ideia para votes/participants: cada documento (status pai + users/{uid} para
     // saber se sou admin) lido uma única vez, em vez de isMember()/isSuperAdmin() cada
     // uma relendo por conta própria.
@@ -604,10 +667,12 @@ service cloud.firestore {
       let isAdmin = get(/databases/$(database)/documents/users/$(uid)).data.get('role', 'user') == 'superadmin';
       return isSignedIn()
         && userId == uid
+        && voteData.keys().hasOnly(['userId', 'optionId', 'createdAt'])
         && voteData.userId == uid
         && voteData.optionId is string
         && voteData.createdAt is timestamp
         && status.type == 'poll'
+        && pollOptionExists(status.poll.options, voteData.optionId)
         && status.expiresAt > request.time
         && isMember(status.communityId, isAdmin);
     }
@@ -628,16 +693,15 @@ service cloud.firestore {
     match /statuses/{statusId} {
       allow read: if isSignedIn() && isMember(resource.data.communityId, isSuperAdmin());
       allow create: if canCreateStatus(request.resource.data, statusId);
-      allow update: if isSignedIn()
-        && resource.data.authorId == request.auth.uid
-        && isMember(resource.data.communityId, isSuperAdmin())
-        && request.resource.data.authorId == resource.data.authorId
-        && request.resource.data.communityId == resource.data.communityId
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.expiresAt == resource.data.expiresAt
-        && request.resource.data.type == resource.data.type
-        && request.resource.data.authorIsSuperAdmin == resource.data.authorIsSuperAdmin
-        && isValidStatusContent(request.resource.data, statusId);
+      // AUD-003/AUD-004: o app nunca chama update() no documento de status (só
+      // create/delete — votos e participações são subcoleções à parte, com suas
+      // próprias regras). A versão anterior desta regra deixava authorUsername de
+      // fora da lista de campos imutáveis (podia ser trocado após a publicação) e,
+      // mais grave, permitia reescrever o conteúdo (texto, enquete, etc.) de uma
+      // publicação já existente via acesso direto ao Firestore, depois de votos/
+      // interações já registrados contra o conteúdo original. Bloquear update por
+      // completo fecha os dois achados sem custo — nada no app depende disso.
+      allow update: if false;
       allow delete: if isSignedIn()
         && (resource.data.authorId == request.auth.uid || isSuperAdmin());
 
