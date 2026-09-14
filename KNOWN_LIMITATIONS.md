@@ -1,10 +1,40 @@
 # Pendências conhecidas e aceitas
 
-Retrato consolidado da auditoria de segurança pré-lançamento de 2026-09-12. Documenta o
-que ficou em aberto **conscientemente** neste momento, e por quê — para revisitar depois
-do lançamento sem precisar reconstruir o raciocínio a partir do histórico de chat.
+Retrato consolidado das auditorias de segurança pré-lançamento de 2026-09-12 e
+2026-09-14. Documenta o que ficou em aberto **conscientemente** neste momento, e por
+quê — para revisitar depois do lançamento sem precisar reconstruir o raciocínio a
+partir do histórico de chat.
 
-## Resolvido nesta rodada
+## Resolvido em 2026-09-14 (auditoria `auditoria_projeto_treinos_para_claude.csv`)
+
+| ID | Achado | Correção |
+|---|---|---|
+| AUD-001/002 | Exclusão de conta não apagava `bodyMeasurements` nem `rateLimitCounters/{uid}` | Adicionados à lista de limpeza em `functions/deletion-service.js` |
+| AUD-003/004 | `authorUsername` não era travado no update de um status; conteúdo de uma publicação já existente podia ser reescrito via acesso direto ao Firestore | `allow update: if false` em `statuses/{statusId}` — o app nunca chamava update mesmo, só create/delete |
+| AUD-005 | Schema de status sem allowlist completa de campos | `keys().hasOnly([...])` por tipo em `isValidStatusContent()` |
+| AUD-006 | Estatísticas públicas (`entries`/`sets`) calculadas e gravadas pelo próprio cliente | Cálculo movido para a Cloud Function `refreshPublicStatistics` (Admin SDK, agregação real); create/update bloqueado nas regras |
+| AUD-007 | Denúncia de foto não preservava a imagem — evidência sumia quando a publicação expirava/era excluída | `submitSupportRequest` copia o arquivo para `moderationEvidence/{requestId}.webp`, fora do ciclo de vida da publicação; leitura restrita a superadmin |
+| AUD-008 | Política de Privacidade não listava medidas corporais entre os dados coletados | `functions/legal/documents.json` atualizado; versão do manifesto subida (força novo aceite) |
+| AUD-010 | Troca de @ em dois commits distintos do cliente — falha entre eles deixava o novo @ reservado sem dono | Cloud Function `renameUsername` (Admin SDK, transação única e atômica) |
+| AUD-011 | Voto em enquete não conferia se `optionId` existia de fato entre as opções | `pollOptionExists()` em `canVote()` |
+| AUD-012 | Nada impedia deploy de produção sem App Check configurado | `scripts/check-production-config.mjs` como `hosting.predeploy` |
+| AUD-013 | Imagens de parceiro/comunidade carregadas sem controle de referrer | `referrerPolicy="no-referrer"` + `loading="lazy"` em `SponsoredAdCard`/`CommunityIcon` |
+| AUD-014 | Faltavam headers de hardening web | `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, `Permissions-Policy` em `firebase.json` |
+| AUD-017/018/019 | Doc citando função removida (`confirmPayment`); cache de fotos não limpo no logout; timer não cancelado em `useStatusPhoto` | Correções pontuais — ver `docs/admin-maintenance.md`, `photoBlobCache.js`, `useStatusPhoto.js` |
+
+**AUD-009 revisitado e mantido como estava**: a decisão de manter `RATE_LIMIT_ENFORCE = false`
+foi reconfirmada nesta rodada (não é um esquecimento) — ainda não há dados reais de
+produção para calibrar o limiar sem risco de falso positivo. Ver detalhe original
+abaixo, item 2 de "Pendências aceitas".
+
+**Não corrigido nesta rodada, escopo deliberadamente menor** (ver resumo entregue ao
+usuário para o raciocínio completo de cada um): AUD-015 (suíte Playwright/E2E ampla —
+cobertura de regras foi ampliada, E2E de UI não), AUD-016/021 (README — parcialmente
+corrigido, não reescrito por completo), AUD-020 (dividir `functions/index.js` e
+`WorkoutForm.jsx` em módulos menores — refatoração grande, sem bug funcional
+associado, risco de regressão maior que o benefício imediato).
+
+## Resolvido em 2026-09-12
 
 | # | Achado | Commit(s) |
 |---|---|---|

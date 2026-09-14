@@ -120,6 +120,7 @@
             { "cells": ["E-mail e credenciais", "Criar sua conta e permitir login"] },
             { "cells": ["Nome de usuário e descrição", "Montar seu perfil"] },
             { "cells": ["Exercícios, cargas, séries e notas", "Seu diário de treino — pode conter dados de saúde"] },
+            { "cells": ["Peso, % de gordura, cintura, quadril, massa magra e altura", "Acompanhar sua evolução física — são dados de saúde"] },
             { "cells": ["Publicações, votos e filiações", "Fazer as comunidades funcionarem"] },
             { "cells": ["Pedidos de atendimento e denúncias", "Responder você e apurar violações"] }
           ]
@@ -130,6 +131,7 @@
         "title": "Dados de saúde",
         "items": [
           "Notas de treino podem revelar lesões ou condições de saúde — evite detalhes clínicos desnecessários.",
+          "Medidas corporais (peso, % de gordura, cintura, quadril, massa magra, altura) que você registrar no diário também são dados de saúde.",
           "Esse tipo de dado exige seu consentimento específico, separado do aceite geral, e pode ser revogado a qualquer momento pelo atendimento."
         ]
       },
@@ -137,7 +139,7 @@
         "id": "visibilidade",
         "title": "Quem vê seus dados",
         "items": [
-          "Seu diário de treino é privado — só você vê cargas, séries e notas.",
+          "Seu diário de treino é privado — só você vê cargas, séries, notas e medidas corporais.",
           "Nome de usuário e descrição do perfil ficam visíveis a outros usuários logados.",
           "Estatísticas do perfil só aparecem para outros se você ativar o compartilhamento.",
           "Conquistas publicadas na comunidade ficam visíveis por 24 horas."

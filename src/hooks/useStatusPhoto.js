@@ -28,22 +28,30 @@ export function useStatusPhoto(photoPath, preloadedBlob) {
     let active = true
     setState((previous) => ({ ...previous, loading: true, error: null }))
     const load = preloadedBlob ? Promise.resolve(preloadedBlob) : getStatusPhotoBlob(photoPath)
+    // AUD-019: sem guardar o id e limpar no sucesso/erro, este timer seguia vivo até
+    // os 15s completarem mesmo quando o carregamento já tinha terminado bem antes --
+    // trabalho fantasma, sem efeito visível (Promise.race já ignora o timeout perdedor),
+    // mas o timer real do event loop só era liberado no fim do prazo inteiro.
+    let timeoutId
     const timeout = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('timeout')), LOAD_TIMEOUT_MS)
+      timeoutId = setTimeout(() => reject(new Error('timeout')), LOAD_TIMEOUT_MS)
     })
     Promise.race([load, timeout])
       .then((blob) => {
+        clearTimeout(timeoutId)
         if (!active) return
         const url = URL.createObjectURL(blob)
         setCachedPhotoUrl(photoPath, url)
         setState({ url, loading: false, error: null })
       })
       .catch((error) => {
+        clearTimeout(timeoutId)
         if (!active) return
         setState({ url: null, loading: false, error })
       })
     return () => {
       active = false
+      clearTimeout(timeoutId)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoPath, attempt])

@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react'
-import { Box, Button, FormControl, TextInput, Textarea, Text, Link } from '@primer/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Box, Button, FormControl, TextInput, Textarea, Text } from '@primer/react'
 import {
   CheckCircleFillIcon,
   CheckIcon,
@@ -11,7 +11,9 @@ import {
 import { MUSCLE_GROUPS } from '../constants/muscleGroups'
 import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
 import { validateWorkout, hasErrors } from '../utils/validators'
-import { getWorkoutSets, getWorkoutLoad, MAX_WORKOUT_SETS, isValidSet } from '../utils/workoutSets'
+import { getWorkoutSets, MAX_WORKOUT_SETS, isValidSet } from '../utils/workoutSets'
+import { toDate } from '../utils/date'
+import { formatDate } from '../utils/format'
 import { SetCard } from './SetCard'
 import { calculateVolume } from '../utils/calculations'
 import { useFocusWithinBodyClass } from '../hooks/useFocusWithinBodyClass'
@@ -25,6 +27,8 @@ import {
 import { nextStepAfterFinishing, valuesForNextExercise } from '../utils/workoutSessionFlow'
 import { sortExercisesInGroup } from '../utils/exerciseOrder'
 import { nextActiveSetIndexAfterRemoval } from '../utils/setCardFlow'
+import { suggestedSets, inheritSet } from '../utils/setSuggestions'
+import '../styles/workoutExecution.css'
 
 // Enquanto o teclado virtual está provavelmente aberto (um campo do formulário tem
 // foco), CSS esconde a barra de navegação inferior e o botão flutuante de instalar o
@@ -114,7 +118,10 @@ export function WorkoutForm({
     return {
       ...value,
       exerciseId: initialExercise?.id || value.exerciseId,
-      setDetails: getWorkoutSets(value).map((set) => ({ ...set, key: nextSetId.current++ })),
+      setDetails: (initialValue
+        ? getWorkoutSets(value).map((set) => ({ ...set, source: 'manual' }))
+        : suggestedSets(history.find((workout) => workout.exerciseId === initialExercise?.id))
+      ).map((set) => ({ ...set, key: nextSetId.current++ })),
     }
   })
   const [step, setStep] = useState(() => (initialExercise ? 'register' : 'group'))
@@ -164,7 +171,9 @@ export function WorkoutForm({
   const allExercisesInGroup = useMemo(
     () =>
       sortExercisesInGroup(
-        availableExercises.filter((exercise) => (exercise.muscleGroup || 'Outros') === selectedGroup)
+        availableExercises.filter(
+          (exercise) => (exercise.muscleGroup || 'Outros') === selectedGroup
+        )
       ),
     [availableExercises, selectedGroup]
   )
@@ -179,14 +188,21 @@ export function WorkoutForm({
     [history, values.exerciseId]
   )
   const lastWorkout = exerciseHistory[0]
-  const bestLoad = exerciseHistory.length
-    ? Math.max(...exerciseHistory.map((workout) => getWorkoutLoad(workout)))
-    : null
+  useEffect(() => {
+    if (!lastWorkout || initialValue || cardio) return
+    setValues((previous) => {
+      if (!previous.setDetails.every((set) => set.source === 'empty')) return previous
+      return {
+        ...previous,
+        setDetails: suggestedSets(lastWorkout).map((set) => ({ ...set, key: nextSetId.current++ })),
+      }
+    })
+  }, [lastWorkout, initialValue, cardio])
   // Só oferece "Repetir última sessão" enquanto o registro atual está intocado -- um tap
   // nunca deve sobrescrever peso/reps (ou duração/distância) que o usuário já digitou.
   const isEntryPristine = cardio
     ? !values.durationMinutes && !values.distanceKm
-    : values.setDetails.every((set) => !set.weight && !set.reps)
+    : values.setDetails.every((set) => set.source === 'empty')
 
   function rememberDraft() {
     if (!values.exerciseId) return
@@ -211,7 +227,9 @@ export function WorkoutForm({
           ...buildEmpty(exercise.id),
           date: values.date,
           note: values.note,
-          setDetails: [{ weight: '', reps: '', key: nextSetId.current++ }],
+          setDetails: suggestedSets(
+            history.find((workout) => workout.exerciseId === exercise.id)
+          ).map((set) => ({ ...set, key: nextSetId.current++ })),
         }
       )
       setCompleted(completionDrafts.current.get(exercise.id) || new Set())
@@ -243,7 +261,10 @@ export function WorkoutForm({
 
   function addSet(repeat = false) {
     const key = nextSetId.current++
-    changeSets((sets) => [...sets, { ...(repeat ? sets.at(-1) : { weight: '', reps: '' }), key }])
+    changeSets((sets) => [
+      ...sets,
+      { ...(repeat ? sets.at(-1) : { weight: '', reps: '' }), source: 'inherited', key },
+    ])
   }
 
   function setField(field, value) {
@@ -259,6 +280,7 @@ export function WorkoutForm({
       const sets = getWorkoutSets(lastWorkout).map((set) => ({
         weight: String(set.weight),
         reps: String(set.reps),
+        source: 'history',
         key: nextSetId.current++,
       }))
       setValues((previous) => ({ ...previous, setDetails: sets }))
@@ -268,7 +290,9 @@ export function WorkoutForm({
   }
 
   function updateSet(key, field, value) {
-    changeSets((sets) => sets.map((set) => (set.key === key ? { ...set, [field]: value } : set)))
+    changeSets((sets) =>
+      sets.map((set) => (set.key === key ? { ...set, [field]: value, source: 'manual' } : set))
+    )
     setCompleted((previous) => {
       const next = new Set(previous)
       next.delete(key)
@@ -297,12 +321,21 @@ export function WorkoutForm({
   // sobrar nenhum, fica onde está (ver requisito do SetCard).
   function handleToggleComplete(key) {
     const willComplete = !completed.has(key)
+    const current = values.setDetails.find((set) => set.key === key)
+    if (willComplete && !isValidSet(current)) return
     toggleComplete(key)
     if (!willComplete) return
     const nextCompleted = new Set(completed)
     nextCompleted.add(key)
     const nextPendingIndex = values.setDetails.findIndex((set) => !nextCompleted.has(set.key))
-    if (nextPendingIndex !== -1) setActiveSetIndex(nextPendingIndex)
+    if (nextPendingIndex !== -1) {
+      changeSets((sets) =>
+        sets.map((set, index) =>
+          index === nextPendingIndex ? inheritSet(set, current, nextCompleted.has(set.key)) : set
+        )
+      )
+      setActiveSetIndex(nextPendingIndex)
+    }
   }
 
   // Remove a série ativa (botão discreto em SetCard.jsx, com confirmação de dois
@@ -311,6 +344,7 @@ export function WorkoutForm({
   function handleRemoveSet(key) {
     const previousLength = values.setDetails.length
     changeSets((sets) => sets.filter((item) => item.key !== key))
+    setCompleted((previous) => new Set([...previous].filter((item) => item !== key)))
     setActiveSetIndex((current) => nextActiveSetIndexAfterRemoval(current, previousLength))
   }
 
@@ -321,6 +355,8 @@ export function WorkoutForm({
     const validationErrors = validateWorkout(payload)
     setErrors(validationErrors)
     if (validationErrors.date || validationErrors.note) setDetailsOpen(true)
+    const invalidIndex = values.setDetails.findIndex((_, index) => validationErrors[`set${index}`])
+    if (!cardio && invalidIndex !== -1) setActiveSetIndex(invalidIndex)
     if (hasErrors(validationErrors)) return
 
     setSubmitting(true)
@@ -356,21 +392,33 @@ export function WorkoutForm({
   const formRef = useFocusWithinBodyClass(KEYBOARD_ACTIVE_CLASS)
 
   return (
-    <Box as="form" ref={formRef} className="workout-form" onSubmit={handleSubmit}>
+    <Box as="form" ref={formRef} className="workout-form workout-execution" onSubmit={handleSubmit}>
       <nav className="workout-progress" aria-label="Etapas do treino">
         {step === 'group' ? (
-          <span className="is-current" aria-current="step">1 Grupo</span>
+          <span className="is-current" aria-current="step">
+            1 Grupo
+          </span>
         ) : (
-          <button type="button" className="is-done" onClick={showGroups}>1 Grupo</button>
+          <button type="button" className="is-done" onClick={showGroups}>
+            1 Grupo
+          </button>
         )}
         {step === 'register' ? (
-          <button type="button" className="is-done" onClick={showExercises}>2 Exercício</button>
+          <button type="button" className="is-done" onClick={showExercises}>
+            2 Exercício
+          </button>
         ) : (
-          <span className={step === 'exercise' ? 'is-current' : ''} aria-current={step === 'exercise' ? 'step' : undefined}>
+          <span
+            className={step === 'exercise' ? 'is-current' : ''}
+            aria-current={step === 'exercise' ? 'step' : undefined}
+          >
             2 Exercício
           </span>
         )}
-        <span className={step === 'register' ? 'is-current' : ''} aria-current={step === 'register' ? 'step' : undefined}>
+        <span
+          className={step === 'register' ? 'is-current' : ''}
+          aria-current={step === 'register' ? 'step' : undefined}
+        >
           3 {cardio ? 'Sessão' : 'Séries'}
         </span>
       </nav>
@@ -468,45 +516,27 @@ export function WorkoutForm({
 
       {step === 'register' && selectedExercise && (
         <div className="workout-step workout-register-step">
-          <section className="exercise-picker" aria-label="Exercício selecionado">
-            <div className="selected-workout-context">
-              <div>
-                <span>{selectedGroup}</span>
-                <strong>{selectedExercise.name}</strong>
-              </div>
-              <div>
-                <Button size="small" type="button" onClick={showExercises}>
-                  Trocar exercício
-                </Button>
-                <Link as="button" type="button" onClick={showGroups} sx={{ fontSize: 0 }}>
-                  Trocar grupo
-                </Link>
-              </div>
+          <section className="exercise-context-bar" aria-label="Exercício selecionado">
+            <div className="exercise-context-name">
+              <span>{selectedGroup}</span>
+              <strong>{selectedExercise.name}</strong>
+            </div>
+            <div className="exercise-context-actions">
+              <button type="button" onClick={showExercises}>
+                Trocar exercício
+              </button>
+              <button type="button" onClick={showGroups}>
+                Trocar grupo
+              </button>
             </div>
 
-            <p className="workout-reference" aria-live="polite">
-              {!lastWorkout
-                ? 'Primeiro registro'
-                : `Última: ${
-                    cardio
-                      ? formatCardioSession(lastWorkout)
-                      : getWorkoutSets(lastWorkout)
-                          .map((set) => `${set.weight}kg×${set.reps}`)
-                          .join(' · ')
-                  }`}
-              {/* Cardio ainda não tem noção de recorde nesta primeira versão — ver
-                  ExerciseDetail.jsx, mesmo motivo (sem carga, "melhor" não se aplica). */}
-              {!cardio && bestLoad != null && (
-                <>
-                  {' · '}
-                  <span className="workout-reference-best">
-                    Melhor {bestLoad.toLocaleString('pt-BR')}kg
-                  </span>
-                </>
-              )}
-            </p>
             {lastWorkout && isEntryPristine && (
-              <Button size="small" type="button" leadingVisual={CopyIcon} onClick={repeatLastWorkout}>
+              <Button
+                size="small"
+                type="button"
+                leadingVisual={CopyIcon}
+                onClick={repeatLastWorkout}
+              >
                 Repetir última sessão
               </Button>
             )}
@@ -555,7 +585,10 @@ export function WorkoutForm({
             <fieldset className="sets-fieldset" disabled={submitting}>
               <legend className="sr-only">Séries</legend>
               <SetCard
-                sets={values.setDetails.map((set) => ({ ...set, completed: completed.has(set.key) }))}
+                sets={values.setDetails.map((set) => ({
+                  ...set,
+                  completed: completed.has(set.key),
+                }))}
                 activeIndex={activeSetIndex}
                 onNavigate={setActiveSetIndex}
                 onUpdate={updateSet}
@@ -563,32 +596,16 @@ export function WorkoutForm({
                 onAdd={values.setDetails.length < MAX_WORKOUT_SETS ? handleAddSet : undefined}
                 onRemove={handleRemoveSet}
                 lastWorkout={lastWorkout}
-                bestLoad={bestLoad}
+                validSetCount={validSetCount}
+                volume={values.setDetails.every(isValidSet) ? calculateVolume(values) : null}
                 disabled={submitting}
               />
-              {errors.setDetails && (
+              {(errors.setDetails || errors[`set${activeSetIndex}`]) && (
                 <Text role="alert" className="form-error">
-                  {errors.setDetails}
+                  {errors.setDetails || errors[`set${activeSetIndex}`]}
                 </Text>
               )}
             </fieldset>
-          )}
-
-          {!cardio && (
-            <div className="session-summary" aria-live="polite">
-              <div>
-                <span>Séries válidas</span>
-                <strong>{validSetCount}</strong>
-              </div>
-              <div>
-                <span>Volume estimado</span>
-                <strong>
-                  {values.setDetails.every(isValidSet)
-                    ? `${calculateVolume(values).toLocaleString('pt-BR')} kg`
-                    : '—'}
-                </strong>
-              </div>
-            </div>
           )}
 
           <details
@@ -641,6 +658,58 @@ export function WorkoutForm({
               Finalizar exercício
             </Button>
           </div>
+          <details className="workout-past-sessions" key={values.exerciseId}>
+            <summary>Sessões anteriores ({exerciseHistory.length})</summary>
+            <p className="workout-history-caption">
+              Histórico limitado aos registros já carregados.
+            </p>
+            {exerciseHistory.length === 0 ? (
+              <p>Nenhuma sessão anterior deste exercício nos registros carregados.</p>
+            ) : (
+              <ol className="workout-history-list">
+                {exerciseHistory.map((workout, index) => {
+                  const sets = getWorkoutSets(workout)
+                  const sessionDate = workout.date ? toDate(workout.date) : null
+                  const validDate = sessionDate && Number.isFinite(sessionDate.getTime())
+                  return (
+                    <li key={workout.id || index} className="workout-history-session">
+                      <div className="workout-history-heading">
+                        <strong>
+                          {validDate ? formatDate(sessionDate) : 'Data não informada'}
+                        </strong>
+                        {!isCardioExercise(workout) &&
+                          sets.length > 0 &&
+                          sets.every(isValidSet) && (
+                            <span>
+                              Volume total: {calculateVolume(workout).toLocaleString('pt-BR')} kg
+                            </span>
+                          )}
+                      </div>
+                      {isCardioExercise(workout) ? (
+                        <p>{formatCardioSession(workout)}</p>
+                      ) : (
+                        <ul className="workout-history-sets">
+                          {sets.map((set, setIndex) => (
+                            <li key={setIndex}>
+                              <b>S{setIndex + 1}</b>
+                              <span>
+                                {Number(set.weight).toLocaleString('pt-BR')}kg × {set.reps}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {workout.note && (
+                        <p className="workout-history-note">
+                          <b>Observação:</b> {workout.note}
+                        </p>
+                      )}
+                    </li>
+                  )
+                })}
+              </ol>
+            )}
+          </details>
         </div>
       )}
     </Box>

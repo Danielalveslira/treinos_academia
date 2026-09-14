@@ -21,3 +21,11 @@ export function setCachedPhotoUrl(photoPath, url) {
     cache.delete(oldestKey)
   }
 }
+
+// AUD-018: nada chamava isto no logout/troca de usuário -- os blobs (e as object URLs
+// que apontam pra eles) ficavam vivos em memória até serem despejados pelo teto de
+// MAX_ENTRIES ou até um reload de página, mesmo depois da sessão que os baixou acabar.
+export function clearPhotoCache() {
+  for (const url of cache.values()) URL.revokeObjectURL(url)
+  cache.clear()
+}

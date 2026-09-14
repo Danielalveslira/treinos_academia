@@ -118,6 +118,13 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
       const uid = job.targetId
       let tasks
       if (job.kind === 'account') {
+        // supportRequests, moderationDecisions e moderationEvidence/*.webp
+        // (Storage) NÃO entram nesta lista, de propósito: são o histórico de
+        // moderação, preservado independente do destino da conta (denunciante,
+        // denunciado ou alvo de um recurso). A evidência de foto já tem sua
+        // própria política de retenção, ligada à decisão do chamado, não à conta
+        // (ver EVIDENCE_PENDING_RETENTION_MS em functions/index.js) -- excluir a
+        // conta não acelera nem adia esse prazo.
         tasks = [
           async () => {
             try {
@@ -134,7 +141,7 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
           () => eraseQuery(db.collectionGroup('participants').where('userId', '==', uid)),
           () => removeStatuses(db.collection('statuses').where('authorId', '==', uid)),
           () => eraseQuery(db.collection('usernames').where('uid', '==', uid)),
-          ...['workouts', 'exercises', 'legalAcceptances', 'notices'].map(
+          ...['workouts', 'exercises', 'bodyMeasurements', 'legalAcceptances', 'notices'].map(
             (name) => () => eraseQuery(db.collection(`users/${uid}/${name}`))
           ),
           () => eraseQuery(db.collection(`publicProfiles/${uid}/statistics`)),
@@ -153,6 +160,7 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
               `publicProfiles/${uid}`,
               `accountRestrictions/${uid}`,
               `supportLimits/${uid}`,
+              `rateLimitCounters/${uid}`,
             ])
               batch.delete(db.doc(path))
             await batch.commit()

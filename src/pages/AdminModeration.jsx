@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Box,
   Button,
@@ -15,8 +15,36 @@ import {
 } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { useSupport } from '../hooks/useSupport'
-import { decideSupportRequest } from '../services/supportService'
+import { decideSupportRequest, getModerationEvidenceBlob } from '../services/supportService'
 import { formatDateTime } from '../utils/format'
+
+// AUD-007: a página só imprimia contentSnapshot como JSON cru -- photoPath nunca
+// virava imagem, então um relato contra uma foto (mesmo com a evidência preservada
+// no Storage, ver submitSupportRequest) não dava pra ver de fato. Componente próprio
+// e minimalista (sem cache/retry de useStatusPhoto -- essa página é de baixo tráfego,
+// um moderador olhando um relato de cada vez) em vez de reaproveitar aquele hook.
+function EvidencePhoto({ evidencePath }) {
+  const [state, setState] = useState({ url: null, loading: true, error: false })
+  useEffect(() => {
+    let active = true
+    setState({ url: null, loading: true, error: false })
+    getModerationEvidenceBlob(evidencePath)
+      .then((blob) => {
+        if (active) setState({ url: URL.createObjectURL(blob), loading: false, error: false })
+      })
+      .catch(() => {
+        if (active) setState({ url: null, loading: false, error: true })
+      })
+    return () => {
+      active = false
+    }
+  }, [evidencePath])
+  useEffect(() => () => state.url && URL.revokeObjectURL(state.url), [state.url])
+  if (state.loading) return <Spinner aria-label="Carregando evidência" />
+  if (state.error || !state.url)
+    return <Text sx={{ color: 'fg.muted' }}>Evidência indisponível.</Text>
+  return <img src={state.url} alt="Foto denunciada" className="support-evidence-photo" />
+}
 
 const ACTIONS = {
   no_action: 'Responder sem penalidade',
@@ -194,6 +222,7 @@ export default function AdminModeration() {
         <form className="support-form" onSubmit={submit}>
           <h2>Decisão do pedido {selected.id}</h2>
           <p className="support-message">{selected.message}</p>
+          {selected.evidencePath && <EvidencePhoto evidencePath={selected.evidencePath} />}
           {selected.contentSnapshot && (
             <details>
               <summary>Conteúdo preservado</summary>

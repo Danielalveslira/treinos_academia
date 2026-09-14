@@ -1,7 +1,15 @@
 import { before, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
-import { doc, setDoc, addDoc, collection, Timestamp, serverTimestamp } from 'firebase/firestore'
+import {
+  doc,
+  setDoc,
+  addDoc,
+  updateDoc,
+  collection,
+  Timestamp,
+  serverTimestamp,
+} from 'firebase/firestore'
 import { legalDigest } from '../functions/legal-core.js'
 
 // Cobertura mínima e focada, não uma suíte completa de canCreateStatus() (que hoje não
@@ -23,6 +31,26 @@ function textStatus(overrides = {}) {
     authorIsSuperAdmin: false,
     type: 'text',
     text: 'Bora treinar',
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 1440 * 60000),
+    ...overrides,
+  }
+}
+
+function pollStatus(overrides = {}) {
+  return {
+    communityId: 'comm1',
+    authorId: 'member',
+    authorUsername: null,
+    authorIsSuperAdmin: false,
+    type: 'poll',
+    poll: {
+      question: 'Treino hoje?',
+      options: [
+        { id: 'yes', label: 'Sim' },
+        { id: 'no', label: 'Não' },
+      ],
+    },
     createdAt: serverTimestamp(),
     expiresAt: Timestamp.fromMillis(Date.now() + 1440 * 60000),
     ...overrides,
@@ -103,4 +131,54 @@ test('once the suspension expires (until in the past), status creation is allowe
     })
   })
   await assertSucceeds(addDoc(collection(member, 'statuses'), textStatus()))
+})
+
+// AUD-005: antes desta mudança, isValidStatusContent só validava o formato do campo
+// de conteúdo esperado (data.text, data.poll, ...) sem travar as chaves de nível
+// superior do documento -- um payload podia carregar campos extras arbitrários (ou
+// até o conteúdo de outro tipo, ex.: 'poll' junto de type == 'text') e passar.
+test('a status cannot carry fields outside the schema for its type', async () => {
+  await assertFails(
+    addDoc(collection(member, 'statuses'), { ...textStatus(), extraField: 'not allowed' })
+  )
+  await assertFails(
+    addDoc(collection(member, 'statuses'), {
+      ...textStatus(),
+      poll: { question: 'q', options: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }] },
+    })
+  )
+})
+
+test('a poll status cannot carry an unrelated text field', async () => {
+  await assertFails(addDoc(collection(member, 'statuses'), { ...pollStatus(), text: 'sneaky' }))
+})
+
+// AUD-003/AUD-004: authorUsername não era travado na lista de campos imutáveis do
+// update, e o conteúdo (texto/enquete/etc.) de uma publicação já existente podia ser
+// reescrito via acesso direto ao Firestore -- o app nunca chama update() no documento
+// de status (só create/delete), então bloquear por completo não quebra nada real.
+test('a status document can never be updated after creation, not even by its own author', async () => {
+  const ref = await addDoc(collection(member, 'statuses'), textStatus())
+  await assertFails(updateDoc(ref, { authorUsername: 'someone-else' }))
+  await assertFails(updateDoc(ref, { text: 'edited after votes came in' }))
+})
+
+// AUD-011: optionId só era validado como string, nunca conferido contra as opções
+// reais da enquete -- um cliente podia gravar um voto com um id inventado.
+test('voting on a poll requires optionId to match one of its real options', async () => {
+  const ref = await addDoc(collection(member, 'statuses'), pollStatus())
+  await assertFails(
+    setDoc(doc(member, `statuses/${ref.id}/votes/member`), {
+      userId: 'member',
+      optionId: 'made-up-option',
+      createdAt: serverTimestamp(),
+    })
+  )
+  await assertSucceeds(
+    setDoc(doc(member, `statuses/${ref.id}/votes/member`), {
+      userId: 'member',
+      optionId: 'yes',
+      createdAt: serverTimestamp(),
+    })
+  )
 })

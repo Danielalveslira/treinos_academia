@@ -1,6 +1,11 @@
 import { collection, getDocs, limit, orderBy, query, where, startAfter } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../firebase/config'
+import { ref as storageRef, getBytes } from 'firebase/storage'
+import { db, functions, storage } from '../firebase/config'
+
+// Mesmo teto de statusesService.getStatusPhotoBlob -- a evidência é uma cópia do
+// mesmo tipo de arquivo (foto de publicação, sempre .webp).
+const MAX_EVIDENCE_DOWNLOAD_BYTES = 5 * 1024 * 1024
 
 export async function listSupportRequestsPage(
   userId,
@@ -35,4 +40,11 @@ export async function decideSupportRequest(values) {
 
 export async function cancelSupportRequest(requestId) {
   return (await httpsCallable(functions, 'cancelSupportRequest')({ requestId })).data
+}
+
+// AUD-007: submitSupportRequest copia a foto denunciada para este caminho, fora do
+// ciclo de vida da publicação original -- só a moderação consegue ler (storage.rules).
+export async function getModerationEvidenceBlob(evidencePath) {
+  const bytes = await getBytes(storageRef(storage, evidencePath), MAX_EVIDENCE_DOWNLOAD_BYTES)
+  return new Blob([bytes], { type: 'image/webp' })
 }

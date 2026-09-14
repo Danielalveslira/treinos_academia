@@ -8,8 +8,9 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
-import { db } from '../firebase/config'
-import { getWorkoutStatistics } from './workoutsService'
+import { httpsCallable } from 'firebase/functions'
+import { db, functions } from '../firebase/config'
+import { refreshPublicStatistics } from './publicProfilesService'
 
 export const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 
@@ -67,6 +68,14 @@ async function reserveUsername(userId, username) {
 }
 
 // Recebe apenas campos alterados. Descrição não precisa consultar a reserva de nomes.
+//
+// AUD-010: a troca de username sai daqui e vai para a Cloud Function renameUsername
+// (functions/index.js) — ela faz reserva + users + publicProfiles numa única
+// transação atômica via Admin SDK. O fluxo anterior (reservar em um commit, só então
+// atualizar users/publicProfiles num segundo commit) podia deixar o novo @ reservado
+// sem dono se o segundo commit falhasse (rede caindo entre os dois, aba fechada
+// etc.) — indisponível pra todo mundo, inclusive pro próprio usuário, até ele tentar
+// de novo com o mesmo valor.
 export async function updateUserProfile(userId, changes) {
   const patch = {}
   if (Object.hasOwn(changes, 'bio')) {
@@ -83,37 +92,34 @@ export async function updateUserProfile(userId, changes) {
     patch.shareStatistics = changes.shareStatistics
   }
   if (!Object.keys(patch).length) return patch
-  const statistics = patch.shareStatistics === true ? await getWorkoutStatistics(userId) : null
-  function writePublic(writer) {
-    writer.set(doc(db, 'publicProfiles', userId), patch, { merge: true })
-    if (statistics)
-      writer.set(doc(db, 'publicProfiles', userId, 'statistics', 'summary'), {
-        ...statistics,
-        updatedAt: serverTimestamp(),
-      })
-    if (patch.shareStatistics === false)
-      writer.delete(doc(db, 'publicProfiles', userId, 'statistics', 'summary'))
+
+  if (Object.hasOwn(patch, 'username')) {
+    try {
+      await httpsCallable(functions, 'renameUsername')({ username: patch.username })
+    } catch (error) {
+      if (error?.code === 'functions/already-exists') throw new Error('USERNAME_TAKEN')
+      throw error
+    }
   }
-  if (!Object.hasOwn(patch, 'username')) {
+
+  const rest = { ...patch }
+  delete rest.username
+  if (Object.keys(rest).length) {
     const batch = writeBatch(db)
-    batch.update(userRef(userId), patch)
-    writePublic(batch)
+    batch.set(doc(db, 'publicProfiles', userId), rest, { merge: true })
+    batch.update(userRef(userId), rest)
+    if (rest.shareStatistics === false) {
+      batch.delete(doc(db, 'publicProfiles', userId, 'statistics', 'summary'))
+    }
     await batch.commit()
-    return patch
   }
-  const profileSnap = await getDoc(userRef(userId))
-  if (!profileSnap.exists()) throw new Error('PROFILE_NOT_FOUND')
-  const previousUsername = profileSnap.data().username
-  if (previousUsername !== patch.username) {
-    await reserveUsername(userId, patch.username)
+  // AUD-006: estatísticas públicas agora são calculadas e gravadas pelo servidor
+  // (ver publicProfilesService.refreshPublicStatistics) — precisa rodar DEPOIS do
+  // batch acima, porque a function exige shareStatistics == true já persistido em
+  // publicProfiles/{uid} antes de aceitar recalcular.
+  if (rest.shareStatistics === true) {
+    await refreshPublicStatistics()
   }
-  const batch = writeBatch(db)
-  batch.update(userRef(userId), patch)
-  writePublic(batch)
-  if (previousUsername && previousUsername !== patch.username) {
-    batch.delete(usernameRef(previousUsername))
-  }
-  await batch.commit()
   return patch
 }
 

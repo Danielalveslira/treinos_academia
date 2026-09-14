@@ -46,7 +46,7 @@ export default function Profile() {
     setRefreshingStats(true)
     setSuccess(false)
     try {
-      await refreshPublicStatistics(user.uid)
+      await refreshPublicStatistics()
       setSuccess('Estatísticas atualizadas.')
     } catch {
       setFieldErrors({ form: 'Não foi possível atualizar as estatísticas. Tente novamente.' })
