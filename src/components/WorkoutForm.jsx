@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Box, Button, FormControl, TextInput, Textarea, Text } from '@primer/react'
 import {
   CheckCircleFillIcon,
@@ -28,6 +29,7 @@ import { nextStepAfterFinishing, valuesForNextExercise } from '../utils/workoutS
 import { sortExercisesInGroup } from '../utils/exerciseOrder'
 import { nextActiveSetIndexAfterRemoval } from '../utils/setCardFlow'
 import { suggestedSets, inheritSet } from '../utils/setSuggestions'
+import { recentExerciseSessions } from '../utils/exerciseHistory'
 import '../styles/workoutExecution.css'
 
 // Enquanto o teclado virtual está provavelmente aberto (um campo do formulário tem
@@ -188,6 +190,7 @@ export function WorkoutForm({
     [history, values.exerciseId]
   )
   const lastWorkout = exerciseHistory[0]
+  const recentHistory = useMemo(() => recentExerciseSessions(exerciseHistory), [exerciseHistory])
   useEffect(() => {
     if (!lastWorkout || initialValue || cardio) return
     setValues((previous) => {
@@ -595,7 +598,6 @@ export function WorkoutForm({
                 onToggleComplete={handleToggleComplete}
                 onAdd={values.setDetails.length < MAX_WORKOUT_SETS ? handleAddSet : undefined}
                 onRemove={handleRemoveSet}
-                lastWorkout={lastWorkout}
                 validSetCount={validSetCount}
                 volume={values.setDetails.every(isValidSet) ? calculateVolume(values) : null}
                 disabled={submitting}
@@ -659,15 +661,15 @@ export function WorkoutForm({
             </Button>
           </div>
           <details className="workout-past-sessions" key={values.exerciseId}>
-            <summary>Sessões anteriores ({exerciseHistory.length})</summary>
+            <summary>Sessões anteriores ({recentHistory.length})</summary>
             <p className="workout-history-caption">
-              Histórico limitado aos registros já carregados.
+              Até 7 dias, contados a partir da sessão mais recente disponível.
             </p>
-            {exerciseHistory.length === 0 ? (
+            {recentHistory.length === 0 ? (
               <p>Nenhuma sessão anterior deste exercício nos registros carregados.</p>
             ) : (
               <ol className="workout-history-list">
-                {exerciseHistory.map((workout, index) => {
+                {recentHistory.map((workout, index) => {
                   const sets = getWorkoutSets(workout)
                   const sessionDate = workout.date ? toDate(workout.date) : null
                   const validDate = sessionDate && Number.isFinite(sessionDate.getTime())
@@ -709,6 +711,12 @@ export function WorkoutForm({
                 })}
               </ol>
             )}
+            <Link
+              className="workout-history-link"
+              to={`/historico?exercicio=${encodeURIComponent(values.exerciseId)}`}
+            >
+              Ver histórico completo
+            </Link>
           </details>
         </div>
       )}

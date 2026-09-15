@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { suggestedSets, inheritSet, parseSetInput, adjustSetValue } from './setSuggestions.js'
+import { suggestedSets, inheritSet, parseSetInput } from './setSuggestions.js'
 import { isValidSet } from './workoutSets.js'
 
 test('history preserves the corresponding set, including legacy and zero load', () => {
@@ -57,14 +57,4 @@ test('direct entry accepts comma, dot and empty drafts without NaN', () => {
   for (const raw of ['NaN', 'Infinity', '-1', '1e3', 'abc', '1,2,3', '10001'])
     assert.equal(parseSetInput('weight', raw), null)
   for (const raw of ['1.5', '1,5', '-1', '100001']) assert.equal(parseSetInput('reps', raw), null)
-})
-
-test('quick adjustments respect decimal arithmetic, zero and upper boundaries', () => {
-  assert.equal(adjustSetValue('weight', '17.5', 1.25), '18.75')
-  assert.equal(adjustSetValue('weight', '0', -2.5), '0')
-  assert.equal(adjustSetValue('weight', '9999', 2.5), '10000')
-  assert.equal(adjustSetValue('reps', '8', 1), '9')
-  assert.equal(adjustSetValue('reps', '1', -1), '1')
-  assert.equal(adjustSetValue('reps', '100000', 1), '100000')
-  assert.equal(adjustSetValue('reps', '', 1), '1')
 })

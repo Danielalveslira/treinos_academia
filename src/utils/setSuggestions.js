@@ -31,11 +31,3 @@ export function parseSetInput(field, raw) {
   if (Number(value) > (field === 'weight' ? 10000 : 100000)) return null
   return value
 }
-
-export function adjustSetValue(field, value, delta) {
-  const max = field === 'weight' ? 10000 : 100000
-  const min = field === 'weight' ? 0 : 1
-  return String(
-    Math.min(max, Math.max(min, Math.round(((Number(value) || 0) + delta) * 100) / 100))
-  )
-}

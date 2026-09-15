@@ -1,81 +1,34 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  CheckIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  TrashIcon,
-  PencilIcon,
-  HistoryIcon,
-} from '@primer/octicons-react'
-import { getWorkoutSets, isValidSet } from '../utils/workoutSets'
-import { adjustSetValue, parseSetInput } from '../utils/setSuggestions'
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, TrashIcon } from '@primer/octicons-react'
+import { isValidSet } from '../utils/workoutSets'
+import { parseSetInput } from '../utils/setSuggestions'
 
 function NumberControl({ field, value, disabled, onChange }) {
   const weight = field === 'weight'
   const label = weight ? 'Peso (kg)' : 'Repetições'
-  const deltas = weight ? [-2.5, -1.25, 1.25, 2.5] : [-1, 1]
-  const max = weight ? 10000 : 100000
-  const min = weight ? 0 : 1
-  const step = weight ? 2.5 : 1
-  const adjust = (delta) => onChange(adjustSetValue(field, value, delta))
   return (
     <div className="set-card-field">
       <label className="set-card-field-label" htmlFor={`set-${field}`}>
         {label}
       </label>
-      <div className="set-card-stepper">
-        <button
-          type="button"
-          className="set-card-step"
-          aria-label={weight ? 'Diminuir peso em 2,5 kg' : 'Diminuir repetições'}
-          disabled={disabled || Number(value) <= min}
-          onClick={() => adjust(-step)}
-        >
-          −
-        </button>
-        <div className="set-card-input-wrap">
-          <input
-            id={`set-${field}`}
-            className="set-card-value"
-            style={String(value).length > 4 ? { fontSize: 'clamp(16px, 2.5vw, 28px)' } : undefined}
-            type="text"
-            inputMode={weight ? 'decimal' : 'numeric'}
-            autoComplete="off"
-            value={String(value).replace('.', ',')}
-            placeholder="0"
-            disabled={disabled}
-            aria-describedby={`set-${field}-hint`}
-            onChange={(event) => {
-              const parsed = parseSetInput(field, event.target.value)
-              if (parsed !== null) onChange(parsed)
-            }}
-          />
-          <PencilIcon size={16} aria-hidden="true" />
-        </div>
-        <button
-          type="button"
-          className="set-card-step is-positive"
-          aria-label={weight ? 'Aumentar peso em 2,5 kg' : 'Aumentar repetições'}
-          disabled={disabled || Number(value) >= max}
-          onClick={() => adjust(step)}
-        >
-          +
-        </button>
-      </div>
-      <div className="set-card-chips">
-        {deltas.map((delta) => (
-          <button
-            key={delta}
-            type="button"
-            className={`set-card-chip${delta > 0 ? ' is-positive' : ''}`}
-            disabled={disabled || (delta < 0 ? Number(value) <= min : Number(value) >= max)}
-            aria-label={`${delta > 0 ? 'Somar' : 'Subtrair'} ${Math.abs(delta).toLocaleString('pt-BR')} ${weight ? 'kg' : 'repetição'}`}
-            onClick={() => adjust(delta)}
-          >
-            {delta > 0 ? '+' : ''}
-            {delta.toLocaleString('pt-BR')}
-          </button>
-        ))}
+      <div className={`set-card-input-wrap${weight ? ' has-unit' : ''}`}>
+        <input
+          id={`set-${field}`}
+          className="set-card-value"
+          style={String(value).length > 4 ? { fontSize: 'clamp(20px, 3vw, 32px)' } : undefined}
+          type="text"
+          inputMode={weight ? 'decimal' : 'numeric'}
+          autoComplete="off"
+          value={String(value).replace('.', ',')}
+          placeholder="0"
+          disabled={disabled}
+          aria-describedby={`set-${field}-hint`}
+          onChange={(event) => {
+            const parsed = parseSetInput(field, event.target.value)
+            if (parsed !== null) onChange(parsed)
+          }}
+        />
+        {weight && <span className="set-card-unit">kg</span>}
       </div>
       <small id={`set-${field}-hint`}>Toque no valor para digitar</small>
     </div>
@@ -90,7 +43,6 @@ export function SetCard({
   onToggleComplete,
   onAdd,
   onRemove,
-  lastWorkout,
   validSetCount,
   volume,
   disabled,
@@ -105,7 +57,6 @@ export function SetCard({
   useEffect(() => () => clearTimeout(timer.current), [])
   if (!activeSet) return null
   const isLast = activeIndex === sets.length - 1
-  const lastSets = lastWorkout ? getWorkoutSets(lastWorkout) : []
   return (
     <div className="set-card">
       <div className="set-card-header">
@@ -188,22 +139,6 @@ export function SetCard({
           />
         ))}
       </div>
-      <section className="set-card-history" aria-label="Último treino">
-        <strong>
-          <HistoryIcon size={20} /> Último treino
-        </strong>
-        {lastSets.length ? (
-          <div>
-            {lastSets.map((set, index) => (
-              <span key={index}>
-                <b>S{index + 1}</b> {Number(set.weight).toLocaleString('pt-BR')}kg × {set.reps}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p>Sem histórico nos registros carregados. Informe seus valores.</p>
-        )}
-      </section>
       <button
         type="button"
         className={`set-card-complete${activeSet.completed ? ' is-complete' : ''}`}

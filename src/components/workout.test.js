@@ -16,10 +16,12 @@ before(async () => {
       contents: `
         import { createElement } from 'react'
         import { renderToStaticMarkup } from 'react-dom/server'
+        import { MemoryRouter } from 'react-router-dom'
         import { ThemeProvider, BaseStyles } from '@primer/react'
         import { WorkoutForm } from './WorkoutForm.jsx'
         export const render = (props) => renderToStaticMarkup(createElement(ThemeProvider, null,
-          createElement(BaseStyles, null, createElement(WorkoutForm, props))))
+          createElement(BaseStyles, null, createElement(MemoryRouter, null,
+            createElement(WorkoutForm, props)))))
       `,
       resolveDir: new URL('.', import.meta.url).pathname,
     },
@@ -43,7 +45,7 @@ const props = {
 }
 
 // Text inputs with numeric inputMode accept the Portuguese decimal separator.
-test('new form creates one set card with accessible steppers, disabled at the empty/zero boundary', () => {
+test('new form uses only direct weight and repetition inputs', () => {
   const html = render(props)
   assert.equal((html.match(/type="number"/g) || []).length, 0)
   assert.match(html, /aria-label="Série 1"/)
@@ -51,18 +53,13 @@ test('new form creates one set card with accessible steppers, disabled at the em
   // -- o segmento "+" redundante na barra de progresso foi removido.
   assert.match(html, /aria-label="Adicionar nova série"/)
   assert.doesNotMatch(html, /set-card-segment-add/)
-  // Peso e reps nascem em 0 (set vazio) -- os botões "diminuir" ficam desabilitados no
-  // piso, os "aumentar" não.
-  assert.match(html, /aria-label="Diminuir peso em 2,5 kg" disabled=""/)
-  assert.match(html, /aria-label="Aumentar peso em 2,5 kg"(?! disabled)/)
-  assert.match(html, /aria-label="Diminuir repetições" disabled=""/)
   assert.match(html, /inputMode="decimal"/)
   assert.match(html, /inputMode="numeric"/)
-  const order = ['>-2,5<', '>-1,25<', '>+1,25<', '>+2,5<'].map((chip) => html.indexOf(chip))
-  assert.ok(
-    order.every((index, i) => i === 0 || index > order[i - 1]),
-    'chips de granularidade devem aparecer em ordem crescente'
-  )
+  assert.match(html, /class="set-card-unit">kg</)
+  assert.doesNotMatch(html, /set-card-step|set-card-chip/)
+  assert.doesNotMatch(html, /Somar |Subtrair |Aumentar peso|Diminuir peso/)
+  assert.doesNotMatch(html, />[−+]1(?:,25)?</)
+  assert.doesNotMatch(html, /Último treino|Sem histórico nos registros carregados/)
   // Set vazio não passa em isValidSet -- "concluir série" nasce desabilitado.
   assert.match(html, /class="set-card-complete" disabled=""/)
   assert.doesNotMatch(html, /Adicionar série</)
@@ -134,6 +131,7 @@ test('history opens with suggested values and an enabled one-touch completion', 
     history: [
       {
         exerciseId: 'squat',
+        date: new Date(2026, 8, 14, 12),
         setDetails: [
           { weight: 17.5, reps: 8 },
           { weight: 20, reps: 6 },
@@ -145,7 +143,7 @@ test('history opens with suggested values and an enabled one-touch completion', 
   assert.match(html, /id="set-weight"[^>]*value="17,5"/)
   assert.match(html, /id="set-reps"[^>]*value="8"/)
   assert.match(html, /class="set-card-complete" aria-pressed="false"/)
-  assert.match(html, /Último treino/)
+  assert.doesNotMatch(html, /Último treino/)
 })
 
 test('with no exercise pre-selected, the form opens on the muscle group step, not the set fields', () => {
@@ -181,6 +179,13 @@ test('previous sessions are collapsed, exercise-scoped and show dates, sets, vol
         reps: 8,
         sets: 2,
       },
+      {
+        id: 'outside-window',
+        exerciseId: 'squat',
+        date: new Date(2026, 8, 7, 12),
+        setDetails: [{ weight: 99, reps: 1 }],
+        note: 'Fora da janela',
+      },
       { id: 'other', exerciseId: 'bench', note: 'Não mostrar' },
     ],
   })
@@ -192,7 +197,11 @@ test('previous sessions are collapsed, exercise-scoped and show dates, sets, vol
   assert.match(html, /Volume total: 160 kg/)
   assert.match(html, /12,5kg × 10/)
   assert.match(html, /Boa execução/)
+  assert.doesNotMatch(html, /Fora da janela|99kg/)
   assert.doesNotMatch(html, /Não mostrar/)
+  assert.match(html, /href="\/historico\?exercicio=squat"/)
+  assert.match(html, /Ver histórico completo/)
+  assert.ok(html.indexOf('14/09/2026') < html.indexOf('10/09/2026'))
   assert.ok(html.indexOf('workout-past-sessions') > html.indexOf('Finalizar exercício'))
 })
 
@@ -201,7 +210,15 @@ test('previous sessions provide an empty state and support cardio history', () =
   const html = render({
     exercises: [{ id: 'run', name: 'Corrida', active: true, type: 'cardio' }],
     defaultExerciseId: 'run',
-    history: [{ exerciseId: 'run', type: 'cardio', durationMinutes: 20, distanceKm: 3 }],
+    history: [
+      {
+        exerciseId: 'run',
+        type: 'cardio',
+        date: new Date(2026, 8, 14, 12),
+        durationMinutes: 20,
+        distanceKm: 3,
+      },
+    ],
   })
   assert.match(html, /Sessões anteriores \(1\)/)
   assert.match(html, /20 min/)
