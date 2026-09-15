@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { listGlobalSponsoredAds } from '../services/sponsoredAdsService'
-import { describeFirestoreError } from '../utils/firestoreError'
 import { toMillis } from '../utils/expiry'
-import { getCached, setCached } from '../utils/pageCache'
+import { useCachedQuery } from './useCachedQuery'
 
 const CACHE_KEY = 'sponsoredAds:global'
 
@@ -11,29 +10,12 @@ const CACHE_KEY = 'sponsoredAds:global'
 // exige isSignedIn(), sem depender de myCommunityIds() — não há o mesmo risco de a
 // consulta inteira ser negada (ver "Firestore list-rule get() gotcha").
 export function useGlobalSponsoredAds(enabled) {
-  const cached = getCached(CACHE_KEY)
-  const [ads, setAds] = useState(cached || [])
-  const [loading, setLoading] = useState(enabled && !cached)
-  const [error, setError] = useState(null)
-
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const data = await listGlobalSponsoredAds()
-      setAds(data)
-      setCached(CACHE_KEY, data)
-    } catch (err) {
-      setError(describeFirestoreError(err, 'useGlobalSponsoredAds'))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (enabled && !cached) refresh()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, refresh])
+  const fetchAds = useCallback(() => listGlobalSponsoredAds(), [])
+  const {
+    data: ads = [],
+    loading,
+    error,
+  } = useCachedQuery(CACHE_KEY, fetchAds, { enabled, context: 'useGlobalSponsoredAds' })
 
   const now = Date.now()
   // Mesmo filtro client-side de useSponsoredAds.js (expiresAt/displayMode não dão pra

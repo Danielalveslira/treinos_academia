@@ -2,11 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchCached, getCached, setCached, invalidateCache } from '../utils/pageCache'
 import { describeFirestoreError } from '../utils/firestoreError'
 
-export function useCachedQuery(key, fetchValue) {
+export function useCachedQuery(key, fetchValue, { enabled = true, context = 'query' } = {}) {
+  const cached = enabled ? getCached(key) : undefined
   const [state, setState] = useState(() => ({
     key,
-    data: getCached(key),
-    loading: getCached(key) === undefined,
+    data: cached,
+    loading: enabled && cached === undefined,
     error: null,
   }))
   const revision = useRef(0)
@@ -15,6 +16,7 @@ export function useCachedQuery(key, fetchValue) {
 
   const run = useCallback(
     async (force) => {
+      if (!enabled) return
       const request = ++revision.current
       setState((previous) => ({
         key,
@@ -32,33 +34,41 @@ export function useCachedQuery(key, fetchValue) {
             key,
             data: undefined,
             loading: false,
-            error: describeFirestoreError(error, 'query'),
+            error: describeFirestoreError(error, context),
           })
         }
       }
     },
-    [key, fetchValue]
+    [key, fetchValue, enabled, context]
   )
 
   useEffect(() => {
+    if (!enabled) {
+      revision.current += 1
+      return undefined
+    }
     run(false)
     return () => {
       revision.current += 1
     }
-  }, [run])
+  }, [enabled, run])
 
   const refresh = useCallback(() => run(true), [run])
   const setData = useCallback(
     (data) => {
-      if (activeKey.current !== key) return
+      if (!enabled || activeKey.current !== key) return
       revision.current += 1
       invalidateCache(key)
       setCached(key, data)
       setState({ key, data, loading: false, error: null })
     },
-    [key]
+    [key, enabled]
   )
 
-  const current = state.key === key ? state : { data: getCached(key), loading: true, error: null }
+  const current = !enabled
+    ? { data: undefined, loading: false, error: null }
+    : state.key === key
+      ? state
+      : { data: getCached(key), loading: true, error: null }
   return { ...current, refresh, setData }
 }
