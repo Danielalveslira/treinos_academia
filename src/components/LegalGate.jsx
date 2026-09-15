@@ -7,7 +7,13 @@ import { useAuth } from '../hooks/useAuth'
 import { getLegalAccess, acceptLegalDocuments } from '../services/legalService'
 import { setBirthInfo } from '../services/usersService'
 import { logoutUser } from '../services/authService'
-import { isAccountRestricted, LEGAL_MANIFEST, needsLegalAcceptance } from '../utils/legal'
+import {
+  isAccountRestricted,
+  isCachedAccessValid,
+  isLegalPolicyOutdated,
+  LEGAL_MANIFEST,
+  needsLegalAcceptance,
+} from '../utils/legal'
 import { validateBirthDate, hasErrors } from '../utils/validators'
 
 function todayString() {
@@ -24,10 +30,16 @@ function cacheKey(uid) {
   return `legalAccess:${uid}`
 }
 
+// Só devolve o cache se ele ainda descrever a versão atual do manifest (ver
+// isCachedAccessValid em utils/legal.js) -- um cache de um deploy anterior é tratado
+// como se não existisse (volta pro estado de carregamento neutro) em vez de arriscar
+// mostrar "documentos sendo atualizados" a partir de um dado que já não é aplicável.
 function readCachedAccess(uid) {
   try {
     const raw = sessionStorage.getItem(cacheKey(uid))
-    return raw ? JSON.parse(raw) : null
+    if (!raw) return null
+    const cached = JSON.parse(raw)
+    return isCachedAccessValid(cached) ? cached : null
   } catch {
     return null
   }
@@ -76,9 +88,7 @@ export function LegalGate({ children }) {
   }, [user.uid, attempt])
   if (!LEGAL_MANIFEST.published) return children
   const restricted = isAccountRestricted(access?.restriction)
-  const outdated =
-    access &&
-    (access.policy?.version !== LEGAL_MANIFEST.version || access.policy?.published !== true)
+  const outdated = isLegalPolicyOutdated(access)
   // Superadmin nunca fica trancado por uma versão ainda não publicada em
   // legalPolicy/current: precisa sempre poder chegar ao painel para publicá-la. Uma
   // vez publicada, o aceite normal continua exigido (regra em firestore.rules).
