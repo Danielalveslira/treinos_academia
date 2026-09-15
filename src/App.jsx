@@ -28,86 +28,92 @@ const AdminModeration = lazy(() => import('./pages/AdminModeration'))
 const AdminAccounts = lazy(() => import('./pages/AdminAccounts'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
+export function AppRoutes() {
+  return (
+    <Routes>
+      <Route
+        element={
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
+        }
+      >
+        <Route path="/login" element={<Login />} />
+        <Route path="/cadastro" element={<Register />} />
+        <Route path="/esqueci-senha" element={<ForgotPassword />} />
+        <Route path="/regras-da-comunidade" element={<LegalDocument documentId="community" />} />
+        <Route path="/termos-de-uso" element={<LegalDocument documentId="terms" />} />
+        <Route path="/politica-de-privacidade" element={<LegalDocument documentId="privacy" />} />
+        <Route path="/atendimento" element={<Support />} />
+        <Route path="*" element={<NotFound />} />
+      </Route>
+
+      <Route
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        <Route
+          element={
+            <ExercisesProvider>
+              <Outlet />
+            </ExercisesProvider>
+          }
+        >
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/exercicios" element={<Exercises />} />
+          <Route path="/exercicios/:id" element={<ExerciseDetail />} />
+          <Route path="/novo-treino" element={<NewWorkout />} />
+          <Route path="/historico" element={<History />} />
+        </Route>
+        <Route path="/perfil" element={<Profile />} />
+        <Route
+          path="/admin/moderacao"
+          element={
+            <SuperAdminRoute>
+              <AdminModeration />
+            </SuperAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/contas"
+          element={
+            <SuperAdminRoute>
+              <AdminAccounts />
+            </SuperAdminRoute>
+          }
+        />
+        <Route path="/comunidades" element={<Communities />} />
+        <Route path="/comunidades/perfil/:userId" element={<PublicProfile />} />
+        <Route path="/comunidades/:id" element={<CommunityDetail />} />
+        <Route
+          path="/admin/comunidades"
+          element={
+            <SuperAdminRoute>
+              <AdminCommunities />
+            </SuperAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/parcerias"
+          element={
+            <SuperAdminRoute>
+              <AdminSponsoredAds />
+            </SuperAdminRoute>
+          }
+        />
+      </Route>
+    </Routes>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route
-            element={
-              <Suspense fallback={<PageFallback />}>
-                <Outlet />
-              </Suspense>
-            }
-          >
-            <Route path="/login" element={<Login />} />
-            <Route path="/cadastro" element={<Register />} />
-            <Route path="/esqueci-senha" element={<ForgotPassword />} />
-            <Route
-              path="/regras-da-comunidade"
-              element={<LegalDocument documentId="community" />}
-            />
-            <Route path="/termos-de-uso" element={<LegalDocument documentId="terms" />} />
-            <Route
-              path="/politica-de-privacidade"
-              element={<LegalDocument documentId="privacy" />}
-            />
-            <Route path="/atendimento" element={<Support />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-
-          <Route
-            element={
-              <ProtectedRoute>
-                <ExercisesProvider>
-                  <Layout />
-                </ExercisesProvider>
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/exercicios" element={<Exercises />} />
-            <Route path="/exercicios/:id" element={<ExerciseDetail />} />
-            <Route path="/novo-treino" element={<NewWorkout />} />
-            <Route path="/historico" element={<History />} />
-            <Route path="/perfil" element={<Profile />} />
-            <Route
-              path="/admin/moderacao"
-              element={
-                <SuperAdminRoute>
-                  <AdminModeration />
-                </SuperAdminRoute>
-              }
-            />
-            <Route
-              path="/admin/contas"
-              element={
-                <SuperAdminRoute>
-                  <AdminAccounts />
-                </SuperAdminRoute>
-              }
-            />
-            <Route path="/comunidades" element={<Communities />} />
-            <Route path="/comunidades/perfil/:userId" element={<PublicProfile />} />
-            <Route path="/comunidades/:id" element={<CommunityDetail />} />
-            <Route
-              path="/admin/comunidades"
-              element={
-                <SuperAdminRoute>
-                  <AdminCommunities />
-                </SuperAdminRoute>
-              }
-            />
-            <Route
-              path="/admin/parcerias"
-              element={
-                <SuperAdminRoute>
-                  <AdminSponsoredAds />
-                </SuperAdminRoute>
-              }
-            />
-          </Route>
-        </Routes>
+        <AppRoutes />
       </AuthProvider>
     </BrowserRouter>
   )

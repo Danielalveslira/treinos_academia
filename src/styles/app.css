@@ -67,19 +67,6 @@ body {
   color: var(--fgColor-muted);
   margin-bottom: 8px;
 }
-.page-description {
-  font-size: 14px;
-  color: var(--fgColor-muted);
-  margin: 8px 0 24px;
-  line-height: 1.6;
-}
-.page-heading .page-description {
-  margin-bottom: 0;
-}
-.latest-workout {
-  padding: 22px 24px;
-  margin-bottom: 20px;
-}
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -112,34 +99,12 @@ body {
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
-.dashboard-columns {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  gap: 24px;
-  align-items: start;
-}
 .panel {
   border: 1px solid var(--borderColor-default);
   border-radius: 8px;
   background: var(--bgColor-default);
   padding: 24px;
   min-width: 0;
-}
-.chart-panel > div:last-child {
-  border: 0;
-  padding: 12px 0 0;
-  margin-bottom: 0;
-}
-.recent-panel {
-  padding: 20px 0 0;
-  overflow: hidden;
-}
-.recent-panel > div:first-child {
-  padding: 0 20px 12px;
-}
-.recent-panel > div:last-child {
-  border: 0;
-  border-radius: 0;
 }
 .workout-row {
   min-height: 69px;
@@ -155,9 +120,6 @@ body {
   border: 1px solid var(--borderColor-default);
   border-radius: 8px;
   padding: 24px;
-}
-.filters-panel {
-  background: var(--bgColor-muted);
 }
 .skip-link {
   position: fixed;
@@ -175,11 +137,6 @@ a:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--focus-outlineColor, var(--fgColor-accent));
   outline-offset: 3px;
-}
-@media (max-width: 900px) {
-  .dashboard-columns {
-    grid-template-columns: 1fr;
-  }
 }
 @media (max-width: 767px) {
   .main-content {
@@ -206,12 +163,8 @@ button:focus-visible {
   .indicator-label {
     font-size: 12px;
   }
-  .panel,
-  .latest-workout {
+  .panel {
     padding: 18px;
-  }
-  .recent-panel {
-    padding: 18px 0 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1551,16 +1504,6 @@ body:has(.pwa-offline) .app-shell {
 }
 .support-form > * {
   min-width: 0;
-}
-.support-card {
-  padding: 20px;
-  border: 1px solid var(--borderColor-default);
-  border-radius: 8px;
-  margin-bottom: 16px;
-}
-.support-card h2,
-.support-card h3 {
-  font-size: 16px;
 }
 .support-message {
   white-space: pre-wrap;

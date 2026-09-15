@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom'
-import { Box, Spinner } from '@primer/react'
+import { Box, Button, Flash, Spinner } from '@primer/react'
+import { PublicLayout } from './PublicLayout'
 import { useAuth } from '../hooks/useAuth'
 import { LegalGate } from './LegalGate'
 import { EmailVerificationGate } from './EmailVerificationGate'
@@ -7,7 +8,7 @@ import { DisabledAccountGate } from './DisabledAccountGate'
 import { requiresEmailVerification } from '../utils/emailVerification'
 
 export function ProtectedRoute({ children }) {
-  const { user, profile, loading, verifyingSession } = useAuth()
+  const { user, profile, profileError, loading, verifyingSession } = useAuth()
 
   // Enquanto o AuthContext confirma se um permission-denied significa conta excluída
   // (getIdToken(true), ver handlePossibleGhostSession), nenhuma tela protegida deve
@@ -24,6 +25,19 @@ export function ProtectedRoute({ children }) {
     )
   }
   if (!user) return <Navigate to="/login" replace />
+  if (profileError || !profile) {
+    return (
+      <PublicLayout>
+        <section className="support-page" aria-labelledby="profile-load-title">
+          <h1 id="profile-load-title">Não foi possível carregar sua conta</h1>
+          <Flash variant="danger" role="alert">
+            {profileError || 'Seu perfil não está disponível.'}
+          </Flash>
+          <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+        </section>
+      </PublicLayout>
+    )
+  }
 
   // Checado antes de tudo (inclusive verificação de e-mail): uma conta desativada não
   // precisa nem deveria ver "confirme seu e-mail" ou "aceite os documentos" — o próprio
