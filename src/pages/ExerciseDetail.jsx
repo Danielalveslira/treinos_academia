@@ -118,13 +118,15 @@ export default function ExerciseDetail() {
           <Button onClick={refresh} loading={loadingWorkouts} disabled={loadingWorkouts}>
             Atualizar
           </Button>
-          <Button
-            variant="primary"
-            leadingVisual={PlayIcon}
-            onClick={() => navigate(`/novo-treino?exercicio=${id}`)}
-          >
-            Treinar
-          </Button>
+          {(loading || error || workouts.length > 0) && (
+            <Button
+              variant="primary"
+              leadingVisual={PlayIcon}
+              onClick={() => navigate(`/novo-treino?exercicio=${id}`)}
+            >
+              Treinar
+            </Button>
+          )}
         </Box>
       </Box>
 

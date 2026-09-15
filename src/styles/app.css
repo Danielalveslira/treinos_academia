@@ -279,12 +279,6 @@ button:focus-visible {
 .auth-intro h2 > span {
   color: var(--fgColor-muted);
 }
-.auth-intro > p {
-  max-width: 400px;
-  color: var(--fgColor-muted);
-  font-size: 16px;
-  line-height: 1.7;
-}
 .auth-benefits {
   display: grid;
   gap: 24px;
@@ -369,9 +363,6 @@ button:focus-visible {
   .public-header {
     padding: 18px 20px;
   }
-  .public-header nav {
-    gap: 16px;
-  }
   .public-header .brand {
     gap: 8px;
     font-size: 16px;
@@ -387,10 +378,6 @@ button:focus-visible {
     letter-spacing: -1px;
     margin: 16px 0 12px;
   }
-  .auth-intro > p {
-    font-size: 14px;
-    margin: 0;
-  }
   .auth-benefits {
     display: none;
   }
@@ -404,21 +391,6 @@ button:focus-visible {
     width: calc(100% - 40px);
     font-size: 11px;
   }
-}
-.frequency-legend {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--fgColor-muted);
-  margin-bottom: 8px;
-}
-.frequency-legend > span {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  background: var(--fgColor-success);
 }
 .frequency-tooltip {
   background: var(--bgColor-default);
@@ -1983,8 +1955,6 @@ body {
   text-decoration: none;
 }
 
-.frequency-legend { display: none; }
-
 .frequency-tooltip {
   border: 0;
   border-radius: var(--fitness-radius-sm);
@@ -2708,7 +2678,6 @@ body {
   .history-sets { max-width: 100%; }
 
   .exercise-groups { grid-template-columns: 1fr; gap: 28px; }
-  .exercise-detail-page .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .chart-surface { margin-inline: -8px; padding-inline: 4px; }
   .empty-workout {
     display: grid;
@@ -2814,7 +2783,6 @@ body {
 
 .auth-intro h2 > span { color: #c2c9c1; }
 
-.auth-intro > p,
 .auth-intro-content > p {
   max-width: 500px;
   margin: 0;

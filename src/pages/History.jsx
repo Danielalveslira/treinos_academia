@@ -167,7 +167,7 @@ export default function History() {
           </Box>
         </div>
 
-        {hasActiveFilters && (
+        {hasActiveFilters && (loading || error || workouts.length > 0) && (
           <Button size="small" onClick={clearFilters} sx={{ mt: 2 }}>
             Limpar filtros
           </Button>

@@ -252,18 +252,9 @@ function CommunityDetail({ id }) {
                 </Text>
               )}
             </Box>
-            {member ? (
+            {member && (
               <Button onClick={handleLeave} disabled={membershipPending} sx={{ flexShrink: 0 }}>
                 Sair
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                onClick={handleJoin}
-                disabled={membershipPending}
-                sx={{ flexShrink: 0 }}
-              >
-                Entrar
               </Button>
             )}
           </Box>

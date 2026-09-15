@@ -116,7 +116,7 @@ export default function AdminCommunities() {
         <Heading as="h1" sx={{ fontSize: 3 }}>
           Administrar comunidades
         </Heading>
-        {!formOpen && !editingCommunity && (
+        {!formOpen && !editingCommunity && (loading || error || communities.length > 0) && (
           <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
             Nova
           </Button>

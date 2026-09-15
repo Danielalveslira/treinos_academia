@@ -120,7 +120,7 @@ export default function AdminSponsoredAds() {
         <Heading as="h1" sx={{ fontSize: 3 }}>
           Anúncios e parcerias
         </Heading>
-        {!formOpen && !editingAd && (
+        {!formOpen && !editingAd && (loading || error || ads.length > 0) && (
           <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
             Novo
           </Button>

@@ -59,9 +59,6 @@ export function FrequencyChart({ data, metric = 'trainings' }) {
   const config = METRICS[metric] || METRICS.trainings
   return (
     <div>
-      <div className="frequency-legend">
-        <span /> Semana atual
-      </div>
       <ResponsiveContainer width="100%" height={260}>
         <BarChart
           data={data}
