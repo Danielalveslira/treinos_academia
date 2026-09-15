@@ -34,7 +34,6 @@ export function useCommunities() {
     } finally {
       setLoading(false)
     }
-     
   }, [user.uid, cacheKey])
 
   useEffect(() => {
@@ -71,10 +70,8 @@ export function useCommunities() {
   }
 
   return {
-    communities,
     myCommunities,
     exploreCommunities,
-    isMember: (communityId) => myCommunityIds.has(communityId),
     loading,
     error,
     refresh,

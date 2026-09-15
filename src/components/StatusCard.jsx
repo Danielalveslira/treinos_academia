@@ -196,6 +196,7 @@ function PollStatus({ status, currentUserId, showToast }) {
               key={option.id}
               as={counts && !myOptionId ? 'button' : 'div'}
               type={counts && !myOptionId ? 'button' : undefined}
+              disabled={counts && !myOptionId ? voting : undefined}
               onClick={counts && !myOptionId ? () => handleVote(option.id) : undefined}
               sx={{
                 position: 'relative',
@@ -207,7 +208,7 @@ function PollStatus({ status, currentUserId, showToast }) {
                 p: 2,
                 bg: 'canvas.default',
                 color: 'fg.default',
-                cursor: counts && !myOptionId ? 'pointer' : 'default',
+                cursor: counts && !myOptionId && !voting ? 'pointer' : 'default',
                 overflow: 'hidden',
               }}
             >

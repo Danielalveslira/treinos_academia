@@ -147,6 +147,7 @@ export function WorkoutForm({
   })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
+  const submitLock = useRef(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   // Qual série o SetCard mostra agora -- sempre resetada pra 0 quando setDetails é
   // trocado por inteiro (novo exercício, repetir última sessão, avançar depois de
@@ -353,7 +354,7 @@ export function WorkoutForm({
 
   async function handleSubmit(event) {
     event.preventDefault()
-    if (step !== 'register') return
+    if (step !== 'register' || submitLock.current) return
     const payload = { ...values, type: getExerciseType(selectedExercise) }
     const validationErrors = validateWorkout(payload)
     setErrors(validationErrors)
@@ -362,6 +363,7 @@ export function WorkoutForm({
     if (!cardio && invalidIndex !== -1) setActiveSetIndex(invalidIndex)
     if (hasErrors(validationErrors)) return
 
+    submitLock.current = true
     setSubmitting(true)
     try {
       await onSubmit(payload)
@@ -370,6 +372,7 @@ export function WorkoutForm({
       // não marca o exercício como concluído nem avança de aba num salvamento que falhou.
       return
     } finally {
+      submitLock.current = false
       setSubmitting(false)
     }
 
@@ -402,12 +405,12 @@ export function WorkoutForm({
             1 Grupo
           </span>
         ) : (
-          <button type="button" className="is-done" onClick={showGroups}>
+          <button type="button" className="is-done" disabled={submitting} onClick={showGroups}>
             1 Grupo
           </button>
         )}
         {step === 'register' ? (
-          <button type="button" className="is-done" onClick={showExercises}>
+          <button type="button" className="is-done" disabled={submitting} onClick={showExercises}>
             2 Exercício
           </button>
         ) : (
@@ -525,10 +528,10 @@ export function WorkoutForm({
               <strong>{selectedExercise.name}</strong>
             </div>
             <div className="exercise-context-actions">
-              <button type="button" onClick={showExercises}>
+              <button type="button" disabled={submitting} onClick={showExercises}>
                 Trocar exercício
               </button>
-              <button type="button" onClick={showGroups}>
+              <button type="button" disabled={submitting} onClick={showGroups}>
                 Trocar grupo
               </button>
             </div>
@@ -538,6 +541,7 @@ export function WorkoutForm({
                 size="small"
                 type="button"
                 leadingVisual={CopyIcon}
+                disabled={submitting}
                 onClick={repeatLastWorkout}
               >
                 Repetir última sessão
@@ -617,7 +621,7 @@ export function WorkoutForm({
           >
             <summary>Data e observações</summary>
             <div className="workout-details-fields">
-              <FormControl required>
+              <FormControl required disabled={submitting}>
                 <FormControl.Label>Data</FormControl.Label>
                 <TextInput
                   type="date"
@@ -630,7 +634,7 @@ export function WorkoutForm({
                   <FormControl.Validation variant="error">{errors.date}</FormControl.Validation>
                 )}
               </FormControl>
-              <FormControl>
+              <FormControl disabled={submitting}>
                 <FormControl.Label>Observação (opcional)</FormControl.Label>
                 <Textarea
                   value={values.note}
@@ -647,7 +651,11 @@ export function WorkoutForm({
           </details>
 
           <div className="workout-form-actions">
-            <Button type="button" onClick={initialValue ? onCancel : showExercises}>
+            <Button
+              type="button"
+              disabled={submitting}
+              onClick={initialValue ? onCancel : showExercises}
+            >
               Cancelar
             </Button>
             <Button

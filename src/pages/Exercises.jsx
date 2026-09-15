@@ -192,9 +192,11 @@ export default function Exercises() {
             <Button leadingVisual={SyncIcon} onClick={refresh} loading={loading} disabled={loading}>
               Atualizar
             </Button>
-            <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
-              Novo
-            </Button>
+            {(loading || error || hasAnyExercise) && (
+              <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
+                Novo
+              </Button>
+            )}
           </Box>
         )}
       </header>

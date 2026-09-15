@@ -20,13 +20,19 @@ export function FormShell({ onSubmit, onCancel, submitting, children }) {
             justifyContent: ['stretch', 'flex-end'],
           }}
         >
-          <Button type="button" onClick={onCancel} sx={{ width: ['100%', 'auto'] }}>
+          <Button
+            type="button"
+            onClick={onCancel}
+            disabled={submitting}
+            sx={{ width: ['100%', 'auto'] }}
+          >
             Cancelar
           </Button>
           <Button
             type="submit"
             variant="primary"
             loading={submitting}
+            disabled={submitting}
             sx={{ width: ['100%', 'auto'] }}
           >
             Salvar
