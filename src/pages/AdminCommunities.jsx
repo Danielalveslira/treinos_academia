@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Box, Heading, Text, Button, Spinner, Label } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
@@ -30,6 +30,20 @@ export default function AdminCommunities() {
   const confirmDelete = useConfirmDelete()
   const [formOpen, setFormOpen] = useState(false)
   const [editingCommunity, setEditingCommunity] = useState(null)
+  const actionLock = useRef(false)
+  const [busyCommunityId, setBusyCommunityId] = useState(null)
+
+  function beginRowAction(communityId) {
+    if (actionLock.current) return false
+    actionLock.current = true
+    setBusyCommunityId(communityId)
+    return true
+  }
+
+  function endRowAction() {
+    actionLock.current = false
+    setBusyCommunityId(null)
+  }
 
   async function handleCreate(values) {
     try {
@@ -54,12 +68,15 @@ export default function AdminCommunities() {
   }
 
   async function handleToggleActive(community) {
+    if (!beginRowAction(community.id)) return
     try {
       await toggleActive(community.id, !community.isActive)
       showToast(community.isActive ? 'Comunidade desativada.' : 'Comunidade ativada.')
     } catch (err) {
       console.error('[AdminCommunities] toggleActive:', err)
       showToast('Erro ao alterar status.', 'danger')
+    } finally {
+      endRowAction()
     }
   }
 
@@ -69,12 +86,15 @@ export default function AdminCommunities() {
       content: 'A comunidade será bloqueada e seus dados serão excluídos em etapas.',
     })
     if (!confirmed) return
+    if (!beginRowAction(community.id)) return
     try {
       await remove(community.id)
       showToast('Exclusão da comunidade agendada.')
     } catch (err) {
       console.error('[AdminCommunities] delete:', err)
       showToast('Erro ao excluir comunidade.', 'danger')
+    } finally {
+      endRowAction()
     }
   }
 
@@ -168,12 +188,14 @@ export default function AdminCommunities() {
 
               <Button
                 size="small"
-                disabled={community.deletionStatus === 'pending'}
+                loading={busyCommunityId === community.id}
+                disabled={community.deletionStatus === 'pending' || busyCommunityId !== null}
                 onClick={() => handleToggleActive(community)}
               >
                 {community.isActive ? 'Desativar' : 'Ativar'}
               </Button>
               <RowActionsMenu
+                disabled={community.deletionStatus === 'pending' || busyCommunityId !== null}
                 actions={[
                   {
                     key: 'edit',

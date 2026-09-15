@@ -64,3 +64,12 @@ test('renders the same trigger with a single action, for future non-edit/delete 
   assert.match(html, /aria-haspopup="true"/)
   assert.match(html, /Mais ações/)
 })
+
+test('disables the trigger while a row action is pending', () => {
+  const html = render({
+    disabled: true,
+    actions: [{ key: 'delete', label: 'Excluir', icon: () => null, onSelect: () => {} }],
+  })
+  assert.match(html, /aria-haspopup="true"/)
+  assert.match(html, /disabled=""/)
+})

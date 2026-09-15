@@ -1,11 +1,12 @@
 import { ActionMenu, ActionList, IconButton } from '@primer/react'
 import { KebabHorizontalIcon } from '@primer/octicons-react'
 
-export function RowActionsMenu({ actions }) {
+export function RowActionsMenu({ actions, disabled = false }) {
   return (
     <ActionMenu>
       <ActionMenu.Anchor>
         <IconButton
+          disabled={disabled}
           icon={KebabHorizontalIcon}
           variant="invisible"
           aria-label="Mais ações"
@@ -17,7 +18,12 @@ export function RowActionsMenu({ actions }) {
           {actions.map((action) => {
             const Icon = action.icon
             return (
-              <ActionList.Item key={action.key} variant={action.variant} onSelect={action.onSelect}>
+              <ActionList.Item
+                key={action.key}
+                variant={action.variant}
+                disabled={disabled || action.disabled}
+                onSelect={action.onSelect}
+              >
                 <ActionList.LeadingVisual>
                   <Icon />
                 </ActionList.LeadingVisual>

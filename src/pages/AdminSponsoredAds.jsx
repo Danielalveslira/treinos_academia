@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Box, Heading, Text, Button, Spinner, Label } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
@@ -25,6 +25,8 @@ export default function AdminSponsoredAds() {
   const confirmDelete = useConfirmDelete()
   const [formOpen, setFormOpen] = useState(false)
   const [editingAd, setEditingAd] = useState(null)
+  const actionLock = useRef(false)
+  const [busyAdId, setBusyAdId] = useState(null)
 
   // Deriva a contagem por comunidade da mesma lista já carregada pra exibir a lista de
   // anúncios abaixo -- evita uma leitura por comunidade (N+1) só pra mostrar o badge
@@ -83,12 +85,18 @@ export default function AdminSponsoredAds() {
       content: 'O anúncio deixa de aparecer imediatamente em todas as comunidades listadas.',
     })
     if (!confirmed) return
+    if (actionLock.current) return
+    actionLock.current = true
+    setBusyAdId(ad.id)
     try {
       await remove(ad.id)
       showToast('Anúncio excluído.')
     } catch (err) {
       console.error('[AdminSponsoredAds] delete:', err)
       showToast('Erro ao excluir anúncio.', 'danger')
+    } finally {
+      actionLock.current = false
+      setBusyAdId(null)
     }
   }
 
@@ -189,6 +197,7 @@ export default function AdminSponsoredAds() {
                 </Text>
               </Box>
               <RowActionsMenu
+                disabled={busyAdId !== null}
                 actions={[
                   {
                     key: 'edit',

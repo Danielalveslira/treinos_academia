@@ -1,7 +1,23 @@
+import { useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Heading, Text, Button, Spinner, Link, ActionMenu, ActionList, IconButton } from '@primer/react'
+import {
+  Box,
+  Heading,
+  Text,
+  Button,
+  Spinner,
+  Link,
+  ActionMenu,
+  ActionList,
+  IconButton,
+} from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { ChevronRightIcon, KebabHorizontalIcon, PeopleIcon, SignOutIcon } from '@primer/octicons-react'
+import {
+  ChevronRightIcon,
+  KebabHorizontalIcon,
+  PeopleIcon,
+  SignOutIcon,
+} from '@primer/octicons-react'
 import { useCommunities } from '../hooks/useCommunities'
 import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
@@ -23,11 +39,12 @@ function CommunityNameBlock({ community }) {
 // mesmo padrão de RowActionsMenu (Exercícios/Histórico): um único gatilho visível,
 // funciona igual em toque ou clique, sem precisar de gesto novo (toque longo/botão
 // direito) que não existe em nenhum outro lugar do app.
-function LeaveCommunityMenu({ onLeave }) {
+function LeaveCommunityMenu({ onLeave, disabled }) {
   return (
     <ActionMenu>
       <ActionMenu.Anchor>
         <IconButton
+          disabled={disabled}
           icon={KebabHorizontalIcon}
           variant="invisible"
           aria-label="Mais ações"
@@ -36,7 +53,7 @@ function LeaveCommunityMenu({ onLeave }) {
       </ActionMenu.Anchor>
       <ActionMenu.Overlay align="end">
         <ActionList>
-          <ActionList.Item variant="danger" onSelect={onLeave}>
+          <ActionList.Item variant="danger" disabled={disabled} onSelect={onLeave}>
             <ActionList.LeadingVisual>
               <SignOutIcon />
             </ActionList.LeadingVisual>
@@ -81,24 +98,44 @@ export default function Communities() {
   const { myCommunities, exploreCommunities, loading, error, refresh, join, leave } =
     useCommunities()
   const { toasts, showToast } = useToast()
+  const membershipLock = useRef(false)
+  const [pendingCommunityId, setPendingCommunityId] = useState(null)
+
+  function beginMembershipChange(communityId) {
+    if (membershipLock.current) return false
+    membershipLock.current = true
+    setPendingCommunityId(communityId)
+    return true
+  }
+
+  function endMembershipChange() {
+    membershipLock.current = false
+    setPendingCommunityId(null)
+  }
 
   async function handleJoin(community) {
+    if (!beginMembershipChange(community.id)) return
     try {
       await join(community.id)
       showToast(`Você entrou em ${community.name}.`)
     } catch (err) {
       console.error('[Communities] join:', err)
       showToast('Erro ao entrar na comunidade.', 'danger')
+    } finally {
+      endMembershipChange()
     }
   }
 
   async function handleLeave(community) {
+    if (!beginMembershipChange(community.id)) return
     try {
       await leave(community.id)
       showToast(`Você saiu de ${community.name}.`)
     } catch (err) {
       console.error('[Communities] leave:', err)
       showToast('Erro ao sair da comunidade.', 'danger')
+    } finally {
+      endMembershipChange()
     }
   }
 
@@ -152,7 +189,12 @@ export default function Communities() {
                   key={community.id}
                   community={community}
                   linkTo={`/comunidades/${community.id}`}
-                  action={<LeaveCommunityMenu onLeave={() => handleLeave(community)} />}
+                  action={
+                    <LeaveCommunityMenu
+                      onLeave={() => handleLeave(community)}
+                      disabled={pendingCommunityId !== null}
+                    />
+                  }
                 />
               ))}
             </Box>
@@ -193,7 +235,13 @@ export default function Communities() {
                   key={community.id}
                   community={community}
                   action={
-                    <Button size="small" variant="primary" onClick={() => handleJoin(community)}>
+                    <Button
+                      size="small"
+                      variant="primary"
+                      loading={pendingCommunityId === community.id}
+                      disabled={pendingCommunityId !== null}
+                      onClick={() => handleJoin(community)}
+                    >
                       Entrar
                     </Button>
                   }
