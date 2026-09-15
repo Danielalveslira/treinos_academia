@@ -62,13 +62,18 @@ export class ErrorBoundary extends Component {
         <Text sx={{ color: 'fg.muted', maxWidth: 420 }}>
           {stale
             ? 'Esta aba ainda estava com a versão anterior. Salve o que estiver fazendo, se puder, e recarregue para continuar.'
-            : 'Não foi possível carregar esta página. Isso costuma se resolver recarregando — se persistir, tente novamente em alguns instantes.'}
+            : 'Não foi possível carregar esta página. Tente novamente em alguns instantes.'}
         </Text>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button variant="primary" onClick={this.handleReload}>
-            Recarregar
-          </Button>
-          {!stale && <Button onClick={this.handleRetry}>Tentar novamente</Button>}
+        <Box>
+          {stale ? (
+            <Button variant="primary" onClick={this.handleReload}>
+              Recarregar página
+            </Button>
+          ) : (
+            <Button variant="primary" onClick={this.handleRetry}>
+              Tentar novamente
+            </Button>
+          )}
         </Box>
       </Box>
     )

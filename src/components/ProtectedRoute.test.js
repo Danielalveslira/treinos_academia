@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { build } from 'esbuild'
+import manifest from '../../functions/legal/manifest.json' with { type: 'json' }
 
 let directory
 let render
@@ -59,7 +60,17 @@ after(async () => {
 
 const baseAuth = {
   user: { uid: 'u1', emailVerified: true },
-  profile: { role: 'user', createdAt: { toDate: () => new Date('2020-01-01') } },
+  profile: {
+    role: 'user',
+    createdAt: { toDate: () => new Date('2020-01-01') },
+    legalAcceptance: { version: manifest.version, digest: 'digest-atual', acceptedAt: {} },
+  },
+  profileError: '',
+  legalAccess: {
+    policy: { version: manifest.version, published: true, digest: 'digest-atual' },
+  },
+  legalLoading: false,
+  legalError: '',
   loading: false,
   verifyingSession: false,
 }
@@ -81,4 +92,43 @@ test('a disabled account sees the disabled-account gate, never the protected con
 test('an active account never sees the disabled-account gate', () => {
   const html = render(baseAuth)
   assert.doesNotMatch(html, /Conta desativada/)
+  assert.doesNotMatch(html, /Antes de continuar/)
+  assert.match(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('legal state still loading shows only a neutral spinner', () => {
+  const html = render({ ...baseAuth, legalAccess: null, legalLoading: true })
+  assert.match(html, /Verificando acesso/)
+  assert.doesNotMatch(html, /Antes de continuar/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('a user without the current acceptance sees the legal form', () => {
+  const html = render({
+    ...baseAuth,
+    profile: { ...baseAuth.profile, legalAcceptance: undefined },
+  })
+  assert.match(html, /Antes de continuar/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('a legal network error has a specific screen', () => {
+  const html = render({
+    ...baseAuth,
+    legalAccess: null,
+    legalError: 'Não foi possível consultar a policy e as restrições atuais.',
+  })
+  assert.match(html, /Não foi possível verificar seu acesso/)
+  assert.match(html, /Verifique sua conexão/)
+  assert.doesNotMatch(html, /documentos estão sendo atualizados/i)
+})
+
+test('a profile load failure never turns into a legal acceptance request', () => {
+  const html = render({
+    ...baseAuth,
+    profile: null,
+    profileError: 'Não foi possível carregar seu perfil.',
+  })
+  assert.match(html, /Não foi possível carregar sua conta/)
+  assert.doesNotMatch(html, /Antes de continuar/)
 })

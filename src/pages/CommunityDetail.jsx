@@ -33,8 +33,7 @@ import { ToastFlash } from '../components/ToastFlash'
 
 const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
 
-export default function CommunityDetail() {
-  const { id } = useParams()
+function CommunityDetail({ id }) {
   const navigate = useNavigate()
   const { user, profile, isSuperAdmin } = useAuth()
   const { toasts, showToast } = useToast()
@@ -55,7 +54,7 @@ export default function CommunityDetail() {
     addStatusLocally,
     remove,
     now,
-  } = useCommunityFeed(id)
+  } = useCommunityFeed(id, member)
 
   // enabled=member: só busca depois de confirmar participação, nunca antes -- ver
   // comentário em useSponsoredAds.js sobre por que isso é obrigatório, não só uma
@@ -90,7 +89,6 @@ export default function CommunityDetail() {
     try {
       await joinCommunity(id, user.uid)
       setMember(true)
-      refreshFeed()
       showToast('Você entrou na comunidade.')
     } catch (err) {
       console.error('[CommunityDetail] join:', err)
@@ -390,4 +388,9 @@ export default function CommunityDetail() {
       )}
     </Box>
   )
+}
+
+export default function CommunityDetailRoute() {
+  const { id } = useParams()
+  return <CommunityDetail key={id} id={id} />
 }

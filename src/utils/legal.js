@@ -4,8 +4,15 @@ import documents from '../../functions/legal/documents.json' with { type: 'json'
 export const LEGAL_MANIFEST = manifest
 export const LEGAL_DOCUMENTS = documents
 
-export function needsLegalAcceptance(acceptance, version = manifest.version) {
-  return !acceptance || acceptance.version !== version || !acceptance.acceptedAt
+export function needsLegalAcceptance(acceptance, policy) {
+  return (
+    !acceptance ||
+    !policy?.version ||
+    !policy?.digest ||
+    acceptance.version !== policy.version ||
+    acceptance.digest !== policy.digest ||
+    !acceptance.acceptedAt
+  )
 }
 
 export function isAccountRestricted(restriction, now = Date.now()) {
@@ -22,18 +29,42 @@ export function isAccountRestricted(restriction, now = Date.now()) {
 // (ainda carregando) nunca é "desatualizado": é "desconhecido".
 export function isLegalPolicyOutdated(access, version = manifest.version) {
   return Boolean(
-    access && (access.policy?.version !== version || access.policy?.published !== true)
+    access &&
+    (access.policy?.version !== version ||
+      access.policy?.published !== true ||
+      typeof access.policy?.digest !== 'string' ||
+      !access.policy.digest)
   )
 }
 
-// LegalGate.jsx: um cache (sessionStorage) só é seguro como estado inicial enquanto
-// reflete a MESMA versão do manifest que este bundle está executando agora. Um cache
-// escrito por um deploy anterior (versão diferente) não deve ser tratado como uma
-// resposta válida -- nem "ok" nem "desatualizado" -- e sim como se não existisse
-// (LegalGate volta a mostrar o carregamento neutro até a consulta fresca decidir).
-// Sem isso, um usuário nesta mesma aba desde antes de um novo deploy via a mensagem
-// de "documentos sendo atualizados" piscar a partir de um dado que já não descreve
-// a versão atual, mesmo quando ele nunca chegou a ser realmente aplicável.
-export function isCachedAccessValid(cached, version = manifest.version) {
-  return Boolean(cached?.policy?.version === version)
+// Versões anteriores guardavam policy + ausência de restrição em sessionStorage e
+// chegavam a liberar o app antes da leitura fresca. Como uma restrição pode ser criada
+// depois desse registro, nenhum cache do navegador é autoritativo para acesso legal.
+// A limpeza acontece em toda troca de autenticação e remove também chaves deixadas por
+// bundles antigos, sem tocar nos demais dados da sessão.
+export function clearCachedLegalAccess(storage = globalThis.sessionStorage) {
+  try {
+    for (let index = storage.length - 1; index >= 0; index--) {
+      const key = storage.key(index)
+      if (key?.startsWith('legalAccess:')) storage.removeItem(key)
+    }
+  } catch {
+    // sessionStorage pode não existir ou estar bloqueado; o acesso fresco não depende dele.
+  }
+}
+
+export function resolveLegalGateState({ profile, access, loading, error }) {
+  if (!profile || loading || (!access && !error)) return 'loading'
+  if (error) return 'error'
+  if (isAccountRestricted(access.restriction)) return 'restricted'
+
+  const policyUnavailable =
+    LEGAL_MANIFEST.published !== true || isLegalPolicyOutdated(access, LEGAL_MANIFEST.version)
+  // O superadmin precisa alcançar o painel que publica/corrige legalPolicy/current.
+  // Assim que a policy fica válida, ele volta ao mesmo requisito de aceite dos demais.
+  if (policyUnavailable) return profile.role === 'superadmin' ? 'allowed' : 'policy-unavailable'
+
+  return needsLegalAcceptance(profile.legalAcceptance, access.policy)
+    ? 'acceptance-required'
+    : 'allowed'
 }

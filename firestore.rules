@@ -434,9 +434,16 @@ service cloud.firestore {
     }
 
     function isValidCommunity(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() <= 60
+      return data.keys().hasOnly([
+          'name', 'description', 'imageUrl', 'iconName', 'isActive', 'postAccess',
+          'memberCount', 'createdBy', 'createdAt'
+        ])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 60
         && data.description is string && data.description.size() <= 300
-        && (data.imageUrl == null || data.imageUrl is string)
+        // imageUrl é somente compatibilidade de leitura com comunidades antigas; o
+        // formulário atual não envia a chave. Acessá-la diretamente quando ausente
+        // causa erro de avaliação e nega até o payload válido do createCommunity().
+        && (!('imageUrl' in data) || data.imageUrl == null || data.imageUrl is string)
         && data.isActive is bool
         && data.createdBy is string
         && data.createdAt is timestamp

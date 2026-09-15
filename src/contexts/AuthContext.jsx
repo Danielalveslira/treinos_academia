@@ -7,6 +7,8 @@ import { logoutUser } from '../services/authService'
 import { isAccountGoneError } from '../utils/authErrors'
 import { clearPageCache } from '../utils/pageCache'
 import { clearPhotoCache } from '../utils/photoBlobCache'
+import { getLegalAccess } from '../services/legalService'
+import { clearCachedLegalAccess } from '../utils/legal'
 
 export const AuthContext = createContext(null)
 
@@ -14,6 +16,10 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [profileError, setProfileError] = useState('')
+  const [legalAccess, setLegalAccess] = useState(null)
+  const [legalLoading, setLegalLoading] = useState(true)
+  const [legalError, setLegalError] = useState('')
   // Só true durante a checagem de "sessão fantasma" abaixo — cobre o intervalo entre
   // perceber o permission-denied e confirmar (via getIdToken(true)) que a conta já não
   // existe mais. ProtectedRoute mostra um spinner nesse meio-tempo em vez de qualquer
@@ -45,7 +51,10 @@ export function AuthProvider({ children }) {
         // esse erro do jeito que já faz hoje (mensagem genérica, botão de tentar de novo).
       } catch (refreshError) {
         if (isAccountGoneError(refreshError)) {
-          console.warn('[Auth] conta não existe mais no servidor, encerrando sessão local:', refreshError)
+          console.warn(
+            '[Auth] conta não existe mais no servidor, encerrando sessão local:',
+            refreshError
+          )
           if (active && revision === forRevision) await logoutUser().catch(() => {})
         }
       } finally {
@@ -59,22 +68,33 @@ export function AuthProvider({ children }) {
       // fotos baixadas pela sessão anterior ficavam vivas em memória até o teto de
       // MAX_ENTRIES ou um reload, mesmo depois do logout/troca de usuário.
       clearPhotoCache()
+      clearCachedLegalAccess()
       const current = ++revision
       unsubscribeProfile?.()
       unsubscribeProfile = null
       setUser(firebaseUser)
       setProfile(null)
+      setProfileError('')
+      setLegalAccess(null)
+      setLegalError('')
+      setLegalLoading(Boolean(firebaseUser))
       setLoading(true)
       if (!firebaseUser) {
         if (active) {
           setProfile(null)
+          setLegalAccess(null)
+          setLegalLoading(false)
           setLoading(false)
         }
         return
       }
-      try {
-        const userProfile = await ensureUserProfile(firebaseUser.uid)
-        if (active && current === revision) {
+      const [profileResult, legalResult] = await Promise.allSettled([
+        ensureUserProfile(firebaseUser.uid),
+        getLegalAccess(firebaseUser.uid),
+      ])
+      if (active && current === revision) {
+        if (profileResult.status === 'fulfilled') {
+          const userProfile = profileResult.value
           setProfile(userProfile)
           // Uma ação administrativa (desativar conta, aplicar restrição) grava direto em
           // users/{uid} de outra sessão — sem um listener aqui, a sessão afetada só veria
@@ -87,15 +107,26 @@ export function AuthProvider({ children }) {
               setProfile((prev) => ({ ...prev, ...snapshot.data(), id: firebaseUser.uid }))
             },
             (error) => {
-              if (active && current === revision) handlePossibleGhostSession(firebaseUser, error, current)
+              if (active && current === revision)
+                handlePossibleGhostSession(firebaseUser, error, current)
             }
           )
+        } else {
+          console.error('[Auth] ensureUserProfile:', profileResult.reason)
+          setProfileError(
+            'Não foi possível carregar seu perfil. Recarregue a página para tentar novamente.'
+          )
+          await handlePossibleGhostSession(firebaseUser, profileResult.reason, current)
+          if (!active || current !== revision) return
         }
-      } catch (err) {
-        console.error('[Auth] ensureUserProfile:', err)
-        if (active && current === revision) await handlePossibleGhostSession(firebaseUser, err, current)
-      } finally {
-        if (active && current === revision) setLoading(false)
+        if (legalResult.status === 'fulfilled') {
+          setLegalAccess(legalResult.value)
+        } else {
+          console.error('[Auth] getLegalAccess:', legalResult.reason)
+          setLegalError('Não foi possível consultar a policy e as restrições atuais.')
+        }
+        setLegalLoading(false)
+        setLoading(false)
       }
     })
     return () => {
@@ -123,9 +154,40 @@ export function AuthProvider({ children }) {
     return userProfile
   }
 
+  async function refreshLegalAccess(userId = user?.uid) {
+    if (!userId || auth.currentUser?.uid !== userId) return
+    setLegalLoading(true)
+    setLegalError('')
+    try {
+      const access = await getLegalAccess(userId)
+      if (auth.currentUser?.uid === userId) setLegalAccess(access)
+      return access
+    } catch (error) {
+      console.error('[Auth] getLegalAccess:', error)
+      if (auth.currentUser?.uid === userId) {
+        setLegalError('Não foi possível consultar a policy e as restrições atuais.')
+      }
+    } finally {
+      if (auth.currentUser?.uid === userId) setLegalLoading(false)
+    }
+  }
+
   return (
     <AuthContext.Provider
-      value={{ user, profile, isSuperAdmin, loading, verifyingSession, refreshProfile, saveProfile }}
+      value={{
+        user,
+        profile,
+        profileError,
+        legalAccess,
+        legalLoading,
+        legalError,
+        isSuperAdmin,
+        loading,
+        verifyingSession,
+        refreshProfile,
+        refreshLegalAccess,
+        saveProfile,
+      }}
     >
       {children}
     </AuthContext.Provider>

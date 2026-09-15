@@ -1,12 +1,12 @@
 import { httpsCallable } from 'firebase/functions'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDocFromServer } from 'firebase/firestore'
 import { db, functions } from '../firebase/config'
 import { LEGAL_MANIFEST } from '../utils/legal'
 
 export async function getLegalAccess(userId) {
   const [policy, restriction] = await Promise.all([
-    getDoc(doc(db, 'legalPolicy', 'current')),
-    getDoc(doc(db, 'accountRestrictions', userId)),
+    getDocFromServer(doc(db, 'legalPolicy', 'current')),
+    getDocFromServer(doc(db, 'accountRestrictions', userId)),
   ])
   return { policy: policy.data(), restriction: restriction.data() }
 }

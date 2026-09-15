@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Box,
   Flash,
@@ -55,7 +55,7 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
   const [compressingPhoto, setCompressingPhoto] = useState(false)
   const [caption, setCaption] = useState('')
   const [uploadProgress, setUploadProgress] = useState(null)
-  const [uploadTask, setUploadTask] = useState(null)
+  const uploadTask = useRef(null)
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -64,6 +64,13 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
       if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl)
     }
   }, [photoPreviewUrl])
+
+  useEffect(
+    () => () => {
+      uploadTask.current?.cancel()
+    },
+    []
+  )
 
   function updateOption(index, value) {
     setOptions((prev) => prev.map((o, i) => (i === index ? value : o)))
@@ -109,7 +116,14 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
   }
 
   function handleCancelUpload() {
-    uploadTask?.cancel()
+    uploadTask.current?.cancel()
+  }
+
+  function handleCancel() {
+    const task = uploadTask.current
+    uploadTask.current = null
+    task?.cancel()
+    onCancel()
   }
 
   async function handleSubmit(e) {
@@ -150,7 +164,7 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
           { blob: photoBlob, caption },
           { onProgress: setUploadProgress }
         )
-        setUploadTask(task)
+        uploadTask.current = task
         const ref = await done
         await onSubmit({ type, ref, blob: photoBlob, caption })
       }
@@ -163,7 +177,7 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
     } finally {
       setSubmitting(false)
       setUploadProgress(null)
-      setUploadTask(null)
+      uploadTask.current = null
     }
   }
 
@@ -380,7 +394,7 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
         )}
 
         <Box className="community-form-actions">
-          <Button type="button" onClick={onCancel}>
+          <Button type="button" onClick={handleCancel}>
             Cancelar
           </Button>
           <Button

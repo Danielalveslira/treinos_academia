@@ -1,63 +1,29 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Button, FormControl, TextInput, Flash, Spinner } from '@primer/react'
+import { Box, Button, FormControl, TextInput, Flash, Spinner } from '@primer/react'
 import { PublicLayout } from './PublicLayout'
 import { LegalConsent } from './LegalConsent'
 import { useAuth } from '../hooks/useAuth'
-import { getLegalAccess, acceptLegalDocuments } from '../services/legalService'
+import { acceptLegalDocuments } from '../services/legalService'
 import { setBirthInfo } from '../services/usersService'
 import { logoutUser } from '../services/authService'
-import {
-  isAccountRestricted,
-  isCachedAccessValid,
-  isLegalPolicyOutdated,
-  LEGAL_MANIFEST,
-  needsLegalAcceptance,
-} from '../utils/legal'
+import { LEGAL_MANIFEST, resolveLegalGateState } from '../utils/legal'
 import { validateBirthDate, hasErrors } from '../utils/validators'
 
 function todayString() {
   return new Date().toISOString().slice(0, 10)
 }
 
-// Sobrevive a um F5 (ao contrário do pageCache.js, que é só em memória) para quem já
-// passou por essa checagem nesta aba não ver o spinner "Antes de continuar" de
-// novo a cada reload — a verificação real ainda roda em segundo plano a cada
-// montagem (fetchAndCacheAccess abaixo), então uma restrição ou versão nova aplicada
-// no meio da sessão continua sendo pega, só não paga o custo de mostrar o gate vazio
-// primeiro quando o resultado de antes ainda é válido.
-function cacheKey(uid) {
-  return `legalAccess:${uid}`
-}
-
-// Só devolve o cache se ele ainda descrever a versão atual do manifest (ver
-// isCachedAccessValid em utils/legal.js) -- um cache de um deploy anterior é tratado
-// como se não existisse (volta pro estado de carregamento neutro) em vez de arriscar
-// mostrar "documentos sendo atualizados" a partir de um dado que já não é aplicável.
-function readCachedAccess(uid) {
-  try {
-    const raw = sessionStorage.getItem(cacheKey(uid))
-    if (!raw) return null
-    const cached = JSON.parse(raw)
-    return isCachedAccessValid(cached) ? cached : null
-  } catch {
-    return null
-  }
-}
-
-function writeCachedAccess(uid, access) {
-  try {
-    sessionStorage.setItem(cacheKey(uid), JSON.stringify(access))
-  } catch {
-    // sessionStorage indisponível (modo privado etc.) — só não evita o spinner na
-    // próxima vez, a verificação em si continua funcionando normalmente.
-  }
-}
-
 export function LegalGate({ children }) {
-  const { user, profile, refreshProfile } = useAuth()
-  const [access, setAccess] = useState(() => readCachedAccess(user.uid))
-  const [attempt, setAttempt] = useState(0)
+  const {
+    user,
+    profile,
+    legalAccess: access,
+    legalLoading,
+    legalError,
+    refreshProfile,
+    refreshLegalAccess,
+  } = useAuth()
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmed, setConfirmed] = useState({
@@ -70,36 +36,27 @@ export function LegalGate({ children }) {
   // conseguir aceitar uma versão nova dos documentos. Quem já tem, não vê o campo.
   const [birthDate, setBirthDate] = useState('')
   const [birthDateError, setBirthDateError] = useState('')
-  useEffect(() => {
-    if (!LEGAL_MANIFEST.published) return
-    let active = true
-    getLegalAccess(user.uid)
-      .then((data) => {
-        if (!active) return
-        setAccess(data)
-        writeCachedAccess(user.uid, data)
-      })
-      .catch(() => {
-        if (active) setError('Não foi possível verificar os documentos. Tente novamente.')
-      })
-    return () => {
-      active = false
-    }
-  }, [user.uid, attempt])
-  if (!LEGAL_MANIFEST.published) return children
-  const restricted = isAccountRestricted(access?.restriction)
-  const outdated = isLegalPolicyOutdated(access)
-  // Superadmin nunca fica trancado por uma versão ainda não publicada em
-  // legalPolicy/current: precisa sempre poder chegar ao painel para publicá-la. Uma
-  // vez publicada, o aceite normal continua exigido (regra em firestore.rules).
-  if (outdated && profile?.role === 'superadmin') return children
-  if (
-    access &&
-    !restricted &&
-    !outdated &&
-    !needsLegalAcceptance(profile?.legalAcceptance, access.policy.version)
-  )
-    return children
+  const gateState = resolveLegalGateState({
+    profile,
+    access,
+    loading: legalLoading,
+    error: legalError,
+  })
+
+  if (gateState === 'loading') {
+    return (
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}
+      >
+        <Spinner aria-label="Verificando acesso" />
+      </Box>
+    )
+  }
+  if (gateState === 'allowed') return children
+
+  const restricted = gateState === 'restricted'
+  const policyUnavailable = gateState === 'policy-unavailable'
+  const accessError = gateState === 'error'
 
   const needsBirthDate = !profile?.dataNascimento
 
@@ -140,23 +97,21 @@ export function LegalGate({ children }) {
     <PublicLayout>
       <section className="support-page" aria-labelledby="legal-gate-title">
         <h1 id="legal-gate-title">
-          {restricted ? 'Acesso restrito' : 'Antes de continuar'}
+          {restricted
+            ? 'Acesso restrito'
+            : accessError
+              ? 'Não foi possível verificar seu acesso'
+              : policyUnavailable
+                ? 'Documentos indisponíveis'
+                : 'Antes de continuar'}
         </h1>
-        {error && (
+        {(error || accessError) && (
           <Flash variant="danger" role="alert">
-            {error}
+            {error || `${legalError} Verifique sua conexão e tente novamente.`}
           </Flash>
         )}
-        {!access && !error && <Spinner aria-label="Verificando documentos" />}
-        {!access && error && (
-          <Button
-            onClick={() => {
-              setError('')
-              setAttempt((n) => n + 1)
-            }}
-          >
-            Tentar novamente
-          </Button>
+        {accessError && (
+          <Button onClick={() => refreshLegalAccess(user.uid)}>Tentar novamente</Button>
         )}
         {restricted && (
           <p>
@@ -164,13 +119,13 @@ export function LegalGate({ children }) {
             <Link to="/atendimento">atendimento</Link>.
           </p>
         )}
-        {outdated && (
+        {policyUnavailable && (
           <p>
-            Os documentos estão sendo atualizados.{' '}
+            A policy publicada não corresponde a esta versão do app.{' '}
             <Button onClick={() => window.location.reload()}>Recarregar</Button>
           </p>
         )}
-        {access && !restricted && !outdated && (
+        {gateState === 'acceptance-required' && (
           <form onSubmit={accept}>
             <p>
               Leia a versão {LEGAL_MANIFEST.version}. O atendimento permanece disponível antes da
@@ -195,8 +150,8 @@ export function LegalGate({ children }) {
                   block
                 />
                 <FormControl.Caption>
-                  Necessária para confirmar a idade mínima ({LEGAL_MANIFEST.minimumAge} anos) —
-                  sua conta ainda não tinha essa informação.
+                  Necessária para confirmar a idade mínima ({LEGAL_MANIFEST.minimumAge} anos) — sua
+                  conta ainda não tinha essa informação.
                 </FormControl.Caption>
                 {birthDateError && (
                   <FormControl.Validation variant="error">{birthDateError}</FormControl.Validation>
