@@ -114,7 +114,7 @@ service cloud.firestore {
     }
 
     function isValidExercise(data) {
-      return data.name is string && data.name.size() > 0 && data.name.size() <= 60
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100
         // Sem teto até aqui — o formulário só oferecia uma lista fixa de grupos, então
         // nada gravava um valor arbitrariamente grande, mas o campo sempre foi texto
         // livre nesta regra. Agora que o formulário deixa criar grupos personalizados
@@ -132,6 +132,16 @@ service cloud.firestore {
         // travar isso aqui também.
         && (!('type' in data) || data.type in ['strength', 'cardio'])
         && (!('note' in data) || data.note is string && data.note.size() <= 300)
+        && (!('source' in data) || data.source in ['custom', 'catalog'])
+        && (!('catalogExerciseId' in data)
+          || data.catalogExerciseId == null
+          || data.catalogExerciseId is string
+            && data.catalogExerciseId.size() > 0
+            && data.catalogExerciseId.size() <= 100)
+        && (data.get('source', 'custom') != 'catalog'
+          || data.catalogExerciseId is string && data.catalogExerciseId.size() > 0)
+        && (data.get('source', 'custom') != 'custom'
+          || data.get('catalogExerciseId', null) == null)
         // Posição do exercício dentro do próprio muscleGroup (ver "Reordenar
         // exercícios" em Exercises.jsx) -- opcional pelo mesmo motivo de type/note:
         // a maioria dos exercícios nunca é reordenada manualmente, e um exercício

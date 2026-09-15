@@ -19,6 +19,7 @@ let firestoreEnv
 let storageEnv
 let memberStorage
 let outsiderStorage
+let anonymousStorage
 
 async function seed(path, data) {
   await firestoreEnv.withSecurityRulesDisabled((context) =>
@@ -65,11 +66,34 @@ before(async () => {
   await storageEnv.clearStorage()
   memberStorage = storageEnv.authenticatedContext('member').storage()
   outsiderStorage = storageEnv.authenticatedContext('outsider').storage()
+  anonymousStorage = storageEnv.unauthenticatedContext().storage()
   await seed('users/member', { role: 'user' })
   await seed(`communityMembers/${COMMUNITY_ID}_member`, {
     communityId: COMMUNITY_ID,
     userId: 'member',
   })
+})
+
+test('catalog images are publicly readable only in the versioned catalog namespace', async () => {
+  const catalogPath = 'exercise-catalog/v1/Barbell_Deadlift/thumb.webp'
+  await seedPhoto(catalogPath)
+  await assertSucceeds(getBytes(ref(anonymousStorage, catalogPath)))
+  await assertFails(
+    uploadBytes(ref(memberStorage, catalogPath), new Uint8Array([2]), {
+      contentType: 'image/webp',
+    })
+  )
+
+  const invalidPaths = [
+    'exercise-catalog/current/Barbell_Deadlift/thumb.webp',
+    'exercise-catalog/v1/../thumb.webp',
+    'exercise-catalog/v1/Barbell_Deadlift/0.jpg',
+    'private-catalog/v1/Barbell_Deadlift/thumb.webp',
+  ]
+  for (const path of invalidPaths) {
+    await seedPhoto(path)
+    await assertFails(getBytes(ref(anonymousStorage, path)))
+  }
 })
 
 after(async () => {

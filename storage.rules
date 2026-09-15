@@ -6,6 +6,16 @@ rules_version = '2';
 // a filiação do leitor, totalizando exatamente duas consultas.
 service firebase.storage {
   match /b/{bucket}/o {
+    // Catálogo estático público: a URL é derivada de catalog.json, sem consulta ao
+    // Firestore. Clientes nunca escrevem neste namespace; somente o pipeline local com
+    // Admin SDK (que não passa pelas Rules) pode publicar arquivos versionados.
+    match /exercise-catalog/{version}/{exerciseId}/{fileName} {
+      allow read: if version.matches('^v[0-9]+$')
+        && exerciseId.matches('^[A-Za-z0-9_() .-]+$')
+        && fileName.matches('^(thumb|[0-9]+)\\.webp$');
+      allow write: if false;
+    }
+
     match /statusPhotos/{communityId}/{fileName} {
       function statusId() {
         return fileName.replace('[.]webp$', '');

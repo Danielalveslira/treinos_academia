@@ -1,6 +1,7 @@
 import {
   collection,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   deleteField,
@@ -13,6 +14,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { getExerciseType } from '../utils/exerciseType'
+import { getCatalogPersonalDocumentId } from '../utils/exerciseCatalog.js'
 
 // Teto de defesa: ninguém cadastra centenas de exercícios de verdade, mas sem isso a
 // leitura escala com o tamanho da coleção — o app já funciona bem dentro desse limite.
@@ -35,7 +37,15 @@ export function createExercise(userId, exercise) {
     type: getExerciseType(exercise),
     note: exercise.note?.trim() || '',
     active: true,
+    source: 'custom',
+    catalogExerciseId: null,
   })
+}
+
+export async function createCatalogExercise(userId, exercise) {
+  const exerciseId = getCatalogPersonalDocumentId(exercise.catalogExerciseId)
+  await setDoc(doc(db, 'users', userId, 'exercises', exerciseId), exercise)
+  return exerciseId
 }
 
 export function updateExercise(userId, exerciseId, exercise, { clearOrder = false } = {}) {

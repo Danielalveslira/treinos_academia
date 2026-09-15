@@ -59,9 +59,9 @@ export function validateUsername(rawUsername) {
   return errors
 }
 
-export function validateExercise({ name, muscleGroup, type }) {
+export function validateExercise({ name, muscleGroup, type, source, catalogExerciseId }) {
   const errors = {}
-  const nameError = requiredText(name, 60, 'Nome é obrigatório', 'Nome muito longo')
+  const nameError = requiredText(name, 100, 'Nome é obrigatório', 'Nome muito longo')
   if (nameError) errors.name = nameError
   const muscleGroupError = requiredText(
     muscleGroup,
@@ -71,6 +71,13 @@ export function validateExercise({ name, muscleGroup, type }) {
   )
   if (muscleGroupError) errors.muscleGroup = muscleGroupError
   if (type != null && !EXERCISE_TYPES.includes(type)) errors.type = 'Tipo inválido'
+  if (source != null && !['custom', 'catalog'].includes(source)) errors.source = 'Origem inválida'
+  if (source === 'catalog' && (!catalogExerciseId || typeof catalogExerciseId !== 'string')) {
+    errors.catalogExerciseId = 'Exercício do catálogo inválido'
+  }
+  if (source !== 'catalog' && catalogExerciseId != null) {
+    errors.catalogExerciseId = 'Exercício personalizado não pode ter ID de catálogo'
+  }
   return errors
 }
 
@@ -143,7 +150,12 @@ export function validateTextStatus({ text }) {
 
 export function validatePollStatus({ question, options }) {
   const errors = {}
-  const questionError = requiredText(question, 200, 'Pergunta é obrigatória', 'Pergunta muito longa')
+  const questionError = requiredText(
+    question,
+    200,
+    'Pergunta é obrigatória',
+    'Pergunta muito longa'
+  )
   if (questionError) errors.question = questionError
   const filled = options.filter((o) => o.trim())
   if (filled.length < 2) errors.options = 'Adicione pelo menos 2 opções'

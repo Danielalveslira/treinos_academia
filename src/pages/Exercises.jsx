@@ -22,6 +22,7 @@ import { useExercises } from '../contexts/ExercisesContext'
 import { useDashboard } from '../hooks/useDashboard'
 import { useToast } from '../hooks/useToast'
 import { ExerciseForm } from '../components/ExerciseForm'
+import { ExerciseCatalog } from '../components/ExerciseCatalog'
 import { ErrorState } from '../components/ErrorState'
 import { RowActionsMenu } from '../components/RowActionsMenu'
 import { ToastFlash } from '../components/ToastFlash'
@@ -47,11 +48,14 @@ function buildLastLoggedMap(allWorkouts) {
 
 export default function Exercises() {
   const navigate = useNavigate()
-  const { exercises, loading, error, add, edit, remove, reorder, refresh } = useExercises()
+  const { exercises, loading, error, add, addFromCatalog, edit, remove, reorder, refresh } =
+    useExercises()
   const { allWorkouts } = useDashboard()
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
   const [formOpen, setFormOpen] = useState(false)
+  const [addChoiceOpen, setAddChoiceOpen] = useState(false)
+  const [catalogOpen, setCatalogOpen] = useState(false)
   const [editingExercise, setEditingExercise] = useState(null)
   const [search, setSearch] = useState('')
   const [showInactive, setShowInactive] = useState(false)
@@ -139,6 +143,18 @@ export default function Exercises() {
     }
   }
 
+  async function handleCatalogAdd(exercise) {
+    try {
+      const result = await addFromCatalog(exercise)
+      showToast(result.added ? 'Exercício adicionado.' : 'Exercício já adicionado.')
+      return result
+    } catch (err) {
+      console.error('[Exercises] catalog create:', err)
+      showToast('Erro ao adicionar exercício.', 'danger')
+      throw err
+    }
+  }
+
   async function handleUpdate(values) {
     try {
       await edit(editingExercise.id, values)
@@ -187,222 +203,275 @@ export default function Exercises() {
           )}
         </div>
 
-        {!formOpen && !editingExercise && (
+        {!formOpen && !editingExercise && !addChoiceOpen && !catalogOpen && (
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button leadingVisual={SyncIcon} onClick={refresh} loading={loading} disabled={loading}>
               Atualizar
             </Button>
             {(loading || error || hasAnyExercise) && (
-              <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
-                Novo
+              <Button
+                leadingVisual={PlusIcon}
+                variant="primary"
+                onClick={() => setAddChoiceOpen(true)}
+              >
+                Adicionar exercício
               </Button>
             )}
           </Box>
         )}
       </header>
 
-      {formOpen && (
-        <ExerciseForm exercises={exercises} onSubmit={handleCreate} onCancel={() => setFormOpen(false)} />
-      )}
-      {editingExercise && (
-        <ExerciseForm
-          exercises={exercises}
-          initialValue={editingExercise}
-          onSubmit={handleUpdate}
-          onCancel={() => setEditingExercise(null)}
+      {catalogOpen ? (
+        <ExerciseCatalog
+          personalExercises={exercises}
+          onAdd={handleCatalogAdd}
+          onClose={() => setCatalogOpen(false)}
         />
-      )}
-
-      {loading && exercises.length === 0 && (
-        <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
-      )}
-      <ErrorState error={error} onRetry={refresh} />
-
-      {!loading && !error && !hasAnyExercise && (
-        <Blankslate>
-          <Blankslate.Visual>
-            <TasklistIcon size={24} />
-          </Blankslate.Visual>
-          <Blankslate.Heading>Nenhum exercício cadastrado</Blankslate.Heading>
-          <Blankslate.Description>
-            Cadastre seu primeiro exercício para começar a registrar treinos.
-          </Blankslate.Description>
-          <Blankslate.PrimaryAction onClick={() => setFormOpen(true)}>
-            Cadastrar exercício
-          </Blankslate.PrimaryAction>
-        </Blankslate>
-      )}
-
-      {hasAnyExercise && (
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mb: 3 }}>
-          {exercises.length > SEARCH_THRESHOLD && (
-            <label className="exercise-search" style={{ flex: '1 1 220px', marginBottom: 0 }}>
-              <span className="sr-only">Buscar exercício</span>
-              <SearchIcon size={16} />
-              <input
-                type="search"
-                value={search}
-                placeholder="Buscar exercício"
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </label>
+      ) : (
+        <>
+          {addChoiceOpen && (
+            <Box className="exercise-add-choice" aria-labelledby="exercise-add-title">
+              <Heading as="h2" id="exercise-add-title">
+                Adicionar exercício
+              </Heading>
+              <Text as="p">Escolha a origem do exercício.</Text>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setAddChoiceOpen(false)
+                    setCatalogOpen(true)
+                  }}
+                >
+                  Catálogo Evolutus
+                </Button>
+                <Button
+                  onClick={() => {
+                    setAddChoiceOpen(false)
+                    setFormOpen(true)
+                  }}
+                >
+                  Criar personalizado
+                </Button>
+                <Button variant="invisible" onClick={() => setAddChoiceOpen(false)}>
+                  Cancelar
+                </Button>
+              </Box>
+            </Box>
           )}
-          {inactiveCount > 0 && (
-            <Button
-              leadingVisual={showInactive ? EyeClosedIcon : EyeIcon}
-              onClick={() => setShowInactive((prev) => !prev)}
-            >
-              {showInactive ? 'Ocultar inativos' : `Mostrar inativos (${inactiveCount})`}
-            </Button>
+
+          {formOpen && (
+            <ExerciseForm
+              exercises={exercises}
+              onSubmit={handleCreate}
+              onCancel={() => setFormOpen(false)}
+            />
           )}
-        </Box>
-      )}
+          {editingExercise && (
+            <ExerciseForm
+              exercises={exercises}
+              initialValue={editingExercise}
+              onSubmit={handleUpdate}
+              onCancel={() => setEditingExercise(null)}
+            />
+          )}
 
-      {hasAnyExercise && !hasVisibleExercise && (
-        <Text as="p" sx={{ color: 'fg.muted', textAlign: 'center', py: 5 }}>
-          Nenhum exercício encontrado.
-        </Text>
-      )}
+          {loading && exercises.length === 0 && (
+            <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
+          )}
+          <ErrorState error={error} onRetry={refresh} />
 
-      <div className="exercise-groups">
-        {grouped.map(([muscleGroup, list]) => {
-          const GroupIcon = getMuscleGroupIcon(muscleGroup)
-          const isReordering = reorderGroup === muscleGroup
-          const canReorder =
-            !reorderGroup && !formOpen && !editingExercise && groupSizeAll.get(muscleGroup) >= 2
-          return (
-            <section className="exercise-group" key={muscleGroup}>
-              <div className="exercise-group-heading">
-                <span className="muscle-icon">
-                  <GroupIcon size={16} strokeWidth={2} />
-                </span>
-                <Heading as="h2">{muscleGroup}</Heading>
-                <span className="exercise-group-count">{list.length}</span>
-                {canReorder && (
-                  <Button
-                    size="small"
-                    leadingVisual={ListOrderedIcon}
-                    onClick={() => startReorder(muscleGroup)}
-                    sx={{ ml: 2 }}
-                  >
-                    Reordenar
-                  </Button>
-                )}
-              </div>
+          {!loading && !error && !hasAnyExercise && (
+            <Blankslate>
+              <Blankslate.Visual>
+                <TasklistIcon size={24} />
+              </Blankslate.Visual>
+              <Blankslate.Heading>Nenhum exercício cadastrado</Blankslate.Heading>
+              <Blankslate.Description>
+                Cadastre seu primeiro exercício para começar a registrar treinos.
+              </Blankslate.Description>
+              <Blankslate.PrimaryAction onClick={() => setAddChoiceOpen(true)}>
+                Adicionar exercício
+              </Blankslate.PrimaryAction>
+            </Blankslate>
+          )}
 
-              {isReordering && (
-                <Stack gap="none" className="exercise-list exercise-list-reorder">
-                  {reorderIds.map((exerciseId, index) => {
-                    const exercise = exercises.find((ex) => ex.id === exerciseId)
-                    if (!exercise) return null
-                    return (
-                      <Box key={exerciseId} className="exercise-row exercise-row-reorder">
-                        <Text className={exercise.active ? '' : 'is-inactive'} sx={{ flex: 1 }}>
-                          {exercise.name}
-                        </Text>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          <IconButton
-                            size="small"
-                            icon={ArrowUpIcon}
-                            aria-label={`Mover ${exercise.name} para cima`}
-                            disabled={index === 0 || savingOrder}
-                            onClick={() => moveReorderRow(exerciseId, -1)}
-                          />
-                          <IconButton
-                            size="small"
-                            icon={ArrowDownIcon}
-                            aria-label={`Mover ${exercise.name} para baixo`}
-                            disabled={index === reorderIds.length - 1 || savingOrder}
-                            onClick={() => moveReorderRow(exerciseId, 1)}
-                          />
-                        </Box>
-                      </Box>
-                    )
-                  })}
-                  <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                    <Button
-                      variant="primary"
-                      leadingVisual={CheckIcon}
-                      loading={savingOrder}
-                      disabled={savingOrder}
-                      onClick={saveReorder}
-                    >
-                      Salvar ordem
-                    </Button>
-                    <Button leadingVisual={XIcon} disabled={savingOrder} onClick={cancelReorder}>
-                      Cancelar
-                    </Button>
-                  </Box>
-                </Stack>
+          {hasAnyExercise && (
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mb: 3 }}>
+              {exercises.length > SEARCH_THRESHOLD && (
+                <label className="exercise-search" style={{ flex: '1 1 220px', marginBottom: 0 }}>
+                  <span className="sr-only">Buscar exercício</span>
+                  <SearchIcon size={16} />
+                  <input
+                    type="search"
+                    value={search}
+                    placeholder="Buscar exercício"
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </label>
               )}
+              {inactiveCount > 0 && (
+                <Button
+                  leadingVisual={showInactive ? EyeClosedIcon : EyeIcon}
+                  onClick={() => setShowInactive((prev) => !prev)}
+                >
+                  {showInactive ? 'Ocultar inativos' : `Mostrar inativos (${inactiveCount})`}
+                </Button>
+              )}
+            </Box>
+          )}
 
-              {!isReordering && (
-              <Stack gap="none" className="exercise-list">
-                {list.map((exercise) => {
-                  const lastLogged = lastLoggedMap.get(exercise.id)
-                  return (
-                    <Box key={exercise.id} className="exercise-row">
-                      <Box
-                        as="button"
-                        type="button"
-                        onClick={() => navigate(`/exercicios/${exercise.id}`)}
-                        sx={{
-                          flex: 1,
-                          minWidth: 0,
-                          textAlign: 'left',
-                          bg: 'transparent',
-                          border: 0,
-                          p: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 2,
-                          cursor: 'pointer',
-                          color: 'fg.default',
-                        }}
+          {hasAnyExercise && !hasVisibleExercise && (
+            <Text as="p" sx={{ color: 'fg.muted', textAlign: 'center', py: 5 }}>
+              Nenhum exercício encontrado.
+            </Text>
+          )}
+
+          <div className="exercise-groups">
+            {grouped.map(([muscleGroup, list]) => {
+              const GroupIcon = getMuscleGroupIcon(muscleGroup)
+              const isReordering = reorderGroup === muscleGroup
+              const canReorder =
+                !reorderGroup && !formOpen && !editingExercise && groupSizeAll.get(muscleGroup) >= 2
+              return (
+                <section className="exercise-group" key={muscleGroup}>
+                  <div className="exercise-group-heading">
+                    <span className="muscle-icon">
+                      <GroupIcon size={16} strokeWidth={2} />
+                    </span>
+                    <Heading as="h2">{muscleGroup}</Heading>
+                    <span className="exercise-group-count">{list.length}</span>
+                    {canReorder && (
+                      <Button
+                        size="small"
+                        leadingVisual={ListOrderedIcon}
+                        onClick={() => startReorder(muscleGroup)}
+                        sx={{ ml: 2 }}
                       >
-                        <Box sx={{ minWidth: 0, display: 'grid', gap: '2px' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Text className={exercise.active ? '' : 'is-inactive'}>
+                        Reordenar
+                      </Button>
+                    )}
+                  </div>
+
+                  {isReordering && (
+                    <Stack gap="none" className="exercise-list exercise-list-reorder">
+                      {reorderIds.map((exerciseId, index) => {
+                        const exercise = exercises.find((ex) => ex.id === exerciseId)
+                        if (!exercise) return null
+                        return (
+                          <Box key={exerciseId} className="exercise-row exercise-row-reorder">
+                            <Text className={exercise.active ? '' : 'is-inactive'} sx={{ flex: 1 }}>
                               {exercise.name}
                             </Text>
-                            {!exercise.active && <Label>Inativo</Label>}
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <IconButton
+                                size="small"
+                                icon={ArrowUpIcon}
+                                aria-label={`Mover ${exercise.name} para cima`}
+                                disabled={index === 0 || savingOrder}
+                                onClick={() => moveReorderRow(exerciseId, -1)}
+                              />
+                              <IconButton
+                                size="small"
+                                icon={ArrowDownIcon}
+                                aria-label={`Mover ${exercise.name} para baixo`}
+                                disabled={index === reorderIds.length - 1 || savingOrder}
+                                onClick={() => moveReorderRow(exerciseId, 1)}
+                              />
+                            </Box>
                           </Box>
-                          {lastLogged && (
-                            <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-                              Último registro: {formatDate(lastLogged)}
-                            </Text>
-                          )}
-                        </Box>
-                        <Box sx={{ ml: 'auto', color: 'fg.muted', display: 'flex' }}>
-                          <ChevronRightIcon size={16} />
-                        </Box>
+                        )
+                      })}
+                      <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
+                        <Button
+                          variant="primary"
+                          leadingVisual={CheckIcon}
+                          loading={savingOrder}
+                          disabled={savingOrder}
+                          onClick={saveReorder}
+                        >
+                          Salvar ordem
+                        </Button>
+                        <Button
+                          leadingVisual={XIcon}
+                          disabled={savingOrder}
+                          onClick={cancelReorder}
+                        >
+                          Cancelar
+                        </Button>
                       </Box>
-                      <RowActionsMenu
-                        actions={[
-                          {
-                            key: 'edit',
-                            label: 'Editar',
-                            icon: PencilIcon,
-                            onSelect: () => setEditingExercise(exercise),
-                          },
-                          {
-                            key: 'delete',
-                            label: 'Excluir',
-                            icon: TrashIcon,
-                            variant: 'danger',
-                            onSelect: () => handleDeleteRequest(exercise),
-                          },
-                        ]}
-                      />
-                    </Box>
-                  )
-                })}
-              </Stack>
-              )}
-            </section>
-          )
-        })}
-      </div>
+                    </Stack>
+                  )}
+
+                  {!isReordering && (
+                    <Stack gap="none" className="exercise-list">
+                      {list.map((exercise) => {
+                        const lastLogged = lastLoggedMap.get(exercise.id)
+                        return (
+                          <Box key={exercise.id} className="exercise-row">
+                            <Box
+                              as="button"
+                              type="button"
+                              onClick={() => navigate(`/exercicios/${exercise.id}`)}
+                              sx={{
+                                flex: 1,
+                                minWidth: 0,
+                                textAlign: 'left',
+                                bg: 'transparent',
+                                border: 0,
+                                p: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                cursor: 'pointer',
+                                color: 'fg.default',
+                              }}
+                            >
+                              <Box sx={{ minWidth: 0, display: 'grid', gap: '2px' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                  <Text className={exercise.active ? '' : 'is-inactive'}>
+                                    {exercise.name}
+                                  </Text>
+                                  {!exercise.active && <Label>Inativo</Label>}
+                                </Box>
+                                {lastLogged && (
+                                  <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+                                    Último registro: {formatDate(lastLogged)}
+                                  </Text>
+                                )}
+                              </Box>
+                              <Box sx={{ ml: 'auto', color: 'fg.muted', display: 'flex' }}>
+                                <ChevronRightIcon size={16} />
+                              </Box>
+                            </Box>
+                            <RowActionsMenu
+                              actions={[
+                                {
+                                  key: 'edit',
+                                  label: 'Editar',
+                                  icon: PencilIcon,
+                                  onSelect: () => setEditingExercise(exercise),
+                                },
+                                {
+                                  key: 'delete',
+                                  label: 'Excluir',
+                                  icon: TrashIcon,
+                                  variant: 'danger',
+                                  onSelect: () => handleDeleteRequest(exercise),
+                                },
+                              ]}
+                            />
+                          </Box>
+                        )
+                      })}
+                    </Stack>
+                  )}
+                </section>
+              )
+            })}
+          </div>
+        </>
+      )}
     </Box>
   )
 }

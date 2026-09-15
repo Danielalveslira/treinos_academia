@@ -23,7 +23,7 @@ before(async () => {
           createElement(BaseStyles, null, createElement(MemoryRouter, null,
             createElement(WorkoutForm, props)))))
       `,
-      resolveDir: new URL('.', import.meta.url).pathname,
+      resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile,
     bundle: true,

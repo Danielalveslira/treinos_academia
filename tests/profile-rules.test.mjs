@@ -195,9 +195,7 @@ test('a freshly created profile can self-delete to roll back a failed registrati
 test('opt-in exposes totals only through the server-computed summary; opt-out blocks reads and any client write', async () => {
   const summary = (db) => doc(db, 'publicProfiles/owner/statistics/summary')
   await assertFails(getDoc(summary(visitor)))
-  await assertSucceeds(
-    updateDoc(doc(owner, 'publicProfiles/owner'), { shareStatistics: true })
-  )
+  await assertSucceeds(updateDoc(doc(owner, 'publicProfiles/owner'), { shareStatistics: true }))
   // O dono não consegue mais gravar o próprio resumo diretamente -- nem create nem
   // update, com nenhum conteúdo, mesmo depois de já ter ativado o compartilhamento.
   await assertFails(setDoc(summary(owner), { entries: 1, sets: 3, updatedAt: serverTimestamp() }))
@@ -310,7 +308,7 @@ test('a status can never be updated after creation -- not expiresAt, not its con
   await assertSucceeds(deleteDoc(ref))
 })
 
-test('photo publication requires photoPath scoped to this exact document, never another publication\'s file', async () => {
+test("photo publication requires photoPath scoped to this exact document, never another publication's file", async () => {
   const FILE_ID = 'AAAAAAAAAAAAAAAAAAAA' // 20 chars — mesmo formato do id gerado pelo Firestore
   const OTHER_FILE_ID = 'BBBBBBBBBBBBBBBBBBBB'
   const status = (overrides = {}) => ({
@@ -359,9 +357,7 @@ test('photo publication requires photoPath scoped to this exact document, never 
   )
   const { photoPath: _omitPath, ...withoutPath } = status()
   await assertFails(setDoc(doc(owner, `statuses/${FILE_ID}`), withoutPath))
-  await assertFails(
-    setDoc(doc(owner, `statuses/${FILE_ID}`), status({ caption: 'x'.repeat(281) }))
-  )
+  await assertFails(setDoc(doc(owner, `statuses/${FILE_ID}`), status({ caption: 'x'.repeat(281) })))
   const { caption: _omitCaption, ...withoutCaption } = status()
   await assertSucceeds(
     setDoc(doc(owner, `statuses/${OTHER_FILE_ID}`), {
@@ -468,7 +464,10 @@ test('poll and workout statuses are capped in size like every other status type'
         type: 'poll',
         poll: {
           question: 'x'.repeat(201),
-          options: [{ id: '0', label: 'Sim' }, { id: '1', label: 'Não' }],
+          options: [
+            { id: '0', label: 'Sim' },
+            { id: '1', label: 'Não' },
+          ],
         },
       })
     )
@@ -480,7 +479,10 @@ test('poll and workout statuses are capped in size like every other status type'
         type: 'poll',
         poll: {
           question: 'Treinou?',
-          options: [{ id: '0', label: 'x'.repeat(81) }, { id: '1', label: 'Não' }],
+          options: [
+            { id: '0', label: 'x'.repeat(81) },
+            { id: '1', label: 'Não' },
+          ],
         },
       })
     )
@@ -492,7 +494,10 @@ test('poll and workout statuses are capped in size like every other status type'
         type: 'poll',
         poll: {
           question: 'x'.repeat(200),
-          options: [{ id: '0', label: 'x'.repeat(80) }, { id: '1', label: 'Não' }],
+          options: [
+            { id: '0', label: 'x'.repeat(80) },
+            { id: '1', label: 'Não' },
+          ],
         },
       })
     )
@@ -509,7 +514,9 @@ test('poll and workout statuses are capped in size like every other status type'
         ...overrides,
       },
     })
-  await assertFails(setDoc(doc(owner, 'statuses/workoutbigtitle'), workout({ title: 'x'.repeat(101) })))
+  await assertFails(
+    setDoc(doc(owner, 'statuses/workoutbigtitle'), workout({ title: 'x'.repeat(101) }))
+  )
   await assertFails(
     setDoc(doc(owner, 'statuses/workoutbiglocation'), workout({ location: 'x'.repeat(151) }))
   )
@@ -559,7 +566,11 @@ test('publishing still works once legal terms are published and accepted (regres
   const client = env.authenticatedContext(uid).firestore()
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore()
-    await setDoc(doc(db, 'legalPolicy/current'), { published: true, version: 'v1', digest: 'abc123' })
+    await setDoc(doc(db, 'legalPolicy/current'), {
+      published: true,
+      version: 'v1',
+      digest: 'abc123',
+    })
     await setDoc(doc(db, `users/${uid}`), {
       role: 'user',
       username: uid,
@@ -582,22 +593,36 @@ test('publishing still works once legal terms are published and accepted (regres
       expiresAt: Timestamp.fromMillis(Date.now() + 86400000),
       ...overrides,
     })
-    await assertSucceeds(setDoc(doc(client, 'statuses/termstext'), base({ type: 'text', text: 'oi' })))
+    await assertSucceeds(
+      setDoc(doc(client, 'statuses/termstext'), base({ type: 'text', text: 'oi' }))
+    )
     await assertSucceeds(
       setDoc(
         doc(client, 'statuses/termspoll'),
         base({
           type: 'poll',
-          poll: { question: 'Treinou?', options: [{ id: '0', label: 'Sim' }, { id: '1', label: 'Não' }] },
+          poll: {
+            question: 'Treinou?',
+            options: [
+              { id: '0', label: 'Sim' },
+              { id: '1', label: 'Não' },
+            ],
+          },
         })
       )
     )
     // Stale acceptance (terms published, but this user's version/digest is out of date)
     // must still be denied — the fix must not have loosened this.
     await env.withSecurityRulesDisabled(async (context) => {
-      await setDoc(doc(context.firestore(), `users/${uid}`), { legalAcceptance: { version: 'old', digest: 'x' } }, { merge: true })
+      await setDoc(
+        doc(context.firestore(), `users/${uid}`),
+        { legalAcceptance: { version: 'old', digest: 'x' } },
+        { merge: true }
+      )
     })
-    await assertFails(setDoc(doc(client, 'statuses/termsstale'), base({ type: 'text', text: 'oi' })))
+    await assertFails(
+      setDoc(doc(client, 'statuses/termsstale'), base({ type: 'text', text: 'oi' }))
+    )
   } finally {
     // Nunca deixar legalPolicy/current publicado depois deste teste — outros testes no
     // arquivo assumem o atalho barato (sem termos publicados) para owner/visitor/admin,
@@ -711,9 +736,7 @@ test('cardio workouts are validated by duration/distance instead of sets, and ty
   await assertFails(setDoc(ref, cardio({ distanceKm: 0 })))
   await assertFails(setDoc(ref, cardio({ distanceKm: 501 })))
   // Campo de força (setDetails) não é permitido numa sessão de cardio.
-  await assertFails(
-    setDoc(ref, { ...cardio(), setDetails: [{ weight: 1, reps: 1 }] })
-  )
+  await assertFails(setDoc(ref, { ...cardio(), setDetails: [{ weight: 1, reps: 1 }] }))
   await assertSucceeds(setDoc(ref, cardio()))
   // distanceKm é opcional — nem toda corrida em esteira mede distância.
   const { distanceKm: _omitDistance, ...withoutDistance } = cardio()
@@ -758,7 +781,12 @@ test('a strength workout may say type: "strength" explicitly; a legacy one witho
 })
 
 test('exercise type is optional (legacy defaults to strength) and limited to the known values', async () => {
-  const exercise = (overrides = {}) => ({ name: 'Corrida', muscleGroup: 'Cardio', active: true, ...overrides })
+  const exercise = (overrides = {}) => ({
+    name: 'Corrida',
+    muscleGroup: 'Cardio',
+    active: true,
+    ...overrides,
+  })
   await assertSucceeds(setDoc(doc(owner, 'users/owner/exercises/legacy-type'), exercise()))
   await assertSucceeds(
     setDoc(doc(owner, 'users/owner/exercises/explicit-strength'), exercise({ type: 'strength' }))
@@ -766,7 +794,43 @@ test('exercise type is optional (legacy defaults to strength) and limited to the
   await assertSucceeds(
     setDoc(doc(owner, 'users/owner/exercises/explicit-cardio'), exercise({ type: 'cardio' }))
   )
-  await assertFails(setDoc(doc(owner, 'users/owner/exercises/bad-type'), exercise({ type: 'yoga' })))
+  await assertFails(
+    setDoc(doc(owner, 'users/owner/exercises/bad-type'), exercise({ type: 'yoga' }))
+  )
+})
+
+test('exercise source metadata accepts legacy/custom/catalog shapes and rejects inconsistent data', async () => {
+  const exercise = (overrides = {}) => ({
+    name: 'Supino',
+    muscleGroup: 'Peito',
+    active: true,
+    ...overrides,
+  })
+  await assertSucceeds(setDoc(doc(owner, 'users/owner/exercises/source-legacy'), exercise()))
+  await assertSucceeds(
+    setDoc(
+      doc(owner, 'users/owner/exercises/source-custom'),
+      exercise({ source: 'custom', catalogExerciseId: null })
+    )
+  )
+  await assertSucceeds(
+    setDoc(
+      doc(owner, 'users/owner/exercises/source-catalog'),
+      exercise({ source: 'catalog', catalogExerciseId: 'Barbell_Bench_Press_-_Medium_Grip' })
+    )
+  )
+  await assertFails(
+    setDoc(doc(owner, 'users/owner/exercises/source-missing-id'), exercise({ source: 'catalog' }))
+  )
+  await assertFails(
+    setDoc(
+      doc(owner, 'users/owner/exercises/source-custom-with-id'),
+      exercise({ source: 'custom', catalogExerciseId: 'catalog-id' })
+    )
+  )
+  await assertFails(
+    setDoc(doc(owner, 'users/owner/exercises/source-invalid'), exercise({ source: 'external' }))
+  )
 })
 
 test('heightCm on the profile is optional, nullable, and bounded to a plausible range', async () => {
@@ -818,9 +882,18 @@ test('body measurements are a time series (each check-in its own document), ever
 })
 
 test('exercise name and muscleGroup are capped, so a custom group typed by hand cannot inflate the document', async () => {
-  const exercise = (overrides = {}) => ({ name: 'Supino', muscleGroup: 'Peito', active: true, ...overrides })
-  await assertFails(setDoc(doc(owner, 'users/owner/exercises/e1'), exercise({ name: 'x'.repeat(61) })))
-  await assertSucceeds(setDoc(doc(owner, 'users/owner/exercises/e1'), exercise({ name: 'x'.repeat(60) })))
+  const exercise = (overrides = {}) => ({
+    name: 'Supino',
+    muscleGroup: 'Peito',
+    active: true,
+    ...overrides,
+  })
+  await assertFails(
+    setDoc(doc(owner, 'users/owner/exercises/e1'), exercise({ name: 'x'.repeat(101) }))
+  )
+  await assertSucceeds(
+    setDoc(doc(owner, 'users/owner/exercises/e1'), exercise({ name: 'x'.repeat(100) }))
+  )
   // muscleGroup nunca teve teto de tamanho nesta regra — antes só o formulário travava
   // numa lista fixa de opções; agora que dá pra digitar um grupo novo, o mesmo campo
   // recebe entrada direta do usuário e precisa do mesmo tipo de teto que os outros
@@ -838,7 +911,12 @@ test('exercise name and muscleGroup are capped, so a custom group typed by hand 
 })
 
 test('exercise order is optional, bounded, and can be cleared (ex.: ao trocar de grupo muscular)', async () => {
-  const exercise = (overrides = {}) => ({ name: 'Supino', muscleGroup: 'Peito', active: true, ...overrides })
+  const exercise = (overrides = {}) => ({
+    name: 'Supino',
+    muscleGroup: 'Peito',
+    active: true,
+    ...overrides,
+  })
   await assertSucceeds(setDoc(doc(owner, 'users/owner/exercises/ordered'), exercise({ order: 0 })))
   await assertFails(setDoc(doc(owner, 'users/owner/exercises/bad1'), exercise({ order: -1 })))
   await assertFails(setDoc(doc(owner, 'users/owner/exercises/bad2'), exercise({ order: 1.5 })))
@@ -862,7 +940,9 @@ test('accounts created after the email verification cutoff need a verified token
   })
   const unverifiedNew = env.authenticatedContext('newbie2', { email_verified: false }).firestore()
   const verifiedNew = env.authenticatedContext('newbie2', { email_verified: true }).firestore()
-  const unverifiedVeteran = env.authenticatedContext('veteran', { email_verified: false }).firestore()
+  const unverifiedVeteran = env
+    .authenticatedContext('veteran', { email_verified: false })
+    .firestore()
 
   const exercise = { name: 'Supino', muscleGroup: 'Peito', active: true }
   await assertFails(setDoc(doc(unverifiedNew, 'users/newbie2/exercises/bench'), exercise))
@@ -934,9 +1014,7 @@ test('community schema rejects invalid values and extra fields', async () => {
   await assertFails(
     addDoc(collection(admin, 'communities'), communityPayload({ postAccess: 'moderators' }))
   )
-  await assertFails(
-    addDoc(collection(admin, 'communities'), communityPayload({ imageUrl: false }))
-  )
+  await assertFails(addDoc(collection(admin, 'communities'), communityPayload({ imageUrl: false })))
   await assertFails(
     addDoc(collection(admin, 'communities'), communityPayload({ unexpected: 'not-allowed' }))
   )

@@ -3,12 +3,14 @@ import { useAuth } from '../hooks/useAuth'
 import {
   listExercises,
   createExercise,
+  createCatalogExercise,
   updateExercise,
   deleteExercise,
   saveExerciseOrder,
 } from '../services/exercisesService'
 import { useCachedQuery } from '../hooks/useCachedQuery'
 import { getExerciseType } from '../utils/exerciseType'
+import { catalogExerciseToPersonal, isCatalogExerciseAdded } from '../utils/exerciseCatalog.js'
 
 const EMPTY = []
 
@@ -24,6 +26,10 @@ function normalize(exercise) {
     muscleGroup: exercise.muscleGroup.trim(),
     type: getExerciseType(exercise),
     note: exercise.note?.trim() || '',
+    ...(exercise.source ? { source: exercise.source } : {}),
+    ...(Object.hasOwn(exercise, 'catalogExerciseId')
+      ? { catalogExerciseId: exercise.catalogExerciseId }
+      : {}),
   }
 }
 
@@ -38,8 +44,27 @@ export function ExercisesProvider({ children }) {
 
   async function add(exercise) {
     const docRef = await createExercise(user.uid, exercise)
-    const created = { id: docRef.id, ...normalize(exercise), active: true }
+    const created = {
+      id: docRef.id,
+      ...normalize(exercise),
+      active: true,
+      source: 'custom',
+      catalogExerciseId: null,
+    }
     setData([...exercises, created].sort(byName))
+  }
+
+  async function addFromCatalog(catalogExercise) {
+    if (isCatalogExerciseAdded(exercises, catalogExercise.id)) return { added: false }
+    const group = catalogExerciseToPersonal(catalogExercise).muscleGroup
+    const groupOrders = exercises
+      .filter((exercise) => exercise.muscleGroup === group && Number.isInteger(exercise.order))
+      .map((exercise) => exercise.order)
+    const order = groupOrders.length ? Math.min(299, Math.max(...groupOrders) + 1) : 0
+    const personalExercise = catalogExerciseToPersonal(catalogExercise, { order })
+    const id = await createCatalogExercise(user.uid, personalExercise)
+    setData([...exercises, { id, ...personalExercise }].sort(byName))
+    return { added: true, exercise: { id, ...personalExercise } }
   }
 
   async function edit(exerciseId, exercise) {
@@ -88,7 +113,7 @@ export function ExercisesProvider({ children }) {
 
   return (
     <ExercisesContext.Provider
-      value={{ exercises, loading, error, add, edit, remove, reorder, refresh }}
+      value={{ exercises, loading, error, add, addFromCatalog, edit, remove, reorder, refresh }}
     >
       {children}
     </ExercisesContext.Provider>
