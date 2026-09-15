@@ -52,7 +52,7 @@ before(async () => {
           return { calls, result, updates: getUpdates() }
         }
       `,
-      resolveDir: new URL('.', import.meta.url).pathname,
+      resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile: cachedQueryOutfile,
     bundle: true,
@@ -131,7 +131,7 @@ before(async () => {
           return { disabled, disabledCalls, community, global, calls: getCalls() }
         }
       `,
-      resolveDir: new URL('.', import.meta.url).pathname,
+      resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile: sponsoredAdsOutfile,
     bundle: true,

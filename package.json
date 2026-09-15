@@ -6,6 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:catalog": "node scripts/build-exercise-catalog.mjs",
+    "build:catalog-images": "node scripts/build-exercise-catalog-images.mjs",
+    "build:catalog-images:dry-run": "node scripts/build-exercise-catalog-images.mjs --dry-run",
+    "build:catalog-images:apply": "node scripts/build-exercise-catalog-images.mjs --apply",
+    "upload:catalog-images": "node scripts/upload-exercise-catalog-images.mjs",
+    "upload:catalog-images:dry-run": "node scripts/upload-exercise-catalog-images.mjs --dry-run",
+    "upload:catalog-images:apply": "node scripts/upload-exercise-catalog-images.mjs --apply",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "node --test src/**/*.test.js",
@@ -38,8 +45,11 @@
     "eslint": "^9.15.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.14",
+    "firebase-admin": "^14.4.0",
     "globals": "^15.12.0",
     "prettier": "^3.9.6",
+    "react-test-renderer": "^18.3.1",
+    "sharp": "^0.34.5",
     "vite": "^5.4.11"
   }
 }

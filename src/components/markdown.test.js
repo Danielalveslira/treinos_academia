@@ -25,7 +25,7 @@ before(async () => {
         export { MarkdownField } from './MarkdownField.jsx'
         export const render = (component, props) => renderToStaticMarkup(createElement(component, props))
       `,
-      resolveDir: new URL('.', import.meta.url).pathname,
+      resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile,
     bundle: true,

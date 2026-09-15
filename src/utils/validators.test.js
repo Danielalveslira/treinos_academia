@@ -50,7 +50,7 @@ test('validateSexo accepts the three known options, null/undefined, and rejects 
 test('validateExercise requires name and muscleGroup, and bounds both lengths', () => {
   assert.equal(hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'Peito' })), false)
   assert.match(validateExercise({ name: '', muscleGroup: 'Peito' }).name, /obrigatório/)
-  assert.match(validateExercise({ name: 'x'.repeat(61), muscleGroup: 'Peito' }).name, /longo/)
+  assert.match(validateExercise({ name: 'x'.repeat(101), muscleGroup: 'Peito' }).name, /longo/)
   assert.match(validateExercise({ name: 'Supino', muscleGroup: '' }).muscleGroup, /obrigatório/)
   assert.match(validateExercise({ name: 'Supino', muscleGroup: '   ' }).muscleGroup, /obrigatório/)
   // Grupo personalizado (digitado no formulário, não escolhido de uma lista fixa) —
@@ -61,7 +61,7 @@ test('validateExercise requires name and muscleGroup, and bounds both lengths', 
     /longo/
   )
   assert.equal(hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'x'.repeat(30) })), false)
-  assert.equal(hasErrors(validateExercise({ name: 'x'.repeat(60), muscleGroup: 'Peito' })), false)
+  assert.equal(hasErrors(validateExercise({ name: 'x'.repeat(100), muscleGroup: 'Peito' })), false)
   // type é opcional (exercícios de antes deste campo existir não o têm) e só aceita os
   // dois valores conhecidos quando presente.
   assert.equal(hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'Peito' })), false)
@@ -72,6 +72,30 @@ test('validateExercise requires name and muscleGroup, and bounds both lengths', 
   assert.match(
     validateExercise({ name: 'Supino', muscleGroup: 'Peito', type: 'yoga' }).type,
     /inválido/
+  )
+  assert.equal(
+    hasErrors(
+      validateExercise({
+        name: 'Supino',
+        muscleGroup: 'Peito',
+        source: 'catalog',
+        catalogExerciseId: 'bench',
+      })
+    ),
+    false
+  )
+  assert.match(
+    validateExercise({ name: 'Supino', muscleGroup: 'Peito', source: 'catalog' }).catalogExerciseId,
+    /inválido/
+  )
+  assert.match(
+    validateExercise({
+      name: 'Supino',
+      muscleGroup: 'Peito',
+      source: 'custom',
+      catalogExerciseId: 'bench',
+    }).catalogExerciseId,
+    /personalizado/
   )
 })
 
@@ -253,10 +277,7 @@ test('validateSponsoredAd: description/imageUrl/ctaLabel are optional but bounde
     validateSponsoredAd(baseSponsoredAd({ imageUrl: 'x'.repeat(501) })).imageUrl,
     /longo/
   )
-  assert.match(
-    validateSponsoredAd(baseSponsoredAd({ ctaLabel: 'x'.repeat(31) })).ctaLabel,
-    /longo/
-  )
+  assert.match(validateSponsoredAd(baseSponsoredAd({ ctaLabel: 'x'.repeat(31) })).ctaLabel, /longo/)
 })
 
 test('validateSponsoredAd: ctaType/ctaTarget are only required when ctaLabel is filled', () => {
@@ -266,8 +287,7 @@ test('validateSponsoredAd: ctaType/ctaTarget are only required when ctaLabel is 
     /Selecione/
   )
   assert.match(
-    validateSponsoredAd(baseSponsoredAd({ ctaLabel: 'Saiba mais', ctaType: 'external' }))
-      .ctaTarget,
+    validateSponsoredAd(baseSponsoredAd({ ctaLabel: 'Saiba mais', ctaType: 'external' })).ctaTarget,
     /Informe o destino/
   )
   assert.equal(
@@ -298,7 +318,10 @@ test('validateSponsoredAd: ctaTarget is restricted to a safe scheme per ctaType'
   }
 
   // external: só https://, nunca http:// puro, javascript:, data: ou protocol-relative.
-  assert.equal(hasErrors(ctaErrors({ ctaType: 'external', ctaTarget: 'https://exemplo.com' })), false)
+  assert.equal(
+    hasErrors(ctaErrors({ ctaType: 'external', ctaTarget: 'https://exemplo.com' })),
+    false
+  )
   for (const malicious of [
     'javascript:alert(1)',
     'data:text/html,<script>alert(1)</script>',
@@ -327,10 +350,7 @@ test('validateSponsoredAd: ctaTarget is restricted to a safe scheme per ctaType'
 
 test('validateSponsoredAd: expiresAt is optional but must be a parseable date when given', () => {
   assert.equal(hasErrors(validateSponsoredAd(baseSponsoredAd())), false)
-  assert.equal(
-    hasErrors(validateSponsoredAd(baseSponsoredAd({ expiresAt: '2026-12-31' }))),
-    false
-  )
+  assert.equal(hasErrors(validateSponsoredAd(baseSponsoredAd({ expiresAt: '2026-12-31' }))), false)
   assert.match(
     validateSponsoredAd(baseSponsoredAd({ expiresAt: 'not-a-date' })).expiresAt,
     /inválida/

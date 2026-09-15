@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "exerciseCount": 873,
+  "sourceSha256": "14243659cc469c85722e8ad006baa80b3b4a10c0ba5b169d7111ed4579fe5dcb",
+  "duplicateIds": [],
+  "duplicateNames": [
+    {
+      "value": "Afundo com Halteres",
+      "count": 2
+    },
+    {
+      "value": "Arranco a Partir de Blocos",
+      "count": 2
+    },
+    {
+      "value": "Corrida na Esteira",
+      "count": 2
+    },
+    {
+      "value": "Supino com Correntes",
+      "count": 2
+    }
+  ],
+  "nullCounts": {
+    "force": 29,
+    "level": 0,
+    "mechanic": 87,
+    "equipment": 77,
+    "category": 0
+  },
+  "emptyArrayCounts": {
+    "primaryMuscles": 0,
+    "secondaryMuscles": 272,
+    "instructions": 5,
+    "imageRefs": 0
+  }
+}

@@ -28,7 +28,7 @@ before(async () => {
           </ThemeProvider>
         )
       `,
-      resolveDir: new URL('.', import.meta.url).pathname,
+      resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
       loader: 'jsx',
     },
     outfile,

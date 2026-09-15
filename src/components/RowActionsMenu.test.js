@@ -21,7 +21,7 @@ before(async () => {
         export const render = (props) => renderToStaticMarkup(createElement(ThemeProvider, null,
           createElement(BaseStyles, null, createElement(RowActionsMenu, props))))
       `,
-      resolveDir: new URL('.', import.meta.url).pathname,
+      resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile,
     bundle: true,
