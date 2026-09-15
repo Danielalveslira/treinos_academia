@@ -9,6 +9,7 @@ import {
 } from '@firebase/rules-unit-testing'
 import {
   doc,
+  addDoc,
   getDoc,
   getDocs,
   collection,
@@ -870,33 +871,101 @@ test('accounts created after the email verification cutoff need a verified token
   await assertSucceeds(setDoc(doc(unverifiedVeteran, 'users/veteran/exercises/bench'), exercise))
 })
 
-test('community iconName defaults to none but only accepts a name from the icon grid, never an arbitrary string', async () => {
-  const community = (overrides = {}) => ({
+function communityPayload(overrides = {}) {
+  return {
     name: 'Academia Teste',
     description: '',
-    imageUrl: null,
+    iconName: 'users',
     isActive: true,
     postAccess: 'everyone',
     memberCount: 0,
     createdBy: 'admin',
-    createdAt: Timestamp.now(),
+    createdAt: serverTimestamp(),
     ...overrides,
-  })
-  // Ausente: comunidades de antes deste campo existir continuam válidas — o padrão
-  // (getCommunityIcon) é resolvido só na leitura, sem migração.
-  await assertSucceeds(setDoc(doc(admin, 'communities/iconless'), community()))
+  }
+}
+
+test('superadmin creates and updates a community with the exact frontend payload, without legacy imageUrl', async () => {
+  // Espelha createCommunity() em src/services/communitiesService.js: addDoc, ícone por
+  // nome e nenhuma chave imageUrl. Este era o payload negado em produção porque a Rule
+  // acessava data.imageUrl diretamente mesmo quando a chave não existia.
+  const created = await assertSucceeds(addDoc(collection(admin, 'communities'), communityPayload()))
+  assert.equal((await getDoc(created)).data().iconName, 'users')
   await assertSucceeds(
-    setDoc(doc(admin, 'communities/iconvalid'), community({ iconName: 'dumbbell' }))
+    updateDoc(created, {
+      name: 'Academia Atualizada',
+      description: 'Nova descrição',
+      iconName: 'dumbbell',
+      isActive: false,
+      postAccess: 'admins',
+    })
+  )
+  await assertSucceeds(getDocs(collection(admin, 'communities')))
+
+  // imageUrl continua opcional para compatibilidade com documentos antigos.
+  await assertSucceeds(
+    setDoc(
+      doc(admin, 'communities/legacy-image'),
+      communityPayload({ imageUrl: 'https://example.com/legacy.png' })
+    )
+  )
+  await assertSucceeds(
+    setDoc(doc(admin, 'communities/legacy-image-null'), communityPayload({ imageUrl: null }))
+  )
+})
+
+test('community creation remains restricted to the authenticated superadmin and its own uid', async () => {
+  await assertFails(
+    addDoc(collection(owner, 'communities'), communityPayload({ createdBy: 'owner' }))
   )
   await assertFails(
-    setDoc(doc(admin, 'communities/iconbad'), community({ iconName: 'not-a-real-icon' }))
+    addDoc(collection(visitor, 'communities'), communityPayload({ createdBy: 'visitor' }))
+  )
+  await assertFails(
+    addDoc(collection(admin, 'communities'), communityPayload({ createdBy: 'owner' }))
+  )
+})
+
+test('community schema rejects invalid values and extra fields', async () => {
+  await assertFails(addDoc(collection(admin, 'communities'), communityPayload({ name: '' })))
+  await assertFails(
+    addDoc(collection(admin, 'communities'), communityPayload({ createdAt: 'not-a-timestamp' }))
+  )
+  await assertFails(
+    addDoc(collection(admin, 'communities'), communityPayload({ postAccess: 'moderators' }))
+  )
+  await assertFails(
+    addDoc(collection(admin, 'communities'), communityPayload({ imageUrl: false }))
+  )
+  await assertFails(
+    addDoc(collection(admin, 'communities'), communityPayload({ unexpected: 'not-allowed' }))
+  )
+})
+
+test('community read, update and delete permissions remain restricted', async () => {
+  const created = await assertSucceeds(
+    addDoc(collection(admin, 'communities'), communityPayload({ name: 'Permissões' }))
+  )
+  await assertSucceeds(getDoc(doc(owner, created.path)))
+  await assertSucceeds(getDocs(collection(owner, 'communities')))
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), created.path)))
+  await assertFails(updateDoc(doc(owner, created.path), { name: 'Alteração indevida' }))
+  await assertFails(deleteDoc(created))
+})
+
+test('community iconName only accepts a name from the icon grid, never an arbitrary string', async () => {
+  await assertSucceeds(
+    setDoc(doc(admin, 'communities/iconvalid'), communityPayload({ iconName: 'dumbbell' }))
+  )
+  await assertFails(
+    setDoc(doc(admin, 'communities/iconbad'), communityPayload({ iconName: 'not-a-real-icon' }))
   )
   // Nunca aceita o que vier do cliente sem checar contra a lista — inclusive tentativas
   // de injetar algo além de um nome de ícone conhecido.
   await assertFails(
     setDoc(
       doc(admin, 'communities/iconxss'),
-      community({ iconName: '<script>alert(1)</script>' })
+      communityPayload({ iconName: '<script>alert(1)</script>' })
     )
   )
 })
