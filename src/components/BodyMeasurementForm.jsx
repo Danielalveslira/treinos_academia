@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FormControl, TextInput, Textarea, IconButton, Flash } from '@primer/react'
+import { Flash, FormControl, IconButton, TextInput, Textarea } from '@primer/react'
 import { InfoIcon } from '@primer/octicons-react'
 import { validateBodyMeasurement } from '../utils/validators'
 import { useFormState } from '../hooks/useFormState'
@@ -12,41 +12,59 @@ function todayString() {
   ).padStart(2, '0')}`
 }
 
-const BIOIMPEDANCE_INFO =
-  'Normalmente vem de uma balança de bioimpedância (as residenciais já dão uma estimativa razoável) ou de uma avaliação com profissional de educação física ou nutricionista — algumas clínicas também oferecem isso. Sem acesso a nenhum dos dois, é melhor deixar em branco do que chutar: são estimativas, não medidas exatas.'
+const GENERAL_FIELDS = [
+  ['heightCm', 'Altura', 'cm', '178'],
+  ['weightKg', 'Peso', 'kg', '78,5'],
+  ['bodyFatPercent', 'Gordura corporal', '%', '18'],
+]
+const CIRCUMFERENCE_FIELDS = [
+  ['abdomenCm', 'Abdômen'],
+  ['waistCm', 'Cintura'],
+  ['hipCm', 'Quadril'],
+  ['chestCm', 'Tórax'],
+  ['armCm', 'Braço'],
+  ['thighCm', 'Coxa'],
+  ['calfCm', 'Panturrilha'],
+]
+const COMPOSITION_FIELDS = [
+  ['leanMassKg', 'Massa magra'],
+  ['fatMassKg', 'Massa gorda'],
+]
 
-function InfoToggle({ open, onToggle, label }) {
+function NumericField({ field, label, unit, example, values, setField, errors }) {
   return (
-    <IconButton
-      icon={InfoIcon}
-      variant="invisible"
-      size="small"
-      aria-label={label}
-      aria-expanded={open}
-      onClick={onToggle}
-    />
+    <FormControl>
+      <FormControl.Label>
+        {label} ({unit})
+      </FormControl.Label>
+      <TextInput
+        type="number"
+        inputMode="decimal"
+        value={values[field]}
+        onChange={(event) => setField(field, event.target.value)}
+        placeholder={`Ex.: ${example || '85'}`}
+        block
+      />
+      {errors[field] && (
+        <FormControl.Validation variant="error">{errors[field]}</FormControl.Validation>
+      )}
+    </FormControl>
   )
 }
 
-// Todos os campos são opcionais — o usuário pode preencher só o que sabe. Sem
-// balança/avaliação, %gordura e massa magra ficam em branco; o botão ⓘ ao lado explica
-// como conseguir essas duas.
 export function BodyMeasurementForm({ initialHeightCm, onSubmit, onCancel }) {
+  const initialValues = Object.fromEntries(
+    [...GENERAL_FIELDS, ...CIRCUMFERENCE_FIELDS, ...COMPOSITION_FIELDS].map(([field]) => [
+      field,
+      field === 'heightCm' && initialHeightCm != null ? String(initialHeightCm) : '',
+    ])
+  )
   const { values, setField, errors, submitting, handleSubmit } = useFormState({
-    initialValues: {
-      date: todayString(),
-      heightCm: initialHeightCm != null ? String(initialHeightCm) : '',
-      weightKg: '',
-      bodyFatPercent: '',
-      waistCm: '',
-      hipCm: '',
-      leanMassKg: '',
-      note: '',
-    },
+    initialValues: { date: todayString(), ...initialValues, note: '' },
     validate: validateBodyMeasurement,
     onSubmit,
   })
-  const [infoOpen, setInfoOpen] = useState(null)
+  const [infoOpen, setInfoOpen] = useState(false)
 
   return (
     <FormShell onSubmit={handleSubmit} onCancel={onCancel} submitting={submitting}>
@@ -55,128 +73,65 @@ export function BodyMeasurementForm({ initialHeightCm, onSubmit, onCancel }) {
         <TextInput
           type="date"
           value={values.date}
-          onChange={(e) => setField('date', e.target.value)}
+          onChange={(event) => setField('date', event.target.value)}
           max={todayString()}
           block
         />
       </FormControl>
 
-      <FormControl>
-        <FormControl.Label>Altura (cm)</FormControl.Label>
-        <TextInput
-          type="number"
-          inputMode="decimal"
-          value={values.heightCm}
-          onChange={(e) => setField('heightCm', e.target.value)}
-          placeholder="Ex.: 178"
-          block
-        />
-        {errors.heightCm && (
-          <FormControl.Validation variant="error">{errors.heightCm}</FormControl.Validation>
-        )}
-      </FormControl>
+      <fieldset className="measurement-fieldset">
+        <legend>Dados gerais</legend>
+        <span className="measurement-fieldset-caption">Preencha somente o que mediu.</span>
+        <div className="measurement-form-grid">
+          {GENERAL_FIELDS.map(([field, label, unit, example]) => (
+            <NumericField
+              key={field}
+              {...{ field, label, unit, example, values, setField, errors }}
+            />
+          ))}
+        </div>
+      </fieldset>
 
-      <FormControl>
-        <FormControl.Label>Peso (kg)</FormControl.Label>
-        <TextInput
-          type="number"
-          inputMode="decimal"
-          value={values.weightKg}
-          onChange={(e) => setField('weightKg', e.target.value)}
-          placeholder="Ex.: 78,5"
-          block
-        />
-        {errors.weightKg && (
-          <FormControl.Validation variant="error">{errors.weightKg}</FormControl.Validation>
-        )}
-      </FormControl>
+      <fieldset className="measurement-fieldset">
+        <legend>Circunferências</legend>
+        <span className="measurement-fieldset-caption">Todas em centímetros.</span>
+        <div className="measurement-form-grid">
+          {CIRCUMFERENCE_FIELDS.map(([field, label]) => (
+            <NumericField
+              key={field}
+              {...{ field, label, unit: 'cm', values, setField, errors }}
+            />
+          ))}
+        </div>
+      </fieldset>
 
-      <FormControl>
-        <FormControl.Label sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          % de gordura corporal
-          <InfoToggle
-            open={infoOpen === 'bodyFat'}
-            onToggle={() => setInfoOpen((v) => (v === 'bodyFat' ? null : 'bodyFat'))}
-            label="Como medir % de gordura corporal"
+      <fieldset className="measurement-fieldset">
+        <legend>
+          Composição
+          <IconButton
+            icon={InfoIcon}
+            variant="invisible"
+            size="small"
+            aria-label="Sobre composição corporal"
+            aria-expanded={infoOpen}
+            onClick={() => setInfoOpen((open) => !open)}
           />
-        </FormControl.Label>
-        {infoOpen === 'bodyFat' && (
+        </legend>
+        {infoOpen && (
           <Flash variant="default" sx={{ mb: 2, fontSize: 0 }}>
-            {BIOIMPEDANCE_INFO}
+            Valores de composição variam conforme método e protocolo. Se deixar as massas em
+            branco, peso e gordura permitem estimativas.
           </Flash>
         )}
-        <TextInput
-          type="number"
-          inputMode="decimal"
-          value={values.bodyFatPercent}
-          onChange={(e) => setField('bodyFatPercent', e.target.value)}
-          placeholder="Ex.: 18"
-          block
-        />
-        {errors.bodyFatPercent && (
-          <FormControl.Validation variant="error">{errors.bodyFatPercent}</FormControl.Validation>
-        )}
-      </FormControl>
-
-      <FormControl>
-        <FormControl.Label>Cintura (cm)</FormControl.Label>
-        <TextInput
-          type="number"
-          inputMode="decimal"
-          value={values.waistCm}
-          onChange={(e) => setField('waistCm', e.target.value)}
-          placeholder="Ex.: 85"
-          block
-        />
-        {errors.waistCm && (
-          <FormControl.Validation variant="error">{errors.waistCm}</FormControl.Validation>
-        )}
-      </FormControl>
-
-      <FormControl>
-        <FormControl.Label>Quadril (cm)</FormControl.Label>
-        <TextInput
-          type="number"
-          inputMode="decimal"
-          value={values.hipCm}
-          onChange={(e) => setField('hipCm', e.target.value)}
-          placeholder="Ex.: 100"
-          block
-        />
-        {errors.hipCm && (
-          <FormControl.Validation variant="error">{errors.hipCm}</FormControl.Validation>
-        )}
-      </FormControl>
-
-      <FormControl>
-        <FormControl.Label sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          Massa magra (kg)
-          <InfoToggle
-            open={infoOpen === 'leanMass'}
-            onToggle={() => setInfoOpen((v) => (v === 'leanMass' ? null : 'leanMass'))}
-            label="Como medir massa magra"
-          />
-        </FormControl.Label>
-        {infoOpen === 'leanMass' && (
-          <Flash variant="default" sx={{ mb: 2, fontSize: 0 }}>
-            {BIOIMPEDANCE_INFO}
-          </Flash>
-        )}
-        <TextInput
-          type="number"
-          inputMode="decimal"
-          value={values.leanMassKg}
-          onChange={(e) => setField('leanMassKg', e.target.value)}
-          placeholder="Deixe em branco para estimar a partir do peso e % de gordura"
-          block
-        />
-        <FormControl.Caption>
-          Se vazio e você informou peso + % de gordura acima, calculamos uma estimativa.
-        </FormControl.Caption>
-        {errors.leanMassKg && (
-          <FormControl.Validation variant="error">{errors.leanMassKg}</FormControl.Validation>
-        )}
-      </FormControl>
+        <div className="measurement-form-grid">
+          {COMPOSITION_FIELDS.map(([field, label]) => (
+            <NumericField
+              key={field}
+              {...{ field, label, unit: 'kg', values, setField, errors }}
+            />
+          ))}
+        </div>
+      </fieldset>
 
       <FormControl>
         <FormControl.Label>
@@ -184,7 +139,7 @@ export function BodyMeasurementForm({ initialHeightCm, onSubmit, onCancel }) {
         </FormControl.Label>
         <Textarea
           value={values.note}
-          onChange={(e) => setField('note', e.target.value)}
+          onChange={(event) => setField('note', event.target.value)}
           rows={2}
           maxLength={300}
           block

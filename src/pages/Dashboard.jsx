@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Box, Button, Heading, Spinner } from '@primer/react'
 import {
@@ -7,7 +7,6 @@ import {
   GraphIcon,
   PlayIcon,
   PulseIcon,
-  TrophyIcon,
 } from '@primer/octicons-react'
 import { useDashboard } from '../hooks/useDashboard'
 import { useExercises } from '../contexts/ExercisesContext'
@@ -20,11 +19,9 @@ import { getDailyStreak } from '../utils/streak'
 import { getDashboardGreeting } from '../utils/greeting'
 import { formatDate, buildExerciseNameMap } from '../utils/format'
 import { toDate } from '../utils/date.js'
-import { formatWorkoutSets, getWorkoutLoad } from '../utils/workoutSets'
+import { formatWorkoutSets } from '../utils/workoutSets'
 import { isCardioWorkout, formatCardioSession } from '../utils/cardioSessions'
-import { FrequencyChart } from '../components/FrequencyChart'
 import { StreakCard } from '../components/StreakCard'
-import { BodyCompositionCard } from '../components/BodyCompositionCard'
 import { ErrorState } from '../components/ErrorState'
 
 function getVolumeTrend(workouts) {
@@ -47,19 +44,8 @@ function getVolumeTrend(workouts) {
   return { current, percent }
 }
 
-// Os três indicadores que dão pra acompanhar semana a semana no mesmo gráfico — cada um
-// já tinha seu número isolado em algum lugar da tela (dias ativos, volume, e agora
-// cardio); juntar num seletor evita um gráfico por indicador, que seria mais poluição,
-// não menos.
-const INDICATORS = [
-  { key: 'trainings', label: 'Treinos', heading: 'Consistência' },
-  { key: 'volume', label: 'Peso', heading: 'Volume de treino' },
-  { key: 'cardio', label: 'Corrida', heading: 'Corrida' },
-]
-
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [indicator, setIndicator] = useState('trainings')
   const { recentWorkouts, allWorkouts, loading, error, refresh } = useDashboard()
   const { exercises } = useExercises()
   const { profile, user } = useAuth()
@@ -71,27 +57,6 @@ export default function Dashboard() {
   // cardio não tem peso×repetição, então entraria como 0 e sub-representaria os dois.
   const consistency = useMemo(() => getTrainingConsistency(allWorkouts), [allWorkouts])
   const dailyStreak = useMemo(() => getDailyStreak(allWorkouts), [allWorkouts])
-  // Nem toda corrida tem distância (é opcional no registro) — se ninguém informou,
-  // mostrar duração em vez de "0 km" toda semana.
-  const preferredCardioField = consistency.totalDistanceKm > 0 ? 'distanceKm' : 'durationMinutes'
-  const chartMetric = indicator === 'cardio' ? preferredCardioField : indicator
-  const indicatorMeta = INDICATORS.find((item) => item.key === indicator)
-  const indicatorSummary =
-    indicator === 'volume'
-      ? { value: consistency.totalVolumeKg.toLocaleString('pt-BR'), unit: 'kg no período' }
-      : indicator === 'cardio'
-        ? preferredCardioField === 'distanceKm'
-          ? {
-              value: consistency.totalDistanceKm.toLocaleString('pt-BR', {
-                maximumFractionDigits: 1,
-              }),
-              unit: 'km no período',
-            }
-          : { value: consistency.totalDurationMinutes.toLocaleString('pt-BR'), unit: 'min no período' }
-        : {
-            value: consistency.total,
-            unit: consistency.total === 1 ? 'dia ativo' : 'dias ativos',
-          }
   const strengthWorkouts = useMemo(
     () => allWorkouts.filter((w) => !isCardioWorkout(w)),
     [allWorkouts]
@@ -101,9 +66,6 @@ export default function Dashboard() {
   const lastExercise = lastWorkout
     ? exerciseNameById.get(lastWorkout.exerciseId) || 'seu último exercício'
     : null
-  const bestLoad = strengthWorkouts.length
-    ? Math.max(...strengthWorkouts.map((workout) => getWorkoutLoad(workout)))
-    : 0
   const firstName =
     profile?.displayName?.trim().split(/\s+/)[0] ||
     profile?.username ||
@@ -200,12 +162,12 @@ export default function Dashboard() {
       <section className="performance-strip" aria-label="Resumo do progresso">
         <div>
           <CalendarIcon size={18} />
-          <span>Esta semana</span>
+          <span>Dias de treino nesta semana</span>
           <strong>{consistency.frequency}x</strong>
         </div>
         <div>
           <GraphIcon size={18} />
-          <span>Volume 7 dias</span>
+          <span>Volume de carga · 7 dias</span>
           <strong>{Math.round(volume.current).toLocaleString('pt-BR')} kg</strong>
           {volume.percent != null && (
             <small className={volume.percent >= 0 ? 'trend-up' : 'trend-down'}>
@@ -215,42 +177,15 @@ export default function Dashboard() {
           )}
         </div>
         <div>
-          <TrophyIcon size={18} />
-          <span>Melhor carga</span>
-          <strong>{bestLoad.toLocaleString('pt-BR')} kg</strong>
+          <GraphIcon size={18} />
+          <span>Análise completa</span>
+          <RouterLink to="/progresso" className="text-link">
+            Ver progresso <ArrowRightIcon size={14} />
+          </RouterLink>
         </div>
       </section>
 
       <div className="dashboard-flow">
-        <section className="progress-section" aria-labelledby="frequency-title">
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">RITMO DE TREINO</span>
-              <Heading as="h2" id="frequency-title">
-                {indicatorMeta.heading}
-              </Heading>
-            </div>
-            <span className="section-summary">
-              <strong>{indicatorSummary.value}</strong> {indicatorSummary.unit}
-            </span>
-          </div>
-          <div className="metric-tabs" role="tablist" aria-label="Indicador do gráfico">
-            {INDICATORS.map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                role="tab"
-                aria-selected={indicator === item.key}
-                className={indicator === item.key ? 'is-active' : ''}
-                onClick={() => setIndicator(item.key)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          <FrequencyChart data={consistency.chartData} metric={chartMetric} />
-        </section>
-
         <section className="recent-section" aria-labelledby="recent-title">
           <div className="section-heading">
             <div>
@@ -281,8 +216,6 @@ export default function Dashboard() {
           </div>
         </section>
       </div>
-
-      <BodyCompositionCard />
     </div>
   )
 }

@@ -11,5 +11,11 @@ export function useBodyMeasurements() {
     `bodyMeasurements:${user.uid}`,
     fetchValue
   )
-  return { measurements: data || EMPTY, loading, error, refresh }
+  return {
+    measurements: data?.items || EMPTY,
+    truncated: data?.truncated || false,
+    loading,
+    error,
+    refresh,
+  }
 }

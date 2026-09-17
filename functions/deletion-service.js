@@ -141,9 +141,14 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
           () => eraseQuery(db.collectionGroup('participants').where('userId', '==', uid)),
           () => removeStatuses(db.collection('statuses').where('authorId', '==', uid)),
           () => eraseQuery(db.collection('usernames').where('uid', '==', uid)),
-          ...['workouts', 'exercises', 'bodyMeasurements', 'legalAcceptances', 'notices'].map(
-            (name) => () => eraseQuery(db.collection(`users/${uid}/${name}`))
-          ),
+          ...[
+            'workouts',
+            'exercises',
+            'bodyMeasurements',
+            'progressDaily',
+            'legalAcceptances',
+            'notices',
+          ].map((name) => () => eraseQuery(db.collection(`users/${uid}/${name}`))),
           () => eraseQuery(db.collection(`publicProfiles/${uid}/statistics`)),
           async () => {
             try {

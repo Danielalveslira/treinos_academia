@@ -388,16 +388,35 @@ service cloud.firestore {
       // sobre uma janela limitada, não aqui). Pelo menos um dos campos de medida real
       // precisa estar presente — um check-in inteiramente vazio não serve pra nada.
       function isValidBodyMeasurement(data) {
-        return data.keys().hasOnly(['date', 'weightKg', 'bodyFatPercent', 'waistCm', 'hipCm', 'leanMassKg', 'note', 'createdAt'])
+        return data.keys().hasOnly([
+            'date', 'weightKg', 'bodyFatPercent', 'abdomenCm', 'waistCm', 'hipCm',
+            'chestCm', 'armCm', 'thighCm', 'calfCm', 'leanMassKg', 'fatMassKg',
+            'note', 'createdAt'
+          ])
           && data.date is timestamp
           && (!('weightKg' in data) || (data.weightKg is number && data.weightKg > 0 && data.weightKg <= 400))
           && (!('bodyFatPercent' in data) || (data.bodyFatPercent is number && data.bodyFatPercent > 0 && data.bodyFatPercent <= 70))
+          && (!('abdomenCm' in data) || (data.abdomenCm is number && data.abdomenCm > 0 && data.abdomenCm <= 300))
           && (!('waistCm' in data) || (data.waistCm is number && data.waistCm > 0 && data.waistCm <= 200))
           && (!('hipCm' in data) || (data.hipCm is number && data.hipCm > 0 && data.hipCm <= 200))
+          && (!('chestCm' in data) || (data.chestCm is number && data.chestCm > 0 && data.chestCm <= 300))
+          && (!('armCm' in data) || (data.armCm is number && data.armCm > 0 && data.armCm <= 200))
+          && (!('thighCm' in data) || (data.thighCm is number && data.thighCm > 0 && data.thighCm <= 200))
+          && (!('calfCm' in data) || (data.calfCm is number && data.calfCm > 0 && data.calfCm <= 200))
           && (!('leanMassKg' in data) || (data.leanMassKg is number && data.leanMassKg > 0 && data.leanMassKg <= 300))
+          && (!('fatMassKg' in data) || (data.fatMassKg is number && data.fatMassKg > 0 && data.fatMassKg <= 300))
           && (!('note' in data) || (data.note is string && data.note.size() <= 300))
           && ('weightKg' in data || 'bodyFatPercent' in data || 'waistCm' in data
-            || 'hipCm' in data || 'leanMassKg' in data);
+            || 'hipCm' in data || 'leanMassKg' in data || 'abdomenCm' in data
+            || 'chestCm' in data || 'armCm' in data || 'thighCm' in data
+            || 'calfCm' in data || 'fatMassKg' in data);
+      }
+
+      // Resumo derivado dos treinos pela Cloud Function onWorkoutWritten. O cliente
+      // pode consultar o próprio progresso, mas nunca forjar ou editar totais.
+      match /progressDaily/{day} {
+        allow read: if isOwner(userId) && hasAppAccess(isSuperAdmin());
+        allow write: if false;
       }
 
       match /bodyMeasurements/{measurementId} {
