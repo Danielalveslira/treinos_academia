@@ -19,7 +19,7 @@ const NAV_ITEMS = [
   { to: '/', label: 'Início', icon: HomeIcon, end: true },
   { to: '/exercicios', label: 'Exercícios', icon: ListUnorderedIcon },
   { to: '/novo-treino', label: 'Treinar', icon: PlayIcon, action: true },
-  { to: '/historico', label: 'Progresso', icon: HistoryIcon },
+  { to: '/progresso', label: 'Progresso', icon: HistoryIcon },
   { to: '/comunidades', label: 'Comunidades', icon: PeopleIcon },
 ]
 

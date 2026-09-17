@@ -231,6 +231,22 @@ test('daily aggregate is allowed only to the owner and returns server totals', a
   await assertFails(aggregate(visitor))
 })
 
+test('private progress summaries are owner-readable and server-write-only', async () => {
+  const path = 'users/owner/progressDaily/2026-09-09'
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), path), {
+      dateKey: '2026-09-09',
+      workoutCount: 1,
+      strengthVolumeKg: 1000,
+    })
+  })
+  await assertSucceeds(getDoc(doc(owner, path)))
+  await assertFails(getDoc(doc(visitor, path)))
+  await assertFails(updateDoc(doc(owner, path), { strengthVolumeKg: 999999 }))
+  await assertFails(deleteDoc(doc(owner, path)))
+  await assertFails(setDoc(doc(owner, 'users/owner/progressDaily/2026-09-10'), { workoutCount: 1 }))
+})
+
 test('achievement publication requires membership and safe payload; author may delete', async () => {
   const achievement = { day: '2026-09-09', text: 'Treino concluído!', entries: 1, sets: 3 }
   const status = (overrides = {}) => ({

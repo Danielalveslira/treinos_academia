@@ -12,6 +12,8 @@ service firebase.storage {
     match /exercise-catalog/{version}/{exerciseId}/{fileName} {
       allow read: if version.matches('^v[0-9]+$')
         && exerciseId.matches('^[A-Za-z0-9_() .-]+$')
+        && exerciseId != '.'
+        && exerciseId != '..'
         && fileName.matches('^(thumb|[0-9]+)\\.webp$');
       allow write: if false;
     }

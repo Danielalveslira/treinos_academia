@@ -188,9 +188,15 @@ export function validateBodyMeasurement({
   heightCm,
   weightKg,
   bodyFatPercent,
+  abdomenCm,
   waistCm,
   hipCm,
+  chestCm,
+  armCm,
+  thighCm,
+  calfCm,
   leanMassKg,
+  fatMassKg,
   note,
 }) {
   const errors = {}
@@ -203,9 +209,15 @@ export function validateBodyMeasurement({
   if (!inRange(heightCm, 50, 250, true)) errors.heightCm = 'Altura entre 50 e 250 cm'
   if (!inRange(weightKg, 0, 400)) errors.weightKg = 'Peso até 400 kg'
   if (!inRange(bodyFatPercent, 0, 70)) errors.bodyFatPercent = '% de gordura até 70'
+  if (!inRange(abdomenCm, 0, 300)) errors.abdomenCm = 'Abdômen até 300 cm'
   if (!inRange(waistCm, 0, 200)) errors.waistCm = 'Cintura até 200 cm'
   if (!inRange(hipCm, 0, 200)) errors.hipCm = 'Quadril até 200 cm'
+  if (!inRange(chestCm, 0, 300)) errors.chestCm = 'Tórax até 300 cm'
+  if (!inRange(armCm, 0, 200)) errors.armCm = 'Braço até 200 cm'
+  if (!inRange(thighCm, 0, 200)) errors.thighCm = 'Coxa até 200 cm'
+  if (!inRange(calfCm, 0, 200)) errors.calfCm = 'Panturrilha até 200 cm'
   if (!inRange(leanMassKg, 0, 300)) errors.leanMassKg = 'Massa magra até 300 kg'
+  if (!inRange(fatMassKg, 0, 300)) errors.fatMassKg = 'Massa gorda até 300 kg'
   const noteError = optionalText(note, 300, 'Use até 300 caracteres')
   if (noteError) errors.note = noteError
   return errors

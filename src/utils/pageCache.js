@@ -43,7 +43,7 @@ export function invalidateCache(prefix) {
 }
 
 export function invalidateWorkoutCache(uid) {
-  for (const prefix of ['dashboard', 'workouts', 'exerciseHistory']) {
+  for (const prefix of ['dashboard', 'workouts', 'exerciseHistory', 'progress']) {
     invalidateCache(`${prefix}:${uid}:`)
     // Dashboard keys historically have no suffix.
     store.delete(`${prefix}:${uid}`)

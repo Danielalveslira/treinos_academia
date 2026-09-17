@@ -4,6 +4,10 @@ import {
   calculateBMI,
   calculateWHR,
   calculateLeanMass,
+  calculateFatMass,
+  calculateWaistHeightRatio,
+  getBodyMetricChange,
+  getBodyMetricSeries,
   getLatestBodyComposition,
   getWeightTrend,
 } from './bodyComposition.js'
@@ -90,4 +94,63 @@ test('getWeightTrend has no previous-window comparison when history is too short
   assert.equal(result.average, 80)
   assert.equal(result.percentChange, null)
   assert.deepEqual(getWeightTrend([]), { average: null, percentChange: null })
+})
+
+test('derives fat mass and waist-height ratio only from compatible values', () => {
+  assert.equal(calculateFatMass(80, 20), 16)
+  assert.equal(calculateFatMass(80, null), null)
+  assert.equal(calculateWaistHeightRatio(84, 180), 84 / 180)
+})
+
+test('manual fat mass wins over the estimate and reports its origin', () => {
+  const manual = getLatestBodyComposition(
+    [{ date: new Date(2026, 8, 10), weightKg: 80, bodyFatPercent: 20, fatMassKg: 18 }],
+    180
+  )
+  assert.equal(manual.fatMassKg, 18)
+  assert.equal(manual.fatMassSource, 'manual')
+
+  const calculated = getLatestBodyComposition(
+    [{ date: new Date(2026, 8, 10), weightKg: 80, bodyFatPercent: 20 }],
+    180
+  )
+  assert.equal(calculated.fatMassKg, 16)
+  assert.equal(calculated.fatMassSource, 'calculated')
+})
+
+test('new circumference metrics support sparse and legacy measurements', () => {
+  const measurements = [
+    { date: new Date(2026, 8, 10), armCm: 36, chestCm: 102 },
+    { date: new Date(2026, 8, 1), abdomenCm: 88, thighCm: 59, calfCm: 39 },
+    { date: new Date(2026, 7, 1), weightKg: 80 },
+  ]
+  const composition = getLatestBodyComposition(measurements, 180)
+  assert.equal(composition.armCm, 36)
+  assert.equal(composition.abdomenCm, 88)
+  assert.deepEqual(
+    getBodyMetricSeries(measurements, 'armCm', 30, new Date(2026, 8, 16, 12)).map(
+      (point) => point.value
+    ),
+    [36]
+  )
+  assert.deepEqual(getBodyMetricSeries(measurements, 'unknown', 30), [])
+})
+
+test('body metric series respects the selected period and calculates change', () => {
+  const now = new Date(2026, 8, 16, 12)
+  const series = getBodyMetricSeries(
+    [
+      { date: new Date(2026, 8, 16, 12), weightKg: 79 },
+      { date: new Date(2026, 8, 1, 12), weightKg: 80 },
+      { date: new Date(2026, 6, 1, 12), weightKg: 82 },
+    ],
+    'weightKg',
+    30,
+    now
+  )
+  assert.deepEqual(
+    series.map((point) => point.value),
+    [80, 79]
+  )
+  assert.deepEqual(getBodyMetricChange(series), { current: 79, change: -1, trend: 'Em queda' })
 })

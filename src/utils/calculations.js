@@ -37,6 +37,9 @@ export function getExerciseIndicators(workouts) {
       maxLoad: null,
       evolutionPercent: null,
       lastVolume: null,
+      averageVolume: 0,
+      averageSets: 0,
+      totalReps: 0,
       accumulatedVolume: 0,
       sessionCount: 0,
       lastWorkoutDate: null,
@@ -47,6 +50,13 @@ export function getExerciseIndicators(workouts) {
   const [latest, previous] = sorted
 
   const accumulatedVolume = sorted.reduce((sum, w) => sum + calculateVolume(w), 0)
+  const totalSets = sorted.reduce((sum, workout) => sum + getWorkoutSets(workout).length, 0)
+  const totalReps = sorted.reduce(
+    (sum, workout) =>
+      sum +
+      getWorkoutSets(workout).reduce((workoutTotal, set) => workoutTotal + Number(set.reps), 0),
+    0
+  )
 
   const maxLoad = Math.max(...sorted.map((w) => getWorkoutLoad(w)))
   // maxLoad já inclui o próprio treino mais recente, então comparar currentLoad >= maxLoad
@@ -65,6 +75,9 @@ export function getExerciseIndicators(workouts) {
       previous ? getWorkoutLoad(previous) : null
     ),
     lastVolume: calculateVolume(latest),
+    averageVolume: accumulatedVolume / sorted.length,
+    averageSets: totalSets / sorted.length,
+    totalReps,
     accumulatedVolume,
     sessionCount: sorted.length,
     lastWorkoutDate: toDate(latest.date),

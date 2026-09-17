@@ -13,11 +13,23 @@ import {
 import { db } from '../firebase/config'
 import { invalidateCache } from '../utils/pageCache'
 
-// Medida corporal se registra às vezes, não toda hora como treino — 90 dias cobre bem
-// mais do que a janela de tendência (7 dias) precisa, e mesmo assim nunca é uma lista
-// grande de verdade (ver getWeightTrend, calculations feitas sobre isto no cliente).
-const RECENT_WINDOW_DAYS = 90
-const SAFETY_LIMIT = 120
+// Medida corporal é esparsa. A janela anual sustenta os gráficos sem uma coleção
+// agregada adicional; o teto mantém o custo previsível mesmo em uso atípico.
+const RECENT_WINDOW_DAYS = 371
+const SAFETY_LIMIT = 500
+const MEASUREMENT_FIELDS = [
+  'weightKg',
+  'bodyFatPercent',
+  'abdomenCm',
+  'waistCm',
+  'hipCm',
+  'chestCm',
+  'armCm',
+  'thighCm',
+  'calfCm',
+  'leanMassKg',
+  'fatMassKg',
+]
 
 function measurementsRef(userId) {
   return collection(db, 'users', userId, 'bodyMeasurements')
@@ -46,7 +58,12 @@ export async function listRecentMeasurements(userId) {
     limit(SAFETY_LIMIT)
   )
   const snapshot = await getDocs(q)
-  return snapshot.docs.map(toDoc)
+  return {
+    items: snapshot.docs.map(toDoc),
+    // Igual a 500 já é tratado de forma conservadora como possível truncamento.
+    // Evita uma leitura 501 apenas para distinguir o caso raro de exatamente 500.
+    truncated: snapshot.size === SAFETY_LIMIT,
+  }
 }
 
 // Salva tudo que veio preenchido num único commit: altura (se informada) vai direto pro
@@ -55,22 +72,16 @@ export async function listRecentMeasurements(userId) {
 // simplesmente não entram no documento — "só o que sabe".
 export async function saveBodyCheckIn(
   userId,
-  { date, heightCm, weightKg, bodyFatPercent, waistCm, hipCm, leanMassKg, note } = {}
+  values = {}
 ) {
   const measurement = {}
-  const weight = cleanNumber(weightKg)
-  const bodyFat = cleanNumber(bodyFatPercent)
-  const waist = cleanNumber(waistCm)
-  const hip = cleanNumber(hipCm)
-  const leanMass = cleanNumber(leanMassKg)
-  if (weight != null) measurement.weightKg = weight
-  if (bodyFat != null) measurement.bodyFatPercent = bodyFat
-  if (waist != null) measurement.waistCm = waist
-  if (hip != null) measurement.hipCm = hip
-  if (leanMass != null) measurement.leanMassKg = leanMass
-  if (note?.trim()) measurement.note = note.trim()
+  for (const field of MEASUREMENT_FIELDS) {
+    const value = cleanNumber(values[field])
+    if (value != null) measurement[field] = value
+  }
+  if (values.note?.trim()) measurement.note = values.note.trim()
 
-  const height = cleanNumber(heightCm)
+  const height = cleanNumber(values.heightCm)
   const hasMeasurement = Object.keys(measurement).length > 0
   if (height == null && !hasMeasurement) return false
 
@@ -79,7 +90,7 @@ export async function saveBodyCheckIn(
   if (hasMeasurement) {
     batch.set(doc(measurementsRef(userId)), {
       ...measurement,
-      date: toTimestamp(date),
+      date: toTimestamp(values.date),
       createdAt: serverTimestamp(),
     })
   }

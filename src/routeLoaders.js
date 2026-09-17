@@ -7,6 +7,7 @@ export const routeLoaders = {
   '/': () => import('./pages/Dashboard'),
   '/novo-treino': () => import('./pages/NewWorkout'),
   '/historico': () => import('./pages/History'),
+  '/progresso': () => import('./pages/Progress'),
   '/exercicios': () => import('./pages/Exercises'),
   '/comunidades': () => import('./pages/Communities'),
 }

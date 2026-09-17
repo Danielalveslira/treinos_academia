@@ -96,6 +96,7 @@ before(async () => {
                 '/': page,
                 '/novo-treino': page,
                 '/historico': page,
+                '/progresso': page,
                 '/exercicios': page,
                 '/comunidades': page,
               }
@@ -118,7 +119,14 @@ after(async () => {
 })
 
 test('exercise data provider wraps only routes that consume exercise data', () => {
-  for (const path of ['/', '/exercicios', '/exercicios/squat', '/novo-treino', '/historico']) {
+  for (const path of [
+    '/',
+    '/exercicios',
+    '/exercicios/squat',
+    '/novo-treino',
+    '/historico',
+    '/progresso',
+  ]) {
     assert.equal(render(path).providerMounts, 1, path)
   }
 })

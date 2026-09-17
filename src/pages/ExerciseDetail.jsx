@@ -15,7 +15,6 @@ import {
   ArrowDownIcon,
   ArrowRightIcon,
   ZapIcon,
-  DatabaseIcon,
   PlayIcon,
 } from '@primer/octicons-react'
 import { useExercises } from '../contexts/ExercisesContext'
@@ -247,17 +246,17 @@ export default function ExerciseDetail() {
           <Box className="stats-grid" sx={{ mb: 3 }}>
             <IndicatorCard
               icon={GraphBarVerticalIcon}
-              label="Maior carga atual"
+              label="Carga máxima atual"
               value={formatWeight(indicators.currentLoad)}
             />
             <IndicatorCard
               icon={TrophyIcon}
-              label="Maior carga"
+              label={`Recorde nas últimas ${EXERCISE_HISTORY_PAGE_SIZE} sessões`}
               value={formatWeight(indicators.maxLoad)}
             />
             <IndicatorCard
               icon={HistoryIcon}
-              label="Maior carga anterior"
+              label="Carga da sessão anterior"
               value={formatWeight(indicators.previousLoad)}
             />
             <IndicatorCard
@@ -270,11 +269,18 @@ export default function ExerciseDetail() {
               value={formatWeight(indicators.lastVolume)}
             />
             <IndicatorCard
-              icon={DatabaseIcon}
-              label="Volume acumulado"
-              value={formatWeight(indicators.accumulatedVolume)}
+              label="Volume médio recente"
+              value={formatWeight(indicators.averageVolume)}
             />
-            <IndicatorCard icon={ChecklistIcon} label="Sessões" value={indicators.sessionCount} />
+            <IndicatorCard
+              label="Média de séries"
+              value={indicators.averageSets.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+            />
+            <IndicatorCard
+              icon={ChecklistIcon}
+              label="Repetições nas sessões exibidas"
+              value={indicators.totalReps}
+            />
             <IndicatorCard
               icon={CalendarIcon}
               label="Último treino"

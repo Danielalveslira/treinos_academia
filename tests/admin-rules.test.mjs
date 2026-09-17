@@ -257,6 +257,7 @@ test('account deletion fences writes, drains bounded batches and cleans foreign 
   // (documento à parte, fora de users/{uid}) ficavam de fora da lista de limpeza —
   // dados sensíveis/vinculados ao UID sobreviviam à exclusão "permanente" da conta.
   batch.set(db.doc('users/erase/bodyMeasurements/m1'), { weightKg: 80, date: new Date() })
+  batch.set(db.doc('users/erase/progressDaily/2026-09-09'), { workoutCount: 1 })
   batch.set(db.doc('rateLimitCounters/erase'), { postedAt: [Date.now()] })
   await batch.commit()
   await deletion.queue('account', 'erase', 'admin')
@@ -275,6 +276,7 @@ test('account deletion fences writes, drains bounded batches and cleans foreign 
   assert.equal((await db.doc('users/erase').get()).exists, false)
   assert.equal((await db.collection('users/erase/workouts').get()).size, 0)
   assert.equal((await db.collection('users/erase/bodyMeasurements').get()).size, 0)
+  assert.equal((await db.collection('users/erase/progressDaily').get()).size, 0)
   assert.equal((await db.doc('rateLimitCounters/erase').get()).exists, false)
   assert.equal((await db.doc('statuses/foreign/votes/erase').get()).exists, false)
   assert.equal((await db.doc('statuses/own/votes/another').get()).exists, false)
@@ -515,7 +517,10 @@ test('submitSupportRequest preserves the reported photo reference and never fail
   })
   const saved = await db.doc(`supportRequests/${result.id}`).get()
   assert.equal(saved.data().kind, 'report')
-  assert.equal(saved.data().contentSnapshot.photoPath, 'statusPhotos/evidencegym/reportedphoto.webp')
+  assert.equal(
+    saved.data().contentSnapshot.photoPath,
+    'statusPhotos/evidencegym/reportedphoto.webp'
+  )
 })
 
 // AUD-007: retenção da evidência não é indefinida -- é decidida no fecho do chamado.
@@ -533,7 +538,10 @@ test('cancelSupportRequest shortens evidence retention -- no decision was ever m
     evidenceExpiresAt: Timestamp.fromMillis(Date.now() + 30 * 86400000),
     createdAt: Timestamp.now(),
   })
-  await api.cancelSupportRequest.run({ auth: { uid: 'selfcancel' }, data: { requestId: 'toCancel' } })
+  await api.cancelSupportRequest.run({
+    auth: { uid: 'selfcancel' },
+    data: { requestId: 'toCancel' },
+  })
   const after = (await db.doc('supportRequests/toCancel').get()).data()
   assert.equal(after.state, 'closed')
   const daysLeft = (after.evidenceExpiresAt.toMillis() - Date.now()) / 86400000

@@ -1,15 +1,26 @@
 import { createAccountsService } from './accounts-service.js'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
-import { onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore'
+import {
+  onDocumentCreated,
+  onDocumentDeleted,
+  onDocumentWritten,
+} from 'firebase-functions/v2/firestore'
 import { createDeletionService, statusPhotoExtra } from './deletion-service.js'
 import { createBumpMemberCount } from './community-members-service.js'
 import { createSyncUserCommunityIds } from './user-communities-sync.js'
 import { createEnforcePostRateLimit } from './rate-limit-service.js'
+import { affectedWorkoutDays, createProgressDailyService } from './progress-daily-service.js'
 import { validId } from './legal-core.js'
 import { accountView, validateSetAccountStatus, validateDeleteAccount } from './admin-core.js'
 import { readFileSync } from 'node:fs'
 import { initializeApp } from 'firebase-admin/app'
-import { getFirestore, FieldValue, FieldPath, Timestamp, AggregateField } from 'firebase-admin/firestore'
+import {
+  getFirestore,
+  FieldValue,
+  FieldPath,
+  Timestamp,
+  AggregateField,
+} from 'firebase-admin/firestore'
 import { getAuth } from 'firebase-admin/auth'
 import { getStorage } from 'firebase-admin/storage'
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
@@ -43,6 +54,19 @@ const manifest = JSON.parse(readFileSync(new URL('./legal/manifest.json', import
 const documents = JSON.parse(readFileSync(new URL('./legal/documents.json', import.meta.url)))
 const digest = legalDigest(manifest, documents)
 const options = { region: 'southamerica-east1', maxInstances: 5 }
+const rebuildProgressDay = createProgressDailyService({ db, Timestamp, FieldValue })
+
+// Recalcula o dia inteiro em vez de aplicar incrementos. Assim criação, edição,
+// exclusão, mudança de data e retry do trigger produzem sempre o mesmo resumo.
+export const onWorkoutWritten = onDocumentWritten(
+  { ...options, document: 'users/{uid}/workouts/{workoutId}', retry: true },
+  async (event) => {
+    const before = event.data?.before?.data()
+    const after = event.data?.after?.data()
+    const days = affectedWorkoutDays(before, after)
+    await Promise.all(days.map((day) => rebuildProgressDay(event.params.uid, day)))
+  }
+)
 
 // AUD-007: política de retenção da cópia de evidência (moderationEvidence/*.webp).
 // Ligada ao ciclo de vida do próprio chamado, não a um prazo fixo desde a criação:
@@ -339,9 +363,12 @@ export const decideSupportRequest = onCall(options, async (request) => {
       // nenhuma medida com base nela, então volta a ter prazo curto.
       ...(data.evidencePath
         ? {
-            evidenceExpiresAt: ['temporary_suspension', 'system_ban', 'community_ban', 'remove_content'].includes(
-              action
-            )
+            evidenceExpiresAt: [
+              'temporary_suspension',
+              'system_ban',
+              'community_ban',
+              'remove_content',
+            ].includes(action)
               ? null
               : Timestamp.fromMillis(Date.now() + EVIDENCE_NO_ACTION_RETENTION_MS),
           }
@@ -546,7 +573,10 @@ export const purgeOrphanedPhotos = onSchedule(
     const candidates = files
       .map((file) => ({
         file,
-        statusId: file.name.split('/').pop().replace(/\.webp$/, ''),
+        statusId: file.name
+          .split('/')
+          .pop()
+          .replace(/\.webp$/, ''),
         createdAt: new Date(file.metadata.timeCreated).getTime(),
       }))
       .filter((candidate) => now - candidate.createdAt >= ORPHAN_GRACE_MS)

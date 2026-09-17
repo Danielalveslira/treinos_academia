@@ -16,6 +16,7 @@ const Exercises = lazy(routeLoaders['/exercicios'])
 const ExerciseDetail = lazy(() => import('./pages/ExerciseDetail'))
 const NewWorkout = lazy(routeLoaders['/novo-treino'])
 const History = lazy(routeLoaders['/historico'])
+const Progress = lazy(routeLoaders['/progresso'])
 const Communities = lazy(routeLoaders['/comunidades'])
 const CommunityDetail = lazy(() => import('./pages/CommunityDetail'))
 const AdminCommunities = lazy(() => import('./pages/AdminCommunities'))
@@ -67,6 +68,7 @@ export function AppRoutes() {
           <Route path="/exercicios/:id" element={<ExerciseDetail />} />
           <Route path="/novo-treino" element={<NewWorkout />} />
           <Route path="/historico" element={<History />} />
+          <Route path="/progresso" element={<Progress />} />
         </Route>
         <Route path="/perfil" element={<Profile />} />
         <Route

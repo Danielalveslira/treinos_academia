@@ -37,12 +37,12 @@ test('validateAcceptance blocks while the manifest is not published or incomplet
 })
 
 test('validateAcceptance requires the current version and every confirmation', () => {
-  assert.match(
-    validateAcceptance({ version: '0.9.0' }, publishedManifest),
-    /versão mudou/i
-  )
+  assert.match(validateAcceptance({ version: '0.9.0' }, publishedManifest), /versão mudou/i)
   assert.equal(
-    validateAcceptance({ version: '1.0.0', accepted: true, healthDataConsent: true }, publishedManifest),
+    validateAcceptance(
+      { version: '1.0.0', accepted: true, healthDataConsent: true },
+      publishedManifest
+    ),
     null
   )
   assert.match(
@@ -60,8 +60,8 @@ test('validateAcceptance requires the current version and every confirmation', (
 // (mesma lógica, runtime do navegador — sem pacote compartilhado entre os dois).
 test('calculateAge counts full years, only crediting the birthday once it has actually passed, and reads Firestore Timestamps', () => {
   const now = new Date(2026, 8, 10) // 2026-09-10
-  assert.equal(calculateAge('2000-09-10', now), 26)
-  assert.equal(calculateAge('2000-09-11', now), 25)
+  assert.equal(calculateAge(new Date(2000, 8, 10), now), 26)
+  assert.equal(calculateAge(new Date(2000, 8, 11), now), 25)
   assert.equal(calculateAge({ toDate: () => new Date(2008, 0, 1) }, now), 18)
 })
 
@@ -139,10 +139,7 @@ test('validateDecision bounds temporary_suspension to 1-30 days and requires com
   )
   assert.equal(validateDecision({ ...base, action: 'temporary_suspension', days: 7 }), null)
   assert.match(validateDecision({ ...base, action: 'community_ban' }), /Informe a comunidade/)
-  assert.equal(
-    validateDecision({ ...base, action: 'community_ban', communityId: 'gym-1' }),
-    null
-  )
+  assert.equal(validateDecision({ ...base, action: 'community_ban', communityId: 'gym-1' }), null)
 })
 
 test('validateDecision rejects a malformed communityId regardless of action, before it reaches a Firestore path', () => {

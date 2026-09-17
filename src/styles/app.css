@@ -2578,6 +2578,125 @@ body {
   background: var(--bgColor-default);
 }
 
+.progress-stats-grid,
+.strength-stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.body-measurements-grid {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.progress-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 10px;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+}
+
+.progress-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.progress-chart-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  font-style: normal;
+}
+
+.progress-chart-legend i.is-current {
+  background: #2f81f7;
+}
+
+.progress-chart-legend i.is-previous {
+  background: #8b949e;
+}
+
+.progress-chart-legend i.is-estimate {
+  background: transparent;
+  border: 2px dashed #a371f7;
+  border-radius: 50%;
+}
+
+.body-subsection-heading {
+  margin-top: 32px;
+  margin-bottom: 18px;
+}
+
+.body-subsection-heading h3 {
+  margin: 2px 0 0;
+  font-size: 17px;
+}
+
+.measurement-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 20px;
+}
+
+.measurement-fieldset legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fgColor-default);
+}
+
+.measurement-fieldset-caption {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+}
+
+.measurement-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.muscle-distribution {
+  display: grid;
+  gap: 10px;
+}
+
+.muscle-distribution > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--borderColor-muted);
+}
+
+.body-chart-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+@media (max-width: 767px) {
+  .progress-stats-grid,
+  .strength-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .measurement-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .exercise-add-choice h2,
 .catalog-heading h2,
 .catalog-details h2 { margin: 0; }
