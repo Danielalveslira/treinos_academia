@@ -3,6 +3,7 @@ import { Box, Button, Flash, Heading, Label, Spinner, Text } from '@primer/react
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
 import { getCashPurchaseSettings, requestCashPurchase } from '../services/cashPurchaseService'
+import { CashPackageCards } from '../components/CashPackageCards'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
   resolveRequestId,
@@ -24,7 +25,7 @@ function newRequestId() {
 // esta página nunca credita nada sozinha.
 export default function EvoCash() {
   const { user } = useAuth()
-  const [settings, setSettings] = useState({ packages: [], pixKey: null })
+  const [settings, setSettings] = useState({ packages: [], pixKey: null, createCommunityCashCost: null })
   const [loadingSettings, setLoadingSettings] = useState(true)
   // Guarda o requestId da tentativa em andamento -- reenviado se a MESMA tentativa
   // (mesmo pacote, ainda sem sucesso) for repetida, nunca gerado de novo a cada clique
@@ -135,36 +136,15 @@ export default function EvoCash() {
             compras&quot; abaixo.
           </Flash>
         )}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-          {settings.packages.map((pkg) => (
-            <Box
-              key={pkg.packageId}
-              sx={{
-                border: '1px solid',
-                borderColor: 'border.default',
-                borderRadius: 2,
-                p: 3,
-                minWidth: 220,
-              }}
-            >
-              <Heading as="h3" sx={{ fontSize: 1 }}>
-                {pkg.label}
-              </Heading>
-              <Text as="p" sx={{ fontSize: 3, fontWeight: 'bold', m: 0 }}>
-                {formatCentavosBRL(pkg.amountCentavos)}
-              </Text>
-              <Button
-                variant="primary"
-                sx={{ mt: 2 }}
-                loading={buyingPackageId === pkg.packageId}
-                disabled={!!buyingPackageId || hasPendingPurchase}
-                onClick={() => buy(pkg.packageId)}
-              >
-                Comprar
-              </Button>
-            </Box>
-          ))}
-        </Box>
+        {!loadingSettings && settings.packages.length > 0 && (
+          <CashPackageCards
+            packages={settings.packages}
+            communityCreationCashCost={settings.createCommunityCashCost}
+            buyingPackageId={buyingPackageId}
+            disabled={!!buyingPackageId || hasPendingPurchase}
+            onBuy={buy}
+          />
+        )}
       </section>
 
       <section aria-labelledby="my-purchases-heading">

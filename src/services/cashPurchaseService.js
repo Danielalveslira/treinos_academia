@@ -31,7 +31,13 @@ export async function getCashPurchaseSettings() {
   const packages = Object.entries(data?.cashPackages || {})
     .filter(([, pkg]) => pkg?.active === true)
     .map(([packageId, pkg]) => ({ packageId, ...pkg }))
-  return { packages, pixKey: data?.pixKey || null }
+  // Mesmo documento, campo adicional: custo real (em EvoCash) de criar uma comunidade
+  // paga (ver privilege-core.js), só pra exibição -- alimenta o princípio de
+  // "concretude" dos cards (cashPackagePresentation.js), nunca usado pra decidir nada
+  // financeiro aqui. null quando ausente/inválido, nunca um valor inventado.
+  const cashCost = data?.privileges?.createCommunity?.cashCost
+  const createCommunityCashCost = typeof cashCost === 'number' && cashCost > 0 ? cashCost : null
+  return { packages, pixKey: data?.pixKey || null, createCommunityCashCost }
 }
 
 // requestId gerado UMA VEZ por tentativa de compra e reenviado em qualquer retry --

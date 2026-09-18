@@ -128,6 +128,25 @@ test('missing economyConfig document yields no packages and no PIX key, never a 
   const settings = await api.getCashPurchaseSettings()
   assert.deepEqual(settings.packages, [])
   assert.equal(settings.pixKey, null)
+  assert.equal(settings.createCommunityCashCost, null)
+})
+
+test('createCommunityCashCost comes from the same economyConfig document (privileges.createCommunity.cashCost)', async () => {
+  const { api } = await service({
+    configDoc: { ...PACKAGES_CONFIG, privileges: { createCommunity: { cashCost: 50 } } },
+  })
+  const settings = await api.getCashPurchaseSettings()
+  assert.equal(settings.createCommunityCashCost, 50)
+})
+
+test('createCommunityCashCost is null when the block is missing or malformed, never an invented default', async () => {
+  const missing = await (await service({ configDoc: PACKAGES_CONFIG })).api.getCashPurchaseSettings()
+  assert.equal(missing.createCommunityCashCost, null)
+
+  const malformed = await (
+    await service({ configDoc: { ...PACKAGES_CONFIG, privileges: { createCommunity: { cashCost: 0 } } } })
+  ).api.getCashPurchaseSettings()
+  assert.equal(malformed.createCommunityCashCost, null)
 })
 
 test('requestCashPurchase forwards packageId and requestId untouched to the callable (retry reuses the same requestId end to end)', async () => {
