@@ -20,6 +20,13 @@ export function formatDateTime(value) {
   return value.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+// EvoCash (Fase 4): preço sempre gravado como inteiro em centavos (nunca float de
+// reais, ver cash-purchase-core.js) -- só a exibição converte para reais.
+export function formatCentavosBRL(amountCentavos) {
+  if (amountCentavos == null) return '—'
+  return (amountCentavos / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
 export function buildExerciseNameMap(exercises) {
   const map = new Map()
   exercises.forEach((ex) => map.set(ex.id, ex.name))

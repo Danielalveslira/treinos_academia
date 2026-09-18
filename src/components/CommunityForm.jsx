@@ -7,7 +7,7 @@ import { FormShell } from './FormShell'
 
 const EMPTY = { name: '', description: '', postAccess: 'everyone', iconName: DEFAULT_COMMUNITY_ICON_NAME }
 
-export function CommunityForm({ initialValue, onSubmit, onCancel }) {
+export function CommunityForm({ initialValue, onSubmit, onCancel, showPostAccess = true }) {
   const { values, setField, errors, submitting, handleSubmit } = useFormState({
     initialValues: initialValue ? { ...EMPTY, ...initialValue } : EMPTY,
     validate: validateCommunity,
@@ -54,21 +54,24 @@ export function CommunityForm({ initialValue, onSubmit, onCancel }) {
         )}
       </FormControl>
 
-      <FormControl>
-        <FormControl.Label>Quem pode publicar</FormControl.Label>
-        <Select
-          value={values.postAccess}
-          onChange={(e) => setField('postAccess', e.target.value)}
-          block
-        >
-          <Select.Option value="everyone">Todos os membros</Select.Option>
-          <Select.Option value="admins">Somente superadmin</Select.Option>
-        </Select>
-        <FormControl.Caption>
-          Com "Somente superadmin", membros comuns só podem visualizar as publicações
-          (ex: uma comunidade de avisos oficiais).
-        </FormControl.Caption>
-      </FormControl>
+      {showPostAccess && (
+        <FormControl>
+          <FormControl.Label>Quem pode publicar</FormControl.Label>
+          <Select
+            value={values.postAccess}
+            onChange={(e) => setField('postAccess', e.target.value)}
+            block
+          >
+            <Select.Option value="everyone">Todos os membros</Select.Option>
+            <Select.Option value="admins">Somente moderadores</Select.Option>
+          </Select>
+          <FormControl.Caption>
+            Com "Somente moderadores", membros comuns só podem visualizar as publicações
+            (ex: uma comunidade de avisos oficiais). Moderadores são o superadmin e, na
+            própria comunidade, o dono dela.
+          </FormControl.Caption>
+        </FormControl>
+      )}
 
       {initialValue && (
         <FormControl>

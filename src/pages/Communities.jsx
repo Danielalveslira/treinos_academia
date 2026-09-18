@@ -155,9 +155,14 @@ export default function Communities() {
         <Heading as="h1" sx={{ m: 0 }}>
           Comunidades
         </Heading>
-        <Button onClick={refresh} loading={loading} disabled={loading}>
-          Atualizar
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button as={RouterLink} to="/comunidades/criar">
+            Criar comunidade
+          </Button>
+          <Button onClick={refresh} loading={loading} disabled={loading}>
+            Atualizar
+          </Button>
+        </Box>
       </Box>
 
       {loading && myCommunities.length === 0 && exploreCommunities.length === 0 && (

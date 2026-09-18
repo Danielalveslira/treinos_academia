@@ -8,14 +8,24 @@ import {
   PlusIcon,
   PeopleIcon,
   TrophyIcon,
+  GearIcon,
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunityFeed } from '../hooks/useCommunityFeed'
 import { useSponsoredAds } from '../hooks/useSponsoredAds'
+import { useMyEconomyVotes } from '../hooks/useMyEconomyVotes'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
-import { getCommunity } from '../services/communitiesService'
+import {
+  getCommunity,
+  updateCommunity,
+  setCommunityActive,
+  deleteCommunity,
+} from '../services/communitiesService'
 import { isMember, joinCommunity, leaveCommunity } from '../services/communityMembersService'
+import { CommunityForm } from '../components/CommunityForm'
+import { CommunityMembersModeration } from '../components/CommunityMembersModeration'
+import { canModerateCommunity } from '../utils/communityOwnership'
 import {
   createAchievementStatus,
   createTextStatus,
@@ -45,6 +55,7 @@ function CommunityDetail({ id }) {
   const [loadingCommunity, setLoadingCommunity] = useState(true)
   const [communityError, setCommunityError] = useState(null)
   const [formOpen, setFormOpen] = useState(false)
+  const [managing, setManaging] = useState(false)
 
   const {
     statuses,
@@ -60,6 +71,10 @@ function CommunityDetail({ id }) {
   // comentário em useSponsoredAds.js sobre por que isso é obrigatório, não só uma
   // otimização.
   const { feedAds, bannerAds } = useSponsoredAds(id, member)
+
+  // 1 consulta para o feed inteiro (nunca 1 leitura por card) -- ver useMyEconomyVotes.js.
+  const statusIds = member ? statuses.map((status) => status.id) : []
+  const { votesByStatusId, setVote } = useMyEconomyVotes(statusIds, user?.uid)
 
   const loadCommunity = useCallback(async () => {
     setLoadingCommunity(true)
@@ -110,6 +125,49 @@ function CommunityDetail({ id }) {
       showToast('Erro ao sair da comunidade.', 'danger')
     } finally {
       setMembershipPending(false)
+    }
+  }
+
+  // Fase 5: mesmas funções de communitiesService.js já usadas pelo painel admin --
+  // funcionam para o dono porque firestore.rules agora aceita isCommunityOwner nas
+  // mesmas Rules que já aceitavam isSuperAdmin(), não porque este código sabe algo novo.
+  async function handleUpdateCommunity(values) {
+    try {
+      await updateCommunity(id, values)
+      setCommunity((previous) => ({ ...previous, ...values }))
+      setManaging(false)
+      showToast('Comunidade atualizada.')
+    } catch (err) {
+      console.error('[CommunityDetail] updateCommunity:', err)
+      showToast('Erro ao atualizar a comunidade.', 'danger')
+      throw err
+    }
+  }
+
+  async function handleToggleActive() {
+    try {
+      await setCommunityActive(id, !community.isActive)
+      setCommunity((previous) => ({ ...previous, isActive: !previous.isActive }))
+      showToast(community.isActive ? 'Comunidade desativada.' : 'Comunidade reativada.')
+    } catch (err) {
+      console.error('[CommunityDetail] setCommunityActive:', err)
+      showToast('Erro ao alterar o status da comunidade.', 'danger')
+    }
+  }
+
+  async function handleDeleteCommunity() {
+    const confirmed = await confirmDelete({
+      title: 'Excluir esta comunidade?',
+      content: 'Publicações, membros e restrições dela serão apagados. Esta ação não pode ser desfeita.',
+    })
+    if (!confirmed) return
+    try {
+      await deleteCommunity(id)
+      showToast('Exclusão da comunidade solicitada.')
+      navigate('/comunidades', { replace: true })
+    } catch (err) {
+      console.error('[CommunityDetail] deleteCommunity:', err)
+      showToast('Erro ao excluir a comunidade.', 'danger')
     }
   }
 
@@ -221,7 +279,15 @@ function CommunityDetail({ id }) {
   }
 
   const loading = loadingCommunity || loadingFeed
-  const canPost = isSuperAdmin || community?.postAccess !== 'admins'
+  // Fase 5: dono da comunidade conta como moderador só DENTRO dela -- nunca em nenhuma
+  // outra (ver firestore.rules: isCommunityOwner/statusCommunityOk). community?.ownerId
+  // já vem do próprio getCommunity(id) acima, sem leitura extra.
+  const canModerate = canModerateCommunity({
+    isSuperAdmin,
+    communityOwnerId: community?.ownerId,
+    uid: user.uid,
+  })
+  const canPost = canModerate || community?.postAccess !== 'admins'
 
   return (
     <Box className="community-page">
@@ -252,12 +318,51 @@ function CommunityDetail({ id }) {
                 </Text>
               )}
             </Box>
-            {member && (
-              <Button onClick={handleLeave} disabled={membershipPending} sx={{ flexShrink: 0 }}>
-                Sair
-              </Button>
-            )}
+            <Box sx={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+              {canModerate && !managing && (
+                <Button leadingVisual={GearIcon} onClick={() => setManaging(true)}>
+                  Gerenciar
+                </Button>
+              )}
+              {member && (
+                <Button onClick={handleLeave} disabled={membershipPending}>
+                  Sair
+                </Button>
+              )}
+            </Box>
           </Box>
+
+          {/* Fase 5: visível para isSuperAdmin || dono (ownerId) -- as MESMAS
+              funções de communitiesService.js que o painel admin global já usa, só que
+              aqui restritas (pelas Rules, não só pela UI) a esta comunidade. */}
+          {canModerate && managing && (
+            <Box
+              sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3 }}
+            >
+              <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
+                Gerenciar comunidade
+              </Heading>
+              <CommunityForm
+                initialValue={community}
+                onSubmit={handleUpdateCommunity}
+                onCancel={() => setManaging(false)}
+              />
+              <Box sx={{ display: 'flex', gap: 2, mt: 3, borderTop: '1px solid', borderColor: 'border.default', pt: 3 }}>
+                <Button onClick={handleToggleActive}>
+                  {community.isActive ? 'Desativar comunidade' : 'Reativar comunidade'}
+                </Button>
+                <Button variant="danger" onClick={handleDeleteCommunity}>
+                  Excluir comunidade
+                </Button>
+              </Box>
+              <Box sx={{ mt: 3, borderTop: '1px solid', borderColor: 'border.default', pt: 3 }}>
+                <Heading as="h3" sx={{ fontSize: 0, mb: 2 }}>
+                  Membros e banimentos
+                </Heading>
+                <CommunityMembersModeration communityId={id} />
+              </Box>
+            </Box>
+          )}
 
           {!member && (
             <Blankslate>
@@ -354,10 +459,12 @@ function CommunityDetail({ id }) {
                     key={status.id}
                     status={status}
                     currentUserId={user.uid}
-                    canDelete={status.authorId === user.uid || isSuperAdmin}
+                    canDelete={status.authorId === user.uid || canModerate}
                     onDelete={handleDeleteStatus}
                     now={now}
                     showToast={showToast}
+                    myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
+                    onEconomyVoted={(value) => setVote(status.id, value)}
                   />
                 ))}
               </div>

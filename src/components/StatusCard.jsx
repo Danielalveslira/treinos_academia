@@ -18,6 +18,7 @@ import {
   leaveWorkout,
 } from '../services/statusesService'
 import { ExpiryBadge } from './ExpiryBadge'
+import { EconomyVoteBar } from './EconomyVoteBar'
 import { AchievementSummary } from './AchievementSummary'
 import { MarkdownViewer } from './MarkdownViewer'
 import { PhotoStatus } from './PhotoStatus'
@@ -351,7 +352,16 @@ function WorkoutStatus({ status, currentUserId, showToast }) {
   )
 }
 
-export function StatusCard({ status, currentUserId, canDelete, onDelete, now, showToast }) {
+export function StatusCard({
+  status,
+  currentUserId,
+  canDelete,
+  onDelete,
+  now,
+  showToast,
+  myEconomyVote,
+  onEconomyVoted,
+}) {
   return (
     <article className="status-card">
       <StatusHeader
@@ -378,6 +388,15 @@ export function StatusCard({ status, currentUserId, canDelete, onDelete, now, sh
         {status.type === 'photo' && (
           <PhotoStatus status={status} preloadedBlob={status._localPhotoBlob} />
         )}
+      </div>
+      <div className="status-footer">
+        <EconomyVoteBar
+          status={status}
+          currentUserId={currentUserId}
+          showToast={showToast}
+          myVote={myEconomyVote}
+          onVoted={onEconomyVoted}
+        />
       </div>
       {isReportableAuthor(status, currentUserId) && (
         <Link

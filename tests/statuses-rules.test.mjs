@@ -1,4 +1,4 @@
-import { before, test } from 'node:test'
+import { before, after, test } from 'node:test'
 import { readFile } from 'node:fs/promises'
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
 import {
@@ -103,6 +103,14 @@ before(async () => {
       joinedAt: Timestamp.now(),
     })
   })
+})
+
+// Sem isto, o ambiente de teste (conexões gRPC com o emulador) nunca fecha -- o
+// processo do test runner fica esperando indefinidamente por handles abertos depois
+// que todos os testes já passaram (achado da auditoria de diagnóstico da Fase 5: os
+// testes em si sempre passaram rápido, o arquivo inteiro é que nunca concluía).
+after(async () => {
+  await env?.cleanup()
 })
 
 test('a member in good standing can create a status', async () => {

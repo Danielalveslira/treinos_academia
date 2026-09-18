@@ -77,17 +77,42 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Economia interna (EvoCoins/EvoCash) -- seção 26 do prompt de economia. Config
+    // sempre de leitura só, nunca escrita pelo cliente (nem por superadmin): qualquer
+    // ajuste futuro nos valores passa por uma Cloud Function própria (Fase 4+), nunca
+    // por escrita direta no Firestore.
+    match /economyConfig/{docId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
     match /accountRestrictions/{userId} {
       allow get: if isOwner(userId) || isSuperAdmin();
       allow write: if false;
     }
 
     match /communityRestrictions/{restrictionId} {
-      allow read: if isSuperAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      // Fase 5: dono da comunidade também pode ver quem está banido dela (mesmo poder
+      // de moderação que o superadmin já tinha) -- isCommunityOwner só é avaliada
+      // (pagando seu get() extra) quando as duas checagens mais baratas já falharam.
+      allow read: if isSuperAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid)
+        || isCommunityOwner(resource.data.communityId);
+      // setCommunityMemberBan (Cloud Function) é o único escritor -- nunca o cliente,
+      // nem para o próprio superadmin/dono (mesmo padrão de communityRestrictions até
+      // aqui: write sempre false, só Admin SDK).
       allow write: if false;
     }
 
     match /supportRequests/{requestId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+      allow write: if false;
+    }
+
+    // EvoCash (Fase 4 -- seção 26 do prompt de economia). Top-level, mesmo padrão de
+    // supportRequests: dono ou superadmin leem, cliente nunca escreve -- todo o ciclo
+    // (requestCashPurchase/confirmCashPurchase/cancelCashPurchase) passa só pela Admin
+    // SDK, nunca por escrita direta do Firestore.
+    match /cashPurchases/{purchaseId} {
       allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
       allow write: if false;
     }
@@ -436,6 +461,27 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isSuperAdmin();
         allow write: if false;
       }
+
+      // Economia interna (EvoCoins/EvoCash) -- seção 5/6/26 do prompt de economia.
+      // Mesmo padrão de leitura de legalAcceptances/notices acima (dono ou superadmin,
+      // sem exigir hasAppAccess): mesmo uma conta desativada/suspensa continua
+      // enxergando o próprio saldo/histórico -- só a Cloud Function decide se ela pode
+      // GANHAR ou GASTAR algo, nunca se pode LER. Cliente nunca escreve nenhum dos três:
+      // saldo, ledger e o resumo diário são sempre calculados e gravados pela Admin SDK.
+      match /wallet/{docId} {
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow write: if false;
+      }
+
+      match /economyTransactions/{transactionId} {
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow write: if false;
+      }
+
+      match /economyDaily/{day} {
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow write: if false;
+      }
     }
 
     // Reserva de @usuário: um documento por nome de usuário, apontando para o dono.
@@ -465,7 +511,7 @@ service cloud.firestore {
     function isValidCommunity(data) {
       return data.keys().hasOnly([
           'name', 'description', 'imageUrl', 'iconName', 'isActive', 'postAccess',
-          'memberCount', 'createdBy', 'createdAt'
+          'memberCount', 'createdBy', 'createdAt', 'ownerId'
         ])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 60
         && data.description is string && data.description.size() <= 300
@@ -476,6 +522,17 @@ service cloud.firestore {
         && data.isActive is bool
         && data.createdBy is string
         && data.createdAt is timestamp
+        // Fase 5: fonte autoritativa de permissão dentro da comunidade (ver
+        // isCommunityOwner) -- sempre igual a createdBy na criação (nenhuma
+        // transferência de posse existe ainda), mas é um campo PRÓPRIO e imutável
+        // separado, não um alias de createdBy, porque uma futura transferência de posse
+        // mudaria só este campo, nunca o registro histórico de quem criou. Ausente =
+        // comunidade de antes deste campo existir (só superadmin administra -- ver
+        // isCommunityOwner/allow update abaixo, nunca tratado como "qualquer uid é
+        // dono"). Opcional de propósito, mesmo padrão de postAccess/iconName logo
+        // abaixo: uma comunidade antiga sem backfill continua editável pelo superadmin
+        // sem migração obrigatória (ver auditoria de compatibilidade da Fase 5).
+        && (!('ownerId' in data) || data.ownerId is string)
         // Ausente = 'everyone' (comunidades criadas antes deste campo existir continuam
         // válidas sem precisar de migração).
         && (!('postAccess' in data) || data.postAccess in ['everyone', 'admins'])
@@ -499,16 +556,47 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/communities/$(communityId)).data.isActive == true;
     }
 
+    // Fase 5 (privilégios): dono de UMA comunidade específica -- escopo estritamente
+    // menor que isSuperAdmin(), nunca um substituto dele. communities.ownerId é a única
+    // fonte autoritativa (nunca o role de communityMembers, que é só para UI). Custa 1
+    // get() extra sempre que chamada -- usada só onde o documento sendo avaliado não é
+    // já o próprio community doc (para a Rule de update de communities, ler
+    // resource.data.ownerId direto é de graça, sem chamar esta função).
+    function isCommunityOwner(communityId) {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/communities/$(communityId)).data.get('ownerId', null) == request.auth.uid;
+    }
+
     match /communities/{communityId} {
       allow read: if hasAppAccess(isSuperAdmin());
+      // ownerId opcional na criação de propósito: uma comunidade OFICIAL criada
+      // direto pelo superadmin (este caminho -- createCommunityWithCash nunca passa
+      // por aqui, é Admin SDK) prefere nascer SEM ownerId, administrada globalmente
+      // por isSuperAdmin() para sempre. Se este campo fosse gravado com o uid de quem
+      // criou, uma conta que mais tarde perdesse role:'superadmin' continuaria "dona"
+      // daquela comunidade oficial só por tê-la criado no passado -- exatamente o que
+      // isValidCommunity() não pode permitir. Quando presente, ainda precisa ser o
+      // próprio uid de quem cria (nunca atribuído a outra pessoa nesta Rule).
       allow create: if isSuperAdmin()
         && isValidCommunity(request.resource.data)
-        && request.resource.data.createdBy == request.auth.uid;
-      allow update: if isSuperAdmin()
+        && request.resource.data.createdBy == request.auth.uid
+        && (!('ownerId' in request.resource.data) || request.resource.data.ownerId == request.auth.uid);
+      // Fase 5: dono da própria comunidade tem os mesmos poderes de edição/desativação
+      // que o superadmin tinha sozinho -- resource.data.ownerId já está em mãos aqui
+      // (é o próprio documento sendo atualizado), então isto não soma nenhum get() novo.
+      // ownerId nunca muda depois de criado (mesma imutabilidade de createdBy/createdAt)
+      // -- Fase 5 não inclui transferência de posse.
+      allow update: if (isSuperAdmin() || resource.data.get('ownerId', null) == request.auth.uid)
         && !exists(/databases/$(database)/documents/deletionJobs/$('community_' + communityId))
         && isValidCommunity(request.resource.data)
         && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.createdAt == resource.data.createdAt;
+        && request.resource.data.createdAt == resource.data.createdAt
+        // .get(..., null) dos dois lados -- nunca acesso direto: uma comunidade
+        // antiga sem ownerId não tem esse campo nem em resource.data nem (por não ser
+        // enviado por updateCommunity()) em request.resource.data, e comparar campos
+        // ausentes diretamente (em vez de via .get) lança erro de avaliação em vez de
+        // simplesmente reprovar -- o que travaria toda edição de comunidade antiga.
+        && request.resource.data.get('ownerId', null) == resource.data.get('ownerId', null);
       allow delete: if false;
     }
 
@@ -517,13 +605,16 @@ service cloud.firestore {
     }
 
     match /communityMembers/{membershipId} {
-      // Leitura restrita: cada usuário só enxerga a própria filiação; só o
-      // superadmin pode listar/contar todos os membros de uma comunidade.
+      // Leitura restrita: cada usuário só enxerga a própria filiação; superadmin ou o
+      // dono da comunidade (Fase 5) podem listar/contar todos os membros dela.
       // resource == null cobre o get() de "ainda não sou membro" (documento não
       // existe): sem isso, resource.data.userId falha a avaliação e o Firestore
-      // nega com permission-denied em vez de simplesmente não encontrar nada.
+      // nega com permission-denied em vez de simplesmente não encontrar nada. O curto-
+      // circuito de || garante que isCommunityOwner só é avaliada (e paga seu get()
+      // extra) quando as checagens mais baratas acima já falharam.
       allow read: if isSignedIn()
-        && (resource == null || resource.data.userId == request.auth.uid || isSuperAdmin());
+        && (resource == null || resource.data.userId == request.auth.uid || isSuperAdmin()
+          || isCommunityOwner(resource.data.communityId));
       allow create: if hasAppAccess(isSuperAdmin())
         && request.resource.data.userId == request.auth.uid
         && membershipId == expectedMembershipId(request.resource.data)
@@ -653,7 +744,14 @@ service cloud.firestore {
         && !exists(/databases/$(database)/documents/communityRestrictions/$(communityId + '_' + uid))
         && exists(/databases/$(database)/documents/communityMembers/$(communityId + '_' + uid))
         && community.isActive == true
-        && (community.get('postAccess', 'everyone') != 'admins' || isAdmin);
+        // Fase 5: o dono da comunidade também conta como "admin" para o próprio
+        // postAccess:'admins' dela -- usa o `community` já lido acima (sem get() extra),
+        // e NUNCA reescreve o parâmetro isAdmin em si (que continua vindo só de
+        // role=='superadmin' e segue gating statusAccountOk isoladamente -- ver
+        // canCreateStatus abaixo; misturar os dois deixaria um dono desativado/sem
+        // e-mail verificado escapando de checagens que nada têm a ver com esta
+        // comunidade).
+        && (community.get('postAccess', 'everyone') != 'admins' || isAdmin || community.get('ownerId', null) == uid);
     }
 
     function canCreateStatus(data, statusId) {
@@ -738,14 +836,39 @@ service cloud.firestore {
       // interações já registrados contra o conteúdo original. Bloquear update por
       // completo fecha os dois achados sem custo — nada no app depende disso.
       allow update: if false;
+      // Fase 5: dono da comunidade também pode remover conteúdo dentro dela (mesmo
+      // poder de moderação que o superadmin já tinha) -- isCommunityOwner só é avaliada
+      // (pagando seu get() extra) quando as duas checagens mais baratas já falharam.
       allow delete: if isSignedIn()
-        && (resource.data.authorId == request.auth.uid || isSuperAdmin());
+        && (resource.data.authorId == request.auth.uid || isSuperAdmin()
+          || isCommunityOwner(resource.data.communityId));
 
       match /votes/{userId} {
         allow read: if isSignedIn()
           && isMember(get(/databases/$(database)/documents/statuses/$(statusId)).data.communityId, isSuperAdmin());
         allow create: if canVote(statusId, userId, request.resource.data);
         allow update, delete: if false;
+      }
+
+      // Voto econômico (positivo/negativo, custa EvoCoins) -- Fase 2 do prompt de
+      // economia. Deliberadamente uma subcoleção própria, nunca /votes acima: aquela é
+      // o voto de ENQUETE, gratuito, sem nenhuma relação com carteira/ledger. Só a
+      // Cloud Function voteOnPost (Admin SDK) escreve aqui -- write sempre false, mesmo
+      // padrão de wallet/economyTransactions/economyDaily em users/{userId}.
+      match /economyVotes/{userId} {
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow write: if false;
+      }
+
+      // Contador de recompensa por post/dia (Fase 3 -- reward-settlement-service.js).
+      // Documento próprio, nunca um campo no status principal: statuses/{id} não tem
+      // nenhum listener em tempo real hoje, mas a Fase 3 audita para não acoplar
+      // bookkeeping econômico (escrito a cada execução do settlement) ao documento de
+      // conteúdo do post (ver auditoria de Fase 3). Sem "dono" natural (é sobre o post,
+      // não sobre um usuário) -- só superadmin lê, por enquanto sem uso no cliente.
+      match /economyRewardDaily/{dateKey} {
+        allow read: if isSuperAdmin();
+        allow write: if false;
       }
 
       match /participants/{userId} {

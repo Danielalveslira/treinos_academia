@@ -6,6 +6,7 @@ import {
   ShieldLockIcon,
   PeopleIcon,
   MegaphoneIcon,
+  CreditCardIcon,
   SunIcon,
   MoonIcon,
   SignOutIcon,
@@ -53,6 +54,12 @@ export function AccountMenu({ onLogout, signingOut }) {
             </ActionList.LeadingVisual>
             Meu perfil
           </ActionList.LinkItem>
+          <ActionList.LinkItem as={Link} to="/evocash" replace onClick={() => setOpen(false)}>
+            <ActionList.LeadingVisual>
+              <CreditCardIcon />
+            </ActionList.LeadingVisual>
+            Comprar EvoCash
+          </ActionList.LinkItem>
           {isSuperAdmin && (
             <ActionList.Group title="Administração">
               <ActionList.LinkItem
@@ -93,6 +100,17 @@ export function AccountMenu({ onLogout, signingOut }) {
                   <ShieldLockIcon />
                 </ActionList.LeadingVisual>
                 Moderação
+              </ActionList.LinkItem>
+              <ActionList.LinkItem
+                as={Link}
+                to="/admin/compras-evocash"
+                replace
+                onClick={() => setOpen(false)}
+              >
+                <ActionList.LeadingVisual>
+                  <CreditCardIcon />
+                </ActionList.LeadingVisual>
+                Compras de EvoCash
               </ActionList.LinkItem>
             </ActionList.Group>
           )}

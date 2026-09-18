@@ -976,6 +976,11 @@ function communityPayload(overrides = {}) {
     postAccess: 'everyone',
     memberCount: 0,
     createdBy: 'admin',
+    // Fase 5: SEM ownerId de propósito -- espelha communitiesService.createCommunity()
+    // de verdade. Uma comunidade oficial criada pelo painel admin fica administrada
+    // globalmente por isSuperAdmin(), nunca por um uid específico (ver
+    // isCommunityOwner/allow create em firestore.rules) -- assim uma conta que perder
+    // o papel de superadmin no futuro não conserva posse de comunidades que criou.
     createdAt: serverTimestamp(),
     ...overrides,
   }

@@ -59,3 +59,13 @@ export async function countMembers(communityId) {
   const snapshot = await getCountFromServer(q)
   return snapshot.data().count
 }
+
+// Fase 5: só quem as Rules já deixam listar todos os membros de uma comunidade
+// consegue algo além do próprio doc (superadmin, ou o dono dela -- ver isCommunityOwner
+// em firestore.rules). Usado pela seção "Gerenciar comunidade" para moderar
+// membros/banimentos.
+export async function listCommunityMembers(communityId) {
+  const q = query(membersRef(), where('communityId', '==', communityId), limit(MAX_MEMBERSHIPS))
+  const snapshot = await getDocs(q)
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+}

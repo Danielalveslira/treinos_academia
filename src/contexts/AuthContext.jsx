@@ -9,6 +9,7 @@ import { clearPageCache } from '../utils/pageCache'
 import { clearPhotoCache } from '../utils/photoBlobCache'
 import { getLegalAccess } from '../services/legalService'
 import { clearCachedLegalAccess } from '../utils/legal'
+import { clearCachedWallet } from '../services/economyService'
 
 export const AuthContext = createContext(null)
 
@@ -69,6 +70,7 @@ export function AuthProvider({ children }) {
       // MAX_ENTRIES ou um reload, mesmo depois do logout/troca de usuário.
       clearPhotoCache()
       clearCachedLegalAccess()
+      clearCachedWallet()
       const current = ++revision
       unsubscribeProfile?.()
       unsubscribeProfile = null

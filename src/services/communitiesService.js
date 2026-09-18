@@ -58,6 +58,13 @@ export async function getCommunity(communityId) {
   return snapshot.exists() ? toDoc(snapshot) : null
 }
 
+// Fase 5: comunidade OFICIAL criada pelo painel admin nasce DE PROPÓSITO sem ownerId
+// (campo opcional em firestore.rules) -- continua administrada globalmente por
+// isSuperAdmin(), nunca por um uid específico. Gravar ownerId:userId aqui faria uma
+// conta que mais tarde perdesse o papel de superadmin conservar posse de uma
+// comunidade oficial só por tê-la criado no passado; createCommunityWithCash (Admin
+// SDK, privilegeService.js) é o único caminho que grava ownerId, sempre igual ao uid de
+// quem pagou por ela.
 export function createCommunity(userId, community) {
   return addDoc(communitiesRef(), {
     name: community.name.trim(),

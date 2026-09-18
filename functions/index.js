@@ -6,6 +6,7 @@ import {
   onDocumentWritten,
 } from 'firebase-functions/v2/firestore'
 import { createDeletionService, statusPhotoExtra } from './deletion-service.js'
+import { createCommunityModerationService } from './community-moderation-service.js'
 import { createBumpMemberCount } from './community-members-service.js'
 import { createSyncUserCommunityIds } from './user-communities-sync.js'
 import { createEnforcePostRateLimit } from './rate-limit-service.js'
@@ -38,6 +39,18 @@ import {
   REPORT_PROTECTED_AUTHOR_ERROR,
   REPORT_OWN_STATUS_ERROR,
 } from './moderation-core.js'
+import { createConfigService } from './economy/config-service.js'
+import { createWalletService } from './economy/wallet-service.js'
+import { createLedgerService } from './economy/ledger-service.js'
+import { createActivityService } from './economy/activity-service.js'
+import { createVoteService } from './economy/vote-service.js'
+import { validateVoteOnPost } from './economy/vote-core.js'
+import { createCashPurchaseService } from './economy/cash-purchase-service.js'
+import { createPrivilegeService } from './economy/privilege-service.js'
+import {
+  createRewardSettlementService,
+  SETTLEMENT_FUNCTION_TIMEOUT_SECONDS,
+} from './economy/reward-settlement-service.js'
 initializeApp()
 const db = getFirestore()
 const authAdmin = getAuth()
@@ -101,6 +114,167 @@ async function assertWritableAccount(tx, uid) {
     throw new HttpsError('failed-precondition', 'A conta está em exclusão.')
   }
 }
+
+const getEconomyConfig = createConfigService({ db })
+const walletService = createWalletService({ db, FieldValue })
+const ledgerService = createLedgerService({ db, FieldValue })
+const registerActivity = createActivityService({
+  db,
+  FieldValue,
+  wallet: walletService,
+  ledger: ledgerService,
+  getEconomyConfig,
+  assertWritableAccount,
+})
+
+// Economia interna (EvoCoins/EvoCash) -- Fase 1: só recompensa diária por atividade
+// qualificada. O cliente nunca envia minutos, só sinaliza "aconteceu uma ação real
+// agora" (ver useQualifiedActivity.js); todo o cálculo de tempo decorrido é feito aqui
+// com o relógio do servidor (ver activity-core.js: activeMinutes vem exclusivamente do
+// intervalo entre chamadas consecutivas, nunca de um valor enviado pelo cliente).
+//
+// Candidata natural a `enforceAppCheck: true` (seção 27 do prompt de economia) assim
+// que o site key de reCAPTCHA estiver publicado em produção -- hoje nenhuma callable do
+// projeto liga essa opção (App Check ainda é best-effort, ver src/firebase/config.js),
+// então não é ligada isoladamente só aqui. A validação de negócio em si (limites de
+// checkpoint, idempotência) não depende de App Check para ser segura.
+export const registerQualifiedActivity = onCall(options, async (request) => {
+  const uid = requireUser(request)
+  return registerActivity(uid)
+})
+
+const castVote = createVoteService({
+  db,
+  FieldValue,
+  wallet: walletService,
+  ledger: ledgerService,
+  getEconomyConfig,
+  assertWritableAccount,
+  HttpsError,
+})
+
+// Voto econômico (Fase 2 -- seções 12-14 do prompt de economia): positivo/negativo,
+// custa EvoCoins na primeira vez, trocar de direção depois é grátis, remover não
+// reembolsa. Deliberadamente em statuses/{id}/economyVotes/{uid}, nunca em
+// statuses/{id}/votes/{uid} -- essa outra coleção é o voto de ENQUETE, gratuito e sem
+// nenhuma relação com a carteira; não reaproveitar nem confundir uma com a outra (ver
+// vote-core.js). rewardState fica pronto no documento desde já (seção 14), mas o
+// processamento em si (crédito ao autor) só chega na Fase 3 -- aqui a recompensa nunca
+// é paga, só marcada como pending/ineligible.
+//
+// Candidata a `enforceAppCheck: true` (seção 27), mesma justificativa de
+// registerQualifiedActivity acima -- não ligada isoladamente aqui pelo mesmo motivo. O
+// limite diário de votos pagos (maxVotesPerUserDay) já cobre o rate limiting específico
+// pedido pela seção 27 para esta ação.
+export const voteOnPost = onCall(options, async (request) => {
+  const uid = requireUser(request)
+  const error = validateVoteOnPost(request.data)
+  if (error) throw new HttpsError('invalid-argument', error)
+  return castVote(uid, request.data.statusId, request.data.value)
+})
+
+const cashPurchases = createCashPurchaseService({
+  db,
+  FieldValue,
+  wallet: walletService,
+  ledger: ledgerService,
+  assertWritableAccount,
+  HttpsError,
+})
+
+// EvoCash (Fase 4 -- seções 20-23 do prompt de economia): compra manual/PIX com
+// confirmação administrativa. O cliente nunca envia preço/quantidade, só packageId --
+// requestCashPurchase sempre lê economyConfig/current fresco (nunca o cache com TTL de
+// getEconomyConfig(), usado só para EvoCoins) e bloqueia a operação se a config
+// estiver ausente ou o pacote for inválido/inativo, nunca cai num valor padrão (dinheiro
+// real). requestId é gerado uma vez pelo cliente e reenviado em qualquer retry --
+// idempotência real via ID de documento determinístico (uid+requestId), não uma
+// checagem best-effort.
+export const requestCashPurchase = onCall(options, async (request) => {
+  const uid = requireUser(request)
+  return cashPurchases.requestCashPurchase(uid, {
+    packageId: request.data?.packageId,
+    requestId: request.data?.requestId,
+  })
+})
+
+export const confirmCashPurchase = onCall(options, async (request) => {
+  const adminId = requireUser(request)
+  const purchaseId = request.data?.purchaseId
+  if (!validId(purchaseId)) throw new HttpsError('invalid-argument', 'Compra inválida.')
+  return cashPurchases.confirmCashPurchase(adminId, purchaseId, request.data?.adminNote)
+})
+
+export const cancelCashPurchase = onCall(options, async (request) => {
+  const adminId = requireUser(request)
+  const purchaseId = request.data?.purchaseId
+  if (!validId(purchaseId)) throw new HttpsError('invalid-argument', 'Compra inválida.')
+  return cashPurchases.cancelCashPurchase(adminId, purchaseId, request.data?.reason)
+})
+
+const privileges = createPrivilegeService({
+  db,
+  FieldValue,
+  wallet: walletService,
+  ledger: ledgerService,
+  assertWritableAccount,
+  HttpsError,
+})
+
+// Fase 5 (privilégios com EvoCash) -- primeiro privilégio: criação de comunidade paga.
+// Reaproveita a MESMA coleção communities/mesmo schema que o painel admin já escreve
+// direto via Rules (ver firestore.rules); este caminho é só para usuários comuns, com
+// elegibilidade + débito + criação atômicos (ver privilege-service.js). email_verified
+// vem do próprio token do chamador (Firebase Auth), nunca de um campo do Firestore --
+// mesma fonte que firestore.rules usa em emailVerifiedOk().
+export const createCommunityWithCash = onCall(options, async (request) => {
+  const uid = requireUser(request)
+  return privileges.createCommunityWithCash(uid, {
+    name: request.data?.name,
+    description: request.data?.description,
+    iconName: request.data?.iconName,
+    requestId: request.data?.requestId,
+    emailVerified: request.auth.token.email_verified === true,
+  })
+})
+
+const settleVoteRewards = createRewardSettlementService({
+  db,
+  FieldValue,
+  Timestamp,
+  wallet: walletService,
+  ledger: ledgerService,
+  getEconomyConfig,
+})
+
+// Settlement assíncrono de recompensa (Fase 3 -- reward-settlement-service.js): credita
+// o autor pelos votos positivos elegíveis, nunca no caminho crítico do voto em si (que
+// só marca rewardState:'pending', ver vote-service.js). Lease próprio (não o padrão
+// leaseToken/leaseUntil de deletionJobs, que é por JOB individual -- aqui é 1 lease
+// para a execução inteira, ver reward-settlement-service.js) garante que duas execuções
+// do scheduler nunca processam a fila ordenada em paralelo. timeoutSeconds IMPORTADO de
+// reward-settlement-service.js (não repetido aqui) -- a duração do lease é derivada
+// exatamente deste valor, então os dois nunca podem divergir silenciosamente (auditoria
+// operacional: um timeoutSeconds maior que a duração do lease permitiria uma segunda
+// execução assumir o lease enquanto a primeira ainda está, tecnicamente, autorizada a
+// processar).
+export const settleVoteRewardsScheduled = onSchedule(
+  { ...options, schedule: 'every 5 minutes', timeoutSeconds: SETTLEMENT_FUNCTION_TIMEOUT_SECONDS },
+  async () => {
+    try {
+      const result = await settleVoteRewards()
+      // Sempre loga, inclusive skipped:true (conflito de lease) -- antes só o caminho
+      // feliz era logado, o que escondia todo conflito de lease dos logs. Estrutura
+      // simples (console.log de um objeto) é suficiente para a V1 (seção 3 da
+      // auditoria): processed/capped/promoted por run, duração, oldestPendingAgeMs
+      // (atraso da fila) e a própria contagem de skipped:true (=conflitos de lease) já
+      // saem filtráveis no Cloud Logging sem nenhuma infra de métricas adicional.
+      console.log('reward settlement', result)
+    } catch (error) {
+      console.error('Reward settlement failed', error.code || error.message)
+    }
+  }
+)
 
 export const acceptLegalDocuments = onCall(options, async (request) => {
   const uid = requireUser(request)
@@ -465,6 +639,28 @@ export const deleteCommunityPermanently = onCall(options, async (request) => {
   if (!validId(request.data?.communityId))
     throw new HttpsError('invalid-argument', 'Comunidade inválida.')
   return deletions.queue('community', request.data.communityId, adminId)
+})
+
+const communityModeration = createCommunityModerationService({ db, FieldValue, HttpsError, isProtectedRole })
+
+// Fase 5 (privilégios): caminho DEDICADO para banir/desbanir de UMA comunidade --
+// deliberadamente NÃO uma ampliação de decideSupportRequest (ver
+// community-moderation-service.js para o porquê). O único trabalho daqui é extrair
+// request.data e checar o formato dos IDs -- toda a autorização/regra de negócio mora
+// no service, testável sem depender deste arquivo.
+export const setCommunityMemberBan = onCall(options, async (request) => {
+  const adminId = requireUser(request)
+  const communityId = request.data?.communityId
+  const targetUserId = request.data?.targetUserId
+  if (!validId(communityId) || !validId(targetUserId)) {
+    throw new HttpsError('invalid-argument', 'Dados inválidos.')
+  }
+  return communityModeration.setCommunityMemberBan(adminId, {
+    communityId,
+    targetUserId,
+    banned: request.data?.banned === true,
+    reason: request.data?.reason,
+  })
 })
 
 export const cleanupDeletedStatus = onDocumentDeleted(

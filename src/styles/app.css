@@ -700,6 +700,26 @@ body:has(.pwa-offline) .app-shell {
   font-size: 14px;
   overflow-wrap: anywhere;
 }
+.profile-wallet {
+  padding: 20px 24px 24px;
+  border-top: 1px solid var(--borderColor-muted);
+}
+.profile-wallet-heading {
+  margin: 0 0 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fgColor-muted);
+}
+.profile-wallet .stats-grid {
+  margin-bottom: 0;
+}
+.profile-wallet .indicator-card {
+  padding: 14px 10px;
+}
+.profile-wallet .indicator-value {
+  font-size: 16px;
+}
 @media (max-width: 767px) {
   .profile-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -1318,6 +1338,9 @@ body:has(.pwa-offline) .app-shell {
   min-height: 32px;
   margin-top: 8px;
   font-size: 12px;
+}
+.status-footer {
+  margin-top: 10px;
 }
 .legal-page {
   max-width: 1120px;

@@ -6,6 +6,8 @@
 // limpeza, senão a foto fica sem referência (ver queueDeleted: um job "sem foto" criado
 // primeiro vence e o gatilho, chegando depois com o dado certo, encontra o job já
 // existente e desiste).
+import { financialBlockReason } from './economy/cash-purchase-core.js'
+
 export function statusPhotoExtra(data) {
   return data?.type === 'photo' && data.photoPath ? { photoPath: data.photoPath } : {}
 }
@@ -26,7 +28,11 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
         target,
         db.doc('maintenance/adminV1')
       )
-      if (admin.data()?.role !== 'superadmin')
+      // Fase 5: excluir uma COMUNIDADE (nunca uma conta) também é um poder do dono --
+      // entity já É o documento da comunidade neste caso (lido acima como `target`),
+      // então checar ownerId não custa nenhuma leitura extra.
+      const isCommunityOwner = kind === 'community' && entity.exists && entity.data().ownerId === adminId
+      if (admin.data()?.role !== 'superadmin' && !isCommunityOwner)
         throw new HttpsError('permission-denied', 'Acesso administrativo necessário.')
       if (kind === 'account' && id === adminId)
         throw new HttpsError('failed-precondition', 'Você não pode excluir a própria conta.')
@@ -116,6 +122,40 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
     if (!job) return
     try {
       const uid = job.targetId
+      // Fase 4 (EvoCash): portão financeiro, avaliado só antes da PRIMEIRA etapa
+      // destrutiva (stage 0) -- nunca depois, o ponto de não-retorno já passou. Usa o
+      // cashPurchaseLock (users/{uid}/wallet/cashPurchaseLock) em vez de uma query
+      // userId+status: leitura de documento único, sem índice adicional, e é o mesmo
+      // dado que já é a fonte de verdade de "existe uma compra pending" (ver
+      // cash-purchase-service.js). Ficar bloqueado aqui NUNCA retenta a cada minuto: o
+      // job sai do estado 'pending' (vira 'blocked_financial_review'), e a query de
+      // processDeletionJobs em index.js já filtra state=='pending' -- some da fila
+      // sozinho até confirmCashPurchase/cancelCashPurchase resolverem a pendência e
+      // recolocá-lo em 'pending' (ver reactivateDeletionIfClear em
+      // economy/cash-purchase-service.js).
+      if (job.kind === 'account' && !job.stage) {
+        const blocked = await db.runTransaction(async (tx) => {
+          const current = await tx.get(ref)
+          if (current.data()?.leaseToken !== token) return false
+          const [lockSnapshot, walletSnapshot] = await tx.getAll(
+            db.doc(`users/${uid}/wallet/cashPurchaseLock`),
+            db.doc(`users/${uid}/wallet/current`)
+          )
+          const reason = financialBlockReason({
+            pendingPurchaseId: lockSnapshot.exists ? lockSnapshot.data().pendingPurchaseId : null,
+            cashBalance: walletSnapshot.exists ? walletSnapshot.data().cashBalance : 0,
+          })
+          if (!reason) return false
+          tx.update(ref, {
+            state: 'blocked_financial_review',
+            blockReason: reason,
+            leaseUntil: Timestamp.fromMillis(0),
+            updatedAt: FieldValue.serverTimestamp(),
+          })
+          return true
+        })
+        if (blocked) return
+      }
       let tasks
       if (job.kind === 'account') {
         // supportRequests, moderationDecisions e moderationEvidence/*.webp
@@ -139,16 +179,24 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
           () => eraseQuery(db.collection('communityRestrictions').where('userId', '==', uid)),
           () => eraseQuery(db.collectionGroup('votes').where('userId', '==', uid)),
           () => eraseQuery(db.collectionGroup('participants').where('userId', '==', uid)),
+          // Voto econômico (Fase 2): mesmo raciocínio do ledger de Coins acima -- sem
+          // EvoCash, apagar o registro de quem votou não sustenta nenhuma compra real.
+          () => eraseQuery(db.collectionGroup('economyVotes').where('userId', '==', uid)),
           () => removeStatuses(db.collection('statuses').where('authorId', '==', uid)),
           () => eraseQuery(db.collection('usernames').where('uid', '==', uid)),
-          ...[
-            'workouts',
-            'exercises',
-            'bodyMeasurements',
-            'progressDaily',
-            'legalAcceptances',
-            'notices',
-          ].map((name) => () => eraseQuery(db.collection(`users/${uid}/${name}`))),
+          // economyTransactions (ledger) NÃO entra mais nesta lista a partir da Fase 4:
+          // pode conter comprovante de dinheiro real (asset:'cash'), então apagar
+          // apagaria auditoria financeira. Retenção declarada TEMPORÁRIA (também
+          // preserva, de brinde, histórico social de EvoCoins que não precisaria de
+          // retenção nenhuma) até existir uma política formal separando os dois. Já não
+          // há risco de cashBalance>0 sumir junto com wallet/current aqui embaixo: o
+          // portão financeiro acima bloqueia a exclusão inteira antes de chegar a esta
+          // etapa enquanto cashBalance > 0.
+          ...['workouts', 'exercises', 'bodyMeasurements', 'progressDaily', 'legalAcceptances', 'notices'].map(
+            (name) => () => eraseQuery(db.collection(`users/${uid}/${name}`))
+          ),
+          () => eraseQuery(db.collection(`users/${uid}/wallet`)),
+          () => eraseQuery(db.collection(`users/${uid}/economyDaily`)),
           () => eraseQuery(db.collection(`publicProfiles/${uid}/statistics`)),
           async () => {
             try {
@@ -183,7 +231,10 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
           },
         ]
       } else {
-        tasks = ['votes', 'participants'].map(
+        // economyRewardDaily (Fase 3): contador de recompensa por dia deste post --
+        // some junto com o post, mesma lista, sem custo extra (nenhum índice novo, é só
+        // mais uma subcoleção varrida pelo mesmo eraseQuery já usado para as outras).
+        tasks = ['votes', 'participants', 'economyVotes', 'economyRewardDaily'].map(
           (name) => () => eraseQuery(db.collection(`statuses/${uid}/${name}`))
         )
         // Só publicações do tipo foto carregam esse campo (ver queueDeleted em

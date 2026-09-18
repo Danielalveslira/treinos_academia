@@ -1,4 +1,4 @@
-import { before, test } from 'node:test'
+import { before, after, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
@@ -49,6 +49,14 @@ before(async () => {
     await setDoc(doc(db, 'users/member'), { role: 'user', communityIds: ['comm1'] })
     await setDoc(doc(db, 'users/outsider'), { role: 'user', communityIds: ['comm2'] })
   })
+})
+
+// Mesmo diagnóstico da Fase 5 (ver statuses-rules.test.mjs): sem isto, as conexões
+// gRPC com o emulador nunca fecham e o test runner trava indefinidamente esperando
+// handles abertos, mesmo com todos os testes já passando -- não relacionado a Rules
+// nenhuma, só a este arquivo nunca ter chamado env.cleanup().
+after(async () => {
+  await env?.cleanup()
 })
 
 test('admin can create a sponsored ad', async () => {

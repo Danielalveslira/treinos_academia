@@ -10,6 +10,7 @@ import {
 } from '@primer/octicons-react'
 import { logoutUser } from '../services/authService'
 import { useAuth } from '../hooks/useAuth'
+import { useQualifiedActivity } from '../hooks/useQualifiedActivity'
 import { preloadRoute } from '../routeLoaders'
 import { PageFallback } from './PageFallback'
 import { BrandMark } from './BrandMark'
@@ -58,6 +59,10 @@ export function Layout() {
   const { pathname } = useLocation()
   const [signingOut, setSigningOut] = useState(false)
   const [logoutError, setLogoutError] = useState('')
+  // Só o "ping" de atividade qualificada (seção 8/9 do prompt de economia) -- não é um
+  // listener de saldo: a carteira em si só é lida sob demanda onde a UI precisa dela
+  // (ver WalletCard/useWallet.js).
+  useQualifiedActivity()
 
   async function logout() {
     if (signingOut) return

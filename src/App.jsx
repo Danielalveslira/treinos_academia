@@ -27,6 +27,9 @@ const LegalDocument = lazy(() => import('./pages/LegalDocument'))
 const Support = lazy(() => import('./pages/Support'))
 const AdminModeration = lazy(() => import('./pages/AdminModeration'))
 const AdminAccounts = lazy(() => import('./pages/AdminAccounts'))
+const EvoCash = lazy(() => import('./pages/EvoCash'))
+const AdminCashPurchases = lazy(() => import('./pages/AdminCashPurchases'))
+const CreateCommunity = lazy(() => import('./pages/CreateCommunity'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 export function AppRoutes() {
@@ -71,6 +74,16 @@ export function AppRoutes() {
           <Route path="/progresso" element={<Progress />} />
         </Route>
         <Route path="/perfil" element={<Profile />} />
+        <Route path="/evocash" element={<EvoCash />} />
+        <Route path="/comunidades/criar" element={<CreateCommunity />} />
+        <Route
+          path="/admin/compras-evocash"
+          element={
+            <SuperAdminRoute>
+              <AdminCashPurchases />
+            </SuperAdminRoute>
+          }
+        />
         <Route
           path="/admin/moderacao"
           element={

@@ -11,6 +11,7 @@ import {
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { LegalLinks } from '../components/LegalLinks'
+import { WalletCard } from '../components/WalletCard'
 import { formatDate } from '../utils/format'
 import { validateUsername, hasErrors } from '../utils/validators'
 import { BIO_MAX_LENGTH } from '../services/usersService'
@@ -271,6 +272,7 @@ export default function Profile() {
               <dd>{isSuperAdmin ? 'Superadmin' : 'Usuário'}</dd>
             </div>
           </dl>
+          <WalletCard />
           <LegalLinks />
         </aside>
       </div>
