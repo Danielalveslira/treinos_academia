@@ -5,6 +5,7 @@ import {
   isValidCashPackage,
   isValidPurchaseSnapshot,
   financialBlockReason,
+  resolveConfigVersion,
 } from './cash-purchase-core.js'
 
 test('cashPurchaseIdFromRequest is deterministic for the same uid+requestId', () => {
@@ -100,6 +101,23 @@ test('financialBlockReason: compra pending bloqueia independente do saldo', () =
 
 test('financialBlockReason: saldo positivo bloqueia quando não há pending', () => {
   assert.equal(financialBlockReason({ pendingPurchaseId: null, cashBalance: 1 }), 'positive_cash_balance')
+})
+
+test('resolveConfigVersion keeps a valid positive integer as-is', () => {
+  assert.equal(resolveConfigVersion(7), 7)
+  assert.equal(resolveConfigVersion(1), 1)
+  assert.equal(resolveConfigVersion(1_000_000), 1_000_000)
+})
+
+test('resolveConfigVersion falls back to null when version is missing (economyConfig/current sem esse campo)', () => {
+  assert.equal(resolveConfigVersion(undefined), null)
+  assert.equal(resolveConfigVersion(null), null)
+})
+
+test('resolveConfigVersion falls back to null for any invalid version, never crashes the write', () => {
+  for (const bad of [0, -1, 1.5, NaN, Infinity, '7', {}, [], true, 1_000_001]) {
+    assert.equal(resolveConfigVersion(bad), null, `version=${JSON.stringify(bad)} deveria virar null`)
+  }
 })
 
 test('financialBlockReason: nada bloqueia quando não há pending nem saldo', () => {

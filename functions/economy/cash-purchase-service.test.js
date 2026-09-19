@@ -117,6 +117,36 @@ test('requestCashPurchase cria um pedido pending com snapshot imutável do pacot
   assert.equal(lock.pendingPurchaseId, result.purchaseId)
 })
 
+// Regressão de produção: economyConfig/current criado só com cashPackages (sem
+// `version`) fazia tx.create falhar com "Cannot use undefined as a Firestore value
+// (found in field configVersion)" -- toda compra retornava 500. seedConfig() sempre
+// setava version:7 no fixture, então esse gap nunca apareceu em teste antes de acontecer
+// de verdade em produção (ver auditoria dos logs do requestCashPurchase).
+test('requestCashPurchase nunca falha por causa de economyConfig/current sem "version" -- configVersion vira null', async () => {
+  const service = buildService()
+  await db.doc('economyConfig/current').set({ cashPackages: { [PACKAGE_ID]: PACKAGE } })
+  const buyer = uid()
+  const result = await service.requestCashPurchase(buyer, { packageId: PACKAGE_ID, requestId: requestId() })
+
+  assert.equal(result.status, 'pending')
+  const purchase = await getPurchase(result.purchaseId)
+  assert.equal(purchase.configVersion, null)
+})
+
+test('requestCashPurchase trata um "version" inválido/corrompido como null, nunca grava lixo nem quebra', async () => {
+  const service = buildService()
+  await db.doc('economyConfig/current').set({
+    version: 'not-a-number',
+    cashPackages: { [PACKAGE_ID]: PACKAGE },
+  })
+  const buyer = uid()
+  const result = await service.requestCashPurchase(buyer, { packageId: PACKAGE_ID, requestId: requestId() })
+
+  assert.equal(result.status, 'pending')
+  const purchase = await getPurchase(result.purchaseId)
+  assert.equal(purchase.configVersion, null)
+})
+
 test('cliente não define preço nem quantidade -- só packageId é usado, o resto vem sempre do servidor', async () => {
   const service = buildService()
   await seedConfig()

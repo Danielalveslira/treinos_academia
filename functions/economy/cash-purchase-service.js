@@ -4,6 +4,7 @@ import {
   isValidCashPackage,
   isValidPurchaseSnapshot,
   financialBlockReason,
+  resolveConfigVersion,
 } from './cash-purchase-core.js'
 
 // Fase 4 (EvoCash) -- requestCashPurchase/confirmCashPurchase/cancelCashPurchase.
@@ -91,7 +92,7 @@ export function createCashPurchaseService({ db, FieldValue, wallet, ledger, asse
         cashAmount: pkg.cashAmount,
         amountCentavos: pkg.amountCentavos,
         currency: 'BRL',
-        configVersion: configSnapshot.data().version,
+        configVersion: resolveConfigVersion(configSnapshot.data().version),
         paymentMethod: 'manual_pix',
         status: 'pending',
         createdAt: FieldValue.serverTimestamp(),

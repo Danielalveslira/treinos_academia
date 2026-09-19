@@ -30,6 +30,17 @@ export function isValidCashPackage(value) {
   )
 }
 
+// configVersion é só um campo de auditoria (nunca validado por isValidPurchaseSnapshot,
+// nunca lido por mais nada no sistema -- ver firestore.rules) -- mas o Firestore rejeita
+// `undefined` em qualquer campo de escrita (economyConfig/current pode não ter `version`
+// nenhum, como no primeiro deploy dos pacotes), e um `version` corrompido/editado à mão
+// (string, negativo, decimal) não deveria virar um valor absurdo gravado pra sempre no
+// histórico da compra. null é o valor seguro para "não sei qual versão estava valendo" --
+// nunca bloqueia a compra, só perde a informação de auditoria.
+export function resolveConfigVersion(value) {
+  return isSafePositiveInteger(value, 1_000_000) ? value : null
+}
+
 // Revalidação defensiva do snapshot já gravado, feita de novo em confirmCashPurchase
 // antes de creditar -- nunca confia cegamente num documento só porque já existe e está
 // 'pending' (edição manual, migração futura, corrupção). Reaproveita isValidCashPackage
