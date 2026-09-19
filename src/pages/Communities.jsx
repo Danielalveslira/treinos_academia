@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Box,
@@ -23,6 +23,7 @@ import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { CommunityIcon } from '../components/CommunityIcon'
+import { listFeaturedCommunities, recordPromotionClick } from '../services/promotionsService'
 
 function CommunityNameBlock({ community }) {
   return (
@@ -72,7 +73,7 @@ function LeaveCommunityMenu({ onLeave, disabled }) {
 // Agora todo item com linkTo ganha o mesmo tratamento visível (fundo ao passar o mouse/
 // focar, seta no fim) e o botão/menu de ação fica visualmente separado por um divisor,
 // nunca dentro da área clicável de navegação.
-function CommunityRow({ community, action, linkTo }) {
+function CommunityRow({ community, action, linkTo, onNavigate }) {
   const content = (
     <>
       <CommunityIcon community={community} />
@@ -82,7 +83,7 @@ function CommunityRow({ community, action, linkTo }) {
   return (
     <Box className="community-row">
       {linkTo ? (
-        <Link as={RouterLink} to={linkTo} className="community-row-link">
+        <Link as={RouterLink} to={linkTo} className="community-row-link" onClick={onNavigate}>
           {content}
           <ChevronRightIcon size={16} className="community-row-chevron" />
         </Link>
@@ -94,12 +95,40 @@ function CommunityRow({ community, action, linkTo }) {
   )
 }
 
+// Métrica informativa (App Check ainda adiado, nunca base de cobrança/ranking) --
+// "fogo e esquece": clicar precisa navegar mesmo se o registro falhar, então a falha só
+// vai pro console, nunca bloqueia/atrasa a navegação nem mostra um toast de erro.
+function recordFeaturedCommunityClick(community) {
+  if (!community.activePromotionId) return
+  recordPromotionClick({
+    targetType: 'community',
+    targetId: community.id,
+    promotionId: community.activePromotionId,
+  }).catch((err) => console.error('[Communities] recordPromotionClick:', err))
+}
+
 export default function Communities() {
   const { myCommunities, exploreCommunities, loading, error, refresh, join, leave } =
     useCommunities()
   const { toasts, showToast } = useToast()
   const membershipLock = useRef(false)
   const [pendingCommunityId, setPendingCommunityId] = useState(null)
+
+  // Fase 6 -- "comunidades em destaque" (promovidas com EvoCash pelo próprio dono).
+  // communities/{id} não é restrita por membership na leitura (ver firestore.rules),
+  // então não precisa de nenhum gate de "só depois de confirmar participação" aqui.
+  const [featuredCommunities, setFeaturedCommunities] = useState([])
+  useEffect(() => {
+    let active = true
+    listFeaturedCommunities()
+      .then((items) => {
+        if (active) setFeaturedCommunities(items)
+      })
+      .catch((err) => console.error('[Communities] listFeaturedCommunities:', err))
+    return () => {
+      active = false
+    }
+  }, [])
 
   function beginMembershipChange(communityId) {
     if (membershipLock.current) return false
@@ -169,6 +198,26 @@ export default function Communities() {
         <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
       )}
       <ErrorState error={error} onRetry={refresh} />
+
+      {featuredCommunities.length > 0 && (
+        <>
+          <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
+            Comunidades em destaque
+          </Heading>
+          <Box
+            sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, overflow: 'hidden', mb: 4 }}
+          >
+            {featuredCommunities.map((community) => (
+              <CommunityRow
+                key={community.id}
+                community={community}
+                linkTo={`/comunidades/${community.id}`}
+                onNavigate={() => recordFeaturedCommunityClick(community)}
+              />
+            ))}
+          </Box>
+        </>
+      )}
 
       {!error && (myCommunities.length > 0 || exploreCommunities.length > 0 || !loading) && (
         <>

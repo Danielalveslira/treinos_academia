@@ -29,6 +29,7 @@ const AdminModeration = lazy(() => import('./pages/AdminModeration'))
 const AdminAccounts = lazy(() => import('./pages/AdminAccounts'))
 const EvoCash = lazy(() => import('./pages/EvoCash'))
 const AdminCashPurchases = lazy(() => import('./pages/AdminCashPurchases'))
+const AdminPromotions = lazy(() => import('./pages/AdminPromotions'))
 const CreateCommunity = lazy(() => import('./pages/CreateCommunity'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
@@ -116,6 +117,14 @@ export function AppRoutes() {
           element={
             <SuperAdminRoute>
               <AdminSponsoredAds />
+            </SuperAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/promocoes"
+          element={
+            <SuperAdminRoute>
+              <AdminPromotions />
             </SuperAdminRoute>
           }
         />

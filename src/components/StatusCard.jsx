@@ -23,10 +23,13 @@ import { AchievementSummary } from './AchievementSummary'
 import { MarkdownViewer } from './MarkdownViewer'
 import { PhotoStatus } from './PhotoStatus'
 import { ShareMenu } from './ShareMenu'
+import { PromoteDialog } from './PromoteDialog'
+import { PromotedBadge } from './PromotedBadge'
 import { formatDateTime } from '../utils/format'
 import { getCached, setCached } from '../utils/pageCache'
 import { isReportableAuthor } from '../utils/moderation'
 import { toDate } from '../utils/date.js'
+import { toMillis } from '../utils/expiry.js'
 
 // Selo dourado e discreto — o valor vem de authorIsSuperAdmin, gravado no status e
 // conferido pelo servidor no momento da publicação (ver firestore.rules e
@@ -362,6 +365,10 @@ export function StatusCard({
   myEconomyVote,
   onEconomyVoted,
 }) {
+  const [promoteOpen, setPromoteOpen] = useState(false)
+  const isAuthor = status.authorId === currentUserId
+  const isCurrentlyPromoted = Boolean(status.promoted) && toMillis(status.promotedUntil) > toMillis(now)
+
   return (
     <article className="status-card">
       <StatusHeader
@@ -371,6 +378,12 @@ export function StatusCard({
         onDelete={onDelete}
         showToast={showToast}
       />
+
+      {isCurrentlyPromoted && (
+        <Box sx={{ mb: 2 }}>
+          <PromotedBadge />
+        </Box>
+      )}
 
       <div className="status-content">
         {status.type === 'text' && <MarkdownViewer value={status.text} />}
@@ -405,6 +418,21 @@ export function StatusCard({
         >
           Denunciar violação
         </Link>
+      )}
+      {isAuthor && !isCurrentlyPromoted && (
+        <Button size="small" variant="invisible" onClick={() => setPromoteOpen(true)}>
+          Promover publicação
+        </Button>
+      )}
+      {promoteOpen && (
+        <PromoteDialog
+          targetType="post"
+          targetId={status.id}
+          currentUserId={currentUserId}
+          title="Promover publicação"
+          onClose={() => setPromoteOpen(false)}
+          onPromoted={() => setPromoteOpen(false)}
+        />
       )}
     </article>
   )

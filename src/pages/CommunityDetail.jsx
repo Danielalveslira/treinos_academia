@@ -38,8 +38,12 @@ import { StatusForm } from '../components/StatusForm'
 import { StatusCard } from '../components/StatusCard'
 import { SponsoredAdCard } from '../components/SponsoredAdCard'
 import { SponsoredAdBanner } from '../components/SponsoredAdBanner'
+import { PromoteDialog } from '../components/PromoteDialog'
+import { PromotedBadge } from '../components/PromotedBadge'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
+import { listFeaturedStatusesForCommunity } from '../services/promotionsService'
+import { toMillis } from '../utils/expiry.js'
 
 const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
 
@@ -72,8 +76,33 @@ function CommunityDetail({ id }) {
   // otimização.
   const { feedAds, bannerAds } = useSponsoredAds(id, member)
 
+  // Fase 6 -- "destaques" (posts promovidos com EvoCash) precisam de uma consulta
+  // própria porque o feed normal só cobre as últimas 24h (STATUS_LIFETIME_MS); uma
+  // promoção de 7/30 dias precisa continuar visível bem depois disso. Filtrado no
+  // servidor por promotedUntil > agora (nunca limit() antes de tirar os expirados, ver
+  // promotionsService.js) -- nunca lê promotions/{id} pra isto.
+  const [featuredStatuses, setFeaturedStatuses] = useState([])
+  const [promoteCommunityOpen, setPromoteCommunityOpen] = useState(false)
+  useEffect(() => {
+    if (!member) return
+    let active = true
+    listFeaturedStatusesForCommunity(id)
+      .then((items) => {
+        if (active) setFeaturedStatuses(items)
+      })
+      .catch((err) => console.error('[CommunityDetail] listFeaturedStatusesForCommunity:', err))
+    return () => {
+      active = false
+    }
+  }, [id, member])
+
   // 1 consulta para o feed inteiro (nunca 1 leitura por card) -- ver useMyEconomyVotes.js.
-  const statusIds = member ? statuses.map((status) => status.id) : []
+  // Inclui featuredStatuses também: um post promovido pode estar fora da janela de 24h
+  // do feed normal, mas ainda precisa do próprio voto resolvido (senão EconomyVoteBar
+  // ficaria "carregando" pra sempre nesse card).
+  const statusIds = member
+    ? [...new Set([...statuses, ...featuredStatuses].map((status) => status.id))]
+    : []
   const { votesByStatusId, setVote } = useMyEconomyVotes(statusIds, user?.uid)
 
   const loadCommunity = useCallback(async () => {
@@ -312,6 +341,9 @@ function CommunityDetail({ id }) {
           <Box className="community-heading">
             <Box sx={{ minWidth: 0 }}>
               <Heading as="h1">{community.name}</Heading>
+              {Boolean(community.promoted) && toMillis(community.promotedUntil) > toMillis(new Date()) && (
+                <PromotedBadge />
+              )}
               {community.description && (
                 <Text as="p" className="community-description">
                   {community.description}
@@ -355,6 +387,13 @@ function CommunityDetail({ id }) {
                   Excluir comunidade
                 </Button>
               </Box>
+              {/* Fase 6: promoção paga é uma decisão do DONO, nunca do superadmin agindo
+                  como moderador -- diferente de canModerate acima, checa ownerId direto. */}
+              {community.ownerId === user.uid && !community.promoted && (
+                <Box sx={{ mt: 3, borderTop: '1px solid', borderColor: 'border.default', pt: 3 }}>
+                  <Button onClick={() => setPromoteCommunityOpen(true)}>Promover comunidade</Button>
+                </Box>
+              )}
               <Box sx={{ mt: 3, borderTop: '1px solid', borderColor: 'border.default', pt: 3 }}>
                 <Heading as="h3" sx={{ fontSize: 0, mb: 2 }}>
                   Membros e banimentos
@@ -362,6 +401,19 @@ function CommunityDetail({ id }) {
                 <CommunityMembersModeration communityId={id} />
               </Box>
             </Box>
+          )}
+          {promoteCommunityOpen && (
+            <PromoteDialog
+              targetType="community"
+              targetId={id}
+              currentUserId={user.uid}
+              title="Promover comunidade"
+              onClose={() => setPromoteCommunityOpen(false)}
+              onPromoted={() => {
+                setPromoteCommunityOpen(false)
+                loadCommunity()
+              }}
+            />
           )}
 
           {!member && (
@@ -382,6 +434,32 @@ function CommunityDetail({ id }) {
           {member && (
             <>
               <SponsoredAdBanner ads={bannerAds} />
+              {featuredStatuses.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
+                    Destaques
+                  </Heading>
+                  {/* recordPromotionClick (clique, ver Communities.jsx) não é disparado aqui de
+                      propósito: um StatusCard já renderiza o conteúdo inteiro inline (texto,
+                      enquete, foto...), não existe um único "abrir" que leve a outro lugar --
+                      diferente de CommunityRow, cujo link inteiro navega para /comunidades/{id}.
+                      V1 fica sem métrica de clique para posts promovidos; só cliques em
+                      comunidades em destaque são contados. */}
+                  {featuredStatuses.map((status) => (
+                    <StatusCard
+                      key={`featured-${status.id}`}
+                      status={status}
+                      currentUserId={user.uid}
+                      canDelete={status.authorId === user.uid || canModerate}
+                      onDelete={handleDeleteStatus}
+                      now={now}
+                      showToast={showToast}
+                      myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
+                      onEconomyVoted={(value) => setVote(status.id, value)}
+                    />
+                  ))}
+                </Box>
+              )}
               {!formOpen && (
                 <Box className="community-toolbar">
                   <Heading as="h2">Publicações</Heading>

@@ -6,6 +6,7 @@ import {
   ShieldLockIcon,
   PeopleIcon,
   MegaphoneIcon,
+  RocketIcon,
   CreditCardIcon,
   SunIcon,
   MoonIcon,
@@ -111,6 +112,17 @@ export function AccountMenu({ onLogout, signingOut }) {
                   <CreditCardIcon />
                 </ActionList.LeadingVisual>
                 Compras de EvoCash
+              </ActionList.LinkItem>
+              <ActionList.LinkItem
+                as={Link}
+                to="/admin/promocoes"
+                replace
+                onClick={() => setOpen(false)}
+              >
+                <ActionList.LeadingVisual>
+                  <RocketIcon />
+                </ActionList.LeadingVisual>
+                Promoções (EvoCash)
               </ActionList.LinkItem>
             </ActionList.Group>
           )}

@@ -47,6 +47,8 @@ import { createVoteService } from './economy/vote-service.js'
 import { validateVoteOnPost } from './economy/vote-core.js'
 import { createCashPurchaseService } from './economy/cash-purchase-service.js'
 import { createPrivilegeService } from './economy/privilege-service.js'
+import { createPromotionService } from './economy/promotion-service.js'
+import { isTargetCurrentlyPromoted } from './economy/promotion-core.js'
 import {
   createRewardSettlementService,
   SETTLEMENT_FUNCTION_TIMEOUT_SECONDS,
@@ -235,6 +237,52 @@ export const createCommunityWithCash = onCall(options, async (request) => {
     iconName: request.data?.iconName,
     requestId: request.data?.requestId,
     emailVerified: request.auth.token.email_verified === true,
+  })
+})
+
+const promotions = createPromotionService({
+  db,
+  FieldValue,
+  Timestamp,
+  wallet: walletService,
+  ledger: ledgerService,
+  assertWritableAccount,
+  HttpsError,
+})
+
+// Fase 6 (promoções pagas com EvoCash) -- pacote fixo, duração fixa, sem CPC/CPM/
+// leilão. Elegibilidade + débito + criação atômicos numa única transação (mesmo
+// esqueleto de createCommunityWithCash, ver promotion-service.js). Nunca toca em
+// sponsoredAds (coleção/Rules/tela institucionais, superadmin-only) -- são sistemas
+// completamente separados, mesmo que ambos deem mais exposição a algo dentro do app.
+export const createPromotion = onCall(options, async (request) => {
+  const uid = requireUser(request)
+  return promotions.createPromotion(uid, {
+    targetType: request.data?.targetType,
+    targetId: request.data?.targetId,
+    packageId: request.data?.packageId,
+    requestId: request.data?.requestId,
+  })
+})
+
+export const cancelPromotion = onCall(options, async (request) => {
+  const uid = requireUser(request)
+  return promotions.cancelPromotion(uid, {
+    promotionId: request.data?.promotionId,
+    reason: request.data?.reason,
+  })
+})
+
+// Métricas informativas (App Check ainda adiado -- nunca participam de preço, cobrança
+// ou ranking financeiro). V1 só grava clique; impressão fica para uma evolução
+// posterior (dispararia a cada render/scroll, volume de writes bem maior).
+export const recordPromotionEvent = onCall(options, async (request) => {
+  const uid = requireUser(request)
+  return promotions.recordPromotionEvent(uid, {
+    targetType: request.data?.targetType,
+    targetId: request.data?.targetId,
+    promotionId: request.data?.promotionId,
+    type: request.data?.type,
   })
 })
 
@@ -663,15 +711,26 @@ export const setCommunityMemberBan = onCall(options, async (request) => {
   })
 })
 
+// Fase 6: uma promoção ativa NUNCA é apagada quando o alvo some (histórico econômico
+// real -- EvoCash já foi gasto -- mesmo tratamento que cashPurchases/economyTransactions
+// já recebem em deletion-service.js). markTargetRemoved só fecha o status como
+// 'target_removed'; idempotente, seguro sob retry:true.
 export const cleanupDeletedStatus = onDocumentDeleted(
   { ...options, document: 'statuses/{id}', retry: true },
   (event) => {
-    return deletions.queueDeleted('status', event.params.id, statusPhotoExtra(event.data?.data()))
+    return Promise.all([
+      deletions.queueDeleted('status', event.params.id, statusPhotoExtra(event.data?.data())),
+      promotions.markTargetRemoved('post', event.params.id),
+    ])
   }
 )
 export const cleanupDeletedCommunity = onDocumentDeleted(
   { ...options, document: 'communities/{id}', retry: true },
-  (event) => deletions.queueDeleted('community', event.params.id)
+  (event) =>
+    Promise.all([
+      deletions.queueDeleted('community', event.params.id),
+      promotions.markTargetRemoved('community', event.params.id),
+    ])
 )
 
 const bumpMemberCount = createBumpMemberCount({ db, FieldValue })
@@ -747,8 +806,21 @@ export const purgeExpiredPhotos = onSchedule(
       .limit(200)
       .get()
     if (expired.empty) return
+    const nowMs = Date.now()
+    // Fase 6: post_boost_3d/post_boost_7d só fazem sentido se o documento continuar
+    // existindo pelos 3-7 dias pagos -- sem este filtro, uma foto com promoção ativa
+    // seria apagada ~24h depois de publicada mesmo tendo pago por mais dias de
+    // destaque (auditoria confirmou este job ignorava `promoted` por completo).
+    const toDelete = expired.docs.filter((item) => {
+      const data = item.data()
+      return !isTargetCurrentlyPromoted(
+        { promoted: data.promoted, promotedUntilMs: data.promotedUntil?.toMillis() ?? null },
+        nowMs
+      )
+    })
+    if (toDelete.length === 0) return
     const batch = db.batch()
-    expired.docs.forEach((item) => batch.delete(item.ref))
+    toDelete.forEach((item) => batch.delete(item.ref))
     await batch.commit()
   }
 )

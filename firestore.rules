@@ -117,6 +117,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Fase 6 (promoções pagas com EvoCash) -- pacote fixo/duração fixa, completamente
+    // separado de sponsoredAds (institucional, superadmin-only, ver match abaixo). O
+    // feed nunca lê esta coleção (só os campos denormalizados promoted/promotedUntil em
+    // statuses/communities, já cobertos pelas Rules deles) -- só o dono (tela "Minhas
+    // promoções") e superadmin (moderação) precisam ler o documento em si. Escrita
+    // sempre via Admin SDK (createPromotion/cancelPromotion/recordPromotionEvent) --
+    // nunca o cliente, nem os contadores de clique (mesmo padrão de cashPurchases).
+    match /promotions/{promotionId} {
+      allow read: if isSignedIn() && (resource.data.ownerId == request.auth.uid || isSuperAdmin());
+      allow write: if false;
+    }
+
     match /moderationDecisions/{decisionId} {
       allow read: if isSuperAdmin();
       allow write: if false;
@@ -511,7 +523,8 @@ service cloud.firestore {
     function isValidCommunity(data) {
       return data.keys().hasOnly([
           'name', 'description', 'imageUrl', 'iconName', 'isActive', 'postAccess',
-          'memberCount', 'createdBy', 'createdAt', 'ownerId'
+          'memberCount', 'createdBy', 'createdAt', 'ownerId', 'promoted', 'promotedUntil',
+          'activePromotionId'
         ])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 60
         && data.description is string && data.description.size() <= 300
@@ -549,7 +562,20 @@ service cloud.firestore {
         && (!('iconName' in data) || data.iconName in [
           'users', 'dumbbell', 'heart-pulse', 'flame', 'trophy', 'target',
           'zap', 'star', 'rocket', 'mountain', 'bike', 'footprints'
-        ]);
+        ])
+        // Fase 6 (promoções pagas com EvoCash): denormalizado por createPromotion/
+        // cancelPromotion (Admin SDK, ignora esta Rule inteira) -- só aparece aqui pra
+        // que o formato continue válido quando o cliente reenvia o documento inteiro
+        // numa edição comum (ex.: trocar a descrição). A imutabilidade de verdade
+        // (cliente nunca MUDA o valor) está no allow update abaixo, não aqui.
+        && (!('promoted' in data) || data.promoted is bool)
+        && (!('promotedUntil' in data) || data.promotedUntil == null || data.promotedUntil is timestamp)
+        // activePromotionId: mesmo raciocínio -- só createPromotion/cancelPromotion
+        // (Admin SDK) gravam, aparece aqui só pra validar o formato quando o cliente
+        // reenvia o documento inteiro numa edição comum. Nunca a promotions/{id}
+        // correspondente é exposta ao cliente por este campo sozinho (ver
+        // recordPromotionEvent, que revalida tudo de novo no servidor).
+        && (!('activePromotionId' in data) || data.activePromotionId == null || data.activePromotionId is string);
     }
 
     function communityIsActive(communityId) {
@@ -596,7 +622,14 @@ service cloud.firestore {
         // enviado por updateCommunity()) em request.resource.data, e comparar campos
         // ausentes diretamente (em vez de via .get) lança erro de avaliação em vez de
         // simplesmente reprovar -- o que travaria toda edição de comunidade antiga.
-        && request.resource.data.get('ownerId', null) == resource.data.get('ownerId', null);
+        && request.resource.data.get('ownerId', null) == resource.data.get('ownerId', null)
+        // Fase 6: promoted/promotedUntil são server-managed (só createPromotion/
+        // cancelPromotion, Admin SDK, gravam) -- nem o dono nem o superadmin conseguem
+        // mudá-los por uma edição comum do cliente, mesma imutabilidade já aplicada a
+        // createdBy/createdAt/ownerId acima.
+        && request.resource.data.get('promoted', false) == resource.data.get('promoted', false)
+        && request.resource.data.get('promotedUntil', null) == resource.data.get('promotedUntil', null)
+        && request.resource.data.get('activePromotionId', null) == resource.data.get('activePromotionId', null);
       allow delete: if false;
     }
 
