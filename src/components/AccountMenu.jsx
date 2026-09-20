@@ -61,6 +61,12 @@ export function AccountMenu({ onLogout, signingOut }) {
             </ActionList.LeadingVisual>
             Comprar EvoCash
           </ActionList.LinkItem>
+          <ActionList.LinkItem as={Link} to="/minhas-promocoes" replace onClick={() => setOpen(false)}>
+            <ActionList.LeadingVisual>
+              <RocketIcon />
+            </ActionList.LeadingVisual>
+            Minhas promoções
+          </ActionList.LinkItem>
           {isSuperAdmin && (
             <ActionList.Group title="Administração">
               <ActionList.LinkItem

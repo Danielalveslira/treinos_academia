@@ -3,6 +3,7 @@ import { Box, Button, Dialog, Flash, Spinner, Text } from '@primer/react'
 import { getWallet } from '../services/economyService'
 import { createPromotion, getPromotionPackages } from '../services/promotionsService'
 import { resolveRequestId } from '../utils/cashPurchaseFlow'
+import { formatDateTime } from '../utils/format'
 
 // Fase 6 (promoções pagas com EvoCash) -- pacote fixo, duração fixa, sem CPC/CPM/
 // leilão. Mesmo fluxo idempotente de EvoCash.jsx/CreateCommunity.jsx
@@ -96,7 +97,14 @@ export function PromoteDialogBody({ targetType, targetId, currentUserId, onPromo
   if (result) {
     return (
       <Flash variant="success">
-        Promoção ativada! Válida por {result.durationDays} {result.durationDays === 1 ? 'dia' : 'dias'}.
+        <Text as="p" sx={{ fontWeight: 'bold', m: 0 }}>
+          Promoção ativada — {result.cashAmount} EvoCash debitado.
+        </Text>
+        <Text as="p" sx={{ m: 0 }}>
+          Válida por {result.durationDays} {result.durationDays === 1 ? 'dia' : 'dias'}, até{' '}
+          {formatDateTime(new Date(result.expiresAtMs))}. Acompanhe ou cancele em &quot;Minhas
+          promoções&quot;.
+        </Text>
       </Flash>
     )
   }

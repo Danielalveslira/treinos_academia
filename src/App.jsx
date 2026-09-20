@@ -30,6 +30,7 @@ const AdminAccounts = lazy(() => import('./pages/AdminAccounts'))
 const EvoCash = lazy(() => import('./pages/EvoCash'))
 const AdminCashPurchases = lazy(() => import('./pages/AdminCashPurchases'))
 const AdminPromotions = lazy(() => import('./pages/AdminPromotions'))
+const MyPromotions = lazy(() => import('./pages/MyPromotions'))
 const CreateCommunity = lazy(() => import('./pages/CreateCommunity'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
@@ -76,6 +77,7 @@ export function AppRoutes() {
         </Route>
         <Route path="/perfil" element={<Profile />} />
         <Route path="/evocash" element={<EvoCash />} />
+        <Route path="/minhas-promocoes" element={<MyPromotions />} />
         <Route path="/comunidades/criar" element={<CreateCommunity />} />
         <Route
           path="/admin/compras-evocash"
