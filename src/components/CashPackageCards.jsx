@@ -8,14 +8,8 @@ import { buildCashPackagesPresentation } from '../utils/cashPackagePresentation'
 // buildCashPackagesPresentation (cashPackagePresentation.js) -- este componente só
 // desenha o que a camada de apresentação calculou, e chama onBuy(packageId) sem alterar
 // em nada o fluxo de requestCashPurchase/resolveRequestId já existente em EvoCash.jsx.
-export function CashPackageCards({
-  packages,
-  communityCreationCashCost = null,
-  buyingPackageId = null,
-  disabled = false,
-  onBuy,
-}) {
-  const views = buildCashPackagesPresentation(packages, { communityCreationCashCost })
+export function CashPackageCards({ packages, buyingPackageId = null, disabled = false, onBuy }) {
+  const views = buildCashPackagesPresentation(packages)
 
   return (
     <Box>
@@ -60,39 +54,29 @@ export function CashPackageCards({
             <Text as="p" sx={{ fontSize: 3, fontWeight: 'bold', m: 0 }}>
               {formatCentavosBRL(pkg.amountCentavos)}
             </Text>
-            {pkg.unitPriceCentavosPer100 != null && (
-              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-                {formatCentavosBRL(pkg.unitPriceCentavosPer100)} por 100 EvoCash
-              </Text>
-            )}
             {pkg.tagline && (
               <Text as="p" sx={{ fontSize: 1, m: 0 }}>
                 {pkg.tagline}
               </Text>
             )}
-            {pkg.savingsCentavos != null && (
-              <Text as="p" sx={{ fontSize: 0, color: 'success.fg', m: 0 }}>
-                Economize {formatCentavosBRL(pkg.savingsCentavos)} comparado a {pkg.savingsComparisonCount}{' '}
-                compras de 100 EvoCash · ≈{pkg.savingsPercent}% melhor valor
-              </Text>
-            )}
-            {pkg.communityCreationCount != null && (
-              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-                Pode cobrir até {pkg.communityCreationCount}{' '}
-                {pkg.communityCreationCount === 1 ? 'criação de comunidade' : 'criações de comunidade'}
-              </Text>
-            )}
-            <Button
-              variant={pkg.highlight ? 'primary' : 'default'}
-              block
-              data-testid={`buy-${pkg.packageId}`}
-              sx={{ mt: 'auto', pt: 2 }}
-              loading={buyingPackageId === pkg.packageId}
-              disabled={disabled}
-              onClick={() => onBuy(pkg.packageId)}
-            >
-              Comprar por {formatCentavosBRL(pkg.amountCentavos)}
-            </Button>
+            {/* Box próprio em vez de sx={{ mt: 'auto' }} direto no Button: o Button do
+                Primer renderiza o <button> dentro de um wrapper de loading
+                (prc-Button-ConditionalWrapper) que não herda margin do sx do Button --
+                sem este Box, o botão ficava "flutuando" logo após o conteúdo em vez de
+                grudado no rodapé do card, deixando espaço em branco desalinhado entre
+                cards com quantidades diferentes de texto. */}
+            <Box sx={{ mt: 'auto', pt: 2 }}>
+              <Button
+                variant={pkg.highlight ? 'primary' : 'default'}
+                block
+                data-testid={`buy-${pkg.packageId}`}
+                loading={buyingPackageId === pkg.packageId}
+                disabled={disabled}
+                onClick={() => onBuy(pkg.packageId)}
+              >
+                Comprar por {formatCentavosBRL(pkg.amountCentavos)}
+              </Button>
+            </Box>
           </Box>
         ))}
       </Box>

@@ -2,27 +2,52 @@
 
 Quero implementar a apresentação dos pacotes oficiais de EvoCash no Evolutus, com foco em **aumentar desejo e conversão**, usando princípios de psicologia comportamental de forma ética, transparente e sem dark patterns.
 
+> **Atualização (2026-09-20) — reposicionamento como moeda premium/rara.** Os valores
+> originais abaixo foram substituídos pelos pacotes aprovados nesta seção. Os antigos
+> (50/R$5,90, 100/R$9,90, 300/R$24,90, 700/R$49,90) não devem mais aparecer em nenhum
+> lugar do código, config ou copy. As seções "Ancoragem" e "Framing de valor" mais
+> abaixo descrevem a versão ANTERIOR do design (economia calculada, "R$X por 100
+> EvoCash") e foram **descontinuadas**: a versão atual comunica raridade pela própria
+> quantidade de EvoCash e pelo design, sem matemática comparativa entre pacotes.
+
 ## Pacotes aprovados
 
 ```text
-Essencial — 50 EvoCash — R$ 5,90
-Inicial   — 100 EvoCash — R$ 9,90
-Popular   — 300 EvoCash — R$ 24,90
-Max       — 700 EvoCash — R$ 49,90
+Essencial — 25 EvoCash  — R$ 5,90  — "Para uma ação pontual"
+Inicial   — 50 EvoCash  — R$ 10,90 — "Uma boa forma de começar"
+Popular   — 120 EvoCash — R$ 23,90 — badge "Recomendado" — "Melhor equilíbrio entre preço e saldo"
+Max       — 300 EvoCash — R$ 49,90 — badge "Melhor valor" — "Maior pacote disponível"
 ```
 
-Config esperada:
+O Max é 300 EvoCash (não 250, valor considerado antes): o custo real de
+`promotionPackages.community_boost_30d` é 300 EvoCash, e com um teto de 250 nenhuma
+compra única cobriria esse destaque — o usuário teria que combinar pacotes. Alinhar o
+Max a 300 resolve essa incompatibilidade sem alterar o preço da promoção.
+
+Config esperada em `economyConfig/current.cashPackages`:
 
 ```js
 cashPackages: {
-  pack_50:  { cashAmount: 50,  amountCentavos: 590,  label: "50 EvoCash",  active: true },
-  pack_100: { cashAmount: 100, amountCentavos: 990,  label: "100 EvoCash", active: true },
-  pack_300: { cashAmount: 300, amountCentavos: 2490, label: "300 EvoCash", active: true },
-  pack_700: { cashAmount: 700, amountCentavos: 4990, label: "700 EvoCash", active: true }
+  pack_25:      { cashAmount: 25,  amountCentavos: 590,  label: "25 EvoCash",  active: true },
+  pack_50_v2:   { cashAmount: 50,  amountCentavos: 1090, label: "50 EvoCash",  active: true },
+  pack_120:     { cashAmount: 120, amountCentavos: 2390, label: "120 EvoCash", active: true },
+  pack_300_v2:  { cashAmount: 300, amountCentavos: 4990, label: "300 EvoCash", active: true }
 }
 ```
 
-Antes de escrever em produção, confirme o schema real de `economyConfig/current` e não sobrescreva outros blocos existentes.
+`packageId` é tratado como um SKU imutável — nunca reaproveitado para um preço/
+quantidade diferente. Os novos pacotes de 50 e 300 EvoCash usam `pack_50_v2`/
+`pack_300_v2`, não `pack_50`/`pack_300`: esses IDs antigos já significaram preços
+diferentes (R$5,90 e R$24,90 respectivamente), e reaproveitá-los arriscaria uma aba com
+cache antigo mostrar o preço velho na tela enquanto o backend (que resolve preço fresco
+por `packageId` a cada request) cobra o preço novo pelo mesmo ID. `pack_50`, `pack_100`,
+`pack_300` e `pack_700` foram todos removidos e não devem sobrar residuais no documento
+de config — uma escrita com `{merge: true}` sozinha NÃO remove chaves de mapa aninhado
+não mencionadas (Firestore faz merge recursivo em campos de mapa); a remoção exige
+`FieldValue.delete()` explícito para cada chave antiga dentro do mesmo write. `pack_250`
+nunca chegou a existir em produção e não deve ser criado.
+
+Antes de escrever em produção, confirme o schema real de `economyConfig/current` e não sobrescreva outros blocos existentes (ex.: `promotionPackages`).
 
 ---
 
@@ -41,23 +66,12 @@ Não quero uma tela com aparência de tabela técnica. Quero cards de compra vis
 
 ## Princípios de persuasão a aplicar
 
-### 1. Ancoragem
+### 1. Ancoragem (descontinuado)
 
-Use o pacote `Max` como referência de maior valor e destaque a economia relativa dos pacotes maiores.
-
-Exemplos permitidos:
-
-```text
-Popular
-Economize R$ 4,80 comparado a 3 compras de 100 EvoCash
-≈ 16% melhor valor
-
-Max
-Economize R$ 19,40 comparado a 7 compras de 100 EvoCash
-≈ 28% melhor valor
-```
-
-Faça os cálculos no código a partir dos preços/config sempre que possível. Não deixe percentuais comerciais hardcoded se puderem ficar inconsistentes com a config.
+> Esta seção descrevia a versão anterior do design e não é mais aplicada. A partir do
+> reposicionamento de 2026-09-20, nenhum card mostra "economize R$X" ou "~X% melhor
+> valor" — a raridade e o posicionamento premium vêm da própria quantidade de EvoCash
+> oferecida e do design dos cards, sem matemática comparativa entre pacotes.
 
 ### 2. Efeito de compromisso / opção recomendada
 
@@ -74,35 +88,12 @@ NÃO use “Mais escolhido” enquanto não houver dados reais de compras compro
 
 O card Popular pode ter maior destaque visual, borda/elevação e CTA mais evidente, mas não deve estar pré-selecionado de forma enganosa.
 
-### 3. Framing de valor
+### 3. Framing de valor (descontinuado)
 
-Não mostre apenas:
-
-```text
-300 EvoCash
-R$ 24,90
-```
-
-Mostre também o valor unitário de maneira discreta:
-
-```text
-R$ 8,30 por 100 EvoCash
-```
-
-Para o Max:
-
-```text
-R$ 7,13 por 100 EvoCash
-Melhor valor por EvoCash
-```
-
-Para o Essencial, comunique o benefício de entrada:
-
-```text
-Comece com pouco
-```
-
-Não destaque que ele tem pior valor unitário.
+> Esta seção pedia um valor unitário discreto ("R$X por 100 EvoCash") em cada card.
+> A partir do reposicionamento de 2026-09-20 esse framing foi removido: os cards
+> mostram apenas quantidade de EvoCash, preço e a tagline curta da tabela de pacotes
+> aprovados, sem cálculo de preço unitário.
 
 ### 4. Efeito de progressão
 
@@ -138,8 +129,8 @@ Cada card deve ter CTA simples:
 
 ```text
 Comprar por R$ 5,90
-Comprar por R$ 9,90
-Comprar por R$ 24,90
+Comprar por R$ 10,90
+Comprar por R$ 23,90
 Comprar por R$ 49,90
 ```
 
@@ -204,39 +195,39 @@ Cada card deve mostrar:
 nome
 quantidade de EvoCash
 preço
-valor por 100
-benefício curto
+tagline curta
 badge quando aplicável
 CTA
 ```
 
-Sugestão de copy:
+Copy aprovada (2026-09-20):
 
 ```text
 ESSENCIAL
-50 EvoCash
+25 EvoCash
 R$ 5,90
-Comece com pouco
+Para uma ação pontual
 
 INICIAL
-100 EvoCash
-R$ 9,90
+50 EvoCash
+R$ 10,90
 Uma boa forma de começar
 
 POPULAR
-300 EvoCash
-R$ 24,90
+120 EvoCash
+R$ 23,90
 Recomendado
 Melhor equilíbrio entre preço e saldo
 
 MAX
-700 EvoCash
+300 EvoCash
 R$ 49,90
 Melhor valor
-Até ~28% mais econômico que comprar 100 por vez
+Maior pacote disponível
 ```
 
-A copy final pode ser ajustada para combinar com o design atual do Evolutus.
+Nenhum card mostra preço unitário, "economize R$X" ou percentual de economia — ver nota
+de descontinuação nas seções "Ancoragem" e "Framing de valor" acima.
 
 ---
 
@@ -251,11 +242,12 @@ A copy final pode ser ajustada para combinar com o design atual do Evolutus.
 7. Preserve acessibilidade, teclado, contraste e responsividade.
 8. Adicione testes para:
    - ordem dos pacotes;
-   - cálculo de valor por 100;
-   - cálculo de economia do Popular/Max;
+   - preço/quantidade de cada pacote batem com os valores aprovados (25/50/120/300);
+   - valores antigos (50/590, 100/990, 300/2490, 700/4990) nunca aparecem;
    - pacote inativo não aparece;
    - CTA envia o `packageId` correto;
-   - não existe claim “Mais escolhido” sem dado real;
+   - não existe claim "Mais escolhido"/"Mais comprado" sem dado real;
+   - nenhum texto de preço unitário, economia ou percentual comparativo aparece;
    - retry mantém a idempotência existente.
 
 ## Produção

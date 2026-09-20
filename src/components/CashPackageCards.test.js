@@ -70,11 +70,15 @@ after(async () => {
   if (directory) await rm(directory, { recursive: true, force: true })
 })
 
+// Reposicionamento EvoCash como moeda premium/rara -- os 4 pacotes aprovados. IDs de 50 e
+// 300 EvoCash são pack_50_v2/pack_300_v2 (não pack_50/pack_300): packageId é um SKU
+// imutável, e os IDs antigos já representaram preços diferentes (R$5,90 e R$24,90). Max é
+// 300 (não 250) EvoCash, alinhado ao custo de community_boost_30d.
 const PACKAGES = [
-  { packageId: 'pack_50', cashAmount: 50, amountCentavos: 590, label: '50 EvoCash', active: true },
-  { packageId: 'pack_100', cashAmount: 100, amountCentavos: 990, label: '100 EvoCash', active: true },
-  { packageId: 'pack_300', cashAmount: 300, amountCentavos: 2490, label: '300 EvoCash', active: true },
-  { packageId: 'pack_700', cashAmount: 700, amountCentavos: 4990, label: '700 EvoCash', active: true },
+  { packageId: 'pack_25', cashAmount: 25, amountCentavos: 590, label: '25 EvoCash', active: true },
+  { packageId: 'pack_50_v2', cashAmount: 50, amountCentavos: 1090, label: '50 EvoCash', active: true },
+  { packageId: 'pack_120', cashAmount: 120, amountCentavos: 2390, label: '120 EvoCash', active: true },
+  { packageId: 'pack_300_v2', cashAmount: 300, amountCentavos: 4990, label: '300 EvoCash', active: true },
 ]
 
 test('renders all 4 active packages, in order, each with its real price and a CTA', () => {
@@ -84,8 +88,8 @@ test('renders all 4 active packages, in order, each with its real price and a CT
   assert.match(html, />Popular</)
   assert.match(html, />Max</)
   assert.match(html, /R\$\s?5,90/)
-  assert.match(html, /R\$\s?9,90/)
-  assert.match(html, /R\$\s?24,90/)
+  assert.match(html, /R\$\s?10,90/)
+  assert.match(html, /R\$\s?23,90/)
   assert.match(html, /R\$\s?49,90/)
   assert.equal((html.match(/Comprar por/g) || []).length, 4)
   const essencialIndex = html.indexOf('>Essencial<')
@@ -97,16 +101,29 @@ test('renders all 4 active packages, in order, each with its real price and a CT
   assert.ok(popularIndex < maxIndex)
 })
 
+// R$49,90 sozinho não é mais uma prova de pacote antigo: coincide com o preço do novo
+// Max (300 EvoCash), que antes pertencia ao pack_700 (700 EvoCash). Por isso a checagem
+// aqui é por quantidade+preço, não só pelo preço isolado.
+test('never renders the old package prices/quantities (9,90/100 · 24,90/300 · 700 EvoCash for 49,90)', () => {
+  const html = renderStatic({ packages: PACKAGES, onBuy: () => {} })
+  assert.doesNotMatch(html, /R\$\s?9,90/)
+  assert.doesNotMatch(html, /R\$\s?24,90/)
+  assert.doesNotMatch(html, />700 EvoCash</)
+})
+
 test('an inactive package never renders as a card', () => {
   const html = renderStatic({
-    packages: [...PACKAGES, { packageId: 'pack_old', cashAmount: 10, amountCentavos: 100, label: 'Descontinuado', active: false }],
+    packages: [
+      ...PACKAGES,
+      { packageId: 'pack_old', cashAmount: 10, amountCentavos: 100, label: 'Descontinuado', active: false },
+    ],
     onBuy: () => {},
   })
   assert.doesNotMatch(html, /Descontinuado/)
   assert.equal((html.match(/Comprar por/g) || []).length, 4)
 })
 
-test('Popular is visually recommended and Max earns "Melhor valor" from real pricing -- never "Mais escolhido"', () => {
+test('Popular is visually recommended and Max shows "Melhor valor" -- never "Mais escolhido"/"Mais comprado"', () => {
   const html = renderStatic({ packages: PACKAGES, onBuy: () => {} })
   assert.match(html, /Recomendado/)
   assert.match(html, /Melhor valor/)
@@ -114,13 +131,23 @@ test('Popular is visually recommended and Max earns "Melhor valor" from real pri
   assert.doesNotMatch(html, /Mais comprado/i)
 })
 
-test('shows the value-per-100 framing and the computed savings copy for Popular/Max', () => {
+test('taglines match the approved copy for each tier', () => {
   const html = renderStatic({ packages: PACKAGES, onBuy: () => {} })
-  assert.match(html, /R\$\s?8,30 por 100 EvoCash/)
-  assert.match(html, /R\$\s?7,13 por 100 EvoCash/)
-  assert.match(html, /Economize R\$\s?4,80/)
-  assert.match(html, /Economize R\$\s?19,40/)
-  assert.match(html, /28% melhor valor/)
+  assert.match(html, /Para uma ação pontual/)
+  assert.match(html, /Uma boa forma de começar/)
+  assert.match(html, /Melhor equilíbrio entre preço e saldo/)
+  assert.match(html, /Maior pacote disponível/)
+})
+
+// Reposicionamento premium: sem matemática comparativa entre pacotes -- nem "R$X por
+// 100 EvoCash", nem "Economize R$X"/"~X% melhor valor", nem "cobre N criações de
+// comunidade". A raridade vem da própria quantidade oferecida e do design.
+test('never shows unit-price framing, savings copy, or community-creation coverage math', () => {
+  const html = renderStatic({ packages: PACKAGES, onBuy: () => {} })
+  assert.doesNotMatch(html, /por 100 EvoCash/)
+  assert.doesNotMatch(html, /Economize/)
+  assert.doesNotMatch(html, /melhor valor.*calculad|%\s*melhor valor/i)
+  assert.doesNotMatch(html, /cria(ç|c)(ã|a)o de comunidade/i)
 })
 
 test('shows the trust/security line near the purchase area, with no investment-like language', () => {
@@ -133,8 +160,8 @@ test('shows the trust/security line near the purchase area, with no investment-l
 test('clicking a card CTA sends exactly that card packageId to onBuy, never another one', () => {
   const calls = []
   globalThis.__onBuy = (packageId) => calls.push(packageId)
-  clickBuy({ packages: PACKAGES, onBuy: (id) => globalThis.__onBuy(id) }, 'pack_300')
-  clickBuy({ packages: PACKAGES, onBuy: (id) => globalThis.__onBuy(id) }, 'pack_700')
-  assert.deepEqual(calls, ['pack_300', 'pack_700'])
+  clickBuy({ packages: PACKAGES, onBuy: (id) => globalThis.__onBuy(id) }, 'pack_120')
+  clickBuy({ packages: PACKAGES, onBuy: (id) => globalThis.__onBuy(id) }, 'pack_300_v2')
+  assert.deepEqual(calls, ['pack_120', 'pack_300_v2'])
   delete globalThis.__onBuy
 })

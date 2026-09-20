@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Box, Button, Flash, Heading, Label, Spinner, Text } from '@primer/react'
+import { SparkleFillIcon } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
 import { getCashPurchaseSettings, requestCashPurchase } from '../services/cashPurchaseService'
@@ -25,7 +26,7 @@ function newRequestId() {
 // esta página nunca credita nada sozinha.
 export default function EvoCash() {
   const { user } = useAuth()
-  const [settings, setSettings] = useState({ packages: [], pixKey: null, createCommunityCashCost: null })
+  const [settings, setSettings] = useState({ packages: [], pixKey: null })
   const [loadingSettings, setLoadingSettings] = useState(true)
   // Guarda o requestId da tentativa em andamento -- reenviado se a MESMA tentativa
   // (mesmo pacote, ainda sem sucesso) for repetida, nunca gerado de novo a cada clique
@@ -90,8 +91,36 @@ export default function EvoCash() {
       <header className="profile-page-heading">
         <span className="profile-eyebrow">EVOCASH</span>
         <h1>Comprar EvoCash</h1>
-        <p>Crédito premium para comunidades, destaques e recursos futuros.</p>
+        <p>A moeda premium do Evolutus para recursos exclusivos, comunidades e destaques.</p>
       </header>
+
+      {/* Sem data nem contagem regressiva inventada -- "por tempo limitado" e "serão
+          reajustados posteriormente" nunca com prazo específico, só a condição real. */}
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 2,
+          alignItems: 'flex-start',
+          border: '1px solid',
+          borderColor: 'attention.emphasis',
+          bg: 'attention.subtle',
+          borderRadius: 2,
+          p: 3,
+          mb: 4,
+        }}
+      >
+        <Box sx={{ color: 'attention.fg', flexShrink: 0, display: 'flex', pt: '2px' }}>
+          <SparkleFillIcon size={18} />
+        </Box>
+        <Box>
+          <Text as="p" sx={{ fontWeight: 'bold', m: 0, color: 'attention.fg' }}>
+            Valores especiais por tempo limitado
+          </Text>
+          <Text as="p" sx={{ fontSize: 1, m: 0, mt: 1 }}>
+            Os preços atuais estão abaixo da tabela padrão do EvoCash e serão reajustados posteriormente.
+          </Text>
+        </Box>
+      </Box>
 
       {error && (
         <Flash variant="danger" role="alert" sx={{ mb: 3 }}>
@@ -139,7 +168,6 @@ export default function EvoCash() {
         {!loadingSettings && settings.packages.length > 0 && (
           <CashPackageCards
             packages={settings.packages}
-            communityCreationCashCost={settings.createCommunityCashCost}
             buyingPackageId={buyingPackageId}
             disabled={!!buyingPackageId || hasPendingPurchase}
             onBuy={buy}
