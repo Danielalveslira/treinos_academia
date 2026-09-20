@@ -8,7 +8,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../firebase/config'
+import { db, functions, functionsUsCentral } from '../firebase/config'
 
 const EMPTY_WALLET = { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0 }
 
@@ -22,7 +22,12 @@ const EMPTY_WALLET = { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0 }
 const CACHE_TTL_MS = 5 * 60 * 1000
 
 const registerQualifiedActivityCallable = httpsCallable(functions, 'registerQualifiedActivity')
-const voteOnPostCallable = httpsCallable(functions, 'voteOnPost')
+// Voto econômico migrou para us-central1 (voteOnPostV2) depois do experimento A/B --
+// mesmo banco (nam5), mesma lógica (vote-service.js), só a região muda: 66-77% mais
+// rápido que southamerica-east1 em todas as ações medidas (create/switch/remove/
+// revote). Sem fallback para a Function antiga de propósito -- se us-central1 cair,
+// queremos ver o erro, não mascarar silenciosamente voltando pra outra região.
+const voteOnPostV2Callable = httpsCallable(functionsUsCentral, 'voteOnPostV2')
 
 function cacheKey(uid) {
   return `wallet:${uid}`
@@ -129,7 +134,7 @@ export async function getMyEconomyVotesForStatuses(uid, statusIds) {
 // -- trocar de direção ou remover depois é grátis, sem reembolso. Atualiza o cache local
 // da carteira a partir da própria resposta, mesma ideia de registerQualifiedActivity.
 export async function castVote(uid, statusId, value) {
-  const result = (await voteOnPostCallable({ statusId, value })).data
+  const result = (await voteOnPostV2Callable({ statusId, value })).data
   if (result?.charged) {
     const current = readCache(uid) || EMPTY_WALLET
     writeCache(uid, { ...current, coinBalance: current.coinBalance - result.costCoins })

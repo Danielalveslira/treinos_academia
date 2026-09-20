@@ -4,24 +4,56 @@ import { todayKey } from './activity-core.js'
 // voteOnPost -- seção 13 do prompt de economia (voto atômico). HttpsError injetado
 // (mesmo padrão de deletion-service.js) em vez de importado direto: mantém este arquivo
 // testável sem depender do runtime de Cloud Functions.
+//
+// Leituras agrupadas via tx.getAll() (auditoria de latência: Firestore em nam5,
+// Function em southamerica-east1 -- cada round trip cross-região é caro, então o número
+// de round trips importa mais que o número de documentos por si só). Versão
+// CONSERVADORA (nunca lê wallet/daily/ledger fora do branch que realmente precisa
+// deles -- switch/remove/noop não ganham nenhuma leitura nova nem entram no read set
+// desses documentos):
+//
+//   batch 1: deletionJobRef + statusRef -- os dois únicos documentos que não dependem
+//   de nada além de uid/statusId (os argumentos da própria função).
+//
+//   batch 2: membershipRef/communityRestrictionRef (dependem de status.communityId, só
+//   conhecido depois do batch 1) + accountRestrictionRef + voteRef. Com isto já dá pra
+//   decidir noop/switch/remove/create -- switch/remove/noop terminam aqui, em 2 round
+//   trips de leitura, sem nunca tocar em wallet/daily/ledger.
+//
+//   batch 3 (só quando action === 'create'): dailyRef + walletRef + ledgerRef --
+//   sempre os 3 juntos (aceito ler wallet/ledger antes de saber se o limite diário
+//   bloqueia), mas só quando a ação É de fato 'create'. 3º round trip só neste branch.
+//
+// Nenhuma regra de negócio muda: mesma ordem de validação/erros, mesma cobrança, mesmo
+// ledger, mesma idempotência, mesmos contadores -- só ONDE cada tx.get() acontece.
 export function createVoteService({
   db,
   FieldValue,
   wallet,
   ledger,
   getEconomyConfig,
-  assertWritableAccount,
+  // Não é mais chamada aqui -- seu único efeito (checar deletionJobs/account_{uid}) é
+  // replicado inline abaixo, agrupado com a leitura de status no batch 1. Chamá-la
+  // seria um tx.get() isolado, reintroduzindo exatamente o round trip que este
+  // refactor existe para eliminar. Mantido como parâmetro só por compatibilidade com o
+  // mesmo formato de injeção de dependência dos outros serviços econômicos/dos testes.
+  // eslint-disable-next-line no-unused-vars -- mantido só por compatibilidade, ver comentário acima
+  assertWritableAccount: _assertWritableAccount,
   HttpsError,
   now = Date.now,
 }) {
   return async function voteOnPost(uid, statusId, incomingValue) {
     const statusRef = db.doc(`statuses/${statusId}`)
     const voteRef = db.doc(`statuses/${statusId}/economyVotes/${uid}`)
+    const deletionJobRef = db.doc(`deletionJobs/account_${uid}`)
 
     return db.runTransaction(async (tx) => {
-      await assertWritableAccount(tx, uid)
+      // batch 1 (1 round trip): nada aqui depende de status.communityId.
+      const [deletionJobSnapshot, statusSnapshot] = await tx.getAll(deletionJobRef, statusRef)
 
-      const statusSnapshot = await tx.get(statusRef)
+      if (deletionJobSnapshot.exists) {
+        throw new HttpsError('failed-precondition', 'A conta está em exclusão.')
+      }
       if (!statusSnapshot.exists) {
         throw new HttpsError('not-found', 'Publicação não encontrada.')
       }
@@ -42,6 +74,8 @@ export function createVoteService({
       const membershipRef = db.doc(`communityMembers/${status.communityId}_${uid}`)
       const communityRestrictionRef = db.doc(`communityRestrictions/${status.communityId}_${uid}`)
       const accountRestrictionRef = db.doc(`accountRestrictions/${uid}`)
+
+      // batch 2 (1 round trip): o suficiente para decidir noop/switch/remove/create.
       const [membershipSnapshot, communityRestrictionSnapshot, accountRestrictionSnapshot, voteSnapshot] =
         await tx.getAll(membershipRef, communityRestrictionRef, accountRestrictionRef, voteRef)
 
@@ -69,7 +103,9 @@ export function createVoteService({
 
       // 'switch' e 'remove': o pagamento já aconteceu uma vez para esta publicação
       // (charged=true é permanente, ver vote-core.js) -- só o valor/estado de recompensa
-      // mudam, nunca a carteira, o ledger ou o limite diário.
+      // mudam, nunca a carteira, o ledger ou o limite diário. Nenhuma leitura nova
+      // acontece daqui pra frente neste branch (nem wallet, nem daily, nem ledger --
+      // de propósito, ver comentário no topo do arquivo).
       if (action !== 'create') {
         const nextState = nextRewardState(existingVote.rewardState, incomingValue)
         // rewardPendingAt/rewardDayKey marcam O EVENTO ELEGÍVEL (seção 2 da auditoria de
@@ -99,19 +135,32 @@ export function createVoteService({
       }
 
       // action === 'create': primeiro voto do usuário nesta publicação -- só aqui existe
-      // cobrança, limite diário e ledger (seção 12).
+      // cobrança, limite diário e ledger (seção 12). config continua fora da transação,
+      // com o mesmo cache em memória por instância de sempre (5min TTL, ver
+      // config-service.js) -- comportamento intocado.
       const config = await getEconomyConfig()
       const { costCoins, maxVotesPerUserDay } = config.voting
       const dateKey = todayKey(nowMs)
       const dailyRef = db.doc(`users/${uid}/economyDaily/${dateKey}`)
-      const dailySnapshot = await tx.get(dailyRef)
+      const walletRef = wallet.walletRef(uid)
+      const naturalKey = `vote:${statusId}:charge`
+      const ledgerRef = ledger.ledgerRef(uid, naturalKey)
+
+      // batch 3 (1 round trip, só neste branch): daily/wallet/ledger juntos -- aceito
+      // ler wallet/ledger mesmo quando o limite diário abaixo acaba bloqueando a
+      // votação (trade-off explícito: 1 round trip sempre, em vez de até 3
+      // sequenciais).
+      const [dailySnapshot, walletSnapshot, ledgerSnapshot] = await tx.getAll(dailyRef, walletRef, ledgerRef)
+
       const daily = dailySnapshot.exists ? dailySnapshot.data() : null
       const votesChargedToday = daily?.votesCharged || 0
       if (votesChargedToday >= maxVotesPerUserDay) {
         throw new HttpsError('resource-exhausted', 'Limite diário de votos atingido.')
       }
 
-      const currentWallet = await wallet.getWallet(tx, uid)
+      const currentWallet = walletSnapshot.exists
+        ? walletSnapshot.data()
+        : { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0 }
       if (currentWallet.coinBalance < costCoins) {
         throw new HttpsError('failed-precondition', 'Saldo de EvoCoins insuficiente para votar.')
       }
@@ -119,8 +168,7 @@ export function createVoteService({
       // Mesma trava dupla de idempotência de activity-service.js: charged=true (recém
       // decidido acima via decideVoteAction) já deveria bastar, o ledger é a rede de
       // segurança extra contra uma reexecução que visse o voto ainda não criado.
-      const naturalKey = `vote:${statusId}:charge`
-      const alreadyLedgered = await ledger.alreadyRecorded(tx, uid, naturalKey)
+      const alreadyLedgered = ledgerSnapshot.exists
       if (!alreadyLedgered) {
         wallet.debitCoins(tx, uid, currentWallet, costCoins)
         ledger.record(tx, uid, naturalKey, {

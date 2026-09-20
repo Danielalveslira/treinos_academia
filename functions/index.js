@@ -168,7 +168,23 @@ const castVote = createVoteService({
 // registerQualifiedActivity acima -- não ligada isoladamente aqui pelo mesmo motivo. O
 // limite diário de votos pagos (maxVotesPerUserDay) já cobre o rate limiting específico
 // pedido pela seção 27 para esta ação.
+// LEGADO -- mantida só até confirmar que nenhum cliente ainda a chama (o frontend
+// migrou para voteOnPostV2/us-central1 depois do A/B: 66-77% mais rápido contra o
+// mesmo banco nam5, region/rede era o gargalo real, não a lógica). Candidata a remoção
+// assim que o smoke em produção confirmar 100% do tráfego em voteOnPostV2.
 export const voteOnPost = onCall(options, async (request) => {
+  const uid = requireUser(request)
+  const error = validateVoteOnPost(request.data)
+  if (error) throw new HttpsError('invalid-argument', error)
+  return castVote(uid, request.data.statusId, request.data.value)
+})
+
+// Endpoint DEFINITIVO do voto econômico (pós A/B, ver auditoria de latência) -- mesmo
+// banco (nam5), mesma lógica (castVote é a mesma instância de createVoteService usada
+// por voteOnPost acima, nenhuma duplicação), só a região muda. Sem minInstances --
+// cold start já se mostrou um fator secundário frente ao ganho de região/rede.
+const optionsUsCentral = { ...options, region: 'us-central1' }
+export const voteOnPostV2 = onCall(optionsUsCentral, async (request) => {
   const uid = requireUser(request)
   const error = validateVoteOnPost(request.data)
   if (error) throw new HttpsError('invalid-argument', error)

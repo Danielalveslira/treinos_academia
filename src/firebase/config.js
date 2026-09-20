@@ -21,10 +21,16 @@ export const db = getFirestore(app)
 export const functions = getFunctions(app, 'southamerica-east1')
 export const storage = getStorage(app)
 
+// us-central1 -- só o voto econômico (voteOnPostV2) roda aqui, desde a migração pós
+// A/B (66-77% mais rápido que southamerica-east1 contra o mesmo banco nam5, ver
+// economyService.js castVote). Toda outra Function continua em `functions` acima.
+export const functionsUsCentral = getFunctions(app, 'us-central1')
+
 if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
   connectFirestoreEmulator(db, '127.0.0.1', 8080)
   connectFunctionsEmulator(functions, '127.0.0.1', 5001)
+  connectFunctionsEmulator(functionsUsCentral, '127.0.0.1', 5001)
   connectStorageEmulator(storage, '127.0.0.1', 9199)
 }
 

@@ -37,7 +37,10 @@ async function service({ walletDocs = {}, voteDocs = {}, callableResults = {} } 
           )
           pluginBuild.onLoad({ filter: /.*/, namespace: 'fixture' }, ({ path }) => {
             if (path.endsWith('config')) {
-              return { contents: 'export const db = {}\nexport const functions = {}' }
+              return {
+                contents:
+                  'export const db = {}\nexport const functions = {}\nexport const functionsUsCentral = {}',
+              }
             }
             if (path.endsWith('functions')) {
               return {
@@ -274,7 +277,7 @@ test('castVote decrements the cached wallet by costCoins when the vote is charge
   globalThis.sessionStorage = fakeSessionStorage()
   const { api } = await service({
     walletDocs: { alice: { coinBalance: 10, lifetimeCoinsEarned: 10, cashBalance: 0 } },
-    callableResults: { voteOnPost: { voted: true, action: 'create', charged: true, costCoins: 3 } },
+    callableResults: { voteOnPostV2: { voted: true, action: 'create', charged: true, costCoins: 3 } },
   })
   await api.getWallet('alice')
   const result = await api.castVote('alice', 's1', 1)
@@ -288,7 +291,7 @@ test('castVote never touches the cached wallet when the vote was not charged (sw
   globalThis.sessionStorage = fakeSessionStorage()
   const { api } = await service({
     walletDocs: { alice: { coinBalance: 7, lifetimeCoinsEarned: 10, cashBalance: 0 } },
-    callableResults: { voteOnPost: { voted: true, action: 'switch', charged: false } },
+    callableResults: { voteOnPostV2: { voted: true, action: 'switch', charged: false } },
   })
   await api.getWallet('alice')
   await api.castVote('alice', 's1', -1)
