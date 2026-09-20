@@ -15,6 +15,7 @@ import { preloadRoute } from '../routeLoaders'
 import { PageFallback } from './PageFallback'
 import { BrandMark } from './BrandMark'
 import { AccountMenu } from './AccountMenu'
+import { WalletHeaderBadges } from './WalletHeaderBadges'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Início', icon: HomeIcon, end: true },
@@ -92,6 +93,7 @@ export function Layout() {
           </Link>
           <Navigation />
           <div className="header-actions">
+            <WalletHeaderBadges />
             <AccountMenu onLogout={logout} signingOut={signingOut} />
           </div>
         </div>
