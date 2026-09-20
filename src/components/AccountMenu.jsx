@@ -61,7 +61,12 @@ export function AccountMenu({ onLogout, signingOut }) {
             </ActionList.LeadingVisual>
             Comprar EvoCash
           </ActionList.LinkItem>
-          <ActionList.LinkItem as={Link} to="/minhas-promocoes" replace onClick={() => setOpen(false)}>
+          <ActionList.LinkItem
+            as={Link}
+            to="/minhas-promocoes"
+            replace
+            onClick={() => setOpen(false)}
+          >
             <ActionList.LeadingVisual>
               <RocketIcon />
             </ActionList.LeadingVisual>
@@ -91,7 +96,12 @@ export function AccountMenu({ onLogout, signingOut }) {
                 </ActionList.LeadingVisual>
                 Anúncios e parcerias
               </ActionList.LinkItem>
-              <ActionList.LinkItem as={Link} to="/admin/contas" replace onClick={() => setOpen(false)}>
+              <ActionList.LinkItem
+                as={Link}
+                to="/admin/contas"
+                replace
+                onClick={() => setOpen(false)}
+              >
                 <ActionList.LeadingVisual>
                   <PersonIcon />
                 </ActionList.LeadingVisual>

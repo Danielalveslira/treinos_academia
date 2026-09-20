@@ -117,6 +117,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Administração de chaves PIX (/admin/pagamentos) -- server-only, sem exceção nem
+    // para superadmin via client SDK: todo o CRUD (listPixPaymentMethods/
+    // savePixPaymentMethod/setActivePixPaymentMethod/deletePixPaymentMethod/
+    // setPixPaymentsEnabled) passa só pela Admin SDK. Nunca guarda senha bancária, token
+    // ou qualquer credencial de acesso -- só dados de recebimento (chave/tipo/
+    // recebedor). A chave ATIVA é republicada em economyConfig/current.pixPayment (essa
+    // sim de leitura liberada a qualquer signed-in, ver acima) só com os campos públicos
+    // necessários para o comprador pagar.
+    match /privatePaymentConfig/{docId} {
+      allow read, write: if false;
+    }
+
     // Fase 6 (promoções pagas com EvoCash) -- pacote fixo/duração fixa, completamente
     // separado de sponsoredAds (institucional, superadmin-only, ver match abaixo). O
     // feed nunca lê esta coleção (só os campos denormalizados promoted/promotedUntil em

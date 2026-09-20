@@ -8,6 +8,7 @@ import {
   ADMIN_CASH_PURCHASE_STATUS_LABELS,
   resolvePixKeyTypeLabel,
   abbreviateProtocol,
+  normalizeCashPurchasesAdminTab,
 } from './cashPurchaseFlow.js'
 
 test('resolveRequestId reuses the same requestId when retrying the same package', () => {
@@ -97,4 +98,15 @@ test('abbreviateProtocol never truncates a value already short enough to fit', (
 test('abbreviateProtocol leaves non-string input untouched, never crashes', () => {
   assert.equal(abbreviateProtocol(undefined), undefined)
   assert.equal(abbreviateProtocol(null), null)
+})
+
+test('normalizeCashPurchasesAdminTab accepts the 2 known tabs', () => {
+  assert.equal(normalizeCashPurchasesAdminTab('pedidos'), 'pedidos')
+  assert.equal(normalizeCashPurchasesAdminTab('pix'), 'pix')
+})
+
+test('normalizeCashPurchasesAdminTab falls back to "pedidos" for anything unknown, missing or malformed -- never breaks the page', () => {
+  for (const bad of [undefined, null, '', 'outra-coisa', 'PIX', 42]) {
+    assert.equal(normalizeCashPurchasesAdminTab(bad), 'pedidos')
+  }
 })

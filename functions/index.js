@@ -47,6 +47,7 @@ import { createVoteService } from './economy/vote-service.js'
 import { validateVoteOnPost } from './economy/vote-core.js'
 import { createListPostEconomyVoters } from './economy/vote-query-service.js'
 import { createCashPurchaseService } from './economy/cash-purchase-service.js'
+import { createPixPaymentAdminService } from './economy/pix-payment-admin-service.js'
 import { createPrivilegeService } from './economy/privilege-service.js'
 import { createPromotionService } from './economy/promotion-service.js'
 import { isTargetCurrentlyPromoted } from './economy/promotion-core.js'
@@ -259,6 +260,44 @@ export const cancelCashPurchase = onCall(options, async (request) => {
   const purchaseId = request.data?.purchaseId
   if (!validId(purchaseId)) throw new HttpsError('invalid-argument', 'Compra inválida.')
   return cashPurchases.cancelCashPurchase(adminId, purchaseId, request.data?.reason)
+})
+
+// Administração de chaves PIX (/admin/pagamentos) -- privatePaymentConfig/pix é
+// server-only (ver firestore.rules: allow read, write: if false), então este é o ÚNICO
+// caminho pra ler/gravar. Cada função do serviço verifica role==='superadmin' na própria
+// transação (mesmo padrão de confirmCashPurchase/cancelCashPurchase acima); requireUser
+// aqui só garante que existe um chamador autenticado antes de gastar uma leitura.
+const pixPaymentAdmin = createPixPaymentAdminService({ db, FieldValue, HttpsError })
+
+export const listPixPaymentMethods = onCall(options, async (request) => {
+  const adminId = requireUser(request)
+  return pixPaymentAdmin.listPixPaymentMethods(adminId)
+})
+
+export const savePixPaymentMethod = onCall(options, async (request) => {
+  const adminId = requireUser(request)
+  return pixPaymentAdmin.savePixPaymentMethod(adminId, {
+    methodId: request.data?.methodId || null,
+    label: request.data?.label,
+    key: request.data?.key,
+    keyType: request.data?.keyType,
+    recipientName: request.data?.recipientName,
+  })
+})
+
+export const setActivePixPaymentMethod = onCall(options, async (request) => {
+  const adminId = requireUser(request)
+  return pixPaymentAdmin.setActivePixPaymentMethod(adminId, { methodId: request.data?.methodId })
+})
+
+export const deletePixPaymentMethod = onCall(options, async (request) => {
+  const adminId = requireUser(request)
+  return pixPaymentAdmin.deletePixPaymentMethod(adminId, { methodId: request.data?.methodId })
+})
+
+export const setPixPaymentsEnabled = onCall(options, async (request) => {
+  const adminId = requireUser(request)
+  return pixPaymentAdmin.setPixPaymentsEnabled(adminId, { enabled: request.data?.enabled })
 })
 
 const privileges = createPrivilegeService({

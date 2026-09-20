@@ -138,6 +138,10 @@ test('unrelated protected routes do not mount the exercise data provider', () =>
     '/comunidades/community-1',
     '/admin/contas',
     '/admin/comunidades',
+    '/admin/compras-evocash',
+    // A aba de configuração PIX vive na mesma rota via ?tab= (não uma rota própria,
+    // ver AdminCashPurchases.jsx) -- /admin/pagamentos nunca existiu como rota real.
+    '/admin/compras-evocash?tab=pix',
   ]) {
     assert.equal(render(path).providerMounts, 0, path)
   }

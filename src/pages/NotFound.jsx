@@ -13,6 +13,10 @@ export default function NotFound() {
           textAlign: 'center',
           gap: 3,
           py: 6,
+          width: '100%',
+          maxWidth: 480,
+          mx: 'auto',
+          px: 3,
         }}
       >
         <Heading as="h1" sx={{ fontSize: 3 }}>
