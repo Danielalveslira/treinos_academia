@@ -1,6 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { validateVoteOnPost, decideVoteAction, nextRewardState } from './vote-core.js'
+import {
+  validateVoteOnPost,
+  decideVoteAction,
+  nextRewardState,
+  economyVoteCountDelta,
+} from './vote-core.js'
 
 test('validateVoteOnPost accepts 1, -1 and null, with a valid statusId', () => {
   for (const value of [1, -1, null]) {
@@ -131,4 +136,28 @@ test('capped -- qualquer alteração (positivo, negativo ou remoção) -> perman
 test('deferred -- negativo ou removido pelo votante -> ineligible (cancela a oportunidade)', () => {
   assert.equal(nextRewardState('deferred', -1), 'ineligible')
   assert.equal(nextRewardState('deferred', null), 'ineligible')
+})
+
+// "Ver quem votou" -- economyVoteCountDelta cobre as mesmas transições de
+// decideVoteAction (create/switch/remove), mais a ausência total (nada muda).
+test('economyVoteCountDelta: create (sem voto -> positivo ou negativo)', () => {
+  assert.deepEqual(economyVoteCountDelta(null, 1), { positiveDelta: 1, negativeDelta: 0 })
+  assert.deepEqual(economyVoteCountDelta(undefined, -1), { positiveDelta: 0, negativeDelta: 1 })
+})
+
+test('economyVoteCountDelta: switch (positivo <-> negativo)', () => {
+  assert.deepEqual(economyVoteCountDelta(1, -1), { positiveDelta: -1, negativeDelta: 1 })
+  assert.deepEqual(economyVoteCountDelta(-1, 1), { positiveDelta: 1, negativeDelta: -1 })
+})
+
+test('economyVoteCountDelta: remove (positivo ou negativo -> null)', () => {
+  assert.deepEqual(economyVoteCountDelta(1, null), { positiveDelta: -1, negativeDelta: 0 })
+  assert.deepEqual(economyVoteCountDelta(-1, undefined), { positiveDelta: 0, negativeDelta: -1 })
+})
+
+test('economyVoteCountDelta: nada muda -> delta zero (nunca escreve à toa)', () => {
+  assert.deepEqual(economyVoteCountDelta(null, null), { positiveDelta: 0, negativeDelta: 0 })
+  assert.deepEqual(economyVoteCountDelta(1, 1), { positiveDelta: 0, negativeDelta: 0 })
+  assert.deepEqual(economyVoteCountDelta(-1, -1), { positiveDelta: 0, negativeDelta: 0 })
+  assert.deepEqual(economyVoteCountDelta(undefined, null), { positiveDelta: 0, negativeDelta: 0 })
 })

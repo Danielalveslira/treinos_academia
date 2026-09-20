@@ -46,7 +46,11 @@ async function service({ walletDocs = {}, voteDocs = {}, callableResults = {} } 
               return {
                 contents: `
                   const RESULTS = ${JSON.stringify(callableResults)}
-                  export const httpsCallable = (app, name) => async () => ({ data: RESULTS[name] ?? null })
+                  export const httpsCallable = (app, name) => async (args) => {
+                    globalThis.__callableCalls = globalThis.__callableCalls || []
+                    globalThis.__callableCalls.push({ name, args })
+                    return { data: RESULTS[name] ?? null }
+                  }
                 `,
               }
             }
@@ -95,6 +99,7 @@ async function service({ walletDocs = {}, voteDocs = {}, callableResults = {} } 
   })
   globalThis.__getDocCalls = 0
   globalThis.__getDocsCalls = 0
+  globalThis.__callableCalls = []
   const api = await import(
     `data:text/javascript;base64,${Buffer.from(outputFiles[0].text).toString('base64')}`
   )
@@ -102,6 +107,7 @@ async function service({ walletDocs = {}, voteDocs = {}, callableResults = {} } 
     api,
     getDocCalls: () => globalThis.__getDocCalls,
     getDocsCalls: () => globalThis.__getDocsCalls,
+    callableCalls: (name) => globalThis.__callableCalls.filter((call) => call.name === name),
   }
 }
 
@@ -285,6 +291,35 @@ test('castVote decrements the cached wallet by costCoins when the vote is charge
   const wallet = await api.getWallet('alice')
   assert.equal(wallet.coinBalance, 7)
   assert.equal(wallet.lifetimeCoinsEarned, 10, 'débito nunca deveria mexer em lifetimeCoinsEarned')
+})
+
+test('listPostEconomyVoters forwards statusId/direction/cursor/limit untouched and returns the callable data', async () => {
+  const { api, callableCalls } = await service({
+    callableResults: {
+      listPostEconomyVoters: { voters: [{ userId: 'alice', username: 'alice_v' }], nextCursor: null },
+    },
+  })
+  const result = await api.listPostEconomyVoters('s1', 'positive', { cursor: { firstChargedAtMs: 1, voterId: 'x' }, limit: 10 })
+  assert.deepEqual(result, { voters: [{ userId: 'alice', username: 'alice_v' }], nextCursor: null })
+  assert.deepEqual(callableCalls('listPostEconomyVoters')[0].args, {
+    statusId: 's1',
+    direction: 'positive',
+    cursor: { firstChargedAtMs: 1, voterId: 'x' },
+    limit: 10,
+  })
+})
+
+test('listPostEconomyVoters defaults cursor to null and limit to 20 when omitted', async () => {
+  const { api, callableCalls } = await service({
+    callableResults: { listPostEconomyVoters: { voters: [], nextCursor: null } },
+  })
+  await api.listPostEconomyVoters('s1', 'negative')
+  assert.deepEqual(callableCalls('listPostEconomyVoters')[0].args, {
+    statusId: 's1',
+    direction: 'negative',
+    cursor: null,
+    limit: 20,
+  })
 })
 
 test('castVote never touches the cached wallet when the vote was not charged (switch/remove/noop)', async () => {

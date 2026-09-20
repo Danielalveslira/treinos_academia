@@ -51,6 +51,14 @@
       ]
     },
     {
+      "collectionGroup": "economyVotes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "value", "order": "ASCENDING" },
+        { "fieldPath": "firstChargedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "cashPurchases",
       "queryScope": "COLLECTION",
       "fields": [

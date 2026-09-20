@@ -79,6 +79,11 @@ async function getVote(statusId, voterUid) {
   return snapshot.exists ? snapshot.data() : null
 }
 
+async function getStatus(statusId) {
+  const snapshot = await db.doc(`statuses/${statusId}`).get()
+  return snapshot.data()
+}
+
 async function getDaily(testUid, dateKey) {
   const snapshot = await db.doc(`users/${testUid}/economyDaily/${dateKey}`).get()
   return snapshot.exists ? snapshot.data() : null
@@ -565,4 +570,112 @@ test('rewardPendingAt/rewardDayKey são carimbados ao entrar em pending e limpos
     firstPendingAt.toMillis(),
     'reentrar em pending depois de ineligible é um evento elegível novo, não reaproveita o carimbo antigo'
   )
+})
+
+// "Ver quem votou" -- positiveVoteCount/negativeVoteCount agora vivem na MESMA
+// transação de voteOnPost (nunca num gatilho Firestore separado -- ver revisão de
+// segurança que motivou isso). Estes testes substituem os que existiam para o gatilho
+// removido (vote-count-service.test.js).
+test('primeiro voto positivo cria positiveVoteCount=1 no status, mesmo sem o campo existir antes (post anterior a este recurso)', async () => {
+  const communityId = uid()
+  const authorId = uid()
+  const voterUid = uid()
+  const statusId = `s-${uid()}`
+  await seedCommunityAndStatus({ communityId, statusId, authorId })
+  await joinCommunity(communityId, voterUid)
+  await fundWallet(voterUid, 10)
+  const voteOnPost = buildService()
+
+  let status = await getStatus(statusId)
+  assert.equal('positiveVoteCount' in status, false, 'post seedado sem os contadores, como um post anterior a este recurso')
+
+  await voteOnPost(voterUid, statusId, 1)
+  status = await getStatus(statusId)
+  assert.equal(status.positiveVoteCount, 1)
+  assert.equal(status.negativeVoteCount, 0)
+})
+
+test('primeiro voto negativo cria negativeVoteCount=1, positiveVoteCount permanece 0', async () => {
+  const communityId = uid()
+  const authorId = uid()
+  const voterUid = uid()
+  const statusId = `s-${uid()}`
+  await seedCommunityAndStatus({ communityId, statusId, authorId })
+  await joinCommunity(communityId, voterUid)
+  await fundWallet(voterUid, 10)
+  const voteOnPost = buildService()
+
+  await voteOnPost(voterUid, statusId, -1)
+  const status = await getStatus(statusId)
+  assert.equal(status.positiveVoteCount, 0)
+  assert.equal(status.negativeVoteCount, 1)
+})
+
+test('trocar de positivo para negativo move a contagem de um lado para o outro, na mesma transação', async () => {
+  const communityId = uid()
+  const authorId = uid()
+  const voterUid = uid()
+  const statusId = `s-${uid()}`
+  await seedCommunityAndStatus({ communityId, statusId, authorId })
+  await joinCommunity(communityId, voterUid)
+  await fundWallet(voterUid, 10)
+  const voteOnPost = buildService()
+
+  await voteOnPost(voterUid, statusId, 1)
+  await voteOnPost(voterUid, statusId, -1)
+  const status = await getStatus(statusId)
+  assert.equal(status.positiveVoteCount, 0)
+  assert.equal(status.negativeVoteCount, 1)
+})
+
+test('remover um voto positivo decrementa positiveVoteCount, sem tocar em negativeVoteCount', async () => {
+  const communityId = uid()
+  const authorId = uid()
+  const voterUid = uid()
+  const statusId = `s-${uid()}`
+  await seedCommunityAndStatus({ communityId, statusId, authorId })
+  await joinCommunity(communityId, voterUid)
+  await fundWallet(voterUid, 10)
+  const voteOnPost = buildService()
+
+  await voteOnPost(voterUid, statusId, 1)
+  await voteOnPost(voterUid, statusId, null)
+  const status = await getStatus(statusId)
+  assert.equal(status.positiveVoteCount, 0)
+  assert.equal(status.negativeVoteCount, 0)
+})
+
+test('vários votantes consolidam corretamente: 2 positivos + 1 negativo = positiveVoteCount 2, negativeVoteCount 1', async () => {
+  const communityId = uid()
+  const authorId = uid()
+  const statusId = `s-${uid()}`
+  await seedCommunityAndStatus({ communityId, statusId, authorId })
+  const voteOnPost = buildService()
+
+  for (const value of [1, 1, -1]) {
+    const voterUid = uid()
+    await joinCommunity(communityId, voterUid)
+    await fundWallet(voterUid, 10)
+    await voteOnPost(voterUid, statusId, value)
+  }
+  const status = await getStatus(statusId)
+  assert.equal(status.positiveVoteCount, 2)
+  assert.equal(status.negativeVoteCount, 1)
+})
+
+test('um clique repetido no mesmo valor (noop) nunca incrementa nem decrementa nada', async () => {
+  const communityId = uid()
+  const authorId = uid()
+  const voterUid = uid()
+  const statusId = `s-${uid()}`
+  await seedCommunityAndStatus({ communityId, statusId, authorId })
+  await joinCommunity(communityId, voterUid)
+  await fundWallet(voterUid, 10)
+  const voteOnPost = buildService()
+
+  await voteOnPost(voterUid, statusId, 1)
+  await voteOnPost(voterUid, statusId, 1) // noop -- decideVoteAction já barra isto
+  const status = await getStatus(statusId)
+  assert.equal(status.positiveVoteCount, 1)
+  assert.equal(status.negativeVoteCount, 0)
 })

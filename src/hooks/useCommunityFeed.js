@@ -3,6 +3,7 @@ import { listCommunityFeed, deleteStatus } from '../services/statusesService'
 import { describeFirestoreError } from '../utils/firestoreError'
 import { toMillis } from '../utils/expiry'
 import { fetchCached, getCached, setCached } from '../utils/pageCache'
+import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta'
 
 // Um único relógio compartilhado por feed: os cards leem "now" via prop em vez de cada
 // um rodar seu próprio timer, e o mesmo tick também remove localmente quem já expirou —
@@ -97,6 +98,18 @@ export function useCommunityFeed(communityId, enabled = true) {
     })
   }
 
+  // Chamado só DEPOIS de voteOnPost já ter confirmado sucesso (nunca antes -- ver
+  // EconomyVoteBar.jsx, sem optimistic update) -- corrige só o status afetado dentro
+  // do array, sem refetch. Um statusId que não está neste array (ex.: só existe em
+  // featuredStatuses, fora deste hook) é um no-op aqui de propósito.
+  function updateEconomyVoteCounts(statusId, delta) {
+    setStatuses((prev) => {
+      const next = applyEconomyVoteCountDeltaToList(prev, statusId, delta)
+      if (next !== prev) setCached(cacheKey, next)
+      return next
+    })
+  }
+
   return {
     statuses: enabled ? statuses : [],
     loading: enabled && (!ready || loading),
@@ -104,6 +117,7 @@ export function useCommunityFeed(communityId, enabled = true) {
     refresh,
     addStatusLocally,
     remove,
+    updateEconomyVoteCounts,
     now,
   }
 }

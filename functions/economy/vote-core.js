@@ -55,3 +55,23 @@ export function nextRewardState(existingRewardState, incomingValue) {
   }
   return incomingValue === 1 ? 'pending' : 'ineligible'
 }
+
+// "Ver quem votou" -- delta de positiveVoteCount/negativeVoteCount (denormalizados em
+// statuses/{id}, mantidos por um gatilho -- ver vote-count-service.js) a partir da
+// transição ANTES -> DEPOIS de valor de UM documento em economyVotes. Pura, sem I/O,
+// testável sem simular um CloudEvent do Firestore. Cobre as 3 transições possíveis de
+// voteOnPost (create/switch/remove) mais a ausência total (before/after null,
+// documento nunca existiu ou noop nunca chegou a escrever) -- create é
+// null->1/null->-1, switch é 1->-1/-1->1, remove é 1->null/-1->null.
+export function economyVoteCountDelta(beforeValue, afterValue) {
+  const before = beforeValue ?? null
+  const after = afterValue ?? null
+  let positiveDelta = 0
+  let negativeDelta = 0
+  if (before === after) return { positiveDelta, negativeDelta }
+  if (before === 1) positiveDelta -= 1
+  else if (before === -1) negativeDelta -= 1
+  if (after === 1) positiveDelta += 1
+  else if (after === -1) negativeDelta += 1
+  return { positiveDelta, negativeDelta }
+}

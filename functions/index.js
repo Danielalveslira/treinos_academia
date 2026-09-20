@@ -45,6 +45,7 @@ import { createLedgerService } from './economy/ledger-service.js'
 import { createActivityService } from './economy/activity-service.js'
 import { createVoteService } from './economy/vote-service.js'
 import { validateVoteOnPost } from './economy/vote-core.js'
+import { createListPostEconomyVoters } from './economy/vote-query-service.js'
 import { createCashPurchaseService } from './economy/cash-purchase-service.js'
 import { createPrivilegeService } from './economy/privilege-service.js'
 import { createPromotionService } from './economy/promotion-service.js'
@@ -189,6 +190,36 @@ export const voteOnPostV2 = onCall(optionsUsCentral, async (request) => {
   const error = validateVoteOnPost(request.data)
   if (error) throw new HttpsError('invalid-argument', error)
   return castVote(uid, request.data.statusId, request.data.value)
+})
+
+// "Ver quem votou" -- positiveVoteCount/negativeVoteCount em statuses/{id}, mantidos
+// na MESMA transação de voteOnPost (ver vote-service.js), nunca por um gatilho
+// Firestore separado -- gatilhos podem ser entregues mais de uma vez, e um contador
+// incremental sem deduplicação persistente (FieldValue.increment não é idempotente)
+// causaria drift a cada reentrega. Como toda escrita em economyVotes já passa por
+// voteOnPost, o incremento cabe na mesma transação sem custo extra de leitura/escrita
+// nem risco de dupla contagem. O settlement da Fase 3 só atualiza campos de reward do
+// voto (rewardState/rewardPendingAt/...), nunca `value` -- por isso nunca precisa
+// tocar nestes contadores.
+//
+// "Ver quem votou" -- nunca expõe statuses/{id}/economyVotes diretamente (campos
+// internos da economia: charged, rewardState, timestamps de recompensa, ver
+// firestore.rules). Só dados públicos e sanitizados por votante (ver
+// vote-query-service.js). Checagem de acesso equivalente à leitura de statuses/{id}
+// (isSignedIn + isMember: conta com acesso ao app, sem restrição na comunidade, sem
+// job de exclusão da comunidade, membro dela), com bypass total para superadmin --
+// nunca menos restrita que a Rule real. Em us-central1 (não southamerica-east1) pelo
+// mesmo motivo do voto: consulta Firestore-heavy contra o mesmo banco nam5, o A/B já
+// provou que a região da Function importa mais que a distância geográfica do usuário.
+const listVoters = createListPostEconomyVoters({ db, Timestamp, HttpsError })
+export const listPostEconomyVoters = onCall(optionsUsCentral, async (request) => {
+  const uid = requireUser(request)
+  return listVoters(uid, {
+    statusId: request.data?.statusId,
+    direction: request.data?.direction,
+    cursor: request.data?.cursor ?? null,
+    limit: request.data?.limit,
+  })
 })
 
 const cashPurchases = createCashPurchaseService({

@@ -14,6 +14,8 @@
     "backfill:progress:apply": "node scripts/backfill-progress-daily.mjs --apply",
     "backfill:community-owner:dry-run": "node scripts/backfill-community-owner-id.mjs",
     "backfill:community-owner:apply": "node scripts/backfill-community-owner-id.mjs --apply",
+    "backfill:economy-vote-counts:dry-run": "node scripts/backfill-economy-vote-counts.mjs",
+    "backfill:economy-vote-counts:apply": "node scripts/backfill-economy-vote-counts.mjs --apply",
     "upload:catalog-images": "node scripts/upload-exercise-catalog-images.mjs",
     "upload:catalog-images:dry-run": "node scripts/upload-exercise-catalog-images.mjs --dry-run",
     "upload:catalog-images:apply": "node scripts/upload-exercise-catalog-images.mjs --apply",

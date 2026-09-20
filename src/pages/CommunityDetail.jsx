@@ -44,6 +44,7 @@ import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { listFeaturedStatusesForCommunity } from '../services/promotionsService'
 import { toMillis } from '../utils/expiry.js'
+import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta'
 
 const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
 
@@ -68,6 +69,7 @@ function CommunityDetail({ id }) {
     refresh: refreshFeed,
     addStatusLocally,
     remove,
+    updateEconomyVoteCounts,
     now,
   } = useCommunityFeed(id, member)
 
@@ -104,6 +106,15 @@ function CommunityDetail({ id }) {
     ? [...new Set([...statuses, ...featuredStatuses].map((status) => status.id))]
     : []
   const { votesByStatusId, setVote } = useMyEconomyVotes(statusIds, user?.uid)
+
+  // Um mesmo post pode aparecer duas vezes na tela (card normal em `statuses` + cópia
+  // destacada em `featuredStatuses`, ver Fase 6) -- um único handler aplica o mesmo
+  // delta nos dois lugares onde o statusId existir, pra nunca deixar uma cópia com o
+  // número antigo enquanto a outra já atualizou.
+  function handleEconomyVoted(statusId, delta) {
+    updateEconomyVoteCounts(statusId, delta)
+    setFeaturedStatuses((prev) => applyEconomyVoteCountDeltaToList(prev, statusId, delta))
+  }
 
   const loadCommunity = useCallback(async () => {
     setLoadingCommunity(true)
@@ -455,7 +466,10 @@ function CommunityDetail({ id }) {
                       now={now}
                       showToast={showToast}
                       myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
-                      onEconomyVoted={(value) => setVote(status.id, value)}
+                      onEconomyVoted={(value, delta) => {
+                        setVote(status.id, value)
+                        handleEconomyVoted(status.id, delta)
+                      }}
                     />
                   ))}
                 </Box>
@@ -542,7 +556,10 @@ function CommunityDetail({ id }) {
                     now={now}
                     showToast={showToast}
                     myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
-                    onEconomyVoted={(value) => setVote(status.id, value)}
+                    onEconomyVoted={(value, delta) => {
+                      setVote(status.id, value)
+                      handleEconomyVoted(status.id, delta)
+                    }}
                   />
                 ))}
               </div>

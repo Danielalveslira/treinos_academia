@@ -28,6 +28,9 @@ const registerQualifiedActivityCallable = httpsCallable(functions, 'registerQual
 // revote). Sem fallback para a Function antiga de propósito -- se us-central1 cair,
 // queremos ver o erro, não mascarar silenciosamente voltando pra outra região.
 const voteOnPostV2Callable = httpsCallable(functionsUsCentral, 'voteOnPostV2')
+// Também em us-central1 -- consulta Firestore-heavy contra o mesmo banco nam5, mesmo
+// raciocínio do voto (ver acima).
+const listPostEconomyVotersCallable = httpsCallable(functionsUsCentral, 'listPostEconomyVoters')
 
 function cacheKey(uid) {
   return `wallet:${uid}`
@@ -140,6 +143,14 @@ export async function castVote(uid, statusId, value) {
     writeCache(uid, { ...current, coinBalance: current.coinBalance - result.costCoins })
   }
   return result
+}
+
+// "Ver quem votou" -- nunca lê statuses/{id}/economyVotes direto (Rules já bloqueiam
+// leitura de outro uid, ver firestore.rules); a callable devolve só {userId, username}
+// por votante, paginado. cursor é o valor devolvido em nextCursor da página anterior
+// (null na primeira página); direction é 'positive' ou 'negative'.
+export async function listPostEconomyVoters(statusId, direction, { cursor = null, limit = 20 } = {}) {
+  return (await listPostEconomyVotersCallable({ statusId, direction, cursor, limit })).data
 }
 
 // Mesmo padrão de clearCachedLegalAccess (utils/legal.js): limpa em toda troca de

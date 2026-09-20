@@ -1,4 +1,4 @@
-import { decideVoteAction, nextRewardState } from './vote-core.js'
+import { decideVoteAction, nextRewardState, economyVoteCountDelta } from './vote-core.js'
 import { todayKey } from './activity-core.js'
 
 // voteOnPost -- seção 13 do prompt de economia (voto atômico). HttpsError injetado
@@ -101,12 +101,38 @@ export function createVoteService({
         return { voted: false, action: 'noop' }
       }
 
+      // "Ver quem votou" -- positiveVoteCount/negativeVoteCount em statuses/{id},
+      // atualizados na MESMA transação (nunca por um gatilho Firestore separado:
+      // gatilhos podem ser reentregues, e FieldValue.increment não é idempotente --
+      // uma reentrega contaria a mesma troca de voto duas vezes, causando drift
+      // permanente). Como toda mudança de `value` já passa por aqui, não existe
+      // nenhuma escrita de voto fora desta transação para perder. increment() num
+      // campo ainda ausente (posts anteriores a este campo) simplesmente o cria com o
+      // delta -- corrigir a contagem histórica desses posts é responsabilidade do
+      // backfill único (scripts/backfill-economy-vote-counts.mjs), não desta função.
+      //
+      // Cálculo do delta fica aqui (puro, sem I/O), mas a ESCRITA (tx.update) só
+      // acontece depois de cada branch já ter feito todas as leituras que precisa --
+      // Firestore exige todas as leituras de uma transação antes de qualquer escrita.
+      const { positiveDelta, negativeDelta } = economyVoteCountDelta(
+        existingVote ? existingVote.value : null,
+        incomingValue
+      )
+      function applyVoteCountDelta() {
+        tx.update(statusRef, {
+          positiveVoteCount: FieldValue.increment(positiveDelta),
+          negativeVoteCount: FieldValue.increment(negativeDelta),
+        })
+      }
+
       // 'switch' e 'remove': o pagamento já aconteceu uma vez para esta publicação
       // (charged=true é permanente, ver vote-core.js) -- só o valor/estado de recompensa
       // mudam, nunca a carteira, o ledger ou o limite diário. Nenhuma leitura nova
       // acontece daqui pra frente neste branch (nem wallet, nem daily, nem ledger --
-      // de propósito, ver comentário no topo do arquivo).
+      // de propósito, ver comentário no topo do arquivo), então a escrita do contador
+      // já pode ir.
       if (action !== 'create') {
+        applyVoteCountDelta()
         const nextState = nextRewardState(existingVote.rewardState, incomingValue)
         // rewardPendingAt/rewardDayKey marcam O EVENTO ELEGÍVEL (seção 2 da auditoria de
         // Fase 3): o settlement usa o dia deste carimbo, nunca o dia em que ele rodou.
@@ -169,6 +195,9 @@ export function createVoteService({
       // decidido acima via decideVoteAction) já deveria bastar, o ledger é a rede de
       // segurança extra contra uma reexecução que visse o voto ainda não criado.
       const alreadyLedgered = ledgerSnapshot.exists
+      // Todas as leituras da transação já aconteceram (acima) -- a partir daqui só
+      // escritas, incluindo o contador de "Ver quem votou".
+      applyVoteCountDelta()
       if (!alreadyLedgered) {
         wallet.debitCoins(tx, uid, currentWallet, costCoins)
         ledger.record(tx, uid, naturalKey, {
