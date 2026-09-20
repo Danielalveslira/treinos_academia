@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   cashPurchaseIdFromRequest,
   isValidCashPackage,
+  isValidPixPayment,
   isValidPurchaseSnapshot,
   financialBlockReason,
   resolveConfigVersion,
@@ -88,6 +89,53 @@ test('isValidPurchaseSnapshot rejects the same malformed cashAmount/amountCentav
   assert.equal(isValidPurchaseSnapshot({ ...VALID_SNAPSHOT, cashAmount: -1 }), false)
   assert.equal(isValidPurchaseSnapshot({ ...VALID_SNAPSHOT, amountCentavos: 1.5 }), false)
   assert.equal(isValidPurchaseSnapshot({ ...VALID_SNAPSHOT, packageLabel: '' }), false)
+})
+
+const VALID_PIX_PAYMENT = {
+  enabled: true,
+  key: 'chave-pix-teste@evolutus.app',
+  keyType: 'email',
+  recipientName: 'Evolutus Ltda',
+}
+
+test('isValidPixPayment accepts a well-formed, enabled config', () => {
+  assert.equal(isValidPixPayment(VALID_PIX_PAYMENT), true)
+})
+
+test('isValidPixPayment rejects a missing/null/non-object value (config ausente/corrompida)', () => {
+  assert.equal(isValidPixPayment(undefined), false)
+  assert.equal(isValidPixPayment(null), false)
+  assert.equal(isValidPixPayment('pix'), false)
+  assert.equal(isValidPixPayment(42), false)
+})
+
+test('isValidPixPayment rejects enabled !== true (ausente, false, ou qualquer valor truthy que não seja o booleano true)', () => {
+  for (const bad of [false, undefined, 1, 'true', null]) {
+    assert.equal(isValidPixPayment({ ...VALID_PIX_PAYMENT, enabled: bad }), false)
+  }
+})
+
+test('isValidPixPayment rejects a missing/empty/oversized key', () => {
+  for (const bad of ['', '   ', 42, null, undefined, 'x'.repeat(201)]) {
+    assert.equal(isValidPixPayment({ ...VALID_PIX_PAYMENT, key: bad }), false)
+  }
+  assert.equal(isValidPixPayment({ ...VALID_PIX_PAYMENT, key: 'x'.repeat(200) }), true)
+})
+
+test('isValidPixPayment rejects an unknown/missing keyType', () => {
+  for (const bad of ['pix', '', null, undefined, 'EMAIL']) {
+    assert.equal(isValidPixPayment({ ...VALID_PIX_PAYMENT, keyType: bad }), false)
+  }
+  for (const good of ['email', 'phone', 'cpf', 'cnpj', 'random']) {
+    assert.equal(isValidPixPayment({ ...VALID_PIX_PAYMENT, keyType: good }), true)
+  }
+})
+
+test('isValidPixPayment rejects a missing/empty/oversized recipientName', () => {
+  for (const bad of ['', '   ', 42, null, undefined, 'x'.repeat(141)]) {
+    assert.equal(isValidPixPayment({ ...VALID_PIX_PAYMENT, recipientName: bad }), false)
+  }
+  assert.equal(isValidPixPayment({ ...VALID_PIX_PAYMENT, recipientName: 'x'.repeat(140) }), true)
 })
 
 test('financialBlockReason: compra pending bloqueia independente do saldo', () => {

@@ -14,6 +14,7 @@ import {
 } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
+import { useUsernamesByIds } from '../hooks/useUsernamesByIds'
 import { cancelCashPurchase, confirmCashPurchase } from '../services/cashPurchaseService'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
@@ -34,6 +35,9 @@ export default function AdminCashPurchases() {
     true,
     status
   )
+  // Batch, nunca N+1: uma consulta por página carregada (ou por status trocado), não
+  // uma leitura de users/{uid} por card -- ver resolveUsernamesByIds.
+  const usernameById = useUsernamesByIds(purchases.map((purchase) => purchase.userId))
   const [actingOn, setActingOn] = useState(null) // { purchaseId, action: 'confirm' | 'cancel' }
   const [noteDraft, setNoteDraft] = useState('')
   const [reasonDraft, setReasonDraft] = useState('')
@@ -157,6 +161,9 @@ export default function AdminCashPurchases() {
               <Heading as="h2" sx={{ fontSize: 1 }}>
                 {purchase.packageLabel}
               </Heading>
+              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
+                {usernameById[purchase.userId] ? `@${usernameById[purchase.userId]}` : 'sem @'} · {purchase.userId}
+              </Text>
               <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
                 Protocolo {purchase.id} · {formatDateTime(purchase.createdAt?.toDate())}
               </Text>

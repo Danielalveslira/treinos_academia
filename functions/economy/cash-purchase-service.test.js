@@ -69,11 +69,23 @@ function buildDeletions() {
 
 const PACKAGE_ID = 'pack_100'
 const PACKAGE = { cashAmount: 100, amountCentavos: 990, label: '100 EvoCash', active: true }
+const VALID_PIX_PAYMENT = {
+  enabled: true,
+  key: 'chave-pix-teste@evolutus.app',
+  keyType: 'email',
+  recipientName: 'Evolutus Ltda',
+}
 
-async function seedConfig(overrides = {}) {
+// pixPayment sempre vem válido por padrão -- os testes que existiam antes desta função
+// aceitar um 2º parâmetro continuam batendo o caminho feliz sem precisar saber que o
+// PIX agora também é validado. Testes que querem um pixPayment especificamente inválido
+// passam { pixPayment: {...} }; o cenário de "documento sem pixPayment nenhum" precisa
+// escrever direto (default de parâmetro dispara mesmo passando `undefined` explícito).
+async function seedConfig(cashPackageOverrides = {}, { pixPayment = VALID_PIX_PAYMENT } = {}) {
   await db.doc('economyConfig/current').set({
     version: 7,
-    cashPackages: { [PACKAGE_ID]: PACKAGE, ...overrides },
+    cashPackages: { [PACKAGE_ID]: PACKAGE, ...cashPackageOverrides },
+    pixPayment,
   })
 }
 
@@ -124,7 +136,7 @@ test('requestCashPurchase cria um pedido pending com snapshot imutável do pacot
 // de verdade em produção (ver auditoria dos logs do requestCashPurchase).
 test('requestCashPurchase nunca falha por causa de economyConfig/current sem "version" -- configVersion vira null', async () => {
   const service = buildService()
-  await db.doc('economyConfig/current').set({ cashPackages: { [PACKAGE_ID]: PACKAGE } })
+  await db.doc('economyConfig/current').set({ cashPackages: { [PACKAGE_ID]: PACKAGE }, pixPayment: VALID_PIX_PAYMENT })
   const buyer = uid()
   const result = await service.requestCashPurchase(buyer, { packageId: PACKAGE_ID, requestId: requestId() })
 
@@ -138,6 +150,7 @@ test('requestCashPurchase trata um "version" inválido/corrompido como null, nun
   await db.doc('economyConfig/current').set({
     version: 'not-a-number',
     cashPackages: { [PACKAGE_ID]: PACKAGE },
+    pixPayment: VALID_PIX_PAYMENT,
   })
   const buyer = uid()
   const result = await service.requestCashPurchase(buyer, { packageId: PACKAGE_ID, requestId: requestId() })
@@ -161,6 +174,67 @@ test('cliente não define preço nem quantidade -- só packageId é usado, o res
   })
   assert.equal(result.cashAmount, PACKAGE.cashAmount)
   assert.equal(result.amountCentavos, PACKAGE.amountCentavos)
+})
+
+// ---- pixPaymentSnapshot: mesmo raciocínio de imutabilidade do snapshot financeiro ----
+
+test('requestCashPurchase salva pixPaymentSnapshot vindo da config no momento da criação, e devolve no payload', async () => {
+  const service = buildService()
+  await seedConfig()
+  const buyer = uid()
+  const result = await service.requestCashPurchase(buyer, { packageId: PACKAGE_ID, requestId: requestId() })
+
+  const expectedSnapshot = {
+    key: VALID_PIX_PAYMENT.key,
+    keyType: VALID_PIX_PAYMENT.keyType,
+    recipientName: VALID_PIX_PAYMENT.recipientName,
+  }
+  assert.deepEqual(result.pixPaymentSnapshot, expectedSnapshot)
+  const purchase = await getPurchase(result.purchaseId)
+  assert.deepEqual(purchase.pixPaymentSnapshot, expectedSnapshot)
+})
+
+test('payload do cliente não consegue sobrescrever pixPaymentSnapshot -- só a config lida pelo servidor conta', async () => {
+  const service = buildService()
+  await seedConfig()
+  const buyer = uid()
+  // Cliente malicioso/bugado tentando injetar um destino de PIX diferente junto do
+  // pedido -- requestCashPurchase nem lê esse campo da entrada.
+  const result = await service.requestCashPurchase(buyer, {
+    packageId: PACKAGE_ID,
+    requestId: requestId(),
+    pixPaymentSnapshot: { key: 'chave-do-atacante@evil.com', keyType: 'email', recipientName: 'Atacante' },
+  })
+  assert.deepEqual(result.pixPaymentSnapshot, {
+    key: VALID_PIX_PAYMENT.key,
+    keyType: VALID_PIX_PAYMENT.keyType,
+    recipientName: VALID_PIX_PAYMENT.recipientName,
+  })
+})
+
+test('mudar economyConfig/current.pixPayment depois não altera o pixPaymentSnapshot de um pending já existente (reload lê o snapshot do próprio pedido)', async () => {
+  const service = buildService()
+  await seedConfig()
+  const buyer = uid()
+  const { purchaseId } = await service.requestCashPurchase(buyer, {
+    packageId: PACKAGE_ID,
+    requestId: requestId(),
+  })
+
+  // Config muda -- nova chave/recebedor, como se o dono tivesse trocado o PIX depois.
+  await seedConfig(
+    {},
+    { pixPayment: { enabled: true, key: 'chave-nova@evolutus.app', keyType: 'email', recipientName: 'Novo Recebedor' } }
+  )
+
+  // "Reload": relê o pedido já existente diretamente, independente do resultado
+  // original de requestCashPurchase -- simula abrir "Minhas compras" de novo.
+  const purchaseAfterConfigChange = await getPurchase(purchaseId)
+  assert.deepEqual(purchaseAfterConfigChange.pixPaymentSnapshot, {
+    key: VALID_PIX_PAYMENT.key,
+    keyType: VALID_PIX_PAYMENT.keyType,
+    recipientName: VALID_PIX_PAYMENT.recipientName,
+  })
 })
 
 test('config ausente bloqueia a compra (fail-closed, sem fallback)', async () => {
@@ -191,6 +265,70 @@ test('pacote inativo (active:false) bloqueia com mensagem própria, distinta de 
     () => service.requestCashPurchase(buyer, { packageId: PACKAGE_ID, requestId: requestId() }),
     (error) => error.code === 'failed-precondition' && /não está mais disponível/.test(error.message)
   )
+})
+
+// ---- fail-closed também pro PIX: sem pixPayment válido, nem cria o pedido ----
+
+test('pixPayment válido permite a criação do pedido normalmente', async () => {
+  const service = buildService()
+  await seedConfig()
+  const buyer = uid()
+  const result = await service.requestCashPurchase(buyer, { packageId: PACKAGE_ID, requestId: requestId() })
+  assert.equal(result.status, 'pending')
+})
+
+test('pixPayment.enabled !== true bloqueia a criação do pedido, sem nenhuma escrita parcial', async () => {
+  const service = buildService()
+  await seedConfig({}, { pixPayment: { ...VALID_PIX_PAYMENT, enabled: false } })
+  const buyer = uid()
+  await assert.rejects(
+    () => service.requestCashPurchase(buyer, { packageId: PACKAGE_ID, requestId: requestId() }),
+    (error) => error.code === 'failed-precondition' && /PIX estão temporariamente indisponíveis/.test(error.message)
+  )
+  const snapshot = await db.collection('cashPurchases').where('userId', '==', buyer).get()
+  assert.equal(snapshot.size, 0, 'nenhum cashPurchases criado')
+  assert.equal(await getLock(buyer), null, 'nenhum lock criado')
+})
+
+test('pixPayment ausente do documento inteiro bloqueia a criação do pedido', async () => {
+  const service = buildService()
+  // Direto (não via seedConfig): default de parâmetro dispara mesmo passando
+  // `pixPayment: undefined` explicitamente, então só escrever o doc sem o campo garante
+  // o cenário real de "nunca foi configurado".
+  await db.doc('economyConfig/current').set({ version: 7, cashPackages: { [PACKAGE_ID]: PACKAGE } })
+  const buyer = uid()
+  await assert.rejects(
+    () => service.requestCashPurchase(buyer, { packageId: PACKAGE_ID, requestId: requestId() }),
+    (error) => error.code === 'failed-precondition' && /PIX estão temporariamente indisponíveis/.test(error.message)
+  )
+  const snapshot = await db.collection('cashPurchases').where('userId', '==', buyer).get()
+  assert.equal(snapshot.size, 0)
+})
+
+test('chave PIX ausente/vazia bloqueia a criação do pedido, sem nenhuma escrita parcial', async () => {
+  const service = buildService()
+  await seedConfig({}, { pixPayment: { ...VALID_PIX_PAYMENT, key: '' } })
+  const buyer = uid()
+  await assert.rejects(
+    () => service.requestCashPurchase(buyer, { packageId: PACKAGE_ID, requestId: requestId() }),
+    (error) => error.code === 'failed-precondition' && /PIX estão temporariamente indisponíveis/.test(error.message)
+  )
+  assert.equal(await getLock(buyer), null)
+})
+
+test('recipientName ausente bloqueia a criação do pedido, sem nenhuma escrita parcial', async () => {
+  const service = buildService()
+  const { recipientName, ...withoutRecipient } = VALID_PIX_PAYMENT
+  void recipientName
+  await seedConfig({}, { pixPayment: withoutRecipient })
+  const buyer = uid()
+  await assert.rejects(
+    () => service.requestCashPurchase(buyer, { packageId: PACKAGE_ID, requestId: requestId() }),
+    (error) => error.code === 'failed-precondition' && /PIX estão temporariamente indisponíveis/.test(error.message)
+  )
+  const snapshot = await db.collection('cashPurchases').where('userId', '==', buyer).get()
+  assert.equal(snapshot.size, 0)
+  assert.equal(await getLock(buyer), null)
 })
 
 test('mesmo requestId + mesmo packageId -> replay: devolve o mesmo pedido, não cria um segundo documento', async () => {

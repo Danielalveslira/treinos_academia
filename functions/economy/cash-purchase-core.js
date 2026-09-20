@@ -59,6 +59,28 @@ export function isValidPurchaseSnapshot(data) {
   )
 }
 
+const VALID_PIX_KEY_TYPES = new Set(['email', 'phone', 'cpf', 'cnpj', 'random'])
+
+// pixPayment é puramente informativo pro comprador (nunca usado pra calcular preço ou
+// quantidade -- isso continua vindo só de cashPackages) -- mas sem ele o comprador não
+// teria pra onde mandar o PIX, então bloqueia a CRIAÇÃO do pedido, fail-closed, antes de
+// qualquer escrita (mesmo raciocínio de isValidCashPackage: ausente/inválido nunca cai
+// num default, sempre bloqueia).
+export function isValidPixPayment(pixPayment) {
+  return (
+    pixPayment != null &&
+    typeof pixPayment === 'object' &&
+    pixPayment.enabled === true &&
+    typeof pixPayment.key === 'string' &&
+    pixPayment.key.trim().length > 0 &&
+    pixPayment.key.length <= 200 &&
+    VALID_PIX_KEY_TYPES.has(pixPayment.keyType) &&
+    typeof pixPayment.recipientName === 'string' &&
+    pixPayment.recipientName.trim().length > 0 &&
+    pixPayment.recipientName.length <= 140
+  )
+}
+
 // Único ponto de decisão sobre o que bloqueia a exclusão de conta por motivo
 // financeiro -- usado tanto pelo portão em deletion-service.js (lendo o lock +
 // wallet.cashBalance de verdade) quanto por confirmCashPurchase/cancelCashPurchase

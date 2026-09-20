@@ -2,6 +2,7 @@ import { validId } from '../legal-core.js'
 import {
   cashPurchaseIdFromRequest,
   isValidCashPackage,
+  isValidPixPayment,
   isValidPurchaseSnapshot,
   financialBlockReason,
   resolveConfigVersion,
@@ -40,6 +41,7 @@ export function createCashPurchaseService({ db, FieldValue, wallet, ledger, asse
       cashAmount: data.cashAmount,
       amountCentavos: data.amountCentavos,
       currency: data.currency,
+      pixPaymentSnapshot: data.pixPaymentSnapshot,
     }
   }
 
@@ -77,12 +79,21 @@ export function createCashPurchaseService({ db, FieldValue, wallet, ledger, asse
       // preço/ativação de pacote é a única parte da config econômica onde "ausente ou
       // inválida" precisa BLOQUEAR a operação, nunca cair num default embutido.
       const configSnapshot = await tx.get(db.doc('economyConfig/current'))
-      const pkg = configSnapshot.exists ? configSnapshot.data()?.cashPackages?.[packageId] : null
+      const configData = configSnapshot.exists ? configSnapshot.data() : null
+      const pkg = configData?.cashPackages?.[packageId]
       if (!isValidCashPackage(pkg)) {
         throw new HttpsError('failed-precondition', 'Pacote de EvoCash indisponível no momento.')
       }
       if (pkg.active !== true) {
         throw new HttpsError('failed-precondition', 'Este pacote não está mais disponível.')
+      }
+      // Fail-closed também pro PIX: sem chave/recebedor configurados (ou com
+      // pixPayment.enabled !== true), não faz sentido abrir um pedido -- o comprador nunca
+      // saberia pra onde mandar o dinheiro. Checado ANTES de qualquer tx.create/tx.set
+      // desta função, então um bloqueio aqui nunca deixa cashPurchases, lock ou qualquer
+      // outra escrita parcial.
+      if (!isValidPixPayment(configData?.pixPayment)) {
+        throw new HttpsError('failed-precondition', 'Pagamentos via PIX estão temporariamente indisponíveis.')
       }
 
       const purchase = {
@@ -96,6 +107,17 @@ export function createCashPurchaseService({ db, FieldValue, wallet, ledger, asse
         paymentMethod: 'manual_pix',
         status: 'pending',
         createdAt: FieldValue.serverTimestamp(),
+        // Snapshot imutável do destino do PIX no momento da criação -- mesmo raciocínio
+        // de packageLabel/cashAmount/amountCentavos: se economyConfig/current.pixPayment
+        // mudar depois (nova chave, novo recebedor), este pedido continua mostrando
+        // exatamente o destino que existia quando foi criado. Vem só do que o backend
+        // acabou de validar (isValidPixPayment acima) -- nunca de nada que o cliente
+        // mandou (requestCashPurchase nem aceita esse campo como parâmetro).
+        pixPaymentSnapshot: {
+          key: configData.pixPayment.key,
+          keyType: configData.pixPayment.keyType,
+          recipientName: configData.pixPayment.recipientName,
+        },
       }
       tx.create(ref, purchase)
       tx.set(

@@ -6,6 +6,8 @@ import {
   canSubmitCancellation,
   USER_CASH_PURCHASE_STATUS_LABELS,
   ADMIN_CASH_PURCHASE_STATUS_LABELS,
+  resolvePixKeyTypeLabel,
+  abbreviateProtocol,
 } from './cashPurchaseFlow.js'
 
 test('resolveRequestId reuses the same requestId when retrying the same package', () => {
@@ -63,4 +65,36 @@ test('the user-facing and admin-facing status maps both cover exactly pending/cr
       assert.equal(typeof labels[status].variant, 'string')
     }
   }
+})
+
+test('resolvePixKeyTypeLabel maps every valid keyType to a Portuguese label', () => {
+  assert.equal(resolvePixKeyTypeLabel('email'), 'E-mail')
+  assert.equal(resolvePixKeyTypeLabel('phone'), 'Telefone')
+  assert.equal(resolvePixKeyTypeLabel('cpf'), 'CPF')
+  assert.equal(resolvePixKeyTypeLabel('cnpj'), 'CNPJ')
+  assert.equal(resolvePixKeyTypeLabel('random'), 'Chave aleatória')
+})
+
+test('resolvePixKeyTypeLabel falls back to a generic label for an unknown/missing keyType, never crashes', () => {
+  assert.equal(resolvePixKeyTypeLabel('unknown'), 'Chave PIX')
+  assert.equal(resolvePixKeyTypeLabel(undefined), 'Chave PIX')
+  assert.equal(resolvePixKeyTypeLabel(null), 'Chave PIX')
+})
+
+test('abbreviateProtocol shortens a real 64-char sha256 protocol to prefix…suffix', () => {
+  const protocol = '1c900a837a5d1fbd2777e47b0a9fe9c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8924640f'
+  const short = abbreviateProtocol(protocol)
+  assert.equal(short, `${protocol.slice(0, 8)}…${protocol.slice(-7)}`)
+  assert.ok(short.length < protocol.length, 'a versão abreviada é sempre mais curta que o valor real')
+})
+
+test('abbreviateProtocol never truncates a value already short enough to fit', () => {
+  for (const value of ['abc', '', 'x'.repeat(15)]) {
+    assert.equal(abbreviateProtocol(value), value)
+  }
+})
+
+test('abbreviateProtocol leaves non-string input untouched, never crashes', () => {
+  assert.equal(abbreviateProtocol(undefined), undefined)
+  assert.equal(abbreviateProtocol(null), null)
 })

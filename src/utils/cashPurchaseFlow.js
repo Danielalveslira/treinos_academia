@@ -42,3 +42,27 @@ export const ADMIN_CASH_PURCHASE_STATUS_LABELS = {
   credited: { text: 'Creditada', variant: 'success' },
   cancelled: { text: 'Cancelada', variant: 'danger' },
 }
+
+const PIX_KEY_TYPE_LABELS = {
+  email: 'E-mail',
+  phone: 'Telefone',
+  cpf: 'CPF',
+  cnpj: 'CNPJ',
+  random: 'Chave aleatória',
+}
+
+// pixPayment.keyType já vem validado pelo backend (ver isValidPixPayment em
+// cash-purchase-core.js) antes de qualquer pedido poder ser criado -- o fallback aqui é
+// só defesa de exibição (nunca deveria disparar na prática).
+export function resolvePixKeyTypeLabel(keyType) {
+  return PIX_KEY_TYPE_LABELS[keyType] || 'Chave PIX'
+}
+
+// Abrevia só a APRESENTAÇÃO de um protocolo (sha256 hex, sempre 64 caracteres) pra não
+// estourar a largura do card no mobile -- nunca usado pelo valor que é efetivamente
+// copiado ou enviado a qualquer callable, só pelo texto exibido na tela.
+export function abbreviateProtocol(value, { prefixLength = 8, suffixLength = 7 } = {}) {
+  if (typeof value !== 'string') return value
+  if (value.length <= prefixLength + suffixLength) return value
+  return `${value.slice(0, prefixLength)}…${value.slice(-suffixLength)}`
+}

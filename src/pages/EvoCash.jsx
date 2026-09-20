@@ -5,10 +5,13 @@ import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
 import { getCashPurchaseSettings, requestCashPurchase } from '../services/cashPurchaseService'
 import { CashPackageCards } from '../components/CashPackageCards'
+import { CopyButton } from '../components/CopyButton'
+import { PixPaymentInstructions } from '../components/PixPaymentInstructions'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
   resolveRequestId,
   hasPendingCashPurchase,
+  abbreviateProtocol,
   USER_CASH_PURCHASE_STATUS_LABELS as STATUS_LABELS,
 } from '../utils/cashPurchaseFlow'
 
@@ -26,7 +29,7 @@ function newRequestId() {
 // esta página nunca credita nada sozinha.
 export default function EvoCash() {
   const { user } = useAuth()
-  const [settings, setSettings] = useState({ packages: [], pixKey: null })
+  const [settings, setSettings] = useState({ packages: [], pixPayment: null })
   const [loadingSettings, setLoadingSettings] = useState(true)
   // Guarda o requestId da tentativa em andamento -- reenviado se a MESMA tentativa
   // (mesmo pacote, ainda sem sucesso) for repetida, nunca gerado de novo a cada clique
@@ -112,7 +115,7 @@ export default function EvoCash() {
         <Box sx={{ color: 'attention.fg', flexShrink: 0, display: 'flex', pt: '2px' }}>
           <SparkleFillIcon size={18} />
         </Box>
-        <Box>
+        <Box sx={{ minWidth: 0 }}>
           <Text as="p" sx={{ fontWeight: 'bold', m: 0, color: 'attention.fg' }}>
             Valores especiais por tempo limitado
           </Text>
@@ -129,24 +132,22 @@ export default function EvoCash() {
       )}
 
       {lastCreated && (
-        <Flash variant="success" sx={{ mb: 3 }}>
-          <Text as="p" sx={{ fontWeight: 'bold', m: 0 }}>
-            Pedido criado — protocolo {lastCreated.purchaseId}
+        <Box sx={{ mb: 3, minWidth: 0 }}>
+          <Text as="p" sx={{ fontWeight: 'bold', m: 0, mb: 2 }}>
+            Pedido criado
           </Text>
-          <Text as="p" sx={{ m: 0 }}>
-            Pague {formatCentavosBRL(lastCreated.amountCentavos)} via PIX
-            {settings.pixKey ? (
-              <>
-                {' '}
-                para a chave <strong>{settings.pixKey}</strong>
-              </>
-            ) : (
-              ' (fale com o Atendimento para receber a chave)'
-            )}{' '}
-            e envie o comprovante pelo Atendimento citando o protocolo acima. Você recebe{' '}
-            {lastCreated.cashAmount} EvoCash assim que a equipe confirmar o pagamento.
-          </Text>
-        </Flash>
+          {/* pixPaymentSnapshot vem do próprio pedido (gravado por requestCashPurchase no
+              momento da criação), nunca de settings.pixPayment (config ao vivo) -- se a
+              chave mudar depois, este pedido continua mostrando o destino de quando foi
+              criado. */}
+          <PixPaymentInstructions
+            purchaseId={lastCreated.purchaseId}
+            packageLabel={lastCreated.packageLabel}
+            cashAmount={lastCreated.cashAmount}
+            amountCentavos={lastCreated.amountCentavos}
+            pixPayment={lastCreated.pixPaymentSnapshot}
+          />
+        </Box>
       )}
 
       <section aria-labelledby="packages-heading" style={{ marginBottom: '2rem' }}>
@@ -196,10 +197,9 @@ export default function EvoCash() {
             key={purchase.id}
             sx={{
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              flexWrap: 'wrap',
+              flexDirection: 'column',
               gap: 2,
+              minWidth: 0,
               border: '1px solid',
               borderColor: 'border.default',
               borderRadius: 2,
@@ -207,25 +207,86 @@ export default function EvoCash() {
               mb: 2,
             }}
           >
-            <Box>
-              <Text as="p" sx={{ fontWeight: 'bold', m: 0 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: 2,
+                minWidth: 0,
+              }}
+            >
+              <Text as="p" sx={{ fontWeight: 'bold', m: 0, minWidth: 0, wordBreak: 'break-word' }}>
                 {purchase.packageLabel}
               </Text>
-              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-                Protocolo {purchase.id} · {formatDateTime(purchase.createdAt?.toDate())}
-              </Text>
-              <Text as="p" sx={{ fontSize: 0, m: 0 }}>
-                {formatCentavosBRL(purchase.amountCentavos)} — {purchase.cashAmount} EvoCash
-              </Text>
-              {purchase.status === 'cancelled' && purchase.cancelReason && (
-                <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-                  Motivo: {purchase.cancelReason}
-                </Text>
-              )}
+              <Label variant={STATUS_LABELS[purchase.status]?.variant}>
+                {STATUS_LABELS[purchase.status]?.text || purchase.status}
+              </Label>
             </Box>
-            <Label variant={STATUS_LABELS[purchase.status]?.variant}>
-              {STATUS_LABELS[purchase.status]?.text || purchase.status}
-            </Label>
+
+            <Text as="p" sx={{ fontSize: 0, m: 0 }}>
+              {formatCentavosBRL(purchase.amountCentavos)} — {purchase.cashAmount} EvoCash
+            </Text>
+
+            <Box sx={{ minWidth: 0 }}>
+              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
+                Protocolo
+              </Text>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, minWidth: 0 }}>
+                <Text
+                  as="span"
+                  title={purchase.id}
+                  sx={{ fontSize: 0, fontFamily: 'mono', wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0 }}
+                >
+                  {abbreviateProtocol(purchase.id)}
+                </Text>
+                <CopyButton
+                  value={purchase.id}
+                  label="Copiar"
+                  successMessage="Protocolo copiado"
+                  testId={`copy-protocol-${purchase.id}`}
+                />
+              </Box>
+            </Box>
+
+            <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
+              Data: {formatDateTime(purchase.createdAt?.toDate())}
+            </Text>
+
+            {purchase.status === 'pending' && (
+              // Mesmo raciocínio acima: pixPaymentSnapshot é o do PRÓPRIO pedido, nunca a
+              // config atual -- reload/"Minhas compras" sempre mostra o destino de quando
+              // o pedido foi criado, mesmo que economyConfig/current.pixPayment já tenha
+              // mudado depois.
+              <PixPaymentInstructions
+                purchaseId={purchase.id}
+                packageLabel={purchase.packageLabel}
+                cashAmount={purchase.cashAmount}
+                amountCentavos={purchase.amountCentavos}
+                pixPayment={purchase.pixPaymentSnapshot}
+              />
+            )}
+
+            {purchase.status === 'credited' && (
+              <Box>
+                <Text as="p" sx={{ fontWeight: 'bold', color: 'success.fg', m: 0 }}>
+                  Pagamento confirmado
+                </Text>
+                <Text as="p" sx={{ m: 0 }}>
+                  EvoCash creditado
+                </Text>
+              </Box>
+            )}
+
+            {purchase.status === 'cancelled' && purchase.cancelReason && (
+              <Text
+                as="p"
+                sx={{ fontSize: 0, color: 'fg.muted', m: 0, wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+              >
+                Motivo: {purchase.cancelReason}
+              </Text>
+            )}
           </Box>
         ))}
         {hasMore && (
