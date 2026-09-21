@@ -49,6 +49,162 @@ import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta
 
 const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
 
+// View pura (sem hooks de Firestore) separada do wrapper que busca os dados de verdade --
+// mesmo padrão de WalletHeaderBadgesView/PromoteDialogBody: testável só com props.
+// Reordena a composição da comunidade (não a lógica): criação de conteúdo + publicidade
+// (toolbar de Publicações, banner e feedAds) vêm antes de Destaques, que por sua vez vêm
+// antes do feed normal -- assim a quantidade de posts destacados (até FEATURED_LIMIT, ver
+// promotionsService.js) nunca empurra o botão "+ Publicar" ou os anúncios pra baixo.
+// featuredStatuses, statuses, feedAds e bannerAds continuam vindo exatamente de onde já
+// vinham (useCommunityFeed/useSponsoredAds/listFeaturedStatusesForCommunity, em
+// CommunityDetail); esta função só decide ONDE cada bloco aparece na página.
+export function CommunityFeedSection({
+  communityId,
+  currentUserId,
+  author,
+  canModerate,
+  canPost,
+  bannerAds,
+  feedAds,
+  featuredStatuses,
+  statuses,
+  loadingFeed,
+  feedError,
+  formOpen,
+  setFormOpen,
+  refreshFeed,
+  now,
+  showToast,
+  votesByStatusId,
+  setVote,
+  onEconomyVoted,
+  onDeleteStatus,
+  onCreateStatus,
+  onPromoted,
+}) {
+  return (
+    <>
+      <SponsoredAdBanner ads={bannerAds} />
+
+      {!formOpen && (
+        <Box className="community-toolbar">
+          <Heading as="h2">Publicações</Heading>
+          <Box className="community-publish-actions">
+            <Button onClick={refreshFeed} loading={loadingFeed} disabled={loadingFeed}>
+              Atualizar
+            </Button>
+            {canPost && (
+              <>
+                <Button
+                  leadingVisual={PlusIcon}
+                  variant="primary"
+                  onClick={() => setFormOpen('status')}
+                >
+                  Publicar
+                </Button>
+                <Button leadingVisual={TrophyIcon} onClick={() => setFormOpen('achievement')}>
+                  Conquista do dia
+                </Button>
+              </>
+            )}
+          </Box>
+        </Box>
+      )}
+      {!canPost && (
+        <Text sx={{ display: 'block', color: 'fg.muted', fontSize: 1, mb: 3 }}>
+          Somente o superadmin pode publicar nesta comunidade.
+        </Text>
+      )}
+      {canPost && formOpen === 'achievement' && (
+        <AchievementForm onSubmit={onCreateStatus} onCancel={() => setFormOpen(false)} />
+      )}
+      {canPost && formOpen === 'status' && (
+        <StatusForm
+          communityId={communityId}
+          author={author}
+          onSubmit={onCreateStatus}
+          onCancel={() => setFormOpen(false)}
+        />
+      )}
+
+      {feedAds.length > 0 && (
+        <div className="community-feed">
+          {feedAds.map((ad) => (
+            <SponsoredAdCard key={ad.id} ad={ad} />
+          ))}
+        </div>
+      )}
+
+      {featuredStatuses.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
+            Destaques
+          </Heading>
+          {/* recordPromotionClick (clique, ver Communities.jsx) não é disparado aqui de
+              propósito: um StatusCard já renderiza o conteúdo inteiro inline (texto,
+              enquete, foto...), não existe um único "abrir" que leve a outro lugar --
+              diferente de CommunityRow, cujo link inteiro navega para /comunidades/{id}.
+              V1 fica sem métrica de clique para posts promovidos; só cliques em
+              comunidades em destaque são contados. */}
+          {featuredStatuses.map((status) => (
+            <StatusCard
+              key={`featured-${status.id}`}
+              status={status}
+              currentUserId={currentUserId}
+              canDelete={status.authorId === currentUserId || canModerate}
+              onDelete={onDeleteStatus}
+              now={now}
+              showToast={showToast}
+              myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
+              onEconomyVoted={(value, delta) => {
+                setVote(status.id, value)
+                onEconomyVoted(status.id, delta)
+              }}
+            />
+          ))}
+        </Box>
+      )}
+
+      {loadingFeed && statuses.length === 0 && (
+        <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
+      )}
+      <ErrorState error={feedError} onRetry={refreshFeed} />
+
+      {!loadingFeed && !feedError && statuses.length === 0 && (
+        <Blankslate>
+          <Blankslate.Visual>
+            <MegaphoneIcon size={24} />
+          </Blankslate.Visual>
+          <Blankslate.Heading>Nenhuma publicação nas últimas 24h</Blankslate.Heading>
+          <Blankslate.Description>
+            Seja o primeiro a publicar algo nesta comunidade.
+          </Blankslate.Description>
+        </Blankslate>
+      )}
+
+      <div className="community-feed">
+        {statuses.map((status) => (
+          <StatusCard
+            key={status.id}
+            status={status}
+            currentUserId={currentUserId}
+            canDelete={status.authorId === currentUserId || canModerate}
+            onDelete={onDeleteStatus}
+            now={now}
+            showToast={showToast}
+            myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
+            onEconomyVoted={(value, delta) => {
+              setVote(status.id, value)
+              onEconomyVoted(status.id, delta)
+            }}
+            onPromoted={onPromoted}
+          />
+        ))}
+      </div>
+    </>
+  )
+}
+
 function CommunityDetail({ id }) {
   const navigate = useNavigate()
   const { user, profile, isSuperAdmin } = useAuth()
@@ -448,130 +604,32 @@ function CommunityDetail({ id }) {
           )}
 
           {member && (
-            <>
-              <SponsoredAdBanner ads={bannerAds} />
-              {featuredStatuses.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
-                    Destaques
-                  </Heading>
-                  {/* recordPromotionClick (clique, ver Communities.jsx) não é disparado aqui de
-                      propósito: um StatusCard já renderiza o conteúdo inteiro inline (texto,
-                      enquete, foto...), não existe um único "abrir" que leve a outro lugar --
-                      diferente de CommunityRow, cujo link inteiro navega para /comunidades/{id}.
-                      V1 fica sem métrica de clique para posts promovidos; só cliques em
-                      comunidades em destaque são contados. */}
-                  {featuredStatuses.map((status) => (
-                    <StatusCard
-                      key={`featured-${status.id}`}
-                      status={status}
-                      currentUserId={user.uid}
-                      canDelete={status.authorId === user.uid || canModerate}
-                      onDelete={handleDeleteStatus}
-                      now={now}
-                      showToast={showToast}
-                      myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
-                      onEconomyVoted={(value, delta) => {
-                        setVote(status.id, value)
-                        handleEconomyVoted(status.id, delta)
-                      }}
-                    />
-                  ))}
-                </Box>
-              )}
-              {!formOpen && (
-                <Box className="community-toolbar">
-                  <Heading as="h2">Publicações</Heading>
-                  <Box className="community-publish-actions">
-                    <Button onClick={refreshFeed} loading={loadingFeed} disabled={loadingFeed}>
-                      Atualizar
-                    </Button>
-                    {canPost && (
-                      <>
-                        <Button
-                          leadingVisual={PlusIcon}
-                          variant="primary"
-                          onClick={() => setFormOpen('status')}
-                        >
-                          Publicar
-                        </Button>
-                        <Button
-                          leadingVisual={TrophyIcon}
-                          onClick={() => setFormOpen('achievement')}
-                        >
-                          Conquista do dia
-                        </Button>
-                      </>
-                    )}
-                  </Box>
-                </Box>
-              )}
-              {!canPost && (
-                <Text sx={{ display: 'block', color: 'fg.muted', fontSize: 1, mb: 3 }}>
-                  Somente o superadmin pode publicar nesta comunidade.
-                </Text>
-              )}
-              {canPost && formOpen === 'achievement' && (
-                <AchievementForm
-                  onSubmit={handleCreateStatus}
-                  onCancel={() => setFormOpen(false)}
-                />
-              )}
-              {canPost && formOpen === 'status' && (
-                <StatusForm
-                  communityId={id}
-                  author={{
-                    id: user.uid,
-                    username: profile?.username || null,
-                    role: profile?.role,
-                  }}
-                  onSubmit={handleCreateStatus}
-                  onCancel={() => setFormOpen(false)}
-                />
-              )}
-
-              {loadingFeed && statuses.length === 0 && (
-                <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
-              )}
-              <ErrorState error={feedError} onRetry={refreshFeed} />
-
-              {!loadingFeed && !feedError && statuses.length === 0 && (
-                <Blankslate>
-                  <Blankslate.Visual>
-                    <MegaphoneIcon size={24} />
-                  </Blankslate.Visual>
-                  <Blankslate.Heading>Nenhuma publicação nas últimas 24h</Blankslate.Heading>
-                  <Blankslate.Description>
-                    Seja o primeiro a publicar algo nesta comunidade.
-                  </Blankslate.Description>
-                </Blankslate>
-              )}
-
-              <div className="community-feed">
-                {feedAds.map((ad) => (
-                  <SponsoredAdCard key={ad.id} ad={ad} />
-                ))}
-                {statuses.map((status) => (
-                  <StatusCard
-                    key={status.id}
-                    status={status}
-                    currentUserId={user.uid}
-                    canDelete={status.authorId === user.uid || canModerate}
-                    onDelete={handleDeleteStatus}
-                    now={now}
-                    showToast={showToast}
-                    myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
-                    onEconomyVoted={(value, delta) => {
-                      setVote(status.id, value)
-                      handleEconomyVoted(status.id, delta)
-                    }}
-                    onPromoted={(statusId, result) =>
-                      updatePostPromotion(statusId, { promoted: true, promotedUntil: result.expiresAtMs })
-                    }
-                  />
-                ))}
-              </div>
-            </>
+            <CommunityFeedSection
+              communityId={id}
+              currentUserId={user.uid}
+              author={{ id: user.uid, username: profile?.username || null, role: profile?.role }}
+              canModerate={canModerate}
+              canPost={canPost}
+              bannerAds={bannerAds}
+              feedAds={feedAds}
+              featuredStatuses={featuredStatuses}
+              statuses={statuses}
+              loadingFeed={loadingFeed}
+              feedError={feedError}
+              formOpen={formOpen}
+              setFormOpen={setFormOpen}
+              refreshFeed={refreshFeed}
+              now={now}
+              showToast={showToast}
+              votesByStatusId={votesByStatusId}
+              setVote={setVote}
+              onEconomyVoted={handleEconomyVoted}
+              onDeleteStatus={handleDeleteStatus}
+              onCreateStatus={handleCreateStatus}
+              onPromoted={(statusId, result) =>
+                updatePostPromotion(statusId, { promoted: true, promotedUntil: result.expiresAtMs })
+              }
+            />
           )}
         </>
       )}
