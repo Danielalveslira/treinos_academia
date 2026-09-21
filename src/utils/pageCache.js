@@ -42,6 +42,13 @@ export function invalidateCache(prefix) {
   for (const key of pending.keys()) if (key.startsWith(prefix)) pending.delete(key)
 }
 
+// Único ponto que conhece a chave `communities:{uid}` -- entrar/sair/criar/editar/
+// excluir comunidade chamam isto em vez de escrever a string na mão em cada arquivo
+// (useCommunities.js, CommunityDetail.jsx, CreateCommunity.jsx, communityMembersService.js).
+export function invalidateCommunitiesCache(uid) {
+  invalidateCache(`communities:${uid}`)
+}
+
 export function invalidateWorkoutCache(uid) {
   for (const prefix of ['dashboard', 'workouts', 'exerciseHistory', 'progress']) {
     invalidateCache(`${prefix}:${uid}:`)

@@ -33,6 +33,7 @@ import {
   createWorkoutStatus,
 } from '../services/statusesService'
 import { describeFirestoreError } from '../utils/firestoreError'
+import { invalidateCommunitiesCache } from '../utils/pageCache'
 import { AchievementForm } from '../components/AchievementForm'
 import { StatusForm } from '../components/StatusForm'
 import { StatusCard } from '../components/StatusCard'
@@ -70,6 +71,7 @@ function CommunityDetail({ id }) {
     addStatusLocally,
     remove,
     updateEconomyVoteCounts,
+    updatePostPromotion,
     now,
   } = useCommunityFeed(id, member)
 
@@ -175,6 +177,7 @@ function CommunityDetail({ id }) {
     try {
       await updateCommunity(id, values)
       setCommunity((previous) => ({ ...previous, ...values }))
+      invalidateCommunitiesCache(user.uid)
       setManaging(false)
       showToast('Comunidade atualizada.')
     } catch (err) {
@@ -188,6 +191,7 @@ function CommunityDetail({ id }) {
     try {
       await setCommunityActive(id, !community.isActive)
       setCommunity((previous) => ({ ...previous, isActive: !previous.isActive }))
+      invalidateCommunitiesCache(user.uid)
       showToast(community.isActive ? 'Comunidade desativada.' : 'Comunidade reativada.')
     } catch (err) {
       console.error('[CommunityDetail] setCommunityActive:', err)
@@ -203,6 +207,7 @@ function CommunityDetail({ id }) {
     if (!confirmed) return
     try {
       await deleteCommunity(id)
+      invalidateCommunitiesCache(user.uid)
       showToast('Exclusão da comunidade solicitada.')
       navigate('/comunidades', { replace: true })
     } catch (err) {
@@ -560,6 +565,9 @@ function CommunityDetail({ id }) {
                       setVote(status.id, value)
                       handleEconomyVoted(status.id, delta)
                     }}
+                    onPromoted={(statusId, result) =>
+                      updatePostPromotion(statusId, { promoted: true, promotedUntil: result.expiresAtMs })
+                    }
                   />
                 ))}
               </div>

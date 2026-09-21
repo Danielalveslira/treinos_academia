@@ -110,6 +110,18 @@ export function useCommunityFeed(communityId, enabled = true) {
     })
   }
 
+  // Chamado só depois de createPromotion já ter confirmado sucesso (mesmo raciocínio de
+  // updateEconomyVoteCounts) -- sem isso o post promovido só ganharia o selo "Em
+  // destaque" depois de um refresh(), já que promoted/promotedUntil só existem no
+  // documento que o servidor gravou, nunca no array local até esta função rodar.
+  function updatePostPromotion(statusId, patch) {
+    setStatuses((prev) => {
+      const next = prev.map((s) => (s.id === statusId ? { ...s, ...patch } : s))
+      setCached(cacheKey, next)
+      return next
+    })
+  }
+
   return {
     statuses: enabled ? statuses : [],
     loading: enabled && (!ready || loading),
@@ -118,6 +130,7 @@ export function useCommunityFeed(communityId, enabled = true) {
     addStatusLocally,
     remove,
     updateEconomyVoteCounts,
+    updatePostPromotion,
     now,
   }
 }

@@ -23,7 +23,7 @@ export function useQualifiedActivity() {
     const now = Date.now()
     if (now - lastPingRef.current < MIN_PING_INTERVAL_MS) return
     lastPingRef.current = now
-    registerQualifiedActivity(user.uid)
+    registerQualifiedActivity()
       .then((result) => {
         if (result?.granted) grantedTodayRef.current = true
       })

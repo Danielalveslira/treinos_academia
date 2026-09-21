@@ -45,6 +45,7 @@ export default function EvoCash() {
     loadMore,
     error: listError,
     refresh,
+    addPurchaseLocally,
   } = useCashPurchases(user?.uid)
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export default function EvoCash() {
       const result = await requestCashPurchase({ packageId, requestId })
       setLastCreated(result)
       setPendingAttempt(null)
-      await refresh()
+      addPurchaseLocally({ ...result, id: result.purchaseId })
     } catch (err) {
       setPendingAttempt({ key: packageId, requestId })
       setError(

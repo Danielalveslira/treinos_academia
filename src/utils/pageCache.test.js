@@ -4,6 +4,7 @@ import {
   clearPageCache,
   fetchCached,
   getCached,
+  invalidateCommunitiesCache,
   invalidateWorkoutCache,
   setCached,
 } from './pageCache.js'
@@ -45,6 +46,14 @@ test('a mutation invalidates all views of that user without touching another acc
   for (const key of ['dashboard:alice', 'workouts:alice:::', 'exerciseHistory:alice:squat'])
     assert.equal(getCached(key), undefined)
   assert.deepEqual(getCached('dashboard:bob'), [1])
+})
+
+test('invalidateCommunitiesCache clears only that user\'s communities list', () => {
+  setCached('communities:alice', { communities: [1], myCommunityIds: ['c1'] })
+  setCached('communities:bob', { communities: [2], myCommunityIds: ['c2'] })
+  invalidateCommunitiesCache('alice')
+  assert.equal(getCached('communities:alice'), undefined)
+  assert.deepEqual(getCached('communities:bob'), { communities: [2], myCommunityIds: ['c2'] })
 })
 
 test('late responses cannot repopulate cache after logout or overwrite a new request', async () => {

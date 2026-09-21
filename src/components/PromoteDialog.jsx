@@ -1,6 +1,6 @@
 import { useEffect, useReducer } from 'react'
 import { Box, Button, Dialog, Flash, Spinner, Text } from '@primer/react'
-import { getWallet } from '../services/economyService'
+import { useWallet } from '../hooks/useWallet'
 import { createPromotion, getPromotionPackages } from '../services/promotionsService'
 import { resolveRequestId } from '../utils/cashPurchaseFlow'
 import { formatDateTime } from '../utils/format'
@@ -10,13 +10,14 @@ import { formatDateTime } from '../utils/format'
 // (resolveRequestId): um retry depois de uma falha reenvia o MESMO requestId, nunca
 // debita duas vezes (a garantia real está no servidor, ver promotion-service.js -- isto
 // é só a UI). Estado extraído como reducer puro (mesmo motivo de EconomyVotersDialog:
-// testável sem depender de act()/TestRenderer).
+// testável sem depender de act()/TestRenderer). Saldo vem de useWallet() (carteira
+// compartilhada, ver WalletContext.jsx) -- nunca uma leitura própria: promover debita
+// cashBalance, e o listener único já reflete isso sozinho, sem esta tela precisar saber.
 export function initialPromoteDialogState() {
   return {
     packages: [],
     loadingPackages: true,
     selectedPackageId: null,
-    walletBalance: null,
     submitting: false,
     error: '',
     pendingAttempt: null,
@@ -33,8 +34,6 @@ export function promoteDialogReducer(state, action) {
         loadingPackages: false,
         selectedPackageId: state.selectedPackageId ?? action.packages[0]?.packageId ?? null,
       }
-    case 'wallet_loaded':
-      return { ...state, walletBalance: action.balance }
     case 'select_package':
       return { ...state, selectedPackageId: action.packageId }
     case 'submit_start':
@@ -54,23 +53,20 @@ function newRequestId() {
     : `req-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
-export function PromoteDialogBody({ targetType, targetId, currentUserId, onPromoted }) {
+export function PromoteDialogBody({ targetType, targetId, onPromoted }) {
   const [state, dispatch] = useReducer(promoteDialogReducer, undefined, initialPromoteDialogState)
-  const { packages, loadingPackages, selectedPackageId, walletBalance, submitting, error, pendingAttempt, result } =
-    state
+  const { packages, loadingPackages, selectedPackageId, submitting, error, pendingAttempt, result } = state
+  const { wallet, loading: loadingWallet } = useWallet()
 
   useEffect(() => {
     let active = true
     getPromotionPackages(targetType).then((loaded) => {
       if (active) dispatch({ type: 'packages_loaded', packages: loaded })
     })
-    getWallet(currentUserId).then((wallet) => {
-      if (active) dispatch({ type: 'wallet_loaded', balance: wallet.cashBalance })
-    })
     return () => {
       active = false
     }
-  }, [targetType, currentUserId])
+  }, [targetType])
 
   async function promote() {
     if (submitting || !selectedPackageId) return
@@ -115,8 +111,8 @@ export function PromoteDialogBody({ targetType, targetId, currentUserId, onPromo
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {walletBalance != null && (
-        <Text sx={{ fontSize: 0, color: 'fg.muted' }}>Saldo atual: {walletBalance} EvoCash</Text>
+      {!loadingWallet && (
+        <Text sx={{ fontSize: 0, color: 'fg.muted' }}>Saldo atual: {wallet.cashBalance} EvoCash</Text>
       )}
       {error && (
         <Text as="p" role="alert" sx={{ color: 'danger.fg', fontSize: 0, m: 0 }}>

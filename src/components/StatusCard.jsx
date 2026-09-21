@@ -364,6 +364,7 @@ export function StatusCard({
   showToast,
   myEconomyVote,
   onEconomyVoted,
+  onPromoted,
 }) {
   const [promoteOpen, setPromoteOpen] = useState(false)
   const isAuthor = status.authorId === currentUserId
@@ -431,7 +432,10 @@ export function StatusCard({
           currentUserId={currentUserId}
           title="Promover publicação"
           onClose={() => setPromoteOpen(false)}
-          onPromoted={() => setPromoteOpen(false)}
+          onPromoted={(result) => {
+            setPromoteOpen(false)
+            onPromoted?.(status.id, result)
+          }}
         />
       )}
     </article>

@@ -9,6 +9,7 @@ import { getCreateCommunityPrivilege, createCommunityWithCash } from '../service
 import { resolveRequestId } from '../utils/cashPurchaseFlow'
 import { evaluateCommunityCreationRequirements } from '../utils/communityOwnership'
 import { formatDate } from '../utils/format'
+import { invalidateCommunitiesCache } from '../utils/pageCache'
 
 function newRequestId() {
   return typeof crypto?.randomUUID === 'function'
@@ -66,6 +67,7 @@ export default function CreateCommunity() {
     try {
       const result = await createCommunityWithCash({ ...values, requestId })
       setPendingAttempt(null)
+      invalidateCommunitiesCache(user.uid)
       navigate(`/comunidades/${result.communityId}`, { replace: true })
     } catch (err) {
       console.error('[CreateCommunity] createCommunityWithCash:', err)

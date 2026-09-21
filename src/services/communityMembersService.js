@@ -13,6 +13,7 @@ import {
   getCountFromServer,
 } from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { invalidateCommunitiesCache } from '../utils/pageCache'
 
 // Teto de defesa: bem acima do número de comunidades que existem no app (ver
 // MAX_COMMUNITIES em communitiesService.js), então nunca deveria cortar uso real.
@@ -42,16 +43,21 @@ export async function isMember(communityId, userId) {
   return snapshot.exists()
 }
 
-export function joinCommunity(communityId, userId) {
-  return setDoc(doc(db, 'communityMembers', membershipId(communityId, userId)), {
+// Chamado tanto por useCommunities.js (lista) quanto por CommunityDetail.jsx (tela da
+// comunidade) -- invalidar a cache da lista aqui, num único lugar, cobre os dois
+// caminhos sem duplicar a chamada em cada componente.
+export async function joinCommunity(communityId, userId) {
+  await setDoc(doc(db, 'communityMembers', membershipId(communityId, userId)), {
     communityId,
     userId,
     joinedAt: serverTimestamp(),
   })
+  invalidateCommunitiesCache(userId)
 }
 
-export function leaveCommunity(communityId, userId) {
-  return deleteDoc(doc(db, 'communityMembers', membershipId(communityId, userId)))
+export async function leaveCommunity(communityId, userId) {
+  await deleteDoc(doc(db, 'communityMembers', membershipId(communityId, userId)))
+  invalidateCommunitiesCache(userId)
 }
 
 export async function countMembers(communityId) {

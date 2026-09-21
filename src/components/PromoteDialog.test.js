@@ -29,14 +29,25 @@ async function bundle() {
         name: 'services-fixture',
         setup(pluginBuild) {
           pluginBuild.onResolve(
-            { filter: /\/services\/(economyService|promotionsService)$/ },
-            (args) => ({ path: args.path, namespace: 'fixture' })
+            { filter: /\/services\/promotionsService$/ },
+            (args) => ({ path: args.path, namespace: 'promotions-fixture' })
           )
-          pluginBuild.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({
+          pluginBuild.onLoad({ filter: /.*/, namespace: 'promotions-fixture' }, () => ({
             contents: `
-              export const getWallet = async () => ({ cashBalance: 0 })
               export const getPromotionPackages = async () => []
               export const createPromotion = async () => ({})
+            `,
+          }))
+          // PromoteDialog.jsx agora lê o saldo via useWallet() (carteira compartilhada,
+          // ver WalletContext.jsx) em vez de chamar getWallet() direto -- stub aqui evita
+          // puxar a cadeia real até firebase/config.js só pra testar o reducer puro.
+          pluginBuild.onResolve(
+            { filter: /\/hooks\/useWallet$/ },
+            (args) => ({ path: args.path, namespace: 'wallet-fixture' })
+          )
+          pluginBuild.onLoad({ filter: /.*/, namespace: 'wallet-fixture' }, () => ({
+            contents: `
+              export const useWallet = () => ({ wallet: { cashBalance: 0 }, loading: false })
             `,
           }))
         },
@@ -84,11 +95,6 @@ test('packages_loaded never overrides a selection the user already made', () => 
 test('select_package switches the active selection', () => {
   const state = promoteDialogReducer(initialPromoteDialogState(), { type: 'select_package', packageId: 'x' })
   assert.equal(state.selectedPackageId, 'x')
-})
-
-test('wallet_loaded stores the balance without touching anything else', () => {
-  const state = promoteDialogReducer(initialPromoteDialogState(), { type: 'wallet_loaded', balance: 42 })
-  assert.equal(state.walletBalance, 42)
 })
 
 test('submit_start clears a previous error and marks submitting', () => {

@@ -73,20 +73,11 @@ export async function getWallet(uid, { forceRefresh = false } = {}) {
   return wallet
 }
 
-// A própria resposta da callable já diz quanto foi creditado quando o reward é
-// concedido -- atualiza o cache local a partir dela (e reinicia o TTL, ver writeCache),
-// sem precisar reler o Firestore.
-export async function registerQualifiedActivity(uid) {
-  const result = (await registerQualifiedActivityCallable()).data
-  if (result?.granted) {
-    const current = readCache(uid) || EMPTY_WALLET
-    writeCache(uid, {
-      ...current,
-      coinBalance: current.coinBalance + result.rewardCoins,
-      lifetimeCoinsEarned: current.lifetimeCoinsEarned + result.rewardCoins,
-    })
-  }
-  return result
+// O crédito em si é refletido pelo onSnapshot único de WalletContext.jsx assim que o
+// Firestore confirma a escrita de creditCoins (activity-service.js) -- nunca precisa de
+// patch manual de cache aqui, nem do uid (que esta função não usa mais).
+export async function registerQualifiedActivity() {
+  return (await registerQualifiedActivityCallable()).data
 }
 
 // Teto do operador `in` do Firestore -- também o tamanho de página do feed
@@ -134,15 +125,12 @@ export async function getMyEconomyVotesForStatuses(uid, statusIds) {
 }
 
 // Só a primeira vez que o usuário vota nesta publicação cobra EvoCoins (result.charged)
-// -- trocar de direção ou remover depois é grátis, sem reembolso. Atualiza o cache local
-// da carteira a partir da própria resposta, mesma ideia de registerQualifiedActivity.
-export async function castVote(uid, statusId, value) {
-  const result = (await voteOnPostV2Callable({ statusId, value })).data
-  if (result?.charged) {
-    const current = readCache(uid) || EMPTY_WALLET
-    writeCache(uid, { ...current, coinBalance: current.coinBalance - result.costCoins })
-  }
-  return result
+// -- trocar de direção ou remover depois é grátis, sem reembolso. O débito em si é
+// refletido pelo onSnapshot único de WalletContext.jsx assim que o Firestore confirma a
+// escrita de debitCoins (vote-service.js) -- nunca precisa de patch manual de cache
+// aqui, nem do uid (que esta função não usa mais).
+export async function castVote(statusId, value) {
+  return (await voteOnPostV2Callable({ statusId, value })).data
 }
 
 // "Ver quem votou" -- nunca lê statuses/{id}/economyVotes direto (Rules já bloqueiam

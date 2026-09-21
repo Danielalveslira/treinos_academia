@@ -42,7 +42,7 @@ export function EconomyVoteBar({ status, currentUserId, showToast, myVote, onVot
     const nextValue = myValue === value ? null : value
     setVoting(true)
     try {
-      await castVote(currentUserId, status.id, nextValue)
+      await castVote(status.id, nextValue)
       // Delta calculado só DEPOIS do backend confirmar sucesso -- nunca antes (sem
       // optimistic update, ver auditoria: o backend é quem decide se a ação realmente
       // aconteceu). myValue (ainda o valor ANTERIOR aqui) é a transição real aplicada.

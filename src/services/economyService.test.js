@@ -166,21 +166,17 @@ test('after logout, the previous uid cache is gone and the next uid never sees i
   assert.deepEqual(bob, { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0 })
 })
 
-test('registerQualifiedActivity updates the local cache from the callable response, without an extra Firestore read', async () => {
+test('registerQualifiedActivity forwards the callable response untouched, without reading or writing the wallet cache', async () => {
   globalThis.sessionStorage = fakeSessionStorage()
-  const { api, getDocCalls } = await service({
-    walletDocs: { alice: { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0 } },
+  const { api, getDocCalls, callableCalls } = await service({
     callableResults: { registerQualifiedActivity: { granted: true, rewardCoins: 3, activeMinutes: 31 } },
   })
-  await api.getWallet('alice')
-  const result = await api.registerQualifiedActivity('alice')
-  assert.equal(result.granted, true)
-  const updated = await api.getWallet('alice')
-  assert.equal(updated.coinBalance, 3)
-  assert.equal(updated.lifetimeCoinsEarned, 3)
-  // 1 leitura para o getWallet inicial, nenhuma outra depois do crédito -- a atualização
-  // veio da resposta da callable, não de reler o Firestore.
-  assert.equal(getDocCalls(), 1)
+  const result = await api.registerQualifiedActivity()
+  assert.deepEqual(result, { granted: true, rewardCoins: 3, activeMinutes: 31 })
+  assert.equal(callableCalls('registerQualifiedActivity')[0].args, undefined)
+  // O crédito em si é refletido pelo listener único de WalletContext.jsx, nunca por um
+  // patch manual de cache aqui -- nenhuma leitura de Firestore deveria acontecer.
+  assert.equal(getDocCalls(), 0)
 })
 
 test('an expired cache entry (older than the TTL) is treated as a miss and rereads Firestore', async () => {
@@ -220,18 +216,6 @@ test('a cache entry still within the TTL is reused as-is, without rereading Fire
   const wallet = await api.getWallet('alice')
   assert.equal(wallet.coinBalance, 8)
   assert.equal(getDocCalls(), 0)
-})
-
-test('registerQualifiedActivity leaves the cache untouched when the checkpoint is not granted', async () => {
-  globalThis.sessionStorage = fakeSessionStorage()
-  const { api } = await service({
-    walletDocs: { alice: { coinBalance: 7, lifetimeCoinsEarned: 7, cashBalance: 0 } },
-    callableResults: { registerQualifiedActivity: { granted: false, reason: 'too_soon' } },
-  })
-  await api.getWallet('alice')
-  await api.registerQualifiedActivity('alice')
-  const wallet = await api.getWallet('alice')
-  assert.equal(wallet.coinBalance, 7)
 })
 
 test('getMyEconomyVotesForStatuses fetches every status in a single query (no N+1), returning only the ones actually voted on', async () => {
@@ -279,18 +263,13 @@ test('getMyEconomyVotesForStatuses chunks beyond the Firestore `in` limit (30) i
   assert.equal(getDocsCalls(), 2, '35 status ids > 30 (limite do `in`) deveria virar 2 consultas')
 })
 
-test('castVote decrements the cached wallet by costCoins when the vote is charged', async () => {
-  globalThis.sessionStorage = fakeSessionStorage()
-  const { api } = await service({
-    walletDocs: { alice: { coinBalance: 10, lifetimeCoinsEarned: 10, cashBalance: 0 } },
+test('castVote forwards exactly statusId/value to the callable and returns its response untouched', async () => {
+  const { api, callableCalls } = await service({
     callableResults: { voteOnPostV2: { voted: true, action: 'create', charged: true, costCoins: 3 } },
   })
-  await api.getWallet('alice')
-  const result = await api.castVote('alice', 's1', 1)
-  assert.equal(result.charged, true)
-  const wallet = await api.getWallet('alice')
-  assert.equal(wallet.coinBalance, 7)
-  assert.equal(wallet.lifetimeCoinsEarned, 10, 'débito nunca deveria mexer em lifetimeCoinsEarned')
+  const result = await api.castVote('s1', 1)
+  assert.deepEqual(result, { voted: true, action: 'create', charged: true, costCoins: 3 })
+  assert.deepEqual(callableCalls('voteOnPostV2')[0].args, { statusId: 's1', value: 1 })
 })
 
 test('listPostEconomyVoters forwards statusId/direction/cursor/limit untouched and returns the callable data', async () => {
@@ -322,14 +301,11 @@ test('listPostEconomyVoters defaults cursor to null and limit to 20 when omitted
   })
 })
 
-test('castVote never touches the cached wallet when the vote was not charged (switch/remove/noop)', async () => {
+test('castVote never reads or writes the wallet cache, charged or not -- the listener alone reflects any debit', async () => {
   globalThis.sessionStorage = fakeSessionStorage()
-  const { api } = await service({
-    walletDocs: { alice: { coinBalance: 7, lifetimeCoinsEarned: 10, cashBalance: 0 } },
+  const { api, getDocCalls } = await service({
     callableResults: { voteOnPostV2: { voted: true, action: 'switch', charged: false } },
   })
-  await api.getWallet('alice')
-  await api.castVote('alice', 's1', -1)
-  const wallet = await api.getWallet('alice')
-  assert.equal(wallet.coinBalance, 7)
+  await api.castVote('s1', -1)
+  assert.equal(getDocCalls(), 0)
 })

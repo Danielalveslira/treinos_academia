@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { WalletProvider } from './contexts/WalletContext'
 import { ExercisesProvider } from './contexts/ExercisesContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { SuperAdminRoute } from './components/SuperAdminRoute'
@@ -139,7 +140,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <WalletProvider>
+          <AppRoutes />
+        </WalletProvider>
       </AuthProvider>
     </BrowserRouter>
   )

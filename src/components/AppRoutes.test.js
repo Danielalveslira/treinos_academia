@@ -48,6 +48,7 @@ before(async () => {
           const stub = (filter, path) =>
             buildContext.onResolve({ filter }, () => ({ path, namespace: 'stub' }))
           stub(/contexts\/AuthContext$/, 'auth-context')
+          stub(/contexts\/WalletContext$/, 'wallet-context')
           stub(/contexts\/ExercisesContext$/, 'exercises-context')
           stub(/components\/ProtectedRoute$/, 'protected-route')
           stub(/components\/SuperAdminRoute$/, 'admin-route')
@@ -58,6 +59,9 @@ before(async () => {
 
           buildContext.onLoad({ filter: /^auth-context$/, namespace: 'stub' }, () => ({
             contents: `export const AuthProvider = ({ children }) => children`,
+          }))
+          buildContext.onLoad({ filter: /^wallet-context$/, namespace: 'stub' }, () => ({
+            contents: `export const WalletProvider = ({ children }) => children`,
           }))
           buildContext.onLoad({ filter: /^exercises-context$/, namespace: 'stub' }, () => ({
             contents: `
