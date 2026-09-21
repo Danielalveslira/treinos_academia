@@ -9,6 +9,7 @@ import {
 } from '../services/communitiesService'
 import { countMembers } from '../services/communityMembersService'
 import { describeFirestoreError } from '../utils/firestoreError'
+import { invalidateCommunitiesCache } from '../utils/pageCache'
 import { useAuth } from './useAuth'
 
 // memberCount é mantido no servidor (gatilho em communityMembers) — na maioria das
@@ -70,23 +71,30 @@ export function useAdminCommunities() {
     }
   }
 
+  // Mesma chamada já usada por CommunityDetail.jsx para estas 4 mutações -- sem isto, um
+  // superadmin que também navega em /comunidades continua vendo a versão antiga por até
+  // 5min depois de mexer aqui (ver invalidateCommunitiesCache em utils/pageCache.js).
   async function add(community) {
     await createCommunity(user.uid, community)
+    invalidateCommunitiesCache(user.uid)
     await refresh()
   }
 
   async function edit(communityId, community) {
     await updateCommunity(communityId, community)
+    invalidateCommunitiesCache(user.uid)
     setCommunities((prev) => prev.map((c) => (c.id === communityId ? { ...c, ...community } : c)))
   }
 
   async function toggleActive(communityId, isActive) {
     await setCommunityActive(communityId, isActive)
+    invalidateCommunitiesCache(user.uid)
     setCommunities((prev) => prev.map((c) => (c.id === communityId ? { ...c, isActive } : c)))
   }
 
   async function remove(communityId) {
     await deleteCommunity(communityId)
+    invalidateCommunitiesCache(user.uid)
     setCommunities((prev) => prev.filter((c) => c.id !== communityId))
   }
 

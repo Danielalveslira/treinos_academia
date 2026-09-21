@@ -10,6 +10,8 @@ let directory
 let renderGuide
 let renderVisual
 let openVisual
+let focusTrap
+let focusTrapEdgeCases
 
 const exercise = {
   id: 'Row',
@@ -61,6 +63,140 @@ before(async () => {
           act(() => component.unmount())
           return result
         }
+        // A11Y-1: Tab/Shift+Tab não pode escapar do modal para o conteúdo atrás do
+        // backdrop. querySelectorAll é mockado devolvendo dois elementos focáveis fixos
+        // (first/last); o teste simula Tab a partir do último (deve voltar ao primeiro,
+        // com preventDefault) e Shift+Tab a partir do primeiro (deve ir ao último).
+        export const focusTrap = (exercise) => {
+          let activeElement = null
+          const first = { focus: () => { activeElement = first } }
+          const last = { focus: () => { activeElement = last } }
+          let keydownHandler = null
+          global.document = {
+            addEventListener: (type, handler) => {
+              if (type === 'keydown') keydownHandler = handler
+            },
+            removeEventListener: (type) => {
+              if (type === 'keydown') keydownHandler = null
+            },
+            get activeElement() {
+              return activeElement
+            },
+          }
+          let component
+          act(() => {
+            component = TestRenderer.create(
+              createElement(WorkoutExerciseVisual, {
+                exercise,
+                group: 'Costas',
+                displayName: exercise.name,
+              }),
+              {
+                createNodeMock: (element) => {
+                  if (element.type === 'section') return { querySelectorAll: () => [first, last] }
+                  if (element.type === 'button') return { focus: () => {} }
+                  return null
+                },
+              }
+            )
+          })
+          act(() => {
+            component.root.findByProps({ className: 'workout-guide-trigger' }).props.onClick()
+          })
+          activeElement = last
+          let forwardPrevented = false
+          keydownHandler({
+            key: 'Tab',
+            shiftKey: false,
+            preventDefault: () => {
+              forwardPrevented = true
+            },
+          })
+          const forwardWrapped = activeElement === first && forwardPrevented
+          activeElement = first
+          let backwardPrevented = false
+          keydownHandler({
+            key: 'Tab',
+            shiftKey: true,
+            preventDefault: () => {
+              backwardPrevented = true
+            },
+          })
+          const backwardWrapped = activeElement === last && backwardPrevented
+          act(() => component.unmount())
+          return { forwardWrapped, backwardWrapped }
+        }
+        // Casos de borda pedidos na revisão: 1 único elemento focável mantém o foco nele
+        // mesmo (Tab e Shift+Tab), Escape continua fechando, e o foco volta ao trigger no
+        // unmount -- direto no WorkoutExerciseGuide (sem passar pelo trigger real), com
+        // onClose/triggerRef controlados pelo teste.
+        export const focusTrapEdgeCases = (exercise) => {
+          let activeElement = null
+          const only = { focus: () => { activeElement = only } }
+          let keydownHandler = null
+          let triggerFocused = false
+          let closeCalls = 0
+          global.document = {
+            addEventListener: (type, handler) => {
+              if (type === 'keydown') keydownHandler = handler
+            },
+            removeEventListener: (type) => {
+              if (type === 'keydown') keydownHandler = null
+            },
+            get activeElement() {
+              return activeElement
+            },
+          }
+          let component
+          act(() => {
+            component = TestRenderer.create(
+              createElement(WorkoutExerciseGuide, {
+                exercise,
+                onClose: () => {
+                  closeCalls += 1
+                },
+                triggerRef: {
+                  current: {
+                    focus: () => {
+                      triggerFocused = true
+                    },
+                  },
+                },
+              }),
+              {
+                createNodeMock: (element) => {
+                  if (element.type === 'section') return { querySelectorAll: () => [only] }
+                  if (element.type === 'button') return { focus: () => {} }
+                  return null
+                },
+              }
+            )
+          })
+          activeElement = only
+          let forwardPrevented = false
+          keydownHandler({
+            key: 'Tab',
+            shiftKey: false,
+            preventDefault: () => {
+              forwardPrevented = true
+            },
+          })
+          const staysForward = activeElement === only && forwardPrevented
+          activeElement = only
+          let backwardPrevented = false
+          keydownHandler({
+            key: 'Tab',
+            shiftKey: true,
+            preventDefault: () => {
+              backwardPrevented = true
+            },
+          })
+          const staysBackward = activeElement === only && backwardPrevented
+          keydownHandler({ key: 'Escape', preventDefault: () => {} })
+          const escapeClosed = closeCalls === 1
+          act(() => component.unmount())
+          return { staysForward, staysBackward, escapeClosed, focusReturnedToTrigger: triggerFocused }
+        }
       `,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
@@ -77,7 +213,8 @@ before(async () => {
     },
     logLevel: 'silent',
   })
-  ;({ renderGuide, renderVisual, openVisual } = createRequire(import.meta.url)(outfile))
+  ;({ renderGuide, renderVisual, openVisual, focusTrap, focusTrapEdgeCases } =
+    createRequire(import.meta.url)(outfile))
 })
 
 after(async () => {
@@ -114,4 +251,17 @@ test('execution guide exposes two lazy images, metadata and numbered instruction
 test('execution guide omits an empty instructions section', () => {
   const html = renderGuide({ ...exercise, instructions: [] })
   assert.doesNotMatch(html, /workout-guide-instructions|Instruções/)
+})
+
+test('Tab from the last focusable element wraps to the first, and Shift+Tab from the first wraps to the last', () => {
+  assert.deepEqual(focusTrap(exercise), { forwardWrapped: true, backwardWrapped: true })
+})
+
+test('with a single focusable element, Tab and Shift+Tab keep focus on it; Escape closes; focus returns to the trigger on unmount', () => {
+  assert.deepEqual(focusTrapEdgeCases(exercise), {
+    staysForward: true,
+    staysBackward: true,
+    escapeClosed: true,
+    focusReturnedToTrigger: true,
+  })
 })

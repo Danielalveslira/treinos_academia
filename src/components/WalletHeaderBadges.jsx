@@ -26,9 +26,9 @@ export function WalletHeaderBadgesView({ visible, loading, coinBalance, cashBala
   )
 }
 
-// useWallet() é a MESMA fonte já usada por WalletCard.jsx (Perfil) -- leitura sob
-// demanda com cache de sessão (ver economyService.js:getWallet), nunca um listener novo
-// nem uma segunda forma de calcular saldo.
+// useWallet() é a MESMA fonte já usada por WalletCard.jsx (Perfil) -- 1 onSnapshot
+// compartilhado por usuário, mantido em WalletContext.jsx, nunca um listener novo nem
+// uma segunda forma de calcular saldo (ver useWallet.js).
 export function WalletHeaderBadges() {
   const { user } = useAuth()
   const { wallet, loading } = useWallet()

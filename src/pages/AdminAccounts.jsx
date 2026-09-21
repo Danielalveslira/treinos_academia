@@ -145,7 +145,7 @@ export default function AdminAccounts() {
       showToast('Conta ativada.')
     } catch (err) {
       console.error('[AdminAccounts] enable:', err)
-      showToast('Erro ao ativar conta.', 'danger')
+      showToast(actionError(err, 'Erro ao ativar conta.'), 'danger')
     }
   }
 

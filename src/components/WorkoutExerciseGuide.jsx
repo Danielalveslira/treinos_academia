@@ -9,12 +9,38 @@ function displayValue(value) {
 
 export function WorkoutExerciseGuide({ exercise, onClose, triggerRef }) {
   const closeButtonRef = useRef(null)
+  const dialogRef = useRef(null)
 
+  // Trap real de foco: Tab/Shift+Tab nunca escapa para o conteúdo atrás do backdrop
+  // enquanto o modal está aberto. O padrão de isolamento de PwaControls.jsx
+  // (content.inert = true no #app-content) não é reaproveitável aqui sem portal, porque
+  // este componente é renderizado dentro da própria árvore de #app-content -- inert num
+  // ancestral também apagaria o modal. Restauração de foco ao trigger e fechamento por
+  // Escape já existiam e continuam aqui, sem mudança de comportamento.
   useEffect(() => {
     const trigger = triggerRef.current
     closeButtonRef.current?.focus()
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const dialog = dialogRef.current
+      if (!dialog) return
+      const focusable = dialog.querySelectorAll(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+      if (focusable.length === 0) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => {
@@ -26,6 +52,7 @@ export function WorkoutExerciseGuide({ exercise, onClose, triggerRef }) {
   return (
     <div className="workout-guide-backdrop" role="presentation" onMouseDown={onClose}>
       <section
+        ref={dialogRef}
         className="workout-guide-dialog"
         role="dialog"
         aria-modal="true"
