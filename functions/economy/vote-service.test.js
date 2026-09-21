@@ -49,11 +49,17 @@ function uid() {
   return `voter-${Date.now()}-${counter++}`
 }
 
-async function seedCommunityAndStatus({ communityId, statusId, authorId, expiresInMs = 60 * 60 * 1000 }) {
+async function seedCommunityAndStatus({
+  communityId,
+  statusId,
+  authorId,
+  expiresInMs = 60 * 60 * 1000,
+  type = 'text',
+}) {
   await db.doc(`statuses/${statusId}`).set({
     communityId,
     authorId,
-    type: 'text',
+    type,
     text: 'oi',
     expiresAt: Timestamp.fromMillis(Date.now() + expiresInMs),
   })
@@ -281,6 +287,54 @@ test('votar numa publicação inexistente falha com not-found, sem cobrar nada',
   await fundWallet(voterUid, 10)
   const voteOnPost = buildService()
   await assert.rejects(() => voteOnPost(voterUid, `s-${uid()}`, 1))
+  assert.equal((await getWallet(voterUid)).coinBalance, 10)
+})
+
+// Enquete já tem o próprio mecanismo de voto (gratuito, statuses/{id}/votes/{uid}) --
+// voto econômico (Apoio/Negativo, paga EvoCoins) não deveria existir para esse tipo de
+// conteúdo. Cobre exatamente o caminho que uma chamada direta/forjada à callable
+// tentaria explorar (o frontend nunca mostra os botões para enquete, mas isso sozinho
+// não impede uma chamada HTTP direta).
+test('voto econômico numa enquete é rejeitado com failed-precondition, sem cobrar EvoCoins nem criar o voto', async () => {
+  const communityId = `c-${uid()}`
+  const authorId = uid()
+  const voterUid = uid()
+  const statusId = `s-${uid()}`
+  await seedCommunityAndStatus({ communityId, statusId, authorId, type: 'poll' })
+  await joinCommunity(communityId, voterUid)
+  await fundWallet(voterUid, 10)
+  const voteOnPost = buildService()
+
+  await assert.rejects(
+    () => voteOnPost(voterUid, statusId, 1),
+    (error) => {
+      assert.equal(error.code, 'failed-precondition')
+      assert.match(error.message, /[Ee]nquete/)
+      return true
+    }
+  )
+
+  assert.equal(await getVote(statusId, voterUid), null, 'nenhum documento de voto econômico deveria ser criado')
+  assert.equal((await getWallet(voterUid)).coinBalance, 10, 'nenhuma EvoCoin debitada')
+  assert.equal(await countLedgerEntries(voterUid), 0, 'nenhuma entrada no ledger')
+  const status = await getStatus(statusId)
+  assert.equal(status.positiveVoteCount ?? 0, 0, 'contador de voto econômico não deveria mudar')
+  assert.equal(status.negativeVoteCount ?? 0, 0)
+  const daily = await getDaily(voterUid, todayKey(Date.now()))
+  assert.equal(daily, null, 'limite diário de votos pagos não deveria ser consumido')
+})
+
+test('voto econômico negativo numa enquete também é rejeitado, mesma barreira independente do valor', async () => {
+  const communityId = `c-${uid()}`
+  const authorId = uid()
+  const voterUid = uid()
+  const statusId = `s-${uid()}`
+  await seedCommunityAndStatus({ communityId, statusId, authorId, type: 'poll' })
+  await joinCommunity(communityId, voterUid)
+  await fundWallet(voterUid, 10)
+  const voteOnPost = buildService()
+
+  await assert.rejects(() => voteOnPost(voterUid, statusId, -1), /[Ee]nquete/)
   assert.equal((await getWallet(voterUid)).coinBalance, 10)
 })
 

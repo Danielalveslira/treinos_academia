@@ -58,6 +58,18 @@ export function createVoteService({
         throw new HttpsError('not-found', 'Publicação não encontrada.')
       }
       const status = statusSnapshot.data()
+      // Enquete já tem o próprio mecanismo de voto (statuses/{id}/votes/{uid}, gratuito,
+      // ver firestore.rules canVote) -- voto econômico é para o resto do conteúdo
+      // (posts normais). Sem esta barreira, uma chamada direta/forjada à callable
+      // debitaria EvoCoins e marcaria rewardState 'pending' (crédito ao autor via
+      // reward-settlement-service.js) para uma enquete, dois sistemas de voto
+      // coexistindo no mesmo post -- nunca foi essa a intenção do produto.
+      if (status.type === 'poll') {
+        throw new HttpsError(
+          'failed-precondition',
+          'Enquetes não recebem voto econômico -- vote em uma das opções da enquete.'
+        )
+      }
       if (status.authorId === uid) {
         throw new HttpsError('failed-precondition', 'Você não pode votar na própria publicação.')
       }

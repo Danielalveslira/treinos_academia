@@ -403,15 +403,22 @@ export function StatusCard({
           <PhotoStatus status={status} preloadedBlob={status._localPhotoBlob} />
         )}
       </div>
-      <div className="status-footer">
-        <EconomyVoteBar
-          status={status}
-          currentUserId={currentUserId}
-          showToast={showToast}
-          myVote={myEconomyVote}
-          onVoted={onEconomyVoted}
-        />
-      </div>
+      {/* Enquete já tem o próprio mecanismo de voto (PollStatus acima, gratuito, nas
+          próprias opções) -- voto econômico Apoio/Negativo não se aplica a esse tipo de
+          conteúdo, então o rodapé inteiro (botões, contagens, "Você apoiou/discordou",
+          "Ver quem votou") nem é montado para enquete, não só escondido visualmente. O
+          backend (vote-service.js) rejeita a mesma tentativa via chamada direta. */}
+      {status.type !== 'poll' && (
+        <div className="status-footer">
+          <EconomyVoteBar
+            status={status}
+            currentUserId={currentUserId}
+            showToast={showToast}
+            myVote={myEconomyVote}
+            onVoted={onEconomyVoted}
+          />
+        </div>
+      )}
       {isReportableAuthor(status, currentUserId) && (
         <Link
           className="status-report-link"
