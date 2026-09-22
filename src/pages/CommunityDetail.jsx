@@ -472,7 +472,8 @@ function CommunityDetail({ id }) {
   async function handleDeleteCommunity() {
     const confirmed = await confirmDelete({
       title: 'Excluir esta comunidade?',
-      content: 'Publicações, membros e restrições dela serão apagados. Esta ação não pode ser desfeita.',
+      content:
+        'Publicações, membros e restrições dela serão apagados. Esta ação não pode ser desfeita.',
     })
     if (!confirmed) return
     try {
@@ -640,9 +641,8 @@ function CommunityDetail({ id }) {
           <Box className="community-heading">
             <Box sx={{ minWidth: 0 }}>
               <Heading as="h1">{community.name}</Heading>
-              {Boolean(community.promoted) && toMillis(community.promotedUntil) > toMillis(new Date()) && (
-                <PromotedBadge />
-              )}
+              {Boolean(community.promoted) &&
+                toMillis(community.promotedUntil) > toMillis(new Date()) && <PromotedBadge />}
               {community.description && (
                 <Text as="p" className="community-description">
                   {community.description}
@@ -668,7 +668,13 @@ function CommunityDetail({ id }) {
               aqui restritas (pelas Rules, não só pela UI) a esta comunidade. */}
           {canModerate && managing && (
             <Box
-              sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3 }}
+              sx={{
+                border: '1px solid',
+                borderColor: 'border.default',
+                borderRadius: 2,
+                p: 3,
+                mb: 3,
+              }}
             >
               <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
                 Gerenciar comunidade
@@ -678,7 +684,16 @@ function CommunityDetail({ id }) {
                 onSubmit={handleUpdateCommunity}
                 onCancel={() => setManaging(false)}
               />
-              <Box sx={{ display: 'flex', gap: 2, mt: 3, borderTop: '1px solid', borderColor: 'border.default', pt: 3 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  gap: 2,
+                  mt: 3,
+                  borderTop: '1px solid',
+                  borderColor: 'border.default',
+                  pt: 3,
+                }}
+              >
                 <Button onClick={handleToggleActive}>
                   {community.isActive ? 'Desativar comunidade' : 'Reativar comunidade'}
                 </Button>

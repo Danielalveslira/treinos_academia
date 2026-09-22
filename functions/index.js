@@ -791,7 +791,12 @@ export const deleteCommunityPermanently = onCall(options, async (request) => {
   return deletions.queue('community', request.data.communityId, adminId)
 })
 
-const communityModeration = createCommunityModerationService({ db, FieldValue, HttpsError, isProtectedRole })
+const communityModeration = createCommunityModerationService({
+  db,
+  FieldValue,
+  HttpsError,
+  isProtectedRole,
+})
 
 // Fase 5 (privilégios): caminho DEDICADO para banir/desbanir de UMA comunidade --
 // deliberadamente NÃO uma ampliação de decideSupportRequest (ver

@@ -166,10 +166,7 @@ function order(html, ...markers) {
     return index
   })
   for (let i = 1; i < indices.length; i += 1) {
-    assert.ok(
-      indices[i - 1] < indices[i],
-      `esperava "${markers[i - 1]}" antes de "${markers[i]}"`
-    )
+    assert.ok(indices[i - 1] < indices[i], `esperava "${markers[i - 1]}" antes de "${markers[i]}"`)
   }
 }
 
