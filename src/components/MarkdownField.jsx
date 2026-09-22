@@ -1,8 +1,22 @@
-import { useId, useRef, useState } from 'react'
-import { Box, FormControl, IconButton, SegmentedControl, Text, Textarea } from '@primer/react'
+import { createElement, useId, useRef, useState } from 'react'
+import {
+  ActionList,
+  ActionMenu,
+  Box,
+  Dialog,
+  FormControl,
+  IconButton,
+  SegmentedControl,
+  Text,
+  Textarea,
+  TextInput,
+} from '@primer/react'
 import {
   BoldIcon,
+  HeadingIcon,
+  HorizontalRuleIcon,
   ItalicIcon,
+  KebabHorizontalIcon,
   LinkIcon,
   QuoteIcon,
   CodeIcon,
@@ -11,22 +25,78 @@ import {
   TasklistIcon,
   PencilIcon,
   EyeIcon,
+  TableIcon,
 } from '@primer/octicons-react'
-import { applyMarkdownAction } from '../utils/markdownToolbar'
+import {
+  applyMarkdownAction,
+  insertMarkdownLink,
+  normalizeMarkdownLinkUrl,
+} from '../utils/markdownToolbar'
 import { MarkdownViewer } from './MarkdownViewer'
 
-const TOOLBAR_ACTIONS = [
+const PRIMARY_ACTIONS = [
   { action: 'bold', icon: BoldIcon, label: 'Negrito' },
   { action: 'italic', icon: ItalicIcon, label: 'Itálico' },
+  { action: 'heading', icon: HeadingIcon, label: 'Título' },
   { action: 'link', icon: LinkIcon, label: 'Link' },
-  { action: 'quote', icon: QuoteIcon, label: 'Citação' },
-  { action: 'code', icon: CodeIcon, label: 'Código' },
-  { action: 'unorderedList', icon: ListUnorderedIcon, label: 'Lista' },
-  { action: 'orderedList', icon: ListOrderedIcon, label: 'Lista numerada' },
-  { action: 'checklist', icon: TasklistIcon, label: 'Checklist' },
 ]
 
-const CONTENT_MIN_HEIGHT = ['240px', '320px']
+const SECONDARY_ACTIONS = [
+  { action: 'quote', icon: QuoteIcon, label: 'Citação' },
+  { action: 'code', icon: CodeIcon, label: 'Código inline' },
+  { action: 'unorderedList', icon: ListUnorderedIcon, label: 'Lista com marcadores' },
+  { action: 'orderedList', icon: ListOrderedIcon, label: 'Lista numerada' },
+  { action: 'checklist', icon: TasklistIcon, label: 'Checklist' },
+  { action: 'horizontalRule', icon: HorizontalRuleIcon, label: 'Separador horizontal' },
+  { action: 'table', icon: TableIcon, label: 'Tabela simples' },
+]
+
+const CONTENT_MIN_HEIGHT = ['128px', '144px']
+
+function LinkDialog({ draft, setDraft, onCancel, onInsert, inputRef, returnFocusRef }) {
+  return (
+    <Dialog
+      title="Inserir link"
+      subtitle="Use um endereço HTTP ou HTTPS."
+      width="medium"
+      onClose={onCancel}
+      initialFocusRef={inputRef}
+      returnFocusRef={returnFocusRef}
+      footerButtons={[
+        { content: 'Cancelar', onClick: onCancel },
+        { content: 'Inserir link', buttonType: 'primary', onClick: onInsert },
+      ]}
+    >
+      <Box sx={{ display: 'grid', gap: 3, p: 3 }}>
+        <FormControl>
+          <FormControl.Label>Texto do link</FormControl.Label>
+          <TextInput
+            value={draft.label}
+            onChange={(event) => setDraft((current) => ({ ...current, label: event.target.value }))}
+            maxLength={200}
+            block
+          />
+        </FormControl>
+        <FormControl required>
+          <FormControl.Label>Endereço</FormControl.Label>
+          <TextInput
+            ref={inputRef}
+            value={draft.url}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, url: event.target.value, error: '' }))
+            }
+            placeholder="https://exemplo.com"
+            aria-invalid={draft.error ? 'true' : undefined}
+            block
+          />
+          {draft.error && (
+            <FormControl.Validation variant="error">{draft.error}</FormControl.Validation>
+          )}
+        </FormControl>
+      </Box>
+    </Dialog>
+  )
+}
 
 export function MarkdownField({
   label,
@@ -38,41 +108,113 @@ export function MarkdownField({
   error,
   caption,
   maxLength = 500,
-  rows = 10,
+  rows = 5,
 }) {
   const id = useId()
   const [mode, setMode] = useState('edit')
   const [toolbarError, setToolbarError] = useState('')
+  const [linkDraft, setLinkDraft] = useState(null)
   const textareaRef = useRef(null)
+  const linkInputRef = useRef(null)
   const text = typeof value === 'string' ? value : ''
   const validation = error || toolbarError
   const describedBy = `${id}-caption${validation ? ` ${id}-validationMessage` : ''}`
 
-  function runAction(action) {
+  function restoreSelection(selectionStart, selectionEnd) {
     const el = textareaRef.current
-    if (!el || disabled || mode !== 'edit') return
-    const {
-      value: nextValue,
-      selectionStart,
-      selectionEnd,
-    } = applyMarkdownAction(
-      action,
-      text,
-      el.selectionStart ?? text.length,
-      el.selectionEnd ?? text.length
-    )
-    if (nextValue.length > maxLength) {
-      setToolbarError(`A formatação ultrapassa o limite de ${maxLength} caracteres.`)
-      el.focus()
-      return
-    }
-    setToolbarError('')
-    onChange(nextValue)
     requestAnimationFrame(() => {
-      if (!el.isConnected) return
+      if (!el?.isConnected) return
       el.focus()
       el.setSelectionRange(selectionStart, selectionEnd)
     })
+  }
+
+  function applyResult({ value: nextValue, selectionStart, selectionEnd }) {
+    const el = textareaRef.current
+    if (!el) return false
+    if (nextValue.length > maxLength) {
+      setToolbarError(`A formatação ultrapassa o limite de ${maxLength} caracteres.`)
+      el.focus()
+      return false
+    }
+    setToolbarError('')
+    onChange(nextValue)
+    restoreSelection(selectionStart, selectionEnd)
+    return true
+  }
+
+  function openLinkDialog() {
+    const el = textareaRef.current
+    if (!el || disabled || mode !== 'edit') return
+    const selectionStart = el.selectionStart ?? text.length
+    const selectionEnd = el.selectionEnd ?? text.length
+    setLinkDraft({
+      label: text.slice(selectionStart, selectionEnd),
+      url: '',
+      error: '',
+      selectionStart,
+      selectionEnd,
+    })
+  }
+
+  function closeLinkDialog() {
+    if (!linkDraft) return
+    const { selectionStart, selectionEnd } = linkDraft
+    setLinkDraft(null)
+    restoreSelection(selectionStart, selectionEnd)
+  }
+
+  function insertLink() {
+    if (!linkDraft) return
+    const url = normalizeMarkdownLinkUrl(linkDraft.url)
+    if (!url) {
+      setLinkDraft((current) => ({
+        ...current,
+        error: 'Informe um endereço HTTP ou HTTPS válido.',
+      }))
+      return
+    }
+    const result = insertMarkdownLink(
+      text,
+      linkDraft.selectionStart,
+      linkDraft.selectionEnd,
+      linkDraft.label.trim(),
+      url
+    )
+    if (result.value.length > maxLength) {
+      setLinkDraft((current) => ({
+        ...current,
+        error: `O link ultrapassa o limite de ${maxLength} caracteres.`,
+      }))
+      return
+    }
+    setLinkDraft(null)
+    applyResult(result)
+  }
+
+  function runAction(action) {
+    if (action === 'link') {
+      openLinkDialog()
+      return
+    }
+    const el = textareaRef.current
+    if (!el || disabled || mode !== 'edit') return
+    applyResult(
+      applyMarkdownAction(
+        action,
+        text,
+        el.selectionStart ?? text.length,
+        el.selectionEnd ?? text.length
+      )
+    )
+  }
+
+  function handleKeyDown(event) {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey) return
+    const action = { b: 'bold', i: 'italic', k: 'link' }[event.key.toLowerCase()]
+    if (!action) return
+    event.preventDefault()
+    runAction(action)
   }
 
   return (
@@ -103,9 +245,9 @@ export function MarkdownField({
           <Box
             role="group"
             aria-label="Formatação do texto"
-            sx={{ display: 'flex', flexWrap: 'wrap' }}
+            sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}
           >
-            {TOOLBAR_ACTIONS.map(({ action, icon, label: actionLabel }) => (
+            {PRIMARY_ACTIONS.map(({ action, icon, label: actionLabel }) => (
               <IconButton
                 key={action}
                 type="button"
@@ -117,6 +259,28 @@ export function MarkdownField({
                 onClick={() => runAction(action)}
               />
             ))}
+            <ActionMenu>
+              <ActionMenu.Anchor>
+                <IconButton
+                  type="button"
+                  icon={KebabHorizontalIcon}
+                  variant="invisible"
+                  size="medium"
+                  aria-label="Mais opções de formatação"
+                  disabled={disabled || mode === 'preview'}
+                />
+              </ActionMenu.Anchor>
+              <ActionMenu.Overlay align="start">
+                <ActionList>
+                  {SECONDARY_ACTIONS.map(({ action, icon, label: actionLabel }) => (
+                    <ActionList.Item key={action} onSelect={() => runAction(action)}>
+                      <ActionList.LeadingVisual>{createElement(icon)}</ActionList.LeadingVisual>
+                      {actionLabel}
+                    </ActionList.Item>
+                  ))}
+                </ActionList>
+              </ActionMenu.Overlay>
+            </ActionMenu>
           </Box>
           <SegmentedControl
             aria-label="Editar ou pré-visualizar"
@@ -151,6 +315,7 @@ export function MarkdownField({
               setToolbarError('')
               onChange(e.target.value)
             }}
+            onKeyDown={handleKeyDown}
             required={required}
             validationStatus={validation ? 'error' : undefined}
             aria-describedby={describedBy}
@@ -163,7 +328,12 @@ export function MarkdownField({
             sx={{
               border: 0,
               borderRadius: 0,
-              '& textarea': { minHeight: CONTENT_MIN_HEIGHT, fontSize: '16px' },
+              '& textarea': {
+                minHeight: CONTENT_MIN_HEIGHT,
+                p: 3,
+                fontSize: '16px',
+                lineHeight: 1.6,
+              },
             }}
           />
         ) : (
@@ -190,12 +360,34 @@ export function MarkdownField({
           sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 2 }}
         >
           <span>{caption || 'Aceita **negrito**, _itálico_, listas, links e tabelas.'}</span>
-          <Text sx={{ flexShrink: 0, color: text.length >= maxLength ? 'danger.fg' : 'fg.muted' }}>
-            {text.length}/{maxLength}
+          <Text
+            aria-live="polite"
+            sx={{
+              flexShrink: 0,
+              color:
+                text.length >= maxLength
+                  ? 'danger.fg'
+                  : text.length >= maxLength * 0.9
+                    ? 'attention.fg'
+                    : 'fg.muted',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {text.length} / {maxLength}
           </Text>
         </Box>
       </FormControl.Caption>
       {validation && <FormControl.Validation variant="error">{validation}</FormControl.Validation>}
+      {linkDraft && (
+        <LinkDialog
+          draft={linkDraft}
+          setDraft={setLinkDraft}
+          onCancel={closeLinkDialog}
+          onInsert={insertLink}
+          inputRef={linkInputRef}
+          returnFocusRef={textareaRef}
+        />
+      )}
     </FormControl>
   )
 }

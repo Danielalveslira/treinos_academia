@@ -9,14 +9,26 @@ function wrapSelection(value, start, end, marker, placeholder) {
   return { value: nextValue, selectionStart, selectionEnd }
 }
 
-function wrapLink(value, start, end) {
+export function normalizeMarkdownLinkUrl(value) {
+  const input = typeof value === 'string' ? value.trim() : ''
+  if (!input || input.startsWith('//')) return null
+
+  const candidate = /^[a-z][a-z\d+.-]*:/i.test(input) ? input : `https://${input}`
+  try {
+    const url = new URL(candidate)
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : null
+  } catch {
+    return null
+  }
+}
+
+export function insertMarkdownLink(value, start, end, label, url) {
   const before = value.slice(0, start)
-  const selected = value.slice(start, end)
   const after = value.slice(end)
-  const label = selected || 'texto do link'
-  const nextValue = `${before}[${label}](url)${after}`
-  const urlStart = before.length + label.length + 3
-  return { value: nextValue, selectionStart: urlStart, selectionEnd: urlStart + 3 }
+  const safeLabel = (label || 'texto do link').replaceAll('[', '\\[').replaceAll(']', '\\]')
+  const markdown = `[${safeLabel}](${url})`
+  const cursor = before.length + markdown.length
+  return { value: `${before}${markdown}${after}`, selectionStart: cursor, selectionEnd: cursor }
 }
 
 // Aplica um prefixo a cada linha tocada pela seleção (citação, listas) — se nada
@@ -43,6 +55,22 @@ function prefixLines(value, start, end, prefix) {
   return { value: nextValue, selectionStart: lineStart, selectionEnd: lineEnd + delta }
 }
 
+function insertBlock(value, start, end, block, selectionOffset = block.length) {
+  const before = value.slice(0, start)
+  const after = value.slice(end)
+  const leadingBreak =
+    before && !before.endsWith('\n\n') ? (before.endsWith('\n') ? '\n' : '\n\n') : ''
+  const trailingBreak =
+    after && !after.startsWith('\n\n') ? (after.startsWith('\n') ? '\n' : '\n\n') : ''
+  const insertion = `${leadingBreak}${block}${trailingBreak}`
+  const cursor = before.length + leadingBreak.length + selectionOffset
+  return {
+    value: `${before}${insertion}${after}`,
+    selectionStart: cursor,
+    selectionEnd: cursor,
+  }
+}
+
 export function applyMarkdownAction(action, value, start, end) {
   switch (action) {
     case 'bold':
@@ -51,6 +79,8 @@ export function applyMarkdownAction(action, value, start, end) {
       return wrapSelection(value, start, end, '_', 'itálico')
     case 'code':
       return wrapSelection(value, start, end, '`', 'código')
+    case 'heading':
+      return prefixLines(value, start, end, '## ')
     case 'quote':
       return prefixLines(value, start, end, '> ')
     case 'unorderedList':
@@ -59,8 +89,12 @@ export function applyMarkdownAction(action, value, start, end) {
       return prefixLines(value, start, end, '1. ')
     case 'checklist':
       return prefixLines(value, start, end, '- [ ] ')
-    case 'link':
-      return wrapLink(value, start, end)
+    case 'horizontalRule':
+      return insertBlock(value, start, end, '---')
+    case 'table': {
+      const block = '| Coluna 1 | Coluna 2 |\n| --- | --- |\n| Célula | Célula |'
+      return insertBlock(value, start, end, block, 2)
+    }
     default:
       return { value, selectionStart: start, selectionEnd: end }
   }

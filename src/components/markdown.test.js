@@ -114,5 +114,7 @@ test('editor associates label, caption, requirement and validation with the text
   assert.ok(html.includes(`aria-describedby="${id}-caption ${id}-validationMessage"`))
   assert.match(html, /aria-required="true"/)
   assert.match(html, /aria-invalid="true"/)
-  assert.match(html, /rows="10"/)
+  assert.match(html, /rows="5"/)
+  assert.match(html, />0 \/ 500</)
+  assert.match(html, /Mais opções de formatação/)
 })

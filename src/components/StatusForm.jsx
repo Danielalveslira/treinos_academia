@@ -28,6 +28,12 @@ import {
   validatePhotoStatus,
   hasErrors,
 } from '../utils/validators'
+import {
+  clearStatusDraft,
+  readStatusDraft,
+  saveStatusDraft,
+  statusDraftKey,
+} from '../utils/statusDraft'
 
 const TYPES = [
   { value: 'text', label: 'Texto' },
@@ -38,13 +44,13 @@ const TYPES = [
 
 const EMPTY_OPTIONS = ['', '']
 
-// communityId e author só são usados pelo tipo "foto": ao contrário dos outros tipos
-// (onde o pai cria o documento a partir de onSubmit), o upload precisa acontecer
-// aqui dentro mesmo, porque só quem chama uploadBytesResumable tem acesso à tarefa
-// que dá progresso real e permite cancelar — ver createPhotoStatus.
+// No tipo "foto", communityId e author também são usados no upload local,
+// pois somente createPhotoStatus tem acesso à tarefa que fornece progresso e cancelamento.
 export function StatusForm({ communityId, author, onSubmit, onCancel }) {
+  const textDraftKey = statusDraftKey(author?.id, communityId, 'text')
+  const activeTextDraftKey = useRef(textDraftKey)
   const [type, setType] = useState('text')
-  const [text, setText] = useState('')
+  const [text, setText] = useState(() => readStatusDraft(author?.id, communityId, 'text'))
   const [question, setQuestion] = useState('')
   const [options, setOptions] = useState(EMPTY_OPTIONS)
   const [workoutTitle, setWorkoutTitle] = useState('')
@@ -71,6 +77,16 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
     },
     []
   )
+
+  useEffect(() => {
+    if (activeTextDraftKey.current !== textDraftKey) {
+      activeTextDraftKey.current = textDraftKey
+      setText(readStatusDraft(author?.id, communityId, 'text'))
+      return
+    }
+
+    saveStatusDraft(author?.id, communityId, 'text', text)
+  }, [author?.id, communityId, text, textDraftKey])
 
   function updateOption(index, value) {
     setOptions((prev) => prev.map((o, i) => (i === index ? value : o)))
@@ -147,8 +163,10 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
 
     setSubmitting(true)
     try {
-      if (type === 'text') await onSubmit({ type, text })
-      else if (type === 'poll') {
+      if (type === 'text') {
+        await onSubmit({ type, text })
+        clearStatusDraft(author?.id, communityId, 'text')
+      } else if (type === 'poll') {
         await onSubmit({ type, question, options: options.filter((o) => o.trim()) })
       } else if (type === 'workout') {
         await onSubmit({
@@ -209,6 +227,7 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
             disabled={submitting}
             maxLength={500}
             error={errors.text}
+            caption="Use a formatação sem precisar decorar Markdown. O rascunho fica neste dispositivo."
           />
         )}
 
