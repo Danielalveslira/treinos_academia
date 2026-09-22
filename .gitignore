@@ -10,3 +10,4 @@ dist-ssr
 firebase-debug.log
 firestore-debug.log
 .generated/exercise-catalog-images/
+.vercel
