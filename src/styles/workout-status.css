@@ -1,0 +1,50 @@
+.workout-status-card {
+  border-color: color-mix(in srgb, var(--fitness-accent) 45%, var(--borderColor-default));
+}
+
+.workout-status {
+  min-width: 0;
+}
+
+.workout-status-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: var(--fitness-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.workout-participants-summary button {
+  min-height: 36px;
+  overflow-wrap: anywhere;
+  text-align: left;
+  white-space: normal;
+}
+
+.workout-actions button {
+  min-height: 40px;
+}
+
+.workout-participant-row {
+  min-width: 0;
+}
+
+.workout-participant-link {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 543px) {
+  .workout-actions {
+    display: grid !important;
+    grid-template-columns: 1fr;
+  }
+
+  .workout-actions button {
+    width: 100%;
+  }
+}

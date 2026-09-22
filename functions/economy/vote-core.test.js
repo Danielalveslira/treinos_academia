@@ -5,6 +5,8 @@ import {
   decideVoteAction,
   nextRewardState,
   economyVoteCountDelta,
+  economyVoteIneligibility,
+  isEconomyVoteEligibleStatusType,
 } from './vote-core.js'
 
 test('validateVoteOnPost accepts 1, -1 and null, with a valid statusId', () => {
@@ -25,6 +27,14 @@ test('validateVoteOnPost rejects any value other than 1, -1 or null', () => {
   }
 })
 
+test('economic voting eligibility excludes polls and scheduled workouts only', () => {
+  assert.match(economyVoteIneligibility('poll'), /Enquetes/)
+  assert.match(economyVoteIneligibility('workout'), /Treinos marcados/)
+  for (const type of ['text', 'achievement', 'photo']) {
+    assert.equal(isEconomyVoteEligibleStatusType(type), true)
+  }
+})
+
 test('no existing vote + a real value (1 or -1) -> create', () => {
   assert.equal(decideVoteAction({ existingVote: null, incomingValue: 1 }).action, 'create')
   assert.equal(decideVoteAction({ existingVote: undefined, incomingValue: -1 }).action, 'create')
@@ -35,25 +45,13 @@ test('no existing vote + null (nothing to remove) -> noop', () => {
 })
 
 test('existing vote + the exact same value again (accidental double click) -> noop', () => {
-  assert.equal(
-    decideVoteAction({ existingVote: { value: 1 }, incomingValue: 1 }).action,
-    'noop'
-  )
-  assert.equal(
-    decideVoteAction({ existingVote: { value: -1 }, incomingValue: -1 }).action,
-    'noop'
-  )
+  assert.equal(decideVoteAction({ existingVote: { value: 1 }, incomingValue: 1 }).action, 'noop')
+  assert.equal(decideVoteAction({ existingVote: { value: -1 }, incomingValue: -1 }).action, 'noop')
 })
 
 test('existing vote + the opposite value -> switch (no new charge)', () => {
-  assert.equal(
-    decideVoteAction({ existingVote: { value: 1 }, incomingValue: -1 }).action,
-    'switch'
-  )
-  assert.equal(
-    decideVoteAction({ existingVote: { value: -1 }, incomingValue: 1 }).action,
-    'switch'
-  )
+  assert.equal(decideVoteAction({ existingVote: { value: 1 }, incomingValue: -1 }).action, 'switch')
+  assert.equal(decideVoteAction({ existingVote: { value: -1 }, incomingValue: 1 }).action, 'switch')
 })
 
 test('existing active vote + null -> remove (no refund)', () => {

@@ -20,6 +20,11 @@ export function formatDateTime(value) {
   return value.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+export function formatTime(value) {
+  if (!value) return '—'
+  return value.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
 // EvoCash (Fase 4): preço sempre gravado como inteiro em centavos (nunca float de
 // reais, ver cash-purchase-core.js) -- só a exibição converte para reais.
 export function formatCentavosBRL(amountCentavos) {

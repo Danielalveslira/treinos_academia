@@ -46,6 +46,7 @@ import { createActivityService } from './economy/activity-service.js'
 import { createVoteService } from './economy/vote-service.js'
 import { validateVoteOnPost } from './economy/vote-core.js'
 import { createListPostEconomyVoters } from './economy/vote-query-service.js'
+import { createListWorkoutParticipants } from './workout-participants-service.js'
 import { createCashPurchaseService } from './economy/cash-purchase-service.js'
 import { createPixPaymentAdminService } from './economy/pix-payment-admin-service.js'
 import { createPrivilegeService } from './economy/privilege-service.js'
@@ -218,6 +219,21 @@ export const listPostEconomyVoters = onCall(optionsUsCentral, async (request) =>
   return listVoters(uid, {
     statusId: request.data?.statusId,
     direction: request.data?.direction,
+    cursor: request.data?.cursor ?? null,
+    limit: request.data?.limit,
+  })
+})
+
+// "Ver participantes" (Treino Marcado V1) -- mesma checagem de acesso de
+// listPostEconomyVoters (reaproveita resolvePostAccessDenialReason), mas nunca chamada
+// automaticamente por card: só quando o membro abre "Ver participantes" no
+// WorkoutStatus. Região padrão (southamerica-east1), não us-central1 -- ação sob
+// demanda, de baixa frequência, não justifica a mesma otimização de latência do voto.
+const listParticipants = createListWorkoutParticipants({ db, Timestamp, HttpsError })
+export const listWorkoutParticipants = onCall(options, async (request) => {
+  const uid = requireUser(request)
+  return listParticipants(uid, {
+    statusId: request.data?.statusId,
     cursor: request.data?.cursor ?? null,
     limit: request.data?.limit,
   })

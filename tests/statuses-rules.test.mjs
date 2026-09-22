@@ -1,9 +1,17 @@
 import { before, after, test } from 'node:test'
+import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { initializeTestEnvironment, assertFails, assertSucceeds } from '@firebase/rules-unit-testing'
+import {
+  initializeTestEnvironment,
+  assertFails,
+  assertSucceeds,
+} from '@firebase/rules-unit-testing'
 import {
   doc,
+  getDoc,
+  getDocs,
   setDoc,
+  deleteDoc,
   addDoc,
   updateDoc,
   collection,
@@ -22,6 +30,7 @@ import { legalDigest } from '../functions/legal-core.js'
 
 let env
 let member
+let currentLegalAcceptance
 
 function textStatus(overrides = {}) {
   return {
@@ -31,6 +40,24 @@ function textStatus(overrides = {}) {
     authorIsSuperAdmin: false,
     type: 'text',
     text: 'Bora treinar',
+    createdAt: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 1440 * 60000),
+    ...overrides,
+  }
+}
+
+function workoutStatus(overrides = {}) {
+  return {
+    communityId: 'comm1',
+    authorId: 'member',
+    authorUsername: null,
+    authorIsSuperAdmin: false,
+    type: 'workout',
+    workout: {
+      title: 'Treino de pernas',
+      date: Timestamp.fromMillis(Date.now() + 60 * 60000),
+      location: 'Academia X',
+    },
     createdAt: serverTimestamp(),
     expiresAt: Timestamp.fromMillis(Date.now() + 1440 * 60000),
     ...overrides,
@@ -65,6 +92,11 @@ before(async () => {
     await readFile(new URL('../functions/legal/documents.json', import.meta.url))
   )
   const digest = legalDigest(manifest, legalDocuments)
+  currentLegalAcceptance = {
+    version: manifest.version,
+    digest,
+    acceptedAt: Timestamp.now(),
+  }
 
   env = await initializeTestEnvironment({
     projectId: 'demo-treinos',
@@ -88,7 +120,7 @@ before(async () => {
     await setDoc(doc(db, 'users/member'), {
       role: 'user',
       createdAt: Timestamp.fromMillis(1577836800000),
-      legalAcceptance: { version: manifest.version, digest, acceptedAt: Timestamp.now() },
+      legalAcceptance: currentLegalAcceptance,
     })
     await setDoc(doc(db, 'communities/comm1'), {
       name: 'Comunidade',
@@ -152,7 +184,13 @@ test('a status cannot carry fields outside the schema for its type', async () =>
   await assertFails(
     addDoc(collection(member, 'statuses'), {
       ...textStatus(),
-      poll: { question: 'q', options: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }] },
+      poll: {
+        question: 'q',
+        options: [
+          { id: 'a', label: 'A' },
+          { id: 'b', label: 'B' },
+        ],
+      },
     })
   )
 })
@@ -189,4 +227,120 @@ test('voting on a poll requires optionId to match one of its real options', asyn
       createdAt: serverTimestamp(),
     })
   )
+})
+
+// Treino Marcado V1: canJoinWorkout usa status.workout.date, não mais status.expiresAt,
+// como autoridade de elegibilidade -- ver o comentário em firestore.rules. Este teste
+// planta o status diretamente (withSecurityRulesDisabled), simulando exatamente um post
+// real que já saiu do feed recente (expiresAt no passado) mas cujo evento ainda não
+// aconteceu -- o cenário que motivou a mudança.
+async function seedWorkoutStatusBypassingRules(statusId, overrides = {}) {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `statuses/${statusId}`), workoutStatus(overrides))
+  })
+}
+
+test('joining a future workout still works even after the post itself has left the recent feed (expiresAt in the past)', async () => {
+  const statusId = 'workout-future-expired-post'
+  await seedWorkoutStatusBypassingRules(statusId, {
+    workout: {
+      title: 'Treino de pernas',
+      date: Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60000), // daqui a 7 dias
+      location: 'Academia X',
+    },
+    expiresAt: Timestamp.fromMillis(Date.now() - 60000), // post já saiu do feed recente
+  })
+  await assertSucceeds(
+    setDoc(doc(member, `statuses/${statusId}/participants/member`), {
+      userId: 'member',
+      joinedAt: serverTimestamp(),
+    })
+  )
+})
+
+test('joining a workout whose date has already passed is rejected, even if the post itself has not expired yet', async () => {
+  const statusId = 'workout-past-date-fresh-post'
+  await seedWorkoutStatusBypassingRules(statusId, {
+    workout: {
+      title: 'Treino de pernas',
+      date: Timestamp.fromMillis(Date.now() - 60 * 60000), // já aconteceu há 1h
+      location: 'Academia X',
+    },
+    expiresAt: Timestamp.fromMillis(Date.now() + 1440 * 60000), // post ainda "recente"
+  })
+  await assertFails(
+    setDoc(doc(member, `statuses/${statusId}/participants/member`), {
+      userId: 'member',
+      joinedAt: serverTimestamp(),
+    })
+  )
+})
+
+test('a non-member cannot join a future workout even in the same community', async () => {
+  const ref = await addDoc(collection(member, 'statuses'), workoutStatus())
+  const outsider = env.authenticatedContext('outsider').firestore()
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'users/outsider'), { role: 'user' })
+  })
+  await assertFails(
+    setDoc(doc(outsider, `statuses/${ref.id}/participants/outsider`), {
+      userId: 'outsider',
+      joinedAt: serverTimestamp(),
+    })
+  )
+})
+
+test('a member can cancel their own participation at any time (delete is not gated by workout.date)', async () => {
+  const ref = await addDoc(collection(member, 'statuses'), workoutStatus())
+  await assertSucceeds(
+    setDoc(doc(member, `statuses/${ref.id}/participants/member`), {
+      userId: 'member',
+      joinedAt: serverTimestamp(),
+    })
+  )
+  await assertSucceeds(deleteDoc(doc(member, `statuses/${ref.id}/participants/member`)))
+})
+
+test('repeating join never creates a second participant document', async () => {
+  const ref = await addDoc(collection(member, 'statuses'), workoutStatus())
+  const participantRef = doc(member, `statuses/${ref.id}/participants/member`)
+  await assertSucceeds(setDoc(participantRef, { userId: 'member', joinedAt: serverTimestamp() }))
+  await assertFails(setDoc(participantRef, { userId: 'member', joinedAt: serverTimestamp() }))
+  const participants = await assertSucceeds(
+    getDocs(collection(member, `statuses/${ref.id}/participants`))
+  )
+  assert.equal(participants.size, 1)
+})
+
+test('community members can read participant identities, outsiders cannot', async () => {
+  const ref = await addDoc(collection(member, 'statuses'), workoutStatus())
+  await assertSucceeds(
+    setDoc(doc(member, `statuses/${ref.id}/participants/member`), {
+      userId: 'member',
+      joinedAt: serverTimestamp(),
+    })
+  )
+
+  const otherMember = env.authenticatedContext('member2').firestore()
+  const outsider = env.authenticatedContext('outsider-reader').firestore()
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore()
+    await setDoc(doc(db, 'users/member2'), {
+      role: 'user',
+      createdAt: Timestamp.fromMillis(1577836800000),
+      legalAcceptance: currentLegalAcceptance,
+    })
+    await setDoc(doc(db, 'communityMembers/comm1_member2'), {
+      communityId: 'comm1',
+      userId: 'member2',
+      joinedAt: Timestamp.now(),
+    })
+    await setDoc(doc(db, 'users/outsider-reader'), {
+      role: 'user',
+      createdAt: Timestamp.fromMillis(1577836800000),
+    })
+  })
+
+  await assertSucceeds(getDoc(doc(otherMember, `statuses/${ref.id}/participants/member`)))
+  await assertFails(getDoc(doc(outsider, `statuses/${ref.id}/participants/member`)))
 })

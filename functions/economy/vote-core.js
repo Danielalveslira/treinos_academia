@@ -13,6 +13,23 @@ export function validateVoteOnPost(data) {
   return null
 }
 
+// Fonte única de elegibilidade por tipo, usada tanto pelas duas callables de voto
+// (via vote-service) quanto pelo settlement de recompensas antigas. Poll possui voto
+// próprio e workout possui RSVP; nenhum dos dois participa da economia.
+export function economyVoteIneligibility(statusType) {
+  if (statusType === 'poll') {
+    return 'Enquetes não recebem voto econômico -- vote em uma das opções da enquete.'
+  }
+  if (statusType === 'workout') {
+    return 'Treinos marcados não recebem voto econômico -- use a confirmação de participação.'
+  }
+  return null
+}
+
+export function isEconomyVoteEligibleStatusType(statusType) {
+  return economyVoteIneligibility(statusType) == null
+}
+
 // existingVote: documento atual em economyVotes/{uid} (ou null/undefined se o usuário
 // nunca votou nesta publicação). incomingValue: 1 (positivo), -1 (negativo) ou null
 // (remover o voto).

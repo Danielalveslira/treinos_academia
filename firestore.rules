@@ -856,6 +856,17 @@ service cloud.firestore {
         && isMember(status.communityId, isAdmin);
     }
 
+    // Treino Marcado V1: a elegibilidade para participar é a DATA DO EVENTO
+    // (status.workout.date), nunca status.expiresAt (o prazo de 24h que só controla
+    // quanto tempo o post fica no feed recente, igual a qualquer outro tipo -- ver
+    // listCommunityFeed em statusesService.js e canCreateStatus acima, que continuam
+    // intocados). Antes desta mudança, um treino marcado para daqui a vários dias
+    // ficava impossível de confirmar presença assim que o POST completasse 24h, bem
+    // antes do evento em si acontecer -- e nada impedia entrar num treino cuja data já
+    // tinha passado. status.workout.date > request.time resolve as duas coisas de uma
+    // vez: bloqueia join após o evento, e libera join enquanto o evento ainda não
+    // aconteceu, mesmo que o post já tenha saído do feed recente (ver a seção "Próximos
+    // treinos", que busca por workout.date > agora, não por expiresAt).
     function canJoinWorkout(statusId, userId, participantData) {
       let status = get(/databases/$(database)/documents/statuses/$(statusId)).data;
       let uid = request.auth.uid;
@@ -865,7 +876,7 @@ service cloud.firestore {
         && participantData.userId == uid
         && participantData.joinedAt is timestamp
         && status.type == 'workout'
-        && status.expiresAt > request.time
+        && status.workout.date > request.time
         && isMember(status.communityId, isAdmin);
     }
 

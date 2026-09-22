@@ -14,12 +14,18 @@ import {
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore'
+import { httpsCallable } from 'firebase/functions'
 import { ref as storageRef, uploadBytesResumable, getBytes } from 'firebase/storage'
-import { db, storage } from '../firebase/config'
+import { db, storage, functions } from '../firebase/config'
 import { validateAchievement } from '../utils/achievements'
 
 const FEED_PAGE_SIZE = 30
+// Próximos treinos (Treino Marcado V1): teto de defesa, não paginação -- uma comunidade
+// real dificilmente tem mais que isso de eventos futuros simultâneos; se algum dia
+// precisar de mais, é um cursor novo, não um número maior aqui.
+const UPCOMING_WORKOUTS_PAGE_SIZE = 20
 const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
+const listWorkoutParticipantsCallable = httpsCallable(functions, 'listWorkoutParticipants')
 // Um pouco acima de MAX_OUTPUT_BYTES (utils/imageCompression.js) só de folga — nunca
 // deveria ter um objeto maior que isso em statusPhotos/, pois storage.rules recusa
 // qualquer upload além desse teto.
@@ -200,6 +206,46 @@ export function joinWorkout(statusId, userId) {
 
 export function leaveWorkout(statusId, userId) {
   return deleteDoc(doc(db, 'statuses', statusId, 'participants', userId))
+}
+
+// "Próximos treinos" (Treino Marcado V1) -- consulta própria, independente do feed
+// recente (que filtra por expiresAt, sem nenhuma relação com a data do evento, ver
+// canJoinWorkout em firestore.rules). Busca só workout.date > agora, ordenado pelo
+// evento mais próximo primeiro -- nunca lê todos os statuses da comunidade para filtrar
+// no cliente, nunca um listener (mesmo raciocínio de listCommunityFeed: 1 leitura sob
+// demanda, cacheada pelo hook que a chama). Índice composto necessário:
+// statuses(communityId ASC, type ASC, workout.date ASC) -- ver firestore.indexes.json.
+export async function listUpcomingWorkouts(communityId, pageSize = UPCOMING_WORKOUTS_PAGE_SIZE) {
+  const q = query(
+    statusesRef(),
+    where('communityId', '==', communityId),
+    where('type', '==', 'workout'),
+    where('workout.date', '>', Timestamp.now()),
+    orderBy('workout.date', 'asc'),
+    limit(pageSize)
+  )
+  const snapshot = await getDocs(q)
+  return snapshot.docs.map(toDoc)
+}
+
+// Resolve o alvo de um link #treino-{id} mesmo quando ele ficou fora do limite 20 da
+// consulta acima. É um get direto sujeito à mesma Rule de statuses/{id}: somente membro
+// da comunidade do próprio status consegue lê-lo. A checagem de communityId impede um
+// treino válido de outra comunidade de ser exibido na rota atual.
+export async function getSharedWorkout(statusId, communityId) {
+  const snapshot = await getDoc(doc(db, 'statuses', statusId))
+  if (!snapshot.exists()) return null
+  const status = toDoc(snapshot)
+  return status.type === 'workout' && status.communityId === communityId ? status : null
+}
+
+// "Ver participantes" -- callable dedicada (listWorkoutParticipants, mesmo padrão de
+// listPostEconomyVoters), nunca N getDoc separados por participante: users/{uid} só é
+// legível pelo próprio dono (ver firestore.rules), então resolver username por
+// participante exige o servidor (Admin SDK) de qualquer forma. cursor é o valor
+// devolvido em nextCursor da página anterior (null na primeira página).
+export async function listWorkoutParticipants(statusId, { cursor = null, limit = 20 } = {}) {
+  return (await listWorkoutParticipantsCallable({ statusId, cursor, limit })).data
 }
 
 export function createAchievementStatus(communityId, author, values) {

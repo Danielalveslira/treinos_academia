@@ -264,3 +264,53 @@ test('sem permissão de postar, a toolbar ainda aparece (só sem os botões Publ
   assert.doesNotMatch(html, />Publicar</)
   order(html, '>Publicações<', '>Destaques<')
 })
+
+test('próximos treinos ficam em seção própria e não duplicam em Destaques ou no feed', () => {
+  const event = makeStatus('workout-1', {
+    type: 'workout',
+    workout: { title: 'Treino de pernas', date: new Date(Date.now() + 60000) },
+  })
+  const html = render({
+    upcomingWorkouts: [event],
+    featuredStatuses: [event, makeStatus('feat-1')],
+    statuses: [event, makeStatus('post-1')],
+  })
+
+  order(
+    html,
+    '>Publicações<',
+    '>Próximos treinos<',
+    'data-status-id="workout-1"',
+    '>Destaques<',
+    'data-status-id="feat-1"',
+    'data-status-id="post-1"'
+  )
+  assert.equal((html.match(/data-status-id="workout-1"/g) || []).length, 1)
+})
+
+test('treino que passou é removido da seção mesmo se ainda estiver no cache', () => {
+  const pastEvent = makeStatus('workout-past', {
+    type: 'workout',
+    workout: { title: 'Treino antigo', date: new Date(Date.now() - 60000) },
+  })
+  const html = render({ upcomingWorkouts: [pastEvent] })
+  assert.doesNotMatch(html, />Próximos treinos</)
+  assert.doesNotMatch(html, /data-status-id="workout-past"/)
+})
+
+test('treino compartilhado fora dos 20 primeiros continua visível e sem duplicação', () => {
+  const upcomingWorkouts = Array.from({ length: 20 }, (_, index) =>
+    makeStatus(`workout-${index}`, {
+      type: 'workout',
+      workout: { title: `Treino ${index}`, date: new Date(Date.now() + (index + 1) * 60000) },
+    })
+  )
+  const sharedWorkout = makeStatus('workout-shared', {
+    type: 'workout',
+    workout: { title: 'Treino compartilhado', date: new Date(Date.now() + 86400000) },
+  })
+  const html = render({ upcomingWorkouts, sharedWorkout })
+  assert.match(html, /data-status-id="workout-shared"/)
+  assert.equal((html.match(/data-status-id="workout-shared"/g) || []).length, 1)
+  assert.equal((html.match(/test-status-card/g) || []).length, 21)
+})

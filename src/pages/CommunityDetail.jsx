@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import { Box, Heading, Text, Button, Spinner, Link } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
@@ -12,6 +12,7 @@ import {
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useCommunityFeed } from '../hooks/useCommunityFeed'
+import { useUpcomingWorkouts } from '../hooks/useUpcomingWorkouts'
 import { useSponsoredAds } from '../hooks/useSponsoredAds'
 import { useMyEconomyVotes } from '../hooks/useMyEconomyVotes'
 import { useToast } from '../hooks/useToast'
@@ -31,6 +32,7 @@ import {
   createTextStatus,
   createPollStatus,
   createWorkoutStatus,
+  getSharedWorkout,
 } from '../services/statusesService'
 import { describeFirestoreError } from '../utils/firestoreError'
 import { invalidateCommunitiesCache } from '../utils/pageCache'
@@ -46,6 +48,7 @@ import { ToastFlash } from '../components/ToastFlash'
 import { listFeaturedStatusesForCommunity } from '../services/promotionsService'
 import { toMillis } from '../utils/expiry.js'
 import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta'
+import { workoutIdFromHash } from '../utils/share'
 
 const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
 
@@ -60,12 +63,17 @@ const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
 // CommunityDetail); esta função só decide ONDE cada bloco aparece na página.
 export function CommunityFeedSection({
   communityId,
+  communityName,
   currentUserId,
   author,
   canModerate,
   canPost,
   bannerAds,
   feedAds,
+  upcomingWorkouts = [],
+  sharedWorkout = null,
+  loadingUpcomingWorkouts = false,
+  upcomingWorkoutsError = null,
   featuredStatuses,
   statuses,
   loadingFeed,
@@ -82,6 +90,19 @@ export function CommunityFeedSection({
   onCreateStatus,
   onPromoted,
 }) {
+  const currentTime = toMillis(now) || Date.now()
+  const workoutCandidates = sharedWorkout ? [sharedWorkout, ...upcomingWorkouts] : upcomingWorkouts
+  const visibleUpcomingWorkouts = workoutCandidates.filter(
+    (status, index, items) =>
+      toMillis(status.workout?.date) > currentTime &&
+      items.findIndex((candidate) => candidate.id === status.id) === index
+  )
+  const upcomingWorkoutIds = new Set(visibleUpcomingWorkouts.map((status) => status.id))
+  const visibleFeaturedStatuses = featuredStatuses.filter(
+    (status) => !upcomingWorkoutIds.has(status.id)
+  )
+  const visibleStatuses = statuses.filter((status) => !upcomingWorkoutIds.has(status.id))
+
   return (
     <>
       <SponsoredAdBanner ads={bannerAds} />
@@ -135,33 +156,73 @@ export function CommunityFeedSection({
         </div>
       )}
 
-      {featuredStatuses.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
-            Destaques
-          </Heading>
+      {/* Treino Marcado V1: seção própria, nunca misturada com Destaques -- Destaques é
+          sobre posts PROMOVIDOS (pagos), "Próximos treinos" é sobre DATA (workout.date >
+          agora), critérios independentes. Fica entre os anúncios/toolbar e Destaques:
+          são eventos acionáveis (data/hora reais, "Vou participar" com prazo), então
+          ficam mais perto do topo de prioridade da página (mesmo raciocínio da
+          reordenação anterior: ação real antes de conteúdo em destaque). A própria view
+          remove duplicatas entre esta seção, Destaques e o feed normal. */}
+      {(visibleUpcomingWorkouts.length > 0 || loadingUpcomingWorkouts || upcomingWorkoutsError) && (
+        <Box as="section" className="community-feed-group community-upcoming-section">
+          <Heading as="h2">Próximos treinos</Heading>
+          {loadingUpcomingWorkouts && visibleUpcomingWorkouts.length === 0 && (
+            <Spinner
+              aria-label="Carregando próximos treinos"
+              sx={{ display: 'block', mx: 'auto', my: 3 }}
+            />
+          )}
+          <ErrorState error={upcomingWorkoutsError} onRetry={refreshFeed} />
+          <div className="community-feed">
+            {visibleUpcomingWorkouts.map((status) => (
+              <StatusCard
+                key={`upcoming-${status.id}`}
+                status={status}
+                currentUserId={currentUserId}
+                canDelete={status.authorId === currentUserId || canModerate}
+                onDelete={onDeleteStatus}
+                now={now}
+                communityName={communityName}
+                showToast={showToast}
+                myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
+                onEconomyVoted={(value, delta) => {
+                  setVote(status.id, value)
+                  onEconomyVoted(status.id, delta)
+                }}
+              />
+            ))}
+          </div>
+        </Box>
+      )}
+
+      {visibleFeaturedStatuses.length > 0 && (
+        <Box as="section" className="community-feed-group community-featured-section">
+          <Heading as="h2">Destaques</Heading>
           {/* recordPromotionClick (clique, ver Communities.jsx) não é disparado aqui de
               propósito: um StatusCard já renderiza o conteúdo inteiro inline (texto,
               enquete, foto...), não existe um único "abrir" que leve a outro lugar --
               diferente de CommunityRow, cujo link inteiro navega para /comunidades/{id}.
               V1 fica sem métrica de clique para posts promovidos; só cliques em
               comunidades em destaque são contados. */}
-          {featuredStatuses.map((status) => (
-            <StatusCard
-              key={`featured-${status.id}`}
-              status={status}
-              currentUserId={currentUserId}
-              canDelete={status.authorId === currentUserId || canModerate}
-              onDelete={onDeleteStatus}
-              now={now}
-              showToast={showToast}
-              myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
-              onEconomyVoted={(value, delta) => {
-                setVote(status.id, value)
-                onEconomyVoted(status.id, delta)
-              }}
-            />
-          ))}
+          <div className="community-feed">
+            {visibleFeaturedStatuses.map((status) => (
+              <StatusCard
+                key={`featured-${status.id}`}
+                status={status}
+                currentUserId={currentUserId}
+                canDelete={status.authorId === currentUserId || canModerate}
+                onDelete={onDeleteStatus}
+                now={now}
+                communityName={communityName}
+                showToast={showToast}
+                myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
+                onEconomyVoted={(value, delta) => {
+                  setVote(status.id, value)
+                  onEconomyVoted(status.id, delta)
+                }}
+              />
+            ))}
+          </div>
         </Box>
       )}
 
@@ -170,7 +231,7 @@ export function CommunityFeedSection({
       )}
       <ErrorState error={feedError} onRetry={refreshFeed} />
 
-      {!loadingFeed && !feedError && statuses.length === 0 && (
+      {!loadingFeed && !feedError && visibleStatuses.length === 0 && (
         <Blankslate>
           <Blankslate.Visual>
             <MegaphoneIcon size={24} />
@@ -183,7 +244,7 @@ export function CommunityFeedSection({
       )}
 
       <div className="community-feed">
-        {statuses.map((status) => (
+        {visibleStatuses.map((status) => (
           <StatusCard
             key={status.id}
             status={status}
@@ -191,6 +252,7 @@ export function CommunityFeedSection({
             canDelete={status.authorId === currentUserId || canModerate}
             onDelete={onDeleteStatus}
             now={now}
+            communityName={communityName}
             showToast={showToast}
             myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
             onEconomyVoted={(value, delta) => {
@@ -216,6 +278,8 @@ function CommunityDetail({ id }) {
   const [membershipPending, setMembershipPending] = useState(false)
   const [loadingCommunity, setLoadingCommunity] = useState(true)
   const [communityError, setCommunityError] = useState(null)
+  const [sharedWorkout, setSharedWorkout] = useState(null)
+  const sharedWorkoutScrolled = useRef('')
   const [formOpen, setFormOpen] = useState(false)
   const [managing, setManaging] = useState(false)
 
@@ -230,6 +294,14 @@ function CommunityDetail({ id }) {
     updatePostPromotion,
     now,
   } = useCommunityFeed(id, member)
+
+  const {
+    workouts: upcomingWorkouts,
+    loading: loadingUpcomingWorkouts,
+    error: upcomingWorkoutsError,
+    refresh: refreshUpcomingWorkouts,
+    setWorkouts: setUpcomingWorkouts,
+  } = useUpcomingWorkouts(id, member)
 
   // enabled=member: só busca depois de confirmar participação, nunca antes -- ver
   // comentário em useSponsoredAds.js sobre por que isso é obrigatório, não só uma
@@ -257,11 +329,16 @@ function CommunityDetail({ id }) {
   }, [id, member])
 
   // 1 consulta para o feed inteiro (nunca 1 leitura por card) -- ver useMyEconomyVotes.js.
-  // Inclui featuredStatuses também: um post promovido pode estar fora da janela de 24h
-  // do feed normal, mas ainda precisa do próprio voto resolvido (senão EconomyVoteBar
-  // ficaria "carregando" pra sempre nesse card).
+  // Inclui destaques elegíveis: um post promovido pode estar fora da janela de 24h do
+  // feed normal. Poll e workout são excluídos porque nenhum deles possui voto econômico.
   const statusIds = member
-    ? [...new Set([...statuses, ...featuredStatuses].map((status) => status.id))]
+    ? [
+        ...new Set(
+          [...statuses, ...featuredStatuses]
+            .filter((status) => status.type !== 'poll' && status.type !== 'workout')
+            .map((status) => status.id)
+        ),
+      ]
     : []
   const { votesByStatusId, setVote } = useMyEconomyVotes(statusIds, user?.uid)
 
@@ -273,6 +350,43 @@ function CommunityDetail({ id }) {
     updateEconomyVoteCounts(statusId, delta)
     setFeaturedStatuses((prev) => applyEconomyVoteCountDeltaToList(prev, statusId, delta))
   }
+
+  const refreshCommunityContent = useCallback(
+    () => Promise.all([refreshFeed(), refreshUpcomingWorkouts()]),
+    [refreshFeed, refreshUpcomingWorkouts]
+  )
+
+  useEffect(() => {
+    setSharedWorkout(null)
+    if (!member || typeof window === 'undefined') return undefined
+    const statusId = workoutIdFromHash(window.location.hash)
+    if (!statusId) return undefined
+
+    let active = true
+    getSharedWorkout(statusId, id)
+      .then((status) => {
+        if (active) setSharedWorkout(status)
+      })
+      .catch((error) => {
+        if (active) console.error('[CommunityDetail] getSharedWorkout:', error)
+      })
+    return () => {
+      active = false
+    }
+  }, [id, member])
+
+  useEffect(() => {
+    if (!member || typeof window === 'undefined') return undefined
+    const anchor = window.location.hash.slice(1)
+    if (!anchor.startsWith('treino-') || sharedWorkoutScrolled.current === anchor) return undefined
+    const frame = window.requestAnimationFrame(() => {
+      const element = document.getElementById(anchor)
+      if (!element) return
+      sharedWorkoutScrolled.current = anchor
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [member, sharedWorkout, upcomingWorkouts, featuredStatuses, statuses])
 
   const loadCommunity = useCallback(async () => {
     setLoadingCommunity(true)
@@ -421,7 +535,7 @@ function CommunityDetail({ id }) {
         })
       } else if (values.type === 'workout') {
         const ref = await createWorkoutStatus(id, author, values)
-        addStatusLocally({
+        const workoutStatus = {
           id: ref.id,
           communityId: id,
           authorId: author.id,
@@ -435,7 +549,17 @@ function CommunityDetail({ id }) {
           },
           createdAt: new Date(),
           expiresAt,
-        })
+        }
+        addStatusLocally(workoutStatus)
+        setUpcomingWorkouts(
+          [workoutStatus, ...upcomingWorkouts]
+            .filter(
+              (status, index, items) =>
+                items.findIndex((candidate) => candidate.id === status.id) === index
+            )
+            .sort((left, right) => toMillis(left.workout.date) - toMillis(right.workout.date))
+            .slice(0, 20)
+        )
       } else if (values.type === 'photo') {
         // O upload e a criação do documento já aconteceram dentro do StatusForm (é
         // quem controla o progresso/cancelamento) — aqui só sobra atualizar o feed
@@ -472,6 +596,9 @@ function CommunityDetail({ id }) {
     if (!confirmed) return
     try {
       await remove(status.id)
+      setUpcomingWorkouts(upcomingWorkouts.filter((item) => item.id !== status.id))
+      setSharedWorkout((item) => (item?.id === status.id ? null : item))
+      setFeaturedStatuses((items) => items.filter((item) => item.id !== status.id))
       showToast('Publicação excluída.')
     } catch (err) {
       console.error('[CommunityDetail] delete:', err)
@@ -606,19 +733,24 @@ function CommunityDetail({ id }) {
           {member && (
             <CommunityFeedSection
               communityId={id}
+              communityName={community.name}
               currentUserId={user.uid}
               author={{ id: user.uid, username: profile?.username || null, role: profile?.role }}
               canModerate={canModerate}
               canPost={canPost}
               bannerAds={bannerAds}
               feedAds={feedAds}
+              upcomingWorkouts={upcomingWorkouts}
+              sharedWorkout={sharedWorkout}
+              loadingUpcomingWorkouts={loadingUpcomingWorkouts}
+              upcomingWorkoutsError={upcomingWorkoutsError}
               featuredStatuses={featuredStatuses}
               statuses={statuses}
-              loadingFeed={loadingFeed}
+              loadingFeed={loadingFeed || loadingUpcomingWorkouts}
               feedError={feedError}
               formOpen={formOpen}
               setFormOpen={setFormOpen}
-              refreshFeed={refreshFeed}
+              refreshFeed={refreshCommunityContent}
               now={now}
               showToast={showToast}
               votesByStatusId={votesByStatusId}

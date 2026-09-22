@@ -21,14 +21,14 @@ async function photoFileIfLoaded(status) {
 export function ShareMenu({ status, showToast }) {
   async function handleNativeShare() {
     try {
-      await shareNatively(status.communityId, await photoFileIfLoaded(status))
+      await shareNatively(status.communityId, await photoFileIfLoaded(status), status)
     } catch (error) {
       if (error?.name !== 'AbortError') showToast?.('Não foi possível compartilhar.', 'danger')
     }
   }
 
   async function handleInstagram() {
-    const { copied, text } = await shareToInstagram(status.communityId)
+    const { copied, text } = await shareToInstagram(status.communityId, status)
     showToast?.(
       copied ? 'Texto copiado! Cole no Instagram.' : `Copie e cole no Instagram: ${text}`,
       copied ? 'success' : 'attention'
@@ -53,7 +53,7 @@ export function ShareMenu({ status, showToast }) {
       <ActionMenu.Anchor>{button()}</ActionMenu.Anchor>
       <ActionMenu.Overlay align="end">
         <ActionList>
-          <ActionList.Item onSelect={() => shareToWhatsApp(status.communityId)}>
+          <ActionList.Item onSelect={() => shareToWhatsApp(status.communityId, status)}>
             WhatsApp
           </ActionList.Item>
           <ActionList.Item onSelect={handleInstagram}>Instagram</ActionList.Item>

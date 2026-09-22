@@ -145,6 +145,24 @@
       ]
     },
     {
+      "collectionGroup": "statuses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "communityId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "workout.date",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "workouts",
       "queryScope": "COLLECTION",
       "fields": [

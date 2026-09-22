@@ -1,4 +1,9 @@
-import { evaluateAuthorEligibility, planSettlementBatch, rewardSettlementNaturalKey } from './reward-settlement-core.js'
+import {
+  evaluateAuthorEligibility,
+  planSettlementBatch,
+  rewardSettlementNaturalKey,
+} from './reward-settlement-core.js'
+import { isEconomyVoteEligibleStatusType } from './vote-core.js'
 
 // Descoberta e promoção limitadas para caber num timeoutSeconds generoso (300s, mesmo
 // padrão de processDeletionJobs) mesmo no pior caso -- ver auditoria de Fase 3 para o
@@ -176,10 +181,10 @@ export function createRewardSettlementService({
       const distinctStatusIds = [...new Set(candidates.map((c) => c.statusId))]
       const statusRefs = distinctStatusIds.map((id) => db.doc(`statuses/${id}`))
       const statusSnapshots = statusRefs.length ? await tx.getAll(...statusRefs) : []
-      const statusAuthorByStatusId = {}
+      const statusByStatusId = {}
       distinctStatusIds.forEach((id, index) => {
         const snap = statusSnapshots[index]
-        statusAuthorByStatusId[id] = snap.exists ? snap.data().authorId : null
+        statusByStatusId[id] = snap.exists ? snap.data() : null
       })
 
       // ---- contador por post/dia (statuses/{id}/economyRewardDaily/{day}) ----
@@ -187,7 +192,10 @@ export function createRewardSettlementService({
       for (const c of candidates) {
         const key = `${c.statusId}|${c.rewardDayKey}`
         if (!postDayRefs.has(key)) {
-          postDayRefs.set(key, db.doc(`statuses/${c.statusId}/economyRewardDaily/${c.rewardDayKey}`))
+          postDayRefs.set(
+            key,
+            db.doc(`statuses/${c.statusId}/economyRewardDaily/${c.rewardDayKey}`)
+          )
         }
       }
       const postDayKeys = [...postDayRefs.keys()]
@@ -208,11 +216,17 @@ export function createRewardSettlementService({
       for (const c of candidates) {
         const authorKey = `${c.authorId}|${c.rewardDayKey}`
         if (!economyDailyRefs.has(authorKey)) {
-          economyDailyRefs.set(authorKey, db.doc(`users/${c.authorId}/economyDaily/${c.rewardDayKey}`))
+          economyDailyRefs.set(
+            authorKey,
+            db.doc(`users/${c.authorId}/economyDaily/${c.rewardDayKey}`)
+          )
         }
         const voterKey = `${c.voterId}|${c.rewardDayKey}`
         if (!economyDailyRefs.has(voterKey)) {
-          economyDailyRefs.set(voterKey, db.doc(`users/${c.voterId}/economyDaily/${c.rewardDayKey}`))
+          economyDailyRefs.set(
+            voterKey,
+            db.doc(`users/${c.voterId}/economyDaily/${c.rewardDayKey}`)
+          )
         }
       }
       const economyDailyKeys = [...economyDailyRefs.keys()]
@@ -221,19 +235,28 @@ export function createRewardSettlementService({
         : []
       const economyDailyData = {}
       economyDailyKeys.forEach((key, index) => {
-        economyDailyData[key] = economyDailySnapshots[index].exists ? economyDailySnapshots[index].data() : null
+        economyDailyData[key] = economyDailySnapshots[index].exists
+          ? economyDailySnapshots[index].data()
+          : null
       })
 
       // ================= DECISÃO (pura, em memória, sem I/O) =================
-      const votesForCore = candidates.map((c) => ({
-        voteKey: c.voteKey,
-        authorId: c.authorId,
-        voterId: c.voterId,
-        statusId: c.statusId,
-        rewardDayKey: c.rewardDayKey,
-        statusEligible: statusAuthorByStatusId[c.statusId] === c.authorId,
-        authorEligibility: authorEligibilityByAuthorId[c.authorId],
-      }))
+      const votesForCore = candidates.map((c) => {
+        const status = statusByStatusId[c.statusId]
+        const authorMatches = status?.authorId === c.authorId
+        const typeEligible = isEconomyVoteEligibleStatusType(status?.type)
+        return {
+          voteKey: c.voteKey,
+          authorId: c.authorId,
+          voterId: c.voterId,
+          statusId: c.statusId,
+          rewardDayKey: c.rewardDayKey,
+          statusEligible: authorMatches && typeEligible,
+          statusIneligibilityReason:
+            status && authorMatches && !typeEligible ? 'status_type_ineligible' : 'status_gone',
+          authorEligibility: authorEligibilityByAuthorId[c.authorId],
+        }
+      })
 
       const initialCounters = {
         postDaily: postDayCoins,
@@ -249,7 +272,8 @@ export function createRewardSettlementService({
             .filter((key, i, arr) => arr.indexOf(key) === i)
             .map((key) => {
               const [voterId, day, authorId] = key.split('|')
-              const count = economyDailyData[`${voterId}|${day}`]?.authorRewardCounts?.[authorId] || 0
+              const count =
+                economyDailyData[`${voterId}|${day}`]?.authorRewardCounts?.[authorId] || 0
               return [key, count]
             })
         ),
@@ -307,7 +331,8 @@ export function createRewardSettlementService({
       for (const [key, { simple, mapIncrements }] of dailyPayloads) {
         const ref = economyDailyRefs.get(key)
         const payload = { updatedAt: FieldValue.serverTimestamp() }
-        for (const [field, delta] of Object.entries(simple)) payload[field] = FieldValue.increment(delta)
+        for (const [field, delta] of Object.entries(simple))
+          payload[field] = FieldValue.increment(delta)
         if (Object.keys(mapIncrements).length > 0) {
           const mergedMap = { ...(economyDailyData[key]?.authorRewardCounts || {}) }
           for (const [authorId, delta] of Object.entries(mapIncrements)) {

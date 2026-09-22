@@ -100,6 +100,36 @@ async function countLedgerEntries(testUid) {
   return snapshot.size
 }
 
+async function assertWorkoutVoteRejected(value) {
+  const communityId = `c-${uid()}`
+  const authorId = uid()
+  const voterUid = uid()
+  const statusId = `s-${uid()}`
+  await seedCommunityAndStatus({ communityId, statusId, authorId, type: 'workout' })
+  await joinCommunity(communityId, voterUid)
+  await fundWallet(voterUid, 10)
+  const voteOnPost = buildService()
+
+  await assert.rejects(
+    () => voteOnPost(voterUid, statusId, value),
+    (error) => {
+      assert.equal(error.code, 'failed-precondition')
+      assert.match(error.message, /Treinos marcados/)
+      return true
+    }
+  )
+
+  assert.equal(await getVote(statusId, voterUid), null)
+  assert.equal((await getWallet(voterUid)).coinBalance, 10)
+  assert.equal(await countLedgerEntries(voterUid), 0)
+  assert.equal(await countLedgerEntries(authorId), 0)
+  assert.equal(await getWallet(authorId), null)
+  assert.equal(await getDaily(voterUid, todayKey(Date.now())), null)
+  const status = await getStatus(statusId)
+  assert.equal(status.positiveVoteCount ?? 0, 0)
+  assert.equal(status.negativeVoteCount ?? 0, 0)
+}
+
 test('primeiro voto (positivo): cobra 3 EvoCoins, cria o voto, grava o ledger e conta no limite diário', async () => {
   const communityId = `c-${uid()}`
   const authorId = uid()
@@ -126,7 +156,11 @@ test('primeiro voto (positivo): cobra 3 EvoCoins, cria o voto, grava o ledger e 
   assert.equal(vote.authorId, authorId)
   assert.equal(vote.rewardState, 'pending')
   assert.ok(vote.rewardPendingAt, 'evento elegível precisa estar carimbado para o settlement usar')
-  assert.equal(vote.rewardDayKey, todayKey(Date.now()), 'usa o dia do evento, não um valor arbitrário')
+  assert.equal(
+    vote.rewardDayKey,
+    todayKey(Date.now()),
+    'usa o dia do evento, não um valor arbitrário'
+  )
 
   assert.equal(await countLedgerEntries(voterUid), 1)
 
@@ -216,15 +250,27 @@ test('votar → pagar → remover → votar de novo no mesmo status: nenhum novo
   assert.equal(removal.charged, false)
   let vote = await getVote(statusId, voterUid)
   assert.equal(vote.value, null)
-  assert.equal(vote.charged, true, 'charged nunca volta a false -- é isto que impede a recobrança abaixo')
+  assert.equal(
+    vote.charged,
+    true,
+    'charged nunca volta a false -- é isto que impede a recobrança abaixo'
+  )
 
   // 4. votar de novo no mesmo status -- resultado obrigatório: nada novo.
   const revote = await voteOnPost(voterUid, statusId, 1)
-  assert.equal(revote.action, 'switch', 'documento de voto já existe -- nunca mais passa por "create"')
+  assert.equal(
+    revote.action,
+    'switch',
+    'documento de voto já existe -- nunca mais passa por "create"'
+  )
   assert.equal(revote.charged, false, 'nenhum novo débito')
 
   wallet = await getWallet(voterUid)
-  assert.equal(wallet.coinBalance, 7, 'saldo idêntico ao de depois do primeiro voto -- nenhum novo débito')
+  assert.equal(
+    wallet.coinBalance,
+    7,
+    'saldo idêntico ao de depois do primeiro voto -- nenhum novo débito'
+  )
 
   daily = await getDaily(voterUid, dateKey)
   assert.equal(daily.votesCharged, 1, 'nenhum novo votesCharged')
@@ -314,7 +360,11 @@ test('voto econômico numa enquete é rejeitado com failed-precondition, sem cob
     }
   )
 
-  assert.equal(await getVote(statusId, voterUid), null, 'nenhum documento de voto econômico deveria ser criado')
+  assert.equal(
+    await getVote(statusId, voterUid),
+    null,
+    'nenhum documento de voto econômico deveria ser criado'
+  )
   assert.equal((await getWallet(voterUid)).coinBalance, 10, 'nenhuma EvoCoin debitada')
   assert.equal(await countLedgerEntries(voterUid), 0, 'nenhuma entrada no ledger')
   const status = await getStatus(statusId)
@@ -336,6 +386,14 @@ test('voto econômico negativo numa enquete também é rejeitado, mesma barreira
 
   await assert.rejects(() => voteOnPost(voterUid, statusId, -1), /[Ee]nquete/)
   assert.equal((await getWallet(voterUid)).coinBalance, 10)
+})
+
+test('voto econômico positivo forjado em Treino Marcado é rejeitado sem cobrança, ledger, contador ou recompensa', async () => {
+  await assertWorkoutVoteRejected(1)
+})
+
+test('voto econômico negativo forjado em Treino Marcado é rejeitado sem cobrança, ledger, contador ou recompensa', async () => {
+  await assertWorkoutVoteRejected(-1)
 })
 
 test('votar numa publicação expirada é rejeitado', async () => {
@@ -370,7 +428,9 @@ test('quem está restrito na comunidade não pode votar, mesmo sendo membro', as
   const statusId = `s-${uid()}`
   await seedCommunityAndStatus({ communityId, statusId, authorId })
   await joinCommunity(communityId, voterUid)
-  await db.doc(`communityRestrictions/${communityId}_${voterUid}`).set({ userId: voterUid, communityId })
+  await db
+    .doc(`communityRestrictions/${communityId}_${voterUid}`)
+    .set({ userId: voterUid, communityId })
   await fundWallet(voterUid, 10)
   const voteOnPost = buildService()
   await assert.rejects(() => voteOnPost(voterUid, statusId, 1))
@@ -493,7 +553,9 @@ test('requisições simultâneas do primeiro voto na mesma publicação cobram u
   await fundWallet(voterUid, 30)
   const voteOnPost = buildService()
 
-  const results = await Promise.all(Array.from({ length: 5 }, () => voteOnPost(voterUid, statusId, 1)))
+  const results = await Promise.all(
+    Array.from({ length: 5 }, () => voteOnPost(voterUid, statusId, 1))
+  )
   const chargedCount = results.filter((r) => r.charged).length
   assert.equal(chargedCount, 1)
 
@@ -534,10 +596,9 @@ test('trocar/remover/revotar nunca redefine rewardState de volta para pending/in
 
   await voteOnPost(voterUid, statusId, 1)
   // Simula a Fase 3 já tendo processado este voto positivo (autor já creditado).
-  await db.doc(`statuses/${statusId}/economyVotes/${voterUid}`).set(
-    { rewardState: 'processed' },
-    { merge: true }
-  )
+  await db
+    .doc(`statuses/${statusId}/economyVotes/${voterUid}`)
+    .set({ rewardState: 'processed' }, { merge: true })
 
   await voteOnPost(voterUid, statusId, -1) // switch
   assert.equal((await getVote(statusId, voterUid)).rewardState, 'processed')
@@ -575,7 +636,11 @@ test('um par (votante, status) nunca tem mais de um documento de voto, mesmo dep
 
   const votes = await db.collection(`statuses/${statusId}/economyVotes`).get()
   assert.equal(votes.size, 1, 'nunca deveria existir mais de 1 documento para este par')
-  assert.equal(votes.docs[0].id, voterUid, 'o único documento é sempre o de ID determinístico = uid do votante')
+  assert.equal(
+    votes.docs[0].id,
+    voterUid,
+    'o único documento é sempre o de ID determinístico = uid do votante'
+  )
 })
 
 // rewardPendingAt/rewardDayKey (seção 2 da auditoria de Fase 3): o settlement precisa
@@ -641,7 +706,11 @@ test('primeiro voto positivo cria positiveVoteCount=1 no status, mesmo sem o cam
   const voteOnPost = buildService()
 
   let status = await getStatus(statusId)
-  assert.equal('positiveVoteCount' in status, false, 'post seedado sem os contadores, como um post anterior a este recurso')
+  assert.equal(
+    'positiveVoteCount' in status,
+    false,
+    'post seedado sem os contadores, como um post anterior a este recurso'
+  )
 
   await voteOnPost(voterUid, statusId, 1)
   status = await getStatus(statusId)

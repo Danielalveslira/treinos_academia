@@ -1,4 +1,9 @@
-import { decideVoteAction, nextRewardState, economyVoteCountDelta } from './vote-core.js'
+import {
+  decideVoteAction,
+  nextRewardState,
+  economyVoteCountDelta,
+  economyVoteIneligibility,
+} from './vote-core.js'
 import { todayKey } from './activity-core.js'
 
 // voteOnPost -- seção 13 do prompt de economia (voto atômico). HttpsError injetado
@@ -58,18 +63,11 @@ export function createVoteService({
         throw new HttpsError('not-found', 'Publicação não encontrada.')
       }
       const status = statusSnapshot.data()
-      // Enquete já tem o próprio mecanismo de voto (statuses/{id}/votes/{uid}, gratuito,
-      // ver firestore.rules canVote) -- voto econômico é para o resto do conteúdo
-      // (posts normais). Sem esta barreira, uma chamada direta/forjada à callable
-      // debitaria EvoCoins e marcaria rewardState 'pending' (crédito ao autor via
-      // reward-settlement-service.js) para uma enquete, dois sistemas de voto
-      // coexistindo no mesmo post -- nunca foi essa a intenção do produto.
-      if (status.type === 'poll') {
-        throw new HttpsError(
-          'failed-precondition',
-          'Enquetes não recebem voto econômico -- vote em uma das opções da enquete.'
-        )
-      }
+      // Esta barreira roda antes de ler carteira/limite/ledger e antes de qualquer
+      // contador ou documento de voto ser alterado. voteOnPost e voteOnPostV2 usam a
+      // mesma instância deste serviço, portanto não existe divergência entre endpoints.
+      const ineligibility = economyVoteIneligibility(status.type)
+      if (ineligibility) throw new HttpsError('failed-precondition', ineligibility)
       if (status.authorId === uid) {
         throw new HttpsError('failed-precondition', 'Você não pode votar na própria publicação.')
       }
@@ -88,14 +86,21 @@ export function createVoteService({
       const accountRestrictionRef = db.doc(`accountRestrictions/${uid}`)
 
       // batch 2 (1 round trip): o suficiente para decidir noop/switch/remove/create.
-      const [membershipSnapshot, communityRestrictionSnapshot, accountRestrictionSnapshot, voteSnapshot] =
-        await tx.getAll(membershipRef, communityRestrictionRef, accountRestrictionRef, voteRef)
+      const [
+        membershipSnapshot,
+        communityRestrictionSnapshot,
+        accountRestrictionSnapshot,
+        voteSnapshot,
+      ] = await tx.getAll(membershipRef, communityRestrictionRef, accountRestrictionRef, voteRef)
 
       if (!membershipSnapshot.exists) {
         throw new HttpsError('permission-denied', 'Você não participa desta comunidade.')
       }
       if (communityRestrictionSnapshot.exists) {
-        throw new HttpsError('permission-denied', 'Você está impedido de interagir nesta comunidade.')
+        throw new HttpsError(
+          'permission-denied',
+          'Você está impedido de interagir nesta comunidade.'
+        )
       }
       if (accountRestrictionSnapshot.exists) {
         const restriction = accountRestrictionSnapshot.data()
@@ -164,7 +169,11 @@ export function createVoteService({
           updatedAt: FieldValue.serverTimestamp(),
           rewardState: nextState,
           ...(enteringPending
-            ? { rewardPendingAt: FieldValue.serverTimestamp(), rewardDayKey: todayKey(nowMs), rewardRetryAt: null }
+            ? {
+                rewardPendingAt: FieldValue.serverTimestamp(),
+                rewardDayKey: todayKey(nowMs),
+                rewardRetryAt: null,
+              }
             : nextState === 'ineligible'
               ? { rewardPendingAt: null, rewardDayKey: null, rewardRetryAt: null }
               : {}),
@@ -188,7 +197,11 @@ export function createVoteService({
       // ler wallet/ledger mesmo quando o limite diário abaixo acaba bloqueando a
       // votação (trade-off explícito: 1 round trip sempre, em vez de até 3
       // sequenciais).
-      const [dailySnapshot, walletSnapshot, ledgerSnapshot] = await tx.getAll(dailyRef, walletRef, ledgerRef)
+      const [dailySnapshot, walletSnapshot, ledgerSnapshot] = await tx.getAll(
+        dailyRef,
+        walletRef,
+        ledgerRef
+      )
 
       const daily = dailySnapshot.exists ? dailySnapshot.data() : null
       const votesChargedToday = daily?.votesCharged || 0

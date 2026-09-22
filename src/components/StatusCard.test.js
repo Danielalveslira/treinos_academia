@@ -19,6 +19,7 @@ import { build } from 'esbuild'
 let directory
 let render
 let setPollCache
+let setWorkoutCache
 
 let counter = 0
 function id(prefix) {
@@ -59,6 +60,24 @@ function makeTextStatus(overrides = {}) {
   }
 }
 
+function makeWorkoutStatus(overrides = {}) {
+  return {
+    id: id('workout'),
+    communityId: 'c1',
+    authorId: 'author-1',
+    authorUsername: 'ana',
+    type: 'workout',
+    workout: {
+      title: 'Treino de pernas',
+      date: new Date(Date.now() + 2 * 60 * 60 * 1000),
+      location: 'Academia X',
+    },
+    createdAt: new Date(),
+    expiresAt: new Date(Date.now() - 60 * 1000),
+    ...overrides,
+  }
+}
+
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'status-card-tests-'))
   const outfile = join(directory, 'status-card.cjs')
@@ -74,6 +93,8 @@ before(async () => {
         const noop = () => {}
         export const setPollCache = (statusId, currentUserId, counts, myOptionId) =>
           setCached(\`pollStatus:\${statusId}:\${currentUserId}\`, { counts, myOptionId })
+        export const setWorkoutCache = (statusId, currentUserId, count, amParticipant) =>
+          setCached(\`workoutStatus:\${statusId}:\${currentUserId}\`, { count, amParticipant })
         export const render = (props) => renderToStaticMarkup(createElement(ThemeProvider, null,
           createElement(BaseStyles, null, createElement(MemoryRouter, null, createElement(StatusCard, {
             currentUserId: 'viewer-1',
@@ -114,7 +135,7 @@ before(async () => {
       }),
     },
   })
-  ;({ render, setPollCache } = createRequire(import.meta.url)(outfile))
+  ;({ render, setPollCache, setWorkoutCache } = createRequire(import.meta.url)(outfile))
 })
 
 after(async () => {
@@ -170,10 +191,53 @@ test('post normal continua mostrando Apoio/Negativo, com o rodapé de voto econ�
   assert.match(html, /Voto negativo/)
 })
 
-test('post normal (não enquete) de outro tipo (conquista) também mantém Apoio/Negativo -- a exclusão é só para enquete', () => {
+test('conquista mantém Apoio/Negativo', () => {
   const status = { ...makeTextStatus(), type: 'achievement', achievement: null }
   status.text = undefined
   const html = render({ status })
   assert.match(html, /class="status-footer"/)
   assert.match(html, /apoios|apoio\b/)
+})
+
+test('treino futuro mantém participação ativa após expirar no feed e identifica evento e organizador', () => {
+  const status = makeWorkoutStatus()
+  setWorkoutCache(status.id, 'viewer-1', 3, false)
+  const html = render({ status, communityName: 'Corrida SP' })
+  assert.match(html, new RegExp(`id="treino-${status.id}"`))
+  assert.match(html, /Treino marcado/)
+  assert.match(html, /Organizado por @ana/)
+  assert.match(html, /3 confirmados · Ver participantes/)
+  assert.match(html, /Vou participar/)
+  assert.match(html, /Adicionar ao calendário/)
+  assert.doesNotMatch(html, /class="status-footer"/)
+  assert.doesNotMatch(html, /Voto positivo|Voto negativo|apoios|negativos/)
+})
+
+test('treino concluído bloqueia nova participação, mas mantém calendário disponível', () => {
+  const status = makeWorkoutStatus({
+    workout: {
+      title: 'Treino encerrado',
+      date: new Date(Date.now() - 3 * 60 * 60 * 1000),
+      location: 'Academia X',
+    },
+  })
+  setWorkoutCache(status.id, 'viewer-1', 2, false)
+  const html = render({ status })
+  assert.match(html, /Concluído/)
+  assert.doesNotMatch(html, /Vou participar/)
+  assert.match(html, /Adicionar ao calendário/)
+})
+
+test('participante confirmado pode cancelar mesmo depois do início do treino', () => {
+  const status = makeWorkoutStatus({
+    workout: {
+      title: 'Treino em andamento',
+      date: new Date(Date.now() - 30 * 60 * 1000),
+      location: 'Academia X',
+    },
+  })
+  setWorkoutCache(status.id, 'viewer-1', 1, true)
+  const html = render({ status })
+  assert.match(html, /Em andamento/)
+  assert.match(html, /Cancelar participação/)
 })

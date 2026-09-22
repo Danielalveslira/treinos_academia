@@ -75,11 +75,11 @@ function buildVoteService({ now } = {}) {
   })
 }
 
-async function seedStatus({ statusId, authorId, communityId = `c-${uid()}` }) {
+async function seedStatus({ statusId, authorId, communityId = `c-${uid()}`, type = 'text' }) {
   await db.doc(`statuses/${statusId}`).set({
     communityId,
     authorId,
-    type: 'text',
+    type,
     text: 'oi',
     expiresAt: Timestamp.fromMillis(Date.now() + 60 * 60 * 1000),
   })
@@ -106,7 +106,14 @@ async function seedPendingVote({ statusId, voterId, authorId, rewardDayKey, rewa
   })
 }
 
-async function seedDeferredVote({ statusId, voterId, authorId, rewardDayKey, rewardPendingAtMs, rewardRetryAtMs }) {
+async function seedDeferredVote({
+  statusId,
+  voterId,
+  authorId,
+  rewardDayKey,
+  rewardPendingAtMs,
+  rewardRetryAtMs,
+}) {
   await db.doc(`statuses/${statusId}/economyVotes/${voterId}`).set({
     userId: voterId,
     authorId,
@@ -153,7 +160,13 @@ test('um voto pending elegível é processado: credita o autor, grava ledger, at
   const voterId = uid()
   const statusId = uid()
   await seedStatus({ statusId, authorId })
-  await seedPendingVote({ statusId, voterId, authorId, rewardDayKey: DAY, rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`) })
+  await seedPendingVote({
+    statusId,
+    voterId,
+    authorId,
+    rewardDayKey: DAY,
+    rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`),
+  })
 
   const settle = buildSettlement({ now: () => Date.parse(`${DAY}T12:00:00-03:00`) })
   const result = await settle()
@@ -171,7 +184,10 @@ test('um voto pending elegível é processado: credita o autor, grava ledger, at
   assert.ok(vote.rewardSettledAt)
 
   const authorDaily = await getAuthorDaily(authorId, DAY)
-  assert.equal(authorDaily.authorRewardCoins, DEFAULT_ECONOMY_CONFIG.voting.rewardCoinsPerPositiveVote)
+  assert.equal(
+    authorDaily.authorRewardCoins,
+    DEFAULT_ECONOMY_CONFIG.voting.rewardCoinsPerPositiveVote
+  )
 
   const postDaily = await getPostRewardDaily(statusId, DAY)
   assert.equal(postDaily.coinsCredited, DEFAULT_ECONOMY_CONFIG.voting.rewardCoinsPerPositiveVote)
@@ -217,7 +233,11 @@ test('limite por post/dia: o voto que estouraria é capped, os anteriores no mes
   await seedStatus({ statusId, authorId })
   await db.doc('economyConfig/current').set({
     dailyActivity: DEFAULT_ECONOMY_CONFIG.dailyActivity,
-    voting: { ...DEFAULT_ECONOMY_CONFIG.voting, maxRewardCoinsPerPostDay: 2, maxRewardCoinsPerAuthorDay: 1000 },
+    voting: {
+      ...DEFAULT_ECONOMY_CONFIG.voting,
+      maxRewardCoinsPerPostDay: 2,
+      maxRewardCoinsPerAuthorDay: 1000,
+    },
   })
   try {
     const voterIds = [uid(), uid(), uid()]
@@ -247,7 +267,13 @@ test('publicação removida antes do settlement: voto vira capped, sem crédito'
   const voterId = uid()
   const statusId = uid()
   await seedStatus({ statusId, authorId })
-  await seedPendingVote({ statusId, voterId, authorId, rewardDayKey: DAY, rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`) })
+  await seedPendingVote({
+    statusId,
+    voterId,
+    authorId,
+    rewardDayKey: DAY,
+    rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`),
+  })
   await db.doc(`statuses/${statusId}`).delete()
 
   const settle = buildSettlement({ now: () => Date.parse(`${DAY}T12:00:00-03:00`) })
@@ -259,12 +285,45 @@ test('publicação removida antes do settlement: voto vira capped, sem crédito'
   assert.equal(await getWallet(authorId), null)
 })
 
+test('voto econômico antigo pending de Treino Marcado é capped sem gerar crédito novo', async () => {
+  const authorId = uid()
+  const voterId = uid()
+  const statusId = uid()
+  await seedStatus({ statusId, authorId, type: 'workout' })
+  await seedPendingVote({
+    statusId,
+    voterId,
+    authorId,
+    rewardDayKey: DAY,
+    rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`),
+  })
+
+  const settle = buildSettlement({ now: () => Date.parse(`${DAY}T12:00:00-03:00`) })
+  const result = await settle()
+
+  assert.equal(result.processed, 0)
+  assert.equal(result.capped, 1)
+  assert.equal(await getWallet(authorId), null)
+  assert.equal(await countLedgerEntries(authorId), 0)
+  assert.equal(await getAuthorDaily(authorId, DAY), null)
+  assert.equal(await getPostRewardDaily(statusId, DAY), null)
+  const vote = await getVote(statusId, voterId)
+  assert.equal(vote.rewardState, 'capped')
+  assert.equal(vote.rewardCappedReason, 'status_type_ineligible')
+})
+
 test('autor em exclusão: voto vira capped, sem crédito', async () => {
   const authorId = uid()
   const voterId = uid()
   const statusId = uid()
   await seedStatus({ statusId, authorId })
-  await seedPendingVote({ statusId, voterId, authorId, rewardDayKey: DAY, rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`) })
+  await seedPendingVote({
+    statusId,
+    voterId,
+    authorId,
+    rewardDayKey: DAY,
+    rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`),
+  })
   await db.doc(`deletionJobs/account_${authorId}`).set({ state: 'pending' })
 
   const settle = buildSettlement({ now: () => Date.parse(`${DAY}T12:00:00-03:00`) })
@@ -280,7 +339,13 @@ test('autor banido (system_ban): voto vira capped, sem crédito', async () => {
   const voterId = uid()
   const statusId = uid()
   await seedStatus({ statusId, authorId })
-  await seedPendingVote({ statusId, voterId, authorId, rewardDayKey: DAY, rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`) })
+  await seedPendingVote({
+    statusId,
+    voterId,
+    authorId,
+    rewardDayKey: DAY,
+    rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`),
+  })
   await db.doc(`accountRestrictions/${authorId}`).set({ action: 'system_ban' })
 
   const settle = buildSettlement({ now: () => Date.parse(`${DAY}T12:00:00-03:00`) })
@@ -296,7 +361,13 @@ test('autor com suspensão temporária ativa: voto vira deferred (não capped), 
   const pendingAtMs = Date.parse(`${DAY}T10:00:00-03:00`)
   const nowMs = Date.parse(`${DAY}T12:00:00-03:00`)
   await seedStatus({ statusId, authorId })
-  await seedPendingVote({ statusId, voterId, authorId, rewardDayKey: DAY, rewardPendingAtMs: pendingAtMs })
+  await seedPendingVote({
+    statusId,
+    voterId,
+    authorId,
+    rewardDayKey: DAY,
+    rewardPendingAtMs: pendingAtMs,
+  })
   await db.doc(`accountRestrictions/${authorId}`).set({
     action: 'temporary_suspension',
     until: Timestamp.fromMillis(nowMs + 60 * 60 * 1000),
@@ -333,7 +404,11 @@ test('deferred não reserva quota: um voto já deferred de execução anterior n
   await seedStatus({ statusId, authorId })
   await db.doc('economyConfig/current').set({
     dailyActivity: DEFAULT_ECONOMY_CONFIG.dailyActivity,
-    voting: { ...DEFAULT_ECONOMY_CONFIG.voting, maxRewardCoinsPerPostDay: 1, maxRewardCoinsPerAuthorDay: 1000 },
+    voting: {
+      ...DEFAULT_ECONOMY_CONFIG.voting,
+      maxRewardCoinsPerPostDay: 1,
+      maxRewardCoinsPerAuthorDay: 1000,
+    },
   })
   try {
     // Retry ainda não vencido -- não deveria ser promovido nesta execução, então
@@ -357,7 +432,11 @@ test('deferred não reserva quota: um voto já deferred de execução anterior n
     const result = await settle()
     assert.equal(result.promoted, 0, 'retryAt ainda não venceu -- não promovido nesta execução')
     assert.equal(result.processed, 1)
-    assert.equal(result.deferred, 0, 'o voto já deferred não é candidato desta execução -- nem é tocado')
+    assert.equal(
+      result.deferred,
+      0,
+      'o voto já deferred não é candidato desta execução -- nem é tocado'
+    )
 
     const pendingVote = await getVote(statusId, pendingVoterId)
     assert.equal(
@@ -366,7 +445,11 @@ test('deferred não reserva quota: um voto já deferred de execução anterior n
       'o voto deferred não reservou o teto do post -- este ainda coube inteiro'
     )
     const stillDeferred = await getVote(statusId, deferredVoterId)
-    assert.equal(stillDeferred.rewardState, 'deferred', 'intocado -- não era candidato desta execução')
+    assert.equal(
+      stillDeferred.rewardState,
+      'deferred',
+      'intocado -- não era candidato desta execução'
+    )
   } finally {
     await db.doc('economyConfig/current').delete()
   }
@@ -459,7 +542,11 @@ test('promoção: deferred com rewardRetryAt vencido volta a pending preservando
   const settle = buildSettlement({ now: () => Date.parse(`${DAY}T10:00:00-03:00`) })
   const result = await settle()
   assert.equal(result.promoted, 1)
-  assert.equal(result.processed, 1, 'promovido e processado na MESMA execução (promoção roda antes da descoberta)')
+  assert.equal(
+    result.processed,
+    1,
+    'promovido e processado na MESMA execução (promoção roda antes da descoberta)'
+  )
 
   const vote = await getVote(statusId, voterId)
   assert.equal(vote.rewardState, 'processed')
@@ -548,7 +635,11 @@ test('consolidação entre papéis: o mesmo uid como autor creditado E como vota
     DEFAULT_ECONOMY_CONFIG.voting.rewardCoinsPerPositiveVote,
     'papel de autor -- nunca perdido pela escrita do papel de votante'
   )
-  assert.equal(dualDaily.rewardedVotesGiven, 1, 'papel de votante -- nunca perdido pela escrita do papel de autor')
+  assert.equal(
+    dualDaily.rewardedVotesGiven,
+    1,
+    'papel de votante -- nunca perdido pela escrita do papel de autor'
+  )
   assert.equal(dualDaily.authorRewardCounts[otherAuthor], 1)
 })
 
@@ -557,12 +648,20 @@ test('revalidação no reread: um voto que mudou de valor entre a descoberta e o
   const voterId = uid()
   const statusId = uid()
   await seedStatus({ statusId, authorId })
-  await seedPendingVote({ statusId, voterId, authorId, rewardDayKey: DAY, rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`) })
+  await seedPendingVote({
+    statusId,
+    voterId,
+    authorId,
+    rewardDayKey: DAY,
+    rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`),
+  })
 
   // Simula uma corrida: o votante muda de ideia depois que este teste "descobriria" o
   // voto, mas antes do settlement de fato rodar -- vote-service.js real faria isto,
   // aqui simulamos a gravação direta pra não depender de timing real entre dois processos.
-  await db.doc(`statuses/${statusId}/economyVotes/${voterId}`).set({ value: -1, rewardState: 'ineligible' }, { merge: true })
+  await db
+    .doc(`statuses/${statusId}/economyVotes/${voterId}`)
+    .set({ value: -1, rewardState: 'ineligible' }, { merge: true })
 
   const settle = buildSettlement({ now: () => Date.parse(`${DAY}T12:00:00-03:00`) })
   const result = await settle()
@@ -579,7 +678,13 @@ test('lease: uma execução já em andamento (lease ativo) faz a nova execução
   const voterId = uid()
   const statusId = uid()
   await seedStatus({ statusId, authorId })
-  await seedPendingVote({ statusId, voterId, authorId, rewardDayKey: DAY, rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`) })
+  await seedPendingVote({
+    statusId,
+    voterId,
+    authorId,
+    rewardDayKey: DAY,
+    rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`),
+  })
 
   const nowMs = Date.parse(`${DAY}T12:00:00-03:00`)
   await db.doc('maintenance/rewardSettlementLock').set({
@@ -667,7 +772,13 @@ test('CONCORRÊNCIA: duas execuções do scheduler disputando o mesmo lease nunc
   const voterId = uid()
   const statusId = uid()
   await seedStatus({ statusId, authorId })
-  await seedPendingVote({ statusId, voterId, authorId, rewardDayKey: DAY, rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`) })
+  await seedPendingVote({
+    statusId,
+    voterId,
+    authorId,
+    rewardDayKey: DAY,
+    rewardPendingAtMs: Date.parse(`${DAY}T10:00:00-03:00`),
+  })
 
   const settle = buildSettlement({ now: () => Date.parse(`${DAY}T12:00:00-03:00`) })
   const [resultA, resultB] = await Promise.all([settle(), settle()])
@@ -677,10 +788,18 @@ test('CONCORRÊNCIA: duas execuções do scheduler disputando o mesmo lease nunc
   const totalProcessed = [resultA, resultB]
     .filter((r) => !r.skipped)
     .reduce((sum, r) => sum + r.processed, 0)
-  assert.equal(totalProcessed, 1, 'o voto único só pode ter sido processado por uma das duas execuções')
+  assert.equal(
+    totalProcessed,
+    1,
+    'o voto único só pode ter sido processado por uma das duas execuções'
+  )
 
   const wallet = await getWallet(authorId)
-  assert.equal(wallet.coinBalance, DEFAULT_ECONOMY_CONFIG.voting.rewardCoinsPerPositiveVote, 'crédito único, não duplicado')
+  assert.equal(
+    wallet.coinBalance,
+    DEFAULT_ECONOMY_CONFIG.voting.rewardCoinsPerPositiveVote,
+    'crédito único, não duplicado'
+  )
   assert.equal(await countLedgerEntries(authorId), 1)
   assert.equal((await getVote(statusId, voterId)).rewardState, 'processed')
 })

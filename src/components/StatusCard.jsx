@@ -7,6 +7,9 @@ import {
   LocationIcon,
   ClockIcon,
   ShieldCheckIcon,
+  CheckIcon,
+  CalendarIcon,
+  PeopleIcon,
 } from '@primer/octicons-react'
 import {
   getMyVote,
@@ -25,11 +28,19 @@ import { PhotoStatus } from './PhotoStatus'
 import { ShareMenu } from './ShareMenu'
 import { PromoteDialog } from './PromoteDialog'
 import { PromotedBadge } from './PromotedBadge'
+import { WorkoutParticipantsDialog } from './WorkoutParticipantsDialog'
 import { formatDateTime } from '../utils/format'
 import { getCached, setCached } from '../utils/pageCache'
 import { isReportableAuthor } from '../utils/moderation'
 import { toDate } from '../utils/date.js'
 import { toMillis } from '../utils/expiry.js'
+import {
+  describeScheduledWorkoutState,
+  isScheduledWorkoutJoinable,
+  nextWorkoutParticipationState,
+} from '../utils/scheduledWorkout'
+import { buildIcsEvent, downloadIcsFile } from '../utils/icsExport'
+import '../styles/workout-status.css'
 
 // Selo dourado e discreto — o valor vem de authorIsSuperAdmin, gravado no status e
 // conferido pelo servidor no momento da publicação (ver firestore.rules e
@@ -248,14 +259,24 @@ function PollStatus({ status, currentUserId, showToast }) {
   )
 }
 
-function WorkoutStatus({ status, currentUserId, showToast }) {
+// Treino Marcado V1: identidade própria (título, estado temporal calculado a partir de
+// workout.date -- nunca de expiresAt, ver utils/scheduledWorkout.js), organizador,
+// participação e "Adicionar ao calendário". `now` vem do relógio já compartilhado pelo
+// feed (useCommunityFeed.js, atualizado a cada 15s) -- nenhum setInterval novo só para
+// este card.
+function WorkoutStatus({ status, currentUserId, showToast, now, communityName }) {
   // Contagem agregada + 1 leitura direta pelo id (não a lista inteira de participantes)
   // — mesmo raciocínio da enquete: nunca escala com o número de pessoas confirmadas.
+  // A lista de nomes (quem confirmou) NÃO é buscada automaticamente aqui: um preview
+  // fixo (ex. "Daniel, Pedro e +5") exigiria chamar a Function a cada card renderizado,
+  // multiplicando o custo pelo número de treinos marcados na tela -- só o botão "Ver
+  // participantes" abaixo chama listWorkoutParticipants, sob demanda, uma vez.
   const cacheKey = `workoutStatus:${status.id}:${currentUserId}`
   const cached = getCached(cacheKey)
   const [count, setCount] = useState(cached?.count ?? null)
   const [amParticipant, setAmParticipant] = useState(cached?.amParticipant ?? false)
   const [pending, setPending] = useState(false)
+  const [participantsOpen, setParticipantsOpen] = useState(false)
   // Mesmo raciocínio da enquete: sem isso, uma falha de rede/permissão deixava o botão
   // desabilitado (count === null) pra sempre, sem nenhuma explicação de por quê.
   const [loadError, setLoadError] = useState(false)
@@ -289,17 +310,17 @@ function WorkoutStatus({ status, currentUserId, showToast }) {
       if (amParticipant) {
         await leaveWorkout(status.id, currentUserId)
         setCount((prev) => {
-          const next = prev - 1
-          setCached(cacheKey, { count: next, amParticipant: false })
-          return next
+          const next = nextWorkoutParticipationState(prev, false)
+          setCached(cacheKey, next)
+          return next.count
         })
         setAmParticipant(false)
       } else {
         await joinWorkout(status.id, currentUserId)
         setCount((prev) => {
-          const next = prev + 1
-          setCached(cacheKey, { count: next, amParticipant: true })
-          return next
+          const next = nextWorkoutParticipationState(prev, true)
+          setCached(cacheKey, next)
+          return next.count
         })
         setAmParticipant(true)
       }
@@ -311,45 +332,113 @@ function WorkoutStatus({ status, currentUserId, showToast }) {
     }
   }
 
+  function addToCalendar() {
+    const dateMs = toMillis(status.workout.date)
+    const ics = buildIcsEvent({
+      uid: `${status.id}@evolutus`,
+      title: status.workout.title,
+      startMs: dateMs,
+      location: status.workout.location,
+      description: communityName
+        ? `Comunidade Evolutus: ${communityName}`
+        : 'Treino marcado no Evolutus',
+    })
+    downloadIcsFile(`${status.workout.title || 'treino'}.ics`, ics)
+  }
+
+  const dateMs = toMillis(status.workout.date)
+  const nowMs = toMillis(now) || Date.now()
+  const state = describeScheduledWorkoutState(dateMs, nowMs)
+  const joinable = isScheduledWorkoutJoinable(dateMs, nowMs)
+  const organizerUsername = typeof status.authorUsername === 'string' ? status.authorUsername : null
+
   return (
-    <Box>
+    <Box className="workout-status">
+      <Text className="workout-status-label">
+        <CalendarIcon size={14} /> Treino marcado
+      </Text>
       <Text sx={{ fontWeight: 'bold', fontSize: 1, display: 'block', mb: 2 }}>
         {status.workout.title}
       </Text>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 3 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'fg.muted' }}>
           <ClockIcon size={14} />
           <Text sx={{ fontSize: 0 }}>{formatDateTime(toDate(status.workout.date))}</Text>
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'fg.muted' }}>
-          <LocationIcon size={14} />
-          <Text sx={{ fontSize: 0 }}>{status.workout.location}</Text>
-        </Box>
+        {status.workout.location && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'fg.muted' }}>
+            <LocationIcon size={14} />
+            <Text sx={{ fontSize: 0 }}>{status.workout.location}</Text>
+          </Box>
+        )}
       </Box>
+      <Text
+        sx={{
+          display: 'block',
+          fontSize: 0,
+          fontWeight: 'bold',
+          mb: 1,
+          color: state.key === 'concluded' ? 'fg.muted' : 'accent.fg',
+        }}
+      >
+        {state.label}
+      </Text>
+      <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted', mb: 2 }}>
+        Organizado por {organizerUsername ? `@${organizerUsername}` : 'Membro'}
+      </Text>
       {loadError && count === null ? (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Text sx={{ fontSize: 0, color: 'danger.fg' }}>Não foi possível carregar participantes.</Text>
+          <Text sx={{ fontSize: 0, color: 'danger.fg' }}>
+            Não foi possível carregar participantes.
+          </Text>
           <Button size="small" onClick={() => setRetryToken((token) => token + 1)}>
             Tentar novamente
           </Button>
         </Box>
       ) : (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-          <Button
-            size="small"
-            variant={amParticipant ? 'default' : 'primary'}
-            onClick={toggle}
-            disabled={count === null || pending}
-            leadingVisual={PersonIcon}
+        <>
+          <Box
+            className="workout-participants-summary"
+            sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap', mb: 2 }}
           >
-            {amParticipant ? 'Cancelar participação' : 'Participar'}
-          </Button>
-          {count !== null && (
-            <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-              {count} {count === 1 ? 'confirmado' : 'confirmados'}
-            </Text>
-          )}
-        </Box>
+            {count !== null && (
+              <Button
+                size="small"
+                variant="invisible"
+                leadingVisual={PeopleIcon}
+                sx={{ color: 'fg.muted', px: 1 }}
+                onClick={() => setParticipantsOpen(true)}
+              >
+                {count} {count === 1 ? 'confirmado' : 'confirmados'} · Ver participantes
+              </Button>
+            )}
+          </Box>
+          <Box
+            className="workout-actions"
+            sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}
+          >
+            {(amParticipant || joinable) && (
+              <Button
+                size="small"
+                variant={amParticipant ? 'default' : 'primary'}
+                onClick={toggle}
+                disabled={count === null || pending}
+                leadingVisual={amParticipant ? PersonIcon : CheckIcon}
+              >
+                {amParticipant ? 'Cancelar participação' : 'Vou participar'}
+              </Button>
+            )}
+            <Button size="small" leadingVisual={CalendarIcon} onClick={addToCalendar}>
+              Adicionar ao calendário
+            </Button>
+          </Box>
+        </>
+      )}
+      {participantsOpen && (
+        <WorkoutParticipantsDialog
+          statusId={status.id}
+          onClose={() => setParticipantsOpen(false)}
+        />
       )}
     </Box>
   )
@@ -365,13 +454,18 @@ export function StatusCard({
   myEconomyVote,
   onEconomyVoted,
   onPromoted,
+  communityName,
 }) {
   const [promoteOpen, setPromoteOpen] = useState(false)
   const isAuthor = status.authorId === currentUserId
-  const isCurrentlyPromoted = Boolean(status.promoted) && toMillis(status.promotedUntil) > toMillis(now)
+  const isCurrentlyPromoted =
+    Boolean(status.promoted) && toMillis(status.promotedUntil) > toMillis(now)
 
   return (
-    <article className="status-card">
+    <article
+      className={`status-card${status.type === 'workout' ? ' workout-status-card' : ''}`}
+      id={status.type === 'workout' ? `treino-${status.id}` : undefined}
+    >
       <StatusHeader
         status={status}
         now={now}
@@ -396,19 +490,23 @@ export function StatusCard({
         )}
 
         {status.type === 'workout' && (
-          <WorkoutStatus status={status} currentUserId={currentUserId} showToast={showToast} />
+          <WorkoutStatus
+            status={status}
+            currentUserId={currentUserId}
+            showToast={showToast}
+            now={now}
+            communityName={communityName}
+          />
         )}
 
         {status.type === 'photo' && (
           <PhotoStatus status={status} preloadedBlob={status._localPhotoBlob} />
         )}
       </div>
-      {/* Enquete já tem o próprio mecanismo de voto (PollStatus acima, gratuito, nas
-          próprias opções) -- voto econômico Apoio/Negativo não se aplica a esse tipo de
-          conteúdo, então o rodapé inteiro (botões, contagens, "Você apoiou/discordou",
-          "Ver quem votou") nem é montado para enquete, não só escondido visualmente. O
-          backend (vote-service.js) rejeita a mesma tentativa via chamada direta. */}
-      {status.type !== 'poll' && (
+      {/* Enquete usa o voto gratuito das próprias opções; treino usa participação.
+          Nenhum dos dois monta EconomyVoteBar ou seus contadores/listas. O backend usa
+          a mesma elegibilidade em vote-service e no settlement de recompensas antigas. */}
+      {status.type !== 'poll' && status.type !== 'workout' && (
         <div className="status-footer">
           <EconomyVoteBar
             status={status}

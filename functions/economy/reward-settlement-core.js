@@ -75,10 +75,22 @@ export function planSettlementBatch({ votes, initialCounters, limits }) {
   const authorCredits = new Map() // authorId -> { amount, voteKeys: [] }
 
   for (const vote of votes) {
-    const { voteKey, authorId, voterId, statusId, rewardDayKey, statusEligible, authorEligibility } = vote
+    const {
+      voteKey,
+      authorId,
+      voterId,
+      statusId,
+      rewardDayKey,
+      statusEligible,
+      authorEligibility,
+    } = vote
 
     if (!statusEligible) {
-      outcomes.push({ voteKey, outcome: 'capped', reason: 'status_gone' })
+      outcomes.push({
+        voteKey,
+        outcome: 'capped',
+        reason: vote.statusIneligibilityReason || 'status_gone',
+      })
       continue
     }
     if (authorEligibility.status === 'permanently_ineligible') {
@@ -154,7 +166,10 @@ export function planSettlementBatch({ votes, initialCounters, limits }) {
     // voteKeys ordenados -- a chave natural do ledger (montada por quem chama) precisa
     // ser determinística independente da ordem de iteração do Map.
     authorCredits: Object.fromEntries(
-      [...authorCredits].map(([id, c]) => [id, { amount: c.amount, voteKeys: [...c.voteKeys].sort() }])
+      [...authorCredits].map(([id, c]) => [
+        id,
+        { amount: c.amount, voteKeys: [...c.voteKeys].sort() },
+      ])
     ),
   }
 }
