@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import {
   Box,
@@ -11,17 +11,17 @@ import {
   Spinner,
   Text,
   Textarea,
-  UnderlineNav,
 } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
 import { useUsernamesByIds } from '../hooks/useUsernamesByIds'
 import { cancelCashPurchase, confirmCashPurchase } from '../services/cashPurchaseService'
 import { PixPaymentSettings } from '../components/PixPaymentSettings'
+import { AdminCashPurchasesTabs } from '../components/AdminCashPurchasesTabs'
+import { useAdminCashPurchasesTab } from '../hooks/useAdminCashPurchasesTab'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
   canSubmitCancellation,
-  normalizeCashPurchasesAdminTab,
   ADMIN_CASH_PURCHASE_STATUS_LABELS as STATUS_LABELS,
 } from '../utils/cashPurchaseFlow'
 
@@ -35,11 +35,7 @@ import {
 // nenhuma callable nova só para leitura.
 export default function AdminCashPurchases() {
   const { user } = useAuth()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const tab = normalizeCashPurchasesAdminTab(searchParams.get('tab'))
-  function selectTab(nextTab) {
-    setSearchParams(nextTab === 'pedidos' ? {} : { tab: nextTab }, { replace: true })
-  }
+  const { tab, selectTab } = useAdminCashPurchasesTab()
   const [status, setStatus] = useState('pending')
   const {
     purchases,
@@ -121,24 +117,7 @@ export default function AdminCashPurchases() {
     <div className="support-page">
       <h1>Compras de EvoCash</h1>
 
-      <UnderlineNav aria-label="Seções de Compras de EvoCash" sx={{ mb: 3 }}>
-        <UnderlineNav.Item
-          as="button"
-          type="button"
-          aria-current={tab === 'pedidos'}
-          onSelect={() => selectTab('pedidos')}
-        >
-          Pedidos
-        </UnderlineNav.Item>
-        <UnderlineNav.Item
-          as="button"
-          type="button"
-          aria-current={tab === 'pix'}
-          onSelect={() => selectTab('pix')}
-        >
-          Configuração PIX
-        </UnderlineNav.Item>
-      </UnderlineNav>
+      <AdminCashPurchasesTabs tab={tab} onSelectTab={selectTab} />
 
       {tab === 'pix' && <PixPaymentSettings />}
 
