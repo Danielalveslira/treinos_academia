@@ -1,17 +1,23 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { toMillis, formatTimeRemaining } from './expiry.js'
+import { formatPublicationDateTime, formatRemainingTime, toMillis } from './expiry.js'
 
-test('formatTimeRemaining shows hours+minutes above 1h and minutes only below', () => {
-  assert.equal(formatTimeRemaining(18 * 3600000 + 42 * 60000), 'Expira em 18h 42min')
-  assert.equal(formatTimeRemaining(3 * 3600000 + 15 * 60000), 'Expira em 3h 15min')
-  assert.equal(formatTimeRemaining(27 * 60000), 'Expira em 27min')
+test('formatRemainingTime uses total hours, including durations above 24h', () => {
+  assert.equal(formatRemainingTime(52 * 3600000), '52h restantes')
+  assert.equal(formatRemainingTime(18 * 3600000 + 25 * 60000), '18h25min restantes')
+  assert.equal(formatRemainingTime(45 * 60000), '45min restantes')
 })
 
-test('formatTimeRemaining never shows 0min while still counting and hides once expired', () => {
-  assert.equal(formatTimeRemaining(30000), 'Expira em 1min')
-  assert.equal(formatTimeRemaining(0), null)
-  assert.equal(formatTimeRemaining(-1000), null)
+test('formatRemainingTime never advertises remaining time after the exact deadline', () => {
+  assert.equal(formatRemainingTime(30000), '1min restantes')
+  assert.equal(formatRemainingTime(0), 'Expirado')
+  assert.equal(formatRemainingTime(-1000), 'Expirado')
+  assert.equal(formatRemainingTime(0, 'Promoção encerrada'), 'Promoção encerrada')
+})
+
+test('formatPublicationDateTime formats the exact instant in the local timezone', () => {
+  const localDate = new Date(2026, 8, 22, 14, 30)
+  assert.equal(formatPublicationDateTime(localDate), '22/09/2026 às 14h30')
 })
 
 test('toMillis reads Firestore Timestamp, Date and raw values', () => {

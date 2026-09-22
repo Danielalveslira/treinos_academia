@@ -101,7 +101,7 @@ function StatusHeader({ status, now, canDelete, onDelete, showToast }) {
         </Text>
       </Box>
       <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: 1 }}>
-        <ExpiryBadge expiresAt={status.expiresAt} now={now} />
+        <ExpiryBadge status={status} now={now} />
         <ShareMenu status={status} showToast={showToast} />
         {canDelete && (
           <IconButton

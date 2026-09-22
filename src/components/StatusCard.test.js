@@ -183,12 +183,15 @@ test('já votado na enquete: a opção escolhida não é mais um botão clicáve
 
 test('post normal continua mostrando Apoio/Negativo, com o rodapé de voto econômico presente', () => {
   const status = makeTextStatus()
-  const html = render({ status, myEconomyVote: null })
+  const html = render({ status, myEconomyVote: null, canDelete: true })
   assert.match(html, /class="status-footer"/)
   assert.match(html, /2 apoios/)
   assert.match(html, /1 negativo/)
   assert.match(html, /Voto positivo/)
   assert.match(html, /Voto negativo/)
+  assert.match(html, /Ver informações de expiração da publicação/)
+  assert.match(html, /Compartilhar publicação/)
+  assert.match(html, /Excluir publicação/)
 })
 
 test('conquista mantém Apoio/Negativo', () => {
@@ -206,9 +209,11 @@ test('treino futuro mantém participação ativa após expirar no feed e identif
   assert.match(html, new RegExp(`id="treino-${status.id}"`))
   assert.match(html, /Treino marcado/)
   assert.match(html, /Organizado por @ana/)
+  assert.match(html, /Começa em 2h/)
   assert.match(html, /3 confirmados · Ver participantes/)
   assert.match(html, /Vou participar/)
   assert.match(html, /Adicionar ao calendário/)
+  assert.doesNotMatch(html, /Ver informações de expiração da publicação/)
   assert.doesNotMatch(html, /class="status-footer"/)
   assert.doesNotMatch(html, /Voto positivo|Voto negativo|apoios|negativos/)
 })
