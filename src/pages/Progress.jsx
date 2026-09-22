@@ -97,14 +97,7 @@ export default function Progress() {
   const previous = useMemo(() => aggregateProgress(previousDays), [previousDays])
   const chart = useMemo(
     () =>
-      buildProgressComparisonChart(
-        currentDays,
-        previousDays,
-        period,
-        metric,
-        range,
-        exerciseNames
-      ),
+      buildProgressComparisonChart(currentDays, previousDays, period, metric, range, exerciseNames),
     [currentDays, previousDays, period, metric, range, exerciseNames]
   )
   const muscleGroups = useMemo(
@@ -136,7 +129,7 @@ export default function Progress() {
   const hasCurrentChartData = chart.some((point) => point.currentValue > 0)
 
   return (
-    <div className="dashboard fitness-dashboard">
+    <div className="dashboard fitness-dashboard progress-page">
       <header className="section-heading">
         <div>
           <span className="eyebrow">EVOLUÇÃO</span>
@@ -174,7 +167,7 @@ export default function Progress() {
 
       {!loading && !error && (
         <>
-          <Box className="stats-grid progress-stats-grid" sx={{ my: 3 }}>
+          <Box className="stats-grid progress-stats-grid progress-overview-grid">
             <IndicatorCard label="Dias de treino" value={current.trainingDays} />
             <IndicatorCard label="Treinos registrados" value={current.workoutCount} />
             <IndicatorCard label="Exercícios distintos" value={current.distinctExercises} />
@@ -221,11 +214,7 @@ export default function Progress() {
               ))}
             </div>
             {hasCurrentChartData ? (
-              <ProgressChart
-                data={chart}
-                formatValue={config.format}
-                showPrevious={showPrevious}
-              />
+              <ProgressChart data={chart} formatValue={config.format} showPrevious={showPrevious} />
             ) : (
               <Text sx={{ color: 'fg.muted' }}>Sem registros neste período.</Text>
             )}
@@ -237,7 +226,9 @@ export default function Progress() {
             <div className="section-heading">
               <div>
                 <span className="eyebrow">VOLUME</span>
-                <Heading as="h2" id="volume-title">Carga e trabalho realizado</Heading>
+                <Heading as="h2" id="volume-title">
+                  Carga e trabalho realizado
+                </Heading>
               </div>
             </div>
             <Box className="stats-grid progress-stats-grid">
@@ -257,7 +248,9 @@ export default function Progress() {
               <IndicatorCard label="Repetições" value={current.reps} />
             </Box>
             <Text as="p" sx={{ color: 'fg.muted', fontSize: 1 }}>
-              Volume de carga = soma de peso × repetições das séries. Carga zero e exercícios de peso corporal não recebem peso estimado; séries, repetições e frequência continuam contabilizadas.
+              Volume de carga = soma de peso × repetições das séries. Carga zero e exercícios de
+              peso corporal não recebem peso estimado; séries, repetições e frequência continuam
+              contabilizadas.
             </Text>
           </section>
 

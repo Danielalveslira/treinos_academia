@@ -547,7 +547,7 @@ body:has(.pwa-offline) .app-shell {
   margin: 0 auto;
 }
 .profile-page-heading {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 .profile-eyebrow {
   color: var(--fgColor-muted);
@@ -571,7 +571,7 @@ body:has(.pwa-offline) .app-shell {
   align-items: center;
   gap: 24px;
   padding: 28px;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
   border: 1px solid var(--borderColor-default);
   border-radius: 16px;
   background: linear-gradient(115deg, var(--bgColor-accent-muted), var(--bgColor-default) 75%);
@@ -621,7 +621,7 @@ body:has(.pwa-offline) .app-shell {
 .profile-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
-  gap: 24px;
+  gap: 28px;
   align-items: start;
 }
 .profile-card {
@@ -634,7 +634,7 @@ body:has(.pwa-offline) .app-shell {
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 24px;
+  padding: 24px 28px;
   border-bottom: 1px solid var(--borderColor-muted);
 }
 .profile-section-icon {
@@ -658,8 +658,8 @@ body:has(.pwa-offline) .app-shell {
 .profile-form {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 24px;
+  gap: 28px;
+  padding: 28px;
 }
 .profile-optional {
   font-weight: 400;
@@ -680,10 +680,10 @@ body:has(.pwa-offline) .app-shell {
 }
 .profile-account-details {
   margin: 0;
-  padding: 0 24px;
+  padding: 4px 28px;
 }
 .profile-account-details > div {
-  padding: 20px 0;
+  padding: 20px 0 22px;
 }
 .profile-account-details > div + div {
   border-top: 1px solid var(--borderColor-muted);
@@ -701,24 +701,39 @@ body:has(.pwa-offline) .app-shell {
   overflow-wrap: anywhere;
 }
 .profile-wallet {
-  padding: 20px 24px 24px;
+  padding: 24px 28px 28px;
   border-top: 1px solid var(--borderColor-muted);
 }
 .profile-wallet-heading {
-  margin: 0 0 12px;
+  margin: 0 0 16px;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--fgColor-muted);
 }
 .profile-wallet .stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: 12px;
   margin-bottom: 0;
 }
 .profile-wallet .indicator-card {
-  padding: 14px 10px;
+  min-height: 88px;
+  padding: 16px 12px;
+  border: 0;
+  background: var(--bgColor-muted);
+}
+.profile-wallet .indicator-label {
+  margin-bottom: 8px;
+  font-size: 11px;
 }
 .profile-wallet .indicator-value {
-  font-size: 16px;
+  font-size: 18px;
+}
+.profile-wallet > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  margin-top: 16px;
 }
 @media (max-width: 767px) {
   .profile-grid {
@@ -750,6 +765,9 @@ body:has(.pwa-offline) .app-shell {
   .profile-form {
     padding: 20px;
   }
+  .profile-form {
+    gap: 24px;
+  }
   .profile-form-footer {
     flex-direction: column;
     align-items: stretch;
@@ -760,6 +778,9 @@ body:has(.pwa-offline) .app-shell {
   }
   .profile-account-details {
     padding: 0 20px;
+  }
+  .profile-wallet {
+    padding: 20px;
   }
 }
 
@@ -961,7 +982,7 @@ body:has(.pwa-offline) .app-shell {
 .community-toolbar {
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 .community-toolbar h2 {
   margin: 0;
@@ -969,11 +990,28 @@ body:has(.pwa-offline) .app-shell {
 }
 .community-feed {
   display: grid;
-  gap: 12px;
+  gap: 16px;
+}
+.community-feed-group {
+  min-width: 0;
+  margin: 28px 0;
+}
+.community-feed-group > h2 {
+  margin: 0 0 14px;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.community-featured-section {
+  padding: 20px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bgColor-accent-muted) 36%, transparent);
+}
+.community-featured-section > h2 {
+  color: var(--fgColor-default);
 }
 .status-card {
   min-width: 0;
-  padding: 16px;
+  padding: 20px;
   border: 1px solid var(--borderColor-default);
   border-radius: 8px;
   background: var(--bgColor-default);
@@ -1033,7 +1071,7 @@ body:has(.pwa-offline) .app-shell {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   padding: 10px 14px;
   border: 1px solid var(--fitness-accent);
   border-radius: 8px;
@@ -1091,7 +1129,7 @@ body:has(.pwa-offline) .app-shell {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 .status-author {
   display: block;
@@ -1263,7 +1301,16 @@ body:has(.pwa-offline) .app-shell {
   }
   .status-card,
   .main-content .community-form {
-    padding: 12px;
+    padding: 16px;
+  }
+  .community-feed {
+    gap: 14px;
+  }
+  .community-feed-group {
+    margin-block: 24px;
+  }
+  .community-featured-section {
+    padding: 16px;
   }
   .status-photo img {
     max-height: 360px;
@@ -1340,7 +1387,9 @@ body:has(.pwa-offline) .app-shell {
   font-size: 12px;
 }
 .status-footer {
-  margin-top: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--borderColor-muted);
 }
 .legal-page {
   max-width: 1120px;
@@ -1905,8 +1954,39 @@ body {
   min-width: 0;
 }
 
+.progress-page {
+  width: 100%;
+  max-width: 1100px;
+  margin-inline: auto;
+}
+
+.progress-page > .section-heading {
+  margin-bottom: 24px;
+}
+
+.progress-page > .section-heading h1 {
+  margin: 0 0 8px;
+}
+
+.progress-page > .metric-tabs {
+  margin-bottom: 0;
+}
+
+.progress-overview-grid {
+  margin: 24px 0 0;
+}
+
+.progress-section {
+  margin-top: 40px;
+  padding-top: 36px;
+  border-top: 1px solid var(--borderColor-muted);
+}
+
 .body-composition-card {
-  margin-top: 44px;
+  min-width: 0;
+  margin-top: 40px;
+  padding-top: 36px;
+  border-top: 1px solid var(--borderColor-muted);
 }
 
 .body-stats-grid {
@@ -1927,6 +2007,10 @@ body {
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 18px;
+}
+
+.progress-page .section-heading {
+  margin-bottom: 24px;
 }
 
 .section-heading h2 {
@@ -2614,6 +2698,36 @@ body {
 .progress-stats-grid,
 .strength-stats-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.progress-page .indicator-card {
+  display: flex;
+  min-height: 104px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px;
+  border-color: var(--borderColor-muted);
+  border-radius: 14px;
+}
+
+.progress-page .indicator-label {
+  min-height: 32px;
+  margin-bottom: 8px;
+  line-height: 1.35;
+}
+
+.progress-page .indicator-value {
+  font-size: clamp(19px, 2.2vw, 26px);
+  line-height: 1.15;
+}
+
+.progress-page .progress-section > p,
+.body-composition-card > p {
+  max-width: 760px;
+  margin: 16px 0 0;
+  line-height: 1.6;
 }
 
 .body-measurements-grid {
@@ -2624,9 +2738,22 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
-  margin-bottom: 10px;
+  margin-bottom: 16px;
   color: var(--fgColor-muted);
   font-size: 12px;
+}
+
+.progress-chart-surface {
+  min-width: 0;
+  margin-top: 20px;
+  padding: 20px 12px 8px;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--fitness-surface);
+}
+
+.body-metric-chart-surface {
+  margin-top: 16px;
 }
 
 .progress-chart-legend span {
@@ -2658,8 +2785,8 @@ body {
 }
 
 .body-subsection-heading {
-  margin-top: 32px;
-  margin-bottom: 18px;
+  margin-top: 40px;
+  margin-bottom: 20px;
 }
 
 .body-subsection-heading h3 {
@@ -2699,15 +2826,18 @@ body {
 
 .muscle-distribution {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .muscle-distribution > div {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--borderColor-muted);
+  align-items: center;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--fitness-surface);
 }
 
 .body-chart-controls {
@@ -2716,17 +2846,70 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 20px;
+  margin-top: 28px;
+  margin-bottom: 4px;
+}
+
+.body-chart-controls > .metric-tabs {
+  max-width: 100%;
+  margin-bottom: 0;
 }
 
 @media (max-width: 767px) {
+  .progress-page .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .progress-page .section-heading > button,
+  .progress-page .section-heading > select {
+    max-width: 100%;
+  }
+
+  .progress-page .section-summary {
+    text-align: left;
+  }
+
+  .progress-section,
+  .body-composition-card {
+    margin-top: 32px;
+    padding-top: 28px;
+  }
+
   .progress-stats-grid,
   .strength-stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .progress-page .indicator-card {
+    min-height: 96px;
+    padding: 16px;
+  }
+
+  .progress-chart-surface {
+    margin-inline: -4px;
+    padding: 16px 4px 4px;
+  }
+
+  .muscle-distribution {
+    grid-template-columns: 1fr;
   }
 
   .measurement-form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 359px) {
+  .progress-stats-grid,
+  .strength-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-page .indicator-card {
+    min-height: 88px;
   }
 }
 

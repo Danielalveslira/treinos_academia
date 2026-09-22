@@ -12,7 +12,7 @@ export function WalletCard() {
   const { wallet, loading } = useWallet()
 
   return (
-    <div>
+    <div className="profile-wallet">
       <h3 className="profile-wallet-heading">Carteira Evolutus</h3>
       <Box className="stats-grid" sx={{ my: 2 }}>
         <IndicatorCard
