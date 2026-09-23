@@ -30,6 +30,14 @@ function active(version) {
   )
 }
 
+function reverseKeys(value) {
+  if (Array.isArray(value)) return value.map(reverseKeys)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).reverse().map(([key, item]) => [key, reverseKeys(item)]))
+  }
+  return value
+}
+
 function access(bundle) {
   return {
     policy: { version: bundle.manifest.version, digest: bundle.digest, published: true },
@@ -54,6 +62,20 @@ test('loads and displays the complete immutable archive matching active versions
     assert.equal(bundle.manifest.version, version)
     assert.ok(bundle.documents.length >= 3)
     assert.equal(bundle.digest, APPROVED_LEGAL_DIGESTS[version])
+    const archive = version === '1.3.0' ? oldArchive : newArchive
+    const firestoreArchive = reverseKeys(archive)
+    const resolvedFromFirestore = await resolveLegalBundle(
+      { version, digest: APPROVED_LEGAL_DIGESTS[version], published: true },
+      firestoreArchive
+    )
+    assert.deepEqual(resolvedFromFirestore.documents, bundle.documents)
+    await assert.rejects(
+      resolveLegalBundle(
+        { version, digest: APPROVED_LEGAL_DIGESTS[version], published: true },
+        { ...firestoreArchive, documents: [...firestoreArchive.documents].reverse() }
+      ),
+      /LEGAL_POLICY_INCOMPATIBLE/
+    )
     assert.ok(selectLegalDocument(bundle, 'privacy', version)?.sections.length)
     assert.equal(selectLegalDocument(bundle, 'privacy', version === '1.3.0' ? '1.4.0' : '1.3.0'), null)
     assert.deepEqual(

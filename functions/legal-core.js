@@ -6,8 +6,44 @@ export const APPROVED_LEGAL_DIGESTS = JSON.parse(
   readFileSync(new URL('./legal/approved-digests.json', import.meta.url))
 )
 
+const approvedArchives = {
+  '1.3.0': JSON.parse(
+    readFileSync(new URL('./legal/test-fixtures/1.3.0.json', import.meta.url))
+  ),
+  '1.4.0': {
+    manifest: JSON.parse(readFileSync(new URL('./legal/manifest.json', import.meta.url))),
+    documents: JSON.parse(readFileSync(new URL('./legal/documents.json', import.meta.url))),
+  },
+}
+
 export function legalDigest(manifest, documents) {
   return createHash('sha256').update(JSON.stringify({ manifest, documents })).digest('hex')
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+      .join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+export function legalArchiveContentMatches(version, archive) {
+  const approved = approvedArchives[version]
+  if (!approved || !archive) return false
+  return (
+    canonicalJson({ manifest: archive.manifest, documents: archive.documents }) ===
+    canonicalJson({ manifest: approved.manifest, documents: approved.documents })
+  )
+}
+
+for (const [version, archive] of Object.entries(approvedArchives)) {
+  if (legalDigest(archive.manifest, archive.documents) !== APPROVED_LEGAL_DIGESTS[version]) {
+    throw new Error(`Approved legal archive does not match its pinned digest: ${version}`)
+  }
 }
 
 export function validateAcceptance(data, manifest) {
@@ -42,7 +78,7 @@ export function validateActiveLegalAcceptance(data, policy, archive) {
     archive.manifest?.published !== true ||
     !Array.isArray(archive.documents) ||
     archive.documents.length === 0 ||
-    legalDigest(archive.manifest, archive.documents) !== approvedDigest
+    !legalArchiveContentMatches(version, archive)
   ) {
     return 'O arquivo jurídico ativo está indisponível ou inconsistente.'
   }

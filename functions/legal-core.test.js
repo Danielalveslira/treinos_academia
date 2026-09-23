@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   APPROVED_LEGAL_DIGESTS,
+  legalArchiveContentMatches,
   legalDigest,
   validateAcceptance,
   validateActiveLegalAcceptance,
@@ -74,6 +75,34 @@ test('active acceptance accepts only immutable 1.3.0 and 1.4.0 archives', () => 
     assert.equal(
       validateActiveLegalAcceptance(data, { version, digest, published: true }, archive),
       null
+    )
+  }
+})
+
+test('active archive content is order independent while preserving array order and exact values', () => {
+  const reverseKeys = (value) => {
+    if (Array.isArray(value)) return value.map(reverseKeys)
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(Object.entries(value).reverse().map(([key, item]) => [key, reverseKeys(item)]))
+    }
+    return value
+  }
+  for (const archive of [previousArchive, currentArchive]) {
+    const reordered = reverseKeys(archive)
+    assert.equal(legalArchiveContentMatches(archive.manifest.version, reordered), true)
+    assert.equal(
+      legalArchiveContentMatches(archive.manifest.version, {
+        ...reordered,
+        documents: [{ ...reordered.documents[0], title: 'Alterado' }, ...reordered.documents.slice(1)],
+      }),
+      false
+    )
+    assert.equal(
+      legalArchiveContentMatches(archive.manifest.version, {
+        ...reordered,
+        documents: [...reordered.documents].reverse(),
+      }),
+      false
     )
   }
 })

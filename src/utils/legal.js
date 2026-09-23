@@ -1,13 +1,18 @@
 import manifest from '../../functions/legal/manifest.json' with { type: 'json' }
 import documents from '../../functions/legal/documents.json' with { type: 'json' }
 import approvedDigests from '../../functions/legal/approved-digests.json' with { type: 'json' }
+import previousArchive from '../../functions/legal/test-fixtures/1.3.0.json' with { type: 'json' }
 
 export const LEGAL_MANIFEST = manifest
 export const LEGAL_DOCUMENTS = documents
 export const APPROVED_LEGAL_DIGESTS = approvedDigests
 export const SUPPORTED_LEGAL_VERSIONS = Object.keys(approvedDigests)
+const approvedArchives = {
+  '1.3.0': previousArchive,
+  '1.4.0': { manifest, documents },
+}
 
-export async function calculateLegalDigest(versionManifest, versionDocuments) {
+async function calculateLegalDigest(versionManifest, versionDocuments) {
   if (!globalThis.crypto?.subtle) throw new Error('LEGAL_CRYPTO_UNAVAILABLE')
   const payload = JSON.stringify({ manifest: versionManifest, documents: versionDocuments })
   const bytes = new TextEncoder().encode(payload)
@@ -15,8 +20,32 @@ export async function calculateLegalDigest(versionManifest, versionDocuments) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`)
+      .join(',')}}`
+  }
+  return JSON.stringify(value)
+}
+
+export function legalArchiveContentMatches(version, archive) {
+  if (!Object.hasOwn(approvedArchives, version)) return false
+  const approved = approvedArchives[version]
+  if (!approved || !archive) return false
+  return (
+    canonicalJson({ manifest: archive.manifest, documents: archive.documents }) ===
+    canonicalJson({ manifest: approved.manifest, documents: approved.documents })
+  )
+}
+
 export async function resolveLegalBundle(policy, archive) {
   const version = policy?.version
+  if (!Object.hasOwn(APPROVED_LEGAL_DIGESTS, version)) {
+    throw new Error('LEGAL_POLICY_INCOMPATIBLE')
+  }
   const expectedDigest = APPROVED_LEGAL_DIGESTS[version]
   if (
     !expectedDigest ||
@@ -27,11 +56,13 @@ export async function resolveLegalBundle(policy, archive) {
     archive.manifest?.version !== version ||
     archive.manifest?.published !== true ||
     !Array.isArray(archive.documents) ||
-    archive.documents.length === 0
+    archive.documents.length === 0 ||
+    !legalArchiveContentMatches(version, archive)
   ) {
     throw new Error('LEGAL_POLICY_INCOMPATIBLE')
   }
-  if ((await calculateLegalDigest(archive.manifest, archive.documents)) !== expectedDigest) {
+  const approved = approvedArchives[version]
+  if ((await calculateLegalDigest(approved.manifest, approved.documents)) !== expectedDigest) {
     throw new Error('LEGAL_POLICY_INCOMPATIBLE')
   }
   return {
@@ -52,6 +83,7 @@ export function canSubmitLegalRegistration({ bundle, loading, confirmed }) {
   return Boolean(
     !loading &&
       bundle?.manifest?.published === true &&
+      Object.hasOwn(APPROVED_LEGAL_DIGESTS, bundle?.manifest?.version) &&
       bundle?.digest === APPROVED_LEGAL_DIGESTS[bundle.manifest.version] &&
       confirmed?.accepted === true &&
       confirmed?.healthDataConsent === true
@@ -60,7 +92,7 @@ export function canSubmitLegalRegistration({ bundle, loading, confirmed }) {
 
 export function legalConsentDocumentLinks(bundle) {
   const version = bundle?.manifest?.version
-  if (!version || !APPROVED_LEGAL_DIGESTS[version]) return []
+  if (!version || !Object.hasOwn(APPROVED_LEGAL_DIGESTS, version)) return []
   return [
     { label: 'Termos de Uso', to: `/termos-de-uso?version=${version}` },
     { label: 'Regras da Comunidade', to: `/regras-da-comunidade?version=${version}` },

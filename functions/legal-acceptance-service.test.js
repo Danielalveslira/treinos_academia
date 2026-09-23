@@ -33,9 +33,17 @@ const archives = { '1.3.0': previousArchive, '1.4.0': currentArchive }
 let sequence = 0
 const unique = () => `legal_user_${Date.now()}_${sequence++}`
 
+function reverseKeys(value) {
+  if (Array.isArray(value)) return value.map(reverseKeys)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).reverse().map(([key, item]) => [key, reverseKeys(item)]))
+  }
+  return value
+}
+
 async function seedPolicy(version, archive = archives[version]) {
   await Promise.all([
-    db.doc(`legalVersions/${version}`).set(archive),
+    db.doc(`legalVersions/${version}`).set(reverseKeys(archive)),
     db.doc('legalPolicy/current').set({
       version,
       digest: APPROVED_LEGAL_DIGESTS[version],
@@ -58,7 +66,7 @@ const consent = (version) => ({
   healthDataConsent: true,
 })
 
-test('accepts exactly the active archived version and requires a fresh 1.4.0 acceptance after transition', async () => {
+test('accepts reordered Firestore archive maps and requires a fresh 1.4.0 acceptance after transition', async () => {
   const uid = unique()
   await seedUser(uid)
   await seedPolicy('1.3.0')
