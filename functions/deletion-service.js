@@ -31,7 +31,8 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
       // Fase 5: excluir uma COMUNIDADE (nunca uma conta) também é um poder do dono --
       // entity já É o documento da comunidade neste caso (lido acima como `target`),
       // então checar ownerId não custa nenhuma leitura extra.
-      const isCommunityOwner = kind === 'community' && entity.exists && entity.data().ownerId === adminId
+      const isCommunityOwner =
+        kind === 'community' && entity.exists && entity.data().ownerId === adminId
       if (admin.data()?.role !== 'superadmin' && !isCommunityOwner)
         throw new HttpsError('permission-denied', 'Acesso administrativo necessário.')
       if (kind === 'account' && id === adminId)
@@ -74,6 +75,43 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
     page.docs.forEach((item) => batch.delete(item.ref))
     await batch.commit()
     return false
+  }
+
+  async function eraseStoragePrefix(prefix) {
+    // Alguns harnesses legados não exercitam Storage e injetam apenas auth/db.
+    // Em produção o bucket completo é sempre fornecido por functions/index.js.
+    if (!bucket?.getFiles) return true
+    const [files] = await bucket.getFiles({ prefix })
+    await Promise.all(files.map((file) => file.delete({ ignoreNotFound: true })))
+    return true
+  }
+
+  async function drainQuery(query) {
+    while (!(await eraseQuery(query))) {
+      // Keep draining this bounded, server-side deletion subtask before removing its owner lock.
+    }
+  }
+
+  async function eraseProfessionalListing(uid) {
+    const lockRef = db.doc(`professionalListingOwnerLocks/${uid}`)
+    const lock = await lockRef.get()
+    if (!lock.exists) return true
+    const listingId = lock.data().listingId
+    await Promise.all([
+      eraseStoragePrefix(`professionalListingMedia/${listingId}/`),
+      drainQuery(db.collection('showcaseReviewDecisions').where('listingId', '==', listingId)),
+      drainQuery(db.collection('showcaseReports').where('listingId', '==', listingId)),
+    ])
+    const batch = db.batch()
+    for (const path of [
+      `publishedProfessionalListings/${listingId}`,
+      `professionalListingDrafts/${listingId}`,
+      `professionalListings/${listingId}`,
+      `professionalListingOwnerLocks/${uid}`,
+    ])
+      batch.delete(db.doc(path))
+    await batch.commit()
+    return true
   }
 
   // A status is removed first; its deletion trigger queues a job that drains its
@@ -192,12 +230,23 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
           // há risco de cashBalance>0 sumir junto com wallet/current aqui embaixo: o
           // portão financeiro acima bloqueia a exclusão inteira antes de chegar a esta
           // etapa enquanto cashBalance > 0.
-          ...['workouts', 'exercises', 'bodyMeasurements', 'progressDaily', 'legalAcceptances', 'notices'].map(
-            (name) => () => eraseQuery(db.collection(`users/${uid}/${name}`))
-          ),
+          ...[
+            'workouts',
+            'exercises',
+            'bodyMeasurements',
+            'progressDaily',
+            'legalAcceptances',
+            'showcaseLegalAcceptances',
+            'notices',
+          ].map((name) => () => eraseQuery(db.collection(`users/${uid}/${name}`))),
           () => eraseQuery(db.collection(`users/${uid}/wallet`)),
           () => eraseQuery(db.collection(`users/${uid}/economyDaily`)),
           () => eraseQuery(db.collection(`publicProfiles/${uid}/statistics`)),
+          () => eraseProfessionalListing(uid),
+          async () => {
+            await eraseStoragePrefix(`profileAvatars/${uid}/`)
+            return eraseQuery(db.collection('profileAvatarMedia').where('ownerId', '==', uid))
+          },
           async () => {
             try {
               await auth.deleteUser(uid)
@@ -214,6 +263,7 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
               `accountRestrictions/${uid}`,
               `supportLimits/${uid}`,
               `rateLimitCounters/${uid}`,
+              `showcaseReportRateLimits/${uid}`,
             ])
               batch.delete(db.doc(path))
             await batch.commit()

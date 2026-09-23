@@ -16,7 +16,10 @@ const fakeAuth = {
   async revokeRefreshTokens() {},
   async deleteUser() {},
 }
-const fakeBucket = { file: () => ({ delete: async () => {} }) }
+const fakeBucket = {
+  file: () => ({ delete: async () => {} }),
+  getFiles: async () => [[]],
+}
 
 function FakeHttpsError(code, message) {
   const error = new Error(message)
@@ -81,6 +84,52 @@ test('deleting an account erases its wallet and economyDaily, but preserves econ
   assert.equal(transactions.empty, false, 'ledger financeiro precisa sobreviver à exclusão')
 })
 
+test('account deletion removes the professional listing, owner lock, draft and global avatar manifest', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const adminId = uid()
+  const targetUid = uid()
+  const listingId = uid()
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${targetUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+  await db.doc(`professionalListingOwnerLocks/${targetUid}`).set({ ownerId: targetUid, listingId })
+  await db.doc(`professionalListings/${listingId}`).set({ ownerId: targetUid })
+  await db.doc(`professionalListingDrafts/${listingId}`).set({ ownerId: targetUid })
+  await db.doc(`publishedProfessionalListings/${listingId}`).set({ publicationStatus: 'published' })
+  await db.doc(`profileAvatarMedia/${uid()}`).set({ ownerId: targetUid })
+  await db.doc(`users/${targetUid}/showcaseLegalAcceptances/1.0.0`).set({
+    userId: targetUid,
+    listingId,
+    version: '1.0.0',
+  })
+
+  const { id } = await deletions.queue('account', targetUid, adminId)
+  await runToCompletion(deletions, db.doc(`deletionJobs/${id}`))
+
+  const snapshots = await Promise.all([
+    db.doc(`professionalListingOwnerLocks/${targetUid}`).get(),
+    db.doc(`professionalListings/${listingId}`).get(),
+    db.doc(`professionalListingDrafts/${listingId}`).get(),
+    db.doc(`publishedProfessionalListings/${listingId}`).get(),
+  ])
+  assert.ok(snapshots.every((snapshot) => !snapshot.exists))
+  assert.equal(
+    (await db.collection('profileAvatarMedia').where('ownerId', '==', targetUid).get()).empty,
+    true
+  )
+  assert.equal(
+    (await db.collection(`users/${targetUid}/showcaseLegalAcceptances`).get()).empty,
+    true
+  )
+})
+
 // Confirma que a limpeza pagina de verdade em vez de tentar apagar tudo de uma vez:
 // mais documentos do que o tamanho de página interno de eraseQuery (100), então drenar
 // a coleção precisa de várias chamadas a step() (cada uma processando no máximo uma
@@ -105,10 +154,13 @@ test('an economyDaily collection larger than one deletion batch is drained safel
   const DAILY_DOC_COUNT = 130 // > o batchSize interno de eraseQuery (100)
   const seedBatch = db.batch()
   for (let i = 0; i < DAILY_DOC_COUNT; i++) {
-    seedBatch.set(db.doc(`users/${targetUid}/economyDaily/2026-01-${String(i + 1).padStart(4, '0')}`), {
-      activeMinutes: 0,
-      checkpointsCount: 0,
-    })
+    seedBatch.set(
+      db.doc(`users/${targetUid}/economyDaily/2026-01-${String(i + 1).padStart(4, '0')}`),
+      {
+        activeMinutes: 0,
+        checkpointsCount: 0,
+      }
+    )
   }
   await seedBatch.commit()
 
@@ -221,7 +273,11 @@ test('a positive cashBalance alone (no pending purchase) blocks account deletion
   assert.equal(job.data().state, 'blocked_financial_review')
   assert.equal(job.data().blockReason, 'positive_cash_balance')
   const wallet = await db.doc(`users/${targetUid}/wallet/current`).get()
-  assert.equal(wallet.data().cashBalance, 550, 'saldo intacto -- exclusão não chegou a apagar o wallet')
+  assert.equal(
+    wallet.data().cashBalance,
+    550,
+    'saldo intacto -- exclusão não chegou a apagar o wallet'
+  )
 })
 
 // Fase 3: economyRewardDaily (contador de recompensa por post/dia) precisa sumir junto
@@ -296,5 +352,9 @@ test('a regular user who is neither superadmin nor the community owner cannot qu
     () => deletions.queue('community', communityId, outsiderId),
     (error) => error.code === 'permission-denied'
   )
-  assert.equal((await db.doc(`communities/${communityId}`).get()).exists, true, 'nada deveria ter mudado')
+  assert.equal(
+    (await db.doc(`communities/${communityId}`).get()).exists,
+    true,
+    'nada deveria ter mudado'
+  )
 })

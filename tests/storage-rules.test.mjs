@@ -6,7 +6,7 @@ import {
   assertFails,
   assertSucceeds,
 } from '@firebase/rules-unit-testing'
-import { doc, setDoc, Timestamp } from 'firebase/firestore'
+import { deleteDoc, doc, setDoc, Timestamp } from 'firebase/firestore'
 import { getBytes, ref, uploadBytes } from 'firebase/storage'
 
 const PROJECT_ID = 'demo-treinos'
@@ -198,4 +198,49 @@ test('only a superadmin can read moderation evidence; nobody can write it from t
       contentType: 'image/webp',
     })
   )
+})
+
+test('profile avatars require an allocated owner manifest and are readable only as the active member avatar', async () => {
+  const mediaId = randomId()
+  const avatarPath = `profileAvatars/member/${mediaId}.webp`
+  await seed(`profileAvatarMedia/${mediaId}`, {
+    ownerId: 'member',
+    storagePath: avatarPath,
+    state: 'allocated',
+  })
+  await assertSucceeds(
+    uploadBytes(ref(memberStorage, avatarPath), new Uint8Array([1]), { contentType: 'image/webp' })
+  )
+  await assertFails(
+    uploadBytes(
+      ref(outsiderStorage, `profileAvatars/outsider/${mediaId}.webp`),
+      new Uint8Array([1]),
+      { contentType: 'image/webp' }
+    )
+  )
+  await seed('publicProfiles/member', {
+    username: 'member',
+    bio: null,
+    shareStatistics: false,
+    avatarPath,
+  })
+  await assertSucceeds(getBytes(ref(memberStorage, avatarPath)))
+  await assertSucceeds(getBytes(ref(outsiderStorage, avatarPath)))
+  await assertFails(getBytes(ref(anonymousStorage, avatarPath)))
+})
+
+test('approved storefront avatar is anonymously readable only while referenced by a published projection', async () => {
+  const listingId = 'listingStorageRules'
+  const mediaId = 'KKKKKKKKKKKKKKKKKKKK'
+  const avatarPath = `professionalListingMedia/${listingId}/approved/${mediaId}.webp`
+  await seedPhoto(avatarPath)
+  await seed(`publishedProfessionalListings/${listingId}`, {
+    publicationStatus: 'published',
+    avatarPath,
+  })
+  await assertSucceeds(getBytes(ref(anonymousStorage, avatarPath)))
+  await firestoreEnv.withSecurityRulesDisabled(async (context) => {
+    await deleteDoc(doc(context.firestore(), `publishedProfessionalListings/${listingId}`))
+  })
+  await assertFails(getBytes(ref(anonymousStorage, avatarPath)))
 })

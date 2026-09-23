@@ -1,6 +1,39 @@
 {
   "indexes": [
     {
+      "collectionGroup": "publishedProfessionalListings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "publicationStatus", "order": "ASCENDING" },
+        { "fieldPath": "filterKeys", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "sortKey", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "professionalListingDrafts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "reviewState", "order": "ASCENDING" },
+        { "fieldPath": "submittedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "showcaseReports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "profileAvatarMedia",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "state", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "statuses",
       "queryScope": "COLLECTION",
       "fields": [

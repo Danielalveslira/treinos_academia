@@ -47,6 +47,9 @@ import { createVoteService } from './economy/vote-service.js'
 import { validateVoteOnPost } from './economy/vote-core.js'
 import { createListPostEconomyVoters } from './economy/vote-query-service.js'
 import { createListWorkoutParticipants } from './workout-participants-service.js'
+import { createProfessionalListingService } from './professional-listing-service.js'
+import { createProfileAvatarService } from './profile-avatar-service.js'
+import sharp from 'sharp'
 import { createCashPurchaseService } from './economy/cash-purchase-service.js'
 import { createPixPaymentAdminService } from './economy/pix-payment-admin-service.js'
 import { createPrivilegeService } from './economy/privilege-service.js'
@@ -71,8 +74,74 @@ const bucket = {
 const manifest = JSON.parse(readFileSync(new URL('./legal/manifest.json', import.meta.url)))
 const documents = JSON.parse(readFileSync(new URL('./legal/documents.json', import.meta.url)))
 const digest = legalDigest(manifest, documents)
+const showcaseManifest = JSON.parse(
+  readFileSync(new URL('./legal/showcase-manifest.json', import.meta.url))
+)
+const showcaseDocument = JSON.parse(
+  readFileSync(new URL('./legal/showcase-document.json', import.meta.url))
+)
+const showcaseDigest = legalDigest(showcaseManifest, [showcaseDocument])
 const options = { region: 'southamerica-east1', maxInstances: 5 }
 const rebuildProgressDay = createProgressDailyService({ db, Timestamp, FieldValue })
+
+const professionalListings = createProfessionalListingService({
+  db,
+  bucket,
+  FieldValue,
+  HttpsError,
+  showcaseLegal: {
+    manifest: showcaseManifest,
+    digest: showcaseDigest,
+  },
+})
+const profileAvatars = createProfileAvatarService({
+  db,
+  bucket,
+  FieldValue,
+  HttpsError,
+  inspectImage: async (buffer) => sharp(buffer, { limitInputPixels: 2560000 }).metadata(),
+})
+
+export const createProfessionalListingDraft = onCall(options, (request) =>
+  professionalListings.createDraft(requireUser(request), request.data || {})
+)
+export const saveProfessionalListingDraft = onCall(options, (request) =>
+  professionalListings.saveDraft(requireUser(request), request.data || {})
+)
+export const submitProfessionalListing = onCall(options, (request) =>
+  professionalListings.submit(requireUser(request), request.data || {})
+)
+export const reviewProfessionalListing = onCall(options, (request) =>
+  professionalListings.review(requireUser(request), request.data || {})
+)
+export const unpublishProfessionalListing = onCall(options, (request) =>
+  professionalListings.unpublish(requireUser(request), request.data || {})
+)
+export const suspendProfessionalListing = onCall(options, (request) =>
+  professionalListings.suspend(requireUser(request), request.data || {})
+)
+export const reportProfessionalListing = onCall(options, (request) =>
+  professionalListings.report(requireUser(request), request.data || {})
+)
+export const resolveProfessionalListingReport = onCall(options, (request) =>
+  professionalListings.resolveReport(requireUser(request), request.data || {})
+)
+export const deleteProfessionalListing = onCall(options, (request) =>
+  professionalListings.deleteListing(requireUser(request), request.data || {})
+)
+export const allocateProfileAvatar = onCall(options, (request) =>
+  profileAvatars.allocate(requireUser(request))
+)
+export const confirmProfileAvatar = onCall(options, (request) =>
+  profileAvatars.confirm(requireUser(request), request.data || {})
+)
+export const removeProfileAvatar = onCall(options, (request) =>
+  profileAvatars.remove(requireUser(request))
+)
+export const purgeExpiredProfileAvatars = onSchedule(
+  { ...options, schedule: 'every 24 hours', timeoutSeconds: 300 },
+  () => profileAvatars.purgeExpired()
+)
 
 // Recalcula o dia inteiro em vez de aplicar incrementos. Assim criação, edição,
 // exclusão, mudança de data e retry do trigger produzem sempre o mesmo resumo.

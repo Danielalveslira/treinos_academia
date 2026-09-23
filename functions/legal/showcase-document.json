@@ -1,0 +1,113 @@
+{
+  "id": "showcase-publication-terms",
+  "path": "/termos-publicacao-vitrine",
+  "title": "Termos de Publicação da Vitrine Profissional — Evolutus",
+  "description": "Condições específicas para criar, submeter e manter uma vitrine pública de profissional ou espaço no Evolutus.",
+  "summary": [
+    "A Vitrine V1 é gratuita e serve para apresentar profissionais e espaços e permitir contato externo.",
+    "O titular responde pela veracidade, atualização e legitimidade das informações e conteúdos fornecidos.",
+    "A aprovação da vitrine é uma análise de conteúdo e não certifica formação, registro, qualidade ou resultados profissionais."
+  ],
+  "sections": [
+    {
+      "id": "finalidade",
+      "title": "1. Finalidade da vitrine",
+      "paragraphs": [
+        "A Vitrine Profissional permite que titulares apresentem gratuitamente seus serviços profissionais ou espaços de prática física no diretório público do Evolutus.",
+        "A Vitrine V1 não realiza venda, pagamento, agendamento, intermediação financeira ou garantia de contratação. O contato e eventual contratação acontecem diretamente entre visitante e titular, fora do Evolutus."
+      ]
+    },
+    {
+      "id": "dados-publicos",
+      "title": "2. Dados exibidos publicamente",
+      "paragraphs": [
+        "Quando a vitrine for aprovada e publicada, qualquer visitante, inclusive sem conta no Evolutus, poderá acessar os dados comerciais autorizados pelo titular."
+      ],
+      "items": [
+        "Nome profissional ou comercial, tipo de vitrine, categoria, modalidades e especialidades.",
+        "Apresentação, cidade, unidade federativa e modalidade de atendimento.",
+        "Links externos de contato informados para divulgação, como WhatsApp, Instagram e site.",
+        "Comunidade vinculada, quando o titular possuir autorização válida sobre ela.",
+        "Avatar aprovado, somente quando houver autorização específica do titular."
+      ]
+    },
+    {
+      "id": "avatar",
+      "title": "3. Autorização para uso do avatar",
+      "paragraphs": [
+        "O titular de uma vitrine profissional pode autorizar expressamente o uso público de uma versão de sua foto de perfil. A versão enviada para revisão fica identificada e somente pode aparecer na vitrine após aprovação.",
+        "Trocar a foto do perfil pessoal não publica automaticamente a nova imagem na vitrine. Revogar a autorização ou remover a foto faz a vitrine retornar ao avatar padrão, sem prejuízo da análise de outras informações."
+      ]
+    },
+    {
+      "id": "responsabilidade",
+      "title": "4. Responsabilidade pelas informações",
+      "items": [
+        "O titular declara possuir autorização para divulgar os nomes, textos, imagens, marcas, contatos e demais conteúdos fornecidos.",
+        "O titular deve manter as informações corretas, atuais, lícitas e compatíveis com sua atividade real.",
+        "É proibido inserir informação enganosa, identidade de terceiros, promessa falsa, conteúdo ilícito ou material que viole direitos autorais, de imagem, marca, privacidade ou outros direitos.",
+        "O titular é responsável pelas comunicações, propostas e relações comerciais realizadas por seus canais externos."
+      ]
+    },
+    {
+      "id": "contatos-externos",
+      "title": "5. Contatos e serviços externos",
+      "paragraphs": [
+        "Os links de contato direcionam o visitante para serviços de terceiros. Esses serviços possuem seus próprios termos, políticas e práticas de segurança.",
+        "O Evolutus não controla conversas, negociações, pagamentos ou entregas realizados nesses canais e não garante disponibilidade, segurança ou resultado de serviços externos."
+      ]
+    },
+    {
+      "id": "licenca",
+      "title": "6. Uso do conteúdo fornecido",
+      "paragraphs": [
+        "O titular mantém os direitos que possuir sobre o conteúdo enviado e concede ao Evolutus autorização não exclusiva, gratuita e limitada para armazenar, adaptar tecnicamente, revisar e exibir esse conteúdo enquanto necessário para operar, divulgar e moderar a vitrine.",
+        "A autorização termina quando o conteúdo é removido dos sistemas ativos, ressalvadas cópias técnicas temporárias, registros de aceite, decisões de moderação e retenções exigidas para segurança, exercício de direitos ou cumprimento legal."
+      ]
+    },
+    {
+      "id": "revisao",
+      "title": "7. Revisão, aprovação, rejeição e suspensão",
+      "items": [
+        "A submissão pode ser aprovada ou rejeitada conforme estes Termos, os Termos de Uso, as Regras da Comunidade e as políticas aplicáveis.",
+        "Alterações em uma vitrine publicada podem exigir nova revisão. Enquanto isso, a versão pública anteriormente aprovada permanece inalterada, exceto quando uma autorização de exposição for revogada.",
+        "A vitrine pode ser suspensa ou removida diante de irregularidade, risco, denúncia procedente, perda de autorização sobre conteúdo ou comunidade, ou violação das regras aplicáveis.",
+        "A decisão de aprovação não é definitiva e não impede revisão posterior diante de fatos novos."
+      ]
+    },
+    {
+      "id": "denuncias",
+      "title": "8. Denúncias",
+      "paragraphs": [
+        "Usuários autenticados podem denunciar uma vitrine. As denúncias são analisadas e podem resultar em nenhuma ação, solicitação de ajuste, suspensão ou remoção, conforme o caso.",
+        "O envio de denúncia não gera penalidade automática. Denúncias deliberadamente falsas ou abusivas podem ser tratadas conforme as regras gerais do Evolutus."
+      ]
+    },
+    {
+      "id": "sem-garantias",
+      "title": "9. Ausência de garantia comercial ou certificação",
+      "items": [
+        "O Evolutus não garante visualizações, contatos, clientes, vendas, contratação, renda ou qualquer resultado comercial.",
+        "A aprovação verifica a adequação do conteúdo para publicação e não certifica formação, habilitação, registro profissional, experiência, qualidade, segurança ou resultado do titular.",
+        "O visitante deve avaliar por conta própria as informações, credenciais e condições oferecidas antes de contratar ou realizar qualquer pagamento externo."
+      ]
+    },
+    {
+      "id": "despublicacao",
+      "title": "10. Despublicação e exclusão",
+      "paragraphs": [
+        "O titular pode despublicar ou excluir sua vitrine pelos controles disponíveis. A despublicação retira a projeção pública, mas preserva o rascunho para possível edição. A exclusão remove a vitrine e suas mídias operacionais, observadas retenções legítimas de segurança, auditoria, moderação e cumprimento legal.",
+        "A exclusão da conta segue o processo geral do Evolutus e inclui a limpeza dos dados operacionais da vitrine."
+      ]
+    },
+    {
+      "id": "relacao-documentos",
+      "title": "11. Relação com os demais documentos",
+      "paragraphs": [
+        "Estes Termos complementam os Termos de Uso, a Política de Privacidade e as Regras da Comunidade do Evolutus. Em caso de conflito, aplica-se a regra específica à Vitrine sem afastar direitos previstos em lei.",
+        "O uso das demais funcionalidades do Evolutus não depende do aceite destes Termos. O aceite é exigido somente para submeter uma Vitrine Profissional ou de Espaço."
+      ]
+    }
+  ],
+  "sources": []
+}

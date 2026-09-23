@@ -6,6 +6,43 @@ rules_version = '2';
 // a filiação do leitor, totalizando exatamente duas consultas.
 service firebase.storage {
   match /b/{bucket}/o {
+    match /profileAvatars/{userId}/{fileName} {
+      function avatarManifest() {
+        return firestore.get(
+          /databases/(default)/documents/profileAvatarMedia/$(fileName.replace('[.]webp$', ''))
+        ).data;
+      }
+
+      allow read: if request.auth != null
+        && firestore.get(/databases/(default)/documents/publicProfiles/$(userId)).data.avatarPath
+          == 'profileAvatars/' + userId + '/' + fileName;
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && resource == null
+        && fileName.matches('^[A-Za-z0-9]{20}\\.webp$')
+        && request.resource.size > 0
+        && request.resource.size <= 1024 * 1024
+        && request.resource.contentType == 'image/webp'
+        && avatarManifest().ownerId == userId
+        && avatarManifest().storagePath == 'profileAvatars/' + userId + '/' + fileName
+        && avatarManifest().state == 'allocated';
+      allow update, delete: if false;
+    }
+
+    match /professionalListingMedia/{listingId}/approved/{fileName} {
+      function publishedListing() {
+        return firestore.get(
+          /databases/(default)/documents/publishedProfessionalListings/$(listingId)
+        ).data;
+      }
+
+      allow read: if fileName.matches('^[A-Za-z0-9]{20}\\.webp$')
+        && publishedListing().publicationStatus == 'published'
+        && publishedListing().avatarPath
+          == 'professionalListingMedia/' + listingId + '/approved/' + fileName;
+      allow write: if false;
+    }
+
     // Catálogo estático público: a URL é derivada de catalog.json, sem consulta ao
     // Firestore. Clientes nunca escrevem neste namespace; somente o pipeline local com
     // Admin SDK (que não passa pelas Rules) pode publicar arquivos versionados.

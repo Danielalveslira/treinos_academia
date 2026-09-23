@@ -77,6 +77,18 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Documento jurídico específico da Vitrine. É público para permitir leitura antes
+    // do aceite, mas não participa de hasAppAccess() e nunca bloqueia o restante do app.
+    match /showcaseLegalPolicy/{policyId} {
+      allow get: if true;
+      allow list, write: if false;
+    }
+
+    match /showcaseLegalVersions/{version} {
+      allow get: if true;
+      allow list, write: if false;
+    }
+
     // Economia interna (EvoCoins/EvoCash) -- seção 26 do prompt de economia. Config
     // sempre de leitura só, nunca escrita pelo cliente (nem por superadmin): qualquer
     // ajuste futuro nos valores passa por uma Cloud Function própria (Fase 4+), nunca
@@ -144,6 +156,52 @@ service cloud.firestore {
     match /moderationDecisions/{decisionId} {
       allow read: if isSuperAdmin();
       allow write: if false;
+    }
+
+    // Vitrine V1: o documento autoritativo nunca é público. Visitantes anônimos
+    // leem somente a projeção sanitizada, escrita pela Admin SDK depois da aprovação.
+    match /professionalListings/{listingId} {
+      allow get: if isSignedIn()
+        && (resource.data.ownerId == request.auth.uid || isSuperAdmin());
+      allow list: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /professionalListingDrafts/{listingId} {
+      allow read: if isSignedIn()
+        && (resource.data.ownerId == request.auth.uid || isSuperAdmin());
+      allow write: if false;
+    }
+
+    match /professionalListingOwnerLocks/{userId} {
+      allow get: if isOwner(userId) || isSuperAdmin();
+      allow list, write: if false;
+    }
+
+    match /publishedProfessionalListings/{listingId} {
+      allow get, list: if resource.data.publicationStatus == 'published';
+      allow write: if false;
+    }
+
+    match /showcaseReviewDecisions/{decisionId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    match /showcaseReports/{reportId} {
+      allow read: if isSignedIn()
+        && (resource.data.reporterId == request.auth.uid || isSuperAdmin());
+      allow write: if false;
+    }
+
+    match /profileAvatarMedia/{mediaId} {
+      allow read: if isSignedIn()
+        && (resource.data.ownerId == request.auth.uid || isSuperAdmin());
+      allow write: if false;
+    }
+
+    match /showcaseReportRateLimits/{userId} {
+      allow read, write: if false;
     }
 
     function isSuperAdmin() {
@@ -325,7 +383,10 @@ service cloud.firestore {
       allow list: if false;
       allow create: if isOwner(userId)
         && request.resource.data.keys().hasAll(['username', 'bio', 'shareStatistics'])
-        && request.resource.data.keys().hasOnly(['username', 'bio', 'shareStatistics'])
+        && request.resource.data.keys().hasOnly(['username', 'bio', 'shareStatistics', 'avatarMediaId', 'avatarPath', 'updatedAt'])
+        && !('avatarMediaId' in request.resource.data)
+        && !('avatarPath' in request.resource.data)
+        && !('updatedAt' in request.resource.data)
         && isValidUsernameField(request.resource.data)
         && ownsUsernameField(userId, request.resource.data)
         && isValidBioField(request.resource.data)
@@ -337,7 +398,9 @@ service cloud.firestore {
       // Function renameUsername, atômica, Admin SDK.
       allow update: if isOwner(userId)
         && request.resource.data.keys().hasAll(['username', 'bio', 'shareStatistics'])
-        && request.resource.data.keys().hasOnly(['username', 'bio', 'shareStatistics'])
+        && request.resource.data.keys().hasOnly(['username', 'bio', 'shareStatistics', 'avatarMediaId', 'avatarPath', 'updatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['username', 'bio', 'shareStatistics'])
         && isValidUsernameField(request.resource.data)
         && (request.resource.data.get('username', null) == resource.data.get('username', null)
           || isInitialUsernameClaim(userId, resource.data, request.resource.data))
@@ -477,6 +540,11 @@ service cloud.firestore {
       }
 
       match /legalAcceptances/{version} {
+        allow read: if isOwner(userId) || isSuperAdmin();
+        allow write: if false;
+      }
+
+      match /showcaseLegalAcceptances/{version} {
         allow read: if isOwner(userId) || isSuperAdmin();
         allow write: if false;
       }
