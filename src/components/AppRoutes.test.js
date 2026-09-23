@@ -21,12 +21,14 @@ before(async () => {
         import { MemoryRouter } from 'react-router-dom'
         import { AppRoutes } from '../App.jsx'
         import { getProviderMounts, resetProviderMounts } from '../contexts/ExercisesContext'
+        import { getProtectedMounts, resetProtectedMounts } from '../components/ProtectedRoute'
         export function render(path) {
           resetProviderMounts()
+          resetProtectedMounts()
           const html = renderToStaticMarkup(
             createElement(MemoryRouter, { initialEntries: [path] }, createElement(AppRoutes))
           )
-          return { html, providerMounts: getProviderMounts() }
+          return { html, providerMounts: getProviderMounts(), protectedMounts: getProtectedMounts() }
         }
       `,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
@@ -76,7 +78,12 @@ before(async () => {
             loader: 'jsx',
           }))
           buildContext.onLoad({ filter: /^protected-route$/, namespace: 'stub' }, () => ({
-            contents: `export const ProtectedRoute = ({ children }) => children`,
+            contents: `
+              let mounts = 0
+              export const ProtectedRoute = ({ children }) => { mounts += 1; return children }
+              export const getProtectedMounts = () => mounts
+              export const resetProtectedMounts = () => { mounts = 0 }
+            `,
           }))
           buildContext.onLoad({ filter: /^admin-route$/, namespace: 'stub' }, () => ({
             contents: `export const SuperAdminRoute = ({ children }) => children`,
@@ -146,7 +153,18 @@ test('unrelated protected routes do not mount the exercise data provider', () =>
     // A aba de configuração PIX vive na mesma rota via ?tab= (não uma rota própria,
     // ver AdminCashPurchases.jsx) -- /admin/pagamentos nunca existiu como rota real.
     '/admin/compras-evocash?tab=pix',
+    '/minha-vitrine',
+    '/admin/vitrines',
   ]) {
     assert.equal(render(path).providerMounts, 0, path)
   }
+})
+
+test('professional directory and detail are public while unpublished management is gated', () => {
+  assert.equal(render('/profissionais').protectedMounts, 0)
+  assert.equal(render('/profissionais/listing-1').protectedMounts, 0)
+  assert.equal(render('/termos-publicacao-vitrine').protectedMounts, 0)
+  assert.equal(render('/minha-vitrine').protectedMounts, 1)
+  assert.equal(render('/minha-vitrine').html.includes('pÃ¡gina'), false)
+  assert.equal(render('/admin/vitrines').protectedMounts, 1)
 })

@@ -15,6 +15,8 @@ import { WalletCard } from '../components/WalletCard'
 import { formatDate } from '../utils/format'
 import { validateUsername, hasErrors } from '../utils/validators'
 import { BIO_MAX_LENGTH } from '../services/usersService'
+import { ProfileAvatar } from '../components/ProfileAvatar'
+import { removeProfileAvatar, uploadProfileAvatar } from '../services/profileAvatarService'
 
 function toDate(value) {
   if (!value) return null
@@ -23,7 +25,7 @@ function toDate(value) {
 }
 
 export default function Profile() {
-  const { user, profile, isSuperAdmin, saveProfile } = useAuth()
+  const { user, profile, isSuperAdmin, saveProfile, refreshProfile } = useAuth()
   const [draft, setDraft] = useState({})
   const [fieldErrors, setFieldErrors] = useState({})
   const [success, setSuccess] = useState(false)
@@ -33,6 +35,9 @@ export default function Profile() {
   const bio = draft.bio ?? profile?.bio ?? ''
   const shareStatistics = draft.shareStatistics ?? profile?.shareStatistics ?? false
   const [refreshingStats, setRefreshingStats] = useState(false)
+  const [avatarFile, setAvatarFile] = useState(null)
+  const [avatarBusy, setAvatarBusy] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
   const changes = {}
   if (shareStatistics !== (profile?.shareStatistics === true))
     changes.shareStatistics = shareStatistics
@@ -95,6 +100,41 @@ export default function Profile() {
   const initial = (profile?.username || user?.email || '?')[0].toUpperCase()
   const memberSince = toDate(profile?.createdAt)
 
+  async function saveAvatar() {
+    if (!avatarFile || avatarBusy) return
+    setAvatarBusy(true)
+    setAvatarError('')
+    try {
+      await uploadProfileAvatar(avatarFile)
+      await refreshProfile(user.uid)
+      setAvatarFile(null)
+      setSuccess('Foto de perfil atualizada.')
+    } catch (error) {
+      setAvatarError(
+        error?.message === 'AVATAR_TOO_LARGE'
+          ? 'A imagem compactada ultrapassou 1 MB. Escolha outra foto.'
+          : 'Não foi possível atualizar a foto.'
+      )
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  async function removeAvatar() {
+    if (avatarBusy || !window.confirm('Remover sua foto de perfil?')) return
+    setAvatarBusy(true)
+    setAvatarError('')
+    try {
+      await removeProfileAvatar()
+      await refreshProfile(user.uid)
+      setSuccess('Foto de perfil removida.')
+    } catch {
+      setAvatarError('Não foi possível remover a foto.')
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
   return (
     <div className="profile-page">
       <header className="profile-page-heading">
@@ -104,9 +144,7 @@ export default function Profile() {
       </header>
 
       <section className="profile-identity" aria-label="Resumo do perfil">
-        <div className="profile-avatar" aria-hidden="true">
-          {initial}
-        </div>
+        <ProfileAvatar path={profile?.avatarPath} name={initial} className="profile-avatar" />
         <div className="profile-identity-copy">
           <h2>{profile?.username ? `@${profile.username}` : 'Vamos apresentar você?'}</h2>
           <p>{profile?.bio || 'Adicione uma descrição e conte um pouco sobre você.'}</p>
@@ -152,6 +190,39 @@ export default function Profile() {
                 Não foi possível carregar seu perfil. Recarregue a página para tentar novamente.
               </Flash>
             )}
+            <div className="profile-avatar-control">
+              <div>
+                <strong>Foto de perfil</strong>
+                <p>JPEG, PNG, WebP ou GIF. A imagem é convertida para WebP e limitada a 1 MB.</p>
+              </div>
+              {avatarError && <Flash variant="danger">{avatarError}</Flash>}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                disabled={avatarBusy || !profile}
+                onChange={(event) => setAvatarFile(event.target.files?.[0] || null)}
+              />
+              <div>
+                <Button
+                  type="button"
+                  onClick={saveAvatar}
+                  loading={avatarBusy && Boolean(avatarFile)}
+                  disabled={!avatarFile || avatarBusy}
+                >
+                  Enviar foto
+                </Button>
+                {profile?.avatarPath && (
+                  <Button
+                    type="button"
+                    variant="danger"
+                    onClick={removeAvatar}
+                    disabled={avatarBusy}
+                  >
+                    Remover foto
+                  </Button>
+                )}
+              </div>
+            </div>
             <FormControl required disabled={submitting || !profile}>
               <FormControl.Label>Nome de usuário</FormControl.Label>
               <TextInput

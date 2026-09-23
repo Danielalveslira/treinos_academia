@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { WalletProvider } from './contexts/WalletContext'
 import { ExercisesProvider } from './contexts/ExercisesContext'
@@ -8,6 +8,7 @@ import { SuperAdminRoute } from './components/SuperAdminRoute'
 import { Layout } from './components/Layout'
 import { PageFallback } from './components/PageFallback'
 import { routeLoaders } from './routeLoaders'
+import { SHOWCASE_LEGAL_MANIFEST } from './utils/showcaseLegal'
 
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
@@ -32,6 +33,10 @@ const EvoCash = lazy(() => import('./pages/EvoCash'))
 const AdminCashPurchases = lazy(() => import('./pages/AdminCashPurchases'))
 const AdminPromotions = lazy(() => import('./pages/AdminPromotions'))
 const MyPromotions = lazy(() => import('./pages/MyPromotions'))
+const Professionals = lazy(() => import('./pages/Professionals'))
+const ProfessionalListing = lazy(() => import('./pages/ProfessionalListing'))
+const MyProfessionalListing = lazy(() => import('./pages/MyProfessionalListing'))
+const AdminProfessionalListings = lazy(() => import('./pages/AdminProfessionalListings'))
 const CreateCommunity = lazy(() => import('./pages/CreateCommunity'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
@@ -51,7 +56,13 @@ export function AppRoutes() {
         <Route path="/regras-da-comunidade" element={<LegalDocument documentId="community" />} />
         <Route path="/termos-de-uso" element={<LegalDocument documentId="terms" />} />
         <Route path="/politica-de-privacidade" element={<LegalDocument documentId="privacy" />} />
+        <Route
+          path="/termos-publicacao-vitrine"
+          element={<LegalDocument documentId="showcase-publication-terms" />}
+        />
         <Route path="/atendimento" element={<Support />} />
+        <Route path="/profissionais" element={<Professionals />} />
+        <Route path="/profissionais/:listingId" element={<ProfessionalListing />} />
         <Route path="*" element={<NotFound />} />
       </Route>
 
@@ -79,7 +90,21 @@ export function AppRoutes() {
         <Route path="/perfil" element={<Profile />} />
         <Route path="/evocash" element={<EvoCash />} />
         <Route path="/minhas-promocoes" element={<MyPromotions />} />
+        <Route
+          path="/minha-vitrine"
+          element={
+            SHOWCASE_LEGAL_MANIFEST.published ? <MyProfessionalListing /> : <Navigate to="/" replace />
+          }
+        />
         <Route path="/comunidades/criar" element={<CreateCommunity />} />
+        <Route
+          path="/admin/vitrines"
+          element={
+            <SuperAdminRoute>
+              <AdminProfessionalListings />
+            </SuperAdminRoute>
+          }
+        />
         <Route
           path="/admin/compras-evocash"
           element={

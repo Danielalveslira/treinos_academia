@@ -23,6 +23,7 @@ export function PublicLayout({ children }) {
           Evolutus
         </Link>
         <nav aria-label="Navegação">
+          <NavLink to="/profissionais">Profissionais</NavLink>
           {user ? (
             <NavLink to="/" replace>
               Ir para o app

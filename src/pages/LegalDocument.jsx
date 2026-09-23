@@ -4,9 +4,17 @@ import { Button, Flash } from '@primer/react'
 import { ShieldLockIcon, ReportIcon } from '@primer/octicons-react'
 import { PublicLayout } from '../components/PublicLayout'
 import { LEGAL_DOCUMENTS, LEGAL_MANIFEST } from '../utils/legal'
+import { SHOWCASE_LEGAL_DOCUMENT, SHOWCASE_LEGAL_MANIFEST } from '../utils/showcaseLegal'
 
 export default function LegalDocument({ documentId }) {
-  const document = LEGAL_DOCUMENTS.find((item) => item.id === documentId)
+  const showcase = documentId === SHOWCASE_LEGAL_DOCUMENT.id
+  const document = showcase
+    ? SHOWCASE_LEGAL_DOCUMENT
+    : LEGAL_DOCUMENTS.find((item) => item.id === documentId)
+  const documentManifest = showcase ? SHOWCASE_LEGAL_MANIFEST : LEGAL_MANIFEST
+  const relatedDocuments = showcase
+    ? LEGAL_DOCUMENTS
+    : LEGAL_DOCUMENTS.filter((item) => item.id !== documentId)
   const { hash } = useLocation()
   useEffect(() => {
     const previousTitle = window.document.title
@@ -31,12 +39,12 @@ export default function LegalDocument({ documentId }) {
           <h1>{document.title}</h1>
           <p>{document.description}</p>
           <p className="legal-meta">
-            Versão {LEGAL_MANIFEST.version} ·{' '}
-            <time dateTime={LEGAL_MANIFEST.date}>
-              {LEGAL_MANIFEST.date.split('-').reverse().join('/')}
+            Versão {documentManifest.version} ·{' '}
+            <time dateTime={documentManifest.date}>
+              {documentManifest.date.split('-').reverse().join('/')}
             </time>
           </p>
-          {!LEGAL_MANIFEST.published && (
+          {!documentManifest.published && (
             <Flash variant="warning">
               Minuta para revisão jurídica. Estes documentos ainda não entraram em vigor.
             </Flash>
@@ -152,7 +160,7 @@ export default function LegalDocument({ documentId }) {
                 <Link to="/atendimento">atendimento</Link>.
               </p>
               <ul>
-                {LEGAL_DOCUMENTS.filter((item) => item.id !== documentId).map((item) => (
+                {relatedDocuments.map((item) => (
                   <li key={item.id}>
                     <Link to={item.path}>{item.title}</Link>
                   </li>
@@ -162,11 +170,11 @@ export default function LegalDocument({ documentId }) {
             <section id="historico" tabIndex={-1} aria-labelledby="historico-title">
               <h2 id="historico-title">Histórico e referências</h2>
               <p>
-                {LEGAL_MANIFEST.date.split('-').reverse().join('/')} · Versão{' '}
-                {LEGAL_MANIFEST.version}
+                {documentManifest.date.split('-').reverse().join('/')} · Versão{' '}
+                {documentManifest.version}
               </p>
               <ul>
-                {LEGAL_MANIFEST.changes.map((change) => (
+                {documentManifest.changes.map((change) => (
                   <li key={change}>{change}</li>
                 ))}
               </ul>

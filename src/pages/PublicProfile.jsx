@@ -4,6 +4,7 @@ import { Button, Flash, Spinner } from '@primer/react'
 import { ChevronLeftIcon, ShieldLockIcon } from '@primer/octicons-react'
 import { getPublicProfile, getPublicStatistics } from '../services/publicProfilesService'
 import { formatDateTime } from '../utils/format'
+import { ProfileAvatar } from '../components/ProfileAvatar'
 
 export default function PublicProfile() {
   const { userId } = useParams()
@@ -60,9 +61,11 @@ export default function PublicProfile() {
             <h1>Perfil do membro</h1>
           </header>
           <section className="profile-identity">
-            <div className="profile-avatar" aria-hidden="true">
-              {(result.profile.username || 'M')[0].toUpperCase()}
-            </div>
+            <ProfileAvatar
+              path={result.profile.avatarPath}
+              name={result.profile.username || 'M'}
+              className="profile-avatar"
+            />
             <div className="profile-identity-copy">
               <h2>{result.profile.username ? `@${result.profile.username}` : 'Membro'}</h2>
               <p>{result.profile.bio || 'Este membro ainda não adicionou uma descrição.'}</p>

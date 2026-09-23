@@ -14,9 +14,11 @@ import {
   ThreeBarsIcon,
   XIcon,
   QuestionIcon,
+  BriefcaseIcon,
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useColorMode } from '../hooks/useColorMode'
+import { SHOWCASE_LEGAL_MANIFEST } from '../utils/showcaseLegal'
 
 export function AccountMenu({ onLogout, signingOut }) {
   const [open, setOpen] = useState(false)
@@ -55,6 +57,14 @@ export function AccountMenu({ onLogout, signingOut }) {
             </ActionList.LeadingVisual>
             Meu perfil
           </ActionList.LinkItem>
+          {SHOWCASE_LEGAL_MANIFEST.published && (
+            <ActionList.LinkItem as={Link} to="/minha-vitrine" replace onClick={() => setOpen(false)}>
+              <ActionList.LeadingVisual>
+                <BriefcaseIcon />
+              </ActionList.LeadingVisual>
+              Minha vitrine
+            </ActionList.LinkItem>
+          )}
           <ActionList.LinkItem as={Link} to="/evocash" replace onClick={() => setOpen(false)}>
             <ActionList.LeadingVisual>
               <CreditCardIcon />
@@ -74,6 +84,17 @@ export function AccountMenu({ onLogout, signingOut }) {
           </ActionList.LinkItem>
           {isSuperAdmin && (
             <ActionList.Group title="Administração">
+              <ActionList.LinkItem
+                as={Link}
+                to="/admin/vitrines"
+                replace
+                onClick={() => setOpen(false)}
+              >
+                <ActionList.LeadingVisual>
+                  <BriefcaseIcon />
+                </ActionList.LeadingVisual>
+                Vitrines profissionais
+              </ActionList.LinkItem>
               <ActionList.LinkItem
                 as={Link}
                 to="/admin/comunidades"
