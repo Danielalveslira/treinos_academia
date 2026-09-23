@@ -35,6 +35,9 @@ let env,
   bucketDeletes
 before(async () => {
   process.env.GCLOUD_PROJECT = 'demo-admin-rules'
+  // emulators:exec injeta FIREBASE_CONFIG=demo-treinos; initializeApp() prioriza
+  // esse valor sobre GCLOUD_PROJECT. Admin SDK e Rules precisam do mesmo projeto.
+  process.env.FIREBASE_CONFIG = JSON.stringify({ projectId: 'demo-admin-rules' })
   process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8080'
   env = await initializeTestEnvironment({
     projectId: 'demo-admin-rules',
