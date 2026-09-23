@@ -106,13 +106,13 @@ test('old caches from multiple users are cleared so logout/login cannot mix acce
   assert.equal(storage.has('unrelated'), true)
 })
 
-test('a new legal version blocks an old bundle and an old acceptance', () => {
+test('the previous legal policy blocks the new bundle until publication', () => {
   assert.equal(
-    isLegalPolicyOutdated({ policy: { ...policy, version: '1.4.0' } }, LEGAL_MANIFEST.version),
+    isLegalPolicyOutdated({ policy: { ...policy, version: '1.3.0' } }, LEGAL_MANIFEST.version),
     true
   )
   assert.equal(
-    state({ access: { policy: { ...policy, version: '1.4.0' }, restriction: undefined } }),
+    state({ access: { policy: { ...policy, version: '1.3.0' }, restriction: undefined } }),
     'policy-unavailable'
   )
 })

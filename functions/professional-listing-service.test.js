@@ -119,6 +119,35 @@ test('concurrent and replayed creation produces exactly one listing per account'
   assert.equal(listings.size, 1)
 })
 
+test('unpublished storefront terms block submission even with a complete draft', async () => {
+  const owner = unique('terms_unpublished')
+  await seedUser(owner)
+  const { listingId } = await service.createDraft(owner, {
+    requestId: unique('request'),
+    kind: 'professional',
+  })
+  await service.saveDraft(owner, { listingId, draft: completeDraft() })
+  const unpublishedService = createProfessionalListingService({
+    db,
+    bucket,
+    FieldValue,
+    HttpsError: FakeHttpsError,
+    showcaseLegal: {
+      manifest: { ...showcaseManifest, published: false },
+      digest: showcaseDigest,
+    },
+  })
+  await assert.rejects(
+    unpublishedService.submit(owner, {
+      listingId,
+      termsAccepted: true,
+      termsVersion: showcaseManifest.version,
+      operationId: unique('submission'),
+    }),
+    (error) => error.code === 'failed-precondition'
+  )
+})
+
 test('submission requires the current storefront terms and records an idempotent server acceptance', async () => {
   const owner = unique('terms_owner')
   const other = unique('terms_other')
