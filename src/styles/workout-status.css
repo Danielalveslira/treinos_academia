@@ -48,3 +48,10 @@
     width: 100%;
   }
 }
+.status-author-avatar {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  font-size: 14px;
+}
+.status-author-avatar svg { width: 20px; height: 20px; }

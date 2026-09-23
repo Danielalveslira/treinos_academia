@@ -134,6 +134,16 @@ before(async () => {
         DEV: false,
       }),
     },
+    plugins: [{
+      name: 'avatar-prop-stub',
+      setup(context) {
+        context.onResolve({ filter: /\/ProfileAvatar$/ }, () => ({ path: 'avatar', namespace: 'stub' }))
+        context.onLoad({ filter: /^avatar$/, namespace: 'stub' }, () => ({
+          resolveDir: new URL('../../', import.meta.url).pathname,
+          contents: `import { createElement } from 'react'; export const ProfileAvatar = ({path}) => createElement('span', {'data-author-avatar': path || ''})`,
+        }))
+      },
+    }],
   })
   ;({ render, setPollCache, setWorkoutCache } = createRequire(import.meta.url)(outfile))
 })
@@ -151,6 +161,12 @@ test('enquete não renderiza EconomyVoteBar: sem Apoio/Negativo, sem botões de 
   assert.doesNotMatch(html, /Você apoiou|Você discordou/)
   assert.doesNotMatch(html, /Voto positivo|Voto negativo/)
   assert.doesNotMatch(html, /class="status-footer"/)
+})
+
+test('o cabeçalho recebe apenas o avatar público elegível do autor e mantém fallback sem ele', () => {
+  const status = makeTextStatus()
+  assert.match(render({ status, authorAvatarPath: 'profileAvatars/author-1/active.webp' }), /data-author-avatar="profileAvatars\/author-1\/active.webp"/)
+  assert.match(render({ status, authorAvatarPath: null }), /data-author-avatar=""/)
 })
 
 test('enquete continua permitindo voto nas opções: pergunta, opções e botões clicáveis (sem voto ainda) renderizam normalmente', () => {
