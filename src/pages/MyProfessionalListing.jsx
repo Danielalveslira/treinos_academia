@@ -51,6 +51,8 @@ function editableDraft(data, kind) {
 export default function MyProfessionalListing() {
   const { user, profile } = useAuth()
   const [record, setRecord] = useState(undefined)
+  const [loadError, setLoadError] = useState(false)
+  const [loadRevision, setLoadRevision] = useState(0)
   const [form, setForm] = useState(null)
   const [communities, setCommunities] = useState([])
   const [busy, setBusy] = useState('')
@@ -60,38 +62,72 @@ export default function MyProfessionalListing() {
   const submissionOperation = useRef(null)
 
   async function reload() {
-    const [current, acceptance] = await Promise.all([
-      getMyProfessionalListing(user.uid),
-      getShowcaseLegalAcceptance(user.uid, SHOWCASE_LEGAL_MANIFEST.version),
-    ])
+    const current = await getMyProfessionalListing(user.uid)
+    if (current && (!current.listing || !current.draft)) {
+      throw new Error('SHOWCASE_INCOMPLETE_RECORD')
+    }
     setRecord(current)
-    setLegalAcceptance(acceptance)
     if (current) setForm(editableDraft(current.draft, current.listing.kind))
+    getShowcaseLegalAcceptance(user.uid, SHOWCASE_LEGAL_MANIFEST.version)
+      .then(setLegalAcceptance)
+      .catch(() =>
+        setMessage({
+          variant: 'warning',
+          text: 'Não foi possível verificar seu aceite da Vitrine. Recarregue a página antes de enviar.',
+        })
+      )
   }
 
   useEffect(() => {
     let active = true
-    Promise.all([
-      getMyProfessionalListing(user.uid),
-      listActiveCommunities(),
-      getShowcaseLegalAcceptance(user.uid, SHOWCASE_LEGAL_MANIFEST.version),
-    ])
-      .then(([current, allCommunities, acceptance]) => {
+    setLoadError(false)
+    const timeout = window.setTimeout(() => {
+      if (active) setLoadError(true)
+    }, 15000)
+    getMyProfessionalListing(user.uid)
+      .then((current) => {
         if (!active) return
+        if (current && (!current.listing || !current.draft)) {
+          throw new Error('SHOWCASE_INCOMPLETE_RECORD')
+        }
         setRecord(current)
         if (current) setForm(editableDraft(current.draft, current.listing.kind))
+      })
+      .catch((error) => {
+        if (!active) return
+        console.error('[Vitrine] carregamento inicial:', error)
+        setLoadError(true)
+      })
+      .finally(() => window.clearTimeout(timeout))
+    listActiveCommunities()
+      .then((allCommunities) => {
+        if (!active) return
         setCommunities(allCommunities.filter((community) => community.ownerId === user.uid))
+      })
+      .catch(() => {
+        if (active)
+          setMessage({
+            variant: 'warning',
+            text: 'Não foi possível carregar suas comunidades. A vitrine pode ser editada sem vínculo por enquanto.',
+          })
+      })
+    getShowcaseLegalAcceptance(user.uid, SHOWCASE_LEGAL_MANIFEST.version)
+      .then((acceptance) => {
+        if (!active) return
         setLegalAcceptance(acceptance)
       })
-      .catch(
-        () =>
-          active &&
-          setMessage({ variant: 'danger', text: 'Não foi possível carregar sua vitrine.' })
-      )
+      .catch(() => {
+        if (active)
+          setMessage({
+            variant: 'warning',
+            text: 'Não foi possível verificar seu aceite da Vitrine. Recarregue a página antes de enviar.',
+          })
+      })
     return () => {
       active = false
+      window.clearTimeout(timeout)
     }
-  }, [user.uid])
+  }, [user.uid, loadRevision])
 
   function edit(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -211,7 +247,16 @@ export default function MyProfessionalListing() {
   if (record === undefined)
     return (
       <div className="professional-state">
-        <Spinner aria-label="Carregando sua vitrine" />
+        {loadError ? (
+          <>
+            <Flash variant="danger">Não foi possível carregar sua vitrine.</Flash>
+            <Button onClick={() => setLoadRevision((revision) => revision + 1)}>
+              Tentar novamente
+            </Button>
+          </>
+        ) : (
+          <Spinner aria-label="Carregando sua vitrine" />
+        )}
       </div>
     )
   if (!record)
