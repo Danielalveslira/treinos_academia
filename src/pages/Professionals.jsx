@@ -73,6 +73,13 @@ export default function Professionals() {
           </p>
         </header>
 
+        <div className="professional-filter-heading">
+          <div>
+            <span className="profile-eyebrow">EXPLORE A REDE</span>
+            <h2>Encontre a opção certa para você</h2>
+          </div>
+          <p>Filtre por área, local e forma de atendimento.</p>
+        </div>
         <section className="professional-filters" aria-label="Filtros do diretório">
           <label>
             Tipo
@@ -138,7 +145,7 @@ export default function Professionals() {
             <Spinner aria-label="Carregando vitrines" />
           </div>
         ) : result.items.length === 0 ? (
-          <div className="professional-state">
+          <div className="professional-state" role="status">
             <SearchIcon size={28} />
             <h2>Nenhuma vitrine encontrada</h2>
             <p>Ajuste os filtros para ver outras opções.</p>

@@ -625,12 +625,13 @@ body:has(.pwa-offline) .app-shell {
 /* Vitrine de profissionais e espaços. */
 .professionals-page,
 .professional-detail-page {
-  width: min(1160px, 100%);
+  width: min(1360px, 100%);
   margin: 0 auto;
 }
+.professionals-page { padding: 0 28px 48px; }
 .professionals-hero {
-  max-width: 760px;
-  padding: 36px 0 30px;
+  max-width: 840px;
+  padding: 48px 0 40px;
 }
 .professionals-hero h1 {
   margin: 8px 0 12px;
@@ -644,14 +645,23 @@ body:has(.pwa-offline) .app-shell {
   color: var(--fgColor-muted);
   line-height: 1.65;
 }
+.professional-filter-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.professional-filter-heading h2 { margin: 6px 0 0; font-size: clamp(20px, 2vw, 25px); }
+.professional-filter-heading p { margin: 0 0 2px; color: var(--fgColor-muted); font-size: 13px; }
 .professional-filters {
   display: grid;
   grid-template-columns: repeat(5, minmax(130px, 1fr));
-  gap: 12px;
-  padding: 18px;
-  margin-bottom: 28px;
+  gap: 14px;
+  padding: 20px;
+  margin-bottom: 32px;
   border: 1px solid var(--borderColor-default);
-  border-radius: 16px;
+  border-radius: 18px;
   background: var(--bgColor-muted);
 }
 .professional-filters label,
@@ -678,32 +688,38 @@ body:has(.pwa-offline) .app-shell {
 }
 .professional-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
 }
 .professional-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   min-width: 0;
-  padding: 22px;
+  overflow: hidden;
   border: 1px solid var(--borderColor-default);
-  border-radius: 16px;
+  border-radius: 20px;
   background: var(--bgColor-default);
-  box-shadow: 0 10px 28px rgb(0 0 0 / 8%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 6%);
+  transition: transform 160ms ease, box-shadow 160ms ease;
 }
-.professional-card > a,
-.professional-card > button {
-  grid-column: 1 / -1;
-  justify-self: end;
+.professional-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgb(0 0 0 / 10%);
+}
+.professional-card-media {
+  display: grid;
+  place-items: center;
+  height: 150px;
+  background: linear-gradient(135deg, var(--bgColor-accent-muted), var(--bgColor-muted));
 }
 .professional-card-avatar {
-  width: 64px;
-  height: 64px;
-  font-size: 24px;
+  width: 112px;
+  height: 112px;
+  font-size: 38px;
+  box-shadow: 0 6px 22px rgb(0 0 0 / 12%);
 }
-.professional-card-body { min-width: 0; }
+.professional-card-body { min-width: 0; flex: 1; padding: 20px 22px 18px; }
 .professional-card-labels {
   display: flex;
   flex-wrap: wrap;
@@ -713,8 +729,8 @@ body:has(.pwa-offline) .app-shell {
   font-size: 11px;
 }
 .professional-card h2 {
-  margin: 9px 0 3px;
-  font-size: 19px;
+  margin: 12px 0 4px;
+  font-size: 21px;
   overflow-wrap: anywhere;
 }
 .professional-card-category,
@@ -727,7 +743,7 @@ body:has(.pwa-offline) .app-shell {
   display: flex;
   gap: 5px;
   align-items: center;
-  margin-top: 10px;
+  margin-top: 14px;
 }
 .professional-card-modalities,
 .professional-tags {
@@ -746,12 +762,19 @@ body:has(.pwa-offline) .app-shell {
   color: var(--fgColor-muted);
   font-size: 11px;
 }
+.professional-card-cta {
+  margin: 0 22px 22px;
+  justify-content: center;
+}
 .professional-state {
   display: grid;
   place-items: center;
-  min-height: 260px;
+  min-height: 300px;
   padding: 34px;
   text-align: center;
+  border: 1px dashed var(--borderColor-default);
+  border-radius: 18px;
+  background: var(--bgColor-muted);
 }
 .professional-state h1,
 .professional-state h2 { margin: 12px 0 4px; }
@@ -839,39 +862,50 @@ body:has(.pwa-offline) .app-shell {
 .listing-preview .professional-card > a { pointer-events: none; }
 .listing-danger-zone { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 22px; margin-top: 28px; border: 1px solid var(--borderColor-danger-muted); border-radius: 14px; }
 .listing-danger-zone h2 { flex: 1 1 100%; margin: 0 0 6px; font-size: 16px; }
-.admin-listing-section { margin-top: 24px; }
-.admin-listing-stack { display: grid; gap: 12px; }
-.admin-listing-stack article { display: flex; justify-content: space-between; gap: 20px; padding: 20px; border: 1px solid var(--borderColor-default); border-radius: 14px; background: var(--bgColor-default); }
-.admin-listing-stack article > div:first-child { min-width: 0; }
-.admin-listing-stack article > div:last-child { display: flex; flex-wrap: wrap; gap: 8px; align-self: center; }
-.admin-listing-stack span,
-.admin-listing-stack small { display: block; margin-top: 5px; color: var(--fgColor-muted); }
-.admin-listing-stack p { max-width: 700px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-listing-section { margin-top: 32px; }
+.admin-listing-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.admin-listing-section-heading h2 { margin: 5px 0 0; font-size: 22px; }
+.admin-listing-count { display: grid; place-items: center; min-width: 32px; height: 32px; padding: 0 8px; border-radius: 999px; background: var(--bgColor-accent-muted); color: var(--fgColor-accent); font-weight: 700; }
+.admin-listing-stack { display: grid; gap: 14px; }
+.admin-listing-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center; padding: 22px; border: 1px solid var(--borderColor-default); border-radius: 16px; background: var(--bgColor-default); }
+.admin-listing-item-pending { border-left: 4px solid var(--borderColor-attention-emphasis); }
+.admin-listing-copy { display: grid; min-width: 0; gap: 6px; }
+.admin-listing-copy strong { font-size: 17px; overflow-wrap: anywhere; }
+.admin-listing-copy span,
+.admin-listing-copy small { color: var(--fgColor-muted); }
+.admin-listing-copy .admin-listing-status { color: var(--fgColor-attention); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
+.admin-listing-copy p { max-width: 700px; margin: 5px 0; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-listing-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; min-width: max-content; }
+.admin-listing-actions button { min-width: 110px; white-space: nowrap; }
 
 @media (max-width: 900px) {
   .professional-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .professional-grid { grid-template-columns: minmax(0, 1fr); }
+  .professional-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .listing-editor-grid { grid-template-columns: minmax(0, 1fr); }
   .listing-preview { position: static; }
 }
 @media (max-width: 700px) {
+  .professionals-page { padding: 0 16px 32px; }
   .professionals-hero { padding-top: 18px; }
+  .professional-filter-heading { align-items: start; flex-direction: column; gap: 4px; }
+  .professional-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .professional-filters { grid-template-columns: minmax(0, 1fr); padding: 14px; }
   .professional-detail-hero { grid-template-columns: auto minmax(0, 1fr); padding: 20px; gap: 15px; }
   .professional-detail-hero > button { grid-column: 1 / -1; }
   .professional-detail-avatar { width: 72px; height: 72px; border-radius: 20px; }
   .professional-detail-grid { grid-template-columns: minmax(0, 1fr); }
   .listing-kind-picker { grid-template-columns: minmax(0, 1fr); }
-  .listing-dashboard-heading,
-  .admin-listing-stack article { align-items: stretch; flex-direction: column; }
+  .listing-dashboard-heading { align-items: stretch; flex-direction: column; }
+  .admin-listing-item { grid-template-columns: minmax(0, 1fr); padding: 18px; }
+  .admin-listing-actions { min-width: 0; justify-content: stretch; }
+  .admin-listing-actions button { flex: 1 1 140px; }
   .listing-inline-fields,
   .listing-check-grid { grid-template-columns: minmax(0, 1fr); }
   .listing-editor-actions { flex-direction: column; }
   .listing-editor-actions button { width: 100%; }
 }
 @media (max-width: 359px) {
-  .professional-card { grid-template-columns: minmax(0, 1fr); }
-  .professional-card-avatar { width: 54px; height: 54px; }
+  .professional-card-avatar { width: 88px; height: 88px; }
   .professional-detail-hero { grid-template-columns: minmax(0, 1fr); }
 }
 .profile-identity-copy {

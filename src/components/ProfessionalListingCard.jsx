@@ -13,12 +13,14 @@ import {
 export function ProfessionalListingCard({ listing }) {
   return (
     <article className="professional-card">
-      <ProfileAvatar
-        path={listing.avatarPath}
-        name={listing.displayName}
-        professional={listing.kind === 'professional'}
-        className="professional-card-avatar"
-      />
+      <div className="professional-card-media">
+        <ProfileAvatar
+          path={listing.avatarPath}
+          name={listing.displayName}
+          professional={listing.kind === 'professional'}
+          className="professional-card-avatar"
+        />
+      </div>
       <div className="professional-card-body">
         <div className="professional-card-labels">
           <Label>{optionLabel(LISTING_KIND_OPTIONS, listing.kind)}</Label>
@@ -37,7 +39,7 @@ export function ProfessionalListingCard({ listing }) {
           ))}
         </ul>
       </div>
-      <Button as={Link} to={`/profissionais/${listing.id}`} variant="primary">
+      <Button as={Link} to={`/profissionais/${listing.id}`} variant="primary" className="professional-card-cta">
         Ver vitrine
       </Button>
     </article>
