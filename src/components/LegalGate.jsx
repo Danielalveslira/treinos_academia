@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Box, Button, FormControl, TextInput, Flash, Spinner } from '@primer/react'
 import { PublicLayout } from './PublicLayout'
@@ -43,6 +43,15 @@ export function LegalGate({ children }) {
     loading: legalLoading,
     error: legalError,
   })
+
+  useEffect(() => {
+    if (!user?.uid) return undefined
+    const checkActivePolicy = () => {
+      if (document.visibilityState === 'visible') refreshLegalAccess(user.uid)
+    }
+    document.addEventListener('visibilitychange', checkActivePolicy)
+    return () => document.removeEventListener('visibilitychange', checkActivePolicy)
+  }, [user?.uid, refreshLegalAccess])
 
   if (gateState === 'loading') {
     return (
