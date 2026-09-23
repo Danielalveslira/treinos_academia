@@ -160,7 +160,7 @@ test('unrelated protected routes do not mount the exercise data provider', () =>
   }
 })
 
-test('professional directory and detail are public while unpublished management is gated', () => {
+test('professional directory and terms are public while published management requires login', () => {
   assert.equal(render('/profissionais').protectedMounts, 0)
   assert.equal(render('/profissionais/listing-1').protectedMounts, 0)
   assert.equal(render('/termos-publicacao-vitrine').protectedMounts, 0)

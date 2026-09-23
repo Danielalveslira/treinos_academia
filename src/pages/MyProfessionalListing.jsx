@@ -24,6 +24,7 @@ import { EMPTY_LISTING_DRAFT } from '../utils/professionalListing'
 import {
   canSubmitShowcaseListing,
   hasCurrentShowcaseAcceptance,
+  SHOWCASE_LEGAL_DOCUMENT,
   SHOWCASE_LEGAL_MANIFEST,
 } from '../utils/showcaseLegal'
 
@@ -459,7 +460,7 @@ export default function MyProfessionalListing() {
                   <span>
                     Li e aceito os{' '}
                     <Link to="/termos-publicacao-vitrine" target="_blank" rel="noopener">
-                      Termos de Publicação da Vitrine Profissional — Evolutus
+                      {SHOWCASE_LEGAL_DOCUMENT.title}
                     </Link>{' '}
                     (versão {SHOWCASE_LEGAL_MANIFEST.version}).
                   </span>

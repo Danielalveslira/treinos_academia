@@ -158,18 +158,30 @@ test('acceptLegalDocuments verifies the minimum age from dataNascimento on the s
   const legalRequire = createRequire(new URL('../functions/package.json', import.meta.url))
   const manifest = legalRequire('./legal/manifest.json')
   const documents = legalRequire('./legal/documents.json')
+  const digestMap = legalRequire('./legal/approved-digests.json')
   const digest = legalDigest(manifest, documents)
+  const archive = {
+    manifest,
+    documents,
+    digest,
+  }
   // legalPolicy/current publicado ativa o ramo caro de hasCurrentAcceptance() nas
   // regras (ver firestore.rules) para o resto deste arquivo, que compartilha o mesmo
   // db/env entre todos os testes — precisa ser desfeito no final, senão os testes
   // seguintes (cujos usuários não têm legalAcceptance) passam a falhar por causa
   // disto, não do que eles realmente testam.
   await db.doc('legalPolicy/current').set({ version: manifest.version, digest, published: true })
+  await db.doc(`legalVersions/${manifest.version}`).set(archive)
   try {
     const req = (uid) => ({
       auth: { uid },
       rawRequest: { ip: '203.0.113.10' },
-      data: { version: manifest.version, accepted: true, healthDataConsent: true },
+      data: {
+        version: manifest.version,
+        digest: digestMap[manifest.version],
+        accepted: true,
+        healthDataConsent: true,
+      },
     })
 
     // Conta anterior a este campo: sem dataNascimento nenhuma.
@@ -196,6 +208,7 @@ test('acceptLegalDocuments verifies the minimum age from dataNascimento on the s
     await assert.doesNotReject(api.acceptLegalDocuments.run(req('adult')))
   } finally {
     await db.doc('legalPolicy/current').delete()
+    await db.doc(`legalVersions/${manifest.version}`).delete()
   }
 })
 

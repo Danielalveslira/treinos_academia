@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto'
 import { isIP } from 'node:net'
+import { readFileSync } from 'node:fs'
+
+export const APPROVED_LEGAL_DIGESTS = JSON.parse(
+  readFileSync(new URL('./legal/approved-digests.json', import.meta.url))
+)
 
 export function legalDigest(manifest, documents) {
   return createHash('sha256').update(JSON.stringify({ manifest, documents })).digest('hex')
@@ -14,6 +19,34 @@ export function validateAcceptance(data, manifest) {
     return 'Confirme os documentos e a autorização específica para os dados de treino.'
   }
   return null
+}
+
+export function validateActiveLegalAcceptance(data, policy, archive) {
+  const version = data?.version
+  if (!Object.hasOwn(APPROVED_LEGAL_DIGESTS, version)) {
+    return 'Esta versão dos documentos não é suportada.'
+  }
+  const approvedDigest = APPROVED_LEGAL_DIGESTS[version]
+  if (
+    policy?.published !== true ||
+    policy.version !== version ||
+    policy.digest !== approvedDigest ||
+    data?.digest !== approvedDigest
+  ) {
+    return 'A política ativa mudou. Recarregue a página antes de aceitar.'
+  }
+  if (
+    !archive ||
+    archive.digest !== approvedDigest ||
+    archive.manifest?.version !== version ||
+    archive.manifest?.published !== true ||
+    !Array.isArray(archive.documents) ||
+    archive.documents.length === 0 ||
+    legalDigest(archive.manifest, archive.documents) !== approvedDigest
+  ) {
+    return 'O arquivo jurídico ativo está indisponível ou inconsistente.'
+  }
+  return validateAcceptance(data, archive.manifest)
 }
 
 // Espelha calculateAge em src/utils/age.js (runtimes diferentes, sem um pacote

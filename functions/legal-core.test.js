@@ -1,14 +1,26 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
+  APPROVED_LEGAL_DIGESTS,
   legalDigest,
   validateAcceptance,
+  validateActiveLegalAcceptance,
   calculateAge,
   requestIp,
   validId,
   validateSupportRequest,
   validateDecision,
 } from './legal-core.js'
+
+const previousArchive = JSON.parse(
+  readFileSync(new URL('./legal/test-fixtures/1.3.0.json', import.meta.url))
+)
+const currentArchive = {
+  manifest: JSON.parse(readFileSync(new URL('./legal/manifest.json', import.meta.url))),
+  documents: JSON.parse(readFileSync(new URL('./legal/documents.json', import.meta.url))),
+}
+currentArchive.digest = APPROVED_LEGAL_DIGESTS[currentArchive.manifest.version]
 
 const publishedManifest = {
   published: true,
@@ -51,6 +63,44 @@ test('validateAcceptance requires the current version and every confirmation', (
       publishedManifest
     ),
     /Confirme/
+  )
+})
+
+test('active acceptance accepts only immutable 1.3.0 and 1.4.0 archives', () => {
+  for (const archive of [previousArchive, currentArchive]) {
+    const version = archive.manifest.version
+    const digest = APPROVED_LEGAL_DIGESTS[version]
+    const data = { version, digest, accepted: true, healthDataConsent: true }
+    assert.equal(
+      validateActiveLegalAcceptance(data, { version, digest, published: true }, archive),
+      null
+    )
+  }
+})
+
+test('active acceptance rejects arbitrary versions, stale digests and altered archive content', () => {
+  const version = '1.3.0'
+  const digest = APPROVED_LEGAL_DIGESTS[version]
+  const data = { version, digest, accepted: true, healthDataConsent: true }
+  const policy = { version, digest, published: true }
+  assert.match(
+    validateActiveLegalAcceptance({ ...data, version: '9.9.9' }, policy, previousArchive),
+    /não é suportada/
+  )
+  assert.match(
+    validateActiveLegalAcceptance(data, { ...policy, version: '1.4.0' }, previousArchive),
+    /mudou/
+  )
+  assert.match(
+    validateActiveLegalAcceptance({ ...data, digest: 'outro' }, policy, previousArchive),
+    /mudou/
+  )
+  assert.match(
+    validateActiveLegalAcceptance(data, policy, {
+      ...previousArchive,
+      documents: [{ ...previousArchive.documents[0], title: 'Conteúdo alterado' }],
+    }),
+    /inconsistente/
   )
 })
 

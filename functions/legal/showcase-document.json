@@ -1,20 +1,20 @@
 {
   "id": "showcase-publication-terms",
   "path": "/termos-publicacao-vitrine",
-  "title": "Termos de Publicação da Vitrine Profissional — Evolutus",
+  "title": "Termos de Publicação da Vitrine Profissional e de Espaços — Evolutus",
   "description": "Condições específicas para criar, submeter e manter uma vitrine pública de profissional ou espaço no Evolutus.",
   "summary": [
     "A Vitrine V1 é gratuita e serve para apresentar profissionais e espaços e permitir contato externo.",
     "O titular responde pela veracidade, atualização e legitimidade das informações e conteúdos fornecidos.",
-    "A aprovação da vitrine é uma análise de conteúdo e não certifica formação, registro, qualidade ou resultados profissionais."
+    "A aprovação da vitrine permite a publicação, mas não certifica credenciais, qualidade ou resultados profissionais."
   ],
   "sections": [
     {
       "id": "finalidade",
       "title": "1. Finalidade da vitrine",
       "paragraphs": [
-        "A Vitrine Profissional permite que titulares apresentem gratuitamente seus serviços profissionais ou espaços de prática física no diretório público do Evolutus.",
-        "A Vitrine V1 não realiza venda, pagamento, agendamento, intermediação financeira ou garantia de contratação. O contato e eventual contratação acontecem diretamente entre visitante e titular, fora do Evolutus."
+        "A Vitrine permite que titulares apresentem gratuitamente seus serviços profissionais ou espaços de prática física no diretório público do Evolutus.",
+        "A Vitrine V1 não realiza venda, pagamento, agendamento ou intermediação financeira. O contato e eventual contratação acontecem diretamente entre visitante e titular, fora do Evolutus."
       ]
     },
     {
@@ -27,7 +27,7 @@
         "Nome profissional ou comercial, tipo de vitrine, categoria, modalidades e especialidades.",
         "Apresentação, cidade, unidade federativa e modalidade de atendimento.",
         "Links externos de contato informados para divulgação, como WhatsApp, Instagram e site.",
-        "Comunidade vinculada, quando o titular possuir autorização válida sobre ela.",
+        "Comunidade vinculada, quando o titular for responsável por ela e ela estiver ativa na submissão e na aprovação. Mudanças posteriores podem exigir revisão ou retirada da vinculação.",
         "Avatar aprovado, somente quando houver autorização específica do titular."
       ]
     },
@@ -71,7 +71,7 @@
       "items": [
         "A submissão pode ser aprovada ou rejeitada conforme estes Termos, os Termos de Uso, as Regras da Comunidade e as políticas aplicáveis.",
         "Alterações em uma vitrine publicada podem exigir nova revisão. Enquanto isso, a versão pública anteriormente aprovada permanece inalterada, exceto quando uma autorização de exposição for revogada.",
-        "A vitrine pode ser suspensa ou removida diante de irregularidade, risco, denúncia procedente, perda de autorização sobre conteúdo ou comunidade, ou violação das regras aplicáveis.",
+        "A vitrine pode ser suspensa e retirada do diretório diante de irregularidade, risco, denúncia procedente, perda das condições de divulgação ou violação das regras aplicáveis.",
         "A decisão de aprovação não é definitiva e não impede revisão posterior diante de fatos novos."
       ]
     },
@@ -79,7 +79,7 @@
       "id": "denuncias",
       "title": "8. Denúncias",
       "paragraphs": [
-        "Usuários autenticados podem denunciar uma vitrine. As denúncias são analisadas e podem resultar em nenhuma ação, solicitação de ajuste, suspensão ou remoção, conforme o caso.",
+        "Usuários autenticados podem denunciar uma vitrine. A denúncia é analisada por administração autorizada e pode ser encerrada sem medida ou resultar em suspensão da vitrine.",
         "O envio de denúncia não gera penalidade automática. Denúncias deliberadamente falsas ou abusivas podem ser tratadas conforme as regras gerais do Evolutus."
       ]
     },
@@ -104,7 +104,7 @@
       "id": "relacao-documentos",
       "title": "11. Relação com os demais documentos",
       "paragraphs": [
-        "Estes Termos complementam os Termos de Uso, a Política de Privacidade e as Regras da Comunidade do Evolutus. Em caso de conflito, aplica-se a regra específica à Vitrine sem afastar direitos previstos em lei.",
+        "Estes Termos complementam os Termos de Uso, a Política de Privacidade e as Regras da Comunidade do Evolutus. Em caso de conflito, aplica-se a regra específica da Vitrine sem afastar direitos previstos em lei.",
         "O uso das demais funcionalidades do Evolutus não depende do aceite destes Termos. O aceite é exigido somente para submeter uma Vitrine Profissional ou de Espaço."
       ]
     }

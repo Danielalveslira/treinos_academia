@@ -4,10 +4,10 @@ import { Box, Button, FormControl, TextInput, Flash, Spinner } from '@primer/rea
 import { PublicLayout } from './PublicLayout'
 import { LegalConsent } from './LegalConsent'
 import { useAuth } from '../hooks/useAuth'
-import { acceptLegalDocuments } from '../services/legalService'
+import { acceptLegalDocuments, isLegalPolicyChangedError } from '../services/legalService'
 import { setBirthInfo } from '../services/usersService'
 import { logoutUser } from '../services/authService'
-import { LEGAL_MANIFEST, resolveLegalGateState } from '../utils/legal'
+import { resolveLegalGateState } from '../utils/legal'
 import { validateBirthDate, hasErrors } from '../utils/validators'
 
 function todayString() {
@@ -25,6 +25,7 @@ export function LegalGate({ children }) {
     refreshLegalAccess,
   } = useAuth()
   const [error, setError] = useState('')
+  const [policyChanged, setPolicyChanged] = useState(false)
   const [saving, setSaving] = useState(false)
   const [confirmed, setConfirmed] = useState({
     accepted: false,
@@ -59,12 +60,15 @@ export function LegalGate({ children }) {
   const accessError = gateState === 'error'
 
   const needsBirthDate = !profile?.dataNascimento
+  const legalBundle = access?.legalBundle
 
   async function accept(e) {
     e.preventDefault()
     if (saving || !Object.values(confirmed).every(Boolean)) return
     if (needsBirthDate) {
-      const errors = validateBirthDate(birthDate, { minimumAge: LEGAL_MANIFEST.minimumAge })
+      const errors = validateBirthDate(birthDate, {
+        minimumAge: legalBundle.manifest.minimumAge,
+      })
       setBirthDateError(errors.birthDate || '')
       if (hasErrors(errors)) return
     }
@@ -72,7 +76,7 @@ export function LegalGate({ children }) {
     setError('')
     try {
       if (needsBirthDate) await setBirthInfo(user.uid, { dataNascimento: birthDate })
-      await acceptLegalDocuments(confirmed)
+      await acceptLegalDocuments(confirmed, legalBundle)
       await refreshProfile(user.uid)
     } catch (err) {
       // A própria Cloud Function já identifica esse caso com precisão (assertWritableAccount
@@ -83,6 +87,10 @@ export function LegalGate({ children }) {
       if (err?.message === 'A conta está em exclusão.') {
         setError('Sua sessão não é mais válida. Você será desconectado.')
         await logoutUser().catch(() => {})
+        return
+      }
+      if (isLegalPolicyChangedError(err) || err?.message === 'LEGAL_POLICY_INCOMPATIBLE') {
+        setPolicyChanged(true)
         return
       }
       setError(
@@ -125,14 +133,19 @@ export function LegalGate({ children }) {
             <Button onClick={() => window.location.reload()}>Recarregar</Button>
           </p>
         )}
-        {gateState === 'acceptance-required' && (
+        {policyChanged && (
+          <Flash variant="warning" role="alert">
+            A Política de Privacidade mudou nesta aba. Recarregue a página para ler a versão ativa.
+          </Flash>
+        )}
+        {gateState === 'acceptance-required' && !policyChanged && (
           <form onSubmit={accept}>
             <p>
-              Leia a versão {LEGAL_MANIFEST.version}. O atendimento permanece disponível antes da
-              sua decisão.
+              Leia a versão {legalBundle.manifest.version}. O atendimento permanece disponível antes
+              da sua decisão.
             </p>
             <ul>
-              {LEGAL_MANIFEST.changes.map((change) => (
+              {legalBundle.manifest.changes.map((change) => (
                 <li key={change}>{change}</li>
               ))}
             </ul>
@@ -150,20 +163,26 @@ export function LegalGate({ children }) {
                   block
                 />
                 <FormControl.Caption>
-                  Necessária para confirmar a idade mínima ({LEGAL_MANIFEST.minimumAge} anos) — sua
-                  conta ainda não tinha essa informação.
+                  Necessária para confirmar a idade mínima ({legalBundle.manifest.minimumAge} anos)
+                  — sua conta ainda não tinha essa informação.
                 </FormControl.Caption>
                 {birthDateError && (
                   <FormControl.Validation variant="error">{birthDateError}</FormControl.Validation>
                 )}
               </FormControl>
             )}
-            <LegalConsent value={confirmed} onChange={setConfirmed} disabled={saving} />
+            <LegalConsent
+              value={confirmed}
+              onChange={setConfirmed}
+              disabled={saving}
+              legalBundle={legalBundle}
+            />
             <Button type="submit" variant="primary" loading={saving} disabled={saving}>
               Aceitar e continuar
             </Button>
           </form>
         )}
+        {policyChanged && <Button onClick={() => window.location.reload()}>Recarregar</Button>}
         <p>
           <Link to="/atendimento">Atendimento, recursos e privacidade</Link>
         </p>

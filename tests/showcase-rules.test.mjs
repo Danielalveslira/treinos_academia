@@ -24,9 +24,19 @@ let owner
 let outsider
 let admin
 let anonymous
+let legalArchive13
+let legalArchive14
 const listingId = 'listing_rules_v1'
 
 before(async () => {
+  legalArchive13 = JSON.parse(
+    await readFile(new URL('../functions/legal/test-fixtures/1.3.0.json', import.meta.url), 'utf8')
+  )
+  legalArchive14 = {
+    manifest: JSON.parse(await readFile(new URL('../functions/legal/manifest.json', import.meta.url), 'utf8')),
+    documents: JSON.parse(await readFile(new URL('../functions/legal/documents.json', import.meta.url), 'utf8')),
+    digest: JSON.parse(await readFile(new URL('../functions/legal/approved-digests.json', import.meta.url), 'utf8'))['1.4.0'],
+  }
   env = await initializeTestEnvironment({
     projectId: 'demo-treinos',
     firestore: {
@@ -42,6 +52,8 @@ before(async () => {
   anonymous = env.unauthenticatedContext().firestore()
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore()
+    await setDoc(doc(db, 'legalVersions/1.3.0'), legalArchive13)
+    await setDoc(doc(db, 'legalVersions/1.4.0'), legalArchive14)
     await setDoc(doc(db, 'users/showcase-owner'), { role: 'user' })
     await setDoc(doc(db, 'users/showcase-outsider'), { role: 'user' })
     await setDoc(doc(db, 'users/showcase-admin'), { role: 'superadmin' })
@@ -117,6 +129,14 @@ test('anonymous visitors can read published projections and filtered directory q
     )
   )
   assert.equal(result.size, 1)
+})
+
+test('anonymous users can read immutable legal archives for either supported policy version but cannot write them', async () => {
+  for (const version of ['1.3.0', '1.4.0']) {
+    const archive = await assertSucceeds(getDoc(doc(anonymous, `legalVersions/${version}`)))
+    assert.equal(archive.data().manifest.version, version)
+  }
+  await assertFails(setDoc(doc(anonymous, 'legalVersions/1.3.0'), { forged: true }))
 })
 
 test('anonymous and unrelated users cannot read authoritative or draft records', async () => {

@@ -1,24 +1,44 @@
-import { useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { Button, Flash } from '@primer/react'
 import { ShieldLockIcon, ReportIcon } from '@primer/octicons-react'
 import { PublicLayout } from '../components/PublicLayout'
-import { LEGAL_DOCUMENTS, LEGAL_MANIFEST } from '../utils/legal'
+import { selectLegalDocument } from '../utils/legal'
+import { getActiveLegalBundle } from '../services/legalService'
 import { SHOWCASE_LEGAL_DOCUMENT, SHOWCASE_LEGAL_MANIFEST } from '../utils/showcaseLegal'
 
 export default function LegalDocument({ documentId }) {
   const showcase = documentId === SHOWCASE_LEGAL_DOCUMENT.id
-  const document = showcase
-    ? SHOWCASE_LEGAL_DOCUMENT
-    : LEGAL_DOCUMENTS.find((item) => item.id === documentId)
-  const documentManifest = showcase ? SHOWCASE_LEGAL_MANIFEST : LEGAL_MANIFEST
-  const relatedDocuments = showcase
-    ? LEGAL_DOCUMENTS
-    : LEGAL_DOCUMENTS.filter((item) => item.id !== documentId)
+  const [bundle, setBundle] = useState(null)
+  const [loadError, setLoadError] = useState(false)
+  const [searchParams] = useSearchParams()
+  const requestedVersion = searchParams.get('version') || ''
   const { hash } = useLocation()
   useEffect(() => {
+    let active = true
+    getActiveLegalBundle()
+      .then((activeBundle) => active && setBundle(activeBundle))
+      .catch(() => active && setLoadError(true))
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const document = showcase
+    ? SHOWCASE_LEGAL_DOCUMENT
+    : selectLegalDocument(bundle, documentId, requestedVersion)
+  const documentManifest = showcase ? SHOWCASE_LEGAL_MANIFEST : bundle?.manifest
+  const relatedDocuments = showcase
+    ? bundle?.documents || []
+    : (bundle?.documents || []).filter((item) => item.id !== documentId)
+  const staleTab = Boolean(
+    !showcase && bundle && requestedVersion && requestedVersion !== bundle.manifest.version
+  )
+  const documentTitle = document?.title
+  useEffect(() => {
+    if (!documentTitle) return undefined
     const previousTitle = window.document.title
-    window.document.title = `${document.title} · Treinos`
+    window.document.title = `${documentTitle} · Treinos`
     if (hash) {
       const section = window.document.getElementById(hash.slice(1))
       section?.scrollIntoView()
@@ -27,7 +47,39 @@ export default function LegalDocument({ documentId }) {
     return () => {
       window.document.title = previousTitle
     }
-  }, [document.title, hash])
+  }, [documentTitle, hash])
+
+  if (loadError) {
+    return (
+      <PublicLayout>
+        <section className="support-page" role="alert">
+          <h1>Documento indisponível</h1>
+          <p>Não foi possível confirmar a versão ativa. Verifique sua conexão e recarregue.</p>
+          <Button onClick={() => window.location.reload()}>Recarregar</Button>
+        </section>
+      </PublicLayout>
+    )
+  }
+  if (!bundle) {
+    return <PublicLayout><section className="support-page" aria-live="polite"><h1>Carregando documento</h1></section></PublicLayout>
+  }
+  if (staleTab) {
+    return (
+      <PublicLayout>
+        <section className="support-page" role="alert">
+          <h1>Esta página está desatualizada</h1>
+          <p>
+            O link abriu a versão {requestedVersion}, mas a versão ativa é {bundle.manifest.version}.
+            Recarregue para consultar o conteúdo correto.
+          </p>
+          <Button onClick={() => window.location.reload()}>Recarregar</Button>
+        </section>
+      </PublicLayout>
+    )
+  }
+  if (!document) {
+    return <PublicLayout><section className="support-page"><h1>Documento não encontrado</h1></section></PublicLayout>
+  }
 
   return (
     <PublicLayout>
@@ -140,15 +192,15 @@ export default function LegalDocument({ documentId }) {
             <section id="contato" tabIndex={-1} aria-labelledby="contato-title">
               <h2 id="contato-title">Contato e documentos relacionados</h2>
               <p>
-                {LEGAL_MANIFEST.controllerName
-                  ? `Responsável: ${LEGAL_MANIFEST.controllerName}.`
+                {bundle.manifest.controllerName
+                  ? `Responsável: ${bundle.manifest.controllerName}.`
                   : 'Identificação do responsável pendente na minuta.'}
               </p>
-              {LEGAL_MANIFEST.contactEmail ? (
+              {bundle.manifest.contactEmail ? (
                 <p>
                   E-mail:{' '}
-                  <a href={`mailto:${LEGAL_MANIFEST.contactEmail}`}>
-                    {LEGAL_MANIFEST.contactEmail}
+                  <a href={`mailto:${bundle.manifest.contactEmail}`}>
+                    {bundle.manifest.contactEmail}
                   </a>
                   .
                 </p>
@@ -162,7 +214,7 @@ export default function LegalDocument({ documentId }) {
               <ul>
                 {relatedDocuments.map((item) => (
                   <li key={item.id}>
-                    <Link to={item.path}>{item.title}</Link>
+                    <Link to={`${item.path}?version=${bundle.manifest.version}`}>{item.title}</Link>
                   </li>
                 ))}
               </ul>

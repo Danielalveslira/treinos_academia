@@ -18,20 +18,20 @@ test('storefront acceptance requires this document, current version and a server
   assert.equal(hasCurrentShowcaseAcceptance({ ...current, acceptedAt: null }), false)
 })
 
-test('storefront legal draft remains unpublished until explicit approval', () => {
-  assert.equal(SHOWCASE_LEGAL_MANIFEST.published, false)
+test('unpublished storefront terms always block submission', () => {
   assert.equal(
     canSubmitShowcaseListing({
       acceptance: null,
       confirmed: true,
-      manifest: SHOWCASE_LEGAL_MANIFEST,
+      manifest: { ...SHOWCASE_LEGAL_MANIFEST, published: false },
     }),
     false
   )
 })
 
-test('published terms require either explicit confirmation or a current recorded acceptance', () => {
-  const manifest = { ...SHOWCASE_LEGAL_MANIFEST, published: true }
+test('published storefront terms require confirmation or a current recorded acceptance', () => {
+  const manifest = SHOWCASE_LEGAL_MANIFEST
+  assert.equal(manifest.published, true)
   assert.equal(canSubmitShowcaseListing({ acceptance: null, confirmed: false, manifest }), false)
   assert.equal(canSubmitShowcaseListing({ acceptance: null, confirmed: true, manifest }), true)
   assert.equal(

@@ -28,8 +28,6 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import {
   legalDigest,
   requestIp,
-  validateAcceptance,
-  calculateAge,
   validateSupportRequest,
   validateDecision,
 } from './legal-core.js'
@@ -49,6 +47,7 @@ import { createListPostEconomyVoters } from './economy/vote-query-service.js'
 import { createListWorkoutParticipants } from './workout-participants-service.js'
 import { createProfessionalListingService } from './professional-listing-service.js'
 import { createProfileAvatarService } from './profile-avatar-service.js'
+import { createLegalAcceptanceService } from './legal-acceptance-service.js'
 import sharp from 'sharp'
 import { createCashPurchaseService } from './economy/cash-purchase-service.js'
 import { createPixPaymentAdminService } from './economy/pix-payment-admin-service.js'
@@ -71,9 +70,6 @@ const bucket = {
   file: (path) => getStorage().bucket().file(path),
   getFiles: (query) => getStorage().bucket().getFiles(query),
 }
-const manifest = JSON.parse(readFileSync(new URL('./legal/manifest.json', import.meta.url)))
-const documents = JSON.parse(readFileSync(new URL('./legal/documents.json', import.meta.url)))
-const digest = legalDigest(manifest, documents)
 const showcaseManifest = JSON.parse(
   readFileSync(new URL('./legal/showcase-manifest.json', import.meta.url))
 )
@@ -188,6 +184,13 @@ async function assertWritableAccount(tx, uid) {
     throw new HttpsError('failed-precondition', 'A conta está em exclusão.')
   }
 }
+
+const legalAcceptanceService = createLegalAcceptanceService({
+  db,
+  FieldValue,
+  HttpsError,
+  assertWritableAccount,
+})
 
 const getEconomyConfig = createConfigService({ db })
 const walletService = createWalletService({ db, FieldValue })
@@ -497,72 +500,13 @@ export const settleVoteRewardsScheduled = onSchedule(
 
 export const acceptLegalDocuments = onCall(options, async (request) => {
   const uid = requireUser(request)
-  const error = validateAcceptance(request.data, manifest)
-  if (error) throw new HttpsError('failed-precondition', error)
   let ip
   try {
     ip = requestIp(request)
   } catch {
     throw new HttpsError('internal', 'Não foi possível registrar o aceite. Tente novamente.')
   }
-  const acceptance = db.doc(`users/${uid}/legalAcceptances/${manifest.version}`)
-  const archive = db.doc(`legalVersions/${manifest.version}`)
-  const profile = db.doc(`users/${uid}`)
-  await db.runTransaction(async (tx) => {
-    await assertWritableAccount(tx, uid)
-    const [previous, version, user, policy] = await tx.getAll(
-      acceptance,
-      archive,
-      profile,
-      db.doc('legalPolicy/current')
-    )
-    if (!user.exists)
-      throw new HttpsError('failed-precondition', 'Finalize seu perfil antes do aceite.')
-    // Nunca confia num "ageConfirmed" enviado pelo cliente (removido do formulário —
-    // ver LegalConsent.jsx): a idade mínima é sempre calculada aqui, a partir da data
-    // de nascimento já gravada no próprio documento (setBirthInfo em usersService.js,
-    // chamado antes deste passo no fluxo de cadastro em Register.jsx).
-    const birthDate = user.data().dataNascimento
-    if (!birthDate || calculateAge(birthDate) < manifest.minimumAge) {
-      throw new HttpsError(
-        'failed-precondition',
-        `É necessário ter pelo menos ${manifest.minimumAge} anos para aceitar os documentos.`
-      )
-    }
-    if (policy.data()?.version !== manifest.version || policy.data()?.digest !== digest) {
-      throw new HttpsError(
-        'failed-precondition',
-        'Os documentos estão sendo atualizados. Tente novamente em instantes.'
-      )
-    }
-    if (version.exists && version.data().digest !== digest) {
-      throw new HttpsError('failed-precondition', 'Uma versão publicada não pode ser substituída.')
-    }
-    if (previous.exists) {
-      if (previous.data().digest !== digest)
-        throw new HttpsError('failed-precondition', 'Versão inconsistente.')
-      return
-    }
-    if (!version.exists)
-      tx.create(archive, { manifest, documents, digest, createdAt: FieldValue.serverTimestamp() })
-    tx.create(acceptance, {
-      userId: uid,
-      version: manifest.version,
-      digest,
-      acceptedAt: FieldValue.serverTimestamp(),
-      ip,
-      accepted: true,
-      healthDataConsent: true,
-    })
-    tx.update(profile, {
-      legalAcceptance: {
-        version: manifest.version,
-        digest,
-        acceptedAt: FieldValue.serverTimestamp(),
-      },
-    })
-  })
-  return { version: manifest.version }
+  return legalAcceptanceService.accept(uid, request.data || {}, ip)
 })
 
 export const submitSupportRequest = onCall(options, async (request) => {
