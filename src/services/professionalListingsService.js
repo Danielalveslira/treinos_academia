@@ -52,16 +52,26 @@ export async function getMyProfessionalListing(userId) {
   const lock = await getDoc(doc(db, 'professionalListingOwnerLocks', userId))
   if (!lock.exists()) return null
   const listingId = lock.data().listingId
-  const [listing, draft, published] = await Promise.all([
+  const [listing, draft] = await Promise.all([
     getDoc(doc(db, 'professionalListings', listingId)),
     getDoc(doc(db, 'professionalListingDrafts', listingId)),
-    getDoc(doc(db, 'publishedProfessionalListings', listingId)),
   ])
+  let published = null
+  if (listing.exists() && listing.data().lifecycleState === 'published') {
+    try {
+      const projection = await getDoc(doc(db, 'publishedProfessionalListings', listingId))
+      published = projection.exists() ? projection.data() : null
+    } catch (error) {
+      // A projeção pode ter sido removida entre a leitura do registro e esta consulta.
+      // As Rules negam até o get de um documento ausente; a edição privada segue disponível.
+      if (error?.code !== 'permission-denied') throw error
+    }
+  }
   return {
     id: listingId,
     listing: listing.exists() ? listing.data() : null,
     draft: draft.exists() ? draft.data() : null,
-    published: published.exists() ? published.data() : null,
+    published,
   }
 }
 

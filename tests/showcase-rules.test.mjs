@@ -33,9 +33,15 @@ before(async () => {
     await readFile(new URL('../functions/legal/test-fixtures/1.3.0.json', import.meta.url), 'utf8')
   )
   legalArchive14 = {
-    manifest: JSON.parse(await readFile(new URL('../functions/legal/manifest.json', import.meta.url), 'utf8')),
-    documents: JSON.parse(await readFile(new URL('../functions/legal/documents.json', import.meta.url), 'utf8')),
-    digest: JSON.parse(await readFile(new URL('../functions/legal/approved-digests.json', import.meta.url), 'utf8'))['1.4.0'],
+    manifest: JSON.parse(
+      await readFile(new URL('../functions/legal/manifest.json', import.meta.url), 'utf8')
+    ),
+    documents: JSON.parse(
+      await readFile(new URL('../functions/legal/documents.json', import.meta.url), 'utf8')
+    ),
+    digest: JSON.parse(
+      await readFile(new URL('../functions/legal/approved-digests.json', import.meta.url), 'utf8')
+    )['1.4.0'],
   }
   env = await initializeTestEnvironment({
     projectId: 'demo-treinos',
@@ -129,6 +135,10 @@ test('anonymous visitors can read published projections and filtered directory q
     )
   )
   assert.equal(result.size, 1)
+})
+
+test('a missing public projection cannot be read even by the draft owner', async () => {
+  await assertFails(getDoc(doc(owner, 'publishedProfessionalListings/unpublished_draft')))
 })
 
 test('anonymous users can read immutable legal archives for either supported policy version but cannot write them', async () => {
