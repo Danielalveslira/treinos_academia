@@ -122,7 +122,8 @@
             { "cells": ["Exercícios, cargas, séries e notas", "Seu diário de treino — pode conter dados de saúde"] },
             { "cells": ["Peso, % de gordura, cintura, quadril, massa magra e altura", "Acompanhar sua evolução física — são dados de saúde"] },
             { "cells": ["Publicações, votos e filiações", "Fazer as comunidades funcionarem"] },
-            { "cells": ["Pedidos de atendimento e denúncias", "Responder você e apurar violações"] }
+            { "cells": ["Pedidos de atendimento e denúncias", "Responder você e apurar violações"] },
+            { "cells": ["Dados comerciais, rascunhos e aceites da Vitrine", "Preparar, revisar, publicar e administrar a vitrine, com registro do aceite específico"] }
           ]
         }
       },
@@ -142,7 +143,9 @@
           "Seu diário de treino é privado — só você vê cargas, séries, notas e medidas corporais.",
           "Nome de usuário e descrição do perfil ficam visíveis a outros usuários logados.",
           "Estatísticas do perfil só aparecem para outros se você ativar o compartilhamento.",
-          "Conquistas publicadas na comunidade ficam visíveis por 24 horas."
+          "Conquistas publicadas na comunidade ficam visíveis por 24 horas.",
+          "Após aprovação, nome profissional ou comercial, categoria, modalidades, especialidades, apresentação, cidade/UF, forma de atendimento, contatos externos e eventual comunidade vinculada ficam visíveis na Vitrine a qualquer visitante, inclusive sem login. Links de contato levam a serviços de terceiros, sujeitos às políticas desses serviços.",
+          "O avatar de uma vitrine de profissional só é exibido mediante autorização específica e aprovação. Rascunhos, aceites, denúncias e decisões de revisão não são exibidos no diretório público."
         ]
       },
       {
@@ -158,9 +161,10 @@
         "id": "seguranca",
         "title": "Segurança e retenção",
         "items": [
-          "Usamos o Google Firebase para autenticação, banco de dados e hospedagem.",
+          "Usamos o Google Firebase para autenticação, banco de dados e armazenamento de mídias; o frontend é hospedado na Vercel.",
           "Seus dados ficam guardados enquanto sua conta existir, ou até você pedir a exclusão.",
-          "Registros de aceite e atendimento podem ser mantidos além disso quando exigido por lei."
+          "Despublicar ou suspender uma Vitrine retira sua versão pública; excluir a Vitrine remove os dados e mídias operacionais, ressalvadas cópias técnicas temporárias e retenções legítimas.",
+          "Registros de aceite, revisão, denúncias e atendimento podem ser mantidos pelo tempo necessário à segurança, ao exercício de direitos ou ao cumprimento de obrigação legal."
         ]
       }
     ],
