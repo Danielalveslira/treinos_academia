@@ -25,6 +25,7 @@ import { EconomyVoteBar } from './EconomyVoteBar'
 import { AchievementSummary } from './AchievementSummary'
 import { MarkdownViewer } from './MarkdownViewer'
 import { PhotoStatus } from './PhotoStatus'
+import { ProfileAvatar } from './ProfileAvatar'
 import { ShareMenu } from './ShareMenu'
 import { PromoteDialog } from './PromoteDialog'
 import { PromotedBadge } from './PromotedBadge'
@@ -63,32 +64,14 @@ function SuperAdminBadge() {
   )
 }
 
-function StatusHeader({ status, now, canDelete, onDelete, showToast }) {
+function StatusHeader({ status, authorAvatarPath, now, canDelete, onDelete, showToast }) {
   // As regras exigem authorUsername nulo ou string (ver firestore.rules), mas nunca
   // custa nada tratar dado inesperado com cuidado aqui também — um valor de outro
   // tipo (ex.: number) não deveria derrubar o card inteiro, só cair no "M" padrão.
   const authorUsername = typeof status.authorUsername === 'string' ? status.authorUsername : null
-  const initial = (authorUsername || 'M').charAt(0).toUpperCase() || 'M'
   return (
     <header className="status-header">
-      <Box
-        aria-hidden="true"
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          width: 32,
-          height: 32,
-          borderRadius: '50%',
-          bg: 'canvas.subtle',
-          color: 'fg.muted',
-          fontSize: 1,
-          fontWeight: 'bold',
-        }}
-      >
-        {initial}
-      </Box>
+      <ProfileAvatar path={authorAvatarPath} name={authorUsername || 'M'} className="status-author-avatar" />
       <Box sx={{ minWidth: 0, flex: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Link to={`/comunidades/perfil/${status.authorId}`} className="status-author">
@@ -446,6 +429,7 @@ function WorkoutStatus({ status, currentUserId, showToast, now, communityName })
 
 export function StatusCard({
   status,
+  authorAvatarPath,
   currentUserId,
   canDelete,
   onDelete,
@@ -468,6 +452,7 @@ export function StatusCard({
     >
       <StatusHeader
         status={status}
+        authorAvatarPath={authorAvatarPath}
         now={now}
         canDelete={canDelete}
         onDelete={onDelete}

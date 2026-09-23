@@ -4,18 +4,18 @@ import { loadAvatarBytes } from '../services/profileAvatarService'
 import { getCachedPhotoUrl, setCachedPhotoUrl } from '../utils/photoBlobCache'
 
 export function ProfileAvatar({ path, name = '', className = '', professional = true }) {
-  const [url, setUrl] = useState(() => (path ? getCachedPhotoUrl(path) || '' : ''))
+  const [image, setImage] = useState(() => ({ path, url: path ? getCachedPhotoUrl(path) || '' : '' }))
   useEffect(() => {
     let active = true
     if (!path) {
-      setUrl('')
+      setImage({ path, url: '' })
       return () => {
         active = false
       }
     }
     const cached = getCachedPhotoUrl(path)
     if (cached) {
-      setUrl(cached)
+      setImage({ path, url: cached })
       return () => {
         active = false
       }
@@ -25,14 +25,15 @@ export function ProfileAvatar({ path, name = '', className = '', professional = 
         if (!active) return
         const objectUrl = URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }))
         setCachedPhotoUrl(path, objectUrl)
-        setUrl(objectUrl)
+        setImage({ path, url: objectUrl })
       })
-      .catch(() => active && setUrl(''))
+      .catch(() => active && setImage({ path, url: '' }))
     return () => {
       active = false
     }
   }, [path])
 
+  const url = image.path === path ? image.url : ''
   return (
     <span className={`profile-avatar-image ${className}`.trim()} aria-hidden="true">
       {url ? (

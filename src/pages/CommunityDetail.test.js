@@ -91,8 +91,8 @@ before(async () => {
             resolveDir: projectRoot,
             contents: `
               import { createElement } from 'react'
-              export function StatusCard({ status }) {
-                return createElement('div', { className: 'test-status-card', 'data-status-id': status.id }, status.id)
+              export function StatusCard({ status, authorAvatarPath }) {
+                return createElement('div', { className: 'test-status-card', 'data-status-id': status.id, 'data-avatar-path': authorAvatarPath || '' }, status.id)
               }
             `,
           }))
@@ -239,6 +239,21 @@ test('feed normal continua funcionando: múltiplos posts renderizam, na ordem re
     'data-status-id="post-2"',
     'data-status-id="post-3"'
   )
+})
+
+test('o mesmo avatar público acompanha o autor no feed, nos destaques e nos treinos', () => {
+  const workout = makeStatus('workout-avatar', {
+    type: 'workout',
+    workout: { title: 'Treino', date: new Date(Date.now() + 60000) },
+  })
+  const html = render({
+    upcomingWorkouts: [workout],
+    featuredStatuses: [makeStatus('feat-avatar')],
+    statuses: [makeStatus('post-avatar', { authorId: 'author-2' })],
+    authorAvatars: { 'author-1': 'profileAvatars/author-1/current.webp' },
+  })
+  assert.equal((html.match(/data-avatar-path="profileAvatars\/author-1\/current.webp"/g) || []).length, 2)
+  assert.match(html, /data-status-id="post-avatar" data-avatar-path=""/)
 })
 
 test('a toolbar de Publicações mantém as mesmas classes CSS (community-toolbar/community-publish-actions), então a regra @media que a empilha no mobile continua valendo sem mudança', () => {

@@ -65,6 +65,12 @@ export function AccountMenu({ onLogout, signingOut }) {
               Minha vitrine
             </ActionList.LinkItem>
           )}
+          <ActionList.LinkItem as={Link} to="/profissionais" onClick={() => setOpen(false)}>
+            <ActionList.LeadingVisual>
+              <BriefcaseIcon />
+            </ActionList.LeadingVisual>
+            Explorar profissionais
+          </ActionList.LinkItem>
           <ActionList.LinkItem as={Link} to="/evocash" replace onClick={() => setOpen(false)}>
             <ActionList.LeadingVisual>
               <CreditCardIcon />

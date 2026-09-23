@@ -313,6 +313,13 @@ export default function MyProfessionalListing() {
         )}
       </header>
       {message && <Flash variant={message.variant}>{message.text}</Flash>}
+      {state === 'published' && form.kind === 'professional' && profile?.avatarPath && !record.published?.avatarPath && (
+        <Flash variant="warning">
+          {form.useProfileAvatar
+            ? 'Sua foto global ainda não foi aprovada nesta página pública. Envie esta versão para revisão.'
+            : 'Sua foto global ainda não está autorizada nesta página pública. Marque a autorização abaixo, salve e envie uma nova versão para revisão.'}
+        </Flash>
+      )}
       {record.draft?.rejectionSummary && (
         <Flash variant="warning">
           <strong>Ajustes solicitados:</strong> {record.draft.rejectionSummary}
@@ -463,7 +470,7 @@ export default function MyProfessionalListing() {
                   onChange={(e) => edit('useProfileAvatar', e.target.checked)}
                 />
                 <span>
-                  Autorizar o uso da minha foto global aprovada nesta vitrine
+                  Autorizar o uso da minha foto global nesta vitrine após revisão
                   <small>
                     {profile?.avatarPath
                       ? 'Uma nova foto pessoal só aparecerá aqui após nova revisão.'

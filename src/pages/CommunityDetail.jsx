@@ -15,6 +15,7 @@ import { useCommunityFeed } from '../hooks/useCommunityFeed'
 import { useUpcomingWorkouts } from '../hooks/useUpcomingWorkouts'
 import { useSponsoredAds } from '../hooks/useSponsoredAds'
 import { useMyEconomyVotes } from '../hooks/useMyEconomyVotes'
+import { useCommunityAuthorAvatars } from '../hooks/useCommunityAuthorAvatars'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import {
@@ -76,6 +77,7 @@ export function CommunityFeedSection({
   upcomingWorkoutsError = null,
   featuredStatuses,
   statuses,
+  authorAvatars = {},
   loadingFeed,
   feedError,
   formOpen,
@@ -178,6 +180,7 @@ export function CommunityFeedSection({
               <StatusCard
                 key={`upcoming-${status.id}`}
                 status={status}
+                authorAvatarPath={authorAvatars[status.authorId]}
                 currentUserId={currentUserId}
                 canDelete={status.authorId === currentUserId || canModerate}
                 onDelete={onDeleteStatus}
@@ -209,6 +212,7 @@ export function CommunityFeedSection({
               <StatusCard
                 key={`featured-${status.id}`}
                 status={status}
+                authorAvatarPath={authorAvatars[status.authorId]}
                 currentUserId={currentUserId}
                 canDelete={status.authorId === currentUserId || canModerate}
                 onDelete={onDeleteStatus}
@@ -248,6 +252,7 @@ export function CommunityFeedSection({
           <StatusCard
             key={status.id}
             status={status}
+            authorAvatarPath={authorAvatars[status.authorId]}
             currentUserId={currentUserId}
             canDelete={status.authorId === currentUserId || canModerate}
             onDelete={onDeleteStatus}
@@ -341,6 +346,13 @@ function CommunityDetail({ id }) {
       ]
     : []
   const { votesByStatusId, setVote } = useMyEconomyVotes(statusIds, user?.uid)
+  const authorAvatars = useCommunityAuthorAvatars(
+    member,
+    statuses,
+    featuredStatuses,
+    upcomingWorkouts,
+    sharedWorkout ? [sharedWorkout] : []
+  )
 
   // Um mesmo post pode aparecer duas vezes na tela (card normal em `statuses` + cópia
   // destacada em `featuredStatuses`, ver Fase 6) -- um único handler aplica o mesmo
@@ -761,6 +773,7 @@ function CommunityDetail({ id }) {
               upcomingWorkoutsError={upcomingWorkoutsError}
               featuredStatuses={featuredStatuses}
               statuses={statuses}
+              authorAvatars={authorAvatars}
               loadingFeed={loadingFeed || loadingUpcomingWorkouts}
               feedError={feedError}
               formOpen={formOpen}
