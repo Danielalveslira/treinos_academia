@@ -8,9 +8,12 @@ import { build } from 'esbuild'
 import manifest from '../../functions/legal/manifest.json' with { type: 'json' }
 import documents from '../../functions/legal/documents.json' with { type: 'json' }
 import digests from '../../functions/legal/approved-digests.json' with { type: 'json' }
+import previousArchive from '../../functions/legal/test-fixtures/1.3.0.json' with { type: 'json' }
 
 let directory
 let render
+let mount
+let act
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'protected-route-tests-'))
   const outfile = join(directory, 'route.cjs')
@@ -19,6 +22,7 @@ before(async () => {
       contents: `
         import { createElement } from 'react'
         import { renderToStaticMarkup } from 'react-dom/server'
+        import TestRenderer, { act } from 'react-test-renderer'
         import { MemoryRouter } from 'react-router-dom'
         import { ThemeProvider, BaseStyles } from '@primer/react'
         import { AuthContext } from '../contexts/AuthContext.jsx'
@@ -27,6 +31,10 @@ before(async () => {
           createElement(BaseStyles, null, createElement(MemoryRouter, null,
             createElement(AuthContext.Provider, { value: authValue },
               createElement(ProtectedRoute, null, createElement('div', null, 'CONTEUDO_PROTEGIDO')))))))
+        export { act }
+        export const mount = (authValue) => TestRenderer.create(createElement(MemoryRouter, null,
+          createElement(AuthContext.Provider, { value: authValue },
+            createElement(ProtectedRoute, null, createElement('div', null, 'CONTEUDO_PROTEGIDO')))))
       `,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
@@ -54,7 +62,7 @@ before(async () => {
       }),
     },
   })
-  ;({ render } = createRequire(import.meta.url)(outfile))
+  ;({ render, mount, act } = createRequire(import.meta.url)(outfile))
 })
 after(async () => {
   if (directory) await rm(directory, { recursive: true, force: true })
@@ -113,6 +121,56 @@ test('a user without the current acceptance sees the legal form', () => {
   })
   assert.match(html, /Antes de continuar/)
   assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('a user who accepted 1.3.0 sees the 1.4.0 confirmation before protected content', () => {
+  const html = render({
+    ...baseAuth,
+    profile: {
+      ...baseAuth.profile,
+      legalAcceptance: {
+        version: previousArchive.manifest.version,
+        digest: digests[previousArchive.manifest.version],
+        acceptedAt: {},
+      },
+    },
+  })
+  assert.match(html, /Antes de continuar/)
+  assert.match(html, /Leia a versão 1\.4\.0/)
+  assert.match(html, /Li e aceito os/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('returning to an open tab checks whether the active legal policy changed', () => {
+  const previousDocument = globalThis.document
+  const listeners = new Map()
+  const requestedUsers = []
+  globalThis.document = {
+    visibilityState: 'hidden',
+    addEventListener(type, callback) { listeners.set(type, callback) },
+    removeEventListener(type, callback) {
+      if (listeners.get(type) === callback) listeners.delete(type)
+    },
+  }
+  let view
+  try {
+    act(() => {
+      view = mount({
+        ...baseAuth,
+        refreshLegalAccess: (uid) => requestedUsers.push(uid),
+      })
+    })
+    assert.equal(typeof listeners.get('visibilitychange'), 'function')
+    act(() => listeners.get('visibilitychange')())
+    assert.deepEqual(requestedUsers, [])
+    globalThis.document.visibilityState = 'visible'
+    act(() => listeners.get('visibilitychange')())
+    assert.deepEqual(requestedUsers, ['u1'])
+    act(() => view.unmount())
+    assert.equal(listeners.has('visibilitychange'), false)
+  } finally {
+    globalThis.document = previousDocument
+  }
 })
 
 test('a legal network error has a specific screen', () => {
