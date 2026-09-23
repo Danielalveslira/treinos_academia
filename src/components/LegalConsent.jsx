@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
-import { LEGAL_MANIFEST } from '../utils/legal'
+import { legalConsentDocumentLinks } from '../utils/legal'
 
-export function LegalConsent({ value, onChange, disabled }) {
+export function LegalConsent({ value, onChange, disabled, legalBundle }) {
+  const version = legalBundle.manifest.version
+  const links = legalConsentDocumentLinks(legalBundle)
   return (
     <fieldset className="legal-consent" disabled={disabled}>
       <legend>Documentos e autorizações</legend>
@@ -14,18 +16,15 @@ export function LegalConsent({ value, onChange, disabled }) {
         />
         <span>
           Li e aceito os{' '}
-          <Link to="/termos-de-uso" target="_blank" rel="noopener">
-            Termos de Uso
-          </Link>{' '}
-          e as{' '}
-          <Link to="/regras-da-comunidade" target="_blank" rel="noopener">
-            Regras da Comunidade
-          </Link>{' '}
-          e li a{' '}
-          <Link to="/politica-de-privacidade" target="_blank" rel="noopener">
-            Política de Privacidade
-          </Link>{' '}
-          (versão {LEGAL_MANIFEST.version}; links abrem em nova aba).
+          {links.map((link, index) => (
+            <span key={link.to}>
+              {index > 0 ? (index === links.length - 1 ? ' e ' : ', ') : ''}
+              <Link to={link.to} target="_blank" rel="noopener">
+                {link.label}
+              </Link>
+            </span>
+          ))}{' '}
+          (versão {version}; links abrem em nova aba).
         </span>
       </label>
       <label>

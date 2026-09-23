@@ -1,0 +1,257 @@
+{
+  "manifest": {
+    "version": "1.3.0",
+    "date": "2026-09-14",
+    "published": true,
+    "controllerName": "Wellington Daniel Alves de Lira",
+    "contactEmail": "dnllira1@gmail.com",
+    "minimumAge": 12,
+    "changes": [
+      "Política de Privacidade: passa a listar explicitamente as medidas corporais (peso, % de gordura, cintura, quadril, massa magra, altura) entre os dados de saúde coletados."
+    ]
+  },
+  "documents": [
+    {
+      "id": "community",
+      "path": "/regras-da-comunidade",
+      "title": "Regras da Comunidade",
+      "description": "Um espaço para evoluir, compartilhar e incentivar com respeito.",
+      "summary": [
+        "Respeite as pessoas. Assédio, discriminação, ameaças e exposição de dados não são aceitos.",
+        "Não publique golpes, conteúdo sexual, práticas perigosas ou links maliciosos.",
+        "Denúncias são analisadas com evidências. Toda penalidade tem motivo e direito de recurso."
+      ],
+      "sections": [
+        {
+          "id": "condutas",
+          "title": "Não é permitido",
+          "items": [
+            "Assédio, discriminação, ameaças ou discurso de ódio.",
+            "Conteúdo sexual ou qualquer forma de exploração de menores.",
+            "Golpes, fraudes, contas falsas ou uso da identidade de outra pessoa.",
+            "Venda de substâncias ilegais/anabolizantes e incentivo a práticas perigosas de treino.",
+            "Spam, publicidade não autorizada, links maliciosos ou manipulação de engajamento.",
+            "Divulgar dados ou imagens de terceiros sem autorização.",
+            "Denúncias feitas de má-fé, sabendo que são falsas."
+          ]
+        },
+        {
+          "id": "penalidades",
+          "title": "Penalidades",
+          "table": {
+            "headers": [
+              "Gravidade",
+              "Exemplo",
+              "Medida"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "Leve",
+                  "Fora do tema, spam isolado",
+                  "Remoção do conteúdo ou advertência"
+                ]
+              },
+              {
+                "cells": [
+                  "Moderada",
+                  "Reincidência ou provocação",
+                  "Suspensão temporária, com prazo"
+                ]
+              },
+              {
+                "cells": [
+                  "Grave",
+                  "Assédio, discriminação, fraude",
+                  "Banimento da comunidade"
+                ]
+              },
+              {
+                "cells": [
+                  "Crítica",
+                  "Ameaça, exploração de menores, ataque ao sistema",
+                  "Suspensão e banimento de toda a conta"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "moderacao",
+          "title": "Como funciona",
+          "items": [
+            "Denuncie pelo botão “Denunciar violação”, informando o fato e as evidências.",
+            "Toda decisão é registrada com motivo, regra aplicada e possibilidade de recurso.",
+            "Uma denúncia isolada não gera banimento automático — cada caso é analisado.",
+            "Casos de risco imediato podem gerar suspensão enquanto os fatos são apurados."
+          ]
+        }
+      ],
+      "sources": [
+        {
+          "label": "Referência de objetividade: Termos do TabNews",
+          "href": "https://www.tabnews.com.br/termos-de-uso"
+        }
+      ]
+    },
+    {
+      "id": "terms",
+      "path": "/termos-de-uso",
+      "title": "Termos de Uso",
+      "description": "O que você precisa saber sobre sua conta, o serviço e seus direitos.",
+      "summary": [
+        "Você mantém os direitos sobre o conteúdo que publica.",
+        "O Treinos organiza seus registros de treino; não substitui orientação médica."
+      ],
+      "sections": [
+        {
+          "id": "conta",
+          "title": "Sua conta",
+          "items": [
+            "Cadastro com e-mail, senha e nome de usuário — mantenha seus dados corretos e sua senha protegida.",
+            "Uso a partir de 12 anos.",
+            "Você aceita estes Termos, as Regras da Comunidade e confirma a leitura da Política de Privacidade."
+          ]
+        },
+        {
+          "id": "conteudo",
+          "title": "Seu conteúdo",
+          "items": [
+            "Você mantém os direitos sobre o que publica; o Treinos só armazena e exibe o necessário para o app funcionar.",
+            "Publicações saem do feed em 24 horas.",
+            "Respeite os direitos autorais e a privacidade de outras pessoas ao publicar."
+          ]
+        },
+        {
+          "id": "avisos",
+          "title": "Avisos importantes",
+          "items": [
+            "Registros e indicadores são informativos — não são prescrição médica, de treino ou de dieta.",
+            "Violações graves das Regras da Comunidade podem levar à suspensão ou encerramento da conta.",
+            "Mudanças relevantes nestes Termos exigem um novo aceite antes de continuar usando o app.",
+            "Aplicam-se as leis brasileiras, com os direitos do consumidor sempre preservados."
+          ]
+        }
+      ],
+      "sources": [
+        {
+          "label": "Código de Defesa do Consumidor — arts. 46 e 51",
+          "href": "https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm"
+        }
+      ]
+    },
+    {
+      "id": "privacy",
+      "path": "/politica-de-privacidade",
+      "title": "Política de Privacidade",
+      "description": "Quais dados usamos, para quê e como você pode exercer seus direitos.",
+      "summary": [
+        "Seus registros detalhados de treino não são publicados automaticamente.",
+        "Você escolhe se compartilha estatísticas do seu perfil.",
+        "Você pode pedir acesso, correção ou exclusão dos seus dados pelo atendimento, a qualquer momento."
+      ],
+      "sections": [
+        {
+          "id": "dados",
+          "title": "O que coletamos",
+          "table": {
+            "headers": [
+              "Dados",
+              "Para quê"
+            ],
+            "rows": [
+              {
+                "cells": [
+                  "E-mail e credenciais",
+                  "Criar sua conta e permitir login"
+                ]
+              },
+              {
+                "cells": [
+                  "Nome de usuário e descrição",
+                  "Montar seu perfil"
+                ]
+              },
+              {
+                "cells": [
+                  "Exercícios, cargas, séries e notas",
+                  "Seu diário de treino — pode conter dados de saúde"
+                ]
+              },
+              {
+                "cells": [
+                  "Peso, % de gordura, cintura, quadril, massa magra e altura",
+                  "Acompanhar sua evolução física — são dados de saúde"
+                ]
+              },
+              {
+                "cells": [
+                  "Publicações, votos e filiações",
+                  "Fazer as comunidades funcionarem"
+                ]
+              },
+              {
+                "cells": [
+                  "Pedidos de atendimento e denúncias",
+                  "Responder você e apurar violações"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "saude",
+          "title": "Dados de saúde",
+          "items": [
+            "Notas de treino podem revelar lesões ou condições de saúde — evite detalhes clínicos desnecessários.",
+            "Medidas corporais (peso, % de gordura, cintura, quadril, massa magra, altura) que você registrar no diário também são dados de saúde.",
+            "Esse tipo de dado exige seu consentimento específico, separado do aceite geral, e pode ser revogado a qualquer momento pelo atendimento."
+          ]
+        },
+        {
+          "id": "visibilidade",
+          "title": "Quem vê seus dados",
+          "items": [
+            "Seu diário de treino é privado — só você vê cargas, séries, notas e medidas corporais.",
+            "Nome de usuário e descrição do perfil ficam visíveis a outros usuários logados.",
+            "Estatísticas do perfil só aparecem para outros se você ativar o compartilhamento.",
+            "Conquistas publicadas na comunidade ficam visíveis por 24 horas."
+          ]
+        },
+        {
+          "id": "direitos",
+          "title": "Seus direitos",
+          "items": [
+            "Acessar, corrigir ou excluir seus dados a qualquer momento.",
+            "Revogar consentimentos dados anteriormente.",
+            "Tudo isso pelo atendimento, escolhendo “Privacidade ou exclusão da conta”."
+          ]
+        },
+        {
+          "id": "seguranca",
+          "title": "Segurança e retenção",
+          "items": [
+            "Usamos o Google Firebase para autenticação, banco de dados e hospedagem.",
+            "Seus dados ficam guardados enquanto sua conta existir, ou até você pedir a exclusão.",
+            "Registros de aceite e atendimento podem ser mantidos além disso quando exigido por lei."
+          ]
+        }
+      ],
+      "sources": [
+        {
+          "label": "LGPD — Lei nº 13.709/2018",
+          "href": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm"
+        },
+        {
+          "label": "Marco Civil da Internet — Lei nº 12.965/2014",
+          "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2014/lei/l12965.htm"
+        }
+      ]
+    }
+  ],
+  "digest": "146179e661d21211483d30eb7567880bdec950dd9c7bdf9514db42ae490fe232",
+  "createdAt": {
+    "_seconds": 1789437745,
+    "_nanoseconds": 410000000
+  }
+}

@@ -6,6 +6,8 @@ import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { build } from 'esbuild'
 import manifest from '../../functions/legal/manifest.json' with { type: 'json' }
+import documents from '../../functions/legal/documents.json' with { type: 'json' }
+import digests from '../../functions/legal/approved-digests.json' with { type: 'json' }
 
 let directory
 let render
@@ -63,11 +65,12 @@ const baseAuth = {
   profile: {
     role: 'user',
     createdAt: { toDate: () => new Date('2020-01-01') },
-    legalAcceptance: { version: manifest.version, digest: 'digest-atual', acceptedAt: {} },
+    legalAcceptance: { version: manifest.version, digest: digests[manifest.version], acceptedAt: {} },
   },
   profileError: '',
   legalAccess: {
-    policy: { version: manifest.version, published: true, digest: 'digest-atual' },
+    policy: { version: manifest.version, published: true, digest: digests[manifest.version] },
+    legalBundle: { manifest, documents, digest: digests[manifest.version] },
   },
   legalLoading: false,
   legalError: '',

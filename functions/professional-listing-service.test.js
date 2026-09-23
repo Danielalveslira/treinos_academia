@@ -148,6 +148,33 @@ test('unpublished storefront terms block submission even with a complete draft',
   )
 })
 
+test('missing published storefront policy blocks submission without creating a legal acceptance', async () => {
+  await db.doc('showcaseLegalPolicy/current').delete()
+  await db.doc(`showcaseLegalVersions/${showcaseManifest.version}`).delete()
+  const owner = unique('terms_missing')
+  await seedUser(owner)
+  const { listingId } = await service.createDraft(owner, {
+    requestId: unique('request'),
+    kind: 'professional',
+  })
+  await service.saveDraft(owner, { listingId, draft: completeDraft() })
+  await assert.rejects(
+    service.submit(owner, {
+      listingId,
+      termsAccepted: true,
+      termsVersion: showcaseManifest.version,
+      operationId: unique('submission'),
+    }),
+    (error) => error.code === 'failed-precondition'
+  )
+  assert.equal(
+    (await db.doc(`users/${owner}/showcaseLegalAcceptances/${showcaseManifest.version}`).get())
+      .exists,
+    false
+  )
+  assert.equal((await db.doc(`publishedProfessionalListings/${listingId}`).get()).exists, false)
+})
+
 test('submission requires the current storefront terms and records an idempotent server acceptance', async () => {
   const owner = unique('terms_owner')
   const other = unique('terms_other')

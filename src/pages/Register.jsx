@@ -1,5 +1,5 @@
 import { AuthLayout } from '../components/PublicLayout'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Button, FormControl, TextInput, Select, Link, Flash, Stack } from '@primer/react'
 import { registerUser, setDisplayName, sendVerificationEmail } from '../services/authService'
@@ -14,8 +14,12 @@ import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../utils/authErrors'
 import { validateUsername, validateBirthDate, validateSexo, hasErrors } from '../utils/validators'
 import { LegalConsent } from '../components/LegalConsent'
-import { LEGAL_MANIFEST } from '../utils/legal'
-import { acceptLegalDocuments } from '../services/legalService'
+import { canSubmitLegalRegistration } from '../utils/legal'
+import {
+  acceptLegalDocuments,
+  getActiveLegalBundle,
+  isLegalPolicyChangedError,
+} from '../services/legalService'
 
 function todayString() {
   return new Date().toISOString().slice(0, 10)
@@ -37,12 +41,38 @@ export default function Register() {
     accepted: false,
     healthDataConsent: false,
   })
+  const [legalBundle, setLegalBundle] = useState(null)
+  const [legalLoading, setLegalLoading] = useState(true)
+  const [legalError, setLegalError] = useState('')
+
+  useEffect(() => {
+    let active = true
+    getActiveLegalBundle()
+      .then((bundle) => {
+        if (active) setLegalBundle(bundle)
+      })
+      .catch((err) => {
+        if (active) setLegalError(err.message === 'LEGAL_POLICY_INCOMPATIBLE'
+          ? 'Os documentos ativos não são compatíveis com esta versão. Recarregue a página.'
+          : 'Não foi possível carregar os documentos. Verifique sua conexão e recarregue a página.')
+      })
+      .finally(() => {
+        if (active) setLegalLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (submitting) return
     setError('')
-    if (LEGAL_MANIFEST.published && !Object.values(confirmed).every(Boolean)) {
+    if (legalLoading || !legalBundle) {
+      setError(legalError || 'Aguarde o carregamento dos documentos antes de criar a conta.')
+      return
+    }
+    if (!canSubmitLegalRegistration({ bundle: legalBundle, loading: legalLoading, confirmed })) {
       setError('Confirme os documentos e a autorização para seus dados de treino.')
       return
     }
@@ -53,7 +83,7 @@ export default function Register() {
     const validationErrors = {
       ...validateUsername(username),
       ...validateBirthDate(birthDate, {
-        minimumAge: LEGAL_MANIFEST.published ? LEGAL_MANIFEST.minimumAge : undefined,
+        minimumAge: legalBundle.manifest.published ? legalBundle.manifest.minimumAge : undefined,
       }),
       ...validateSexo(sexo),
     }
@@ -63,7 +93,7 @@ export default function Register() {
     setSubmitting(true)
     try {
       if (createdAccount) {
-        await acceptLegalDocuments(confirmed)
+        await acceptLegalDocuments(confirmed, legalBundle)
         await refreshProfile(createdAccount)
         // replace: mesmo motivo do Login — depois de autenticado, cadastro/login não devem
         // continuar acessíveis pelo botão voltar.
@@ -112,7 +142,7 @@ export default function Register() {
       sendVerificationEmail(credential.user).catch((sendErr) => {
         console.error('[Auth] sendVerificationEmail:', sendErr)
       })
-      if (LEGAL_MANIFEST.published) await acceptLegalDocuments(confirmed)
+      if (legalBundle.manifest.published) await acceptLegalDocuments(confirmed, legalBundle)
       await refreshProfile(uid)
       // replace: mesmo motivo do Login — depois de autenticado, cadastro/login não devem
       // continuar acessíveis pelo botão voltar.
@@ -120,7 +150,9 @@ export default function Register() {
     } catch (err) {
       console.error('[Auth] register:', err)
       setError(
-        err.code?.startsWith('functions/')
+        isLegalPolicyChangedError(err) || err?.message === 'LEGAL_POLICY_INCOMPATIBLE'
+          ? 'Os documentos ativos mudaram. Recarregue a página, leia a versão atual e tente novamente.'
+          : err.code?.startsWith('functions/')
           ? 'Sua conta foi criada, mas o aceite não foi registrado. Tente novamente ou entre na conta para concluir.'
           : translateAuthError(err)
       )
@@ -147,6 +179,14 @@ export default function Register() {
           {error && (
             <Flash role="alert" variant="danger">
               {error}
+            </Flash>
+          )}
+          {legalError && (
+            <Flash role="alert" variant="danger">
+              {legalError}{' '}
+              <Button type="button" variant="invisible" onClick={() => window.location.reload()}>
+                Recarregar
+              </Button>
             </Flash>
           )}
 
@@ -223,8 +263,13 @@ export default function Register() {
             </Select>
           </FormControl>
 
-          {LEGAL_MANIFEST.published && (
-            <LegalConsent value={confirmed} onChange={setConfirmed} disabled={submitting} />
+          {legalBundle?.manifest.published && (
+            <LegalConsent
+              value={confirmed}
+              onChange={setConfirmed}
+              disabled={submitting}
+              legalBundle={legalBundle}
+            />
           )}
 
           <Button
@@ -233,7 +278,7 @@ export default function Register() {
             size="large"
             block
             loading={submitting}
-            disabled={submitting}
+            disabled={submitting || legalLoading || !legalBundle || Boolean(legalError)}
           >
             Criar conta
           </Button>
