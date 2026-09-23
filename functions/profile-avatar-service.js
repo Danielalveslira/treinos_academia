@@ -1,4 +1,14 @@
-export function createProfileAvatarService({ db, bucket, FieldValue, HttpsError, inspectImage }) {
+const ALLOCATION_WINDOW_MS = 60 * 60 * 1000
+const MAX_ALLOCATIONS_PER_WINDOW = 6
+
+export function createProfileAvatarService({
+  db,
+  bucket,
+  FieldValue,
+  HttpsError,
+  inspectImage,
+  now = Date.now,
+}) {
   const MAX_BYTES = 1024 * 1024
   const fail = (code, message) => {
     throw new HttpsError(code, message)
@@ -19,21 +29,42 @@ export function createProfileAvatarService({ db, bucket, FieldValue, HttpsError,
   async function allocate(uid) {
     const mediaRef = db.collection('profileAvatarMedia').doc()
     const path = `profileAvatars/${uid}/${mediaRef.id}.webp`
-    await db.runTransaction(async (tx) => {
-      const [user, deletion] = await tx.getAll(
-        db.doc(`users/${uid}`),
-        db.doc(`deletionJobs/account_${uid}`)
-      )
+    const userRef = db.doc(`users/${uid}`)
+    return db.runTransaction(async (tx) => {
+      const [user, deletion] = await tx.getAll(userRef, db.doc(`deletionJobs/account_${uid}`))
       if (!user.exists || deletion.exists)
         fail('failed-precondition', 'A conta não pode alterar a foto agora.')
+
+      const nowMs = now()
+      const previous = user.data().avatarAllocation || {}
+      if (previous.pendingMediaId && previous.pendingAt > nowMs - ALLOCATION_WINDOW_MS) {
+        const pending = await tx.get(db.doc(`profileAvatarMedia/${previous.pendingMediaId}`))
+        if (pending.data()?.ownerId === uid && pending.data()?.state === 'allocated') {
+          return { mediaId: pending.id, path: pending.data().storagePath }
+        }
+      }
+
+      const recent = (previous.allocatedAt || []).filter(
+        (time) => time > nowMs - ALLOCATION_WINDOW_MS
+      )
+      if (recent.length >= MAX_ALLOCATIONS_PER_WINDOW) {
+        fail('resource-exhausted', 'Aguarde antes de enviar outra foto.')
+      }
       tx.create(mediaRef, {
         ownerId: uid,
         storagePath: path,
         state: 'allocated',
         createdAt: FieldValue.serverTimestamp(),
       })
+      tx.update(userRef, {
+        avatarAllocation: {
+          allocatedAt: [...recent, nowMs],
+          pendingMediaId: mediaRef.id,
+          pendingAt: nowMs,
+        },
+      })
+      return { mediaId: mediaRef.id, path }
     })
-    return { mediaId: mediaRef.id, path }
   }
 
   async function confirm(uid, { mediaId }) {

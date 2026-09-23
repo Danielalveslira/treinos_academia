@@ -34,15 +34,87 @@ const bucket = {
     }
   },
 }
-const service = createProfileAvatarService({
-  db,
-  bucket,
-  FieldValue,
-  HttpsError: FakeHttpsError,
-  inspectImage: async () => ({ width: 512, height: 512 }),
-})
+const makeService = (now = Date.now) =>
+  createProfileAvatarService({
+    db,
+    bucket,
+    FieldValue,
+    HttpsError: FakeHttpsError,
+    inspectImage: async () => ({ width: 512, height: 512 }),
+    now,
+  })
+const service = makeService()
 let sequence = 0
 const uid = () => `avatar_user_${Date.now()}_${sequence++}`
+
+test('allocation replays return the pending media without consuming another slot', async () => {
+  const userId = uid()
+  await db.doc(`users/${userId}`).set({ role: 'user' })
+  const first = await service.allocate(userId)
+  const replay = await service.allocate(userId)
+  assert.deepEqual(replay, first)
+  assert.equal(
+    (await db.doc(`users/${userId}`).get()).data().avatarAllocation.allocatedAt.length,
+    1
+  )
+  assert.equal(
+    (await db.collection('profileAvatarMedia').where('ownerId', '==', userId).get()).size,
+    1
+  )
+})
+
+test('allocation rejects the seventh new media in a moving hour', async () => {
+  const userId = uid()
+  await db.doc(`users/${userId}`).set({ role: 'user' })
+  for (let index = 0; index < 6; index++) {
+    const { mediaId } = await service.allocate(userId)
+    await db.doc(`profileAvatarMedia/${mediaId}`).update({ state: 'active' })
+  }
+  await assert.rejects(service.allocate(userId), { code: 'resource-exhausted' })
+  assert.equal(
+    (await db.collection('profileAvatarMedia').where('ownerId', '==', userId).get()).size,
+    6
+  )
+})
+
+test('allocation frees exactly the slots that leave the moving window', async () => {
+  const userId = uid()
+  let clock = 1_000_000
+  const limited = makeService(() => clock)
+  await db.doc(`users/${userId}`).set({ role: 'user' })
+  for (let index = 0; index < 6; index++) {
+    const { mediaId } = await limited.allocate(userId)
+    await db.doc(`profileAvatarMedia/${mediaId}`).update({ state: 'active' })
+    clock += 1_000
+  }
+  await assert.rejects(limited.allocate(userId), { code: 'resource-exhausted' })
+  clock = 1_000_000 + 60 * 60 * 1_000
+  const seventh = await limited.allocate(userId)
+  assert.ok(seventh.mediaId)
+  await db.doc(`profileAvatarMedia/${seventh.mediaId}`).update({ state: 'active' })
+  await assert.rejects(limited.allocate(userId), { code: 'resource-exhausted' })
+})
+
+test('concurrent allocation calls share one pending media and one quota slot', async () => {
+  const userId = uid()
+  await db.doc(`users/${userId}`).set({ role: 'user' })
+  await db.doc(`users/${userId}`).set(
+    {
+      avatarAllocation: { allocatedAt: Array(5).fill(Date.now()) },
+    },
+    { merge: true }
+  )
+  const results = await Promise.all(Array.from({ length: 8 }, () => service.allocate(userId)))
+  assert.equal(new Set(results.map((result) => result.mediaId)).size, 1)
+  assert.equal(
+    (await db.doc(`users/${userId}`).get()).data().avatarAllocation.allocatedAt.length,
+    6
+  )
+  assert.equal(
+    (await db.collection('profileAvatarMedia').where('ownerId', '==', userId).get()).size,
+    1
+  )
+})
 
 test('global avatar allocation, confirmation and removal update private and public profiles', async () => {
   const userId = uid()
