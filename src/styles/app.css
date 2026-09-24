@@ -836,6 +836,37 @@ body:has(.pwa-offline) .app-shell {
 .listing-kind-picker button:hover { border-color: var(--borderColor-accent-emphasis); }
 .listing-kind-picker strong { font-size: 20px; }
 .listing-kind-picker span { color: var(--fgColor-muted); line-height: 1.55; }
+
+.usage-profile-field {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.usage-profile-field legend {
+  padding: 0;
+  margin-bottom: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.usage-profile-option {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.usage-profile-option:has(input:checked) {
+  border-color: var(--borderColor-accent-emphasis);
+  background: var(--bgColor-accent-muted);
+}
+.usage-profile-option input { margin-top: 3px; flex-shrink: 0; }
+.usage-profile-option span { display: grid; gap: 2px; }
+.usage-profile-option small { color: var(--fgColor-muted); line-height: 1.5; }
+.usage-profile-field:disabled .usage-profile-option { cursor: not-allowed; opacity: 0.7; }
 .listing-dashboard-heading { display: flex; justify-content: space-between; gap: 18px; align-items: center; margin-bottom: 24px; }
 .listing-dashboard-heading h1 { margin: 6px 0; }
 .listing-dashboard-heading p { margin: 0; color: var(--fgColor-muted); }
