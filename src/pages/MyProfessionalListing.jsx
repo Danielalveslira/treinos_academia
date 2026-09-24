@@ -313,11 +313,20 @@ export default function MyProfessionalListing() {
         )}
       </header>
       {message && <Flash variant={message.variant}>{message.text}</Flash>}
-      {state === 'published' && form.kind === 'professional' && profile?.avatarPath && !record.published?.avatarPath && (
+      {state === 'published' &&
+        form.kind === 'professional' &&
+        profile?.avatarPath &&
+        !record.published?.avatarPath && (
+          <Flash variant="warning">
+            {form.useProfileAvatar
+              ? 'Sua foto global ainda não foi aprovada nesta página pública. Envie esta versão para revisão.'
+              : 'Sua foto global ainda não está autorizada nesta página pública. Marque a autorização abaixo, salve e envie uma nova versão para revisão.'}
+          </Flash>
+        )}
+      {pending && record.draft?.submittedAvatarMediaId && (
         <Flash variant="warning">
-          {form.useProfileAvatar
-            ? 'Sua foto global ainda não foi aprovada nesta página pública. Envie esta versão para revisão.'
-            : 'Sua foto global ainda não está autorizada nesta página pública. Marque a autorização abaixo, salve e envie uma nova versão para revisão.'}
+          A foto autorizada foi enviada com esta versão e só aparecerá no card do diretório e na
+          página da Vitrine após a aprovação.
         </Flash>
       )}
       {record.draft?.rejectionSummary && (

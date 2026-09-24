@@ -282,7 +282,8 @@ export function createProfessionalListingService({
     if (
       !media.exists ||
       media.data().ownerId !== draft.ownerId ||
-      media.data().storagePath !== sourcePath
+      media.data().storagePath !== sourcePath ||
+      !['active', 'superseded'].includes(media.data().state)
     ) {
       fail('failed-precondition', 'A versão de avatar enviada não está mais disponível.')
     }
@@ -291,7 +292,11 @@ export function createProfessionalListingService({
     await bucket
       .file(approvedPath)
       .setMetadata({ cacheControl: 'public,max-age=300', contentType: 'image/webp' })
-    return { avatarPath: approvedPath, avatarSourceMediaId: sourceMediaId }
+    return {
+      avatarPath: approvedPath,
+      avatarSourceMediaId: sourceMediaId,
+      avatarSourcePath: sourcePath,
+    }
   }
 
   async function review(adminId, { listingId, decision, reason = '' }) {
@@ -319,13 +324,31 @@ export function createProfessionalListingService({
     let result
     try {
       result = await db.runTransaction(async (tx) => {
-        const [currentListing, currentDraft] = await tx.getAll(listingRef, draftRef)
+        const avatarMediaRef = avatar.avatarSourceMediaId
+          ? db.doc(`profileAvatarMedia/${avatar.avatarSourceMediaId}`)
+          : null
+        const [currentListing, currentDraft, currentAvatarMedia] = await tx.getAll(
+          listingRef,
+          draftRef,
+          ...(avatarMediaRef ? [avatarMediaRef] : [])
+        )
         if (
           currentListing.data()?.lifecycleState !== 'pending_review' ||
           currentDraft.data()?.reviewState !== 'pending_review' ||
           currentDraft.data()?.version !== expectedVersion
         ) {
           fail('aborted', 'A submissão mudou durante a análise.')
+        }
+        if (
+          avatarMediaRef &&
+          (currentDraft.data().useProfileAvatar !== true ||
+            currentDraft.data().submittedAvatarMediaId !== avatar.avatarSourceMediaId ||
+            currentDraft.data().submittedAvatarPath !== avatar.avatarSourcePath ||
+            currentAvatarMedia.data()?.ownerId !== currentDraft.data().ownerId ||
+            currentAvatarMedia.data()?.storagePath !== avatar.avatarSourcePath ||
+            !['active', 'superseded'].includes(currentAvatarMedia.data()?.state))
+        ) {
+          fail('aborted', 'A autorização da foto mudou durante a análise.')
         }
         if (currentDraft.data().linkedCommunityId) {
           const community = await tx.get(

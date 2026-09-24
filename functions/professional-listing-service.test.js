@@ -402,6 +402,57 @@ test('approval uses the avatar version pinned at submission, not a later persona
   assert.deepEqual(files.get(published.avatarPath), Buffer.from('first-avatar'))
 })
 
+test('approval keeps the default avatar when no authorized photo was submitted', async () => {
+  const owner = unique('owner_no_avatar')
+  const admin = unique('admin_no_avatar')
+  await Promise.all([seedUser(owner), seedUser(admin, { role: 'superadmin' })])
+  const { listingId } = await service.createDraft(owner, {
+    requestId: unique('request'),
+    kind: 'professional',
+  })
+  await service.saveDraft(owner, { listingId, draft: completeDraft() })
+  await submitListing(owner, listingId)
+  await service.review(admin, { listingId, decision: 'approved' })
+
+  const published = (await db.doc(`publishedProfessionalListings/${listingId}`).get()).data()
+  assert.equal(published.avatarPath, undefined)
+  assert.equal(published.avatarSourceMediaId, undefined)
+})
+
+test('approval rejects an allocated or revoked avatar instead of exposing it', async () => {
+  for (const mediaState of ['allocated', 'deleted']) {
+    const owner = unique(`owner_${mediaState}`)
+    const admin = unique(`admin_${mediaState}`)
+    const mediaId = db.collection('profileAvatarMedia').doc().id
+    const sourcePath = `profileAvatars/${owner}/${mediaId}.webp`
+    await Promise.all([
+      seedUser(owner, { avatarMediaId: mediaId, avatarPath: sourcePath }),
+      seedUser(admin, { role: 'superadmin' }),
+      db.doc(`profileAvatarMedia/${mediaId}`).set({
+        ownerId: owner,
+        storagePath: sourcePath,
+        state: mediaState,
+      }),
+    ])
+    files.set(sourcePath, Buffer.from(mediaState))
+    const { listingId } = await service.createDraft(owner, {
+      requestId: unique('request'),
+      kind: 'professional',
+    })
+    await service.saveDraft(owner, {
+      listingId,
+      draft: completeDraft('professional', { useProfileAvatar: true }),
+    })
+    await submitListing(owner, listingId)
+
+    await assert.rejects(
+      service.review(admin, { listingId, decision: 'approved' }),
+      /não está mais disponível/
+    )
+    assert.equal((await db.doc(`publishedProfessionalListings/${listingId}`).get()).exists, false)
+  }
+})
+
 test('approval revalidates linked community ownership and active state', async () => {
   const owner = unique('owner')
   const admin = unique('admin')
