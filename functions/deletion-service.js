@@ -32,9 +32,21 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
   const jobRef = (kind, id) => db.doc(`deletionJobs/${kind}_${id}`)
   const batchSize = 100
 
+  // Chamada tanto de queue() (síncrona, assim que a exclusão é solicitada) quanto do
+  // estágio 0 de step() (rede de segurança idempotente, caso a chamada em queue()
+  // falhe) -- desativar duas vezes não é erro, o Admin SDK trata como no-op.
+  async function disableAuthAccount(uid) {
+    try {
+      await auth.updateUser(uid, { disabled: true })
+      await auth.revokeRefreshTokens(uid)
+    } catch (error) {
+      if (error.code !== 'auth/user-not-found') throw error
+    }
+  }
+
   async function queue(kind, id, adminId) {
     const job = jobRef(kind, id)
-    await db.runTransaction(async (tx) => {
+    const created = await db.runTransaction(async (tx) => {
       const target = db.doc(`${kind === 'account' ? 'users' : 'communities'}/${id}`)
       const [admin, previous, entity, migration] = await tx.getAll(
         db.doc(`users/${adminId}`),
@@ -53,7 +65,7 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
         throw new HttpsError('failed-precondition', 'Você não pode excluir a própria conta.')
       if (entity.data()?.role === 'superadmin')
         throw new HttpsError('failed-precondition', 'Não é possível excluir um administrador.')
-      if (previous.exists) return
+      if (previous.exists) return false
       if (!entity.exists && kind !== 'account')
         throw new HttpsError('not-found', 'Registro não encontrado.')
       if (kind === 'account' && migration.data()?.interactionsVersion !== 1) {
@@ -78,7 +90,24 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
             ? { accountStatus: 'deleting' }
             : { isActive: false, deletionStatus: 'pending' }
         )
+      return true
     })
+    // Síncrono, antes de devolver a resposta ao chamador -- sem esperar o próximo
+    // tick do agendador (até ~1 minuto, mais se a fila estiver ocupada) para que a
+    // conta pare de conseguir logar. A trava do Firestore (deletionJobs/account_{uid},
+    // já em vigor desde a transação acima) já barra qualquer sessão existente
+    // imediatamente; isto fecha a OUTRA metade -- impedir um login NOVO. Só na
+    // primeira vez (created:true) -- uma chamada repetida (job já existente, replay
+    // idempotente) não precisa desativar de novo uma conta que step() já deve ter
+    // desativado ou até excluído. Best-effort de propósito: se falhar aqui (rede
+    // etc.), o estágio 0 de step() tenta de novo no próximo tick, então uma falha
+    // nunca deveria travar a resposta ao admin nem deixar a exclusão sem essa
+    // proteção para sempre.
+    if (created && kind === 'account') {
+      await disableAuthAccount(id).catch((error) => {
+        console.error('[deletion] disableAuthAccount (queue):', id, error.code || error.message)
+      })
+    }
     return { pending: true, id: job.id }
   }
 
@@ -222,12 +251,7 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
         // conta não acelera nem adia esse prazo.
         tasks = [
           async () => {
-            try {
-              await auth.updateUser(uid, { disabled: true })
-              await auth.revokeRefreshTokens(uid)
-            } catch (error) {
-              if (error.code !== 'auth/user-not-found') throw error
-            }
+            await disableAuthAccount(uid)
             return true
           },
           () => eraseQuery(db.collection('communityMembers').where('userId', '==', uid)),

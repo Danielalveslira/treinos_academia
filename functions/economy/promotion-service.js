@@ -33,6 +33,9 @@ const REASON_ERRORS = {
 // sem incomodar o uso real (um clique de verdade nunca se repete em menos de 10s no
 // MESMO card).
 const PROMOTION_EVENT_WINDOW_MS = 10 * 1000
+// Retenção do próprio registro de throttle (não a janela de limite acima) -- ver
+// purgeExpiredPromotionEventLimits em index.js.
+const PROMOTION_EVENT_LIMIT_TTL_MS = 24 * 60 * 60 * 1000
 
 function targetCollection(targetType) {
   return targetType === 'post' ? 'statuses' : 'communities'
@@ -281,7 +284,17 @@ export function createPromotionService({ db, FieldValue, Timestamp, wallet, ledg
         return { recorded: false }
       }
       tx.update(ref, { clickCount: FieldValue.increment(1) })
-      tx.set(throttleRef, { lastClickAt: Timestamp.fromMillis(now()) })
+      // expireAt: limpo por purgeExpiredPromotionEventLimits (index.js), mesmo padrão
+      // de purgeExpiredPhotos/purgeExpiredModerationEvidence -- folga generosa e
+      // deliberadamente desacoplada de PROMOTION_EVENT_WINDOW_MS (10s): o prazo aqui é
+      // só para não deixar o documento vivo para sempre (inclusive depois que a conta
+      // que clicou é excluída, já que este registro não carrega mais nenhum vínculo
+      // com ela além do próprio uid no ID do documento), nunca para reabrir a janela
+      // de limite cedo demais.
+      tx.set(throttleRef, {
+        lastClickAt: Timestamp.fromMillis(now()),
+        expireAt: Timestamp.fromMillis(now() + PROMOTION_EVENT_LIMIT_TTL_MS),
+      })
       return { recorded: true }
     })
   }

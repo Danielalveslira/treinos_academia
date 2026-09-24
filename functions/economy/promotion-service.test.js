@@ -805,6 +805,14 @@ test('recordPromotionEvent within the throttle window from the same user is a si
   assert.equal(second.recorded, false, 'a rapid repeat click from the same user must be a silent no-op')
   assert.equal((await getPromotion(result.promotionId)).clickCount, 1)
 
+  // Fechamento da auditoria: o próprio registro de throttle precisa carregar um
+  // expireAt no futuro -- é o que purgeExpiredPromotionEventLimits (index.js) usa
+  // para limpar estes documentos mais tarde, já que a chave composta (uid_promotionId)
+  // não entra no lote final de deletion-service.js.
+  const throttleDoc = await db.doc(`promotionEventLimits/${clicker}_${result.promotionId}`).get()
+  assert.ok(throttleDoc.exists)
+  assert.ok(throttleDoc.data().expireAt.toMillis() > clock, 'expireAt must be set in the future')
+
   // Passado o suficiente da janela, o próximo clique do MESMO usuário volta a contar.
   clock += 11 * 1000
   const third = await service.recordPromotionEvent(clicker, eventArgs)

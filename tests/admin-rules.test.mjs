@@ -300,10 +300,15 @@ test('account deletion fences writes, drains bounded batches and cleans foreign 
   await assertFails(
     setDoc(doc(erasedClient, 'users/erase'), { role: 'user', createdAt: serverTimestamp() })
   )
+  // queue() agora também desativa a conta no Auth de forma síncrona (auditoria de
+  // exclusão), sem esperar step() -- por isso disable/revoke aparecem duas vezes
+  // (uma em queue(), outra no estágio 0 de step(), idempotente por design) antes do
+  // delete. A REPETIÇÃO de queue() logo abaixo, sobre um job já concluído, não gera
+  // um novo par: só a primeira chamada (que de fato cria o job) desativa a conta.
   await deletion.queue('account', 'erase', 'admin')
   assert.deepEqual(
     authCalls.filter(([, id]) => id === 'erase').map(([op]) => op),
-    ['disable', 'revoke', 'delete']
+    ['disable', 'revoke', 'disable', 'revoke', 'delete']
   )
 })
 
@@ -659,4 +664,23 @@ test('purgeExpiredModerationEvidence clears only documents whose retention windo
   assert.equal(pending.evidencePath, 'moderationEvidence/stillPending.webp')
   const forever = (await db.doc('supportRequests/keptForever').get()).data()
   assert.equal(forever.evidencePath, 'moderationEvidence/keptForever.webp')
+})
+
+// Auditoria de backend: promotionEventLimits (o throttle de recordPromotionEvent, ver
+// economy/promotion-service.js) usa uma chave composta (uid_promotionId), então não
+// entra no lote final de deletion-service.js (que só apaga documentos cuja chave É o
+// próprio uid) -- limpo por expiração própria em vez disso, mesmo padrão de
+// purgeExpiredModerationEvidence.
+test('purgeExpiredPromotionEventLimits clears only throttle records whose expireAt has passed', async () => {
+  await db.doc('promotionEventLimits/user1_promo1').set({
+    lastClickAt: Timestamp.fromMillis(Date.now() - 25 * 60 * 60 * 1000),
+    expireAt: Timestamp.fromMillis(Date.now() - 1000),
+  })
+  await db.doc('promotionEventLimits/user2_promo1').set({
+    lastClickAt: Timestamp.now(),
+    expireAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+  })
+  await api.purgeExpiredPromotionEventLimits.run()
+  assert.equal((await db.doc('promotionEventLimits/user1_promo1').get()).exists, false)
+  assert.equal((await db.doc('promotionEventLimits/user2_promo1').get()).exists, true)
 })

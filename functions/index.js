@@ -1092,6 +1092,24 @@ export const purgeExpiredModerationEvidence = onSchedule(
   }
 )
 
+// recordPromotionEvent (economy/promotion-service.js) grava um expireAt generoso e
+// desacoplado da própria janela de limite (ver comentário lá) -- este job só executa
+// esse prazo já calculado, mesmo padrão de purgeExpiredModerationEvidence acima.
+export const purgeExpiredPromotionEventLimits = onSchedule(
+  { ...options, schedule: 'every 24 hours', timeoutSeconds: 300 },
+  async () => {
+    const expired = await db
+      .collection('promotionEventLimits')
+      .where('expireAt', '<=', Timestamp.now())
+      .limit(200)
+      .get()
+    if (expired.empty) return
+    const batch = db.batch()
+    expired.docs.forEach((item) => batch.delete(item.ref))
+    await batch.commit()
+  }
+)
+
 export const listDeletionJobs = onCall(options, async (request) => {
   await requireSuperAdmin(requireUser(request))
   const jobs = await db

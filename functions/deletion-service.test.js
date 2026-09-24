@@ -32,6 +32,22 @@ function uid() {
   return `deletion-user-${Date.now()}-${counter++}`
 }
 
+function buildTrackingAuth() {
+  const calls = { updateUser: [], revokeRefreshTokens: [], deleteUser: [] }
+  return {
+    calls,
+    async updateUser(targetUid, patch) {
+      calls.updateUser.push({ uid: targetUid, patch })
+    },
+    async revokeRefreshTokens(targetUid) {
+      calls.revokeRefreshTokens.push(targetUid)
+    },
+    async deleteUser(targetUid) {
+      calls.deleteUser.push(targetUid)
+    },
+  }
+}
+
 async function runToCompletion(deletions, ref) {
   for (let i = 0; i < 30; i++) {
     await deletions.step(ref)
@@ -377,5 +393,110 @@ test('a regular user who is neither superadmin nor the community owner cannot qu
     (await db.doc(`communities/${communityId}`).get()).exists,
     true,
     'nada deveria ter mudado'
+  )
+})
+
+// Fechamento da auditoria de exclusão: a conta precisa parar de conseguir logar assim
+// que a exclusão é SOLICITADA, não só quando step() chega ao estágio 0 (que pode
+// esperar até ~1 minuto pelo próximo tick do agendador, mais se a fila estiver
+// ocupada). queue() agora desativa a conta no Auth de forma síncrona, antes de devolver
+// a resposta -- sem nunca esperar o agendador para isso.
+test('queue() disables the Auth account synchronously, before any step() call ever runs', async () => {
+  const trackingAuth = buildTrackingAuth()
+  const deletions = createDeletionService({
+    db,
+    auth: trackingAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const adminId = uid()
+  const targetUid = uid()
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${targetUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+
+  await deletions.queue('account', targetUid, adminId)
+
+  assert.deepEqual(
+    trackingAuth.calls.updateUser,
+    [{ uid: targetUid, patch: { disabled: true } }],
+    'the account must already be disabled by the time queue() returns'
+  )
+  assert.deepEqual(trackingAuth.calls.revokeRefreshTokens, [targetUid])
+  // step() ainda não rodou nenhuma vez -- confirma que a desativação em queue() não
+  // depende do job já ter sido processado.
+  const job = await db.doc(`deletionJobs/account_${targetUid}`).get()
+  assert.equal(job.data().stage, 0)
+})
+
+// A trava do Firestore (deletionJobs/account_{uid}) já bloqueia toda operação nova
+// imediatamente (isSignedIn() em firestore.rules); isto prova que step()'s próprio
+// estágio 0 continua idempotente mesmo depois de queue() já ter desativado a conta --
+// nenhum erro, mesmo chamando updateUser({disabled:true}) de novo sobre uma conta que
+// queue() já desativou.
+test('step()\'s own stage 0 auth-disable is a safe idempotent no-op after queue() already did it', async () => {
+  const trackingAuth = buildTrackingAuth()
+  const deletions = createDeletionService({
+    db,
+    auth: trackingAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const adminId = uid()
+  const targetUid = uid()
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${targetUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+
+  const { id } = await deletions.queue('account', targetUid, adminId)
+  await runToCompletion(deletions, db.doc(`deletionJobs/${id}`))
+
+  assert.equal(trackingAuth.calls.updateUser.length, 2, 'once from queue(), once from stage 0')
+  assert.equal(trackingAuth.calls.deleteUser.length, 1)
+})
+
+// Fechamento da auditoria: duas execuções do agendador podem se sobrepor de verdade
+// (o schedule dispara a cada minuto mesmo que a anterior ainda não tenha terminado,
+// ver comentário em processDeletionJobs/index.js) -- prova que chamar step() duas
+// vezes CONCORRENTEMENTE sobre o MESMO job nunca duplica trabalho nem corrompe o
+// resultado: a lease por job (reivindicada dentro de uma transação) garante que só
+// uma das duas execuções realmente processa cada rodada.
+test('two concurrent step() calls on the same job never double-process or corrupt it', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const adminId = uid()
+  const targetUid = uid()
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${targetUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+  await db.doc(`communityMembers/c1_${targetUid}`).set({ communityId: 'c1', userId: targetUid })
+
+  const { id } = await deletions.queue('account', targetUid, adminId)
+  const ref = db.doc(`deletionJobs/${id}`)
+
+  // Concorrência real: as duas chamadas competem pela mesma lease ao mesmo tempo, não
+  // uma depois da outra.
+  await Promise.all([deletions.step(ref), deletions.step(ref)])
+
+  // Pode não ter terminado numa única rodada concorrente (uma das duas pode ter sido
+  // descartada pela lease antes de fazer qualquer progresso) -- completa com chamadas
+  // sequenciais normais, provando que nada ficou preso ou inconsistente.
+  await runToCompletion(deletions, ref)
+  const finished = await ref.get()
+  assert.equal(finished.data().state, 'complete')
+  assert.equal(
+    (await db.doc(`communityMembers/c1_${targetUid}`).get()).exists,
+    false,
+    'a exclusão real ainda precisa ter acontecido, exatamente uma vez'
   )
 })
