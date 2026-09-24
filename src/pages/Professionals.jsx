@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Button, Flash, Spinner } from '@primer/react'
 import { SearchIcon } from '@primer/octicons-react'
 import { PublicLayout } from '../components/PublicLayout'
@@ -11,10 +12,17 @@ import {
 } from '../constants/professionalListingTaxonomy'
 import { listPublishedProfessionalListings } from '../services/professionalListingsService'
 
-const initialFilters = { kind: 'professional', modality: '*', uf: '*', city: '*', serviceMode: '*' }
+const KIND_VALUES = LISTING_KIND_OPTIONS.map((option) => option.value)
 
 export default function Professionals() {
-  const [filters, setFilters] = useState(initialFilters)
+  const [params] = useSearchParams()
+  const [filters, setFilters] = useState(() => ({
+    kind: KIND_VALUES.includes(params.get('tipo')) ? params.get('tipo') : 'professional',
+    modality: '*',
+    uf: '*',
+    city: '*',
+    serviceMode: '*',
+  }))
   const [result, setResult] = useState({ items: [], cursor: null })
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
