@@ -130,13 +130,15 @@ test('account deletion removes the professional listing, owner lock, draft and g
   )
 })
 
-// Confirma que a limpeza pagina de verdade em vez de tentar apagar tudo de uma vez:
-// mais documentos do que o tamanho de página interno de eraseQuery (100), então drenar
-// a coleção precisa de várias chamadas a step() (cada uma processando no máximo uma
-// página), nunca uma leitura/gravação gigante só. economyDaily (não mais
-// economyTransactions, que passou a ser preservado na Fase 4) é a coleção que continua
-// sendo apagada e pode crescer bastante por ano de uso.
-test('an economyDaily collection larger than one deletion batch is drained safely across multiple step() calls', async () => {
+// A limpeza ainda pagina de verdade internamente (eraseQuery nunca lê/apaga mais que
+// batchSize=100 documentos por página), mas step() agora processa página após página,
+// estágio após estágio, até esgotar um orçamento de tempo (deadline) -- não mais uma
+// página por chamada. Uma conta com mais documentos do que uma única página (100)
+// precisa terminar numa ÚNICA chamada a step(), já que o orçamento padrão (4 minutos)
+// sobra de longe para isso. É exatamente essa mudança que resolve "a exclusão demora
+// excessivamente": antes, o agendador (a cada 1 minuto, até 10 jobs por execução)
+// precisava de uma volta inteira por página de cada estágio de cada conta.
+test('an economyDaily collection larger than one internal page is fully drained within a single step() call', async () => {
   const deletions = createDeletionService({
     db,
     auth: fakeAuth,
@@ -167,35 +169,54 @@ test('an economyDaily collection larger than one deletion batch is drained safel
   const { id } = await deletions.queue('account', targetUid, adminId)
   const ref = db.doc(`deletionJobs/${id}`)
 
-  let callsUsed = 0
-  let observedPartialDrain = false
-  for (let i = 0; i < 40; i++) {
-    await deletions.step(ref)
-    callsUsed++
-    const remaining = (await db.collection(`users/${targetUid}/economyDaily`).get()).size
-    if (remaining > 0 && remaining < DAILY_DOC_COUNT) observedPartialDrain = true
-    const snapshot = await ref.get()
-    if (snapshot.data()?.state === 'complete') break
-  }
+  await deletions.step(ref)
 
-  const finalCount = (await db.collection(`users/${targetUid}/economyDaily`).get()).size
-  assert.equal(finalCount, 0)
-  assert.ok(
-    observedPartialDrain,
-    'deveria ter observado um estado intermediário (nem 0 nem 130 documentos) provando a paginação'
-  )
-  // ceil(130/100) = 2 chamadas que efetivamente apagam uma página (100, depois 30) --
-  // eraseQuery sempre devolve false depois de apagar uma página não vazia, então cada
-  // uma delas precisa da PRÓXIMA chamada a step() pra continuar -- mais 1 chamada final
-  // em que eraseQuery encontra a coleção já vazia e devolve true, liberando os estágios
-  // seguintes (publicProfiles/statistics, exclusão no Auth, batch final) na mesma
-  // chamada. Não é uma estimativa: com todo o resto já vazio para este uid recém-criado,
-  // esse é o número exato de chamadas até "complete".
+  const [job, remaining] = await Promise.all([
+    ref.get(),
+    db.collection(`users/${targetUid}/economyDaily`).get(),
+  ])
+  assert.equal(job.data().state, 'complete', 'uma única chamada deveria bastar dentro do orçamento padrão')
+  assert.equal(remaining.size, 0)
+})
+
+// Prova que o orçamento de tempo (deadline) é respeitado de verdade -- não só "existe
+// mas nunca importa". Um deadline já vencido faz step() não avançar estágio nenhum
+// nesta chamada (sem perder nem corromper o que já foi apagado, já que cada página
+// continua sendo seu próprio commit atômico); uma chamada seguinte, com o orçamento
+// padrão, retoma exatamente de onde parou e termina.
+test('a spent deadline makes step() advance nothing this call; a later call with budget resumes and finishes', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const adminId = uid()
+  const targetUid = uid()
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${targetUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+  await db.doc(`communityMembers/c1_${targetUid}`).set({ communityId: 'c1', userId: targetUid })
+
+  const { id } = await deletions.queue('account', targetUid, adminId)
+  const ref = db.doc(`deletionJobs/${id}`)
+
+  await deletions.step(ref, { deadline: Date.now() - 1 })
+  const stalled = await ref.get()
+  assert.equal(stalled.data().state, 'pending')
+  assert.equal(stalled.data().stage, 0, 'nenhum estágio deveria ter avançado sem orçamento')
   assert.equal(
-    callsUsed,
-    3,
-    `esperava exatamente 3 chamadas a step() para drenar 130 documentos em páginas de 100, usou ${callsUsed}`
+    (await db.doc(`communityMembers/c1_${targetUid}`).get()).exists,
+    true,
+    'nada destrutivo deveria ter rodado sem orçamento de tempo'
   )
+
+  await deletions.step(ref)
+  const finished = await ref.get()
+  assert.equal(finished.data().state, 'complete')
+  assert.equal((await db.doc(`communityMembers/c1_${targetUid}`).get()).exists, false)
 })
 
 // Fase 4: portão financeiro -- uma compra pending (refletida no cashPurchaseLock) trava

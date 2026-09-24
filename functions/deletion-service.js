@@ -14,6 +14,20 @@ export function statusPhotoExtra(data) {
 
 // Durable deletion jobs double as write fences. Completed account jobs remain as
 // tombstones so an old authentication token cannot recreate the deleted profile.
+// Sem um orçamento de tempo, step() processava UMA página (100 docs) de UM estágio por
+// chamada e devolvia o controle -- com o agendador rodando a cada minuto e até 10 jobs
+// por execução, uma conta com milhares de registros (status, votos, participações)
+// podia levar horas para terminar, sempre reprocessando a fila inteira a cada volta.
+// Usado como teto PADRÃO quando step() é chamado sem um deadline explícito (ex.: um
+// teste, ou uma chamada avulsa) -- processDeletionJobs em index.js passa o seu próprio,
+// derivado do timeoutSeconds da função agendada.
+const DEFAULT_STEP_BUDGET_MS = 4 * 60 * 1000
+// Cobre o deadline inteiro (+ folga) -- sem isso, uma lease de duração fixa (2min)
+// menor que o orçamento de processamento expirava NO MEIO de uma chamada ainda em
+// andamento, permitindo que outra execução do agendador (elas podem se sobrepor; a
+// lease é o que já as torna seguras de rodar em paralelo) reivindicasse o mesmo job.
+const LEASE_BUFFER_MS = 30 * 1000
+
 export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp, HttpsError }) {
   const jobRef = (kind, id) => db.doc(`deletionJobs/${kind}_${id}`)
   const batchSize = 100
@@ -147,14 +161,17 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
     return false
   }
 
-  async function step(ref) {
+  async function step(ref, { deadline = Date.now() + DEFAULT_STEP_BUDGET_MS } = {}) {
     const token = db.collection('deletionJobs').doc().id
     const job = await db.runTransaction(async (tx) => {
       const snapshot = await tx.get(ref)
       const data = snapshot.data()
       if (!data || data.state === 'complete' || data.leaseUntil?.toMillis() > Date.now())
         return null
-      tx.update(ref, { leaseToken: token, leaseUntil: Timestamp.fromMillis(Date.now() + 120000) })
+      tx.update(ref, {
+        leaseToken: token,
+        leaseUntil: Timestamp.fromMillis(deadline + LEASE_BUFFER_MS),
+      })
       return data
     })
     if (!job) return
@@ -299,8 +316,13 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
         }
       }
       let stage = job.stage || 0
-      // Bound each invocation to one nonempty batch, while skipping empty stages.
-      while (stage < tasks.length && (await tasks[stage]())) stage++
+      // Processa quantas páginas/estágios couberem no orçamento de tempo (deadline),
+      // não só uma página por chamada -- cada tarefa de eraseQuery/removeStatuses
+      // apaga uma página (até batchSize docs) e devolve false enquanto ainda houver
+      // mais; só avança de estágio quando a tarefa atual finalmente devolve true.
+      while (stage < tasks.length && Date.now() < deadline) {
+        if (await tasks[stage]()) stage++
+      }
       await db.runTransaction(async (tx) => {
         const current = await tx.get(ref)
         if (current.data()?.leaseToken !== token) return
