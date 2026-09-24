@@ -81,7 +81,7 @@ before(async () => {
             export const TrashIcon=()=>null; export const PersonIcon=()=>null; export const LocationIcon=()=>null;
             export const ClockIcon=()=>null; export const ShieldCheckIcon=()=>null; export const CheckIcon=()=>null;
             export const CalendarIcon=()=>null; export const PeopleIcon=()=>null; export const ThumbsupIcon=()=>null;
-            export const ThumbsdownIcon=()=>null;
+            export const ThumbsdownIcon=()=>null; export const XIcon=()=>null;
           `,
           }))
           context.onLoad({ filter: /^router$/, namespace: 'stub' }, () => ({
@@ -116,6 +116,16 @@ before(async () => {
 after(async () => {
   delete globalThis.__statusVote
   if (directory) await rm(directory, { recursive: true, force: true })
+})
+
+// O auto-dismiss do erro (ACTION_ERROR_AUTO_DISMISS_MS em StatusCard.jsx) usa
+// window.setTimeout/clearTimeout -- este teste roda no Node puro (sem jsdom), então
+// window não existe a menos que seja provido aqui, como já é feito em
+// MyProfessionalListing.test.js.
+const previousWindow = globalThis.window
+globalThis.window = { setTimeout, clearTimeout }
+after(() => {
+  globalThis.window = previousWindow
 })
 
 function status(id) {
@@ -170,4 +180,60 @@ test('an action error stays below its post, is isolated, and clears after a succ
   await act(async () => positiveButtons[0].props.onClick())
   assert.equal(articles[0].findAllByProps({ className: 'status-action-error' }).length, 0)
   renderer.unmount()
+})
+
+test('the action error auto-dismisses on its timer, can be dismissed manually, and never leaks a duplicate timer', async () => {
+  globalThis.__statusVote = async () => {
+    throw new Error('Falha ao votar.')
+  }
+  const scheduled = []
+  const clearedIds = []
+  let nextTimerId = 1
+  const previousWindow = globalThis.window
+  globalThis.window = {
+    setTimeout: (callback, delay) => {
+      const id = nextTimerId++
+      scheduled.push({ id, callback, delay })
+      return id
+    },
+    clearTimeout: (id) => clearedIds.push(id),
+  }
+
+  let renderer
+  try {
+    await act(async () => {
+      renderer = TestRenderer.create(
+        React.createElement(StatusCard, {
+          status: status('post-timer'),
+          currentUserId: 'viewer',
+          now: Date.now(),
+          myEconomyVote: null,
+          onDelete: async () => true,
+        })
+      )
+    })
+    const positiveButton = renderer.root.findByProps({ 'aria-label': 'Voto positivo' })
+
+    await act(async () => positiveButton.props.onClick())
+    assert.ok(renderer.root.findAllByProps({ className: 'status-action-error' }).length > 0)
+    assert.equal(scheduled.length, 1, 'exactly one timer scheduled for the error')
+
+    // Dispensa manual: some na hora e cancela o timer pendente -- sem isso, o timer
+    // velho dispararia depois no vazio (não é um leak de memória grave, mas é um
+    // setTimeout fantasma que este teste garante que não sobra).
+    const dismissButton = renderer.root.findByProps({ 'aria-label': 'Dispensar aviso' })
+    await act(async () => dismissButton.props.onClick())
+    assert.equal(renderer.root.findAllByProps({ className: 'status-action-error' }).length, 0)
+    assert.deepEqual(clearedIds, [scheduled[0].id])
+
+    // Um novo erro depois do dismiss agenda exatamente UM novo timer (nunca dois
+    // concorrentes) e, ao disparar sozinho, some sem exigir clique nenhum.
+    await act(async () => positiveButton.props.onClick())
+    assert.equal(scheduled.length, 2)
+    await act(async () => scheduled[1].callback())
+    assert.equal(renderer.root.findAllByProps({ className: 'status-action-error' }).length, 0)
+  } finally {
+    renderer?.unmount()
+    globalThis.window = previousWindow
+  }
 })

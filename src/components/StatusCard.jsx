@@ -10,6 +10,7 @@ import {
   CheckIcon,
   CalendarIcon,
   PeopleIcon,
+  XIcon,
 } from '@primer/octicons-react'
 import {
   getMyVote,
@@ -43,6 +44,12 @@ import {
 } from '../utils/scheduledWorkout'
 import { buildIcsEvent, downloadIcsFile } from '../utils/icsExport'
 import '../styles/workout-status.css'
+
+// Todo erro contextual hoje é transitório (voto, enquete, participação, exclusão --
+// sempre resolve tentando de novo), então some sozinho depois de um tempo pra não virar
+// lixo visual acumulado no card. O X abaixo cobre o caso de alguém querer descartar
+// antes disso.
+const ACTION_ERROR_AUTO_DISMISS_MS = 6000
 
 // Selo dourado e discreto — o valor vem de authorIsSuperAdmin, gravado no status e
 // conferido pelo servidor no momento da publicação (ver firestore.rules e
@@ -459,6 +466,15 @@ export function StatusCard({
     Boolean(status.promoted) && toMillis(status.promotedUntil) > toMillis(now)
   const interactionActive = isPublicationInteractionActive(status, now)
 
+  // Reagenda sempre que a mensagem muda (inclusive de um erro pro próximo): o cleanup
+  // do efeito anterior cancela o timer velho antes deste rodar, então nunca há dois
+  // timers concorrentes nem um timer antigo apagando uma mensagem mais nova.
+  useEffect(() => {
+    if (!actionError) return undefined
+    const timer = window.setTimeout(() => setActionError(''), ACTION_ERROR_AUTO_DISMISS_MS)
+    return () => window.clearTimeout(timer)
+  }, [actionError])
+
   function handleActionMessage(message, variant = 'success') {
     if (variant === 'danger') {
       setActionError(message)
@@ -576,7 +592,17 @@ export function StatusCard({
       )}
       {actionError && (
         <Flash className="status-action-error" variant="danger" role="alert">
-          {actionError}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Text sx={{ flex: 1, minWidth: 0 }}>{actionError}</Text>
+            <IconButton
+              icon={XIcon}
+              variant="invisible"
+              size="small"
+              aria-label="Dispensar aviso"
+              onClick={() => setActionError('')}
+              sx={{ color: 'fg.muted', flexShrink: 0 }}
+            />
+          </Box>
         </Flash>
       )}
     </article>
