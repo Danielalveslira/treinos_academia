@@ -16,10 +16,11 @@ import {
   deleteProfessionalListing,
   getMyProfessionalListing,
   getShowcaseLegalAcceptance,
+  publishProfessionalListing,
   saveProfessionalListing,
-  submitProfessionalListing,
   unpublishProfessionalListing,
 } from '../services/professionalListingsService'
+import { setUsageProfile } from '../services/usageProfileService'
 import { EMPTY_LISTING_DRAFT } from '../utils/professionalListing'
 import {
   canSubmitShowcaseListing,
@@ -27,10 +28,14 @@ import {
   SHOWCASE_LEGAL_DOCUMENT,
   SHOWCASE_LEGAL_MANIFEST,
 } from '../utils/showcaseLegal'
+import { isEligibleForListingCreation } from '../constants/usageProfile'
+import { UsageProfileField } from '../components/UsageProfileField'
 
 const STATE_LABELS = {
   draft: 'Rascunho',
-  pending_review: 'Em revisão',
+  // Legado: vitrines com uma submissão presa no antigo fluxo de aprovação (antes da
+  // publicação direta). Some sozinho assim que o titular salvar o rascunho de novo.
+  pending_review: 'Em revisão (legado)',
   published: 'Publicada',
   suspended: 'Suspensa',
   archived: 'Despublicada',
@@ -163,6 +168,21 @@ export default function MyProfessionalListing() {
     }
   }
 
+  // Preenchimento contextual para conta legada (usageProfile ainda ausente): o
+  // AuthContext mantém um listener ao vivo em users/{uid}, então profile.usageProfile
+  // já reflete o novo valor no próximo render, sem precisar recarregar nada aqui.
+  async function declareUsageProfile(value) {
+    setBusy('usageProfile')
+    setMessage(null)
+    try {
+      await setUsageProfile(value)
+    } catch {
+      setMessage({ variant: 'danger', text: 'Não foi possível salvar seu perfil de uso.' })
+    } finally {
+      setBusy('')
+    }
+  }
+
   function payload() {
     const { specialtiesText, ...draft } = form
     return {
@@ -190,12 +210,12 @@ export default function MyProfessionalListing() {
     }
   }
 
-  async function submit() {
-    setBusy('submit')
+  async function publish() {
+    setBusy('publish')
     setMessage(null)
     try {
       submissionOperation.current ||= crypto.randomUUID().replaceAll('-', '')
-      await submitProfessionalListing(record.id, {
+      await publishProfessionalListing(record.id, {
         termsAccepted: termsConfirmed,
         termsVersion: SHOWCASE_LEGAL_MANIFEST.version,
         operationId: submissionOperation.current,
@@ -203,9 +223,9 @@ export default function MyProfessionalListing() {
       await reload()
       submissionOperation.current = null
       setTermsConfirmed(false)
-      setMessage({ variant: 'success', text: 'Vitrine enviada para revisão.' })
+      setMessage({ variant: 'success', text: 'Vitrine publicada.' })
     } catch (error) {
-      setMessage({ variant: 'danger', text: error?.message || 'Não foi possível enviar.' })
+      setMessage({ variant: 'danger', text: error?.message || 'Não foi possível publicar.' })
     } finally {
       setBusy('')
     }
@@ -259,7 +279,8 @@ export default function MyProfessionalListing() {
         )}
       </div>
     )
-  if (!record)
+  if (!record) {
+    const usageProfile = profile?.usageProfile
     return (
       <div className="my-listing-page">
         <header className="profile-page-heading">
@@ -268,27 +289,63 @@ export default function MyProfessionalListing() {
           <p>Crie uma página pública para apresentar seu trabalho ou espaço.</p>
         </header>
         {message && <Flash variant={message.variant}>{message.text}</Flash>}
-        <section className="listing-kind-picker">
-          {LISTING_KIND_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => create(option.value)}
+        {!usageProfile ? (
+          // Conta legada: nunca declarou o perfil de uso. Preenchimento contextual
+          // aqui mesmo, no ponto em que isso passa a importar -- não bloqueia o resto
+          // do app nem classifica ninguém como "comum" por omissão.
+          <>
+            <p>Antes de continuar, diga como você pretende usar o Evolutus.</p>
+            <UsageProfileField
+              value=""
+              onChange={declareUsageProfile}
+              legend="Como você pretende utilizar o Evolutus?"
               disabled={Boolean(busy)}
-            >
-              <strong>{option.label}</strong>
-              <span>
-                {option.value === 'professional'
-                  ? 'Para personal trainers, treinadores e especialistas.'
-                  : 'Para academias, boxes, estúdios e assessorias.'}
-              </span>
-            </button>
-          ))}
-        </section>
+            />
+          </>
+        ) : isEligibleForListingCreation(usageProfile) ? (
+          <section className="listing-kind-picker">
+            {LISTING_KIND_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => create(option.value)}
+                disabled={Boolean(busy)}
+              >
+                <strong>{option.label}</strong>
+                <span>
+                  {option.value === 'professional'
+                    ? 'Para personal trainers, treinadores e especialistas.'
+                    : 'Para academias, boxes, estúdios e assessorias.'}
+                </span>
+              </button>
+            ))}
+          </section>
+        ) : (
+          <Flash variant="warning">
+            A criação de Vitrine fica disponível para os perfis de uso Profissional e
+            Responsável por estabelecimento. Você pode mudar isso a qualquer momento em{' '}
+            <Link to="/perfil">Meu perfil</Link>.
+          </Flash>
+        )}
+      </div>
+    )
+  }
+  // record e form são setState separados feitos juntos (mesmo callback), mas nada
+  // garante que sempre cheguem no mesmo commit -- sem isto, um record já truthy com
+  // form ainda null quebraria form.displayName logo abaixo.
+  if (!form)
+    return (
+      <div className="professional-state">
+        <Spinner aria-label="Carregando sua vitrine" />
       </div>
     )
 
-  const pending = record.draft?.reviewState === 'pending_review'
+  // 'publishing' é a trava transitória do publish() -- na prática o titular quase
+  // nunca observa isso (a chamada é síncrona do ponto de vista do cliente); só fica
+  // visível se uma tentativa anterior travou pela metade (ex.: função derrubada no
+  // meio da cópia do avatar) e o titular ainda não tentou de novo.
+  const publishing = record.draft?.reviewState === 'publishing'
+  const pending = publishing || record.listing.lifecycleState === 'pending_review'
   const state = record.listing.lifecycleState
   const hasLegalAcceptance = hasCurrentShowcaseAcceptance(legalAcceptance)
   const legalSubmissionAllowed = canSubmitShowcaseListing({
@@ -319,14 +376,13 @@ export default function MyProfessionalListing() {
         !record.published?.avatarPath && (
           <Flash variant="warning">
             {form.useProfileAvatar
-              ? 'Sua foto global ainda não foi aprovada nesta página pública. Envie esta versão para revisão.'
-              : 'Sua foto global ainda não está autorizada nesta página pública. Marque a autorização abaixo, salve e envie uma nova versão para revisão.'}
+              ? 'Sua foto global ainda não aparece nesta página pública. Publique esta versão para atualizá-la.'
+              : 'Sua foto global ainda não está autorizada nesta página pública. Marque a autorização abaixo, salve e publique novamente.'}
           </Flash>
         )}
-      {pending && record.draft?.submittedAvatarMediaId && (
+      {pending && (
         <Flash variant="warning">
-          A foto autorizada foi enviada com esta versão e só aparecerá no card do diretório e na
-          página da Vitrine após a aprovação.
+          Uma publicação anterior desta vitrine ainda não terminou. Tente novamente em instantes.
         </Flash>
       )}
       {record.draft?.rejectionSummary && (
@@ -479,10 +535,10 @@ export default function MyProfessionalListing() {
                   onChange={(e) => edit('useProfileAvatar', e.target.checked)}
                 />
                 <span>
-                  Autorizar o uso da minha foto global nesta vitrine após revisão
+                  Autorizar o uso da minha foto global nesta vitrine ao publicar
                   <small>
                     {profile?.avatarPath
-                      ? 'Uma nova foto pessoal só aparecerá aqui após nova revisão.'
+                      ? 'Uma nova foto pessoal só aparecerá aqui depois que você publicar de novo.'
                       : 'Adicione uma foto em Meu perfil primeiro.'}
                   </small>
                 </span>
@@ -530,7 +586,7 @@ export default function MyProfessionalListing() {
             ) : (
               <Flash variant="warning">
                 A versão {SHOWCASE_LEGAL_MANIFEST.version} ainda é uma minuta pendente de aprovação.
-                A submissão permanece bloqueada.
+                A publicação permanece bloqueada.
               </Flash>
             )}
           </fieldset>
@@ -541,13 +597,13 @@ export default function MyProfessionalListing() {
             <Button
               type="button"
               variant="primary"
-              onClick={submit}
-              loading={busy === 'submit'}
+              onClick={publish}
+              loading={busy === 'publish'}
               disabled={
                 pending || Boolean(busy) || !record.draft?.version || !legalSubmissionAllowed
               }
             >
-              Enviar para revisão
+              Publicar
             </Button>
           </div>
         </form>

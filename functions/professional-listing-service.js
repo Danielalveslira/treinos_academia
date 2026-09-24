@@ -3,9 +3,16 @@ import {
   validListingId,
   validateListingDraft,
 } from './professional-listing-core.js'
+import { isEligibleForListingCreation } from './usage-profile-core.js'
 
-const REPORT_WINDOW_MS = 24 * 60 * 60 * 1000
 const LEGAL_VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
+// Trava transitória contra publicação concorrente (duplo clique, retry de rede com
+// operationId novo) -- publish() já é auto-suficiente (sem espera por um admin), mas
+// as duas fases (copiar o avatar no Storage não pode rodar dentro de uma transação do
+// Firestore) ainda deixam uma janela real entre elas. Expira sozinha: uma função que
+// trava para sempre por causa de uma instância derrubada no meio da cópia não tem
+// nenhum admin para destravar, diferente do antigo review() pendente.
+const PUBLISHING_LOCK_TIMEOUT_MS = 2 * 60 * 1000
 
 export function createProfessionalListingService({
   db,
@@ -35,6 +42,12 @@ export function createProfessionalListingService({
       fail('permission-denied', 'Acesso administrativo necessário.')
   }
 
+  function isPublishingLocked(draftData) {
+    if (draftData?.reviewState !== 'publishing') return false
+    const startedAt = draftData.publishingStartedAt?.toMillis?.()
+    return typeof startedAt === 'number' && startedAt > Date.now() - PUBLISHING_LOCK_TIMEOUT_MS
+  }
+
   async function createDraft(uid, { requestId, kind }) {
     if (!validListingId(requestId) || !['professional', 'space'].includes(kind)) {
       fail('invalid-argument', 'Dados inválidos para criar a vitrine.')
@@ -42,7 +55,7 @@ export function createProfessionalListingService({
     const lockRef = db.doc(`professionalListingOwnerLocks/${uid}`)
     const proposedId = db.collection('professionalListings').doc().id
     return db.runTransaction(async (tx) => {
-      await assertWritableAccount(tx, uid)
+      const user = await assertWritableAccount(tx, uid)
       const lock = await tx.get(lockRef)
       if (lock.exists) {
         const listing = await tx.get(db.doc(`professionalListings/${lock.data().listingId}`))
@@ -50,6 +63,16 @@ export function createProfessionalListingService({
           fail('already-exists', 'Sua conta já possui uma vitrine de outro tipo.')
         }
         return { listingId: lock.data().listingId, created: false }
+      }
+      // Só barra a criação de uma vitrine NOVA -- quem já possui uma (ramo acima)
+      // continua podendo reabri-la/geri-la mesmo que o perfil de uso tenha mudado
+      // depois. Perfil de uso ausente (conta legada nunca declarou) também não é
+      // elegível: precisa declarar profissional/responsável primeiro.
+      if (!isEligibleForListingCreation(user.data().usageProfile)) {
+        fail(
+          'failed-precondition',
+          'Defina seu perfil de uso como profissional ou responsável por estabelecimento em Meu Perfil antes de criar uma vitrine.'
+        )
       }
       const now = FieldValue.serverTimestamp()
       tx.create(lockRef, {
@@ -108,8 +131,8 @@ export function createProfessionalListingService({
       if (['suspended', 'deleting'].includes(listing.data().lifecycleState)) {
         fail('failed-precondition', 'A vitrine não pode ser editada neste estado.')
       }
-      if (currentDraft.data()?.reviewState === 'pending_review') {
-        fail('failed-precondition', 'A versão enviada está em análise.')
+      if (isPublishingLocked(currentDraft.data())) {
+        fail('failed-precondition', 'Uma publicação desta vitrine está em andamento.')
       }
       if (listing.data().kind !== parsed.value.kind)
         fail('failed-precondition', 'O tipo da vitrine não pode ser alterado.')
@@ -144,7 +167,33 @@ export function createProfessionalListingService({
     return result
   }
 
-  async function submit(
+  async function copyAuthorizedAvatar(listingId, ownerId, avatarSource) {
+    const { avatarSourceMediaId: sourceMediaId, avatarSourcePath: sourcePath } = avatarSource
+    const media = await db.doc(`profileAvatarMedia/${sourceMediaId}`).get()
+    if (
+      !media.exists ||
+      media.data().ownerId !== ownerId ||
+      media.data().storagePath !== sourcePath ||
+      !['active', 'superseded'].includes(media.data().state)
+    ) {
+      fail('failed-precondition', 'A foto autorizada não está mais disponível.')
+    }
+    const approvedPath = `professionalListingMedia/${listingId}/approved/${db.collection('_').doc().id}.webp`
+    await bucket.file(sourcePath).copy(bucket.file(approvedPath))
+    await bucket
+      .file(approvedPath)
+      .setMetadata({ cacheControl: 'public,max-age=300', contentType: 'image/webp' })
+    return { avatarPath: approvedPath, avatarSourceMediaId: sourceMediaId, avatarSourcePath: sourcePath }
+  }
+
+  // Publicação direta pelo titular -- substitui o antigo par submit()/review(): sem
+  // fila nem decisão de superadmin, mas ainda em duas fases (a cópia do avatar no
+  // Storage não pode rodar dentro de uma transação do Firestore). A fase 1 valida
+  // titularidade/estado/termos/rascunho e trava a vitrine ("publishing"); a fase 2
+  // copia a foto autorizada (se houver) e revalida tudo de novo antes de publicar,
+  // exatamente a mesma proteção contra corrida que o antigo review() já tinha --
+  // só que disparada pelo próprio dono, na hora, em vez de um admin dias depois.
+  async function publish(
     uid,
     { listingId, termsAccepted = false, termsVersion = '', operationId = '' }
   ) {
@@ -165,10 +214,12 @@ export function createProfessionalListingService({
     }
     const listingRef = db.doc(`professionalListings/${listingId}`)
     const draftRef = db.doc(`professionalListingDrafts/${listingId}`)
+    const publicRef = db.doc(`publishedProfessionalListings/${listingId}`)
     const policyRef = db.doc('showcaseLegalPolicy/current')
     const archiveRef = db.doc(`showcaseLegalVersions/${legalManifest.version}`)
     const acceptanceRef = db.doc(`users/${uid}/showcaseLegalAcceptances/${legalManifest.version}`)
-    return db.runTransaction(async (tx) => {
+
+    const prepared = await db.runTransaction(async (tx) => {
       const user = await assertWritableAccount(tx, uid)
       const [listing, draft, policy, archive, previousAcceptance] = await tx.getAll(
         listingRef,
@@ -180,23 +231,19 @@ export function createProfessionalListingService({
       if (!listing.exists || listing.data().ownerId !== uid)
         fail('permission-denied', 'Vitrine não encontrada.')
       if (
-        draft.data()?.reviewState === 'pending_review' &&
-        draft.data()?.submissionOperationId === operationId &&
-        draft.data()?.submittedLegalVersion === legalManifest.version &&
-        draft.data()?.submittedLegalDigest === legalDigest
+        listing.data().lifecycleState === 'published' &&
+        draft.data()?.publishOperationId === operationId
       ) {
-        return {
-          listingId,
-          version: draft.data().version,
-          state: 'pending_review',
-          repeated: true,
-        }
+        return { repeated: true, version: listing.data().publishedVersion }
       }
       if (['suspended', 'deleting'].includes(listing.data().lifecycleState)) {
-        fail('failed-precondition', 'A vitrine não pode ser enviada neste estado.')
+        fail('failed-precondition', 'A vitrine não pode ser publicada neste estado.')
       }
-      if (!draft.exists || draft.data().reviewState !== 'draft' || !draft.data().version) {
-        fail('failed-precondition', 'Salve um rascunho completo antes de enviar.')
+      if (isPublishingLocked(draft.data())) {
+        fail('aborted', 'Já existe uma publicação desta vitrine em andamento.')
+      }
+      if (!draft.exists || !draft.data().version) {
+        fail('failed-precondition', 'Salve um rascunho completo antes de publicar.')
       }
       const parsed = validateListingDraft(draft.data())
       if (parsed.error) fail('failed-precondition', parsed.error)
@@ -228,7 +275,7 @@ export function createProfessionalListingService({
             'failed-precondition',
             termsVersion && termsVersion !== legalManifest.version
               ? 'A versão dos termos mudou. Releia e confirme o documento vigente.'
-              : 'Confirme os Termos de Publicação da Vitrine antes de enviar.'
+              : 'Confirme os Termos de Publicação da Vitrine antes de publicar.'
           )
         }
         tx.create(acceptanceRef, {
@@ -241,177 +288,110 @@ export function createProfessionalListingService({
           acceptedAt: FieldValue.serverTimestamp(),
         })
       }
-      const submittedAvatar =
+      const avatarWanted =
         draft.data().kind === 'professional' &&
         draft.data().useProfileAvatar === true &&
         user.data().avatarMediaId &&
         user.data().avatarPath
-          ? {
-              submittedAvatarMediaId: user.data().avatarMediaId,
-              submittedAvatarPath: user.data().avatarPath,
-            }
-          : {
-              submittedAvatarMediaId: FieldValue.delete(),
-              submittedAvatarPath: FieldValue.delete(),
-            }
       tx.update(draftRef, {
-        reviewState: 'pending_review',
-        ...submittedAvatar,
-        submissionOperationId: operationId,
-        submittedLegalDocumentId: legalDocumentId,
-        submittedLegalVersion: legalManifest.version,
-        submittedLegalDigest: legalDigest,
-        submittedAt: FieldValue.serverTimestamp(),
+        reviewState: 'publishing',
+        publishingOperationId: operationId,
+        publishingStartedAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       })
-      tx.update(listingRef, {
-        lifecycleState: 'pending_review',
-        pendingVersion: draft.data().version,
-        updatedAt: FieldValue.serverTimestamp(),
-      })
-      return { listingId, version: draft.data().version, state: 'pending_review' }
+      return {
+        repeated: false,
+        version: draft.data().version,
+        ownerId: uid,
+        draftData: draft.data(),
+        avatarSource: avatarWanted
+          ? { avatarSourceMediaId: user.data().avatarMediaId, avatarSourcePath: user.data().avatarPath }
+          : null,
+      }
     })
-  }
+    if (prepared.repeated) {
+      return { listingId, version: prepared.version, state: 'published', repeated: true }
+    }
 
-  async function approvedAvatar(listingId, draft) {
-    if (!draft.useProfileAvatar || draft.kind !== 'professional') return {}
-    const sourcePath = draft.submittedAvatarPath
-    const sourceMediaId = draft.submittedAvatarMediaId
-    if (!sourcePath || !sourceMediaId) return {}
-    const media = await db.doc(`profileAvatarMedia/${sourceMediaId}`).get()
-    if (
-      !media.exists ||
-      media.data().ownerId !== draft.ownerId ||
-      media.data().storagePath !== sourcePath ||
-      !['active', 'superseded'].includes(media.data().state)
-    ) {
-      fail('failed-precondition', 'A versão de avatar enviada não está mais disponível.')
+    let avatar = {}
+    try {
+      avatar = prepared.avatarSource
+        ? await copyAuthorizedAvatar(listingId, uid, prepared.avatarSource)
+        : {}
+    } catch (error) {
+      await db.runTransaction(async (tx) => {
+        const draft = await tx.get(draftRef)
+        if (draft.data()?.publishingOperationId === operationId) {
+          tx.update(draftRef, { reviewState: 'draft', updatedAt: FieldValue.serverTimestamp() })
+        }
+      })
+      throw error
     }
-    const approvedPath = `professionalListingMedia/${listingId}/approved/${db.collection('_').doc().id}.webp`
-    await bucket.file(sourcePath).copy(bucket.file(approvedPath))
-    await bucket
-      .file(approvedPath)
-      .setMetadata({ cacheControl: 'public,max-age=300', contentType: 'image/webp' })
-    return {
-      avatarPath: approvedPath,
-      avatarSourceMediaId: sourceMediaId,
-      avatarSourcePath: sourcePath,
-    }
-  }
-
-  async function review(adminId, { listingId, decision, reason = '' }) {
-    if (!validListingId(listingId) || !['approved', 'rejected'].includes(decision)) {
-      fail('invalid-argument', 'Decisão inválida.')
-    }
-    if (decision === 'rejected' && String(reason).trim().length < 5) {
-      fail('invalid-argument', 'Informe o motivo da rejeição.')
-    }
-    await requireSuperAdmin(adminId)
-    const listingRef = db.doc(`professionalListings/${listingId}`)
-    const draftRef = db.doc(`professionalListingDrafts/${listingId}`)
-    const publicRef = db.doc(`publishedProfessionalListings/${listingId}`)
-    const [listing, draft, previousPublic] = await Promise.all([
-      listingRef.get(),
-      draftRef.get(),
-      publicRef.get(),
-    ])
-    if (!listing.exists || !draft.exists || draft.data().reviewState !== 'pending_review') {
-      fail('failed-precondition', 'Esta submissão não está pendente.')
-    }
-    const expectedVersion = draft.data().version
-    const avatar = decision === 'approved' ? await approvedAvatar(listingId, draft.data()) : {}
-    const decisionRef = db.collection('showcaseReviewDecisions').doc()
+    const publicSnapshotBefore = await publicRef.get()
     let result
     try {
       result = await db.runTransaction(async (tx) => {
         const avatarMediaRef = avatar.avatarSourceMediaId
           ? db.doc(`profileAvatarMedia/${avatar.avatarSourceMediaId}`)
           : null
-        const [currentListing, currentDraft, currentAvatarMedia] = await tx.getAll(
+        const [listing, draft, currentAvatarMedia] = await tx.getAll(
           listingRef,
           draftRef,
           ...(avatarMediaRef ? [avatarMediaRef] : [])
         )
         if (
-          currentListing.data()?.lifecycleState !== 'pending_review' ||
-          currentDraft.data()?.reviewState !== 'pending_review' ||
-          currentDraft.data()?.version !== expectedVersion
+          !listing.exists ||
+          listing.data().ownerId !== uid ||
+          ['suspended', 'deleting'].includes(listing.data().lifecycleState) ||
+          draft.data()?.reviewState !== 'publishing' ||
+          draft.data()?.publishingOperationId !== operationId
         ) {
-          fail('aborted', 'A submissão mudou durante a análise.')
+          fail('aborted', 'A vitrine mudou durante a publicação.')
         }
         if (
           avatarMediaRef &&
-          (currentDraft.data().useProfileAvatar !== true ||
-            currentDraft.data().submittedAvatarMediaId !== avatar.avatarSourceMediaId ||
-            currentDraft.data().submittedAvatarPath !== avatar.avatarSourcePath ||
-            currentAvatarMedia.data()?.ownerId !== currentDraft.data().ownerId ||
+          (draft.data().useProfileAvatar !== true ||
+            currentAvatarMedia.data()?.ownerId !== uid ||
             currentAvatarMedia.data()?.storagePath !== avatar.avatarSourcePath ||
             !['active', 'superseded'].includes(currentAvatarMedia.data()?.state))
         ) {
-          fail('aborted', 'A autorização da foto mudou durante a análise.')
+          fail('aborted', 'A autorização da foto mudou durante a publicação.')
         }
-        if (currentDraft.data().linkedCommunityId) {
-          const community = await tx.get(
-            db.doc(`communities/${currentDraft.data().linkedCommunityId}`)
-          )
+        if (draft.data().linkedCommunityId) {
+          const community = await tx.get(db.doc(`communities/${draft.data().linkedCommunityId}`))
           if (
             !community.exists ||
-            community.data().ownerId !== currentDraft.data().ownerId ||
+            community.data().ownerId !== uid ||
             community.data().isActive !== true
           ) {
             fail('failed-precondition', 'A comunidade vinculada não está mais autorizada.')
           }
         }
         const now = FieldValue.serverTimestamp()
-        tx.create(decisionRef, {
-          listingId,
-          submittedVersion: expectedVersion,
-          reviewerId: adminId,
-          decision,
-          reason: String(reason).trim() || null,
-          legalDocumentId: currentDraft.data().submittedLegalDocumentId || null,
-          legalVersion: currentDraft.data().submittedLegalVersion || null,
-          legalDigest: currentDraft.data().submittedLegalDigest || null,
-          createdAt: now,
-        })
-        if (decision === 'rejected') {
-          tx.update(draftRef, {
-            reviewState: 'rejected',
-            rejectionSummary: String(reason).trim(),
-            submittedAvatarMediaId: FieldValue.delete(),
-            submittedAvatarPath: FieldValue.delete(),
-            updatedAt: now,
-          })
-          tx.update(listingRef, {
-            lifecycleState: currentListing.data().publishedVersion ? 'published' : 'draft',
-            pendingVersion: FieldValue.delete(),
-            updatedAt: now,
-          })
-          return { listingId, state: 'rejected' }
-        }
-        const projection = buildPublicProjection(currentDraft.data(), avatar)
+        const projection = buildPublicProjection(draft.data(), avatar)
         tx.set(publicRef, {
           ...projection,
-          linkedCommunity: currentDraft.data().linkedCommunity || null,
-          publishedVersion: expectedVersion,
+          linkedCommunity: draft.data().linkedCommunity || null,
+          publishedVersion: prepared.version,
           publishedAt: now,
           updatedAt: now,
         })
         tx.update(listingRef, {
           lifecycleState: 'published',
-          publishedVersion: expectedVersion,
+          publishedVersion: prepared.version,
           pendingVersion: FieldValue.delete(),
           updatedAt: now,
         })
         tx.update(draftRef, {
           reviewState: 'draft',
-          basedOnPublishedVersion: expectedVersion,
-          rejectionSummary: null,
-          submittedAvatarMediaId: FieldValue.delete(),
-          submittedAvatarPath: FieldValue.delete(),
+          basedOnPublishedVersion: prepared.version,
+          rejectionSummary: FieldValue.delete(),
+          publishOperationId: operationId,
+          publishingOperationId: FieldValue.delete(),
+          publishingStartedAt: FieldValue.delete(),
           updatedAt: now,
         })
-        return { listingId, state: 'published', version: expectedVersion }
+        return { listingId, state: 'published', version: prepared.version }
       })
     } catch (error) {
       if (avatar.avatarPath)
@@ -419,9 +399,20 @@ export function createProfessionalListingService({
           .file(avatar.avatarPath)
           .delete({ ignoreNotFound: true })
           .catch(() => {})
+      await db.runTransaction(async (tx) => {
+        const draft = await tx.get(draftRef)
+        if (draft.data()?.publishingOperationId === operationId) {
+          tx.update(draftRef, {
+            reviewState: 'draft',
+            publishingOperationId: FieldValue.delete(),
+            publishingStartedAt: FieldValue.delete(),
+            updatedAt: FieldValue.serverTimestamp(),
+          })
+        }
+      }).catch(() => {})
       throw error
     }
-    const previousAvatarPath = previousPublic.data()?.avatarPath
+    const previousAvatarPath = publicSnapshotBefore.data()?.avatarPath
     if (previousAvatarPath && previousAvatarPath !== avatar.avatarPath) {
       await bucket
         .file(previousAvatarPath)
@@ -486,96 +477,6 @@ export function createProfessionalListingService({
     return { listingId, state: 'suspended' }
   }
 
-  async function report(uid, { listingId, message }) {
-    const text = String(message || '').trim()
-    if (!validListingId(listingId) || text.length < 5 || text.length > 500)
-      fail('invalid-argument', 'Informe uma denúncia entre 5 e 500 caracteres.')
-    const publicRef = db.doc(`publishedProfessionalListings/${listingId}`)
-    const rateRef = db.doc(`showcaseReportRateLimits/${uid}`)
-    const reportRef = db.collection('showcaseReports').doc()
-    return db.runTransaction(async (tx) => {
-      await assertWritableAccount(tx, uid)
-      const [published, rate] = await tx.getAll(publicRef, rateRef)
-      if (!published.exists) fail('not-found', 'Vitrine indisponível.')
-      if (rate.data()?.lastReportAt?.toMillis() > Date.now() - REPORT_WINDOW_MS)
-        fail('resource-exhausted', 'Aguarde antes de enviar outra denúncia.')
-      tx.create(reportRef, {
-        listingId,
-        reporterId: uid,
-        state: 'open',
-        message: text,
-        createdAt: FieldValue.serverTimestamp(),
-      })
-      tx.set(rateRef, { lastReportAt: FieldValue.serverTimestamp() })
-      return { reportId: reportRef.id }
-    })
-  }
-
-  async function resolveReport(adminId, { reportId, action, reason = '' }) {
-    if (!validListingId(reportId) || !['no_action', 'suspend'].includes(action))
-      fail('invalid-argument', 'Decisão inválida.')
-    await requireSuperAdmin(adminId)
-    const reportRef = db.doc(`showcaseReports/${reportId}`)
-    let avatarPath = null
-    let listingId = null
-    const result = await db.runTransaction(async (tx) => {
-      const reportSnapshot = await tx.get(reportRef)
-      if (!reportSnapshot.exists) fail('failed-precondition', 'Denúncia indisponível.')
-      if (reportSnapshot.data().state === 'closed') {
-        if (reportSnapshot.data().decision === action) {
-          return { reportId, state: 'closed', repeated: true }
-        }
-        fail('aborted', 'A denúncia já recebeu outra decisão.')
-      }
-      if (reportSnapshot.data().state !== 'open')
-        fail('failed-precondition', 'Denúncia indisponível.')
-
-      listingId = reportSnapshot.data().listingId
-      const now = FieldValue.serverTimestamp()
-      if (action === 'suspend') {
-        if (String(reason || '').trim().length < 5)
-          fail('invalid-argument', 'Informe o motivo da suspensão.')
-        const listingRef = db.doc(`professionalListings/${listingId}`)
-        const publicRef = db.doc(`publishedProfessionalListings/${listingId}`)
-        const [listing, published] = await tx.getAll(listingRef, publicRef)
-        if (!listing.exists) fail('not-found', 'Vitrine não encontrada.')
-        avatarPath = published.data()?.avatarPath || null
-        tx.delete(publicRef)
-        if (listing.data().lifecycleState !== 'suspended') {
-          tx.update(listingRef, {
-            lifecycleState: 'suspended',
-            suspendedReason: String(reason).trim(),
-            suspendedBy: adminId,
-            updatedAt: now,
-          })
-          tx.create(db.doc(`showcaseReviewDecisions/report_${reportId}`), {
-            listingId,
-            submittedVersion: listing.data().publishedVersion || 0,
-            reviewerId: adminId,
-            decision: 'suspended',
-            reason: String(reason).trim(),
-            createdAt: now,
-          })
-        }
-      }
-      tx.update(reportRef, {
-        state: 'closed',
-        decision: action,
-        decisionReason: String(reason).trim() || null,
-        decidedBy: adminId,
-        decidedAt: now,
-      })
-      return { reportId, state: 'closed' }
-    })
-    if (avatarPath) {
-      await bucket
-        .file(avatarPath)
-        .delete({ ignoreNotFound: true })
-        .catch(() => {})
-    }
-    return result
-  }
-
   async function deleteListing(uid, { listingId }) {
     if (!validListingId(listingId)) fail('invalid-argument', 'Vitrine inválida.')
     const listingRef = db.doc(`professionalListings/${listingId}`)
@@ -609,12 +510,9 @@ export function createProfessionalListingService({
   return {
     createDraft,
     saveDraft,
-    submit,
-    review,
+    publish,
     unpublish,
     suspend,
-    report,
-    resolveReport,
     deleteListing,
   }
 }

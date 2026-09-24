@@ -11,10 +11,7 @@ import {
 import { PublicLayout } from '../components/PublicLayout'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { useAuth } from '../hooks/useAuth'
-import {
-  getPublishedProfessionalListing,
-  reportProfessionalListing,
-} from '../services/professionalListingsService'
+import { getPublishedProfessionalListing } from '../services/professionalListingsService'
 import {
   CATEGORY_OPTIONS,
   LISTING_KIND_OPTIONS,
@@ -31,7 +28,6 @@ export default function ProfessionalListing() {
   const { user } = useAuth()
   const [listing, setListing] = useState(undefined)
   const [error, setError] = useState(false)
-  const [reporting, setReporting] = useState(false)
   const [notice, setNotice] = useState('')
   useEffect(() => {
     let active = true
@@ -59,20 +55,6 @@ export default function ProfessionalListing() {
       }
     } catch (shareError) {
       if (shareError?.name !== 'AbortError') setNotice('Não foi possível compartilhar.')
-    }
-  }
-
-  async function report() {
-    const message = window.prompt('Descreva o problema com esta vitrine:')
-    if (!message) return
-    setReporting(true)
-    try {
-      await reportProfessionalListing(listingId, message)
-      setNotice('Denúncia enviada para análise.')
-    } catch {
-      setNotice('Não foi possível enviar a denúncia.')
-    } finally {
-      setReporting(false)
     }
   }
 
@@ -174,12 +156,14 @@ export default function ProfessionalListing() {
                 )}
                 {user ? (
                   <Button
+                    as={Link}
+                    to={`/atendimento?tipo=report&vitrine=${listingId}`}
                     variant="invisible"
-                    onClick={report}
-                    loading={reporting}
                     leadingVisual={ReportIcon}
                   >
-                    Denunciar vitrine
+                    {listing.kind === 'professional'
+                      ? 'Denunciar profissional'
+                      : 'Denunciar estabelecimento'}
                   </Button>
                 ) : (
                   <Link to="/login">Entre para denunciar conteúdo</Link>

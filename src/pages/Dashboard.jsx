@@ -22,6 +22,7 @@ import { toDate } from '../utils/date.js'
 import { isCardioWorkout } from '../utils/cardioSessions'
 import { StreakCard } from '../components/StreakCard'
 import { ErrorState } from '../components/ErrorState'
+import { ProfessionalsDiscovery } from '../components/ProfessionalsDiscovery'
 
 function getVolumeTrend(workouts) {
   const now = new Date()
@@ -183,6 +184,8 @@ export default function Dashboard() {
           </RouterLink>
         </div>
       </section>
+
+      <ProfessionalsDiscovery />
     </div>
   )
 }

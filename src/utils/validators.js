@@ -3,6 +3,7 @@ import { calculateAge } from './age.js'
 import { EXERCISE_TYPES } from './exerciseType.js'
 import { isValidCardioSession, MAX_DURATION_MINUTES, MAX_DISTANCE_KM } from './cardioSessions.js'
 import { COMMUNITY_ICON_NAMES } from '../constants/communityIcons.js'
+import { USAGE_PROFILES } from '../constants/usageProfile.js'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 export const SEXO_OPTIONS = ['masculino', 'feminino', 'nao_informar']
@@ -46,6 +47,16 @@ export function validateBirthDate(dateString, { minimumAge } = {}) {
 export function validateSexo(value) {
   const errors = {}
   if (value != null && !SEXO_OPTIONS.includes(value)) errors.sexo = 'Opção inválida'
+  return errors
+}
+
+// Diferente de validateSexo: obrigatório e sem alternativa pré-selecionada (ver
+// Register.jsx) -- um valor ausente é sempre um erro, não "não informado".
+export function validateUsageProfile(value) {
+  const errors = {}
+  if (!USAGE_PROFILES.includes(value)) {
+    errors.usageProfile = 'Selecione como você pretende utilizar o Evolutus'
+  }
   return errors
 }
 

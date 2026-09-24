@@ -8,13 +8,16 @@ import {
   CalendarIcon,
   MailIcon,
   CheckIcon,
+  BriefcaseIcon,
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { LegalLinks } from '../components/LegalLinks'
 import { WalletCard } from '../components/WalletCard'
+import { UsageProfileField } from '../components/UsageProfileField'
 import { formatDate } from '../utils/format'
 import { validateUsername, hasErrors } from '../utils/validators'
 import { BIO_MAX_LENGTH } from '../services/usersService'
+import { setUsageProfile } from '../services/usageProfileService'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { removeProfileAvatar, uploadProfileAvatar } from '../services/profileAvatarService'
 
@@ -38,6 +41,12 @@ export default function Profile() {
   const [avatarFile, setAvatarFile] = useState(null)
   const [avatarBusy, setAvatarBusy] = useState(false)
   const [avatarError, setAvatarError] = useState('')
+  const [usageProfileDraft, setUsageProfileDraft] = useState('')
+  const [usageProfileBusy, setUsageProfileBusy] = useState(false)
+  const [usageProfileError, setUsageProfileError] = useState('')
+  const [usageProfileSuccess, setUsageProfileSuccess] = useState(false)
+  const usageProfileValue = usageProfileDraft || profile?.usageProfile || ''
+  const usageProfileDirty = usageProfileDraft && usageProfileDraft !== (profile?.usageProfile || '')
   const changes = {}
   if (shareStatistics !== (profile?.shareStatistics === true))
     changes.shareStatistics = shareStatistics
@@ -132,6 +141,30 @@ export default function Profile() {
       setAvatarError('Não foi possível remover a foto.')
     } finally {
       setAvatarBusy(false)
+    }
+  }
+
+  // O AuthContext mantém um listener ao vivo em users/{uid} -- profile.usageProfile já
+  // reflete o novo valor assim que a Cloud Function grava, sem precisar de
+  // refreshProfile aqui. Ao mudar para "comum" com uma vitrine ainda ativa, o próprio
+  // servidor recusa com uma mensagem explicando o que fazer (ver usage-profile-service.js).
+  async function saveUsageProfile() {
+    if (usageProfileBusy || !usageProfileDirty) return
+    setUsageProfileBusy(true)
+    setUsageProfileError('')
+    setUsageProfileSuccess(false)
+    try {
+      await setUsageProfile(usageProfileDraft)
+      setUsageProfileDraft('')
+      setUsageProfileSuccess(true)
+    } catch (error) {
+      setUsageProfileError(
+        error?.code === 'functions/failed-precondition' && error?.message
+          ? error.message
+          : 'Não foi possível salvar seu perfil de uso. Tente novamente.'
+      )
+    } finally {
+      setUsageProfileBusy(false)
     }
   }
 
@@ -346,6 +379,66 @@ export default function Profile() {
           <WalletCard />
           <LegalLinks />
         </aside>
+        <section className="profile-card" aria-labelledby="usage-profile-heading">
+          <header className="profile-card-heading">
+            <span className="profile-section-icon">
+              <BriefcaseIcon size={20} />
+            </span>
+            <div>
+              <h2 id="usage-profile-heading">Perfil de uso</h2>
+              <p>
+                Personaliza as opções exibidas para você. Não é uma certificação
+                profissional nem altera suas permissões.
+              </p>
+            </div>
+          </header>
+          <div className="profile-form">
+            {usageProfileSuccess && (
+              <Flash variant="success" role="status">
+                <CheckIcon /> Perfil de uso salvo.
+              </Flash>
+            )}
+            {usageProfileError && (
+              <Flash variant="danger" role="alert">
+                {usageProfileError}
+              </Flash>
+            )}
+            {!profile?.usageProfile && (
+              <Flash variant="warning">
+                Sua conta ainda não declarou um perfil de uso. Escolha uma opção abaixo
+                quando quiser.
+              </Flash>
+            )}
+            <UsageProfileField
+              value={usageProfileValue}
+              onChange={(value) => {
+                setUsageProfileDraft(value)
+                setUsageProfileSuccess(false)
+                setUsageProfileError('')
+              }}
+              disabled={usageProfileBusy || !profile}
+            />
+            <div className="profile-form-footer">
+              <span>
+                {usageProfileBusy
+                  ? 'Salvando…'
+                  : usageProfileDirty
+                    ? 'Você tem uma alteração para salvar.'
+                    : 'Tudo em dia por aqui.'}
+              </span>
+              <Button
+                type="button"
+                variant="primary"
+                loading={usageProfileBusy}
+                disabled={!usageProfileDirty || usageProfileBusy || !profile}
+                onClick={saveUsageProfile}
+                sx={{ minHeight: 44 }}
+              >
+                Salvar perfil de uso
+              </Button>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   )

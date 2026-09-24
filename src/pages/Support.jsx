@@ -42,6 +42,7 @@ export default function Support() {
   )
   const [message, setMessage] = useState('')
   const [statusId, setStatusId] = useState(params.get('publicacao') || '')
+  const [listingId, setListingId] = useState(params.get('vitrine') || '')
   const [communityId, setCommunityId] = useState(params.get('comunidade') || '')
   const [decisionId, setDecisionId] = useState('')
   const [error, setError] = useState('')
@@ -92,6 +93,7 @@ export default function Support() {
         kind,
         message,
         statusId: kind === 'report' ? statusId : '',
+        listingId: kind === 'report' ? listingId : '',
         communityId: kind === 'report' ? communityId : '',
         decisionId: kind === 'appeal' ? decisionId : '',
       })
@@ -226,6 +228,19 @@ export default function Support() {
                     />
                     <FormControl.Caption>
                       Use o botão de denúncia na publicação para preencher automaticamente.
+                    </FormControl.Caption>
+                  </FormControl>
+                  <FormControl disabled={saving}>
+                    <FormControl.Label>Identificador da vitrine (opcional)</FormControl.Label>
+                    <TextInput
+                      block
+                      maxLength={128}
+                      value={listingId}
+                      onChange={(e) => setListingId(e.target.value)}
+                    />
+                    <FormControl.Caption>
+                      Use o botão de denúncia na página do profissional ou estabelecimento para
+                      preencher automaticamente.
                     </FormControl.Caption>
                   </FormControl>
                   <FormControl disabled={saving}>

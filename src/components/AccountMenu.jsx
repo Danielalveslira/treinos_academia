@@ -23,7 +23,7 @@ import { SHOWCASE_LEGAL_MANIFEST } from '../utils/showcaseLegal'
 export function AccountMenu({ onLogout, signingOut }) {
   const [open, setOpen] = useState(false)
   const { key } = useLocation()
-  const { isSuperAdmin } = useAuth()
+  const { isSuperAdmin, profile } = useAuth()
   const { dark, toggleColorMode } = useColorMode()
 
   useEffect(() => {
@@ -57,7 +57,12 @@ export function AccountMenu({ onLogout, signingOut }) {
             </ActionList.LeadingVisual>
             Meu perfil
           </ActionList.LinkItem>
-          {SHOWCASE_LEGAL_MANIFEST.published && (
+          {/* profile?.usageProfile === 'common' só esconde o atalho (declutter) -- a
+              rota /minha-vitrine continua acessível e decide por conta própria (com
+              dados reais) o que mostrar; ver MyProfessionalListing.jsx. Legado
+              (usageProfile ausente) e profissional/estabelecimento continuam vendo o
+              atalho normalmente. */}
+          {SHOWCASE_LEGAL_MANIFEST.published && profile?.usageProfile !== 'common' && (
             <ActionList.LinkItem as={Link} to="/minha-vitrine" replace onClick={() => setOpen(false)}>
               <ActionList.LeadingVisual>
                 <BriefcaseIcon />
@@ -65,12 +70,6 @@ export function AccountMenu({ onLogout, signingOut }) {
               Minha vitrine
             </ActionList.LinkItem>
           )}
-          <ActionList.LinkItem as={Link} to="/profissionais" onClick={() => setOpen(false)}>
-            <ActionList.LeadingVisual>
-              <BriefcaseIcon />
-            </ActionList.LeadingVisual>
-            Explorar profissionais
-          </ActionList.LinkItem>
           <ActionList.LinkItem as={Link} to="/evocash" replace onClick={() => setOpen(false)}>
             <ActionList.LeadingVisual>
               <CreditCardIcon />
@@ -90,17 +89,6 @@ export function AccountMenu({ onLogout, signingOut }) {
           </ActionList.LinkItem>
           {isSuperAdmin && (
             <ActionList.Group title="Administração">
-              <ActionList.LinkItem
-                as={Link}
-                to="/admin/vitrines"
-                replace
-                onClick={() => setOpen(false)}
-              >
-                <ActionList.LeadingVisual>
-                  <BriefcaseIcon />
-                </ActionList.LeadingVisual>
-                Vitrines profissionais
-              </ActionList.LinkItem>
               <ActionList.LinkItem
                 as={Link}
                 to="/admin/comunidades"

@@ -175,6 +175,26 @@ test('validateSupportRequest enforces kind, message length and id shape', () => 
   )
 })
 
+test('validateSupportRequest accepts a listing reference for Vitrine reports but rejects one combined with a status', () => {
+  assert.equal(
+    validateSupportRequest({ kind: 'report', message: 'x'.repeat(20), listingId: 'listing-1' }),
+    null
+  )
+  assert.match(
+    validateSupportRequest({ kind: 'report', message: 'x'.repeat(20), listingId: 'has space' }),
+    /Referência inválida/
+  )
+  assert.match(
+    validateSupportRequest({
+      kind: 'report',
+      message: 'x'.repeat(20),
+      statusId: 'status-1',
+      listingId: 'listing-1',
+    }),
+    /apenas uma referência/
+  )
+})
+
 test('validateDecision rejects unknown actions and undersized justification fields', () => {
   const base = {
     requestId: 'req-1',

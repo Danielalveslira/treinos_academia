@@ -9,8 +9,10 @@ export function isProtectedRole(role) {
   return PROTECTED_ROLES.has(role)
 }
 
+// Cobre publicações e vitrines (profissionais/estabelecimentos) igualmente -- ambas
+// passam pelo mesmo canal único de denúncia (submitSupportRequest em index.js).
 export const REPORT_PROTECTED_AUTHOR_ERROR =
-  'Publicações e interações de administradores não podem ser denunciadas.'
+  'Publicações, vitrines e interações de administradores não podem ser denunciadas.'
 
 // O autor de uma publicação já pode excluí-la diretamente (sem passar pela fila de
 // moderação) — denunciar a própria publicação não tem nenhum uso legítimo e só
@@ -18,6 +20,11 @@ export const REPORT_PROTECTED_AUTHOR_ERROR =
 // verdade. Ver isReportableAuthor em src/utils/moderation.js: mesma regra, espelhada
 // no cliente só para esconder o botão; a decisão de verdade é sempre esta aqui.
 export const REPORT_OWN_STATUS_ERROR = 'Você não pode denunciar sua própria publicação.'
+
+// Mesma regra de isSelfReport, aplicada ao titular de uma vitrine (Vitrine V1 --
+// canal único de denúncia). Despublicar/excluir a própria vitrine já está disponível
+// em "Minha vitrine"; denunciá-la não tem uso legítimo.
+export const REPORT_OWN_LISTING_ERROR = 'Você não pode denunciar sua própria vitrine.'
 
 export function isSelfReport(authorId, reporterId) {
   return authorId === reporterId

@@ -857,6 +857,20 @@ test('heightCm on the profile is optional, nullable, and bounded to a plausible 
   await assertSucceeds(updateDoc(doc(owner, 'users/owner'), { heightCm: null }))
 })
 
+// Perfil de USO (usageProfile) sempre pela Cloud Function setUsageProfile (Admin SDK)
+// -- nunca escrita direta do cliente, porque mudar para "comum" com uma vitrine ativa
+// exige uma checagem de negócio (ver usage-profile-service.js) que as Rules não
+// conseguem expressar com uma mensagem de erro útil. Mesmo padrão de
+// accountStatus/avatarMediaId/communityIds: campo simplesmente ausente da allowlist.
+test('usageProfile is never settable by a direct client write, only by the Admin SDK', async () => {
+  await assertFails(updateDoc(doc(owner, 'users/owner'), { usageProfile: 'professional' }))
+  await assertFails(updateDoc(doc(owner, 'users/owner'), { usageProfile: 'common' }))
+  await assertFails(
+    setDoc(doc(owner, 'users/owner'), { role: 'user', usageProfile: 'professional' }, { merge: true })
+  )
+  assert.equal((await getDoc(doc(owner, 'users/owner'))).data().usageProfile, undefined)
+})
+
 test('body measurements are a time series (each check-in its own document), every field optional but at least one required', async () => {
   const measurement = (overrides = {}) => ({
     date: Timestamp.now(),

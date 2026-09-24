@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   validateBirthDate,
   validateSexo,
+  validateUsageProfile,
   validateExercise,
   validateWorkout,
   validateBodyMeasurement,
@@ -45,6 +46,16 @@ test('validateSexo accepts the three known options, null/undefined, and rejects 
   assert.equal(hasErrors(validateSexo(null)), false)
   assert.equal(hasErrors(validateSexo(undefined)), false)
   assert.equal(hasErrors(validateSexo('outro-valor-qualquer')), true)
+})
+
+test('validateUsageProfile accepts only the three declared options, unlike validateSexo it never allows null/undefined', () => {
+  assert.equal(hasErrors(validateUsageProfile('common')), false)
+  assert.equal(hasErrors(validateUsageProfile('professional')), false)
+  assert.equal(hasErrors(validateUsageProfile('establishment_owner')), false)
+  assert.equal(hasErrors(validateUsageProfile(null)), true)
+  assert.equal(hasErrors(validateUsageProfile(undefined)), true)
+  assert.equal(hasErrors(validateUsageProfile('')), true)
+  assert.equal(hasErrors(validateUsageProfile('superadmin')), true)
 })
 
 test('validateExercise requires name and muscleGroup, and bounds both lengths', () => {

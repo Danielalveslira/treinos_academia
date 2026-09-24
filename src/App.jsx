@@ -36,7 +36,6 @@ const MyPromotions = lazy(() => import('./pages/MyPromotions'))
 const Professionals = lazy(() => import('./pages/Professionals'))
 const ProfessionalListing = lazy(() => import('./pages/ProfessionalListing'))
 const MyProfessionalListing = lazy(() => import('./pages/MyProfessionalListing'))
-const AdminProfessionalListings = lazy(() => import('./pages/AdminProfessionalListings'))
 const CreateCommunity = lazy(() => import('./pages/CreateCommunity'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
@@ -97,14 +96,6 @@ export function AppRoutes() {
           }
         />
         <Route path="/comunidades/criar" element={<CreateCommunity />} />
-        <Route
-          path="/admin/vitrines"
-          element={
-            <SuperAdminRoute>
-              <AdminProfessionalListings />
-            </SuperAdminRoute>
-          }
-        />
         <Route
           path="/admin/compras-evocash"
           element={

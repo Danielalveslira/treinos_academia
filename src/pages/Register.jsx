@@ -10,9 +10,17 @@ import {
   isUsernameAvailable,
   deleteFreshProfile,
 } from '../services/usersService'
+import { setUsageProfile } from '../services/usageProfileService'
 import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../utils/authErrors'
-import { validateUsername, validateBirthDate, validateSexo, hasErrors } from '../utils/validators'
+import {
+  validateUsername,
+  validateBirthDate,
+  validateSexo,
+  validateUsageProfile,
+  hasErrors,
+} from '../utils/validators'
+import { UsageProfileField } from '../components/UsageProfileField'
 import { LegalConsent } from '../components/LegalConsent'
 import { canSubmitLegalRegistration } from '../utils/legal'
 import {
@@ -33,6 +41,9 @@ export default function Register() {
   const [username, setUsernameField] = useState('')
   const [sexo, setSexo] = useState('nao_informar')
   const [birthDate, setBirthDate] = useState('')
+  // Sem valor inicial de propósito -- "Como você pretende utilizar o Evolutus?" exige
+  // uma escolha explícita, ao contrário de sexo (que já nasce com "Não informar").
+  const [usageProfile, setUsageProfileField] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -86,6 +97,7 @@ export default function Register() {
         minimumAge: legalBundle.manifest.published ? legalBundle.manifest.minimumAge : undefined,
       }),
       ...validateSexo(sexo),
+      ...validateUsageProfile(usageProfile),
     }
     setFieldErrors(validationErrors)
     if (hasErrors(validationErrors)) return
@@ -141,6 +153,12 @@ export default function Register() {
       // EmailVerificationGate assim que cair na tela de bloqueio.
       sendVerificationEmail(credential.user).catch((sendErr) => {
         console.error('[Auth] sendVerificationEmail:', sendErr)
+      })
+      // Também best-effort e pela mesma razão: se isto falhar, a conta segue existindo
+      // sem usageProfile e é recuperada pelo mesmo preenchimento contextual de contas
+      // legadas (Meu Perfil/fluxo da Vitrine) -- nunca precisa desfazer o cadastro.
+      setUsageProfile(usageProfile).catch((profileErr) => {
+        console.error('[Auth] setUsageProfile:', profileErr)
       })
       if (legalBundle.manifest.published) await acceptLegalDocuments(confirmed, legalBundle)
       await refreshProfile(uid)
@@ -262,6 +280,17 @@ export default function Register() {
               <Select.Option value="feminino">Feminino</Select.Option>
             </Select>
           </FormControl>
+
+          <UsageProfileField
+            value={usageProfile}
+            onChange={setUsageProfileField}
+            disabled={submitting}
+          />
+          {fieldErrors.usageProfile && (
+            <FormControl.Validation variant="error">
+              {fieldErrors.usageProfile}
+            </FormControl.Validation>
+          )}
 
           {legalBundle?.manifest.published && (
             <LegalConsent
