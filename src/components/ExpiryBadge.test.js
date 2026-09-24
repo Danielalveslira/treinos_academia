@@ -174,7 +174,8 @@ test('active promotion shows total hours and distinguishes the original feed win
     },
   })
 
-  assert.equal(view.read().anchorText, '52h15min restantes')
+  assert.equal(view.read().anchorText, '')
+  assert.equal(view.read().anchorLabel, '52h15min restantes. Ver detalhes da promoção')
   const state = view.click()
   assert.match(state.content, /Publicação promovida/)
   assert.match(state.content, /Promoção ativa até24\/09\/2026 às 18h00/)
@@ -200,7 +201,8 @@ test('workout hides the generic expiry control but keeps an active promotion ind
       promotedUntil: 7_201_000,
     },
   })
-  assert.equal(promoted.read().anchorText, '2h restantes')
+  assert.equal(promoted.read().anchorText, '')
+  assert.equal(promoted.read().anchorLabel, '2h restantes. Ver detalhes da promoção')
   assert.doesNotMatch(promoted.click().content, /Janela original do feed/)
   promoted.unmount()
 })

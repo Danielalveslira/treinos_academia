@@ -1459,13 +1459,15 @@ body:has(.pwa-offline) .app-shell {
 }
 .status-author {
   display: block;
-  width: fit-content;
+  min-width: 0;
   max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--fgColor-default);
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
-  overflow-wrap: anywhere;
 }
 .status-author:hover {
   color: var(--fgColor-accent);

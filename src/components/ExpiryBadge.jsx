@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { AnchoredOverlay, Box, Button, IconButton, Text } from '@primer/react'
+import { AnchoredOverlay, Box, IconButton, Text } from '@primer/react'
 import { ClockIcon } from '@primer/octicons-react'
 import { formatPublicationDateTime, formatRemainingTime, toMillis } from '../utils/expiry'
 
@@ -40,30 +40,26 @@ export function ExpiryBadge({ status, now }) {
   const showDistinctFeedExpiry =
     promotionActive && status.type !== 'workout' && expiresAtMs && expiresAtMs !== promotedUntilMs
 
-  const renderAnchor = (anchorProps) =>
-    promotionActive ? (
-      <Button
-        {...anchorProps}
-        type="button"
-        leadingVisual={ClockIcon}
-        variant="invisible"
-        size="small"
-        aria-label={`${promotionRemaining}. Ver detalhes da promoção`}
-        sx={{ color: 'fg.muted', whiteSpace: 'nowrap' }}
-      >
-        {promotionRemaining}
-      </Button>
-    ) : (
-      <IconButton
-        {...anchorProps}
-        type="button"
-        icon={ClockIcon}
-        variant="invisible"
-        size="small"
-        aria-label="Ver informações de expiração da publicação"
-        sx={{ color: 'fg.muted' }}
-      />
-    )
+  // Ambos os ramos são só o ícone -- o texto extenso ("74h28min restantes") nunca
+  // fica visível no card: ele empurrava o cabeçalho (StatusHeader é flex, este botão
+  // tem flexShrink:0) e sobrava pouco espaço pra `.status-author`, quebrando o
+  // @username caractere por caractere no mobile. O tempo continua acessível — só que
+  // dentro do popover (DetailRow "Tempo restante" abaixo) e via aria-label do ícone.
+  const renderAnchor = (anchorProps) => (
+    <IconButton
+      {...anchorProps}
+      type="button"
+      icon={ClockIcon}
+      variant="invisible"
+      size="small"
+      aria-label={
+        promotionActive
+          ? `${promotionRemaining}. Ver detalhes da promoção`
+          : 'Ver informações de expiração da publicação'
+      }
+      sx={{ color: 'fg.muted' }}
+    />
+  )
 
   return (
     <AnchoredOverlay
