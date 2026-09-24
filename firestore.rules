@@ -598,7 +598,18 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.createdAt is timestamp
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('username', null) == null;
-      allow delete: if isSignedIn() && resource.data.uid == request.auth.uid;
+      // Mesma janela de 10 minutos que users/{userId} e publicProfiles/{userId} (ver
+      // deleteFreshProfile em src/services/usersService.js) -- sem ela, o dono podia
+      // liberar a própria reserva a qualquer momento da vida da conta enquanto
+      // users/publicProfiles ainda apontavam pro mesmo @ (não são apagados junto),
+      // abrindo uma janela para outra conta reivindicar o MESMO nome de usuário já
+      // exibido em outro lugar (duas contas com o mesmo @, inclusive em publicações
+      // futuras). Fora do cadastro, a única forma de mudar de @ é renameUsername
+      // (Admin SDK), que já cuida de tudo numa transação só.
+      allow delete: if isSignedIn()
+        && resource.data.uid == request.auth.uid
+        && resource.data.createdAt is timestamp
+        && request.time < resource.data.createdAt + duration.value(10, 'm');
       allow update: if false;
     }
 

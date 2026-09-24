@@ -6,7 +6,15 @@ import {
   assertFails,
   assertSucceeds,
 } from '@firebase/rules-unit-testing'
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore'
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  Timestamp,
+} from 'firebase/firestore'
 
 // AUD-010: reproduz explicitamente o bypass que a Cloud Function renameUsername
 // (functions/index.js) foi criada para fechar -- o cliente reconstruindo o fluxo
@@ -119,3 +127,41 @@ test('a client who already has a @ cannot reserve a new username directly either
 // A Cloud Function (Admin SDK, fora do alcance destas regras) continua sendo o único
 // jeito de trocar um @ já existente -- exercida de fato em admin-rules.test.mjs
 // ('renameUsername moves the reservation atomically...'), não simulada aqui.
+
+// Auditoria de backend: usernames/{username} tinha allow delete sem o mesmo teto de 10
+// minutos que users/{uid} e publicProfiles/{uid} já usam (ver deleteFreshProfile em
+// src/services/usersService.js) -- sem ele, o dono podia liberar a própria reserva a
+// qualquer momento da vida da conta enquanto users/publicProfiles continuavam
+// apontando pro mesmo @ (eles não são apagados junto), abrindo brecha para outra conta
+// reivindicar o MESMO nome de usuário já exibido em outro lugar.
+test('a fresh (registration-window) username reservation can self-delete for rollback, an old one cannot', async () => {
+  // uid próprio (não "newbie") -- o teste de cadastro acima já reivindica
+  // "newbiehandle" para "newbie" e nunca desfaz isso; reusar o mesmo uid faria este
+  // create falhar por "já tem @" (isInitialUsernameClaim), não pelo motivo que este
+  // teste investiga.
+  const freshUid = 'newbie-rollback'
+  const fresh = env.authenticatedContext(freshUid).firestore()
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), `users/${freshUid}`), { role: 'user' })
+  })
+  await assertSucceeds(
+    setDoc(doc(fresh, 'usernames/freshrollbackhandle'), { uid: freshUid, createdAt: serverTimestamp() })
+  )
+  // Ainda dentro da janela de cadastro (createdAt acabou de ser gravado): rollback
+  // continua funcionando normalmente.
+  await assertSucceeds(deleteDoc(doc(fresh, 'usernames/freshrollbackhandle')))
+
+  // "owner" já existe desde antes, mas o seed em before() grava createdAt bem recente
+  // (Timestamp.now() na hora em que a suíte sobe) -- reseedado aqui com um createdAt
+  // de verdade fora da janela de 10 minutos para representar uma conta estabelecida.
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'usernames/owner'), {
+      uid: 'owner',
+      createdAt: Timestamp.fromMillis(Date.now() - 11 * 60 * 1000),
+    })
+  })
+  await assertFails(deleteDoc(doc(env.authenticatedContext('owner').firestore(), 'usernames/owner')))
+  await env.withSecurityRulesDisabled(async (context) => {
+    assert.equal((await getDoc(doc(context.firestore(), 'usernames/owner'))).exists(), true)
+  })
+})
