@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Box, Text, Button, IconButton } from '@primer/react'
+import { Box, Text, Button, Flash, IconButton } from '@primer/react'
 import {
   TrashIcon,
   PersonIcon,
@@ -10,6 +10,7 @@ import {
   CheckIcon,
   CalendarIcon,
   PeopleIcon,
+  XIcon,
 } from '@primer/octicons-react'
 import {
   getMyVote,
@@ -35,6 +36,7 @@ import { getCached, setCached } from '../utils/pageCache'
 import { isReportableAuthor } from '../utils/moderation'
 import { toDate } from '../utils/date.js'
 import { toMillis } from '../utils/expiry.js'
+import { isPublicationInteractionActive } from '../utils/statusAvailability.js'
 import {
   describeScheduledWorkoutState,
   isScheduledWorkoutJoinable,
@@ -42,6 +44,12 @@ import {
 } from '../utils/scheduledWorkout'
 import { buildIcsEvent, downloadIcsFile } from '../utils/icsExport'
 import '../styles/workout-status.css'
+
+// Todo erro contextual hoje é transitório (voto, enquete, participação, exclusão --
+// sempre resolve tentando de novo), então some sozinho depois de um tempo pra não virar
+// lixo visual acumulado no card. O X abaixo cobre o caso de alguém querer descartar
+// antes disso.
+const ACTION_ERROR_AUTO_DISMISS_MS = 6000
 
 // Selo dourado e discreto — o valor vem de authorIsSuperAdmin, gravado no status e
 // conferido pelo servidor no momento da publicação (ver firestore.rules e
@@ -64,14 +72,18 @@ function SuperAdminBadge() {
   )
 }
 
-function StatusHeader({ status, authorAvatarPath, now, canDelete, onDelete, showToast }) {
+function StatusHeader({ status, authorAvatarPath, now, canDelete, onDelete, deleting, showToast }) {
   // As regras exigem authorUsername nulo ou string (ver firestore.rules), mas nunca
   // custa nada tratar dado inesperado com cuidado aqui também — um valor de outro
   // tipo (ex.: number) não deveria derrubar o card inteiro, só cair no "M" padrão.
   const authorUsername = typeof status.authorUsername === 'string' ? status.authorUsername : null
   return (
     <header className="status-header">
-      <ProfileAvatar path={authorAvatarPath} name={authorUsername || 'M'} className="status-author-avatar" />
+      <ProfileAvatar
+        path={authorAvatarPath}
+        name={authorUsername || 'M'}
+        className="status-author-avatar"
+      />
       <Box sx={{ minWidth: 0, flex: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Link to={`/comunidades/perfil/${status.authorId}`} className="status-author">
@@ -93,6 +105,7 @@ function StatusHeader({ status, authorAvatarPath, now, canDelete, onDelete, show
             size="small"
             aria-label="Excluir publicação"
             onClick={() => onDelete(status)}
+            disabled={deleting}
             sx={{ color: 'fg.muted' }}
           />
         )}
@@ -101,7 +114,7 @@ function StatusHeader({ status, authorAvatarPath, now, canDelete, onDelete, show
   )
 }
 
-function PollStatus({ status, currentUserId, showToast }) {
+function PollStatus({ status, currentUserId, showToast, onActionSuccess, interactionActive }) {
   // counts/myOptionId em vez da lista de votos: nunca baixa a subcoleção inteira (uma
   // enquete popular pode ter milhares de votos) — só contagens agregadas por opção
   // (no máximo 6, teto do schema) e o meu próprio voto, 1 leitura direta pelo id.
@@ -160,6 +173,7 @@ function PollStatus({ status, currentUserId, showToast }) {
         return next
       })
       setMyOptionId(optionId)
+      onActionSuccess?.()
     } catch (error) {
       console.error('[PollStatus] voteOnPoll:', error)
       showToast?.('Não foi possível registrar seu voto. Tente novamente.', 'danger')
@@ -192,10 +206,12 @@ function PollStatus({ status, currentUserId, showToast }) {
           return (
             <Box
               key={option.id}
-              as={counts && !myOptionId ? 'button' : 'div'}
-              type={counts && !myOptionId ? 'button' : undefined}
-              disabled={counts && !myOptionId ? voting : undefined}
-              onClick={counts && !myOptionId ? () => handleVote(option.id) : undefined}
+              as={counts && !myOptionId && interactionActive ? 'button' : 'div'}
+              type={counts && !myOptionId && interactionActive ? 'button' : undefined}
+              disabled={counts && !myOptionId && interactionActive ? voting : undefined}
+              onClick={
+                counts && !myOptionId && interactionActive ? () => handleVote(option.id) : undefined
+              }
               sx={{
                 position: 'relative',
                 textAlign: 'left',
@@ -206,7 +222,8 @@ function PollStatus({ status, currentUserId, showToast }) {
                 p: 2,
                 bg: 'canvas.default',
                 color: 'fg.default',
-                cursor: counts && !myOptionId && !voting ? 'pointer' : 'default',
+                cursor:
+                  counts && !myOptionId && interactionActive && !voting ? 'pointer' : 'default',
                 overflow: 'hidden',
               }}
             >
@@ -247,7 +264,7 @@ function PollStatus({ status, currentUserId, showToast }) {
 // participação e "Adicionar ao calendário". `now` vem do relógio já compartilhado pelo
 // feed (useCommunityFeed.js, atualizado a cada 15s) -- nenhum setInterval novo só para
 // este card.
-function WorkoutStatus({ status, currentUserId, showToast, now, communityName }) {
+function WorkoutStatus({ status, currentUserId, showToast, onActionSuccess, now, communityName }) {
   // Contagem agregada + 1 leitura direta pelo id (não a lista inteira de participantes)
   // — mesmo raciocínio da enquete: nunca escala com o número de pessoas confirmadas.
   // A lista de nomes (quem confirmou) NÃO é buscada automaticamente aqui: um preview
@@ -307,6 +324,7 @@ function WorkoutStatus({ status, currentUserId, showToast, now, communityName })
         })
         setAmParticipant(true)
       }
+      onActionSuccess?.()
     } catch (error) {
       console.error('[WorkoutStatus] joinWorkout/leaveWorkout:', error)
       showToast?.('Não foi possível atualizar sua participação. Tente novamente.', 'danger')
@@ -441,9 +459,43 @@ export function StatusCard({
   communityName,
 }) {
   const [promoteOpen, setPromoteOpen] = useState(false)
+  const [actionError, setActionError] = useState('')
+  const [deleting, setDeleting] = useState(false)
   const isAuthor = status.authorId === currentUserId
   const isCurrentlyPromoted =
     Boolean(status.promoted) && toMillis(status.promotedUntil) > toMillis(now)
+  const interactionActive = isPublicationInteractionActive(status, now)
+
+  // Reagenda sempre que a mensagem muda (inclusive de um erro pro próximo): o cleanup
+  // do efeito anterior cancela o timer velho antes deste rodar, então nunca há dois
+  // timers concorrentes nem um timer antigo apagando uma mensagem mais nova.
+  useEffect(() => {
+    if (!actionError) return undefined
+    const timer = window.setTimeout(() => setActionError(''), ACTION_ERROR_AUTO_DISMISS_MS)
+    return () => window.clearTimeout(timer)
+  }, [actionError])
+
+  function handleActionMessage(message, variant = 'success') {
+    if (variant === 'danger') {
+      setActionError(message)
+      return
+    }
+    setActionError('')
+    showToast?.(message, variant)
+  }
+
+  async function handleDelete() {
+    if (deleting) return
+    setDeleting(true)
+    try {
+      const deleted = await onDelete(status)
+      if (deleted !== false) setActionError('')
+    } catch (error) {
+      setActionError(error?.message || 'Não foi possível excluir a publicação.')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <article
@@ -455,8 +507,9 @@ export function StatusCard({
         authorAvatarPath={authorAvatarPath}
         now={now}
         canDelete={canDelete}
-        onDelete={onDelete}
-        showToast={showToast}
+        onDelete={handleDelete}
+        deleting={deleting}
+        showToast={handleActionMessage}
       />
 
       {isCurrentlyPromoted && (
@@ -471,14 +524,21 @@ export function StatusCard({
         {status.type === 'achievement' && <AchievementSummary achievement={status.achievement} />}
 
         {status.type === 'poll' && (
-          <PollStatus status={status} currentUserId={currentUserId} showToast={showToast} />
+          <PollStatus
+            status={status}
+            currentUserId={currentUserId}
+            showToast={handleActionMessage}
+            onActionSuccess={() => setActionError('')}
+            interactionActive={interactionActive}
+          />
         )}
 
         {status.type === 'workout' && (
           <WorkoutStatus
             status={status}
             currentUserId={currentUserId}
-            showToast={showToast}
+            showToast={handleActionMessage}
+            onActionSuccess={() => setActionError('')}
             now={now}
             communityName={communityName}
           />
@@ -496,9 +556,11 @@ export function StatusCard({
           <EconomyVoteBar
             status={status}
             currentUserId={currentUserId}
-            showToast={showToast}
+            showToast={handleActionMessage}
             myVote={myEconomyVote}
             onVoted={onEconomyVoted}
+            onActionSuccess={() => setActionError('')}
+            interactionActive={interactionActive}
           />
         </div>
       )}
@@ -527,6 +589,21 @@ export function StatusCard({
             onPromoted?.(status.id, result)
           }}
         />
+      )}
+      {actionError && (
+        <Flash className="status-action-error" variant="danger" role="alert">
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Text sx={{ flex: 1, minWidth: 0 }}>{actionError}</Text>
+            <IconButton
+              icon={XIcon}
+              variant="invisible"
+              size="small"
+              aria-label="Dispensar aviso"
+              onClick={() => setActionError('')}
+              sx={{ color: 'fg.muted', flexShrink: 0 }}
+            />
+          </Box>
+        </Flash>
       )}
     </article>
   )

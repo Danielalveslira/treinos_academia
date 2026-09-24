@@ -139,7 +139,7 @@ before(async () => {
       setup(context) {
         context.onResolve({ filter: /\/ProfileAvatar$/ }, () => ({ path: 'avatar', namespace: 'stub' }))
         context.onLoad({ filter: /^avatar$/, namespace: 'stub' }, () => ({
-          resolveDir: new URL('../../', import.meta.url).pathname,
+          resolveDir: new URL('../../', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
           contents: `import { createElement } from 'react'; export const ProfileAvatar = ({path}) => createElement('span', {'data-author-avatar': path || ''})`,
         }))
       },

@@ -16,6 +16,11 @@ test('fitDimensions downscales proportionally to the longest side', () => {
   assert.deepEqual(fitDimensions(1600, 3200), { width: 800, height: 1600 })
 })
 
+test('fitDimensions accepts a smaller custom max, as profileAvatarService uses for avatars', () => {
+  assert.deepEqual(fitDimensions(1600, 1600, 320), { width: 320, height: 320 })
+  assert.deepEqual(fitDimensions(200, 100, 320), { width: 200, height: 100 })
+})
+
 test('validateImageFile rejects missing files, disallowed types and oversized files', () => {
   assert.match(validateImageFile(null), /selecione/i)
   assert.match(validateImageFile({ type: 'application/pdf', size: 100 }), /formato/i)

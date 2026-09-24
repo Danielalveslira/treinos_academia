@@ -3,6 +3,7 @@ import {
   nextRewardState,
   economyVoteCountDelta,
   economyVoteIneligibility,
+  isPublicationInteractionActive,
 } from './vote-core.js'
 import { todayKey } from './activity-core.js'
 
@@ -72,7 +73,16 @@ export function createVoteService({
         throw new HttpsError('failed-precondition', 'Você não pode votar na própria publicação.')
       }
       const nowMs = now()
-      if (status.expiresAt?.toMillis() <= nowMs) {
+      if (
+        !isPublicationInteractionActive(
+          {
+            expiresAtMs: status.expiresAt?.toMillis(),
+            promoted: status.promoted,
+            promotedUntilMs: status.promotedUntil?.toMillis(),
+          },
+          nowMs
+        )
+      ) {
         throw new HttpsError('failed-precondition', 'Esta publicação já expirou.')
       }
 
@@ -84,6 +94,8 @@ export function createVoteService({
       const membershipRef = db.doc(`communityMembers/${status.communityId}_${uid}`)
       const communityRestrictionRef = db.doc(`communityRestrictions/${status.communityId}_${uid}`)
       const accountRestrictionRef = db.doc(`accountRestrictions/${uid}`)
+      const communityRef = db.doc(`communities/${status.communityId}`)
+      const communityDeletionRef = db.doc(`deletionJobs/community_${status.communityId}`)
 
       // batch 2 (1 round trip): o suficiente para decidir noop/switch/remove/create.
       const [
@@ -91,7 +103,24 @@ export function createVoteService({
         communityRestrictionSnapshot,
         accountRestrictionSnapshot,
         voteSnapshot,
-      ] = await tx.getAll(membershipRef, communityRestrictionRef, accountRestrictionRef, voteRef)
+        communitySnapshot,
+        communityDeletionSnapshot,
+      ] = await tx.getAll(
+        membershipRef,
+        communityRestrictionRef,
+        accountRestrictionRef,
+        voteRef,
+        communityRef,
+        communityDeletionRef
+      )
+
+      if (
+        !communitySnapshot.exists ||
+        communitySnapshot.data().isActive !== true ||
+        communityDeletionSnapshot.exists
+      ) {
+        throw new HttpsError('failed-precondition', 'Esta publicação não está disponível.')
+      }
 
       if (!membershipSnapshot.exists) {
         throw new HttpsError('permission-denied', 'Você não participa desta comunidade.')

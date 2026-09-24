@@ -55,14 +55,19 @@ async function seedCommunityAndStatus({
   authorId,
   expiresInMs = 60 * 60 * 1000,
   type = 'text',
+  status = {},
 }) {
-  await db.doc(`statuses/${statusId}`).set({
-    communityId,
-    authorId,
-    type,
-    text: 'oi',
-    expiresAt: Timestamp.fromMillis(Date.now() + expiresInMs),
-  })
+  await Promise.all([
+    db.doc(`communities/${communityId}`).set({ isActive: true }, { merge: true }),
+    db.doc(`statuses/${statusId}`).set({
+      communityId,
+      authorId,
+      type,
+      text: 'oi',
+      expiresAt: Timestamp.fromMillis(Date.now() + expiresInMs),
+      ...status,
+    }),
+  ])
 }
 
 async function joinCommunity(communityId, voterUid) {
@@ -406,6 +411,74 @@ test('votar numa publicação expirada é rejeitado', async () => {
   await fundWallet(voterUid, 10)
   const voteOnPost = buildService()
   await assert.rejects(() => voteOnPost(voterUid, statusId, 1), /expirou/)
+})
+
+test('votar durante uma promoção válida continua permitido após a janela original', async () => {
+  const now = Date.now()
+  const communityId = `c-${uid()}`
+  const authorId = uid()
+  const voterUid = uid()
+  const statusId = `s-${uid()}`
+  await seedCommunityAndStatus({
+    communityId,
+    statusId,
+    authorId,
+    expiresInMs: -1000,
+    status: {
+      promoted: true,
+      promotedUntil: Timestamp.fromMillis(now + 60 * 60 * 1000),
+      activePromotionId: `promotion-${uid()}`,
+    },
+  })
+  await joinCommunity(communityId, voterUid)
+  await fundWallet(voterUid, 10)
+
+  const result = await buildService({ now: () => now })(voterUid, statusId, 1)
+  assert.equal(result.voted, true)
+  assert.equal((await getWallet(voterUid)).coinBalance, 7)
+})
+
+test('votar após o término da promoção e da janela original é rejeitado', async () => {
+  const now = Date.now()
+  const communityId = `c-${uid()}`
+  const authorId = uid()
+  const voterUid = uid()
+  const statusId = `s-${uid()}`
+  await seedCommunityAndStatus({
+    communityId,
+    statusId,
+    authorId,
+    expiresInMs: -2000,
+    status: {
+      promoted: true,
+      promotedUntil: Timestamp.fromMillis(now - 1000),
+    },
+  })
+  await joinCommunity(communityId, voterUid)
+  await fundWallet(voterUid, 10)
+
+  await assert.rejects(() => buildService({ now: () => now })(voterUid, statusId, 1), /expirou/)
+  assert.equal((await getWallet(voterUid)).coinBalance, 10)
+})
+
+test('uma publicação de comunidade inativa ou em exclusão não aceita voto', async () => {
+  for (const unavailableState of ['inactive', 'deleting']) {
+    const communityId = `c-${uid()}`
+    const authorId = uid()
+    const voterUid = uid()
+    const statusId = `s-${uid()}`
+    await seedCommunityAndStatus({ communityId, statusId, authorId })
+    await joinCommunity(communityId, voterUid)
+    await fundWallet(voterUid, 10)
+    if (unavailableState === 'inactive') {
+      await db.doc(`communities/${communityId}`).update({ isActive: false })
+    } else {
+      await db.doc(`deletionJobs/community_${communityId}`).set({ state: 'pending' })
+    }
+
+    await assert.rejects(() => buildService()(voterUid, statusId, 1), /não está disponível/)
+    assert.equal((await getWallet(voterUid)).coinBalance, 10)
+  }
 })
 
 test('quem não participa da comunidade não pode votar', async () => {

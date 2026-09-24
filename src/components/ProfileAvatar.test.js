@@ -18,7 +18,7 @@ before(async () => {
   await build({
     stdin: {
       contents: `export { ProfileAvatar } from './ProfileAvatar.jsx'`,
-      resolveDir: new URL('.', import.meta.url).pathname,
+      resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile,
     bundle: true,
@@ -52,7 +52,11 @@ before(async () => {
             contents: `export const loadAvatarBytes = async () => new Uint8Array([1])`,
           }))
           context.onLoad({ filter: /^cache$/, namespace: 'stub' }, () => ({
-            contents: `export const getCachedPhotoUrl = (path) => path === 'old.webp' ? 'blob:old' : null; export const setCachedPhotoUrl = () => {}`,
+            contents: `
+              export const getCachedPhotoUrl = (path) => path === 'old.webp' ? 'blob:old' : null;
+              export const setCachedPhotoUrl = () => {};
+              export const loadPhotoOnce = (path, fetcher) => fetcher();
+            `,
           }))
         },
       },

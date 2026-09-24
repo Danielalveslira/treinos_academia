@@ -150,6 +150,36 @@ test('reading rejects a mismatched path, type or expired status', async () => {
   }
 })
 
+test('a promoted photo remains readable only until its effective expiry', async () => {
+  const activeId = randomId()
+  const activePath = `statusPhotos/${COMMUNITY_ID}/${activeId}.webp`
+  const endedId = randomId()
+  const endedPath = `statusPhotos/${COMMUNITY_ID}/${endedId}.webp`
+  const originalExpiry = Timestamp.fromMillis(Date.now() - 60_000)
+  await Promise.all([seedPhoto(activePath), seedPhoto(endedPath)])
+  await seed(
+    `statuses/${activeId}`,
+    photoStatus({
+      photoPath: activePath,
+      expiresAt: originalExpiry,
+      promoted: true,
+      promotedUntil: Timestamp.fromMillis(Date.now() + 60_000),
+    })
+  )
+  await seed(
+    `statuses/${endedId}`,
+    photoStatus({
+      photoPath: endedPath,
+      expiresAt: originalExpiry,
+      promoted: true,
+      promotedUntil: Timestamp.fromMillis(Date.now() - 1_000),
+    })
+  )
+
+  await assertSucceeds(getBytes(ref(memberStorage, activePath)))
+  await assertFails(getBytes(ref(memberStorage, endedPath)))
+})
+
 test('upload still validates file name, content type and size', async () => {
   const invalidName = 'short'
   const invalidPath = `statusPhotos/${COMMUNITY_ID}/${invalidName}.webp`

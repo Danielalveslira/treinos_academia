@@ -229,6 +229,42 @@ test('voting on a poll requires optionId to match one of its real options', asyn
   )
 })
 
+test('poll voting uses the effective publication window of an active promotion', async () => {
+  const activeId = 'promotedPollActive'
+  const expiredId = 'promotedPollExpired'
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore()
+    const expiredOriginal = Timestamp.fromMillis(Date.now() - 60_000)
+    await setDoc(doc(db, `statuses/${activeId}`), {
+      ...pollStatus({ createdAt: Timestamp.now(), expiresAt: expiredOriginal }),
+      promoted: true,
+      promotedUntil: Timestamp.fromMillis(Date.now() + 60_000),
+      activePromotionId: 'activePromotion',
+    })
+    await setDoc(doc(db, `statuses/${expiredId}`), {
+      ...pollStatus({ createdAt: Timestamp.now(), expiresAt: expiredOriginal }),
+      promoted: true,
+      promotedUntil: Timestamp.fromMillis(Date.now() - 1_000),
+      activePromotionId: 'expiredPromotion',
+    })
+  })
+
+  await assertSucceeds(
+    setDoc(doc(member, `statuses/${activeId}/votes/member`), {
+      userId: 'member',
+      optionId: 'yes',
+      createdAt: serverTimestamp(),
+    })
+  )
+  await assertFails(
+    setDoc(doc(member, `statuses/${expiredId}/votes/member`), {
+      userId: 'member',
+      optionId: 'yes',
+      createdAt: serverTimestamp(),
+    })
+  )
+})
+
 // Treino Marcado V1: canJoinWorkout usa status.workout.date, não mais status.expiresAt,
 // como autoridade de elegibilidade -- ver o comentário em firestore.rules. Este teste
 // planta o status diretamente (withSecurityRulesDisabled), simulando exatamente um post

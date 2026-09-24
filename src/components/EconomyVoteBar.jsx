@@ -20,7 +20,15 @@ import { economyVoteCountDelta } from '../utils/economyVoteCountDelta'
 // componente nunca busca o próprio voto sozinho, exatamente pra não reintroduzir 1
 // leitura de Firestore por card (o padrão N+1 que useMyEconomyVotes existe pra evitar).
 // undefined = ainda carregando o lote; null = carregado, sem voto; {value} = votou.
-export function EconomyVoteBar({ status, currentUserId, showToast, myVote, onVoted }) {
+export function EconomyVoteBar({
+  status,
+  currentUserId,
+  showToast,
+  myVote,
+  onVoted,
+  onActionSuccess,
+  interactionActive = true,
+}) {
   const [myValue, setMyValue] = useState(myVote?.value ?? null)
   const [voting, setVoting] = useState(false)
   const [openVotersDialog, setOpenVotersDialog] = useState(null) // null | 'positive' | 'negative'
@@ -49,6 +57,7 @@ export function EconomyVoteBar({ status, currentUserId, showToast, myVote, onVot
       const delta = economyVoteCountDelta(myValue, nextValue)
       setMyValue(nextValue)
       onVoted?.(nextValue, delta)
+      onActionSuccess?.()
     } catch (error) {
       console.error('[EconomyVoteBar] castVote:', error)
       showToast?.(
@@ -78,7 +87,7 @@ export function EconomyVoteBar({ status, currentUserId, showToast, myVote, onVot
             aria-pressed={myValue === 1}
             size="small"
             variant={myValue === 1 ? 'primary' : 'invisible'}
-            disabled={loading || voting}
+            disabled={loading || voting || !interactionActive}
             onClick={() => vote(1)}
           />
           <IconButton
@@ -87,7 +96,7 @@ export function EconomyVoteBar({ status, currentUserId, showToast, myVote, onVot
             aria-pressed={myValue === -1}
             size="small"
             variant={myValue === -1 ? 'danger' : 'invisible'}
-            disabled={loading || voting}
+            disabled={loading || voting || !interactionActive}
             onClick={() => vote(-1)}
           />
         </>

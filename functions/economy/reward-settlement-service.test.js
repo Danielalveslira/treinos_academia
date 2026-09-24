@@ -76,13 +76,16 @@ function buildVoteService({ now } = {}) {
 }
 
 async function seedStatus({ statusId, authorId, communityId = `c-${uid()}`, type = 'text' }) {
-  await db.doc(`statuses/${statusId}`).set({
-    communityId,
-    authorId,
-    type,
-    text: 'oi',
-    expiresAt: Timestamp.fromMillis(Date.now() + 60 * 60 * 1000),
-  })
+  await Promise.all([
+    db.doc(`communities/${communityId}`).set({ isActive: true }, { merge: true }),
+    db.doc(`statuses/${statusId}`).set({
+      communityId,
+      authorId,
+      type,
+      text: 'oi',
+      expiresAt: Timestamp.fromMillis(Date.now() + 60 * 60 * 1000),
+    }),
+  ])
   return communityId
 }
 
