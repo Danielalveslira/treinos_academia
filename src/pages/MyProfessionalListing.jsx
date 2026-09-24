@@ -20,6 +20,7 @@ import {
   saveProfessionalListing,
   unpublishProfessionalListing,
 } from '../services/professionalListingsService'
+import { setUsageProfile } from '../services/usageProfileService'
 import { EMPTY_LISTING_DRAFT } from '../utils/professionalListing'
 import {
   canSubmitShowcaseListing,
@@ -27,6 +28,8 @@ import {
   SHOWCASE_LEGAL_DOCUMENT,
   SHOWCASE_LEGAL_MANIFEST,
 } from '../utils/showcaseLegal'
+import { isEligibleForListingCreation } from '../constants/usageProfile'
+import { UsageProfileField } from '../components/UsageProfileField'
 
 const STATE_LABELS = {
   draft: 'Rascunho',
@@ -165,6 +168,21 @@ export default function MyProfessionalListing() {
     }
   }
 
+  // Preenchimento contextual para conta legada (usageProfile ainda ausente): o
+  // AuthContext mantém um listener ao vivo em users/{uid}, então profile.usageProfile
+  // já reflete o novo valor no próximo render, sem precisar recarregar nada aqui.
+  async function declareUsageProfile(value) {
+    setBusy('usageProfile')
+    setMessage(null)
+    try {
+      await setUsageProfile(value)
+    } catch {
+      setMessage({ variant: 'danger', text: 'Não foi possível salvar seu perfil de uso.' })
+    } finally {
+      setBusy('')
+    }
+  }
+
   function payload() {
     const { specialtiesText, ...draft } = form
     return {
@@ -261,7 +279,8 @@ export default function MyProfessionalListing() {
         )}
       </div>
     )
-  if (!record)
+  if (!record) {
+    const usageProfile = profile?.usageProfile
     return (
       <div className="my-listing-page">
         <header className="profile-page-heading">
@@ -270,25 +289,47 @@ export default function MyProfessionalListing() {
           <p>Crie uma página pública para apresentar seu trabalho ou espaço.</p>
         </header>
         {message && <Flash variant={message.variant}>{message.text}</Flash>}
-        <section className="listing-kind-picker">
-          {LISTING_KIND_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => create(option.value)}
+        {!usageProfile ? (
+          // Conta legada: nunca declarou o perfil de uso. Preenchimento contextual
+          // aqui mesmo, no ponto em que isso passa a importar -- não bloqueia o resto
+          // do app nem classifica ninguém como "comum" por omissão.
+          <>
+            <p>Antes de continuar, diga como você pretende usar o Evolutus.</p>
+            <UsageProfileField
+              value=""
+              onChange={declareUsageProfile}
+              legend="Como você pretende utilizar o Evolutus?"
               disabled={Boolean(busy)}
-            >
-              <strong>{option.label}</strong>
-              <span>
-                {option.value === 'professional'
-                  ? 'Para personal trainers, treinadores e especialistas.'
-                  : 'Para academias, boxes, estúdios e assessorias.'}
-              </span>
-            </button>
-          ))}
-        </section>
+            />
+          </>
+        ) : isEligibleForListingCreation(usageProfile) ? (
+          <section className="listing-kind-picker">
+            {LISTING_KIND_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => create(option.value)}
+                disabled={Boolean(busy)}
+              >
+                <strong>{option.label}</strong>
+                <span>
+                  {option.value === 'professional'
+                    ? 'Para personal trainers, treinadores e especialistas.'
+                    : 'Para academias, boxes, estúdios e assessorias.'}
+                </span>
+              </button>
+            ))}
+          </section>
+        ) : (
+          <Flash variant="warning">
+            A criação de Vitrine fica disponível para os perfis de uso Profissional e
+            Responsável por estabelecimento. Você pode mudar isso a qualquer momento em{' '}
+            <Link to="/perfil">Meu perfil</Link>.
+          </Flash>
+        )}
       </div>
     )
+  }
   // record e form são setState separados feitos juntos (mesmo callback), mas nada
   // garante que sempre cheguem no mesmo commit -- sem isto, um record já truthy com
   // form ainda null quebraria form.displayName logo abaixo.

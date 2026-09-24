@@ -53,6 +53,10 @@ before(async () => {
           `,
             ],
             [
+              '../services/usageProfileService',
+              'export const setUsageProfile = (...args) => globalThis.__showcaseMocks.setUsageProfile(...args)',
+            ],
+            [
               '../components/ProfessionalListingCard',
               'export const ProfessionalListingCard = () => null',
             ],
@@ -95,12 +99,13 @@ after(async () => {
   if (directory) await rm(directory, { recursive: true, force: true })
 })
 
-async function renderWith(services) {
-  globalThis.__showcaseAuth = { user: { uid: 'owner-1' }, profile: {} }
+async function renderWith(services, profile = {}) {
+  globalThis.__showcaseAuth = { user: { uid: 'owner-1' }, profile }
   globalThis.__showcaseMocks = {
     getMyProfessionalListing: async () => null,
     getShowcaseLegalAcceptance: async () => null,
     listActiveCommunities: async () => [],
+    setUsageProfile: async () => ({ usageProfile: 'professional' }),
     ...services,
   }
   const previousWindow = globalThis.window
@@ -152,6 +157,52 @@ test('an acceptance lookup failure still opens the editor with a clear warning',
     const html = JSON.stringify(page.view.toJSON())
     assert.match(html, /Crie uma página pública/)
     assert.match(html, /Não foi possível verificar seu aceite da Vitrine/)
+  } finally {
+    page.close()
+  }
+})
+
+test('with no listing yet, an eligible usage profile shows the kind picker', async () => {
+  const page = await renderWith({}, { usageProfile: 'professional' })
+  try {
+    const html = JSON.stringify(page.view.toJSON())
+    assert.match(html, /Para personal trainers/)
+    assert.match(html, /Para academias, boxes/)
+  } finally {
+    page.close()
+  }
+})
+
+test('with no listing yet, usageProfile: common shows a pointer to Meu Perfil instead of the picker', async () => {
+  const page = await renderWith({}, { usageProfile: 'common' })
+  try {
+    const html = JSON.stringify(page.view.toJSON())
+    assert.doesNotMatch(html, /Para personal trainers/)
+    assert.match(html, /Profissional e Responsável por estabelecimento/)
+  } finally {
+    page.close()
+  }
+})
+
+test('with no listing yet, a legacy account (no usageProfile) is prompted to declare one contextually, not defaulted to common', async () => {
+  const declared = []
+  const page = await renderWith({ setUsageProfile: async (value) => declared.push(value) }, {})
+  try {
+    const html = JSON.stringify(page.view.toJSON())
+    assert.doesNotMatch(html, /Para personal trainers/)
+    assert.doesNotMatch(html, /Profissional e Responsável por estabelecimento/)
+    assert.match(html, /Antes de continuar, diga como você pretende usar o Evolutus/)
+    // A declaração em si (chamada ao serviço) é o que importa aqui -- o texto some
+    // depois porque o AuthContext de verdade mantém um listener ao vivo em
+    // users/{uid} e propaga profile.usageProfile sozinho; esse stub de useAuth() é
+    // estático de propósito (ver renderWith), então não simula esse próximo passo.
+    const professionalRadio = page.view.root.findAllByProps({ value: 'professional' })[0]
+    act(() => {
+      professionalRadio.props.onChange()
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    act(() => {})
+    assert.deepEqual(declared, ['professional'])
   } finally {
     page.close()
   }
