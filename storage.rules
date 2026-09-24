@@ -68,7 +68,10 @@ service firebase.storage {
         return status.type == 'photo'
           && status.communityId == communityId
           && status.photoPath == 'statusPhotos/' + communityId + '/' + fileName
-          && status.expiresAt > request.time;
+          && (status.expiresAt > request.time
+            || (status.get('promoted', false) == true
+              && status.get('promotedUntil', null) is timestamp
+              && status.promotedUntil > request.time));
       }
 
       function canReadPhoto() {

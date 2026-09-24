@@ -30,6 +30,25 @@ export function isEconomyVoteEligibleStatusType(statusType) {
   return economyVoteIneligibility(statusType) == null
 }
 
+export function effectivePublicationExpiryMs(status) {
+  const expiresAtMs = status?.expiresAtMs
+  const promotedUntilMs = status?.promotedUntilMs
+  const activePromotionExpiryMs =
+    status?.promoted === true &&
+    typeof promotedUntilMs === 'number' &&
+    Number.isFinite(promotedUntilMs)
+      ? promotedUntilMs
+      : 0
+  return Math.max(
+    typeof expiresAtMs === 'number' && Number.isFinite(expiresAtMs) ? expiresAtMs : 0,
+    activePromotionExpiryMs
+  )
+}
+
+export function isPublicationInteractionActive(status, nowMs) {
+  return effectivePublicationExpiryMs(status) > nowMs
+}
+
 // existingVote: documento atual em economyVotes/{uid} (ou null/undefined se o usuário
 // nunca votou nesta publicação). incomingValue: 1 (positivo), -1 (negativo) ou null
 // (remover o voto).

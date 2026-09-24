@@ -603,6 +603,12 @@ body:has(.pwa-offline) .app-shell {
   height: 100%;
   object-fit: cover;
 }
+
+.status-action-error {
+  margin-top: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
 .profile-avatar-control {
   display: grid;
   gap: 12px;

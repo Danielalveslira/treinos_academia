@@ -606,16 +606,17 @@ function CommunityDetail({ id }) {
       title: 'Excluir esta publicação?',
       content: 'Esta ação não pode ser desfeita.',
     })
-    if (!confirmed) return
+    if (!confirmed) return false
     try {
       await remove(status.id)
       setUpcomingWorkouts(upcomingWorkouts.filter((item) => item.id !== status.id))
       setSharedWorkout((item) => (item?.id === status.id ? null : item))
       setFeaturedStatuses((items) => items.filter((item) => item.id !== status.id))
       showToast('Publicação excluída.')
+      return true
     } catch (err) {
       console.error('[CommunityDetail] delete:', err)
-      showToast('Erro ao excluir publicação.', 'danger')
+      throw new Error('Não foi possível excluir a publicação.', { cause: err })
     }
   }
 
