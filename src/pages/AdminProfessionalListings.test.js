@@ -21,7 +21,7 @@ before(async () => {
         export { default as AdminProfessionalListings } from './AdminProfessionalListings.jsx'
         export { state } from '../services/professionalListingsService'
       `,
-      resolveDir: new URL('.', import.meta.url).pathname,
+      resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile,
     bundle: true,

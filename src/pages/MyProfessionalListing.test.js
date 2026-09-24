@@ -22,7 +22,7 @@ before(async () => {
         export { act }
         export const mount = () => TestRenderer.create(createElement(MyProfessionalListing))
       `,
-      resolveDir: new URL('.', import.meta.url).pathname,
+      resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile,
     bundle: true,
@@ -73,7 +73,7 @@ before(async () => {
           buildApi.onLoad({ filter: /.*/, namespace: 'showcase-page-mock' }, (args) => ({
             contents: mocked.get(args.path),
             loader: 'js',
-            resolveDir: new URL('.', import.meta.url).pathname,
+            resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
           }))
         },
       },

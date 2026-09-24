@@ -22,7 +22,7 @@ before(async () => {
         export { listeners } from 'firebase/firestore'
         export { useCommunityAuthorAvatars }
       `,
-      resolveDir: new URL('.', import.meta.url).pathname,
+      resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile,
     bundle: true,

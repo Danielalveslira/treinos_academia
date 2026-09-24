@@ -18,7 +18,7 @@ before(async () => {
   await build({
     stdin: {
       contents: `export { ProfileAvatar } from './ProfileAvatar.jsx'`,
-      resolveDir: new URL('.', import.meta.url).pathname,
+      resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile,
     bundle: true,
