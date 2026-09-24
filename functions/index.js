@@ -36,6 +36,7 @@ import {
   isSelfReport,
   REPORT_PROTECTED_AUTHOR_ERROR,
   REPORT_OWN_STATUS_ERROR,
+  REPORT_OWN_LISTING_ERROR,
 } from './moderation-core.js'
 import { createConfigService } from './economy/config-service.js'
 import { createWalletService } from './economy/wallet-service.js'
@@ -104,23 +105,14 @@ export const createProfessionalListingDraft = onCall(options, (request) =>
 export const saveProfessionalListingDraft = onCall(options, (request) =>
   professionalListings.saveDraft(requireUser(request), request.data || {})
 )
-export const submitProfessionalListing = onCall(options, (request) =>
-  professionalListings.submit(requireUser(request), request.data || {})
-)
-export const reviewProfessionalListing = onCall(options, (request) =>
-  professionalListings.review(requireUser(request), request.data || {})
+export const publishProfessionalListing = onCall(options, (request) =>
+  professionalListings.publish(requireUser(request), request.data || {})
 )
 export const unpublishProfessionalListing = onCall(options, (request) =>
   professionalListings.unpublish(requireUser(request), request.data || {})
 )
 export const suspendProfessionalListing = onCall(options, (request) =>
   professionalListings.suspend(requireUser(request), request.data || {})
-)
-export const reportProfessionalListing = onCall(options, (request) =>
-  professionalListings.report(requireUser(request), request.data || {})
-)
-export const resolveProfessionalListingReport = onCall(options, (request) =>
-  professionalListings.resolveReport(requireUser(request), request.data || {})
 )
 export const deleteProfessionalListing = onCall(options, (request) =>
   professionalListings.deleteListing(requireUser(request), request.data || {})
@@ -513,7 +505,8 @@ export const submitSupportRequest = onCall(options, async (request) => {
   const uid = requireUser(request)
   const error = validateSupportRequest(request.data)
   if (error) throw new HttpsError('invalid-argument', error)
-  const { kind, message, statusId = '', communityId = '', decisionId = '' } = request.data
+  const { kind, message, statusId = '', communityId = '', decisionId = '', listingId = '' } =
+    request.data
   const ref = db.collection('supportRequests').doc()
   const throttle = db.doc(`supportLimits/${uid}`)
   // AUD-007: precisa sobreviver à transação (a cópia da foto de evidência, mais
@@ -555,6 +548,35 @@ export const submitSupportRequest = onCall(options, async (request) => {
       }
       snapshot = status.data()
     }
+    if (listingId && kind === 'report') {
+      // Vitrine V1 (canal único): a denúncia referencia a projeção pública (o que o
+      // denunciante de fato viu) mas a titularidade/papel do autor são sempre lidos
+      // do registro autoritativo (professionalListings), nunca da projeção -- mesmo
+      // padrão do ramo de statusId acima (nunca confia num authorIsSuperAdmin
+      // denormalizado).
+      const [published, listing] = await tx.getAll(
+        db.doc(`publishedProfessionalListings/${listingId}`),
+        db.doc(`professionalListings/${listingId}`)
+      )
+      if (!published.exists || !listing.exists)
+        throw new HttpsError(
+          'not-found',
+          'A vitrine não está mais disponível. Envie o relato sem a referência da vitrine.'
+        )
+      if (isSelfReport(listing.data().ownerId, uid)) {
+        throw new HttpsError('permission-denied', REPORT_OWN_LISTING_ERROR)
+      }
+      const owner = await tx.get(db.doc(`users/${listing.data().ownerId}`))
+      if (isProtectedRole(owner.data()?.role)) {
+        throw new HttpsError('permission-denied', REPORT_PROTECTED_AUTHOR_ERROR)
+      }
+      snapshot = {
+        authorId: listing.data().ownerId,
+        listingId,
+        kind: listing.data().kind,
+        displayName: published.data().displayName,
+      }
+    }
     if (kind === 'appeal') {
       const decision = await tx.get(db.doc(`moderationDecisions/${decisionId}`))
       if (!decision.exists || decision.data().targetUserId !== uid)
@@ -565,6 +587,7 @@ export const submitSupportRequest = onCall(options, async (request) => {
       kind,
       message: message.trim(),
       statusId: kind === 'report' ? statusId : '',
+      listingId: kind === 'report' ? listingId : '',
       communityId: relatedCommunity,
       decisionId: kind === 'appeal' ? decisionId : '',
       contentSnapshot: snapshot,
@@ -642,6 +665,10 @@ export const decideSupportRequest = onCall(options, async (request) => {
   } = request.data
   const ref = db.doc(`supportRequests/${requestId}`)
   const decisionRef = db.collection('moderationDecisions').doc()
+  // Precisa sobreviver à transação -- a exclusão do arquivo no Storage roda depois
+  // dela (Storage não participa de transações do Firestore), mesmo padrão do
+  // suspend()/resolveReport() que já existiam em professional-listing-service.js.
+  let listingAvatarPath = null
   await db.runTransaction(async (tx) => {
     if (communityId && (await tx.get(db.doc(`deletionJobs/community_${communityId}`))).exists) {
       throw new HttpsError('failed-precondition', 'A comunidade está em exclusão.')
@@ -672,8 +699,23 @@ export const decideSupportRequest = onCall(options, async (request) => {
     }
     if (action === 'community_ban' && communityId !== data.communityId)
       throw new HttpsError('invalid-argument', 'Comunidade divergente.')
-    if (action === 'remove_content' && !data.statusId)
-      throw new HttpsError('invalid-argument', 'O pedido não contém uma publicação.')
+    if (action === 'remove_content' && !data.statusId && !data.listingId)
+      throw new HttpsError('invalid-argument', 'O pedido não contém uma publicação ou vitrine.')
+    if (action === 'remove_content' && data.listingId) {
+      const listingRef = db.doc(`professionalListings/${data.listingId}`)
+      const publicRef = db.doc(`publishedProfessionalListings/${data.listingId}`)
+      const [listing, published] = await tx.getAll(listingRef, publicRef)
+      if (listing.exists && listing.data().lifecycleState !== 'suspended') {
+        listingAvatarPath = published.data()?.avatarPath || null
+        tx.delete(publicRef)
+        tx.update(listingRef, {
+          lifecycleState: 'suspended',
+          suspendedReason: reason.trim(),
+          suspendedBy: adminId,
+          updatedAt: FieldValue.serverTimestamp(),
+        })
+      }
+    }
     const until =
       action === 'temporary_suspension' ? Timestamp.fromMillis(Date.now() + days * 86400000) : null
     tx.create(decisionRef, {
@@ -737,8 +779,14 @@ export const decideSupportRequest = onCall(options, async (request) => {
       if (communityId) tx.delete(db.doc(`communityRestrictions/${communityId}_${targetUserId}`))
       else tx.delete(db.doc(`accountRestrictions/${targetUserId}`))
     }
-    if (action === 'remove_content') tx.delete(db.doc(`statuses/${data.statusId}`))
+    if (action === 'remove_content' && data.statusId) tx.delete(db.doc(`statuses/${data.statusId}`))
   })
+  if (listingAvatarPath) {
+    await bucket
+      .file(listingAvatarPath)
+      .delete({ ignoreNotFound: true })
+      .catch(() => {})
+  }
   return { id: decisionRef.id }
 })
 

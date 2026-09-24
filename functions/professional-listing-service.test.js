@@ -96,13 +96,13 @@ async function seedShowcasePolicy(overrides = {}) {
   ])
 }
 
-async function submitListing(owner, listingId, overrides = {}) {
+async function publishListing(owner, listingId, overrides = {}) {
   await seedShowcasePolicy()
-  return service.submit(owner, {
+  return service.publish(owner, {
     listingId,
     termsAccepted: true,
     termsVersion: showcaseManifest.version,
-    operationId: unique('submission'),
+    operationId: unique('publication'),
     ...overrides,
   })
 }
@@ -119,7 +119,7 @@ test('concurrent and replayed creation produces exactly one listing per account'
   assert.equal(listings.size, 1)
 })
 
-test('unpublished storefront terms block submission even with a complete draft', async () => {
+test('unpublished storefront terms block publication even with a complete draft', async () => {
   const owner = unique('terms_unpublished')
   await seedUser(owner)
   const { listingId } = await service.createDraft(owner, {
@@ -138,17 +138,17 @@ test('unpublished storefront terms block submission even with a complete draft',
     },
   })
   await assert.rejects(
-    unpublishedService.submit(owner, {
+    unpublishedService.publish(owner, {
       listingId,
       termsAccepted: true,
       termsVersion: showcaseManifest.version,
-      operationId: unique('submission'),
+      operationId: unique('publication'),
     }),
     (error) => error.code === 'failed-precondition'
   )
 })
 
-test('missing published storefront policy blocks submission without creating a legal acceptance', async () => {
+test('missing published storefront policy blocks publication without creating a legal acceptance', async () => {
   await db.doc('showcaseLegalPolicy/current').delete()
   await db.doc(`showcaseLegalVersions/${showcaseManifest.version}`).delete()
   const owner = unique('terms_missing')
@@ -159,11 +159,11 @@ test('missing published storefront policy blocks submission without creating a l
   })
   await service.saveDraft(owner, { listingId, draft: completeDraft() })
   await assert.rejects(
-    service.submit(owner, {
+    service.publish(owner, {
       listingId,
       termsAccepted: true,
       termsVersion: showcaseManifest.version,
-      operationId: unique('submission'),
+      operationId: unique('publication'),
     }),
     (error) => error.code === 'failed-precondition'
   )
@@ -175,7 +175,7 @@ test('missing published storefront policy blocks submission without creating a l
   assert.equal((await db.doc(`publishedProfessionalListings/${listingId}`).get()).exists, false)
 })
 
-test('submission requires the current storefront terms and records an idempotent server acceptance', async () => {
+test('publication requires the current storefront terms and records an idempotent server acceptance', async () => {
   const owner = unique('terms_owner')
   const other = unique('terms_other')
   await Promise.all([seedUser(owner), seedUser(other), seedShowcasePolicy()])
@@ -194,20 +194,20 @@ test('submission requires the current storefront terms and records an idempotent
   })
 
   await assert.rejects(
-    service.submit(owner, {
+    service.publish(owner, {
       listingId,
       termsAccepted: false,
       termsVersion: showcaseManifest.version,
-      operationId: unique('submission'),
+      operationId: unique('publication'),
     }),
     (error) => error.code === 'failed-precondition'
   )
   await assert.rejects(
-    service.submit(owner, {
+    service.publish(owner, {
       listingId,
       termsAccepted: true,
       termsVersion: '0.9.0',
-      operationId: unique('submission'),
+      operationId: unique('publication'),
     }),
     (error) => error.code === 'failed-precondition'
   )
@@ -217,7 +217,7 @@ test('submission requires the current storefront terms and records an idempotent
   )
   assert.equal((await db.doc(`publishedProfessionalListings/${listingId}`).get()).exists, false)
 
-  const operationId = unique('submission')
+  const operationId = unique('publication')
   const payload = {
     listingId,
     termsAccepted: true,
@@ -226,7 +226,7 @@ test('submission requires the current storefront terms and records an idempotent
     userId: other,
     acceptedAt: Timestamp.fromMillis(1),
   }
-  await service.submit(owner, payload)
+  await service.publish(owner, payload)
   const acceptance = (
     await db.doc(`users/${owner}/showcaseLegalAcceptances/${showcaseManifest.version}`).get()
   ).data()
@@ -237,11 +237,11 @@ test('submission requires the current storefront terms and records an idempotent
   assert.equal(typeof acceptance.acceptedAt.toMillis(), 'number')
   assert.ok(acceptance.acceptedAt.toMillis() > 1)
 
-  const replay = await service.submit(owner, payload)
+  const replay = await service.publish(owner, payload)
   assert.equal(replay.repeated, true)
 })
 
-test('a policy update or missing immutable archive blocks submission without changing the draft', async () => {
+test('a policy update or missing immutable archive blocks publication without changing the draft', async () => {
   const owner = unique('terms_owner')
   await seedUser(owner)
   const { listingId } = await service.createDraft(owner, {
@@ -252,65 +252,61 @@ test('a policy update or missing immutable archive blocks submission without cha
   await seedShowcasePolicy({ version: '2.0.0', digest: 'new-digest' })
 
   await assert.rejects(
-    service.submit(owner, {
+    service.publish(owner, {
       listingId,
       termsAccepted: true,
       termsVersion: showcaseManifest.version,
-      operationId: unique('submission'),
+      operationId: unique('publication'),
     }),
     (error) => error.code === 'failed-precondition'
   )
   await seedShowcasePolicy()
   await db.doc(`showcaseLegalVersions/${showcaseManifest.version}`).delete()
   await assert.rejects(
-    service.submit(owner, {
+    service.publish(owner, {
       listingId,
       termsAccepted: true,
       termsVersion: showcaseManifest.version,
-      operationId: unique('submission'),
+      operationId: unique('publication'),
     }),
     (error) => error.code === 'failed-precondition'
   )
   const draft = (await db.doc(`professionalListingDrafts/${listingId}`).get()).data()
   assert.equal(draft.reviewState, 'draft')
-  assert.equal(draft.submittedAt, undefined)
+  assert.equal(draft.publishingOperationId, undefined)
   assert.equal((await db.doc(`publishedProfessionalListings/${listingId}`).get()).exists, false)
 })
 
-test('an existing acceptance for the same immutable version is reused after rejection', async () => {
+test('an existing acceptance for the same immutable version is reused on a later republish', async () => {
   const owner = unique('terms_owner')
-  const admin = unique('terms_admin')
-  await Promise.all([seedUser(owner), seedUser(admin, { role: 'superadmin' })])
+  await seedUser(owner)
   const { listingId } = await service.createDraft(owner, {
     requestId: unique('request'),
     kind: 'professional',
   })
   await service.saveDraft(owner, { listingId, draft: completeDraft() })
-  await submitListing(owner, listingId)
-  await service.review(admin, {
+  await publishListing(owner, listingId)
+  await service.saveDraft(owner, {
     listingId,
-    decision: 'rejected',
-    reason: 'Ajuste necessário no conteúdo.',
+    draft: completeDraft('professional', { displayName: 'Ana Treinadora II' }),
   })
-  await service.saveDraft(owner, { listingId, draft: completeDraft() })
 
   await seedShowcasePolicy()
   await assert.doesNotReject(
-    service.submit(owner, {
+    service.publish(owner, {
       listingId,
       termsAccepted: false,
       termsVersion: showcaseManifest.version,
-      operationId: unique('submission'),
+      operationId: unique('publication'),
     })
   )
 })
 
-test('owner isolation, authorized community link and administrative approval are enforced', async () => {
+test('owner isolation, authorized community link and immediate self-publication are enforced', async () => {
   const owner = unique('owner')
   const intruder = unique('intruder')
-  const admin = unique('admin')
   const communityId = unique('community')
-  await Promise.all([seedUser(owner), seedUser(intruder), seedUser(admin, { role: 'superadmin' })])
+  await Promise.all([seedUser(owner), seedUser(intruder)])
   await db
     .doc(`communities/${communityId}`)
     .set({ ownerId: owner, name: 'Equipe Norte', isActive: true })
@@ -327,8 +323,17 @@ test('owner isolation, authorized community link and administrative approval are
     listingId,
     draft: completeDraft('professional', { linkedCommunityId: communityId }),
   })
-  await submitListing(owner, listingId)
-  await service.review(admin, { listingId, decision: 'approved' })
+  await seedShowcasePolicy()
+  await assert.rejects(
+    service.publish(intruder, {
+      listingId,
+      termsAccepted: true,
+      termsVersion: showcaseManifest.version,
+      operationId: unique('publication'),
+    }),
+    (error) => error.code === 'permission-denied'
+  )
+  await publishListing(owner, listingId)
 
   const publicSnapshot = await db.doc(`publishedProfessionalListings/${listingId}`).get()
   assert.equal(publicSnapshot.data().displayName, 'Ana Treinadora')
@@ -336,44 +341,57 @@ test('owner isolation, authorized community link and administrative approval are
   assert.equal(publicSnapshot.data().ownerId, undefined)
 })
 
-test('pending edits and rejection never replace the previously approved projection', async () => {
+test('editing after publication never replaces the live projection until republished', async () => {
   const owner = unique('owner')
-  const admin = unique('admin')
-  await Promise.all([seedUser(owner), seedUser(admin, { role: 'superadmin' })])
+  await seedUser(owner)
   const { listingId } = await service.createDraft(owner, {
     requestId: unique('request'),
     kind: 'space',
   })
   await service.saveDraft(owner, { listingId, draft: completeDraft('space') })
-  await submitListing(owner, listingId)
-  await service.review(admin, { listingId, decision: 'approved' })
+  await publishListing(owner, listingId)
 
   await service.saveDraft(owner, {
     listingId,
-    draft: completeDraft('space', { displayName: 'Nome ainda pendente' }),
+    draft: completeDraft('space', { displayName: 'Nome ainda não publicado' }),
   })
-  await submitListing(owner, listingId)
   assert.equal(
     (await db.doc(`publishedProfessionalListings/${listingId}`).get()).data().displayName,
     'Espaço Movimento'
   )
-  await service.review(admin, { listingId, decision: 'rejected', reason: 'Nome não comprovado.' })
+
+  // Uma publicação que falha (política revogada nesta janela) também não deve
+  // vazar a edição ainda não confirmada para o card público.
+  await db.doc('showcaseLegalPolicy/current').delete()
+  await assert.rejects(
+    service.publish(owner, {
+      listingId,
+      termsAccepted: true,
+      termsVersion: showcaseManifest.version,
+      operationId: unique('publication'),
+    }),
+    (error) => error.code === 'failed-precondition'
+  )
   assert.equal(
     (await db.doc(`publishedProfessionalListings/${listingId}`).get()).data().displayName,
     'Espaço Movimento'
+  )
+
+  await publishListing(owner, listingId)
+  assert.equal(
+    (await db.doc(`publishedProfessionalListings/${listingId}`).get()).data().displayName,
+    'Nome ainda não publicado'
   )
 })
 
-test('approval uses the avatar version pinned at submission, not a later personal avatar', async () => {
+test('publication always uses the currently authorized avatar, never a stale one', async () => {
   const owner = unique('owner')
-  const admin = unique('admin')
   const firstMediaId = db.collection('profileAvatarMedia').doc().id
   const secondMediaId = db.collection('profileAvatarMedia').doc().id
   const firstPath = `profileAvatars/${owner}/${firstMediaId}.webp`
   const secondPath = `profileAvatars/${owner}/${secondMediaId}.webp`
   await Promise.all([
     seedUser(owner, { avatarMediaId: firstMediaId, avatarPath: firstPath }),
-    seedUser(admin, { role: 'superadmin' }),
     db.doc(`profileAvatarMedia/${firstMediaId}`).set({
       ownerId: owner,
       storagePath: firstPath,
@@ -390,44 +408,54 @@ test('approval uses the avatar version pinned at submission, not a later persona
     listingId,
     draft: completeDraft('professional', { useProfileAvatar: true }),
   })
-  await submitListing(owner, listingId)
-  await db.doc(`users/${owner}`).update({
-    avatarMediaId: secondMediaId,
-    avatarPath: secondPath,
-  })
-  await service.review(admin, { listingId, decision: 'approved' })
+  await publishListing(owner, listingId)
 
-  const published = (await db.doc(`publishedProfessionalListings/${listingId}`).get()).data()
-  assert.equal(published.avatarSourceMediaId, firstMediaId)
-  assert.deepEqual(files.get(published.avatarPath), Buffer.from('first-avatar'))
+  const firstPublished = (await db.doc(`publishedProfessionalListings/${listingId}`).get()).data()
+  assert.equal(firstPublished.avatarSourceMediaId, firstMediaId)
+  assert.deepEqual(files.get(firstPublished.avatarPath), Buffer.from('first-avatar'))
+
+  await db.doc(`profileAvatarMedia/${secondMediaId}`).set({
+    ownerId: owner,
+    storagePath: secondPath,
+    state: 'active',
+  })
+  await db.doc(`profileAvatarMedia/${firstMediaId}`).update({ state: 'superseded' })
+  await db.doc(`users/${owner}`).update({ avatarMediaId: secondMediaId, avatarPath: secondPath })
+  await service.saveDraft(owner, {
+    listingId,
+    draft: completeDraft('professional', { useProfileAvatar: true }),
+  })
+  await publishListing(owner, listingId)
+
+  const secondPublished = (
+    await db.doc(`publishedProfessionalListings/${listingId}`).get()
+  ).data()
+  assert.equal(secondPublished.avatarSourceMediaId, secondMediaId)
+  assert.deepEqual(files.get(secondPublished.avatarPath), Buffer.from('second-avatar'))
 })
 
-test('approval keeps the default avatar when no authorized photo was submitted', async () => {
+test('publication keeps the default avatar when no authorized photo was saved', async () => {
   const owner = unique('owner_no_avatar')
-  const admin = unique('admin_no_avatar')
-  await Promise.all([seedUser(owner), seedUser(admin, { role: 'superadmin' })])
+  await seedUser(owner)
   const { listingId } = await service.createDraft(owner, {
     requestId: unique('request'),
     kind: 'professional',
   })
   await service.saveDraft(owner, { listingId, draft: completeDraft() })
-  await submitListing(owner, listingId)
-  await service.review(admin, { listingId, decision: 'approved' })
+  await publishListing(owner, listingId)
 
   const published = (await db.doc(`publishedProfessionalListings/${listingId}`).get()).data()
   assert.equal(published.avatarPath, undefined)
   assert.equal(published.avatarSourceMediaId, undefined)
 })
 
-test('approval rejects an allocated or revoked avatar instead of exposing it', async () => {
+test('publication rejects an allocated or revoked avatar instead of exposing it', async () => {
   for (const mediaState of ['allocated', 'deleted']) {
     const owner = unique(`owner_${mediaState}`)
-    const admin = unique(`admin_${mediaState}`)
     const mediaId = db.collection('profileAvatarMedia').doc().id
     const sourcePath = `profileAvatars/${owner}/${mediaId}.webp`
     await Promise.all([
       seedUser(owner, { avatarMediaId: mediaId, avatarPath: sourcePath }),
-      seedUser(admin, { role: 'superadmin' }),
       db.doc(`profileAvatarMedia/${mediaId}`).set({
         ownerId: owner,
         storagePath: sourcePath,
@@ -443,21 +471,22 @@ test('approval rejects an allocated or revoked avatar instead of exposing it', a
       listingId,
       draft: completeDraft('professional', { useProfileAvatar: true }),
     })
-    await submitListing(owner, listingId)
 
-    await assert.rejects(
-      service.review(admin, { listingId, decision: 'approved' }),
-      /não está mais disponível/
-    )
+    await assert.rejects(publishListing(owner, listingId), /não está mais disponível/)
     assert.equal((await db.doc(`publishedProfessionalListings/${listingId}`).get()).exists, false)
+    // Uma publicação que falhou por causa do avatar não deve deixar a vitrine
+    // travada em "publishing" -- uma nova tentativa (ex.: depois de desmarcar a
+    // autorização) precisa continuar possível.
+    await assert.doesNotReject(
+      service.saveDraft(owner, { listingId, draft: completeDraft() })
+    )
   }
 })
 
-test('approval revalidates linked community ownership and active state', async () => {
+test('publication revalidates linked community ownership and active state', async () => {
   const owner = unique('owner')
-  const admin = unique('admin')
   const communityId = unique('community')
-  await Promise.all([seedUser(owner), seedUser(admin, { role: 'superadmin' })])
+  await seedUser(owner)
   await db.doc(`communities/${communityId}`).set({
     ownerId: owner,
     name: 'Comunidade temporária',
@@ -471,28 +500,21 @@ test('approval revalidates linked community ownership and active state', async (
     listingId,
     draft: completeDraft('professional', { linkedCommunityId: communityId }),
   })
-  await submitListing(owner, listingId)
   await db.doc(`communities/${communityId}`).update({ isActive: false })
 
   await assert.rejects(
-    service.review(admin, { listingId, decision: 'approved' }),
+    publishListing(owner, listingId),
     (error) => error.code === 'failed-precondition'
   )
   assert.equal((await db.doc(`publishedProfessionalListings/${listingId}`).get()).exists, false)
 })
 
-test('unauthorized community ownership is rejected and reports can suspend a public listing', async () => {
+test('unauthorized community ownership is rejected and a published listing can be suspended', async () => {
   const owner = unique('owner')
   const otherOwner = unique('other')
-  const reporter = unique('reporter')
   const admin = unique('admin')
   const communityId = unique('community')
-  await Promise.all([
-    seedUser(owner),
-    seedUser(otherOwner),
-    seedUser(reporter),
-    seedUser(admin, { role: 'superadmin' }),
-  ])
+  await Promise.all([seedUser(owner), seedUser(otherOwner), seedUser(admin, { role: 'superadmin' })])
   await db
     .doc(`communities/${communityId}`)
     .set({ ownerId: otherOwner, name: 'Alheia', isActive: true })
@@ -508,36 +530,51 @@ test('unauthorized community ownership is rejected and reports can suspend a pub
     (error) => error.code === 'permission-denied'
   )
   await service.saveDraft(owner, { listingId, draft: completeDraft() })
-  await submitListing(owner, listingId)
-  await service.review(admin, { listingId, decision: 'approved' })
-  const { reportId } = await service.report(reporter, {
-    listingId,
-    message: 'Conteúdo comercial enganoso.',
-  })
-  await service.resolveReport(admin, {
-    reportId,
-    action: 'suspend',
-    reason: 'Conteúdo incompatível.',
-  })
+  await publishListing(owner, listingId)
+
+  await service.suspend(admin, { listingId, reason: 'Conteúdo incompatível.' })
   assert.equal((await db.doc(`publishedProfessionalListings/${listingId}`).get()).exists, false)
   assert.equal(
     (await db.doc(`professionalListings/${listingId}`).get()).data().lifecycleState,
     'suspended'
   )
-  const repeated = await service.resolveReport(admin, {
-    reportId,
-    action: 'suspend',
-    reason: 'Conteúdo incompatível.',
-  })
-  assert.equal(repeated.repeated, true)
-  await assert.rejects(
-    service.resolveReport(admin, { reportId, action: 'no_action' }),
-    (error) => error.code === 'aborted'
-  )
   await assert.rejects(
     service.saveDraft(owner, { listingId, draft: completeDraft() }),
     (error) => error.code === 'failed-precondition'
   )
+})
+
+test('a publish that loses a race with another attempt is aborted instead of overwriting it', async () => {
+  const owner = unique('owner')
+  await seedUser(owner)
+  const { listingId } = await service.createDraft(owner, {
+    requestId: unique('request'),
+    kind: 'professional',
+  })
+  await service.saveDraft(owner, { listingId, draft: completeDraft() })
+  await seedShowcasePolicy()
+  const draftRef = db.doc(`professionalListingDrafts/${listingId}`)
+  // Simula uma primeira chamada de publish() já em andamento (trava fresca).
+  await draftRef.update({
+    reviewState: 'publishing',
+    publishingOperationId: unique('other_publication'),
+    publishingStartedAt: Timestamp.now(),
+  })
+  await assert.rejects(
+    service.publish(owner, {
+      listingId,
+      termsAccepted: true,
+      termsVersion: showcaseManifest.version,
+      operationId: unique('publication'),
+    }),
+    (error) => error.code === 'aborted'
+  )
+  // Uma trava expirada (instância derrubada no meio de uma publicação antiga) não
+  // deve travar a vitrine para sempre -- sem nenhum admin para destravá-la.
+  await draftRef.update({
+    publishingStartedAt: Timestamp.fromMillis(Date.now() - 10 * 60 * 1000),
+  })
+  await assert.doesNotReject(publishListing(owner, listingId))
 })
 
 test('listing deletion is safely retryable after a partial Storage failure', async () => {

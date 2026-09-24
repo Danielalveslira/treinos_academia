@@ -120,10 +120,14 @@ export function validateSupportRequest(data) {
   ) {
     return 'Descreva o pedido usando entre 10 e 3.000 caracteres.'
   }
-  for (const field of ['statusId', 'communityId', 'decisionId']) {
+  for (const field of ['statusId', 'communityId', 'decisionId', 'listingId']) {
     if (data[field] && !validId(data[field])) return 'Referência inválida.'
   }
   if (data.kind === 'appeal' && !validId(data.decisionId)) return 'Informe o protocolo da decisão.'
+  // Uma denúncia é sobre uma publicação OU uma vitrine, nunca as duas ao mesmo tempo
+  // -- statusId e listingId apontam para fluxos de contentSnapshot/remove_content
+  // completamente distintos em submitSupportRequest/decideSupportRequest.
+  if (data.statusId && data.listingId) return 'Informe apenas uma referência de denúncia.'
   return null
 }
 

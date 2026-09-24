@@ -158,8 +158,10 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Vitrine V1: o documento autoritativo nunca é público. Visitantes anônimos
-    // leem somente a projeção sanitizada, escrita pela Admin SDK depois da aprovação.
+    // Vitrine V1: o documento autoritativo nunca é público. Visitantes anônimos leem
+    // somente a projeção sanitizada, escrita pela Admin SDK ao publicar (publish() em
+    // professional-listing-service.js) -- publicação é direta pelo titular, sem fila
+    // de aprovação prévia; moderação acontece depois, pelo canal único de denúncia.
     match /professionalListings/{listingId} {
       allow get: if isSignedIn()
         && (resource.data.ownerId == request.auth.uid || isSuperAdmin());
