@@ -153,6 +153,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Janela de recordPromotionEvent (auditoria de backend) -- mesmo padrão de
+    // supportLimits/showcaseReportRateLimits: puramente um contador de controle
+    // interno, nunca lido nem escrito pelo cliente.
+    match /promotionEventLimits/{limitId} {
+      allow read, write: if false;
+    }
+
     match /moderationDecisions/{decisionId} {
       allow read: if isSuperAdmin();
       allow write: if false;

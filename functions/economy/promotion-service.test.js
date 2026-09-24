@@ -769,6 +769,49 @@ test('recordPromotionEvent(click) incrementa clickCount; impression ainda não �
   )
 })
 
+// Auditoria de backend: recordPromotionEvent não tinha nenhum limite de frequência --
+// nada impedia chamar em loop apertado contra a mesma promoção e gerar escrita
+// ilimitada. Uma janela curta por (uid, promoção) fecha isso sem exigir troca de
+// usuário nem afetar o clique real de sempre (nunca se repete em menos de 10s no
+// MESMO card).
+test('recordPromotionEvent within the throttle window from the same user is a silent no-op; a later click still counts', async () => {
+  await seedConfig()
+  const authorId = uid()
+  const communityId = uid()
+  const statusId = uid()
+  const clicker = uid()
+  await seedCommunity(communityId, { ownerId: uid() })
+  await seedStatus(statusId, { communityId, authorId })
+  await seedMembership(communityId, authorId)
+  await fundWallet(authorId, 100)
+  let clock = Date.now()
+  const service = buildService({ now: () => clock })
+  const result = await service.createPromotion(authorId, {
+    targetType: 'post',
+    targetId: statusId,
+    packageId: 'post_boost_3d',
+    requestId: requestId(),
+  })
+
+  const eventArgs = {
+    targetType: 'post',
+    targetId: statusId,
+    promotionId: result.promotionId,
+    type: 'click',
+  }
+  const first = await service.recordPromotionEvent(clicker, eventArgs)
+  assert.equal(first.recorded, true)
+  const second = await service.recordPromotionEvent(clicker, eventArgs)
+  assert.equal(second.recorded, false, 'a rapid repeat click from the same user must be a silent no-op')
+  assert.equal((await getPromotion(result.promotionId)).clickCount, 1)
+
+  // Passado o suficiente da janela, o próximo clique do MESMO usuário volta a contar.
+  clock += 11 * 1000
+  const third = await service.recordPromotionEvent(clicker, eventArgs)
+  assert.equal(third.recorded, true)
+  assert.equal((await getPromotion(result.promotionId)).clickCount, 2)
+})
+
 test('recordPromotionEvent numa promoção inexistente falha com not-found', async () => {
   const service = buildService()
   await assert.rejects(
