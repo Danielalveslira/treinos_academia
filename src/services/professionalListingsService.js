@@ -26,23 +26,14 @@ export function createProfessionalListing(
 export function saveProfessionalListing(listingId, draft) {
   return call('saveProfessionalListingDraft', { listingId, draft })
 }
-export function submitProfessionalListing(listingId, legalAcceptance) {
-  return call('submitProfessionalListing', { listingId, ...legalAcceptance })
-}
-export function reviewProfessionalListing(listingId, decision, reason = '') {
-  return call('reviewProfessionalListing', { listingId, decision, reason })
+export function publishProfessionalListing(listingId, legalAcceptance) {
+  return call('publishProfessionalListing', { listingId, ...legalAcceptance })
 }
 export function unpublishProfessionalListing(listingId) {
   return call('unpublishProfessionalListing', { listingId })
 }
 export function suspendProfessionalListing(listingId, reason) {
   return call('suspendProfessionalListing', { listingId, reason })
-}
-export function reportProfessionalListing(listingId, message) {
-  return call('reportProfessionalListing', { listingId, message })
-}
-export function resolveProfessionalListingReport(reportId, action, reason = '') {
-  return call('resolveProfessionalListingReport', { reportId, action, reason })
 }
 export function deleteProfessionalListing(listingId) {
   return call('deleteProfessionalListing', { listingId })
@@ -85,43 +76,23 @@ export async function getPublishedProfessionalListing(listingId) {
   return snapshot.exists() ? toItem(snapshot) : null
 }
 
-export async function listPublishedProfessionalListings(filters, cursor = null) {
+export async function listPublishedProfessionalListings(
+  filters,
+  cursor = null,
+  pageSize = LISTINGS_PAGE_SIZE
+) {
   const constraints = [
     where('publicationStatus', '==', 'published'),
     where('filterKeys', 'array-contains', listingFilterKey(filters)),
     orderBy('sortKey'),
   ]
   if (cursor) constraints.push(startAfter(cursor))
-  constraints.push(limit(LISTINGS_PAGE_SIZE))
+  constraints.push(limit(pageSize))
   const snapshot = await getDocs(
     query(collection(db, 'publishedProfessionalListings'), ...constraints)
   )
   return {
     items: snapshot.docs.map(toItem),
-    nextCursor: snapshot.size === LISTINGS_PAGE_SIZE ? snapshot.docs.at(-1) : null,
+    nextCursor: snapshot.size === pageSize ? snapshot.docs.at(-1) : null,
   }
-}
-
-export async function listPendingProfessionalListings() {
-  const snapshot = await getDocs(
-    query(
-      collection(db, 'professionalListingDrafts'),
-      where('reviewState', '==', 'pending_review'),
-      orderBy('submittedAt'),
-      limit(50)
-    )
-  )
-  return snapshot.docs.map(toItem)
-}
-
-export async function listOpenShowcaseReports() {
-  const snapshot = await getDocs(
-    query(
-      collection(db, 'showcaseReports'),
-      where('state', '==', 'open'),
-      orderBy('createdAt'),
-      limit(50)
-    )
-  )
-  return snapshot.docs.map(toItem)
 }

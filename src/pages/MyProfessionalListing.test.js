@@ -48,13 +48,20 @@ before(async () => {
             export const createProfessionalListing = () => {}
             export const deleteProfessionalListing = () => {}
             export const saveProfessionalListing = () => {}
-            export const submitProfessionalListing = () => {}
+            export const publishProfessionalListing = () => {}
             export const unpublishProfessionalListing = () => {}
           `,
             ],
             [
               '../components/ProfessionalListingCard',
               'export const ProfessionalListingCard = () => null',
+            ],
+            [
+              'react-router-dom',
+              `
+            import { createElement } from 'react'
+            export const Link = ({ children, to }) => createElement('a', { href: to }, children)
+          `,
             ],
             [
               '@primer/react',
@@ -102,6 +109,12 @@ async function renderWith(services) {
   act(() => {
     view = mount()
   })
+  // Dois ciclos: o primeiro resolve as promises (getMyProfessionalListing etc.) e
+  // aplica o setRecord/setForm que elas disparam; o segundo garante que esse
+  // commit (e qualquer microtask que ele por sua vez agende) já foi refletido antes
+  // de qualquer teste inspecionar a árvore.
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  act(() => {})
   await new Promise((resolve) => setTimeout(resolve, 0))
   act(() => {})
   return {
@@ -139,6 +152,39 @@ test('an acceptance lookup failure still opens the editor with a clear warning',
     const html = JSON.stringify(page.view.toJSON())
     assert.match(html, /Crie uma página pública/)
     assert.match(html, /Não foi possível verificar seu aceite da Vitrine/)
+  } finally {
+    page.close()
+  }
+})
+
+test('a complete draft renders a direct "Publicar" action, never the old review-queue wording', async () => {
+  const page = await renderWith({
+    getMyProfessionalListing: async () => ({
+      id: 'listing-1',
+      listing: { kind: 'professional', lifecycleState: 'draft', ownerId: 'owner-1' },
+      draft: {
+        kind: 'professional',
+        version: 1,
+        reviewState: 'draft',
+        displayName: 'Ana Treinadora',
+        categoryKey: 'personal_trainer',
+        modalityKeys: ['musculacao'],
+        specialties: [],
+        bio: 'Acompanhamento individual.',
+        city: 'São Paulo',
+        uf: 'SP',
+        serviceMode: 'in_person',
+        contacts: {},
+        useProfileAvatar: false,
+      },
+      published: null,
+    }),
+  })
+  try {
+    const html = JSON.stringify(page.view.toJSON())
+    assert.match(html, /Publicar/)
+    assert.doesNotMatch(html, /Enviar para revisão/)
+    assert.doesNotMatch(html, /em revisão/i)
   } finally {
     page.close()
   }
