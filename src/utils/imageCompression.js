@@ -36,7 +36,12 @@ function encode(canvas, type, quality) {
 // Compressão real (decodificação, canvas, toBlob) só existe no navegador — fica de
 // fora dos testes unitários de propósito. fitDimensions/validateImageFile acima
 // cobrem a parte que dá pra testar sem um DOM completo.
-export async function compressImage(file) {
+//
+// maxDimension é ajustável por chamador: o teto de 1600px (status/vitrine, onde a
+// imagem pode ocupar boa parte da largura do card) desperdiça banda e tempo de
+// decodificação num avatar, que nunca é exibido acima de ~112px em nenhuma tela do
+// app (ver AVATAR_MAX_DIMENSION em profileAvatarService.js).
+export async function compressImage(file, { maxDimension = MAX_DIMENSION } = {}) {
   const invalid = validateImageFile(file)
   if (invalid) throw new UnsupportedImageError(invalid)
 
@@ -48,7 +53,7 @@ export async function compressImage(file) {
   }
 
   try {
-    const { width, height } = fitDimensions(bitmap.width, bitmap.height)
+    const { width, height } = fitDimensions(bitmap.width, bitmap.height, maxDimension)
     const canvas = document.createElement('canvas')
     canvas.width = width
     canvas.height = height

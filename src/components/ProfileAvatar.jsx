@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PersonIcon } from '@primer/octicons-react'
 import { loadAvatarBytes } from '../services/profileAvatarService'
-import { getCachedPhotoUrl, setCachedPhotoUrl } from '../utils/photoBlobCache'
+import { getCachedPhotoUrl, loadPhotoOnce } from '../utils/photoBlobCache'
 
 export function ProfileAvatar({ path, name = '', className = '', professional = true }) {
   const [image, setImage] = useState(() => ({ path, url: path ? getCachedPhotoUrl(path) || '' : '' }))
@@ -20,14 +20,23 @@ export function ProfileAvatar({ path, name = '', className = '', professional = 
         active = false
       }
     }
-    loadAvatarBytes(path)
-      .then((bytes) => {
-        if (!active) return
-        const objectUrl = URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }))
-        setCachedPhotoUrl(path, objectUrl)
-        setImage({ path, url: objectUrl })
+    // loadPhotoOnce agrupa montagens concorrentes do MESMO path (ex.: o mesmo autor
+    // aparecendo em "Destaques" e no feed principal ao mesmo tempo) numa única
+    // requisição ao Storage, em vez de uma por card.
+    loadPhotoOnce(path, () =>
+      loadAvatarBytes(path).then(
+        (bytes) => URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }))
+      )
+    )
+      .then((url) => active && setImage({ path, url }))
+      .catch((error) => {
+        // Sem isto, uma foto autorizada e aprovada que falha ao carregar (Rules,
+        // rede, path inconsistente) parece indistinguível de "sem foto elegível" --
+        // mesmo fallback visual, zero rastro pra investigar. Todo outro catch deste
+        // tipo no app já loga (ver StatusCard.jsx, EconomyVoteBar.jsx etc.).
+        console.error('[ProfileAvatar] loadAvatarBytes:', path, error)
+        if (active) setImage({ path, url: '' })
       })
-      .catch(() => active && setImage({ path, url: '' }))
     return () => {
       active = false
     }

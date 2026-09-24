@@ -7,6 +7,11 @@
 // referenciando eles.
 const MAX_ENTRIES = 30
 const cache = new Map()
+// Downloads em andamento, por path -- nunca guarda a Promise no `cache` acima (que só
+// guarda URLs já resolvidas): dois cards montando com o mesmo path ao mesmo tempo (ex.:
+// o mesmo autor aparecendo em "Destaques" e no feed principal) esperam esta ÚNICA
+// requisição em vez de cada um abrir a sua contra o Storage.
+const inFlight = new Map()
 
 export function getCachedPhotoUrl(photoPath) {
   return cache.get(photoPath)
@@ -20,6 +25,26 @@ export function setCachedPhotoUrl(photoPath, url) {
     URL.revokeObjectURL(cache.get(oldestKey))
     cache.delete(oldestKey)
   }
+}
+
+// `fetcher` só roda quando nem o cache resolvido nem um download já em andamento
+// cobrem este path. Rejeições não são cacheadas -- a próxima montagem tenta de novo.
+export function loadPhotoOnce(photoPath, fetcher) {
+  const cached = getCachedPhotoUrl(photoPath)
+  if (cached) return Promise.resolve(cached)
+  const pending = inFlight.get(photoPath)
+  if (pending) return pending
+  const promise = Promise.resolve()
+    .then(fetcher)
+    .then((url) => {
+      setCachedPhotoUrl(photoPath, url)
+      return url
+    })
+    .finally(() => {
+      if (inFlight.get(photoPath) === promise) inFlight.delete(photoPath)
+    })
+  inFlight.set(photoPath, promise)
+  return promise
 }
 
 // AUD-018: nada chamava isto no logout/troca de usuário -- os blobs (e as object URLs

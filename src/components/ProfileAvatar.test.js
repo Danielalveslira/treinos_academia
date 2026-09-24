@@ -52,7 +52,11 @@ before(async () => {
             contents: `export const loadAvatarBytes = async () => new Uint8Array([1])`,
           }))
           context.onLoad({ filter: /^cache$/, namespace: 'stub' }, () => ({
-            contents: `export const getCachedPhotoUrl = (path) => path === 'old.webp' ? 'blob:old' : null; export const setCachedPhotoUrl = () => {}`,
+            contents: `
+              export const getCachedPhotoUrl = (path) => path === 'old.webp' ? 'blob:old' : null;
+              export const setCachedPhotoUrl = () => {};
+              export const loadPhotoOnce = (path, fetcher) => fetcher();
+            `,
           }))
         },
       },
