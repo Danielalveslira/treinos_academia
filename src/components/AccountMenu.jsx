@@ -65,12 +65,6 @@ export function AccountMenu({ onLogout, signingOut }) {
               Minha vitrine
             </ActionList.LinkItem>
           )}
-          <ActionList.LinkItem as={Link} to="/profissionais" onClick={() => setOpen(false)}>
-            <ActionList.LeadingVisual>
-              <BriefcaseIcon />
-            </ActionList.LeadingVisual>
-            Explorar profissionais
-          </ActionList.LinkItem>
           <ActionList.LinkItem as={Link} to="/evocash" replace onClick={() => setOpen(false)}>
             <ActionList.LeadingVisual>
               <CreditCardIcon />
@@ -90,17 +84,6 @@ export function AccountMenu({ onLogout, signingOut }) {
           </ActionList.LinkItem>
           {isSuperAdmin && (
             <ActionList.Group title="Administração">
-              <ActionList.LinkItem
-                as={Link}
-                to="/admin/vitrines"
-                replace
-                onClick={() => setOpen(false)}
-              >
-                <ActionList.LeadingVisual>
-                  <BriefcaseIcon />
-                </ActionList.LeadingVisual>
-                Vitrines profissionais
-              </ActionList.LinkItem>
               <ActionList.LinkItem
                 as={Link}
                 to="/admin/comunidades"

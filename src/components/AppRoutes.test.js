@@ -154,7 +154,6 @@ test('unrelated protected routes do not mount the exercise data provider', () =>
     // ver AdminCashPurchases.jsx) -- /admin/pagamentos nunca existiu como rota real.
     '/admin/compras-evocash?tab=pix',
     '/minha-vitrine',
-    '/admin/vitrines',
   ]) {
     assert.equal(render(path).providerMounts, 0, path)
   }
@@ -166,5 +165,4 @@ test('professional directory and terms are public while published management req
   assert.equal(render('/termos-publicacao-vitrine').protectedMounts, 0)
   assert.equal(render('/minha-vitrine').protectedMounts, 1)
   assert.equal(render('/minha-vitrine').html.includes('pÃ¡gina'), false)
-  assert.equal(render('/admin/vitrines').protectedMounts, 1)
 })
