@@ -39,29 +39,44 @@ export function createCommunityModerationService({ db, FieldValue, HttpsError, i
     }
     const { isSuperAdminCaller } = await requireSuperAdminOrCommunityOwner(adminId, communityId)
     const ref = db.doc(`communityRestrictions/${communityId}_${targetUserId}`)
+    // A checagem de decisionId e a escrita/exclusão em si precisam do MESMO snapshot --
+    // lidas fora de uma transação, uma decisão formal (decideSupportRequest) podia ser
+    // gravada entre a leitura e a escrita/exclusão daqui, sendo silenciosamente
+    // sobrescrita (banimento) ou apagada (desbanimento) mesmo com a proteção abaixo.
     if (banned) {
       const target = await db.doc(`users/${targetUserId}`).get()
       if (isProtectedRole(target.data()?.role)) {
         throw new HttpsError('failed-precondition', 'Não é possível banir um administrador.')
       }
-      await ref.set({
-        userId: targetUserId,
-        communityId,
-        bannedBy: adminId,
-        reason: reason.trim(),
-        createdAt: FieldValue.serverTimestamp(),
-      })
-    } else {
-      if (!isSuperAdminCaller) {
-        const existing = await ref.get()
-        if (existing.exists && existing.data().decisionId) {
+      await db.runTransaction(async (tx) => {
+        const existing = await tx.get(ref)
+        if (!isSuperAdminCaller && existing.exists && existing.data().decisionId) {
           throw new HttpsError(
             'permission-denied',
             'Este banimento foi aplicado pela moderação global e só pode ser revisto por um administrador.'
           )
         }
-      }
-      await ref.delete()
+        tx.set(ref, {
+          userId: targetUserId,
+          communityId,
+          bannedBy: adminId,
+          reason: reason.trim(),
+          createdAt: FieldValue.serverTimestamp(),
+        })
+      })
+    } else {
+      await db.runTransaction(async (tx) => {
+        if (!isSuperAdminCaller) {
+          const existing = await tx.get(ref)
+          if (existing.exists && existing.data().decisionId) {
+            throw new HttpsError(
+              'permission-denied',
+              'Este banimento foi aplicado pela moderação global e só pode ser revisto por um administrador.'
+            )
+          }
+        }
+        tx.delete(ref)
+      })
     }
     return { communityId, targetUserId, banned }
   }

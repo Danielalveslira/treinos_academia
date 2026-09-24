@@ -4,6 +4,7 @@ import { Link as RouterLink, useNavigate, Navigate } from 'react-router-dom'
 import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { loginUser } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
+import { consumeLogoutReason } from '../utils/logoutReason'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Login() {
@@ -13,6 +14,9 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Lazy: lê e já limpa na primeira renderização -- uma sessão encerrada por
+  // handlePossibleGhostSession (ver AuthContext.jsx) cai direto aqui.
+  const [sessionNotice] = useState(consumeLogoutReason)
 
   if (!loading && user) return <Navigate to="/" replace />
 
@@ -49,6 +53,11 @@ export default function Login() {
     >
       <form onSubmit={handleSubmit} className="public-form">
         <Stack gap="normal">
+          {sessionNotice && !error && (
+            <Flash role="status" variant="warning">
+              {sessionNotice}
+            </Flash>
+          )}
           {error && (
             <Flash role="alert" variant="danger">
               {error}

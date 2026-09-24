@@ -1,10 +1,11 @@
 import { createContext, useEffect, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, onSnapshot } from 'firebase/firestore'
+import { doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { auth, db } from '../firebase/config'
 import { ensureUserProfile, updateUserProfile } from '../services/usersService'
 import { logoutUser } from '../services/authService'
 import { isAccountGoneError } from '../utils/authErrors'
+import { setLogoutReason } from '../utils/logoutReason'
 import { clearPageCache } from '../utils/pageCache'
 import { clearPhotoCache } from '../utils/photoBlobCache'
 import { getLegalAccess } from '../services/legalService'
@@ -33,30 +34,50 @@ export function AuthProvider({ children }) {
     let revision = 0
     let unsubscribeProfile = null
 
-    // Perfil e regras negam a própria leitura (permission-denied) só acontece, na
-    // prática, quando a conta foi excluída/desabilitada por um admin em outra sessão
-    // (ver deletionJobs/account_{uid}, a "lápide" permanente em firestore.rules que
-    // bloqueia esse uid pra sempre) — nunca em uso normal, já que as regras sempre
-    // permitem ler o próprio perfil. getIdToken(true) confirma isso do jeito que o
-    // próprio Firebase recomenda: se o token não renovar, a conta é mesmo inexistente/
-    // desabilitada no servidor, e a sessão local precisa encerrar — sem isso, o app
-    // ficava "logado" (token em cache ainda parece válido) só descobrindo aos poucos,
-    // tela por tela, que cada leitura é negada.
+    // Um permission-denied na leitura do próprio perfil só acontece, na prática, quando
+    // deletionJobs/account_{uid} existe (a "lápide" permanente em firestore.rules que
+    // bloqueia esse uid pra sempre, criada no INSTANTE em que a exclusão é solicitada) —
+    // nunca em uso normal. Mas essa trava liga antes da conta do Firebase Auth em si ser
+    // desativada (isso só acontece num estágio posterior do job de exclusão, minutos
+    // depois): getIdToken(true) sozinho não basta, porque o token continua renovando
+    // normalmente enquanto a conta do Auth ainda não foi tocada, mesmo com a exclusão já
+    // bloqueando tudo no Firestore. Por isso, depois de renovar, refaz a MESMA leitura
+    // negada com o token novo — só um permission-denied que sobrevive à renovação prova
+    // que a trava (não só o token) é o problema, e aí sim a sessão local precisa encerrar.
     async function handlePossibleGhostSession(firebaseUser, error, forRevision) {
       if (error?.code !== 'permission-denied') return
       setVerifyingSession(true)
       try {
-        await firebaseUser.getIdToken(true)
-        // Token renovou normalmente — não era uma conta excluída, foi outra causa
-        // (ex.: uma restrição temporária). Não desloga; deixa a tela atual lidar com
-        // esse erro do jeito que já faz hoje (mensagem genérica, botão de tentar de novo).
-      } catch (refreshError) {
-        if (isAccountGoneError(refreshError)) {
-          console.warn(
-            '[Auth] conta não existe mais no servidor, encerrando sessão local:',
-            refreshError
-          )
-          if (active && revision === forRevision) await logoutUser().catch(() => {})
+        try {
+          await firebaseUser.getIdToken(true)
+        } catch (refreshError) {
+          if (isAccountGoneError(refreshError)) {
+            console.warn(
+              '[Auth] conta não existe mais no Auth, encerrando sessão local:',
+              refreshError
+            )
+            if (active && revision === forRevision) {
+              setLogoutReason('account-deleted')
+              await logoutUser().catch(() => {})
+            }
+          }
+          return
+        }
+        try {
+          await getDoc(doc(db, 'users', firebaseUser.uid))
+          // Releu com sucesso já com o token novo — não era uma sessão fantasma, foi
+          // outra causa transitória. Não desloga; deixa a tela atual lidar com esse erro
+          // do jeito que já faz hoje (mensagem genérica, botão de tentar de novo).
+        } catch (retryError) {
+          if (retryError?.code === 'permission-denied') {
+            console.warn(
+              '[Auth] perfil segue inacessível mesmo com token renovado -- exclusão em andamento, encerrando sessão local.'
+            )
+            if (active && revision === forRevision) {
+              setLogoutReason('account-deleted')
+              await logoutUser().catch(() => {})
+            }
+          }
         }
       } finally {
         if (active && revision === forRevision) setVerifyingSession(false)

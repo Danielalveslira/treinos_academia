@@ -25,6 +25,18 @@ const REASON_ERRORS = {
   insufficient_cash: ['failed-precondition', 'Você não tem EvoCash suficiente.'],
 }
 
+// Auditoria de backend: recordPromotionEvent não tinha nenhum limite de frequência --
+// contador é só informativo (nunca afeta preço/ranking, ver comentário mais abaixo),
+// mas nada impedia uma conta autenticada chamar a Function em loop apertado contra
+// qualquer promotionId/targetId (só IDs opacos, não segredos) e gerar escrita
+// ilimitada às custas do projeto. Uma janela curta por (uid, promoção) já fecha isso
+// sem incomodar o uso real (um clique de verdade nunca se repete em menos de 10s no
+// MESMO card).
+const PROMOTION_EVENT_WINDOW_MS = 10 * 1000
+// Retenção do próprio registro de throttle (não a janela de limite acima) -- ver
+// purgeExpiredPromotionEventLimits em index.js.
+const PROMOTION_EVENT_LIMIT_TTL_MS = 24 * 60 * 60 * 1000
+
 function targetCollection(targetType) {
   return targetType === 'post' ? 'statuses' : 'communities'
 }
@@ -249,18 +261,42 @@ export function createPromotionService({ db, FieldValue, Timestamp, wallet, ledg
     if (type !== 'click') throw new HttpsError('invalid-argument', 'Tipo de evento inválido.')
 
     const ref = promotionRef(promotionId)
-    const snapshot = await ref.get()
-    if (!snapshot.exists) throw new HttpsError('not-found', 'Promoção não encontrada.')
-    const promotion = snapshot.data()
-    if (!promotionMatchesTarget(promotion, { targetType, targetId })) {
-      throw new HttpsError('failed-precondition', 'Esta promoção não corresponde a este conteúdo.')
-    }
-    if (!isPromotionCurrentlyActive({ status: promotion.status, expiresAtMs: promotion.expiresAt?.toMillis() }, now())) {
-      throw new HttpsError('failed-precondition', 'Esta promoção não está mais ativa.')
-    }
-
-    await ref.update({ clickCount: FieldValue.increment(1) })
-    return { recorded: true }
+    const throttleRef = db.doc(`promotionEventLimits/${uid}_${promotionId}`)
+    return db.runTransaction(async (tx) => {
+      const [snapshot, throttle] = await tx.getAll(ref, throttleRef)
+      if (!snapshot.exists) throw new HttpsError('not-found', 'Promoção não encontrada.')
+      const promotion = snapshot.data()
+      if (!promotionMatchesTarget(promotion, { targetType, targetId })) {
+        throw new HttpsError('failed-precondition', 'Esta promoção não corresponde a este conteúdo.')
+      }
+      if (
+        !isPromotionCurrentlyActive(
+          { status: promotion.status, expiresAtMs: promotion.expiresAt?.toMillis() },
+          now()
+        )
+      ) {
+        throw new HttpsError('failed-precondition', 'Esta promoção não está mais ativa.')
+      }
+      if (throttle.exists && throttle.data().lastClickAt?.toMillis() > now() - PROMOTION_EVENT_WINDOW_MS) {
+        // Silencioso de propósito: um clique real repetido no mesmo card não é um
+        // erro do usuário, e o contador é só informativo -- nunca vale travar a
+        // navegação por causa dele.
+        return { recorded: false }
+      }
+      tx.update(ref, { clickCount: FieldValue.increment(1) })
+      // expireAt: limpo por purgeExpiredPromotionEventLimits (index.js), mesmo padrão
+      // de purgeExpiredPhotos/purgeExpiredModerationEvidence -- folga generosa e
+      // deliberadamente desacoplada de PROMOTION_EVENT_WINDOW_MS (10s): o prazo aqui é
+      // só para não deixar o documento vivo para sempre (inclusive depois que a conta
+      // que clicou é excluída, já que este registro não carrega mais nenhum vínculo
+      // com ela além do próprio uid no ID do documento), nunca para reabrir a janela
+      // de limite cedo demais.
+      tx.set(throttleRef, {
+        lastClickAt: Timestamp.fromMillis(now()),
+        expireAt: Timestamp.fromMillis(now() + PROMOTION_EVENT_LIMIT_TTL_MS),
+      })
+      return { recorded: true }
+    })
   }
 
   // Chamado pelos gatilhos de exclusão de statuses/communities (index.js) -- nunca

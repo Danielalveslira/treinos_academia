@@ -14,13 +14,39 @@ export function statusPhotoExtra(data) {
 
 // Durable deletion jobs double as write fences. Completed account jobs remain as
 // tombstones so an old authentication token cannot recreate the deleted profile.
+// Sem um orçamento de tempo, step() processava UMA página (100 docs) de UM estágio por
+// chamada e devolvia o controle -- com o agendador rodando a cada minuto e até 10 jobs
+// por execução, uma conta com milhares de registros (status, votos, participações)
+// podia levar horas para terminar, sempre reprocessando a fila inteira a cada volta.
+// Usado como teto PADRÃO quando step() é chamado sem um deadline explícito (ex.: um
+// teste, ou uma chamada avulsa) -- processDeletionJobs em index.js passa o seu próprio,
+// derivado do timeoutSeconds da função agendada.
+const DEFAULT_STEP_BUDGET_MS = 4 * 60 * 1000
+// Cobre o deadline inteiro (+ folga) -- sem isso, uma lease de duração fixa (2min)
+// menor que o orçamento de processamento expirava NO MEIO de uma chamada ainda em
+// andamento, permitindo que outra execução do agendador (elas podem se sobrepor; a
+// lease é o que já as torna seguras de rodar em paralelo) reivindicasse o mesmo job.
+const LEASE_BUFFER_MS = 30 * 1000
+
 export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp, HttpsError }) {
   const jobRef = (kind, id) => db.doc(`deletionJobs/${kind}_${id}`)
   const batchSize = 100
 
+  // Chamada tanto de queue() (síncrona, assim que a exclusão é solicitada) quanto do
+  // estágio 0 de step() (rede de segurança idempotente, caso a chamada em queue()
+  // falhe) -- desativar duas vezes não é erro, o Admin SDK trata como no-op.
+  async function disableAuthAccount(uid) {
+    try {
+      await auth.updateUser(uid, { disabled: true })
+      await auth.revokeRefreshTokens(uid)
+    } catch (error) {
+      if (error.code !== 'auth/user-not-found') throw error
+    }
+  }
+
   async function queue(kind, id, adminId) {
     const job = jobRef(kind, id)
-    await db.runTransaction(async (tx) => {
+    const created = await db.runTransaction(async (tx) => {
       const target = db.doc(`${kind === 'account' ? 'users' : 'communities'}/${id}`)
       const [admin, previous, entity, migration] = await tx.getAll(
         db.doc(`users/${adminId}`),
@@ -39,7 +65,7 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
         throw new HttpsError('failed-precondition', 'Você não pode excluir a própria conta.')
       if (entity.data()?.role === 'superadmin')
         throw new HttpsError('failed-precondition', 'Não é possível excluir um administrador.')
-      if (previous.exists) return
+      if (previous.exists) return false
       if (!entity.exists && kind !== 'account')
         throw new HttpsError('not-found', 'Registro não encontrado.')
       if (kind === 'account' && migration.data()?.interactionsVersion !== 1) {
@@ -64,7 +90,24 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
             ? { accountStatus: 'deleting' }
             : { isActive: false, deletionStatus: 'pending' }
         )
+      return true
     })
+    // Síncrono, antes de devolver a resposta ao chamador -- sem esperar o próximo
+    // tick do agendador (até ~1 minuto, mais se a fila estiver ocupada) para que a
+    // conta pare de conseguir logar. A trava do Firestore (deletionJobs/account_{uid},
+    // já em vigor desde a transação acima) já barra qualquer sessão existente
+    // imediatamente; isto fecha a OUTRA metade -- impedir um login NOVO. Só na
+    // primeira vez (created:true) -- uma chamada repetida (job já existente, replay
+    // idempotente) não precisa desativar de novo uma conta que step() já deve ter
+    // desativado ou até excluído. Best-effort de propósito: se falhar aqui (rede
+    // etc.), o estágio 0 de step() tenta de novo no próximo tick, então uma falha
+    // nunca deveria travar a resposta ao admin nem deixar a exclusão sem essa
+    // proteção para sempre.
+    if (created && kind === 'account') {
+      await disableAuthAccount(id).catch((error) => {
+        console.error('[deletion] disableAuthAccount (queue):', id, error.code || error.message)
+      })
+    }
     return { pending: true, id: job.id }
   }
 
@@ -147,14 +190,17 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
     return false
   }
 
-  async function step(ref) {
+  async function step(ref, { deadline = Date.now() + DEFAULT_STEP_BUDGET_MS } = {}) {
     const token = db.collection('deletionJobs').doc().id
     const job = await db.runTransaction(async (tx) => {
       const snapshot = await tx.get(ref)
       const data = snapshot.data()
       if (!data || data.state === 'complete' || data.leaseUntil?.toMillis() > Date.now())
         return null
-      tx.update(ref, { leaseToken: token, leaseUntil: Timestamp.fromMillis(Date.now() + 120000) })
+      tx.update(ref, {
+        leaseToken: token,
+        leaseUntil: Timestamp.fromMillis(deadline + LEASE_BUFFER_MS),
+      })
       return data
     })
     if (!job) return
@@ -205,12 +251,7 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
         // conta não acelera nem adia esse prazo.
         tasks = [
           async () => {
-            try {
-              await auth.updateUser(uid, { disabled: true })
-              await auth.revokeRefreshTokens(uid)
-            } catch (error) {
-              if (error.code !== 'auth/user-not-found') throw error
-            }
+            await disableAuthAccount(uid)
             return true
           },
           () => eraseQuery(db.collection('communityMembers').where('userId', '==', uid)),
@@ -299,8 +340,13 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
         }
       }
       let stage = job.stage || 0
-      // Bound each invocation to one nonempty batch, while skipping empty stages.
-      while (stage < tasks.length && (await tasks[stage]())) stage++
+      // Processa quantas páginas/estágios couberem no orçamento de tempo (deadline),
+      // não só uma página por chamada -- cada tarefa de eraseQuery/removeStatuses
+      // apaga uma página (até batchSize docs) e devolve false enquanto ainda houver
+      // mais; só avança de estágio quando a tarefa atual finalmente devolve true.
+      while (stage < tasks.length && Date.now() < deadline) {
+        if (await tasks[stage]()) stage++
+      }
       await db.runTransaction(async (tx) => {
         const current = await tx.get(ref)
         if (current.data()?.leaseToken !== token) return

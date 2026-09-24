@@ -940,22 +940,54 @@ export const onStatusCreate = onDocumentCreated(
   (event) => enforcePostRateLimit(event.data?.data()?.authorId)
 )
 
+// timeoutSeconds alto de propósito: step() agora processa páginas/estágios em loop até
+// este deadline compartilhado (não mais uma página por execução -- ver
+// DEFAULT_STEP_BUDGET_MS em deletion-service.js), então o teto real de quantos dados
+// uma volta do agendador consegue apagar é (praticamente) só o tempo disponível aqui.
+// A margem de 40s sob o timeout da função cobre o commit final de cada job + a
+// sobrecarga do próprio agendamento. Execuções concorrentes (o agendador dispara a
+// cada minuto mesmo que a anterior ainda esteja rodando) continuam seguras: a lease
+// por job em step() garante que nenhum outro tick reivindique um job já em andamento.
+const DELETION_JOBS_TIMEOUT_SECONDS = 540
 export const processDeletionJobs = onSchedule(
-  { ...options, schedule: 'every 1 minutes', timeoutSeconds: 300 },
+  { ...options, schedule: 'every 1 minutes', timeoutSeconds: DELETION_JOBS_TIMEOUT_SECONDS },
   async () => {
+    const startedAt = Date.now()
+    const deadline = startedAt + (DELETION_JOBS_TIMEOUT_SECONDS - 40) * 1000
     const jobs = await db
       .collection('deletionJobs')
       .where('state', '==', 'pending')
       .orderBy('updatedAt')
       .limit(10)
       .get()
+    let processed = 0
+    let errored = 0
+    let deadlineHit = false
     for (const job of jobs.docs) {
+      if (Date.now() >= deadline) {
+        deadlineHit = true
+        break
+      }
       try {
-        await deletions.step(job.ref)
+        await deletions.step(job.ref, { deadline })
+        processed++
       } catch (error) {
+        errored++
         console.error('Deletion job failed', job.id, error.code)
       }
     }
+    // Observabilidade mínima (mesmo padrão de settleVoteRewardsScheduled): fila
+    // (jobs.size), quantos de fato avançaram nesta execução, erros e se o próprio
+    // orçamento de tempo foi o limitante (deadlineHit:true = fila grande o bastante
+    // para valer a pena investigar, não um bug) -- tudo filtrável no Cloud Logging
+    // sem infra de métricas adicional.
+    console.log('deletion jobs', {
+      queued: jobs.size,
+      processed,
+      errored,
+      deadlineHit,
+      durationMs: Date.now() - startedAt,
+    })
   }
 )
 
@@ -1057,6 +1089,24 @@ export const purgeExpiredModerationEvidence = onSchedule(
         })
       })
     )
+  }
+)
+
+// recordPromotionEvent (economy/promotion-service.js) grava um expireAt generoso e
+// desacoplado da própria janela de limite (ver comentário lá) -- este job só executa
+// esse prazo já calculado, mesmo padrão de purgeExpiredModerationEvidence acima.
+export const purgeExpiredPromotionEventLimits = onSchedule(
+  { ...options, schedule: 'every 24 hours', timeoutSeconds: 300 },
+  async () => {
+    const expired = await db
+      .collection('promotionEventLimits')
+      .where('expireAt', '<=', Timestamp.now())
+      .limit(200)
+      .get()
+    if (expired.empty) return
+    const batch = db.batch()
+    expired.docs.forEach((item) => batch.delete(item.ref))
+    await batch.commit()
   }
 )
 

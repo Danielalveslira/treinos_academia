@@ -6,6 +6,10 @@ const MESSAGES = {
   'auth/wrong-password': 'E-mail ou senha incorretos.',
   'auth/invalid-credential': 'E-mail ou senha incorretos.',
   'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.',
+  // deletion-service.js desativa a conta no Auth assim que a exclusão é solicitada
+  // (queue(), síncrono) -- uma tentativa de login logo em seguida já bate nesse
+  // código, não em "senha incorreta".
+  'auth/user-disabled': 'Esta conta não está mais disponível.',
 }
 
 export function translateAuthError(error) {

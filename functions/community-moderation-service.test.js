@@ -239,6 +239,42 @@ test('superadmin PODE remover um community_ban aplicado pela moderação global'
   assert.equal(await getRestriction(communityId, target), null)
 })
 
+// Auditoria de backend: a mesma proteção acima existia SÓ para desbanir -- o caminho
+// de banir sobrescrevia (ref.set incondicional) qualquer restrição já existente,
+// inclusive uma decisão formal, apagando decisionId sem checagem nenhuma. Depois
+// disso, a proteção de desbanimento deixava de valer (o documento sobrescrito já não
+// tinha mais decisionId), então o owner conseguiria desbanir livremente em seguida --
+// um jeito indireto de contornar a mesma regra.
+test('owner NÃO pode sobrescrever (rebanir) um community_ban aplicado pela moderação global', async () => {
+  const service = buildService()
+  const owner = uid()
+  const target = uid()
+  await db.doc(`users/${owner}`).set({ role: 'user' })
+  await db.doc(`users/${target}`).set({ role: 'user' })
+  const communityId = await seedCommunity({ ownerId: owner })
+  await db.doc(`communityRestrictions/${communityId}_${target}`).set({
+    userId: target,
+    communityId,
+    decisionId: 'formal-decision-3',
+  })
+
+  await assert.rejects(
+    () =>
+      service.setCommunityMemberBan(owner, {
+        communityId,
+        targetUserId: target,
+        banned: true,
+        reason: 'tentativa de sobrescrever a decisão formal',
+      }),
+    (error) => error.code === 'permission-denied'
+  )
+  assert.equal(
+    (await getRestriction(communityId, target)).decisionId,
+    'formal-decision-3',
+    'a decisão formal precisa sobreviver intacta, não só continuar existindo'
+  )
+})
+
 test('owner PODE remover um banimento que ele mesmo aplicou pelo caminho leve (sem decisionId)', async () => {
   const service = buildService()
   const owner = uid()
