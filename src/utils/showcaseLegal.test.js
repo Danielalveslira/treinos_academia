@@ -30,8 +30,9 @@ test('unpublished storefront terms always block submission', () => {
 })
 
 test('published storefront terms require confirmation or a current recorded acceptance', () => {
-  const manifest = SHOWCASE_LEGAL_MANIFEST
-  assert.equal(manifest.published, true)
+  // Não depende do estado atual (publicado ou minuta) do documento real -- só do
+  // comportamento de canSubmitShowcaseListing quando published é true.
+  const manifest = { ...SHOWCASE_LEGAL_MANIFEST, published: true }
   assert.equal(canSubmitShowcaseListing({ acceptance: null, confirmed: false, manifest }), false)
   assert.equal(canSubmitShowcaseListing({ acceptance: null, confirmed: true, manifest }), true)
   assert.equal(
