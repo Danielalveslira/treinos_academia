@@ -3,6 +3,7 @@ import {
   validListingId,
   validateListingDraft,
 } from './professional-listing-core.js'
+import { isEligibleForListingCreation } from './usage-profile-core.js'
 
 const LEGAL_VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 // Trava transitória contra publicação concorrente (duplo clique, retry de rede com
@@ -54,7 +55,7 @@ export function createProfessionalListingService({
     const lockRef = db.doc(`professionalListingOwnerLocks/${uid}`)
     const proposedId = db.collection('professionalListings').doc().id
     return db.runTransaction(async (tx) => {
-      await assertWritableAccount(tx, uid)
+      const user = await assertWritableAccount(tx, uid)
       const lock = await tx.get(lockRef)
       if (lock.exists) {
         const listing = await tx.get(db.doc(`professionalListings/${lock.data().listingId}`))
@@ -62,6 +63,16 @@ export function createProfessionalListingService({
           fail('already-exists', 'Sua conta já possui uma vitrine de outro tipo.')
         }
         return { listingId: lock.data().listingId, created: false }
+      }
+      // Só barra a criação de uma vitrine NOVA -- quem já possui uma (ramo acima)
+      // continua podendo reabri-la/geri-la mesmo que o perfil de uso tenha mudado
+      // depois. Perfil de uso ausente (conta legada nunca declarou) também não é
+      // elegível: precisa declarar profissional/responsável primeiro.
+      if (!isEligibleForListingCreation(user.data().usageProfile)) {
+        fail(
+          'failed-precondition',
+          'Defina seu perfil de uso como profissional ou responsável por estabelecimento em Meu Perfil antes de criar uma vitrine.'
+        )
       }
       const now = FieldValue.serverTimestamp()
       tx.create(lockRef, {

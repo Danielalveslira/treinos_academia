@@ -75,8 +75,10 @@ const completeDraft = (kind = 'professional', overrides = {}) => ({
   ...overrides,
 })
 
+// usageProfile: 'professional' por padrão -- a maioria destes testes exerce o fluxo
+// de vitrine em si, não a elegibilidade de perfil de uso (coberta à parte, abaixo).
 async function seedUser(uid, data = {}) {
-  await db.doc(`users/${uid}`).set({ role: 'user', ...data })
+  await db.doc(`users/${uid}`).set({ role: 'user', usageProfile: 'professional', ...data })
 }
 
 async function seedShowcasePolicy(overrides = {}) {
@@ -117,6 +119,46 @@ test('concurrent and replayed creation produces exactly one listing per account'
   assert.equal(results[0].listingId, results[1].listingId)
   const listings = await db.collection('professionalListings').where('ownerId', '==', uid).get()
   assert.equal(listings.size, 1)
+})
+
+test('creating a new listing requires an eligible usage profile; owning one already is never revoked', async () => {
+  const common = unique('common')
+  const legacy = unique('legacy')
+  const establishment = unique('establishment')
+  await Promise.all([
+    seedUser(common, { usageProfile: 'common' }),
+    // Conta legada: nunca declarou -- sem a chave, não apenas com um valor vazio.
+    db.doc(`users/${legacy}`).set({ role: 'user' }),
+    seedUser(establishment, { usageProfile: 'establishment_owner' }),
+  ])
+
+  await assert.rejects(
+    service.createDraft(common, { requestId: unique('request'), kind: 'professional' }),
+    (error) => error.code === 'failed-precondition'
+  )
+  await assert.rejects(
+    service.createDraft(legacy, { requestId: unique('request'), kind: 'professional' }),
+    (error) => error.code === 'failed-precondition'
+  )
+  await assert.doesNotReject(
+    service.createDraft(establishment, { requestId: unique('request'), kind: 'professional' })
+  )
+
+  // Perder a elegibilidade depois nunca revoga o acesso a uma vitrine já existente --
+  // só uma criação NOVA é barrada.
+  const eligibleThenCommon = unique('eligible_then_common')
+  await seedUser(eligibleThenCommon)
+  const { listingId } = await service.createDraft(eligibleThenCommon, {
+    requestId: unique('request'),
+    kind: 'space',
+  })
+  await db.doc(`users/${eligibleThenCommon}`).update({ usageProfile: 'common' })
+  const replay = await service.createDraft(eligibleThenCommon, {
+    requestId: unique('request'),
+    kind: 'space',
+  })
+  assert.equal(replay.listingId, listingId)
+  assert.equal(replay.created, false)
 })
 
 test('unpublished storefront terms block publication even with a complete draft', async () => {

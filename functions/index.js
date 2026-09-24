@@ -47,6 +47,7 @@ import { validateVoteOnPost } from './economy/vote-core.js'
 import { createListPostEconomyVoters } from './economy/vote-query-service.js'
 import { createListWorkoutParticipants } from './workout-participants-service.js'
 import { createProfessionalListingService } from './professional-listing-service.js'
+import { createUsageProfileService } from './usage-profile-service.js'
 import { createProfileAvatarService } from './profile-avatar-service.js'
 import { createLegalAcceptanceService } from './legal-acceptance-service.js'
 import sharp from 'sharp'
@@ -81,6 +82,7 @@ const showcaseDigest = legalDigest(showcaseManifest, [showcaseDocument])
 const options = { region: 'southamerica-east1', maxInstances: 5 }
 const rebuildProgressDay = createProgressDailyService({ db, Timestamp, FieldValue })
 
+const usageProfiles = createUsageProfileService({ db, FieldValue, HttpsError })
 const professionalListings = createProfessionalListingService({
   db,
   bucket,
@@ -1153,3 +1155,12 @@ export const renameUsername = onCall(options, async (request) => {
   })
   return { username }
 })
+
+// Perfil de uso (cadastro obrigatório + alteração posterior) -- sempre pela Admin SDK,
+// nunca escrita direta do cliente (usageProfile não está na allowlist de users/{uid}
+// em firestore.rules), porque mudar para "comum" com uma vitrine ativa precisa da
+// checagem de negócio em usage-profile-service.js (ver LISTING_STATES_BLOCKING_COMMON),
+// algo que as Rules não conseguem expressar com uma mensagem de erro útil.
+export const setUsageProfile = onCall(options, (request) =>
+  usageProfiles.setUsageProfile(requireUser(request), request.data || {})
+)
