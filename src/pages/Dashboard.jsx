@@ -17,10 +17,9 @@ import { getProfileHeroImage } from '../constants/profileHeroImage'
 import { calculateVolume, getTrainingConsistency } from '../utils/calculations'
 import { getDailyStreak } from '../utils/streak'
 import { getDashboardGreeting } from '../utils/greeting'
-import { formatDate, buildExerciseNameMap } from '../utils/format'
+import { buildExerciseNameMap } from '../utils/format'
 import { toDate } from '../utils/date.js'
-import { formatWorkoutSets } from '../utils/workoutSets'
-import { isCardioWorkout, formatCardioSession } from '../utils/cardioSessions'
+import { isCardioWorkout } from '../utils/cardioSessions'
 import { StreakCard } from '../components/StreakCard'
 import { ErrorState } from '../components/ErrorState'
 
@@ -184,38 +183,6 @@ export default function Dashboard() {
           </RouterLink>
         </div>
       </section>
-
-      <div className="dashboard-flow">
-        <section className="recent-section" aria-labelledby="recent-title">
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">ÚLTIMA ATIVIDADE</span>
-              <Heading as="h2" id="recent-title">
-                Treinos recentes
-              </Heading>
-            </div>
-            <RouterLink to="/historico" className="text-link">
-              Ver tudo <ArrowRightIcon size={14} />
-            </RouterLink>
-          </div>
-          <div className="recent-workouts">
-            {recentWorkouts.slice(0, 4).map((workout, index) => (
-              <article className="recent-workout-row" key={workout.id}>
-                <span className="workout-index">{String(index + 1).padStart(2, '0')}</span>
-                <div>
-                  <strong>{exerciseNameById.get(workout.exerciseId) || 'Exercício'}</strong>
-                  <span>
-                    {isCardioWorkout(workout)
-                      ? formatCardioSession(workout)
-                      : formatWorkoutSets(workout)}
-                  </span>
-                </div>
-                <time>{formatDate(toDate(workout.date))}</time>
-              </article>
-            ))}
-          </div>
-        </section>
-      </div>
     </div>
   )
 }
