@@ -403,6 +403,42 @@ test('getOwnStatus reports only the two states the client needs to differentiate
   assert.equal('cashBalance' in blockedStatus, false)
 })
 
+// Validação final: getMyDeletionStatus (functions/index.js) sempre chama
+// getOwnStatus(requireUser(request)) -- a própria uid autenticada, nunca um valor lido de
+// request.data. Prova, na camada que realmente decide o resultado, que duas contas nunca
+// se enxergam: uma bloqueada por revisão financeira e outra sem job nenhum, consultadas
+// pela MESMA chamada de teste, cada uma só vê o próprio estado.
+test('getOwnStatus never leaks one account\'s state when consulted for another -- isolation between uids', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const adminId = uid()
+  const blockedUid = uid()
+  const untouchedUid = uid()
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${blockedUid}`).set({ role: 'user' })
+  await db.doc(`users/${untouchedUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+  await db
+    .doc(`users/${blockedUid}/wallet/current`)
+    .set({ coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 100 })
+
+  const { id } = await deletions.queue('account', blockedUid, adminId)
+  await deletions.step(db.doc(`deletionJobs/${id}`))
+
+  assert.deepEqual(await deletions.getOwnStatus(blockedUid), { state: 'blocked_financial_review' })
+  assert.deepEqual(
+    await deletions.getOwnStatus(untouchedUid),
+    { state: null },
+    'uma conta sem exclusão nenhuma nunca deveria herdar o estado de outra'
+  )
+})
+
 test('getOwnStatus never exposes internal states -- a completed job reads as no job at all', async () => {
   const deletions = createDeletionService({
     db,

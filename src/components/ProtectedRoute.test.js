@@ -213,6 +213,24 @@ test('a deletion blocked for financial review shows its own gate, never the gene
   assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
 })
 
+// Validação final, item 3: a tela precisa dar um caminho de verdade até o atendimento
+// (link navegável, não só a palavra no texto) e nunca citar saldo/valor -- getMyDeletionStatus
+// já nunca devolve isso, mas a própria cópia da tela reforça essa garantia por conta
+// própria. "Sair da conta" precisa existir para permitir encerrar a sessão manualmente
+// (ver DisabledAccountGate, mesmo padrão), já que aqui a sessão não é encerrada sozinha.
+test('the financial-review gate links to /atendimento, offers a manual sign-out, and never mentions a balance', () => {
+  const html = render({
+    ...baseAuth,
+    profile: null,
+    profileError: 'Não foi possível carregar seu perfil.',
+    deletionStatus: 'blocked_financial_review',
+  })
+  assert.match(html, /href="\/atendimento"/)
+  assert.match(html, /Sair da conta/)
+  assert.doesNotMatch(html, /saldo/i)
+  assert.doesNotMatch(html, /R\$/)
+})
+
 test('an active account never sees the deletion-blocked gate', () => {
   const html = render(baseAuth)
   assert.doesNotMatch(html, /Exclusão em revisão financeira/)

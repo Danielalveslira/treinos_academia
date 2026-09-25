@@ -324,6 +324,36 @@ test('getMyDeletionStatus failing falls back to the existing token-refresh-based
     assert.equal(ctx.calls.getDocCalls, 1)
     assert.equal(ctx.calls.logoutUser, 1)
     assert.equal(useAuth().deletionStatus, null)
+    assert.equal(useAuth().verifyingSession, false, 'nunca deveria ficar em loading infinito')
+  } finally {
+    ctx.close()
+  }
+})
+
+// Validação final, item 2: especificamente o caso em que o callable em si não consegue
+// AUTENTICAR a chamada (token já expirado no momento exato da consulta -- diferente do
+// teste acima, que simula uma falha de rede genérica). httpsCallable tem um timeout
+// padrão de 70s (@firebase/functions, sempre aplicado -- nunca espera para sempre), mas
+// aqui o callable rejeita de imediato com o formato real de um HttpsError('unauthenticated')
+// vindo do SDK cliente. Prova que verifyingSession nunca fica preso em true e que a app
+// ainda assim termina a sessão pela via de fallback já testada, em vez de travar
+// esperando um sinal que nunca chega.
+test('getMyDeletionStatus failing to authenticate (expired token) never leaves verifyingSession stuck true', async () => {
+  const ctx = await setup({
+    getIdToken: async () => {
+      throw Object.assign(new Error('token expired'), { code: 'auth/user-token-expired' })
+    },
+    getDocAfterRefresh: { exists: () => true, data: () => ({ role: 'user' }) },
+    getMyDeletionStatus: async () => {
+      throw Object.assign(new Error('Entre na sua conta.'), { code: 'functions/unauthenticated' })
+    },
+  })
+  try {
+    assert.equal(useAuth().verifyingSession, false)
+    await ctx.triggerProfileError(Object.assign(new Error('denied'), { code: 'permission-denied' }))
+    assert.equal(useAuth().verifyingSession, false, 'nunca deveria ficar em loading infinito')
+    assert.equal(ctx.calls.logoutUser, 1, 'ainda assim termina a sessão pelo fallback existente')
+    assert.equal(useAuth().deletionStatus, null)
   } finally {
     ctx.close()
   }
