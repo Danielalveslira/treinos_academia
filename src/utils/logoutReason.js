@@ -8,6 +8,11 @@ const KEY = 'evolutus:logout-reason'
 const REASONS = {
   'account-deleted':
     'Sua conta não está mais disponível. Se isso for um engano, entre em contato pelo suporte.',
+  // Distinto de 'account-deleted': aqui a exclusão está genuinamente em processamento
+  // (state:'pending' em deletionJobs/account_{uid}, confirmado via getMyDeletionStatus),
+  // não necessariamente concluída -- ver handlePossibleGhostSession em AuthContext.jsx.
+  'account-deleting':
+    'Sua conta está em processo de exclusão e a sessão foi encerrada. Se isso for um engano, entre em contato pelo suporte.',
 }
 
 export function setLogoutReason(reason) {

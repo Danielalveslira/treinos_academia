@@ -5,10 +5,11 @@ import { useAuth } from '../hooks/useAuth'
 import { LegalGate } from './LegalGate'
 import { EmailVerificationGate } from './EmailVerificationGate'
 import { DisabledAccountGate } from './DisabledAccountGate'
+import { AccountDeletionBlockedGate } from './AccountDeletionBlockedGate'
 import { requiresEmailVerification } from '../utils/emailVerification'
 
 export function ProtectedRoute({ children }) {
-  const { user, profile, profileError, loading, verifyingSession } = useAuth()
+  const { user, profile, profileError, loading, verifyingSession, deletionStatus } = useAuth()
 
   // Enquanto o AuthContext confirma se um permission-denied significa conta excluída
   // (getIdToken(true), ver handlePossibleGhostSession), nenhuma tela protegida deve
@@ -25,6 +26,15 @@ export function ProtectedRoute({ children }) {
     )
   }
   if (!user) return <Navigate to="/login" replace />
+  // Checado antes do erro genérico de perfil abaixo: uma exclusão bloqueada para revisão
+  // financeira NEGA a leitura do próprio perfil (mesma trava de deletionJobs/account_{uid}
+  // que uma exclusão em andamento), então profileError/!profile também seriam verdadeiros
+  // aqui -- sem este gate, o usuário veria "Não foi possível carregar sua conta" em vez
+  // do aviso específico (ver handlePossibleGhostSession em AuthContext.jsx, que só marca
+  // deletionStatus depois de confirmar o motivo por um mecanismo confiável do backend).
+  if (deletionStatus === 'blocked_financial_review') {
+    return <AccountDeletionBlockedGate />
+  }
   if (profileError || !profile) {
     return (
       <PublicLayout>
