@@ -193,3 +193,45 @@ test('a profile load failure never turns into a legal acceptance request', () =>
   assert.match(html, /Não foi possível carregar sua conta/)
   assert.doesNotMatch(html, /Antes de continuar/)
 })
+
+// Bug "conta com exclusão bloqueada": a mesma trava do Firestore que bloqueia uma
+// exclusão em andamento também nega a leitura do perfil quando o job está
+// blocked_financial_review (ver getOwnStatus em deletion-service.js), então profile é
+// null e profileError também está preenchido aqui -- sem este gate ter prioridade, a
+// tela genérica de "Não foi possível carregar sua conta" apareceria em vez do aviso
+// específico (que nunca cita saldo/motivo financeiro).
+test('a deletion blocked for financial review shows its own gate, never the generic profile-load error', () => {
+  const html = render({
+    ...baseAuth,
+    profile: null,
+    profileError: 'Não foi possível carregar seu perfil.',
+    deletionStatus: 'blocked_financial_review',
+  })
+  assert.match(html, /Exclusão em revisão financeira/)
+  assert.match(html, /atendimento/)
+  assert.doesNotMatch(html, /Não foi possível carregar sua conta/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
+// Validação final, item 3: a tela precisa dar um caminho de verdade até o atendimento
+// (link navegável, não só a palavra no texto) e nunca citar saldo/valor -- getMyDeletionStatus
+// já nunca devolve isso, mas a própria cópia da tela reforça essa garantia por conta
+// própria. "Sair da conta" precisa existir para permitir encerrar a sessão manualmente
+// (ver DisabledAccountGate, mesmo padrão), já que aqui a sessão não é encerrada sozinha.
+test('the financial-review gate links to /atendimento, offers a manual sign-out, and never mentions a balance', () => {
+  const html = render({
+    ...baseAuth,
+    profile: null,
+    profileError: 'Não foi possível carregar seu perfil.',
+    deletionStatus: 'blocked_financial_review',
+  })
+  assert.match(html, /href="\/atendimento"/)
+  assert.match(html, /Sair da conta/)
+  assert.doesNotMatch(html, /saldo/i)
+  assert.doesNotMatch(html, /R\$/)
+})
+
+test('an active account never sees the deletion-blocked gate', () => {
+  const html = render(baseAuth)
+  assert.doesNotMatch(html, /Exclusão em revisão financeira/)
+})

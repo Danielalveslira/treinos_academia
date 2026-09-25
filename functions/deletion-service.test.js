@@ -235,6 +235,57 @@ test('a spent deadline makes step() advance nothing this call; a later call with
   assert.equal((await db.doc(`communityMembers/c1_${targetUid}`).get()).exists, false)
 })
 
+// Requisito do bug "conta com exclusão bloqueada": "retomada após falha". Uma falha real
+// (não um deadline esgotado) precisa deixar o job com lastError preenchido e a lease
+// liberada, SEM desfazer nem refazer os estágios já concluídos antes dela -- uma chamada
+// seguinte, normal, retoma exatamente do estágio em que parou e termina.
+test('a task that genuinely fails sets lastError and releases the lease; a later call resumes without redoing already-finished stages', async () => {
+  let getFilesCalls = 0
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: {
+      file: () => ({ delete: async () => {} }),
+      getFiles: async () => {
+        getFilesCalls++
+        if (getFilesCalls === 1) throw Object.assign(new Error('transient storage error'), { code: 'unavailable' })
+        return [[]]
+      },
+    },
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const adminId = uid()
+  const targetUid = uid()
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${targetUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+  await db.doc(`communityMembers/c1_${targetUid}`).set({ communityId: 'c1', userId: targetUid })
+
+  const { id } = await deletions.queue('account', targetUid, adminId)
+  const ref = db.doc(`deletionJobs/${id}`)
+
+  // bucket.getFiles só é usado no estágio de apagar avatares, bem depois de
+  // communityMembers -- por isso a falha só acontece depois que esse estágio anterior já
+  // avançou de verdade nesta mesma chamada.
+  await assert.rejects(() => deletions.step(ref))
+  const failed = await ref.get()
+  assert.equal(failed.data().state, 'pending')
+  assert.ok(failed.data().lastError, 'lastError deveria estar preenchido depois da falha')
+  assert.equal(failed.data().leaseUntil.toMillis(), 0, 'a lease precisa ser liberada para uma retentativa futura')
+  assert.equal(
+    (await db.doc(`communityMembers/c1_${targetUid}`).get()).exists,
+    false,
+    'o estágio já concluído antes da falha não deveria ser desfeito nem refeito'
+  )
+
+  await runToCompletion(deletions, ref)
+  const finished = await ref.get()
+  assert.equal(finished.data().state, 'complete')
+  assert.equal(finished.data().lastError, null)
+})
+
 // Fase 4: portão financeiro -- uma compra pending (refletida no cashPurchaseLock) trava
 // a exclusão ANTES de qualquer etapa destrutiva, e o job sai do estado 'pending' (nunca
 // mais reaparece na query de processDeletionJobs, que filtra state=='pending') -- ao
@@ -315,6 +366,146 @@ test('a positive cashBalance alone (no pending purchase) blocks account deletion
     550,
     'saldo intacto -- exclusão não chegou a apagar o wallet'
   )
+})
+
+// Bug "conta com exclusão bloqueada": o cliente não tem NENHUMA regra de leitura pra
+// deletionJobs (firestore.rules), então getOwnStatus (Admin SDK) é o único jeito seguro
+// de saber o próprio estado. Prova que só os dois states que precisam de tratamento
+// dedicado no frontend saem daqui, e nunca blockReason/saldo/qualquer outro campo.
+test('getOwnStatus reports only the two states the client needs to differentiate, never blockReason or balance', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const adminId = uid()
+  const targetUid = uid()
+  assert.deepEqual(await deletions.getOwnStatus(targetUid), { state: null }, 'sem nenhum job')
+
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${targetUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+  await db
+    .doc(`users/${targetUid}/wallet/current`)
+    .set({ coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 100 })
+
+  const { id } = await deletions.queue('account', targetUid, adminId)
+  const ref = db.doc(`deletionJobs/${id}`)
+  assert.deepEqual(await deletions.getOwnStatus(targetUid), { state: 'pending' })
+
+  await deletions.step(ref)
+  const blockedStatus = await deletions.getOwnStatus(targetUid)
+  assert.deepEqual(blockedStatus, { state: 'blocked_financial_review' })
+  assert.equal('blockReason' in blockedStatus, false)
+  assert.equal('cashBalance' in blockedStatus, false)
+})
+
+// Validação final: getMyDeletionStatus (functions/index.js) sempre chama
+// getOwnStatus(requireUser(request)) -- a própria uid autenticada, nunca um valor lido de
+// request.data. Prova, na camada que realmente decide o resultado, que duas contas nunca
+// se enxergam: uma bloqueada por revisão financeira e outra sem job nenhum, consultadas
+// pela MESMA chamada de teste, cada uma só vê o próprio estado.
+test('getOwnStatus never leaks one account\'s state when consulted for another -- isolation between uids', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const adminId = uid()
+  const blockedUid = uid()
+  const untouchedUid = uid()
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${blockedUid}`).set({ role: 'user' })
+  await db.doc(`users/${untouchedUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+  await db
+    .doc(`users/${blockedUid}/wallet/current`)
+    .set({ coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 100 })
+
+  const { id } = await deletions.queue('account', blockedUid, adminId)
+  await deletions.step(db.doc(`deletionJobs/${id}`))
+
+  assert.deepEqual(await deletions.getOwnStatus(blockedUid), { state: 'blocked_financial_review' })
+  assert.deepEqual(
+    await deletions.getOwnStatus(untouchedUid),
+    { state: null },
+    'uma conta sem exclusão nenhuma nunca deveria herdar o estado de outra'
+  )
+})
+
+test('getOwnStatus never exposes internal states -- a completed job reads as no job at all', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const adminId = uid()
+  const targetUid = uid()
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${targetUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+
+  const { id } = await deletions.queue('account', targetUid, adminId)
+  await runToCompletion(deletions, db.doc(`deletionJobs/${id}`))
+
+  assert.deepEqual(await deletions.getOwnStatus(targetUid), { state: null })
+})
+
+// Fecha a lacuna: quando a chamada best-effort de queue() falha (rede etc.) e o job já
+// nasce bloqueado por revisão financeira, o estágio 0 do array de tasks (que também
+// desativaria o Auth) NUNCA chega a rodar -- o bloqueio devolve antes disso, e o job sai
+// de 'pending' pra sempre (a query de processDeletionJobs não o pega mais). Sem esta
+// rede de segurança, a conta ficaria bloqueada sem o Auth desativado até um admin
+// resolver a pendência financeira.
+test('when disableAuthAccount fails inside queue(), step() retries it as a safety net upon discovering the job blocked_financial_review', async () => {
+  const calls = { updateUser: [] }
+  const flakyAuth = {
+    async updateUser(targetUid, patch) {
+      calls.updateUser.push({ uid: targetUid, patch })
+      if (calls.updateUser.length === 1) throw new Error('transient network error')
+    },
+    async revokeRefreshTokens() {},
+    async deleteUser() {},
+  }
+  const deletions = createDeletionService({
+    db,
+    auth: flakyAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const adminId = uid()
+  const targetUid = uid()
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${targetUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+  await db
+    .doc(`users/${targetUid}/wallet/current`)
+    .set({ coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 100 })
+
+  const { id } = await deletions.queue('account', targetUid, adminId)
+  assert.equal(calls.updateUser.length, 1, 'a chamada best-effort de queue() já deveria ter falhado')
+
+  const ref = db.doc(`deletionJobs/${id}`)
+  await deletions.step(ref)
+  const job = await ref.get()
+  assert.equal(job.data().state, 'blocked_financial_review')
+  assert.equal(
+    calls.updateUser.length,
+    2,
+    'step() deveria ter tentado desativar de novo ao descobrir o bloqueio'
+  )
+  assert.deepEqual(calls.updateUser[1], { uid: targetUid, patch: { disabled: true } })
 })
 
 // Fase 3: economyRewardDaily (contador de recompensa por post/dia) precisa sumir junto

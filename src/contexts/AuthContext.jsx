@@ -4,6 +4,7 @@ import { doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { auth, db } from '../firebase/config'
 import { ensureUserProfile, updateUserProfile } from '../services/usersService'
 import { logoutUser } from '../services/authService'
+import { getMyDeletionStatus } from '../services/accountDeletionService'
 import { isAccountGoneError } from '../utils/authErrors'
 import { setLogoutReason } from '../utils/logoutReason'
 import { clearPageCache } from '../utils/pageCache'
@@ -28,6 +29,12 @@ export function AuthProvider({ children }) {
   // tela protegida (LegalGate incluso), pra nunca chegar a renderizar "Documentos para
   // continuar" pra uma conta que o servidor já sabe que não existe.
   const [verifyingSession, setVerifyingSession] = useState(false)
+  // Terceiro estado de uma exclusão solicitada, distinto de "sessão fantasma" (logout
+  // direto): bloqueada aguardando revisão financeira (ver getOwnStatus em
+  // deletion-service.js). Só um admin resolve isso -- a sessão local não é encerrada
+  // sozinha, ProtectedRoute mostra um aviso dedicado (AccountDeletionBlockedGate) em vez
+  // de deslogar sem explicação.
+  const [deletionStatus, setDeletionStatus] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -44,10 +51,42 @@ export function AuthProvider({ children }) {
     // bloqueando tudo no Firestore. Por isso, depois de renovar, refaz a MESMA leitura
     // negada com o token novo — só um permission-denied que sobrevive à renovação prova
     // que a trava (não só o token) é o problema, e aí sim a sessão local precisa encerrar.
+    //
+    // Bug "exclusão bloqueada para revisão financeira": um job pode ficar parado
+    // indefinidamente em state:'blocked_financial_review' (só um admin resolve, ver
+    // reactivateDeletionIfClear em economy/cash-purchase-service.js) sem NUNCA avançar
+    // para desativar o Auth de novo nem para excluir a conta -- mas a trava do Firestore
+    // já bloqueia a leitura do perfil desde a solicitação original. Tratar isso como
+    // "conta excluída" (deslogando com essa mensagem) seria enganoso e, pior, tratar
+    // QUALQUER permission-denied como exclusão sem confirmar por um mecanismo confiável
+    // do backend arrisca deslogar por um motivo não relacionado. getMyDeletionStatus é
+    // esse mecanismo: uma Cloud Function (Admin SDK, nunca as regras do Firestore) que
+    // devolve só o state do job da própria uid, nunca blockReason nem saldo. Consultada
+    // ANTES do getIdToken(true) abaixo porque continua funcionando mesmo depois do Auth
+    // já ter sido desativado nesta sessão (o token em cache, ainda não expirado
+    // naturalmente, já basta pra chamar uma Function -- só getIdToken(true), que força
+    // uma renovação de verdade, falha nesse caso).
     async function handlePossibleGhostSession(firebaseUser, error, forRevision) {
       if (error?.code !== 'permission-denied') return
       setVerifyingSession(true)
       try {
+        let status = null
+        try {
+          status = await getMyDeletionStatus()
+        } catch (statusError) {
+          console.warn('[Auth] getMyDeletionStatus:', statusError)
+        }
+        if (!active || revision !== forRevision) return
+        if (status?.state === 'blocked_financial_review') {
+          setDeletionStatus('blocked_financial_review')
+          return
+        }
+        if (status?.state === 'pending') {
+          console.warn('[Auth] exclusão em processamento, encerrando sessão local.')
+          setLogoutReason('account-deleting')
+          await logoutUser().catch(() => {})
+          return
+        }
         try {
           await firebaseUser.getIdToken(true)
         } catch (refreshError) {
@@ -98,6 +137,7 @@ export function AuthProvider({ children }) {
       setUser(firebaseUser)
       setProfile(null)
       setProfileError('')
+      setDeletionStatus(null)
       setLegalAccess(null)
       setLegalError('')
       setLegalLoading(Boolean(firebaseUser))
@@ -207,6 +247,7 @@ export function AuthProvider({ children }) {
         isSuperAdmin,
         loading,
         verifyingSession,
+        deletionStatus,
         refreshProfile,
         refreshLegalAccess,
         saveProfile,

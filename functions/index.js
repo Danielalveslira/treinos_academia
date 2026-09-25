@@ -854,6 +854,30 @@ export const deleteCommunityPermanently = onCall(options, async (request) => {
   return deletions.queue('community', request.data.communityId, adminId)
 })
 
+// Correção do bug "conta com exclusão bloqueada": deletionJobs não tem regra de leitura
+// nenhuma pro dono (fica só do lado do Admin SDK), então sem isto o cliente não tinha
+// como diferenciar "minha exclusão está bloqueada aguardando revisão financeira" de
+// "minha conta já foi excluída de vez" -- as duas manifestavam o mesmo permission-denied
+// na leitura do próprio perfil. Sempre a própria uid do chamador (request.auth.uid),
+// nunca um alvo enviado pelo cliente -- não é possível consultar o status de outra
+// conta. Ver getOwnStatus em deletion-service.js: só o state volta, nunca blockReason
+// nem qualquer dado financeiro.
+//
+// Continua respondendo mesmo com o Auth já desativado (disableAuthAccount, ver
+// deletion-service.js): o framework do onCall autentica com
+// admin.auth().verifyIdToken(idToken) SEM checkRevoked (node_modules/firebase-functions/
+// lib/common/providers/https.js), e sem checkRevoked essa verificação nunca consulta o
+// backend do Auth -- só confere assinatura/validade do JWT já em cache no cliente. Por
+// isso o frontend consulta esta Function ANTES de um getIdToken(true) (que força uma
+// renovação de verdade e falharia de imediato numa conta desativada): é exatamente essa
+// janela que permite diferenciar blocked_financial_review de exclusão concluída (ver
+// handlePossibleGhostSession em AuthContext.jsx). Isto só vale em produção -- o emulador
+// do Auth aplica esse mesmo check de revogação/desativação incondicionalmente
+// (firebase-admin força isEmulator nessa checagem), então não é reproduzível localmente.
+export const getMyDeletionStatus = onCall(options, async (request) => {
+  return deletions.getOwnStatus(requireUser(request))
+})
+
 const communityModeration = createCommunityModerationService({
   db,
   FieldValue,

@@ -1,5 +1,11 @@
 const MESSAGES = {
-  'auth/email-already-in-use': 'Este e-mail já está cadastrado.',
+  // Uma conta em exclusão continua reservando o e-mail no Firebase Auth até a etapa final
+  // do job (auth.deleteUser, ver deletion-service.js) -- que nunca roda enquanto o job
+  // estiver bloqueado por revisão financeira (só um admin resolve isso). Sem esta pista,
+  // quem tentasse recadastrar com o mesmo e-mail ficaria preso num "já está cadastrado"
+  // sem nenhum caminho a seguir.
+  'auth/email-already-in-use':
+    'Este e-mail já está cadastrado. Se você solicitou a exclusão desta conta e ela ainda não foi concluída, aguarde ou entre em contato pelo atendimento antes de tentar novamente.',
   'auth/invalid-email': 'E-mail inválido.',
   'auth/weak-password': 'A senha deve ter pelo menos 6 caracteres.',
   'auth/user-not-found': 'E-mail ou senha incorretos.',

@@ -22,7 +22,7 @@ export const WalletContext = createContext(null)
 // automaticamente assim que o Firestore confirma a escrita, mesmo vinda de outra sessão/
 // dispositivo/admin -- sem nenhum código extra na feature que disparou a mutação.
 export function WalletProvider({ children }) {
-  const { user } = useAuth()
+  const { user, deletionStatus } = useAuth()
   const [wallet, setWallet] = useState(EMPTY_WALLET)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -31,7 +31,13 @@ export function WalletProvider({ children }) {
     let active = true
     let revision = 0
 
-    if (!user) {
+    // Uma exclusão bloqueada para revisão financeira já nega esta leitura pela mesma
+    // trava de deletionJobs/account_{uid} (ver firestore.rules) -- sem isto, o listener
+    // seguia tentando e registrando "Wallet onSnapshot: permission-denied" indefinidamente,
+    // sem nenhuma coordenação com o aviso dedicado que AuthContext já decidiu mostrar
+    // (AccountDeletionBlockedGate, via ProtectedRoute) nem com a sessão sendo encerrada
+    // (exclusão em processamento, ver handlePossibleGhostSession).
+    if (!user || deletionStatus) {
       setWallet(EMPTY_WALLET)
       setLoading(false)
       setError(null)
@@ -84,7 +90,7 @@ export function WalletProvider({ children }) {
     // listener à toa a cada vez. Só o uid realmente muda a identidade de qual carteira
     // observar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid])
+  }, [user?.uid, deletionStatus])
 
   return <WalletContext.Provider value={{ wallet, loading, error }}>{children}</WalletContext.Provider>
 }

@@ -84,6 +84,10 @@ before(async () => {
               'export const logoutUser = (...args) => globalThis.__authMocks.logoutUser(...args)',
             ],
             [
+              '../services/accountDeletionService',
+              'export const getMyDeletionStatus = (...args) => globalThis.__authMocks.getMyDeletionStatus(...args)',
+            ],
+            [
               '../services/legalService',
               'export const getLegalAccess = async () => null',
             ],
@@ -120,14 +124,21 @@ after(async () => {
   if (directory) await rm(directory, { recursive: true, force: true })
 })
 
-function makeFirebaseUser({ getIdToken }) {
-  return { uid: 'user-1', getIdToken }
+function makeFirebaseUser({ getIdToken }, calls) {
+  return {
+    uid: 'user-1',
+    getIdToken: async (...args) => {
+      calls.getIdTokenCalls++
+      return getIdToken(...args)
+    },
+  }
 }
 
-async function setup({ getIdToken, getDocAfterRefresh, ensureUserProfile }) {
-  const calls = { logoutUser: 0, getDocCalls: 0 }
+async function setup({ getIdToken, getDocAfterRefresh, ensureUserProfile, getMyDeletionStatus }) {
+  const calls = { logoutUser: 0, getDocCalls: 0, getIdTokenCalls: 0, getMyDeletionStatusCalls: 0 }
   let authCallback
   let profileListener
+  const resolvedGetMyDeletionStatus = getMyDeletionStatus || (async () => ({ state: null }))
   globalThis.__authMocks = {
     registerAuthCallback: (cb) => {
       authCallback = cb
@@ -145,6 +156,10 @@ async function setup({ getIdToken, getDocAfterRefresh, ensureUserProfile }) {
       if (getDocAfterRefresh instanceof Error) throw getDocAfterRefresh
       return getDocAfterRefresh
     },
+    getMyDeletionStatus: async (...args) => {
+      calls.getMyDeletionStatusCalls++
+      return resolvedGetMyDeletionStatus(...args)
+    },
   }
   let view
   act(() => {
@@ -161,7 +176,7 @@ async function setup({ getIdToken, getDocAfterRefresh, ensureUserProfile }) {
       act(() => {})
     }
   }
-  const firebaseUser = makeFirebaseUser({ getIdToken })
+  const firebaseUser = makeFirebaseUser({ getIdToken }, calls)
   act(() => {
     authCallback(firebaseUser)
   })
@@ -233,6 +248,132 @@ test('a non permission-denied error on the profile listener is left alone (no re
     await ctx.triggerProfileError(Object.assign(new Error('offline'), { code: 'unavailable' }))
     assert.equal(ctx.calls.getDocCalls, 0)
     assert.equal(ctx.calls.logoutUser, 0)
+  } finally {
+    ctx.close()
+  }
+})
+
+// Bug "conta com exclusão bloqueada": um job pode ficar parado indefinidamente em
+// blocked_financial_review (só um admin resolve, ver reactivateDeletionIfClear) sem
+// nunca desativar o Auth de novo nem excluir a conta -- mas a trava do Firestore já
+// nega a leitura do perfil desde a solicitação original. getMyDeletionStatus (Cloud
+// Function, Admin SDK) é consultado ANTES de qualquer coisa, e um retorno
+// blocked_financial_review nunca desloga nem chega a tocar getIdToken/getDoc -- só
+// marca deletionStatus para ProtectedRoute mostrar o aviso dedicado.
+test('a deletion blocked for financial review sets a dedicated status, never logs out, and never falls through to getIdToken/getDoc', async () => {
+  const ctx = await setup({
+    getIdToken: async () => {
+      throw new Error('getIdToken should never be called when the backend already answered')
+    },
+    getDocAfterRefresh: { exists: () => true, data: () => ({ role: 'user' }) },
+    getMyDeletionStatus: async () => ({ state: 'blocked_financial_review' }),
+  })
+  try {
+    await ctx.triggerProfileError(Object.assign(new Error('denied'), { code: 'permission-denied' }))
+    assert.equal(ctx.calls.getMyDeletionStatusCalls, 1)
+    assert.equal(ctx.calls.getIdTokenCalls, 0)
+    assert.equal(ctx.calls.getDocCalls, 0)
+    assert.equal(ctx.calls.logoutUser, 0, 'blocked_financial_review não é resolvido pelo titular, não desloga sozinho')
+    assert.equal(useAuth().deletionStatus, 'blocked_financial_review')
+    assert.equal(useAuth().verifyingSession, false)
+  } finally {
+    ctx.close()
+  }
+})
+
+// Diferente do bloqueio acima: 'pending' é uma exclusão de fato em andamento (ou prestes
+// a rodar), sem nada a esperar -- a sessão local é encerrada, mas com uma mensagem
+// distinta de "conta excluída" (ver logoutReason.js, 'account-deleting'), nunca
+// confundida com blocked_financial_review.
+test('a deletion actively in progress (pending) ends the session immediately, without falling through to the generic ghost-session check', async () => {
+  const ctx = await setup({
+    getIdToken: async () => {
+      throw new Error('getIdToken should never be called when the backend already answered')
+    },
+    getDocAfterRefresh: { exists: () => true, data: () => ({ role: 'user' }) },
+    getMyDeletionStatus: async () => ({ state: 'pending' }),
+  })
+  try {
+    await ctx.triggerProfileError(Object.assign(new Error('denied'), { code: 'permission-denied' }))
+    assert.equal(ctx.calls.getIdTokenCalls, 0)
+    assert.equal(ctx.calls.getDocCalls, 0)
+    assert.equal(ctx.calls.logoutUser, 1)
+    assert.equal(useAuth().deletionStatus, null, 'pending não é o estado bloqueado -- não deveria acionar o gate')
+  } finally {
+    ctx.close()
+  }
+})
+
+// Requisito #4 do bug: nunca interpretar QUALQUER permission-denied como exclusão sem
+// confirmar por um mecanismo confiável -- se a própria consulta ao backend falhar (rede,
+// função fora do ar) ou não encontrar nenhum job (state: null), o comportamento cai de
+// volta para a detecção já existente e testada (getIdToken(true) + nova tentativa da
+// leitura), nunca assume silenciosamente que está tudo bem nem que a conta sumiu.
+test('getMyDeletionStatus failing falls back to the existing token-refresh-based ghost-session detection', async () => {
+  const ctx = await setup({
+    getIdToken: async () => 'fresh-token',
+    getDocAfterRefresh: Object.assign(new Error('denied'), { code: 'permission-denied' }),
+    getMyDeletionStatus: async () => {
+      throw new Error('network error')
+    },
+  })
+  try {
+    await ctx.triggerProfileError(Object.assign(new Error('denied'), { code: 'permission-denied' }))
+    assert.equal(ctx.calls.getMyDeletionStatusCalls, 1)
+    assert.equal(ctx.calls.getIdTokenCalls, 1)
+    assert.equal(ctx.calls.getDocCalls, 1)
+    assert.equal(ctx.calls.logoutUser, 1)
+    assert.equal(useAuth().deletionStatus, null)
+    assert.equal(useAuth().verifyingSession, false, 'nunca deveria ficar em loading infinito')
+  } finally {
+    ctx.close()
+  }
+})
+
+// Validação final, item 2: especificamente o caso em que o callable em si não consegue
+// AUTENTICAR a chamada (token já expirado no momento exato da consulta -- diferente do
+// teste acima, que simula uma falha de rede genérica). httpsCallable tem um timeout
+// padrão de 70s (@firebase/functions, sempre aplicado -- nunca espera para sempre), mas
+// aqui o callable rejeita de imediato com o formato real de um HttpsError('unauthenticated')
+// vindo do SDK cliente. Prova que verifyingSession nunca fica preso em true e que a app
+// ainda assim termina a sessão pela via de fallback já testada, em vez de travar
+// esperando um sinal que nunca chega.
+test('getMyDeletionStatus failing to authenticate (expired token) never leaves verifyingSession stuck true', async () => {
+  const ctx = await setup({
+    getIdToken: async () => {
+      throw Object.assign(new Error('token expired'), { code: 'auth/user-token-expired' })
+    },
+    getDocAfterRefresh: { exists: () => true, data: () => ({ role: 'user' }) },
+    getMyDeletionStatus: async () => {
+      throw Object.assign(new Error('Entre na sua conta.'), { code: 'functions/unauthenticated' })
+    },
+  })
+  try {
+    assert.equal(useAuth().verifyingSession, false)
+    await ctx.triggerProfileError(Object.assign(new Error('denied'), { code: 'permission-denied' }))
+    assert.equal(useAuth().verifyingSession, false, 'nunca deveria ficar em loading infinito')
+    assert.equal(ctx.calls.logoutUser, 1, 'ainda assim termina a sessão pelo fallback existente')
+    assert.equal(useAuth().deletionStatus, null)
+  } finally {
+    ctx.close()
+  }
+})
+
+// state: null (sem job algum) é tratado igual a uma falha do próprio getMyDeletionStatus
+// -- cai no mesmo fallback, nunca é confundido com blocked_financial_review nem pending.
+test('getMyDeletionStatus reporting no job (state: null) also falls back to the existing detection', async () => {
+  const ctx = await setup({
+    getIdToken: async () => {
+      throw Object.assign(new Error('disabled'), { code: 'auth/user-disabled' })
+    },
+    getDocAfterRefresh: { exists: () => true, data: () => ({ role: 'user' }) },
+    getMyDeletionStatus: async () => ({ state: null }),
+  })
+  try {
+    await ctx.triggerProfileError(Object.assign(new Error('denied'), { code: 'permission-denied' }))
+    assert.equal(ctx.calls.getIdTokenCalls, 1)
+    assert.equal(ctx.calls.logoutUser, 1)
+    assert.equal(useAuth().deletionStatus, null)
   } finally {
     ctx.close()
   }

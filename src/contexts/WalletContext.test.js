@@ -60,6 +60,12 @@ before(async () => {
             globalThis.__setWalletTestUser(user)
           })
         }
+
+        export function setDeletionStatus(status) {
+          act(() => {
+            globalThis.__setWalletTestDeletionStatus(status)
+          })
+        }
       `,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
@@ -110,9 +116,14 @@ before(async () => {
             contents: `
               import { useEffect, useState } from 'react'
               let currentUser = null
+              let currentDeletionStatus = null
               const listeners = new Set()
               globalThis.__setWalletTestUser = (user) => {
                 currentUser = user
+                listeners.forEach((l) => l())
+              }
+              globalThis.__setWalletTestDeletionStatus = (status) => {
+                currentDeletionStatus = status
                 listeners.forEach((l) => l())
               }
               export function useAuth() {
@@ -122,7 +133,7 @@ before(async () => {
                   listeners.add(listener)
                   return () => listeners.delete(listener)
                 }, [])
-                return { user: currentUser }
+                return { user: currentUser, deletionStatus: currentDeletionStatus }
               }
             `,
             loader: 'jsx',
@@ -158,6 +169,7 @@ beforeEach(() => {
   globalThis.__bootstrapResults = {}
   globalThis.__walletContextValue = undefined
   harness.setUser(null)
+  harness.setDeletionStatus(null)
 })
 
 function activeHandlersForPath(path) {
@@ -349,4 +361,57 @@ test('unmounting the provider unsubscribes the listener (cleanup)', async () => 
 
   harness.unmount(component)
   assert.equal(activeHandlersForPath('users/alice/wallet/current').length, 0)
+})
+
+// Bug "conta com exclusão bloqueada": antes desta correção, o listener da carteira era
+// totalmente alheio ao estado de exclusão do AuthContext -- continuava tentando e
+// registrando "Wallet onSnapshot: permission-denied" indefinidamente mesmo com a conta
+// já sinalizada como bloqueada/em exclusão em outro lugar do app.
+test('a known deletion status stops the wallet listener and clears the wallet, even with a user still set', async () => {
+  const component = harness.renderProvider()
+  harness.setUser({ uid: 'alice' })
+  await Promise.resolve()
+  harness.flushSync()
+  assert.equal(activeHandlersForPath('users/alice/wallet/current').length, 1)
+
+  harness.setDeletionStatus('blocked_financial_review')
+  assert.equal(
+    activeHandlersForPath('users/alice/wallet/current').length,
+    0,
+    'o listener deveria ser encerrado assim que a exclusão é conhecida'
+  )
+  assert.deepEqual(globalThis.__walletContextValue.wallet, {
+    coinBalance: 0,
+    lifetimeCoinsEarned: 0,
+    cashBalance: 0,
+  })
+  assert.equal(globalThis.__walletContextValue.loading, false)
+  assert.equal(globalThis.__walletContextValue.error, null)
+  harness.unmount(component)
+})
+
+test('a deletion status already known when the user appears never creates a listener at all', async () => {
+  harness.setDeletionStatus('blocked_financial_review')
+  const component = harness.renderProvider()
+  harness.setUser({ uid: 'alice' })
+  await Promise.resolve()
+  harness.flushSync()
+  assert.equal(globalThis.__snapshotSubscribeCount, 0)
+  harness.unmount(component)
+})
+
+test('clearing the deletion status (e.g. an unrelated transient flag) resubscribes normally', async () => {
+  harness.setDeletionStatus('blocked_financial_review')
+  const component = harness.renderProvider()
+  harness.setUser({ uid: 'alice' })
+  await Promise.resolve()
+  harness.flushSync()
+  assert.equal(globalThis.__snapshotSubscribeCount, 0)
+
+  harness.setDeletionStatus(null)
+  await Promise.resolve()
+  harness.flushSync()
+  const [handler] = activeHandlersForPath('users/alice/wallet/current')
+  assert.ok(handler, 'deveria voltar a assinar depois que o status de exclusão deixa de existir')
+  harness.unmount(component)
 })
