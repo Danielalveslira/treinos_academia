@@ -15,6 +15,17 @@ test('translateAuthError gives a clear, specific message for a login attempt on 
   assert.equal(translateAuthError({ code: 'auth/user-disabled' }), 'Esta conta não está mais disponível.')
 })
 
+// Bug "conta com exclusão bloqueada": o e-mail continua reservado no Firebase Auth
+// enquanto o job de exclusão não chega na etapa final (auth.deleteUser), o que nunca
+// acontece sozinho enquanto o job estiver blocked_financial_review (só um admin resolve).
+// Um recadastro com o mesmo e-mail precisa de uma saída clara, não um "já cadastrado"
+// sem próximo passo.
+test('translateAuthError points a duplicate-email registration attempt toward support, in case it belongs to a pending deletion', () => {
+  const message = translateAuthError({ code: 'auth/email-already-in-use' })
+  assert.match(message, /já está cadastrado/)
+  assert.match(message, /atendimento/)
+})
+
 test('isAccountGoneError confirms only the codes that mean the account is truly disabled/deleted', () => {
   assert.equal(isAccountGoneError({ code: 'auth/user-disabled' }), true)
   assert.equal(isAccountGoneError({ code: 'auth/user-token-expired' }), true)
