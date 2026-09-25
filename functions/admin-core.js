@@ -29,7 +29,11 @@ export function validateDeleteAccount(data) {
   return null
 }
 
-function serialize(value) {
+// Exportado para reuso por qualquer outro serviço admin que devolva Timestamps do
+// Firestore por uma callable (ver listBlockedForReview em deletion-service.js) --
+// datas nunca voltam cruas: o SDK cliente de callable não reconstrói Timestamp/GeoPoint
+// automaticamente como um snapshot de leitura faz, então toda data vira string ISO aqui.
+export function serialize(value) {
   if (value?.toDate) return value.toDate().toISOString()
   if (Array.isArray(value)) return value.map(serialize)
   if (value && typeof value === 'object') {

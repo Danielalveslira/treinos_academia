@@ -7,6 +7,7 @@
 // primeiro vence e o gatilho, chegando depois com o dado certo, encontra o job já
 // existente e desiste).
 import { financialBlockReason } from './economy/cash-purchase-core.js'
+import { serialize } from './admin-core.js'
 
 export function statusPhotoExtra(data) {
   return data?.type === 'photo' && data.photoPath ? { photoPath: data.photoPath } : {}
@@ -421,5 +422,122 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
     const state = snapshot.data()?.state
     return { state: state === 'pending' || state === 'blocked_financial_review' ? state : null }
   }
-  return { queue, step, queueDeleted, getOwnStatus }
+
+  const REVIEW_LIST_LIMIT = 50
+
+  // Painel administrativo "Exclusão de contas": deletionJobs não tem regra de leitura
+  // nenhuma (nem para o dono, ver getOwnStatus acima), então esta é a única forma de um
+  // admin enxergar quais contas estão travadas aguardando revisão financeira -- sem
+  // isto, o aviso que o usuário via (AccountDeletionBlockedGate) não correspondia a
+  // NENHUMA tela do painel, e o job ficava invisível pra sempre (listDeletionJobs, em
+  // index.js, só lista state=='pending', nunca 'blocked_financial_review'). Só jobs de
+  // conta entram aqui -- é o único kind que o portão financeiro em step() avalia.
+  // cashPurchaseLock/wallet/current são lidos e devolvidos aqui (não deixados para uma
+  // leitura separada do cliente) porque são exatamente os dois valores que
+  // financialBlockReason usa para decidir o bloqueio -- o admin vê os MESMOS dados que o
+  // portão está avaliando, nunca uma leitura desencontrada feita depois. reindex por
+  // state+updatedAt já existe (firestore.indexes.json, criado para
+  // processDeletionJobs/listDeletionJobs) -- serve qualquer valor de state, nenhum
+  // índice novo é necessário.
+  async function listBlockedForReview() {
+    const jobsSnapshot = await db
+      .collection('deletionJobs')
+      .where('state', '==', 'blocked_financial_review')
+      .orderBy('updatedAt')
+      .limit(REVIEW_LIST_LIMIT)
+      .get()
+    return Promise.all(
+      jobsSnapshot.docs.map(async (job) => {
+        const data = job.data()
+        const uid = data.targetId
+        const [lockSnapshot, walletSnapshot, historySnapshot] = await Promise.all([
+          db.doc(`users/${uid}/wallet/cashPurchaseLock`).get(),
+          db.doc(`users/${uid}/wallet/current`).get(),
+          db
+            .collection(`deletionJobs/${job.id}/financialReviews`)
+            .orderBy('checkedAt', 'desc')
+            .limit(20)
+            .get(),
+        ])
+        return {
+          id: job.id,
+          targetId: uid,
+          requestedBy: data.requestedBy || null,
+          blockReason: data.blockReason || null,
+          createdAt: serialize(data.createdAt) || null,
+          updatedAt: serialize(data.updatedAt) || null,
+          cashBalance: walletSnapshot.exists ? (walletSnapshot.data().cashBalance ?? 0) : 0,
+          pendingPurchaseId: lockSnapshot.exists ? lockSnapshot.data().pendingPurchaseId || null : null,
+          history: historySnapshot.docs.map((entry) => ({ id: entry.id, ...serialize(entry.data()) })),
+        }
+      })
+    )
+  }
+
+  // Ação segura de revisão administrativa -- NUNCA altera saldo, ledger ou qualquer dado
+  // financeiro, só reavalia financialBlockReason com os valores REAIS e atuais (nunca
+  // hipotéticos) e, se já não houver motivo de bloqueio, retoma o job. É a MESMA
+  // transição que reactivateDeletionIfClear já faz automaticamente dentro de
+  // confirmCashPurchase/cancelCashPurchase (cash-purchase-service.js) -- esta é a mesma
+  // lógica, exposta como ação avulsa, para o caso em que a pendência foi resolvida por
+  // outro caminho (ou para simplesmente registrar que um admin revisou e o bloqueio
+  // continua válido). Sempre registra a revisão (quem, quando, o que decidiu, os valores
+  // exatos conferidos) mesmo quando o resultado é "continua bloqueado" -- é o histórico
+  // de decisões que o painel expõe.
+  //
+  // Corridas: a checagem de state === 'blocked_financial_review' acontece dentro da
+  // MESMA transação que escreve o resultado -- processDeletionJobs só reprocessa jobs
+  // 'pending' (nunca disputa esta transição), e se confirmCashPurchase/
+  // cancelCashPurchase já tiver destravado o job entre a leitura da lista e este
+  // chamado, esta transação vê o novo state e recusa com failed-precondition, sem
+  // duplicar nem sobrescrever nada.
+  async function reviewFinancialBlock(adminId, jobId, note) {
+    const ref = db.doc(`deletionJobs/${jobId}`)
+    return db.runTransaction(async (tx) => {
+      const [admin, job] = await tx.getAll(db.doc(`users/${adminId}`), ref)
+      if (admin.data()?.role !== 'superadmin') {
+        throw new HttpsError('permission-denied', 'Apenas administradores podem revisar exclusões.')
+      }
+      if (!job.exists) throw new HttpsError('not-found', 'Solicitação de exclusão não encontrada.')
+      const data = job.data()
+      if (data.kind !== 'account' || data.state !== 'blocked_financial_review') {
+        throw new HttpsError(
+          'failed-precondition',
+          'Esta solicitação não está mais aguardando revisão financeira.'
+        )
+      }
+      const uid = data.targetId
+      const [lockSnapshot, walletSnapshot] = await tx.getAll(
+        db.doc(`users/${uid}/wallet/cashPurchaseLock`),
+        db.doc(`users/${uid}/wallet/current`)
+      )
+      const cashBalance = walletSnapshot.exists ? (walletSnapshot.data().cashBalance ?? 0) : 0
+      const pendingPurchaseId = lockSnapshot.exists
+        ? lockSnapshot.data().pendingPurchaseId || null
+        : null
+      const reason = financialBlockReason({ pendingPurchaseId, cashBalance })
+      tx.create(db.collection(`deletionJobs/${jobId}/financialReviews`).doc(), {
+        adminId,
+        note: typeof note === 'string' && note.trim() ? note.trim().slice(0, 500) : null,
+        blockReasonAtCheck: data.blockReason || null,
+        cashBalanceAtCheck: cashBalance,
+        pendingPurchaseIdAtCheck: pendingPurchaseId,
+        resultingState: reason ? 'still_blocked' : 'resumed',
+        resultingBlockReason: reason || null,
+        checkedAt: FieldValue.serverTimestamp(),
+      })
+      if (reason) {
+        tx.update(ref, { blockReason: reason, updatedAt: FieldValue.serverTimestamp() })
+        return { resumed: false, blockReason: reason }
+      }
+      tx.update(ref, {
+        state: 'pending',
+        blockReason: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+      })
+      return { resumed: true }
+    })
+  }
+
+  return { queue, step, queueDeleted, getOwnStatus, listBlockedForReview, reviewFinancialBlock }
 }
