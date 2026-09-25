@@ -238,7 +238,22 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
           })
           return true
         })
-        if (blocked) return
+        if (blocked) {
+          // Rede de segurança: quando o job já nasce bloqueado por revisão financeira,
+          // o estágio 0 do array de tasks (montado abaixo) nunca chega a rodar -- o
+          // bloqueio devolve antes disso. Normalmente a conta já foi desativada de
+          // forma síncrona em queue(); isto só cobre o caso raro dessa chamada
+          // best-effort ter falhado (rede etc.), pra nunca deixar uma conta bloqueada
+          // sem essa proteção até um admin resolver a pendência e reabrir o job.
+          await disableAuthAccount(uid).catch((error) => {
+            console.error(
+              '[deletion] disableAuthAccount (blocked):',
+              uid,
+              error.code || error.message
+            )
+          })
+          return
+        }
       }
       let tasks
       if (job.kind === 'account') {
@@ -390,5 +405,21 @@ export function createDeletionService({ db, auth, bucket, FieldValue, Timestamp,
       })
     })
   }
-  return { queue, step, queueDeleted }
+
+  // Único jeito seguro do cliente aprender o próprio estado de exclusão: deletionJobs
+  // não tem NENHUMA regra de leitura pro dono (ver firestore.rules -- só é referenciado
+  // dentro de exists() por outras regras, nunca lido direto), e mesmo que tivesse,
+  // blockReason/saldo são dado financeiro privado que não deveria ser exposto pra
+  // explicar um permission-denied. Só os dois estados que precisam de uma tela dedicada
+  // no cliente (AccountDeletionBlockedGate / logout com mensagem específica de
+  // "exclusão em processamento") -- 'complete' e "sem job nenhum" caem no mesmo
+  // tratamento de sempre (getIdToken(true) + nova tentativa da leitura, ver
+  // handlePossibleGhostSession em AuthContext.jsx), então não precisam ser
+  // diferenciados aqui.
+  async function getOwnStatus(uid) {
+    const snapshot = await jobRef('account', uid).get()
+    const state = snapshot.data()?.state
+    return { state: state === 'pending' || state === 'blocked_financial_review' ? state : null }
+  }
+  return { queue, step, queueDeleted, getOwnStatus }
 }

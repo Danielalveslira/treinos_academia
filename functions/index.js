@@ -854,6 +854,18 @@ export const deleteCommunityPermanently = onCall(options, async (request) => {
   return deletions.queue('community', request.data.communityId, adminId)
 })
 
+// Correção do bug "conta com exclusão bloqueada": deletionJobs não tem regra de leitura
+// nenhuma pro dono (fica só do lado do Admin SDK), então sem isto o cliente não tinha
+// como diferenciar "minha exclusão está bloqueada aguardando revisão financeira" de
+// "minha conta já foi excluída de vez" -- as duas manifestavam o mesmo permission-denied
+// na leitura do próprio perfil. Sempre a própria uid do chamador (request.auth.uid),
+// nunca um alvo enviado pelo cliente -- não é possível consultar o status de outra
+// conta. Ver getOwnStatus em deletion-service.js: só o state volta, nunca blockReason
+// nem qualquer dado financeiro.
+export const getMyDeletionStatus = onCall(options, async (request) => {
+  return deletions.getOwnStatus(requireUser(request))
+})
+
 const communityModeration = createCommunityModerationService({
   db,
   FieldValue,
