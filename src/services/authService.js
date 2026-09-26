@@ -1,56 +1,62 @@
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  sendPasswordResetEmail,
-  sendEmailVerification,
-  updateProfile,
-} from 'firebase/auth'
-import { auth } from '../firebase/config'
+import { supabase } from '../supabase/config'
 
-export function registerUser(email, password) {
-  return createUserWithEmailAndPassword(auth, email, password)
+export async function registerUser(email, password) {
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  if (error) throw error
+  return { user: { uid: data.user.id, email: data.user.email } }
 }
 
-export function sendVerificationEmail(user) {
-  return sendEmailVerification(user)
+// NOTA DE COMPATIBILIDADE: no Firebase, o cadastro loga na hora e a verificação de
+// e-mail é só um gate de acesso (emailVerifiedOk nas rules) — o usuário navega logado,
+// só vendo telas bloqueadas até clicar no link. No Supabase, "Confirm email" ligado
+// impede a sessão de existir até a confirmação (sem sessão pra sequer mostrar um
+// gate); com autoconfirm ligado (como está hoje, necessário pro cadastro completar
+// sem travar — ver conversa anterior), email_confirmed_at já vem preenchido na hora,
+// então esta função e has_app_access() não bloqueiam ninguém de verdade ainda. Fica
+// como TODO: replicar o gate completo exige decidir explicitamente o trade-off
+// (desativar autoconfirm e perder o "loga na hora", ou um mecanismo de verificação
+// paralelo próprio) — não decidi isso sozinho.
+// Sem equivalente exato do %DISPLAY_NAME% do template do Firebase (o template de
+// e-mail do Supabase não tem essa variável) — mantido só para não quebrar a chamada em
+// Register.jsx, gravando em user_metadata (não afeta nada mais no app hoje).
+export async function setDisplayName(_user, displayName) {
+  const { error } = await supabase.auth.updateUser({ data: { display_name: displayName } })
+  if (error) throw error
 }
 
-// O template de verificação de e-mail do Firebase usa %DISPLAY_NAME% (ver Console >
-// Authentication > Templates) — sem isso, chega em branco ("Olá ,") pra todo mundo,
-// já que o cadastro nunca preenchia esse campo do Authentication.
-export function setDisplayName(user, displayName) {
-  return updateProfile(user, { displayName })
+export async function sendVerificationEmail() {
+  const { data } = await supabase.auth.getUser()
+  if (!data.user?.email) return
+  const { error } = await supabase.auth.resend({ type: 'signup', email: data.user.email })
+  if (error) throw error
 }
 
-// user.emailVerified só reflete o que o SDK já tinha em memória (do último login/token) —
-// depois que o usuário clica no link, nada nesta aba avisa isso sozinho. reload() busca o
-// estado atual do próprio Firebase Auth e atualiza o objeto `user` (inclusive
-// emailVerified) in place; é isso que EmailVerificationGate chama tanto ao montar quanto
-// no botão "Já verifiquei".
-//
-// reload() sozinho NÃO é suficiente: ele atualiza o objeto `user` local, mas o token de
-// ID que o Firestore/Storage/Functions realmente anexam em cada requisição só é
-// reemitido quando expira sozinho (até 1h) ou quando alguém força — email_verified é uma
-// claim gravada DENTRO desse token, não relida a cada chamada. Sem o getIdToken(true)
-// abaixo, o app mostra o conteúdo liberado (o objeto local diz emailVerified: true) mas
-// toda consulta ao Firestore continua sendo negada pelas regras, que leem o token antigo,
-// não o objeto local — foi exatamente esse o bug relatado (permissão negada mesmo depois
-// de verificar).
-export async function refreshEmailVerified(user) {
-  await user.reload()
-  if (user.emailVerified) await user.getIdToken(true)
-  return user.emailVerified
+export async function refreshEmailVerified() {
+  const { data, error } = await supabase.auth.getUser()
+  if (error) throw error
+  return !!data.user?.email_confirmed_at
 }
 
-export function loginUser(email, password) {
-  return signInWithEmailAndPassword(auth, email, password)
+export async function loginUser(email, password) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw error
 }
 
-export function logoutUser() {
-  return signOut(auth)
+export async function logoutUser() {
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
 }
 
-export function resetPassword(email) {
-  return sendPasswordResetEmail(auth, email)
+export async function resetPassword(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email)
+  if (error) throw error
+}
+
+// Substitui credential.user.delete() do Firebase (que permitia a própria conta recém-criada
+// se autoexcluir do lado do cliente) — o SDK do Supabase não expõe esse método, então isso
+// é feito por uma RPC que só apaga o próprio auth.users (cascateando para users/publicProfiles
+// /usernames). Usado só no rollback de cadastro (ver Register.jsx).
+export async function deleteCurrentAccount() {
+  const { error } = await supabase.rpc('delete_own_account')
+  if (error) throw error
 }
