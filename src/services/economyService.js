@@ -7,7 +7,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, functions, functionsUsCentral } from '../firebase/config'
+import { db, functionsUsCentral } from '../firebase/config'
 import { supabase } from '../supabase/config'
 
 const EMPTY_WALLET = { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0 }
@@ -21,7 +21,6 @@ const EMPTY_WALLET = { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0 }
 // evitando 1 leitura do Firestore por navegação.
 const CACHE_TTL_MS = 5 * 60 * 1000
 
-const registerQualifiedActivityCallable = httpsCallable(functions, 'registerQualifiedActivity')
 // Voto econômico migrou para us-central1 (voteOnPostV2) depois do experimento A/B --
 // mesmo banco (nam5), mesma lógica (vote-service.js), só a região muda: 66-77% mais
 // rápido que southamerica-east1 em todas as ações medidas (create/switch/remove/
@@ -82,10 +81,12 @@ export async function getWallet(uid, { forceRefresh = false } = {}) {
 }
 
 // O crédito em si é refletido pelo onSnapshot único de WalletContext.jsx assim que o
-// Firestore confirma a escrita de creditCoins (activity-service.js) -- nunca precisa de
-// patch manual de cache aqui, nem do uid (que esta função não usa mais).
+// Supabase confirma a escrita de _wallet_credit_coins (register_qualified_activity,
+// RPC) -- nunca precisa de patch manual de cache aqui, nem do uid (a RPC usa auth.uid()).
 export async function registerQualifiedActivity() {
-  return (await registerQualifiedActivityCallable()).data
+  const { data, error } = await supabase.rpc('register_qualified_activity')
+  if (error) throw error
+  return data
 }
 
 // Teto do operador `in` do Firestore -- também o tamanho de página do feed
