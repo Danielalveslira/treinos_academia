@@ -16,7 +16,7 @@ export const AuthContext = createContext(null)
 // site, o usuário do Supabase (que só tem .id) ganha um alias .uid aqui.
 function toAppUser(supabaseUser) {
   if (!supabaseUser) return null
-  return { ...supabaseUser, uid: supabaseUser.id }
+  return { ...supabaseUser, uid: supabaseUser.id, emailVerified: Boolean(supabaseUser.email_confirmed_at) }
 }
 
 export function AuthProvider({ children }) {

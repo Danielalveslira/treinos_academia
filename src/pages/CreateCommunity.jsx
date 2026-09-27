@@ -71,14 +71,20 @@ export default function CreateCommunity() {
       navigate(`/comunidades/${result.communityId}`, { replace: true })
     } catch (err) {
       console.error('[CreateCommunity] createCommunityWithCash:', err)
-      setPendingAttempt(err?.code === 'already-exists' ? null : { key: attemptKey, requestId })
-      setError(
-        ['functions/failed-precondition', 'functions/invalid-argument', 'functions/already-exists'].includes(
-          err?.code
-        )
-          ? err.message
-          : 'Não foi possível criar a comunidade. Tente novamente.'
-      )
+      // create_community_with_cash (RPC) levanta um código curto em vez de uma frase
+      // pronta (ver supabase/migrations/..._privilege_create_community.sql).
+      const KNOWN_ERRORS = {
+        REQUEST_ID_CONFLICT: 'Este pedido já foi usado para criar uma comunidade diferente.',
+        PRIVILEGE_CONFIG_UNAVAILABLE: 'Configuração de privilégios indisponível no momento.',
+        ACCOUNT_DISABLED: 'Sua conta não está em condições de criar uma comunidade.',
+        ACCOUNT_RESTRICTED: 'Sua conta está com uma restrição ativa.',
+        ACCOUNT_TOO_NEW: 'Sua conta ainda não atingiu o tempo mínimo exigido.',
+        EMAIL_NOT_VERIFIED: 'Confirme seu e-mail para criar uma comunidade.',
+        INSUFFICIENT_REPUTATION: 'Você ainda não tem reputação (EvoCoins histórico) suficiente.',
+        INSUFFICIENT_CASH: 'Você não tem EvoCash suficiente.',
+      }
+      setPendingAttempt(err?.message === 'REQUEST_ID_CONFLICT' ? null : { key: attemptKey, requestId })
+      setError(KNOWN_ERRORS[err?.message] || 'Não foi possível criar a comunidade. Tente novamente.')
     }
   }
 
