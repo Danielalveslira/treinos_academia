@@ -29,7 +29,7 @@ function newRequestId() {
 // esta página nunca credita nada sozinha.
 export default function EvoCash() {
   const { user } = useAuth()
-  const [settings, setSettings] = useState({ packages: [], pixPayment: null })
+  const [settings, setSettings] = useState({ packages: [] })
   const [loadingSettings, setLoadingSettings] = useState(true)
   // Guarda o requestId da tentativa em andamento -- reenviado se a MESMA tentativa
   // (mesmo pacote, ainda sem sucesso) for repetida, nunca gerado de novo a cada clique
@@ -73,18 +73,29 @@ export default function EvoCash() {
       const result = await requestCashPurchase({ packageId, requestId })
       setLastCreated(result)
       setPendingAttempt(null)
-      addPurchaseLocally({ ...result, id: result.purchaseId })
+      addPurchaseLocally({
+        id: result.id,
+        packageId: result.packageId,
+        packageLabel: result.packageLabel,
+        cashAmount: result.cashAmount,
+        amountCentavos: result.amountCentavos,
+        currency: result.currency,
+        status: result.status,
+        qrCode: result.qrCode,
+        qrCodeBase64: result.qrCodeBase64,
+        ticketUrl: result.ticketUrl,
+        createdAt: new Date().toISOString(),
+      })
     } catch (err) {
       setPendingAttempt({ key: packageId, requestId })
-      setError(
-        [
-          'functions/failed-precondition',
-          'functions/invalid-argument',
-          'functions/already-exists',
-        ].includes(err?.code)
-          ? err.message
-          : 'Não foi possível solicitar a compra. Tente novamente.'
-      )
+      const KNOWN_ERRORS = {
+        PENDING_CASH_PURCHASE_EXISTS: 'Você já tem uma compra de EvoCash pendente.',
+        CASH_PACKAGE_UNAVAILABLE: 'Este pacote não está mais disponível.',
+        MERCADOPAGO_NOT_CONFIGURED: 'Pagamentos estão temporariamente indisponíveis.',
+        MERCADOPAGO_REQUEST_FAILED: 'Não foi possível gerar o pagamento PIX. Tente novamente.',
+        REQUEST_ID_CONFLICT: 'Este pedido já foi usado para outra compra.',
+      }
+      setError(KNOWN_ERRORS[err?.message] || 'Não foi possível solicitar a compra. Tente novamente.')
     } finally {
       setBuyingPackageId(null)
     }
@@ -137,16 +148,14 @@ export default function EvoCash() {
           <Text as="p" sx={{ fontWeight: 'bold', m: 0, mb: 2 }}>
             Pedido criado
           </Text>
-          {/* pixPaymentSnapshot vem do próprio pedido (gravado por requestCashPurchase no
-              momento da criação), nunca de settings.pixPayment (config ao vivo) -- se a
-              chave mudar depois, este pedido continua mostrando o destino de quando foi
-              criado. */}
           <PixPaymentInstructions
-            purchaseId={lastCreated.purchaseId}
+            purchaseId={lastCreated.id}
             packageLabel={lastCreated.packageLabel}
             cashAmount={lastCreated.cashAmount}
             amountCentavos={lastCreated.amountCentavos}
-            pixPayment={lastCreated.pixPaymentSnapshot}
+            qrCode={lastCreated.qrCode}
+            qrCodeBase64={lastCreated.qrCodeBase64}
+            ticketUrl={lastCreated.ticketUrl}
           />
         </Box>
       )}
@@ -252,20 +261,18 @@ export default function EvoCash() {
             </Box>
 
             <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-              Data: {formatDateTime(purchase.createdAt?.toDate())}
+              Data: {formatDateTime(purchase.createdAt ? new Date(purchase.createdAt) : null)}
             </Text>
 
             {purchase.status === 'pending' && (
-              // Mesmo raciocínio acima: pixPaymentSnapshot é o do PRÓPRIO pedido, nunca a
-              // config atual -- reload/"Minhas compras" sempre mostra o destino de quando
-              // o pedido foi criado, mesmo que economyConfig/current.pixPayment já tenha
-              // mudado depois.
               <PixPaymentInstructions
                 purchaseId={purchase.id}
                 packageLabel={purchase.packageLabel}
                 cashAmount={purchase.cashAmount}
                 amountCentavos={purchase.amountCentavos}
-                pixPayment={purchase.pixPaymentSnapshot}
+                qrCode={purchase.qrCode}
+                qrCodeBase64={purchase.qrCodeBase64}
+                ticketUrl={purchase.ticketUrl}
               />
             )}
 

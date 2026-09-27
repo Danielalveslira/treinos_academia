@@ -60,16 +60,13 @@ export default function AdminPromotions() {
       setCancelingId(null)
       await load()
     } catch (err) {
-      setActionError(
-        [
-          'functions/failed-precondition',
-          'functions/invalid-argument',
-          'functions/not-found',
-          'functions/permission-denied',
-        ].includes(err?.code)
-          ? err.message
-          : 'Não foi possível cancelar a promoção.'
-      )
+      const KNOWN_ERRORS = {
+        PROMOTION_NOT_FOUND: 'Promoção não encontrada.',
+        PERMISSION_DENIED: 'Você não tem permissão para cancelar esta promoção.',
+        PROMOTION_NOT_ACTIVE: 'Esta promoção não está mais ativa.',
+        REASON_REQUIRED: 'Informe um motivo com pelo menos 5 caracteres.',
+      }
+      setActionError(KNOWN_ERRORS[err?.message] || 'Não foi possível cancelar a promoção.')
     } finally {
       setSaving(false)
     }

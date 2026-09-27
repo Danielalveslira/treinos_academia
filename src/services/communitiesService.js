@@ -10,7 +10,9 @@ function resolveIconName(iconName) {
 // tamanho da tabela — bem acima de qualquer uso real do app.
 const MAX_COMMUNITIES = 200
 
-function toDoc(row) {
+// Exportado para promotionsService.js (listFeaturedCommunities) reaproveitar a mesma
+// forma camelCase, em vez de duplicar o mapeamento.
+export function mapCommunityRow(row) {
   return {
     id: row.id,
     name: row.name,
@@ -23,6 +25,9 @@ function toDoc(row) {
     createdAt: row.created_at,
     ownerId: row.owner_id,
     deletionStatus: row.deletion_status,
+    promoted: row.promoted,
+    promotedUntil: row.promoted_until,
+    activePromotionId: row.active_promotion_id,
   }
 }
 
@@ -34,7 +39,7 @@ export async function listActiveCommunities() {
     .order('name')
     .limit(MAX_COMMUNITIES)
   if (error) throw error
-  return data.map(toDoc)
+  return data.map(mapCommunityRow)
 }
 
 export async function listCommunitiesPage(cursor = null, pageSize = 25) {
@@ -43,7 +48,7 @@ export async function listCommunitiesPage(cursor = null, pageSize = 25) {
   const { data, error } = await q
   if (error) throw error
   return {
-    items: data.map(toDoc),
+    items: data.map(mapCommunityRow),
     nextCursor: data.length === pageSize ? data.at(-1).name : null,
   }
 }
@@ -55,7 +60,7 @@ export async function getCommunity(communityId) {
     .eq('id', communityId)
     .maybeSingle()
   if (error) throw error
-  return data ? toDoc(data) : null
+  return data ? mapCommunityRow(data) : null
 }
 
 // Fase 5: comunidade OFICIAL criada pelo painel admin nasce DE PROPÓSITO sem owner_id

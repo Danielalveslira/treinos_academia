@@ -26,7 +26,7 @@ function baseStatusFields(communityId, author, type) {
   }
 }
 
-function toDoc(row) {
+export function mapStatusRow(row) {
   const base = {
     id: row.id,
     communityId: row.community_id,
@@ -36,6 +36,9 @@ function toDoc(row) {
     type: row.type,
     createdAt: row.created_at,
     expiresAt: row.expires_at,
+    promoted: row.promoted,
+    promotedUntil: row.promoted_until,
+    activePromotionId: row.active_promotion_id,
   }
   switch (row.type) {
     case 'text':
@@ -73,7 +76,7 @@ export async function listCommunityFeed(communityId, pageSize = FEED_PAGE_SIZE) 
     .order('expires_at', { ascending: false })
     .limit(pageSize)
   if (error) throw error
-  return data.map(toDoc)
+  return data.map(mapStatusRow)
 }
 
 export async function createTextStatus(communityId, author, text) {
@@ -268,7 +271,7 @@ export async function listUpcomingWorkouts(communityId, pageSize = UPCOMING_WORK
     .order('workout_date', { ascending: true })
     .limit(pageSize)
   if (error) throw error
-  return data.map(toDoc)
+  return data.map(mapStatusRow)
 }
 
 // Resolve o alvo de um link #treino-{id} mesmo quando ficou fora do limite da consulta
@@ -278,7 +281,7 @@ export async function getSharedWorkout(statusId, communityId) {
   const { data, error } = await supabase.from('statuses').select('*').eq('id', statusId).maybeSingle()
   if (error) throw error
   if (!data) return null
-  const status = toDoc(data)
+  const status = mapStatusRow(data)
   return status.type === 'workout' && status.communityId === communityId ? status : null
 }
 

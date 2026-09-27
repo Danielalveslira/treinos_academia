@@ -1,97 +1,117 @@
-import {
-  collection,
-  doc,
-  documentId,
-  getDoc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  startAfter,
-  where,
-} from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../firebase/config'
-
-const requestCashPurchaseCallable = httpsCallable(functions, 'requestCashPurchase')
-const confirmCashPurchaseCallable = httpsCallable(functions, 'confirmCashPurchase')
-const cancelCashPurchaseCallable = httpsCallable(functions, 'cancelCashPurchase')
+import { supabase } from '../supabase/config'
 
 const PAGE_SIZE = 25
 
-// Preço/quantidade sempre vêm daqui (economyConfig/current), nunca de um valor
-// digitado -- o cliente só manda o packageId escolhido (ver requestCashPurchase). Lido
-// direto pelo client SDK (Rules já liberam leitura de economyConfig a qualquer
-// signed-in), sem callable própria -- é só exibição, requestCashPurchase revalida tudo
-// de novo no servidor antes de creditar qualquer coisa. pixPayment é um campo de
-// exibição (a Function só valida SE ele é aceitável -- enabled/key/keyType/
-// recipientName -- antes de permitir a criação do pedido; nunca lê o valor pra calcular
-// preço/quantidade), configurado manualmente no mesmo documento, ausente até alguém
-// cadastrar.
+export function mapPurchaseRow(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    packageId: row.package_id,
+    packageLabel: row.package_label,
+    cashAmount: row.cash_amount,
+    amountCentavos: row.amount_centavos,
+    currency: row.currency,
+    status: row.status,
+    qrCode: row.qr_code,
+    qrCodeBase64: row.qr_code_base64,
+    ticketUrl: row.ticket_url,
+    createdAt: row.created_at,
+    creditedAt: row.credited_at,
+    creditedBy: row.credited_by,
+    confirmationNote: row.confirmation_note,
+    cancelledAt: row.cancelled_at,
+    cancelledBy: row.cancelled_by,
+    cancelReason: row.cancel_reason,
+  }
+}
+
+// Preço/quantidade sempre vêm daqui (economy_config), nunca de um valor digitado -- o
+// cliente só manda o packageId escolhido (ver requestCashPurchase). Lido direto via
+// client SDK (RLS já libera leitura de economy_config a qualquer autenticado), sem RPC
+// própria -- é só exibição; request_cash_purchase/mercadopago-create-payment revalidam
+// tudo de novo no servidor antes de criar qualquer pagamento.
 export async function getCashPurchaseSettings() {
-  const snapshot = await getDoc(doc(db, 'economyConfig/current'))
-  const data = snapshot.exists() ? snapshot.data() : {}
-  const packages = Object.entries(data?.cashPackages || {})
+  const { data, error } = await supabase.from('economy_config').select('config').eq('id', true).maybeSingle()
+  if (error) throw error
+  const cashPackages = data?.config?.cashPackages || {}
+  const packages = Object.entries(cashPackages)
     .filter(([, pkg]) => pkg?.active === true)
     .map(([packageId, pkg]) => ({ packageId, ...pkg }))
-  return { packages, pixPayment: data?.pixPayment || null }
+  return { packages }
 }
 
-// requestId gerado UMA VEZ por tentativa de compra e reenviado em qualquer retry --
-// isso é o que torna requestCashPurchase idempotente (ver cash-purchase-core.js:
-// cashPurchaseIdFromRequest). Quem chama esta função decide quando gerar um requestId
-// novo (uma nova intenção de compra) vs. reenviar o mesmo (retry da mesma intenção).
+// requestId gerado UMA VEZ por tentativa de compra e reenviado em qualquer retry -- é o
+// que torna a operação idempotente ponta a ponta (reserva da linha pendente + criação
+// do pagamento PIX no Mercado Pago). Ao contrário do original (só uma callable), aqui
+// isso passa por uma Edge Function (mercadopago-create-payment) porque falar com a API
+// do Mercado Pago é uma chamada HTTP externa, que RPC de Postgres não faz.
 export async function requestCashPurchase({ packageId, requestId }) {
-  return (await requestCashPurchaseCallable({ packageId, requestId })).data
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession()
+  if (sessionErr) throw sessionErr
+  const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago-create-payment`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session.access_token}` },
+    body: JSON.stringify({ packageId, requestId }),
+  })
+  const body = await response.json()
+  if (!response.ok) {
+    throw new Error(body?.error || 'REQUEST_FAILED')
+  }
+  return body
 }
 
+// Fallback operacional (superadmin) -- webhook do Mercado Pago é o caminho principal de
+// confirmação; isto existe para quando ele falhar ou o pagamento for resolvido fora do
+// fluxo do app.
 export async function confirmCashPurchase(purchaseId, adminNote) {
-  return (await confirmCashPurchaseCallable({ purchaseId, adminNote })).data
+  const { data, error } = await supabase.rpc('confirm_cash_purchase', {
+    p_purchase_id: purchaseId, p_admin_note: adminNote || null,
+  })
+  if (error) throw error
+  return data
 }
 
 export async function cancelCashPurchase(purchaseId, reason) {
-  return (await cancelCashPurchaseCallable({ purchaseId, reason })).data
+  const { data, error } = await supabase.rpc('cancel_cash_purchase', { p_purchase_id: purchaseId, p_reason: reason })
+  if (error) throw error
+  return data
 }
 
 export async function listMyCashPurchasesPage(userId, { cursor = null } = {}) {
-  const filters = [where('userId', '==', userId), orderBy('createdAt', 'desc')]
-  if (cursor) filters.push(startAfter(cursor))
-  const result = await getDocs(query(collection(db, 'cashPurchases'), ...filters, limit(PAGE_SIZE)))
+  let q = supabase.from('cash_purchases').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(PAGE_SIZE)
+  if (cursor) q = q.lt('created_at', cursor)
+  const { data, error } = await q
+  if (error) throw error
   return {
-    items: result.docs.map((item) => ({ ...item.data(), id: item.id })),
-    nextCursor: result.size === PAGE_SIZE ? result.docs.at(-1) : null,
+    items: data.map(mapPurchaseRow),
+    nextCursor: data.length === PAGE_SIZE ? data.at(-1).created_at : null,
   }
 }
 
 export async function listCashPurchasesForAdminPage({ status = '', cursor = null } = {}) {
-  const filters = []
-  if (status) filters.push(where('status', '==', status))
-  filters.push(orderBy('createdAt', 'desc'))
-  if (cursor) filters.push(startAfter(cursor))
-  const result = await getDocs(query(collection(db, 'cashPurchases'), ...filters, limit(PAGE_SIZE)))
+  let q = supabase.from('cash_purchases').select('*').order('created_at', { ascending: false }).limit(PAGE_SIZE)
+  if (status) q = q.eq('status', status)
+  if (cursor) q = q.lt('created_at', cursor)
+  const { data, error } = await q
+  if (error) throw error
   return {
-    items: result.docs.map((item) => ({ ...item.data(), id: item.id })),
-    nextCursor: result.size === PAGE_SIZE ? result.docs.at(-1) : null,
+    items: data.map(mapPurchaseRow),
+    nextCursor: data.length === PAGE_SIZE ? data.at(-1).created_at : null,
   }
 }
 
-const USER_LOOKUP_CHUNK_SIZE = 30 // teto do operador "in" do Firestore
+const USER_LOOKUP_CHUNK_SIZE = 30 // mesmo teto do operador `in` do Firestore, mantido por consistência
 
 // Resolve o username de vários compradores de uma vez só -- nunca uma leitura por card
-// na lista do admin (evita N+1). Mesma técnica de documentId()+'in' já usada em
-// economyService.js (fetchMyVotesForStatuses): users/{uid} já libera isSuperAdmin() ler
-// qualquer perfil (ver firestore.rules), então isto funciona direto do client SDK, sem
-// precisar de uma callable nova só pra isso.
+// na lista do admin (evita N+1).
 export async function resolveUsernamesByIds(userIds) {
   const uniqueIds = [...new Set(userIds)].filter(Boolean)
   const usernameById = {}
   for (let i = 0; i < uniqueIds.length; i += USER_LOOKUP_CHUNK_SIZE) {
     const chunk = uniqueIds.slice(i, i + USER_LOOKUP_CHUNK_SIZE)
-    const refs = chunk.map((id) => doc(db, 'users', id))
-    const snapshot = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', refs)))
-    for (const item of snapshot.docs) {
-      usernameById[item.id] = item.data()?.username || null
-    }
+    const { data, error } = await supabase.from('public_profiles').select('user_id, username').in('user_id', chunk)
+    if (error) throw error
+    for (const row of data) usernameById[row.user_id] = row.username || null
   }
   return usernameById
 }

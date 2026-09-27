@@ -72,20 +72,33 @@ export function PromoteDialogBody({ targetType, targetId, onPromoted }) {
     if (submitting || !selectedPackageId) return
     const requestId = resolveRequestId(pendingAttempt, selectedPackageId, newRequestId)
     dispatch({ type: 'submit_start' })
+    const selectedPackage = packages.find((pkg) => pkg.packageId === selectedPackageId)
     try {
       const promotionResult = await createPromotion({ targetType, targetId, packageId: selectedPackageId, requestId })
-      dispatch({ type: 'submit_success', result: promotionResult })
-      onPromoted?.(promotionResult)
+      const result = {
+        ...promotionResult,
+        cashAmount: selectedPackage?.cashAmount,
+        durationDays: selectedPackage?.durationDays,
+      }
+      dispatch({ type: 'submit_success', result })
+      onPromoted?.(result)
     } catch (err) {
+      const KNOWN_ERRORS = {
+        TARGET_NOT_FOUND: 'Conteúdo não encontrado.',
+        NOT_OWNER: 'Você só pode promover o seu próprio conteúdo.',
+        ACCOUNT_DISABLED: 'Sua conta não está em condições de promover conteúdo.',
+        ACCOUNT_RESTRICTED: 'Sua conta está com uma restrição ativa.',
+        NOT_A_MEMBER: 'Você precisa ser membro desta comunidade.',
+        COMMUNITY_RESTRICTED: 'Você está restrito nesta comunidade.',
+        COMMUNITY_UNAVAILABLE: 'Esta comunidade não está disponível.',
+        ALREADY_PROMOTED: 'Este conteúdo já está promovido.',
+        INVALID_PACKAGE: 'Pacote de promoção indisponível no momento.',
+        INSUFFICIENT_CASH: 'Você não tem EvoCash suficiente.',
+      }
       dispatch({
         type: 'submit_error',
         pendingAttempt: { key: selectedPackageId, requestId },
-        message:
-          ['functions/failed-precondition', 'functions/invalid-argument', 'functions/permission-denied'].includes(
-            err?.code
-          )
-            ? err.message
-            : 'Não foi possível criar a promoção. Tente novamente.',
+        message: KNOWN_ERRORS[err?.message] || 'Não foi possível criar a promoção. Tente novamente.',
       })
     }
   }
@@ -98,7 +111,7 @@ export function PromoteDialogBody({ targetType, targetId, onPromoted }) {
         </Text>
         <Text as="p" sx={{ m: 0 }}>
           Válida por {result.durationDays} {result.durationDays === 1 ? 'dia' : 'dias'}, até{' '}
-          {formatDateTime(new Date(result.expiresAtMs))}. Acompanhe ou cancele em &quot;Minhas
+          {formatDateTime(new Date(result.expiresAt))}. Acompanhe ou cancele em &quot;Minhas
           promoções&quot;.
         </Text>
       </Flash>

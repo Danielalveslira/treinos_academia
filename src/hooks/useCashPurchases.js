@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { doc, onSnapshot } from 'firebase/firestore'
-import { db } from '../firebase/config'
-import { listCashPurchasesForAdminPage, listMyCashPurchasesPage } from '../services/cashPurchaseService'
+import { supabase } from '../supabase/config'
+import { listCashPurchasesForAdminPage, listMyCashPurchasesPage, mapPurchaseRow } from '../services/cashPurchaseService'
 
 // Mesmo padrão de useSupport.js: paginação por cursor, uma "revision" pra descartar
 // respostas atrasadas de uma consulta anterior (troca de filtro/usuário antes da
@@ -73,27 +72,29 @@ export function useCashPurchases(userId, admin = false, status = '') {
     setPurchases((prev) => (prev.some((p) => p.id === purchase.id) ? prev : [purchase, ...prev]))
   }
 
-  // Nunca mais que 1 pending por usuário (cashPurchaseLock, ver cash-purchase-service.js
-  // no backend) -- por isso um único onSnapshot no documento pending atual é suficiente
-  // pra saber quando o admin confirma/cancela, sem ouvir a coleção inteira nem fazer
-  // polling. Fica sem listener nenhum sempre que não há pending (inclusive admin=true,
-  // que já tem sua própria tela com refresh() próprio -- ver AdminCashPurchases.jsx).
+  // Nunca mais que 1 pending por usuário (índice único parcial, ver migration
+  // economy_cash_purchases_promotions.sql) -- por isso um único canal Realtime filtrado
+  // por essa linha é suficiente pra saber quando o webhook do Mercado Pago (ou um admin,
+  // no fallback manual) credita/cancela, sem ouvir a tabela inteira nem fazer polling.
+  // Fica sem listener nenhum sempre que não há pending (inclusive admin=true, que já tem
+  // sua própria tela com refresh() próprio -- ver AdminCashPurchases.jsx).
   const pendingId = !admin ? purchases.find((p) => p.status === 'pending')?.id ?? null : null
   useEffect(() => {
     if (!pendingId) return undefined
-    const unsubscribe = onSnapshot(
-      doc(db, 'cashPurchases', pendingId),
-      (snapshot) => {
-        if (!snapshot.exists()) return
-        const data = snapshot.data()
-        // Estado inicial do próprio listener (ainda pending) -- nunca reescreve nada, só
-        // reage à transição real pra um estado terminal.
-        if (data.status === 'pending') return
-        setPurchases((prev) => prev.map((p) => (p.id === pendingId ? { ...data, id: pendingId } : p)))
-      },
-      (err) => console.error('[useCashPurchases] onSnapshot pending:', err)
-    )
-    return unsubscribe
+    const channel = supabase
+      .channel(`cash-purchase-${pendingId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'cash_purchases', filter: `id=eq.${pendingId}` },
+        (payload) => {
+          // Estado inicial do próprio listener (ainda pending) -- nunca reescreve nada, só
+          // reage à transição real pra um estado terminal.
+          if (payload.new.status === 'pending') return
+          setPurchases((prev) => prev.map((p) => (p.id === pendingId ? mapPurchaseRow(payload.new) : p)))
+        }
+      )
+      .subscribe()
+    return () => channel.unsubscribe()
   }, [pendingId])
 
   return { hasMore: !!cursor, loadMore, purchases, loading, error, refresh, addPurchaseLocally }

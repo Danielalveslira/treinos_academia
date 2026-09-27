@@ -77,12 +77,13 @@ export default function MyPromotions() {
       setConfirmingId(null)
       await load()
     } catch (err) {
-      setActionError(
-        ['functions/failed-precondition', 'functions/not-found', 'functions/permission-denied'].includes(err?.code)
-          ? err.message
-          : 'Não foi possível cancelar a promoção.'
-      )
-      // failed-precondition normalmente significa que o estado mudou debaixo do usuário
+      const KNOWN_ERRORS = {
+        PROMOTION_NOT_FOUND: 'Promoção não encontrada.',
+        PERMISSION_DENIED: 'Você não tem permissão para cancelar esta promoção.',
+        PROMOTION_NOT_ACTIVE: 'Esta promoção não está mais ativa.',
+      }
+      setActionError(KNOWN_ERRORS[err?.message] || 'Não foi possível cancelar a promoção.')
+      // PROMOTION_NOT_ACTIVE normalmente significa que o estado mudou debaixo do usuário
       // (já cancelada em outra aba, ou expirou entre abrir a confirmação e confirmar) --
       // recarrega em silêncio (mantendo a caixa de confirmação e o erro visíveis) pra
       // que ela reflita a realidade assim que o usuário fechar a confirmação, em vez de

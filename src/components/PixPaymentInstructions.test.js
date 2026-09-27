@@ -38,68 +38,53 @@ after(async () => {
   if (directory) await rm(directory, { recursive: true, force: true })
 })
 
-const PROTOCOL = '1c900a837a5d1fbd2777e47b0a9fe9c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8924640f'
-
-const PIX_PAYMENT = {
-  enabled: true,
-  key: 'chave-pix-aleatoria-1234-5678-90ab-cdef1234567890',
-  keyType: 'random',
-  recipientName: 'Evolutus Ltda',
-}
+const PROTOCOL = '1c900a83-7a5d-4fbd-8777-e47b0a9fe9c3'
 
 const BASE_PROPS = {
   purchaseId: PROTOCOL,
   packageLabel: '120 EvoCash',
   cashAmount: 120,
   amountCentavos: 2390,
-  pixPayment: PIX_PAYMENT,
+  qrCode: '00020126580014br.gov.bcb.pix...',
+  qrCodeBase64: 'aGVsbG8=',
+  ticketUrl: 'https://mercadopago.com/ticket/123',
 }
 
-test('renders package, amount, exact value, pix key, key type label, recipient and an abbreviated protocol', () => {
+test('renders package, amount, exact value, pix copy-paste code and an abbreviated protocol', () => {
   const html = renderStatic(BASE_PROPS)
   assert.match(html, /120 EvoCash/)
   assert.match(html, /R\$\s?23,90/)
-  assert.match(html, /chave-pix-aleatoria-1234-5678-90ab-cdef1234567890/)
-  assert.match(html, /Chave aleatória/)
-  assert.match(html, /Evolutus Ltda/)
+  assert.match(html, /00020126580014br\.gov\.bcb\.pix/)
   // protocolo aparece abreviado como TEXTO visível (prefixo…sufixo) -- o valor completo só
   // existe no atributo title (tooltip) e no botão Copiar, nunca como texto na tela.
-  assert.match(html, /1c900a83…924640f/)
+  assert.match(html, /1c900a83…a9fe9c3/)
   assert.doesNotMatch(html, new RegExp(`>${PROTOCOL}<`))
 })
 
-test('shows the copy-key and copy-protocol affordances', () => {
+test('shows the copy-pix-code and copy-protocol affordances, and a link to the Mercado Pago ticket', () => {
   const html = renderStatic(BASE_PROPS)
-  assert.match(html, /Copiar chave/)
+  assert.match(html, /Copiar código PIX/)
   assert.match(html, />Copiar</)
+  assert.match(html, /Abrir comprovante do Mercado Pago/)
 })
 
 test('shows the exact required waiting copy', () => {
   const html = renderStatic(BASE_PROPS)
   assert.match(
     html,
-    /Após realizar o PIX, aguarde a confirmação do pagamento\. O EvoCash será creditado somente após a aprovação\./
+    /a confirmação é automática — o EvoCash é creditado assim que o Mercado Pago aprovar o pagamento/
   )
-  assert.match(html, /Envie exatamente o valor indicado no pedido\./)
 })
 
-test('renders nothing when pixPayment is not available (fail-safe, never invents payment instructions)', () => {
-  const html = renderStatic({ ...BASE_PROPS, pixPayment: null })
-  assert.doesNotMatch(html, /Pagamento via PIX|Chave PIX|Protocolo/)
+test('renders nothing when there is no qrCode (fail-safe, never invents payment instructions)', () => {
+  const html = renderStatic({ ...BASE_PROPS, qrCode: null })
+  assert.doesNotMatch(html, /Pagamento via PIX|Código PIX|Protocolo/)
 })
 
-test('maps every valid keyType to its Portuguese label', () => {
-  const cases = [
-    ['email', 'E-mail'],
-    ['phone', 'Telefone'],
-    ['cpf', 'CPF'],
-    ['cnpj', 'CNPJ'],
-    ['random', 'Chave aleatória'],
-  ]
-  for (const [keyType, label] of cases) {
-    const html = renderStatic({ ...BASE_PROPS, pixPayment: { ...PIX_PAYMENT, keyType } })
-    assert.match(html, new RegExp(label), `keyType=${keyType} deveria mostrar "${label}"`)
-  }
+test('renders without a QR code image or ticket link when they are absent', () => {
+  const html = renderStatic({ ...BASE_PROPS, qrCodeBase64: null, ticketUrl: null })
+  assert.doesNotMatch(html, /<img/)
+  assert.doesNotMatch(html, /Abrir comprovante/)
 })
 
 test('a short protocol is shown in full (nothing to abbreviate)', () => {

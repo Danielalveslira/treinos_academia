@@ -1,21 +1,19 @@
-import { Box, Text } from '@primer/react'
+import { Box, Link, Text } from '@primer/react'
 import { formatCentavosBRL } from '../utils/format'
-import { resolvePixKeyTypeLabel, abbreviateProtocol } from '../utils/cashPurchaseFlow'
+import { abbreviateProtocol } from '../utils/cashPurchaseFlow'
 import { CopyButton } from './CopyButton'
 
 // Reutilizado em dois lugares (EvoCash.jsx): logo após requestCashPurchase resolver, e
 // dentro de cada card de "Minhas compras" enquanto status === 'pending'. Nunca renderiza
-// nada se pixPayment não estiver carregado/válido -- fail-safe de exibição, nunca inventa
-// uma instrução de pagamento sem dado real (o backend já bloqueou a CRIAÇÃO do pedido
-// nesse caso, ver isValidPixPayment em cash-purchase-core.js; isto aqui é só defesa
-// adicional caso settings.pixPayment ainda não tenha carregado no momento do render).
+// nada sem QR code -- fail-safe de exibição (o Mercado Pago sempre devolve um pagamento
+// PIX com QR code; se por algum motivo faltar, é melhor não mostrar nada do que uma
+// instrução incompleta).
 //
-// Todo texto que pode ser longo e imprevisível (chave PIX, protocolo) usa
-// wordBreak/overflowWrap + minWidth:0 nos containers flex, pra nunca estourar a largura
-// do card em telas pequenas -- não é uma solução ajustada aos dados de hoje, funciona
-// para qualquer chave aleatória/protocolo por mais longos que sejam.
-export function PixPaymentInstructions({ purchaseId, packageLabel, cashAmount, amountCentavos, pixPayment }) {
-  if (!pixPayment) return null
+// Diferença do fluxo antigo (PIX manual): não existe mais "chave PIX/recebedor" fixos --
+// cada compra tem seu próprio QR code/código copia-e-cola gerado pelo Mercado Pago, e a
+// confirmação é automática (webhook), nunca depende de um admin conferir manualmente.
+export function PixPaymentInstructions({ purchaseId, packageLabel, cashAmount, amountCentavos, qrCode, qrCodeBase64, ticketUrl }) {
+  if (!qrCode) return null
 
   return (
     <Box
@@ -31,7 +29,7 @@ export function PixPaymentInstructions({ purchaseId, packageLabel, cashAmount, a
       }}
     >
       <Text as="p" sx={{ fontWeight: 'bold', m: 0 }}>
-        Pagamento via PIX
+        Pagamento via PIX (Mercado Pago)
       </Text>
       <Text as="p" sx={{ m: 0, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
         {packageLabel} — {cashAmount} EvoCash
@@ -40,24 +38,36 @@ export function PixPaymentInstructions({ purchaseId, packageLabel, cashAmount, a
         Valor: <Text sx={{ fontWeight: 'bold' }}>{formatCentavosBRL(amountCentavos)}</Text>
       </Text>
 
+      {qrCodeBase64 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+          <img
+            src={`data:image/png;base64,${qrCodeBase64}`}
+            alt="QR code para pagamento PIX"
+            style={{ width: 220, height: 220 }}
+          />
+        </Box>
+      )}
+
       <Box sx={{ minWidth: 0 }}>
         <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-          Chave PIX ({resolvePixKeyTypeLabel(pixPayment.keyType)})
+          Código PIX copia e cola
         </Text>
         <Text
           as="p"
-          sx={{ fontWeight: 'bold', m: 0, wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0 }}
+          sx={{ fontFamily: 'mono', fontSize: 0, m: 0, wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0 }}
         >
-          {pixPayment.key}
+          {qrCode}
         </Text>
         <Box sx={{ mt: 1 }}>
-          <CopyButton value={pixPayment.key} label="Copiar chave" successMessage="Chave PIX copiada" testId="copy-pix-key" />
+          <CopyButton value={qrCode} label="Copiar código PIX" successMessage="Código PIX copiado" testId="copy-pix-code" />
         </Box>
       </Box>
 
-      <Text as="p" sx={{ m: 0, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-        Recebedor: <Text sx={{ fontWeight: 'bold' }}>{pixPayment.recipientName}</Text>
-      </Text>
+      {ticketUrl && (
+        <Link href={ticketUrl} target="_blank" rel="noreferrer">
+          Abrir comprovante do Mercado Pago
+        </Link>
+      )}
 
       <Box sx={{ minWidth: 0 }}>
         <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
@@ -76,8 +86,8 @@ export function PixPaymentInstructions({ purchaseId, packageLabel, cashAmount, a
       </Box>
 
       <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-        Após realizar o PIX, aguarde a confirmação do pagamento. O EvoCash será creditado somente após a aprovação.
-        Envie exatamente o valor indicado no pedido.
+        Após pagar, a confirmação é automática — o EvoCash é creditado assim que o Mercado Pago aprovar o pagamento,
+        geralmente em poucos segundos.
       </Text>
     </Box>
   )
