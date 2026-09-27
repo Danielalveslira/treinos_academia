@@ -64,11 +64,6 @@ export async function updateUserProfile(userId, changes) {
   return mapUserRow(data)
 }
 
-export async function setUsageProfile(usageProfile) {
-  const { error } = await supabase.rpc('set_usage_profile', { p_usage_profile: usageProfile })
-  if (error) throw error
-}
-
 // Desfaz um cadastro que falhou depois de ensureUserProfile()/setUsername() já terem
 // escrito algo (ver Register.jsx). Apaga primeiro os registros de perfil (permitido só
 // nos minutos seguintes à criação, via RLS) e por fim a própria conta no Auth — nessa

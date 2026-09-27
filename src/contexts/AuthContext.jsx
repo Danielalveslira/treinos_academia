@@ -41,12 +41,11 @@ export function AuthProvider({ children }) {
   // esta versão consulta getMyDeletionStatus() proativamente a cada carga de perfil,
   // em vez de reagir a um erro de permissão específico.
   const [deletionStatus, setDeletionStatus] = useState(null)
-  // Compartilhado entre a carga automática (onAuthStateChange) e refreshProfile/
-  // refreshLegalAccess (chamados direto por Register.jsx/LegalGate) — sem isso, os
-  // dois lados corriam separado: uma carga automática disparada no instante do
-  // cadastro podia responder DEPOIS de um refresh mais novo e sobrescrever o estado
-  // completo com uma "foto" antiga de antes dos passos seguintes do cadastro.
-  const revisionRef = useRef(0)
+  // Só usado DENTRO do efeito abaixo, pra uma chamada de loadSession não pisar no
+  // resultado de outra mais nova (duas trocas de sessão em sequência rápida) — nunca
+  // compartilhado com refreshProfile/refreshLegalAccess/saveProfile (ver por quê no
+  // comentário de refreshProfile mais abaixo).
+  const sessionRevisionRef = useRef(0)
 
   useEffect(() => {
     let active = true
@@ -55,7 +54,7 @@ export function AuthProvider({ children }) {
     async function checkDeletionStatus(userId, forRevision) {
       try {
         const { state } = await getMyDeletionStatus()
-        if (!active || forRevision !== revisionRef.current) return
+        if (!active || forRevision !== sessionRevisionRef.current) return
         if (state === 'blocked_financial_review') {
           setDeletionStatus('blocked_financial_review')
         } else if (state === 'pending') {
@@ -72,7 +71,7 @@ export function AuthProvider({ children }) {
       clearPhotoCache()
       clearCachedLegalAccess()
       clearCachedWallet()
-      const current = ++revisionRef.current
+      const current = ++sessionRevisionRef.current
       profileChannel?.unsubscribe()
       profileChannel = null
       setUser(toAppUser(supabaseUser))
@@ -97,7 +96,7 @@ export function AuthProvider({ children }) {
         ensureUserProfile(supabaseUser.id),
         getLegalAccess(supabaseUser.id),
       ])
-      if (!active || current !== revisionRef.current) return
+      if (!active || current !== sessionRevisionRef.current) return
 
       if (profileResult.status === 'fulfilled') {
         setProfile(profileResult.value)
@@ -112,7 +111,7 @@ export function AuthProvider({ children }) {
             'postgres_changes',
             { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${supabaseUser.id}` },
             (payload) => {
-              if (!active || current !== revisionRef.current) return
+              if (!active || current !== sessionRevisionRef.current) return
               setProfile(mapUserRow(payload.new))
             }
           )
@@ -150,44 +149,40 @@ export function AuthProvider({ children }) {
 
   const isSuperAdmin = profile?.role === 'superadmin'
 
+  // saveProfile/refreshProfile/refreshLegalAccess são chamadas diretas (Register.jsx,
+  // LegalGate, Profile.jsx), independentes do carregamento automático de sessão acima —
+  // de propósito SEM nenhum contador de revisão compartilhado com sessionRevisionRef:
+  // essa proteção já foi tentada numa versão anterior e causava o efeito oposto (uma
+  // chamada destas, acontecendo enquanto loadSession ainda aguardava
+  // ensureUserProfile/getLegalAccess, fazia loadSession descartar seu próprio resultado
+  // e nunca zerar `loading`, travando o app num spinner infinito). Cada uma só grava o
+  // que ela mesma acabou de buscar, sempre um dado fresco (nunca uma "foto antiga").
   async function saveProfile(changes) {
     const userId = user.uid
-    const current = ++revisionRef.current
     const patch = await updateUserProfile(userId, changes)
-    if (current === revisionRef.current) {
-      setProfile((prev) => (prev?.id === userId ? { ...prev, ...patch } : prev))
-    }
+    setProfile((prev) => (prev?.id === userId ? { ...prev, ...patch } : prev))
     return patch
   }
 
-  // Usado logo após o cadastro: nesse momento o listener de onAuthStateChange já pode
-  // ter buscado o perfil (ainda sem @usuário, criado uma fração de segundo antes),
-  // então essa função relê a linha e sincroniza o estado do contexto sem depender
-  // dessa corrida. Bumps revisionRef antes do fetch para descartar qualquer carga
-  // automática mais antiga que ainda esteja em voo.
   async function refreshProfile(userId) {
-    const current = ++revisionRef.current
     const userProfile = await ensureUserProfile(userId)
-    if (current === revisionRef.current) setProfile(userProfile)
+    setProfile(userProfile)
     return userProfile
   }
 
   async function refreshLegalAccess(userId = user?.uid) {
     if (!userId) return
-    const current = ++revisionRef.current
     setLegalLoading(true)
     setLegalError('')
     try {
       const access = await getLegalAccess(userId)
-      if (current === revisionRef.current) setLegalAccess(access)
+      setLegalAccess(access)
       return access
     } catch (error) {
       console.error('[Auth] getLegalAccess:', error)
-      if (current === revisionRef.current) {
-        setLegalError('Não foi possível consultar a policy e as restrições atuais.')
-      }
+      setLegalError('Não foi possível consultar a policy e as restrições atuais.')
     } finally {
-      if (current === revisionRef.current) setLegalLoading(false)
+      setLegalLoading(false)
     }
   }
 
