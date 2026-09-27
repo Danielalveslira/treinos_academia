@@ -1,22 +1,31 @@
-import { doc, getDoc } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../firebase/config'
+import { supabase } from '../supabase/config'
 
 export async function getPublicProfile(userId) {
-  const snapshot = await getDoc(doc(db, 'publicProfiles', userId))
-  return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null
+  const { data, error } = await supabase
+    .from('public_profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  return { id: data.user_id, username: data.username, bio: data.bio, shareStatistics: data.share_statistics }
 }
 
 export async function getPublicStatistics(userId) {
-  const snapshot = await getDoc(doc(db, 'publicProfiles', userId, 'statistics', 'summary'))
-  return snapshot.exists() ? snapshot.data() : null
+  const { data, error } = await supabase
+    .from('public_profile_statistics')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  return data ? { entries: data.entries, sets: data.sets, updatedAt: data.updated_at } : null
 }
 
-// AUD-006: o cálculo (agregação sobre o diário real de treino) e a gravação do
-// resumo público agora rodam no servidor, via Cloud Function com Admin SDK — o
-// cliente não escreve mais esse documento direto (firestore.rules bloqueia
-// create/update ali). Sempre para o próprio usuário autenticado: a function lê
-// request.auth.uid, não aceita um userId arbitrário.
+// AUD-006: o cálculo (agregação sobre o diário real de treino) e a gravação do resumo
+// público rodam no servidor via RPC security definer — o cliente não escreve mais esse
+// registro direto. Sempre para o próprio usuário autenticado (a RPC usa auth.uid(),
+// nunca aceita um userId arbitrário).
 export async function refreshPublicStatistics() {
-  return (await httpsCallable(functions, 'refreshPublicStatistics')()).data
+  const { error } = await supabase.rpc('refresh_public_statistics')
+  if (error) throw error
 }

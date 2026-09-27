@@ -1,82 +1,99 @@
-import {
-  collection,
-  addDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  deleteField,
-  doc,
-  getDocs,
-  query,
-  orderBy,
-  limit,
-  writeBatch,
-} from 'firebase/firestore'
-import { db } from '../firebase/config'
+import { supabase } from '../supabase/config'
 import { getExerciseType } from '../utils/exerciseType'
 import { getCatalogPersonalDocumentId } from '../utils/exerciseCatalog.js'
 
 // Teto de defesa: ninguém cadastra centenas de exercícios de verdade, mas sem isso a
-// leitura escala com o tamanho da coleção — o app já funciona bem dentro desse limite.
+// leitura escala com o tamanho da tabela — o app já funciona bem dentro desse limite.
 const MAX_EXERCISES = 300
 
-function exercisesRef(userId) {
-  return collection(db, 'users', userId, 'exercises')
+function toDoc(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    muscleGroup: row.muscle_group,
+    type: row.type,
+    note: row.note,
+    active: row.active,
+    source: row.source,
+    catalogExerciseId: row.catalog_exercise_id,
+    order: row.order,
+  }
 }
 
 export async function listExercises(userId) {
-  const q = query(exercisesRef(userId), orderBy('name'), limit(MAX_EXERCISES))
-  const snapshot = await getDocs(q)
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  const { data, error } = await supabase
+    .from('exercises')
+    .select('*')
+    .eq('user_id', userId)
+    .order('name')
+    .limit(MAX_EXERCISES)
+  if (error) throw error
+  return data.map(toDoc)
 }
 
-export function createExercise(userId, exercise) {
-  return addDoc(exercisesRef(userId), {
-    name: exercise.name.trim(),
-    muscleGroup: exercise.muscleGroup.trim(),
-    type: getExerciseType(exercise),
-    note: exercise.note?.trim() || '',
-    active: true,
-    source: 'custom',
-    catalogExerciseId: null,
-  })
+export async function createExercise(userId, exercise) {
+  const { data, error } = await supabase
+    .from('exercises')
+    .insert({
+      user_id: userId,
+      name: exercise.name.trim(),
+      muscle_group: exercise.muscleGroup.trim(),
+      type: getExerciseType(exercise),
+      note: exercise.note?.trim() || '',
+      active: true,
+      source: 'custom',
+      catalog_exercise_id: null,
+    })
+    .select()
+    .single()
+  if (error) throw error
+  return { id: data.id }
 }
 
 export async function createCatalogExercise(userId, exercise) {
   const exerciseId = getCatalogPersonalDocumentId(exercise.catalogExerciseId)
-  await setDoc(doc(db, 'users', userId, 'exercises', exerciseId), exercise)
+  const { error } = await supabase.from('exercises').insert({
+    id: exerciseId,
+    user_id: userId,
+    name: exercise.name,
+    muscle_group: exercise.muscleGroup,
+    type: exercise.type || 'strength',
+    note: exercise.note || '',
+    active: exercise.active ?? true,
+    source: 'catalog',
+    catalog_exercise_id: exercise.catalogExerciseId,
+  })
+  if (error) throw error
   return exerciseId
 }
 
-export function updateExercise(userId, exerciseId, exercise, { clearOrder = false } = {}) {
-  return updateDoc(doc(db, 'users', userId, 'exercises', exerciseId), {
+export async function updateExercise(userId, exerciseId, exercise, { clearOrder = false } = {}) {
+  const patch = {
     name: exercise.name.trim(),
-    muscleGroup: exercise.muscleGroup.trim(),
+    muscle_group: exercise.muscleGroup.trim(),
     // type nunca muda depois de criado (ver ExerciseForm.jsx — o campo vira somente
     // leitura ao editar); reenviado aqui só pra "curar" exercícios antigos sem o campo
     // com um valor explícito na próxima edição, sem exigir uma migração em massa.
     type: getExerciseType(exercise),
     note: exercise.note?.trim() || '',
     active: exercise.active,
-    // A posição salva em "Reordenar exercícios" só faz sentido dentro do grupo em
-    // que foi definida — ao trocar o exercício de grupo (ver ExercisesContext.edit),
-    // ela precisa ser removida, não só deixada desatualizada, senão o exercício
-    // herda uma posição arbitrária do grupo anterior no grupo novo.
-    ...(clearOrder ? { order: deleteField() } : {}),
-  })
+  }
+  // A posição salva em "Reordenar exercícios" só faz sentido dentro do grupo em que foi
+  // definida — ao trocar o exercício de grupo, ela precisa ser removida, não só deixada
+  // desatualizada, senão o exercício herda uma posição arbitrária do grupo anterior.
+  if (clearOrder) patch.order = null
+  const { error } = await supabase.from('exercises').update(patch).eq('id', exerciseId).eq('user_id', userId)
+  if (error) throw error
 }
 
-export function deleteExercise(userId, exerciseId) {
-  return deleteDoc(doc(db, 'users', userId, 'exercises', exerciseId))
+export async function deleteExercise(userId, exerciseId) {
+  const { error } = await supabase.from('exercises').delete().eq('id', exerciseId).eq('user_id', userId)
+  if (error) throw error
 }
 
-// Grava a nova ordem de um único grupo muscular em um só commit — nunca lê nem
-// escreve exercícios de outro grupo. MAX_EXERCISES (300) garante que um grupo
-// nunca chega perto do limite de 500 operações por batch do Firestore.
-export function saveExerciseOrder(userId, orderedExerciseIds) {
-  const batch = writeBatch(db)
-  orderedExerciseIds.forEach((exerciseId, index) => {
-    batch.update(doc(db, 'users', userId, 'exercises', exerciseId), { order: index })
-  })
-  return batch.commit()
+// Grava a nova ordem de um único grupo muscular num único statement atômico (RPC) —
+// nunca uma reordenação parcial se algo falhar no meio.
+export async function saveExerciseOrder(userId, orderedExerciseIds) {
+  const { error } = await supabase.rpc('save_exercise_order', { p_exercise_ids: orderedExerciseIds })
+  if (error) throw error
 }

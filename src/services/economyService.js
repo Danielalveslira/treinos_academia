@@ -2,13 +2,13 @@ import {
   collectionGroup,
   doc,
   documentId,
-  getDoc,
   getDocs,
   query,
   where,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, functions, functionsUsCentral } from '../firebase/config'
+import { supabase } from '../supabase/config'
 
 const EMPTY_WALLET = { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0 }
 
@@ -62,13 +62,21 @@ function writeCache(uid, wallet) {
 // máximo 1x/dia na Fase 1), então uma leitura a cada poucos minutos (ou até o cache ser
 // atualizado por registerQualifiedActivity) já cobre a UX sem manter uma conexão aberta
 // o tempo todo.
+// TODO(economia): tabela wallets ainda é só um stub no Supabase (sem crédito/débito
+// real ainda — ver migration wallet_stub.sql) até a fase de economia ser portada;
+// get_my_wallet() sempre devolve zero até lá.
 export async function getWallet(uid, { forceRefresh = false } = {}) {
   if (!forceRefresh) {
     const cached = readCache(uid)
     if (cached) return cached
   }
-  const snapshot = await getDoc(doc(db, 'users', uid, 'wallet', 'current'))
-  const wallet = snapshot.exists() ? snapshot.data() : EMPTY_WALLET
+  const { data, error } = await supabase.rpc('get_my_wallet')
+  if (error) throw error
+  const wallet = {
+    coinBalance: data.coin_balance,
+    lifetimeCoinsEarned: data.lifetime_coins_earned,
+    cashBalance: data.cash_balance,
+  }
   writeCache(uid, wallet)
   return wallet
 }

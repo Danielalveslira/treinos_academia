@@ -1,264 +1,322 @@
-import {
-  collection,
-  addDoc,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  getCountFromServer,
-  setDoc,
-  query,
-  where,
-  orderBy,
-  limit,
-  serverTimestamp,
-  Timestamp,
-} from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { ref as storageRef, uploadBytesResumable, getBytes } from 'firebase/storage'
-import { db, storage, functions } from '../firebase/config'
+import { supabase } from '../supabase/config'
 import { validateAchievement } from '../utils/achievements'
 
 const FEED_PAGE_SIZE = 30
-// Próximos treinos (Treino Marcado V1): teto de defesa, não paginação -- uma comunidade
-// real dificilmente tem mais que isso de eventos futuros simultâneos; se algum dia
-// precisar de mais, é um cursor novo, não um número maior aqui.
 const UPCOMING_WORKOUTS_PAGE_SIZE = 20
 const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
-const listWorkoutParticipantsCallable = httpsCallable(functions, 'listWorkoutParticipants')
 // Um pouco acima de MAX_OUTPUT_BYTES (utils/imageCompression.js) só de folga — nunca
-// deveria ter um objeto maior que isso em statusPhotos/, pois storage.rules recusa
-// qualquer upload além desse teto.
+// deveria ter um objeto maior que isso no bucket, pois ele recusa upload além desse teto.
 const MAX_PHOTO_DOWNLOAD_BYTES = 5 * 1024 * 1024
 
-function statusesRef() {
-  return collection(db, 'statuses')
-}
-
-function toDoc(d) {
-  return { id: d.id, ...d.data() }
-}
-
 function expiresAtValue() {
-  return Timestamp.fromMillis(Date.now() + STATUS_LIFETIME_MS)
+  return new Date(Date.now() + STATUS_LIFETIME_MS).toISOString()
 }
 
-// Campos comuns a toda publicação de comunidade, para não repetir o mesmo bloco em
-// cada create*Status abaixo (texto, enquete, treino marcado, conquista e foto).
-// authorUsername é gravado no próprio status (denormalizado) para o feed poder mostrar
-// quem publicou sem precisar de 1 leitura extra em "users" por item exibido. Nunca o
-// e-mail: é um dado sensível e não deveria aparecer publicamente na comunidade.
-// authorIsSuperAdmin (selo dourado) é só a conveniência de exibição — o valor real é
-// conferido pelo servidor (firestore.rules: authorIsSuperAdmin == isSuperAdmin()),
-// então um usuário comum nunca consegue gravar esse campo como true.
+// author_is_superadmin (selo dourado) é só a conveniência de exibição — o valor
+// enviado aqui é ignorado pelo banco (trigger enforce_status_author_badge sobrescreve
+// com o papel real de quem está autenticado), igual à regra equivalente do main.
 function baseStatusFields(communityId, author, type) {
   return {
-    communityId,
-    authorId: author.id,
-    authorUsername: author.username || null,
-    authorIsSuperAdmin: author.role === 'superadmin',
+    community_id: communityId,
+    author_id: author.id,
+    author_username: author.username || null,
+    author_is_superadmin: author.role === 'superadmin',
     type,
-    createdAt: serverTimestamp(),
-    expiresAt: expiresAtValue(),
+    expires_at: expiresAtValue(),
+  }
+}
+
+function toDoc(row) {
+  const base = {
+    id: row.id,
+    communityId: row.community_id,
+    authorId: row.author_id,
+    authorUsername: row.author_username,
+    authorIsSuperAdmin: row.author_is_superadmin,
+    type: row.type,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+  }
+  switch (row.type) {
+    case 'text':
+      return { ...base, text: row.text }
+    case 'poll':
+      return { ...base, poll: { question: row.poll_question, options: row.poll_options } }
+    case 'workout':
+      return {
+        ...base,
+        workout: { title: row.workout_title, date: row.workout_date, location: row.workout_location },
+      }
+    case 'achievement':
+      return {
+        ...base,
+        achievement: {
+          day: row.achievement_day,
+          text: row.achievement_text,
+          entries: row.achievement_entries,
+          sets: row.achievement_sets,
+        },
+      }
+    case 'photo':
+      return { ...base, photoPath: row.photo_path, caption: row.photo_caption }
+    default:
+      return base
   }
 }
 
 export async function listCommunityFeed(communityId, pageSize = FEED_PAGE_SIZE) {
-  // expiresAt = createdAt + 24h (deslocamento fixo), então ordenar por expiresAt desc
-  // equivale a ordenar por createdAt desc (mais recentes primeiro) e ainda satisfaz a
-  // exigência do Firestore de que o primeiro orderBy acompanhe o campo do filtro de
-  // desigualdade.
-  const q = query(
-    statusesRef(),
-    where('communityId', '==', communityId),
-    where('expiresAt', '>', Timestamp.now()),
-    orderBy('expiresAt', 'desc'),
-    limit(pageSize)
-  )
-  const snapshot = await getDocs(q)
-  return snapshot.docs.map(toDoc)
+  const { data, error } = await supabase
+    .from('statuses')
+    .select('*')
+    .eq('community_id', communityId)
+    .gt('expires_at', new Date().toISOString())
+    .order('expires_at', { ascending: false })
+    .limit(pageSize)
+  if (error) throw error
+  return data.map(toDoc)
 }
 
-export function createTextStatus(communityId, author, text) {
-  return addDoc(statusesRef(), {
-    ...baseStatusFields(communityId, author, 'text'),
-    text: text.trim(),
+export async function createTextStatus(communityId, author, text) {
+  const { data, error } = await supabase
+    .from('statuses')
+    .insert({ ...baseStatusFields(communityId, author, 'text'), text: text.trim() })
+    .select('id')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function createPollStatus(communityId, author, question, options) {
+  const { data, error } = await supabase
+    .from('statuses')
+    .insert({
+      ...baseStatusFields(communityId, author, 'poll'),
+      poll_question: question.trim(),
+      poll_options: options.map((label, index) => ({ id: String(index), label: label.trim() })),
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function createWorkoutStatus(communityId, author, workout) {
+  const { data, error } = await supabase
+    .from('statuses')
+    .insert({
+      ...baseStatusFields(communityId, author, 'workout'),
+      workout_title: workout.title.trim(),
+      workout_date: new Date(workout.date).toISOString(),
+      workout_location: workout.location.trim(),
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return data
+}
+
+// Faz upload via XMLHttpRequest direto no endpoint REST do Storage em vez do
+// supabase-js (que não expõe progresso nem cancelamento de upload) — assim mantém o
+// mesmo comportamento de antes (barra de progresso real + botão de cancelar).
+async function uploadWithProgress(objectPath, blob, { onProgress, signal } = {}) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  return new Promise((resolve, reject) => {
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/status-photos/${objectPath}`
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', url)
+    xhr.setRequestHeader('Authorization', `Bearer ${session?.access_token}`)
+    xhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_ANON_KEY)
+    xhr.setRequestHeader('Content-Type', 'image/webp')
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(e.loaded / e.total)
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve()
+      else reject(new Error('UPLOAD_FAILED'))
+    }
+    xhr.onerror = () => reject(new Error('UPLOAD_FAILED'))
+    xhr.onabort = () => {
+      const err = new Error('Upload cancelado')
+      err.code = 'storage/canceled'
+      reject(err)
+    }
+    signal?.addEventListener('abort', () => xhr.abort())
+    xhr.send(blob)
   })
 }
 
-export function createPollStatus(communityId, author, question, options) {
-  return addDoc(statusesRef(), {
-    ...baseStatusFields(communityId, author, 'poll'),
-    poll: {
-      question: question.trim(),
-      options: options.map((label, index) => ({ id: String(index), label: label.trim() })),
-    },
-  })
-}
+// O registro nasce antes do upload. A criação dele passa pelas policies completas
+// (termos, restrições, filiação e configuração da comunidade), e a policy de Storage
+// só precisa consultar esse registro para autorizar os bytes. Se o envio falhar ou for
+// cancelado, removemos o registro; o gatilho de exclusão e a varredura de órfãos
+// (ainda não portada) continuam sendo a rede de segurança para falhas de rede.
+export async function createPhotoStatus(communityId, author, { blob, caption }, { onProgress } = {}) {
+  const statusId = crypto.randomUUID()
+  const photoPath = `statusPhotos/${communityId}/${statusId}.webp`
+  const objectPath = `${communityId}/${statusId}.webp`
 
-export function createWorkoutStatus(communityId, author, workout) {
-  return addDoc(statusesRef(), {
-    ...baseStatusFields(communityId, author, 'workout'),
-    workout: {
-      title: workout.title.trim(),
-      date: Timestamp.fromDate(new Date(workout.date)),
-      location: workout.location.trim(),
-    },
-  })
-}
-
-// O documento nasce antes do upload. A criação dele passa pelas regras completas do
-// Firestore (termos, restrições, filiação e configuração da comunidade), e o Storage
-// precisa consultar somente esse documento para autorizar os bytes. Isso
-// mantém as regras do Storage dentro do limite de duas consultas cruzadas por operação.
-// Se o envio falhar ou for cancelado, removemos o documento; o gatilho de exclusão e a
-// varredura de órfãos continuam sendo a rede de segurança para falhas de rede.
-// uploadBytesResumable (em vez de uploadBytes) é o que permite progresso e cancelamento
-// reais no formulário, em vez de só um spinner indeterminado.
-export async function createPhotoStatus(
-  communityId,
-  author,
-  { blob, caption },
-  { onProgress } = {}
-) {
-  const statusRef = doc(statusesRef())
-  const photoPath = `statusPhotos/${communityId}/${statusRef.id}.webp`
-  await setDoc(statusRef, {
+  const { error: insertError } = await supabase.from('statuses').insert({
+    id: statusId,
     ...baseStatusFields(communityId, author, 'photo'),
-    photoPath,
-    caption: caption ? caption.trim() : '',
+    photo_path: photoPath,
+    photo_caption: caption ? caption.trim() : '',
   })
-  const task = uploadBytesResumable(storageRef(storage, photoPath), blob, {
-    contentType: 'image/webp',
-  })
-  const done = new Promise((resolve, reject) => {
-    task.on(
-      'state_changed',
-      (snapshot) => onProgress?.(snapshot.bytesTransferred / snapshot.totalBytes),
-      async (error) => {
-        try {
-          await deleteDoc(statusRef)
-        } catch {
-          // O job de expiração remove qualquer documento residual em até 24h.
-        }
-        reject(error)
-      },
-      () => resolve(statusRef)
-    )
-  })
-  return { task, done }
+  if (insertError) throw insertError
+
+  const controller = new AbortController()
+  const done = uploadWithProgress(objectPath, blob, { onProgress, signal: controller.signal }).then(
+    () => ({ id: statusId }),
+    async (error) => {
+      await supabase
+        .from('statuses')
+        .delete()
+        .eq('id', statusId)
+        .catch(() => {})
+      throw error
+    }
+  )
+  return { task: { cancel: () => controller.abort() }, done }
 }
 
 export async function getStatusPhotoBlob(photoPath) {
-  const bytes = await getBytes(storageRef(storage, photoPath), MAX_PHOTO_DOWNLOAD_BYTES)
-  return new Blob([bytes], { type: 'image/webp' })
+  const objectPath = photoPath.replace(/^statusPhotos\//, '')
+  const { data, error } = await supabase.storage.from('status-photos').download(objectPath)
+  if (error) throw error
+  if (data.size > MAX_PHOTO_DOWNLOAD_BYTES) throw new Error('PHOTO_TOO_LARGE')
+  return data
 }
 
-export function deleteStatus(statusId) {
-  return deleteDoc(doc(db, 'statuses', statusId))
+export async function deleteStatus(statusId) {
+  const { error } = await supabase.from('statuses').delete().eq('id', statusId)
+  if (error) throw error
 }
 
-// O documento de voto tem o próprio userId como id, então "meu voto" é 1 leitura direta —
-// nunca precisa baixar a subcoleção inteira pra saber se (e em quê) alguém votou.
 export async function getMyVote(statusId, userId) {
-  const snapshot = await getDoc(doc(db, 'statuses', statusId, 'votes', userId))
-  return snapshot.exists() ? snapshot.data() : null
+  const { data, error } = await supabase
+    .from('status_votes')
+    .select('*')
+    .eq('status_id', statusId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  return data ? { optionId: data.option_id, userId: data.user_id, createdAt: data.created_at } : null
 }
 
-// Contagem por opção via agregação no servidor: custa 1 leitura fixa por opção
-// (no máximo 6, teto do schema da enquete), nunca escala com o número de votos.
+// Uma única query agregada no servidor (get_poll_results) — nunca escala com o número
+// de opções nem de votos. optionIds sem nenhum voto entram com 0 (mesmo shape do
+// original, que consultava cada opção explicitamente).
 export async function getPollResults(statusId, optionIds) {
-  const votesRef = collection(db, 'statuses', statusId, 'votes')
-  const counts = await Promise.all(
-    optionIds.map(async (optionId) => {
-      const snapshot = await getCountFromServer(query(votesRef, where('optionId', '==', optionId)))
-      return [optionId, snapshot.data().count]
-    })
-  )
-  return Object.fromEntries(counts)
+  const { data, error } = await supabase.rpc('get_poll_results', { p_status_id: statusId })
+  if (error) throw error
+  const counts = Object.fromEntries(optionIds.map((id) => [id, 0]))
+  for (const row of data) counts[row.option_id] = Number(row.votes)
+  return counts
 }
 
-export function voteOnPoll(statusId, userId, optionId) {
-  return setDoc(doc(db, 'statuses', statusId, 'votes', userId), {
-    optionId,
-    userId,
-    createdAt: serverTimestamp(),
-  })
+export async function voteOnPoll(statusId, userId, optionId) {
+  const { error } = await supabase
+    .from('status_votes')
+    .upsert({ status_id: statusId, user_id: userId, option_id: optionId })
+  if (error) throw error
 }
 
-// Mesma ideia: id do documento é o userId, então "eu participo?" é 1 leitura direta.
 export async function amIParticipant(statusId, userId) {
-  const snapshot = await getDoc(doc(db, 'statuses', statusId, 'participants', userId))
-  return snapshot.exists()
+  const { data, error } = await supabase
+    .from('status_participants')
+    .select('user_id')
+    .eq('status_id', statusId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (error) throw error
+  return !!data
 }
 
 export async function countParticipants(statusId) {
-  const snapshot = await getCountFromServer(collection(db, 'statuses', statusId, 'participants'))
-  return snapshot.data().count
+  const { count, error } = await supabase
+    .from('status_participants')
+    .select('*', { count: 'exact', head: true })
+    .eq('status_id', statusId)
+  if (error) throw error
+  return count
 }
 
-export function joinWorkout(statusId, userId) {
-  return setDoc(doc(db, 'statuses', statusId, 'participants', userId), {
-    userId,
-    joinedAt: serverTimestamp(),
-  })
+export async function joinWorkout(statusId, userId) {
+  const { error } = await supabase.from('status_participants').insert({ status_id: statusId, user_id: userId })
+  if (error) throw error
 }
 
-export function leaveWorkout(statusId, userId) {
-  return deleteDoc(doc(db, 'statuses', statusId, 'participants', userId))
+export async function leaveWorkout(statusId, userId) {
+  const { error } = await supabase
+    .from('status_participants')
+    .delete()
+    .eq('status_id', statusId)
+    .eq('user_id', userId)
+  if (error) throw error
 }
 
-// "Próximos treinos" (Treino Marcado V1) -- consulta própria, independente do feed
-// recente (que filtra por expiresAt, sem nenhuma relação com a data do evento, ver
-// canJoinWorkout em firestore.rules). Busca só workout.date > agora, ordenado pelo
-// evento mais próximo primeiro -- nunca lê todos os statuses da comunidade para filtrar
-// no cliente, nunca um listener (mesmo raciocínio de listCommunityFeed: 1 leitura sob
-// demanda, cacheada pelo hook que a chama). Índice composto necessário:
-// statuses(communityId ASC, type ASC, workout.date ASC) -- ver firestore.indexes.json.
+// "Próximos treinos" (Treino Marcado V1) — consulta própria, independente do feed
+// recente (que filtra por expires_at, sem relação com a data do evento).
 export async function listUpcomingWorkouts(communityId, pageSize = UPCOMING_WORKOUTS_PAGE_SIZE) {
-  const q = query(
-    statusesRef(),
-    where('communityId', '==', communityId),
-    where('type', '==', 'workout'),
-    where('workout.date', '>', Timestamp.now()),
-    orderBy('workout.date', 'asc'),
-    limit(pageSize)
-  )
-  const snapshot = await getDocs(q)
-  return snapshot.docs.map(toDoc)
+  const { data, error } = await supabase
+    .from('statuses')
+    .select('*')
+    .eq('community_id', communityId)
+    .eq('type', 'workout')
+    .gt('workout_date', new Date().toISOString())
+    .order('workout_date', { ascending: true })
+    .limit(pageSize)
+  if (error) throw error
+  return data.map(toDoc)
 }
 
-// Resolve o alvo de um link #treino-{id} mesmo quando ele ficou fora do limite 20 da
-// consulta acima. É um get direto sujeito à mesma Rule de statuses/{id}: somente membro
-// da comunidade do próprio status consegue lê-lo. A checagem de communityId impede um
-// treino válido de outra comunidade de ser exibido na rota atual.
+// Resolve o alvo de um link #treino-{id} mesmo quando ficou fora do limite da consulta
+// acima. Sujeito à mesma policy de statuses/{id}: só membro da comunidade do próprio
+// status consegue lê-lo.
 export async function getSharedWorkout(statusId, communityId) {
-  const snapshot = await getDoc(doc(db, 'statuses', statusId))
-  if (!snapshot.exists()) return null
-  const status = toDoc(snapshot)
+  const { data, error } = await supabase.from('statuses').select('*').eq('id', statusId).maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  const status = toDoc(data)
   return status.type === 'workout' && status.communityId === communityId ? status : null
 }
 
-// "Ver participantes" -- callable dedicada (listWorkoutParticipants, mesmo padrão de
-// listPostEconomyVoters), nunca N getDoc separados por participante: users/{uid} só é
-// legível pelo próprio dono (ver firestore.rules), então resolver username por
-// participante exige o servidor (Admin SDK) de qualquer forma. cursor é o valor
-// devolvido em nextCursor da página anterior (null na primeira página).
+// "Ver participantes" — public_profiles é legível por qualquer autenticado (mesmo
+// motivo de exibir @ no feed), então dá pra resolver o username com um join direto no
+// cliente, sem precisar de uma callable dedicada como no Firebase (lá, users/{uid} só é
+// legível pelo próprio dono).
 export async function listWorkoutParticipants(statusId, { cursor = null, limit = 20 } = {}) {
-  return (await listWorkoutParticipantsCallable({ statusId, cursor, limit })).data
+  let q = supabase
+    .from('status_participants')
+    .select('user_id, joined_at, public_profiles(username)')
+    .eq('status_id', statusId)
+    .order('joined_at', { ascending: true })
+    .order('user_id', { ascending: true })
+    .limit(limit)
+  if (cursor) q = q.gt('joined_at', cursor)
+  const { data, error } = await q
+  if (error) throw error
+  return {
+    participants: data.map((row) => ({ userId: row.user_id, username: row.public_profiles?.username || null })),
+    nextCursor: data.length === limit ? data.at(-1).joined_at : null,
+  }
 }
 
-export function createAchievementStatus(communityId, author, values) {
+export async function createAchievementStatus(communityId, author, values) {
   const error = validateAchievement(values)
   if (error) throw new Error(error)
-  const achievement = {
-    day: values.day,
-    text: values.text.trim(),
-    entries: values.entries,
-    sets: values.sets,
-  }
-  return addDoc(statusesRef(), {
-    ...baseStatusFields(communityId, author, 'achievement'),
-    achievement,
-  })
+  const { data, error: insertError } = await supabase
+    .from('statuses')
+    .insert({
+      ...baseStatusFields(communityId, author, 'achievement'),
+      achievement_day: values.day,
+      achievement_text: values.text.trim(),
+      achievement_entries: values.entries,
+      achievement_sets: values.sets,
+    })
+    .select('id')
+    .single()
+  if (insertError) throw insertError
+  return data
 }

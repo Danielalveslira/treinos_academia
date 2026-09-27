@@ -1,23 +1,33 @@
-import { collection, getDocs, query, where } from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../firebase/config'
+import { supabase } from '../supabase/config'
 
-const setCommunityMemberBanCallable = httpsCallable(functions, 'setCommunityMemberBan')
-
-// Fase 5 -- caminho DEDICADO para banir/desbanir de UMA comunidade (nunca
-// decideSupportRequest, ver community-moderation-service.js no backend). Autorizado
-// por superadmin OU community.ownerId===uid; um community_ban aplicado pela moderação
-// global (com decisionId) só pode ser desfeito por um superadmin, nunca pelo dono.
+// Fase 5 — caminho DEDICADO para banir/desbanir de UMA comunidade (nunca
+// decide_support_request, ver migration community_member_ban.sql). Autorizado por
+// superadmin OU community.owner_id===uid; um community_ban aplicado pela moderação
+// global (com decision_id) só pode ser desfeito por um superadmin, nunca pelo dono —
+// tudo reforçado dentro da própria RPC.
 export async function setCommunityMemberBan({ communityId, targetUserId, banned, reason }) {
-  return (await setCommunityMemberBanCallable({ communityId, targetUserId, banned, reason })).data
+  const { error } = await supabase.rpc('set_community_member_ban', {
+    p_community_id: communityId,
+    p_target_user_id: targetUserId,
+    p_banned: banned,
+    p_reason: reason,
+  })
+  if (error) throw error
 }
 
-// Só quem as Rules já deixam (superadmin, ou o dono da própria comunidade) consegue
-// listar as restrições dela -- usado para saber quem já está banido antes de oferecer
+// Só quem as policies já deixam (superadmin, ou o dono da própria comunidade) consegue
+// listar as restrições dela — usado para saber quem já está banido antes de oferecer
 // banir/desbanir na UI.
 export async function listCommunityRestrictions(communityId) {
-  const snapshot = await getDocs(
-    query(collection(db, 'communityRestrictions'), where('communityId', '==', communityId))
-  )
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+  const { data, error } = await supabase.rpc('list_community_restrictions', { p_community_id: communityId })
+  if (error) throw error
+  return data.map((row) => ({
+    id: `${row.community_id}_${row.user_id}`,
+    communityId: row.community_id,
+    userId: row.user_id,
+    decisionId: row.decision_id,
+    bannedBy: row.banned_by,
+    reason: row.reason,
+    createdAt: row.created_at,
+  }))
 }
