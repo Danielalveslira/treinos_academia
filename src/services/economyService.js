@@ -1,13 +1,3 @@
-import {
-  collectionGroup,
-  doc,
-  documentId,
-  getDocs,
-  query,
-  where,
-} from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { db, functionsUsCentral } from '../firebase/config'
 import { supabase } from '../supabase/config'
 
 const EMPTY_WALLET = { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0 }
@@ -20,16 +10,6 @@ const EMPTY_WALLET = { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0 }
 // bastante pra nunca ficar perceptivelmente errado, longo o bastante pra continuar
 // evitando 1 leitura do Firestore por navegação.
 const CACHE_TTL_MS = 5 * 60 * 1000
-
-// Voto econômico migrou para us-central1 (voteOnPostV2) depois do experimento A/B --
-// mesmo banco (nam5), mesma lógica (vote-service.js), só a região muda: 66-77% mais
-// rápido que southamerica-east1 em todas as ações medidas (create/switch/remove/
-// revote). Sem fallback para a Function antiga de propósito -- se us-central1 cair,
-// queremos ver o erro, não mascarar silenciosamente voltando pra outra região.
-const voteOnPostV2Callable = httpsCallable(functionsUsCentral, 'voteOnPostV2')
-// Também em us-central1 -- consulta Firestore-heavy contra o mesmo banco nam5, mesmo
-// raciocínio do voto (ver acima).
-const listPostEconomyVotersCallable = httpsCallable(functionsUsCentral, 'listPostEconomyVoters')
 
 function cacheKey(uid) {
   return `wallet:${uid}`
@@ -117,37 +97,49 @@ export async function getMyEconomyVotesForStatuses(uid, statusIds) {
   for (let i = 0; i < statusIds.length; i += VOTE_QUERY_CHUNK_SIZE) {
     chunks.push(statusIds.slice(i, i + VOTE_QUERY_CHUNK_SIZE))
   }
-  const snapshots = await Promise.all(
-    chunks.map((chunk) => {
-      const refs = chunk.map((statusId) => doc(db, 'statuses', statusId, 'economyVotes', uid))
-      return getDocs(query(collectionGroup(db, 'economyVotes'), where(documentId(), 'in', refs)))
-    })
+  const results = await Promise.all(
+    chunks.map((chunk) =>
+      supabase.from('status_economy_votes').select('*').eq('user_id', uid).in('status_id', chunk)
+    )
   )
   const votesByStatusId = {}
-  for (const snapshot of snapshots) {
-    for (const item of snapshot.docs) {
-      // item.ref.parent é a subcoleção economyVotes; .parent dela é o status pai.
-      votesByStatusId[item.ref.parent.parent.id] = item.data()
+  for (const { data, error } of results) {
+    if (error) throw error
+    for (const row of data) {
+      votesByStatusId[row.status_id] = {
+        value: row.value,
+        charged: row.charged,
+        rewardState: row.reward_state,
+      }
     }
   }
   return votesByStatusId
 }
 
-// Só a primeira vez que o usuário vota nesta publicação cobra EvoCoins (result.charged)
-// -- trocar de direção ou remover depois é grátis, sem reembolso. O débito em si é
-// refletido pelo onSnapshot único de WalletContext.jsx assim que o Firestore confirma a
-// escrita de debitCoins (vote-service.js) -- nunca precisa de patch manual de cache
-// aqui, nem do uid (que esta função não usa mais).
+// Só a primeira vez que o usuário vota nesta publicação cobra EvoCoins (result.action
+// === 'create') -- trocar de direção ou remover depois é grátis, sem reembolso. O
+// débito em si é refletido pela subscription Realtime única de WalletContext.jsx assim
+// que o Supabase confirma a escrita de _wallet_debit_coins (cast_vote, RPC) -- nunca
+// precisa de patch manual de cache aqui, nem do uid (a RPC usa auth.uid()).
 export async function castVote(statusId, value) {
-  return (await voteOnPostV2Callable({ statusId, value })).data
+  const { data, error } = await supabase.rpc('cast_vote', { p_status_id: statusId, p_value: value })
+  if (error) throw error
+  return data
 }
 
-// "Ver quem votou" -- nunca lê statuses/{id}/economyVotes direto (Rules já bloqueiam
-// leitura de outro uid, ver firestore.rules); a callable devolve só {userId, username}
-// por votante, paginado. cursor é o valor devolvido em nextCursor da página anterior
-// (null na primeira página); direction é 'positive' ou 'negative'.
+// "Ver quem votou" -- nunca lê status_economy_votes direto (RLS já bloqueia leitura de
+// outro uid); a RPC devolve só {userId, username} por votante, paginado. cursor é o
+// valor devolvido em nextCursor da página anterior (null na primeira página); direction
+// é 'positive' ou 'negative'.
 export async function listPostEconomyVoters(statusId, direction, { cursor = null, limit = 20 } = {}) {
-  return (await listPostEconomyVotersCallable({ statusId, direction, cursor, limit })).data
+  const { data, error } = await supabase.rpc('list_post_economy_voters', {
+    p_status_id: statusId,
+    p_direction: direction === 'positive' ? 1 : -1,
+    p_cursor: cursor,
+    p_limit: limit,
+  })
+  if (error) throw error
+  return data
 }
 
 // Mesmo padrão de clearCachedLegalAccess (utils/legal.js): limpa em toda troca de
