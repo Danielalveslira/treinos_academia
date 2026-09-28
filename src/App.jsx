@@ -29,6 +29,7 @@ const LegalDocument = lazy(() => import('./pages/LegalDocument'))
 const Support = lazy(() => import('./pages/Support'))
 const AdminModeration = lazy(() => import('./pages/AdminModeration'))
 const AdminAccounts = lazy(() => import('./pages/AdminAccounts'))
+const AdminAccountDeletions = lazy(() => import('./pages/AdminAccountDeletions'))
 const EvoCash = lazy(() => import('./pages/EvoCash'))
 const AdminCashPurchases = lazy(() => import('./pages/AdminCashPurchases'))
 const AdminPromotions = lazy(() => import('./pages/AdminPromotions'))
@@ -117,6 +118,14 @@ export function AppRoutes() {
           element={
             <SuperAdminRoute>
               <AdminAccounts />
+            </SuperAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/exclusao-contas"
+          element={
+            <SuperAdminRoute>
+              <AdminAccountDeletions />
             </SuperAdminRoute>
           }
         />

@@ -172,6 +172,9 @@ export default function AdminAccounts() {
         <Button as={Link} to="/admin/moderacao" replace>
           Atendimento e moderação
         </Button>
+        <Button as={Link} to="/admin/exclusao-contas" replace>
+          Exclusão de contas
+        </Button>
       </Box>
       <ToastFlash toasts={toasts} />
       <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>

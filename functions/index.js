@@ -878,6 +878,36 @@ export const getMyDeletionStatus = onCall(options, async (request) => {
   return deletions.getOwnStatus(requireUser(request))
 })
 
+// Painel administrativo "Exclusão de contas": lista os jobs travados em
+// blocked_financial_review, com os dados que a análise precisa (saldo/compra pendente
+// atuais, motivo, datas, histórico de revisões já feitas) -- deletionJobs continua sem
+// NENHUMA regra de leitura direta para o cliente (ver getOwnStatus acima), superadmin
+// inclusive. Ver listBlockedForReview em deletion-service.js.
+export const listBlockedAccountDeletions = onCall(options, async (request) => {
+  await requireSuperAdmin(requireUser(request))
+  return { jobs: await deletions.listBlockedForReview() }
+})
+
+// Ação segura de revisão -- nunca mexe em saldo/ledger, só reavalia o portão financeiro
+// com os valores reais e atuais e, se já não houver motivo de bloqueio, retoma o job
+// (idêntico ao que confirmCashPurchase/cancelCashPurchase já fazem automaticamente, ver
+// reactivateDeletionIfClear em cash-purchase-service.js). Sempre registra a revisão
+// (quem, quando, o que decidiu), mesmo quando o resultado é "continua bloqueado". Ver
+// reviewFinancialBlock em deletion-service.js para a lógica completa e a proteção
+// contra corrida com o Scheduler/confirmCashPurchase/cancelCashPurchase.
+export const reviewBlockedAccountDeletion = onCall(options, async (request) => {
+  const adminId = requireUser(request)
+  const jobId = request.data?.jobId
+  if (!validId(jobId) || !jobId.startsWith('account_')) {
+    throw new HttpsError('invalid-argument', 'Solicitação inválida.')
+  }
+  const note = request.data?.note
+  if (note != null && (typeof note !== 'string' || note.length > 500)) {
+    throw new HttpsError('invalid-argument', 'Nota inválida.')
+  }
+  return deletions.reviewFinancialBlock(adminId, jobId, note)
+})
+
 const communityModeration = createCommunityModerationService({
   db,
   FieldValue,
