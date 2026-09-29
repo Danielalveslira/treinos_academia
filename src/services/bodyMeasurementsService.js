@@ -1,16 +1,4 @@
-import {
-  collection,
-  doc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  limit,
-  writeBatch,
-  serverTimestamp,
-  Timestamp,
-} from 'firebase/firestore'
-import { db } from '../firebase/config'
+import { supabase } from '../supabase/config'
 import { invalidateCache } from '../utils/pageCache'
 
 // Medida corporal é esparsa. A janela anual sustenta os gráficos sem uma coleção
@@ -30,17 +18,18 @@ const MEASUREMENT_FIELDS = [
   'leanMassKg',
   'fatMassKg',
 ]
-
-function measurementsRef(userId) {
-  return collection(db, 'users', userId, 'bodyMeasurements')
-}
-
-function toDoc(d) {
-  return { id: d.id, ...d.data() }
-}
-
-function toTimestamp(dateString) {
-  return Timestamp.fromDate(new Date(`${dateString}T12:00:00`))
+const COLUMN_BY_FIELD = {
+  weightKg: 'weight_kg',
+  bodyFatPercent: 'body_fat_percent',
+  abdomenCm: 'abdomen_cm',
+  waistCm: 'waist_cm',
+  hipCm: 'hip_cm',
+  chestCm: 'chest_cm',
+  armCm: 'arm_cm',
+  thighCm: 'thigh_cm',
+  calfCm: 'calf_cm',
+  leanMassKg: 'lean_mass_kg',
+  fatMassKg: 'fat_mass_kg',
 }
 
 function cleanNumber(value) {
@@ -49,31 +38,38 @@ function cleanNumber(value) {
   return Number.isFinite(n) ? n : undefined
 }
 
+function toDoc(row) {
+  const doc = { id: row.id, date: row.date }
+  for (const [field, column] of Object.entries(COLUMN_BY_FIELD)) {
+    if (row[column] != null) doc[field] = Number(row[column])
+  }
+  if (row.note) doc.note = row.note
+  return doc
+}
+
 export async function listRecentMeasurements(userId) {
-  const since = Timestamp.fromDate(new Date(Date.now() - RECENT_WINDOW_DAYS * 86400000))
-  const q = query(
-    measurementsRef(userId),
-    where('date', '>=', since),
-    orderBy('date', 'desc'),
-    limit(SAFETY_LIMIT)
-  )
-  const snapshot = await getDocs(q)
+  const since = new Date(Date.now() - RECENT_WINDOW_DAYS * 86400000).toISOString()
+  const { data, error } = await supabase
+    .from('body_measurements')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('date', since)
+    .order('date', { ascending: false })
+    .limit(SAFETY_LIMIT)
+  if (error) throw error
   return {
-    items: snapshot.docs.map(toDoc),
+    items: data.map(toDoc),
     // Igual a 500 já é tratado de forma conservadora como possível truncamento.
     // Evita uma leitura 501 apenas para distinguir o caso raro de exatamente 500.
-    truncated: snapshot.size === SAFETY_LIMIT,
+    truncated: data.length === SAFETY_LIMIT,
   }
 }
 
-// Salva tudo que veio preenchido num único commit: altura (se informada) vai direto pro
-// perfil (muda raramente, não é série temporal — ver isValidHeightField), o resto vira
-// um novo check-in em bodyMeasurements (nunca sobrescreve o anterior). Campos vazios
-// simplesmente não entram no documento — "só o que sabe".
-export async function saveBodyCheckIn(
-  userId,
-  values = {}
-) {
+// Salva tudo que veio preenchido numa única chamada (save_body_check_in): altura (se
+// informada) vai direto pro perfil (muda raramente, não é série temporal), o resto vira
+// um novo check-in em body_measurements (nunca sobrescreve o anterior). Campos vazios
+// simplesmente não entram no payload -- "só o que sabe".
+export async function saveBodyCheckIn(userId, values = {}) {
   const measurement = {}
   for (const field of MEASUREMENT_FIELDS) {
     const value = cleanNumber(values[field])
@@ -85,18 +81,12 @@ export async function saveBodyCheckIn(
   const hasMeasurement = Object.keys(measurement).length > 0
   if (height == null && !hasMeasurement) return false
 
-  const batch = writeBatch(db)
-  if (height != null) batch.set(doc(db, 'users', userId), { heightCm: height }, { merge: true })
-  if (hasMeasurement) {
-    batch.set(doc(measurementsRef(userId)), {
-      ...measurement,
-      date: toTimestamp(values.date),
-      createdAt: serverTimestamp(),
-    })
-  }
-  await batch.commit()
-  // heightCm em si não precisa disso: users/{uid} é sincronizado por listener (ver
-  // AuthContext.jsx), não por este cache. Só a lista de check-ins passa por aqui.
+  const payload = { ...measurement }
+  if (height != null) payload.heightCm = height
+  if (hasMeasurement) payload.date = values.date
+
+  const { data, error } = await supabase.rpc('save_body_check_in', { payload })
+  if (error) throw error
   if (hasMeasurement) invalidateCache(`bodyMeasurements:${userId}`)
-  return true
+  return data
 }
