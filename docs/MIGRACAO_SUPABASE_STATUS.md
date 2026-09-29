@@ -14,7 +14,10 @@ Projeto Supabase Cloud: ref `ywrjojrjgozdfpddkkuy` (`https://ywrjojrjgozdfpddkku
 ## O que já está 100% em Supabase
 
 ### Núcleo
-Auth (email/senha), perfis, treinos, exercícios, comunidades (incl. dono/moderação/banimento), statuses/feed (incl. fotos via Storage), suporte/denúncias/apelações, moderação, aceite de termos legais, admin de contas, exclusão de conta/comunidade (fila `deletion_jobs`, mas **sem worker ainda** — ver pendências).
+Auth (email/senha), perfis, treinos, exercícios, comunidades (incl. dono/moderação/banimento), statuses/feed (incl. fotos via Storage), suporte/denúncias/apelações, moderação, aceite de termos legais, admin de contas, exclusão de conta/comunidade (fila `deletion_jobs`, mas **sem worker ainda** — ver pendências), **painel "Exclusão de contas" / revisão de bloqueio financeiro** (ver abaixo).
+
+### Painel "Exclusão de contas" (PR #55, portado nesta sessão)
+`deletion_financial_reviews` (histórico de revisão, equivalente a `deletionJobs/{jobId}/financialReviews`), RPCs `list_blocked_account_deletions()`/`review_blocked_account_deletion()` (security definer, superadmin-only, mesma lógica de `_reactivate_deletion_if_clear`: nunca altera saldo/ledger, só reavalia o bloqueio com os valores reais e atuais). `src/services/adminAccountDeletionsService.js` reescrito para `supabase.rpc(...)`; `AdminAccountDeletions.jsx` só teve o mapeamento de erro ajustado (código Firebase → `err.message` de exceção Postgres). Validado rodando as 43 migrations do zero contra a imagem `supabase/postgres` (Docker) e exercitando as duas RPCs manualmente via `psql` (listagem, bloqueio mantido, bloqueio liberado, corrida `NOT_BLOCKED`, `PERMISSION_DENIED`) — não deu para rodar `supabase start` completo neste ambiente (o container do Realtime não conecta ao Postgres a tempo, aparentemente limitação de recursos do sandbox), mas a base de dados/RPCs em si foram confirmadas.
 
 ### Economia — Fase 1 (carteira, ledger, atividade)
 `wallets`, `economy_transactions` (ledger idempotente por `natural_key`), `economy_config` (config jsonb), `register_qualified_activity()`.
@@ -57,9 +60,8 @@ Estes arquivos ainda importam `firebase/*` diretamente — cada um é uma funcio
 | `src/services/profileAvatarService.js` + `src/hooks/useCommunityAuthorAvatars.js` | Avatar de perfil (upload/alocação) | `allocateProfileAvatar`, `confirmProfileAvatar`, `removeProfileAvatar`, `purgeExpiredProfileAvatars` (scheduled) |
 | `src/services/bodyMeasurementsService.js` | Medidas corporais (peso/medidas ao longo do tempo) | — (verificar `functions/index.js` por triggers relacionados) |
 | `src/services/progressService.js` | Página de progresso/gráficos | depende de `onWorkoutWritten` (trigger `onDocumentWritten`) |
-| `src/services/adminAccountDeletionsService.js` + `src/pages/AdminAccountDeletions.jsx` | **NOVO** (mesclado de `origin/main` nesta sessão, PR #55, ainda 100% Firebase) — painel de revisão de exclusões de conta bloqueadas por pendência financeira | `listBlockedAccountDeletions`, `reviewBlockedAccountDeletion` |
 
-**Nota sobre o item "AdminAccountDeletions"**: o lado Postgres já tem a base pronta para isso — `deletion_jobs.block_reason`/estado `blocked_financial_review` e `_reactivate_deletion_if_clear()` (criados na Fase 4, usados por `confirm_cash_purchase`/`cancel_cash_purchase`) — só falta a RPC de **listar** e **decidir** essas exclusões bloqueadas, espelhando `listBlockedAccountDeletions`/`reviewBlockedAccountDeletion`. É provavelmente o próximo item mais barato de portar.
+~~`adminAccountDeletionsService.js` + `AdminAccountDeletions.jsx`~~ — portado nesta sessão, ver "Painel Exclusão de contas" acima.
 
 ### Worker de exclusão (nunca implementado em Supabase)
 `deletion_jobs` (fila) existe e é escrita corretamente (`queue_deletion`, triggers `queue_deletion_on_delete`), mas **não há nenhum processo que efetivamente execute a exclusão** (apagar de verdade linhas/arquivos de Storage) — equivalente a `processDeletionJobs` (Firebase, scheduled). Precisa de uma Edge Function + `pg_cron` chamando-a, replicando a máquina de estados de `functions/deletion-service.js` (a mesma que ganhou 120 linhas novas no PR #55 mesclado agora — vale reler o Firebase atualizado antes de portar, para não perder a lógica de bloqueio financeiro que acabou de ser adicionada lá).
@@ -90,7 +92,7 @@ Cadência usada em toda a migração: **testar local → `supabase db push`/`fun
 ## Próximos passos sugeridos (em ordem de custo/benefício)
 
 1. Configurar credenciais do Mercado Pago (ver seção acima) — é só configuração, zero código novo.
-2. Portar `listBlockedAccountDeletions`/`reviewBlockedAccountDeletion` (RPCs simples, base do schema já existe).
+2. ~~Portar `listBlockedAccountDeletions`/`reviewBlockedAccountDeletion`~~ — feito nesta sessão.
 3. Implementar o worker de exclusão (`process_deletion_jobs`, Edge Function + `pg_cron`) — desbloqueia exclusão de conta/comunidade/status de fato acontecer.
 4. Migrar avatar de perfil, depois profissionais (professionalListings), depois Vitrine (sponsoredAds) — nessa ordem, do mais simples ao mais amplo.
 5. Corrigir os bugs de dívida técnica listados acima (`.toDate()`, testes quebrados) — não bloqueiam nada, mas valem uma sessão dedicada.

@@ -1,18 +1,21 @@
-import { httpsCallable } from 'firebase/functions'
-import { functions } from '../firebase/config'
+import { supabase } from '../supabase/config'
 
-// deletionJobs não tem regra de leitura nenhuma -- superadmin incluso (ver
-// getOwnStatus/listBlockedForReview em deletion-service.js) -- então o painel "Exclusão
-// de contas" só existe através destas duas callables.
-const listBlockedAccountDeletionsCallable = httpsCallable(functions, 'listBlockedAccountDeletions')
-const reviewBlockedAccountDeletionCallable = httpsCallable(functions, 'reviewBlockedAccountDeletion')
-
+// deletion_jobs não tem policy nenhuma (server_only) -- superadmin incluso -- então o
+// painel "Exclusão de contas" só existe através destas duas RPCs security definer (ver
+// migration 20260929000001_admin_account_deletion_review.sql).
 export async function listBlockedAccountDeletions() {
-  return (await listBlockedAccountDeletionsCallable()).data.jobs
+  const { data, error } = await supabase.rpc('list_blocked_account_deletions')
+  if (error) throw error
+  return data
 }
 
 // Ação segura: nunca altera saldo/ledger, só reavalia o bloqueio com os valores atuais
-// e, se já estiver claro, retoma o job -- ver reviewFinancialBlock em deletion-service.js.
+// e, se já estiver claro, retoma o job -- ver review_blocked_account_deletion.
 export async function reviewBlockedAccountDeletion(jobId, note) {
-  return (await reviewBlockedAccountDeletionCallable({ jobId, note: note || undefined })).data
+  const { data, error } = await supabase.rpc('review_blocked_account_deletion', {
+    p_job_id: jobId,
+    p_note: note || null,
+  })
+  if (error) throw error
+  return data
 }

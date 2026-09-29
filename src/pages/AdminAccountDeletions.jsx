@@ -29,6 +29,13 @@ const REVIEW_RESULT_LABELS = {
   still_blocked: 'Continuou bloqueado',
 }
 
+const KNOWN_ERRORS = {
+  JOB_NOT_FOUND: 'Solicitação de exclusão não encontrada.',
+  NOT_BLOCKED: 'Esta solicitação não está mais aguardando revisão financeira.',
+  PERMISSION_DENIED: 'Você não tem permissão para esta ação.',
+  NOTE_TOO_LONG: 'A nota deve ter no máximo 500 caracteres.',
+}
+
 function toDate(value) {
   return value ? new Date(value) : null
 }
@@ -66,11 +73,7 @@ export default function AdminAccountDeletions() {
       console.error('[AdminAccountDeletions] review:', err)
       setActionError((previous) => ({
         ...previous,
-        [jobId]: ['functions/failed-precondition', 'functions/invalid-argument', 'functions/not-found'].includes(
-          err?.code
-        )
-          ? err.message
-          : 'Não foi possível registrar a revisão. Tente novamente.',
+        [jobId]: KNOWN_ERRORS[err?.message] || 'Não foi possível registrar a revisão. Tente novamente.',
       }))
     }
   }
