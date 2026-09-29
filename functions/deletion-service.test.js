@@ -691,3 +691,202 @@ test('two concurrent step() calls on the same job never double-process or corrup
     'a exclusão real ainda precisa ter acontecido, exatamente uma vez'
   )
 })
+
+// Painel administrativo "Exclusão de contas": listBlockedForReview/reviewFinancialBlock
+// completam o fluxo até então sem NENHUMA visibilidade no painel para um job travado em
+// blocked_financial_review (listDeletionJobs, em index.js, só lista state=='pending').
+async function seedBlockedAccount({ deletions, cashBalance = 0, pendingPurchaseId = null } = {}) {
+  const adminId = uid()
+  const targetUid = uid()
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${targetUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+  if (cashBalance) {
+    await db
+      .doc(`users/${targetUid}/wallet/current`)
+      .set({ coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance })
+  }
+  if (pendingPurchaseId) {
+    await db.doc(`users/${targetUid}/wallet/cashPurchaseLock`).set({ pendingPurchaseId })
+  }
+  const { id } = await deletions.queue('account', targetUid, adminId)
+  const ref = db.doc(`deletionJobs/${id}`)
+  await deletions.step(ref)
+  return { adminId, targetUid, jobId: id, ref }
+}
+
+test('listBlockedForReview returns exactly the blocked accounts, with the same financial figures the gate evaluated, and no history yet', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const { targetUid, jobId } = await seedBlockedAccount({ deletions, cashBalance: 300 })
+  // Um job 'pending' comum (nunca bloqueado) não deveria aparecer nesta lista --
+  // listBlockedForReview é estritamente sobre revisão financeira, não sobre exclusões
+  // em andamento (isso já é o papel de listDeletionJobs).
+  const otherAdmin = uid()
+  const otherTarget = uid()
+  await db.doc(`users/${otherAdmin}`).set({ role: 'superadmin' })
+  await db.doc(`users/${otherTarget}`).set({ role: 'user' })
+  await deletions.queue('account', otherTarget, otherAdmin)
+
+  // Suíte compartilha o mesmo Firestore emulado sem limpeza entre testes (mesmo padrão
+  // do resto deste arquivo) -- outros testes já deixaram outros jobs bloqueados para
+  // trás, então a asserção mira o job/alvo desta chamada especificamente, nunca o
+  // tamanho total da coleção.
+  const jobs = await deletions.listBlockedForReview()
+  const job = jobs.find((item) => item.id === jobId)
+  assert.ok(job, 'o job recém-bloqueado deveria estar na lista')
+  assert.equal(job.targetId, targetUid)
+  assert.equal(job.blockReason, 'positive_cash_balance')
+  assert.equal(job.cashBalance, 300)
+  assert.equal(job.pendingPurchaseId, null)
+  assert.deepEqual(job.history, [])
+  assert.equal(typeof job.createdAt, 'string', 'datas voltam serializadas (ISO), nunca um Timestamp cru')
+  assert.equal(
+    jobs.some((item) => item.targetId === otherTarget),
+    false,
+    'um job "pending" comum (nunca bloqueado) não deveria aparecer nesta lista'
+  )
+})
+
+test('a non-superadmin cannot review a blocked deletion', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const { jobId } = await seedBlockedAccount({ deletions, cashBalance: 100 })
+  const outsiderId = uid()
+  await db.doc(`users/${outsiderId}`).set({ role: 'user' })
+  await assert.rejects(
+    () => deletions.reviewFinancialBlock(outsiderId, jobId, ''),
+    (error) => error.code === 'permission-denied'
+  )
+})
+
+test('reviewing a job that is not (or no longer) blocked_financial_review fails without side effects', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const adminId = uid()
+  const targetUid = uid()
+  await db.doc(`users/${adminId}`).set({ role: 'superadmin' })
+  await db.doc(`users/${targetUid}`).set({ role: 'user' })
+  await db.doc('maintenance/adminV1').set({ interactionsVersion: 1 })
+  // Nunca chega a bloquear (sem saldo, sem compra pendente) -- job comum 'pending'.
+  const { id } = await deletions.queue('account', targetUid, adminId)
+  await assert.rejects(
+    () => deletions.reviewFinancialBlock(adminId, id, ''),
+    (error) => error.code === 'failed-precondition'
+  )
+  const job = await db.doc(`deletionJobs/${id}`).get()
+  assert.equal(job.data().state, 'pending', 'nada deveria ter mudado')
+})
+
+test('a still-warranted block (balance unchanged) stays blocked, never touches the wallet, and records the review', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const { adminId, targetUid, jobId, ref } = await seedBlockedAccount({ deletions, cashBalance: 750 })
+
+  const result = await deletions.reviewFinancialBlock(adminId, jobId, 'Confirmado com o financeiro.')
+  assert.deepEqual(result, { resumed: false, blockReason: 'positive_cash_balance' })
+
+  const job = await ref.get()
+  assert.equal(job.data().state, 'blocked_financial_review', 'continua bloqueado')
+  const wallet = await db.doc(`users/${targetUid}/wallet/current`).get()
+  assert.equal(wallet.data().cashBalance, 750, 'o saldo nunca é alterado por uma revisão')
+
+  const jobs = await deletions.listBlockedForReview()
+  const reviewed = jobs.find((j) => j.id === jobId)
+  assert.equal(reviewed.history.length, 1)
+  assert.equal(reviewed.history[0].adminId, adminId)
+  assert.equal(reviewed.history[0].resultingState, 'still_blocked')
+  assert.equal(reviewed.history[0].note, 'Confirmado com o financeiro.')
+})
+
+// Cenário realista de "resolvido por outro caminho": a pendência (cashPurchaseLock)
+// deixou de existir sem passar por confirmCashPurchase/cancelCashPurchase -- a revisão
+// reavalia com os valores atuais e retoma o job sozinha, sem qualquer operação
+// financeira própria.
+test('a block that has genuinely cleared resumes the job, and processDeletionJobs completes it normally afterward', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const { adminId, jobId, ref } = await seedBlockedAccount({
+    deletions,
+    pendingPurchaseId: 'purchase-under-review',
+  })
+  await db.doc(`deletionJobs/${jobId}`).get().then((s) => assert.equal(s.data().state, 'blocked_financial_review'))
+
+  // Simula a pendência tendo sido resolvida por fora (não por confirmCashPurchase/
+  // cancelCashPurchase, que já reativariam o job sozinhos) -- a revisão nunca escreve a
+  // carteira, só relê o estado real dela.
+  await db.doc(`users/${(await ref.get()).data().targetId}/wallet/cashPurchaseLock`).set({
+    pendingPurchaseId: null,
+  })
+
+  const result = await deletions.reviewFinancialBlock(adminId, jobId, '')
+  assert.deepEqual(result, { resumed: true })
+
+  const job = await ref.get()
+  assert.equal(job.data().state, 'pending')
+  assert.equal(job.data().blockReason, undefined, 'blockReason precisa ser removido, não só deixado obsoleto')
+
+  await runToCompletion(deletions, ref)
+  assert.equal((await ref.get()).data().state, 'complete')
+})
+
+test('reviewing an already-resumed job again fails instead of reprocessing or duplicating history', async () => {
+  const deletions = createDeletionService({
+    db,
+    auth: fakeAuth,
+    bucket: fakeBucket,
+    FieldValue,
+    Timestamp,
+    HttpsError: FakeHttpsError,
+  })
+  const { adminId, jobId, ref } = await seedBlockedAccount({
+    deletions,
+    pendingPurchaseId: 'purchase-2',
+  })
+  const targetUid = (await ref.get()).data().targetId
+  await db.doc(`users/${targetUid}/wallet/cashPurchaseLock`).set({ pendingPurchaseId: null })
+
+  const first = await deletions.reviewFinancialBlock(adminId, jobId, '')
+  assert.deepEqual(first, { resumed: true })
+
+  await assert.rejects(
+    () => deletions.reviewFinancialBlock(adminId, jobId, ''),
+    (error) => error.code === 'failed-precondition'
+  )
+  const jobs = await deletions.listBlockedForReview()
+  assert.equal(
+    jobs.some((j) => j.id === jobId),
+    false,
+    'um job já retomado não deveria mais aparecer na lista de revisão'
+  )
+})
