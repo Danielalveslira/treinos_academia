@@ -19,6 +19,8 @@ export function mapUserRow(row) {
     sexo: row.sexo,
     dataNascimento: row.data_nascimento,
     heightCm: row.height_cm,
+    avatarMediaId: row.avatar_media_id,
+    avatarPath: row.avatar_path,
     usageProfile: row.usage_profile,
     accountStatus: row.account_status,
     disabledAt: row.disabled_at,

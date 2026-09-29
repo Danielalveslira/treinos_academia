@@ -421,3 +421,7 @@ verify_jwt = true
 [functions.mercadopago-webhook]
 enabled = true
 verify_jwt = false
+
+[functions.profile-avatar-confirm]
+enabled = true
+verify_jwt = true
