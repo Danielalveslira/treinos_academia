@@ -1,98 +1,123 @@
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  startAfter,
-  where,
-} from 'firebase/firestore'
-import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../firebase/config'
-import { listingFilterKey } from '../utils/professionalListing'
+import { supabase } from '../supabase/config'
 
-export const LISTINGS_PAGE_SIZE = 20
-const call = (name, data) => httpsCallable(functions, name)(data).then((result) => result.data)
-const toItem = (snapshot) => ({ id: snapshot.id, ...snapshot.data() })
+export const LISTING_KIND_VALUES = ['professional', 'space']
 
-export function createProfessionalListing(
-  kind,
-  requestId = crypto.randomUUID().replaceAll('-', '')
-) {
-  return call('createProfessionalListingDraft', { kind, requestId: requestId.slice(0, 128) })
+export function createProfessionalListing(kind) {
+  return supabase.rpc('create_professional_listing', { p_kind: kind }).then(unwrap)
 }
+
 export function saveProfessionalListing(listingId, draft) {
-  return call('saveProfessionalListingDraft', { listingId, draft })
-}
-export function publishProfessionalListing(listingId, legalAcceptance) {
-  return call('publishProfessionalListing', { listingId, ...legalAcceptance })
-}
-export function unpublishProfessionalListing(listingId) {
-  return call('unpublishProfessionalListing', { listingId })
-}
-export function suspendProfessionalListing(listingId, reason) {
-  return call('suspendProfessionalListing', { listingId, reason })
-}
-export function deleteProfessionalListing(listingId) {
-  return call('deleteProfessionalListing', { listingId })
+  return supabase.rpc('save_professional_listing_draft', { p_listing_id: listingId, p_draft: draft }).then(unwrap)
 }
 
-export async function getMyProfessionalListing(userId) {
-  const lock = await getDoc(doc(db, 'professionalListingOwnerLocks', userId))
-  if (!lock.exists()) return null
-  const listingId = lock.data().listingId
-  const [listing, draft] = await Promise.all([
-    getDoc(doc(db, 'professionalListings', listingId)),
-    getDoc(doc(db, 'professionalListingDrafts', listingId)),
-  ])
-  let published = null
-  if (listing.exists() && listing.data().lifecycleState === 'published') {
-    try {
-      const projection = await getDoc(doc(db, 'publishedProfessionalListings', listingId))
-      published = projection.exists() ? projection.data() : null
-    } catch (error) {
-      // A projeção pode ter sido removida entre a leitura do registro e esta consulta.
-      // As Rules negam até o get de um documento ausente; a edição privada segue disponível.
-      if (error?.code !== 'permission-denied') throw error
-    }
-  }
-  return {
-    id: listingId,
-    listing: listing.exists() ? listing.data() : null,
-    draft: draft.exists() ? draft.data() : null,
-    published,
-  }
+// Fase 1 apenas (ver migration 20260929000005_professional_listings.sql): a fase 2
+// (copiar o avatar autorizado, exigida só quando useProfileAvatar=true) depende de uma
+// Edge Function que ainda não existe -- hoje isso nunca importa na prática porque
+// showcase_legal_policy.published=false trava tudo já na fase 1, igual à produção atual.
+export function publishProfessionalListing(listingId, { termsAccepted, termsVersion, operationId }) {
+  return supabase
+    .rpc('prepare_professional_listing_publish', {
+      p_listing_id: listingId,
+      p_terms_accepted: termsAccepted,
+      p_terms_version: termsVersion,
+      p_operation_id: operationId,
+    })
+    .then(unwrap)
+}
+
+export function unpublishProfessionalListing(listingId) {
+  return supabase.rpc('unpublish_professional_listing', { p_listing_id: listingId }).then(unwrap)
+}
+
+export function suspendProfessionalListing(listingId, reason) {
+  return supabase.rpc('suspend_professional_listing', { p_listing_id: listingId, p_reason: reason }).then(unwrap)
+}
+
+export function deleteProfessionalListing(listingId) {
+  return supabase.rpc('delete_professional_listing', { p_listing_id: listingId }).then(unwrap)
+}
+
+export function getMyProfessionalListing() {
+  return supabase.rpc('get_my_professional_listing').then(unwrap)
 }
 
 export async function getShowcaseLegalAcceptance(userId, version) {
-  const snapshot = await getDoc(doc(db, 'users', userId, 'showcaseLegalAcceptances', version))
-  return snapshot.exists() ? snapshot.data() : null
+  const { data, error } = await supabase
+    .from('showcase_legal_acceptances')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('version', version)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  return {
+    userId: data.user_id,
+    listingId: data.listing_id,
+    operationId: data.operation_id,
+    documentId: data.document_id,
+    version: data.version,
+    digest: data.digest,
+    acceptedAt: data.accepted_at,
+  }
+}
+
+function mapPublishedRow(row) {
+  if (!row) return null
+  return {
+    id: row.listing_id,
+    kind: row.kind,
+    displayName: row.display_name,
+    sortKey: row.sort_key,
+    categoryKey: row.category_key,
+    modalityKeys: row.modality_keys,
+    specialties: row.specialties,
+    bio: row.bio,
+    city: row.city,
+    cityKey: row.city_key,
+    uf: row.uf,
+    serviceMode: row.service_mode,
+    publicContacts: row.public_contacts,
+    linkedCommunityId: row.linked_community_id,
+    linkedCommunity: row.linked_community_id
+      ? { id: row.linked_community_id, name: row.linked_community_name }
+      : null,
+    avatarPath: row.avatar_path,
+    avatarSourceMediaId: row.avatar_source_media_id,
+    publishedVersion: row.published_version,
+    publishedAt: row.published_at,
+    updatedAt: row.updated_at,
+  }
 }
 
 export async function getPublishedProfessionalListing(listingId) {
-  const snapshot = await getDoc(doc(db, 'publishedProfessionalListings', listingId))
-  return snapshot.exists() ? toItem(snapshot) : null
+  const { data, error } = await supabase
+    .from('published_professional_listings')
+    .select('*')
+    .eq('listing_id', listingId)
+    .maybeSingle()
+  if (error) throw error
+  return mapPublishedRow(data)
 }
 
-export async function listPublishedProfessionalListings(
-  filters,
-  cursor = null,
-  pageSize = LISTINGS_PAGE_SIZE
-) {
-  const constraints = [
-    where('publicationStatus', '==', 'published'),
-    where('filterKeys', 'array-contains', listingFilterKey(filters)),
-    orderBy('sortKey'),
-  ]
-  if (cursor) constraints.push(startAfter(cursor))
-  constraints.push(limit(pageSize))
-  const snapshot = await getDocs(
-    query(collection(db, 'publishedProfessionalListings'), ...constraints)
-  )
-  return {
-    items: snapshot.docs.map(toItem),
-    nextCursor: snapshot.size === pageSize ? snapshot.docs.at(-1) : null,
-  }
+// filters usa '*' como "qualquer" (mesma convenção das telas de busca, herdada do
+// array-contains do Firestore) -- aqui vira null pra RPC tratar como filtro ausente.
+const orNull = (value) => (value && value !== '*' ? value : null)
+
+export async function listPublishedProfessionalListings(filters, cursor = null, pageSize = 20) {
+  const { data, error } = await supabase.rpc('list_published_professional_listings', {
+    p_kind: filters.kind,
+    p_modality: orNull(filters.modality),
+    p_uf: orNull(filters.uf),
+    p_city: orNull(filters.city),
+    p_service_mode: orNull(filters.serviceMode),
+    p_cursor: cursor,
+    p_limit: pageSize,
+  })
+  if (error) throw error
+  return { items: data.items, nextCursor: data.nextCursor }
+}
+
+function unwrap({ data, error }) {
+  if (error) throw error
+  return data
 }
