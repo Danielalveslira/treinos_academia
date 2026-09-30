@@ -3,12 +3,88 @@ import assert from 'node:assert/strict'
 import { MUSCLE_GROUPS } from '../constants/muscleGroups.js'
 import { EXERCISE_TYPES } from './exerciseType.js'
 import {
+  formatCatalogLabel,
   getExerciseSource,
   isProviderExerciseAdded,
   mapCatalogCategoryToExerciseType,
+  mapCatalogMuscleToLibraryGroup,
   mapCatalogMuscleToPersonalGroup,
   providerExerciseToPersonal,
 } from './exerciseCatalog.js'
+
+// Os 17 valores distintos de primary_muscle hoje em public.exercise_catalog, auditados
+// direto em produção (868 exercícios) -- cada um DEVE ter um grupo oficial explícito,
+// nenhum pode cair no fallback.
+const REAL_PRIMARY_MUSCLES_TO_GROUP = {
+  quadriceps: 'Pernas',
+  ombros: 'Ombros',
+  abdominais: 'Abdômen',
+  peito: 'Peito',
+  isquiotibiais: 'Pernas',
+  triceps: 'Tríceps',
+  biceps: 'Bíceps',
+  dorsais: 'Costas',
+  'meio-das-costas': 'Costas',
+  panturrilhas: 'Panturrilha',
+  'inferior-das-costas': 'Costas',
+  antebracos: 'Bíceps',
+  gluteos: 'Glúteos',
+  trapezio: 'Costas',
+  adutores: 'Pernas',
+  pescoco: 'Costas',
+  abdutores: 'Pernas',
+}
+
+test('mapCatalogMuscleToLibraryGroup cobre os 17 primary_muscle reais do catálogo, sem nenhum cair no fallback', () => {
+  for (const [muscle, expectedGroup] of Object.entries(REAL_PRIMARY_MUSCLES_TO_GROUP)) {
+    assert.equal(mapCatalogMuscleToLibraryGroup(muscle), expectedGroup, `músculo "${muscle}"`)
+  }
+})
+
+test('mapCatalogMuscleToLibraryGroup tem um fallback explícito (nunca lança) pra músculo desconhecido', () => {
+  assert.equal(mapCatalogMuscleToLibraryGroup('musculo-que-nao-existe'), 'Pernas')
+  assert.equal(mapCatalogMuscleToLibraryGroup(undefined), 'Pernas')
+  assert.equal(mapCatalogMuscleToLibraryGroup(null), 'Pernas')
+})
+
+// Achado no smoke test manual: valores crus do dataset perderam acento na origem
+// ("forca", "quadriceps") e a preposição de nomes compostos ficava maiúscula
+// ("Inferior Das Costas"). formatCatalogLabel é o único formatador -- usado em
+// ExerciseCatalog.jsx, WorkoutExerciseGuide.jsx e Exercises.jsx.
+test('formatCatalogLabel restaura o acento nos valores auditados que perderam diacrítico na origem', () => {
+  assert.equal(formatCatalogLabel('forca'), 'Força')
+  assert.equal(formatCatalogLabel('quadriceps'), 'Quadríceps')
+  assert.equal(formatCatalogLabel('triceps'), 'Tríceps')
+  assert.equal(formatCatalogLabel('biceps'), 'Bíceps')
+  assert.equal(formatCatalogLabel('gluteos'), 'Glúteos')
+  assert.equal(formatCatalogLabel('pescoco'), 'Pescoço')
+  assert.equal(formatCatalogLabel('antebracos'), 'Antebraços')
+  assert.equal(formatCatalogLabel('trapezio'), 'Trapézio')
+  assert.equal(formatCatalogLabel('maquina'), 'Máquina')
+  assert.equal(formatCatalogLabel('avancado'), 'Avançado')
+  assert.equal(formatCatalogLabel('intermediario'), 'Intermediário')
+  assert.equal(formatCatalogLabel('bola-de-exercicio'), 'Bola de Exercício')
+  assert.equal(formatCatalogLabel('levantamento-olimpico'), 'Levantamento Olímpico')
+})
+
+test('formatCatalogLabel deixa preposições/artigos em minúsculo no meio do rótulo, nunca no início', () => {
+  assert.equal(formatCatalogLabel('inferior-das-costas'), 'Inferior das Costas')
+  assert.equal(formatCatalogLabel('meio-das-costas'), 'Meio das Costas')
+  assert.equal(formatCatalogLabel('peso-do-corpo'), 'Peso do Corpo')
+  assert.equal(formatCatalogLabel('rolo-de-espuma'), 'Rolo de Espuma')
+})
+
+test('formatCatalogLabel não mexe em valores que já ficam corretos só capitalizando', () => {
+  assert.equal(formatCatalogLabel('barra'), 'Barra')
+  assert.equal(formatCatalogLabel('kettlebell'), 'Kettlebell')
+  assert.equal(formatCatalogLabel('iniciante'), 'Iniciante')
+  assert.equal(formatCatalogLabel('cardio'), 'Cardio')
+})
+
+test('formatCatalogLabel nunca lança pra valor ausente', () => {
+  assert.equal(formatCatalogLabel(null), 'Não informado')
+  assert.equal(formatCatalogLabel(undefined), 'Não informado')
+})
 
 // Amostra no formato de resposta do nosso catálogo (ver exerciseCatalogService.js): id é
 // o UUID interno da linha em exercise_catalog, providerExerciseId é o ID original do

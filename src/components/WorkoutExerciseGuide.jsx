@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useExerciseCatalogDetail } from '../hooks/useExerciseCatalogDetail.js'
+import { formatCatalogLabel as displayValue } from '../utils/exerciseCatalog.js'
 import { ExerciseCatalogImage } from './ExerciseCatalogImage.jsx'
-
-function displayValue(value) {
-  const text = String(value ?? '').replaceAll('-', ' ').replaceAll('_', ' ')
-  return text ? text.charAt(0).toLocaleUpperCase('pt-BR') + text.slice(1) : ''
-}
 
 // exercise é o exercício PESSOAL (snapshot: name/muscleGroup/equipment/providerExerciseId
 // já salvos em public.exercises) -- o conteúdo rico (imagens/instruções) vem à parte, via

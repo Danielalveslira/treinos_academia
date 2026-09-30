@@ -6,6 +6,7 @@ import {
   TasklistIcon,
   PlusIcon,
   ChevronRightIcon,
+  ChevronDownIcon,
   SearchIcon,
   SyncIcon,
   EyeIcon,
@@ -30,11 +31,9 @@ import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
 import { formatDate } from '../utils/format'
 import { toDate } from '../utils/date.js'
+import { normalizeForSearch } from '../utils/text.js'
+import { formatCatalogLabel } from '../utils/exerciseCatalog.js'
 import { sortExercisesInGroup, moveExerciseOrder } from '../utils/exerciseOrder'
-
-// Busca só aparece a partir daqui — mesmo limiar usado em WorkoutForm.jsx para a busca
-// por grupo, por consistência: com poucos exercícios ela é só ruído na tela.
-const SEARCH_THRESHOLD = 6
 
 // Primeira ocorrência por exerciseId já é a mais recente: allWorkouts (useDashboard)
 // vem ordenado por data decrescente.
@@ -44,6 +43,13 @@ function buildLastLoggedMap(allWorkouts) {
     if (!map.has(workout.exerciseId)) map.set(workout.exerciseId, toDate(workout.date))
   }
   return map
+}
+
+// "Grupo · Equipamento" -- nunca mostra um metadado que o exercício não tem (equipment é
+// só snapshot de exercícios vindos do catálogo; personalizados normalmente não têm).
+function exerciseSubtitle(exercise) {
+  const equipment = exercise.equipment ? formatCatalogLabel(exercise.equipment) : null
+  return [exercise.muscleGroup, equipment].filter(Boolean).join(' · ')
 }
 
 export default function Exercises() {
@@ -58,9 +64,11 @@ export default function Exercises() {
   const [catalogOpen, setCatalogOpen] = useState(false)
   const [editingExercise, setEditingExercise] = useState(null)
   const [search, setSearch] = useState('')
+  const [groupFilter, setGroupFilter] = useState('')
   const [showInactive, setShowInactive] = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState(() => new Set())
   // Grupo atualmente em modo "Reordenar" (um por vez) e o rascunho de ids na nova
-  // ordem, só gravado no Firestore ao confirmar em "Salvar ordem" (ver saveReorder).
+  // ordem, só gravado no banco ao confirmar em "Salvar ordem" (ver saveReorder).
   const [reorderGroup, setReorderGroup] = useState(null)
   const [reorderIds, setReorderIds] = useState([])
   const [savingOrder, setSavingOrder] = useState(false)
@@ -68,14 +76,26 @@ export default function Exercises() {
   const lastLoggedMap = useMemo(() => buildLastLoggedMap(allWorkouts), [allWorkouts])
   const inactiveCount = useMemo(() => exercises.filter((ex) => !ex.active).length, [exercises])
 
+  // Grupos com pelo menos um exercício visível (respeitando "mostrar inativos", mas não
+  // a busca por nome nem o filtro de grupo em si) -- é a lista de chips disponíveis.
+  const availableGroups = useMemo(() => {
+    const groups = new Set()
+    for (const exercise of exercises) {
+      if (!showInactive && !exercise.active) continue
+      groups.add(exercise.muscleGroup)
+    }
+    return [...groups].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [exercises, showInactive])
+
   const visibleExercises = useMemo(() => {
-    const term = search.trim().toLowerCase()
+    const term = normalizeForSearch(search.trim())
     return exercises.filter((exercise) => {
       if (!showInactive && !exercise.active) return false
-      if (term && !exercise.name.toLowerCase().includes(term)) return false
+      if (groupFilter && exercise.muscleGroup !== groupFilter) return false
+      if (term && !normalizeForSearch(exercise.name).includes(term)) return false
       return true
     })
-  }, [exercises, showInactive, search])
+  }, [exercises, showInactive, groupFilter, search])
 
   const grouped = useMemo(() => {
     const groups = new Map()
@@ -89,9 +109,9 @@ export default function Exercises() {
       .sort(([a], [b]) => a.localeCompare(b, 'pt-BR'))
   }, [visibleExercises])
 
-  // Conta o grupo inteiro (ativos e inativos, sem o filtro de busca) -- "Reordenar"
-  // ordena o grupo completo, então o botão só aparece quando isso de fato envolve
-  // mais de um exercício, independente do que a busca/"mostrar inativos" esconde.
+  // Conta o grupo inteiro (ativos e inativos, sem busca/filtro de grupo) -- "Reordenar"
+  // ordena o grupo completo, então o botão só aparece quando isso de fato envolve mais de
+  // um exercício, independente do que a busca/"mostrar inativos" esconde.
   const groupSizeAll = useMemo(() => {
     const counts = new Map()
     for (const exercise of exercises) {
@@ -99,6 +119,15 @@ export default function Exercises() {
     }
     return counts
   }, [exercises])
+
+  function toggleGroupCollapsed(muscleGroup) {
+    setCollapsedGroups((current) => {
+      const next = new Set(current)
+      if (next.has(muscleGroup)) next.delete(muscleGroup)
+      else next.add(muscleGroup)
+      return next
+    })
+  }
 
   function startReorder(muscleGroup) {
     const ids = sortExercisesInGroup(exercises.filter((ex) => ex.muscleGroup === muscleGroup)).map(
@@ -184,18 +213,19 @@ export default function Exercises() {
 
   const hasAnyExercise = exercises.length > 0
   const hasVisibleExercise = visibleExercises.length > 0
+  const distinctGroupCount = new Set(exercises.filter((ex) => showInactive || ex.active).map((ex) => ex.muscleGroup)).size
 
   return (
     <Box className="exercises-page">
       <ToastFlash toasts={toasts} />
-      <header className="page-title-row">
+      <header className="page-title-row exercises-header">
         <div>
           <span className="eyebrow">SUA BIBLIOTECA</span>
           <Heading as="h1">Exercícios</Heading>
           {hasAnyExercise && (
             <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: 1, mb: 0 }}>
-              {exercises.length} exercício{exercises.length === 1 ? '' : 's'} em {grouped.length}{' '}
-              {grouped.length === 1 ? 'grupo' : 'grupos'}
+              {exercises.length} exercício{exercises.length === 1 ? '' : 's'} · {distinctGroupCount}{' '}
+              {distinctGroupCount === 1 ? 'grupo' : 'grupos'}
               {inactiveCount > 0 && !showInactive
                 ? ` · ${inactiveCount} inativo${inactiveCount === 1 ? '' : 's'} oculto${inactiveCount === 1 ? '' : 's'}`
                 : ''}
@@ -204,20 +234,15 @@ export default function Exercises() {
         </div>
 
         {!formOpen && !editingExercise && !addChoiceOpen && !catalogOpen && (
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button leadingVisual={SyncIcon} onClick={refresh} loading={loading} disabled={loading}>
-              Atualizar
-            </Button>
-            {(loading || error || hasAnyExercise) && (
-              <Button
-                leadingVisual={PlusIcon}
-                variant="primary"
-                onClick={() => setAddChoiceOpen(true)}
-              >
-                Adicionar exercício
-              </Button>
-            )}
-          </Box>
+          <IconButton
+            icon={SyncIcon}
+            aria-label="Atualizar"
+            size="small"
+            variant="invisible"
+            onClick={refresh}
+            loading={loading}
+            disabled={loading}
+          />
         )}
       </header>
 
@@ -296,29 +321,62 @@ export default function Exercises() {
             </Blankslate>
           )}
 
-          {hasAnyExercise && (
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mb: 3 }}>
-              {exercises.length > SEARCH_THRESHOLD && (
-                <label className="exercise-search" style={{ flex: '1 1 220px', marginBottom: 0 }}>
-                  <span className="sr-only">Buscar exercício</span>
-                  <SearchIcon size={16} />
-                  <input
-                    type="search"
-                    value={search}
-                    placeholder="Buscar exercício"
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </label>
-              )}
-              {inactiveCount > 0 && (
-                <Button
-                  leadingVisual={showInactive ? EyeClosedIcon : EyeIcon}
-                  onClick={() => setShowInactive((prev) => !prev)}
-                >
-                  {showInactive ? 'Ocultar inativos' : `Mostrar inativos (${inactiveCount})`}
+          {hasAnyExercise && !formOpen && !editingExercise && (
+            <Box className="exercises-toolbar">
+              <label className="exercise-search">
+                <span className="sr-only">Buscar na biblioteca</span>
+                <SearchIcon size={16} />
+                <input
+                  type="search"
+                  value={search}
+                  placeholder="Buscar na biblioteca..."
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </label>
+              {!addChoiceOpen && (
+                <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setAddChoiceOpen(true)}>
+                  Adicionar
                 </Button>
               )}
             </Box>
+          )}
+
+          {hasAnyExercise && availableGroups.length > 1 && (
+            <div className="exercise-group-chips" role="tablist" aria-label="Filtrar por grupo muscular">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={groupFilter === ''}
+                className={`chip ${groupFilter === '' ? 'is-active' : ''}`}
+                onClick={() => setGroupFilter('')}
+              >
+                Todos
+              </button>
+              {availableGroups.map((group) => (
+                <button
+                  key={group}
+                  type="button"
+                  role="tab"
+                  aria-selected={groupFilter === group}
+                  className={`chip ${groupFilter === group ? 'is-active' : ''}`}
+                  onClick={() => setGroupFilter(group)}
+                >
+                  {group}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {hasAnyExercise && inactiveCount > 0 && (
+            <Button
+              size="small"
+              variant="invisible"
+              leadingVisual={showInactive ? EyeClosedIcon : EyeIcon}
+              onClick={() => setShowInactive((prev) => !prev)}
+              sx={{ mb: 2 }}
+            >
+              {showInactive ? 'Ocultar inativos' : `Mostrar inativos (${inactiveCount})`}
+            </Button>
           )}
 
           {hasAnyExercise && !hasVisibleExercise && (
@@ -331,27 +389,38 @@ export default function Exercises() {
             {grouped.map(([muscleGroup, list]) => {
               const GroupIcon = getMuscleGroupIcon(muscleGroup)
               const isReordering = reorderGroup === muscleGroup
+              const isCollapsed = collapsedGroups.has(muscleGroup) && !isReordering
               const canReorder =
                 !reorderGroup && !formOpen && !editingExercise && groupSizeAll.get(muscleGroup) >= 2
               return (
                 <section className="exercise-group" key={muscleGroup}>
-                  <div className="exercise-group-heading">
+                  <button
+                    type="button"
+                    className="exercise-group-heading"
+                    onClick={() => toggleGroupCollapsed(muscleGroup)}
+                    aria-expanded={!isCollapsed}
+                  >
+                    <ChevronDownIcon
+                      size={14}
+                      className={`exercise-group-chevron ${isCollapsed ? 'is-collapsed' : ''}`}
+                    />
                     <span className="muscle-icon">
                       <GroupIcon size={16} strokeWidth={2} />
                     </span>
                     <Heading as="h2">{muscleGroup}</Heading>
                     <span className="exercise-group-count">{list.length}</span>
-                    {canReorder && (
-                      <Button
-                        size="small"
-                        leadingVisual={ListOrderedIcon}
-                        onClick={() => startReorder(muscleGroup)}
-                        sx={{ ml: 2 }}
-                      >
-                        Reordenar
-                      </Button>
-                    )}
-                  </div>
+                  </button>
+                  {canReorder && !isCollapsed && (
+                    <Button
+                      size="small"
+                      variant="invisible"
+                      leadingVisual={ListOrderedIcon}
+                      onClick={() => startReorder(muscleGroup)}
+                      sx={{ mb: 2 }}
+                    >
+                      Reordenar
+                    </Button>
+                  )}
 
                   {isReordering && (
                     <Stack gap="none" className="exercise-list exercise-list-reorder">
@@ -403,29 +472,18 @@ export default function Exercises() {
                     </Stack>
                   )}
 
-                  {!isReordering && (
+                  {!isReordering && !isCollapsed && (
                     <Stack gap="none" className="exercise-list">
                       {list.map((exercise) => {
                         const lastLogged = lastLoggedMap.get(exercise.id)
+                        const subtitle = exerciseSubtitle(exercise)
                         return (
                           <Box key={exercise.id} className="exercise-row">
                             <Box
                               as="button"
                               type="button"
                               onClick={() => navigate(`/exercicios/${exercise.id}`)}
-                              sx={{
-                                flex: 1,
-                                minWidth: 0,
-                                textAlign: 'left',
-                                bg: 'transparent',
-                                border: 0,
-                                p: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 2,
-                                cursor: 'pointer',
-                                color: 'fg.default',
-                              }}
+                              className="exercise-row-main"
                             >
                               <Box sx={{ minWidth: 0, display: 'grid', gap: '2px' }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -434,9 +492,12 @@ export default function Exercises() {
                                   </Text>
                                   {!exercise.active && <Label>Inativo</Label>}
                                 </Box>
+                                {subtitle && (
+                                  <Text sx={{ fontSize: 0, color: 'fg.muted' }}>{subtitle}</Text>
+                                )}
                                 {lastLogged && (
                                   <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-                                    Último registro: {formatDate(lastLogged)}
+                                    Último treino: {formatDate(lastLogged)}
                                   </Text>
                                 )}
                               </Box>
