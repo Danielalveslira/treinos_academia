@@ -66,20 +66,41 @@ export async function getExerciseDetail({ catalogId, provider, providerExerciseI
   return data ? mapRow(data) : null
 }
 
-// Distinct de duas colunas pequenas (muscles[]/equipment) sobre um catálogo de 868
-// linhas -- mais simples e barato que manter uma segunda RPC só pra isso, e cacheável em
-// memória pela sessão (não muda durante o uso do app).
-let taxonomyCache = null
-export async function listCatalogTaxonomy() {
-  if (taxonomyCache) return taxonomyCache
-  const { data, error } = await supabase.from('exercise_catalog').select('muscles, equipment').eq('is_active', true)
-  if (error) throw error
+// Distinct de colunas pequenas (muscles[]/equipment/category/difficulty) sobre um
+// catálogo de 868 linhas -- mais simples e barato que manter RPCs só pra isso. Vem sempre
+// dos dados reais (nunca um enum hardcoded desalinhado do catálogo) e nunca inclui um
+// filtro vazio (só valores realmente presentes). Cacheia a PROMISE (não só o resultado)
+// pra dedupear chamadas concorrentes -- dois componentes montando ao mesmo tempo (ex.:
+// ExerciseCatalog + algo mais) disparam uma única consulta, não duas.
+let taxonomyPromise = null
+async function fetchCatalogTaxonomy() {
+  const { data, error } = await supabase
+    .from('exercise_catalog')
+    .select('muscles, equipment, category, difficulty')
+    .eq('is_active', true)
+  if (error) {
+    taxonomyPromise = null // erro não fica em cache -- próxima chamada tenta de novo
+    throw error
+  }
   const muscles = new Set()
   const equipment = new Set()
+  const categories = new Set()
+  const levels = new Set()
   for (const row of data) {
     for (const muscle of row.muscles || []) muscles.add(muscle)
     if (row.equipment) equipment.add(row.equipment)
+    if (row.category) categories.add(row.category)
+    if (row.difficulty) levels.add(row.difficulty)
   }
-  taxonomyCache = { muscles: [...muscles].sort(), equipment: [...equipment].sort() }
-  return taxonomyCache
+  return {
+    muscles: [...muscles].sort(),
+    equipment: [...equipment].sort(),
+    categories: [...categories].sort(),
+    levels: [...levels].sort(),
+  }
+}
+
+export function listCatalogTaxonomy() {
+  if (!taxonomyPromise) taxonomyPromise = fetchCatalogTaxonomy()
+  return taxonomyPromise
 }

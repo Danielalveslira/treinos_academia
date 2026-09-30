@@ -45,6 +45,17 @@ test('normalizeExercise nunca inventa dado ausente -- campos opcionais viram nul
   assert.deepEqual(row.media_refs, { images: [] })
 })
 
+test('normalizeExercise preserva acentuação/cedilha do nome exatamente como veio -- normalização é só pra busca, nunca pro campo de apresentação', () => {
+  const accented = [
+    'Abraçar a Bola', 'Extensão de Pé', 'Elevação Pélvica', 'Rosca Direta com Ênfase',
+    'Remada Única com Halteres', 'Agachamento com Ênfase nos Glúteos', 'Panturrilha em Pé',
+  ]
+  for (const name of accented) {
+    const row = normalizeExercise({ ...complete, name })
+    assert.equal(row.name, name)
+  }
+})
+
 test('normalizeExercise combina primaryMuscles + secondaryMuscles sem duplicar', () => {
   const row = normalizeExercise({ ...complete, primaryMuscles: ['peito'], secondaryMuscles: ['peito', 'triceps'] })
   assert.deepEqual(row.muscles, ['peito', 'triceps'])

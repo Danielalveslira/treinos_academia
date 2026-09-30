@@ -3,21 +3,13 @@ import { Box, Button, Heading, Spinner, Text } from '@primer/react'
 import { ArrowLeftIcon, SearchIcon } from '@primer/octicons-react'
 import { useExerciseCatalogSearch } from '../hooks/useExerciseCatalogSearch.js'
 import { useExerciseCatalogTaxonomy } from '../hooks/useExerciseCatalogTaxonomy.js'
-import {
-  EXERCISE_CATALOG_CATEGORIES,
-  EXERCISE_CATALOG_LEVELS,
-} from '../constants/exerciseCatalogTaxonomy.js'
-import { isProviderExerciseAdded } from '../utils/exerciseCatalog.js'
+import { formatCatalogLabel as displayValue, isProviderExerciseAdded } from '../utils/exerciseCatalog.js'
 import { ExerciseCatalogImage } from './ExerciseCatalogImage.jsx'
 
-function displayValue(value) {
-  if (value == null) return 'Não informado'
-  return value
-    .replaceAll('-', ' ')
-    .replace(/(^|\s)\S/g, (letter) => letter.toLocaleUpperCase('pt-BR'))
-}
-
 function FilterSelect({ label, value, options, onChange }) {
+  // Nunca mostra um filtro sem opções reais (ex.: taxonomia ainda carregando, ou uma
+  // categoria que não existe em nenhum exercício do catálogo).
+  if (!options.length) return null
   return (
     <label className="catalog-filter">
       <span>{label}</span>
@@ -111,7 +103,7 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
   const [selected, setSelected] = useState(null)
   const [addingId, setAddingId] = useState(null)
   const [addedIds, setAddedIds] = useState(() => new Set())
-  const { muscles, equipment } = useExerciseCatalogTaxonomy()
+  const { muscles, equipment, categories, levels } = useExerciseCatalogTaxonomy()
   const { items, total, loading, loadingMore, hasMore, loadMore, error, queryTooShort, noQueryIntent } =
     useExerciseCatalogSearch({
       q: query,
@@ -194,13 +186,13 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
         <FilterSelect
           label="Categoria"
           value={filters.category}
-          options={EXERCISE_CATALOG_CATEGORIES}
+          options={categories}
           onChange={(value) => changeFilter('category', value)}
         />
         <FilterSelect
           label="Nível"
           value={filters.level}
-          options={EXERCISE_CATALOG_LEVELS}
+          options={levels}
           onChange={(value) => changeFilter('level', value)}
         />
       </div>

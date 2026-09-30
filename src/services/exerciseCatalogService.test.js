@@ -159,18 +159,33 @@ test('getExerciseDetail devolve null quando o item não existe mais no catálogo
 test('listCatalogTaxonomy agrega músculos/equipamentos distintos e cacheia entre chamadas', async () => {
   globalThis.__fromResult = {
     data: [
-      { muscles: ['peito', 'triceps'], equipment: 'barra' },
-      { muscles: ['peito'], equipment: null },
-      { muscles: ['quadriceps'], equipment: 'barra' },
+      { muscles: ['peito', 'triceps'], equipment: 'barra', category: 'forca', difficulty: 'iniciante' },
+      { muscles: ['peito'], equipment: null, category: 'forca', difficulty: null },
+      { muscles: ['quadriceps'], equipment: 'barra', category: 'cardio', difficulty: 'avancado' },
     ],
     error: null,
   }
   const first = await service.listCatalogTaxonomy()
   assert.deepEqual(first.muscles, ['peito', 'quadriceps', 'triceps'])
   assert.deepEqual(first.equipment, ['barra'])
+  assert.deepEqual(first.categories, ['cardio', 'forca'])
+  assert.deepEqual(first.levels, ['avancado', 'iniciante'])
 
   const callsBefore = globalThis.__supabaseCalls.length
   const second = await service.listCatalogTaxonomy()
   assert.deepEqual(second, first)
   assert.equal(globalThis.__supabaseCalls.length, callsBefore, 'segunda chamada não deve consultar o banco de novo')
+})
+
+test('nome com acento/cedilha nunca é normalizado na apresentação -- só a query de busca é normalizada', async () => {
+  const accentedRow = { ...rawRow, name: 'Abraçar a Bola', provider_exercise_id: 'Hug_A_Ball' }
+  globalThis.__rpcResult = { data: [accentedRow], error: null }
+  const { data } = await service.searchExercises({ q: 'abracar', limit: 20, offset: 0 })
+
+  // A query enviada à RPC pode/deve ser normalizada lá dentro (pg_trgm + unaccent) --
+  // mas o texto que o usuário digitou nunca é alterado no client antes de enviar, e o
+  // nome que volta pra UI é exatamente o que a RPC devolveu, sem nenhum unaccent/
+  // toLowerCase aplicado no caminho.
+  assert.equal(globalThis.__supabaseCalls[0].params.p_query, 'abracar')
+  assert.equal(data[0].name, 'Abraçar a Bola')
 })

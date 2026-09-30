@@ -268,7 +268,7 @@ test('execution guide exposes two lazy images, metadata and numbered instruction
   assert.match(html, /Row\/1\.jpg/)
   assert.equal((html.match(/loading="lazy"/g) || []).length, 2)
   assert.match(html, /Músculos/)
-  assert.match(html, /Meio das costas/)
+  assert.match(html, /Meio das Costas/)
   assert.match(html, /<ol>/)
   assert.match(html, /Mantenha a coluna neutra\./)
   assert.match(html, /Puxe a barra\./)
