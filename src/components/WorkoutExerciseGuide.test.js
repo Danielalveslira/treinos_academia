@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { build } from 'esbuild'
 
+const require = createRequire(import.meta.url)
 let directory
 let renderGuide
 let renderVisual
@@ -13,10 +14,21 @@ let openVisual
 let focusTrap
 let focusTrapEdgeCases
 
+// exercise agora é o exercício PESSOAL (snapshot mínimo: name/muscleGroup/equipment/
+// providerExerciseId) -- o conteúdo rico (imagens/instruções/nível) vem de
+// useExerciseCatalogDetail, mockado abaixo pra devolver um valor fixo e síncrono (o
+// componente real busca isso em public.exercise_catalog via Supabase, que não faz
+// sentido num teste de renderização puro).
 const exercise = {
-  id: 'Row',
+  id: 'personal-1',
   name: 'Remada',
-  imageRefs: ['Row/0.jpg', 'Row/1.jpg'],
+  muscleGroup: 'Costas',
+  equipment: 'barra',
+  providerExerciseId: 'Row',
+}
+const detail = {
+  id: 'Row',
+  images: ['https://cdn.test/Row/0.jpg', 'https://cdn.test/Row/1.jpg'],
   primaryMuscles: ['meio-das-costas'],
   equipment: 'barra',
   level: 'iniciante',
@@ -206,15 +218,29 @@ before(async () => {
     format: 'cjs',
     jsx: 'automatic',
     loader: { '.css': 'empty' },
-    define: {
-      'import.meta.env.VITE_EXERCISE_CATALOG_ASSET_BASE_URL':
-        '"https://cdn.test/exercise-catalog/v1"',
-      'import.meta.env.DEV': 'false',
-    },
+    plugins: [
+      {
+        name: 'exercise-catalog-detail-stub',
+        setup(context) {
+          context.onResolve({ filter: /\/hooks\/useExerciseCatalogDetail\.js$/ }, () => ({
+            path: 'detail-hook',
+            namespace: 'stub',
+          }))
+          context.onLoad({ filter: /^detail-hook$/, namespace: 'stub' }, () => ({
+            contents: `
+              const DETAIL = ${JSON.stringify(detail)}
+              export const useExerciseCatalogDetail = ({ catalogId, providerExerciseId } = {}) =>
+                (catalogId || providerExerciseId)
+                  ? { data: DETAIL, loading: false, unavailable: false }
+                  : { data: null, loading: false, unavailable: true }
+            `,
+          }))
+        },
+      },
+    ],
     logLevel: 'silent',
   })
-  ;({ renderGuide, renderVisual, openVisual, focusTrap, focusTrapEdgeCases } =
-    createRequire(import.meta.url)(outfile))
+  ;({ renderGuide, renderVisual, openVisual, focusTrap, focusTrapEdgeCases } = require(outfile))
 })
 
 after(async () => {
@@ -224,10 +250,10 @@ after(async () => {
 test('workout header loads only the current thumbnail and exposes the execution button', () => {
   const html = renderVisual(exercise)
   assert.match(html, /workout-exercise-thumbnail/)
-  assert.match(html, /thumb\.webp/)
+  assert.match(html, /Row\/0\.jpg/)
   assert.match(html, /Ver execução/)
   assert.equal((html.match(/<img/g) || []).length, 1)
-  assert.doesNotMatch(html, /0\.webp|1\.webp|role="dialog"/)
+  assert.doesNotMatch(html, /Row\/1\.jpg|role="dialog"/)
 })
 
 test('execution button opens the guide and only then mounts the two large images', () => {
@@ -238,8 +264,8 @@ test('execution guide exposes two lazy images, metadata and numbered instruction
   const html = renderGuide(exercise)
   assert.match(html, /role="dialog"/)
   assert.match(html, /aria-modal="true"/)
-  assert.match(html, /0\.webp/)
-  assert.match(html, /1\.webp/)
+  assert.match(html, /Row\/0\.jpg/)
+  assert.match(html, /Row\/1\.jpg/)
   assert.equal((html.match(/loading="lazy"/g) || []).length, 2)
   assert.match(html, /Músculos/)
   assert.match(html, /Meio das costas/)
@@ -248,9 +274,13 @@ test('execution guide exposes two lazy images, metadata and numbered instruction
   assert.match(html, /Puxe a barra\./)
 })
 
-test('execution guide omits an empty instructions section', () => {
-  const html = renderGuide({ ...exercise, instructions: [] })
-  assert.doesNotMatch(html, /workout-guide-instructions|Instruções/)
+test('execution guide falls back to the personal snapshot when the catalog is unavailable', () => {
+  const html = renderGuide({ ...exercise, providerExerciseId: null })
+  assert.match(html, /Remada/)
+  assert.match(html, /Costas/)
+  assert.match(html, /Barra/)
+  assert.match(html, /indisponível no momento/)
+  assert.doesNotMatch(html, /Row\/0\.jpg/)
 })
 
 test('Tab from the last focusable element wraps to the first, and Shift+Tab from the first wraps to the last', () => {

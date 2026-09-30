@@ -1,14 +1,10 @@
-import { collection, documentId, getDocs, orderBy, query, where } from 'firebase/firestore'
-import { db } from '../firebase/config'
+import { supabase } from '../supabase/config'
 
 export async function listProgressDays(userId, startDateKey, endDateKey) {
-  const snapshot = await getDocs(
-    query(
-      collection(db, 'users', userId, 'progressDaily'),
-      where(documentId(), '>=', startDateKey),
-      where(documentId(), '<=', endDateKey),
-      orderBy(documentId())
-    )
-  )
-  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+  const { data, error } = await supabase.rpc('list_progress_days', {
+    p_start: startDateKey,
+    p_end: endDateKey,
+  })
+  if (error) throw error
+  return data
 }

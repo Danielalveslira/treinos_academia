@@ -90,13 +90,13 @@ test('validateExercise requires name and muscleGroup, and bounds both lengths', 
         name: 'Supino',
         muscleGroup: 'Peito',
         source: 'catalog',
-        catalogExerciseId: 'bench',
+        providerExerciseId: 'bench',
       })
     ),
     false
   )
   assert.match(
-    validateExercise({ name: 'Supino', muscleGroup: 'Peito', source: 'catalog' }).catalogExerciseId,
+    validateExercise({ name: 'Supino', muscleGroup: 'Peito', source: 'catalog' }).providerExerciseId,
     /inválido/
   )
   assert.match(
@@ -104,8 +104,8 @@ test('validateExercise requires name and muscleGroup, and bounds both lengths', 
       name: 'Supino',
       muscleGroup: 'Peito',
       source: 'custom',
-      catalogExerciseId: 'bench',
-    }).catalogExerciseId,
+      providerExerciseId: 'bench',
+    }).providerExerciseId,
     /personalizado/
   )
 })

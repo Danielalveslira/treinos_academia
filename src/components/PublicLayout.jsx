@@ -65,7 +65,7 @@ export function AuthLayout({ children, title, description, footer }) {
             width="1145"
             height="1374"
             loading="eager"
-            fetchPriority="high"
+            fetchpriority="high"
           />
           <div className="auth-intro-content">
             <span className="public-eyebrow">

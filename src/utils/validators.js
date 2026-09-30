@@ -70,7 +70,7 @@ export function validateUsername(rawUsername) {
   return errors
 }
 
-export function validateExercise({ name, muscleGroup, type, source, catalogExerciseId }) {
+export function validateExercise({ name, muscleGroup, type, source, providerExerciseId }) {
   const errors = {}
   const nameError = requiredText(name, 100, 'Nome é obrigatório', 'Nome muito longo')
   if (nameError) errors.name = nameError
@@ -83,11 +83,11 @@ export function validateExercise({ name, muscleGroup, type, source, catalogExerc
   if (muscleGroupError) errors.muscleGroup = muscleGroupError
   if (type != null && !EXERCISE_TYPES.includes(type)) errors.type = 'Tipo inválido'
   if (source != null && !['custom', 'catalog'].includes(source)) errors.source = 'Origem inválida'
-  if (source === 'catalog' && (!catalogExerciseId || typeof catalogExerciseId !== 'string')) {
-    errors.catalogExerciseId = 'Exercício do catálogo inválido'
+  if (source === 'catalog' && (!providerExerciseId || typeof providerExerciseId !== 'string')) {
+    errors.providerExerciseId = 'Exercício do catálogo inválido'
   }
-  if (source !== 'catalog' && catalogExerciseId != null) {
-    errors.catalogExerciseId = 'Exercício personalizado não pode ter ID de catálogo'
+  if (source !== 'catalog' && providerExerciseId != null) {
+    errors.providerExerciseId = 'Exercício personalizado não pode ter ID de catálogo'
   }
   return errors
 }

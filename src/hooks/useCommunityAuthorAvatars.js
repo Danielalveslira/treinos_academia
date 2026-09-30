@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { doc, onSnapshot } from 'firebase/firestore'
-import { db } from '../firebase/config'
+import { supabase } from '../supabase/config'
 
 export function uniqueCommunityAuthorIds(...groups) {
   return [
@@ -13,8 +12,10 @@ export function uniqueCommunityAuthorIds(...groups) {
   ].sort()
 }
 
-// publicProfiles permite get autenticado, mas não list. Um listener por autor visível
-// acompanha troca/remoção da foto sem multiplicar leituras por mensagem ou por seção.
+// public_profiles permite select autenticado pra qualquer linha, mas Realtime ainda
+// precisa de um filtro por linha -- um channel por autor visível acompanha troca/remoção
+// da foto sem multiplicar leituras por mensagem ou por seção (mesma estratégia de "um
+// listener por autor" do onSnapshot original).
 export function useCommunityAuthorAvatars(enabled, ...groups) {
   const idsKey = enabled ? JSON.stringify(uniqueCommunityAuthorIds(...groups)) : ''
   const [avatars, setAvatars] = useState({})
@@ -22,15 +23,38 @@ export function useCommunityAuthorAvatars(enabled, ...groups) {
   useEffect(() => {
     setAvatars({})
     if (!idsKey) return
-    const unsubscribers = JSON.parse(idsKey).map((uid) =>
-      onSnapshot(
-        doc(db, 'publicProfiles', uid),
-        (snapshot) =>
-          setAvatars((current) => ({ ...current, [uid]: snapshot.data()?.avatarPath || null })),
-        () => setAvatars((current) => ({ ...current, [uid]: null }))
+    const ids = JSON.parse(idsKey)
+
+    let active = true
+    Promise.all(
+      ids.map((uid) =>
+        supabase.from('public_profiles').select('avatar_path').eq('user_id', uid).maybeSingle()
       )
+    ).then((results) => {
+      if (!active) return
+      setAvatars((current) => {
+        const next = { ...current }
+        results.forEach(({ data }, index) => {
+          next[ids[index]] = data?.avatar_path || null
+        })
+        return next
+      })
+    })
+
+    const channels = ids.map((uid) =>
+      supabase
+        .channel(`public-profiles-avatar-${uid}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'public_profiles', filter: `user_id=eq.${uid}` },
+          (payload) => setAvatars((current) => ({ ...current, [uid]: payload.new?.avatar_path || null }))
+        )
+        .subscribe()
     )
-    return () => unsubscribers.forEach((unsubscribe) => unsubscribe())
+    return () => {
+      active = false
+      channels.forEach((channel) => supabase.removeChannel(channel))
+    }
   }, [idsKey])
 
   return avatars

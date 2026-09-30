@@ -8,7 +8,13 @@ export async function getPublicProfile(userId) {
     .maybeSingle()
   if (error) throw error
   if (!data) return null
-  return { id: data.user_id, username: data.username, bio: data.bio, shareStatistics: data.share_statistics }
+  return {
+    id: data.user_id,
+    username: data.username,
+    bio: data.bio,
+    shareStatistics: data.share_statistics,
+    avatarPath: data.avatar_path,
+  }
 }
 
 export async function getPublicStatistics(userId) {

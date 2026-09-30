@@ -10,7 +10,7 @@ import {
 } from '../services/exercisesService'
 import { useCachedQuery } from '../hooks/useCachedQuery'
 import { getExerciseType } from '../utils/exerciseType'
-import { catalogExerciseToPersonal, isCatalogExerciseAdded } from '../utils/exerciseCatalog.js'
+import { providerExerciseToPersonal, isProviderExerciseAdded } from '../utils/exerciseCatalog.js'
 
 const EMPTY = []
 
@@ -27,8 +27,8 @@ function normalize(exercise) {
     type: getExerciseType(exercise),
     note: exercise.note?.trim() || '',
     ...(exercise.source ? { source: exercise.source } : {}),
-    ...(Object.hasOwn(exercise, 'catalogExerciseId')
-      ? { catalogExerciseId: exercise.catalogExerciseId }
+    ...(Object.hasOwn(exercise, 'providerExerciseId')
+      ? { providerExerciseId: exercise.providerExerciseId }
       : {}),
   }
 }
@@ -49,19 +49,22 @@ export function ExercisesProvider({ children }) {
       ...normalize(exercise),
       active: true,
       source: 'custom',
-      catalogExerciseId: null,
+      providerExerciseId: null,
     }
     setData([...exercises, created].sort(byName))
   }
 
+  // catalogExercise vem no formato de resposta do nosso catálogo (id do catálogo,
+  // providerExerciseId, name, primaryMuscles, equipment, category, ...) — ver
+  // exerciseCatalogService.searchExercises.
   async function addFromCatalog(catalogExercise) {
-    if (isCatalogExerciseAdded(exercises, catalogExercise.id)) return { added: false }
-    const group = catalogExerciseToPersonal(catalogExercise).muscleGroup
+    if (isProviderExerciseAdded(exercises, catalogExercise.providerExerciseId)) return { added: false }
+    const group = providerExerciseToPersonal(catalogExercise).muscleGroup
     const groupOrders = exercises
       .filter((exercise) => exercise.muscleGroup === group && Number.isInteger(exercise.order))
       .map((exercise) => exercise.order)
     const order = groupOrders.length ? Math.min(299, Math.max(...groupOrders) + 1) : 0
-    const personalExercise = catalogExerciseToPersonal(catalogExercise, { order })
+    const personalExercise = providerExerciseToPersonal(catalogExercise, { order })
     const id = await createCatalogExercise(user.uid, personalExercise)
     setData([...exercises, { id, ...personalExercise }].sort(byName))
     return { added: true, exercise: { id, ...personalExercise } }

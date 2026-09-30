@@ -31,6 +31,37 @@ import {
 import { isEligibleForListingCreation } from '../constants/usageProfile'
 import { UsageProfileField } from '../components/UsageProfileField'
 
+// RPCs do Supabase lançam códigos curtos (ver migration
+// 20260929000005_professional_listings.sql), não frases prontas como o HttpsError do
+// Firebase original -- esta tela sempre mostrou error.message direto pro usuário, então
+// precisa traduzir aqui pra não vazar o código cru. Mesmo texto das mensagens originais
+// (professional-listing-core.js/professional-listing-service.js).
+const KNOWN_ERRORS = {
+  INVALID_ARGUMENT: 'Dados inválidos para criar a vitrine.',
+  ACCOUNT_DELETING: 'A conta não pode alterar uma vitrine agora.',
+  ALREADY_EXISTS: 'Sua conta já possui uma vitrine de outro tipo.',
+  NOT_ELIGIBLE:
+    'Defina seu perfil de uso como profissional ou responsável por estabelecimento em Meu Perfil antes de criar uma vitrine.',
+  LISTING_NOT_FOUND: 'Vitrine não encontrada.',
+  LISTING_NOT_EDITABLE: 'A vitrine não pode ser alterada neste estado.',
+  KIND_IMMUTABLE: 'O tipo da vitrine não pode ser alterado.',
+  INVALID_DISPLAY_NAME: 'Informe um nome com até 80 caracteres.',
+  INVALID_CATEGORY: 'Categoria inválida.',
+  INVALID_MODALITIES: 'Selecione entre uma e cinco modalidades.',
+  TOO_MANY_SPECIALTIES: 'Informe no máximo dez especialidades.',
+  INVALID_BIO: 'Informe uma apresentação com até 1.500 caracteres.',
+  INVALID_CITY: 'Informe uma cidade com até 80 caracteres.',
+  INVALID_UF: 'Estado inválido.',
+  INVALID_SERVICE_MODE: 'Atendimento inválido.',
+  INVALID_CONTACTS: 'Use somente links HTTPS válidos para os contatos.',
+  INVALID_LINKED_COMMUNITY: 'Você só pode vincular uma comunidade ativa da qual é titular.',
+  PUBLISH_IN_PROGRESS: 'Uma publicação desta vitrine está em andamento.',
+  DRAFT_INCOMPLETE: 'Salve um rascunho completo antes de publicar.',
+  SHOWCASE_TERMS_UNAVAILABLE: 'Os Termos de Publicação da Vitrine ainda não estão disponíveis.',
+  TERMS_NOT_ACCEPTED: 'Confirme os Termos de Publicação da Vitrine antes de publicar.',
+  ACCEPTANCE_INCONSISTENT: 'O registro anterior de aceite é inconsistente.',
+}
+
 const STATE_LABELS = {
   draft: 'Rascunho',
   // Legado: vitrines com uma submissão presa no antigo fluxo de aprovação (antes da
@@ -162,7 +193,10 @@ export default function MyProfessionalListing() {
       await createProfessionalListing(kind)
       await reload()
     } catch (error) {
-      setMessage({ variant: 'danger', text: error?.message || 'Não foi possível criar a vitrine.' })
+      setMessage({
+        variant: 'danger',
+        text: KNOWN_ERRORS[error?.message] || 'Não foi possível criar a vitrine.',
+      })
     } finally {
       setBusy('')
     }
@@ -204,7 +238,7 @@ export default function MyProfessionalListing() {
       await reload()
       setMessage({ variant: 'success', text: 'Rascunho salvo.' })
     } catch (error) {
-      setMessage({ variant: 'danger', text: error?.message || 'Não foi possível salvar.' })
+      setMessage({ variant: 'danger', text: KNOWN_ERRORS[error?.message] || 'Não foi possível salvar.' })
     } finally {
       setBusy('')
     }
@@ -225,7 +259,7 @@ export default function MyProfessionalListing() {
       setTermsConfirmed(false)
       setMessage({ variant: 'success', text: 'Vitrine publicada.' })
     } catch (error) {
-      setMessage({ variant: 'danger', text: error?.message || 'Não foi possível publicar.' })
+      setMessage({ variant: 'danger', text: KNOWN_ERRORS[error?.message] || 'Não foi possível publicar.' })
     } finally {
       setBusy('')
     }
