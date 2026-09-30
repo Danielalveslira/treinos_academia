@@ -1,38 +1,34 @@
-import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { MUSCLE_GROUPS } from '../constants/muscleGroups.js'
 import { EXERCISE_TYPES } from './exerciseType.js'
 import {
-  catalogExerciseToPersonal,
-  filterCatalog,
-  getCatalogFilterOptions,
-  getCatalogExerciseById,
-  getCatalogExerciseForPersonal,
-  getWorkoutCatalogExercise,
   getExerciseSource,
-  isCatalogExerciseAdded,
+  isProviderExerciseAdded,
   mapCatalogCategoryToExerciseType,
   mapCatalogMuscleToPersonalGroup,
-  normalizeSearchText,
-  searchCatalog,
-  sortCatalog,
+  providerExerciseToPersonal,
 } from './exerciseCatalog.js'
 
+// Amostra no formato de resposta do nosso catálogo (ver exerciseCatalogService.js): id é
+// o UUID interno da linha em exercise_catalog, providerExerciseId é o ID original do
+// dataset (imports/exercicios_ptbr.json) -- os dois nunca são o mesmo campo.
 const sample = [
   {
-    id: 'one',
+    id: '11111111-1111-1111-1111-111111111111',
+    providerExerciseId: 'Hip_Thrust',
     name: 'Elevação de Quadril',
     primaryMuscles: ['gluteos'],
     secondaryMuscles: ['isquiotibiais'],
-    equipment: 'peso-do-corpo',
+    equipment: 'barbell',
     category: 'forca',
     level: 'iniciante',
     instructions: ['Faça o movimento.'],
-    imageRefs: ['one/0.jpg'],
+    images: ['Hip_Thrust/0.jpg'],
   },
   {
-    id: 'two',
+    id: '22222222-2222-2222-2222-222222222222',
+    providerExerciseId: 'Running',
     name: 'Corrida',
     primaryMuscles: ['quadriceps'],
     secondaryMuscles: [],
@@ -40,157 +36,62 @@ const sample = [
     category: 'cardio',
     level: 'intermediario',
     instructions: [],
-    imageRefs: [],
+    images: [],
   },
 ]
 
-test('generated catalog loads with 873 unique stable IDs', async () => {
-  const catalog = JSON.parse(
-    await readFile(
-      new URL('../../public/exercise-catalog/v1/catalog.json', import.meta.url),
-      'utf8'
-    )
-  )
-  assert.equal(catalog.version, 1)
-  assert.equal(catalog.exercises.length, 873)
-  assert.equal(new Set(catalog.exercises.map(({ id }) => id)).size, 873)
-  assert.ok(getCatalogExerciseById(catalog.exercises, 'Barbell_Deadlift'))
+test('muscle/category mapping cobre chaves legadas (free-exercise-db em inglês) e o dataset atual (pt-BR)', () => {
+  assert.equal(mapCatalogMuscleToPersonalGroup({ primaryMuscles: ['glutes'] }), 'Glúteos')
+  assert.equal(mapCatalogMuscleToPersonalGroup({ primaryMuscles: ['gluteos'] }), 'Glúteos')
+  assert.equal(mapCatalogMuscleToPersonalGroup({ primaryMuscles: [] }), 'Pernas')
+  assert.equal(mapCatalogCategoryToExerciseType('cardio'), 'cardio')
+  assert.equal(mapCatalogCategoryToExerciseType('forca'), 'strength')
+  assert.equal(mapCatalogCategoryToExerciseType('alongamento'), 'strength')
 })
 
-test('catalog search covers name without accents, muscles, equipment and category', () => {
-  assert.equal(normalizeSearchText('Elevação'), 'elevacao')
-  assert.deepEqual(
-    searchCatalog(sample, 'elevacao').map(({ id }) => id),
-    ['one']
-  )
-  assert.deepEqual(
-    searchCatalog(sample, 'isquiotibiais').map(({ id }) => id),
-    ['one']
-  )
-  assert.deepEqual(
-    searchCatalog(sample, 'peso corpo').map(({ id }) => id),
-    ['one']
-  )
-  assert.deepEqual(
-    searchCatalog(sample, 'cardio').map(({ id }) => id),
-    ['two']
-  )
-})
-
-test('catalog filters equipment, category, level and primary muscle, including null', () => {
-  assert.deepEqual(
-    filterCatalog(sample, { equipment: 'peso-do-corpo' }).map(({ id }) => id),
-    ['one']
-  )
-  assert.deepEqual(
-    filterCatalog(sample, { equipment: null }).map(({ id }) => id),
-    ['two']
-  )
-  assert.deepEqual(
-    filterCatalog(sample, { category: 'cardio' }).map(({ id }) => id),
-    ['two']
-  )
-  assert.deepEqual(
-    filterCatalog(sample, { level: 'iniciante' }).map(({ id }) => id),
-    ['one']
-  )
-  assert.deepEqual(
-    filterCatalog(sample, { muscle: 'quadriceps' }).map(({ id }) => id),
-    ['two']
-  )
-})
-
-test('catalog filter options only expose values compatible with the other active filters', () => {
-  const options = getCatalogFilterOptions(sample, { muscle: 'gluteos' })
-  assert.deepEqual(options.equipment, ['peso-do-corpo'])
-  assert.deepEqual(options.categories, ['forca'])
-  assert.deepEqual(options.levels, ['iniciante'])
-
-  const cardioOptions = getCatalogFilterOptions(sample, {
-    category: 'cardio',
-    level: 'intermediario',
-  })
-  assert.deepEqual(cardioOptions.muscles, ['quadriceps'])
-  assert.deepEqual(cardioOptions.equipment, [null])
-})
-
-test('catalog sorting uses name and stable ID as tie breaker', () => {
-  const equalNames = [
-    { ...sample[0], id: 'b', name: 'Mesmo nome' },
-    { ...sample[1], id: 'a', name: 'Mesmo nome' },
-  ]
-  assert.deepEqual(
-    sortCatalog(equalNames).map(({ id }) => id),
-    ['a', 'b']
-  )
-})
-
-test('all catalog muscles and categories map to current personal values', async () => {
-  const catalog = JSON.parse(
-    await readFile(
-      new URL('../../public/exercise-catalog/v1/catalog.json', import.meta.url),
-      'utf8'
-    )
-  )
-  for (const exercise of catalog.exercises) {
+test('all mapped values stay within the app own muscle group / exercise type sets', () => {
+  for (const exercise of sample) {
     assert.ok(MUSCLE_GROUPS.includes(mapCatalogMuscleToPersonalGroup(exercise)))
     assert.ok(EXERCISE_TYPES.includes(mapCatalogCategoryToExerciseType(exercise.category)))
   }
 })
 
-test('catalog maps only lightweight fields to a personal exercise', () => {
-  const personal = catalogExerciseToPersonal(sample[0], { order: 3 })
+test('providerExerciseToPersonal keeps only the minimal snapshot (name/muscleGroup/equipment)', () => {
+  const personal = providerExerciseToPersonal(sample[0], { order: 3 })
   assert.deepEqual(personal, {
     name: 'Elevação de Quadril',
     muscleGroup: 'Glúteos',
     type: 'strength',
+    equipment: 'barbell',
     source: 'catalog',
-    catalogExerciseId: 'one',
+    provider: 'evolutus_dataset',
+    providerExerciseId: 'Hip_Thrust',
+    catalogId: '11111111-1111-1111-1111-111111111111',
     active: true,
     note: '',
     order: 3,
   })
-  for (const heavyField of [
-    'instructions',
-    'secondaryMuscles',
-    'equipment',
-    'level',
-    'imageRefs',
-    'category',
-  ]) {
-    assert.equal(Object.hasOwn(personal, heavyField), false)
+  // Conteúdo rico do catálogo NUNCA entra no snapshot -- fica só em
+  // public.exercise_catalog, buscado sob demanda, nunca persistido em public.exercises.
+  for (const richField of ['instructions', 'secondaryMuscles', 'level', 'images', 'category']) {
+    assert.equal(Object.hasOwn(personal, richField), false)
   }
 })
 
-test('duplicate detection uses catalog ID, not name; legacy and custom remain custom', () => {
+test('providerExerciseToPersonal keeps equipment null when the exercise has none', () => {
+  const personal = providerExerciseToPersonal(sample[1])
+  assert.equal(personal.equipment, null)
+})
+
+test('duplicate detection uses provider + providerExerciseId, not name', () => {
   const personal = [
     { id: 'legacy', name: 'Mesmo nome' },
-    { id: 'custom', name: 'Mesmo nome', source: 'custom', catalogExerciseId: null },
-    { id: 'catalog', name: 'Outro nome', source: 'catalog', catalogExerciseId: 'one' },
+    { id: 'custom', name: 'Mesmo nome', source: 'custom', providerExerciseId: null },
+    { id: 'catalog', name: 'Outro nome', source: 'catalog', providerExerciseId: 'Hip_Thrust' },
   ]
-  assert.equal(isCatalogExerciseAdded(personal, 'one'), true)
-  assert.equal(isCatalogExerciseAdded(personal, 'two'), false)
+  assert.equal(isProviderExerciseAdded(personal, 'Hip_Thrust'), true)
+  assert.equal(isProviderExerciseAdded(personal, 'Running'), false)
   assert.equal(getExerciseSource(personal[0]), 'custom')
   assert.equal(getExerciseSource(personal[1]), 'custom')
-})
-
-test('personal catalog exercise resolves static catalog data through catalogExerciseId', () => {
-  assert.equal(getCatalogExerciseForPersonal({ catalogExerciseId: 'two' }, sample)?.id, 'two')
-  assert.equal(getCatalogExerciseForPersonal({ source: 'custom' }, sample), null)
-})
-
-test('workout resolves only explicit catalog exercises; custom, legacy and missing IDs stay visual-free', () => {
-  assert.equal(
-    getWorkoutCatalogExercise({ source: 'catalog', catalogExerciseId: 'one' }, sample)?.id,
-    'one'
-  )
-  assert.equal(
-    getWorkoutCatalogExercise({ source: 'custom', catalogExerciseId: 'one' }, sample),
-    null
-  )
-  assert.equal(getWorkoutCatalogExercise({ catalogExerciseId: 'one' }, sample), null)
-  assert.equal(
-    getWorkoutCatalogExercise({ source: 'catalog', catalogExerciseId: 'missing' }, sample),
-    null
-  )
+  assert.equal(getExerciseSource(personal[2]), 'catalog')
 })

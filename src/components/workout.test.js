@@ -31,6 +31,24 @@ before(async () => {
     format: 'cjs',
     jsx: 'automatic',
     loader: { '.css': 'empty' },
+    // WorkoutForm.jsx -> WorkoutExerciseGuide.jsx -> useExerciseCatalogDetail.js puxa a
+    // cadeia real até supabase/config.js (precisa de VITE_SUPABASE_URL, que não existe
+    // fora do Vite) -- nenhum destes testes passa exercício com providerExerciseId, então
+    // o hook nunca seria chamado de verdade; só o import em si já quebrava o bundle.
+    plugins: [
+      {
+        name: 'exercise-catalog-detail-stub',
+        setup(context) {
+          context.onResolve({ filter: /\/hooks\/useExerciseCatalogDetail\.js$/ }, () => ({
+            path: 'detail-hook',
+            namespace: 'stub',
+          }))
+          context.onLoad({ filter: /^detail-hook$/, namespace: 'stub' }, () => ({
+            contents: `export const useExerciseCatalogDetail = () => ({ data: null, loading: false, stale: false, unavailable: true })`,
+          }))
+        },
+      },
+    ],
     logLevel: 'silent',
   })
   ;({ render } = createRequire(import.meta.url)(outfile))

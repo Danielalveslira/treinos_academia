@@ -30,8 +30,6 @@ import { sortExercisesInGroup } from '../utils/exerciseOrder'
 import { nextActiveSetIndexAfterRemoval } from '../utils/setCardFlow'
 import { suggestedSets, inheritSet } from '../utils/setSuggestions'
 import { recentExerciseSessions } from '../utils/exerciseHistory'
-import { useExerciseCatalog } from '../hooks/useExerciseCatalog'
-import { getWorkoutCatalogExercise } from '../utils/exerciseCatalog'
 import { WorkoutExerciseVisual } from './WorkoutExerciseGuide'
 import '../styles/workoutExecution.css'
 
@@ -169,15 +167,6 @@ export function WorkoutForm({
   const selectedExercise = useMemo(
     () => availableExercises.find((exercise) => exercise.id === values.exerciseId),
     [availableExercises, values.exerciseId]
-  )
-  const hasCatalogExercises = useMemo(
-    () => availableExercises.some((exercise) => exercise.source === 'catalog'),
-    [availableExercises]
-  )
-  const { data: exerciseCatalog } = useExerciseCatalog({ enabled: hasCatalogExercises })
-  const catalogExercise = useMemo(
-    () => getWorkoutCatalogExercise(selectedExercise, exerciseCatalog?.exercises ?? []),
-    [selectedExercise, exerciseCatalog]
   )
   const cardio = isCardioExercise(selectedExercise)
   // Sem o filtro de busca -- é a lista "de verdade" do grupo, usada por
@@ -535,9 +524,9 @@ export function WorkoutForm({
       {step === 'register' && selectedExercise && (
         <div className="workout-step workout-register-step">
           <section className="exercise-context-bar" aria-label="Exercício selecionado">
-            {catalogExercise ? (
+            {selectedExercise.providerExerciseId ? (
               <WorkoutExerciseVisual
-                exercise={catalogExercise}
+                exercise={selectedExercise}
                 group={selectedGroup}
                 displayName={selectedExercise.name}
               />

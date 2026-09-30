@@ -19,7 +19,7 @@ import {
 } from '@primer/octicons-react'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useExerciseHistory } from '../hooks/useExerciseHistory'
-import { useExerciseCatalog } from '../hooks/useExerciseCatalog.js'
+import { useExerciseCatalogDetail } from '../hooks/useExerciseCatalogDetail.js'
 import { EXERCISE_HISTORY_PAGE_SIZE } from '../services/workoutsService'
 import {
   getExerciseIndicators,
@@ -34,8 +34,6 @@ import { VolumeChart } from '../components/VolumeChart'
 import { ErrorState } from '../components/ErrorState'
 import { isCardioExercise } from '../utils/exerciseType'
 import { formatCardioSession } from '../utils/cardioSessions'
-import { getCatalogExerciseForPersonal } from '../utils/exerciseCatalog.js'
-import { getExerciseImageUrl } from '../utils/exerciseCatalogImages.js'
 import { ExerciseCatalogImage } from '../components/ExerciseCatalogImage.jsx'
 
 // Duração/distância totais não fazem parte do sistema de volume/carga/recorde de força
@@ -65,10 +63,11 @@ export default function ExerciseDetail() {
   const { workouts, loading: loadingWorkouts, error, refresh } = useExerciseHistory(id)
 
   const exercise = exercises.find((e) => e.id === id)
-  const { data: catalog } = useExerciseCatalog({
-    enabled: Boolean(exercise?.catalogExerciseId),
+  const { data: catalogExercise } = useExerciseCatalogDetail({
+    catalogId: exercise?.catalogId,
+    provider: exercise?.provider,
+    providerExerciseId: exercise?.providerExerciseId,
   })
-  const catalogExercise = getCatalogExerciseForPersonal(exercise, catalog?.exercises || [])
   const cardio = isCardioExercise(exercise)
   const indicators = useMemo(() => getExerciseIndicators(workouts), [workouts])
   const chartData = useMemo(() => buildLoadHistory(workouts), [workouts])
@@ -137,12 +136,12 @@ export default function ExerciseDetail() {
         </Box>
       </Box>
 
-      {catalogExercise && (
+      {catalogExercise?.images?.length > 0 && (
         <section className="personal-catalog-images" aria-label={`Imagens de ${exercise.name}`}>
-          {catalogExercise.imageRefs.slice(0, 2).map((_, index) => (
+          {catalogExercise.images.slice(0, 2).map((src, index) => (
             <ExerciseCatalogImage
-              key={index}
-              src={getExerciseImageUrl(catalogExercise, index)}
+              key={src}
+              src={src}
               alt={`Demonstração de ${exercise.name}, posição ${index + 1}`}
               className="catalog-detail-image"
             />

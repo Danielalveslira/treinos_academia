@@ -1,6 +1,5 @@
 import { supabase } from '../supabase/config'
 import { getExerciseType } from '../utils/exerciseType'
-import { getCatalogPersonalDocumentId } from '../utils/exerciseCatalog.js'
 
 // Teto de defesa: ninguém cadastra centenas de exercícios de verdade, mas sem isso a
 // leitura escala com o tamanho da tabela — o app já funciona bem dentro desse limite.
@@ -15,7 +14,10 @@ function toDoc(row) {
     note: row.note,
     active: row.active,
     source: row.source,
-    catalogExerciseId: row.catalog_exercise_id,
+    provider: row.provider,
+    providerExerciseId: row.provider_exercise_id,
+    catalogId: row.catalog_id,
+    equipment: row.equipment,
     order: row.order,
   }
 }
@@ -42,7 +44,8 @@ export async function createExercise(userId, exercise) {
       note: exercise.note?.trim() || '',
       active: true,
       source: 'custom',
-      catalog_exercise_id: null,
+      provider: null,
+      provider_exercise_id: null,
     })
     .select()
     .single()
@@ -50,21 +53,30 @@ export async function createExercise(userId, exercise) {
   return { id: data.id }
 }
 
+// id NUNCA é derivado do ID do provedor (era o bug: 'catalog--<id-externo>' não é um
+// uuid válido, exercises.id é uuid gerado pelo Postgres) -- o vínculo com o catálogo
+// vive em provider/provider_exercise_id (snapshot resiliente) + catalog_id (atalho
+// opcional, nunca a chave primária).
 export async function createCatalogExercise(userId, exercise) {
-  const exerciseId = getCatalogPersonalDocumentId(exercise.catalogExerciseId)
-  const { error } = await supabase.from('exercises').insert({
-    id: exerciseId,
-    user_id: userId,
-    name: exercise.name,
-    muscle_group: exercise.muscleGroup,
-    type: exercise.type || 'strength',
-    note: exercise.note || '',
-    active: exercise.active ?? true,
-    source: 'catalog',
-    catalog_exercise_id: exercise.catalogExerciseId,
-  })
+  const { data, error } = await supabase
+    .from('exercises')
+    .insert({
+      user_id: userId,
+      name: exercise.name,
+      muscle_group: exercise.muscleGroup,
+      type: exercise.type || 'strength',
+      note: exercise.note || '',
+      active: exercise.active ?? true,
+      source: 'catalog',
+      provider: exercise.provider,
+      provider_exercise_id: exercise.providerExerciseId,
+      catalog_id: exercise.catalogId || null,
+      equipment: exercise.equipment || null,
+    })
+    .select()
+    .single()
   if (error) throw error
-  return exerciseId
+  return data.id
 }
 
 export async function updateExercise(userId, exerciseId, exercise, { clearOrder = false } = {}) {

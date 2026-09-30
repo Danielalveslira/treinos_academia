@@ -1,15 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getExerciseImageUrl, getExerciseThumbnailUrl } from '../utils/exerciseCatalogImages'
-import { ExerciseCatalogImage } from './ExerciseCatalogImage'
+import { useExerciseCatalogDetail } from '../hooks/useExerciseCatalogDetail.js'
+import { ExerciseCatalogImage } from './ExerciseCatalogImage.jsx'
 
 function displayValue(value) {
-  const text = String(value ?? '').replaceAll('-', ' ')
+  const text = String(value ?? '').replaceAll('-', ' ').replaceAll('_', ' ')
   return text ? text.charAt(0).toLocaleUpperCase('pt-BR') + text.slice(1) : ''
 }
 
+// exercise é o exercício PESSOAL (snapshot: name/muscleGroup/equipment/providerExerciseId
+// já salvos em public.exercises) -- o conteúdo rico (imagens/instruções) vem à parte, via
+// useExerciseCatalogDetail, nunca bloqueante: mesmo se o item tiver sumido do catálogo
+// (reimportação futura), o treino continua abrindo com o snapshot básico (ver
+// `unavailable` abaixo).
 export function WorkoutExerciseGuide({ exercise, onClose, triggerRef }) {
   const closeButtonRef = useRef(null)
   const dialogRef = useRef(null)
+  const { data: detail, loading, unavailable } = useExerciseCatalogDetail({
+    catalogId: exercise.catalogId,
+    provider: exercise.provider,
+    providerExerciseId: exercise.providerExerciseId,
+  })
 
   // Trap real de foco: Tab/Shift+Tab nunca escapa para o conteúdo atrás do backdrop
   // enquanto o modal está aberto. O padrão de isolamento de PwaControls.jsx
@@ -49,6 +59,11 @@ export function WorkoutExerciseGuide({ exercise, onClose, triggerRef }) {
     }
   }, [onClose, triggerRef])
 
+  const images = detail?.images?.slice(0, 2) || []
+  const primaryMuscles = detail?.primaryMuscles?.length ? detail.primaryMuscles : [exercise.muscleGroup]
+  const equipment = detail?.equipment ?? exercise.equipment
+  const instructions = detail?.instructions || []
+
   return (
     <div className="workout-guide-backdrop" role="presentation" onMouseDown={onClose}>
       <section
@@ -66,38 +81,52 @@ export function WorkoutExerciseGuide({ exercise, onClose, triggerRef }) {
           </button>
         </header>
 
-        <div className="workout-guide-images">
-          {exercise.imageRefs.slice(0, 2).map((_, index) => (
-            <ExerciseCatalogImage
-              key={index}
-              src={getExerciseImageUrl(exercise, index)}
-              alt={`${exercise.name}, posição ${index + 1}`}
-              className="workout-guide-image"
-              fallbackLabel={`Imagem ${index + 1} indisponível`}
-            />
-          ))}
-        </div>
+        {images.length > 0 ? (
+          <div className="workout-guide-images">
+            {images.map((src, index) => (
+              <ExerciseCatalogImage
+                key={src}
+                src={src}
+                alt={`${exercise.name}, posição ${index + 1}`}
+                className="workout-guide-image"
+                fallbackLabel={`Imagem ${index + 1} indisponível`}
+              />
+            ))}
+          </div>
+        ) : (
+          !loading && (
+            <p className="workout-guide-unavailable">
+              {unavailable
+                ? 'Conteúdo detalhado indisponível no momento. Você ainda pode registrar sua série normalmente.'
+                : 'Sem imagens para este exercício.'}
+            </p>
+          )
+        )}
 
         <dl className="workout-guide-meta">
           <div>
             <dt>Músculos</dt>
-            <dd>{exercise.primaryMuscles.map(displayValue).join(', ')}</dd>
+            <dd>{primaryMuscles.map(displayValue).join(', ')}</dd>
           </div>
-          <div>
-            <dt>Equipamento</dt>
-            <dd>{displayValue(exercise.equipment)}</dd>
-          </div>
-          <div>
-            <dt>Nível</dt>
-            <dd>{displayValue(exercise.level)}</dd>
-          </div>
+          {equipment && (
+            <div>
+              <dt>Equipamento</dt>
+              <dd>{displayValue(equipment)}</dd>
+            </div>
+          )}
+          {detail?.level && (
+            <div>
+              <dt>Nível</dt>
+              <dd>{displayValue(detail.level)}</dd>
+            </div>
+          )}
         </dl>
 
-        {exercise.instructions.length > 0 && (
+        {instructions.length > 0 && (
           <section className="workout-guide-instructions" aria-labelledby="workout-guide-steps">
             <h3 id="workout-guide-steps">Instruções</h3>
             <ol>
-              {exercise.instructions.map((instruction, index) => (
+              {instructions.map((instruction, index) => (
                 <li key={index}>{instruction}</li>
               ))}
             </ol>
@@ -112,12 +141,17 @@ export function WorkoutExerciseVisual({ exercise, group, displayName }) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef(null)
   const closeGuide = useCallback(() => setOpen(false), [])
+  const { data: detail } = useExerciseCatalogDetail({
+    catalogId: exercise.catalogId,
+    provider: exercise.provider,
+    providerExerciseId: exercise.providerExerciseId,
+  })
 
   return (
     <>
       <div className="exercise-context-visual">
         <ExerciseCatalogImage
-          src={getExerciseThumbnailUrl(exercise)}
+          src={detail?.images?.[0] || null}
           alt=""
           className="workout-exercise-thumbnail"
           hideOnError
