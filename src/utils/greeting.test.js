@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { getDashboardGreeting, hasWorkoutOn, IMPACT_EYEBROW } from './greeting.js'
 
-test('hasWorkoutOn matches the local calendar day, ignoring time and accepting Firestore timestamps', () => {
+test('hasWorkoutOn matches the local calendar day, ignoring time and accepting timestamp-shaped dates ({ toDate })', () => {
   const today = new Date(2026, 8, 10, 9, 0, 0)
   const sameDayNoon = new Date(2026, 8, 10, 12, 0, 0)
   const yesterday = new Date(2026, 8, 9, 12, 0, 0)

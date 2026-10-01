@@ -63,8 +63,8 @@ function workoutPayload(workout) {
 // cursor é opaco pro resto do app (useWorkouts.js só guarda e devolve) — aqui é um par
 // (date, created_at) usado para paginação por keyset. Com `date` como coluna real (não
 // mais um timestamp fixado ao meio-dia), o próprio ORDER BY já mantém os registros do
-// mesmo dia juntos e na ordem certa, sem precisar da lógica de "buscar o resto do dia"
-// que o Firestore exigia.
+// mesmo dia juntos e na ordem certa, sem precisar de nenhuma lógica extra de "buscar o
+// resto do dia".
 export async function listWorkoutsPage(
   userId,
   { exerciseId, startDate, endDate, cursor, pageSize = RECENT_PAGE_SIZE } = {}

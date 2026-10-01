@@ -1,4 +1,5 @@
-// Mesmos tetos de firestore.rules (isValidCardioSession) — manter em sincronia.
+// Mesmos tetos do check constraint em workouts (duration_minutes/distance_km, migration
+// workouts_cardio_type) — manter em sincronia.
 export const MAX_DURATION_MINUTES = 600
 export const MAX_DISTANCE_KM = 500
 

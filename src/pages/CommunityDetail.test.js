@@ -8,7 +8,7 @@ import { build } from 'esbuild'
 
 // Testa só a composição/ordem da view pura (CommunityFeedSection), com props diretas --
 // mesmo espírito de WalletHeaderBadgesView/PromoteDialogBody: sem precisar montar
-// useCommunityFeed/useSponsoredAds/Firestore de verdade. StatusCard, SponsoredAdCard,
+// useCommunityFeed/useSponsoredAds/Supabase de verdade. StatusCard, SponsoredAdCard,
 // SponsoredAdBanner, AchievementForm, StatusForm e ErrorState são substituídos por
 // marcadores mínimos -- a lógica interna deles já é responsabilidade de cada um, aqui só
 // interessa ONDE CommunityFeedSection decide colocar cada bloco. Box/Heading/Text/Button/
@@ -136,18 +136,13 @@ before(async () => {
     // CommunityDetail.jsx importa communitiesService/communityMembersService/useAuth/
     // useCommunityFeed/useSponsoredAds/useMyEconomyVotes/statusesService/promotionsService
     // no topo do arquivo -- mesmo só usando CommunityFeedSection (que não chama nenhum
-    // desses hooks), o módulo inteiro é avaliado, incluindo a cadeia até firebase/config.js.
+    // desses hooks), o módulo inteiro é avaliado, incluindo a cadeia até supabase/config.js.
     // Mesmo bloco de WalletHeaderBadges.test.js/SuperAdminRoute.test.js -- só
-    // initializeApp() precisa não explodir ao carregar, nunca é chamado por esta view.
+    // createClient() precisa não explodir ao carregar, nunca é chamado por esta view.
     define: {
       'import.meta.env': JSON.stringify({
-        VITE_FIREBASE_API_KEY: 'test',
-        VITE_FIREBASE_AUTH_DOMAIN: 'test',
-        VITE_FIREBASE_PROJECT_ID: 'test',
-        VITE_FIREBASE_STORAGE_BUCKET: 'test',
-        VITE_FIREBASE_MESSAGING_SENDER_ID: 'test',
-        VITE_FIREBASE_APP_ID: 'test',
-        VITE_USE_FIREBASE_EMULATOR: 'false',
+        VITE_SUPABASE_URL: 'https://test.supabase.co',
+        VITE_SUPABASE_ANON_KEY: 'test',
         DEV: false,
       }),
     },

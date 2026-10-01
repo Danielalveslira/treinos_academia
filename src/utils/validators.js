@@ -144,9 +144,8 @@ export function validateCommunity({ name, description, iconName }) {
   if (nameError) errors.name = nameError
   const descriptionError = optionalText(description, 300, 'Descrição muito longa')
   if (descriptionError) errors.description = descriptionError
-  // Defesa em profundidade: a grade do seletor já só oferece esses valores, e o
-  // servidor recusa qualquer outro (isValidCommunity em firestore.rules) — checar aqui
-  // também evita gastar uma escrita com algo que a regra vai rejeitar de qualquer jeito.
+  // Defesa em profundidade: a grade do seletor já só oferece esses valores -- checar
+  // aqui também evita gastar uma escrita que o resto do app não saberia renderizar.
   if (iconName != null && !COMMUNITY_ICON_NAMES.includes(iconName))
     errors.iconName = 'Ícone inválido'
   return errors
@@ -193,8 +192,8 @@ export function validatePhotoStatus({ blob, caption }) {
   return errors
 }
 
-// Tudo opcional — só valida formato/faixa plausível de quem preencheu (mesmos limites de
-// isValidBodyMeasurement/isValidHeightField em firestore.rules), nunca obrigatoriedade.
+// Tudo opcional — só valida formato/faixa plausível de quem preencheu (validação hoje só
+// client-side, sem constraint espelhando isto no Postgres), nunca obrigatoriedade.
 export function validateBodyMeasurement({
   heightCm,
   weightKg,
@@ -240,24 +239,25 @@ export const SPONSORED_AD_DISPLAY_MODES = ['feed', 'banner']
 // um ctaTarget do tipo 'javascript:...' executava no clique, na origem real do app,
 // contra qualquer membro das comunidades do anúncio (achado #1 da auditoria de
 // segurança). https-only (não http) por simplicidade: um só esquema aceito, sem
-// ambiguidade. Espelhada em isValidSponsoredAd() em firestore.rules -- nunca confiar só
-// nesta camada.
+// ambiguidade. Espelhada no constraint sponsored_ads_cta_target_shape (migration
+// sponsored_ads.sql) -- nunca confiar só nesta camada.
 const EXTERNAL_CTA_TARGET_PATTERN = /^https:\/\/.+$/
 // Precisa começar com uma única barra (não duas) -- "//evil.com" é uma URL válida
 // "protocol-relative" que o navegador resolveria para outro domínio, e "/\evil.com"
 // sofre o mesmo risco por normalização de barra invertida em alguns navegadores. Só a
 // barra raiz sozinha ("/") também é aceita.
 const INTERNAL_CTA_TARGET_PATTERN = /^\/([^/\\].*)?$/
-// Teto de forma do próprio documento (quantas comunidades um anúncio pode listar) —
-// puramente sobre o shape, não exige consultar o Firestore, então cabe neste arquivo.
+// Teto de forma da própria linha (quantas comunidades um anúncio pode listar; mesmo
+// valor do constraint sponsored_ads_community_ids_size) — puramente sobre o shape, não
+// exige nenhuma consulta extra, então cabe neste arquivo.
 const MAX_SPONSORED_AD_COMMUNITIES = 50
 
 // Quantos anúncios podem mirar a MESMA comunidade ao mesmo tempo — a checagem em si
-// (contar quantos já existem) precisa do Firestore e mora em sponsoredAdsService.js,
+// (contar quantos já existem) precisa de uma consulta e mora em sponsoredAdsService.js,
 // mas o número e a classe de erro ficam aqui: são valores puros que tanto o service
 // quanto o formulário admin (SponsoredAdForm) precisam, e mantê-los aqui evita o
-// formulário importar de um arquivo que carrega toda a inicialização do Firebase só
-// para ler uma constante.
+// formulário importar de um arquivo que carrega toda a inicialização do client Supabase
+// só para ler uma constante.
 export const MAX_ACTIVE_ADS_PER_COMMUNITY = 6
 
 export class SponsoredAdCapError extends Error {

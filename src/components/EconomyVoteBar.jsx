@@ -12,13 +12,14 @@ import { economyVoteCountDelta } from '../utils/economyVoteCountDelta'
 // "Ver quem votou": os totais (positiveVoteCount/negativeVoteCount) são denormalizados
 // em statuses/{id} por um gatilho (ver vote-count-service.js/functions/index.js) --
 // chegam de graça junto com o resto do status, sem nenhuma leitura extra por card. Os
-// votos individuais continuam nunca expostos direto (a regra só libera leitura do
-// próprio voto, ver firestore.rules); clicar num total abre EconomyVotersDialog, que
-// busca a lista sanitizada via a callable dedicada listPostEconomyVoters.
+// votos individuais continuam nunca expostos direto (RLS em status_economy_votes só
+// libera leitura do próprio voto, ver policy status_economy_votes_select); clicar num
+// total abre EconomyVotersDialog, que busca a lista sanitizada via a RPC dedicada
+// listPostEconomyVoters.
 //
 // myVote vem de fora (useMyEconomyVotes.js, 1 consulta para o feed inteiro) -- este
 // componente nunca busca o próprio voto sozinho, exatamente pra não reintroduzir 1
-// leitura de Firestore por card (o padrão N+1 que useMyEconomyVotes existe pra evitar).
+// leitura por card (o padrão N+1 que useMyEconomyVotes existe pra evitar).
 // undefined = ainda carregando o lote; null = carregado, sem voto; {value} = votou.
 export function EconomyVoteBar({
   status,

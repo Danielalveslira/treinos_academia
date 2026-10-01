@@ -71,8 +71,8 @@ before(async () => {
             path: 'page-cache',
             namespace: 'stub',
           }))
-          buildContext.onResolve({ filter: /utils\/firestoreError$/ }, () => ({
-            path: 'firestore-error',
+          buildContext.onResolve({ filter: /utils\/queryError$/ }, () => ({
+            path: 'query-error',
             namespace: 'stub',
           }))
           buildContext.onLoad({ filter: /^react$/, namespace: 'stub' }, () => ({
@@ -107,8 +107,8 @@ before(async () => {
               export const fetchCached = (_key, fetchValue) => fetchValue()
             `,
           }))
-          buildContext.onLoad({ filter: /^firestore-error$/, namespace: 'stub' }, () => ({
-            contents: `export const describeFirestoreError = () => ({ message: 'erro' })`,
+          buildContext.onLoad({ filter: /^query-error$/, namespace: 'stub' }, () => ({
+            contents: `export const describeQueryError = () => ({ message: 'erro' })`,
           }))
         },
       },

@@ -9,7 +9,7 @@ import { build } from 'esbuild'
 // Enquete já tem o próprio mecanismo de voto (PollStatus, nas próprias opções, grátis) --
 // voto econômico Apoio/Negativo (EconomyVoteBar) não deveria aparecer para esse tipo de
 // conteúdo. Testa via renderToStaticMarkup (sem act()/TestRenderer -- StatusCard.jsx
-// importa statusesService/economyService, que tocam firebase/config; combinar
+// importa statusesService/economyService, que tocam supabase/config; combinar
 // act()+TestRenderer com módulos assim travou `node --test` antes, ver
 // PromoteDialog.test.js). Efeitos nunca rodam em SSR, então PollStatus/EconomyVoteBar só
 // mostram estado "carregado" se a cache real (utils/pageCache.js, não mockada, mesmo
@@ -118,19 +118,14 @@ before(async () => {
     loader: { '.css': 'empty' },
     logLevel: 'silent',
     // StatusCard.jsx importa statusesService/economyService/pageCache no topo do arquivo
-    // -- o módulo inteiro é avaliado, incluindo a cadeia até firebase/config.js. Mesmo
-    // bloco de WalletHeaderBadges.test.js/SuperAdminRoute.test.js -- só initializeApp()
+    // -- o módulo inteiro é avaliado, incluindo a cadeia até supabase/config.js. Mesmo
+    // bloco de WalletHeaderBadges.test.js/SuperAdminRoute.test.js -- só createClient()
     // precisa não explodir ao carregar; como o teste nunca dispara nenhum efeito (SSR) e
     // pré-popula a cache real antes de renderizar, nenhuma chamada de rede é feita.
     define: {
       'import.meta.env': JSON.stringify({
-        VITE_FIREBASE_API_KEY: 'test',
-        VITE_FIREBASE_AUTH_DOMAIN: 'test',
-        VITE_FIREBASE_PROJECT_ID: 'test',
-        VITE_FIREBASE_STORAGE_BUCKET: 'test',
-        VITE_FIREBASE_MESSAGING_SENDER_ID: 'test',
-        VITE_FIREBASE_APP_ID: 'test',
-        VITE_USE_FIREBASE_EMULATOR: 'false',
+        VITE_SUPABASE_URL: 'https://test.supabase.co',
+        VITE_SUPABASE_ANON_KEY: 'test',
         DEV: false,
       }),
     },

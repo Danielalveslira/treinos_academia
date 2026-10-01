@@ -4,10 +4,9 @@ import { toMillis } from '../utils/expiry'
 import { useCachedQuery } from './useCachedQuery'
 
 // `enabled` deve ser exatamente a mesma flag de "isMember() confirmado" que já controla
-// se o resto da tela da comunidade renderiza (ver CommunityDetail.jsx) -- nunca chamar
-// com enabled=true para uma comunidade que o usuário ainda não confirmou participar. A
-// regra de leitura em firestore.rules nega a consulta INTEIRA (não filtra documento a
-// documento) quando isso acontece; ver a memória "Firestore list-rule get() gotcha".
+// se o resto da tela da comunidade renderiza (ver CommunityDetail.jsx) -- evita disparar
+// a consulta antes de a participação estar confirmada (RLS já filtra linha a linha, mas
+// não há motivo pra gastar o round-trip antes da hora).
 export function useSponsoredAds(communityId, enabled) {
   const cacheKey = `sponsoredAds:${communityId}`
   const fetchAds = useCallback(() => listSponsoredAdsForCommunity(communityId), [communityId])

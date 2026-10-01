@@ -1,9 +1,9 @@
 import { COMMUNITY_ICON_NAMES, getCommunityIcon } from '../constants/communityIcons'
 import { CommunityIcon } from './CommunityIcon'
 
-// Grade fixa (nunca upload livre — ver isValidCommunity em firestore.rules, que só
-// aceita um desses nomes) com preview no mesmo badge usado na listagem, pra quem está
-// criando ver exatamente como vai aparecer antes de salvar.
+// Grade fixa (nunca upload livre -- COMMUNITY_ICON_NAMES é a lista fechada de nomes
+// aceitos) com preview no mesmo badge usado na listagem, pra quem está criando ver
+// exatamente como vai aparecer antes de salvar.
 export function CommunityIconPicker({ value, onChange, name }) {
   return (
     <div className="community-icon-picker">

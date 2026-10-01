@@ -96,7 +96,7 @@ export function ExercisesProvider({ children }) {
   }
 
   // orderedIds: todos os exercícios de UM grupo muscular, na ordem desejada.
-  // Só grava no Firestore se a ordem proposta for diferente da já salva — evita
+  // Só grava no banco se a ordem proposta for diferente da já salva — evita
   // uma escrita em branco quando o usuário entra e sai do modo "Reordenar" sem
   // mudar nada.
   async function reorder(orderedIds) {

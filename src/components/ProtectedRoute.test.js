@@ -5,10 +5,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { build } from 'esbuild'
-import manifest from '../../functions/legal/manifest.json' with { type: 'json' }
-import documents from '../../functions/legal/documents.json' with { type: 'json' }
-import digests from '../../functions/legal/approved-digests.json' with { type: 'json' }
-import previousArchive from '../../functions/legal/test-fixtures/1.3.0.json' with { type: 'json' }
+import manifest from '../../legal/manifest.json' with { type: 'json' }
+import documents from '../../legal/documents.json' with { type: 'json' }
+import digests from '../../legal/approved-digests.json' with { type: 'json' }
+import previousArchive from '../../legal/test-fixtures/1.3.0.json' with { type: 'json' }
 
 let directory
 let render
@@ -45,19 +45,14 @@ before(async () => {
     jsx: 'automatic',
     loader: { '.css': 'empty' },
     logLevel: 'silent',
-    // ProtectedRoute -> LegalGate -> legalService.js -> firebase/config.js, que lê
+    // ProtectedRoute -> LegalGate -> legalService.js -> supabase/config.js, que lê
     // import.meta.env.VITE_* (só existe via Vite em dev/build real). getLegalAccess()
     // nunca chega a ser chamado num renderToStaticMarkup (useEffect não roda em SSR) --
-    // só initializeApp() precisa não explodir na hora de montar o módulo.
+    // só createClient() precisa não explodir na hora de montar o módulo.
     define: {
       'import.meta.env': JSON.stringify({
-        VITE_FIREBASE_API_KEY: 'test',
-        VITE_FIREBASE_AUTH_DOMAIN: 'test',
-        VITE_FIREBASE_PROJECT_ID: 'test',
-        VITE_FIREBASE_STORAGE_BUCKET: 'test',
-        VITE_FIREBASE_MESSAGING_SENDER_ID: 'test',
-        VITE_FIREBASE_APP_ID: 'test',
-        VITE_USE_FIREBASE_EMULATOR: 'false',
+        VITE_SUPABASE_URL: 'https://test.supabase.co',
+        VITE_SUPABASE_ANON_KEY: 'test',
         DEV: false,
       }),
     },
@@ -86,8 +81,8 @@ const baseAuth = {
   verifyingSession: false,
 }
 
-// Achado #2 da auditoria de segurança: setAccountStatus (Cloud Function) só grava
-// accountStatus:'disabled' no Firestore, nunca revoga o token do Auth -- sem este gate,
+// Achado #2 da auditoria de segurança: setAccountStatus (RPC) só grava
+// accountStatus:'disabled' na tabela users, nunca revoga o token do Auth -- sem este gate,
 // o usuário via os próprios children normalmente (a única coisa que de fato bloqueava
 // era cada leitura subsequente falhando com um erro genérico, sem nunca dizer o motivo).
 test('a disabled account sees the disabled-account gate, never the protected content', () => {
@@ -194,9 +189,9 @@ test('a profile load failure never turns into a legal acceptance request', () =>
   assert.doesNotMatch(html, /Antes de continuar/)
 })
 
-// Bug "conta com exclusão bloqueada": a mesma trava do Firestore que bloqueia uma
+// Bug "conta com exclusão bloqueada": a mesma trava do Postgres que bloqueia uma
 // exclusão em andamento também nega a leitura do perfil quando o job está
-// blocked_financial_review (ver getOwnStatus em deletion-service.js), então profile é
+// blocked_financial_review (ver run_deletion_job na migration do deletion worker), então profile é
 // null e profileError também está preenchido aqui -- sem este gate ter prioridade, a
 // tela genérica de "Não foi possível carregar sua conta" apareceria em vez do aviso
 // específico (que nunca cita saldo/motivo financeiro).

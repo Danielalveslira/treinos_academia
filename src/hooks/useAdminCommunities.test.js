@@ -50,8 +50,8 @@ before(async () => {
             path: 'members-service',
             namespace: 'stub',
           }))
-          buildContext.onResolve({ filter: /utils\/firestoreError$/ }, () => ({
-            path: 'firestore-error',
+          buildContext.onResolve({ filter: /utils\/queryError$/ }, () => ({
+            path: 'query-error',
             namespace: 'stub',
           }))
           buildContext.onResolve({ filter: /\.\/useAuth$/ }, () => ({ path: 'use-auth', namespace: 'stub' }))
@@ -78,8 +78,8 @@ before(async () => {
           buildContext.onLoad({ filter: /^members-service$/, namespace: 'stub' }, () => ({
             contents: `export const countMembers = async () => 0`,
           }))
-          buildContext.onLoad({ filter: /^firestore-error$/, namespace: 'stub' }, () => ({
-            contents: `export const describeFirestoreError = () => 'erro'`,
+          buildContext.onLoad({ filter: /^query-error$/, namespace: 'stub' }, () => ({
+            contents: `export const describeQueryError = () => 'erro'`,
           }))
         },
       },

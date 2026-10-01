@@ -67,8 +67,8 @@ before(async () => {
             path: 'statuses',
             namespace: 'stub',
           }))
-          buildContext.onResolve({ filter: /utils\/firestoreError$/ }, () => ({
-            path: 'firestore-error',
+          buildContext.onResolve({ filter: /utils\/queryError$/ }, () => ({
+            path: 'query-error',
             namespace: 'stub',
           }))
           buildContext.onResolve({ filter: /utils\/expiry$/ }, () => ({
@@ -108,8 +108,8 @@ before(async () => {
               export const resetFeedCalls = () => { calls = 0 }
             `,
           }))
-          buildContext.onLoad({ filter: /^firestore-error$/, namespace: 'stub' }, () => ({
-            contents: `export const describeFirestoreError = () => 'erro'`,
+          buildContext.onLoad({ filter: /^query-error$/, namespace: 'stub' }, () => ({
+            contents: `export const describeQueryError = () => 'erro'`,
           }))
           buildContext.onLoad({ filter: /^expiry$/, namespace: 'stub' }, () => ({
             contents: `export const toMillis = () => 1`,

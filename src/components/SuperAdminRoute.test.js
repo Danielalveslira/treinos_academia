@@ -10,7 +10,7 @@ import { build } from 'esbuild'
 // renderToStaticMarkup. /admin/compras-evocash (e todas as outras rotas /admin/*) usam
 // este MESMO componente compartilhado -- testar SuperAdminRoute aqui é o que garante,
 // de fato, que um usuário comum nunca alcança o conteúdo administrativo pelo
-// roteamento/UI, não só pelas Rules do Firestore.
+// roteamento/UI, não só pelas RLS do Postgres.
 let directory
 let render
 before(async () => {
@@ -39,18 +39,13 @@ before(async () => {
     jsx: 'automatic',
     loader: { '.css': 'empty' },
     logLevel: 'silent',
-    // SuperAdminRoute -> AuthContext.jsx -> firebase/config.js, que lê
+    // SuperAdminRoute -> AuthContext.jsx -> supabase/config.js, que lê
     // import.meta.env.VITE_* (só existe via Vite em dev/build real). Mesmo bloco de
-    // ProtectedRoute.test.js -- só initializeApp() precisa não explodir ao montar.
+    // ProtectedRoute.test.js -- só createClient() precisa não explodir ao montar.
     define: {
       'import.meta.env': JSON.stringify({
-        VITE_FIREBASE_API_KEY: 'test',
-        VITE_FIREBASE_AUTH_DOMAIN: 'test',
-        VITE_FIREBASE_PROJECT_ID: 'test',
-        VITE_FIREBASE_STORAGE_BUCKET: 'test',
-        VITE_FIREBASE_MESSAGING_SENDER_ID: 'test',
-        VITE_FIREBASE_APP_ID: 'test',
-        VITE_USE_FIREBASE_EMULATOR: 'false',
+        VITE_SUPABASE_URL: 'https://test.supabase.co',
+        VITE_SUPABASE_ANON_KEY: 'test',
         DEV: false,
       }),
     },

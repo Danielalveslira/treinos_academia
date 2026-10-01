@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { listCommunityFeed, deleteStatus } from '../services/statusesService'
-import { describeFirestoreError } from '../utils/firestoreError'
+import { describeQueryError } from '../utils/queryError'
 import { toMillis } from '../utils/expiry'
 import { fetchCached, getCached, setCached } from '../utils/pageCache'
 import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta'
 
 // Um único relógio compartilhado por feed: os cards leem "now" via prop em vez de cada
 // um rodar seu próprio timer, e o mesmo tick também remove localmente quem já expirou —
-// sem nenhuma leitura extra ao Firestore, a exclusão física acontece depois, sozinha.
+// sem nenhuma leitura extra ao banco, a exclusão física acontece depois, sozinha.
 const EXPIRY_TICK_MS = 15000
 
 export function useCommunityFeed(communityId, enabled = true) {
@@ -31,7 +31,7 @@ export function useCommunityFeed(communityId, enabled = true) {
         setNow(Date.now())
         setStatuses(data)
       } catch (err) {
-        if (current === revision.current) setError(describeFirestoreError(err, 'useCommunityFeed'))
+        if (current === revision.current) setError(describeQueryError(err, 'useCommunityFeed'))
       } finally {
         if (current === revision.current) {
           setReady(true)

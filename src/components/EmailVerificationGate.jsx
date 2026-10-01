@@ -65,9 +65,9 @@ export function EmailVerificationGate({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, verified])
 
-  // Contagem regressiva do cooldown de reenvio — só cosmética (o Firebase já recusa
-  // reenvios em excesso com auth/too-many-requests de qualquer forma); evita o usuário
-  // martelar o botão e bater nesse limite sem necessidade.
+  // Contagem regressiva do cooldown de reenvio — só cosmética (o Auth já recusa
+  // reenvios em excesso com over_email_send_rate_limit de qualquer forma); evita o
+  // usuário martelar o botão e bater nesse limite sem necessidade.
   useEffect(() => {
     if (cooldown <= 0) return undefined
     const timer = setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000)

@@ -32,7 +32,7 @@ test('keeps last week streak while current week is pending, but breaks on a miss
   assert.equal(getTrainingConsistency([workout(2026, 9, 8), workout(2026, 8, 30)], now).streak, 1)
 })
 
-test('handles year boundaries, Firestore timestamps, and empty history', () => {
+test('handles year boundaries, timestamp-shaped dates ({ toDate }), and empty history', () => {
   const result = getTrainingConsistency(
     [{ date: { toDate: () => new Date(2025, 11, 31, 12) } }, workout(2026, 1, 5)],
     new Date(2026, 0, 5, 15)

@@ -7,7 +7,7 @@ import { createRequire } from 'node:module'
 import { build } from 'esbuild'
 
 // Testa só a view pura (WalletHeaderBadgesView), com props diretas -- sem precisar
-// mockar useAuth/useWallet/Firestore (mesmo espírito de PromoteDialogBody vs
+// mockar useAuth/useWallet/Supabase (mesmo espírito de PromoteDialogBody vs
 // PromoteDialog). O wrapper com hooks (WalletHeaderBadges) só passa adiante o que
 // useAuth()/useWallet() já devolvem, sem lógica própria pra testar aqui.
 let directory
@@ -33,19 +33,14 @@ before(async () => {
     logLevel: 'silent',
     // WalletHeaderBadges.jsx importa useAuth/useWallet no topo do arquivo -- mesmo só
     // usando WalletHeaderBadgesView (que não chama nenhum hook), o bundle inteiro é
-    // avaliado, incluindo a cadeia até firebase/config.js, que lê import.meta.env.VITE_*
+    // avaliado, incluindo a cadeia até supabase/config.js, que lê import.meta.env.VITE_*
     // (só existe via Vite em dev/build real). Mesmo stub de SuperAdminRoute.test.js --
     // só precisa não explodir ao carregar o módulo, useAuth/useWallet nunca são
     // chamados por esta view.
     define: {
       'import.meta.env': JSON.stringify({
-        VITE_FIREBASE_API_KEY: 'test',
-        VITE_FIREBASE_AUTH_DOMAIN: 'test',
-        VITE_FIREBASE_PROJECT_ID: 'test',
-        VITE_FIREBASE_STORAGE_BUCKET: 'test',
-        VITE_FIREBASE_MESSAGING_SENDER_ID: 'test',
-        VITE_FIREBASE_APP_ID: 'test',
-        VITE_USE_FIREBASE_EMULATOR: 'false',
+        VITE_SUPABASE_URL: 'https://test.supabase.co',
+        VITE_SUPABASE_ANON_KEY: 'test',
         DEV: false,
       }),
     },

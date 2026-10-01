@@ -1,6 +1,6 @@
 // EvoCash (Fase 4) -- lógica pura extraída de EvoCash.jsx/AdminCashPurchases.jsx para
 // ser testável sem renderizar nada (mesmo espírito de exerciseOrder.js): decisões de
-// UI que não dependem de Firestore/callable, só de dados já em mãos.
+// UI que não dependem de chamadas de rede, só de dados já em mãos.
 
 // requestId reaproveitado enquanto a MESMA tentativa (mesma "chave" -- um packageId, ou
 // os valores do formulário serializados em CreateCommunity.jsx, ainda sem sucesso) está

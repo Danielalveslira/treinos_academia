@@ -1,41 +1,28 @@
+// Códigos em error.code vêm do GoTrue (Supabase Auth), não de strings livres --
+// ver node_modules/@supabase/auth-js/src/lib/error-codes.ts para a lista completa.
 const MESSAGES = {
-  // Uma conta em exclusão continua reservando o e-mail no Firebase Auth até a etapa final
-  // do job (auth.deleteUser, ver deletion-service.js) -- que nunca roda enquanto o job
-  // estiver bloqueado por revisão financeira (só um admin resolve isso). Sem esta pista,
-  // quem tentasse recadastrar com o mesmo e-mail ficaria preso num "já está cadastrado"
-  // sem nenhum caminho a seguir.
-  'auth/email-already-in-use':
+  // Uma conta em exclusão continua reservando o e-mail no Auth até a etapa final do job
+  // (auth.admin.deleteUser, ver run_deletion_job na migration do deletion worker) -- que
+  // nunca roda enquanto o job estiver bloqueado por revisão financeira (só um admin
+  // resolve isso). Sem esta pista, quem tentasse recadastrar com o mesmo e-mail ficaria
+  // preso num "já está cadastrado" sem nenhum caminho a seguir.
+  user_already_exists:
     'Este e-mail já está cadastrado. Se você solicitou a exclusão desta conta e ela ainda não foi concluída, aguarde ou entre em contato pelo atendimento antes de tentar novamente.',
-  'auth/invalid-email': 'E-mail inválido.',
-  'auth/weak-password': 'A senha deve ter pelo menos 6 caracteres.',
-  'auth/user-not-found': 'E-mail ou senha incorretos.',
-  'auth/wrong-password': 'E-mail ou senha incorretos.',
-  'auth/invalid-credential': 'E-mail ou senha incorretos.',
-  'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde.',
-  // deletion-service.js desativa a conta no Auth assim que a exclusão é solicitada
-  // (queue(), síncrono) -- uma tentativa de login logo em seguida já bate nesse
-  // código, não em "senha incorreta".
-  'auth/user-disabled': 'Esta conta não está mais disponível.',
+  email_exists:
+    'Este e-mail já está cadastrado. Se você solicitou a exclusão desta conta e ela ainda não foi concluída, aguarde ou entre em contato pelo atendimento antes de tentar novamente.',
+  email_address_invalid: 'E-mail inválido.',
+  weak_password: 'A senha deve ter pelo menos 6 caracteres.',
+  // GoTrue nunca distingue "não existe" de "senha errada" num login (só invalid_credentials),
+  // ao contrário do Firebase Auth que tinha um código pra cada caso.
+  invalid_credentials: 'E-mail ou senha incorretos.',
+  over_request_rate_limit: 'Muitas tentativas. Tente novamente mais tarde.',
+  over_email_send_rate_limit: 'Muitas tentativas. Tente novamente mais tarde.',
+  // A conta é desativada (banida) assim que a exclusão é solicitada (queue_deletion,
+  // síncrono) -- uma tentativa de login logo em seguida já bate nesse código, não em
+  // "senha incorreta".
+  user_banned: 'Esta conta não está mais disponível.',
 }
 
 export function translateAuthError(error) {
   return MESSAGES[error?.code] || 'Ocorreu um erro. Tente novamente.'
-}
-
-// Confirma que a conta não existe mais (ou foi desabilitada) no Firebase Auth — usado
-// por AuthContext pra decidir se um permission-denied na leitura do próprio perfil é uma
-// "sessão fantasma" (conta excluída/desabilitada por um admin em outro lugar) e não um
-// problema transitório de rede/regras. getIdToken(true) é a forma que o próprio Firebase
-// recomenda pra perceber revokeRefreshTokens()/deleteUser() já executados no servidor: o
-// token em cache no navegador continua parecendo válido pro SDK até expirar sozinho (até
-// 1h) ou até algo forçar essa renovação — sem isso, o app nunca percebe a exclusão sozinho.
-const ACCOUNT_GONE_CODES = new Set([
-  'auth/user-disabled',
-  'auth/user-token-expired',
-  'auth/user-not-found',
-  'auth/invalid-user-token',
-])
-
-export function isAccountGoneError(error) {
-  return ACCOUNT_GONE_CODES.has(error?.code)
 }

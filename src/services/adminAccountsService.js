@@ -27,8 +27,8 @@ export async function deleteAccountPermanently(userId, confirmation) {
   return {}
 }
 
-// Join direto com auth.users em vez de Cloud Function: ao contrário do Firebase
-// (Auth e Firestore são sistemas separados), aqui os dois vivem no mesmo Postgres.
+// Join direto com auth.users em vez de uma RPC dedicada: Auth e as tabelas de app
+// vivem no mesmo Postgres, então a consulta pode atravessar os dois schemas.
 export async function listAccountsPage({ search = '', cursor = null, pageSize = 50 } = {}) {
   const { data, error } = await supabase.rpc('admin_list_accounts', {
     p_search: search,

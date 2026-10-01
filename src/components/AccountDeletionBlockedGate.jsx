@@ -6,12 +6,12 @@ import { logoutUser } from '../services/authService'
 // Terceiro estado possível de uma exclusão solicitada (ao lado de "em processamento",
 // tratado como logout direto em AuthContext, e "concluída", já sem sessão nenhuma pra
 // mostrar isto) -- a exclusão está bloqueada aguardando revisão financeira (saldo em
-// EvoCash ou compra pendente, ver financialBlockReason em economy/cash-purchase-core.js).
-// Só um administrador resolve isso (confirmCashPurchase/cancelCashPurchase reabrindo o
-// job, ver reactivateDeletionIfClear) -- nunca automaticamente, nunca pelo próprio
-// titular -- por isso nenhuma ação aqui além de sair da conta, e a mensagem nunca cita
-// saldo/valor (dado financeiro privado; a própria carteira já está inacessível pelas
-// regras do Firestore de qualquer forma).
+// EvoCash ou compra pendente, ver _compute_financial_block_reason na migration do
+// deletion worker). Só um administrador resolve isso (confirmar/cancelar a compra
+// pendente reabre o job, ver _reactivate_deletion_if_clear) -- nunca automaticamente,
+// nunca pelo próprio titular -- por isso nenhuma ação aqui além de sair da conta, e a
+// mensagem nunca cita saldo/valor (dado financeiro privado, mesmo que a própria carteira
+// continue legível pelo dono via RLS).
 export function AccountDeletionBlockedGate() {
   return (
     <PublicLayout>

@@ -5,14 +5,14 @@ import { logoutUser } from '../services/authService'
 
 // Diferente da restrição temporária (accountRestrictions, tratada em LegalGate) e da
 // exclusão de conta (detectada como "sessão fantasma" em AuthContext via
-// handlePossibleGhostSession): desativar uma conta (setAccountStatus, Cloud Function) só
-// grava accountStatus:'disabled' no Firestore -- nunca revoga o token do Firebase Auth
-// nem chama auth.updateUser(disabled:true). Sem este gate, o usuário continuava
-// "logado" normalmente (a leitura do próprio perfil é sempre permitida ao dono) enquanto
-// toda outra leitura do app (workouts, comunidades, statuses, sponsoredAds) já falhava
-// com permission-denied via hasAppAccess() -- uma sequência de erros genéricos em cada
-// tela, sem nunca dizer que a conta foi desativada nem por quê, e sem a sessão se
-// encerrar sozinha (achado #2 da auditoria de segurança).
+// handlePossibleGhostSession): desativar uma conta (set_account_status, RPC) só grava
+// account_status:'disabled' na tabela users -- nunca revoga o token do Auth nem
+// desabilita o login. Sem este gate, o usuário continuava "logado" normalmente (a
+// leitura do próprio perfil é sempre permitida ao dono) enquanto toda outra leitura do
+// app (workouts, comunidades, statuses, sponsoredAds) já falhava via RLS (has_app_access())
+// -- uma sequência de erros genéricos em cada tela, sem nunca dizer que a conta foi
+// desativada nem por quê, e sem a sessão se encerrar sozinha (achado #2 da auditoria de
+// segurança).
 export function DisabledAccountGate({ reason }) {
   return (
     <PublicLayout>

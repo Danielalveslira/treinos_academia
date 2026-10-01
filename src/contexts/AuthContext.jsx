@@ -35,11 +35,12 @@ export function AuthProvider({ children }) {
   // NOTA: ao contrário do Firebase (onde uma "sessão fantasma" — conta já excluída mas
   // token do navegador ainda parecendo válido — precisava ser detectada via um
   // permission-denied reinterpretado, já que o token seguia renovando por até 1h com
-  // claims velhas), o worker que de fato apaga a conta no Supabase (fase de economia/
-  // limpeza, ainda não portado) faz o JWT parar de funcionar imediatamente quando
-  // roda — não há uma janela de "parece válido mas não é" pra replicar aqui. Por isso
-  // esta versão consulta getMyDeletionStatus() proativamente a cada carga de perfil,
-  // em vez de reagir a um erro de permissão específico.
+  // claims velhas), o worker que de fato apaga a conta (process-deletion-jobs, Edge
+  // Function + run_deletion_job, chamado via pg_cron a cada minuto -- ver migration
+  // deletion_worker.sql) faz o JWT parar de funcionar imediatamente quando roda
+  // (auth.admin.deleteUser) — não há uma janela de "parece válido mas não é" pra
+  // replicar aqui. Por isso esta versão consulta getMyDeletionStatus() proativamente a
+  // cada carga de perfil, em vez de reagir a um erro de permissão específico.
   const [deletionStatus, setDeletionStatus] = useState(null)
   // Só usado DENTRO do efeito abaixo, pra uma chamada de loadSession não pisar no
   // resultado de outra mais nova (duas trocas de sessão em sequência rápida) — nunca

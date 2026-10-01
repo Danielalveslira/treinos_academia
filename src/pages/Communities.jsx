@@ -115,7 +115,7 @@ export default function Communities() {
   const [pendingCommunityId, setPendingCommunityId] = useState(null)
 
   // Fase 6 -- "comunidades em destaque" (promovidas com EvoCash pelo próprio dono).
-  // communities/{id} não é restrita por membership na leitura (ver firestore.rules),
+  // communities não é restrita por membership na leitura (ver policy communities_select),
   // então não precisa de nenhum gate de "só depois de confirmar participação" aqui.
   const [featuredCommunities, setFeaturedCommunities] = useState([])
   useEffect(() => {

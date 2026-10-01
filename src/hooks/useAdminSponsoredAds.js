@@ -5,7 +5,7 @@ import {
   updateSponsoredAd,
   deleteSponsoredAd,
 } from '../services/sponsoredAdsService'
-import { describeFirestoreError } from '../utils/firestoreError'
+import { describeQueryError } from '../utils/queryError'
 import { useAuth } from './useAuth'
 
 export function useAdminSponsoredAds() {
@@ -20,7 +20,7 @@ export function useAdminSponsoredAds() {
     try {
       setAds(await listAllSponsoredAds())
     } catch (err) {
-      setError(describeFirestoreError(err, 'useAdminSponsoredAds'))
+      setError(describeQueryError(err, 'useAdminSponsoredAds'))
     } finally {
       setLoading(false)
     }

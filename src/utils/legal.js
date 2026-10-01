@@ -1,7 +1,7 @@
-import manifest from '../../functions/legal/manifest.json' with { type: 'json' }
-import documents from '../../functions/legal/documents.json' with { type: 'json' }
-import approvedDigests from '../../functions/legal/approved-digests.json' with { type: 'json' }
-import previousArchive from '../../functions/legal/test-fixtures/1.3.0.json' with { type: 'json' }
+import manifest from '../../legal/manifest.json' with { type: 'json' }
+import documents from '../../legal/documents.json' with { type: 'json' }
+import approvedDigests from '../../legal/approved-digests.json' with { type: 'json' }
+import previousArchive from '../../legal/test-fixtures/1.3.0.json' with { type: 'json' }
 
 export const LEGAL_MANIFEST = manifest
 export const LEGAL_DOCUMENTS = documents
@@ -121,7 +121,7 @@ export function isAccountRestricted(restriction, now = Date.now()) {
 // LegalGate.jsx: a policy é considerada desatualizada quando a versão publicada em
 // legalPolicy/current diverge da versão que este bundle espera, ou quando ela ainda
 // não foi publicada -- nos dois casos, ninguém deveria conseguir aceitar (o servidor
-// também recusaria, ver validateAcceptance em functions/legal-core.js). access null
+// também recusaria, ver validateAcceptance em legalDigest.js). access null
 // (ainda carregando) nunca é "desatualizado": é "desconhecido".
 export function isLegalPolicyOutdated(access) {
   return Boolean(

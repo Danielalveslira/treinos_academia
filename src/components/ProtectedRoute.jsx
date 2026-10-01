@@ -59,7 +59,7 @@ export function ProtectedRoute({ children }) {
     return <DisabledAccountGate reason={profile.disabledReason} />
   }
 
-  // Só monta o gate (e paga o custo de checar o status com o Firebase) para contas que
+  // Só monta o gate (e paga o custo de checar o status de verificação) para contas que
   // realmente precisam disso — contas anteriores à mudança nunca entram aqui, mesmo que
   // emailVerified esteja false (ver requiresEmailVerification/EMAIL_VERIFICATION_CUTOFF).
   if (!user.emailVerified && requiresEmailVerification(profile)) {

@@ -1,18 +1,13 @@
 // Data de corte: só contas cujo perfil foi criado a partir daqui exigem e-mail
-// verificado para acessar o sistema (ver EmailVerificationGate.jsx e firestore.rules).
-// Decisão de produto: não é retroativo — quem já tinha conta antes dessa mudança
-// continua entrando normalmente, sem aviso nem bloqueio surpresa.
+// verificado para acessar o sistema (ver EmailVerificationGate.jsx). Decisão de produto:
+// não é retroativo — quem já tinha conta antes dessa mudança continua entrando
+// normalmente, sem aviso nem bloqueio surpresa.
 //
-// Usa o createdAt já gravado no perfil (users/{uid}.createdAt), não
-// user.metadata.creationTime do Authentication — precisa ser a mesma fonte lida pelo
-// cliente (aqui) e pelas Security Rules (que não enxergam metadata do Authentication,
-// só o que está no próprio documento Firestore), senão as duas camadas podem divergir
-// sobre quem precisa verificar.
-// Se mudar, atualize também firestore.rules (emailVerifiedOk), que usa o mesmo instante
-// em milissegundos (timestamp.value(...) lá, .getTime() aqui) — timestamp.date() nas
-// regras só tem granularidade de dia, então precisamos do valor exato dos dois lados
-// pra não abrir uma janela onde cliente e servidor discordam sobre quem já foi pego
-// pela exigência.
+// Usa o createdAt já gravado no perfil (public.users.created_at), não
+// user.metadata.creationTime do Auth. Hoje essa exigência só existe no cliente — não há
+// policy/trigger no Postgres replicando este corte no servidor (mailer_autoconfirm está
+// ligado no projeto; a política de verificação de e-mail foi adiada, ver
+// docs/MIGRACAO_SUPABASE_STATUS.md).
 export const EMAIL_VERIFICATION_CUTOFF = new Date('2026-09-11T14:15:00Z') // 1789136100000
 
 export function requiresEmailVerification(profile) {

@@ -2,8 +2,8 @@
 // CreateCommunity.jsx para ser testável sem renderizar nada (mesmo espírito de
 // cashPurchaseFlow.js/exerciseOrder.js).
 
-// community.ownerId é a ÚNICA fonte autoritativa (mesma regra de firestore.rules:
-// isCommunityOwner) -- nunca o role de communityMembers, que é só para UI/representação.
+// community.ownerId é a ÚNICA fonte autoritativa (mesma regra aplicada via RLS no
+// Postgres) -- nunca o role de communityMembers, que é só para UI/representação.
 export function canModerateCommunity({ isSuperAdmin, communityOwnerId, uid }) {
   return isSuperAdmin === true || (communityOwnerId != null && communityOwnerId === uid)
 }

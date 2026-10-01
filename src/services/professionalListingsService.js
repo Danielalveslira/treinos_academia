@@ -99,8 +99,8 @@ export async function getPublishedProfessionalListing(listingId) {
   return mapPublishedRow(data)
 }
 
-// filters usa '*' como "qualquer" (mesma convenção das telas de busca, herdada do
-// array-contains do Firestore) -- aqui vira null pra RPC tratar como filtro ausente.
+// filters usa '*' como "qualquer" (mesma convenção das outras telas de busca do app) --
+// aqui vira null pra RPC tratar como filtro ausente.
 const orNull = (value) => (value && value !== '*' ? value : null)
 
 export async function listPublishedProfessionalListings(filters, cursor = null, pageSize = 20) {

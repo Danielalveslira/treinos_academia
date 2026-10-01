@@ -1,6 +1,7 @@
 // Conteúdo de administradores nunca é denunciável. authorIsSuperAdmin vem do
-// servidor (firestore.rules exige que bata com o role real de quem publicou —
-// veja statusesService.js), então é seguro decidir a UI com ele. O autor também
+// servidor (trigger enforce_status_author_badge grava o role real de quem publicou,
+// nunca o que o cliente manda — veja statusesService.js), então é seguro decidir a UI
+// com ele. O autor também
 // nunca denuncia a própria publicação — ele já pode excluí-la diretamente, então
 // "denunciar" a própria publicação nunca é uma denúncia de verdade, só ruído na
 // fila de moderação. Isso só controla se o botão aparece: quem cria a denúncia

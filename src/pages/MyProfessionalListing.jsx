@@ -32,10 +32,9 @@ import { isEligibleForListingCreation } from '../constants/usageProfile'
 import { UsageProfileField } from '../components/UsageProfileField'
 
 // RPCs do Supabase lançam códigos curtos (ver migration
-// 20260929000005_professional_listings.sql), não frases prontas como o HttpsError do
-// Firebase original -- esta tela sempre mostrou error.message direto pro usuário, então
-// precisa traduzir aqui pra não vazar o código cru. Mesmo texto das mensagens originais
-// (professional-listing-core.js/professional-listing-service.js).
+// 20260929000005_professional_listings.sql), não frases prontas -- esta tela sempre
+// mostrou error.message direto pro usuário, então precisa traduzir aqui pra não vazar o
+// código cru.
 const KNOWN_ERRORS = {
   INVALID_ARGUMENT: 'Dados inválidos para criar a vitrine.',
   ACCOUNT_DELETING: 'A conta não pode alterar uma vitrine agora.',

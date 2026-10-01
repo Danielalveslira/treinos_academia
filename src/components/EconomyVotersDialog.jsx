@@ -5,10 +5,10 @@ import { listPostEconomyVoters } from '../services/economyService'
 
 // "Ver quem votou" -- modal com abas Apoios/Negativos, cada uma paginada
 // independentemente (ver listPostEconomyVoters/economyService.js). Nunca lê
-// statuses/{id}/economyVotes direto (Rules já bloqueiam -- ver firestore.rules); só
-// dados públicos sanitizados pela callable dedicada. Cada aba guarda seu próprio
-// cursor/lista -- trocar de aba e voltar não perde o progresso já carregado nem
-// refaz a primeira página à toa.
+// status_economy_votes direto (RLS já bloqueia -- ver policy
+// status_economy_votes_select); só dados públicos sanitizados pela RPC dedicada. Cada
+// aba guarda seu próprio cursor/lista -- trocar de aba e voltar não perde o progresso já
+// carregado nem refaz a primeira página à toa.
 export function VoterRow({ voter }) {
   const initial = (voter.username || 'M').charAt(0).toUpperCase()
   return (

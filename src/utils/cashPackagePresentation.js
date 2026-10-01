@@ -69,7 +69,7 @@ function resolvePresentation(packageId) {
 // Monta a lista de cards prontos para renderização: filtra pacotes inativos (defesa
 // extra -- getCashPurchaseSettings já filtra active===true, mas esta função não deveria
 // depender disso pra estar correta sozinha) e ordena de forma determinística (nunca a
-// ordem de campos que o Firestore devolver). Um packageId desconhecido (config futura)
+// ordem em que o banco devolver as linhas). Um packageId desconhecido (config futura)
 // ainda aparece, só sem copy especial, em vez de quebrar a tela.
 export function buildCashPackagesPresentation(packages) {
   const active = (packages || []).filter((pkg) => pkg?.active !== false)

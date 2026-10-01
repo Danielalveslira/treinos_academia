@@ -5,7 +5,7 @@ const keyFor = (dateKey) => `${KEY_PREFIX}${dateKey}`
 // (ambiente de teste) -- qualquer falha aqui degrada pra um Set vazio, nunca quebra a
 // tela. Sem sync entre aparelhos de propósito: é só uma marcação visual de "já fiz esse
 // exercício hoje, neste aparelho", não um dado de treino de verdade (esse continua só no
-// Firestore).
+// banco).
 export function loadDoneExerciseIds(dateKey) {
   try {
     const raw = localStorage.getItem(keyFor(dateKey))

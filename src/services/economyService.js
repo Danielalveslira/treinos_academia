@@ -6,9 +6,8 @@ const EMPTY_WALLET = { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0 }
 // teto de idade, um valor gravado aqui poderia ficar visualmente desatualizado pelo
 // resto da sessão (inclusive sobrevivendo a reloads, já que sessionStorage não se limpa
 // nisso), mesmo que o saldo real tenha mudado por outro caminho (outra aba, ajuste
-// administrativo). Mesmo TTL de config-service.js (5min) por consistência -- curto o
-// bastante pra nunca ficar perceptivelmente errado, longo o bastante pra continuar
-// evitando 1 leitura do Firestore por navegação.
+// administrativo). TTL de 5min -- curto o bastante pra nunca ficar perceptivelmente
+// errado, longo o bastante pra continuar evitando uma leitura por navegação.
 const CACHE_TTL_MS = 5 * 60 * 1000
 
 function cacheKey(uid) {
@@ -37,13 +36,10 @@ function writeCache(uid, wallet) {
 }
 
 // Leitura sob demanda com cache de sessão (com TTL, ver CACHE_TTL_MS) -- nunca um
-// listener (onSnapshot) permanente. wallet/current é pequeno e muda raramente (no
-// máximo 1x/dia na Fase 1), então uma leitura a cada poucos minutos (ou até o cache ser
-// atualizado por registerQualifiedActivity) já cobre a UX sem manter uma conexão aberta
-// o tempo todo.
-// TODO(economia): tabela wallets ainda é só um stub no Supabase (sem crédito/débito
-// real ainda — ver migration wallet_stub.sql) até a fase de economia ser portada;
-// get_my_wallet() sempre devolve zero até lá.
+// listener permanente (o realtime fica a cargo de WalletContext.jsx, canal
+// postgres_changes). wallet/current é pequeno e muda raramente (no máximo 1x/dia na
+// Fase 1), então uma leitura a cada poucos minutos (ou até o cache ser atualizado por
+// registerQualifiedActivity) já cobre a UX sem manter uma conexão aberta o tempo todo.
 export async function getWallet(uid, { forceRefresh = false } = {}) {
   if (!forceRefresh) {
     const cached = readCache(uid)
@@ -60,8 +56,8 @@ export async function getWallet(uid, { forceRefresh = false } = {}) {
   return wallet
 }
 
-// O crédito em si é refletido pelo onSnapshot único de WalletContext.jsx assim que o
-// Supabase confirma a escrita de _wallet_credit_coins (register_qualified_activity,
+// O crédito em si é refletido pelo canal postgres_changes único de WalletContext.jsx
+// assim que o Supabase confirma a escrita de _wallet_credit_coins (register_qualified_activity,
 // RPC) -- nunca precisa de patch manual de cache aqui, nem do uid (a RPC usa auth.uid()).
 export async function registerQualifiedActivity() {
   const { data, error } = await supabase.rpc('register_qualified_activity')
@@ -69,27 +65,19 @@ export async function registerQualifiedActivity() {
   return data
 }
 
-// Teto do operador `in` do Firestore -- também o tamanho de página do feed
-// (FEED_PAGE_SIZE em statusesService.js), então normalmente cabe tudo numa página só;
-// o loop abaixo só existe pro caso desse tamanho de página crescer no futuro.
+// Tamanho de lote arbitrário (igual ao FEED_PAGE_SIZE de statusesService.js, então
+// normalmente cabe tudo num lote só) -- o loop abaixo só existe como proteção caso esse
+// tamanho de página cresça no futuro; o Postgres não impõe limite de itens num `.in()`.
 const VOTE_QUERY_CHUNK_SIZE = 30
 
-// Voto econômico (Fase 2) -- deliberadamente em statuses/{id}/economyVotes/{uid}, nunca
-// em statuses/{id}/votes/{uid} (isso é o voto de ENQUETE, gratuito, sem relação com a
-// carteira; ver StatusCard.jsx/statusesService.js). value: 1 (positivo), -1 (negativo)
-// ou null (remover o voto).
+// Voto econômico (Fase 2) -- deliberadamente em status_economy_votes, nunca na mesma
+// tabela do voto de ENQUETE (gratuito, sem relação com a carteira; ver
+// StatusCard.jsx/statusesService.js). value: 1 (positivo), -1 (negativo) ou null
+// (remover o voto).
 //
-// Elimina o N+1 de round-trips (N getDoc separados, um por card) trocando por 1 única
-// consulta/round-trip por página de feed (collection group + `in` sobre o id do
-// documento) -- ver useMyEconomyVotes.js, o único chamador esperado. IMPORTANTE sobre
-// custo: isto reduz o número de IDAS AO SERVIDOR (1 em vez de N), não necessariamente o
-// número de DOCUMENT READS cobrados -- o Firestore cobra por documento efetivamente
-// retornado na consulta, não por "1 leitura por query". Se o usuário votou em V das N
-// publicações da página, o custo passa a ser ~V reads (mínimo de 1 read mesmo se V=0,
-// cobrança mínima de toda consulta), contra N reads do getDoc por card de antes -- ou
-// seja, a economia de LEITURAS é real e proporcional a quantos posts ficaram sem voto
-// (o caso comum), mas se o usuário tivesse votado nos N posts inteiros, o número de
-// reads seria o mesmo de antes (só o número de round-trips HTTP cairia).
+// Elimina o N+1 de round-trips (N consultas separadas, uma por card) trocando por 1
+// única consulta/round-trip por página de feed (`.in()` sobre os ids da página) -- ver
+// useMyEconomyVotes.js, o único chamador esperado.
 // Devolve só as publicações em que o usuário JÁ votou; ausência de uma chave = sem voto.
 export async function getMyEconomyVotesForStatuses(uid, statusIds) {
   if (statusIds.length === 0) return {}

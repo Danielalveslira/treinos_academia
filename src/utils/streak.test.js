@@ -68,7 +68,7 @@ test('last7Days marks today and reflects trained/not-trained per day, ignores sa
   assert.equal(result.last7Days.at(-2).trained, false) // 10/09
 })
 
-test('ignores future-dated entries and Firestore Timestamp-shaped dates, empty history streaks at zero', () => {
+test('ignores future-dated entries and timestamp-shaped dates ({ toDate }), empty history streaks at zero', () => {
   const now = new Date(2026, 8, 11, 12)
   const future = getDailyStreak([workout(2026, 9, 12)], now)
   assert.equal(future.current, 0)

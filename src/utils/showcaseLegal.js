@@ -1,5 +1,5 @@
-import manifest from '../../functions/legal/showcase-manifest.json' with { type: 'json' }
-import document from '../../functions/legal/showcase-document.json' with { type: 'json' }
+import manifest from '../../legal/showcase-manifest.json' with { type: 'json' }
+import document from '../../legal/showcase-document.json' with { type: 'json' }
 
 export const SHOWCASE_LEGAL_MANIFEST = manifest
 export const SHOWCASE_LEGAL_DOCUMENT = document

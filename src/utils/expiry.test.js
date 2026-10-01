@@ -20,7 +20,7 @@ test('formatPublicationDateTime formats the exact instant in the local timezone'
   assert.equal(formatPublicationDateTime(localDate), '22/09/2026 às 14h30')
 })
 
-test('toMillis reads Firestore Timestamp, Date and raw values', () => {
+test('toMillis reads a timestamp-shaped value ({ toDate }), Date and raw values', () => {
   const asDate = new Date('2026-09-09T12:00:00Z')
   assert.equal(toMillis(asDate), asDate.getTime())
   assert.equal(toMillis({ toMillis: () => 123 }), 123)

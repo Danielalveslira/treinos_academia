@@ -6,11 +6,8 @@ Aplicação web para acompanhar evolução em treinos de academia: exercícios, 
 
 - **Frontend:** React + Vite
 - **UI:** [GitHub Primer React](https://primer.style/) — todos os elementos de interface (botões, formulários, listas, diálogos, feedback) usam componentes do Primer; não há biblioteca de estilo concorrente
-- **Autenticação:** Firebase Authentication
-- **Banco de dados:** Firebase Firestore
-- **Backend:** Cloud Functions (`functions/`, Node) — moderação, exclusão de conta/comunidade (jobs em lote), publicação de documentos legais e manutenção de contadores denormalizados. Só existe onde a lógica não pode ser confiada ao cliente (ex.: aplicar uma penalidade); tudo que Firestore Security Rules conseguem validar sozinhas continua sem passar por uma function.
-- **Arquivos:** Firebase Storage — hoje só fotos de publicações de comunidade (`statusPhotos/{communityId}/{statusId}.webp`), com regras próprias em `storage.rules`.
-- **Hospedagem:** Firebase Hosting (compatível com Vercel/Netlify, ajustando o passo de deploy)
+- **Backend:** [Supabase](https://supabase.com/) — Postgres (banco + autenticação + storage), Row Level Security como camada de autorização, RPCs (`supabase/migrations/`) para qualquer escrita que precise de lógica/transação atômica, Edge Functions (`supabase/functions/`) para o que SQL puro não alcança (chamadas HTTP externas, Storage, Auth admin), `pg_cron` para rotinas agendadas (liquidação de recompensas, worker de exclusão de conta).
+- **Hospedagem:** Vercel (`vercel.json`)
 
 ## Arquitetura
 
@@ -20,83 +17,35 @@ src/
   pages/        telas da aplicação (uma por rota)
   hooks/        acesso a dados + estado (useAuth, useWorkouts...)
   contexts/     estado compartilhado (AuthContext, ExercisesContext — cache de exercícios)
-  services/     acesso direto ao Firebase (Auth e Firestore), sem lógica de UI
+  services/     acesso ao Supabase (supabase.from()/.rpc()), sem lógica de UI
   utils/        cálculos puros (volume, evolução %) e validações
   constants/    valores fixos (grupos musculares)
-  contexts/     AuthContext (estado de sessão)
-  firebase/     inicialização e configuração do SDK
+  supabase/     inicialização do client (config.js)
+
+supabase/
+  migrations/   todo o schema, RLS, RPCs e triggers — fonte de verdade do backend
+  functions/    Edge Functions (Deno) — só onde SQL puro não alcança
 ```
 
-Regra geral: **components/pages não falam com o Firestore/Storage diretamente** — sempre passam por um service (`src/services/`), que é quem importa `firebase/config`. Um hook (`src/hooks/`) entra no meio quando há estado para gerenciar (loading, paginação, cache, listener) — para uma chamada pontual sem estado próprio (ex.: um botão de "salvar" chamando `updateUserProfile`), a página chama o service diretamente. Cálculos de indicadores (volume, evolução %, frequência) ficam isolados em `utils/calculations.js`, puros e testáveis.
+Regra geral: **components/pages não falam com o Supabase diretamente** — sempre passam por um service (`src/services/`), que é quem importa `supabase/config`. Um hook (`src/hooks/`) entra no meio quando há estado para gerenciar (loading, paginação, cache, listener realtime) — para uma chamada pontual sem estado próprio, a página chama o service diretamente. Cálculos de indicadores (volume, evolução %, frequência) ficam isolados em `utils/calculations.js`, puros e testáveis.
 
-Componentes próprios em `components/` existem apenas quando o Primer não tem equivalente direto (ex.: `WorkoutForm`, `ExerciseForm`, `RowActionsMenu`, `LoadChart`/`VolumeChart`) — e mesmo esses são compostos internamente com peças do Primer (`Box`, `FormControl`, `Stack`, `ActionMenu`). Erros de leitura do Firestore nunca são escondidos atrás de uma mensagem genérica: `utils/firestoreError.js` loga o erro real no console e, quando a causa é um índice composto ausente, expõe o link de criação direto na tela (ver `components/ErrorState.jsx`).
+Componentes próprios em `components/` existem apenas quando o Primer não tem equivalente direto (ex.: `WorkoutForm`, `ExerciseForm`, `RowActionsMenu`, `LoadChart`/`VolumeChart`) — e mesmo esses são compostos internamente com peças do Primer (`Box`, `FormControl`, `Stack`, `ActionMenu`). Erros de consulta nunca são escondidos atrás de uma mensagem genérica sem log: `utils/queryError.js` loga o erro real no console e devolve uma mensagem amigável pro usuário (ver `components/ErrorState.jsx`).
 
 **Nota sobre a versão do Primer:** `@primer/react` está fixado em `^37.x` (não `^38`). A v38 removeu `Box` e a prop `sx` do pacote principal em favor de CSS Modules — uma mudança de arquitetura grande demais para este estágio do projeto, e a v37 ainda é a versão com toda a documentação e exemplos oficiais do Primer. Não faça upgrade para v38 sem reescrever a camada de layout.
 
-## Modelo de dados (Firestore)
+## Modelo de dados (Postgres/Supabase)
 
-```
-users/{userId}                          { role: 'user' | 'superadmin', createdAt, username?, bio?,
-                                           shareStatistics?, sexo?, dataNascimento?, heightCm?,
-                                           accountStatus? }
-users/{userId}/exercises/{exerciseId}   { name, muscleGroup, note, active, order? }
-users/{userId}/workouts/{workoutId}     { exerciseId, setDetails | (weight, sets, reps), date, note,
-                                           type: 'strength' | 'cardio', createdAt }
-users/{userId}/bodyMeasurements/{id}    { date, weightKg?, bodyFatPercent?, waistCm?, hipCm?,
-                                           leanMassKg?, note?, createdAt }  (time series — cada
-                                           check-in é um documento novo, nunca sobrescreve o anterior)
-users/{userId}/legalAcceptances/{version} { userId, version, digest, acceptedAt }
-users/{userId}/notices/{noticeId}       aviso de uma restrição/decisão de moderação aplicada à conta
+O schema completo — tabelas, constraints, índices, RLS, RPCs e triggers — vive versionado em `supabase/migrations/`, aplicado em ordem (`supabase db push`). Não há um resumo paralelo aqui que possa ficar desatualizado; para entender uma tabela específica, leia a migration que a criou (o nome do arquivo já indica o domínio: `*_workouts.sql`, `*_statuses.sql`, `*_economy_*.sql`, etc.) — cada uma tem comentários explicando as decisões.
 
-usernames/{username}                    { uid, createdAt }
-publicProfiles/{userId}                 { username, bio, shareStatistics }
-publicProfiles/{userId}/statistics/summary  { entries, sets, updatedAt } — só existe com
-                                           shareStatistics == true; calculado e gravado por uma
-                                           Cloud Function (refreshPublicStatistics), nunca pelo
-                                           cliente diretamente
-
-communities/{communityId}               { name, description, imageUrl?, isActive, createdBy,
-                                           createdAt, postAccess?, memberCount?, iconName? }
-communityMembers/{communityId}_{userId} { communityId, userId, joinedAt }
-communityRestrictions/{communityId}_{userId}  restrição aplicada a um usuário numa comunidade
-statuses/{statusId}                     { communityId, authorId, authorUsername, authorIsSuperAdmin,
-                                           type: 'text' | 'poll' | 'workout' | 'achievement' | 'photo',
-                                           createdAt, expiresAt, ... }  — expira em 24h, imutável
-                                           depois de criado (só create/delete, nunca update)
-statuses/{statusId}/votes/{userId}          { optionId, createdAt }        (type: poll)
-statuses/{statusId}/participants/{userId}   { joinedAt }                  (type: workout)
-
-sponsoredAds/{adId}                     anúncio de parceiro, alvo por comunidade e/ou global (Home)
-accountRestrictions/{userId}            restrição ativa na conta inteira (suspensão/banimento)
-rateLimitCounters/{userId}              janela deslizante de publicações recentes (anti-spam)
-
-supportRequests/{requestId}             pedido de atendimento — denúncia, recurso ou privacidade/
-                                           exclusão; guarda um contentSnapshot da publicação
-                                           denunciada e, se for uma foto, evidencePath (cópia do
-                                           arquivo preservada fora do ciclo de vida da publicação)
-moderationDecisions/{decisionId}        decisão de moderação (manual ou automática) e sua justificativa
-deletionJobs/{kind}_{id}                fila de exclusão em lote (conta/comunidade/publicação) —
-                                           processada por uma Cloud Function agendada
-legalPolicy/current, legalVersions/{version}  versão vigente dos documentos legais (Termos,
-                                           Regras da Comunidade, Política de Privacidade) e seu
-                                           histórico publicado
-```
-
-Estrutura escolhida por ser a mais simples que atende aos requisitos: subcoleções por usuário isolam os dados naturalmente (cada leitura já é escopada ao usuário autenticado) e evitam junções complexas. Não há coleção separada de "grupos musculares" (é um campo simples no exercício) nem relacionamentos adicionais — não são necessários no estágio atual.
-
-`usernames/{username}` reserva o @ de forma única sem precisar de Cloud Function: `usersService.setUsername` lê esse documento dentro de uma transação do Firestore antes de reivindicar um nome — se dois usuários tentarem o mesmo @ ao mesmo tempo, o Firestore garante que só um vence (a transação perdedora relê o estado e é rejeitada). O e-mail nunca é gravado em `statuses` — só o @ (denormalizado, pelo mesmo motivo de custo explicado abaixo), com "Membro" como texto de exibição para quem ainda não escolheu um.
-
-`communityMembers` usa `{communityId}_{userId}` como ID do documento — o mesmo padrão de `statuses/{statusId}/votes/{userId}` (ID = uid) — para impedir naturalmente duplicidade (entrar duas vezes, votar duas vezes) sem precisar de uma query extra para checar antes de escrever.
+Visão geral dos domínios principais: `users`/`exercises`/`workouts`/`body_measurements` (núcleo pessoal), `communities`/`community_members`/`statuses`/`status_votes`/`status_participants` (comunidades e feed), `wallets`/`economy_transactions`/`cash_purchases`/`promotions` (EvoCoins/EvoCash), `support_requests`/`moderation_decisions`/`account_restrictions` (moderação/atendimento), `deletion_jobs` (exclusão de conta/comunidade/publicação, processada por `pg_cron` + a Edge Function `process-deletion-jobs`), `legal_policy`/`legal_versions`/`legal_acceptances` (termos/privacidade versionados), `exercise_catalog` (catálogo próprio de exercícios, `imports/exercicios_ptbr.json`).
 
 ## Segurança
 
-- **Firestore Security Rules** (`firestore.rules`) exigem `request.auth.uid == userId` para qualquer leitura/escrita em `users/{userId}/**`, e validam o formato dos documentos de `exercises`, `workouts` e `bodyMeasurements` no servidor — a validação de formulário no frontend é só uma camada de UX, não a de segurança. Cada schema usa `keys().hasOnly([...])` para rejeitar campos fora do esperado, não só validar o formato dos campos previstos.
-- Nenhuma credencial sensível (service account, chave privada) é usada no frontend: apenas a configuração pública do Firebase, que é segura para o cliente por design. Cloud Functions (Admin SDK) usam as credenciais padrão do ambiente do Google Cloud, nunca uma chave versionada no repositório.
-- **App Check** (reCAPTCHA v3) é opcional em desenvolvimento mas esperado em produção — `scripts/check-production-config.mjs` roda antes de todo `firebase deploy --only hosting` (`firebase.json`, `hosting.predeploy`) e falha o deploy se `VITE_RECAPTCHA_SITE_KEY` não estiver configurada, com um escape hatch explícito (`SKIP_APPCHECK_CHECK=true`) para quem precisa publicar sem ela deliberadamente.
-- `.env` nunca é versionado (`.gitignore`); use `.env.example` como referência.
-- Comunidades seguem o mesmo princípio: criar/editar/excluir comunidade exige `role == "superadmin"` checado nas regras (via `get()` no documento do próprio usuário), nunca só no frontend; publicar em uma comunidade exige filiação (`communityMembers`) e comunidade ativa; votos exigem que a opção escolhida exista de fato na enquete. Uma publicação (`status`) é imutável depois de criada — as regras só permitem `create` e `delete` (pelo autor ou superadmin), nunca `update`, nem pelo próprio autor.
-- Operações que exigem uma transação atômica entre vários documentos onde as regras não bastam (ex.: trocar de @ mexendo em `usernames/`, `users/` e `publicProfiles/` ao mesmo tempo; calcular estatísticas públicas a partir do diário de treino real) passam por uma Cloud Function com Admin SDK, não por um `writeBatch` do cliente — ver `functions/index.js` (`renameUsername`, `refreshPublicStatistics`).
-- Ver [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) para o retrato das pendências de segurança conhecidas e aceitas conscientemente (o que ficou em aberto e por quê), mantido como referência única para revisão pós-lançamento.
+- **Row Level Security** (ativado em toda tabela que o cliente lê/escreve diretamente) restringe cada linha ao próprio `auth.uid()`, com exceções explícitas por policy para dado público (perfis públicos, feed de comunidade) — a validação de formulário no frontend é só uma camada de UX, não a de segurança.
+- Operações que precisam de lógica/transação além do que uma policy consegue expressar (reservar um @ único, votar sem corrida, processar uma compra) são RPCs `security definer`, nunca um `insert`/`update` direto do cliente — ver os arquivos em `supabase/migrations/`.
+- Nenhuma credencial sensível (service role key) é usada no frontend — só a URL pública do projeto e a anon key, que são seguras para o cliente por design (protegidas pela RLS, não por serem secretas). A service role key só existe como secret de Edge Function ou variável de ambiente de script administrativo, nunca no bundle do app.
+- `.env` nunca é versionado (`.gitignore`).
+- Ver [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) para o retrato das pendências de segurança conhecidas e aceitas conscientemente.
 
 ## Cálculos
 
@@ -107,85 +56,68 @@ Evolução (%) = ((carga atual - carga anterior) / carga anterior) × 100
 
 Casos sem histórico anterior ou carga anterior igual a zero retornam `null` (exibido como "—"), evitando divisão por zero.
 
-## Uso consciente do plano gratuito
-
-- A maioria das leituras é pontual (`getDocs`), sob demanda; a única exceção é o perfil do usuário autenticado (`users/{uid}`), que usa um listener (`onSnapshot`) para refletir na hora ações administrativas feitas em outra sessão (desativar conta, aplicar restrição) — ver `AuthContext.jsx`.
-- Histórico paginado (20 registros por página, com "carregar mais").
-- Indicadores de exercício limitam a leitura às últimas 30 sessões daquele exercício.
-- Dashboard usa uma janela de 50 treinos recentes para volume/frequência e `getCountFromServer` (contagem agregada, custo mínimo) para o total de treinos — evita ler o histórico inteiro.
-- Feed de comunidade limitado a 30 publicações não expiradas por consulta; contagem de membros via `getCountFromServer` (não lê os documentos); nome do autor é gravado no próprio `status` (denormalizado) para o feed não precisar de 1 leitura extra em `users` por publicação exibida.
-
 ## Performance
 
-- Cada página é carregada sob demanda (`React.lazy` em `App.jsx`) — quem abre a tela de login não baixa o código do dashboard, dos gráficos ou do Firestore.
-- `vite.config.js` separa `firebase`, `@primer/react`+`styled-components` e `recharts` em chunks próprios, para o navegador cachear esse código entre deploys (ele só muda quando a dependência muda, não a cada alteração no app).
-- Formatação padronizada com Prettier (`npm run format` / `npm run format:check`) — sem isso não há garantia de indentação consistente conforme o projeto cresce.
+- Cada página é carregada sob demanda (`React.lazy` em `App.jsx`) — quem abre a tela de login não baixa o código do dashboard nem dos gráficos.
+- Histórico e catálogo de exercícios são sempre paginados no Postgres — nunca carrega a lista inteira no frontend.
+- `vite.config.js` separa `@primer/react`+`styled-components` e `recharts` em chunks próprios, para o navegador cachear esse código entre deploys.
+- Formatação padronizada com Prettier (`npm run format` / `npm run format:check`).
 
 ## Configuração
 
-1. Crie um projeto no [console do Firebase](https://console.firebase.google.com/).
-2. Ative **Authentication** (método E-mail/senha), **Firestore Database** (modo produção), **Storage** e **Cloud Functions** (as duas últimas exigem o plano Blaze).
-3. Copie `.env.example` para `.env` e preencha com as chaves do seu app web (Configurações do projeto → Seus apps).
-4. Instale as dependências e rode em desenvolvimento:
+1. Crie um projeto no [Supabase](https://supabase.com/dashboard).
+2. Copie `.env.example` para `.env` e preencha `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` (Project Settings → API).
+3. Instale as dependências e rode em desenvolvimento:
 
 ```bash
 npm install
 npm run dev
 ```
 
-5. Publique as regras de segurança, os índices, as Cloud Functions e as regras de Storage (requer [firebase-tools](https://firebase.google.com/docs/cli), via `npx`, e o plano Blaze do projeto para Functions/Storage):
+4. Aplique o schema no seu projeto (requer a [Supabase CLI](https://supabase.com/docs/guides/cli)):
 
 ```bash
-npx firebase deploy --only firestore:rules,firestore:indexes,storage,functions --project <seu-projeto>
+npx supabase link --project-ref <seu-projeto>
+npx supabase db push
+npx supabase functions deploy
 ```
 
-6. Para usar a área de Comunidades, promova seu próprio usuário a superadmin: no console do Firebase, Firestore → coleção `users` → documento com o seu `uid` → edite o campo `role` para `superadmin`. Sem isso, o link de administração não aparece e `/admin/comunidades` redireciona de volta.
+5. Para usar a área de Comunidades, promova seu próprio usuário a superadmin: no SQL editor do Supabase, `update public.users set role = 'superadmin' where id = '<seu-uid>';`. Sem isso, o link de administração não aparece e `/admin/comunidades` redireciona de volta.
 
-### Testando localmente com os emuladores (opcional)
-
-Sem custo e sem afetar dados reais:
+### Testando localmente (opcional)
 
 ```bash
-npm run emulators          # sobe Auth + Firestore emulados
+npx supabase start   # sobe Postgres/Auth/Storage local (Docker)
+npx supabase db reset
+npm run dev           # com um .env.local apontando pro Supabase local
 ```
-
-Em outro terminal, defina `VITE_USE_FIREBASE_EMULATOR=true` no `.env` e rode `npm run dev`.
 
 ## Deploy
 
-**Firebase Hosting:**
-
-```bash
-npm run build
-npx firebase deploy --only hosting,firestore:rules,firestore:indexes,storage,functions
-```
-
-**Vercel/Netlify:** build command `npm run build`, output directory `dist`, e configure as mesmas variáveis de `.env.example` no painel do serviço.
+**Vercel:** build command `npm run build`, output directory `dist`, configure as mesmas variáveis de `.env.example` no painel do serviço. Mudanças de schema são publicadas separadamente via `npx supabase db push`/`functions deploy`, nunca pelo deploy do frontend.
 
 ## Comunidades
 
 Feed temporário por comunidade, com dois papéis:
 
-- **superadmin**: cria, edita, ativa/desativa e exclui comunidades, e vê quantos membros cada uma tem. Definido pelo campo `role` em `users/{userId}` — só pode ser alterado manualmente no console do Firebase (Firestore → `users/{uid}` → editar `role` para `"superadmin"`) ou via Admin SDK; **nunca** por uma escrita vinda do app (`firestore.rules` bloqueia isso: `create` exige `role == "user"`, `update` exige que o campo não mude). Não existe fluxo de autopromoção de propósito.
+- **superadmin**: cria, edita, ativa/desativa e exclui comunidades, e vê quantos membros cada uma tem. Definido pelo campo `role` em `public.users` — só alterável diretamente no banco (SQL editor/RPC administrativa), nunca por uma escrita vinda do app. Não existe fluxo de autopromoção de propósito.
 - **usuário**: entra/sai de comunidades ativas, publica conteúdo nas que participa, vota em enquetes, confirma presença em treinos marcados.
 
-Cada publicação (`status`) expira 24h após criada (`expiresAt = createdAt + 24h`, validado nas regras com tolerância de alguns minutos para a diferença entre o relógio do cliente — que calcula `expiresAt` — e o `request.time` do servidor, que resolve `createdAt`). O feed sempre filtra `expiresAt > agora`; nada expirado aparece na tela mesmo que o documento ainda exista no banco (a limpeza física é responsabilidade de uma [política de TTL do Firestore](https://firebase.google.com/docs/firestore/ttl) configurada manualmente no console/CLI para o campo `expiresAt` das coleções `statuses` — não há como declarar isso em `firestore.rules`/`firestore.indexes.json`).
+Cada publicação (`status`) expira 24h após criada. O feed sempre filtra publicações não expiradas; a limpeza física (remover a linha e o arquivo associado) é feita pelo worker de exclusão (`pg_cron` + Edge Function `process-deletion-jobs`), nunca pelo cliente.
 
-Publicações são de cinco tipos — texto, enquete, treino marcado, conquista do dia (compartilhada a partir do Dashboard, ver "Perfis públicos e conquistas" abaixo) e foto. Fotos vão para o Firebase Storage (`statusPhotos/{communityId}/{statusId}.webp`, um arquivo por publicação, nunca sobrescrito). O documento da foto é criado primeiro e passa por todas as regras do Firestore; só então `storage.rules` aceita os bytes vinculados a esse documento. Na leitura, o Storage confere o status e a filiação à comunidade. Esse encadeamento mantém cada operação dentro do limite de duas consultas cruzadas imposto pelo Storage. A limpeza do arquivo ao excluir a publicação (ou a conta/comunidade inteira) é feita pelo backend (`functions/deletion-service.js`), nunca pelo cliente. O documento de status em si é imutável depois de criado — as regras só permitem `create` e `delete`, nunca `update` (evita reescrever o conteúdo, ou o autor, de uma publicação já vista/votada).
-
-A quantidade de membros por comunidade (visível só para o superadmin) usa `getCountFromServer` — não lê os documentos de `communityMembers`, só agrega no servidor.
+Publicações são de cinco tipos — texto, enquete, treino marcado, conquista do dia e foto. Fotos vão para o bucket `status-photos` do Supabase Storage, com RLS própria.
 
 ## Moderação, atendimento e exclusão de dados
 
-Denúncias, recursos e pedidos de privacidade/exclusão passam por `supportRequests/{id}`, sempre criado por uma Cloud Function (`submitSupportRequest`) — nunca escrito direto pelo cliente. Denunciar uma publicação guarda um retrato do conteúdo (`contentSnapshot`) no momento da denúncia; se for uma foto, a function também copia o arquivo para `moderationEvidence/{requestId}.webp` no Storage, fora do ciclo de vida da publicação original — a evidência sobrevive à expiração/exclusão da publicação (leitura restrita a `superadmin`). Decisões (`decideSupportRequest`) ficam em `moderationDecisions/{id}` e, quando aplicam uma penalidade, também gravam um aviso em `users/{uid}/notices/{id}` e, se for uma suspensão/banimento, em `accountRestrictions/{uid}` ou `communityRestrictions/{communityId}_{uid}`. Publicar em excesso (mais de 8 publicações em 10 minutos) é detectado por um gatilho (`functions/rate-limit-service.js`) — hoje em modo só-log (`RATE_LIMIT_ENFORCE = false`, ver [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md)).
+Denúncias, recursos e pedidos de privacidade/exclusão passam por `public.support_requests`, sempre criado por uma RPC (nunca um insert direto do cliente). Decisões ficam em `public.moderation_decisions` e, quando aplicam uma penalidade, também geram um aviso para o usuário e, se for suspensão/banimento, uma linha em `account_restrictions`/`community_restrictions`.
 
-Excluir uma conta ou comunidade nunca apaga na hora: o pedido cria um `deletionJobs/{kind}_{id}` (bloqueando a conta/comunidade imediatamente pelas regras) e uma Cloud Function agendada (`processDeletionJobs`) drena a limpeza em lotes — perfil, diário de treino, medidas corporais, aceites/notificações, filiações, restrições, interações e o nome de usuário reservado. `supportRequests` e `moderationDecisions` nunca são apagados por essa limpeza (histórico de moderação permanece, mesmo depois da conta denunciante ou denunciada deixar de existir). Detalhes operacionais (ordem de publicação de uma mudança de contrato, verificação local) ficam em [docs/admin-maintenance.md](docs/admin-maintenance.md).
+Excluir uma conta, comunidade ou publicação nunca apaga na hora: o pedido cria uma linha em `public.deletion_jobs` (bloqueando o alvo imediatamente via RLS/status), e a Edge Function `process-deletion-jobs` (chamada por `pg_cron` a cada minuto) processa a fila — apaga os dados do usuário/comunidade/publicação, preservando auditoria financeira (`economy_transactions`) e histórico de moderação (`support_requests`, `moderation_decisions`) independente do destino da conta. Uma conta com compra de EvoCash pendente ou saldo positivo fica represada (`blocked_financial_review`) até revisão administrativa — nunca exclui com saldo real em aberto.
 
-Os documentos legais (Termos de Uso, Regras da Comunidade, Política de Privacidade — `functions/legal/documents.json`) são versionados: mudar o conteúdo exige subir a versão em `functions/legal/manifest.json`, o que força todo usuário a um novo aceite (`acceptLegalDocuments`) antes de continuar publicando ou treinando. A idade mínima e o consentimento específico para dados de saúde (notas de treino, medidas corporais) também são checados nesse fluxo, nunca só confiando num campo enviado pelo cliente.
+Os documentos legais (Termos de Uso, Regras da Comunidade, Política de Privacidade — `legal/documents.json`) são versionados: mudar o conteúdo exige subir a versão em `legal/manifest.json` e rodar `scripts/seed-legal.mjs`, o que força todo usuário a um novo aceite antes de continuar publicando ou treinando.
 
 ## Escopo desta primeira versão
 
-Autenticação (cadastro, login, logout, recuperação de senha), CRUD de exercícios, registro/edição/exclusão de treinos, histórico com filtros por exercício e período, dashboard com indicadores essenciais e gráfico de evolução de carga por exercício, e regras de segurança do Firestore. Funcionalidades adicionais (mais gráficos, exportação, etc.) devem ser avaliadas somente depois que essa base estiver validada em uso real.
+Autenticação (cadastro, login, logout, recuperação de senha), CRUD de exercícios, registro/edição/exclusão de treinos, histórico com filtros por exercício e período, dashboard com indicadores essenciais e gráfico de evolução de carga por exercício, com Row Level Security como camada de autorização. Funcionalidades adicionais devem ser avaliadas somente depois que essa base estiver validada em uso real.
 
 ## Aplicativo instalável (PWA)
 
@@ -201,48 +133,36 @@ Abra o endereço exibido pelo preview. O botão **Instalar app** usa a confirma�
 nativa quando o navegador a disponibiliza; caso contrário, apresenta instruções.
 No iPhone/iPad, use Safari → Compartilhar → Adicionar à Tela de Início.
 
-O cache contém somente arquivos estáticos da interface. Dados do Firebase e
-requisições de autenticação não são armazenados pelo service worker. Sem conexão,
-uma tela impede o uso dos formulários; ao reconectar, um formulário já aberto
-permanece preenchido. Registrar/sincronizar treinos offline não está implementado.
+O cache contém somente arquivos estáticos da interface. Dados e requisições de
+autenticação não são armazenados pelo service worker. Sem conexão, uma tela
+impede o uso dos formulários; ao reconectar, um formulário já aberto permanece
+preenchido. Registrar/sincronizar treinos offline não está implementado.
 
 Novas versões são verificadas ao abrir o app e ao voltar à janela. O aviso permite
 adiar a atualização ou confirmar o recarregamento. Caches de versões anteriores
 são preservados para as abas abertas continuarem carregando seus arquivos.
 
-Para disponibilizar a instalação aos usuários, publique o build no Firebase
-Hosting do projeto. `firebase.json` já define HTTPS via Hosting, rotas da SPA e
-cabeçalhos de revalidação do worker/manifesto. A publicação não faz parte do build.
+A publicação acontece via Vercel (ver "Deploy" acima); não faz parte do build.
 Os ícones podem ser regenerados com `python3 scripts/generate-icons.py`.
 
 ### Perfis públicos e conquistas
 
 - `/perfil` edita nome, descrição e visibilidade das estatísticas. As alterações são
-  gravadas atomicamente no perfil privado e em `publicProfiles/{uid}`. A reserva de
+  gravadas atomicamente no perfil privado e em `public_profiles`. A reserva de
   nome continua transacional; editar apenas a descrição não consulta nomes.
-- O `@` das publicações abre `/comunidades/perfil/{uid}`. Apenas usuários autenticados
-  podem consultar esse documento público por ID; ele admite somente `username`, `bio`
-  e `shareStatistics`. E-mail, papel administrativo e histórico ficam no documento privado.
-- Perfis antigos ganham o documento público no próximo acesso, com estatísticas ocultas.
+- O `@` das publicações abre `/comunidades/perfil/{uid}`. `public_profiles` admite
+  leitura pública (RLS) e expõe somente `username`, `bio` e `share_statistics`.
+  E-mail, papel administrativo e histórico ficam na tabela privada `users`.
+- Perfis antigos ganham a linha pública no próximo acesso, com estatísticas ocultas.
   Antes disso, o visitante vê um estado de perfil indisponível.
 - Ao habilitar estatísticas, o app publica um resumo de registros de exercícios e séries
-  via agregação no servidor. O botão **Atualizar estatísticas** atualiza esse retrato;
-  a página pública informa a data da atualização. Cada registro representa um exercício,
-  não necessariamente um dia ou uma sessão completa de treino.
-- Desabilitar a opção exclui o resumo e bloqueia sua leitura nas regras. O histórico de
+  via agregação no servidor (RPC). O botão **Atualizar estatísticas** atualiza esse
+  retrato; a página pública informa a data da atualização.
+- Desabilitar a opção exclui o resumo e bloqueia sua leitura via RLS. O histórico de
   exercícios nunca é liberado a visitantes, mesmo quando os totais estão visíveis.
 - **Compartilhar conquista do dia**, dentro de uma comunidade, consulta apenas os totais
   do dia local e apresenta uma prévia. A mensagem e esses totais são publicados mediante
-  confirmação no botão, por 24 horas. Essa publicação é independente da visibilidade
-  do perfil e pode ser excluída pelo autor. Os totais são compartilhados pelo cliente,
-  não constituem certificação de resultados esportivos.
+  confirmação no botão, por 24 horas. Os totais são compartilhados pelo cliente, não
+  constituem certificação de resultados esportivos.
 
-Antes de disponibilizar esta versão, publique `firestore.rules` e `firestore.indexes.json`
-no mesmo projeto Firebase do app (`firebase deploy --only firestore:rules,firestore:indexes`).
-O novo índice `workouts(date, sets)` atende à agregação das conquistas do dia. A versão
-anterior das regras não permite criar os documentos públicos.
-
-Validação: `npm test` cobre cálculos e datas das conquistas. Com o emulador Firestore
-ativo em `127.0.0.1:8080`, `npm run test:rules` verifica leitura pública, bloqueio de dados
-privados, ativação/desativação dos totais, agregação e publicação/exclusão de conquistas.
-Os testes usam exclusivamente o projeto local `demo-treinos`.
+Validação: `npm test` cobre cálculos, datas das conquistas e a lógica de serviço (via esbuild, mockando `supabase/config.js`).
