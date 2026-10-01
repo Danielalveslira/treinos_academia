@@ -35,9 +35,15 @@ Deno.serve(async (req) => {
   // baterem exatamente, então chamar isto sem necessidade nunca afeta outra tentativa).
   async function abortSafely() {
     if (!listingId || !operationId) return
-    await adminClient
-      .rpc('abort_professional_listing_publish', { p_listing_id: listingId, p_operation_id: operationId })
-      .catch((error) => console.error('[finalize-professional-listing-publish] abort failed:', error))
+    try {
+      const { error } = await adminClient.rpc('abort_professional_listing_publish', {
+        p_listing_id: listingId,
+        p_operation_id: operationId,
+      })
+      if (error) console.error('[finalize-professional-listing-publish] abort failed:', error)
+    } catch (error) {
+      console.error('[finalize-professional-listing-publish] abort failed:', error)
+    }
   }
 
   try {
