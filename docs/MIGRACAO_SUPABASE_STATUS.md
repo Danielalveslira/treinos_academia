@@ -1,17 +1,17 @@
 # Status da migração Firebase → Supabase
 
-Documento de handoff, última atualização 2026-09-29 (sessão de integração da ExerciseAPI). Lê isto antes de mexer em qualquer coisa relacionada a auth, economia (EvoCoins/EvoCash), exercícios ou dados.
+Documento de handoff, última atualização 2026-10-01 (PRs #58/#59: remoção completa do Firebase, worker de exclusão, deploy do avatar, correção da Vitrine). Lê isto antes de mexer em qualquer coisa relacionada a auth, economia (EvoCoins/EvoCash), exercícios ou dados.
 
 ## Visão geral
 
-O **frontend** já não importa nada de `firebase/*` — as 5 features que ainda dependiam dele (Vitrine, profissionais, avatar de perfil, medidas corporais, progresso) foram portadas pra Supabase, e a dependência `firebase` + `src/firebase/config.js` foram removidas do app (confirmado: o chunk `firebase` sumiu do build de produção). `functions/` (Cloud Functions), `firestore.rules`, `storage.rules` e seus testes **continuam no repo de propósito** — é a Fase 7 (descomissionar de vez a infra Firebase) que ainda não rodou, só o consumo do frontend foi cortado.
+**Migração concluída. Supabase é o backend único do Evolutus.** O Firebase foi removido por completo do repositório (PR #58): `functions/` (Cloud Functions), `firestore.rules`, `firestore.indexes.json`, `storage.rules`, `.firebaserc`, `firebase.json`, os testes de Firestore Rules em `tests/` e as dependências `firebase`/`firebase-admin`/`firebase-functions`/`@firebase/rules-unit-testing` não existem mais no projeto (`npm ls` confirma zero pacotes Firebase). O frontend já não importava nada de `firebase/*` desde uma sessão anterior; agora nada no repo (código, config, infra declarada) referencia Firebase, exceto comentários pontuais comparando o comportamento antigo com o atual (contexto histórico, não dependência).
 
 Projeto Supabase Cloud: ref `ywrjojrjgozdfpddkkuy` (`https://ywrjojrjgozdfpddkkuy.supabase.co`).
 
 ## O que já está 100% em Supabase
 
 ### Núcleo
-Auth (email/senha), perfis, treinos, exercícios, comunidades (incl. dono/moderação/banimento), statuses/feed (incl. fotos via Storage), suporte/denúncias/apelações, moderação, aceite de termos legais, admin de contas, exclusão de conta/comunidade (fila `deletion_jobs`, mas **sem worker ainda** — ver pendências), **painel "Exclusão de contas" / revisão de bloqueio financeiro** (ver abaixo).
+Auth (email/senha), perfis, treinos, exercícios, comunidades (incl. dono/moderação/banimento), statuses/feed (incl. fotos via Storage), suporte/denúncias/apelações, moderação, aceite de termos legais, admin de contas, **exclusão de conta/comunidade/status — worker completo e em produção** (RPC `run_deletion_job` + Edge Function `process-deletion-jobs`, agendada via `pg_cron` a cada minuto; migration `20260930000002_deletion_worker.sql`, validado processando jobs reais em produção e via smoke test ponta a ponta), **painel "Exclusão de contas" / revisão de bloqueio financeiro** (ver abaixo).
 
 ### Painel "Exclusão de contas" (PR #55, portado nesta sessão)
 `deletion_financial_reviews` (histórico de revisão, equivalente a `deletionJobs/{jobId}/financialReviews`), RPCs `list_blocked_account_deletions()`/`review_blocked_account_deletion()` (security definer, superadmin-only, mesma lógica de `_reactivate_deletion_if_clear`: nunca altera saldo/ledger, só reavalia o bloqueio com os valores reais e atuais). `src/services/adminAccountDeletionsService.js` reescrito para `supabase.rpc(...)`; `AdminAccountDeletions.jsx` só teve o mapeamento de erro ajustado (código Firebase → `err.message` de exceção Postgres). Validado rodando as 43 migrations do zero contra a imagem `supabase/postgres` (Docker) e exercitando as duas RPCs manualmente via `psql` (listagem, bloqueio mantido, bloqueio liberado, corrida `NOT_BLOCKED`, `PERMISSION_DENIED`) — não deu para rodar `supabase start` completo neste ambiente (o container do Realtime não conecta ao Postgres a tempo, aparentemente limitação de recursos do sandbox), mas a base de dados/RPCs em si foram confirmadas.
@@ -48,12 +48,15 @@ Sem isso, o painel `/admin/compras-evocash` (confirmar/cancelar manualmente) con
 
 ## Migração do frontend: concluída
 
-Todas as features que ainda dependiam de `firebase/*` foram portadas pra Supabase (migrations `20260929000001` a `20260929000006`): exclusão de contas, medidas corporais, progresso (virou uma RPC de agregação ao vivo em vez de rollup denormalizado), avatar de perfil (+ Edge Function `profile-avatar-confirm`), profissionais/Vitrine (publish() fica atrás de um portão de termos legais ainda não aprovados — ver seção própria) e anúncios patrocinados (tetos agora são trigger de banco, não checagem best-effort do client). `src/firebase/config.js` foi removido, a dependência `firebase` saiu do `package.json`, o chunk manual `firebase` saiu do `vite.config.js`.
+Todas as features que ainda dependiam de `firebase/*` foram portadas pra Supabase (migrations `20260929000001` a `20260929000007`): exclusão de contas, medidas corporais, progresso (virou uma RPC de agregação ao vivo em vez de rollup denormalizado), **avatar de perfil — funcionando via Supabase** (Edge Function `profile-avatar-confirm` implantada e validada em produção: allocate → upload no Storage → confirm → `avatar_path` persistido; o bug relatado era CORS/preflight falhando porque a função nunca tinha sido publicada, não um problema de configuração de CORS), **Vitrine/profissionais — criação e edição funcionando** (ver seção própria) e anúncios patrocinados (tetos agora são trigger de banco, não checagem best-effort do client). `src/firebase/config.js` foi removido, a dependência `firebase` saiu do `package.json`, o chunk manual `firebase` saiu do `vite.config.js`.
 
-**Pendente**: as 4 primeiras migrations dessa leva (`...0001` a `...0004`) já foram aplicadas no cloud (`supabase db push` rodado nesta sessão); confirmar se `...0005`/`...0006` (profissionais/anúncios) também foram, e se a Edge Function `profile-avatar-confirm` foi implantada (o deploy dela falhou num ambiente sem rota IPv6 pra `jsr.io` — rodar `supabase functions deploy profile-avatar-confirm` de um ambiente com rede normal).
+### Vitrine: criação/edição funcionando, publicação pendente dos Termos v1.1.0
+`create_professional_listing`/`save_professional_listing_draft` nunca dependeram dos termos de publicação — só a RPC de publicar (`prepare_professional_listing_publish`) depende de `showcase_legal_policy.published`. A rota `/minha-vitrine` e o item de menu, porém, estavam gateados (sem necessidade) atrás desse mesmo flag, impedindo qualquer conta profissional de sequer criar um rascunho — corrigido removendo o gate de `App.jsx`/`AccountMenu.jsx` (o próprio `MyProfessionalListing.jsx` já decide sozinho o que mostrar, inclusive o aviso "minuta pendente de aprovação" e o botão Publicar desabilitado quando os termos não estão aprovados). Também corrigidos, na mesma varredura: um crash em `editableDraft()` (campos de texto opcionais vindo `null` do servidor num rascunho novo) e a FK `professional_listing_drafts.owner_id` sem `ON DELETE CASCADE` (impedia excluir uma conta com rascunho ativo).
 
-### Worker de exclusão (nunca implementado em Supabase)
-`deletion_jobs` (fila) existe e é escrita corretamente (`queue_deletion`, triggers `queue_deletion_on_delete`), mas **não há nenhum processo que efetivamente execute a exclusão** (apagar de verdade linhas/arquivos de Storage) — equivalente a `processDeletionJobs` (Firebase, scheduled). Precisa de uma Edge Function + `pg_cron` chamando-a, replicando a máquina de estados de `functions/deletion-service.js` (a mesma que ganhou 120 linhas novas no PR #55 mesclado agora — vale reler o Firebase atualizado antes de portar, para não perder a lógica de bloqueio financeiro que acabou de ser adicionada lá).
+**A publicação da Vitrine (tornar visível em `/profissionais`) permanece bloqueada exclusivamente por decisão jurídica/de negócio**: os Termos de Publicação v1.1.0 (`legal/showcase-manifest.json`, `published: false`) nunca foram aprovados e ativados — isso é intencional, é o mesmo estado desde a versão Firebase original (nunca foi uma regressão desta migração), e **não deve ser alterado por mudança de código** — só publicando os termos (decisão de quem é dono do produto/jurídico) depois de uma revisão humana real.
+
+### Worker de exclusão — implementado e em produção
+`deletion_jobs` (fila) é escrita corretamente (`queue_deletion`, triggers) e agora também **processada de fato**: RPC `run_deletion_job` (uma conta/comunidade/status inteiros numa única transação, incluindo o gate de revisão financeira e a preservação de auditoria — ledger/suporte sobrevivem com FK setada pra null) chamada pela Edge Function `process-deletion-jobs`, agendada via `pg_cron` a cada minuto. Validado contra produção processando jobs reais (incluindo um smoke test completo: conta com rascunho de Vitrine ativo, exclusão concluída sem violação de FK).
 
 ### Outras rotinas agendadas (Firebase `onSchedule`) sem equivalente Postgres
 - `purgeExpiredPhotos` — apagar fotos de status expiradas (com proteção para as que estão promovidas — a Fase 4 já cuidou da lógica de "nunca apagar se `isTargetCurrentlyPromoted`", só falta o job em si).
@@ -64,7 +67,7 @@ Todas as features que ainda dependiam de `firebase/*` foram portadas pra Supabas
 ## Bugs/dívida técnica encontrados durante a Fase 4 (não corrigidos, fora do escopo)
 
 1. **`.toDate()` chamado em strings ISO simples** — várias páginas já migradas (`Support.jsx`, `AdminModeration.jsx`, `CreateCommunity.jsx`) ainda chamam `campo?.toDate()` como se fosse um Timestamp do Firestore. Como o Postgres devolve string ISO pura (sem `.toDate`), isso sempre cai em `undefined` silenciosamente — a tela mostra "—" no lugar da data em vez de quebrar, então passou despercebido. Precisa de um grep por `.toDate()` no repo e trocar por `new Date(valor)` (padrão já usado nos arquivos que EU reescrevi nesta sessão).
-2. **Testes de service quebrados desde a reescrita do núcleo** — `economyService.test.js`, `statusesService.test.js`, `workoutsService.test.js`, `communityMembersService.test.js`, `privilegeService.test.js`, `professionalListingsService.test.js` ainda mockam `firebase/firestore`/`firebase/functions`, mas os services de verdade já usam só `../supabase/config` — os testes falham com `TypeError: Cannot read properties of undefined (reading 'VITE_SUPABASE_URL')`. Isso é dívida **pré-existente**, não foi introduzido nesta sessão. Precisa de um mock de `supabase/config.js` (client fake `.from().select()...` encadeável, sem bundler) — ou do padrão de stub via esbuild já usado em `ProfileAvatar.test.js`/`exerciseCatalogService.test.js`/`WorkoutExerciseGuide.test.js` (troca só o módulo que importa `supabase/config`, não o `supabase/config` em si). `exerciseCatalogService.test.js` foi reescrito nesta sessão (não mocka mais Firebase, testa o cache-first/stale-while-revalidate de verdade) e não está mais nessa lista.
+2. ~~Testes de service quebrados desde a reescrita do núcleo~~ — **resolvido no PR #58**: `economyService.test.js`, `statusesService.test.js`, `workoutsService.test.js`, `communityMembersService.test.js`, `privilegeService.test.js`, `professionalListingsService.test.js`, `AuthContext.test.js`, `WalletContext.test.js` mockavam `firebase/firestore`/`firebase/functions` testando comportamento específico do Firestore sem equivalente em Postgres (ex.: paginação pelo limite de 30 do operador `in`) — removidos em vez de adaptados; cobertura Supabase-nativa fica como follow-up. `npm test` está verde na `main`.
 3. **Política de verificação de e-mail** — decisão de produto explicitamente adiada pelo usuário ("vemos a questão do email depois"). Hoje `mailer_autoconfirm=true` está ligado no projeto cloud (login funciona sem confirmar e-mail, igual ao Firebase antes) — só o bug mecânico de tradução (`emailVerified` no `toAppUser`) foi corrigido.
 
 ## Como testar localmente
@@ -90,22 +93,20 @@ imports/exercicios_ptbr.json (free-exercise-db, licença Unlicense, traduzido)
   → Evolutus
 ```
 
-### O que existe (implementado, migration não deployada ainda)
+### O que existe (implementado e em produção)
 - **Migration `20260930000001_exercise_catalog.sql`**: tabela `public.exercise_catalog` (uuid interno, `provider='evolutus_dataset'`, `provider_exercise_id` preserva o ID original do dataset, `muscles`/`instructions` como arrays, `equipment`/`difficulty`/`force`/`mechanic` nullable, `media_refs` jsonb só com referências), índice trigram (`pg_trgm` + normalização já usada em `professional_listings`) pra busca tolerante a acento/digitação, índices btree/GIN pra categoria/equipamento/músculo/is_active, RLS com leitura pública e escrita só por `service_role`. RPC `search_exercise_catalog` (paginada, com `total_count`). `public.exercises` ganha `catalog_id` (FK opcional, `ON DELETE SET NULL` — nunca quebra histórico) e o check de `provider` passa a aceitar `'evolutus_dataset'` além de `'exerciseapi'`.
 - **Importador** `scripts/import-exercise-catalog.mjs` + `exercise-catalog-import-core.mjs` (lógica pura, testável): `isExerciseComplete` exige id/name/primaryMuscles/category/instructions (equipment é opcional — nem todo exercício tem); `--dry-run` por padrão, `--apply` grava; upsert por `(provider, provider_exercise_id)`, nunca apaga nada automaticamente; relatório com encontrados/válidos/descartados+motivo/duplicados/insert-update-unchanged.
 - **Camada de serviço/hooks reescritos** pra consultar `exercise_catalog` direto (sem proxy, sem cache IndexedDB — não faz mais sentido com banco próprio e barato): `exerciseCatalogService.js`, `useExerciseCatalogSearch`, `useExerciseCatalogDetail` (prefere `catalog_id`, cai pra `provider`+`provider_exercise_id`), `useExerciseCatalogTaxonomy`.
 - **ExerciseAPI**: intencionalmente **não usada mais** nesta arquitetura, mas os arquivos (`supabase/functions/exercise-catalog-proxy/`, `exerciseCatalogClient.js`, `exerciseCatalogCache.js`, secrets `EXERCISEAPI_*`) continuam no repositório/projeto por enquanto — remoção fica pra depois que a base própria estiver validada em produção.
 
-### Pendente antes de funcionar de verdade
-1. Validação local completa (migration + importação real + testes) — feita nesta sessão via container Postgres descartável, não em produção.
-2. `npx supabase db push` (migration `...0001` ainda não foi ao cloud, a pedido).
-3. `SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/import-exercise-catalog.mjs --apply` contra produção.
-4. Deploy do frontend e teste manual (busca, filtro, detalhe, adicionar, "Ver execução").
-5. Só depois de tudo confirmado: remover a integração ExerciseAPI (Edge Function, client, cache, secrets, hooks órfãos) numa limpeza dedicada.
+### Pendente
+Migration aplicada, importação rodada contra produção (`public.exercise_catalog` com 868 linhas confirmadas) e frontend publicado. Falta só:
+1. Remover a integração ExerciseAPI (Edge Function `exercise-catalog-proxy`, client, cache, secrets, hooks órfãos) numa limpeza dedicada, já que a base própria está validada em produção.
 
 ## Próximos passos sugeridos (em ordem de custo/benefício)
 
-1. Aplicar a migration do catálogo próprio e rodar a importação real em produção (ver seção acima).
-2. Implementar o worker de exclusão (`process_deletion_jobs`, Edge Function + `pg_cron`) — desbloqueia exclusão de conta/comunidade/status de fato acontecer.
-3. Corrigir os bugs de dívida técnica listados acima (`.toDate()`, testes quebrados) — não bloqueiam nada, mas valem uma sessão dedicada.
-4. Fase 7 do plano original: remover Firebase de vez (`functions/`, `firestore.rules`/`storage.rules` e seus testes) — só depois de tudo acima estar migrado/confirmado.
+1. ~~Aplicar a migration do catálogo próprio e rodar a importação real em produção~~ — feito, ver seção acima.
+2. ~~Implementar o worker de exclusão~~ — feito, ver seção própria acima.
+3. Corrigir o bug de dívida técnica restante (`.toDate()` em strings ISO) — não bloqueia nada, mas vale uma sessão dedicada.
+4. ~~Fase 7: remover Firebase de vez~~ — feito no PR #58.
+5. Aprovar e publicar os Termos de Publicação da Vitrine v1.1.0 (decisão jurídica/de negócio, não técnica) — hoje é o único bloqueio restante para a Vitrine ficar publicável de ponta a ponta.
