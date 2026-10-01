@@ -44,7 +44,9 @@ before(async () => {
               '../services/professionalListingsService',
               `
             export const getMyProfessionalListing = (...args) => globalThis.__showcaseMocks.getMyProfessionalListing(...args)
-            export const getShowcaseLegalAcceptance = (...args) => globalThis.__showcaseMocks.getShowcaseLegalAcceptance(...args)
+            export const getActiveShowcasePolicy = (...args) => globalThis.__showcaseMocks.getActiveShowcasePolicy(...args)
+            export const getShowcaseLegalAcknowledgement = (...args) => globalThis.__showcaseMocks.getShowcaseLegalAcknowledgement(...args)
+            export const acknowledgeShowcaseTerms = (...args) => globalThis.__showcaseMocks.acknowledgeShowcaseTerms(...args)
             export const createProfessionalListing = () => {}
             export const deleteProfessionalListing = () => {}
             export const saveProfessionalListing = () => {}
@@ -103,7 +105,15 @@ async function renderWith(services, profile = {}) {
   globalThis.__showcaseAuth = { user: { uid: 'owner-1' }, profile }
   globalThis.__showcaseMocks = {
     getMyProfessionalListing: async () => null,
-    getShowcaseLegalAcceptance: async () => null,
+    getActiveShowcasePolicy: async () => ({
+      documentId: null,
+      version: null,
+      digest: null,
+      published: false,
+      publishedAt: null,
+    }),
+    getShowcaseLegalAcknowledgement: async () => null,
+    acknowledgeShowcaseTerms: async () => ({ version: null, acknowledged: true }),
     listActiveCommunities: async () => [],
     setUsageProfile: async () => ({ usageProfile: 'professional' }),
     ...services,
@@ -147,16 +157,19 @@ test('an optional communities failure does not prevent the owner from opening My
   }
 })
 
-test('an acceptance lookup failure still opens the editor with a clear warning', async () => {
+// Decisão de produto: ciência dos Termos nunca bloqueia nada, então uma falha ao
+// consultá-la também não pode virar um aviso pro titular -- só loga e segue (ver
+// loadShowcaseTermsState em MyProfessionalListing.jsx).
+test('a showcase terms lookup failure never surfaces a warning -- it is not a gate', async () => {
   const page = await renderWith({
-    getShowcaseLegalAcceptance: async () => {
-      throw new Error('acceptance unavailable')
+    getActiveShowcasePolicy: async () => {
+      throw new Error('policy unavailable')
     },
   })
   try {
     const html = JSON.stringify(page.view.toJSON())
     assert.match(html, /Crie uma página pública/)
-    assert.match(html, /Não foi possível verificar seu aceite da Vitrine/)
+    assert.doesNotMatch(html, /Termos/)
   } finally {
     page.close()
   }
@@ -236,6 +249,98 @@ test('a complete draft renders a direct "Publicar" action, never the old review-
     assert.match(html, /Publicar/)
     assert.doesNotMatch(html, /Enviar para revisão/)
     assert.doesNotMatch(html, /em revisão/i)
+  } finally {
+    page.close()
+  }
+})
+
+const COMPLETE_DRAFT_RECORD = {
+  id: 'listing-1',
+  listing: { kind: 'professional', lifecycleState: 'draft', ownerId: 'owner-1' },
+  draft: {
+    kind: 'professional',
+    version: 1,
+    reviewState: 'draft',
+    displayName: 'Ana Treinadora',
+    categoryKey: 'personal_trainer',
+    modalityKeys: ['musculacao'],
+    specialties: [],
+    bio: 'Acompanhamento individual.',
+    city: 'São Paulo',
+    uf: 'SP',
+    serviceMode: 'in_person',
+    contacts: {},
+    useProfileAvatar: false,
+  },
+  published: null,
+}
+
+// Decisão de produto: uma versão nova dos Termos nunca bloqueia Salvar/Publicar -- só
+// mostra o aviso. Sem nenhum acknowledgement mockado, "Publicar" continua presente (não
+// escondido nem substituído por nada que dependa de aceite).
+test('publishing stays available with no acknowledgement at all -- never gated by terms', async () => {
+  const page = await renderWith({
+    getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD,
+    getActiveShowcasePolicy: async () => ({
+      documentId: 'showcase-publication-terms',
+      version: '1.1.0',
+      digest: 'abc',
+      published: true,
+      publishedAt: '2026-10-01T00:00:00Z',
+    }),
+    getShowcaseLegalAcknowledgement: async () => null,
+  })
+  try {
+    const html = JSON.stringify(page.view.toJSON())
+    assert.match(html, /Publicar/)
+    assert.match(html, /Os Termos da Vitrine foram atualizados/)
+  } finally {
+    page.close()
+  }
+})
+
+test('no acknowledgement banner when the server has no published showcase terms yet', async () => {
+  const page = await renderWith({ getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD })
+  try {
+    const html = JSON.stringify(page.view.toJSON())
+    assert.doesNotMatch(html, /Termos da Vitrine foram atualizados/)
+  } finally {
+    page.close()
+  }
+})
+
+test('clicking "OK, entendi" acknowledges the current version and the banner disappears', async () => {
+  const acknowledged = []
+  const page = await renderWith({
+    getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD,
+    getActiveShowcasePolicy: async () => ({
+      documentId: 'showcase-publication-terms',
+      version: '1.1.0',
+      digest: 'abc',
+      published: true,
+      publishedAt: '2026-10-01T00:00:00Z',
+    }),
+    getShowcaseLegalAcknowledgement: async () => null,
+    acknowledgeShowcaseTerms: async () => {
+      acknowledged.push('1.1.0')
+      return { version: '1.1.0', acknowledged: true }
+    },
+  })
+  try {
+    assert.match(JSON.stringify(page.view.toJSON()), /Os Termos da Vitrine foram atualizados/)
+    const okButton = page.view.root
+      .findAllByType('button')
+      .find((node) => node.children.join('') === 'OK, entendi')
+    act(() => {
+      okButton.props.onClick()
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    act(() => {})
+    assert.deepEqual(acknowledged, ['1.1.0'])
+    assert.doesNotMatch(
+      JSON.stringify(page.view.toJSON()),
+      /Os Termos da Vitrine foram atualizados/
+    )
   } finally {
     page.close()
   }

@@ -1,50 +1,46 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  canSubmitShowcaseListing,
-  hasCurrentShowcaseAcceptance,
+  hasCurrentShowcaseAcknowledgement,
+  shouldShowShowcaseTermsBanner,
   SHOWCASE_LEGAL_MANIFEST,
 } from './showcaseLegal.js'
 
-test('storefront acceptance requires this document, current version and a server timestamp', () => {
-  const current = {
-    documentId: SHOWCASE_LEGAL_MANIFEST.documentId,
-    version: SHOWCASE_LEGAL_MANIFEST.version,
-    acceptedAt: { seconds: 1 },
-  }
-  assert.equal(hasCurrentShowcaseAcceptance(current), true)
-  assert.equal(hasCurrentShowcaseAcceptance({ ...current, version: '0.9.0' }), false)
-  assert.equal(hasCurrentShowcaseAcceptance({ ...current, documentId: 'terms' }), false)
-  assert.equal(hasCurrentShowcaseAcceptance({ ...current, acceptedAt: null }), false)
+const policy = {
+  documentId: SHOWCASE_LEGAL_MANIFEST.documentId,
+  version: '1.1.0',
+  published: true,
+}
+
+test('acknowledgement requires the currently published version and a server timestamp', () => {
+  const current = { version: policy.version, acknowledgedAt: '2026-10-01T00:00:00Z' }
+  assert.equal(hasCurrentShowcaseAcknowledgement(current, policy), true)
+  assert.equal(hasCurrentShowcaseAcknowledgement({ ...current, version: '1.0.0' }, policy), false)
+  assert.equal(hasCurrentShowcaseAcknowledgement({ ...current, acknowledgedAt: null }, policy), false)
+  assert.equal(hasCurrentShowcaseAcknowledgement(null, policy), false)
 })
 
-test('unpublished storefront terms always block submission', () => {
+test('no banner when the server has no published showcase policy yet', () => {
   assert.equal(
-    canSubmitShowcaseListing({
-      acceptance: null,
-      confirmed: true,
-      manifest: { ...SHOWCASE_LEGAL_MANIFEST, published: false },
-    }),
+    shouldShowShowcaseTermsBanner({ policy: { published: false, version: null }, acknowledgement: null }),
     false
   )
 })
 
-test('published storefront terms require confirmation or a current recorded acceptance', () => {
-  // Não depende do estado atual (publicado ou minuta) do documento real -- só do
-  // comportamento de canSubmitShowcaseListing quando published é true.
-  const manifest = { ...SHOWCASE_LEGAL_MANIFEST, published: true }
-  assert.equal(canSubmitShowcaseListing({ acceptance: null, confirmed: false, manifest }), false)
-  assert.equal(canSubmitShowcaseListing({ acceptance: null, confirmed: true, manifest }), true)
+test('banner shows for a published version the user never acknowledged -- never a gate', () => {
+  assert.equal(shouldShowShowcaseTermsBanner({ policy, acknowledgement: null }), true)
   assert.equal(
-    canSubmitShowcaseListing({
-      acceptance: {
-        documentId: manifest.documentId,
-        version: manifest.version,
-        acceptedAt: { seconds: 1 },
-      },
-      confirmed: false,
-      manifest,
+    shouldShowShowcaseTermsBanner({
+      policy,
+      acknowledgement: { version: '1.0.0', acknowledgedAt: '2026-09-01T00:00:00Z' },
     }),
     true
   )
+})
+
+test('banner hides once the current version is acknowledged, reappears on a newer one', () => {
+  const acknowledgement = { version: policy.version, acknowledgedAt: '2026-10-01T00:00:00Z' }
+  assert.equal(shouldShowShowcaseTermsBanner({ policy, acknowledgement }), false)
+  const nextPolicy = { ...policy, version: '1.2.0' }
+  assert.equal(shouldShowShowcaseTermsBanner({ policy: nextPolicy, acknowledgement }), true)
 })

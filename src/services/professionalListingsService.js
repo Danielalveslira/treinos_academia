@@ -10,16 +10,15 @@ export function saveProfessionalListing(listingId, draft) {
   return supabase.rpc('save_professional_listing_draft', { p_listing_id: listingId, p_draft: draft }).then(unwrap)
 }
 
-// Fase 1 apenas (ver migration 20260929000005_professional_listings.sql): a fase 2
-// (copiar o avatar autorizado, exigida só quando useProfileAvatar=true) depende de uma
-// Edge Function que ainda não existe -- hoje isso nunca importa na prática porque
-// showcase_legal_policy.published=false trava tudo já na fase 1, igual à produção atual.
-export function publishProfessionalListing(listingId, { termsAccepted, termsVersion, operationId }) {
+// Fase 1 apenas (ver migration 20260929000005_professional_listings.sql, atualizada por
+// 20261001000002_showcase_terms_acknowledgement.sql): a fase 2 (copiar o avatar
+// autorizado, exigida só quando useProfileAvatar=true) depende de uma Edge Function que
+// ainda não existe -- isso continua pendente independente dos Termos da Vitrine (ver
+// nota na migration). Publicar não depende mais de aceite/ciência de termos nenhuma.
+export function publishProfessionalListing(listingId, operationId) {
   return supabase
     .rpc('prepare_professional_listing_publish', {
       p_listing_id: listingId,
-      p_terms_accepted: termsAccepted,
-      p_terms_version: termsVersion,
       p_operation_id: operationId,
     })
     .then(unwrap)
@@ -41,6 +40,8 @@ export function getMyProfessionalListing() {
   return supabase.rpc('get_my_professional_listing').then(unwrap)
 }
 
+// Histórico do antigo fluxo (aceite = pré-condição de publicar) -- preservado, nunca
+// mais escrito. Nenhuma tela ativa chama isto hoje; fica só pra leitura/auditoria.
 export async function getShowcaseLegalAcceptance(userId, version) {
   const { data, error } = await supabase
     .from('showcase_legal_acceptances')
@@ -59,6 +60,45 @@ export async function getShowcaseLegalAcceptance(userId, version) {
     digest: data.digest,
     acceptedAt: data.accepted_at,
   }
+}
+
+// Versão hoje publicada dos Termos da Vitrine, segundo o servidor -- nunca o manifesto
+// estático do bundle, que pode estar desatualizado numa aba aberta há tempo. Sempre
+// exatamente 1 linha (id boolean primary key default true).
+export async function getActiveShowcasePolicy() {
+  const { data, error } = await supabase.from('showcase_legal_policy').select('*').single()
+  if (error) throw error
+  return {
+    documentId: data.document_id,
+    version: data.version,
+    digest: data.digest,
+    published: data.published,
+    publishedAt: data.published_at,
+  }
+}
+
+// Ciência (não aceite) da versão vigente -- ver acknowledge_showcase_terms(). Nunca é
+// condição de publicar; só decide se o aviso de "Termos atualizados" aparece.
+export async function getShowcaseLegalAcknowledgement(userId, version) {
+  const { data, error } = await supabase
+    .from('showcase_legal_acknowledgements')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('version', version)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  return {
+    userId: data.user_id,
+    documentId: data.document_id,
+    version: data.version,
+    digest: data.digest,
+    acknowledgedAt: data.acknowledged_at,
+  }
+}
+
+export function acknowledgeShowcaseTerms() {
+  return supabase.rpc('acknowledge_showcase_terms').then(unwrap)
 }
 
 function mapPublishedRow(row) {

@@ -893,6 +893,8 @@ body:has(.pwa-offline) .app-shell {
 .listing-checkbox { grid-template-columns: auto minmax(0, 1fr); align-items: start; }
 .listing-checkbox span { display: grid; gap: 4px; color: var(--fgColor-default); }
 .listing-editor-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.showcase-terms-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.showcase-terms-banner-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .listing-preview { position: sticky; top: 92px; }
 .listing-preview h2 { margin: 0 0 12px; font-size: 15px; }
 .listing-preview .professional-card { grid-template-columns: auto minmax(0, 1fr); }
@@ -940,6 +942,8 @@ body:has(.pwa-offline) .app-shell {
   .listing-check-grid { grid-template-columns: minmax(0, 1fr); }
   .listing-editor-actions { flex-direction: column; }
   .listing-editor-actions button { width: 100%; }
+  .showcase-terms-banner-actions { width: 100%; }
+  .showcase-terms-banner-actions button { flex: 1 1 auto; }
 }
 @media (max-width: 359px) {
   .professional-card-avatar { width: 88px; height: 88px; }

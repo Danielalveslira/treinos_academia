@@ -12,22 +12,19 @@ import {
 import { useAuth } from '../hooks/useAuth'
 import { listActiveCommunities } from '../services/communitiesService'
 import {
+  acknowledgeShowcaseTerms,
   createProfessionalListing,
   deleteProfessionalListing,
+  getActiveShowcasePolicy,
   getMyProfessionalListing,
-  getShowcaseLegalAcceptance,
+  getShowcaseLegalAcknowledgement,
   publishProfessionalListing,
   saveProfessionalListing,
   unpublishProfessionalListing,
 } from '../services/professionalListingsService'
 import { setUsageProfile } from '../services/usageProfileService'
 import { EMPTY_LISTING_DRAFT } from '../utils/professionalListing'
-import {
-  canSubmitShowcaseListing,
-  hasCurrentShowcaseAcceptance,
-  SHOWCASE_LEGAL_DOCUMENT,
-  SHOWCASE_LEGAL_MANIFEST,
-} from '../utils/showcaseLegal'
+import { shouldShowShowcaseTermsBanner } from '../utils/showcaseLegal'
 import { isEligibleForListingCreation } from '../constants/usageProfile'
 import { UsageProfileField } from '../components/UsageProfileField'
 
@@ -56,9 +53,6 @@ const KNOWN_ERRORS = {
   INVALID_LINKED_COMMUNITY: 'Você só pode vincular uma comunidade ativa da qual é titular.',
   PUBLISH_IN_PROGRESS: 'Uma publicação desta vitrine está em andamento.',
   DRAFT_INCOMPLETE: 'Salve um rascunho completo antes de publicar.',
-  SHOWCASE_TERMS_UNAVAILABLE: 'Os Termos de Publicação da Vitrine ainda não estão disponíveis.',
-  TERMS_NOT_ACCEPTED: 'Confirme os Termos de Publicação da Vitrine antes de publicar.',
-  ACCEPTANCE_INCONSISTENT: 'O registro anterior de aceite é inconsistente.',
 }
 
 const STATE_LABELS = {
@@ -104,8 +98,11 @@ export default function MyProfessionalListing() {
   const [communities, setCommunities] = useState([])
   const [busy, setBusy] = useState('')
   const [message, setMessage] = useState(null)
-  const [legalAcceptance, setLegalAcceptance] = useState(null)
-  const [termsConfirmed, setTermsConfirmed] = useState(false)
+  // Ciência (não aceite) da versão vigente dos Termos -- só decide o aviso abaixo, nunca
+  // bloqueia salvar/publicar (ver decisão de produto em
+  // 20261001000002_showcase_terms_acknowledgement.sql).
+  const [showcasePolicy, setShowcasePolicy] = useState(null)
+  const [showcaseAcknowledgement, setShowcaseAcknowledgement] = useState(null)
   const submissionOperation = useRef(null)
 
   async function reload() {
@@ -115,14 +112,6 @@ export default function MyProfessionalListing() {
     }
     setRecord(current)
     if (current) setForm(editableDraft(current.draft, current.listing.kind))
-    getShowcaseLegalAcceptance(user.uid, SHOWCASE_LEGAL_MANIFEST.version)
-      .then(setLegalAcceptance)
-      .catch(() =>
-        setMessage({
-          variant: 'warning',
-          text: 'Não foi possível verificar seu aceite da Vitrine. Recarregue a página antes de enviar.',
-        })
-      )
   }
 
   useEffect(() => {
@@ -158,18 +147,20 @@ export default function MyProfessionalListing() {
             text: 'Não foi possível carregar suas comunidades. A vitrine pode ser editada sem vínculo por enquanto.',
           })
       })
-    getShowcaseLegalAcceptance(user.uid, SHOWCASE_LEGAL_MANIFEST.version)
-      .then((acceptance) => {
+    // Ciência (não aceite) da versão vigente -- nunca bloqueia nada, então uma falha
+    // aqui só loga e segue (ver decisão de produto em
+    // 20261001000002_showcase_terms_acknowledgement.sql).
+    getActiveShowcasePolicy()
+      .then((policy) => {
         if (!active) return
-        setLegalAcceptance(acceptance)
+        setShowcasePolicy(policy)
+        if (!policy.published || !policy.version) return Promise.resolve(null)
+        return getShowcaseLegalAcknowledgement(user.uid, policy.version)
       })
-      .catch(() => {
-        if (active)
-          setMessage({
-            variant: 'warning',
-            text: 'Não foi possível verificar seu aceite da Vitrine. Recarregue a página antes de enviar.',
-          })
+      .then((acknowledgement) => {
+        if (active) setShowcaseAcknowledgement(acknowledgement)
       })
+      .catch((error) => console.error('[Vitrine] showcase terms state:', error))
     return () => {
       active = false
       window.clearTimeout(timeout)
@@ -260,17 +251,31 @@ export default function MyProfessionalListing() {
     setMessage(null)
     try {
       submissionOperation.current ||= crypto.randomUUID().replaceAll('-', '')
-      await publishProfessionalListing(record.id, {
-        termsAccepted: termsConfirmed,
-        termsVersion: SHOWCASE_LEGAL_MANIFEST.version,
-        operationId: submissionOperation.current,
-      })
+      await publishProfessionalListing(record.id, submissionOperation.current)
       await reload()
       submissionOperation.current = null
-      setTermsConfirmed(false)
       setMessage({ variant: 'success', text: 'Vitrine publicada.' })
     } catch (error) {
       setMessage({ variant: 'danger', text: KNOWN_ERRORS[error?.message] || 'Não foi possível publicar.' })
+    } finally {
+      setBusy('')
+    }
+  }
+
+  // Nunca é condição de salvar/publicar -- só esconde o aviso. "OK, entendi" pode falhar
+  // (rede) sem que o titular perca a capacidade de editar/publicar: por isso erro aqui
+  // vira mensagem de aviso, nunca bloqueia o resto da tela.
+  async function acknowledgeTerms() {
+    setBusy('acknowledge-terms')
+    try {
+      await acknowledgeShowcaseTerms()
+      setShowcaseAcknowledgement({ version: showcasePolicy.version, acknowledgedAt: new Date().toISOString() })
+    } catch (error) {
+      console.error('[Vitrine] acknowledge terms:', error)
+      setMessage({
+        variant: 'warning',
+        text: 'Não foi possível registrar a confirmação agora. Tente novamente.',
+      })
     } finally {
       setBusy('')
     }
@@ -392,11 +397,9 @@ export default function MyProfessionalListing() {
   const publishing = record.draft?.reviewState === 'publishing'
   const pending = publishing || record.listing.lifecycleState === 'pending_review'
   const state = record.listing.lifecycleState
-  const hasLegalAcceptance = hasCurrentShowcaseAcceptance(legalAcceptance)
-  const legalSubmissionAllowed = canSubmitShowcaseListing({
-    acceptance: legalAcceptance,
-    confirmed: termsConfirmed,
-    manifest: SHOWCASE_LEGAL_MANIFEST,
+  const showTermsBanner = shouldShowShowcaseTermsBanner({
+    policy: showcasePolicy,
+    acknowledgement: showcaseAcknowledgement,
   })
   return (
     <div className="my-listing-page">
@@ -414,6 +417,23 @@ export default function MyProfessionalListing() {
           </Button>
         )}
       </header>
+      {showTermsBanner && (
+        <Flash variant="default" className="showcase-terms-banner">
+          <span>Os Termos da Vitrine foram atualizados.</span>
+          <div className="showcase-terms-banner-actions">
+            <Button as={Link} to="/termos-publicacao-vitrine" target="_blank" rel="noopener">
+              Ler o que mudou
+            </Button>
+            <Button
+              variant="primary"
+              onClick={acknowledgeTerms}
+              loading={busy === 'acknowledge-terms'}
+            >
+              OK, entendi
+            </Button>
+          </div>
+        </Flash>
+      )}
       {message && <Flash variant={message.variant}>{message.text}</Flash>}
       {state === 'published' &&
         form.kind === 'professional' &&
@@ -605,36 +625,6 @@ export default function MyProfessionalListing() {
               <small>Somente comunidades ativas das quais você é titular.</small>
             </label>
           </fieldset>
-          <fieldset className="listing-legal-consent" disabled={pending || Boolean(busy)}>
-            <legend>Termos de publicação</legend>
-            {SHOWCASE_LEGAL_MANIFEST.published ? (
-              hasLegalAcceptance ? (
-                <p>
-                  Aceite da versão {SHOWCASE_LEGAL_MANIFEST.version} já registrado para esta conta.
-                </p>
-              ) : (
-                <label className="listing-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={termsConfirmed}
-                    onChange={(event) => setTermsConfirmed(event.target.checked)}
-                  />
-                  <span>
-                    Li e aceito os{' '}
-                    <Link to="/termos-publicacao-vitrine" target="_blank" rel="noopener">
-                      {SHOWCASE_LEGAL_DOCUMENT.title}
-                    </Link>{' '}
-                    (versão {SHOWCASE_LEGAL_MANIFEST.version}).
-                  </span>
-                </label>
-              )
-            ) : (
-              <Flash variant="warning">
-                A versão {SHOWCASE_LEGAL_MANIFEST.version} ainda é uma minuta pendente de aprovação.
-                A publicação permanece bloqueada.
-              </Flash>
-            )}
-          </fieldset>
           <div className="listing-editor-actions">
             <Button type="submit" loading={busy === 'save'} disabled={pending || Boolean(busy)}>
               Salvar rascunho
@@ -644,9 +634,7 @@ export default function MyProfessionalListing() {
               variant="primary"
               onClick={publish}
               loading={busy === 'publish'}
-              disabled={
-                pending || Boolean(busy) || !record.draft?.version || !legalSubmissionAllowed
-              }
+              disabled={pending || Boolean(busy) || !record.draft?.version}
             >
               Publicar
             </Button>
