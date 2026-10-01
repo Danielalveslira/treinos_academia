@@ -895,6 +895,8 @@ body:has(.pwa-offline) .app-shell {
 .listing-editor-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .showcase-terms-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .showcase-terms-banner-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.showcase-terms-dialog ul { padding-left: 20px; margin: 8px 0 16px; }
+.showcase-terms-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .listing-preview { position: sticky; top: 92px; }
 .listing-preview h2 { margin: 0 0 12px; font-size: 15px; }
 .listing-preview .professional-card { grid-template-columns: auto minmax(0, 1fr); }
@@ -943,7 +945,8 @@ body:has(.pwa-offline) .app-shell {
   .listing-editor-actions { flex-direction: column; }
   .listing-editor-actions button { width: 100%; }
   .showcase-terms-banner-actions { width: 100%; }
-  .showcase-terms-banner-actions button { flex: 1 1 auto; }
+  .showcase-terms-banner-actions button,
+  .showcase-terms-dialog-actions button { flex: 1 1 auto; }
 }
 @media (max-width: 359px) {
   .professional-card-avatar { width: 88px; height: 88px; }

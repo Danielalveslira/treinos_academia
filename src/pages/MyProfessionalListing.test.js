@@ -46,11 +46,13 @@ before(async () => {
             export const getMyProfessionalListing = (...args) => globalThis.__showcaseMocks.getMyProfessionalListing(...args)
             export const getActiveShowcasePolicy = (...args) => globalThis.__showcaseMocks.getActiveShowcasePolicy(...args)
             export const getShowcaseLegalAcknowledgement = (...args) => globalThis.__showcaseMocks.getShowcaseLegalAcknowledgement(...args)
+            export const getShowcaseLegalVersion = (...args) => globalThis.__showcaseMocks.getShowcaseLegalVersion(...args)
             export const acknowledgeShowcaseTerms = (...args) => globalThis.__showcaseMocks.acknowledgeShowcaseTerms(...args)
             export const createProfessionalListing = () => {}
             export const deleteProfessionalListing = () => {}
             export const saveProfessionalListing = () => {}
-            export const publishProfessionalListing = () => {}
+            export const publishProfessionalListing = (...args) => globalThis.__showcaseMocks.publishProfessionalListing(...args)
+            export const finalizeProfessionalListingPublish = (...args) => globalThis.__showcaseMocks.finalizeProfessionalListingPublish(...args)
             export const unpublishProfessionalListing = () => {}
           `,
             ],
@@ -76,6 +78,10 @@ before(async () => {
             export const Button = ({ children, onClick }) => createElement('button', { onClick }, children)
             export const Flash = ({ children }) => createElement('div', null, children)
             export const Spinner = ({ 'aria-label': label }) => createElement('span', null, label)
+            export const Dialog = ({ title, children, onClose }) => createElement('div', { 'data-dialog-title': title },
+              createElement('button', { 'data-dialog-close': true, onClick: onClose }, 'fechar'),
+              children
+            )
           `,
             ],
           ])
@@ -113,7 +119,10 @@ async function renderWith(services, profile = {}) {
       publishedAt: null,
     }),
     getShowcaseLegalAcknowledgement: async () => null,
+    getShowcaseLegalVersion: async () => null,
     acknowledgeShowcaseTerms: async () => ({ version: null, acknowledged: true }),
+    publishProfessionalListing: async () => ({ repeated: false, version: 1, avatarMediaId: null, avatarPath: null }),
+    finalizeProfessionalListingPublish: async () => ({ listingId: 'listing-1', state: 'published', version: 1 }),
     listActiveCommunities: async () => [],
     setUsageProfile: async () => ({ usageProfile: 'professional' }),
     ...services,
@@ -299,6 +308,87 @@ test('publishing stays available with no acknowledgement at all -- never gated b
   }
 })
 
+// Fase 1 (prepare) sozinha nunca é "sucesso" -- só depois que a Fase 2 (Edge Function,
+// finalize) também termina é que a tela mostra "Vitrine publicada.".
+test('"Vitrine publicada" only shows after phase 2 (finalize) succeeds, never from phase 1 alone', async () => {
+  const calls = []
+  const page = await renderWith({
+    getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD,
+    publishProfessionalListing: async (...args) => {
+      calls.push(['prepare', ...args])
+      return { repeated: false, version: 1, avatarMediaId: null, avatarPath: null }
+    },
+    finalizeProfessionalListingPublish: async (...args) => {
+      calls.push(['finalize', ...args])
+      return { listingId: 'listing-1', state: 'published', version: 1 }
+    },
+  })
+  try {
+    act(() => {
+      findButtonByText(page.view.root, 'Publicar').props.onClick()
+    })
+    await flush(act)
+    assert.deepEqual(
+      calls.map((call) => call[0]),
+      ['prepare', 'finalize']
+    )
+    assert.match(JSON.stringify(page.view.toJSON()), /Vitrine publicada/)
+  } finally {
+    page.close()
+  }
+})
+
+// `repeated: true` (uma chamada anterior com o MESMO operationId já publicou de
+// verdade) -- nada a finalizar de novo; chamar a Edge Function outra vez seria
+// redundante (e falharia, já que o rascunho não está mais em 'publishing').
+test('a repeated prepare (same operationId already published) skips calling finalize again', async () => {
+  const calls = []
+  const page = await renderWith({
+    getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD,
+    publishProfessionalListing: async () => {
+      calls.push('prepare')
+      return { repeated: true, version: 1 }
+    },
+    finalizeProfessionalListingPublish: async () => {
+      calls.push('finalize')
+      return { listingId: 'listing-1', state: 'published', version: 1 }
+    },
+  })
+  try {
+    act(() => {
+      findButtonByText(page.view.root, 'Publicar').props.onClick()
+    })
+    await flush(act)
+    assert.deepEqual(calls, ['prepare'])
+    assert.match(JSON.stringify(page.view.toJSON()), /Vitrine publicada/)
+  } finally {
+    page.close()
+  }
+})
+
+// Se a Fase 2 falhar depois que a Fase 1 já travou o rascunho, a tela nunca mostra
+// sucesso -- só um erro, sem considerar a publicação concluída.
+test('a phase 2 (finalize) failure after a successful phase 1 never shows success', async () => {
+  const page = await renderWith({
+    getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD,
+    publishProfessionalListing: async () => ({ repeated: false, version: 1 }),
+    finalizeProfessionalListingPublish: async () => {
+      throw new Error('PUBLISH_STATE_CHANGED')
+    },
+  })
+  try {
+    act(() => {
+      findButtonByText(page.view.root, 'Publicar').props.onClick()
+    })
+    await flush(act)
+    const html = JSON.stringify(page.view.toJSON())
+    assert.doesNotMatch(html, /Vitrine publicada/)
+    assert.match(html, /Não foi possível publicar/)
+  } finally {
+    page.close()
+  }
+})
+
 test('no acknowledgement banner when the server has no published showcase terms yet', async () => {
   const page = await renderWith({ getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD })
   try {
@@ -309,7 +399,17 @@ test('no acknowledgement banner when the server has no published showcase terms 
   }
 })
 
-test('clicking "OK, entendi" acknowledges the current version and the banner disappears', async () => {
+function findButtonByText(root, text) {
+  return root.findAllByType('button').find((node) => node.children.join('') === text)
+}
+
+async function flush(act) {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  act(() => {})
+}
+
+// "Ler o que mudou" só abre o diálogo com o resumo -- nunca registra ciência sozinho.
+test('opening "Ler o que mudou" shows the changes summary but does not acknowledge anything', async () => {
   const acknowledged = []
   const page = await renderWith({
     getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD,
@@ -321,6 +421,47 @@ test('clicking "OK, entendi" acknowledges the current version and the banner dis
       publishedAt: '2026-10-01T00:00:00Z',
     }),
     getShowcaseLegalAcknowledgement: async () => null,
+    getShowcaseLegalVersion: async () => ({
+      version: '1.1.0',
+      manifest: { changes: ['Publicação passa a ser direta pelo titular.'] },
+    }),
+    acknowledgeShowcaseTerms: async () => {
+      acknowledged.push('1.1.0')
+      return { version: '1.1.0', acknowledged: true }
+    },
+  })
+  try {
+    act(() => {
+      findButtonByText(page.view.root, 'Ler o que mudou').props.onClick()
+    })
+    await flush(act)
+    const html = JSON.stringify(page.view.toJSON())
+    assert.match(html, /Publicação passa a ser direta pelo titular/)
+    assert.deepEqual(acknowledged, [])
+    // Fechar sem clicar em "OK, entendi" mantém o aviso.
+    act(() => {
+      findButtonByText(page.view.root, 'fechar').props.onClick()
+    })
+    assert.deepEqual(acknowledged, [])
+    assert.match(JSON.stringify(page.view.toJSON()), /Os Termos da Vitrine foram atualizados/)
+  } finally {
+    page.close()
+  }
+})
+
+test('clicking "OK, entendi" inside the dialog acknowledges the current version and the banner disappears', async () => {
+  const acknowledged = []
+  const page = await renderWith({
+    getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD,
+    getActiveShowcasePolicy: async () => ({
+      documentId: 'showcase-publication-terms',
+      version: '1.1.0',
+      digest: 'abc',
+      published: true,
+      publishedAt: '2026-10-01T00:00:00Z',
+    }),
+    getShowcaseLegalAcknowledgement: async () => null,
+    getShowcaseLegalVersion: async () => ({ version: '1.1.0', manifest: { changes: [] } }),
     acknowledgeShowcaseTerms: async () => {
       acknowledged.push('1.1.0')
       return { version: '1.1.0', acknowledged: true }
@@ -328,14 +469,14 @@ test('clicking "OK, entendi" acknowledges the current version and the banner dis
   })
   try {
     assert.match(JSON.stringify(page.view.toJSON()), /Os Termos da Vitrine foram atualizados/)
-    const okButton = page.view.root
-      .findAllByType('button')
-      .find((node) => node.children.join('') === 'OK, entendi')
     act(() => {
-      okButton.props.onClick()
+      findButtonByText(page.view.root, 'Ler o que mudou').props.onClick()
     })
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    act(() => {})
+    await flush(act)
+    act(() => {
+      findButtonByText(page.view.root, 'OK, entendi').props.onClick()
+    })
+    await flush(act)
     assert.deepEqual(acknowledged, ['1.1.0'])
     assert.doesNotMatch(
       JSON.stringify(page.view.toJSON()),

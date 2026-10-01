@@ -10,11 +10,11 @@ export function saveProfessionalListing(listingId, draft) {
   return supabase.rpc('save_professional_listing_draft', { p_listing_id: listingId, p_draft: draft }).then(unwrap)
 }
 
-// Fase 1 apenas (ver migration 20260929000005_professional_listings.sql, atualizada por
-// 20261001000002_showcase_terms_acknowledgement.sql): a fase 2 (copiar o avatar
-// autorizado, exigida só quando useProfileAvatar=true) depende de uma Edge Function que
-// ainda não existe -- isso continua pendente independente dos Termos da Vitrine (ver
-// nota na migration). Publicar não depende mais de aceite/ciência de termos nenhuma.
+// Fase 1 apenas: trava o rascunho em 'publishing' e devolve o que a Fase 2 (Edge
+// Function) vai precisar. Nunca considerar isto "publicado" sozinho -- ver
+// finalizeProfessionalListingPublish logo abaixo, chamada só se `repeated` vier false
+// (true = uma chamada anterior com o mesmo operationId já publicou de verdade; nada a
+// finalizar de novo).
 export function publishProfessionalListing(listingId, operationId) {
   return supabase
     .rpc('prepare_professional_listing_publish', {
@@ -22,6 +22,29 @@ export function publishProfessionalListing(listingId, operationId) {
       p_operation_id: operationId,
     })
     .then(unwrap)
+}
+
+// Fase 2: Edge Function com service role, só ela pode chamar
+// finalize_professional_listing_publish/abort_professional_listing_publish (revogadas de
+// authenticated/anon/public). Nunca manda avatarMediaId/avatarPath pro servidor -- a
+// função re-deriva os dois a partir do JWT, nunca confia em path vindo do cliente.
+export async function finalizeProfessionalListingPublish(listingId, operationId) {
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession()
+  if (sessionErr) throw sessionErr
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/finalize-professional-listing-publish`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+      },
+      body: JSON.stringify({ listingId, operationId }),
+    }
+  )
+  const body = await response.json()
+  if (!response.ok) throw new Error(body?.error || 'FINALIZE_FAILED')
+  return body
 }
 
 export function unpublishProfessionalListing(listingId) {
@@ -99,6 +122,27 @@ export async function getShowcaseLegalAcknowledgement(userId, version) {
 
 export function acknowledgeShowcaseTerms() {
   return supabase.rpc('acknowledge_showcase_terms').then(unwrap)
+}
+
+// Resumo das mudanças ("Ler o que mudou") vem daqui -- nunca hardcoded no frontend --
+// showcase_legal_versions é o arquivo imutável por versão (manifest.changes é o mesmo
+// array já usado em legal/showcase-manifest.json, só que a cópia que realmente foi
+// ativada no servidor).
+export async function getShowcaseLegalVersion(version) {
+  const { data, error } = await supabase
+    .from('showcase_legal_versions')
+    .select('*')
+    .eq('version', version)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return null
+  return {
+    version: data.version,
+    manifest: data.manifest,
+    document: data.document,
+    digest: data.digest,
+    createdAt: data.created_at,
+  }
 }
 
 function mapPublishedRow(row) {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button, Flash, Spinner } from '@primer/react'
 import { Link } from 'react-router-dom'
 import { ProfessionalListingCard } from '../components/ProfessionalListingCard'
+import { ShowcaseTermsUpdateDialog } from '../components/ShowcaseTermsUpdateDialog'
 import {
   BRAZIL_STATES,
   CATEGORY_OPTIONS,
@@ -15,9 +16,11 @@ import {
   acknowledgeShowcaseTerms,
   createProfessionalListing,
   deleteProfessionalListing,
+  finalizeProfessionalListingPublish,
   getActiveShowcasePolicy,
   getMyProfessionalListing,
   getShowcaseLegalAcknowledgement,
+  getShowcaseLegalVersion,
   publishProfessionalListing,
   saveProfessionalListing,
   unpublishProfessionalListing,
@@ -103,6 +106,10 @@ export default function MyProfessionalListing() {
   // 20261001000002_showcase_terms_acknowledgement.sql).
   const [showcasePolicy, setShowcasePolicy] = useState(null)
   const [showcaseAcknowledgement, setShowcaseAcknowledgement] = useState(null)
+  // "Ler o que mudou" -- aberto sob demanda, nunca carrega o resumo antes de ser clicado.
+  const [showcaseTermsDialogOpen, setShowcaseTermsDialogOpen] = useState(false)
+  const [showcaseVersionChanges, setShowcaseVersionChanges] = useState(null)
+  const [loadingShowcaseVersion, setLoadingShowcaseVersion] = useState(false)
   const submissionOperation = useRef(null)
 
   async function reload() {
@@ -246,12 +253,21 @@ export default function MyProfessionalListing() {
     }
   }
 
+  // Fase 1 (prepare) trava o rascunho; Fase 2 (Edge Function, finalize) de fato publica
+  // (copia o avatar autorizado e grava published_professional_listings). "Vitrine
+  // publicada" só aparece depois que as duas terminam -- nunca com base só na Fase 1.
+  // `repeated: true` = uma chamada anterior com este MESMO operationId já publicou de
+  // verdade (idempotência da própria Fase 1); nesse caso não há nada pra finalizar de
+  // novo, só confirmar o sucesso já conquistado.
   async function publish() {
     setBusy('publish')
     setMessage(null)
     try {
       submissionOperation.current ||= crypto.randomUUID().replaceAll('-', '')
-      await publishProfessionalListing(record.id, submissionOperation.current)
+      const prepared = await publishProfessionalListing(record.id, submissionOperation.current)
+      if (!prepared.repeated) {
+        await finalizeProfessionalListingPublish(record.id, submissionOperation.current)
+      }
       await reload()
       submissionOperation.current = null
       setMessage({ variant: 'success', text: 'Vitrine publicada.' })
@@ -270,6 +286,7 @@ export default function MyProfessionalListing() {
     try {
       await acknowledgeShowcaseTerms()
       setShowcaseAcknowledgement({ version: showcasePolicy.version, acknowledgedAt: new Date().toISOString() })
+      setShowcaseTermsDialogOpen(false)
     } catch (error) {
       console.error('[Vitrine] acknowledge terms:', error)
       setMessage({
@@ -278,6 +295,23 @@ export default function MyProfessionalListing() {
       })
     } finally {
       setBusy('')
+    }
+  }
+
+  // Abrir o diálogo só busca o resumo sob demanda -- fechar de qualquer jeito que não
+  // seja "OK, entendi" (X, Escape, clique fora) nunca registra ciência, o aviso continua.
+  async function openShowcaseTermsDialog() {
+    setShowcaseTermsDialogOpen(true)
+    if (!showcasePolicy?.version) return
+    setLoadingShowcaseVersion(true)
+    try {
+      const versionDetail = await getShowcaseLegalVersion(showcasePolicy.version)
+      setShowcaseVersionChanges(versionDetail?.manifest?.changes || [])
+    } catch (error) {
+      console.error('[Vitrine] showcase version detail:', error)
+      setShowcaseVersionChanges([])
+    } finally {
+      setLoadingShowcaseVersion(false)
     }
   }
 
@@ -421,18 +455,19 @@ export default function MyProfessionalListing() {
         <Flash variant="default" className="showcase-terms-banner">
           <span>Os Termos da Vitrine foram atualizados.</span>
           <div className="showcase-terms-banner-actions">
-            <Button as={Link} to="/termos-publicacao-vitrine" target="_blank" rel="noopener">
-              Ler o que mudou
-            </Button>
-            <Button
-              variant="primary"
-              onClick={acknowledgeTerms}
-              loading={busy === 'acknowledge-terms'}
-            >
-              OK, entendi
-            </Button>
+            <Button onClick={openShowcaseTermsDialog}>Ler o que mudou</Button>
           </div>
         </Flash>
+      )}
+      {showcaseTermsDialogOpen && (
+        <ShowcaseTermsUpdateDialog
+          version={showcasePolicy?.version}
+          changes={showcaseVersionChanges}
+          loading={loadingShowcaseVersion}
+          onClose={() => setShowcaseTermsDialogOpen(false)}
+          onAcknowledge={acknowledgeTerms}
+          acknowledging={busy === 'acknowledge-terms'}
+        />
       )}
       {message && <Flash variant={message.variant}>{message.text}</Flash>}
       {state === 'published' &&
