@@ -18,7 +18,6 @@ import {
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useColorMode } from '../hooks/useColorMode'
-import { SHOWCASE_LEGAL_MANIFEST } from '../utils/showcaseLegal'
 
 export function AccountMenu({ onLogout, signingOut }) {
   const [open, setOpen] = useState(false)
@@ -62,7 +61,7 @@ export function AccountMenu({ onLogout, signingOut }) {
               dados reais) o que mostrar; ver MyProfessionalListing.jsx. Legado
               (usageProfile ausente) e profissional/estabelecimento continuam vendo o
               atalho normalmente. */}
-          {SHOWCASE_LEGAL_MANIFEST.published && profile?.usageProfile !== 'common' && (
+          {profile?.usageProfile !== 'common' && (
             <ActionList.LinkItem as={Link} to="/minha-vitrine" replace onClick={() => setOpen(false)}>
               <ActionList.LeadingVisual>
                 <BriefcaseIcon />
