@@ -6,7 +6,7 @@ import {
   joinCommunity,
   leaveCommunity,
 } from '../services/communityMembersService'
-import { describeFirestoreError } from '../utils/firestoreError'
+import { describeQueryError } from '../utils/queryError'
 import { getCached, setCached } from '../utils/pageCache'
 
 export function useCommunities() {
@@ -30,7 +30,7 @@ export function useCommunities() {
       setMyCommunityIds(new Set(myIds))
       setCached(cacheKey, { communities: communityList, myCommunityIds: myIds })
     } catch (err) {
-      setError(describeFirestoreError(err, 'useCommunities'))
+      setError(describeQueryError(err, 'useCommunities'))
     } finally {
       setLoading(false)
     }

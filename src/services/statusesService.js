@@ -287,8 +287,8 @@ export async function getSharedWorkout(statusId, communityId) {
 
 // "Ver participantes" — public_profiles é legível por qualquer autenticado (mesmo
 // motivo de exibir @ no feed), então dá pra resolver o username com um join direto no
-// cliente, sem precisar de uma callable dedicada como no Firebase (lá, users/{uid} só é
-// legível pelo próprio dono).
+// cliente, sem precisar de uma RPC dedicada (ao contrário de users, legível só pelo
+// próprio dono via RLS).
 export async function listWorkoutParticipants(statusId, { cursor = null, limit = 20 } = {}) {
   let q = supabase
     .from('status_participants')

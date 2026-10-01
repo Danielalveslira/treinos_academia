@@ -6,9 +6,8 @@ import { useCachedQuery } from './useCachedQuery'
 const CACHE_KEY = 'sponsoredAds:global'
 
 // `enabled` só precisa ser "usuário autenticado" (não uma checagem de participação em
-// comunidade, como em useSponsoredAds.js): a regra de leitura de um anúncio isGlobal só
-// exige isSignedIn(), sem depender de myCommunityIds() — não há o mesmo risco de a
-// consulta inteira ser negada (ver "Firestore list-rule get() gotcha").
+// comunidade, como em useSponsoredAds.js): a policy de leitura de um anúncio is_global
+// só exige auth.uid() is not null, sem depender de community_members.
 export function useGlobalSponsoredAds(enabled) {
   const fetchAds = useCallback(() => listGlobalSponsoredAds(), [])
   const {

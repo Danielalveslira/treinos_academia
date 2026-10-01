@@ -51,8 +51,8 @@ import '../styles/workout-status.css'
 // antes disso.
 const ACTION_ERROR_AUTO_DISMISS_MS = 6000
 
-// Selo dourado e discreto — o valor vem de authorIsSuperAdmin, gravado no status e
-// conferido pelo servidor no momento da publicação (ver firestore.rules e
+// Selo dourado e discreto — o valor vem de authorIsSuperAdmin, gravado no status pelo
+// trigger enforce_status_author_badge no momento da publicação (ver
 // statusesService.js), nunca de um campo que o próprio cliente poderia forjar.
 function SuperAdminBadge() {
   return (
@@ -73,9 +73,9 @@ function SuperAdminBadge() {
 }
 
 function StatusHeader({ status, authorAvatarPath, now, canDelete, onDelete, deleting, showToast }) {
-  // As regras exigem authorUsername nulo ou string (ver firestore.rules), mas nunca
-  // custa nada tratar dado inesperado com cuidado aqui também — um valor de outro
-  // tipo (ex.: number) não deveria derrubar o card inteiro, só cair no "M" padrão.
+  // author_username é uma coluna text (nulo ou string por natureza), mas nunca custa
+  // nada tratar dado inesperado com cuidado aqui também — um valor de outro tipo (ex.:
+  // number) não deveria derrubar o card inteiro, só cair no "M" padrão.
   const authorUsername = typeof status.authorUsername === 'string' ? status.authorUsername : null
   return (
     <header className="status-header">
@@ -129,9 +129,10 @@ function PollStatus({ status, currentUserId, showToast, onActionSuccess, interac
   // já tinha falhado de vez. loadError + o botão "Tentar novamente" abaixo cobrem isso.
   const [loadError, setLoadError] = useState(false)
   const [retryToken, setRetryToken] = useState(0)
-  // As regras exigem que cada opção seja {id, label} (ver firestore.rules), mas o
-  // mesmo raciocínio do authorUsername acima vale aqui: um item inesperado (ex.:
-  // null) não deveria quebrar a renderização de toda a enquete, só ser ignorado.
+  // O constraint statuses_content_shape só valida a quantidade de opções (2 a 6), não o
+  // shape de cada item -- então, mesmo raciocínio do authorUsername acima: um item
+  // inesperado (ex.: null) não deveria quebrar a renderização de toda a enquete, só ser
+  // ignorado.
   const options = (status.poll?.options || []).filter(
     (option) => option && typeof option.id === 'string' && typeof option.label === 'string'
   )

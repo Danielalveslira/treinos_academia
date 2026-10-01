@@ -5,7 +5,7 @@ import {
   deleteAccountPermanently,
   listDeletionJobs,
 } from '../services/adminAccountsService'
-import { describeFirestoreError } from '../utils/firestoreError'
+import { describeQueryError } from '../utils/queryError'
 
 export function useAdminAccounts(search = '') {
   const [accounts, setAccounts] = useState([])
@@ -30,7 +30,7 @@ export function useAdminAccounts(search = '') {
       setCursor(page.nextCursor)
       setJobs(pending)
     } catch (err) {
-      if (current === revision.current) setError(describeFirestoreError(err, 'useAdminAccounts'))
+      if (current === revision.current) setError(describeQueryError(err, 'useAdminAccounts'))
     } finally {
       if (current === revision.current) setLoading(false)
     }
@@ -59,7 +59,7 @@ export function useAdminAccounts(search = '') {
       ])
       setCursor(page.nextCursor)
     } catch (err) {
-      if (current === revision.current) setError(describeFirestoreError(err, 'listAccountsPage'))
+      if (current === revision.current) setError(describeQueryError(err, 'listAccountsPage'))
     } finally {
       if (current === revision.current) setLoading(false)
     }

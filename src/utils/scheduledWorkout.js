@@ -2,8 +2,8 @@ import { formatTime } from './format.js'
 
 // Estado temporal do "treino marcado" (Treino Marcado V1) -- puro, calculado 100%
 // client-side a partir de workout.date (nunca de expiresAt, que não tem relação
-// nenhuma com o evento em si, ver firestore.rules canJoinWorkout). Nenhum
-// scheduler/Function roda para manter isto atualizado: o card simplesmente recalcula a
+// nenhuma com o evento em si, ver isScheduledWorkoutJoinable abaixo). Nenhum
+// scheduler/cron roda para manter isto atualizado: o card simplesmente recalcula a
 // cada render, igual a qualquer outro relógio de UI do projeto (ver "now" compartilhado
 // em useCommunityFeed.js).
 const MINUTES_MS = 60000
@@ -46,10 +46,11 @@ export function describeScheduledWorkoutState(dateMs, nowMs = Date.now()) {
   return { key: 'upcoming', label: `Em ${dayDiff} dias` }
 }
 
-// Espelha exatamente a condição de canJoinWorkout em firestore.rules
-// (status.workout.date > request.time) -- checagem client-side só para UX (desabilitar
-// o botão sem esperar o servidor rejeitar); o servidor continua sendo quem decide de
-// verdade.
+// status.workout.date > agora -- checagem só client-side, pra UX (desabilitar o botão).
+// RISCO CONHECIDO: ao contrário da versão Firestore (que tinha a mesma condição
+// replicada nas rules), a policy status_participants_all no Postgres não valida esta
+// janela de tempo hoje -- nada no servidor impede um insert direto em status_participants
+// para um treino já expirado. Rever se vale a pena um check constraint ou trigger.
 export function isScheduledWorkoutJoinable(dateMs, nowMs = Date.now()) {
   return dateMs > nowMs
 }

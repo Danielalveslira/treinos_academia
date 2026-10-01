@@ -128,17 +128,14 @@ export default function Register() {
         await setBirthInfo(uid, { sexo, dataNascimento: birthDate })
         await setDisplayName(credential.user, username)
       } catch (postCreateErr) {
-        // A conta no Authentication já existe nesse ponto, e os passos acima podem já
-        // ter escrito o perfil (e reservado o @) no Firestore antes de falhar. Desfaz
-        // tudo: primeiro os documentos (as regras só permitem isso nos minutos
-        // seguintes à criação), depois a conta em si — sem isso, o e-mail ficaria
-        // bloqueado E o perfil ficaria órfão no banco pra sempre.
-        // setUsername() normaliza (trim + minúsculas) antes de gravar/reservar — a
-        // limpeza precisa mirar o mesmo valor, não o texto bruto do campo.
+        // A conta no Auth já existe nesse ponto, e os passos acima podem já ter escrito
+        // o perfil (e reservado o @) antes de falhar. deleteFreshProfile desfaz tudo:
+        // primeiro as linhas de perfil, depois a conta em si (deleteCurrentAccount, via
+        // RPC, já embutido nela) — sem isso, o e-mail ficaria bloqueado E o perfil
+        // ficaria órfão no banco pra sempre. setUsername() normaliza (trim + minúsculas)
+        // antes de gravar/reservar — a limpeza precisa mirar o mesmo valor, não o texto
+        // bruto do campo.
         await deleteFreshProfile(uid, username.trim().toLowerCase()).catch((cleanupErr) => {
-          console.error('[Auth] register rollback failed (profile):', cleanupErr)
-        })
-        await credential.user.delete().catch((cleanupErr) => {
           console.error('[Auth] register rollback failed:', cleanupErr)
         })
         if (postCreateErr.message === 'USERNAME_TAKEN') {

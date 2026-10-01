@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import oldArchive from '../../functions/legal/test-fixtures/1.3.0.json' with { type: 'json' }
+import oldArchive from '../../legal/test-fixtures/1.3.0.json' with { type: 'json' }
 import {
   APPROVED_LEGAL_DIGESTS,
   LEGAL_DOCUMENTS,
@@ -63,16 +63,16 @@ test('loads and displays the complete immutable archive matching active versions
     assert.ok(bundle.documents.length >= 3)
     assert.equal(bundle.digest, APPROVED_LEGAL_DIGESTS[version])
     const archive = version === '1.3.0' ? oldArchive : newArchive
-    const firestoreArchive = reverseKeys(archive)
-    const resolvedFromFirestore = await resolveLegalBundle(
+    const reorderedArchive = reverseKeys(archive)
+    const resolvedFromReordered = await resolveLegalBundle(
       { version, digest: APPROVED_LEGAL_DIGESTS[version], published: true },
-      firestoreArchive
+      reorderedArchive
     )
-    assert.deepEqual(resolvedFromFirestore.documents, bundle.documents)
+    assert.deepEqual(resolvedFromReordered.documents, bundle.documents)
     await assert.rejects(
       resolveLegalBundle(
         { version, digest: APPROVED_LEGAL_DIGESTS[version], published: true },
-        { ...firestoreArchive, documents: [...firestoreArchive.documents].reverse() }
+        { ...reorderedArchive, documents: [...reorderedArchive.documents].reverse() }
       ),
       /LEGAL_POLICY_INCOMPATIBLE/
     )

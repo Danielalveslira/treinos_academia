@@ -19,10 +19,10 @@ test('buildShareText embeds only the app name and the community link', () => {
   const text = buildShareText('gym', 'https://app.example.com')
   assert.match(text, /Evolutus/)
   assert.match(text, /https:\/\/app\.example\.com\/comunidades\/gym/)
-  assert.doesNotMatch(text, /firestore|statuses\/|token/i)
+  assert.doesNotMatch(text, /statuses\/|token/i)
 })
 
-test('workout sharing points directly to the workout card without exposing Firestore paths', () => {
+test('workout sharing points directly to the workout card without exposing internal data paths', () => {
   const status = {
     id: 'workout-123',
     type: 'workout',
@@ -35,7 +35,7 @@ test('workout sharing points directly to the workout card without exposing Fires
   const text = buildShareText('gym', 'https://app.example.com', status)
   assert.match(text, /Treino de pernas/)
   assert.match(text, /#treino-workout-123/)
-  assert.doesNotMatch(text, /firestore|statuses\//i)
+  assert.doesNotMatch(text, /statuses\//i)
 })
 
 test('workoutIdFromHash accepts only a safe workout anchor', () => {

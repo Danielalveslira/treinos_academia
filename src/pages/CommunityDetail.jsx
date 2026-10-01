@@ -35,7 +35,7 @@ import {
   createWorkoutStatus,
   getSharedWorkout,
 } from '../services/statusesService'
-import { describeFirestoreError } from '../utils/firestoreError'
+import { describeQueryError } from '../utils/queryError'
 import { invalidateCommunitiesCache } from '../utils/pageCache'
 import { AchievementForm } from '../components/AchievementForm'
 import { StatusForm } from '../components/StatusForm'
@@ -53,7 +53,7 @@ import { workoutIdFromHash } from '../utils/share'
 
 const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
 
-// View pura (sem hooks de Firestore) separada do wrapper que busca os dados de verdade --
+// View pura (sem hooks de dados) separada do wrapper que busca os dados de verdade --
 // mesmo padrão de WalletHeaderBadgesView/PromoteDialogBody: testável só com props.
 // Reordena a composição da comunidade (não a lógica): criação de conteúdo + publicidade
 // (toolbar de Publicações, banner e feedAds) vêm antes de Destaques, que por sua vez vêm
@@ -408,7 +408,7 @@ function CommunityDetail({ id }) {
       setCommunity(data)
       setMember(memberFlag)
     } catch (err) {
-      setCommunityError(describeFirestoreError(err, 'CommunityDetail'))
+      setCommunityError(describeQueryError(err, 'CommunityDetail'))
     } finally {
       setLoadingCommunity(false)
     }
@@ -418,9 +418,9 @@ function CommunityDetail({ id }) {
     loadCommunity()
   }, [loadCommunity])
 
-  // A guarda contra clique duplo evita dois efeitos: uma segunda escrita inútil (a
-  // regra do Firestore já recusa update em communityMembers, então isso nunca corrompe
-  // dado nenhum) e, principalmente, o falso "Erro ao entrar/sair" que aparecia quando
+  // A guarda contra clique duplo evita dois efeitos: uma segunda escrita inútil (RLS não
+  // tem nenhuma policy de update em community_members, então isso nunca corrompe dado
+  // nenhum) e, principalmente, o falso "Erro ao entrar/sair" que aparecia quando
   // o segundo clique chegava depois do primeiro já ter concluído.
   async function handleJoin() {
     if (membershipPending) return
@@ -453,8 +453,9 @@ function CommunityDetail({ id }) {
   }
 
   // Fase 5: mesmas funções de communitiesService.js já usadas pelo painel admin --
-  // funcionam para o dono porque firestore.rules agora aceita isCommunityOwner nas
-  // mesmas Rules que já aceitavam isSuperAdmin(), não porque este código sabe algo novo.
+  // funcionam para o dono porque a policy communities_update agora aceita
+  // is_community_owner() ao lado de is_superadmin(), não porque este código sabe algo
+  // novo.
   async function handleUpdateCommunity(values) {
     try {
       await updateCommunity(id, values)
@@ -622,7 +623,7 @@ function CommunityDetail({ id }) {
 
   const loading = loadingCommunity || loadingFeed
   // Fase 5: dono da comunidade conta como moderador só DENTRO dela -- nunca em nenhuma
-  // outra (ver firestore.rules: isCommunityOwner/statusCommunityOk). community?.ownerId
+  // outra (mesma condição is_community_owner() usada nas policies). community?.ownerId
   // já vem do próprio getCommunity(id) acima, sem leitura extra.
   const canModerate = canModerateCommunity({
     isSuperAdmin,

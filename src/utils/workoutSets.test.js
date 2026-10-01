@@ -98,7 +98,7 @@ test('same-day records are ordered by createdAt, not by array/insertion order', 
     createdAt: { toMillis: () => 2000 },
     setDetails: [{ weight: 33, reps: 4 }],
   }
-  // A ordem em que os registros chegam do Firestore não é garantida para o mesmo
+  // A ordem em que os registros chegam do banco não é garantida para o mesmo
   // "date" — o resultado deve ser o mesmo não importa a ordem de entrada aqui.
   for (const pair of [
     [first, second],

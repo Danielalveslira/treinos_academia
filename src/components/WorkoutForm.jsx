@@ -82,10 +82,10 @@ export function WorkoutForm({
 }) {
   const nextSetId = useRef(0)
   // Editando, o tipo do treino já existente trava qual exercício dá pra escolher —
-  // trocar pra um exercício de outro tipo faria a checagem de imutabilidade de type
-  // nas firestore.rules recusar o salvamento (ver isValidWorkout/allow update). Mais
-  // simples barrar isso aqui, na lista de opções, do que deixar o usuário chegar até
-  // "Finalizar exercício" pra só então descobrir que não pode.
+  // trocar pra um exercício de outro tipo faria o trigger de imutabilidade de type
+  // (migration workouts_cardio_type) recusar o update. Mais simples barrar isso aqui, na
+  // lista de opções, do que deixar o usuário chegar até "Finalizar exercício" pra só
+  // então descobrir que não pode.
   const editingType = initialValue ? getExerciseType(initialValue) : null
   const availableExercises = useMemo(() => {
     const active = exercises.filter(
@@ -133,7 +133,7 @@ export function WorkoutForm({
   const [completed, setCompleted] = useState(() => new Set())
   const drafts = useRef(new Map())
   const completionDrafts = useRef(new Map())
-  // Exercícios finalizados HOJE, neste aparelho (localStorage, sem sync com Firestore --
+  // Exercícios finalizados HOJE, neste aparelho (localStorage, sem sync com o banco --
   // ver doneExercisesStorage.js). Diferente de `completed` acima: aquele é por SÉRIE,
   // dentro do exercício atual; este é por EXERCÍCIO, através de todo o fluxo de sessão
   // (grupo -> exercício -> séries), e é o que decide a navegação ao finalizar (ver

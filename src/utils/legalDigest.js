@@ -1,4 +1,4 @@
-// Mesmo algoritmo de functions/legal-core.js (legalDigest): sha256 de
+// Mesmo algoritmo de legalDigest.js (legalDigest): sha256 de
 // JSON.stringify({manifest, documents}). Calculado aqui, no cliente, porque a RPC
 // accept_legal_documents só compara esse valor contra o que já está gravado em
 // legal_policy (ver scripts/seed-legal.mjs) — nunca confia nele como fonte de verdade.

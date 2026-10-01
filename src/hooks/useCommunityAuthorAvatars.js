@@ -14,8 +14,8 @@ export function uniqueCommunityAuthorIds(...groups) {
 
 // public_profiles permite select autenticado pra qualquer linha, mas Realtime ainda
 // precisa de um filtro por linha -- um channel por autor visível acompanha troca/remoção
-// da foto sem multiplicar leituras por mensagem ou por seção (mesma estratégia de "um
-// listener por autor" do onSnapshot original).
+// da foto sem multiplicar leituras por mensagem ou por seção ("um listener por autor",
+// nunca um por mensagem/seção).
 export function useCommunityAuthorAvatars(enabled, ...groups) {
   const idsKey = enabled ? JSON.stringify(uniqueCommunityAuthorIds(...groups)) : ''
   const [avatars, setAvatars] = useState({})

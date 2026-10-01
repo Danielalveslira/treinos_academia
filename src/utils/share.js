@@ -1,6 +1,6 @@
 // Posts comuns compartilham a rota pública da comunidade. Treinos acrescentam apenas
-// um fragmento com o id do card para localizar o evento, sem expor caminho do Firestore
-// nem qualquer dado da conta de quem compartilha.
+// um fragmento com o id do card para localizar o evento, sem expor nenhum caminho
+// interno de dados nem qualquer dado da conta de quem compartilha.
 const APP_NAME = 'Evolutus'
 
 export function buildCommunityLink(communityId, origin = window.location.origin) {

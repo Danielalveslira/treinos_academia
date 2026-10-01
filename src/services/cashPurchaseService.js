@@ -100,7 +100,7 @@ export async function listCashPurchasesForAdminPage({ status = '', cursor = null
   }
 }
 
-const USER_LOOKUP_CHUNK_SIZE = 30 // mesmo teto do operador `in` do Firestore, mantido por consistência
+const USER_LOOKUP_CHUNK_SIZE = 30 // tamanho de lote arbitrário, mantido por consistência com os outros chunkings do app
 
 // Resolve o username de vários compradores de uma vez só -- nunca uma leitura por card
 // na lista do admin (evita N+1).

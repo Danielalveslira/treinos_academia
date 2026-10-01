@@ -6,20 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "backfill:progress:dry-run": "node scripts/backfill-progress-daily.mjs",
-    "backfill:progress:apply": "node scripts/backfill-progress-daily.mjs --apply",
-    "backfill:community-owner:dry-run": "node scripts/backfill-community-owner-id.mjs",
-    "backfill:community-owner:apply": "node scripts/backfill-community-owner-id.mjs --apply",
-    "backfill:economy-vote-counts:dry-run": "node scripts/backfill-economy-vote-counts.mjs",
-    "backfill:economy-vote-counts:apply": "node scripts/backfill-economy-vote-counts.mjs --apply",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "node --test src/**/*.test.js",
     "test:backfill": "node --test scripts/*.test.mjs",
     "format": "prettier --write \"src/**/*.{js,jsx}\"",
-    "format:check": "prettier --check \"src/**/*.{js,jsx}\"",
-    "emulators": "firebase emulators:start --only auth,firestore,storage --project demo",
-    "test:rules": "node --test --test-concurrency=1 tests/*rules.test.mjs"
+    "format:check": "prettier --check \"src/**/*.{js,jsx}\""
   },
   "dependencies": {
     "@primer/octicons-react": "^19.35.0",
@@ -38,18 +30,15 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
-    "@firebase/rules-unit-testing": "^4.0.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
     "eslint": "^9.15.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.14",
-    "firebase-admin": "^14.4.0",
     "globals": "^15.12.0",
     "prettier": "^3.9.6",
     "react-test-renderer": "^18.3.1",
-    "sharp": "^0.34.5",
     "vite": "^5.4.11"
   }
 }

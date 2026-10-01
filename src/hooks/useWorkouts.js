@@ -7,7 +7,7 @@ import {
   updateWorkout,
   deleteWorkout,
 } from '../services/workoutsService'
-import { describeFirestoreError } from '../utils/firestoreError'
+import { describeQueryError } from '../utils/queryError'
 
 const EMPTY = []
 export function useWorkouts(filters = {}) {
@@ -48,7 +48,7 @@ export function useWorkouts(filters = {}) {
       setPagination({ key, loading: false, error: null })
     } catch (error) {
       if (pending.current === request)
-        setPagination({ key, loading: false, error: describeFirestoreError(error, 'loadMore') })
+        setPagination({ key, loading: false, error: describeQueryError(error, 'loadMore') })
     } finally {
       if (pending.current === request) pending.current = null
     }

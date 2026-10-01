@@ -1,5 +1,6 @@
-// Keep `sets` as a derived count for existing Firestore sum('sets') queries.
-// Firestore rules validate each list position explicitly; keep this limit in sync.
+// Keep `sets` as a derived count for the server-side sum(sets) aggregates (see the
+// profile stats RPCs). The check constraint workouts_sets_match enforces
+// jsonb_array_length(set_details) = sets; keep this limit in sync with it.
 export const MAX_WORKOUT_SETS = 10
 
 export function getWorkoutSets(workout) {

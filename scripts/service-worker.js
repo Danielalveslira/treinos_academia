@@ -32,7 +32,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url)
   if (event.request.method !== 'GET' || url.origin !== self.location.origin) return
-  // Firebase/auth/API requests are never cached by this worker.
+  // Auth/API requests are never cached by this worker.
   if (event.request.mode === 'navigate' && !url.pathname.startsWith('/__/')) {
     // Network-first: um refresh (inclusive hard refresh) deve sempre buscar o shell
     // mais atual quando há conexão. O cache só entra como fallback offline (cenário

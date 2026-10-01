@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchCached, getCached, setCached, invalidateCache } from '../utils/pageCache'
-import { describeFirestoreError } from '../utils/firestoreError'
+import { describeQueryError } from '../utils/queryError'
 
 export function useCachedQuery(key, fetchValue, { enabled = true, context = 'query' } = {}) {
   const cached = enabled ? getCached(key) : undefined
@@ -34,7 +34,7 @@ export function useCachedQuery(key, fetchValue, { enabled = true, context = 'que
             key,
             data: undefined,
             loading: false,
-            error: describeFirestoreError(error, context),
+            error: describeQueryError(error, context),
           })
         }
       }

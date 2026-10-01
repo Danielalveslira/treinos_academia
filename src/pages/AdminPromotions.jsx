@@ -15,7 +15,7 @@ const STATUS_LABELS = {
 // cancelar (com motivo obrigatório, nunca reembolsa). Deliberadamente separado de
 // /admin/parcerias (AdminSponsoredAds.jsx, anúncios institucionais) -- o usuário/owner
 // nunca ganha acesso a nenhum dos dois; este painel também é exclusivo de superadmin
-// (ver firestore.rules: promotions/{id} só lê dono/superadmin, e esta LISTA completa só
+// (RLS em promotions só deixa dono/superadmin lerem uma linha, e esta LISTA completa só
 // resolve para superadmin).
 export default function AdminPromotions() {
   const [promotions, setPromotions] = useState([])

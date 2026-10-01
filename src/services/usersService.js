@@ -4,8 +4,7 @@ import { deleteCurrentAccount } from './authService'
 export const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 export const BIO_MAX_LENGTH = 300
 
-// A tabela users é snake_case; o resto do app lê o perfil em camelCase, no mesmo
-// formato que os documentos do Firestore usavam.
+// A tabela users é snake_case; o resto do app lê o perfil em camelCase.
 export function mapUserRow(row) {
   if (!row) return null
   return {
@@ -50,7 +49,7 @@ export async function setBirthInfo(userId, { sexo, dataNascimento } = {}) {
 
 // AUD-010: a troca de username é sempre atômica (reserva + users + publicProfiles numa
 // única transação SQL dentro de update_user_profile) — o Postgres já garante isso por
-// natureza de função, sem precisar de uma Cloud Function separada como no Firebase.
+// natureza de função, sem precisar de uma Edge Function/RPC separada só pra isso.
 export async function updateUserProfile(userId, changes) {
   const payload = {}
   if (Object.hasOwn(changes, 'bio')) payload.bio = changes.bio || ''

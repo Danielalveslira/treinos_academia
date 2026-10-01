@@ -8,7 +8,7 @@ import { useWallet } from '../hooks/useWallet'
 //
 // View pura (sem hooks) separada do wrapper que lê os dados de verdade -- mesmo padrão
 // de PromoteDialogBody/PromoteDialog: testável só com props, sem precisar mockar
-// useAuth/useWallet/Firestore.
+// useAuth/useWallet/Supabase.
 export function WalletHeaderBadgesView({ visible, loading, coinBalance, cashBalance }) {
   if (!visible) return null
 
@@ -26,9 +26,9 @@ export function WalletHeaderBadgesView({ visible, loading, coinBalance, cashBala
   )
 }
 
-// useWallet() é a MESMA fonte já usada por WalletCard.jsx (Perfil) -- 1 onSnapshot
-// compartilhado por usuário, mantido em WalletContext.jsx, nunca um listener novo nem
-// uma segunda forma de calcular saldo (ver useWallet.js).
+// useWallet() é a MESMA fonte já usada por WalletCard.jsx (Perfil) -- 1 canal
+// postgres_changes compartilhado por usuário, mantido em WalletContext.jsx, nunca um
+// listener novo nem uma segunda forma de calcular saldo (ver useWallet.js).
 export function WalletHeaderBadges() {
   const { user } = useAuth()
   const { wallet, loading } = useWallet()

@@ -6,7 +6,7 @@ import {
   setCommunityActive,
   deleteCommunity,
 } from '../services/communitiesService'
-import { describeFirestoreError } from '../utils/firestoreError'
+import { describeQueryError } from '../utils/queryError'
 import { invalidateCommunitiesCache } from '../utils/pageCache'
 import { useAuth } from './useAuth'
 
@@ -35,7 +35,7 @@ export function useAdminCommunities() {
       const counts = await Promise.all(list.map(resolveMemberCount))
       setMemberCounts(Object.fromEntries(list.map((c, i) => [c.id, counts[i]])))
     } catch (err) {
-      setError(describeFirestoreError(err, 'useAdminCommunities'))
+      setError(describeQueryError(err, 'useAdminCommunities'))
     } finally {
       setLoading(false)
     }
@@ -58,7 +58,7 @@ export function useAdminCommunities() {
       }))
       setCursor(page.nextCursor)
     } catch (error) {
-      setError(describeFirestoreError(error, 'listCommunitiesPage'))
+      setError(describeQueryError(error, 'listCommunitiesPage'))
     } finally {
       setLoading(false)
     }

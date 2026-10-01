@@ -1,5 +1,5 @@
 // "Adicionar ao calendário" (Treino Marcado V1) -- gera um arquivo .ics no próprio
-// navegador, sem nenhuma Function/escrita no Firestore nem integração OAuth com Google
+// navegador, sem nenhuma chamada de rede ou escrita no banco nem integração OAuth com Google
 // Calendar. buildIcsEvent é puro (testável sem DOM); downloadIcsFile é o único ponto que
 // toca o DOM (Blob + <a download>), isolado de propósito para o resto ficar testável.
 

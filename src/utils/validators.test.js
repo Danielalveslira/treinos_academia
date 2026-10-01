@@ -65,8 +65,8 @@ test('validateExercise requires name and muscleGroup, and bounds both lengths', 
   assert.match(validateExercise({ name: 'Supino', muscleGroup: '' }).muscleGroup, /obrigatório/)
   assert.match(validateExercise({ name: 'Supino', muscleGroup: '   ' }).muscleGroup, /obrigatório/)
   // Grupo personalizado (digitado no formulário, não escolhido de uma lista fixa) —
-  // mesmo teto aplicado nas firestore.rules (isValidExercise), pra nunca aceitar no
-  // cliente o que o servidor recusaria.
+  // mesmo teto aplicado pelo check constraint exercises_muscle_group_check no Postgres,
+  // pra nunca aceitar no cliente o que o servidor recusaria.
   assert.match(
     validateExercise({ name: 'Supino', muscleGroup: 'x'.repeat(31) }).muscleGroup,
     /longo/

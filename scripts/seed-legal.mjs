@@ -1,7 +1,7 @@
 // Publica os documentos legais atuais (functions/legal/manifest.json + documents.json)
 // nas tabelas legal_policy/legal_versions do Supabase — equivalente ao antigo
 // publish-legal.js, mas roda contra Postgres em vez do Firestore. Usa o MESMO
-// algoritmo de digest de functions/legal-core.js (sha256 de JSON.stringify({manifest,
+// algoritmo de digest de legalDigest.js (sha256 de JSON.stringify({manifest,
 // documents})), então o valor calculado aqui bate com o que o cliente recalcula ao
 // aceitar os termos (ver src/utils/legalDigest.js).
 //
@@ -17,8 +17,8 @@ if (!url || !serviceRoleKey) {
   process.exit(1)
 }
 
-const manifest = JSON.parse(readFileSync(new URL('../functions/legal/manifest.json', import.meta.url)))
-const documents = JSON.parse(readFileSync(new URL('../functions/legal/documents.json', import.meta.url)))
+const manifest = JSON.parse(readFileSync(new URL('../legal/manifest.json', import.meta.url)))
+const documents = JSON.parse(readFileSync(new URL('../legal/documents.json', import.meta.url)))
 const digest = createHash('sha256').update(JSON.stringify({ manifest, documents })).digest('hex')
 
 const supabase = createClient(url, serviceRoleKey)

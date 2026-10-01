@@ -4,7 +4,7 @@ import {
   reviewBlockedAccountDeletion,
 } from '../services/adminAccountDeletionsService'
 import { resolveUsernamesByIds } from '../services/cashPurchaseService'
-import { describeFirestoreError } from '../utils/firestoreError'
+import { describeQueryError } from '../utils/queryError'
 
 // Mesmo padrão de useAdminAccounts/useAdminCashPurchases: revision descarta respostas
 // atrasadas de uma consulta anterior, actionLock impede duas revisões simultâneas na
@@ -32,7 +32,7 @@ export function useAdminAccountDeletions() {
       const names = await resolveUsernamesByIds(list.map((job) => job.targetId))
       if (current === revision.current) setUsernameById(names)
     } catch (err) {
-      if (current === revision.current) setError(describeFirestoreError(err, 'useAdminAccountDeletions'))
+      if (current === revision.current) setError(describeQueryError(err, 'useAdminAccountDeletions'))
     } finally {
       if (current === revision.current) setLoading(false)
     }

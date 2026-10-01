@@ -162,12 +162,6 @@ before(async () => {
           pluginBuild.onResolve({ filter: /\/components\/ExerciseCatalog$/ }, (args) => ({
             path: args.path, namespace: 'fixture-noop-component',
           }))
-          // ErrorState.jsx usa useAuth() só pra isSuperAdmin -- sem isso, a cadeia
-          // arrasta AuthContext.jsx -> supabase/config.js (precisa de VITE_SUPABASE_URL,
-          // que não existe fora do Vite).
-          pluginBuild.onResolve({ filter: /\/hooks\/useAuth$/ }, (args) => ({
-            path: args.path, namespace: 'fixture-auth',
-          }))
           // RowActionsMenu usa @primer/react ActionMenu, que toca `document` de verdade
           // (portal/click-outside) num efeito -- fora de escopo aqui (o teste é sobre
           // busca/filtro/grupo, não o menu de ações), então vira um placeholder simples.
@@ -198,9 +192,6 @@ before(async () => {
           }))
           pluginBuild.onLoad({ filter: /.*/, namespace: 'fixture-noop-component' }, () => ({
             contents: `export const ExerciseForm = () => null; export const ExerciseCatalog = () => null; export const RowActionsMenu = () => null`,
-          }))
-          pluginBuild.onLoad({ filter: /.*/, namespace: 'fixture-auth' }, () => ({
-            contents: `export function useAuth() { return { isSuperAdmin: false, user: { uid: 'fake-uid' } } }`,
           }))
         },
       },
