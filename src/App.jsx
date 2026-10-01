@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { WalletProvider } from './contexts/WalletContext'
 import { ExercisesProvider } from './contexts/ExercisesContext'
@@ -8,7 +8,6 @@ import { SuperAdminRoute } from './components/SuperAdminRoute'
 import { Layout } from './components/Layout'
 import { PageFallback } from './components/PageFallback'
 import { routeLoaders } from './routeLoaders'
-import { SHOWCASE_LEGAL_MANIFEST } from './utils/showcaseLegal'
 
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
@@ -90,12 +89,12 @@ export function AppRoutes() {
         <Route path="/perfil" element={<Profile />} />
         <Route path="/evocash" element={<EvoCash />} />
         <Route path="/minhas-promocoes" element={<MyPromotions />} />
-        <Route
-          path="/minha-vitrine"
-          element={
-            SHOWCASE_LEGAL_MANIFEST.published ? <MyProfessionalListing /> : <Navigate to="/" replace />
-          }
-        />
+        {/* O gate de Termos de Publicação (showcase_legal_policy.published) é responsabilidade
+            de MyProfessionalListing.jsx, só na ação de publicar -- criar/editar rascunho não
+            depende disso (ver create_professional_listing/save_professional_listing_draft,
+            nenhuma das duas consulta showcase_legal_policy). A rota sempre renderiza a
+            página; ela decide sozinha o que mostrar com base no profile/listing reais. */}
+        <Route path="/minha-vitrine" element={<MyProfessionalListing />} />
         <Route path="/comunidades/criar" element={<CreateCommunity />} />
         <Route
           path="/admin/compras-evocash"

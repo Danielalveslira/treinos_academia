@@ -73,9 +73,21 @@ const STATE_LABELS = {
 }
 
 function editableDraft(data, kind) {
+  // Um rascunho recém-criado (create_professional_listing) vem do servidor com todo
+  // campo de texto opcional como null, não '' (professional_listing_drafts não tem
+  // default pra display_name/category_key/bio/city/uf/service_mode) -- um ...data por
+  // cima de EMPTY_LISTING_DRAFT sobrescreve o default com esse null (chave presente
+  // vence o spread anterior), e form.bio.length quebra a tela inteira. ?? troca só os
+  // null/undefined pelo default; '' explicitamente digitado pelo usuário continua ''.
   return {
     ...EMPTY_LISTING_DRAFT,
     ...data,
+    displayName: data?.displayName ?? EMPTY_LISTING_DRAFT.displayName,
+    categoryKey: data?.categoryKey ?? EMPTY_LISTING_DRAFT.categoryKey,
+    bio: data?.bio ?? EMPTY_LISTING_DRAFT.bio,
+    city: data?.city ?? EMPTY_LISTING_DRAFT.city,
+    uf: data?.uf ?? EMPTY_LISTING_DRAFT.uf,
+    serviceMode: data?.serviceMode ?? EMPTY_LISTING_DRAFT.serviceMode,
     kind,
     contacts: { ...EMPTY_LISTING_DRAFT.contacts, ...data?.contacts },
     linkedCommunityId: data?.linkedCommunityId || '',
