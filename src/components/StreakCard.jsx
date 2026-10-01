@@ -1,39 +1,74 @@
-import { Flash } from '@primer/react'
-import { FlameIcon } from '@primer/octicons-react'
+import { ArrowRightIcon, CheckIcon, GearIcon } from '@primer/octicons-react'
+import { ConsistencyFlame } from './ConsistencyFlame'
 
-function dayLabel(dateKey) {
-  const date = new Date(`${dateKey}T12:00:00`)
-  return date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+const STATE_LABELS = {
+  completed: 'treino concluído',
+  planned: 'treino planejado, ainda pendente',
+  in_progress: 'treino iniciado',
+  rest: 'descanso planejado',
+  none: 'sem atividade',
 }
 
-// streak vem de getDailyStreak(allWorkouts) — mesma fonte de dados já carregada pelo
-// Dashboard pro gráfico de consistência, nunca um valor gravado à parte (ver streak.js).
-export function StreakCard({ streak }) {
+function dayLabel(day) {
+  const date = new Date(`${day.dateKey}T12:00:00`)
+  return `${date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}: ${STATE_LABELS[day.state]}`
+}
+
+function todayCopy(day) {
+  if (day.state === 'completed') return 'Treino concluído. Hoje é dia de recuperar.'
+  if (day.state === 'planned')
+    return day.reminderTime
+      ? `Treino planejado · ${day.reminderTime}`
+      : day.title
+        ? `${day.title} planejado`
+        : 'Treino planejado para hoje'
+  if (day.state === 'in_progress')
+    return day.title ? `${day.title} em andamento` : 'Treino em andamento'
+  if (day.state === 'rest') return 'Descanso planejado'
+  return 'Nenhum treino programado'
+}
+
+export function StreakCard({ consistency, hasTrainingPlan, onConfigurePlan, onOpenCalendar }) {
   return (
-    <section className="streak-card" aria-label="Sequência de dias ativos">
+    <section className="streak-card" aria-labelledby="consistency-title">
       <div className="streak-summary">
-        <span className="streak-flame" aria-hidden="true">
-          <FlameIcon size={20} />
+        <span className="streak-flame">
+          <ConsistencyFlame active={consistency.trainedToday} />
         </span>
         <div>
-          <strong>{streak.current}</strong>
-          <span>{streak.current === 1 ? 'dia seguido' : 'dias seguidos'}</span>
+          <strong id="consistency-title">
+            {consistency.current} {consistency.current === 1 ? 'dia' : 'dias'} de consistência
+          </strong>
+          <span>
+            Melhor sequência no ano: {consistency.longest}{' '}
+            {consistency.longest === 1 ? 'dia' : 'dias'}
+          </span>
         </div>
       </div>
-      <ul className="streak-days">
-        {streak.last7Days.map((day) => (
+      <ul className="streak-days" aria-label="Resumo dos últimos sete dias">
+        {consistency.recent.map((day) => (
           <li
-            key={day.date}
-            className={`streak-pip${day.trained ? ' is-trained' : ''}${day.isToday ? ' is-today' : ''}`}
-            aria-label={`${dayLabel(day.date)}: ${day.trained ? 'treinou' : day.isToday ? 'ainda não treinou hoje' : 'sem treino'}`}
-          />
+            key={day.dateKey}
+            className={`streak-pip is-${day.state}${day.isToday ? ' is-today' : ''}`}
+            aria-label={dayLabel(day)}
+          >
+            {day.state === 'completed' && <CheckIcon size={11} aria-hidden="true" />}
+            {day.state === 'rest' && <span aria-hidden="true">–</span>}
+          </li>
         ))}
       </ul>
-      {streak.todayIsUrgent && (
-        <Flash variant="attention" className="streak-alert" role="alert">
-          Treine hoje até 23:59 para não perder sua sequência.
-        </Flash>
-      )}
+      <div className="streak-today">
+        <span>Hoje</span>
+        <strong>{todayCopy(consistency.today)}</strong>
+      </div>
+      <div className="streak-actions">
+        <button type="button" className="streak-action-link" onClick={onConfigurePlan}>
+          <GearIcon size={14} /> {hasTrainingPlan ? 'Ajustar planejamento' : 'Planejar semana'}
+        </button>
+        <button type="button" className="streak-action-link" onClick={onOpenCalendar}>
+          Ver calendário <ArrowRightIcon size={14} />
+        </button>
+      </div>
     </section>
   )
 }

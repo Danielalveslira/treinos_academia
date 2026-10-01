@@ -1,5 +1,10 @@
 import { supabase } from '../supabase/config'
 import { deleteCurrentAccount } from './authService'
+import {
+  dayKeyInTimezone,
+  getDeviceTimezone,
+  normalizeTrainingPreferences,
+} from '../utils/trainingPlan'
 
 export const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 export const BIO_MAX_LENGTH = 300
@@ -22,6 +27,7 @@ export function mapUserRow(row) {
     avatarPath: row.avatar_path,
     usageProfile: row.usage_profile,
     accountStatus: row.account_status,
+    trainingPreferences: normalizeTrainingPreferences(row.training_preferences),
     disabledAt: row.disabled_at,
     disabledBy: row.disabled_by,
     disabledReason: row.disabled_reason,
@@ -33,6 +39,20 @@ export function mapUserRow(row) {
         }
       : null,
   }
+}
+
+export async function saveTrainingPreferences(preferences) {
+  const timezone = preferences.timezone || getDeviceTimezone()
+  const payload = {
+    plannedTrainingDays: preferences.plannedTrainingDays,
+    reminderEnabled: Boolean(preferences.reminderEnabled),
+    reminderTime: preferences.reminderEnabled ? preferences.reminderTime : null,
+    timezone,
+    effectiveFrom: dayKeyInTimezone(new Date(), timezone),
+  }
+  const { data, error } = await supabase.rpc('set_training_preferences', { payload })
+  if (error) throw error
+  return normalizeTrainingPreferences(data)
 }
 
 // userId é mantido nas assinaturas abaixo só por compatibilidade com os call sites
@@ -59,7 +79,13 @@ export async function updateUserProfile(userId, changes) {
   if (!Object.keys(payload).length) return {}
   const { data, error } = await supabase.rpc('update_user_profile', { payload })
   if (error) {
-    const KNOWN = ['BIO_TOO_LONG', 'INVALID_USERNAME', 'USERNAME_TAKEN', 'INVALID_PRIVACY', 'INVALID_HEIGHT']
+    const KNOWN = [
+      'BIO_TOO_LONG',
+      'INVALID_USERNAME',
+      'USERNAME_TAKEN',
+      'INVALID_PRIVACY',
+      'INVALID_HEIGHT',
+    ]
     throw new Error(KNOWN.find((code) => error.message?.includes(code)) || error.message)
   }
   return mapUserRow(data)
@@ -102,6 +128,7 @@ export async function setUsername(userId, rawUsername) {
   const username = rawUsername.trim().toLowerCase()
   if (!USERNAME_PATTERN.test(username)) throw new Error('INVALID_USERNAME')
   const { data, error } = await supabase.rpc('set_username', { p_username: username })
-  if (error) throw new Error(error.message?.includes('USERNAME_TAKEN') ? 'USERNAME_TAKEN' : error.message)
+  if (error)
+    throw new Error(error.message?.includes('USERNAME_TAKEN') ? 'USERNAME_TAKEN' : error.message)
   return data
 }

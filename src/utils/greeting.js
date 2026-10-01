@@ -42,7 +42,7 @@ function stableIndex(key, length) {
 // ("BOM DIA"/"BOA TARDE"/"BOA NOITE") e pós-treino ("TREINO CONCLUÍDO"), que repetiam a
 // mesma saudação do heading logo acima dela (ex.: "BOM DIA" + "Bom dia, fulano...").
 // Sempre a mesma, em qualquer estado — não é mais parte da variação por período/trained.
-export const IMPACT_EYEBROW = 'SEM PROGRESSÃO. SEM RESULTADOS.'
+export const IMPACT_EYEBROW = 'SEU RITMO, SUA EVOLUÇÃO'
 
 const TRAINED_MESSAGES = [
   (name) => `Treino de hoje concluído, ${name}. Boa.`,
@@ -55,27 +55,69 @@ const TRAINED_MESSAGES = [
 
 const PERIOD_MESSAGES = {
   morning: [
-    (name) => `Bom dia, ${name}. Pronto para treinar?`,
-    (name) => `Começando o dia treinando, ${name}?`,
+    (name) => `Bom dia, ${name}. Como você está hoje?`,
+    (name) => `Bom dia, ${name}. Seu espaço está pronto.`,
   ],
   afternoon: [
-    (name) => `Boa tarde, ${name}. Pronto para evoluir?`,
-    (name) => `Vamos treinar, ${name}?`,
+    (name) => `Boa tarde, ${name}. Continue no seu ritmo.`,
+    (name) => `Boa tarde, ${name}. Que bom ter você aqui.`,
   ],
   night: [
-    (name) => `Boa noite, ${name}. Ainda dá tempo de treinar.`,
-    (name) => `Fechar o dia com um treino, ${name}?`,
+    (name) => `Boa noite, ${name}. Como foi seu dia?`,
+    (name) => `Boa noite, ${name}. Seu progresso continua aqui.`,
   ],
 }
 
+const CONTEXT_MESSAGES = {
+  in_progress: [
+    (name) => `Seu treino está em andamento, ${name}.`,
+    () => 'Continue de onde parou.',
+  ],
+  planned: [
+    (name) => `Seu treino de hoje está pronto, ${name}.`,
+    () => 'Há um treino planejado para hoje.',
+  ],
+  planned_due: [
+    (name) => `Seu treino planejado está pronto, ${name}.`,
+    () => 'Este é seu horário preferido. Comece quando estiver pronto.',
+  ],
+  rest: [
+    (name) => `Hoje é dia de recuperação, ${name}.`,
+    () => 'Recuperar também faz parte do processo.',
+  ],
+  return: [(name) => `Bom ter você de volta, ${name}.`, () => 'Retome no seu ritmo.'],
+}
+
 // now: injetável para teste; em produção é sempre a hora local de verdade (new Date()).
-export function getDashboardGreeting({ firstName, workouts, now = new Date(), uid = '' }) {
-  const trainedToday = hasWorkoutOn(workouts, now)
+export function getDashboardGreeting({
+  firstName,
+  workouts = [],
+  todayState,
+  reminderDue = false,
+  daysSinceLastActivity = null,
+  now = new Date(),
+  uid = '',
+}) {
+  const trainedToday = todayState === 'completed' || (!todayState && hasWorkoutOn(workouts, now))
   const dayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`
 
   if (trainedToday) {
     const index = stableIndex(`${uid}:${dayKey}:trained`, TRAINED_MESSAGES.length)
     return { eyebrow: IMPACT_EYEBROW, heading: TRAINED_MESSAGES[index](firstName), trainedToday }
+  }
+
+  const context =
+    todayState === 'planned' && reminderDue
+      ? 'planned_due'
+      : todayState === 'in_progress' || todayState === 'planned' || todayState === 'rest'
+        ? todayState
+        : daysSinceLastActivity != null && daysSinceLastActivity >= 3
+          ? 'return'
+          : null
+  if (context) {
+    const messages = CONTEXT_MESSAGES[context]
+    const index = stableIndex(`${uid}:${dayKey}:${context}`, messages.length)
+    return { eyebrow: IMPACT_EYEBROW, heading: messages[index](firstName), trainedToday: false }
   }
 
   const messages = PERIOD_MESSAGES[periodOfDay(now.getHours())]
