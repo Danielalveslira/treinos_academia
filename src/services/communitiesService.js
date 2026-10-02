@@ -63,6 +63,16 @@ export async function getCommunity(communityId) {
   return data ? mapCommunityRow(data) : null
 }
 
+export async function getCommunitySummary(communityId) {
+  const { data, error } = await supabase
+    .from('communities')
+    .select('id,name,owner_id')
+    .eq('id', communityId)
+    .maybeSingle()
+  if (error) throw error
+  return data ? { id: data.id, name: data.name, ownerId: data.owner_id } : null
+}
+
 // Fase 5: comunidade OFICIAL criada pelo painel admin nasce DE PROPÓSITO sem owner_id
 // — continua administrada globalmente por is_superadmin(), nunca por um uid
 // específico. Só o privilégio pago (economia, ainda não portado) grava owner_id.

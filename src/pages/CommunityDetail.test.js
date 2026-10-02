@@ -247,7 +247,10 @@ test('o mesmo avatar público acompanha o autor no feed, nos destaques e nos tre
     statuses: [makeStatus('post-avatar', { authorId: 'author-2' })],
     authorAvatars: { 'author-1': 'profileAvatars/author-1/current.webp' },
   })
-  assert.equal((html.match(/data-avatar-path="profileAvatars\/author-1\/current.webp"/g) || []).length, 2)
+  assert.equal(
+    (html.match(/data-avatar-path="profileAvatars\/author-1\/current.webp"/g) || []).length,
+    2
+  )
   assert.match(html, /data-status-id="post-avatar" data-avatar-path=""/)
 })
 
@@ -312,12 +315,52 @@ test('treino compartilhado fora dos 20 primeiros continua visível e sem duplica
       workout: { title: `Treino ${index}`, date: new Date(Date.now() + (index + 1) * 60000) },
     })
   )
-  const sharedWorkout = makeStatus('workout-shared', {
+  const sharedStatus = makeStatus('workout-shared', {
     type: 'workout',
     workout: { title: 'Treino compartilhado', date: new Date(Date.now() + 86400000) },
   })
-  const html = render({ upcomingWorkouts, sharedWorkout })
+  const html = render({ upcomingWorkouts, sharedStatus })
   assert.match(html, /data-status-id="workout-shared"/)
   assert.equal((html.match(/data-status-id="workout-shared"/g) || []).length, 1)
   assert.equal((html.match(/test-status-card/g) || []).length, 21)
+})
+
+test('publicação comum de link fora da primeira página aparece uma vez em bloco próprio', () => {
+  const statuses = Array.from({ length: 30 }, (_, index) => makeStatus(`post-${index}`))
+  const sharedStatus = makeStatus('post-old', { type: 'text', text: 'Post antigo' })
+  const html = render({ statuses, sharedStatus })
+  assert.match(html, />Publicação do link</)
+  assert.equal((html.match(/data-status-id="post-old"/g) || []).length, 1)
+  assert.equal((html.match(/test-status-card/g) || []).length, 31)
+})
+
+test('publicação de link que já está no feed carregado não é duplicada', () => {
+  const statuses = [makeStatus('post-1'), makeStatus('post-2')]
+  const html = render({ statuses, sharedStatus: makeStatus('post-2') })
+  assert.doesNotMatch(html, />Publicação do link</)
+  assert.equal((html.match(/data-status-id="post-2"/g) || []).length, 1)
+})
+
+test('conquista, enquete e foto de link fora do feed usam o mesmo bloco, sem lógica por tipo', () => {
+  for (const type of ['achievement', 'poll', 'photo']) {
+    const html = render({ sharedStatus: makeStatus(`${type}-1`, { type }) })
+    assert.match(html, />Publicação do link</)
+    assert.match(html, new RegExp(`data-status-id="${type}-1"`))
+  }
+})
+
+test('treino de link já passado (comentários ainda abertos) aparece no bloco do link', () => {
+  const sharedStatus = makeStatus('workout-past', {
+    type: 'workout',
+    workout: { title: 'Treino de ontem', date: new Date(Date.now() - 3600000) },
+  })
+  const html = render({ sharedStatus })
+  assert.doesNotMatch(html, />Próximos treinos</)
+  assert.match(html, />Publicação do link</)
+  assert.equal((html.match(/data-status-id="workout-past"/g) || []).length, 1)
+})
+
+test('publicação inexistente ou removida (sem resultado) não renderiza bloco de link', () => {
+  const html = render({ statuses: [makeStatus('post-1')], sharedStatus: null })
+  assert.doesNotMatch(html, />Publicação do link</)
 })

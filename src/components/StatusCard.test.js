@@ -213,6 +213,25 @@ test('post normal continua mostrando Apoio/Negativo, com o rodapé de voto econ�
   assert.match(html, /Excluir publicação/)
 })
 
+test('comentários usam o mesmo ID canônico em todos os tipos de publicação', () => {
+  const statuses = [
+    makeTextStatus(),
+    makeWorkoutStatus(),
+    makePollStatus(),
+    { ...makeTextStatus(), type: 'achievement', achievement: null, text: undefined },
+    { ...makeTextStatus(), type: 'photo', photoPath: null, caption: 'Foto', text: undefined },
+  ]
+
+  for (const status of statuses) {
+    const html = render({ status })
+    assert.match(html, />Comentar</)
+    assert.match(
+      html,
+      new RegExp(`id="${status.type === 'workout' ? 'treino' : 'publicacao'}-${status.id}"`)
+    )
+  }
+})
+
 test('conquista mantém Apoio/Negativo', () => {
   const status = { ...makeTextStatus(), type: 'achievement', achievement: null }
   status.text = undefined

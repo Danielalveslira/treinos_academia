@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Box, Heading, Text, Button, Spinner, Link } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import {
@@ -33,7 +33,7 @@ import {
   createTextStatus,
   createPollStatus,
   createWorkoutStatus,
-  getSharedWorkout,
+  getSharedStatus,
 } from '../services/statusesService'
 import { describeQueryError } from '../utils/queryError'
 import { invalidateCommunitiesCache } from '../utils/pageCache'
@@ -49,7 +49,8 @@ import { ToastFlash } from '../components/ToastFlash'
 import { listFeaturedStatusesForCommunity } from '../services/promotionsService'
 import { toMillis } from '../utils/expiry.js'
 import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta'
-import { workoutIdFromHash } from '../utils/share'
+import { publicationIdFromHash } from '../utils/share'
+import { isStatusLoaded } from '../utils/sharedStatus'
 
 const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
 
@@ -72,7 +73,7 @@ export function CommunityFeedSection({
   bannerAds,
   feedAds,
   upcomingWorkouts = [],
-  sharedWorkout = null,
+  sharedStatus = null,
   loadingUpcomingWorkouts = false,
   upcomingWorkoutsError = null,
   featuredStatuses,
@@ -93,7 +94,10 @@ export function CommunityFeedSection({
   onPromoted,
 }) {
   const currentTime = toMillis(now) || Date.now()
-  const workoutCandidates = sharedWorkout ? [sharedWorkout, ...upcomingWorkouts] : upcomingWorkouts
+  // Publicação alvo de um link (resolvida por ID quando fora da 1ª página do feed): um treino
+  // futuro entra em "Próximos treinos"; qualquer outra (ou treino já passado) ganha bloco próprio.
+  const workoutCandidates =
+    sharedStatus?.type === 'workout' ? [sharedStatus, ...upcomingWorkouts] : upcomingWorkouts
   const visibleUpcomingWorkouts = workoutCandidates.filter(
     (status, index, items) =>
       toMillis(status.workout?.date) > currentTime &&
@@ -104,6 +108,16 @@ export function CommunityFeedSection({
     (status) => !upcomingWorkoutIds.has(status.id)
   )
   const visibleStatuses = statuses.filter((status) => !upcomingWorkoutIds.has(status.id))
+  const linkedStatus =
+    sharedStatus &&
+    !isStatusLoaded(
+      sharedStatus.id,
+      visibleUpcomingWorkouts,
+      visibleFeaturedStatuses,
+      visibleStatuses
+    )
+      ? sharedStatus
+      : null
 
   return (
     <>
@@ -183,6 +197,7 @@ export function CommunityFeedSection({
                 authorAvatarPath={authorAvatars[status.authorId]}
                 currentUserId={currentUserId}
                 canDelete={status.authorId === currentUserId || canModerate}
+                canModerate={canModerate}
                 onDelete={onDeleteStatus}
                 now={now}
                 communityName={communityName}
@@ -194,6 +209,33 @@ export function CommunityFeedSection({
                 }}
               />
             ))}
+          </div>
+        </Box>
+      )}
+
+      {linkedStatus && (
+        <Box as="section" className="community-feed-group community-linked-section">
+          <Heading as="h2">Publicação do link</Heading>
+          <div className="community-feed">
+            <StatusCard
+              status={linkedStatus}
+              authorAvatarPath={authorAvatars[linkedStatus.authorId]}
+              currentUserId={currentUserId}
+              canDelete={linkedStatus.authorId === currentUserId || canModerate}
+              canModerate={canModerate}
+              onDelete={onDeleteStatus}
+              now={now}
+              communityName={communityName}
+              showToast={showToast}
+              myEconomyVote={
+                votesByStatusId ? (votesByStatusId[linkedStatus.id] ?? null) : undefined
+              }
+              onEconomyVoted={(value, delta) => {
+                setVote(linkedStatus.id, value)
+                onEconomyVoted(linkedStatus.id, delta)
+              }}
+              onPromoted={onPromoted}
+            />
           </div>
         </Box>
       )}
@@ -215,6 +257,7 @@ export function CommunityFeedSection({
                 authorAvatarPath={authorAvatars[status.authorId]}
                 currentUserId={currentUserId}
                 canDelete={status.authorId === currentUserId || canModerate}
+                canModerate={canModerate}
                 onDelete={onDeleteStatus}
                 now={now}
                 communityName={communityName}
@@ -255,6 +298,7 @@ export function CommunityFeedSection({
             authorAvatarPath={authorAvatars[status.authorId]}
             currentUserId={currentUserId}
             canDelete={status.authorId === currentUserId || canModerate}
+            canModerate={canModerate}
             onDelete={onDeleteStatus}
             now={now}
             communityName={communityName}
@@ -283,8 +327,10 @@ function CommunityDetail({ id }) {
   const [membershipPending, setMembershipPending] = useState(false)
   const [loadingCommunity, setLoadingCommunity] = useState(true)
   const [communityError, setCommunityError] = useState(null)
-  const [sharedWorkout, setSharedWorkout] = useState(null)
-  const sharedWorkoutScrolled = useRef('')
+  const { hash } = useLocation()
+  const [sharedStatus, setSharedStatus] = useState(null)
+  const sharedStatusRequested = useRef('')
+  const sharedAnchorScrolled = useRef('')
   const [formOpen, setFormOpen] = useState(false)
   const [managing, setManaging] = useState(false)
 
@@ -319,15 +365,20 @@ function CommunityDetail({ id }) {
   // servidor por promotedUntil > agora (nunca limit() antes de tirar os expirados, ver
   // promotionsService.js) -- nunca lê promotions/{id} pra isto.
   const [featuredStatuses, setFeaturedStatuses] = useState([])
+  const [featuredLoaded, setFeaturedLoaded] = useState(false)
   const [promoteCommunityOpen, setPromoteCommunityOpen] = useState(false)
   useEffect(() => {
     if (!member) return
     let active = true
+    setFeaturedLoaded(false)
     listFeaturedStatusesForCommunity(id)
       .then((items) => {
         if (active) setFeaturedStatuses(items)
       })
       .catch((err) => console.error('[CommunityDetail] listFeaturedStatusesForCommunity:', err))
+      .finally(() => {
+        if (active) setFeaturedLoaded(true)
+      })
     return () => {
       active = false
     }
@@ -339,7 +390,7 @@ function CommunityDetail({ id }) {
   const statusIds = member
     ? [
         ...new Set(
-          [...statuses, ...featuredStatuses]
+          [...statuses, ...featuredStatuses, ...(sharedStatus ? [sharedStatus] : [])]
             .filter((status) => status.type !== 'poll' && status.type !== 'workout')
             .map((status) => status.id)
         ),
@@ -351,7 +402,7 @@ function CommunityDetail({ id }) {
     statuses,
     featuredStatuses,
     upcomingWorkouts,
-    sharedWorkout ? [sharedWorkout] : []
+    sharedStatus ? [sharedStatus] : []
   )
 
   // Um mesmo post pode aparecer duas vezes na tela (card normal em `statuses` + cópia
@@ -368,37 +419,42 @@ function CommunityDetail({ id }) {
     [refreshFeed, refreshUpcomingWorkouts]
   )
 
+  // Link para uma publicação (#treino-{id} / #publicacao-{id}): primeiro procura nas listas já
+  // carregadas; só se ela não estiver lá (fora da 1ª página do feed, expirada etc.) faz UMA
+  // leitura por ID canônico -- nunca carrega páginas anteriores nem o feed inteiro.
+  const sharedStatusId = publicationIdFromHash(hash)
   useEffect(() => {
-    setSharedWorkout(null)
-    if (!member || typeof window === 'undefined') return undefined
-    const statusId = workoutIdFromHash(window.location.hash)
-    if (!statusId) return undefined
+    setSharedStatus(null)
+    sharedStatusRequested.current = ''
+    sharedAnchorScrolled.current = ''
+  }, [id, sharedStatusId])
 
-    let active = true
-    getSharedWorkout(statusId, id)
+  const feedSettled = member && !loadingFeed && !loadingUpcomingWorkouts && featuredLoaded
+  useEffect(() => {
+    if (!feedSettled || !sharedStatusId) return
+    if (isStatusLoaded(sharedStatusId, statuses, featuredStatuses, upcomingWorkouts)) return
+    if (sharedStatusRequested.current === sharedStatusId) return
+
+    sharedStatusRequested.current = sharedStatusId
+    getSharedStatus(sharedStatusId, id)
       .then((status) => {
-        if (active) setSharedWorkout(status)
+        if (sharedStatusRequested.current === sharedStatusId) setSharedStatus(status)
       })
-      .catch((error) => {
-        if (active) console.error('[CommunityDetail] getSharedWorkout:', error)
-      })
-    return () => {
-      active = false
-    }
-  }, [id, member])
+      .catch((error) => console.error('[CommunityDetail] getSharedStatus:', error))
+  }, [feedSettled, sharedStatusId, id, statuses, featuredStatuses, upcomingWorkouts])
 
   useEffect(() => {
-    if (!member || typeof window === 'undefined') return undefined
-    const anchor = window.location.hash.slice(1)
-    if (!anchor.startsWith('treino-') || sharedWorkoutScrolled.current === anchor) return undefined
+    if (!member || !sharedStatusId) return undefined
+    const anchor = hash.slice(1)
+    if (sharedAnchorScrolled.current === anchor) return undefined
     const frame = window.requestAnimationFrame(() => {
       const element = document.getElementById(anchor)
       if (!element) return
-      sharedWorkoutScrolled.current = anchor
+      sharedAnchorScrolled.current = anchor
       element.scrollIntoView({ behavior: 'smooth', block: 'center' })
     })
     return () => window.cancelAnimationFrame(frame)
-  }, [member, sharedWorkout, upcomingWorkouts, featuredStatuses, statuses])
+  }, [member, hash, sharedStatusId, sharedStatus, upcomingWorkouts, featuredStatuses, statuses])
 
   const loadCommunity = useCallback(async () => {
     setLoadingCommunity(true)
@@ -611,7 +667,7 @@ function CommunityDetail({ id }) {
     try {
       await remove(status.id)
       setUpcomingWorkouts(upcomingWorkouts.filter((item) => item.id !== status.id))
-      setSharedWorkout((item) => (item?.id === status.id ? null : item))
+      setSharedStatus((item) => (item?.id === status.id ? null : item))
       setFeaturedStatuses((items) => items.filter((item) => item.id !== status.id))
       showToast('Publicação excluída.')
       return true
@@ -770,7 +826,7 @@ function CommunityDetail({ id }) {
               bannerAds={bannerAds}
               feedAds={feedAds}
               upcomingWorkouts={upcomingWorkouts}
-              sharedWorkout={sharedWorkout}
+              sharedStatus={sharedStatus}
               loadingUpcomingWorkouts={loadingUpcomingWorkouts}
               upcomingWorkoutsError={upcomingWorkoutsError}
               featuredStatuses={featuredStatuses}

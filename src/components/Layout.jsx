@@ -17,6 +17,8 @@ import { PageFallback } from './PageFallback'
 import { BrandMark } from './BrandMark'
 import { AccountMenu } from './AccountMenu'
 import { WalletHeaderBadges } from './WalletHeaderBadges'
+import { CommentNotifications } from '../features/comments/components/CommentNotifications'
+import { COMMENTS_ENABLED } from '../features/comments/config'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Início', icon: HomeIcon, end: true },
@@ -95,6 +97,7 @@ export function Layout() {
           <Navigation />
           <div className="header-actions">
             <WalletHeaderBadges />
+            {COMMENTS_ENABLED && <CommentNotifications />}
             <AccountMenu onLogout={logout} signingOut={signingOut} />
           </div>
         </div>

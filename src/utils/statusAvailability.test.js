@@ -28,3 +28,14 @@ test('an ended or unmarked promotion does not keep interactions active', () => {
     false
   )
 })
+
+test('a canonical comments close time keeps a scheduled workout interactive', () => {
+  const now = Date.now()
+  const status = {
+    expiresAt: new Date(now - 60_000),
+    commentsCloseAt: new Date(now + 60_000),
+    promoted: false,
+  }
+
+  assert.equal(isPublicationInteractionActive(status, now), true)
+})

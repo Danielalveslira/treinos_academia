@@ -11,10 +11,13 @@ export function buildWorkoutLink(communityId, statusId, origin = window.location
   return `${buildCommunityLink(communityId, origin)}#treino-${encodeURIComponent(statusId)}`
 }
 
-export function workoutIdFromHash(hash) {
-  if (typeof hash !== 'string' || !hash.startsWith('#treino-')) return null
+// Âncoras de card: #treino-{id} (Treino Marcado) e #publicacao-{id} (demais tipos).
+// Ambas carregam o mesmo ID canônico da publicação.
+export function publicationIdFromHash(hash) {
+  const match = typeof hash === 'string' ? /^#(?:treino|publicacao)-(.+)$/.exec(hash) : null
+  if (!match) return null
   try {
-    const statusId = decodeURIComponent(hash.slice('#treino-'.length))
+    const statusId = decodeURIComponent(match[1])
     return /^[A-Za-z0-9_-]{1,128}$/.test(statusId) ? statusId : null
   } catch {
     return null

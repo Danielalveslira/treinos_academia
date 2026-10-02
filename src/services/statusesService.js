@@ -7,6 +7,8 @@ const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
 // Um pouco acima de MAX_OUTPUT_BYTES (utils/imageCompression.js) só de folga — nunca
 // deveria ter um objeto maior que isso no bucket, pois ele recusa upload além desse teto.
 const MAX_PHOTO_DOWNLOAD_BYTES = 5 * 1024 * 1024
+const STATUS_SUMMARY_COLUMNS =
+  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,comments_close_at,promoted,promoted_until,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_caption'
 
 function expiresAtValue() {
   return new Date(Date.now() + STATUS_LIFETIME_MS).toISOString()
@@ -36,6 +38,7 @@ export function mapStatusRow(row) {
     type: row.type,
     createdAt: row.created_at,
     expiresAt: row.expires_at,
+    commentsCloseAt: row.comments_close_at,
     promoted: row.promoted,
     promotedUntil: row.promoted_until,
     activePromotionId: row.active_promotion_id,
@@ -44,6 +47,7 @@ export function mapStatusRow(row) {
     // fazia subir -- por isso "voltavam a zero" ao atualizar.
     positiveVoteCount: row.positive_vote_count ?? 0,
     negativeVoteCount: row.negative_vote_count ?? 0,
+    commentCount: row.comment_count ?? 0,
   }
   switch (row.type) {
     case 'text':
@@ -53,7 +57,11 @@ export function mapStatusRow(row) {
     case 'workout':
       return {
         ...base,
-        workout: { title: row.workout_title, date: row.workout_date, location: row.workout_location },
+        workout: {
+          title: row.workout_title,
+          date: row.workout_date,
+          location: row.workout_location,
+        },
       }
     case 'achievement':
       return {
@@ -278,15 +286,32 @@ export async function listUpcomingWorkouts(communityId, pageSize = UPCOMING_WORK
   return data.map(mapStatusRow)
 }
 
-// Resolve o alvo de um link #treino-{id} mesmo quando ficou fora do limite da consulta
-// acima. Sujeito à mesma policy de statuses/{id}: só membro da comunidade do próprio
-// status consegue lê-lo.
-export async function getSharedWorkout(statusId, communityId) {
-  const { data, error } = await supabase.from('statuses').select('*').eq('id', statusId).maybeSingle()
+// Resolve o alvo de um link #treino-{id} / #publicacao-{id} (qualquer tipo de publicação)
+// mesmo quando ficou fora da primeira página do feed: 1 leitura por ID canônico, sem
+// carregar páginas do feed. Sujeito à mesma policy de statuses/{id}: só membro da
+// comunidade do próprio status consegue lê-lo; inexistente/removida/de outra comunidade
+// devolve null.
+export async function getSharedStatus(statusId, communityId) {
+  const { data, error } = await supabase
+    .from('statuses')
+    .select('*')
+    .eq('id', statusId)
+    .eq('community_id', communityId)
+    .maybeSingle()
   if (error) throw error
-  if (!data) return null
-  const status = mapStatusRow(data)
-  return status.type === 'workout' && status.communityId === communityId ? status : null
+  return data ? mapStatusRow(data) : null
+}
+
+// Leitura pontual usada pelo contexto de comentário. Não carrega o feed nem relações
+// interativas (votos/participantes); retorna apenas os campos necessários ao resumo.
+export async function getStatusSummary(statusId) {
+  const { data, error } = await supabase
+    .from('statuses')
+    .select(STATUS_SUMMARY_COLUMNS)
+    .eq('id', statusId)
+    .maybeSingle()
+  if (error) throw error
+  return data ? mapStatusRow(data) : null
 }
 
 // "Ver participantes" -- via RPC list_workout_participants (security definer, fail-closed, só quem

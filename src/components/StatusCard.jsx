@@ -31,6 +31,8 @@ import { ShareMenu } from './ShareMenu'
 import { PromoteDialog } from './PromoteDialog'
 import { PromotedBadge } from './PromotedBadge'
 import { WorkoutParticipantsDialog } from './WorkoutParticipantsDialog'
+import { CommentSection } from '../features/comments/components/CommentSection'
+import { COMMENTS_ENABLED } from '../features/comments/config'
 import { formatDateTime } from '../utils/format'
 import { getCached, setCached } from '../utils/pageCache'
 import { isReportableAuthor } from '../utils/moderation'
@@ -458,6 +460,7 @@ export function StatusCard({
   onEconomyVoted,
   onPromoted,
   communityName,
+  canModerate = false,
 }) {
   const [promoteOpen, setPromoteOpen] = useState(false)
   const [actionError, setActionError] = useState('')
@@ -501,7 +504,7 @@ export function StatusCard({
   return (
     <article
       className={`status-card${status.type === 'workout' ? ' workout-status-card' : ''}`}
-      id={status.type === 'workout' ? `treino-${status.id}` : undefined}
+      id={status.type === 'workout' ? `treino-${status.id}` : `publicacao-${status.id}`}
     >
       <StatusHeader
         status={status}
@@ -564,6 +567,16 @@ export function StatusCard({
             interactionActive={interactionActive}
           />
         </div>
+      )}
+      {COMMENTS_ENABLED && (
+        <CommentSection
+          statusId={status.id}
+          communityId={status.communityId}
+          initialCount={status.commentCount}
+          currentUserId={currentUserId}
+          canModerate={canModerate}
+          allowWrite={interactionActive}
+        />
       )}
       {isReportableAuthor(status, currentUserId) && (
         <Link

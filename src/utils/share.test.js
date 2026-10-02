@@ -5,7 +5,7 @@ import {
   buildShareText,
   buildWorkoutLink,
   canShareNatively,
-  workoutIdFromHash,
+  publicationIdFromHash,
 } from './share.js'
 
 test('buildCommunityLink points to the public community route, nothing else', () => {
@@ -38,11 +38,14 @@ test('workout sharing points directly to the workout card without exposing inter
   assert.doesNotMatch(text, /statuses\//i)
 })
 
-test('workoutIdFromHash accepts only a safe workout anchor', () => {
-  assert.equal(workoutIdFromHash('#treino-workout_123'), 'workout_123')
-  assert.equal(workoutIdFromHash('#treino-workout%2F123'), null)
-  assert.equal(workoutIdFromHash('#outro-workout_123'), null)
-  assert.equal(workoutIdFromHash('#treino-'), null)
+test('publicationIdFromHash accepts only a safe publication anchor of any type', () => {
+  assert.equal(publicationIdFromHash('#treino-workout_123'), 'workout_123')
+  assert.equal(publicationIdFromHash('#publicacao-post_456'), 'post_456')
+  assert.equal(publicationIdFromHash('#treino-workout%2F123'), null)
+  assert.equal(publicationIdFromHash('#outro-workout_123'), null)
+  assert.equal(publicationIdFromHash('#treino-'), null)
+  assert.equal(publicationIdFromHash('#publicacao-'), null)
+  assert.equal(publicationIdFromHash(''), null)
 })
 
 test('canShareNatively reflects navigator.share availability', () => {

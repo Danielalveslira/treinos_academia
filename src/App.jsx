@@ -8,6 +8,7 @@ import { SuperAdminRoute } from './components/SuperAdminRoute'
 import { Layout } from './components/Layout'
 import { PageFallback } from './components/PageFallback'
 import { routeLoaders } from './routeLoaders'
+import { COMMENTS_ENABLED } from './features/comments/config'
 
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
@@ -38,6 +39,7 @@ const Professionals = lazy(() => import('./pages/Professionals'))
 const ProfessionalListing = lazy(() => import('./pages/ProfessionalListing'))
 const MyProfessionalListing = lazy(() => import('./pages/MyProfessionalListing'))
 const CreateCommunity = lazy(() => import('./pages/CreateCommunity'))
+const CommentContextPage = lazy(() => import('./features/comments/pages/CommentContextPage'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 
 export function AppRoutes() {
@@ -140,6 +142,12 @@ export function AppRoutes() {
         <Route path="/comunidades" element={<Communities />} />
         <Route path="/comunidades/perfil/:userId" element={<PublicProfile />} />
         <Route path="/comunidades/:id" element={<CommunityDetail />} />
+        {COMMENTS_ENABLED && (
+          <Route
+            path="/comunidades/:id/publicacoes/:statusId/comentarios/:commentId"
+            element={<CommentContextPage />}
+          />
+        )}
         <Route
           path="/admin/comunidades"
           element={

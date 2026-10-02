@@ -64,7 +64,7 @@ function EvidencePhoto({ evidencePath }) {
 const ACTIONS = {
   no_action: 'Responder sem penalidade',
   warning: 'Advertência',
-  remove_content: 'Remover publicação',
+  remove_content: 'Remover conteúdo',
   suspend_listing: 'Suspender vitrine',
   temporary_suspension: 'Suspensão temporária do sistema',
   community_ban: 'Banimento da comunidade',
