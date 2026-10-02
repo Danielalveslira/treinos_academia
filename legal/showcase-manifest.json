@@ -2,7 +2,7 @@
   "documentId": "showcase-publication-terms",
   "version": "1.1.0",
   "date": "2026-09-24",
-  "published": false,
+  "published": true,
   "changes": [
     "A publicação da Vitrine passa a ser direta pelo titular, sem aprovação administrativa prévia; moderação passa a acontecer depois, por denúncia, pelo mesmo canal de atendimento do restante do Evolutus.",
     "Nova seção 12 (Atualização destes Termos): uma nova versão nunca despublica, suspende ou bloqueia uma vitrine já publicada, nem impede criar, editar ou publicar; o sistema pode pedir confirmação de ciência, que nunca é condição para isso. Seção 11 ajustada para não descrever mais nenhum aceite como pré-condição de publicar.",
