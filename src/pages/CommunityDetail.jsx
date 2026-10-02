@@ -7,7 +7,7 @@ import {
   MegaphoneIcon,
   PlusIcon,
   PeopleIcon,
-  TrophyIcon,
+  GraphIcon,
   GearIcon,
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
@@ -29,7 +29,7 @@ import { CommunityForm } from '../components/CommunityForm'
 import { CommunityMembersModeration } from '../components/CommunityMembersModeration'
 import { canModerateCommunity } from '../utils/communityOwnership'
 import {
-  createAchievementStatus,
+  createPhotoStatus,
   createTextStatus,
   createPollStatus,
   createWorkoutStatus,
@@ -37,7 +37,7 @@ import {
 } from '../services/statusesService'
 import { describeQueryError } from '../utils/queryError'
 import { invalidateCommunitiesCache } from '../utils/pageCache'
-import { AchievementForm } from '../components/AchievementForm'
+import { CommunityProgressShare } from '../components/CommunityProgressShare'
 import { StatusForm } from '../components/StatusForm'
 import { StatusCard } from '../components/StatusCard'
 import { SponsoredAdCard } from '../components/SponsoredAdCard'
@@ -139,8 +139,8 @@ export function CommunityFeedSection({
                 >
                   Publicar
                 </Button>
-                <Button leadingVisual={TrophyIcon} onClick={() => setFormOpen('achievement')}>
-                  Conquista do dia
+                <Button leadingVisual={GraphIcon} onClick={() => setFormOpen('progress')}>
+                  Compartilhar progresso
                 </Button>
               </>
             )}
@@ -152,8 +152,8 @@ export function CommunityFeedSection({
           Somente o superadmin pode publicar nesta comunidade.
         </Text>
       )}
-      {canPost && formOpen === 'achievement' && (
-        <AchievementForm onSubmit={onCreateStatus} onCancel={() => setFormOpen(false)} />
+      {canPost && formOpen === 'progress' && (
+        <CommunityProgressShare onCreateStatus={onCreateStatus} onClose={() => setFormOpen(false)} />
       )}
       {canPost && formOpen === 'status' && (
         <StatusForm
@@ -561,16 +561,25 @@ function CommunityDetail({ id }) {
     const authorIsSuperAdmin = author.role === 'superadmin'
     const expiresAt = new Date(Date.now() + STATUS_LIFETIME_MS)
     try {
-      if (values.type === 'achievement') {
-        const ref = await createAchievementStatus(id, author, values.achievement)
+      if (values.type === 'progress') {
+        // Card de progresso = foto normal da comunidade (mesmo bucket/pipeline/policies) + metadado de progresso.
+        const { done } = await createPhotoStatus(id, author, {
+          blob: values.blob,
+          caption: values.caption,
+          progress: values.progress,
+        })
+        const ref = await done
         addStatusLocally({
           id: ref.id,
           communityId: id,
           authorId: author.id,
           authorUsername: author.username,
           authorIsSuperAdmin,
-          type: 'achievement',
-          achievement: values.achievement,
+          type: 'photo',
+          photoPath: `statusPhotos/${id}/${ref.id}.webp`,
+          caption: values.caption ? values.caption.trim() : '',
+          progress: values.progress,
+          _localPhotoBlob: values.blob,
           createdAt: new Date(),
           expiresAt,
         })
@@ -650,7 +659,7 @@ function CommunityDetail({ id }) {
         })
       }
       setFormOpen(false)
-      showToast('Publicado na comunidade.')
+      showToast(values.type === 'progress' ? 'Progresso publicado na comunidade.' : 'Publicado na comunidade.')
     } catch (err) {
       console.error('[CommunityDetail] createStatus:', err)
       showToast('Erro ao publicar.', 'danger')

@@ -82,7 +82,7 @@ test('"Semana perfeita" tab only exists when the week is 100% done', () => {
 test('preview is the same SVG that becomes the PNG: an <img> with the data URL and a descriptive alt', () => {
   const html = renderBody({ options: optionsWith([day('2026-10-02')]), env: { navigator: {} } })
   assert.match(html, /<img[^>]*src="data:image\/svg\+xml;charset=utf-8,/)
-  assert.match(html, /alt="Conquista do dia: treino concluído/)
+  assert.match(html, /alt="Treino do dia: treino concluído/)
   assert.match(html, /width="1080"/)
   assert.match(html, /height="1350"/)
 })
@@ -133,4 +133,49 @@ test('consistency card: "Compartilhar" only when the handler exists, alongside t
   assert.match(withShare, /Compartilhar/)
   assert.match(withShare, /Ver calendário/)
   assert.match(withShare, /Ajustar planejamento/)
+})
+
+// --- Comunidades: o MESMO seletor, em modo "Publicar na comunidade" ---------------------------------------------
+test('publish mode: same tabs and preview, optional message and "Publicar na comunidade" as the main action (no share/download)', () => {
+  const options = optionsWith([day('2026-10-02')])
+  const html = renderBody({
+    options,
+    onPublish: async () => {},
+    env: { navigator: { share() {} } },
+  })
+  const tabs = [...html.matchAll(/role="tab"[^>]*>([^<]+)</g)].map((m) => m[1])
+  assert.deepEqual(tabs, ['Dia', 'Semana', 'Mês', 'Trimestre'])
+  assert.match(html, />Publicar na comunidade</)
+  assert.match(html, /Mensagem \(opcional\)/)
+  assert.match(html, /<textarea[^>]*maxLength="280"|<textarea[^>]*maxlength="280"/i)
+  assert.match(html, /<img[^>]*src="data:image\/svg\+xml/)
+  assert.doesNotMatch(html, />Compartilhar</)
+  assert.doesNotMatch(html, />Baixar imagem</)
+  assert.doesNotMatch(html, /Conquista do dia|Sua conquista de hoje/)
+})
+
+test('publish mode never offers a variant the user has not earned (no "Dia" without a workout, no invalid perfect week)', () => {
+  const html = renderBody({
+    options: optionsWith([]),
+    onPublish: async () => {},
+    env: { navigator: {} },
+  })
+  const tabs = [...html.matchAll(/role="tab"[^>]*>([^<]+)</g)].map((m) => m[1])
+  assert.deepEqual(tabs, ['Semana', 'Mês', 'Trimestre'])
+})
+
+test('publish mode custom label is supported and the Home mode is unchanged without onPublish', () => {
+  const options = optionsWith([day('2026-10-02')])
+  assert.match(
+    renderBody({
+      options,
+      onPublish: async () => {},
+      publishLabel: 'Postar',
+      env: { navigator: {} },
+    }),
+    />Postar</
+  )
+  const home = renderBody({ options, env: { navigator: { share() {} } } })
+  assert.match(home, />Compartilhar</)
+  assert.doesNotMatch(home, /Publicar na comunidade/)
 })

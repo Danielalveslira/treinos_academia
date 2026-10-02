@@ -73,7 +73,7 @@ export function StreakCard({
         </button>
         {onShare && (
           <button type="button" className="streak-action-link" onClick={onShare}>
-            <ShareIcon size={14} /> Compartilhar
+            <ShareIcon size={14} /> Compartilhar progresso
           </button>
         )}
         <button type="button" className="streak-action-link" onClick={onOpenCalendar}>

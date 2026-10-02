@@ -9,11 +9,11 @@ export function AchievementSummary({ achievement }) {
   if (!hasRecords && !hasText) return null
 
   return (
-    <section className="achievement-summary" aria-label="Conquista do dia">
+    <section className="achievement-summary" aria-label="Conquista">
       <div className="achievement-heading">
         <span className="achievement-title">
           <TrophyIcon size={16} />
-          Conquista do dia
+          Conquista
         </span>
         <time dateTime={achievement.day}>
           {formatDate(new Date(`${achievement.day}T12:00:00`))}

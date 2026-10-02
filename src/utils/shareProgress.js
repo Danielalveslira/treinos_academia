@@ -184,8 +184,9 @@ function dailyModel({ days, now, consistency }) {
     metrics.push({ label: exercises === 1 ? 'exercício' : 'exercícios', value: String(exercises) })
   return {
     variant: 'daily',
-    eyebrow: 'Conquista do dia',
+    eyebrow: 'Treino do dia',
     title: 'Treino concluído',
+    period: { start: localDayKey(now), end: localDayKey(now) },
     subtitle: formatLongDate(now),
     grid: {
       kind: 'row',
@@ -197,7 +198,7 @@ function dailyModel({ days, now, consistency }) {
       ],
     },
     metrics,
-    alt: `Conquista do dia: treino concluído em ${formatLongDate(now)}`,
+    alt: `Treino do dia: treino concluído em ${formatLongDate(now)}`,
   }
 }
 
@@ -214,6 +215,7 @@ function perfectWeekModel({ perfect, consistency }) {
     variant: 'perfect_week',
     eyebrow: 'Semana perfeita',
     title: '100% do plano',
+    period: { start: localDayKey(perfect.range.start), end: localDayKey(perfect.range.end) },
     subtitle: formatRange(perfect.range.start, perfect.range.end),
     grid: {
       kind: 'row',
@@ -252,6 +254,7 @@ function weekModel({ progressDays, preferences, consistency, now }) {
     variant: 'week',
     eyebrow: 'Minha semana',
     title: formatRange(range.start, range.end),
+    period: { start: localDayKey(range.start), end: localDayKey(range.end) },
     subtitle: null,
     grid: {
       kind: 'row',
@@ -271,6 +274,7 @@ function monthModel({ progressDays, preferences, now }) {
   return {
     variant: 'month',
     eyebrow: 'Resumo mensal',
+    period: { start: localDayKey(range.start), end: localDayKey(range.end) },
     title: `${MONTH_NAMES[now.getMonth()][0].toUpperCase()}${MONTH_NAMES[now.getMonth()].slice(1)}`,
     subtitle: String(now.getFullYear()),
     grid: {
@@ -311,6 +315,7 @@ function quarterModel({ progressDays, preferences, now }) {
   return {
     variant: 'quarter',
     eyebrow: 'Resumo trimestral',
+    period: { start: localDayKey(range.start), end: localDayKey(range.end) },
     title: `${quarter}º trimestre`,
     subtitle: String(now.getFullYear()),
     grid: {
@@ -327,6 +332,20 @@ function quarterModel({ progressDays, preferences, now }) {
       { label: 'melhor sequência', value: String(summary.longestRun) },
     ],
     alt: `Resumo do ${quarter}º trimestre: ${plural(summary.activeDays, 'dia treinado', 'dias treinados')}`,
+  }
+}
+
+export const CAPTION_MAX_LENGTH = 280
+
+// Metadado que acompanha o card quando ele é PUBLICADO numa comunidade (a imagem em si vai pelo pipeline de fotos).
+// kind = variante do card; período em dias locais (YYYY-MM-DD). Mensagem opcional, aparada e limitada ao tamanho da
+// legenda das fotos.
+export function buildProgressPayload(model, caption = '') {
+  return {
+    caption: String(caption ?? '')
+      .trim()
+      .slice(0, CAPTION_MAX_LENGTH),
+    progress: { kind: model.variant, periodStart: model.period.start, periodEnd: model.period.end },
   }
 }
 

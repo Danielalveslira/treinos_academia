@@ -4555,3 +4555,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .share-progress-actions { grid-template-columns: 1fr 1fr; }
   .share-progress-tabs { justify-content: center; }
 }
+
+/* Card de progresso no feed (foto + metadado): rótulo discreto acima da imagem */
+.status-progress-tag { display: inline-flex; align-items: center; gap: 5px; margin: 0 0 8px; color: var(--fgColor-muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.status-progress-tag svg { color: var(--fitness-accent); }

@@ -1,5 +1,5 @@
 import { Box, Spinner, Text, Link as PrimerLink } from '@primer/react'
-import { AlertIcon, ImageIcon } from '@primer/octicons-react'
+import { AlertIcon, GraphIcon, ImageIcon } from '@primer/octicons-react'
 import { useStatusPhoto } from '../hooks/useStatusPhoto'
 
 export function PhotoStatus({ status, preloadedBlob }) {
@@ -7,11 +7,19 @@ export function PhotoStatus({ status, preloadedBlob }) {
 
   return (
     <Box>
+      {status.progress && (
+        <Text as="span" className="status-progress-tag">
+          <GraphIcon size={12} /> Progresso
+        </Text>
+      )}
       <Box className="status-photo" aria-busy={loading}>
         {url && (
           <img
             src={url}
-            alt={status.caption?.trim() || 'Foto publicada na comunidade'}
+            alt={
+              status.caption?.trim() ||
+              (status.progress ? 'Card de progresso' : 'Foto publicada na comunidade')
+            }
             loading="lazy"
             decoding="async"
           />

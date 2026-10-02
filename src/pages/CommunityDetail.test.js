@@ -9,7 +9,7 @@ import { build } from 'esbuild'
 // Testa só a composição/ordem da view pura (CommunityFeedSection), com props diretas --
 // mesmo espírito de WalletHeaderBadgesView/PromoteDialogBody: sem precisar montar
 // useCommunityFeed/useSponsoredAds/Supabase de verdade. StatusCard, SponsoredAdCard,
-// SponsoredAdBanner, AchievementForm, StatusForm e ErrorState são substituídos por
+// SponsoredAdBanner, CommunityProgressShare, StatusForm e ErrorState são substituídos por
 // marcadores mínimos -- a lógica interna deles já é responsabilidade de cada um, aqui só
 // interessa ONDE CommunityFeedSection decide colocar cada bloco. Box/Heading/Text/Button/
 // Spinner/Blankslate (Primer) continuam reais, como em SuperAdminRoute.test.js.
@@ -80,7 +80,7 @@ before(async () => {
           stub(/\/components\/StatusCard$/, 'status-card-stub')
           stub(/\/components\/SponsoredAdCard$/, 'ad-card-stub')
           stub(/\/components\/SponsoredAdBanner$/, 'ad-banner-stub')
-          stub(/\/components\/AchievementForm$/, 'achievement-form-stub')
+          stub(/\/components\/CommunityProgressShare$/, 'progress-share-stub')
           stub(/\/components\/StatusForm$/, 'status-form-stub')
           stub(/\/components\/ErrorState$/, 'error-state-stub')
           // resolveDir aqui é obrigatório: um módulo virtual (namespace custom) não herda
@@ -115,8 +115,12 @@ before(async () => {
               }
             `,
           }))
-          pluginBuild.onLoad({ filter: /.*/, namespace: 'achievement-form-stub' }, () => ({
-            contents: `export function AchievementForm() { return null }`,
+          pluginBuild.onLoad({ filter: /.*/, namespace: 'progress-share-stub' }, () => ({
+            resolveDir: projectRoot,
+            contents: `
+              import { createElement } from 'react'
+              export function CommunityProgressShare() { return createElement('div', { className: 'test-progress-share' }, 'seletor-de-progresso') }
+            `,
           }))
           pluginBuild.onLoad({ filter: /.*/, namespace: 'status-form-stub' }, () => ({
             contents: `export function StatusForm() { return null }`,
@@ -363,4 +367,23 @@ test('treino de link já passado (comentários ainda abertos) aparece no bloco d
 test('publicação inexistente ou removida (sem resultado) não renderiza bloco de link', () => {
   const html = render({ statuses: [makeStatus('post-1')], sharedStatus: null })
   assert.doesNotMatch(html, />Publicação do link</)
+})
+
+test('a ação da comunidade é "Compartilhar progresso" (genérica, sem "Conquista do dia"), logo depois de Publicar', () => {
+  const html = render({ statuses: [], featuredStatuses: [] })
+  order(html, '>Publicar<', '>Compartilhar progresso<')
+  assert.doesNotMatch(html, /Conquista do dia|Sua conquista de hoje|Compartilhar conquista/)
+  assert.doesNotMatch(html, /test-progress-share/)
+})
+
+test('formOpen = "progress" abre o MESMO seletor de progresso (CommunityProgressShare) e esconde a toolbar', () => {
+  const html = render({ formOpen: 'progress' })
+  assert.match(html, /test-progress-share/)
+  assert.doesNotMatch(html, />Compartilhar progresso</)
+})
+
+test('quem não pode publicar na comunidade não vê "Compartilhar progresso" nem o seletor', () => {
+  const html = render({ canPost: false, formOpen: 'progress' })
+  assert.doesNotMatch(html, />Compartilhar progresso</)
+  assert.doesNotMatch(html, /test-progress-share/)
 })

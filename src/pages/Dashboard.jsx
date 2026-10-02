@@ -21,20 +21,12 @@ import { ActivityCalendarDialog } from '../components/ActivityCalendarDialog'
 import { ShareProgressDialog } from '../components/ShareProgressDialog'
 import { buildShareOptions } from '../utils/shareProgress'
 import { TrainingPlanDialog } from '../components/TrainingPlanDialog'
-import {
-  buildActivityDays,
-  calculateConsistency,
-  dateFromKey,
-  localDayKey,
-} from '../utils/activityCalendar'
+import { dateFromKey, localDayKey } from '../utils/activityCalendar'
+import { buildConsistencySnapshot } from '../utils/consistencySnapshot'
 import { ErrorState } from '../components/ErrorState'
 import { ProfessionalsDiscovery } from '../components/ProfessionalsDiscovery'
 import { saveTrainingPreferences } from '../services/usersService'
-import {
-  buildWeeklyPlanDays,
-  isPreferredReminderDue,
-  normalizeTrainingPreferences,
-} from '../utils/trainingPlan'
+import { isPreferredReminderDue, normalizeTrainingPreferences } from '../utils/trainingPlan'
 
 function getVolumeTrend(days) {
   const now = new Date()
@@ -72,24 +64,10 @@ export default function Dashboard() {
     () => normalizeTrainingPreferences(profile?.trainingPreferences),
     [profile?.trainingPreferences]
   )
-  const plannedDays = useMemo(() => buildWeeklyPlanDays(trainingPreferences), [trainingPreferences])
-  const activityDays = useMemo(
-    () => buildActivityDays(progressDays, { plannedDays }),
-    [plannedDays, progressDays]
+  const { activityDays, consistency } = useMemo(
+    () => buildConsistencySnapshot(progressDays, trainingPreferences),
+    [progressDays, trainingPreferences]
   )
-  const consistency = useMemo(() => {
-    const now = new Date()
-    const timeline = buildActivityDays(progressDays, {
-      now,
-      plannedDays: buildWeeklyPlanDays(trainingPreferences, {
-        now,
-        startDate: new Date(now.getFullYear() - 1, 11, 1, 12),
-      }),
-      startDate: new Date(now.getFullYear() - 1, 11, 1, 12),
-    })
-    const annual = calculateConsistency(activityDays, now)
-    return { ...annual, current: calculateConsistency(timeline, now).current }
-  }, [activityDays, progressDays, trainingPreferences])
   // Só calcula quando o modal abre, a partir do que a Home já carregou (nenhuma consulta nova).
   const shareOptions = useMemo(
     () =>

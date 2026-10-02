@@ -13,10 +13,11 @@ function loadImage(url, env) {
   })
 }
 
-// scale 1 = 1080x1350. Dispositivos fracos não sofrem: um único drawImage.
-export async function renderSvgToPngBlob(
+// 1080x1350. Dispositivos fracos não sofrem: um único drawImage. PNG para compartilhar/baixar; WebP para
+// publicar (o bucket de fotos das comunidades só aceita image/webp, até 4MB -- o mesmo pipeline das fotos).
+export async function renderSvgToBlob(
   svg,
-  { width = SHARE_WIDTH, height = SHARE_HEIGHT } = {},
+  { width = SHARE_WIDTH, height = SHARE_HEIGHT, type = 'image/png', quality } = {},
   env = globalThis
 ) {
   const image = await loadImage(svgToDataUrl(svg), env)
@@ -26,8 +27,26 @@ export async function renderSvgToPngBlob(
   const context = canvas.getContext('2d')
   if (!context) throw new Error('CANVAS_UNAVAILABLE')
   context.drawImage(image, 0, 0, width, height)
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, type, quality))
   if (!blob) throw new Error('PNG_ENCODE_FAILED')
+  // Navegadores sem encoder do formato pedido devolvem PNG: falha explícita em vez de enviar o tipo errado.
+  if (blob.type && blob.type !== type) throw new Error('IMAGE_TYPE_UNSUPPORTED')
+  return blob
+}
+
+export function renderSvgToPngBlob(svg, options = {}, env = globalThis) {
+  return renderSvgToBlob(svg, { ...options, type: 'image/png' }, env)
+}
+
+export const MAX_PUBLISH_BYTES = 4 * 1024 * 1024
+
+// Card como WebP pronto para o Storage das publicações. Tenta qualidade alta e cai para uma menor se passar do teto.
+export async function renderSvgToPublishBlob(svg, env = globalThis) {
+  let blob = await renderSvgToBlob(svg, { type: 'image/webp', quality: 0.92 }, env)
+  if (blob.size > MAX_PUBLISH_BYTES) {
+    blob = await renderSvgToBlob(svg, { type: 'image/webp', quality: 0.75 }, env)
+  }
+  if (blob.size > MAX_PUBLISH_BYTES) throw new Error('IMAGE_TOO_LARGE')
   return blob
 }
 

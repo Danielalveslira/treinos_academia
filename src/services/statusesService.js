@@ -1,5 +1,4 @@
 import { supabase } from '../supabase/config'
-import { validateAchievement } from '../utils/achievements'
 
 const FEED_PAGE_SIZE = 30
 const UPCOMING_WORKOUTS_PAGE_SIZE = 20
@@ -8,7 +7,7 @@ const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
 // deveria ter um objeto maior que isso no bucket, pois ele recusa upload além desse teto.
 const MAX_PHOTO_DOWNLOAD_BYTES = 5 * 1024 * 1024
 const STATUS_SUMMARY_COLUMNS =
-  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,comments_close_at,promoted,promoted_until,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_caption'
+  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,comments_close_at,promoted,promoted_until,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_caption,progress_kind,progress_period_start,progress_period_end'
 
 function expiresAtValue() {
   return new Date(Date.now() + STATUS_LIFETIME_MS).toISOString()
@@ -74,7 +73,19 @@ export function mapStatusRow(row) {
         },
       }
     case 'photo':
-      return { ...base, photoPath: row.photo_path, caption: row.photo_caption }
+      return {
+        ...base,
+        photoPath: row.photo_path,
+        caption: row.photo_caption,
+        // Card de progresso compartilhado (foto + metadado): null para fotos comuns.
+        progress: row.progress_kind
+          ? {
+              kind: row.progress_kind,
+              periodStart: row.progress_period_start,
+              periodEnd: row.progress_period_end,
+            }
+          : null,
+      }
     default:
       return base
   }
@@ -168,7 +179,12 @@ async function uploadWithProgress(objectPath, blob, { onProgress, signal } = {})
 // só precisa consultar esse registro para autorizar os bytes. Se o envio falhar ou for
 // cancelado, removemos o registro; o gatilho de exclusão e a varredura de órfãos
 // (ainda não portada) continuam sendo a rede de segurança para falhas de rede.
-export async function createPhotoStatus(communityId, author, { blob, caption }, { onProgress } = {}) {
+export async function createPhotoStatus(
+  communityId,
+  author,
+  { blob, caption, progress = null },
+  { onProgress } = {}
+) {
   const statusId = crypto.randomUUID()
   const photoPath = `statusPhotos/${communityId}/${statusId}.webp`
   const objectPath = `${communityId}/${statusId}.webp`
@@ -178,6 +194,13 @@ export async function createPhotoStatus(communityId, author, { blob, caption }, 
     ...baseStatusFields(communityId, author, 'photo'),
     photo_path: photoPath,
     photo_caption: caption ? caption.trim() : '',
+    ...(progress
+      ? {
+          progress_kind: progress.kind,
+          progress_period_start: progress.periodStart,
+          progress_period_end: progress.periodEnd,
+        }
+      : {}),
   })
   if (insertError) throw insertError
 
@@ -328,22 +351,4 @@ export async function listWorkoutParticipants(statusId, { cursor = null, limit =
   })
   if (error) throw error
   return { participants: data?.participants ?? [], nextCursor: data?.nextCursor ?? null }
-}
-
-export async function createAchievementStatus(communityId, author, values) {
-  const error = validateAchievement(values)
-  if (error) throw new Error(error)
-  const { data, error: insertError } = await supabase
-    .from('statuses')
-    .insert({
-      ...baseStatusFields(communityId, author, 'achievement'),
-      achievement_day: values.day,
-      achievement_text: values.text.trim(),
-      achievement_entries: values.entries,
-      achievement_sets: values.sets,
-    })
-    .select('id')
-    .single()
-  if (insertError) throw insertError
-  return data
 }

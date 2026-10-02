@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   SHARE_VARIANTS,
+  buildProgressPayload,
   buildShareOptions,
   evaluatePerfectWeek,
   getMonthRange,
@@ -134,7 +135,7 @@ test('daily card: only shows when today is completed and carries streak, workout
     now: FRIDAY,
   })
   const daily = optionFor(options, 'daily')
-  assert.equal(daily.eyebrow, 'Conquista do dia')
+  assert.equal(daily.eyebrow, 'Treino do dia')
   assert.deepEqual(
     daily.metrics.map((m) => `${m.value} ${m.label}`),
     ['12 dias seguidos', '2 treinos', '3 exercícios']
@@ -244,4 +245,37 @@ test('malformed progress rows (null, missing dateKey, zero workouts, string coun
   })
   assert.ok(options.length >= 3)
   assert.equal(optionFor(options, 'daily').metrics[1].value, '2')
+})
+
+test('publish payload carries kind, period and a trimmed/limited message for every variant', () => {
+  const all = buildShareOptions({
+    progressDays: [day('2026-09-28'), day('2026-09-30'), day('2026-10-02')],
+    preferences: PLAN,
+    consistency,
+    now: FRIDAY,
+  })
+  for (const model of all) {
+    const payload = buildProgressPayload(model, '  Semana concluída 💪  ')
+    assert.equal(payload.caption, 'Semana concluída 💪')
+    assert.equal(payload.progress.kind, model.variant)
+    assert.match(payload.progress.periodStart, /^\d{4}-\d{2}-\d{2}$/)
+    assert.equal(payload.progress.periodStart <= payload.progress.periodEnd, true)
+  }
+  const week = all.find((o) => o.variant === 'week')
+  assert.deepEqual(buildProgressPayload(week).progress, {
+    kind: 'week',
+    periodStart: '2026-09-28',
+    periodEnd: '2026-10-04',
+  })
+  assert.equal(buildProgressPayload(week).caption, '')
+  assert.equal(buildProgressPayload(week, 'x'.repeat(400)).caption.length, 280)
+  assert.equal(buildProgressPayload(week, null).caption, '')
+  assert.deepEqual(
+    buildProgressPayload(all.find((o) => o.variant === 'daily')).progress.periodStart,
+    '2026-10-02'
+  )
+  const month = all.find((o) => o.variant === 'month').period
+  assert.deepEqual([month.start, month.end], ['2026-10-01', '2026-10-31'])
+  const quarter = all.find((o) => o.variant === 'quarter').period
+  assert.deepEqual([quarter.start, quarter.end], ['2026-10-01', '2026-12-31'])
 })
