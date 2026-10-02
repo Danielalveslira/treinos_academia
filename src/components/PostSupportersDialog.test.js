@@ -78,9 +78,9 @@ after(async () => {
   if (directory) await rm(directory, { recursive: true, force: true })
 })
 
-const alice = { userId: 'alice-uid', username: 'alice_v', avatarPath: null }
-const bob = { userId: 'bob-uid', username: 'bob_v', avatarPath: null }
-const cris = { userId: 'cris-uid', username: 'cris_v', avatarPath: null }
+const alice = { userId: 'alice-uid', username: 'alice_v' }
+const bob = { userId: 'bob-uid', username: 'bob_v' }
+const cris = { userId: 'cris-uid', username: 'cris_v' }
 
 test('the initial state has nothing loaded, no cursor and no error', () => {
   assert.deepEqual(initialSupportersDialogState(), {
@@ -182,7 +182,7 @@ test('SupporterRow shows @username and links to that exact public profile', () =
 })
 
 test('SupporterRow falls back to "Membro" when there is no public username', () => {
-  const html = renderRow({ userId: 'ghost-uid', username: null, avatarPath: null })
+  const html = renderRow({ userId: 'ghost-uid', username: null })
   assert.match(html, /Membro/)
   assert.match(html, /href="\/comunidades\/perfil\/ghost-uid"/)
 })
@@ -206,4 +206,28 @@ test('copy says "curtidas"/"Quem curtiu" and never "apoio"', () => {
   assert.match(source, /title="Quem curtiu"/)
   assert.match(source, /Ninguém curtiu ainda\./)
   assert.doesNotMatch(source.replace(/\/\/.*$/gm, ''), /apoiou|apoios|apoio\b|Ninguém apoiou/)
+})
+
+// "Quem curtiu" é só texto: @usuario com link. Nada de avatar, placeholder ou espaço reservado para imagem.
+test('SupporterRow renders ONLY the @username link: no image, no avatar, no placeholder', () => {
+  const html = renderRow(alice)
+  assert.doesNotMatch(html, /<img|<svg|profile-avatar|avatar/i)
+  const links = html.match(/<a\b/g) || []
+  assert.equal(links.length, 1)
+  assert.equal(html.replace(/<[^>]*>/g, '').trim(), '@alice_v')
+})
+
+test('a supporter without username shows only "Membro" (still just text, still a profile link)', () => {
+  const html = renderRow({ userId: 'ghost-uid', username: null })
+  assert.equal(html.replace(/<[^>]*>/g, '').trim(), 'Membro')
+  assert.match(html, /href="\/comunidades\/perfil\/ghost-uid"/)
+  assert.doesNotMatch(html, /<img|<svg/)
+})
+
+test('the dialog source and the service no longer know avatars (data minimization: only userId and username)', () => {
+  const dialog = readFileSync(new URL('./PostSupportersDialog.jsx', import.meta.url), 'utf8')
+  const service = readFileSync(new URL('../services/economyService.js', import.meta.url), 'utf8')
+  const strip = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+  assert.doesNotMatch(strip(dialog), /ProfileAvatar|avatarPath|avatar_path/)
+  assert.doesNotMatch(strip(service), /avatarPath|avatar_path/)
 })

@@ -42,13 +42,6 @@ async function bundle() {
             path: args.path,
             namespace: 'fixture',
           }))
-          pluginBuild.onResolve({ filter: /\/services\/profileAvatarService$/ }, (args) => ({
-            path: args.path,
-            namespace: 'fixture-avatar',
-          }))
-          pluginBuild.onLoad({ filter: /.*/, namespace: 'fixture-avatar' }, () => ({
-            contents: 'export const loadAvatarBytes = async () => new Uint8Array()',
-          }))
           pluginBuild.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({
             contents: `
               export const castVote = async () => ({ voted: true, action: 'create', charged: true, costCoins: 3 })
