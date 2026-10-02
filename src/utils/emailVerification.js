@@ -1,3 +1,5 @@
+import { toDate } from './date.js'
+
 // Data de corte: só contas cujo perfil foi criado a partir daqui exigem e-mail
 // verificado para acessar o sistema (ver EmailVerificationGate.jsx). Decisão de produto:
 // não é retroativo — quem já tinha conta antes dessa mudança continua entrando
@@ -11,6 +13,6 @@
 export const EMAIL_VERIFICATION_CUTOFF = new Date('2026-09-11T14:15:00Z') // 1789136100000
 
 export function requiresEmailVerification(profile) {
-  const createdAt = profile?.createdAt?.toDate ? profile.createdAt.toDate() : null
+  const createdAt = toDate(profile?.createdAt)
   return !!createdAt && createdAt >= EMAIL_VERIFICATION_CUTOFF
 }

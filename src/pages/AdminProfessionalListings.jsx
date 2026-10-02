@@ -21,6 +21,7 @@ import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { adminGetProfessionalListing } from '../services/professionalListingsService'
 import { LISTING_KIND_OPTIONS, optionLabel } from '../constants/professionalListingTaxonomy'
+import { toDate } from '../utils/date'
 import { formatDateTime } from '../utils/format'
 
 const STATE_OPTIONS = [
@@ -37,10 +38,6 @@ const STATE_LABELS = {
   archived: { text: 'Despublicada', variant: 'secondary' },
   suspended: { text: 'Suspensa', variant: 'danger' },
   deleting: { text: 'Em exclusão', variant: 'danger' },
-}
-
-function toDate(value) {
-  return value ? new Date(value) : null
 }
 
 function actionError(error, fallback) {

@@ -36,6 +36,16 @@ export default function PublicProfile() {
   }, [userId, attempt])
   const ready = result?.userId === userId && result?.attempt === attempt
   return (
+    <PublicProfileView ready={ready} result={result} onRetry={() => setAttempt((n) => n + 1)} />
+  )
+}
+
+// Apresentação pura (sem efeitos/dados): recebe o resultado já carregado -- isolada para ser testada com
+// perfil ausente, username/avatar nulos e estatísticas com updatedAt em string ISO (timestamptz do
+// Supabase). Nunca assume que o perfil existe: a conta pode ter sido excluída ou nunca ter criado o
+// perfil público ("Perfil ainda indisponível"), e username nulo vira "Membro".
+export function PublicProfileView({ ready, result, onRetry }) {
+  return (
     <div className="profile-page">
       <Link className="profile-back" to="/comunidades">
         <ChevronLeftIcon /> Comunidades
@@ -45,7 +55,7 @@ export default function PublicProfile() {
       ) : result.error ? (
         <Flash variant="danger">
           Não foi possível carregar o perfil.{' '}
-          <Button onClick={() => setAttempt((n) => n + 1)}>Tentar novamente</Button>
+          <Button onClick={() => onRetry()}>Tentar novamente</Button>
         </Flash>
       ) : !result.profile ? (
         <section className="profile-card profile-empty">
@@ -83,7 +93,7 @@ export default function PublicProfile() {
             ) : result.statisticsError ? (
               <Flash variant="warning">
                 Estatísticas indisponíveis. A privacidade pode ter mudado.{' '}
-                <Button onClick={() => setAttempt((n) => n + 1)}>Atualizar</Button>
+                <Button onClick={() => onRetry()}>Atualizar</Button>
               </Flash>
             ) : !result.statistics ? (
               <p>Nenhum resumo compartilhado ainda.</p>
@@ -99,7 +109,7 @@ export default function PublicProfile() {
                     <dd>{result.statistics.sets.toLocaleString('pt-BR')}</dd>
                   </div>
                 </dl>
-                <p>Atualizado em {formatDateTime(result.statistics.updatedAt?.toDate())}</p>
+                <p>Atualizado em {formatDateTime(result.statistics.updatedAt)}</p>
               </>
             )}
           </section>

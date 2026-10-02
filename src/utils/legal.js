@@ -1,3 +1,4 @@
+import { toMillis } from './date.js'
 import manifest from '../../legal/manifest.json' with { type: 'json' }
 import documents from '../../legal/documents.json' with { type: 'json' }
 import approvedDigests from '../../legal/approved-digests.json' with { type: 'json' }
@@ -114,7 +115,7 @@ export function needsLegalAcceptance(acceptance, policy) {
 export function isAccountRestricted(restriction, now = Date.now()) {
   if (!restriction) return false
   if (restriction.action === 'system_ban') return true
-  const until = restriction.until?.toMillis?.() ?? new Date(restriction.until).getTime()
+  const until = toMillis(restriction.until)
   return restriction.action === 'temporary_suspension' && until > now
 }
 

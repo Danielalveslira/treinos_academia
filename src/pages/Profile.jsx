@@ -18,14 +18,9 @@ import { formatDate } from '../utils/format'
 import { validateUsername, hasErrors } from '../utils/validators'
 import { BIO_MAX_LENGTH } from '../services/usersService'
 import { setUsageProfile } from '../services/usageProfileService'
+import { toDate } from '../utils/date'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { removeProfileAvatar, uploadProfileAvatar } from '../services/profileAvatarService'
-
-function toDate(value) {
-  if (!value) return null
-  const date = value.toDate ? value.toDate() : new Date(value)
-  return Number.isNaN(date.getTime()) ? null : date
-}
 
 export default function Profile() {
   const { user, profile, isSuperAdmin, saveProfile, refreshProfile } = useAuth()

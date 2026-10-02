@@ -1,9 +1,7 @@
-export function toMillis(value) {
-  if (!value) return 0
-  if (typeof value.toMillis === 'function') return value.toMillis()
-  if (typeof value.toDate === 'function') return value.toDate().getTime()
-  return new Date(value).getTime()
-}
+// toMillis vive em utils/date.js (único ponto que conhece formatos legados); reexportado aqui
+// porque é o import histórico de quem trata expiração.
+export { toMillis } from './date.js'
+import { toMillis } from './date.js'
 
 // Usa horas totais, sem converter 52h em "2 dias", para manter o mesmo vocabulário das
 // promoções. O piso evita prometer tempo que já acabou; o mínimo de 1min só vale quando

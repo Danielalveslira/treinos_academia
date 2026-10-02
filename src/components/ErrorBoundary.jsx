@@ -51,7 +51,7 @@ export class ErrorBoundary extends Component {
           justifyContent: 'center',
           textAlign: 'center',
           gap: 3,
-          minHeight: '100vh',
+          minHeight: this.props.inline ? '40vh' : '100vh',
           p: 4,
         }}
       >

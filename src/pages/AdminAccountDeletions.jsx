@@ -19,6 +19,7 @@ import { getDeletionFinancialHistory } from '../services/adminAccountDeletionsSe
 import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
+import { toDate } from '../utils/date'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
   ADMIN_ACTIONS,
@@ -42,10 +43,6 @@ const KNOWN_ERRORS = {
   PERMISSION_DENIED: 'Você não tem permissão para esta ação.',
   NOTE_REQUIRED: `A nota administrativa é obrigatória (mínimo ${NOTE_MIN_LENGTH} caracteres).`,
   NOTE_TOO_LONG: 'A nota deve ter no máximo 500 caracteres.',
-}
-
-function toDate(value) {
-  return value ? new Date(value) : null
 }
 
 function stateVariant(state) {

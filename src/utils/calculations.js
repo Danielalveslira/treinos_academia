@@ -1,5 +1,5 @@
 import { getWorkoutSets, getWorkoutLoad } from './workoutSets.js'
-import { toDate } from './date.js'
+import { toDate, toMillis } from './date.js'
 
 export function calculateVolume(workout) {
   return getWorkoutSets(workout).reduce(
@@ -18,7 +18,7 @@ function calculateEvolutionPercent(currentLoad, previousLoad) {
 // podia sair trocado (evolução e gráfico invertidos) em registros feitos no mesmo dia.
 // Registros antigos sem createdAt mantêm o comportamento anterior nesse empate.
 function millisOf(value) {
-  return value?.toMillis ? value.toMillis() : new Date(value).getTime()
+  return toMillis(value)
 }
 function sortByDateDesc(workouts) {
   return [...workouts].sort((a, b) => {

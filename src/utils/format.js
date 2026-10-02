@@ -1,3 +1,5 @@
+import { toDate } from './date.js'
+
 export function formatPercent(value) {
   if (value == null) return '—'
   const sign = value > 0 ? '+' : ''
@@ -10,19 +12,22 @@ export function formatWeight(value) {
   return `${rounded.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}kg`
 }
 
+// Aceitam Date, string ISO (Supabase), número (ms) ou resíduo legado -- tudo passa por toDate, então
+// um valor ausente ou inválido vira '—' em vez de "Invalid Date" ou de um TypeError (ex.: string ISO
+// não tem toLocaleDateString).
 export function formatDate(value) {
-  if (!value) return '—'
-  return value.toLocaleDateString('pt-BR')
+  const date = toDate(value)
+  return date ? date.toLocaleDateString('pt-BR') : '—'
 }
 
 export function formatDateTime(value) {
-  if (!value) return '—'
-  return value.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+  const date = toDate(value)
+  return date ? date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'
 }
 
 export function formatTime(value) {
-  if (!value) return '—'
-  return value.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const date = toDate(value)
+  return date ? date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—'
 }
 
 // EvoCash (Fase 4): preço sempre gravado como inteiro em centavos (nunca float de

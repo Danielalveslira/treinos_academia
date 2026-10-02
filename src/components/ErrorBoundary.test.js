@@ -11,6 +11,7 @@ let renderError
 let actionFor
 let retry
 let reload
+let renderInline
 
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'error-boundary-tests-'))
@@ -33,6 +34,13 @@ before(async () => {
           const output = instanceFor(error).render()
           return renderToStaticMarkup(createElement(ThemeProvider, null,
             createElement(BaseStyles, null, output)))
+        }
+
+        export function renderInline(error) {
+          const instance = new ErrorBoundary({ inline: true, children: createElement('div', null, 'CONTEUDO') })
+          instance.state = { error }
+          return renderToStaticMarkup(createElement(ThemeProvider, null,
+            createElement(BaseStyles, null, instance.render())))
         }
 
         export function actionFor(error) {
@@ -67,7 +75,9 @@ before(async () => {
     loader: { '.css': 'empty' },
     logLevel: 'silent',
   })
-  ;({ renderError, actionFor, retry, reload } = createRequire(import.meta.url)(outfile))
+  ;({ renderError, renderInline, actionFor, retry, reload } = createRequire(import.meta.url)(
+    outfile
+  ))
 })
 
 after(async () => {
@@ -114,4 +124,16 @@ test('a stale chunk keeps only the full-page reload required to fetch the curren
   globalThis.window = { location: { reload: () => reloadCount++ } }
   reload(staleError)
   assert.equal(reloadCount, 1)
+})
+
+// Erro contido numa rota (Layout): o fallback não ocupa a tela inteira, para que cabeçalho/navegação
+// continuem visíveis; o erro continua indo para o console em componentDidCatch.
+test('the inline (per-route) fallback is shorter than the full-screen root fallback and offers retry', () => {
+  const error = new Error('x.toDate is not a function')
+  const inline = renderInline(error)
+  assert.match(inline, /Algo deu errado/)
+  assert.match(inline, /Tentar novamente/)
+  // Estilos são classes geradas (não inline): o container do fallback inline tem classe diferente do de tela cheia.
+  const boxClass = (html) => html.match(/class="(Box-sc-[^"]*)"/)[1]
+  assert.notEqual(boxClass(inline), boxClass(renderError(error)))
 })

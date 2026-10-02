@@ -8,6 +8,7 @@ import { CommunityForm } from '../components/CommunityForm'
 import { getCreateCommunityPrivilege, createCommunityWithCash } from '../services/privilegeService'
 import { resolveRequestId } from '../utils/cashPurchaseFlow'
 import { evaluateCommunityCreationRequirements } from '../utils/communityOwnership'
+import { toDate } from '../utils/date'
 import { formatDate } from '../utils/format'
 import { invalidateCommunitiesCache } from '../utils/pageCache'
 
@@ -18,7 +19,7 @@ function newRequestId() {
 }
 
 function accountAgeDays(createdAt) {
-  const date = createdAt?.toDate ? createdAt.toDate() : null
+  const date = toDate(createdAt)
   if (!date) return 0
   return Math.floor((Date.now() - date.getTime()) / 86400000)
 }
@@ -133,7 +134,7 @@ export default function CreateCommunity() {
           ) : (
             <Text as="p" sx={{ color: 'fg.muted' }}>
               Você ainda não atende a todos os requisitos acima.
-              {profile?.createdAt && ` Conta criada em ${formatDate(profile.createdAt.toDate())}.`}
+              {profile?.createdAt && ` Conta criada em ${formatDate(profile.createdAt)}.`}
             </Text>
           )}
         </>

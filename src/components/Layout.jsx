@@ -1,4 +1,5 @@
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
+import { ErrorBoundary } from './ErrorBoundary'
 import { Suspense, useState } from 'react'
 import { Button, Flash } from '@primer/react'
 import {
@@ -116,9 +117,14 @@ export function Layout() {
             </Button>
           </Flash>
         )}
-        <Suspense fallback={<PageFallback />}>
-          <Outlet />
-        </Suspense>
+        {/* Um erro de renderização numa página fica contido aqui (navegação e cabeçalho continuam
+            utilizáveis) e é limpo ao trocar de rota (key). O ErrorBoundary raiz (main.jsx) continua
+            como última rede. O erro segue sendo registrado no console por componentDidCatch. */}
+        <ErrorBoundary key={pathname} inline>
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
+        </ErrorBoundary>
       </main>
       <Navigation mobile />
     </div>
