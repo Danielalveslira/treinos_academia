@@ -98,6 +98,17 @@ test('retention copy: resolved case shows the date as DD/MM/AAAA', () => {
   )
 })
 
+test('retention copy: a case closed by cancelling the deletion also shows its retention date', () => {
+  assert.deepEqual(
+    describeCaseRetention({
+      status: 'cancelled',
+      retentionUntil: '2027-10-02T12:41:00Z',
+      retentionHold: false,
+    }),
+    ['Retenção até: 02/10/2027']
+  )
+})
+
 test('retention copy: a legal hold shows "Retenção estendida", the reason and the original deadline', () => {
   assert.deepEqual(
     describeCaseRetention({

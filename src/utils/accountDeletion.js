@@ -128,6 +128,7 @@ export function describeCaseRetention(financialCase) {
     return lines
   }
   if (financialCase.status === 'open') return ['Retenção: inicia após a resolução']
-  if (financialCase.status === 'resolved' && until) return [`Retenção até: ${until}`]
+  if ((financialCase.status === 'resolved' || financialCase.status === 'cancelled') && until)
+    return [`Retenção até: ${until}`]
   return []
 }
