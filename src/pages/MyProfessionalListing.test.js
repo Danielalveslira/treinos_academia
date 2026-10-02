@@ -50,7 +50,7 @@ before(async () => {
             export const acknowledgeShowcaseTerms = (...args) => globalThis.__showcaseMocks.acknowledgeShowcaseTerms(...args)
             export const createProfessionalListing = () => {}
             export const deleteProfessionalListing = () => {}
-            export const saveProfessionalListing = () => {}
+            export const saveProfessionalListing = (...args) => globalThis.__showcaseMocks.saveProfessionalListing(...args)
             export const publishProfessionalListing = (...args) => globalThis.__showcaseMocks.publishProfessionalListing(...args)
             export const finalizeProfessionalListingPublish = (...args) => globalThis.__showcaseMocks.finalizeProfessionalListingPublish(...args)
             export const unpublishProfessionalListing = () => {}
@@ -121,6 +121,7 @@ async function renderWith(services, profile = {}) {
     getShowcaseLegalAcknowledgement: async () => null,
     getShowcaseLegalVersion: async () => null,
     acknowledgeShowcaseTerms: async () => ({ version: null, acknowledged: true }),
+    saveProfessionalListing: async () => ({ listingId: 'listing-1', version: 2 }),
     publishProfessionalListing: async () => ({ repeated: false, version: 1, avatarMediaId: null, avatarPath: null }),
     finalizeProfessionalListingPublish: async () => ({ listingId: 'listing-1', state: 'published', version: 1 }),
     listActiveCommunities: async () => [],
@@ -290,6 +291,87 @@ const PUBLISHED_RECORD = {
   draft: { ...COMPLETE_DRAFT_RECORD.draft, publishOperationId: 'completed-operation' },
   published: { id: 'listing-1', publishedVersion: 1 },
 }
+
+const CONTACTS = {
+  whatsapp: 'https://wa.me/5511999999999',
+  instagram: 'https://instagram.com/ana.treina',
+  website: 'https://ana.example.com',
+}
+
+function fillContacts(root) {
+  const byPlaceholder = (placeholder) =>
+    root.findAllByType('input').find((node) => node.props.placeholder === placeholder)
+  act(() => {
+    byPlaceholder('https://wa.me/5511999999999').props.onChange({ target: { value: CONTACTS.whatsapp } })
+    byPlaceholder('https://instagram.com/seuusuario').props.onChange({ target: { value: CONTACTS.instagram } })
+    byPlaceholder('https://seusite.com.br').props.onChange({ target: { value: CONTACTS.website } })
+  })
+}
+
+test('contacts persist after saving and the refetch keeps all fields populated', async () => {
+  let stored = COMPLETE_DRAFT_RECORD
+  let savedPayload
+  const page = await renderWith({
+    getMyProfessionalListing: async () => stored,
+    saveProfessionalListing: async (_listingId, draft) => {
+      savedPayload = draft
+      stored = { ...stored, draft: { ...stored.draft, ...draft, version: 2 } }
+      return { listingId: 'listing-1', version: 2 }
+    },
+  })
+  try {
+    fillContacts(page.view.root)
+    act(() => page.view.root.findByType('form').props.onSubmit({ preventDefault() {} }))
+    await flush(act)
+
+    assert.deepEqual(savedPayload.contacts, CONTACTS)
+    const values = page.view.root
+      .findAllByType('input')
+      .filter((node) => node.props.type === 'url')
+      .map((node) => node.props.value)
+    assert.deepEqual(values, Object.values(CONTACTS))
+  } finally {
+    page.close()
+  }
+})
+
+test('publishing saves current contacts before prepare and preserves them in the projection', async () => {
+  let stored = COMPLETE_DRAFT_RECORD
+  const calls = []
+  const page = await renderWith({
+    getMyProfessionalListing: async () => stored,
+    saveProfessionalListing: async (_listingId, draft) => {
+      calls.push('save')
+      stored = { ...stored, draft: { ...stored.draft, ...draft, version: 2 } }
+      return { listingId: 'listing-1', version: 2 }
+    },
+    publishProfessionalListing: async () => {
+      calls.push('prepare')
+      return { repeated: false, version: 2 }
+    },
+    finalizeProfessionalListingPublish: async () => {
+      calls.push('finalize')
+      stored = {
+        ...stored,
+        listing: { ...stored.listing, lifecycleState: 'published', publishedVersion: 2 },
+        published: { id: 'listing-1', publishedVersion: 2, publicContacts: CONTACTS },
+      }
+      return { listingId: 'listing-1', state: 'published', version: 2 }
+    },
+  })
+  try {
+    fillContacts(page.view.root)
+    act(() => findButtonByText(page.view.root, 'Publicar').props.onClick())
+    await flush(act)
+
+    assert.deepEqual(calls, ['save', 'prepare', 'finalize'])
+    assert.deepEqual(stored.draft.contacts, CONTACTS)
+    assert.deepEqual(stored.published.publicContacts, CONTACTS)
+    assert.match(JSON.stringify(page.view.toJSON()), /Vitrine publicada/)
+  } finally {
+    page.close()
+  }
+})
 
 // Decisão de produto: uma versão nova dos Termos nunca bloqueia Salvar/Publicar -- só
 // mostra o aviso. Sem nenhum acknowledgement mockado, "Publicar" continua presente (não
@@ -526,7 +608,7 @@ test('the compact banner acknowledges directly through "Entendi" and disappears 
   }
 })
 
-test('an interrupted phase 2 retries with the same operation and only reports success after finalize', async () => {
+test('an interrupted phase 2 can abort and start a new safe operation before reporting success', async () => {
   const prepareOperations = []
   const finalizeOperations = []
   let reads = 0
@@ -554,8 +636,9 @@ test('an interrupted phase 2 retries with the same operation and only reports su
     await flush(act)
     assert.equal(prepareOperations.length, 2)
     assert.equal(finalizeOperations.length, 2)
-    assert.equal(prepareOperations[0], prepareOperations[1])
-    assert.equal(finalizeOperations[0], finalizeOperations[1])
+    assert.notEqual(prepareOperations[0], prepareOperations[1])
+    assert.equal(prepareOperations[0], finalizeOperations[0])
+    assert.equal(prepareOperations[1], finalizeOperations[1])
     assert.match(JSON.stringify(page.view.toJSON()), /Vitrine publicada/)
   } finally {
     page.close()

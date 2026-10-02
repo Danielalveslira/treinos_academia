@@ -271,6 +271,15 @@ export default function MyProfessionalListing() {
     setBusy('publish')
     setMessage(null)
     try {
+      // Publicar também persiste o formulário atual. Antes, a Fase 1 usava somente o
+      // último rascunho salvo no banco; contatos recém-digitados eram descartados no
+      // reload posterior, apesar de ainda aparecerem na tela no momento do clique.
+      // Uma operação interrompida é a única exceção: o formulário está bloqueado e o
+      // mesmo operationId precisa ser retomado sem criar uma nova versão do rascunho.
+      if (!record.draft?.publishingOperationId) {
+        await saveProfessionalListing(record.id, payload())
+        submissionOperation.current = null
+      }
       submissionOperation.current ||=
         record.draft?.publishingOperationId || crypto.randomUUID().replaceAll('-', '')
       const prepared = await publishProfessionalListing(record.id, submissionOperation.current)

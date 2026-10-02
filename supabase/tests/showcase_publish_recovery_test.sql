@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(17);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -27,6 +27,38 @@ insert into public.professional_listing_drafts (
   '41000000-0000-0000-0000-000000000001',
   'professional', 'Vitrine Teste', 'personal_trainer', array['musculacao'],
   '{}', 'Bio de teste', 'São Paulo', 'sao paulo', 'SP', 'online', '{}'::jsonb, 1
+);
+
+select public.save_professional_listing_draft(
+  '42000000-0000-0000-0000-000000000001',
+  jsonb_build_object(
+    'kind', 'professional',
+    'displayName', 'Vitrine Teste',
+    'categoryKey', 'personal_trainer',
+    'modalityKeys', jsonb_build_array('musculacao'),
+    'specialties', '[]'::jsonb,
+    'bio', 'Bio de teste',
+    'city', 'São Paulo',
+    'uf', 'SP',
+    'serviceMode', 'online',
+    'contacts', jsonb_build_object(
+      'whatsapp', 'https://wa.me/5511999999999',
+      'instagram', 'https://instagram.com/vitrine.teste',
+      'website', 'https://vitrine.example.com'
+    ),
+    'linkedCommunityId', '',
+    'useProfileAvatar', false
+  )
+);
+select is(
+  (select contacts from public.professional_listing_drafts
+    where listing_id = '42000000-0000-0000-0000-000000000001'),
+  jsonb_build_object(
+    'whatsapp', 'https://wa.me/5511999999999',
+    'instagram', 'https://instagram.com/vitrine.teste',
+    'website', 'https://vitrine.example.com'
+  ),
+  'save persists every contact in the draft'
 );
 
 select is(
@@ -93,6 +125,16 @@ select is(
     where listing_id = '42000000-0000-0000-0000-000000000001'),
   1,
   'finalize creates exactly one projection'
+);
+select ok(
+  (select public_contacts @> jsonb_build_array(
+      jsonb_build_object('type', 'whatsapp', 'url', 'https://wa.me/5511999999999'),
+      jsonb_build_object('type', 'instagram', 'url', 'https://instagram.com/vitrine.teste'),
+      jsonb_build_object('type', 'website', 'url', 'https://vitrine.example.com')
+    )
+    from public.published_professional_listings
+    where listing_id = '42000000-0000-0000-0000-000000000001'),
+  'finalize publishes all saved contacts'
 );
 select is(
   public.finalize_professional_listing_publish(

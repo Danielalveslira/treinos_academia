@@ -1,27 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Button, Flash, Spinner } from '@primer/react'
-import {
-  LinkExternalIcon,
-  LocationIcon,
-  PeopleIcon,
-  ShareAndroidIcon,
-  ReportIcon,
-} from '@primer/octicons-react'
+import { Spinner } from '@primer/react'
 import { PublicLayout } from '../components/PublicLayout'
-import { ProfileAvatar } from '../components/ProfileAvatar'
+import { ProfessionalListingView } from '../components/ProfessionalListingView'
 import { useAuth } from '../hooks/useAuth'
 import { getPublishedProfessionalListing } from '../services/professionalListingsService'
-import {
-  CATEGORY_OPTIONS,
-  LISTING_KIND_OPTIONS,
-  MODALITY_OPTIONS,
-  SERVICE_MODE_OPTIONS,
-  optionLabel,
-} from '../constants/professionalListingTaxonomy'
-import { safeExternalContact } from '../utils/professionalListing'
-
-const CONTACT_LABELS = { whatsapp: 'WhatsApp', instagram: 'Instagram', website: 'Site' }
 
 export default function ProfessionalListing() {
   const { listingId } = useParams()
@@ -58,7 +41,6 @@ export default function ProfessionalListing() {
     }
   }
 
-  const contacts = listing?.publicContacts?.map(safeExternalContact).filter(Boolean) || []
   return (
     <PublicLayout>
       <div className="professional-detail-page">
@@ -75,102 +57,13 @@ export default function ProfessionalListing() {
             <p>Ela pode estar em revisão, suspensa ou ter sido removida.</p>
           </section>
         ) : (
-          <>
-            {notice && <Flash role="status">{notice}</Flash>}
-            <header className="professional-detail-hero">
-              <ProfileAvatar
-                path={listing.avatarPath}
-                name={listing.displayName}
-                professional={listing.kind === 'professional'}
-                className="professional-detail-avatar"
-              />
-              <div>
-                <span className="profile-eyebrow">
-                  {optionLabel(LISTING_KIND_OPTIONS, listing.kind).toUpperCase()}
-                </span>
-                <h1>{listing.displayName}</h1>
-                <p>{optionLabel(CATEGORY_OPTIONS, listing.categoryKey)}</p>
-                <span className="professional-detail-location">
-                  <LocationIcon /> {listing.city}, {listing.uf} ·{' '}
-                  {optionLabel(SERVICE_MODE_OPTIONS, listing.serviceMode)}
-                </span>
-              </div>
-              <Button onClick={share} leadingVisual={ShareAndroidIcon}>
-                Compartilhar
-              </Button>
-            </header>
-            <div className="professional-detail-grid">
-              <main className="professional-detail-content">
-                <section>
-                  <h2>Apresentação</h2>
-                  <p>{listing.bio}</p>
-                </section>
-                <section>
-                  <h2>Modalidades</h2>
-                  <div className="professional-tags">
-                    {listing.modalityKeys.map((key) => (
-                      <span key={key}>{optionLabel(MODALITY_OPTIONS, key)}</span>
-                    ))}
-                  </div>
-                </section>
-                {listing.specialties?.length > 0 && (
-                  <section>
-                    <h2>Especialidades</h2>
-                    <ul>
-                      {listing.specialties.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                  </section>
-                )}
-              </main>
-              <aside className="professional-contact-card">
-                <h2>Entre em contato</h2>
-                <p>
-                  Negocie diretamente com o profissional ou espaço. O Evolutus não processa
-                  pagamentos.
-                </p>
-                {contacts.map((contact) => (
-                  <Button
-                    key={contact.type}
-                    as="a"
-                    href={contact.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    leadingVisual={LinkExternalIcon}
-                    block
-                  >
-                    {CONTACT_LABELS[contact.type]}
-                  </Button>
-                ))}
-                {contacts.length === 0 && <p>Nenhum contato público informado.</p>}
-                {listing.linkedCommunity && (
-                  <Button
-                    as={Link}
-                    to={`/comunidades/${listing.linkedCommunity.id}`}
-                    leadingVisual={PeopleIcon}
-                    block
-                  >
-                    Ver comunidade {listing.linkedCommunity.name}
-                  </Button>
-                )}
-                {user ? (
-                  <Button
-                    as={Link}
-                    to={`/atendimento?tipo=report&vitrine=${listingId}`}
-                    variant="invisible"
-                    leadingVisual={ReportIcon}
-                  >
-                    {listing.kind === 'professional'
-                      ? 'Denunciar profissional'
-                      : 'Denunciar estabelecimento'}
-                  </Button>
-                ) : (
-                  <Link to="/login">Entre para denunciar conteúdo</Link>
-                )}
-              </aside>
-            </div>
-          </>
+          <ProfessionalListingView
+            listing={listing}
+            listingId={listingId}
+            user={user}
+            notice={notice}
+            onShare={share}
+          />
         )}
       </div>
     </PublicLayout>
