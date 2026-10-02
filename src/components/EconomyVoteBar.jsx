@@ -124,7 +124,6 @@ export function EconomyVoteBar({
         </Box>
       ) : (
         <Button
-          leadingVisual={ThumbsdownIcon}
           aria-label={`Não curtir (${negativeCount})`}
           aria-pressed={myValue === -1}
           size="small"
@@ -133,7 +132,12 @@ export function EconomyVoteBar({
           data-testid="dislike-button"
           onClick={() => vote(-1)}
         >
-          {negativeCount}
+          {/* Ícone e número lado a lado com espaçamento explícito (o leadingVisual do Button ficava
+              colado ao número quando o botão só tem o contador como conteúdo). */}
+          <Box as="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <ThumbsdownIcon size={16} />
+            <Text sx={{ fontWeight: 'normal' }}>{negativeCount}</Text>
+          </Box>
         </Button>
       )}
       {!isAuthor && myValue === 1 && (
