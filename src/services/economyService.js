@@ -115,15 +115,15 @@ export async function castVote(statusId, value) {
   return data
 }
 
-// "Ver quem votou" -- nunca lê status_economy_votes direto (RLS já bloqueia leitura de
-// outro uid); a RPC devolve só {userId, username} por votante, paginado. cursor é o
-// valor devolvido em nextCursor da página anterior (null na primeira página); direction
-// é 'positive' ou 'negative'.
-export async function listPostEconomyVoters(statusId, direction, { cursor = null, limit = 20 } = {}) {
-  const { data, error } = await supabase.rpc('list_post_economy_voters', {
+// "Quem apoiou" -- nunca lê status_economy_votes direto (RLS só libera o próprio voto); a RPC
+// devolve só { userId, username, avatarPath } de APOIADORES, mais recentes primeiro, em páginas.
+// cursor é o nextCursor da página anterior ({ at, userId }) ou null na primeira. NÃO existe
+// equivalente para "Não apoiar": essa identidade não é exposta em lugar nenhum.
+export async function listPostSupporters(statusId, { cursor = null, limit = 20 } = {}) {
+  const { data, error } = await supabase.rpc('list_post_supporters', {
     p_status_id: statusId,
-    p_direction: direction === 'positive' ? 1 : -1,
-    p_cursor: cursor,
+    p_cursor_at: cursor?.at ?? null,
+    p_cursor_user: cursor?.userId ?? null,
     p_limit: limit,
   })
   if (error) throw error

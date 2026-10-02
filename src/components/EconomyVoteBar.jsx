@@ -1,21 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { Box, Button, IconButton, Text } from '@primer/react'
+import { Box, Button, Text } from '@primer/react'
 import { ThumbsupIcon, ThumbsdownIcon } from '@primer/octicons-react'
 import { castVote } from '../services/economyService'
-import { EconomyVotersDialog } from './EconomyVotersDialog'
+import { PostSupportersDialog } from './PostSupportersDialog'
 import { economyVoteCountDelta } from '../utils/economyVoteCountDelta'
 
 // Voto econômico (Fase 2) -- deliberadamente distinto do voto de ENQUETE (PollStatus,
 // mais acima neste mesmo arquivo/StatusCard.jsx): custa EvoCoins, vive em
 // statuses/{id}/economyVotes/{uid}, nunca em statuses/{id}/votes/{uid}.
 //
-// "Ver quem votou": os totais (positiveVoteCount/negativeVoteCount) são denormalizados
-// em statuses/{id} por um gatilho (ver vote-count-service.js/functions/index.js) --
-// chegam de graça junto com o resto do status, sem nenhuma leitura extra por card. Os
-// votos individuais continuam nunca expostos direto (RLS em status_economy_votes só
-// libera leitura do próprio voto, ver policy status_economy_votes_select); clicar num
-// total abre EconomyVotersDialog, que busca a lista sanitizada via a RPC dedicada
-// listPostEconomyVoters.
+// Reações da publicação: "Apoiar · X" e "Não apoiar · Y". Os totais (positiveVoteCount/
+// negativeVoteCount) vêm denormalizados em statuses -- chegam de graça junto com o status, sem
+// leitura extra por card. SÓ "Apoiar · X" abre a lista de pessoas (PostSupportersDialog, buscada
+// apenas quando o modal abre); "Não apoiar · Y" é contador + ação, sem nenhuma lista -- a
+// identidade de quem não apoiou não é exposta na UI nem no backend. Os votos individuais nunca
+// são lidos direto (RLS em status_economy_votes só libera o próprio voto).
 //
 // myVote vem de fora (useMyEconomyVotes.js, 1 consulta para o feed inteiro) -- este
 // componente nunca busca o próprio voto sozinho, exatamente pra não reintroduzir 1
@@ -32,7 +31,7 @@ export function EconomyVoteBar({
 }) {
   const [myValue, setMyValue] = useState(myVote?.value ?? null)
   const [voting, setVoting] = useState(false)
-  const [openVotersDialog, setOpenVotersDialog] = useState(null) // null | 'positive' | 'negative'
+  const [supportersOpen, setSupportersOpen] = useState(false)
   // Só sincroniza com a prop ENQUANTO o lote ainda não chegou -- depois que o próprio
   // usuário vota nesta publicação, o estado local passa a mandar (a prop só volta a
   // mudar numa refetch do lote inteiro, que não deveria sobrescrever um voto já aplicado
@@ -70,66 +69,69 @@ export function EconomyVoteBar({
     }
   }
 
-  // Autor não vota na própria publicação (ver sem-auto-voto em vote-service.js) -- os
-  // botões de votar somem para ele, mas os totais continuam visíveis e clicáveis (é
-  // o dono do post quem mais tem motivo de querer ver quem apoiou/discordou).
+  // Autor não vota na própria publicação (ver sem-auto-voto em vote-service.js) -- os botões de
+  // reagir somem para ele, mas os totais continuam visíveis e o de apoios continua abrindo a lista.
   const isAuthor = status.authorId === currentUserId
   const loading = myVote === undefined
   const positiveCount = status.positiveVoteCount ?? 0
   const negativeCount = status.negativeVoteCount ?? 0
+  const disabled = loading || voting || !interactionActive
+
+  const supportersButton = (
+    <Button
+      variant="invisible"
+      size="small"
+      sx={{ color: 'fg.muted', px: 1 }}
+      aria-label={`Ver quem apoiou (${positiveCount})`}
+      onClick={() => setSupportersOpen(true)}
+    >
+      {isAuthor ? `Apoios · ${positiveCount}` : `· ${positiveCount}`}
+    </Button>
+  )
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
       {!isAuthor && (
-        <>
-          <IconButton
-            icon={ThumbsupIcon}
-            aria-label="Voto positivo"
-            aria-pressed={myValue === 1}
-            size="small"
-            variant={myValue === 1 ? 'primary' : 'invisible'}
-            disabled={loading || voting || !interactionActive}
-            onClick={() => vote(1)}
-          />
-          <IconButton
-            icon={ThumbsdownIcon}
-            aria-label="Voto negativo"
-            aria-pressed={myValue === -1}
-            size="small"
-            variant={myValue === -1 ? 'danger' : 'invisible'}
-            disabled={loading || voting || !interactionActive}
-            onClick={() => vote(-1)}
-          />
-        </>
+        <Button
+          leadingVisual={ThumbsupIcon}
+          aria-label="Apoiar"
+          aria-pressed={myValue === 1}
+          size="small"
+          variant={myValue === 1 ? 'primary' : 'invisible'}
+          disabled={disabled}
+          onClick={() => vote(1)}
+        >
+          Apoiar
+        </Button>
       )}
-      <Button
-        variant="invisible"
-        size="small"
-        sx={{ color: 'fg.muted', px: 1 }}
-        onClick={() => setOpenVotersDialog('positive')}
-      >
-        👍 {positiveCount} {positiveCount === 1 ? 'apoio' : 'apoios'}
-      </Button>
-      <Button
-        variant="invisible"
-        size="small"
-        sx={{ color: 'fg.muted', px: 1 }}
-        onClick={() => setOpenVotersDialog('negative')}
-      >
-        👎 {negativeCount} {negativeCount === 1 ? 'negativo' : 'negativos'}
-      </Button>
+      {supportersButton}
+      {!isAuthor && (
+        <Button
+          leadingVisual={ThumbsdownIcon}
+          aria-label="Não apoiar"
+          aria-pressed={myValue === -1}
+          size="small"
+          variant={myValue === -1 ? 'danger' : 'invisible'}
+          disabled={disabled}
+          onClick={() => vote(-1)}
+        >
+          Não apoiar
+        </Button>
+      )}
+      {/* Só contador: sem botão, sem link, sem lista de pessoas. */}
+      <Text sx={{ fontSize: 0, color: 'fg.muted', px: 1 }} data-testid="non-support-count">
+        {isAuthor ? `Não apoiar · ${negativeCount}` : `· ${negativeCount}`}
+      </Text>
       {!isAuthor && myValue != null && (
         <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-          {myValue === 1 ? 'Você apoiou' : 'Você discordou'}
+          {myValue === 1 ? 'Você apoiou' : 'Você não apoiou'}
         </Text>
       )}
-      {openVotersDialog && (
-        <EconomyVotersDialog
+      {supportersOpen && (
+        <PostSupportersDialog
           statusId={status.id}
-          initialDirection={openVotersDialog}
-          positiveCount={positiveCount}
-          negativeCount={negativeCount}
-          onClose={() => setOpenVotersDialog(null)}
+          supportCount={positiveCount}
+          onClose={() => setSupportersOpen(false)}
         />
       )}
     </Box>

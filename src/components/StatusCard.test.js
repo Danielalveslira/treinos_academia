@@ -129,16 +129,21 @@ before(async () => {
         DEV: false,
       }),
     },
-    plugins: [{
-      name: 'avatar-prop-stub',
-      setup(context) {
-        context.onResolve({ filter: /\/ProfileAvatar$/ }, () => ({ path: 'avatar', namespace: 'stub' }))
-        context.onLoad({ filter: /^avatar$/, namespace: 'stub' }, () => ({
-          resolveDir: new URL('../../', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
-          contents: `import { createElement } from 'react'; export const ProfileAvatar = ({path}) => createElement('span', {'data-author-avatar': path || ''})`,
-        }))
+    plugins: [
+      {
+        name: 'avatar-prop-stub',
+        setup(context) {
+          context.onResolve({ filter: /\/ProfileAvatar$/ }, () => ({
+            path: 'avatar',
+            namespace: 'stub',
+          }))
+          context.onLoad({ filter: /^avatar$/, namespace: 'stub' }, () => ({
+            resolveDir: new URL('../../', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
+            contents: `import { createElement } from 'react'; export const ProfileAvatar = ({path}) => createElement('span', {'data-author-avatar': path || ''})`,
+          }))
+        },
       },
-    }],
+    ],
   })
   ;({ render, setPollCache, setWorkoutCache } = createRequire(import.meta.url)(outfile))
 })
@@ -152,15 +157,18 @@ test('enquete não renderiza EconomyVoteBar: sem Apoio/Negativo, sem botões de 
   setPollCache(status.id, 'viewer-1', { a: 1, b: 1 }, null)
   const html = render({ status })
   assert.doesNotMatch(html, /apoio/i)
-  assert.doesNotMatch(html, /negativo/i)
+  assert.doesNotMatch(html, /Não apoiar/i)
   assert.doesNotMatch(html, /Você apoiou|Você discordou/)
-  assert.doesNotMatch(html, /Voto positivo|Voto negativo/)
+  assert.doesNotMatch(html, /Ver quem apoiou|>Apoiar</)
   assert.doesNotMatch(html, /class="status-footer"/)
 })
 
 test('o cabeçalho recebe apenas o avatar público elegível do autor e mantém fallback sem ele', () => {
   const status = makeTextStatus()
-  assert.match(render({ status, authorAvatarPath: 'profileAvatars/author-1/active.webp' }), /data-author-avatar="profileAvatars\/author-1\/active.webp"/)
+  assert.match(
+    render({ status, authorAvatarPath: 'profileAvatars/author-1/active.webp' }),
+    /data-author-avatar="profileAvatars\/author-1\/active.webp"/
+  )
   assert.match(render({ status, authorAvatarPath: null }), /data-author-avatar=""/)
 })
 
@@ -189,17 +197,18 @@ test('já votado na enquete: a opção escolhida não é mais um botão clicáve
   setPollCache(status.id, 'viewer-1', { a: 2, b: 2 }, 'a')
   const html = render({ status })
   assert.match(html, />4 votos</)
-  assert.doesNotMatch(html, /apoio|negativo/i)
+  assert.doesNotMatch(html, /Ver quem apoiou|Não apoiar/i)
 })
 
 test('post normal continua mostrando Apoio/Negativo, com o rodapé de voto econômico presente', () => {
   const status = makeTextStatus()
   const html = render({ status, myEconomyVote: null, canDelete: true })
   assert.match(html, /class="status-footer"/)
-  assert.match(html, /2 apoios/)
-  assert.match(html, /1 negativo/)
-  assert.match(html, /Voto positivo/)
-  assert.match(html, /Voto negativo/)
+  assert.match(html, /Ver quem apoiou \(2\)/)
+  assert.match(html, /· 1/)
+  assert.match(html, />Apoiar</)
+  assert.match(html, />Não apoiar</)
+  assert.doesNotMatch(html, /quem n[ãa]o apoiou/i)
   assert.match(html, /Ver informações de expiração da publicação/)
   assert.match(html, /Compartilhar publicação/)
   assert.match(html, /Excluir publicação/)
@@ -210,7 +219,7 @@ test('conquista mantém Apoio/Negativo', () => {
   status.text = undefined
   const html = render({ status })
   assert.match(html, /class="status-footer"/)
-  assert.match(html, /apoios|apoio\b/)
+  assert.match(html, /Ver quem apoiou/)
 })
 
 test('treino futuro mantém participação ativa após expirar no feed e identifica evento e organizador', () => {
@@ -226,7 +235,7 @@ test('treino futuro mantém participação ativa após expirar no feed e identif
   assert.match(html, /Adicionar ao calendário/)
   assert.doesNotMatch(html, /Ver informações de expiração da publicação/)
   assert.doesNotMatch(html, /class="status-footer"/)
-  assert.doesNotMatch(html, /Voto positivo|Voto negativo|apoios|negativos/)
+  assert.doesNotMatch(html, />Apoiar<|>Não apoiar<|Ver quem apoiou/)
 })
 
 test('treino concluído bloqueia nova participação, mas mantém calendário disponível', () => {
