@@ -32,7 +32,9 @@ export function ProtectedRoute({ children }) {
   // aqui -- sem este gate, o usuário veria "Não foi possível carregar sua conta" em vez
   // do aviso específico (ver handlePossibleGhostSession em AuthContext.jsx, que só marca
   // deletionStatus depois de confirmar o motivo por um mecanismo confiável do backend).
-  if (deletionStatus === 'blocked_financial_review') {
+  // 'pending' só chega aqui com a pendência financeira já separada (AuthContext: sem ela, a
+  // sessão é encerrada) -- o titular segue vendo o andamento até o worker concluir.
+  if (deletionStatus === 'blocked_financial_review' || deletionStatus === 'pending') {
     return <AccountDeletionBlockedGate />
   }
   if (profileError || !profile) {

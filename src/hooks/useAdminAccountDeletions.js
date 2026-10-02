@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  listBlockedAccountDeletions,
+  cancelAccountDeletion,
+  listAccountDeletions,
   reviewBlockedAccountDeletion,
+  separateFinancialCaseAndResumeDeletion,
 } from '../services/adminAccountDeletionsService'
-import { resolveUsernamesByIds } from '../services/cashPurchaseService'
 import { describeQueryError } from '../utils/queryError'
 
 // Mesmo padrão de useAdminAccounts/useAdminCashPurchases: revision descarta respostas
-// atrasadas de uma consulta anterior, actionLock impede duas revisões simultâneas na
-// mesma sessão do painel.
+// atrasadas de uma consulta anterior, actionLock impede duas ações simultâneas na mesma
+// sessão do painel. Depois de cada ação a lista é relida do servidor -- nenhuma decisão
+// (nem o novo estado do job) é inferida no cliente.
 export function useAdminAccountDeletions() {
-  const [jobs, setJobs] = useState([])
-  const [usernameById, setUsernameById] = useState({})
+  const [scope, setScope] = useState('open')
+  const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(null)
@@ -26,32 +28,29 @@ export function useAdminAccountDeletions() {
     setLoading(true)
     setError(null)
     try {
-      const list = await listBlockedAccountDeletions()
+      const list = await listAccountDeletions(scope)
       if (current !== revision.current) return
-      setJobs(list)
-      const names = await resolveUsernamesByIds(list.map((job) => job.targetId))
-      if (current === revision.current) setUsernameById(names)
+      setRequests(list)
     } catch (err) {
-      if (current === revision.current) setError(describeQueryError(err, 'useAdminAccountDeletions'))
+      if (current === revision.current)
+        setError(describeQueryError(err, 'useAdminAccountDeletions'))
     } finally {
       if (current === revision.current) setLoading(false)
     }
-  }, [])
+  }, [scope])
 
   useEffect(() => {
     refresh()
     return invalidate
   }, [refresh, invalidate])
 
-  async function review(jobId, note) {
+  async function runAction(jobId, action) {
     if (actionLock.current) throw new Error('Aguarde a operação atual.')
     actionLock.current = true
     setBusy(jobId)
     try {
-      const result = await reviewBlockedAccountDeletion(jobId, note)
-      // resumed:true -- o job saiu de blocked_financial_review, não faz mais sentido
-      // segurar na lista até o próximo refresh manual.
-      if (result.resumed) setJobs((previous) => previous.filter((job) => job.id !== jobId))
+      const result = await action()
+      await refresh()
       return result
     } finally {
       actionLock.current = false
@@ -59,5 +58,17 @@ export function useAdminAccountDeletions() {
     }
   }
 
-  return { jobs, usernameById, loading, error, busy, refresh, review }
+  return {
+    scope,
+    setScope,
+    requests,
+    loading,
+    error,
+    busy,
+    refresh,
+    review: (jobId, note) => runAction(jobId, () => reviewBlockedAccountDeletion(jobId, note)),
+    separateCase: (jobId, note) =>
+      runAction(jobId, () => separateFinancialCaseAndResumeDeletion(jobId, note)),
+    cancel: (jobId, note) => runAction(jobId, () => cancelAccountDeletion(jobId, note)),
+  }
 }

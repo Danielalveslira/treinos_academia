@@ -2,7 +2,7 @@ import { createContext, useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase/config'
 import { ensureUserProfile, updateUserProfile, mapUserRow } from '../services/usersService'
 import { logoutUser } from '../services/authService'
-import { getMyDeletionStatus } from '../services/accountDeletionService'
+import { getMyDeletionReview } from '../services/accountDeletionService'
 import { setLogoutReason } from '../utils/logoutReason'
 import { clearPageCache } from '../utils/pageCache'
 import { clearPhotoCache } from '../utils/photoBlobCache'
@@ -16,7 +16,11 @@ export const AuthContext = createContext(null)
 // site, o usuário do Supabase (que só tem .id) ganha um alias .uid aqui.
 function toAppUser(supabaseUser) {
   if (!supabaseUser) return null
-  return { ...supabaseUser, uid: supabaseUser.id, emailVerified: Boolean(supabaseUser.email_confirmed_at) }
+  return {
+    ...supabaseUser,
+    uid: supabaseUser.id,
+    emailVerified: Boolean(supabaseUser.email_confirmed_at),
+  }
 }
 
 export function AuthProvider({ children }) {
@@ -39,9 +43,12 @@ export function AuthProvider({ children }) {
   // Function + run_deletion_job, chamado via pg_cron a cada minuto -- ver migration
   // deletion_worker.sql) faz o JWT parar de funcionar imediatamente quando roda
   // (auth.admin.deleteUser) — não há uma janela de "parece válido mas não é" pra
-  // replicar aqui. Por isso esta versão consulta getMyDeletionStatus() proativamente a
+  // replicar aqui. Por isso esta versão consulta getMyDeletionReview() proativamente a
   // cada carga de perfil, em vez de reagir a um erro de permissão específico.
   const [deletionStatus, setDeletionStatus] = useState(null)
+  // Detalhes públicos da exclusão (protocolo, se a pendência foi separada) -- ver
+  // get_my_deletion_review; nunca saldo/valores.
+  const [deletionReview, setDeletionReview] = useState(null)
   // Só usado DENTRO do efeito abaixo, pra uma chamada de loadSession não pisar no
   // resultado de outra mais nova (duas trocas de sessão em sequência rápida) — nunca
   // compartilhado com refreshProfile/refreshLegalAccess/saveProfile (ver por quê no
@@ -54,16 +61,22 @@ export function AuthProvider({ children }) {
 
     async function checkDeletionStatus(userId, forRevision) {
       try {
-        const { state } = await getMyDeletionStatus()
+        const review = await getMyDeletionReview()
         if (!active || forRevision !== sessionRevisionRef.current) return
-        if (state === 'blocked_financial_review') {
-          setDeletionStatus('blocked_financial_review')
-        } else if (state === 'pending') {
+        if (
+          review?.state === 'blocked_financial_review' ||
+          (review?.state === 'pending' && review.financialCaseSeparated)
+        ) {
+          // pending COM pendência separada: a exclusão segue sozinha pelo worker, mas o
+          // titular ainda vê o andamento (e o protocolo) até a sessão ser encerrada.
+          setDeletionReview(review)
+          setDeletionStatus(review.state)
+        } else if (review?.state === 'pending') {
           setLogoutReason('account-deleting')
           await logoutUser().catch(() => {})
         }
       } catch (error) {
-        console.warn('[Auth] getMyDeletionStatus:', error)
+        console.warn('[Auth] getMyDeletionReview:', error)
       }
     }
 
@@ -79,6 +92,7 @@ export function AuthProvider({ children }) {
       setProfile(null)
       setProfileError('')
       setDeletionStatus(null)
+      setDeletionReview(null)
       setLegalAccess(null)
       setLegalError('')
       setLegalLoading(Boolean(supabaseUser))
@@ -110,7 +124,12 @@ export function AuthProvider({ children }) {
           .channel(`users-changes-${supabaseUser.id}`)
           .on(
             'postgres_changes',
-            { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${supabaseUser.id}` },
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'users',
+              filter: `id=eq.${supabaseUser.id}`,
+            },
             (payload) => {
               if (!active || current !== sessionRevisionRef.current) return
               setProfile(mapUserRow(payload.new))
@@ -120,7 +139,9 @@ export function AuthProvider({ children }) {
         checkDeletionStatus(supabaseUser.id, current)
       } else {
         console.error('[Auth] ensureUserProfile:', profileResult.reason)
-        setProfileError('Não foi possível carregar seu perfil. Recarregue a página para tentar novamente.')
+        setProfileError(
+          'Não foi possível carregar seu perfil. Recarregue a página para tentar novamente.'
+        )
       }
 
       if (legalResult.status === 'fulfilled') {
@@ -187,6 +208,15 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // Relê a revisão da própria exclusão (botão "Atualizar situação" da tela de exclusão).
+  // Devolve null quando não há mais exclusão em andamento (concluída ou cancelada).
+  async function refreshDeletionReview() {
+    const review = await getMyDeletionReview()
+    setDeletionReview(review)
+    setDeletionStatus(review ? review.state : null)
+    return review
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -200,6 +230,8 @@ export function AuthProvider({ children }) {
         loading,
         verifyingSession: false,
         deletionStatus,
+        deletionReview,
+        refreshDeletionReview,
         refreshProfile,
         refreshLegalAccess,
         saveProfile,

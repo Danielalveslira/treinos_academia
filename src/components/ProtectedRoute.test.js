@@ -68,7 +68,11 @@ const baseAuth = {
   profile: {
     role: 'user',
     createdAt: { toDate: () => new Date('2020-01-01') },
-    legalAcceptance: { version: manifest.version, digest: digests[manifest.version], acceptedAt: {} },
+    legalAcceptance: {
+      version: manifest.version,
+      digest: digests[manifest.version],
+      acceptedAt: {},
+    },
   },
   profileError: '',
   legalAccess: {
@@ -142,7 +146,9 @@ test('returning to an open tab checks whether the active legal policy changed', 
   const requestedUsers = []
   globalThis.document = {
     visibilityState: 'hidden',
-    addEventListener(type, callback) { listeners.set(type, callback) },
+    addEventListener(type, callback) {
+      listeners.set(type, callback)
+    },
     removeEventListener(type, callback) {
       if (listeners.get(type) === callback) listeners.delete(type)
     },
@@ -202,7 +208,8 @@ test('a deletion blocked for financial review shows its own gate, never the gene
     profileError: 'Não foi possível carregar seu perfil.',
     deletionStatus: 'blocked_financial_review',
   })
-  assert.match(html, /Exclusão em revisão financeira/)
+  assert.match(html, /Exclusão em análise/)
+  assert.match(html, /Em revisão financeira/)
   assert.match(html, /atendimento/)
   assert.doesNotMatch(html, /Não foi possível carregar sua conta/)
   assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
@@ -228,5 +235,57 @@ test('the financial-review gate links to /atendimento, offers a manual sign-out,
 
 test('an active account never sees the deletion-blocked gate', () => {
   const html = render(baseAuth)
-  assert.doesNotMatch(html, /Exclusão em revisão financeira/)
+  assert.doesNotMatch(html, /Exclusão em análise/)
+})
+
+// Exclusão em análise (revisão completa): protocolo da solicitação e andamento, sem nunca
+// citar saldo/valor -- o servidor (get_my_deletion_review) nem devolve esses dados.
+test('the deletion gate shows the protocol and progress while the financial review is open', () => {
+  const html = render({
+    ...baseAuth,
+    profile: null,
+    profileError: 'Não foi possível carregar seu perfil.',
+    deletionStatus: 'blocked_financial_review',
+    deletionReview: {
+      state: 'blocked_financial_review',
+      protocol: 'EXC-000042',
+      requestedAt: '2026-10-01T12:00:00Z',
+      financialCaseSeparated: false,
+      financialCaseProtocol: null,
+    },
+  })
+  assert.match(html, /Exclusão em análise/)
+  assert.match(html, /EXC-000042/)
+  assert.match(html, /Situação atual: <strong>Em revisão financeira/)
+  assert.match(html, /Andamento da exclusão/)
+  assert.doesNotMatch(html, /Pendência financeira separada/)
+  assert.doesNotMatch(html, /continuará sendo tratado separadamente/)
+  assert.doesNotMatch(html, /saldo/i)
+  assert.doesNotMatch(html, /R\$/)
+})
+
+test('once the financial case is separated the gate says the process continues separately and shows the case protocol', () => {
+  const html = render({
+    ...baseAuth,
+    profile: null,
+    profileError: 'Não foi possível carregar seu perfil.',
+    deletionStatus: 'pending',
+    deletionReview: {
+      state: 'pending',
+      protocol: 'EXC-000042',
+      requestedAt: '2026-10-01T12:00:00Z',
+      financialCaseSeparated: true,
+      financialCaseProtocol: 'FIN-000007',
+    },
+  })
+  assert.match(
+    html,
+    /Seu processo financeiro continuará sendo tratado separadamente\. A exclusão da conta seguirá normalmente\./
+  )
+  assert.match(html, /Situação atual: <strong>Exclusão em andamento/)
+  assert.match(html, /Pendência financeira separada/)
+  assert.match(html, /FIN-000007/)
+  assert.match(html, /href="\/atendimento"/)
+  assert.doesNotMatch(html, /saldo/i)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
 })
