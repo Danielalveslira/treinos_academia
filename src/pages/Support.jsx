@@ -22,6 +22,7 @@ import { getPublishedProfessionalListing } from '../services/professionalListing
 import { REPORT_CATEGORY_OPTIONS } from '../constants/supportReportCategories'
 import { LEGAL_MANIFEST } from '../utils/legal'
 import { formatDateTime } from '../utils/format'
+import { toDate } from '../utils/date'
 
 const KINDS = {
   report: 'Denunciar violação',
@@ -202,7 +203,7 @@ export default function Support() {
                     )}
                     {notice.until && (
                       <Text as="p" sx={{ m: 0, fontSize: 0, color: 'fg.muted' }}>
-                        Prazo: {formatDateTime(notice.until.toDate())}
+                        Prazo: {formatDateTime(toDate(notice.until))}
                       </Text>
                     )}
                     <Button
@@ -360,7 +361,7 @@ export default function Support() {
                         {KINDS[item.kind]}
                       </Heading>
                       <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-                        Protocolo {item.id} · {formatDateTime(item.createdAt?.toDate())}
+                        Protocolo {item.id} · {formatDateTime(toDate(item.createdAt))}
                       </Text>
                     </Box>
                     <Label variant={STATE_LABELS[item.state]?.variant}>
@@ -382,7 +383,7 @@ export default function Support() {
                     >
                       <Text as="p" sx={{ fontWeight: 'bold', fontSize: 0, m: 0 }}>
                         Resposta da administração
-                        {item.decidedAt ? ` · ${formatDateTime(item.decidedAt.toDate())}` : ''}
+                        {item.decidedAt ? ` · ${formatDateTime(toDate(item.decidedAt))}` : ''}
                       </Text>
                       <Text as="p" className="support-message" sx={{ m: 0 }}>
                         {item.response}
