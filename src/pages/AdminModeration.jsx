@@ -199,15 +199,28 @@ export default function AdminModeration() {
                 {STATE_LABELS[item.state]?.text || item.state}
               </Label>
             </Box>
-            <Link to={`/admin/contas?usuario=${encodeURIComponent(item.userId)}`}>
-              Ver conta do solicitante
-            </Link>
+            {/* A conta do solicitante pode já ter sido excluída -- run_deletion_job nunca
+                apaga a denúncia, só zera user_id (ver 20260930000002_deletion_worker.sql).
+                Sem link quebrado apontando pra "null". */}
+            {item.userId ? (
+              <Link to={`/admin/contas?usuario=${encodeURIComponent(item.userId)}`}>
+                Ver conta do solicitante
+              </Link>
+            ) : (
+              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0, fontStyle: 'italic' }}>
+                Conta do solicitante excluída.
+              </Text>
+            )}
             {item.category && (
               <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
                 Categoria: {categoryLabel(item.category)}
               </Text>
             )}
-            {item.listingId && (
+            {/* listingKind nunca é apagado (não é FK) mesmo se a vitrine/titular forem
+                excluídos depois -- listingId/listingDisplayName/listingLifecycleState podem
+                virar null nesse caso (on delete set null / LEFT JOIN), mas o contexto de
+                "isto era uma denúncia de vitrine" nunca desaparece silenciosamente. */}
+            {item.listingKind && (
               <Box
                 sx={{
                   display: 'flex',
@@ -219,13 +232,19 @@ export default function AdminModeration() {
                 }}
               >
                 <Text as="span">
-                  Vitrine denunciada: {item.listingDisplayName || item.listingId} (
+                  Vitrine denunciada:{' '}
+                  {item.listingId ? item.listingDisplayName || item.listingId : 'Conteúdo não disponível'} (
                   {optionLabel(LISTING_KIND_OPTIONS, item.listingKind)} ·{' '}
-                  {LISTING_STATE_LABELS[item.listingLifecycleState] || item.listingLifecycleState || '—'})
+                  {item.listingId
+                    ? LISTING_STATE_LABELS[item.listingLifecycleState] || item.listingLifecycleState || '—'
+                    : 'Excluída'}
+                  )
                 </Text>
-                <Link to={`/admin/vitrines?busca=${encodeURIComponent(item.listingDisplayName || '')}`}>
-                  Abrir no admin de Vitrines
-                </Link>
+                {item.listingId && (
+                  <Link to={`/admin/vitrines?busca=${encodeURIComponent(item.listingDisplayName || '')}`}>
+                    Abrir no admin de Vitrines
+                  </Link>
+                )}
               </Box>
             )}
             <Text as="p" className="support-message" sx={{ m: 0 }}>

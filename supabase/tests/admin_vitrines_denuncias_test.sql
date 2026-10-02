@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(32);
 
 -- Fixtures: um dono de vitrine (reporter-alvo), um denunciante comum, um superadmin.
 insert into auth.users (
@@ -243,6 +243,100 @@ select is(
   ) item limit 1),
   'suspended',
   'admin_list_support_requests mostra o estado atual (ao vivo) da vitrine'
+);
+
+-- === robustez: uma denúncia NUNCA deve desaparecer nem derrubar o admin só porque a
+-- conta do denunciante ou a vitrine/titular denunciados foram excluídos depois
+-- (run_deletion_job, mesmo caminho real de exclusão de conta) ===
+insert into auth.users (
+  id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+) values
+  ('56000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated',
+   'owner-delfix@example.invalid', 'not-used', now(), '{}'::jsonb, '{}'::jsonb, now(), now()),
+  ('56000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated',
+   'reporter-delfix@example.invalid', 'not-used', now(), '{}'::jsonb, '{}'::jsonb, now(), now());
+update public.users set usage_profile = 'professional', username = 'ownerdelfix'
+  where id = '56000000-0000-0000-0000-000000000001';
+update public.users set username = 'reporterdelfix'
+  where id = '56000000-0000-0000-0000-000000000002';
+
+insert into public.professional_listings (id, owner_id, kind, lifecycle_state, published_version)
+values ('57000000-0000-0000-0000-000000000001', '56000000-0000-0000-0000-000000000001', 'professional', 'published', 1);
+insert into public.professional_listing_drafts (
+  listing_id, owner_id, kind, display_name, category_key, modality_keys, specialties, bio, city, city_key, uf,
+  service_mode, contacts, version
+) values (
+  '57000000-0000-0000-0000-000000000001', '56000000-0000-0000-0000-000000000001', 'professional',
+  'Vitrine Delfix', 'personal_trainer', array['musculacao'], '{}', 'Bio de teste',
+  'São Paulo', 'sao paulo', 'SP', 'online', '{}'::jsonb, 1
+);
+
+select set_config('request.jwt.claim.sub', '56000000-0000-0000-0000-000000000002', true);
+delete from public.support_limits where user_id = '56000000-0000-0000-0000-000000000002';
+select public.submit_support_request(jsonb_build_object(
+  'kind', 'report', 'message', 'Denúncia que precisa sobreviver a exclusões de conta.',
+  'listingId', '57000000-0000-0000-0000-000000000001', 'category', 'spam'
+));
+
+-- Exclusão real do DENUNCIANTE (mesmo run_deletion_job que a Edge Function
+-- process-deletion-jobs chama -- não um DELETE avulso simulando o efeito).
+insert into public.deletion_jobs (kind, target_id, state)
+values ('account', '56000000-0000-0000-0000-000000000002', 'pending');
+select public.run_deletion_job(
+  (select id from public.deletion_jobs where kind = 'account' and target_id = '56000000-0000-0000-0000-000000000002')
+);
+
+select is(
+  (select count(*)::int from public.support_requests
+    where message = 'Denúncia que precisa sobreviver a exclusões de conta.'),
+  1,
+  'denúncia sobrevive à exclusão da conta do denunciante'
+);
+select is(
+  (select user_id from public.support_requests
+    where message = 'Denúncia que precisa sobreviver a exclusões de conta.'),
+  null,
+  'user_id vira null quando o denunciante é excluído (nunca derruba a denúncia)'
+);
+select set_config('request.jwt.claim.sub', '51000000-0000-0000-0000-000000000003', true);
+select lives_ok(
+  $$select public.admin_list_support_requests('', '57000000-0000-0000-0000-000000000001', null, 50)$$,
+  'admin_list_support_requests não lança erro com denunciante excluído'
+);
+
+-- Exclusão real do TITULAR da vitrine denunciada -- cascade de professional_listings
+-- (owner_id on delete cascade) apaga a vitrine; support_requests.listing_id/
+-- listing_owner_id viram null (on delete set null), mas listing_kind (não é FK)
+-- preserva o contexto mínimo de que era uma denúncia de vitrine profissional.
+insert into public.deletion_jobs (kind, target_id, state)
+values ('account', '56000000-0000-0000-0000-000000000001', 'pending');
+select public.run_deletion_job(
+  (select id from public.deletion_jobs where kind = 'account' and target_id = '56000000-0000-0000-0000-000000000001')
+);
+
+select is(
+  (select count(*)::int from public.support_requests
+    where message = 'Denúncia que precisa sobreviver a exclusões de conta.'),
+  1,
+  'denúncia sobrevive também à exclusão da conta do titular da vitrine'
+);
+select is(
+  (select listing_id from public.support_requests
+    where message = 'Denúncia que precisa sobreviver a exclusões de conta.'),
+  null,
+  'listing_id vira null quando a vitrine é excluída (cascade a partir do titular)'
+);
+select is(
+  (select listing_kind from public.support_requests
+    where message = 'Denúncia que precisa sobreviver a exclusões de conta.'),
+  'professional',
+  'listing_kind sobrevive (coluna comum, não FK) mesmo com a vitrine excluída'
+);
+select set_config('request.jwt.claim.sub', '51000000-0000-0000-0000-000000000003', true);
+select lives_ok(
+  $$select public.admin_list_support_requests('', null, null, 50)$$,
+  'admin_list_support_requests não lança erro mesmo com vitrine e titular excluídos'
 );
 
 select * from finish();
