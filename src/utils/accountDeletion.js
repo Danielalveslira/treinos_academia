@@ -44,6 +44,8 @@ export const CASE_EVENT_LABELS = {
   held_payment_restored: 'Pagamento retido creditado na carteira',
   resolved: 'Caso resolvido',
   cancelled: 'Caso cancelado',
+  retention_hold_set: 'Retenção estendida (legal hold) ativada',
+  retention_hold_released: 'Retenção estendida (legal hold) removida',
 }
 
 export const SEPARATED_CASE_MESSAGE =
@@ -107,3 +109,25 @@ export const ADMIN_ACTIONS = {
 }
 
 export const NOTE_MIN_LENGTH = 5
+
+// Retenção financeira de um caso (política: aberto = preservado enquanto pendente; resolvido = 1
+// ano a partir de resolved_at; hold = preservado além do prazo). Só apresentação -- o prazo é
+// calculado e guardado pelo servidor (retention_until). Datas no fuso de Brasília, DD/MM/AAAA.
+export function describeCaseRetention(financialCase) {
+  if (!financialCase) return []
+  const lines = []
+  const until = financialCase.retentionUntil
+    ? new Date(financialCase.retentionUntil).toLocaleDateString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+      })
+    : null
+  if (financialCase.retentionHold) {
+    lines.push('Retenção estendida')
+    lines.push(`Motivo: ${financialCase.retentionHoldReason || '—'}`)
+    if (until) lines.push(`Prazo original: ${until}`)
+    return lines
+  }
+  if (financialCase.status === 'open') return ['Retenção: inicia após a resolução']
+  if (financialCase.status === 'resolved' && until) return [`Retenção até: ${until}`]
+  return []
+}

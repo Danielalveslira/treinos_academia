@@ -6,6 +6,7 @@ import {
   DELETION_STATE_LABELS,
   REVIEW_RESULT_LABELS,
   SEPARATED_CASE_MESSAGE,
+  describeCaseRetention,
   describeDeletionProgress,
 } from './accountDeletion.js'
 
@@ -77,4 +78,57 @@ test('there is no force-delete admin action and the separation copy states what 
   assert.match(separate, /NÃO zera o EvoCash/)
   assert.match(separate, /NÃO apaga o ledger/)
   assert.match(separate, /irreversível/)
+})
+
+test('retention copy: open case starts counting only after resolution', () => {
+  assert.deepEqual(
+    describeCaseRetention({ status: 'open', retentionUntil: null, retentionHold: false }),
+    ['Retenção: inicia após a resolução']
+  )
+})
+
+test('retention copy: resolved case shows the date as DD/MM/AAAA', () => {
+  assert.deepEqual(
+    describeCaseRetention({
+      status: 'resolved',
+      retentionUntil: '2027-10-02T12:41:00Z',
+      retentionHold: false,
+    }),
+    ['Retenção até: 02/10/2027']
+  )
+})
+
+test('retention copy: a legal hold shows "Retenção estendida", the reason and the original deadline', () => {
+  assert.deepEqual(
+    describeCaseRetention({
+      status: 'resolved',
+      retentionUntil: '2027-10-02T12:41:00Z',
+      retentionHold: true,
+      retentionHoldReason: 'disputa judicial em andamento',
+    }),
+    ['Retenção estendida', 'Motivo: disputa judicial em andamento', 'Prazo original: 02/10/2027']
+  )
+  assert.deepEqual(
+    describeCaseRetention({
+      status: 'open',
+      retentionUntil: null,
+      retentionHold: true,
+      retentionHoldReason: 'guarda legal',
+    }),
+    ['Retenção estendida', 'Motivo: guarda legal']
+  )
+})
+
+test('retention copy: nothing for a missing or cancelled case, and hold events have labels', () => {
+  assert.deepEqual(describeCaseRetention(null), [])
+  assert.deepEqual(
+    describeCaseRetention({ status: 'cancelled', retentionUntil: null, retentionHold: false }),
+    []
+  )
+})
+
+test('case events for the retention hold are labelled', async () => {
+  const { CASE_EVENT_LABELS } = await import('./accountDeletion.js')
+  assert.ok(CASE_EVENT_LABELS.retention_hold_set)
+  assert.ok(CASE_EVENT_LABELS.retention_hold_released)
 })

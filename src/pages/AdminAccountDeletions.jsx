@@ -26,6 +26,7 @@ import {
   CASE_EVENT_LABELS,
   CASE_STATUS_LABELS,
   DELETION_STATE_LABELS,
+  describeCaseRetention,
   NOTE_MIN_LENGTH,
   PURCHASE_STATUS_LABELS,
   REVIEW_RESULT_LABELS,
@@ -173,6 +174,11 @@ function FinancialHistory({ jobId }) {
           <Text as="p" sx={{ m: 0, color: 'fg.muted' }}>
             Decisão: “{financialCase.decisionNote}”
           </Text>
+          {describeCaseRetention(financialCase).map((line) => (
+            <Text as="p" key={line} sx={{ m: 0, color: 'fg.muted' }}>
+              {line}
+            </Text>
+          ))}
           {financialCase.events.map((event) => (
             <Text as="p" key={event.id} sx={{ m: 0, color: 'fg.muted' }}>
               {formatDateTime(toDate(event.createdAt))} ·{' '}
