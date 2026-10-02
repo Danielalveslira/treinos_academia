@@ -205,3 +205,51 @@ function unwrap({ data, error }) {
   if (error) throw error
   return data
 }
+
+// Admin de Vitrines -- paginação por cursor no servidor (mesmo padrão de
+// admin_list_accounts), nunca carrega todas as vitrines no cliente.
+function toAdminListingRow(row) {
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    ownerUsername: row.owner_username,
+    ownerEmail: row.owner_email,
+    kind: row.kind,
+    lifecycleState: row.lifecycle_state,
+    displayName: row.display_name,
+    publishedVersion: row.published_version,
+    suspendedReason: row.suspended_reason,
+    suspendedBy: row.suspended_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export async function adminListProfessionalListings({
+  search = '',
+  lifecycleState = '',
+  cursor = null,
+  pageSize = 50,
+} = {}) {
+  const { data, error } = await supabase.rpc('admin_list_professional_listings', {
+    p_search: search,
+    p_lifecycle_state: lifecycleState,
+    p_cursor: cursor,
+    p_page_size: pageSize,
+  })
+  if (error) throw error
+  return {
+    listings: data.map(toAdminListingRow),
+    nextCursor: data.length === pageSize ? data.at(-1).id : null,
+  }
+}
+
+export function adminGetProfessionalListing(listingId) {
+  return supabase.rpc('admin_get_professional_listing', { p_listing_id: listingId }).then(unwrap)
+}
+
+export function adminReactivateProfessionalListing(listingId) {
+  return supabase
+    .rpc('admin_reactivate_professional_listing', { p_listing_id: listingId })
+    .then(unwrap)
+}

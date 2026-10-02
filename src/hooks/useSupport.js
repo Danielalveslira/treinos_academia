@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { listModerationNotices, listSupportRequestsPage } from '../services/supportService'
 
-export function useSupport(userId, admin = false, state = '') {
+export function useSupport(userId, admin = false, state = '', listingId = null) {
   const revision = useRef(0)
   const invalidate = useCallback(() => {
     revision.current++
@@ -18,7 +18,7 @@ export function useSupport(userId, admin = false, state = '') {
     setError('')
     try {
       const [items, decisions] = await Promise.all([
-        listSupportRequestsPage(userId, admin, { state }),
+        listSupportRequestsPage(userId, admin, { state, listingId }),
         admin ? Promise.resolve([]) : listModerationNotices(userId),
       ])
       if (current !== revision.current) return
@@ -31,7 +31,7 @@ export function useSupport(userId, admin = false, state = '') {
     } finally {
       if (current === revision.current) setLoading(false)
     }
-  }, [userId, admin, state])
+  }, [userId, admin, state, listingId])
   useEffect(() => {
     refresh()
     return () => {
@@ -43,7 +43,7 @@ export function useSupport(userId, admin = false, state = '') {
     const current = revision.current
     setLoading(true)
     try {
-      const page = await listSupportRequestsPage(userId, admin, { state, cursor })
+      const page = await listSupportRequestsPage(userId, admin, { state, listingId, cursor })
       if (current !== revision.current) return
       setRequests((previous) => [...previous, ...page.items])
       setCursor(page.nextCursor)

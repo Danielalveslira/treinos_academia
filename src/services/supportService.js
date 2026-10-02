@@ -13,6 +13,10 @@ function toDoc(row) {
     statusId: row.status_id,
     communityId: row.community_id,
     decisionId: row.decision_id,
+    category: row.category,
+    listingId: row.listing_id,
+    listingOwnerId: row.listing_owner_id,
+    listingKind: row.listing_kind,
     contentSnapshot: row.content_snapshot,
     state: row.state,
     createdAt: row.created_at,
@@ -21,10 +25,52 @@ function toDoc(row) {
   }
 }
 
-export async function listSupportRequestsPage(userId, admin = false, { state = '', cursor = null } = {}) {
-  let q = supabase.from('support_requests').select('*').order('created_at', { ascending: false }).limit(25)
-  if (!admin) q = q.eq('user_id', userId)
-  if (admin && state) q = q.eq('state', state)
+// Visão do admin já vem com o contexto da vitrine resolvido em lote (nome atual, estado
+// atual) pela própria RPC -- nunca uma chamada por linha (ver admin_list_support_requests).
+function toAdminDoc(item) {
+  return {
+    id: item.id,
+    userId: item.userId,
+    kind: item.kind,
+    message: item.message,
+    statusId: item.statusId,
+    communityId: item.communityId,
+    decisionId: item.decisionId,
+    category: item.category,
+    listingId: item.listingId,
+    listingOwnerId: item.listingOwnerId,
+    listingKind: item.listingKind,
+    listingDisplayName: item.listingDisplayName,
+    listingLifecycleState: item.listingLifecycleState,
+    contentSnapshot: item.contentSnapshot,
+    state: item.state,
+    createdAt: item.createdAt,
+    response: item.response,
+    decidedAt: item.decidedAt,
+  }
+}
+
+export async function listSupportRequestsPage(
+  userId,
+  admin = false,
+  { state = '', listingId = null, cursor = null } = {}
+) {
+  if (admin) {
+    const { data, error } = await supabase.rpc('admin_list_support_requests', {
+      p_state: state,
+      p_listing_id: listingId,
+      p_cursor: cursor,
+      p_page_size: 25,
+    })
+    if (error) throw error
+    return { items: data.items.map(toAdminDoc), nextCursor: data.nextCursor }
+  }
+  let q = supabase
+    .from('support_requests')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(25)
   if (cursor) q = q.lt('created_at', cursor)
   const { data, error } = await q
   if (error) throw error
@@ -65,6 +111,8 @@ export async function submitSupportRequest(values) {
       kind: values.kind,
       message: values.message,
       statusId: values.statusId || '',
+      listingId: values.listingId || '',
+      category: values.category || '',
       communityId: values.communityId || '',
       decisionId: values.decisionId || '',
     },

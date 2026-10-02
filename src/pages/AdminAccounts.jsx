@@ -172,6 +172,9 @@ export default function AdminAccounts() {
         <Button as={Link} to="/admin/moderacao" replace>
           Atendimento e moderação
         </Button>
+        <Button as={Link} to="/admin/vitrines" replace>
+          Vitrines
+        </Button>
         <Button as={Link} to="/admin/exclusao-contas" replace>
           Exclusão de contas
         </Button>

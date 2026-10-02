@@ -16,7 +16,21 @@ import {
 import { useAuth } from '../hooks/useAuth'
 import { useSupport } from '../hooks/useSupport'
 import { decideSupportRequest, getModerationEvidenceBlob } from '../services/supportService'
+import { REPORT_CATEGORY_OPTIONS } from '../constants/supportReportCategories'
+import { LISTING_KIND_OPTIONS, optionLabel } from '../constants/professionalListingTaxonomy'
 import { formatDateTime } from '../utils/format'
+
+const LISTING_STATE_LABELS = {
+  draft: 'Rascunho',
+  published: 'Publicada',
+  archived: 'Despublicada',
+  suspended: 'Suspensa',
+  deleting: 'Em exclusão',
+}
+
+function categoryLabel(value) {
+  return optionLabel(REPORT_CATEGORY_OPTIONS, value)
+}
 
 // AUD-007: a página só imprimia contentSnapshot como JSON cru -- photoPath nunca
 // virava imagem, então um relato contra uma foto (mesmo com a evidência preservada
@@ -50,6 +64,7 @@ const ACTIONS = {
   no_action: 'Responder sem penalidade',
   warning: 'Advertência',
   remove_content: 'Remover publicação',
+  suspend_listing: 'Suspender vitrine',
   temporary_suspension: 'Suspensão temporária do sistema',
   community_ban: 'Banimento da comunidade',
   system_ban: 'Banimento do sistema',
@@ -86,7 +101,10 @@ export default function AdminModeration() {
     setSelected(item)
     setDraft({
       action: 'no_action',
-      targetUserId: item.contentSnapshot?.authorId || (item.kind === 'appeal' ? item.userId : ''),
+      targetUserId:
+        item.contentSnapshot?.authorId ||
+        item.listingOwnerId ||
+        (item.kind === 'appeal' ? item.userId : ''),
       communityId: item.communityId || '',
       days: 7,
       rule: '',
@@ -184,6 +202,32 @@ export default function AdminModeration() {
             <Link to={`/admin/contas?usuario=${encodeURIComponent(item.userId)}`}>
               Ver conta do solicitante
             </Link>
+            {item.category && (
+              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
+                Categoria: {categoryLabel(item.category)}
+              </Text>
+            )}
+            {item.listingId && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 2,
+                  alignItems: 'center',
+                  fontSize: 0,
+                  color: 'fg.muted',
+                }}
+              >
+                <Text as="span">
+                  Vitrine denunciada: {item.listingDisplayName || item.listingId} (
+                  {optionLabel(LISTING_KIND_OPTIONS, item.listingKind)} ·{' '}
+                  {LISTING_STATE_LABELS[item.listingLifecycleState] || item.listingLifecycleState || '—'})
+                </Text>
+                <Link to={`/admin/vitrines?busca=${encodeURIComponent(item.listingDisplayName || '')}`}>
+                  Abrir no admin de Vitrines
+                </Link>
+              </Box>
+            )}
             <Text as="p" className="support-message" sx={{ m: 0 }}>
               {item.message}
             </Text>
@@ -240,9 +284,10 @@ export default function AdminModeration() {
             <FormControl.Label>Medida</FormControl.Label>
             <Select value={draft.action} onChange={(e) => edit('action', e.target.value)} block>
               {Object.entries(ACTIONS)
-                .filter(
-                  ([value]) => ['report', 'appeal'].includes(selected.kind) || value === 'no_action'
-                )
+                .filter(([value]) => {
+                  if (value === 'suspend_listing') return !!selected.listingId
+                  return ['report', 'appeal'].includes(selected.kind) || value === 'no_action'
+                })
                 .map(([value, label]) => (
                   <Select.Option key={value} value={value}>
                     {label}
@@ -250,16 +295,23 @@ export default function AdminModeration() {
                 ))}
             </Select>
           </FormControl>
-          {['targetUserId', 'communityId'].map((field) => (
-            <FormControl disabled={saving} key={field}>
-              <FormControl.Label>
-                {field === 'targetUserId'
-                  ? 'ID do usuário atingido'
-                  : 'ID da comunidade (em branco para todo o sistema)'}
-              </FormControl.Label>
-              <TextInput block value={draft[field]} onChange={(e) => edit(field, e.target.value)} />
-            </FormControl>
-          ))}
+          {draft.action === 'suspend_listing' ? (
+            <Text as="p" sx={{ fontSize: 0, color: 'fg.muted' }}>
+              A vitrine denunciada será suspensa para o titular informado nesta denúncia — não é
+              preciso informar usuário ou comunidade.
+            </Text>
+          ) : (
+            ['targetUserId', 'communityId'].map((field) => (
+              <FormControl disabled={saving} key={field}>
+                <FormControl.Label>
+                  {field === 'targetUserId'
+                    ? 'ID do usuário atingido'
+                    : 'ID da comunidade (em branco para todo o sistema)'}
+                </FormControl.Label>
+                <TextInput block value={draft[field]} onChange={(e) => edit(field, e.target.value)} />
+              </FormControl>
+            ))
+          )}
           {draft.action === 'temporary_suspension' && (
             <FormControl required disabled={saving}>
               <FormControl.Label>Prazo em dias (1 a 30)</FormControl.Label>

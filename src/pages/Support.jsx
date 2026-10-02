@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   Box,
@@ -18,6 +18,8 @@ import { PublicLayout } from '../components/PublicLayout'
 import { useAuth } from '../hooks/useAuth'
 import { useSupport } from '../hooks/useSupport'
 import { submitSupportRequest, cancelSupportRequest } from '../services/supportService'
+import { getPublishedProfessionalListing } from '../services/professionalListingsService'
+import { REPORT_CATEGORY_OPTIONS } from '../constants/supportReportCategories'
 import { LEGAL_MANIFEST } from '../utils/legal'
 import { formatDateTime } from '../utils/format'
 
@@ -42,7 +44,9 @@ export default function Support() {
   )
   const [message, setMessage] = useState('')
   const [statusId, setStatusId] = useState(params.get('publicacao') || '')
-  const [listingId, setListingId] = useState(params.get('vitrine') || '')
+  const [listingId] = useState(params.get('vitrine') || '')
+  const [listingContext, setListingContext] = useState(null)
+  const [category, setCategory] = useState('')
   const [communityId, setCommunityId] = useState(params.get('comunidade') || '')
   const [decisionId, setDecisionId] = useState('')
   const [error, setError] = useState('')
@@ -57,6 +61,23 @@ export default function Support() {
     error: loadError,
     refresh,
   } = useSupport(user?.uid)
+
+  // Contexto automático do alvo denunciado -- o usuário não digita qual vitrine está
+  // denunciando, o botão na própria vitrine já manda o id pela URL; aqui só resolve um
+  // nome amigável pra confirmar visualmente. Melhor esforço: se a vitrine já não estiver
+  // mais pública (ex.: suspensa), a denúncia continua válida mesmo sem esse nome.
+  useEffect(() => {
+    if (!listingId) return
+    let active = true
+    getPublishedProfessionalListing(listingId)
+      .then((listing) => {
+        if (active) setListingContext(listing)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [listingId])
 
   async function handleCancel(item) {
     const confirmed = await confirm({
@@ -85,6 +106,10 @@ export default function Support() {
       setError('Descreva o pedido usando pelo menos 10 caracteres.')
       return
     }
+    if (kind === 'report' && !category) {
+      setError('Selecione uma categoria para a denúncia.')
+      return
+    }
     setSaving(true)
     setError('')
     setSuccess('')
@@ -94,11 +119,13 @@ export default function Support() {
         message,
         statusId: kind === 'report' ? statusId : '',
         listingId: kind === 'report' ? listingId : '',
+        category: kind === 'report' ? category : '',
         communityId: kind === 'report' ? communityId : '',
         decisionId: kind === 'appeal' ? decisionId : '',
       })
       setSuccess(`Pedido registrado. Protocolo: ${result.id}.`)
       setMessage('')
+      setCategory('')
       await refresh()
     } catch (err) {
       if (err.code === 'functions/resource-exhausted') {
@@ -218,31 +245,40 @@ export default function Support() {
               </FormControl>
               {kind === 'report' && (
                 <>
-                  <FormControl disabled={saving}>
-                    <FormControl.Label>Identificador da publicação (opcional)</FormControl.Label>
-                    <TextInput
-                      block
-                      maxLength={128}
-                      value={statusId}
-                      onChange={(e) => setStatusId(e.target.value)}
-                    />
-                    <FormControl.Caption>
-                      Use o botão de denúncia na publicação para preencher automaticamente.
-                    </FormControl.Caption>
+                  {listingId && (
+                    <Flash sx={{ mb: 2 }}>
+                      Você está denunciando{' '}
+                      {listingContext
+                        ? `${listingContext.kind === 'professional' ? 'o profissional' : 'o estabelecimento'} "${listingContext.displayName}"`
+                        : 'esta vitrine'}
+                      .
+                    </Flash>
+                  )}
+                  <FormControl required disabled={saving}>
+                    <FormControl.Label>Categoria da denúncia</FormControl.Label>
+                    <Select block value={category} onChange={(e) => setCategory(e.target.value)}>
+                      <Select.Option value="">Selecione uma categoria</Select.Option>
+                      {REPORT_CATEGORY_OPTIONS.map((option) => (
+                        <Select.Option key={option.value} value={option.value}>
+                          {option.label}
+                        </Select.Option>
+                      ))}
+                    </Select>
                   </FormControl>
-                  <FormControl disabled={saving}>
-                    <FormControl.Label>Identificador da vitrine (opcional)</FormControl.Label>
-                    <TextInput
-                      block
-                      maxLength={128}
-                      value={listingId}
-                      onChange={(e) => setListingId(e.target.value)}
-                    />
-                    <FormControl.Caption>
-                      Use o botão de denúncia na página do profissional ou estabelecimento para
-                      preencher automaticamente.
-                    </FormControl.Caption>
-                  </FormControl>
+                  {!listingId && (
+                    <FormControl disabled={saving}>
+                      <FormControl.Label>Identificador da publicação (opcional)</FormControl.Label>
+                      <TextInput
+                        block
+                        maxLength={128}
+                        value={statusId}
+                        onChange={(e) => setStatusId(e.target.value)}
+                      />
+                      <FormControl.Caption>
+                        Use o botão de denúncia na publicação para preencher automaticamente.
+                      </FormControl.Caption>
+                    </FormControl>
+                  )}
                   <FormControl disabled={saving}>
                     <FormControl.Label>Identificador da comunidade (opcional)</FormControl.Label>
                     <TextInput
