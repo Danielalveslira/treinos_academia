@@ -18,6 +18,7 @@
 // REVOGADAS de public/anon/authenticated -- só esta função, com a service role, as chama.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
+import { finalizedOperationResult, resolveAuthorizedAvatar } from './publishState.js'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -66,7 +67,7 @@ Deno.serve(async (req) => {
     // Nunca confia em owner_id do cliente -- só no uid resolvido pelo próprio JWT.
     const { data: listing, error: listingErr } = await adminClient
       .from('professional_listings')
-      .select('id, owner_id')
+      .select('id, owner_id, lifecycle_state, published_version')
       .eq('id', listingId)
       .maybeSingle()
     if (listingErr || !listing || listing.owner_id !== uid) {
@@ -75,9 +76,11 @@ Deno.serve(async (req) => {
 
     const { data: draft, error: draftErr } = await adminClient
       .from('professional_listing_drafts')
-      .select('use_profile_avatar, kind, review_state, publishing_operation_id')
+      .select('use_profile_avatar, kind, review_state, publishing_operation_id, publish_operation_id')
       .eq('listing_id', listingId)
       .maybeSingle()
+    const finalized = finalizedOperationResult(listing, draft, operationId)
+    if (finalized) return jsonOk(finalized)
     if (
       draftErr ||
       !draft ||
@@ -88,26 +91,24 @@ Deno.serve(async (req) => {
       // rascunho) quanto uma chamada fora de ordem (Fase 2 sem Fase 1 correspondente)
       // -- os dois são "nada aqui pra finalizar com este operationId", nunca uma
       // publicação dupla.
+      await abortSafely()
       return jsonError('PUBLISH_STATE_CHANGED', 409)
     }
 
-    let avatarPath: string | null = null
-    let avatarSourceMediaId: string | null = null
+    let owner: { avatar_media_id: string | null; avatar_path: string | null } | null = null
     if (draft.kind === 'professional' && draft.use_profile_avatar === true) {
-      const { data: owner } = await adminClient
+      const { data } = await adminClient
         .from('users')
         .select('avatar_media_id, avatar_path')
         .eq('id', uid)
         .maybeSingle()
-      if (owner?.avatar_media_id && owner?.avatar_path) {
-        avatarPath = owner.avatar_path
-        avatarSourceMediaId = owner.avatar_media_id
-      }
+      owner = data
       // Sem avatar autorizado agora: publica normalmente, sem foto (avatarPath fica
       // null) -- mesma regra de "sem avatar, publica com o padrão" do original.
       // finalize_professional_listing_publish revalida owner/state do media_id de
       // qualquer forma (AVATAR_AUTHORIZATION_CHANGED se mudou entre a Fase 1 e esta).
     }
+    const { avatarPath, avatarSourceMediaId } = resolveAuthorizedAvatar(draft, owner)
 
     const { data: result, error: finalizeErr } = await adminClient.rpc(
       'finalize_professional_listing_publish',

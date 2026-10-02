@@ -75,7 +75,7 @@ before(async () => {
               '@primer/react',
               `
             import { createElement } from 'react'
-            export const Button = ({ children, onClick }) => createElement('button', { onClick }, children)
+            export const Button = ({ children, onClick, ...props }) => createElement('button', { onClick, ...props }, children)
             export const Flash = ({ children }) => createElement('div', null, children)
             export const Spinner = ({ 'aria-label': label }) => createElement('span', null, label)
             export const Dialog = ({ title, children, onClose }) => createElement('div', { 'data-dialog-title': title },
@@ -284,6 +284,13 @@ const COMPLETE_DRAFT_RECORD = {
   published: null,
 }
 
+const PUBLISHED_RECORD = {
+  ...COMPLETE_DRAFT_RECORD,
+  listing: { ...COMPLETE_DRAFT_RECORD.listing, lifecycleState: 'published', publishedVersion: 1 },
+  draft: { ...COMPLETE_DRAFT_RECORD.draft, publishOperationId: 'completed-operation' },
+  published: { id: 'listing-1', publishedVersion: 1 },
+}
+
 // Decisão de produto: uma versão nova dos Termos nunca bloqueia Salvar/Publicar -- só
 // mostra o aviso. Sem nenhum acknowledgement mockado, "Publicar" continua presente (não
 // escondido nem substituído por nada que dependa de aceite).
@@ -302,7 +309,7 @@ test('publishing stays available with no acknowledgement at all -- never gated b
   try {
     const html = JSON.stringify(page.view.toJSON())
     assert.match(html, /Publicar/)
-    assert.match(html, /Os Termos da Vitrine foram atualizados/)
+    assert.match(html, /Termos da Vitrine atualizados/)
   } finally {
     page.close()
   }
@@ -312,8 +319,9 @@ test('publishing stays available with no acknowledgement at all -- never gated b
 // finalize) também termina é que a tela mostra "Vitrine publicada.".
 test('"Vitrine publicada" only shows after phase 2 (finalize) succeeds, never from phase 1 alone', async () => {
   const calls = []
+  let reads = 0
   const page = await renderWith({
-    getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD,
+    getMyProfessionalListing: async () => (++reads === 1 ? COMPLETE_DRAFT_RECORD : PUBLISHED_RECORD),
     publishProfessionalListing: async (...args) => {
       calls.push(['prepare', ...args])
       return { repeated: false, version: 1, avatarMediaId: null, avatarPath: null }
@@ -343,8 +351,9 @@ test('"Vitrine publicada" only shows after phase 2 (finalize) succeeds, never fr
 // redundante (e falharia, já que o rascunho não está mais em 'publishing').
 test('a repeated prepare (same operationId already published) skips calling finalize again', async () => {
   const calls = []
+  let reads = 0
   const page = await renderWith({
-    getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD,
+    getMyProfessionalListing: async () => (++reads === 1 ? COMPLETE_DRAFT_RECORD : PUBLISHED_RECORD),
     publishProfessionalListing: async () => {
       calls.push('prepare')
       return { repeated: true, version: 1 }
@@ -393,7 +402,7 @@ test('no acknowledgement banner when the server has no published showcase terms 
   const page = await renderWith({ getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD })
   try {
     const html = JSON.stringify(page.view.toJSON())
-    assert.doesNotMatch(html, /Termos da Vitrine foram atualizados/)
+    assert.doesNotMatch(html, /Termos da Vitrine atualizados/)
   } finally {
     page.close()
   }
@@ -432,7 +441,7 @@ test('opening "Ler o que mudou" shows the changes summary but does not acknowled
   })
   try {
     act(() => {
-      findButtonByText(page.view.root, 'Ler o que mudou').props.onClick()
+      findButtonByText(page.view.root, 'Ler alterações').props.onClick()
     })
     await flush(act)
     const html = JSON.stringify(page.view.toJSON())
@@ -443,7 +452,7 @@ test('opening "Ler o que mudou" shows the changes summary but does not acknowled
       findButtonByText(page.view.root, 'fechar').props.onClick()
     })
     assert.deepEqual(acknowledged, [])
-    assert.match(JSON.stringify(page.view.toJSON()), /Os Termos da Vitrine foram atualizados/)
+    assert.match(JSON.stringify(page.view.toJSON()), /Termos da Vitrine atualizados/)
   } finally {
     page.close()
   }
@@ -468,9 +477,9 @@ test('clicking "OK, entendi" inside the dialog acknowledges the current version 
     },
   })
   try {
-    assert.match(JSON.stringify(page.view.toJSON()), /Os Termos da Vitrine foram atualizados/)
+    assert.match(JSON.stringify(page.view.toJSON()), /Termos da Vitrine atualizados/)
     act(() => {
-      findButtonByText(page.view.root, 'Ler o que mudou').props.onClick()
+      findButtonByText(page.view.root, 'Ler alterações').props.onClick()
     })
     await flush(act)
     act(() => {
@@ -480,8 +489,155 @@ test('clicking "OK, entendi" inside the dialog acknowledges the current version 
     assert.deepEqual(acknowledged, ['1.1.0'])
     assert.doesNotMatch(
       JSON.stringify(page.view.toJSON()),
-      /Os Termos da Vitrine foram atualizados/
+      /Termos da Vitrine atualizados/
     )
+  } finally {
+    page.close()
+  }
+})
+
+test('the compact banner acknowledges directly through "Entendi" and disappears immediately', async () => {
+  const acknowledged = []
+  const page = await renderWith({
+    getMyProfessionalListing: async () => COMPLETE_DRAFT_RECORD,
+    getActiveShowcasePolicy: async () => ({
+      documentId: 'showcase-publication-terms',
+      version: '1.1.0',
+      digest: 'abc',
+      published: true,
+      publishedAt: '2026-10-01T00:00:00Z',
+    }),
+    getShowcaseLegalAcknowledgement: async () => null,
+    acknowledgeShowcaseTerms: async () => {
+      acknowledged.push('1.1.0')
+      return { version: '1.1.0', acknowledged: true }
+    },
+  })
+  try {
+    assert.match(JSON.stringify(page.view.toJSON()), /Veja o que mudou nesta versão/)
+    act(() => {
+      findButtonByText(page.view.root, 'Entendi').props.onClick()
+    })
+    await flush(act)
+    assert.deepEqual(acknowledged, ['1.1.0'])
+    assert.doesNotMatch(JSON.stringify(page.view.toJSON()), /Termos da Vitrine atualizados/)
+  } finally {
+    page.close()
+  }
+})
+
+test('an interrupted phase 2 retries with the same operation and only reports success after finalize', async () => {
+  const prepareOperations = []
+  const finalizeOperations = []
+  let reads = 0
+  const page = await renderWith({
+    getMyProfessionalListing: async () => {
+      reads += 1
+      return reads >= 3 ? PUBLISHED_RECORD : COMPLETE_DRAFT_RECORD
+    },
+    publishProfessionalListing: async (_listingId, operationId) => {
+      prepareOperations.push(operationId)
+      return { repeated: false, version: 1 }
+    },
+    finalizeProfessionalListingPublish: async (_listingId, operationId) => {
+      finalizeOperations.push(operationId)
+      if (finalizeOperations.length === 1) throw new Error('NETWORK_INTERRUPTED')
+      return { listingId: 'listing-1', state: 'published', version: 1 }
+    },
+  })
+  try {
+    act(() => findButtonByText(page.view.root, 'Publicar').props.onClick())
+    await flush(act)
+    assert.doesNotMatch(JSON.stringify(page.view.toJSON()), /Vitrine publicada/)
+
+    act(() => findButtonByText(page.view.root, 'Publicar').props.onClick())
+    await flush(act)
+    assert.equal(prepareOperations.length, 2)
+    assert.equal(finalizeOperations.length, 2)
+    assert.equal(prepareOperations[0], prepareOperations[1])
+    assert.equal(finalizeOperations[0], finalizeOperations[1])
+    assert.match(JSON.stringify(page.view.toJSON()), /Vitrine publicada/)
+  } finally {
+    page.close()
+  }
+})
+
+test('a loaded publishing state can resume the stored operation instead of staying locked', async () => {
+  const operations = []
+  let reads = 0
+  const publishingRecord = {
+    ...COMPLETE_DRAFT_RECORD,
+    draft: {
+      ...COMPLETE_DRAFT_RECORD.draft,
+      reviewState: 'publishing',
+      publishingOperationId: 'stale-operation',
+      publishingStartedAt: '2026-10-01T19:31:09.647Z',
+    },
+  }
+  const publishedRecord = {
+    ...COMPLETE_DRAFT_RECORD,
+    listing: { ...COMPLETE_DRAFT_RECORD.listing, lifecycleState: 'published', publishedVersion: 1 },
+    draft: { ...COMPLETE_DRAFT_RECORD.draft, publishOperationId: 'stale-operation' },
+    published: { id: 'listing-1', publishedVersion: 1 },
+  }
+  const page = await renderWith({
+    getMyProfessionalListing: async () => {
+      reads += 1
+      return reads === 1 ? publishingRecord : publishedRecord
+    },
+    publishProfessionalListing: async (_listingId, operationId) => {
+      operations.push(['prepare', operationId])
+      return { repeated: false, resumed: true, version: 1 }
+    },
+    finalizeProfessionalListingPublish: async (_listingId, operationId) => {
+      operations.push(['finalize', operationId])
+      return { listingId: 'listing-1', state: 'published', version: 1 }
+    },
+  })
+  try {
+    assert.match(JSON.stringify(page.view.toJSON()), /Retomar publicação/)
+    act(() => findButtonByText(page.view.root, 'Retomar publicação').props.onClick())
+    await flush(act)
+    assert.deepEqual(operations, [
+      ['prepare', 'stale-operation'],
+      ['finalize', 'stale-operation'],
+    ])
+    assert.match(JSON.stringify(page.view.toJSON()), /Vitrine publicada/)
+  } finally {
+    page.close()
+  }
+})
+
+test('nullable draft fields are normalized before reaching controlled inputs', async () => {
+  const page = await renderWith({
+    getMyProfessionalListing: async () => ({
+      ...COMPLETE_DRAFT_RECORD,
+      draft: {
+        ...COMPLETE_DRAFT_RECORD.draft,
+        displayName: null,
+        categoryKey: null,
+        modalityKeys: null,
+        specialties: null,
+        bio: null,
+        city: null,
+        uf: null,
+        serviceMode: null,
+        contacts: { whatsapp: null, instagram: null, website: null },
+        linkedCommunityId: null,
+        useProfileAvatar: null,
+      },
+    }),
+  })
+  try {
+    const controls = [
+      ...page.view.root.findAllByType('input'),
+      ...page.view.root.findAllByType('select'),
+      ...page.view.root.findAllByType('textarea'),
+    ]
+    for (const control of controls) {
+      if ('value' in control.props) assert.notEqual(control.props.value, null)
+      if ('checked' in control.props) assert.equal(typeof control.props.checked, 'boolean')
+    }
   } finally {
     page.close()
   }

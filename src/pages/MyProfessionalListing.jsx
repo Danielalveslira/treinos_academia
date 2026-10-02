@@ -86,7 +86,14 @@ function editableDraft(data, kind) {
     uf: data?.uf ?? EMPTY_LISTING_DRAFT.uf,
     serviceMode: data?.serviceMode ?? EMPTY_LISTING_DRAFT.serviceMode,
     kind,
-    contacts: { ...EMPTY_LISTING_DRAFT.contacts, ...data?.contacts },
+    modalityKeys: Array.isArray(data?.modalityKeys) ? data.modalityKeys : [],
+    specialties: Array.isArray(data?.specialties) ? data.specialties : [],
+    contacts: {
+      whatsapp: data?.contacts?.whatsapp ?? '',
+      instagram: data?.contacts?.instagram ?? '',
+      website: data?.contacts?.website ?? '',
+    },
+    useProfileAvatar: data?.useProfileAvatar === true,
     linkedCommunityId: data?.linkedCommunityId || '',
     specialtiesText: data?.specialties?.join(', ') || '',
   }
@@ -119,6 +126,7 @@ export default function MyProfessionalListing() {
     }
     setRecord(current)
     if (current) setForm(editableDraft(current.draft, current.listing.kind))
+    return current
   }
 
   useEffect(() => {
@@ -263,15 +271,32 @@ export default function MyProfessionalListing() {
     setBusy('publish')
     setMessage(null)
     try {
-      submissionOperation.current ||= crypto.randomUUID().replaceAll('-', '')
+      submissionOperation.current ||=
+        record.draft?.publishingOperationId || crypto.randomUUID().replaceAll('-', '')
       const prepared = await publishProfessionalListing(record.id, submissionOperation.current)
       if (!prepared.repeated) {
         await finalizeProfessionalListingPublish(record.id, submissionOperation.current)
       }
-      await reload()
+      const current = await reload()
+      if (current?.listing?.lifecycleState !== 'published' || !current.published) {
+        throw new Error('PUBLISH_NOT_FINALIZED')
+      }
       submissionOperation.current = null
       setMessage({ variant: 'success', text: 'Vitrine publicada.' })
     } catch (error) {
+      // A Edge Function tenta abortar a operação em qualquer falha. Recarregar reflete
+      // esse abort; se só a resposta se perdeu após um finalize real, também revela o
+      // estado publicado persistido no servidor.
+      try {
+        const current = await reload()
+        if (current?.listing?.lifecycleState === 'published' && current.published) {
+          submissionOperation.current = null
+          setMessage({ variant: 'success', text: 'Vitrine publicada.' })
+          return
+        }
+      } catch (reloadError) {
+        console.error('[Vitrine] recarregamento após falha de publicação:', reloadError)
+      }
       setMessage({ variant: 'danger', text: KNOWN_ERRORS[error?.message] || 'Não foi possível publicar.' })
     } finally {
       setBusy('')
@@ -429,7 +454,8 @@ export default function MyProfessionalListing() {
   // visível se uma tentativa anterior travou pela metade (ex.: função derrubada no
   // meio da cópia do avatar) e o titular ainda não tentou de novo.
   const publishing = record.draft?.reviewState === 'publishing'
-  const pending = publishing || record.listing.lifecycleState === 'pending_review'
+  const pending = record.listing.lifecycleState === 'pending_review'
+  const editorLocked = publishing || pending
   const state = record.listing.lifecycleState
   const showTermsBanner = shouldShowShowcaseTermsBanner({
     policy: showcasePolicy,
@@ -452,12 +478,25 @@ export default function MyProfessionalListing() {
         )}
       </header>
       {showTermsBanner && (
-        <Flash variant="default" className="showcase-terms-banner">
-          <span>Os Termos da Vitrine foram atualizados.</span>
-          <div className="showcase-terms-banner-actions">
-            <Button onClick={openShowcaseTermsDialog}>Ler o que mudou</Button>
+        <section className="showcase-terms-banner" aria-label="Termos da Vitrine atualizados">
+          <div className="showcase-terms-banner-copy">
+            <strong>Termos da Vitrine atualizados</strong>
+            <span>Veja o que mudou nesta versão.</span>
           </div>
-        </Flash>
+          <div className="showcase-terms-banner-actions">
+            <Button size="small" variant="invisible" onClick={openShowcaseTermsDialog}>
+              Ler alterações
+            </Button>
+            <Button
+              size="small"
+              variant="primary"
+              onClick={acknowledgeTerms}
+              loading={busy === 'acknowledge-terms'}
+            >
+              Entendi
+            </Button>
+          </div>
+        </section>
       )}
       {showcaseTermsDialogOpen && (
         <ShowcaseTermsUpdateDialog
@@ -480,10 +519,21 @@ export default function MyProfessionalListing() {
               : 'Sua foto global ainda não está autorizada nesta página pública. Marque a autorização abaixo, salve e publique novamente.'}
           </Flash>
         )}
-      {pending && (
+      {publishing && (
         <Flash variant="warning">
-          Uma publicação anterior desta vitrine ainda não terminou. Tente novamente em instantes.
+          <span>Uma publicação anterior foi interrompida.</span>{' '}
+          <Button
+            size="small"
+            onClick={publish}
+            loading={busy === 'publish'}
+            disabled={Boolean(busy)}
+          >
+            Retomar publicação
+          </Button>
         </Flash>
+      )}
+      {pending && (
+        <Flash variant="warning">Esta vitrine ainda usa o fluxo legado de revisão.</Flash>
       )}
       {record.draft?.rejectionSummary && (
         <Flash variant="warning">
@@ -497,14 +547,14 @@ export default function MyProfessionalListing() {
       )}
       <div className="listing-editor-grid">
         <form className="listing-editor" onSubmit={save}>
-          <fieldset disabled={pending || Boolean(busy)}>
+          <fieldset disabled={editorLocked || Boolean(busy)}>
             <legend>Informações públicas</legend>
             <label>
               Nome profissional ou comercial
               <input
                 required
                 maxLength={80}
-                value={form.displayName}
+                value={form.displayName ?? ''}
                 onChange={(e) => edit('displayName', e.target.value)}
               />
             </label>
@@ -512,7 +562,7 @@ export default function MyProfessionalListing() {
               Categoria
               <select
                 required
-                value={form.categoryKey}
+                value={form.categoryKey ?? ''}
                 onChange={(e) => edit('categoryKey', e.target.value)}
               >
                 <option value="">Selecione</option>
@@ -529,7 +579,7 @@ export default function MyProfessionalListing() {
                 required
                 maxLength={1500}
                 rows={7}
-                value={form.bio}
+                value={form.bio ?? ''}
                 onChange={(e) => edit('bio', e.target.value)}
               />
               <small>{form.bio.length}/1500</small>
@@ -540,13 +590,13 @@ export default function MyProfessionalListing() {
                 <input
                   required
                   maxLength={80}
-                  value={form.city}
+                  value={form.city ?? ''}
                   onChange={(e) => edit('city', e.target.value)}
                 />
               </label>
               <label>
                 UF
-                <select required value={form.uf} onChange={(e) => edit('uf', e.target.value)}>
+                <select required value={form.uf ?? ''} onChange={(e) => edit('uf', e.target.value)}>
                   <option value="">Selecione</option>
                   {BRAZIL_STATES.map((uf) => (
                     <option key={uf}>{uf}</option>
@@ -557,7 +607,7 @@ export default function MyProfessionalListing() {
             <label>
               Atendimento
               <select
-                value={form.serviceMode}
+                value={form.serviceMode ?? ''}
                 onChange={(e) => edit('serviceMode', e.target.value)}
               >
                 {SERVICE_MODE_OPTIONS.map((option) => (
@@ -586,12 +636,12 @@ export default function MyProfessionalListing() {
               Especialidades, separadas por vírgula
               <input
                 maxLength={610}
-                value={form.specialtiesText}
+                value={form.specialtiesText ?? ''}
                 onChange={(e) => edit('specialtiesText', e.target.value)}
               />
             </label>
           </fieldset>
-          <fieldset disabled={pending || Boolean(busy)}>
+          <fieldset disabled={editorLocked || Boolean(busy)}>
             <legend>Contatos externos</legend>
             <label>
               WhatsApp
@@ -599,7 +649,7 @@ export default function MyProfessionalListing() {
                 type="url"
                 maxLength={300}
                 placeholder="https://wa.me/5511999999999"
-                value={form.contacts.whatsapp}
+                value={form.contacts.whatsapp ?? ''}
                 onChange={(e) => editContact('whatsapp', e.target.value)}
               />
             </label>
@@ -609,7 +659,7 @@ export default function MyProfessionalListing() {
                 type="url"
                 maxLength={300}
                 placeholder="https://instagram.com/seuusuario"
-                value={form.contacts.instagram}
+                value={form.contacts.instagram ?? ''}
                 onChange={(e) => editContact('instagram', e.target.value)}
               />
             </label>
@@ -619,18 +669,18 @@ export default function MyProfessionalListing() {
                 type="url"
                 maxLength={300}
                 placeholder="https://seusite.com.br"
-                value={form.contacts.website}
+                value={form.contacts.website ?? ''}
                 onChange={(e) => editContact('website', e.target.value)}
               />
             </label>
           </fieldset>
-          <fieldset disabled={pending || Boolean(busy)}>
+          <fieldset disabled={editorLocked || Boolean(busy)}>
             <legend>Vínculos</legend>
             {form.kind === 'professional' && (
               <label className="listing-checkbox">
                 <input
                   type="checkbox"
-                  checked={form.useProfileAvatar}
+                  checked={Boolean(form.useProfileAvatar)}
                   disabled={!profile?.avatarPath}
                   onChange={(e) => edit('useProfileAvatar', e.target.checked)}
                 />
@@ -647,7 +697,7 @@ export default function MyProfessionalListing() {
             <label>
               Comunidade vinculada
               <select
-                value={form.linkedCommunityId}
+                value={form.linkedCommunityId ?? ''}
                 onChange={(e) => edit('linkedCommunityId', e.target.value)}
               >
                 <option value="">Nenhuma</option>
@@ -661,7 +711,7 @@ export default function MyProfessionalListing() {
             </label>
           </fieldset>
           <div className="listing-editor-actions">
-            <Button type="submit" loading={busy === 'save'} disabled={pending || Boolean(busy)}>
+            <Button type="submit" loading={busy === 'save'} disabled={editorLocked || Boolean(busy)}>
               Salvar rascunho
             </Button>
             <Button
@@ -669,7 +719,7 @@ export default function MyProfessionalListing() {
               variant="primary"
               onClick={publish}
               loading={busy === 'publish'}
-              disabled={pending || Boolean(busy) || !record.draft?.version}
+              disabled={editorLocked || Boolean(busy) || !record.draft?.version}
             >
               Publicar
             </Button>
@@ -687,7 +737,7 @@ export default function MyProfessionalListing() {
             Despublicar
           </Button>
         )}
-        <Button variant="danger" onClick={remove} disabled={pending || Boolean(busy)}>
+        <Button variant="danger" onClick={remove} disabled={editorLocked || Boolean(busy)}>
           Excluir vitrine
         </Button>
       </section>
