@@ -1,0 +1,15 @@
+-- Restaura o EXECUTE de private.can_view_status para authenticated.
+--
+-- Sintoma em produção: a lista de comentários não carrega (GET comment_list_items -> 403,
+-- "permission denied for function can_view_status", 42501), para TODOS os usuários.
+--
+-- Causa: a RLS de public.post_comments (e a de comment_likes) chama private.can_view_status(...) com os
+-- privilégios de quem consulta. 20261002000005_comments_read_rls concede esse EXECUTE a authenticated, mas
+-- 20261002000009_notifications_center termina com
+--     revoke all on all functions in schema private from public, anon, authenticated;
+-- que apaga o grant (a mesma linha existe em 20261002000004, onde era inofensiva porque 000005 vem DEPOIS e
+-- reconcede). Em 000009 nada reconcede.
+--
+-- Esta migration só devolve o grant intencional. As demais funções do schema private seguem sem acesso do
+-- cliente (são security definer chamadas por wrappers públicos, ou triggers).
+grant execute on function private.can_view_status(uuid, uuid) to authenticated;
