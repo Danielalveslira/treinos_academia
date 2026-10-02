@@ -39,6 +39,11 @@ export function mapStatusRow(row) {
     promoted: row.promoted,
     promotedUntil: row.promoted_until,
     activePromotionId: row.active_promotion_id,
+    // Totais de reação denormalizados em statuses (cast_vote os mantém). Sem mapeá-los aqui, todo
+    // carregamento da página os deixava undefined (exibidos como 0) e só o delta local da sessão os
+    // fazia subir -- por isso "voltavam a zero" ao atualizar.
+    positiveVoteCount: row.positive_vote_count ?? 0,
+    negativeVoteCount: row.negative_vote_count ?? 0,
   }
   switch (row.type) {
     case 'text':
