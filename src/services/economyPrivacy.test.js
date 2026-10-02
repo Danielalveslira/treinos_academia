@@ -45,3 +45,13 @@ test('no component offers a list of people who did not support (no "negativos" t
     )
   }
 })
+
+test('the list_post_supporters RPC is only consumed by the likers modal, which reads just userId and username', () => {
+  const consumers = sourceFiles(SRC).filter((file) =>
+    /list_post_supporters|listPostSupporters/.test(readFileSync(file, 'utf8'))
+  )
+  assert.deepEqual(consumers.map((file) => file.replace(SRC, '')).sort(), [
+    'components/PostSupportersDialog.jsx',
+    'services/economyService.js',
+  ])
+})

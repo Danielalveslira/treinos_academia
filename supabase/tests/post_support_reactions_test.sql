@@ -74,8 +74,8 @@ select is((select jsonb_array_length(r -> 'supporters') from _p1), 4, 'lista tra
 select ok(not exists (select 1 from _p1, jsonb_array_elements(r -> 'supporters') e where e ->> 'userId' = '68000000-0000-0000-0000-000000000006'), 'quem NÃO apoiou nunca aparece na lista');
 select is((select r -> 'supporters' -> 0 ->> 'userId' from _p1), '68000000-0000-0000-0000-000000000005', 'ordenação: mais recente primeiro');
 select is((select r -> 'supporters' -> 3 ->> 'userId' from _p1), '68000000-0000-0000-0000-000000000002', 'ordenação: mais antigo por último');
-select is((select (r -> 'supporters' -> 0) ?& array['userId','username','avatarPath'] from _p1), true, 'item traz userId, username e avatarPath');
-select is((select count(*)::int from _p1, jsonb_object_keys(r -> 'supporters' -> 0) k where k not in ('userId','username','avatarPath')), 0, 'item não vaza value/charged/reward/timestamps');
+select is((select (r -> 'supporters' -> 0) ?& array['userId','username'] from _p1), true, 'item traz userId e username');
+select is((select count(*)::int from _p1, jsonb_object_keys(r -> 'supporters' -> 0) k where k not in ('userId','username')), 0, 'item não vaza avatar/value/charged/reward/timestamps');
 select is((select r -> 'nextCursor' from _p1), 'null'::jsonb, 'sem próxima página quando tudo cabe');
 select is((select r -> 'supporters' -> 0 ->> 'username' from _p1), 'apoiador05', 'username vem do perfil público (1 JOIN, sem N+1)');
 
