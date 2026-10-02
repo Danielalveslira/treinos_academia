@@ -18,6 +18,8 @@ import { getDashboardGreeting } from '../utils/greeting'
 import { buildExerciseNameMap } from '../utils/format'
 import { StreakCard } from '../components/StreakCard'
 import { ActivityCalendarDialog } from '../components/ActivityCalendarDialog'
+import { ShareProgressDialog } from '../components/ShareProgressDialog'
+import { buildShareOptions } from '../utils/shareProgress'
 import { TrainingPlanDialog } from '../components/TrainingPlanDialog'
 import {
   buildActivityDays,
@@ -57,6 +59,7 @@ function getVolumeTrend(days) {
 
 export default function Dashboard() {
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const [planOpen, setPlanOpen] = useState(false)
   const navigate = useNavigate()
   const { recentWorkouts, progressDays, loading, error, refresh } = useHomeDashboard()
@@ -87,6 +90,19 @@ export default function Dashboard() {
     const annual = calculateConsistency(activityDays, now)
     return { ...annual, current: calculateConsistency(timeline, now).current }
   }, [activityDays, progressDays, trainingPreferences])
+  // Só calcula quando o modal abre, a partir do que a Home já carregou (nenhuma consulta nova).
+  const shareOptions = useMemo(
+    () =>
+      shareOpen
+        ? buildShareOptions({
+            progressDays,
+            preferences: trainingPreferences,
+            consistency,
+            username: profile?.username,
+          })
+        : [],
+    [shareOpen, progressDays, trainingPreferences, consistency, profile?.username]
+  )
   const volume = useMemo(() => getVolumeTrend(progressDays), [progressDays])
   const weekStartKey = useMemo(() => {
     const date = new Date()
@@ -211,6 +227,7 @@ export default function Dashboard() {
         hasTrainingPlan={trainingPreferences.plannedTrainingDays.length > 0}
         onConfigurePlan={() => setPlanOpen(true)}
         onOpenCalendar={() => setCalendarOpen(true)}
+        onShare={() => setShareOpen(true)}
       />
 
       <section className="performance-strip" aria-label="Resumo do progresso">
@@ -246,7 +263,14 @@ export default function Dashboard() {
           consistency={consistency}
           exerciseNameById={exerciseNameById}
           onClose={() => setCalendarOpen(false)}
+          onShare={() => {
+            setCalendarOpen(false)
+            setShareOpen(true)
+          }}
         />
+      )}
+      {shareOpen && shareOptions.length > 0 && (
+        <ShareProgressDialog options={shareOptions} onClose={() => setShareOpen(false)} />
       )}
       {planOpen && (
         <TrainingPlanDialog

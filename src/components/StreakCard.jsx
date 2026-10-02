@@ -1,4 +1,4 @@
-import { ArrowRightIcon, CheckIcon, GearIcon } from '@primer/octicons-react'
+import { ArrowRightIcon, CheckIcon, GearIcon, ShareIcon } from '@primer/octicons-react'
 import { ConsistencyFlame } from './ConsistencyFlame'
 
 const STATE_LABELS = {
@@ -28,7 +28,13 @@ function todayCopy(day) {
   return 'Nenhum treino programado'
 }
 
-export function StreakCard({ consistency, hasTrainingPlan, onConfigurePlan, onOpenCalendar }) {
+export function StreakCard({
+  consistency,
+  hasTrainingPlan,
+  onConfigurePlan,
+  onOpenCalendar,
+  onShare,
+}) {
   return (
     <section className="streak-card" aria-labelledby="consistency-title">
       <div className="streak-summary">
@@ -65,6 +71,11 @@ export function StreakCard({ consistency, hasTrainingPlan, onConfigurePlan, onOp
         <button type="button" className="streak-action-link" onClick={onConfigurePlan}>
           <GearIcon size={14} /> {hasTrainingPlan ? 'Ajustar planejamento' : 'Planejar semana'}
         </button>
+        {onShare && (
+          <button type="button" className="streak-action-link" onClick={onShare}>
+            <ShareIcon size={14} /> Compartilhar
+          </button>
+        )}
         <button type="button" className="streak-action-link" onClick={onOpenCalendar}>
           Ver calendário <ArrowRightIcon size={14} />
         </button>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Dialog } from '@primer/react'
+import { Button, Dialog } from '@primer/react'
+import { ShareIcon } from '@primer/octicons-react'
 import { buildCalendarWeeks, dateFromKey } from '../utils/activityCalendar'
 
 const STATE_LABELS = {
@@ -25,13 +26,20 @@ function describeDay(day, exerciseNameById) {
   return `${date}. ${day.title ? `${day.title}. ` : ''}${STATE_LABELS[day.state]}.`
 }
 
-export function ActivityCalendarDialog({ days, consistency, exerciseNameById, onClose }) {
+export function ActivityCalendarDialog({ days, consistency, exerciseNameById, onClose, onShare }) {
   const weeks = useMemo(() => buildCalendarWeeks(days), [days])
   const [selected, setSelected] = useState(null)
   const year = dateFromKey(days[0].dateKey).getFullYear()
 
   return (
     <Dialog title={`Atividades em ${year}`} onClose={onClose} width="xlarge">
+      {onShare && (
+        <div className="activity-calendar-share">
+          <Button size="small" leadingVisual={ShareIcon} onClick={onShare}>
+            Compartilhar progresso
+          </Button>
+        </div>
+      )}
       <div className="activity-calendar-summary" aria-label="Resumo do período">
         <span>
           <strong>{consistency.current}</strong> sequência atual

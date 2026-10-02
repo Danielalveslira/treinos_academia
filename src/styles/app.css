@@ -4514,3 +4514,44 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .auth-intro-content { padding: 18px; }
   .auth-intro h2 { font-size: 22px; }
 }
+
+/* Compartilhar progresso ---------------------------------------------------- */
+.activity-calendar-share { display: flex; justify-content: flex-end; margin: 0 0 10px; }
+
+.share-progress { display: flex; flex-direction: column; gap: 14px; padding: 4px 0 2px; }
+.share-progress-tabs { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.share-progress-tabs::-webkit-scrollbar { display: none; }
+.share-progress-tab {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 999px;
+  background: var(--bgColor-default);
+  color: var(--fgColor-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.share-progress-tab.is-active { border-color: var(--fitness-accent); background: var(--fitness-accent-soft); color: var(--fitness-accent-strong); }
+.share-progress-tab:focus-visible { outline: 2px solid var(--fitness-accent); outline-offset: 2px; }
+.share-progress-preview { display: flex; justify-content: center; }
+.share-progress-card {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: min(58vh, 640px);
+  aspect-ratio: 4 / 5;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgb(0 0 0 / 30%);
+  user-select: none;
+}
+.share-progress-actions { display: grid; gap: 10px; }
+.share-progress-message { min-height: 20px; margin: 0; text-align: center; color: var(--fgColor-muted); font-size: 13px; }
+.share-progress-message[data-kind='error'] { color: var(--fgColor-danger); }
+@media (min-width: 768px) {
+  .share-progress-actions { grid-template-columns: 1fr 1fr; }
+  .share-progress-tabs { justify-content: center; }
+}
