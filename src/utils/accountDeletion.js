@@ -6,6 +6,8 @@
 export const DELETION_STATE_LABELS = {
   pending: 'Em andamento',
   blocked_financial_review: 'Em revisão financeira',
+  // Estado técnico: banco já limpo, aguardando a confirmação da remoção no Auth (o worker repete até confirmar).
+  auth_cleanup: 'Finalizando (remoção do acesso)',
   complete: 'Concluída',
   cancelled: 'Cancelada',
 }

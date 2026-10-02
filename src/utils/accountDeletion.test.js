@@ -54,7 +54,13 @@ test('the user-facing progress never carries any financial value', () => {
 })
 
 test('every deletion_jobs state and review result produced by the database has a label', () => {
-  for (const state of ['pending', 'blocked_financial_review', 'complete', 'cancelled']) {
+  for (const state of [
+    'pending',
+    'blocked_financial_review',
+    'auth_cleanup',
+    'complete',
+    'cancelled',
+  ]) {
     assert.ok(DELETION_STATE_LABELS[state], state)
   }
   for (const result of ['resumed', 'still_blocked', 'case_separated', 'cancelled']) {

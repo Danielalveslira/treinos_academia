@@ -51,8 +51,8 @@ select set_config('request.jwt.claim.sub', '60000000-0000-0000-0000-000000000001
 select public.queue_deletion('account', '60000000-0000-0000-0000-000000000011');
 select is((select account_status from public.users where id = '60000000-0000-0000-0000-000000000011'), 'deleting', 'conta enfileirada vira deleting');
 select is(
-  (select public.run_deletion_job((select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000011')) ->> 'complete'),
-  'true', 'sem saldo: o worker conclui direto');
+  (select public.run_deletion_job((select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000011')) ->> 'authPending'),
+  'true', 'sem saldo: o worker limpa o banco direto (falta só confirmar o Auth)');
 select is((select count(*)::int from public.users where id = '60000000-0000-0000-0000-000000000011'), 0, 'sem saldo: public.users removido');
 select is((select count(*)::int from public.account_financial_cases where original_user_id = '60000000-0000-0000-0000-000000000011'), 0, 'sem saldo: nenhum caso financeiro criado');
 
@@ -127,7 +127,9 @@ select set_config('request.jwt.claim.sub', '60000000-0000-0000-0000-000000000001
 select is(
   (select public.run_deletion_job((select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000012')) ->> 'deleteAuthUser'),
   'true', 'worker conclui e pede a remoção do Auth (Edge Function)');
-select is((select state from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000012'), 'complete', 'job chega a complete');
+select is((select state from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000012'), 'auth_cleanup', 'banco limpo: job aguarda a confirmação do Auth');
+select public.confirm_auth_deletion((select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000012'));
+select is((select state from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000012'), 'complete', 'Auth confirmado: job chega a complete');
 select is((select count(*)::int from public.users where id = '60000000-0000-0000-0000-000000000012'), 0, 'public.users removido');
 select is((select count(*)::int from public.wallets where user_id = '60000000-0000-0000-0000-000000000012'), 0, 'carteira removida com a conta (valor preservado no caso)');
 select is((select count(*)::int from public.account_financial_cases where original_user_id = '60000000-0000-0000-0000-000000000012' and status = 'open'), 1, 'caso financeiro permanece aberto');
@@ -147,7 +149,8 @@ select throws_ok(
 select is(
   (select public.resolve_account_financial_case((select (r ->> 'caseId')::uuid from _r1), 'tratado pelo financeiro') ->> 'resolved'),
   'true', 'caso resolvido depois da exclusão');
-select ok((select retain_until is not null and resolved_at is not null from public.account_financial_cases where id = (select (r ->> 'caseId')::uuid from _r1)), 'resolução registra retain_until');
+select ok((select resolved_at is not null from public.account_financial_cases where id = (select (r ->> 'caseId')::uuid from _r1)), 'resolução registra resolved_at');
+select hasnt_column('public', 'account_financial_cases', 'retain_until', 'nenhum prazo de retenção é assumido (PENDENTE DE DEFINIÇÃO)');
 select is((select (public.admin_get_deletion_financial_history((select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000012')) -> 'ledger' -> 0 ->> 'amount')::int), 50, 'histórico financeiro acessível depois da exclusão');
 
 -- === pagamento tardio: PIX pendente pago depois da separação ===
@@ -165,7 +168,7 @@ select is((select public.credit_cash_purchase_from_webhook(9013, 'approved') ->>
 select is((select count(*)::int from public.account_financial_case_events where kind = 'late_payment_held'
            and case_id = (select id from public.account_financial_cases where original_user_id = '60000000-0000-0000-0000-000000000013')), 1, 'um único evento de pagamento retido');
 select is((select count(*)::int from public.economy_transactions where natural_key = 'cash-purchase:61000000-0000-0000-0000-000000000013'), 0, 'nenhum ledger de crédito criado para o pagamento retido');
-select is((select public.run_deletion_job((select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000013')) ->> 'complete'), 'true', 'exclusão conclui com pagamento retido');
+select is((select public.run_deletion_job((select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000013')) ->> 'authPending'), 'true', 'exclusão conclui no banco com pagamento retido');
 select is((select public.credit_cash_purchase_from_webhook(9013, 'approved') ->> 'reason'), 'already_held_in_case', 'webhook depois da exclusão continua só retendo');
 select is((select count(*)::int from public.wallets where user_id = '60000000-0000-0000-0000-000000000013')
         + (select count(*)::int from public.users where id = '60000000-0000-0000-0000-000000000013'), 0, 'pagamento tardio não recria conta nem carteira');

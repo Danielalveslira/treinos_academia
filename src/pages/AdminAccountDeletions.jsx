@@ -173,11 +173,6 @@ function FinancialHistory({ jobId }) {
           <Text as="p" sx={{ m: 0, color: 'fg.muted' }}>
             Decisão: “{financialCase.decisionNote}”
           </Text>
-          {financialCase.retainUntil && (
-            <Text as="p" sx={{ m: 0, color: 'fg.muted' }}>
-              Retenção até {formatDateTime(toDate(financialCase.retainUntil))}
-            </Text>
-          )}
           {financialCase.events.map((event) => (
             <Text as="p" key={event.id} sx={{ m: 0, color: 'fg.muted' }}>
               {formatDateTime(toDate(event.createdAt))} ·{' '}

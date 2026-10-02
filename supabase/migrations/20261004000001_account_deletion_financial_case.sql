@@ -37,7 +37,7 @@ create sequence public.deletion_job_protocol_seq;
 -- nome, e-mail, telefone ou perfil é copiado: quem precisa ser contatado é localizado
 -- pelo protocolo (mostrado ao usuário na tela de exclusão e no atendimento) e, para o
 -- dinheiro real, pelo mp_payment_id das compras vinculadas (o dado do pagador já está no
--- Mercado Pago). retain_until só é preenchido quando o caso é resolvido.
+-- Mercado Pago). Retenção: PENDENTE DE DEFINIÇÃO (ver 20261004000002).
 create table public.account_financial_cases (
   id uuid primary key default gen_random_uuid(),
   protocol text not null unique
@@ -60,8 +60,8 @@ create table public.account_financial_cases (
   resolved_at timestamptz,
   resolved_by uuid references public.users(id) on delete set null,
   resolution_note text check (resolution_note is null or char_length(resolution_note) <= 500),
-  -- resolved_at + 5 anos (prazo usual de guarda de registros financeiros/consumidor no
-  -- Brasil) -- valor a CONFIRMAR com o jurídico; nenhum job apaga casos hoje.
+  -- RETENÇÃO PENDENTE DE DEFINIÇÃO (jurídico/contábil): esta coluna é removida em
+  -- 20261004000002 -- nenhum prazo é assumido e nenhum job apaga casos.
   retain_until timestamptz
 );
 -- Um job só pode ter um caso aberto (idempotência de retry/duplo clique). Um job cancelado
@@ -722,7 +722,7 @@ revoke execute on function public.cancel_account_deletion(uuid, text) from publi
 grant execute on function public.cancel_account_deletion(uuid, text) to authenticated;
 
 -- Encerra um caso financeiro (depois de tratado fora do sistema: estorno, acordo etc.).
--- Não mexe em saldo/ledger: só registra a decisão e inicia a contagem de retenção.
+-- Não mexe em saldo/ledger: só registra a decisão (a retenção é PENDENTE DE DEFINIÇÃO).
 create or replace function public.resolve_account_financial_case(p_case_id uuid, p_note text) returns jsonb
   language plpgsql security definer set search_path = public as $$
 declare
