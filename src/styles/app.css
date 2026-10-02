@@ -4523,7 +4523,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .share-progress-tabs::-webkit-scrollbar { display: none; }
 .share-progress-tab {
   flex: 0 0 auto;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 16px;
   border: 1px solid var(--borderColor-muted);
   border-radius: 999px;
@@ -4559,3 +4559,17 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 /* Card de progresso no feed (foto + metadado): rótulo discreto acima da imagem */
 .status-progress-tag { display: inline-flex; align-items: center; gap: 5px; margin: 0 0 8px; color: var(--fgColor-muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .status-progress-tag svg { color: var(--fitness-accent); }
+
+/* Mobile: textarea >= 16px (o iOS dá zoom no foco abaixo disso) e CTA fixo no fim da folha -- com o teclado aberto
+   "Publicar na comunidade" continua visível e alcançável sem rolar. */
+.share-progress textarea { font-size: 16px; }
+@media (max-width: 767px) {
+  .share-progress.is-publishing .share-progress-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--overlay-bgColor, var(--bgColor-default));
+  }
+  .share-progress-card { max-height: min(52vh, 560px); }
+}

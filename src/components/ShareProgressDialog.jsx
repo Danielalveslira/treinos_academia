@@ -96,7 +96,7 @@ export function ShareProgressDialogBody({
 
   if (!model) return null
   return (
-    <div className="share-progress">
+    <div className={`share-progress${publishing ? ' is-publishing' : ''}`}>
       <div className="share-progress-tabs" role="tablist" aria-label="Período do progresso">
         {options.map((option) => (
           <button

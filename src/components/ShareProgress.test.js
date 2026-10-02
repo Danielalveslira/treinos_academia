@@ -179,3 +179,25 @@ test('publish mode custom label is supported and the Home mode is unchanged with
   assert.match(home, />Compartilhar</)
   assert.doesNotMatch(home, /Publicar na comunidade/)
 })
+
+test('mobile: the publish sheet marks itself so the CTA can stay pinned above the keyboard; the Home sheet does not', () => {
+  const options = optionsWith([day('2026-10-02')])
+  assert.match(
+    renderBody({ options, onPublish: async () => {}, env: { navigator: {} } }),
+    /class="share-progress is-publishing"/
+  )
+  assert.doesNotMatch(renderBody({ options, env: { navigator: {} } }), /is-publishing/)
+})
+
+test('mobile CSS contract: pinned CTA, 16px textarea (no iOS zoom), 44px tabs, preview never wider than the sheet', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const css = await readFile(new URL('../styles/app.css', import.meta.url), 'utf8')
+  assert.match(
+    css,
+    /\.share-progress\.is-publishing \.share-progress-actions\s*\{[^}]*position:\s*sticky;[^}]*bottom:\s*0/s
+  )
+  assert.match(css, /\.share-progress textarea\s*\{\s*font-size:\s*16px/)
+  assert.match(css, /\.share-progress-tab\s*\{[^}]*min-height:\s*44px/s)
+  assert.match(css, /\.share-progress-card\s*\{[^}]*max-width:\s*100%/s)
+  assert.match(css, /\.share-progress-tabs\s*\{[^}]*overflow-x:\s*auto/s)
+})
