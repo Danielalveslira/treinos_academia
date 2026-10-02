@@ -70,40 +70,52 @@ after(async () => {
 
 const STATUS = { id: 'status1', authorId: 'author1', positiveVoteCount: 2, negativeVoteCount: 1 }
 
-test('a non-author sees Apoiar · X and Não apoiar · Y', () => {
+test('a non-author sees "Curtir · X" and the dislike as icon + count only', () => {
   const html = render({ status: STATUS, currentUserId: 'voter1', myVote: null })
-  assert.match(html, />Apoiar</)
-  assert.match(html, />Não apoiar</)
+  assert.match(html, />Curtir</)
   assert.match(html, /· 2/)
-  assert.match(html, /· 1/)
+  assert.match(html, /aria-label="Não curtir \(1\)"/)
+  assert.match(html, /data-testid="dislike-button"[^>]*>.*?1<\/span>/s)
 })
 
-test('only the support count opens the people list: it is a button; the non-support count is plain text', () => {
+test('no visible text "Não curtir"/"Não apoiar"/"Apoiar" anywhere: the dislike is icon + number, with an aria-label', () => {
+  for (const currentUserId of ['voter1', 'author1']) {
+    const html = render({ status: STATUS, currentUserId, myVote: null })
+    const visible = html.replace(/<[^>]*>/g, '|')
+    assert.doesNotMatch(visible, /Não curtir|Não apoiar|Apoiar|Negativ/)
+  }
+})
+
+test('only the like count opens the people list: it is a button; the dislike never has a people affordance', () => {
   const html = render({ status: STATUS, currentUserId: 'voter1', myVote: null })
-  assert.match(html, /aria-label="Ver quem apoiou \(2\)"/)
-  // Não apoiar tem UM botão (a ação de reagir) e o contador ao lado é texto, sem botão/link.
-  assert.match(html, /data-testid="non-support-count"/)
-  assert.doesNotMatch(html, /<button[^>]*data-testid="non-support-count"/)
-  assert.doesNotMatch(html, /<a[^>]*non-support/)
-  assert.doesNotMatch(html, /quem não apoiou|ver quem n[ãa]o apoiou|Negativos \(/i)
-  assert.equal((html.match(/<button/g) || []).length, 3) // Apoiar, contador de apoios, Não apoiar
+  assert.match(html, /aria-label="Ver quem curtiu \(2\)"/)
+  assert.doesNotMatch(html, /quem n[ãa]o curtiu|quem n[ãa]o apoiou|Ver quem (?:descurtiu|negativ)/i)
+  // Curtir, contador de curtidas e o botão de reação negativa -- nenhum botão extra para listar.
+  assert.equal((html.match(/<button/g) || []).length, 3)
 })
 
-test('the author never sees the reaction buttons (sem-auto-voto), but still sees both totals and can open supporters', () => {
+test('the author sees no reaction buttons, only "Curtidas · X" (opens the list) and a static dislike count', () => {
   const html = render({ status: STATUS, currentUserId: 'author1', myVote: null })
-  assert.doesNotMatch(html, />Apoiar</)
-  assert.doesNotMatch(html, />Não apoiar</)
-  assert.match(html, /Apoios · 2/)
-  assert.match(html, /Não apoiar · 1/)
-  assert.equal((html.match(/<button/g) || []).length, 1) // só "Apoios · X"
+  assert.doesNotMatch(html, />Curtir</)
+  assert.match(html, /Curtidas · 2/)
+  assert.match(html, /role="img" aria-label="1 não curtiram"/)
+  assert.doesNotMatch(html, /data-testid="dislike-button"/)
+  assert.equal((html.match(/<button/g) || []).length, 1)
 })
 
-test('reflects the user own reaction: pressed state and status text', () => {
-  const supported = render({ status: STATUS, currentUserId: 'voter1', myVote: { value: 1 } })
-  assert.match(supported, /Você apoiou/)
-  assert.match(supported, /aria-pressed="true"[^>]*>(?:(?!<button).)*Apoiar/s)
-  const notSupported = render({ status: STATUS, currentUserId: 'voter1', myVote: { value: -1 } })
-  assert.match(notSupported, /Você não apoiou/)
+test('reflects the user own like: pressed state and "Você curtiu"; a dislike shows no text, only the pressed state', () => {
+  const liked = render({ status: STATUS, currentUserId: 'voter1', myVote: { value: 1 } })
+  assert.match(liked, /Você curtiu/)
+  assert.match(
+    liked,
+    /aria-label="Curtir"[^>]*aria-pressed="true"|aria-pressed="true"[^>]*aria-label="Curtir"/
+  )
+  const disliked = render({ status: STATUS, currentUserId: 'voter1', myVote: { value: -1 } })
+  assert.doesNotMatch(disliked, /Você curtiu|Você apoiou|Você não/)
+  assert.match(
+    disliked,
+    /aria-label="Não curtir \(1\)"[^>]*aria-pressed="true"|aria-pressed="true"[^>]*aria-label="Não curtir \(1\)"/
+  )
 })
 
 test('a post with no counters yet (pre-backfill) shows 0, never crashes', () => {
@@ -112,11 +124,11 @@ test('a post with no counters yet (pre-backfill) shows 0, never crashes', () => 
     currentUserId: 'author1',
     myVote: null,
   })
-  assert.match(html, /Apoios · 0/)
-  assert.match(html, /Não apoiar · 0/)
+  assert.match(html, /Curtidas · 0/)
+  assert.match(html, /aria-label="0 não curtiram"/)
 })
 
-test('no supporters dialog is present before the support count is clicked', () => {
+test('no likers dialog is present before the like count is clicked', () => {
   const html = render({ status: STATUS, currentUserId: 'voter1', myVote: null })
-  assert.doesNotMatch(html, /Quem apoiou<\/h/)
+  assert.doesNotMatch(html, /Quem curtiu<\/h/)
 })

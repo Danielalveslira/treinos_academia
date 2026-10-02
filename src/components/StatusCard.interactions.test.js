@@ -170,7 +170,7 @@ test('an action error stays below its post, is isolated, and clears after a succ
     )
   })
 
-  const positiveButtons = renderer.root.findAllByProps({ 'aria-label': 'Apoiar' })
+  const positiveButtons = renderer.root.findAllByProps({ 'aria-label': 'Curtir' })
   await act(async () => positiveButtons[0].props.onClick())
   const articles = renderer.root.findAllByType('article')
   assert.ok(articles[0].findAllByProps({ className: 'status-action-error' }).length > 0)
@@ -212,7 +212,7 @@ test('the action error auto-dismisses on its timer, can be dismissed manually, a
         })
       )
     })
-    const positiveButton = renderer.root.findAllByProps({ 'aria-label': 'Apoiar' })[0]
+    const positiveButton = renderer.root.findAllByProps({ 'aria-label': 'Curtir' })[0]
 
     await act(async () => positiveButton.props.onClick())
     assert.ok(renderer.root.findAllByProps({ className: 'status-action-error' }).length > 0)

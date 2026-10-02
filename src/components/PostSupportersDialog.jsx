@@ -4,7 +4,7 @@ import { Box, Button, Dialog, Link, Spinner, Text } from '@primer/react'
 import { listPostSupporters } from '../services/economyService'
 import { ProfileAvatar } from './ProfileAvatar'
 
-// "Quem apoiou" -- modal só de APOIADORES, paginado. Quem marcou "Não apoiar" NUNCA aparece
+// "Quem curtiu" -- modal só de quem CURTIU (apoio), paginado. Quem reagiu negativamente NUNCA aparece
 // (nem existe no backend uma RPC que liste essas pessoas -- ver list_post_supporters e a
 // migration 20261006000001). Só é montado quando o usuário abre o modal, então o feed nunca
 // carrega usuários junto com as publicações. Nunca lê status_economy_votes direto (RLS só
@@ -94,7 +94,7 @@ export function PostSupportersDialogBody({ statusId, supportCount }) {
   return (
     <>
       <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: 0 }}>
-        {supportCount} {supportCount === 1 ? 'apoio' : 'apoios'}
+        {supportCount} {supportCount === 1 ? 'curtida' : 'curtidas'}
       </Text>
 
       {error && (
@@ -119,7 +119,7 @@ export function PostSupportersDialogBody({ statusId, supportCount }) {
         ))}
       </Box>
       {!loading && loaded && supporters.length === 0 && !error && (
-        <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Ninguém apoiou ainda.</Text>
+        <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Ninguém curtiu ainda.</Text>
       )}
 
       {loading && <Spinner aria-label="Carregando" sx={{ mt: 3 }} />}
@@ -134,7 +134,7 @@ export function PostSupportersDialogBody({ statusId, supportCount }) {
 
 export function PostSupportersDialog({ statusId, supportCount, onClose }) {
   return (
-    <Dialog title="Quem apoiou" onClose={onClose} width="medium">
+    <Dialog title="Quem curtiu" onClose={onClose} width="medium">
       <PostSupportersDialogBody statusId={statusId} supportCount={supportCount} />
     </Dialog>
   )

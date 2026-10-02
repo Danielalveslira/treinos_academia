@@ -156,10 +156,10 @@ test('enquete não renderiza EconomyVoteBar: sem Apoio/Negativo, sem botões de 
   const status = makePollStatus()
   setPollCache(status.id, 'viewer-1', { a: 1, b: 1 }, null)
   const html = render({ status })
-  assert.doesNotMatch(html, /apoio/i)
-  assert.doesNotMatch(html, /Não apoiar/i)
-  assert.doesNotMatch(html, /Você apoiou|Você discordou/)
-  assert.doesNotMatch(html, /Ver quem apoiou|>Apoiar</)
+  assert.doesNotMatch(html, /apoio|curti/i)
+  assert.doesNotMatch(html, /Não curtir|Não apoiar/i)
+  assert.doesNotMatch(html, /Você curtiu|Você apoiou|Você discordou/)
+  assert.doesNotMatch(html, /Ver quem curtiu|>Curtir</)
   assert.doesNotMatch(html, /class="status-footer"/)
 })
 
@@ -197,18 +197,17 @@ test('já votado na enquete: a opção escolhida não é mais um botão clicáve
   setPollCache(status.id, 'viewer-1', { a: 2, b: 2 }, 'a')
   const html = render({ status })
   assert.match(html, />4 votos</)
-  assert.doesNotMatch(html, /Ver quem apoiou|Não apoiar/i)
+  assert.doesNotMatch(html, /Ver quem curtiu|Não apoiar/i)
 })
 
 test('post normal continua mostrando Apoio/Negativo, com o rodapé de voto econômico presente', () => {
   const status = makeTextStatus()
   const html = render({ status, myEconomyVote: null, canDelete: true })
   assert.match(html, /class="status-footer"/)
-  assert.match(html, /Ver quem apoiou \(2\)/)
-  assert.match(html, /· 1/)
-  assert.match(html, />Apoiar</)
-  assert.match(html, />Não apoiar</)
-  assert.doesNotMatch(html, /quem n[ãa]o apoiou/i)
+  assert.match(html, /Ver quem curtiu \(2\)/)
+  assert.match(html, />Curtir</)
+  assert.match(html, /Não curtir/)
+  assert.doesNotMatch(html, /quem n[ãa]o curtiu/i)
   assert.match(html, /Ver informações de expiração da publicação/)
   assert.match(html, /Compartilhar publicação/)
   assert.match(html, /Excluir publicação/)
@@ -219,7 +218,7 @@ test('conquista mantém Apoio/Negativo', () => {
   status.text = undefined
   const html = render({ status })
   assert.match(html, /class="status-footer"/)
-  assert.match(html, /Ver quem apoiou/)
+  assert.match(html, /Ver quem curtiu/)
 })
 
 test('treino futuro mantém participação ativa após expirar no feed e identifica evento e organizador', () => {
@@ -235,7 +234,7 @@ test('treino futuro mantém participação ativa após expirar no feed e identif
   assert.match(html, /Adicionar ao calendário/)
   assert.doesNotMatch(html, /Ver informações de expiração da publicação/)
   assert.doesNotMatch(html, /class="status-footer"/)
-  assert.doesNotMatch(html, />Apoiar<|>Não apoiar<|Ver quem apoiou/)
+  assert.doesNotMatch(html, />Curtir<|Não curtir|Ver quem curtiu/)
 })
 
 test('treino concluído bloqueia nova participação, mas mantém calendário disponível', () => {

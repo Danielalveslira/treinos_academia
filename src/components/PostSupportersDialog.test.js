@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { build } from 'esbuild'
+import { readFileSync } from 'node:fs'
 
 // IMPORTANTE: nunca use react-test-renderer (act()/TestRenderer.create) neste arquivo.
 // Investigado a fundo: agrupar act()/TestRenderer com react-router-dom OU SegmentedControl
@@ -29,8 +30,10 @@ async function bundle() {
         import { createElement } from 'react'
         import { renderToStaticMarkup } from 'react-dom/server'
         import { MemoryRouter } from 'react-router-dom'
-        import { SupporterRow, supportersDialogReducer, initialSupportersDialogState } from './PostSupportersDialog.jsx'
+        import { SupporterRow, PostSupportersDialogBody, supportersDialogReducer, initialSupportersDialogState } from './PostSupportersDialog.jsx'
         export { supportersDialogReducer, initialSupportersDialogState }
+        export const renderBody = (props) =>
+          renderToStaticMarkup(createElement(MemoryRouter, null, createElement(PostSupportersDialogBody, props)))
         export const renderRow = (supporter) =>
           renderToStaticMarkup(createElement(MemoryRouter, null, createElement(SupporterRow, { supporter })))
       `,
@@ -69,7 +72,8 @@ async function bundle() {
   return createRequire(import.meta.url)(outfile)
 }
 
-const { supportersDialogReducer, initialSupportersDialogState, renderRow } = await bundle()
+const { supportersDialogReducer, initialSupportersDialogState, renderRow, renderBody } =
+  await bundle()
 after(async () => {
   if (directory) await rm(directory, { recursive: true, force: true })
 })
@@ -193,4 +197,13 @@ test('there is no negative direction anywhere in the dialog state: only supporte
   const state = initialSupportersDialogState()
   assert.equal('negative' in state, false)
   assert.equal('direction' in state, false)
+})
+
+test('copy says "curtidas"/"Quem curtiu" and never "apoio"', () => {
+  assert.match(renderBody({ statusId: 's1', supportCount: 3 }), /3 curtidas/)
+  assert.match(renderBody({ statusId: 's1', supportCount: 1 }), /1 curtida\b/)
+  const source = readFileSync(new URL('./PostSupportersDialog.jsx', import.meta.url), 'utf8')
+  assert.match(source, /title="Quem curtiu"/)
+  assert.match(source, /Ninguém curtiu ainda\./)
+  assert.doesNotMatch(source.replace(/\/\/.*$/gm, ''), /apoiou|apoios|apoio\b|Ninguém apoiou/)
 })
