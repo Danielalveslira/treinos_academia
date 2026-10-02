@@ -236,13 +236,12 @@ export async function amIParticipant(statusId, userId) {
   return !!data
 }
 
+// Contagem real de confirmados (RPC): a leitura direta de status_participants só enxerga a PRÓPRIA linha
+// (RLS), então um count(*) direto mostraria 0/1 para qualquer pessoa.
 export async function countParticipants(statusId) {
-  const { count, error } = await supabase
-    .from('status_participants')
-    .select('*', { count: 'exact', head: true })
-    .eq('status_id', statusId)
+  const { data, error } = await supabase.rpc('count_workout_participants', { p_status_id: statusId })
   if (error) throw error
-  return count
+  return data ?? 0
 }
 
 export async function joinWorkout(statusId, userId) {
@@ -285,25 +284,20 @@ export async function getSharedWorkout(statusId, communityId) {
   return status.type === 'workout' && status.communityId === communityId ? status : null
 }
 
-// "Ver participantes" — public_profiles é legível por qualquer autenticado (mesmo
-// motivo de exibir @ no feed), então dá pra resolver o username com um join direto no
-// cliente, sem precisar de uma RPC dedicada (ao contrário de users, legível só pelo
-// próprio dono via RLS).
+// "Ver participantes" -- via RPC list_workout_participants (security definer, fail-closed, só quem
+// enxerga a publicação). Não dá para fazer o embed `public_profiles(username)` direto em
+// status_participants (PGRST200: as duas tabelas só se ligam a users, não entre si) e a RLS de
+// status_participants só libera a própria linha. Devolve só { userId, username }; username null (conta
+// sem perfil público) vira "Membro" na UI. cursor é o nextCursor da página anterior ({ at, userId }).
 export async function listWorkoutParticipants(statusId, { cursor = null, limit = 20 } = {}) {
-  let q = supabase
-    .from('status_participants')
-    .select('user_id, joined_at, public_profiles(username)')
-    .eq('status_id', statusId)
-    .order('joined_at', { ascending: true })
-    .order('user_id', { ascending: true })
-    .limit(limit)
-  if (cursor) q = q.gt('joined_at', cursor)
-  const { data, error } = await q
+  const { data, error } = await supabase.rpc('list_workout_participants', {
+    p_status_id: statusId,
+    p_cursor_at: cursor?.at ?? null,
+    p_cursor_user: cursor?.userId ?? null,
+    p_limit: limit,
+  })
   if (error) throw error
-  return {
-    participants: data.map((row) => ({ userId: row.user_id, username: row.public_profiles?.username || null })),
-    nextCursor: data.length === limit ? data.at(-1).joined_at : null,
-  }
+  return { participants: data?.participants ?? [], nextCursor: data?.nextCursor ?? null }
 }
 
 export async function createAchievementStatus(communityId, author, values) {
