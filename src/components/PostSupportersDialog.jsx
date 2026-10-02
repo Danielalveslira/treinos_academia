@@ -2,18 +2,17 @@ import { useEffect, useReducer } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Dialog, Link, Spinner, Text } from '@primer/react'
 import { listPostSupporters } from '../services/economyService'
-import { ProfileAvatar } from './ProfileAvatar'
 
 // "Quem curtiu" -- modal só de quem CURTIU (apoio), paginado. Quem reagiu negativamente NUNCA aparece
 // (nem existe no backend uma RPC que liste essas pessoas -- ver list_post_supporters e a
 // migration 20261006000001). Só é montado quando o usuário abre o modal, então o feed nunca
 // carrega usuários junto com as publicações. Nunca lê status_economy_votes direto (RLS só
-// libera o próprio voto); os dados vêm sanitizados da RPC: { userId, username, avatarPath }.
+// libera o próprio voto); os dados vêm sanitizados da RPC, mínimos: { userId, username }. A lista é só
+// texto (@usuario, com link para o perfil público): sem avatar, placeholder nem espaço de imagem.
 export function SupporterRow({ supporter }) {
   const label = supporter.username ? `@${supporter.username}` : 'Membro'
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1, minWidth: 0 }}>
-      <ProfileAvatar path={supporter.avatarPath} name={supporter.username || ''} />
+    <Box sx={{ display: 'flex', alignItems: 'center', py: 1, minWidth: 0 }}>
       <Link
         as={RouterLink}
         to={`/comunidades/perfil/${supporter.userId}`}
