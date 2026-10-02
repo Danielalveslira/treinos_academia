@@ -2,10 +2,16 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { SHARE_HEIGHT, SHARE_WIDTH } from './shareProgressSvg.js'
 import {
-  canShareImageFiles,
+  SHARE_TEXT,
+  SHARE_TITLE,
+  appUrl,
+  buildSharePayload,
+  copyAppLink,
   downloadFile,
+  nativeShare,
+  renderSvgToBlob,
   renderSvgToPngBlob,
-  shareImageFile,
+  renderSvgToPublishBlob,
   toPngFile,
 } from './shareImage.js'
 
@@ -14,6 +20,7 @@ function fakeEnv({
   imageFails = false,
   noContext = false,
   blob = { size: 10, type: 'image/png' },
+  forceType,
 } = {}) {
   const drawn = []
   const clicks = []
@@ -29,7 +36,7 @@ function fakeEnv({
     width: 0,
     height: 0,
     getContext: () => (noContext ? null : { drawImage: (...args) => drawn.push(args) }),
-    toBlob: (callback, type) => callback(blob && { ...blob, type }),
+    toBlob: (callback, type) => callback(blob && { ...blob, type: forceType || type }),
   }
   return {
     drawn,
@@ -101,58 +108,6 @@ test('toPngFile wraps the blob as image/png with the given name', () => {
   assert.equal(file.type, 'image/png')
 })
 
-test('file sharing is only offered when the browser supports share + canShare with files', () => {
-  const file = { name: 'a.png' }
-  assert.equal(canShareImageFiles(file, { navigator: {} }), false)
-  assert.equal(canShareImageFiles(file, { navigator: { share() {} } }), false)
-  assert.equal(canShareImageFiles(file, { navigator: { share() {}, canShare: () => true } }), true)
-  assert.equal(
-    canShareImageFiles(file, { navigator: { share() {}, canShare: () => false } }),
-    false
-  )
-  assert.equal(
-    canShareImageFiles(file, {
-      navigator: {
-        share() {},
-        canShare: () => {
-          throw new Error('x')
-        },
-      },
-    }),
-    false
-  )
-  assert.equal(canShareImageFiles(file, {}), false)
-})
-
-test('sharing: success, user cancel (AbortError is NOT an error) and real failures', async () => {
-  const calls = []
-  const ok = { navigator: { share: async (payload) => calls.push(payload) } }
-  assert.equal(
-    await shareImageFile({ name: 'a.png' }, { title: 'Evolutus', text: 't' }, ok),
-    'shared'
-  )
-  assert.deepEqual(
-    calls[0].files.map((f) => f.name),
-    ['a.png']
-  )
-  const cancelled = {
-    navigator: {
-      share: async () => {
-        throw Object.assign(new Error('x'), { name: 'AbortError' })
-      },
-    },
-  }
-  assert.equal(await shareImageFile({ name: 'a.png' }, {}, cancelled), 'cancelled')
-  const broken = {
-    navigator: {
-      share: async () => {
-        throw Object.assign(new Error('boom'), { name: 'NotAllowedError' })
-      },
-    },
-  }
-  await assert.rejects(() => shareImageFile({ name: 'a.png' }, {}, broken), /boom/)
-})
-
 test('download: clicks an anchor with the file name and revokes the object URL afterwards', () => {
   const env = fakeEnv()
   downloadFile({ name: 'evolutus-month.png' }, env)
@@ -161,4 +116,176 @@ test('download: clicks an anchor with the file name and revokes the object URL a
   assert.equal(env.revoked.length, 0)
   env.timers[0]()
   assert.deepEqual(env.revoked, ['blob:fake'])
+})
+
+const FILE = { name: 'evolutus-week.png', type: 'image/png' }
+const ORIGIN = 'https://evolutus.example'
+function shareEnv({ share, canShare, clipboard } = {}) {
+  const calls = []
+  return {
+    calls,
+    location: { origin: ORIGIN },
+    navigator: {
+      ...(share === false
+        ? {}
+        : {
+            share: async (data) => {
+              calls.push(data)
+              if (share) await share(data)
+            },
+          }),
+      ...(canShare === undefined
+        ? { canShare: () => true }
+        : canShare === false
+          ? {}
+          : { canShare }),
+      ...(clipboard ? { clipboard } : {}),
+    },
+  }
+}
+
+test('share payload carries the image, the title, the message and the app URL (origin of the running app)', () => {
+  const payload = buildSharePayload(FILE, { location: { origin: ORIGIN } })
+  assert.deepEqual(payload.files, [FILE])
+  assert.equal(payload.title, 'Meu progresso no Evolutus')
+  assert.equal(
+    payload.text,
+    'Olha meu progresso no Evolutus 💪\nVenha acompanhar sua evolução também!'
+  )
+  assert.equal(payload.url, ORIGIN)
+  assert.equal(appUrl({ location: { origin: 'https://x.vercel.app' } }), 'https://x.vercel.app')
+  assert.equal(appUrl({}), null)
+  assert.equal('url' in buildSharePayload(FILE, {}), false)
+})
+
+test('Compartilhar calls the native share ONCE with image + text + URL when the device accepts it', async () => {
+  const env = shareEnv()
+  assert.equal(await nativeShare(FILE, env), 'shared')
+  assert.equal(env.calls.length, 1)
+  assert.deepEqual(env.calls[0], {
+    title: SHARE_TITLE,
+    text: SHARE_TEXT,
+    url: ORIGIN,
+    files: [FILE],
+  })
+})
+
+test('canShare is checked with the files payload before sharing', async () => {
+  const seen = []
+  const env = shareEnv({ canShare: (data) => (seen.push(data), true) })
+  await nativeShare(FILE, env)
+  assert.deepEqual(seen[0].files, [FILE])
+})
+
+test('a device that refuses file + url together still gets the link: it moves into the text, image kept', async () => {
+  const env = shareEnv({ canShare: (data) => !('url' in data) })
+  assert.equal(await nativeShare(FILE, env), 'shared')
+  assert.deepEqual(env.calls[0].files, [FILE])
+  assert.equal(env.calls[0].text, `${SHARE_TEXT}\n${ORIGIN}`)
+  assert.equal('url' in env.calls[0], false)
+})
+
+test('no file sharing support: shares text + URL natively and NEVER downloads', async () => {
+  const downloads = []
+  const env = {
+    ...shareEnv({ canShare: () => false }),
+    URL: { createObjectURL: () => (downloads.push('url'), 'blob:x') },
+  }
+  assert.equal(await nativeShare(FILE, env), 'shared_text')
+  assert.deepEqual(env.calls[0], { title: SHARE_TITLE, text: SHARE_TEXT, url: ORIGIN })
+  assert.equal(env.calls[0].files, undefined)
+  assert.deepEqual(downloads, [])
+})
+
+test('no Web Share at all: "unsupported" -- nothing is shared and nothing is downloaded', async () => {
+  const downloads = []
+  const env = {
+    ...shareEnv({ share: false }),
+    URL: { createObjectURL: () => (downloads.push('url'), 'blob:x') },
+    document: {
+      createElement: () => {
+        downloads.push('a')
+      },
+    },
+  }
+  assert.equal(await nativeShare(FILE, env), 'unsupported')
+  assert.deepEqual(downloads, [])
+  assert.equal(await nativeShare(FILE, {}), 'unsupported')
+})
+
+test('closing the native sheet (AbortError) is "cancelled", not an error; real failures propagate', async () => {
+  const cancelled = shareEnv({
+    share: async () => {
+      throw Object.assign(new Error('x'), { name: 'AbortError' })
+    },
+  })
+  assert.equal(await nativeShare(FILE, cancelled), 'cancelled')
+  const broken = shareEnv({
+    share: async () => {
+      throw Object.assign(new Error('boom'), { name: 'NotAllowedError' })
+    },
+  })
+  await assert.rejects(() => nativeShare(FILE, broken), /boom/)
+})
+
+test('copy link fallback: explicit, uses the app origin, and reports failure honestly', async () => {
+  const written = []
+  assert.equal(
+    await copyAppLink({
+      location: { origin: ORIGIN },
+      navigator: { clipboard: { writeText: async (t) => written.push(t) } },
+    }),
+    true
+  )
+  assert.deepEqual(written, [ORIGIN])
+  assert.equal(await copyAppLink({ location: { origin: ORIGIN }, navigator: {} }), false)
+  assert.equal(
+    await copyAppLink({
+      location: { origin: ORIGIN },
+      navigator: {
+        clipboard: {
+          writeText: async () => {
+            throw new Error('denied')
+          },
+        },
+      },
+    }),
+    false
+  )
+  assert.equal(
+    await copyAppLink({ navigator: { clipboard: { writeText: async () => {} } } }),
+    false
+  )
+})
+
+test('download and share are fully separate code paths: downloadFile never touches navigator.share', () => {
+  const env = fakeEnv()
+  let shared = 0
+  env.navigator = { share: () => (shared += 1) }
+  downloadFile({ name: 'a.png' }, env)
+  assert.equal(shared, 0)
+  assert.equal(env.clicks.length, 1)
+})
+
+test('publishing renders WebP (the bucket only accepts image/webp), re-encoding smaller when over the limit', async () => {
+  const env = fakeEnv({ blob: { size: 1000, type: 'image/webp' } })
+  const blob = await renderSvgToPublishBlob('<svg/>', env)
+  assert.equal(blob.type, 'image/webp')
+  await assert.rejects(
+    () =>
+      renderSvgToBlob(
+        '<svg/>',
+        { type: 'image/webp' },
+        fakeEnv({ blob: { size: 1 }, forceType: 'image/png' })
+      ),
+    /IMAGE_TYPE_UNSUPPORTED/
+  )
+  await assert.rejects(
+    () =>
+      renderSvgToPublishBlob(
+        '<svg/>',
+        fakeEnv({ blob: { size: 5 * 1024 * 1024, type: 'image/webp' } })
+      ),
+    /IMAGE_TOO_LARGE/
+  )
 })

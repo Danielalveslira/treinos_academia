@@ -1,4 +1,6 @@
-import { Box, Dialog, Spinner } from '@primer/react'
+import { Box, Spinner } from '@primer/react'
+import { ModalSheet, ModalSheetFrame } from './ModalSheet'
+import { useSheetTitleId } from '../hooks/useSheetTitleId'
 import { ErrorState } from './ErrorState'
 import { ShareProgressDialog } from './ShareProgressDialog'
 import { useProgressShareOptions } from '../hooks/useProgressShareOptions'
@@ -22,16 +24,26 @@ export function CommunityProgressShare({ onCreateStatus, onClose }) {
     )
   }
   return (
-    <Dialog
-      title="Compartilhar progresso"
+    <CommunityProgressShareState
+      loading={loading}
+      error={error}
+      refresh={refresh}
       onClose={onClose}
-      width="large"
-      position={{ narrow: 'fullscreen', regular: 'center' }}
-    >
-      <Box sx={{ minHeight: 160, display: 'grid', placeItems: 'center' }}>
-        {loading && <Spinner aria-label="Carregando seu progresso" />}
-        {!loading && <ErrorState error={error} onRetry={refresh} />}
-      </Box>
-    </Dialog>
+    />
+  )
+}
+
+// Carregando/erro na MESMA folha modal do seletor (X sempre acessível, safe-area), nunca num diálogo diferente.
+function CommunityProgressShareState({ loading, error, refresh, onClose }) {
+  const titleId = useSheetTitleId()
+  return (
+    <ModalSheet onClose={onClose}>
+      <ModalSheetFrame titleId={titleId} title="Compartilhar progresso" onClose={onClose}>
+        <Box sx={{ minHeight: 160, display: 'grid', placeItems: 'center' }}>
+          {loading && <Spinner aria-label="Carregando seu progresso" />}
+          {!loading && <ErrorState error={error} onRetry={refresh} />}
+        </Box>
+      </ModalSheetFrame>
+    </ModalSheet>
   )
 }

@@ -87,16 +87,6 @@ test('preview is the same SVG that becomes the PNG: an <img> with the data URL a
   assert.match(html, /height="1350"/)
 })
 
-test('share button only appears when the browser can share; download is always there', () => {
-  const options = optionsWith([day('2026-10-02')])
-  const withShare = renderBody({ options, env: { navigator: { share() {} } } })
-  assert.match(withShare, />Compartilhar</)
-  assert.match(withShare, />Baixar imagem</)
-  const withoutShare = renderBody({ options, env: { navigator: {} } })
-  assert.doesNotMatch(withoutShare, />Compartilhar</)
-  assert.match(withoutShare, />Baixar imagem</)
-})
-
 test('the status line is a polite live region and starts empty (no stale message)', () => {
   const html = renderBody({ options: optionsWith([]), env: { navigator: {} } })
   assert.match(html, /role="status"[^>]*aria-live="polite"[^>]*><\/p>/)
@@ -180,24 +170,128 @@ test('publish mode custom label is supported and the Home mode is unchanged with
   assert.doesNotMatch(home, /Publicar na comunidade/)
 })
 
-test('mobile: the publish sheet marks itself so the CTA can stay pinned above the keyboard; the Home sheet does not', () => {
-  const options = optionsWith([day('2026-10-02')])
-  assert.match(
-    renderBody({ options, onPublish: async () => {}, env: { navigator: {} } }),
-    /class="share-progress is-publishing"/
-  )
-  assert.doesNotMatch(renderBody({ options, env: { navigator: {} } }), /is-publishing/)
+// --- Folha modal mobile-first ---------------------------------------------------------------------------------
+const frameHtml = (props) =>
+  renderBody({
+    options: optionsWith([day('2026-10-02')]),
+    env: { navigator: {} },
+    onClose() {},
+    ...props,
+  })
+
+test('the sheet ALWAYS renders a close button in the header (title left, X right), outside the scrollable body, in Home and community modes', () => {
+  for (const html of [frameHtml({}), frameHtml({ onPublish: async () => {} })]) {
+    assert.match(html, /role="dialog"[^>]*aria-modal="true"/)
+    assert.match(html, /aria-labelledby="sheet-title-/)
+    const header = html.indexOf('modal-sheet-header')
+    const title = html.indexOf('>Compartilhar progresso<')
+    const close = html.indexOf('modal-sheet-close')
+    const body = html.indexOf('modal-sheet-body')
+    const footer = html.indexOf('modal-sheet-footer')
+    assert.ok(
+      header >= 0 && title > header && close > title,
+      'título antes do X, ambos no cabeçalho'
+    )
+    assert.ok(body > close, 'o corpo rolável vem depois do cabeçalho (o X não está dentro dele)')
+    assert.ok(footer > body, 'rodapé fora e depois do corpo rolável')
+    assert.match(html, /<button[^>]*class="modal-sheet-close"[^>]*aria-label="Fechar"/)
+  }
 })
 
-test('mobile CSS contract: pinned CTA, 16px textarea (no iOS zoom), 44px tabs, preview never wider than the sheet', async () => {
+test('the primary actions live in the FOOTER (always reachable), not inside the scrolling body', () => {
+  const home = frameHtml({})
+  const footerOnly = home.slice(home.indexOf('modal-sheet-footer'))
+  assert.match(footerOnly, />Compartilhar</)
+  assert.match(footerOnly, />Baixar imagem</)
+  assert.doesNotMatch(
+    home.slice(home.indexOf('modal-sheet-body'), home.indexOf('modal-sheet-footer')),
+    />Compartilhar<|>Baixar imagem</
+  )
+  const publish = frameHtml({ onPublish: async () => {} })
+  assert.match(publish.slice(publish.indexOf('modal-sheet-footer')), />Publicar na comunidade</)
+  const caption = publish.indexOf('Mensagem (opcional)')
+  assert.ok(
+    caption > publish.indexOf('modal-sheet-body') &&
+      caption < publish.indexOf('modal-sheet-footer'),
+    'mensagem no corpo, CTA no rodapé'
+  )
+})
+
+test('Home mode always offers BOTH "Compartilhar" and "Baixar imagem", even without Web Share (no silent download fallback)', () => {
+  for (const env of [{ navigator: {} }, { navigator: { share() {} } }, {}]) {
+    const html = renderBody({ options: optionsWith([day('2026-10-02')]), env, onClose() {} })
+    assert.match(html, />Compartilhar</)
+    assert.match(html, />Baixar imagem</)
+  }
+})
+
+test('source contract: "Compartilhar" never downloads, "Baixar imagem" never shares, publishing is separate', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const source = await readFile(new URL('./ShareProgressDialog.jsx', import.meta.url), 'utf8')
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+  const share = code.slice(code.indexOf('const share ='), code.indexOf('const download ='))
+  const download = code.slice(code.indexOf('const download ='), code.indexOf('const copyLink ='))
+  const publish = code.slice(code.indexOf('const publish ='), code.indexOf('if (!model)'))
+  assert.match(share, /nativeShare\(/)
+  assert.doesNotMatch(share, /downloadFile|renderSvgToPublishBlob|onPublish/)
+  assert.match(download, /downloadFile\(/)
+  assert.doesNotMatch(download, /nativeShare|copyAppLink|onPublish/)
+  assert.match(publish, /onPublish\(/)
+  assert.doesNotMatch(publish, /nativeShare|downloadFile/)
+})
+
+test('Home and community use the SAME sheet base (no Primer Dialog, no divergent implementation)', async () => {
+  const { readFile } = await import('node:fs/promises')
+  for (const file of ['./ShareProgressDialog.jsx', './CommunityProgressShare.jsx']) {
+    const source = await readFile(new URL(file, import.meta.url), 'utf8')
+    assert.match(source, /from '\.\/ModalSheet'/, file)
+    assert.doesNotMatch(
+      source,
+      /\bDialog\b[^;]*from '@primer\/react'|import \{[^}]*\bDialog\b[^}]*\} from '@primer\/react'/,
+      file
+    )
+  }
+  const home = await readFile(new URL('./ShareProgressDialog.jsx', import.meta.url), 'utf8')
+  const community = await readFile(new URL('./CommunityProgressShare.jsx', import.meta.url), 'utf8')
+  assert.match(community, /ShareProgressDialog/)
+  assert.match(home, /export function ShareProgressDialog/)
+})
+
+test('mobile CSS contract: safe-area top/bottom, 100dvh, header/footer outside the scroll area, 44px touch targets, above the app chrome', async () => {
   const { readFile } = await import('node:fs/promises')
   const css = await readFile(new URL('../styles/app.css', import.meta.url), 'utf8')
+  const rule = (selector) =>
+    css.match(
+      new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`)
+    )?.[1] || ''
+  // altura: viewport visual quando conhecida, 100dvh como base (nunca só 100vh)
+  assert.match(rule('.modal-sheet'), /height:\s*var\(--sheet-height,\s*100dvh\)/)
+  assert.match(rule('.modal-sheet'), /flex-direction:\s*column/)
+  // cabeçalho com safe-area superior (notch/Dynamic Island) e fora da rolagem
+  assert.match(rule('.modal-sheet-header'), /env\(safe-area-inset-top/)
+  assert.match(rule('.modal-sheet-header'), /flex:\s*0 0 auto/)
+  // corpo: único que rola
+  assert.match(rule('.modal-sheet-body'), /overflow-y:\s*auto/)
+  assert.match(rule('.modal-sheet-body'), /min-height:\s*0/)
+  assert.match(rule('.modal-sheet-body'), /overscroll-behavior:\s*contain/)
+  // rodapé com safe-area inferior e fora da rolagem
+  assert.match(rule('.modal-sheet-footer'), /env\(safe-area-inset-bottom/)
+  assert.match(rule('.modal-sheet-footer'), /flex:\s*0 0 auto/)
+  // X com 44x44 e abas com 44px
+  assert.match(rule('.modal-sheet-close'), /width:\s*44px/)
+  assert.match(rule('.modal-sheet-close'), /height:\s*44px/)
+  assert.match(rule('.share-progress-tab'), /min-height:\s*44px/)
+  // por cima de header/navegação (z-index 100) e fundo travado
+  assert.ok(Number(rule('.modal-sheet-backdrop').match(/z-index:\s*(\d+)/)?.[1]) > 100)
+  assert.match(css, /body\.modal-sheet-open\s*\{[^}]*overflow:\s*hidden/)
+  // textarea sem zoom no iOS, preview limitado pela viewport dinâmica, abas roláveis
+  assert.match(css, /\.share-progress textarea\s*\{\s*font-size:\s*16px/)
+  assert.match(rule('.share-progress-card'), /max-width:\s*100%/)
+  assert.match(rule('.share-progress-card'), /max-height:\s*min\(52dvh/)
+  assert.match(rule('.share-progress-tabs'), /overflow-x:\s*auto/)
+  // desktop: vira cartão centralizado
   assert.match(
     css,
-    /\.share-progress\.is-publishing \.share-progress-actions\s*\{[^}]*position:\s*sticky;[^}]*bottom:\s*0/s
+    /@media \(min-width: 768px\)\s*\{\s*\.modal-sheet-backdrop\s*\{[^}]*align-items:\s*center/
   )
-  assert.match(css, /\.share-progress textarea\s*\{\s*font-size:\s*16px/)
-  assert.match(css, /\.share-progress-tab\s*\{[^}]*min-height:\s*44px/s)
-  assert.match(css, /\.share-progress-card\s*\{[^}]*max-width:\s*100%/s)
-  assert.match(css, /\.share-progress-tabs\s*\{[^}]*overflow-x:\s*auto/s)
 })

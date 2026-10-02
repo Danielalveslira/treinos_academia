@@ -54,25 +54,74 @@ export function toPngFile(blob, filename, env = globalThis) {
   return new env.File([blob], filename, { type: 'image/png' })
 }
 
-// Web Share com ARQUIVO (iOS/Android modernos). Sem suporte -> false e a UI oferece só "Baixar imagem".
-export function canShareImageFiles(file, env = globalThis) {
-  const nav = env.navigator
-  if (!nav || typeof nav.share !== 'function' || typeof nav.canShare !== 'function') return false
+// ---------------------------------------------------------------------------------------------------------------
+// COMPARTILHAR = compartilhamento NATIVO do aparelho (Web Share API). Nunca vira download: se o navegador não
+// compartilha imagem, tenta texto + link; se nem isso existe, devolve 'unsupported' e a UI mostra a mensagem
+// (com "Copiar link"). Baixar a imagem é uma ação SEPARADA (downloadFile), só no botão "Baixar imagem".
+export const SHARE_TITLE = 'Meu progresso no Evolutus'
+export const SHARE_TEXT = 'Olha meu progresso no Evolutus 💪\nVenha acompanhar sua evolução também!'
+
+// URL do app = a origem em que ele está rodando (nunca hardcode: preview, domínio próprio e produção funcionam).
+export function appUrl(env = globalThis) {
+  return env.location?.origin || null
+}
+
+function canShareData(nav, data) {
   try {
-    return nav.canShare({ files: [file] })
+    return typeof nav.canShare === 'function' ? Boolean(nav.canShare(data)) : false
   } catch {
     return false
   }
 }
 
-// Devolve 'shared' | 'cancelled'. O usuário fechar a folha de compartilhamento NÃO é erro.
-export async function shareImageFile(file, { title, text }, env = globalThis) {
+// Payload completo: imagem + título + texto + URL. Apps de destino decidem como exibir; o nosso papel é entregar
+// tudo que a Web Share API do aparelho aceitar.
+export function buildSharePayload(file, env = globalThis) {
+  const url = appUrl(env)
+  return { title: SHARE_TITLE, text: SHARE_TEXT, ...(url ? { url } : {}), files: [file] }
+}
+
+// Devolve 'shared' (imagem + texto + link), 'shared_text' (só texto + link: o aparelho não compartilha arquivos),
+// 'cancelled' (usuário fechou a folha: NÃO é erro) ou 'unsupported' (sem Web Share). Erros reais propagam.
+export async function nativeShare(file, env = globalThis) {
+  const nav = env.navigator
+  if (!nav || typeof nav.share !== 'function') return 'unsupported'
+  const url = appUrl(env)
   try {
-    await env.navigator.share({ files: [file], title, text })
-    return 'shared'
+    if (file) {
+      const full = buildSharePayload(file, env)
+      if (canShareData(nav, full)) {
+        await nav.share(full)
+        return 'shared'
+      }
+      // Alguns aparelhos recusam arquivo + url juntos: leva o link dentro do texto para ele não se perder.
+      const linkInText = {
+        title: SHARE_TITLE,
+        text: url ? `${SHARE_TEXT}\n${url}` : SHARE_TEXT,
+        files: [file],
+      }
+      if (canShareData(nav, linkInText)) {
+        await nav.share(linkInText)
+        return 'shared'
+      }
+    }
+    await nav.share({ title: SHARE_TITLE, text: SHARE_TEXT, ...(url ? { url } : {}) })
+    return 'shared_text'
   } catch (error) {
     if (error?.name === 'AbortError') return 'cancelled'
     throw error
+  }
+}
+
+// Fallback explícito (NUNCA automático) quando o compartilhamento não é suportado.
+export async function copyAppLink(env = globalThis) {
+  const url = appUrl(env)
+  if (!url || typeof env.navigator?.clipboard?.writeText !== 'function') return false
+  try {
+    await env.navigator.clipboard.writeText(url)
+    return true
+  } catch {
+    return false
   }
 }
 

@@ -382,6 +382,5 @@ export function buildShareOptions({
     ...model,
     handle: username ? `@${username}` : null,
     filename: fileName(model.variant, now),
-    shareText: 'Meu progresso no Evolutus',
   }))
 }
