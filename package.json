@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
-    "test": "node --test src/**/*.test.js",
+    "test": "node --test \"src/**/*.test.js\"",
     "test:backfill": "node --test scripts/*.test.mjs",
     "test:functions": "node --test supabase/functions/*/*.test.js",
     "format": "prettier --write \"src/**/*.{js,jsx}\"",

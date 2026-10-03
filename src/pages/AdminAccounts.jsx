@@ -1,164 +1,226 @@
-import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import {
-  Box,
-  Heading,
-  Text,
-  Button,
-  Spinner,
-  Label,
-  Dialog,
-  FormControl,
-  TextInput,
-  Textarea,
-  ActionMenu,
-  ActionList,
-  IconButton,
-} from '@primer/react'
+import { useCallback, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Box, Button, Flash, Heading, Spinner, Text, UnderlineNav } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import { PersonIcon, KebabHorizontalIcon, TrashIcon, BlockedIcon, CheckIcon } from '@primer/octicons-react'
-import { useAdminAccounts } from '../hooks/useAdminAccounts'
+import { PersonIcon, SyncIcon } from '@primer/octicons-react'
 import { useToast } from '../hooks/useToast'
-import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
+import { formatDateTime } from '../utils/format'
+import { useAdminAccountsSnapshot } from '../features/adminAccounts/hooks/useAdminAccountsSnapshot'
+import { useAccountDetails } from '../features/adminAccounts/hooks/useAccountDetails'
+import {
+  fetchAuditLog,
+  requestAccountDeletion,
+  setAccountsStatus,
+} from '../features/adminAccounts/api/adminAccounts.api'
+import {
+  COLUMN_OPTIONS,
+  EMPTY_FILTERS,
+  PAGE_SIZES,
+  TABS,
+  buildAccountsCsv,
+  canDelete,
+  canManageStatus,
+  csvFileName,
+  deletionRequestedChange,
+  describeActionError,
+  filterAccounts,
+  paginate,
+  sortAccounts,
+  statusChangeFor,
+} from '../features/adminAccounts/utils/accounts'
+import { AccountsMetrics } from '../features/adminAccounts/components/AccountsMetrics'
+import { AccountsToolbar } from '../features/adminAccounts/components/AccountsToolbar'
+import { AccountsTable } from '../features/adminAccounts/components/AccountsTable'
+import { AccountDrawer } from '../features/adminAccounts/components/AccountDrawer'
+import { BulkActionsBar } from '../features/adminAccounts/components/BulkActionsBar'
+import { AuditLogList } from '../features/adminAccounts/components/AuditLogList'
+import {
+  DeleteAccountDialog,
+  StatusDialog,
+} from '../features/adminAccounts/components/AccountDialogs'
 
-function actionError(error, fallback) {
-  return [
-    'functions/failed-precondition',
-    'functions/invalid-argument',
-    'functions/already-exists',
-    'functions/not-found',
-  ].includes(error?.code)
-    ? error.message
-    : fallback
-}
-
-function DisableDialog({ account, onClose, onConfirm }) {
-  const [reason, setReason] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  return (
-    <Dialog
-      title={`Desativar conta de ${account.username || account.email || account.id}`}
-      onClose={saving ? () => {} : onClose}
-      footerButtons={[
-        { content: 'Cancelar', onClick: onClose, disabled: saving },
-        {
-          content: 'Desativar conta',
-          buttonType: 'danger',
-          disabled: reason.trim().length < 5 || saving,
-          onClick: async () => {
-            setSaving(true)
-            setError((await onConfirm(reason)) || '')
-            setSaving(false)
-          },
-        },
-      ]}
-    >
-      <Box sx={{ p: 3 }}>
-        {error && (
-          <Text as="p" role="alert" sx={{ color: 'danger.fg' }}>
-            {error}
-          </Text>
-        )}
-        <FormControl required>
-          <FormControl.Label>Motivo</FormControl.Label>
-          <Textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={3}
-            maxLength={500}
-            block
-            placeholder="Descreva o motivo da desativação"
-          />
-        </FormControl>
-      </Box>
-    </Dialog>
+function downloadCsv(accounts) {
+  const url = URL.createObjectURL(
+    new Blob([buildAccountsCsv(accounts)], { type: 'text/csv;charset=utf-8' })
   )
+  const link = document.createElement('a')
+  link.href = url
+  link.download = csvFileName()
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }
 
-function DeleteAccountDialog({ account, onClose, onConfirm }) {
-  const [confirmation, setConfirmation] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  return (
-    <Dialog
-      title={`Excluir permanentemente ${account.username || account.email || account.id}`}
-      onClose={saving ? () => {} : onClose}
-      footerButtons={[
-        { content: 'Cancelar', onClick: onClose, disabled: saving },
-        {
-          content: 'Excluir permanentemente',
-          buttonType: 'danger',
-          disabled: confirmation !== 'EXCLUIR' || saving,
-          onClick: async () => {
-            setSaving(true)
-            setError((await onConfirm()) || '')
-            setSaving(false)
-          },
-        },
-      ]}
-    >
-      <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Text sx={{ fontWeight: 'bold', color: 'danger.fg' }}>
-          A conta será bloqueada agora e excluída em etapas. Registros de atendimento preservados
-          não serão apagados. Esta ação não pode ser desfeita.
-        </Text>
-        {error && (
-          <Text as="p" role="alert" sx={{ color: 'danger.fg' }}>
-            {error}
-          </Text>
-        )}
-        <FormControl>
-          <FormControl.Label>Digite EXCLUIR para confirmar</FormControl.Label>
-          <TextInput value={confirmation} onChange={(e) => setConfirmation(e.target.value)} block />
-        </FormControl>
-      </Box>
-    </Dialog>
-  )
-}
-
+// Só a ação "Atualizar" lê a lista; busca, filtros, ordenação, abas, paginação, painel (Visão
+// geral) e CSV trabalham sobre o snapshot em memória. Nada aqui usa timer, foco de janela ou
+// realtime.
 export default function AdminAccounts() {
-  const [params] = useSearchParams()
-  const [search, setSearch] = useState(params.get('usuario') || '')
-  const { accounts, jobs, loading, error, busy, hasMore, loadMore, refresh, disable, enable, remove } =
-    useAdminAccounts(search)
+  const { snapshot, isRefreshing, error, localChangeAt, syncedVersion, refresh, applyChanges } =
+    useAdminAccountsSnapshot()
+  const details = useAccountDetails(syncedVersion)
   const { toasts, showToast } = useToast()
-  const [dialog, setDialog] = useState(null) // { type: 'disable'|'delete', account }
 
-  const filtered = accounts
+  const [tab, setTab] = useState('all')
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const [sort, setSort] = useState({ key: 'created_at', direction: 'desc' })
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZES[1])
+  const [selection, setSelection] = useState(() => new Set())
+  const [openId, setOpenId] = useState(null)
+  const [visibleColumns, setVisibleColumns] = useState(
+    () => new Set(COLUMN_OPTIONS.map((c) => c.key))
+  )
+  const [dialog, setDialog] = useState(null) // { type: 'status'|'delete', ... }
+  const [busy, setBusy] = useState(false)
+  const [logs, setLogs] = useState({ status: 'idle', data: [] })
 
-  async function handleDisable(reason) {
+  const accounts = useMemo(() => snapshot?.accounts ?? [], [snapshot])
+  const byId = useMemo(() => new Map(accounts.map((account) => [account.id, account])), [accounts])
+  const filtered = useMemo(() => filterAccounts(accounts, filters, tab), [accounts, filters, tab])
+  const sorted = useMemo(() => sortAccounts(filtered, sort), [filtered, sort])
+  const pagination = useMemo(() => paginate(sorted, page, pageSize), [sorted, page, pageSize])
+  const selectedAccounts = useMemo(
+    () => [...selection].map((id) => byId.get(id)).filter(Boolean),
+    [selection, byId]
+  )
+  const openAccount = openId ? byId.get(openId) : null
+
+  function changeFilter(key, value) {
+    setFilters((previous) => ({ ...previous, [key]: value }))
+    setPage(1)
+  }
+
+  function changeSort(key) {
+    setSort((previous) =>
+      previous.key === key
+        ? { key, direction: previous.direction === 'asc' ? 'desc' : 'asc' }
+        : { key, direction: key === 'username' ? 'asc' : 'desc' }
+    )
+  }
+
+  function toggleRow(id) {
+    setSelection((previous) => {
+      const next = new Set(previous)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
+  }
+
+  function togglePage() {
+    setSelection((previous) => {
+      const next = new Set(previous)
+      const everySelected = pagination.rows.every((row) => next.has(row.id))
+      for (const row of pagination.rows) {
+        if (everySelected) next.delete(row.id)
+        else next.add(row.id)
+      }
+      return next
+    })
+  }
+
+  function toggleColumn(key) {
+    setVisibleColumns((previous) => {
+      const next = new Set(previous)
+      if (!next.delete(key)) next.add(key)
+      return next
+    })
+  }
+
+  const handleCopied = useCallback(
+    (copied, label) =>
+      copied ? showToast(`${label} copiado.`) : showToast('Não foi possível copiar.', 'danger'),
+    [showToast]
+  )
+
+  function afterAdminAction(ids) {
+    for (const id of ids) details.invalidate(id, 'audit')
+    setLogs((previous) => (previous.status === 'idle' ? previous : { status: 'idle', data: [] }))
+  }
+
+  async function handleRefresh() {
+    const ok = await refresh()
+    if (ok) setLogs({ status: 'idle', data: [] })
+  }
+
+  // Desativar/reativar 1..N contas: 1 escrita; o estado local é atualizado com o resultado e
+  // nenhum snapshot novo é pedido.
+  async function runStatusChange(targets, disabled, reason) {
     try {
-      await disable(dialog.account.id, reason)
+      const results = await setAccountsStatus(
+        targets.map((account) => account.id),
+        disabled,
+        reason
+      )
+      const changes = new Map()
+      const failures = []
+      for (const result of results) {
+        if (result.ok) changes.set(result.id, statusChangeFor(byId.get(result.id), result))
+        else failures.push(result)
+      }
+      applyChanges(changes)
+      afterAdminAction([...changes.keys()])
+      setSelection((previous) => new Set([...previous].filter((id) => !changes.has(id))))
       setDialog(null)
-      showToast('Conta desativada.')
+      const verb = disabled ? 'desativada' : 'reativada'
+      if (failures.length === 0) {
+        showToast(changes.size === 1 ? `Conta ${verb}.` : `${changes.size} contas ${verb}s.`)
+      } else {
+        showToast(
+          `${changes.size} ${verb}(s), ${failures.length} com falha: ${describeActionError(failures[0].error, 'erro inesperado')}`,
+          'danger'
+        )
+      }
     } catch (err) {
-      console.error('[AdminAccounts] disable:', err)
-      return actionError(err, 'Erro ao desativar conta.')
+      console.error('[AdminAccounts] status:', err)
+      return describeActionError(err, 'Erro ao alterar o status. Tente novamente.')
     }
   }
 
-  async function handleEnable(account) {
+  async function runDeletion(account, reason) {
     try {
-      await enable(account.id)
-      showToast('Conta ativada.')
-    } catch (err) {
-      console.error('[AdminAccounts] enable:', err)
-      showToast(actionError(err, 'Erro ao ativar conta.'), 'danger')
-    }
-  }
-
-  async function handleDelete() {
-    try {
-      await remove(dialog.account.id)
+      await requestAccountDeletion(account.id, reason)
+      applyChanges(new Map([[account.id, deletionRequestedChange]]))
+      afterAdminAction([account.id])
       setDialog(null)
       showToast('Exclusão agendada. A conta já está bloqueada.')
     } catch (err) {
       console.error('[AdminAccounts] delete:', err)
-      return actionError(err, 'Erro ao excluir conta.')
+      return describeActionError(err, 'Erro ao excluir conta.')
     }
   }
+
+  const openStatusDialog = (targets, disabled) => {
+    const eligible = targets.filter(
+      (account) =>
+        canManageStatus(account) &&
+        (disabled ? account.status !== 'disabled' : account.status === 'disabled')
+    )
+    if (eligible.length === 0) {
+      showToast('Nenhuma das contas pode ser alterada por esta ação.', 'danger')
+      return
+    }
+    setDialog({
+      type: 'status',
+      targets: eligible,
+      skipped: targets.length - eligible.length,
+      disabled,
+    })
+  }
+
+  async function loadLogs() {
+    setLogs((previous) => ({ ...previous, status: 'loading' }))
+    try {
+      setLogs({ status: 'ready', data: await fetchAuditLog({ limit: 100 }) })
+    } catch (err) {
+      console.error('[AdminAccounts] logs:', err)
+      setLogs((previous) => ({ ...previous, status: 'error' }))
+    }
+  }
+
+  const initial = !snapshot && !isRefreshing && !error
+  const drawerOpen = Boolean(openAccount) && tab !== 'logs'
 
   return (
     <Box>
@@ -180,158 +242,272 @@ export default function AdminAccounts() {
         </Button>
       </Box>
       <ToastFlash toasts={toasts} />
-      <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
-        Contas
-      </Heading>
 
-      <FormControl sx={{ mb: 3 }}>
-        <FormControl.Label visuallyHidden>Buscar conta</FormControl.Label>
-        <TextInput
-          placeholder="Início do @usuário, e-mail completo ou UID"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          block
-        />
-      </FormControl>
-
-      <Button onClick={refresh} disabled={loading || !!busy} sx={{ mb: 3 }}>
-        Atualizar lista
-      </Button>
-      {jobs.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Heading as="h2" sx={{ fontSize: 2 }}>
-            Exclusões em andamento
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          gap: 2,
+          mb: 3,
+        }}
+      >
+        <Box>
+          <Heading as="h1" sx={{ fontSize: 3 }}>
+            Contas
           </Heading>
-          {jobs.map((job) => (
-            <Text as="p" key={job.id} sx={{ fontSize: 1, overflowWrap: 'anywhere' }}>
-              {job.kind}: {job.targetId} —{' '}
-              {job.lastError ? 'Nova tentativa automática pendente' : 'Em processamento'}
-            </Text>
-          ))}
+          <Text sx={{ color: 'fg.muted', fontSize: 1 }}>
+            Gerencie usuários, status, risco e solicitações de exclusão.
+          </Text>
         </Box>
-      )}
-      {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
-      <ErrorState error={error} onRetry={refresh} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          {snapshot && (
+            <Text sx={{ fontSize: 0, color: 'fg.muted' }} aria-live="polite">
+              Última atualização: {formatDateTime(snapshot.generated_at)}
+              {localChangeAt ? ` · alterações locais às ${formatDateTime(localChangeAt)}` : ''}
+            </Text>
+          )}
+          <Button
+            leadingVisual={isRefreshing ? Spinner : SyncIcon}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? 'Atualizando...' : snapshot ? 'Atualizar' : 'Atualizar dados'}
+          </Button>
+        </Box>
+      </Box>
 
-      {!loading && !error && filtered.length === 0 && (
+      {error && (
+        <Flash variant="danger" sx={{ mb: 3 }}>
+          <Text sx={{ display: 'block' }}>Não foi possível atualizar os dados.</Text>
+          {snapshot && (
+            <Text sx={{ display: 'block' }}>
+              Os dados exibidos são da última atualização bem-sucedida.
+            </Text>
+          )}
+          <Box sx={{ mt: 2 }}>
+            <Button size="small" onClick={handleRefresh} disabled={isRefreshing}>
+              Tentar novamente
+            </Button>
+          </Box>
+        </Flash>
+      )}
+
+      {initial && (
         <Blankslate>
           <Blankslate.Visual>
             <PersonIcon size={24} />
           </Blankslate.Visual>
-          <Blankslate.Heading>Nenhuma conta encontrada</Blankslate.Heading>
+          <Blankslate.Heading>Dados ainda não carregados</Blankslate.Heading>
+          <Blankslate.Description>
+            A lista só é lida quando você pede, para economizar o banco.
+          </Blankslate.Description>
+          <Blankslate.PrimaryAction onClick={handleRefresh}>
+            Atualizar dados
+          </Blankslate.PrimaryAction>
         </Blankslate>
       )}
 
-      {filtered.length > 0 && (
-        <Box
-          sx={{
-            border: '1px solid',
-            borderColor: 'border.default',
-            borderRadius: 2,
-            overflow: 'hidden',
-          }}
-        >
-          {filtered.map((account, index) => (
-            <Box
-              key={account.id}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                flexWrap: 'wrap',
-                px: 3,
-                py: 2,
-                borderTop: index === 0 ? 'none' : '1px solid',
-                borderColor: 'border.default',
-              }}
-            >
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                  <Text sx={{ fontWeight: 'bold' }}>
-                    {account.username ? `@${account.username}` : account.email || account.id}
-                  </Text>
-                  <Label variant={account.accountStatus === 'disabled' ? 'danger' : 'success'}>
-                    {account.accountStatus === 'deleting'
-                      ? 'Em exclusão'
-                      : account.accountStatus === 'disabled'
-                        ? 'Desativada'
-                        : 'Ativa'}
-                  </Label>
+      {!snapshot && isRefreshing && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+
+      {snapshot && (
+        <>
+          {snapshot.meta.truncated && (
+            <Flash variant="warning" sx={{ mb: 3 }}>
+              O snapshot traz as {snapshot.meta.returned.toLocaleString('pt-BR')} contas mais
+              recentes de {snapshot.meta.total.toLocaleString('pt-BR')}. Busca e filtros valem só
+              para elas.
+            </Flash>
+          )}
+          <AccountsMetrics
+            metrics={snapshot.metrics}
+            activeCard={filters.card}
+            onSelectCard={(card) => {
+              changeFilter('card', card)
+              setTab('all')
+            }}
+          />
+          <AccountsToolbar
+            filters={filters}
+            onFilterChange={changeFilter}
+            onClearFilters={() => {
+              setFilters(EMPTY_FILTERS)
+              setPage(1)
+            }}
+            visibleColumns={visibleColumns}
+            onToggleColumn={toggleColumn}
+            onExport={() => downloadCsv(sorted)}
+            exportCount={sorted.length}
+          />
+
+          <UnderlineNav aria-label="Seções de contas" sx={{ mb: 3 }}>
+            {TABS.map((item) => (
+              <UnderlineNav.Item
+                key={item.key}
+                as="button"
+                aria-current={tab === item.key ? 'page' : undefined}
+                onSelect={() => {
+                  setTab(item.key)
+                  setPage(1)
+                }}
+              >
+                {item.label}
+              </UnderlineNav.Item>
+            ))}
+          </UnderlineNav>
+
+          {tab === 'logs' ? (
+            <Box>
+              {logs.status === 'idle' && (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <Text sx={{ color: 'fg.muted' }}>Nenhum log carregado.</Text>
+                  <Button onClick={loadLogs}>Carregar logs</Button>
                 </Box>
-                <Text sx={{ fontSize: 0, color: 'fg.muted' }}>{account.email}</Text>
-              </Box>
-
-              {account.role !== 'superadmin' && account.accountStatus !== 'deleting' && (
-                <Box sx={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-                  {account.accountStatus === 'disabled' ? (
-                    <Button
-                      size="small"
-                      disabled={!!busy}
-                      leadingVisual={CheckIcon}
-                      onClick={() => handleEnable(account)}
-                    >
-                      Ativar
+              )}
+              {logs.status === 'loading' && <Spinner />}
+              {logs.status === 'error' && (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <Text sx={{ color: 'danger.fg' }}>Não foi possível carregar os logs.</Text>
+                  <Button onClick={loadLogs}>Tentar novamente</Button>
+                </Box>
+              )}
+              {logs.status === 'ready' && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <Box>
+                    <Button size="small" onClick={loadLogs}>
+                      Recarregar logs
                     </Button>
-                  ) : (
-                    <Button
-                      size="small"
-                      disabled={!!busy}
-                      leadingVisual={BlockedIcon}
-                      onClick={() => setDialog({ type: 'disable', account })}
-                    >
-                      Desativar
-                    </Button>
-                  )}
-
-                  <ActionMenu>
-                    <ActionMenu.Anchor>
-                      <IconButton
-                        disabled={!!busy}
-                        icon={KebabHorizontalIcon}
-                        variant="invisible"
-                        aria-label="Mais ações"
-                        sx={{ color: 'fg.muted' }}
-                      />
-                    </ActionMenu.Anchor>
-                    <ActionMenu.Overlay align="end">
-                      <ActionList>
-                        <ActionList.Item
-                          variant="danger"
-                          onSelect={() => setDialog({ type: 'delete', account })}
-                        >
-                          <ActionList.LeadingVisual>
-                            <TrashIcon />
-                          </ActionList.LeadingVisual>
-                          Excluir permanentemente
-                        </ActionList.Item>
-                      </ActionList>
-                    </ActionMenu.Overlay>
-                  </ActionMenu>
+                    <Text sx={{ ml: 2, fontSize: 0, color: 'fg.muted' }}>
+                      Últimos 100 registros.
+                    </Text>
+                  </Box>
+                  <AuditLogList entries={logs.data} showTarget />
                 </Box>
               )}
             </Box>
-          ))}
-        </Box>
+          ) : (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: [
+                  'minmax(0, 1fr)',
+                  null,
+                  null,
+                  drawerOpen ? 'minmax(0, 1fr) 400px' : 'minmax(0, 1fr)',
+                ],
+                gap: 3,
+                alignItems: 'start',
+              }}
+            >
+              <Box sx={{ minWidth: 0 }}>
+                <BulkActionsBar
+                  count={selectedAccounts.length}
+                  busy={busy}
+                  onDisable={() => openStatusDialog(selectedAccounts, true)}
+                  onEnable={() => openStatusDialog(selectedAccounts, false)}
+                  onExport={() => downloadCsv(selectedAccounts)}
+                  onClear={() => setSelection(new Set())}
+                />
+                {sorted.length === 0 ? (
+                  <Blankslate>
+                    <Blankslate.Visual>
+                      <PersonIcon size={24} />
+                    </Blankslate.Visual>
+                    <Blankslate.Heading>Nenhuma conta encontrada</Blankslate.Heading>
+                    <Blankslate.Description>
+                      Ajuste a busca ou os filtros para ver outras contas.
+                    </Blankslate.Description>
+                  </Blankslate>
+                ) : (
+                  <AccountsTable
+                    rows={pagination.rows}
+                    selectedIds={selection}
+                    openId={openId}
+                    sort={sort}
+                    visibleColumns={visibleColumns}
+                    disabled={busy}
+                    compact={drawerOpen}
+                    pagination={pagination}
+                    total={sorted.length}
+                    pageSize={pageSize}
+                    onSort={changeSort}
+                    onToggleRow={toggleRow}
+                    onTogglePage={togglePage}
+                    onOpen={setOpenId}
+                    onDisable={(account) => openStatusDialog([account], true)}
+                    onEnable={(account) => openStatusDialog([account], false)}
+                    onDelete={(account) =>
+                      canDelete(account) && setDialog({ type: 'delete', account })
+                    }
+                    onPageChange={setPage}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size)
+                      setPage(1)
+                    }}
+                  />
+                )}
+              </Box>
+              {drawerOpen && (
+                <AccountDrawer
+                  account={openAccount}
+                  entries={details.entries}
+                  busy={busy}
+                  onLoadSection={details.load}
+                  onClose={() => setOpenId(null)}
+                  onDisable={(account) => openStatusDialog([account], true)}
+                  onEnable={(account) => openStatusDialog([account], false)}
+                  onDelete={(account) => setDialog({ type: 'delete', account })}
+                  onCopied={handleCopied}
+                />
+              )}
+            </Box>
+          )}
+        </>
       )}
 
-      {hasMore && (
-        <Button onClick={loadMore} disabled={loading} sx={{ mt: 3 }}>
-          Carregar mais contas
-        </Button>
-      )}
-
-      {dialog?.type === 'disable' && (
-        <DisableDialog
-          account={dialog.account}
+      {dialog?.type === 'status' && (
+        <StatusDialog
+          targets={dialog.targets}
+          skipped={dialog.skipped}
+          disabled={dialog.disabled}
           onClose={() => setDialog(null)}
-          onConfirm={handleDisable}
+          onConfirm={async (reason) => {
+            setBusy(true)
+            try {
+              return await runStatusChange(dialog.targets, dialog.disabled, reason)
+            } finally {
+              setBusy(false)
+            }
+          }}
         />
       )}
       {dialog?.type === 'delete' && (
         <DeleteAccountDialog
           account={dialog.account}
           onClose={() => setDialog(null)}
-          onConfirm={handleDelete}
+          onConfirm={async (reason) => {
+            setBusy(true)
+            try {
+              return await runDeletion(dialog.account, reason)
+            } finally {
+              setBusy(false)
+            }
+          }}
         />
       )}
     </Box>
