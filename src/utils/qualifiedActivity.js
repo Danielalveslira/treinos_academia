@@ -11,14 +11,19 @@ export function saoPauloDayKey(date = new Date()) {
   }).format(date)
 }
 
-// O app só deixa de pingar no dia quando a recompensa diária já saiu E o dia já virou "dia
-// ativo". A recompensa pode sair antes do mínimo de atividade do dia ativo (config), e parar
-// antes disso impediria o dia de qualificar. Resposta sem dayQualified (servidor antigo)
+// A recompensa de atividade do dia está RESOLVIDA quando foi paga, já tinha sido paga ou o
+// servidor a barrou de vez (teto diário de EvoCoins cheio / regra desligada). O app só deixa de
+// pingar no dia quando ela está resolvida E o dia já virou "dia ativo" (criação de comunidade) --
+// parar antes disso impediria o dia de qualificar. Resposta sem dayQualified (servidor antigo)
 // nunca encerra o dia: no pior caso custa um ping barato a mais.
+const RESOLVED_REASONS = new Set([
+  'already_granted',
+  'already_ledgered',
+  'daily_cap_reached',
+  'rule_disabled',
+])
+
 export function isDayActivityComplete(result) {
-  const rewardDone =
-    result?.granted === true ||
-    result?.reason === 'already_granted' ||
-    result?.reason === 'already_ledgered'
+  const rewardDone = result?.granted === true || RESOLVED_REASONS.has(result?.reason)
   return rewardDone && result?.dayQualified === true
 }

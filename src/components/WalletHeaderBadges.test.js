@@ -80,3 +80,20 @@ test('a zero balance still renders as "0", never hidden or blank (never invents/
   const html = renderStatic({ visible: true, loading: false, coinBalance: 0, cashBalance: 0 })
   assert.equal((html.match(/>0</g) || []).length, 2)
 })
+
+test('mostra o progresso diário vindo do servidor no indicador de EvoCoins, sem alterar o saldo', () => {
+  const html = renderStatic({
+    visible: true,
+    loading: false,
+    coinBalance: 12,
+    cashBalance: 3,
+    dailyProgress: 'EvoCoins de hoje: 7 / 10',
+  })
+  assert.match(html, /title="12 EvoCoins · EvoCoins de hoje: 7 \/ 10"/)
+  assert.match(html, />12</)
+})
+
+test('sem progresso diário o indicador segue idêntico ao anterior', () => {
+  const html = renderStatic({ visible: true, loading: false, coinBalance: 12, cashBalance: 3 })
+  assert.match(html, /title="12 EvoCoins"/)
+})

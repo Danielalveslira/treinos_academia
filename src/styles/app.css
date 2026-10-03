@@ -1154,6 +1154,12 @@ body:has(.pwa-offline) .app-shell {
 .profile-wallet .indicator-value {
   font-size: 18px;
 }
+.profile-wallet-daily {
+  margin: 12px 0 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fgColor-muted);
+}
 .profile-wallet > a {
   display: inline-flex;
   align-items: center;
@@ -4856,3 +4862,13 @@ body.modal-sheet-open { overflow: hidden; }
 .community-review > div { display: flex; justify-content: space-between; gap: 16px; }
 .community-review dt { color: var(--fgColor-muted); font-size: 14px; }
 .community-review dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+
+/* Finalizar treino: marcador server-side de conclusão (ver NewWorkout.jsx). */
+.workout-finish {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+.workout-finish .btn {
+  min-height: 44px;
+}

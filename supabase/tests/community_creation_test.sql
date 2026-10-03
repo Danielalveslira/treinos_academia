@@ -187,13 +187,13 @@ select throws_ok($$select * from public.community_creation_activity_days$$, '425
 select throws_ok($$insert into public.community_creation_activity_days (user_id, activity_date, qualified_seconds, qualified) values (pg_temp.uid('0a'), current_date, 9999, true)$$, '42501', null, 'cliente não forja dia ativo');
 select throws_ok($$select * from public.community_creation_products$$, '42501', null, 'preços só pelo RPC (tabela fechada)');
 select throws_ok($$update public.community_creation_rules set required_account_days = 0$$, '42501', null, 'cliente não altera as regras');
-update public.wallets set coin_balance = 99999, cash_balance = 99999 where user_id = pg_temp.uid('0a');
+select throws_ok($$update public.wallets set coin_balance = 99999, cash_balance = 99999 where user_id = 'c1000000-0000-0000-0000-00000000000a'$$, '42501', null, 'cliente não escreve na carteira (REVOKE explícito, independente de RLS)');
 select ok(has_function_privilege('authenticated', 'public.create_community(text,text,text,text,text,text)', 'execute'), 'authenticated executa create_community');
 select ok(not has_function_privilege('anon', 'public.create_community(text,text,text,text,text,text)', 'execute'), 'anon não executa create_community');
 select ok(not has_function_privilege('anon', 'public.get_my_community_creation_eligibility()', 'execute'), 'anon não executa a elegibilidade');
 select ok(not has_function_privilege('anon', 'public.upgrade_community_tier(uuid,text,text,text)', 'execute'), 'anon não executa o upgrade');
 reset role;
-select is(pg_temp.coins('0a') || '/' || pg_temp.cash('0a'), '10/0', 'cliente não altera o próprio saldo (UPDATE direto não afeta nenhuma linha)');
+select is(pg_temp.coins('0a') || '/' || pg_temp.cash('0a'), '10/0', 'cliente não altera o próprio saldo');
 select ok(to_regprocedure('public.create_community_with_cash(text,text,text,text)') is null, 'fluxo antigo (que ignorava o novo gate) foi removido');
 
 -- dono altera a própria comunidade, mas não tier/retenção nem fura o limite reativando
@@ -274,11 +274,11 @@ select is((select qualified_seconds from public.community_creation_activity_days
 update public.community_creation_activity_days set last_checkpoint_at = now() - interval '2 hours' where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date;
 select public.register_qualified_activity();
 select is((select qualified_seconds || '/' || qualified from public.community_creation_activity_days where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date), '1500/true', 'cada intervalo soma no máximo 20 min; >= 10 min qualifica o dia');
-update public.community_creation_activity_days set checkpoints_count = 6, last_checkpoint_at = now() - interval '10 minutes' where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date;
+update public.community_creation_activity_days set checkpoints_count = 40, last_checkpoint_at = now() - interval '10 minutes' where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date;
 select is((public.register_qualified_activity() ->> 'dayQualified')::boolean, true, 'resposta traz dayQualified = true depois que o dia qualificou');
-select is((select qualified_seconds from public.community_creation_activity_days where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date), 1500, 'teto de pings por dia');
--- o fluxo de recompensa da economia segue funcionando junto
-select is((select count(*)::int from public.economy_daily where user_id = pg_temp.uid('0a')), 1, 'economy_daily continua sendo alimentada');
+select is((select qualified_seconds from public.community_creation_activity_days where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date), 1500, 'teto de 40 pings por dia (limita escritas, não minutos)');
+-- a atividade tem UMA fonte (community_creation_activity_days): nada de minutos paralelos em economy_daily
+select is((select coalesce(sum(active_minutes), 0) from public.economy_daily where user_id = pg_temp.uid('0a')), 0::numeric, 'economy_daily não acumula mais minutos de atividade');
 
 select * from finish();
 rollback;

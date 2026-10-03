@@ -19,6 +19,25 @@ test('só encerra o dia quando a recompensa saiu E o dia já qualificou', () => 
   )
 })
 
+test('recompensa barrada pelo teto diário também a resolve (o app para de pingar quando o dia qualificou)', () => {
+  assert.equal(
+    isDayActivityComplete({ granted: false, reason: 'daily_cap_reached', dayQualified: true }),
+    true
+  )
+  assert.equal(
+    isDayActivityComplete({ granted: false, reason: 'daily_cap_reached', dayQualified: false }),
+    false
+  )
+  assert.equal(
+    isDayActivityComplete({ granted: false, reason: 'rule_disabled', dayQualified: true }),
+    true
+  )
+  assert.equal(
+    isDayActivityComplete({ granted: false, reason: 'account_unavailable', dayQualified: true }),
+    false
+  )
+})
+
 test('resposta sem dayQualified nunca encerra o dia', () => {
   assert.equal(isDayActivityComplete({ granted: true }), false)
   assert.equal(isDayActivityComplete(null), false)

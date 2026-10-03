@@ -17,6 +17,7 @@ import { PageFallback } from './PageFallback'
 import { BrandMark } from './BrandMark'
 import { AccountMenu } from './AccountMenu'
 import { WalletHeaderBadges } from './WalletHeaderBadges'
+import { EvoCoinsAwardNotice } from './EvoCoinsAwardNotice'
 import { NotificationBell } from '../features/notifications/components/NotificationBell'
 
 const NAV_ITEMS = [
@@ -128,6 +129,7 @@ export function Layout() {
           </Suspense>
         </ErrorBoundary>
       </main>
+      <EvoCoinsAwardNotice />
       <Navigation mobile />
     </div>
   )

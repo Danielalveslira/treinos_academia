@@ -81,6 +81,39 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+/* Aviso discreto de EvoCoins recebidas (EvoCoinsAwardNotice.jsx): pílula no topo, sem capturar
+   foco nem cliques, some sozinho. Nunca cobre a ação principal. */
+.evocoin-award-notice {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 68px);
+  right: 12px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 999px;
+  background: var(--bgColor-default);
+  box-shadow: var(--shadow-resting-medium, 0 2px 8px rgba(0, 0, 0, 0.18));
+  color: var(--fgColor-default);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  animation: evocoin-award-in 0.2s ease-out;
+}
+.evocoin-award-icon {
+  flex-shrink: 0;
+  display: block;
+}
+@keyframes evocoin-award-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .evocoin-award-notice { animation: none; }
+}
 .account-menu-trigger {
   width: 44px;
   height: 44px;

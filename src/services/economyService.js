@@ -35,6 +35,12 @@ function writeCache(uid, wallet) {
   }
 }
 
+// Leitura síncrona do cache (sem rede) -- só para pintar o saldo na hora; o valor confiável vem
+// de getWallet(uid, { forceRefresh: true }).
+export function peekCachedWallet(uid) {
+  return readCache(uid)
+}
+
 // Leitura sob demanda com cache de sessão (com TTL, ver CACHE_TTL_MS) -- nunca um
 // listener permanente (o realtime fica a cargo de WalletContext.jsx, canal
 // postgres_changes). wallet/current é pequeno e muda raramente (no máximo 1x/dia na
@@ -61,6 +67,22 @@ export async function getWallet(uid, { forceRefresh = false } = {}) {
 // RPC) -- nunca precisa de patch manual de cache aqui, nem do uid (a RPC usa auth.uid()).
 export async function registerQualifiedActivity() {
   const { data, error } = await supabase.rpc('register_qualified_activity')
+  if (error) throw error
+  return data
+}
+
+// EvoCoins ganhas hoje (America/Sao_Paulo): { earned, limit, remaining, day }. O servidor soma
+// todas as fontes e aplica o teto -- o cliente só exibe. Uma leitura por PK; sem polling.
+export async function getMyEvocoinDay() {
+  const { data, error } = await supabase.rpc('get_my_evocoin_day')
+  if (error) throw error
+  return data
+}
+
+// Evento de conclusão do treino (servidor decide se há esforço suficiente hoje e quanto paga).
+// Devolve { awardedCoins, dailyEarned, dailyLimit, dailyRemaining, reason? }.
+export async function completeWorkoutSession() {
+  const { data, error } = await supabase.rpc('complete_workout_session')
   if (error) throw error
   return data
 }

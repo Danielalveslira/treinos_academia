@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Box, Heading, Spinner } from '@primer/react'
+import { Box, Button, Heading, Spinner } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PlayIcon, PulseIcon } from '@primer/octicons-react'
 import { useExercises } from '../contexts/ExercisesContext'
@@ -8,6 +9,15 @@ import { useToast } from '../hooks/useToast'
 import { WorkoutForm } from '../components/WorkoutForm'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
+import { completeWorkoutSession } from '../services/economyService'
+import { loadDoneExerciseIds } from '../utils/doneExercisesStorage'
+
+function localDateKey() {
+  const today = new Date()
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+    today.getDate()
+  ).padStart(2, '0')}`
+}
 
 export default function NewWorkout() {
   const navigate = useNavigate()
@@ -17,10 +27,33 @@ export default function NewWorkout() {
   const { exercises, loading, error, refresh } = useExercises()
   const { workouts, add } = useWorkouts()
   const { toasts, showToast } = useToast()
+  // O botão "Finalizar treino" só aparece depois de registrar ao menos um exercício hoje (nesta
+  // sessão ou, após recarregar, pela marcação local de exercícios feitos hoje).
+  const [hasRegistered, setHasRegistered] = useState(
+    () => loadDoneExerciseIds(localDateKey()).size > 0
+  )
+  const [finishing, setFinishing] = useState(false)
+
+  // Evento de conclusão: o SERVIDOR decide se houve esforço suficiente hoje e quanto paga (o
+  // cliente não envia valor nem data). A recompensa, se houver, chega pelo aviso discreto de
+  // EvoCoins (WalletContext); aqui só se leva o usuário ao histórico.
+  async function handleFinish() {
+    if (finishing) return
+    setFinishing(true)
+    try {
+      await completeWorkoutSession()
+      navigate('/historico')
+    } catch (err) {
+      console.error('[NewWorkout] finish:', err)
+      showToast('Não foi possível finalizar o treino agora. Tente novamente.', 'danger')
+      setFinishing(false)
+    }
+  }
 
   async function handleSubmit(values) {
     try {
       await add(values)
+      setHasRegistered(true)
       showToast('Treino registrado.')
     } catch (err) {
       console.error('[NewWorkout] create:', err)
@@ -75,6 +108,14 @@ export default function NewWorkout() {
           onSubmit={handleSubmit}
           onCancel={() => navigate(-1)}
         />
+      )}
+
+      {!loading && !error && hasRegistered && (
+        <div className="workout-finish">
+          <Button variant="primary" onClick={handleFinish} disabled={finishing}>
+            {finishing ? 'Finalizando…' : 'Finalizar treino'}
+          </Button>
+        </div>
       )}
     </Box>
   )
