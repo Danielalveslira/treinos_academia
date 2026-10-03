@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { listCommunityFeed, deleteStatus } from '../services/statusesService'
 import { describeQueryError } from '../utils/queryError'
 import { toMillis } from '../utils/expiry'
+import { isNeverExpiring } from '../utils/postRetention'
 import { fetchCached, getCached, setCached } from '../utils/pageCache'
 import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta'
 
@@ -71,7 +72,7 @@ export function useCommunityFeed(communityId, enabled = true) {
       const current = Date.now()
       setNow(current)
       setStatuses((prev) => {
-        const next = prev.filter((s) => toMillis(s.expiresAt) > current)
+        const next = prev.filter((s) => isNeverExpiring(s) || toMillis(s.expiresAt) > current)
         if (next.length !== prev.length) setCached(cacheKey, next)
         return next.length === prev.length ? prev : next
       })

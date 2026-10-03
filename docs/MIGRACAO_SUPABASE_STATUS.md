@@ -23,7 +23,7 @@ Auth (email/senha), perfis, treinos, exercícios, comunidades (incl. dono/modera
 `status_economy_votes`, `cast_vote()`, `settle_vote_rewards()` (pg_cron a cada 5min), antifraude com 4 limites.
 
 ### Economia — Fase 3 (criação de comunidade paga)
-`community_creation_requests`, `create_community_with_cash()`.
+`community_creation_requests`, `create_community_with_cash()` — **substituída** pelo fluxo de tiers (`create_community()`, ver [COMMUNITY_CREATION.md](COMMUNITY_CREATION.md)); a RPC antiga foi removida em `20261008000003`.
 
 ### Economia — Fase 4 (compra de EvoCash + promoções) — recém-implementada
 - **Compra de EvoCash via Mercado Pago**: `cash_purchases`, RPC `request_cash_purchase()` (reserva idempotente, 1 pendente por vez, preço fail-closed de `economy_config.cashPackages`), Edge Function `mercadopago-create-payment` (gera o pagamento PIX na API do Mercado Pago) e `mercadopago-webhook` (credita automaticamente após revalidar o pagamento direto na API — nunca confia no payload do webhook). `confirm_cash_purchase()`/`cancel_cash_purchase()` continuam como fallback manual do superadmin.

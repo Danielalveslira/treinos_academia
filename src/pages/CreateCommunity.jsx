@@ -1,141 +1,221 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Box, Flash, Heading, Spinner, Text } from '@primer/react'
-import { CheckCircleFillIcon, XCircleFillIcon } from '@primer/octicons-react'
+import { Button, Flash, Spinner } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
-import { useWallet } from '../hooks/useWallet'
-import { CommunityForm } from '../components/CommunityForm'
-import { getCreateCommunityPrivilege, createCommunityWithCash } from '../services/privilegeService'
+import { EligibilityPanel } from '../components/communityCreation/EligibilityPanel'
+import {
+  InfoStep,
+  PaymentStep,
+  RetentionStep,
+  ReviewStep,
+} from '../components/communityCreation/CreationSteps'
+import {
+  createCommunity,
+  getCommunityCreationEligibility,
+  listCommunityCreationProducts,
+} from '../services/communityCreationService'
+import { DEFAULT_COMMUNITY_ICON_NAME } from '../constants/communityIcons'
 import { resolveRequestId } from '../utils/cashPurchaseFlow'
-import { evaluateCommunityCreationRequirements } from '../utils/communityOwnership'
-import { toDate } from '../utils/date'
-import { formatDate } from '../utils/format'
+import {
+  WIZARD_STEPS,
+  attemptKeyOf,
+  creationErrorMessage,
+  newIdempotencyKey,
+  paymentOptionsFor,
+  shouldRenewRequestId,
+} from '../utils/communityCreation'
 import { invalidateCommunitiesCache } from '../utils/pageCache'
 
-function newRequestId() {
-  return typeof crypto?.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `req-${Date.now()}-${Math.random().toString(36).slice(2)}`
-}
+// Erros que mudam a elegibilidade/saldo: recarrega os dados do servidor e volta ao início.
+const REFRESH_ERRORS = new Set([
+  'ACCOUNT_NOT_ELIGIBLE',
+  'ACCOUNT_TOO_NEW',
+  'NOT_ACTIVE_ENOUGH',
+  'EMAIL_NOT_VERIFIED',
+  'COMMUNITY_LIMIT_REACHED',
+])
 
-function accountAgeDays(createdAt) {
-  const date = toDate(createdAt)
-  if (!date) return 0
-  return Math.floor((Date.now() - date.getTime()) / 86400000)
-}
-
-// Fase 5 (privilégios com EvoCash) -- primeiro privilégio: criação de comunidade paga.
-// A elegibilidade mostrada aqui é só UX: quem decide de verdade é sempre
-// createCommunityWithCash (Cloud Function), que revalida tudo de novo antes de cobrar.
+// Criação de comunidade em 5 etapas, mobile first: elegibilidade -> informações -> retenção
+// das publicações -> pagamento -> revisão. Nada aqui autoriza nada: create_community
+// recalcula elegibilidade, limite, preço e saldo no banco, e é idempotente.
 export default function CreateCommunity() {
   const navigate = useNavigate()
-  const { user, profile } = useAuth()
-  const { wallet, loading: loadingWallet } = useWallet()
-  const [privilege, setPrivilege] = useState(null)
-  const [loadingPrivilege, setLoadingPrivilege] = useState(true)
-  const [pendingAttempt, setPendingAttempt] = useState(null)
+  const { user } = useAuth()
+  const [stepIndex, setStepIndex] = useState(0)
+  const [eligibility, setEligibility] = useState(null)
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [values, setValues] = useState({
+    name: '',
+    description: '',
+    iconName: DEFAULT_COMMUNITY_ICON_NAME,
+  })
+  const [tier, setTier] = useState(null)
+  const [paymentMethod, setPaymentMethod] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const pendingAttemptRef = useRef(null)
+  const submittingRef = useRef(false)
 
-  useEffect(() => {
-    let active = true
-    getCreateCommunityPrivilege()
-      .then((result) => {
-        if (active) setPrivilege(result)
-      })
-      .finally(() => {
-        if (active) setLoadingPrivilege(false)
-      })
-    return () => {
-      active = false
+  const load = useCallback(async () => {
+    setLoading(true)
+    setLoadError(false)
+    try {
+      const [nextEligibility, nextProducts] = await Promise.all([
+        getCommunityCreationEligibility(),
+        listCommunityCreationProducts(),
+      ])
+      setEligibility(nextEligibility)
+      setProducts(nextProducts)
+    } catch (err) {
+      console.error('[CreateCommunity] load:', err)
+      setLoadError(true)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  const loading = loadingWallet || loadingPrivilege
-  const ageDays = accountAgeDays(profile?.createdAt)
+  useEffect(() => {
+    load()
+  }, [load])
 
-  const { requirements, allMet } = evaluateCommunityCreationRequirements({
-    privilege,
-    accountAgeDays: ageDays,
-    emailVerified: user.emailVerified === true,
-    lifetimeCoinsEarned: wallet.lifetimeCoinsEarned,
-    cashBalance: wallet.cashBalance,
-  })
+  const step = WIZARD_STEPS[stepIndex]
+  const product = products.find((item) => item.tier === tier) || null
+  const paymentOption =
+    paymentOptionsFor(product, eligibility).find((option) => option.method === paymentMethod) ||
+    null
 
-  async function handleSubmit(values) {
+  const goBack = () => (stepIndex === 0 ? navigate('/comunidades') : setStepIndex(stepIndex - 1))
+  const goNext = () => setStepIndex((index) => Math.min(index + 1, WIZARD_STEPS.length - 1))
+
+  function selectTier(nextTier) {
+    setTier(nextTier)
+    const options = paymentOptionsFor(
+      products.find((item) => item.tier === nextTier),
+      eligibility
+    )
+    // Pré-seleciona uma forma que o saldo cobre; senão o usuário escolhe (ou vê o que falta).
+    setPaymentMethod((options.find((option) => option.enough) || null)?.method ?? null)
+  }
+
+  async function handleSubmit() {
+    if (submittingRef.current || !product || !paymentOption) return
+    submittingRef.current = true
+    setSubmitting(true)
     setError('')
-    const attemptKey = JSON.stringify(values)
-    const requestId = resolveRequestId(pendingAttempt, attemptKey, newRequestId)
+    const payload = { ...values, tier, paymentMethod }
+    const attemptKey = attemptKeyOf(payload)
+    const idempotencyKey = resolveRequestId(
+      pendingAttemptRef.current,
+      attemptKey,
+      newIdempotencyKey
+    )
+    pendingAttemptRef.current = { key: attemptKey, requestId: idempotencyKey }
     try {
-      const result = await createCommunityWithCash({ ...values, requestId })
-      setPendingAttempt(null)
+      const result = await createCommunity({
+        name: values.name.trim(),
+        description: values.description.trim(),
+        iconName: values.iconName,
+        tier,
+        paymentMethod,
+        idempotencyKey,
+      })
+      pendingAttemptRef.current = null
       invalidateCommunitiesCache(user.uid)
       navigate(`/comunidades/${result.communityId}`, { replace: true })
     } catch (err) {
-      console.error('[CreateCommunity] createCommunityWithCash:', err)
-      // create_community_with_cash (RPC) levanta um código curto em vez de uma frase
-      // pronta (ver supabase/migrations/..._privilege_create_community.sql).
-      const KNOWN_ERRORS = {
-        REQUEST_ID_CONFLICT: 'Este pedido já foi usado para criar uma comunidade diferente.',
-        PRIVILEGE_CONFIG_UNAVAILABLE: 'Configuração de privilégios indisponível no momento.',
-        ACCOUNT_DISABLED: 'Sua conta não está em condições de criar uma comunidade.',
-        ACCOUNT_RESTRICTED: 'Sua conta está com uma restrição ativa.',
-        ACCOUNT_TOO_NEW: 'Sua conta ainda não atingiu o tempo mínimo exigido.',
-        EMAIL_NOT_VERIFIED: 'Confirme seu e-mail para criar uma comunidade.',
-        INSUFFICIENT_REPUTATION: 'Você ainda não tem reputação (EvoCoins histórico) suficiente.',
-        INSUFFICIENT_CASH: 'Você não tem EvoCash suficiente.',
+      console.error('[CreateCommunity] createCommunity:', err)
+      // Falha de rede/desconhecida mantém a chave (o retry devolve o resultado original);
+      // conflito de chave não se resolve repetindo.
+      if (shouldRenewRequestId(err)) pendingAttemptRef.current = null
+      setError(creationErrorMessage(err))
+      if (REFRESH_ERRORS.has(err?.message)) {
+        await load()
+        setStepIndex(0)
+      } else if (err?.message === 'INSUFFICIENT_COINS' || err?.message === 'INSUFFICIENT_CASH') {
+        await load()
+        setPaymentMethod(null)
+        setStepIndex(WIZARD_STEPS.indexOf('payment'))
       }
-      setPendingAttempt(err?.message === 'REQUEST_ID_CONFLICT' ? null : { key: attemptKey, requestId })
-      setError(KNOWN_ERRORS[err?.message] || 'Não foi possível criar a comunidade. Tente novamente.')
+    } finally {
+      submittingRef.current = false
+      setSubmitting(false)
     }
   }
 
   return (
-    <div className="profile-page">
+    <div className="profile-page community-wizard">
       <header className="profile-page-heading">
-        <span className="profile-eyebrow">EVOCASH</span>
-        <h1>Criar uma comunidade</h1>
-        <p>Requisitos combinados de reputação, tempo de conta e EvoCash.</p>
+        <span className="profile-eyebrow">
+          PASSO {stepIndex + 1} DE {WIZARD_STEPS.length}
+        </span>
+        <h1>Criar comunidade</h1>
       </header>
 
-      {error && (
-        <Flash variant="danger" role="alert" sx={{ mb: 3 }}>
-          {error}
+      {loading && (
+        <Spinner
+          aria-label="Carregando sua elegibilidade"
+          sx={{ display: 'block', mx: 'auto', my: 5 }}
+        />
+      )}
+
+      {!loading && loadError && (
+        <Flash variant="danger" role="alert">
+          Não foi possível carregar a criação de comunidades.{' '}
+          <Button variant="invisible" onClick={load}>
+            Tentar novamente
+          </Button>
         </Flash>
       )}
 
-      {loading && <Spinner aria-label="Carregando requisitos" />}
-      {!loading && !privilege && (
-        <Flash variant="warning">Criação de comunidades está indisponível no momento.</Flash>
-      )}
-
-      {!loading && privilege && (
+      {!loading && !loadError && eligibility && (
         <>
-          <Box sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 4 }}>
-            <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
-              Requisitos
-            </Heading>
-            {requirements.map((requirement) => (
-              <Box key={requirement.key} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                {requirement.met ? (
-                  <CheckCircleFillIcon fill="success.fg" />
-                ) : (
-                  <XCircleFillIcon fill="danger.fg" />
-                )}
-                <Text as="span">{requirement.label}</Text>
-                <Text as="span" sx={{ color: 'fg.muted', fontSize: 0 }}>
-                  ({requirement.detail})
-                </Text>
-              </Box>
-            ))}
-          </Box>
-
-          {allMet ? (
-            <CommunityForm showPostAccess={false} onSubmit={handleSubmit} onCancel={() => navigate('/comunidades')} />
-          ) : (
-            <Text as="p" sx={{ color: 'fg.muted' }}>
-              Você ainda não atende a todos os requisitos acima.
-              {profile?.createdAt && ` Conta criada em ${formatDate(profile.createdAt)}.`}
-            </Text>
+          {error && step !== 'review' && (
+            <Flash variant="danger" role="alert" sx={{ mb: 3 }}>
+              {error}
+            </Flash>
+          )}
+          {step === 'eligibility' && (
+            <EligibilityPanel eligibility={eligibility} onContinue={goNext} />
+          )}
+          {step === 'info' && (
+            <InfoStep
+              values={values}
+              onChange={(field, value) => setValues((current) => ({ ...current, [field]: value }))}
+              onBack={goBack}
+              onNext={goNext}
+            />
+          )}
+          {step === 'retention' && (
+            <RetentionStep
+              products={products}
+              tier={tier}
+              onSelect={selectTier}
+              onBack={goBack}
+              onNext={goNext}
+            />
+          )}
+          {step === 'payment' && product && (
+            <PaymentStep
+              product={product}
+              eligibility={eligibility}
+              method={paymentMethod}
+              onSelect={setPaymentMethod}
+              onBack={goBack}
+              onNext={goNext}
+            />
+          )}
+          {step === 'review' && product && paymentOption && (
+            <ReviewStep
+              values={values}
+              product={product}
+              option={paymentOption}
+              submitting={submitting}
+              error={error}
+              onBack={goBack}
+              onSubmit={handleSubmit}
+            />
           )}
         </>
       )}

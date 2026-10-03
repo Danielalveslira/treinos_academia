@@ -1,6 +1,8 @@
 import { toMillis } from './expiry.js'
+import { isNeverExpiring } from './postRetention.js'
 
 export function effectivePublicationExpiry(status) {
+  if (isNeverExpiring(status)) return Infinity
   const commentsCloseAt = toMillis(status?.commentsCloseAt)
   const expiresAt = toMillis(status?.expiresAt)
   const promotedUntil = status?.promoted === true ? toMillis(status?.promotedUntil) : 0

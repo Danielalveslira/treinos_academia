@@ -48,11 +48,11 @@ import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { listFeaturedStatusesForCommunity } from '../services/promotionsService'
 import { toMillis } from '../utils/expiry.js'
+import { expiresAtForRetention } from '../utils/postRetention'
 import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta'
 import { publicationIdFromHash } from '../utils/share'
 import { isStatusLoaded } from '../utils/sharedStatus'
 
-const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
 
 // View pura (sem hooks de dados) separada do wrapper que busca os dados de verdade --
 // mesmo padrão de WalletHeaderBadgesView/PromoteDialogBody: testável só com props.
@@ -360,7 +360,7 @@ function CommunityDetail({ id }) {
   const { feedAds, bannerAds } = useSponsoredAds(id, member)
 
   // Fase 6 -- "destaques" (posts promovidos com EvoCash) precisam de uma consulta
-  // própria porque o feed normal só cobre as últimas 24h (STATUS_LIFETIME_MS); uma
+  // própria porque o feed normal só cobre a janela de retenção da comunidade (24h, 30d); uma
   // promoção de 7/30 dias precisa continuar visível bem depois disso. Filtrado no
   // servidor por promotedUntil > agora (nunca limit() antes de tirar os expirados, ver
   // promotionsService.js) -- nunca lê promotions/{id} pra isto.
@@ -559,7 +559,9 @@ function CommunityDetail({ id }) {
   async function handleCreateStatus(values) {
     const author = { id: user.uid, username: profile?.username || null, role: profile?.role }
     const authorIsSuperAdmin = author.role === 'superadmin'
-    const expiresAt = new Date(Date.now() + STATUS_LIFETIME_MS)
+    // Só para o post otimista: o prazo real (e a regra guardada no post) vêm do banco.
+    const retentionMode = community?.postRetentionMode || '24h'
+    const expiresAt = expiresAtForRetention(retentionMode)
     try {
       if (values.type === 'progress') {
         // Card de progresso = foto normal da comunidade (mesmo bucket/pipeline/policies) + metadado de progresso.
@@ -582,6 +584,7 @@ function CommunityDetail({ id }) {
           _localPhotoBlob: values.blob,
           createdAt: new Date(),
           expiresAt,
+          retentionMode,
         })
       } else if (values.type === 'text') {
         const ref = await createTextStatus(id, author, values.text)
@@ -595,6 +598,7 @@ function CommunityDetail({ id }) {
           text: values.text.trim(),
           createdAt: new Date(),
           expiresAt,
+          retentionMode,
         })
       } else if (values.type === 'poll') {
         const ref = await createPollStatus(id, author, values.question, values.options)
@@ -611,6 +615,7 @@ function CommunityDetail({ id }) {
           },
           createdAt: new Date(),
           expiresAt,
+          retentionMode,
         })
       } else if (values.type === 'workout') {
         const ref = await createWorkoutStatus(id, author, values)
@@ -628,6 +633,7 @@ function CommunityDetail({ id }) {
           },
           createdAt: new Date(),
           expiresAt,
+          retentionMode,
         }
         addStatusLocally(workoutStatus)
         setUpcomingWorkouts(
@@ -656,6 +662,7 @@ function CommunityDetail({ id }) {
           _localPhotoBlob: values.blob,
           createdAt: new Date(),
           expiresAt,
+          retentionMode,
         })
       }
       setFormOpen(false)

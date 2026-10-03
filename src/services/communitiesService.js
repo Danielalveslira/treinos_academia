@@ -28,6 +28,8 @@ export function mapCommunityRow(row) {
     promoted: row.promoted,
     promotedUntil: row.promoted_until,
     activePromotionId: row.active_promotion_id,
+    tier: row.tier,
+    postRetentionMode: row.post_retention_mode,
   }
 }
 

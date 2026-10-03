@@ -2,17 +2,14 @@ import { supabase } from '../supabase/config'
 
 const FEED_PAGE_SIZE = 30
 const UPCOMING_WORKOUTS_PAGE_SIZE = 20
-const STATUS_LIFETIME_MS = 24 * 60 * 60 * 1000
 // Um pouco acima de MAX_OUTPUT_BYTES (utils/imageCompression.js) só de folga — nunca
 // deveria ter um objeto maior que isso no bucket, pois ele recusa upload além desse teto.
 const MAX_PHOTO_DOWNLOAD_BYTES = 5 * 1024 * 1024
 const STATUS_SUMMARY_COLUMNS =
-  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,comments_close_at,promoted,promoted_until,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_caption,progress_kind,progress_period_start,progress_period_end'
+  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,retention_mode,comments_close_at,promoted,promoted_until,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_caption,progress_kind,progress_period_start,progress_period_end'
 
-function expiresAtValue() {
-  return new Date(Date.now() + STATUS_LIFETIME_MS).toISOString()
-}
-
+// expires_at/retention_mode NÃO são enviados: o banco calcula os dois no INSERT a partir da
+// retenção da comunidade (trigger statuses_apply_retention) e ignora qualquer valor do cliente.
 // author_is_superadmin (selo dourado) é só a conveniência de exibição — o valor
 // enviado aqui é ignorado pelo banco (trigger enforce_status_author_badge sobrescreve
 // com o papel real de quem está autenticado), igual à regra equivalente do main.
@@ -23,7 +20,6 @@ function baseStatusFields(communityId, author, type) {
     author_username: author.username || null,
     author_is_superadmin: author.role === 'superadmin',
     type,
-    expires_at: expiresAtValue(),
   }
 }
 
@@ -37,6 +33,7 @@ export function mapStatusRow(row) {
     type: row.type,
     createdAt: row.created_at,
     expiresAt: row.expires_at,
+    retentionMode: row.retention_mode,
     commentsCloseAt: row.comments_close_at,
     promoted: row.promoted,
     promotedUntil: row.promoted_until,
@@ -96,8 +93,9 @@ export async function listCommunityFeed(communityId, pageSize = FEED_PAGE_SIZE) 
     .from('statuses')
     .select('*')
     .eq('community_id', communityId)
-    .gt('expires_at', new Date().toISOString())
-    .order('expires_at', { ascending: false })
+    // expires_at nulo = sem expiração automática (retention_mode no_auto_expiration).
+    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+    .order('created_at', { ascending: false })
     .limit(pageSize)
   if (error) throw error
   return data.map(mapStatusRow)
