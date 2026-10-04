@@ -271,12 +271,14 @@ test('push com payload inválido não quebra e exibe fallback seguro', async () 
   assert.equal(sw.self.shownNotification.options.data.targetUrl, '/')
 })
 
-test('notificationclick foca janela existente e navega somente dentro da origem', async () => {
-  const navigated = []
+test('notificationclick navega a janela existente para a rota e só então foca', async () => {
+  const calls = []
+  sw.self.openedWindow = null
+  const navigatedClient = { focus: async () => { calls.push('focus') } }
   sw.self.windowClients = [{
     url: `${ORIGIN}/perfil`,
-    focus: async () => { sw.self.focused = true },
-    navigate: async (url) => navigated.push(url),
+    focus: async () => { calls.push('focus-original') },
+    navigate: async (url) => { calls.push(`navigate:${url}`); return navigatedClient },
   }]
   let work
   let closed = false
@@ -286,8 +288,8 @@ test('notificationclick foca janela existente e navega somente dentro da origem'
   })
   await work
   assert.equal(closed, true)
-  assert.equal(sw.self.focused, true)
-  assert.deepEqual(navigated, [`${ORIGIN}/comunidades/1`])
+  assert.deepEqual(calls, [`navigate:${ORIGIN}/comunidades/1`, 'focus'])
+  assert.equal(sw.self.openedWindow, null)
 })
 
 test('notificationclick abre janela quando não há cliente existente', async () => {
@@ -338,4 +340,64 @@ test('notificationclick ignora janela de outra origem e nunca abre URL externa',
   await work
   assert.equal(sw.self.openedWindow, `${ORIGIN}/`)
   sw.self.windowClients = []
+})
+
+// Comportamento real de Chromium/Firefox: focus() consome a permissão de interação do clique e,
+// depois dele, openWindow() é recusado ("Not allowed to open a window").
+function clickWithFocusConsumingActivation({ navigate }) {
+  const state = { focused: false, opened: null, openError: null }
+  sw.self.openedWindow = null
+  sw.self.clients.openWindow = async (url) => {
+    if (state.focused) { state.openError = new Error('Not allowed to open a window'); throw state.openError }
+    state.opened = url
+    sw.self.openedWindow = url
+  }
+  const client = {
+    url: `${ORIGIN}/`,
+    focus: async () => { state.focused = true },
+    ...(navigate ? { navigate } : {}),
+  }
+  sw.self.windowClients = [client]
+  return state
+}
+
+async function click(targetUrl) {
+  let work
+  handlers.notificationclick({
+    notification: { data: { targetUrl }, close() {} },
+    waitUntil: (promise) => { work = promise },
+  })
+  await work
+}
+
+test('notificationclick: navigate recusado (cliente não controlado) abre a rota ANTES de focar', async () => {
+  const state = clickWithFocusConsumingActivation({ navigate: async () => { throw new TypeError('not controlled') } })
+  await click('/perfil')
+  assert.equal(state.opened, `${ORIGIN}/perfil`)
+  assert.equal(state.openError, null)
+  assert.equal(state.focused, false)
+})
+
+test('notificationclick: navigate indisponível ou resolvendo null também abre a rota', async () => {
+  let state = clickWithFocusConsumingActivation({})
+  await click('/perfil')
+  assert.equal(state.opened, `${ORIGIN}/perfil`)
+  state = clickWithFocusConsumingActivation({ navigate: async () => null })
+  await click('/perfil')
+  assert.equal(state.opened, `${ORIGIN}/perfil`)
+})
+
+test('notificationclick: sem permissão para abrir janela ao menos foca o app e não quebra', async () => {
+  const state = clickWithFocusConsumingActivation({ navigate: async () => { throw new TypeError('x') } })
+  sw.self.clients.openWindow = async () => { throw new Error('Not allowed to open a window') }
+  await click('/perfil')
+  assert.equal(state.focused, true)
+})
+
+test('notificationclick: sem janela existente abre direto a rota do payload', async () => {
+  sw.self.windowClients = []
+  sw.self.openedWindow = null
+  sw.self.clients.openWindow = async (url) => { sw.self.openedWindow = url }
+  await click('/perfil')
+  assert.equal(sw.self.openedWindow, `${ORIGIN}/perfil`)
 })

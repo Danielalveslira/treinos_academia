@@ -213,15 +213,23 @@ self.addEventListener('notificationclick', (event) => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     const existing = windows.find((client) => new URL(client.url).origin === self.location.origin)
     if (existing) {
-      try {
-        await existing.focus()
-        // `navigate` só existe/funciona em clientes controlados; senão cai para openWindow.
-        if (!('navigate' in existing)) throw new Error('navigate unsupported')
-        await existing.navigate(href)
-        return
-      } catch {
-        // segue para abrir uma nova janela
+      // 1) Navega ANTES de focar: focus() consome a permissão de interação do clique, e sem ela o
+      //    fallback openWindow() seria recusado, deixando só a aba antiga em foco (sem a rota).
+      let navigated = null
+      if ('navigate' in existing) {
+        try { navigated = await existing.navigate(href) } catch { navigated = null }
       }
+      if (navigated) {
+        try { await navigated.focus() } catch { /* navegou; focar é só conforto */ }
+        return
+      }
+      // 2) Cliente não controlado (navigate indisponível/recusado): abre direto na rota.
+      try {
+        await self.clients.openWindow(href)
+        return
+      } catch { /* sem permissão para abrir: ao menos traz o app para frente */ }
+      try { await existing.focus() } catch { /* nada mais a fazer */ }
+      return
     }
     await self.clients.openWindow(href)
   })())
