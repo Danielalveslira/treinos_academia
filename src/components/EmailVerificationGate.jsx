@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Button, Flash, Spinner } from '@primer/react'
 import { PublicLayout } from './PublicLayout'
 import { useAuth } from '../hooks/useAuth'
-import { sendVerificationEmail, refreshEmailVerified, logoutUser } from '../services/authService'
+import { sendVerificationEmail, refreshEmailVerified } from '../services/authService'
+import { LogoutButton } from './LogoutButton'
 
 const RESEND_COOLDOWN_S = 60
 
@@ -135,7 +136,7 @@ export function EmailVerificationGate({ children }) {
           <Button onClick={handleResend} loading={resending} disabled={resending || cooldown > 0}>
             {cooldown > 0 ? `Reenviar e-mail (${cooldown}s)` : 'Reenviar e-mail'}
           </Button>
-          <Button onClick={logoutUser}>Sair da conta</Button>
+          <LogoutButton />
         </div>
       </section>
     </PublicLayout>

@@ -11,6 +11,7 @@ import {
   SunIcon,
   MoonIcon,
   SignOutIcon,
+  DeviceMobileIcon,
   ThreeBarsIcon,
   XIcon,
   QuestionIcon,
@@ -19,7 +20,7 @@ import {
 import { useAuth } from '../hooks/useAuth'
 import { useColorMode } from '../hooks/useColorMode'
 
-export function AccountMenu({ onLogout, signingOut }) {
+export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
   const [open, setOpen] = useState(false)
   const { key } = useLocation()
   const { isSuperAdmin, profile } = useAuth()
@@ -168,11 +169,28 @@ export function AccountMenu({ onLogout, signingOut }) {
             Ajuda e atendimento
           </ActionList.LinkItem>
           <ActionList.Divider />
-          <ActionList.Item variant="danger" disabled={signingOut} onSelect={onLogout}>
+          {/* preventDefault: o menu fica aberto durante o signOut para o item mostrar "Saindo…"; o
+              redirecionamento para /login desmonta tudo no fim. */}
+          <ActionList.Item
+            variant="danger"
+            disabled={signingOut}
+            onSelect={(event) => {
+              event.preventDefault()
+              onLogout()
+            }}
+          >
             <ActionList.LeadingVisual>
               <SignOutIcon />
             </ActionList.LeadingVisual>
             {signingOut ? 'Saindo…' : 'Sair da conta'}
+          </ActionList.Item>
+          {/* Ação de segurança, separada do "Sair da conta": o menu fecha normalmente e a
+              confirmação explícita (Layout) vem antes de qualquer logout global. */}
+          <ActionList.Item variant="danger" disabled={signingOut} onSelect={onLogoutAll}>
+            <ActionList.LeadingVisual>
+              <DeviceMobileIcon />
+            </ActionList.LeadingVisual>
+            Sair de todos os dispositivos
           </ActionList.Item>
         </ActionList>
       </ActionMenu.Overlay>

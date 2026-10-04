@@ -9,6 +9,9 @@ import { clearPhotoCache } from '../utils/photoBlobCache'
 import { getLegalAccess } from '../services/legalService'
 import { clearCachedLegalAccess } from '../utils/legal'
 import { clearCachedWallet } from '../services/economyService'
+import { isSameSessionIdentity } from '../utils/authSession'
+import { clearActivityPingThrottle } from '../utils/activityPing'
+import { clearAllCommentDrafts } from '../features/comments/utils/drafts'
 
 export const AuthContext = createContext(null)
 
@@ -54,6 +57,10 @@ export function AuthProvider({ children }) {
   // compartilhado com refreshProfile/refreshLegalAccess/saveProfile (ver por quê no
   // comentário de refreshProfile mais abaixo).
   const sessionRevisionRef = useRef(0)
+  // Identidade (id do usuário, ou null) da sessão já carregada; undefined = ainda nada
+  // carregado. Usada para NÃO recarregar tudo quando o Supabase reemite eventos da MESMA
+  // sessão (ver onAuthStateChange abaixo).
+  const loadedUserIdRef = useRef(undefined)
 
   useEffect(() => {
     let active = true
@@ -86,6 +93,7 @@ export function AuthProvider({ children }) {
       clearCachedLegalAccess()
       clearCachedWallet()
       const current = ++sessionRevisionRef.current
+      loadedUserIdRef.current = supabaseUser?.id ?? null
       profileChannel?.unsubscribe()
       profileChannel = null
       setUser(toAppUser(supabaseUser))
@@ -154,12 +162,35 @@ export function AuthProvider({ children }) {
       setLoading(false)
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (active) loadSession(session?.user ?? null)
-    })
-
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      loadSession(session?.user ?? null)
+    // onAuthStateChange já emite INITIAL_SESSION ao assinar: um getSession() separado só
+    // duplicava perfil + termos + revisão de exclusão + canal Realtime a cada abertura.
+    //
+    // O Supabase também reemite eventos da MESMA sessão sem que nada tenha mudado para o app:
+    // SIGNED_IN ao voltar para a aba, TOKEN_REFRESHED a cada renovação do token, USER_UPDATED.
+    // Tratar cada um como uma nova sessão zerava o estado, mostrava o spinner (desmontando a
+    // tela privada inteira, com formulários em andamento) e refazia todas as leituras. Só uma
+    // troca real de identidade (login, logout, outro usuário) recarrega a sessão.
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      const nextUser = session?.user ?? null
+      if (event === 'SIGNED_OUT') {
+        clearAllCommentDrafts()
+        // Um novo login (outra sessão) deve registrar o uso logo, sem esperar os 10 min.
+        clearActivityPingThrottle()
+      }
+      if (isSameSessionIdentity(loadedUserIdRef.current, nextUser)) {
+        if (nextUser) {
+          // E-mail confirmado/alterado chega por aqui; o resto do objeto não muda a UI.
+          setUser((previous) =>
+            previous &&
+            previous.email === nextUser.email &&
+            previous.email_confirmed_at === nextUser.email_confirmed_at
+              ? previous
+              : toAppUser(nextUser)
+          )
+        }
+        return
+      }
+      loadSession(nextUser)
     })
 
     return () => {
@@ -192,19 +223,25 @@ export function AuthProvider({ children }) {
     return userProfile
   }
 
-  async function refreshLegalAccess(userId = user?.uid) {
+  // `silent`: revalidação em segundo plano (voltar para a aba). Não liga legalLoading -- isso
+  // faria o LegalGate trocar o app inteiro por um spinner e desmontar a tela atual (formulários
+  // em andamento perdidos) -- e uma falha de rede mantém o último acesso conhecido em vez de
+  // abrir a tela de erro. As políticas RLS do servidor continuam sendo a barreira real.
+  async function refreshLegalAccess(userId = user?.uid, { silent = false } = {}) {
     if (!userId) return
-    setLegalLoading(true)
-    setLegalError('')
+    if (!silent) {
+      setLegalLoading(true)
+      setLegalError('')
+    }
     try {
       const access = await getLegalAccess(userId)
       setLegalAccess(access)
       return access
     } catch (error) {
       console.error('[Auth] getLegalAccess:', error)
-      setLegalError('Não foi possível consultar a policy e as restrições atuais.')
+      if (!silent) setLegalError('Não foi possível consultar a policy e as restrições atuais.')
     } finally {
-      setLegalLoading(false)
+      if (!silent) setLegalLoading(false)
     }
   }
 

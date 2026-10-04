@@ -54,8 +54,8 @@ export default function Login() {
       <form onSubmit={handleSubmit} className="public-form">
         <Stack gap="normal">
           {sessionNotice && !error && (
-            <Flash role="status" variant="warning">
-              {sessionNotice}
+            <Flash role="status" variant={sessionNotice.tone === 'warning' ? 'warning' : 'default'}>
+              {sessionNotice.message}
             </Flash>
           )}
           {error && (

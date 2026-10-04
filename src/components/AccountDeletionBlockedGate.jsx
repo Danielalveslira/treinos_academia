@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Button, Flash } from '@primer/react'
 import { PublicLayout } from './PublicLayout'
 import { useAuth } from '../hooks/useAuth'
-import { logoutUser } from '../services/authService'
+import { LogoutButton } from './LogoutButton'
 import { describeDeletionProgress } from '../utils/accountDeletion'
 import { formatDateTime } from '../utils/format'
 
@@ -81,7 +81,7 @@ export function AccountDeletionBlockedGate() {
         <Button onClick={handleRefresh} disabled={refreshing} sx={{ mr: 2 }}>
           Atualizar situação
         </Button>
-        <Button onClick={logoutUser}>Sair da conta</Button>
+        <LogoutButton />
       </section>
     </PublicLayout>
   )

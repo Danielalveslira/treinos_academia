@@ -4,6 +4,6 @@
 // imagem que já era usada antes dessa distinção existir.
 export function getProfileHeroImage(sexo) {
   return sexo === 'feminino'
-    ? { src: '/sexo_mulher.png', alt: 'Atleta fazendo levantamento terra em uma academia' }
-    : { src: '/capa.png', alt: 'Atleta fazendo barra fixa em uma academia' }
+    ? { name: 'sexo_mulher', width: 1024, height: 1536, alt: 'Atleta fazendo levantamento terra em uma academia' }
+    : { name: 'capa', width: 1145, height: 1374, alt: 'Atleta fazendo barra fixa em uma academia' }
 }

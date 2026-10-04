@@ -16,6 +16,7 @@ import {
 } from '@primer/react'
 import { PublicLayout } from '../components/PublicLayout'
 import { useAuth } from '../hooks/useAuth'
+import { useSingleFlight } from '../hooks/useSingleFlight'
 import { useSupport } from '../hooks/useSupport'
 import { submitSupportRequest, cancelSupportRequest } from '../services/supportService'
 import { getPublishedProfessionalListing } from '../services/professionalListingsService'
@@ -80,7 +81,13 @@ export default function Support() {
     }
   }, [listingId])
 
-  async function handleCancel(item) {
+  const cancelFlight = useSingleFlight()
+
+  function handleCancel(item) {
+    return cancelFlight.run(item.id, () => cancelRequest(item))
+  }
+
+  async function cancelRequest(item) {
     const confirmed = await confirm({
       title: 'Cancelar este pedido?',
       content: 'O pedido será encerrado e não poderá mais ser analisado.',

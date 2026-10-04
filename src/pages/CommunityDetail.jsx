@@ -11,6 +11,7 @@ import {
   GearIcon,
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
+import { useSingleFlight } from '../hooks/useSingleFlight'
 import { useCommunityFeed } from '../hooks/useCommunityFeed'
 import { useUpcomingWorkouts } from '../hooks/useUpcomingWorkouts'
 import { useSponsoredAds } from '../hooks/useSponsoredAds'
@@ -526,7 +527,13 @@ function CommunityDetail({ id }) {
     }
   }
 
-  async function handleToggleActive() {
+  const actionFlight = useSingleFlight()
+
+  function handleToggleActive() {
+    return actionFlight.run('toggle-active', toggleActive)
+  }
+
+  async function toggleActive() {
     try {
       await setCommunityActive(id, !community.isActive)
       setCommunity((previous) => ({ ...previous, isActive: !previous.isActive }))
@@ -538,7 +545,11 @@ function CommunityDetail({ id }) {
     }
   }
 
-  async function handleDeleteCommunity() {
+  function handleDeleteCommunity() {
+    return actionFlight.run('delete-community', deleteThisCommunity)
+  }
+
+  async function deleteThisCommunity() {
     const confirmed = await confirmDelete({
       title: 'Excluir esta comunidade?',
       content:
@@ -674,7 +685,11 @@ function CommunityDetail({ id }) {
     }
   }
 
-  async function handleDeleteStatus(status) {
+  function handleDeleteStatus(status) {
+    return actionFlight.run(`delete-status:${status.id}`, () => deleteStatus(status))
+  }
+
+  async function deleteStatus(status) {
     const confirmed = await confirmDelete({
       title: 'Excluir esta publicação?',
       content: 'Esta ação não pode ser desfeita.',

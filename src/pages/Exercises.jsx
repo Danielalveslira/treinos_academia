@@ -21,6 +21,7 @@ import {
 } from '@primer/octicons-react'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useDashboard } from '../hooks/useDashboard'
+import { useSingleFlight } from '../hooks/useSingleFlight'
 import { useToast } from '../hooks/useToast'
 import { ExerciseForm } from '../components/ExerciseForm'
 import { ExerciseCatalog } from '../components/ExerciseCatalog'
@@ -195,7 +196,13 @@ export default function Exercises() {
     }
   }
 
-  async function handleDeleteRequest(exercise) {
+  const deleteFlight = useSingleFlight()
+
+  function handleDeleteRequest(exercise) {
+    return deleteFlight.run(exercise.id, () => deleteExercise(exercise))
+  }
+
+  async function deleteExercise(exercise) {
     const confirmed = await confirmDelete({
       title: `Excluir "${exercise.name}"?`,
       content: 'Os registros de treino associados não serão excluídos.',

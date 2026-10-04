@@ -5,6 +5,7 @@ import { LegalLinks } from './LegalLinks'
 import { useAuth } from '../hooks/useAuth'
 import { GraphIcon, SunIcon, MoonIcon, ChecklistIcon, HistoryIcon } from '@primer/octicons-react'
 import { BrandMark } from './BrandMark'
+import { ResponsivePicture } from './ResponsivePicture'
 
 export function PublicLayout({ children }) {
   const { user } = useAuth()
@@ -58,14 +59,14 @@ export function AuthLayout({ children, title, description, footer }) {
     <PublicLayout>
       <div className="auth-layout">
         <section className="auth-intro" aria-label="Sobre o Treinos">
-          <img
+          <ResponsivePicture
             className="auth-cover"
-            src="/capa_principal.png"
+            name="capa_principal"
             alt=""
-            width="1145"
-            height="1374"
-            loading="eager"
-            fetchpriority="high"
+            width={1145}
+            height={1374}
+            sizes="(max-width: 900px) 100vw, 50vw"
+            priority
           />
           <div className="auth-intro-content">
             <span className="public-eyebrow">

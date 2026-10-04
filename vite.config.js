@@ -7,9 +7,13 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
+        // Bibliotecas grandes e estáveis em chunks próprios: ficam em cache entre deploys (o hash
+        // só muda quando a biblioteca muda) e só os chunks de boot entram no precache do SW
+        // (scripts/pwa-plugin.js). charts/markdown só são importados por telas lazy.
         manualChunks: {
           charts: ['recharts'],
           primer: ['@primer/react', 'styled-components'],
+          markdown: ['react-markdown', 'remark-gfm', 'rehype-sanitize'],
         },
       },
     },

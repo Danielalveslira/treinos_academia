@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Box, Button, FormControl, TextInput, Flash, Spinner } from '@primer/react'
 import { PublicLayout } from './PublicLayout'
@@ -7,8 +7,11 @@ import { useAuth } from '../hooks/useAuth'
 import { acceptLegalDocuments, isLegalPolicyChangedError } from '../services/legalService'
 import { setBirthInfo } from '../services/usersService'
 import { logoutUser } from '../services/authService'
+import { LogoutButton } from './LogoutButton'
 import { resolveLegalGateState } from '../utils/legal'
 import { validateBirthDate, hasErrors } from '../utils/validators'
+
+const LEGAL_RECHECK_MIN_INTERVAL_MS = 30 * 1000
 
 function todayString() {
   return new Date().toISOString().slice(0, 10)
@@ -44,14 +47,22 @@ export function LegalGate({ children }) {
     error: legalError,
   })
 
+  // Revalida termos/restrições ao voltar para a aba -- em segundo plano (silent) e no máximo
+  // uma vez por LEGAL_RECHECK_MIN_INTERVAL_MS, para não refazer 3 consultas a cada troca de aba.
+  const lastLegalCheck = useRef(Date.now())
+  const refreshLegalAccessRef = useRef(refreshLegalAccess)
+  refreshLegalAccessRef.current = refreshLegalAccess
   useEffect(() => {
     if (!user?.uid) return undefined
     const checkActivePolicy = () => {
-      if (document.visibilityState === 'visible') refreshLegalAccess(user.uid)
+      if (document.visibilityState !== 'visible') return
+      if (Date.now() - lastLegalCheck.current < LEGAL_RECHECK_MIN_INTERVAL_MS) return
+      lastLegalCheck.current = Date.now()
+      refreshLegalAccessRef.current(user.uid, { silent: true })
     }
     document.addEventListener('visibilitychange', checkActivePolicy)
     return () => document.removeEventListener('visibilitychange', checkActivePolicy)
-  }, [user?.uid, refreshLegalAccess])
+  }, [user?.uid])
 
   if (gateState === 'loading') {
     return (
@@ -195,9 +206,7 @@ export function LegalGate({ children }) {
         <p>
           <Link to="/atendimento">Atendimento, recursos e privacidade</Link>
         </p>
-        <Button onClick={logoutUser} disabled={saving}>
-          Sair da conta
-        </Button>
+        <LogoutButton disabled={saving} />
       </section>
     </PublicLayout>
   )

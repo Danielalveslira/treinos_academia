@@ -1,7 +1,7 @@
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from './ErrorBoundary'
-import { Suspense, useState } from 'react'
-import { Button, Flash } from '@primer/react'
+import { Suspense } from 'react'
+import { Button, Flash, useConfirm } from '@primer/react'
 import {
   HomeIcon,
   HistoryIcon,
@@ -9,10 +9,12 @@ import {
   PeopleIcon,
   PlayIcon,
 } from '@primer/octicons-react'
-import { logoutUser } from '../services/authService'
+import { confirmAndLogoutAll, useLogout } from '../hooks/useLogout'
 import { useAuth } from '../hooks/useAuth'
 import { useQualifiedActivity } from '../hooks/useQualifiedActivity'
+import { useActivityHeartbeat } from '../hooks/useActivityHeartbeat'
 import { preloadRoute } from '../routeLoaders'
+import { originState } from '../utils/navigation'
 import { PageFallback } from './PageFallback'
 import { BrandMark } from './BrandMark'
 import { AccountMenu } from './AccountMenu'
@@ -29,6 +31,7 @@ const NAV_ITEMS = [
 ]
 
 function Navigation({ mobile = false }) {
+  const location = useLocation()
   return (
     <nav
       className={mobile ? 'mobile-nav' : 'desktop-nav'}
@@ -44,8 +47,9 @@ function Navigation({ mobile = false }) {
           // abas repetidamente faz o botão voltar do navegador/celular ter que passar por
           // cada aba visitada antes de sair do app de verdade. "Treinar" fica de fora
           // (é uma ação, não uma aba) porque o Cancelar de NewWorkout.jsx depende de
-          // navigate(-1) para voltar exatamente para onde o usuário estava.
+          // returnToOrigin (utils/navigation.js) para voltar à origem registrada em state.from.
           replace={!item.action}
+          state={item.action ? originState(location) : undefined}
           className={`nav-link${item.action ? ' nav-link-action' : ''}`}
           onMouseEnter={() => preloadRoute(item.to)}
           onFocus={() => preloadRoute(item.to)}
@@ -60,26 +64,18 @@ function Navigation({ mobile = false }) {
 
 export function Layout() {
   const { profile } = useAuth()
-  const { pathname } = useLocation()
-  const [signingOut, setSigningOut] = useState(false)
-  const [logoutError, setLogoutError] = useState('')
+  const location = useLocation()
+  const { pathname } = location
+  const { logout, logoutAll, signingOut, error: logoutError } = useLogout()
+  const confirm = useConfirm()
+
+  const confirmLogoutAll = () => confirmAndLogoutAll(confirm, logoutAll)
   // Só o "ping" de atividade qualificada (seção 8/9 do prompt de economia) -- não é um
   // listener de saldo: a carteira em si só é lida sob demanda onde a UI precisa dela
   // (ver WalletCard/useWallet.js).
   useQualifiedActivity()
-
-  async function logout() {
-    if (signingOut) return
-    setSigningOut(true)
-    setLogoutError('')
-    try {
-      await logoutUser()
-    } catch {
-      setLogoutError('Não foi possível sair. Tente novamente pelo menu da conta.')
-    } finally {
-      setSigningOut(false)
-    }
-  }
+  // "Último uso" para o admin: visível apenas, no máximo 1 chamada a cada 10 min.
+  useActivityHeartbeat()
 
   return (
     <div className="app-shell">
@@ -98,7 +94,7 @@ export function Layout() {
           <div className="header-actions">
             <WalletHeaderBadges />
             <NotificationBell />
-            <AccountMenu onLogout={logout} signingOut={signingOut} />
+            <AccountMenu onLogout={logout} onLogoutAll={confirmLogoutAll} signingOut={signingOut} />
           </div>
         </div>
       </header>

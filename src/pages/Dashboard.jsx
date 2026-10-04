@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { Box, Button, Heading, Spinner } from '@primer/react'
 import {
   ArrowRightIcon,
@@ -13,6 +13,8 @@ import { useExercises } from '../contexts/ExercisesContext'
 import { useAuth } from '../hooks/useAuth'
 import { useGlobalSponsoredAds } from '../hooks/useGlobalSponsoredAds'
 import { SponsoredAdBanner } from '../components/SponsoredAdBanner'
+import { ResponsivePicture } from '../components/ResponsivePicture'
+import { originState } from '../utils/navigation'
 import { getProfileHeroImage } from '../constants/profileHeroImage'
 import { getDashboardGreeting } from '../utils/greeting'
 import { buildExerciseNameMap } from '../utils/format'
@@ -54,6 +56,7 @@ export default function Dashboard() {
   const [shareOpen, setShareOpen] = useState(false)
   const [planOpen, setPlanOpen] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
   const { recentWorkouts, progressDays, loading, error, refresh } = useHomeDashboard()
   const { exercises } = useExercises()
   const { profile, user, refreshProfile } = useAuth()
@@ -158,7 +161,13 @@ export default function Dashboard() {
 
       {recentWorkouts.length === 0 ? (
         <section className="empty-workout" aria-labelledby="empty-workout-title">
-          <img src={heroImage.src} alt={heroImage.alt} />
+          <ResponsivePicture
+            name={heroImage.name}
+            alt={heroImage.alt}
+            width={heroImage.width}
+            height={heroImage.height}
+            sizes="(max-width: 767px) 100vw, 60vw"
+          />
           <div className="empty-workout-content">
             <span className="eyebrow">COMECE HOJE</span>
             <Heading as="h1" id="empty-workout-title">
@@ -169,7 +178,7 @@ export default function Dashboard() {
               className="empty-workout-cta"
               variant="primary"
               leadingVisual={PlayIcon}
-              onClick={() => navigate('/novo-treino')}
+              onClick={() => navigate('/novo-treino', { state: originState(location) })}
             >
               Iniciar primeiro treino
             </Button>
@@ -177,7 +186,13 @@ export default function Dashboard() {
         </section>
       ) : (
         <section className="workout-hero" aria-labelledby="next-workout-title">
-          <img src={heroImage.src} alt={heroImage.alt} />
+          <ResponsivePicture
+            name={heroImage.name}
+            alt={heroImage.alt}
+            width={heroImage.width}
+            height={heroImage.height}
+            sizes="(max-width: 767px) 100vw, 60vw"
+          />
           <div className="workout-hero-shade" />
           <div className="workout-hero-content">
             <span className="hero-kicker">
@@ -190,6 +205,7 @@ export default function Dashboard() {
             <Button
               as={RouterLink}
               to={`/novo-treino?exercicio=${lastWorkout.exerciseId}`}
+              state={originState(location)}
               className="start-workout-button"
               leadingVisual={PlayIcon}
               variant="primary"

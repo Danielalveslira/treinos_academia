@@ -140,8 +140,11 @@ test('a user who accepted 1.3.0 sees the 1.4.0 confirmation before protected con
   assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
 })
 
-test('returning to an open tab checks whether the active legal policy changed', () => {
+test('returning to an open tab checks the legal policy in the background, at most once per interval', () => {
   const previousDocument = globalThis.document
+  const realNow = Date.now
+  let now = realNow()
+  Date.now = () => now
   const listeners = new Map()
   const requestedUsers = []
   globalThis.document = {
@@ -158,19 +161,27 @@ test('returning to an open tab checks whether the active legal policy changed', 
     act(() => {
       view = mount({
         ...baseAuth,
-        refreshLegalAccess: (uid) => requestedUsers.push(uid),
+        refreshLegalAccess: (uid, options) => requestedUsers.push([uid, options]),
       })
     })
     assert.equal(typeof listeners.get('visibilitychange'), 'function')
     act(() => listeners.get('visibilitychange')())
     assert.deepEqual(requestedUsers, [])
     globalThis.document.visibilityState = 'visible'
+    // logo após o boot (dados legais acabaram de ser lidos): nada a revalidar
     act(() => listeners.get('visibilitychange')())
-    assert.deepEqual(requestedUsers, ['u1'])
+    assert.deepEqual(requestedUsers, [])
+    now += 60 * 1000
+    act(() => listeners.get('visibilitychange')())
+    // silent: não liga o spinner global nem desmonta a tela atual
+    assert.deepEqual(requestedUsers, [['u1', { silent: true }]])
+    act(() => listeners.get('visibilitychange')())
+    assert.equal(requestedUsers.length, 1)
     act(() => view.unmount())
     assert.equal(listeners.has('visibilitychange'), false)
   } finally {
     globalThis.document = previousDocument
+    Date.now = realNow
   }
 })
 

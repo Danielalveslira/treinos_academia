@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
-import { Button } from '@primer/react'
 import { PublicLayout } from './PublicLayout'
-import { logoutUser } from '../services/authService'
+import { LogoutButton } from './LogoutButton'
 
 // Diferente da restrição temporária (accountRestrictions, tratada em LegalGate) e da
 // exclusão de conta (detectada como "sessão fantasma" em AuthContext via
@@ -32,7 +31,7 @@ export function DisabledAccountGate({ reason }) {
           Se acredita que isso é um engano, entre em contato pelo{' '}
           <Link to="/atendimento">atendimento</Link>.
         </p>
-        <Button onClick={logoutUser}>Sair da conta</Button>
+        <LogoutButton />
       </section>
     </PublicLayout>
   )

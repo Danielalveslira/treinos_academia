@@ -2928,7 +2928,12 @@ body {
   isolation: isolate;
 }
 
-.workout-hero > img {
+.workout-hero > picture,
+.empty-workout > picture {
+  display: contents;
+}
+
+.workout-hero > picture > img {
   position: absolute;
   inset: 0 0 0 auto;
   z-index: -2;
@@ -3428,7 +3433,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   box-shadow: var(--fitness-shadow);
 }
 
-.empty-workout > img {
+.empty-workout > picture > img {
   position: relative;
   grid-column: 2;
   grid-row: 1;
@@ -4422,7 +4427,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .dashboard-greeting { align-items: center; margin-bottom: 22px; }
 
   .workout-hero { min-height: 410px; border-radius: 20px; }
-  .workout-hero > img { inset: 0; width: 100%; object-position: center 22%; opacity: .84; }
+  .workout-hero > picture > img { inset: 0; width: 100%; object-position: center 22%; opacity: .84; }
   .workout-hero-shade { background: linear-gradient(0deg, #090d09f5 3%, #090d09ba 43%, transparent 78%); }
   .workout-hero-content { justify-content: flex-end; width: 100%; min-height: 410px; padding: 24px; }
   .workout-hero-content h2 { max-width: 310px; font-size: 31px; }
@@ -4494,11 +4499,20 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
     min-height: calc(100dvh - 170px);
     box-shadow: none;
   }
-  .empty-workout > img {
+  /* A imagem de fundo sai do fluxo como o <picture> inteiro (não só o <img> dentro de um
+     display:contents): assim o conteúdo continua esticando até o fim do card e ancorado embaixo,
+     como antes de a imagem virar <picture>. */
+  .empty-workout > picture {
+    display: block;
     position: absolute;
     grid-column: 1;
     inset: 0;
+  }
+  .empty-workout > picture > img {
+    display: block;
+    position: static;
     width: 100%;
+    height: 100%;
     object-position: center 20%;
     opacity: 1;
   }

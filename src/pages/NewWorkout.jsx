@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useRef, useState } from 'react'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Box, Button, Heading, Spinner } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PlayIcon, PulseIcon } from '@primer/octicons-react'
@@ -11,6 +11,7 @@ import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { completeWorkoutSession } from '../services/economyService'
 import { loadDoneExerciseIds } from '../utils/doneExercisesStorage'
+import { returnToOrigin } from '../utils/navigation'
 
 function localDateKey() {
   const today = new Date()
@@ -21,6 +22,7 @@ function localDateKey() {
 
 export default function NewWorkout() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const defaultExerciseId = searchParams.get('exercicio') || ''
 
@@ -33,19 +35,24 @@ export default function NewWorkout() {
     () => loadDoneExerciseIds(localDateKey()).size > 0
   )
   const [finishing, setFinishing] = useState(false)
+  // O ref bloqueia cliques no mesmo ciclo de eventos (o state só reflete no próximo render).
+  const finishingRef = useRef(false)
 
   // Evento de conclusão: o SERVIDOR decide se houve esforço suficiente hoje e quanto paga (o
   // cliente não envia valor nem data). A recompensa, se houver, chega pelo aviso discreto de
   // EvoCoins (WalletContext); aqui só se leva o usuário ao histórico.
   async function handleFinish() {
-    if (finishing) return
+    if (finishingRef.current) return
+    finishingRef.current = true
     setFinishing(true)
     try {
       await completeWorkoutSession()
-      navigate('/historico')
+      // replace: o formulário concluído não deve ser reaberto pelo botão Voltar.
+      navigate('/historico', { replace: true })
     } catch (err) {
       console.error('[NewWorkout] finish:', err)
       showToast('Não foi possível finalizar o treino agora. Tente novamente.', 'danger')
+      finishingRef.current = false
       setFinishing(false)
     }
   }
@@ -106,7 +113,7 @@ export default function NewWorkout() {
           history={workouts}
           defaultExerciseId={defaultExerciseId}
           onSubmit={handleSubmit}
-          onCancel={() => navigate(-1)}
+          onCancel={() => returnToOrigin(navigate, location, '/')}
         />
       )}
 

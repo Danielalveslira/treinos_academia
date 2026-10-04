@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -35,6 +35,8 @@ import { buildExerciseNameMap } from '../utils/format'
 import { getWorkoutSets, formatWorkoutSets } from '../utils/workoutSets'
 import { isCardioWorkout, formatCardioSession } from '../utils/cardioSessions'
 import { toDate } from '../utils/date.js'
+import { originState } from '../utils/navigation'
+import { useSingleFlight } from '../hooks/useSingleFlight'
 
 function toEditableWorkout(workout) {
   const date = toDate(workout.date)
@@ -58,6 +60,7 @@ const NO_FILTERS = { exerciseFilter: '', startDate: '', endDate: '' }
 
 export default function History() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const [exerciseFilter, setExerciseFilter] = useState(
     searchParams.get('exercicio') || NO_FILTERS.exerciseFilter
@@ -100,7 +103,15 @@ export default function History() {
     }
   }
 
-  async function handleDeleteRequest(workout) {
+  // run(): um segundo toque em "Excluir" (ou um segundo diálogo) enquanto a exclusão do mesmo
+  // registro ainda corre não dispara outra mutation.
+  const deleteFlight = useSingleFlight()
+
+  function handleDeleteRequest(workout) {
+    return deleteFlight.run(workout.id, () => deleteWorkout(workout))
+  }
+
+  async function deleteWorkout(workout) {
     const confirmed = await confirmDelete({
       title: 'Excluir registro de treino?',
       content: 'Esta ação não pode ser desfeita.',
@@ -210,7 +221,7 @@ export default function History() {
             ) : (
               <Blankslate.PrimaryAction
                 leadingVisual={PlayIcon}
-                onClick={() => navigate('/novo-treino')}
+                onClick={() => navigate('/novo-treino', { state: originState(location) })}
               >
                 Iniciar treino
               </Blankslate.PrimaryAction>

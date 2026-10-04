@@ -6,13 +6,23 @@
 const KEY = 'evolutus:logout-reason'
 
 const REASONS = {
-  'account-deleted':
-    'Sua conta não está mais disponível. Se isso for um engano, entre em contato pelo suporte.',
+  // Logout pedido pelo próprio usuário (ver useLogout): só confirma que a sessão foi encerrada.
+  'signed-out': { message: 'Você saiu da conta.', tone: 'default' },
+  // "Sair de todos os dispositivos" (logout global, com confirmação).
+  'signed-out-all': { message: 'Você saiu da conta em todos os dispositivos.', tone: 'default' },
+  'account-deleted': {
+    message:
+      'Sua conta não está mais disponível. Se isso for um engano, entre em contato pelo suporte.',
+    tone: 'warning',
+  },
   // Distinto de 'account-deleted': aqui a exclusão está genuinamente em processamento
   // (state:'pending' em deletionJobs/account_{uid}, confirmado via getMyDeletionStatus),
   // não necessariamente concluída -- ver handlePossibleGhostSession em AuthContext.jsx.
-  'account-deleting':
-    'Sua conta está em processo de exclusão e a sessão foi encerrada. Se isso for um engano, entre em contato pelo suporte.',
+  'account-deleting': {
+    message:
+      'Sua conta está em processo de exclusão e a sessão foi encerrada. Se isso for um engano, entre em contato pelo suporte.',
+    tone: 'warning',
+  },
 }
 
 export function setLogoutReason(reason) {
@@ -24,16 +34,16 @@ export function setLogoutReason(reason) {
   }
 }
 
-// Lê E limpa numa única chamada -- a mensagem é para a PRÓXIMA renderização da tela de
+// Devolve { message, tone } ou null. Lê E limpa numa única chamada -- a mensagem é para a PRÓXIMA renderização da tela de
 // login, nunca para a seguinte (senão sobreviveria a um login bem-sucedido e reapareceria
 // depois de um logout comum sem relação nenhuma).
 export function consumeLogoutReason() {
   try {
     const reason = sessionStorage.getItem(KEY)
-    if (!reason) return ''
+    if (!reason) return null
     sessionStorage.removeItem(KEY)
-    return REASONS[reason] || ''
+    return REASONS[reason] || null
   } catch {
-    return ''
+    return null
   }
 }

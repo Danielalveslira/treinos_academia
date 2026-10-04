@@ -1,7 +1,8 @@
 import { formatWorkoutSets, getWorkoutLoad } from '../utils/workoutSets'
 import { toDate } from '../utils/date.js'
 import { useMemo } from 'react'
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import { originState } from '../utils/navigation'
+import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Box, Button, Heading, Text, Label, Link, Spinner, Flash } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import {
@@ -59,6 +60,7 @@ function EvolutionValue({ percent }) {
 export default function ExerciseDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { exercises, loading: loadingExercises } = useExercises()
   const { workouts, loading: loadingWorkouts, error, refresh } = useExerciseHistory(id)
 
@@ -128,7 +130,7 @@ export default function ExerciseDetail() {
             <Button
               variant="primary"
               leadingVisual={PlayIcon}
-              onClick={() => navigate(`/novo-treino?exercicio=${id}`)}
+              onClick={() => navigate(`/novo-treino?exercicio=${id}`, { state: originState(location) })}
             >
               Treinar
             </Button>
@@ -161,7 +163,9 @@ export default function ExerciseDetail() {
           <Blankslate.Description>
             Registre um treino para acompanhar a evolução deste exercício.
           </Blankslate.Description>
-          <Blankslate.PrimaryAction onClick={() => navigate(`/novo-treino?exercicio=${id}`)}>
+          <Blankslate.PrimaryAction
+            onClick={() => navigate(`/novo-treino?exercicio=${id}`, { state: originState(location) })}
+          >
             Registrar treino
           </Blankslate.PrimaryAction>
         </Blankslate>

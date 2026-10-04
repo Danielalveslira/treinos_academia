@@ -42,9 +42,70 @@ export async function loginUser(email, password) {
   if (error) throw error
 }
 
-export async function logoutUser() {
-  const { error } = await supabase.auth.signOut()
-  if (error) throw error
+// Fluxo ÚNICO de logout. Chamadas concorrentes (duplo toque, menu + gate, logout forçado do
+// AuthContext) compartilham a mesma requisição: signOut roda exatamente uma vez. Com um logout
+// em andamento, qualquer outro pedido (inclusive de escopo diferente) recebe a mesma promessa --
+// os botões ficam travados juntos (useLogout), então isso só protege contra corrida.
+//
+// Escopos (auth-js 2.117):
+//  - 'local' (PADRÃO do Evolutus, logoutUser): encerra só esta sessão; os outros aparelhos
+//    seguem logados. É o "Sair da conta" de todos os pontos de saída.
+//  - "Sair de todos os dispositivos" (logoutAllDevices): ação de segurança separada, sempre atrás
+//    de confirmação explícita na UI, em DUAS etapas que o usuário vê como uma só:
+//      1. signOut({ scope: 'others' }) revoga todas as outras sessões e MANTÉM a atual;
+//      2. só se a 1 deu certo, o mesmo fluxo local de cima encerra este aparelho.
+//    Se a etapa 1 falha, nada é encerrado aqui: o usuário continua logado e pode tentar de novo
+//    (com 'global', uma falha de rede deixava este aparelho deslogado e os outros ativos).
+//
+// Se a revogação no servidor falha (sem rede, 5xx) num logout LOCAL, o SDK REMOVE a sessão local
+// mesmo assim (emite SIGNED_OUT) e só devolve o erro. A sessão local nunca fica "presa": só é
+// erro de verdade se ela continuar existindo. O resultado informa `revoked`:
+//  - local + revoked:false -> sai deste aparelho; só o refresh token desta sessão segue válido
+//    no servidor até expirar. Sem aviso (não muda nada para o usuário).
+//
+// O estado privado do frontend (caches, perfil, carteira, canais Realtime) é limpo pelo
+// AuthContext quando o evento SIGNED_OUT chega; o redirecionamento para /login (replace) é do
+// ProtectedRoute assim que `user` fica nulo.
+let logoutInFlight = null
+
+async function signOutLocal() {
+  const { error } = await supabase.auth.signOut({ scope: 'local' })
+  if (!error) return { revoked: true }
+  const { data } = await supabase.auth.getSession().catch(() => ({ data: null }))
+  if (data?.session) throw error
+  console.warn(
+    '[Auth] logout (local): sessão local encerrada, revogação no servidor não confirmada:',
+    error
+  )
+  return { revoked: false }
+}
+
+function singleFlight(task) {
+  if (!logoutInFlight) {
+    logoutInFlight = task().finally(() => {
+      logoutInFlight = null
+    })
+  }
+  return logoutInFlight
+}
+
+export function logoutUser() {
+  return singleFlight(signOutLocal)
+}
+
+// Falha da etapa 1 carrega `logoutStep: 'others'` para a UI mostrar a mensagem certa.
+export function logoutAllDevices() {
+  return singleFlight(async () => {
+    const { error } = await supabase.auth.signOut({ scope: 'others' })
+    if (error) {
+      error.logoutStep = 'others'
+      throw error
+    }
+    await signOutLocal()
+    // As outras sessões foram revogadas (confirmado); o que sobra incerto é só o token deste
+    // aparelho, que já saiu.
+    return { revoked: true }
+  })
 }
 
 export async function resetPassword(email) {

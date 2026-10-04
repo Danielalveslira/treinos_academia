@@ -21,3 +21,16 @@ export function writeCommentDraft(statusId, parentCommentId, value) {
     // Storage may be unavailable in privacy mode. Draft persistence is best-effort.
   }
 }
+
+// Rascunhos de comentário são por status, não por usuário: ao encerrar a sessão, o próximo
+// usuário deste aparelho não deve ver o texto não enviado do anterior.
+export function clearAllCommentDrafts() {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i)
+      if (key?.startsWith(`${PREFIX}:`)) localStorage.removeItem(key)
+    }
+  } catch {
+    // Best-effort: storage indisponível não impede o logout.
+  }
+}
