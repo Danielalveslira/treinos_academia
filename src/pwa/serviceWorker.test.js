@@ -299,3 +299,43 @@ test('notificationclick abre janela quando não há cliente existente', async ()
   await work
   assert.equal(sw.self.openedWindow, `${ORIGIN}/`)
 })
+
+test('push rejeita targetUrl com barra invertida (equivale a // no navegador)', async () => {
+  let work
+  handlers.push({
+    data: { json: () => ({ title: 'Aviso', targetUrl: '/\\evil.test' }) },
+    waitUntil: (promise) => { work = promise },
+  })
+  await work
+  assert.equal(sw.self.shownNotification.options.data.targetUrl, '/')
+  assert.equal(sw.self.shownNotification.options.body, 'Você recebeu uma nova notificação.')
+})
+
+test('notificationclick abre nova janela quando navigate falha no cliente existente', async () => {
+  sw.self.openedWindow = null
+  sw.self.windowClients = [{
+    url: `${ORIGIN}/perfil`,
+    focus: async () => {},
+    navigate: async () => { throw new TypeError('not a controlled client') },
+  }]
+  let work
+  handlers.notificationclick({
+    notification: { data: { targetUrl: '/notificacoes' }, close() {} },
+    waitUntil: (promise) => { work = promise },
+  })
+  await work
+  assert.equal(sw.self.openedWindow, `${ORIGIN}/notificacoes`)
+})
+
+test('notificationclick ignora janela de outra origem e nunca abre URL externa', async () => {
+  sw.self.openedWindow = null
+  sw.self.windowClients = [{ url: 'https://evil.test/', focus: async () => { throw new Error('não deve focar') } }]
+  let work
+  handlers.notificationclick({
+    notification: { data: { targetUrl: '/\\evil.test' }, close() {} },
+    waitUntil: (promise) => { work = promise },
+  })
+  await work
+  assert.equal(sw.self.openedWindow, `${ORIGIN}/`)
+  sw.self.windowClients = []
+})

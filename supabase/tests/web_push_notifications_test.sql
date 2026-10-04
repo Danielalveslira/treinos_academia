@@ -13,24 +13,24 @@ update public.users set role = 'superadmin' where id = '91000000-0000-0000-0000-
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000001', true);
 select lives_ok(
-  $$select public.register_push_subscription('https://push.example/device', repeat('p', 32), repeat('a', 16), 'test', 'phone', 'android')$$,
+  $$select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/device', repeat('p', 32), repeat('a', 16), 'test', 'phone', 'android')$$,
   'usuário registra subscription para a própria sessão'
 );
 select is((public.get_my_push_status()->>'activeSubscriptions')::int, 1, 'status não expõe segredos e conta a subscription');
 
 select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000002', true);
 select lives_ok(
-  $$select public.register_push_subscription('https://push.example/device', repeat('q', 32), repeat('b', 16), 'test', 'shared', 'desktop')$$,
+  $$select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/device', repeat('q', 32), repeat('b', 16), 'test', 'shared', 'desktop')$$,
   'mesmo endpoint é reassociado na troca de conta'
 );
 reset role;
-select is((select user_id from public.push_subscriptions where endpoint = 'https://push.example/device'),
+select is((select user_id from public.push_subscriptions where endpoint = 'https://fcm.googleapis.com/fcm/send/device'),
   '91000000-0000-0000-0000-000000000002'::uuid, 'endpoint pertence somente à conta atual');
-select is((select count(*)::int from public.push_subscriptions where endpoint = 'https://push.example/device'), 1, 'endpoint é único');
+select is((select count(*)::int from public.push_subscriptions where endpoint = 'https://fcm.googleapis.com/fcm/send/device'), 1, 'endpoint é único');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000001', true);
-select is(public.unregister_push_subscription('https://push.example/device'), 0, 'usuário anterior não revoga endpoint reassociado');
+select is(public.unregister_push_subscription('https://fcm.googleapis.com/fcm/send/device'), 0, 'usuário anterior não revoga endpoint reassociado');
 select throws_ok($$select * from public.notification_push_outbox$$, '42501', null, 'cliente não lê a outbox');
 select throws_ok($$select * from public.notification_push_deliveries$$, '42501', null, 'cliente não lê deliveries');
 select ok(not has_table_privilege('authenticated', 'public.push_subscriptions', 'SELECT'), 'authenticated não lista subscriptions');
@@ -43,7 +43,7 @@ select throws_ok(
 
 select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000003', true);
 select lives_ok(
-  $$select public.register_push_subscription('https://push.example/admin', repeat('r', 32), repeat('c', 16), 'test', 'admin', 'desktop')$$,
+  $$select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/admin', repeat('r', 32), repeat('c', 16), 'test', 'admin', 'desktop')$$,
   'admin registra subscription própria'
 );
 select lives_ok(
@@ -59,7 +59,7 @@ select is((select count(*)::int from public.notification_push_outbox where user_
 -- Resultado 410 revoga a subscription; 404 segue o mesmo outcome `expired` do worker.
 insert into public.push_subscriptions (id, user_id, endpoint, p256dh, auth)
 values ('93500000-0000-0000-0000-000000000002', '91000000-0000-0000-0000-000000000003',
-  'https://push.example/admin-2', repeat('s', 32), repeat('d', 16));
+  'https://fcm.googleapis.com/fcm/send/admin-2', repeat('s', 32), repeat('d', 16));
 insert into public.notification_push_outbox (id, notification_id, user_id, category, status, locked_by, locked_at)
 select '93000000-0000-0000-0000-000000000001', n.id, n.recipient_id, 'administrative', 'processing', 'expired-worker', now()
 from public.notifications n where n.recipient_id = '91000000-0000-0000-0000-000000000003' limit 1

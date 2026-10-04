@@ -167,7 +167,11 @@ self.addEventListener('fetch', (event) => {
 })
 
 function safeNotificationTarget(value) {
-  if (typeof value !== 'string' || value.length > 300 || !value.startsWith('/') || value.startsWith('//')) return '/'
+  // "\" vira "/" nos navegadores: "/\host" equivale a "//host" (open redirect).
+  if (
+    typeof value !== 'string' || value.length > 300 || !value.startsWith('/') ||
+    value.startsWith('//') || value.includes('\\')
+  ) return '/'
   if ([...value].some((character) => {
     const code = character.charCodeAt(0)
     return code < 32 || code === 127
@@ -202,14 +206,23 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const targetUrl = safeNotificationTarget(event.notification.data?.targetUrl)
   event.waitUntil((async () => {
-    const target = new URL(targetUrl, self.location.origin).href
+    let target = new URL(targetUrl, self.location.origin)
+    // Defesa em profundidade: mesmo após a sanitização, nunca navega para outra origem.
+    if (target.origin !== self.location.origin) target = new URL('/', self.location.origin)
+    const href = target.href
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     const existing = windows.find((client) => new URL(client.url).origin === self.location.origin)
     if (existing) {
-      await existing.focus()
-      if ('navigate' in existing) await existing.navigate(target)
-      return
+      try {
+        await existing.focus()
+        // `navigate` só existe/funciona em clientes controlados; senão cai para openWindow.
+        if (!('navigate' in existing)) throw new Error('navigate unsupported')
+        await existing.navigate(href)
+        return
+      } catch {
+        // segue para abrir uma nova janela
+      }
     }
-    await self.clients.openWindow(target)
+    await self.clients.openWindow(href)
   })())
 })

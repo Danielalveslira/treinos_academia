@@ -1,4 +1,10 @@
 const DEFAULT_LIMIT = 25
+const DEFAULT_SEND_TIMEOUT_MS = 10000
+
+// Mesma allowlist da migration (private.is_push_endpoint_allowed): o endpoint vem do cliente e o
+// worker faz POST nele, então só os serviços de push dos navegadores são aceitos.
+const PUSH_ENDPOINT_PATTERN =
+  /^https:\/\/(fcm\.googleapis\.com|([a-z0-9-]+\.)*push\.services\.mozilla\.com|([a-z0-9-]+\.)*push\.apple\.com|([a-z0-9-]+\.)*notify\.windows\.com)\//i
 
 const CONTENT = {
   post_reply: ['Novo comentário', 'Alguém comentou na sua publicação.'],
@@ -14,8 +20,16 @@ const CONTENT = {
   admin_broadcast: ['Aviso do Evolutus', 'Você recebeu um aviso importante.'],
 }
 
+export function isAllowedPushEndpoint(value) {
+  return typeof value === 'string' && value.length <= 4096 && PUSH_ENDPOINT_PATTERN.test(value)
+}
+
 export function safeTargetUrl(value) {
-  if (typeof value !== 'string' || value.length > 300 || !value.startsWith('/') || value.startsWith('//')) {
+  // "\" é tratado como "/" pelos navegadores: "/\host" equivale a "//host".
+  if (
+    typeof value !== 'string' || value.length > 300 || !value.startsWith('/') ||
+    value.startsWith('//') || value.includes('\\')
+  ) {
     return '/'
   }
   const hasControlCharacter = [...value].some((character) => {
@@ -63,7 +77,17 @@ export function safePushError(error, job) {
   return message.slice(0, 500)
 }
 
-export async function processPushOutbox(admin, sendNotification, { workerId = crypto.randomUUID(), limit = DEFAULT_LIMIT } = {}) {
+function withTimeout(promise, ms) {
+  let timer
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error('PUSH_SEND_TIMEOUT'), { code: 'ETIMEDOUT' })), ms)
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+}
+
+export async function processPushOutbox(admin, sendNotification, {
+  workerId = crypto.randomUUID(), limit = DEFAULT_LIMIT, sendTimeoutMs = DEFAULT_SEND_TIMEOUT_MS,
+} = {}) {
   const { data: jobs, error: claimError } = await admin.rpc('claim_push_jobs', {
     p_worker_id: workerId,
     p_limit: Math.min(Math.max(limit, 1), 100),
@@ -72,11 +96,15 @@ export async function processPushOutbox(admin, sendNotification, { workerId = cr
 
   const uniqueJobs = [...new Map((jobs || []).map((job) => [job.delivery_id, job])).values()]
   const results = await Promise.all(uniqueJobs.map(async (job) => {
+    if (!isAllowedPushEndpoint(job.endpoint)) {
+      // Nunca chama um host fora da allowlist; a subscription é revogada pelo outcome `expired`.
+      return { delivery_id: job.delivery_id, outcome: 'expired', http_status: null, error: 'ENDPOINT_NOT_ALLOWED' }
+    }
     try {
-      await sendNotification(
+      await withTimeout(sendNotification(
         { endpoint: job.endpoint, keys: { p256dh: job.p256dh, auth: job.auth } },
         buildPushPayload(job)
-      )
+      ), sendTimeoutMs)
       return { delivery_id: job.delivery_id, outcome: 'sent', http_status: 201, error: null }
     } catch (error) {
       const classified = classifyPushError(error)

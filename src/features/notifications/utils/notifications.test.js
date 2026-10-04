@@ -72,6 +72,7 @@ test('unknown types fall back to a generic message', () => {
 test('safeActionUrl only accepts internal paths', () => {
   assert.equal(safeActionUrl('/admin/moderacao'), '/admin/moderacao')
   assert.equal(safeActionUrl('//evil.example'), null)
+  assert.equal(safeActionUrl('/\\evil.example'), null)
   assert.equal(safeActionUrl('https://evil.example'), null)
   assert.equal(safeActionUrl('javascript:alert(1)'), null)
   assert.equal(safeActionUrl(null), null)

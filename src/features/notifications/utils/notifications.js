@@ -72,10 +72,12 @@ export function notificationContent(notification) {
   }
 }
 
-// Só aceita caminhos internos (começam com "/" e não com "//"): o destino vem do banco, mas o
+// Só aceita caminhos internos (começam com "/", nem "//" nem "/\"): o destino vem do banco, mas o
 // cliente nunca navega para uma URL externa a partir de uma notificação.
 export function safeActionUrl(url) {
-  return typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') ? url : null
+  return typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.includes('\\')
+    ? url
+    : null
 }
 
 export function notificationHref(notification) {
