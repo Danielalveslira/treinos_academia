@@ -24,8 +24,14 @@ const COLUMNS = [
   // Status nunca some (nem pelo seletor "Colunas"): é o dado que a tabela existe para mostrar.
   { key: 'status', label: 'Status', sort: 'status', show: ['table-cell'], always: true },
   {
+    key: 'last_active_at',
+    label: 'Último uso',
+    sort: 'last_active_at',
+    show: [null, null, null, 'table-cell'],
+  },
+  {
     key: 'last_sign_in_at',
-    label: 'Último acesso',
+    label: 'Último login',
     sort: 'last_sign_in_at',
     show: [null, null, null, 'table-cell'],
   },
@@ -47,7 +53,12 @@ const COLUMNS = [
 
 // Com o painel da conta aberto a tabela perde ~380px: as colunas menos usadas saem da tabela
 // (continuam no painel) para o Status e as ações não ficarem cortados.
-const COMPACT_HIDDEN = new Set(['created_at', 'community_count', 'financial_status'])
+const COMPACT_HIDDEN = new Set([
+  'created_at',
+  'community_count',
+  'financial_status',
+  'last_sign_in_at',
+])
 
 const hidden = (show) => ({ display: show.map((value) => value || 'none') })
 
@@ -81,6 +92,8 @@ function cell(column, account) {
       return ROLE_LABELS[account.role] || account.role
     case 'status':
       return <AccountStatusBadge status={account.status} />
+    case 'last_active_at':
+      return account.last_active_at ? formatDateTime(account.last_active_at) : 'Sem registro'
     case 'last_sign_in_at':
       return account.last_sign_in_at ? formatDateTime(account.last_sign_in_at) : 'Nunca'
     case 'created_at':

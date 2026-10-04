@@ -21,6 +21,7 @@ const row = (n, patch = {}) => ({
   status: 'active',
   created_at: `2026-0${n}-01T00:00:00Z`,
   last_sign_in_at: `2026-10-0${n}T00:00:00Z`,
+  last_active_at: `2026-10-0${n}T12:00:00Z`,
   community_count: n,
   financial_status: 'none',
   flags_count: 0,

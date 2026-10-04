@@ -71,19 +71,28 @@ export const PAGE_SIZES = [8, 25, 50, 100]
 
 export const COLUMN_OPTIONS = [
   { key: 'role', label: 'Papel' },
-  { key: 'last_sign_in_at', label: 'Último acesso' },
+  // Uso (user_activity) e login (Auth) são conceitos diferentes: "Último uso" é o instante mais
+  // recente em que qualquer sessão da conta usou o app; "Último login" é só o último sign-in.
+  { key: 'last_active_at', label: 'Último uso' },
+  { key: 'last_sign_in_at', label: 'Último login' },
   { key: 'created_at', label: 'Criado em' },
   { key: 'community_count', label: 'Comunidades' },
   { key: 'financial_status', label: 'Financeiro' },
   { key: 'flags_count', label: 'Flags' },
 ]
 
+// Colunas visíveis ao abrir a tela: "Último login" é secundário e fica atrás do seletor "Colunas".
+export const DEFAULT_VISIBLE_COLUMNS = COLUMN_OPTIONS.map((c) => c.key).filter(
+  (key) => key !== 'last_sign_in_at'
+)
+
+// Filtro "Último uso" (campo last_active_at).
 export const LAST_ACCESS_OPTIONS = [
   { key: 'day', label: 'Últimas 24 horas' },
   { key: 'week', label: 'Últimos 7 dias' },
   { key: 'month', label: 'Últimos 30 dias' },
   { key: 'stale', label: 'Há mais de 30 dias' },
-  { key: 'never', label: 'Nunca acessou' },
+  { key: 'never', label: 'Sem registro de uso' },
 ]
 
 export const COMMUNITY_OPTIONS = [
@@ -129,9 +138,9 @@ function matchesSearch(account, term) {
 
 function matchesLastAccess(account, key, now) {
   if (!key) return true
-  if (key === 'never') return !account.last_sign_in_at
-  if (!account.last_sign_in_at) return false
-  const age = now - new Date(account.last_sign_in_at).getTime()
+  if (key === 'never') return !account.last_active_at
+  if (!account.last_active_at) return false
+  const age = now - new Date(account.last_active_at).getTime()
   if (key === 'day') return age <= DAY
   if (key === 'week') return age <= 7 * DAY
   if (key === 'month') return age <= 30 * DAY
@@ -178,6 +187,7 @@ export const SORT_ACCESSORS = {
   username: (a) => (a.username || a.email || a.id).toLowerCase(),
   role: (a) => a.role,
   status: (a) => a.status,
+  last_active_at: (a) => (a.last_active_at ? new Date(a.last_active_at).getTime() : -Infinity),
   last_sign_in_at: (a) => (a.last_sign_in_at ? new Date(a.last_sign_in_at).getTime() : -Infinity),
   created_at: (a) => new Date(a.created_at).getTime(),
   community_count: (a) => a.community_count,
@@ -251,7 +261,8 @@ export const CSV_COLUMNS = [
   ['E-mail', (a) => a.email || ''],
   ['Papel', (a) => ROLE_LABELS[a.role] || a.role],
   ['Status', (a) => STATUS_LABELS[a.status] || a.status],
-  ['Último acesso', (a) => a.last_sign_in_at || ''],
+  ['Último uso', (a) => a.last_active_at || ''],
+  ['Último login', (a) => a.last_sign_in_at || ''],
   ['Criado em', (a) => a.created_at],
   ['Comunidades', (a) => a.community_count],
   ['Financeiro', (a) => FINANCIAL_LABELS[a.financial_status] || a.financial_status],

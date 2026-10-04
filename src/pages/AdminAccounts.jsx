@@ -14,7 +14,7 @@ import {
   setAccountsStatus,
 } from '../features/adminAccounts/api/adminAccounts.api'
 import {
-  COLUMN_OPTIONS,
+  DEFAULT_VISIBLE_COLUMNS,
   EMPTY_FILTERS,
   PAGE_SIZES,
   TABS,
@@ -70,7 +70,7 @@ export default function AdminAccounts() {
   const [selection, setSelection] = useState(() => new Set())
   const [openId, setOpenId] = useState(null)
   const [visibleColumns, setVisibleColumns] = useState(
-    () => new Set(COLUMN_OPTIONS.map((c) => c.key))
+    () => new Set(DEFAULT_VISIBLE_COLUMNS)
   )
   const [dialog, setDialog] = useState(null) // { type: 'status'|'delete', ... }
   const [busy, setBusy] = useState(false)

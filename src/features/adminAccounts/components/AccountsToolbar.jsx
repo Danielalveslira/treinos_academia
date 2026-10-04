@@ -85,7 +85,7 @@ export function AccountsToolbar({
           onChange={(value) => onFilterChange('role', value)}
         />
         <FilterMenu
-          label="Último acesso"
+          label="Último uso"
           options={LAST_ACCESS_OPTIONS}
           value={filters.lastAccess}
           onChange={(value) => onFilterChange('lastAccess', value)}

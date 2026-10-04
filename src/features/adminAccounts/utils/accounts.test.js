@@ -1,6 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  COLUMN_OPTIONS,
+  CSV_COLUMNS,
+  DEFAULT_VISIBLE_COLUMNS,
   EMPTY_FILTERS,
   applyAccountChanges,
   buildAccountsCsv,
@@ -27,6 +30,7 @@ function account(overrides = {}) {
     status: 'active',
     created_at: hoursAgo(24 * 100),
     last_sign_in_at: hoursAgo(2),
+    last_active_at: hoursAgo(2),
     community_count: 0,
     financial_status: 'none',
     flags_count: 0,
@@ -53,6 +57,7 @@ const accounts = [
     status: 'suspended',
     restriction_action: 'temporary_suspension',
     last_sign_in_at: hoursAgo(24 * 5),
+    last_active_at: hoursAgo(24 * 5),
     community_count: 2,
   }),
   account({
@@ -62,6 +67,7 @@ const accounts = [
     deletion_status: 'pending',
     financial_status: 'pending',
     last_sign_in_at: null,
+    last_active_at: null,
   }),
   account({
     id: 'd-4',
@@ -70,6 +76,7 @@ const accounts = [
     role: 'superadmin',
     created_at: hoursAgo(24 * 3),
     last_sign_in_at: hoursAgo(24 * 60),
+    last_active_at: hoursAgo(24 * 60),
     financial_status: 'balance',
   }),
 ]
@@ -126,7 +133,7 @@ test('ordenação local, estável e sem mutar a entrada', () => {
     ['a-1', 'b-2']
   )
   assert.deepEqual(
-    ids(sortAccounts(accounts, { key: 'last_sign_in_at', direction: 'desc' })).at(-1),
+    ids(sortAccounts(accounts, { key: 'last_active_at', direction: 'desc' })).at(-1),
     'c-3'
   )
   assert.deepEqual(ids(accounts), before)
@@ -218,4 +225,44 @@ test('mensagens de erro conhecidas viram texto amigável; o resto cai no fallbac
     'Contas de administrador não podem ser desativadas.'
   )
   assert.equal(describeActionError({ message: 'boom' }, 'fallback'), 'fallback')
+})
+
+test('Último uso (last_active_at) e Último login (last_sign_in_at) são conceitos independentes', () => {
+  const accounts = [
+    // logou há 40 dias, mas usou o app há 1 hora (refresh token mantém a sessão)
+    account({ id: 'uso-recente', last_sign_in_at: hoursAgo(24 * 40), last_active_at: hoursAgo(1) }),
+    // logou agora e ainda não há registro de uso
+    account({ id: 'sem-registro', last_sign_in_at: hoursAgo(1), last_active_at: null }),
+  ]
+  const f = (filters) => ids(filterAccounts(accounts, { ...EMPTY_FILTERS, ...filters }))
+  assert.deepEqual(f({ lastAccess: 'day' }), ['uso-recente'])
+  assert.deepEqual(f({ lastAccess: 'never' }), ['sem-registro'])
+  assert.deepEqual(ids(sortAccounts(accounts, { key: 'last_active_at', direction: 'desc' })), [
+    'uso-recente',
+    'sem-registro',
+  ])
+  assert.deepEqual(ids(sortAccounts(accounts, { key: 'last_sign_in_at', direction: 'desc' })), [
+    'sem-registro',
+    'uso-recente',
+  ])
+})
+
+test('CSV exporta Último uso e Último login em colunas separadas', () => {
+  const headers = CSV_COLUMNS.map(([label]) => label)
+  assert.ok(headers.includes('Último uso') && headers.includes('Último login'))
+  assert.ok(!headers.includes('Último acesso'))
+  const row = Object.fromEntries(
+    CSV_COLUMNS.map(([label, get]) => [
+      label,
+      get(account({ last_sign_in_at: 'L', last_active_at: 'U' })),
+    ])
+  )
+  assert.equal(row['Último uso'], 'U')
+  assert.equal(row['Último login'], 'L')
+})
+
+test('"Último login" fica atrás do seletor de colunas por padrão', () => {
+  assert.ok(DEFAULT_VISIBLE_COLUMNS.includes('last_active_at'))
+  assert.ok(!DEFAULT_VISIBLE_COLUMNS.includes('last_sign_in_at'))
+  assert.ok(COLUMN_OPTIONS.some((column) => column.key === 'last_sign_in_at'))
 })

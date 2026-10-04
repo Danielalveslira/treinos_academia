@@ -76,8 +76,11 @@ function Overview({ account, onCopied }) {
       <CopyField label="E-mail" value={account.email} onCopied={onCopied} />
       <CopyField label="UID" value={account.id} onCopied={onCopied} />
       <Field label="Papel">{ROLE_LABELS[account.role] || account.role}</Field>
-      <Field label="Último acesso">
-        {account.last_sign_in_at ? formatDateTime(account.last_sign_in_at) : 'Nunca acessou'}
+      <Field label="Último uso">
+        {account.last_active_at ? formatDateTime(account.last_active_at) : 'Sem registro de uso'}
+      </Field>
+      <Field label="Último login">
+        {account.last_sign_in_at ? formatDateTime(account.last_sign_in_at) : 'Nunca'}
       </Field>
       <Field label="Criado em">{formatDate(account.created_at)}</Field>
       <Field label="Versão legal aceita">{account.accepted_legal_version || '—'}</Field>
