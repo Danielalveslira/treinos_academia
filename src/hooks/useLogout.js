@@ -9,6 +9,28 @@ export function logoutErrorMessage(online = globalThis.navigator?.onLine !== fal
     : 'Sem conexão. Conecte-se à internet para sair da conta com segurança.'
 }
 
+// A revogação de Web Push é best-effort: autenticação tem prioridade. Nunca espera além deste
+// orçamento (rede lenta, unsubscribe travado em alguns navegadores) e nunca propaga erro.
+export const PUSH_REVOKE_BUDGET_MS = 2500
+
+async function revokePushBestEffort(options) {
+  // Sem rede não há como revogar no servidor; o provedor invalida o endpoint no próximo envio.
+  if (globalThis.navigator?.onLine === false) return
+  let timer
+  try {
+    await Promise.race([
+      disablePushNotifications(options),
+      new Promise((resolve) => {
+        timer = setTimeout(resolve, PUSH_REVOKE_BUDGET_MS)
+      }),
+    ])
+  } catch {
+    console.warn('[Push] revogação no logout falhou (ignorada)')
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export const LOGOUT_ALL_OTHERS_ERROR =
   'Não foi possível sair dos outros dispositivos. Tente novamente.'
 
@@ -74,7 +96,7 @@ export function useLogout() {
     () => run({
       reason: 'signed-out',
       action: async () => {
-        await disablePushNotifications().catch(() => console.warn('[Push] logout revoke failed'))
+        await revokePushBestEffort()
         return logoutUser()
       },
       failureMessage: logoutErrorMessage,
@@ -84,14 +106,13 @@ export function useLogout() {
 
   // Ação de segurança: revoga as outras sessões e, só se isso der certo, sai deste aparelho
   // (duas etapas em authService, uma única ação para o usuário). Quem chama deve confirmar antes.
+  // O Push de todos os dispositivos só é revogado entre as duas etapas (auth primeiro).
   const logoutAll = useCallback(
     () =>
       run({
         reason: 'signed-out-all',
-        action: async () => {
-          await disablePushNotifications({ allDevices: true }).catch(() => console.warn('[Push] global logout revoke failed'))
-          return logoutAllDevices()
-        },
+        action: () =>
+          logoutAllDevices({ beforeLocalSignOut: () => revokePushBestEffort({ allDevices: true }) }),
         failureMessage: logoutAllErrorMessage,
       }),
     [run]

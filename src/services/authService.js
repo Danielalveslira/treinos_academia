@@ -94,12 +94,22 @@ export function logoutUser() {
 }
 
 // Falha da etapa 1 carrega `logoutStep: 'others'` para a UI mostrar a mensagem certa.
-export function logoutAllDevices() {
+// `beforeLocalSignOut` roda DEPOIS de a etapa 1 dar certo e ANTES de encerrar esta sessão (ainda
+// há JWT para chamar o backend): é o gancho da revogação de Web Push, que é best-effort -- uma
+// falha dele nunca impede o logout e, se a etapa 1 falhar, ele nem chega a rodar.
+export function logoutAllDevices({ beforeLocalSignOut } = {}) {
   return singleFlight(async () => {
     const { error } = await supabase.auth.signOut({ scope: 'others' })
     if (error) {
       error.logoutStep = 'others'
       throw error
+    }
+    if (beforeLocalSignOut) {
+      try {
+        await beforeLocalSignOut()
+      } catch (hookError) {
+        console.warn('[Auth] pré-logout (best-effort) falhou:', hookError)
+      }
     }
     await signOutLocal()
     // As outras sessões foram revogadas (confirmado); o que sobra incerto é só o token deste
