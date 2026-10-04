@@ -107,7 +107,7 @@ select is((select count(*)::int from claim_loop2), 0, 'subscription revogada nã
 select is((select o.status from public.notification_push_outbox o join public.notifications n on n.id = o.notification_id
   where n.metadata->>'title' = 'loop'), 'sent', 'job com um dispositivo entregue e outro revogado conclui como sent');
 
--- Elegibilidade é rechecada no envio ------------------------------------------------------
+-- Elegibilidade: conta bloqueada (gatilho da 02) e Push/categoria desligados (recheca no claim) --
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '95000000-0000-0000-0000-000000000001', true);
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/elig', repeat('p', 32), repeat('a', 16));
@@ -117,9 +117,28 @@ values ('95000000-0000-0000-0000-000000000001', 'admin_broadcast', '{"title":"el
 update public.users set account_status = 'disabled' where id = '95000000-0000-0000-0000-000000000001';
 create temporary table claim_elig as select * from public.claim_push_jobs('hard-w5', 100);
 select is((select count(*)::int from claim_elig), 0, 'conta desativada após o enfileiramento não recebe');
-select is((select o.last_error from public.notification_push_outbox o join public.notifications n on n.id = o.notification_id
-  where n.metadata->>'title' = 'elig'), 'RECIPIENT_NOT_ELIGIBLE', 'job é cancelado com motivo');
+select ok((select o.last_error in ('ACCOUNT_UNAVAILABLE','RECIPIENT_NOT_ELIGIBLE') and o.status = 'cancelled'
+  from public.notification_push_outbox o join public.notifications n on n.id = o.notification_id
+  where n.metadata->>'title' = 'elig'), 'job é cancelado com motivo');
+select is((select count(*)::int from public.push_subscriptions where user_id = '95000000-0000-0000-0000-000000000001' and revoked_at is null), 0,
+  'bloquear a conta revoga as subscriptions (gatilho)');
 update public.users set account_status = 'active' where id = '95000000-0000-0000-0000-000000000001';
+
+-- Push/categoria desligados DEPOIS do enfileiramento: o claim cancela (não depende do gatilho).
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '95000000-0000-0000-0000-000000000001', true);
+select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/elig2', repeat('p', 32), repeat('a', 16));
+reset role;
+insert into public.notifications (recipient_id, type, metadata)
+values ('95000000-0000-0000-0000-000000000001', 'admin_broadcast', '{"title":"cat-off","body":"x"}');
+update public.push_notification_preferences set categories = '{"administrative":false}'::jsonb
+where user_id = '95000000-0000-0000-0000-000000000001';
+create temporary table claim_cat as select * from public.claim_push_jobs('hard-w5b', 100);
+select is((select count(*)::int from claim_cat), 0, 'categoria desligada após o enfileiramento não recebe');
+select is((select o.last_error from public.notification_push_outbox o join public.notifications n on n.id = o.notification_id
+  where n.metadata->>'title' = 'cat-off'), 'RECIPIENT_NOT_ELIGIBLE', 'claim cancela com motivo');
+update public.push_notification_preferences set categories = '{"administrative":true}'::jsonb
+where user_id = '95000000-0000-0000-0000-000000000001';
 
 -- Só retries futuros: devolve à fila sem esperar o lock expirar -----------------------------
 insert into public.notifications (recipient_id, type, metadata)
