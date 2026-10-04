@@ -14,6 +14,15 @@ Edge Function `process-push-outbox` (secrets; nunca versionar valores):
 VAPID_PUBLIC_KEY
 VAPID_PRIVATE_KEY
 VAPID_SUBJECT
+PUSH_WORKER_SECRET   (>= 32 caracteres aleatórios; exigido no header X-Push-Worker-Secret)
+```
+
+O mesmo valor de `PUSH_WORKER_SECRET` precisa existir no Supabase Vault com o nome
+`push_worker_secret` (o cron lê de lá a cada execução; a migration não contém o valor):
+
+```sql
+select vault.create_secret('<mesmo valor>', 'push_worker_secret');
+-- rotação: select vault.update_secret(id, '<novo valor>') e atualizar o secret da função
 ```
 
 `VAPID_SUBJECT` deve ser `mailto:...` ou uma URL HTTPS controlada pelo Evolutus.
@@ -36,9 +45,9 @@ Sem os quatro valores a função responde 503 e **não consome a fila**: os jobs
   no endpoint que o usuário registrou. Se surgir um provedor novo, ampliar os dois lugares.
 - `targetUrl` aceita apenas caminho interno; `//` e `\` são rejeitados (o navegador trata
   `/\host` como `//host`) no banco, no worker, no Service Worker e na Central.
-- Como o agendamento do `process-deletion-jobs`, o cron autentica com a anon key (pública).
-  Qualquer pessoa com ela pode disparar o worker, mas só consegue antecipar o processamento da
-  fila; o claim usa `FOR UPDATE SKIP LOCKED` e nenhum dado é retornado além de contadores.
+- O worker só processa a fila com o header `X-Push-Worker-Secret` correto. Sem ele (ou com
+  valor errado) responde 401 **antes** de qualquer consulta ou claim; sem `PUSH_WORKER_SECRET`
+  utilizável na função responde 503. A anon key do gateway (pública) não autoriza nada.
 - Cada conta mantém no máximo 20 dispositivos ativos (os menos recentes são revogados).
 - Trocar de conta no mesmo navegador reassocia o endpoint à conta atual e cancela as entregas
   pendentes da conta anterior.

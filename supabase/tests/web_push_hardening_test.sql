@@ -164,5 +164,10 @@ delete from auth.users where id = '95000000-0000-0000-0000-000000000003';
 select is((select created_by from public.push_broadcast_audit where idempotency_key = '96000000-0000-0000-0000-000000000001'), null,
   'excluir o superadmin preserva a auditoria');
 
+-- Cron do worker: único, autenticado por segredo do Vault e sem segredo literal -----------------
+select is((select count(*)::int from cron.job where jobname = 'process-push-outbox'), 1, 'continua existindo um único cron do worker');
+select ok((select command like '%X-Push-Worker-Secret%' and command like '%vault.decrypted_secrets%' and command like '%push_worker_secret%'
+  from cron.job where jobname = 'process-push-outbox'), 'cron envia o segredo lido do Vault');
+
 select * from finish();
 rollback;
