@@ -62,6 +62,41 @@ Sem os quatro valores a função responde 503 e **não consome a fila**: os jobs
 
 Não publicar parcialmente o frontend antes de RPCs, tabelas e worker estarem disponíveis.
 
+## Runbook de publicação (nesta ordem)
+
+Requer `SUPABASE_ACCESS_TOKEN` (ou `supabase login`) e acesso ao projeto `ywrjojrjgozdfpddkkuy`.
+
+```bash
+# 1. migrations (conferir antes: 20261012000000..03)
+npx supabase db push --linked --dry-run && npx supabase db push --linked
+
+# 2. secrets (a chave privada não é impressa nem salva em arquivo)
+KEYS=$(npx web-push generate-vapid-keys --json)
+VAPID_PUBLIC_KEY=$(printf '%s' "$KEYS" | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).publicKey')
+VAPID_PRIVATE_KEY=$(printf '%s' "$KEYS" | node -pe 'JSON.parse(require("fs").readFileSync(0,"utf8")).privateKey')
+PUSH_WORKER_SECRET=$(openssl rand -hex 32)
+npx supabase secrets set VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" \
+  VAPID_SUBJECT="mailto:<contato>" PUSH_WORKER_SECRET="$PUSH_WORKER_SECRET"
+echo "VITE_VAPID_PUBLIC_KEY=$VAPID_PUBLIC_KEY"   # valor público, vai para o Vercel (Production)
+# Vault (SQL editor do projeto), com o MESMO valor de PUSH_WORKER_SECRET:
+#   select vault.create_secret('<PUSH_WORKER_SECRET>', 'push_worker_secret');
+
+# 3. função
+npx supabase functions deploy process-push-outbox
+
+# 4. cron protegido já vem da migration 20261012000000..03; conferir o worker:
+curl -si -X POST https://ywrjojrjgozdfpddkkuy.supabase.co/functions/v1/process-push-outbox \
+  -H "Authorization: Bearer <anon key>"                       # esperado: 401
+curl -si -X POST https://ywrjojrjgozdfpddkkuy.supabase.co/functions/v1/process-push-outbox \
+  -H "Authorization: Bearer <anon key>" -H "X-Push-Worker-Secret: $PUSH_WORKER_SECRET"   # 200
+
+# 5. definir VITE_VAPID_PUBLIC_KEY no Vercel (Production) ANTES de publicar; 6. merge/push e
+#    aguardar o deploy READY.
+```
+
+Depois do smoke com 1 conta de teste, usar `select * from notification_push_outbox order by
+created_at desc limit 20` (service role) para acompanhar `status`, `attempt_count` e `last_error`.
+
 ## Rollback operacional
 
 Desativar ou remover o cron `process-push-outbox`. A Central de Notificações continua funcionando;
