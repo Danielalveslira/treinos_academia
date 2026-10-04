@@ -68,7 +68,14 @@ function load({ responder } = {}) {
     location: { origin: ORIGIN },
     addEventListener: (type, fn) => (handlers[type] = fn),
     skipWaiting: async () => (self.skipped = true),
-    clients: { claim: async () => (self.claimed = true) },
+    registration: {
+      showNotification: async (title, options) => { self.shownNotification = { title, options } },
+    },
+    clients: {
+      claim: async () => (self.claimed = true),
+      matchAll: async () => self.windowClients || [],
+      openWindow: async (url) => { self.openedWindow = url },
+    },
   }
   const source = TEMPLATE.replace('__VERSION__', 'v2')
     .replace('__SHELL_URLS__', JSON.stringify(SHELL))
@@ -239,4 +246,56 @@ test('collectBootAssets inclui entry + imports estáticos + CSS, e exclui chunks
     '/assets/primer.css',
     '/assets/primer.js',
   ])
+})
+
+test('push valida payload e usa fallback sem depender do React', async () => {
+  let work
+  handlers.push({
+    data: { json: () => ({ title: 'Aviso', body: 'Corpo', notificationId: 7, targetUrl: 'https://evil.test' }) },
+    waitUntil: (promise) => { work = promise },
+  })
+  await work
+  assert.equal(sw.self.shownNotification.title, 'Aviso')
+  assert.equal(sw.self.shownNotification.options.data.targetUrl, '/')
+  assert.equal(sw.self.shownNotification.options.tag, 'notification-7')
+})
+
+test('push com payload inválido não quebra e exibe fallback seguro', async () => {
+  let work
+  handlers.push({
+    data: { json: () => { throw new SyntaxError('invalid json') } },
+    waitUntil: (promise) => { work = promise },
+  })
+  await work
+  assert.equal(sw.self.shownNotification.title, 'Evolutus')
+  assert.equal(sw.self.shownNotification.options.data.targetUrl, '/')
+})
+
+test('notificationclick foca janela existente e navega somente dentro da origem', async () => {
+  const navigated = []
+  sw.self.windowClients = [{
+    url: `${ORIGIN}/perfil`,
+    focus: async () => { sw.self.focused = true },
+    navigate: async (url) => navigated.push(url),
+  }]
+  let work
+  let closed = false
+  handlers.notificationclick({
+    notification: { data: { targetUrl: '/comunidades/1' }, close: () => { closed = true } },
+    waitUntil: (promise) => { work = promise },
+  })
+  await work
+  assert.equal(closed, true)
+  assert.equal(sw.self.focused, true)
+  assert.deepEqual(navigated, [`${ORIGIN}/comunidades/1`])
+})
+
+test('notificationclick abre janela quando não há cliente existente', async () => {
+  let work
+  handlers.notificationclick({
+    notification: { data: { targetUrl: '//evil.test' }, close() {} },
+    waitUntil: (promise) => { work = promise },
+  })
+  await work
+  assert.equal(sw.self.openedWindow, `${ORIGIN}/`)
 })

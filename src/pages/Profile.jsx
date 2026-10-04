@@ -21,6 +21,7 @@ import { setUsageProfile } from '../services/usageProfileService'
 import { toDate } from '../utils/date'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { removeProfileAvatar, uploadProfileAvatar } from '../services/profileAvatarService'
+import { PushNotificationSettings } from '../features/notifications/components/PushNotificationSettings'
 
 export default function Profile() {
   const { user, profile, isSuperAdmin, saveProfile, refreshProfile } = useAuth()
@@ -434,6 +435,7 @@ export default function Profile() {
             </div>
           </div>
         </section>
+        <PushNotificationSettings />
       </div>
     </div>
   )

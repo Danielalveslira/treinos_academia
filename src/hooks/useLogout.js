@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { logoutAllDevices, logoutUser } from '../services/authService'
 import { consumeLogoutReason, setLogoutReason } from '../utils/logoutReason'
+import { disablePushNotifications } from '../features/notifications/services/pushService'
 
 export function logoutErrorMessage(online = globalThis.navigator?.onLine !== false) {
   return online
@@ -70,7 +71,14 @@ export function useLogout() {
 
   // Padrão: encerra só esta sessão (scope local).
   const logout = useCallback(
-    () => run({ reason: 'signed-out', action: logoutUser, failureMessage: logoutErrorMessage }),
+    () => run({
+      reason: 'signed-out',
+      action: async () => {
+        await disablePushNotifications().catch(() => console.warn('[Push] logout revoke failed'))
+        return logoutUser()
+      },
+      failureMessage: logoutErrorMessage,
+    }),
     [run]
   )
 
@@ -80,7 +88,10 @@ export function useLogout() {
     () =>
       run({
         reason: 'signed-out-all',
-        action: logoutAllDevices,
+        action: async () => {
+          await disablePushNotifications({ allDevices: true }).catch(() => console.warn('[Push] global logout revoke failed'))
+          return logoutAllDevices()
+        },
         failureMessage: logoutAllErrorMessage,
       }),
     [run]

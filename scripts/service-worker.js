@@ -165,3 +165,51 @@ self.addEventListener('fetch', (event) => {
     )
   }
 })
+
+function safeNotificationTarget(value) {
+  if (typeof value !== 'string' || value.length > 300 || !value.startsWith('/') || value.startsWith('//')) return '/'
+  if ([...value].some((character) => {
+    const code = character.charCodeAt(0)
+    return code < 32 || code === 127
+  })) return '/'
+  return value
+}
+
+self.addEventListener('push', (event) => {
+  event.waitUntil((async () => {
+    let payload = {}
+    try { payload = event.data?.json() || {} } catch { payload = {} }
+    const title = typeof payload.title === 'string' && payload.title.trim()
+      ? payload.title.slice(0, 120)
+      : 'Evolutus'
+    const body = typeof payload.body === 'string' && payload.body.trim()
+      ? payload.body.slice(0, 240)
+      : 'Você recebeu uma nova notificação.'
+    await self.registration.showNotification(title, {
+      body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: payload.notificationId ? `notification-${String(payload.notificationId)}` : undefined,
+      data: {
+        notificationId: payload.notificationId ? String(payload.notificationId) : null,
+        targetUrl: safeNotificationTarget(payload.targetUrl),
+      },
+    })
+  })())
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const targetUrl = safeNotificationTarget(event.notification.data?.targetUrl)
+  event.waitUntil((async () => {
+    const target = new URL(targetUrl, self.location.origin).href
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    const existing = windows.find((client) => new URL(client.url).origin === self.location.origin)
+    if (existing) {
+      await existing.focus()
+      if ('navigate' in existing) await existing.navigate(target)
+      return
+    }
+    await self.clients.openWindow(target)
+  })())
+})

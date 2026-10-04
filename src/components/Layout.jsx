@@ -21,6 +21,7 @@ import { AccountMenu } from './AccountMenu'
 import { WalletHeaderBadges } from './WalletHeaderBadges'
 import { EvoCoinsAwardNotice } from './EvoCoinsAwardNotice'
 import { NotificationBell } from '../features/notifications/components/NotificationBell'
+import { usePushSubscriptionSync } from '../features/notifications/hooks/usePushSubscriptionSync'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Início', icon: HomeIcon, end: true },
@@ -76,6 +77,7 @@ export function Layout() {
   useQualifiedActivity()
   // "Último uso" para o admin: visível apenas, no máximo 1 chamada a cada 10 min.
   useActivityHeartbeat()
+  usePushSubscriptionSync(Boolean(profile))
 
   return (
     <div className="app-shell">

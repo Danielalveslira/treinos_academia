@@ -21,6 +21,7 @@ export const ADMIN_NOTIFICATION_TYPES = new Set([
   'admin_moderation_decision',
   'admin_restriction',
   'admin_deletion_review',
+  'admin_broadcast',
 ])
 
 export function isAdminNotification(notification) {
@@ -61,6 +62,11 @@ export function notificationContent(notification) {
       return { title: 'Restrição aplicada', description: ACTION_LABELS[metadata.action] }
     case 'admin_deletion_review':
       return { title: 'Exclusão de conta aguardando revisão financeira' }
+    case 'admin_broadcast':
+      return {
+        title: typeof metadata.title === 'string' ? metadata.title : 'Aviso do Evolutus',
+        description: typeof metadata.body === 'string' ? metadata.body : undefined,
+      }
     default:
       return { title: 'Nova notificação' }
   }

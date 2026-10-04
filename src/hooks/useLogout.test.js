@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
+import { setImmediate as waitForImmediate } from 'node:timers/promises'
 import { build } from 'esbuild'
 
 let directory
@@ -36,6 +37,10 @@ before(async () => {
             path: 'supabase',
             namespace: 'stub',
           }))
+          ctx.onResolve({ filter: /features\/notifications\/services\/pushService$/ }, () => ({
+            path: 'push-service',
+            namespace: 'stub',
+          }))
           ctx.onLoad({ filter: /^react$/, namespace: 'stub' }, () => ({
             contents: `
               const slots = []
@@ -59,6 +64,9 @@ before(async () => {
           ctx.onLoad({ filter: /^supabase$/, namespace: 'stub' }, () => ({
             contents: `export const supabase = { auth: { signOut: (...a) => globalThis.__signOut(...a), getSession: () => globalThis.__getSession() } }`,
           }))
+          ctx.onLoad({ filter: /^push-service$/, namespace: 'stub' }, () => ({
+            contents: `export const disablePushNotifications = (...a) => globalThis.__disablePushNotifications(...a)`,
+          }))
         },
       },
     ],
@@ -73,6 +81,7 @@ after(async () => {
 let store
 beforeEach(() => {
   store = new Map()
+  globalThis.__disablePushNotifications = () => Promise.resolve()
   globalThis.sessionStorage = {
     getItem: (k) => store.get(k) ?? null,
     setItem: (k, v) => store.set(k, v),
@@ -107,6 +116,7 @@ test('duplo toque em "Sair" chama o signOut uma única vez e deixa o aviso para 
   const { logout } = mod.useLogout()
   const first = logout()
   const second = logout()
+  await waitForImmediate()
   finish()
   await Promise.all([first, second])
   assert.equal(calls, 1)
@@ -258,6 +268,7 @@ test('logout e logout global compartilham a trava: toques simultâneos fazem uma
   const hook = mod.useLogout()
   const a = hook.logout()
   const b = hook.logoutAll()
+  await waitForImmediate()
   finish()
   await Promise.all([a, b])
   assert.equal(calls, 1)

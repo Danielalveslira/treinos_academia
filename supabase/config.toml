@@ -437,3 +437,7 @@ verify_jwt = true
 [functions.process-deletion-jobs]
 enabled = true
 verify_jwt = true
+
+[functions.process-push-outbox]
+enabled = true
+verify_jwt = true
