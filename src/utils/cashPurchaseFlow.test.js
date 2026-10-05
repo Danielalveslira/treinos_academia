@@ -55,10 +55,10 @@ test('canSubmitCancellation mirrors the server minimum (5 trimmed characters)', 
   assert.equal(canSubmitCancellation(undefined), false)
 })
 
-test('the user-facing and admin-facing status maps both cover exactly pending/credited/cancelled', () => {
+test('the user-facing and admin-facing status maps cover every purchase state', () => {
   for (const labels of [USER_CASH_PURCHASE_STATUS_LABELS, ADMIN_CASH_PURCHASE_STATUS_LABELS]) {
-    assert.deepEqual(Object.keys(labels).sort(), ['cancelled', 'credited', 'pending'])
-    for (const status of ['pending', 'credited', 'cancelled']) {
+    assert.deepEqual(Object.keys(labels).sort(), ['cancelled', 'credited', 'held_in_case', 'pending'])
+    for (const status of ['pending', 'credited', 'cancelled', 'held_in_case']) {
       assert.equal(typeof labels[status].text, 'string')
       assert.ok(labels[status].text.length > 0)
       assert.equal(typeof labels[status].variant, 'string')

@@ -12,6 +12,9 @@ export function mapPurchaseRow(row) {
     amountCentavos: row.amount_centavos,
     currency: row.currency,
     status: row.status,
+    paymentProvider: row.payment_provider,
+    checkoutUrl: row.checkout_url,
+    captureMethod: row.provider_capture_method,
     qrCode: row.qr_code,
     qrCodeBase64: row.qr_code_base64,
     ticketUrl: row.ticket_url,
@@ -28,8 +31,7 @@ export function mapPurchaseRow(row) {
 // Preço/quantidade sempre vêm daqui (economy_config), nunca de um valor digitado -- o
 // cliente só manda o packageId escolhido (ver requestCashPurchase). Lido direto via
 // client SDK (RLS já libera leitura de economy_config a qualquer autenticado), sem RPC
-// própria -- é só exibição; request_cash_purchase/mercadopago-create-payment revalidam
-// tudo de novo no servidor antes de criar qualquer pagamento.
+// própria -- é só exibição; reserve_infinitepay_cash_purchase revalida no servidor.
 export async function getCashPurchaseSettings() {
   const { data, error } = await supabase.from('economy_config').select('config').eq('id', true).maybeSingle()
   if (error) throw error
@@ -40,24 +42,29 @@ export async function getCashPurchaseSettings() {
   return { packages }
 }
 
-// requestId gerado UMA VEZ por tentativa de compra e reenviado em qualquer retry -- é o
-// que torna a operação idempotente ponta a ponta (reserva da linha pendente + criação
-// do pagamento PIX no Mercado Pago). Ao contrário do original (só uma callable), aqui
-// isso passa por uma Edge Function (mercadopago-create-payment) porque falar com a API
-// do Mercado Pago é uma chamada HTTP externa, que RPC de Postgres não faz.
-export async function requestCashPurchase({ packageId, requestId }) {
+// A função reserva a compra e gera order_nsu no servidor; o cliente envia só packageId.
+async function callPaymentFunction(name, body) {
   const { data: sessionData, error: sessionErr } = await supabase.auth.getSession()
   if (sessionErr) throw sessionErr
-  const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mercadopago-create-payment`, {
+  if (!sessionData.session) throw new Error('NOT_AUTHENTICATED')
+  const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${name}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session.access_token}` },
-    body: JSON.stringify({ packageId, requestId }),
+    body: JSON.stringify(body),
   })
-  const body = await response.json()
+  const result = await response.json()
   if (!response.ok) {
-    throw new Error(body?.error || 'REQUEST_FAILED')
+    throw new Error(result?.error || 'REQUEST_FAILED')
   }
-  return body
+  return result
+}
+
+export function requestCashPurchase({ packageId }) {
+  return callPaymentFunction('infinitepay-create-checkout', { packageId })
+}
+
+export function checkInfinitepayPurchase(purchaseId, hints = {}) {
+  return callPaymentFunction('infinitepay-check-payment', { purchaseId, ...hints })
 }
 
 // Fallback operacional (superadmin) -- webhook do Mercado Pago é o caminho principal de

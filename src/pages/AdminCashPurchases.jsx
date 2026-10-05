@@ -31,12 +31,8 @@ const KNOWN_ERRORS = {
   REASON_REQUIRED: 'Informe um motivo com pelo menos 5 caracteres.',
 }
 
-// Painel admin de EvoCash: confirmação é automática via webhook do Mercado Pago na
-// grande maioria dos casos -- este painel é o fallback operacional (confirmar/cancelar
-// manualmente quando o webhook falhar ou o pagamento for resolvido fora do fluxo do
-// app), nunca o caminho principal. Sem mais aba de "Configuração PIX": cada compra tem
-// seu próprio QR code gerado pelo Mercado Pago, não há mais chave PIX fixa para
-// cadastrar.
+// Confirmação manual permanece apenas para compras históricas Mercado Pago. A RPC
+// também recusa essa ação para InfinitePay: somente payment_check pode liberar crédito.
 export default function AdminCashPurchases() {
   const { user } = useAuth()
   const [status, setStatus] = useState('pending')
@@ -168,6 +164,9 @@ export default function AdminCashPurchases() {
               <Text as="p" sx={{ fontSize: 0, m: 0 }}>
                 {formatCentavosBRL(purchase.amountCentavos)} — {purchase.cashAmount} EvoCash
               </Text>
+              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
+                Provedor: {purchase.paymentProvider === 'infinitepay' ? 'InfinitePay' : 'Mercado Pago'}
+              </Text>
             </Box>
             <Label variant={STATUS_LABELS[purchase.status]?.variant}>
               {STATUS_LABELS[purchase.status]?.text || purchase.status}
@@ -178,7 +177,7 @@ export default function AdminCashPurchases() {
           </Link>
           {purchase.status === 'credited' && (
             <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-              {purchase.creditedBy ? `Confirmado por ${purchase.creditedBy}` : 'Confirmado automaticamente (Mercado Pago)'} em{' '}
+              {purchase.creditedBy ? `Confirmado por ${purchase.creditedBy}` : `Confirmado automaticamente (${purchase.paymentProvider === 'infinitepay' ? 'InfinitePay' : 'Mercado Pago'})`} em{' '}
               {formatDateTime(purchase.creditedAt ? new Date(purchase.creditedAt) : null)}
               {purchase.confirmationNote ? ` — ${purchase.confirmationNote}` : ''}
             </Text>
@@ -192,13 +191,22 @@ export default function AdminCashPurchases() {
 
           {purchase.status === 'pending' && actingOn?.purchaseId !== purchase.id && (
             <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button variant="primary" onClick={() => startAction(purchase.id, 'confirm')}>
-                Confirmar pagamento
-              </Button>
-              <Button variant="danger" onClick={() => startAction(purchase.id, 'cancel')}>
-                Cancelar
-              </Button>
+              {purchase.paymentProvider !== 'infinitepay' && (
+                <Button variant="primary" onClick={() => startAction(purchase.id, 'confirm')}>
+                  Confirmar pagamento
+                </Button>
+              )}
+              {purchase.paymentProvider !== 'infinitepay' && (
+                <Button variant="danger" onClick={() => startAction(purchase.id, 'cancel')}>
+                  Cancelar
+                </Button>
+              )}
             </Box>
+          )}
+          {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && (
+            <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
+              Aguardando webhook ou conciliação com a InfinitePay. Verifique no provedor antes de qualquer cancelamento.
+            </Text>
           )}
 
           {actingOn?.purchaseId === purchase.id && (

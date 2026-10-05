@@ -1,27 +1,19 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Box, Button, Flash, Heading, Label, Spinner, Text } from '@primer/react'
 import { SparkleFillIcon } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
-import { getCashPurchaseSettings, requestCashPurchase } from '../services/cashPurchaseService'
+import { checkInfinitepayPurchase, getCashPurchaseSettings, requestCashPurchase } from '../services/cashPurchaseService'
 import { CashPackageCards } from '../components/CashPackageCards'
 import { CopyButton } from '../components/CopyButton'
 import { PixPaymentInstructions } from '../components/PixPaymentInstructions'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
-  resolveRequestId,
   hasPendingCashPurchase,
   abbreviateProtocol,
   USER_CASH_PURCHASE_STATUS_LABELS as STATUS_LABELS,
 } from '../utils/cashPurchaseFlow'
-
-function newRequestId() {
-  // crypto.randomUUID exige contexto seguro (https/localhost) -- sempre verdadeiro no
-  // app publicado, mas o fallback evita quebrar num ambiente de desenvolvimento atípico.
-  return typeof crypto?.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `req-${Date.now()}-${Math.random().toString(36).slice(2)}`
-}
 
 // EvoCash (Fase 4): pacotes, solicitar compra, instruções de PIX e "minhas compras" --
 // tudo numa página só, já que são passos do mesmo fluxo. O crédito em si só acontece
@@ -31,13 +23,10 @@ export default function EvoCash() {
   const { user } = useAuth()
   const [settings, setSettings] = useState({ packages: [] })
   const [loadingSettings, setLoadingSettings] = useState(true)
-  // Guarda o requestId da tentativa em andamento -- reenviado se a MESMA tentativa
-  // (mesmo pacote, ainda sem sucesso) for repetida, nunca gerado de novo a cada clique
-  // (isso é o que torna o retry idempotente, ver cash-purchase-core.js).
-  const [pendingAttempt, setPendingAttempt] = useState(null)
+  const [searchParams, setSearchParams] = useSearchParams()
   const [buyingPackageId, setBuyingPackageId] = useState(null)
   const [error, setError] = useState('')
-  const [lastCreated, setLastCreated] = useState(null)
+  const [checkoutReturn, setCheckoutReturn] = useState(null)
   const {
     purchases,
     loading,
@@ -45,7 +34,6 @@ export default function EvoCash() {
     loadMore,
     error: listError,
     refresh,
-    addPurchaseLocally,
   } = useCashPurchases(user?.uid)
 
   useEffect(() => {
@@ -62,38 +50,54 @@ export default function EvoCash() {
     }
   }, [])
 
+  useEffect(() => {
+    if (searchParams.get('checkout_return') !== '1') return
+    const purchaseId = searchParams.get('purchase_id')
+    if (!/^[0-9a-f-]{36}$/i.test(purchaseId || '')) return
+    const hints = {
+      order_nsu: searchParams.get('order_nsu'),
+      transaction_nsu: searchParams.get('transaction_nsu'),
+      slug: searchParams.get('slug'),
+    }
+    let active = true
+    setCheckoutReturn('checking')
+    checkInfinitepayPurchase(purchaseId, hints)
+      .then((result) => {
+        if (!active) return
+        setCheckoutReturn(result.status === 'credited' ? 'credited' : 'pending')
+        refresh()
+        if (result.status === 'credited') setSearchParams({}, { replace: true })
+      })
+      .catch(() => { if (active) setCheckoutReturn('pending') })
+    return () => { active = false }
+  }, [searchParams, setSearchParams, refresh])
+
+  useEffect(() => {
+    if (checkoutReturn !== 'pending') return
+    const purchaseId = searchParams.get('purchase_id')
+    if (purchases.some((purchase) => purchase.id === purchaseId && purchase.status === 'credited')) {
+      setCheckoutReturn('credited')
+      setSearchParams({}, { replace: true })
+    }
+  }, [checkoutReturn, purchases, searchParams, setSearchParams])
+
   const hasPendingPurchase = hasPendingCashPurchase(purchases)
 
   async function buy(packageId) {
     if (buyingPackageId) return
     setError('')
     setBuyingPackageId(packageId)
-    const requestId = resolveRequestId(pendingAttempt, packageId, newRequestId)
     try {
-      const result = await requestCashPurchase({ packageId, requestId })
-      setLastCreated(result)
-      setPendingAttempt(null)
-      addPurchaseLocally({
-        id: result.id,
-        packageId: result.packageId,
-        packageLabel: result.packageLabel,
-        cashAmount: result.cashAmount,
-        amountCentavos: result.amountCentavos,
-        currency: result.currency,
-        status: result.status,
-        qrCode: result.qrCode,
-        qrCodeBase64: result.qrCodeBase64,
-        ticketUrl: result.ticketUrl,
-        createdAt: new Date().toISOString(),
-      })
+      const result = await requestCashPurchase({ packageId })
+      window.location.assign(result.checkoutUrl)
     } catch (err) {
-      setPendingAttempt({ key: packageId, requestId })
       const KNOWN_ERRORS = {
         PENDING_CASH_PURCHASE_EXISTS: 'Você já tem uma compra de EvoCash pendente.',
         CASH_PACKAGE_UNAVAILABLE: 'Este pacote não está mais disponível.',
-        MERCADOPAGO_NOT_CONFIGURED: 'Pagamentos estão temporariamente indisponíveis.',
-        MERCADOPAGO_REQUEST_FAILED: 'Não foi possível gerar o pagamento PIX. Tente novamente.',
-        REQUEST_ID_CONFLICT: 'Este pedido já foi usado para outra compra.',
+        INFINITEPAY_NOT_CONFIGURED: 'Pagamentos estão temporariamente indisponíveis.',
+        INFINITEPAY_LINK_FAILED: 'Não foi possível abrir o checkout. Tente novamente.',
+        CHECKOUT_IN_PROGRESS: 'O checkout está sendo criado. Tente novamente em instantes.',
+        CHECKOUT_RECONCILIATION_REQUIRED: 'Não foi possível confirmar a criação do checkout. O suporte precisa conciliar este pedido antes de uma nova tentativa.',
       }
       setError(KNOWN_ERRORS[err?.message] || 'Não foi possível solicitar a compra. Tente novamente.')
     } finally {
@@ -143,22 +147,11 @@ export default function EvoCash() {
         </Flash>
       )}
 
-      {lastCreated && (
-        <Box sx={{ mb: 3, minWidth: 0 }}>
-          <Text as="p" sx={{ fontWeight: 'bold', m: 0, mb: 2 }}>
-            Pedido criado
-          </Text>
-          <PixPaymentInstructions
-            purchaseId={lastCreated.id}
-            packageLabel={lastCreated.packageLabel}
-            cashAmount={lastCreated.cashAmount}
-            amountCentavos={lastCreated.amountCentavos}
-            qrCode={lastCreated.qrCode}
-            qrCodeBase64={lastCreated.qrCodeBase64}
-            ticketUrl={lastCreated.ticketUrl}
-          />
-        </Box>
-      )}
+      {checkoutReturn && <Flash sx={{ mb: 3 }} role="status">
+        {checkoutReturn === 'checking' ? 'Confirmando seu pagamento…' :
+          checkoutReturn === 'credited' ? 'Pagamento confirmado. Seu saldo foi atualizado.' :
+          'Pagamento ainda não confirmado. Acompanhe em Minhas compras.'}
+      </Flash>}
 
       <section aria-labelledby="packages-heading" style={{ marginBottom: '2rem' }}>
         <Heading as="h2" id="packages-heading" sx={{ fontSize: 2, mb: 2 }}>
@@ -172,15 +165,16 @@ export default function EvoCash() {
         )}
         {hasPendingPurchase && (
           <Flash sx={{ mb: 3 }}>
-            Você já tem uma compra aguardando confirmação — acompanhe em &quot;Minhas
-            compras&quot; abaixo.
+            Você já tem uma compra em andamento — acompanhe em &quot;Minhas compras&quot; abaixo.
           </Flash>
         )}
         {!loadingSettings && settings.packages.length > 0 && (
           <CashPackageCards
             packages={settings.packages}
             buyingPackageId={buyingPackageId}
-            disabled={!!buyingPackageId || hasPendingPurchase}
+            disabled={!!buyingPackageId || (hasPendingPurchase && !purchases.some(
+              (purchase) => purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && !purchase.checkoutUrl
+            ))}
             onBuy={buy}
           />
         )}
@@ -264,7 +258,11 @@ export default function EvoCash() {
               Data: {formatDateTime(purchase.createdAt ? new Date(purchase.createdAt) : null)}
             </Text>
 
-            {purchase.status === 'pending' && (
+            {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && purchase.checkoutUrl && (
+              <Button as="a" href={purchase.checkoutUrl}>Continuar no checkout</Button>
+            )}
+
+            {purchase.status === 'pending' && purchase.paymentProvider !== 'infinitepay' && (
               <PixPaymentInstructions
                 purchaseId={purchase.id}
                 packageLabel={purchase.packageLabel}

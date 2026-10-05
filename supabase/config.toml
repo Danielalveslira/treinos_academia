@@ -441,3 +441,15 @@ verify_jwt = true
 [functions.process-push-outbox]
 enabled = true
 verify_jwt = true
+
+[functions.infinitepay-create-checkout]
+enabled = true
+verify_jwt = true
+
+[functions.infinitepay-check-payment]
+enabled = true
+verify_jwt = true
+
+[functions.infinitepay-webhook]
+enabled = true
+verify_jwt = false

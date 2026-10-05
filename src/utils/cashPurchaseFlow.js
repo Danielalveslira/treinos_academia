@@ -27,20 +27,21 @@ export function canSubmitCancellation(reason) {
   return typeof reason === 'string' && reason.trim().length >= 5
 }
 
-// Uma entrada por status realmente alcançável (pending/credited/cancelled, ver
-// cash-purchase-core.js: são os 2 únicos estados terminais + o inicial). Textos
+// Uma entrada por status realmente alcançável, inclusive retenção em caso financeiro. Textos
 // diferentes para a mesma compra dependendo de quem olha (usuário vê "aguardando
 // confirmação"; admin vê "pendente") -- diferença de público, não duplicação por acaso.
 export const USER_CASH_PURCHASE_STATUS_LABELS = {
   pending: { text: 'Aguardando confirmação', variant: 'attention' },
   credited: { text: 'Creditado', variant: 'success' },
   cancelled: { text: 'Cancelado', variant: 'danger' },
+  held_in_case: { text: 'Retido em análise financeira', variant: 'attention' },
 }
 
 export const ADMIN_CASH_PURCHASE_STATUS_LABELS = {
   pending: { text: 'Pendente', variant: 'attention' },
   credited: { text: 'Creditada', variant: 'success' },
   cancelled: { text: 'Cancelada', variant: 'danger' },
+  held_in_case: { text: 'Retida em caso financeiro', variant: 'attention' },
 }
 
 // Abrevia só a APRESENTAÇÃO de um protocolo (uuid, 36 caracteres) pra não estourar a
