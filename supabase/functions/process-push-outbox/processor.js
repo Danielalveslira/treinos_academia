@@ -1,3 +1,7 @@
+import { renderPushMessage, workoutReminderMessage } from './messages.js'
+
+export { workoutReminderMessage }
+
 const DEFAULT_LIMIT = 25
 const DEFAULT_SEND_TIMEOUT_MS = 10000
 
@@ -6,138 +10,50 @@ const DEFAULT_SEND_TIMEOUT_MS = 10000
 const PUSH_ENDPOINT_PATTERN =
   /^https:\/\/(fcm\.googleapis\.com|([a-z0-9-]+\.)*push\.services\.mozilla\.com|([a-z0-9-]+\.)*push\.apple\.com|([a-z0-9-]+\.)*notify\.windows\.com)\//i
 
-const CONTENT = {
-  post_like: ['Nova curtida', 'Alguém curtiu sua publicação.'],
-  moderation_notice: ['Aviso da conta', 'Você recebeu um aviso da moderação.'],
-  report_resolved: ['Atendimento', 'Seu caso foi analisado.'],
-  economy_credit: ['Evolutus', 'Você recebeu uma recompensa.'],
-  economy_debit: ['Ajuste na carteira', 'Houve um ajuste na sua carteira.'],
-  post_reply: ['Novo comentário', 'Alguém comentou na sua publicação.'],
-  comment_reply: ['Nova resposta', 'Alguém respondeu seu comentário.'],
-  comment_mention: ['Nova menção', 'Alguém mencionou você em um comentário.'],
-  comment_like: ['Nova curtida', 'Alguém curtiu seu comentário.'],
-  admin_report: ['Nova denúncia', 'Uma denúncia aguarda análise.'],
-  admin_appeal: ['Novo recurso', 'Um recurso aguarda análise.'],
-  admin_privacy_request: ['Solicitação de privacidade', 'Uma solicitação aguarda análise.'],
-  admin_moderation_decision: ['Decisão de moderação', 'Uma decisão de moderação foi registrada.'],
-  admin_restriction: ['Aviso da conta', 'Uma restrição foi aplicada.'],
-  admin_deletion_review: ['Revisão de exclusão', 'Uma exclusão aguarda revisão.'],
-  admin_broadcast: ['Aviso do Evolutus', 'Você recebeu um aviso importante.'],
-}
+const COALESCED_TYPES = new Set(['post_like', 'comment_like', 'admin_report', 'admin_appeal', 'admin_privacy_request'])
 
-const MODERATION_BODIES = {
-  warning: 'Você recebeu um aviso da moderação.',
-  remove_content: 'Um conteúdo seu foi removido pela moderação.',
-  temporary_suspension: 'Sua conta foi suspensa temporariamente.',
-  community_ban: 'Você foi removido de uma comunidade.',
-  system_ban: 'Sua conta foi suspensa.',
-  restore: 'Uma restrição na sua conta foi retirada.',
-}
-const SUPPORT_BODIES = {
-  report: 'Sua denúncia foi analisada.',
-  appeal: 'Seu recurso foi analisado.',
-  privacy: 'Sua solicitação de privacidade foi concluída.',
-}
-const ECONOMY_REASONS = { cash_purchase_confirmed: 'Pagamento confirmado', admin_bonus: 'Bônus' }
-const ASSET_NAMES = { coin: 'EvoCoins', cash: 'EvoCash' }
-const SOCIAL_TYPES = ['post_reply', 'comment_reply', 'comment_mention', 'comment_like', 'post_like']
-
-const WORKOUT_REMINDERS = {
-  workout_reminder_before: [
-    ['🏋️ Treino no radar', 'Seu treino começa em uma hora. Deixe tudo pronto!'],
-    ['🔥 O plano está de pé', 'Daqui a uma hora é hora de treinar. Bora?'],
-    ['⚡ Já já tem treino', 'Falta uma hora para colocar o plano em prática.'],
-    ['👀 Seu treino está chegando', 'Uma hora para começar. Seu plano está esperando.'],
-    ['💪 Prepare o terreno', 'Seu horário de treino chega em uma hora.'],
-    ['Treino marcado', 'Daqui a uma hora você tem um encontro com seu plano.'],
-  ],
-  workout_reminder_start: [
-    ['🏋️ Hora de treinar!', 'Seu treino de hoje já está esperando.'],
-    ['🔥 Vamos nessa?', 'Você marcou este horário por um motivo.'],
-    ['⚡ Seu treino começou', 'O plano está feito. Agora é colocar em prática.'],
-    ['👀 O treino está olhando pra você', 'Bora começar?'],
-    ['💪 É agora', 'Seu horário de treino chegou.'],
-    ['Seu plano chama', 'Hora de dar o primeiro passo do treino de hoje.'],
-  ],
-}
-
-export function workoutReminderMessage(type, variant) {
-  const messages = WORKOUT_REMINDERS[type]
-  if (!messages) return null
-  const index = Number.isInteger(variant) && variant >= 0 ? variant % messages.length : 0
-  return messages[index]
-}
-
-// Texto do Push de economia. O valor vem da ledger confirmada no banco (metadata gravada pelo
-// trigger), nunca do cliente. Só o valor de EvoCoins aparece: nada de saldo, e nenhum valor em
-// EvoCash (informação financeira que pode ficar visível na tela bloqueada).
-function economyContent(job, metadata) {
-  const asset = ASSET_NAMES[metadata.asset] ? metadata.asset : null
-  const reason = ECONOMY_REASONS[metadata.reason]
-  if (job.notification_type === 'economy_debit') {
-    return ['Ajuste na carteira', 'Houve um ajuste na sua carteira. Toque para ver.']
-  }
-  if (asset === 'coin') {
-    const amount = Number(metadata.amount)
-    if (Number.isFinite(amount) && amount > 0 && amount <= 1e9) {
-      return ['Você recebeu EvoCoins', `Você recebeu ${amount.toLocaleString('pt-BR')} EvoCoins.${reason ? ` Motivo: ${reason}.` : ''}`]
-    }
-  }
-  if (metadata.reason === 'cash_purchase_confirmed') return ['Pagamento confirmado', 'Seus EvoCash foram creditados.']
-  return [asset === 'cash' ? 'Você recebeu EvoCash' : 'Você recebeu uma recompensa',
-    asset === 'cash' ? 'Você recebeu EvoCash.' : 'Você recebeu uma recompensa.']
+// Hash curto e estável para a `tag` (agrupa no aparelho sem expor o caminho no payload).
+function shortHash(value) {
+  let hash = 5381
+  for (const character of String(value)) hash = ((hash << 5) + hash + character.charCodeAt(0)) >>> 0
+  return hash.toString(36)
 }
 
 export function isAllowedPushEndpoint(value) {
   return typeof value === 'string' && value.length <= 4096 && PUSH_ENDPOINT_PATTERN.test(value)
 }
 
+// Mesma regra do Service Worker e da Central: só caminho interno, sem "//", "\\", espaço nem
+// caracteres de controle (o navegador remove tab/nova linha, e "/<TAB>/host" viraria "//host").
 export function safeTargetUrl(value) {
-  // "\" é tratado como "/" pelos navegadores: "/\host" equivale a "//host".
   if (
     typeof value !== 'string' || value.length > 300 || !value.startsWith('/') ||
-    value.startsWith('//') || value.includes('\\')
+    value.startsWith('//') || value.includes('\\') ||
+    // eslint-disable-next-line no-control-regex
+    /[\u0000-\u0020\u007f-\u009f\u2028\u2029]/.test(value)
   ) {
     return '/'
   }
-  const hasControlCharacter = [...value].some((character) => {
-    const code = character.charCodeAt(0)
-    return code < 32 || code === 127
-  })
-  return hasControlCharacter ? '/' : value
+  return value
 }
 
 export function buildPushPayload(job) {
-  const [fallbackTitle, fallbackBody] = CONTENT[job.notification_type] || ['Nova notificação', 'Você recebeu uma nova notificação.']
-  const metadata = job.metadata && typeof job.metadata === 'object' ? job.metadata : {}
-  const broadcast = job.notification_type === 'admin_broadcast'
-  const body = broadcast && typeof metadata.body === 'string' ? metadata.body.slice(0, 240) : fallbackBody
-  const actor = typeof job.actor_username === 'string' && job.actor_username.trim()
-    ? `@${job.actor_username.trim()}`
-    : null
-  let title = broadcast && typeof metadata.title === 'string' ? metadata.title.slice(0, 120)
-    : actor && SOCIAL_TYPES.includes(job.notification_type)
-    ? `${actor}: ${fallbackTitle.toLowerCase()}`
-    : fallbackTitle
-  let finalBody = body
-  if (job.notification_type === 'economy_credit' || job.notification_type === 'economy_debit') {
-    ;[title, finalBody] = economyContent(job, metadata)
-  } else if (WORKOUT_REMINDERS[job.notification_type]) {
-    ;[title, finalBody] = workoutReminderMessage(job.notification_type, metadata.variant)
-  } else if (job.notification_type === 'moderation_notice') {
-    finalBody = MODERATION_BODIES[metadata.action] || body
-  } else if (job.notification_type === 'report_resolved') {
-    finalBody = SUPPORT_BODIES[metadata.kind] || body
-  }
-  return {
+  const { title, body } = renderPushMessage(job)
+  const payload = {
     notificationId: String(job.notification_id),
     title,
-    body: finalBody,
+    body,
     type: job.notification_type,
     targetUrl: safeTargetUrl(job.action_url),
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
   }
+  // Curtidas e alertas administrativos em rajada compartilham a `tag`: um Push novo SUBSTITUI o
+  // anterior no aparelho em vez de empilhar (o Service Worker usa renotify para ainda avisar).
+  if (COALESCED_TYPES.has(job.notification_type)) {
+    payload.tag = `${job.notification_type}:${shortHash(job.action_url || job.notification_type)}`
+  }
+  return payload
 }
 
 const URGENCIES = new Set(['very-low', 'low', 'normal', 'high'])
@@ -164,6 +80,10 @@ export function safePushError(error, job) {
   for (const secret of [job.endpoint, job.p256dh, job.auth]) {
     if (typeof secret === 'string' && secret) message = message.split(secret).join('[redacted]')
   }
+  // Rede de segurança: qualquer URL ou token longo (chave, JWT, endpoint de outro formato) sai do log.
+  message = message
+    .replace(/https?:\/\/\S+/gi, '[url]')
+    .replace(/[A-Za-z0-9_-]{32,}/g, '[redacted]')
   return message.slice(0, 500)
 }
 

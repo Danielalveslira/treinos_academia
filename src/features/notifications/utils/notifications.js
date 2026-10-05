@@ -1,3 +1,5 @@
+import { workoutReminderMessage } from '../../../../supabase/functions/process-push-outbox/messages.js'
+
 const ACTION_LABELS = {
   warning: 'Advertência',
   remove_content: 'Conteúdo removido',
@@ -35,17 +37,6 @@ const ECONOMY_REASON_LABELS = {
 }
 
 const ASSET_NAMES = { coin: 'EvoCoins', cash: 'EvoCash' }
-
-const WORKOUT_REMINDERS = {
-  workout_reminder_before: [
-    '🏋️ Treino no radar', '🔥 O plano está de pé', '⚡ Já já tem treino',
-    '👀 Seu treino está chegando', '💪 Prepare o terreno', 'Treino marcado',
-  ],
-  workout_reminder_start: [
-    '🏋️ Hora de treinar!', '🔥 Vamos nessa?', '⚡ Seu treino começou',
-    '👀 O treino está olhando pra você', '💪 É agora', 'Seu plano chama',
-  ],
-}
 
 // O valor vem da linha confirmada da ledger (gravada pelo banco); aqui só é formatado. Dentro do app
 // (conteúdo privado) o valor aparece; o Push nunca mostra valores em EvoCash.
@@ -97,10 +88,9 @@ export function notificationContent(notification) {
   switch (notification.type) {
     case 'workout_reminder_before':
     case 'workout_reminder_start': {
-      const titles = WORKOUT_REMINDERS[notification.type]
-      const variant = Number.isInteger(metadata.variant) && metadata.variant >= 0
-        ? metadata.variant % titles.length : 0
-      return { title: titles[variant], description: notification.type === 'workout_reminder_before'
+      // Mesmo catálogo do Push: a Central mostra exatamente o título que o aparelho recebeu.
+      const [title] = workoutReminderMessage(notification.type, metadata.variant)
+      return { title, description: notification.type === 'workout_reminder_before'
         ? 'Seu treino começa em uma hora.' : 'Seu horário de treino chegou.' }
     }
     case 'comment_like':
@@ -151,7 +141,12 @@ export function notificationContent(notification) {
 // Só aceita caminhos internos (começam com "/", nem "//" nem "/\"): o destino vem do banco, mas o
 // cliente nunca navega para uma URL externa a partir de uma notificação.
 export function safeActionUrl(url) {
-  return typeof url === 'string' && url.startsWith('/') && !url.startsWith('//') && !url.includes('\\')
+  // Só caminho interno. Rejeita "//", "\" e QUALQUER caractere de controle: o navegador remove tab/nova
+  // linha de URLs, então "/<TAB>/host" viraria "//host" (redirecionamento ao abrir em nova aba).
+  // eslint-disable-next-line no-control-regex
+  const hasControlOrSpace = typeof url === 'string' && /[\u0000-\u0020\u007f-\u009f\u2028\u2029]/.test(url)
+  return typeof url === 'string' && url.length <= 300 && url.startsWith('/') && !url.startsWith('//')
+    && !url.includes('\\') && !hasControlOrSpace
     ? url
     : null
 }

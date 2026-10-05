@@ -167,14 +167,15 @@ self.addEventListener('fetch', (event) => {
 })
 
 function safeNotificationTarget(value) {
-  // "\" vira "/" nos navegadores: "/\host" equivale a "//host" (open redirect).
+  // Só caminho interno: sem "//", "\\" (o navegador a trata como "/"), espaço nem caracteres de controle
+  // (tab/nova linha são removidos de URLs: "/<TAB>/host" viraria "//host").
   if (
     typeof value !== 'string' || value.length > 300 || !value.startsWith('/') ||
     value.startsWith('//') || value.includes('\\')
   ) return '/'
   if ([...value].some((character) => {
     const code = character.charCodeAt(0)
-    return code < 32 || code === 127
+    return code <= 32 || (code >= 127 && code <= 159) || code === 0x2028 || code === 0x2029
   })) return '/'
   return value
 }
@@ -189,11 +190,15 @@ self.addEventListener('push', (event) => {
     const body = typeof payload.body === 'string' && payload.body.trim()
       ? payload.body.slice(0, 240)
       : 'Você recebeu uma nova notificação.'
+    // `tag` do servidor agrupa rajadas (curtidas/alertas): o Push novo SUBSTITUI o anterior no aparelho
+    // e `renotify` ainda avisa. Só aceita um formato conservador; qualquer outra coisa é ignorada.
+    const groupTag = typeof payload.tag === 'string' && /^[A-Za-z0-9:_-]{1,64}$/.test(payload.tag) ? payload.tag : null
     await self.registration.showNotification(title, {
       body,
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
-      tag: payload.notificationId ? `notification-${String(payload.notificationId)}` : undefined,
+      tag: groupTag || (payload.notificationId ? `notification-${String(payload.notificationId)}` : undefined),
+      renotify: Boolean(groupTag),
       data: {
         notificationId: payload.notificationId ? String(payload.notificationId) : null,
         targetUrl: safeNotificationTarget(payload.targetUrl),

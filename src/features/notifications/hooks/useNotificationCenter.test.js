@@ -214,7 +214,10 @@ test('o código da Central não importa nada de Web Push', async () => {
   })
   const inputs = Object.keys(result.metafile.inputs)
   assert.ok(inputs.some((file) => file.endsWith('useNotificationCenter.js')))
-  assert.deepEqual(inputs.filter((file) => /push/i.test(file)), [])
+  // O único arquivo "push" permitido é o catálogo de textos (módulo puro, compartilhado com o worker).
+  const pushFiles = inputs.filter((file) => /push/i.test(file))
+  assert.deepEqual(pushFiles.map((file) => file.split('/').slice(-2).join('/')), ['process-push-outbox/messages.js'])
+  assert.equal(inputs.some((file) => /pushService|usePushSubscriptionSync|PushNotificationSettings/.test(file)), false)
 })
 
 // ---- Realtime -----------------------------------------------------------------------------------

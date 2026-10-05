@@ -1,28 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { notificationContent } from '../../../src/features/notifications/utils/notifications.js'
 import {
   buildPushPayload, classifyPushError, isAllowedPushEndpoint, processPushOutbox, pushSendOptions, safePushError, safeTargetUrl,
-  workoutReminderMessage,
 } from './processor.js'
-
-test('lembretes de treino variam sem expor dados do usuário no Push', () => {
-  const base = { notification_id: 42, notification_type: 'workout_reminder_before',
-    action_url: '/novo-treino?planejado=2026-10-06' }
-  const first = buildPushPayload({ ...base, metadata: { variant: 0 } })
-  const second = buildPushPayload({ ...base, metadata: { variant: 1 } })
-  assert.notEqual(first.title, second.title)
-  assert.equal(first.targetUrl, base.action_url)
-  assert.equal(first.body.includes('2026-10-06'), false)
-  assert.deepEqual(workoutReminderMessage('workout_reminder_start', 99),
-    workoutReminderMessage('workout_reminder_start', 3))
-  for (const type of ['workout_reminder_before', 'workout_reminder_start']) {
-    for (let variant = 0; variant < 6; variant += 1) {
-      assert.equal(notificationContent({ type, metadata: { variant } }).title,
-        workoutReminderMessage(type, variant)[0], 'Central e Push usam o mesmo título')
-    }
-  }
-})
 
 const FCM = 'https://fcm.googleapis.com/fcm/send/'
 
@@ -150,61 +130,6 @@ test('falha de finalização propaga para o worker não marcar sucesso falso', a
   await assert.rejects(processPushOutbox(admin, async () => {}, { workerId: 'worker' }), /db down/)
 })
 
-test('payload de broadcast usa título/corpo limitados e URL sanitizada', () => {
-  const payload = buildPushPayload({
-    notification_id: 1, notification_type: 'admin_broadcast', action_url: '/\\evil.test',
-    metadata: { title: 'T'.repeat(500), body: 'B'.repeat(500), email: 'secret@example.test' },
-  })
-  assert.equal(payload.title.length, 120)
-  assert.equal(payload.body.length, 240)
-  assert.equal(payload.targetUrl, '/')
-  assert.equal(JSON.stringify(payload).includes('secret@'), false)
-})
-
-test('payload de comment_like diz quem curtiu e abre o comentário, sem conteúdo privado', () => {
-  const payload = buildPushPayload({
-    notification_id: 41, notification_type: 'comment_like', actor_username: 'liker02',
-    action_url: '/comunidades/c1/publicacoes/p1/comentarios/k1', metadata: { texto: 'privado' },
-  })
-  assert.equal(payload.title, '@liker02: nova curtida')
-  assert.equal(payload.body, 'Alguém curtiu seu comentário.')
-  assert.equal(payload.targetUrl, '/comunidades/c1/publicacoes/p1/comentarios/k1')
-  assert.equal(JSON.stringify(payload).includes('privado'), false)
-})
-
-test('payloads dos novos eventos: post_like, economia, moderação e atendimento, sem dados sensíveis', () => {
-  const like = buildPushPayload({ notification_id: 1, notification_type: 'post_like', actor_username: 'ana', action_url: '/comunidades/c#publicacao-p', metadata: {} })
-  assert.equal(like.title, '@ana: nova curtida')
-  assert.equal(like.body, 'Alguém curtiu sua publicação.')
-  assert.equal(like.targetUrl, '/comunidades/c#publicacao-p')
-
-  const coins = buildPushPayload({ notification_id: 2, notification_type: 'economy_credit', action_url: '/evocash', metadata: { asset: 'coin', amount: 25, reason: 'admin_bonus' } })
-  assert.equal(coins.title, 'Você recebeu EvoCoins')
-  assert.equal(coins.body, 'Você recebeu 25 EvoCoins. Motivo: Bônus.')
-
-  const cash = buildPushPayload({ notification_id: 3, notification_type: 'economy_credit', action_url: '/evocash', metadata: { asset: 'cash', amount: 120, reason: 'cash_purchase_confirmed' } })
-  assert.equal(cash.title, 'Pagamento confirmado')
-  assert.equal(JSON.stringify(cash).includes('120'), false, 'valor em EvoCash não aparece no Push')
-
-  const debit = buildPushPayload({ notification_id: 4, notification_type: 'economy_debit', action_url: '/evocash', metadata: { asset: 'coin', amount: 9876, reason: 'chargeback' } })
-  assert.equal(JSON.stringify(debit).includes('9876'), false, 'ajuste não expõe valor')
-
-  const mod = buildPushPayload({ notification_id: 5, notification_type: 'moderation_notice', action_url: '/atendimento', metadata: { action: 'remove_content', reason: 'SEGREDO' } })
-  assert.equal(mod.body, 'Um conteúdo seu foi removido pela moderação.')
-  assert.equal(JSON.stringify(mod).includes('SEGREDO'), false)
-
-  const support = buildPushPayload({ notification_id: 6, notification_type: 'report_resolved', action_url: '/atendimento', metadata: { kind: 'appeal' } })
-  assert.equal(support.body, 'Seu recurso foi analisado.')
-})
-
-test('valores inesperados nos metadados caem em texto genérico', () => {
-  const weird = buildPushPayload({ notification_id: 7, notification_type: 'economy_credit', metadata: { asset: 'coin', amount: 'DROP TABLE', reason: '<script>' } })
-  assert.equal(JSON.stringify(weird).includes('DROP'), false)
-  assert.equal(JSON.stringify(weird).includes('script'), false)
-  const unknownAction = buildPushPayload({ notification_id: 8, notification_type: 'moderation_notice', metadata: { action: '<b>x</b>' } })
-  assert.equal(unknownAction.body, 'Você recebeu um aviso da moderação.')
-})
-
 test('urgência e TTL vêm do catálogo; valores inválidos usam padrões seguros', () => {
   assert.deepEqual(pushSendOptions({ urgency: 'high', ttl_seconds: 604800 }), { urgency: 'high', ttl: 604800 })
   assert.deepEqual(pushSendOptions({ urgency: 'normal', ttl_seconds: 86400 }), { urgency: 'normal', ttl: 86400 })
@@ -223,4 +148,49 @@ test('o worker repassa urgência/TTL de cada job ao provedor', async () => {
   } }
   await processPushOutbox(admin, async (subscription, payload, options) => { seen.push([subscription.endpoint.slice(-1), options]) }, { workerId: 'w' })
   assert.deepEqual(seen, [['h', { urgency: 'high', ttl: 86400 }], ['n', { urgency: 'normal', ttl: 3600 }]])
+})
+
+test('payload é mínimo e carrega só campos conhecidos (nada de metadata nem ids internos)', () => {
+  const payload = buildPushPayload({
+    notification_id: 5, notification_type: 'post_reply', actor_username: 'ana', action_url: '/comunidades/c/publicacoes/p/comentarios/k',
+    metadata: { email: 'segredo@example.test', saldo: 999 }, variant: 3, group_count: 1,
+  })
+  assert.deepEqual(Object.keys(payload).sort(), ['badge', 'body', 'icon', 'notificationId', 'targetUrl', 'title', 'type'])
+  assert.equal(JSON.stringify(payload).includes('segredo'), false)
+  assert.equal(JSON.stringify(payload).includes('999'), false)
+})
+
+test('curtidas e alertas administrativos levam `tag` para substituir o Push anterior no aparelho', () => {
+  const a = buildPushPayload({ notification_id: 1, notification_type: 'post_like', actor_username: 'a', action_url: '/comunidades/c#publicacao-p1', metadata: {}, variant: 0, group_count: 1 })
+  const b = buildPushPayload({ notification_id: 2, notification_type: 'post_like', actor_username: 'b', action_url: '/comunidades/c#publicacao-p1', metadata: {}, variant: 1, group_count: 3 })
+  const other = buildPushPayload({ notification_id: 3, notification_type: 'post_like', actor_username: 'c', action_url: '/comunidades/c#publicacao-p2', metadata: {}, variant: 0, group_count: 1 })
+  assert.equal(a.tag, b.tag, 'mesma publicação, mesma tag')
+  assert.notEqual(a.tag, other.tag, 'publicações diferentes não se substituem')
+  assert.match(a.tag, /^post_like:[a-z0-9]+$/)
+  assert.equal(buildPushPayload({ notification_id: 4, notification_type: 'post_reply', actor_username: 'a', action_url: '/x', metadata: {}, variant: 0, group_count: 1 }).tag, undefined, 'comentários nunca se substituem')
+})
+
+test('o worker repassa variante e tamanho do grupo ao texto (curtidas agrupadas)', () => {
+  const payload = buildPushPayload({ notification_id: 9, notification_type: 'post_like', actor_username: 'joao', action_url: '/x', metadata: {}, variant: 0, group_count: 4 })
+  assert.match(payload.body, /^@joao e mais 3 pessoas curtiram/)
+  const same = buildPushPayload({ notification_id: 9, notification_type: 'post_like', actor_username: 'joao', action_url: '/x', metadata: {}, variant: 0, group_count: 4 })
+  assert.deepEqual(payload, same, 'reprocessar o mesmo job gera exatamente o mesmo Push')
+})
+
+test('lembretes de treino usam a variante gravada pelo banco (sem módulo) e não expõem a data', () => {
+  const base = { notification_id: 42, notification_type: 'workout_reminder_start', action_url: '/novo-treino?planejado=2026-10-06' }
+  const a = buildPushPayload({ ...base, metadata: { variant: 9600 } })
+  const b = buildPushPayload({ ...base, metadata: { variant: 9601 } })
+  assert.notEqual(a.title, b.title)
+  assert.equal(a.targetUrl, base.action_url)
+  assert.equal(JSON.stringify(a).includes('2026-10-06'), true, 'a data só existe no deep link, nunca no texto')
+  assert.equal(a.body.includes('2026'), false)
+})
+
+test('erros persistidos não carregam URLs, tokens longos nem as chaves da subscription', () => {
+  const job = { endpoint: `${FCM}abc`, p256dh: 'chave-publica', auth: 'segredo-auth' }
+  const raw = new Error(`falha em https://outro.exemplo/path?token=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdef e chave-publica segredo-auth Bearer eyJhbGciOiJIUzI1NiJ9abcdefghijklmnopqrstuvwxyz`)
+  const out = safePushError(raw, job)
+  assert.ok(!/https?:|chave-publica|segredo-auth|eyJhbGci|ABCDEFGHIJKLMNOP/.test(out), out)
+  assert.ok(out.length <= 500)
 })

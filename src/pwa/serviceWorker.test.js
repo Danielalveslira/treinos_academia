@@ -443,3 +443,46 @@ test('clique sem janela abre direto o deep link com âncora', async () => {
   await click('/comunidades/c1#treino-w1')
   assert.equal(sw.self.openedWindow, `${ORIGIN}/comunidades/c1#treino-w1`)
 })
+
+// ---- Contrato de URL: as 3 camadas JS (Central, worker, Service Worker) aplicam a MESMA regra ------
+const BAD_URLS = [
+  'https://evil.test', 'http://evil.test', '//evil.test', '/\\evil.test', '/\t/evil.test', '/\n/evil.test', '/\r/evil.test',
+  ' /x', '/ x', '/x y', 'javascript:alert(1)', 'data:text/html,x', 'vbscript:x', '\u0000/x', '/\u2028/evil', '/\u0085/evil',
+  '', null, undefined, 123, `/${'a'.repeat(300)}`,
+]
+const GOOD_URLS = ['/', '/perfil', '/comunidades/c#publicacao-p', '/novo-treino?planejado=2026-10-06', '/comunidades/c/publicacoes/p/comentarios/k']
+
+test('contrato de URL: Central, worker e Service Worker rejeitam o mesmo conjunto e aceitam os mesmos caminhos', async () => {
+  const { safeActionUrl } = await import('../features/notifications/utils/notifications.js')
+  const { safeTargetUrl } = await import('../../supabase/functions/process-push-outbox/processor.js')
+  for (const url of BAD_URLS) {
+    assert.equal(safeActionUrl(url), null, `Central aceitou ${JSON.stringify(url)}`)
+    assert.equal(safeTargetUrl(url), '/', `worker aceitou ${JSON.stringify(url)}`)
+    let work
+    handlers.push({ data: { json: () => ({ title: 't', targetUrl: url }) }, waitUntil: (promise) => { work = promise } })
+    await work
+    assert.equal(sw.self.shownNotification.options.data.targetUrl, '/', `Service Worker aceitou ${JSON.stringify(url)}`)
+  }
+  for (const url of GOOD_URLS) {
+    assert.equal(safeActionUrl(url), url)
+    assert.equal(safeTargetUrl(url), url)
+    let work
+    handlers.push({ data: { json: () => ({ title: 't', targetUrl: url }) }, waitUntil: (promise) => { work = promise } })
+    await work
+    assert.equal(sw.self.shownNotification.options.data.targetUrl, url)
+  }
+})
+
+test('push com `tag` do servidor agrupa e re-notifica; tag inválida é ignorada', async () => {
+  let work
+  handlers.push({ data: { json: () => ({ title: 'a', notificationId: 7, tag: 'post_like:1x9z' }) }, waitUntil: (promise) => { work = promise } })
+  await work
+  assert.equal(sw.self.shownNotification.options.tag, 'post_like:1x9z')
+  assert.equal(sw.self.shownNotification.options.renotify, true)
+  for (const tag of ['<script>', 'a b', 'x'.repeat(65), 12, {}, '']) {
+    handlers.push({ data: { json: () => ({ title: 'a', notificationId: 8, tag }) }, waitUntil: (promise) => { work = promise } })
+    await work
+    assert.equal(sw.self.shownNotification.options.tag, 'notification-8', `aceitou tag ${JSON.stringify(tag)}`)
+    assert.equal(sw.self.shownNotification.options.renotify, false)
+  }
+})
