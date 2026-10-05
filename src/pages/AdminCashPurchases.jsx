@@ -1,292 +1,66 @@
-import { Link } from 'react-router-dom'
 import { useState } from 'react'
-import {
-  Box,
-  Button,
-  Flash,
-  FormControl,
-  Heading,
-  Label,
-  Select,
-  Spinner,
-  Text,
-  Textarea,
-} from '@primer/react'
+import { Link } from 'react-router-dom'
+import { Box, Button, Flash, FormControl, Heading, Label, Select, Spinner, Text } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
 import { useUsernamesByIds } from '../hooks/useUsernamesByIds'
-import { cancelCashPurchase, confirmCashPurchase } from '../services/cashPurchaseService'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
-import {
-  canSubmitCancellation,
-  cashPurchaseStatusLabel,
-  ADMIN_CASH_PURCHASE_STATUS_LABELS as STATUS_LABELS,
-} from '../utils/cashPurchaseFlow'
+import { cashPurchaseStatusLabel, ADMIN_CASH_PURCHASE_STATUS_LABELS as STATUS_LABELS } from '../utils/cashPurchaseFlow'
 
-const KNOWN_ERRORS = {
-  PURCHASE_NOT_FOUND: 'Compra não encontrada.',
-  PURCHASE_NOT_PENDING: 'Esta compra não está mais pendente.',
-  PERMISSION_DENIED: 'Você não tem permissão para esta ação.',
-  ALREADY_CREDITED: 'Esta compra já foi creditada.',
-  INVALID_PURCHASE_SNAPSHOT: 'Dados da compra inconsistentes -- não é seguro creditar.',
-  REASON_REQUIRED: 'Informe um motivo com pelo menos 5 caracteres.',
+function date(value) {
+  return formatDateTime(value ? new Date(value) : null)
 }
 
-// Confirmação manual permanece apenas para compras históricas Mercado Pago. A RPC
-// também recusa essa ação para InfinitePay: somente payment_check pode liberar crédito.
 export default function AdminCashPurchases() {
   const { user } = useAuth()
   const [status, setStatus] = useState('pending')
-  const {
-    purchases,
-    loading,
-    hasMore,
-    loadMore,
-    error: loadError,
-    refresh,
-  } = useCashPurchases(user.uid, true, status)
-  // Batch, nunca N+1: uma consulta por página carregada (ou por status trocado), não
-  // uma leitura por card -- ver resolveUsernamesByIds.
-  const usernameById = useUsernamesByIds(purchases.map((purchase) => purchase.userId))
-  const [actingOn, setActingOn] = useState(null) // { purchaseId, action: 'confirm' | 'cancel' }
-  const [noteDraft, setNoteDraft] = useState('')
-  const [reasonDraft, setReasonDraft] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [actionError, setActionError] = useState('')
-
-  function startAction(purchaseId, action) {
-    setActingOn({ purchaseId, action })
-    setNoteDraft('')
-    setReasonDraft('')
-    setActionError('')
-  }
-  function cancelAction() {
-    setActingOn(null)
-    setActionError('')
-  }
-
-  async function submitConfirm(purchaseId) {
-    if (saving) return
-    setSaving(true)
-    setActionError('')
-    try {
-      await confirmCashPurchase(purchaseId, noteDraft.trim() || undefined)
-      setActingOn(null)
-      await refresh()
-    } catch (err) {
-      setActionError(KNOWN_ERRORS[err?.message] || 'Não foi possível confirmar a compra. Tente novamente.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function submitCancel(purchaseId) {
-    if (saving) return
-    setSaving(true)
-    setActionError('')
-    try {
-      await cancelCashPurchase(purchaseId, reasonDraft)
-      setActingOn(null)
-      await refresh()
-    } catch (err) {
-      setActionError(KNOWN_ERRORS[err?.message] || 'Não foi possível cancelar a compra. Tente novamente.')
-    } finally {
-      setSaving(false)
-    }
-  }
+  const { purchases, loading, hasMore, loadMore, error, refresh } = useCashPurchases(user.uid, true, status)
+  const usernames = useUsernamesByIds(purchases.map((purchase) => purchase.userId))
 
   return (
     <div className="support-page">
       <h1>Compras de EvoCash</h1>
-
-      <p>
-        A confirmação é automática (webhook do Mercado Pago). Use "Confirmar pagamento"/"Cancelar" só
-        quando isso falhar ou o pagamento tiver sido resolvido fora do fluxo do app -- confirmar credita
-        o valor imediatamente; cancelar exige um motivo e não pode ser desfeito.
-      </p>
-
+      <Text as="p">Histórico de compras e conciliação automática de pagamentos.</Text>
       <FormControl sx={{ mb: 3 }}>
         <FormControl.Label>Mostrar compras</FormControl.Label>
         <Select value={status} onChange={(event) => setStatus(event.target.value)}>
           <Select.Option value="pending">Pendentes</Select.Option>
-          <Select.Option value="credited">Creditadas</Select.Option>
-          <Select.Option value="cancelled">Canceladas</Select.Option>
-          <Select.Option value="">Todas</Select.Option>
+          <Select.Option value="paid">Pagos</Select.Option>
+          <Select.Option value="cancelled">Cancelados</Select.Option>
+          <Select.Option value="failed">Falhas</Select.Option>
+          <Select.Option value="">Todos</Select.Option>
         </Select>
       </FormControl>
-
       {loading && purchases.length === 0 && <Spinner aria-label="Carregando compras" />}
-      {loadError && (
-        <Flash variant="danger" sx={{ mb: 3 }}>
-          {loadError} <Button onClick={refresh}>Tentar novamente</Button>
-        </Flash>
-      )}
-      {!loading && purchases.length === 0 && !loadError && (
-        <Text as="p" sx={{ color: 'fg.muted' }}>
-          Nenhuma compra encontrada para este filtro.
-        </Text>
-      )}
-
+      {error && <Flash variant="danger" sx={{ mb: 3 }}>{error} <Button onClick={refresh}>Tentar novamente</Button></Flash>}
+      {!loading && purchases.length === 0 && !error && <Text as="p">Nenhuma compra encontrada para este filtro.</Text>}
       {purchases.map((purchase) => (
-        <Box
-          as="article"
-          key={purchase.id}
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-            border: '1px solid',
-            borderColor: 'border.default',
-            borderRadius: 2,
-            p: 3,
-            mb: 3,
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              flexWrap: 'wrap',
-              gap: 2,
-            }}
-          >
-            <Box>
-              <Heading as="h2" sx={{ fontSize: 1 }}>
-                {purchase.packageLabel}
-              </Heading>
-              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-                {usernameById[purchase.userId] ? `@${usernameById[purchase.userId]}` : 'sem @'}{' '}
-                · {purchase.userId}
-              </Text>
-              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-                Protocolo {purchase.id} · {formatDateTime(purchase.createdAt ? new Date(purchase.createdAt) : null)}
-              </Text>
-              <Text as="p" sx={{ fontSize: 0, m: 0 }}>
-                {formatCentavosBRL(purchase.amountCentavos)} — {purchase.cashAmount} EvoCash
-              </Text>
-              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-                Provedor: {purchase.paymentProvider === 'infinitepay' ? 'InfinitePay' : 'Mercado Pago'}
-              </Text>
-            </Box>
+        <Box as="article" key={purchase.id} sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3, overflowWrap: 'anywhere' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+            <Heading as="h2" sx={{ fontSize: 1 }}>{purchase.packageLabel}</Heading>
             <Label variant={cashPurchaseStatusLabel(purchase, STATUS_LABELS).variant}>
               {cashPurchaseStatusLabel(purchase, STATUS_LABELS).text}
             </Label>
           </Box>
-          <Link to={`/admin/contas?usuario=${encodeURIComponent(purchase.userId)}`}>
-            Ver conta do comprador (saldo e ledger)
-          </Link>
-          {purchase.status === 'credited' && (
-            <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-              {purchase.creditedBy ? `Confirmado por ${purchase.creditedBy}` : `Confirmado automaticamente (${purchase.paymentProvider === 'infinitepay' ? 'InfinitePay' : 'Mercado Pago'})`} em{' '}
-              {formatDateTime(purchase.creditedAt ? new Date(purchase.creditedAt) : null)}
-              {purchase.confirmationNote ? ` — ${purchase.confirmationNote}` : ''}
-            </Text>
-          )}
-          {purchase.status === 'cancelled' && (
-            <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-              Cancelado por {purchase.cancelledBy} em{' '}
-              {formatDateTime(purchase.cancelledAt ? new Date(purchase.cancelledAt) : null)} — {purchase.cancelReason}
-            </Text>
-          )}
-
-          {purchase.status === 'pending' && actingOn?.purchaseId !== purchase.id && (
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              {purchase.paymentProvider !== 'infinitepay' && (
-                <Button variant="primary" onClick={() => startAction(purchase.id, 'confirm')}>
-                  Confirmar pagamento
-                </Button>
-              )}
-              {purchase.paymentProvider !== 'infinitepay' && (
-                <Button variant="danger" onClick={() => startAction(purchase.id, 'cancel')}>
-                  Cancelar
-                </Button>
-              )}
-            </Box>
-          )}
-          {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && (
-            <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-              {purchase.cancelRequestedAt
-                ? 'Comprador solicitou cancelamento. Confira no provedor se o link pode ser pago e se há transação antes de concluir o caso.'
-                : purchase.checkoutUrl
-                ? 'Aguardando webhook ou conciliação com a InfinitePay. Verifique no provedor antes de qualquer cancelamento.'
-                : 'Checkout sem URL. Concilie o pedido no provedor antes de qualquer cancelamento.'}
-            </Text>
-          )}
-
-          {actingOn?.purchaseId === purchase.id && (
-            <Box sx={{ borderTop: '1px solid', borderColor: 'border.default', pt: 2 }}>
-              {actionError && (
-                <Flash variant="danger" role="alert" sx={{ mb: 2 }}>
-                  {actionError}
-                </Flash>
-              )}
-              {actingOn.action === 'confirm' ? (
-                <>
-                  <FormControl disabled={saving}>
-                    <FormControl.Label>
-                      Nota para auditoria <span className="profile-optional">(opcional)</span>
-                    </FormControl.Label>
-                    <Textarea
-                      block
-                      maxLength={500}
-                      rows={2}
-                      placeholder="Ex.: pagamento resolvido manualmente, referência #12345"
-                      value={noteDraft}
-                      onChange={(event) => setNoteDraft(event.target.value)}
-                    />
-                  </FormControl>
-                  <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                    <Button type="button" disabled={saving} onClick={cancelAction}>
-                      Voltar
-                    </Button>
-                    <Button
-                      variant="primary"
-                      loading={saving}
-                      onClick={() => submitConfirm(purchase.id)}
-                    >
-                      Confirmar de verdade
-                    </Button>
-                  </Box>
-                </>
-              ) : (
-                <>
-                  <FormControl required disabled={saving}>
-                    <FormControl.Label>Motivo do cancelamento</FormControl.Label>
-                    <Textarea
-                      block
-                      required
-                      minLength={5}
-                      maxLength={500}
-                      rows={2}
-                      value={reasonDraft}
-                      onChange={(event) => setReasonDraft(event.target.value)}
-                    />
-                  </FormControl>
-                  <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                    <Button type="button" disabled={saving} onClick={cancelAction}>
-                      Voltar
-                    </Button>
-                    <Button
-                      variant="danger"
-                      loading={saving}
-                      disabled={!canSubmitCancellation(reasonDraft)}
-                      onClick={() => submitCancel(purchase.id)}
-                    >
-                      Cancelar de verdade
-                    </Button>
-                  </Box>
-                </>
-              )}
-            </Box>
-          )}
+          <Text as="p" sx={{ m: 0 }}>{formatCentavosBRL(purchase.amountCentavos)} · {purchase.cashAmount} EvoCash</Text>
+          <Text as="p" sx={{ fontSize: 0, color: 'fg.muted' }}>
+            Protocolo: {purchase.id}<br />
+            Usuário: {purchase.userId ? (usernames[purchase.userId] ? `@${usernames[purchase.userId]} · ${purchase.userId}` : purchase.userId) : 'Conta excluída'}<br />
+            Provider: {purchase.paymentProvider === 'infinitepay' ? 'InfinitePay' : 'Mercado Pago'}<br />
+            Order NSU: {purchase.orderNsu || '—'}<br />
+            Transaction NSU: {purchase.transactionNsu || '—'}<br />
+            Forma de pagamento: {purchase.captureMethod || '—'}<br />
+            Criada: {date(purchase.createdAt)}<br />
+            Creditada: {date(purchase.creditedAt)}<br />
+            Cancelada: {date(purchase.cancelledAt)}
+          </Text>
+          {purchase.paidAfterCancelAt && <Text as="p" sx={{ color: 'attention.fg', fontWeight: 'bold' }}>
+            Pago após cancelamento: {date(purchase.paidAfterCancelAt)}
+          </Text>}
+          {purchase.userId && <Link to={`/admin/contas?usuario=${encodeURIComponent(purchase.userId)}`}>Ver conta do comprador</Link>}
         </Box>
       ))}
-      {hasMore && (
-        <Button onClick={loadMore} disabled={loading}>
-          Carregar mais compras
-        </Button>
-      )}
+      {hasMore && <Button onClick={loadMore} disabled={loading}>Carregar mais compras</Button>}
     </div>
   )
 }

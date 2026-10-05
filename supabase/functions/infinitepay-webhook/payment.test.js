@@ -42,6 +42,21 @@ test('duplicate notification does not call payment_check again', async () => {
   assert.equal(deps.calls.some((call) => call[0] === 'rpc' || call[0] === 'fetch'), false)
 })
 
+test('cancelled checkout is checked, unpaid remains cancelled and paid settles once', async () => {
+  const cancelled = { ...purchase, status: 'cancelled' }
+  const unpaid = fixtures({ row: cancelled, check: { success: true, paid: false, amount: 590 } })
+  assert.deepEqual(await verifyAndConfirm(unpaid), { status: 'cancelled', confirmed: false })
+  assert.equal(unpaid.calls.some((call) => call[0] === 'rpc'), false)
+  const paid = fixtures({ row: cancelled })
+  assert.deepEqual(await verifyAndConfirm(paid), { status: 'credited', confirmed: true })
+  assert.equal(paid.calls.filter((call) => call[0] === 'fetch').length, 1)
+  assert.equal(paid.calls.filter((call) => call[0] === 'rpc').length, 1)
+  const replay = fixtures({ row: { ...cancelled, status: 'credited', provider_transaction_nsu: hint.transactionNsu,
+    provider_invoice_slug: hint.invoiceSlug } })
+  assert.equal((await verifyAndConfirm(replay)).status, 'credited')
+  assert.equal(replay.calls.some((call) => call[0] === 'rpc'), false)
+})
+
 test('customer return is scoped to the authenticated user', async () => {
   const deps = fixtures()
   await verifyAndConfirm({ ...deps, userId: 'user-1' })

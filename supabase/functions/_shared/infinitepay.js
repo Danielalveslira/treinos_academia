@@ -21,7 +21,7 @@ export async function verifyAndConfirm({ admin, handle, hint, userId = null, fet
   if (lookupError || !purchase) throw new Error('PURCHASE_NOT_FOUND')
   if (purchase.provider_transaction_nsu && purchase.provider_transaction_nsu !== hint.transactionNsu) throw new Error('TRANSACTION_MISMATCH')
   if (purchase.provider_invoice_slug && purchase.provider_invoice_slug !== hint.invoiceSlug) throw new Error('INVOICE_MISMATCH')
-  if (purchase.status !== 'pending') return { status: purchase.status,
+  if (!['pending', 'cancelled'].includes(purchase.status)) return { status: purchase.status,
     confirmed: ['credited', 'held_in_case'].includes(purchase.status) }
   const response = await fetcher('https://api.checkout.infinitepay.io/payment_check', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -31,7 +31,7 @@ export async function verifyAndConfirm({ admin, handle, hint, userId = null, fet
   })
   if (!response.ok) throw new Error('PAYMENT_CHECK_FAILED')
   const check = await response.json()
-  if (check?.success !== true || check?.paid !== true) return { status: 'pending', confirmed: false }
+  if (check?.success !== true || check?.paid !== true) return { status: purchase.status, confirmed: false }
   if (!Number.isSafeInteger(check.amount) || check.amount !== purchase.amount_centavos ||
       purchase.currency !== 'BRL' || !purchase.package_id ||
       !['pix', 'credit_card'].includes(check.capture_method)) throw new Error('PAYMENT_MISMATCH')
@@ -42,6 +42,11 @@ export async function verifyAndConfirm({ admin, handle, hint, userId = null, fet
     p_receipt_url: null,
   })
   if (confirmError) throw new Error(confirmError.message)
-  return { status: result?.reason === 'held_in_financial_case' ? 'held_in_case' : 'credited',
-    confirmed: true }
+  if (result?.reason === 'held_in_financial_case' || result?.reason === 'already_held_in_case') {
+    return { status: 'held_in_case', confirmed: true }
+  }
+  if (result?.credited === true || result?.reason === 'already_credited') {
+    return { status: 'credited', confirmed: true }
+  }
+  throw new Error('PAYMENT_NOT_SETTLED')
 }

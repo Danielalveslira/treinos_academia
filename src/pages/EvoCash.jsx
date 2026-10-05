@@ -4,7 +4,7 @@ import { Box, Button, Flash, Heading, Label, Spinner, Text } from '@primer/react
 import { SparkleFillIcon } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
-import { checkInfinitepayPurchase, getCashPurchaseSettings, requestCashPurchase, requestInfinitepayCancellation } from '../services/cashPurchaseService'
+import { cancelMyCashPurchase, checkInfinitepayPurchase, getCashPurchaseSettings, requestCashPurchase } from '../services/cashPurchaseService'
 import { CashPackageCards } from '../components/CashPackageCards'
 import { CopyButton } from '../components/CopyButton'
 import { PixPaymentInstructions } from '../components/PixPaymentInstructions'
@@ -17,10 +17,7 @@ import {
   USER_CASH_PURCHASE_STATUS_LABELS as STATUS_LABELS,
 } from '../utils/cashPurchaseFlow'
 
-// EvoCash (Fase 4): pacotes, solicitar compra, instruções de PIX e "minhas compras" --
-// tudo numa página só, já que são passos do mesmo fluxo. O crédito em si só acontece
-// depois de um admin confirmar o pagamento manualmente (ver AdminCashPurchases.jsx);
-// esta página nunca credita nada sozinha.
+// O crédito é confirmado no backend após payment_check; esta página apenas abre o checkout.
 export default function EvoCash() {
   const { user } = useAuth()
   const [settings, setSettings] = useState({ packages: [] })
@@ -110,15 +107,15 @@ export default function EvoCash() {
     }
   }
 
-  async function requestCancellation(purchaseId) {
+  async function cancelPurchase(purchaseId) {
     if (cancellingPurchaseId) return
     setError('')
     setCancellingPurchaseId(purchaseId)
     try {
-      await requestInfinitepayCancellation(purchaseId)
+      await cancelMyCashPurchase(purchaseId)
       await refresh()
     } catch {
-      setError('Não foi possível solicitar o cancelamento. Tente novamente.')
+      setError('Não foi possível cancelar a compra. Tente novamente.')
     } finally {
       setCancellingPurchaseId(null)
     }
@@ -183,11 +180,7 @@ export default function EvoCash() {
           </Text>
         )}
         {hasPendingPurchase && (
-          <Flash sx={{ mb: 3 }}>
-            {purchases.some((purchase) => purchase.status === 'pending' && purchase.cancelRequestedAt)
-              ? 'Seu pedido de cancelamento está em análise. Acompanhe em "Minhas compras" abaixo.'
-              : 'Você já tem uma compra em andamento — acompanhe em "Minhas compras" abaixo.'}
-          </Flash>
+          <Flash sx={{ mb: 3 }}>Você já tem uma compra em andamento — acompanhe em "Minhas compras" abaixo.</Flash>
         )}
         {!loadingSettings && settings.packages.length > 0 && (
           <CashPackageCards
@@ -277,26 +270,14 @@ export default function EvoCash() {
               Data: {formatDateTime(purchase.createdAt ? new Date(purchase.createdAt) : null)}
             </Text>
 
-            {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && purchase.checkoutUrl && !purchase.cancelRequestedAt && (
-              <Button as="a" href={purchase.checkoutUrl}>Continuar no checkout</Button>
-            )}
-
-            {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && !purchase.cancelRequestedAt && (
-              <Box>
-                <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', mb: 2 }}>
-                  Se desistiu, solicite o cancelamento. Um link já emitido pode continuar pagável até a conciliação.
-                </Text>
+            {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                {purchase.checkoutUrl && <Button as="a" href={purchase.checkoutUrl}>Continuar pagamento</Button>}
                 <Button variant="danger" disabled={!!cancellingPurchaseId}
-                  onClick={() => requestCancellation(purchase.id)}>
-                  {cancellingPurchaseId === purchase.id ? 'Solicitando…' : 'Solicitar cancelamento'}
+                  onClick={() => cancelPurchase(purchase.id)}>
+                  {cancellingPurchaseId === purchase.id ? 'Cancelando…' : 'Cancelar'}
                 </Button>
               </Box>
-            )}
-
-            {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && purchase.cancelRequestedAt && (
-              <Text as="p" sx={{ fontSize: 0, color: 'attention.fg', m: 0 }}>
-                Solicitação recebida. Não use o link de pagamento; a equipe precisa conciliar o pedido com a InfinitePay.
-              </Text>
             )}
 
             {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && !purchase.checkoutUrl && (
@@ -328,6 +309,12 @@ export default function EvoCash() {
                   EvoCash creditado
                 </Text>
               </Box>
+            )}
+
+            {purchase.paidAfterCancelAt && (
+              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
+                Pagamento recebido após o cancelamento e conciliado automaticamente.
+              </Text>
             )}
 
             {purchase.status === 'cancelled' && purchase.cancelReason && (

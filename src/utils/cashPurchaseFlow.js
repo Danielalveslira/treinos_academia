@@ -19,13 +19,10 @@ export function resolveRequestId(pendingAttempt, key, generateId) {
 // cash-purchase-service.js); esta checagem só evita o clique que sabidamente falharia.
 export function hasPendingCashPurchase(purchases) {
   return purchases.some((purchase) => purchase.status === 'pending' &&
-    (purchase.paymentProvider !== 'infinitepay' || !!purchase.checkoutUrl || !!purchase.cancelRequestedAt))
+    (purchase.paymentProvider !== 'infinitepay' || !!purchase.checkoutUrl))
 }
 
 export function cashPurchaseStatusLabel(purchase, labels) {
-  if (purchase.paymentProvider === 'infinitepay' && purchase.status === 'pending' && purchase.cancelRequestedAt) {
-    return { text: 'Cancelamento solicitado', variant: 'attention' }
-  }
   if (purchase.paymentProvider === 'infinitepay' && purchase.status === 'pending' && !purchase.checkoutUrl) {
     return purchase.checkoutUncertain
       ? { text: 'Checkout em conciliação', variant: 'attention' }
@@ -43,8 +40,7 @@ export function openInfinitepayCheckout(value, navigate = (url) => window.locati
   navigate(url.toString())
 }
 
-// Mesmo limite mínimo de 5 caracteres que cancelCashPurchase exige no servidor -- aqui
-// só desabilita o botão antes de gastar uma chamada que sabidamente falharia.
+// Também usado pela tela de cancelamento de promoções.
 export function canSubmitCancellation(reason) {
   return typeof reason === 'string' && reason.trim().length >= 5
 }

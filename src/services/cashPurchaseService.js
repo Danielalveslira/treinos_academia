@@ -16,7 +16,9 @@ export function mapPurchaseRow(row) {
     checkoutUrl: row.checkout_url,
     checkoutUncertain: row.checkout_uncertain,
     checkoutHttpStatus: row.checkout_http_status,
-    cancelRequestedAt: row.cancel_requested_at,
+    orderNsu: row.provider_order_nsu,
+    transactionNsu: row.provider_transaction_nsu,
+    paidAfterCancelAt: row.paid_after_cancel_at,
     captureMethod: row.provider_capture_method,
     qrCode: row.qr_code,
     qrCodeBase64: row.qr_code_base64,
@@ -70,27 +72,10 @@ export function checkInfinitepayPurchase(purchaseId, hints = {}) {
   return callPaymentFunction('infinitepay-check-payment', { purchaseId, ...hints })
 }
 
-export async function requestInfinitepayCancellation(purchaseId) {
-  const { data, error } = await supabase.rpc('request_infinitepay_cash_purchase_cancellation', {
+export async function cancelMyCashPurchase(purchaseId) {
+  const { data, error } = await supabase.rpc('cancel_my_cash_purchase', {
     p_purchase_id: purchaseId,
   })
-  if (error) throw error
-  return data
-}
-
-// Fallback operacional (superadmin) -- webhook do Mercado Pago é o caminho principal de
-// confirmação; isto existe para quando ele falhar ou o pagamento for resolvido fora do
-// fluxo do app.
-export async function confirmCashPurchase(purchaseId, adminNote) {
-  const { data, error } = await supabase.rpc('confirm_cash_purchase', {
-    p_purchase_id: purchaseId, p_admin_note: adminNote || null,
-  })
-  if (error) throw error
-  return data
-}
-
-export async function cancelCashPurchase(purchaseId, reason) {
-  const { data, error } = await supabase.rpc('cancel_cash_purchase', { p_purchase_id: purchaseId, p_reason: reason })
   if (error) throw error
   return data
 }
@@ -108,7 +93,9 @@ export async function listMyCashPurchasesPage(userId, { cursor = null } = {}) {
 
 export async function listCashPurchasesForAdminPage({ status = '', cursor = null } = {}) {
   let q = supabase.from('cash_purchases').select('*').order('created_at', { ascending: false }).limit(PAGE_SIZE)
-  if (status) q = q.eq('status', status)
+  if (status === 'paid') q = q.in('status', ['credited', 'held_in_case'])
+  else if (status === 'failed') q = q.eq('status', 'checkout_failed')
+  else if (status) q = q.eq('status', status)
   if (cursor) q = q.lt('created_at', cursor)
   const { data, error } = await q
   if (error) throw error

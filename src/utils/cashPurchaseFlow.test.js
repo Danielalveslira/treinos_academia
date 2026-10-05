@@ -5,7 +5,6 @@ import {
   hasPendingCashPurchase,
   cashPurchaseStatusLabel,
   openInfinitepayCheckout,
-  canSubmitCancellation,
   USER_CASH_PURCHASE_STATUS_LABELS,
   ADMIN_CASH_PURCHASE_STATUS_LABELS,
   abbreviateProtocol,
@@ -47,18 +46,9 @@ test('hasPendingCashPurchase is true only when some purchase is still pending', 
   assert.equal(hasPendingCashPurchase([{ status: 'pending', paymentProvider: 'infinitepay', checkoutUrl: null }]), false)
   assert.equal(hasPendingCashPurchase([{ status: 'pending', paymentProvider: 'infinitepay', checkoutUrl: 'https://checkout.infinitepay.io/x' }]), true)
   assert.equal(hasPendingCashPurchase([{ status: 'checkout_failed', paymentProvider: 'infinitepay' }]), false)
-  assert.equal(hasPendingCashPurchase([{ status: 'pending', paymentProvider: 'infinitepay', cancelRequestedAt: '2026-10-05T00:00:00Z' }]), true)
+  assert.equal(hasPendingCashPurchase([{ status: 'cancelled', paymentProvider: 'infinitepay', checkoutUrl: 'https://checkout.infinitepay.io/x' }]), false)
   assert.equal(hasPendingCashPurchase([{ status: 'credited' }, { status: 'cancelled' }]), false)
   assert.equal(hasPendingCashPurchase([]), false)
-})
-
-test('canSubmitCancellation mirrors the server minimum (5 trimmed characters)', () => {
-  assert.equal(canSubmitCancellation('oi'), false)
-  assert.equal(canSubmitCancellation('    '), false)
-  assert.equal(canSubmitCancellation('   oi '), false)
-  assert.equal(canSubmitCancellation('12345'), true)
-  assert.equal(canSubmitCancellation('  12345  '), true)
-  assert.equal(canSubmitCancellation(undefined), false)
 })
 
 test('the user-facing and admin-facing status maps cover every purchase state', () => {
@@ -77,8 +67,8 @@ test('InfinitePay without a checkout URL is never labelled as awaiting payment',
   assert.equal(cashPurchaseStatusLabel(purchase, USER_CASH_PURCHASE_STATUS_LABELS).text, 'Preparando checkout')
   assert.equal(cashPurchaseStatusLabel({ ...purchase, checkoutUncertain: true }, USER_CASH_PURCHASE_STATUS_LABELS).text,
     'Checkout em conciliação')
-  assert.equal(cashPurchaseStatusLabel({ ...purchase, cancelRequestedAt: '2026-10-05T00:00:00Z' }, USER_CASH_PURCHASE_STATUS_LABELS).text,
-    'Cancelamento solicitado')
+  assert.equal(cashPurchaseStatusLabel({ ...purchase, status: 'cancelled' }, USER_CASH_PURCHASE_STATUS_LABELS).text,
+    'Cancelado')
 })
 
 test('checkout success navigates to the InfinitePay page and refuses other hosts', () => {

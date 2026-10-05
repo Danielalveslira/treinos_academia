@@ -69,16 +69,14 @@ reaproveita o mesmo pedido se pacote e preço não mudaram. Timeout, 5xx ou
 resposta sem URL permanecem em conciliação, porque o provedor pode ter emitido
 um link apesar da resposta ambígua. A interface distingue esse estado de um
 pagamento em andamento e não credita carteira ou ledger.
-O comprador pode solicitar cancelamento de uma compra pendente. O pedido fica
-registrado, o link deixa de ser oferecido na interface e a equipe deve conciliar
-o provedor. A API pública do Checkout Integrado não documenta invalidação do
-link; por isso a compra continua pendente e um pagamento tardio verificado ainda
-é tratado pelo fluxo financeiro normal.
-Não há parâmetro público documentado para cancelar um link: não expirar nem
-cancelar automaticamente uma compra que ainda pode ser paga. O cancelamento
-manual exige checagem operacional no provedor para evitar pagamento tardio após
-cancelamento. O fluxo antigo do Mercado Pago permanece disponível durante o
-período de transição.
+O comprador cancela imediatamente a compra InfinitePay pendente. A compra fica
+`cancelled`, deixa de bloquear uma nova tentativa e o checkout antigo não é mais
+oferecido na interface. A API pública não documenta invalidação de link; se um
+pagamento tardio for confirmado por `payment_check`, a compra cancelada é
+creditada exatamente uma vez ou retida em caso financeiro durante exclusão de
+conta. `paid_after_cancel_at` registra esse evento. A exclusão de conta continua
+bloqueada enquanto existir checkout cancelado que possa ser pago, até a separação
+do caso financeiro. Compras históricas Mercado Pago permanecem preservadas.
 
 O teste pgTAP valida a transação SQL; os testes de Edge Functions usam respostas
 simuladas. A verificação de entrega real e disponibilidade do webhook depende do
