@@ -23,8 +23,8 @@ insert into public.community_members (community_id, user_id) values
   ('72000000-0000-0000-0000-000000000002', '71000000-0000-0000-0000-000000000002');
 
 insert into public.wallets (user_id, coin_balance, cash_balance) values ('71000000-0000-0000-0000-000000000002', 7, 40);
-insert into public.cash_purchases (user_id, request_id, package_id, package_label, cash_amount, amount_centavos, status)
-values ('71000000-0000-0000-0000-000000000007', 'req-adminaccounts', 'pkg', 'Pacote', 10, 1000, 'pending');
+insert into public.cash_purchases (user_id, request_id, package_id, package_label, cash_amount, amount_centavos, status, payment_provider, provider_order_nsu)
+values ('71000000-0000-0000-0000-000000000007', 'req-adminaccounts', 'pkg', 'Pacote', 10, 1000, 'pending', 'infinitepay', 'evo_77777777777777777777777777777777');
 
 insert into public.support_requests (id, user_id, kind, message)
 values ('73000000-0000-0000-0000-000000000001', '71000000-0000-0000-0000-000000000009', 'report', 'Denúncia de teste do painel de contas.');

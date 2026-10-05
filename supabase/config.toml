@@ -414,14 +414,6 @@ enabled = true
 # and column/key alignment. Set to "null" to emit raw, unformatted SQL.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":180,\"commaStyle\":\"trailing\"}"
 
-[functions.mercadopago-create-payment]
-enabled = true
-verify_jwt = true
-
-[functions.mercadopago-webhook]
-enabled = true
-verify_jwt = false
-
 [functions.profile-avatar-confirm]
 enabled = true
 verify_jwt = true

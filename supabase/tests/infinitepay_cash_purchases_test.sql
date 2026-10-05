@@ -143,13 +143,13 @@ select is((select count(*)::int from public.economy_transactions where reference
 select is((select coalesce((select cash_balance::int from public.wallets where user_id = '72000000-0000-0000-0000-000000000003'), 0)),
   0, 'held payment creates no wallet balance');
 
-select throws_ok($$select public.confirm_cash_purchase((select (r->>'id')::uuid from _ip_b), null)$$,
-  'PROVIDER_VERIFICATION_REQUIRED', 'admin cannot manually credit InfinitePay');
-select throws_ok($$select public.cancel_cash_purchase((select (r->>'id')::uuid from _ip_b), 'cancelar sem consulta')$$,
-  'PROVIDER_RECONCILIATION_REQUIRED', 'admin cannot cancel payable InfinitePay link');
+select ok(to_regprocedure('public.confirm_cash_purchase(uuid,text)') is null,
+  'manual confirmation RPC has been removed');
+select ok(to_regprocedure('public.cancel_cash_purchase(uuid,text)') is null,
+  'manual cancellation RPC has been removed');
 select set_config('request.jwt.claim.sub', '72000000-0000-0000-0000-000000000002', true);
-select throws_ok($$select public.confirm_cash_purchase((select (r->>'id')::uuid from _ip_b), null)$$,
-  'PERMISSION_DENIED', 'ordinary user cannot use manual admin fallback');
+select ok(to_regprocedure('public.request_cash_purchase(text,text)') is null,
+  'legacy purchase RPC has been removed');
 
 select * from finish();
 rollback;

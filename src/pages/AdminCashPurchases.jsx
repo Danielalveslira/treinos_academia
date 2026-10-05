@@ -46,7 +46,7 @@ export default function AdminCashPurchases() {
           <Text as="p" sx={{ fontSize: 0, color: 'fg.muted' }}>
             Protocolo: {purchase.id}<br />
             Usuário: {purchase.userId ? (usernames[purchase.userId] ? `@${usernames[purchase.userId]} · ${purchase.userId}` : purchase.userId) : 'Conta excluída'}<br />
-            Provider: {purchase.paymentProvider === 'infinitepay' ? 'InfinitePay' : 'Mercado Pago'}<br />
+            Provedor: {purchase.paymentProvider === 'infinitepay' ? 'InfinitePay' : 'Legado'}<br />
             Order NSU: {purchase.orderNsu || '—'}<br />
             Transaction NSU: {purchase.transactionNsu || '—'}<br />
             Forma de pagamento: {purchase.captureMethod || '—'}<br />

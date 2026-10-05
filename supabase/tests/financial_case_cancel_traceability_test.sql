@@ -13,8 +13,8 @@ update public.users set role = 'superadmin' where id = '66000000-0000-0000-0000-
 
 select public._wallet_credit_cash('66000000-0000-0000-0000-000000000051', 25);
 select public._ledger_record('66000000-0000-0000-0000-000000000051', 'seed:1', 'cash', 'credit', 25, 'cash_purchase_confirmed', 'cash_purchase', 'seed');
-insert into public.cash_purchases (id, user_id, request_id, package_id, package_label, cash_amount, amount_centavos, status, mp_payment_id)
-values ('67000000-0000-0000-0000-000000000051', '66000000-0000-0000-0000-000000000051', 'req-51', 'pack_25', 'Essencial', 25, 590, 'pending', 9151);
+insert into public.cash_purchases (id, user_id, request_id, package_id, package_label, cash_amount, amount_centavos, status, payment_provider, provider_order_nsu, checkout_url)
+values ('67000000-0000-0000-0000-000000000051', '66000000-0000-0000-0000-000000000051', 'req-51', 'pack_25', 'Essencial', 25, 590, 'pending', 'infinitepay', 'evo_51515151515151515151515151515151', 'https://checkout.infinitepay.io/test-51');
 select public._wallet_credit_cash('66000000-0000-0000-0000-000000000052', 10);
 select public._ledger_record('66000000-0000-0000-0000-000000000052', 'seed:1', 'cash', 'credit', 10, 'cash_purchase_confirmed', 'cash_purchase', 'seed');
 
@@ -58,14 +58,14 @@ select results_eq($$select ledger_id, purchase_id, linked_at from public.account
                   $$select ledger_id, purchase_id, linked_at from _items_before$$, 'itens históricos inalterados pelo cancelamento');
 
 -- 4. operações financeiras normais continuam; a compra antiga NÃO vira held_in_case
-select is((public.credit_cash_purchase_from_webhook(9151, 'approved') ->> 'credited'), 'true', 'pagamento da compra antiga credita normalmente na carteira');
+select is((public.confirm_infinitepay_cash_purchase('67000000-0000-0000-0000-000000000051', 'evo_51515151515151515151515151515151', 'txn-51', 'inv-51', 590, 'pix', null) ->> 'credited'), 'true', 'pagamento confirmado credita normalmente na carteira');
 select is((select status from public.cash_purchases where id = (select purchase_id from _ids)), 'credited', 'compra antiga não é tratada como held_in_case');
 select is((select cash_balance from public.wallets where user_id = '66000000-0000-0000-0000-000000000051'), 50, 'carteira = 25 + 25');
 select is((select count(*)::int from public.account_financial_case_events where case_id = (select id from _c) and kind = 'late_payment_held'), 0, 'nenhum pagamento retido no caso cancelado');
 select lives_ok($$select public._wallet_debit_cash('66000000-0000-0000-0000-000000000051', 5)$$, 'conta reativada pode gastar EvoCash');
 select is((select cash_balance from public.wallets where user_id = '66000000-0000-0000-0000-000000000051'), 45, 'débito aplicado');
 select set_config('request.jwt.claim.sub', '66000000-0000-0000-0000-000000000051', true);
-select lives_ok($$select public.request_cash_purchase('pack_25', 'req-after-cancel')$$, 'conta reativada pode comprar EvoCash');
+select lives_ok($$select public.reserve_infinitepay_cash_purchase('66000000-0000-0000-0000-000000000051', 'pack_25')$$, 'conta reativada pode comprar EvoCash');
 select throws_ok($$select public.admin_get_deletion_financial_history((select id from public.deletion_jobs where target_id = '66000000-0000-0000-0000-000000000051'))$$, 'PERMISSION_DENIED', 'usuário comum não vê histórico financeiro');
 select set_config('request.jwt.claim.sub', '66000000-0000-0000-0000-000000000001', true);
 

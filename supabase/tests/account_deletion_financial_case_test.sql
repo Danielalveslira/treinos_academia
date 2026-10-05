@@ -30,11 +30,11 @@ select public._ledger_record('60000000-0000-0000-0000-000000000014', 'seed:1', '
 select public._wallet_credit_cash('60000000-0000-0000-0000-000000000015', 30);
 select public._ledger_record('60000000-0000-0000-0000-000000000015', 'seed:1', 'cash', 'credit', 30, 'cash_purchase_confirmed', 'cash_purchase', 'seed');
 
--- Compras PIX pendentes (13 e 15) já com mp_payment_id, como depois de mercadopago-create-payment.
-insert into public.cash_purchases (id, user_id, request_id, package_id, package_label, cash_amount, amount_centavos, status, mp_payment_id)
+-- Compras Pix pendentes com links emitidos.
+insert into public.cash_purchases (id, user_id, request_id, package_id, package_label, cash_amount, amount_centavos, status, payment_provider, provider_order_nsu, checkout_url)
 values
-  ('61000000-0000-0000-0000-000000000013', '60000000-0000-0000-0000-000000000013', 'req-13', 'pack_25', 'Essencial', 25, 590, 'pending', 9013),
-  ('61000000-0000-0000-0000-000000000015', '60000000-0000-0000-0000-000000000015', 'req-15', 'pack_25', 'Essencial', 25, 590, 'pending', 9015);
+  ('61000000-0000-0000-0000-000000000013', '60000000-0000-0000-0000-000000000013', 'req-13', 'pack_25', 'Essencial', 25, 590, 'pending', 'infinitepay', 'evo_13131313131313131313131313131313', 'https://checkout.infinitepay.io/test-13'),
+  ('61000000-0000-0000-0000-000000000015', '60000000-0000-0000-0000-000000000015', 'req-15', 'pack_25', 'Essencial', 25, 590, 'pending', 'infinitepay', 'evo_15151515151515151515151515151515', 'https://checkout.infinitepay.io/test-15');
 
 -- === usuário comum não acessa nenhuma ação admin ===
 select set_config('request.jwt.claim.sub', '60000000-0000-0000-0000-000000000002', true);
@@ -65,7 +65,7 @@ select is((select state from public.deletion_jobs where target_id = '60000000-00
 
 -- gasto/compra comum bloqueados durante a exclusão
 select set_config('request.jwt.claim.sub', '60000000-0000-0000-0000-000000000012', true);
-select throws_ok($$select public.request_cash_purchase('pack_25', 'req-new')$$, 'ACCOUNT_DELETING', 'conta em exclusão não abre compra nova');
+select throws_ok($$select public.reserve_infinitepay_cash_purchase('60000000-0000-0000-0000-000000000012', 'pack_25')$$, 'ACCOUNT_UNAVAILABLE', 'conta em exclusão não abre compra nova');
 select throws_ok($$select public._wallet_debit_cash('60000000-0000-0000-0000-000000000012', 1)$$, 'ACCOUNT_DELETING', 'conta em exclusão não gasta EvoCash');
 select is((select public.get_my_deletion_review() ->> 'financialCaseSeparated'), 'false', 'usuário: pendência ainda não separada');
 select ok(not (public.get_my_deletion_review() ? 'cashBalance') and not (public.get_my_deletion_review() ? 'blockReason'),
@@ -161,23 +161,23 @@ select is(
     (select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000013'), 'PIX pendente acompanhado pelo financeiro') ->> 'cashBalanceSnapshot')),
   '20', 'caso com compra pendente registra saldo');
 select is((select pending_purchases_snapshot from public.account_financial_cases where original_user_id = '60000000-0000-0000-0000-000000000013'), 1, 'caso registra a compra pendente');
-select is((select public.credit_cash_purchase_from_webhook(9013, 'approved') ->> 'reason'), 'held_in_financial_case', 'pagamento tardio vai para o caso');
+select is((select public.confirm_infinitepay_cash_purchase('61000000-0000-0000-0000-000000000013', 'evo_13131313131313131313131313131313', 'txn-13', 'inv-13', 590, 'pix', null) ->> 'reason'), 'held_in_financial_case', 'pagamento tardio vai para o caso');
 select is((select cash_balance from public.wallets where user_id = '60000000-0000-0000-0000-000000000013'), 20, 'pagamento tardio não credita a carteira');
 select is((select status from public.cash_purchases where id = '61000000-0000-0000-0000-000000000013'), 'held_in_case', 'compra marcada como retida no caso');
-select is((select public.credit_cash_purchase_from_webhook(9013, 'approved') ->> 'reason'), 'already_held_in_case', 'reentrega do webhook é idempotente');
+select is((select public.confirm_infinitepay_cash_purchase('61000000-0000-0000-0000-000000000013', 'evo_13131313131313131313131313131313', 'txn-13', 'inv-13', 590, 'pix', null) ->> 'reason'), 'already_held_in_case', 'reentrega do webhook é idempotente');
 select is((select count(*)::int from public.account_financial_case_events where kind = 'late_payment_held'
            and case_id = (select id from public.account_financial_cases where original_user_id = '60000000-0000-0000-0000-000000000013')), 1, 'um único evento de pagamento retido');
 select is((select count(*)::int from public.economy_transactions where natural_key = 'cash-purchase:61000000-0000-0000-0000-000000000013'), 0, 'nenhum ledger de crédito criado para o pagamento retido');
 select is((select public.run_deletion_job((select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000013')) ->> 'authPending'), 'true', 'exclusão conclui no banco com pagamento retido');
-select is((select public.credit_cash_purchase_from_webhook(9013, 'approved') ->> 'reason'), 'already_held_in_case', 'webhook depois da exclusão continua só retendo');
+select is((select public.confirm_infinitepay_cash_purchase('61000000-0000-0000-0000-000000000013', 'evo_13131313131313131313131313131313', 'txn-13', 'inv-13', 590, 'pix', null) ->> 'reason'), 'already_held_in_case', 'webhook depois da exclusão continua só retendo');
 select is((select count(*)::int from public.wallets where user_id = '60000000-0000-0000-0000-000000000013')
         + (select count(*)::int from public.users where id = '60000000-0000-0000-0000-000000000013'), 0, 'pagamento tardio não recria conta nem carteira');
 select is((select count(*)::int from public.cash_purchases where financial_case_id is not null and user_id is null and id = '61000000-0000-0000-0000-000000000013'), 1, 'compra continua referenciada pelo caso');
 
 -- Compra sem dono e sem caso (exclusão anterior a este fluxo): nunca credita, nunca erra.
-insert into public.cash_purchases (id, user_id, request_id, package_id, package_label, cash_amount, amount_centavos, status, mp_payment_id)
-values ('61000000-0000-0000-0000-000000000099', null, 'req-99', 'pack_25', 'Essencial', 25, 590, 'pending', 9099);
-select is((select public.credit_cash_purchase_from_webhook(9099, 'approved') ->> 'reason'), 'account_deleted_without_case', 'compra órfã sem caso não credita nada');
+insert into public.cash_purchases (id, user_id, request_id, package_id, package_label, cash_amount, amount_centavos, status, payment_provider, provider_order_nsu)
+values ('61000000-0000-0000-0000-000000000099', null, 'req-99', 'pack_25', 'Essencial', 25, 590, 'pending', 'infinitepay', 'evo_99999999999999999999999999999999');
+select throws_ok($$select public.confirm_infinitepay_cash_purchase('61000000-0000-0000-0000-000000000099', 'evo_99999999999999999999999999999999', 'txn-99', 'inv-99', 590, 'pix', null)$$, 'PURCHASE_ACCOUNT_DELETED_WITHOUT_CASE', 'compra órfã sem caso não credita nada');
 select is((select status from public.cash_purchases where id = '61000000-0000-0000-0000-000000000099'), 'pending', 'compra órfã segue pendente (rastreável)');
 
 -- === cancelar solicitação enquanto reversível: sem caso, conta desativada antes ===
@@ -199,7 +199,7 @@ select public.queue_deletion('account', '60000000-0000-0000-0000-000000000015');
 select public.run_deletion_job((select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000015'));
 select public.separate_financial_case_and_resume_deletion(
   (select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000015'), 'separando antes de reconsiderar');
-select public.credit_cash_purchase_from_webhook(9015, 'approved');
+select public.confirm_infinitepay_cash_purchase('61000000-0000-0000-0000-000000000015', 'evo_15151515151515151515151515151515', 'txn-15', 'inv-15', 590, 'pix', null);
 select is((select cash_balance from public.wallets where user_id = '60000000-0000-0000-0000-000000000015'), 30, 'retido: carteira intacta antes do cancelamento');
 select public.cancel_account_deletion((select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000015'), 'usuário voltou e pediu para manter a conta');
 select is((select account_status from public.users where id = '60000000-0000-0000-0000-000000000015'), 'active', 'conta reativada');

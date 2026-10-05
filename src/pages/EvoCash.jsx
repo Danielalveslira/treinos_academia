@@ -7,7 +7,6 @@ import { useCashPurchases } from '../hooks/useCashPurchases'
 import { cancelMyCashPurchase, checkInfinitepayPurchase, getCashPurchaseSettings, requestCashPurchase } from '../services/cashPurchaseService'
 import { CashPackageCards } from '../components/CashPackageCards'
 import { CopyButton } from '../components/CopyButton'
-import { PixPaymentInstructions } from '../components/PixPaymentInstructions'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
   hasPendingCashPurchase,
@@ -286,18 +285,6 @@ export default function EvoCash() {
                   ? 'O checkout não abriu. Este pedido precisa de conciliação antes de pagar.'
                   : 'O checkout está sendo preparado. Nenhum pagamento foi iniciado.'}
               </Text>
-            )}
-
-            {purchase.status === 'pending' && purchase.paymentProvider !== 'infinitepay' && (
-              <PixPaymentInstructions
-                purchaseId={purchase.id}
-                packageLabel={purchase.packageLabel}
-                cashAmount={purchase.cashAmount}
-                amountCentavos={purchase.amountCentavos}
-                qrCode={purchase.qrCode}
-                qrCodeBase64={purchase.qrCodeBase64}
-                ticketUrl={purchase.ticketUrl}
-              />
             )}
 
             {purchase.status === 'credited' && (
