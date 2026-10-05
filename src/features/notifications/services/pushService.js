@@ -37,6 +37,31 @@ function subscriptionParams(subscription) {
   }
 }
 
+// Etapa onde a ativação falhou (permission, service-worker, subscribe, register, confirm): o erro
+// real nunca vira só "não foi possível" -- a UI mostra `describePushError`.
+function stageError(stage, error) {
+  const wrapped = error instanceof Error ? error : new Error(String(error))
+  if (!wrapped.stage) wrapped.stage = stage
+  return wrapped
+}
+
+async function step(stage, task) {
+  try {
+    return await task()
+  } catch (error) {
+    throw stageError(stage, error)
+  }
+}
+
+// Texto técnico seguro para exibir/logar: etapa, código/nome e mensagem, sem URLs (o endpoint da
+// subscription é sensível) e com tamanho limitado.
+export function describePushError(error) {
+  if (!error) return ''
+  const label = error.code || error.name || 'Error'
+  const message = String(error.message || '').replace(/https?:\/\/\S+/g, '[url]').slice(0, 160)
+  return [error.stage, label, message].filter(Boolean).join(' · ')
+}
+
 const SERVICE_WORKER_TIMEOUT_MS = 10000
 const REVOKE_TIMEOUT_MS = 5000
 
@@ -74,29 +99,52 @@ async function registerSubscription(subscription) {
   return subscription
 }
 
+// Estado DESTE dispositivo/contexto (navegador ou PWA instalado): permissão, Service Worker e
+// subscription locais. Nunca inferido da conta: browser e PWA podem ter subscriptions distintas
+// (no iOS, o app da Tela de Início tem armazenamento próprio; no Chrome/Android compartilham).
+export async function getLocalPushState() {
+  const support = pushSupport()
+  const permission = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
+  if (!support.supported) return { support, permission, endpoint: null, standalone: isStandalone() }
+  let endpoint = null
+  try {
+    endpoint = await getLocalPushEndpoint()
+  } catch {
+    endpoint = null
+  }
+  return { support, permission, endpoint, standalone: isStandalone() }
+}
+
 export async function enablePushNotifications() {
   const support = pushSupport()
-  if (!support.supported) throw Object.assign(new Error(support.reason), { code: support.reason })
+  if (!support.supported) throw Object.assign(new Error(support.reason), { code: support.reason, stage: 'support' })
   const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
-  if (!publicKey) throw Object.assign(new Error('VAPID_NOT_CONFIGURED'), { code: 'vapid-not-configured' })
+  if (!publicKey) throw Object.assign(new Error('VAPID_NOT_CONFIGURED'), { code: 'vapid-not-configured', stage: 'config' })
   if (!(await currentRegistration())) {
-    throw Object.assign(new Error('SERVICE_WORKER_UNAVAILABLE'), { code: 'service-worker-unavailable' })
+    throw Object.assign(new Error('SERVICE_WORKER_UNAVAILABLE'), { code: 'service-worker-unavailable', stage: 'service-worker' })
   }
-  const permission = await Notification.requestPermission()
-  if (permission !== 'granted') return { permission, subscription: null }
-  const registration = await withTimeout(navigator.serviceWorker.ready, SERVICE_WORKER_TIMEOUT_MS, 'service-worker-unavailable')
+  const permission = await step('permission', () => Notification.requestPermission())
+  if (permission !== 'granted') return { permission, subscription: null, status: null }
+  const registration = await step('service-worker', () =>
+    withTimeout(navigator.serviceWorker.ready, SERVICE_WORKER_TIMEOUT_MS, 'service-worker-unavailable'))
   const applicationServerKey = decodeVapidPublicKey(publicKey)
-  let subscription = await registration.pushManager.getSubscription()
+  let subscription = await step('subscribe', () => registration.pushManager.getSubscription())
   // Chave VAPID trocada: a subscription antiga seria recusada pelo provedor.
   if (subscription && !sameApplicationServerKey(subscription, applicationServerKey)) {
-    await subscription.unsubscribe()
+    await step('subscribe', () => subscription.unsubscribe())
     subscription = null
   }
   if (!subscription) {
-    subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })
+    subscription = await step('subscribe', () =>
+      registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey }))
   }
-  await registerSubscription(subscription)
-  return { permission, subscription }
+  await step('register', () => registerSubscription(subscription))
+  // Só considera ativo quando o backend devolve ESTE endpoint como ativo para o usuário atual.
+  const status = await step('confirm', () => getPushStatus(subscription.endpoint))
+  if (!status?.thisDevice) {
+    throw stageError('confirm', Object.assign(new Error('ENDPOINT_NOT_ACTIVE'), { code: 'push-not-confirmed' }))
+  }
+  return { permission, subscription, status }
 }
 
 // Renova o vínculo da subscription local com a conta atual (sem criar subscription nova).

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BellIcon, CheckIcon } from '@primer/octicons-react'
 import { Button, Flash } from '@primer/react'
 import {
+  describePushError,
   disablePushNotifications,
   enablePushNotifications,
   getLocalPushEndpoint,
@@ -30,7 +31,10 @@ export function PushNotificationSettings() {
       .catch(() => null)
       .then((endpoint) => getPushStatus(endpoint))
       .then((value) => active && setStatus(value))
-      .catch(() => active && setStatus({ enabled: false, thisDevice: false }))
+      .catch((error) => {
+        console.error('[Push] status failed', describePushError(error))
+        if (active) setStatus({ enabled: false, thisDevice: false, error: describePushError(error) })
+      })
     return () => { active = false }
   }, [support.supported])
 
@@ -40,7 +44,7 @@ export function PushNotificationSettings() {
     try {
       const result = await enablePushNotifications()
       if (result.permission === 'granted') {
-        setStatus(await getPushStatus(result.subscription.endpoint))
+        setStatus(result.status)
         setMessage({ variant: 'success', text: 'Notificações ativadas neste dispositivo.' })
       } else if (result.permission === 'denied') {
         setMessage({ variant: 'warning', text: 'Permissão bloqueada. Libere notificações nas configurações do navegador.' })
@@ -48,7 +52,13 @@ export function PushNotificationSettings() {
         setMessage({ variant: 'warning', text: 'A permissão não foi concedida. Toque em ativar para tentar de novo.' })
       }
     } catch (error) {
-      setMessage({ variant: 'danger', text: ENABLE_ERRORS[error?.code] || 'Não foi possível ativar notificações.' })
+      const detail = describePushError(error)
+      console.error('[Push] enable failed', detail)
+      setMessage({
+        variant: 'danger',
+        text: ENABLE_ERRORS[error?.code] || 'Não foi possível ativar notificações.',
+        detail,
+      })
     } finally {
       setBusy(false)
     }
@@ -61,8 +71,10 @@ export function PushNotificationSettings() {
       await disablePushNotifications()
       setStatus((current) => ({ ...current, thisDevice: false }))
       setMessage({ variant: 'success', text: 'Notificações desativadas neste dispositivo.' })
-    } catch {
-      setMessage({ variant: 'danger', text: 'Não foi possível desativar notificações.' })
+    } catch (error) {
+      const detail = describePushError(error)
+      console.error('[Push] disable failed', detail)
+      setMessage({ variant: 'danger', text: 'Não foi possível desativar notificações.', detail })
     } finally {
       setBusy(false)
     }
@@ -79,13 +91,24 @@ export function PushNotificationSettings() {
         </div>
       </header>
       <div className="profile-form">
-        {message && <Flash variant={message.variant} role="status">{message.variant === 'success' && <CheckIcon />} {message.text}</Flash>}
+        {message && <Flash variant={message.variant} role="status">{message.variant === 'success' && <CheckIcon />} {message.text}
+          {message.detail && <small className="pwa-muted" style={{ display: 'block' }}>Detalhe técnico: {message.detail}</small>}
+        </Flash>}
         {!support.supported && (
           <Flash variant="warning">
             {support.reason === 'ios-install-required'
               ? 'Adicione o Evolutus à Tela de Início e abra o app instalado para ativar notificações.'
               : 'Este navegador não oferece Web Push.'}
           </Flash>
+        )}
+        {status?.error && (
+          <Flash variant="warning">
+            Não foi possível verificar o estado deste dispositivo.
+            <small className="pwa-muted" style={{ display: 'block' }}>Detalhe técnico: {status.error}</small>
+          </Flash>
+        )}
+        {!status?.thisDevice && status?.activeSubscriptions > 0 && !status?.error && (
+          <p className="pwa-muted">As notificações estão ativas em outro dispositivo da sua conta; este ainda não.</p>
         )}
         {permission === 'denied' && (
           <p className="pwa-muted">A permissão está bloqueada. Altere-a nas configurações do navegador.</p>
