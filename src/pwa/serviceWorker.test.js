@@ -401,3 +401,45 @@ test('notificationclick: sem janela existente abre direto a rota do payload', as
   await click('/perfil')
   assert.equal(sw.self.openedWindow, `${ORIGIN}/perfil`)
 })
+
+test('push com o app FECHADO (nenhuma janela) mostra a notificação com ícone/badge do Evolutus, sem tocar em clientes', async () => {
+  sw.self.windowClients = []
+  let matchAllCalls = 0
+  const originalMatchAll = sw.self.clients.matchAll
+  sw.self.clients.matchAll = async () => { matchAllCalls += 1; return [] }
+  let work
+  handlers.push({
+    data: { json: () => ({ title: '@ana: nova curtida', body: 'Alguém curtiu sua publicação.', notificationId: 41, targetUrl: '/comunidades/c1#publicacao-p1', icon: 'https://evil.test/x.png' }) },
+    waitUntil: (promise) => { work = promise },
+  })
+  await work
+  sw.self.clients.matchAll = originalMatchAll
+  const { title, options } = sw.self.shownNotification
+  assert.equal(title, '@ana: nova curtida')
+  assert.equal(options.body, 'Alguém curtiu sua publicação.')
+  assert.equal(options.icon, '/icons/icon-192.png', 'ícone vem do app, nunca do payload')
+  assert.equal(options.badge, '/icons/icon-192.png')
+  assert.equal(options.data.targetUrl, '/comunidades/c1#publicacao-p1', 'âncora da publicação preservada')
+  assert.equal(matchAllCalls, 0, 'mostrar o Push não depende de janela/React')
+})
+
+test('clique com a âncora da publicação: navega a janela existente para o card exato', async () => {
+  const navigated = []
+  sw.self.openedWindow = null
+  sw.self.windowClients = [{
+    url: `${ORIGIN}/`,
+    focus: async () => {},
+    navigate: async (url) => { navigated.push(url); return { focus: async () => {} } },
+  }]
+  await click('/comunidades/c1#publicacao-p1')
+  assert.deepEqual(navigated, [`${ORIGIN}/comunidades/c1#publicacao-p1`])
+  assert.equal(sw.self.openedWindow, null)
+})
+
+test('clique sem janela abre direto o deep link com âncora', async () => {
+  sw.self.windowClients = []
+  sw.self.openedWindow = null
+  sw.self.clients.openWindow = async (url) => { sw.self.openedWindow = url }
+  await click('/comunidades/c1#treino-w1')
+  assert.equal(sw.self.openedWindow, `${ORIGIN}/comunidades/c1#treino-w1`)
+})

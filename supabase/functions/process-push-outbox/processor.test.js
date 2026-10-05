@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  buildPushPayload, classifyPushError, isAllowedPushEndpoint, processPushOutbox, safePushError, safeTargetUrl,
+  buildPushPayload, classifyPushError, isAllowedPushEndpoint, processPushOutbox, pushSendOptions, safePushError, safeTargetUrl,
 } from './processor.js'
 
 const FCM = 'https://fcm.googleapis.com/fcm/send/'
@@ -150,4 +150,57 @@ test('payload de comment_like diz quem curtiu e abre o comentário, sem conteúd
   assert.equal(payload.body, 'Alguém curtiu seu comentário.')
   assert.equal(payload.targetUrl, '/comunidades/c1/publicacoes/p1/comentarios/k1')
   assert.equal(JSON.stringify(payload).includes('privado'), false)
+})
+
+test('payloads dos novos eventos: post_like, economia, moderação e atendimento, sem dados sensíveis', () => {
+  const like = buildPushPayload({ notification_id: 1, notification_type: 'post_like', actor_username: 'ana', action_url: '/comunidades/c#publicacao-p', metadata: {} })
+  assert.equal(like.title, '@ana: nova curtida')
+  assert.equal(like.body, 'Alguém curtiu sua publicação.')
+  assert.equal(like.targetUrl, '/comunidades/c#publicacao-p')
+
+  const coins = buildPushPayload({ notification_id: 2, notification_type: 'economy_credit', action_url: '/evocash', metadata: { asset: 'coin', amount: 25, reason: 'admin_bonus' } })
+  assert.equal(coins.title, 'Você recebeu EvoCoins')
+  assert.equal(coins.body, 'Você recebeu 25 EvoCoins. Motivo: Bônus.')
+
+  const cash = buildPushPayload({ notification_id: 3, notification_type: 'economy_credit', action_url: '/evocash', metadata: { asset: 'cash', amount: 120, reason: 'cash_purchase_confirmed' } })
+  assert.equal(cash.title, 'Pagamento confirmado')
+  assert.equal(JSON.stringify(cash).includes('120'), false, 'valor em EvoCash não aparece no Push')
+
+  const debit = buildPushPayload({ notification_id: 4, notification_type: 'economy_debit', action_url: '/evocash', metadata: { asset: 'coin', amount: 9876, reason: 'chargeback' } })
+  assert.equal(JSON.stringify(debit).includes('9876'), false, 'ajuste não expõe valor')
+
+  const mod = buildPushPayload({ notification_id: 5, notification_type: 'moderation_notice', action_url: '/atendimento', metadata: { action: 'remove_content', reason: 'SEGREDO' } })
+  assert.equal(mod.body, 'Um conteúdo seu foi removido pela moderação.')
+  assert.equal(JSON.stringify(mod).includes('SEGREDO'), false)
+
+  const support = buildPushPayload({ notification_id: 6, notification_type: 'report_resolved', action_url: '/atendimento', metadata: { kind: 'appeal' } })
+  assert.equal(support.body, 'Seu recurso foi analisado.')
+})
+
+test('valores inesperados nos metadados caem em texto genérico', () => {
+  const weird = buildPushPayload({ notification_id: 7, notification_type: 'economy_credit', metadata: { asset: 'coin', amount: 'DROP TABLE', reason: '<script>' } })
+  assert.equal(JSON.stringify(weird).includes('DROP'), false)
+  assert.equal(JSON.stringify(weird).includes('script'), false)
+  const unknownAction = buildPushPayload({ notification_id: 8, notification_type: 'moderation_notice', metadata: { action: '<b>x</b>' } })
+  assert.equal(unknownAction.body, 'Você recebeu um aviso da moderação.')
+})
+
+test('urgência e TTL vêm do catálogo; valores inválidos usam padrões seguros', () => {
+  assert.deepEqual(pushSendOptions({ urgency: 'high', ttl_seconds: 604800 }), { urgency: 'high', ttl: 604800 })
+  assert.deepEqual(pushSendOptions({ urgency: 'normal', ttl_seconds: 86400 }), { urgency: 'normal', ttl: 86400 })
+  assert.deepEqual(pushSendOptions({ urgency: 'urgentíssimo', ttl_seconds: -5 }), { urgency: 'normal', ttl: 86400 })
+  assert.deepEqual(pushSendOptions({}), { urgency: 'normal', ttl: 86400 })
+})
+
+test('o worker repassa urgência/TTL de cada job ao provedor', async () => {
+  const seen = []
+  const admin = { rpc: async (name) => {
+    if (name === 'claim_push_jobs') return { data: [
+      { delivery_id: 'h', notification_id: 1, endpoint: `${FCM}h`, p256dh: 'x', auth: 'y', notification_type: 'post_reply', action_url: '/', urgency: 'high', ttl_seconds: 86400 },
+      { delivery_id: 'n', notification_id: 2, endpoint: `${FCM}n`, p256dh: 'x', auth: 'y', notification_type: 'post_like', action_url: '/', urgency: 'normal', ttl_seconds: 3600 },
+    ], error: null }
+    return { error: null }
+  } }
+  await processPushOutbox(admin, async (subscription, payload, options) => { seen.push([subscription.endpoint.slice(-1), options]) }, { workerId: 'w' })
+  assert.deepEqual(seen, [['h', { urgency: 'high', ttl: 86400 }], ['n', { urgency: 'normal', ttl: 3600 }]])
 })

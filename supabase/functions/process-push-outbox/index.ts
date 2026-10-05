@@ -36,10 +36,10 @@ Deno.serve(createWorkerHandler({
   logError: (...args: unknown[]) => console.error(...args),
   run: () => {
     const admin = createClient(SUPABASE_URL!, SERVICE_ROLE_KEY!)
-    return processPushOutbox(admin, (subscription: unknown, payload: unknown) =>
+    return processPushOutbox(admin, (subscription: unknown, payload: unknown, options: { urgency: string; ttl: number }) =>
       webpush.sendNotification(subscription, JSON.stringify(payload), {
-        TTL: 3600,
-        urgency: 'normal',
+        TTL: options.ttl,
+        urgency: options.urgency,
         timeout: SEND_TIMEOUT_MS,
       })
     )
