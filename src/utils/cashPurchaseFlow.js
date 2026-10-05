@@ -18,7 +18,29 @@ export function resolveRequestId(pendingAttempt, key, generateId) {
 // backend já impede uma segunda compra pending via cashPurchaseLock, ver
 // cash-purchase-service.js); esta checagem só evita o clique que sabidamente falharia.
 export function hasPendingCashPurchase(purchases) {
-  return purchases.some((purchase) => purchase.status === 'pending')
+  return purchases.some((purchase) => purchase.status === 'pending' &&
+    (purchase.paymentProvider !== 'infinitepay' || !!purchase.checkoutUrl || !!purchase.cancelRequestedAt))
+}
+
+export function cashPurchaseStatusLabel(purchase, labels) {
+  if (purchase.paymentProvider === 'infinitepay' && purchase.status === 'pending' && purchase.cancelRequestedAt) {
+    return { text: 'Cancelamento solicitado', variant: 'attention' }
+  }
+  if (purchase.paymentProvider === 'infinitepay' && purchase.status === 'pending' && !purchase.checkoutUrl) {
+    return purchase.checkoutUncertain
+      ? { text: 'Checkout em conciliação', variant: 'attention' }
+      : { text: 'Preparando checkout', variant: 'attention' }
+  }
+  return labels[purchase.status] || { text: purchase.status, variant: 'default' }
+}
+
+export function openInfinitepayCheckout(value, navigate = (url) => window.location.assign(url)) {
+  let url
+  try { url = new URL(value) } catch { throw new Error('INVALID_CHECKOUT_URL') }
+  if (url.protocol !== 'https:' ||
+      !['checkout.infinitepay.io', 'checkout.infinitepay.com.br'].includes(url.hostname) ||
+      url.username || url.password || url.port) throw new Error('INVALID_CHECKOUT_URL')
+  navigate(url.toString())
 }
 
 // Mesmo limite mínimo de 5 caracteres que cancelCashPurchase exige no servidor -- aqui
@@ -34,6 +56,7 @@ export const USER_CASH_PURCHASE_STATUS_LABELS = {
   pending: { text: 'Aguardando confirmação', variant: 'attention' },
   credited: { text: 'Creditado', variant: 'success' },
   cancelled: { text: 'Cancelado', variant: 'danger' },
+  checkout_failed: { text: 'Checkout não iniciado', variant: 'danger' },
   held_in_case: { text: 'Retido em análise financeira', variant: 'attention' },
 }
 
@@ -41,6 +64,7 @@ export const ADMIN_CASH_PURCHASE_STATUS_LABELS = {
   pending: { text: 'Pendente', variant: 'attention' },
   credited: { text: 'Creditada', variant: 'success' },
   cancelled: { text: 'Cancelada', variant: 'danger' },
+  checkout_failed: { text: 'Falha no checkout', variant: 'danger' },
   held_in_case: { text: 'Retida em caso financeiro', variant: 'attention' },
 }
 

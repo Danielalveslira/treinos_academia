@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import {
   resolveRequestId,
   hasPendingCashPurchase,
+  cashPurchaseStatusLabel,
+  openInfinitepayCheckout,
   canSubmitCancellation,
   USER_CASH_PURCHASE_STATUS_LABELS,
   ADMIN_CASH_PURCHASE_STATUS_LABELS,
@@ -42,6 +44,10 @@ test('resolveRequestId also protects retries of a form-shaped key (community cre
 
 test('hasPendingCashPurchase is true only when some purchase is still pending', () => {
   assert.equal(hasPendingCashPurchase([{ status: 'credited' }, { status: 'pending' }]), true)
+  assert.equal(hasPendingCashPurchase([{ status: 'pending', paymentProvider: 'infinitepay', checkoutUrl: null }]), false)
+  assert.equal(hasPendingCashPurchase([{ status: 'pending', paymentProvider: 'infinitepay', checkoutUrl: 'https://checkout.infinitepay.io/x' }]), true)
+  assert.equal(hasPendingCashPurchase([{ status: 'checkout_failed', paymentProvider: 'infinitepay' }]), false)
+  assert.equal(hasPendingCashPurchase([{ status: 'pending', paymentProvider: 'infinitepay', cancelRequestedAt: '2026-10-05T00:00:00Z' }]), true)
   assert.equal(hasPendingCashPurchase([{ status: 'credited' }, { status: 'cancelled' }]), false)
   assert.equal(hasPendingCashPurchase([]), false)
 })
@@ -57,13 +63,31 @@ test('canSubmitCancellation mirrors the server minimum (5 trimmed characters)', 
 
 test('the user-facing and admin-facing status maps cover every purchase state', () => {
   for (const labels of [USER_CASH_PURCHASE_STATUS_LABELS, ADMIN_CASH_PURCHASE_STATUS_LABELS]) {
-    assert.deepEqual(Object.keys(labels).sort(), ['cancelled', 'credited', 'held_in_case', 'pending'])
-    for (const status of ['pending', 'credited', 'cancelled', 'held_in_case']) {
+    assert.deepEqual(Object.keys(labels).sort(), ['cancelled', 'checkout_failed', 'credited', 'held_in_case', 'pending'])
+    for (const status of ['pending', 'credited', 'cancelled', 'held_in_case', 'checkout_failed']) {
       assert.equal(typeof labels[status].text, 'string')
       assert.ok(labels[status].text.length > 0)
       assert.equal(typeof labels[status].variant, 'string')
     }
   }
+})
+
+test('InfinitePay without a checkout URL is never labelled as awaiting payment', () => {
+  const purchase = { paymentProvider: 'infinitepay', status: 'pending', checkoutUrl: null }
+  assert.equal(cashPurchaseStatusLabel(purchase, USER_CASH_PURCHASE_STATUS_LABELS).text, 'Preparando checkout')
+  assert.equal(cashPurchaseStatusLabel({ ...purchase, checkoutUncertain: true }, USER_CASH_PURCHASE_STATUS_LABELS).text,
+    'Checkout em conciliação')
+  assert.equal(cashPurchaseStatusLabel({ ...purchase, cancelRequestedAt: '2026-10-05T00:00:00Z' }, USER_CASH_PURCHASE_STATUS_LABELS).text,
+    'Cancelamento solicitado')
+})
+
+test('checkout success navigates to the InfinitePay page and refuses other hosts', () => {
+  const opened = []
+  openInfinitepayCheckout('https://checkout.infinitepay.io/evolutus?lenc=token', (url) => opened.push(url))
+  assert.deepEqual(opened, ['https://checkout.infinitepay.io/evolutus?lenc=token'])
+  assert.throws(() => openInfinitepayCheckout('https://checkout.infinitepay.io.evil.test/x', (url) => opened.push(url)),
+    /INVALID_CHECKOUT_URL/)
+  assert.equal(opened.length, 1)
 })
 
 test('abbreviateProtocol shortens a real 64-char sha256 protocol to prefix…suffix', () => {

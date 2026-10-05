@@ -4,13 +4,15 @@ import { Box, Button, Flash, Heading, Label, Spinner, Text } from '@primer/react
 import { SparkleFillIcon } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
-import { checkInfinitepayPurchase, getCashPurchaseSettings, requestCashPurchase } from '../services/cashPurchaseService'
+import { checkInfinitepayPurchase, getCashPurchaseSettings, requestCashPurchase, requestInfinitepayCancellation } from '../services/cashPurchaseService'
 import { CashPackageCards } from '../components/CashPackageCards'
 import { CopyButton } from '../components/CopyButton'
 import { PixPaymentInstructions } from '../components/PixPaymentInstructions'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
   hasPendingCashPurchase,
+  cashPurchaseStatusLabel,
+  openInfinitepayCheckout,
   abbreviateProtocol,
   USER_CASH_PURCHASE_STATUS_LABELS as STATUS_LABELS,
 } from '../utils/cashPurchaseFlow'
@@ -25,6 +27,7 @@ export default function EvoCash() {
   const [loadingSettings, setLoadingSettings] = useState(true)
   const [searchParams, setSearchParams] = useSearchParams()
   const [buyingPackageId, setBuyingPackageId] = useState(null)
+  const [cancellingPurchaseId, setCancellingPurchaseId] = useState(null)
   const [error, setError] = useState('')
   const [checkoutReturn, setCheckoutReturn] = useState(null)
   const {
@@ -89,19 +92,35 @@ export default function EvoCash() {
     setBuyingPackageId(packageId)
     try {
       const result = await requestCashPurchase({ packageId })
-      window.location.assign(result.checkoutUrl)
+      openInfinitepayCheckout(result.checkoutUrl)
     } catch (err) {
       const KNOWN_ERRORS = {
         PENDING_CASH_PURCHASE_EXISTS: 'Você já tem uma compra de EvoCash pendente.',
         CASH_PACKAGE_UNAVAILABLE: 'Este pacote não está mais disponível.',
         INFINITEPAY_NOT_CONFIGURED: 'Pagamentos estão temporariamente indisponíveis.',
-        INFINITEPAY_LINK_FAILED: 'Não foi possível abrir o checkout. Tente novamente.',
-        CHECKOUT_IN_PROGRESS: 'O checkout está sendo criado. Tente novamente em instantes.',
-        CHECKOUT_RECONCILIATION_REQUIRED: 'Não foi possível confirmar a criação do checkout. O suporte precisa conciliar este pedido antes de uma nova tentativa.',
+        INFINITEPAY_LINK_FAILED: 'Não foi possível abrir o pagamento. Tente novamente.',
+        INVALID_CHECKOUT_URL: 'Não foi possível abrir o pagamento. Tente novamente.',
+        CHECKOUT_SAVE_FAILED: 'Não foi possível abrir o pagamento. Tente novamente.',
+        CHECKOUT_IN_PROGRESS: 'Não foi possível abrir o pagamento. Tente novamente.',
+        CHECKOUT_RECONCILIATION_REQUIRED: 'Não foi possível abrir o pagamento. Tente novamente.',
       }
       setError(KNOWN_ERRORS[err?.message] || 'Não foi possível solicitar a compra. Tente novamente.')
     } finally {
       setBuyingPackageId(null)
+    }
+  }
+
+  async function requestCancellation(purchaseId) {
+    if (cancellingPurchaseId) return
+    setError('')
+    setCancellingPurchaseId(purchaseId)
+    try {
+      await requestInfinitepayCancellation(purchaseId)
+      await refresh()
+    } catch {
+      setError('Não foi possível solicitar o cancelamento. Tente novamente.')
+    } finally {
+      setCancellingPurchaseId(null)
     }
   }
 
@@ -165,16 +184,16 @@ export default function EvoCash() {
         )}
         {hasPendingPurchase && (
           <Flash sx={{ mb: 3 }}>
-            Você já tem uma compra em andamento — acompanhe em &quot;Minhas compras&quot; abaixo.
+            {purchases.some((purchase) => purchase.status === 'pending' && purchase.cancelRequestedAt)
+              ? 'Seu pedido de cancelamento está em análise. Acompanhe em "Minhas compras" abaixo.'
+              : 'Você já tem uma compra em andamento — acompanhe em "Minhas compras" abaixo.'}
           </Flash>
         )}
         {!loadingSettings && settings.packages.length > 0 && (
           <CashPackageCards
             packages={settings.packages}
             buyingPackageId={buyingPackageId}
-            disabled={!!buyingPackageId || (hasPendingPurchase && !purchases.some(
-              (purchase) => purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && !purchase.checkoutUrl
-            ))}
+            disabled={!!buyingPackageId || hasPendingPurchase}
             onBuy={buy}
           />
         )}
@@ -224,8 +243,8 @@ export default function EvoCash() {
               <Text as="p" sx={{ fontWeight: 'bold', m: 0, minWidth: 0, wordBreak: 'break-word' }}>
                 {purchase.packageLabel}
               </Text>
-              <Label variant={STATUS_LABELS[purchase.status]?.variant}>
-                {STATUS_LABELS[purchase.status]?.text || purchase.status}
+              <Label variant={cashPurchaseStatusLabel(purchase, STATUS_LABELS).variant}>
+                {cashPurchaseStatusLabel(purchase, STATUS_LABELS).text}
               </Label>
             </Box>
 
@@ -258,8 +277,34 @@ export default function EvoCash() {
               Data: {formatDateTime(purchase.createdAt ? new Date(purchase.createdAt) : null)}
             </Text>
 
-            {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && purchase.checkoutUrl && (
+            {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && purchase.checkoutUrl && !purchase.cancelRequestedAt && (
               <Button as="a" href={purchase.checkoutUrl}>Continuar no checkout</Button>
+            )}
+
+            {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && !purchase.cancelRequestedAt && (
+              <Box>
+                <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', mb: 2 }}>
+                  Se desistiu, solicite o cancelamento. Um link já emitido pode continuar pagável até a conciliação.
+                </Text>
+                <Button variant="danger" disabled={!!cancellingPurchaseId}
+                  onClick={() => requestCancellation(purchase.id)}>
+                  {cancellingPurchaseId === purchase.id ? 'Solicitando…' : 'Solicitar cancelamento'}
+                </Button>
+              </Box>
+            )}
+
+            {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && purchase.cancelRequestedAt && (
+              <Text as="p" sx={{ fontSize: 0, color: 'attention.fg', m: 0 }}>
+                Solicitação recebida. Não use o link de pagamento; a equipe precisa conciliar o pedido com a InfinitePay.
+              </Text>
+            )}
+
+            {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && !purchase.checkoutUrl && (
+              <Text as="p" sx={{ fontSize: 0, color: 'attention.fg', m: 0 }}>
+                {purchase.checkoutUncertain
+                  ? 'O checkout não abriu. Este pedido precisa de conciliação antes de pagar.'
+                  : 'O checkout está sendo preparado. Nenhum pagamento foi iniciado.'}
+              </Text>
             )}
 
             {purchase.status === 'pending' && purchase.paymentProvider !== 'infinitepay' && (

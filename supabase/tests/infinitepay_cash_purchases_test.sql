@@ -6,11 +6,14 @@ insert into auth.users (id, aud, role, email, encrypted_password, email_confirme
 values
   ('72000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'buyer-a@example.invalid', 'unused', now(), '{}', '{}', now(), now()),
   ('72000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'buyer-b@example.invalid', 'unused', now(), '{}', '{}', now(), now()),
-  ('72000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'buyer-c@example.invalid', 'unused', now(), '{}', '{}', now(), now());
+  ('72000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'buyer-c@example.invalid', 'unused', now(), '{}', '{}', now(), now()),
+  ('72000000-0000-0000-0000-000000000004', 'authenticated', 'authenticated', 'buyer-d@example.invalid', 'unused', now(), '{}', '{}', now(), now());
 
 select ok(not has_function_privilege('authenticated', 'public.reserve_infinitepay_cash_purchase(uuid,text)', 'EXECUTE'), 'ordinary user cannot reserve via privileged RPC');
 select ok(not has_function_privilege('authenticated', 'public.confirm_infinitepay_cash_purchase(uuid,text,text,text,integer,text,text)', 'EXECUTE'), 'ordinary user cannot credit');
 select ok(has_function_privilege('service_role', 'public.confirm_infinitepay_cash_purchase(uuid,text,text,text,integer,text,text)', 'EXECUTE'), 'service role can credit after provider check');
+select ok(not has_function_privilege('authenticated', 'public.fail_infinitepay_checkout(uuid,integer)', 'EXECUTE'), 'ordinary user cannot mark checkout failure');
+select ok(not has_function_privilege('anon', 'public.request_infinitepay_cash_purchase_cancellation(uuid)', 'EXECUTE'), 'anonymous user cannot request cancellation');
 
 create temp table _ip_a as
   select public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000001', 'pack_25') as r;
@@ -32,6 +35,39 @@ create temp table _ip_b as
 select public.mark_infinitepay_checkout_uncertain((select (r->>'id')::uuid from _ip_b));
 select throws_ok($$select public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000002', 'pack_25')$$,
   'CHECKOUT_RECONCILIATION_REQUIRED', 'uncertain link cannot be recreated automatically');
+
+create temp table _ip_d as
+  select public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000004', 'pack_25') as r;
+select public.fail_infinitepay_checkout((select (r->>'id')::uuid from _ip_d), 422);
+select is((select status from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
+  'checkout_failed', '4xx is not shown as awaiting payment');
+select is((select checkout_url from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
+  null, 'failed checkout has no link');
+select is((public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000004', 'pack_25')->>'id'),
+  (select r->>'id' from _ip_d), 'retry reuses the failed purchase');
+select is((select count(*)::int from public.cash_purchases where user_id = '72000000-0000-0000-0000-000000000004'),
+  1, 'retry creates no second purchase');
+select is((select count(*)::int from public.economy_transactions where reference_id = (select r->>'id' from _ip_d)),
+  0, 'failed checkout writes no ledger');
+select is((select coalesce((select cash_balance::int from public.wallets where user_id = '72000000-0000-0000-0000-000000000004'), 0)),
+  0, 'failed checkout writes no wallet');
+select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _ip_d), 'https://checkout.infinitepay.io/evolutus?lenc=test');
+select is((select status from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
+  'pending', 'payment becomes pending only after valid checkout is saved');
+select set_config('request.jwt.claim.sub', '72000000-0000-0000-0000-000000000004', true);
+select is((public.request_infinitepay_cash_purchase_cancellation((select (r->>'id')::uuid from _ip_d))->>'status'),
+  'cancel_requested', 'owner can request cancellation');
+select ok((select cancel_requested_at is not null from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
+  'cancellation request is recorded');
+select is((select status from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
+  'pending', 'payable link remains pending for late payment reconciliation');
+select throws_ok($$select public.request_infinitepay_cash_purchase_cancellation((select (r->>'id')::uuid from _ip_a))$$,
+  'PURCHASE_NOT_FOUND', 'user cannot request cancellation for another buyer');
+select is((public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _ip_d),
+  (select r->>'orderNsu' from _ip_d), 'txn-d', 'invoice-d', 590, 'pix', null)->>'credited'),
+  'true', 'verified late payment still settles after cancellation request');
+select is((select count(*)::int from public.economy_transactions where reference_id = (select r->>'id' from _ip_d)),
+  1, 'late payment after cancellation request writes one ledger row');
 
 select throws_ok($$select public.confirm_infinitepay_cash_purchase(
   (select (r->>'id')::uuid from _ip_a), (select r->>'orderNsu' from _ip_a),

@@ -73,9 +73,8 @@ export function useCashPurchases(userId, admin = false, status = '') {
   }
 
   // Nunca mais que 1 pending por usuário (índice único parcial, ver migration
-  // economy_cash_purchases_promotions.sql) -- por isso um único canal Realtime filtrado
-  // por essa linha é suficiente pra saber quando o webhook do Mercado Pago (ou um admin,
-  // no fallback manual) credita/cancela, sem ouvir a tabela inteira nem fazer polling.
+  // economy_cash_purchases_promotions.sql) -- um canal Realtime filtrado por essa linha
+  // acompanha checkout, pedido de cancelamento e confirmação sem polling.
   // Fica sem listener nenhum sempre que não há pending (inclusive admin=true, que já tem
   // sua própria tela com refresh() próprio -- ver AdminCashPurchases.jsx).
   const pendingId = !admin ? purchases.find((p) => p.status === 'pending')?.id ?? null : null
@@ -87,9 +86,8 @@ export function useCashPurchases(userId, admin = false, status = '') {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'cash_purchases', filter: `id=eq.${pendingId}` },
         (payload) => {
-          // Estado inicial do próprio listener (ainda pending) -- nunca reescreve nada, só
-          // reage à transição real pra um estado terminal.
-          if (payload.new.status === 'pending') return
+          // Atualiza também checkout_url e cancel_requested_at enquanto a compra
+          // continua pendente, para refletir o pedido em outros dispositivos.
           setPurchases((prev) => prev.map((p) => (p.id === pendingId ? mapPurchaseRow(payload.new) : p)))
         }
       )

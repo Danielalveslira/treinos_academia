@@ -30,7 +30,13 @@ Deno.serve(async (req) => {
       'INFINITEPAY_LINK_FAILED', 'INVALID_CHECKOUT_URL', 'CHECKOUT_SAVE_FAILED',
       'CHECKOUT_RECONCILIATION_REQUIRED']
     if (!safe.includes(code)) console.error('[InfinitePay create] unexpected error class:', error?.constructor?.name)
-    return json({ error: safe.includes(code) ? code : 'INTERNAL_ERROR' }, code === 'CHECKOUT_IN_PROGRESS' ? 409 : 400)
+    const providerStatus = error instanceof Error && 'providerStatus' in error
+      ? Number(error.providerStatus) : null
+    const providerCode = error instanceof Error && 'providerCode' in error &&
+      typeof error.providerCode === 'string' ? error.providerCode : null
+    return json({ error: safe.includes(code) ? code : 'INTERNAL_ERROR',
+      ...(providerStatus ? { providerStatus } : {}),
+      ...(providerCode ? { providerCode } : {}) }, code === 'CHECKOUT_IN_PROGRESS' ? 409 : 400)
   }
 })
 

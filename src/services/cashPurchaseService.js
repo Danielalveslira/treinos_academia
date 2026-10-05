@@ -14,6 +14,9 @@ export function mapPurchaseRow(row) {
     status: row.status,
     paymentProvider: row.payment_provider,
     checkoutUrl: row.checkout_url,
+    checkoutUncertain: row.checkout_uncertain,
+    checkoutHttpStatus: row.checkout_http_status,
+    cancelRequestedAt: row.cancel_requested_at,
     captureMethod: row.provider_capture_method,
     qrCode: row.qr_code,
     qrCodeBase64: row.qr_code_base64,
@@ -65,6 +68,14 @@ export function requestCashPurchase({ packageId }) {
 
 export function checkInfinitepayPurchase(purchaseId, hints = {}) {
   return callPaymentFunction('infinitepay-check-payment', { purchaseId, ...hints })
+}
+
+export async function requestInfinitepayCancellation(purchaseId) {
+  const { data, error } = await supabase.rpc('request_infinitepay_cash_purchase_cancellation', {
+    p_purchase_id: purchaseId,
+  })
+  if (error) throw error
+  return data
 }
 
 // Fallback operacional (superadmin) -- webhook do Mercado Pago é o caminho principal de

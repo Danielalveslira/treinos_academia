@@ -19,6 +19,7 @@ import { cancelCashPurchase, confirmCashPurchase } from '../services/cashPurchas
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
   canSubmitCancellation,
+  cashPurchaseStatusLabel,
   ADMIN_CASH_PURCHASE_STATUS_LABELS as STATUS_LABELS,
 } from '../utils/cashPurchaseFlow'
 
@@ -168,8 +169,8 @@ export default function AdminCashPurchases() {
                 Provedor: {purchase.paymentProvider === 'infinitepay' ? 'InfinitePay' : 'Mercado Pago'}
               </Text>
             </Box>
-            <Label variant={STATUS_LABELS[purchase.status]?.variant}>
-              {STATUS_LABELS[purchase.status]?.text || purchase.status}
+            <Label variant={cashPurchaseStatusLabel(purchase, STATUS_LABELS).variant}>
+              {cashPurchaseStatusLabel(purchase, STATUS_LABELS).text}
             </Label>
           </Box>
           <Link to={`/admin/contas?usuario=${encodeURIComponent(purchase.userId)}`}>
@@ -205,7 +206,11 @@ export default function AdminCashPurchases() {
           )}
           {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && (
             <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-              Aguardando webhook ou conciliação com a InfinitePay. Verifique no provedor antes de qualquer cancelamento.
+              {purchase.cancelRequestedAt
+                ? 'Comprador solicitou cancelamento. Confira no provedor se o link pode ser pago e se há transação antes de concluir o caso.'
+                : purchase.checkoutUrl
+                ? 'Aguardando webhook ou conciliação com a InfinitePay. Verifique no provedor antes de qualquer cancelamento.'
+                : 'Checkout sem URL. Concilie o pedido no provedor antes de qualquer cancelamento.'}
             </Text>
           )}
 
