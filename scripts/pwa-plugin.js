@@ -29,11 +29,28 @@ export function collectBootAssets(bundle) {
   return [...seen].sort().map((file) => `/${file}`)
 }
 
+// Endpoint e chave PÚBLICA (anon) da RPC de telemetria do Push. Sem as duas variáveis (ou com URL que
+// não seja https) o Service Worker sai sem telemetria, nunca com valores parciais.
+export function pushAckConfig(env = {}) {
+  const base = typeof env.VITE_SUPABASE_URL === 'string' ? env.VITE_SUPABASE_URL.trim().replace(/\/+$/, '') : ''
+  const key = typeof env.VITE_SUPABASE_ANON_KEY === 'string' ? env.VITE_SUPABASE_ANON_KEY.trim() : ''
+  let url = null
+  try {
+    const parsed = new URL(base)
+    if (parsed.protocol === 'https:' && !parsed.search && !parsed.hash) url = `${parsed.origin}${parsed.pathname.replace(/\/+$/, '')}/rest/v1/rpc/push_delivery_ack`
+  } catch { /* URL inválida: sem telemetria */ }
+  return url && key ? { url, key } : { url: null, key: null }
+}
+
 export function pwaPlugin() {
+  let ack = { url: null, key: null }
   return {
     name: 'treinos-pwa',
     apply: 'build',
     enforce: 'post',
+    configResolved(config) {
+      ack = pushAckConfig(config.env)
+    },
     generateBundle(_, bundle) {
       const files = Object.keys(bundle).filter((file) => !file.endsWith('.map'))
       const hash = createHash('sha256')
@@ -50,6 +67,8 @@ export function pwaPlugin() {
           JSON.stringify(['/index.html', ...PUBLIC_SHELL_FILES.map((file) => `/${file}`)])
         )
         .replace('__BOOT_ASSETS__', JSON.stringify(collectBootAssets(bundle)))
+        .replace('__PUSH_ACK_URL__', () => JSON.stringify(ack.url))
+        .replace('__PUSH_ACK_KEY__', () => JSON.stringify(ack.key))
       this.emitFile({ type: 'asset', fileName: 'sw.js', source })
     },
   }

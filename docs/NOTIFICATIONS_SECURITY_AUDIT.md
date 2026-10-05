@@ -81,3 +81,27 @@ Ainda não há tela de preferências por categoria.
 
 `pgbench` (8 clientes, 3.200 transações, 200 destinatários): gatilho novo 6,6 ms vs anterior 7,0 ms (social) e
 5,4 ms vs 7,1 ms (texto fixo). Claim de 100 jobs: 24 ms. Sem consulta por mensagem, sem polling, sem Realtime novo.
+
+## Telemetria da última milha do Web Push (migration 20261014000007)
+
+Objetivo: saber em qual etapa um Push demora (cron, worker, Push Service, aparelho/Service Worker)
+sem mexer no comportamento de entrega (cron, hold, urgency, TTL e reconciliação de subscription
+ficam como estão).
+
+Por entrega (`notification_push_deliveries`): `claimed_at`, `worker_started_at`, `provider_accepted_at`,
+`last_http_status` (código REAL do Push Service), `sw_received_at`, `show_resolved_at`, `show_failed_at`
+(+ `show_failure`, só o NOME do erro), `clicked_at`. A view `private.push_delivery_timeline` calcula as
+etapas em ms (hold, espera pelo worker, claim, provedor, provedor→SW, SW→exibição, total).
+
+Segurança:
+- o `claim_push_jobs` gera um token opaco de 256 bits por entrega e guarda só o SHA-256; o token em
+  claro viaja no payload criptografado do Push e, no aparelho, em `notification.data` (para o clique);
+- `push_delivery_ack(token, evento, falha)` é a única função nova executável por `anon`: só avança UMA
+  coluna de tempo da entrega dona do token, com o relógio do servidor, uma única vez (retry idempotente),
+  e responde igual para token inexistente, inválido ou vencido (>30 dias): sem oráculo;
+- `worker_started_at`/`provider_accepted_at` só chegam por `finish_push_batch` (service_role), validados
+  (±1h) por `private.push_clock`; HTTP fora de 100–599 vira nulo;
+- nenhuma coluna guarda endpoint, p256dh, auth, VAPID, JWT, título/corpo ou metadata;
+- no Service Worker o ACK é melhor esforço: o "received" só dispara a requisição, a notificação é
+  mostrada logo em seguida, o "shown" vai depois; timeout de 4 s com abort; falhas são engolidas e uma
+  falha de `showNotification` continua sendo propagada como antes.

@@ -18,6 +18,12 @@ const ASSET_CACHE = 'treinos-assets-v1'
 const IMAGE_CACHE = 'treinos-images-v1'
 const SHELL_URLS = __SHELL_URLS__ // eslint-disable-line no-undef
 const BOOT_ASSETS = __BOOT_ASSETS__ // eslint-disable-line no-undef
+// Telemetria da última milha do Push (RPC pública, só avança o tempo da entrega dona do token).
+// Null quando o build não tem as variáveis do Supabase: a telemetria simplesmente não roda.
+const PUSH_ACK_URL = __PUSH_ACK_URL__ // eslint-disable-line no-undef
+const PUSH_ACK_KEY = __PUSH_ACK_KEY__ // eslint-disable-line no-undef
+const ACK_TIMEOUT_MS = 4000
+const ACK_TOKEN_PATTERN = /^[0-9a-f]{64}$/
 
 const MAX_ASSET_ENTRIES = 120
 const MAX_IMAGE_ENTRIES = 40
@@ -180,6 +186,39 @@ function safeNotificationTarget(value) {
   return value
 }
 
+// ACK de telemetria: melhor esforço, NUNCA rejeita e nunca é aguardado antes de mostrar a
+// notificação. O token é o identificador opaco da entrega (vem no payload criptografado); o servidor
+// grava o relógio dele. Falha de rede, resposta de erro ou lentidão (abortada em ACK_TIMEOUT_MS) são
+// ignoradas: a notificação não depende disto.
+function sendDeliveryAck(token, eventName, failure) {
+  try {
+    if (!PUSH_ACK_URL || !PUSH_ACK_KEY || typeof token !== 'string' || !ACK_TOKEN_PATTERN.test(token)) {
+      return Promise.resolve()
+    }
+    const controller = typeof AbortController === 'function' ? new AbortController() : null
+    const timer = controller ? setTimeout(() => controller.abort(), ACK_TIMEOUT_MS) : null
+    const body = { p_token: token, p_event: eventName }
+    if (failure) body.p_failure = failure
+    return Promise.resolve(fetch(PUSH_ACK_URL, {
+      method: 'POST',
+      headers: { apikey: PUSH_ACK_KEY, Authorization: `Bearer ${PUSH_ACK_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      keepalive: true,
+      cache: 'no-store',
+      credentials: 'omit',
+      signal: controller ? controller.signal : undefined,
+    })).then(() => undefined, () => undefined).then(() => { if (timer) clearTimeout(timer) })
+  } catch {
+    return Promise.resolve()
+  }
+}
+
+// Só o NOME do erro (letras), nunca a mensagem: nada de texto livre na telemetria.
+function failureName(error) {
+  const name = String((error && error.name) || '').replace(/[^A-Za-z]/g, '').slice(0, 40)
+  return name || 'Error'
+}
+
 self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     let payload = {}
@@ -193,24 +232,39 @@ self.addEventListener('push', (event) => {
     // `tag` do servidor agrupa rajadas (curtidas/alertas): o Push novo SUBSTITUI o anterior no aparelho
     // e `renotify` ainda avisa. Só aceita um formato conservador; qualquer outra coisa é ignorada.
     const groupTag = typeof payload.tag === 'string' && /^[A-Za-z0-9:_-]{1,64}$/.test(payload.tag) ? payload.tag : null
-    await self.registration.showNotification(title, {
-      body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      tag: groupTag || (payload.notificationId ? `notification-${String(payload.notificationId)}` : undefined),
-      renotify: Boolean(groupTag),
-      data: {
-        notificationId: payload.notificationId ? String(payload.notificationId) : null,
-        targetUrl: safeNotificationTarget(payload.targetUrl),
-      },
-    })
+    const ackToken = typeof payload.ack === 'string' && ACK_TOKEN_PATTERN.test(payload.ack) ? payload.ack : null
+    // Ordem: o ACK de "recebido" só DISPARA a requisição (sem aguardar) e a notificação é mostrada
+    // em seguida; o ACK de "exibido" vai depois de showNotification() resolver.
+    const acks = [sendDeliveryAck(ackToken, 'received')]
+    let showError = null
+    try {
+      await self.registration.showNotification(title, {
+        body,
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        tag: groupTag || (payload.notificationId ? `notification-${String(payload.notificationId)}` : undefined),
+        renotify: Boolean(groupTag),
+        data: {
+          notificationId: payload.notificationId ? String(payload.notificationId) : null,
+          targetUrl: safeNotificationTarget(payload.targetUrl),
+          ack: ackToken,
+        },
+      })
+    } catch (error) {
+      showError = error
+    }
+    acks.push(showError ? sendDeliveryAck(ackToken, 'show_failed', failureName(showError)) : sendDeliveryAck(ackToken, 'shown'))
+    await Promise.all(acks)
+    // Mesmo comportamento de antes: se a exibição falhou, a falha continua visível ao navegador.
+    if (showError) throw showError
   })())
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const targetUrl = safeNotificationTarget(event.notification.data?.targetUrl)
-  event.waitUntil((async () => {
+  const clickAck = event.notification.data?.ack
+  const navigation = (async () => {
     let target = new URL(targetUrl, self.location.origin)
     // Defesa em profundidade: mesmo após a sanitização, nunca navega para outra origem.
     if (target.origin !== self.location.origin) target = new URL('/', self.location.origin)
@@ -237,5 +291,7 @@ self.addEventListener('notificationclick', (event) => {
       return
     }
     await self.clients.openWindow(href)
-  })())
+  })()
+  // Telemetria do clique em paralelo à navegação (não a atrasa nem depende dela; nunca rejeita).
+  event.waitUntil(Promise.all([navigation, sendDeliveryAck(clickAck, 'clicked')]))
 })

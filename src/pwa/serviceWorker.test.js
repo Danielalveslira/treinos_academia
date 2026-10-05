@@ -2,7 +2,8 @@ import { beforeEach, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
-import { collectBootAssets } from '../../scripts/pwa-plugin.js'
+import { setImmediate } from 'node:timers'
+import { collectBootAssets, pushAckConfig } from '../../scripts/pwa-plugin.js'
 
 const TEMPLATE = readFileSync(new URL('../../scripts/service-worker.js', import.meta.url), 'utf8')
 const ORIGIN = 'https://app.test'
@@ -53,13 +54,23 @@ class WorkerRequest extends Request {
   }
 }
 
-function load({ responder } = {}) {
+const ACK_URL = 'https://proj.supabase.co/rest/v1/rpc/push_delivery_ack'
+const ACK_KEY = 'public-anon-key'
+let timers // setTimeout falso: os testes disparam o tempo manualmente
+let ackHandler = () => Promise.resolve(new Response('', { status: 204 }))
+
+function load({ responder, ack = { url: ACK_URL, key: ACK_KEY } } = {}) {
+  timers = []
   network = []
   handlers = {}
   offline = false
   const caches = fakeCaches()
-  const fetchStub = async (input) => {
+  const fetchStub = (input, init) => {
     const url = urlOf(input)
+    if (url === ACK_URL) return ackHandler(init)
+    return plainFetch(input, url)
+  }
+  const plainFetch = async (input, url) => {
     if (offline) throw new TypeError('offline')
     network.push(new URL(url).pathname)
     return responder ? responder(url) : basic('ok', { status: 200 })
@@ -80,6 +91,8 @@ function load({ responder } = {}) {
   const source = TEMPLATE.replace('__VERSION__', 'v2')
     .replace('__SHELL_URLS__', JSON.stringify(SHELL))
     .replace('__BOOT_ASSETS__', JSON.stringify(BOOT))
+    .replace('__PUSH_ACK_URL__', JSON.stringify(ack.url))
+    .replace('__PUSH_ACK_KEY__', JSON.stringify(ack.key))
   globalThis.__fetch = fetchStub
   vm.runInNewContext(source, {
     self,
@@ -94,6 +107,9 @@ function load({ responder } = {}) {
     Math,
     Number,
     Infinity,
+    AbortController,
+    setTimeout: (fn) => { timers.push(fn); return timers.length },
+    clearTimeout: () => {},
   })
   sw = { self, caches }
 }
@@ -485,4 +501,150 @@ test('push com `tag` do servidor agrupa e re-notifica; tag inválida é ignorada
     assert.equal(sw.self.shownNotification.options.tag, 'notification-8', `aceitou tag ${JSON.stringify(tag)}`)
     assert.equal(sw.self.shownNotification.options.renotify, false)
   }
+})
+
+
+// ---- Telemetria da última milha: nunca vira dependência do Push ------------------------------------
+const ACK = 'cd'.repeat(32)
+let log // ordem dos eventos: show, ack:<evento>
+let acks
+
+function arm(mode, options) {
+  acks = []
+  load(options)
+  log = []
+  const originalShow = sw.self.registration.showNotification
+  sw.self.registration.showNotification = async (title, opts) => {
+    log.push('show')
+    if (sw.self.showMode === 'reject') throw Object.assign(new Error('secret message with /private/path'), { name: 'NotAllowedError' })
+    return originalShow(title, opts)
+  }
+  ackHandler = (init) => {
+    const body = JSON.parse(init.body)
+    acks.push({ body, headers: init.headers, signal: init.signal, init })
+    log.push(`ack:${body.p_event}`)
+    if (mode === 'throw') throw new TypeError('sync failure')
+    if (mode === 'offline') return Promise.reject(new TypeError('Failed to fetch'))
+    if (mode === 'hang') return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(new Error('aborted'))))
+    return Promise.resolve(new Response('', { status: 204 }))
+  }
+}
+function push(payload = {}) {
+  let work
+  handlers.push({
+    data: { json: () => ({ title: 'x', body: 'y', notificationId: 5, targetUrl: '/p', ack: ACK, ...payload }) },
+    waitUntil: (promise) => { work = promise },
+  })
+  return work
+}
+
+test('telemetria: Push exibido, ACK "received" disparado ANTES e "shown" DEPOIS de showNotification', async () => {
+  arm('ok')
+  await push()
+  assert.deepEqual(log, ['ack:received', 'show', 'ack:shown'])
+  assert.equal(sw.self.shownNotification.title, 'x')
+  assert.equal(acks[0].body.p_token, ACK)
+  assert.deepEqual(Object.keys(acks[0].body).sort(), ['p_event', 'p_token'])
+  assert.equal(acks[0].headers.apikey, ACK_KEY)
+  assert.equal(acks[0].init.credentials, 'omit')
+  assert.equal(acks[0].init.keepalive, true)
+})
+
+test('telemetria: ACK falhando (offline) e ACK que lança de forma síncrona não impedem a notificação', async () => {
+  for (const mode of ['offline', 'throw']) {
+    arm(mode)
+    await push()
+    assert.equal(sw.self.shownNotification.title, 'x', mode)
+    assert.ok(log.includes('show'), mode)
+  }
+})
+
+test('telemetria: ACK lento NÃO atrasa a exibição; ao estourar o tempo é abortado e o handler termina', async () => {
+  arm('hang')
+  let settled = false
+  const work = push().then(() => { settled = true })
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.ok(log.includes('show'), 'a notificação apareceu com o ACK ainda pendente')
+  assert.equal(sw.self.shownNotification.title, 'x')
+  assert.equal(settled, false, 'o handler só termina depois do ACK (limitado por timeout)')
+  assert.equal(timers.length >= 1, true, 'o ACK tem timeout')
+  timers.forEach((fire) => fire()) // estoura o prazo => AbortController.abort()
+  await work
+  assert.equal(settled, true)
+  assert.ok(acks.every((ack) => ack.signal.aborted))
+})
+
+test('telemetria: showNotification rejeitando gera show_failed só com o NOME do erro e preserva a falha', async () => {
+  arm('ok')
+  sw.self.showMode = 'reject'
+  await assert.rejects(push(), /secret message/)
+  assert.deepEqual(log, ['ack:received', 'show', 'ack:show_failed'])
+  const failed = acks.find((ack) => ack.body.p_event === 'show_failed')
+  assert.equal(failed.body.p_failure, 'NotAllowedError')
+  assert.equal(JSON.stringify(acks).includes('secret'), false, 'nem mensagem nem caminho vão para a telemetria')
+})
+
+test('telemetria: sem token, token inválido ou build sem configuração => nenhuma requisição, notificação normal', async () => {
+  for (const payload of [{ ack: undefined }, { ack: '' }, { ack: 'curto' }, { ack: 'CD'.repeat(32) }, { ack: `${ACK}0` }, { ack: 123 }, { ack: '<img src=x>' }]) {
+    arm('ok')
+    await push(payload)
+    assert.equal(acks.length, 0, JSON.stringify(payload))
+    assert.equal(sw.self.shownNotification.title, 'x')
+  }
+  for (const ack of [{ url: null, key: null }, { url: ACK_URL, key: null }, { url: null, key: ACK_KEY }]) {
+    arm('ok', { ack })
+    await push()
+    assert.equal(acks.length, 0)
+    assert.equal(sw.self.shownNotification.title, 'x')
+  }
+})
+
+test('telemetria: o token vai só em notification.data (para o clique), nunca no título, corpo ou tag', async () => {
+  arm('ok')
+  await push()
+  const { title, options } = sw.self.shownNotification
+  assert.equal(options.data.ack, ACK)
+  assert.equal(`${title}${options.body}${options.tag}`.includes(ACK), false)
+})
+
+test('telemetria: clique envia "clicked" e a navegação acontece mesmo com ACK offline, lento ou lançando', async () => {
+  for (const mode of ['ok', 'offline', 'throw', 'hang']) {
+    arm(mode)
+    sw.self.windowClients = []
+    sw.self.openedWindow = null
+    sw.self.clients.openWindow = async (url) => { sw.self.openedWindow = url }
+    let work
+    handlers.notificationclick({
+      notification: { data: { targetUrl: '/perfil', ack: ACK }, close() {} },
+      waitUntil: (promise) => { work = promise },
+    })
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(sw.self.openedWindow, `${ORIGIN}/perfil`, `${mode}: abriu a rota sem esperar o ACK`)
+    assert.deepEqual(acks.map((ack) => ack.body.p_event), ['clicked'])
+    timers.forEach((fire) => fire())
+    await work
+  }
+})
+
+test('telemetria: clique sem token não faz requisição', async () => {
+  arm('ok')
+  sw.self.windowClients = []
+  await click('/perfil')
+  assert.equal(acks.length, 0)
+})
+
+test('build: pushAckConfig só habilita a telemetria com https + chave; nada de valores parciais', () => {
+  assert.deepEqual(pushAckConfig({ VITE_SUPABASE_URL: 'https://proj.supabase.co/', VITE_SUPABASE_ANON_KEY: 'k' }),
+    { url: ACK_URL, key: 'k' })
+  for (const env of [
+    {}, { VITE_SUPABASE_URL: 'https://proj.supabase.co' }, { VITE_SUPABASE_ANON_KEY: 'k' },
+    { VITE_SUPABASE_URL: 'http://proj.supabase.co', VITE_SUPABASE_ANON_KEY: 'k' },
+    { VITE_SUPABASE_URL: 'not a url', VITE_SUPABASE_ANON_KEY: 'k' },
+    { VITE_SUPABASE_URL: 'https://proj.supabase.co/?x=1', VITE_SUPABASE_ANON_KEY: 'k' },
+  ]) assert.deepEqual(pushAckConfig(env), { url: null, key: null }, JSON.stringify(env))
+})
+
+test('build: o template não deixa placeholders sem substituir', () => {
+  assert.equal((TEMPLATE.match(/__PUSH_ACK_URL__/g) || []).length, 1)
+  assert.equal((TEMPLATE.match(/__PUSH_ACK_KEY__/g) || []).length, 1)
 })

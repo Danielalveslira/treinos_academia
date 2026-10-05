@@ -194,3 +194,96 @@ test('erros persistidos não carregam URLs, tokens longos nem as chaves da subsc
   assert.ok(!/https?:|chave-publica|segredo-auth|eyJhbGci|ABCDEFGHIJKLMNOP/.test(out), out)
   assert.ok(out.length <= 500)
 })
+
+// ===== Telemetria da última milha =====
+const TOKEN = 'ab'.repeat(32)
+const telemetryJob = (id, extra = {}) => ({
+  delivery_id: id, notification_id: 9, endpoint: `${FCM}secret-endpoint-${id}`, p256dh: 'p256-secret-value', auth: 'auth-secret-value',
+  notification_type: 'comment_reply', action_url: '/x', ack_token: TOKEN, ...extra,
+})
+const fakeClock = (...instants) => {
+  let index = 0
+  return () => new Date(instants[Math.min(index++, instants.length - 1)])
+}
+function runWith(jobs, send, options = {}) {
+  const captured = { payloads: [] }
+  const admin = { rpc: async (name, args) => {
+    if (name === 'claim_push_jobs') return { data: jobs, error: null }
+    captured.results = args.p_results
+    return { error: null }
+  } }
+  return processPushOutbox(admin, async (subscription, payload, sendOptions) => {
+    captured.payloads.push(payload)
+    return send(subscription, payload, sendOptions)
+  }, { workerId: 'w', ...options }).then((summary) => ({ summary, ...captured }))
+}
+
+test('telemetria: o token da entrega vai no payload (criptografado pelo transporte) e nunca nos resultados', async () => {
+  const { payloads, results } = await runWith([telemetryJob('d1')], async () => ({ statusCode: 201 }))
+  assert.equal(payloads[0].ack, TOKEN)
+  assert.equal(JSON.stringify(results).includes(TOKEN), false)
+  assert.equal(JSON.stringify(results).includes('secret'), false)
+})
+
+test('telemetria: token ausente ou malformado não entra no payload e não impede o envio', async () => {
+  for (const ack_token of [undefined, null, '', 'curto', 'AB'.repeat(32), `${TOKEN}x`, '<script>']) {
+    const { payloads, summary } = await runWith([telemetryJob('d2', { ack_token })], async () => ({ statusCode: 201 }))
+    assert.equal('ack' in payloads[0], false, String(ack_token))
+    assert.equal(summary.sent, 1)
+  }
+})
+
+test('telemetria: persiste o código HTTP REAL do Push Service, sem inventar', async () => {
+  const statuses = { a: 201, b: 202, c: undefined }
+  const { results } = await runWith(
+    [telemetryJob('a'), telemetryJob('b'), telemetryJob('c')],
+    async (subscription) => {
+      const code = statuses[subscription.endpoint.slice(-1)]
+      return code ? { statusCode: code } : undefined
+    }
+  )
+  const byId = Object.fromEntries(results.map((item) => [item.delivery_id, item.http_status]))
+  assert.deepEqual(byId, { a: 201, b: 202, c: null })
+})
+
+test('telemetria: falha do Push Service guarda o HTTP real da falha', async () => {
+  const { results } = await runWith([telemetryJob('f')], async () => { throw Object.assign(new Error('boom'), { statusCode: 503 }) })
+  assert.equal(results[0].outcome, 'transient')
+  assert.equal(results[0].http_status, 503)
+  assert.equal('provider_accepted_at' in results[0], false)
+})
+
+test('telemetria: worker_started_at é o início do ciclo e provider_accepted_at vem depois do envio', async () => {
+  const { results } = await runWith(
+    [telemetryJob('t')], async () => ({ statusCode: 201 }),
+    { clock: fakeClock('2026-10-05T15:00:01.000Z', '2026-10-05T15:00:01.250Z') }
+  )
+  assert.equal(results[0].worker_started_at, '2026-10-05T15:00:01.000Z')
+  assert.equal(results[0].provider_accepted_at, '2026-10-05T15:00:01.250Z')
+})
+
+test('telemetria: endpoint recusado e falhas carregam só o início do ciclo', async () => {
+  const { results } = await runWith(
+    [telemetryJob('bad', { endpoint: 'https://evil.test/push' })], async () => ({ statusCode: 201 }),
+    { clock: fakeClock('2026-10-05T15:00:01.000Z') }
+  )
+  assert.equal(results[0].outcome, 'expired')
+  assert.equal(results[0].worker_started_at, '2026-10-05T15:00:01.000Z')
+  assert.equal('provider_accepted_at' in results[0], false)
+})
+
+test('telemetria: o token nunca vaza em mensagens de erro persistidas', () => {
+  const message = safePushError(new Error(`falha com ${TOKEN} e ${FCM}secret-endpoint-d1`), telemetryJob('d1'))
+  assert.equal(message.includes(TOKEN), false)
+  assert.equal(message.includes('secret-endpoint'), false)
+})
+
+test('telemetria: não muda urgency, TTL nem o fluxo de envio', async () => {
+  const seen = []
+  const { summary } = await runWith(
+    [telemetryJob('u', { urgency: 'high', ttl_seconds: 900 })],
+    async (_subscription, _payload, sendOptions) => { seen.push(sendOptions); return { statusCode: 201 } }
+  )
+  assert.deepEqual(seen[0], { urgency: 'high', ttl: 900 })
+  assert.deepEqual(summary, { claimed: 1, sent: 1, failed: 0 })
+})
