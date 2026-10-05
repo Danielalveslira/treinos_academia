@@ -168,7 +168,7 @@ select is((select action_url from claimed where notification_type = 'comment_rep
   'resposta: deep link exato do comentário');
 select is((select count(*)::int from claimed where notification_type = 'economy_credit'), 4, 'economia: 2 notificações x 2 dispositivos');
 select is((select action_url from claimed where notification_type = 'moderation_notice' limit 1), '/atendimento', 'moderação abre o Atendimento');
-select is((select count(*)::int from claimed where notification_type = 'admin_report'), 1, 'superadmin: 1 dispositivo');
+select is((select count(*)::int from claimed where notification_type = 'admin_report' and endpoint like '%s-desktop'), 1, 'superadmin de teste: 1 dispositivo (superadmins reais não entram na conta)');
 select ok(not exists (select 1 from claimed where notification_type = 'comment_reply' and subscription_id is not null
   and endpoint like '%a-%'), 'nenhum job para quem não tem dispositivo');
 
