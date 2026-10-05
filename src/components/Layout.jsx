@@ -64,7 +64,7 @@ function Navigation({ mobile = false }) {
 }
 
 export function Layout() {
-  const { profile } = useAuth()
+  const { user, profile } = useAuth()
   const location = useLocation()
   const { pathname } = location
   const { logout, logoutAll, signingOut, error: logoutError } = useLogout()
@@ -95,7 +95,7 @@ export function Layout() {
           <Navigation />
           <div className="header-actions">
             <WalletHeaderBadges />
-            <NotificationBell />
+            <NotificationBell userId={user?.uid} />
             <AccountMenu onLogout={logout} onLogoutAll={confirmLogoutAll} signingOut={signingOut} />
           </div>
         </div>

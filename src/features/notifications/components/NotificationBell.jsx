@@ -63,8 +63,8 @@ export function NotificationItem({ notification, onSelect }) {
   )
 }
 
-export function NotificationBell() {
-  const center = useNotificationCenter()
+export function NotificationBell({ userId = null } = {}) {
+  const center = useNotificationCenter({ userId })
   const { unread, filter, list, changeFilter, loadMore, markAllRead, clearAll, markRead } = center
   const [open, setOpen] = useState(false)
   const [confirmingClear, setConfirmingClear] = useState(false)

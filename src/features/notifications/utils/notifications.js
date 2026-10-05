@@ -87,6 +87,19 @@ export function notificationHref(notification) {
   return safeActionUrl(notification.actionUrl)
 }
 
+// Insere uma notificação recebida em tempo real na ordem da lista (created_at desc, id desc),
+// sem duplicar pelo id. Devolve a MESMA lista quando já existe (evita render à toa).
+export function insertNotification(items, notification) {
+  if (items.some((item) => item.id === notification.id)) return items
+  const index = items.findIndex(
+    (item) =>
+      item.createdAt < notification.createdAt ||
+      (item.createdAt === notification.createdAt && item.id < notification.id)
+  )
+  if (index === -1) return [...items, notification]
+  return [...items.slice(0, index), notification, ...items.slice(index)]
+}
+
 export function notificationCursor(notification) {
   return { createdAt: notification.createdAt, id: notification.id }
 }

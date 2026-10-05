@@ -58,6 +58,62 @@ export async function listNotifications({
   return data.map(mapNotificationRow)
 }
 
+// Uma notificação já enriquecida (autor, comunidade) pela mesma view da lista. Usada quando um
+// evento Realtime chega: o evento só traz a linha crua de `notifications`. null = invisível
+// (ex.: publicação removida) ou arquivada.
+export async function getNotificationById(id) {
+  const supabase = await getSupabase()
+  const { data, error } = await supabase
+    .from('notification_items')
+    .select(NOTIFICATION_COLUMNS)
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
+  return data ? mapNotificationRow(data) : null
+}
+
+// Assina SOMENTE INSERT e UPDATE de `notifications` filtrados pelo destinatário (a RLS ainda é
+// aplicada pelo Realtime com o JWT do usuário). Devolve a função que remove o canal -- chamada no
+// logout e na troca de conta. `onReconnect` roda quando o canal volta a ficar SUBSCRIBED depois de
+// uma queda: eventos perdidos nesse intervalo são recuperados por uma releitura, não por polling.
+export function subscribeToNotifications(userId, { onInsert, onUpdate, onReconnect }) {
+  let cancelled = false
+  let channel = null
+  let client = null
+  getSupabase()
+    .then((supabase) => {
+      if (cancelled) return
+      client = supabase
+      let connectedOnce = false
+      const filter = `recipient_id=eq.${userId}`
+      const mine = (payload) => payload?.new && payload.new.recipient_id === userId
+      channel = supabase
+        .channel(`notifications-${userId}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter }, (payload) => {
+          if (!cancelled && mine(payload)) onInsert(payload.new)
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter }, (payload) => {
+          if (!cancelled && mine(payload)) onUpdate(payload.new)
+        })
+        .subscribe((status) => {
+          if (cancelled || status !== 'SUBSCRIBED') return
+          if (connectedOnce) onReconnect()
+          connectedOnce = true
+        })
+    })
+    .catch(() => {
+      // Sem Realtime a Central continua funcionando (abrir/voltar à aba relê o contador).
+    })
+  return () => {
+    cancelled = true
+    if (channel && client) {
+      const removed = channel
+      channel = null
+      client.removeChannel(removed)
+    }
+  }
+}
+
 export async function markNotificationsRead(ids) {
   const supabase = await getSupabase()
   const { error } = await supabase.rpc('notifications_mark_read', { p_ids: ids, p_before: null })
