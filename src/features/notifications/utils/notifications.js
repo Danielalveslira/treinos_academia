@@ -14,6 +14,54 @@ const TARGET_LABELS = {
   listing: 'Vitrine denunciada',
 }
 
+const NOTICE_TEXTS = {
+  warning: 'Você recebeu uma advertência da moderação.',
+  remove_content: 'Um conteúdo seu foi removido pela moderação.',
+  temporary_suspension: 'Sua conta foi suspensa temporariamente.',
+  community_ban: 'Você foi removido de uma comunidade.',
+  system_ban: 'Sua conta foi suspensa.',
+  restore: 'Uma restrição na sua conta foi retirada.',
+}
+
+const SUPPORT_TEXTS = {
+  report: 'Sua denúncia foi analisada.',
+  appeal: 'Seu recurso foi analisado.',
+  privacy: 'Sua solicitação de privacidade foi concluída.',
+}
+
+const ECONOMY_REASON_LABELS = {
+  cash_purchase_confirmed: 'Pagamento confirmado',
+  admin_bonus: 'Bônus',
+}
+
+const ASSET_NAMES = { coin: 'EvoCoins', cash: 'EvoCash' }
+
+// O valor vem da linha confirmada da ledger (gravada pelo banco); aqui só é formatado. Dentro do app
+// (conteúdo privado) o valor aparece; o Push nunca mostra valores em EvoCash.
+function economyContent(notification, metadata) {
+  const asset = ASSET_NAMES[metadata.asset] ? metadata.asset : null
+  const amount = Number(metadata.amount)
+  const valid = Number.isFinite(amount) && amount > 0 && amount <= 1e9
+  const formatted = valid ? amount.toLocaleString('pt-BR') : null
+  const reason = ECONOMY_REASON_LABELS[metadata.reason]
+  if (notification.type === 'economy_debit') {
+    return {
+      title: 'Ajuste na sua carteira',
+      description: formatted && asset ? `−${formatted} ${ASSET_NAMES[asset]}` : undefined,
+    }
+  }
+  if (metadata.reason === 'cash_purchase_confirmed') {
+    return {
+      title: 'Pagamento confirmado',
+      description: formatted ? `+${formatted} EvoCash creditados` : 'Seus EvoCash foram creditados',
+    }
+  }
+  if (asset && formatted) {
+    return { title: `Você recebeu ${formatted} ${ASSET_NAMES[asset]}.`, description: reason ? `Motivo: ${reason}` : undefined }
+  }
+  return { title: 'Você recebeu uma recompensa.', description: reason ? `Motivo: ${reason}` : undefined }
+}
+
 export const ADMIN_NOTIFICATION_TYPES = new Set([
   'admin_report',
   'admin_appeal',
@@ -44,6 +92,15 @@ export function notificationContent(notification) {
       return { title: `${actorName(notification)} mencionou você em um comentário.` }
     case 'post_reply':
       return { title: `${actorName(notification)} comentou na sua publicação.` }
+    case 'post_like':
+      return { title: `${actorName(notification)} curtiu sua publicação.` }
+    case 'economy_credit':
+    case 'economy_debit':
+      return economyContent(notification, metadata)
+    case 'moderation_notice':
+      return { title: NOTICE_TEXTS[metadata.action] || 'Você recebeu um aviso da moderação.' }
+    case 'report_resolved':
+      return { title: SUPPORT_TEXTS[metadata.kind] || 'Seu caso foi analisado.' }
     case 'admin_report':
       return {
         title: 'Nova denúncia aguardando análise',

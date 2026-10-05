@@ -4,9 +4,12 @@ import {
   AlertIcon,
   BellIcon,
   CheckIcon,
+  CheckCircleIcon,
   CommentIcon,
   ShieldIcon,
+  ThumbsupIcon,
   TrashIcon,
+  ZapIcon,
 } from '@primer/octicons-react'
 import { Button, Spinner, Text } from '@primer/react'
 import { formatDateTime } from '../../../utils/format'
@@ -20,6 +23,19 @@ const FILTERS = [
 ]
 
 function NotificationIcon({ notification }) {
+  switch (notification.type) {
+    case 'post_like':
+    case 'comment_like':
+      return <ThumbsupIcon size={16} />
+    case 'economy_credit':
+    case 'economy_debit':
+      return <ZapIcon size={16} />
+    case 'moderation_notice':
+      return notification.priority === 'high' ? <AlertIcon size={16} /> : <ShieldIcon size={16} />
+    case 'report_resolved':
+      return <CheckCircleIcon size={16} />
+    default:
+  }
   if (!isAdminNotification(notification)) return <CommentIcon size={16} />
   return notification.priority === 'high' ? <AlertIcon size={16} /> : <ShieldIcon size={16} />
 }

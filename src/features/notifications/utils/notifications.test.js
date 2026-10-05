@@ -100,3 +100,33 @@ test('newestCreatedAt bounds bulk actions by what the user has seen', () => {
   assert.equal(newestCreatedAt(all, unread), '2026-10-08T10:00:00.5+00:00')
   assert.equal(newestCreatedAt([], undefined), null)
 })
+
+test('conteúdo dos eventos do pipeline único: curtida em publicação, economia, moderação e atendimento', () => {
+  assert.equal(notificationContent({ ...base, type: 'post_like' }).title, '@ana curtiu sua publicação.')
+  const coins = notificationContent({ ...base, type: 'economy_credit', metadata: { asset: 'coin', amount: 25, reason: 'admin_bonus' } })
+  assert.equal(coins.title, 'Você recebeu 25 EvoCoins.')
+  assert.equal(coins.description, 'Motivo: Bônus')
+  const cash = notificationContent({ ...base, type: 'economy_credit', metadata: { asset: 'cash', amount: 120, reason: 'cash_purchase_confirmed' } })
+  assert.equal(cash.title, 'Pagamento confirmado')
+  assert.match(cash.description, /\+120 EvoCash/)
+  const debit = notificationContent({ ...base, type: 'economy_debit', metadata: { asset: 'cash', amount: 5, reason: 'chargeback' } })
+  assert.equal(debit.title, 'Ajuste na sua carteira')
+  assert.match(debit.description, /5 EvoCash/)
+  assert.equal(notificationContent({ ...base, type: 'moderation_notice', metadata: { action: 'remove_content' } }).title,
+    'Um conteúdo seu foi removido pela moderação.')
+  assert.equal(notificationContent({ ...base, type: 'report_resolved', metadata: { kind: 'appeal' } }).title, 'Seu recurso foi analisado.')
+})
+
+test('metadados inesperados caem em texto genérico (nunca HTML nem valores inventados)', () => {
+  const weird = notificationContent({ ...base, type: 'economy_credit', metadata: { asset: 'coin', amount: 'DROP', reason: '<b>x</b>' } })
+  assert.equal(weird.title, 'Você recebeu uma recompensa.')
+  assert.equal(weird.description, undefined)
+  assert.equal(notificationContent({ ...base, type: 'moderation_notice', metadata: { action: '<b>x</b>' } }).title, 'Você recebeu um aviso da moderação.')
+})
+
+test('deep links: curtida em publicação e eventos sem status usam o action_url do banco', () => {
+  assert.equal(notificationHref({ ...base, type: 'post_like', actionUrl: '/comunidades/c1#publicacao-p1' }), '/comunidades/c1#publicacao-p1')
+  assert.equal(notificationHref({ ...base, type: 'economy_credit', actionUrl: '/evocash' }), '/evocash')
+  assert.equal(notificationHref({ ...base, type: 'moderation_notice', actionUrl: '/atendimento' }), '/atendimento')
+  assert.equal(notificationHref({ ...base, type: 'post_like', actionUrl: '/\\evil.test' }), null)
+})
