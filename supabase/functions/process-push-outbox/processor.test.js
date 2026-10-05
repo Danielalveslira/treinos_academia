@@ -1,8 +1,28 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { notificationContent } from '../../../src/features/notifications/utils/notifications.js'
 import {
   buildPushPayload, classifyPushError, isAllowedPushEndpoint, processPushOutbox, pushSendOptions, safePushError, safeTargetUrl,
+  workoutReminderMessage,
 } from './processor.js'
+
+test('lembretes de treino variam sem expor dados do usuário no Push', () => {
+  const base = { notification_id: 42, notification_type: 'workout_reminder_before',
+    action_url: '/novo-treino?planejado=2026-10-06' }
+  const first = buildPushPayload({ ...base, metadata: { variant: 0 } })
+  const second = buildPushPayload({ ...base, metadata: { variant: 1 } })
+  assert.notEqual(first.title, second.title)
+  assert.equal(first.targetUrl, base.action_url)
+  assert.equal(first.body.includes('2026-10-06'), false)
+  assert.deepEqual(workoutReminderMessage('workout_reminder_start', 99),
+    workoutReminderMessage('workout_reminder_start', 3))
+  for (const type of ['workout_reminder_before', 'workout_reminder_start']) {
+    for (let variant = 0; variant < 6; variant += 1) {
+      assert.equal(notificationContent({ type, metadata: { variant } }).title,
+        workoutReminderMessage(type, variant)[0], 'Central e Push usam o mesmo título')
+    }
+  }
+})
 
 const FCM = 'https://fcm.googleapis.com/fcm/send/'
 

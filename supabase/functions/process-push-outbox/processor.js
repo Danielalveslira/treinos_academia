@@ -42,6 +42,32 @@ const ECONOMY_REASONS = { cash_purchase_confirmed: 'Pagamento confirmado', admin
 const ASSET_NAMES = { coin: 'EvoCoins', cash: 'EvoCash' }
 const SOCIAL_TYPES = ['post_reply', 'comment_reply', 'comment_mention', 'comment_like', 'post_like']
 
+const WORKOUT_REMINDERS = {
+  workout_reminder_before: [
+    ['🏋️ Treino no radar', 'Seu treino começa em uma hora. Deixe tudo pronto!'],
+    ['🔥 O plano está de pé', 'Daqui a uma hora é hora de treinar. Bora?'],
+    ['⚡ Já já tem treino', 'Falta uma hora para colocar o plano em prática.'],
+    ['👀 Seu treino está chegando', 'Uma hora para começar. Seu plano está esperando.'],
+    ['💪 Prepare o terreno', 'Seu horário de treino chega em uma hora.'],
+    ['Treino marcado', 'Daqui a uma hora você tem um encontro com seu plano.'],
+  ],
+  workout_reminder_start: [
+    ['🏋️ Hora de treinar!', 'Seu treino de hoje já está esperando.'],
+    ['🔥 Vamos nessa?', 'Você marcou este horário por um motivo.'],
+    ['⚡ Seu treino começou', 'O plano está feito. Agora é colocar em prática.'],
+    ['👀 O treino está olhando pra você', 'Bora começar?'],
+    ['💪 É agora', 'Seu horário de treino chegou.'],
+    ['Seu plano chama', 'Hora de dar o primeiro passo do treino de hoje.'],
+  ],
+}
+
+export function workoutReminderMessage(type, variant) {
+  const messages = WORKOUT_REMINDERS[type]
+  if (!messages) return null
+  const index = Number.isInteger(variant) && variant >= 0 ? variant % messages.length : 0
+  return messages[index]
+}
+
 // Texto do Push de economia. O valor vem da ledger confirmada no banco (metadata gravada pelo
 // trigger), nunca do cliente. Só o valor de EvoCoins aparece: nada de saldo, e nenhum valor em
 // EvoCash (informação financeira que pode ficar visível na tela bloqueada).
@@ -96,6 +122,8 @@ export function buildPushPayload(job) {
   let finalBody = body
   if (job.notification_type === 'economy_credit' || job.notification_type === 'economy_debit') {
     ;[title, finalBody] = economyContent(job, metadata)
+  } else if (WORKOUT_REMINDERS[job.notification_type]) {
+    ;[title, finalBody] = workoutReminderMessage(job.notification_type, metadata.variant)
   } else if (job.notification_type === 'moderation_notice') {
     finalBody = MODERATION_BODIES[metadata.action] || body
   } else if (job.notification_type === 'report_resolved') {

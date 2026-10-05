@@ -21,6 +21,15 @@ const base = {
   createdAt: '2026-10-08T10:00:00.5+00:00',
 }
 
+test('lembrete de treino varia na Central e leva ao fluxo planejado', () => {
+  const first = { ...base, type: 'workout_reminder_before',
+    actionUrl: '/novo-treino?planejado=2026-10-06', metadata: { variant: 0 } }
+  const next = { ...first, metadata: { variant: 1 } }
+  assert.notEqual(notificationContent(first).title, notificationContent(next).title)
+  assert.equal(notificationHref(first), '/novo-treino?planejado=2026-10-06')
+  assert.match(notificationContent({ ...first, type: 'workout_reminder_start' }).description, /horário/)
+})
+
 test('comment notifications keep the comment deep link', () => {
   const notification = {
     ...base,

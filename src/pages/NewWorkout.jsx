@@ -12,6 +12,7 @@ import { ToastFlash } from '../components/ToastFlash'
 import { completeWorkoutSession } from '../services/economyService'
 import { loadDoneExerciseIds } from '../utils/doneExercisesStorage'
 import { returnToOrigin } from '../utils/navigation'
+import { plannedWorkoutNotice } from '../utils/plannedWorkout'
 
 function localDateKey() {
   const today = new Date()
@@ -25,6 +26,7 @@ export default function NewWorkout() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const defaultExerciseId = searchParams.get('exercicio') || ''
+  const plannedNotice = plannedWorkoutNotice(searchParams.get('planejado'), localDateKey())
 
   const { exercises, loading, error, refresh } = useExercises()
   const { workouts, add } = useWorkouts()
@@ -86,6 +88,7 @@ export default function NewWorkout() {
         <div>
           <span className="eyebrow">SESSÃO DE TREINO</span>
           <Heading as="h1">Vamos treinar</Heading>
+          {plannedNotice && <p>{plannedNotice}</p>}
         </div>
       </header>
 

@@ -34,7 +34,7 @@ export function TrainingPlanDialog({ preferences, onSave, onClose }) {
         ),
         reminderEnabled,
         reminderTime: reminderEnabled ? reminderTime : null,
-        timezone: initial.timezone || getDeviceTimezone(),
+        timezone: getDeviceTimezone(),
       })
       onClose()
     } catch (saveError) {
@@ -74,7 +74,7 @@ export function TrainingPlanDialog({ preferences, onSave, onClose }) {
             disabled={saving}
             onChange={(event) => setReminderEnabled(event.target.checked)}
           />
-          <span>Lembrar na Home em um horário preferido</span>
+          <span>Lembrar na Home e receber Push</span>
         </label>
 
         {reminderEnabled && (
@@ -86,13 +86,13 @@ export function TrainingPlanDialog({ preferences, onSave, onClose }) {
               onChange={(event) => setReminderTime(event.target.value)}
             />
             <FormControl.Caption>
-              O MVP adapta a mensagem da Home; não envia notificação push.
+              Um aviso uma hora antes e outro no horário, se o treino ainda não começou. Push exige ativação nas notificações deste dispositivo.
             </FormControl.Caption>
           </FormControl>
         )}
 
         <small className="training-plan-timezone">
-          Fuso horário: {initial.timezone || getDeviceTimezone()}
+          Fuso horário ao salvar: {getDeviceTimezone()}
         </small>
         {error && <Flash variant="danger">{error}</Flash>}
         <div className="training-plan-actions">

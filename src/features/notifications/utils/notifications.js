@@ -36,6 +36,17 @@ const ECONOMY_REASON_LABELS = {
 
 const ASSET_NAMES = { coin: 'EvoCoins', cash: 'EvoCash' }
 
+const WORKOUT_REMINDERS = {
+  workout_reminder_before: [
+    '🏋️ Treino no radar', '🔥 O plano está de pé', '⚡ Já já tem treino',
+    '👀 Seu treino está chegando', '💪 Prepare o terreno', 'Treino marcado',
+  ],
+  workout_reminder_start: [
+    '🏋️ Hora de treinar!', '🔥 Vamos nessa?', '⚡ Seu treino começou',
+    '👀 O treino está olhando pra você', '💪 É agora', 'Seu plano chama',
+  ],
+}
+
 // O valor vem da linha confirmada da ledger (gravada pelo banco); aqui só é formatado. Dentro do app
 // (conteúdo privado) o valor aparece; o Push nunca mostra valores em EvoCash.
 function economyContent(notification, metadata) {
@@ -84,6 +95,14 @@ function actorName(notification) {
 export function notificationContent(notification) {
   const metadata = notification.metadata || {}
   switch (notification.type) {
+    case 'workout_reminder_before':
+    case 'workout_reminder_start': {
+      const titles = WORKOUT_REMINDERS[notification.type]
+      const variant = Number.isInteger(metadata.variant) && metadata.variant >= 0
+        ? metadata.variant % titles.length : 0
+      return { title: titles[variant], description: notification.type === 'workout_reminder_before'
+        ? 'Seu treino começa em uma hora.' : 'Seu horário de treino chegou.' }
+    }
     case 'comment_like':
       return { title: `${actorName(notification)} curtiu seu comentário.` }
     case 'comment_reply':
