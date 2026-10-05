@@ -140,3 +140,14 @@ test('payload de broadcast usa título/corpo limitados e URL sanitizada', () => 
   assert.equal(payload.targetUrl, '/')
   assert.equal(JSON.stringify(payload).includes('secret@'), false)
 })
+
+test('payload de comment_like diz quem curtiu e abre o comentário, sem conteúdo privado', () => {
+  const payload = buildPushPayload({
+    notification_id: 41, notification_type: 'comment_like', actor_username: 'liker02',
+    action_url: '/comunidades/c1/publicacoes/p1/comentarios/k1', metadata: { texto: 'privado' },
+  })
+  assert.equal(payload.title, '@liker02: nova curtida')
+  assert.equal(payload.body, 'Alguém curtiu seu comentário.')
+  assert.equal(payload.targetUrl, '/comunidades/c1/publicacoes/p1/comentarios/k1')
+  assert.equal(JSON.stringify(payload).includes('privado'), false)
+})

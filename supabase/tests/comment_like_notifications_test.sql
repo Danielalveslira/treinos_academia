@@ -70,5 +70,55 @@ select ok(not exists (
   where t.typname = 'notification_type' and e.enumlabel ilike '%vote%'),
   'não existe tipo de notificação para votos em publicações');
 
+-- ===== Web Push: a curtida chega ao OUTBOX e ao claim do worker (não basta existir na tabela) =====
+-- Estado limpo: o autor não tem curtidas pendentes e registra 1 dispositivo.
+select pg_temp.as_user('02');
+select public.comment_set_like((select (row).id from author_comment), false);
+select pg_temp.as_user('01');
+select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/author-phone', repeat('p', 32), repeat('a', 16), 'ua', 'phone', 'android');
+
+select pg_temp.as_user('02');
+select public.comment_set_like((select (row).id from author_comment), true);
+create or replace function pg_temp.like_outbox() returns int language sql as
+  $$select count(*)::int from public.notification_push_outbox o join public.notifications n on n.id = o.notification_id
+    where o.user_id = '86000000-0000-0000-0000-000000000001' and n.type = 'comment_like'$$;
+select is(pg_temp.like_outbox(), 1, 'curtida de comentário entra na outbox de Push do autor');
+select is((select o.category from public.notification_push_outbox o join public.notifications n on n.id = o.notification_id
+  where n.type = 'comment_like' and o.user_id = '86000000-0000-0000-0000-000000000001'), 'social', 'categoria social');
+select public.comment_set_like((select (row).id from author_comment), true);
+select is(pg_temp.like_outbox(), 1, 'retry da curtida não cria outro job de Push');
+
+create temp table like_claim as select * from public.claim_push_jobs('like-worker', 100);
+select is((select count(*)::int from like_claim where notification_type = 'comment_like'), 1, 'o worker recebe a curtida para enviar (1 dispositivo)');
+select is((select actor_username from like_claim where notification_type = 'comment_like'), 'liker02', 'worker recebe o autor da curtida');
+select is((select action_url from like_claim where notification_type = 'comment_like'),
+  '/comunidades/87000000-0000-0000-0000-000000000001/publicacoes/88000000-0000-0000-0000-000000000001/comentarios/' || (select (row).id::text from author_comment),
+  'deep link aponta para o comentário curtido');
+select public.finish_push_batch('like-worker', (select jsonb_agg(jsonb_build_object('delivery_id', delivery_id, 'outcome', 'sent', 'http_status', 201, 'error', null)) from like_claim));
+select is((select o.status from public.notification_push_outbox o join public.notifications n on n.id = o.notification_id
+  where n.type = 'comment_like' and o.user_id = '86000000-0000-0000-0000-000000000001'), 'sent', 'entrega concluída como sent');
+
+-- Descurtir remove a notificação (e a outbox/deliveries em cascata); curtir de novo gera NOVO push.
+select public.comment_set_like((select (row).id from author_comment), false);
+select is(pg_temp.like_outbox(), 0, 'descurtir remove também o job de Push');
+select public.comment_set_like((select (row).id from author_comment), true);
+select is(pg_temp.like_outbox(), 1, 'curtir novamente gera um novo job de Push');
+
+-- O autor sem dispositivo habilitado não recebe Push, mas continua recebendo a notificação.
+select pg_temp.as_user('01');
+select public.unregister_push_subscription();
+select pg_temp.as_user('02');
+select public.comment_set_like((select (row).id from author_comment), false);
+select public.comment_set_like((select (row).id from author_comment), true);
+select is(pg_temp.likes_for_author(), 1, 'sem dispositivo: a notificação existe na Central');
+select is(pg_temp.like_outbox(), 0, 'sem dispositivo: nenhum job de Push');
+
+-- Curtir o próprio comentário não gera notificação nem Push.
+select pg_temp.as_user('01');
+select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/author-phone', repeat('p', 32), repeat('a', 16), 'ua', 'phone', 'android');
+select public.comment_set_like((select (row).id from author_comment), false);
+select public.comment_set_like((select (row).id from author_comment), true);
+select is(pg_temp.like_outbox(), 0, 'curtir o próprio comentário não enfileira Push');
+
 select * from finish();
 rollback;
