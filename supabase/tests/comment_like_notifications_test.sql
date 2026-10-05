@@ -88,6 +88,8 @@ select is((select o.category from public.notification_push_outbox o join public.
 select public.comment_set_like((select (row).id from author_comment), true);
 select is(pg_temp.like_outbox(), 1, 'retry da curtida não cria outro job de Push');
 
+-- o Push de curtida espera uma janela de agrupamento (45s); aqui o tempo passa
+update public.notification_push_outbox set next_attempt_at = now() where status = 'pending';
 create temp table like_claim as select * from public.claim_push_jobs('like-worker', 100);
 select is((select count(*)::int from like_claim where notification_type = 'comment_like'), 1, 'o worker recebe a curtida para enviar (1 dispositivo)');
 select is((select actor_username from like_claim where notification_type = 'comment_like'), 'liker02', 'worker recebe o autor da curtida');
@@ -102,7 +104,8 @@ select is((select o.status from public.notification_push_outbox o join public.no
 select public.comment_set_like((select (row).id from author_comment), false);
 select is(pg_temp.like_outbox(), 0, 'descurtir remove também o job de Push');
 select public.comment_set_like((select (row).id from author_comment), true);
-select is(pg_temp.like_outbox(), 1, 'curtir novamente gera um novo job de Push');
+select is(pg_temp.likes_for_author(), 1, 'curtir novamente recria a notificação na Central');
+select is(pg_temp.like_outbox(), 0, 'curtir de novo dentro do cooldown (Push já enviado antes) NÃO repete o Push');
 
 -- O autor sem dispositivo habilitado não recebe Push, mas continua recebendo a notificação.
 select pg_temp.as_user('01');

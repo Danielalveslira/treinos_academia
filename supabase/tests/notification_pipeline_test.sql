@@ -155,6 +155,8 @@ update public.support_requests set state = 'closed' where id = '9a000000-0000-00
 select is(pg_temp.notes('report_resolved', '01'), 1, 'reencerrar não duplica');
 
 -- ===== Worker: claim com payload/URL/urgência e múltiplos dispositivos =====
+-- curtidas e alertas administrativos esperam uma janela de agrupamento; aqui o tempo passa
+update public.notification_push_outbox set next_attempt_at = now() where status = 'pending';
 create temp table claimed as select * from public.claim_push_jobs('pipe-worker', 100);
 select is((select count(distinct notification_id)::int from claimed where notification_type = 'post_like'), 4, 'o claim devolve as curtidas de publicação de B (post, treino, conquista, foto)');
 select is((select count(*)::int from claimed where notification_type = 'post_like' and action_url like '%#publicacao-%'), 6, 'post/conquista/foto: 3 jobs x 2 dispositivos');
