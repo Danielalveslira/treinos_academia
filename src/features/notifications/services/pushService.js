@@ -62,6 +62,31 @@ export function describePushError(error) {
   return [error.stage, label, message].filter(Boolean).join(' · ')
 }
 
+// "Desativei Push neste dispositivo" é uma escolha EXPLÍCITA do usuário, guardada por conta no
+// armazenamento local. O logout também revoga a subscription, mas isso NÃO é uma escolha: no próximo
+// login o dispositivo volta a se inscrever sozinho (a permissão do navegador já está concedida, então
+// não há novo prompt). Sem isso, cada logout/login deixava a conta sem Push até alguém tocar em Ativar.
+const optOutKey = (userId) => `evolutus:push-optout:${userId}`
+
+export function isPushOptedOut(userId) {
+  if (!userId) return false
+  try {
+    return globalThis.localStorage?.getItem(optOutKey(userId)) === '1'
+  } catch {
+    return false
+  }
+}
+
+function setPushOptOut(userId, value) {
+  if (!userId) return
+  try {
+    if (value) globalThis.localStorage?.setItem(optOutKey(userId), '1')
+    else globalThis.localStorage?.removeItem(optOutKey(userId))
+  } catch {
+    // sem armazenamento: o comportamento padrão (reinscrever) continua válido
+  }
+}
+
 const SERVICE_WORKER_TIMEOUT_MS = 10000
 const REVOKE_TIMEOUT_MS = 5000
 
@@ -115,7 +140,7 @@ export async function getLocalPushState() {
   return { support, permission, endpoint, standalone: isStandalone() }
 }
 
-export async function enablePushNotifications() {
+export async function enablePushNotifications({ userId = null } = {}) {
   const support = pushSupport()
   if (!support.supported) throw Object.assign(new Error(support.reason), { code: support.reason, stage: 'support' })
   const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
@@ -139,6 +164,7 @@ export async function enablePushNotifications() {
       registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey }))
   }
   await step('register', () => registerSubscription(subscription))
+  setPushOptOut(userId, false)
   // Só considera ativo quando o backend devolve ESTE endpoint como ativo para o usuário atual.
   const status = await step('confirm', () => getPushStatus(subscription.endpoint))
   if (!status?.thisDevice) {
@@ -147,12 +173,25 @@ export async function enablePushNotifications() {
   return { permission, subscription, status }
 }
 
-// Renova o vínculo da subscription local com a conta atual (sem criar subscription nova).
-export async function syncPushSubscription() {
+// Renova o vínculo da subscription local com a conta atual. Se a permissão já está concedida e este
+// dispositivo não tem subscription (logout revogou, navegador a descartou), recria -- sem prompt --
+// a menos que o usuário tenha desativado o Push aqui de propósito.
+export async function syncPushSubscription({ userId = null } = {}) {
   if (!pushSupport().supported || Notification.permission !== 'granted') return null
+  if (isPushOptedOut(userId)) return null
   const registration = await currentRegistration()
-  const subscription = registration ? await registration.pushManager.getSubscription() : null
-  return subscription ? registerSubscription(subscription) : null
+  if (!registration) return null
+  let subscription = await registration.pushManager.getSubscription()
+  if (!subscription) {
+    const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
+    if (!publicKey) return null
+    const ready = await withTimeout(navigator.serviceWorker.ready, SERVICE_WORKER_TIMEOUT_MS, 'service-worker-unavailable')
+    subscription = await ready.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: decodeVapidPublicKey(publicKey),
+    })
+  }
+  return registerSubscription(subscription)
 }
 
 async function revokePush({ allDevices }) {
@@ -176,7 +215,10 @@ async function revokePush({ allDevices }) {
   if (failure) throw failure
 }
 
-export function disablePushNotifications({ allDevices = false } = {}) {
+// `explicit` (+ userId): o usuário escolheu desativar neste dispositivo -- guarda a escolha para o
+// sync não reinscrever. Logout chama sem `explicit` (não é uma escolha).
+export function disablePushNotifications({ allDevices = false, explicit = false, userId = null } = {}) {
+  if (explicit) setPushOptOut(userId, true)
   return withTimeout(revokePush({ allDevices }), REVOKE_TIMEOUT_MS, 'push-revoke-timeout')
 }
 

@@ -77,7 +77,7 @@ export function Layout() {
   useQualifiedActivity()
   // "Último uso" para o admin: visível apenas, no máximo 1 chamada a cada 10 min.
   useActivityHeartbeat()
-  usePushSubscriptionSync(Boolean(profile))
+  usePushSubscriptionSync(Boolean(profile), user?.uid)
 
   return (
     <div className="app-shell">

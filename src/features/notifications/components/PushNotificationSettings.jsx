@@ -15,7 +15,7 @@ const ENABLE_ERRORS = {
   'service-worker-unavailable': 'O app ainda não está pronto para notificações. Recarregue a página e tente de novo.',
 }
 
-export function PushNotificationSettings() {
+export function PushNotificationSettings({ userId = null } = {}) {
   const [status, setStatus] = useState(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState(null)
@@ -42,7 +42,7 @@ export function PushNotificationSettings() {
     setBusy(true)
     setMessage(null)
     try {
-      const result = await enablePushNotifications()
+      const result = await enablePushNotifications({ userId })
       if (result.permission === 'granted') {
         setStatus(result.status)
         setMessage({ variant: 'success', text: 'Notificações ativadas neste dispositivo.' })
@@ -68,7 +68,7 @@ export function PushNotificationSettings() {
     setBusy(true)
     setMessage(null)
     try {
-      await disablePushNotifications()
+      await disablePushNotifications({ explicit: true, userId })
       setStatus((current) => ({ ...current, thisDevice: false }))
       setMessage({ variant: 'success', text: 'Notificações desativadas neste dispositivo.' })
     } catch (error) {

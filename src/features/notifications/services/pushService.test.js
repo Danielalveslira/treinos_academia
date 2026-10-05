@@ -108,14 +108,21 @@ test('falha ao revogar no servidor ainda encerra a subscription local e propaga 
   assert.equal(registration.state.unsubscribed, 1)
 })
 
-test('sync não cria subscription nem pede permissão e não trava sem Service Worker', async () => {
+test('sync não pede permissão: sem permissão concedida ou sem SW não cria nada', async () => {
   browser({ registration: undefined })
-  assert.equal(await mod.syncPushSubscription(), null)
-  browser({ registration: fakeRegistration(null) })
-  assert.equal(await mod.syncPushSubscription(), null)
+  assert.equal(await mod.syncPushSubscription({ userId: 'u1' }), null)
   browser({ registration: fakeRegistration('https://fcm.googleapis.com/fcm/send/local'), permission: 'default' })
-  assert.equal(await mod.syncPushSubscription(), null)
+  assert.equal(await mod.syncPushSubscription({ userId: 'u1' }), null)
+  browser({ registration: fakeRegistration('https://fcm.googleapis.com/fcm/send/local'), permission: 'denied' })
+  assert.equal(await mod.syncPushSubscription({ userId: 'u1' }), null)
   assert.equal(globalThis.__prompted, false)
+  assert.deepEqual(rpcCalls, [])
+})
+
+test('sync sem subscription e sem VAPID configurado não faz nada', async () => {
+  browser({ registration: fakeRegistration(null) })
+  globalThis.__vapidKey = undefined
+  assert.equal(await mod.syncPushSubscription({ userId: 'u1' }), null)
   assert.deepEqual(rpcCalls, [])
 })
 
@@ -232,4 +239,93 @@ test('estado local sem suporte (iOS fora da Tela de Início) não consulta nada'
   assert.equal(state.support.reason, 'ios-install-required')
   assert.equal(state.endpoint, null)
   assert.deepEqual(rpcCalls, [])
+})
+
+// ---- ciclo de vida: logout revoga, o próximo login RESTAURA (sem prompt) ---------------------------
+function storage() {
+  const data = new Map()
+  setGlobal('localStorage', {
+    getItem: (k) => (data.has(k) ? data.get(k) : null),
+    setItem: (k, v) => data.set(k, String(v)),
+    removeItem: (k) => data.delete(k),
+  })
+  return data
+}
+
+function restorable({ subscribed = false } = {}) {
+  const created = { endpoint: 'https://fcm.googleapis.com/fcm/send/restored', toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/restored', keys: { p256dh: 'p'.repeat(32), auth: 'a'.repeat(16) } }), unsubscribe: async () => true }
+  let current = subscribed ? created : null
+  const calls = { subscribe: 0 }
+  const registration = {
+    pushManager: {
+      getSubscription: async () => current,
+      subscribe: async () => { calls.subscribe += 1; current = created; return created },
+    },
+  }
+  browser({ registration, ready: Promise.resolve(registration) })
+  globalThis.__vapidKey = VAPID
+  return { calls }
+}
+
+test('login depois de um logout: permissão concedida e sem subscription => recria e registra, sem prompt', async () => {
+  storage()
+  const { calls } = restorable()
+  const result = await mod.syncPushSubscription({ userId: 'u1' })
+  assert.equal(calls.subscribe, 1)
+  assert.equal(result.endpoint, 'https://fcm.googleapis.com/fcm/send/restored')
+  assert.deepEqual(rpcCalls.map(([name]) => name), ['register_push_subscription'])
+  assert.equal(globalThis.__prompted, false)
+})
+
+test('com subscription existente o sync só renova: não cria outra a cada abertura', async () => {
+  storage()
+  const { calls } = restorable({ subscribed: true })
+  await mod.syncPushSubscription({ userId: 'u1' })
+  await mod.syncPushSubscription({ userId: 'u1' })
+  assert.equal(calls.subscribe, 0)
+})
+
+test('"Desativar neste dispositivo" é lembrado: o sync não reinscreve essa conta', async () => {
+  storage()
+  restorable({ subscribed: true })
+  await mod.disablePushNotifications({ explicit: true, userId: 'u1' })
+  assert.equal(mod.isPushOptedOut('u1'), true)
+  const { calls } = restorable()
+  rpcCalls.length = 0
+  assert.equal(await mod.syncPushSubscription({ userId: 'u1' }), null)
+  assert.equal(calls.subscribe, 0)
+  assert.deepEqual(rpcCalls, [])
+  // outra conta no mesmo navegador não herda a escolha
+  assert.equal(mod.isPushOptedOut('u2'), false)
+})
+
+test('logout NÃO conta como escolha: o próximo login volta a se inscrever', async () => {
+  storage()
+  restorable({ subscribed: true })
+  await mod.disablePushNotifications() // caminho do logout (sem explicit)
+  assert.equal(mod.isPushOptedOut('u1'), false)
+  const { calls } = restorable()
+  await mod.syncPushSubscription({ userId: 'u1' })
+  assert.equal(calls.subscribe, 1)
+})
+
+test('ativar de novo limpa a desativação anterior', async () => {
+  storage()
+  restorable({ subscribed: true })
+  await mod.disablePushNotifications({ explicit: true, userId: 'u1' })
+  activatable()
+  await mod.enablePushNotifications({ userId: 'u1' })
+  assert.equal(mod.isPushOptedOut('u1'), false)
+})
+
+test('troca de conta no mesmo navegador: cada conta ganha a sua subscription e a anterior fica revogada', async () => {
+  storage()
+  restorable({ subscribed: true })
+  await mod.disablePushNotifications() // logout da conta A: revoga e desinscreve
+  assert.equal(rpcCalls.at(-1)[0], 'unregister_push_subscription')
+  const { calls } = restorable()
+  rpcCalls.length = 0
+  await mod.syncPushSubscription({ userId: 'conta-b' }) // login da conta B
+  assert.equal(calls.subscribe, 1)
+  assert.deepEqual(rpcCalls.map(([name]) => name), ['register_push_subscription'])
 })

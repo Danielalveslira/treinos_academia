@@ -435,7 +435,7 @@ export default function Profile() {
             </div>
           </div>
         </section>
-        <PushNotificationSettings />
+        <PushNotificationSettings userId={user?.uid} />
       </div>
     </div>
   )
