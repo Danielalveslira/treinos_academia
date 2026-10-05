@@ -75,3 +75,9 @@ O timezone é fixado ao salvar o planejamento. Ao viajar, salvar o plano novamen
 para o timezone atual do dispositivo; com o app fechado o horário segue o timezone salvo.
 Não há treino individual para abrir: o deep link entra diretamente no fluxo de iniciar treino,
 com a data planejada identificada, e continua útil mesmo se o plano tiver sido removido.
+
+## Envio de Push (atualização da auditoria de segurança)
+
+Textos vêm de um catálogo único (`supabase/functions/process-push-outbox/messages.js`) com variantes por
+evento. Curtidas em rajada e alertas administrativos são agrupados; moderação, atendimento e finanças usam
+texto genérico na tela bloqueada. Detalhes, achados e decisões: `docs/NOTIFICATIONS_SECURITY_AUDIT.md`.
