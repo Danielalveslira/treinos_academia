@@ -1,4 +1,5 @@
 import { localDayKey } from './activityCalendar.js'
+import { businessDayKey } from './businessDate.js'
 
 export const TRAINING_WEEKDAYS = [
   { id: 'monday', short: 'Seg', label: 'Segunda' },
@@ -71,7 +72,7 @@ export function buildWeeklyPlanDays(preferences, { now = new Date(), startDate, 
   if (plan.plannedTrainingDays.length === 0 || !plan.effectiveFrom) return []
 
   const selected = new Set(plan.plannedTrainingDays)
-  const year = now.getFullYear()
+  const year = Number(businessDayKey(now).slice(0, 4))
   const start = startDate || new Date(year, 0, 1, 12)
   const end = endDate || new Date(year, 11, 31, 12)
   const result = []

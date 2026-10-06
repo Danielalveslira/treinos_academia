@@ -6,8 +6,8 @@ import { createActivityPinger, startActivityHeartbeat } from '../utils/activityP
 // Marca "último uso" no servidor ao abrir/retomar o app e no máximo a cada 10 min enquanto a
 // página está visível (ver utils/activityPing.js). Montado só dentro do Layout autenticado.
 export function useActivityHeartbeat() {
-  const { user } = useAuth()
-  const uid = user?.uid
+  const { user, offlineLocal } = useAuth()
+  const uid = offlineLocal ? null : user?.uid
   useEffect(() => {
     if (!uid) return undefined
     return startActivityHeartbeat({

@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Button, useConfirm } from '@primer/react'
 import { DownloadIcon, XIcon } from '@primer/octicons-react'
+import { isOfflineShellEnabled, isOfflineWriteEnabled } from '../services/offline/database'
+import { getOfflineRolloutUser, subscribeOfflineRollout } from '../services/offline/rollout'
 
 export function PwaControls() {
+  useSyncExternalStore(subscribeOfflineRollout, getOfflineRolloutUser)
   const confirm = useConfirm()
   const [installPrompt, setInstallPrompt] = useState(null)
   const [installed, setInstalled] = useState(
@@ -10,6 +13,11 @@ export function PwaControls() {
   )
   const [help, setHelp] = useState(false)
   const [offline, setOffline] = useState(!navigator.onLine)
+  // Escrita offline ligada (Fase 3): ficar sem rede NÃO bloqueia mais o app -- o aviso discreto é o
+  // SyncStatus, e o que exige servidor é barrado por tela (Layout) e por ação (Finalizar treino).
+  // Desligada (padrão): comportamento anterior, tela cheia e conteúdo inerte.
+  const offlineWrites = isOfflineWriteEnabled()
+  const blocking = offline && !isOfflineShellEnabled()
   const [updateAvailable, setUpdateAvailable] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [installing, setInstalling] = useState(false)
@@ -91,7 +99,7 @@ export function PwaControls() {
 
   useEffect(() => {
     const content = document.getElementById('app-content')
-    if (!offline || !content) return
+    if (!blocking || !content) return
     const previousFocus = document.activeElement
     content.inert = true
     setHelp(false)
@@ -100,7 +108,7 @@ export function PwaControls() {
       content.inert = false
       previousFocus?.focus()
     }
-  }, [offline])
+  }, [blocking])
 
   async function install() {
     if (!installPrompt) {
@@ -127,7 +135,9 @@ export function PwaControls() {
   async function update() {
     const confirmed = await confirm({
       title: 'Atualizar o app agora?',
-      content: 'Salve seus registros antes de continuar; a página será recarregada.',
+      content: offlineWrites
+        ? 'Seus registros já foram salvos neste aparelho. O app será reiniciado para aplicar a nova versão.'
+        : 'Salve seus registros antes de continuar; a página será recarregada.',
       confirmButtonContent: 'Atualizar',
       cancelButtonContent: 'Cancelar',
     })
@@ -179,7 +189,9 @@ export function PwaControls() {
           </p>
         )}
         <p className="pwa-muted">
-          Você precisa de internet para consultar e registrar seus treinos.
+          {offlineWrites
+            ? 'Seus registros de treino ficam salvos no aparelho e sincronizam quando a conexão voltar.'
+            : 'Você precisa de internet para consultar e registrar seus treinos.'}
         </p>
         <Button variant="primary" block onClick={() => setHelp(false)}>
           Entendi
@@ -196,7 +208,7 @@ export function PwaControls() {
           </Button>
         </aside>
       )}
-      {offline && (
+      {blocking && (
         <div className="pwa-offline" role="alert" ref={offlinePanel} tabIndex={-1}>
           <div>
             <img src="/icons/icon-192.png" width="64" height="64" alt="" />

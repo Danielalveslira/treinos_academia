@@ -10,6 +10,13 @@ const REASONS = {
   'signed-out': { message: 'Você saiu da conta.', tone: 'default' },
   // "Sair de todos os dispositivos" (logout global, com confirmação).
   'signed-out-all': { message: 'Você saiu da conta em todos os dispositivos.', tone: 'default' },
+  // Voltou a rede depois de um período offline e a sessão não pôde ser renovada. Não é logout do usuário: o
+  // que ele salvou neste aparelho continua guardado e sincroniza depois que ele entrar de novo.
+  'session-expired': {
+    message:
+      'Sua sessão expirou. Entre novamente para sincronizar suas alterações; o que você salvou neste aparelho continua guardado.',
+    tone: 'warning',
+  },
   'account-deleted': {
     message:
       'Sua conta não está mais disponível. Se isso for um engano, entre em contato pelo suporte.',

@@ -1,14 +1,12 @@
 // Apoio de useQualifiedActivity. O servidor é quem decide quanto cada ping vale
 // (register_qualified_activity); aqui só se decide quando o app pode parar de pingar no dia.
 
-// Dia no fuso do servidor (America/Sao_Paulo) -- o mesmo que o banco usa para agrupar o dia.
+import { businessDayKey } from './businessDate.js'
+
+// Dia no fuso do servidor (America/Sao_Paulo) -- o mesmo que o banco usa para agrupar o dia. Mantido
+// com este nome por compatibilidade; a regra mora em businessDate.js (fonte única).
 export function saoPauloDayKey(date = new Date()) {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Sao_Paulo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date)
+  return businessDayKey(date)
 }
 
 // A recompensa de atividade do dia está RESOLVIDA quando foi paga, já tinha sido paga ou o

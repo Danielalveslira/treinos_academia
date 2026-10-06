@@ -98,6 +98,9 @@ test('logoutUser compartilha UMA requisição entre chamadas concorrentes', asyn
   }
   const a = mod.logoutUser()
   const b = mod.logoutUser()
+  // O logout primeiro desliga a autorização local de abrir a conta offline (assíncrono) e só então chama o
+  // signOut; por isso o signOut não acontece mais dentro do mesmo tick de logoutUser().
+  await waitForImmediate()
   finish()
   await Promise.all([a, b])
   assert.equal(calls, 1)

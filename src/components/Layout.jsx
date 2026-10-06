@@ -1,6 +1,6 @@
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from './ErrorBoundary'
-import { Suspense } from 'react'
+import { Suspense, lazy } from 'react'
 import { Button, Flash, useConfirm } from '@primer/react'
 import {
   HomeIcon,
@@ -22,6 +22,17 @@ import { WalletHeaderBadges } from './WalletHeaderBadges'
 import { EvoCoinsAwardNotice } from './EvoCoinsAwardNotice'
 import { NotificationBell } from '../features/notifications/components/NotificationBell'
 import { usePushSubscriptionSync } from '../features/notifications/hooks/usePushSubscriptionSync'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import { useSyncScheduler } from '../hooks/useSyncScheduler'
+import { isOfflineShellEnabled } from '../services/offline/database'
+import { useWarmOfflineRoutes } from '../hooks/useWarmOfflineRoutes'
+import { isOfflineCapablePath } from '../utils/offlineRoutes'
+import { resolveLegalGateState } from '../utils/legal'
+
+// Fora do bundle de entrada: o indicador (e toda a pilha de sync) só é necessário com usuário logado.
+const SyncStatus = lazy(() =>
+  import('./SyncStatus').then((module) => ({ default: module.SyncStatus }))
+)
 
 const NAV_ITEMS = [
   { to: '/', label: 'Início', icon: HomeIcon, end: true },
@@ -64,7 +75,8 @@ function Navigation({ mobile = false }) {
 }
 
 export function Layout() {
-  const { user, profile } = useAuth()
+  const { user, profile, legalAccess, deletionStatus, offlineLocal, serverAccessAllowed } =
+    useAuth()
   const location = useLocation()
   const { pathname } = location
   const { logout, logoutAll, signingOut, error: logoutError } = useLogout()
@@ -77,7 +89,22 @@ export function Layout() {
   useQualifiedActivity()
   // "Último uso" para o admin: visível apenas, no máximo 1 chamada a cada 10 min.
   useActivityHeartbeat()
-  usePushSubscriptionSync(Boolean(profile), user?.uid)
+  // Modo offline local (cold start): usuário reconhecido pelo aparelho, SEM sessão confirmada pelo servidor.
+  // Push e sync só começam depois que a revalidação confirma sessão, perfil e termos (AuthContext).
+  usePushSubscriptionSync(Boolean(profile) && !offlineLocal, user?.uid)
+  // Esvazia a outbox (treino salvo offline) ao abrir, no evento `online`, ao voltar ao primeiro plano.
+  const syncAuthorized =
+    !offlineLocal &&
+    serverAccessAllowed &&
+    !deletionStatus &&
+    profile?.accountStatus === 'active' &&
+    resolveLegalGateState({ profile, access: legalAccess, loading: false, error: '' }) === 'allowed'
+  useSyncScheduler(syncAuthorized ? user?.uid : null)
+  useWarmOfflineRoutes(!offlineLocal)
+  // Escrita offline ligada: o app não é mais bloqueado sem rede, mas o que EXIGE servidor (EvoCash,
+  // comunidades, perfil, administração...) mostra um aviso em vez de tentar e falhar.
+  const online = useOnlineStatus()
+  const needsServer = !online && isOfflineShellEnabled() && !isOfflineCapablePath(pathname)
 
   return (
     <div className="app-shell">
@@ -95,7 +122,7 @@ export function Layout() {
           <Navigation />
           <div className="header-actions">
             <WalletHeaderBadges />
-            <NotificationBell userId={user?.uid} />
+            {!offlineLocal && <NotificationBell userId={user?.uid} />}
             <AccountMenu onLogout={logout} onLogoutAll={confirmLogoutAll} signingOut={signingOut} />
           </div>
         </div>
@@ -121,11 +148,33 @@ export function Layout() {
         {/* Um erro de renderização numa página fica contido aqui (navegação e cabeçalho continuam
             utilizáveis) e é limpo ao trocar de rota (key). O ErrorBoundary raiz (main.jsx) continua
             como última rede. O erro segue sendo registrado no console por componentDidCatch. */}
-        <ErrorBoundary key={pathname} inline>
-          <Suspense fallback={<PageFallback />}>
-            <Outlet />
-          </Suspense>
-        </ErrorBoundary>
+        {offlineLocal && (
+          <div className="sync-status sync-status-offline" role="status">
+            {online
+              ? 'Reconectando sua conta…'
+              : 'Modo offline: você entrou com os dados salvos neste aparelho.'}
+          </div>
+        )}
+        <Suspense fallback={null}>
+          <SyncStatus />
+        </Suspense>
+        {needsServer ? (
+          <div className="offline-only-notice" role="alert">
+            <h2>Esta área precisa de internet</h2>
+            <p>
+              Conecte-se para continuar. Seus registros de treino continuam salvos neste aparelho.
+            </p>
+            <Button as={Link} to="/novo-treino" replace>
+              Ir para o treino
+            </Button>
+          </div>
+        ) : (
+          <ErrorBoundary key={pathname} inline>
+            <Suspense fallback={<PageFallback />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
+        )}
       </main>
       <EvoCoinsAwardNotice />
       <Navigation mobile />

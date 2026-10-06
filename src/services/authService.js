@@ -1,4 +1,6 @@
 import { supabase } from '../supabase/config'
+import { disableOfflineAccess } from './offline/bootstrap'
+import { isOfflineColdStartEnabled } from './offline/database'
 
 export async function registerUser(email, password) {
   const { data, error } = await supabase.auth.signUp({ email, password })
@@ -90,7 +92,16 @@ function singleFlight(task) {
 }
 
 export function logoutUser() {
-  return singleFlight(signOutLocal)
+  return singleFlight(async () => {
+    // LOGOUT EXPLÍCITO: antes de qualquer outra coisa, o aparelho deixa de poder abrir esta conta offline
+    // (cold start). Sessão expirada/rede ruim NÃO passam por aqui -- só um logout pedido (ou forçado pelo
+    // servidor, como exclusão de conta). A outbox não é tocada: o trabalho não sincronizado continua
+    // guardado e volta a ser da sessão do mesmo usuário quando ele entrar de novo online.
+    const disabled = await disableOfflineAccess()
+    if (!disabled && isOfflineColdStartEnabled())
+      throw new Error('Não foi possível concluir a saída neste aparelho. Tente novamente.')
+    return signOutLocal()
+  })
 }
 
 // Falha da etapa 1 carrega `logoutStep: 'others'` para a UI mostrar a mensagem certa.
@@ -111,6 +122,9 @@ export function logoutAllDevices({ beforeLocalSignOut } = {}) {
         console.warn('[Auth] pré-logout (best-effort) falhou:', hookError)
       }
     }
+    const disabled = await disableOfflineAccess()
+    if (!disabled && isOfflineColdStartEnabled())
+      throw new Error('Não foi possível concluir a saída neste aparelho. Tente novamente.') // logout explícito: também deste aparelho
     await signOutLocal()
     // As outras sessões foram revogadas (confirmado); o que sobra incerto é só o token deste
     // aparelho, que já saiu.

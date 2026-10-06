@@ -6,10 +6,13 @@ import { loginUser } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
 import { consumeLogoutReason } from '../utils/logoutReason'
 import { useAuth } from '../hooks/useAuth'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import { OFFLINE_ENTRY_REQUIRES_INTERNET } from '../contexts/AuthContext'
 
 export default function Login() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
+  const online = useOnlineStatus()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -53,6 +56,10 @@ export default function Login() {
     >
       <form onSubmit={handleSubmit} className="public-form">
         <Stack gap="normal">
+          {!online && (
+            // Entrar (e criar conta) exige o servidor; só quem já entrou online neste aparelho abre offline.
+            <Flash role="status">{OFFLINE_ENTRY_REQUIRES_INTERNET}</Flash>
+          )}
           {sessionNotice && !error && (
             <Flash role="status" variant={sessionNotice.tone === 'warning' ? 'warning' : 'default'}>
               {sessionNotice.message}

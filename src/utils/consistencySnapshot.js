@@ -1,5 +1,6 @@
 import { buildActivityDays, calculateConsistency } from './activityCalendar.js'
 import { buildWeeklyPlanDays } from './trainingPlan.js'
+import { businessDayKey } from './businessDate.js'
 
 // ÚNICO lugar que monta "dias de atividade do ano" + "consistência" a partir de progressDays e do
 // planejamento de treino. Usado pela Home (card de consistência/calendário) e pelo compartilhamento de
@@ -10,7 +11,7 @@ import { buildWeeklyPlanDays } from './trainingPlan.js'
 export function buildConsistencySnapshot(progressDays, trainingPreferences, now = new Date()) {
   const plannedDays = buildWeeklyPlanDays(trainingPreferences, { now })
   const activityDays = buildActivityDays(progressDays, { now, plannedDays })
-  const timelineStart = new Date(now.getFullYear() - 1, 11, 1, 12)
+  const timelineStart = new Date(Number(businessDayKey(now).slice(0, 4)) - 1, 11, 1, 12)
   const timeline = buildActivityDays(progressDays, {
     now,
     plannedDays: buildWeeklyPlanDays(trainingPreferences, { now, startDate: timelineStart }),

@@ -4951,9 +4951,81 @@ body.modal-sheet-open { overflow: hidden; }
 /* Finalizar treino: marcador server-side de conclusão (ver NewWorkout.jsx). */
 .workout-finish {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   margin-top: 20px;
 }
 .workout-finish .btn {
   min-height: 44px;
+}
+
+/* SyncStatus: indicador discreto do que está salvo neste aparelho (Fase 3 offline). Nunca modal. */
+.sync-status {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 8px;
+  background: var(--bgColor-muted);
+  color: var(--fgColor-default);
+  font-size: 13px;
+}
+.sync-status-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.sync-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fgColor-muted);
+  flex: none;
+}
+.sync-status-synced .sync-status-dot {
+  background: var(--fgColor-success);
+}
+.sync-status-syncing .sync-status-dot,
+.sync-status-saving .sync-status-dot,
+.sync-status-pending .sync-status-dot,
+.sync-status-offline-pending .sync-status-dot {
+  background: var(--fgColor-attention);
+}
+.sync-status-failed {
+  border-color: var(--borderColor-danger-muted, var(--borderColor-default));
+}
+.sync-status-failed .sync-status-dot {
+  background: var(--fgColor-danger);
+}
+.sync-status-detail {
+  color: var(--fgColor-muted);
+}
+.sync-status-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.sync-status-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sync-status-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+.workout-finish-hint {
+  margin: 8px 0 0;
+  text-align: center;
+  color: var(--fgColor-muted);
+  font-size: 13px;
+}
+.offline-only-notice {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--fgColor-muted);
 }

@@ -72,7 +72,7 @@ export function mapCatalogCategoryToExerciseType(category) {
 // nome, grupo muscular e equipamento (os três campos que mantêm um treino antigo
 // compreensível mesmo que o catálogo mude ou remova o exercício depois). NUNCA copia
 // imagens/instruções -- conteúdo rico fica só em public.exercise_catalog, buscado sob
-// demanda (ver docs/MIGRACAO_SUPABASE_STATUS.md). catalogId é o atalho opcional
+// demanda. catalogId é o atalho opcional
 // (exercises.catalog_id, ON DELETE SET NULL) -- nunca a chave primária em si.
 export function providerExerciseToPersonal(exercise, { order } = {}) {
   const personal = {

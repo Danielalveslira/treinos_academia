@@ -13,7 +13,7 @@ let moduleUnderTest
 // supabase/config.js instancia um client real (precisa de VITE_SUPABASE_URL/ANON_KEY) e
 // o resolvedor ESM puro do node --test não aceita o import sem extensão (`../supabase/
 // config`) que o resto do app usa via bundler (Vite) -- mockar aqui é dívida de teste
-// pré-existente no projeto (ver docs/MIGRACAO_SUPABASE_STATUS.md), então só stubamos o
+// pré-existente no projeto, então só stubamos o
 // necessário pro módulo carregar; uniqueCommunityAuthorIds (função pura) é a única coisa
 // testada sem precisar simular canal/postgres_changes de verdade.
 before(async () => {

@@ -35,14 +35,15 @@ import { buildExerciseNameMap } from '../utils/format'
 import { getWorkoutSets, formatWorkoutSets } from '../utils/workoutSets'
 import { isCardioWorkout, formatCardioSession } from '../utils/cardioSessions'
 import { toDate } from '../utils/date.js'
+import { entityDayKey } from '../utils/businessDate'
 import { originState } from '../utils/navigation'
 import { useSingleFlight } from '../hooks/useSingleFlight'
 
 function toEditableWorkout(workout) {
-  const date = toDate(workout.date)
   const base = {
     exerciseId: workout.exerciseId,
-    date: date.toISOString().slice(0, 10),
+    // O treino mantém a PRÓPRIA data (nunca recalculada por fuso/relógio do aparelho).
+    date: entityDayKey(workout.date) ?? toDate(workout.date).toISOString().slice(0, 10),
     note: workout.note || '',
   }
   if (isCardioWorkout(workout)) {
@@ -90,9 +91,13 @@ export default function History() {
 
   async function handleUpdate(values) {
     try {
-      await edit(editingWorkout.id, values)
+      const result = await edit(editingWorkout.id, values)
       setEditingWorkout(null)
-      showToast('Registro atualizado.')
+      showToast(
+        result?.pendingSync
+          ? 'Alteração salva neste aparelho. Será sincronizada quando houver conexão.'
+          : 'Registro atualizado.'
+      )
     } catch (err) {
       console.error('[History] update:', err)
       showToast('Erro ao atualizar registro.', 'danger')
@@ -119,8 +124,12 @@ export default function History() {
     if (!confirmed) return
 
     try {
-      await remove(workout.id)
-      showToast('Registro excluído.')
+      const result = await remove(workout.id)
+      showToast(
+        result?.pendingSync
+          ? 'Exclusão salva neste aparelho. Será sincronizada quando houver conexão.'
+          : 'Registro excluído.'
+      )
     } catch (err) {
       console.error('[History] delete:', err)
       showToast('Erro ao excluir registro.', 'danger')

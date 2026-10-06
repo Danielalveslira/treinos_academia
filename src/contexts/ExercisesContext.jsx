@@ -34,10 +34,13 @@ function normalize(exercise) {
 }
 
 export function ExercisesProvider({ children }) {
-  const { user } = useAuth()
-  const fetchValue = useCallback(() => listExercises(user.uid), [user.uid])
+  const { user, offlineLocal } = useAuth()
+  const fetchValue = useCallback(
+    () => listExercises(user.uid, { localOnly: offlineLocal }),
+    [user.uid, offlineLocal]
+  )
   const { data, loading, error, refresh, setData } = useCachedQuery(
-    `exercises:${user.uid}`,
+    `exercises:${user.uid}:${offlineLocal ? 'local' : 'online'}`,
     fetchValue
   )
   const exercises = data || EMPTY
@@ -58,7 +61,8 @@ export function ExercisesProvider({ children }) {
   // providerExerciseId, name, primaryMuscles, equipment, category, ...) — ver
   // exerciseCatalogService.searchExercises.
   async function addFromCatalog(catalogExercise) {
-    if (isProviderExerciseAdded(exercises, catalogExercise.providerExerciseId)) return { added: false }
+    if (isProviderExerciseAdded(exercises, catalogExercise.providerExerciseId))
+      return { added: false }
     const group = providerExerciseToPersonal(catalogExercise).muscleGroup
     const groupOrders = exercises
       .filter((exercise) => exercise.muscleGroup === group && Number.isInteger(exercise.order))

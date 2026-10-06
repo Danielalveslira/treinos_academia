@@ -1,5 +1,14 @@
 import { supabase } from '../supabase/config'
 import { getExerciseType } from '../utils/exerciseType'
+import { readThrough } from './offline/readThrough.js'
+import {
+  patchCachedUserExercise,
+  readCachedUserExercises,
+  removeCachedUserExercise,
+  replaceCachedUserExercises,
+  setCachedUserExerciseOrder,
+  upsertCachedUserExercise,
+} from './offline/userExercisesCache.js'
 
 // Teto de defesa: ninguém cadastra centenas de exercícios de verdade, mas sem isso a
 // leitura escala com o tamanho da tabela — o app já funciona bem dentro desse limite.
@@ -22,15 +31,30 @@ function toDoc(row) {
   }
 }
 
-export async function listExercises(userId) {
-  const { data, error } = await supabase
-    .from('exercises')
-    .select('*')
-    .eq('user_id', userId)
-    .order('name')
-    .limit(MAX_EXERCISES)
-  if (error) throw error
-  return data.map(toDoc)
+// Lista pessoal (dado privado): o servidor manda; a resposta substitui a cópia local do usuário
+// (services/offline/userExercisesCache.js), lida de volta só se a rede falhar.
+export function listExercises(userId, { localOnly = false } = {}) {
+  let rows = []
+  return readThrough({
+    label: 'exercises-list',
+    localOnly,
+    remote: async () => {
+      const { data, error } = await supabase
+        .from('exercises')
+        .select('*')
+        .eq('user_id', userId)
+        .order('name')
+        .limit(MAX_EXERCISES)
+      if (error) throw error
+      rows = data
+      return data.map(toDoc)
+    },
+    persist: () => replaceCachedUserExercises(userId, rows),
+    local: async () => {
+      const cached = await readCachedUserExercises(userId)
+      return cached && cached.map(toDoc).sort((a, b) => a.name.localeCompare(b.name))
+    },
+  })
 }
 
 export async function createExercise(userId, exercise) {
@@ -50,6 +74,7 @@ export async function createExercise(userId, exercise) {
     .select()
     .single()
   if (error) throw error
+  upsertCachedUserExercise(userId, data) // cópia local em segundo plano; nunca lança
   return { id: data.id }
 }
 
@@ -76,6 +101,7 @@ export async function createCatalogExercise(userId, exercise) {
     .select()
     .single()
   if (error) throw error
+  upsertCachedUserExercise(userId, data)
   return data.id
 }
 
@@ -94,18 +120,31 @@ export async function updateExercise(userId, exerciseId, exercise, { clearOrder 
   // definida — ao trocar o exercício de grupo, ela precisa ser removida, não só deixada
   // desatualizada, senão o exercício herda uma posição arbitrária do grupo anterior.
   if (clearOrder) patch.order = null
-  const { error } = await supabase.from('exercises').update(patch).eq('id', exerciseId).eq('user_id', userId)
+  const { error } = await supabase
+    .from('exercises')
+    .update(patch)
+    .eq('id', exerciseId)
+    .eq('user_id', userId)
   if (error) throw error
+  patchCachedUserExercise(userId, exerciseId, patch)
 }
 
 export async function deleteExercise(userId, exerciseId) {
-  const { error } = await supabase.from('exercises').delete().eq('id', exerciseId).eq('user_id', userId)
+  const { error } = await supabase
+    .from('exercises')
+    .delete()
+    .eq('id', exerciseId)
+    .eq('user_id', userId)
   if (error) throw error
+  removeCachedUserExercise(userId, exerciseId)
 }
 
 // Grava a nova ordem de um único grupo muscular num único statement atômico (RPC) —
 // nunca uma reordenação parcial se algo falhar no meio.
 export async function saveExerciseOrder(userId, orderedExerciseIds) {
-  const { error } = await supabase.rpc('save_exercise_order', { p_exercise_ids: orderedExerciseIds })
+  const { error } = await supabase.rpc('save_exercise_order', {
+    p_exercise_ids: orderedExerciseIds,
+  })
   if (error) throw error
+  setCachedUserExerciseOrder(userId, orderedExerciseIds)
 }

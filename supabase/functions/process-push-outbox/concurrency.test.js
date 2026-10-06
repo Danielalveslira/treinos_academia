@@ -7,12 +7,14 @@ import process from 'node:process'
 import { processPushOutbox } from './processor.js'
 
 const CONTAINER = process.env.PG_TEST_CONTAINER
+const DB_USER = process.env.PG_TEST_USER || 'postgres'
+const DB_NAME = process.env.PG_TEST_DATABASE || 'postgres'
 const USER = 'c0000000-0000-0000-0000-000000000001'
 const lit = (value) => `'${String(value).replace(/'/g, "''")}'`
 
 function psql(sql) {
   return new Promise((resolve, reject) => {
-    const child = spawn('docker', ['exec', '-i', CONTAINER, 'psql', '-U', 'postgres', '-X', '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1'])
+    const child = spawn('docker', ['exec', '-i', CONTAINER, 'psql', '-U', DB_USER, '-d', DB_NAME, '-X', '-q', '-t', '-A', '-v', 'ON_ERROR_STOP=1'])
     let out = ''
     let err = ''
     child.stdout.on('data', (chunk) => { out += chunk })

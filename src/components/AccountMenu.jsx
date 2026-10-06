@@ -19,8 +19,11 @@ import {
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useColorMode } from '../hooks/useColorMode'
+import { useLogoutNotice } from '../hooks/usePendingNotice'
 
 export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
+  // Treino salvo offline e ainda não sincronizado NÃO impede sair (a fila é desta conta e fica guardada).
+  const logoutNotice = useLogoutNotice()
   const [open, setOpen] = useState(false)
   const { key } = useLocation()
   const { isSuperAdmin, profile } = useAuth()
@@ -183,6 +186,9 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
               <SignOutIcon />
             </ActionList.LeadingVisual>
             {signingOut ? 'Saindo…' : 'Sair da conta'}
+            {logoutNotice && (
+              <ActionList.Description variant="block">{logoutNotice}</ActionList.Description>
+            )}
           </ActionList.Item>
           {/* Ação de segurança, separada do "Sair da conta": o menu fecha normalmente e a
               confirmação explícita (Layout) vem antes de qualquer logout global. */}

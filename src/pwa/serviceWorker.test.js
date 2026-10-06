@@ -18,7 +18,16 @@ function fakeCaches() {
     if (!stores.has(name)) stores.set(name, new Map())
     const store = stores.get(name)
     return {
-      match: async (request) => store.get(urlOf(request))?.clone(),
+      match: async (request, options) => {
+        const entry = store.get(urlOf(request))
+        if (
+          entry?.headers.get('vary')?.toLowerCase().includes('origin') &&
+          !options?.ignoreVary &&
+          request?.headers?.has('origin')
+        )
+          return undefined
+        return entry?.clone()
+      },
       put: async (request, response) => void store.set(urlOf(request), response),
       keys: async () => [...store.keys()].map((url) => new Request(url)),
       delete: async (request) => store.delete(urlOf(request)),
@@ -80,12 +89,16 @@ function load({ responder, ack = { url: ACK_URL, key: ACK_KEY } } = {}) {
     addEventListener: (type, fn) => (handlers[type] = fn),
     skipWaiting: async () => (self.skipped = true),
     registration: {
-      showNotification: async (title, options) => { self.shownNotification = { title, options } },
+      showNotification: async (title, options) => {
+        self.shownNotification = { title, options }
+      },
     },
     clients: {
       claim: async () => (self.claimed = true),
       matchAll: async () => self.windowClients || [],
-      openWindow: async (url) => { self.openedWindow = url },
+      openWindow: async (url) => {
+        self.openedWindow = url
+      },
     },
   }
   const source = TEMPLATE.replace('__VERSION__', 'v2')
@@ -108,7 +121,10 @@ function load({ responder, ack = { url: ACK_URL, key: ACK_KEY } } = {}) {
     Number,
     Infinity,
     AbortController,
-    setTimeout: (fn) => { timers.push(fn); return timers.length },
+    setTimeout: (fn) => {
+      timers.push(fn)
+      return timers.length
+    },
     clearTimeout: () => {},
   })
   sw = { self, caches }
@@ -177,6 +193,17 @@ test('assets com hash: rede na primeira vez, cache nas seguintes', async () => {
   await dispatchFetch(get('/assets/Admin-1.js'))
   await dispatchFetch(get('/assets/Admin-1.js'))
   assert.deepEqual(network, ['/assets/Admin-1.js'])
+})
+
+test('precache com Vary: Origin serve JS/CSS offline quando o navegador envia Origin no import', async () => {
+  load({
+    responder: () =>
+      basic('js', { headers: { 'content-type': 'text/javascript', vary: 'Origin' } }),
+  })
+  await lifecycle('install')
+  offline = true
+  const response = await dispatchFetch(get('/assets/index-aaa.js', { headers: { origin: ORIGIN } }))
+  assert.equal(response.response && (await response.response.text()), 'js')
 })
 
 test('não guarda 404, erro nem HTML do fallback SPA como se fosse um asset', async () => {
@@ -267,8 +294,17 @@ test('collectBootAssets inclui entry + imports estáticos + CSS, e exclui chunks
 test('push valida payload e usa fallback sem depender do React', async () => {
   let work
   handlers.push({
-    data: { json: () => ({ title: 'Aviso', body: 'Corpo', notificationId: 7, targetUrl: 'https://evil.test' }) },
-    waitUntil: (promise) => { work = promise },
+    data: {
+      json: () => ({
+        title: 'Aviso',
+        body: 'Corpo',
+        notificationId: 7,
+        targetUrl: 'https://evil.test',
+      }),
+    },
+    waitUntil: (promise) => {
+      work = promise
+    },
   })
   await work
   assert.equal(sw.self.shownNotification.title, 'Aviso')
@@ -279,8 +315,14 @@ test('push valida payload e usa fallback sem depender do React', async () => {
 test('push com payload inválido não quebra e exibe fallback seguro', async () => {
   let work
   handlers.push({
-    data: { json: () => { throw new SyntaxError('invalid json') } },
-    waitUntil: (promise) => { work = promise },
+    data: {
+      json: () => {
+        throw new SyntaxError('invalid json')
+      },
+    },
+    waitUntil: (promise) => {
+      work = promise
+    },
   })
   await work
   assert.equal(sw.self.shownNotification.title, 'Evolutus')
@@ -290,17 +332,35 @@ test('push com payload inválido não quebra e exibe fallback seguro', async () 
 test('notificationclick navega a janela existente para a rota e só então foca', async () => {
   const calls = []
   sw.self.openedWindow = null
-  const navigatedClient = { focus: async () => { calls.push('focus') } }
-  sw.self.windowClients = [{
-    url: `${ORIGIN}/perfil`,
-    focus: async () => { calls.push('focus-original') },
-    navigate: async (url) => { calls.push(`navigate:${url}`); return navigatedClient },
-  }]
+  const navigatedClient = {
+    focus: async () => {
+      calls.push('focus')
+    },
+  }
+  sw.self.windowClients = [
+    {
+      url: `${ORIGIN}/perfil`,
+      focus: async () => {
+        calls.push('focus-original')
+      },
+      navigate: async (url) => {
+        calls.push(`navigate:${url}`)
+        return navigatedClient
+      },
+    },
+  ]
   let work
   let closed = false
   handlers.notificationclick({
-    notification: { data: { targetUrl: '/comunidades/1' }, close: () => { closed = true } },
-    waitUntil: (promise) => { work = promise },
+    notification: {
+      data: { targetUrl: '/comunidades/1' },
+      close: () => {
+        closed = true
+      },
+    },
+    waitUntil: (promise) => {
+      work = promise
+    },
   })
   await work
   assert.equal(closed, true)
@@ -312,7 +372,9 @@ test('notificationclick abre janela quando não há cliente existente', async ()
   let work
   handlers.notificationclick({
     notification: { data: { targetUrl: '//evil.test' }, close() {} },
-    waitUntil: (promise) => { work = promise },
+    waitUntil: (promise) => {
+      work = promise
+    },
   })
   await work
   assert.equal(sw.self.openedWindow, `${ORIGIN}/`)
@@ -322,7 +384,9 @@ test('push rejeita targetUrl com barra invertida (equivale a // no navegador)', 
   let work
   handlers.push({
     data: { json: () => ({ title: 'Aviso', targetUrl: '/\\evil.test' }) },
-    waitUntil: (promise) => { work = promise },
+    waitUntil: (promise) => {
+      work = promise
+    },
   })
   await work
   assert.equal(sw.self.shownNotification.options.data.targetUrl, '/')
@@ -331,15 +395,21 @@ test('push rejeita targetUrl com barra invertida (equivale a // no navegador)', 
 
 test('notificationclick abre nova janela quando navigate falha no cliente existente', async () => {
   sw.self.openedWindow = null
-  sw.self.windowClients = [{
-    url: `${ORIGIN}/perfil`,
-    focus: async () => {},
-    navigate: async () => { throw new TypeError('not a controlled client') },
-  }]
+  sw.self.windowClients = [
+    {
+      url: `${ORIGIN}/perfil`,
+      focus: async () => {},
+      navigate: async () => {
+        throw new TypeError('not a controlled client')
+      },
+    },
+  ]
   let work
   handlers.notificationclick({
     notification: { data: { targetUrl: '/notificacoes' }, close() {} },
-    waitUntil: (promise) => { work = promise },
+    waitUntil: (promise) => {
+      work = promise
+    },
   })
   await work
   assert.equal(sw.self.openedWindow, `${ORIGIN}/notificacoes`)
@@ -347,11 +417,20 @@ test('notificationclick abre nova janela quando navigate falha no cliente existe
 
 test('notificationclick ignora janela de outra origem e nunca abre URL externa', async () => {
   sw.self.openedWindow = null
-  sw.self.windowClients = [{ url: 'https://evil.test/', focus: async () => { throw new Error('não deve focar') } }]
+  sw.self.windowClients = [
+    {
+      url: 'https://evil.test/',
+      focus: async () => {
+        throw new Error('não deve focar')
+      },
+    },
+  ]
   let work
   handlers.notificationclick({
     notification: { data: { targetUrl: '/\\evil.test' }, close() {} },
-    waitUntil: (promise) => { work = promise },
+    waitUntil: (promise) => {
+      work = promise
+    },
   })
   await work
   assert.equal(sw.self.openedWindow, `${ORIGIN}/`)
@@ -364,13 +443,18 @@ function clickWithFocusConsumingActivation({ navigate }) {
   const state = { focused: false, opened: null, openError: null }
   sw.self.openedWindow = null
   sw.self.clients.openWindow = async (url) => {
-    if (state.focused) { state.openError = new Error('Not allowed to open a window'); throw state.openError }
+    if (state.focused) {
+      state.openError = new Error('Not allowed to open a window')
+      throw state.openError
+    }
     state.opened = url
     sw.self.openedWindow = url
   }
   const client = {
     url: `${ORIGIN}/`,
-    focus: async () => { state.focused = true },
+    focus: async () => {
+      state.focused = true
+    },
     ...(navigate ? { navigate } : {}),
   }
   sw.self.windowClients = [client]
@@ -381,13 +465,19 @@ async function click(targetUrl) {
   let work
   handlers.notificationclick({
     notification: { data: { targetUrl }, close() {} },
-    waitUntil: (promise) => { work = promise },
+    waitUntil: (promise) => {
+      work = promise
+    },
   })
   await work
 }
 
 test('notificationclick: navigate recusado (cliente não controlado) abre a rota ANTES de focar', async () => {
-  const state = clickWithFocusConsumingActivation({ navigate: async () => { throw new TypeError('not controlled') } })
+  const state = clickWithFocusConsumingActivation({
+    navigate: async () => {
+      throw new TypeError('not controlled')
+    },
+  })
   await click('/perfil')
   assert.equal(state.opened, `${ORIGIN}/perfil`)
   assert.equal(state.openError, null)
@@ -404,8 +494,14 @@ test('notificationclick: navigate indisponível ou resolvendo null também abre 
 })
 
 test('notificationclick: sem permissão para abrir janela ao menos foca o app e não quebra', async () => {
-  const state = clickWithFocusConsumingActivation({ navigate: async () => { throw new TypeError('x') } })
-  sw.self.clients.openWindow = async () => { throw new Error('Not allowed to open a window') }
+  const state = clickWithFocusConsumingActivation({
+    navigate: async () => {
+      throw new TypeError('x')
+    },
+  })
+  sw.self.clients.openWindow = async () => {
+    throw new Error('Not allowed to open a window')
+  }
   await click('/perfil')
   assert.equal(state.focused, true)
 })
@@ -413,7 +509,9 @@ test('notificationclick: sem permissão para abrir janela ao menos foca o app e 
 test('notificationclick: sem janela existente abre direto a rota do payload', async () => {
   sw.self.windowClients = []
   sw.self.openedWindow = null
-  sw.self.clients.openWindow = async (url) => { sw.self.openedWindow = url }
+  sw.self.clients.openWindow = async (url) => {
+    sw.self.openedWindow = url
+  }
   await click('/perfil')
   assert.equal(sw.self.openedWindow, `${ORIGIN}/perfil`)
 })
@@ -422,11 +520,24 @@ test('push com o app FECHADO (nenhuma janela) mostra a notificação com ícone/
   sw.self.windowClients = []
   let matchAllCalls = 0
   const originalMatchAll = sw.self.clients.matchAll
-  sw.self.clients.matchAll = async () => { matchAllCalls += 1; return [] }
+  sw.self.clients.matchAll = async () => {
+    matchAllCalls += 1
+    return []
+  }
   let work
   handlers.push({
-    data: { json: () => ({ title: '@ana: nova curtida', body: 'Alguém curtiu sua publicação.', notificationId: 41, targetUrl: '/comunidades/c1#publicacao-p1', icon: 'https://evil.test/x.png' }) },
-    waitUntil: (promise) => { work = promise },
+    data: {
+      json: () => ({
+        title: '@ana: nova curtida',
+        body: 'Alguém curtiu sua publicação.',
+        notificationId: 41,
+        targetUrl: '/comunidades/c1#publicacao-p1',
+        icon: 'https://evil.test/x.png',
+      }),
+    },
+    waitUntil: (promise) => {
+      work = promise
+    },
   })
   await work
   sw.self.clients.matchAll = originalMatchAll
@@ -435,18 +546,27 @@ test('push com o app FECHADO (nenhuma janela) mostra a notificação com ícone/
   assert.equal(options.body, 'Alguém curtiu sua publicação.')
   assert.equal(options.icon, '/icons/icon-192.png', 'ícone vem do app, nunca do payload')
   assert.equal(options.badge, '/icons/icon-192.png')
-  assert.equal(options.data.targetUrl, '/comunidades/c1#publicacao-p1', 'âncora da publicação preservada')
+  assert.equal(
+    options.data.targetUrl,
+    '/comunidades/c1#publicacao-p1',
+    'âncora da publicação preservada'
+  )
   assert.equal(matchAllCalls, 0, 'mostrar o Push não depende de janela/React')
 })
 
 test('clique com a âncora da publicação: navega a janela existente para o card exato', async () => {
   const navigated = []
   sw.self.openedWindow = null
-  sw.self.windowClients = [{
-    url: `${ORIGIN}/`,
-    focus: async () => {},
-    navigate: async (url) => { navigated.push(url); return { focus: async () => {} } },
-  }]
+  sw.self.windowClients = [
+    {
+      url: `${ORIGIN}/`,
+      focus: async () => {},
+      navigate: async (url) => {
+        navigated.push(url)
+        return { focus: async () => {} }
+      },
+    },
+  ]
   await click('/comunidades/c1#publicacao-p1')
   assert.deepEqual(navigated, [`${ORIGIN}/comunidades/c1#publicacao-p1`])
   assert.equal(sw.self.openedWindow, null)
@@ -455,35 +575,76 @@ test('clique com a âncora da publicação: navega a janela existente para o car
 test('clique sem janela abre direto o deep link com âncora', async () => {
   sw.self.windowClients = []
   sw.self.openedWindow = null
-  sw.self.clients.openWindow = async (url) => { sw.self.openedWindow = url }
+  sw.self.clients.openWindow = async (url) => {
+    sw.self.openedWindow = url
+  }
   await click('/comunidades/c1#treino-w1')
   assert.equal(sw.self.openedWindow, `${ORIGIN}/comunidades/c1#treino-w1`)
 })
 
 // ---- Contrato de URL: as 3 camadas JS (Central, worker, Service Worker) aplicam a MESMA regra ------
 const BAD_URLS = [
-  'https://evil.test', 'http://evil.test', '//evil.test', '/\\evil.test', '/\t/evil.test', '/\n/evil.test', '/\r/evil.test',
-  ' /x', '/ x', '/x y', 'javascript:alert(1)', 'data:text/html,x', 'vbscript:x', '\u0000/x', '/\u2028/evil', '/\u0085/evil',
-  '', null, undefined, 123, `/${'a'.repeat(300)}`,
+  'https://evil.test',
+  'http://evil.test',
+  '//evil.test',
+  '/\\evil.test',
+  '/\t/evil.test',
+  '/\n/evil.test',
+  '/\r/evil.test',
+  ' /x',
+  '/ x',
+  '/x y',
+  'javascript:alert(1)',
+  'data:text/html,x',
+  'vbscript:x',
+  '\u0000/x',
+  '/\u2028/evil',
+  '/\u0085/evil',
+  '',
+  null,
+  undefined,
+  123,
+  `/${'a'.repeat(300)}`,
 ]
-const GOOD_URLS = ['/', '/perfil', '/comunidades/c#publicacao-p', '/novo-treino?planejado=2026-10-06', '/comunidades/c/publicacoes/p/comentarios/k']
+const GOOD_URLS = [
+  '/',
+  '/perfil',
+  '/comunidades/c#publicacao-p',
+  '/novo-treino?planejado=2026-10-06',
+  '/comunidades/c/publicacoes/p/comentarios/k',
+]
 
 test('contrato de URL: Central, worker e Service Worker rejeitam o mesmo conjunto e aceitam os mesmos caminhos', async () => {
   const { safeActionUrl } = await import('../features/notifications/utils/notifications.js')
-  const { safeTargetUrl } = await import('../../supabase/functions/process-push-outbox/processor.js')
+  const { safeTargetUrl } =
+    await import('../../supabase/functions/process-push-outbox/processor.js')
   for (const url of BAD_URLS) {
     assert.equal(safeActionUrl(url), null, `Central aceitou ${JSON.stringify(url)}`)
     assert.equal(safeTargetUrl(url), '/', `worker aceitou ${JSON.stringify(url)}`)
     let work
-    handlers.push({ data: { json: () => ({ title: 't', targetUrl: url }) }, waitUntil: (promise) => { work = promise } })
+    handlers.push({
+      data: { json: () => ({ title: 't', targetUrl: url }) },
+      waitUntil: (promise) => {
+        work = promise
+      },
+    })
     await work
-    assert.equal(sw.self.shownNotification.options.data.targetUrl, '/', `Service Worker aceitou ${JSON.stringify(url)}`)
+    assert.equal(
+      sw.self.shownNotification.options.data.targetUrl,
+      '/',
+      `Service Worker aceitou ${JSON.stringify(url)}`
+    )
   }
   for (const url of GOOD_URLS) {
     assert.equal(safeActionUrl(url), url)
     assert.equal(safeTargetUrl(url), url)
     let work
-    handlers.push({ data: { json: () => ({ title: 't', targetUrl: url }) }, waitUntil: (promise) => { work = promise } })
+    handlers.push({
+      data: { json: () => ({ title: 't', targetUrl: url }) },
+      waitUntil: (promise) => {
+        work = promise
+      },
+    })
     await work
     assert.equal(sw.self.shownNotification.options.data.targetUrl, url)
   }
@@ -491,18 +652,31 @@ test('contrato de URL: Central, worker e Service Worker rejeitam o mesmo conjunt
 
 test('push com `tag` do servidor agrupa e re-notifica; tag inválida é ignorada', async () => {
   let work
-  handlers.push({ data: { json: () => ({ title: 'a', notificationId: 7, tag: 'post_like:1x9z' }) }, waitUntil: (promise) => { work = promise } })
+  handlers.push({
+    data: { json: () => ({ title: 'a', notificationId: 7, tag: 'post_like:1x9z' }) },
+    waitUntil: (promise) => {
+      work = promise
+    },
+  })
   await work
   assert.equal(sw.self.shownNotification.options.tag, 'post_like:1x9z')
   assert.equal(sw.self.shownNotification.options.renotify, true)
   for (const tag of ['<script>', 'a b', 'x'.repeat(65), 12, {}, '']) {
-    handlers.push({ data: { json: () => ({ title: 'a', notificationId: 8, tag }) }, waitUntil: (promise) => { work = promise } })
+    handlers.push({
+      data: { json: () => ({ title: 'a', notificationId: 8, tag }) },
+      waitUntil: (promise) => {
+        work = promise
+      },
+    })
     await work
-    assert.equal(sw.self.shownNotification.options.tag, 'notification-8', `aceitou tag ${JSON.stringify(tag)}`)
+    assert.equal(
+      sw.self.shownNotification.options.tag,
+      'notification-8',
+      `aceitou tag ${JSON.stringify(tag)}`
+    )
     assert.equal(sw.self.shownNotification.options.renotify, false)
   }
 })
-
 
 // ---- Telemetria da última milha: nunca vira dependência do Push ------------------------------------
 const ACK = 'cd'.repeat(32)
@@ -516,7 +690,10 @@ function arm(mode, options) {
   const originalShow = sw.self.registration.showNotification
   sw.self.registration.showNotification = async (title, opts) => {
     log.push('show')
-    if (sw.self.showMode === 'reject') throw Object.assign(new Error('secret message with /private/path'), { name: 'NotAllowedError' })
+    if (sw.self.showMode === 'reject')
+      throw Object.assign(new Error('secret message with /private/path'), {
+        name: 'NotAllowedError',
+      })
     return originalShow(title, opts)
   }
   ackHandler = (init) => {
@@ -525,15 +702,29 @@ function arm(mode, options) {
     log.push(`ack:${body.p_event}`)
     if (mode === 'throw') throw new TypeError('sync failure')
     if (mode === 'offline') return Promise.reject(new TypeError('Failed to fetch'))
-    if (mode === 'hang') return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(new Error('aborted'))))
+    if (mode === 'hang')
+      return new Promise((_, reject) =>
+        init.signal.addEventListener('abort', () => reject(new Error('aborted')))
+      )
     return Promise.resolve(new Response('', { status: 204 }))
   }
 }
 function push(payload = {}) {
   let work
   handlers.push({
-    data: { json: () => ({ title: 'x', body: 'y', notificationId: 5, targetUrl: '/p', ack: ACK, ...payload }) },
-    waitUntil: (promise) => { work = promise },
+    data: {
+      json: () => ({
+        title: 'x',
+        body: 'y',
+        notificationId: 5,
+        targetUrl: '/p',
+        ack: ACK,
+        ...payload,
+      }),
+    },
+    waitUntil: (promise) => {
+      work = promise
+    },
   })
   return work
 }
@@ -562,7 +753,9 @@ test('telemetria: ACK falhando (offline) e ACK que lança de forma síncrona nã
 test('telemetria: ACK lento NÃO atrasa a exibição; ao estourar o tempo é abortado e o handler termina', async () => {
   arm('hang')
   let settled = false
-  const work = push().then(() => { settled = true })
+  const work = push().then(() => {
+    settled = true
+  })
   await new Promise((resolve) => setImmediate(resolve))
   assert.ok(log.includes('show'), 'a notificação apareceu com o ACK ainda pendente')
   assert.equal(sw.self.shownNotification.title, 'x')
@@ -581,17 +774,33 @@ test('telemetria: showNotification rejeitando gera show_failed só com o NOME do
   assert.deepEqual(log, ['ack:received', 'show', 'ack:show_failed'])
   const failed = acks.find((ack) => ack.body.p_event === 'show_failed')
   assert.equal(failed.body.p_failure, 'NotAllowedError')
-  assert.equal(JSON.stringify(acks).includes('secret'), false, 'nem mensagem nem caminho vão para a telemetria')
+  assert.equal(
+    JSON.stringify(acks).includes('secret'),
+    false,
+    'nem mensagem nem caminho vão para a telemetria'
+  )
 })
 
 test('telemetria: sem token, token inválido ou build sem configuração => nenhuma requisição, notificação normal', async () => {
-  for (const payload of [{ ack: undefined }, { ack: '' }, { ack: 'curto' }, { ack: 'CD'.repeat(32) }, { ack: `${ACK}0` }, { ack: 123 }, { ack: '<img src=x>' }]) {
+  for (const payload of [
+    { ack: undefined },
+    { ack: '' },
+    { ack: 'curto' },
+    { ack: 'CD'.repeat(32) },
+    { ack: `${ACK}0` },
+    { ack: 123 },
+    { ack: '<img src=x>' },
+  ]) {
     arm('ok')
     await push(payload)
     assert.equal(acks.length, 0, JSON.stringify(payload))
     assert.equal(sw.self.shownNotification.title, 'x')
   }
-  for (const ack of [{ url: null, key: null }, { url: ACK_URL, key: null }, { url: null, key: ACK_KEY }]) {
+  for (const ack of [
+    { url: null, key: null },
+    { url: ACK_URL, key: null },
+    { url: null, key: ACK_KEY },
+  ]) {
     arm('ok', { ack })
     await push()
     assert.equal(acks.length, 0)
@@ -612,15 +821,26 @@ test('telemetria: clique envia "clicked" e a navegação acontece mesmo com ACK 
     arm(mode)
     sw.self.windowClients = []
     sw.self.openedWindow = null
-    sw.self.clients.openWindow = async (url) => { sw.self.openedWindow = url }
+    sw.self.clients.openWindow = async (url) => {
+      sw.self.openedWindow = url
+    }
     let work
     handlers.notificationclick({
       notification: { data: { targetUrl: '/perfil', ack: ACK }, close() {} },
-      waitUntil: (promise) => { work = promise },
+      waitUntil: (promise) => {
+        work = promise
+      },
     })
     await new Promise((resolve) => setImmediate(resolve))
-    assert.equal(sw.self.openedWindow, `${ORIGIN}/perfil`, `${mode}: abriu a rota sem esperar o ACK`)
-    assert.deepEqual(acks.map((ack) => ack.body.p_event), ['clicked'])
+    assert.equal(
+      sw.self.openedWindow,
+      `${ORIGIN}/perfil`,
+      `${mode}: abriu a rota sem esperar o ACK`
+    )
+    assert.deepEqual(
+      acks.map((ack) => ack.body.p_event),
+      ['clicked']
+    )
     timers.forEach((fire) => fire())
     await work
   }
@@ -634,14 +854,19 @@ test('telemetria: clique sem token não faz requisição', async () => {
 })
 
 test('build: pushAckConfig só habilita a telemetria com https + chave; nada de valores parciais', () => {
-  assert.deepEqual(pushAckConfig({ VITE_SUPABASE_URL: 'https://proj.supabase.co/', VITE_SUPABASE_ANON_KEY: 'k' }),
-    { url: ACK_URL, key: 'k' })
+  assert.deepEqual(
+    pushAckConfig({ VITE_SUPABASE_URL: 'https://proj.supabase.co/', VITE_SUPABASE_ANON_KEY: 'k' }),
+    { url: ACK_URL, key: 'k' }
+  )
   for (const env of [
-    {}, { VITE_SUPABASE_URL: 'https://proj.supabase.co' }, { VITE_SUPABASE_ANON_KEY: 'k' },
+    {},
+    { VITE_SUPABASE_URL: 'https://proj.supabase.co' },
+    { VITE_SUPABASE_ANON_KEY: 'k' },
     { VITE_SUPABASE_URL: 'http://proj.supabase.co', VITE_SUPABASE_ANON_KEY: 'k' },
     { VITE_SUPABASE_URL: 'not a url', VITE_SUPABASE_ANON_KEY: 'k' },
     { VITE_SUPABASE_URL: 'https://proj.supabase.co/?x=1', VITE_SUPABASE_ANON_KEY: 'k' },
-  ]) assert.deepEqual(pushAckConfig(env), { url: null, key: null }, JSON.stringify(env))
+  ])
+    assert.deepEqual(pushAckConfig(env), { url: null, key: null }, JSON.stringify(env))
 })
 
 test('build: o template não deixa placeholders sem substituir', () => {

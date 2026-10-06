@@ -27,6 +27,7 @@ import {
 } from '../utils/doneExercisesStorage'
 import { nextStepAfterFinishing, valuesForNextExercise } from '../utils/workoutSessionFlow'
 import { sortExercisesInGroup } from '../utils/exerciseOrder'
+import { businessDayKey } from '../utils/businessDate'
 import { nextActiveSetIndexAfterRemoval } from '../utils/setCardFlow'
 import { suggestedSets, inheritSet } from '../utils/setSuggestions'
 import { recentExerciseSessions } from '../utils/exerciseHistory'
@@ -40,11 +41,9 @@ import '../styles/workoutExecution.css'
 // teclado por altura de tela.
 const KEYBOARD_ACTIVE_CLASS = 'keyboard-active'
 
+// "Hoje" é o dia de NEGÓCIO (America/Sao_Paulo), não o do aparelho (ver utils/businessDate.js).
 function todayString() {
-  const today = new Date()
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
-    today.getDate()
-  ).padStart(2, '0')}`
+  return businessDayKey()
 }
 
 // setDetails e durationMinutes/distanceKm coexistem aqui sempre, os dois tipos — só o

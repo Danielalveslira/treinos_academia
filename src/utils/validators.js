@@ -4,6 +4,7 @@ import { EXERCISE_TYPES } from './exerciseType.js'
 import { isValidCardioSession, MAX_DURATION_MINUTES, MAX_DISTANCE_KM } from './cardioSessions.js'
 import { COMMUNITY_ICON_NAMES } from '../constants/communityIcons.js'
 import { USAGE_PROFILES } from '../constants/usageProfile.js'
+import { isFutureBusinessDay } from './businessDate.js'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 export const SEXO_OPTIONS = ['masculino', 'feminino', 'nao_informar']
@@ -126,7 +127,7 @@ export function validateWorkout({
     new Date(date).toISOString().slice(0, 10) !== date
   ) {
     errors.date = 'Data inválida'
-  } else if (date > new Date().toISOString().slice(0, 10)) {
+  } else if (isFutureBusinessDay(date)) {
     errors.date = 'A data não pode ser no futuro'
   }
   if (note != null && (typeof note !== 'string' || note.trim().length > 300))

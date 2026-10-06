@@ -13,14 +13,14 @@ import { normalizeTrainingPreferences } from '../utils/trainingPlan'
 // cache começa com "progress:{uid}:", então invalidateWorkoutCache (novo treino) já a invalida; só busca quando
 // `enabled` (o seletor está aberto).
 export function useProgressShareOptions({ enabled = true } = {}) {
-  const { user, profile } = useAuth()
+  const { user, profile, offlineLocal } = useAuth()
   const { start, end, year } = getActivityRange()
   const fetchValue = useCallback(
-    () => listProgressDays(user.uid, start, end),
-    [user.uid, start, end]
+    () => (offlineLocal ? Promise.resolve([]) : listProgressDays(user.uid, start, end)),
+    [user.uid, start, end, offlineLocal]
   )
   const { data, loading, error, refresh } = useCachedQuery(
-    `progress:${user.uid}:days:${year}`,
+    `progress:${user.uid}:days:${year}:${offlineLocal ? 'local' : 'online'}`,
     fetchValue,
     { enabled, context: 'useProgressShareOptions' }
   )

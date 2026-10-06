@@ -8,7 +8,11 @@ const EMPTY_WALLET = { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0 }
 
 function mapWalletRow(row) {
   return row
-    ? { coinBalance: row.coin_balance, lifetimeCoinsEarned: row.lifetime_coins_earned, cashBalance: row.cash_balance }
+    ? {
+        coinBalance: row.coin_balance,
+        lifetimeCoinsEarned: row.lifetime_coins_earned,
+        cashBalance: row.cash_balance,
+      }
     : EMPTY_WALLET
 }
 
@@ -28,7 +32,7 @@ export const WalletContext = createContext(null)
 // próprio Realtime), nunca do cache de sessão, para um saldo antigo não virar "+N" falso.
 // Cada crédito dispara UMA leitura de get_my_evocoin_day (<= 10 por usuário/dia); sem polling.
 export function WalletProvider({ children }) {
-  const { user, deletionStatus } = useAuth()
+  const { user, deletionStatus, offlineLocal } = useAuth()
   const [wallet, setWallet] = useState(EMPTY_WALLET)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -43,7 +47,7 @@ export function WalletProvider({ children }) {
     // null = ainda sem base confiável (nada de "+N" até a primeira leitura fresca/evento).
     let baselineLifetime = null
 
-    if (!user || deletionStatus) {
+    if (!user || deletionStatus || offlineLocal) {
       setWallet(EMPTY_WALLET)
       setLoading(false)
       setError(null)
@@ -112,7 +116,7 @@ export function WalletProvider({ children }) {
       channel?.unsubscribe()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, deletionStatus])
+  }, [user?.uid, deletionStatus, offlineLocal])
 
   return (
     <WalletContext.Provider value={{ wallet, loading, error, dailyCoins, lastAward }}>

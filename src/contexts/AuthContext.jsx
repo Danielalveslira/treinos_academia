@@ -12,6 +12,22 @@ import { clearCachedWallet } from '../services/economyService'
 import { isSameSessionIdentity } from '../utils/authSession'
 import { clearActivityPingThrottle } from '../utils/activityPing'
 import { clearAllCommentDrafts } from '../features/comments/utils/drafts'
+import { purgePrivateData } from '../services/offline/userScope'
+import { isOfflineColdStartEnabled } from '../services/offline/database'
+import { hydrateOfflineRollout, refreshRemoteRollout, setOfflineRolloutUser, subscribeOfflineRollout } from '../services/offline/rollout'
+import { flushOfflineTelemetry, recordOfflineDiagnostic, setOfflineTelemetryContext } from '../services/offline/diagnostics'
+import { classifyReadError } from '../services/offline/readError'
+import { createProbe } from '../services/offline/connectivity'
+import {
+  buildBootstrapRecord,
+  dropBootstrapsExcept,
+  evaluateOfflineEntry,
+  offlineIdentity,
+  readActiveBootstrap,
+  saveBootstrap,
+} from '../services/offline/bootstrap'
+import { resolveLegalGateState } from '../utils/legal'
+import { requiresEmailVerification } from '../utils/emailVerification'
 
 export const AuthContext = createContext(null)
 
@@ -24,6 +40,35 @@ function toAppUser(supabaseUser) {
     uid: supabaseUser.id,
     emailVerified: Boolean(supabaseUser.email_confirmed_at),
   }
+}
+
+export const OFFLINE_ENTRY_REQUIRES_INTERNET =
+  'Conecte-se à internet para entrar no Evolutus neste aparelho.'
+
+// Sondagem do backend (cache curto, sem polling): `force` porque aqui a pergunta é "dá para perguntar ao
+// servidor agora?", e um resultado antigo de "não" não pode prender o usuário offline depois que a rede voltou.
+let probe = null
+async function backendReachable() {
+  if (globalThis.navigator?.onLine === false) return false
+  probe ??= createProbe({
+    baseUrl: import.meta.env?.VITE_SUPABASE_URL,
+    anonKey: import.meta.env?.VITE_SUPABASE_ANON_KEY,
+  })
+  return probe.probe({ force: true })
+}
+
+async function getServerAppAccess() {
+  const { data, error } = await supabase.rpc('has_app_access')
+  if (error) throw error
+  return data === true
+}
+
+// Falha por falta de rede (e NÃO erro de auth/permissão: esse nunca vira "modo offline").
+function hasConnectivityFailure(...results) {
+  const failures = results.filter((r) => r.status === 'rejected')
+  return (
+    failures.length > 0 && failures.every((r) => classifyReadError(r.reason) === 'connectivity')
+  )
 }
 
 export function AuthProvider({ children }) {
@@ -52,6 +97,15 @@ export function AuthProvider({ children }) {
   // Detalhes públicos da exclusão (protocolo, se a pendência foi separada) -- ver
   // get_my_deletion_review; nunca saldo/valores.
   const [deletionReview, setDeletionReview] = useState(null)
+  // 'online' = sessão confirmada pelo servidor; 'offline-local' = usuário reconhecido por este aparelho (cold
+  // start offline), SEM confirmação do servidor até a revalidação.
+  const [authMode, setAuthMode] = useState('online')
+  const [offlineVerifiedAt, setOfflineVerifiedAt] = useState(null)
+  const [serverAccessAllowed, setServerAccessAllowed] = useState(null)
+  const [rolloutRevision, setRolloutRevision] = useState(0)
+  const authModeRef = useRef('online')
+  const revalidatingRef = useRef(false)
+  const revalidateRef = useRef(null)
   // Só usado DENTRO do efeito abaixo, pra uma chamada de loadSession não pisar no
   // resultado de outra mais nova (duas trocas de sessão em sequência rápida) — nunca
   // compartilhado com refreshProfile/refreshLegalAccess/saveProfile (ver por quê no
@@ -61,6 +115,7 @@ export function AuthProvider({ children }) {
   // carregado. Usada para NÃO recarregar tudo quando o Supabase reemite eventos da MESMA
   // sessão (ver onAuthStateChange abaixo).
   const loadedUserIdRef = useRef(undefined)
+  const lastSessionUserIdRef = useRef(null)
 
   useEffect(() => {
     let active = true
@@ -87,40 +142,27 @@ export function AuthProvider({ children }) {
       }
     }
 
-    async function loadSession(supabaseUser) {
-      clearPageCache()
-      clearPhotoCache()
-      clearCachedLegalAccess()
-      clearCachedWallet()
-      const current = ++sessionRevisionRef.current
-      loadedUserIdRef.current = supabaseUser?.id ?? null
-      profileChannel?.unsubscribe()
-      profileChannel = null
-      setUser(toAppUser(supabaseUser))
-      setProfile(null)
-      setProfileError('')
-      setDeletionStatus(null)
-      setDeletionReview(null)
-      setLegalAccess(null)
-      setLegalError('')
-      setLegalLoading(Boolean(supabaseUser))
-      setLoading(true)
-      if (!supabaseUser) {
-        if (active) {
-          setProfile(null)
-          setLegalAccess(null)
-          setLegalLoading(false)
-          setLoading(false)
-        }
-        return
-      }
-
-      const [profileResult, legalResult] = await Promise.allSettled([
-        ensureUserProfile(supabaseUser.id),
-        getLegalAccess(supabaseUser.id),
-      ])
+    // Aplica o resultado da leitura de perfil + termos do SERVIDOR (boot online ou revalidação ao
+    // reconectar). `silent`: revalidação em segundo plano -- não liga `loading` (isso desmontaria a tela
+    // atual com formulários em andamento).
+    function applyAccountResults(
+      supabaseUser,
+      profileResult,
+      legalResult,
+      accessResult,
+      current,
+      { silent }
+    ) {
       if (!active || current !== sessionRevisionRef.current) return
-
+      authModeRef.current = 'online'
+      setAuthMode('online')
+      setOfflineTelemetryContext(supabaseUser.id, accessResult.status === 'fulfilled')
+      setServerAccessAllowed(accessResult.status === 'fulfilled' && accessResult.value === true)
+      if (silent) {
+        setUser(toAppUser(supabaseUser))
+        setProfileError('')
+        setLegalError('')
+      }
       if (profileResult.status === 'fulfilled') {
         setProfile(profileResult.value)
         // Uma ação administrativa (desativar conta, aplicar restrição) grava direto na
@@ -128,6 +170,7 @@ export function AuthProvider({ children }) {
         // afetada só veria o efeito num próximo refresh/reload manual, mesmo já
         // bloqueada no servidor (as policies já negam na hora; isto é só a UI refletir
         // o motivo). Sincroniza a linha INTEIRA a cada mudança, não só um subconjunto.
+        profileChannel?.unsubscribe()
         profileChannel = supabase
           .channel(`users-changes-${supabaseUser.id}`)
           .on(
@@ -147,6 +190,7 @@ export function AuthProvider({ children }) {
         checkDeletionStatus(supabaseUser.id, current)
       } else {
         console.error('[Auth] ensureUserProfile:', profileResult.reason)
+        setProfile(null)
         setProfileError(
           'Não foi possível carregar seu perfil. Recarregue a página para tentar novamente.'
         )
@@ -156,11 +200,196 @@ export function AuthProvider({ children }) {
         setLegalAccess(legalResult.value)
       } else {
         console.error('[Auth] getLegalAccess:', legalResult.reason)
+        setLegalAccess(null)
         setLegalError('Não foi possível consultar a policy e as restrições atuais.')
+      }
+      if (
+        accessResult.status === 'rejected' &&
+        profileResult.status === 'fulfilled' &&
+        legalResult.status === 'fulfilled'
+      ) {
+        console.error('[Auth] has_app_access:', accessResult.reason)
+        setProfileError('Não foi possível confirmar o acesso à sua conta. Tente novamente.')
       }
       setLegalLoading(false)
       setLoading(false)
     }
+
+    // ---- Cold start offline (VITE_OFFLINE_COLD_START_ENABLED) ----------------------------------------
+    // "Este aparelho reconhece o último usuário que entrou ONLINE e libera os recursos locais que ele já
+    // podia usar" -- NUNCA "o servidor confirmou agora". Nenhum token é guardado aqui (a sessão é do
+    // Supabase); o servidor continua decidindo tudo que exige backend, e ao reconectar o estado dele
+    // prevalece (revalidate). Falha segura: qualquer dúvida = não entra offline.
+    async function resolveOfflineEntry() {
+      const record = await readActiveBootstrap()
+      setOfflineTelemetryContext(record?.user_id, false)
+      if (!evaluateOfflineEntry(record, { userId: lastSessionUserIdRef.current }).ok) {
+        recordOfflineDiagnostic('cold_start_denied')
+        return null
+      }
+      await hydrateOfflineRollout(record.user_id)
+      if (!isOfflineColdStartEnabled(import.meta.env, record.user_id)) {
+        recordOfflineDiagnostic('cold_start_denied')
+        return null
+      }
+      // Com o backend alcançável a ausência de sessão é uma resposta real do servidor (sessão expirada ou
+      // inválida): vai para o login. Só abre offline quando a rede de fato não permite perguntar.
+      if (await backendReachable()) return null
+      return record
+    }
+
+    function enterOfflineLocal(record, current) {
+      if (!active || current !== sessionRevisionRef.current) return
+      const identity = offlineIdentity(record)
+      setOfflineTelemetryContext(identity.user.id, false)
+      recordOfflineDiagnostic('cold_start_opened')
+      setOfflineRolloutUser(identity.user.id)
+      loadedUserIdRef.current = identity.user.id
+      authModeRef.current = 'offline-local'
+      setAuthMode('offline-local')
+      setServerAccessAllowed(null)
+      setOfflineVerifiedAt(record.last_online_verified_at)
+      setUser(identity.user)
+      setProfile(identity.profile)
+      setProfileError('')
+      setDeletionStatus(null)
+      setDeletionReview(null)
+      setLegalAccess(identity.legalAccess)
+      setLegalError('')
+      setLegalLoading(false)
+      setLoading(false)
+    }
+
+    async function loadSession(supabaseUser) {
+      const coldStart = isOfflineColdStartEnabled()
+      const current = ++sessionRevisionRef.current
+      if (supabaseUser) lastSessionUserIdRef.current = supabaseUser.id
+      setOfflineRolloutUser(supabaseUser?.id ?? null)
+      setOfflineTelemetryContext(supabaseUser?.id ?? null, false)
+      // Uma troca real de identidade invalida imediatamente o acesso offline da conta anterior,
+      // mesmo que o carregamento de perfil/termos da nova conta falhe depois.
+      if (coldStart && supabaseUser) await dropBootstrapsExcept(supabaseUser.id)
+      if (!active || current !== sessionRevisionRef.current) return
+      clearPageCache()
+      clearPhotoCache()
+      clearCachedLegalAccess()
+      clearCachedWallet()
+      // Banco local (IndexedDB): remove o que não é desta sessão -- só os outros usuários na troca/login (a
+      // outbox nunca). Sem sessão e com cold start ligado a limpeza espera a decisão abaixo: ausência de
+      // sessão por EXPIRAÇÃO/rede não é logout, e o logout explícito já desligou o bootstrap (authService).
+      if (supabaseUser || !coldStart) purgePrivateData(supabaseUser?.id ?? null)
+      loadedUserIdRef.current = supabaseUser?.id ?? null
+      authModeRef.current = 'online'
+      setAuthMode('online')
+      setServerAccessAllowed(null)
+      setOfflineVerifiedAt(null)
+      profileChannel?.unsubscribe()
+      profileChannel = null
+      setUser(toAppUser(supabaseUser))
+      setProfile(null)
+      setProfileError('')
+      setDeletionStatus(null)
+      setDeletionReview(null)
+      setLegalAccess(null)
+      setLegalError('')
+      setLegalLoading(Boolean(supabaseUser))
+      setLoading(true)
+      if (!supabaseUser) {
+        if (coldStart) {
+          const record = await resolveOfflineEntry()
+          if (!active || current !== sessionRevisionRef.current) return
+          if (record) {
+            enterOfflineLocal(record, current)
+            return
+          }
+          purgePrivateData(null)
+        }
+        if (active) {
+          setProfile(null)
+          setLegalAccess(null)
+          setLegalLoading(false)
+          setLoading(false)
+        }
+        return
+      }
+
+      const [profileResult, legalResult, accessResult] = await Promise.allSettled([
+        ensureUserProfile(supabaseUser.id),
+        getLegalAccess(supabaseUser.id),
+        getServerAppAccess(),
+      ])
+      if (!active || current !== sessionRevisionRef.current) return
+
+      if (coldStart && hasConnectivityFailure(profileResult, legalResult, accessResult)) {
+        const record = await readActiveBootstrap()
+        await hydrateOfflineRollout(supabaseUser.id)
+        if (!active || current !== sessionRevisionRef.current) return
+        if (
+          evaluateOfflineEntry(record, { userId: supabaseUser.id }).ok &&
+          isOfflineColdStartEnabled(import.meta.env, supabaseUser.id)
+        ) {
+          enterOfflineLocal(record, current)
+        } else {
+          setProfileError(OFFLINE_ENTRY_REQUIRES_INTERNET)
+          setLegalLoading(false)
+          setLoading(false)
+        }
+        return
+      }
+      applyAccountResults(supabaseUser, profileResult, legalResult, accessResult, current, {
+        silent: false,
+      })
+    }
+
+    // Reconexão com o app aberto em modo offline local. Ordem SEGURA (nada de sync antes do fim):
+    //   1 conectividade real -> 2 sessão Supabase (refresh oficial) -> 3 identidade -> 4 perfil/acesso ->
+    //   5 termos vigentes -> 6 bootstrap atualizado (efeito abaixo) -> 7 sync liberado (Layout só liga o
+    //   sync em modo online confirmado) -> 8 outbox.
+    // Sem renovar a sessão: exige login online, preservando o que está pendente.
+    async function revalidate() {
+      if (authModeRef.current !== 'offline-local' || revalidatingRef.current) return
+      revalidatingRef.current = true
+      try {
+        if (!(await backendReachable())) return
+        const { data, error } = await supabase.auth.getSession()
+        if (!active || authModeRef.current !== 'offline-local') return
+        const session = data?.session
+        if (!session) {
+          // Rede instável na renovação: continua offline e tenta de novo depois.
+          if (error?.name === 'AuthRetryableFetchError') return
+          setLogoutReason('session-expired')
+          recordOfflineDiagnostic('revalidation_session_expired')
+          await loadSession(null)
+          return
+        }
+        if (session.user.id !== loadedUserIdRef.current) {
+          await loadSession(session.user) // identidade diferente: caminho completo (limpa o resto)
+          return
+        }
+        const current = sessionRevisionRef.current
+        const [profileResult, legalResult, accessResult] = await Promise.allSettled([
+          ensureUserProfile(session.user.id),
+          getLegalAccess(session.user.id),
+          getServerAppAccess(),
+        ])
+        if (!active || current !== sessionRevisionRef.current) return
+        if (hasConnectivityFailure(profileResult, legalResult, accessResult)) return // a rede caiu de novo: segue offline
+        recordOfflineDiagnostic(
+          profileResult.status === 'fulfilled' &&
+            legalResult.status === 'fulfilled' &&
+            accessResult.status === 'fulfilled' &&
+            accessResult.value === true
+            ? 'revalidation_ok'
+            : 'revalidation_denied'
+        )
+        applyAccountResults(session.user, profileResult, legalResult, accessResult, current, {
+          silent: true,
+        })
+      } finally {
+        revalidatingRef.current = false
+      }
+    }
+    revalidateRef.current = revalidate
 
     // onAuthStateChange já emite INITIAL_SESSION ao assinar: um getSession() separado só
     // duplicava perfil + termos + revisão de exclusão + canal Realtime a cada abertura.
@@ -178,7 +407,9 @@ export function AuthProvider({ children }) {
         clearActivityPingThrottle()
       }
       if (isSameSessionIdentity(loadedUserIdRef.current, nextUser)) {
-        if (nextUser) {
+        // Em modo offline local o usuário exposto é o RECONHECIDO LOCALMENTE; só a revalidação (que confirma
+        // sessão, perfil e termos) o promove a sessão confirmada pelo servidor.
+        if (nextUser && authModeRef.current !== 'offline-local') {
           // E-mail confirmado/alterado chega por aqui; o resto do objeto não muda a UI.
           setUser((previous) =>
             previous &&
@@ -195,10 +426,123 @@ export function AuthProvider({ children }) {
 
     return () => {
       active = false
+      revalidateRef.current = null
       profileChannel?.unsubscribe()
       subscription.subscription.unsubscribe()
     }
   }, [])
+
+  // Busca a configuração operacional com a sessão online. Poll curto + foreground propagam o
+  // kill switch sem novo build. A decisão local usa apenas a última resposta válida desta conta.
+  useEffect(() => subscribeOfflineRollout(() => setRolloutRevision((value) => value + 1)), [])
+  useEffect(() => {
+    if (authMode !== 'online' || !user?.uid || serverAccessAllowed !== true) return undefined
+    let active = true
+    const userId = user.uid
+    const update = async () => {
+      if (globalThis.navigator?.onLine === false) return
+      await hydrateOfflineRollout(userId)
+      if (active) {
+        await refreshRemoteRollout(userId)
+        flushOfflineTelemetry().catch(() => {})
+      }
+    }
+    const onVisible = () => { if (document.visibilityState === 'visible') update() }
+    window.addEventListener('online', update)
+    document.addEventListener('visibilitychange', onVisible)
+    const timer = setInterval(update, 15_000)
+    update()
+    return () => {
+      active = false
+      clearInterval(timer)
+      window.removeEventListener('online', update)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [authMode, user?.uid, serverAccessAllowed])
+
+  // Modo offline local: tenta revalidar quando a rede volta, ao voltar para a aba e, com o navegador
+  // dizendo "online" mas o backend ainda inalcançável (portal cativo), a cada 30 s com a aba visível.
+  useEffect(() => {
+    if (authMode !== 'offline-local') return undefined
+    const attempt = () => revalidateRef.current?.()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') attempt()
+    }
+    window.addEventListener('online', attempt)
+    document.addEventListener('visibilitychange', onVisible)
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine !== false) attempt()
+    }, 30_000)
+    if (navigator.onLine !== false) attempt()
+    return () => {
+      window.removeEventListener('online', attempt)
+      document.removeEventListener('visibilitychange', onVisible)
+      clearInterval(timer)
+    }
+  }, [authMode])
+
+  // Bootstrap local: só a partir do que o SERVIDOR confirmou (modo online) e só com o cold start ligado.
+  // Estado que NÃO permite acesso (conta desativada/em exclusão/restrita, termos novos pendentes, e-mail por
+  // verificar) fica gravado como bloqueado: o aparelho nunca abre offline o que o servidor já barrou.
+  useEffect(() => {
+    if (
+      !isOfflineColdStartEnabled(import.meta.env, user?.uid) ||
+      authMode !== 'online' ||
+      !user ||
+      !profile ||
+      !legalAccess ||
+      serverAccessAllowed === null
+    )
+      return
+    // SÓ dados confirmados pelo servidor viram bootstrap. Num render intermediário (troca de modo/usuário) o
+    // estado pode ainda ser o da identidade OFFLINE ou o de outro usuário: isso nunca é regravado.
+    if (
+      user.offline ||
+      legalAccess.offline ||
+      profile.id !== user.uid ||
+      loadedUserIdRef.current !== user.uid ||
+      authModeRef.current !== 'online'
+    )
+      return
+    const gate = resolveLegalGateState({ profile, access: legalAccess, loading: false, error: '' })
+    const emailOk = user.emailVerified || !requiresEmailVerification(profile)
+    const allowed =
+      serverAccessAllowed &&
+      gate === 'allowed' &&
+      profile.accountStatus === 'active' &&
+      !deletionStatus &&
+      emailOk
+    const blockedReason = allowed
+      ? null
+      : !serverAccessAllowed
+        ? 'SERVER_ACCESS_DENIED'
+        : deletionStatus
+          ? 'ACCOUNT_DELETING'
+          : profile.accountStatus !== 'active'
+            ? 'ACCOUNT_NOT_ACTIVE'
+            : !emailOk
+              ? 'EMAIL_UNVERIFIED'
+              : gate.toUpperCase().replace(/-/g, '_')
+    saveBootstrap(
+      buildBootstrapRecord({
+        userId: user.uid,
+        profile,
+        emailVerified: user.emailVerified,
+        policy: legalAccess.policy,
+        allowed,
+        blockedReason,
+      })
+    ).then((saved) => {
+      if (saved && allowed) recordOfflineDiagnostic('bootstrap_saved')
+      // Aparelho passa a guardar algo que vale proteger: pede armazenamento persistente (uma vez, sem bloquear).
+      // Carregado sob demanda (só existe depois de um login ONLINE confirmado): fora do bundle de entrada.
+      if (saved && allowed) {
+        import('../services/offline/storagePersistence')
+          .then((module) => module.requestPersistentStorageOnce())
+          .catch(() => {})
+      }
+    })
+  }, [authMode, user, profile, legalAccess, deletionStatus, serverAccessAllowed, rolloutRevision])
 
   const isSuperAdmin = profile?.role === 'superadmin'
 
@@ -219,7 +563,11 @@ export function AuthProvider({ children }) {
 
   async function refreshProfile(userId) {
     const userProfile = await ensureUserProfile(userId)
-    setProfile(userProfile)
+    const access = await getServerAppAccess()
+    if (loadedUserIdRef.current === userId && authModeRef.current === 'online') {
+      setProfile(userProfile)
+      setServerAccessAllowed(access)
+    }
     return userProfile
   }
 
@@ -228,14 +576,17 @@ export function AuthProvider({ children }) {
   // em andamento perdidos) -- e uma falha de rede mantém o último acesso conhecido em vez de
   // abrir a tela de erro. As políticas RLS do servidor continuam sendo a barreira real.
   async function refreshLegalAccess(userId = user?.uid, { silent = false } = {}) {
-    if (!userId) return
+    if (!userId || authModeRef.current === 'offline-local') return
     if (!silent) {
       setLegalLoading(true)
       setLegalError('')
     }
     try {
-      const access = await getLegalAccess(userId)
-      setLegalAccess(access)
+      const [access, allowed] = await Promise.all([getLegalAccess(userId), getServerAppAccess()])
+      if (loadedUserIdRef.current === userId && authModeRef.current === 'online') {
+        setLegalAccess(access)
+        setServerAccessAllowed(allowed)
+      }
       return access
     } catch (error) {
       console.error('[Auth] getLegalAccess:', error)
@@ -266,6 +617,9 @@ export function AuthProvider({ children }) {
         isSuperAdmin,
         loading,
         verifyingSession: false,
+        offlineLocal: authMode === 'offline-local',
+        serverAccessAllowed,
+        offlineVerifiedAt,
         deletionStatus,
         deletionReview,
         refreshDeletionReview,

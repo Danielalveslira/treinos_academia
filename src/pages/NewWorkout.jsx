@@ -9,16 +9,31 @@ import { useToast } from '../hooks/useToast'
 import { WorkoutForm } from '../components/WorkoutForm'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
-import { completeWorkoutSession } from '../services/economyService'
+import { completeWorkoutSession, getMyEvocoinDay } from '../services/economyService'
+import { flushPending } from '../services/offline/syncScheduler'
+import { classifyReadError } from '../services/offline/readError'
+import { useAuth } from '../hooks/useAuth'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import { FINISH_MESSAGES, FINISH_OFFLINE_MESSAGE, runFinishWorkout } from '../utils/finishWorkout'
 import { loadDoneExerciseIds } from '../utils/doneExercisesStorage'
 import { returnToOrigin } from '../utils/navigation'
 import { plannedWorkoutNotice } from '../utils/plannedWorkout'
+import { businessDayKey, isBusinessDayKey } from '../utils/businessDate'
 
-function localDateKey() {
-  const today = new Date()
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
-    today.getDate()
-  ).padStart(2, '0')}`
+// "Hoje" é o dia de NEGÓCIO (America/Sao_Paulo), não o do aparelho (ver utils/businessDate.js).
+const localDateKey = () => businessDayKey()
+
+// Dia do treino a concluir: o que o SERVIDOR considera hoje (mesma regra da recompensa). Se a leitura
+// falhar por conectividade o erro sobe (finalizar exige servidor); por qualquer outro motivo cai no dia de
+// negócio calculado aqui (America/Sao_Paulo), que é a mesma definição, nunca o fuso do aparelho.
+async function serverBusinessDay() {
+  try {
+    const result = await getMyEvocoinDay()
+    if (isBusinessDayKey(result?.day)) return result.day
+  } catch (error) {
+    if (classifyReadError(error) === 'connectivity') throw error
+  }
+  return businessDayKey()
 }
 
 export default function NewWorkout() {
@@ -31,6 +46,8 @@ export default function NewWorkout() {
   const { exercises, loading, error, refresh } = useExercises()
   const { workouts, add } = useWorkouts()
   const { toasts, showToast } = useToast()
+  const { user } = useAuth()
+  const online = useOnlineStatus()
   // O botão "Finalizar treino" só aparece depois de registrar ao menos um exercício hoje (nesta
   // sessão ou, após recarregar, pela marcação local de exercícios feitos hoje).
   const [hasRegistered, setHasRegistered] = useState(
@@ -47,23 +64,34 @@ export default function NewWorkout() {
     if (finishingRef.current) return
     finishingRef.current = true
     setFinishing(true)
-    try {
-      await completeWorkoutSession()
+    // Regras (online-only, esvaziar a fila antes, nunca recompensa local) em utils/finishWorkout.js.
+    const { outcome, error } = await runFinishWorkout({
+      isOnline: () => navigator.onLine !== false,
+      getDay: serverBusinessDay,
+      flushPending: (day) => flushPending(user.uid, { date: day }),
+      completeSession: completeWorkoutSession,
+      classifyError: classifyReadError,
+    })
+    if (outcome === 'done') {
       // replace: o formulário concluído não deve ser reaberto pelo botão Voltar.
       navigate('/historico', { replace: true })
-    } catch (err) {
-      console.error('[NewWorkout] finish:', err)
-      showToast('Não foi possível finalizar o treino agora. Tente novamente.', 'danger')
-      finishingRef.current = false
-      setFinishing(false)
+      return
     }
+    if (error) console.error('[NewWorkout] finish:', error)
+    showToast(FINISH_MESSAGES[outcome], 'danger')
+    finishingRef.current = false
+    setFinishing(false)
   }
 
   async function handleSubmit(values) {
     try {
-      await add(values)
+      const result = await add(values)
       setHasRegistered(true)
-      showToast('Treino registrado.')
+      showToast(
+        result?.pendingSync
+          ? 'Salvo neste aparelho. Será sincronizado quando houver conexão.'
+          : 'Treino registrado.'
+      )
     } catch (err) {
       console.error('[NewWorkout] create:', err)
       showToast('Erro ao registrar treino.', 'danger')
@@ -122,9 +150,10 @@ export default function NewWorkout() {
 
       {!loading && !error && hasRegistered && (
         <div className="workout-finish">
-          <Button variant="primary" onClick={handleFinish} disabled={finishing}>
+          <Button variant="primary" onClick={handleFinish} disabled={finishing || !online}>
             {finishing ? 'Finalizando…' : 'Finalizar treino'}
           </Button>
+          {!online && <p className="workout-finish-hint">{FINISH_OFFLINE_MESSAGE}</p>}
         </div>
       )}
     </Box>

@@ -95,7 +95,10 @@ function isCacheableAsset(response) {
 
 async function assetStrategy(request) {
   const cache = await caches.open(ASSET_CACHE)
-  const cached = await cache.match(request)
+  // O precache usa Request(url), enquanto imports de módulos/CSS incluem Origin. Alguns hosts
+  // respondem com Vary: Origin; a comparação padrão perde o asset já salvo e tenta a rede offline.
+  // Só chegamos aqui para assets da PRÓPRIA origem e com URL hashada pelo build.
+  const cached = await cache.match(request, { ignoreVary: true })
   if (cached) return cached
   const response = await fetch(request)
   if (isCacheableAsset(response)) {
@@ -117,7 +120,7 @@ async function withTimestamp(response) {
 
 async function imageStrategy(request) {
   const cache = await caches.open(IMAGE_CACHE)
-  const cached = await cache.match(request)
+  const cached = await cache.match(request, { ignoreVary: true })
   const age = cached ? Date.now() - Number(cached.headers.get(CACHED_AT_HEADER) || 0) : Infinity
   if (cached && age < IMAGE_MAX_AGE_MS) return cached
   try {
@@ -176,13 +179,20 @@ function safeNotificationTarget(value) {
   // Só caminho interno: sem "//", "\\" (o navegador a trata como "/"), espaço nem caracteres de controle
   // (tab/nova linha são removidos de URLs: "/<TAB>/host" viraria "//host").
   if (
-    typeof value !== 'string' || value.length > 300 || !value.startsWith('/') ||
-    value.startsWith('//') || value.includes('\\')
-  ) return '/'
-  if ([...value].some((character) => {
-    const code = character.charCodeAt(0)
-    return code <= 32 || (code >= 127 && code <= 159) || code === 0x2028 || code === 0x2029
-  })) return '/'
+    typeof value !== 'string' ||
+    value.length > 300 ||
+    !value.startsWith('/') ||
+    value.startsWith('//') ||
+    value.includes('\\')
+  )
+    return '/'
+  if (
+    [...value].some((character) => {
+      const code = character.charCodeAt(0)
+      return code <= 32 || (code >= 127 && code <= 159) || code === 0x2028 || code === 0x2029
+    })
+  )
+    return '/'
   return value
 }
 
@@ -192,22 +202,40 @@ function safeNotificationTarget(value) {
 // ignoradas: a notificação não depende disto.
 function sendDeliveryAck(token, eventName, failure) {
   try {
-    if (!PUSH_ACK_URL || !PUSH_ACK_KEY || typeof token !== 'string' || !ACK_TOKEN_PATTERN.test(token)) {
+    if (
+      !PUSH_ACK_URL ||
+      !PUSH_ACK_KEY ||
+      typeof token !== 'string' ||
+      !ACK_TOKEN_PATTERN.test(token)
+    ) {
       return Promise.resolve()
     }
     const controller = typeof AbortController === 'function' ? new AbortController() : null
     const timer = controller ? setTimeout(() => controller.abort(), ACK_TIMEOUT_MS) : null
     const body = { p_token: token, p_event: eventName }
     if (failure) body.p_failure = failure
-    return Promise.resolve(fetch(PUSH_ACK_URL, {
-      method: 'POST',
-      headers: { apikey: PUSH_ACK_KEY, Authorization: `Bearer ${PUSH_ACK_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      keepalive: true,
-      cache: 'no-store',
-      credentials: 'omit',
-      signal: controller ? controller.signal : undefined,
-    })).then(() => undefined, () => undefined).then(() => { if (timer) clearTimeout(timer) })
+    return Promise.resolve(
+      fetch(PUSH_ACK_URL, {
+        method: 'POST',
+        headers: {
+          apikey: PUSH_ACK_KEY,
+          Authorization: `Bearer ${PUSH_ACK_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        keepalive: true,
+        cache: 'no-store',
+        credentials: 'omit',
+        signal: controller ? controller.signal : undefined,
+      })
+    )
+      .then(
+        () => undefined,
+        () => undefined
+      )
+      .then(() => {
+        if (timer) clearTimeout(timer)
+      })
   } catch {
     return Promise.resolve()
   }
@@ -215,49 +243,69 @@ function sendDeliveryAck(token, eventName, failure) {
 
 // Só o NOME do erro (letras), nunca a mensagem: nada de texto livre na telemetria.
 function failureName(error) {
-  const name = String((error && error.name) || '').replace(/[^A-Za-z]/g, '').slice(0, 40)
+  const name = String((error && error.name) || '')
+    .replace(/[^A-Za-z]/g, '')
+    .slice(0, 40)
   return name || 'Error'
 }
 
 self.addEventListener('push', (event) => {
-  event.waitUntil((async () => {
-    let payload = {}
-    try { payload = event.data?.json() || {} } catch { payload = {} }
-    const title = typeof payload.title === 'string' && payload.title.trim()
-      ? payload.title.slice(0, 120)
-      : 'Evolutus'
-    const body = typeof payload.body === 'string' && payload.body.trim()
-      ? payload.body.slice(0, 240)
-      : 'Você recebeu uma nova notificação.'
-    // `tag` do servidor agrupa rajadas (curtidas/alertas): o Push novo SUBSTITUI o anterior no aparelho
-    // e `renotify` ainda avisa. Só aceita um formato conservador; qualquer outra coisa é ignorada.
-    const groupTag = typeof payload.tag === 'string' && /^[A-Za-z0-9:_-]{1,64}$/.test(payload.tag) ? payload.tag : null
-    const ackToken = typeof payload.ack === 'string' && ACK_TOKEN_PATTERN.test(payload.ack) ? payload.ack : null
-    // Ordem: o ACK de "recebido" só DISPARA a requisição (sem aguardar) e a notificação é mostrada
-    // em seguida; o ACK de "exibido" vai depois de showNotification() resolver.
-    const acks = [sendDeliveryAck(ackToken, 'received')]
-    let showError = null
-    try {
-      await self.registration.showNotification(title, {
-        body,
-        icon: '/icons/icon-192.png',
-        badge: '/icons/icon-192.png',
-        tag: groupTag || (payload.notificationId ? `notification-${String(payload.notificationId)}` : undefined),
-        renotify: Boolean(groupTag),
-        data: {
-          notificationId: payload.notificationId ? String(payload.notificationId) : null,
-          targetUrl: safeNotificationTarget(payload.targetUrl),
-          ack: ackToken,
-        },
-      })
-    } catch (error) {
-      showError = error
-    }
-    acks.push(showError ? sendDeliveryAck(ackToken, 'show_failed', failureName(showError)) : sendDeliveryAck(ackToken, 'shown'))
-    await Promise.all(acks)
-    // Mesmo comportamento de antes: se a exibição falhou, a falha continua visível ao navegador.
-    if (showError) throw showError
-  })())
+  event.waitUntil(
+    (async () => {
+      let payload = {}
+      try {
+        payload = event.data?.json() || {}
+      } catch {
+        payload = {}
+      }
+      const title =
+        typeof payload.title === 'string' && payload.title.trim()
+          ? payload.title.slice(0, 120)
+          : 'Evolutus'
+      const body =
+        typeof payload.body === 'string' && payload.body.trim()
+          ? payload.body.slice(0, 240)
+          : 'Você recebeu uma nova notificação.'
+      // `tag` do servidor agrupa rajadas (curtidas/alertas): o Push novo SUBSTITUI o anterior no aparelho
+      // e `renotify` ainda avisa. Só aceita um formato conservador; qualquer outra coisa é ignorada.
+      const groupTag =
+        typeof payload.tag === 'string' && /^[A-Za-z0-9:_-]{1,64}$/.test(payload.tag)
+          ? payload.tag
+          : null
+      const ackToken =
+        typeof payload.ack === 'string' && ACK_TOKEN_PATTERN.test(payload.ack) ? payload.ack : null
+      // Ordem: o ACK de "recebido" só DISPARA a requisição (sem aguardar) e a notificação é mostrada
+      // em seguida; o ACK de "exibido" vai depois de showNotification() resolver.
+      const acks = [sendDeliveryAck(ackToken, 'received')]
+      let showError = null
+      try {
+        await self.registration.showNotification(title, {
+          body,
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png',
+          tag:
+            groupTag ||
+            (payload.notificationId ? `notification-${String(payload.notificationId)}` : undefined),
+          renotify: Boolean(groupTag),
+          data: {
+            notificationId: payload.notificationId ? String(payload.notificationId) : null,
+            targetUrl: safeNotificationTarget(payload.targetUrl),
+            ack: ackToken,
+          },
+        })
+      } catch (error) {
+        showError = error
+      }
+      acks.push(
+        showError
+          ? sendDeliveryAck(ackToken, 'show_failed', failureName(showError))
+          : sendDeliveryAck(ackToken, 'shown')
+      )
+      await Promise.all(acks)
+      // Mesmo comportamento de antes: se a exibição falhou, a falha continua visível ao navegador.
+      if (showError) throw showError
+    })()
+  )
 })
 
 self.addEventListener('notificationclick', (event) => {
@@ -276,18 +324,32 @@ self.addEventListener('notificationclick', (event) => {
       //    fallback openWindow() seria recusado, deixando só a aba antiga em foco (sem a rota).
       let navigated = null
       if ('navigate' in existing) {
-        try { navigated = await existing.navigate(href) } catch { navigated = null }
+        try {
+          navigated = await existing.navigate(href)
+        } catch {
+          navigated = null
+        }
       }
       if (navigated) {
-        try { await navigated.focus() } catch { /* navegou; focar é só conforto */ }
+        try {
+          await navigated.focus()
+        } catch {
+          /* navegou; focar é só conforto */
+        }
         return
       }
       // 2) Cliente não controlado (navigate indisponível/recusado): abre direto na rota.
       try {
         await self.clients.openWindow(href)
         return
-      } catch { /* sem permissão para abrir: ao menos traz o app para frente */ }
-      try { await existing.focus() } catch { /* nada mais a fazer */ }
+      } catch {
+        /* sem permissão para abrir: ao menos traz o app para frente */
+      }
+      try {
+        await existing.focus()
+      } catch {
+        /* nada mais a fazer */
+      }
       return
     }
     await self.clients.openWindow(href)

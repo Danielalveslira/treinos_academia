@@ -4,6 +4,7 @@ import {
   buildActivityDays,
   buildCalendarWeeks,
   calculateConsistency,
+  getActivityRange,
   localDayKey,
 } from './activityCalendar.js'
 import { buildWeeklyPlanDays } from './trainingPlan.js'
@@ -17,6 +18,24 @@ test('new user gets an empty annual calendar and zero consistency', () => {
   assert.equal(result.longest, 0)
   assert.equal(result.totalWorkouts, 0)
   assert.equal(result.today.state, 'none')
+})
+
+test('calendário e progresso usam a virada de São Paulo, inclusive quando UTC já mudou de dia/ano', () => {
+  const before = new Date('2027-01-01T02:59:59Z')
+  const after = new Date('2027-01-01T03:00:00Z')
+  assert.equal(getActivityRange(before).year, 2026)
+  assert.equal(getActivityRange(after).year, 2027)
+  assert.equal(
+    calculateConsistency(
+      buildActivityDays([{ dateKey: '2026-12-31', workoutCount: 1 }], { now: before }),
+      before
+    ).today.dateKey,
+    '2026-12-31'
+  )
+  assert.equal(
+    calculateConsistency(buildActivityDays([], { now: after }), after).today.dateKey,
+    '2027-01-01'
+  )
 })
 
 test('counts current and best consistency while ignoring duplicate workouts in a day', () => {

@@ -19,13 +19,13 @@ const MIN_PING_INTERVAL_MS = 3 * 60 * 1000
 // recompensa pode sair antes do mínimo de atividade deles. A marca é por dia (fuso do
 // servidor): uma aba aberta de um dia para o outro volta a pingar na virada.
 export function useQualifiedActivity() {
-  const { user, profile } = useAuth()
+  const { user, profile, offlineLocal } = useAuth()
   const { pathname } = useLocation()
   const lastPingRef = useRef(0)
   const completedDayRef = useRef(null)
 
   useEffect(() => {
-    if (!user || !profile || completedDayRef.current === saoPauloDayKey()) return
+    if (!user || !profile || offlineLocal || completedDayRef.current === saoPauloDayKey()) return
     const now = Date.now()
     if (now - lastPingRef.current < MIN_PING_INTERVAL_MS) return
     lastPingRef.current = now
@@ -35,5 +35,5 @@ export function useQualifiedActivity() {
         if (isDayActivityComplete(result)) completedDayRef.current = dayKey
       })
       .catch(() => {}) // best-effort: nunca deveria interromper a navegação por causa disto
-  }, [pathname, user, profile])
+  }, [pathname, user, profile, offlineLocal])
 }

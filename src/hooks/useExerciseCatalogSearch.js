@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { searchExercises } from '../services/exerciseCatalogService.js'
+import { isLocalFallback } from '../services/offline/localFallback.js'
 
 const DEBOUNCE_MS = 400
 // Abaixo disso, ainda não vale a pena consultar -- "s", "su" só gerariam ruído. A tela
@@ -16,7 +17,7 @@ function describeError() {
 // dispara a cada tecla.
 export function useExerciseCatalogSearch({ enabled = true, q = '', category, muscle, equipment, level }) {
   const [debouncedQuery, setDebouncedQuery] = useState(q)
-  const [state, setState] = useState({ items: [], total: null, loading: enabled, error: null })
+  const [state, setState] = useState({ items: [], total: null, loading: enabled, error: null, fromCache: false })
   const [offset, setOffset] = useState(0)
   const [loadingMore, setLoadingMore] = useState(false)
   const revision = useRef(0)
@@ -49,7 +50,7 @@ export function useExerciseCatalogSearch({ enabled = true, q = '', category, mus
       else setState((previous) => ({ ...previous, loading: true, error: null }))
 
       try {
-        const { data, total } = await searchExercises({
+        const result = await searchExercises({
           limit: PAGE_SIZE,
           offset: loadOffset,
           q: effectiveQuery || undefined,
@@ -59,11 +60,14 @@ export function useExerciseCatalogSearch({ enabled = true, q = '', category, mus
           level,
         })
         if (request !== revision.current) return
+        const { data, total } = result
         setState((previous) => ({
           items: append ? [...previous.items, ...data] : data,
           total,
           loading: false,
           error: null,
+          // true = servidor inalcançável, resultado parcial vindo do aparelho (ver offline/readThrough).
+          fromCache: isLocalFallback(result),
         }))
         setOffset(loadOffset)
       } catch {
@@ -78,7 +82,7 @@ export function useExerciseCatalogSearch({ enabled = true, q = '', category, mus
 
   useEffect(() => {
     if (!enabled || queryTooShort || noQueryIntent) {
-      setState({ items: [], total: null, loading: false, error: null })
+      setState({ items: [], total: null, loading: false, error: null, fromCache: false })
       return
     }
     load(0)

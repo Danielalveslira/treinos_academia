@@ -1,3 +1,5 @@
+import { isLocalFallback } from '../services/offline/localFallback.js'
+
 // Memory only. Keys include the user ID; never cache authorization decisions here.
 const store = new Map()
 const pending = new Map()
@@ -26,8 +28,10 @@ export function fetchCached(key, fetchValue, { force = false } = {}) {
   const request = Promise.resolve()
     .then(fetchValue)
     .then((value) => {
-      // Logout or a write may have invalidated this request while it was in flight.
-      if (pending.get(key) === request) setCached(key, value)
+      // Logout or a write may have invalidated this request while it was in flight. Um resultado
+      // que veio do IndexedDB (servidor inalcançável) nunca é memorizado: ao reconectar, a
+      // próxima leitura deve ir ao servidor, não reaproveitar um dado local por 5 minutos.
+      if (pending.get(key) === request && !isLocalFallback(value)) setCached(key, value)
       return value
     })
     .finally(() => {

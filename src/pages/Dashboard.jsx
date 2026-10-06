@@ -23,28 +23,23 @@ import { ActivityCalendarDialog } from '../components/ActivityCalendarDialog'
 import { ShareProgressDialog } from '../components/ShareProgressDialog'
 import { buildShareOptions } from '../utils/shareProgress'
 import { TrainingPlanDialog } from '../components/TrainingPlanDialog'
-import { dateFromKey, localDayKey } from '../utils/activityCalendar'
 import { buildConsistencySnapshot } from '../utils/consistencySnapshot'
+import { addDaysToDayKey, businessDayKey, businessDayKeyDaysAgo } from '../utils/businessDate'
 import { ErrorState } from '../components/ErrorState'
 import { ProfessionalsDiscovery } from '../components/ProfessionalsDiscovery'
 import { saveTrainingPreferences } from '../services/usersService'
 import { isPreferredReminderDue, normalizeTrainingPreferences } from '../utils/trainingPlan'
 
 function getVolumeTrend(days) {
-  const now = new Date()
-  const startCurrent = new Date(now)
-  startCurrent.setDate(now.getDate() - 6)
-  startCurrent.setHours(0, 0, 0, 0)
-  const startPrevious = new Date(startCurrent)
-  startPrevious.setDate(startPrevious.getDate() - 7)
+  const startCurrent = businessDayKeyDaysAgo(6)
+  const startPrevious = businessDayKeyDaysAgo(13)
   let current = 0
   let previous = 0
 
   days.forEach((day) => {
-    const date = dateFromKey(day.dateKey)
     const volume = Number(day.strengthVolumeKg) || 0
-    if (date >= startCurrent) current += volume
-    else if (date >= startPrevious) previous += volume
+    if (day.dateKey >= startCurrent) current += volume
+    else if (day.dateKey >= startPrevious) previous += volume
   })
 
   const percent = previous ? Math.round(((current - previous) / previous) * 100) : null
@@ -59,8 +54,8 @@ export default function Dashboard() {
   const location = useLocation()
   const { recentWorkouts, progressDays, loading, error, refresh } = useHomeDashboard()
   const { exercises } = useExercises()
-  const { profile, user, refreshProfile } = useAuth()
-  const { bannerAds } = useGlobalSponsoredAds(Boolean(user))
+  const { profile, user, refreshProfile, offlineLocal } = useAuth()
+  const { bannerAds } = useGlobalSponsoredAds(Boolean(user) && !offlineLocal)
   const heroImage = getProfileHeroImage(profile?.sexo)
   const exerciseNameById = useMemo(() => buildExerciseNameMap(exercises), [exercises])
   const trainingPreferences = useMemo(
@@ -86,12 +81,12 @@ export default function Dashboard() {
   )
   const volume = useMemo(() => getVolumeTrend(progressDays), [progressDays])
   const weekStartKey = useMemo(() => {
-    const date = new Date()
-    date.setDate(date.getDate() - ((date.getDay() + 6) % 7))
-    return localDayKey(date)
+    const today = businessDayKey()
+    const weekday = new Date(`${today}T12:00:00Z`).getUTCDay()
+    return addDaysToDayKey(today, -((weekday + 6) % 7))
   }, [])
   const weeklyFrequency = progressDays.filter(
-    (day) => day.dateKey >= weekStartKey && day.dateKey <= localDayKey(new Date())
+    (day) => day.dateKey >= weekStartKey && day.dateKey <= businessDayKey()
   ).length
   const lastWorkout = recentWorkouts[0]
   const lastExercise = lastWorkout
@@ -104,12 +99,9 @@ export default function Dashboard() {
     user?.displayName?.trim().split(/\s+/)[0] ||
     'atleta'
   const daysSinceLastActivity = useMemo(() => {
-    const last = [...progressDays].reverse().find((day) => day.dateKey < localDayKey(new Date()))
+    const last = [...progressDays].reverse().find((day) => day.dateKey < businessDayKey())
     return last
-      ? Math.floor(
-          (new Date().setHours(0, 0, 0, 0) - dateFromKey(last.dateKey).setHours(0, 0, 0, 0)) /
-            86400000
-        )
+      ? Math.floor((Date.parse(businessDayKey()) - Date.parse(last.dateKey)) / 86400000)
       : null
   }, [progressDays])
   const greeting = useMemo(
@@ -161,13 +153,15 @@ export default function Dashboard() {
 
       {recentWorkouts.length === 0 ? (
         <section className="empty-workout" aria-labelledby="empty-workout-title">
-          <ResponsivePicture
-            name={heroImage.name}
-            alt={heroImage.alt}
-            width={heroImage.width}
-            height={heroImage.height}
-            sizes="(max-width: 767px) 100vw, 60vw"
-          />
+          {!offlineLocal && (
+            <ResponsivePicture
+              name={heroImage.name}
+              alt={heroImage.alt}
+              width={heroImage.width}
+              height={heroImage.height}
+              sizes="(max-width: 767px) 100vw, 60vw"
+            />
+          )}
           <div className="empty-workout-content">
             <span className="eyebrow">COMECE HOJE</span>
             <Heading as="h1" id="empty-workout-title">
@@ -186,13 +180,15 @@ export default function Dashboard() {
         </section>
       ) : (
         <section className="workout-hero" aria-labelledby="next-workout-title">
-          <ResponsivePicture
-            name={heroImage.name}
-            alt={heroImage.alt}
-            width={heroImage.width}
-            height={heroImage.height}
-            sizes="(max-width: 767px) 100vw, 60vw"
-          />
+          {!offlineLocal && (
+            <ResponsivePicture
+              name={heroImage.name}
+              alt={heroImage.alt}
+              width={heroImage.width}
+              height={heroImage.height}
+              sizes="(max-width: 767px) 100vw, 60vw"
+            />
+          )}
           <div className="workout-hero-shade" />
           <div className="workout-hero-content">
             <span className="hero-kicker">
@@ -250,7 +246,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <ProfessionalsDiscovery />
+      {!offlineLocal && <ProfessionalsDiscovery />}
       {calendarOpen && (
         <ActivityCalendarDialog
           days={activityDays}

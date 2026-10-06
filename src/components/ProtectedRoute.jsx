@@ -7,9 +7,20 @@ import { EmailVerificationGate } from './EmailVerificationGate'
 import { DisabledAccountGate } from './DisabledAccountGate'
 import { AccountDeletionBlockedGate } from './AccountDeletionBlockedGate'
 import { requiresEmailVerification } from '../utils/emailVerification'
+import { resolveLegalGateState } from '../utils/legal'
 
 export function ProtectedRoute({ children }) {
-  const { user, profile, profileError, loading, verifyingSession, deletionStatus } = useAuth()
+  const {
+    user,
+    profile,
+    profileError,
+    loading,
+    verifyingSession,
+    deletionStatus,
+    serverAccessAllowed,
+    legalAccess,
+    offlineLocal,
+  } = useAuth()
 
   // Enquanto o AuthContext confirma se um permission-denied significa conta excluída
   // (getIdToken(true), ver handlePossibleGhostSession), nenhuma tela protegida deve
@@ -59,6 +70,25 @@ export function ProtectedRoute({ children }) {
   // handlePossibleGhostSession).
   if (profile?.accountStatus === 'disabled') {
     return <DisabledAccountGate reason={profile.disabledReason} />
+  }
+
+  // Um perfil legível não concede acesso: a RPC do servidor é a última autoridade. Pendência de
+  // termos segue para o LegalGate; qualquer outra negativa não monta as telas protegidas.
+  if (
+    !offlineLocal &&
+    serverAccessAllowed === false &&
+    resolveLegalGateState({ profile, access: legalAccess, loading: false, error: '' }) === 'allowed'
+  ) {
+    return (
+      <PublicLayout>
+        <section className="support-page">
+          <h1>Acesso indisponível</h1>
+          <Flash variant="danger" role="alert">
+            O servidor não autorizou o acesso a esta conta.
+          </Flash>
+        </section>
+      </PublicLayout>
+    )
   }
 
   // Só monta o gate (e paga o custo de checar o status de verificação) para contas que

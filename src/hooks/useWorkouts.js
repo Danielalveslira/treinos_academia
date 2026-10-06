@@ -11,12 +11,12 @@ import { describeQueryError } from '../utils/queryError'
 
 const EMPTY = []
 export function useWorkouts(filters = {}) {
-  const { user } = useAuth()
+  const { user, offlineLocal } = useAuth()
   const { exerciseId, startDate, endDate } = filters
-  const key = `workouts:${user.uid}:${exerciseId || ''}:${startDate || ''}:${endDate || ''}`
+  const key = `workouts:${user.uid}:${exerciseId || ''}:${startDate || ''}:${endDate || ''}:${offlineLocal ? 'local' : 'online'}`
   const fetchValue = useCallback(
-    () => listWorkoutsPage(user.uid, { exerciseId, startDate, endDate }),
-    [user.uid, exerciseId, startDate, endDate]
+    () => listWorkoutsPage(user.uid, { exerciseId, startDate, endDate, localOnly: offlineLocal }),
+    [user.uid, exerciseId, startDate, endDate, offlineLocal]
   )
   const query = useCachedQuery(key, fetchValue)
   const [pagination, setPagination] = useState({ key, loading: false, error: null })
@@ -38,6 +38,7 @@ export function useWorkouts(filters = {}) {
         exerciseId,
         startDate,
         endDate,
+        localOnly: offlineLocal,
         cursor: query.data.nextCursor,
       })
       if (pending.current !== request) return
@@ -61,14 +62,16 @@ export function useWorkouts(filters = {}) {
   }
   async function edit(id, workout) {
     pending.current = null
-    await updateWorkout(user.uid, id, workout)
+    const result = await updateWorkout(user.uid, id, workout)
     await refresh()
+    return result
   }
   async function remove(id) {
     pending.current = null
-    await deleteWorkout(user.uid, id)
+    const result = await deleteWorkout(user.uid, id)
     query.setData({ ...query.data, items: query.data.items.filter((item) => item.id !== id) })
     setPagination({ key, loading: false, error: null })
+    return result
   }
   return {
     workouts: query.data?.items || EMPTY,

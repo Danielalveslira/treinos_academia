@@ -8,8 +8,7 @@ import { toDate } from './date.js'
 // Usa o createdAt já gravado no perfil (public.users.created_at), não
 // user.metadata.creationTime do Auth. Hoje essa exigência só existe no cliente — não há
 // policy/trigger no Postgres replicando este corte no servidor (mailer_autoconfirm está
-// ligado no projeto; a política de verificação de e-mail foi adiada, ver
-// docs/MIGRACAO_SUPABASE_STATUS.md).
+// ligado no projeto; a política de verificação de e-mail foi adiada).
 export const EMAIL_VERIFICATION_CUTOFF = new Date('2026-09-11T14:15:00Z') // 1789136100000
 
 export function requiresEmailVerification(profile) {

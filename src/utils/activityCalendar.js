@@ -1,3 +1,5 @@
+import { businessDayKey } from './businessDate.js'
+
 const DAY_MS = 86400000
 
 export function localDayKey(date) {
@@ -10,7 +12,7 @@ export function dateFromKey(key) {
 }
 
 export function getActivityRange(now = new Date()) {
-  const year = now.getFullYear()
+  const year = Number(businessDayKey(now).slice(0, 4))
   return { start: `${year - 1}-12-01`, end: `${year}-12-31`, year }
 }
 
@@ -31,8 +33,8 @@ export function buildActivityDays(
     })
   }
 
-  const today = localDayKey(now)
-  const year = now.getFullYear()
+  const today = businessDayKey(now)
+  const year = Number(today.slice(0, 4))
   const days = []
   const rangeStart = startDate || new Date(year, 0, 1, 12)
   const rangeEnd = endDate || new Date(year, 11, 31, 12)
@@ -62,14 +64,13 @@ function countsForConsistency(state) {
 }
 
 export function calculateConsistency(activityDays, now = new Date()) {
-  const today = localDayKey(now)
+  const today = businessDayKey(now)
   const knownDays = activityDays.filter((day) => day.dateKey <= today)
   const byDate = new Map(knownDays.map((day) => [day.dateKey, day]))
   const completed = knownDays.filter((day) => day.state === 'completed')
 
   let current = 0
-  const cursor = new Date(now)
-  cursor.setHours(12, 0, 0, 0)
+  const cursor = dateFromKey(today)
   if (!countsForConsistency(byDate.get(today)?.state)) cursor.setDate(cursor.getDate() - 1)
   while (countsForConsistency(byDate.get(localDayKey(cursor))?.state)) {
     current += 1

@@ -2,6 +2,25 @@ import { supabase } from '../supabase/config'
 import { normalizeWorkout } from '../utils/workoutSets'
 import { validateWorkout, hasErrors } from '../utils/validators'
 import { invalidateWorkoutCache } from '../utils/pageCache'
+import { businessDayKeyDaysAgo } from '../utils/businessDate'
+import { readThrough } from './offline/readThrough.js'
+import {
+  cacheWorkoutRow,
+  forgetCachedWorkout,
+  overlayPendingWorkouts,
+  readCachedWorkoutRow,
+  readCachedWorkouts,
+  recordWorkoutsPage,
+} from './offline/historyCache.js'
+import { OPERATIONS, buildLocalRow, hasPendingMutation } from './offline/outbox.js'
+import {
+  WRITE_TIMEOUT_MS,
+  browserSaysOffline,
+  canQueueLocally,
+  failedByConnectivity,
+  queueWorkoutWrite,
+  syncedResult,
+} from './offline/localWrites.js'
 
 const RECENT_PAGE_SIZE = 20
 
@@ -41,7 +60,8 @@ function workoutPayload(workout) {
       ...base,
       type: 'cardio',
       duration_minutes: Number(workout.durationMinutes),
-      distance_km: workout.distanceKm === '' || workout.distanceKm == null ? null : Number(workout.distanceKm),
+      distance_km:
+        workout.distanceKm === '' || workout.distanceKm == null ? null : Number(workout.distanceKm),
       set_details: null,
       sets: null,
     }
@@ -65,35 +85,52 @@ function workoutPayload(workout) {
 // mais um timestamp fixado ao meio-dia), o próprio ORDER BY já mantém os registros do
 // mesmo dia juntos e na ordem certa, sem precisar de nenhuma lógica extra de "buscar o
 // resto do dia".
-export async function listWorkoutsPage(
+export function listWorkoutsPage(
   userId,
-  { exerciseId, startDate, endDate, cursor, pageSize = RECENT_PAGE_SIZE } = {}
+  { exerciseId, startDate, endDate, cursor, pageSize = RECENT_PAGE_SIZE, localOnly = false } = {}
 ) {
-  let q = supabase
-    .from('workouts')
-    .select('*')
-    .eq('user_id', userId)
-    .order('date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(pageSize)
+  const filters = { exerciseId, startDate, endDate }
+  let rows = []
+  return readThrough({
+    label: 'workouts-page',
+    localOnly,
+    remote: async () => {
+      let q = supabase
+        .from('workouts')
+        .select('*')
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(pageSize)
 
-  if (exerciseId) q = q.eq('exercise_id', exerciseId)
-  if (startDate) q = q.gte('date', startDate)
-  if (endDate) q = q.lte('date', endDate)
-  if (cursor) {
-    q = q.or(
-      `date.lt.${cursor.date},and(date.eq.${cursor.date},created_at.lt.${cursor.createdAt})`
-    )
-  }
+      if (exerciseId) q = q.eq('exercise_id', exerciseId)
+      if (startDate) q = q.gte('date', startDate)
+      if (endDate) q = q.lte('date', endDate)
+      if (cursor) {
+        q = q.or(
+          `date.lt.${cursor.date},and(date.eq.${cursor.date},created_at.lt.${cursor.createdAt})`
+        )
+      }
 
-  const { data, error } = await q
-  if (error) throw error
+      const { data, error } = await q
+      if (error) throw error
+      rows = data
 
-  const last = data[data.length - 1]
-  return {
-    items: data.map(toDoc),
-    nextCursor: data.length === pageSize ? { date: last.date, createdAt: last.created_at } : null,
-  }
+      const last = data[data.length - 1]
+      // Servidor + o que foi salvo offline e ainda não sincronizou (nunca some da tela).
+      const view = await overlayPendingWorkouts(userId, data, { filters, cursor, limit: pageSize })
+      return {
+        items: view.map(toDoc),
+        nextCursor:
+          data.length === pageSize ? { date: last.date, createdAt: last.created_at } : null,
+      }
+    },
+    persist: () => recordWorkoutsPage(userId, rows, { filters, cursor, limit: pageSize }),
+    local: async () => {
+      const page = await readCachedWorkouts(userId, { filters, cursor, limit: pageSize })
+      return page && { items: page.rows.map(toDoc), nextCursor: page.nextCursor }
+    },
+  })
 }
 
 // Exportado para a UI poder avisar o recorte real nos indicadores (ver ExerciseDetail.jsx)
@@ -101,47 +138,169 @@ export async function listWorkoutsPage(
 // completo — um recorde de carga mais antigo que essa página some da comparação.
 export const EXERCISE_HISTORY_PAGE_SIZE = 30
 
-export async function listWorkoutsForExercise(userId, exerciseId, pageSize = EXERCISE_HISTORY_PAGE_SIZE) {
-  const { data, error } = await supabase
-    .from('workouts')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('exercise_id', exerciseId)
-    .order('date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(pageSize)
-  if (error) throw error
-  return data.map(toDoc)
+export function listWorkoutsForExercise(userId, exerciseId, pageSize = EXERCISE_HISTORY_PAGE_SIZE) {
+  const filters = { exerciseId }
+  let rows = []
+  return readThrough({
+    label: 'workouts-exercise',
+    remote: async () => {
+      const { data, error } = await supabase
+        .from('workouts')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('exercise_id', exerciseId)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(pageSize)
+      if (error) throw error
+      rows = data
+      const view = await overlayPendingWorkouts(userId, data, { filters, limit: pageSize })
+      return view.map(toDoc)
+    },
+    persist: () => recordWorkoutsPage(userId, rows, { filters, limit: pageSize }),
+    local: async () => {
+      const page = await readCachedWorkouts(userId, { filters, limit: pageSize })
+      return page && page.rows.map(toDoc)
+    },
+  })
+}
+
+// Escrita de treino. Resultado: { persisted, synced, pendingSync, workout }.
+//  - synced:true  -> o servidor confirmou (fluxo online de sempre; o servidor é a autoridade);
+//  - synced:false -> salvo SÓ neste aparelho + outbox (pendingSync:true), enviado quando houver conexão.
+// Com VITE_OFFLINE_WRITE_ENABLED desligada (padrão) o caminho é exatamente o de antes da Fase 3.
+// "Finalizar treino" (EvoCoins) NÃO passa por aqui e continua exigindo o servidor.
+
+function writeSignal() {
+  return AbortSignal.timeout(WRITE_TIMEOUT_MS)
 }
 
 export async function createWorkout(userId, workout) {
-  const { data, error } = await supabase
-    .from('workouts')
-    .insert({ user_id: userId, ...workoutPayload(workout) })
-    .select()
-    .single()
-  if (error) throw error
+  const payload = workoutPayload(workout) // valida; inválido nunca chega nem na fila
+  if (!(await canQueueLocally())) {
+    const { data, error } = await supabase
+      .from('workouts')
+      .insert({ user_id: userId, ...payload })
+      .select()
+      .single()
+    if (error) throw error
+    invalidateWorkoutCache(userId)
+    cacheWorkoutRow(userId, data) // cache local em segundo plano; nunca lança
+    return syncedResult(data)
+  }
+  // O id nasce no cliente: o MESMO id vale no servidor (sem mapa id-local -> id-remoto) e torna o
+  // reenvio idempotente se a resposta se perder.
+  const id = globalThis.crypto.randomUUID()
+  if (!browserSaysOffline()) {
+    const signal = writeSignal()
+    try {
+      const { data, error } = await supabase
+        .from('workouts')
+        .insert({ id, user_id: userId, ...payload })
+        .select()
+        .single()
+        .abortSignal(signal)
+      if (error) throw error
+      invalidateWorkoutCache(userId)
+      cacheWorkoutRow(userId, data)
+      return syncedResult(data)
+    } catch (error) {
+      if (!failedByConnectivity(error, signal)) throw error
+    }
+  }
   invalidateWorkoutCache(userId)
-  return data
+  return queueWorkoutWrite(userId, {
+    operation: OPERATIONS.create,
+    entityId: id,
+    payload,
+    workout: buildLocalRow(userId, id, payload, null, Date.now()),
+  })
 }
 
 export async function updateWorkout(userId, workoutId, workout) {
-  const { data, error } = await supabase
-    .from('workouts')
-    .update(workoutPayload(workout))
-    .eq('id', workoutId)
-    .eq('user_id', userId)
-    .select()
-    .single()
-  if (error) throw error
+  const payload = workoutPayload(workout)
+  if (!(await canQueueLocally())) {
+    const { data, error } = await supabase
+      .from('workouts')
+      .update(payload)
+      .eq('id', workoutId)
+      .eq('user_id', userId)
+      .select()
+      .single()
+    if (error) throw error
+    invalidateWorkoutCache(userId)
+    cacheWorkoutRow(userId, data)
+    return syncedResult(data)
+  }
+  // Com mutação pendente para o mesmo registro o servidor pode nem conhecê-lo ainda: a edição entra
+  // na fila (compactada com a pendente), nunca vai direto.
+  if (!browserSaysOffline() && !(await hasPendingMutation(userId, workoutId))) {
+    const signal = writeSignal()
+    try {
+      const { data, error } = await supabase
+        .from('workouts')
+        .update(payload)
+        .eq('id', workoutId)
+        .eq('user_id', userId)
+        .select()
+        .single()
+        .abortSignal(signal)
+      if (error) throw error
+      invalidateWorkoutCache(userId)
+      cacheWorkoutRow(userId, data)
+      return syncedResult(data)
+    } catch (error) {
+      if (!failedByConnectivity(error, signal)) throw error
+    }
+  }
+  const local = await readCachedWorkoutRow(userId, workoutId)
   invalidateWorkoutCache(userId)
-  return data
+  return queueWorkoutWrite(userId, {
+    operation: OPERATIONS.update,
+    entityId: workoutId,
+    payload,
+    // Versão que ESTE aparelho viu: o servidor só aplica se ela ainda for a atual (senão, conflito).
+    baseUpdatedAt: local?.updated_at ?? null,
+    workout: buildLocalRow(userId, workoutId, payload, local, Date.now()),
+  })
 }
 
 export async function deleteWorkout(userId, workoutId) {
-  const { error } = await supabase.from('workouts').delete().eq('id', workoutId).eq('user_id', userId)
-  if (error) throw error
+  if (!(await canQueueLocally())) {
+    const { error } = await supabase
+      .from('workouts')
+      .delete()
+      .eq('id', workoutId)
+      .eq('user_id', userId)
+    if (error) throw error
+    invalidateWorkoutCache(userId)
+    forgetCachedWorkout(userId, workoutId)
+    return syncedResult(null)
+  }
+  if (!browserSaysOffline() && !(await hasPendingMutation(userId, workoutId))) {
+    const signal = writeSignal()
+    try {
+      const { error } = await supabase
+        .from('workouts')
+        .delete()
+        .eq('id', workoutId)
+        .eq('user_id', userId)
+        .abortSignal(signal)
+      if (error) throw error
+      invalidateWorkoutCache(userId)
+      forgetCachedWorkout(userId, workoutId)
+      return syncedResult(null)
+    } catch (error) {
+      if (!failedByConnectivity(error, signal)) throw error
+    }
+  }
+  const local = await readCachedWorkoutRow(userId, workoutId)
   invalidateWorkoutCache(userId)
+  return queueWorkoutWrite(userId, {
+    operation: OPERATIONS.delete,
+    entityId: workoutId,
+    baseUpdatedAt: local?.updated_at ?? null,
+  })
 }
 
 // Janela e teto para as métricas de constância (streak/frequência semanal) sem ler a
@@ -152,18 +311,35 @@ export async function deleteWorkout(userId, workoutId) {
 export const DASHBOARD_HISTORY_DAYS = 371
 export const DASHBOARD_SAFETY_LIMIT = 500
 
-export async function listDashboardWorkouts(userId) {
-  const since = new Date(Date.now() - DASHBOARD_HISTORY_DAYS * 86400000).toISOString().slice(0, 10)
-  const { data, error } = await supabase
-    .from('workouts')
-    .select('*')
-    .eq('user_id', userId)
-    .gte('date', since)
-    .order('date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(DASHBOARD_SAFETY_LIMIT)
-  if (error) throw error
-  return data.map(toDoc)
+export function listDashboardWorkouts(userId) {
+  const since = businessDayKeyDaysAgo(DASHBOARD_HISTORY_DAYS) // dias de calendário do negócio, não UTC
+  const filters = { startDate: since }
+  let rows = []
+  return readThrough({
+    label: 'workouts-dashboard',
+    remote: async () => {
+      const { data, error } = await supabase
+        .from('workouts')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('date', since)
+        .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(DASHBOARD_SAFETY_LIMIT)
+      if (error) throw error
+      rows = data
+      const view = await overlayPendingWorkouts(userId, data, {
+        filters,
+        limit: DASHBOARD_SAFETY_LIMIT,
+      })
+      return view.map(toDoc)
+    },
+    persist: () => recordWorkoutsPage(userId, rows, { filters, limit: DASHBOARD_SAFETY_LIMIT }),
+    local: async () => {
+      const page = await readCachedWorkouts(userId, { filters, limit: DASHBOARD_SAFETY_LIMIT })
+      return page && page.rows.map(toDoc)
+    },
+  })
 }
 
 // Agregado no servidor: não transfere o histórico para exibir dois totais. sum(sets)
