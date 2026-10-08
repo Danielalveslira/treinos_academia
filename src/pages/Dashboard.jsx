@@ -52,7 +52,8 @@ export default function Dashboard() {
   const [planOpen, setPlanOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  const { recentWorkouts, progressDays, loading, error, refresh } = useHomeDashboard()
+  const { recentWorkouts, progressDays, progressAvailable, loading, error, refresh } =
+    useHomeDashboard()
   const { exercises } = useExercises()
   const { profile, user, refreshProfile, offlineLocal } = useAuth()
   const { bannerAds } = useGlobalSponsoredAds(Boolean(user) && !offlineLocal)
@@ -213,6 +214,7 @@ export default function Dashboard() {
       )}
 
       <StreakCard
+        unavailable={!progressAvailable}
         consistency={consistency}
         hasTrainingPlan={trainingPreferences.plannedTrainingDays.length > 0}
         onConfigurePlan={() => setPlanOpen(true)}
@@ -224,13 +226,15 @@ export default function Dashboard() {
         <div>
           <CalendarIcon size={18} />
           <span>Dias de treino nesta semana</span>
-          <strong>{weeklyFrequency}x</strong>
+          <strong>{progressAvailable ? `${weeklyFrequency}x` : '—'}</strong>
         </div>
         <div>
           <GraphIcon size={18} />
           <span>Volume de carga · 7 dias</span>
-          <strong>{Math.round(volume.current).toLocaleString('pt-BR')} kg</strong>
-          {volume.percent != null && (
+          <strong>
+            {progressAvailable ? `${Math.round(volume.current).toLocaleString('pt-BR')} kg` : '—'}
+          </strong>
+          {progressAvailable && volume.percent != null && (
             <small className={volume.percent >= 0 ? 'trend-up' : 'trend-down'}>
               {volume.percent >= 0 ? '+' : ''}
               {volume.percent}%

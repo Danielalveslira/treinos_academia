@@ -15,6 +15,7 @@ let directory
 let on
 let off
 let cold
+let prod
 
 async function bundle(name, env) {
   const outfile = join(directory, `${name}.cjs`)
@@ -28,6 +29,8 @@ async function bundle(name, env) {
         import { SyncStatus } from './SyncStatus.jsx'
         import { AuthContext } from '../contexts/AuthContext.jsx'
         export * as status from '../services/offline/syncStatusStore.js'
+        export * as boot from '../services/offline/bootState.js'
+        export * as rollout from '../services/offline/rollout.js'
         export * as outbox from '../services/offline/outbox.js'
         export { closeDatabase } from '../services/offline/database.js'
 
@@ -81,12 +84,15 @@ before(async () => {
   on = await bundle('on', { VITE_OFFLINE_WRITE_ENABLED: 'true', PROD: false })
   off = await bundle('off', { PROD: false })
   cold = await bundle('cold', { VITE_OFFLINE_COLD_START_ENABLED: 'true', PROD: false })
+  // Produção com cold start: o bloqueio só se resolve pelo bootState (nenhum modo offline liberado no ato).
+  prod = await bundle('prod', { VITE_OFFLINE_COLD_START_ENABLED: 'true', PROD: true })
 })
 
 after(async () => {
   await on.closeDatabase()
   await off.closeDatabase()
   await cold.closeDatabase()
+  await prod.closeDatabase()
   await rm(directory, { recursive: true, force: true })
 })
 
@@ -136,10 +142,13 @@ beforeEach(async () => {
   await on.closeDatabase()
   await off.closeDatabase()
   await cold.closeDatabase()
+  await prod.closeDatabase()
   globalThis.indexedDB = new IDBFactory()
   installBrowser({ onLine: true }) // antes do reset: o estado inicial do store lê navigator.onLine
   on.status.resetSyncStatusForTests()
   off.status.resetSyncStatusForTests()
+  prod.boot.setBootState(prod.boot.BOOT_STATE.initializing) // estado inicial de um build com cold start
+  prod.rollout.setOfflineRolloutUser(null)
 })
 
 // ----------------------------------------------------------------------------------- PwaControls
@@ -169,6 +178,74 @@ test('flag DESLIGADA (padrão): o comportamento anterior é preservado — tela 
   off.act(() => fire('online'))
   assert.equal(json(tree).includes('pwa-offline'), false)
   assert.equal(content.inert, false)
+})
+
+// ------------------------------------------------------------------- PwaControls x estado de boot (flash)
+
+test('FLASH: abrir offline com cold start no build NÃO mostra "Você está sem conexão" enquanto a restauração local roda', () => {
+  installBrowser({ onLine: false })
+  assert.equal(prod.boot.getBootState(), 'initializing')
+  const tree = prod.renderPwa()
+  assert.equal(json(tree).includes('pwa-offline'), false)
+  assert.equal(json(tree).includes('Você está sem conexão'), false)
+  assert.equal(content.inert, false, 'o app não fica inerte durante a hidratação')
+})
+
+test('FLASH: initializing -> offline_ready nunca renderiza o bloqueio em NENHUM passo (restauração concluída)', () => {
+  installBrowser({ onLine: false })
+  const seen = []
+  const tree = prod.renderPwa()
+  seen.push(json(tree))
+  // Snapshot de rollout chega (mesmo id) e só depois a conta é aberta offline.
+  prod.act(() => prod.rollout.setOfflineRolloutUser('user-a'))
+  seen.push(json(tree))
+  prod.act(() => prod.rollout.setRemoteRolloutSnapshot('user-a', {
+    offline_write: { enabled: true, rollout_percentage: 100 },
+    offline_cold_start: { enabled: true, rollout_percentage: 100 },
+  }, true))
+  seen.push(json(tree))
+  prod.act(() => prod.boot.setBootState('offline_ready'))
+  seen.push(json(tree))
+  for (const html of seen) assert.equal(html.includes('Você está sem conexão'), false)
+  assert.equal(content.inert, false)
+})
+
+test('cold start válido (offline_ready) nunca bloqueia, mesmo se o snapshot de rollout ainda não hidratou', () => {
+  installBrowser({ onLine: false })
+  prod.boot.setBootState('offline_ready')
+  const tree = prod.renderPwa()
+  assert.equal(json(tree).includes('pwa-offline'), false)
+  assert.equal(content.inert, false)
+})
+
+test('restauração terminou SEM cold start válido (offline_unavailable): aí SIM mostra o bloqueio', () => {
+  installBrowser({ onLine: false })
+  const tree = prod.renderPwa()
+  assert.equal(json(tree).includes('Você está sem conexão'), false)
+  prod.act(() => prod.boot.setBootState('offline_unavailable'))
+  assert.equal(json(tree).includes('Você está sem conexão'), true)
+  assert.equal(content.inert, true)
+  // Voltou a rede: o bloqueio sai.
+  setOnLine(true)
+  prod.act(() => fire('online'))
+  assert.equal(json(tree).includes('pwa-offline'), false)
+  assert.equal(content.inert, false)
+})
+
+test('depois de pronto (online_ready), cair a rede sem nenhum modo offline liberado continua bloqueando (comportamento anterior)', () => {
+  installBrowser({ onLine: true })
+  prod.boot.setBootState('online_ready')
+  const tree = prod.renderPwa()
+  assert.equal(json(tree).includes('pwa-offline'), false)
+  setOnLine(false)
+  prod.act(() => fire('offline'))
+  assert.equal(json(tree).includes('Você está sem conexão'), true)
+})
+
+test('build SEM cold start: o estado de boot já nasce resolvido e o bloqueio imediato anterior é preservado', () => {
+  installBrowser({ onLine: false })
+  assert.equal(off.boot.getBootState(), 'online_ready')
+  assert.equal(json(off.renderPwa()).includes('Você está sem conexão'), true)
 })
 
 // ------------------------------------------------------------------------------------- SyncStatus

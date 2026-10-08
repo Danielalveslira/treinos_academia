@@ -10,10 +10,22 @@ import { formatDailyProgress } from '../utils/evocoins'
 // View pura (sem hooks) separada do wrapper que lê os dados de verdade -- mesmo padrão
 // de PromoteDialogBody/PromoteDialog: testável só com props, sem precisar mockar
 // useAuth/useWallet/Supabase.
-export function WalletHeaderBadgesView({ visible, loading, coinBalance, cashBalance, dailyProgress = null }) {
+// `snapshot`: o valor exibido é o ÚLTIMO CONHECIDO guardado no aparelho (modo offline), não uma leitura
+// do servidor. Só muda o texto de apoio: o número é o mesmo e nada aqui autoriza gasto.
+export function WalletHeaderBadgesView({
+  visible,
+  loading,
+  coinBalance,
+  cashBalance,
+  dailyProgress = null,
+  snapshot = false,
+}) {
   if (!visible) return null
 
-  const coinTitle = loading ? undefined : `${coinBalance} EvoCoins${dailyProgress ? ` · ${dailyProgress}` : ''}`
+  const known = snapshot ? ' (último saldo conhecido)' : ''
+  const coinTitle = loading
+    ? undefined
+    : `${coinBalance} EvoCoins${dailyProgress ? ` · ${dailyProgress}` : ''}${known}`
 
   return (
     <div className="wallet-header-badges" aria-label="Seu saldo de EvoCoins e EvoCash">
@@ -21,7 +33,7 @@ export function WalletHeaderBadgesView({ visible, loading, coinBalance, cashBala
         <BrandMark size={14} color="var(--fitness-blue)" className="wallet-badge-icon" />
         <span className="wallet-badge-value">{loading ? '—' : coinBalance.toLocaleString('pt-BR')}</span>
       </span>
-      <span className="wallet-badge" title={loading ? undefined : `${cashBalance} EvoCash`}>
+      <span className="wallet-badge" title={loading ? undefined : `${cashBalance} EvoCash${known}`}>
         <BrandMark size={14} color="var(--fitness-accent)" className="wallet-badge-icon" />
         <span className="wallet-badge-value">{loading ? '—' : cashBalance.toLocaleString('pt-BR')}</span>
       </span>
@@ -34,15 +46,18 @@ export function WalletHeaderBadgesView({ visible, loading, coinBalance, cashBala
 // listener novo nem uma segunda forma de calcular saldo (ver useWallet.js).
 export function WalletHeaderBadges() {
   const { user } = useAuth()
-  const { wallet, loading, dailyCoins } = useWallet()
+  const { dailyCoins, display } = useWallet()
 
+  // `display` = último valor conhecido (servidor ou snapshot do aparelho). Sem nenhum valor real ainda
+  // (carregando, ou offline sem snapshot) o indicador mostra "—": nunca um 0 que pareça saldo.
   return (
     <WalletHeaderBadgesView
       visible={!!user}
-      loading={loading}
-      coinBalance={wallet.coinBalance}
-      cashBalance={wallet.cashBalance}
+      loading={!display}
+      coinBalance={display?.coinBalance ?? 0}
+      cashBalance={display?.cashBalance ?? 0}
       dailyProgress={formatDailyProgress(dailyCoins)}
+      snapshot={display?.source === 'snapshot'}
     />
   )
 }

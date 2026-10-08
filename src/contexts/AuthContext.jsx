@@ -18,8 +18,10 @@ import {
   hydrateOfflineRollout,
   refreshRemoteRollout,
   setOfflineRolloutUser,
+  setRemoteRolloutSnapshot,
   subscribeOfflineRollout,
 } from '../services/offline/rollout'
+import { resolveBootState, setBootState } from '../services/offline/bootState'
 import { flushOfflineTelemetry, recordOfflineDiagnostic, setOfflineTelemetryContext } from '../services/offline/diagnostics'
 import { classifyReadError } from '../services/offline/readError'
 import { createProbe } from '../services/offline/connectivity'
@@ -108,6 +110,12 @@ export function AuthProvider({ children }) {
   const [offlineVerifiedAt, setOfflineVerifiedAt] = useState(null)
   const [serverAccessAllowed, setServerAccessAllowed] = useState(null)
   const [rolloutRevision, setRolloutRevision] = useState(0)
+  // Snapshot agregado da Home restaurado do IndexedDB no cold start (saldo, EvoCoins do dia, atividade).
+  // SOMENTE EXIBIÇÃO do último valor conhecido: nada aqui autoriza operação alguma.
+  const [offlineHome, setOfflineHome] = useState(null)
+  // A restauração local já terminou e NÃO havia cold start válido (ver bootState.resolveBootState). Só o
+  // cold start aberto (enterOfflineLocal) o desliga: com a rede de volta ele é inofensivo (resolveBootState).
+  const [localDenied, setLocalDenied] = useState(false)
   const authModeRef = useRef('online')
   const revalidatingRef = useRef(false)
   const revalidateRef = useRef(null)
@@ -161,6 +169,7 @@ export function AuthProvider({ children }) {
       if (!active || current !== sessionRevisionRef.current) return
       authModeRef.current = 'online'
       setAuthMode('online')
+      setOfflineHome(null)
       setOfflineTelemetryContext(supabaseUser.id, accessResult.status === 'fulfilled')
       setServerAccessAllowed(accessResult.status === 'fulfilled' && accessResult.value === true)
       if (silent) {
@@ -225,27 +234,31 @@ export function AuthProvider({ children }) {
     // podia usar" -- NUNCA "o servidor confirmou agora". Nenhum token é guardado aqui (a sessão é do
     // Supabase); o servidor continua decidindo tudo que exige backend, e ao reconectar o estado dele
     // prevalece (revalidate). Falha segura: qualquer dúvida = não entra offline.
-    // Snapshot local utilizável por ESTE usuário: bootstrap gravado online e válido para o mesmo id, e o
-    // cold start autorizado para ele (snapshot de rollout hidratado do IndexedDB). Nunca consulta a rede.
-    async function localEntryFor(userId) {
-      const { readActiveBootstrap, evaluateOfflineEntry } = await bootstrapEntry()
-      const record = await readActiveBootstrap()
-      await hydrateOfflineRollout(userId)
-      return evaluateOfflineEntry(record, { userId }).ok &&
+    // Entrada local utilizável: bootstrap gravado ONLINE (do mesmo usuário, quando `expectedUserId` existe),
+    // cold start autorizado para ele (snapshot de rollout) e o snapshot da Home -- tudo numa ÚNICA leitura do
+    // IndexedDB (readOfflineEntry). Nunca consulta a rede. Devolve { record, home } ou null.
+    async function localEntryFor(expectedUserId = null) {
+      const { readOfflineEntry, evaluateOfflineEntry } = await bootstrapEntry()
+      const entry = await readOfflineEntry()
+      const userId = expectedUserId ?? entry.record?.user_id
+      if (!userId) return null
+      setRemoteRolloutSnapshot(userId, entry.rollout, true)
+      const allowed =
+        evaluateOfflineEntry(entry.record, { userId: expectedUserId }).ok &&
         isOfflineColdStartEnabled(import.meta.env, userId)
-        ? record
-        : null
+      return allowed ? entry : null
     }
 
     async function resolveOfflineEntry() {
-      const { readActiveBootstrap, evaluateOfflineEntry } = await bootstrapEntry()
-      const record = await readActiveBootstrap()
+      const { readOfflineEntry, evaluateOfflineEntry } = await bootstrapEntry()
+      const entry = await readOfflineEntry()
+      const record = entry.record
       setOfflineTelemetryContext(record?.user_id, false)
       if (!evaluateOfflineEntry(record, { userId: lastSessionUserIdRef.current }).ok) {
         recordOfflineDiagnostic('cold_start_denied')
         return null
       }
-      await hydrateOfflineRollout(record.user_id)
+      setRemoteRolloutSnapshot(record.user_id, entry.rollout, true)
       if (!isOfflineColdStartEnabled(import.meta.env, record.user_id)) {
         recordOfflineDiagnostic('cold_start_denied')
         return null
@@ -253,10 +266,25 @@ export function AuthProvider({ children }) {
       // Com o backend alcançável a ausência de sessão é uma resposta real do servidor (sessão expirada ou
       // inválida): vai para o login. Só abre offline quando a rede de fato não permite perguntar.
       if (await backendReachable()) return null
-      return record
+      return entry
     }
 
-    async function enterOfflineLocal(record, current) {
+    // Abertura SEM rede, antes de qualquer resposta do auth-js: offline com o token vencido ele tenta renovar
+    // por dezenas de segundos (retry com backoff) antes de emitir a sessão inicial. O snapshot local não
+    // precisa disso: o bootstrap diz quem é o usuário e o rollout/termos já foram validados online.
+    async function openFromLocalSnapshot() {
+      const current = ++sessionRevisionRef.current
+      const entry = await localEntryFor()
+      if (!active || current !== sessionRevisionRef.current) return
+      if (entry) {
+        await enterOfflineLocal(entry, current)
+      } else {
+        recordOfflineDiagnostic('cold_start_denied')
+        setLocalDenied(true)
+      }
+    }
+
+    async function enterOfflineLocal({ record, home }, current) {
       const { offlineIdentity } = await bootstrapEntry()
       if (!active || current !== sessionRevisionRef.current) return
       const identity = offlineIdentity(record)
@@ -266,6 +294,8 @@ export function AuthProvider({ children }) {
       loadedUserIdRef.current = identity.user.id
       authModeRef.current = 'offline-local'
       setAuthMode('offline-local')
+      setOfflineHome(home)
+      setLocalDenied(false)
       setServerAccessAllowed(null)
       setOfflineVerifiedAt(record.last_online_verified_at)
       setUser(identity.user)
@@ -285,9 +315,17 @@ export function AuthProvider({ children }) {
       if (supabaseUser) lastSessionUserIdRef.current = supabaseUser.id
       setOfflineRolloutUser(supabaseUser?.id ?? null)
       setOfflineTelemetryContext(supabaseUser?.id ?? null, false)
+      // Cold start SEM rede: o navegador já diz que está offline, então perfil/termos/acesso/carteira e
+      // Realtime nem são tentados -- o snapshot local validado ONLINE para ESTE usuário abre o app na hora.
+      // A leitura começa ANTES da limpeza abaixo (que abre transações de escrita no mesmo banco e a
+      // seguraria). Sem snapshot válido (ou feature não autorizada) cai no caminho normal, como antes.
+      const earlyEntry =
+        coldStart && supabaseUser && globalThis.navigator?.onLine === false
+          ? localEntryFor(supabaseUser.id)
+          : null
       // Uma troca real de identidade invalida imediatamente o acesso offline da conta anterior,
       // mesmo que o carregamento de perfil/termos da nova conta falhe depois.
-      if (coldStart && supabaseUser) await dropBootstrapsExcept(supabaseUser.id)
+      if (coldStart && supabaseUser && !earlyEntry) await dropBootstrapsExcept(supabaseUser.id)
       if (!active || current !== sessionRevisionRef.current) return
       clearPageCache()
       clearPhotoCache()
@@ -297,17 +335,17 @@ export function AuthProvider({ children }) {
       // outbox nunca). Sem sessão e com cold start ligado a limpeza espera a decisão abaixo: ausência de
       // sessão por EXPIRAÇÃO/rede não é logout, e o logout explícito já desligou o bootstrap (authService).
       if (supabaseUser || !coldStart) purgePrivateData(supabaseUser?.id ?? null)
-      // Cold start SEM rede: o navegador já diz que está offline, então perfil/termos/acesso/carteira e
-      // Realtime nem são tentados -- o snapshot local validado ONLINE para ESTE usuário abre o app na hora.
-      // Sem snapshot válido (ou feature não autorizada) cai no caminho normal logo abaixo, como antes.
-      if (coldStart && supabaseUser && globalThis.navigator?.onLine === false) {
-        const record = await localEntryFor(supabaseUser.id)
+      if (earlyEntry) {
+        const entry = await earlyEntry
         if (!active || current !== sessionRevisionRef.current) return
-        if (record) return await enterOfflineLocal(record, current)
+        if (entry) return await enterOfflineLocal(entry, current)
+        await dropBootstrapsExcept(supabaseUser.id)
+        if (!active || current !== sessionRevisionRef.current) return
       }
       loadedUserIdRef.current = supabaseUser?.id ?? null
       authModeRef.current = 'online'
       setAuthMode('online')
+      setOfflineHome(null)
       setServerAccessAllowed(null)
       setOfflineVerifiedAt(null)
       profileChannel?.unsubscribe()
@@ -323,10 +361,10 @@ export function AuthProvider({ children }) {
       setLoading(true)
       if (!supabaseUser) {
         if (coldStart) {
-          const record = await resolveOfflineEntry()
+          const entry = await resolveOfflineEntry()
           if (!active || current !== sessionRevisionRef.current) return
-          if (record) {
-            await enterOfflineLocal(record, current)
+          if (entry) {
+            await enterOfflineLocal(entry, current)
             return
           }
           purgePrivateData(null)
@@ -348,10 +386,10 @@ export function AuthProvider({ children }) {
       if (!active || current !== sessionRevisionRef.current) return
 
       if (coldStart && hasConnectivityFailure(profileResult, legalResult, accessResult)) {
-        const record = await localEntryFor(supabaseUser.id)
+        const entry = await localEntryFor(supabaseUser.id)
         if (!active || current !== sessionRevisionRef.current) return
-        if (record) {
-          await enterOfflineLocal(record, current)
+        if (entry) {
+          await enterOfflineLocal(entry, current)
         } else {
           setProfileError(OFFLINE_ENTRY_REQUIRES_INTERNET)
           setLegalLoading(false)
@@ -422,6 +460,8 @@ export function AuthProvider({ children }) {
     // Tratar cada um como uma nova sessão zerava o estado, mostrava o spinner (desmontando a
     // tela privada inteira, com formulários em andamento) e refazia todas as leituras. Só uma
     // troca real de identidade (login, logout, outro usuário) recarrega a sessão.
+    if (isOfflineColdStartEnabled() && globalThis.navigator?.onLine === false) openFromLocalSnapshot()
+
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       const nextUser = session?.user ?? null
       if (event === 'SIGNED_OUT') {
@@ -429,6 +469,10 @@ export function AuthProvider({ children }) {
         // Um novo login (outra sessão) deve registrar o uso logo, sem esperar os 10 min.
         clearActivityPingThrottle()
       }
+      // Aberto offline pelo snapshot local: o auth-js (token vencido, sem rede) acaba entregando uma sessão
+      // inicial vazia depois de tentar renovar por dezenas de segundos. Isso NÃO é logout: o app continua
+      // aberto e a revalidação, ao reconectar, decide o que fazer com a sessão.
+      if (event === 'INITIAL_SESSION' && !nextUser && authModeRef.current === 'offline-local') return
       if (isSameSessionIdentity(loadedUserIdRef.current, nextUser)) {
         // Em modo offline local o usuário exposto é o RECONHECIDO LOCALMENTE; só a revalidação (que confirma
         // sessão, perfil e termos) o promove a sessão confirmada pelo servidor.
@@ -458,6 +502,15 @@ export function AuthProvider({ children }) {
   // Busca a configuração operacional com a sessão online. Poll lento (só com a aba visível) + foreground + `online` propagam o
   // kill switch sem novo build. A decisão local usa apenas a última resposta válida desta conta.
   useEffect(() => subscribeOfflineRollout(() => setRolloutRevision((value) => value + 1)), [])
+  // Máquina de estados do boot (bootState.js): o PwaControls só decide "sem conexão" depois que a
+  // restauração local termina de verdade -- nunca no meio dela.
+  useEffect(() => {
+    // Builds sem cold start não têm o que restaurar: o estado fica em online_ready e nada muda.
+    if (!isOfflineColdStartEnabled()) return
+    setBootState(
+      resolveBootState({ loading, authMode, localDenied, onLine: globalThis.navigator?.onLine })
+    )
+  }, [loading, authMode, localDenied])
   useEffect(() => {
     let stop
     import('../supabase/realtimeOffline')
@@ -650,6 +703,7 @@ export function AuthProvider({ children }) {
         loading,
         verifyingSession: false,
         offlineLocal: authMode === 'offline-local',
+        offlineHome,
         serverAccessAllowed,
         offlineVerifiedAt,
         deletionStatus,

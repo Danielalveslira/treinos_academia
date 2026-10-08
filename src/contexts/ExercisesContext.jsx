@@ -41,7 +41,8 @@ export function ExercisesProvider({ children }) {
   )
   const { data, loading, error, refresh, setData } = useCachedQuery(
     `exercises:${user.uid}:${offlineLocal ? 'local' : 'online'}`,
-    fetchValue
+    fetchValue,
+    { keepPreviousScope: user.uid }
   )
   const exercises = data || EMPTY
 

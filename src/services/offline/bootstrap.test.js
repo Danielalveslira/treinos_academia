@@ -70,6 +70,7 @@ test('o bootstrap guarda só o perfil MÍNIMO: sem role, e-mail, nascimento, sex
     'createdAt',
     'id',
     'trainingPreferences',
+    'usageProfile', // só decide atalhos do menu (ex.: "Minha vitrine"); não é dado pessoal sensível
     'username',
   ])
   const text = JSON.stringify(rec)
@@ -111,6 +112,15 @@ test('a identidade offline NUNCA tem privilégio (role "user"), nem e-mail, e ma
   assert.equal(identity.legalAccess.offline, true)
   assert.equal(identity.legalAccess.policy.version, VERSION)
   assert.equal(identity.legalAccess.restriction, null)
+})
+
+test('o perfil de uso (atalhos do menu) é restaurado offline; registro antigo sem o campo segue válido', () => {
+  const identity = offlineIdentity(record({ profile: fullProfile(A, { usageProfile: 'common' }) }))
+  assert.equal(identity.profile.usageProfile, 'common')
+  const legacy = record()
+  delete legacy.profile.usageProfile // bootstrap gravado antes deste campo existir
+  assert.deepEqual(evaluateOfflineEntry(legacy), { ok: true, reason: null })
+  assert.equal(offlineIdentity(legacy).profile.usageProfile, undefined)
 })
 
 // ------------------------------------------------------------------------------ quem pode entrar

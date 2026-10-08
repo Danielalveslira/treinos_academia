@@ -34,6 +34,8 @@ async function bundle(name, env) {
         import * as history from '../services/offline/historyCache.js'
         import { closeDatabase } from '../services/offline/database.js'
         import { setRemoteRolloutSnapshot } from '../services/offline/rollout.js'
+        import * as bootState from '../services/offline/bootState.js'
+        import * as homeSnapshot from '../services/offline/homeSnapshot.js'
         import { consumeLogoutReason } from '../utils/logoutReason.js'
 
         let latest = null
@@ -44,7 +46,7 @@ async function bundle(name, env) {
           return { tree, unmount: () => act(() => tree.unmount()) }
         }
         export const auth = () => latest
-        export { act, logoutUser, setRemoteRolloutSnapshot, bootstrap, outbox, history, closeDatabase, consumeLogoutReason, resolveLegalGateState, LEGAL_MANIFEST, LEGAL_DOCUMENTS, APPROVED_LEGAL_DIGESTS }
+        export { act, logoutUser, setRemoteRolloutSnapshot, bootState, homeSnapshot, bootstrap, outbox, history, closeDatabase, consumeLogoutReason, resolveLegalGateState, LEGAL_MANIFEST, LEGAL_DOCUMENTS, APPROVED_LEGAL_DIGESTS }
       `,
       resolveDir: new URL('.', import.meta.url).pathname,
     },
@@ -75,7 +77,11 @@ async function bundle(name, env) {
                 auth: {
                   onAuthStateChange(cb) {
                     listeners.add(cb)
-                    Promise.resolve().then(() => cb('INITIAL_SESSION', globalThis.__initialSession ?? null))
+                    const initial = () => listeners.has(cb) && cb('INITIAL_SESSION', globalThis.__initialSession ?? null)
+                    // O auth-js, offline com o token vencido, só entrega a sessão inicial depois de tentar
+                    // renovar por dezenas de segundos: __initialDelay simula esse atraso.
+                    if (globalThis.__initialDelay) setTimeout(initial, globalThis.__initialDelay)
+                    else Promise.resolve().then(initial)
                     return { data: { subscription: { unsubscribe: () => listeners.delete(cb) } } }
                   },
                   getSession: async () => globalThis.__getSession(),
@@ -232,6 +238,7 @@ beforeEach(async () => {
 })
 afterEach(() => {
   delete globalThis.__initialSession
+  delete globalThis.__initialDelay
 })
 
 const login = (id) => {
@@ -858,5 +865,178 @@ test('bootstrap INVÁLIDO (aceite legal adulterado/versão desconhecida) não li
   setNavigator(false)
   view = await onlineLogin(on, A)
   assert.equal(on.auth().offlineLocal, false)
+  view.unmount()
+})
+
+
+// ============================================================================ snapshot da Home / boot sem rede
+
+const WALLET = { coinBalance: 20, lifetimeCoinsEarned: 35, cashBalance: 320 }
+const PROGRESS = {
+  start: '2025-12-01',
+  end: '2026-12-31',
+  days: [{ dateKey: '2026-10-07', workoutCount: 1, strengthVolumeKg: 800, exerciseStats: [{ exerciseId: 'e1' }] }],
+}
+
+async function onlineWithSnapshot(id = A) {
+  const view = await onlineLogin(on, id)
+  await on.homeSnapshot.saveHomeSnapshot(id, { wallet: WALLET, progress: PROGRESS })
+  view.unmount()
+  return view
+}
+
+test('COLD START restaura o snapshot da Home (saldo + atividade) junto com a identidade, sem RPC', async () => {
+  await onlineWithSnapshot()
+  world.online = false
+  setNavigator(false)
+  world.calls.length = 0
+  const view = await onlineLogin(on, A)
+  const ctx = on.auth()
+  assert.equal(ctx.offlineLocal, true)
+  assert.equal(ctx.offlineHome.user_id, A)
+  assert.equal(ctx.offlineHome.wallet.coinBalance, 20)
+  assert.equal(ctx.offlineHome.wallet.cashBalance, 320)
+  assert.equal(ctx.offlineHome.progress.days[0].dateKey, '2026-10-07')
+  assert.deepEqual(world.calls, [])
+  view.unmount()
+})
+
+test('sem snapshot gravado, o cold start abre mesmo assim com offlineHome = null (a UI mostra "—", nunca zero)', async () => {
+  let view = await onlineLogin(on, A)
+  view.unmount()
+  world.online = false
+  setNavigator(false)
+  view = await onlineLogin(on, A)
+  assert.equal(on.auth().offlineLocal, true)
+  assert.equal(on.auth().offlineHome, null)
+  view.unmount()
+})
+
+test('o snapshot de A NÃO é exposto quando quem está ativo no aparelho é B', async () => {
+  await onlineWithSnapshot(A)
+  // B entra online no mesmo aparelho (bootstrap/snapshot de A deixam de valer).
+  let view = await onlineLogin(on, B)
+  view.unmount()
+  await on.homeSnapshot.saveHomeSnapshot(A, { wallet: WALLET }) // resíduo de A em disco
+  world.online = false
+  setNavigator(false)
+  view = await onlineLogin(on, B)
+  assert.equal(on.auth().offlineLocal, true)
+  assert.equal(on.auth().user.uid, B)
+  assert.equal(on.auth().offlineHome, null)
+  view.unmount()
+})
+
+test('LOGOUT explícito apaga o snapshot; offline depois disso nada da conta anterior é restaurado', async () => {
+  let view = await onlineLogin(on, A)
+  await on.homeSnapshot.saveHomeSnapshot(A, { wallet: WALLET, progress: PROGRESS })
+  await on.logoutUser()
+  await settle(100)
+  const keys = (await rawAllSyncMeta()).map((row) => row.key)
+  assert.equal(keys.includes(on.homeSnapshot.homeSnapshotKey(A)), false)
+  view.unmount()
+  world.online = false
+  setNavigator(false)
+  globalThis.__session = null
+  globalThis.__initialSession = null
+  view = on.mount()
+  await settle(120)
+  assert.equal(on.auth().offlineLocal, false)
+  assert.equal(on.auth().offlineHome, null)
+  view.unmount()
+})
+
+async function rawAllSyncMeta() {
+  const db = await new Promise((resolve, reject) => {
+    const request = globalThis.indexedDB.open('evolutus-local-v1')
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+  try {
+    return await new Promise((resolve, reject) => {
+      const request = db.transaction('syncMeta', 'readonly').objectStore('syncMeta').getAll()
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error)
+    })
+  } finally {
+    db.close()
+  }
+}
+
+test('BOOT SEM ESPERAR O AUTH-JS: com o token vencido (INITIAL_SESSION atrasado) o app abre do snapshot local na hora', async () => {
+  await onlineWithSnapshot()
+  world.online = false
+  setNavigator(false)
+  globalThis.__session = null
+  globalThis.__initialSession = null
+  globalThis.__initialDelay = 400 // o auth-js ainda está tentando renovar o token
+  world.calls.length = 0
+  const view = on.mount()
+  await settle(120)
+  assert.equal(on.auth().offlineLocal, true, 'aberto antes da sessão inicial')
+  assert.equal(on.auth().loading, false)
+  assert.equal(on.auth().user.uid, A)
+  assert.equal(on.auth().offlineHome.wallet.coinBalance, 20)
+  assert.equal(on.bootState.getBootState(), 'offline_ready')
+  // A sessão inicial vazia chega depois: NÃO derruba o app aberto (não é logout).
+  const user = on.auth().user
+  await settle(450)
+  assert.equal(on.auth().offlineLocal, true)
+  assert.equal(on.auth().user, user)
+  assert.equal(on.auth().loading, false)
+  assert.equal(on.auth().offlineHome.wallet.coinBalance, 20)
+  assert.deepEqual(world.calls, [])
+  view.unmount()
+})
+
+test('BOOT: sem cold start válido o bloqueio legítimo não espera o auth-js (offline_unavailable na hora)', async () => {
+  world.online = false
+  setNavigator(false)
+  globalThis.__session = null
+  globalThis.__initialSession = null
+  globalThis.__initialDelay = 400
+  const view = on.mount()
+  assert.equal(on.bootState.getBootState(), 'initializing', 'enquanto hidrata o bloqueio não aparece')
+  await settle(120)
+  assert.equal(on.bootState.getBootState(), 'offline_unavailable')
+  assert.equal(on.auth().offlineLocal, false)
+  await settle(450)
+  assert.equal(on.bootState.getBootState(), 'offline_unavailable')
+  view.unmount()
+})
+
+test('BOOT: o estado de boot acompanha a restauração (initializing -> offline_ready) sem passar por "indisponível"', async () => {
+  await onlineWithSnapshot()
+  world.online = false
+  setNavigator(false)
+  const seen = []
+  const stop = on.bootState.subscribeBootState(() => seen.push(on.bootState.getBootState()))
+  on.bootState.setBootState('initializing')
+  const view = await onlineLogin(on, A)
+  assert.equal(on.bootState.getBootState(), 'offline_ready')
+  assert.ok(!seen.includes('offline_unavailable'), `passou por: ${seen.join(' > ')}`)
+  stop()
+  view.unmount()
+})
+
+test('RECONEXÃO: ao voltar a rede o snapshot sai de cena (offlineHome = null) e a sessão volta a ser a do servidor', async () => {
+  await onlineWithSnapshot()
+  world.online = false
+  setNavigator(false)
+  globalThis.__session = null
+  globalThis.__initialSession = null
+  world.refreshFails = { name: 'AuthRetryableFetchError', message: 'fetch failed' }
+  const view = on.mount()
+  await settle(120)
+  assert.equal(on.auth().offlineHome.wallet.coinBalance, 20)
+  world.online = true
+  setNavigator(true)
+  globalThis.__session = { user: supaUser(A), access_token: 'novo', expires_at: 9e9 }
+  world.refreshFails = null
+  window.__fire('online')
+  await settle(200)
+  assert.equal(on.auth().offlineLocal, false)
+  assert.equal(on.auth().offlineHome, null)
+  assert.equal(on.bootState.getBootState(), 'online_ready')
   view.unmount()
 })

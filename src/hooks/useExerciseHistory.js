@@ -15,7 +15,8 @@ export function useExerciseHistory(exerciseId) {
   )
   const { data, loading, error, refresh } = useCachedQuery(
     `exerciseHistory:${user.uid}:${exerciseId}:${offlineLocal ? 'local' : 'online'}`,
-    fetchValue
+    fetchValue,
+    { keepPreviousScope: `${user.uid}:${exerciseId}` }
   )
   return { workouts: data || EMPTY, loading, error, refresh }
 }

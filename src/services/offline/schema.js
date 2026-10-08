@@ -39,6 +39,10 @@ export function userMetaKey(userId, name) {
   return `${USER_META_PREFIX}${userId}:${name}`
 }
 
+// Nomes (sufixos de userMetaKey) dos registros por usuário que o cold start lê numa ÚNICA transação.
+export const HOME_SNAPSHOT_META = 'home-snapshot'
+export const ROLLOUT_META = 'offline-rollout'
+
 // Cada migration recebe o banco e a transação de versionchange. Só pode criar/alterar stores e
 // índices (e mover dados dentro da própria transação).
 export const MIGRATIONS = [

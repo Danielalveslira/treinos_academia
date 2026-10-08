@@ -40,6 +40,9 @@ export const OFFLINE_ESSENTIAL_MODULES = [
   'src/pages/Exercises.jsx',
   'src/pages/ExerciseDetail.jsx',
   'src/components/SyncStatus.jsx',
+  // Sem sessão nem bootstrap o app cai em /login: a rota precisa abrir offline (é minúscula) para o aviso de
+  // "sem conexão" aparecer em vez de o erro de um chunk ausente derrubar a tela inteira.
+  'src/pages/Login.jsx',
   // Dependências dinâmicas do próprio cold start (abrir sem rede e pausar o Realtime):
   'src/services/offline/bootstrapEntry.js',
   'src/supabase/realtimeOffline.js',

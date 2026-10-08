@@ -1,5 +1,5 @@
 import { attempt, request, withTransaction } from './database.js'
-import { STORES } from './schema.js'
+import { HOME_SNAPSHOT_META, STORES, userMetaKey } from './schema.js'
 
 // Bootstrap local para COLD START OFFLINE: a fotografia mínima da conta que permite abrir o app sem
 // internet no aparelho onde o usuário já entrou online.
@@ -16,7 +16,7 @@ import { STORES } from './schema.js'
 
 export const BOOTSTRAP_SCHEMA_VERSION = 1
 export const ACTIVE_KEY = 'bootstrap:active-user' // syncMeta pública: ponteiro, sem dado da conta
-const LOGOUT_KEY = 'bootstrap:last-explicit-logout'
+export const LOGOUT_KEY = 'bootstrap:last-explicit-logout'
 
 // Campos do perfil que o shell offline realmente usa (identificar o usuário, gates, rotina planejada).
 // role NÃO entra: offline ninguém ganha papel de admin por cache (as telas admin exigem servidor).
@@ -28,6 +28,8 @@ export function minimalProfile(profile) {
     createdAt: profile.createdAt ?? null,
     accountStatus: profile.accountStatus ?? null,
     trainingPreferences: profile.trainingPreferences ?? null,
+    // Só decide quais atalhos o menu mostra (ex.: "Minha vitrine"); não é dado pessoal sensível.
+    usageProfile: profile.usageProfile ?? null,
   }
 }
 
@@ -140,6 +142,8 @@ export function disableOfflineAccess() {
           const active = await request(syncMeta.get(ACTIVE_KEY))
           offlineBootstrap.clear()
           syncMeta.delete(ACTIVE_KEY)
+          // Os dados da conta que saiu (saldo, atividade) vão embora junto com o bootstrap, na mesma transação.
+          if (active?.value) syncMeta.delete(userMetaKey(active.value, HOME_SNAPSHOT_META))
           syncMeta.put({
             key: LOGOUT_KEY,
             value: { at: Date.now(), userId: active?.value ?? null },
@@ -161,7 +165,10 @@ export function dropBootstrapsExcept(keepUserId) {
         'readwrite',
         async ({ offlineBootstrap, syncMeta }) => {
           for (const key of await request(offlineBootstrap.getAllKeys()))
-            if (key !== keepUserId) offlineBootstrap.delete(key)
+            if (key !== keepUserId) {
+              offlineBootstrap.delete(key)
+              syncMeta.delete(userMetaKey(key, HOME_SNAPSHOT_META))
+            }
           const active = await request(syncMeta.get(ACTIVE_KEY))
           if (active?.value && active.value !== keepUserId) syncMeta.delete(ACTIVE_KEY)
         }

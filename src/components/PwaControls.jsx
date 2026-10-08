@@ -3,9 +3,11 @@ import { Button, useConfirm } from '@primer/react'
 import { DownloadIcon, XIcon } from '@primer/octicons-react'
 import { isOfflineShellEnabled, isOfflineWriteEnabled } from '../services/offline/database'
 import { getOfflineRolloutRevision, subscribeOfflineRollout } from '../services/offline/rollout'
+import { BOOT_STATE, getBootState, subscribeBootState } from '../services/offline/bootState'
 
 export function PwaControls() {
   useSyncExternalStore(subscribeOfflineRollout, getOfflineRolloutRevision)
+  const boot = useSyncExternalStore(subscribeBootState, getBootState)
   const confirm = useConfirm()
   const [installPrompt, setInstallPrompt] = useState(null)
   const [installed, setInstalled] = useState(
@@ -17,7 +19,13 @@ export function PwaControls() {
   // SyncStatus, e o que exige servidor é barrado por tela (Layout) e por ação (Finalizar treino).
   // Desligada (padrão): comportamento anterior, tela cheia e conteúdo inerte.
   const offlineWrites = isOfflineWriteEnabled()
-  const blocking = offline && !isOfflineShellEnabled()
+  // O bloqueio só vale DEPOIS da restauração local (bootState): enquanto o AuthContext hidrata o IndexedDB
+  // (initializing) o app mostra o próprio carregamento, e um cold start válido (offline_ready) nunca bloqueia.
+  const blocking =
+    offline &&
+    boot !== BOOT_STATE.initializing &&
+    boot !== BOOT_STATE.offlineReady &&
+    !isOfflineShellEnabled()
   const [updateAvailable, setUpdateAvailable] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [installing, setInstalling] = useState(false)

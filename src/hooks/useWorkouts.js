@@ -18,7 +18,10 @@ export function useWorkouts(filters = {}) {
     () => listWorkoutsPage(user.uid, { exerciseId, startDate, endDate, localOnly: offlineLocal }),
     [user.uid, exerciseId, startDate, endDate, offlineLocal]
   )
-  const query = useCachedQuery(key, fetchValue)
+  // Ao voltar a rede a chave passa de 'local' para 'online': a lista atual fica na tela até a nova chegar.
+  const query = useCachedQuery(key, fetchValue, {
+    keepPreviousScope: `${user.uid}:${exerciseId || ''}:${startDate || ''}:${endDate || ''}`,
+  })
   const [pagination, setPagination] = useState({ key, loading: false, error: null })
   const pending = useRef(null)
   useEffect(

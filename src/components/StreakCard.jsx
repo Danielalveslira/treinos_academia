@@ -28,7 +28,10 @@ function todayCopy(day) {
   return 'Nenhum treino programado'
 }
 
+// `unavailable`: offline e SEM snapshot de atividade -- não há como saber a sequência nem o que foi feito, então
+// nada de "0 dias" nem de dias marcados como sem atividade: o cartão diz que depende da conexão.
 export function StreakCard({
+  unavailable = false,
   consistency,
   hasTrainingPlan,
   onConfigurePlan,
@@ -43,42 +46,50 @@ export function StreakCard({
         </span>
         <div>
           <strong id="consistency-title">
-            {consistency.current} {consistency.current === 1 ? 'dia' : 'dias'} de consistência
+            {unavailable ? '—' : consistency.current}{' '}
+            {consistency.current === 1 && !unavailable ? 'dia' : 'dias'} de consistência
           </strong>
           <span>
-            Melhor sequência no ano: {consistency.longest}{' '}
-            {consistency.longest === 1 ? 'dia' : 'dias'}
+            {unavailable
+              ? 'Disponível quando houver conexão'
+              : `Melhor sequência no ano: ${consistency.longest} ${consistency.longest === 1 ? 'dia' : 'dias'}`}
           </span>
         </div>
       </div>
-      <ul className="streak-days" aria-label="Resumo dos últimos sete dias">
-        {consistency.recent.map((day) => (
-          <li
-            key={day.dateKey}
-            className={`streak-pip is-${day.state}${day.isToday ? ' is-today' : ''}`}
-            aria-label={dayLabel(day)}
-          >
-            {day.state === 'completed' && <CheckIcon size={11} aria-hidden="true" />}
-            {day.state === 'rest' && <span aria-hidden="true">–</span>}
-          </li>
-        ))}
-      </ul>
-      <div className="streak-today">
-        <span>Hoje</span>
-        <strong>{todayCopy(consistency.today)}</strong>
-      </div>
+      {!unavailable && (
+        <ul className="streak-days" aria-label="Resumo dos últimos sete dias">
+          {consistency.recent.map((day) => (
+            <li
+              key={day.dateKey}
+              className={`streak-pip is-${day.state}${day.isToday ? ' is-today' : ''}`}
+              aria-label={dayLabel(day)}
+            >
+              {day.state === 'completed' && <CheckIcon size={11} aria-hidden="true" />}
+              {day.state === 'rest' && <span aria-hidden="true">–</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {!unavailable && (
+        <div className="streak-today">
+          <span>Hoje</span>
+          <strong>{todayCopy(consistency.today)}</strong>
+        </div>
+      )}
       <div className="streak-actions">
         <button type="button" className="streak-action-link" onClick={onConfigurePlan}>
           <GearIcon size={14} /> {hasTrainingPlan ? 'Ajustar planejamento' : 'Planejar semana'}
         </button>
-        {onShare && (
+        {onShare && !unavailable && (
           <button type="button" className="streak-action-link" onClick={onShare}>
             <ShareIcon size={14} /> Compartilhar progresso
           </button>
         )}
-        <button type="button" className="streak-action-link" onClick={onOpenCalendar}>
-          Ver calendário <ArrowRightIcon size={14} />
-        </button>
+        {!unavailable && (
+          <button type="button" className="streak-action-link" onClick={onOpenCalendar}>
+            Ver calendário <ArrowRightIcon size={14} />
+          </button>
+        )}
       </div>
     </section>
   )

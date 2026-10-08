@@ -1,7 +1,8 @@
 import { APPROVED_LEGAL_DIGESTS } from '../../utils/legal.js'
 import { attempt, request, withTransaction } from './database.js'
-import { STORES } from './schema.js'
+import { ROLLOUT_META, STORES, userMetaKey } from './schema.js'
 import { ACTIVE_KEY, BOOTSTRAP_SCHEMA_VERSION } from './bootstrap.js'
+import { homeSnapshotKey, validateHomeSnapshot } from './homeSnapshot.js'
 
 // Leitura/decisão do COLD START OFFLINE. Fica em módulo à parte (carregado sob demanda, só quando o app abre
 // sem rede) para não pesar no bundle de boot de quem está online; as regras e o formato do registro
@@ -78,7 +79,14 @@ export function offlineIdentity(record) {
   }
 }
 
-export function readActiveBootstrap() {
+const EMPTY_ENTRY = Object.freeze({ record: null, home: null, rollout: null })
+
+// TUDO que o cold start precisa do disco, numa ÚNICA transação (sem várias leituras separadas no boot):
+//  - record:  o bootstrap do usuário ativo (identidade mínima + aceite legal);
+//  - home:    o snapshot agregado da Home DESTE usuário (saldo, EvoCoins do dia, atividade) já validado;
+//  - rollout: a última resposta válida do rollout do servidor para este usuário (decide se pode abrir).
+// Nunca lança: falha de IndexedDB = sem entrada (não entra offline).
+export function readOfflineEntry() {
   return attempt(
     'bootstrap:read',
     () =>
@@ -87,11 +95,24 @@ export function readActiveBootstrap() {
         'readonly',
         async ({ offlineBootstrap, syncMeta }) => {
           const active = await request(syncMeta.get(ACTIVE_KEY))
-          if (!active?.value) return null
-          return (await request(offlineBootstrap.get(active.value))) ?? null
+          if (!active?.value) return EMPTY_ENTRY
+          const userId = active.value
+          const [record, home, rollout] = await Promise.all([
+            request(offlineBootstrap.get(userId)),
+            request(syncMeta.get(homeSnapshotKey(userId))),
+            request(syncMeta.get(userMetaKey(userId, ROLLOUT_META))),
+          ])
+          return {
+            record: record ?? null,
+            home: validateHomeSnapshot(home?.value, userId),
+            rollout: rollout?.value ?? null,
+          }
         }
       ),
-    null
+    EMPTY_ENTRY
   )
 }
 
+export async function readActiveBootstrap() {
+  return (await readOfflineEntry()).record
+}
