@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { suggestedSets, inheritSet, parseSetInput } from './setSuggestions.js'
+import { suggestedSets, parseSetInput } from './setSuggestions.js'
 import { isValidSet } from './workoutSets.js'
 
 test('history preserves the corresponding set, including legacy and zero load', () => {
@@ -28,21 +28,6 @@ test('missing or invalid history does not invent values', () => {
   ]) {
     assert.deepEqual(suggestedSets(workout), [{ weight: '', reps: '', source: 'empty' }])
   }
-})
-
-test('inheritance fills untouched next sets; historical, manually edited and completed values win', () => {
-  const previous = { weight: '17.5', reps: '8' }
-  assert.deepEqual(inheritSet({ key: 2, source: 'empty' }, previous, false), {
-    ...previous,
-    key: 2,
-    source: 'inherited',
-  })
-  for (const source of ['history', 'manual']) {
-    const target = { weight: '', reps: '6', source }
-    assert.equal(inheritSet(target, previous, false), target)
-  }
-  const completed = { weight: '5', reps: '12' }
-  assert.equal(inheritSet(completed, previous, true), completed)
 })
 
 test('direct entry accepts comma, dot and empty drafts without NaN', () => {

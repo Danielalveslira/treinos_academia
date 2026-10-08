@@ -6,31 +6,46 @@ import {
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  CopyIcon,
   SearchIcon,
 } from '@primer/octicons-react'
 import { MUSCLE_GROUPS } from '../constants/muscleGroups'
 import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
 import { validateWorkout, hasErrors } from '../utils/validators'
-import { getWorkoutSets, MAX_WORKOUT_SETS, isValidSet } from '../utils/workoutSets'
+import { getWorkoutSets, isValidSet } from '../utils/workoutSets'
 import { toDate } from '../utils/date'
 import { formatDate } from '../utils/format'
-import { SetCard } from './SetCard'
+import { ExerciseComplete, SaveStatus, SetCard } from './SetCard'
 import { calculateVolume } from '../utils/calculations'
 import { useFocusWithinBodyClass } from '../hooks/useFocusWithinBodyClass'
 import { getExerciseType, isCardioExercise } from '../utils/exerciseType'
-import { formatCardioSession } from '../utils/cardioSessions'
+import { formatCardioSession, isValidCardioSession } from '../utils/cardioSessions'
 import {
   loadDoneExerciseIds,
   saveDoneExerciseIds,
   cleanupStaleDoneExerciseKeys,
 } from '../utils/doneExercisesStorage'
-import { nextStepAfterFinishing, valuesForNextExercise } from '../utils/workoutSessionFlow'
 import { sortExercisesInGroup } from '../utils/exerciseOrder'
 import { businessDayKey } from '../utils/businessDate'
 import { nextActiveSetIndexAfterRemoval } from '../utils/setCardFlow'
-import { suggestedSets, inheritSet } from '../utils/setSuggestions'
 import { recentExerciseSessions } from '../utils/exerciseHistory'
+import {
+  addSet,
+  aggregateSyncStatus,
+  allSetsDone,
+  buildEditSets,
+  buildSessionSets,
+  canRemoveSet,
+  commitSetEdit,
+  concludeSet,
+  doneSetsPayload,
+  dropPendingSets,
+  nextPendingIndex,
+  removeSet,
+  rowSyncStatus,
+  setSyncStatus,
+  updateSetField,
+} from '../utils/setSession'
+import { createRowSaver } from '../utils/rowSaver'
 import { WorkoutExerciseVisual } from './WorkoutExerciseGuide'
 import '../styles/workoutExecution.css'
 
@@ -41,24 +56,13 @@ import '../styles/workoutExecution.css'
 // teclado por altura de tela.
 const KEYBOARD_ACTIVE_CLASS = 'keyboard-active'
 
+// Dois toques seguidos no mesmo botão (duplo clique, toque nervoso) nunca devem concluir duas séries:
+// depois de o card avançar, o mesmo botão passa a pertencer à série seguinte.
+const CONCLUDE_COOLDOWN_MS = 400
+
 // "Hoje" é o dia de NEGÓCIO (America/Sao_Paulo), não o do aparelho (ver utils/businessDate.js).
 function todayString() {
   return businessDayKey()
-}
-
-// setDetails e durationMinutes/distanceKm coexistem aqui sempre, os dois tipos — só o
-// tipo do exercício selecionado (selectedExercise, via getExerciseType) decide qual
-// metade é validada, renderizada e enviada (ver handleSubmit). Mais simples do que
-// trocar a forma do objeto a cada troca de exercício.
-function buildEmpty(defaultExerciseId) {
-  return {
-    exerciseId: defaultExerciseId || '',
-    setDetails: [{ weight: '', reps: '' }],
-    durationMinutes: '',
-    distanceKm: '',
-    date: todayString(),
-    note: '',
-  }
 }
 
 function orderedGroups(exercises) {
@@ -71,20 +75,44 @@ function orderedGroups(exercises) {
   ]
 }
 
+const formatWeight = (weight) => Number(weight).toLocaleString('pt-BR')
+
+// Resumo curto do que foi registrado: "3 séries · 20 kg × 10" ou, se variam, "20×10 · 22,5×8 · …".
+function summarizeSets(sets) {
+  const done = doneSetsPayload(sets)
+  const label = `${done.length} ${done.length === 1 ? 'série' : 'séries'}`
+  const same = done.every((set) => set.weight === done[0].weight && set.reps === done[0].reps)
+  return same
+    ? `${label} · ${formatWeight(done[0].weight)} kg × ${done[0].reps}`
+    : `${label} · ${done.map((set) => `${formatWeight(set.weight)}×${set.reps}`).join(' · ')}`
+}
+
+const cardioValues = (workout) => ({
+  durationMinutes: workout?.durationMinutes != null ? String(workout.durationMinutes) : '',
+  distanceKm: workout?.distanceKm != null ? String(workout.distanceKm) : '',
+})
+
 export function WorkoutForm({
   exercises,
   history = [],
   initialValue,
   defaultExerciseId,
   onSubmit,
+  onCreate,
+  onUpdate,
   onCancel,
 }) {
+  // Dois modos: SESSÃO (novo treino — cada série concluída já é gravada, ver utils/rowSaver.js) e
+  // EDIÇÃO (initialValue vindo de History.jsx — todas as séries já existem e "Salvar alterações" grava
+  // tudo de uma vez, como antes).
+  const editing = Boolean(initialValue)
   const nextSetId = useRef(0)
+  const nextKey = () => nextSetId.current++
   // Editando, o tipo do treino já existente trava qual exercício dá pra escolher —
   // trocar pra um exercício de outro tipo faria o trigger de imutabilidade de type
   // (migration workouts_cardio_type) recusar o update. Mais simples barrar isso aqui, na
-  // lista de opções, do que deixar o usuário chegar até "Finalizar exercício" pra só
-  // então descobrir que não pode.
+  // lista de opções, do que deixar o usuário chegar até "Salvar" pra só então descobrir
+  // que não pode.
   const editingType = initialValue ? getExerciseType(initialValue) : null
   const availableExercises = useMemo(() => {
     const active = exercises.filter(
@@ -115,30 +143,63 @@ export function WorkoutForm({
   }, [exercises, initialValue?.exerciseId, editingType])
   const initialExerciseId = initialValue?.exerciseId || defaultExerciseId || ''
   const initialExercise = availableExercises.find((exercise) => exercise.id === initialExerciseId)
-  const [values, setValues] = useState(() => {
-    const value = initialValue || buildEmpty(initialExercise?.id)
-    return {
-      ...value,
-      exerciseId: initialExercise?.id || value.exerciseId,
-      setDetails: (initialValue
-        ? getWorkoutSets(value).map((set) => ({ ...set, source: 'manual' }))
-        : suggestedSets(history.find((workout) => workout.exerciseId === initialExercise?.id))
-      ).map((set) => ({ ...set, key: nextSetId.current++ })),
+
+  // Valores de um exercício que ainda não foi tocado: sugestão do último treino quando existe
+  // (marcada como 'history', nunca como concluída) e campos vazios quando não existe.
+  function freshValues(exercise, { date = todayString(), note = '' } = {}) {
+    const last = history.find((workout) => workout.exerciseId === exercise?.id)
+    const base = {
+      exerciseId: exercise?.id || '',
+      setDetails: [],
+      durationMinutes: '',
+      distanceKm: '',
+      cardioDone: false,
+      cardioCommitted: null,
+      cardioSource: 'empty',
+      date,
+      note,
     }
+    if (isCardioExercise(exercise)) {
+      return last ? { ...base, ...cardioValues(last), cardioSource: 'history' } : base
+    }
+    return { ...base, setDetails: buildSessionSets(last, nextKey) }
+  }
+
+  const [values, setValues] = useState(() => {
+    if (initialValue) {
+      const cardioEdit = editingType === 'cardio'
+      const committed = cardioValues(initialValue)
+      return {
+        ...initialValue,
+        exerciseId: initialExercise?.id || initialValue.exerciseId,
+        setDetails: cardioEdit ? [] : buildEditSets(getWorkoutSets(initialValue), nextKey),
+        durationMinutes: committed.durationMinutes,
+        distanceKm: committed.distanceKm,
+        cardioDone: cardioEdit,
+        cardioCommitted: cardioEdit ? committed : null,
+        cardioSource: 'manual',
+      }
+    }
+    return freshValues(initialExercise)
   })
+  // Handlers leem daqui (não do state do render): dois toques no mesmo frame enxergariam o mesmo state
+  // antigo e concluiriam a mesma série duas vezes.
+  const valuesRef = useRef(values)
+  function update(change) {
+    const next = change(valuesRef.current)
+    valuesRef.current = next
+    setValues(next)
+    return next
+  }
   const [step, setStep] = useState(() => (initialExercise ? 'register' : 'group'))
   const [selectedGroup, setSelectedGroup] = useState(initialExercise?.muscleGroup || 'Outros')
   const [search, setSearch] = useState('')
-  const [completed, setCompleted] = useState(() => new Set())
   const drafts = useRef(new Map())
-  const completionDrafts = useRef(new Map())
   // Exercícios finalizados HOJE, neste aparelho (localStorage, sem sync com o banco --
-  // ver doneExercisesStorage.js). Diferente de `completed` acima: aquele é por SÉRIE,
-  // dentro do exercício atual; este é por EXERCÍCIO, através de todo o fluxo de sessão
-  // (grupo -> exercício -> séries), e é o que decide a navegação ao finalizar (ver
-  // handleSubmit/nextStepAfterFinishing). Não se aplica a edição avulsa vinda de
-  // History.jsx (initialValue setado) -- editar um registro já existente fecha o
-  // formulário sozinho, sem o conceito de "próximo exercício do grupo".
+  // ver doneExercisesStorage.js). É por EXERCÍCIO, através de todo o fluxo de sessão
+  // (grupo -> exercício -> séries), e é o que marca "concluído" na lista e decide qual é o
+  // próximo exercício. Não se aplica a edição avulsa vinda de History.jsx (initialValue
+  // setado).
   const [doneExerciseIds, setDoneExerciseIds] = useState(() => {
     if (initialValue) return new Set()
     const today = todayString()
@@ -149,10 +210,36 @@ export function WorkoutForm({
   const [submitting, setSubmitting] = useState(false)
   const submitLock = useRef(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
-  // Qual série o SetCard mostra agora -- sempre resetada pra 0 quando setDetails é
-  // trocado por inteiro (novo exercício, repetir última sessão, avançar depois de
-  // finalizar); ao adicionar uma série, aponta pra ela (ver handleAddSet).
-  const [activeSetIndex, setActiveSetIndex] = useState(0)
+  const [reviewing, setReviewing] = useState(false)
+  // Qual série o SetCard mostra agora (espelhado num ref pelo mesmo motivo de valuesRef).
+  const [activeSetIndex, setActiveSetIndexState] = useState(() =>
+    Math.max(0, nextPendingIndex(values.setDetails, -1))
+  )
+  const activeRef = useRef(activeSetIndex)
+  function setActive(index) {
+    activeRef.current = index
+    setActiveSetIndexState(index)
+  }
+  const lastConcludeAt = useRef(0)
+
+  // Gravação: um saver por exercício (linha do dia) e o estado dele para a interface.
+  const savers = useRef(new Map())
+  const savedMeta = useRef(new Map())
+  const [saveStates, setSaveStates] = useState({})
+  const writers = useRef({ onCreate, onUpdate })
+  writers.current = { onCreate, onUpdate }
+  function saverFor(exerciseId) {
+    let saver = savers.current.get(exerciseId)
+    if (!saver) {
+      saver = createRowSaver({
+        createRow: (payload, options) => writers.current.onCreate(payload, options),
+        updateRow: (id, payload) => writers.current.onUpdate(id, payload),
+        onChange: (state) => setSaveStates((previous) => ({ ...previous, [exerciseId]: state })),
+      })
+      savers.current.set(exerciseId, saver)
+    }
+    return saver
+  }
 
   const groups = useMemo(() => orderedGroups(availableExercises), [availableExercises])
   const groupCounts = useMemo(() => {
@@ -168,9 +255,8 @@ export function WorkoutForm({
     [availableExercises, values.exerciseId]
   )
   const cardio = isCardioExercise(selectedExercise)
-  // Sem o filtro de busca -- é a lista "de verdade" do grupo, usada por
-  // nextStepAfterFinishing pra saber se sobra exercício não concluído. exercisesInGroup
-  // (abaixo) é só a versão filtrada exibida na tela.
+  // Sem o filtro de busca -- é a lista "de verdade" do grupo, usada pra achar o próximo
+  // exercício não concluído. exercisesInGroup (abaixo) é só a versão filtrada exibida na tela.
   const allExercisesInGroup = useMemo(
     () =>
       sortExercisesInGroup(
@@ -192,52 +278,129 @@ export function WorkoutForm({
   )
   const lastWorkout = exerciseHistory[0]
   const recentHistory = useMemo(() => recentExerciseSessions(exerciseHistory), [exerciseHistory])
+
+  // O histórico pode chegar depois do formulário: enquanto nada foi tocado, a sugestão entra sozinha.
   useEffect(() => {
-    if (!lastWorkout || initialValue || cardio) return
-    setValues((previous) => {
-      if (!previous.setDetails.every((set) => set.source === 'empty')) return previous
-      return {
-        ...previous,
-        setDetails: suggestedSets(lastWorkout).map((set) => ({ ...set, key: nextSetId.current++ })),
-      }
-    })
+    if (!lastWorkout || initialValue) return
+    const current = valuesRef.current
+    if (cardio) {
+      if (current.cardioDone || current.durationMinutes || current.distanceKm) return
+      update((previous) => ({ ...previous, ...cardioValues(lastWorkout), cardioSource: 'history' }))
+      return
+    }
+    if (!current.setDetails.every((set) => set.source === 'empty' && !set.done)) return
+    update((previous) => ({ ...previous, setDetails: buildSessionSets(lastWorkout, nextKey) }))
   }, [lastWorkout, initialValue, cardio])
-  // Só oferece "Repetir última sessão" enquanto o registro atual está intocado -- um tap
-  // nunca deve sobrescrever peso/reps (ou duração/distância) que o usuário já digitou.
-  const isEntryPristine = cardio
-    ? !values.durationMinutes && !values.distanceKm
-    : values.setDetails.every((set) => set.source === 'empty')
+
+  const sets = values.setDetails
+  const rowState = saveStates[values.exerciseId]
+  const syncStatuses = useMemo(
+    () => (editing || cardio ? [] : sets.map((set) => setSyncStatus(set, rowState))),
+    [editing, cardio, sets, rowState]
+  )
+  const cardioDirty =
+    values.cardioDone &&
+    (values.durationMinutes !== values.cardioCommitted?.durationMinutes ||
+      values.distanceKm !== values.cardioCommitted?.distanceKm)
+  const exerciseFinished = cardio ? values.cardioDone : allSetsDone(sets)
+  const showComplete = !editing && exerciseFinished && !reviewing && !cardioDirty
+  const completeStatus = cardio ? rowSyncStatus(rowState) : aggregateSyncStatus(syncStatuses)
+  const rowStatus = rowState?.status || 'idle'
+
+  // Reenvia o que ficou sem gravar assim que a conexão volta. Enquanto algo está gravando ou falhou,
+  // fechar a aba pede confirmação: é o único jeito de uma série concluída se perder.
+  useEffect(() => {
+    function retryFailed() {
+      savers.current.forEach((saver) => saver.retry())
+    }
+    window.addEventListener('online', retryFailed)
+    return () => window.removeEventListener('online', retryFailed)
+  }, [])
+  const hasUnsaved = Object.values(saveStates).some(
+    (state) => state.status === 'saving' || state.status === 'error'
+  )
+  useEffect(() => {
+    if (!hasUnsaved) return undefined
+    function warn(event) {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [hasUnsaved])
+
+  // Ao trocar de exercício (ou de etapa) a tela volta ao topo do formulário, em vez de manter a rolagem
+  // do exercício anterior.
+  const formRef = useFocusWithinBodyClass(KEYBOARD_ACTIVE_CLASS)
+  const mounted = useRef(false)
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true
+      return
+    }
+    formRef.current?.scrollIntoView?.({ block: 'start' })
+  }, [step, values.exerciseId, formRef])
+
+  function sessionPayload(current) {
+    const base = {
+      exerciseId: current.exerciseId,
+      type: getExerciseType(selectedExercise),
+      date: current.date,
+      note: current.note,
+    }
+    if (cardio) {
+      const committed = current.cardioCommitted || cardioValues()
+      return { ...base, ...committed }
+    }
+    return { ...base, setDetails: doneSetsPayload(current.setDetails) }
+  }
+
+  // Grava o estado confirmado do exercício (séries concluídas + data/observação). Sempre o estado
+  // completo: o saver descarta pedidos intermediários e nunca grava duas vezes ao mesmo tempo.
+  function persist(current) {
+    const payload = sessionPayload(current)
+    const validationErrors = validateWorkout(payload)
+    if (validationErrors.date || validationErrors.note) {
+      setErrors(validationErrors)
+      setDetailsOpen(true)
+    }
+    savedMeta.current.set(current.exerciseId, `${current.date}|${current.note}`)
+    return saverFor(current.exerciseId).save(payload)
+  }
+
+  function markExerciseDone(exerciseId) {
+    if (editing || doneExerciseIds.has(exerciseId)) return
+    const next = new Set(doneExerciseIds).add(exerciseId)
+    setDoneExerciseIds(next)
+    saveDoneExerciseIds(todayString(), next)
+  }
 
   function rememberDraft() {
-    if (!values.exerciseId) return
-    drafts.current.set(values.exerciseId, values)
-    completionDrafts.current.set(values.exerciseId, completed)
+    if (!valuesRef.current.exerciseId) return
+    drafts.current.set(valuesRef.current.exerciseId, valuesRef.current)
+  }
+
+  function showStep(next, group) {
+    rememberDraft()
+    if (group) setSelectedGroup(group)
+    setSearch('')
+    setErrors({})
+    setStep(next)
   }
 
   function chooseGroup(group) {
-    rememberDraft()
-    setSelectedGroup(group)
-    setSearch('')
-    setErrors({})
-    setStep('exercise')
+    showStep('exercise', group)
   }
 
   function chooseExercise(exercise) {
-    if (exercise.id !== values.exerciseId) {
+    if (exercise.id !== valuesRef.current.exerciseId) {
       rememberDraft()
       const saved = drafts.current.get(exercise.id)
-      setValues(
-        saved || {
-          ...buildEmpty(exercise.id),
-          date: values.date,
-          note: values.note,
-          setDetails: suggestedSets(
-            history.find((workout) => workout.exerciseId === exercise.id)
-          ).map((set) => ({ ...set, key: nextSetId.current++ })),
-        }
+      const next = update(
+        (previous) => saved || freshValues(exercise, { date: previous.date, note: previous.note })
       )
-      setCompleted(completionDrafts.current.get(exercise.id) || new Set())
-      setActiveSetIndex(0)
+      setActive(Math.max(0, nextPendingIndex(next.setDetails, -1)))
+      setReviewing(false)
     }
     setSelectedGroup(exercise.muscleGroup || 'Outros')
     setSearch('')
@@ -246,121 +409,153 @@ export function WorkoutForm({
   }
 
   function showGroups() {
-    rememberDraft()
-    setSearch('')
-    setStep('group')
+    showStep('group')
   }
 
   function showExercises() {
-    rememberDraft()
-    if (selectedExercise) setSelectedGroup(selectedExercise.muscleGroup || 'Outros')
-    setSearch('')
-    setStep('exercise')
-  }
-
-  function changeSets(change) {
-    setValues((previous) => ({ ...previous, setDetails: change(previous.setDetails) }))
-    setErrors({})
-  }
-
-  function addSet(repeat = false) {
-    const key = nextSetId.current++
-    changeSets((sets) => [
-      ...sets,
-      { ...(repeat ? sets.at(-1) : { weight: '', reps: '' }), source: 'inherited', key },
-    ])
+    showStep('exercise', selectedExercise ? selectedExercise.muscleGroup || 'Outros' : undefined)
   }
 
   function setField(field, value) {
-    setValues((previous) => ({ ...previous, [field]: value }))
+    update((previous) => ({ ...previous, [field]: value }))
   }
 
-  function repeatLastWorkout() {
-    if (!lastWorkout) return
-    if (cardio) {
-      setField('durationMinutes', String(lastWorkout.durationMinutes ?? ''))
-      setField('distanceKm', lastWorkout.distanceKm != null ? String(lastWorkout.distanceKm) : '')
-    } else {
-      const sets = getWorkoutSets(lastWorkout).map((set) => ({
-        weight: String(set.weight),
-        reps: String(set.reps),
-        source: 'history',
-        key: nextSetId.current++,
-      }))
-      setValues((previous) => ({ ...previous, setDetails: sets }))
-      setActiveSetIndex(0)
-    }
+  function changeSets(change) {
+    update((previous) => ({ ...previous, setDetails: change(previous.setDetails) }))
     setErrors({})
   }
 
-  function updateSet(key, field, value) {
-    changeSets((sets) =>
-      sets.map((set) => (set.key === key ? { ...set, [field]: value, source: 'manual' } : set))
-    )
-    setCompleted((previous) => {
-      const next = new Set(previous)
-      next.delete(key)
-      return next
-    })
+  function handleFieldChange(field, value) {
+    const key = valuesRef.current.setDetails[activeRef.current]?.key
+    changeSets((current) => updateSetField(current, key, field, value))
   }
 
-  function toggleComplete(key) {
-    setCompleted((previous) => {
-      const next = new Set(previous)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
+  // Concluir série: registra, avança no mesmo card e, se era a última, finaliza o exercício. Não abre
+  // teclado, diálogo nem outra tela.
+  function handleConclude() {
+    const now = Date.now()
+    if (now - lastConcludeAt.current < CONCLUDE_COOLDOWN_MS) return
+    const result = concludeSet(valuesRef.current.setDetails, activeRef.current)
+    if (!result) return
+    lastConcludeAt.current = now
+    const next = update((previous) => ({ ...previous, setDetails: result.sets }))
+    setErrors({})
+    setReviewing(false)
+    if (result.finished) markExerciseDone(next.exerciseId)
+    else setActive(result.nextIndex)
+    persist(next)
   }
 
-  // Repete a última série (mesmo peso/reps) e navega o SetCard direto pra ela --
-  // equivalente ao antigo botão "Repetir série" + já escolher a nova série.
+  // Corrige uma série já concluída: só ela muda; as demais permanecem como foram registradas.
+  function handleCommitEdit() {
+    const committed = commitSetEdit(valuesRef.current.setDetails, activeRef.current)
+    if (!committed) return
+    const next = update((previous) => ({ ...previous, setDetails: committed }))
+    persist(next)
+  }
+
   function handleAddSet() {
-    const newIndex = values.setDetails.length
-    addSet(true)
-    setActiveSetIndex(newIndex)
+    const index = valuesRef.current.setDetails.length
+    changeSets((current) => addSet(current, nextKey))
+    setActive(Math.min(index, valuesRef.current.setDetails.length - 1))
   }
 
-  // Ao concluir (não ao reabrir) a série ativa, avança pro próximo pendente -- se não
-  // sobrar nenhum, fica onde está (ver requisito do SetCard).
-  function handleToggleComplete(key) {
-    const willComplete = !completed.has(key)
-    const current = values.setDetails.find((set) => set.key === key)
-    if (willComplete && !isValidSet(current)) return
-    toggleComplete(key)
-    if (!willComplete) return
-    const nextCompleted = new Set(completed)
-    nextCompleted.add(key)
-    const nextPendingIndex = values.setDetails.findIndex((set) => !nextCompleted.has(set.key))
-    if (nextPendingIndex !== -1) {
-      changeSets((sets) =>
-        sets.map((set, index) =>
-          index === nextPendingIndex ? inheritSet(set, current, nextCompleted.has(set.key)) : set
-        )
-      )
-      setActiveSetIndex(nextPendingIndex)
-    }
+  function handleRemoveSet() {
+    const current = valuesRef.current.setDetails
+    const target = current[activeRef.current]
+    if (!target || !canRemoveSet(current, target.key)) return
+    const next = update((previous) => ({
+      ...previous,
+      setDetails: removeSet(previous.setDetails, target.key),
+    }))
+    setActive(nextActiveSetIndexAfterRemoval(activeRef.current, current.length))
+    if (editing) return
+    if (target.done) persist(next)
+    if (allSetsDone(next.setDetails)) markExerciseDone(next.exerciseId)
   }
 
-  // Remove a série ativa (botão discreto em SetCard.jsx, com confirmação de dois
-  // toques em vez de dialog). Só existe enquanto sobra mais de uma série -- o próprio
-  // SetCard já desabilita o botão nesse caso.
-  function handleRemoveSet(key) {
-    const previousLength = values.setDetails.length
-    changeSets((sets) => sets.filter((item) => item.key !== key))
-    setCompleted((previous) => new Set([...previous].filter((item) => item !== key)))
-    setActiveSetIndex((current) => nextActiveSetIndexAfterRemoval(current, previousLength))
+  function handleFinishNow() {
+    const next = update((previous) => ({
+      ...previous,
+      setDetails: dropPendingSets(previous.setDetails),
+    }))
+    setActive(0)
+    if (allSetsDone(next.setDetails)) markExerciseDone(next.exerciseId)
   }
 
+  function handleConcludeCardio() {
+    const current = valuesRef.current
+    if (!isValidCardioSession(current)) return
+    const now = Date.now()
+    if (now - lastConcludeAt.current < CONCLUDE_COOLDOWN_MS) return
+    lastConcludeAt.current = now
+    const next = update((previous) => ({
+      ...previous,
+      cardioDone: true,
+      cardioCommitted: {
+        durationMinutes: previous.durationMinutes,
+        distanceKm: previous.distanceKm,
+      },
+    }))
+    setErrors({})
+    setReviewing(false)
+    markExerciseDone(next.exerciseId)
+    persist(next)
+  }
+
+  function handleRetry() {
+    saverFor(valuesRef.current.exerciseId).retry()
+  }
+
+  // Data e observação são gravadas junto com a próxima série — ou, se o registro já existe, ao sair do
+  // campo, para nunca ficarem só na tela.
+  function handleMetaBlur() {
+    const current = valuesRef.current
+    if (editing || !savedMeta.current.has(current.exerciseId)) return
+    if (savedMeta.current.get(current.exerciseId) === `${current.date}|${current.note}`) return
+    persist(current)
+  }
+
+  // Próximo exercício NÃO CONCLUÍDO do mesmo grupo (na ordem do grupo, dando a volta); sem sobra, volta
+  // para a escolha de grupo. Só acontece por toque do usuário.
+  const nextExercise = useMemo(() => {
+    const list = allExercisesInGroup
+    const index = list.findIndex((exercise) => exercise.id === values.exerciseId)
+    return [...list.slice(index + 1), ...list.slice(0, Math.max(index, 0))].find(
+      (exercise) => exercise.id !== values.exerciseId && !doneExerciseIds.has(exercise.id)
+    )
+  }, [allExercisesInGroup, values.exerciseId, doneExerciseIds])
+  const nextLabel = nextExercise ? 'Próximo exercício' : 'Escolher outro grupo'
+
+  function handleNext() {
+    if (nextExercise) chooseExercise(nextExercise)
+    else showGroups()
+  }
+
+  function handleReview() {
+    setReviewing(true)
+    setActive(0)
+  }
+
+  // Edição de um registro existente: valida tudo e grava de uma vez (contrato antigo de onSubmit).
   async function handleSubmit(event) {
     event.preventDefault()
+    if (!editing) {
+      // Enter num campo só fecha o teclado; concluir série é sempre o botão.
+      document.activeElement?.blur?.()
+      return
+    }
     if (step !== 'register' || submitLock.current) return
-    const payload = { ...values, type: getExerciseType(selectedExercise) }
+    const payload = {
+      ...values,
+      type: getExerciseType(selectedExercise),
+      setDetails: sets.map(({ weight, reps }) => ({ weight, reps })),
+    }
     const validationErrors = validateWorkout(payload)
     setErrors(validationErrors)
     if (validationErrors.date || validationErrors.note) setDetailsOpen(true)
-    const invalidIndex = values.setDetails.findIndex((_, index) => validationErrors[`set${index}`])
-    if (!cardio && invalidIndex !== -1) setActiveSetIndex(invalidIndex)
+    const invalidIndex = sets.findIndex((_, index) => validationErrors[`set${index}`])
+    if (!cardio && invalidIndex !== -1) setActive(invalidIndex)
     if (hasErrors(validationErrors)) return
 
     submitLock.current = true
@@ -368,34 +563,12 @@ export function WorkoutForm({
     try {
       await onSubmit(payload)
     } catch {
-      // onSubmit (NewWorkout.jsx/History.jsx) já mostrou o toast de erro e relança --
-      // não marca o exercício como concluído nem avança de aba num salvamento que falhou.
-      return
+      // onSubmit (History.jsx) já mostrou o toast de erro e relança.
     } finally {
       submitLock.current = false
       setSubmitting(false)
     }
-
-    if (initialValue) return // edição avulsa -- sem fluxo de sessão pra navegar.
-
-    const { doneExerciseIds: nextDone, step: nextStep } = nextStepAfterFinishing({
-      allExercisesInGroup,
-      doneExerciseIds,
-      finishedExerciseId: values.exerciseId,
-    })
-    setDoneExerciseIds(nextDone)
-    saveDoneExerciseIds(todayString(), nextDone)
-    setValues((previous) => ({
-      ...valuesForNextExercise(previous),
-      setDetails: [{ weight: '', reps: '', key: nextSetId.current++ }],
-    }))
-    setActiveSetIndex(0)
-    setSearch('')
-    setStep(nextStep)
   }
-
-  const validSetCount = values.setDetails.filter(isValidSet).length
-  const formRef = useFocusWithinBodyClass(KEYBOARD_ACTIVE_CLASS)
 
   return (
     <Box as="form" ref={formRef} className="workout-form workout-execution" onSubmit={handleSubmit}>
@@ -535,83 +708,112 @@ export function WorkoutForm({
                 <strong>{selectedExercise.name}</strong>
               </div>
             )}
-            <div className="exercise-context-actions">
-              <button type="button" disabled={submitting} onClick={showExercises}>
-                Trocar exercício
-              </button>
-              <button type="button" disabled={submitting} onClick={showGroups}>
-                Trocar grupo
-              </button>
-            </div>
-
-            {lastWorkout && isEntryPristine && (
-              <Button
-                size="small"
-                type="button"
-                leadingVisual={CopyIcon}
-                disabled={submitting}
-                onClick={repeatLastWorkout}
-              >
-                Repetir última sessão
-              </Button>
-            )}
           </section>
 
-          {cardio && (
+          {showComplete && (
+            <ExerciseComplete
+              summary={
+                cardio
+                  ? formatCardioSession({
+                      durationMinutes: values.cardioCommitted.durationMinutes,
+                      distanceKm:
+                        values.cardioCommitted.distanceKm === ''
+                          ? null
+                          : values.cardioCommitted.distanceKm,
+                    })
+                  : summarizeSets(sets)
+              }
+              syncStatus={completeStatus}
+              onRetry={handleRetry}
+              onNext={handleNext}
+              onReview={handleReview}
+              nextLabel={nextLabel}
+            />
+          )}
+
+          {cardio && !showComplete && (
             <fieldset className="cardio-fieldset" disabled={submitting}>
               <legend>Sessão</legend>
-              <FormControl required>
-                <FormControl.Label>Duração (min)</FormControl.Label>
-                <TextInput
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  max={600}
-                  step={1}
-                  value={values.durationMinutes}
-                  onChange={(event) => setField('durationMinutes', event.target.value)}
-                  placeholder="0"
-                  block
-                />
-              </FormControl>
-              <FormControl>
-                <FormControl.Label>Distância (km, opcional)</FormControl.Label>
-                <TextInput
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  max={500}
-                  step="any"
-                  value={values.distanceKm}
-                  onChange={(event) => setField('distanceKm', event.target.value)}
-                  placeholder="0"
-                  block
-                />
-              </FormControl>
+              {values.cardioSource === 'history' && !values.cardioDone && (
+                <span className="set-card-source">Sugerido do último treino</span>
+              )}
+              <div className="cardio-fields">
+                <FormControl required>
+                  <FormControl.Label>Duração (min)</FormControl.Label>
+                  <TextInput
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={600}
+                    step={1}
+                    value={values.durationMinutes}
+                    onChange={(event) => setField('durationMinutes', event.target.value)}
+                    placeholder="Ex.: 30"
+                    size="large"
+                    block
+                  />
+                </FormControl>
+                <FormControl>
+                  <FormControl.Label>Distância (km, opcional)</FormControl.Label>
+                  <TextInput
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    max={500}
+                    step="any"
+                    value={values.distanceKm}
+                    onChange={(event) => setField('distanceKm', event.target.value)}
+                    placeholder="Ex.: 5"
+                    size="large"
+                    block
+                  />
+                </FormControl>
+              </div>
               {errors.durationMinutes && (
                 <Text role="alert" className="form-error">
                   {errors.durationMinutes}
                 </Text>
               )}
+              {!editing && (
+                <>
+                  <button
+                    type="button"
+                    className="set-card-complete"
+                    disabled={!isValidCardioSession(values)}
+                    onClick={handleConcludeCardio}
+                  >
+                    <CheckIcon size={22} />
+                    {values.cardioDone ? 'Atualizar sessão' : 'Concluir exercício'}
+                  </button>
+                  {values.cardioDone && (
+                    <SaveStatus
+                      status={rowStatus === 'error' ? 'error' : completeStatus}
+                      onRetry={handleRetry}
+                    />
+                  )}
+                </>
+              )}
             </fieldset>
           )}
 
-          {!cardio && (
+          {!cardio && !showComplete && (
             <fieldset className="sets-fieldset" disabled={submitting}>
               <legend className="sr-only">Séries</legend>
               <SetCard
-                sets={values.setDetails.map((set) => ({
-                  ...set,
-                  completed: completed.has(set.key),
-                }))}
+                mode={editing ? 'edit' : 'session'}
+                sets={sets}
                 activeIndex={activeSetIndex}
-                onNavigate={setActiveSetIndex}
-                onUpdate={updateSet}
-                onToggleComplete={handleToggleComplete}
-                onAdd={values.setDetails.length < MAX_WORKOUT_SETS ? handleAddSet : undefined}
+                syncStatuses={syncStatuses}
+                rowStatus={rowStatus}
+                onSelect={setActive}
+                onChange={handleFieldChange}
+                onConclude={handleConclude}
+                onCommitEdit={handleCommitEdit}
+                onAdd={handleAddSet}
                 onRemove={handleRemoveSet}
-                validSetCount={validSetCount}
-                volume={values.setDetails.every(isValidSet) ? calculateVolume(values) : null}
+                canRemove={canRemoveSet(sets, sets[activeSetIndex]?.key)}
+                onFinishNow={handleFinishNow}
+                onRetry={handleRetry}
                 disabled={submitting}
               />
               {(errors.setDetails || errors[`set${activeSetIndex}`]) && (
@@ -620,6 +822,12 @@ export function WorkoutForm({
                 </Text>
               )}
             </fieldset>
+          )}
+
+          {!editing && exerciseFinished && reviewing && (
+            <Button type="button" className="workout-next" onClick={handleNext}>
+              {nextLabel}
+            </Button>
           )}
 
           <details
@@ -635,6 +843,7 @@ export function WorkoutForm({
                   type="date"
                   value={values.date}
                   onChange={(event) => setField('date', event.target.value)}
+                  onBlur={handleMetaBlur}
                   max={todayString()}
                   block
                 />
@@ -647,6 +856,7 @@ export function WorkoutForm({
                 <Textarea
                   value={values.note}
                   onChange={(event) => setField('note', event.target.value)}
+                  onBlur={handleMetaBlur}
                   rows={2}
                   maxLength={300}
                   block
@@ -658,24 +868,22 @@ export function WorkoutForm({
             </div>
           </details>
 
-          <div className="workout-form-actions">
-            <Button
-              type="button"
-              disabled={submitting}
-              onClick={initialValue ? onCancel : showExercises}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              leadingVisual={CheckIcon}
-              loading={submitting}
-              disabled={submitting}
-            >
-              Finalizar exercício
-            </Button>
-          </div>
+          {editing && (
+            <div className="workout-form-actions">
+              <Button type="button" disabled={submitting} onClick={onCancel}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                leadingVisual={CheckIcon}
+                loading={submitting}
+                disabled={submitting}
+              >
+                Salvar alterações
+              </Button>
+            </div>
+          )}
           <details className="workout-past-sessions" key={values.exerciseId}>
             <summary>Sessões anteriores ({recentHistory.length})</summary>
             <p className="workout-history-caption">

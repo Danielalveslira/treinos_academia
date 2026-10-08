@@ -63,32 +63,34 @@ const props = {
 }
 
 // Text inputs with numeric inputMode accept the Portuguese decimal separator.
-test('new form uses only direct weight and repetition inputs', () => {
+test('new form without history: empty fields, three pending sets and one main action', () => {
   const html = render(props)
   assert.equal((html.match(/type="number"/g) || []).length, 0)
-  assert.match(html, /aria-label="Série 1"/)
-  // Único controle de "criar nova série" é a seta › (que, na última, assume esse papel)
-  // -- o segmento "+" redundante na barra de progresso foi removido.
-  assert.match(html, /aria-label="Adicionar nova série"/)
-  assert.doesNotMatch(html, /set-card-segment-add/)
+  assert.match(html, /Série 1 de 3/)
+  assert.match(html, /aria-label="Série 1, pendente"/)
+  assert.match(html, /aria-label="Série 3, pendente"/)
   assert.match(html, /inputMode="decimal"/)
   assert.match(html, /inputMode="numeric"/)
-  assert.match(html, /class="set-card-unit">kg</)
-  assert.doesNotMatch(html, /set-card-step|set-card-chip/)
-  assert.doesNotMatch(html, /Somar |Subtrair |Aumentar peso|Diminuir peso/)
-  assert.doesNotMatch(html, />[−+]1(?:,25)?</)
-  assert.doesNotMatch(html, /Último treino|Sem histórico nos registros carregados/)
-  // Set vazio não passa em isValidSet -- "concluir série" nasce desabilitado.
+  // Sem histórico nem planejamento: nada de valores inventados — só placeholders.
+  assert.match(html, /id="set-weight"[^>]*placeholder="Ex\.: 20"[^>]*value=""/)
+  assert.match(html, /id="set-reps"[^>]*placeholder="Ex\.: 10"[^>]*value=""/)
+  assert.match(html, /Primeira vez\?/)
+  assert.doesNotMatch(html, /Sugerido do último treino|Igual à série anterior|Registrada/)
+  // Set vazio não passa em isValidSet -- "Concluir série" nasce desabilitado.
   assert.match(html, /class="set-card-complete" disabled=""/)
-  assert.doesNotMatch(html, /Adicionar série</)
-  assert.doesNotMatch(html, /Repetir série</)
-  // Com uma única série, "Remover série" existe mas nasce desabilitado -- nunca dá pra
-  // ficar sem nenhuma série (mesma regra do antigo botão de remover na tabela).
-  assert.match(html, /aria-label="Remover série 1" disabled=""/)
+  assert.match(html, /Concluir série/)
+  // Sem navegação duplicada, contadores repetidos, volume estimado nem texto de herança.
+  assert.doesNotMatch(html, /Série anterior|Próxima série|set-card-nav|session-summary/)
+  assert.doesNotMatch(html, /Volume estimado|Séries válidas|concluídas</)
+  assert.doesNotMatch(html, /Trocar exercício|Trocar grupo|Repetir última sessão/)
+  assert.doesNotMatch(html, /Finalizar exercício/)
+  // Configuração de séries fica recolhida; com várias séries remover está habilitado.
+  assert.match(html, /<details class="set-card-adjust"><summary>Ajustar séries<\/summary>/)
+  assert.match(html, /Remover série 1/)
 })
 
 test('editing legacy and individual sets preserves every set (not just the visible one) and inactive exercise selection', () => {
-  for (const { initialValue, expectedVolume } of [
+  for (const { initialValue, expectedSets } of [
     {
       initialValue: {
         exerciseId: 'squat',
@@ -98,7 +100,7 @@ test('editing legacy and individual sets preserves every set (not just the visib
         date: '2025-01-01',
         note: '',
       },
-      expectedVolume: '720 kg', // 30x12 duas vezes -- forma legada, mesmo peso/reps pras duas séries.
+      expectedSets: 2, // 30x12 duas vezes -- forma legada, mesmo peso/reps pras duas séries.
     },
     {
       initialValue: {
@@ -110,8 +112,7 @@ test('editing legacy and individual sets preserves every set (not just the visib
         date: '2025-01-01',
         note: '',
       },
-      expectedVolume: '680 kg', // 30x12 + 40x8 -- só dá pra bater esse número se a SEGUNDA
-      // série (não visível, já que o card mostra uma de cada vez) sobreviveu intacta.
+      expectedSets: 2, // a SEGUNDA série (fora de vista) precisa sobreviver intacta.
     },
   ]) {
     const html = render({
@@ -126,20 +127,18 @@ test('editing legacy and individual sets preserves every set (not just the visib
     assert.match(html, /<strong>Agachamento<\/strong>/)
     // As duas séries geram dois segmentos clicáveis na barra de progresso do card --
     // nunca um terceiro segmento "+" (removido, ver primeiro teste) inflando a contagem.
-    assert.match(html, /aria-label="Série 1"/)
-    assert.match(html, /aria-label="Série 2"/)
-    assert.doesNotMatch(html, /set-card-segment-add/)
+    assert.match(html, /aria-label="Série 1, concluída"/)
+    assert.match(html, /aria-label="Série 2, concluída"/)
     assert.match(html, /Série 1 de 2/)
     // Com mais de uma série, "Remover série" fica habilitado.
-    assert.match(html, /aria-label="Remover série 1"(?! disabled)/)
+    assert.match(html, /Remover série 1<\/button>/)
+    assert.doesNotMatch(html, /Remover série 1<\/button>.*disabled/)
     // Card abre na primeira série (30kg x 12).
     assert.match(html, /id="set-weight"[^>]*value="30"/)
     assert.match(html, /id="set-reps"[^>]*value="12"/)
-    // "Séries válidas: 2" e o volume batendo só provam que a SEGUNDA série (fora de
-    // vista) preservou seu próprio peso/reps -- não dá pra ver isso direto na página
-    // renderizada, já que só a série ativa aparece.
-    assert.match(html, /Séries válidas<\/span><strong>2<\/strong>/)
-    assert.match(html, new RegExp(`Volume estimado</span><strong>${expectedVolume}`))
+    // Editar um registro não oferece "Concluir série" (todas já foram registradas) e salva tudo de uma vez.
+    assert.doesNotMatch(html, /Concluir série/)
+    assert.match(html, /Salvar alterações/)
   }
 })
 
@@ -160,8 +159,11 @@ test('history opens with suggested values and an enabled one-touch completion', 
   assert.match(html, /Série 1 de 2/)
   assert.match(html, /id="set-weight"[^>]*value="17,5"/)
   assert.match(html, /id="set-reps"[^>]*value="8"/)
-  assert.match(html, /class="set-card-complete" aria-pressed="false"/)
-  assert.doesNotMatch(html, /Último treino/)
+  // Sugestão do histórico é identificada como tal e nunca como série registrada.
+  assert.match(html, /Sugerido do último treino/)
+  assert.doesNotMatch(html, /Registrada|aria-label="Série \d, concluída"/)
+  assert.match(html, /class="set-card-complete"><svg/)
+  assert.doesNotMatch(html, /Último treino</)
 })
 
 test('with no exercise pre-selected, the form opens on the muscle group step, not the set fields', () => {
@@ -220,7 +222,7 @@ test('previous sessions are collapsed, exercise-scoped and show dates, sets, vol
   assert.match(html, /href="\/historico\?exercicio=squat"/)
   assert.match(html, /Ver histórico completo/)
   assert.ok(html.indexOf('14/09/2026') < html.indexOf('10/09/2026'))
-  assert.ok(html.indexOf('workout-past-sessions') > html.indexOf('Finalizar exercício'))
+  assert.ok(html.indexOf('workout-past-sessions') > html.indexOf('Data e observações'))
 })
 
 test('previous sessions provide an empty state and support cardio history', () => {

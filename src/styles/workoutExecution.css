@@ -9,6 +9,8 @@
 .workout-execution .workout-progress {
   position: static;
   gap: 8px;
+  max-width: 560px;
+  margin-inline: auto;
 }
 .workout-execution .workout-progress > * {
   min-height: 40px;
@@ -165,179 +167,388 @@
   padding-left: 24px;
   line-height: 1.5;
 }
-.exercise-context-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
+/* Registro de séries (SetCard.jsx): mobile first — 320px é o piso; tablet/desktop só limitam a largura. */
+.workout-register-step {
+  max-width: 560px;
+  margin-inline: auto;
+  padding-bottom: env(safe-area-inset-bottom);
 }
-.exercise-context-actions > button {
-  min-height: 32px;
-  padding: 4px 6px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--fgColor-muted);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
+.workout-execution .exercise-context-bar {
+  padding: 0 0 12px;
+  border-bottom: 0;
 }
-.exercise-context-actions > button:hover {
-  background: var(--fitness-surface);
-  color: var(--fgColor-default);
-  text-decoration: underline;
-}
-.workout-execution .sets-fieldset {
-  margin-top: 18px;
+.workout-execution .sets-fieldset,
+.workout-execution .cardio-fieldset {
+  margin-top: 4px;
 }
 .workout-execution .set-card {
-  padding: 22px 28px 0;
+  padding: 16px 14px 10px;
   border: 1px solid var(--borderColor-default);
+  border-radius: var(--fitness-radius-md);
+  background: var(--fitness-surface);
 }
-.workout-execution .set-card-header {
-  gap: 12px;
-  margin-bottom: 8px;
-}
-.workout-execution .set-card-header-text {
+.set-card-header {
   display: grid;
-  gap: 4px;
-  font-size: 14px;
-}
-.workout-execution .set-card-header-text > span:first-child {
-  font-size: 28px;
-  line-height: 1.2;
-}
-.workout-execution .set-card-navigation {
-  display: flex;
-  align-items: center;
   gap: 6px;
+  margin-bottom: 12px;
 }
-.workout-execution .set-card-remove {
-  width: 44px;
-  height: 44px;
-}
-.workout-execution .set-card-nav {
-  border-radius: 12px;
-}
-.workout-execution .set-card-progress {
+.set-card-title-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 16px;
+  justify-content: space-between;
+  gap: 2px 10px;
 }
-.workout-execution .set-card-segment {
-  flex: 0 0 44px;
-  height: 44px;
-  font: inherit;
-  color: var(--fgColor-default);
-  border: 1px solid var(--borderColor-default);
-  background: transparent;
+.set-card-title-row strong {
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
-.workout-execution .set-card-segment.is-active {
+.set-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+.set-card-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 999px;
   background: var(--bgColor-default);
-  border-color: var(--fitness-blue);
-  color: var(--fitness-blue);
+  color: var(--fgColor-muted);
+  font-size: 11px;
+  font-weight: 600;
 }
-.workout-execution .set-card-segment.is-complete {
+.set-card-source.is-done {
+  border-color: var(--fitness-accent);
   background: var(--fitness-accent-soft);
   color: var(--fitness-accent-strong);
 }
-.workout-execution .set-card-progress > span {
+.set-card-source.is-dirty {
+  border-color: var(--borderColor-attention-muted, var(--borderColor-default));
+  color: var(--fgColor-attention);
+}
+.save-status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
   margin-left: auto;
+  gap: 2px 6px;
   color: var(--fgColor-muted);
   font-size: 12px;
 }
-.workout-execution .set-card-fields {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  width: min(100%, 820px);
-  margin: 20px auto 0;
+.save-status.is-saved {
+  color: var(--fitness-accent-strong);
 }
-.workout-execution .set-card-field {
-  align-content: center;
-  gap: 10px;
-  min-height: 154px;
-  padding: 18px 20px;
-  border: 1px solid var(--borderColor-default);
-  border-radius: 14px;
+.save-status.is-saving svg {
+  animation: save-spin 0.9s linear infinite;
 }
-.workout-execution .set-card-field-label {
-  font-size: 16px;
+.save-status.is-local {
+  color: var(--fgColor-attention);
+}
+.save-status.is-error {
+  color: var(--fgColor-danger);
   font-weight: 600;
 }
-.workout-execution .set-card-input-wrap {
-  position: relative;
-  width: min(100%, 300px);
+.save-status-retry {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+@keyframes save-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+.set-card-progress {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+.set-card-progress > li {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.set-card-segment {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fgColor-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.set-card-segment.is-complete {
+  border-color: var(--fitness-accent);
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+}
+.set-card-segment.is-local {
+  border-color: var(--borderColor-attention-muted, var(--borderColor-default));
+  color: var(--fgColor-attention);
+}
+.set-card-segment.is-saving {
+  color: var(--fgColor-muted);
+}
+.set-card-segment.is-error {
+  border-color: var(--fgColor-danger);
+  background: transparent;
+  color: var(--fgColor-danger);
+}
+.set-card-segment.is-active {
+  border-color: var(--fitness-blue);
+  box-shadow: 0 0 0 1px var(--fitness-blue);
+  color: var(--fitness-blue);
+}
+.set-card-segment.is-active.is-complete {
+  color: var(--fitness-accent-strong);
+}
+.set-card-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  animation: set-swap 0.16s ease-out;
+}
+@keyframes set-swap {
+  from {
+    opacity: 0.35;
+    translate: 6px 0;
+  }
+}
+.set-card-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.set-card-field-label {
+  color: var(--fgColor-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.set-card-input-wrap {
   min-width: 0;
   border: 1px solid var(--borderColor-default);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--bgColor-default);
 }
-.workout-execution .set-card-input-wrap:focus-within {
+.set-card-input-wrap:focus-within {
   border-color: var(--fitness-blue);
   box-shadow: 0 0 0 1px var(--fitness-blue);
 }
-.workout-execution .set-card-value {
+.set-card-value {
   width: 100%;
   min-width: 0;
-  height: 68px;
+  height: 64px;
+  padding: 0 6px;
   border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--fgColor-default);
+  font: inherit;
+  font-size: 30px;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  outline: 0;
+}
+.set-card-value::placeholder {
+  color: var(--fgColor-muted);
+  font-size: 15px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+.set-card-hint {
+  margin: 10px 2px 0;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
+.set-card-complete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 56px;
+  margin-top: 14px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--fitness-accent);
+  color: #08110a;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    transform 0.1s ease,
+    background-color 0.15s ease;
+}
+.set-card-complete:not(:disabled):active {
+  transform: scale(0.985);
+}
+.set-card-complete.is-secondary {
+  background: transparent;
+  color: var(--fgColor-default);
+  box-shadow: inset 0 0 0 1px var(--borderColor-default);
+}
+.set-card-link {
+  display: block;
+  min-height: 40px;
+  margin: 4px auto 0;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--fgColor-muted);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.set-card-adjust {
+  margin-top: 4px;
+  border-top: 1px solid var(--borderColor-muted);
+}
+.set-card-adjust summary {
+  min-height: 44px;
+  align-content: center;
+  color: var(--fgColor-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.set-card-adjust-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 10px;
+}
+.set-card-adjust-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 10px;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.set-card-adjust-actions button.is-confirming {
+  border-color: var(--fgColor-danger);
+  background: var(--fgColor-danger);
+  color: #fff;
+}
+.exercise-complete {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 4px 12px;
+  padding: 16px 14px;
+  border: 1px solid var(--fitness-accent);
+  border-radius: var(--fitness-radius-md);
+  background: var(--fitness-accent-soft);
+  animation: complete-in 0.22s ease-out;
+}
+@keyframes complete-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+.exercise-complete-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--fitness-accent);
+  color: #08110a;
+}
+.exercise-complete h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.exercise-complete p {
+  margin: 2px 0 6px;
+  color: var(--fgColor-muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.exercise-complete-actions {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 8px;
+  margin-top: 10px;
+}
+.exercise-complete-actions .set-card-complete {
+  margin-top: 0;
+}
+.exercise-complete-review {
+  min-height: 44px;
+  border: 1px solid var(--borderColor-default);
   border-radius: 12px;
   background: transparent;
   color: var(--fgColor-default);
   font: inherit;
-  font-size: clamp(28px, 3vw, 42px);
-  font-weight: 800;
-  padding: 4px 16px;
-  outline: 0;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-.workout-execution .set-card-input-wrap.has-unit .set-card-value {
-  padding-inline: 52px;
-}
-.workout-execution .set-card-unit {
-  position: absolute;
-  top: 50%;
-  right: 18px;
-  translate: 0 -50%;
-  color: var(--fgColor-muted);
-  font-size: 16px;
   font-weight: 600;
-  pointer-events: none;
+  cursor: pointer;
 }
-.workout-execution .set-card-field small {
-  color: var(--fgColor-muted);
-  font-size: 13px;
-  text-align: center;
+.workout-execution .workout-next {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 12px;
 }
-.workout-execution .set-card-complete {
-  min-height: 60px;
-  font-size: 21px;
-  margin-top: 24px;
-}
-.workout-execution .set-card-inheritance {
-  color: var(--fitness-accent-strong);
-  text-align: center;
-  font-size: 13px;
-  margin: 14px 0;
-}
-.workout-execution .session-summary {
+.cardio-fields {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-  text-align: center;
-  margin-top: 16px;
-  border-bottom: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
-.workout-execution .session-summary > div + div {
-  border-left: 1px solid var(--borderColor-default);
+.cardio-fieldset .set-card-complete {
+  margin-top: 4px;
 }
-.workout-execution .session-summary span {
-  font-size: 13px;
+@media (max-width: 359px) {
+  .cardio-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .set-card-value {
+    font-size: 26px;
+  }
 }
-.workout-execution .session-summary strong {
-  font-size: 22px;
+@media (prefers-reduced-motion: reduce) {
+  .set-card-fields,
+  .exercise-complete,
+  .save-status.is-saving svg {
+    animation: none;
+  }
+  .set-card-complete,
+  .set-card-segment {
+    transition: none;
+  }
 }
 .workout-execution .workout-details {
   margin-top: 14px;
@@ -478,35 +689,6 @@ body.keyboard-active .workout-execution .workout-form-actions {
   }
   .exercise-context-name > strong {
     font-size: 18px;
-  }
-  .exercise-context-actions > button {
-    min-height: 36px;
-  }
-  .workout-execution .set-card {
-    padding: 18px 14px 0;
-  }
-  .workout-execution .set-card-header {
-    flex-wrap: wrap;
-  }
-  .workout-execution .set-card-header-text > span:first-child {
-    font-size: 25px;
-  }
-  .workout-execution .set-card-fields {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-    margin-top: 14px;
-  }
-  .workout-execution .set-card-field {
-    min-height: 132px;
-    padding: 14px 12px;
-    gap: 8px;
-  }
-  .workout-execution .set-card-value {
-    height: 62px;
-    font-size: 34px;
-  }
-  .workout-execution .set-card-complete {
-    font-size: 20px;
   }
   .workout-execution .workout-form-actions {
     padding-inline: 0;

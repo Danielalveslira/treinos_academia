@@ -83,7 +83,9 @@ export function useWorkouts(filters = {}) {
     hasMore: !!query.data?.nextCursor,
     loadMore,
     refresh,
-    add: (workout) => createWorkout(user.uid, workout),
+    add: (workout, options) => createWorkout(user.uid, workout, options),
+    // Grava sem recarregar a lista (registro série a série: um refetch por série seria desperdício).
+    save: (id, workout) => updateWorkout(user.uid, id, workout),
     edit,
     remove,
   }

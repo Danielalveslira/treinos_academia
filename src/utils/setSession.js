@@ -80,7 +80,11 @@ export function concludeSet(sets, index) {
     }
     return set
   })
-  return { sets: next, nextIndex: nextPendingIndex(next, index), finished: next.every((s) => s.done) }
+  return {
+    sets: next,
+    nextIndex: nextPendingIndex(next, index),
+    finished: next.every((s) => s.done),
+  }
 }
 
 // Confirma a edição de uma série já concluída (sem mexer nas demais).
@@ -151,4 +155,18 @@ export function setSourceLabel(set) {
   if (set.source === 'history') return 'Sugerido do último treino'
   if (set.source === 'inherited') return 'Igual à série anterior'
   return null
+}
+
+// Resumo de uma lista de estados de gravação (o pior primeiro): usado no painel de exercício concluído.
+export function aggregateSyncStatus(statuses) {
+  const present = statuses.filter(Boolean)
+  for (const status of ['error', 'saving', 'local']) if (present.includes(status)) return status
+  return present.length ? 'saved' : null
+}
+
+// Estado de gravação de um registro cardio (uma linha, sem séries).
+export function rowSyncStatus(row) {
+  if (!row || row.status === 'idle' || row.status === 'saving') return 'saving'
+  if (row.status === 'error') return 'error'
+  return row.pendingSync ? 'local' : 'saved'
 }

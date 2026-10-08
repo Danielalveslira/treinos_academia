@@ -876,3 +876,69 @@ test('o aviso de logout só mostra a quantidade (nunca dado do treino) e some co
   on.status.resetSyncStatusForTests()
   assert.equal(on.notice.getPendingCount(), 0)
 })
+
+// ============================================================================ id do cliente (série a série)
+
+const UNIQUE = {
+  code: '23505',
+  message: 'duplicate key value violates unique constraint "workouts_pkey"',
+}
+const CLIENT_ID = 'c3000000-0000-4000-8000-0000000000aa'
+
+for (const [label, service, flag] of [
+  ['flag DESLIGADA', () => off, 'off'],
+  ['flag ligada', () => on, 'on'],
+]) {
+  test(`${label}: createWorkout com id do cliente envia esse id e repetir a criação vira UPDATE do mesmo registro`, async () => {
+    const api = service()
+    respond.fn = (call) => {
+      const steps = call.steps.map(([m]) => m)
+      if (steps.includes('insert'))
+        return { data: null, error: globalThis.__alreadyThere ? UNIQUE : null }
+      return undefined
+    }
+    respond.data = (call) => {
+      const insert = call.steps.find(([m]) => m === 'insert')?.[1]
+      return {
+        ...(insert || {}),
+        id: CLIENT_ID,
+        user_id: A,
+        exercise_id: EX,
+        type: 'strength',
+        set_details: [{ weight: 80, reps: 10 }],
+        sets: 1,
+        date: today,
+        note: '',
+        duration_minutes: null,
+        distance_km: null,
+        created_at: 'c',
+        updated_at: 'c',
+      }
+    }
+
+    globalThis.__alreadyThere = false
+    const first = await api.workouts.createWorkout(A, form(), { id: CLIENT_ID })
+    assert.equal(first.synced, true, flag)
+    const insert = globalThis.__calls[0].steps.find(([m]) => m === 'insert')[1]
+    assert.equal(insert.id, CLIENT_ID)
+
+    // A resposta da primeira tentativa se perdeu: o servidor responde "já existe" ao reenvio.
+    globalThis.__calls = []
+    globalThis.__alreadyThere = true
+    const retry = await api.workouts.createWorkout(A, form('85'), { id: CLIENT_ID })
+    delete globalThis.__alreadyThere
+    assert.equal(retry.synced, true)
+    const kinds = globalThis.__calls.map((c) => c.steps.map(([m]) => m)[0])
+    assert.deepEqual(kinds, ['insert', 'update'])
+    const update = globalThis.__calls[1].steps
+    assert.ok(
+      update.some(([m, column, value]) => m === 'eq' && column === 'id' && value === CLIENT_ID)
+    )
+    assert.deepEqual(await api.outbox.listMutations(A), [])
+  })
+}
+
+test('createWorkout sem id do cliente mantém o comportamento anterior (erro de unicidade continua sendo erro)', async () => {
+  respond.error = UNIQUE
+  await assert.rejects(off.workouts.createWorkout(A, form()), (e) => e === UNIQUE)
+})

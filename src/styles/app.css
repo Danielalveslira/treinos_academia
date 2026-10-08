@@ -3814,120 +3814,6 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 
 .form-error { display: block; margin-top: 8px; color: var(--fgColor-danger); }
 
-/* Card de série única (SetCard.jsx) -- substitui a antiga tabela de séries. */
-.set-card {
-  padding: 20px;
-  border-radius: var(--fitness-radius-md);
-  background: var(--fitness-surface);
-}
-
-.set-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.set-card-header-text { display: flex; align-items: baseline; gap: 16px; font-size: 13px; }
-.set-card-header-text > span:first-child { font-weight: 750; }
-.set-card-header-text > span:last-child { color: var(--fgColor-muted); }
-
-/* Discreto de propósito -- não deve competir com o CTA "concluir série" no rodapé. */
-.set-card-remove {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--fgColor-muted);
-  cursor: pointer;
-}
-.set-card-remove:disabled { cursor: not-allowed; opacity: .35; }
-.set-card-remove.is-confirming { background: var(--fgColor-danger); color: #fff; }
-
-.set-card-progress { display: flex; gap: 4px; margin-bottom: 20px; }
-
-.set-card-segment {
-  flex: 1;
-  height: 8px;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: var(--borderColor-muted);
-  cursor: pointer;
-  transition: background-color .15s ease;
-}
-.set-card-segment.is-active { background: var(--fitness-blue); }
-.set-card-segment.is-complete { background: var(--fitness-accent); }
-
-/* 44x44 -- alvo de toque mínimo recomendado, igual em todas as larguras (ver overrides
-   removidos de <359px, que encolhiam pra 34px). */
-.set-card-nav {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--bgColor-default);
-  color: var(--fgColor-default);
-  box-shadow: inset 0 0 0 1px var(--borderColor-default);
-  cursor: pointer;
-}
-.set-card-nav:disabled { cursor: not-allowed; opacity: .35; }
-
-.set-card-fields { display: grid; gap: 14px; min-width: 0; }
-.set-card-field { display: grid; justify-items: center; gap: 10px; min-width: 0; }
-.set-card-field-label { color: var(--fgColor-muted); font-size: 13px; }
-
-.set-card-value {
-  min-width: 64px;
-  font-size: 38px;
-  font-weight: 800;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-.set-card-complete {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  min-height: 52px;
-  margin-top: 20px;
-  border: 0;
-  border-radius: var(--fitness-radius-sm);
-  background: var(--fitness-accent);
-  color: #08110a;
-  font-size: 15px;
-  font-weight: 750;
-  cursor: pointer;
-}
-.set-card-complete:disabled { cursor: not-allowed; opacity: .45; }
-.set-card-complete.is-complete {
-  background: var(--fitness-accent-soft);
-  color: var(--fitness-accent-strong);
-  box-shadow: inset 0 0 0 1px var(--fitness-accent);
-}
-
-.session-summary {
-  display: flex;
-  justify-content: flex-end;
-  gap: 28px;
-  margin-top: 26px;
-  padding: 18px 0;
-  border-block: 1px solid var(--borderColor-muted);
-}
-
-.session-summary > div { display: flex; flex-direction: column; gap: 3px; }
-.session-summary span { color: var(--fgColor-muted); font-size: 11px; }
-.session-summary strong { font-size: 18px; font-variant-numeric: tabular-nums; }
 
 .workout-details { padding: 18px 0; border-bottom: 1px solid var(--borderColor-muted); }
 .workout-details summary { min-height: 30px; color: var(--fgColor-muted); font-size: 13px; cursor: pointer; }
@@ -4526,27 +4412,8 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .muscle-group-card { min-height: 66px; padding: 9px; }
   .muscle-group-mark { width: 34px; height: 34px; }
   .muscle-group-card strong { font-size: 13px; }
-  /* Respiro vertical bem mais apertado que o padrão (pensado pra telas largas) -- em
-     ~360-390px de largura por ~600px de altura, isso aproxima "concluir série" do
-     fim da tela sem rolar (não elimina 100% a rolagem em todo aparelho: o cabeçalho
-     fixo da página + "Vamos treinar" + as 3 abas + o cartão do exercício, tudo FORA
-     do SetCard, já somam ~370px antes do card começar -- reduzir isso está fora do
-     escopo deste componente). Os alvos de toque de 44x44 da navegação não encolhem. */
-  .set-card { padding: 10px 12px; }
-  .set-card-header { margin-bottom: 4px; }
-  .set-card-progress { margin-bottom: 6px; }
-  .set-card-fields { grid-template-columns: 1fr 1fr; align-items: start; gap: 8px; }
-  .set-card-value { min-width: 0; font-size: 22px; }
-  .set-card-field { gap: 2px; }
-  .set-card-field-label { font-size: 12px; }
-  .set-card-complete { min-height: 48px; margin-top: 6px; }
-  .session-summary { justify-content: space-between; gap: 14px; }
-  /* bottom vem de navigation.css (--bottom-navigation-space) -- carrega depois deste
-     arquivo, então uma segunda declaração aqui só ficaria morta/confusa. */
-  /* .workout-form-actions é sticky (sempre visível no fim da tela, mesmo raciocínio de
-     .set-card-complete acima) -- em telas curtas ele reserva essa faixa o tempo todo,
-     então "concluir série" precisa terminar ANTES dela, não só antes do fim da tela.
-     Reduzido aqui pra sobrar mais altura pro conteúdo por trás. */
+  /* .workout-form-actions (só na edição de um registro) é sticky: reserva essa faixa o tempo todo, então
+     fica enxuto aqui. bottom vem de navigation.css (--bottom-navigation-space), que carrega depois. */
   .workout-form-actions {
     margin-inline: -16px;
     padding-inline: 16px;
@@ -4608,11 +4475,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .workout-hero-content h2 { font-size: 28px; }
   .performance-strip { margin-inline: 4px; }
   .performance-strip > div { padding-inline: 9px; }
-  .set-card { padding: 14px; }
   .workout-form-actions { margin-inline: -12px; padding-inline: 12px; }
-  /* Em telas muito estreitas, os campos passam para uma coluna. */
-  .set-card-fields { grid-template-columns: 1fr; gap: 10px; }
-  .set-card-value { font-size: 28px; min-width: 52px; }
 }
 
 /* Authentication artwork: shared by login, registration and password recovery. */

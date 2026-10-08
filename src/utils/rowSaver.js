@@ -12,7 +12,12 @@ import { setValueKey } from './setSession.js'
 //  - persisted: { [chaveDaSérie]: 'peso|reps' } do que o servidor/aparelho já confirmou;
 //  - pendingSync: a última gravação ficou só neste aparelho (offline), aguardando sincronizar.
 
-export function createRowSaver({ createRow, updateRow, onChange, newId = () => crypto.randomUUID() }) {
+export function createRowSaver({
+  createRow,
+  updateRow,
+  onChange,
+  newId = () => crypto.randomUUID(),
+}) {
   let rowId = null
   let created = false
   let running = null
@@ -64,7 +69,8 @@ export function createRowSaver({ createRow, updateRow, onChange, newId = () => c
   return {
     save,
     // Reenvia o estado mais recente (botão "Tentar novamente" / volta da conexão).
-    retry: () => (latest && state.status === 'error' ? save(latest) : (running ?? Promise.resolve())),
+    retry: () =>
+      latest && state.status === 'error' ? save(latest) : (running ?? Promise.resolve()),
     getState: () => state,
     getRowId: () => rowId,
   }

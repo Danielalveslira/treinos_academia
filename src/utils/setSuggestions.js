@@ -11,17 +11,6 @@ export function suggestedSets(workout) {
     : [{ weight: '', reps: '', source: 'empty' }]
 }
 
-export function inheritSet(target, previous, completed) {
-  if (
-    completed ||
-    target.source === 'history' ||
-    target.source === 'manual' ||
-    !isValidSet(previous)
-  )
-    return target
-  return { ...target, weight: previous.weight, reps: previous.reps, source: 'inherited' }
-}
-
 // Empty and trailing decimal drafts stay editable; invalid syntax/ranges never enter state.
 export function parseSetInput(field, raw) {
   const value = raw.replace(',', '.')

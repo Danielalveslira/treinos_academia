@@ -44,7 +44,7 @@ export default function NewWorkout() {
   const plannedNotice = plannedWorkoutNotice(searchParams.get('planejado'), localDateKey())
 
   const { exercises, loading, error, refresh } = useExercises()
-  const { workouts, add } = useWorkouts()
+  const { workouts, add, save } = useWorkouts()
   const { toasts, showToast } = useToast()
   const { user } = useAuth()
   const online = useOnlineStatus()
@@ -83,23 +83,25 @@ export default function NewWorkout() {
     setFinishing(false)
   }
 
-  async function handleSubmit(values) {
+  // Cada série concluída chega aqui (WorkoutForm -> utils/rowSaver.js): a primeira cria o registro do
+  // exercício, as seguintes o atualizam. Sem toast por série — a própria série mostra se foi salva, está
+  // pendente neste aparelho ou falhou; erros sobem para o saver, que oferece "Tentar novamente".
+  async function handleCreate(values, options) {
     try {
-      const result = await add(values)
+      const result = await add(values, options)
       setHasRegistered(true)
-      showToast(
-        result?.pendingSync
-          ? 'Salvo neste aparelho. Será sincronizado quando houver conexão.'
-          : 'Treino registrado.'
-      )
+      return result
     } catch (err) {
       console.error('[NewWorkout] create:', err)
-      showToast('Erro ao registrar treino.', 'danger')
-      // Relançado de propósito: WorkoutForm precisa distinguir sucesso de falha pra não
-      // marcar o exercício como concluído nem avançar de aba num salvamento que falhou
-      // (ver handleSubmit em WorkoutForm.jsx). A navegação pra fora do fluxo de treino
-      // (ex.: /historico) não acontece mais aqui -- ver nextStepAfterFinishing, que
-      // mantém o usuário dentro do fluxo por abas (grupo -> exercício -> séries).
+      throw err
+    }
+  }
+
+  async function handleUpdate(id, values) {
+    try {
+      return await save(id, values)
+    } catch (err) {
+      console.error('[NewWorkout] update:', err)
       throw err
     }
   }
@@ -143,7 +145,8 @@ export default function NewWorkout() {
           exercises={exercises}
           history={workouts}
           defaultExerciseId={defaultExerciseId}
-          onSubmit={handleSubmit}
+          onCreate={handleCreate}
+          onUpdate={handleUpdate}
           onCancel={() => returnToOrigin(navigate, location, '/')}
         />
       )}
