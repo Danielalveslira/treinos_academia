@@ -6,6 +6,7 @@ import {
   ShareIcon,
   SunIcon,
 } from '@primer/octicons-react'
+import { BedSingle } from 'lucide-react'
 import { ConsistencyFlame } from './ConsistencyFlame'
 import { useDayPeriod } from '../hooks/useDayPeriod'
 
@@ -115,7 +116,9 @@ export function StreakCard({
                 </span>
                 <span className={`streak-pip is-${day.state}`} aria-hidden="true">
                   {day.state === 'completed' && <CheckIcon size={16} />}
-                  {day.state === 'rest' && <span>–</span>}
+                  {day.state === 'rest' && (
+                    <BedSingle size={16} strokeWidth={2} className="streak-rest-icon" />
+                  )}
                 </span>
               </li>
             ))}

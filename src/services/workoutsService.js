@@ -181,14 +181,28 @@ function writeSignal() {
   return AbortSignal.timeout(WRITE_TIMEOUT_MS)
 }
 
-export async function createWorkout(userId, workout) {
+// `id` (opcional): id do registro gerado pelo cliente. Permite repetir a criação sem duplicar o registro
+// quando a resposta anterior se perdeu (o id já existente vira atualização) — usado pelo registro série a
+// série (utils/rowSaver.js). Sem `id`, o comportamento é o de sempre.
+const UNIQUE_VIOLATION = '23505'
+
+export async function createWorkout(userId, workout, { id: clientId } = {}) {
   const payload = workoutPayload(workout) // valida; inválido nunca chega nem na fila
   if (!(await canQueueLocally())) {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('workouts')
-      .insert({ user_id: userId, ...payload })
+      .insert({ ...(clientId ? { id: clientId } : {}), user_id: userId, ...payload })
       .select()
       .single()
+    if (error?.code === UNIQUE_VIOLATION && clientId) {
+      ;({ data, error } = await supabase
+        .from('workouts')
+        .update(payload)
+        .eq('id', clientId)
+        .eq('user_id', userId)
+        .select()
+        .single())
+    }
     if (error) throw error
     invalidateWorkoutCache(userId)
     cacheWorkoutRow(userId, data) // cache local em segundo plano; nunca lança
@@ -196,16 +210,26 @@ export async function createWorkout(userId, workout) {
   }
   // O id nasce no cliente: o MESMO id vale no servidor (sem mapa id-local -> id-remoto) e torna o
   // reenvio idempotente se a resposta se perder.
-  const id = globalThis.crypto.randomUUID()
+  const id = clientId || globalThis.crypto.randomUUID()
   if (!browserSaysOffline()) {
     const signal = writeSignal()
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('workouts')
         .insert({ id, user_id: userId, ...payload })
         .select()
         .single()
         .abortSignal(signal)
+      if (error?.code === UNIQUE_VIOLATION && clientId) {
+        ;({ data, error } = await supabase
+          .from('workouts')
+          .update(payload)
+          .eq('id', id)
+          .eq('user_id', userId)
+          .select()
+          .single()
+          .abortSignal(signal))
+      }
       if (error) throw error
       invalidateWorkoutCache(userId)
       cacheWorkoutRow(userId, data)

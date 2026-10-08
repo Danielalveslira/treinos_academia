@@ -3194,6 +3194,8 @@ body {
   background: repeating-linear-gradient(135deg, transparent 0 3px, var(--bgColor-muted) 3px 6px);
 }
 
+.streak-rest-icon { flex: 0 0 auto; color: var(--fgColor-default); opacity: .75; }
+
 .streak-day.is-today .streak-pip:not(.is-completed) {
   border-color: var(--fitness-accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--fitness-accent) 22%, transparent);

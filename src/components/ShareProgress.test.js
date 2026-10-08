@@ -140,6 +140,10 @@ test('consistency card: weekday labels, legend, today status with a period icon 
     onShare() {},
   })
   assert.equal([...html.matchAll(/class="streak-day-name"/g)].length, 7)
+  // Cama SÓ no bloquinho de descanso (1 dia 'rest' no fixture); nenhum outro estado a recebe.
+  assert.equal([...html.matchAll(/streak-rest-icon/g)].length, 1)
+  assert.match(html, /streak-pip is-rest"[^>]*><svg[^>]*streak-rest-icon/)
+  assert.doesNotMatch(html, /is-(completed|planned|none)"[^>]*><svg[^>]*streak-rest-icon/)
   for (const label of ['Concluído', 'Planejado', 'Descanso', 'Pendente'])
     assert.match(html, new RegExp(label))
   assert.match(html, /data-period="(day|night)"/)
