@@ -7,13 +7,11 @@ import {
   buildBootstrapRecord,
   disableOfflineAccess,
   dropBootstrapsExcept,
-  evaluateOfflineEntry,
   markBootstrapBlocked,
   minimalProfile,
-  offlineIdentity,
-  readActiveBootstrap,
   saveBootstrap,
 } from './bootstrap.js'
+import { evaluateOfflineEntry, offlineIdentity, readActiveBootstrap } from './bootstrapEntry.js'
 import { OPERATIONS, enqueueWorkoutMutation, listMutations } from './outbox.js'
 import { purgePrivateData } from './userScope.js'
 import { recordWorkoutsPage, readCachedWorkouts } from './historyCache.js'

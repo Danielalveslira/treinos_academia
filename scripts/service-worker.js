@@ -18,6 +18,11 @@ const ASSET_CACHE = 'treinos-assets-v1'
 const IMAGE_CACHE = 'treinos-images-v1'
 const SHELL_URLS = __SHELL_URLS__ // eslint-disable-line no-undef
 const BOOT_ASSETS = __BOOT_ASSETS__ // eslint-disable-line no-undef
+// Chunks das telas que abrem offline (Home, Treino, Histórico, Exercícios, detalhe): resolvidos no build
+// a partir dos módulos-fonte (scripts/pwa-plugin.js), nunca por nome fixo.
+const OFFLINE_ASSETS = __OFFLINE_ASSETS__ // eslint-disable-line no-undef
+// Conjunto mínimo que esta versão exige para abrir offline: entra inteiro no install e nunca é expulso.
+const CORE_ASSETS = [...BOOT_ASSETS, ...OFFLINE_ASSETS]
 // Telemetria da última milha do Push (RPC pública, só avança o tempo da entrega dona do token).
 // Null quando o build não tem as variáveis do Supabase: a telemetria simplesmente não roda.
 const PUSH_ACK_URL = __PUSH_ACK_URL__ // eslint-disable-line no-undef
@@ -38,14 +43,22 @@ const CURRENT_CACHES = [SHELL_CACHE, ASSET_CACHE, IMAGE_CACHE]
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
-      const shell = await caches.open(SHELL_CACHE)
-      await shell.addAll(SHELL_URLS.map((url) => new Request(url, { cache: 'reload' })))
-      const assets = await caches.open(ASSET_CACHE)
-      await Promise.all(
-        BOOT_ASSETS.map(async (url) => {
-          if (!(await assets.match(url))) await assets.add(url)
-        })
-      )
+      // ATÔMICO: a versão só vira "pronta" (e só então ativa) quando shell + boot + telas offline estão
+      // TODOS no cache. Qualquer falha rejeita o install: o worker anterior (e o cache funcional dele)
+      // continua valendo, e o shell parcial desta versão é descartado -- nunca "index novo + chunk antigo".
+      try {
+        const shell = await caches.open(SHELL_CACHE)
+        await shell.addAll(SHELL_URLS.map((url) => new Request(url, { cache: 'reload' })))
+        const assets = await caches.open(ASSET_CACHE)
+        await Promise.all(
+          CORE_ASSETS.map(async (url) => {
+            if (!(await assets.match(url, { ignoreVary: true }))) await storeAsset(assets, url)
+          })
+        )
+      } catch (error) {
+        await caches.delete(SHELL_CACHE)
+        throw error
+      }
       // A install que não ativa sozinha é a causa raiz da tela branca pós-deploy: uma
       // aba que só faz hard refresh (sem fechar todas as abas) nunca via a versão nova,
       // e ficava presa servindo um index.html antigo apontando para chunks já removidos
@@ -68,27 +81,32 @@ self.addEventListener('activate', (event) => {
           .filter((key) => key.startsWith(OWNED_PREFIX) && !CURRENT_CACHES.includes(key))
           .map((key) => caches.delete(key))
       )
-      // Chunks de boot que o teto já tenha expulsado (ex.: instalados em outra versão e nunca
+      // Chunks essenciais que o teto já tenha expulsado (ex.: instalados em outra versão e nunca
       // reinseridos) voltam ao cache antes da poda: sem eles o app não abre offline.
-      await restoreBootAssets()
+      await restoreCoreAssets()
       await Promise.all([
-        trim(ASSET_CACHE, MAX_ASSET_ENTRIES, BOOT_ASSETS),
+        trim(ASSET_CACHE, MAX_ASSET_ENTRIES, CORE_ASSETS),
         trim(IMAGE_CACHE, MAX_IMAGE_ENTRIES),
       ])
     })()
   )
 })
 
+// Busca e guarda um asset; recusa 404/erro/HTML do fallback SPA (não seria um chunk JS/CSS de verdade).
+async function storeAsset(cache, url) {
+  const response = await fetch(url)
+  if (!isCacheableAsset(response)) throw new Error(`asset indisponível: ${url}`)
+  await cache.put(url, response)
+}
+
 // Melhor esforço: sem rede, o próximo install/activate com rede repete.
-async function restoreBootAssets() {
+async function restoreCoreAssets() {
   try {
     const cache = await caches.open(ASSET_CACHE)
     await Promise.all(
-      BOOT_ASSETS.map(async (url) => {
+      CORE_ASSETS.map(async (url) => {
         try {
-          if (await cache.match(url, { ignoreVary: true })) return
-          const response = await fetch(url)
-          if (isCacheableAsset(response)) await cache.put(url, response)
+          if (!(await cache.match(url, { ignoreVary: true }))) await storeAsset(cache, url)
         } catch {
           /* offline: tenta de novo no próximo ciclo */
         }
@@ -133,7 +151,7 @@ async function assetStrategy(request) {
   const response = await fetch(request)
   if (isCacheableAsset(response)) {
     await cache.put(request, response.clone())
-    trim(ASSET_CACHE, MAX_ASSET_ENTRIES, BOOT_ASSETS).catch(() => {})
+    trim(ASSET_CACHE, MAX_ASSET_ENTRIES, CORE_ASSETS).catch(() => {})
   }
   return response
 }
@@ -174,17 +192,12 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     // Network-first: um refresh (inclusive hard refresh) deve sempre buscar o shell
-    // mais atual quando há conexão. O cache só entra como fallback offline (cenário
-    // coberto pelo pwa-offline em PwaControls), nunca como fonte primária.
+    // mais atual quando há conexão. O cache só entra como fallback offline, nunca como fonte
+    // primária. O shell do cache é SÓ o do install desta versão (casado com os chunks que o install
+    // guardou): regravá-lo com o HTML da rede, que pode ser de um deploy mais novo que este worker,
+    // criaria "index novo + chunks que não estão no cache" e o app não abriria offline.
     event.respondWith(
       fetch(request)
-        .then((response) => {
-          if (response.ok) {
-            const copy = response.clone()
-            caches.open(SHELL_CACHE).then((cache) => cache.put('/index.html', copy))
-          }
-          return response
-        })
         .catch(
           async () =>
             (await caches.open(SHELL_CACHE).then((c) => c.match('/index.html'))) || Response.error()

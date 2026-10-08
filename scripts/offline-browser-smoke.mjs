@@ -114,6 +114,95 @@ async function readLocal(page) {
   }), { dbName: DB_NAME, dbVersion: DB_VERSION, userId: USER_ID })
 }
 
+
+// Sessão do Supabase JÁ no armazenamento do navegador (token válido): é o caso real do cold start -- o
+// auth-js entrega o usuário sem rede e o app NÃO pode esperar por RPC nenhuma para abrir.
+async function seedSupabaseSession(page) {
+  await page.evaluate(({ userId }) => {
+    const expires = Math.floor(Date.now() / 1000) + 3600
+    localStorage.setItem('sb-offline-smoke-auth-token', JSON.stringify({
+      access_token: 'a.b.c', refresh_token: 'r', token_type: 'bearer', expires_in: 3600, expires_at: expires,
+      user: { id: userId, aud: 'authenticated', role: 'authenticated', email: 'offline@teste.dev', email_confirmed_at: '2026-10-01T10:00:00Z', app_metadata: {}, user_metadata: {}, created_at: '2026-10-01T10:00:00Z' },
+    }))
+  }, { userId: USER_ID })
+}
+
+// Reproduz o bug real: NADA é pré-buscado à mão. O Service Worker é a única fonte dos chunks; sessão do
+// Supabase presente; PWA reaberto sem rede; Home -> Treino -> detalhe do exercício -> registro offline.
+async function coldStartWithoutManualWarmup(browser, origin, outDir) {
+  const context = await browser.newContext()
+  let page = await context.newPage()
+  await page.goto(origin)
+  await page.evaluate(() => navigator.serviceWorker.ready)
+  if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller)))) await page.reload()
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller))
+  const cached = await page.evaluate(async () => {
+    const names = (await caches.keys()).filter((name) => name.startsWith('treinos-assets'))
+    return (await Promise.all(names.map(async (name) => (await (await caches.open(name)).keys()).map((r) => new URL(r.url).pathname)))).flat()
+  })
+  const sw = readFileSync(join(outDir, 'sw.js'), 'utf8')
+  const expected = [...JSON.parse(/const BOOT_ASSETS = (\[[^\]]*\])/.exec(sw)[1]), ...JSON.parse(/const OFFLINE_ASSETS = (\[[^\]]*\])/.exec(sw)[1])]
+  assert(expected.length > 4, 'OFFLINE_ASSETS vazio: as telas essenciais não entraram no build do SW')
+  for (const url of expected) assert(cached.includes(url), `Install não guardou ${url}`)
+  await seed(page)
+  await seedSupabaseSession(page)
+  await page.close()
+
+  await context.setOffline(true)
+  page = await context.newPage()
+  const problems = []
+  const backend = []
+  page.on('console', (message) => {
+    if (/dynamically imported module|Failed to fetch dynamically/i.test(message.text())) problems.push(message.text())
+  })
+  page.on('pageerror', (error) => {
+    if (/dynamically imported module/i.test(error.message)) problems.push(error.message)
+  })
+  page.on('requestfailed', (request) => {
+    if (new URL(request.url()).pathname.startsWith('/assets/')) problems.push(`asset falhou: ${request.url()}`)
+  })
+  page.on('request', (request) => {
+    if (request.url().includes('offline-smoke.invalid')) backend.push(request.url())
+  })
+  page.on('websocket', (socket) => backend.push(socket.url()))
+
+  await page.goto(origin, { waitUntil: 'domcontentloaded' })
+  await page.getByText('Modo offline: você entrou com os dados salvos neste aparelho.', { exact: false }).waitFor({ timeout: 15_000 })
+  assert((await page.getByText('Você está sem conexão', { exact: false }).count()) === 0, 'Tela de bloqueio offline apareceu')
+  const blocked = await page.evaluate(() => document.getElementById('app-content')?.inert === true)
+  assert(!blocked, 'Conteúdo do app ficou inerte (bloqueio offline do PwaControls)')
+  await page.getByText('teste_offline', { exact: false }).first().waitFor({ timeout: 15_000 })
+
+  await page.locator('a[href="/novo-treino"]').first().click()
+  await page.locator('.muscle-group-card').first().waitFor({ timeout: 15_000 })
+  // Detalhe do exercício: o chunk lazy precisa vir do cache (a tela pode mostrar seu próprio erro de dados).
+  await page.goto(`${origin}/exercicios/${EXERCISE_ID}`, { waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(1500)
+  assert((await page.getByText('Esta área ainda não está disponível offline', { exact: false }).count()) === 0, 'Detalhe do exercício caiu no fallback "indisponível offline"')
+  await page.goto(`${origin}/historico`, { waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(1000)
+  await page.goto(`${origin}/novo-treino`, { waitUntil: 'domcontentloaded' })
+  await page.locator('.muscle-group-card').first().click()
+  await page.locator('.workout-exercise-card').first().click()
+  await page.getByLabel('Peso (kg)').fill('30')
+  await page.getByLabel('Repetições').fill('8')
+  await page.getByRole('button', { name: 'Concluir série' }).click()
+  await page.getByRole('button', { name: 'Finalizar exercício' }).click()
+  await page.waitForFunction(async ({ dbName, dbVersion }) => new Promise((resolveDone) => {
+    const open = indexedDB.open(dbName, dbVersion)
+    open.onsuccess = () => {
+      const db = open.result
+      const count = db.transaction('outbox').objectStore('outbox').count()
+      count.onsuccess = () => { db.close(); resolveDone(count.result >= 2) }
+    }
+  }), { dbName: DB_NAME, dbVersion: DB_VERSION })
+
+  assert(problems.length === 0, `Falhas de chunk/asset offline:\n${problems.join('\n')}`)
+  assert(backend.length === 0, `Boot offline tentou falar com o backend/Realtime:\n${backend.join('\n')}`)
+  await context.close()
+  return expected.length
+}
+
 async function main() {
   assert(LEGAL_DIGEST, 'Bundle legal aprovado ausente no fixture')
   const outDir = mkdtempSync(join(tmpdir(), 'evolutus-offline-browser-'))
@@ -125,6 +214,7 @@ async function main() {
     server = started.server
     const origin = started.origin
     browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined })
+    const coreAssets = await coldStartWithoutManualWarmup(browser, origin, outDir)
     const context = await browser.newContext()
     let page = await context.newPage()
     await page.goto(origin)
@@ -180,7 +270,7 @@ async function main() {
     await page.waitForURL('**/login', { timeout: 15_000 })
     const afterReconnect = await readLocal(page)
     assert(afterReconnect.outbox.length >= 2, 'Reconexão sem sessão apagou a outbox')
-    console.log(`CHROMIUM_OFFLINE_OK: cold start, IndexedDB, outbox=${afterReconnect.outbox.length}, escrita, reconexão e atualização do SW`)
+    console.log(`CHROMIUM_OFFLINE_OK: cold start sem pré-busca manual (${coreAssets} assets do SW), sem RPC/Realtime no boot, IndexedDB, outbox=${afterReconnect.outbox.length}, escrita, reconexão e atualização do SW`)
   } finally {
     await browser?.close()
     if (server) await new Promise((resolveClosed) => server.close(resolveClosed))

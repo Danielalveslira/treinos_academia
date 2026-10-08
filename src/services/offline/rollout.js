@@ -2,6 +2,7 @@
 // autenticada; nunca concede autoridade server-side. VITE_* continua como chave mestra de segurança.
 let activeUserId = null
 const listeners = new Set()
+let revision = 0
 const snapshots = new Map()
 const inFlight = new Map()
 const FEATURES = ['offline_write', 'offline_cold_start']
@@ -14,7 +15,19 @@ export function setOfflineRolloutUser(userId) {
   const next = typeof userId === 'string' && userId ? userId : null
   if (activeUserId === next) return
   activeUserId = next
+  notify()
+}
+
+// Cada mudança (usuário OU snapshot) incrementa a revisão. Quem lê as flags durante o render precisa
+// assinar a REVISÃO, não o id do usuário: o snapshot costuma chegar depois do usuário (hidratado do
+// IndexedDB), com o mesmo id, e um useSyncExternalStore sobre o id não re-renderizaria.
+function notify() {
+  revision += 1
   for (const listener of listeners) listener()
+}
+
+export function getOfflineRolloutRevision() {
+  return revision
 }
 
 export function getOfflineRolloutUser() {
@@ -58,7 +71,7 @@ export function setRemoteRolloutSnapshot(userId, raw, cache = false) {
       ? previous[feature] : snapshot[feature]]))
   if (JSON.stringify(previous) === JSON.stringify(merged)) return true
   snapshots.set(userId, merged)
-  if (userId === activeUserId) for (const listener of listeners) listener()
+  if (userId === activeUserId) notify()
   return true
 }
 

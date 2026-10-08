@@ -9,6 +9,7 @@ export const routeLoaders = {
   '/historico': () => import('./pages/History'),
   '/progresso': () => import('./pages/Progress'),
   '/exercicios': () => import('./pages/Exercises'),
+  '/exercicios/:id': () => import('./pages/ExerciseDetail'),
   '/comunidades': () => import('./pages/Communities'),
 }
 

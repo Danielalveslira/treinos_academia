@@ -26,11 +26,11 @@ import { createProbe } from '../services/offline/connectivity'
 import {
   buildBootstrapRecord,
   dropBootstrapsExcept,
-  evaluateOfflineEntry,
-  offlineIdentity,
-  readActiveBootstrap,
   saveBootstrap,
 } from '../services/offline/bootstrap'
+
+// Leitura/decisão do cold start: só carregada quando o app abre sem rede (fora do bundle de boot online).
+const bootstrapEntry = () => import('../services/offline/bootstrapEntry')
 import { resolveLegalGateState } from '../utils/legal'
 import { requiresEmailVerification } from '../utils/emailVerification'
 
@@ -225,7 +225,20 @@ export function AuthProvider({ children }) {
     // podia usar" -- NUNCA "o servidor confirmou agora". Nenhum token é guardado aqui (a sessão é do
     // Supabase); o servidor continua decidindo tudo que exige backend, e ao reconectar o estado dele
     // prevalece (revalidate). Falha segura: qualquer dúvida = não entra offline.
+    // Snapshot local utilizável por ESTE usuário: bootstrap gravado online e válido para o mesmo id, e o
+    // cold start autorizado para ele (snapshot de rollout hidratado do IndexedDB). Nunca consulta a rede.
+    async function localEntryFor(userId) {
+      const { readActiveBootstrap, evaluateOfflineEntry } = await bootstrapEntry()
+      const record = await readActiveBootstrap()
+      await hydrateOfflineRollout(userId)
+      return evaluateOfflineEntry(record, { userId }).ok &&
+        isOfflineColdStartEnabled(import.meta.env, userId)
+        ? record
+        : null
+    }
+
     async function resolveOfflineEntry() {
+      const { readActiveBootstrap, evaluateOfflineEntry } = await bootstrapEntry()
       const record = await readActiveBootstrap()
       setOfflineTelemetryContext(record?.user_id, false)
       if (!evaluateOfflineEntry(record, { userId: lastSessionUserIdRef.current }).ok) {
@@ -243,7 +256,8 @@ export function AuthProvider({ children }) {
       return record
     }
 
-    function enterOfflineLocal(record, current) {
+    async function enterOfflineLocal(record, current) {
+      const { offlineIdentity } = await bootstrapEntry()
       if (!active || current !== sessionRevisionRef.current) return
       const identity = offlineIdentity(record)
       setOfflineTelemetryContext(identity.user.id, false)
@@ -283,6 +297,14 @@ export function AuthProvider({ children }) {
       // outbox nunca). Sem sessão e com cold start ligado a limpeza espera a decisão abaixo: ausência de
       // sessão por EXPIRAÇÃO/rede não é logout, e o logout explícito já desligou o bootstrap (authService).
       if (supabaseUser || !coldStart) purgePrivateData(supabaseUser?.id ?? null)
+      // Cold start SEM rede: o navegador já diz que está offline, então perfil/termos/acesso/carteira e
+      // Realtime nem são tentados -- o snapshot local validado ONLINE para ESTE usuário abre o app na hora.
+      // Sem snapshot válido (ou feature não autorizada) cai no caminho normal logo abaixo, como antes.
+      if (coldStart && supabaseUser && globalThis.navigator?.onLine === false) {
+        const record = await localEntryFor(supabaseUser.id)
+        if (!active || current !== sessionRevisionRef.current) return
+        if (record) return await enterOfflineLocal(record, current)
+      }
       loadedUserIdRef.current = supabaseUser?.id ?? null
       authModeRef.current = 'online'
       setAuthMode('online')
@@ -304,7 +326,7 @@ export function AuthProvider({ children }) {
           const record = await resolveOfflineEntry()
           if (!active || current !== sessionRevisionRef.current) return
           if (record) {
-            enterOfflineLocal(record, current)
+            await enterOfflineLocal(record, current)
             return
           }
           purgePrivateData(null)
@@ -326,14 +348,10 @@ export function AuthProvider({ children }) {
       if (!active || current !== sessionRevisionRef.current) return
 
       if (coldStart && hasConnectivityFailure(profileResult, legalResult, accessResult)) {
-        const record = await readActiveBootstrap()
-        await hydrateOfflineRollout(supabaseUser.id)
+        const record = await localEntryFor(supabaseUser.id)
         if (!active || current !== sessionRevisionRef.current) return
-        if (
-          evaluateOfflineEntry(record, { userId: supabaseUser.id }).ok &&
-          isOfflineColdStartEnabled(import.meta.env, supabaseUser.id)
-        ) {
-          enterOfflineLocal(record, current)
+        if (record) {
+          await enterOfflineLocal(record, current)
         } else {
           setProfileError(OFFLINE_ENTRY_REQUIRES_INTERNET)
           setLegalLoading(false)
@@ -440,6 +458,13 @@ export function AuthProvider({ children }) {
   // Busca a configuração operacional com a sessão online. Poll lento (só com a aba visível) + foreground + `online` propagam o
   // kill switch sem novo build. A decisão local usa apenas a última resposta válida desta conta.
   useEffect(() => subscribeOfflineRollout(() => setRolloutRevision((value) => value + 1)), [])
+  useEffect(() => {
+    let stop
+    import('../supabase/realtimeOffline')
+      .then((module) => { stop = module.pauseRealtimeWhenOffline(supabase) })
+      .catch(() => {})
+    return () => stop?.()
+  }, [])
   useEffect(() => {
     if (authMode !== 'online' || !user?.uid || serverAccessAllowed !== true) return undefined
     let active = true

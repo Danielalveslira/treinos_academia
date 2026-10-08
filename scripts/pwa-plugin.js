@@ -29,6 +29,48 @@ export function collectBootAssets(bundle) {
   return [...seen].sort().map((file) => `/${file}`)
 }
 
+// Telas/módulos que precisam abrir SEM rede no cold start offline (Home, Treino, Histórico, Exercícios,
+// detalhe do exercício e o indicador de sincronização). Identificados pelo caminho-fonte, nunca pelo
+// nome com hash: o hash muda a cada build e esta lista é resolvida contra o bundle gerado. Fica de fora
+// o que é pesado ou exige servidor (Progresso/gráficos, Comunidades, Admin...): isso segue sob demanda.
+export const OFFLINE_ESSENTIAL_MODULES = [
+  'src/pages/Dashboard.jsx',
+  'src/pages/NewWorkout.jsx',
+  'src/pages/History.jsx',
+  'src/pages/Exercises.jsx',
+  'src/pages/ExerciseDetail.jsx',
+  'src/components/SyncStatus.jsx',
+  // Dependências dinâmicas do próprio cold start (abrir sem rede e pausar o Realtime):
+  'src/services/offline/bootstrapEntry.js',
+  'src/supabase/realtimeOffline.js',
+]
+
+// Chunks (JS/CSS) dos módulos essenciais: o chunk-fachada de cada um + TUDO que ele importa
+// ESTATICAMENTE (chunks compartilhados e CSS). Imports dinâmicos não entram. Já exclui o que o boot
+// precacheia. Falha o build se um módulo essencial sumir/for renomeado: o offline quebraria em silêncio.
+export function collectOfflineAssets(bundle, bootAssets, modules = OFFLINE_ESSENTIAL_MODULES) {
+  const boot = new Set(bootAssets)
+  const seen = new Set()
+  const visit = (fileName) => {
+    const chunk = bundle[fileName]
+    if (!chunk || chunk.type !== 'chunk' || seen.has(fileName)) return
+    seen.add(fileName)
+    for (const css of chunk.viteMetadata?.importedCss ?? []) seen.add(css)
+    chunk.imports.forEach(visit)
+  }
+  for (const module of modules) {
+    const facade = Object.values(bundle).find(
+      (chunk) => chunk.type === 'chunk' && chunk.facadeModuleId?.replaceAll('\\', '/').endsWith(`/${module}`)
+    )
+    if (!facade) throw new Error(`Módulo offline essencial não encontrado no bundle: ${module}`)
+    visit(facade.fileName)
+  }
+  return [...seen]
+    .map((file) => `/${file}`)
+    .filter((url) => !boot.has(url))
+    .sort()
+}
+
 // Endpoint e chave PÚBLICA (anon) da RPC de telemetria do Push. Sem as duas variáveis (ou com URL que
 // não seja https) o Service Worker sai sem telemetria, nunca com valores parciais.
 export function pushAckConfig(env = {}) {
@@ -59,6 +101,7 @@ export function pwaPlugin() {
       for (const file of files) hash.update(bundle[file].code || bundle[file].source)
       for (const file of PUBLIC_SHELL_FILES) hash.update(readFileSync(`public/${file}`))
       const template = readFileSync('scripts/service-worker.js', 'utf8')
+      const bootAssets = collectBootAssets(bundle)
       hash.update(template)
       const source = template
         .replace('__VERSION__', hash.digest('hex').slice(0, 16))
@@ -66,7 +109,8 @@ export function pwaPlugin() {
           '__SHELL_URLS__',
           JSON.stringify(['/index.html', ...PUBLIC_SHELL_FILES.map((file) => `/${file}`)])
         )
-        .replace('__BOOT_ASSETS__', JSON.stringify(collectBootAssets(bundle)))
+        .replace('__BOOT_ASSETS__', JSON.stringify(bootAssets))
+        .replace('__OFFLINE_ASSETS__', JSON.stringify(collectOfflineAssets(bundle, bootAssets)))
         .replace('__PUSH_ACK_URL__', () => JSON.stringify(ack.url))
         .replace('__PUSH_ACK_KEY__', () => JSON.stringify(ack.key))
       this.emitFile({ type: 'asset', fileName: 'sw.js', source })

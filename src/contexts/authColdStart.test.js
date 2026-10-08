@@ -14,6 +14,7 @@ const require = createRequire(import.meta.url)
 let directory
 let on
 let off
+let prod
 
 async function bundle(name, env) {
   const outfile = join(directory, `${name}.cjs`)
@@ -26,10 +27,13 @@ async function bundle(name, env) {
         import { useAuth } from '../hooks/useAuth.js'
         import { logoutUser } from '../services/authService.js'
         import { LEGAL_MANIFEST, LEGAL_DOCUMENTS, APPROVED_LEGAL_DIGESTS, resolveLegalGateState } from '../utils/legal.js'
-        import * as bootstrap from '../services/offline/bootstrap.js'
+        import * as bootstrapMain from '../services/offline/bootstrap.js'
+        import * as bootstrapEntry from '../services/offline/bootstrapEntry.js'
+        const bootstrap = { ...bootstrapMain, ...bootstrapEntry }
         import * as outbox from '../services/offline/outbox.js'
         import * as history from '../services/offline/historyCache.js'
         import { closeDatabase } from '../services/offline/database.js'
+        import { setRemoteRolloutSnapshot } from '../services/offline/rollout.js'
         import { consumeLogoutReason } from '../utils/logoutReason.js'
 
         let latest = null
@@ -40,7 +44,7 @@ async function bundle(name, env) {
           return { tree, unmount: () => act(() => tree.unmount()) }
         }
         export const auth = () => latest
-        export { act, logoutUser, bootstrap, outbox, history, closeDatabase, consumeLogoutReason, resolveLegalGateState, LEGAL_MANIFEST, LEGAL_DOCUMENTS, APPROVED_LEGAL_DIGESTS }
+        export { act, logoutUser, setRemoteRolloutSnapshot, bootstrap, outbox, history, closeDatabase, consumeLogoutReason, resolveLegalGateState, LEGAL_MANIFEST, LEGAL_DOCUMENTS, APPROVED_LEGAL_DIGESTS }
       `,
       resolveDir: new URL('.', import.meta.url).pathname,
     },
@@ -97,6 +101,13 @@ before(async () => {
     VITE_SUPABASE_URL: 'http://backend.test',
     VITE_SUPABASE_ANON_KEY: 'k',
   })
+  prod = await bundle('prod', {
+    PROD: true,
+    VITE_OFFLINE_WRITE_ENABLED: 'true',
+    VITE_OFFLINE_COLD_START_ENABLED: 'true',
+    VITE_SUPABASE_URL: 'http://backend.test',
+    VITE_SUPABASE_ANON_KEY: 'k',
+  })
   off = await bundle('off', {
     VITE_SUPABASE_URL: 'http://backend.test',
     VITE_SUPABASE_ANON_KEY: 'k',
@@ -105,6 +116,7 @@ before(async () => {
 after(async () => {
   await on.closeDatabase()
   await off.closeDatabase()
+  await prod.closeDatabase()
   await rm(directory, { recursive: true, force: true })
 })
 
@@ -146,6 +158,7 @@ function setNavigator(onLine) {
 beforeEach(async () => {
   await on.closeDatabase()
   await off.closeDatabase()
+  await prod.closeDatabase()
   globalThis.indexedDB = new IDBFactory()
   const [version, digest] = Object.entries(on.APPROVED_LEGAL_DIGESTS).at(-1)
   world = {
@@ -756,5 +769,94 @@ test('RECONEXÃO: erro do SERVIDOR (não de rede) ao revalidar sai do modo offli
   await settle(200)
   assert.equal(on.auth().offlineLocal, false) // o servidor negou: o estado online prevalece (nada de "continuar offline")
   assert.match(on.auth().profileError, /Não foi possível carregar seu perfil/)
+  view.unmount()
+})
+
+
+// ============================================================================ cold start NÃO depende da rede
+
+const rollout = (coldStart, extra = {}) => ({
+  offline_write: { enabled: true, rollout_percentage: 100, updated_at: Date.now() },
+  offline_cold_start: { enabled: coldStart, rollout_percentage: 100, updated_at: Date.now(), ...extra },
+})
+
+test('COLD START (sessão válida + navegador offline): abre direto do snapshot local, SEM nenhuma RPC/consulta de perfil, termos, acesso ou carteira', async () => {
+  let view = await onlineLogin(on, A)
+  view.unmount()
+  world.online = false
+  setNavigator(false)
+  world.calls.length = 0
+  view = await onlineLogin(on, A)
+  const ctx = on.auth()
+  assert.equal(ctx.offlineLocal, true)
+  assert.equal(ctx.loading, false)
+  assert.equal(ctx.user.uid, A)
+  assert.deepEqual(world.calls, [], 'nada de rede no boot offline')
+  view.unmount()
+})
+
+test('PRODUÇÃO: com o rollout do servidor liberando, o cold start abre offline e o snapshot é o do MESMO usuário', async () => {
+  prod.setRemoteRolloutSnapshot(A, rollout(true))
+  let view = await onlineLogin(prod, A)
+  assert.equal((await prod.bootstrap.readActiveBootstrap())?.user_id, A, 'bootstrap gravado online')
+  view.unmount()
+  world.online = false
+  setNavigator(false)
+  world.calls.length = 0
+  view = await onlineLogin(prod, A)
+  assert.equal(prod.auth().offlineLocal, true)
+  assert.equal(prod.auth().user.uid, A)
+  assert.deepEqual(world.calls, [])
+  view.unmount()
+})
+
+test('PRODUÇÃO: flag server-side DESLIGADA -> cold start não é liberado (e o erro de entrada aparece)', async () => {
+  prod.setRemoteRolloutSnapshot(A, rollout(true))
+  let view = await onlineLogin(prod, A)
+  view.unmount()
+  prod.setRemoteRolloutSnapshot(A, rollout(false, { updated_at: Date.now() + 1000 }))
+  world.online = false
+  setNavigator(false)
+  view = await onlineLogin(prod, A)
+  assert.equal(prod.auth().offlineLocal, false)
+  assert.match(prod.auth().profileError, /Conecte-se à internet/)
+  view.unmount()
+})
+
+test('PRODUÇÃO: sem bootstrap gravado, o cold start continua bloqueado mesmo com o rollout liberado', async () => {
+  prod.setRemoteRolloutSnapshot(A, rollout(true))
+  world.online = false
+  setNavigator(false)
+  const view = await onlineLogin(prod, A)
+  assert.equal(prod.auth().offlineLocal, false)
+  assert.match(prod.auth().profileError, /Conecte-se à internet/)
+  view.unmount()
+})
+
+test('bootstrap de OUTRO usuário nunca abre a sessão offline de A', async () => {
+  let view = await onlineLogin(on, B)
+  view.unmount()
+  world.online = false
+  setNavigator(false)
+  view = await onlineLogin(on, A)
+  assert.equal(on.auth().offlineLocal, false)
+  assert.notEqual(on.auth().user?.uid === B, true)
+  view.unmount()
+})
+
+test('bootstrap INVÁLIDO (aceite legal adulterado/versão desconhecida) não libera o offline', async () => {
+  let view = await onlineLogin(on, A)
+  view.unmount()
+  const record = await on.bootstrap.readActiveBootstrap()
+  await on.bootstrap.saveBootstrap({
+    ...record,
+    legal: { ...record.legal, accepted_digest: 'f'.repeat(64) },
+    last_online_verified_at: record.last_online_verified_at + 1,
+    updated_at: record.updated_at + 1,
+  })
+  world.online = false
+  setNavigator(false)
+  view = await onlineLogin(on, A)
+  assert.equal(on.auth().offlineLocal, false)
   view.unmount()
 })

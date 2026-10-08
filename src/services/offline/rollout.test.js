@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import 'fake-indexeddb/auto'
 import { closeDatabase, isOfflineColdStartEnabled, isOfflineShellEnabled, isOfflineWriteEnabled, withTransaction } from './database.js'
-import { hydrateOfflineRollout, isInOfflineRollout, refreshRemoteRollout, remoteFeatureAllowed, rolloutBucket, setOfflineRolloutUser, setRemoteRolloutSnapshot, validateRolloutSnapshot } from './rollout.js'
+import { getOfflineRolloutRevision, hydrateOfflineRollout, isInOfflineRollout, refreshRemoteRollout, remoteFeatureAllowed, rolloutBucket, setOfflineRolloutUser, setRemoteRolloutSnapshot, validateRolloutSnapshot } from './rollout.js'
 import { ROLLOUT_FRESH_MS, ROLLOUT_MAX_STALE_ONLINE_MS, prepareRolloutForWrite, rolloutSnapshotAgeMs } from './rolloutWrite.js'
 
 const A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -190,4 +190,18 @@ test('escrita: sem confirmação nenhuma e servidor lento, a espera é limitada 
   assert.ok(Date.now() - started < 300)
   await new Promise((resolve) => setTimeout(resolve, 450))
   await closeDatabase()
+})
+
+test('PwaControls: o snapshot chegando DEPOIS do usuário (mesmo id) muda a revisão e libera o shell', () => {
+  const K = '55555555-5555-4555-8555-555555555555'
+  setOfflineRolloutUser(K) // usuário definido primeiro; snapshot ainda não hidratado
+  assert.equal(isOfflineShellEnabled(env), false)
+  const seen = []
+  const before = getOfflineRolloutRevision()
+  // O que a tela assina precisa mudar quando o snapshot chega, mesmo com o id do usuário igual.
+  setRemoteRolloutSnapshot(K, config(100, 100), true)
+  seen.push(getOfflineRolloutRevision())
+  assert.notEqual(seen[0], before, 'a revisão tem que mudar para o PwaControls re-renderizar')
+  assert.equal(isOfflineShellEnabled(env), true)
+  setOfflineRolloutUser(null)
 })

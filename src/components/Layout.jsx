@@ -20,7 +20,6 @@ import { BrandMark } from './BrandMark'
 import { AccountMenu } from './AccountMenu'
 import { WalletHeaderBadges } from './WalletHeaderBadges'
 import { EvoCoinsAwardNotice } from './EvoCoinsAwardNotice'
-import { NotificationBell } from '../features/notifications/components/NotificationBell'
 import { usePushSubscriptionSync } from '../features/notifications/hooks/usePushSubscriptionSync'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { useSyncScheduler } from '../hooks/useSyncScheduler'
@@ -30,6 +29,13 @@ import { isOfflineCapablePath } from '../utils/offlineRoutes'
 import { resolveLegalGateState } from '../utils/legal'
 
 // Fora do bundle de entrada: o indicador (e toda a pilha de sync) só é necessário com usuário logado.
+// O sino (e a pilha de notificações com Realtime) não é necessário para pintar a primeira tela: sai do bundle
+// de boot. O espaço de 32 px evita deslocar o menu da conta quando o chunk chega.
+const NotificationBell = lazy(() =>
+  import('../features/notifications/components/NotificationBell').then((module) => ({
+    default: module.NotificationBell,
+  }))
+)
 const SyncStatus = lazy(() =>
   import('./SyncStatus').then((module) => ({ default: module.SyncStatus }))
 )
@@ -122,7 +128,11 @@ export function Layout() {
           <Navigation />
           <div className="header-actions">
             <WalletHeaderBadges />
-            {!offlineLocal && <NotificationBell userId={user?.uid} />}
+            {!offlineLocal && (
+              <Suspense fallback={<span aria-hidden="true" style={{ width: 32, height: 32 }} />}>
+                <NotificationBell userId={user?.uid} />
+              </Suspense>
+            )}
             <AccountMenu onLogout={logout} onLogoutAll={confirmLogoutAll} signingOut={signingOut} />
           </div>
         </div>

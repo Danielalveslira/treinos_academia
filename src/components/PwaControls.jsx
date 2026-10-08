@@ -2,10 +2,10 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Button, useConfirm } from '@primer/react'
 import { DownloadIcon, XIcon } from '@primer/octicons-react'
 import { isOfflineShellEnabled, isOfflineWriteEnabled } from '../services/offline/database'
-import { getOfflineRolloutUser, subscribeOfflineRollout } from '../services/offline/rollout'
+import { getOfflineRolloutRevision, subscribeOfflineRollout } from '../services/offline/rollout'
 
 export function PwaControls() {
-  useSyncExternalStore(subscribeOfflineRollout, getOfflineRolloutUser)
+  useSyncExternalStore(subscribeOfflineRollout, getOfflineRolloutRevision)
   const confirm = useConfirm()
   const [installPrompt, setInstallPrompt] = useState(null)
   const [installed, setInstalled] = useState(

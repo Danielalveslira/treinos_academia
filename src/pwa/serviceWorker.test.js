@@ -3,12 +3,14 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import { setImmediate } from 'node:timers'
-import { collectBootAssets, pushAckConfig } from '../../scripts/pwa-plugin.js'
+import { collectBootAssets, collectOfflineAssets, pushAckConfig } from '../../scripts/pwa-plugin.js'
 
 const TEMPLATE = readFileSync(new URL('../../scripts/service-worker.js', import.meta.url), 'utf8')
 const ORIGIN = 'https://app.test'
 const SHELL = ['/index.html', '/manifest.webmanifest', '/icons/icon-192.png']
 const BOOT = ['/assets/index-aaa.js', '/assets/index-aaa.css']
+const OFFLINE = ['/assets/Dashboard-bbb.js', '/assets/ExerciseDetail-ccc.js', '/assets/WorkoutForm-ddd.css']
+const CORE = [...BOOT, ...OFFLINE]
 
 const urlOf = (input) => (typeof input === 'string' ? new URL(input, ORIGIN).href : input.url)
 
@@ -104,6 +106,7 @@ function load({ responder, ack = { url: ACK_URL, key: ACK_KEY } } = {}) {
   const source = TEMPLATE.replace('__VERSION__', 'v2')
     .replace('__SHELL_URLS__', JSON.stringify(SHELL))
     .replace('__BOOT_ASSETS__', JSON.stringify(BOOT))
+    .replace('__OFFLINE_ASSETS__', JSON.stringify(OFFLINE))
     .replace('__PUSH_ACK_URL__', JSON.stringify(ack.url))
     .replace('__PUSH_ACK_KEY__', JSON.stringify(ack.key))
   globalThis.__fetch = fetchStub
@@ -151,13 +154,13 @@ const navigation = (path) => {
 
 beforeEach(() => load())
 
-test('install guarda só o shell e o JS/CSS de boot (nenhum chunk de tela) e ativa na hora', async () => {
+test('install guarda o shell, o boot e SÓ as telas offline essenciais (nenhuma outra) e ativa na hora', async () => {
   await lifecycle('install')
-  assert.deepEqual([...network].sort(), [...SHELL, ...BOOT].sort())
+  assert.deepEqual([...network].sort(), [...SHELL, ...CORE].sort())
   assert.equal(sw.self.skipped, true)
   const shell = [...sw.caches.stores.get('treinos-shell-v2').keys()].map((u) => new URL(u).pathname)
   assert.deepEqual(shell.sort(), [...SHELL].sort())
-  assert.equal(sw.caches.stores.get('treinos-assets-v1').size, BOOT.length)
+  assert.equal(sw.caches.stores.get('treinos-assets-v1').size, CORE.length)
 })
 
 test('activate remove shells antigos mas preserva caches de assets/imagens e de terceiros', async () => {
@@ -256,7 +259,7 @@ test('activate sem rede não falha nem apaga o boot que existe', async () => {
   offline = true
   await lifecycle('activate')
   assert.equal(sw.self.claimed, true)
-  assert.equal(sw.caches.stores.get('treinos-assets-v1').size, BOOT.length)
+  assert.equal(sw.caches.stores.get('treinos-assets-v1').size, CORE.length)
 })
 
 test('imagens: cache-first, e expiradas são buscadas de novo', async () => {
@@ -275,7 +278,10 @@ test('imagens: cache-first, e expiradas são buscadas de novo', async () => {
 
 test('navegação: rede primeiro; offline cai no index.html em cache; sem cache, erro de rede', async () => {
   load({
-    responder: () => basic('<html>shell</html>', { headers: { 'content-type': 'text/html' } }),
+    responder: (url) =>
+      url.includes('/assets/')
+        ? basic('js', { headers: { 'content-type': 'text/javascript' } })
+        : basic('<html>shell</html>', { headers: { 'content-type': 'text/html' } }),
   })
   offline = true
   const first = await dispatchFetch(navigation('/perfil'))
@@ -285,11 +291,117 @@ test('navegação: rede primeiro; offline cai no index.html em cache; sem cache,
   const online = await dispatchFetch(navigation('/comunidades/123'))
   assert.equal(await online.response.text(), '<html>shell</html>')
   await new Promise((resolve) => setTimeout(resolve, 0))
-  assert.ok(sw.caches.stores.get('treinos-shell-v2').has(`${ORIGIN}/index.html`))
+  // A rede NÃO regrava o shell do cache (pode ser de um deploy mais novo que este worker).
+  assert.ok(!sw.caches.stores.get('treinos-shell-v2')?.has(`${ORIGIN}/index.html`))
 
+  // O fallback offline é o shell do install, casado com os chunks que o install guardou.
+  await lifecycle('install')
   offline = true
   const fallback = await dispatchFetch(navigation('/comunidades/123'))
   assert.equal(await fallback.response.text(), '<html>shell</html>')
+})
+
+test('navegação online com HTML mais novo que o worker NÃO contamina o shell offline', async () => {
+  let html = '<html>v2</html>'
+  load({ responder: (url) => (url.endsWith('/index.html') || !url.includes('/assets/')
+    ? basic(html, { headers: { 'content-type': 'text/html' } })
+    : basic('js', { headers: { 'content-type': 'text/javascript' } })) })
+  await lifecycle('install')
+  html = '<html>v3-novo-deploy</html>' // deploy novo publicado depois do install deste worker
+  await dispatchFetch(navigation('/'))
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  offline = true
+  const fallback = await dispatchFetch(navigation('/historico'))
+  assert.equal(await fallback.response.text(), '<html>v2</html>')
+  for (const url of CORE) assert.equal((await dispatchFetch(get(url))).handled, true)
+})
+
+test('cold start offline: toda tela essencial + dependências abrem do cache, sem rede', async () => {
+  load({ responder: () => basic('js', { headers: { 'content-type': 'text/javascript' } }) })
+  await lifecycle('install')
+  offline = true
+  network.length = 0
+  for (const url of CORE) {
+    const result = await dispatchFetch(get(url, { headers: { origin: ORIGIN } }))
+    assert.equal(await result.response.text(), 'js', `${url} não veio do cache`)
+  }
+  assert.deepEqual(network, [])
+})
+
+test('install é atômico: um asset essencial indisponível rejeita o install e descarta o shell parcial', async () => {
+  load({
+    responder: (url) =>
+      url.endsWith('/ExerciseDetail-ccc.js')
+        ? basic('nope', { status: 404 })
+        : basic('js', { headers: { 'content-type': 'text/javascript' } }),
+  })
+  await assert.rejects(lifecycle('install'))
+  assert.equal(sw.self.skipped, undefined) // não ativa uma versão incompleta
+  assert.ok(!sw.caches.stores.has('treinos-shell-v2'))
+})
+
+test('install rejeitado com HTML do fallback SPA no lugar de um chunk', async () => {
+  load({
+    responder: (url) =>
+      url.endsWith('/Dashboard-bbb.js')
+        ? basic('<html>', { headers: { 'content-type': 'text/html' } })
+        : basic('js', { headers: { 'content-type': 'text/javascript' } }),
+  })
+  await assert.rejects(lifecycle('install'))
+})
+
+test('o teto de assets também preserva as telas offline essenciais', async () => {
+  load({ responder: () => basic('js', { headers: { 'content-type': 'text/javascript' } }) })
+  await lifecycle('install')
+  for (let i = 0; i < 200; i++) await dispatchFetch(get(`/assets/outra${i}.js`))
+  await lifecycle('activate')
+  const urls = [...sw.caches.stores.get('treinos-assets-v1').keys()].map((u) => new URL(u).pathname)
+  for (const url of CORE) assert.ok(urls.includes(url), `${url} expulso`)
+  assert.equal(urls.length, 120)
+})
+
+test('build novo (hashes novos): o install repõe o conjunto da nova versão sem apagar a anterior em uso', async () => {
+  load({ responder: () => basic('js', { headers: { 'content-type': 'text/javascript' } }) })
+  await lifecycle('install')
+  const assets = sw.caches.stores.get('treinos-assets-v1')
+  const before = [...assets.keys()].length
+  assert.equal(before, CORE.length)
+  // Segunda versão com os mesmos nomes de vendor: nada é rebaixado, nada se perde.
+  await lifecycle('install')
+  assert.equal(assets.size, CORE.length)
+})
+
+test('collectOfflineAssets: resolve por módulo-fonte (sem hash fixo), segue imports estáticos e exclui boot e dinâmicos', () => {
+  const chunk = (fileName, extra = {}) => ({
+    type: 'chunk', fileName, imports: [], dynamicImports: [], isEntry: false, ...extra,
+  })
+  const bundle = {
+    'assets/index-9.js': chunk('assets/index-9.js', { isEntry: true }),
+    'assets/Dashboard-XYZ.js': chunk('assets/Dashboard-XYZ.js', {
+      facadeModuleId: '/repo/src/pages/Dashboard.jsx',
+      imports: ['assets/index-9.js', 'assets/shared-7.js'],
+      dynamicImports: ['assets/charts-1.js'],
+      viteMetadata: { importedCss: new Set(['assets/Dashboard-XYZ.css']) },
+    }),
+    'assets/ExerciseDetail-QQ.js': chunk('assets/ExerciseDetail-QQ.js', {
+      facadeModuleId: '/repo/src/pages/ExerciseDetail.jsx', imports: ['assets/shared-7.js'],
+    }),
+    'assets/shared-7.js': chunk('assets/shared-7.js'),
+    'assets/charts-1.js': chunk('assets/charts-1.js'),
+  }
+  const assets = collectOfflineAssets(bundle, ['/assets/index-9.js'], [
+    'src/pages/Dashboard.jsx', 'src/pages/ExerciseDetail.jsx',
+  ])
+  assert.deepEqual(assets, [
+    '/assets/Dashboard-XYZ.css', '/assets/Dashboard-XYZ.js', '/assets/ExerciseDetail-QQ.js', '/assets/shared-7.js',
+  ])
+  // Outro build, hashes diferentes: mesma resolução.
+  const renamed = JSON.parse(JSON.stringify(bundle).replaceAll('XYZ', 'NEW').replaceAll('QQ', 'ZZ'))
+  renamed['assets/Dashboard-NEW.js'].viteMetadata = { importedCss: new Set(['assets/Dashboard-NEW.css']) }
+  assert.ok(collectOfflineAssets(renamed, ['/assets/index-9.js'], ['src/pages/ExerciseDetail.jsx'])
+    .includes('/assets/ExerciseDetail-ZZ.js'))
+  // Módulo essencial renomeado/removido => build falha em vez de quebrar o offline em silêncio.
+  assert.throws(() => collectOfflineAssets(bundle, [], ['src/pages/Sumiu.jsx']), /não encontrado/)
 })
 
 test('collectBootAssets inclui entry + imports estáticos + CSS, e exclui chunks dinâmicos', () => {

@@ -42,6 +42,9 @@ export class ErrorBoundary extends Component {
   render() {
     if (!this.state.error) return this.props.children
     const stale = isStaleChunkError(this.state.error)
+    // Sem rede, um chunk ausente não é "versão nova publicada": é uma tela que ainda não está no aparelho.
+    // Fica dentro do app (este boundary é por rota) em vez de derrubar tudo.
+    const offlineChunk = stale && navigator.onLine === false
     return (
       <Box
         sx={{
@@ -57,15 +60,25 @@ export class ErrorBoundary extends Component {
       >
         <AlertIcon size={32} />
         <Heading as="h1" sx={{ fontSize: 3 }}>
-          {stale ? 'Uma nova versão do app foi publicada' : 'Algo deu errado'}
+          {offlineChunk
+            ? 'Esta área ainda não está disponível offline'
+            : stale
+              ? 'Uma nova versão do app foi publicada'
+              : 'Algo deu errado'}
         </Heading>
         <Text sx={{ color: 'fg.muted', maxWidth: 420 }}>
-          {stale
-            ? 'Esta aba ainda estava com a versão anterior. Salve o que estiver fazendo, se puder, e recarregue para continuar.'
-            : 'Não foi possível carregar esta página. Tente novamente em alguns instantes.'}
+          {offlineChunk
+            ? 'Conecte-se à internet para abrir esta tela. Seus registros continuam salvos neste aparelho.'
+            : stale
+              ? 'Esta aba ainda estava com a versão anterior. Salve o que estiver fazendo, se puder, e recarregue para continuar.'
+              : 'Não foi possível carregar esta página. Tente novamente em alguns instantes.'}
         </Text>
         <Box>
-          {stale ? (
+          {offlineChunk ? (
+            <Button variant="primary" onClick={() => window.location.assign('/')}>
+              Voltar ao início
+            </Button>
+          ) : stale ? (
             <Button variant="primary" onClick={this.handleReload}>
               Recarregar página
             </Button>

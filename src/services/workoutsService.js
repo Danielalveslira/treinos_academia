@@ -138,11 +138,17 @@ export function listWorkoutsPage(
 // completo — um recorde de carga mais antigo que essa página some da comparação.
 export const EXERCISE_HISTORY_PAGE_SIZE = 30
 
-export function listWorkoutsForExercise(userId, exerciseId, pageSize = EXERCISE_HISTORY_PAGE_SIZE) {
+export function listWorkoutsForExercise(
+  userId,
+  exerciseId,
+  pageSize = EXERCISE_HISTORY_PAGE_SIZE,
+  { localOnly = false } = {}
+) {
   const filters = { exerciseId }
   let rows = []
   return readThrough({
     label: 'workouts-exercise',
+    localOnly,
     remote: async () => {
       const { data, error } = await supabase
         .from('workouts')

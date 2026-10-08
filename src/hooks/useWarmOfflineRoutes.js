@@ -2,12 +2,14 @@ import { useEffect } from 'react'
 import { preloadRoute } from '../routeLoaders'
 import { isOfflineColdStartEnabled } from '../services/offline/database'
 
-// O Service Worker só pré-cacheia o BOOT; as telas são chunks lazy que entram no cache de assets quando são
+// O Service Worker pré-cacheia o BOOT e as telas offline essenciais (OFFLINE_ESSENTIAL_MODULES, no build); este
+// aquecimento é a segunda camada: busca de novo as telas pequenas e a de gráficos (Progresso), que NÃO entra no
+// install por ser grande. As telas são chunks lazy que entram no cache de assets quando são
 // abertas pela primeira vez. Para o cold start offline abrir o app, os chunks das telas que funcionam sem
 // rede precisam já estar no cache -- então, com a conta confirmada online e o navegador ocioso, o app busca
 // (e o SW guarda) só essas telas. Nada do resto do produto é pré-baixado. Respeita "economia de dados" e
 // rede 2G (preloadRoute já ignora) e deixa a tela de gráficos (chunk grande) só para conexão boa.
-const SMALL_OFFLINE_ROUTES = ['/', '/exercicios', '/novo-treino', '/historico']
+const SMALL_OFFLINE_ROUTES = ['/', '/exercicios', '/exercicios/:id', '/novo-treino', '/historico']
 
 export function useWarmOfflineRoutes(enabled) {
   useEffect(() => {
