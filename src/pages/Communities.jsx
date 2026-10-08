@@ -1,45 +1,35 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import {
-  Box,
-  Heading,
-  Text,
-  Button,
-  Spinner,
-  Link,
-  ActionMenu,
-  ActionList,
-  IconButton,
-} from '@primer/react'
-import { Blankslate } from '@primer/react/experimental'
+import { Spinner, Button, ActionMenu, ActionList, IconButton } from '@primer/react'
 import {
   ChevronRightIcon,
   KebabHorizontalIcon,
   PeopleIcon,
+  PlusIcon,
   SignOutIcon,
+  StarFillIcon,
+  SyncIcon,
 } from '@primer/octicons-react'
+import { Compass } from 'lucide-react'
 import { useCommunities } from '../hooks/useCommunities'
+import { useCommunityActivity } from '../hooks/useCommunityActivity'
 import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { CommunityIcon } from '../components/CommunityIcon'
+import { ResponsivePicture } from '../components/ResponsivePicture'
+import { ProfileAvatar } from '../components/ProfileAvatar'
 import { listFeaturedCommunities, recordPromotionClick } from '../services/promotionsService'
+import {
+  describeActivityPreview,
+  formatMemberCount,
+  formatRelativeTime,
+} from '../utils/communityActivity'
 
-function CommunityNameBlock({ community }) {
-  return (
-    <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Text className="community-row-name">{community.name}</Text>
-      <Text className="community-row-description">
-        {community.memberCount ?? 0} {community.memberCount === 1 ? 'membro' : 'membros'}
-      </Text>
-    </Box>
-  )
-}
-
-// "Sair" fica atrás do ⋯ (em vez de um botão sempre visível ao lado de cada linha) —
-// mesmo padrão de RowActionsMenu (Exercícios/Histórico): um único gatilho visível,
-// funciona igual em toque ou clique, sem precisar de gesto novo (toque longo/botão
-// direito) que não existe em nenhum outro lugar do app.
+// "Sair" fica atrás do ⋯ (em vez de um botão sempre visível em cada cartão) — mesmo padrão
+// de RowActionsMenu (Exercícios/Histórico): um único gatilho visível, funciona igual em
+// toque ou clique, sem gesto novo (toque longo/botão direito) que não existe em nenhum
+// outro lugar do app.
 function LeaveCommunityMenu({ onLeave, disabled }) {
   return (
     <ActionMenu>
@@ -49,7 +39,7 @@ function LeaveCommunityMenu({ onLeave, disabled }) {
           icon={KebabHorizontalIcon}
           variant="invisible"
           aria-label="Mais ações"
-          sx={{ color: 'fg.muted' }}
+          className="community-card-menu-button"
         />
       </ActionMenu.Anchor>
       <ActionMenu.Overlay align="end">
@@ -66,32 +56,107 @@ function LeaveCommunityMenu({ onLeave, disabled }) {
   )
 }
 
-// Uma linha inteira precisa deixar claro, de cara, se ela é "toque para abrir" ou só
-// uma linha informativa com um botão — antes disso dependia inteiramente do link do
-// nome ter (ou não) a cor/sublinhado padrão do Primer, algo sutil demais para
-// diferenciar duas comunidades na mesma lista (o motivo do usuário relatar confusão).
-// Agora todo item com linkTo ganha o mesmo tratamento visível (fundo ao passar o mouse/
-// focar, seta no fim) e o botão/menu de ação fica visualmente separado por um divisor,
-// nunca dentro da área clicável de navegação.
-function CommunityRow({ community, action, linkTo, onNavigate }) {
-  const content = (
-    <>
-      <CommunityIcon community={community} />
-      <CommunityNameBlock community={community} />
-    </>
-  )
+// Prévia discreta da última publicação: autor, tempo relativo e um trecho curto. Enquanto a
+// prévia ainda carrega não mostra nada (sem "pulo" de layout para o estado vazio).
+function CommunityActivityPreview({ activity, ready }) {
+  if (activity) {
+    const author = typeof activity.authorUsername === 'string' ? activity.authorUsername : null
+    const time = formatRelativeTime(activity.createdAt)
+    const text = describeActivityPreview(activity)
+    return (
+      <div className="community-card-preview">
+        <ProfileAvatar
+          path={activity.authorAvatarPath}
+          name={author || 'M'}
+          className="community-card-avatar"
+        />
+        <div className="community-card-preview-body">
+          <p className="community-card-preview-meta">
+            <strong>{author ? `@${author}` : 'Membro'}</strong>
+            {time && <span> · {time}</span>}
+          </p>
+          {text && <p className="community-card-preview-text">{text}</p>}
+        </div>
+      </div>
+    )
+  }
+  if (!ready) return null
   return (
-    <Box className="community-row">
-      {linkTo ? (
-        <Link as={RouterLink} to={linkTo} className="community-row-link" onClick={onNavigate}>
-          {content}
-          <ChevronRightIcon size={16} className="community-row-chevron" />
-        </Link>
-      ) : (
-        <Box className="community-row-static">{content}</Box>
+    <div className="community-card-preview community-card-preview--empty">
+      <p className="community-card-preview-text">Ainda sem publicações. Comece a conversa!</p>
+    </div>
+  )
+}
+
+// O cartão inteiro é a área de toque (o link do nome estica por ::after sobre o cartão) e o
+// menu ⋯ fica acima dessa camada — assim não há botão aninhado em link e o alvo de toque
+// é o maior possível sem nenhum gesto novo.
+function CommunityCard({ community, linkTo, onNavigate, menu, badge, children }) {
+  return (
+    <article className="community-card">
+      <div className="community-card-top">
+        <CommunityIcon community={community} size={48} />
+        <div className="community-card-info">
+          <RouterLink to={linkTo} className="community-card-link" onClick={onNavigate}>
+            {community.name}
+          </RouterLink>
+          <p className="community-card-meta">
+            {badge}
+            <span>{formatMemberCount(community.memberCount)}</span>
+          </p>
+        </div>
+        <ChevronRightIcon size={16} className="community-card-chevron" />
+        {menu && <div className="community-card-menu">{menu}</div>}
+      </div>
+      {children}
+    </article>
+  )
+}
+
+function ExploreCard({ community, joining, disabled, onJoin }) {
+  return (
+    <article className="community-explore-card">
+      <div className="community-explore-head">
+        <CommunityIcon community={community} size={44} />
+        <div className="community-card-info">
+          <h3 className="community-explore-name">{community.name}</h3>
+          <p className="community-card-meta">
+            <span>{formatMemberCount(community.memberCount)}</span>
+          </p>
+        </div>
+        <Button
+          variant="primary"
+          className="community-join-button"
+          loading={joining}
+          disabled={disabled}
+          onClick={() => onJoin(community)}
+          aria-label={`Entrar em ${community.name}`}
+        >
+          Entrar
+        </Button>
+      </div>
+      {community.description && (
+        <p className="community-explore-description">{community.description}</p>
       )}
-      {action && <Box className="community-row-action">{action}</Box>}
-    </Box>
+    </article>
+  )
+}
+
+// Imagem decorativa do topo (public/img/comunidades-hero-<largura>.*; original em
+// imports/images-source/). 1600w só serve telas largas/retina.
+const HERO_WIDTHS = [480, 800, 1024, 1600]
+
+function SectionHeading({ icon, title, subtitle, id }) {
+  return (
+    <header className="communities-section-heading">
+      <span className="communities-section-icon" aria-hidden="true">
+        {icon}
+      </span>
+      <div>
+        <h2 id={id}>{title}</h2>
+        {subtitle && <p>{subtitle}</p>}
+      </div>
+    </header>
   )
 }
 
@@ -110,6 +175,9 @@ function recordFeaturedCommunityClick(community) {
 export default function Communities() {
   const { myCommunities, exploreCommunities, loading, error, refresh, join, leave } =
     useCommunities()
+  const { activity, isActivityChecked, reloadActivity } = useCommunityActivity(
+    myCommunities.map((community) => community.id)
+  )
   const { toasts, showToast } = useToast()
   const membershipLock = useRef(false)
   const [pendingCommunityId, setPendingCommunityId] = useState(null)
@@ -168,31 +236,56 @@ export default function Communities() {
     }
   }
 
+  function handleRefresh() {
+    refresh()
+    reloadActivity()
+  }
+
+  const showLists =
+    !error && (myCommunities.length > 0 || exploreCommunities.length > 0 || !loading)
+
   return (
-    <Box className="community-page">
+    <div className="community-page community-page--hub">
       <ToastFlash toasts={toasts} />
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          flexWrap: 'wrap',
-          gap: 2,
-          mb: 3,
-        }}
-      >
-        <Heading as="h1" sx={{ m: 0 }}>
-          Comunidades
-        </Heading>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button as={RouterLink} to="/comunidades/criar">
+
+      <header className="communities-hero">
+        <div className="communities-hero-media" aria-hidden="true">
+          <ResponsivePicture
+            name="comunidades-hero"
+            alt=""
+            width={1600}
+            height={900}
+            widths={HERO_WIDTHS}
+            sizes="(min-width: 1184px) 1184px, 100vw"
+            priority
+          />
+        </div>
+        <div className="communities-hero-text">
+          <h1>Comunidades</h1>
+          <p>Treine, compartilhe e evolua junto.</p>
+        </div>
+        <div className="communities-hero-actions">
+          <Button
+            as={RouterLink}
+            to="/comunidades/criar"
+            variant="primary"
+            leadingVisual={PlusIcon}
+            className="communities-create-button"
+          >
             Criar comunidade
           </Button>
-          <Button onClick={refresh} loading={loading} disabled={loading}>
+          <Button
+            onClick={handleRefresh}
+            loading={loading}
+            disabled={loading}
+            variant="invisible"
+            leadingVisual={SyncIcon}
+            className="communities-refresh-button"
+          >
             Atualizar
           </Button>
-        </Box>
-      </Box>
+        </div>
+      </header>
 
       {loading && myCommunities.length === 0 && exploreCommunities.length === 0 && (
         <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
@@ -200,111 +293,105 @@ export default function Communities() {
       <ErrorState error={error} onRetry={refresh} />
 
       {featuredCommunities.length > 0 && (
-        <>
-          <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
-            Comunidades em destaque
-          </Heading>
-          <Box
-            sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, overflow: 'hidden', mb: 4 }}
-          >
+        <section className="communities-section" aria-labelledby="communities-featured">
+          <SectionHeading
+            icon={<StarFillIcon size={18} />}
+            title="Em destaque"
+            id="communities-featured"
+          />
+          <div className="communities-grid">
             {featuredCommunities.map((community) => (
-              <CommunityRow
+              <CommunityCard
                 key={community.id}
                 community={community}
                 linkTo={`/comunidades/${community.id}`}
                 onNavigate={() => recordFeaturedCommunityClick(community)}
+                badge={<span className="community-card-pill">Destaque</span>}
               />
             ))}
-          </Box>
-        </>
+          </div>
+        </section>
       )}
 
-      {!error && (myCommunities.length > 0 || exploreCommunities.length > 0 || !loading) && (
+      {showLists && (
         <>
-          <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
-            Minhas comunidades
-          </Heading>
-          {myCommunities.length === 0 ? (
-            <Text sx={{ color: 'fg.muted', fontSize: 1, display: 'block', mb: 4 }}>
-              Você ainda não entrou em nenhuma comunidade.
-            </Text>
-          ) : (
-            <Box
-              sx={{
-                border: '1px solid',
-                borderColor: 'border.default',
-                borderRadius: 2,
-                overflow: 'hidden',
-                mb: 4,
-              }}
-            >
-              {myCommunities.map((community) => (
-                <CommunityRow
-                  key={community.id}
-                  community={community}
-                  linkTo={`/comunidades/${community.id}`}
-                  action={
-                    <LeaveCommunityMenu
-                      onLeave={() => handleLeave(community)}
-                      disabled={pendingCommunityId !== null}
+          <section className="communities-section" aria-labelledby="communities-mine">
+            <SectionHeading
+              icon={<PeopleIcon size={18} />}
+              title="Minhas comunidades"
+              id="communities-mine"
+            />
+            {myCommunities.length === 0 ? (
+              <div className="communities-empty">
+                <span className="communities-empty-icon" aria-hidden="true">
+                  <PeopleIcon size={18} />
+                </span>
+                <div>
+                  <p className="communities-empty-title">
+                    Você ainda não entrou em nenhuma comunidade
+                  </p>
+                  <p className="communities-empty-text">Entre em uma abaixo ou crie a sua.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="communities-grid">
+                {myCommunities.map((community) => (
+                  <CommunityCard
+                    key={community.id}
+                    community={community}
+                    linkTo={`/comunidades/${community.id}`}
+                    menu={
+                      <LeaveCommunityMenu
+                        onLeave={() => handleLeave(community)}
+                        disabled={pendingCommunityId !== null}
+                      />
+                    }
+                  >
+                    <CommunityActivityPreview
+                      activity={activity[community.id]}
+                      ready={isActivityChecked(community.id)}
                     />
-                  }
-                />
-              ))}
-            </Box>
-          )}
+                  </CommunityCard>
+                ))}
+              </div>
+            )}
+          </section>
 
-          <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
-            Explorar
-          </Heading>
-          {exploreCommunities.length === 0 ? (
-            <Box
-              sx={{
-                border: '1px dashed',
-                borderColor: 'border.muted',
-                borderRadius: 2,
-              }}
-            >
-              <Blankslate>
-                <Blankslate.Visual>
-                  <PeopleIcon size={24} />
-                </Blankslate.Visual>
-                <Blankslate.Heading>Você já está em todas</Blankslate.Heading>
-                <Blankslate.Description>
-                  Não há novas comunidades no momento.
-                </Blankslate.Description>
-              </Blankslate>
-            </Box>
-          ) : (
-            <Box
-              sx={{
-                border: '1px solid',
-                borderColor: 'border.default',
-                borderRadius: 2,
-                overflow: 'hidden',
-              }}
-            >
-              {exploreCommunities.map((community) => (
-                <CommunityRow
-                  key={community.id}
-                  community={community}
-                  action={
-                    <Button
-                      size="small"
-                      variant="primary"
-                      loading={pendingCommunityId === community.id}
-                      disabled={pendingCommunityId !== null}
-                      onClick={() => handleJoin(community)}
-                    >
-                      Entrar
-                    </Button>
-                  }
-                />
-              ))}
-            </Box>
-          )}
+          <section className="communities-section" aria-labelledby="communities-explore">
+            <SectionHeading
+              icon={<Compass size={18} />}
+              title="Explorar comunidades"
+              subtitle="Descubra grupos com os mesmos objetivos que você."
+              id="communities-explore"
+            />
+            {exploreCommunities.length === 0 ? (
+              <div className="communities-empty">
+                <span className="communities-empty-icon" aria-hidden="true">
+                  <Compass size={18} />
+                </span>
+                <div>
+                  <p className="communities-empty-title">Você já está em todas</p>
+                  <p className="communities-empty-text">
+                    Quando surgirem novas comunidades, elas aparecem aqui.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="communities-grid communities-grid--explore">
+                {exploreCommunities.map((community) => (
+                  <ExploreCard
+                    key={community.id}
+                    community={community}
+                    joining={pendingCommunityId === community.id}
+                    disabled={pendingCommunityId !== null}
+                    onJoin={handleJoin}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         </>
       )}
-    </Box>
+    </div>
   )
 }

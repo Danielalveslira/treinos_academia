@@ -4,8 +4,8 @@
 // resto fica lazy, para não competir com o JS/CSS do boot.
 const WIDTHS = [480, 800, 1024]
 
-function srcSet(name, ext) {
-  return WIDTHS.map((width) => `/img/${name}-${width}.${ext} ${width}w`).join(', ')
+function srcSet(name, ext, widths) {
+  return widths.map((width) => `/img/${name}-${width}.${ext} ${width}w`).join(', ')
 }
 
 export function ResponsivePicture({
@@ -14,13 +14,14 @@ export function ResponsivePicture({
   width,
   height,
   sizes = '100vw',
+  widths = WIDTHS,
   priority = false,
   className,
 }) {
   return (
     <picture>
-      <source type="image/avif" srcSet={srcSet(name, 'avif')} sizes={sizes} />
-      <source type="image/webp" srcSet={srcSet(name, 'webp')} sizes={sizes} />
+      <source type="image/avif" srcSet={srcSet(name, 'avif', widths)} sizes={sizes} />
+      <source type="image/webp" srcSet={srcSet(name, 'webp', widths)} sizes={sizes} />
       <img
         className={className}
         src={`/img/${name}-800.webp`}

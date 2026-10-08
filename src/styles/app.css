@@ -1309,67 +1309,414 @@ body:has(.pwa-offline) .app-shell {
   line-height: 1.5;
 }
 
-/* Linha de comunidade ("Minhas comunidades"/"Explorar"): a área clicável (avatar+nome)
-   e o botão de ação (Sair/Entrar) precisam ser visualmente distintos e consistentes
-   entre todas as linhas — antes disso dependia só da cor/sublinhado padrão do link,
-   sutil demais para diferenciar duas comunidades lado a lado. */
-.community-row {
-  display: flex;
-  align-items: stretch;
-  border-top: 0.5px solid var(--borderColor-muted);
+/* Hub de Comunidades (mobile-first: 320-430px é o desenho base; ≥768px vira grade) ------ */
+.community-page--hub {
+  max-width: none;
 }
-.community-row:first-of-type { border-top: none; }
 
-.community-row-link,
-.community-row-static {
+.communities-hero {
+  /* O hero é escuro nos dois temas (cores fixas, sem depender de --bgColor-default):
+     --hero-base é o mesmo #0d1117 do fundo do tema escuro, então lá a imagem se funde com
+     a página; no tema claro o hero continua escuro e só a máscara de baixo faz a
+     transição para o branco. Nada aqui usa opacity no contêiner (não afeta texto/botões). */
+  --hero-base: #0d1117;
+  --hero-fade: 56px;
+  position: relative;
+  z-index: 0;
   display: flex;
-  flex: 1;
-  align-items: center;
-  min-width: 0;
-  gap: 10px;
-  padding: 12px 16px;
-  color: var(--fgColor-default);
-  text-decoration: none;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 28px;
+  padding-bottom: 28px;
+  isolation: isolate;
 }
-.community-row-link {
-  cursor: pointer;
-  transition: background-color 0.15s ease;
+/* Imagem só atrás do topo: sangra sobre o padding do .main-content (até as bordas no
+   celular, logo abaixo da navegação; os insets espelham aquele padding: 22/16px, 12px
+   abaixo de 360px e 34/28px a partir de 768px) e desce até o fim da margem do hero. Os
+   controles ficam sempre sobre a parte opaca: a máscara só começa a esmaecer
+   (--hero-fade, = padding-bottom + margin-bottom) abaixo deles. */
+.communities-hero-media {
+  position: absolute;
+  z-index: -1;
+  inset: -22px -16px -28px;
+  overflow: hidden;
+  background: var(--hero-base);
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--hero-fade)), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - var(--hero-fade)), transparent 100%);
 }
-.community-row-link:hover,
-.community-row-link:focus-visible {
-  background: var(--bgColor-muted);
+@media (max-width: 359px) {
+  .communities-hero-media {
+    inset-inline: -12px;
+  }
 }
-.community-row-link:focus-visible {
-  outline: 2px solid var(--focus-outlineColor);
-  outline-offset: -2px;
+.communities-hero-media picture {
+  display: contents;
 }
-.community-row-chevron {
-  flex-shrink: 0;
-  margin-left: auto;
-  color: var(--fgColor-muted);
+.communities-hero-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 72% 22%;
 }
-.community-row-name {
-  display: block;
-  overflow-wrap: anywhere;
+/* Overlays independentes (a imagem fica com as cores originais): escurece à esquerda,
+   onde fica o texto, e um véu leve no topo; os personagens, à direita, ficam intactos. */
+.communities-hero-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      var(--hero-base) 0%,
+      color-mix(in srgb, var(--hero-base) 78%, transparent) 38%,
+      color-mix(in srgb, var(--hero-base) 12%, transparent) 78%,
+      transparent 100%
+    ),
+    linear-gradient(to bottom, color-mix(in srgb, var(--hero-base) 40%, transparent), transparent 35%);
+}
+.main-content .community-page .communities-hero h1 {
+  margin: 0;
+  color: #f0f6fc;
+  font-size: 26px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+.communities-hero-text p {
+  margin: 4px 0 0;
+  color: rgb(240 246 252 / 76%);
   font-size: 14px;
-  font-weight: 600;
 }
-.community-row-description {
+.communities-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.communities-hero-actions .communities-create-button {
+  flex: 1;
+  min-height: 44px;
+  justify-content: center;
+}
+.communities-hero-actions .communities-refresh-button {
+  min-height: 44px;
+  padding-inline: 12px;
+  border: 1px solid rgb(240 246 252 / 16%);
+  background: rgb(13 17 23 / 55%);
+  color: #f0f6fc;
+}
+.communities-hero-actions .communities-refresh-button:hover:not(:disabled),
+.communities-hero-actions .communities-refresh-button:focus-visible {
+  background: rgb(240 246 252 / 14%);
+  color: #fff;
+}
+
+.communities-section {
+  margin-bottom: 28px;
+}
+.communities-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.communities-section-icon,
+.communities-empty-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+}
+.communities-section-heading h2 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.communities-section-heading p {
+  margin: 2px 0 0;
+  color: var(--fitness-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.communities-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+/* Cartão de "Minhas comunidades": o link do nome estica por ::after sobre o cartão
+   inteiro (alvo de toque máximo) e o menu ⋯ fica numa camada acima. */
+.community-card,
+.community-explore-card {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--fitness-radius-md);
+  background: var(--fitness-surface);
+  background-image: radial-gradient(
+    120% 100% at 0% 0%,
+    color-mix(in srgb, var(--fitness-accent) 9%, transparent),
+    transparent 62%
+  );
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.community-card:hover,
+.community-card:focus-within {
+  border-color: color-mix(in srgb, var(--fitness-accent) 55%, var(--borderColor-muted));
+}
+.community-card:active {
+  transform: scale(0.99);
+}
+.community-card-top,
+.community-explore-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 6px 14px 14px;
+}
+.community-explore-head {
+  padding-right: 14px;
+}
+.community-card .community-icon,
+.community-explore-card .community-icon {
+  border: 1px solid color-mix(in srgb, var(--fitness-accent) 35%, transparent);
+}
+.community-card-info {
+  flex: 1;
+  min-width: 0;
+}
+.community-card-link {
   display: -webkit-box;
   overflow: hidden;
-  margin-top: 2px;
-  color: var(--fgColor-muted);
-  font-size: 12px;
-  line-height: 1.4;
+  color: var(--fgColor-default);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  text-decoration: none;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
-.community-row-action {
+.community-card-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.community-card-link:focus-visible {
+  outline: none;
+}
+.community-card:has(.community-card-link:focus-visible) {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 2px;
+}
+.community-card-meta {
   display: flex;
-  flex-shrink: 0;
   align-items: center;
-  padding: 0 16px 0 12px;
-  border-left: 1px solid var(--borderColor-muted);
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0 0;
+  color: var(--fitness-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.community-card-pill {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+.community-card-chevron {
+  flex: 0 0 auto;
+  color: var(--fitness-muted);
+}
+.community-card-menu {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+}
+.community-card-menu .community-card-menu-button {
+  width: 44px;
+  height: 44px;
+  color: var(--fitness-muted);
+}
+.community-card:not(:has(.community-card-menu)) .community-card-top {
+  padding-right: 14px;
+}
+
+.community-card-preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 14px;
+  padding: 12px 0 14px;
+  border-top: 1px solid var(--borderColor-muted);
+}
+.community-card-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 12px;
+}
+.community-card-avatar svg {
+  width: 16px;
+  height: 16px;
+}
+.community-card-preview-body {
+  flex: 1;
+  min-width: 0;
+}
+.community-card-preview-meta,
+.community-card-preview-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.community-card-preview-meta {
+  overflow: hidden;
+  color: var(--fitness-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.community-card-preview-meta strong {
+  color: var(--fgColor-default);
+  font-weight: 600;
+}
+.community-card-preview-text {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--fgColor-default);
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.community-card-preview--empty {
+  align-items: center;
+  padding-block: 10px 12px;
+}
+.community-card-preview--empty .community-card-preview-text {
+  color: var(--fitness-muted);
+  font-size: 12px;
+}
+
+/* Cartão de "Explorar": Entrar à direita do cabeçalho, descrição curta abaixo. */
+.community-explore-name {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.community-explore-description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  padding: 0 14px 14px;
+  color: var(--fitness-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.community-explore-head .community-join-button {
+  flex: 0 0 auto;
+  min-width: 76px;
+  min-height: 40px;
+}
+
+/* Estado vazio compacto (sem bloco grande): ícone discreto + duas linhas curtas. */
+.communities-empty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed var(--borderColor-default);
+  border-radius: var(--fitness-radius-md);
+}
+.communities-empty-title,
+.communities-empty-text {
+  margin: 0;
+  line-height: 1.4;
+}
+.communities-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.communities-empty-text {
+  color: var(--fitness-muted);
+  font-size: 13px;
+}
+
+@media (min-width: 768px) {
+  .communities-hero {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    --hero-fade: 80px;
+    min-height: 260px;
+    margin-bottom: 40px;
+    padding-bottom: 40px;
+  }
+  .communities-hero-media {
+    inset: -34px -28px -40px;
+    -webkit-mask-image:
+      linear-gradient(to bottom, #000 calc(100% - var(--hero-fade)), transparent 100%),
+      linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 56px), transparent 100%);
+    mask-image:
+      linear-gradient(to bottom, #000 calc(100% - var(--hero-fade)), transparent 100%),
+      linear-gradient(90deg, transparent 0, #000 24px, #000 calc(100% - 56px), transparent 100%);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+  .communities-hero-media img {
+    object-position: 70% 6%;
+  }
+  .main-content .community-page .communities-hero h1 {
+    font-size: 34px;
+  }
+  .communities-hero-text p {
+    font-size: 16px;
+  }
+  .communities-hero-actions .communities-create-button {
+    flex: 0 0 auto;
+  }
+  .communities-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+}
+@media (min-width: 1100px) {
+  .communities-grid:not(.communities-grid--explore) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (hover: hover) {
+  .community-card:hover {
+    transform: translateY(-1px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .community-card,
+  .community-explore-card {
+    transition: none;
+  }
+  .community-card:active,
+  .community-card:hover {
+    transform: none;
+  }
 }
 .main-content .community-page h1 {
   margin-top: 0;

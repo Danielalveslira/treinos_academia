@@ -101,6 +101,100 @@ export async function listCommunityFeed(communityId, pageSize = FEED_PAGE_SIZE) 
   return data.map(mapStatusRow)
 }
 
+// Prévia "viva" dos cartões de Minhas comunidades: só a publicação mais recente de cada
+// comunidade. UMA requisição (comunidades com `statuses` embutido, limit 1 POR comunidade —
+// o PostgREST aplica o limite do recurso embutido a cada linha pai) em vez de uma por
+// comunidade, mais uma leitura em lote dos avatares dos autores. Uma consulta plana
+// "últimas N publicações das minhas comunidades" não serve: uma comunidade muito ativa
+// ocupa todas as N linhas e esvazia as demais. statuses_select já restringe a leitura a
+// membros (e superadmin) e statuses_community_created_idx cobre a ordenação.
+const ACTIVITY_PREVIEW_COLUMNS =
+  'id,community_id,author_id,author_username,type,created_at,text,poll_question,workout_title,achievement_text,photo_caption'
+// IDs por requisição: mantém a URL curta (cada uuid tem ~37 caracteres) sem limitar quantas
+// comunidades têm prévia. Quem está em até ACTIVITY_BATCH_SIZE comunidades faz 1 requisição
+// de publicações; acima disso, ceil(N / ACTIVITY_BATCH_SIZE) em paralelo (nunca 1 por
+// comunidade; o teto de associações do app é 200, ou seja, no máximo 5 lotes).
+export const ACTIVITY_BATCH_SIZE = 40
+
+function chunk(items, size) {
+  const chunks = []
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size))
+  return chunks
+}
+
+export function buildCommunityActivity(rows, avatars = {}) {
+  const byCommunity = {}
+  rows.forEach((row) => {
+    const latest = row.statuses?.[0]
+    if (!latest) return
+    const status = mapStatusRow(latest)
+    byCommunity[row.id] = { ...status, authorAvatarPath: avatars[status.authorId] || null }
+  })
+  return byCommunity
+}
+
+async function listActivityBatch(ids, nowIso) {
+  const { data, error } = await supabase
+    .from('communities')
+    .select(`id,statuses(${ACTIVITY_PREVIEW_COLUMNS})`)
+    .in('id', ids)
+    // expires_at nulo = sem expiração automática (retention_mode no_auto_expiration).
+    .or(`expires_at.is.null,expires_at.gt.${nowIso}`, { referencedTable: 'statuses' })
+    .order('created_at', { referencedTable: 'statuses', ascending: false })
+    .limit(1, { referencedTable: 'statuses' })
+  if (error) throw error
+  return data
+}
+
+// checkedIds = comunidades cuja leitura deu certo: só delas a tela pode afirmar "sem
+// publicações". Um lote que falha não derruba os demais (suas comunidades ficam sem prévia e
+// sem essa afirmação) e `partial` avisa o chamador para não memorizar o resultado incompleto.
+// Se TODOS os lotes falharem, lança (a tela trata a prévia como secundária).
+export async function listLatestCommunityActivity(communityIds) {
+  const ids = [...new Set(communityIds)]
+  if (ids.length === 0) return { activity: {}, checkedIds: [], partial: false }
+  const nowIso = new Date().toISOString()
+  const batches = chunk(ids, ACTIVITY_BATCH_SIZE)
+  const settled = await Promise.allSettled(batches.map((batch) => listActivityBatch(batch, nowIso)))
+  const failed = settled.filter((result) => result.status === 'rejected')
+  if (failed.length === settled.length) throw failed[0].reason
+  failed.forEach((result) =>
+    console.error('[statusesService] listLatestCommunityActivity batch:', result.reason)
+  )
+
+  const rows = settled.flatMap((result) => (result.status === 'fulfilled' ? result.value : []))
+  const checkedIds = batches.flatMap((batch, index) =>
+    settled[index].status === 'fulfilled' ? batch : []
+  )
+  const authorIds = [...new Set(rows.map((row) => row.statuses?.[0]?.author_id).filter(Boolean))]
+  const avatars = {}
+  if (authorIds.length > 0) {
+    // Avatar é enfeite: se falhar, a prévia aparece com a inicial do autor.
+    const profileResults = await Promise.allSettled(
+      chunk(authorIds, ACTIVITY_BATCH_SIZE).map(async (batch) => {
+        const { data, error } = await supabase
+          .from('public_profiles')
+          .select('user_id,avatar_path')
+          .in('user_id', batch)
+        if (error) throw error
+        return data
+      })
+    )
+    profileResults.forEach((result) => {
+      if (result.status === 'rejected') {
+        console.error('[statusesService] listLatestCommunityActivity avatars:', result.reason)
+        return
+      }
+      result.value.forEach((row) => (avatars[row.user_id] = row.avatar_path || null))
+    })
+  }
+  return {
+    activity: buildCommunityActivity(rows, avatars),
+    checkedIds,
+    partial: failed.length > 0,
+  }
+}
+
 export async function createTextStatus(communityId, author, text) {
   const { data, error } = await supabase
     .from('statuses')
