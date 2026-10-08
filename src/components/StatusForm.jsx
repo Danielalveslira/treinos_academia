@@ -34,6 +34,7 @@ import {
   saveStatusDraft,
   statusDraftKey,
 } from '../utils/statusDraft'
+import { STATUS_TEXT_MAX_LENGTH } from '../utils/statusLimits'
 
 const TYPES = [
   { value: 'text', label: 'Texto' },
@@ -225,7 +226,7 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
             onChange={setText}
             required
             disabled={submitting}
-            maxLength={500}
+            maxLength={STATUS_TEXT_MAX_LENGTH}
             error={errors.text}
             caption="Use a formatação sem precisar decorar Markdown. O rascunho fica neste dispositivo."
           />

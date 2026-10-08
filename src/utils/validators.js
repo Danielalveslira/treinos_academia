@@ -5,6 +5,7 @@ import { isValidCardioSession, MAX_DURATION_MINUTES, MAX_DISTANCE_KM } from './c
 import { COMMUNITY_ICON_NAMES } from '../constants/communityIcons.js'
 import { USAGE_PROFILES } from '../constants/usageProfile.js'
 import { isFutureBusinessDay } from './businessDate.js'
+import { STATUS_TEXT_MAX_LENGTH } from './statusLimits.js'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 export const SEXO_OPTIONS = ['masculino', 'feminino', 'nao_informar']
@@ -154,7 +155,12 @@ export function validateCommunity({ name, description, iconName }) {
 
 export function validateTextStatus({ text }) {
   const errors = {}
-  const textError = requiredText(text, 500, 'Escreva algo para publicar', 'Texto muito longo')
+  const textError = requiredText(
+    text,
+    STATUS_TEXT_MAX_LENGTH,
+    'Escreva algo para publicar',
+    'Texto muito longo'
+  )
   if (textError) errors.text = textError
   return errors
 }

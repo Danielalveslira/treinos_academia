@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, useEffect, useRef, useState } from 'react'
 import { Box, Button, Text } from '@primer/react'
 import { ThumbsupIcon, ThumbsdownIcon } from '@primer/octicons-react'
 import { castVote } from '../services/economyService'
-import { PostSupportersDialog } from './PostSupportersDialog'
+import { LazyDialogBoundary } from './LazyDialogBoundary'
 import { economyVoteCountDelta } from '../utils/economyVoteCountDelta'
+
+// "Quem curtiu" só baixa quando alguém toca no contador.
+const PostSupportersDialog = lazy(() =>
+  import('./PostSupportersDialog').then((module) => ({ default: module.PostSupportersDialog }))
+)
 
 // Voto econômico (Fase 2) -- deliberadamente distinto do voto de ENQUETE (PollStatus,
 // mais acima neste mesmo arquivo/StatusCard.jsx): custa EvoCoins, vive em
@@ -144,11 +149,13 @@ export function EconomyVoteBar({
         <Text sx={{ fontSize: 0, color: 'fg.muted' }}>Você curtiu</Text>
       )}
       {likersOpen && (
-        <PostSupportersDialog
-          statusId={status.id}
-          supportCount={positiveCount}
-          onClose={() => setLikersOpen(false)}
-        />
+        <LazyDialogBoundary onFail={() => setLikersOpen(false)}>
+          <PostSupportersDialog
+            statusId={status.id}
+            supportCount={positiveCount}
+            onClose={() => setLikersOpen(false)}
+          />
+        </LazyDialogBoundary>
       )}
     </Box>
   )

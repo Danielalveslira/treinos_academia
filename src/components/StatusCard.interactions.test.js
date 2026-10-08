@@ -54,6 +54,10 @@ before(async () => {
             path: 'statuses',
             namespace: 'stub',
           }))
+          context.onResolve({ filter: /\/services\/statusInteractionsService$/ }, () => ({
+            path: 'interactions',
+            namespace: 'stub',
+          }))
           context.onResolve(
             {
               filter:
@@ -82,6 +86,7 @@ before(async () => {
             export const ClockIcon=()=>null; export const ShieldCheckIcon=()=>null; export const CheckIcon=()=>null;
             export const CalendarIcon=()=>null; export const PeopleIcon=()=>null; export const ThumbsupIcon=()=>null;
             export const ThumbsdownIcon=()=>null; export const XIcon=()=>null;
+            export const ChevronDownIcon=()=>null; export const ChevronUpIcon=()=>null;
           `,
           }))
           context.onLoad({ filter: /^router$/, namespace: 'stub' }, () => ({
@@ -96,9 +101,14 @@ before(async () => {
           }))
           context.onLoad({ filter: /^statuses$/, namespace: 'stub' }, () => ({
             contents: `
-            export const getMyVote=async()=>null; export const getPollResults=async()=>({}); export const voteOnPoll=async()=>{};
-            export const amIParticipant=async()=>false; export const countParticipants=async()=>0;
+            export const voteOnPoll=async()=>{};
             export const joinWorkout=async()=>{}; export const leaveWorkout=async()=>{};
+          `,
+          }))
+          context.onLoad({ filter: /^interactions$/, namespace: 'stub' }, () => ({
+            contents: `
+            export const loadPollState=async()=>({ counts: {}, myOptionId: null });
+            export const loadWorkoutState=async()=>({ count: 0, amParticipant: false });
           `,
           }))
           context.onLoad({ filter: /.*/, namespace: 'component-stub' }, ({ path }) => {

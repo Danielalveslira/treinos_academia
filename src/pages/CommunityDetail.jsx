@@ -1,15 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Box, Heading, Text, Button, Spinner, Link } from '@primer/react'
+import { lazy, useCallback, useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Box, Heading, Button, Spinner } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
-import {
-  ChevronLeftIcon,
-  MegaphoneIcon,
-  PlusIcon,
-  PeopleIcon,
-  GraphIcon,
-  GearIcon,
-} from '@primer/octicons-react'
+import { PeopleIcon } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useSingleFlight } from '../hooks/useSingleFlight'
 import { useCommunityFeed } from '../hooks/useCommunityFeed'
@@ -17,6 +10,7 @@ import { useUpcomingWorkouts } from '../hooks/useUpcomingWorkouts'
 import { useSponsoredAds } from '../hooks/useSponsoredAds'
 import { useMyEconomyVotes } from '../hooks/useMyEconomyVotes'
 import { useCommunityAuthorAvatars } from '../hooks/useCommunityAuthorAvatars'
+import { useFeedScrollMemory } from '../hooks/useFeedScrollMemory'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import {
@@ -26,8 +20,6 @@ import {
   deleteCommunity,
 } from '../services/communitiesService'
 import { isMember, joinCommunity, leaveCommunity } from '../services/communityMembersService'
-import { CommunityForm } from '../components/CommunityForm'
-import { CommunityMembersModeration } from '../components/CommunityMembersModeration'
 import { canModerateCommunity } from '../utils/communityOwnership'
 import {
   createPhotoStatus,
@@ -37,14 +29,16 @@ import {
   getSharedStatus,
 } from '../services/statusesService'
 import { describeQueryError } from '../utils/queryError'
-import { invalidateCommunitiesCache } from '../utils/pageCache'
-import { CommunityProgressShare } from '../components/CommunityProgressShare'
-import { StatusForm } from '../components/StatusForm'
-import { StatusCard } from '../components/StatusCard'
-import { SponsoredAdCard } from '../components/SponsoredAdCard'
-import { SponsoredAdBanner } from '../components/SponsoredAdBanner'
-import { PromoteDialog } from '../components/PromoteDialog'
-import { PromotedBadge } from '../components/PromotedBadge'
+import {
+  fetchCached,
+  getCached,
+  invalidateCache,
+  invalidateCommunitiesCache,
+  setCached,
+} from '../utils/pageCache'
+import { CommunityFeedSection } from '../components/CommunityFeedSection'
+import { CommunityHeader } from '../components/CommunityHeader'
+import { LazyDialogBoundary } from '../components/LazyDialogBoundary'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { listFeaturedStatusesForCommunity } from '../services/promotionsService'
@@ -53,269 +47,21 @@ import { expiresAtForRetention } from '../utils/postRetention'
 import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta'
 import { publicationIdFromHash } from '../utils/share'
 import { isStatusLoaded } from '../utils/sharedStatus'
+import '../styles/community-feed.css'
 
-
-// View pura (sem hooks de dados) separada do wrapper que busca os dados de verdade --
-// mesmo padrão de WalletHeaderBadgesView/PromoteDialogBody: testável só com props.
-// Reordena a composição da comunidade (não a lógica): criação de conteúdo + publicidade
-// (toolbar de Publicações, banner e feedAds) vêm antes de Destaques, que por sua vez vêm
-// antes do feed normal -- assim a quantidade de posts destacados (até FEATURED_LIMIT, ver
-// promotionsService.js) nunca empurra o botão "+ Publicar" ou os anúncios pra baixo.
-// featuredStatuses, statuses, feedAds e bannerAds continuam vindo exatamente de onde já
-// vinham (useCommunityFeed/useSponsoredAds/listFeaturedStatusesForCommunity, em
-// CommunityDetail); esta função só decide ONDE cada bloco aparece na página.
-export function CommunityFeedSection({
-  communityId,
-  communityName,
-  currentUserId,
-  author,
-  canModerate,
-  canPost,
-  bannerAds,
-  feedAds,
-  upcomingWorkouts = [],
-  sharedStatus = null,
-  loadingUpcomingWorkouts = false,
-  upcomingWorkoutsError = null,
-  featuredStatuses,
-  statuses,
-  authorAvatars = {},
-  loadingFeed,
-  feedError,
-  formOpen,
-  setFormOpen,
-  refreshFeed,
-  now,
-  showToast,
-  votesByStatusId,
-  setVote,
-  onEconomyVoted,
-  onDeleteStatus,
-  onCreateStatus,
-  onPromoted,
-}) {
-  const currentTime = toMillis(now) || Date.now()
-  // Publicação alvo de um link (resolvida por ID quando fora da 1ª página do feed): um treino
-  // futuro entra em "Próximos treinos"; qualquer outra (ou treino já passado) ganha bloco próprio.
-  const workoutCandidates =
-    sharedStatus?.type === 'workout' ? [sharedStatus, ...upcomingWorkouts] : upcomingWorkouts
-  const visibleUpcomingWorkouts = workoutCandidates.filter(
-    (status, index, items) =>
-      toMillis(status.workout?.date) > currentTime &&
-      items.findIndex((candidate) => candidate.id === status.id) === index
-  )
-  const upcomingWorkoutIds = new Set(visibleUpcomingWorkouts.map((status) => status.id))
-  const visibleFeaturedStatuses = featuredStatuses.filter(
-    (status) => !upcomingWorkoutIds.has(status.id)
-  )
-  const visibleStatuses = statuses.filter((status) => !upcomingWorkoutIds.has(status.id))
-  const linkedStatus =
-    sharedStatus &&
-    !isStatusLoaded(
-      sharedStatus.id,
-      visibleUpcomingWorkouts,
-      visibleFeaturedStatuses,
-      visibleStatuses
-    )
-      ? sharedStatus
-      : null
-
-  return (
-    <>
-      <SponsoredAdBanner ads={bannerAds} />
-
-      {!formOpen && (
-        <Box className="community-toolbar">
-          <Heading as="h2">Publicações</Heading>
-          <Box className="community-publish-actions">
-            <Button onClick={refreshFeed} loading={loadingFeed} disabled={loadingFeed}>
-              Atualizar
-            </Button>
-            {canPost && (
-              <>
-                <Button
-                  leadingVisual={PlusIcon}
-                  variant="primary"
-                  onClick={() => setFormOpen('status')}
-                >
-                  Publicar
-                </Button>
-                <Button leadingVisual={GraphIcon} onClick={() => setFormOpen('progress')}>
-                  Compartilhar progresso
-                </Button>
-              </>
-            )}
-          </Box>
-        </Box>
-      )}
-      {!canPost && (
-        <Text sx={{ display: 'block', color: 'fg.muted', fontSize: 1, mb: 3 }}>
-          Somente o superadmin pode publicar nesta comunidade.
-        </Text>
-      )}
-      {canPost && formOpen === 'progress' && (
-        <CommunityProgressShare onCreateStatus={onCreateStatus} onClose={() => setFormOpen(false)} />
-      )}
-      {canPost && formOpen === 'status' && (
-        <StatusForm
-          communityId={communityId}
-          author={author}
-          onSubmit={onCreateStatus}
-          onCancel={() => setFormOpen(false)}
-        />
-      )}
-
-      {feedAds.length > 0 && (
-        <div className="community-feed">
-          {feedAds.map((ad) => (
-            <SponsoredAdCard key={ad.id} ad={ad} />
-          ))}
-        </div>
-      )}
-
-      {/* Treino Marcado V1: seção própria, nunca misturada com Destaques -- Destaques é
-          sobre posts PROMOVIDOS (pagos), "Próximos treinos" é sobre DATA (workout.date >
-          agora), critérios independentes. Fica entre os anúncios/toolbar e Destaques:
-          são eventos acionáveis (data/hora reais, "Vou participar" com prazo), então
-          ficam mais perto do topo de prioridade da página (mesmo raciocínio da
-          reordenação anterior: ação real antes de conteúdo em destaque). A própria view
-          remove duplicatas entre esta seção, Destaques e o feed normal. */}
-      {(visibleUpcomingWorkouts.length > 0 || loadingUpcomingWorkouts || upcomingWorkoutsError) && (
-        <Box as="section" className="community-feed-group community-upcoming-section">
-          <Heading as="h2">Próximos treinos</Heading>
-          {loadingUpcomingWorkouts && visibleUpcomingWorkouts.length === 0 && (
-            <Spinner
-              aria-label="Carregando próximos treinos"
-              sx={{ display: 'block', mx: 'auto', my: 3 }}
-            />
-          )}
-          <ErrorState error={upcomingWorkoutsError} onRetry={refreshFeed} />
-          <div className="community-feed">
-            {visibleUpcomingWorkouts.map((status) => (
-              <StatusCard
-                key={`upcoming-${status.id}`}
-                status={status}
-                authorAvatarPath={authorAvatars[status.authorId]}
-                currentUserId={currentUserId}
-                canDelete={status.authorId === currentUserId || canModerate}
-                canModerate={canModerate}
-                onDelete={onDeleteStatus}
-                now={now}
-                communityName={communityName}
-                showToast={showToast}
-                myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
-                onEconomyVoted={(value, delta) => {
-                  setVote(status.id, value)
-                  onEconomyVoted(status.id, delta)
-                }}
-              />
-            ))}
-          </div>
-        </Box>
-      )}
-
-      {linkedStatus && (
-        <Box as="section" className="community-feed-group community-linked-section">
-          <Heading as="h2">Publicação do link</Heading>
-          <div className="community-feed">
-            <StatusCard
-              status={linkedStatus}
-              authorAvatarPath={authorAvatars[linkedStatus.authorId]}
-              currentUserId={currentUserId}
-              canDelete={linkedStatus.authorId === currentUserId || canModerate}
-              canModerate={canModerate}
-              onDelete={onDeleteStatus}
-              now={now}
-              communityName={communityName}
-              showToast={showToast}
-              myEconomyVote={
-                votesByStatusId ? (votesByStatusId[linkedStatus.id] ?? null) : undefined
-              }
-              onEconomyVoted={(value, delta) => {
-                setVote(linkedStatus.id, value)
-                onEconomyVoted(linkedStatus.id, delta)
-              }}
-              onPromoted={onPromoted}
-            />
-          </div>
-        </Box>
-      )}
-
-      {visibleFeaturedStatuses.length > 0 && (
-        <Box as="section" className="community-feed-group community-featured-section">
-          <Heading as="h2">Destaques</Heading>
-          {/* recordPromotionClick (clique, ver Communities.jsx) não é disparado aqui de
-              propósito: um StatusCard já renderiza o conteúdo inteiro inline (texto,
-              enquete, foto...), não existe um único "abrir" que leve a outro lugar --
-              diferente de CommunityRow, cujo link inteiro navega para /comunidades/{id}.
-              V1 fica sem métrica de clique para posts promovidos; só cliques em
-              comunidades em destaque são contados. */}
-          <div className="community-feed">
-            {visibleFeaturedStatuses.map((status) => (
-              <StatusCard
-                key={`featured-${status.id}`}
-                status={status}
-                authorAvatarPath={authorAvatars[status.authorId]}
-                currentUserId={currentUserId}
-                canDelete={status.authorId === currentUserId || canModerate}
-                canModerate={canModerate}
-                onDelete={onDeleteStatus}
-                now={now}
-                communityName={communityName}
-                showToast={showToast}
-                myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
-                onEconomyVoted={(value, delta) => {
-                  setVote(status.id, value)
-                  onEconomyVoted(status.id, delta)
-                }}
-              />
-            ))}
-          </div>
-        </Box>
-      )}
-
-      {loadingFeed && statuses.length === 0 && (
-        <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />
-      )}
-      <ErrorState error={feedError} onRetry={refreshFeed} />
-
-      {!loadingFeed && !feedError && visibleStatuses.length === 0 && (
-        <Blankslate>
-          <Blankslate.Visual>
-            <MegaphoneIcon size={24} />
-          </Blankslate.Visual>
-          <Blankslate.Heading>Nenhuma publicação nas últimas 24h</Blankslate.Heading>
-          <Blankslate.Description>
-            Seja o primeiro a publicar algo nesta comunidade.
-          </Blankslate.Description>
-        </Blankslate>
-      )}
-
-      <div className="community-feed">
-        {visibleStatuses.map((status) => (
-          <StatusCard
-            key={status.id}
-            status={status}
-            authorAvatarPath={authorAvatars[status.authorId]}
-            currentUserId={currentUserId}
-            canDelete={status.authorId === currentUserId || canModerate}
-            canModerate={canModerate}
-            onDelete={onDeleteStatus}
-            now={now}
-            communityName={communityName}
-            showToast={showToast}
-            myEconomyVote={votesByStatusId ? (votesByStatusId[status.id] ?? null) : undefined}
-            onEconomyVoted={(value, delta) => {
-              setVote(status.id, value)
-              onEconomyVoted(status.id, delta)
-            }}
-            onPromoted={onPromoted}
-          />
-        ))}
-      </div>
-    </>
-  )
-}
+// Painel de gestão, promoção da comunidade: só o dono/superadmin abre; ficam fora do carregamento
+// inicial da comunidade (quase ninguém os usa a cada visita).
+const CommunityForm = lazy(() =>
+  import('../components/CommunityForm').then((module) => ({ default: module.CommunityForm }))
+)
+const CommunityMembersModeration = lazy(() =>
+  import('../components/CommunityMembersModeration').then((module) => ({
+    default: module.CommunityMembersModeration,
+  }))
+)
+const PromoteDialog = lazy(() =>
+  import('../components/PromoteDialog').then((module) => ({ default: module.PromoteDialog }))
+)
 
 function CommunityDetail({ id }) {
   const navigate = useNavigate()
@@ -323,10 +69,15 @@ function CommunityDetail({ id }) {
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
 
-  const [community, setCommunity] = useState(null)
-  const [member, setMember] = useState(false)
+  // Cabeçalho + associação em cache de sessão (por usuário e comunidade). A chave começa com
+  // `communities:{uid}`, então entrar/sair/criar/excluir em QUALQUER tela (invalidateCommunitiesCache) a
+  // derruba. Voltar de outra tela repinta na hora, sem refazer as leituras; "Atualizar" revalida.
+  const pageKey = `communities:${user.uid}:page:${id}`
+  const cachedPage = getCached(pageKey)
+  const [community, setCommunity] = useState(cachedPage?.community ?? null)
+  const [member, setMember] = useState(cachedPage?.member ?? false)
   const [membershipPending, setMembershipPending] = useState(false)
-  const [loadingCommunity, setLoadingCommunity] = useState(true)
+  const [loadingCommunity, setLoadingCommunity] = useState(!cachedPage)
   const [communityError, setCommunityError] = useState(null)
   const { hash } = useLocation()
   const [sharedStatus, setSharedStatus] = useState(null)
@@ -337,15 +88,21 @@ function CommunityDetail({ id }) {
 
   const {
     statuses,
+    hasMore,
     loading: loadingFeed,
+    loadingMore,
+    refreshing,
+    refreshEpoch,
     error: feedError,
+    moreError,
     refresh: refreshFeed,
+    loadMore,
     addStatusLocally,
     remove,
     updateEconomyVoteCounts,
+    updateCommentCount,
     updatePostPromotion,
-    now,
-  } = useCommunityFeed(id, member)
+  } = useCommunityFeed(id, member, user.uid)
 
   const {
     workouts: upcomingWorkouts,
@@ -365,17 +122,40 @@ function CommunityDetail({ id }) {
   // promoção de 7/30 dias precisa continuar visível bem depois disso. Filtrado no
   // servidor por promotedUntil > agora (nunca limit() antes de tirar os expirados, ver
   // promotionsService.js) -- nunca lê promotions/{id} pra isto.
-  const [featuredStatuses, setFeaturedStatuses] = useState([])
-  const [featuredLoaded, setFeaturedLoaded] = useState(false)
+  const featuredKey = `communities:${user.uid}:featured:${id}`
+  const [featuredStatuses, setFeaturedStatusesState] = useState(() => getCached(featuredKey) ?? [])
+  const [featuredLoaded, setFeaturedLoaded] = useState(() => getCached(featuredKey) !== undefined)
   const [promoteCommunityOpen, setPromoteCommunityOpen] = useState(false)
+  // Todo ajuste local dos destaques (voto, exclusão) grava também na cache, para o retorno não repintar
+  // contadores antigos.
+  const setFeaturedStatuses = useCallback(
+    (updater) =>
+      setFeaturedStatusesState((previous) => {
+        const next = typeof updater === 'function' ? updater(previous) : updater
+        setCached(featuredKey, next)
+        return next
+      }),
+    [featuredKey]
+  )
+  const loadFeatured = useCallback(
+    (force = false) =>
+      fetchCached(featuredKey, () => listFeaturedStatusesForCommunity(id), { force }).then(
+        (items) => {
+          setFeaturedStatusesState(items)
+          return items
+        }
+      ),
+    [featuredKey, id]
+  )
   useEffect(() => {
-    if (!member) return
+    if (!member) return undefined
+    if (getCached(featuredKey) !== undefined) {
+      setFeaturedLoaded(true)
+      return undefined
+    }
     let active = true
     setFeaturedLoaded(false)
-    listFeaturedStatusesForCommunity(id)
-      .then((items) => {
-        if (active) setFeaturedStatuses(items)
-      })
+    loadFeatured()
       .catch((err) => console.error('[CommunityDetail] listFeaturedStatusesForCommunity:', err))
       .finally(() => {
         if (active) setFeaturedLoaded(true)
@@ -383,9 +163,9 @@ function CommunityDetail({ id }) {
     return () => {
       active = false
     }
-  }, [id, member])
+  }, [featuredKey, member, loadFeatured])
 
-  // 1 consulta para o feed inteiro (nunca 1 leitura por card) -- ver useMyEconomyVotes.js.
+  // 1 consulta por LOTE de publicações novas (nunca 1 leitura por card) -- ver useMyEconomyVotes.js.
   // Inclui destaques elegíveis: um post promovido pode estar fora da janela de 24h do
   // feed normal. Poll e workout são excluídos porque nenhum deles possui voto econômico.
   const statusIds = member
@@ -406,18 +186,47 @@ function CommunityDetail({ id }) {
     sharedStatus ? [sharedStatus] : []
   )
 
-  // Um mesmo post pode aparecer duas vezes na tela (card normal em `statuses` + cópia
-  // destacada em `featuredStatuses`, ver Fase 6) -- um único handler aplica o mesmo
-  // delta nos dois lugares onde o statusId existir, pra nunca deixar uma cópia com o
-  // número antigo enquanto a outra já atualizou.
-  function handleEconomyVoted(statusId, delta) {
-    updateEconomyVoteCounts(statusId, delta)
-    setFeaturedStatuses((prev) => applyEconomyVoteCountDeltaToList(prev, statusId, delta))
-  }
+  // Um mesmo post pode existir em `statuses` (aba Recentes) e em `featuredStatuses` (aba Destaques, Fase
+  // 6) -- um único handler aplica o mesmo voto/delta nos dois lugares onde o statusId existir, pra nunca
+  // deixar uma cópia com o número antigo. Estável (useCallback): os cards do feed são React.memo e só o
+  // card afetado re-renderiza quando alguém reage.
+  const handleEconomyVoted = useCallback(
+    (statusId, value, delta) => {
+      setVote(statusId, value)
+      updateEconomyVoteCounts(statusId, delta)
+      setFeaturedStatuses((prev) => applyEconomyVoteCountDeltaToList(prev, statusId, delta))
+    },
+    [setVote, updateEconomyVoteCounts, setFeaturedStatuses]
+  )
+  const handleCommentCountChange = useCallback(
+    (statusId, delta) => {
+      updateCommentCount(statusId, delta)
+      setFeaturedStatuses((previous) =>
+        previous.map((status) =>
+          status.id === statusId
+            ? { ...status, commentCount: Math.max(0, (status.commentCount ?? 0) + delta) }
+            : status
+        )
+      )
+    },
+    [updateCommentCount, setFeaturedStatuses]
+  )
+  const handlePromoted = useCallback(
+    (statusId, result) =>
+      updatePostPromotion(statusId, { promoted: true, promotedUntil: result.expiresAtMs }),
+    [updatePostPromotion]
+  )
 
   const refreshCommunityContent = useCallback(
-    () => Promise.all([refreshFeed(), refreshUpcomingWorkouts()]),
-    [refreshFeed, refreshUpcomingWorkouts]
+    () =>
+      Promise.all([
+        refreshFeed(),
+        refreshUpcomingWorkouts(),
+        loadFeatured(true).catch((err) =>
+          console.error('[CommunityDetail] listFeaturedStatusesForCommunity:', err)
+        ),
+      ]),
+    [refreshFeed, refreshUpcomingWorkouts, loadFeatured]
   )
 
   // Link para uma publicação (#treino-{id} / #publicacao-{id}): primeiro procura nas listas já
@@ -433,7 +242,9 @@ function CommunityDetail({ id }) {
   const feedSettled = member && !loadingFeed && !loadingUpcomingWorkouts && featuredLoaded
   useEffect(() => {
     if (!feedSettled || !sharedStatusId) return
-    if (isStatusLoaded(sharedStatusId, statuses, featuredStatuses, upcomingWorkouts)) return
+    // "Recentes" é onde o link cai: só o que aparece lá conta como carregado (um post que existe apenas em
+    // Destaques ainda precisa ser resolvido por ID para ganhar o bloco "Publicação do link").
+    if (isStatusLoaded(sharedStatusId, statuses, upcomingWorkouts)) return
     if (sharedStatusRequested.current === sharedStatusId) return
 
     sharedStatusRequested.current = sharedStatusId
@@ -442,7 +253,7 @@ function CommunityDetail({ id }) {
         if (sharedStatusRequested.current === sharedStatusId) setSharedStatus(status)
       })
       .catch((error) => console.error('[CommunityDetail] getSharedStatus:', error))
-  }, [feedSettled, sharedStatusId, id, statuses, featuredStatuses, upcomingWorkouts])
+  }, [feedSettled, sharedStatusId, id, statuses, upcomingWorkouts])
 
   useEffect(() => {
     if (!member || !sharedStatusId) return undefined
@@ -457,23 +268,39 @@ function CommunityDetail({ id }) {
     return () => window.cancelAnimationFrame(frame)
   }, [member, hash, sharedStatusId, sharedStatus, upcomingWorkouts, featuredStatuses, statuses])
 
-  const loadCommunity = useCallback(async () => {
-    setLoadingCommunity(true)
-    setCommunityError(null)
-    try {
-      const [data, memberFlag] = await Promise.all([getCommunity(id), isMember(id, user.uid)])
-      setCommunity(data)
-      setMember(memberFlag)
-    } catch (err) {
-      setCommunityError(describeQueryError(err, 'CommunityDetail'))
-    } finally {
-      setLoadingCommunity(false)
-    }
-  }, [id, user.uid])
+  const loadCommunity = useCallback(
+    async (force = false) => {
+      setLoadingCommunity(true)
+      setCommunityError(null)
+      try {
+        const page = await fetchCached(
+          pageKey,
+          async () => {
+            const [data, memberFlag] = await Promise.all([getCommunity(id), isMember(id, user.uid)])
+            return { community: data, member: memberFlag }
+          },
+          { force }
+        )
+        setCommunity(page.community)
+        setMember(page.member)
+      } catch (err) {
+        setCommunityError(describeQueryError(err, 'CommunityDetail'))
+      } finally {
+        setLoadingCommunity(false)
+      }
+    },
+    [id, user.uid, pageKey]
+  )
 
   useEffect(() => {
-    loadCommunity()
-  }, [loadCommunity])
+    if (getCached(pageKey) === undefined) loadCommunity()
+  }, [loadCommunity, pageKey])
+
+  // Mantém a cache da página coerente com o que o próprio usuário acabou de fazer aqui.
+  function patchPageCache(patch) {
+    const current = getCached(pageKey)
+    if (current) setCached(pageKey, { ...current, ...patch })
+  }
 
   // A guarda contra clique duplo evita dois efeitos: uma segunda escrita inútil (RLS não
   // tem nenhuma policy de update em community_members, então isso nunca corrompe dado
@@ -485,6 +312,7 @@ function CommunityDetail({ id }) {
     try {
       await joinCommunity(id, user.uid)
       setMember(true)
+      patchPageCache({ member: true })
       showToast('Você entrou na comunidade.')
     } catch (err) {
       console.error('[CommunityDetail] join:', err)
@@ -500,6 +328,9 @@ function CommunityDetail({ id }) {
     try {
       await leaveCommunity(id, user.uid)
       setMember(false)
+      // Saiu: nada do feed fica guardado para esta conta (a cache da lista e da página já foi derrubada).
+      invalidateCache(`communityFeed:${user.uid}:${id}`)
+      invalidateCache(featuredKey)
       showToast('Você saiu da comunidade.')
     } catch (err) {
       console.error('[CommunityDetail] leave:', err)
@@ -517,6 +348,7 @@ function CommunityDetail({ id }) {
     try {
       await updateCommunity(id, values)
       setCommunity((previous) => ({ ...previous, ...values }))
+      patchPageCache({ community: { ...community, ...values } })
       invalidateCommunitiesCache(user.uid)
       setManaging(false)
       showToast('Comunidade atualizada.')
@@ -537,6 +369,7 @@ function CommunityDetail({ id }) {
     try {
       await setCommunityActive(id, !community.isActive)
       setCommunity((previous) => ({ ...previous, isActive: !previous.isActive }))
+      patchPageCache({ community: { ...community, isActive: !community.isActive } })
       invalidateCommunitiesCache(user.uid)
       showToast(community.isActive ? 'Comunidade desativada.' : 'Comunidade reativada.')
     } catch (err) {
@@ -677,7 +510,11 @@ function CommunityDetail({ id }) {
         })
       }
       setFormOpen(false)
-      showToast(values.type === 'progress' ? 'Progresso publicado na comunidade.' : 'Publicado na comunidade.')
+      showToast(
+        values.type === 'progress'
+          ? 'Progresso publicado na comunidade.'
+          : 'Publicado na comunidade.'
+      )
     } catch (err) {
       console.error('[CommunityDetail] createStatus:', err)
       showToast('Erro ao publicar.', 'danger')
@@ -685,9 +522,16 @@ function CommunityDetail({ id }) {
     }
   }
 
-  function handleDeleteStatus(status) {
-    return actionFlight.run(`delete-status:${status.id}`, () => deleteStatus(status))
-  }
+  // Estável (useCallback + ref com o "agora" da renderização): o pai não muda a identidade do handler a
+  // cada render, então os cards do feed (React.memo) não re-renderizam à toa.
+  const live = useRef({})
+  live.current = { deleteStatus }
+  const handleDeleteStatus = useCallback(
+    (status) =>
+      actionFlight.run(`delete-status:${status.id}`, () => live.current.deleteStatus(status)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  )
 
   async function deleteStatus(status) {
     const confirmed = await confirmDelete({
@@ -709,6 +553,11 @@ function CommunityDetail({ id }) {
   }
 
   const loading = loadingCommunity || loadingFeed
+  useFeedScrollMemory(
+    `${user.uid}:${id}`,
+    member && !loadingFeed && statuses.length > 0,
+    Boolean(sharedStatusId)
+  )
   // Fase 5: dono da comunidade conta como moderador só DENTRO dela -- nunca em nenhuma
   // outra (mesma condição is_community_owner() usada nas policies). community?.ownerId
   // já vem do próprio getCommunity(id) acima, sem leitura extra.
@@ -720,74 +569,47 @@ function CommunityDetail({ id }) {
   const canPost = canModerate || community?.postAccess !== 'admins'
 
   return (
-    <Box className="community-page">
+    <div className="community-page cd-page">
       <ToastFlash toasts={toasts} />
-      <Link as={RouterLink} to="/comunidades" className="community-back">
-        <ChevronLeftIcon /> Comunidades
-      </Link>
-      <nav className="community-legal-links" aria-label="Convivência na comunidade">
-        <Link as={RouterLink} to="/regras-da-comunidade">
-          Regras da Comunidade
-        </Link>
-        <Link as={RouterLink} to={`/atendimento?tipo=report&comunidade=${encodeURIComponent(id)}`}>
-          Denunciar violação
-        </Link>
-      </nav>
+      <CommunityHeader
+        communityId={id}
+        community={!loadingCommunity && !communityError ? community : null}
+        menuProps={{
+          member,
+          canManage: canModerate,
+          managing,
+          membershipPending,
+          onRefresh: member ? refreshCommunityContent : undefined,
+          refreshing,
+          onManage: () => setManaging(true),
+          onLeave: handleLeave,
+        }}
+      />
 
       {loadingCommunity && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
-      <ErrorState error={communityError} onRetry={loadCommunity} />
+      <ErrorState error={communityError} onRetry={() => loadCommunity(true)} />
 
       {!loadingCommunity && !communityError && community && (
         <>
-          <Box className="community-heading">
-            <Box sx={{ minWidth: 0 }}>
-              <Heading as="h1">{community.name}</Heading>
-              {Boolean(community.promoted) &&
-                toMillis(community.promotedUntil) > toMillis(new Date()) && <PromotedBadge />}
-              {community.description && (
-                <Text as="p" className="community-description">
-                  {community.description}
-                </Text>
-              )}
-            </Box>
-            <Box sx={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-              {canModerate && !managing && (
-                <Button leadingVisual={GearIcon} onClick={() => setManaging(true)}>
-                  Gerenciar
-                </Button>
-              )}
-              {member && (
-                <Button onClick={handleLeave} disabled={membershipPending}>
-                  Sair
-                </Button>
-              )}
-            </Box>
-          </Box>
-
           {/* Fase 5: visível para isSuperAdmin || dono (ownerId) -- as MESMAS
               funções de communitiesService.js que o painel admin global já usa, só que
               aqui restritas (pelas Rules, não só pela UI) a esta comunidade. */}
           {canModerate && managing && (
-            <Box
-              sx={{
-                border: '1px solid',
-                borderColor: 'border.default',
-                borderRadius: 2,
-                p: 3,
-                mb: 3,
-              }}
-            >
+            <div className="cd-manage">
               <Heading as="h2" sx={{ fontSize: 1, mb: 2 }}>
                 Gerenciar comunidade
               </Heading>
-              <CommunityForm
-                initialValue={community}
-                onSubmit={handleUpdateCommunity}
-                onCancel={() => setManaging(false)}
-              />
+              <LazyDialogBoundary onFail={() => setManaging(false)}>
+                <CommunityForm
+                  initialValue={community}
+                  onSubmit={handleUpdateCommunity}
+                  onCancel={() => setManaging(false)}
+                />
+              </LazyDialogBoundary>
               <Box
                 sx={{
                   display: 'flex',
+                  flexWrap: 'wrap',
                   gap: 2,
                   mt: 3,
                   borderTop: '1px solid',
@@ -813,22 +635,29 @@ function CommunityDetail({ id }) {
                 <Heading as="h3" sx={{ fontSize: 0, mb: 2 }}>
                   Membros e banimentos
                 </Heading>
-                <CommunityMembersModeration communityId={id} />
+                <LazyDialogBoundary>
+                  <CommunityMembersModeration
+                    communityId={id}
+                    ownerId={community.ownerId ?? null}
+                  />
+                </LazyDialogBoundary>
               </Box>
-            </Box>
+            </div>
           )}
           {promoteCommunityOpen && (
-            <PromoteDialog
-              targetType="community"
-              targetId={id}
-              currentUserId={user.uid}
-              title="Promover comunidade"
-              onClose={() => setPromoteCommunityOpen(false)}
-              onPromoted={() => {
-                setPromoteCommunityOpen(false)
-                loadCommunity()
-              }}
-            />
+            <LazyDialogBoundary onFail={() => setPromoteCommunityOpen(false)}>
+              <PromoteDialog
+                targetType="community"
+                targetId={id}
+                currentUserId={user.uid}
+                title="Promover comunidade"
+                onClose={() => setPromoteCommunityOpen(false)}
+                onPromoted={() => {
+                  setPromoteCommunityOpen(false)
+                  loadCommunity(true)
+                }}
+              />
+            </LazyDialogBoundary>
           )}
 
           {!member && (
@@ -865,19 +694,21 @@ function CommunityDetail({ id }) {
               authorAvatars={authorAvatars}
               loadingFeed={loadingFeed || loadingUpcomingWorkouts}
               feedError={feedError}
+              hasMore={hasMore}
+              loadingMore={loadingMore}
+              moreError={moreError}
+              loadMore={loadMore}
               formOpen={formOpen}
               setFormOpen={setFormOpen}
               refreshFeed={refreshCommunityContent}
-              now={now}
               showToast={showToast}
               votesByStatusId={votesByStatusId}
-              setVote={setVote}
               onEconomyVoted={handleEconomyVoted}
               onDeleteStatus={handleDeleteStatus}
               onCreateStatus={handleCreateStatus}
-              onPromoted={(statusId, result) =>
-                updatePostPromotion(statusId, { promoted: true, promotedUntil: result.expiresAtMs })
-              }
+              onPromoted={handlePromoted}
+              onCommentCountChange={handleCommentCountChange}
+              refreshEpoch={refreshEpoch}
             />
           )}
         </>
@@ -894,7 +725,7 @@ function CommunityDetail({ id }) {
           </Blankslate.PrimaryAction>
         </Blankslate>
       )}
-    </Box>
+    </div>
   )
 }
 

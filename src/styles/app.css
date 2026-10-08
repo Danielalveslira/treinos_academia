@@ -604,11 +604,6 @@ body:has(.pwa-offline) .app-shell {
   object-fit: cover;
 }
 
-.status-action-error {
-  margin-top: 10px;
-  padding: 8px 10px;
-  font-size: 12px;
-}
 .profile-avatar-control {
   display: grid;
   gap: 12px;
@@ -1723,77 +1718,6 @@ body:has(.pwa-offline) .app-shell {
   font-size: 24px;
   overflow-wrap: anywhere;
 }
-.community-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 32px;
-  margin-bottom: 12px;
-  font-size: 13px;
-  color: var(--fgColor-muted);
-}
-.community-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 20px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--borderColor-muted);
-}
-.community-heading h1 {
-  margin-bottom: 4px;
-}
-.community-description {
-  display: block;
-  margin: 0;
-  color: var(--fgColor-muted);
-  overflow-wrap: anywhere;
-}
-.community-toolbar,
-.community-publish-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-.community-toolbar {
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-.community-toolbar h2 {
-  margin: 0;
-  font-size: 14px;
-}
-.community-feed {
-  display: grid;
-  gap: 16px;
-}
-.community-feed-group {
-  min-width: 0;
-  margin: 28px 0;
-}
-.community-feed-group > h2 {
-  margin: 0 0 14px;
-  font-size: 16px;
-  letter-spacing: -0.01em;
-}
-.community-featured-section {
-  padding: 20px;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--bgColor-accent-muted) 36%, transparent);
-}
-.community-featured-section > h2 {
-  color: var(--fgColor-default);
-}
-.status-card {
-  min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--borderColor-default);
-  border-radius: 8px;
-  background: var(--bgColor-default);
-}
 .sponsored-ad-card {
   min-width: 0;
   padding: 16px;
@@ -1903,68 +1827,6 @@ body:has(.pwa-offline) .app-shell {
   opacity: 1;
 }
 
-.status-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-.status-author {
-  display: block;
-  min-width: 0;
-  max-width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--fgColor-default);
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-}
-.status-author:hover {
-  color: var(--fgColor-accent);
-  text-decoration: underline;
-}
-.status-content {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  line-height: 1.5;
-}
-.status-content svg {
-  flex-shrink: 0;
-}
-.status-photo {
-  position: relative;
-  overflow: hidden;
-  min-height: 120px;
-  border-radius: 8px;
-  background: var(--bgColor-muted);
-}
-.status-photo img {
-  display: block;
-  width: 100%;
-  max-height: 480px;
-  /* contain preserva a proporção original (nunca corta); a prévia do formulário
-     (.photo-preview img) já usa contain — cover aqui fazia o feed cortar fotos em
-     retrato de um jeito que a prévia nunca mostrou antes de publicar. O fundo
-     (.status-photo, acima) preenche o espaço sobrando quando a proporção não bate. */
-  object-fit: contain;
-}
-.status-photo-state {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--fgColor-muted);
-}
-.status-caption {
-  margin: 8px 0 0;
-  font-size: 14px;
-  line-height: 1.5;
-}
 .photo-picker {
   display: inline-flex;
   align-items: center;
@@ -2075,32 +1937,8 @@ body:has(.pwa-offline) .app-shell {
   .main-content .community-page h1 {
     font-size: 22px;
   }
-  .community-heading {
-    gap: 12px;
-    padding-bottom: 16px;
-  }
-  .status-card,
-  .main-content .community-form {
-    padding: 16px;
-  }
-  .community-feed {
-    gap: 14px;
-  }
-  .community-feed-group {
-    margin-block: 24px;
-  }
-  .community-featured-section {
-    padding: 16px;
-  }
-  .status-photo img {
-    max-height: 360px;
-  }
 }
 @media (max-width: 543px) {
-  .community-toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-  }
   .community-preview-refresh {
     grid-column: 1 / -1;
     justify-self: start;
@@ -2133,15 +1971,12 @@ body:has(.pwa-offline) .app-shell {
 }
 
 /* Documentos legais e atendimento: leitura confortável, inclusive sem autenticação. */
-.legal-links,
-.community-legal-links {
+.legal-links {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 16px;
 }
-.legal-links a,
-.community-legal-links a,
-.status-report-link {
+.legal-links a {
   color: var(--fgColor-accent);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -2154,22 +1989,6 @@ body:has(.pwa-offline) .app-shell {
   display: inline-flex;
   align-items: center;
   min-height: 32px;
-}
-.community-legal-links {
-  margin-bottom: 16px;
-  font-size: 13px;
-}
-.status-report-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  margin-top: 8px;
-  font-size: 12px;
-}
-.status-footer {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--borderColor-muted);
 }
 .comment-section-collapsed,
 .comment-section {
@@ -3486,7 +3305,6 @@ body {
 .trend-up { color: var(--fitness-accent-strong); }
 .trend-down { color: var(--fgColor-danger); }
 
-
 .streak-card {
   display: grid;
   gap: 18px;
@@ -4161,7 +3979,6 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 
 .form-error { display: block; margin-top: 8px; color: var(--fgColor-danger); }
 
-
 .workout-details { padding: 18px 0; border-bottom: 1px solid var(--borderColor-muted); }
 .workout-details summary { min-height: 30px; color: var(--fgColor-muted); font-size: 13px; cursor: pointer; }
 .workout-details-fields { display: grid; gap: 16px; margin-top: 16px; }
@@ -4689,7 +4506,6 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 
 .indicator-card,
 .profile-card,
-.status-card,
 .auth-form-card {
   border-color: var(--borderColor-muted);
   border-radius: var(--fitness-radius-md);
@@ -4745,7 +4561,6 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .performance-strip > div:last-child::before { inset: 0 10px auto; width: auto; height: 1px; }
   .performance-strip strong { font-size: 15px; }
   .performance-strip small { right: 8px; bottom: 15px; }
-
 
   .session-heading { gap: 12px; margin-bottom: 22px; }
   .session-icon { width: 40px; height: 40px; }

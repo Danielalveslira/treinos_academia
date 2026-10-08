@@ -1,0 +1,608 @@
+/* Interior da comunidade: cabeçalho compacto, abas, área de publicar e feed. Mobile primeiro (320-430px é o
+   desenho base); a grade/painel de tablet e desktop entra com min-width. Só propriedades baratas: sem
+   filtros, sem sombras pesadas; transições só em transform/opacity e desligadas em reduced-motion. */
+
+.community-page.cd-page {
+  max-width: 760px;
+}
+
+/* ---- cabeçalho -------------------------------------------------------------------------------- */
+.cd-header {
+  margin-bottom: 16px;
+}
+.cd-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  margin-inline: -10px;
+}
+.cd-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: 10px;
+  color: var(--fgColor-muted);
+  font-size: 13px;
+  text-decoration: none;
+}
+.cd-back:hover {
+  color: var(--fgColor-default);
+}
+.cd-back-label {
+  display: none;
+}
+.cd-topbar .cd-icon-button {
+  width: 44px;
+  height: 44px;
+  color: var(--fgColor-muted);
+}
+.cd-identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding-top: 2px;
+}
+.cd-identity .community-icon {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--fitness-accent) 35%, transparent);
+}
+.cd-identity-text {
+  flex: 1;
+  min-width: 0;
+}
+.main-content .community-page .cd-identity h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.cd-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  color: var(--fitness-muted);
+  font-size: 13px;
+}
+.cd-description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 6px 0 0;
+  color: var(--fitness-muted);
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+.cd-manage {
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: var(--fitness-radius-md);
+}
+
+/* ---- abas + publicar ------------------------------------------------------------------------- */
+.cd-toolbar {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.cd-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--bgColor-muted);
+}
+.cd-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fitness-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cd-tab[aria-selected='true'] {
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fitness-accent) 40%, transparent);
+}
+.cd-tab:focus-visible,
+.cd-secondary:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 2px;
+}
+.cd-tab-count {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--fitness-accent);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+.cd-actions {
+  display: grid;
+  gap: 8px;
+}
+.cd-actions .cd-publish {
+  min-height: 46px;
+  justify-content: center;
+  font-size: 15px;
+}
+.cd-secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 12px;
+  background: var(--fitness-surface);
+  color: var(--fgColor-default);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.cd-secondary > span {
+  flex: 1;
+  text-align: left;
+}
+.cd-secondary > svg:last-child {
+  color: var(--fitness-muted);
+}
+.cd-note {
+  margin: 0 0 16px;
+  color: var(--fitness-muted);
+  font-size: 13px;
+}
+
+/* ---- listas ---------------------------------------------------------------------------------- */
+.community-feed {
+  display: grid;
+  gap: 12px;
+}
+.community-feed-group {
+  min-width: 0;
+  margin: 20px 0;
+}
+.community-feed-group > h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+.cd-pager {
+  display: grid;
+  margin-top: 16px;
+}
+.cd-pager > button {
+  min-height: 44px;
+  justify-content: center;
+}
+.cd-feed-end {
+  margin: 20px 0 8px;
+  color: var(--fitness-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.cd-empty {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 24px 16px;
+  border: 1px dashed var(--borderColor-default);
+  border-radius: var(--fitness-radius-md);
+  color: var(--fitness-muted);
+  text-align: center;
+}
+.cd-empty p {
+  margin: 0;
+  font-size: 14px;
+}
+.cd-empty-hint {
+  font-size: 13px;
+}
+
+/* ---- card de publicação ---------------------------------------------------------------------- */
+.status-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--fitness-radius-md);
+  background: var(--fitness-surface);
+  /* Feeds longos: o navegador pula layout/pintura dos cards fora da tela; a altura estimada
+     (lembrada depois de desenhado) mantém a barra de rolagem estável. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
+}
+.status-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.status-header-main {
+  flex: 1;
+  min-width: 0;
+}
+.status-author-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.status-author {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--fgColor-default);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.status-author:hover {
+  color: var(--fgColor-accent);
+  text-decoration: underline;
+}
+.status-superadmin-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--fgColor-attention);
+}
+.status-time {
+  display: block;
+  color: var(--fitness-muted);
+  font-size: 12px;
+}
+.status-header-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+}
+.status-header-actions button {
+  min-width: 40px;
+  min-height: 40px;
+  color: var(--fitness-muted);
+}
+.status-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.status-content svg {
+  flex-shrink: 0;
+}
+.status-photo {
+  position: relative;
+  overflow: hidden;
+  min-height: 180px;
+  border-radius: 12px;
+  background: var(--bgColor-muted);
+}
+.status-photo img {
+  display: block;
+  width: 100%;
+  max-height: 480px;
+  /* contain preserva a proporção original (nunca corta); a prévia do formulário
+     (.photo-preview img) já usa contain. O fundo (.status-photo) preenche o espaço sobrando. */
+  object-fit: contain;
+}
+.status-photo-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--fgColor-muted);
+}
+.status-caption {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Ações: curtir/contadores à esquerda e comentários à direita numa só linha; a seção de comentários
+   aberta ocupa a linha de baixo. */
+.status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px 8px;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--borderColor-muted);
+}
+.status-footer {
+  min-width: 0;
+}
+/* alvos de toque de 40px+ nas reações (os botões "small" do Primer têm ~28px) */
+.status-footer button,
+.status-actions .comment-section-heading button {
+  min-height: 40px;
+}
+.status-actions .comment-section-collapsed {
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+}
+.status-actions .comment-section-collapsed button {
+  min-height: 36px;
+  color: var(--fitness-muted);
+}
+.status-actions .comment-section {
+  flex: 1 0 100%;
+  margin-top: 6px;
+}
+.status-report-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--fitness-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.status-report-link:hover {
+  color: var(--fgColor-default);
+}
+.status-action-error {
+  margin-top: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+/* ---- enquete: barras compactas (preenchimento por transform: não força layout) ----------------- */
+.status-poll-question {
+  display: block;
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.status-poll-options {
+  display: grid;
+  gap: 8px;
+}
+.status-poll-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  overflow: hidden;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 10px;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+}
+button.status-poll-option {
+  cursor: pointer;
+}
+button.status-poll-option:disabled {
+  cursor: default;
+}
+.status-poll-option.is-mine {
+  border-color: var(--fitness-accent);
+}
+.status-poll-fill {
+  position: absolute;
+  inset: 0;
+  border-bottom: 3px solid var(--fitness-accent);
+  background: color-mix(in srgb, var(--fitness-accent) 16%, transparent);
+  transform: scaleX(var(--poll-fraction, 0));
+  transform-origin: left center;
+  transition: transform 0.35s ease;
+  pointer-events: none;
+}
+.status-poll-label,
+.status-poll-value {
+  position: relative;
+}
+.status-poll-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.status-poll-value {
+  flex-shrink: 0;
+  color: var(--fitness-muted);
+  font-size: 13px;
+}
+.status-poll-total {
+  display: block;
+  margin-top: 8px;
+  color: var(--fitness-muted);
+  font-size: 12px;
+}
+
+/* ---- tablet / desktop ------------------------------------------------------------------------ */
+@media (min-width: 768px) {
+  .cd-header {
+    margin-bottom: 20px;
+    padding: 4px 24px 24px;
+    border: 1px solid var(--borderColor-muted);
+    border-radius: var(--fitness-radius-lg);
+    background: var(--fitness-surface);
+    background-image: radial-gradient(
+      90% 140% at 100% 0%,
+      color-mix(in srgb, var(--fitness-accent) 12%, transparent),
+      transparent 60%
+    );
+  }
+  .cd-back-label {
+    display: inline;
+  }
+  .main-content .community-page .cd-identity h1 {
+    font-size: 28px;
+  }
+  .cd-description {
+    font-size: 15px;
+  }
+  .cd-toolbar {
+    grid-template-columns: minmax(220px, 280px) 1fr;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .cd-actions {
+    grid-template-columns: auto auto;
+    justify-content: end;
+  }
+  .cd-actions .cd-publish {
+    min-width: 140px;
+  }
+  .status-card {
+    padding: 18px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-poll-fill {
+    transition: none;
+  }
+}
+
+/* formulário (chunk sob demanda) ainda baixando: mantém a altura e evita "pulo" de layout */
+.cd-form-loading {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  margin-bottom: 16px;
+  border: 1px dashed var(--borderColor-default);
+  border-radius: var(--fitness-radius-md);
+}
+
+/* ---- conteúdo extenso: "Ver mais"/"Ver menos" dentro do próprio card ----------------------------- */
+.expandable {
+  min-width: 0;
+}
+.expandable-body {
+  position: relative;
+  /* contexto de formatação próprio: a margem do primeiro bloco (ex.: título) não "escapa" para fora e o
+     topo do recorte coincide com o topo do conteúdo medido */
+  display: flow-root;
+}
+.expandable.is-collapsed .expandable-body {
+  overflow: hidden;
+}
+.expandable-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  /* O corte já cai numa fronteira limpa (bloco, linha de tabela ou item): uma linha divisória + o botão
+     bastam para sinalizar que há mais, sem apagar texto com degradê. */
+  border: 0;
+  border-top: 1px solid var(--borderColor-muted);
+  background: transparent;
+  color: var(--fgColor-accent);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.expandable-toggle:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+/* tabelas largas: rolam na horizontal DENTRO do próprio contêiner; as sombras nas bordas (só aparecem quando
+   há mais conteúdo para aquele lado) avisam que dá para arrastar. Só CSS, sem JavaScript. */
+.status-content [role='region'] {
+  --scroll-bg: var(--fitness-surface);
+  background:
+    linear-gradient(to right, var(--scroll-bg) 30%, transparent) left center / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--scroll-bg) 30%, transparent) right center / 28px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 28%), transparent) left center / 10px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 28%), transparent) right center / 10px 100% no-repeat scroll;
+  overscroll-behavior-x: contain;
+}
+.achievement-summary [role='region'] {
+  --scroll-bg: var(--bgColor-muted);
+}
+
+/* ---- destaque compacto no topo de "Recentes" ------------------------------------------------------- */
+.cd-spotlight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--borderColor-muted);
+  border-left: 3px solid var(--fitness-accent);
+  border-radius: 12px;
+  background: var(--fitness-surface);
+  color: var(--fgColor-default);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cd-spotlight > svg {
+  flex: 0 0 auto;
+  color: var(--fitness-accent-strong);
+}
+.cd-spotlight > svg:last-child {
+  color: var(--fitness-muted);
+}
+.cd-spotlight:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 2px;
+}
+.cd-spotlight-body {
+  flex: 1;
+  min-width: 0;
+}
+.cd-spotlight-label {
+  display: block;
+  overflow: hidden;
+  color: var(--fitness-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.cd-spotlight-text {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}

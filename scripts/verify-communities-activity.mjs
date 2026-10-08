@@ -1,4 +1,4 @@
-// Verificação MANUAL (somente leitura) da prévia de atividade das Comunidades contra o Supabase
+// Verificação MANUAL (somente leitura) da prévia de atividade das Comunidades e dos RPCs em lote do feed contra o Supabase
 // hospedado: roda a função real do app (listLatestCommunityActivity) e confere cada resultado
 // contra uma consulta independente de "última publicação" por comunidade, o que valida a
 // compatibilidade do PostgREST (limite do recurso embutido aplicado POR comunidade) e o RLS.
@@ -125,6 +125,47 @@ try {
     ['todas as comunidades foram verificadas, sem falha parcial', checkedIds.length === ids.length && !partial],
     [`requisições em lote: ${batchCalls} <= ${maxCalls} (não 1 por comunidade)`, batchCalls <= maxCalls],
   ]
+  // --- RPCs em lote do feed (migration 20261017000001) x RPCs unitárias de sempre -------------------------
+  // Para as enquetes/treinos recentes das comunidades da conta, o lote precisa devolver exatamente o que a
+  // chamada unitária devolve; e ids que a conta não pode ver (aleatórios) não devolvem nada (fail-closed).
+  const { data: recent, error: recentError } = await supabase
+    .from('statuses')
+    .select('id,type')
+    .in('community_id', ids.slice(0, 40))
+    .in('type', ['poll', 'workout'])
+    .order('created_at', { ascending: false })
+    .limit(40)
+  if (recentError) throw recentError
+  const polls = recent.filter((row) => row.type === 'poll').map((row) => row.id).slice(0, 10)
+  const workouts = recent.filter((row) => row.type === 'workout').map((row) => row.id).slice(0, 10)
+  const rpcBatchAvailable = (await supabase.rpc('get_poll_results_batch', { p_status_ids: [] })).error === null
+  if (!rpcBatchAvailable) console.log('AVISO  RPCs em lote ainda não existem neste projeto (migration 20261017000001): o app usa o fallback unitário.')
+  if (rpcBatchAvailable) {
+    const batchPolls = await supabase.rpc('get_poll_results_batch', { p_status_ids: polls })
+    let pollMismatches = 0
+    for (const id of polls) {
+      const single = await supabase.rpc('get_poll_results', { p_status_id: id })
+      const fromBatch = Object.fromEntries((batchPolls.data ?? []).filter((r) => r.status_id === id).map((r) => [r.option_id, Number(r.votes)]))
+      const fromSingle = Object.fromEntries((single.data ?? []).map((r) => [r.option_id, Number(r.votes)]))
+      if (JSON.stringify(Object.entries(fromBatch).sort()) !== JSON.stringify(Object.entries(fromSingle).sort())) pollMismatches += 1
+    }
+    const batchWorkouts = await supabase.rpc('count_workout_participants_batch', { p_status_ids: workouts })
+    let workoutMismatches = 0
+    for (const id of workouts) {
+      const single = await supabase.rpc('count_workout_participants', { p_status_id: id })
+      const fromBatch = (batchWorkouts.data ?? []).find((r) => r.status_id === id)?.participants
+      if (Number(fromBatch) !== Number(single.data)) workoutMismatches += 1
+    }
+    const strangers = Array.from({ length: 5 }, () => crypto.randomUUID())
+    const strangerPolls = await supabase.rpc('get_poll_results_batch', { p_status_ids: strangers })
+    const strangerWorkouts = await supabase.rpc('count_workout_participants_batch', { p_status_ids: strangers })
+    console.log(`RPCs em lote: ${polls.length} enquetes e ${workouts.length} treinos comparados com as chamadas unitárias`)
+    checks.push(
+      ['RPC em lote de enquetes == chamada unitária', batchPolls.error === null && pollMismatches === 0],
+      ['RPC em lote de treinos == chamada unitária', batchWorkouts.error === null && workoutMismatches === 0],
+      ['ids que a conta não pode ver não devolvem nada (fail-closed)', (strangerPolls.data ?? []).length === 0 && (strangerWorkouts.data ?? []).length === 0]
+    )
+  }
   checks.forEach(([label, ok]) => console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}`))
   process.exitCode = checks.every(([, ok]) => ok) ? 0 : 1
 } finally {

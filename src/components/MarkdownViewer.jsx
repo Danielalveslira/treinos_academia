@@ -1,16 +1,41 @@
 import { Box, Link } from '@primer/react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import rehypeSanitize from 'rehype-sanitize'
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
+import { markdownContainerSx } from './markdownStyles'
+
+// Só http, https e mailto viram link (o padrão do rehype-sanitize ainda aceita irc, ircs e xmpp, que não têm
+// uso aqui e só ampliam a superfície).
+const SANITIZE_SCHEMA = {
+  ...defaultSchema,
+  protocols: { ...defaultSchema.protocols, href: ['http', 'https', 'mailto'] },
+}
 
 const COMPONENTS = {
+  // Conteúdo de usuário nunca carrega recurso externo: uma imagem em markdown (o editor nem oferece) viraria
+  // rastreador do IP de quem lê, consumo de dados em rede fraca e dezenas de downloads num feed. Fica só o texto
+  // alternativo, inerte.
+  img: ({ alt }) => (alt ? <span>{alt}</span> : null),
   a: ({ href, title, children }) => (
     <Link href={href} title={title} target="_blank" rel="noreferrer noopener">
       {children}
     </Link>
   ),
   table: ({ children }) => (
-    <Box role="region" aria-label="Tabela" tabIndex={0} sx={{ overflowX: 'auto', mb: 2 }}>
+    <Box
+      role="region"
+      aria-label="Tabela"
+      tabIndex={0}
+      sx={{
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        mb: 2,
+        border: '1px solid',
+        borderColor: 'border.muted',
+        borderRadius: 2,
+        maxWidth: '100%',
+      }}
+    >
       <table>{children}</table>
     </Box>
   ),
@@ -29,42 +54,10 @@ export function MarkdownViewer({ value, sx }) {
   if (!content.trim()) return null
 
   return (
-    <Box
-      sx={{
-        minWidth: 0,
-        fontSize: 1,
-        lineHeight: 1.6,
-        overflowWrap: 'anywhere',
-        '& p': { m: 0, mb: 2, whiteSpace: 'pre-wrap', '&:last-child': { mb: 0 } },
-        '& ul, & ol': { m: 0, mb: 2, pl: 4 },
-        '& li': { mb: 1 },
-        '& blockquote': {
-          m: 0,
-          mb: 2,
-          pl: 3,
-          borderLeft: '3px solid',
-          borderColor: 'border.default',
-          color: 'fg.muted',
-        },
-        '& code': { fontFamily: 'mono', fontSize: 0, bg: 'neutral.muted', borderRadius: 1, px: 1 },
-        '& pre': { m: 0, mb: 2, p: 2, bg: 'canvas.subtle', borderRadius: 2, overflowX: 'auto' },
-        '& pre code': { bg: 'transparent', p: 0, whiteSpace: 'pre', overflowWrap: 'normal' },
-        '& table': { borderCollapse: 'collapse', width: '100%', fontSize: 1 },
-        '& th, & td': {
-          textAlign: 'left',
-          borderBottom: '1px solid',
-          borderColor: 'border.muted',
-          p: 2,
-        },
-        '& th': { borderColor: 'border.default' },
-        '& hr': { border: 0, borderTop: '1px solid', borderColor: 'border.default', my: 3 },
-        '& img': { maxWidth: '100%', height: 'auto' },
-        ...sx,
-      }}
-    >
+    <Box sx={{ ...markdownContainerSx, ...sx }}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeSanitize]}
+        rehypePlugins={[[rehypeSanitize, SANITIZE_SCHEMA]]}
         components={COMPONENTS}
         skipHtml
       >

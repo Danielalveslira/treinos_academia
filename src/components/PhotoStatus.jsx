@@ -1,9 +1,16 @@
 import { Box, Spinner, Text, Link as PrimerLink } from '@primer/react'
 import { AlertIcon, GraphIcon, ImageIcon } from '@primer/octicons-react'
 import { useStatusPhoto } from '../hooks/useStatusPhoto'
+import { useInView } from '../hooks/useInView'
 
 export function PhotoStatus({ status, preloadedBlob }) {
-  const { url, loading, error, retry } = useStatusPhoto(status.photoPath, preloadedBlob)
+  // A foto só é baixada quando chega perto da tela: num feed longo, as de baixo não custam rede nem memória
+  // até o usuário se aproximar delas.
+  const [photoRef, nearScreen] = useInView({
+    rootMargin: '600px 0px',
+    disabled: Boolean(preloadedBlob),
+  })
+  const { url, loading, error, retry } = useStatusPhoto(status.photoPath, preloadedBlob, nearScreen)
 
   return (
     <Box>
@@ -12,7 +19,7 @@ export function PhotoStatus({ status, preloadedBlob }) {
           <GraphIcon size={12} /> Progresso
         </Text>
       )}
-      <Box className="status-photo" aria-busy={loading}>
+      <Box className="status-photo" aria-busy={loading} ref={photoRef}>
         {url && (
           <img
             src={url}

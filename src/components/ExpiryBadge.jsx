@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import { AnchoredOverlay, Box, IconButton, Text } from '@primer/react'
 import { ClockIcon } from '@primer/octicons-react'
 import { formatPublicationDateTime, formatRemainingTime, toMillis } from '../utils/expiry'
+import { useClockSelector, useNowSelector } from '../utils/clock'
 
 function validMillis(value) {
   const millis = toMillis(value)
@@ -20,11 +21,19 @@ function DetailRow({ label, value }) {
 export function ExpiryBadge({ status, now }) {
   const [open, setOpen] = useState(false)
   const titleId = useId()
-  const nowMs = validMillis(now) ?? Date.now()
+  const nowOverride = validMillis(now) ?? undefined
   const createdAtMs = validMillis(status.createdAt)
   const expiresAtMs = validMillis(status.expiresAt)
   const promotedUntilMs = validMillis(status.promotedUntil)
-  const promotionActive = status.promoted === true && promotedUntilMs > nowMs
+  // Relógio compartilhado por seletor: com o popover fechado nada aqui re-renderiza a cada tick (só
+  // quando a promoção acaba); com ele aberto, o "tempo restante" acompanha o relógio.
+  const promotionActive = useNowSelector(
+    nowOverride,
+    (n) => status.promoted === true && promotedUntilMs > n,
+    toMillis
+  )
+  const openClock = useClockSelector((n) => (open ? n : 0))
+  const nowMs = nowOverride ?? (openClock || Date.now())
 
   // A janela de 24h do feed não representa a validade do evento. Em treino marcado,
   // este controle só volta a existir quando comunica uma promoção realmente ativa.

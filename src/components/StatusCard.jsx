@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, memo, useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Box, Text, Button, Flash, IconButton } from '@primer/react'
 import {
@@ -12,25 +12,17 @@ import {
   PeopleIcon,
   XIcon,
 } from '@primer/octicons-react'
-import {
-  getMyVote,
-  getPollResults,
-  voteOnPoll,
-  amIParticipant,
-  countParticipants,
-  joinWorkout,
-  leaveWorkout,
-} from '../services/statusesService'
+import { voteOnPoll, joinWorkout, leaveWorkout } from '../services/statusesService'
+import { loadPollState, loadWorkoutState } from '../services/statusInteractionsService'
 import { ExpiryBadge } from './ExpiryBadge'
 import { EconomyVoteBar } from './EconomyVoteBar'
 import { AchievementSummary } from './AchievementSummary'
-import { MarkdownViewer } from './MarkdownViewer'
+import { StatusText } from './StatusText'
 import { PhotoStatus } from './PhotoStatus'
 import { ProfileAvatar } from './ProfileAvatar'
 import { ShareMenu } from './ShareMenu'
-import { PromoteDialog } from './PromoteDialog'
 import { PromotedBadge } from './PromotedBadge'
-import { WorkoutParticipantsDialog } from './WorkoutParticipantsDialog'
+import { LazyDialogBoundary } from './LazyDialogBoundary'
 import { CommentSection } from '../features/comments/components/CommentSection'
 import { COMMENTS_ENABLED } from '../features/comments/config'
 import { formatDateTime } from '../utils/format'
@@ -45,7 +37,18 @@ import {
   nextWorkoutParticipationState,
 } from '../utils/scheduledWorkout'
 import { buildIcsEvent, downloadIcsFile } from '../utils/icsExport'
+import { useNowSelector } from '../utils/clock'
 import '../styles/workout-status.css'
+
+// Diálogos que quase ninguém abre a cada visita ao feed: só baixam quando o usuário os abre.
+const PromoteDialog = lazy(() =>
+  import('./PromoteDialog').then((module) => ({ default: module.PromoteDialog }))
+)
+const WorkoutParticipantsDialog = lazy(() =>
+  import('./WorkoutParticipantsDialog').then((module) => ({
+    default: module.WorkoutParticipantsDialog,
+  }))
+)
 
 // Todo erro contextual hoje é transitório (voto, enquete, participação, exclusão --
 // sempre resolve tentando de novo), então some sozinho depois de um tempo pra não virar
@@ -58,19 +61,9 @@ const ACTION_ERROR_AUTO_DISMISS_MS = 6000
 // statusesService.js), nunca de um campo que o próprio cliente poderia forjar.
 function SuperAdminBadge() {
   return (
-    <Box
-      as="span"
-      title="Superadmin"
-      aria-label="Superadmin"
-      sx={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        flexShrink: 0,
-        color: 'attention.fg',
-      }}
-    >
+    <span className="status-superadmin-badge" title="Superadmin" aria-label="Superadmin">
       <ShieldCheckIcon size={14} />
-    </Box>
+    </span>
   )
 }
 
@@ -85,19 +78,18 @@ function StatusHeader({ status, authorAvatarPath, now, canDelete, onDelete, dele
         path={authorAvatarPath}
         name={authorUsername || 'M'}
         className="status-author-avatar"
+        lazy
       />
-      <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <div className="status-header-main">
+        <div className="status-author-row">
           <Link to={`/comunidades/perfil/${status.authorId}`} className="status-author">
             {authorUsername ? `@${authorUsername}` : 'Membro'}
           </Link>
           {status.authorIsSuperAdmin && <SuperAdminBadge />}
-        </Box>
-        <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted' }}>
-          {formatDateTime(toDate(status.createdAt))}
-        </Text>
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: 1 }}>
+        </div>
+        <span className="status-time">{formatDateTime(toDate(status.createdAt))}</span>
+      </div>
+      <div className="status-header-actions">
         <ExpiryBadge status={status} now={now} />
         <ShareMenu status={status} showToast={showToast} />
         {canDelete && (
@@ -108,15 +100,21 @@ function StatusHeader({ status, authorAvatarPath, now, canDelete, onDelete, dele
             aria-label="Excluir publicação"
             onClick={() => onDelete(status)}
             disabled={deleting}
-            sx={{ color: 'fg.muted' }}
           />
         )}
-      </Box>
+      </div>
     </header>
   )
 }
 
-function PollStatus({ status, currentUserId, showToast, onActionSuccess, interactionActive }) {
+function PollStatus({
+  status,
+  currentUserId,
+  showToast,
+  onActionSuccess,
+  interactionActive,
+  refreshEpoch,
+}) {
   // counts/myOptionId em vez da lista de votos: nunca baixa a subcoleção inteira (uma
   // enquete popular pode ter milhares de votos) — só contagens agregadas por opção
   // (no máximo 6, teto do schema) e o meu próprio voto, 1 leitura direta pelo id.
@@ -131,6 +129,8 @@ function PollStatus({ status, currentUserId, showToast, onActionSuccess, interac
   // já tinha falhado de vez. loadError + o botão "Tentar novamente" abaixo cobrem isso.
   const [loadError, setLoadError] = useState(false)
   const [retryToken, setRetryToken] = useState(0)
+  // "Atualizar" manual do feed: recarrega os totais e o meu voto (a cache só vale para a primeira montagem).
+  const [initialEpoch] = useState(refreshEpoch)
   // O constraint statuses_content_shape só valida a quantidade de opções (2 a 6), não o
   // shape de cada item -- então, mesmo raciocínio do authorUsername acima: um item
   // inesperado (ex.: null) não deveria quebrar a renderização de toda a enquete, só ser
@@ -141,27 +141,30 @@ function PollStatus({ status, currentUserId, showToast, onActionSuccess, interac
   const optionIds = options.map((option) => option.id)
 
   useEffect(() => {
-    if (cached) return
+    if (cached && refreshEpoch === initialEpoch) return
     let active = true
     setLoadError(false)
-    Promise.all([getPollResults(status.id, optionIds), getMyVote(status.id, currentUserId)])
-      .then(([results, myVote]) => {
+    // Os cards de uma mesma renderização do feed são agrupados em 1 chamada (ver
+    // statusInteractionsService.js); opções sem voto entram com 0.
+    loadPollState(status.id, currentUserId)
+      .then((state) => {
         if (!active) return
-        const myOptionId = myVote?.optionId ?? null
+        const results = { ...Object.fromEntries(optionIds.map((id) => [id, 0])), ...state?.counts }
+        const myOptionId = state?.myOptionId ?? null
         setCounts(results)
         setMyOptionId(myOptionId)
         setCached(cacheKey, { counts: results, myOptionId })
       })
       .catch((error) => {
         if (!active) return
-        console.error('[PollStatus] getPollResults/getMyVote:', error)
+        console.error('[PollStatus] loadPollState:', error)
         setLoadError(true)
       })
     return () => {
       active = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status.id, currentUserId, retryToken])
+  }, [status.id, currentUserId, retryToken, refreshEpoch])
 
   const total = counts ? Object.values(counts).reduce((sum, n) => sum + n, 0) : 0
 
@@ -196,69 +199,53 @@ function PollStatus({ status, currentUserId, showToast, onActionSuccess, interac
     )
   }
 
+  const votable = Boolean(counts) && !myOptionId && interactionActive
+
   return (
-    <Box>
-      <Text sx={{ fontWeight: 'bold', fontSize: 1, display: 'block', mb: 2 }}>
-        {status.poll?.question}
-      </Text>
-      <Box sx={{ display: 'grid', gap: 2 }}>
+    <div>
+      <span className="status-poll-question">{status.poll?.question}</span>
+      <div className="status-poll-options">
         {options.map((option) => {
           const count = counts?.[option.id] || 0
-          const percent = total > 0 ? Math.round((count / total) * 100) : 0
-          const isMine = myOptionId === option.id
-          return (
-            <Box
-              key={option.id}
-              as={counts && !myOptionId && interactionActive ? 'button' : 'div'}
-              type={counts && !myOptionId && interactionActive ? 'button' : undefined}
-              disabled={counts && !myOptionId && interactionActive ? voting : undefined}
-              onClick={
-                counts && !myOptionId && interactionActive ? () => handleVote(option.id) : undefined
-              }
-              sx={{
-                position: 'relative',
-                textAlign: 'left',
-                border: '1px solid',
-                borderColor: isMine ? 'accent.emphasis' : 'border.default',
-                borderRadius: 2,
-                minHeight: 40,
-                p: 2,
-                bg: 'canvas.default',
-                color: 'fg.default',
-                cursor:
-                  counts && !myOptionId && interactionActive && !voting ? 'pointer' : 'default',
-                overflow: 'hidden',
-              }}
-            >
+          const fraction = total > 0 ? count / total : 0
+          const percent = Math.round(fraction * 100)
+          const className = `status-poll-option${myOptionId === option.id ? ' is-mine' : ''}`
+          const content = (
+            <>
               {counts && (
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: `${percent}%`,
-                    bg: 'accent.subtle',
-                    zIndex: 0,
-                  }}
-                />
+                <span className="status-poll-fill" style={{ '--poll-fraction': fraction }} />
               )}
-              <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'space-between' }}>
-                <Text sx={{ fontSize: 0 }}>{option.label}</Text>
-                {counts && (
-                  <Text sx={{ fontSize: 0, color: 'fg.muted', flexShrink: 0, ml: 2 }}>
-                    {percent}% ({count})
-                  </Text>
-                )}
-              </Box>
-            </Box>
+              <span className="status-poll-label">{option.label}</span>
+              {counts && (
+                <span className="status-poll-value">
+                  {percent}% ({count})
+                </span>
+              )}
+            </>
+          )
+          return votable ? (
+            <button
+              key={option.id}
+              type="button"
+              className={className}
+              disabled={voting}
+              onClick={() => handleVote(option.id)}
+            >
+              {content}
+            </button>
+          ) : (
+            <div key={option.id} className={className}>
+              {content}
+            </div>
           )
         })}
-      </Box>
+      </div>
       {counts && (
-        <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block', mt: 2 }}>
+        <span className="status-poll-total">
           {total} {total === 1 ? 'voto' : 'votos'}
-        </Text>
+        </span>
       )}
-    </Box>
+    </div>
   )
 }
 
@@ -267,7 +254,15 @@ function PollStatus({ status, currentUserId, showToast, onActionSuccess, interac
 // participação e "Adicionar ao calendário". `now` vem do relógio já compartilhado pelo
 // feed (useCommunityFeed.js, atualizado a cada 15s) -- nenhum setInterval novo só para
 // este card.
-function WorkoutStatus({ status, currentUserId, showToast, onActionSuccess, now, communityName }) {
+function WorkoutStatus({
+  status,
+  currentUserId,
+  showToast,
+  onActionSuccess,
+  now,
+  communityName,
+  refreshEpoch,
+}) {
   // Contagem agregada + 1 leitura direta pelo id (não a lista inteira de participantes)
   // — mesmo raciocínio da enquete: nunca escala com o número de pessoas confirmadas.
   // A lista de nomes (quem confirmou) NÃO é buscada automaticamente aqui: um preview
@@ -284,28 +279,31 @@ function WorkoutStatus({ status, currentUserId, showToast, onActionSuccess, now,
   // desabilitado (count === null) pra sempre, sem nenhuma explicação de por quê.
   const [loadError, setLoadError] = useState(false)
   const [retryToken, setRetryToken] = useState(0)
+  const [initialEpoch] = useState(refreshEpoch)
 
   useEffect(() => {
-    if (cached) return
+    if (cached && refreshEpoch === initialEpoch) return
     let active = true
     setLoadError(false)
-    Promise.all([countParticipants(status.id), amIParticipant(status.id, currentUserId)])
-      .then(([total, mine]) => {
+    loadWorkoutState(status.id, currentUserId)
+      .then((state) => {
         if (!active) return
+        const total = state?.count ?? 0
+        const mine = state?.amParticipant ?? false
         setCount(total)
         setAmParticipant(mine)
         setCached(cacheKey, { count: total, amParticipant: mine })
       })
       .catch((error) => {
         if (!active) return
-        console.error('[WorkoutStatus] countParticipants/amIParticipant:', error)
+        console.error('[WorkoutStatus] loadWorkoutState:', error)
         setLoadError(true)
       })
     return () => {
       active = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status.id, currentUserId, retryToken])
+  }, [status.id, currentUserId, retryToken, refreshEpoch])
 
   async function toggle() {
     setPending(true)
@@ -351,9 +349,20 @@ function WorkoutStatus({ status, currentUserId, showToast, onActionSuccess, now,
   }
 
   const dateMs = toMillis(status.workout.date)
-  const nowMs = toMillis(now) || Date.now()
-  const state = describeScheduledWorkoutState(dateMs, nowMs)
-  const joinable = isScheduledWorkoutJoinable(dateMs, nowMs)
+  // Estado do treino pelo relógio compartilhado, por seletor: re-renderiza só quando o rótulo ou a
+  // possibilidade de participar mudam (não a cada tick).
+  const stateKey = useNowSelector(
+    now,
+    (n) => describeScheduledWorkoutState(dateMs, n).key,
+    toMillis
+  )
+  const stateLabel = useNowSelector(
+    now,
+    (n) => describeScheduledWorkoutState(dateMs, n).label,
+    toMillis
+  )
+  const joinable = useNowSelector(now, (n) => isScheduledWorkoutJoinable(dateMs, n), toMillis)
+  const state = { key: stateKey, label: stateLabel }
   const organizerUsername = typeof status.authorUsername === 'string' ? status.authorUsername : null
 
   return (
@@ -439,16 +448,18 @@ function WorkoutStatus({ status, currentUserId, showToast, onActionSuccess, now,
         </>
       )}
       {participantsOpen && (
-        <WorkoutParticipantsDialog
-          statusId={status.id}
-          onClose={() => setParticipantsOpen(false)}
-        />
+        <LazyDialogBoundary onFail={() => setParticipantsOpen(false)}>
+          <WorkoutParticipantsDialog
+            statusId={status.id}
+            onClose={() => setParticipantsOpen(false)}
+          />
+        </LazyDialogBoundary>
       )}
     </Box>
   )
 }
 
-export function StatusCard({
+function StatusCardView({
   status,
   authorAvatarPath,
   currentUserId,
@@ -461,14 +472,34 @@ export function StatusCard({
   onPromoted,
   communityName,
   canModerate = false,
+  anchorPrefix = '',
+  refreshEpoch = 0,
+  onCommentCountChange,
 }) {
   const [promoteOpen, setPromoteOpen] = useState(false)
   const [actionError, setActionError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const isAuthor = status.authorId === currentUserId
-  const isCurrentlyPromoted =
-    Boolean(status.promoted) && toMillis(status.promotedUntil) > toMillis(now)
-  const interactionActive = isPublicationInteractionActive(status, now)
+  // Relógio compartilhado por seletor: só re-renderiza quando a promoção acaba ou a janela de
+  // interação fecha (e `now` explícito, usado em testes, tem prioridade).
+  const isCurrentlyPromoted = useNowSelector(
+    now,
+    (n) => Boolean(status.promoted) && toMillis(status.promotedUntil) > n,
+    toMillis
+  )
+  const interactionActive = useNowSelector(
+    now,
+    (n) => isPublicationInteractionActive(status, n),
+    toMillis
+  )
+  const handleCommentCount = useCallback(
+    (delta) => onCommentCountChange?.(status.id, delta),
+    [onCommentCountChange, status.id]
+  )
+  const handleEconomyVoted = useCallback(
+    (value, delta) => onEconomyVoted?.(status.id, value, delta),
+    [onEconomyVoted, status.id]
+  )
 
   // Reagenda sempre que a mensagem muda (inclusive de um erro pro próximo): o cleanup
   // do efeito anterior cancela o timer velho antes deste rodar, então nunca há dois
@@ -504,7 +535,7 @@ export function StatusCard({
   return (
     <article
       className={`status-card${status.type === 'workout' ? ' workout-status-card' : ''}`}
-      id={status.type === 'workout' ? `treino-${status.id}` : `publicacao-${status.id}`}
+      id={`${anchorPrefix}${status.type === 'workout' ? 'treino' : 'publicacao'}-${status.id}`}
     >
       <StatusHeader
         status={status}
@@ -523,7 +554,7 @@ export function StatusCard({
       )}
 
       <div className="status-content">
-        {status.type === 'text' && <MarkdownViewer value={status.text} />}
+        {status.type === 'text' && <StatusText value={status.text} />}
 
         {status.type === 'achievement' && <AchievementSummary achievement={status.achievement} />}
 
@@ -534,6 +565,7 @@ export function StatusCard({
             showToast={handleActionMessage}
             onActionSuccess={() => setActionError('')}
             interactionActive={interactionActive}
+            refreshEpoch={refreshEpoch}
           />
         )}
 
@@ -545,6 +577,7 @@ export function StatusCard({
             onActionSuccess={() => setActionError('')}
             now={now}
             communityName={communityName}
+            refreshEpoch={refreshEpoch}
           />
         )}
 
@@ -555,29 +588,32 @@ export function StatusCard({
       {/* Enquete usa o voto gratuito das próprias opções; treino usa participação.
           Nenhum dos dois monta EconomyVoteBar ou seus contadores/listas. O backend usa
           a mesma elegibilidade em vote-service e no settlement de recompensas antigas. */}
-      {status.type !== 'poll' && status.type !== 'workout' && (
-        <div className="status-footer">
-          <EconomyVoteBar
-            status={status}
+      <div className="status-actions">
+        {status.type !== 'poll' && status.type !== 'workout' && (
+          <div className="status-footer">
+            <EconomyVoteBar
+              status={status}
+              currentUserId={currentUserId}
+              showToast={handleActionMessage}
+              myVote={myEconomyVote}
+              onVoted={handleEconomyVoted}
+              onActionSuccess={() => setActionError('')}
+              interactionActive={interactionActive}
+            />
+          </div>
+        )}
+        {COMMENTS_ENABLED && (
+          <CommentSection
+            statusId={status.id}
+            communityId={status.communityId}
+            initialCount={status.commentCount}
             currentUserId={currentUserId}
-            showToast={handleActionMessage}
-            myVote={myEconomyVote}
-            onVoted={onEconomyVoted}
-            onActionSuccess={() => setActionError('')}
-            interactionActive={interactionActive}
+            canModerate={canModerate}
+            allowWrite={interactionActive}
+            onCountChange={handleCommentCount}
           />
-        </div>
-      )}
-      {COMMENTS_ENABLED && (
-        <CommentSection
-          statusId={status.id}
-          communityId={status.communityId}
-          initialCount={status.commentCount}
-          currentUserId={currentUserId}
-          canModerate={canModerate}
-          allowWrite={interactionActive}
-        />
-      )}
+        )}
+      </div>
       {isReportableAuthor(status, currentUserId) && (
         <Link
           className="status-report-link"
@@ -592,17 +628,19 @@ export function StatusCard({
         </Button>
       )}
       {promoteOpen && (
-        <PromoteDialog
-          targetType="post"
-          targetId={status.id}
-          currentUserId={currentUserId}
-          title="Promover publicação"
-          onClose={() => setPromoteOpen(false)}
-          onPromoted={(result) => {
-            setPromoteOpen(false)
-            onPromoted?.(status.id, result)
-          }}
-        />
+        <LazyDialogBoundary onFail={() => setPromoteOpen(false)}>
+          <PromoteDialog
+            targetType="post"
+            targetId={status.id}
+            currentUserId={currentUserId}
+            title="Promover publicação"
+            onClose={() => setPromoteOpen(false)}
+            onPromoted={(result) => {
+              setPromoteOpen(false)
+              onPromoted?.(status.id, result)
+            }}
+          />
+        </LazyDialogBoundary>
       )}
       {actionError && (
         <Flash className="status-action-error" variant="danger" role="alert">
@@ -622,3 +660,7 @@ export function StatusCard({
     </article>
   )
 }
+
+// memo: um voto/exclusão/atualização numa publicação não re-renderiza as outras do feed (os handlers
+// recebidos do pai são estáveis e o relógio entra por seletor, não por props).
+export const StatusCard = memo(StatusCardView)

@@ -2,9 +2,22 @@ import { useEffect, useState } from 'react'
 import { PersonIcon } from '@primer/octicons-react'
 import { loadAvatarBytes } from '../services/profileAvatarService'
 import { getCachedPhotoUrl, loadPhotoOnce } from '../utils/photoBlobCache'
+import { useInView } from '../hooks/useInView'
 
-export function ProfileAvatar({ path, name = '', className = '', professional = true }) {
-  const [image, setImage] = useState(() => ({ path, url: path ? getCachedPhotoUrl(path) || '' : '' }))
+// `lazy`: no feed, o avatar só é baixado quando chega perto da tela (cards bem abaixo não custam rede
+// nem memória enquanto não são vistos). Sem `lazy` (padrão) o comportamento é o de sempre.
+export function ProfileAvatar({
+  path,
+  name = '',
+  className = '',
+  professional = true,
+  lazy = false,
+}) {
+  const [wrapperRef, visible] = useInView({ disabled: !lazy })
+  const [image, setImage] = useState(() => ({
+    path,
+    url: path ? getCachedPhotoUrl(path) || '' : '',
+  }))
   useEffect(() => {
     let active = true
     if (!path) {
@@ -20,12 +33,17 @@ export function ProfileAvatar({ path, name = '', className = '', professional = 
         active = false
       }
     }
+    if (!visible) {
+      return () => {
+        active = false
+      }
+    }
     // loadPhotoOnce agrupa montagens concorrentes do MESMO path (ex.: o mesmo autor
     // aparecendo em "Destaques" e no feed principal ao mesmo tempo) numa única
     // requisição ao Storage, em vez de uma por card.
     loadPhotoOnce(path, () =>
-      loadAvatarBytes(path).then(
-        (bytes) => URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }))
+      loadAvatarBytes(path).then((bytes) =>
+        URL.createObjectURL(new Blob([bytes], { type: 'image/webp' }))
       )
     )
       .then((url) => active && setImage({ path, url }))
@@ -40,11 +58,15 @@ export function ProfileAvatar({ path, name = '', className = '', professional = 
     return () => {
       active = false
     }
-  }, [path])
+  }, [path, visible])
 
   const url = image.path === path ? image.url : ''
   return (
-    <span className={`profile-avatar-image ${className}`.trim()} aria-hidden="true">
+    <span
+      ref={wrapperRef}
+      className={`profile-avatar-image ${className}`.trim()}
+      aria-hidden="true"
+    >
       {url ? (
         <img src={url} alt="" />
       ) : professional && name ? (

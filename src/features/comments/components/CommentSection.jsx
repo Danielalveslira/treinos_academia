@@ -11,6 +11,7 @@ export function CommentSection({
   currentUserId,
   canModerate = false,
   allowWrite = true,
+  onCountChange,
 }) {
   const [open, setOpen] = useState(false)
   const [count, setCount] = useState(initialCount)
@@ -40,6 +41,7 @@ export function CommentSection({
           onCreated={(comment) => {
             comments.addComment({ ...comment, _isNew: true }, 'start')
             setCount((value) => value + 1)
+            onCountChange?.(1)
           }}
         />
       )}
@@ -71,7 +73,10 @@ export function CommentSection({
             currentUserId={currentUserId}
             canModerate={canModerate}
             allowWrite={allowWrite}
-            onCommentCreated={() => setCount((value) => value + 1)}
+            onCommentCreated={() => {
+              setCount((value) => value + 1)
+              onCountChange?.(1)
+            }}
             onChange={(next) => comments.updateComment(comment.id, next)}
             visuallyNew={Boolean(comment._isNew)}
           />

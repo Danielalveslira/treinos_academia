@@ -1,6 +1,5 @@
 import { supabase } from '../supabase/config'
 
-const FEED_PAGE_SIZE = 30
 const UPCOMING_WORKOUTS_PAGE_SIZE = 20
 // Um pouco acima de MAX_OUTPUT_BYTES (utils/imageCompression.js) só de folga — nunca
 // deveria ter um objeto maior que isso no bucket, pois ele recusa upload além desse teto.
@@ -88,17 +87,56 @@ export function mapStatusRow(row) {
   }
 }
 
-export async function listCommunityFeed(communityId, pageSize = FEED_PAGE_SIZE) {
-  const { data, error } = await supabase
+// Colunas que o card do feed realmente usa (mapStatusRow): evita levar a linha inteira (select *).
+export const FEED_COLUMNS =
+  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,retention_mode,comments_close_at,promoted,promoted_until,active_promotion_id,positive_vote_count,negative_vote_count,comment_count,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_path,photo_caption,progress_kind,progress_period_start,progress_period_end'
+
+// Tamanho da página do feed: pequeno para abrir rápido e gastar pouco em celular/rede ruins;
+// as próximas páginas só vêm quando o usuário chega perto do fim.
+export const FEED_PAGE_SIZE = 10
+
+// Paginação por cursor (created_at desc, id desc como desempate estável): sem OFFSET, não repete
+// nem pula itens quando entram publicações novas, e usa statuses_community_created_idx.
+// Pede pageSize + 1 linhas só para saber se há próxima página, sem um count(*) à parte.
+// cursor = { createdAt, id } do último item já carregado (createdAt na forma original do banco).
+// O cursor sai de uma publicação já recebida do servidor, mas é interpolado numa string de filtro do
+// PostgREST: valida o formato (timestamp ISO e uuid) para que um valor adulterado nunca vire sintaxe de
+// filtro. (O RLS já impede qualquer acesso indevido; isto evita requisições malformadas.)
+const CURSOR_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/
+const CURSOR_ID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+
+export function isValidFeedCursor(cursor) {
+  return (
+    typeof cursor?.createdAt === 'string' &&
+    typeof cursor?.id === 'string' &&
+    CURSOR_TIMESTAMP.test(cursor.createdAt) &&
+    CURSOR_ID.test(cursor.id)
+  )
+}
+
+export async function listCommunityFeedPage(
+  communityId,
+  { cursor = null, pageSize = FEED_PAGE_SIZE, signal = null } = {}
+) {
+  if (cursor && !isValidFeedCursor(cursor)) throw new Error('INVALID_FEED_CURSOR')
+  let query = supabase
     .from('statuses')
-    .select('*')
+    .select(FEED_COLUMNS)
     .eq('community_id', communityId)
     // expires_at nulo = sem expiração automática (retention_mode no_auto_expiration).
     .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
     .order('created_at', { ascending: false })
-    .limit(pageSize)
+    .order('id', { ascending: false })
+    .limit(pageSize + 1)
+  if (cursor) {
+    query = query.or(
+      `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`
+    )
+  }
+  if (signal) query = query.abortSignal(signal)
+  const { data, error } = await query
   if (error) throw error
-  return data.map(mapStatusRow)
+  return { items: data.slice(0, pageSize).map(mapStatusRow), hasMore: data.length > pageSize }
 }
 
 // Prévia "viva" dos cartões de Minhas comunidades: só a publicação mais recente de cada
@@ -324,17 +362,6 @@ export async function deleteStatus(statusId) {
   if (error) throw error
 }
 
-export async function getMyVote(statusId, userId) {
-  const { data, error } = await supabase
-    .from('status_votes')
-    .select('*')
-    .eq('status_id', statusId)
-    .eq('user_id', userId)
-    .maybeSingle()
-  if (error) throw error
-  return data ? { optionId: data.option_id, userId: data.user_id, createdAt: data.created_at } : null
-}
-
 // Uma única query agregada no servidor (get_poll_results) — nunca escala com o número
 // de opções nem de votos. optionIds sem nenhum voto entram com 0 (mesmo shape do
 // original, que consultava cada opção explicitamente).
@@ -351,17 +378,6 @@ export async function voteOnPoll(statusId, userId, optionId) {
     .from('status_votes')
     .upsert({ status_id: statusId, user_id: userId, option_id: optionId })
   if (error) throw error
-}
-
-export async function amIParticipant(statusId, userId) {
-  const { data, error } = await supabase
-    .from('status_participants')
-    .select('user_id')
-    .eq('status_id', statusId)
-    .eq('user_id', userId)
-    .maybeSingle()
-  if (error) throw error
-  return !!data
 }
 
 // Contagem real de confirmados (RPC): a leitura direta de status_participants só enxerga a PRÓPRIA linha
@@ -391,7 +407,7 @@ export async function leaveWorkout(statusId, userId) {
 export async function listUpcomingWorkouts(communityId, pageSize = UPCOMING_WORKOUTS_PAGE_SIZE) {
   const { data, error } = await supabase
     .from('statuses')
-    .select('*')
+    .select(FEED_COLUMNS)
     .eq('community_id', communityId)
     .eq('type', 'workout')
     .gt('workout_date', new Date().toISOString())
@@ -409,7 +425,7 @@ export async function listUpcomingWorkouts(communityId, pageSize = UPCOMING_WORK
 export async function getSharedStatus(statusId, communityId) {
   const { data, error } = await supabase
     .from('statuses')
-    .select('*')
+    .select(FEED_COLUMNS)
     .eq('id', statusId)
     .eq('community_id', communityId)
     .maybeSingle()

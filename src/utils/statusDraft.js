@@ -1,3 +1,5 @@
+import { STATUS_TEXT_MAX_LENGTH } from './statusLimits.js'
+
 const PREFIX = 'evolutus:status-draft:v1'
 
 export function statusDraftKey(uid, communityId, type) {
@@ -19,7 +21,7 @@ export function readStatusDraft(uid, communityId, type, storage) {
   if (!key) return ''
   try {
     const value = browserStorage(storage)?.getItem(key)
-    return typeof value === 'string' ? value.slice(0, 500) : ''
+    return typeof value === 'string' ? value.slice(0, STATUS_TEXT_MAX_LENGTH) : ''
   } catch {
     return ''
   }
@@ -30,7 +32,7 @@ export function saveStatusDraft(uid, communityId, type, value, storage) {
   const target = browserStorage(storage)
   if (!key || !target) return
   try {
-    if (value) target.setItem(key, value.slice(0, 500))
+    if (value) target.setItem(key, value.slice(0, STATUS_TEXT_MAX_LENGTH))
     else target.removeItem(key)
   } catch {
     // Armazenamento local pode estar bloqueado; editar e publicar continuam funcionando.

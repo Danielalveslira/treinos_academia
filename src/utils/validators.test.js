@@ -1,3 +1,4 @@
+import { STATUS_TEXT_MAX_LENGTH } from './statusLimits.js'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
@@ -96,7 +97,8 @@ test('validateExercise requires name and muscleGroup, and bounds both lengths', 
     false
   )
   assert.match(
-    validateExercise({ name: 'Supino', muscleGroup: 'Peito', source: 'catalog' }).providerExerciseId,
+    validateExercise({ name: 'Supino', muscleGroup: 'Peito', source: 'catalog' })
+      .providerExerciseId,
     /inválido/
   )
   assert.match(
@@ -178,8 +180,14 @@ test('validateCommunity requires a name and only accepts an iconName from the kn
 test('validateTextStatus requires text and bounds its length', () => {
   assert.match(validateTextStatus({ text: '' }).text, /Escreva algo/)
   assert.match(validateTextStatus({ text: '   ' }).text, /Escreva algo/)
-  assert.equal(hasErrors(validateTextStatus({ text: 'x'.repeat(500) })), false)
-  assert.match(validateTextStatus({ text: 'x'.repeat(501) }).text, /longo/)
+  for (const length of [1, Math.floor(STATUS_TEXT_MAX_LENGTH / 2), STATUS_TEXT_MAX_LENGTH]) {
+    assert.equal(
+      hasErrors(validateTextStatus({ text: 'x'.repeat(length) })),
+      false,
+      `${length} caracteres são aceitos (limite atual: ${STATUS_TEXT_MAX_LENGTH})`
+    )
+  }
+  assert.match(validateTextStatus({ text: 'x'.repeat(STATUS_TEXT_MAX_LENGTH + 1) }).text, /longo/)
 })
 
 test('validatePollStatus requires a question, at least 2 filled options, and bounds lengths', () => {

@@ -15,9 +15,11 @@ export function getCached(key) {
   return entry.value
 }
 
-export function setCached(key, value) {
+// maxAge opcional: o feed da comunidade vale ser mostrado "velho" por mais tempo enquanto é revalidado em
+// segundo plano (ver useCommunityFeed); o padrão continua sendo 5 minutos.
+export function setCached(key, value, maxAge = MAX_AGE) {
   store.delete(key)
-  store.set(key, { value, expiresAt: Date.now() + MAX_AGE })
+  store.set(key, { value, expiresAt: Date.now() + maxAge })
   if (store.size > MAX_ENTRIES) store.delete(store.keys().next().value)
 }
 
@@ -62,7 +64,18 @@ export function invalidateWorkoutCache(uid) {
   }
 }
 
+// Estados em memória de outros módulos (avatares, âncoras de rolagem, carregadores em lote...) que também
+// precisam sumir quando a sessão muda: registram-se aqui e são limpos junto com a cache de páginas, que o
+// AuthContext já esvazia ao trocar de conta ou encerrar a sessão.
+const clearListeners = new Set()
+
+export function onPageCacheClear(listener) {
+  clearListeners.add(listener)
+  return () => clearListeners.delete(listener)
+}
+
 export function clearPageCache() {
   store.clear()
   pending.clear()
+  clearListeners.forEach((listener) => listener())
 }

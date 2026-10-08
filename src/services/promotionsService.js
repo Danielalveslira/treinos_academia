@@ -1,5 +1,5 @@
 import { supabase } from '../supabase/config'
-import { mapStatusRow } from './statusesService'
+import { mapStatusRow, FEED_COLUMNS } from './statusesService'
 import { mapCommunityRow } from './communitiesService'
 
 const FEATURED_LIMIT = 6
@@ -30,7 +30,11 @@ function mapPromotionRow(row) {
 // Preço/duração sempre vêm daqui (economy_config.promotionPackages), nunca digitados
 // pelo cliente; o servidor revalida tudo de novo antes de debitar (create_promotion).
 export async function getPromotionPackages(targetType) {
-  const { data, error } = await supabase.from('economy_config').select('config').eq('id', true).maybeSingle()
+  const { data, error } = await supabase
+    .from('economy_config')
+    .select('config')
+    .eq('id', true)
+    .maybeSingle()
   if (error) throw error
   const promotionPackages = data?.config?.promotionPackages || {}
   return Object.entries(promotionPackages)
@@ -43,14 +47,20 @@ export async function getPromotionPackages(targetType) {
 // resolveRequestId em utils/cashPurchaseFlow.js, reaproveitado pelo componente).
 export async function createPromotion({ targetType, targetId, packageId, requestId }) {
   const { data, error } = await supabase.rpc('create_promotion', {
-    p_target_type: targetType, p_target_id: targetId, p_package_id: packageId, p_request_id: requestId,
+    p_target_type: targetType,
+    p_target_id: targetId,
+    p_package_id: packageId,
+    p_request_id: requestId,
   })
   if (error) throw error
   return data
 }
 
 export async function cancelPromotion({ promotionId, reason }) {
-  const { data, error } = await supabase.rpc('cancel_promotion', { p_promotion_id: promotionId, p_reason: reason || null })
+  const { data, error } = await supabase.rpc('cancel_promotion', {
+    p_promotion_id: promotionId,
+    p_reason: reason || null,
+  })
   if (error) throw error
   return data
 }
@@ -59,7 +69,10 @@ export async function cancelPromotion({ promotionId, reason }) {
 // navegação/exibição do conteúdo (métrica informativa, nunca base de cobrança).
 export async function recordPromotionClick({ targetType, targetId, promotionId }) {
   const { data, error } = await supabase.rpc('record_promotion_event', {
-    p_target_type: targetType, p_target_id: targetId, p_promotion_id: promotionId, p_type: 'click',
+    p_target_type: targetType,
+    p_target_id: targetId,
+    p_promotion_id: promotionId,
+    p_type: 'click',
   })
   if (error) throw error
   return data
@@ -72,7 +85,7 @@ export async function recordPromotionClick({ targetType, targetId, promotionId }
 export async function listFeaturedStatusesForCommunity(communityId) {
   const { data, error } = await supabase
     .from('statuses')
-    .select('*')
+    .select(FEED_COLUMNS)
     .eq('community_id', communityId)
     .eq('promoted', true)
     .gt('promoted_until', new Date().toISOString())

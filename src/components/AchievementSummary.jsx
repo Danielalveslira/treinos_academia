@@ -1,6 +1,6 @@
 import { TrophyIcon } from '@primer/octicons-react'
 import { formatDate } from '../utils/format'
-import { MarkdownViewer } from './MarkdownViewer'
+import { StatusText } from './StatusText'
 
 // A prévia e a publicação usam o mesmo resumo.
 export function AchievementSummary({ achievement }) {
@@ -20,7 +20,7 @@ export function AchievementSummary({ achievement }) {
         </time>
       </div>
 
-      <MarkdownViewer value={achievement.text} sx={{ mt: 2 }} />
+      <StatusText value={achievement.text} sx={{ mt: 2 }} />
 
       {hasRecords && (
         <dl className="achievement-stats">

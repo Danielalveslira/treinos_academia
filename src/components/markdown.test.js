@@ -5,12 +5,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { build } from 'esbuild'
+import { STATUS_TEXT_MAX_LENGTH } from '../utils/statusLimits.js'
 
 let directory
 let render
+let renderAsync
 let MarkdownViewer
 let AchievementSummary
 let MarkdownField
+let StatusText
 
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'markdown-tests-'))
@@ -19,11 +22,27 @@ before(async () => {
     stdin: {
       contents: `
         import { createElement } from 'react'
-        import { renderToStaticMarkup } from 'react-dom/server'
+        import { renderToStaticMarkup, renderToPipeableStream } from 'react-dom/server'
+        import { Writable } from 'node:stream'
         export { MarkdownViewer } from './MarkdownViewer.jsx'
         export { AchievementSummary } from './AchievementSummary.jsx'
         export { MarkdownField } from './MarkdownField.jsx'
+        export { StatusText } from './StatusText.jsx'
         export const render = (component, props) => renderToStaticMarkup(createElement(component, props))
+        // Texto de publicação/conquista carrega o renderizador de markdown sob demanda (lazy): o streaming
+        // espera o chunk resolver (onAllReady) e devolve o HTML final, sem depender de ordem entre testes.
+        export const renderAsync = (component, props) => new Promise((resolve, reject) => {
+          const chunks = []
+          const { pipe } = renderToPipeableStream(createElement(component, props), {
+            onAllReady() {
+              pipe(new Writable({
+                write(chunk, _encoding, done) { chunks.push(chunk); done() },
+                final(done) { resolve(Buffer.concat(chunks).toString()); done() },
+              }))
+            },
+            onError: reject,
+          })
+        })
       `,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
@@ -35,9 +54,8 @@ before(async () => {
     loader: { '.css': 'empty' },
     logLevel: 'silent',
   })
-  ;({ render, MarkdownViewer, AchievementSummary, MarkdownField } = createRequire(import.meta.url)(
-    outfile
-  ))
+  ;({ render, renderAsync, MarkdownViewer, AchievementSummary, MarkdownField, StatusText } =
+    createRequire(import.meta.url)(outfile))
 })
 
 after(async () => {
@@ -79,8 +97,8 @@ test('does not render wrappers for empty or missing content', () => {
   assert.equal(render(AchievementSummary, { achievement: { entries: 0, sets: 0, text: ' ' } }), '')
 })
 
-test('written achievements retain their trophy, title and Markdown without empty statistics', () => {
-  const html = render(AchievementSummary, {
+test('written achievements retain their trophy, title and Markdown without empty statistics', async () => {
+  const html = await renderAsync(AchievementSummary, {
     achievement: { day: '2026-09-09', entries: 0, sets: 0, text: '**Voltei!**' },
   })
   assert.match(html, /<section class="achievement-summary"/)
@@ -91,8 +109,8 @@ test('written achievements retain their trophy, title and Markdown without empty
   assert.doesNotMatch(html, /achievement-stats|<dl|Registros de exercícios|Séries realizadas/)
 })
 
-test('saved achievements retain their original date, totals and Markdown', () => {
-  const html = render(AchievementSummary, {
+test('saved achievements retain their original date, totals and Markdown', async () => {
+  const html = await renderAsync(AchievementSummary, {
     achievement: { day: '2025-01-01', entries: 3, sets: 12, text: '**Treino**\nfinalizado' },
   })
   assert.match(html, /<section class="achievement-summary"/)
@@ -116,6 +134,25 @@ test('editor associates label, caption, requirement and validation with the text
   assert.match(html, /aria-required="true"/)
   assert.match(html, /aria-invalid="true"/)
   assert.match(html, /rows="5"/)
-  assert.match(html, />0 \/ 500</)
+  assert.match(html, new RegExp(`>0 / ${STATUS_TEXT_MAX_LENGTH}<`))
+  assert.match(
+    html,
+    new RegExp(`maxLength="${STATUS_TEXT_MAX_LENGTH}"|maxlength="${STATUS_TEXT_MAX_LENGTH}"`)
+  )
   assert.match(html, /Mais opções de formatação/)
+})
+
+test('StatusText: texto corrido simples usa o mesmo contêiner, sem passar pelo renderizador de markdown', () => {
+  const html = render(StatusText, { value: 'Treino finalizado hoje!' })
+  assert.match(html, /<p>Treino finalizado hoje!<\/p>/)
+  assert.equal(render(StatusText, { value: '   ' }), '')
+  assert.equal(render(StatusText, { value: null }), '')
+})
+
+test('StatusText: texto com markdown mostra o próprio texto enquanto o chunk carrega e o renderizado depois', async () => {
+  const eager = await renderAsync(StatusText, { value: 'Hoje: **sem desculpas**' })
+  assert.match(eager, /<strong>sem desculpas<\/strong>/)
+  // fallback (síncrono) nunca fica em branco: mostra o texto cru em pre-wrap
+  const sync = render(StatusText, { value: 'Hoje: _sem_ desculpas', sx: { mt: 2 } })
+  assert.match(sync, /Hoje: /)
 })

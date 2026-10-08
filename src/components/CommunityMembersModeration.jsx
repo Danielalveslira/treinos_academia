@@ -1,9 +1,24 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Button, Flash, FormControl, Label, Link, Spinner, Text, Textarea } from '@primer/react'
+import {
+  Box,
+  Button,
+  Flash,
+  FormControl,
+  Label,
+  Link,
+  Spinner,
+  Text,
+  Textarea,
+} from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { listCommunityMembers } from '../services/communityMembersService'
-import { listCommunityRestrictions, setCommunityMemberBan } from '../services/communityModerationService'
+import {
+  listCommunityRestrictions,
+  setCommunityMemberBan,
+} from '../services/communityModerationService'
+import { listPublicUsernames } from '../services/publicProfilesService'
+import { memberHandle } from '../utils/memberHandle'
 
 // Mesmo mínimo de 5 caracteres trimados que o servidor exige (community-moderation-
 // service.js) -- só evita gastar uma chamada que sabidamente falharia.
@@ -17,10 +32,11 @@ function canSubmitBanReason(reason) {
 // confirmou canModerateCommunity (CommunityDetail.jsx) -- as Rules de leitura de
 // communityMembers/communityRestrictions (isCommunityOwner) são a autoridade de
 // verdade, isto é só a UI.
-export function CommunityMembersModeration({ communityId }) {
+export function CommunityMembersModeration({ communityId, ownerId = null }) {
   const { user } = useAuth()
   const [members, setMembers] = useState([])
   const [restrictionsByUserId, setRestrictionsByUserId] = useState({})
+  const [usernames, setUsernames] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [banningUserId, setBanningUserId] = useState(null)
@@ -38,6 +54,14 @@ export function CommunityMembersModeration({ communityId }) {
       ])
       setMembers(memberList)
       setRestrictionsByUserId(Object.fromEntries(restrictionList.map((r) => [r.userId, r])))
+      // @usuário em vez do id da conta: leitura em lote; se falhar, a lista continua útil (mostra
+      // "Membro") e nunca cai para o id.
+      setUsernames(
+        await listPublicUsernames(memberList.map((m) => m.userId)).catch((err) => {
+          console.error('[CommunityMembersModeration] usernames:', err)
+          return {}
+        })
+      )
     } catch (err) {
       console.error('[CommunityMembersModeration] load:', err)
       setError('Não foi possível carregar os membros da comunidade.')
@@ -65,15 +89,22 @@ export function CommunityMembersModeration({ communityId }) {
     setSaving(true)
     setActionError('')
     try {
-      await setCommunityMemberBan({ communityId, targetUserId: userId, banned: true, reason: reasonDraft })
+      await setCommunityMemberBan({
+        communityId,
+        targetUserId: userId,
+        banned: true,
+        reason: reasonDraft,
+      })
       setBanningUserId(null)
       await load()
     } catch (err) {
       console.error('[CommunityMembersModeration] ban:', err)
       setActionError(
-        ['functions/failed-precondition', 'functions/invalid-argument', 'functions/permission-denied'].includes(
-          err?.code
-        )
+        [
+          'functions/failed-precondition',
+          'functions/invalid-argument',
+          'functions/permission-denied',
+        ].includes(err?.code)
           ? err.message
           : 'Não foi possível banir este membro.'
       )
@@ -92,9 +123,11 @@ export function CommunityMembersModeration({ communityId }) {
     } catch (err) {
       console.error('[CommunityMembersModeration] unban:', err)
       setActionError(
-        ['functions/failed-precondition', 'functions/invalid-argument', 'functions/permission-denied'].includes(
-          err?.code
-        )
+        [
+          'functions/failed-precondition',
+          'functions/invalid-argument',
+          'functions/permission-denied',
+        ].includes(err?.code)
           ? err.message
           : 'Não foi possível desbanir este membro.'
       )
@@ -120,6 +153,8 @@ export function CommunityMembersModeration({ communityId }) {
       {members.map((member) => {
         const restriction = restrictionsByUserId[member.userId]
         const isSelf = member.userId === user.uid
+        const handle = memberHandle(usernames[member.userId])
+        const isOwner = member.role === 'owner' || (ownerId !== null && member.userId === ownerId)
         return (
           <Box
             key={member.id}
@@ -136,19 +171,28 @@ export function CommunityMembersModeration({ communityId }) {
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Link as={RouterLink} to={`/comunidades/perfil/${member.userId}`}>
-                {member.userId}
+                {handle}
               </Link>
-              {member.role === 'owner' && <Label variant="accent">Dono</Label>}
+              {isOwner && <Label variant="accent">Dono</Label>}
               {restriction && <Label variant="danger">Banido</Label>}
             </Box>
-            {!isSelf && member.role !== 'owner' && (
+            {!isSelf && !isOwner && (
               <Box>
                 {restriction ? (
-                  <Button onClick={() => unban(member.userId)} disabled={saving}>
+                  <Button
+                    onClick={() => unban(member.userId)}
+                    disabled={saving}
+                    aria-label={`Desbanir ${handle}`}
+                  >
                     Desbanir
                   </Button>
                 ) : banningUserId === member.userId ? null : (
-                  <Button variant="danger" onClick={() => startBan(member.userId)} disabled={saving}>
+                  <Button
+                    variant="danger"
+                    onClick={() => startBan(member.userId)}
+                    disabled={saving}
+                    aria-label={`Banir ${handle}`}
+                  >
                     Banir
                   </Button>
                 )}
@@ -157,7 +201,7 @@ export function CommunityMembersModeration({ communityId }) {
             {banningUserId === member.userId && (
               <Box sx={{ width: '100%' }}>
                 <FormControl required disabled={saving}>
-                  <FormControl.Label>Motivo do banimento</FormControl.Label>
+                  <FormControl.Label>Motivo do banimento de {handle}</FormControl.Label>
                   <Textarea
                     block
                     required

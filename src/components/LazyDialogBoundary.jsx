@@ -20,10 +20,10 @@ class DialogErrorBoundary extends Component {
   }
 }
 
-export function LazyDialogBoundary({ onFail, children }) {
+export function LazyDialogBoundary({ onFail, fallback = null, children }) {
   return (
     <DialogErrorBoundary onFail={onFail}>
-      <Suspense fallback={null}>{children}</Suspense>
+      <Suspense fallback={fallback}>{children}</Suspense>
     </DialogErrorBoundary>
   )
 }

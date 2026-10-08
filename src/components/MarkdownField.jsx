@@ -33,6 +33,7 @@ import {
   normalizeMarkdownLinkUrl,
 } from '../utils/markdownToolbar'
 import { MarkdownViewer } from './MarkdownViewer'
+import { STATUS_TEXT_MAX_LENGTH } from '../utils/statusLimits'
 
 const PRIMARY_ACTIONS = [
   { action: 'bold', icon: BoldIcon, label: 'Negrito' },
@@ -107,7 +108,7 @@ export function MarkdownField({
   disabled = false,
   error,
   caption,
-  maxLength = 500,
+  maxLength = STATUS_TEXT_MAX_LENGTH,
   rows = 5,
 }) {
   const id = useId()
