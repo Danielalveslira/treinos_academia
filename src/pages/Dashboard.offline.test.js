@@ -18,7 +18,6 @@ const STUBS = {
   '/hooks/useAuth': `export const useAuth = () => globalThis.__auth`,
   '/hooks/useGlobalSponsoredAds': `export const useGlobalSponsoredAds = () => ({ bannerAds: [] })`,
   '/components/SponsoredAdBanner': `export const SponsoredAdBanner = () => null`,
-  '/components/ProfessionalsDiscovery': `export const ProfessionalsDiscovery = () => null`,
   '/components/ResponsivePicture': `export const ResponsivePicture = () => null`,
   '/services/usersService': `export const saveTrainingPreferences = async () => {}`,
 }
@@ -141,4 +140,20 @@ test('online: nada muda — números do servidor e ações do cartão disponíve
   assert.match(html, /<strong>1x<\/strong>/)
   assert.match(html, /1\.500 kg/)
   assert.match(html, /Ver calendário/)
+})
+
+test('a Home não exibe mais Profissionais/Locais (vitrine saiu da tela inicial)', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const source = await readFile(new URL('./Dashboard.jsx', import.meta.url), 'utf8')
+  assert.doesNotMatch(source, /ProfessionalsDiscovery|REDE EVOLUTUS|profissionais/i)
+  setup({ offlineLocal: false, progressAvailable: true })
+  const html = api.render()
+  assert.doesNotMatch(html, /Encontre profissionais|home-discovery/)
+})
+
+test('os diálogos pesados da Home são carregados sob demanda (fora do bundle inicial)', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const source = await readFile(new URL('./Dashboard.jsx', import.meta.url), 'utf8')
+  assert.doesNotMatch(source, /^import .*(ShareProgressDialog|ActivityCalendarDialog|TrainingPlanDialog)/m)
+  assert.match(source, /import\('\.\.\/components\/ShareProgressDialog'\)/)
 })

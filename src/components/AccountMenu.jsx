@@ -16,6 +16,7 @@ import {
   XIcon,
   QuestionIcon,
   BriefcaseIcon,
+  LocationIcon,
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useColorMode } from '../hooks/useColorMode'
@@ -59,6 +60,12 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
               <PersonIcon />
             </ActionList.LeadingVisual>
             Meu perfil
+          </ActionList.LinkItem>
+          <ActionList.LinkItem as={Link} to="/profissionais" replace onClick={() => setOpen(false)}>
+            <ActionList.LeadingVisual>
+              <LocationIcon />
+            </ActionList.LeadingVisual>
+            Profissionais e locais
           </ActionList.LinkItem>
           {/* profile?.usageProfile === 'common' só esconde o atalho (declutter) -- a
               rota /minha-vitrine continua acessível e decide por conta própria (com

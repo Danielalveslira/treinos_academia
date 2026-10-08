@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { lazy, useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { Box, Button, Heading, Spinner } from '@primer/react'
 import {
@@ -19,16 +19,36 @@ import { getProfileHeroImage } from '../constants/profileHeroImage'
 import { getDashboardGreeting } from '../utils/greeting'
 import { buildExerciseNameMap } from '../utils/format'
 import { StreakCard } from '../components/StreakCard'
-import { ActivityCalendarDialog } from '../components/ActivityCalendarDialog'
-import { ShareProgressDialog } from '../components/ShareProgressDialog'
 import { buildShareOptions } from '../utils/shareProgress'
-import { TrainingPlanDialog } from '../components/TrainingPlanDialog'
 import { buildConsistencySnapshot } from '../utils/consistencySnapshot'
 import { addDaysToDayKey, businessDayKey, businessDayKeyDaysAgo } from '../utils/businessDate'
 import { ErrorState } from '../components/ErrorState'
-import { ProfessionalsDiscovery } from '../components/ProfessionalsDiscovery'
+import { LazyDialogBoundary } from '../components/LazyDialogBoundary'
 import { saveTrainingPreferences } from '../services/usersService'
 import { isPreferredReminderDue, normalizeTrainingPreferences } from '../utils/trainingPlan'
+
+// Diálogos só entram no bundle da Home quando alguém os abre (o share puxa o gerador de imagem/canvas).
+const loadShareDialog = () => import('../components/ShareProgressDialog')
+const ShareProgressDialog = lazy(() =>
+  loadShareDialog().then((module) => ({ default: module.ShareProgressDialog }))
+)
+const loadCalendarDialog = () => import('../components/ActivityCalendarDialog')
+const loadPlanDialog = () => import('../components/TrainingPlanDialog')
+const ActivityCalendarDialog = lazy(() =>
+  loadCalendarDialog().then((module) => ({ default: module.ActivityCalendarDialog }))
+)
+const TrainingPlanDialog = lazy(() =>
+  loadPlanDialog().then((module) => ({ default: module.TrainingPlanDialog }))
+)
+
+// Depois que a Home pintou e o aparelho ficou ocioso, baixa os diálogos (uma vez, só online): abrem na hora e o
+// service worker os guarda para funcionar offline também -- sem pesar no carregamento inicial.
+function warmDialogChunks() {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+  loadShareDialog().catch(() => {})
+  loadCalendarDialog().catch(() => {})
+  loadPlanDialog().catch(() => {})
+}
 
 function getVolumeTrend(days) {
   const startCurrent = businessDayKeyDaysAgo(6)
@@ -52,6 +72,12 @@ export default function Dashboard() {
   const [planOpen, setPlanOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
+  useEffect(() => {
+    const idle = globalThis.requestIdleCallback || ((callback) => setTimeout(callback, 1500))
+    const cancel = globalThis.cancelIdleCallback || clearTimeout
+    const handle = idle(warmDialogChunks, { timeout: 4000 })
+    return () => cancel(handle)
+  }, [])
   const { recentWorkouts, progressDays, progressAvailable, loading, error, refresh } =
     useHomeDashboard()
   const { exercises } = useExercises()
@@ -220,6 +246,7 @@ export default function Dashboard() {
         onConfigurePlan={() => setPlanOpen(true)}
         onOpenCalendar={() => setCalendarOpen(true)}
         onShare={() => setShareOpen(true)}
+        onSharePreload={() => loadShareDialog().catch(() => {})}
       />
 
       <section className="performance-strip" aria-label="Resumo do progresso">
@@ -250,28 +277,33 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {!offlineLocal && <ProfessionalsDiscovery />}
       {calendarOpen && (
-        <ActivityCalendarDialog
-          days={activityDays}
-          consistency={consistency}
-          exerciseNameById={exerciseNameById}
-          onClose={() => setCalendarOpen(false)}
-          onShare={() => {
-            setCalendarOpen(false)
-            setShareOpen(true)
-          }}
-        />
+        <LazyDialogBoundary onFail={() => setCalendarOpen(false)}>
+          <ActivityCalendarDialog
+            days={activityDays}
+            consistency={consistency}
+            exerciseNameById={exerciseNameById}
+            onClose={() => setCalendarOpen(false)}
+            onShare={() => {
+              setCalendarOpen(false)
+              setShareOpen(true)
+            }}
+          />
+        </LazyDialogBoundary>
       )}
       {shareOpen && shareOptions.length > 0 && (
-        <ShareProgressDialog options={shareOptions} onClose={() => setShareOpen(false)} />
+        <LazyDialogBoundary onFail={() => setShareOpen(false)}>
+          <ShareProgressDialog options={shareOptions} onClose={() => setShareOpen(false)} />
+        </LazyDialogBoundary>
       )}
       {planOpen && (
-        <TrainingPlanDialog
-          preferences={trainingPreferences}
-          onSave={handleSaveTrainingPlan}
-          onClose={() => setPlanOpen(false)}
-        />
+        <LazyDialogBoundary onFail={() => setPlanOpen(false)}>
+          <TrainingPlanDialog
+            preferences={trainingPreferences}
+            onSave={handleSaveTrainingPlan}
+            onClose={() => setPlanOpen(false)}
+          />
+        </LazyDialogBoundary>
       )}
     </div>
   )

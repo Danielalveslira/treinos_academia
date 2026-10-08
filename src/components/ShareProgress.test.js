@@ -125,6 +125,28 @@ test('consistency card: "Compartilhar" only when the handler exists, alongside t
   assert.match(withShare, /Ajustar planejamento/)
 })
 
+test('consistency card: weekday labels, legend, today status with a period icon (sun or moon) and elegant actions', () => {
+  const states = ['completed', 'none', 'rest', 'planned', 'completed', 'none', 'completed']
+  const recent = states.map((state, index) => ({
+    dateKey: `2026-09-${26 + index}`,
+    state,
+    isToday: index === 6,
+  }))
+  const html = renderStreak({
+    consistency: { ...consistency, recent },
+    hasTrainingPlan: true,
+    onConfigurePlan() {},
+    onOpenCalendar() {},
+    onShare() {},
+  })
+  assert.equal([...html.matchAll(/class="streak-day-name"/g)].length, 7)
+  for (const label of ['Concluído', 'Planejado', 'Descanso', 'Pendente'])
+    assert.match(html, new RegExp(label))
+  assert.match(html, /data-period="(day|night)"/)
+  assert.match(html, /Melhor sequência no ano/)
+  assert.equal([...html.matchAll(/class="streak-action"/g)].length, 3)
+})
+
 // --- Comunidades: o MESMO seletor, em modo "Publicar na comunidade" ---------------------------------------------
 test('publish mode: same tabs and preview, optional message and "Publicar na comunidade" as the main action (no share/download)', () => {
   const options = optionsWith([day('2026-10-02')])
@@ -225,19 +247,41 @@ test('Home mode always offers BOTH "Compartilhar" and "Baixar imagem", even with
   }
 })
 
-test('source contract: "Compartilhar" never downloads, "Baixar imagem" never shares, publishing is separate', async () => {
+test('source contract: "Baixar imagem" only downloads; "Compartilhar" shares files + text (fallback copies + downloads); publishing is separate', async () => {
   const { readFile } = await import('node:fs/promises')
   const source = await readFile(new URL('./ShareProgressDialog.jsx', import.meta.url), 'utf8')
   const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
   const share = code.slice(code.indexOf('const share ='), code.indexOf('const download ='))
-  const download = code.slice(code.indexOf('const download ='), code.indexOf('const copyLink ='))
+  const download = code.slice(code.indexOf('const download ='), code.indexOf('const publish ='))
   const publish = code.slice(code.indexOf('const publish ='), code.indexOf('if (!model)'))
-  assert.match(share, /nativeShare\(/)
-  assert.doesNotMatch(share, /downloadFile|renderSvgToPublishBlob|onPublish/)
+  assert.match(share, /shareWithFallback\(/)
+  assert.match(share, /buildShareText\(model\.variant/)
+  assert.doesNotMatch(share, /renderSvgToPublishBlob|onPublish/)
   assert.match(download, /downloadFile\(/)
-  assert.doesNotMatch(download, /nativeShare|copyAppLink|onPublish/)
+  assert.doesNotMatch(
+    download,
+    /shareWithFallback|nativeShare|copyText|buildShareText|onPublish|setMessage\(SHARE_RESULT/
+  )
   assert.match(publish, /onPublish\(/)
-  assert.doesNotMatch(publish, /nativeShare|downloadFile/)
+  assert.doesNotMatch(publish, /shareWithFallback|nativeShare|downloadFile|copyText/)
+})
+
+test('source contract: the share button can never be stuck busy (every path clears `busy`; spinner only while preparing)', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const source = await readFile(new URL('./ShareProgressDialog.jsx', import.meta.url), 'utf8')
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+  const run = code.slice(code.indexOf('async function run('), code.indexOf('const share ='))
+  assert.match(
+    run,
+    /finally\s*\{[^}]*lock\.current = false[^}]*setBusy\(null\)/,
+    'run() always unlocks'
+  )
+  assert.match(run, /if \(lock\.current\) return/, 'duplicate taps are ignored')
+  const share = code.slice(code.indexOf('const share ='), code.indexOf('const download ='))
+  assert.match(share, /setBusy\('sharing'\)/, 'native sheet open is not a "loading" state')
+  assert.match(share, /clearTimeout\(watchdog\)/, 'the native-sheet watchdog is always cleared')
+  assert.match(code, /loading=\{busy === 'share'\}/)
+  assert.doesNotMatch(code, /loading=\{busy === 'sharing'\}/)
 })
 
 test('Home and community use the SAME sheet base (no Primer Dialog, no divergent implementation)', async () => {

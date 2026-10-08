@@ -1,18 +1,19 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { SHARE_HEIGHT, SHARE_WIDTH } from './shareProgressSvg.js'
+import { buildShareText, SHARE_TITLE } from './shareText.js'
 import {
-  SHARE_TEXT,
-  SHARE_TITLE,
   appUrl,
   buildSharePayload,
-  copyAppLink,
+  copyText,
   downloadFile,
   nativeShare,
+  shareWithFallback,
   renderSvgToBlob,
   renderSvgToPngBlob,
   renderSvgToPublishBlob,
   toPngFile,
+  withTimeout,
 } from './shareImage.js'
 
 // Fakes de navegador: nenhum canvas/Image real é necessário (o projeto não usa jsdom).
@@ -101,6 +102,33 @@ test('rendering failures are explicit errors (image load, canvas context, PNG en
   )
 })
 
+test('a render that never answers (image never loads / toBlob never calls back) times out instead of hanging', async () => {
+  const hanging = fakeEnv()
+  hanging.Image = class {
+    set src(value) {
+      this.url = value // nunca dispara onload/onerror
+    }
+  }
+  const realSetTimeout = globalThis.setTimeout
+  globalThis.setTimeout = (fn, ms, ...args) => realSetTimeout(fn, Math.min(ms, 5), ...args)
+  try {
+    await assert.rejects(() => renderSvgToPngBlob('<svg/>', {}, hanging), /IMAGE_RENDER_TIMEOUT/)
+    const silentEncoder = fakeEnv()
+    silentEncoder.canvas.toBlob = () => {}
+    await assert.rejects(
+      () => renderSvgToPngBlob('<svg/>', {}, silentEncoder),
+      /PNG_ENCODE_TIMEOUT/
+    )
+  } finally {
+    globalThis.setTimeout = realSetTimeout
+  }
+})
+
+test('withTimeout passes the value through and does not leave a pending timer behind', async () => {
+  assert.equal(await withTimeout(Promise.resolve('ok'), 60000, 'X'), 'ok')
+  await assert.rejects(() => withTimeout(Promise.reject(new Error('boom')), 60000, 'X'), /boom/)
+})
+
 test('toPngFile wraps the blob as image/png with the given name', () => {
   const env = fakeEnv()
   const file = toPngFile({ size: 1 }, 'evolutus-week.png', env)
@@ -144,126 +172,124 @@ function shareEnv({ share, canShare, clipboard } = {}) {
   }
 }
 
-test('share payload carries the image, the title, the message and the app URL (origin of the running app)', () => {
-  const payload = buildSharePayload(FILE, { location: { origin: ORIGIN } })
-  assert.deepEqual(payload.files, [FILE])
-  assert.equal(payload.title, 'Meu progresso no Evolutus')
-  assert.equal(
-    payload.text,
-    'Olha meu progresso no Evolutus 💪\nVenha acompanhar sua evolução também!'
-  )
-  assert.equal(payload.url, ORIGIN)
+const TEXT = buildShareText('week', ORIGIN)
+
+test('share payload carries files, title and text -- and NO separate url (the link lives inside the text)', () => {
+  const payload = buildSharePayload(FILE, TEXT)
+  assert.deepEqual(payload, { files: [FILE], title: 'Meu progresso no Evolutus', text: TEXT })
+  assert.equal('url' in payload, false)
+  assert.match(payload.text, new RegExp(`${ORIGIN}$`))
   assert.equal(appUrl({ location: { origin: 'https://x.vercel.app' } }), 'https://x.vercel.app')
   assert.equal(appUrl({}), null)
-  assert.equal('url' in buildSharePayload(FILE, {}), false)
 })
 
-test('Compartilhar calls the native share ONCE with image + text + URL when the device accepts it', async () => {
+test('Compartilhar calls navigator.share ONCE with files + title + text when the device accepts files', async () => {
   const env = shareEnv()
-  assert.equal(await nativeShare(FILE, env), 'shared')
+  assert.equal(await nativeShare(FILE, TEXT, env), 'shared')
   assert.equal(env.calls.length, 1)
-  assert.deepEqual(env.calls[0], {
-    title: SHARE_TITLE,
-    text: SHARE_TEXT,
-    url: ORIGIN,
-    files: [FILE],
-  })
+  assert.deepEqual(env.calls[0], { files: [FILE], title: SHARE_TITLE, text: TEXT })
+  assert.ok(env.calls[0].text.includes(ORIGIN))
 })
 
 test('canShare is checked with the files payload before sharing', async () => {
   const seen = []
   const env = shareEnv({ canShare: (data) => (seen.push(data), true) })
-  await nativeShare(FILE, env)
+  await nativeShare(FILE, TEXT, env)
   assert.deepEqual(seen[0].files, [FILE])
 })
 
-test('a device that refuses file + url together still gets the link: it moves into the text, image kept', async () => {
-  const env = shareEnv({ canShare: (data) => !('url' in data) })
-  assert.equal(await nativeShare(FILE, env), 'shared')
-  assert.deepEqual(env.calls[0].files, [FILE])
-  assert.equal(env.calls[0].text, `${SHARE_TEXT}\n${ORIGIN}`)
-  assert.equal('url' in env.calls[0], false)
-})
-
-test('no file sharing support: shares text + URL natively and NEVER downloads', async () => {
-  const downloads = []
-  const env = {
-    ...shareEnv({ canShare: () => false }),
-    URL: { createObjectURL: () => (downloads.push('url'), 'blob:x') },
+test('no file sharing / no canShare / no Web Share: "unsupported" and nothing is shared', async () => {
+  for (const env of [
+    shareEnv({ canShare: () => false }),
+    shareEnv({ canShare: false }),
+    shareEnv({ share: false }),
+    {},
+  ]) {
+    assert.equal(await nativeShare(FILE, TEXT, env), 'unsupported')
+    assert.equal(env.calls?.length ?? 0, 0)
   }
-  assert.equal(await nativeShare(FILE, env), 'shared_text')
-  assert.deepEqual(env.calls[0], { title: SHARE_TITLE, text: SHARE_TEXT, url: ORIGIN })
-  assert.equal(env.calls[0].files, undefined)
-  assert.deepEqual(downloads, [])
 })
 
-test('no Web Share at all: "unsupported" -- nothing is shared and nothing is downloaded', async () => {
-  const downloads = []
-  const env = {
-    ...shareEnv({ share: false }),
-    URL: { createObjectURL: () => (downloads.push('url'), 'blob:x') },
-    document: {
-      createElement: () => {
-        downloads.push('a')
+function downloadEnv(base) {
+  const clicks = []
+  return {
+    clicks,
+    env: {
+      ...base,
+      document: {
+        createElement: () => ({
+          click() {
+            clicks.push(this)
+          },
+          remove() {},
+        }),
+        body: { appendChild() {} },
       },
+      URL: { createObjectURL: () => 'blob:x', revokeObjectURL() {} },
+      setTimeout: () => {},
     },
   }
-  assert.equal(await nativeShare(FILE, env), 'unsupported')
-  assert.deepEqual(downloads, [])
-  assert.equal(await nativeShare(FILE, {}), 'unsupported')
+}
+
+test('fallback: copies the message AND downloads the image, then reports both', async () => {
+  const written = []
+  const base = shareEnv({
+    canShare: () => false,
+    clipboard: { writeText: async (t) => written.push(t) },
+  })
+  const { env, clicks } = downloadEnv(base)
+  assert.equal(await shareWithFallback(FILE, TEXT, env), 'fallback_copied')
+  assert.deepEqual(written, [TEXT])
+  assert.equal(clicks.length, 1)
+  assert.equal(clicks[0].download, FILE.name)
+  assert.equal(base.calls.length, 0)
 })
 
-test('closing the native sheet (AbortError) is "cancelled", not an error; real failures propagate', async () => {
+test('fallback with a failing/absent clipboard still downloads the image and says so (never throws or hangs)', async () => {
+  const denied = {
+    writeText: async () => {
+      throw new Error('denied')
+    },
+  }
+  for (const clipboard of [undefined, denied]) {
+    const { env, clicks } = downloadEnv(shareEnv({ share: false, clipboard }))
+    assert.equal(await shareWithFallback(FILE, TEXT, env), 'fallback_downloaded')
+    assert.equal(clicks.length, 1)
+  }
+})
+
+test('closing the native sheet (AbortError) is "cancelled" and does NOT trigger the fallback; real failures propagate', async () => {
   const cancelled = shareEnv({
     share: async () => {
       throw Object.assign(new Error('x'), { name: 'AbortError' })
     },
   })
-  assert.equal(await nativeShare(FILE, cancelled), 'cancelled')
+  assert.equal(await shareWithFallback(FILE, TEXT, cancelled), 'cancelled')
   const broken = shareEnv({
     share: async () => {
       throw Object.assign(new Error('boom'), { name: 'NotAllowedError' })
     },
   })
-  await assert.rejects(() => nativeShare(FILE, broken), /boom/)
+  await assert.rejects(() => shareWithFallback(FILE, TEXT, broken), /boom/)
 })
 
-test('copy link fallback: explicit, uses the app origin, and reports failure honestly', async () => {
+test('copyText reports failure honestly', async () => {
   const written = []
   assert.equal(
-    await copyAppLink({
-      location: { origin: ORIGIN },
-      navigator: { clipboard: { writeText: async (t) => written.push(t) } },
-    }),
+    await copyText('oi', { navigator: { clipboard: { writeText: async (t) => written.push(t) } } }),
     true
   )
-  assert.deepEqual(written, [ORIGIN])
-  assert.equal(await copyAppLink({ location: { origin: ORIGIN }, navigator: {} }), false)
+  assert.deepEqual(written, ['oi'])
+  assert.equal(await copyText('oi', { navigator: {} }), false)
   assert.equal(
-    await copyAppLink({
-      location: { origin: ORIGIN },
-      navigator: {
-        clipboard: {
-          writeText: async () => {
-            throw new Error('denied')
-          },
-        },
-      },
-    }),
-    false
-  )
-  assert.equal(
-    await copyAppLink({ navigator: { clipboard: { writeText: async () => {} } } }),
+    await copyText('', { navigator: { clipboard: { writeText: async () => {} } } }),
     false
   )
 })
 
-test('download and share are fully separate code paths: downloadFile never touches navigator.share', () => {
-  const env = fakeEnv()
-  let shared = 0
-  env.navigator = { share: () => (shared += 1) }
+test('downloadFile never touches navigator.share', () => {
+  const env = { ...fakeEnv(), navigator: { share: () => assert.fail('share must not run') } }
   downloadFile({ name: 'a.png' }, env)
-  assert.equal(shared, 0)
   assert.equal(env.clicks.length, 1)
 })
 

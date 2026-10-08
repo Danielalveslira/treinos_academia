@@ -1,16 +1,34 @@
 import { SHARE_HEIGHT, SHARE_WIDTH, svgToDataUrl } from './shareProgressSvg.js'
+import { SHARE_TITLE } from './shareText.js'
 
 // Exportação do card: SVG -> PNG via <canvas> NATIVO (sem html2canvas/libs) e compartilhamento/download.
 // Tudo recebe `env` (window/document/navigator reais por padrão) para ser testável sem navegador.
 // O PNG só é gerado no clique -- o preview usa o próprio SVG.
 
-function loadImage(url, env) {
-  return new Promise((resolve, reject) => {
-    const image = new env.Image()
-    image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error('IMAGE_RENDER_FAILED'))
-    image.src = url
+// Alguns navegadores móveis nunca disparam onload/onerror (SVG que não decodifica) nem chamam o callback do
+// toBlob. Sem prazo, quem espera (o botão "Compartilhar") ficaria em loading para sempre: toda etapa assíncrona
+// de render tem um teto e vira erro.
+export const RENDER_STEP_TIMEOUT_MS = 8000
+
+export function withTimeout(promise, ms, code) {
+  let timer
+  const deadline = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(code)), ms)
   })
+  return Promise.race([promise, deadline]).finally(() => clearTimeout(timer))
+}
+
+function loadImage(url, env) {
+  return withTimeout(
+    new Promise((resolve, reject) => {
+      const image = new env.Image()
+      image.onload = () => resolve(image)
+      image.onerror = () => reject(new Error('IMAGE_RENDER_FAILED'))
+      image.src = url
+    }),
+    RENDER_STEP_TIMEOUT_MS,
+    'IMAGE_RENDER_TIMEOUT'
+  )
 }
 
 // 1080x1350. Dispositivos fracos não sofrem: um único drawImage. PNG para compartilhar/baixar; WebP para
@@ -27,7 +45,11 @@ export async function renderSvgToBlob(
   const context = canvas.getContext('2d')
   if (!context) throw new Error('CANVAS_UNAVAILABLE')
   context.drawImage(image, 0, 0, width, height)
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, type, quality))
+  const blob = await withTimeout(
+    new Promise((resolve) => canvas.toBlob(resolve, type, quality)),
+    RENDER_STEP_TIMEOUT_MS,
+    'PNG_ENCODE_TIMEOUT'
+  )
   if (!blob) throw new Error('PNG_ENCODE_FAILED')
   // Navegadores sem encoder do formato pedido devolvem PNG: falha explícita em vez de enviar o tipo errado.
   if (blob.type && blob.type !== type) throw new Error('IMAGE_TYPE_UNSUPPORTED')
@@ -55,18 +77,19 @@ export function toPngFile(blob, filename, env = globalThis) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// COMPARTILHAR = compartilhamento NATIVO do aparelho (Web Share API). Nunca vira download: se o navegador não
-// compartilha imagem, tenta texto + link; se nem isso existe, devolve 'unsupported' e a UI mostra a mensagem
-// (com "Copiar link"). Baixar a imagem é uma ação SEPARADA (downloadFile), só no botão "Baixar imagem".
-export const SHARE_TITLE = 'Meu progresso no Evolutus'
-export const SHARE_TEXT = 'Olha meu progresso no Evolutus 💪\nVenha acompanhar sua evolução também!'
+// COMPARTILHAR = folha NATIVA do aparelho com imagem + título + mensagem (o link vai DENTRO do texto, nunca em
+// `url` separado: `files + url` reduz a compatibilidade de compartilhamento de arquivos). Alguns apps de destino
+// ignoram o texto quando recebem arquivo; isso é do app de destino, não um erro nosso.
+// Sem suporte a compartilhar arquivo, o fallback COPIA a mensagem e BAIXA a imagem (shareWithFallback).
+// O botão "Baixar imagem" é outra ação (downloadFile): só baixa.
+export { SHARE_TITLE }
 
 // URL do app = a origem em que ele está rodando (nunca hardcode: preview, domínio próprio e produção funcionam).
 export function appUrl(env = globalThis) {
   return env.location?.origin || null
 }
 
-function canShareData(nav, data) {
+function canShareFiles(nav, data) {
   try {
     return typeof nav.canShare === 'function' ? Boolean(nav.canShare(data)) : false
   } catch {
@@ -74,55 +97,45 @@ function canShareData(nav, data) {
   }
 }
 
-// Payload completo: imagem + título + texto + URL. Apps de destino decidem como exibir; o nosso papel é entregar
-// tudo que a Web Share API do aparelho aceitar.
-export function buildSharePayload(file, env = globalThis) {
-  const url = appUrl(env)
-  return { title: SHARE_TITLE, text: SHARE_TEXT, ...(url ? { url } : {}), files: [file] }
+export function buildSharePayload(file, text) {
+  return { files: [file], title: SHARE_TITLE, text }
 }
 
-// Devolve 'shared' (imagem + texto + link), 'shared_text' (só texto + link: o aparelho não compartilha arquivos),
-// 'cancelled' (usuário fechou a folha: NÃO é erro) ou 'unsupported' (sem Web Share). Erros reais propagam.
-export async function nativeShare(file, env = globalThis) {
+// Devolve 'shared', 'cancelled' (usuário fechou a folha: NÃO é erro) ou 'unsupported' (sem Web Share ou sem
+// suporte a arquivo: quem chama usa o fallback). Erros reais propagam.
+export async function nativeShare(file, text, env = globalThis) {
   const nav = env.navigator
-  if (!nav || typeof nav.share !== 'function') return 'unsupported'
-  const url = appUrl(env)
+  if (!file || !nav || typeof nav.share !== 'function') return 'unsupported'
+  const payload = buildSharePayload(file, text)
+  if (!canShareFiles(nav, payload)) return 'unsupported'
   try {
-    if (file) {
-      const full = buildSharePayload(file, env)
-      if (canShareData(nav, full)) {
-        await nav.share(full)
-        return 'shared'
-      }
-      // Alguns aparelhos recusam arquivo + url juntos: leva o link dentro do texto para ele não se perder.
-      const linkInText = {
-        title: SHARE_TITLE,
-        text: url ? `${SHARE_TEXT}\n${url}` : SHARE_TEXT,
-        files: [file],
-      }
-      if (canShareData(nav, linkInText)) {
-        await nav.share(linkInText)
-        return 'shared'
-      }
-    }
-    await nav.share({ title: SHARE_TITLE, text: SHARE_TEXT, ...(url ? { url } : {}) })
-    return 'shared_text'
+    await nav.share(payload)
+    return 'shared'
   } catch (error) {
     if (error?.name === 'AbortError') return 'cancelled'
     throw error
   }
 }
 
-// Fallback explícito (NUNCA automático) quando o compartilhamento não é suportado.
-export async function copyAppLink(env = globalThis) {
-  const url = appUrl(env)
-  if (!url || typeof env.navigator?.clipboard?.writeText !== 'function') return false
+// Copia a mensagem; falha (sem Clipboard API, permissão negada) devolve false em vez de lançar.
+export async function copyText(text, env = globalThis) {
+  if (!text || typeof env.navigator?.clipboard?.writeText !== 'function') return false
   try {
-    await env.navigator.clipboard.writeText(url)
+    await env.navigator.clipboard.writeText(text)
     return true
   } catch {
     return false
   }
+}
+
+// Resultado: 'shared' | 'cancelled' | 'fallback_copied' (imagem baixada + mensagem copiada) |
+// 'fallback_downloaded' (imagem baixada; a mensagem não pôde ser copiada). A imagem sempre fica disponível.
+export async function shareWithFallback(file, text, env = globalThis) {
+  const result = await nativeShare(file, text, env)
+  if (result !== 'unsupported') return result
+  const copied = await copyText(text, env)
+  downloadFile(file, env)
+  return copied ? 'fallback_copied' : 'fallback_downloaded'
 }
 
 export function downloadFile(file, env = globalThis) {
