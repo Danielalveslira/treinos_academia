@@ -14,7 +14,9 @@ import {
 // Indicador discreto do estado do que foi salvo neste aparelho. Sem modal, sem bloquear o treino,
 // sem detalhe técnico: só o texto do estado, a contagem e (se preciso) as ações. Fica oculto quando
 // está tudo em dia (e quando a escrita offline está desligada e não há nada pendente).
-export function SyncStatus() {
+// criticalOnly: telas que já mostram o estado de gravação no próprio conteúdo (registro de treino) só
+// exibem aqui o que exige ação — falha de sincronização —, nunca o aviso rotineiro de offline/pendente.
+export function SyncStatus({ criticalOnly = false }) {
   const { user, offlineLocal } = useAuth()
   const { view } = useSyncStatus()
   const [open, setOpen] = useState(false)
@@ -36,7 +38,7 @@ export function SyncStatus() {
     }
   }, [open, view.kind, view.failed, userId])
 
-  if (!view.visible) return null
+  if (!view.visible || (criticalOnly && view.kind !== 'failed')) return null
   const showSyncButton = view.kind === 'pending' || view.kind === 'failed'
 
   return (

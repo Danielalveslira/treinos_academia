@@ -44,10 +44,10 @@ async function bundle(name, env) {
           act(() => { tree = TestRenderer.create(wrap(createElement(PwaControls), null)) })
           return tree
         }
-        export const renderSyncStatus = (user = { uid: 'user-a' }) => {
+        export const renderSyncStatus = (user = { uid: 'user-a' }, props = null) => {
           let tree
-          act(() => { tree = TestRenderer.create(wrap(createElement(SyncStatus), user)) })
-          return { tree, rerender: () => act(() => tree.update(wrap(createElement(SyncStatus), user))) }
+          act(() => { tree = TestRenderer.create(wrap(createElement(SyncStatus, props), user)) })
+          return { tree, rerender: () => act(() => tree.update(wrap(createElement(SyncStatus, props), user))) }
         }
         export { act }
       `,
@@ -199,10 +199,16 @@ test('FLASH: initializing -> offline_ready nunca renderiza o bloqueio em NENHUM 
   // Snapshot de rollout chega (mesmo id) e só depois a conta é aberta offline.
   prod.act(() => prod.rollout.setOfflineRolloutUser('user-a'))
   seen.push(json(tree))
-  prod.act(() => prod.rollout.setRemoteRolloutSnapshot('user-a', {
-    offline_write: { enabled: true, rollout_percentage: 100 },
-    offline_cold_start: { enabled: true, rollout_percentage: 100 },
-  }, true))
+  prod.act(() =>
+    prod.rollout.setRemoteRolloutSnapshot(
+      'user-a',
+      {
+        offline_write: { enabled: true, rollout_percentage: 100 },
+        offline_cold_start: { enabled: true, rollout_percentage: 100 },
+      },
+      true
+    )
+  )
   seen.push(json(tree))
   prod.act(() => prod.boot.setBootState('offline_ready'))
   seen.push(json(tree))
@@ -349,6 +355,35 @@ test('SyncStatus: falha mostra a contagem e as opções de resolver; "pendência
   assert.deepEqual(visibleText(tree), ['Falha ao sincronizar'])
   assert.ok(json(tree).includes('1 alteração precisa de atenção'))
   assert.ok(json(tree).includes('Ver detalhes'))
+})
+
+test('SyncStatus criticalOnly (registro de treino): esconde o aviso rotineiro, mas mostra falha acionável', async () => {
+  on.status.setSyncUser('user-a')
+  const { tree } = on.renderSyncStatus({ uid: 'user-a' }, { criticalOnly: true })
+  on.act(() => on.status.setOnline(false))
+  assert.deepEqual(visibleText(tree), []) // offline: o card do exercício já informa
+  const payload = {
+    exercise_id: 'x',
+    date: '2026-10-05',
+    type: 'strength',
+    set_details: [{ weight: 1, reps: 1 }],
+    sets: 1,
+    note: '',
+  }
+  await on.outbox.enqueueWorkoutMutation('user-a', {
+    operation: 'workout.create',
+    entityId: 'e-crit',
+    payload,
+  })
+  await on.status.refreshSyncStatus('user-a')
+  on.act(() => {})
+  assert.deepEqual(visibleText(tree), []) // pendente offline: também não repete
+  on.act(() => on.status.setOnline(true))
+  const [claimed] = await on.outbox.claimNextBatch('user-a')
+  await on.outbox.failMutation('user-a', claimed.mutation_id, { code: 'CONFLICT' })
+  await on.status.refreshSyncStatus('user-a')
+  on.act(() => {})
+  assert.deepEqual(visibleText(tree), ['Falha ao sincronizar'])
 })
 
 test('SyncStatus com a flag desligada e sem pendências: não aparece nem offline', () => {

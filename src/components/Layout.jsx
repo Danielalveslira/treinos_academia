@@ -155,10 +155,9 @@ export function Layout() {
             </Button>
           </Flash>
         )}
-        {/* Um erro de renderização numa página fica contido aqui (navegação e cabeçalho continuam
-            utilizáveis) e é limpo ao trocar de rota (key). O ErrorBoundary raiz (main.jsx) continua
-            como última rede. O erro segue sendo registrado no console por componentDidCatch. */}
-        {offlineLocal && (
+        {/* No registro de treino o estado offline/pendente vive no próprio card (SetCard), então os avisos
+            de topo saem dali: menos rolagem e nada repetido. Falhas de sincronização continuam aparecendo. */}
+        {offlineLocal && pathname !== '/novo-treino' && (
           <div className="sync-status sync-status-offline" role="status">
             {online
               ? 'Reconectando sua conta…'
@@ -166,7 +165,7 @@ export function Layout() {
           </div>
         )}
         <Suspense fallback={null}>
-          <SyncStatus />
+          <SyncStatus criticalOnly={pathname === '/novo-treino'} />
         </Suspense>
         {needsServer ? (
           <div className="offline-only-notice" role="alert">
@@ -179,6 +178,9 @@ export function Layout() {
             </Button>
           </div>
         ) : (
+          /* Um erro de renderização numa página fica contido aqui (navegação e cabeçalho continuam
+             utilizáveis) e é limpo ao trocar de rota (key). O ErrorBoundary raiz (main.jsx) continua
+             como última rede. O erro segue sendo registrado no console por componentDidCatch. */
           <ErrorBoundary key={pathname} inline>
             <Suspense fallback={<PageFallback />}>
               <Outlet />
