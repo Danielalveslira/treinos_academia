@@ -6,6 +6,10 @@ const snapshots = new Map()
 const inFlight = new Map()
 const FEATURES = ['offline_write', 'offline_cold_start']
 
+// Frescor da resposta do SERVIDOR (só em memória: um snapshot lido do IndexedDB não prova nada sobre
+// "agora", então começa como velho). A política de escrita está em rolloutWrite.js.
+export const rolloutFetchedAt = new Map()
+
 export function setOfflineRolloutUser(userId) {
   const next = typeof userId === 'string' && userId ? userId : null
   if (activeUserId === next) return
@@ -88,6 +92,7 @@ export function refreshRemoteRollout(userId, client = null) {
       const { data: sessionData } = await supabase.auth.getSession()
       if (error || sessionData?.session?.user?.id !== userId ||
           !setRemoteRolloutSnapshot(userId, data)) return false
+      rolloutFetchedAt.set(userId, Date.now())
       const snapshot = snapshots.get(userId)
       const { withTransaction } = await import('./database.js')
       await withTransaction(['syncMeta'], 'readwrite', ({ syncMeta }) => {

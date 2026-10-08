@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import 'fake-indexeddb/auto'
 import { closeDatabase, isOfflineColdStartEnabled, isOfflineShellEnabled, isOfflineWriteEnabled, withTransaction } from './database.js'
 import { hydrateOfflineRollout, isInOfflineRollout, refreshRemoteRollout, remoteFeatureAllowed, rolloutBucket, setOfflineRolloutUser, setRemoteRolloutSnapshot, validateRolloutSnapshot } from './rollout.js'
+import { ROLLOUT_FRESH_MS, ROLLOUT_MAX_STALE_ONLINE_MS, prepareRolloutForWrite, rolloutSnapshotAgeMs } from './rolloutWrite.js'
 
 const A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
@@ -102,5 +103,91 @@ test('cache antigo de outra aba não reativa feature já desligada pelo servidor
   })
   await hydrateOfflineRollout(E, { force: true })
   assert.equal(remoteFeatureAllowed(E, 'offline_write'), false)
+  await closeDatabase()
+})
+
+function countingClient(userId, data = config(100, 100), delayMs = 0) {
+  const client = {
+    calls: 0,
+    rpc: async () => {
+      client.calls += 1
+      if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs))
+      return { data, error: null }
+    },
+    auth: { getSession: async () => ({ data: { session: { user: { id: userId } } } }) },
+  }
+  return client
+}
+
+test('idade do snapshot: Infinity até a 1ª confirmação do servidor, depois recente', async () => {
+  const F = 'ffffffff-ffff-4fff-8fff-ffffffffffff'
+  const client = countingClient(F)
+  assert.equal(rolloutSnapshotAgeMs(F), Infinity)
+  assert.equal(await refreshRemoteRollout(F, client), true)
+  assert.ok(rolloutSnapshotAgeMs(F) < 1000)
+  await closeDatabase()
+})
+
+test('escrita: snapshot confirmado há pouco NÃO espera nem consulta o servidor', async () => {
+  const G = '99999999-9999-4999-8999-999999999999'
+  const client = countingClient(G, config(100, 100), 200)
+  await refreshRemoteRollout(G, client)
+  const before = client.calls
+  const started = Date.now()
+  await prepareRolloutForWrite(G, { client })
+  assert.ok(Date.now() - started < 50)
+  assert.equal(client.calls, before)
+  await closeDatabase()
+})
+
+test('escrita: snapshot velho (dentro do limite) atualiza em segundo plano sem atrasar', async () => {
+  const H = '88888888-8888-4888-8888-888888888888'
+  const client = countingClient(H, config(100, 100), 300)
+  await refreshRemoteRollout(H, client)
+  const realNow = Date.now
+  Date.now = () => realNow() + ROLLOUT_FRESH_MS + 1000 // passou do frescor, longe do limite duro
+  try {
+    const before = client.calls
+    const started = realNow()
+    await prepareRolloutForWrite(H, { client })
+    assert.ok(realNow() - started < 100, 'não pode aguardar o RPC')
+    assert.equal(client.calls, before + 1) // atualização disparada em segundo plano
+    await new Promise((resolve) => setTimeout(resolve, 350))
+  } finally {
+    Date.now = realNow
+  }
+  await closeDatabase()
+})
+
+test('escrita: cache velho demais não libera a feature para sempre -- espera o servidor (e respeita a revogação)', async () => {
+  const I = '77777777-7777-4777-8777-777777777777'
+  setOfflineRolloutUser(I)
+  let data = config(100, 100)
+  const client = {
+    rpc: async () => ({ data, error: null }),
+    auth: { getSession: async () => ({ data: { session: { user: { id: I } } } }) },
+  }
+  await refreshRemoteRollout(I, client)
+  assert.equal(isOfflineWriteEnabled(env), true)
+  data = { offline_write: { enabled: false, rollout_percentage: 0, updated_at: Date.now() + 1000 }, offline_cold_start: config(0).offline_cold_start }
+  const realNow = Date.now
+  Date.now = () => realNow() + ROLLOUT_MAX_STALE_ONLINE_MS + 1000
+  try {
+    await prepareRolloutForWrite(I, { client })
+  } finally {
+    Date.now = realNow
+  }
+  assert.equal(isOfflineWriteEnabled(env), false)
+  setOfflineRolloutUser(null)
+  await closeDatabase()
+})
+
+test('escrita: sem confirmação nenhuma e servidor lento, a espera é limitada (timeout)', async () => {
+  const J = '66666666-6666-4666-8666-666666666666'
+  const client = countingClient(J, config(100, 100), 400)
+  const started = Date.now()
+  await prepareRolloutForWrite(J, { client, timeoutMs: 50 })
+  assert.ok(Date.now() - started < 300)
+  await new Promise((resolve) => setTimeout(resolve, 450))
   await closeDatabase()
 })

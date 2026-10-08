@@ -14,7 +14,12 @@ import { clearActivityPingThrottle } from '../utils/activityPing'
 import { clearAllCommentDrafts } from '../features/comments/utils/drafts'
 import { purgePrivateData } from '../services/offline/userScope'
 import { isOfflineColdStartEnabled } from '../services/offline/database'
-import { hydrateOfflineRollout, refreshRemoteRollout, setOfflineRolloutUser, subscribeOfflineRollout } from '../services/offline/rollout'
+import {
+  hydrateOfflineRollout,
+  refreshRemoteRollout,
+  setOfflineRolloutUser,
+  subscribeOfflineRollout,
+} from '../services/offline/rollout'
 import { flushOfflineTelemetry, recordOfflineDiagnostic, setOfflineTelemetryContext } from '../services/offline/diagnostics'
 import { classifyReadError } from '../services/offline/readError'
 import { createProbe } from '../services/offline/connectivity'
@@ -432,13 +437,15 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  // Busca a configuração operacional com a sessão online. Poll curto + foreground propagam o
+  // Busca a configuração operacional com a sessão online. Poll lento (só com a aba visível) + foreground + `online` propagam o
   // kill switch sem novo build. A decisão local usa apenas a última resposta válida desta conta.
   useEffect(() => subscribeOfflineRollout(() => setRolloutRevision((value) => value + 1)), [])
   useEffect(() => {
     if (authMode !== 'online' || !user?.uid || serverAccessAllowed !== true) return undefined
     let active = true
     const userId = user.uid
+    // Sem polling com a aba oculta: o retorno ao primeiro plano e o evento `online` consultam na hora
+    // (chamadas simultâneas se fundem em uma só dentro de refreshRemoteRollout).
     const update = async () => {
       if (globalThis.navigator?.onLine === false) return
       await hydrateOfflineRollout(userId)
@@ -447,11 +454,11 @@ export function AuthProvider({ children }) {
         flushOfflineTelemetry().catch(() => {})
       }
     }
-    const onVisible = () => { if (document.visibilityState === 'visible') update() }
+    const onVisible = () => document.visibilityState === 'visible' && update()
     window.addEventListener('online', update)
     document.addEventListener('visibilitychange', onVisible)
-    const timer = setInterval(update, 15_000)
-    update()
+    const timer = setInterval(onVisible, 90_000) // 60-120 s: kill switch sem polling agressivo
+    onVisible()
     return () => {
       active = false
       clearInterval(timer)

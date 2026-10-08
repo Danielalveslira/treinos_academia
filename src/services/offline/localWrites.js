@@ -4,7 +4,8 @@ import { enqueueWorkoutMutation } from './outbox.js'
 import { announceOutboxChanged, requestSync } from './syncScheduler.js'
 import { refreshSyncStatus, setSaving } from './syncStatusStore.js'
 import { recordOfflineDiagnostic } from './diagnostics.js'
-import { getOfflineRolloutUser, hydrateOfflineRollout, refreshRemoteRollout } from './rollout.js'
+import { getOfflineRolloutUser, hydrateOfflineRollout } from './rollout.js'
+import { prepareRolloutForWrite } from './rolloutWrite.js'
 
 // Gravação LOCAL de treino (offline ou com a rede falhando): grava o registro no IndexedDB + enfileira a
 // mutação na mesma transação, e SÓ ENTÃO diz "salvo". Nunca devolve algo que pareça confirmação do
@@ -16,22 +17,14 @@ import { getOfflineRolloutUser, hydrateOfflineRollout, refreshRemoteRollout } fr
 export const WRITE_TIMEOUT_MS = 8000
 
 export async function canQueueLocally() {
-  // Cada nova escrita com rede consulta o kill switch; offline conserva só a última decisão
-  // recebida para esta conta. Uma falha/timeout não inventa uma coorte nova.
+  // Com rede, a escrita usa o snapshot do kill switch sem esperar o servidor enquanto ele for recente
+  // (ver prepareRolloutForWrite); offline conserva só a última decisão recebida para esta conta. Uma
+  // falha/timeout não inventa uma coorte nova.
   const userId = getOfflineRolloutUser()
   if (import.meta.env?.PROD && globalThis.navigator?.onLine === false && userId)
     await hydrateOfflineRollout(userId, { force: true })
-  if (import.meta.env?.PROD && globalThis.navigator?.onLine !== false) {
-    if (userId) {
-      let timeout
-      try {
-        await Promise.race([
-          refreshRemoteRollout(userId),
-          new Promise((resolve) => { timeout = setTimeout(resolve, 1500) }),
-        ])
-      } finally { clearTimeout(timeout) }
-    }
-  }
+  if (import.meta.env?.PROD && globalThis.navigator?.onLine !== false && userId)
+    await prepareRolloutForWrite(userId)
   return isOfflineWriteEnabled() && (await openDatabase()) !== null
 }
 

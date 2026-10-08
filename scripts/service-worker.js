@@ -68,19 +68,49 @@ self.addEventListener('activate', (event) => {
           .filter((key) => key.startsWith(OWNED_PREFIX) && !CURRENT_CACHES.includes(key))
           .map((key) => caches.delete(key))
       )
+      // Chunks de boot que o teto já tenha expulsado (ex.: instalados em outra versão e nunca
+      // reinseridos) voltam ao cache antes da poda: sem eles o app não abre offline.
+      await restoreBootAssets()
       await Promise.all([
-        trim(ASSET_CACHE, MAX_ASSET_ENTRIES),
+        trim(ASSET_CACHE, MAX_ASSET_ENTRIES, BOOT_ASSETS),
         trim(IMAGE_CACHE, MAX_IMAGE_ENTRIES),
       ])
     })()
   )
 })
 
-// Mantém só as `max` entradas mais recentes (cache.keys() devolve na ordem de inserção).
-async function trim(name, max) {
+// Melhor esforço: sem rede, o próximo install/activate com rede repete.
+async function restoreBootAssets() {
+  try {
+    const cache = await caches.open(ASSET_CACHE)
+    await Promise.all(
+      BOOT_ASSETS.map(async (url) => {
+        try {
+          if (await cache.match(url, { ignoreVary: true })) return
+          const response = await fetch(url)
+          if (isCacheableAsset(response)) await cache.put(url, response)
+        } catch {
+          /* offline: tenta de novo no próximo ciclo */
+        }
+      })
+    )
+  } catch {
+    /* cache indisponível: a poda abaixo continua protegendo o que existe */
+  }
+}
+
+// Mantém no máximo `max` entradas, descartando as mais antigas (cache.keys() devolve na ordem de
+// inserção). `keep` são pathnames que nunca saem: os chunks de boot da versão atual precisam
+// sobreviver ao teto -- como o install não reinsere o que já existe, os chunks estáveis (vendor)
+// seriam justamente os mais antigos e os primeiros expulsos.
+async function trim(name, max, keep = []) {
   const cache = await caches.open(name)
   const keys = await cache.keys()
-  await Promise.all(keys.slice(0, Math.max(0, keys.length - max)).map((key) => cache.delete(key)))
+  const excess = keys.length - max
+  if (excess <= 0) return
+  const protectedPaths = new Set(keep)
+  const evictable = keys.filter((key) => !protectedPaths.has(new URL(key.url).pathname))
+  await Promise.all(evictable.slice(0, excess).map((key) => cache.delete(key)))
 }
 
 function isCacheableAsset(response) {
@@ -103,7 +133,7 @@ async function assetStrategy(request) {
   const response = await fetch(request)
   if (isCacheableAsset(response)) {
     await cache.put(request, response.clone())
-    trim(ASSET_CACHE, MAX_ASSET_ENTRIES).catch(() => {})
+    trim(ASSET_CACHE, MAX_ASSET_ENTRIES, BOOT_ASSETS).catch(() => {})
   }
   return response
 }

@@ -224,6 +224,41 @@ test('cache de assets tem teto: descarta os mais antigos', async () => {
   assert.ok(urls.some((url) => url.endsWith('/assets/c124.js')))
 })
 
+test('cache cheio: chunks de boot (os mais antigos) NÃO são expulsos pelo teto', async () => {
+  load({ responder: () => basic('js', { headers: { 'content-type': 'text/javascript' } }) })
+  await lifecycle('install') // boot entra primeiro => são as entradas mais antigas
+  for (let i = 0; i < 200; i++) await dispatchFetch(get(`/assets/rota${i}.js`))
+  await lifecycle('activate')
+  const urls = [...sw.caches.stores.get('treinos-assets-v1').keys()].map((u) => new URL(u).pathname)
+  for (const boot of BOOT) assert.ok(urls.includes(boot), `${boot} foi expulso`)
+  assert.equal(urls.length, 120)
+  assert.ok(!urls.includes('/assets/rota0.js'))
+  assert.ok(urls.includes('/assets/rota199.js'))
+  // Offline logo depois: o boot abre direto do cache.
+  offline = true
+  const response = await dispatchFetch(get(BOOT[0]))
+  assert.equal(await response.response.text(), 'js')
+})
+
+test('activate repõe chunk de boot que já tinha sido expulso (com rede) e a poda o preserva', async () => {
+  load({ responder: () => basic('js', { headers: { 'content-type': 'text/javascript' } }) })
+  const assets = await sw.caches.open('treinos-assets-v1')
+  for (let i = 0; i < 125; i++) await assets.put(`${ORIGIN}/assets/x${i}.js`, basic('x'))
+  await lifecycle('activate')
+  const urls = [...sw.caches.stores.get('treinos-assets-v1').keys()].map((u) => new URL(u).pathname)
+  for (const boot of BOOT) assert.ok(urls.includes(boot), `${boot} não foi reposto`)
+  assert.equal(urls.length, 120)
+})
+
+test('activate sem rede não falha nem apaga o boot que existe', async () => {
+  load({ responder: () => basic('js', { headers: { 'content-type': 'text/javascript' } }) })
+  await lifecycle('install')
+  offline = true
+  await lifecycle('activate')
+  assert.equal(sw.self.claimed, true)
+  assert.equal(sw.caches.stores.get('treinos-assets-v1').size, BOOT.length)
+})
+
 test('imagens: cache-first, e expiradas são buscadas de novo', async () => {
   load({ responder: () => basic('img', { headers: { 'content-type': 'image/avif' } }) })
   await dispatchFetch(get('/img/capa-800.avif'))
