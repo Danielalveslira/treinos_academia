@@ -1,8 +1,9 @@
 # Comunidades 2.0 — publicação, verificação e recuperação
 
-Estado em 2026-10-08: o **frontend** (commit `80d8927`) já está em produção com o limite de texto do editor em
-**500**. As **3 migrations** (commit `71e6119`) estão no repositório, mas **não foram aplicadas** ao projeto
-Supabase hospedado.
+Estado em 2026-10-09: as **3 migrations** (commit `71e6119`) foram aplicadas e verificadas no projeto Supabase
+hospedado (`ywrjojrjgozdfpddkkuy`; histórico 3/3, 2 RPCs, 2 índices, `statuses_text_check` até 7000). O **frontend**
+passa a usar o limite de **7000** caracteres neste release. As seções abaixo ficam como referência de verificação,
+homologação e recuperação.
 
 ## 1. O que cada migration faz e do que depende
 
@@ -18,6 +19,39 @@ duas vezes). `supabase db push` aplica todas as pendentes nessa ordem.
 **Compatibilidade:** todas só ampliam (funções novas, índices novos, limite maior). O frontend anterior e o atual
 funcionam com ou sem elas. A única combinação que falha é *frontend com limite 7000 + banco ainda em 500*
 (erro `23514` ao publicar mais de 500 caracteres), por isso o limite do cliente só sobe depois da migration 3.
+
+## 1.1 Pré-checagem (somente leitura, antes de aplicar qualquer coisa)
+
+Confirme que está no projeto certo (`ywrjojrjgozdfpddkkuy`) e rode no SQL Editor:
+
+```sql
+-- dependências das RPCs: esperado 2 linhas
+select proname from pg_proc
+where pronamespace = 'public'::regnamespace and proname in ('is_community_member', '_can_view_workout_status');
+
+-- a migration 3 troca a constraint pelo nome: esperado 1 linha, com char_length(text) <= 500
+select conname, convalidated, pg_get_constraintdef(oid)
+from pg_constraint where conrelid = 'public.statuses'::regclass and contype = 'c' and pg_get_constraintdef(oid) ilike '%char_length(text)%';
+
+-- tamanho da tabela e maior texto atual (define quanto dura a validação do CHECK)
+select count(*) as posts, coalesce(max(char_length(text)), 0) as maior_texto from public.statuses;
+
+-- histórico das migrations já aplicadas no hospedado (compare com supabase/migrations/)
+select version from supabase_migrations.schema_migrations order by version desc limit 15;
+```
+
+**Cuidado com `supabase db push`:** se o histórico hospedado divergir do repositório (versões aplicadas só no
+hospedado, ou migrations locais antigas ausentes lá), o `db push` recusa ou tenta aplicar o que não deveria.
+Antes de usá-lo, rode `supabase migration list` (precisa de login/link ao projeto). Na dúvida, prefira colar os
+3 arquivos, nessa ordem, no SQL Editor e depois registrar as versões. Qualquer caminho exige sua autorização
+explícita; nada disto foi executado.
+
+**Sem interrupção do serviço:** `000001` só cria funções; `000002` usa `CREATE INDEX` comum (bloqueia escrita em
+`statuses` durante a criação, instantâneo em tabelas pequenas; em tabela grande rode fora de transação com
+`create index concurrently if not exists …`); `000003` troca o CHECK (lock `ACCESS EXCLUSIVE` curto, mas
+valida todas as linhas). Para blindar, abra a sessão com `set lock_timeout = '3s';` e, se a tabela for grande,
+use `add constraint … check (…) not valid;` seguido de `validate constraint statuses_text_check;` em transações
+separadas. Ao final, `notify pgrst, 'reload schema';` garante que o PostgREST enxergue as RPCs novas.
 
 ## 2. Ordem exata de publicação
 
@@ -79,8 +113,14 @@ Manual (celular ou DevTools em 390 px, tema claro e escuro):
       restaurado após recarregar, publicação com "Ver mais/Ver menos"; **7001** não é possível digitar.
 - [ ] Menu ⋯ → "Atualizar publicações" atualiza totais de enquete sem perder a rolagem.
 - [ ] Com uma publicação promovida ativa: uma linha "Em destaque" no topo de Recentes que leva à aba Destaques.
+- [ ] Destaque vencido: uma publicação promovida que já expirou não aparece em Destaques, no contador nem no
+      destaque do topo, mesmo logo após recarregar com o cache; ao promover uma publicação, a aba Destaques
+      passa a listá-la sem esperar o cache de 5 min.
 - [ ] Conta que **não** é membro: "Entre para ver o feed" e nenhuma publicação nas respostas da rede.
 - [ ] Dono da comunidade (não superadmin): "Gerenciar" mostra `@usuário` dos membros, nunca o UUID.
+
+**Limpeza:** o teste de 7000 caracteres cria uma publicação real na conta de teste; apague-a pelo próprio app
+(botão "Excluir publicação" no cartão) ao terminar. Não use service-role nem altere dados de outros usuários.
 
 ## 5. Recuperação (rollback)
 
@@ -105,4 +145,6 @@ mexer no banco.
 - Paginação profunda custa proporcional à profundidade (12,7 ms a 25 mil posts de profundidade); só uma RPC com
   comparação de linhas e novo índice resolveria, e não se justifica hoje.
 - O destaque compacto e os contadores locais usam o relógio do cliente (minuto a minuto): uma promoção que acabou
-  de vencer pode aparecer por até ~1 minuto.
+  de vencer some em até ~1 minuto, inclusive quando a lista veio do cache (a lista de destaques é filtrada no
+  cliente por `promoted` e `promotedUntil`). A regra comercial continua sendo a do servidor (RLS/RPC de promoção).
+- A identidade do `gh` (wellington-lira-brisa) difere do autor git (danielalveslira): confira antes do push.

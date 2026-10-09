@@ -235,8 +235,14 @@ export function CommunityFeedSection({
       items.findIndex((candidate) => candidate.id === status.id) === index
   )
   const upcomingWorkoutIds = new Set(visibleUpcomingWorkouts.map((status) => status.id))
+  // Destaque é promoção PAGA e com prazo: a lista vem filtrada pelo servidor só no instante da leitura e fica em
+  // cache; aqui a validade é conferida de novo com o relógio, para uma promoção encerrada deixar a aba, o contador
+  // e o resumo do topo no máximo ~1 minuto depois do fim (e nunca por causa da cache).
   const visibleFeaturedStatuses = featuredStatuses.filter(
-    (status) => !upcomingWorkoutIds.has(status.id)
+    (status) =>
+      !upcomingWorkoutIds.has(status.id) &&
+      status.promoted === true &&
+      toMillis(status.promotedUntil) > currentTime
   )
   const visibleStatuses = statuses.filter((status) => !upcomingWorkoutIds.has(status.id))
   // "Recentes" é onde o link cai: um post que só existe em Destaques ainda precisa do bloco do link.
@@ -271,9 +277,7 @@ export function CommunityFeedSection({
 
   const featuredCount = visibleFeaturedStatuses.length
   // Primeiro destaque AINDA válido agora (a lista veio filtrada pelo servidor, mas o tempo passa).
-  const spotlight = visibleFeaturedStatuses.find(
-    (status) => status.promoted && toMillis(status.promotedUntil) > currentTime
-  )
+  const spotlight = visibleFeaturedStatuses[0]
   const showSpotlight =
     spotlight &&
     !visibleStatuses

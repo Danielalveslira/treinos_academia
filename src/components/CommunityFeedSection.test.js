@@ -22,6 +22,15 @@ function makeAd(id) {
   return { id }
 }
 
+const promoted = (id, extra = {}) =>
+  makeStatus(id, {
+    authorUsername: 'ana',
+    text: '**Oferta** de hoje: [veja](https://evolutus.app)',
+    promoted: true,
+    promotedUntil: new Date(Date.now() + 3 * 86400000),
+    ...extra,
+  })
+
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'community-feed-section-tests-'))
   const outfile = join(directory, 'community-feed-section.cjs')
@@ -198,7 +207,7 @@ test('sem publicações: abas, Publicar e estado vazio compacto; sem contador de
 
 test('"Recentes" é a aba padrão: o feed aparece e os destaques ficam na outra aba (sem card duplicado)', () => {
   const html = render({
-    featuredStatuses: [makeStatus('feat-1')],
+    featuredStatuses: [promoted('feat-1')],
     statuses: [makeStatus('post-1'), makeStatus('post-2')],
   })
   assert.match(html, /aria-selected="true"[^>]*>Recentes/)
@@ -210,7 +219,7 @@ test('"Recentes" é a aba padrão: o feed aparece e os destaques ficam na outra 
 test('aba Destaques: o painel dos promovidos aparece e o de Recentes continua montado, só escondido', () => {
   const html = render({
     initialTab: 'featured',
-    featuredStatuses: [makeStatus('feat-1'), makeStatus('feat-2')],
+    featuredStatuses: [promoted('feat-1'), promoted('feat-2')],
     statuses: [makeStatus('post-1')],
     hasMore: true,
   })
@@ -232,7 +241,7 @@ test('Destaques vazio: mensagem curta, sem lista', () => {
 })
 
 test('Destaques só é montado quando alguém o abre (a aba inativa não custa render)', () => {
-  const props = { featuredStatuses: [makeStatus('shared-1')], statuses: [makeStatus('shared-1')] }
+  const props = { featuredStatuses: [promoted('shared-1')], statuses: [makeStatus('shared-1')] }
   const recent = render(props)
   assert.equal(count(recent, /data-status-id="shared-1"/g), 1)
   assert.doesNotMatch(recent, /cd-feed-panel-featured/)
@@ -272,7 +281,7 @@ test('a toolbar mantém as classes community-toolbar/community-publish-actions',
 })
 
 test('sem permissão de postar: sem Publicar/Compartilhar progresso, com o aviso, e as abas continuam', () => {
-  const html = render({ canPost: false, featuredStatuses: [makeStatus('feat-1')] })
+  const html = render({ canPost: false, featuredStatuses: [promoted('feat-1')] })
   assert.doesNotMatch(html, />Publicar</)
   assert.doesNotMatch(html, />Compartilhar progresso</)
   assert.match(html, /Somente o superadmin pode publicar nesta comunidade/)
@@ -423,15 +432,6 @@ test('os formulários são lazy (import dinâmico) e aparecem depois que o chunk
   }
 })
 
-const promoted = (id, extra = {}) =>
-  makeStatus(id, {
-    authorUsername: 'ana',
-    text: '**Oferta** de hoje: [veja](https://evolutus.app)',
-    promoted: true,
-    promotedUntil: new Date(Date.now() + 3 * 86400000),
-    ...extra,
-  })
-
 test('destaque compacto: aparece UM resumo de uma linha no topo de Recentes, sem markdown, com o autor', () => {
   const html = render({
     featuredStatuses: [promoted('p1')],
@@ -539,4 +539,47 @@ test('destaque compacto: tocar leva à aba Destaques, onde o post completo apare
   } finally {
     view.unmount()
   }
+})
+
+test('destaque EXPIRADO que ficou na cache não aparece na aba Destaques nem no contador', () => {
+  const expired = promoted('old', { promotedUntil: new Date(Date.now() - 3600 * 1000) })
+  const html = render({
+    initialTab: 'featured',
+    featuredStatuses: [expired, promoted('ok')],
+    statuses: [],
+  })
+  assert.doesNotMatch(
+    html,
+    /data-status-id="old"/,
+    'promoção encerrada não é exibida como destaque'
+  )
+  assert.match(html, /data-status-id="ok"/)
+  assert.match(html, /cd-tab-count[^>]*>1</, 'o contador só conta o que ainda vale')
+})
+
+test('só destaques expirados: aba vazia, sem contador e sem destaque no topo', () => {
+  const expired = [
+    promoted('a', { promotedUntil: new Date(Date.now() - 7200 * 1000) }),
+    promoted('b', { promotedUntil: new Date(Date.now() - 3600 * 1000) }),
+  ]
+  const featuredTab = render({
+    initialTab: 'featured',
+    featuredStatuses: expired,
+    statuses: [makeStatus('x')],
+  })
+  assert.match(featuredTab, /Nenhuma publicação em destaque no momento/)
+  assert.doesNotMatch(featuredTab, /cd-tab-count/)
+  assert.doesNotMatch(
+    render({ featuredStatuses: expired, statuses: [makeStatus('x')] }),
+    /cd-spotlight/
+  )
+})
+
+test('item sem as marcas de promoção (promoted/promotedUntil) não é tratado como destaque', () => {
+  const html = render({
+    initialTab: 'featured',
+    featuredStatuses: [makeStatus('no-flags')],
+    statuses: [],
+  })
+  assert.doesNotMatch(html, /data-status-id="no-flags"/)
 })

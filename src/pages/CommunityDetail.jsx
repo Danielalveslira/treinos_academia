@@ -211,10 +211,16 @@ function CommunityDetail({ id }) {
     },
     [updateCommentCount, setFeaturedStatuses]
   )
+  // Quem acabou de pagar a promoção precisa ver o post em Destaques na hora (e não só depois que a cache de 5 min
+  // vencer): atualiza o card na lista e rebusca os destaques no servidor.
   const handlePromoted = useCallback(
-    (statusId, result) =>
-      updatePostPromotion(statusId, { promoted: true, promotedUntil: result.expiresAtMs }),
-    [updatePostPromotion]
+    (statusId, result) => {
+      updatePostPromotion(statusId, { promoted: true, promotedUntil: result.expiresAtMs })
+      loadFeatured(true).catch((err) =>
+        console.error('[CommunityDetail] listFeaturedStatusesForCommunity:', err)
+      )
+    },
+    [updatePostPromotion, loadFeatured]
   )
 
   const refreshCommunityContent = useCallback(
