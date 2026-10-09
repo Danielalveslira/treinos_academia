@@ -1,8 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
+import {
+  marqueeKeyframes,
+  marqueeTiming,
+  measureOverflow,
+  remainingMs,
+} from '../utils/bannerMarquee'
 
-const ROTATE_INTERVAL_MS = 7000
 const RESUME_AFTER_MS = 4000
+
+// Element.animate (Web Animations) move o texto só com transform, na thread do compositor. Sem ele (navegador muito
+// antigo) o texto longo vira uma linha rolável à mão, igual ao prefers-reduced-motion.
+function canAnimate() {
+  return typeof Element !== 'undefined' && typeof Element.prototype.animate === 'function'
+}
 
 function prefersReducedMotion() {
   return (
@@ -12,15 +23,24 @@ function prefersReducedMotion() {
 
 // Patrocínio da comunidade / banner da Home: um cartão de pouca altura, SEM imagem e sem nenhuma consulta
 // própria (recebe `ads` já carregados e filtrados). "Patrocinado" é sempre visível e lido por leitores de
-// tela. Com mais de uma campanha continua rotacionando (a exposição contratada de cada uma é preservada),
-// com UM único timer, pausado ao tocar/focar/passar o mouse, com a aba oculta e em prefers-reduced-motion.
-// A altura mínima é fixa no CSS, então trocar de campanha não desloca o feed.
+// tela. Marca e mensagem ficam numa linha só: se passam da largura, deslizam sozinhas (pausa, rolagem contínua,
+// pausa) e a campanha SEGUINTE só entra depois de a mensagem ter sido exibida inteira; se cabem, não há animação
+// e o tempo padrão se mantém. Selo, contador e botões nunca se mexem. Com mais de uma campanha continua
+// rotacionando (a exposição contratada de cada uma é preservada), com UM único timer, pausado ao tocar/focar/
+// passar o mouse e com a aba oculta (a rolagem pausa junto e continua de onde parou). Em prefers-reduced-motion
+// não há animação nem rodízio automático: a linha vira uma região rolável à mão (toque/teclado).
+// A altura mínima é fixa no CSS, então nada disso desloca o feed. O React só re-renderiza ao trocar de
+// campanha, mudar o excesso medido ou pausar: o movimento em si não passa pelo React.
 export function SponsoredAdBanner({ ads }) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
   const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden)
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion)
+  const [overflow, setOverflow] = useState(0)
   const resumeTimeoutRef = useRef(null)
+  const lineRef = useRef(null)
+  const textRef = useRef(null)
+  const animationRef = useRef(null)
 
   // Mesmo padrão de matchMedia+listener já usado em AccountMenu.jsx/PwaControls.jsx.
   useEffect(() => {
@@ -42,16 +62,62 @@ export function SponsoredAdBanner({ ads }) {
     setIndex((i) => (i >= ads.length ? 0 : i))
   }, [ads.length])
 
-  const canRotate = ads.length > 1 && !reducedMotion && !paused && !hidden
+  const multiple = ads.length > 1
+  const current = index < ads.length ? index : 0
+  const ad = ads[current]
+  const autoScroll = !reducedMotion && canAnimate()
+  const holding = paused || hidden
+  const timing = useMemo(() => marqueeTiming(autoScroll ? overflow : 0), [autoScroll, overflow])
 
-  // Pausar/retomar sempre reinicia a contagem do zero (não guarda tempo restante) --
-  // efeito só recria o interval quando canRotate muda, então a retomada sempre começa
-  // um ciclo novo de ROTATE_INTERVAL_MS.
+  // Mede o quanto a mensagem passa da largura visível. Só roda ao trocar de campanha e quando a largura da linha
+  // ou do texto muda (um observador para o banner todo); o estado só muda se o excesso mudou.
+  useEffect(() => {
+    const line = lineRef.current
+    const text = textRef.current
+    if (!line || !text) return
+    const measure = () => setOverflow(measureOverflow(text.offsetWidth, line.clientWidth))
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(line)
+    observer.observe(text)
+    return () => observer.disconnect()
+  }, [ad])
+
+  // A rolagem é uma animação de transform criada só quando há excesso a mostrar. Com várias campanhas toca uma
+  // vez (o avanço vem do timer abaixo, que usa a mesma duração); com uma só repete em laço.
+  useEffect(() => {
+    const text = textRef.current
+    if (!timing.animated || !text) return
+    const animation = text.animate(marqueeKeyframes(timing), {
+      duration: timing.totalMs,
+      easing: 'linear',
+      fill: 'forwards',
+      iterations: multiple ? 1 : Infinity,
+    })
+    animationRef.current = animation
+    return () => {
+      animation.cancel()
+      animationRef.current = null
+    }
+  }, [timing, multiple, current])
+
+  useEffect(() => {
+    const animation = animationRef.current
+    if (!animation) return
+    if (holding && animation.playState === 'running') animation.pause()
+    else if (!holding && animation.playState === 'paused') animation.play()
+  }, [holding, timing, multiple, current])
+
+  // Um único timeout por campanha: o tempo padrão se a mensagem cabe; senão, pausa + rolagem + pausa. Retomar
+  // depois de uma pausa continua a rolagem de onde parou (campanha que cabe recomeça o tempo padrão).
+  const canRotate = multiple && autoScroll && !holding
   useEffect(() => {
     if (!canRotate) return
-    const id = setInterval(() => setIndex((i) => (i + 1) % ads.length), ROTATE_INTERVAL_MS)
-    return () => clearInterval(id)
-  }, [canRotate, ads.length])
+    const wait = remainingMs(timing, Number(animationRef.current?.currentTime))
+    const id = setTimeout(() => setIndex((i) => (i + 1) % ads.length), wait)
+    return () => clearTimeout(id)
+  }, [canRotate, timing, current, ads.length])
 
   useEffect(() => () => clearTimeout(resumeTimeoutRef.current), [])
 
@@ -65,10 +131,10 @@ export function SponsoredAdBanner({ ads }) {
   }
 
   if (ads.length === 0) return null
-  const current = index < ads.length ? index : 0
-  const ad = ads[current]
   const hasCta = Boolean(ad.ctaLabel)
-  const multiple = ads.length > 1
+  // sem animação (reduced motion / sem Web Animations) e com excesso: a linha vira região rolável à mão
+  const manual = !autoScroll && overflow > 0
+  const lineClass = `sponsored-ad-banner-line${timing.animated ? ' is-scrolling' : ''}${manual ? ' is-manual' : ''}`
 
   // Avanço manual: pausa o rodízio e só o retoma depois de RESUME_AFTER_MS (o foco no botão também pausa).
   function showNext() {
@@ -91,9 +157,21 @@ export function SponsoredAdBanner({ ads }) {
       <div className="sponsored-ad-banner-content">
         <p className="sponsored-ad-banner-meta">
           <span className="sponsored-ad-pill">Patrocinado</span>
-          <span className="sponsored-ad-banner-partner">{ad.partnerName}</span>
+          <span className="sponsored-ad-banner-partner" title={ad.partnerName}>
+            {ad.partnerName}
+          </span>
         </p>
-        <p className="sponsored-ad-banner-title">{ad.title}</p>
+        <div
+          ref={lineRef}
+          className={lineClass}
+          tabIndex={manual ? 0 : undefined}
+          role={manual ? 'group' : undefined}
+          aria-label={manual ? 'Mensagem completa (role para ler)' : undefined}
+        >
+          <p ref={textRef} className="sponsored-ad-banner-text">
+            {ad.title}
+          </p>
+        </div>
       </div>
       <div className="sponsored-ad-banner-side">
         {/* Só com mais de uma campanha. O contador é discreto e fica acima do botão do anúncio (mobile) ou

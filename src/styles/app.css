@@ -1734,55 +1734,100 @@ body:has(.pwa-offline) .app-shell {
   text-transform: uppercase;
 }
 
-/* patrocínio da comunidade: cartão baixo. Mobile = texto à esquerda (selo+marca, mensagem de até 2 linhas)
-   e botão de 44px à direita, centralizado; ≥640px = uma linha só. As alturas das linhas de texto são
-   reservadas, então trocar de campanha no rodízio nunca desloca o que vem abaixo. */
+/* patrocínio da comunidade. Mobile = coluna organizada em 4 linhas de altura fixa: [selo | 1/N], marca (discreta,
+   uma vez), mensagem (área própria, rola sozinha se for longa) e o CTA em linha própria, de largura total.
+   ≥640px = layout horizontal: selo+marca e mensagem à esquerda, 1/N+CTA à direita. As alturas são reservadas
+   (min-height + linhas fixas), então trocar de campanha no rodízio nunca desloca o que vem abaixo. */
 .sponsored-ad-banner {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
+  grid-template-rows: 22px auto auto auto;
+  grid-template-areas:
+    'pill nav'
+    'partner partner'
+    'line line'
+    'cta cta';
+  align-content: start;
+  row-gap: 6px;
   box-sizing: border-box;
-  /* mesma altura com 1 ou várias campanhas: o contador cabe na coluna do botão (22px + 44px) */
-  min-height: 84px;
+  /* mesma altura com ou sem CTA, com 1 ou várias campanhas */
+  min-height: 152px;
   margin-bottom: 16px;
-  padding: 8px 12px;
+  padding: 12px 14px 14px;
   border: 1px solid var(--borderColor-muted);
   border-radius: var(--fitness-radius-md);
   background: var(--fitness-surface);
 }
-.sponsored-ad-banner-content {
-  min-width: 0;
+/* no mobile os blocos só agrupam: os itens entram direto na grade */
+.sponsored-ad-banner-content,
+.sponsored-ad-banner-meta,
+.sponsored-ad-banner-side {
+  display: contents;
 }
 .sponsored-ad-banner-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
   margin: 0;
 }
+.sponsored-ad-banner .sponsored-ad-pill {
+  grid-area: pill;
+  align-self: center;
+  justify-self: start;
+}
 .sponsored-ad-banner-partner {
+  grid-area: partner;
   min-width: 0;
   overflow: hidden;
   color: var(--fgColor-muted);
   font-size: 12px;
+  line-height: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.sponsored-ad-banner-title {
-  display: -webkit-box;
+/* Área exclusiva da mensagem, de altura fixa. Se passar da largura, o texto desliza por transform (animado por
+   Element.animate no componente); selo, marca, contador e CTA ficam fora dela e nunca se mexem. */
+.sponsored-ad-banner-line {
+  grid-area: line;
+  position: relative;
+  min-width: 0;
   overflow: hidden;
-  /* 2 linhas reservadas (14px x 1.35) mesmo quando a mensagem tem uma só */
-  min-height: 2.7em;
-  margin: 4px 0 0;
+  min-height: 20px;
+  font-size: 15px;
+  line-height: 20px;
+}
+.sponsored-ad-banner-text {
+  display: inline-block;
+  margin: 0;
   color: var(--fgColor-default);
-  font-size: 14px;
   font-weight: 600;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  white-space: nowrap;
+}
+.is-scrolling .sponsored-ad-banner-text {
+  will-change: transform;
+}
+/* degradê na borda direita: sinaliza que há mais texto; a rolagem termina antes dele (FADE_PX) */
+.sponsored-ad-banner-line.is-scrolling::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 14px;
+  background: linear-gradient(to right, transparent, var(--fitness-surface));
+  pointer-events: none;
+}
+/* sem animação (prefers-reduced-motion): região rolável à mão, por toque ou teclado, sem barra de rolagem */
+.sponsored-ad-banner-line.is-manual {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.sponsored-ad-banner-line.is-manual::-webkit-scrollbar {
+  display: none;
+}
+.sponsored-ad-banner-line.is-manual .sponsored-ad-banner-text {
+  padding-right: 14px;
+}
+.sponsored-ad-banner-line.is-manual:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 2px;
 }
 .sponsored-ad-banner-cta,
 .sponsored-ad-cta {
@@ -1791,7 +1836,7 @@ body:has(.pwa-offline) .app-shell {
   justify-content: center;
   box-sizing: border-box;
   min-height: 44px;
-  padding: 0 14px;
+  padding: 0 16px;
   border: 1px solid var(--fitness-accent);
   border-radius: 10px;
   background: transparent;
@@ -1801,8 +1846,11 @@ body:has(.pwa-offline) .app-shell {
   text-align: center;
   text-decoration: none;
 }
+/* CTA em linha própria: largura total, texto centralizado e com respiro de 16px nas laterais */
 .sponsored-ad-banner-cta {
-  max-width: 112px;
+  grid-area: cta;
+  width: 100%;
+  margin-top: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1819,7 +1867,7 @@ body:has(.pwa-offline) .app-shell {
 /* altura reservada (sem conteúdo) enquanto os anúncios carregam, só para comunidades que já tiveram banner */
 .sponsored-ad-banner-slot {
   box-sizing: border-box;
-  height: 84px;
+  height: 152px;
   margin-bottom: 16px;
 }
 @media (min-width: 640px) {
@@ -1828,14 +1876,9 @@ body:has(.pwa-offline) .app-shell {
   }
 }
 
-/* coluna do botão: [contador 1/2 + próximo] sobre o CTA (mobile) / ao lado dele (desktop) */
-.sponsored-ad-banner-side {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  min-width: 0;
-}
+/* [contador 1/N + próximo] no canto da primeira linha (mobile) / ao lado do CTA (desktop) */
 .sponsored-ad-banner-nav {
+  grid-area: nav;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -1862,11 +1905,11 @@ body:has(.pwa-offline) .app-shell {
   color: inherit;
   cursor: pointer;
 }
-/* área de toque maior (≥28x44 acima do CTA) sem ocupar espaço no layout */
+/* área de toque maior (≥44px) sem ocupar espaço no layout */
 .sponsored-ad-banner-next::after {
   content: '';
   position: absolute;
-  inset: -6px -10px 0 -14px;
+  inset: -11px -8px -11px -14px;
 }
 .sponsored-ad-banner-next:hover {
   background: var(--fitness-accent-soft);
@@ -1951,25 +1994,56 @@ body:has(.pwa-offline) .app-shell {
 }
 
 @media (min-width: 640px) {
+  /* horizontal: [selo + marca / mensagem] à esquerda, [1/N + CTA] à direita, numa faixa baixa */
   .sponsored-ad-banner {
+    grid-template-rows: none;
+    grid-template-areas: none;
+    align-content: normal;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 0;
     min-height: 61px;
     padding: 8px 14px;
   }
-  .sponsored-ad-banner-title {
-    min-height: 1.35em;
-    -webkit-line-clamp: 1;
+  .sponsored-ad-banner-content {
+    display: block;
+    grid-area: auto;
+    min-width: 0;
+  }
+  .sponsored-ad-banner-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .sponsored-ad-banner .sponsored-ad-pill,
+  .sponsored-ad-banner-partner {
+    grid-area: auto;
+  }
+  .sponsored-ad-banner-line {
+    min-height: 19px;
+    margin-top: 4px;
+    font-size: 14px;
+    line-height: 19px;
   }
   .sponsored-ad-banner-side {
-    flex-direction: row;
+    display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
+  }
+  .sponsored-ad-banner-nav,
+  .sponsored-ad-banner-cta {
+    grid-area: auto;
   }
   .sponsored-ad-banner-next::after {
     inset: -10px -6px -10px -10px;
   }
   .sponsored-ad-banner-cta {
+    width: auto;
     min-height: 40px;
-    max-width: 200px;
+    max-width: 320px;
+    margin-top: 0;
   }
   .sponsored-ad-card .sponsored-ad-cta {
     min-height: 40px;
