@@ -418,6 +418,14 @@ enabled = true
 enabled = true
 verify_jwt = true
 
+[functions.exercise-visual-confirm]
+enabled = true
+verify_jwt = true
+
+[functions.publish-exercise-visual]
+enabled = true
+verify_jwt = true
+
 [functions.finalize-professional-listing-publish]
 enabled = true
 verify_jwt = true

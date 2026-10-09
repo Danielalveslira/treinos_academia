@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 import { setImmediate } from 'node:timers'
-import { collectBootAssets, collectOfflineAssets, pushAckConfig } from '../../scripts/pwa-plugin.js'
+import { collectBootAssets, collectOfflineAssets, exerciseVisualsPrefix, pushAckConfig } from '../../scripts/pwa-plugin.js'
 
 const TEMPLATE = readFileSync(new URL('../../scripts/service-worker.js', import.meta.url), 'utf8')
 const ORIGIN = 'https://app.test'
@@ -49,6 +49,7 @@ function fakeCaches() {
 
 let sw
 let network // log de URLs buscadas na rede
+let requests // as Requests completas (modo/credenciais) buscadas na rede
 let handlers
 let offline
 
@@ -66,13 +67,15 @@ class WorkerRequest extends Request {
 }
 
 const ACK_URL = 'https://proj.supabase.co/rest/v1/rpc/push_delivery_ack'
+const VISUALS_PREFIX = 'https://proj.supabase.co/storage/v1/object/public/exercise-visuals/'
 const ACK_KEY = 'public-anon-key'
 let timers // setTimeout falso: os testes disparam o tempo manualmente
 let ackHandler = () => Promise.resolve(new Response('', { status: 204 }))
 
-function load({ responder, ack = { url: ACK_URL, key: ACK_KEY } } = {}) {
+function load({ responder, ack = { url: ACK_URL, key: ACK_KEY }, visuals = VISUALS_PREFIX } = {}) {
   timers = []
   network = []
+  requests = []
   handlers = {}
   offline = false
   const caches = fakeCaches()
@@ -84,6 +87,7 @@ function load({ responder, ack = { url: ACK_URL, key: ACK_KEY } } = {}) {
   const plainFetch = async (input, url) => {
     if (offline) throw new TypeError('offline')
     network.push(new URL(url).pathname)
+    requests.push(input)
     return responder ? responder(url) : basic('ok', { status: 200 })
   }
   const self = {
@@ -109,6 +113,7 @@ function load({ responder, ack = { url: ACK_URL, key: ACK_KEY } } = {}) {
     .replace('__OFFLINE_ASSETS__', JSON.stringify(OFFLINE))
     .replace('__PUSH_ACK_URL__', JSON.stringify(ack.url))
     .replace('__PUSH_ACK_KEY__', JSON.stringify(ack.key))
+    .replace('__EXERCISE_VISUALS_PREFIX__', JSON.stringify(visuals))
   globalThis.__fetch = fetchStub
   vm.runInNewContext(source, {
     self,
@@ -173,6 +178,7 @@ test('activate remove shells antigos mas preserva caches de assets/imagens e de 
   assert.deepEqual((await sw.caches.keys()).sort(), [
     'outro-app',
     'treinos-assets-v1',
+    'treinos-exercise-images-v1',
     'treinos-images-v1',
     'treinos-shell-v2',
   ])
@@ -1017,6 +1023,123 @@ test('build: pushAckConfig só habilita a telemetria com https + chave; nada de 
 })
 
 test('build: o template não deixa placeholders sem substituir', () => {
+  assert.equal((TEMPLATE.match(/__EXERCISE_VISUALS_PREFIX__/g) || []).length, 1)
   assert.equal((TEMPLATE.match(/__PUSH_ACK_URL__/g) || []).length, 1)
   assert.equal((TEMPLATE.match(/__PUSH_ACK_KEY__/g) || []).length, 1)
+})
+
+// ---- Imagens oficiais dos exercícios (bucket público exercise-visuals) -------------------------------
+
+const CATALOG_ID = '11111111-2222-3333-4444-555555555555'
+const visualUrl = (file = 'start.webp', version = 3) => `${VISUALS_PREFIX}${CATALOG_ID}/v${version}/${file}`
+const imageRequest = (url) => new Request(url, { mode: 'no-cors' })
+const webp = (body = 'bytes', init = {}) =>
+  new Response(body, { status: 200, headers: { 'content-type': 'image/webp' }, ...init })
+const VISUAL_CACHE = 'treinos-exercise-images-v1'
+
+test('imagem publicada do exercício: rede na primeira vez (refeita com CORS, sem credenciais), cache nas seguintes', async () => {
+  load({ responder: () => webp() })
+  const first = await dispatchFetch(imageRequest(visualUrl()))
+  assert.equal(first.handled, true)
+  assert.equal(await first.response.text(), 'bytes')
+  const second = await dispatchFetch(imageRequest(visualUrl()))
+  assert.equal(await second.response.text(), 'bytes')
+  assert.equal(requests.length, 1, 'a segunda leitura vem do cache, sem rede')
+  assert.equal(requests[0].url, visualUrl())
+  assert.equal(requests[0].mode, 'cors', 'o <img> é no-cors (opaco); o worker refaz com CORS para validar o tipo')
+  assert.equal(requests[0].credentials, 'omit')
+  assert.equal(sw.caches.stores.get(VISUAL_CACHE).size, 1)
+})
+
+test('imagem do exercício: versão nova = URL nova = nova entrada (nunca serve a versão antiga no lugar)', async () => {
+  load({ responder: (url) => webp(url.includes('/v4/') ? 'novo' : 'antigo') })
+  assert.equal(await (await dispatchFetch(imageRequest(visualUrl('start.webp', 3)))).response.text(), 'antigo')
+  assert.equal(await (await dispatchFetch(imageRequest(visualUrl('start.webp', 4)))).response.text(), 'novo')
+  assert.equal(sw.caches.stores.get(VISUAL_CACHE).size, 2)
+})
+
+test('offline: imagem já vista continua aparecendo; nunca vista falha (a UI mostra o placeholder)', async () => {
+  load({ responder: () => webp('vista') })
+  await dispatchFetch(imageRequest(visualUrl('start.webp')))
+  offline = true
+  assert.equal(await (await dispatchFetch(imageRequest(visualUrl('start.webp')))).response.text(), 'vista')
+  const result = dispatchFetch(imageRequest(visualUrl('end.webp')))
+  await assert.rejects(result)
+})
+
+test('só guarda WebP de verdade: erro HTTP, HTML ou outro tipo nunca entram no cache', async () => {
+  load({ responder: () => new Response('nope', { status: 404, headers: { 'content-type': 'application/json' } }) })
+  const notFound = await dispatchFetch(imageRequest(visualUrl()))
+  assert.equal(notFound.response.status, 404)
+  load({ responder: () => new Response('<html>', { status: 200, headers: { 'content-type': 'text/html' } }) })
+  await dispatchFetch(imageRequest(visualUrl()))
+  assert.equal(sw.caches.stores.get(VISUAL_CACHE)?.size ?? 0, 0)
+})
+
+test('NÃO é um cache genérico do Supabase: auth, REST, RPC, realtime, storage privado e outros paths ficam de fora', async () => {
+  load({ responder: () => webp() })
+  const base = 'https://proj.supabase.co'
+  const outside = [
+    `${base}/auth/v1/token?grant_type=refresh_token`,
+    `${base}/rest/v1/exercise_catalog?select=*`,
+    `${base}/rest/v1/rpc/search_exercise_catalog`,
+    `${base}/realtime/v1/websocket`,
+    `${base}/storage/v1/object/sign/exercise-visual-drafts/${CATALOG_ID}/set/start.webp?token=x`,
+    `${base}/storage/v1/object/authenticated/exercise-visual-drafts/${CATALOG_ID}/set/start.webp`,
+    `${base}/storage/v1/object/public/profile-avatars/${CATALOG_ID}/x.webp`,
+    `${base}/storage/v1/object/public/exercise-visual-references/${CATALOG_ID}/v1/start.webp`,
+    `${VISUALS_PREFIX}Bench_Press/0.jpg`, // path do dataset original
+    `${VISUALS_PREFIX}${CATALOG_ID}/v3/start.webp?token=abc`, // com query
+    `${VISUALS_PREFIX}${CATALOG_ID}/v3/start.webp#x`,
+    `${VISUALS_PREFIX}${CATALOG_ID}/v3/../../secret.webp`,
+    `${VISUALS_PREFIX}${CATALOG_ID}/v3/animation.webp`,
+    `https://evil.example/storage/v1/object/public/exercise-visuals/${CATALOG_ID}/v3/start.webp`,
+    `http://proj.supabase.co/storage/v1/object/public/exercise-visuals/${CATALOG_ID}/v3/start.webp`,
+  ]
+  for (const url of outside) assert.equal((await dispatchFetch(imageRequest(url))).handled, false, url)
+  assert.equal(
+    (await dispatchFetch(new Request(visualUrl(), { method: 'POST', body: 'x' }))).handled,
+    false,
+    'só GET'
+  )
+  assert.deepEqual(network, [])
+  assert.equal(sw.caches.stores.size, 0)
+})
+
+test('sem VITE_SUPABASE_URL https no build, o cache de imagens fica desligado', async () => {
+  load({ visuals: null, responder: () => webp() })
+  assert.equal((await dispatchFetch(imageRequest(visualUrl()))).handled, false)
+})
+
+test('teto de entradas: descarta as imagens mais antigas (cache nunca cresce sem limite)', async () => {
+  load({ responder: () => webp() })
+  for (let n = 1; n <= 104; n += 1) {
+    await dispatchFetch(imageRequest(visualUrl('start.webp', n)))
+  }
+  await new Promise((resolve) => setImmediate(resolve))
+  const keys = [...sw.caches.stores.get(VISUAL_CACHE).keys()]
+  assert.equal(keys.length, 100)
+  assert.ok(!keys.includes(visualUrl('start.webp', 1)))
+  assert.ok(keys.includes(visualUrl('start.webp', 104)))
+})
+
+test('activate preserva o cache de imagens de exercício e a poda também o limita', async () => {
+  await sw.caches.open(VISUAL_CACHE)
+  await sw.caches.open('treinos-antigo-v0')
+  await lifecycle('activate')
+  const names = await sw.caches.keys()
+  assert.ok(names.includes(VISUAL_CACHE))
+  assert.ok(!names.includes('treinos-antigo-v0'))
+})
+
+test('build: exerciseVisualsPrefix só liga com https e URL limpa', () => {
+  assert.equal(exerciseVisualsPrefix({ VITE_SUPABASE_URL: 'https://proj.supabase.co/' }), VISUALS_PREFIX)
+  for (const env of [
+    {},
+    { VITE_SUPABASE_URL: 'http://proj.supabase.co' },
+    { VITE_SUPABASE_URL: 'not a url' },
+    { VITE_SUPABASE_URL: 'https://proj.supabase.co/?x=1' },
+    { VITE_SUPABASE_URL: 'https://proj.supabase.co/#x' },
+  ])
+    assert.equal(exerciseVisualsPrefix(env), null, JSON.stringify(env))
 })

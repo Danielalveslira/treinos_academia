@@ -43,11 +43,16 @@ before(async () => {
                   globalThis.__supabaseCalls.push({ kind: 'rpc', name, params })
                   return Promise.resolve(globalThis.__rpcResult)
                 },
+                storage: {
+                  from: (bucket) => ({
+                    getPublicUrl: (path) => ({ data: { publicUrl: 'https://proj.supabase.co/storage/v1/object/public/' + bucket + '/' + path } }),
+                  }),
+                },
                 from: (table) => {
                   const call = { kind: 'from', table, filters: {} }
                   globalThis.__supabaseCalls.push(call)
                   const builder = {
-                    select: () => builder,
+                    select: (columns) => { call.select = columns; return builder },
                     eq: (column, value) => { call.filters[column] = value; return builder },
                     maybeSingle: () => Promise.resolve(globalThis.__fromResult),
                     then: (resolve) => resolve(globalThis.__fromResult),
@@ -74,6 +79,17 @@ beforeEach(() => {
   globalThis.__fromResult = { data: null, error: null }
 })
 
+const CATALOG = '11111111-2222-3333-4444-555555555555'
+const BASE = 'https://proj.supabase.co/storage/v1/object/public/exercise-visuals'
+const PUBLISHED = {
+  version: 3,
+  images: [
+    { role: 'end', path: `${CATALOG}/v3/end.webp` },
+    { role: 'start', path: `${CATALOG}/v3/start.webp` },
+  ],
+  thumbnail: { path: `${CATALOG}/v3/thumb.webp` },
+}
+
 const rawRow = {
   id: 'catalog-uuid-1',
   provider: 'evolutus_dataset',
@@ -87,7 +103,8 @@ const rawRow = {
   force: 'push',
   mechanic: 'composto',
   instructions: ['Deite no banco.', 'Empurre a barra.'],
-  media_refs: { images: ['Bench_Press/0.jpg'] },
+  source_media_refs: { images: ['Bench_Press/0.jpg', 'Bench_Press/1.jpg'] },
+  published_media_refs: PUBLISHED,
   total_count: 1,
 }
 
@@ -116,7 +133,7 @@ test('searchExercises chama a RPC com os parâmetros certos e mapeia as linhas p
     force: 'push',
     mechanic: 'composto',
     instructions: ['Deite no banco.', 'Empurre a barra.'],
-    images: ['Bench_Press/0.jpg'],
+    images: [`${BASE}/${CATALOG}/v3/start.webp`, `${BASE}/${CATALOG}/v3/end.webp`],
   })
 })
 
@@ -139,7 +156,7 @@ test('getExerciseDetail busca por catalogId (PK direta) quando disponível', asy
   const fromCall = globalThis.__supabaseCalls.find((call) => call.kind === 'from')
   assert.deepEqual(fromCall.filters, { id: 'catalog-uuid-1' })
   assert.equal(result.name, 'Supino Reto com Barra')
-  assert.deepEqual(result.images, ['Bench_Press/0.jpg'])
+  assert.deepEqual(result.images, [`${BASE}/${CATALOG}/v3/start.webp`, `${BASE}/${CATALOG}/v3/end.webp`])
 })
 
 test('getExerciseDetail cai pra provider + providerExerciseId sem catalogId', async () => {
@@ -188,4 +205,46 @@ test('nome com acento/cedilha nunca é normalizado na apresentação -- só a qu
   // toLowerCase aplicado no caminho.
   assert.equal(globalThis.__supabaseCalls[0].params.p_query, 'abracar')
   assert.equal(data[0].name, 'Abraçar a Bola')
+})
+
+
+test('resolveExercisePublishedImages devolve start e end (nessa ordem) como URLs públicas do bucket', () => {
+  assert.deepEqual(service.resolveExercisePublishedImages(PUBLISHED), [
+    `${BASE}/${CATALOG}/v3/start.webp`,
+    `${BASE}/${CATALOG}/v3/end.webp`,
+  ])
+})
+
+test('resolveExercisePublishedImages sem mídia publicada devolve lista vazia (UI cai no placeholder)', () => {
+  assert.deepEqual(service.resolveExercisePublishedImages({ images: [] }), [])
+  assert.deepEqual(service.resolveExercisePublishedImages(undefined), [])
+  assert.deepEqual(service.resolveExercisePublishedImages(null), [])
+  assert.deepEqual(service.resolveExercisePublishedImages({ images: 'x' }), [])
+})
+
+test('resolveExercisePublishedImages ignora paths fora do formato publicado (nunca vira URL)', () => {
+  const refs = {
+    images: [
+      { role: 'start', path: 'Bench_Press/0.jpg' },
+      { role: 'end', path: `${CATALOG}/v3/../../secret.webp` },
+      { role: 'start', path: `https://evil.example/${CATALOG}/v1/start.webp` },
+      { role: 'end', path: 42 },
+    ],
+  }
+  assert.deepEqual(service.resolveExercisePublishedImages(refs), [])
+})
+
+test('exercício sem published_media_refs mapeia images vazio mesmo que o dataset tenha referências', async () => {
+  globalThis.__rpcResult = { data: [{ ...rawRow, published_media_refs: { images: [] } }], error: null }
+  const { data } = await service.searchExercises({ limit: 20, offset: 0 })
+  assert.deepEqual(data[0].images, [])
+})
+
+test('getExerciseDetail seleciona published_media_refs e nunca a coluna removida media_refs', async () => {
+  globalThis.__fromResult = { data: rawRow, error: null }
+  await service.getExerciseDetail({ catalogId: 'catalog-uuid-1' })
+  const fromCall = globalThis.__supabaseCalls.find((call) => call.kind === 'from')
+  assert.equal(fromCall.table, 'exercise_catalog')
+  assert.match(fromCall.select, /\bpublished_media_refs\b/)
+  assert.doesNotMatch(fromCall.select, /(^|[ ,])media_refs/)
 })

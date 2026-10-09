@@ -42,7 +42,7 @@ test('normalizeExercise nunca inventa dado ausente -- campos opcionais viram nul
   assert.equal(row.difficulty, null)
   assert.equal(row.force, null)
   assert.equal(row.mechanic, null)
-  assert.deepEqual(row.media_refs, { images: [] })
+  assert.deepEqual(row.source_media_refs, { images: [] })
 })
 
 test('normalizeExercise preserva acentuação/cedilha do nome exatamente como veio -- normalização é só pra busca, nunca pro campo de apresentação', () => {
@@ -113,4 +113,26 @@ test('buildImportPlan conta com/sem equipamento e com/sem mídia', () => {
 
 test('buildImportPlan rejeita fonte que não é um array', () => {
   assert.throws(() => buildImportPlan({ not: 'an array' }), /INVALID_SOURCE_FORMAT/)
+})
+
+// Reimportar o catálogo nunca pode apagar uma imagem aprovada pelo Evolutus: o plano só carrega
+// source_media_refs; published_media_refs (mídia oficial, escrita pelo fluxo de publicação) nunca
+// aparece no que o importador faz upsert -- e um upsert sem a coluna não a altera.
+test('o plano de importação atualiza source_media_refs e NUNCA inclui published_media_refs', () => {
+  const published = { version: 3, images: [{ role: 'start', path: 'x/v3/start.webp' }, { role: 'end', path: 'x/v3/end.webp' }] }
+  const existing = { ...normalizeExercise(complete), published_media_refs: published }
+  const changedImages = { ...complete, images: ['Bench_Press/9.jpg'] }
+
+  const { toUpsert, report } = buildImportPlan([changedImages], new Map([['Bench_Press', existing]]))
+  assert.equal(report.updates, 1)
+  assert.deepEqual(toUpsert[0].source_media_refs, { images: ['Bench_Press/9.jpg'] })
+  assert.equal('published_media_refs' in toUpsert[0], false)
+  assert.equal('media_refs' in toUpsert[0], false)
+  assert.deepEqual(existing.published_media_refs, published)
+})
+
+test('mudança só na mídia publicada não faz o importador reescrever a linha', () => {
+  const existing = { ...normalizeExercise(complete), published_media_refs: { version: 3, images: [] } }
+  const { report } = buildImportPlan([complete], new Map([['Bench_Press', existing]]))
+  assert.equal(report.unchanged, 1)
 })

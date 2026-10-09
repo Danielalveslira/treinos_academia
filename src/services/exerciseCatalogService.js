@@ -21,6 +21,29 @@ import {
 // requisição falha por CONECTIVIDADE (nunca por auth/permissão). Não carrega o catálogo inteiro.
 const PAGE_SIZE_DEFAULT = 20
 
+// Mídia oficial dos exercícios (docs/promps/Evolutus_arquitetura_imagens_exercicios_V2_auditada.md):
+// o banco guarda só o PATH do arquivo publicado (exercise_catalog.published_media_refs) e o cliente
+// monta a URL pública do bucket -- getPublicUrl só concatena, não é uma leitura a mais. A mídia do
+// dataset original (source_media_refs) NÃO é exibida: aqueles paths não existem em lugar nenhum.
+export const EXERCISE_VISUALS_BUCKET = 'exercise-visuals'
+// {catalogId}/v{versão}/{start|end|thumb}.webp -- qualquer outro formato é ignorado (nunca vira URL).
+const PUBLISHED_PATH = /^[0-9a-f-]{36}\/v\d{1,6}\/(start|end|thumb)\.webp$/
+
+export function resolveExercisePublishedImages(publishedMediaRefs) {
+  const byRole = new Map()
+  for (const image of Array.isArray(publishedMediaRefs?.images) ? publishedMediaRefs.images : []) {
+    if (typeof image?.path === 'string' && PUBLISHED_PATH.test(image.path)) byRole.set(image.role, image.path)
+  }
+  const urls = []
+  for (const role of ['start', 'end']) {
+    const path = byRole.get(role)
+    if (!path) continue
+    const url = supabase.storage.from(EXERCISE_VISUALS_BUCKET).getPublicUrl(path)?.data?.publicUrl
+    if (url) urls.push(url)
+  }
+  return urls
+}
+
 function toPrimaryMuscles(row) {
   return row.primary_muscle ? [row.primary_muscle] : []
 }
@@ -43,7 +66,7 @@ function mapRow(row) {
     force: row.force,
     mechanic: row.mechanic,
     instructions: row.instructions || [],
-    images: row.media_refs?.images || [],
+    images: resolveExercisePublishedImages(row.published_media_refs),
   }
 }
 
@@ -78,7 +101,7 @@ export function getExerciseDetail({ catalogId, provider, providerExerciseId }) {
     label: 'catalog-detail',
     remote: async () => {
       let query = supabase.from('exercise_catalog').select(
-        'id, provider, provider_exercise_id, name, primary_muscle, muscles, equipment, category, difficulty, force, mechanic, instructions, media_refs'
+        'id, provider, provider_exercise_id, name, primary_muscle, muscles, equipment, category, difficulty, force, mechanic, instructions, published_media_refs'
       )
       query = catalogId
         ? query.eq('id', catalogId)

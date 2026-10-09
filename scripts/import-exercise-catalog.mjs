@@ -34,7 +34,7 @@ async function loadExisting(client) {
   for (;;) {
     const { data, error } = await client
       .from('exercise_catalog')
-      .select('provider_exercise_id, name, primary_muscle, muscles, equipment, category, difficulty, force, mechanic, instructions, media_refs')
+      .select('provider_exercise_id, name, primary_muscle, muscles, equipment, category, difficulty, force, mechanic, instructions, source_media_refs')
       .eq('provider', PROVIDER)
       .range(from, from + PAGE_SIZE - 1)
     if (error) throw new Error(`FAILED_TO_LOAD_EXISTING: ${error.message}`)

@@ -4719,6 +4719,65 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   background: var(--bgColor-muted);
 }
 .personal-catalog-images { margin-bottom: 24px; }
+.exercise-visual-preview-image { width: 100%; min-height: 0; aspect-ratio: 1; border-radius: 8px; object-fit: contain; background: var(--bgColor-muted); }
+.exercise-visual-preview-image.catalog-image-placeholder { font-size: 12px; }
+.ev-page { display: grid; gap: 12px; }
+.ev-header h1 { margin: 0; font-size: 22px; line-height: 1.2; }
+.ev-header p { margin: 2px 0 0; color: var(--fgColor-muted); font-size: 14px; }
+.ev-muted { color: var(--fgColor-muted); font-size: 12px; }
+.ev-eyebrow { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fgColor-muted); }
+.ev-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 12px; border: 1px solid var(--borderColor-default); border-radius: 8px; background: var(--bgColor-default); }
+.ev-search { display: flex; flex: 1 1 280px; gap: 8px; min-width: 0; }
+.ev-search > :first-child { flex: 1; min-width: 0; }
+.ev-check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; white-space: nowrap; }
+.ev-stats { flex: 1 1 100%; margin: 0; min-height: 18px; font-size: 12px; color: var(--fgColor-muted); }
+.exercise-visuals-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 960px) { .exercise-visuals-layout { grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); align-items: start; } }
+.ev-list, .ev-detail { display: grid; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--borderColor-default); border-radius: 8px; background: var(--bgColor-default); }
+.ev-list-scroll { min-height: 120px; max-height: 420px; overflow-y: auto; margin-inline: -4px; padding-inline: 4px; }
+@media (min-width: 960px) { .ev-list-scroll { max-height: calc(100vh - 320px); min-height: 240px; } }
+.ev-list ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.ev-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; }
+.ev-row:hover { background: var(--bgColor-muted); }
+.ev-row[aria-pressed="true"] { border-color: var(--borderColor-accent-emphasis); background: var(--bgColor-accent-muted); }
+.ev-row:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 1px; }
+.ev-row-text { display: grid; min-width: 0; }
+.ev-row-name { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.ev-row-status { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; font-size: 12px; color: var(--fgColor-muted); }
+.ev-row-status.is-published { color: var(--fgColor-success); }
+.ev-pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ev-loading { display: flex; justify-content: center; padding: 16px 0; }
+.ev-detail { gap: 14px; }
+.ev-detail-empty { min-height: 160px; align-content: start; }
+.ev-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ev-detail-head h2 { margin: 0; font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
+.ev-preview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 360px; }
+.ev-preview[data-size="sm"] { grid-template-columns: repeat(3, minmax(0, 96px)); gap: 8px; max-width: none; }
+.ev-figure { display: grid; gap: 4px; margin: 0; }
+.ev-figure figcaption { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fgColor-muted); }
+.ev-section { display: grid; gap: 8px; }
+.ev-section h3 { margin: 0; font-size: 14px; }
+.ev-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ev-prompt summary, .ev-history summary { cursor: pointer; font-size: 13px; color: var(--fgColor-muted); }
+.ev-prompt pre { margin: 8px 0 0; padding: 8px; max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; border-radius: 6px; background: var(--bgColor-muted); }
+.ev-upload { display: grid; gap: 8px; padding: 10px; border: 1px dashed var(--borderColor-default); border-radius: 6px; }
+/* `.main-content form` (acima) dá fundo/borda/24px a QUALQUER formulário: aqui os da tela de imagens são compactos. */
+.main-content .ev-search { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.main-content .ev-upload { padding: 10px; background: transparent; border: 1px dashed var(--borderColor-default); border-radius: 6px; }
+.ev-upload p { margin: 0; }
+.ev-upload-files { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.ev-file { display: grid; gap: 4px; min-width: 0; }
+.ev-file label { font-size: 13px; font-weight: 600; }
+.ev-file input { max-width: 100%; }
+.ev-review-card strong { font-size: 14px; }
+.ev-review-card { display: grid; gap: 10px; padding: 10px; border: 1px solid var(--borderColor-attention-muted); border-radius: 6px; }
+.ev-checklist { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 4px 16px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.ev-checklist legend { margin-bottom: 4px; padding: 0; font-size: 13px; font-weight: 600; }
+.ev-checklist label { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.ev-input { flex: 1 1 200px; min-width: 0; padding: 5px 10px; border: 1px solid var(--borderColor-default); border-radius: 6px; background: var(--bgColor-default); color: inherit; font: inherit; font-size: 14px; }
+.ev-history ul { display: grid; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+.ev-history li { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--borderColor-muted); border-radius: 6px; }
+.ev-history-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .exercise-detail-page .stats-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-block: 1px solid var(--borderColor-muted); }
 .exercise-detail-page .indicator-card { padding: 20px 16px; border: 0; border-radius: 0; background: transparent; }
 .exercise-detail-page .indicator-card + .indicator-card { border-left: 1px solid var(--borderColor-muted); }

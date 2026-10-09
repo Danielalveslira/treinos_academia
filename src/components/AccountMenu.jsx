@@ -17,6 +17,7 @@ import {
   QuestionIcon,
   BriefcaseIcon,
   LocationIcon,
+  ImageIcon,
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useColorMode } from '../hooks/useColorMode'
@@ -164,6 +165,17 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
                   <RocketIcon />
                 </ActionList.LeadingVisual>
                 Promoções (EvoCash)
+              </ActionList.LinkItem>
+              <ActionList.LinkItem
+                as={Link}
+                to="/admin/exercicios-imagens"
+                replace
+                onClick={() => setOpen(false)}
+              >
+                <ActionList.LeadingVisual>
+                  <ImageIcon />
+                </ActionList.LeadingVisual>
+                Imagens dos exercícios
               </ActionList.LinkItem>
             </ActionList.Group>
           )}

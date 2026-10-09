@@ -351,7 +351,8 @@ const catalogRow = (id, name, extra = {}) => ({
   force: 'push',
   mechanic: 'composto',
   instructions: ['a'],
-  media_refs: { images: ['i.jpg'] },
+  source_media_refs: { images: ['i.jpg'] },
+  published_media_refs: { images: [] },
   total_count: 2,
   ...extra,
 })

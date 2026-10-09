@@ -9,13 +9,18 @@
 //  - /img/*: cache-first com teto de entradas e idade máxima.
 //  - navegação: network-first (um F5 sempre busca o shell mais novo); cache só como fallback
 //    offline.
-//  - NUNCA interceptado: qualquer origem diferente da própria (Supabase Auth/REST/RPC/Realtime/
-//    Storage, tokens, respostas autenticadas) e qualquer método diferente de GET. O Supabase é a
-//    única fonte de verdade; nada dele é guardado aqui.
+//  - imagens oficiais dos exercícios (ÚNICA exceção de origem externa): cache-first sob demanda, só
+//    para URLs do bucket PÚBLICO exercise-visuals do Supabase configurado, no formato exato
+//    {catalogId}/v{n}/{start|end|thumb}.webp. A versão faz parte do path (nova versão = URL nova),
+//    então o cache nunca fica velho. Teto de entradas; nada é baixado antecipadamente.
+//  - NUNCA interceptado: qualquer outra origem (Supabase Auth/REST/RPC/Realtime/Storage privado,
+//    tokens, respostas autenticadas) e qualquer método diferente de GET. O Supabase é a única fonte
+//    de verdade; só os bytes imutáveis das imagens públicas acima são guardados aqui.
 const VERSION = '__VERSION__'
 const SHELL_CACHE = `treinos-shell-${VERSION}`
 const ASSET_CACHE = 'treinos-assets-v1'
 const IMAGE_CACHE = 'treinos-images-v1'
+const EXERCISE_IMAGE_CACHE = 'treinos-exercise-images-v1'
 const SHELL_URLS = __SHELL_URLS__ // eslint-disable-line no-undef
 const BOOT_ASSETS = __BOOT_ASSETS__ // eslint-disable-line no-undef
 // Chunks das telas que abrem offline (Home, Treino, Histórico, Exercícios, detalhe): resolvidos no build
@@ -28,17 +33,24 @@ const CORE_ASSETS = [...BOOT_ASSETS, ...OFFLINE_ASSETS]
 const PUSH_ACK_URL = __PUSH_ACK_URL__ // eslint-disable-line no-undef
 const PUSH_ACK_KEY = __PUSH_ACK_KEY__ // eslint-disable-line no-undef
 const ACK_TIMEOUT_MS = 4000
+// Prefixo https://<projeto>/storage/v1/object/public/exercise-visuals/ do bucket público de imagens
+// dos exercícios. Null quando o build não tem VITE_SUPABASE_URL https: o cache simplesmente não liga.
+const EXERCISE_VISUALS_PREFIX = __EXERCISE_VISUALS_PREFIX__ // eslint-disable-line no-undef
+// {catalogId}/v{versão}/{start|end|thumb}.webp -- o único formato que o cache aceita.
+const EXERCISE_VISUAL_FILE = /^[0-9a-f-]{36}\/v\d{1,6}\/(start|end|thumb)\.webp$/
 const ACK_TOKEN_PATTERN = /^[0-9a-f]{64}$/
 
 const MAX_ASSET_ENTRIES = 120
 const MAX_IMAGE_ENTRIES = 40
+// ~50 exercícios visualizados (start + end). Sob demanda e com poda do mais antigo.
+const MAX_EXERCISE_IMAGE_ENTRIES = 100
 const IMAGE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 const CACHED_AT_HEADER = 'x-sw-cached-at'
 
 // Os caches deste worker compartilham o prefixo; só eles são limpos (nada de apagar caches
 // de terceiros da mesma origem).
 const OWNED_PREFIX = 'treinos-'
-const CURRENT_CACHES = [SHELL_CACHE, ASSET_CACHE, IMAGE_CACHE]
+const CURRENT_CACHES = [SHELL_CACHE, ASSET_CACHE, IMAGE_CACHE, EXERCISE_IMAGE_CACHE]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -87,6 +99,7 @@ self.addEventListener('activate', (event) => {
       await Promise.all([
         trim(ASSET_CACHE, MAX_ASSET_ENTRIES, CORE_ASSETS),
         trim(IMAGE_CACHE, MAX_IMAGE_ENTRIES),
+        trim(EXERCISE_IMAGE_CACHE, MAX_EXERCISE_IMAGE_ENTRIES),
       ])
     })()
   )
@@ -185,9 +198,49 @@ async function imageStrategy(request) {
   }
 }
 
+// Só GET de uma imagem publicada do bucket público, sem query nem hash (uma única chave por arquivo).
+function isExerciseVisualUrl(url) {
+  return (
+    Boolean(EXERCISE_VISUALS_PREFIX) &&
+    url.protocol === 'https:' &&
+    !url.search &&
+    !url.hash &&
+    url.href.startsWith(EXERCISE_VISUALS_PREFIX) &&
+    EXERCISE_VISUAL_FILE.test(url.href.slice(EXERCISE_VISUALS_PREFIX.length))
+  )
+}
+
+function isCacheableExerciseImage(response) {
+  return (
+    response.ok &&
+    response.type !== 'opaque' &&
+    (response.headers.get('content-type') || '').startsWith('image/webp')
+  )
+}
+
+// Cache-first: o path inclui a versão, então o conteúdo de uma URL nunca muda. A requisição do <img>
+// é no-cors (resposta opaca, que não dá para validar); refazemos com CORS (o bucket público responde
+// com Access-Control-Allow-Origin) para só guardar uma imagem WebP de verdade. Offline sem cache: a
+// promessa rejeita e o <img> cai no placeholder (ExerciseCatalogImage) -- o treino nunca é bloqueado.
+async function exerciseImageStrategy(request) {
+  const cache = await caches.open(EXERCISE_IMAGE_CACHE)
+  const cached = await cache.match(request.url, { ignoreVary: true })
+  if (cached) return cached
+  const response = await fetch(new Request(request.url, { mode: 'cors', credentials: 'omit' }))
+  if (isCacheableExerciseImage(response)) {
+    await cache.put(request.url, response.clone())
+    trim(EXERCISE_IMAGE_CACHE, MAX_EXERCISE_IMAGE_ENTRIES).catch(() => {})
+  }
+  return response
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event
   const url = new URL(request.url)
+  if (request.method === 'GET' && isExerciseVisualUrl(url)) {
+    event.respondWith(exerciseImageStrategy(request))
+    return
+  }
   if (request.method !== 'GET' || url.origin !== self.location.origin) return
 
   if (request.mode === 'navigate') {

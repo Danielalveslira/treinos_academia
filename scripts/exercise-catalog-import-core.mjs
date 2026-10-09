@@ -56,13 +56,13 @@ export function normalizeExercise(raw) {
     force: hasText(raw.force) ? raw.force : null,
     mechanic: hasText(raw.mechanic) ? raw.mechanic : null,
     instructions: raw.instructions.filter(hasText),
-    media_refs: { images },
+    source_media_refs: { images },
   }
 }
 
 const COMPARABLE_FIELDS = [
   'name', 'primary_muscle', 'muscles', 'equipment', 'category',
-  'difficulty', 'force', 'mechanic', 'instructions', 'media_refs',
+  'difficulty', 'force', 'mechanic', 'instructions', 'source_media_refs',
 ]
 
 function sameValue(a, b) {
@@ -129,7 +129,7 @@ export function buildImportPlan(rawExercises, existingByProviderExerciseId = new
     .map(([value, ids]) => ({ value, ids }))
 
   const withEquipment = toUpsert.filter((row) => row.equipment !== null).length
-  const withMedia = toUpsert.filter((row) => row.media_refs.images.length > 0).length
+  const withMedia = toUpsert.filter((row) => row.source_media_refs.images.length > 0).length
 
   return {
     toUpsert,

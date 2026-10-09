@@ -87,14 +87,29 @@ export function pushAckConfig(env = {}) {
   return url && key ? { url, key } : { url: null, key: null }
 }
 
+// Prefixo do bucket PÚBLICO de imagens dos exercícios (a única origem externa que o Service Worker
+// guarda em cache). Sem VITE_SUPABASE_URL https válida, null: o cache de imagens fica desligado.
+export function exerciseVisualsPrefix(env = {}) {
+  const base = typeof env.VITE_SUPABASE_URL === 'string' ? env.VITE_SUPABASE_URL.trim() : ''
+  try {
+    const parsed = new URL(base)
+    if (parsed.protocol !== 'https:' || parsed.search || parsed.hash) return null
+    return `${parsed.origin}${parsed.pathname.replace(/\/+$/, '')}/storage/v1/object/public/exercise-visuals/`
+  } catch {
+    return null
+  }
+}
+
 export function pwaPlugin() {
   let ack = { url: null, key: null }
+  let visualsPrefix = null
   return {
     name: 'treinos-pwa',
     apply: 'build',
     enforce: 'post',
     configResolved(config) {
       ack = pushAckConfig(config.env)
+      visualsPrefix = exerciseVisualsPrefix(config.env)
     },
     generateBundle(_, bundle) {
       const files = Object.keys(bundle).filter((file) => !file.endsWith('.map'))
@@ -116,6 +131,7 @@ export function pwaPlugin() {
         .replace('__OFFLINE_ASSETS__', JSON.stringify(collectOfflineAssets(bundle, bootAssets)))
         .replace('__PUSH_ACK_URL__', () => JSON.stringify(ack.url))
         .replace('__PUSH_ACK_KEY__', () => JSON.stringify(ack.key))
+        .replace('__EXERCISE_VISUALS_PREFIX__', () => JSON.stringify(visualsPrefix))
       this.emitFile({ type: 'asset', fileName: 'sw.js', source })
     },
   }
