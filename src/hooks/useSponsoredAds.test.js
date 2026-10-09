@@ -121,9 +121,12 @@ before(async () => {
         import { useSponsoredAds } from './useSponsoredAds.js'
         import { useGlobalSponsoredAds } from './useGlobalSponsoredAds.js'
         import { getCalls, resetCalls } from '../services/sponsoredAdsService'
+        import { observeServerDate } from '../utils/serverClock'
 
         export function exerciseSponsoredAds() {
           resetCalls()
+          // relógio do servidor = 500 ms (Date.now() é simulado em 100): vencimento 50 já passou, 2000 não
+          observeServerDate('Thu, 01 Jan 1970 00:00:00 GMT')
           const disabled = useSponsoredAds('community-1', false)
           const disabledCalls = getCalls()
           const community = useSponsoredAds('community-1', true)
@@ -154,12 +157,11 @@ before(async () => {
             path: 'cached-query',
             namespace: 'stub',
           }))
-          buildContext.onResolve({ filter: /utils\/expiry$/ }, () => ({
-            path: 'expiry',
-            namespace: 'stub',
-          }))
           buildContext.onLoad({ filter: /^react$/, namespace: 'stub' }, () => ({
-            contents: `export const useCallback = (fn) => fn`,
+            contents: `export const useCallback = (fn) => fn
+              export const useMemo = (fn) => fn()
+              export const useState = (initial) => [initial, () => {}]
+              export const useEffect = () => {}`,
           }))
           buildContext.onLoad({ filter: /^sponsored-ads-service$/, namespace: 'stub' }, () => ({
             contents: `
@@ -174,7 +176,7 @@ before(async () => {
             contents: `
               const ads = [
                 { id: 'feed', expiresAt: null, displayMode: ['feed'] },
-                { id: 'banner', expiresAt: 200, displayMode: ['banner'] },
+                { id: 'banner', expiresAt: 2000, displayMode: ['banner'] },
                 { id: 'expired', expiresAt: 50, displayMode: ['feed', 'banner'] },
               ]
               export function useCachedQuery(_key, fetchValue, options) {
@@ -183,9 +185,6 @@ before(async () => {
                 return { data: ads, loading: false, error: null }
               }
             `,
-          }))
-          buildContext.onLoad({ filter: /^expiry$/, namespace: 'stub' }, () => ({
-            contents: `export const toMillis = (value) => value`,
           }))
         },
       },

@@ -18,13 +18,26 @@ function toDoc(row) {
     ctaType: row.cta_type,
     ctaTarget: row.cta_target,
     expiresAt: row.expires_at,
-    communityIds: row.community_ids,
+    communityIds: row.community_ids ?? [],
     isGlobal: row.is_global,
     displayMode: row.display_mode,
     createdBy: row.created_by,
     createdAt: row.created_at,
   }
 }
+
+// Colunas que as telas públicas realmente renderizam. `select('*')` trazia também community_ids (até 50
+// UUIDs por anúncio), created_by e created_at, que nenhum card usa -- bytes à toa em cada leitura. O filtro
+// de comunidade/global continua sendo feito (e reforçado pela RLS) no servidor; os campos omitidos voltam
+// como undefined em toDoc.
+const PUBLIC_COLUMNS =
+  'id, partner_name, title, description, image_url, cta_label, cta_type, cta_target, expires_at, is_global, display_mode'
+
+// Campanha vencida nem sai do servidor, e o "agora" é o do PRÓPRIO Postgres: `now` é um valor especial de
+// timestamptz avaliado no banco, então um aparelho com a hora errada não ressuscita nem derruba campanhas.
+// A lista fica em cache; a revalidação durante esse tempo usa o relógio do servidor (utils/serverClock.js).
+// A RLS segue como regra de acesso; tornar a validade parte da policy exigiria migration.
+const NOT_EXPIRED_FILTER = 'expires_at.is.null,expires_at.gt.now'
 
 // Uso administrativo: todos os anúncios, ativos ou não, pra tela de gestão.
 export async function listAllSponsoredAds() {
@@ -42,8 +55,9 @@ export async function listAllSponsoredAds() {
 export async function listSponsoredAdsForCommunity(communityId) {
   const { data, error } = await supabase
     .from('sponsored_ads')
-    .select('*')
+    .select(PUBLIC_COLUMNS)
     .contains('community_ids', [communityId])
+    .or(NOT_EXPIRED_FILTER)
   if (error) throw error
   return data.map(toDoc)
 }
@@ -51,7 +65,11 @@ export async function listSponsoredAdsForCommunity(communityId) {
 // Consulta usada pelo banner rotativo da Home: anúncios globais, sem relação com
 // comunidades do usuário.
 export async function listGlobalSponsoredAds() {
-  const { data, error } = await supabase.from('sponsored_ads').select('*').eq('is_global', true)
+  const { data, error } = await supabase
+    .from('sponsored_ads')
+    .select(PUBLIC_COLUMNS)
+    .eq('is_global', true)
+    .or(NOT_EXPIRED_FILTER)
   if (error) throw error
   return data.map(toDoc)
 }
@@ -95,7 +113,10 @@ export async function createSponsoredAd(userId, ad) {
 }
 
 export async function updateSponsoredAd(adId, ad) {
-  const { error } = await supabase.from('sponsored_ads').update(sponsoredAdFields(ad)).eq('id', adId)
+  const { error } = await supabase
+    .from('sponsored_ads')
+    .update(sponsoredAdFields(ad))
+    .eq('id', adId)
   if (error) throw translateCapError(error)
 }
 

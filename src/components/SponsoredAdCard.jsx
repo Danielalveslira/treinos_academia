@@ -1,52 +1,57 @@
+import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Text, Button } from '@primer/react'
-import { MegaphoneIcon } from '@primer/octicons-react'
 
-// "Patrocinado" é obrigatório e nunca condicional — transparência com o usuário sobre
-// conteúdo pago, independente de qual parceiro ou comunidade.
+// Publicação patrocinada no feed: mesma superfície/raio dos cards do feed, mas com selo "Patrocinado"
+// sempre visível (nunca condicional — transparência com o usuário sobre conteúdo pago, independente de
+// parceiro ou comunidade). Sem consulta própria, sem observador, sem timer; só CSS.
 export function SponsoredAdCard({ ad }) {
+  const [imageFailed, setImageFailed] = useState(false)
   const hasCta = Boolean(ad.ctaLabel)
   return (
-    <Box as="article" className="sponsored-ad-card" aria-label={`Publicidade de ${ad.partnerName}`}>
-      <Box className="sponsored-ad-badge">
-        <MegaphoneIcon size={12} />
-        <span>Patrocinado</span>
-      </Box>
+    <article className="sponsored-ad-card" aria-label={`Patrocinado: ${ad.partnerName}`}>
+      <header className="sponsored-ad-card-header">
+        <span className="sponsored-ad-pill">Patrocinado</span>
+        <span className="sponsored-ad-partner">{ad.partnerName}</span>
+      </header>
       {/* AUD-013: imageUrl aponta pro domínio do parceiro, fora do nosso controle.
           referrerPolicy evita vazar a URL de onde o card foi visto (informação
           nenhuma o parceiro precisa pra só exibir a própria imagem); loading="lazy"
           evita a requisição pra imagens fora da viewport. Migrar pra um proxy/CDN
           próprio removeria o request de terceiro por completo, mas é uma peça de
-          infraestrutura maior, fora do escopo desta correção pontual. */}
-      {ad.imageUrl && (
-        <img
-          src={ad.imageUrl}
-          alt=""
-          className="sponsored-ad-image"
-          referrerPolicy="no-referrer"
-          loading="lazy"
-        />
+          infraestrutura maior, fora do escopo desta correção pontual. A moldura
+          16:9 é reservada no CSS: a imagem chegando não desloca o feed. */}
+      {ad.imageUrl && !imageFailed && (
+        <div className="sponsored-ad-media">
+          <img
+            src={ad.imageUrl}
+            alt=""
+            width="640"
+            height="360"
+            className="sponsored-ad-image"
+            referrerPolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
+            onError={() => setImageFailed(true)}
+          />
+        </div>
       )}
-      <Text className="sponsored-ad-partner">{ad.partnerName}</Text>
-      <Text className="sponsored-ad-title">{ad.title}</Text>
-      {ad.description && <Text className="sponsored-ad-description">{ad.description}</Text>}
+      <h3 className="sponsored-ad-title">{ad.title}</h3>
+      {ad.description && <p className="sponsored-ad-description">{ad.description}</p>}
       {hasCta &&
         (ad.ctaType === 'internal' ? (
-          <Button as={RouterLink} to={ad.ctaTarget} size="small" className="sponsored-ad-cta">
+          <RouterLink to={ad.ctaTarget} className="sponsored-ad-cta">
             {ad.ctaLabel}
-          </Button>
+          </RouterLink>
         ) : (
-          <Button
-            as="a"
+          <a
             href={ad.ctaTarget}
             target="_blank"
-            rel="noopener noreferrer"
-            size="small"
+            rel="noopener noreferrer sponsored"
             className="sponsored-ad-cta"
           >
             {ad.ctaLabel}
-          </Button>
+          </a>
         ))}
-    </Box>
+    </article>
   )
 }

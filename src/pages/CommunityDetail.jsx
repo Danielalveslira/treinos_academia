@@ -1,4 +1,4 @@
-import { lazy, useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Box, Heading, Button, Spinner } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
@@ -44,6 +44,7 @@ import { ToastFlash } from '../components/ToastFlash'
 import { listFeaturedStatusesForCommunity } from '../services/promotionsService'
 import { toMillis } from '../utils/expiry.js'
 import { expiresAtForRetention } from '../utils/postRetention'
+import { readAdHint, writeAdHint } from '../utils/adSlotHint'
 import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta'
 import { publicationIdFromHash } from '../utils/share'
 import { isStatusLoaded } from '../utils/sharedStatus'
@@ -51,6 +52,9 @@ import '../styles/community-feed.css'
 
 // Painel de gestão, promoção da comunidade: só o dono/superadmin abre; ficam fora do carregamento
 // inicial da comunidade (quase ninguém os usa a cada visita).
+// Prazo máximo que o bloco da comunidade espera pelos anúncios para entrarem juntos com o conteúdo (ver holdForAds).
+const ADS_HOLD_MS = 300
+const NO_ADS = []
 const CommunityForm = lazy(() =>
   import('../components/CommunityForm').then((module) => ({ default: module.CommunityForm }))
 )
@@ -112,19 +116,78 @@ function CommunityDetail({ id }) {
     setWorkouts: setUpcomingWorkouts,
   } = useUpcomingWorkouts(id, member)
 
-  // enabled=member: só busca depois de confirmar participação, nunca antes -- ver
-  // comentário em useSponsoredAds.js sobre por que isso é obrigatório, não só uma
-  // otimização.
-  const { feedAds, bannerAds } = useSponsoredAds(id, member)
+  const featuredKey = `communities:${user.uid}:featured:${id}`
+  const [featuredStatuses, setFeaturedStatusesState] = useState(() => getCached(featuredKey) ?? [])
+  const [featuredLoaded, setFeaturedLoaded] = useState(() => getCached(featuredKey) !== undefined)
+
+  // Anúncios saem em paralelo com a verificação de participação (enquanto a comunidade ainda carrega) em vez
+  // de depois dela: a lista é pequena e, chegando antes dos posts, banner e cards entram junto com o conteúdo
+  // em vez de empurrar publicações já visíveis (CLS). Não vaza nada: a RLS de sponsored_ads só devolve linhas
+  // que o usuário pode ver (quem não participa recebe lista vazia); depois de confirmado que NÃO é membro a
+  // consulta é desligada, e entrar na comunidade invalida a lista vazia guardada (handleJoin).
+  const {
+    feedAds,
+    inlineFeedAds,
+    bannerAds,
+    loading: loadingAds,
+    error: adsError,
+  } = useSponsoredAds(id, member || loadingCommunity)
+  // Reserva espaço (banner + altura do bloco de cards do topo) enquanto a consulta volta, SÓ se esta comunidade
+  // já teve anúncios na última visita (dica local). Ver utils/adSlotHint.js.
+  const adHint = useMemo(() => readAdHint(user.uid, id), [user.uid, id])
+  const topAdsHeightRef = useRef(0)
+  const setTopAdsHeight = useCallback((px) => {
+    topAdsHeightRef.current = px
+  }, [])
+  const adsSettled = member && !loadingAds && !adsError
+  // Coordenação anúncios x conteúdo: sem dica COMPLETA de espaço, o bloco da comunidade (barra de ferramentas + feed)
+  // espera a lista de anúncios por no máximo ADS_HOLD_MS, mostrando o mesmo spinner de "carregando comunidade".
+  // Assim banner e cards entram JUNTO com o resto em vez de empurrar o que já está na tela. Nunca atrasa o feed: o
+  // fetch dos posts corre em paralelo (useCommunityFeed) e a espera acaba na hora em que os posts chegam, os
+  // anúncios resolvem ou o prazo vence -- o que vier primeiro.
+  const hintComplete =
+    (adHint.banner || adHint.feedOnly) && (!adHint.feedOnly || adHint.feedTop > 0)
+  // Os destaques ("Em destaque") têm consulta própria e também inserem um card acima das publicações: entram na mesma
+  // espera, pelo mesmo motivo.
+  const waitingForAds = member && loadingFeed && ((loadingAds && !hintComplete) || !featuredLoaded)
+  const [adsHoldExpired, setAdsHoldExpired] = useState(false)
+  useEffect(() => {
+    if (!waitingForAds) return undefined
+    const timer = setTimeout(() => setAdsHoldExpired(true), ADS_HOLD_MS)
+    return () => clearTimeout(timer)
+  }, [waitingForAds])
+  useEffect(() => {
+    setAdsHoldExpired(false)
+  }, [id])
+  const holdForAds = waitingForAds && !adsHoldExpired
+  // Anúncios que chegam DEPOIS de a comunidade já estar na tela, sem espaço reservado. Nas visitas seguintes a dica
+  // de espaço restaura o topo para os cards.
+  const [lateAds, setLateAds] = useState(false)
+  useEffect(() => {
+    setLateAds(false)
+  }, [id])
+  useEffect(() => {
+    if (member && !holdForAds && loadingAds && !hintComplete) setLateAds(true)
+  }, [member, holdForAds, loadingAds, hintComplete])
+  // Só os cards de feed têm posição flexível ("card no feed da comunidade"): se chegaram tarde e não há altura
+  // reservada para o bloco do topo, entram dentro do feed em vez de empurrar publicações já visíveis. O BANNER é o
+  // "banner rotativo do topo" e fica SEMPRE no topo (espaço reservado pela dica quando já se sabe que existe; sem
+  // dica, o custo de um banner tardio é um único deslocamento de ~100 px, só na 1ª visita com anúncio atrasado).
+  const cardsLate = lateAds && !(adHint.feedTop > 0)
+  useEffect(() => {
+    if (!adsSettled) return
+    writeAdHint(user.uid, id, {
+      banner: bannerAds.length > 0,
+      // -1 = há cards só de feed, mas entraram tarde dentro do feed (altura do topo não medida)
+      feedTop: feedAds.length > 0 ? topAdsHeightRef.current || -1 : 0,
+    })
+  }, [adsSettled, bannerAds.length, feedAds.length, user.uid, id])
 
   // Fase 6 -- "destaques" (posts promovidos com EvoCash) precisam de uma consulta
   // própria porque o feed normal só cobre a janela de retenção da comunidade (24h, 30d); uma
   // promoção de 7/30 dias precisa continuar visível bem depois disso. Filtrado no
   // servidor por promotedUntil > agora (nunca limit() antes de tirar os expirados, ver
   // promotionsService.js) -- nunca lê promotions/{id} pra isto.
-  const featuredKey = `communities:${user.uid}:featured:${id}`
-  const [featuredStatuses, setFeaturedStatusesState] = useState(() => getCached(featuredKey) ?? [])
-  const [featuredLoaded, setFeaturedLoaded] = useState(() => getCached(featuredKey) !== undefined)
   const [promoteCommunityOpen, setPromoteCommunityOpen] = useState(false)
   // Todo ajuste local dos destaques (voto, exclusão) grava também na cache, para o retorno não repintar
   // contadores antigos.
@@ -317,6 +380,8 @@ function CommunityDetail({ id }) {
     setMembershipPending(true)
     try {
       await joinCommunity(id, user.uid)
+      // A lista de anúncios guardada pode ser a vazia de quando ainda não era membro.
+      invalidateCache(`sponsoredAds:${id}`)
       setMember(true)
       patchPageCache({ member: true })
       showToast('Você entrou na comunidade.')
@@ -681,7 +746,9 @@ function CommunityDetail({ id }) {
             </Blankslate>
           )}
 
-          {member && (
+          {member && holdForAds && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+
+          {member && !holdForAds && (
             <CommunityFeedSection
               communityId={id}
               communityName={community.name}
@@ -690,7 +757,12 @@ function CommunityDetail({ id }) {
               canModerate={canModerate}
               canPost={canPost}
               bannerAds={bannerAds}
-              feedAds={feedAds}
+              inlineFirstAfter={cardsLate ? 1 : undefined}
+              reserveBannerSlot={adHint.banner && loadingAds}
+              reserveFeedTopPx={loadingAds ? adHint.feedTop : 0}
+              onTopAdsHeight={setTopAdsHeight}
+              feedAds={cardsLate ? NO_ADS : feedAds}
+              inlineFeedAds={cardsLate ? [...feedAds, ...inlineFeedAds] : inlineFeedAds}
               upcomingWorkouts={upcomingWorkouts}
               sharedStatus={sharedStatus}
               loadingUpcomingWorkouts={loadingUpcomingWorkouts}

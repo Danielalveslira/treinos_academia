@@ -448,15 +448,6 @@ button.status-poll-option:disabled {
 @media (min-width: 768px) {
   .cd-header {
     margin-bottom: 20px;
-    padding: 4px 24px 24px;
-    border: 1px solid var(--borderColor-muted);
-    border-radius: var(--fitness-radius-lg);
-    background: var(--fitness-surface);
-    background-image: radial-gradient(
-      90% 140% at 100% 0%,
-      color-mix(in srgb, var(--fitness-accent) 12%, transparent),
-      transparent 60%
-    );
   }
   .cd-back-label {
     display: inline;
@@ -605,4 +596,66 @@ button.status-poll-option:disabled {
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+/* Rodízio de destaques: a margem passa para o invólucro; com vários destaques a altura é FIXA (2 linhas de texto
+   reservadas), então trocar de destaque nunca desloca o feed. O contador/seta ficam num irmão do botão do card
+   (botão dentro de botão é inválido), no canto direito, como no banner patrocinado. */
+.cd-spotlight-wrap {
+  position: relative;
+  margin: 0 0 12px;
+}
+.cd-spotlight-wrap .cd-spotlight {
+  margin: 0;
+}
+.cd-spotlight-wrap.is-multiple .cd-spotlight {
+  min-height: 72px;
+  padding-right: 68px;
+}
+.cd-spotlight-wrap.is-multiple .cd-spotlight-text {
+  min-height: 2.8em;
+}
+.cd-spotlight-nav {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  margin-top: -11px;
+  color: var(--fitness-muted);
+}
+.cd-spotlight-count {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.cd-spotlight-next {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+/* área de toque ≥ 44px de altura sem ocupar espaço no layout */
+.cd-spotlight-next::after {
+  content: '';
+  position: absolute;
+  inset: -11px -8px -11px -12px;
+}
+.cd-spotlight-next:hover {
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+}
+.cd-spotlight-next:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 1px;
 }

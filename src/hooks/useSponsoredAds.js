@@ -1,7 +1,11 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { listSponsoredAdsForCommunity } from '../services/sponsoredAdsService'
-import { toMillis } from '../utils/expiry'
+import { composeCommunityAds } from '../utils/sponsoredAds'
+import { useAdExpiryTick } from './useAdExpiryTick'
 import { useCachedQuery } from './useCachedQuery'
+
+// Referência estável: um `[]` novo a cada render refaria a composição e o efeito de vencimento à toa.
+const NO_ADS = []
 
 // `enabled` deve ser exatamente a mesma flag de "isMember() confirmado" que já controla
 // se o resto da tela da comunidade renderiza (ver CommunityDetail.jsx) -- evita disparar
@@ -11,7 +15,7 @@ export function useSponsoredAds(communityId, enabled) {
   const cacheKey = `sponsoredAds:${communityId}`
   const fetchAds = useCallback(() => listSponsoredAdsForCommunity(communityId), [communityId])
   const {
-    data: ads = [],
+    data: ads = NO_ADS,
     loading,
     error,
   } = useCachedQuery(cacheKey, fetchAds, {
@@ -19,12 +23,11 @@ export function useSponsoredAds(communityId, enabled) {
     context: 'useSponsoredAds',
   })
 
-  const now = Date.now()
-  // expiresAt e displayMode não dão pra filtrar na própria query (ver comentário em
-  // sponsoredAdsService.js) -- filtrados aqui, no client, logo após o fetch único.
-  const active = ads.filter((ad) => !ad.expiresAt || toMillis(ad.expiresAt) > now)
-  const feedAds = active.filter((ad) => ad.displayMode.includes('feed'))
-  const bannerAds = active.filter((ad) => ad.displayMode.includes('banner'))
+  // expiresAt e displayMode não dão pra filtrar por completo na query (ver sponsoredAdsService.js) -- a
+  // composição (validade, modos e posição banner x feed) roda uma vez por lista carregada.
+  const expiryTick = useAdExpiryTick(ads)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- expiryTick só força a recomposição na hora do vencimento
+  const composed = useMemo(() => composeCommunityAds(ads), [ads, expiryTick])
 
-  return { feedAds, bannerAds, loading, error }
+  return { ...composed, loading, error }
 }

@@ -11,6 +11,7 @@ import {
 } from '../utils/validators'
 import { useFormState } from '../hooks/useFormState'
 import { FormShell } from './FormShell'
+import { isTrustedAdImage } from '../utils/adImage'
 
 const EMPTY = {
   partnerName: '',
@@ -136,7 +137,12 @@ export function SponsoredAdForm({
           onChange={(e) => setField('imageUrl', e.target.value)}
           block
         />
-        <FormControl.Caption>Usada só no card do feed, não aparece no banner.</FormControl.Caption>
+        <FormControl.Caption>
+          Usada só no card do feed, não aparece no banner.
+          {values.imageUrl.trim() && !isTrustedAdImage(values.imageUrl.trim())
+            ? ' Atenção: este endereço é de um site externo, que pode rastrear quem vê o anúncio. Prefira uma imagem hospedada no próprio Evolutus.'
+            : ''}
+        </FormControl.Caption>
         {errors.imageUrl && (
           <FormControl.Validation variant="error">{errors.imageUrl}</FormControl.Validation>
         )}

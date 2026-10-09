@@ -1718,113 +1718,262 @@ body:has(.pwa-offline) .app-shell {
   font-size: 24px;
   overflow-wrap: anywhere;
 }
-.sponsored-ad-card {
-  min-width: 0;
-  padding: 16px;
-  border: 1px solid var(--fitness-accent);
-  border-left-width: 4px;
-  border-radius: 8px;
+/* Publicidade (Patrocinado). Só propriedades baratas: sem blur, sem sombras, sem animação; cores por token,
+   então vale nos dois temas. O selo "Patrocinado" tem contraste próprio (texto forte sobre fundo suave). */
+.sponsored-ad-pill {
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  border-radius: 999px;
   background: var(--fitness-accent-soft);
-}
-.sponsored-ad-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 10px;
   color: var(--fitness-accent-strong);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fitness-accent) 40%, transparent);
   font-size: 11px;
   font-weight: 700;
+  line-height: 18px;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.sponsored-ad-image {
-  display: block;
-  width: 100%;
-  max-height: 220px;
-  margin-bottom: 10px;
-  border-radius: 6px;
-  object-fit: cover;
-}
-.sponsored-ad-partner {
-  display: block;
-  color: var(--fgColor-muted);
-  font-size: 12px;
-}
-.sponsored-ad-title {
-  display: block;
-  margin-top: 2px;
-  font-size: 15px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.sponsored-ad-description {
-  display: block;
-  margin-top: 6px;
-  color: var(--fgColor-muted);
-  font-size: 13px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-.sponsored-ad-cta {
-  margin-top: 12px;
 }
 
+/* patrocínio da comunidade: cartão baixo. Mobile = texto à esquerda (selo+marca, mensagem de até 2 linhas)
+   e botão de 44px à direita, centralizado; ≥640px = uma linha só. As alturas das linhas de texto são
+   reservadas, então trocar de campanha no rodízio nunca desloca o que vem abaixo. */
 .sponsored-ad-banner {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  /* mesma altura com 1 ou várias campanhas: o contador cabe na coluna do botão (22px + 44px) */
+  min-height: 84px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--fitness-radius-md);
+  background: var(--fitness-surface);
+}
+.sponsored-ad-banner-content {
+  min-width: 0;
+}
+.sponsored-ad-banner-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  padding: 10px 14px;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+.sponsored-ad-banner-partner {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sponsored-ad-banner-title {
+  display: -webkit-box;
+  overflow: hidden;
+  /* 2 linhas reservadas (14px x 1.35) mesmo quando a mensagem tem uma só */
+  min-height: 2.7em;
+  margin: 4px 0 0;
+  color: var(--fgColor-default);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.sponsored-ad-banner-cta,
+.sponsored-ad-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 14px;
   border: 1px solid var(--fitness-accent);
-  border-radius: 8px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--fitness-accent-strong);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+.sponsored-ad-banner-cta {
+  max-width: 112px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sponsored-ad-banner-cta:hover,
+.sponsored-ad-cta:hover {
+  background: var(--fitness-accent-soft);
+}
+.sponsored-ad-banner-cta:focus-visible,
+.sponsored-ad-cta:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 2px;
+}
+/* altura reservada (sem conteúdo) enquanto os anúncios carregam, só para comunidades que já tiveram banner */
+.sponsored-ad-banner-slot {
+  box-sizing: border-box;
+  height: 84px;
+  margin-bottom: 16px;
+}
+@media (min-width: 640px) {
+  .sponsored-ad-banner-slot {
+    height: 61px;
+  }
+}
+
+/* coluna do botão: [contador 1/2 + próximo] sobre o CTA (mobile) / ao lado dele (desktop) */
+.sponsored-ad-banner-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+}
+.sponsored-ad-banner-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  height: 22px;
+  color: var(--fgColor-muted);
+}
+.sponsored-ad-banner-count {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.sponsored-ad-banner-next {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+/* área de toque maior (≥28x44 acima do CTA) sem ocupar espaço no layout */
+.sponsored-ad-banner-next::after {
+  content: '';
+  position: absolute;
+  inset: -6px -10px 0 -14px;
+}
+.sponsored-ad-banner-next:hover {
   background: var(--fitness-accent-soft);
   color: var(--fitness-accent-strong);
 }
-.sponsored-ad-banner-content {
-  flex: 1;
+.sponsored-ad-banner-next:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 1px;
+}
+
+/* bloco de cards no topo do feed (sempre na primeira tela): sem content-visibility, para o card não nascer com
+   a altura estimada e crescer depois (deslocamento de layout). Mesma margem do espaço reservado (hint). */
+.sponsored-ad-feed-top {
+  margin-bottom: 12px;
+}
+.sponsored-ad-feed-top .sponsored-ad-card {
+  content-visibility: visible;
+}
+
+/* publicação patrocinada no feed: mesma superfície dos cards do feed */
+.sponsored-ad-card {
   min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--fitness-radius-md);
+  background: var(--fitness-surface);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
 }
-.sponsored-ad-banner-partner {
-  display: block;
-  color: var(--fgColor-muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+.sponsored-ad-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 10px;
 }
-.sponsored-ad-banner-title {
-  display: block;
+.sponsored-ad-partner {
   overflow: hidden;
-  color: var(--fgColor-default);
+  color: var(--fgColor-muted);
   font-size: 13px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.sponsored-ad-banner-cta {
-  flex-shrink: 0;
-  color: var(--fitness-accent-strong);
-  font-size: 12px;
+.sponsored-ad-media {
+  overflow: hidden;
+  margin-bottom: 10px;
+  /* moldura reservada: a imagem (de terceiro, lazy) chegando não desloca o feed */
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 240px;
+  border-radius: 8px;
+  background: var(--bgColor-muted);
+}
+.sponsored-ad-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.main-content .sponsored-ad-title {
+  margin: 0;
+  color: var(--fgColor-default);
+  font-size: 15px;
   font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
-.sponsored-ad-banner-cta:hover {
-  text-decoration: underline;
+.sponsored-ad-description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 6px 0 0;
+  color: var(--fgColor-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
 }
-.sponsored-ad-banner-dots {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
+.sponsored-ad-cta {
+  margin-top: 12px;
 }
-.sponsored-ad-banner-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--fitness-accent);
-  opacity: 0.35;
-}
-.sponsored-ad-banner-dot.is-active {
-  opacity: 1;
+
+@media (min-width: 640px) {
+  .sponsored-ad-banner {
+    min-height: 61px;
+    padding: 8px 14px;
+  }
+  .sponsored-ad-banner-title {
+    min-height: 1.35em;
+    -webkit-line-clamp: 1;
+  }
+  .sponsored-ad-banner-side {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+  .sponsored-ad-banner-next::after {
+    inset: -10px -6px -10px -10px;
+  }
+  .sponsored-ad-banner-cta {
+    min-height: 40px;
+    max-width: 200px;
+  }
+  .sponsored-ad-card .sponsored-ad-cta {
+    min-height: 40px;
+  }
 }
 
 .photo-picker {

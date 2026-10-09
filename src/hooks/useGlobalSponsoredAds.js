@@ -1,9 +1,13 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { listGlobalSponsoredAds } from '../services/sponsoredAdsService'
-import { toMillis } from '../utils/expiry'
+import { selectBannerAds } from '../utils/sponsoredAds'
+import { useAdExpiryTick } from './useAdExpiryTick'
 import { useCachedQuery } from './useCachedQuery'
 
 const CACHE_KEY = 'sponsoredAds:global'
+
+// Referência estável: um `[]` novo a cada render refaria a composição e o efeito de vencimento à toa.
+const NO_ADS = []
 
 // `enabled` só precisa ser "usuário autenticado" (não uma checagem de participação em
 // comunidade, como em useSponsoredAds.js): a policy de leitura de um anúncio is_global
@@ -11,19 +15,16 @@ const CACHE_KEY = 'sponsoredAds:global'
 export function useGlobalSponsoredAds(enabled) {
   const fetchAds = useCallback(() => listGlobalSponsoredAds(), [])
   const {
-    data: ads = [],
+    data: ads = NO_ADS,
     loading,
     error,
   } = useCachedQuery(CACHE_KEY, fetchAds, { enabled, context: 'useGlobalSponsoredAds' })
 
-  const now = Date.now()
-  // Mesmo filtro client-side de useSponsoredAds.js (expiresAt/displayMode não dão pra
-  // filtrar na própria query) — só o modo "banner" importa aqui: a Home nunca renderiza
-  // card de feed, então um anúncio isGlobal com displayMode apenas ['feed'] não deveria
-  // aparecer nela.
-  const bannerAds = ads.filter(
-    (ad) => (!ad.expiresAt || toMillis(ad.expiresAt) > now) && ad.displayMode.includes('banner')
-  )
+  // Só o modo "banner" importa aqui: a Home nunca renderiza card de feed, então um anúncio isGlobal com
+  // displayMode apenas ['feed'] não deveria aparecer nela.
+  const expiryTick = useAdExpiryTick(ads)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- expiryTick só força a recomposição na hora do vencimento
+  const bannerAds = useMemo(() => selectBannerAds(ads), [ads, expiryTick])
 
   return { bannerAds, loading, error }
 }

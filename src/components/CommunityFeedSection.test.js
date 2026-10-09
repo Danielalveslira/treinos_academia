@@ -462,21 +462,50 @@ test('destaque compacto: é a primeira coisa de Recentes, antes de "Próximos tr
   order(html, 'cd-spotlight', '>Próximos treinos<', '>Publicação do link<', 'data-status-id="a"')
 })
 
-test('destaque compacto: só UM, mesmo com vários promovidos, e é o primeiro da lista (mesma ordem da aba)', () => {
+test('destaque compacto: só UM por vez, mesmo com vários promovidos; com vários mostra a posição 1/3 e a seta', () => {
   const html = render({
     featuredStatuses: [
       promoted('p1', { authorUsername: 'primeira' }),
       promoted('p2', { authorUsername: 'segunda' }),
-      promoted('p3'),
+      promoted('p3', { authorUsername: 'terceira' }),
     ],
     statuses: [makeStatus('a'), makeStatus('b'), makeStatus('c'), makeStatus('d')],
   })
   assert.equal(count(html, /class="cd-spotlight"/g), 1)
-  assert.match(html, /@primeira/)
-  assert.doesNotMatch(html, /@segunda/)
+  assert.equal(count(html, /@(primeira|segunda|terceira)/g) >= 1, true)
+  assert.equal(count(html, /Em destaque · @/g), 1, 'apenas um destaque na tela')
+  assert.match(html, /cd-spotlight-count[^>]*>1\/3</)
+  assert.match(html, /cd-spotlight-next/)
 })
 
-test('destaque compacto: não aparece sem destaque, com promoção vencida ou quando o post já está no começo do feed', () => {
+test('destaque compacto: com um único destaque não há contador, seta nem controles', () => {
+  const html = render({
+    featuredStatuses: [promoted('p1')],
+    statuses: [makeStatus('a'), makeStatus('b'), makeStatus('c'), makeStatus('d')],
+  })
+  assert.equal(count(html, /class="cd-spotlight"/g), 1)
+  assert.doesNotMatch(html, /cd-spotlight-nav|cd-spotlight-next|cd-spotlight-count/)
+})
+
+test('destaque compacto: todo destaque elegível participa do rodízio, mesmo já estando entre as 3 primeiras publicações', () => {
+  const html = render({
+    featuredStatuses: [promoted('p1'), promoted('p2')],
+    statuses: [promoted('p1'), makeStatus('b'), makeStatus('c'), makeStatus('d')],
+  })
+  assert.equal(count(html, /class="cd-spotlight"/g), 1)
+  assert.match(html, /cd-spotlight-count[^>]*>1\/2</)
+  const solo = render({
+    featuredStatuses: [promoted('p1')],
+    statuses: [promoted('p1'), makeStatus('b'), makeStatus('c'), makeStatus('d')],
+  })
+  assert.equal(
+    count(solo, /class="cd-spotlight"/g),
+    1,
+    'um único destaque no topo do feed também aparece'
+  )
+})
+
+test('destaque compacto: não aparece sem destaque nem com promoção vencida', () => {
   assert.doesNotMatch(render({ featuredStatuses: [], statuses: [makeStatus('a')] }), /cd-spotlight/)
   assert.doesNotMatch(
     render({
@@ -485,22 +514,6 @@ test('destaque compacto: não aparece sem destaque, com promoção vencida ou qu
     }),
     /cd-spotlight/,
     'promoção encerrada (o relógio do componente anda por minuto) não é destaque'
-  )
-  assert.doesNotMatch(
-    render({
-      featuredStatuses: [promoted('p1')],
-      statuses: [makeStatus('x'), promoted('p1'), makeStatus('y')],
-    }),
-    /cd-spotlight/,
-    'já está entre os primeiros do feed (com o selo Em destaque): não repete'
-  )
-  // se o post está mais fundo no feed (fora dos 3 primeiros), o resumo no topo continua útil
-  assert.match(
-    render({
-      featuredStatuses: [promoted('p1')],
-      statuses: [makeStatus('a'), makeStatus('b'), makeStatus('c'), promoted('p1')],
-    }),
-    /cd-spotlight/
   )
 })
 
@@ -582,4 +595,61 @@ test('item sem as marcas de promoção (promoted/promotedUntil) não é tratado 
     statuses: [],
   })
   assert.doesNotMatch(html, /data-status-id="no-flags"/)
+})
+
+test('campanha de banner+feed: banner no topo e card no meio do feed (depois de 3 publicações), nunca colados', () => {
+  const html = render({
+    bannerAds: [makeAd('both')],
+    inlineFeedAds: [makeAd('both')],
+    statuses: ['p1', 'p2', 'p3', 'p4', 'p5'].map((id) => makeStatus(id)),
+  })
+  assert.equal(count(html, /test-ad-banner/g), 1)
+  assert.equal(count(html, /test-ad-card/g), 1)
+  order(
+    html,
+    'test-ad-banner',
+    'data-status-id="p1"',
+    'data-status-id="p3"',
+    'test-ad-card',
+    'data-status-id="p4"'
+  )
+})
+
+test('campanha só de feed continua no topo do feed; sem campanhas não há blocos nem espaço reservado', () => {
+  const withTop = render({ feedAds: [makeAd('top')], statuses: [makeStatus('p1')] })
+  order(withTop, 'test-ad-card', 'data-status-id="p1"')
+  const none = render({ statuses: [makeStatus('p1')] })
+  assert.equal(count(none, /test-ad-(card|banner)/g), 0)
+  assert.doesNotMatch(none, /sponsored-ad-banner-slot/)
+})
+
+test('espaço do banner só é reservado com a dica ativa e enquanto não há banner', () => {
+  assert.match(render({ reserveBannerSlot: true }), /sponsored-ad-banner-slot/)
+  assert.doesNotMatch(
+    render({ reserveBannerSlot: true, bannerAds: [makeAd('b')] }),
+    /sponsored-ad-banner-slot/
+  )
+  assert.doesNotMatch(render({ reserveBannerSlot: false }), /sponsored-ad-banner-slot/)
+})
+
+test('cards tardios entram dentro do feed (após a 1ª publicação); o banner continua SEMPRE no topo', () => {
+  const html = render({
+    bannerAds: [makeAd('b1')],
+    feedAds: [],
+    inlineFeedAds: [makeAd('c1')],
+    inlineFirstAfter: 1,
+    statuses: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6'].map((id) => makeStatus(id)),
+  })
+  order(html, 'test-ad-banner', 'data-status-id="p1"', 'test-ad-card', 'data-status-id="p2"')
+  assert.equal(count(html, /test-ad-banner/g), 1)
+  assert.equal(count(html, /test-ad-card/g), 1)
+})
+
+test('cards tardios com o feed ainda carregando não aparecem sob o spinner', () => {
+  const html = render({
+    inlineFeedAds: [makeAd('c1')],
+    loadingFeed: true,
+    statuses: [],
+  })
+  assert.equal(count(html, /test-ad-(banner|card)/g), 0)
 })

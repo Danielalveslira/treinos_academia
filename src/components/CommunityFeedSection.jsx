@@ -9,14 +9,14 @@ import {
 } from '@primer/octicons-react'
 import { StatusCard } from './StatusCard'
 import { SponsoredAdBanner } from './SponsoredAdBanner'
+import { FeaturedSpotlight } from './FeaturedSpotlight'
 import { SponsoredAdCard } from './SponsoredAdCard'
 import { LazyDialogBoundary } from './LazyDialogBoundary'
 import { ErrorState } from './ErrorState'
 import { useNowSelector } from '../utils/clock'
 import { toMillis } from '../utils/expiry.js'
 import { isStatusLoaded } from '../utils/sharedStatus'
-import { describeActivityPreview } from '../utils/communityActivity'
-import { stripMarkdown } from '../utils/markdownHint'
+import { interleaveAds } from '../utils/sponsoredAds'
 
 // Formulários que só abrem quando o usuário toca em "Publicar"/"Compartilhar progresso": ficam fora do
 // carregamento inicial da comunidade (e são aquecidos em ociosidade, abaixo, para o toque ser imediato).
@@ -88,36 +88,6 @@ function FeedTabs({ value, onChange, featuredCount, featuredMounted }) {
   )
 }
 
-// Destaque compacto no topo de "Recentes": com a aba "Destaques" separada, quem só lê "Recentes" nunca veria um
-// post promovido (pago). Mostra UM único resumo de uma linha do primeiro destaque elegível (o mesmo critério e
-// a mesma ordem da aba: o que vence primeiro) e leva à aba. Não carrega nem renderiza o post inteiro, não gira,
-// não repete o que já está no começo do feed.
-const SPOTLIGHT_SKIP_IF_IN_FIRST = 3
-
-function spotlightExcerpt(status) {
-  return stripMarkdown(describeActivityPreview(status)) || 'Publicação em destaque'
-}
-
-function FeaturedSpotlight({ status, onOpen }) {
-  const author = typeof status.authorUsername === 'string' ? status.authorUsername : null
-  const excerpt = spotlightExcerpt(status)
-  return (
-    <button
-      type="button"
-      className="cd-spotlight"
-      onClick={onOpen}
-      aria-label={`Ver publicações em destaque. Destaque de ${author ? `@${author}` : 'um membro'}: ${excerpt}`}
-    >
-      <StarIcon size={16} />
-      <span className="cd-spotlight-body">
-        <span className="cd-spotlight-label">Em destaque{author ? ` · @${author}` : ''}</span>
-        <span className="cd-spotlight-text">{excerpt}</span>
-      </span>
-      <ChevronRightIcon size={16} />
-    </button>
-  )
-}
-
 // Rodapé de paginação: um sentinela perto do fim dispara a próxima página sozinho (a não ser que o
 // aparelho esteja no modo de economia de dados) e o botão cobre quem prefere controlar, quem usa
 // teclado e quem está sem IntersectionObserver. Falha mostra o erro com "Tentar novamente".
@@ -162,6 +132,9 @@ function FeedPager({ hasMore, loadingMore, moreError, onLoadMore, count }) {
 // (posts PROMOVIDOS, pagos) agora é uma aba própria e nunca se mistura com os critérios de "Próximos
 // treinos" (que é por DATA do evento). Quem abre um link de publicação cai em "Recentes", onde o alvo
 // é resolvido por ID mesmo fora das páginas já carregadas.
+// Referência estável para listas de anúncios vazias (evita refazer efeitos/memos a cada render).
+const NO_ADS = []
+
 export function CommunityFeedSection({
   communityId,
   communityName,
@@ -170,7 +143,12 @@ export function CommunityFeedSection({
   canModerate,
   canPost,
   bannerAds,
+  reserveBannerSlot = false,
+  reserveFeedTopPx = 0,
+  onTopAdsHeight,
   feedAds,
+  inlineFeedAds = [],
+  inlineFirstAfter,
   upcomingWorkouts = [],
   sharedStatus = null,
   loadingUpcomingWorkouts = false,
@@ -199,6 +177,11 @@ export function CommunityFeedSection({
   initialTab = 'recent',
 }) {
   const [tab, setTab] = useState(initialTab)
+  const topAdsRef = useRef(null)
+  // Altura do bloco de cards do topo, medida uma vez quando a lista de anúncios muda (alimenta a dica de espaço).
+  useEffect(() => {
+    onTopAdsHeight?.(feedAds.length > 0 ? (topAdsRef.current?.offsetHeight ?? 0) : 0)
+  }, [feedAds, onTopAdsHeight])
   // "Recentes" fica sempre montado (só escondido ao trocar de aba): voltar a ele é instantâneo e não perde a
   // posição nem as páginas já carregadas. "Destaques" só é montado na primeira vez que alguém o abre.
   const [featuredMounted, setFeaturedMounted] = useState(initialTab === 'featured')
@@ -206,6 +189,22 @@ export function CommunityFeedSection({
     if (next === 'featured') setFeaturedMounted(true)
     setTab(next)
   }
+  // Abrir um destaque do card: vai para a aba Destaques e rola até a publicação (âncora "destaque-<id>").
+  const scrollTargetRef = useRef(null)
+  function openFeatured(status) {
+    scrollTargetRef.current = `destaque-${status.id}`
+    changeTab('featured')
+  }
+  useEffect(() => {
+    if (tab !== 'featured' || !scrollTargetRef.current || typeof document === 'undefined')
+      return undefined
+    const targetId = scrollTargetRef.current
+    scrollTargetRef.current = null
+    const raf = globalThis.requestAnimationFrame || ((callback) => setTimeout(callback, 0))
+    const caf = globalThis.cancelAnimationFrame || clearTimeout
+    const frame = raf(() => document.getElementById(targetId)?.scrollIntoView?.({ block: 'start' }))
+    return () => caf(frame)
+  }, [tab])
   // Relógio compartilhado por minuto: "próximos treinos" some quando o treino passa, sem tick por card.
   const currentTime = useNowSelector(
     now,
@@ -275,14 +274,22 @@ export function CommunityFeedSection({
     />
   )
 
+  // Enquanto a primeira página de posts não chegou, o card intercalado não aparece: ele ficaria sob o spinner e
+  // saltaria quando os posts entrassem (a exposição só começa junto com o conteúdo).
+  // Campanhas intercaladas no feed: as banner+feed e, no modo "cards tardios" (ver CommunityDetail), os cards só de
+  // feed. O formato "feed" é "card no feed da comunidade" (sem posição fixa prometida); o banner é do topo e nunca
+  // entra aqui. Antes da 1ª página de posts nada é intercalado: ficaria sob o spinner e saltaria quando os posts
+  // entrassem (a exposição só começa junto com o conteúdo).
+  const inlineSlots = inlineFeedAds
+  const feedWithAds = interleaveAds(
+    visibleStatuses,
+    loadingFeed && statuses.length === 0 ? NO_ADS : inlineSlots,
+    inlineFirstAfter ? { firstAfter: inlineFirstAfter } : undefined
+  )
   const featuredCount = visibleFeaturedStatuses.length
-  // Primeiro destaque AINDA válido agora (a lista veio filtrada pelo servidor, mas o tempo passa).
-  const spotlight = visibleFeaturedStatuses[0]
-  const showSpotlight =
-    spotlight &&
-    !visibleStatuses
-      .slice(0, SPOTLIGHT_SKIP_IF_IN_FIRST)
-      .some((status) => status.id === spotlight.id)
+  // Candidatos do card "Em destaque": TODOS os destaques ainda válidos agora (a lista veio filtrada pelo servidor, mas o
+  // tempo passa), em qualquer posição do feed -- o rodízio dá a cada um a mesma chance de exposição.
+  const spotlightStatuses = visibleFeaturedStatuses
   const formLoading = (
     <div className="cd-form-loading" role="status" aria-label="Carregando formulário">
       <Spinner />
@@ -299,6 +306,9 @@ export function CommunityFeedSection({
   return (
     <>
       <SponsoredAdBanner ads={bannerAds} />
+      {reserveBannerSlot && bannerAds.length === 0 && (
+        <div className="sponsored-ad-banner-slot" aria-hidden="true" />
+      )}
 
       {!formOpen && (
         <div className="cd-toolbar community-toolbar">
@@ -361,18 +371,26 @@ export function CommunityFeedSection({
         aria-labelledby="cd-tab-recent"
         hidden={tab !== 'recent'}
       >
-        {feedAds.length > 0 && (
-          <div className="community-feed">
+        {feedAds.length > 0 ? (
+          <div className="community-feed sponsored-ad-feed-top" ref={topAdsRef}>
             {feedAds.map((ad) => (
               <SponsoredAdCard key={ad.id} ad={ad} />
             ))}
           </div>
+        ) : (
+          reserveFeedTopPx > 0 && (
+            <div
+              className="sponsored-ad-feed-top"
+              style={{ height: reserveFeedTopPx }}
+              aria-hidden="true"
+            />
+          )
         )}
 
         {/* Destaque compacto: uma linha, logo no começo de "Recentes" (antes de "Próximos treinos", que pode ter
             vários cards altos). Ver FeaturedSpotlight. */}
-        {showSpotlight && (
-          <FeaturedSpotlight status={spotlight} onOpen={() => changeTab('featured')} />
+        {spotlightStatuses.length > 0 && (
+          <FeaturedSpotlight statuses={spotlightStatuses} onOpen={openFeatured} />
         )}
 
         {/* Treino Marcado V1: seção própria, nunca misturada com Destaques -- Destaques é sobre posts
@@ -419,8 +437,16 @@ export function CommunityFeedSection({
             </div>
           )}
 
+          {/* Campanha contratada também no banner: o card entra no meio do feed (depois de algumas
+              publicações), nunca colado ao banner do topo. Ver interleaveAds. */}
           <div className="community-feed">
-            {visibleStatuses.map((status) => renderCard(status))}
+            {feedWithAds.map((entry) =>
+              entry.type === 'ad' ? (
+                <SponsoredAdCard key={`ad-${entry.ad.id}`} ad={entry.ad} />
+              ) : (
+                renderCard(entry.item)
+              )
+            )}
           </div>
 
           {!feedError && (
