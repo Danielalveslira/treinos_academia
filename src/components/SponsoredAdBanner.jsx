@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
+import { useAdClick, useAdImpression } from '../hooks/useAdMetrics'
 import {
   marqueeKeyframes,
   marqueeTiming,
@@ -31,7 +32,7 @@ function prefersReducedMotion() {
 // não há animação nem rodízio automático: a linha vira uma região rolável à mão (toque/teclado).
 // A altura mínima é fixa no CSS, então nada disso desloca o feed. O React só re-renderiza ao trocar de
 // campanha, mudar o excesso medido ou pausar: o movimento em si não passa pelo React.
-export function SponsoredAdBanner({ ads }) {
+export function SponsoredAdBanner({ ads, placement = 'community_banner', communityId = null }) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
   const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden)
@@ -41,6 +42,7 @@ export function SponsoredAdBanner({ ads }) {
   const lineRef = useRef(null)
   const textRef = useRef(null)
   const animationRef = useRef(null)
+  const rootRef = useRef(null)
 
   // Mesmo padrão de matchMedia+listener já usado em AccountMenu.jsx/PwaControls.jsx.
   useEffect(() => {
@@ -68,6 +70,10 @@ export function SponsoredAdBanner({ ads }) {
   const autoScroll = !reducedMotion && canAnimate()
   const holding = paused || hidden
   const timing = useMemo(() => marqueeTiming(autoScroll ? overflow : 0), [autoScroll, overflow])
+
+  // Métricas (desligadas por padrão): o <aside> é o elemento observado e a campanha atual é a que está sendo medida.
+  useAdImpression(rootRef, ad?.id, placement, communityId)
+  const onCtaClick = useAdClick(ad?.id, placement, communityId)
 
   // Mede o quanto a mensagem passa da largura visível. Só roda ao trocar de campanha e quando a largura da linha
   // ou do texto muda (um observador para o banner todo); o estado só muda se o excesso mudou.
@@ -145,6 +151,7 @@ export function SponsoredAdBanner({ ads }) {
 
   return (
     <aside
+      ref={rootRef}
       className="sponsored-ad-banner"
       onMouseEnter={pause}
       onMouseLeave={scheduleResume}
@@ -203,7 +210,7 @@ export function SponsoredAdBanner({ ads }) {
         )}
         {hasCta &&
           (ad.ctaType === 'internal' ? (
-            <RouterLink to={ad.ctaTarget} className="sponsored-ad-banner-cta">
+            <RouterLink to={ad.ctaTarget} className="sponsored-ad-banner-cta" onClick={onCtaClick}>
               {ad.ctaLabel}
             </RouterLink>
           ) : (
@@ -212,6 +219,8 @@ export function SponsoredAdBanner({ ads }) {
               target="_blank"
               rel="noopener noreferrer sponsored"
               className="sponsored-ad-banner-cta"
+              onClick={onCtaClick}
+              onAuxClick={onCtaClick}
             >
               {ad.ctaLabel}
             </a>

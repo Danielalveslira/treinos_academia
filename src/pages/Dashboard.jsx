@@ -176,7 +176,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <SponsoredAdBanner ads={bannerAds} />
+      <SponsoredAdBanner ads={bannerAds} placement="home_banner" />
 
       {recentWorkouts.length === 0 ? (
         <section className="empty-workout" aria-labelledby="empty-workout-title">

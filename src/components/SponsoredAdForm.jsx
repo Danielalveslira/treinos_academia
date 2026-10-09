@@ -12,6 +12,7 @@ import {
 import { useFormState } from '../hooks/useFormState'
 import { FormShell } from './FormShell'
 import { isTrustedAdImage } from '../utils/adImage'
+import { formValuesFromAd } from '../utils/sponsoredAds'
 
 const EMPTY = {
   partnerName: '',
@@ -44,7 +45,7 @@ export function SponsoredAdForm({
   const [globalCapError, setGlobalCapError] = useState(false)
 
   const { values, setField, setValues, errors, submitting, handleSubmit } = useFormState({
-    initialValues: () => (initialValue ? { ...EMPTY, ...initialValue } : EMPTY),
+    initialValues: () => formValuesFromAd(EMPTY, initialValue),
     validate: validateSponsoredAd,
     onSubmit: async (finalValues) => {
       setCapErrorCommunityId(null)
@@ -165,7 +166,11 @@ export function SponsoredAdForm({
         <>
           <FormControl required>
             <FormControl.Label>Tipo de destino</FormControl.Label>
-            <Select value={values.ctaType} onChange={(e) => setField('ctaType', e.target.value)} block>
+            <Select
+              value={values.ctaType}
+              onChange={(e) => setField('ctaType', e.target.value)}
+              block
+            >
               {SPONSORED_AD_CTA_TYPES.map((type) => (
                 <Select.Option key={type} value={type}>
                   {type === 'external' ? 'Link externo' : 'Rota interna do app'}
@@ -200,9 +205,7 @@ export function SponsoredAdForm({
           onChange={(e) => setField('expiresAt', e.target.value)}
           block
         />
-        <FormControl.Caption>
-          Deixe em branco para não expirar automaticamente.
-        </FormControl.Caption>
+        <FormControl.Caption>Deixe em branco para não expirar automaticamente.</FormControl.Caption>
         {errors.expiresAt && (
           <FormControl.Validation variant="error">{errors.expiresAt}</FormControl.Validation>
         )}

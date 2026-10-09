@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  formValuesFromAd,
   composeCommunityAds,
   interleaveAds,
   nextExpiry,
@@ -123,4 +124,40 @@ test('sem relógio do servidor a revalidação local é dispensada (nunca usa o 
   assert.equal(typeof referenceNow(), 'number')
   assert.deepEqual(ids(composeCommunityAds(list).bannerAds), ['open'])
   resetServerClock()
+})
+
+test('formValuesFromAd: campos opcionais nulos do banco viram string vazia (editar não quebra)', () => {
+  const empty = {
+    title: '',
+    imageUrl: '',
+    ctaLabel: '',
+    ctaType: 'external',
+    ctaTarget: '',
+    expiresAt: '',
+    communityIds: [],
+  }
+  const fromDb = {
+    id: 'x',
+    title: 'T',
+    imageUrl: null,
+    ctaLabel: null,
+    ctaType: null,
+    ctaTarget: null,
+    expiresAt: null,
+    communityIds: ['c1'],
+    createdBy: 'u',
+  }
+  const values = formValuesFromAd(empty, fromDb)
+  assert.deepEqual(values, {
+    title: 'T',
+    imageUrl: '',
+    ctaLabel: '',
+    ctaType: 'external',
+    ctaTarget: '',
+    expiresAt: '',
+    communityIds: ['c1'],
+  })
+  assert.equal(typeof values.imageUrl.trim(), 'string')
+  assert.equal(formValuesFromAd(empty, null), empty)
+  assert.equal(formValuesFromAd(empty, { imageUrl: 'https://a/b.png' }).imageUrl, 'https://a/b.png')
 })

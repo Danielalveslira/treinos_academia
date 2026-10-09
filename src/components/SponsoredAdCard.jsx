@@ -1,14 +1,23 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
+import { useAdClick, useAdImpression } from '../hooks/useAdMetrics'
 
 // Publicação patrocinada no feed: mesma superfície/raio dos cards do feed, mas com selo "Patrocinado"
 // sempre visível (nunca condicional — transparência com o usuário sobre conteúdo pago, independente de
-// parceiro ou comunidade). Sem consulta própria, sem observador, sem timer; só CSS.
-export function SponsoredAdCard({ ad }) {
+// parceiro ou comunidade). Sem consulta própria, sem observador, sem timer; só CSS. A medição de impressão e clique
+// (desligada por padrão, ver hooks/useAdMetrics.js) usa o coletor compartilhado: nada fica neste componente.
+export function SponsoredAdCard({ ad, communityId = null }) {
   const [imageFailed, setImageFailed] = useState(false)
+  const rootRef = useRef(null)
+  useAdImpression(rootRef, ad.id, 'community_feed', communityId)
+  const onCtaClick = useAdClick(ad.id, 'community_feed', communityId)
   const hasCta = Boolean(ad.ctaLabel)
   return (
-    <article className="sponsored-ad-card" aria-label={`Patrocinado: ${ad.partnerName}`}>
+    <article
+      ref={rootRef}
+      className="sponsored-ad-card"
+      aria-label={`Patrocinado: ${ad.partnerName}`}
+    >
       <header className="sponsored-ad-card-header">
         <span className="sponsored-ad-pill">Patrocinado</span>
         <span className="sponsored-ad-partner">{ad.partnerName}</span>
@@ -39,7 +48,7 @@ export function SponsoredAdCard({ ad }) {
       {ad.description && <p className="sponsored-ad-description">{ad.description}</p>}
       {hasCta &&
         (ad.ctaType === 'internal' ? (
-          <RouterLink to={ad.ctaTarget} className="sponsored-ad-cta">
+          <RouterLink to={ad.ctaTarget} className="sponsored-ad-cta" onClick={onCtaClick}>
             {ad.ctaLabel}
           </RouterLink>
         ) : (
@@ -48,6 +57,8 @@ export function SponsoredAdCard({ ad }) {
             target="_blank"
             rel="noopener noreferrer sponsored"
             className="sponsored-ad-cta"
+            onClick={onCtaClick}
+            onAuxClick={onCtaClick}
           >
             {ad.ctaLabel}
           </a>

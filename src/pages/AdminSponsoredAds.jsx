@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Box, Heading, Text, Button, Spinner, Label } from '@primer/react'
+import { Box, Heading, Text, Button, Spinner, Label, UnderlineNav } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { MegaphoneIcon, PlusIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
 import { useAdminSponsoredAds } from '../hooks/useAdminSponsoredAds'
 import { useAdminCommunities } from '../hooks/useAdminCommunities'
+import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { SponsoredAdForm } from '../components/SponsoredAdForm'
@@ -14,6 +15,14 @@ import { RowActionsMenu } from '../components/RowActionsMenu'
 import { toMillis } from '../utils/expiry'
 import { SponsoredAdCapError, SponsoredAdGlobalCapError } from '../utils/validators'
 
+// Aba Métricas: módulo (e o gráfico) só são baixados quando o superadmin abre a aba; nada de leitura antes disso.
+const AdMetricsTab = lazy(() => import('../features/adMetrics/components/AdMetricsTab'))
+
+const TABS = [
+  { key: 'campaigns', label: 'Campanhas' },
+  { key: 'metrics', label: 'Métricas' },
+]
+
 function isExpired(ad, now) {
   return Boolean(ad.expiresAt) && toMillis(ad.expiresAt) < now
 }
@@ -21,6 +30,9 @@ function isExpired(ad, now) {
 export default function AdminSponsoredAds() {
   const { ads, loading, error, refresh, add, edit, remove } = useAdminSponsoredAds()
   const { communities } = useAdminCommunities()
+  const { user } = useAuth()
+  const [tab, setTab] = useState('campaigns')
+  const [metricsOpened, setMetricsOpened] = useState(false)
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
   const [formOpen, setFormOpen] = useState(false)
@@ -120,104 +132,130 @@ export default function AdminSponsoredAds() {
         <Heading as="h1" sx={{ fontSize: 3 }}>
           Anúncios e parcerias
         </Heading>
-        {!formOpen && !editingAd && (loading || error || ads.length > 0) && (
+        {tab === 'campaigns' && !formOpen && !editingAd && (loading || error || ads.length > 0) && (
           <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
             Novo
           </Button>
         )}
       </Box>
 
-      {formOpen && (
-        <SponsoredAdForm
-          communities={communities}
-          adCountByCommunityId={adCountByCommunityId}
-          globalAdCount={globalAdCount}
-          onSubmit={handleCreate}
-          onCancel={() => setFormOpen(false)}
-        />
-      )}
-      {editingAd && (
-        <SponsoredAdForm
-          initialValue={editingAd}
-          communities={communities}
-          adCountByCommunityId={adCountByCommunityId}
-          globalAdCount={globalAdCount}
-          onSubmit={handleUpdate}
-          onCancel={() => setEditingAd(null)}
-        />
-      )}
+      <UnderlineNav aria-label="Seções de anúncios e parcerias" sx={{ mb: 3 }}>
+        {TABS.map((item) => (
+          <UnderlineNav.Item
+            key={item.key}
+            as="button"
+            aria-current={tab === item.key ? 'page' : undefined}
+            onSelect={() => {
+              setTab(item.key)
+              if (item.key === 'metrics') setMetricsOpened(true)
+            }}
+          >
+            {item.label}
+          </UnderlineNav.Item>
+        ))}
+      </UnderlineNav>
 
-      {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
-      <ErrorState error={error} onRetry={refresh} />
-
-      {!loading && !error && ads.length === 0 && (
-        <Blankslate>
-          <Blankslate.Visual>
-            <MegaphoneIcon size={24} />
-          </Blankslate.Visual>
-          <Blankslate.Heading>Nenhum anúncio criado</Blankslate.Heading>
-          <Blankslate.PrimaryAction onClick={() => setFormOpen(true)}>
-            Criar anúncio
-          </Blankslate.PrimaryAction>
-        </Blankslate>
-      )}
-
-      {ads.length > 0 && (
-        <Box
-          sx={{
-            border: '1px solid',
-            borderColor: 'border.default',
-            borderRadius: 2,
-            overflow: 'hidden',
-          }}
-        >
-          {ads.map((ad, index) => (
-            <Box
-              key={ad.id}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                px: 3,
-                py: 2,
-                borderTop: index === 0 ? 'none' : '1px solid',
-                borderColor: 'border.default',
-              }}
-            >
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                  <Text sx={{ fontWeight: 'bold' }}>{ad.title}</Text>
-                  {ad.isGlobal && <Label variant="accent">Home</Label>}
-                  {isExpired(ad, now) && <Label variant="danger">Expirado</Label>}
-                </Box>
-                <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-                  {ad.partnerName}
-                  {ad.communityIds.length > 0 &&
-                    ` · ${ad.communityIds.length} ${ad.communityIds.length === 1 ? 'comunidade' : 'comunidades'}`}
-                </Text>
-              </Box>
-              <RowActionsMenu
-                disabled={busyAdId !== null}
-                actions={[
-                  {
-                    key: 'edit',
-                    label: 'Editar',
-                    icon: PencilIcon,
-                    onSelect: () => setEditingAd(ad),
-                  },
-                  {
-                    key: 'delete',
-                    label: 'Excluir',
-                    icon: TrashIcon,
-                    variant: 'danger',
-                    onSelect: () => handleDelete(ad),
-                  },
-                ]}
-              />
-            </Box>
-          ))}
+      {metricsOpened && (
+        <Box hidden={tab !== 'metrics'}>
+          <Suspense fallback={<Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}>
+            <AdMetricsTab userId={user?.uid} ads={ads} communities={communities} />
+          </Suspense>
         </Box>
       )}
+
+      <Box hidden={tab !== 'campaigns'}>
+        {formOpen && (
+          <SponsoredAdForm
+            communities={communities}
+            adCountByCommunityId={adCountByCommunityId}
+            globalAdCount={globalAdCount}
+            onSubmit={handleCreate}
+            onCancel={() => setFormOpen(false)}
+          />
+        )}
+        {editingAd && (
+          <SponsoredAdForm
+            initialValue={editingAd}
+            communities={communities}
+            adCountByCommunityId={adCountByCommunityId}
+            globalAdCount={globalAdCount}
+            onSubmit={handleUpdate}
+            onCancel={() => setEditingAd(null)}
+          />
+        )}
+
+        {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+        <ErrorState error={error} onRetry={refresh} />
+
+        {!loading && !error && ads.length === 0 && (
+          <Blankslate>
+            <Blankslate.Visual>
+              <MegaphoneIcon size={24} />
+            </Blankslate.Visual>
+            <Blankslate.Heading>Nenhum anúncio criado</Blankslate.Heading>
+            <Blankslate.PrimaryAction onClick={() => setFormOpen(true)}>
+              Criar anúncio
+            </Blankslate.PrimaryAction>
+          </Blankslate>
+        )}
+
+        {ads.length > 0 && (
+          <Box
+            sx={{
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2,
+              overflow: 'hidden',
+            }}
+          >
+            {ads.map((ad, index) => (
+              <Box
+                key={ad.id}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  px: 3,
+                  py: 2,
+                  borderTop: index === 0 ? 'none' : '1px solid',
+                  borderColor: 'border.default',
+                }}
+              >
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                    <Text sx={{ fontWeight: 'bold' }}>{ad.title}</Text>
+                    {ad.isGlobal && <Label variant="accent">Home</Label>}
+                    {isExpired(ad, now) && <Label variant="danger">Expirado</Label>}
+                  </Box>
+                  <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+                    {ad.partnerName}
+                    {ad.communityIds.length > 0 &&
+                      ` · ${ad.communityIds.length} ${ad.communityIds.length === 1 ? 'comunidade' : 'comunidades'}`}
+                  </Text>
+                </Box>
+                <RowActionsMenu
+                  disabled={busyAdId !== null}
+                  actions={[
+                    {
+                      key: 'edit',
+                      label: 'Editar',
+                      icon: PencilIcon,
+                      onSelect: () => setEditingAd(ad),
+                    },
+                    {
+                      key: 'delete',
+                      label: 'Excluir',
+                      icon: TrashIcon,
+                      variant: 'danger',
+                      onSelect: () => handleDelete(ad),
+                    },
+                  ]}
+                />
+              </Box>
+            ))}
+          </Box>
+        )}
+      </Box>
     </Box>
   )
 }

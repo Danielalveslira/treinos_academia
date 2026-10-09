@@ -1,5 +1,9 @@
 # Métricas de Patrocinados — proposta técnica (rascunho para aprovação)
 
+> **Superado:** a implementação da coleta (Fase 2) está em `docs/SPONSORED_AD_METRICS.md`. As decisões finais diferem deste
+> rascunho (um único marcador temporário de 48 h, posicionamentos `home_banner`/`community_banner`/`community_feed`, chave de
+> servidor, `record_ad_events`). Mantido só como histórico das alternativas.
+
 > **Estado:** proposta. Nenhuma migration, tabela, RPC ou evento foi criado em `supabase/migrations` nem em ambiente algum.
 > O SQL abaixo é um rascunho que foi validado só em **transação revertida (`ROLLBACK`)** num Postgres local descartável
 > (resultado na seção 8). Nada aqui foi aplicado.

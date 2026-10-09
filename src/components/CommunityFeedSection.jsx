@@ -305,7 +305,7 @@ export function CommunityFeedSection({
 
   return (
     <>
-      <SponsoredAdBanner ads={bannerAds} />
+      <SponsoredAdBanner ads={bannerAds} placement="community_banner" communityId={communityId} />
       {reserveBannerSlot && bannerAds.length === 0 && (
         <div className="sponsored-ad-banner-slot" aria-hidden="true" />
       )}
@@ -374,7 +374,7 @@ export function CommunityFeedSection({
         {feedAds.length > 0 ? (
           <div className="community-feed sponsored-ad-feed-top" ref={topAdsRef}>
             {feedAds.map((ad) => (
-              <SponsoredAdCard key={ad.id} ad={ad} />
+              <SponsoredAdCard key={ad.id} ad={ad} communityId={communityId} />
             ))}
           </div>
         ) : (
@@ -442,7 +442,11 @@ export function CommunityFeedSection({
           <div className="community-feed">
             {feedWithAds.map((entry) =>
               entry.type === 'ad' ? (
-                <SponsoredAdCard key={`ad-${entry.ad.id}`} ad={entry.ad} />
+                <SponsoredAdCard
+                  key={`ad-${entry.ad.id}`}
+                  ad={entry.ad}
+                  communityId={communityId}
+                />
               ) : (
                 renderCard(entry.item)
               )

@@ -76,3 +76,15 @@ export function interleaveAds(
   })
   return result
 }
+
+// Valores iniciais do formulário de campanha: o banco devolve null em image_url, cta_* e expires_at (colunas
+// opcionais), mas os campos controlados do formulário (e `.trim()` nos avisos) exigem string. Só os campos do
+// molde `empty` entram, e null/undefined caem no padrão do molde.
+export function formValuesFromAd(empty, ad) {
+  if (!ad) return empty
+  const values = { ...empty }
+  for (const key of Object.keys(empty)) {
+    if (ad[key] !== null && ad[key] !== undefined) values[key] = ad[key]
+  }
+  return values
+}
