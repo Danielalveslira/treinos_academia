@@ -9,6 +9,7 @@ import manifest from '../../legal/manifest.json' with { type: 'json' }
 import documents from '../../legal/documents.json' with { type: 'json' }
 import digests from '../../legal/approved-digests.json' with { type: 'json' }
 import previousArchive from '../../legal/test-fixtures/1.3.0.json' with { type: 'json' }
+import archive14 from '../../legal/test-fixtures/1.4.0.json' with { type: 'json' }
 
 let directory
 let render
@@ -122,7 +123,9 @@ test('a user without the current acceptance sees the legal form', () => {
   assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
 })
 
-test('a user who accepted 1.3.0 sees the 1.4.0 confirmation before protected content', () => {
+const currentVersionPattern = new RegExp(`Leia a versão ${manifest.version.replace(/\./g, '\\.')}`)
+
+test('a user who accepted 1.3.0 sees the current-version confirmation before protected content', () => {
   const html = render({
     ...baseAuth,
     profile: {
@@ -135,8 +138,19 @@ test('a user who accepted 1.3.0 sees the 1.4.0 confirmation before protected con
     },
   })
   assert.match(html, /Antes de continuar/)
-  assert.match(html, /Leia a versão 1\.4\.0/)
+  assert.match(html, currentVersionPattern)
   assert.match(html, /Li e aceito os/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('a user who accepted 1.4.0 sees the current-version confirmation; one who accepted the current version goes straight in', () => {
+  const accepted = (version) => ({
+    ...baseAuth,
+    profile: { ...baseAuth.profile, legalAcceptance: { version, digest: digests[version], acceptedAt: {} } },
+  })
+  const html = render(accepted(archive14.manifest.version))
+  assert.match(html, /Antes de continuar/)
+  assert.match(html, currentVersionPattern)
   assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
 })
 

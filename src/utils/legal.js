@@ -2,15 +2,19 @@ import { toMillis } from './date.js'
 import manifest from '../../legal/manifest.json' with { type: 'json' }
 import documents from '../../legal/documents.json' with { type: 'json' }
 import approvedDigests from '../../legal/approved-digests.json' with { type: 'json' }
-import previousArchive from '../../legal/test-fixtures/1.3.0.json' with { type: 'json' }
+import archive13 from '../../legal/test-fixtures/1.3.0.json' with { type: 'json' }
+import archive14 from '../../legal/test-fixtures/1.4.0.json' with { type: 'json' }
 
 export const LEGAL_MANIFEST = manifest
 export const LEGAL_DOCUMENTS = documents
 export const APPROVED_LEGAL_DIGESTS = approvedDigests
 export const SUPPORTED_LEGAL_VERSIONS = Object.keys(approvedDigests)
 const approvedArchives = {
-  '1.3.0': previousArchive,
-  '1.4.0': { manifest, documents },
+  // Versões anteriores continuam aceitas: a 1.4.0 nunca é editada (fixture imutável) e quem tem a 1.4.0 vigente no
+  // banco segue funcionando até a 1.5.0 ser publicada em legal_policy.
+  '1.3.0': archive13,
+  '1.4.0': archive14,
+  '1.5.0': { manifest, documents },
 }
 
 async function calculateLegalDigest(versionManifest, versionDocuments) {

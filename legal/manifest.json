@@ -1,11 +1,12 @@
 {
-  "version": "1.4.0",
-  "date": "2026-09-23",
+  "version": "1.5.0",
+  "date": "2026-10-09",
   "published": true,
   "controllerName": "Wellington Daniel Alves de Lira",
   "contactEmail": "dnllira1@gmail.com",
   "minimumAge": 12,
   "changes": [
-    "Política de Privacidade: descreve a Vitrine V1, os dados públicos acessíveis sem login, os contatos externos, o avatar opcional, os registros de revisão e a hospedagem do frontend na Vercel."
+    "Política de Privacidade: explica a contagem de visualizações e cliques em anúncios patrocinados (totais por anúncio, posição, comunidade e dia; registro temporário de até 48 horas ligado à conta), a base legal (legítimo interesse), o direito de oposição e que menores de 18 anos ficam fora dessa contagem.",
+    "Política de Privacidade: corrige os provedores (Supabase e Vercel, em vez de Google Firebase) e passa a citar a InfinitePay, as notificações push e os prazos de retenção dos dados técnicos."
   ]
 }

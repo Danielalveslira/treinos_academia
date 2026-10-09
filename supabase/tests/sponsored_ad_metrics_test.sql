@@ -21,6 +21,8 @@ select ('a1000000-0000-0000-0000-00000000000' || n)::uuid, 'authenticated', 'aut
 update public.users u set legal_acceptance_version = p.version, legal_acceptance_digest = p.digest,
   legal_acceptance_accepted_at = now()
   from public.legal_policy p where p.id and p.published and u.id::text like 'a1000000-%';
+-- adultos (a medição ignora menores de 18 anos e contas sem data de nascimento; ver migration 20261019000001)
+update public.users set data_nascimento = date '1990-01-01' where id::text like 'a1000000-%';
 update public.users set role = 'superadmin', username = 'adsuperadmin01' where id = 'a1000000-0000-0000-0000-000000000001';
 update public.users set account_status = 'disabled', disabled_reason = 'teste' where id = 'a1000000-0000-0000-0000-000000000005';
 

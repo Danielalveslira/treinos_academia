@@ -42,6 +42,7 @@ select case when n = 0 then '$OWNER'::uuid else ('c1000000-0000-0000-0000-' || l
   from generate_series(0, $N + 2) n;
 update public.users u set legal_acceptance_version = p.version, legal_acceptance_digest = p.digest, legal_acceptance_accepted_at = now()
   from public.legal_policy p where p.id and p.published and u.id::text like 'c1000000-%';
+update public.users set data_nascimento = date '1990-01-01' where id::text like 'c1000000-%';
 update public.users set role = 'superadmin', username = 'concadowner' where id = '$OWNER';
 insert into public.communities (id, name, created_by) values ('$COMM', 'Concorrência de anúncios', '$OWNER');
 insert into public.community_members (community_id, user_id)

@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import oldArchive from '../../legal/test-fixtures/1.3.0.json' with { type: 'json' }
+import archive14 from '../../legal/test-fixtures/1.4.0.json' with { type: 'json' }
 import {
   APPROVED_LEGAL_DIGESTS,
   LEGAL_DOCUMENTS,
@@ -22,8 +23,11 @@ const newArchive = {
   digest: APPROVED_LEGAL_DIGESTS[LEGAL_MANIFEST.version],
 }
 
+// Cada versão aprovada tem o seu arquivo imutável; a vigente no repositório é a de LEGAL_MANIFEST.
+const ARCHIVES = { '1.3.0': oldArchive, '1.4.0': archive14, [LEGAL_MANIFEST.version]: newArchive }
+
 function active(version) {
-  const archive = version === '1.3.0' ? oldArchive : newArchive
+  const archive = ARCHIVES[version]
   return resolveLegalBundle(
     { version, digest: APPROVED_LEGAL_DIGESTS[version], published: true },
     archive
@@ -62,7 +66,7 @@ test('loads and displays the complete immutable archive matching active versions
     assert.equal(bundle.manifest.version, version)
     assert.ok(bundle.documents.length >= 3)
     assert.equal(bundle.digest, APPROVED_LEGAL_DIGESTS[version])
-    const archive = version === '1.3.0' ? oldArchive : newArchive
+    const archive = ARCHIVES[version]
     const reorderedArchive = reverseKeys(archive)
     const resolvedFromReordered = await resolveLegalBundle(
       { version, digest: APPROVED_LEGAL_DIGESTS[version], published: true },
@@ -143,4 +147,18 @@ test('legacy authorization caches are cleared, restrictions still take precedenc
   const bundle = await active('1.4.0')
   assert.equal(isAccountRestricted({ action: 'system_ban' }), true)
   assert.equal(resolveLegalGateState({ profile: { role: 'superadmin' }, access: { ...access(bundle), legalBundle: null }, loading: false, error: '' }), 'allowed')
+})
+
+test('cliente que não conhece a versão publicada fica em "policy-unavailable" (sem loop de reaceite); o superadmin alcança o painel', async () => {
+  // Simula um app antigo (PWA aberta) depois que o banco passa a publicar uma versão que este bundle não aprova.
+  const policy = { version: '9.9.9', digest: 'f'.repeat(64), published: true }
+  await assert.rejects(resolveLegalBundle(policy, newArchive), /LEGAL_POLICY_INCOMPATIBLE/)
+  const current = APPROVED_LEGAL_DIGESTS[LEGAL_MANIFEST.version]
+  const profile = (role) => ({ role, legalAcceptance: { version: LEGAL_MANIFEST.version, digest: current, acceptedAt: { seconds: 1 } } })
+  const blocked = { policy, restriction: undefined, legalBundle: null }
+  assert.equal(resolveLegalGateState({ profile: profile('user'), access: blocked, loading: false, error: null }), 'policy-unavailable')
+  assert.equal(resolveLegalGateState({ profile: profile('superadmin'), access: blocked, loading: false, error: null }), 'allowed')
+  // quem já aceitou a versão que o bundle conhece NÃO é mandado aceitar de novo (sem piscar a tela de aceite)
+  const fresh = await active(LEGAL_MANIFEST.version)
+  assert.equal(resolveLegalGateState({ profile: profile('user'), access: access(fresh), loading: false, error: null }), 'allowed')
 })

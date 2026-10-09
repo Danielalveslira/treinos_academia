@@ -108,22 +108,79 @@
     "summary": [
       "Seus registros detalhados de treino não são publicados automaticamente.",
       "Você escolhe se compartilha estatísticas do seu perfil.",
-      "Você pode pedir acesso, correção ou exclusão dos seus dados pelo atendimento, a qualquer momento."
+      "Contamos, em totais, quantas vezes anúncios patrocinados são vistos e clicados, sem criar perfil seu e sem incluir menores de 18 anos.",
+      "Você pode pedir acesso, correção ou exclusão dos seus dados, ou se opor à contagem de anúncios, pelo atendimento, a qualquer momento."
     ],
     "sections": [
       {
         "id": "dados",
         "title": "O que coletamos",
         "table": {
-          "headers": ["Dados", "Para quê"],
+          "headers": [
+            "Dados",
+            "Para quê"
+          ],
           "rows": [
-            { "cells": ["E-mail e credenciais", "Criar sua conta e permitir login"] },
-            { "cells": ["Nome de usuário e descrição", "Montar seu perfil"] },
-            { "cells": ["Exercícios, cargas, séries e notas", "Seu diário de treino — pode conter dados de saúde"] },
-            { "cells": ["Peso, % de gordura, cintura, quadril, massa magra e altura", "Acompanhar sua evolução física — são dados de saúde"] },
-            { "cells": ["Publicações, votos e filiações", "Fazer as comunidades funcionarem"] },
-            { "cells": ["Pedidos de atendimento e denúncias", "Responder você e apurar violações"] },
-            { "cells": ["Dados comerciais, rascunhos e aceites da Vitrine", "Preparar, revisar, publicar e administrar a vitrine, com registro do aceite específico"] }
+            {
+              "cells": [
+                "E-mail e credenciais",
+                "Criar sua conta e permitir login"
+              ]
+            },
+            {
+              "cells": [
+                "Nome de usuário e descrição",
+                "Montar seu perfil"
+              ]
+            },
+            {
+              "cells": [
+                "Exercícios, cargas, séries e notas",
+                "Seu diário de treino — pode conter dados de saúde"
+              ]
+            },
+            {
+              "cells": [
+                "Peso, % de gordura, cintura, quadril, massa magra e altura",
+                "Acompanhar sua evolução física — são dados de saúde"
+              ]
+            },
+            {
+              "cells": [
+                "Publicações, votos e filiações",
+                "Fazer as comunidades funcionarem"
+              ]
+            },
+            {
+              "cells": [
+                "Pedidos de EvoCash",
+                "Registrar sua compra (pacote, valor e situação do pedido); o pagamento é feito no checkout da InfinitePay"
+              ]
+            },
+            {
+              "cells": [
+                "Pedidos de atendimento e denúncias",
+                "Responder você e apurar violações"
+              ]
+            },
+            {
+              "cells": [
+                "Dados técnicos de uso e notificações",
+                "Se você ativar notificações, guardamos o endereço técnico do seu navegador, o tipo de aparelho e o nome do aparelho; guardamos também o momento do último uso da conta e registros técnicos de sincronização offline"
+              ]
+            },
+            {
+              "cells": [
+                "Dados comerciais, rascunhos e aceites da Vitrine",
+                "Preparar, revisar, publicar e administrar a vitrine, com registro do aceite específico"
+              ]
+            },
+            {
+              "cells": [
+                "Visualizações e cliques em anúncios patrocinados",
+                "Medir o desempenho dos patrocínios e evitar contagem duplicada, sem criar perfil seu (veja “Anúncios patrocinados e medição”)"
+              ]
+            }
           ]
         }
       },
@@ -149,11 +206,25 @@
         ]
       },
       {
+        "id": "anuncios",
+        "title": "Anúncios patrocinados e medição",
+        "items": [
+          "Anúncios marcados como “Patrocinado” aparecem na Home e nas comunidades.",
+          "Contamos uma visualização quando pelo menos metade do anúncio fica na tela por 1 segundo seguido, e um clique quando você toca no botão do anúncio. O clique não confirma que o destino foi aberto.",
+          "Guardamos apenas totais por anúncio, posição (Home, banner da comunidade ou feed), comunidade e dia, que não identificam você. Mantemos esses totais por até 24 meses.",
+          "Para não contar duas vezes o mesmo toque e evitar abusos, guardamos por até 48 horas um registro temporário ligado à sua conta. Ele é apagado automaticamente e, enquanto existe, não é anônimo.",
+          "Só a administração do Evolutus vê esses dados. Os anunciantes recebem apenas totais, nunca dados de uma pessoa.",
+          "Não criamos perfil seu, não personalizamos anúncios, não compartilhamos essa medição com terceiros e não gravamos IP, localização nem identificador de aparelho nela. Contas de menores de 18 anos e contas sem data de nascimento informada não entram nessa medição.",
+          "A base legal é o legítimo interesse do Evolutus em saber se os patrocínios funcionam. Você pode se opor pelo atendimento, escolhendo “Privacidade ou exclusão da conta”."
+        ]
+      },
+      {
         "id": "direitos",
         "title": "Seus direitos",
         "items": [
           "Acessar, corrigir ou excluir seus dados a qualquer momento.",
           "Revogar consentimentos dados anteriormente.",
+          "Se opor à medição de anúncios patrocinados descrita acima.",
           "Tudo isso pelo atendimento, escolhendo “Privacidade ou exclusão da conta”."
         ]
       },
@@ -161,8 +232,10 @@
         "id": "seguranca",
         "title": "Segurança e retenção",
         "items": [
-          "Usamos o Google Firebase para autenticação, banco de dados e armazenamento de mídias; o frontend é hospedado na Vercel.",
-          "Seus dados ficam guardados enquanto sua conta existir, ou até você pedir a exclusão.",
+          "Usamos o Supabase (autenticação, banco de dados PostgreSQL, armazenamento de mídias e funções do servidor) e a Vercel (hospedagem do frontend). O pagamento de EvoCash é processado no checkout da InfinitePay. As notificações push passam pelo serviço do seu navegador ou sistema (como Google, Apple, Mozilla ou Microsoft).",
+          "Esses provedores podem processar dados em servidores fora do Brasil e manter registros técnicos de acesso.",
+          "Seus dados ficam guardados enquanto sua conta existir, ou até você pedir a exclusão, ressalvados os prazos abaixo.",
+          "Registros temporários da medição de anúncios: até 48 horas. Totais da medição, sem identificar você: até 24 meses. Registros técnicos de sincronização offline: até 30 dias.",
           "Despublicar ou suspender uma Vitrine retira sua versão pública; excluir a Vitrine remove os dados e mídias operacionais, ressalvadas cópias técnicas temporárias e retenções legítimas.",
           "Registros de aceite, revisão, denúncias e atendimento podem ser mantidos pelo tempo necessário à segurança, ao exercício de direitos ou ao cumprimento de obrigação legal."
         ]
