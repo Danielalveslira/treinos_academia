@@ -16,7 +16,6 @@ import { SponsoredAdBanner } from '../components/SponsoredAdBanner'
 import { ResponsivePicture } from '../components/ResponsivePicture'
 import { originState } from '../utils/navigation'
 import { getProfileHeroImage } from '../constants/profileHeroImage'
-import { getDashboardGreeting } from '../utils/greeting'
 import { buildExerciseNameMap } from '../utils/format'
 import { StreakCard } from '../components/StreakCard'
 import { buildShareOptions } from '../utils/shareProgress'
@@ -25,7 +24,12 @@ import { addDaysToDayKey, businessDayKey, businessDayKeyDaysAgo } from '../utils
 import { ErrorState } from '../components/ErrorState'
 import { LazyDialogBoundary } from '../components/LazyDialogBoundary'
 import { saveTrainingPreferences } from '../services/usersService'
-import { isPreferredReminderDue, normalizeTrainingPreferences } from '../utils/trainingPlan'
+import { normalizeTrainingPreferences } from '../utils/trainingPlan'
+import { DashboardGreeting } from '../features/greetings/DashboardGreeting'
+import { GREETING_V2_ENABLED } from '../features/greetings/config'
+import { isReminderDue } from '../features/greetings/clock'
+import { useDashboardGreeting } from '../features/greetings/useDashboardGreeting'
+import { useGreetingClock } from '../features/greetings/useGreetingClock'
 
 // Diálogos só entram no bundle da Home quando alguém os abre (o share puxa o gerador de imagem/canvas).
 const loadShareDialog = () => import('../components/ShareProgressDialog')
@@ -81,7 +85,7 @@ export default function Dashboard() {
   const { recentWorkouts, progressDays, progressAvailable, loading, error, refresh } =
     useHomeDashboard()
   const { exercises } = useExercises()
-  const { profile, user, refreshProfile, offlineLocal } = useAuth()
+  const { profile, user, refreshProfile, offlineLocal, patchProfile } = useAuth()
   const { bannerAds } = useGlobalSponsoredAds(Boolean(user) && !offlineLocal)
   const heroImage = getProfileHeroImage(profile?.sexo)
   const exerciseNameById = useMemo(() => buildExerciseNameMap(exercises), [exercises])
@@ -89,9 +93,14 @@ export default function Dashboard() {
     () => normalizeTrainingPreferences(profile?.trainingPreferences),
     [profile?.trainingPreferences]
   )
+  // `now` só muda quando algo relevante para a frase muda (dia de negócio, período, horário do lembrete);
+  // `dayKey` é o que invalida os cálculos diários abaixo -- a Home aberta atravessa a meia-noite sem F5.
+  const now = useGreetingClock({ preferences: trainingPreferences })
+  const dayKey = businessDayKey(now)
   const { activityDays, consistency } = useMemo(
-    () => buildConsistencySnapshot(progressDays, trainingPreferences),
-    [progressDays, trainingPreferences]
+    () => buildConsistencySnapshot(progressDays, trainingPreferences, now),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `now` muda a cada período; só o dia importa aqui
+    [progressDays, trainingPreferences, dayKey]
   )
   // Só calcula quando o modal abre, a partir do que a Home já carregou (nenhuma consulta nova).
   const shareOptions = useMemo(
@@ -108,41 +117,36 @@ export default function Dashboard() {
   )
   const volume = useMemo(() => getVolumeTrend(progressDays), [progressDays])
   const weekStartKey = useMemo(() => {
-    const today = businessDayKey()
-    const weekday = new Date(`${today}T12:00:00Z`).getUTCDay()
-    return addDaysToDayKey(today, -((weekday + 6) % 7))
-  }, [])
+    const weekday = new Date(`${dayKey}T12:00:00Z`).getUTCDay()
+    return addDaysToDayKey(dayKey, -((weekday + 6) % 7))
+  }, [dayKey])
   const weeklyFrequency = progressDays.filter(
-    (day) => day.dateKey >= weekStartKey && day.dateKey <= businessDayKey()
+    (day) => day.dateKey >= weekStartKey && day.dateKey <= dayKey
   ).length
   const lastWorkout = recentWorkouts[0]
   const lastExercise = lastWorkout
     ? exerciseNameById.get(lastWorkout.exerciseId) || 'seu último exercício'
     : null
-  const firstName =
-    profile?.displayName?.trim().split(/\s+/)[0] ||
-    profile?.username ||
-    user?.user_metadata?.display_name?.trim().split(/\s+/)[0] ||
-    user?.displayName?.trim().split(/\s+/)[0] ||
-    'atleta'
   const daysSinceLastActivity = useMemo(() => {
-    const last = [...progressDays].reverse().find((day) => day.dateKey < businessDayKey())
-    return last
-      ? Math.floor((Date.parse(businessDayKey()) - Date.parse(last.dateKey)) / 86400000)
-      : null
-  }, [progressDays])
-  const greeting = useMemo(
-    () =>
-      getDashboardGreeting({
-        firstName,
-        todayState: consistency.today.state,
-        reminderDue:
-          consistency.today.state === 'planned' && isPreferredReminderDue(trainingPreferences),
-        daysSinceLastActivity,
-        uid: user?.uid,
-      }),
-    [firstName, consistency.today.state, daysSinceLastActivity, trainingPreferences, user?.uid]
+    const last = [...progressDays].reverse().find((day) => day.dateKey < dayKey)
+    return last ? Math.floor((Date.parse(dayKey) - Date.parse(last.dateKey)) / 86400000) : null
+  }, [progressDays, dayKey])
+  const reminderDue = useMemo(
+    () => consistency.today.state === 'planned' && isReminderDue(trainingPreferences, now),
+    [consistency.today.state, trainingPreferences, now]
   )
+  const { greeting, onShown } = useDashboardGreeting({
+    profile,
+    user,
+    offlineLocal,
+    todayState: consistency.today.state,
+    reminderDue,
+    daysSinceLastActivity: progressAvailable ? daysSinceLastActivity : null,
+    hasActivityData: progressAvailable,
+    now,
+    onWelcomeAcknowledged: (userId, seenAt) =>
+      patchProfile(userId, { greetingWelcomeSeenAt: seenAt }),
+  })
 
   async function handleSaveTrainingPlan(preferences) {
     await saveTrainingPreferences(preferences)
@@ -169,12 +173,7 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard fitness-dashboard">
-      <header className="dashboard-greeting">
-        <div>
-          <span className="eyebrow">{greeting.eyebrow}</span>
-          <Heading as="h1">{greeting.heading}</Heading>
-        </div>
-      </header>
+      <DashboardGreeting greeting={greeting} onShown={onShown} dynamic={GREETING_V2_ENABLED} />
 
       <SponsoredAdBanner ads={bannerAds} placement="home_banner" />
 

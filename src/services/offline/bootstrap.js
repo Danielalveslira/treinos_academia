@@ -30,6 +30,9 @@ export function minimalProfile(profile) {
     trainingPreferences: profile.trainingPreferences ?? null,
     // Só decide quais atalhos o menu mostra (ex.: "Minha vitrine"); não é dado pessoal sensível.
     usageProfile: profile.usageProfile ?? null,
+    // Preferência de estilo das mensagens da Home (texto); sem ela o offline cairia em "neutro" mesmo com
+    // escolha explícita. O sexo NÃO é guardado: com 'auto' offline a frase é neutra.
+    greetingVoice: profile.greetingVoice ?? 'auto',
   }
 }
 

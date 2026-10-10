@@ -63,11 +63,24 @@ const record = (overrides = {}) =>
 
 // ------------------------------------------------------------------------------------- conteúdo
 
+test('mensagens da Home offline: guarda só a voz escolhida (nunca o sexo); snapshot antigo segue válido', () => {
+  const chosen = minimalProfile(fullProfile(A, { greetingVoice: 'feminino' }))
+  assert.equal(chosen.greetingVoice, 'feminino')
+  assert.equal(Object.hasOwn(chosen, 'sexo'), false)
+  assert.equal(minimalProfile(fullProfile()).greetingVoice, 'auto') // sem escolha: automático
+  // Registro gravado ANTES desta feature (sem a chave) continua sendo aceito para abrir offline.
+  const legacy = record()
+  delete legacy.profile.greetingVoice
+  assert.equal(evaluateOfflineEntry(legacy).ok, true)
+  assert.equal(offlineIdentity(legacy).profile.greetingVoice, undefined) // o app trata como 'auto' => neutro
+})
+
 test('o bootstrap guarda só o perfil MÍNIMO: sem role, e-mail, nascimento, sexo, altura, bio, avatar nem tokens', () => {
   const rec = record()
   assert.deepEqual(Object.keys(rec.profile).sort(), [
     'accountStatus',
     'createdAt',
+    'greetingVoice', // só o estilo (auto/masculino/feminino/neutro) do texto da Home; o sexo continua fora
     'id',
     'trainingPreferences',
     'usageProfile', // só decide atalhos do menu (ex.: "Minha vitrine"); não é dado pessoal sensível

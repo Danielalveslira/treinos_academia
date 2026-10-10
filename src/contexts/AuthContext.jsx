@@ -646,6 +646,13 @@ export function AuthProvider({ children }) {
     return patch
   }
 
+  // Aplica ao perfil em memória um campo que o servidor JÁ confirmou (ex.: ACK das boas-vindas), sem reler
+  // nada. Só vale para a conta carregada agora: o retorno tardio de uma conta anterior é descartado.
+  function patchProfile(userId, patch) {
+    if (loadedUserIdRef.current !== userId) return
+    setProfile((prev) => (prev?.id === userId ? { ...prev, ...patch } : prev))
+  }
+
   async function refreshProfile(userId) {
     const userProfile = await ensureUserProfile(userId)
     const access = await getServerAppAccess()
@@ -712,6 +719,7 @@ export function AuthProvider({ children }) {
         refreshProfile,
         refreshLegalAccess,
         saveProfile,
+        patchProfile,
       }}
     >
       {children}

@@ -3363,6 +3363,23 @@ body {
   margin: 0;
 }
 
+/* Frases curtas e variáveis (features/greetings): tamanho um pouco menor que um título de página, quebra
+   equilibrada e altura mínima de duas linhas -- trocar de 1 para 2 linhas não empurra a Home para baixo.
+   Só com a Greeting V2 ligada (--dynamic): com a flag desligada o cabeçalho legado fica exatamente como era. */
+.dashboard-greeting--dynamic > div {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dashboard-greeting--dynamic h1 {
+  max-width: 46ch;
+  min-height: 2.3em;
+  font-size: clamp(24px, 3.2vw, 34px);
+  line-height: 1.15;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
 .page-title-row > button,
 .dashboard-greeting > button {
   min-height: 34px;
@@ -4829,6 +4846,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .catalog-details dl div { grid-template-columns: 1fr; gap: 2px; }
   .main-content { padding: 22px 16px calc(90px + env(safe-area-inset-bottom)); }
   .main-content h1 { font-size: 29px; }
+  .dashboard-greeting--dynamic h1 { max-width: none; font-size: 22px; }
   .page-title-row,
   .dashboard-greeting { align-items: center; margin-bottom: 22px; }
 

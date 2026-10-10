@@ -28,6 +28,10 @@ export function mapUserRow(row) {
     usageProfile: row.usage_profile,
     accountStatus: row.account_status,
     trainingPreferences: normalizeTrainingPreferences(row.training_preferences),
+    // Mensagens da Home. greetingWelcomeSeenAt: null = ainda não confirmada; undefined = coluna ausente (nunca
+    // tratado como "não vista"). A voz padrão é 'auto'.
+    greetingVoice: row.greeting_voice ?? 'auto',
+    greetingWelcomeSeenAt: row.greeting_welcome_seen_at,
     disabledAt: row.disabled_at,
     disabledBy: row.disabled_by,
     disabledReason: row.disabled_reason,

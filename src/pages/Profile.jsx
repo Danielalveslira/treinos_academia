@@ -22,6 +22,8 @@ import { toDate } from '../utils/date'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { removeProfileAvatar, uploadProfileAvatar } from '../services/profileAvatarService'
 import { PushNotificationSettings } from '../features/notifications/components/PushNotificationSettings'
+import { GREETING_V2_ENABLED } from '../features/greetings/config'
+import { GreetingVoiceSettings } from '../features/greetings/GreetingVoiceSettings'
 
 export default function Profile() {
   const { user, profile, isSuperAdmin, saveProfile, refreshProfile } = useAuth()
@@ -435,6 +437,7 @@ export default function Profile() {
             </div>
           </div>
         </section>
+        {GREETING_V2_ENABLED && <GreetingVoiceSettings />}
         <PushNotificationSettings userId={user?.uid} />
       </div>
     </div>
