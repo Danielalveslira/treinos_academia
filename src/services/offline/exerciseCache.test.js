@@ -5,10 +5,16 @@ import { openDatabase } from './database.js'
 import {
   cacheCatalogEntries,
   cacheCatalogTaxonomy,
+  deriveCatalogTaxonomyFromSnapshot,
+  isCatalogSnapshotComplete,
   normalizeSearchValue,
   readCachedCatalogEntry,
   readCachedCatalogTaxonomy,
+  readCatalogSnapshotMeta,
+  readCatalogSnapshotTaxonomy,
+  replaceCatalogSnapshot,
   searchCachedCatalog,
+  touchCatalogSnapshotCheckedAt,
 } from './exerciseCache.js'
 
 beforeEach(freshDatabase)
@@ -28,6 +34,7 @@ const exercise = (id, name, overrides = {}) => ({
   mechanic: 'composto',
   instructions: ['Deite.', 'Empurre.'],
   images: ['x/0.jpg'],
+  thumbnail: null,
   ...overrides,
 })
 
@@ -176,6 +183,148 @@ test('taxonomia: grava e lê; ausente devolve undefined', async () => {
   assert.equal(await cacheCatalogTaxonomy(taxonomy), true)
   assert.deepEqual(await readCachedCatalogTaxonomy(), taxonomy)
   assert.equal(await cacheCatalogTaxonomy(null), false)
+})
+
+test('replaceCatalogSnapshot: grava tudo, marca complete=true e remove quem não está mais ativo (delete diff)', async () => {
+  await cacheCatalogEntries([exercise('old', 'Vai sair')]) // entrada oportunista anterior
+  assert.equal(
+    await replaceCatalogSnapshot([exercise('c1', 'Supino Reto'), exercise('c2', 'Agachamento')], {
+      revision: 'rev-1',
+    }),
+    true
+  )
+  assert.deepEqual(
+    (await rawAll('exerciseCatalog')).map((row) => row.id).sort(),
+    ['c1', 'c2']
+  )
+  const meta = await readCatalogSnapshotMeta()
+  assert.equal(meta.complete, true)
+  assert.equal(meta.revision, 'rev-1')
+  assert.equal(meta.totalActive, 2)
+  assert.equal(await isCatalogSnapshotComplete(), true)
+})
+
+test('readCatalogSnapshotMeta: undefined quando nunca houve snapshot completo neste aparelho', async () => {
+  assert.equal(await readCatalogSnapshotMeta(), undefined)
+  assert.equal(await isCatalogSnapshotComplete(), false)
+  await cacheCatalogEntries([exercise('c1', 'Supino Reto')]) // oportunista não conta como snapshot completo
+  assert.equal(await readCatalogSnapshotMeta(), undefined)
+})
+
+test('touchCatalogSnapshotCheckedAt: só atualiza lastCheckedAt, nunca os outros campos', async () => {
+  await replaceCatalogSnapshot([exercise('c1', 'Supino Reto')], { revision: 'rev-1', now: 1000 })
+  await touchCatalogSnapshotCheckedAt(2000)
+  const meta = await readCatalogSnapshotMeta()
+  assert.equal(meta.lastCheckedAt, 2000)
+  assert.equal(meta.completedAt, 1000)
+  assert.equal(meta.revision, 'rev-1')
+  assert.equal(meta.complete, true)
+})
+
+test('busca local com snapshot completo: zero resultado é resposta REAL (nunca undefined)', async () => {
+  await replaceCatalogSnapshot([exercise('c1', 'Supino Reto')], { revision: 'rev-1' })
+  const result = await searchCachedCatalog({ q: 'inexistente' })
+  assert.deepEqual(result, { data: [], total: 0, complete: true })
+})
+
+test('busca local sem snapshot completo preserva o comportamento antigo: zero resultado é undefined', async () => {
+  await cacheCatalogEntries([exercise('c1', 'Supino Reto')]) // só oportunista, sem snapshot completo
+  assert.equal(await searchCachedCatalog({ q: 'inexistente' }), undefined)
+  const found = await searchCachedCatalog({ q: 'supino' })
+  assert.equal(found.complete, false)
+})
+
+test('cacheCatalogEntries: pula a poda de 90 dias quando o snapshot está completo (nunca corrompe um snapshot completo)', async () => {
+  const day = 86400000
+  const t0 = Date.UTC(2026, 0, 1)
+  await replaceCatalogSnapshot([exercise('velho', 'Antigo'), exercise('novo', 'Recente')], {
+    revision: 'rev-1',
+    now: t0,
+  })
+  // Gravação OPORTUNÍSTICA concorrente (ex.: uma busca online enquanto o snapshot já está completo),
+  // bem depois dos 90 dias -- NÃO deve podar nada do snapshot completo.
+  await cacheCatalogEntries([exercise('novo', 'Recente Atualizado')], t0 + 91 * day)
+  assert.deepEqual(
+    (await rawAll('exerciseCatalog')).map((row) => row.id).sort(),
+    ['novo', 'velho']
+  )
+  const meta = await readCatalogSnapshotMeta()
+  assert.equal(meta.complete, true, 'gravação oportunística não derruba o marcador de snapshot completo')
+})
+
+test('gravação oportunística entre duas sincronizações completas nunca corrompe o snapshot; a PRÓXIMA sincronização converge', async () => {
+  await replaceCatalogSnapshot([exercise('c1', 'Supino Reto'), exercise('c2', 'Agachamento')], {
+    revision: 'rev-1',
+  })
+  // Exercício 'c2' foi desativado no servidor nesse intervalo; uma leitura online de 'c3' (novo,
+  // ainda ativo) grava oportunisticamente enquanto o snapshot completo antigo ainda vale.
+  await cacheCatalogEntries([exercise('c3', 'Elevação Lateral')])
+  assert.deepEqual(
+    (await rawAll('exerciseCatalog')).map((row) => row.id).sort(),
+    ['c1', 'c2', 'c3']
+  )
+  // Próxima sincronização completa: só c1 e c3 continuam ativos -- c2 (desativado) desaparece,
+  // mesmo tendo sido "visto" via cache oportunístico depois do snapshot anterior.
+  await replaceCatalogSnapshot([exercise('c1', 'Supino Reto'), exercise('c3', 'Elevação Lateral')], {
+    revision: 'rev-2',
+  })
+  assert.deepEqual(
+    (await rawAll('exerciseCatalog')).map((row) => row.id).sort(),
+    ['c1', 'c3']
+  )
+})
+
+test('duas abas sincronizando ao mesmo tempo (lock best-effort, sem travar nenhuma): o resultado final é íntegro e vem de UMA das duas chamadas, nunca uma mistura corrompida', async () => {
+  // withSyncLock (syncLock.js) é melhor-esforço entre abas reais (sem Web Locks, cai pra lease em
+  // localStorage, que não é atômico) -- a garantia de não corromper dado vem daqui: cada chamada é
+  // UMA transação IndexedDB atômica própria; mesmo que as DUAS rodem concorrentes (pior caso do
+  // lock), a serialização de transações do IndexedDB garante que o estado final é exatamente o de
+  // UMA delas por completo, nunca linhas de ambas misturadas.
+  const snapshotA = [exercise('a1', 'Supino'), exercise('a2', 'Agachamento')]
+  const snapshotB = [exercise('b1', 'Remada'), exercise('b2', 'Elevação'), exercise('b3', 'Rosca')]
+  const [okA, okB] = await Promise.all([
+    replaceCatalogSnapshot(snapshotA, { revision: 'rev-a' }),
+    replaceCatalogSnapshot(snapshotB, { revision: 'rev-b' }),
+  ])
+  assert.equal(okA, true)
+  assert.equal(okB, true)
+  const finalIds = (await rawAll('exerciseCatalog')).map((row) => row.id).sort()
+  const meta = await readCatalogSnapshotMeta()
+  const isExactlyA = JSON.stringify(finalIds) === JSON.stringify(['a1', 'a2']) && meta.revision === 'rev-a'
+  const isExactlyB =
+    JSON.stringify(finalIds) === JSON.stringify(['b1', 'b2', 'b3']) && meta.revision === 'rev-b'
+  assert.ok(isExactlyA || isExactlyB, `estado final deveria ser A OU B inteiro, veio: ${finalIds}`)
+  assert.equal(meta.complete, true)
+  assert.equal(meta.totalActive, finalIds.length)
+})
+
+test('deriveCatalogTaxonomyFromSnapshot: agrega músculos primários e secundários, equipamento, categoria e nível', () => {
+  const taxonomy = deriveCatalogTaxonomyFromSnapshot([
+    { primaryMuscles: ['peito'], secondaryMuscles: ['triceps'], equipment: 'barra', category: 'forca', level: 'iniciante' },
+    { primaryMuscles: ['quadriceps'], secondaryMuscles: ['gluteos'], equipment: null, category: 'pernas', level: 'avancado' },
+  ])
+  assert.deepEqual(taxonomy, {
+    muscles: ['gluteos', 'peito', 'quadriceps', 'triceps'],
+    equipment: ['barra'],
+    categories: ['forca', 'pernas'],
+    levels: ['avancado', 'iniciante'],
+  })
+})
+
+test('readCatalogSnapshotTaxonomy: undefined sem snapshot completo; deriva do snapshot quando completo', async () => {
+  await cacheCatalogEntries([exercise('c1', 'Supino Reto')])
+  assert.equal(await readCatalogSnapshotTaxonomy(), undefined)
+
+  await replaceCatalogSnapshot(
+    [exercise('c1', 'Supino Reto'), exercise('c2', 'Agachamento', { primaryMuscles: ['pernas'], equipment: 'nenhum', category: 'pernas', level: 'avancado' })],
+    { revision: 'rev-1' }
+  )
+  assert.deepEqual(await readCatalogSnapshotTaxonomy(), {
+    muscles: ['peito', 'pernas', 'triceps'], // 'triceps' vem da secondaryMuscles default dos dois fixtures
+    equipment: ['barra', 'nenhum'],
+    categories: ['forca', 'pernas'],
+    levels: ['avancado', 'iniciante'],
+  })
 })
 
 test('IndexedDB indisponível: nenhuma função lança, todas degradam para "sem cache"', async () => {

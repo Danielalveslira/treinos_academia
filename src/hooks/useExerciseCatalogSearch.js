@@ -17,7 +17,14 @@ function describeError() {
 // dispara a cada tecla.
 export function useExerciseCatalogSearch({ enabled = true, q = '', category, muscle, equipment, level }) {
   const [debouncedQuery, setDebouncedQuery] = useState(q)
-  const [state, setState] = useState({ items: [], total: null, loading: enabled, error: null, fromCache: false })
+  const [state, setState] = useState({
+    items: [],
+    total: null,
+    loading: enabled,
+    error: null,
+    fromCache: false,
+    isPartialCache: false,
+  })
   const [offset, setOffset] = useState(0)
   const [loadingMore, setLoadingMore] = useState(false)
   const revision = useRef(0)
@@ -61,13 +68,18 @@ export function useExerciseCatalogSearch({ enabled = true, q = '', category, mus
         })
         if (request !== revision.current) return
         const { data, total } = result
+        const fromCache = isLocalFallback(result)
         setState((previous) => ({
           items: append ? [...previous.items, ...data] : data,
           total,
           loading: false,
           error: null,
           // true = servidor inalcançável, resultado parcial vindo do aparelho (ver offline/readThrough).
-          fromCache: isLocalFallback(result),
+          fromCache,
+          // Só é "parcial" quando o cache local ainda não tem o snapshot completo (ver
+          // exerciseCache.searchCachedCatalog) -- com snapshot completo, mesmo offline, o
+          // resultado é tão confiável quanto o do servidor (inclusive zero resultado verdadeiro).
+          isPartialCache: fromCache && result.complete !== true,
         }))
         setOffset(loadOffset)
       } catch {
@@ -82,7 +94,7 @@ export function useExerciseCatalogSearch({ enabled = true, q = '', category, mus
 
   useEffect(() => {
     if (!enabled || queryTooShort || noQueryIntent) {
-      setState({ items: [], total: null, loading: false, error: null, fromCache: false })
+      setState({ items: [], total: null, loading: false, error: null, fromCache: false, isPartialCache: false })
       return
     }
     load(0)

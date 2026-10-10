@@ -1,5 +1,6 @@
 import { attempt, iterate, request, trackPurge, withTransaction } from './database.js'
 import { STORES, USER_META_PREFIX, userMetaKey } from './schema.js'
+import { clearRoutineImageManifest } from './exerciseImagePrep.js'
 
 // Isolamento por usuário do banco local. Quatro camadas independentes:
 //  1. toda linha privada tem user_id na CHAVE PRIMÁRIA e toda leitura/escrita filtra por ele
@@ -21,7 +22,7 @@ const CACHE_STORES = [STORES.userExercises, STORES.workouts]
 
 // keepUserId = id da sessão que está ficando (login/troca) ou null (logout).
 export function purgePrivateData(keepUserId = null) {
-  return trackPurge(
+  const idbPurge = trackPurge(
     attempt(
       'purge',
       () =>
@@ -70,4 +71,14 @@ export function purgePrivateData(keepUserId = null) {
       undefined
     )
   )
+  // Cache Storage (manifesto de imagens da rotina, ver exerciseImagePrep.js) não é IndexedDB e não
+  // tem user_id -- só é limpo no logout explícito (sem conta nenhuma usando o aparelho). Numa troca
+  // DIRETA entre duas contas (keepUserId != null), o manifesto da conta anterior some sozinho na
+  // próxima vez que qualquer uma das contas preparar imagens de novo -- as imagens em si são
+  // públicas (mesmo bucket pra qualquer conta), só a prioridade de eviction é afetada, nunca dado
+  // privado. Começa em paralelo com a limpeza do IndexedDB (nenhuma trava de uma sobre a outra);
+  // fica de fora do `trackPurge`/gate de escrita, que é só sobre o IndexedDB.
+  if (keepUserId != null) return idbPurge
+  const manifestClear = clearRoutineImageManifest().catch(() => {})
+  return Promise.all([idbPurge, manifestClear]).then(() => undefined)
 }

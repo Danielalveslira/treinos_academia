@@ -5,6 +5,7 @@ import { useExerciseCatalogSearch } from '../hooks/useExerciseCatalogSearch.js'
 import { useExerciseCatalogTaxonomy } from '../hooks/useExerciseCatalogTaxonomy.js'
 import { formatCatalogLabel as displayValue, isProviderExerciseAdded } from '../utils/exerciseCatalog.js'
 import { ExerciseCatalogImage } from './ExerciseCatalogImage.jsx'
+import { CatalogOfflineStatus } from './CatalogOfflineStatus.jsx'
 
 function FilterSelect({ label, value, options, onChange }) {
   // Nunca mostra um filtro sem opções reais (ex.: taxonomia ainda carregando, ou uma
@@ -197,6 +198,8 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
         />
       </div>
 
+      <CatalogOfflineStatus personalExercises={personalExercises} />
+
       {noQueryIntent && (
         <Box className="catalog-status">
           Busque por nome ou escolha um filtro para ver exercícios do catálogo.
@@ -237,7 +240,7 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
                       onClick={() => setSelected(exercise)}
                     >
                       <ExerciseCatalogImage
-                        src={exercise.images?.[0] || null}
+                        src={exercise.thumbnail || exercise.images?.[0] || null}
                         alt=""
                         className="catalog-card-thumbnail"
                         fallbackLabel=""

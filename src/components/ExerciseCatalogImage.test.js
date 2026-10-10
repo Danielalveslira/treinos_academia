@@ -51,12 +51,25 @@ test('catalog image is lazy, async-decoded and supports decorative thumbnails', 
   assert.match(html, /alt=""/)
 })
 
-test('catalog image renders a harmless fallback without a URL', () => {
+test('catalog image renders a harmless fallback without a URL (reason: none-published)', () => {
   const html = render({ src: null })
   assert.match(html, /data-image-fallback="true"/)
+  assert.match(html, /data-fallback-reason="none-published"/)
   assert.match(html, /aria-hidden="true"/)
-  assert.match(html, /Sem imagem/)
+  assert.match(html, /Este exercício ainda não tem imagem publicada/)
   assert.doesNotMatch(html, /<img/)
+})
+
+test('image that failed to load defaults to a DIFFERENT reason (offline-unavailable), not "none-published"', () => {
+  const fallback = renderAfterError({ src: '/0.webp' })
+  assert.equal(fallback.props['data-fallback-reason'], 'offline-unavailable')
+  assert.deepEqual(fallback.children, ['Imagem não disponível neste aparelho offline'])
+})
+
+test('explicit fallbackLabel (including an empty string, for blank grid cards) always wins over both defaults', () => {
+  assert.equal(render({ src: null, fallbackLabel: '' }).includes('Este exercício'), false)
+  const blankFallback = renderAfterError({ src: '/0.webp', fallbackLabel: '' })
+  assert.equal(blankFallback.children, null, 'texto vazio -- sem nenhum dos dois textos padrão')
 })
 
 test('catalog thumbnail may disappear silently when its URL is unavailable', () => {

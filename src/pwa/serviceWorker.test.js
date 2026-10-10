@@ -1132,6 +1132,85 @@ test('activate preserva o cache de imagens de exercício e a poda também o limi
   assert.ok(!names.includes('treinos-antigo-v0'))
 })
 
+// ---- Proteção de imagens da rotina (manifesto no Cache Storage) + orçamento de espaço -----------
+
+const MANIFEST_URL = `${ORIGIN}/__exercise-image-manifest__`
+async function writeManifest(paths) {
+  const cache = await sw.caches.open(VISUAL_CACHE)
+  await cache.put('/__exercise-image-manifest__', new Response(JSON.stringify({ paths })))
+}
+
+test('manifesto: imagem da rotina listada sobrevive à poda mesmo sendo a entrada mais antiga', async () => {
+  load({ responder: () => webp() })
+  await writeManifest([new URL(visualUrl('start.webp', 1)).pathname])
+  for (let n = 1; n <= 104; n += 1) {
+    await dispatchFetch(imageRequest(visualUrl('start.webp', n)))
+  }
+  await new Promise((resolve) => setImmediate(resolve))
+  const keys = [...sw.caches.stores.get(VISUAL_CACHE).keys()]
+  assert.equal(keys.length, 100, 'teto continua valendo pro resto')
+  assert.ok(keys.includes(visualUrl('start.webp', 1)), 'protegida pelo manifesto apesar de ser a mais antiga')
+  assert.ok(keys.includes(MANIFEST_URL), 'o manifesto nunca é expulso nem contado como imagem')
+})
+
+test('manifesto: paths fora do formato/prefixo aceito são ignorados (nunca protege lixo)', async () => {
+  load({ responder: () => webp() })
+  await writeManifest([
+    '/outra/coisa/qualquer.webp',
+    new URL(VISUALS_PREFIX).pathname + `${CATALOG_ID}/v3/animation.webp`, // papel inválido
+    'não é nem um path',
+  ])
+  for (let n = 1; n <= 104; n += 1) {
+    await dispatchFetch(imageRequest(visualUrl('start.webp', n)))
+  }
+  await new Promise((resolve) => setImmediate(resolve))
+  const keys = [...sw.caches.stores.get(VISUAL_CACHE).keys()]
+  assert.equal(keys.length, 100)
+  assert.ok(!keys.includes(visualUrl('start.webp', 1)), 'sem manifesto válido, a mais antiga é expulsa normalmente')
+})
+
+test('manifesto corrompido ou ausente: degrada para a poda normal (FIFO), sem lançar', async () => {
+  load({ responder: () => webp() })
+  const cache = await sw.caches.open(VISUAL_CACHE)
+  await cache.put('/__exercise-image-manifest__', new Response('{ isso não é json'))
+  for (let n = 1; n <= 104; n += 1) {
+    await dispatchFetch(imageRequest(visualUrl('start.webp', n)))
+  }
+  await new Promise((resolve) => setImmediate(resolve))
+  const keys = [...sw.caches.stores.get(VISUAL_CACHE).keys()]
+  assert.equal(keys.length, 100)
+  assert.ok(keys.includes(MANIFEST_URL), 'o manifesto em si continua protegido mesmo corrompido')
+})
+
+test('pouco espaço livre (>= 90% da cota): reduz o teto efetivo pela metade', async () => {
+  load({ responder: () => webp() })
+  sw.self.navigator = { storage: { estimate: async () => ({ usage: 950, quota: 1000 }) } }
+  for (let n = 1; n <= 60; n += 1) {
+    await dispatchFetch(imageRequest(visualUrl('start.webp', n)))
+  }
+  await new Promise((resolve) => setImmediate(resolve))
+  const keys = [...sw.caches.stores.get(VISUAL_CACHE).keys()]
+  assert.equal(keys.length, 50, 'teto normal (100) dividido por 2 sob pressão de espaço')
+})
+
+test('espaço com folga (< 90% da cota): mantém o teto normal de 100', async () => {
+  load({ responder: () => webp() })
+  sw.self.navigator = { storage: { estimate: async () => ({ usage: 100, quota: 1000 }) } }
+  for (let n = 1; n <= 104; n += 1) {
+    await dispatchFetch(imageRequest(visualUrl('start.webp', n)))
+  }
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(sw.caches.stores.get(VISUAL_CACHE).size, 100)
+})
+
+test('navigator.storage.estimate indisponível ou lançando: mantém o teto normal, nunca quebra', async () => {
+  load({ responder: () => webp() })
+  sw.self.navigator = { storage: { estimate: async () => { throw new Error('indisponível') } } }
+  await dispatchFetch(imageRequest(visualUrl('start.webp', 1)))
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(sw.caches.stores.get(VISUAL_CACHE).size, 1)
+})
+
 test('build: exerciseVisualsPrefix só liga com https e URL limpa', () => {
   assert.equal(exerciseVisualsPrefix({ VITE_SUPABASE_URL: 'https://proj.supabase.co/' }), VISUALS_PREFIX)
   for (const env of [

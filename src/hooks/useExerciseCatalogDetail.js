@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getExerciseDetail } from '../services/exerciseCatalogService.js'
+import { isLocalFallback } from '../services/offline/localFallback.js'
+import { isCatalogSnapshotComplete } from '../services/offline/exerciseCache.js'
 
 // Detalhe de UM exercício (imagens/instruções/músculos) do nosso catálogo -- usado por
 // WorkoutExerciseGuide.jsx (execução durante o treino) e ExerciseDetail.jsx (histórico).
@@ -16,26 +18,37 @@ export function useExerciseCatalogDetail(
   { enabled = true } = {}
 ) {
   const hasReference = Boolean(catalogId || (provider && providerExerciseId))
-  const [state, setState] = useState({ data: null, loading: enabled && hasReference, unavailable: false })
+  const [state, setState] = useState({
+    data: null,
+    loading: enabled && hasReference,
+    unavailable: false,
+    fromCache: false,
+    isPartialCache: false,
+  })
   const revision = useRef(0)
 
   useEffect(() => {
     if (!enabled || !hasReference) {
-      setState({ data: null, loading: false, unavailable: false })
+      setState({ data: null, loading: false, unavailable: false, fromCache: false, isPartialCache: false })
       return
     }
     const request = ++revision.current
     setState((previous) => ({ ...previous, loading: true }))
 
     getExerciseDetail({ catalogId, provider, providerExerciseId })
-      .then((data) => {
+      .then(async (data) => {
         if (request !== revision.current) return
-        setState({ data, loading: false, unavailable: !data })
+        const fromCache = isLocalFallback(data)
+        // Só importa diferenciar "disponível offline" de "apenas o que foi salvo antes" quando o
+        // detalhe de fato veio do cache -- online nunca precisa dessa checagem extra.
+        const isPartialCache = fromCache ? !(await isCatalogSnapshotComplete()) : false
+        if (request !== revision.current) return
+        setState({ data, loading: false, unavailable: !data, fromCache, isPartialCache })
       })
       .catch((error) => {
         if (request !== revision.current) return
         console.error('[useExerciseCatalogDetail]', catalogId || providerExerciseId, error)
-        setState({ data: null, loading: false, unavailable: true })
+        setState({ data: null, loading: false, unavailable: true, fromCache: false, isPartialCache: false })
       })
 
     return () => {

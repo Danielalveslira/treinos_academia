@@ -134,6 +134,7 @@ test('searchExercises chama a RPC com os parâmetros certos e mapeia as linhas p
     mechanic: 'composto',
     instructions: ['Deite no banco.', 'Empurre a barra.'],
     images: [`${BASE}/${CATALOG}/v3/start.webp`, `${BASE}/${CATALOG}/v3/end.webp`],
+    thumbnail: `${BASE}/${CATALOG}/v3/thumb.webp`,
   })
 })
 
@@ -234,10 +235,21 @@ test('resolveExercisePublishedImages ignora paths fora do formato publicado (nun
   assert.deepEqual(service.resolveExercisePublishedImages(refs), [])
 })
 
-test('exercício sem published_media_refs mapeia images vazio mesmo que o dataset tenha referências', async () => {
+test('resolveExercisePublishedThumbnail lê published_media_refs.thumbnail.path (NÃO está dentro de images[])', () => {
+  assert.equal(service.resolveExercisePublishedThumbnail(PUBLISHED), `${BASE}/${CATALOG}/v3/thumb.webp`)
+})
+
+test('resolveExercisePublishedThumbnail sem miniatura publicada devolve null (conjunto sem thumbnail é válido)', () => {
+  assert.equal(service.resolveExercisePublishedThumbnail({ images: [] }), null)
+  assert.equal(service.resolveExercisePublishedThumbnail(undefined), null)
+  assert.equal(service.resolveExercisePublishedThumbnail({ thumbnail: { path: 'formato/invalido.jpg' } }), null)
+})
+
+test('exercício sem published_media_refs mapeia images e thumbnail vazios mesmo que o dataset tenha referências', async () => {
   globalThis.__rpcResult = { data: [{ ...rawRow, published_media_refs: { images: [] } }], error: null }
   const { data } = await service.searchExercises({ limit: 20, offset: 0 })
   assert.deepEqual(data[0].images, [])
+  assert.equal(data[0].thumbnail, null)
 })
 
 test('getExerciseDetail seleciona published_media_refs e nunca a coluna removida media_refs', async () => {

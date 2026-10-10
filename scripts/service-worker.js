@@ -39,11 +39,22 @@ const EXERCISE_VISUALS_PREFIX = __EXERCISE_VISUALS_PREFIX__ // eslint-disable-li
 // {catalogId}/v{versão}/{start|end|thumb}.webp -- o único formato que o cache aceita.
 const EXERCISE_VISUAL_FILE = /^[0-9a-f-]{36}\/v\d{1,6}\/(start|end|thumb)\.webp$/
 const ACK_TOKEN_PATTERN = /^[0-9a-f]{64}$/
+// Chave sintética (mesma origem do app, NÃO do bucket) onde a página grava a lista de paths das
+// imagens da rotina que pediu para priorizar -- gravada DIRETO no Cache Storage pela própria
+// página (window.caches também dá acesso a este mesmo cache por nome; não é mensagem, por isso
+// sobrevive a reinício/atualização do worker: lida do cache a cada chamada, nunca de memória).
+// Mesma string em src/services/offline/exerciseImagePrep.js (pipelines de build diferentes --
+// não há import cruzado possível entre o Service Worker e o app).
+const EXERCISE_IMAGE_MANIFEST_URL = '/__exercise-image-manifest__'
+const MAX_PROTECTED_EXERCISE_PATHS = 200
 
 const MAX_ASSET_ENTRIES = 120
 const MAX_IMAGE_ENTRIES = 40
-// ~50 exercícios visualizados (start + end). Sob demanda e com poda do mais antigo.
+// ~50 exercícios visualizados (start + end). Sob demanda e com poda do mais antigo -- reduzido
+// pela metade quando o aparelho está com pouco espaço (ver exerciseImageBudget). As imagens da
+// rotina (manifesto acima) são protegidas da poda mesmo com o teto reduzido.
 const MAX_EXERCISE_IMAGE_ENTRIES = 100
+const LOW_STORAGE_RATIO = 0.9 // mesmo limiar de storagePersistence.js (LOW_SPACE_RATIO) no app
 const IMAGE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 const CACHED_AT_HEADER = 'x-sw-cached-at'
 
@@ -99,7 +110,7 @@ self.addEventListener('activate', (event) => {
       await Promise.all([
         trim(ASSET_CACHE, MAX_ASSET_ENTRIES, CORE_ASSETS),
         trim(IMAGE_CACHE, MAX_IMAGE_ENTRIES),
-        trim(EXERCISE_IMAGE_CACHE, MAX_EXERCISE_IMAGE_ENTRIES),
+        trimExerciseImages(),
       ])
     })()
   )
@@ -218,6 +229,55 @@ function isCacheableExerciseImage(response) {
   )
 }
 
+// path (sem a origem do bucket) que casa o formato aceito -- usado para validar o manifesto da
+// página antes de proteger qualquer coisa que ela liste (nunca confia ciegamente no conteúdo).
+function isProtectableExercisePath(path) {
+  if (!EXERCISE_VISUALS_PREFIX || typeof path !== 'string') return false
+  const prefixPath = new URL(EXERCISE_VISUALS_PREFIX).pathname
+  return path.startsWith(prefixPath) && EXERCISE_VISUAL_FILE.test(path.slice(prefixPath.length))
+}
+
+// Paths que a poda NUNCA pode expulsar: o próprio manifesto, mais os paths válidos que ele lista
+// (imagens da rotina que a página preparou). Nunca lança -- manifesto ausente/corrompido só
+// significa "nada protegido além dele mesmo"; a poda comum (FIFO) continua valendo pro resto.
+async function protectedExercisePaths(cache) {
+  const manifestPath = new URL(EXERCISE_IMAGE_MANIFEST_URL, self.location.origin).pathname
+  const paths = [manifestPath]
+  try {
+    const manifestResponse = await cache.match(EXERCISE_IMAGE_MANIFEST_URL)
+    if (manifestResponse) {
+      const manifest = await manifestResponse.json()
+      for (const path of Array.isArray(manifest?.paths) ? manifest.paths : []) {
+        if (paths.length >= MAX_PROTECTED_EXERCISE_PATHS) break
+        if (isProtectableExercisePath(path)) paths.push(path)
+      }
+    }
+  } catch {
+    /* manifesto corrompido/indisponível: segue só com o próprio manifesto protegido */
+  }
+  return paths
+}
+
+// Reduz o teto efetivo sob pressão de espaço (aparelho quase sem cota): protege o que já foi
+// preparado da rotina (ver protectedExercisePaths) em vez de competir igualmente com entradas
+// antigas/não solicitadas. Sem suporte a navigator.storage.estimate(), mantém o teto normal.
+async function exerciseImageBudget() {
+  try {
+    const estimate = await self.navigator?.storage?.estimate?.()
+    if (!estimate?.quota) return MAX_EXERCISE_IMAGE_ENTRIES
+    if (estimate.usage / estimate.quota < LOW_STORAGE_RATIO) return MAX_EXERCISE_IMAGE_ENTRIES
+    return Math.ceil(MAX_EXERCISE_IMAGE_ENTRIES / 2)
+  } catch {
+    return MAX_EXERCISE_IMAGE_ENTRIES
+  }
+}
+
+async function trimExerciseImages() {
+  const cache = await caches.open(EXERCISE_IMAGE_CACHE)
+  const [budget, keep] = await Promise.all([exerciseImageBudget(), protectedExercisePaths(cache)])
+  await trim(EXERCISE_IMAGE_CACHE, budget, keep)
+}
+
 // Cache-first: o path inclui a versão, então o conteúdo de uma URL nunca muda. A requisição do <img>
 // é no-cors (resposta opaca, que não dá para validar); refazemos com CORS (o bucket público responde
 // com Access-Control-Allow-Origin) para só guardar uma imagem WebP de verdade. Offline sem cache: a
@@ -229,7 +289,7 @@ async function exerciseImageStrategy(request) {
   const response = await fetch(new Request(request.url, { mode: 'cors', credentials: 'omit' }))
   if (isCacheableExerciseImage(response)) {
     await cache.put(request.url, response.clone())
-    trim(EXERCISE_IMAGE_CACHE, MAX_EXERCISE_IMAGE_ENTRIES).catch(() => {})
+    trimExerciseImages().catch(() => {})
   }
   return response
 }

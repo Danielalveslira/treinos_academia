@@ -127,6 +127,46 @@ test('IndexedDB indisponível: a limpeza não lança', async () => {
   }
 })
 
+function fakeCaches() {
+  const store = new Map()
+  return {
+    store,
+    open: async () => ({
+      match: async (url) => store.get(String(url)),
+      put: async (url, response) => void store.set(String(url), response),
+      delete: async (url) => store.delete(String(url)),
+    }),
+  }
+}
+
+// Mesma string literal de exerciseImagePrep.js/service-worker.js (EXERCISE_IMAGE_MANIFEST_URL) --
+// a chave usada de verdade é o path relativo, não uma URL absoluta.
+const MANIFEST_KEY = '/__exercise-image-manifest__'
+
+test('logout (nenhum usuário): o manifesto de imagens da rotina (Cache Storage) também é limpo', async () => {
+  const fake = fakeCaches()
+  globalThis.caches = fake
+  try {
+    fake.store.set(MANIFEST_KEY, new Response('{"paths":["x"]}'))
+    await purgePrivateData(null)
+    assert.equal(fake.store.has(MANIFEST_KEY), false)
+  } finally {
+    delete globalThis.caches
+  }
+})
+
+test('troca de conta (A -> B, não é logout): o manifesto da rotina NÃO é limpo aqui -- as imagens são públicas, só a prioridade de eviction fica desatualizada até a próxima preparação', async () => {
+  const fake = fakeCaches()
+  globalThis.caches = fake
+  try {
+    fake.store.set(MANIFEST_KEY, new Response('{"paths":["x"]}'))
+    await purgePrivateData('user-b')
+    assert.equal(fake.store.has(MANIFEST_KEY), true)
+  } finally {
+    delete globalThis.caches
+  }
+})
+
 test('AuthContext chama a limpeza a cada troca real de identidade, sem aguardá-la', () => {
   const source = readFileSync(new URL('../../contexts/AuthContext.jsx', import.meta.url), 'utf8')
   const loadSession = source.slice(
