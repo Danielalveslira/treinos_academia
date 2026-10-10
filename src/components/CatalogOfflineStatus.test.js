@@ -117,12 +117,12 @@ afterEach(() => {
   delete globalThis.__revisionImpl
 })
 
-test('sem snapshot: "Não preparado", botão "Preparar para uso offline", 0 de 0 imagens', async () => {
+test('sem snapshot: "Não preparado", botão "Preparar para uso offline", sem imagens publicadas ainda', async () => {
   const component = api.mount({ personalExercises: [] })
   await settle()
   const text = pageText(component)
   assert.match(text, /Não preparado/)
-  assert.match(text, /0 de 0 arquivos disponíveis/)
+  assert.match(text, /Nenhuma imagem publicada/)
   assert.ok(buttonWithText(component, /Preparar para uso offline/))
   assert.ok(!buttonWithText(component, /^Atualizar$/))
 })
