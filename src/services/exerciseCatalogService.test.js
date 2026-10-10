@@ -150,6 +150,27 @@ test('searchExercises propaga erro da RPC (rate limit do Postgres, indisponibili
   await assert.rejects(() => service.searchExercises({ limit: 20, offset: 0 }))
 })
 
+test('offline conhecido (navigator.onLine === false): searchExercises vai direto pro cache local, NUNCA chama a RPC', async () => {
+  const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { onLine: false } })
+  try {
+    // Sem IndexedDB real neste harness (service.test.js não usa fake-indexeddb) -- o cache local
+    // degrada pra "sem dado", então a chamada rejeita; o que importa aqui é que NENHUMA chamada ao
+    // Supabase aconteceu (não esperou o fetch() falhar pra só então desistir).
+    await assert.rejects(() => service.searchExercises({ limit: 20, offset: 0 }))
+    assert.equal(globalThis.__supabaseCalls.length, 0, 'offline conhecido não tenta a rede')
+  } finally {
+    Object.defineProperty(globalThis, 'navigator', previousNavigator)
+  }
+})
+
+test('online (ou navigator.onLine indefinido): searchExercises continua tentando a rede primeiro, sem mudança de comportamento', async () => {
+  globalThis.__rpcResult = { data: [rawRow], error: null }
+  const { total } = await service.searchExercises({ limit: 20, offset: 0 })
+  assert.equal(total, 1)
+  assert.equal(globalThis.__supabaseCalls[0].kind, 'rpc')
+})
+
 test('getExerciseDetail busca por catalogId (PK direta) quando disponível', async () => {
   globalThis.__fromResult = { data: rawRow, error: null }
   const result = await service.getExerciseDetail({ catalogId: 'catalog-uuid-1' })
@@ -166,6 +187,17 @@ test('getExerciseDetail cai pra provider + providerExerciseId sem catalogId', as
 
   const fromCall = globalThis.__supabaseCalls.find((call) => call.kind === 'from')
   assert.deepEqual(fromCall.filters, { provider: 'evolutus_dataset', provider_exercise_id: 'Bench_Press' })
+})
+
+test('offline conhecido: getExerciseDetail vai direto pro cache local, NUNCA consulta o Supabase (modal de execução não espera timeout)', async () => {
+  const previousNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { onLine: false } })
+  try {
+    await assert.rejects(() => service.getExerciseDetail({ catalogId: 'catalog-uuid-1' }))
+    assert.equal(globalThis.__supabaseCalls.length, 0)
+  } finally {
+    Object.defineProperty(globalThis, 'navigator', previousNavigator)
+  }
 })
 
 test('getExerciseDetail devolve null quando o item não existe mais no catálogo -- nunca lança', async () => {

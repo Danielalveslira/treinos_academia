@@ -231,7 +231,7 @@ before(async () => {
               const DETAIL = ${JSON.stringify(detail)}
               export const useExerciseCatalogDetail = ({ catalogId, providerExerciseId } = {}) =>
                 (catalogId || providerExerciseId)
-                  ? { data: DETAIL, loading: false, unavailable: false }
+                  ? { data: globalThis.__detailOverride ?? DETAIL, loading: false, unavailable: false }
                   : { data: null, loading: false, unavailable: true }
             `,
           }))
@@ -272,6 +272,39 @@ test('execution guide exposes two lazy images, metadata and numbered instruction
   assert.match(html, /<ol>/)
   assert.match(html, /Mantenha a coluna neutra\./)
   assert.match(html, /Puxe a barra\./)
+})
+
+test('without start/end (not published or not cached yet), the guide falls back to the thumbnail instead of showing no image', () => {
+  globalThis.__detailOverride = { ...detail, images: [], thumbnail: 'https://cdn.test/Row/thumb.jpg' }
+  try {
+    const html = renderGuide(exercise)
+    assert.match(html, /Row\/thumb\.jpg/)
+    assert.equal((html.match(/loading="lazy"/g) || []).length, 1)
+    assert.doesNotMatch(html, /Sem imagens para este exercício/)
+  } finally {
+    delete globalThis.__detailOverride
+  }
+})
+
+test('with neither start/end nor a thumbnail, the guide shows the honest "no images" message, not a crash', () => {
+  globalThis.__detailOverride = { ...detail, images: [], thumbnail: null }
+  try {
+    const html = renderGuide(exercise)
+    assert.match(html, /Sem imagens para este exercício/)
+  } finally {
+    delete globalThis.__detailOverride
+  }
+})
+
+test('the compact workout visual prefers the dedicated thumbnail over the full start image', () => {
+  globalThis.__detailOverride = { ...detail, thumbnail: 'https://cdn.test/Row/thumb.jpg' }
+  try {
+    const html = renderVisual(exercise)
+    assert.match(html, /Row\/thumb\.jpg/)
+    assert.doesNotMatch(html, /Row\/0\.jpg/)
+  } finally {
+    delete globalThis.__detailOverride
+  }
 })
 
 test('execution guide falls back to the personal snapshot when the catalog is unavailable', () => {

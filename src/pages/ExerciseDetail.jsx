@@ -138,16 +138,19 @@ export default function ExerciseDetail() {
         </Box>
       </Box>
 
-      {catalogExercise?.images?.length > 0 && (
+      {(catalogExercise?.images?.length > 0 || catalogExercise?.thumbnail) && (
         <section className="personal-catalog-images" aria-label={`Imagens de ${exercise.name}`}>
-          {catalogExercise.images.slice(0, 2).map((src, index) => (
-            <ExerciseCatalogImage
-              key={src}
-              src={src}
-              alt={`Demonstração de ${exercise.name}, posição ${index + 1}`}
-              className="catalog-detail-image"
-            />
-          ))}
+          {(catalogExercise.images?.length ? catalogExercise.images.slice(0, 2) : [catalogExercise.thumbnail]).map(
+            (src, index) => (
+              <ExerciseCatalogImage
+                key={src}
+                src={src}
+                fallbackSrc={catalogExercise.thumbnail}
+                alt={`Demonstração de ${exercise.name}, posição ${index + 1}`}
+                className="catalog-detail-image"
+              />
+            )
+          )}
         </section>
       )}
 

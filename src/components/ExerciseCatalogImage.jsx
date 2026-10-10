@@ -10,12 +10,22 @@ const REASON_LABEL = {
   'offline-unavailable': 'Imagem não disponível neste aparelho offline',
 }
 
-export function ExerciseCatalogImage({ src, alt = '', className = '', fallbackLabel, hideOnError = false }) {
-  const [failedUrl, setFailedUrl] = useState(null)
-  const failed = Boolean(src) && failedUrl === src
-  if (!src || failed) {
+// `fallbackSrc` (tipicamente a thumbnail) só entra em jogo se `src` (start/end) existir mas FALHAR
+// ao carregar -- publicado, mas não baixado/cacheado neste aparelho agora. Nunca usado por si só
+// quando `src` carrega normalmente. Índice avança (nunca volta) por uma lista de candidatos --
+// evita qualquer loop de retry entre os dois.
+export function ExerciseCatalogImage({ src, fallbackSrc, alt = '', className = '', fallbackLabel, hideOnError = false }) {
+  const candidates = []
+  if (src) candidates.push(src)
+  if (fallbackSrc && fallbackSrc !== src) candidates.push(fallbackSrc)
+
+  const [index, setIndex] = useState(0)
+  const effectiveSrc = candidates[index]
+  const exhausted = index >= candidates.length
+
+  if (exhausted) {
     if (hideOnError) return null
-    const reason = failed ? 'offline-unavailable' : 'none-published'
+    const reason = candidates.length > 0 ? 'offline-unavailable' : 'none-published'
     return (
       <div
         className={`catalog-image-placeholder ${className}`.trim()}
@@ -30,11 +40,11 @@ export function ExerciseCatalogImage({ src, alt = '', className = '', fallbackLa
   return (
     <img
       className={className}
-      src={src}
+      src={effectiveSrc}
       loading="lazy"
       decoding="async"
       alt={alt}
-      onError={() => setFailedUrl(src)}
+      onError={() => setIndex((current) => current + 1)}
     />
   )
 }

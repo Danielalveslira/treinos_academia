@@ -55,7 +55,10 @@ export function WorkoutExerciseGuide({ exercise, onClose, triggerRef }) {
     }
   }, [onClose, triggerRef])
 
-  const images = detail?.images?.slice(0, 2) || []
+  // start/end (posição inicial/final) são a prioridade; sem elas (ainda não publicadas, ou
+  // publicadas mas não baixadas neste aparelho), a miniatura é melhor que nenhuma imagem --
+  // mesmo exercício, só um enquadramento menor.
+  const images = detail?.images?.length ? detail.images.slice(0, 2) : detail?.thumbnail ? [detail.thumbnail] : []
   const primaryMuscles = detail?.primaryMuscles?.length ? detail.primaryMuscles : [exercise.muscleGroup]
   const equipment = detail?.equipment ?? exercise.equipment
   const instructions = detail?.instructions || []
@@ -83,6 +86,9 @@ export function WorkoutExerciseGuide({ exercise, onClose, triggerRef }) {
               <ExerciseCatalogImage
                 key={src}
                 src={src}
+                // start/end publicada mas não baixada neste aparelho (offline, cache vazio): tenta a
+                // miniatura antes de desistir -- mesma imagem fica disponível mesmo sem o par completo.
+                fallbackSrc={detail?.thumbnail}
                 alt={`${exercise.name}, posição ${index + 1}`}
                 className="workout-guide-image"
                 fallbackLabel={`Imagem ${index + 1} indisponível`}
@@ -147,7 +153,10 @@ export function WorkoutExerciseVisual({ exercise, group, displayName }) {
     <>
       <div className="exercise-context-visual">
         <ExerciseCatalogImage
-          src={detail?.images?.[0] || null}
+          src={detail?.thumbnail || detail?.images?.[0] || null}
+          // Miniatura publicada mas não baixada ainda: tenta a posição inicial (se essa, por sua
+          // vez, já estiver em cache) antes de ficar em branco.
+          fallbackSrc={detail?.thumbnail ? detail?.images?.[0] : null}
           alt=""
           className="workout-exercise-thumbnail"
           hideOnError

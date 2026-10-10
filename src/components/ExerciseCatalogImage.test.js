@@ -9,6 +9,8 @@ import { build } from 'esbuild'
 let directory
 let render
 let renderAfterError
+let imgSrcAfterErrors
+let renderAfterErrors
 
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'catalog-image-component-'))
@@ -27,6 +29,29 @@ before(async () => {
           act(() => { component.root.findByType('img').props.onError() })
           return component.toJSON()
         }
+        // Dispara onError \`times\` vezes seguidas (cadeia src -> fallbackSrc -> placeholder) e
+        // devolve o <img> atual (null quando já esgotou e caiu no placeholder).
+        export const imgSrcAfterErrors = (props, times) => {
+          let component
+          act(() => { component = TestRenderer.create(createElement(ExerciseCatalogImage, props)) })
+          for (let i = 0; i < times; i += 1) {
+            const img = component.root.findAllByType('img')[0]
+            if (!img) break
+            act(() => { img.props.onError() })
+          }
+          const remaining = component.root.findAllByType('img')
+          return remaining.length ? remaining[0].props.src : null
+        }
+        export const renderAfterErrors = (props, times) => {
+          let component
+          act(() => { component = TestRenderer.create(createElement(ExerciseCatalogImage, props)) })
+          for (let i = 0; i < times; i += 1) {
+            const img = component.root.findAllByType('img')[0]
+            if (!img) break
+            act(() => { img.props.onError() })
+          }
+          return component.toJSON()
+        }
       `,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
@@ -37,7 +62,7 @@ before(async () => {
     jsx: 'automatic',
     logLevel: 'silent',
   })
-  ;({ render, renderAfterError } = createRequire(import.meta.url)(outfile))
+  ;({ render, renderAfterError, imgSrcAfterErrors, renderAfterErrors } = createRequire(import.meta.url)(outfile))
 })
 
 after(async () => {
@@ -81,4 +106,35 @@ test('catalog image failure replaces only that image with its fallback', () => {
   const fallback = renderAfterError({ src: '/0.webp', fallbackLabel: 'Imagem indisponível' })
   assert.equal(fallback.props['data-image-fallback'], true)
   assert.deepEqual(fallback.children, ['Imagem indisponível'])
+})
+
+// fallbackSrc (thumbnail): start/end publicada mas indisponível neste aparelho tenta a miniatura
+// antes de desistir -- nunca usada quando o src principal já carrega.
+test('fallbackSrc is never used while the primary src is loading fine', () => {
+  const html = render({ src: '/start.webp', fallbackSrc: '/thumb.webp' })
+  assert.match(html, /start\.webp/)
+  assert.doesNotMatch(html, /thumb\.webp/)
+})
+
+test('primary src fails: switches to fallbackSrc (thumbnail) instead of the placeholder', () => {
+  const src = imgSrcAfterErrors({ src: '/start.webp', fallbackSrc: '/thumb.webp' }, 1)
+  assert.equal(src, '/thumb.webp')
+})
+
+test('primary AND fallbackSrc both fail: falls back to the placeholder (offline-unavailable), never loops', () => {
+  const tree = renderAfterErrors({ src: '/start.webp', fallbackSrc: '/thumb.webp', fallbackLabel: 'Imagem indisponível' }, 2)
+  assert.equal(tree.props['data-image-fallback'], true)
+  assert.equal(tree.props['data-fallback-reason'], 'offline-unavailable')
+  assert.deepEqual(tree.children, ['Imagem indisponível'])
+})
+
+test('no primary src but a fallbackSrc exists: uses the fallback directly as the first attempt', () => {
+  const html = render({ src: null, fallbackSrc: '/thumb.webp' })
+  assert.match(html, /thumb\.webp/)
+  assert.doesNotMatch(html, /data-image-fallback/)
+})
+
+test('fallbackSrc identical to src is ignored (never retried as if it were a different image)', () => {
+  const tree = renderAfterErrors({ src: '/same.webp', fallbackSrc: '/same.webp' }, 1)
+  assert.equal(tree.props['data-image-fallback'], true, 'uma única tentativa -- não finge que a mesma URL é um fallback')
 })

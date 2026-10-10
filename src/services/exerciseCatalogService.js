@@ -1,6 +1,7 @@
 import { supabase } from '../supabase/config'
 import { readThrough } from './offline/readThrough.js'
 import { isLocalFallback } from './offline/localFallback.js'
+import { isBrowserOffline } from './offline/connectivity.js'
 import {
   cacheCatalogEntries,
   cacheCatalogTaxonomy,
@@ -89,6 +90,11 @@ export function searchExercises({
 }) {
   return readThrough({
     label: 'catalog-search',
+    // offline conhecido (navigator.onLine === false) -- vai direto pro cache local, sem esperar o
+    // fetch() falhar/der timeout pra só então cair no fallback (percebido como lentidão). Só é uma
+    // DICA (ver connectivity.js): com onLine indefinido/true o caminho remote-first de sempre
+    // continua valendo, sem mudar o contrato de readThrough nem o comportamento online.
+    localOnly: isBrowserOffline(),
     remote: async () => {
       const { data, error } = await supabase.rpc('search_exercise_catalog', {
         p_query: q || null,
@@ -138,6 +144,10 @@ export async function fetchCatalogRevision() {
 export function getExerciseDetail({ catalogId, provider, providerExerciseId }) {
   return readThrough({
     label: 'catalog-detail',
+    // Mesmo motivo de searchExercises: offline conhecido pula direto pro IndexedDB -- é o que faz
+    // o modal "Ver execução" e o histórico mostrarem instruções/imagens na hora, sem esperar o
+    // fetch() falhar primeiro.
+    localOnly: isBrowserOffline(),
     remote: async () => {
       let query = supabase.from('exercise_catalog').select(
         'id, provider, provider_exercise_id, name, primary_muscle, muscles, equipment, category, difficulty, force, mechanic, instructions, published_media_refs'
@@ -198,6 +208,7 @@ async function readLocalTaxonomy() {
 function fetchCatalogTaxonomy() {
   return readThrough({
     label: 'catalog-taxonomy',
+    localOnly: isBrowserOffline(),
     remote: fetchRemoteTaxonomy,
     persist: cacheCatalogTaxonomy,
     local: readLocalTaxonomy,

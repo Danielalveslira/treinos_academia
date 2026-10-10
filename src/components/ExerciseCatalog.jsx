@@ -27,7 +27,7 @@ function FilterSelect({ label, value, options, onChange }) {
 }
 
 function ExerciseCatalogDetails({ exercise, added, adding, onAdd, onClose }) {
-  const images = exercise.images?.slice(0, 2) || []
+  const images = exercise.images?.length ? exercise.images.slice(0, 2) : exercise.thumbnail ? [exercise.thumbnail] : []
   return (
     <aside className="catalog-details" aria-labelledby="catalog-details-title">
       <Button leadingVisual={ArrowLeftIcon} onClick={onClose}>
@@ -39,6 +39,7 @@ function ExerciseCatalogDetails({ exercise, added, adding, onAdd, onClose }) {
             <ExerciseCatalogImage
               key={src}
               src={src}
+              fallbackSrc={exercise.thumbnail}
               alt={`Demonstração de ${exercise.name}, posição ${index + 1}`}
               className="catalog-detail-image"
             />
@@ -241,6 +242,7 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
                     >
                       <ExerciseCatalogImage
                         src={exercise.thumbnail || exercise.images?.[0] || null}
+                        fallbackSrc={exercise.thumbnail ? exercise.images?.[0] : null}
                         alt=""
                         className="catalog-card-thumbnail"
                         fallbackLabel=""
