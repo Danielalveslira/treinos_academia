@@ -19,14 +19,17 @@ const newcomer = {
 }
 const now = new Date(2026, 9, 26, 9, 0, 0)
 
-test('voz: explícita vence o sexo; auto usa o sexo só se masculino/feminino; o resto é neutro', () => {
-  assert.equal(resolveGreetingVoice('feminino', 'masculino'), 'feminino')
+test('voz: só "neutro" é escolha explícita; auto, legado (masculino/feminino) e qualquer outro valor usam o sexo do cadastro', () => {
   assert.equal(resolveGreetingVoice('neutro', 'feminino'), 'neutro')
+  assert.equal(resolveGreetingVoice('neutro', 'masculino'), 'neutro')
   assert.equal(resolveGreetingVoice('auto', 'masculino'), 'masculino')
   assert.equal(resolveGreetingVoice('auto', 'feminino'), 'feminino')
+  // Legado: contas que escolheram masculino/feminino antes desta mudança passam a se comportar como 'auto'.
+  assert.equal(resolveGreetingVoice('masculino', 'feminino'), 'feminino')
+  assert.equal(resolveGreetingVoice('feminino', 'masculino'), 'masculino')
   for (const sexo of ['nao_informar', undefined, null, '', 'outro', 42])
     assert.equal(resolveGreetingVoice('auto', sexo), 'neutro')
-  for (const voice of [undefined, null, 'qualquer', 7]) {
+  for (const voice of [undefined, null, 'qualquer', 7, 'masculino', 'feminino']) {
     assert.equal(resolveGreetingVoice(voice, undefined), 'neutro')
     assert.equal(resolveGreetingVoice(voice, 'feminino'), 'feminino')
   }
@@ -141,11 +144,17 @@ test('a frase de boas-vindas é a mesma antes e depois do ACK (mesma semente)', 
 })
 
 test('virada de voz (preferência) troca só a gramática, mantendo a categoria', () => {
-  const masculine = buildGreetingContext({ now, greetingVoice: 'masculino' })
-  const feminine = buildGreetingContext({ now, greetingVoice: 'feminino' })
+  const masculine = buildGreetingContext({ now, greetingVoice: 'neutro', sexo: 'masculino' })
+  const feminine = buildGreetingContext({ now, greetingVoice: 'auto', sexo: 'feminino' })
   assert.equal(masculine.category, feminine.category)
-  assert.equal(masculine.voice, 'masculino')
+  assert.equal(masculine.voice, 'neutro')
   assert.equal(feminine.voice, 'feminino')
+})
+
+test('voz: preferência antiga masculino/feminino (contas que escolheram antes da mudança) vira auto', () => {
+  const legacyMasculino = buildGreetingContext({ now, greetingVoice: 'masculino', sexo: 'feminino' })
+  const autoEquivalent = buildGreetingContext({ now, greetingVoice: 'auto', sexo: 'feminino' })
+  assert.equal(legacyMasculino.voice, autoEquivalent.voice)
 })
 
 test('parseWelcomeCutoff exige ISO com fuso; qualquer outra coisa desliga', () => {

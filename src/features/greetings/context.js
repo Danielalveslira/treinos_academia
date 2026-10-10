@@ -3,13 +3,16 @@ import { DEFAULT_NAME, sanitizeName } from './format.js'
 import { selectGreetingCategory } from './select.js'
 import { isWelcomeEligible } from './welcome.js'
 
-export const GREETING_VOICES = ['auto', 'masculino', 'feminino', 'neutro']
+// Preferências que a pessoa pode ESCOLHER. `masculino`/`feminino` não são mais ofertados (a pessoa não
+// escolhe manualmente um gênero diferente do cadastro) mas continuam aceitos como valor LEGADO já salvo em
+// contas antigas; resolveGreetingVoice trata esse legado como `auto`.
+export const GREETING_VOICES = ['auto', 'neutro']
 
-// Voz do TEXTO (gramática). `auto` usa o sexo do cadastro só quando ele foi escolhido explicitamente;
-// qualquer outra coisa (nao_informar, ausente, valor inesperado) vira neutro. Preferência explícita vence.
+// Voz do TEXTO (gramática). Só `neutro` é escolha explícita que vence o cadastro. Qualquer outro valor --
+// `auto`, legado (`masculino`/`feminino` salvos antes desta mudança), ausente ou inesperado -- usa o sexo do
+// cadastro quando ele é `masculino`/`feminino`; sem isso, neutro.
 export function resolveGreetingVoice(greetingVoice, sexo) {
-  if (greetingVoice === 'masculino' || greetingVoice === 'feminino' || greetingVoice === 'neutro')
-    return greetingVoice
+  if (greetingVoice === 'neutro') return 'neutro'
   return sexo === 'masculino' || sexo === 'feminino' ? sexo : 'neutro'
 }
 

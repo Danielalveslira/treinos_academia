@@ -8,14 +8,16 @@ const VOICE_OPTIONS = [
   {
     value: 'auto',
     label: 'Automático',
-    description: 'Usa o que você informou no cadastro; sem essa informação, texto neutro.',
+    description:
+      'Usa o gênero informado no cadastro para escolher mensagens masculinas ou femininas. Sem gênero informado, usa mensagens neutras.',
   },
-  { value: 'masculino', label: 'Masculino', description: 'Ex.: “Bem-vindo, campeão!”' },
-  { value: 'feminino', label: 'Feminino', description: 'Ex.: “Bem-vinda, campeã!”' },
-  { value: 'neutro', label: 'Neutro', description: 'Sem marcação de gênero.' },
+  { value: 'neutro', label: 'Neutro', description: 'Usa só mensagens sem marcação de gênero.' },
 ]
 
-// Preferência só do TEXTO do cabeçalho da Home: não altera cadastro, permissões nem dados de saúde.
+// Preferência só do TEXTO do cabeçalho da Home: não altera cadastro, permissões nem dados de saúde. A pessoa
+// não escolhe manualmente um gênero diferente do cadastro (só auto/neutro). Valores antigos `masculino`/
+// `feminino`, salvos antes dessa mudança, aparecem aqui como "Automático" (resolveGreetingVoice já os trata
+// como auto na hora de montar a frase).
 // Salva ao escolher (uma RPC, só na troca) e reflete na Home sem recarregar.
 export function GreetingVoiceSettings() {
   const { user, profile, offlineLocal, patchProfile } = useAuth()
@@ -23,7 +25,8 @@ export function GreetingVoiceSettings() {
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const saving = useRef(false)
-  const current = profile?.greetingVoice ?? 'auto'
+  const storedVoice = profile?.greetingVoice ?? 'auto'
+  const current = storedVoice === 'neutro' ? 'neutro' : 'auto'
 
   async function choose(value) {
     if (saving.current || value === current || !user) return
@@ -32,8 +35,8 @@ export function GreetingVoiceSettings() {
     setError('')
     setSaved(false)
     try {
-      const stored = await setGreetingVoice(value)
-      patchProfile?.(user.uid, { greetingVoice: stored })
+      const nextVoice = await setGreetingVoice(value)
+      patchProfile?.(user.uid, { greetingVoice: nextVoice })
       setSaved(true)
     } catch {
       setError('Não foi possível salvar agora. Tente novamente.')
