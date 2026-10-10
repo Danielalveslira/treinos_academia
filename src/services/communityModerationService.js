@@ -19,7 +19,9 @@ export async function setCommunityMemberBan({ communityId, targetUserId, banned,
 // listar as restrições dela — usado para saber quem já está banido antes de oferecer
 // banir/desbanir na UI.
 export async function listCommunityRestrictions(communityId) {
-  const { data, error } = await supabase.rpc('list_community_restrictions', { p_community_id: communityId })
+  const { data, error } = await supabase.rpc('list_community_restrictions', {
+    p_community_id: communityId,
+  })
   if (error) throw error
   return data.map((row) => ({
     id: `${row.community_id}_${row.user_id}`,
@@ -30,4 +32,14 @@ export async function listCommunityRestrictions(communityId) {
     reason: row.reason,
     createdAt: row.created_at,
   }))
+}
+
+// REMOVER (distinto de banir): tira o vínculo agora e não cria restrição -- a pessoa perde o acesso
+// interno imediatamente e pode entrar de novo. Autorizado só no servidor (superadmin ou dono).
+export async function removeCommunityMember({ communityId, targetUserId }) {
+  const { error } = await supabase.rpc('remove_community_member', {
+    p_community_id: communityId,
+    p_target_user_id: targetUserId,
+  })
+  if (error) throw error
 }

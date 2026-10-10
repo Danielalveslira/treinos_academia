@@ -15,10 +15,12 @@ import { useAuth } from '../hooks/useAuth'
 import { listCommunityMembers } from '../services/communityMembersService'
 import {
   listCommunityRestrictions,
+  removeCommunityMember,
   setCommunityMemberBan,
 } from '../services/communityModerationService'
 import { listPublicUsernames } from '../services/publicProfilesService'
 import { memberHandle } from '../utils/memberHandle'
+import { mergeMembersWithBanned } from '../utils/communityAccess'
 
 // Mesmo mínimo de 5 caracteres trimados que o servidor exige (community-moderation-
 // service.js) -- só evita gastar uma chamada que sabidamente falharia.
@@ -32,7 +34,7 @@ function canSubmitBanReason(reason) {
 // confirmou canModerateCommunity (CommunityDetail.jsx) -- as Rules de leitura de
 // communityMembers/communityRestrictions (isCommunityOwner) são a autoridade de
 // verdade, isto é só a UI.
-export function CommunityMembersModeration({ communityId, ownerId = null }) {
+export function CommunityMembersModeration({ communityId, ownerId = null, onMembershipChanged }) {
   const { user } = useAuth()
   const [members, setMembers] = useState([])
   const [restrictionsByUserId, setRestrictionsByUserId] = useState({})
@@ -40,6 +42,7 @@ export function CommunityMembersModeration({ communityId, ownerId = null }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [banningUserId, setBanningUserId] = useState(null)
+  const [removingUserId, setRemovingUserId] = useState(null)
   const [reasonDraft, setReasonDraft] = useState('')
   const [actionError, setActionError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -52,12 +55,16 @@ export function CommunityMembersModeration({ communityId, ownerId = null }) {
         listCommunityMembers(communityId),
         listCommunityRestrictions(communityId),
       ])
-      setMembers(memberList)
+      // Banir/remover tira o vínculo no servidor; o dono continua vendo quem está BANIDO para poder desbanir.
+      // Removido (sem ban) e desbanido somem da lista (desbanir não devolve o vínculo).
+      setMembers(mergeMembersWithBanned(memberList, restrictionList))
       setRestrictionsByUserId(Object.fromEntries(restrictionList.map((r) => [r.userId, r])))
       // @usuário em vez do id da conta: leitura em lote; se falhar, a lista continua útil (mostra
       // "Membro") e nunca cai para o id.
       setUsernames(
-        await listPublicUsernames(memberList.map((m) => m.userId)).catch((err) => {
+        await listPublicUsernames(
+          [...memberList, ...restrictionList].map((item) => item.userId)
+        ).catch((err) => {
           console.error('[CommunityMembersModeration] usernames:', err)
           return {}
         })
@@ -74,7 +81,35 @@ export function CommunityMembersModeration({ communityId, ownerId = null }) {
     load()
   }, [load])
 
+  function startRemove(userId) {
+    setRemovingUserId(userId)
+    setBanningUserId(null)
+    setActionError('')
+  }
+  function cancelRemove() {
+    setRemovingUserId(null)
+  }
+
+  // Remover != banir: tira o vínculo e a pessoa pode entrar de novo; banir também bloqueia a reentrada.
+  async function confirmRemove(userId) {
+    if (saving) return
+    setSaving(true)
+    setActionError('')
+    try {
+      await removeCommunityMember({ communityId, targetUserId: userId })
+      setRemovingUserId(null)
+      onMembershipChanged?.()
+      await load()
+    } catch (err) {
+      console.error('[CommunityMembersModeration] remove:', err)
+      setActionError('Não foi possível remover este membro.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   function startBan(userId) {
+    setRemovingUserId(null)
     setBanningUserId(userId)
     setReasonDraft('')
     setActionError('')
@@ -96,6 +131,7 @@ export function CommunityMembersModeration({ communityId, ownerId = null }) {
         reason: reasonDraft,
       })
       setBanningUserId(null)
+      onMembershipChanged?.()
       await load()
     } catch (err) {
       console.error('[CommunityMembersModeration] ban:', err)
@@ -119,6 +155,7 @@ export function CommunityMembersModeration({ communityId, ownerId = null }) {
     setActionError('')
     try {
       await setCommunityMemberBan({ communityId, targetUserId: userId, banned: false })
+      onMembershipChanged?.()
       await load()
     } catch (err) {
       console.error('[CommunityMembersModeration] unban:', err)
@@ -186,16 +223,45 @@ export function CommunityMembersModeration({ communityId, ownerId = null }) {
                   >
                     Desbanir
                   </Button>
-                ) : banningUserId === member.userId ? null : (
+                ) : banningUserId === member.userId || removingUserId === member.userId ? null : (
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Button
+                      onClick={() => startRemove(member.userId)}
+                      disabled={saving}
+                      aria-label={`Remover ${handle}`}
+                    >
+                      Remover
+                    </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => startBan(member.userId)}
+                      disabled={saving}
+                      aria-label={`Banir ${handle}`}
+                    >
+                      Banir
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            )}
+            {removingUserId === member.userId && (
+              <Box sx={{ width: '100%' }}>
+                <Text as="p" sx={{ color: 'fg.muted', mb: 2 }}>
+                  {handle} perde o acesso agora, mas pode entrar de novo. Para impedir a volta, use
+                  Banir.
+                </Text>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button type="button" disabled={saving} onClick={cancelRemove}>
+                    Voltar
+                  </Button>
                   <Button
                     variant="danger"
-                    onClick={() => startBan(member.userId)}
-                    disabled={saving}
-                    aria-label={`Banir ${handle}`}
+                    loading={saving}
+                    onClick={() => confirmRemove(member.userId)}
                   >
-                    Banir
+                    Confirmar remoção
                   </Button>
-                )}
+                </Box>
               </Box>
             )}
             {banningUserId === member.userId && (

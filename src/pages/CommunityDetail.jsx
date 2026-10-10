@@ -19,8 +19,17 @@ import {
   setCommunityActive,
   deleteCommunity,
 } from '../services/communitiesService'
-import { isMember, joinCommunity, leaveCommunity } from '../services/communityMembersService'
+import {
+  getCommunityAccess,
+  joinCommunity,
+  leaveCommunity,
+} from '../services/communityMembersService'
 import { canModerateCommunity } from '../utils/communityOwnership'
+import {
+  communityContentCachePrefixes,
+  normalizeCommunityAccess,
+  shouldPurgeCommunityState,
+} from '../utils/communityAccess'
 import {
   createPhotoStatus,
   createTextStatus,
@@ -38,6 +47,7 @@ import {
 } from '../utils/pageCache'
 import { CommunityFeedSection } from '../components/CommunityFeedSection'
 import { CommunityHeader } from '../components/CommunityHeader'
+import { CommunityAccessNotice } from '../components/CommunityAccessNotice'
 import { LazyDialogBoundary } from '../components/LazyDialogBoundary'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
@@ -79,7 +89,12 @@ function CommunityDetail({ id }) {
   const pageKey = `communities:${user.uid}:page:${id}`
   const cachedPage = getCached(pageKey)
   const [community, setCommunity] = useState(cachedPage?.community ?? null)
-  const [member, setMember] = useState(cachedPage?.member ?? false)
+  // Estado de acesso vindo do servidor (member | not_member | banned | unavailable). A cópia em cache
+  // serve só para repintar rápido: toda abertura da página revalida no servidor (ver o efeito abaixo)
+  // e quem não é mais membro perde também as caches de conteúdo.
+  const [access, setAccess] = useState(cachedPage?.access ?? 'not_member')
+  const member = access === 'member'
+  const accessRef = useRef(access)
   const [membershipPending, setMembershipPending] = useState(false)
   const [loadingCommunity, setLoadingCommunity] = useState(!cachedPage)
   const [communityError, setCommunityError] = useState(null)
@@ -345,20 +360,24 @@ function CommunityDetail({ id }) {
         const page = await fetchCached(
           pageKey,
           async () => {
-            const [data, memberFlag] = await Promise.all([getCommunity(id), isMember(id, user.uid)])
-            return { community: data, member: memberFlag }
+            const [data, accessState] = await Promise.all([
+              getCommunity(id),
+              getCommunityAccess(id),
+            ])
+            return { community: data, access: accessState }
           },
           { force }
         )
         setCommunity(page.community)
-        setMember(page.member)
+        accessRef.current = page.access
+        setAccess(page.access)
       } catch (err) {
         setCommunityError(describeQueryError(err, 'CommunityDetail'))
       } finally {
         setLoadingCommunity(false)
       }
     },
-    [id, user.uid, pageKey]
+    [id, pageKey]
   )
 
   useEffect(() => {
@@ -371,6 +390,56 @@ function CommunityDetail({ id }) {
     if (current) setCached(pageKey, { ...current, ...patch })
   }
 
+  // Quando o servidor diz que a pessoa deixou de ser membro, nada do conteúdo da comunidade fica
+  // guardado nesta sessão (feed, anúncios, destaques) e a lista "Minhas comunidades" é refeita.
+  // `communities:{uid}` também derruba a cache desta página e dos destaques (mesmo prefixo).
+  const applyAccess = useCallback(
+    (value) => {
+      const next = normalizeCommunityAccess(value)
+      const purge = shouldPurgeCommunityState(accessRef.current, next)
+      accessRef.current = next
+      setAccess(next)
+      if (purge) {
+        communityContentCachePrefixes(user.uid, id).forEach((prefix) => invalidateCache(prefix))
+        // Estado em memória desta tela: nada do conteúdo interno sobrevive à perda de acesso.
+        setFeaturedStatusesState([])
+        setFeaturedLoaded(false)
+        setSharedStatus(null)
+        setManaging(false)
+        setFormOpen(false)
+      } else {
+        const current = getCached(pageKey)
+        if (current) setCached(pageKey, { ...current, access: next })
+      }
+    },
+    [id, pageKey, user.uid]
+  )
+
+  // Revalida o acesso a cada abertura (e ao voltar para a aba), mesmo com a página vinda da cache:
+  // remover alguém de uma comunidade tem efeito imediato aqui, não só quando a cache de 5 min expira.
+  // Se a leitura falhar, mantém o estado atual -- o servidor continua negando os dados de qualquer jeito.
+  useEffect(() => {
+    let active = true
+    // Sem cache, loadCommunity já está lendo o acesso agora: evita a segunda chamada idêntica.
+    const hadCachedPage = getCached(pageKey) !== undefined
+    const revalidate = () => {
+      getCommunityAccess(id)
+        .then((next) => {
+          if (active) applyAccess(next)
+        })
+        .catch((err) => console.error('[CommunityDetail] access:', err))
+    }
+    if (hadCachedPage) revalidate()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') revalidate()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      active = false
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [id, pageKey, applyAccess])
+
   // A guarda contra clique duplo evita dois efeitos: uma segunda escrita inútil (RLS não
   // tem nenhuma policy de update em community_members, então isso nunca corrompe dado
   // nenhum) e, principalmente, o falso "Erro ao entrar/sair" que aparecia quando
@@ -382,12 +451,18 @@ function CommunityDetail({ id }) {
       await joinCommunity(id, user.uid)
       // A lista de anúncios guardada pode ser a vazia de quando ainda não era membro.
       invalidateCache(`sponsoredAds:${id}`)
-      setMember(true)
-      patchPageCache({ member: true })
+      applyAccess('member')
       showToast('Você entrou na comunidade.')
     } catch (err) {
       console.error('[CommunityDetail] join:', err)
-      showToast('Erro ao entrar na comunidade.', 'danger')
+      // O servidor pode ter recusado por remoção/banimento: reflete o estado real em vez de um erro genérico.
+      const next = await getCommunityAccess(id).catch(() => null)
+      if (next === 'banned' || next === 'unavailable') {
+        applyAccess(next)
+        showToast('Você não pode entrar nesta comunidade.', 'danger')
+      } else {
+        showToast('Erro ao entrar na comunidade.', 'danger')
+      }
     } finally {
       setMembershipPending(false)
     }
@@ -398,7 +473,7 @@ function CommunityDetail({ id }) {
     setMembershipPending(true)
     try {
       await leaveCommunity(id, user.uid)
-      setMember(false)
+      applyAccess('not_member')
       // Saiu: nada do feed fica guardado para esta conta (a cache da lista e da página já foi derrubada).
       invalidateCache(`communityFeed:${user.uid}:${id}`)
       invalidateCache(featuredKey)
@@ -409,6 +484,13 @@ function CommunityDetail({ id }) {
     } finally {
       setMembershipPending(false)
     }
+  }
+
+  // Remover/banir/desbanir mudam quem é membro e o contador público: derruba as caches da conta
+  // (lista, página, destaques) e relê a comunidade para o contador refletir o servidor.
+  function handleMembershipChanged() {
+    invalidateCommunitiesCache(user.uid)
+    loadCommunity(true)
   }
 
   // Fase 5: mesmas funções de communitiesService.js já usadas pelo painel admin --
@@ -710,6 +792,7 @@ function CommunityDetail({ id }) {
                   <CommunityMembersModeration
                     communityId={id}
                     ownerId={community.ownerId ?? null}
+                    onMembershipChanged={handleMembershipChanged}
                   />
                 </LazyDialogBoundary>
               </Box>
@@ -731,20 +814,11 @@ function CommunityDetail({ id }) {
             </LazyDialogBoundary>
           )}
 
-          {!member && (
-            <Blankslate>
-              <Blankslate.Visual>
-                <PeopleIcon size={24} />
-              </Blankslate.Visual>
-              <Blankslate.Heading>Entre para ver o feed</Blankslate.Heading>
-              <Blankslate.Description>
-                Só membros podem ver e publicar conteúdos nesta comunidade.
-              </Blankslate.Description>
-              <Blankslate.PrimaryAction onClick={handleJoin} disabled={membershipPending}>
-                Entrar
-              </Blankslate.PrimaryAction>
-            </Blankslate>
-          )}
+          <CommunityAccessNotice
+            access={access}
+            onJoin={handleJoin}
+            joinDisabled={membershipPending}
+          />
 
           {member && holdForAds && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
 

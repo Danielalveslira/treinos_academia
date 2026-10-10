@@ -25,15 +25,18 @@ export async function listMyCommunityIds(userId) {
   return data.map((row) => row.community_id)
 }
 
-export async function isMember(communityId, userId) {
-  const { data, error } = await supabase
-    .from('community_members')
-    .select('community_id')
-    .eq('community_id', communityId)
-    .eq('user_id', userId)
-    .maybeSingle()
+// Estado de acesso calculado pelo servidor (get_community_access): 'member' | 'not_member' |
+// 'banned' | 'unavailable'. É a única fonte para abrir a área interna da comunidade -- o cliente
+// nunca deduz "sou membro" de uma linha de community_members, porque remoção/banimento é uma
+// decisão do servidor. Qualquer resposta desconhecida cai em 'unavailable' (fail-closed).
+const COMMUNITY_ACCESS_STATES = ['member', 'not_member', 'banned', 'unavailable']
+
+export async function getCommunityAccess(communityId) {
+  const { data, error } = await supabase.rpc('get_community_access', {
+    p_community_id: communityId,
+  })
   if (error) throw error
-  return !!data
+  return COMMUNITY_ACCESS_STATES.includes(data) ? data : 'unavailable'
 }
 
 // Chamado tanto por useCommunities.js (lista) quanto por CommunityDetail.jsx (tela da
