@@ -1,5 +1,6 @@
 import { Button, Label } from '@primer/react'
 import { formatDateTime } from '../../utils/format'
+import { PROMPT_PROVIDER_FORMATS } from '../../utils/exerciseVisualPromptBuilder'
 import { ExerciseVisualPreview } from './ExerciseVisualPreview'
 
 const STATUS_LABELS = {
@@ -16,6 +17,16 @@ const SOURCE_LABELS = {
   manual_upload: 'Upload manual',
   gemini_manual: 'IA (manual)',
   gemini_api: 'IA (API)',
+}
+
+function provenanceText(set) {
+  const parts = []
+  if (set.style_version) parts.push(`estilo ${set.style_version}`)
+  if (set.prompt_version) parts.push(`prompt ${set.prompt_version}`)
+  if (set.provider_hint)
+    parts.push(`formato ${PROMPT_PROVIDER_FORMATS[set.provider_hint]?.label || set.provider_hint}`)
+  if (set.reference_style_version) parts.push(`referência ${set.reference_style_version}`)
+  return parts.join(' · ')
 }
 
 export function ExerciseVisualHistory({ sets, exerciseName, busy, disabled, onRestore }) {
@@ -39,6 +50,10 @@ export function ExerciseVisualHistory({ sets, exerciseName, busy, disabled, onRe
                     {set.published_at ? ` · publicada em ${formatDateTime(set.published_at)}` : ''}
                   </span>
                 </div>
+                {provenanceText(set) && <span className="ev-muted">{provenanceText(set)}</span>}
+                {set.status === 'failed' && set.metadata?.failure?.reason && (
+                  <span className="ev-muted">Falha: {set.metadata.failure.reason}</span>
+                )}
                 {set.status === 'rejected' && set.metadata?.rejection?.reason && (
                   <span className="ev-muted">Motivo: {set.metadata.rejection.reason}</span>
                 )}

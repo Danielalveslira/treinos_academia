@@ -51,7 +51,7 @@ select is((select public from storage.buckets where id = 'exercise-visual-drafts
 select is((select public from storage.buckets where id = 'exercise-visual-references'), false, 'references é privado');
 select is(has_function_privilege('authenticated', 'public.publish_exercise_visual_internal(uuid, uuid)', 'execute'), false, 'publish interno não é chamável por authenticated');
 select is(has_function_privilege('authenticated', 'public.confirm_exercise_visual_internal(uuid, uuid, jsonb)', 'execute'), false, 'confirm interno não é chamável por authenticated');
-select is(has_function_privilege('anon', 'public.allocate_exercise_visual_set(uuid, text, text, jsonb)', 'execute'), false, 'anon não aloca');
+select is(has_function_privilege('anon', 'public.allocate_exercise_visual_set(uuid, text, text, jsonb, uuid, uuid, text, text, text)', 'execute'), false, 'anon não aloca');
 
 -- ----------------------------------------------------------------------------
 -- 1) usuário normal não cria visual set; sem auth também não
@@ -77,7 +77,7 @@ select is((select count(*)::int from public.exercise_visual_assets where visual_
 select is((select r->'assets'->'start'->>'path' from alloc),
   '92aaaaaa-0000-0000-0000-000000000001/' || (select r->>'visualSetId' from alloc) || '/start.webp', 'path de draft = {catalog}/{set}/start.webp');
 select is((select status from public.exercise_visual_sets where id = (select (r->>'visualSetId')::uuid from alloc)), 'allocated', 'status allocated');
-select is((select metadata->>'styleVersion' from public.exercise_visual_sets where id = (select (r->>'visualSetId')::uuid from alloc)), 'EVOLUTUS_FITNESS_V1', 'proveniência: styleVersion');
+select is((select metadata->>'styleVersion' from public.exercise_visual_sets where id = (select (r->>'visualSetId')::uuid from alloc)), 'EVOLUTUS_FITNESS_V1', 'proveniência: styleVersion (a migration V2 não troca o perfil ativo)');
 select is((select metadata->'referenceAssets'->>0 from public.exercise_visual_sets where id = (select (r->>'visualSetId')::uuid from alloc)), 'character-side-v1', 'proveniência: metadata do chamador mesclado');
 select is((select created_by::text from public.exercise_visual_sets where id = (select (r->>'visualSetId')::uuid from alloc)), '92000000-0000-0000-0000-000000000001', 'created_by registrado');
 

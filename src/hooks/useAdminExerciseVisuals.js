@@ -4,14 +4,21 @@ import {
   describeVisualError,
   getActiveStyleProfile,
   getVisualCoverage,
+  isDefinitiveUploadError,
   listCatalogForVisuals,
   listVisualSets,
+  newUploadRequestId,
   publishVisualSet,
   rejectVisualSet,
   restoreVisualSet,
   uploadVisualSet,
 } from '../services/exerciseVisualsService'
-import { buildExerciseVisualPrompt, PROMPT_VERSION } from '../utils/exerciseVisualPromptBuilder'
+import {
+  buildExerciseVisualPrompts,
+  DEFAULT_PROMPT_PROVIDER,
+  hashPromptText,
+  PROMPT_VERSION,
+} from '../utils/exerciseVisualPromptBuilder'
 import { describeQueryError } from '../utils/queryError'
 
 // Estado da tela /admin/exercicios-imagens: lista paginada do catálogo (com filtro "sem imagem"),
@@ -25,6 +32,9 @@ export function useAdminExerciseVisuals() {
   const [listError, setListError] = useState(null)
   const [coverage, setCoverage] = useState(null)
   const [styleProfile, setStyleProfile] = useState(null)
+  // 'loading' | 'ready' | 'error': sem 'ready' não há prompt nem criação (nunca um perfil de reserva).
+  const [styleProfileState, setStyleProfileState] = useState('loading')
+  const styleProfileRequest = useRef(0)
 
   const [selected, setSelected] = useState(null)
   const [sets, setSets] = useState([])
@@ -33,6 +43,13 @@ export function useAdminExerciseVisuals() {
 
   const [busy, setBusy] = useState(null) // 'upload' | `publish:${id}` | `reject:${id}` | `restore:${id}`
   const [actionError, setActionError] = useState('')
+  const [promptProvider, setPromptProvider] = useState(DEFAULT_PROMPT_PROVIDER)
+  // `busy` (estado) só muda no próximo render: dois cliques no mesmo instante enxergariam busy === null.
+  // O ref bloqueia o segundo clique imediatamente.
+  const busyRef = useRef(null)
+  // Chave de idempotência do envio em andamento: o mesmo par de arquivos reenviado (retry, conexão instável)
+  // reutiliza a chave e o servidor devolve o mesmo conjunto em vez de criar outro.
+  const uploadKey = useRef(null)
   const listRequest = useRef(0)
   const setsRequest = useRef(0)
 
@@ -68,12 +85,25 @@ export function useAdminExerciseVisuals() {
     loadList()
   }, [loadList])
 
+  const loadStyleProfile = useCallback(async () => {
+    const request = ++styleProfileRequest.current
+    setStyleProfileState('loading')
+    let profile = null
+    try {
+      profile = await getActiveStyleProfile()
+    } catch (error) {
+      describeQueryError(error, 'useAdminExerciseVisuals.styleProfile')
+    }
+    if (request !== styleProfileRequest.current) return
+    const usable = profile?.id && profile?.base_prompt ? profile : null
+    setStyleProfile(usable)
+    setStyleProfileState(usable ? 'ready' : 'error')
+  }, [])
+
   useEffect(() => {
     loadCoverage()
-    getActiveStyleProfile()
-      .then(setStyleProfile)
-      .catch((error) => describeQueryError(error, 'useAdminExerciseVisuals.styleProfile'))
-  }, [loadCoverage])
+    loadStyleProfile()
+  }, [loadCoverage, loadStyleProfile])
 
   const loadSets = useCallback(async (catalogId) => {
     const request = ++setsRequest.current
@@ -110,7 +140,8 @@ export function useAdminExerciseVisuals() {
   // Executa uma ação administrativa: uma por vez, erro sempre visível, e recarrega tudo o que ela
   // pode ter mudado (conjuntos do exercício, linha da lista e cobertura).
   async function run(name, action) {
-    if (busy || !selected) return false
+    if (busyRef.current || !selected) return false
+    busyRef.current = name
     setBusy(name)
     setActionError('')
     try {
@@ -122,36 +153,67 @@ export function useAdminExerciseVisuals() {
       setActionError(describeVisualError(error))
       return false
     } finally {
+      busyRef.current = null
       setBusy(null)
     }
   }
 
-  const prompt = (() => {
-    if (!selected) return null
+  // Dois prompts separados (uma imagem cada), no formato do provider escolhido (genérico por padrão).
+  const prompts = (() => {
+    if (!selected || styleProfileState !== 'ready') return null
     try {
-      return buildExerciseVisualPrompt(selected, styleProfile)
+      return buildExerciseVisualPrompts(selected, styleProfile, { provider: promptProvider })
     } catch {
       return null
     }
   })()
 
   // A origem da imagem é neutra (IA de qualquer fornecedor, prompt externo ou arte própria): o registro
-  // fica como upload manual e a ferramenta usada, se informada, vai só nos metadados.
+  // fica como upload manual e a ferramenta usada, se informada, vai só nos metadados. A proveniência (versão do
+  // estilo e do perfil de prompt, hash exato dos prompts START/END e formato escolhido) é gravada no conjunto.
   function upload({ startFile, endFile, tool }) {
-    return run('upload', () =>
-      uploadVisualSet({
-        catalogId: selected.id,
-        startFile,
-        endFile,
-        generationSource: 'manual_upload',
-        promptVersion: PROMPT_VERSION,
-        metadata: {
+    return run('upload', async () => {
+      // Sem o perfil ativo carregado não há alocação: o registro precisa bater com o prompt mostrado.
+      if (!prompts) throw new Error('STYLE_PROFILE_UNAVAILABLE')
+      let key = uploadKey.current
+      if (
+        !key ||
+        key.catalogId !== selected.id ||
+        key.startFile !== startFile ||
+        key.endFile !== endFile
+      ) {
+        key = { catalogId: selected.id, startFile, endFile, requestId: newUploadRequestId() }
+        uploadKey.current = key
+      }
+      const [promptStartHash, promptEndHash] = await Promise.all([
+        hashPromptText(prompts.start.text),
+        hashPromptText(prompts.end.text),
+      ])
+      try {
+        await uploadVisualSet({
+          catalogId: selected.id,
+          startFile,
+          endFile,
+          generationSource: 'manual_upload',
           promptVersion: PROMPT_VERSION,
-          styleVersion: prompt?.styleVersion,
-          ...(tool?.trim() ? { tool: tool.trim().slice(0, 40) } : {}),
-        },
-      })
-    )
+          requestId: key.requestId,
+          styleProfileId: prompts.start.styleProfileId,
+          promptStartHash,
+          promptEndHash,
+          providerHint: promptProvider,
+          metadata: {
+            promptVersion: PROMPT_VERSION,
+            styleVersion: prompts.start.styleVersion,
+            ...(tool?.trim() ? { tool: tool.trim().slice(0, 40) } : {}),
+          },
+        })
+        uploadKey.current = null
+      } catch (error) {
+        // Erro definitivo do servidor: o próximo envio precisa de uma alocação nova.
+        if (isDefinitiveUploadError(error)) uploadKey.current = null
+        throw error
+      }
+    })
   }
 
   const approve = (setId) => run(`publish:${setId}`, () => publishVisualSet(setId))
@@ -173,7 +235,11 @@ export function useAdminExerciseVisuals() {
     setsError,
     busy,
     actionError,
-    prompt,
+    prompts,
+    styleProfileState,
+    reloadStyleProfile: loadStyleProfile,
+    promptProvider,
+    setPromptProvider,
     select,
     search,
     toggleOnlyMissing,

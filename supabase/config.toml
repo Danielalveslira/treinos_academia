@@ -426,6 +426,10 @@ verify_jwt = true
 enabled = true
 verify_jwt = true
 
+[functions.cleanup-exercise-visuals]
+enabled = true
+verify_jwt = true
+
 [functions.finalize-professional-listing-publish]
 enabled = true
 verify_jwt = true

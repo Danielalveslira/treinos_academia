@@ -1,5 +1,6 @@
 import { before, beforeEach, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import {
   CATALOG,
   OTHER_ADMIN,
@@ -39,6 +40,9 @@ function arrange({ files = ['start', 'end', 'thumbnail'], overrides = {} } = {})
     )
 }
 beforeEach(() => arrange())
+
+const rpcNames = () => fake.rpcCalls.map(([name]) => name)
+const sha = (bytes) => createHash('sha256').update(bytes).digest('hex')
 
 const call = async (body, options) => {
   const response = await handler(post(body, options))
@@ -104,7 +108,9 @@ test('não é WebP de verdade (PNG/HTML renomeado), cortado ou com tamanho/dimen
     fake.buckets[DRAFTS].set(path('start.webp'), bytes)
     const result = await call({ visualSetId: SET })
     assert.deepEqual([label, result.status, result.body.error], [label, 400, 'INVALID_IMAGE'])
-    assert.equal(fake.rpcCalls.length, 0, label)
+    // nada é confirmado; o conjunto é marcado como failed (o path é imutável: não há como regravar)
+    assert.deepEqual([label, rpcNames()], [label, ['fail_exercise_visual_set_internal']])
+    assert.deepEqual(fake.rpcCalls[0][1], { p_set_id: SET, p_actor: SUPERADMIN, p_reason: 'INVALID_IMAGE' })
   }
 })
 
@@ -120,7 +126,7 @@ test('path traversal / path de outro conjunto gravado no banco é recusado ANTES
     const result = await call({ visualSetId: SET })
     assert.deepEqual([evil, result.body.error], [evil, 'INVALID_IMAGE'])
     assert.ok(!fake.downloads.some(([, p]) => p === evil), evil)
-    assert.equal(fake.rpcCalls.length, 0)
+    assert.ok(!rpcNames().includes('confirm_exercise_visual_internal'))
   }
   arrange()
   fake.tables.exercise_visual_assets.find((a) => a.role === 'end').storage_bucket =
@@ -161,4 +167,49 @@ test('erro na RPC interna: resposta de erro e o conjunto continua allocated (nad
   const result = await call({ visualSetId: SET })
   assert.deepEqual([result.status, result.body.error], [400, 'INTERNAL_ERROR'])
   assert.equal(fake.tables.exercise_visual_sets[0].status, 'allocated')
+})
+
+test('V2: grava o SHA-256 real de cada arquivo, a versão de validação e o dHash do navegador (só se bem formado)', async () => {
+  const result = await call({
+    visualSetId: SET,
+    perceptualHashes: { start: 'f0f0f0f0f0f0f0f0', end: 'NAO-E-HEX', thumbnail: 123 },
+  })
+  assert.equal(result.status, 200)
+  const items = Object.fromEntries(fake.rpcCalls[0][1].p_assets.map((a) => [a.role, a]))
+  assert.equal(items.start.sha256, sha(fake.buckets[DRAFTS].get(path('start.webp'))))
+  assert.match(items.end.sha256, /^[0-9a-f]{64}$/)
+  assert.equal(items.start.perceptual_hash, 'f0f0f0f0f0f0f0f0')
+  assert.equal('perceptual_hash' in items.end, false, 'dHash inválido é ignorado, não bloqueia')
+  assert.equal('perceptual_hash' in items.thumbnail, false)
+  assert.ok(Object.values(items).every((a) => a.validation_version === 2))
+})
+
+test('V2: EXIF ou XMP em start/end => IMAGE_METADATA_NOT_ALLOWED, nada confirmado e conjunto marcado como failed', async () => {
+  for (const chunk of ['EXIF', 'XMP ']) {
+    arrange()
+    fake.buckets[DRAFTS].set(path('end.webp'), makeWebp(1024, 1024, { chunk }))
+    const result = await call({ visualSetId: SET })
+    assert.deepEqual([chunk, result.status, result.body.error], [chunk, 400, 'IMAGE_METADATA_NOT_ALLOWED'])
+    assert.deepEqual(rpcNames(), ['fail_exercise_visual_set_internal'])
+    assert.equal(fake.rpcCalls[0][1].p_reason, 'IMAGE_METADATA')
+  }
+})
+
+test('V2: falha ao marcar failed não esconde o erro de validação; arquivo ausente NÃO marca failed (retry possível)', async () => {
+  fake.rpcResult = () => ({ data: null, error: { message: 'boom' } })
+  fake.buckets[DRAFTS].set(path('start.webp'), new Uint8Array(64))
+  assert.deepEqual((await call({ visualSetId: SET })).body, { error: 'INVALID_IMAGE' })
+
+  arrange({ files: ['start', 'thumbnail'] })
+  assert.equal((await call({ visualSetId: SET })).body.error, 'MISSING_FILE')
+  assert.deepEqual(rpcNames(), [])
+})
+
+test('V2: miniatura com EXIF é ignorada como qualquer miniatura inválida (start/end seguem)', async () => {
+  fake.buckets[DRAFTS].set(path('thumb.webp'), makeWebp(320, 320, { chunk: 'EXIF' }))
+  assert.equal((await call({ visualSetId: SET })).status, 200)
+  assert.deepEqual(
+    fake.rpcCalls[0][1].p_assets.map((a) => a.role),
+    ['start', 'end']
+  )
 })

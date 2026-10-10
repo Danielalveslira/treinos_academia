@@ -4769,6 +4769,8 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .ev-file { display: grid; gap: 4px; min-width: 0; }
 .ev-file label { font-size: 13px; font-weight: 600; }
 .ev-file input { max-width: 100%; }
+.ev-file > span { font-size: 13px; font-weight: 600; }
+.ev-provider select { flex: 0 1 auto; max-width: 240px; }
 .ev-review-card strong { font-size: 14px; }
 .ev-review-card { display: grid; gap: 10px; padding: 10px; border: 1px solid var(--borderColor-attention-muted); border-radius: 6px; }
 .ev-checklist { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 4px 16px; min-width: 0; margin: 0; padding: 0; border: 0; }

@@ -10,14 +10,17 @@ export const USER = '33333333-3333-4333-8333-333333333333'
 export const CATALOG = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 export const SET = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
 
-// WebP mínimo válido para o leitor de cabeçalho (VP8X). `riffBytes` permite simular arquivo cortado.
-export function makeWebp(width = 1024, height = 1024, { truncateTo, riffSize } = {}) {
+// WebP mínimo ESTRUTURALMENTE válido para o leitor de cabeçalho e para a varredura de chunks: RIFF + VP8X
+// (tamanho 10) + um chunk de preenchimento até 64 bytes. `chunk` troca o fourCC do preenchimento (ex.: 'EXIF',
+// 'XMP ' para simular metadata); `riffSize`/`truncateTo` simulam arquivo cortado.
+export function makeWebp(width = 1024, height = 1024, { truncateTo, riffSize, chunk = 'ALPH' } = {}) {
   const bytes = new Uint8Array(64)
   const view = new DataView(bytes.buffer)
   bytes.set(Buffer.from('RIFF'), 0)
   view.setUint32(4, riffSize ?? 64 - 8, true)
   bytes.set(Buffer.from('WEBP'), 8)
   bytes.set(Buffer.from('VP8X'), 12)
+  view.setUint32(16, 10, true)
   const w = width - 1
   const h = height - 1
   bytes[24] = w & 0xff
@@ -26,6 +29,8 @@ export function makeWebp(width = 1024, height = 1024, { truncateTo, riffSize } =
   bytes[27] = h & 0xff
   bytes[28] = (h >> 8) & 0xff
   bytes[29] = (h >> 16) & 0xff
+  bytes.set(Buffer.from(chunk), 30)
+  view.setUint32(34, 64 - 38, true)
   return truncateTo ? bytes.subarray(0, truncateTo) : bytes
 }
 

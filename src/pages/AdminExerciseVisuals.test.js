@@ -18,9 +18,11 @@ const STUBS = {
     const call = (name, args, value) => { globalThis.__svc.calls.push([name, ...args]); return value() }
     export const listCatalogForVisuals = (...a) => call('listCatalogForVisuals', a, () => Promise.resolve(globalThis.__svc.catalog))
     export const getVisualCoverage = (...a) => call('getVisualCoverage', a, () => Promise.resolve(globalThis.__svc.coverage))
-    export const getActiveStyleProfile = (...a) => call('getActiveStyleProfile', a, () => Promise.resolve(null))
+    export const getActiveStyleProfile = (...a) => call('getActiveStyleProfile', a, () => globalThis.__svc.profile())
     export const listVisualSets = (...a) => call('listVisualSets', a, () => Promise.resolve(globalThis.__svc.sets))
-    export const uploadVisualSet = (...a) => call('uploadVisualSet', a, () => Promise.resolve({}))
+    export const uploadVisualSet = (...a) => call('uploadVisualSet', a, () => globalThis.__svc.upload())
+    export const isDefinitiveUploadError = (e) => Boolean(e && e.definitive)
+    export const newUploadRequestId = () => 'req-' + (globalThis.__svc.keys = (globalThis.__svc.keys || 0) + 1)
     export const publishVisualSet = (...a) => call('publishVisualSet', a, () => globalThis.__svc.publish())
     export const rejectVisualSet = (...a) => call('rejectVisualSet', a, () => Promise.resolve({}))
     export const restoreVisualSet = (...a) => call('restoreVisualSet', a, () => Promise.resolve({}))
@@ -59,6 +61,10 @@ before(async () => {
             checkAll: () => root.findAll((n) => n.type === 'input' && n.props.type === 'checkbox' && n.props.onChange && n.props.checked === false && !n.props['aria-label'])
               .forEach((box) => act(() => box.props.onChange({ target: { checked: true } }))),
             pickFile: (id, name) => act(() => { root.findAll((n) => n.type === 'input' && n.props.id === id)[0].props.onChange({ target: { files: [{ name, type: 'image/png', size: 100 }] } }) }),
+            select: () => root.findAll((n) => n.type === 'select')[0],
+            setProvider: (value) => act(() => { root.findAll((n) => n.type === 'select')[0].props.onChange({ target: { value } }) }),
+            submitUploadTwice: () => act(() => { const form = root.findByProps({ className: 'ev-upload' }); form.props.onSubmit({ preventDefault() {} }); form.props.onSubmit({ preventDefault() {} }) }),
+            copyValues: () => root.findAll((n) => n.props && n.props['data-testid'] && String(n.props['data-testid']).startsWith('copy-visual-prompt') && n.type === 'button').map((n) => n.props['data-testid']),
             setTool: (value) => act(() => { root.findAll((n) => n.type === 'input' && n.props.placeholder && n.props.placeholder.startsWith('Ex.:'))[0].props.onChange({ target: { value } }) }),
             submitUpload: () => act(() => { root.findByProps({ className: 'ev-upload' }).props.onSubmit({ preventDefault() {} }) }),
             rowButtons: () => root.findAll((n) => n.type === 'button' && String(n.props.className).includes('exercise-visuals-row')),
@@ -103,6 +109,20 @@ after(async () => {
   if (directory) await rm(directory, { recursive: true, force: true })
 })
 
+const PROFILE_V2 = {
+  id: 'profile-v2',
+  name: 'EVOLUTUS_FITNESS_V2',
+  version: 'v2',
+  base_prompt: 'Estilo base V2.',
+  negative_rules: 'Sem texto.',
+}
+const PROFILE_V1 = {
+  id: 'profile-v1',
+  name: 'EVOLUTUS_FITNESS_V1',
+  version: 'v1',
+  base_prompt: 'Estilo base V1.',
+  negative_rules: 'Sem texto.',
+}
 const tick = () => new Promise((resolve) => setTimeout(resolve, 30))
 const called = (name) => globalThis.__svc.calls.filter(([n]) => n === name)
 
@@ -148,6 +168,8 @@ beforeEach(() => {
     coverage: { total: 868, published: 20, missing: 848, percent: (20 / 868) * 100 },
     sets: [],
     publish: () => Promise.resolve({}),
+    upload: () => Promise.resolve({}),
+    profile: () => Promise.resolve(PROFILE_V2),
   }
 })
 
@@ -179,8 +201,18 @@ test('selecionar um exercício carrega os conjuntos e oferece o prompt + upload 
   assert.deepEqual(called('listVisualSets')[0], ['listVisualSets', 'ex-1'])
   const text = page.text()
   assert.match(text, /Criar com IA/)
-  assert.match(text, /Copiar prompt/)
-  assert.doesNotMatch(text, /Gemini/)
+  assert.match(text, /Copiar prompt INICIAL/)
+  assert.match(text, /Copiar prompt FINAL/)
+  assert.doesNotMatch(text, /Copiar prompt(?! INICIAL| FINAL)/, 'não há mais um prompt único')
+  assert.match(text, /Formato do prompt/)
+  assert.equal(page.select().props.value, 'generic', 'Genérico é o padrão')
+  assert.deepEqual(
+    page
+      .select()
+      .findAllByType('option')
+      .map((o) => o.children.join('')),
+    ['Genérico', 'Gemini', 'ChatGPT']
+  )
   assert.match(text, /Sem imagem/)
   assert.doesNotMatch(text, /Aguardando revisão/, 'sem nada em revisão a seção não ocupa espaço')
   assert.match(text, /Histórico \(0\)/)
@@ -305,7 +337,293 @@ test('o envio registra origem neutra (upload manual) e a ferramenta só como met
   const [, args] = called('uploadVisualSet')[0]
   assert.equal(args.generationSource, 'manual_upload')
   assert.equal(args.metadata.tool, 'Minha IA')
-  assert.equal(args.metadata.promptVersion, 'v1')
+  assert.equal(args.metadata.promptVersion, 'v2')
+  assert.equal(args.metadata.styleVersion, 'EVOLUTUS_FITNESS_V2')
+  assert.equal(args.promptVersion, 'v2')
   assert.doesNotMatch(JSON.stringify(args), /gemini|google/i)
+  page.unmount()
+})
+
+test('V2: dois botões de cópia (INICIAL e FINAL) e dois prompts separados, com a regra de uma imagem só', async () => {
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  assert.deepEqual(page.copyValues(), ['copy-visual-prompt-start', 'copy-visual-prompt-end'])
+  const text = page.text()
+  assert.match(text, /Ver prompt inicial/)
+  assert.match(text, /Ver prompt final/)
+  assert.match(text, /Gerar EXATAMENTE UMA imagem: a POSIÇÃO INICIAL \(START\)/)
+  assert.match(text, /Gerar EXATAMENTE UMA imagem: a POSIÇÃO FINAL \(END\)/)
+  assert.match(text, /deve ser utilizada como referência/)
+  assert.equal(page.hasButton('Enviar imagens'), true, 'o envio continua')
+  page.unmount()
+})
+
+test('V2: a dica de referência aparece clara quando a imagem inicial já está disponível', async () => {
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  assert.doesNotMatch(
+    page.text(),
+    /Use a imagem inicial como referência ao gerar a posição final\./
+  )
+  assert.match(
+    page.text(),
+    /Anexe a imagem inicial ao gerar a posição final\./,
+    'dica discreta antes'
+  )
+  page.click(page.button('Enviar imagens'))
+  page.pickFile('visual-start', 's.png')
+  assert.match(page.text(), /Use a imagem inicial como referência ao gerar a posição final\./)
+  page.unmount()
+})
+
+test('V2: trocar o formato muda os dois prompts e é registrado como provider hint; nada além do formato muda', async () => {
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  page.setProvider('gemini')
+  assert.match(page.text(), /Gere a imagem descrita neste briefing\./)
+  assert.match(page.text(), /anexada a esta mensagem/)
+  assert.match(page.text(), /Anexe a imagem inicial na mesma conversa do Gemini/)
+  page.click(page.button('Enviar imagens'))
+  page.pickFile('visual-start', 's.png')
+  page.pickFile('visual-end', 'e.png')
+  page.submitUpload()
+  await tick()
+  assert.equal(called('uploadVisualSet')[0][1].providerHint, 'gemini')
+  page.setProvider('generic')
+  assert.doesNotMatch(page.text(), /Gere a imagem descrita neste briefing\./)
+  page.unmount()
+})
+
+test('V2: o envio registra proveniência (hash SHA-256 de START e END, perfil, chave de idempotência)', async () => {
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  page.click(page.button('Enviar imagens'))
+  page.pickFile('visual-start', 's.png')
+  page.pickFile('visual-end', 'e.png')
+  page.submitUpload()
+  await tick()
+  const [, args] = called('uploadVisualSet')[0]
+  assert.match(args.promptStartHash, /^[0-9a-f]{64}$/)
+  assert.match(args.promptEndHash, /^[0-9a-f]{64}$/)
+  assert.notEqual(args.promptStartHash, args.promptEndHash)
+  assert.equal(args.providerHint, 'generic')
+  assert.equal(args.requestId, 'req-1')
+  assert.equal(
+    args.styleProfileId,
+    'profile-v2',
+    'o perfil registrado é o mesmo que gerou o prompt'
+  )
+  assert.doesNotMatch(JSON.stringify(args), /key|secret|token|password/i)
+  page.unmount()
+})
+
+test('V2: duplo clique em "Enviar para revisão" dispara UM envio só', async () => {
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  page.click(page.button('Enviar imagens'))
+  page.pickFile('visual-start', 's.png')
+  page.pickFile('visual-end', 'e.png')
+  page.submitUploadTwice()
+  await tick()
+  assert.equal(called('uploadVisualSet').length, 1)
+  page.unmount()
+})
+
+test('V2: retry com os mesmos arquivos reutiliza a chave; erro definitivo, ou arquivos novos, geram chave nova', async () => {
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  page.click(page.button('Enviar imagens'))
+  page.pickFile('visual-start', 's.png')
+  page.pickFile('visual-end', 'e.png')
+  const files = () => called('uploadVisualSet').map(([, args]) => args.requestId)
+
+  globalThis.__svc.upload = () => Promise.reject(new TypeError('Failed to fetch'))
+  page.submitUpload()
+  await tick()
+  page.submitUpload()
+  await tick()
+  assert.deepEqual(files(), ['req-1', 'req-1'], 'falha de rede: a mesma chave')
+
+  globalThis.__svc.upload = () =>
+    Promise.reject(Object.assign(new Error('INVALID_IMAGE'), { definitive: true }))
+  page.submitUpload()
+  await tick()
+  page.submitUpload()
+  await tick()
+  assert.deepEqual(
+    files(),
+    ['req-1', 'req-1', 'req-1', 'req-2'],
+    'depois de um erro definitivo a chave é renovada'
+  )
+  page.unmount()
+})
+
+test('V2: avisos automáticos aparecem na revisão sem bloquear a aprovação', async () => {
+  globalThis.__svc.sets = [
+    set('s2', 2, 'review', {
+      assets: [{ role: 'start' }, { role: 'end' }, { role: 'thumbnail' }],
+      metadata: {
+        validation: { warnings: ['START_END_NEARLY_IDENTICAL', 'DUPLICATE_FILE_IN_OTHER_SET'] },
+      },
+    }),
+  ]
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  assert.match(page.text(), /praticamente iguais/)
+  assert.match(page.text(), /já foi usado em outro conjunto/)
+  page.checkAll()
+  assert.equal(page.button('Aprovar e publicar').props.disabled, false)
+  page.unmount()
+})
+
+test('V2: histórico mostra a proveniência (estilo, prompt, formato) e o motivo de falha', async () => {
+  globalThis.__svc.sets = [
+    set('s2', 2, 'archived', {
+      style_version: 'v2',
+      prompt_version: 'v2',
+      provider_hint: 'openai',
+    }),
+    set('s1', 1, 'failed', { metadata: { failure: { reason: 'EXPIRED' } } }),
+  ]
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  assert.match(page.text(), /estilo v2 · prompt v2 · formato ChatGPT/)
+  assert.match(page.text(), /Falha: EXPIRED/)
+  page.unmount()
+})
+
+const ERROR_TEXT = /Não foi possível carregar o padrão visual\. Tente novamente\./
+const failProfile = () => Promise.reject(new TypeError('Failed to fetch'))
+
+test('perfil carregado: prompts e envio funcionam, sem aviso de erro', async () => {
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  assert.doesNotMatch(page.text(), ERROR_TEXT)
+  assert.equal(page.hasButton('Tentar novamente'), false)
+  assert.match(page.text(), /Estilo visual: EVOLUTUS_FITNESS_V2 \(v2\)/)
+  assert.equal(page.button('Enviar imagens').props.disabled, false)
+  page.unmount()
+})
+
+test('falha ao carregar o perfil: sem prompts, sem cópia, sem envio; erro compacto com "Tentar novamente"', async () => {
+  globalThis.__svc.profile = failProfile
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  assert.match(page.text(), ERROR_TEXT)
+  assert.equal(page.hasButton('Tentar novamente'), true)
+  assert.equal(page.button('Copiar prompt INICIAL').props.disabled, true)
+  assert.equal(page.button('Copiar prompt FINAL').props.disabled, true)
+  assert.equal(page.button('Enviar imagens').props.disabled, true)
+  assert.doesNotMatch(page.text(), /Estilo visual:|EXATAMENTE UMA imagem|Ver prompt/)
+  assert.equal(page.select(), undefined, 'sem seletor de formato sem prompt')
+  assert.deepEqual(called('uploadVisualSet'), [])
+  page.unmount()
+})
+
+test('perfil ausente (nenhum ativo no servidor) é tratado como erro, nunca como perfil de reserva', async () => {
+  globalThis.__svc.profile = () => Promise.resolve(null)
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  assert.match(page.text(), ERROR_TEXT)
+  assert.equal(page.button('Enviar imagens').props.disabled, true)
+  globalThis.__svc.profile = () => Promise.resolve({ ...PROFILE_V2, id: null })
+  page.click(page.button('Tentar novamente'))
+  await tick()
+  assert.match(page.text(), ERROR_TEXT, 'perfil sem id também não vale')
+  page.unmount()
+})
+
+test('"Tentar novamente" com sucesso: prompts e criação voltam a funcionar', async () => {
+  globalThis.__svc.profile = failProfile
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  assert.equal(page.button('Enviar imagens').props.disabled, true)
+  globalThis.__svc.profile = () => Promise.resolve(PROFILE_V2)
+  page.click(page.button('Tentar novamente'))
+  await tick()
+  assert.doesNotMatch(page.text(), ERROR_TEXT)
+  assert.equal(called('getActiveStyleProfile').length, 2)
+  assert.deepEqual(page.copyValues(), ['copy-visual-prompt-start', 'copy-visual-prompt-end'])
+  assert.match(page.text(), /Estilo visual: EVOLUTUS_FITNESS_V2 \(v2\)/)
+  page.click(page.button('Enviar imagens'))
+  page.pickFile('visual-start', 's.png')
+  page.pickFile('visual-end', 'e.png')
+  page.submitUpload()
+  await tick()
+  assert.equal(called('uploadVisualSet').length, 1)
+  page.unmount()
+})
+
+test('com o perfil indisponível, imagens publicadas, histórico, revisão e rollback continuam funcionando', async () => {
+  globalThis.__svc.profile = failProfile
+  globalThis.__svc.sets = [
+    set('s4', 4, 'published'),
+    set('s3', 3, 'review', { assets: [{ role: 'start' }, { role: 'end' }, { role: 'thumbnail' }] }),
+    set('s2', 2, 'archived'),
+  ]
+  const page = mount()
+  await tick()
+  assert.match(page.text(), /Supino reto/, 'a lista do catálogo não depende do perfil')
+  page.click(page.rowButtons()[0])
+  await tick()
+  const text = page.text()
+  assert.match(text, ERROR_TEXT)
+  assert.match(text, /Publicada · v4/)
+  assert.match(text, /Versão 3 em revisão/)
+  assert.match(text, /Histórico \(3\)/)
+  assert.equal(page.button('Restaurar esta versão (rollback)').props.disabled, false)
+  page.checkAll()
+  assert.equal(page.button('Aprovar e publicar').props.disabled, false)
+  page.click(page.button('Restaurar esta versão (rollback)'))
+  await tick()
+  assert.deepEqual(called('restoreVisualSet')[0], ['restoreVisualSet', 's2'])
+  page.click(page.button('Aprovar e publicar'))
+  await tick()
+  assert.deepEqual(called('publishVisualSet')[0], ['publishVisualSet', 's3'])
+  page.unmount()
+})
+
+test('proveniência: o prompt mostrado e o conjunto registrado vêm do MESMO perfil (V1 ativo => V1 em tudo)', async () => {
+  globalThis.__svc.profile = () => Promise.resolve(PROFILE_V1)
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  const text = page.text()
+  assert.match(text, /Estilo visual: EVOLUTUS_FITNESS_V1 \(v1\)/)
+  assert.doesNotMatch(text, /EVOLUTUS_FITNESS_V2|Estilo base V2/)
+  page.click(page.button('Enviar imagens'))
+  page.pickFile('visual-start', 's.png')
+  page.pickFile('visual-end', 'e.png')
+  page.submitUpload()
+  await tick()
+  const [, args] = called('uploadVisualSet')[0]
+  assert.equal(args.styleProfileId, 'profile-v1')
+  assert.equal(args.metadata.styleVersion, 'EVOLUTUS_FITNESS_V1')
+  assert.doesNotMatch(JSON.stringify(args), /V2|profile-v2/)
   page.unmount()
 })

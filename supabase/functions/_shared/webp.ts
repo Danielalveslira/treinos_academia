@@ -41,6 +41,30 @@ export function readWebpDimensions(bytes: Uint8Array): { width: number; height: 
   }
 }
 
+// Varre SÓ a lista de chunks de nível superior do RIFF (fourCC + tamanho, sem decodificar nada) atrás de
+// metadata desnecessária: EXIF e XMP (podem carregar GPS, autor, software, prompt de IA...). ICCP (perfil de
+// cor) fica de fora de propósito: remover mudaria a aparência da imagem. Não é um parser de WebP: um arquivo
+// válido sempre tem chunks encadeados até o fim do RIFF, então qualquer tamanho que estoure o arquivo é
+// tratado como corrompido ('MALFORMED'). Bytes depois do fim declarado do RIFF são ignorados (como em
+// isWebpComplete) e um último chunk ímpar sem byte de preenchimento é aceito.
+export type ForbiddenWebpChunk = 'EXIF' | 'XMP' | 'MALFORMED'
+
+export function findForbiddenWebpChunk(bytes: Uint8Array): ForbiddenWebpChunk | null {
+  if (bytes.length < 20) return 'MALFORMED'
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  const limit = Math.min(view.getUint32(4, true) + 8, bytes.length)
+  let position = 12
+  while (position + 8 <= limit) {
+    const fourCC = String.fromCharCode(...bytes.subarray(position, position + 4))
+    const end = position + 8 + view.getUint32(position + 4, true)
+    if (end > limit) return 'MALFORMED'
+    if (fourCC === 'EXIF') return 'EXIF'
+    if (fourCC === 'XMP ') return 'XMP'
+    position = end + (end % 2)
+  }
+  return null
+}
+
 // O campo de tamanho do RIFF (bytes 4-7) diz quantos bytes vêm depois dele. Um arquivo cortado no meio
 // mantém o cabeçalho válido mas fica menor que isso; bytes extras no fim são tolerados. Usado só pelas
 // funções de mídia dos exercícios (o avatar continua só com readWebpDimensions).

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button } from '@primer/react'
+import { Button, Flash } from '@primer/react'
 import { ExerciseVisualPreview } from './ExerciseVisualPreview'
 
 const REVIEW_CHECKLIST = [
@@ -15,6 +15,14 @@ const REVIEW_CHECKLIST = [
   'Mesmo padrão visual do Evolutus',
 ]
 
+// Avisos automáticos da validação do servidor. Nunca bloqueiam: o revisor decide.
+const WARNING_LABELS = {
+  START_END_IDENTICAL_FILE: 'As imagens inicial e final são exatamente o mesmo arquivo.',
+  START_END_NEARLY_IDENTICAL:
+    'As imagens inicial e final são praticamente iguais. Confira se a posição final realmente muda.',
+  DUPLICATE_FILE_IN_OTHER_SET: 'Um dos arquivos já foi usado em outro conjunto de imagens.',
+}
+
 function ReviewCard({ set, exerciseName, busy, disabled, onApprove, onReject }) {
   const [checked, setChecked] = useState({})
   const [reason, setReason] = useState('')
@@ -25,6 +33,11 @@ function ReviewCard({ set, exerciseName, busy, disabled, onApprove, onReject }) 
   return (
     <div className="ev-review-card">
       <strong>Versão {set.version} em revisão</strong>
+      {(set.metadata?.validation?.warnings || []).map((warning) => (
+        <Flash key={warning} variant="warning" role="status">
+          {WARNING_LABELS[warning] || warning}
+        </Flash>
+      ))}
       <ExerciseVisualPreview
         urls={set.previewUrls}
         roles={hasThumbnail ? ['start', 'end', 'thumbnail'] : ['start', 'end']}

@@ -37,6 +37,18 @@ before(async () => {
             path: args.path,
             namespace: 'compress-stub',
           }))
+          pluginBuild.onResolve({ filter: /\/utils\/perceptualHash$/ }, (args) => ({
+            path: args.path,
+            namespace: 'phash-stub',
+          }))
+          pluginBuild.onLoad({ filter: /.*/, namespace: 'phash-stub' }, () => ({
+            contents: `
+              export async function perceptualHashOfBlob(blob) {
+                if (globalThis.__phash === 'throw') throw new Error('phash failed')
+                return globalThis.__phash ? globalThis.__phash(blob.tag) : null
+              }
+            `,
+          }))
           pluginBuild.onLoad({ filter: /.*/, namespace: 'compress-stub' }, () => ({
             contents: `
               export async function compressImage(file, options) {
@@ -98,6 +110,7 @@ let fetchCalls
 beforeEach(() => {
   globalThis.__calls = []
   globalThis.__compressFail = null
+  globalThis.__phash = null
   globalThis.__query = () => ({ data: [], error: null, count: 0 })
   globalThis.__single = { data: null, error: null }
   globalThis.__rpc = async () => ({ data: ALLOCATION, error: null })
@@ -114,8 +127,8 @@ test('uploadVisualSet: converte, aloca, sobe nos paths reservados e confirma no 
     catalogId: 'cat',
     startFile: file('s.png'),
     endFile: file('e.png'),
-    promptVersion: 'v1',
-    metadata: { styleVersion: 'EVOLUTUS_FITNESS_V1' },
+    promptVersion: 'v2',
+    metadata: { styleVersion: 'EVOLUTUS_FITNESS_V2' },
   })
   assert.deepEqual(result, { visualSetId: 'set-1', status: 'review' })
 
@@ -133,8 +146,13 @@ test('uploadVisualSet: converte, aloca, sobe nos paths reservados e confirma no 
   assert.deepEqual(rpc.params, {
     p_catalog_id: 'cat',
     p_generation_source: 'manual_upload',
-    p_prompt_version: 'v1',
-    p_metadata: { styleVersion: 'EVOLUTUS_FITNESS_V1' },
+    p_prompt_version: 'v2',
+    p_metadata: { styleVersion: 'EVOLUTUS_FITNESS_V2' },
+    p_request_id: null,
+    p_style_profile_id: null,
+    p_prompt_start_hash: null,
+    p_prompt_end_hash: null,
+    p_provider_hint: null,
   })
 
   const uploads = globalThis.__calls.filter((call) => call.kind === 'upload')
@@ -401,4 +419,170 @@ test('start e end continuam obrigatórios: falha ao comprimir um deles aborta an
 
 test('erro MISSING_FILE do servidor tem mensagem própria', () => {
   assert.match(service.describeVisualError({ message: 'MISSING_FILE' }), /não chegou ao servidor/)
+})
+
+test('V2: envia chave de idempotência, perfil de estilo, hashes dos prompts START/END e provider hint na alocação', async () => {
+  await service.uploadVisualSet({
+    catalogId: 'cat',
+    startFile: file('s.png'),
+    endFile: file('e.png'),
+    promptVersion: 'v2',
+    requestId: '11111111-1111-4111-8111-111111111111',
+    styleProfileId: 'profile-2',
+    promptStartHash: 'a'.repeat(64),
+    promptEndHash: 'b'.repeat(64),
+    providerHint: 'generic',
+  })
+  const rpc = globalThis.__calls.find((call) => call.kind === 'rpc')
+  assert.deepEqual(rpc.params, {
+    p_catalog_id: 'cat',
+    p_generation_source: 'manual_upload',
+    p_prompt_version: 'v2',
+    p_metadata: {},
+    p_request_id: '11111111-1111-4111-8111-111111111111',
+    p_style_profile_id: 'profile-2',
+    p_prompt_start_hash: 'a'.repeat(64),
+    p_prompt_end_hash: 'b'.repeat(64),
+    p_provider_hint: 'generic',
+  })
+  assert.doesNotMatch(JSON.stringify(rpc.params), /key|token|secret/i, 'nenhum segredo vai junto')
+})
+
+test('V2: o dHash de start/end vai para a confirmação (só os que foram calculados) e nunca bloqueia o envio', async () => {
+  globalThis.__phash = (tag) => (tag.startsWith('s.png@1024') ? 'f0f0f0f0f0f0f0f0' : null)
+  await service.uploadVisualSet({
+    catalogId: 'cat',
+    startFile: file('s.png'),
+    endFile: file('e.png'),
+  })
+  assert.deepEqual(JSON.parse(fetchCalls[0].init.body), {
+    visualSetId: 'set-1',
+    perceptualHashes: { start: 'f0f0f0f0f0f0f0f0' },
+  })
+  fetchCalls.length = 0
+  globalThis.__phash = 'throw'
+  const result = await service.uploadVisualSet({
+    catalogId: 'cat',
+    startFile: file('s.png'),
+    endFile: file('e.png'),
+  })
+  assert.equal(result.status, 'review')
+  assert.deepEqual(JSON.parse(fetchCalls[0].init.body), { visualSetId: 'set-1' })
+})
+
+test('V2: repetição de um envio que já passou do upload (conjunto em review) só reconfirma, sem subir de novo', async () => {
+  globalThis.__rpc = async () => ({
+    data: { ...ALLOCATION, status: 'review', replayed: true },
+    error: null,
+  })
+  const result = await service.uploadVisualSet({
+    catalogId: 'cat',
+    startFile: file('s.png'),
+    endFile: file('e.png'),
+    requestId: '11111111-1111-4111-8111-111111111111',
+  })
+  assert.equal(result.status, 'review')
+  assert.equal(globalThis.__calls.filter((call) => call.kind === 'upload').length, 0)
+  assert.equal(fetchCalls.length, 1)
+})
+
+test('V2: retry depois de upload parcial: arquivo que já existe no Storage (409) não é erro; o envio conclui', async () => {
+  globalThis.__rpc = async () => ({
+    data: { ...ALLOCATION, status: 'allocated', replayed: true },
+    error: null,
+  })
+  globalThis.__upload = async (path) =>
+    path.endsWith('start.webp')
+      ? { error: { statusCode: '409', message: 'The resource already exists' } }
+      : { error: null }
+  const result = await service.uploadVisualSet({
+    catalogId: 'cat',
+    startFile: file('s.png'),
+    endFile: file('e.png'),
+    requestId: '11111111-1111-4111-8111-111111111111',
+  })
+  assert.equal(result.status, 'review')
+  const uploads = globalThis.__calls.filter((call) => call.kind === 'upload')
+  assert.deepEqual(
+    uploads.map((call) => call.path.split('/').pop()),
+    ['start.webp', 'end.webp', 'thumb.webp']
+  )
+  assert.equal(fetchCalls.length, 1)
+})
+
+test('V2: classifica erros definitivos (nova alocação) x repetíveis (mesma chave) e gera chaves únicas', () => {
+  for (const code of [
+    'INVALID_IMAGE',
+    'IMAGE_METADATA_NOT_ALLOWED',
+    'UPLOAD_NOT_AUTHORIZED',
+    'IDEMPOTENCY_KEY_REUSED',
+  ])
+    assert.equal(service.isDefinitiveUploadError({ code }), true, code)
+  assert.equal(service.isDefinitiveUploadError({ message: 'INVALID_STATE' }), true)
+  for (const error of [
+    new TypeError('Failed to fetch'),
+    { code: 'CONFIRM_FAILED' },
+    { message: 'storage down' },
+    null,
+  ])
+    assert.equal(service.isDefinitiveUploadError(error), false)
+  const a = service.newUploadRequestId()
+  const b = service.newUploadRequestId()
+  assert.match(a, /^[0-9a-f-]{36}$/)
+  assert.notEqual(a, b)
+})
+
+test('V2: mensagens novas (metadata EXIF/XMP, transição inválida, integridade) e o conjunto sem miniatura', () => {
+  assert.match(service.describeVisualError({ message: 'IMAGE_METADATA_NOT_ALLOWED' }), /EXIF\/XMP/)
+  assert.match(service.describeVisualError({ message: 'INVALID_TRANSITION' }), /não é permitida/)
+  assert.match(
+    service.describeVisualError({ message: 'INTEGRITY_MISMATCH' }),
+    /mudou depois da validação/
+  )
+  assert.match(service.describeVisualError({ message: 'INCOMPLETE_VISUAL_SET' }), /início e fim/)
+})
+
+test('V2: listVisualSets lê a proveniência e não assina URL de rascunho já purgado', async () => {
+  globalThis.__query = () => ({
+    error: null,
+    data: [
+      {
+        id: 's9',
+        status: 'rejected',
+        drafts_purged_at: '2026-10-10T00:00:00Z',
+        assets: [
+          {
+            role: 'start',
+            storage_bucket: 'exercise-visual-drafts',
+            storage_path: 'c/s9/start.webp',
+          },
+        ],
+      },
+    ],
+  })
+  const sets = await service.listVisualSets('c')
+  assert.deepEqual(sets[0].previewUrls, {})
+  assert.equal(
+    globalThis.__calls.some((call) => call.kind === 'signed'),
+    false
+  )
+  const select = globalThis.__calls
+    .find((call) => call.kind === 'from')
+    .chain.find(([m]) => m === 'select')[1]
+  for (const column of [
+    'style_version',
+    'provider_hint',
+    'prompt_start_hash',
+    'prompt_end_hash',
+    'drafts_purged_at',
+  ])
+    assert.match(select, new RegExp(column))
+  assert.doesNotMatch(select, /request_id/, 'a chave de idempotência não é exposta')
+})
+
+test('mensagem do perfil de estilo indisponível', () => {
+  assert.equal(
+    service.describeVisualError(new Error('STYLE_PROFILE_UNAVAILABLE')),
+    'Não foi possível carregar o padrão visual. Tente novamente.'
+  )
 })

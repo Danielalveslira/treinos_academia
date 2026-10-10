@@ -11,7 +11,7 @@ const { outputFiles } = await build({
   format: 'esm',
   platform: 'node',
 })
-const { readWebpDimensions, isWebpComplete } = await import(
+const { readWebpDimensions, isWebpComplete, findForbiddenWebpChunk } = await import(
   `data:text/javascript;base64,${Buffer.from(outputFiles[0].text).toString('base64')}`
 )
 
@@ -74,4 +74,54 @@ test('isWebpComplete: tamanho RIFF bate com o arquivo; truncado falha; bytes ext
   assert.equal(isWebpComplete(new Uint8Array(8)), false)
   const zero = header('VP8X', () => {})
   assert.equal(isWebpComplete(zero), false, 'RIFF size 0')
+})
+
+// Monta um WebP com a lista de chunks pedida (fourCC + tamanho do payload), RIFF consistente.
+function webpWith(chunks, { pad = true } = {}) {
+  const parts = [Buffer.from('WEBP')]
+  for (const [fourCC, size] of chunks) {
+    const header = Buffer.alloc(8)
+    header.write(fourCC, 0, 'latin1')
+    header.writeUInt32LE(size, 4)
+    parts.push(header, Buffer.alloc(size + (pad ? size % 2 : 0)))
+  }
+  const body = Buffer.concat(parts)
+  const riff = Buffer.alloc(8)
+  riff.write('RIFF', 0, 'latin1')
+  riff.writeUInt32LE(body.length, 4)
+  return new Uint8Array(Buffer.concat([riff, body]))
+}
+
+test('metadata: WebP lossy simples, lossless e com alfa/ICC passam (nada válido quebra)', () => {
+  assert.equal(findForbiddenWebpChunk(webpWith([['VP8 ', 30]])), null, 'lossy simples (canvas do Chrome)')
+  assert.equal(findForbiddenWebpChunk(webpWith([['VP8L', 25]])), null, 'lossless, tamanho ímpar com preenchimento')
+  assert.equal(
+    findForbiddenWebpChunk(webpWith([['VP8X', 10], ['ICCP', 17], ['ALPH', 9], ['VP8 ', 31]])),
+    null,
+    'VP8X + perfil de cor + alfa + imagem'
+  )
+  assert.equal(findForbiddenWebpChunk(webpWith([['VP8 ', 31]], { pad: false })), null, 'último chunk ímpar sem preenchimento é tolerado')
+  const trailing = new Uint8Array([...webpWith([['VP8 ', 30]]), 1, 2, 3, 4, 5])
+  assert.equal(findForbiddenWebpChunk(trailing), null, 'bytes depois do fim do RIFF são ignorados')
+})
+
+test('metadata: EXIF e XMP são recusados em qualquer posição da lista de chunks', () => {
+  assert.equal(findForbiddenWebpChunk(webpWith([['VP8X', 10], ['VP8 ', 30], ['EXIF', 21]])), 'EXIF', 'EXIF no fim')
+  assert.equal(findForbiddenWebpChunk(webpWith([['VP8X', 10], ['XMP ', 40], ['VP8 ', 30]])), 'XMP', 'XMP no meio')
+  assert.equal(findForbiddenWebpChunk(webpWith([['EXIF', 4], ['XMP ', 4]])), 'EXIF')
+})
+
+test('metadata: tamanho de chunk que estoura o arquivo é MALFORMED; arquivo curto também', () => {
+  const bad = webpWith([['VP8X', 10], ['VP8 ', 30]])
+  new DataView(bad.buffer).setUint32(16, 5000, true)
+  assert.equal(findForbiddenWebpChunk(bad), 'MALFORMED')
+  assert.equal(findForbiddenWebpChunk(new Uint8Array(10)), 'MALFORMED')
+  assert.equal(findForbiddenWebpChunk(webpWith([['VP8 ', 30]]).subarray(0, 26)), 'MALFORMED', 'cortado no meio do chunk')
+})
+
+test('metadata: o varredor só lê a lista de chunks (uma "EXIF" dentro do payload não conta)', () => {
+  const bytes = webpWith([['VP8 ', 40]])
+  bytes.set(Buffer.from('EXIF'), 30)
+  bytes.set(Buffer.from('XMP '), 36)
+  assert.equal(findForbiddenWebpChunk(bytes), null)
 })

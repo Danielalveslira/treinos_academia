@@ -1,5 +1,6 @@
 import { supabase } from '../supabase/config'
 import { compressImage } from '../utils/imageCompression'
+import { perceptualHashOfBlob } from '../utils/perceptualHash'
 
 // Administração da mídia oficial dos exercícios (só superadmin -- RLS/RPCs/Edge Functions
 // recusam qualquer outro; ver supabase/migrations/20261020000001_exercise_visuals.sql).
@@ -21,9 +22,16 @@ const ERROR_MESSAGES = {
   INVALID_IMAGE:
     'O servidor recusou uma das imagens (precisa ser WebP válida e dentro do tamanho permitido).',
   IMAGE_TOO_LARGE: 'Imagem muito pesada mesmo após a compressão (máx. 2MB). Use outra imagem.',
-  INCOMPLETE_VISUAL_SET: 'O conjunto está incompleto: início, fim e miniatura são obrigatórios.',
+  IMAGE_METADATA_NOT_ALLOWED:
+    'Uma das imagens contém metadados (EXIF/XMP). Exporte a imagem novamente sem metadados e envie de novo.',
+  INCOMPLETE_VISUAL_SET: 'O conjunto está incompleto: início e fim são obrigatórios.',
   INVALID_STATE:
     'Esse conjunto não está mais no estado esperado. Atualize a lista e tente de novo.',
+  INVALID_TRANSITION: 'Essa mudança de estado não é permitida. Atualize a lista e tente de novo.',
+  INTEGRITY_MISMATCH:
+    'O arquivo do rascunho mudou depois da validação. Envie as imagens novamente.',
+  STYLE_PROFILE_UNAVAILABLE: 'Não foi possível carregar o padrão visual. Tente novamente.',
+  IDEMPOTENCY_KEY_REUSED: 'Esse envio já foi usado para outro exercício. Envie novamente.',
   UPLOAD_NOT_AUTHORIZED: 'Upload não autorizado para esse conjunto.',
   CATALOG_NOT_FOUND: 'Exercício não encontrado ou inativo.',
   RATE_LIMITED: 'Muitas alocações seguidas. Aguarde um pouco e tente de novo.',
@@ -57,6 +65,35 @@ export function normalizeSearchTerm(value) {
     .replace(/[%_\\,()*]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+// Erros que o servidor dá de forma definitiva: repetir o mesmo envio (mesma chave) não adianta, o próximo
+// precisa de uma nova alocação. Qualquer outro erro (rede, timeout, 5xx) pode ser repetido com a MESMA chave sem
+// criar um segundo conjunto.
+const DEFINITIVE_UPLOAD_ERRORS = new Set([
+  'INVALID_IMAGE',
+  'IMAGE_METADATA_NOT_ALLOWED',
+  'UPLOAD_NOT_AUTHORIZED',
+  'IDEMPOTENCY_KEY_REUSED',
+  'INVALID_STATE',
+  'INCOMPLETE_VISUAL_SET',
+  'IMAGE_TOO_LARGE',
+  'MISSING_FILES',
+  'FORBIDDEN',
+  'CATALOG_NOT_FOUND',
+])
+export function isDefinitiveUploadError(error) {
+  return DEFINITIVE_UPLOAD_ERRORS.has(error?.code) || DEFINITIVE_UPLOAD_ERRORS.has(error?.message)
+}
+
+// Chave de idempotência da alocação (uma por envio). Se o navegador não tem crypto.randomUUID, a alocação
+// segue sem chave (continua serializada no banco; só perde a proteção contra retry).
+export function newUploadRequestId() {
+  try {
+    return globalThis.crypto?.randomUUID?.() || null
+  } catch {
+    return null
+  }
 }
 
 export function publishedUrl(path) {
@@ -130,7 +167,7 @@ export async function listVisualSets(catalogId) {
   const { data, error } = await supabase
     .from('exercise_visual_sets')
     .select(
-      'id, catalog_id, version, status, generation_source, prompt_version, created_by, approved_by, metadata, created_at, submitted_at, approved_at, published_at, assets:exercise_visual_assets(role, storage_bucket, storage_path, width, height, byte_size)'
+      'id, catalog_id, version, status, generation_source, prompt_version, style_version, provider_hint, prompt_start_hash, prompt_end_hash, reference_style_version, drafts_purged_at, created_by, approved_by, metadata, created_at, submitted_at, approved_at, published_at, assets:exercise_visual_assets(role, storage_bucket, storage_path, width, height, byte_size)'
     )
     .eq('catalog_id', catalogId)
     .order('version', { ascending: false })
@@ -143,7 +180,11 @@ async function withPreviewUrls(set) {
   const drafts = []
   for (const asset of set.assets || []) {
     if (asset.storage_bucket === PUBLIC_BUCKET) urls[asset.role] = publishedUrl(asset.storage_path)
-    else if (asset.storage_bucket === DRAFTS_BUCKET && set.status !== 'allocated')
+    else if (
+      asset.storage_bucket === DRAFTS_BUCKET &&
+      set.status !== 'allocated' &&
+      !set.drafts_purged_at
+    )
       drafts.push(asset)
   }
   if (drafts.length) {
@@ -188,11 +229,23 @@ async function toVisualBlob(file, maxDimension) {
   return blob
 }
 
+// Storage devolve 409/"already exists" quando o arquivo daquele path já subiu (retry depois de uma falha
+// parcial): o servidor revalida tudo no confirm, então isso não é erro.
+function isAlreadyUploaded(error) {
+  return (
+    String(error?.statusCode) === '409' || /already exists|Duplicate/i.test(error?.message || '')
+  )
+}
+
 // start/end viram WebP de até 1024px; a miniatura (320px) sai da posição inicial. Tudo é convertido no
 // navegador (imageCompression rejeita bytes que não decodificam como imagem) e o servidor valida de
 // novo no confirm. start e end são obrigatórios; a miniatura é melhor-esforço: se não puder ser gerada
 // ou enviada, o conjunto segue só com start/end (o servidor aceita) em vez de falhar o envio inteiro.
-// Devolve o conjunto já em `review`.
+//
+// V2: `requestId` torna a alocação idempotente (duplo clique/retry/conexão instável devolvem o MESMO conjunto
+// em vez de criar outro); `styleProfileId`, `promptStartHash`, `promptEndHash` e `providerHint` registram de
+// onde veio a imagem (nunca segredo); o dHash de start/end gera só um AVISO no servidor. Devolve o conjunto já
+// em `review`.
 export async function uploadVisualSet({
   catalogId,
   startFile,
@@ -200,6 +253,11 @@ export async function uploadVisualSet({
   generationSource = 'manual_upload',
   promptVersion = null,
   metadata = {},
+  requestId = null,
+  styleProfileId = null,
+  promptStartHash = null,
+  promptEndHash = null,
+  providerHint = null,
 }) {
   if (!startFile || !endFile) throw codedError('MISSING_FILES')
 
@@ -213,6 +271,15 @@ export async function uploadVisualSet({
   } catch (error) {
     console.warn('[exerciseVisualsService] miniatura não gerada, seguindo sem ela:', error)
   }
+  // Aviso de "imagens quase idênticas": melhor esforço, nunca atrapalha o envio.
+  const [startHash, endHash] = await Promise.all([
+    perceptualHashOfBlob(start).catch(() => null),
+    perceptualHashOfBlob(end).catch(() => null),
+  ])
+  const perceptualHashes = {
+    ...(startHash ? { start: startHash } : {}),
+    ...(endHash ? { end: endHash } : {}),
+  }
 
   const { data: allocation, error: allocateErr } = await supabase.rpc(
     'allocate_exercise_visual_set',
@@ -221,6 +288,11 @@ export async function uploadVisualSet({
       p_generation_source: generationSource,
       p_prompt_version: promptVersion,
       p_metadata: metadata,
+      p_request_id: requestId,
+      p_style_profile_id: styleProfileId,
+      p_prompt_start_hash: promptStartHash,
+      p_prompt_end_hash: promptEndHash,
+      p_provider_hint: providerHint,
     }
   )
   if (allocateErr) throw allocateErr
@@ -230,20 +302,27 @@ export async function uploadVisualSet({
       contentType: 'image/webp',
       upsert: false,
     })
-  for (const [role, blob] of [
-    ['start', start],
-    ['end', end],
-  ]) {
-    const { error: uploadErr } = await upload(role, blob)
-    if (uploadErr) throw uploadErr
-  }
-  if (thumbnail) {
-    const { error: thumbErr } = await upload('thumbnail', thumbnail)
-    if (thumbErr)
-      console.warn('[exerciseVisualsService] miniatura não enviada, seguindo sem ela:', thumbErr)
+  // Repetição de um envio que já passou do upload (a resposta da confirmação se perdeu): o conjunto não está
+  // mais `allocated`, os bytes já estão no servidor e só falta (re)confirmar -- a confirmação é idempotente.
+  if (allocation.status === undefined || allocation.status === 'allocated') {
+    for (const [role, blob] of [
+      ['start', start],
+      ['end', end],
+    ]) {
+      const { error: uploadErr } = await upload(role, blob)
+      if (uploadErr && !isAlreadyUploaded(uploadErr)) throw uploadErr
+    }
+    if (thumbnail) {
+      const { error: thumbErr } = await upload('thumbnail', thumbnail)
+      if (thumbErr && !isAlreadyUploaded(thumbErr))
+        console.warn('[exerciseVisualsService] miniatura não enviada, seguindo sem ela:', thumbErr)
+    }
   }
 
-  return callAdminFunction('exercise-visual-confirm', { visualSetId: allocation.visualSetId })
+  return callAdminFunction('exercise-visual-confirm', {
+    visualSetId: allocation.visualSetId,
+    ...(Object.keys(perceptualHashes).length ? { perceptualHashes } : {}),
+  })
 }
 
 export function publishVisualSet(visualSetId) {

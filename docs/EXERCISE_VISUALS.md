@@ -234,25 +234,129 @@ O script recusa o ref de produção conhecido e exige o catálogo importado (usa
 `Barbell_Curl`, `Dumbbell_Bicep_Curl`, `Leg_Press`, `Pullups`) e três usuários já existentes (2 superadmins e
 1 comum). Grava dados de teste (sets, arquivos e `published_media_refs`): use só em ambiente descartável.
 
-## Rascunhos abandonados (pendência documentada)
+## Rascunhos abandonados — rotina da V2
 
-Conjuntos em `allocated`, `failed` ou `rejected` (e uma miniatura avulsa não confirmada) **podem deixar
-arquivos** em `exercise-visual-drafts`. Rascunhos de conjuntos publicados são removidos pela própria
-publicação (melhor esforço). Não há rotina/cron agora (§62 do documento de arquitetura). A base já existe:
-o índice `exercise_visual_sets_status_idx (status, created_at)` e a ligação assets→paths. Para inspecionar
-manualmente em homologação:
+Substitui a pendência da V1. Função `cleanup-exercise-visuals` (Edge Function, **só superadmin**, JWT):
 
-```sql
-select s.id, s.status, s.created_at, a.storage_path
-from exercise_visual_sets s
-join exercise_visual_assets a on a.visual_set_id = s.id
-where s.status in ('allocated', 'failed', 'rejected')
-  and s.created_at < now() - interval '24 hours'
-order by s.created_at;
+1. `expire_stale_exercise_visual_sets`: `allocated`/`draft` com mais de 48 h (a janela de upload da policy é de
+   24 h; o banco recusa menos que isso) viram `failed` com motivo `EXPIRED` — a linha, o histórico e o número da
+   versão **ficam** (a versão nunca é reaproveitada).
+2. `list_exercise_visual_purge_candidates`: `failed` com mais de 7 dias e `rejected` com mais de 30 dias que ainda
+   têm bytes no bucket de rascunhos.
+3. A função remove os bytes **só do bucket privado `exercise-visual-drafts`**, em paths recalculados
+   (`{catalog}/{set}/{start|end|thumb}.webp`; qualquer outro path é ignorado e logado).
+4. Só depois disso `mark_exercise_visual_drafts_purged_internal` grava `drafts_purged_at` (e um evento
+   `cleanup` na auditoria). Banco e Storage são passos separados e repetíveis: falha ao remover bytes = o banco
+   não é tocado e o próximo ciclo tenta de novo; falha ao marcar = o próximo ciclo remove de novo (remover objeto
+   inexistente não é erro) e marca.
+
+Nunca tocam: `published`, `archived`, `review` (decisão humana pendente) e o bucket público. Esses limites estão
+no banco (`INVALID_STATE` em qualquer outro status) **e** na função (status e paths conferidos de novo).
+
+Uso manual (não há agendamento configurado — ver "Pendências"):
+
+```bash
+# simulação (só lista)
+curl -s -X POST "$SUPABASE_URL/functions/v1/cleanup-exercise-visuals" \
+  -H "Authorization: Bearer $SUPERADMIN_JWT" -H "Content-Type: application/json" -d '{"dryRun":true}'
+# execução (lote de até 200)
+curl -s -X POST ... -d '{"limit":100}'
 ```
 
-Política sugerida para a rotina futura (`cleanup_exercise_visual_drafts`): `allocated` > 24 h,
-`failed` > 7 dias, `rejected` > período definido; nunca apagar publicadas/arquivadas.
+## V2 — consistência visual e endurecimento do backend
+
+Migration `20261021000001_exercise_visuals_v2.sql` (somente expansão; ver "Ordem de rollout" abaixo).
+
+**Prompts.** `buildStartPrompt` (uma única imagem, posição inicial; proíbe comparação, duas poses, colagem,
+sequência e "antes e depois") e `buildEndPrompt` (uma única imagem; manda usar a imagem START como referência
+obrigatória, manter personagem/roupa/equipamento/câmera/escala/enquadramento/iluminação e alterar **somente** a
+biomecânica da pose). `PROMPT_VERSION = 'v2'`. O seletor "Formato do prompt" (Genérico — padrão, Gemini, ChatGPT)
+só ajusta uma linha de abertura e como a referência é citada; novo provider = uma entrada em
+`PROMPT_PROVIDER_FORMATS`, sem componente novo.
+
+**Style Profile.** `EVOLUTUS_FITNESS_V2` (3D semi-realista, avatar adulto neutro/andrógino, sem musculatura
+exagerada, roupa neutra, rosto pouco caracterizado, fundo transparente, prioridade para a biomecânica; proíbe
+texto, números, logos, setas e decoração). O V1 não foi alterado e **continua o perfil ativo**: a migration cria o
+V2 **inativo** e não muda o perfil ativo. Perfis têm `family` (`EVOLUTUS_FITNESS` para V1/V2) e um índice parcial
+garante no máximo um ativo por família. A troca é explícita: `activate_exercise_visual_style_profile(p_profile_id)`
+(superadmin autenticado) ou `activate_exercise_visual_style_profile_internal(p_profile_id, p_actor)` (service_role
+com um superadmin como ator) — atômica, idempotente, registra `activated_at`/`activated_by`. A mesma função serve
+de **rollback**: ativar o id do V1 devolve o V1 e deixa o V2 cadastrado. Conjuntos já criados mantêm o perfil com
+que nasceram. O app **não tem perfil de reserva**: sem o perfil ativo carregado (com id) não há prompt, cópia nem envio — a tela
+mostra "Não foi possível carregar o padrão visual. Tente novamente." com "Tentar novamente"; histórico, revisão,
+rollback e imagens publicadas seguem normais. O envio registra o `style_profile_id` do perfil que gerou o prompt mostrado.
+
+**Proveniência no conjunto** (`exercise_visual_sets`): `style_version`, `prompt_version` (versão do perfil de
+prompt), `prompt_start_hash`, `prompt_end_hash` (SHA-256 do texto exato copiado — registro de proveniência
+calculado no cliente, não fronteira de segurança), `provider_hint`, `reference_set_id`,
+`reference_style_version`. Nenhum segredo/API key. O `metadata` do cliente não consegue mais sobrescrever
+`source`/`styleVersion` (o servidor escreve por último).
+
+**Referências oficiais.** Tabelas `exercise_visual_reference_sets` (pacote versionado, no máximo um ativo) e
+`exercise_visual_reference_assets` (`character-front`, `character-side`, `character-back`, `style-reference`;
+path exato `{reference_set_id}/{role}.{webp|png|jpg}`), no bucket privado `exercise-visual-references`
+(escrita só service_role). A alocação grava a versão da referência ativa no conjunto. Ainda não há assets nem
+UI/Edge Function de upload de referência; `activate_exercise_visual_reference_set_internal` (service_role)
+já exige pacote completo e confirmado.
+
+**Alocação segura.** Advisory lock transacional por exercício (`private.lock_exercise_visual_catalog`) em vez do
+`FOR UPDATE` na linha do catálogo (que também travava as FKs de treinos dos alunos); a publicação/rollback usa o
+mesmo lock. `request_id` (uuid por envio, único por usuário) torna a alocação idempotente: duplo clique, retry ou
+conexão instável devolvem o mesmo conjunto (`replayed: true`) em vez de criar outro. `unique (catalog_id,
+version)` e `unique (created_by, request_id)` continuam como última defesa. O cliente reutiliza a chave em retries
+de rede e a renova após erro definitivo (`INVALID_IMAGE`, `IMAGE_METADATA_NOT_ALLOWED`…). Teste real de
+concorrência: `scripts/verify-exercise-visuals-concurrency.sh` (sessões simultâneas com barreira; **só em banco
+local**).
+
+**Máquina de estados no banco** (trigger `BEFORE UPDATE`; vale para RPC, Edge Function e SQL direto):
+
+| de | para |
+| --- | --- |
+| `allocated` | `review`, `failed` |
+| `draft` (reservado) | `review`, `rejected`, `failed` |
+| `review` | `published`, `rejected`, `failed` |
+| `published` | `archived` |
+| `archived` | `published` (rollback) |
+| `rejected`, `failed` | — (terminais) |
+
+Qualquer outra transição lança `INVALID_TRANSITION` (ex.: `allocated→published`, `failed→published`,
+`rejected→published`). `catalog_id`, `version`, `created_by` e `request_id` são imutáveis. O estado `failed` agora
+é alcançável: a Edge Function de confirmação marca o conjunto como `failed` quando um arquivo obrigatório é
+inválido (o path de rascunho é insert-only, não dá para regravar) e a expiração também o usa.
+
+**Auditoria.** `exercise_visual_audit_log` (append-only; sem FK para sobreviver à limpeza; só superadmin lê; ninguém
+insere direto): eventos `allocate`, `confirm`, `reject`, `publish`, `archive`, `restore`, `fail`, `cleanup` com
+`actor_id` (nulo quando é o sistema, ex. expiração), status anterior/novo, versão, horário e metadata mínima
+(motivo, avisos). Gerada por trigger na tabela de conjuntos: não depende de cada caminho lembrar de registrar.
+
+**Arquivos.** `exercise_visual_assets` ganhou `sha256` (calculado **no servidor** na confirmação), `perceptual_hash`
+(dHash 64 bits calculado no navegador), `validated_at`, `validation_version` (2 = SHA-256 + metadata). Avisos —
+**nunca bloqueiam**, o revisor decide — gravados em `metadata.validation.warnings`: `START_END_IDENTICAL_FILE`
+(SHA-256 igual), `START_END_NEARLY_IDENTICAL` (dHash a ≤ 2 bits), `DUPLICATE_FILE_IN_OTHER_SET` (SHA-256 já usado
+em outro conjunto). A publicação confere o SHA-256 gravado (`INTEGRITY_MISMATCH`, 409) antes de copiar; conjuntos
+confirmados pela v1 não têm hash e seguem normalmente.
+
+**WebP.** `findForbiddenWebpChunk` varre só a lista de chunks de nível superior e rejeita `EXIF` e `XMP `
+(`IMAGE_METADATA_NOT_ALLOWED`) e tamanhos de chunk que estouram o arquivo. `ICCP` (perfil de cor) é aceito de
+propósito. Não é parser de WebP: não decodifica nada.
+
+**Storage (conferido por pgTAP).** `exercise-visual-drafts` privado, só WebP ≤ 2 MB, leitura só superadmin, upload
+só no path alocado, só enquanto `allocated`, sem update/delete do cliente; `exercise-visuals` público sem escrita
+do cliente (só a Edge Function de publicação) com paths versionados `{catalog}/v{n}/…`; referências privadas sem
+escrita do cliente. URL de preview de rascunho: assinada, 10 min.
+
+### Ordem de rollout da V2
+
+1. Aplicar a migration `20261021000001` (frontend V1 continua funcionando: assinatura retrocompatível e o perfil
+   ativo continua o V1).
+2. Deploy das Edge Functions `exercise-visual-confirm`, `publish-exercise-visual` e `cleanup-exercise-visuals`
+   (`--use-api`: o bundling local falha por DNS no Codespace).
+3. Deploy do frontend V2 (push em main).
+4. Smoke técnico (checklist acima: allocate → upload → confirm → review → publish → rollback, usuário comum negado).
+5. **Só então** ativar o V2:
+   `select public.activate_exercise_visual_style_profile_internal((select id from public.exercise_visual_style_profiles where name = 'EVOLUTUS_FITNESS_V2'), '<uuid-de-um-superadmin>');`
+   (SQL Editor / `service_role`), ou o RPC `activate_exercise_visual_style_profile` com JWT de superadmin.
+6. Rollback do estilo, se preciso: a mesma chamada com o id do `EVOLUTUS_FITNESS_V1`.
 
 ## Piloto — Fase 3 (5 exercícios; ainda não executado)
 
@@ -279,7 +383,10 @@ consistência entre os 5. Critério de revisão: o checklist de 10 itens da pró
 
 - Smoke no projeto de homologação definitivo (checklist acima + script): as funções já passaram no Deno real
   local, mas ainda não num projeto Supabase hospedado — **bloqueia produção**.
-- Rotina de limpeza de rascunhos (§62), ver seção acima.
+- Agendar `cleanup-exercise-visuals` (hoje só manual, com JWT de superadmin; um cron precisaria de um segredo
+  próprio — decisão pendente) e assets reais de referência do personagem.
+- Edge Functions da V2 testadas em Node com fakes e empacotadas no edge-runtime real (`bundle`), mas ainda não
+  executadas ponta a ponta contra Storage/Auth reais (a stack local `local-stack.sh` não sobe sem baixar ~3 GB).
 - A miniatura é publicada mas ainda não usada pela UI do aluno.
 - Migration futura para remover `media_refs` (após o frontend novo estabilizar).
 - Fase 5 (API de IA, fila, custos) e Fase 6 (catálogo completo) não iniciadas.

@@ -11,9 +11,12 @@
 //    aponta para eles) e o conjunto continua em review; repetir publica de novo.
 //  - limpeza dos rascunhos falha: só sobra lixo no bucket privado; a publicação já valeu.
 //  - idempotente: repetir uma publicação já concluída (resposta perdida) devolve sucesso.
+//  - integridade (V2): o rascunho que vai para o bucket público precisa ter o SHA-256 gravado na confirmação
+//    (conjuntos confirmados pela v1 não têm hash e seguem só com as demais validações).
 import { corsHeaders } from '../_shared/cors.ts'
 import { draftPath, FILE_NAMES, publishedPath } from '../_shared/exerciseVisualPaths.ts'
-import { isWebpComplete, readWebpDimensions } from '../_shared/webp.ts'
+import { sha256Hex } from '../_shared/hash.ts'
+import { findForbiddenWebpChunk, isWebpComplete, readWebpDimensions } from '../_shared/webp.ts'
 import { authenticateSuperadmin, jsonError, jsonOk, UUID_PATTERN } from '../_shared/superadminAuth.ts'
 
 const DRAFTS_BUCKET = 'exercise-visual-drafts'
@@ -60,7 +63,7 @@ Deno.serve(async (req) => {
     // Só os arquivos CONFIRMADOS (com metadados gravados pelo confirm) entram na publicação.
     const { data: assets, error: assetsErr } = await adminClient
       .from('exercise_visual_assets')
-      .select('role, storage_bucket, storage_path, mime_type, byte_size')
+      .select('role, storage_bucket, storage_path, mime_type, byte_size, sha256')
       .eq('visual_set_id', visualSetId)
     if (assetsErr || !assets) return jsonError('INTERNAL_ERROR', 500)
     const confirmed = new Map(
@@ -72,7 +75,9 @@ Deno.serve(async (req) => {
 
     const draftPaths: string[] = []
     for (const role of Object.keys(FILE_NAMES)) {
-      const asset = confirmed.get(role) as { storage_bucket: string; storage_path: string } | undefined
+      const asset = confirmed.get(role) as
+        | { storage_bucket: string; storage_path: string; sha256: string | null }
+        | undefined
       if (!asset) continue // miniatura ausente: segue só com start/end
       const source = draftPath(set.catalog_id, set.id, role)
       const target = publishedPath(set.catalog_id, set.version, role)
@@ -84,7 +89,12 @@ Deno.serve(async (req) => {
       if (downloadErr || !blob) return jsonError('MISSING_FILE', 400)
       if (blob.size < 1 || blob.size > MAX_BYTES) return jsonError('INVALID_IMAGE', 400)
       const bytes = new Uint8Array(await blob.arrayBuffer())
-      if (!readWebpDimensions(bytes) || !isWebpComplete(bytes)) return jsonError('INVALID_IMAGE', 400)
+      if (!readWebpDimensions(bytes) || !isWebpComplete(bytes) || findForbiddenWebpChunk(bytes)) {
+        return jsonError('INVALID_IMAGE', 400)
+      }
+      if (asset.sha256 && asset.sha256 !== (await sha256Hex(bytes))) {
+        return jsonError('INTEGRITY_MISMATCH', 409)
+      }
 
       const { error: uploadErr } = await adminClient.storage
         .from(PUBLIC_BUCKET)
@@ -107,7 +117,7 @@ Deno.serve(async (req) => {
     })
     if (publishErr) {
       console.error('[publish-exercise-visual] publish_exercise_visual_internal failed:', publishErr)
-      const known = ['INVALID_STATE', 'INCOMPLETE_VISUAL_SET', 'FORBIDDEN']
+      const known = ['INVALID_STATE', 'INVALID_TRANSITION', 'INCOMPLETE_VISUAL_SET', 'FORBIDDEN']
       return jsonError(known.includes(publishErr.message) ? publishErr.message : 'INTERNAL_ERROR', 409)
     }
 

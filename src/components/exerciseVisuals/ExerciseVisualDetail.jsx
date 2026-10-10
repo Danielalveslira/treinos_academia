@@ -3,6 +3,11 @@ import { Button, Flash, Label, Spinner } from '@primer/react'
 import { UploadIcon } from '@primer/octicons-react'
 import { CopyButton } from '../CopyButton'
 import { formatCatalogLabel } from '../../utils/exerciseCatalog.js'
+import {
+  PROMPT_PROVIDER_FORMATS,
+  PROMPT_PROVIDER_OPTIONS,
+  STYLE_PROFILE_ERROR_MESSAGE,
+} from '../../utils/exerciseVisualPromptBuilder'
 import { ExerciseVisualHistory } from './ExerciseVisualHistory'
 import { ExerciseVisualPreview } from './ExerciseVisualPreview'
 import { ExerciseVisualReview } from './ExerciseVisualReview'
@@ -21,8 +26,9 @@ function currentStatus(sets) {
 // upload), revisão (só quando há algo em revisão) e histórico recolhido. A origem da imagem é neutra:
 // o fluxo de revisão/publicação é o mesmo para IA, prompt externo ou upload manual.
 export function ExerciseVisualDetail({ visuals, online }) {
-  const { selected, sets, prompt, busy } = visuals
+  const { selected, sets, prompts, promptProvider, busy, styleProfileState } = visuals
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [startReady, setStartReady] = useState(false)
   const root = useRef(null)
   const status = currentStatus(sets)
 
@@ -38,7 +44,10 @@ export function ExerciseVisualDetail({ visuals, online }) {
 
   async function submitUpload(files) {
     const ok = await visuals.upload(files)
-    if (ok) setUploadOpen(false)
+    if (ok) {
+      setUploadOpen(false)
+      setStartReady(false)
+    }
     return ok
   }
 
@@ -75,35 +84,102 @@ export function ExerciseVisualDetail({ visuals, online }) {
       <section className="ev-section" aria-label="Novo conjunto">
         <h3>Criar com IA</h3>
         <p className="ev-muted">
-          Copie o prompt, gere as imagens na ferramenta de IA que preferir (ou use arte própria) e
-          envie o resultado.
+          Uma imagem por vez: copie o prompt INICIAL e gere a posição inicial; depois copie o prompt
+          FINAL e gere a posição final usando a imagem inicial como referência. Use a ferramenta de
+          IA que preferir (ou arte própria) e envie o resultado.
         </p>
+        {!prompts && styleProfileState === 'error' && (
+          <Flash variant="danger" role="alert" data-testid="style-profile-error">
+            <span>{STYLE_PROFILE_ERROR_MESSAGE}</span>{' '}
+            <Button size="small" onClick={visuals.reloadStyleProfile}>
+              Tentar novamente
+            </Button>
+          </Flash>
+        )}
+        {!prompts && styleProfileState === 'loading' && (
+          <span className="ev-muted" role="status">
+            Carregando o padrão visual…
+          </span>
+        )}
+        {prompts && (
+          <label className="ev-file ev-provider">
+            <span>Formato do prompt</span>
+            <select
+              className="ev-input"
+              value={promptProvider}
+              onChange={(event) => visuals.setPromptProvider(event.target.value)}
+            >
+              {PROMPT_PROVIDER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="ev-actions">
-          {prompt && (
-            <CopyButton value={prompt.text} label="Copiar prompt" testId="copy-visual-prompt" />
+          {prompts ? (
+            <>
+              <CopyButton
+                value={prompts.start.text}
+                label="Copiar prompt INICIAL"
+                testId="copy-visual-prompt-start"
+              />
+              <CopyButton
+                value={prompts.end.text}
+                label="Copiar prompt FINAL"
+                testId="copy-visual-prompt-end"
+              />
+            </>
+          ) : (
+            <>
+              <Button size="small" disabled data-testid="copy-visual-prompt-start">
+                Copiar prompt INICIAL
+              </Button>
+              <Button size="small" disabled data-testid="copy-visual-prompt-end">
+                Copiar prompt FINAL
+              </Button>
+            </>
           )}
           <Button
             size="small"
             leadingVisual={UploadIcon}
             aria-expanded={uploadOpen}
-            disabled={!online}
+            disabled={!online || !prompts}
             onClick={() => setUploadOpen((open) => !open)}
           >
             Enviar imagens
           </Button>
         </div>
-        {prompt && (
-          <details className="ev-prompt">
-            <summary>Ver prompt</summary>
-            <pre>{prompt.text}</pre>
-          </details>
+        {prompts && startReady && (
+          <Flash variant="warning" data-testid="reference-hint">
+            Use a imagem inicial como referência ao gerar a posição final.
+          </Flash>
         )}
-        {uploadOpen && (
+        {prompts && !startReady && (
+          <span className="ev-muted" data-testid="reference-hint">
+            {PROMPT_PROVIDER_FORMATS[promptProvider]?.attachHint}
+          </span>
+        )}
+        {prompts && (
+          <>
+            <details className="ev-prompt">
+              <summary>Ver prompt inicial</summary>
+              <pre>{prompts.start.text}</pre>
+            </details>
+            <details className="ev-prompt">
+              <summary>Ver prompt final</summary>
+              <pre>{prompts.end.text}</pre>
+            </details>
+          </>
+        )}
+        {uploadOpen && prompts && (
           <ExerciseVisualUploadForm
             busy={busy}
             disabled={!online}
             onSubmit={submitUpload}
             onCancel={() => setUploadOpen(false)}
+            onStartFileChange={(file) => setStartReady(Boolean(file))}
           />
         )}
       </section>

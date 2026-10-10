@@ -20,7 +20,13 @@ function FileField({ id, label, file, onChange, disabled }) {
 
 // Envio das duas imagens (de qualquer origem: IA, prompt externo ou arte própria). A conversão para WebP
 // acontece no navegador e é revalidada no servidor (exercise-visual-confirm); o conjunto vai para revisão.
-export function ExerciseVisualUploadForm({ busy, disabled, onSubmit, onCancel }) {
+export function ExerciseVisualUploadForm({
+  busy,
+  disabled,
+  onSubmit,
+  onCancel,
+  onStartFileChange,
+}) {
   const [startFile, setStartFile] = useState(null)
   const [endFile, setEndFile] = useState(null)
   const [tool, setTool] = useState('')
@@ -44,6 +50,7 @@ export function ExerciseVisualUploadForm({ busy, disabled, onSubmit, onCancel })
     if (ok) {
       setStartFile(null)
       setEndFile(null)
+      onStartFileChange?.(null)
     }
   }
 
@@ -54,7 +61,10 @@ export function ExerciseVisualUploadForm({ busy, disabled, onSubmit, onCancel })
           id="visual-start"
           label="Posição inicial"
           file={startFile}
-          onChange={setStartFile}
+          onChange={(file) => {
+            setStartFile(file)
+            onStartFileChange?.(file)
+          }}
           disabled={locked}
         />
         <FileField

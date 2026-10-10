@@ -7,9 +7,14 @@
 //    segue sem ela (uma falha secundária não pode deixar start/end válidos irrecuperáveis).
 //  - Idempotente: repetir a chamada de um conjunto já em `review` (resposta perdida, duplo clique)
 //    devolve sucesso em vez de erro.
+//  - V2: calcula o SHA-256 dos bytes (detecta arquivo repetido), rejeita EXIF/XMP e registra
+//    validated_at/validation_version. Arquivo inválido num path imutável marca o conjunto como `failed`
+//    (o upload é insert-only: não há como corrigir o mesmo conjunto). O dHash vem do navegador, é
+//    opcional e só gera aviso no banco.
 import { corsHeaders } from '../_shared/cors.ts'
 import { draftPath } from '../_shared/exerciseVisualPaths.ts'
-import { isWebpComplete, readWebpDimensions } from '../_shared/webp.ts'
+import { PERCEPTUAL_HASH_PATTERN, sha256Hex } from '../_shared/hash.ts'
+import { findForbiddenWebpChunk, isWebpComplete, readWebpDimensions } from '../_shared/webp.ts'
 import { authenticateSuperadmin, jsonError, jsonOk, UUID_PATTERN } from '../_shared/superadminAuth.ts'
 
 const DRAFTS_BUCKET = 'exercise-visual-drafts'
@@ -18,15 +23,27 @@ const MIN_DIMENSION = 64
 // start/end: até 1024x1024; thumbnail: até 512 (o cliente gera 320).
 const MAX_DIMENSION: Record<string, number> = { start: 1024, end: 1024, thumbnail: 512 }
 const REQUIRED_ROLES = ['start', 'end']
+// Versão das regras de validação gravada em cada asset (1 = V1: cabeçalho/tamanho; 2 = + SHA-256 e metadata).
+const VALIDATION_VERSION = 2
 
-type Confirmed = { role: string; mime_type: string; width: number; height: number; byte_size: number }
-type Failure = 'MISSING_FILE' | 'INVALID_IMAGE'
+type Confirmed = {
+  role: string
+  mime_type: string
+  width: number
+  height: number
+  byte_size: number
+  sha256: string
+  perceptual_hash?: string
+  validation_version: number
+}
+type Failure = 'MISSING_FILE' | 'INVALID_IMAGE' | 'IMAGE_METADATA_NOT_ALLOWED'
 
 async function inspectAsset(
   adminClient: any,
   asset: { storage_bucket: string; storage_path: string } | undefined,
   expectedPath: string | null,
-  role: string
+  role: string,
+  perceptualHash?: string
 ): Promise<Confirmed | Failure> {
   // Path e bucket precisam ser exatamente os alocados: nada de ".." nem de arquivo de outro conjunto.
   if (!asset || !expectedPath || asset.storage_bucket !== DRAFTS_BUCKET || asset.storage_path !== expectedPath) {
@@ -48,7 +65,19 @@ async function inspectAsset(
   ) {
     return 'INVALID_IMAGE'
   }
-  return { role, mime_type: 'image/webp', width: dimensions.width, height: dimensions.height, byte_size: bytes.length }
+  const forbidden = findForbiddenWebpChunk(bytes)
+  if (forbidden === 'MALFORMED') return 'INVALID_IMAGE'
+  if (forbidden) return 'IMAGE_METADATA_NOT_ALLOWED'
+  return {
+    role,
+    mime_type: 'image/webp',
+    width: dimensions.width,
+    height: dimensions.height,
+    byte_size: bytes.length,
+    sha256: await sha256Hex(bytes),
+    ...(perceptualHash ? { perceptual_hash: perceptualHash } : {}),
+    validation_version: VALIDATION_VERSION,
+  }
 }
 
 Deno.serve(async (req) => {
@@ -59,8 +88,13 @@ Deno.serve(async (req) => {
     if (auth instanceof Response) return auth
     const { uid, adminClient } = auth
 
-    const { visualSetId } = await req.json()
+    const { visualSetId, perceptualHashes } = await req.json()
     if (!UUID_PATTERN.test(String(visualSetId || ''))) return jsonError('INVALID_ARGUMENT', 400)
+    // dHash opcional vindo do navegador: valor mal formatado é simplesmente ignorado (só gera aviso).
+    const perceptual = (role: string): string | undefined => {
+      const value = perceptualHashes?.[role]
+      return typeof value === 'string' && PERCEPTUAL_HASH_PATTERN.test(value) ? value : undefined
+    }
 
     const { data: set, error: setErr } = await adminClient
       .from('exercise_visual_sets')
@@ -85,9 +119,22 @@ Deno.serve(async (req) => {
         adminClient,
         byRole.get(role) as any,
         draftPath(set.catalog_id, set.id, role),
-        role
+        role,
+        perceptual(role)
       )
-      if (typeof result === 'string') return jsonError(result, 400)
+      if (typeof result === 'string') {
+        // Ausente = upload ainda pode ser refeito com a mesma chave; inválido = arquivo definitivo
+        // num path que não aceita regravação: o conjunto sai do fluxo (best effort, auditado).
+        if (result !== 'MISSING_FILE') {
+          const { error: failErr } = await adminClient.rpc('fail_exercise_visual_set_internal', {
+            p_set_id: visualSetId,
+            p_actor: uid,
+            p_reason: result === 'INVALID_IMAGE' ? 'INVALID_IMAGE' : 'IMAGE_METADATA',
+          })
+          if (failErr) console.error('[exercise-visual-confirm] fail_exercise_visual_set_internal:', failErr)
+        }
+        return jsonError(result, 400)
+      }
       confirmed.push(result)
     }
 
@@ -97,7 +144,8 @@ Deno.serve(async (req) => {
         adminClient,
         byRole.get('thumbnail') as any,
         draftPath(set.catalog_id, set.id, 'thumbnail'),
-        'thumbnail'
+        'thumbnail',
+        perceptual('thumbnail')
       )
       if (typeof thumbnail === 'string') {
         console.warn(`[exercise-visual-confirm] thumbnail ignorada (${thumbnail}) no conjunto ${set.id}`)

@@ -1,5 +1,6 @@
 import { before, beforeEach, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import {
   CATALOG,
   SET,
@@ -214,4 +215,40 @@ test('falha na limpeza dos rascunhos não desfaz nem esconde a publicação', as
   const result = await call()
   assert.equal(result.status, 200)
   assert.equal(fake.rpcCalls.length, 1)
+})
+
+test('V2 integridade: rascunho com o SHA-256 gravado na confirmação publica; hash divergente => 409 e nada copiado', async () => {
+  const sha = (bytes) => createHash('sha256').update(bytes).digest('hex')
+  for (const asset of fake.tables.exercise_visual_assets) {
+    const file = asset.storage_path.split('/').pop()
+    asset.sha256 = sha(fake.buckets[DRAFTS].get(draft(file)))
+  }
+  assert.equal((await call()).status, 200, 'hash confere => publica')
+
+  arrange()
+  for (const asset of fake.tables.exercise_visual_assets) asset.sha256 = 'a'.repeat(64)
+  const result = await call()
+  assert.deepEqual([result.status, result.body.error], [409, 'INTEGRITY_MISMATCH'])
+  assert.deepEqual([fake.uploads.length, fake.rpcCalls.length], [0, 0])
+})
+
+test('V2: conjunto confirmado pela v1 (sem sha256) continua publicando', async () => {
+  fake.tables.exercise_visual_assets.forEach((asset) => (asset.sha256 = null))
+  assert.equal((await call()).status, 200)
+})
+
+test('V2: EXIF/XMP no rascunho é recusado também na publicação (defesa em profundidade)', async () => {
+  for (const chunk of ['EXIF', 'XMP ']) {
+    arrange()
+    fake.buckets[DRAFTS].set(draft('start.webp'), makeWebp(1024, 1024, { chunk }))
+    const result = await call()
+    assert.deepEqual([chunk, result.status, result.body.error], [chunk, 400, 'INVALID_IMAGE'])
+    assert.deepEqual([fake.uploads.length, fake.rpcCalls.length], [0, 0])
+  }
+})
+
+test('V2: transição inválida barrada pelo banco chega como 409 INVALID_TRANSITION', async () => {
+  fake.rpcResult = () => ({ data: null, error: { message: 'INVALID_TRANSITION' } })
+  const result = await call()
+  assert.deepEqual([result.status, result.body.error], [409, 'INVALID_TRANSITION'])
 })
