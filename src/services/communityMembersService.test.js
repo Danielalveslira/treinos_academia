@@ -17,7 +17,7 @@ async function bundle() {
   const outfile = join(directory, 'out.cjs')
   await build({
     stdin: {
-      contents: `export { getCommunityAccess } from './communityMembersService.js'`,
+      contents: `export { getCommunityAccess, joinCommunity, listMyCommunityAccess } from './communityMembersService.js'`,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile,
@@ -42,7 +42,8 @@ async function bundle() {
             namespace: 'fake-cache',
           }))
           pluginBuild.onLoad({ filter: /.*/, namespace: 'fake-cache' }, () => ({
-            contents: 'export const invalidateCommunitiesCache = () => {}',
+            contents:
+              'export const invalidateCommunitiesCache = (uid) => { globalThis.__invalidated.push(uid) }',
             loader: 'js',
           }))
         },
@@ -54,6 +55,7 @@ async function bundle() {
 
 beforeEach(async () => {
   globalThis.__rpcCalls = []
+  globalThis.__invalidated = []
   globalThis.__rpcResponse = { data: 'member', error: null }
   service ??= await bundle()
 })
@@ -84,4 +86,41 @@ test('getCommunityAccess propaga o erro do servidor em vez de assumir acesso', a
   const failure = new Error('boom')
   globalThis.__rpcResponse = { data: null, error: failure }
   await assert.rejects(service.getCommunityAccess('c1'), failure)
+})
+
+test('joinCommunity devolve o estado do servidor; banido e indisponível NÃO são exceção', async () => {
+  for (const state of ['joined', 'already_member', 'banned', 'unavailable']) {
+    globalThis.__rpcResponse = { data: state, error: null }
+    assert.equal(await service.joinCommunity('c1', 'u1'), state)
+  }
+  assert.deepEqual(globalThis.__rpcCalls[0], {
+    name: 'join_community',
+    args: { p_community_id: 'c1' },
+  })
+  // qualquer resultado definitivo invalida a lista da conta, para a próxima leitura refletir o servidor
+  assert.equal(globalThis.__invalidated.length, 4)
+})
+
+test('joinCommunity propaga falhas reais (rede/inesperado) e rejeita resposta desconhecida', async () => {
+  const network = { message: 'TypeError: Failed to fetch', code: '' }
+  globalThis.__rpcResponse = { data: null, error: network }
+  await assert.rejects(service.joinCommunity('c1', 'u1'), (thrown) => thrown === network)
+  globalThis.__rpcResponse = { data: 'banido-talvez', error: null }
+  await assert.rejects(service.joinCommunity('c1', 'u1'), /resposta desconhecida/)
+  assert.equal(globalThis.__invalidated.length, 0)
+})
+
+test('listMyCommunityAccess: UMA chamada devolve o estado de todas as comunidades (sem N+1)', async () => {
+  const rows = []
+  for (let i = 0; i < 60; i += 1)
+    rows.push({ community_id: `c${i}`, access: i % 10 === 0 ? 'banned' : 'member' })
+  rows.push({ community_id: 'x', access: 'qualquer-coisa' })
+  globalThis.__rpcResponse = { data: rows, error: null }
+  const map = await service.listMyCommunityAccess()
+  assert.equal(globalThis.__rpcCalls.length, 1)
+  assert.deepEqual(globalThis.__rpcCalls[0], { name: 'list_my_community_access', args: undefined })
+  assert.equal(Object.keys(map).length, 60)
+  assert.equal(map.c0, 'banned')
+  assert.equal(map.c1, 'member')
+  assert.equal(map.x, undefined)
 })

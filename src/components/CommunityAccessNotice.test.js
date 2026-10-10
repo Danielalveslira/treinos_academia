@@ -79,17 +79,28 @@ test('not_member: só o fluxo público de entrada, com o botão Entrar', () => {
   assert.equal(joined, 1)
 })
 
-test('banned: bloqueio claro, sem botão Entrar e sem acionar a entrada', () => {
+test('banned (rota direta): estado dedicado, sem Entrar, com saída discreta para o Explorar', () => {
+  let back = 0
   const component = render({
     access: 'banned',
     onJoin() {
       throw new Error('não deveria entrar')
     },
+    onBack: () => (back += 1),
   })
-  assert.match(pageText(component), /Você não tem acesso a esta comunidade/)
-  assert.match(pageText(component), /banido/)
-  assert.doesNotMatch(pageText(component), /Entre para ver o feed/)
+  const text = pageText(component)
+  assert.match(text, /Acesso à comunidade bloqueado/)
+  assert.match(text, /Você não pode acessar o conteúdo desta comunidade\./)
+  assert.doesNotMatch(text, /Entre para ver o feed/)
+  assert.doesNotMatch(text, /Erro/)
   assert.equal(joinButtons(component).length, 0)
+  const explore = component.root.findAll(
+    (node) =>
+      typeof node.props.onClick === 'function' && /Explorar comunidades/.test(textContent(node))
+  )
+  assert.ok(explore.length > 0)
+  explore[0].props.onClick()
+  assert.equal(back, 1)
 })
 
 test('unavailable: estado neutro, sem botão Entrar e sem vazar conteúdo', () => {

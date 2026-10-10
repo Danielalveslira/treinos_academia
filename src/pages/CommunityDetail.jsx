@@ -26,7 +26,9 @@ import {
 } from '../services/communityMembersService'
 import { canModerateCommunity } from '../utils/communityOwnership'
 import {
+  accessAfterJoin,
   communityContentCachePrefixes,
+  describeJoinFailure,
   normalizeCommunityAccess,
   shouldPurgeCommunityState,
 } from '../utils/communityAccess'
@@ -48,6 +50,7 @@ import {
 import { CommunityFeedSection } from '../components/CommunityFeedSection'
 import { CommunityHeader } from '../components/CommunityHeader'
 import { CommunityAccessNotice } from '../components/CommunityAccessNotice'
+import { classifyReadError } from '../services/offline/readError'
 import { LazyDialogBoundary } from '../components/LazyDialogBoundary'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
@@ -433,10 +436,11 @@ function CommunityDetail({ id }) {
     const onVisible = () => {
       if (document.visibilityState === 'visible') revalidate()
     }
-    document.addEventListener('visibilitychange', onVisible)
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible)
     return () => {
       active = false
-      document.removeEventListener('visibilitychange', onVisible)
+      if (typeof document !== 'undefined')
+        document.removeEventListener('visibilitychange', onVisible)
     }
   }, [id, pageKey, applyAccess])
 
@@ -448,21 +452,21 @@ function CommunityDetail({ id }) {
     if (membershipPending) return
     setMembershipPending(true)
     try {
-      await joinCommunity(id, user.uid)
-      // A lista de anúncios guardada pode ser a vazia de quando ainda não era membro.
-      invalidateCache(`sponsoredAds:${id}`)
-      applyAccess('member')
-      showToast('Você entrou na comunidade.')
+      // O servidor devolve um ESTADO. Banido/indisponível não são erro: a própria página passa a mostrar o aviso
+      // (sem feed, sem "Entrar") e a lista da conta já foi invalidada pelo serviço -- sem refresh manual.
+      const result = await joinCommunity(id, user.uid)
+      const next = accessAfterJoin(result)
+      if (next === 'member') {
+        // A lista de anúncios guardada pode ser a vazia de quando ainda não era membro.
+        invalidateCache(`sponsoredAds:${id}`)
+        applyAccess('member')
+        showToast('Você entrou na comunidade.')
+      } else if (next) {
+        applyAccess(next)
+      }
     } catch (err) {
       console.error('[CommunityDetail] join:', err)
-      // O servidor pode ter recusado por remoção/banimento: reflete o estado real em vez de um erro genérico.
-      const next = await getCommunityAccess(id).catch(() => null)
-      if (next === 'banned' || next === 'unavailable') {
-        applyAccess(next)
-        showToast('Você não pode entrar nesta comunidade.', 'danger')
-      } else {
-        showToast('Erro ao entrar na comunidade.', 'danger')
-      }
+      showToast(describeJoinFailure(classifyReadError(err)), 'danger')
     } finally {
       setMembershipPending(false)
     }
@@ -818,6 +822,7 @@ function CommunityDetail({ id }) {
             access={access}
             onJoin={handleJoin}
             joinDisabled={membershipPending}
+            onBack={() => navigate('/comunidades')}
           />
 
           {member && holdForAds && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}

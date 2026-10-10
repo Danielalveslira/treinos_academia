@@ -17,6 +17,7 @@ import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { CommunityIcon } from '../components/CommunityIcon'
+import { CommunityExploreCard } from '../components/CommunityExploreCard'
 import { ResponsivePicture } from '../components/ResponsivePicture'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { listFeaturedCommunities, recordPromotionClick } from '../services/promotionsService'
@@ -25,6 +26,8 @@ import {
   formatMemberCount,
   formatRelativeTime,
 } from '../utils/communityActivity'
+import { classifyReadError } from '../services/offline/readError'
+import { COMMUNITY_MESSAGES, describeJoinFailure } from '../utils/communityAccess'
 
 // "Sair" fica atrás do ⋯ (em vez de um botão sempre visível em cada cartão) — mesmo padrão
 // de RowActionsMenu (Exercícios/Histórico): um único gatilho visível, funciona igual em
@@ -113,35 +116,6 @@ function CommunityCard({ community, linkTo, onNavigate, menu, badge, children })
   )
 }
 
-function ExploreCard({ community, joining, disabled, onJoin }) {
-  return (
-    <article className="community-explore-card">
-      <div className="community-explore-head">
-        <CommunityIcon community={community} size={44} />
-        <div className="community-card-info">
-          <h3 className="community-explore-name">{community.name}</h3>
-          <p className="community-card-meta">
-            <span>{formatMemberCount(community.memberCount)}</span>
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          className="community-join-button"
-          loading={joining}
-          disabled={disabled}
-          onClick={() => onJoin(community)}
-          aria-label={`Entrar em ${community.name}`}
-        >
-          Entrar
-        </Button>
-      </div>
-      {community.description && (
-        <p className="community-explore-description">{community.description}</p>
-      )}
-    </article>
-  )
-}
-
 // Imagem decorativa do topo (public/img/comunidades-hero-<largura>.*; original em
 // imports/images-source/). 1600w só serve telas largas/retina.
 const HERO_WIDTHS = [480, 800, 1024, 1600]
@@ -181,6 +155,8 @@ export default function Communities() {
   const { toasts, showToast } = useToast()
   const membershipLock = useRef(false)
   const [pendingCommunityId, setPendingCommunityId] = useState(null)
+  // Cartão cuja tentativa de entrada acabou de ser recusada por banimento (mostra o aviso compacto nele).
+  const [blockedNoticeId, setBlockedNoticeId] = useState(null)
 
   // Fase 6 -- "comunidades em destaque" (promovidas com EvoCash pelo próprio dono).
   // communities não é restrita por membership na leitura (ver policy communities_select),
@@ -210,14 +186,23 @@ export default function Communities() {
     setPendingCommunityId(null)
   }
 
+  // O servidor devolve um ESTADO ('joined' | 'already_member' | 'banned' | 'unavailable'). Banimento é
+  // autorização, não erro: o cartão passa a "Acesso bloqueado" com um aviso contextual, sem alerta vermelho no
+  // topo. Só falhas reais (rede, inesperado) viram toast de erro, com mensagem própria e sem texto técnico.
   async function handleJoin(community) {
     if (!beginMembershipChange(community.id)) return
     try {
-      await join(community.id)
-      showToast(`Você entrou em ${community.name}.`)
+      const result = await join(community.id)
+      if (result === 'banned') {
+        setBlockedNoticeId(community.id)
+      } else if (result === 'unavailable') {
+        showToast(COMMUNITY_MESSAGES.unavailable, 'danger')
+      } else {
+        showToast(`Você entrou em ${community.name}.`)
+      }
     } catch (err) {
       console.error('[Communities] join:', err)
-      showToast('Erro ao entrar na comunidade.', 'danger')
+      showToast(describeJoinFailure(classifyReadError(err)), 'danger')
     } finally {
       endMembershipChange()
     }
@@ -379,12 +364,13 @@ export default function Communities() {
             ) : (
               <div className="communities-grid communities-grid--explore">
                 {exploreCommunities.map((community) => (
-                  <ExploreCard
+                  <CommunityExploreCard
                     key={community.id}
                     community={community}
                     joining={pendingCommunityId === community.id}
                     disabled={pendingCommunityId !== null}
                     onJoin={handleJoin}
+                    showBlockedNotice={blockedNoticeId === community.id}
                   />
                 ))}
               </div>

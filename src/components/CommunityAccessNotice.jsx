@@ -1,11 +1,14 @@
+import { Button } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PeopleIcon } from '@primer/octicons-react'
-import { communityAccessView } from '../utils/communityAccess'
+import { CommunityBlockedNotice } from './CommunityBlockedNotice'
+import { COMMUNITY_MESSAGES, communityAccessView } from '../utils/communityAccess'
 
-// O que a pessoa vê no lugar do feed quando o servidor diz que ela NÃO é membro ativa. Só o
-// fluxo público de entrada existe para 'not_member'; banida e indisponível não têm "Entrar".
+// O que a pessoa vê no lugar do feed quando o servidor diz que ela NÃO é membro ativa. Só o fluxo público de
+// entrada existe para 'not_member'; banida e indisponível veem um aviso compacto, SEM "Entrar" e sem nenhum
+// conteúdo interno (a página nem monta feed, composer ou ações de membro nesses estados).
 // Membro (view 'feed') não renderiza nada aqui.
-export function CommunityAccessNotice({ access, onJoin, joinDisabled = false }) {
+export function CommunityAccessNotice({ access, onJoin, joinDisabled = false, onBack }) {
   const view = communityAccessView(access)
   if (view === 'feed') return null
 
@@ -28,18 +31,21 @@ export function CommunityAccessNotice({ access, onJoin, joinDisabled = false }) 
 
   const banned = view === 'banned'
   return (
-    <Blankslate>
-      <Blankslate.Visual>
-        <PeopleIcon size={24} />
-      </Blankslate.Visual>
-      <Blankslate.Heading>
-        {banned ? 'Você não tem acesso a esta comunidade' : 'Comunidade indisponível'}
-      </Blankslate.Heading>
-      <Blankslate.Description>
-        {banned
-          ? 'Você foi banido desta comunidade e não pode ver nem publicar conteúdos nela.'
-          : 'Esta comunidade não está disponível no momento.'}
-      </Blankslate.Description>
-    </Blankslate>
+    <CommunityBlockedNotice
+      className="community-blocked-notice--page"
+      title={banned ? COMMUNITY_MESSAGES.pageBlockedTitle : 'Comunidade indisponível'}
+      text={banned ? COMMUNITY_MESSAGES.pageBlockedText : COMMUNITY_MESSAGES.unavailable}
+    >
+      {onBack && (
+        <Button
+          size="small"
+          variant="invisible"
+          onClick={onBack}
+          className="community-blocked-notice-back"
+        >
+          Explorar comunidades
+        </Button>
+      )}
+    </CommunityBlockedNotice>
   )
 }

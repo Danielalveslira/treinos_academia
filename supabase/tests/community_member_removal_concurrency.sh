@@ -38,6 +38,7 @@ run_at() {
 ban()    { echo "select public.set_community_member_ban('$COMM', '$1', true, 'motivo de teste de concorrência')"; }
 unban()  { echo "select public.set_community_member_ban('$COMM', '$1', false)"; }
 remove() { echo "select public.remove_community_member('$COMM', '$1')"; }
+joinrpc() { echo "select public.join_community('$COMM')"; }
 join()   { echo "insert into public.community_members (community_id, user_id) values ('$COMM', '$1')"; }
 leave()  { echo "delete from public.community_members where community_id = '$COMM' and user_id = '$1'"; }
 
@@ -51,6 +52,9 @@ for r in $(seq 1 "$ROUNDS"); do
   seed_member "$B"; seed_member "$Cc"; seed_member "$D"; seed_member "$E"; seed_member "$F"
   # 1) ban x join (A, que não era membro, tenta entrar enquanto o dono bane)
   run_at "$T" "$OWNER" "$(ban "$A")" & run_at "$T" "$A" "$(join "$A")" &
+  # 1b) ban x join_community (RPC): o resultado correto da corrida é 'banned', nunca 'joined' com ban ativo
+  G=$(uid $((base+7)))
+  run_at "$T" "$OWNER" "$(ban "$G")" & run_at "$T" "$G" "$(joinrpc)" &
   # 2) remover x banir simultâneos (B)
   run_at "$T" "$OWNER" "$(remove "$B")" & run_at "$T" "$OWNER" "$(ban "$B")" &
   # 3) banir x banir (Cc) e desbanir x desbanir (D, banido antes)

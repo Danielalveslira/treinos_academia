@@ -1,0 +1,64 @@
+/* Acesso bloqueado (banimento): estado de autorização, não erro técnico. Chip desabilitado no cartão do
+   Explorar e aviso contextual compacto (vinho discreto no tema escuro) -- nunca o alerta vermelho do topo. */
+.community-explore-head .community-join-button--blocked {
+  min-width: 0;
+  max-width: 46%;
+  min-height: 36px;
+  padding-inline: 10px;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  color: var(--fgColor-danger, #f85149);
+  border-color: var(--borderColor-danger-muted, rgb(248 81 73 / 35%));
+  background: var(--bgColor-danger-muted, rgb(248 81 73 / 10%));
+  opacity: 0.9;
+  cursor: not-allowed;
+}
+.community-blocked-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--borderColor-danger-muted, rgb(248 81 73 / 35%));
+  border-radius: var(--fitness-radius-sm);
+  background: var(--bgColor-danger-muted, rgb(248 81 73 / 10%));
+}
+[data-color-mode='dark'] .community-blocked-notice,
+[data-color-mode='night'] .community-blocked-notice {
+  background: rgb(92 24 32 / 45%);
+  border-color: rgb(248 81 73 / 30%);
+}
+.community-blocked-notice--in-card {
+  margin: 0 14px 14px;
+}
+.community-blocked-notice--page {
+  margin-block: 16px;
+}
+.community-blocked-notice-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--fgColor-danger, #f85149);
+}
+.community-blocked-notice-body {
+  min-width: 0;
+}
+.community-blocked-notice-title,
+.community-blocked-notice-text {
+  margin: 0;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.community-blocked-notice-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+.community-blocked-notice-text {
+  margin-top: 2px;
+  color: var(--fitness-muted);
+  font-size: 12.5px;
+}
+.community-blocked-notice-back {
+  margin: 6px 0 0 -8px;
+}
