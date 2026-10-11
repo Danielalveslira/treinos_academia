@@ -8,7 +8,10 @@ export const MUSCLE_GROUPS = [
   'Abdômen',
   'Glúteos',
   'Panturrilha',
+  'Antebraços',
+  'Pescoço',
   'Cardio',
+  'Outros',
 ]
 
 // Nenhum grupo personalizado é "salvo" à parte — ele só existe enquanto algum exercício

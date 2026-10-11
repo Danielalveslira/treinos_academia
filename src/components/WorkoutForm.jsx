@@ -10,6 +10,7 @@ import {
 } from '@primer/octicons-react'
 import { MUSCLE_GROUPS } from '../constants/muscleGroups'
 import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
+import { MuscleIconBadge } from './MuscleIconBadge'
 import { validateWorkout, hasErrors } from '../utils/validators'
 import { getWorkoutSets, isValidSet } from '../utils/workoutSets'
 import { toDate } from '../utils/date'
@@ -618,9 +619,7 @@ export function WorkoutForm({
                   aria-pressed={selectedGroup === group}
                   onClick={() => chooseGroup(group)}
                 >
-                  <span className="muscle-group-mark" aria-hidden="true">
-                    <GroupIcon size={20} strokeWidth={2} />
-                  </span>
+                  <MuscleIconBadge icon={GroupIcon} size="md" />
                   <span>
                     <strong>{group}</strong>
                     <small>{groupCounts.get(group)} exercícios</small>

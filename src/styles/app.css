@@ -3976,7 +3976,6 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .session-heading h1 { margin: 0; }
 
 .session-icon,
-.muscle-icon,
 .community-icon {
   display: grid;
   flex: 0 0 auto;
@@ -4113,17 +4112,34 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   background: var(--fitness-accent-soft);
 }
 
-.muscle-group-mark {
+/* Badge de ícone compartilhado por grupo/músculo (Exercises.jsx, WorkoutForm.jsx,
+   ExerciseCatalog.jsx, ExerciseDetail.jsx, WorkoutExerciseGuide.jsx, Progress.jsx -- ver
+   MuscleIconBadge.jsx). "solid" é o padrão (músculo/grupo principal); "muted" é mais leve,
+   usado só pra músculo secundário, pra distinguir visualmente sem duplicar o ícone. */
+.muscle-icon-badge {
   display: grid;
   flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
   place-items: center;
   border-radius: 12px;
-  background: var(--bgColor-default);
+}
+.muscle-icon-badge--sm { width: 28px; height: 28px; }
+.muscle-icon-badge--md { width: 38px; height: 38px; }
+.muscle-icon-badge--solid {
+  background: var(--fitness-accent-soft);
   color: var(--fitness-accent-strong);
-  font-size: 14px;
-  font-weight: 800;
+}
+/* Dentro de um card que já tem fundo tingido (.muscle-group-card/.workout-exercise-card
+   usam --fitness-surface), o badge usa o fundo neutro da página pra manter contraste --
+   repetir --fitness-accent-soft ali dava um dégradé indesejado de verde sobre verde. */
+.muscle-group-card .muscle-icon-badge--solid,
+.workout-exercise-card .muscle-icon-badge--solid {
+  background: var(--bgColor-default);
+}
+.muscle-icon-badge--muted {
+  border-radius: 999px;
+  border: 1px solid var(--borderColor-muted);
+  background: transparent;
+  color: var(--fgColor-muted);
 }
 
 .muscle-group-card > span:nth-child(2),
@@ -4378,7 +4394,6 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .exercise-group-chevron { color: var(--fgColor-muted); transition: transform .15s ease; }
 .exercise-group-chevron.is-collapsed { transform: rotate(-90deg); }
 .exercise-row-reorder { gap: 12px; }
-.muscle-icon { display: flex; width: 28px; height: 28px; align-items: center; justify-content: center; flex-shrink: 0; }
 .exercise-list { border-top: 1px solid var(--borderColor-muted); }
 
 .exercise-row {
@@ -4563,6 +4578,8 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   border-radius: 12px;
   background: var(--fitness-surface);
 }
+.progress-muscle-label { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.muscle-distribution .muscle-icon-badge--solid { background: var(--bgColor-default); }
 
 .body-chart-controls {
   display: flex;
@@ -4668,6 +4685,8 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   color: var(--fgColor-default);
 }
 .catalog-filter select:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 1px; }
+.catalog-filters-footer { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.catalog-filter-hint { margin: 0; color: var(--fgColor-muted); font-size: 11px; max-width: 46ch; }
 .catalog-result-count { margin: 16px 0 10px; color: var(--fgColor-muted); font-size: 13px; }
 .catalog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .catalog-card {
@@ -4678,7 +4697,9 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   padding: 12px;
   border: 1px solid var(--borderColor-muted);
   border-radius: 8px;
+  transition: border-color .15s ease, background-color .15s ease;
 }
+.catalog-card.is-added { border-color: var(--fitness-accent-strong); background: var(--fitness-accent-soft); }
 .catalog-card-details {
   display: grid;
   grid-template-columns: 72px minmax(0, 1fr);
@@ -4697,16 +4718,35 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .catalog-card-details:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 4px; }
 .catalog-card-copy { display: grid; min-width: 0; gap: 3px; }
 .catalog-card-copy strong,
-.catalog-card-copy span,
 .catalog-card-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.catalog-card-copy span,
 .catalog-card-copy small { color: var(--fgColor-muted); }
+.catalog-card-copy .catalog-card-muscle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fgColor-muted);
+}
+.catalog-card-muscle span { overflow: hidden; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
+.catalog-card-thumb-wrap { position: relative; flex: 0 0 auto; }
 .catalog-card-thumbnail {
   width: 72px;
   height: 72px;
   min-height: 72px;
   border-radius: 7px;
   object-fit: cover;
+}
+.catalog-card-added-mark {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--fitness-accent-strong);
+  color: var(--fgColor-onEmphasis, #fff);
+  box-shadow: 0 0 0 2px var(--bgColor-default);
 }
 .catalog-load-more { display: flex !important; margin: 18px auto 0; }
 .catalog-status { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 160px; color: var(--fgColor-muted); }
@@ -4719,6 +4759,8 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .catalog-details dt { color: var(--fgColor-muted); font-weight: 600; }
 .catalog-details dd { margin: 0; }
 .catalog-details ol { display: grid; gap: 8px; padding-left: 22px; }
+.catalog-muscle-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.catalog-muscle-list li { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .catalog-image-placeholder {
   display: grid;
   min-height: 180px;
@@ -4841,6 +4883,16 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .catalog-grid { grid-template-columns: 1fr; }
   .catalog-heading { align-items: flex-start; flex-direction: column-reverse; }
   .catalog-card { align-items: flex-start; flex-direction: column; }
+  .catalog-card > .catalog-card-details { width: 100%; }
+  .catalog-card > button:last-child { width: 100%; }
+  .catalog-card-copy strong {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .catalog-filters-footer { flex-direction: column; align-items: stretch; }
   .catalog-details-images,
   .personal-catalog-images { grid-template-columns: 1fr; }
   .catalog-details dl div { grid-template-columns: 1fr; gap: 2px; }
@@ -4874,7 +4926,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .workout-step-heading h2 { font-size: 22px; }
   .muscle-group-grid { gap: 8px; }
   .muscle-group-card { min-height: 66px; padding: 9px; }
-  .muscle-group-mark { width: 34px; height: 34px; }
+  .muscle-icon-badge--md { width: 34px; height: 34px; }
   .muscle-group-card strong { font-size: 13px; }
   /* .workout-form-actions (só na edição de um registro) é sticky: reserva essa faixa o tempo todo, então
      fica enxuto aqui. bottom vem de navigation.css (--bottom-navigation-space), que carrega depois. */

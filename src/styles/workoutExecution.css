@@ -153,6 +153,8 @@
   margin: 0;
   font-size: 14px;
 }
+.workout-guide-muscles { display: flex; flex-wrap: wrap; gap: 8px; }
+.workout-guide-muscles span { display: flex; align-items: center; gap: 6px; }
 .workout-guide-instructions {
   margin-top: 20px;
 }

@@ -14,7 +14,8 @@ import {
 
 // Os 17 valores distintos de primary_muscle hoje em public.exercise_catalog, auditados
 // direto em produção (868 exercícios) -- cada um DEVE ter um grupo oficial explícito,
-// nenhum pode cair no fallback.
+// nenhum pode cair no fallback. Antebraços e Pescoço têm grupo próprio (não são
+// sinônimo de Bíceps/Costas) -- ver docs/prompts/PROMPT_CLAUDE_REDESIGN_EXERCICIOS_EVOLUTUS.md.
 const REAL_PRIMARY_MUSCLES_TO_GROUP = {
   quadriceps: 'Pernas',
   ombros: 'Ombros',
@@ -27,11 +28,11 @@ const REAL_PRIMARY_MUSCLES_TO_GROUP = {
   'meio-das-costas': 'Costas',
   panturrilhas: 'Panturrilha',
   'inferior-das-costas': 'Costas',
-  antebracos: 'Bíceps',
+  antebracos: 'Antebraços',
   gluteos: 'Glúteos',
   trapezio: 'Costas',
   adutores: 'Pernas',
-  pescoco: 'Costas',
+  pescoco: 'Pescoço',
   abdutores: 'Pernas',
 }
 
@@ -42,9 +43,9 @@ test('mapCatalogMuscleToLibraryGroup cobre os 17 primary_muscle reais do catálo
 })
 
 test('mapCatalogMuscleToLibraryGroup tem um fallback explícito (nunca lança) pra músculo desconhecido', () => {
-  assert.equal(mapCatalogMuscleToLibraryGroup('musculo-que-nao-existe'), 'Pernas')
-  assert.equal(mapCatalogMuscleToLibraryGroup(undefined), 'Pernas')
-  assert.equal(mapCatalogMuscleToLibraryGroup(null), 'Pernas')
+  assert.equal(mapCatalogMuscleToLibraryGroup('musculo-que-nao-existe'), 'Outros')
+  assert.equal(mapCatalogMuscleToLibraryGroup(undefined), 'Outros')
+  assert.equal(mapCatalogMuscleToLibraryGroup(null), 'Outros')
 })
 
 // Achado no smoke test manual: valores crus do dataset perderam acento na origem
@@ -119,10 +120,28 @@ const sample = [
 test('muscle/category mapping cobre chaves legadas (free-exercise-db em inglês) e o dataset atual (pt-BR)', () => {
   assert.equal(mapCatalogMuscleToPersonalGroup({ primaryMuscles: ['glutes'] }), 'Glúteos')
   assert.equal(mapCatalogMuscleToPersonalGroup({ primaryMuscles: ['gluteos'] }), 'Glúteos')
-  assert.equal(mapCatalogMuscleToPersonalGroup({ primaryMuscles: [] }), 'Pernas')
+  assert.equal(mapCatalogMuscleToPersonalGroup({ primaryMuscles: [] }), 'Outros')
   assert.equal(mapCatalogCategoryToExerciseType('cardio'), 'cardio')
   assert.equal(mapCatalogCategoryToExerciseType('forca'), 'strength')
   assert.equal(mapCatalogCategoryToExerciseType('alongamento'), 'strength')
+})
+
+// Cardio é tratamento explícito por categoria, não por músculo -- primaryMuscle de um
+// exercício de cardio (ex. "Esteira": quadriceps) é a perna que sustenta o movimento, não
+// o alvo do treino, então nunca deveria cair em "Pernas" nem em qualquer outro grupo de
+// força. category === 'cardio' sempre ganha de MUSCLE_GROUP_MAP.
+test('mapCatalogMuscleToPersonalGroup trata categoria cardio como grupo Cardio, independente do músculo', () => {
+  assert.equal(
+    mapCatalogMuscleToPersonalGroup({ category: 'cardio', primaryMuscles: ['quadriceps'] }),
+    'Cardio'
+  )
+  assert.equal(
+    mapCatalogMuscleToPersonalGroup({ category: 'cardio', primaryMuscles: ['isquiotibiais'] }),
+    'Cardio'
+  )
+  assert.equal(mapCatalogMuscleToPersonalGroup({ category: 'cardio', primaryMuscles: [] }), 'Cardio')
+  // Fora de cardio, continua decidindo pelo músculo normalmente.
+  assert.equal(mapCatalogMuscleToPersonalGroup({ category: 'forca', primaryMuscles: ['peito'] }), 'Peito')
 })
 
 test('all mapped values stay within the app own muscle group / exercise type sets', () => {

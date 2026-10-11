@@ -19,6 +19,7 @@ import {
   PlayIcon,
 } from '@primer/octicons-react'
 import { useExercises } from '../contexts/ExercisesContext'
+import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
 import { useExerciseHistory } from '../hooks/useExerciseHistory'
 import { useExerciseCatalogDetail } from '../hooks/useExerciseCatalogDetail.js'
 import { EXERCISE_HISTORY_PAGE_SIZE } from '../services/workoutsService'
@@ -77,6 +78,7 @@ export default function ExerciseDetail() {
   const cardioSummary = useMemo(() => getCardioSummary(workouts), [workouts])
 
   const loading = loadingExercises || loadingWorkouts
+  const GroupIcon = exercise?.muscleGroup ? getMuscleGroupIcon(exercise.muscleGroup) : GraphBarVerticalIcon
 
   return (
     <Box className="exercise-detail-page">
@@ -111,7 +113,7 @@ export default function ExerciseDetail() {
               color: 'accent.fg',
             }}
           >
-            <GraphBarVerticalIcon size={24} />
+            <GroupIcon size={24} />
           </Box>
           <Box>
             <Heading as="h1" sx={{ fontSize: 3 }}>

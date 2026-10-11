@@ -30,6 +30,7 @@ import { RowActionsMenu } from '../components/RowActionsMenu'
 import { ToastFlash } from '../components/ToastFlash'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
+import { MuscleIconBadge } from '../components/MuscleIconBadge'
 import { formatDate } from '../utils/format'
 import { toDate } from '../utils/date.js'
 import { normalizeForSearch } from '../utils/text.js'
@@ -176,7 +177,11 @@ export default function Exercises() {
   async function handleCatalogAdd(exercise) {
     try {
       const result = await addFromCatalog(exercise)
-      showToast(result.added ? 'Exercício adicionado.' : 'Exercício já adicionado.')
+      showToast(
+        result.added
+          ? `Exercício adicionado em ${result.exercise.muscleGroup}.`
+          : 'Exercício já estava na sua biblioteca.'
+      )
       return result
     } catch (err) {
       console.error('[Exercises] catalog create:', err)
@@ -192,6 +197,16 @@ export default function Exercises() {
       showToast('Exercício atualizado.')
     } catch (err) {
       console.error('[Exercises] update:', err)
+      showToast('Erro ao atualizar exercício.', 'danger')
+    }
+  }
+
+  async function handleToggleActive(exercise) {
+    try {
+      await edit(exercise.id, { ...exercise, active: !exercise.active })
+      showToast(exercise.active ? 'Exercício inativado.' : 'Exercício ativado.')
+    } catch (err) {
+      console.error('[Exercises] toggle active:', err)
       showToast('Erro ao atualizar exercício.', 'danger')
     }
   }
@@ -411,9 +426,7 @@ export default function Exercises() {
                       size={14}
                       className={`exercise-group-chevron ${isCollapsed ? 'is-collapsed' : ''}`}
                     />
-                    <span className="muscle-icon">
-                      <GroupIcon size={16} strokeWidth={2} />
-                    </span>
+                    <MuscleIconBadge icon={GroupIcon} size="sm" />
                     <Heading as="h2">{muscleGroup}</Heading>
                     <span className="exercise-group-count">{list.length}</span>
                   </button>
@@ -519,6 +532,12 @@ export default function Exercises() {
                                   label: 'Editar',
                                   icon: PencilIcon,
                                   onSelect: () => setEditingExercise(exercise),
+                                },
+                                {
+                                  key: 'toggle-active',
+                                  label: exercise.active ? 'Inativar' : 'Ativar',
+                                  icon: exercise.active ? EyeClosedIcon : EyeIcon,
+                                  onSelect: () => handleToggleActive(exercise),
                                 },
                                 {
                                   key: 'delete',

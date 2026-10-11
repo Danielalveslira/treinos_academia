@@ -17,6 +17,8 @@ import { BodyCompositionCard } from '../components/BodyCompositionCard'
 import { ErrorState } from '../components/ErrorState'
 import { useExercises } from '../contexts/ExercisesContext'
 import { StrengthProgress } from '../components/StrengthProgress'
+import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
+import { MuscleIconBadge } from '../components/MuscleIconBadge'
 
 const PERIODS = [
   ['today', 'Hoje'],
@@ -267,7 +269,10 @@ export default function Progress() {
               <div className="muscle-distribution">
                 {muscleGroups.map((item) => (
                   <div key={item.muscleGroup}>
-                    <span>{item.muscleGroup}</span>
+                    <span className="progress-muscle-label">
+                      <MuscleIconBadge icon={getMuscleGroupIcon(item.muscleGroup)} size="sm" />
+                      {item.muscleGroup}
+                    </span>
                     <strong>{item.sets} séries</strong>
                   </div>
                 ))}

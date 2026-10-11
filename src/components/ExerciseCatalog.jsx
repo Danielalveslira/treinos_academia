@@ -1,11 +1,27 @@
 import { useState } from 'react'
 import { Box, Button, Heading, Spinner, Text } from '@primer/react'
-import { ArrowLeftIcon, SearchIcon } from '@primer/octicons-react'
+import { ArrowLeftIcon, CheckIcon, SearchIcon } from '@primer/octicons-react'
 import { useExerciseCatalogSearch } from '../hooks/useExerciseCatalogSearch.js'
 import { useExerciseCatalogTaxonomy } from '../hooks/useExerciseCatalogTaxonomy.js'
 import { formatCatalogLabel as displayValue, isProviderExerciseAdded } from '../utils/exerciseCatalog.js'
+import { getMuscleIcon } from '../constants/muscleGroupIcons.js'
+import { MuscleIconBadge } from './MuscleIconBadge.jsx'
 import { ExerciseCatalogImage } from './ExerciseCatalogImage.jsx'
 import { CatalogOfflineStatus } from './CatalogOfflineStatus.jsx'
+
+function MuscleList({ muscles, tone }) {
+  if (!muscles?.length) return null
+  return (
+    <ul className="catalog-muscle-list">
+      {muscles.map((muscle) => (
+        <li key={muscle}>
+          <MuscleIconBadge icon={getMuscleIcon(muscle)} size="sm" tone={tone} />
+          <span>{displayValue(muscle)}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 function FilterSelect({ label, value, options, onChange }) {
   // Nunca mostra um filtro sem opções reais (ex.: taxonomia ainda carregando, ou uma
@@ -54,12 +70,16 @@ function ExerciseCatalogDetails({ exercise, added, adding, onAdd, onClose }) {
       <dl>
         <div>
           <dt>Músculos primários</dt>
-          <dd>{exercise.primaryMuscles.map(displayValue).join(', ')}</dd>
+          <dd>
+            <MuscleList muscles={exercise.primaryMuscles} tone="solid" />
+          </dd>
         </div>
         {exercise.secondaryMuscles?.length > 0 && (
           <div>
             <dt>Músculos secundários</dt>
-            <dd>{exercise.secondaryMuscles.map(displayValue).join(', ')}</dd>
+            <dd>
+              <MuscleList muscles={exercise.secondaryMuscles} tone="muted" />
+            </dd>
           </div>
         )}
         <div>
@@ -119,6 +139,13 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
     setFilters((current) => ({ ...current, [name]: value }))
   }
 
+  const hasActiveFilters = Boolean(query || filters.muscle || filters.equipment || filters.category || filters.level)
+
+  function clearFilters() {
+    setQuery('')
+    setFilters({ muscle: '', equipment: '', category: '', level: '' })
+  }
+
   function isAdded(providerExerciseId) {
     return addedIds.has(providerExerciseId) || isProviderExerciseAdded(personalExercises, providerExerciseId)
   }
@@ -168,13 +195,13 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
         <input
           type="search"
           value={query}
-          placeholder="Buscar por nome, músculo ou equipamento"
+          placeholder="Buscar por nome do exercício"
           onChange={(event) => setQuery(event.target.value)}
         />
       </label>
       <div className="catalog-filters">
         <FilterSelect
-          label="Grupo muscular"
+          label="Músculo"
           value={filters.muscle}
           options={muscles}
           onChange={(value) => changeFilter('muscle', value)}
@@ -198,6 +225,17 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
           onChange={(value) => changeFilter('level', value)}
         />
       </div>
+      <Box className="catalog-filters-footer">
+        <Text as="p" className="catalog-filter-hint">
+          O filtro Músculo encontra o exercício pelo músculo principal ou secundário. Ao
+          adicionar, o exercício é salvo na biblioteca só pelo músculo principal.
+        </Text>
+        {hasActiveFilters && (
+          <Button size="small" variant="invisible" onClick={clearFilters}>
+            Limpar filtros
+          </Button>
+        )}
+      </Box>
 
       <CatalogOfflineStatus personalExercises={personalExercises} />
 
@@ -234,22 +272,32 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
                 const added = isAdded(exercise.providerExerciseId)
                 const adding = addingId === exercise.providerExerciseId
                 return (
-                  <article className="catalog-card" key={exercise.id}>
+                  <article className={`catalog-card${added ? ' is-added' : ''}`} key={exercise.id}>
                     <button
                       type="button"
                       className="catalog-card-details"
                       onClick={() => setSelected(exercise)}
                     >
-                      <ExerciseCatalogImage
-                        src={exercise.thumbnail || exercise.images?.[0] || null}
-                        fallbackSrc={exercise.thumbnail ? exercise.images?.[0] : null}
-                        alt=""
-                        className="catalog-card-thumbnail"
-                        fallbackLabel=""
-                      />
+                      <span className="catalog-card-thumb-wrap">
+                        <ExerciseCatalogImage
+                          src={exercise.thumbnail || exercise.images?.[0] || null}
+                          fallbackSrc={exercise.thumbnail ? exercise.images?.[0] : null}
+                          alt=""
+                          className="catalog-card-thumbnail"
+                          fallbackLabel=""
+                        />
+                        {added && (
+                          <span className="catalog-card-added-mark" aria-label="Já está na sua biblioteca">
+                            <CheckIcon size={12} />
+                          </span>
+                        )}
+                      </span>
                       <span className="catalog-card-copy">
                         <strong>{exercise.name}</strong>
-                        <span>{exercise.primaryMuscles.map(displayValue).join(', ')}</span>
+                        <span className="catalog-card-muscle">
+                          <MuscleIconBadge icon={getMuscleIcon(exercise.primaryMuscles[0])} size="sm" />
+                          <span>{exercise.primaryMuscles.map(displayValue).join(', ')}</span>
+                        </span>
                         <small>
                           {displayValue(exercise.equipment)} · {displayValue(exercise.level)} ·{' '}
                           {displayValue(exercise.category)}

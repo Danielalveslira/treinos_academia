@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useExerciseCatalogDetail } from '../hooks/useExerciseCatalogDetail.js'
 import { formatCatalogLabel as displayValue } from '../utils/exerciseCatalog.js'
+import { getMuscleIcon } from '../constants/muscleGroupIcons.js'
+import { MuscleIconBadge } from './MuscleIconBadge.jsx'
 import { ExerciseCatalogImage } from './ExerciseCatalogImage.jsx'
 
 // exercise é o exercício PESSOAL (snapshot: name/muscleGroup/equipment/providerExerciseId
@@ -108,7 +110,14 @@ export function WorkoutExerciseGuide({ exercise, onClose, triggerRef }) {
         <dl className="workout-guide-meta">
           <div>
             <dt>Músculos</dt>
-            <dd>{primaryMuscles.map(displayValue).join(', ')}</dd>
+            <dd className="workout-guide-muscles">
+              {primaryMuscles.map((muscle) => (
+                <span key={muscle}>
+                  <MuscleIconBadge icon={getMuscleIcon(muscle)} size="sm" />
+                  {displayValue(muscle)}
+                </span>
+              ))}
+            </dd>
           </div>
           {equipment && (
             <div>

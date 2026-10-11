@@ -14,7 +14,7 @@ const MUSCLE_GROUP_MAP = {
   abdominais: 'Abdômen',
   abdutores: 'Pernas',
   adutores: 'Pernas',
-  antebracos: 'Bíceps',
+  antebracos: 'Antebraços',
   biceps: 'Bíceps',
   dorsais: 'Costas',
   gluteos: 'Glúteos',
@@ -24,7 +24,7 @@ const MUSCLE_GROUP_MAP = {
   ombros: 'Ombros',
   panturrilhas: 'Panturrilha',
   peito: 'Peito',
-  pescoco: 'Costas',
+  pescoco: 'Pescoço',
   quadriceps: 'Pernas',
   trapezio: 'Costas',
   triceps: 'Tríceps',
@@ -38,7 +38,7 @@ const MUSCLE_GROUP_MAP = {
   calves: 'Panturrilha',
 }
 
-const FALLBACK_MUSCLE_GROUP = 'Pernas'
+const FALLBACK_MUSCLE_GROUP = 'Outros'
 
 // Fonte única da origem (primary_muscle estruturado) pro grupo oficial da biblioteca --
 // nunca heurística sobre o nome do exercício. Um músculo fora do mapa é um dado novo do
@@ -58,8 +58,12 @@ export function mapCatalogMuscleToLibraryGroup(primaryMuscle) {
 }
 
 // Mantido pelo shape usado em providerExerciseToPersonal (exercício vindo da busca do
-// catálogo, com primaryMuscles: string[]) -- delega pro mapeamento central acima.
+// catálogo, com primaryMuscles: string[] e category). Cardio sempre vira o grupo "Cardio",
+// antes de olhar o músculo -- primaryMuscle de exercício de cardio (ex. "Esteira") é a
+// perna que sustenta o movimento, não o alvo do treino, então nunca deveria render em
+// "Pernas". Fora de "cardio", delega pro mapeamento central acima.
 export function mapCatalogMuscleToPersonalGroup(exercise) {
+  if (exercise?.category === 'cardio') return 'Cardio'
   return mapCatalogMuscleToLibraryGroup(exercise?.primaryMuscles?.[0])
 }
 
