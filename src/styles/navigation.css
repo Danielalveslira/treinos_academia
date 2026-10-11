@@ -152,7 +152,22 @@
   background: var(--bgColor-default);
   box-shadow: var(--shadow-floating-medium);
 }
-.account-menu-overlay [role='menuitem'] {
+/* [role='menuitem'] aponta pro <li> num ActionList.Item simples, mas pro <a> num
+   ActionList.LinkItem (o Primer decide isso internamente) -- inconsistente pra
+   estilizar. [class*='ActionListContent'] (classe interna do Primer, com hash
+   variável -- daí o seletor por substring) é sempre o mesmo elemento visual real
+   da linha nos dois casos: um display:grid de uma linha só (align-items:start,
+   fixo) com ícone/texto/chevron como grid-items. Numa linha mais alta que o
+   conteúdo (nosso min-height), isso deixa tudo "colado" no topo -- por isso o
+   display:flex + align-items:center aqui, só nessa linha específica (nunca no
+   grid interno de label+chevron, que já fica centralizado por ter altura
+   parecida à do ícone). A ordem dos filhos no DOM (ícone -> conteúdo) já é a
+   ordem visual desejada, então virar flex-row não muda nada no eixo horizontal;
+   o espaçamento entre eles é por margin (Primer), não por grid-gap, então
+   também sobrevive à troca. */
+.account-menu-overlay [class*='ActionListContent'] {
+  display: flex;
+  align-items: center;
   min-height: 38px;
   font-size: 14px;
 }
@@ -264,9 +279,29 @@ body:has(.account-menu-overlay) .pwa-install {
     height: 100vh;
     height: 100dvh;
     border-radius: 0;
-    /* a rolagem real é só da área central (.account-menu-scroll) -- o próprio
-       Overlay não deve rolar, senão vira scroll duplo. */
-    overflow: visible !important;
+    /* overflow:hidden, não visible -- quem rola é só .account-menu-scroll, mais
+       abaixo. Com visible (tentativa anterior), o conteúdo expandido (ex.:
+       Administração aberta) ultrapassava os 100dvh sem nenhum scroll ativar em
+       lugar nenhum e ficava cortado pelo viewport -- bug raiz real era a cadeia de
+       `height:100%` quebrada (ver [data-variant='fullscreen'] abaixo), não a falta
+       de overflow:visible. */
+    overflow: hidden !important;
+  }
+  /* O Primer injeta um <div> intermediário entre o Overlay e o que passamos como
+     children de ActionMenu.Overlay (classe interna dele, identificável só pelo
+     atributo data-variant que ele mesmo seta -- "ActionMenuContainer", com
+     padding-top reservando espaço pro X de fechar). Esse div não tem altura
+     própria (block comum, height:auto) -- então o `height:100%` do nosso
+     .account-menu-content (abaixo) resolvia pra `auto` (percentual contra uma
+     altura indefinida sempre vira auto), nunca travava no viewport, e o conteúdo
+     simplesmente crescia sem limite. Fixar a altura aqui (contra o Overlay, que
+     agora tem altura definida em dvh) é o que faz o `height:100%` seguinte
+     funcionar de verdade. box-sizing:border-box garante que o padding-top deles
+     entre DENTRO desses 100%, não seja somado por cima (senão sobra ~36px de
+     conteúdo cortado no fim, mesmo com a altura "certa"). */
+  .account-menu-overlay[data-responsive='fullscreen'] [data-variant='fullscreen'] {
+    height: 100%;
+    box-sizing: border-box;
   }
   .account-menu-content {
     display: flex;
@@ -287,13 +322,14 @@ body:has(.account-menu-overlay) .pwa-install {
     min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
   .account-menu-session {
     flex: 0 0 auto;
     border-top: 1px solid var(--borderColor-muted);
     padding-bottom: env(safe-area-inset-bottom);
   }
-  .account-menu-overlay[data-responsive='fullscreen'] [role='menuitem'] {
+  .account-menu-overlay[data-responsive='fullscreen'] [class*='ActionListContent'] {
     min-height: 48px;
   }
   /* Bloqueia o scroll de fundo da página enquanto o painel mobile (fullscreen) está
