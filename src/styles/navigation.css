@@ -238,6 +238,69 @@ body:has(.account-menu-overlay) .pwa-install {
   .app-shell {
     --bottom-navigation-space: calc(76px + env(safe-area-inset-bottom));
   }
+  /* O Overlay do ActionMenu (AccountMenu) é portalado pro fim do <body>, numa div
+     que o próprio Primer cria com z-index:1 (cria stacking context própria --
+     comentário deles: "never... change the zIndex to a value other than 1"). Dar um
+     z-index maior no nosso lado (.account-menu-overlay) não escapa dessa stacking
+     context pra competir com .mobile-nav/.app-header -- só reordenaria algo dentro
+     dela, onde não há concorrente. O fix é o inverso: baixar .mobile-nav/.app-header
+     pra z-index:0 só enquanto o menu está aberto (.account-menu-overlay só existe no
+     DOM nesse momento), ficando abaixo do z-index:1 do portal -- mesma lógica já
+     usada em .workout-form-actions/.workout-progress (ver app.css). */
+  body:has(.account-menu-overlay) .mobile-nav,
+  body:has(.account-menu-overlay) .app-header {
+    z-index: 0;
+  }
+  /* Modo "narrow: fullscreen" do AnchoredOverlay (ActionMenu.Overlay variant prop):
+     vira position:fixed/inset:0 por conta do próprio Primer -- aqui só o layout
+     interno (cabeçalho/área que rola/rodapé de sessão) e os ajustes que o dropdown
+     ancorado (desktop) não precisa. */
+  .account-menu-overlay[data-responsive='fullscreen'] {
+    top: 0 !important;
+    left: 0 !important;
+    margin-top: 0 !important;
+    max-width: 100vw !important;
+    max-height: none !important;
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0;
+    /* a rolagem real é só da área central (.account-menu-scroll) -- o próprio
+       Overlay não deve rolar, senão vira scroll duplo. */
+    overflow: visible !important;
+  }
+  .account-menu-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .account-menu-mobile-header {
+    flex: 0 0 auto;
+    padding: 12px 16px;
+    font-size: 15px;
+    border-bottom: 1px solid var(--borderColor-muted);
+  }
+  .account-menu-scroll {
+    flex: 1 1 auto;
+    /* obrigatório: sem min-height:0 o filho flex não encolhe (fica do tamanho do
+       conteúdo) e empurra o rodapé de sessão pra fora da tela em viewports baixos
+       (celular pequeno, paisagem) -- overflow-y:auto sozinho não resolve isso. */
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .account-menu-session {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--borderColor-muted);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .account-menu-overlay[data-responsive='fullscreen'] [role='menuitem'] {
+    min-height: 48px;
+  }
+  /* Bloqueia o scroll de fundo da página enquanto o painel mobile (fullscreen) está
+     aberto -- o dropdown ancorado do desktop nunca precisou disso. */
+  body:has(.account-menu-overlay[data-responsive='fullscreen']) {
+    overflow: hidden;
+  }
   .header-top {
     /* minmax(0, 1fr), não só 1fr: com os indicadores de saldo ocupando espaço em
        header-actions, essa faixa precisa poder encolher abaixo do tamanho natural do
