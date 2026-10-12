@@ -7,11 +7,8 @@ const MAX_PHOTO_DOWNLOAD_BYTES = 5 * 1024 * 1024
 const STATUS_SUMMARY_COLUMNS =
   'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,retention_mode,comments_close_at,promoted,promoted_until,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_caption,progress_kind,progress_period_start,progress_period_end'
 
-// expires_at/retention_mode NÃO são enviados: o banco calcula os dois no INSERT a partir da
-// retenção da comunidade (trigger statuses_apply_retention) e ignora qualquer valor do cliente.
-// author_is_superadmin (selo dourado) é só a conveniência de exibição — o valor
-// enviado aqui é ignorado pelo banco (trigger enforce_status_author_badge sobrescreve
-// com o papel real de quem está autenticado), igual à regra equivalente do main.
+// Nome/selo são dicas de compatibilidade para o banco antigo; o banco atualizado
+// os sobrescreve. Retenção, promoção e contadores pertencem exclusivamente ao servidor.
 function baseStatusFields(communityId, author, type) {
   return {
     community_id: communityId,

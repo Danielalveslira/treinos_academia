@@ -8,7 +8,6 @@ import {
   setUsername,
   setBirthInfo,
   isUsernameAvailable,
-  deleteFreshProfile,
 } from '../services/usersService'
 import { setUsageProfile } from '../services/usageProfileService'
 import { useAuth } from '../hooks/useAuth'
@@ -104,53 +103,35 @@ export default function Register() {
 
     setSubmitting(true)
     try {
-      if (createdAccount) {
-        await acceptLegalDocuments(confirmed, legalBundle)
-        await refreshProfile(createdAccount)
-        // replace: mesmo motivo do Login — depois de autenticado, cadastro/login não devem
-        // continuar acessíveis pelo botão voltar.
-        navigate('/', { replace: true })
-        return
+      let uid = createdAccount
+      if (!uid) {
+        // Antes de criar a identidade, evita reservar um e-mail para um @ já ocupado.
+        const available = await isUsernameAvailable(username)
+        if (!available) {
+          setFieldErrors({ username: 'Esse nome de usuário já está em uso' })
+          return
+        }
+        const credential = await registerUser(email, password)
+        uid = credential.user.uid
+        // Retentativas desta página retomam as etapas idempotentes, sem outro signUp.
+        setCreatedAccount(uid)
+        sendVerificationEmail(credential.user).catch((sendErr) => {
+          console.error('[Auth] sendVerificationEmail:', sendErr)
+        })
       }
-      // Valida o @ antes de criar a conta no Authentication: assim uma tentativa
-      // inválida nunca chega a existir como conta órfã.
-      const available = await isUsernameAvailable(username)
-      if (!available) {
-        setFieldErrors({ username: 'Esse nome de usuário já está em uso' })
-        return
-      }
-
-      const credential = await registerUser(email, password)
-      const uid = credential.user.uid
       try {
         await ensureUserProfile(uid)
         await setUsername(uid, username)
         await setBirthInfo(uid, { sexo, dataNascimento: birthDate })
-        await setDisplayName(credential.user, username)
+        await setDisplayName({ uid }, username)
       } catch (postCreateErr) {
-        // A conta no Auth já existe nesse ponto, e os passos acima podem já ter escrito
-        // o perfil (e reservado o @) antes de falhar. deleteFreshProfile desfaz tudo:
-        // primeiro as linhas de perfil, depois a conta em si (deleteCurrentAccount, via
-        // RPC, já embutido nela) — sem isso, o e-mail ficaria bloqueado E o perfil
-        // ficaria órfão no banco pra sempre. setUsername() normaliza (trim + minúsculas)
-        // antes de gravar/reservar — a limpeza precisa mirar o mesmo valor, não o texto
-        // bruto do campo.
-        await deleteFreshProfile(uid, username.trim().toLowerCase()).catch((cleanupErr) => {
-          console.error('[Auth] register rollback failed:', cleanupErr)
-        })
-        if (postCreateErr.message === 'USERNAME_TAKEN') {
-          setFieldErrors({ username: 'Esse nome de usuário já está em uso' })
-          return
-        }
-        throw postCreateErr
+        // Preserva identidade, perfil e reservas. Exclusão só pelo fluxo oficial.
+        console.error('[Auth] register profile incomplete:', postCreateErr)
+        setError(
+          'Sua conta foi criada, mas o perfil não foi concluído. Tente novamente para concluir nesta página ou entre com seu e-mail e senha para completar o perfil. Se quiser excluir a conta, use o atendimento e o fluxo oficial de exclusão.'
+        )
+        return
       }
-      setCreatedAccount(uid)
-      // Best-effort: um problema aqui não deve desfazer a conta que acabou de ser criada
-      // (diferente do bloco acima) — o usuário ainda consegue reenviar pelo próprio
-      // EmailVerificationGate assim que cair na tela de bloqueio.
-      sendVerificationEmail(credential.user).catch((sendErr) => {
-        console.error('[Auth] sendVerificationEmail:', sendErr)
-      })
       // Também best-effort e pela mesma razão: se isto falhar, a conta segue existindo
       // sem usageProfile e é recuperada pelo mesmo preenchimento contextual de contas
       // legadas (Meu Perfil/fluxo da Vitrine) -- nunca precisa desfazer o cadastro.
@@ -230,6 +211,7 @@ export default function Register() {
             <FormControl.Label>E-mail</FormControl.Label>
             <TextInput
               type="email"
+              disabled={Boolean(createdAccount)}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
@@ -242,6 +224,7 @@ export default function Register() {
             <FormControl.Label>Senha</FormControl.Label>
             <TextInput
               type="password"
+              disabled={Boolean(createdAccount)}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
@@ -306,7 +289,7 @@ export default function Register() {
             loading={submitting}
             disabled={submitting || legalLoading || !legalBundle || Boolean(legalError)}
           >
-            Criar conta
+            {createdAccount ? 'Concluir cadastro' : 'Criar conta'}
           </Button>
         </Stack>
       </form>

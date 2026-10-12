@@ -24,9 +24,9 @@ create or replace function pg_temp.as_user(p text) returns void language sql as
   $$select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-0000000000' || p, true)$$;
 -- Insere uma foto do jeito do app (createPhotoStatus): como o próprio usuário, passando pela RLS (invoker).
 create or replace function pg_temp.photo(p_id text, p_kind text default null, p_start date default null, p_end date default null) returns void language sql as
-  $f$insert into public.statuses (id, community_id, author_id, type, expires_at, photo_path, photo_caption, progress_kind, progress_period_start, progress_period_end)
+  $f$insert into public.statuses (id, community_id, author_id, type, photo_path, photo_caption, progress_kind, progress_period_start, progress_period_end)
      values (('93000000-0000-0000-0000-0000000000' || p_id)::uuid, '92000000-0000-0000-0000-000000000001', '91000000-0000-0000-0000-000000000001', 'photo',
-             now() + interval '1 day', 'statusPhotos/92000000-0000-0000-0000-000000000001/93000000-0000-0000-0000-0000000000' || p_id || '.webp',
+             'statusPhotos/92000000-0000-0000-0000-000000000001/93000000-0000-0000-0000-0000000000' || p_id || '.webp',
              'Semana concluída 💪', p_kind, p_start, p_end)$f$;
 
 set local role authenticated;
@@ -49,8 +49,8 @@ select throws_ok($$select pg_temp.photo('21', 'week', null::date, null::date)$$,
 select throws_ok($$select pg_temp.photo('22', null, '2026-10-01'::date, '2026-10-31'::date)$$, '23514', null, 'período sem kind recusado');
 select throws_ok($$select pg_temp.photo('23', 'week', '2026-10-04', '2026-09-28')$$, '23514', null, 'fim antes do início recusado');
 select throws_ok($$select pg_temp.photo('24', 'quarter', '2026-01-01', '2026-06-30')$$, '23514', null, 'período maior que um trimestre recusado');
-select throws_ok($$insert into public.statuses (community_id, author_id, type, expires_at, text, progress_kind, progress_period_start, progress_period_end)
-  values ('92000000-0000-0000-0000-000000000001', '91000000-0000-0000-0000-000000000001', 'text', now() + interval '1 day', 'oi', 'week', '2026-09-28', '2026-10-04')$$,
+select throws_ok($$insert into public.statuses (community_id, author_id, type, text, progress_kind, progress_period_start, progress_period_end)
+  values ('92000000-0000-0000-0000-000000000001', '91000000-0000-0000-0000-000000000001', 'text', 'oi', 'week', '2026-09-28', '2026-10-04')$$,
   '23514', null, 'progresso só existe em publicações de foto (texto recusado)');
 
 -- === RLS: só quem pode publicar na comunidade ===

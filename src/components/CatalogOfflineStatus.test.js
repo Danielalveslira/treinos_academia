@@ -11,6 +11,7 @@ import { IDBFactory } from 'fake-indexeddb'
 const require = createRequire(import.meta.url)
 let directory
 let api
+const mountedComponents = []
 
 // A RPC real (fetchCatalogSyncPage/fetchCatalogRevision, dentro de catalogSnapshot.js -> import
 // dinâmico de exerciseCatalogService.js) é trocada por um stub -- o que este teste cobre é a UI
@@ -102,6 +103,20 @@ const END = 'https://proj.supabase.co/storage/v1/object/public/exercise-visuals/
 // useHomeDashboard.test.js (settle puro, fora do act).
 const settle = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms))
 
+function mount(props) {
+  const component = api.mount(props)
+  mountedComponents.push(component)
+  return component
+}
+
+// IndexedDB e React não têm prazo de conclusão de 20/40 ms, especialmente na suíte
+// concorrente. Espera limitada pela condição observável, mantendo a assertion final.
+async function waitForText(component, pattern) {
+  const deadline = Date.now() + 3000
+  while (!pattern.test(pageText(component)) && Date.now() < deadline) await settle(10)
+  assert.match(pageText(component), pattern)
+}
+
 beforeEach(async () => {
   await api.closeDatabase()
   globalThis.indexedDB = new IDBFactory()
@@ -112,14 +127,17 @@ beforeEach(async () => {
   delete globalThis.fetch
 })
 afterEach(() => {
+  api.act(() => {
+    for (const component of mountedComponents.splice(0)) component.unmount()
+  })
   delete globalThis.__syncPageCalls
   delete globalThis.__syncPageImpl
   delete globalThis.__revisionImpl
 })
 
 test('sem snapshot: "Não preparado", botão "Preparar para uso offline", sem imagens publicadas ainda', async () => {
-  const component = api.mount({ personalExercises: [] })
-  await settle()
+  const component = mount({ personalExercises: [] })
+  await waitForText(component, /Não preparado/)
   const text = pageText(component)
   assert.match(text, /Não preparado/)
   assert.match(text, /Nenhuma imagem publicada/)
@@ -132,8 +150,8 @@ test('com snapshot completo: "Disponível offline" com a contagem, botão vira "
     [{ id: 'c1', name: 'Supino', images: [], thumbnail: null }],
     { revision: 'rev-1' }
   )
-  const component = api.mount({ personalExercises: [] })
-  await settle()
+  const component = mount({ personalExercises: [] })
+  await waitForText(component, /Disponível offline/)
   const text = pageText(component)
   assert.match(text, /Disponível offline/)
   assert.match(text, /1 exercícios/)
@@ -142,22 +160,29 @@ test('com snapshot completo: "Disponível offline" com a contagem, botão vira "
 })
 
 test('clicar em "Preparar para uso offline" sincroniza e passa a mostrar "Disponível offline"', async () => {
+  let release
+  const pending = new Promise((resolve) => { release = resolve })
   globalThis.__syncPageImpl = async ({ afterId }) =>
-    afterId ? [] : [
+    afterId ? [] : (await pending, [
       {
         id: 'c1', provider_exercise_id: 'Bench', provider: 'evolutus_dataset', name: 'Supino',
         primary_muscle: 'peito', muscles: ['peito'], instructions: ['x'],
         source_media_refs: {}, published_media_refs: { images: [] },
       },
-    ]
-  const component = api.mount({ personalExercises: [] })
-  await settle()
+    ])
+  const component = mount({ personalExercises: [] })
+  await waitForText(component, /Não preparado/)
   assert.match(pageText(component), /Não preparado/)
 
+  let completion
   api.act(() => {
-    buttonWithText(component, /Preparar para uso offline/).props.onClick()
+    completion = buttonWithText(component, /Preparar para uso offline/).props.onClick()
   })
-  await settle(40)
+  assert.match(pageText(component), /Baixando/)
+  assert.equal(buttonWithText(component, /^Atualizar$/).props.disabled, true)
+  release()
+  await completion
+  await waitForText(component, /Disponível offline/)
   const text = pageText(component)
   assert.match(text, /Disponível offline/)
   assert.match(text, /1 exercícios/)
@@ -179,13 +204,15 @@ test('imagens da rotina: resolve pelo catálogo já cacheado e "Preparar imagens
     return new Response('bytes', { status: 200 })
   }
 
-  const component = api.mount({ personalExercises: [{ provider: 'evolutus', providerExerciseId: 'ext-1' }] })
-  await settle()
+  const component = mount({ personalExercises: [{ provider: 'evolutus', providerExerciseId: 'ext-1' }] })
+  await waitForText(component, /0 de 2 arquivos disponíveis/)
   assert.match(pageText(component), /0 de 2 arquivos disponíveis/)
 
+  let completion
   api.act(() => {
-    buttonWithText(component, /Preparar imagens/).props.onClick()
+    completion = buttonWithText(component, /Preparar imagens/).props.onClick()
   })
-  await settle(40)
+  await completion
+  await waitForText(component, /2 de 2 arquivos disponíveis/)
   assert.match(pageText(component), /2 de 2 arquivos disponíveis/)
 })

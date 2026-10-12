@@ -14,6 +14,8 @@ let directory
 let render
 let mountClient
 
+const NOW = Date.parse('2026-10-12T12:00:00Z')
+
 function makeStatus(id, extra = {}) {
   return { id, authorId: 'author-1', type: 'text', ...extra }
 }
@@ -27,7 +29,7 @@ const promoted = (id, extra = {}) =>
     authorUsername: 'ana',
     text: '**Oferta** de hoje: [veja](https://evolutus.app)',
     promoted: true,
-    promotedUntil: new Date(Date.now() + 3 * 86400000),
+    promotedUntil: new Date(NOW + 3 * 86400000),
     ...extra,
   })
 
@@ -59,7 +61,7 @@ before(async () => {
           formOpen: false,
           setFormOpen: noop,
           refreshFeed: noop,
-          now: Date.now(),
+          now: ${NOW},
           showToast: noop,
           votesByStatusId: {},
           onEconomyVoted: noop,
@@ -252,7 +254,7 @@ test('Destaques só é montado quando alguém o abre (a aba inativa não custa r
 test('ordem em Recentes: banner, Publicar, anúncio do feed, próximos treinos e só então o feed', () => {
   const event = makeStatus('workout-1', {
     type: 'workout',
-    workout: { title: 'Treino de pernas', date: new Date(Date.now() + 60000) },
+    workout: { title: 'Treino de pernas', date: new Date(NOW + 60000) },
   })
   const html = render({
     bannerAds: [makeAd('ad-banner-1')],
@@ -291,7 +293,7 @@ test('sem permissão de postar: sem Publicar/Compartilhar progresso, com o aviso
 test('o mesmo avatar público acompanha o autor no feed e nos treinos', () => {
   const workout = makeStatus('workout-avatar', {
     type: 'workout',
-    workout: { title: 'Treino', date: new Date(Date.now() + 60000) },
+    workout: { title: 'Treino', date: new Date(NOW + 60000) },
   })
   const html = render({
     upcomingWorkouts: [workout],
@@ -305,7 +307,7 @@ test('o mesmo avatar público acompanha o autor no feed e nos treinos', () => {
 test('treino que passou é removido da seção mesmo se ainda estiver no cache', () => {
   const pastEvent = makeStatus('workout-past', {
     type: 'workout',
-    workout: { title: 'Treino antigo', date: new Date(Date.now() - 60000) },
+    workout: { title: 'Treino antigo', date: new Date(NOW - 60000) },
   })
   const html = render({ upcomingWorkouts: [pastEvent] })
   assert.doesNotMatch(html, />Próximos treinos</)
@@ -316,12 +318,12 @@ test('treino compartilhado fora dos 20 primeiros continua visível e sem duplica
   const upcomingWorkouts = Array.from({ length: 20 }, (_, index) =>
     makeStatus(`workout-${index}`, {
       type: 'workout',
-      workout: { title: `Treino ${index}`, date: new Date(Date.now() + (index + 1) * 60000) },
+      workout: { title: `Treino ${index}`, date: new Date(NOW + (index + 1) * 60000) },
     })
   )
   const sharedStatus = makeStatus('workout-shared', {
     type: 'workout',
-    workout: { title: 'Treino compartilhado', date: new Date(Date.now() + 86400000) },
+    workout: { title: 'Treino compartilhado', date: new Date(NOW + 86400000) },
   })
   const html = render({ upcomingWorkouts, sharedStatus })
   assert.equal(count(html, /data-status-id="workout-shared"/g), 1)
@@ -368,7 +370,7 @@ test('conquista, enquete e foto de link fora do feed usam o mesmo bloco, sem ló
 test('treino de link já passado (comentários ainda abertos) aparece no bloco do link', () => {
   const sharedStatus = makeStatus('workout-past', {
     type: 'workout',
-    workout: { title: 'Treino de ontem', date: new Date(Date.now() - 3600000) },
+    workout: { title: 'Treino de ontem', date: new Date(NOW - 3600000) },
   })
   const html = render({ sharedStatus })
   assert.doesNotMatch(html, />Próximos treinos</)
@@ -451,7 +453,7 @@ test('destaque compacto: aparece UM resumo de uma linha no topo de Recentes, sem
 test('destaque compacto: é a primeira coisa de Recentes, antes de "Próximos treinos", da publicação do link e do feed', () => {
   const event = makeStatus('workout-1', {
     type: 'workout',
-    workout: { title: 'Treino', date: new Date(Date.now() + 60000) },
+    workout: { title: 'Treino', date: new Date(NOW + 60000) },
   })
   const html = render({
     featuredStatuses: [promoted('p1')],
@@ -509,7 +511,7 @@ test('destaque compacto: não aparece sem destaque nem com promoção vencida', 
   assert.doesNotMatch(render({ featuredStatuses: [], statuses: [makeStatus('a')] }), /cd-spotlight/)
   assert.doesNotMatch(
     render({
-      featuredStatuses: [promoted('p1', { promotedUntil: new Date(Date.now() - 3600 * 1000) })],
+      featuredStatuses: [promoted('p1', { promotedUntil: new Date(NOW - 3600 * 1000) })],
       statuses: [makeStatus('a')],
     }),
     /cd-spotlight/,
@@ -555,7 +557,7 @@ test('destaque compacto: tocar leva à aba Destaques, onde o post completo apare
 })
 
 test('destaque EXPIRADO que ficou na cache não aparece na aba Destaques nem no contador', () => {
-  const expired = promoted('old', { promotedUntil: new Date(Date.now() - 3600 * 1000) })
+  const expired = promoted('old', { promotedUntil: new Date(NOW - 3600 * 1000) })
   const html = render({
     initialTab: 'featured',
     featuredStatuses: [expired, promoted('ok')],
@@ -572,8 +574,8 @@ test('destaque EXPIRADO que ficou na cache não aparece na aba Destaques nem no 
 
 test('só destaques expirados: aba vazia, sem contador e sem destaque no topo', () => {
   const expired = [
-    promoted('a', { promotedUntil: new Date(Date.now() - 7200 * 1000) }),
-    promoted('b', { promotedUntil: new Date(Date.now() - 3600 * 1000) }),
+    promoted('a', { promotedUntil: new Date(NOW - 7200 * 1000) }),
+    promoted('b', { promotedUntil: new Date(NOW - 3600 * 1000) }),
   ]
   const featuredTab = render({
     initialTab: 'featured',

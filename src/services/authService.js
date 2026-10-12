@@ -136,12 +136,3 @@ export async function resetPassword(email) {
   const { error } = await supabase.auth.resetPasswordForEmail(email)
   if (error) throw error
 }
-
-// Substitui credential.user.delete() do Firebase (que permitia a própria conta recém-criada
-// se autoexcluir do lado do cliente) — o SDK do Supabase não expõe esse método, então isso
-// é feito por uma RPC que só apaga o próprio auth.users (cascateando para users/publicProfiles
-// /usernames). Usado só no rollback de cadastro (ver Register.jsx).
-export async function deleteCurrentAccount() {
-  const { error } = await supabase.rpc('delete_own_account')
-  if (error) throw error
-}

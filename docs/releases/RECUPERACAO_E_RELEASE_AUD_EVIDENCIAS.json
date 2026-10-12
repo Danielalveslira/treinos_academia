@@ -1,0 +1,22 @@
+{
+  "database_restore_tables": 130,
+  "database_restore_exact": true,
+  "vault_matches_source": true,
+  "storage_restored_files": 60,
+  "storage_hashes_match": true,
+  "encrypted_archive_decrypt_matches": true,
+  "after_migrations_data_tables": 129,
+  "after_migrations_data_unchanged": true,
+  "local_journal_final": 125,
+  "local_versions": [
+    "20261026000005",
+    "20261026000006"
+  ],
+  "offline_sql": 18,
+  "offline_js": 57,
+  "backup_archive_sha256": "79d7389dfd10159e3ec31e61acb3f93ad99d6c8b8ad1c6450d06a3c6f12810d9",
+  "backup_location": "private Codespaces directory outside Git; encryption key stored separately",
+  "plan": "free",
+  "pitr_enabled": false,
+  "storage_mime_and_cache_control_match": true
+}

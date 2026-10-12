@@ -29,7 +29,7 @@ begin
     select count(*) into v_count from sync_page;
     exit when v_count = 0;
     return query select id from sync_page order by id;
-    select max(id) into v_after from sync_page;
+    select id into v_after from sync_page order by id desc limit 1;
     exit when v_count < p_page_limit;
   end loop;
   return;
@@ -91,31 +91,31 @@ select is((select total_active from rev_after_deactivate) - (select total_active
 -- 3) varredura completa (keyset por id): nenhum ativo do fixture ausente/duplicado,
 --    inativos nunca aparecem, nomes repetidos não quebram a paginação.
 -- ----------------------------------------------------------------------------
-create temp table collected as select id from pg_temp.collect_sync_ids(50);
+create temp table collected as select collect_sync_ids as id from pg_temp.collect_sync_ids(50);
 
 select is((select count(*) from collected), (select count(distinct id) from collected),
   'varredura completa nunca duplica um id');
 select is((select count(*) from collected),
-  (select total_active::int from public.get_exercise_catalog_revision()),
+  (select total_active from public.get_exercise_catalog_revision()),
   'varredura completa devolve exatamente total_active linhas (nenhuma ausente)');
 select is(
   (select count(*) from collected where id = any(array[
     '95aaaaaa-0000-0000-0000-000000000001'::uuid,
     '95aaaaaa-0000-0000-0000-000000000002'::uuid,
     '95aaaaaa-0000-0000-0000-000000000003'::uuid
-  ])), 3,
+  ])), 3::bigint,
   'os 3 ativos do fixture aparecem (inclusive os 2 com nome idêntico)');
-select is((select count(*) from collected where id in ('95aaaaaa-0000-0000-0000-000000000004'::uuid, '95aaaaaa-0000-0000-0000-000000000005'::uuid)), 0,
+select is((select count(*) from collected where id in ('95aaaaaa-0000-0000-0000-000000000004'::uuid, '95aaaaaa-0000-0000-0000-000000000005'::uuid)), 0::bigint,
   'exercícios inativos (fixture original + desativado no teste 2) não aparecem na varredura');
 
 -- ----------------------------------------------------------------------------
 -- 4) p_limit é sempre clampado em [1, 50], como search_exercise_catalog
 -- ----------------------------------------------------------------------------
-select cmp_ok((select count(*) from public.list_exercise_catalog_for_sync(null, 0)), '<=', 1,
+select cmp_ok((select count(*) from public.list_exercise_catalog_for_sync(null, 0)), '<=', 1::bigint,
   'p_limit <= 0 é tratado como 1');
-select cmp_ok((select count(*) from public.list_exercise_catalog_for_sync(null, -5)), '<=', 1,
+select cmp_ok((select count(*) from public.list_exercise_catalog_for_sync(null, -5)), '<=', 1::bigint,
   'p_limit negativo é tratado como 1');
-select cmp_ok((select count(*) from public.list_exercise_catalog_for_sync(null, 1000)), '<=', 50,
+select cmp_ok((select count(*) from public.list_exercise_catalog_for_sync(null, 1000)), '<=', 50::bigint,
   'p_limit é sempre clampado em 50, como a RPC de busca');
 
 select * from finish();

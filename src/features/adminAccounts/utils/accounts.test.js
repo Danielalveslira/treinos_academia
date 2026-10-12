@@ -234,7 +234,7 @@ test('Último uso (last_active_at) e Último login (last_sign_in_at) são concei
     // logou agora e ainda não há registro de uso
     account({ id: 'sem-registro', last_sign_in_at: hoursAgo(1), last_active_at: null }),
   ]
-  const f = (filters) => ids(filterAccounts(accounts, { ...EMPTY_FILTERS, ...filters }))
+  const f = (filters) => ids(filterAccounts(accounts, { ...EMPTY_FILTERS, ...filters }, 'all', NOW))
   assert.deepEqual(f({ lastAccess: 'day' }), ['uso-recente'])
   assert.deepEqual(f({ lastAccess: 'never' }), ['sem-registro'])
   assert.deepEqual(ids(sortAccounts(accounts, { key: 'last_active_at', direction: 'desc' })), [

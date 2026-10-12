@@ -1,5 +1,4 @@
 import { supabase } from '../supabase/config'
-import { deleteCurrentAccount } from './authService'
 import {
   dayKeyInTimezone,
   getDeviceTimezone,
@@ -93,23 +92,6 @@ export async function updateUserProfile(userId, changes) {
     throw new Error(KNOWN.find((code) => error.message?.includes(code)) || error.message)
   }
   return mapUserRow(data)
-}
-
-// Desfaz um cadastro que falhou depois de ensureUserProfile()/setUsername() já terem
-// escrito algo (ver Register.jsx). Apaga primeiro os registros de perfil (permitido só
-// nos minutos seguintes à criação, via RLS) e por fim a própria conta no Auth — nessa
-// ordem porque a exclusão da conta cascateia e apagaria os mesmos registros de qualquer
-// forma, mas fazer os dois passos deixa claro qual falhou se algo der errado no meio.
-export async function deleteFreshProfile(userId, username) {
-  const attempts = [
-    supabase.from('public_profiles').delete().eq('user_id', userId),
-    supabase.from('users').delete().eq('id', userId),
-  ]
-  if (username) attempts.push(supabase.from('usernames').delete().eq('username', username))
-  await Promise.allSettled(attempts)
-  await deleteCurrentAccount().catch((err) => {
-    console.error('[Auth] register rollback failed (account):', err)
-  })
 }
 
 export async function isUsernameAvailable(username) {
