@@ -34,8 +34,10 @@ function arrange(candidates = [candidate(SET)]) {
     for (const asset of row.assets) fake.buckets[DRAFTS].set(asset.path, new Uint8Array([1]))
   fake.buckets[PUBLIC].set(`${CATALOG}/v1/start.webp`, new Uint8Array([1]))
   fake.rpcResult = (name) => {
+    if (name === 'claim_exercise_visual_deletions') return { data: [], error: null }
     if (name === 'expire_stale_exercise_visual_sets') return { data: fake.expired, error: null }
-    if (name === 'list_exercise_visual_purge_candidates') return { data: fake.candidates, error: null }
+    if (name === 'list_exercise_visual_purge_candidates')
+      return { data: fake.candidates, error: null }
     return { data: { alreadyPurged: false }, error: null }
   }
 }
@@ -56,11 +58,20 @@ test('só superadmin: sem JWT 401, usuário comum 403, nada é chamado nem remov
 
 test('caminho feliz: expira, remove os bytes do bucket de rascunhos e só então marca como purgado', async () => {
   const result = await call()
-  assert.deepEqual(result.body, { dryRun: false, expired: 2, candidates: 1, purged: 1, failed: 0, skipped: 0 })
+  assert.deepEqual(result.body, {
+    dryRun: false,
+    expired: 2,
+    candidates: 1,
+    purged: 1,
+    failed: 0,
+    skipped: 0,
+    deletions: { completed: 0, pending: 0 },
+  })
   assert.deepEqual(names(), [
     'expire_stale_exercise_visual_sets',
     'list_exercise_visual_purge_candidates',
     'mark_exercise_visual_drafts_purged_internal',
+    'claim_exercise_visual_deletions',
   ])
   assert.deepEqual(fake.removed, [[DRAFTS, [draft(SET, 'start.webp'), draft(SET, 'end.webp')]]])
   assert.equal(fake.buckets[DRAFTS].size, 0)
@@ -95,7 +106,10 @@ test('paths inesperados vindos do banco são ignorados: nada é removido, nada �
   arrange([evil, traversal])
   const result = await call()
   assert.deepEqual([result.body.skipped, result.body.purged], [2, 0])
-  assert.deepEqual([fake.removed.length, names().filter((n) => n.startsWith('mark')).length], [0, 0])
+  assert.deepEqual(
+    [fake.removed.length, names().filter((n) => n.startsWith('mark')).length],
+    [0, 0]
+  )
 })
 
 test('published/archived/review/allocated nunca são removidos, mesmo se o banco os devolvesse por engano', async () => {
@@ -133,7 +147,9 @@ test('limit é limitado a 1-200 e repassado ao banco; erro ao listar vira INTERN
 test('falha na expiração não impede a purga de quem já estava elegível', async () => {
   const original = fake.rpcResult
   fake.rpcResult = (name, args) =>
-    name === 'expire_stale_exercise_visual_sets' ? { data: null, error: { message: 'x' } } : original(name, args)
+    name === 'expire_stale_exercise_visual_sets'
+      ? { data: null, error: { message: 'x' } }
+      : original(name, args)
   const result = await call()
   assert.deepEqual([result.body.expired, result.body.purged], [0, 1])
 })

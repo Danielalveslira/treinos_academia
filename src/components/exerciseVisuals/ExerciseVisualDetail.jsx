@@ -29,6 +29,7 @@ export function ExerciseVisualDetail({ visuals, online }) {
   const { selected, sets, prompts, promptProvider, busy, styleProfileState } = visuals
   const [uploadOpen, setUploadOpen] = useState(false)
   const [startReady, setStartReady] = useState(false)
+  const [referenceConfirmed, setReferenceConfirmed] = useState(false)
   const root = useRef(null)
   const status = currentStatus(sets)
 
@@ -71,7 +72,27 @@ export function ExerciseVisualDetail({ visuals, online }) {
           {visuals.actionError}
         </Flash>
       )}
-      {visuals.setsError && <Flash variant="danger">{visuals.setsError.message}</Flash>}
+      {visuals.actionMessage && (
+        <Flash
+          variant={visuals.actionMessage.includes('pendente') ? 'warning' : 'success'}
+          role="status"
+        >
+          {visuals.actionMessage}
+        </Flash>
+      )}
+      {visuals.deletions?.some((job) => job.status !== 'complete') && (
+        <Flash variant="warning" role="status">
+          Há arquivos com exclusão pendente. Abra o Histórico para reprocessar.
+        </Flash>
+      )}
+      {visuals.setsError && (
+        <Flash variant="danger" role="alert">
+          Não foi possível confirmar o estado das versões. Recarregue antes de revisar ou excluir.{' '}
+          <Button size="small" disabled={!online || Boolean(busy)} onClick={visuals.reloadSets}>
+            Recarregar versões
+          </Button>
+        </Flash>
+      )}
 
       {visuals.setsLoading ? (
         <div className="ev-loading">
@@ -124,11 +145,13 @@ export function ExerciseVisualDetail({ visuals, online }) {
                 value={prompts.start.text}
                 label="Copiar prompt INICIAL"
                 testId="copy-visual-prompt-start"
+                disabled={prompts.start.needsClarification}
               />
               <CopyButton
                 value={prompts.end.text}
                 label="Copiar prompt FINAL"
                 testId="copy-visual-prompt-end"
+                disabled={prompts.end.needsClarification || (!startReady && !referenceConfirmed)}
               />
             </>
           ) : (
@@ -151,6 +174,23 @@ export function ExerciseVisualDetail({ visuals, online }) {
             Enviar imagens
           </Button>
         </div>
+        {prompts?.start.needsClarification && (
+          <Flash variant="warning">
+            O catálogo não descreve START e o deslocamento seguinte com segurança. Complete as
+            instruções antes de gerar; não invente a execução. O upload de arte já revisada continua
+            disponível.
+          </Flash>
+        )}
+        {prompts && !startReady && (
+          <label className="ev-inspection">
+            <input
+              type="checkbox"
+              checked={referenceConfirmed}
+              onChange={(event) => setReferenceConfirmed(event.target.checked)}
+            />
+            <span>Já tenho a imagem START deste exercício e vou anexá-la ao gerar FINAL.</span>
+          </label>
+        )}
         {prompts && startReady && (
           <Flash variant="warning" data-testid="reference-hint">
             Use a imagem inicial como referência ao gerar a posição final.
@@ -169,7 +209,11 @@ export function ExerciseVisualDetail({ visuals, online }) {
             </details>
             <details className="ev-prompt">
               <summary>Ver prompt final</summary>
-              <pre>{prompts.end.text}</pre>
+              <pre>
+                {startReady || referenceConfirmed
+                  ? prompts.end.text
+                  : 'Tenha a imagem START e confirme que irá anexá-la para liberar o prompt FINAL.'}
+              </pre>
             </details>
           </>
         )}
@@ -184,7 +228,7 @@ export function ExerciseVisualDetail({ visuals, online }) {
         )}
       </section>
 
-      {!visuals.setsLoading && (
+      {!visuals.setsLoading && !visuals.setsError && (
         <>
           <ExerciseVisualReview
             sets={sets}
@@ -193,6 +237,7 @@ export function ExerciseVisualDetail({ visuals, online }) {
             disabled={!online}
             onApprove={visuals.approve}
             onReject={visuals.reject}
+            onDelete={visuals.discard}
           />
           <ExerciseVisualHistory
             sets={sets}
@@ -200,6 +245,11 @@ export function ExerciseVisualDetail({ visuals, online }) {
             busy={busy}
             disabled={!online}
             onRestore={visuals.restore}
+            onDelete={visuals.discard}
+            deletions={visuals.deletions}
+            onRetryDeletion={visuals.retryDeletion}
+            loaded={visuals.historyLoaded}
+            onOpen={visuals.loadHistory}
           />
         </>
       )}

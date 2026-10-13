@@ -351,6 +351,10 @@ begin
   delete from storage.objects where bucket_id in ('exercise-visuals', 'exercise-visual-drafts', 'exercise-visual-references');
   get diagnostics n = row_count;
   return n;
+exception when others then
+  -- Current Storage also denies direct DELETE at statement level, before RLS.
+  if sqlstate='42501' or (sqlstate='P0001' and sqlerrm='Direct deletion from storage tables is not allowed. Use the Storage API instead.') then return 0; end if;
+  raise;
 end;
 $$;
 select pg_temp.as_user('93000000-0000-0000-0000-000000000001');

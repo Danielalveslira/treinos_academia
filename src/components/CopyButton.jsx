@@ -6,7 +6,13 @@ import { copyTextToClipboard } from '../utils/clipboard'
 // (ver abbreviateProtocol em cashPurchaseFlow.js). Se o Clipboard API falhar (contexto
 // não seguro, permissão negada), a falha nunca é silenciada: mostra o valor completo pra
 // quem quiser selecionar manualmente.
-export function CopyButton({ value, label = 'Copiar', successMessage = 'Copiado', testId }) {
+export function CopyButton({
+  value,
+  label = 'Copiar',
+  successMessage = 'Copiado',
+  testId,
+  disabled = false,
+}) {
   const [status, setStatus] = useState('idle') // 'idle' | 'copied' | 'failed'
 
   async function handleClick() {
@@ -16,7 +22,7 @@ export function CopyButton({ value, label = 'Copiar', successMessage = 'Copiado'
 
   return (
     <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, minWidth: 0 }}>
-      <Button size="small" onClick={handleClick} data-testid={testId}>
+      <Button size="small" disabled={disabled} onClick={handleClick} data-testid={testId}>
         {label}
       </Button>
       {status === 'copied' && (
@@ -34,7 +40,13 @@ export function CopyButton({ value, label = 'Copiar', successMessage = 'Copiado'
           as="span"
           role="alert"
           data-testid={testId ? `${testId}-feedback` : undefined}
-          sx={{ fontSize: 0, color: 'danger.fg', wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0 }}
+          sx={{
+            fontSize: 0,
+            color: 'danger.fg',
+            wordBreak: 'break-word',
+            overflowWrap: 'anywhere',
+            minWidth: 0,
+          }}
         >
           Não foi possível copiar automaticamente. Copie manualmente: {value}
         </Text>

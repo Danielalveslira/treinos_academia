@@ -457,3 +457,7 @@ verify_jwt = true
 [functions.infinitepay-webhook]
 enabled = true
 verify_jwt = false
+
+[functions.delete-exercise-visual]
+enabled = true
+verify_jwt = true

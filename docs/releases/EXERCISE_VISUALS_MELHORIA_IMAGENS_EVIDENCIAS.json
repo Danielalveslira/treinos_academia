@@ -1,0 +1,252 @@
+{
+  "status": "implemented_and_tested_not_published",
+  "repository": "Danielalveslira/treinos_academia",
+  "branch": "main",
+  "unchanged_head": "b3d364a1b5303eb60e8bf8234e65d028f6b30ae1",
+  "production_project_confirmed_readonly": "ywrjojrjgozdfpddkkuy",
+  "active_style_confirmed_readonly": "EVOLUTUS_FITNESS_V2",
+  "active_reference_assets": 0,
+  "production_writes": false,
+  "commit_push_deploy_performed": false,
+  "tests": {
+    "javascript_full": 1910,
+    "functions_pass": 151,
+    "functions_preexisting_skip": 1,
+    "pgtap": 307,
+    "real_local_integration": 18,
+    "lint_errors": 0,
+    "preexisting_lint_warnings": 14,
+    "build": "passed",
+    "lost_deletion_response": "passed"
+  },
+  "integration": {
+    "localOnly": true,
+    "checks": [
+      "real WebP upload and server confirmation produce review",
+      "published version blocked without touching public files",
+      "ordinary JWT cannot invoke deletion Edge Function",
+      "concurrent active reference wins safely and blocks deletion",
+      "ordinary user cannot request SQL deletion",
+      "concurrent requests create exactly one durable job",
+      "discarded version immediately leaves review",
+      "Storage failure persists retry state, never completion",
+      "partial public copy survives until retry",
+      "real Storage API removes drafts and partial public copies before completion",
+      "no metadata or files remain for deleted version",
+      "deleted public object no longer downloadable",
+      "completed Edge retry idempotent",
+      "late Storage insertion fenced by durable tombstone",
+      "deletion versus in-flight publication never publishes deleted version",
+      "publication race leaves no untracked orphan files",
+      "new version cannot reuse any deleted public path",
+      "existing published version and catalogue refs preserved"
+    ],
+    "passed": 18
+  },
+  "browser": {
+    "origin": "http://127.0.0.1:55446",
+    "mode": "after",
+    "fixturesOnly": true,
+    "results": [
+      {
+        "width": 390,
+        "dark": false,
+        "signedRequests": 2,
+        "documentRequests": 1,
+        "images": [
+          {
+            "width": 1024,
+            "height": 1024,
+            "complete": true,
+            "loading": "eager"
+          },
+          {
+            "width": 1024,
+            "height": 1024,
+            "complete": true,
+            "loading": "eager"
+          },
+          {
+            "width": 320,
+            "height": 320,
+            "complete": true,
+            "loading": "eager"
+          }
+        ],
+        "errors": []
+      },
+      {
+        "width": 390,
+        "dark": true,
+        "signedRequests": 2,
+        "documentRequests": 1,
+        "images": [
+          {
+            "width": 1024,
+            "height": 1024,
+            "complete": true,
+            "loading": "eager"
+          },
+          {
+            "width": 1024,
+            "height": 1024,
+            "complete": true,
+            "loading": "eager"
+          },
+          {
+            "width": 320,
+            "height": 320,
+            "complete": true,
+            "loading": "eager"
+          }
+        ],
+        "errors": []
+      },
+      {
+        "width": 1366,
+        "dark": false,
+        "signedRequests": 2,
+        "documentRequests": 1,
+        "images": [
+          {
+            "width": 1024,
+            "height": 1024,
+            "complete": true,
+            "loading": "eager"
+          },
+          {
+            "width": 1024,
+            "height": 1024,
+            "complete": true,
+            "loading": "eager"
+          },
+          {
+            "width": 320,
+            "height": 320,
+            "complete": true,
+            "loading": "eager"
+          }
+        ],
+        "errors": []
+      },
+      {
+        "width": 1366,
+        "dark": true,
+        "signedRequests": 2,
+        "documentRequests": 1,
+        "images": [
+          {
+            "width": 1024,
+            "height": 1024,
+            "complete": true,
+            "loading": "eager"
+          },
+          {
+            "width": 1024,
+            "height": 1024,
+            "complete": true,
+            "loading": "eager"
+          },
+          {
+            "width": 320,
+            "height": 320,
+            "complete": true,
+            "loading": "eager"
+          }
+        ],
+        "errors": []
+      }
+    ]
+  },
+  "prompts": {
+    "external_generation_performed": false,
+    "representative_cases": 5,
+    "live_catalog_matches_import": true,
+    "lengths": [
+      {
+        "id": "Pushups",
+        "start_before": 1989,
+        "start_after": 1937,
+        "end_before": 2516,
+        "end_after": 2345
+      },
+      {
+        "id": "Butterfly",
+        "start_before": 2127,
+        "start_after": 2017,
+        "end_before": 2654,
+        "end_after": 2434
+      },
+      {
+        "id": "Barbell_Bench_Press_-_Medium_Grip",
+        "start_before": 2269,
+        "start_after": 2059,
+        "end_before": 2796,
+        "end_after": 2400
+      },
+      {
+        "id": "Alternate_Hammer_Curl",
+        "start_before": 2378,
+        "start_after": 2050,
+        "end_before": 2905,
+        "end_after": 2594
+      },
+      {
+        "id": "Calf_Press_On_The_Leg_Press_Machine",
+        "start_before": 2305,
+        "start_after": 2209,
+        "end_before": 2832,
+        "end_after": 2496
+      }
+    ]
+  },
+  "artifacts": {
+    "prompt_examples": "/tmp/exercise-visual-tests/prompt-samples.json",
+    "live_prompt_examples": "/tmp/exercise-visual-tests/live-prompt-samples.json",
+    "before": "/tmp/exercise-visual-tests/browser-before",
+    "after": "/tmp/exercise-visual-tests/browser-after"
+  },
+  "publication": {
+    "authorized": true,
+    "migration": {
+      "version": "20261029000001",
+      "name": "exercise_visual_deletion",
+      "journal_before": 129,
+      "journal_after": 130,
+      "rls_verified": true,
+      "fences": 9,
+      "style_and_refs_preserved": true
+    },
+    "functions": [
+      {
+        "slug": "cleanup-exercise-visuals",
+        "id": "ddeeeb49-f0b3-445c-9e21-8c0563a48afc",
+        "version": 2,
+        "status": "ACTIVE",
+        "verify_jwt": true,
+        "ezbr_sha256": "567060b7b950378d81da32326144cbe16209ff08945f71875894acb151c1081e"
+      },
+      {
+        "slug": "delete-exercise-visual",
+        "id": "16942e6b-529d-446e-b90f-dfdc94f300a5",
+        "version": 1,
+        "status": "ACTIVE",
+        "verify_jwt": true,
+        "ezbr_sha256": "0c55c1d38d1a1f2a2b579b78df2a95d2073c27636d83bf451e1ee4db57740542"
+      }
+    ],
+    "revalidation": {
+      "javascript_pass": 1910,
+      "edge_pass": 151,
+      "edge_skip_preexisting": 1,
+      "sql_pass": 307,
+      "local_integration_pass": 18,
+      "browser_cases": 4,
+      "lint_errors": 0,
+      "lint_warnings_preexisting": 14,
+      "build": "passed"
+    },
+    "frontend": "awaiting commit/push",
+    "production_smoke": "pending"
+  }
+}

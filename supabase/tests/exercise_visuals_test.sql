@@ -270,7 +270,8 @@ select is((select published_media_refs->>'version' from public.exercise_catalog 
 select is((select published_media_refs->'thumbnail'->>'path' from public.search_exercise_catalog('Supino reto teste', null, null, null, null, 5, 0) where id = '92aaaaaa-0000-0000-0000-000000000001'),
   '92aaaaaa-0000-0000-0000-000000000001/v1/thumb.webp', 'search_exercise_catalog devolve published_media_refs');
 select is((select count(*)::int from public.search_exercise_catalog('Supino reto teste', null, null, null, null, 5, 0) where id = '92aaaaaa-0000-0000-0000-000000000001' and source_media_refs is not null), 1, 'search_exercise_catalog devolve source_media_refs');
-select is((select count(*)::int from storage.objects where bucket_id = 'exercise-visual-drafts'), 0, 'anon não enxerga drafts');
+-- Expiration RLS now uses a private helper intentionally unavailable to anon.
+select throws_ok($$ select count(*) from storage.objects where bucket_id = 'exercise-visual-drafts' $$, '42501', null, 'anon não pode ler drafts (incluindo recusa por privilégio)');
 select throws_ok($$ select count(*) from public.exercise_visual_sets $$, '42501', null, 'anon não lê exercise_visual_sets');
 reset role;
 select pg_temp.as_user('92000000-0000-0000-0000-000000000002');

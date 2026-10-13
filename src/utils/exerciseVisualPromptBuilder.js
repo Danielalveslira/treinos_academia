@@ -6,7 +6,7 @@
 // O texto é independente de fornecedor. `provider` só ajusta o formato (uma linha de abertura e como a
 // referência é citada); 'generic' é o padrão e funciona em qualquer ferramenta. Novo provider = uma entrada em
 // PROMPT_PROVIDER_FORMATS, sem tocar em componentes.
-export const PROMPT_VERSION = 'v2'
+export const PROMPT_VERSION = 'v2.1'
 export const VISUAL_VIEW = 'lateral'
 export const VISUAL_TYPE = 'start_end'
 export const DEFAULT_PROMPT_PROVIDER = 'generic'
@@ -81,36 +81,126 @@ function resolveProvider(provider) {
     : DEFAULT_PROMPT_PROVIDER
 }
 
+// Usa os limites descritos pelo catálogo, não uma execução inferida pelo nome.
+// END é o primeiro deslocamento após START; não a instrução de retorno/repetição.
+export function exercisePoseBrief(exercise) {
+  const { instructions } = structuredExerciseInput(exercise)
+  const movement =
+    /des[çc]a|abaixe|eleve|levante|puxe|empurre|flexion|estend|estique|afaste|aproxime|gire|curve|junte|lower|raise|pull|push|press|extend|bend|curl/i
+  const isReturn = (step) =>
+    /^(repita|repeat|ao terminar|return|retorne|volte)|de volta [àa] posi[çc][ãa]o inicial/i.test(
+      step
+    )
+  let initial = instructions.findIndex((step) =>
+    /(?:esta|essa|this).{0,35}(?:posi[çc][ãa]o inicial|starting position)/i.test(step)
+  )
+  // A postura pode estar escrita sem o rótulo START (ex.: flexão). Só usar o preparo
+  // literalmente descrito antes do primeiro deslocamento; não inferir uma pose do nome.
+  if (
+    initial < 0 &&
+    /^(deite|fique|sente|apoie|posicione|comece|lie|stand|sit|place)/i.test(instructions[0] || '')
+  ) {
+    const next = instructions.findIndex(
+      (step, index) => index > 0 && !isReturn(step) && movement.test(step)
+    )
+    if (next > 0) initial = next - 1
+  }
+  const end =
+    initial >= 0
+      ? instructions.slice(initial + 1).find((step) => !isReturn(step) && movement.test(step))
+      : null
+  return {
+    start: initial >= 0 ? instructions.slice(0, initial + 1).join(' ') : null,
+    end: end || null,
+    camera: /lateral|lados|side|afaste|juntas|together/i.test(end || '')
+      ? 'vista frontal em três quartos'
+      : 'vista lateral em três quartos',
+    complete: initial >= 0 && Boolean(end),
+  }
+}
+
 function exerciseBlock(input) {
-  const lines = [
+  return [
     'EXERCÍCIO',
     `- Nome: ${input.exercise}`,
-    `- Equipamento: ${input.equipment || 'peso do corpo / sem equipamento'}`,
+    `- Equipamento: ${input.equipment || 'não informado; não invente equipamento'}`,
     `- Músculo principal: ${input.primaryMuscle || 'não informado'}`,
   ]
-  if (input.secondaryMuscles.length)
-    lines.push(`- Músculos secundários: ${input.secondaryMuscles.join(', ')}`)
-  if (input.category) lines.push(`- Categoria: ${input.category}`)
-  if (input.difficulty) lines.push(`- Nível: ${input.difficulty}`)
-  if (input.force) lines.push(`- Tipo de força: ${input.force}`)
-  if (input.mechanic) lines.push(`- Mecânica: ${input.mechanic}`)
-  if (input.instructions.length) {
-    lines.push('', 'EXECUÇÃO DO MOVIMENTO (referência biomecânica)')
-    input.instructions.forEach((step, index) => lines.push(`${index + 1}. ${step}`))
-  }
-  return lines
 }
 
 function negativeBlock(profile) {
   const negative = clean(profile.negative_rules)
-  if (!negative) return []
-  return ['', 'EVITE', ...negative.split('\n').map((rule) => `- ${rule.replace(/^[-\s]+/, '')}`)]
+  return [
+    '',
+    'EVITE',
+    ...new Set([
+      'Sem cenário ou paisagem, texto, marca-d’água, logotipo ou membros extras.',
+      ...negative
+        .split('\n')
+        .map((rule) => rule.replace(/^[-\s]+/, ''))
+        .filter(
+          (rule) =>
+            rule && !/^Sem (texto|logotipos|membros extras|elementos decorativos)\./.test(rule)
+        ),
+    ]),
+  ].map((line, index) => (index > 1 ? `- ${line}` : line))
 }
 
 const SINGLE_IMAGE_RULES = [
-  '- Uma única imagem, com uma única pose do personagem.',
+  '- Uma única imagem, com uma única pose do personagem; corpo e equipamento completos, sem cortes.',
   '- NÃO gerar comparação, duas poses, colagem, sequência, painel dividido nem "antes e depois".',
 ]
+
+function styleBlock(profile) {
+  if (profile.name !== 'EVOLUTUS_FITNESS_V2') return clean(profile.base_prompt)
+  return clean(profile.base_prompt)
+    .split('\n')
+    .filter(
+      (line) =>
+        ![
+          /^Avatar humano adulto neutro/,
+          /^Anatomia natural e proporcional/,
+          /^Roupa esportiva neutra/,
+          /^Rosto pouco caracterizado/,
+          /^Mesmo avatar em todos os exercícios/,
+          /^Fundo transparente/,
+          /^Prioridade para a biomecânica/,
+        ].some((rule) => rule.test(line))
+    )
+    .join('\n')
+}
+
+function identityBlock(profile) {
+  // Complementa o V2; não modifica o perfil persistido nem os visuais publicados.
+  return profile.name === 'EVOLUTUS_FITNESS_V2'
+    ? [
+        'IDENTIDADE FIXA DO AVATAR',
+        '- Um único adulto andrógino: rosto oval pouco caracterizado e neutro, cabelo castanho curto, tom de pele médio uniforme, tronco e quadris de proporções médias, ombros proporcionais, musculatura natural; sem traços masculinos ou femininos acentuados.',
+        '- Camiseta esportiva cinza-clara lisa de corte reto, shorts grafite discretos e tênis cinza sem marcas; mesma modelagem, cores, rosto e proporções em cada exercício. Não substituir por um modelo feminino ou masculino estereotipado.',
+      ]
+    : []
+}
+
+function poseBlock(input, role) {
+  const brief = exercisePoseBrief(input)
+  if (!brief.complete)
+    return [
+      'CATÁLOGO INSUFICIENTE',
+      '- Não gere a imagem ainda. Peça a descrição da postura inicial e do ponto distinto do movimento; não invente execução, equipamento nem amplitude.',
+    ]
+  return [
+    role === 'start' ? 'POSIÇÃO INICIAL' : 'POSIÇÃO FINAL',
+    ...(role === 'start' ? [`- Postura START do catálogo: ${brief.start}`] : []),
+    ...(role === 'end'
+      ? [
+          `- Deslocamento e ponto END do catálogo: ${brief.end}`,
+          '- Retrate o limite deste deslocamento, antes do retorno a START; não ilustre a repetição inteira.',
+        ]
+      : []),
+    '- Pés, pegada e mãos, coluna, ângulos articulares e amplitude devem seguir esta descrição. Preserve os apoios na mudança de pose. Se algum detalhe necessário faltar ou for contraditório, peça esclarecimento antes de gerar.',
+    '- Mostre a diferença real do movimento, inclusive quando sutil; não force amplitude nem anatomia para aumentar a diferença.',
+  ]
+}
 
 function prepare(exercise, styleProfile, options) {
   const input = structuredExerciseInput(exercise)
@@ -130,6 +220,7 @@ function result(role, text, { input, profile, provider }) {
     structured: input,
     provider,
     promptVersion: PROMPT_VERSION,
+    needsClarification: !exercisePoseBrief(input).complete,
     styleVersion: profile.name,
     styleProfileId: profile.id,
   }
@@ -142,7 +233,8 @@ export function buildStartPrompt(exercise, styleProfile, options = {}) {
   const lines = [
     ...(format.opening ? [format.opening, ''] : []),
     `Estilo visual: ${profile.name} (${profile.version})`,
-    clean(profile.base_prompt),
+    styleBlock(profile),
+    ...identityBlock(profile),
     '',
     'TAREFA',
     'Gerar EXATAMENTE UMA imagem: a POSIÇÃO INICIAL (START) do exercício abaixo.',
@@ -150,11 +242,10 @@ export function buildStartPrompt(exercise, styleProfile, options = {}) {
     '',
     ...exerciseBlock(input),
     '',
-    'POSIÇÃO INICIAL',
-    '- Mostre o personagem no começo da repetição, antes do movimento principal, com o equipamento posicionado exatamente como é usado neste exercício.',
+    ...poseBlock(input, 'start'),
     '',
     'ENQUADRAMENTO',
-    '- Vista lateral, proporção quadrada (1:1), personagem inteiro visível, com margem ao redor.',
+    `- ${exercisePoseBrief(input).camera}, proporção quadrada (1:1), corpo e equipamento inteiros, com margem. Mostre as articulações que se movem sem sobreposição.`,
     '- Câmera fixa, mesma escala em todos os exercícios, iluminação suave e uniforme.',
     '- Fundo transparente.',
     ...negativeBlock(profile),
@@ -170,7 +261,8 @@ export function buildEndPrompt(exercise, styleProfile, options = {}) {
   const lines = [
     ...(format.opening ? [format.opening, ''] : []),
     `Estilo visual: ${profile.name} (${profile.version})`,
-    clean(profile.base_prompt),
+    styleBlock(profile),
+    ...identityBlock(profile),
     '',
     'TAREFA',
     'Gerar EXATAMENTE UMA imagem: a POSIÇÃO FINAL (END) do exercício abaixo.',
@@ -178,17 +270,16 @@ export function buildEndPrompt(exercise, styleProfile, options = {}) {
     '',
     'REFERÊNCIA OBRIGATÓRIA',
     `- A imagem da POSIÇÃO INICIAL (START), ${format.referenceDelivery}, deve ser utilizada como referência.`,
-    '- Mantenha IGUAL ao START: o personagem (corpo, rosto e proporções), a roupa, o equipamento (modelo, tamanho e acabamento), a câmera, a escala, o enquadramento e a iluminação.',
-    '- Altere SOMENTE a biomecânica da pose: a posição do corpo e das articulações no ponto final do movimento (e do equipamento, quando o movimento o desloca).',
+    '- Mantenha IGUAL ao START: personagem (corpo, rosto e proporções), roupa, equipamento, câmera, escala, enquadramento e iluminação.',
+    '- Altere SOMENTE a biomecânica da pose e a posição do equipamento que se move.',
     '- Se a imagem START não estiver disponível, avise em vez de inventar outro personagem.',
     '',
     ...exerciseBlock(input),
     '',
-    'POSIÇÃO FINAL',
-    '- Mostre o ponto final da fase principal do movimento (fim da repetição), claramente diferente da posição inicial e biomecanicamente correto.',
+    ...poseBlock(input, 'end'),
     '',
     'ENQUADRAMENTO',
-    '- Idêntico ao da imagem START: vista lateral, proporção quadrada (1:1), personagem inteiro visível, com margem ao redor.',
+    '- Idêntico ao da imagem START (não trocar a câmera): proporção quadrada (1:1), personagem inteiro visível, com margem ao redor.',
     '- Fundo transparente.',
     ...negativeBlock(profile),
   ]

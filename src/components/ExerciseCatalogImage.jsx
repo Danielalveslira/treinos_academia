@@ -14,7 +14,17 @@ const REASON_LABEL = {
 // ao carregar -- publicado, mas não baixado/cacheado neste aparelho agora. Nunca usado por si só
 // quando `src` carrega normalmente. Índice avança (nunca volta) por uma lista de candidatos --
 // evita qualquer loop de retry entre os dois.
-export function ExerciseCatalogImage({ src, fallbackSrc, alt = '', className = '', fallbackLabel, hideOnError = false }) {
+export function ExerciseCatalogImage({
+  src,
+  fallbackSrc,
+  alt = '',
+  className = '',
+  fallbackLabel,
+  hideOnError = false,
+  loading = 'lazy',
+  onLoad,
+  onError,
+}) {
   const candidates = []
   if (src) candidates.push(src)
   if (fallbackSrc && fallbackSrc !== src) candidates.push(fallbackSrc)
@@ -41,10 +51,14 @@ export function ExerciseCatalogImage({ src, fallbackSrc, alt = '', className = '
     <img
       className={className}
       src={effectiveSrc}
-      loading="lazy"
+      loading={loading}
       decoding="async"
       alt={alt}
-      onError={() => setIndex((current) => current + 1)}
+      onLoad={onLoad}
+      onError={() => {
+        onError?.()
+        setIndex((current) => current + 1)
+      }}
     />
   )
 }

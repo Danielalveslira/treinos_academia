@@ -19,12 +19,15 @@ const STUBS = {
     export const listCatalogForVisuals = (...a) => call('listCatalogForVisuals', a, () => Promise.resolve(globalThis.__svc.catalog))
     export const getVisualCoverage = (...a) => call('getVisualCoverage', a, () => Promise.resolve(globalThis.__svc.coverage))
     export const getActiveStyleProfile = (...a) => call('getActiveStyleProfile', a, () => globalThis.__svc.profile())
-    export const listVisualSets = (...a) => call('listVisualSets', a, () => Promise.resolve(globalThis.__svc.sets))
+    export const listVisualSets = (...a) => call('listVisualSets', a, () => Promise.resolve(globalThis.__svc.sets.filter(s => a[1]?.history || ['published','review'].includes(s.status))))
+    export const listVisualDeletions = (...a) => call('listVisualDeletions', a, () => Promise.resolve(globalThis.__svc.deletions || []))
+    export const deleteVisualSet = (...a) => call('deleteVisualSet', a, () => globalThis.__svc.discard())
+    export const retryVisualDeletion = (...a) => call('retryVisualDeletion', a, () => Promise.resolve({complete:true}))
     export const uploadVisualSet = (...a) => call('uploadVisualSet', a, () => globalThis.__svc.upload())
     export const isDefinitiveUploadError = (e) => Boolean(e && e.definitive)
     export const newUploadRequestId = () => 'req-' + (globalThis.__svc.keys = (globalThis.__svc.keys || 0) + 1)
     export const publishVisualSet = (...a) => call('publishVisualSet', a, () => globalThis.__svc.publish())
-    export const rejectVisualSet = (...a) => call('rejectVisualSet', a, () => Promise.resolve({}))
+    export const rejectVisualSet = (...a) => call('rejectVisualSet', a, () => {globalThis.__svc.sets=globalThis.__svc.sets.map(s=>s.id===a[0]?{...s,status:'rejected',metadata:{rejection:{reason:a[1]}}}:s);return Promise.resolve({})})
     export const restoreVisualSet = (...a) => call('restoreVisualSet', a, () => Promise.resolve({}))
   `,
   useOnlineStatus: `export function useOnlineStatus() { return globalThis.__online }`,
@@ -58,7 +61,13 @@ before(async () => {
             button: (label) => buttons(label)[0],
             hasButton: (label) => buttons(label).length > 0,
             click: (node) => act(() => { node.props.onClick({ preventDefault() {} }) }),
-            checkAll: () => root.findAll((n) => n.type === 'input' && n.props.type === 'checkbox' && n.props.onChange && n.props.checked === false && !n.props['aria-label'])
+            openHistory: () => act(() => root.findByProps({ className:'ev-history' }).props.onToggle({currentTarget:{open:true}})),
+            reviewChecks: () => root.findAll(n => n.type === 'div' && n.props.className === 'ev-review-card').flatMap(card => card.findAll(n => n.type === 'input' && n.props.type === 'checkbox')),
+            imageError: () => act(() => root.findAll(n => n.type === 'img' && n.props.alt.startsWith('Final'))[0].props.onError()),
+            rejectReason: (value) => act(() => root.findAll(n => n.type === 'select' && n.props['aria-label'] === 'Motivo da rejeição')[0].props.onChange({target:{value}})),
+            loadImages: () => root.findAll(n => n.type === 'img' && n.props.onLoad).forEach(n => act(() => n.props.onLoad({currentTarget:{naturalWidth:n.props.alt.startsWith('Miniatura') ? 320 : 1024,naturalHeight:n.props.alt.startsWith('Miniatura') ? 320 : 1024}}))),
+            checkReference: () => act(() => root.findAll(n => n.type === 'label' && textOf(n).includes('Já tenho a imagem START'))[0].findByType('input').props.onChange({target:{checked:true}})),
+            checkAll: () => root.findAll((n) => n.type === 'div' && n.props.className === 'ev-review-card').flatMap(card => card.findAll((n) => n.type === 'input' && n.props.type === 'checkbox' && n.props.onChange && n.props.checked === false && !n.props['aria-label']))
               .forEach((box) => act(() => box.props.onChange({ target: { checked: true } }))),
             pickFile: (id, name) => act(() => { root.findAll((n) => n.type === 'input' && n.props.id === id)[0].props.onChange({ target: { files: [{ name, type: 'image/png', size: 100 }] } }) }),
             select: () => root.findAll((n) => n.type === 'select')[0],
@@ -136,7 +145,10 @@ const EXERCISE = {
   difficulty: 'iniciante',
   force: 'push',
   mechanic: 'composto',
-  instructions: ['Empurre a barra.'],
+  instructions: [
+    'Deite no banco, segure a barra acima do peito com braços estendidos. Esta é a posição inicial.',
+    'Desça a barra até o meio do peito.',
+  ],
   published_media_refs: { images: [] },
 }
 const set = (id, version, status, extra = {}) => ({
@@ -152,6 +164,13 @@ const set = (id, version, status, extra = {}) => ({
     thumbnail: `https://x/${id}/thumb.webp`,
   },
   ...extra,
+  assets: (extra.assets || []).map((asset) => ({
+    mime_type: 'image/webp',
+    byte_size: 1000,
+    width: asset.role === 'thumbnail' ? 320 : 1024,
+    height: asset.role === 'thumbnail' ? 320 : 1024,
+    ...asset,
+  })),
 })
 
 beforeEach(() => {
@@ -170,6 +189,10 @@ beforeEach(() => {
     publish: () => Promise.resolve({}),
     upload: () => Promise.resolve({}),
     profile: () => Promise.resolve(PROFILE_V2),
+    discard: () => {
+      globalThis.__svc.sets = []
+      return Promise.resolve({ complete: true })
+    },
   }
 })
 
@@ -198,7 +221,7 @@ test('selecionar um exercício carrega os conjuntos e oferece o prompt + upload 
   await tick()
   page.click(page.rowButtons()[0])
   await tick()
-  assert.deepEqual(called('listVisualSets')[0], ['listVisualSets', 'ex-1'])
+  assert.deepEqual(called('listVisualSets')[0], ['listVisualSets', 'ex-1', { history: false }])
   const text = page.text()
   assert.match(text, /Criar com IA/)
   assert.match(text, /Copiar prompt INICIAL/)
@@ -215,8 +238,8 @@ test('selecionar um exercício carrega os conjuntos e oferece o prompt + upload 
   )
   assert.match(text, /Sem imagem/)
   assert.doesNotMatch(text, /Aguardando revisão/, 'sem nada em revisão a seção não ocupa espaço')
-  assert.match(text, /Histórico \(0\)/)
-  assert.match(text, /Nenhuma versão enviada ainda/)
+  assert.match(text, /Histórico/)
+  assert.equal(called('listVisualSets').length, 1)
   assert.equal(
     page.hasButton('Enviar para revisão'),
     false,
@@ -241,6 +264,7 @@ test('"Aprovar e publicar" só habilita com o checklist inteiro marcado e então
   assert.match(page.text(), /Versão 2 em revisão/)
   assert.match(page.text(), /Em revisão/)
   assert.equal(page.button('Aprovar e publicar').props.disabled, true)
+  page.loadImages()
   page.checkAll()
   assert.equal(page.button('Aprovar e publicar').props.disabled, false)
   const listsBefore = called('listVisualSets').length
@@ -264,6 +288,7 @@ test('falha ao publicar mostra o erro e não esconde nada', async () => {
   await tick()
   page.click(page.rowButtons()[0])
   await tick()
+  page.loadImages()
   page.checkAll()
   page.click(page.button('Aprovar e publicar'))
   await tick()
@@ -281,6 +306,8 @@ test('histórico: versão arquivada oferece rollback; publicada não', async () 
   const page = mount()
   await tick()
   page.click(page.rowButtons()[0])
+  await tick()
+  page.openHistory()
   await tick()
   const text = page.text()
   assert.match(text, /Publicada · v3/)
@@ -304,6 +331,7 @@ test('offline: avisa e trava as ações (aprovar/upload exigem servidor)', async
   assert.match(page.text(), /Sem conexão\. Enviar, aprovar e publicar imagens exige internet\./)
   page.click(page.rowButtons()[0])
   await tick()
+  page.loadImages()
   page.checkAll()
   assert.equal(page.button('Aprovar e publicar').props.disabled, true)
   assert.equal(page.button('Rejeitar').props.disabled, true)
@@ -318,6 +346,7 @@ test('conjunto em revisão sem miniatura avisa e continua aprovável (miniatura 
   page.click(page.rowButtons()[0])
   await tick()
   assert.match(page.text(), /Sem miniatura: início e final podem ser publicados normalmente\./)
+  page.loadImages()
   page.checkAll()
   assert.equal(page.button('Aprovar e publicar').props.disabled, false)
   page.unmount()
@@ -337,9 +366,9 @@ test('o envio registra origem neutra (upload manual) e a ferramenta só como met
   const [, args] = called('uploadVisualSet')[0]
   assert.equal(args.generationSource, 'manual_upload')
   assert.equal(args.metadata.tool, 'Minha IA')
-  assert.equal(args.metadata.promptVersion, 'v2')
+  assert.equal(args.metadata.promptVersion, 'v2.1')
   assert.equal(args.metadata.styleVersion, 'EVOLUTUS_FITNESS_V2')
-  assert.equal(args.promptVersion, 'v2')
+  assert.equal(args.promptVersion, 'v2.1')
   assert.doesNotMatch(JSON.stringify(args), /gemini|google/i)
   page.unmount()
 })
@@ -350,6 +379,7 @@ test('V2: dois botões de cópia (INICIAL e FINAL) e dois prompts separados, com
   page.click(page.rowButtons()[0])
   await tick()
   assert.deepEqual(page.copyValues(), ['copy-visual-prompt-start', 'copy-visual-prompt-end'])
+  page.checkReference()
   const text = page.text()
   assert.match(text, /Ver prompt inicial/)
   assert.match(text, /Ver prompt final/)
@@ -385,6 +415,7 @@ test('V2: trocar o formato muda os dois prompts e é registrado como provider hi
   await tick()
   page.click(page.rowButtons()[0])
   await tick()
+  page.checkReference()
   page.setProvider('gemini')
   assert.match(page.text(), /Gere a imagem descrita neste briefing\./)
   assert.match(page.text(), /anexada a esta mensagem/)
@@ -483,8 +514,9 @@ test('V2: avisos automáticos aparecem na revisão sem bloquear a aprovação', 
   await tick()
   page.click(page.rowButtons()[0])
   await tick()
-  assert.match(page.text(), /praticamente iguais/)
-  assert.match(page.text(), /já foi usado em outro conjunto/)
+  assert.match(page.text(), /muito parecidos/)
+  assert.match(page.text(), /usado em outra versão/)
+  page.loadImages()
   page.checkAll()
   assert.equal(page.button('Aprovar e publicar').props.disabled, false)
   page.unmount()
@@ -502,6 +534,8 @@ test('V2: histórico mostra a proveniência (estilo, prompt, formato) e o motivo
   const page = mount()
   await tick()
   page.click(page.rowButtons()[0])
+  await tick()
+  page.openHistory()
   await tick()
   assert.match(page.text(), /estilo v2 · prompt v2 · formato ChatGPT/)
   assert.match(page.text(), /Falha: EXPIRED/)
@@ -590,12 +624,15 @@ test('com o perfil indisponível, imagens publicadas, histórico, revisão e rol
   assert.match(page.text(), /Supino reto/, 'a lista do catálogo não depende do perfil')
   page.click(page.rowButtons()[0])
   await tick()
+  page.openHistory()
+  await tick()
   const text = page.text()
   assert.match(text, ERROR_TEXT)
   assert.match(text, /Publicada · v4/)
   assert.match(text, /Versão 3 em revisão/)
   assert.match(text, /Histórico \(3\)/)
   assert.equal(page.button('Restaurar esta versão (rollback)').props.disabled, false)
+  page.loadImages()
   page.checkAll()
   assert.equal(page.button('Aprovar e publicar').props.disabled, false)
   page.click(page.button('Restaurar esta versão (rollback)'))
@@ -625,5 +662,115 @@ test('proveniência: o prompt mostrado e o conjunto registrado vêm do MESMO per
   assert.equal(args.styleProfileId, 'profile-v1')
   assert.equal(args.metadata.styleVersion, 'EVOLUTUS_FITNESS_V1')
   assert.doesNotMatch(JSON.stringify(args), /V2|profile-v2/)
+  page.unmount()
+})
+
+test('confirmação humana única nunca aprova antes de abrir os arquivos e bloqueia erro de imagem', async () => {
+  globalThis.__svc.sets = [
+    set('review', 3, 'review', { assets: [{ role: 'start' }, { role: 'end' }] }),
+  ]
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  assert.equal(page.reviewChecks().length, 1)
+  page.checkAll()
+  assert.equal(page.button('Aprovar e publicar').props.disabled, true)
+  page.loadImages()
+  assert.equal(page.button('Aprovar e publicar').props.disabled, false)
+  page.imageError()
+  assert.equal(page.button('Aprovar e publicar').props.disabled, true)
+  page.unmount()
+})
+test('rejeição rápida mantém histórico sem recarregar catálogo/cobertura', async () => {
+  globalThis.__svc.sets = [
+    set('review', 3, 'review', { assets: [{ role: 'start' }, { role: 'end' }] }),
+  ]
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  const listReads = called('listCatalogForVisuals').length,
+    coverageReads = called('getVisualCoverage').length
+  page.click(page.button('Rejeitar'))
+  page.rejectReason('Imagem sem relação com exercício')
+  page.click(page.button('Confirmar rejeição'))
+  await tick()
+  assert.deepEqual(called('rejectVisualSet')[0], [
+    'rejectVisualSet',
+    'review',
+    'Imagem sem relação com exercício',
+  ])
+  assert.equal(called('listCatalogForVisuals').length, listReads)
+  assert.equal(called('getVisualCoverage').length, coverageReads)
+  page.openHistory()
+  await tick()
+  assert.match(page.text(), /Motivo: Imagem sem relação com exercício/)
+  page.unmount()
+})
+test('exclusão deliberada não é confundida com rejeição e pendência oferece retry no histórico', async () => {
+  globalThis.__svc.sets = [
+    set('review', 3, 'review', { assets: [{ role: 'start' }, { role: 'end' }] }),
+  ]
+  globalThis.__svc.discard = () => {
+    globalThis.__svc.sets = []
+    globalThis.__svc.deletions = [{ visual_set_id: 'review', version: 3, status: 'pending' }]
+    return Promise.resolve({ complete: false })
+  }
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  assert.equal(called('deleteVisualSet').length, 0)
+  page.click(page.button('Excluir versão'))
+  assert.equal(called('deleteVisualSet').length, 0)
+  page.click(page.button('Confirmar exclusão'))
+  await tick()
+  assert.equal(called('deleteVisualSet').length, 1)
+  assert.match(page.text(), /Exclusão dos arquivos pendente/)
+  assert.doesNotMatch(page.text(), /Versão 3 em revisão/)
+  assert.equal(called('rejectVisualSet').length, 0)
+  page.openHistory()
+  await tick()
+  assert.equal(page.hasButton('Reprocessar exclusão'), true)
+  page.unmount()
+})
+test('FINAL depende de START disponível; histórico continua sob demanda', async () => {
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  assert.equal(page.button('Copiar prompt FINAL').props.disabled, true)
+  assert.equal(called('listVisualSets').length, 1)
+  page.checkReference()
+  assert.equal(page.button('Copiar prompt FINAL').props.disabled, false)
+  page.openHistory()
+  await tick()
+  assert.equal(called('listVisualSets').length, 2)
+  assert.equal(called('listVisualSets')[1][2].history, true)
+  page.unmount()
+})
+
+test('resposta perdida após a exclusão revalida o estado e nunca mantém versão removida em revisão', async () => {
+  globalThis.__svc.sets = [
+    set('review', 3, 'review', { assets: [{ role: 'start' }, { role: 'end' }] }),
+  ]
+  globalThis.__svc.discard = () => {
+    globalThis.__svc.sets = []
+    globalThis.__svc.deletions = [{ visual_set_id: 'review', version: 3, status: 'pending' }]
+    return Promise.reject(new Error('resposta perdida'))
+  }
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  page.click(page.button('Excluir versão'))
+  page.click(page.button('Confirmar exclusão'))
+  await tick()
+  assert.doesNotMatch(page.text(), /Versão 3 em revisão/)
+  assert.match(page.text(), /Há arquivos com exclusão pendente/)
+  page.openHistory()
+  await tick()
+  assert.equal(page.hasButton('Reprocessar exclusão'), true)
   page.unmount()
 })

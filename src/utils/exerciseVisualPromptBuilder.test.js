@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
+  exercisePoseBrief,
   buildEndPrompt,
   buildExerciseVisualPrompts,
   buildStartPrompt,
@@ -58,7 +59,10 @@ const row = {
   difficulty: 'iniciante',
   force: 'push',
   mechanic: 'composto',
-  instructions: ['Deite no banco.', ' Empurre a barra. '],
+  instructions: [
+    'Deite no banco, pés apoiados, segure a barra com os braços estendidos. Esta é a posição inicial.',
+    ' Desça a barra até o peito. ',
+  ],
 }
 
 test('estrutura os dados reais do catálogo (linha crua do banco)', () => {
@@ -72,7 +76,10 @@ test('estrutura os dados reais do catálogo (linha crua do banco)', () => {
     difficulty: 'iniciante',
     force: 'push',
     mechanic: 'composto',
-    instructions: ['Deite no banco.', 'Empurre a barra.'],
+    instructions: [
+      'Deite no banco, pés apoiados, segure a barra com os braços estendidos. Esta é a posição inicial.',
+      'Desça a barra até o peito.',
+    ],
     view: 'lateral',
     visualType: 'start_end',
   })
@@ -95,7 +102,7 @@ test('aceita também o formato mapeado da UI (primaryMuscles/secondaryMuscles/le
 })
 
 test('V2: o texto do EVOLUTUS_FITNESS_V2 e a versão do perfil de prompt (v2)', () => {
-  assert.equal(PROMPT_VERSION, 'v2')
+  assert.equal(PROMPT_VERSION, 'v2.1')
   assert.equal(PROFILE_V2.name, 'EVOLUTUS_FITNESS_V2')
   assert.equal(PROFILE_V2.version, 'v2')
   const base = PROFILE_V2.base_prompt
@@ -147,9 +154,9 @@ test('START: junta Style Profile + dados reais do exercício + enquadramento + r
   assert.match(text, /Estilo visual: EVOLUTUS_FITNESS_V2 \(v2\)/)
   assert.match(text, /- Nome: Supino reto com barra/)
   assert.match(text, /- Equipamento: barra/)
-  assert.match(text, /- Músculos secundários: triceps, ombros/)
-  assert.match(text, /1\. Deite no banco\./)
-  assert.match(text, /EVITE\n- Sem texto\./)
+  assert.match(text, /pés apoiados/)
+  assert.match(text, /Postura START do catálogo: Deite no banco/)
+  assert.match(text, /Sem cenário ou paisagem, texto/)
   const order = [
     'Estilo visual',
     'TAREFA',
@@ -236,7 +243,7 @@ test('providers: genérico é o padrão; Gemini/ChatGPT só mudam o formato (abe
   )
 })
 
-test('exercício sem equipamento vira peso do corpo; campos ausentes não viram "null" no texto', () => {
+test('exercício sem equipamento não inventa peso corporal; campos ausentes não viram "null" no texto', () => {
   for (const build of [buildStartPrompt, buildEndPrompt]) {
     const { text } = build(
       {
@@ -248,7 +255,7 @@ test('exercício sem equipamento vira peso do corpo; campos ausentes não viram 
       },
       PROFILE_V2
     )
-    assert.match(text, /- Equipamento: peso do corpo \/ sem equipamento/)
+    assert.match(text, /- Equipamento: não informado; não invente equipamento/)
     assert.doesNotMatch(text, /null|undefined/)
     assert.doesNotMatch(text, /EXECUÇÃO DO MOVIMENTO/)
     assert.doesNotMatch(text, /Músculos secundários/)
@@ -335,5 +342,49 @@ test('hashPromptText: SHA-256 hex estável do texto exato; muda se o texto muda;
     assert.equal(await hashPromptText('x'), null)
   } finally {
     Object.defineProperty(globalThis, 'crypto', descriptor)
+  }
+})
+
+test('amostra real: peso corporal, máquina, barra, halteres e tornozelos sutis usam poses do catálogo', () => {
+  const catalog = JSON.parse(
+    readFileSync(new URL('../../imports/exercicios_ptbr.json', import.meta.url), 'utf8')
+  )
+  const cases = [
+    ['Pushups', /peito quase tocar o chão/],
+    ['Butterfly', /alças juntas/],
+    ['Barbell_Bench_Press_-_Medium_Grip', /barra tocar o meio do seu peito/],
+    ['Alternate_Hammer_Curl', /halter na altura do ombro/],
+    ['Calf_Press_On_The_Leg_Press_Machine', /Mantenha os joelhos imóveis/],
+  ]
+  for (const [id, endpoint] of cases) {
+    const exercise = catalog.find((row) => row.id === id)
+    assert.ok(exercise)
+    const brief = exercisePoseBrief(exercise)
+    assert.equal(brief.complete, true, id)
+    assert.match(brief.end, endpoint)
+    assert.notEqual(brief.start, brief.end)
+    const { start, end } = buildExerciseVisualPrompts(exercise, PROFILE_V2)
+    assert.equal(start.needsClarification, false)
+    assert.match(end.text, endpoint)
+    assert.match(start.text, /IDENTIDADE FIXA DO AVATAR/)
+    assert.match(start.text, /cinza-clara/)
+    assert.match(start.text, /corpo e equipamento completos/)
+    assert.match(start.text, /Sem cenário ou paisagem/)
+    assert.match(end.text, /REFERÊNCIA OBRIGATÓRIA/)
+    assert.ok(!brief.end.startsWith('Repita') && !brief.end.startsWith('Volte'), id)
+  }
+})
+
+test('catálogo incompleto e menção ao retorno não inventam START nem END', () => {
+  for (const instructions of [
+    [],
+    ['Empurre.'],
+    ['Repita na posição inicial.'],
+    ['Esta é a posição inicial.', 'Repita.'],
+  ]) {
+    const prompt = buildStartPrompt({ name: 'Exercício incompleto', instructions }, PROFILE_V2)
+    assert.equal(prompt.needsClarification, true)
+    assert.match(prompt.text, /Não gere a imagem ainda/)
+    assert.match(prompt.text, /não invente execução/)
   }
 })

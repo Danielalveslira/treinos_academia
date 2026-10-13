@@ -10,6 +10,7 @@
 //     banco não é tocado e o próximo ciclo tenta de novo; se o passo 4 falhar, o próximo ciclo remove de novo
 //     (remover objeto inexistente não é erro) e marca.
 //  `dryRun: true` apenas lista; `limit` (1-200, padrão 100) limita o lote.
+import { processVisualDeletions } from '../delete-exercise-visual/worker.js'
 import { corsHeaders } from '../_shared/cors.ts'
 import { draftPath } from '../_shared/exerciseVisualPaths.ts'
 import { authenticateSuperadmin, jsonError, jsonOk } from '../_shared/superadminAuth.ts'
@@ -38,11 +39,15 @@ Deno.serve(async (req) => {
       body = {}
     }
     const dryRun = body.dryRun === true
-    const limit = Number.isInteger(body.limit) ? Math.min(Math.max(body.limit as number, 1), 200) : 100
+    const limit = Number.isInteger(body.limit)
+      ? Math.min(Math.max(body.limit as number, 1), 200)
+      : 100
 
     let expired = 0
     if (!dryRun) {
-      const { data, error } = await adminClient.rpc('expire_stale_exercise_visual_sets', { p_limit: limit })
+      const { data, error } = await adminClient.rpc('expire_stale_exercise_visual_sets', {
+        p_limit: limit,
+      })
       if (error) console.error('[cleanup-exercise-visuals] expire failed:', error)
       else expired = Number(data) || 0
     }
@@ -72,7 +77,9 @@ Deno.serve(async (req) => {
         actual: asset.path,
       }))
       if (paths.some(({ expected, actual }) => !expected || expected !== actual)) {
-        console.error(`[cleanup-exercise-visuals] paths inesperados no conjunto ${row.visual_set_id}; ignorado`)
+        console.error(
+          `[cleanup-exercise-visuals] paths inesperados no conjunto ${row.visual_set_id}; ignorado`
+        )
         skipped++
         continue
       }
@@ -81,14 +88,20 @@ Deno.serve(async (req) => {
           .from(DRAFTS_BUCKET)
           .remove(paths.map(({ actual }) => actual))
         if (removeErr) {
-          console.error(`[cleanup-exercise-visuals] remove falhou (${row.visual_set_id}):`, removeErr)
+          console.error(
+            `[cleanup-exercise-visuals] remove falhou (${row.visual_set_id}):`,
+            removeErr
+          )
           failed++
           continue
         }
       }
-      const { error: markErr } = await adminClient.rpc('mark_exercise_visual_drafts_purged_internal', {
-        p_set_id: row.visual_set_id,
-      })
+      const { error: markErr } = await adminClient.rpc(
+        'mark_exercise_visual_drafts_purged_internal',
+        {
+          p_set_id: row.visual_set_id,
+        }
+      )
       if (markErr) {
         console.error(`[cleanup-exercise-visuals] mark falhou (${row.visual_set_id}):`, markErr)
         failed++
@@ -97,7 +110,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    return jsonOk({ dryRun: false, expired, candidates: rows.length, purged, failed, skipped })
+    // Retry explicit deletions too. Legacy draft cleanup keeps its existing contract.
+    const deletions = await processVisualDeletions(adminClient).catch(() => ({
+      completed: 0,
+      pending: 1,
+    }))
+    return jsonOk({
+      dryRun: false,
+      expired,
+      candidates: rows.length,
+      purged,
+      failed,
+      skipped,
+      deletions,
+    })
   } catch (error) {
     console.error('[cleanup-exercise-visuals] unexpected error:', error)
     return jsonError('INTERNAL_ERROR', 500)

@@ -63,7 +63,7 @@ before(async () => {
               const record = (call) => { globalThis.__calls.push(call) }
               function builder(table, call) {
                 const b = {}
-                for (const method of ['select', 'eq', 'order', 'range', 'ilike', 'is', 'not', 'limit']) {
+                for (const method of ['select', 'eq', 'in', 'neq', 'order', 'range', 'ilike', 'is', 'not', 'limit']) {
                   b[method] = (...args) => { call.chain.push([method, ...args]); return b }
                 }
                 b.maybeSingle = () => Promise.resolve(globalThis.__single)
@@ -585,4 +585,57 @@ test('mensagem do perfil de estilo indisponível', () => {
     service.describeVisualError(new Error('STYLE_PROFILE_UNAVAILABLE')),
     'Não foi possível carregar o padrão visual. Tente novamente.'
   )
+})
+
+test('exclusão solicita transação autorizada antes do Storage; falha da Edge retorna pendência explícita', async () => {
+  globalThis.__rpc = async () => ({ data: { status: 'pending' }, error: null })
+  await service.deleteVisualSet('set-1')
+  assert.equal(globalThis.__calls[0].name, 'request_exercise_visual_deletion')
+  assert.ok(fetchCalls[0].url.endsWith('/delete-exercise-visual'))
+  assert.equal(JSON.parse(fetchCalls[0].init.body).visualSetId, 'set-1')
+  globalThis.fetch = async () => {
+    throw new Error('Storage offline')
+  }
+  assert.deepEqual(await service.deleteVisualSet('set-1'), { complete: false, status: 'pending' })
+  globalThis.__rpc = async () => ({ data: { status: 'complete' }, error: null })
+  assert.deepEqual(await service.deleteVisualSet('set-1'), { complete: true, status: 'complete' })
+})
+test('exclusão bloqueada não invoca Storage; retry usa somente a tarefa já autorizada', async () => {
+  globalThis.__rpc = async () => ({ data: null, error: new Error('VISUAL_FILE_REFERENCED') })
+  await assert.rejects(service.deleteVisualSet('set-1'), /VISUAL_FILE_REFERENCED/)
+  assert.equal(fetchCalls.length, 0)
+  await service.retryVisualDeletion('set-1')
+  assert.equal(fetchCalls.length, 1)
+  assert.match(service.describeVisualError({ message: 'VISUAL_VERSION_PROTECTED' }), /protegidas/)
+})
+test('cache das URLs evita assinatura/download repetido; histórico é requisitado explicitamente', async () => {
+  const rows = [
+    {
+      id: 'lazy',
+      status: 'review',
+      assets: [
+        {
+          role: 'start',
+          storage_bucket: 'exercise-visual-drafts',
+          storage_path: 'unique-lazy/start.webp',
+        },
+      ],
+    },
+  ]
+  globalThis.__query = () => ({ data: rows, error: null })
+  await service.listVisualSets('lazy')
+  await service.listVisualSets('lazy')
+  assert.equal(globalThis.__calls.filter((c) => c.kind === 'signed').length, 1)
+  assert.ok(globalThis.__calls.some((c) => c.chain?.some(([op]) => op === 'in')))
+  globalThis.__calls = []
+  await service.listVisualSets('lazy', { history: true })
+  assert.equal(
+    globalThis.__calls.some((c) => c.chain?.some(([op]) => op === 'in')),
+    false
+  )
+})
+
+test('retry de upload de versão excluída exige nova chave, sem ressuscitar a versão', () => {
+  assert.equal(service.isDefinitiveUploadError({ message: 'VISUAL_SET_DELETED' }), true)
+  assert.equal(service.isDefinitiveUploadError({ message: 'Failed to fetch' }), false)
 })

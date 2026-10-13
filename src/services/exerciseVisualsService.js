@@ -1,6 +1,7 @@
 import { supabase } from '../supabase/config'
 import { compressImage } from '../utils/imageCompression'
 import { perceptualHashOfBlob } from '../utils/perceptualHash'
+import { onPageCacheClear } from '../utils/pageCache'
 
 // Administração da mídia oficial dos exercícios (só superadmin -- RLS/RPCs/Edge Functions
 // recusam qualquer outro; ver supabase/migrations/20261020000001_exercise_visuals.sql).
@@ -38,6 +39,13 @@ const ERROR_MESSAGES = {
   COPY_FAILED: 'Falha ao copiar as imagens para o armazenamento público. Tente publicar novamente.',
   MISSING_FILES: 'Selecione as duas imagens (posição inicial e final).',
   MISSING_FILE: 'Um dos arquivos não chegou ao servidor. Envie as imagens novamente.',
+  VISUAL_VERSION_PROTECTED: 'Versões publicadas ou já usadas em publicação são protegidas.',
+  VISUAL_FILE_REFERENCED:
+    'Esta versão tem arquivos em uso. A exclusão foi bloqueada; nenhuma referência será removida.',
+  VISUAL_ASSET_PATH_INVALID: 'Referências de arquivo inesperadas. A exclusão foi bloqueada.',
+  VISUAL_SET_DELETED: 'Esta versão foi descartada. Faça um novo envio.',
+  DELETION_PENDING:
+    'A versão saiu da revisão; a remoção física dos arquivos está pendente. Reprocesse a exclusão.',
 }
 
 export function describeVisualError(error) {
@@ -76,6 +84,7 @@ const DEFINITIVE_UPLOAD_ERRORS = new Set([
   'UPLOAD_NOT_AUTHORIZED',
   'IDEMPOTENCY_KEY_REUSED',
   'INVALID_STATE',
+  'VISUAL_SET_DELETED',
   'INCOMPLETE_VISUAL_SET',
   'IMAGE_TOO_LARGE',
   'MISSING_FILES',
@@ -161,45 +170,92 @@ export async function getActiveStyleProfile() {
   return data
 }
 
-// Histórico completo de um exercício (mais novo primeiro), com a URL de pré-visualização de cada
-// arquivo: pública para o que já está no bucket exercise-visuals, assinada (10 min) para rascunhos.
-export async function listVisualSets(catalogId) {
-  const { data, error } = await supabase
+// Só versões publicadas/em revisão são carregadas inicialmente. Histórico é solicitado ao abrir.
+const signedPreviewCache = new Map()
+onPageCacheClear(() => signedPreviewCache.clear())
+export async function listVisualSets(catalogId, { history = false } = {}) {
+  let query = supabase
     .from('exercise_visual_sets')
     .select(
-      'id, catalog_id, version, status, generation_source, prompt_version, style_version, provider_hint, prompt_start_hash, prompt_end_hash, reference_style_version, drafts_purged_at, created_by, approved_by, metadata, created_at, submitted_at, approved_at, published_at, assets:exercise_visual_assets(role, storage_bucket, storage_path, width, height, byte_size)'
+      'id, catalog_id, version, status, generation_source, prompt_version, style_version, provider_hint, prompt_start_hash, prompt_end_hash, reference_style_version, drafts_purged_at, created_by, approved_by, metadata, created_at, submitted_at, approved_at, published_at, assets:exercise_visual_assets(role, storage_bucket, storage_path, mime_type, width, height, byte_size, perceptual_hash)'
     )
     .eq('catalog_id', catalogId)
     .order('version', { ascending: false })
+  if (!history) query = query.in('status', ['published', 'review'])
+  const { data, error } = await query
   if (error) throw error
-  return Promise.all((data || []).map(withPreviewUrls))
+  const sets = data || []
+  const now = Date.now()
+  const drafts = [
+    ...new Set(
+      sets.flatMap((set) =>
+        (set.assets || [])
+          .filter(
+            (asset) =>
+              asset.storage_bucket === DRAFTS_BUCKET &&
+              set.status !== 'allocated' &&
+              !set.drafts_purged_at
+          )
+          .map((asset) => asset.storage_path)
+      )
+    ),
+  ].filter((path) => (signedPreviewCache.get(path)?.until || 0) <= now)
+  if (drafts.length) {
+    const { data: urls, error: signError } = await supabase.storage
+      .from(DRAFTS_BUCKET)
+      .createSignedUrls(drafts, DRAFT_URL_TTL_SECONDS)
+    if (!signError)
+      drafts.forEach((path, index) => {
+        if (urls?.[index]?.signedUrl)
+          signedPreviewCache.set(path, {
+            url: urls[index].signedUrl,
+            until: now + (DRAFT_URL_TTL_SECONDS - 30) * 1000,
+          })
+      })
+  }
+  return sets.map((set) => ({
+    ...set,
+    previewUrls: Object.fromEntries(
+      (set.assets || []).flatMap((asset) => {
+        const url =
+          asset.storage_bucket === PUBLIC_BUCKET
+            ? publishedUrl(asset.storage_path)
+            : set.status !== 'allocated' && !set.drafts_purged_at
+              ? signedPreviewCache.get(asset.storage_path)?.url
+              : null
+        return url ? [[asset.role, url]] : []
+      })
+    ),
+  }))
 }
 
-async function withPreviewUrls(set) {
-  const urls = {}
-  const drafts = []
-  for (const asset of set.assets || []) {
-    if (asset.storage_bucket === PUBLIC_BUCKET) urls[asset.role] = publishedUrl(asset.storage_path)
-    else if (
-      asset.storage_bucket === DRAFTS_BUCKET &&
-      set.status !== 'allocated' &&
-      !set.drafts_purged_at
-    )
-      drafts.push(asset)
+export async function listVisualDeletions(catalogId, { history = false } = {}) {
+  let query = supabase
+    .from('exercise_visual_deletions')
+    .select('visual_set_id,version,status,last_error,created_at,completed_at')
+    .eq('catalog_id', catalogId)
+    .order('created_at', { ascending: false })
+  query = history ? query.limit(50) : query.neq('status', 'complete')
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
+}
+
+// Request transaction removes the version from review. Only Storage-confirmed completion is reported.
+export async function deleteVisualSet(visualSetId) {
+  const { data, error } = await supabase.rpc('request_exercise_visual_deletion', {
+    p_set_id: visualSetId,
+  })
+  if (error) throw error
+  if (data?.status === 'complete') return { complete: true, status: 'complete' }
+  try {
+    return await callAdminFunction('delete-exercise-visual', { visualSetId })
+  } catch {
+    return { complete: false, status: 'pending' }
   }
-  if (drafts.length) {
-    const { data, error } = await supabase.storage.from(DRAFTS_BUCKET).createSignedUrls(
-      drafts.map((asset) => asset.storage_path),
-      DRAFT_URL_TTL_SECONDS
-    )
-    // Sem preview o conjunto continua listado (e revisável pelo metadado); só não mostra a imagem.
-    if (!error) {
-      drafts.forEach((asset, index) => {
-        if (data?.[index]?.signedUrl) urls[asset.role] = data[index].signedUrl
-      })
-    }
-  }
-  return { ...set, previewUrls: urls }
+}
+export function retryVisualDeletion(visualSetId) {
+  return callAdminFunction('delete-exercise-visual', { visualSetId })
 }
 
 async function callAdminFunction(name, body) {

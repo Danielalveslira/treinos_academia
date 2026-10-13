@@ -144,7 +144,7 @@ function adminClient(fake) {
           fake.downloads.push([bucket, path])
           const bytes = fake.buckets[bucket]?.get(path)
           if (fake.fail.download?.(bucket, path) || !bytes)
-            return { data: null, error: { message: 'Object not found' } }
+            return { data: null, error: { code: 'NoSuchKey', message: 'Object not found' } }
           return { data: new Blob([bytes]), error: null }
         },
         upload: async (path, bytes, options) => {

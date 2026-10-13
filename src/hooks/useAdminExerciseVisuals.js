@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   PAGE_SIZE,
+  deleteVisualSet,
+  retryVisualDeletion,
+  listVisualDeletions,
   describeVisualError,
   getActiveStyleProfile,
   getVisualCoverage,
@@ -38,6 +41,11 @@ export function useAdminExerciseVisuals() {
 
   const [selected, setSelected] = useState(null)
   const [sets, setSets] = useState([])
+  const [deletions, setDeletions] = useState([])
+  const [historyLoaded, setHistoryLoaded] = useState(false)
+  const historyRef = useRef(false)
+  const selectedRef = useRef(null)
+  const [actionMessage, setActionMessage] = useState('')
   const [setsLoading, setSetsLoading] = useState(false)
   const [setsError, setSetsError] = useState(null)
 
@@ -105,22 +113,39 @@ export function useAdminExerciseVisuals() {
     loadStyleProfile()
   }, [loadCoverage, loadStyleProfile])
 
-  const loadSets = useCallback(async (catalogId) => {
-    const request = ++setsRequest.current
-    setSetsLoading(true)
-    setSetsError(null)
-    try {
-      const result = await listVisualSets(catalogId)
-      if (request === setsRequest.current) setSets(result)
-    } catch (error) {
-      if (request === setsRequest.current)
-        setSetsError(describeQueryError(error, 'useAdminExerciseVisuals.sets'))
-    } finally {
-      if (request === setsRequest.current) setSetsLoading(false)
-    }
-  }, [])
+  const loadSets = useCallback(
+    async (catalogId, { background = false, history = historyRef.current } = {}) => {
+      const request = ++setsRequest.current
+      if (!background) setSetsLoading(true)
+      setSetsError(null)
+      try {
+        const [result, pending] = await Promise.all([
+          listVisualSets(catalogId, { history }),
+          listVisualDeletions(catalogId, { history }),
+        ])
+        if (request === setsRequest.current && selectedRef.current?.id === catalogId) {
+          setSets(result)
+          setDeletions(pending)
+          setHistoryLoaded(history)
+        }
+      } catch (error) {
+        if (request === setsRequest.current) {
+          if (history) historyRef.current = false
+          setSetsError(describeQueryError(error, 'useAdminExerciseVisuals.sets'))
+        }
+      } finally {
+        if (request === setsRequest.current) setSetsLoading(false)
+      }
+    },
+    []
+  )
 
   function select(exercise) {
+    selectedRef.current = exercise
+    historyRef.current = false
+    setHistoryLoaded(false)
+    setDeletions([])
+    setActionMessage('')
     setSelected(exercise)
     setSets([])
     setActionError('')
@@ -144,13 +169,44 @@ export function useAdminExerciseVisuals() {
     busyRef.current = name
     setBusy(name)
     setActionError('')
+    setActionMessage('')
+    const catalogId = selected.id
     try {
-      await action()
-      await Promise.all([loadSets(selected.id), loadList(), loadCoverage()])
+      const result = await action()
+      if (selectedRef.current?.id === catalogId) {
+        if (name.startsWith('delete:')) {
+          const setId = name.slice(7)
+          const discarded = sets.find((set) => set.id === setId)
+          setSets((current) => current.filter((set) => set.id !== setId))
+          if (!result?.complete && discarded)
+            setDeletions((current) => [
+              ...current.filter((job) => job.visual_set_id !== setId),
+              { visual_set_id: setId, version: discarded.version, status: 'pending' },
+            ])
+        }
+        setActionMessage(
+          name.startsWith('delete:') || name.startsWith('retry:')
+            ? result?.complete
+              ? 'Versão e arquivos excluídos definitivamente.'
+              : 'Versão removida da revisão. Exclusão dos arquivos pendente; use Reprocessar exclusão.'
+            : name.startsWith('reject:')
+              ? 'Versão rejeitada; histórico preservado.'
+              : 'Operação concluída.'
+        )
+        await loadSets(catalogId, { background: true })
+      }
+      if (name.startsWith('publish:') || name.startsWith('restore:'))
+        await Promise.all([loadList(), loadCoverage()])
       return true
     } catch (error) {
       console.error(`[useAdminExerciseVisuals] ${name}:`, error)
-      setActionError(describeVisualError(error))
+      if (selectedRef.current?.id === catalogId) {
+        setActionError(describeVisualError(error))
+        // A resposta pode se perder depois do commit da exclusão. Consulte o estado
+        // confirmado antes de voltar a oferecer revisão/publicação da versão antiga.
+        if (name.startsWith('delete:') || name.startsWith('retry:'))
+          await loadSets(catalogId, { background: true })
+      }
       return false
     } finally {
       busyRef.current = null
@@ -159,14 +215,14 @@ export function useAdminExerciseVisuals() {
   }
 
   // Dois prompts separados (uma imagem cada), no formato do provider escolhido (genérico por padrão).
-  const prompts = (() => {
+  const prompts = useMemo(() => {
     if (!selected || styleProfileState !== 'ready') return null
     try {
       return buildExerciseVisualPrompts(selected, styleProfile, { provider: promptProvider })
     } catch {
       return null
     }
-  })()
+  }, [selected, styleProfileState, styleProfile, promptProvider])
 
   // A origem da imagem é neutra (IA de qualquer fornecedor, prompt externo ou arte própria): o registro
   // fica como upload manual e a ferramenta usada, se informada, vai só nos metadados. A proveniência (versão do
@@ -216,6 +272,13 @@ export function useAdminExerciseVisuals() {
     })
   }
 
+  const loadHistory = () => {
+    if (!selected || historyRef.current) return
+    historyRef.current = true
+    loadSets(selected.id, { background: true, history: true })
+  }
+  const discard = (setId) => run(`delete:${setId}`, () => deleteVisualSet(setId))
+  const retryDeletion = (setId) => run(`retry:${setId}`, () => retryVisualDeletion(setId))
   const approve = (setId) => run(`publish:${setId}`, () => publishVisualSet(setId))
   const reject = (setId, reason) => run(`reject:${setId}`, () => rejectVisualSet(setId, reason))
   const restore = (setId) => run(`restore:${setId}`, () => restoreVisualSet(setId))
@@ -232,6 +295,13 @@ export function useAdminExerciseVisuals() {
     selected,
     sets,
     setsLoading,
+    deletions,
+    historyLoaded,
+    loadHistory,
+    reloadSets: () => selectedRef.current && loadSets(selectedRef.current.id, { background: true }),
+    discard,
+    retryDeletion,
+    actionMessage,
     setsError,
     busy,
     actionError,

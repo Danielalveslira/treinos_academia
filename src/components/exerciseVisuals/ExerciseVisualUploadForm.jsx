@@ -1,8 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button, Flash } from '@primer/react'
 import { validateImageFile } from '../../utils/imageCompression'
 
 function FileField({ id, label, file, onChange, disabled }) {
+  const [preview, setPreview] = useState(null)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    setFailed(false)
+    if (!(file instanceof Blob) || !URL.createObjectURL) {
+      setPreview(null)
+      return undefined
+    }
+    const url = URL.createObjectURL(file)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
   return (
     <div className="ev-file">
       <label htmlFor={id}>{label}</label>
@@ -13,6 +25,19 @@ function FileField({ id, label, file, onChange, disabled }) {
         disabled={disabled}
         onChange={(event) => onChange(event.target.files?.[0] || null)}
       />
+      {preview && !failed && (
+        <img
+          className="ev-upload-preview"
+          src={preview}
+          alt={`Prévia ${label}`}
+          onError={() => setFailed(true)}
+        />
+      )}
+      {failed && (
+        <Flash variant="danger">
+          Não foi possível abrir este arquivo. Escolha uma imagem válida.
+        </Flash>
+      )}
       {file && <span className="ev-muted">{file.name}</span>}
     </div>
   )
