@@ -1,6 +1,6 @@
 # Expiração automática de publicações — produção
 
-Publicado no Supabase `ywrjojrjgozdfpddkkuy` em **13/10/2026**. Ativação às **14:16:39 UTC**, Storage confirmado às **14:19:06 UTC**. GitHub/Vercel serão confirmados na revisão final deste relatório.
+Publicado no Supabase `ywrjojrjgozdfpddkkuy` em **13/10/2026**. Ativação às **14:16:39 UTC**, Storage confirmado às **14:19:06 UTC**. GitHub e Vercel confirmados; detalhes abaixo.
 
 ## Resultado real
 
@@ -52,3 +52,13 @@ Acompanhar `status_expiration_runs/events`, tentativas/erros/datas em `status_ex
 Os logs verificados foram os do PostgreSQL/cron e as respostas HTTP persistidas de `pg_net`; não houve exportação de logs de console do runtime hospedado. A AUD-05 administrativa continua fora deste escopo. Não há pendências de limpeza no lote publicado.
 
 Implementação baseada nos recursos nativos documentados em [Supabase Cron](https://supabase.com/docs/guides/cron) e na [view com security_invoker do PostgreSQL](https://www.postgresql.org/docs/current/sql-createview.html).
+
+## GitHub e Vercel confirmados
+
+Conta GitHub **Danielalveslira**, branch **main**, origin **Danielalveslira/treinos_academia** confirmados. Código e evidências publicados no commit **`3c829eb048e9863b71321e91084d24a73f41c7e6`**; push normal e SHA remoto confirmados. A remoção preexistente de `docs/prompts/PROMPT_CLAUDE_CORRECAO_SCROLL_MENU_MOBILE_EVOLUTUS.md` permaneceu fora do commit. Nenhuma credencial, backup ou arquivo de `/tmp` foi incluído.
+
+Vercel: conta **danielalveslira**, equipe **danielalvesliras-projects**, projeto **treinos_academia**, ID **prj_WYVlCGYu021KZCrqfp62qRH2cbIE**. Deployment automático do commit de código **`dpl_CJhbNdvdEodzw9fGPB2J13nut5Ca`**, **Ready / Production**, build de 35 s; status GitHub/Vercel **success**. URL específica: https://treinosacademia-m99mmk2of-danielalvesliras-projects.vercel.app; alias público: https://treinosacademia-ten.vercel.app. Nenhum deploy manual nem ajuste de ambiente/configuração foi necessário.
+
+Smoke público: HTTP **200**, viewport móvel 390 × 844, login renderizado e **zero page errors**. Asset servido `statusesService-5FsyduDU.js` contém `status_publications`, `verified_promoted_until` e `publication_expires_at`. Smoke SQL remoto somente leitura com role **authenticated** confirmou publicação paga legível, zero posts expirados sem promoção expostos pelo filtro do feed, execução da rotina e escrita de controle negadas. Esse smoke usa RLS real, mas não equivale a login de usuário real pelo navegador; nenhum usuário de produção foi criado para testes.
+
+Esta conclusão documental é registrada em commit adicional, sem mudança de código funcional. Supabase, limpeza inicial, imagens e cron estão validados; não há bloqueios ou pendências desta entrega.

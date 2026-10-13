@@ -1162,5 +1162,32 @@
     "control_write_denied": true,
     "expired_unpaid_visible": 0,
     "paid_post_readable": true
+  },
+  "github": {
+    "account": "Danielalveslira",
+    "repository": "Danielalveslira/treinos_academia",
+    "branch": "main",
+    "codeCommit": "3c829eb048e9863b71321e91084d24a73f41c7e6",
+    "push": "confirmed",
+    "vercelCheck": "success"
+  },
+  "vercel": {
+    "account": "danielalveslira",
+    "scope": "danielalvesliras-projects",
+    "project": "treinos_academia",
+    "id": "prj_WYVlCGYu021KZCrqfp62qRH2cbIE",
+    "deployment": "dpl_CJhbNdvdEodzw9fGPB2J13nut5Ca",
+    "state": "READY",
+    "target": "production",
+    "url": "https://treinosacademia-m99mmk2of-danielalvesliras-projects.vercel.app",
+    "alias": "https://treinosacademia-ten.vercel.app",
+    "browserSmoke": {
+      "origin": "https://treinosacademia-ten.vercel.app",
+      "http": 200,
+      "serviceAsset": "statusesService-5FsyduDU.js",
+      "verifiedFields": true,
+      "mobileLoginRendered": true,
+      "pageErrors": []
+    }
   }
 }
