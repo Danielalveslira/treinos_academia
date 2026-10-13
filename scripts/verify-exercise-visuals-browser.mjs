@@ -263,11 +263,6 @@ try {
       else {
         assert.equal(await review.getByRole('checkbox').count(), 1)
         assert.equal(
-          await page.getByRole('button', { name: 'Copiar prompt FINAL', exact: true }).isDisabled(),
-          true
-        )
-        await page.getByRole('checkbox', { name: /Já tenho a imagem START/ }).check()
-        assert.equal(
           await page.getByRole('button', { name: 'Copiar prompt FINAL', exact: true }).isEnabled(),
           true
         )

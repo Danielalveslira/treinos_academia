@@ -5422,7 +5422,35 @@ body.modal-sheet-open { overflow: hidden; }
 .ev-image-zoom { display: block; width: 100%; min-width: 0; padding: 0; border: 1px solid var(--borderColor-muted); border-radius: 6px; background: var(--bgColor-muted); cursor: zoom-in; color: inherit; }
 .ev-image-zoom:focus-visible { outline: 2px solid var(--focus-outlineColor); }
 .ev-image-zoom .exercise-visual-preview-image { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
-.ev-zoom-image { display: block; max-width: 100%; max-height: 75vh; margin-inline: auto; object-fit: contain; }
+.ev-prompt-note { display: flex; align-items: flex-start; gap: 6px; margin: 0; color: var(--fgColor-muted); font-size: 12px; line-height: 1.5; }
+.ev-prompt-note svg { flex-shrink: 0; margin-top: 2px; }
+/* Reserve the app header and mobile navigation even though Dialog is portaled outside the shell. */
+div:has(> .ev-zoom-dialog) {
+  --ev-zoom-top: calc(64px + env(safe-area-inset-top, 0px));
+  --ev-zoom-bottom: env(safe-area-inset-bottom, 0px);
+  --ev-zoom-gap: 24px;
+  box-sizing: border-box;
+  height: 100dvh;
+  bottom: auto;
+  padding: calc(var(--ev-zoom-top) + var(--ev-zoom-gap)) max(var(--ev-zoom-gap), env(safe-area-inset-right, 0px)) calc(var(--ev-zoom-bottom) + var(--ev-zoom-gap)) max(var(--ev-zoom-gap), env(safe-area-inset-left, 0px));
+}
+.ev-zoom-dialog[role="dialog"][aria-modal="true"] {
+  width: min(560px, 100%);
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(100dvh - var(--ev-zoom-top) - var(--ev-zoom-bottom) - 2 * var(--ev-zoom-gap));
+}
+.ev-zoom-dialog h1 { overflow-wrap: anywhere; }
+.ev-zoom-body { display: grid; place-items: center; }
+.ev-zoom-image {
+  display: block;
+  max-width: 100%;
+  max-height: min(60dvh, max(0px, calc(100dvh - var(--ev-zoom-top) - var(--ev-zoom-bottom) - 2 * var(--ev-zoom-gap) - 120px)));
+  object-fit: contain;
+}
+@media (max-width: 767px) {
+  div:has(> .ev-zoom-dialog) { --ev-zoom-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); --ev-zoom-gap: 16px; }
+}
 .ev-inspection { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; }
 .ev-inspection input { margin-top: 3px; flex-shrink: 0; }
 .ev-rejection, .ev-delete { display: grid; gap: 8px; min-width: 0; }

@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Dialog } from '@primer/react'
 import { ExerciseCatalogImage } from '../ExerciseCatalogImage'
 
 const ROLE_LABELS = { start: 'Início', end: 'Final', thumbnail: 'Miniatura' }
+function ZoomBody({ children }) {
+  return <Dialog.Body className="ev-zoom-body">{children}</Dialog.Body>
+}
 export function ExerciseVisualPreview({
   urls = {},
   roles = ['start', 'end'],
@@ -12,6 +15,7 @@ export function ExerciseVisualPreview({
   onError,
 }) {
   const [zoom, setZoom] = useState(null)
+  const zoomTrigger = useRef(null)
   return (
     <>
       <div className="ev-preview" data-size={size} data-testid="visual-preview">
@@ -21,7 +25,10 @@ export function ExerciseVisualPreview({
               className="ev-image-zoom"
               type="button"
               disabled={!urls[role]}
-              onClick={() => setZoom(role)}
+              onClick={(event) => {
+                zoomTrigger.current = event.currentTarget
+                setZoom(role)
+              }}
               aria-label={`Ampliar ${ROLE_LABELS[role]}${name ? ` — ${name}` : ''}`}
             >
               <ExerciseCatalogImage
@@ -43,7 +50,10 @@ export function ExerciseVisualPreview({
         <Dialog
           title={`${ROLE_LABELS[zoom]} — ${name}`}
           onClose={() => setZoom(null)}
-          width="xlarge"
+          width="large"
+          className="ev-zoom-dialog"
+          renderBody={ZoomBody}
+          returnFocusRef={zoomTrigger}
         >
           <img className="ev-zoom-image" src={urls[zoom]} alt={`${ROLE_LABELS[zoom]} — ${name}`} />
         </Dialog>

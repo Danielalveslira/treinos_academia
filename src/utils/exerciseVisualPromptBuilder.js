@@ -6,7 +6,7 @@
 // O texto é independente de fornecedor. `provider` só ajusta o formato (uma linha de abertura e como a
 // referência é citada); 'generic' é o padrão e funciona em qualquer ferramenta. Novo provider = uma entrada em
 // PROMPT_PROVIDER_FORMATS, sem tocar em componentes.
-export const PROMPT_VERSION = 'v2.1'
+export const PROMPT_VERSION = 'v2.2'
 export const VISUAL_VIEW = 'lateral'
 export const VISUAL_TYPE = 'start_end'
 export const DEFAULT_PROMPT_PROVIDER = 'generic'
@@ -185,8 +185,19 @@ function poseBlock(input, role) {
   const brief = exercisePoseBrief(input)
   if (!brief.complete)
     return [
-      'CATÁLOGO INSUFICIENTE',
-      '- Não gere a imagem ainda. Peça a descrição da postura inicial e do ponto distinto do movimento; não invente execução, equipamento nem amplitude.',
+      role === 'start' ? 'POSIÇÃO INICIAL' : 'POSIÇÃO FINAL',
+      ...(brief.start ? [`- Postura START descrita no catálogo: ${brief.start}`] : []),
+      ...(input.instructions.length
+        ? [
+            `- Instruções disponíveis (confira a qual fase pertencem): ${input.instructions.join(' ')}`,
+          ]
+        : ['- O catálogo não informa a execução.']),
+      'CONFIRA ANTES DE GERAR',
+      ...(!brief.start
+        ? ['- START não identificado: confira postura inicial, pés, mãos e apoios.']
+        : []),
+      '- END não identificado com segurança: confira direção, amplitude e ponto distinto do movimento, antes do retorno a START.',
+      '- Use os dados disponíveis acima; confirme os detalhes ausentes ou ambíguos na execução real. Não invente posições, equipamento nem movimentos a partir do nome.',
     ]
   return [
     role === 'start' ? 'POSIÇÃO INICIAL' : 'POSIÇÃO FINAL',

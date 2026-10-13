@@ -102,7 +102,7 @@ test('aceita também o formato mapeado da UI (primaryMuscles/secondaryMuscles/le
 })
 
 test('V2: o texto do EVOLUTUS_FITNESS_V2 e a versão do perfil de prompt (v2)', () => {
-  assert.equal(PROMPT_VERSION, 'v2.1')
+  assert.equal(PROMPT_VERSION, 'v2.2')
   assert.equal(PROFILE_V2.name, 'EVOLUTUS_FITNESS_V2')
   assert.equal(PROFILE_V2.version, 'v2')
   const base = PROFILE_V2.base_prompt
@@ -384,7 +384,34 @@ test('catálogo incompleto e menção ao retorno não inventam START nem END', (
   ]) {
     const prompt = buildStartPrompt({ name: 'Exercício incompleto', instructions }, PROFILE_V2)
     assert.equal(prompt.needsClarification, true)
-    assert.match(prompt.text, /Não gere a imagem ainda/)
-    assert.match(prompt.text, /não invente execução/)
+    assert.match(prompt.text, /CONFIRA ANTES DE GERAR/)
+    assert.doesNotMatch(prompt.text, /Não gere a imagem ainda/)
+    assert.match(prompt.text, /Não invente posições, equipamento nem movimentos/)
+  }
+})
+
+test('prompts incompletos preservam instruções e START conhecido, sem criar END ou equipamento', () => {
+  for (const instructions of [
+    ['Contraia o bíceps.'],
+    ['Fique em pé com os cotovelos junto ao torso. Esta é a posição inicial.'],
+    [],
+  ]) {
+    for (const provider of ['generic', 'gemini', 'openai']) {
+      const prompts = buildExerciseVisualPrompts({ name: 'Rosca', instructions }, PROFILE_V2, {
+        provider,
+      })
+      for (const prompt of [prompts.start, prompts.end]) {
+        assert.equal(prompt.needsClarification, true)
+        for (const step of instructions) assert.ok(prompt.text.includes(step))
+        assert.match(prompt.text, /END não identificado com segurança/)
+        assert.match(prompt.text, /Equipamento: não informado; não invente equipamento/)
+        assert.doesNotMatch(prompt.text, /halter|barra|90 graus/i)
+      }
+      assert.match(prompts.end.text, /REFERÊNCIA OBRIGATÓRIA/)
+      assert.match(prompts.end.text, /Se a imagem START não estiver disponível, avise/)
+      if (!instructions.length) assert.match(prompts.start.text, /catálogo não informa a execução/)
+      if (instructions[0]?.includes('posição inicial'))
+        assert.match(prompts.start.text, /Postura START descrita no catálogo/)
+    }
   }
 })

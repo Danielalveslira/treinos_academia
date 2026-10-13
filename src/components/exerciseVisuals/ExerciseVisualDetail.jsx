@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Flash, Label, Spinner } from '@primer/react'
-import { UploadIcon } from '@primer/octicons-react'
+import { InfoIcon, UploadIcon } from '@primer/octicons-react'
 import { CopyButton } from '../CopyButton'
 import { formatCatalogLabel } from '../../utils/exerciseCatalog.js'
 import {
@@ -29,7 +29,6 @@ export function ExerciseVisualDetail({ visuals, online }) {
   const { selected, sets, prompts, promptProvider, busy, styleProfileState } = visuals
   const [uploadOpen, setUploadOpen] = useState(false)
   const [startReady, setStartReady] = useState(false)
-  const [referenceConfirmed, setReferenceConfirmed] = useState(false)
   const root = useRef(null)
   const status = currentStatus(sets)
 
@@ -145,13 +144,11 @@ export function ExerciseVisualDetail({ visuals, online }) {
                 value={prompts.start.text}
                 label="Copiar prompt INICIAL"
                 testId="copy-visual-prompt-start"
-                disabled={prompts.start.needsClarification}
               />
               <CopyButton
                 value={prompts.end.text}
                 label="Copiar prompt FINAL"
                 testId="copy-visual-prompt-end"
-                disabled={prompts.end.needsClarification || (!startReady && !referenceConfirmed)}
               />
             </>
           ) : (
@@ -175,21 +172,10 @@ export function ExerciseVisualDetail({ visuals, online }) {
           </Button>
         </div>
         {prompts?.start.needsClarification && (
-          <Flash variant="warning">
-            O catálogo não descreve START e o deslocamento seguinte com segurança. Complete as
-            instruções antes de gerar; não invente a execução. O upload de arte já revisada continua
-            disponível.
-          </Flash>
-        )}
-        {prompts && !startReady && (
-          <label className="ev-inspection">
-            <input
-              type="checkbox"
-              checked={referenceConfirmed}
-              onChange={(event) => setReferenceConfirmed(event.target.checked)}
-            />
-            <span>Já tenho a imagem START deste exercício e vou anexá-la ao gerar FINAL.</span>
-          </label>
+          <p className="ev-prompt-note" role="note">
+            <InfoIcon size={14} aria-hidden="true" />
+            <span>Instruções incompletas. Confira a execução antes de gerar.</span>
+          </p>
         )}
         {prompts && startReady && (
           <Flash variant="warning" data-testid="reference-hint">
@@ -209,11 +195,7 @@ export function ExerciseVisualDetail({ visuals, online }) {
             </details>
             <details className="ev-prompt">
               <summary>Ver prompt final</summary>
-              <pre>
-                {startReady || referenceConfirmed
-                  ? prompts.end.text
-                  : 'Tenha a imagem START e confirme que irá anexá-la para liberar o prompt FINAL.'}
-              </pre>
+              <pre>{prompts.end.text}</pre>
             </details>
           </>
         )}

@@ -66,7 +66,6 @@ before(async () => {
             imageError: () => act(() => root.findAll(n => n.type === 'img' && n.props.alt.startsWith('Final'))[0].props.onError()),
             rejectReason: (value) => act(() => root.findAll(n => n.type === 'select' && n.props['aria-label'] === 'Motivo da rejeição')[0].props.onChange({target:{value}})),
             loadImages: () => root.findAll(n => n.type === 'img' && n.props.onLoad).forEach(n => act(() => n.props.onLoad({currentTarget:{naturalWidth:n.props.alt.startsWith('Miniatura') ? 320 : 1024,naturalHeight:n.props.alt.startsWith('Miniatura') ? 320 : 1024}}))),
-            checkReference: () => act(() => root.findAll(n => n.type === 'label' && textOf(n).includes('Já tenho a imagem START'))[0].findByType('input').props.onChange({target:{checked:true}})),
             checkAll: () => root.findAll((n) => n.type === 'div' && n.props.className === 'ev-review-card').flatMap(card => card.findAll((n) => n.type === 'input' && n.props.type === 'checkbox' && n.props.onChange && n.props.checked === false && !n.props['aria-label']))
               .forEach((box) => act(() => box.props.onChange({ target: { checked: true } }))),
             pickFile: (id, name) => act(() => { root.findAll((n) => n.type === 'input' && n.props.id === id)[0].props.onChange({ target: { files: [{ name, type: 'image/png', size: 100 }] } }) }),
@@ -366,9 +365,9 @@ test('o envio registra origem neutra (upload manual) e a ferramenta só como met
   const [, args] = called('uploadVisualSet')[0]
   assert.equal(args.generationSource, 'manual_upload')
   assert.equal(args.metadata.tool, 'Minha IA')
-  assert.equal(args.metadata.promptVersion, 'v2.1')
+  assert.equal(args.metadata.promptVersion, 'v2.2')
   assert.equal(args.metadata.styleVersion, 'EVOLUTUS_FITNESS_V2')
-  assert.equal(args.promptVersion, 'v2.1')
+  assert.equal(args.promptVersion, 'v2.2')
   assert.doesNotMatch(JSON.stringify(args), /gemini|google/i)
   page.unmount()
 })
@@ -379,7 +378,6 @@ test('V2: dois botões de cópia (INICIAL e FINAL) e dois prompts separados, com
   page.click(page.rowButtons()[0])
   await tick()
   assert.deepEqual(page.copyValues(), ['copy-visual-prompt-start', 'copy-visual-prompt-end'])
-  page.checkReference()
   const text = page.text()
   assert.match(text, /Ver prompt inicial/)
   assert.match(text, /Ver prompt final/)
@@ -415,7 +413,6 @@ test('V2: trocar o formato muda os dois prompts e é registrado como provider hi
   await tick()
   page.click(page.rowButtons()[0])
   await tick()
-  page.checkReference()
   page.setProvider('gemini')
   assert.match(page.text(), /Gere a imagem descrita neste briefing\./)
   assert.match(page.text(), /anexada a esta mensagem/)
@@ -735,15 +732,15 @@ test('exclusão deliberada não é confundida com rejeição e pendência oferec
   assert.equal(page.hasButton('Reprocessar exclusão'), true)
   page.unmount()
 })
-test('FINAL depende de START disponível; histórico continua sob demanda', async () => {
+test('FINAL pode ser copiado, mantém referência START obrigatória e histórico sob demanda', async () => {
   const page = mount()
   await tick()
   page.click(page.rowButtons()[0])
   await tick()
-  assert.equal(page.button('Copiar prompt FINAL').props.disabled, true)
-  assert.equal(called('listVisualSets').length, 1)
-  page.checkReference()
   assert.equal(page.button('Copiar prompt FINAL').props.disabled, false)
+  assert.match(page.text(), /REFERÊNCIA OBRIGATÓRIA/)
+  assert.match(page.text(), /Anexe a imagem inicial ao gerar a posição final/)
+  assert.equal(called('listVisualSets').length, 1)
   page.openHistory()
   await tick()
   assert.equal(called('listVisualSets').length, 2)
@@ -772,5 +769,32 @@ test('resposta perdida após a exclusão revalida o estado e nunca mantém vers�
   page.openHistory()
   await tick()
   assert.equal(page.hasButton('Reprocessar exclusão'), true)
+  page.unmount()
+})
+
+test('instruções incompletas informam sem bloquear cópia nem relaxar a revisão', async () => {
+  globalThis.__svc.catalog = {
+    data: [{ ...EXERCISE, instructions: ['Contraia o peitoral.'] }],
+    total: 1,
+  }
+  globalThis.__svc.sets = [
+    set('review', 3, 'review', { assets: [{ role: 'start' }, { role: 'end' }] }),
+  ]
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+  assert.equal(page.button('Copiar prompt INICIAL').props.disabled, false)
+  assert.equal(page.button('Copiar prompt FINAL').props.disabled, false)
+  assert.match(page.text(), /Instruções incompletas. Confira a execução antes de gerar/)
+  assert.match(page.text(), /Contraia o peitoral/)
+  assert.match(page.text(), /REFERÊNCIA OBRIGATÓRIA/)
+  assert.equal(page.button('Aprovar e publicar').props.disabled, true)
+  page.checkAll()
+  assert.equal(
+    page.button('Aprovar e publicar').props.disabled,
+    true,
+    'human inspection still requires readable images'
+  )
   page.unmount()
 })
