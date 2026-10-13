@@ -1923,7 +1923,7 @@ body:has(.pwa-offline) .app-shell {
 /* bloco de cards no topo do feed (sempre na primeira tela): sem content-visibility, para o card não nascer com
    a altura estimada e crescer depois (deslocamento de layout). Mesma margem do espaço reservado (hint). */
 .sponsored-ad-feed-top {
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 .sponsored-ad-feed-top .sponsored-ad-card {
   content-visibility: visible;
@@ -2318,6 +2318,8 @@ body:has(.pwa-offline) .app-shell {
   word-break: break-word;
 }
 .comment-card.is-highlighted {
+  scroll-margin-top: calc(80px + env(safe-area-inset-top, 0px));
+  scroll-margin-bottom: calc(var(--bottom-navigation-space, 76px) + 16px);
   padding: 12px 12px 10px 14px;
   border-left: 3px solid var(--borderColor-accent-emphasis);
   border-radius: 0 8px 8px 0;
@@ -2506,6 +2508,7 @@ body:has(.pwa-offline) .app-shell {
   to { opacity: 1; }
 }
 .comment-context-page {
+  overflow-wrap: anywhere;
   width: min(100%, 720px);
   min-width: 0;
   margin: 0 auto;
@@ -2546,6 +2549,7 @@ body:has(.pwa-offline) .app-shell {
   font-size: 14px;
 }
 .comment-publication-summary {
+  scroll-margin-top: calc(80px + env(safe-area-inset-top, 0px));
   min-width: 0;
   padding: 16px;
   border: 1px solid var(--borderColor-muted);
@@ -2589,6 +2593,8 @@ body:has(.pwa-offline) .app-shell {
 }
 .comment-publication-content {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 6px;
   margin: 14px 0;
   font-size: 14px;
@@ -2642,6 +2648,8 @@ body:has(.pwa-offline) .app-shell {
 }
 .comment-context-thread {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 18px;
 }
 .comment-context-thread > .comment-card {

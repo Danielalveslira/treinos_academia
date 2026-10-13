@@ -177,7 +177,7 @@
 /* ---- listas ---------------------------------------------------------------------------------- */
 .community-feed {
   display: grid;
-  gap: 12px;
+  gap: 16px;
 }
 .community-feed-group {
   min-width: 0;
@@ -489,44 +489,6 @@ button.status-poll-option:disabled {
   margin-bottom: 16px;
   border: 1px dashed var(--borderColor-default);
   border-radius: var(--fitness-radius-md);
-}
-
-/* ---- conteúdo extenso: "Ver mais"/"Ver menos" dentro do próprio card ----------------------------- */
-.expandable {
-  min-width: 0;
-}
-.expandable-body {
-  position: relative;
-  /* contexto de formatação próprio: a margem do primeiro bloco (ex.: título) não "escapa" para fora e o
-     topo do recorte coincide com o topo do conteúdo medido */
-  display: flow-root;
-}
-.expandable.is-collapsed .expandable-body {
-  overflow: hidden;
-}
-.expandable-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  min-height: 44px;
-  margin-top: 8px;
-  /* O corte já cai numa fronteira limpa (bloco, linha de tabela ou item): uma linha divisória + o botão
-     bastam para sinalizar que há mais, sem apagar texto com degradê. */
-  border: 0;
-  border-top: 1px solid var(--borderColor-muted);
-  background: transparent;
-  color: var(--fgColor-accent);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.expandable-toggle:focus-visible {
-  outline: 2px solid var(--focus-outlineColor);
-  outline-offset: -2px;
-  border-radius: 8px;
 }
 
 /* tabelas largas: rolam na horizontal DENTRO do próprio contêiner; as sombras nas bordas (só aparecem quando

@@ -207,6 +207,15 @@ test('sem publicações: abas, Publicar e estado vazio compacto; sem contador de
   assert.doesNotMatch(html, /Você viu tudo por aqui/)
 })
 
+test('estado vazio e anúncio inline compartilham o grid que controla o espaçamento dos cards', () => {
+  const html = render({ statuses: [], inlineFeedAds: [makeAd('empty-feed-ad')] })
+  assert.match(html, /class="community-feed"><div class="cd-empty">/)
+  assert.match(
+    html,
+    /Seja o primeiro a publicar algo nesta comunidade\.<\/p><\/div><div class="test-ad-card" data-ad-id="empty-feed-ad"/
+  )
+})
+
 test('"Recentes" é a aba padrão: o feed aparece e os destaques ficam na outra aba (sem card duplicado)', () => {
   const html = render({
     featuredStatuses: [promoted('feat-1')],

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { ChevronDownIcon, ChevronUpIcon } from '@primer/octicons-react'
 import { planCollapse } from '../utils/collapseSnap'
 import { observeSize } from '../utils/sizeObserver'
+import './ExpandableContent.css'
 
 const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
 
@@ -67,7 +68,7 @@ export function ExpandableContent({ children, renderFull = null }) {
     }
     setExpanded(false)
     // Ao recolher um texto longo, o topo do card pode ter ficado para cima da tela: traz de volta.
-    const card = wrapperRef.current?.closest('.status-card')
+    const card = wrapperRef.current?.closest('.status-card, .comment-publication-summary')
     if (card && card.getBoundingClientRect().top < 0) {
       window.requestAnimationFrame(() => card.scrollIntoView({ block: 'start' }))
     }

@@ -61,6 +61,14 @@ export default function CommentContextPage() {
     }
   }, [commentId, communityId, retryToken, statusId])
 
+  // The push route loads its context asynchronously; scroll only once that target is mounted.
+  useEffect(() => {
+    if (loading || error || !context?.statusId) return
+    const target = document.getElementById(`comentario-${commentId}`)
+    target?.scrollIntoView({ block: 'start' })
+    target?.focus({ preventScroll: true })
+  }, [commentId, context?.statusId, loading, error])
+
   const publicationAnchor =
     status?.type === 'workout' ? `treino-${statusId}` : `publicacao-${statusId}`
   const publicationPath = `/comunidades/${communityId}#${publicationAnchor}`

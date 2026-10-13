@@ -128,6 +128,7 @@ export function CommentCard({
       className={`comment-card${highlighted ? ' is-highlighted' : ''}${animateHighlight ? ' is-entering' : ''}${contextMode ? ' is-context' : ''}`}
       style={{ '--comment-depth': safeVisualDepth }}
       id={`comentario-${current.id}`}
+      tabIndex={highlighted ? -1 : undefined}
     >
       <header className="comment-header">
         <ProfileAvatar

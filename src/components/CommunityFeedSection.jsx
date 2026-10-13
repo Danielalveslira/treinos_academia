@@ -429,17 +429,16 @@ export function CommunityFeedSection({
           )}
           <ErrorState error={feedError} onRetry={refreshFeed} />
 
-          {showEmptyFeed && (
-            <div className="cd-empty">
-              <MegaphoneIcon size={20} />
-              <p>Nenhuma publicação por aqui ainda.</p>
-              <p className="cd-empty-hint">Seja o primeiro a publicar algo nesta comunidade.</p>
-            </div>
-          )}
-
           {/* Campanha contratada também no banner: o card entra no meio do feed (depois de algumas
               publicações), nunca colado ao banner do topo. Ver interleaveAds. */}
           <div className="community-feed">
+            {showEmptyFeed && (
+              <div className="cd-empty">
+                <MegaphoneIcon size={20} />
+                <p>Nenhuma publicação por aqui ainda.</p>
+                <p className="cd-empty-hint">Seja o primeiro a publicar algo nesta comunidade.</p>
+              </div>
+            )}
             {feedWithAds.map((entry) =>
               entry.type === 'ad' ? (
                 <SponsoredAdCard
