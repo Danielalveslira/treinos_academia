@@ -52,8 +52,8 @@ try {
   )
   // Do not run the worker on pre-existing fixtures; refuse an existing cleanup queue.
   check(
-    sql('select count(*) from public.storage_cleanup_tasks;') === '0',
-    'fresh local cleanup queue'
+    sql("select count(*) from public.storage_cleanup_tasks where state <> 'complete';") === '0',
+    'no unrelated unfinished local cleanup tasks'
   )
   const ids = Array.from({ length: 3 }, () => randomUUID())
   const [author, owner, reviewer] = ids
@@ -149,11 +149,11 @@ try {
   const scoped = {
     rpc: async (name, args) => {
       if (name === 'list_pending_deletion_jobs') {
-        const r = await admin.rpc(name, args)
-        return {
-          ...r,
-          data: r.data?.filter((j) => [author, community, directPhoto].includes(j.target_id)),
-        }
+        return admin
+          .from('deletion_jobs')
+          .select('id,kind,target_id')
+          .in('target_id', [author, community, directPhoto])
+          .in('state', ['pending', 'auth_cleanup'])
       }
       return admin.rpc(name, args)
     },
@@ -213,7 +213,7 @@ try {
   )
   check(
     sql(
-      "select count(*) from public.storage_cleanup_tasks where state='complete' and attempts=2;"
+      `select count(*) from public.storage_cleanup_tasks where state='complete' and attempts=2 and source_id in ('${aPhoto}','${directPhoto}','${avatar}');`
     ) === '3',
     'second attempts persisted'
   )
@@ -245,7 +245,7 @@ try {
   // Actual Storage API missing objects returns success (empty result); exercise it directly.
   good(await admin.storage.from('status-photos').remove([`${community}/${aPhoto}.webp`]))
   check(true, 'real Storage repeated removal succeeds for absent object')
-  // AUD-05 intentionally remains: status branch fails on a still-existing photo row.
+  // AUD-05 regression: status branch now removes an existing photo and captures AUD-04 cleanup.
   const blocked = randomUUID(),
     blockedCommunity = randomUUID()
   sql(`insert into public.communities(id,name,created_by,owner_id) values('${blockedCommunity}','AUD05 dependency','${owner}','${owner}');
@@ -253,7 +253,12 @@ try {
  select set_config('request.jwt.claim.sub','${reviewer}',false);select public.queue_deletion('status','${blocked}');`)
   const job = good(await admin.from('deletion_jobs').select('id').eq('target_id', blocked).single())
   const dependency = good(await admin.rpc('run_deletion_job', { p_job_id: job.id }))
-  check(dependency.error === true, 'AUD-05 remains explicitly reproduced on existing photo status')
+  check(dependency.complete === true, 'AUD-05 administrative photo deletion completes')
+  check(
+    sql(`select count(*) from public.storage_cleanup_tasks where source_id='${blocked}';`) === '1',
+    'AUD-05 captures its photo in existing AUD-04 outbox'
+  )
+  await processStorageCleanup(admin, silent)
   // SQL concurrency with transaction overlap exercises SKIP LOCKED (one fixture, never Storage).
   const leaseId = randomUUID()
   sql(

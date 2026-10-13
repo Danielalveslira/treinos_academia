@@ -1,0 +1,147 @@
+{
+  "audit": "AUD-05",
+  "databaseStatus": "validated_in_production",
+  "migration": "20261030000001_aud05_status_deletion.sql",
+  "migrationHistoryCount": 131,
+  "edgeFunctionsRedeployed": [],
+  "workerVersionUnchanged": 7,
+  "supabaseProject": "ywrjojrjgozdfpddkkuy",
+  "github": {
+    "account": "Danielalveslira",
+    "repository": "Danielalveslira/treinos_academia",
+    "branch": "main",
+    "remote": "origin"
+  },
+  "vercelProject": "treinos_academia",
+  "tests": {
+    "javascriptPassed": 1912,
+    "edgePassed": 151,
+    "edgePreexistingSkipped": 1,
+    "sqlSuites": 15,
+    "sqlPassed": 601,
+    "aud05IntegrationPassed": 19,
+    "aud04IntegrationPassed": 29,
+    "expirationIntegrationPassed": 20,
+    "lintErrors": 0,
+    "lintPreexistingWarnings": 14,
+    "build": "passed"
+  },
+  "productionSmoke": {
+    "project": "ywrjojrjgozdfpddkkuy",
+    "startedAt": "2026-10-13T20:18:52.436Z",
+    "postId": "0491dbd1-55ef-47c3-917e-cd1867e1282c",
+    "communityId": "1c725399-e072-4638-9f66-bf2d0e4609ee",
+    "checks": [
+      "migration journal + exact function delta + ACL/search_path/owner + baseline data hashes",
+      "worker RPC denies authenticated role",
+      "own synthetic photo uploaded; no financial reward enqueued",
+      "real authenticated superadmin can read disposable post + file",
+      "targeted administrative deletion completed with correct photoPaths array",
+      "post absent from database/view; one durable AUD-04 task; repeated deletion skipped",
+      "existing AUD-04 cron acknowledged cleanup; fresh origin GET confirms physical absence",
+      "all pre-existing posts, promotions, ledger, wallets, purchases and moderation evidence hashes unchanged"
+    ],
+    "objectKey": "1c725399-e072-4638-9f66-bf2d0e4609ee/0491dbd1-55ef-47c3-917e-cd1867e1282c.webp",
+    "jobId": "6fbf39e0-4fe1-44e2-9dfb-2c0678306d0b",
+    "taskId": "69076896-ad64-47f8-84c6-c7d4914a463e",
+    "cleanup": {
+      "state": "complete",
+      "attempts": 1,
+      "last_error": null,
+      "completed_at": "2026-10-13T20:19:00.727859+00:00"
+    },
+    "physicalRemoval": {
+      "httpStatus": 400,
+      "message": "Object not found",
+      "authenticatedFreshGet": true,
+      "sdkMessage": "Object not found",
+      "storageObjects": 0,
+      "bucketExists": true
+    },
+    "job": {
+      "state": "complete",
+      "last_error": null
+    },
+    "finishedAt": "2026-10-13T20:19:04.502Z",
+    "passed": 8,
+    "financeUnchanged": true,
+    "preexistingPostsUnchanged": true,
+    "sessionRevokedLocally": true
+  },
+  "workerHealth": {
+    "cron": [
+      {
+        "end": "2026-10-13T20:19:00.135972+00:00",
+        "start": "2026-10-13T20:19:00.123027+00:00",
+        "status": "succeeded"
+      },
+      {
+        "end": "2026-10-13T20:20:00.115866+00:00",
+        "start": "2026-10-13T20:20:00.109443+00:00",
+        "status": "succeeded"
+      }
+    ],
+    "http": [
+      {
+        "content": {
+          "claimed": 0,
+          "failed": 0,
+          "sent": 0
+        },
+        "error": null,
+        "status": 200,
+        "timeout": false
+      },
+      {
+        "content": {
+          "blocked": 0,
+          "cleanupCompleted": 1,
+          "cleanupErrored": 0,
+          "cleanupQueued": 1,
+          "errored": 0,
+          "processed": 0,
+          "queued": 0
+        },
+        "error": null,
+        "status": 200,
+        "timeout": false
+      },
+      {
+        "content": {
+          "blocked": 0,
+          "cleanupCompleted": 0,
+          "cleanupErrored": 0,
+          "cleanupQueued": 0,
+          "errored": 0,
+          "processed": 0,
+          "queued": 0
+        },
+        "error": null,
+        "status": 200,
+        "timeout": false
+      },
+      {
+        "content": {
+          "claimed": 0,
+          "failed": 0,
+          "sent": 0
+        },
+        "error": null,
+        "status": 200,
+        "timeout": false
+      }
+    ],
+    "objects": 0,
+    "row": 0,
+    "tasks": [
+      {
+        "attempts": 1,
+        "completed_at": "2026-10-13T20:19:00.727859+00:00",
+        "id": "69076896-ad64-47f8-84c6-c7d4914a463e",
+        "last_error": null,
+        "state": "complete"
+      }
+    ]
+  },
+  "deploymentNote": "A alteração é exclusivamente SQL; o SHA do commit e o deploy automático correspondente serão confirmados no relatório final."
+}
