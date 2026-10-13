@@ -127,7 +127,7 @@ test('uma única requisição de publicações para todas as comunidades (+1 de 
   assert.ok(
     ops.some(
       ([op, f, o]) =>
-        op === 'or' && /expires_at\.is\.null/.test(f) && o?.referencedTable === 'statuses'
+        op === 'or' && /publication_expires_at\.is\.null/.test(f) && o?.referencedTable === 'statuses'
     )
   )
 })

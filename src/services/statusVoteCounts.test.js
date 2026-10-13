@@ -116,3 +116,26 @@ test('like / unlike / dislike / undo: local delta on top of the persisted totals
   status = applyEconomyVoteCountDelta(status, economyVoteCountDelta(-1, null))
   assert.deepEqual([status.positiveVoteCount, status.negativeVoteCount], [4, 1])
 })
+
+test('promoção verificada pelo servidor prevalece sobre flags canceladas ou inválidas', () => {
+  const status = mapStatusRow(row({
+    promoted: true,
+    promoted_until: '2099-01-01T00:00:00Z',
+    verified_promoted_until: null,
+    interaction_expires_at: '2026-10-04T10:00:00Z',
+  }))
+  assert.equal(status.promoted, false)
+  assert.equal(status.promotedUntil, null)
+  assert.equal(status.commentsCloseAt, '2026-10-04T10:00:00Z')
+})
+
+test('promoção válida preserva exibição mesmo com flags antigas e expiração normal passada', () => {
+  const status = mapStatusRow(row({
+    promoted: false,
+    verified_promoted_until: '2026-10-16T00:00:00Z',
+    interaction_expires_at: '2026-10-16T00:00:00Z',
+  }))
+  assert.equal(status.promoted, true)
+  assert.equal(status.promotedUntil, '2026-10-16T00:00:00Z')
+  assert.equal(status.commentsCloseAt, status.promotedUntil)
+})

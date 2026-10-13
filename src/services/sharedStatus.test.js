@@ -83,7 +83,7 @@ test('busca uma única publicação por id e comunidade, sem varrer o feed', asy
   resolveWith({ data: row('text', { text: 'Olá' }), error: null })
   const status = await getSharedStatus('status-1', 'c1')
   assert.equal(calls.length, 1)
-  assert.equal(calls[0].table, 'statuses')
+  assert.equal(calls[0].table, 'status_publications')
   assert.deepEqual(calls[0].filters, { id: 'status-1', community_id: 'c1' })
   assert.equal(status.id, 'status-1')
   assert.equal(status.text, 'Olá')

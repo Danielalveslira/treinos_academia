@@ -81,7 +81,7 @@ test('primeira página: ordem estável (created_at desc, id desc), pageSize+1, e
       ['id', false],
     ]
   )
-  assert.ok(find('or').some(([, f]) => /expires_at\.is\.null/.test(f)))
+  assert.ok(find('or').some(([, f]) => /publication_expires_at\.is\.null/.test(f)))
   assert.equal(find('range').length + find('offset').length, 0, 'nunca usa OFFSET/range')
   assert.doesNotMatch(String(find('select')[0][1]), /\*/, 'colunas explícitas, sem select *')
 })

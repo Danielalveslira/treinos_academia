@@ -1,0 +1,1166 @@
+{
+  "project": "ywrjojrjgozdfpddkkuy",
+  "before": {
+    "at": "2026-10-13T14:15:24.416457+00:00",
+    "candidates": [
+      {
+        "expiresAt": "2026-10-13T19:42:33.184531+00:00",
+        "id": "004f6f4b-22d8-4f28-9bcb-11a978cc26b5",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "poll"
+      },
+      {
+        "expiresAt": "2026-10-03T16:15:00.21+00:00",
+        "id": "0d541ec6-832a-41bd-8811-474ef92b475e",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "achievement"
+      },
+      {
+        "expiresAt": "2026-09-28T14:16:17.011+00:00",
+        "id": "0d5cfba5-bd98-4e5a-aaef-e3b93447fdac",
+        "photo": true,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-04T02:28:19.903592+00:00",
+        "id": "177c0867-d819-48d3-8e14-c382366b5605",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-13T19:42:33.650597+00:00",
+        "id": "1f4a2470-0989-4ec6-8927-6b3514e2861e",
+        "photo": true,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-06T00:09:09.463156+00:00",
+        "id": "1fd5b9b6-f324-47b6-a17f-871dcef8af76",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-03T20:38:29.137+00:00",
+        "id": "2d962605-198a-4a70-bfb3-5a6a7f0311ba",
+        "photo": true,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-11T11:30:29.256069+00:00",
+        "id": "39c70365-73c1-4804-82ce-d567b3211890",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-09-28T03:03:26.166+00:00",
+        "id": "46f13ee4-7f6a-47ed-8816-b3f222384c66",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-13T19:40:33.329204+00:00",
+        "id": "4826a295-a4d9-4457-8663-1376516ecc9c",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "workout"
+      },
+      {
+        "expiresAt": "2026-10-13T19:38:41.430368+00:00",
+        "id": "5619d6b4-9bf0-484f-a577-5571bc401ff6",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-02T14:17:01.25+00:00",
+        "id": "565ad458-38e9-4161-a631-8320b940ec03",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-09-27T20:39:03.852+00:00",
+        "id": "579c34df-206f-4e3d-a8d8-a465f46b8b8c",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-13T19:42:33.335104+00:00",
+        "id": "671ff3d9-44cb-46b5-bc11-e118f7ccdc56",
+        "photo": true,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-02T17:57:03.968+00:00",
+        "id": "68ba0a62-74e2-4542-b07b-907e3a3bfde7",
+        "photo": true,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-01T12:28:26.365+00:00",
+        "id": "6c73b6f5-e7d8-4593-b54d-36a31b0bacd0",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "workout"
+      },
+      {
+        "expiresAt": "2026-10-10T14:59:31.197791+00:00",
+        "id": "77710d3e-057d-4b84-8ece-10a814302dfc",
+        "photo": true,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-06T20:03:00.751452+00:00",
+        "id": "7aba60d0-a81b-4606-a7bb-3a2c1cefa331",
+        "photo": true,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-13T19:40:33.271366+00:00",
+        "id": "7de750a3-cc72-4450-b18a-08b3c115d297",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "poll"
+      },
+      {
+        "expiresAt": "2026-10-03T18:59:00.558+00:00",
+        "id": "826f8a80-f58a-457d-81cd-ff83d6caaa0c",
+        "photo": true,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-03T16:29:49.925+00:00",
+        "id": "84a8fd71-9f2f-473f-b3be-1724b4ee5c38",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-10T02:34:58.441945+00:00",
+        "id": "8563b506-fced-4a24-82cb-5e870a6279a9",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-13T19:42:33.241587+00:00",
+        "id": "8b0b70ac-cba9-44d3-882c-906ee3a8d67b",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "workout"
+      },
+      {
+        "expiresAt": "2026-10-11T11:29:33.920855+00:00",
+        "id": "8ddace3d-1d69-44f5-83f3-fdcb5fe31c75",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-03T10:02:22.143+00:00",
+        "id": "8e4d8b6f-5058-4c2d-bc07-a0a19e3b6288",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "poll"
+      },
+      {
+        "expiresAt": "2026-10-02T15:02:50.085+00:00",
+        "id": "9833186d-8e7c-46c7-bf0e-4513aa058b41",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "workout"
+      },
+      {
+        "expiresAt": "2026-10-13T19:42:33.089514+00:00",
+        "id": "98c60b67-6890-45fa-9a4c-e5150b950231",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-13T19:38:41.753159+00:00",
+        "id": "b1887d86-199b-4454-97c4-8eb324906818",
+        "photo": true,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-09-30T17:39:51.542+00:00",
+        "id": "b911b641-aa4b-4618-a2eb-a0543f61eec8",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-05T11:11:43.358035+00:00",
+        "id": "ba21935b-e574-4382-b3bb-78f6368e1913",
+        "photo": true,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-13T19:38:41.651112+00:00",
+        "id": "c4118783-bc45-4ffe-91a8-c36aca79c0a4",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "workout"
+      },
+      {
+        "expiresAt": "2026-10-05T22:36:52.71275+00:00",
+        "id": "c5efcc48-7908-4833-a6f5-5549cc377507",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-10T01:11:08.342901+00:00",
+        "id": "c73d8851-f50b-4d87-ada5-c1f99929d803",
+        "photo": false,
+        "reason": "active_promotion",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-13T19:40:33.167555+00:00",
+        "id": "c7f351ed-f03f-46d0-bcab-3d441cc452b5",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-09T14:27:08.697443+00:00",
+        "id": "d3e07746-23d9-4102-a3bd-f4b519483501",
+        "photo": true,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-06T01:16:56.670655+00:00",
+        "id": "d511ed1b-0fb6-437e-94da-7876fa948bba",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-02T21:58:31.034+00:00",
+        "id": "d93f67c3-89f9-401f-b478-33d39cfda017",
+        "photo": true,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-05T11:04:25.565059+00:00",
+        "id": "da7c71ad-483d-4fd3-8a01-6708460a80ce",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-07T13:00:16.124493+00:00",
+        "id": "de719b53-63bd-4718-b9b0-900eba796c4b",
+        "photo": true,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-13T19:38:41.540958+00:00",
+        "id": "e202f299-8658-4c2d-a789-bbfc8514b021",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "poll"
+      },
+      {
+        "expiresAt": "2026-10-13T19:40:33.410706+00:00",
+        "id": "e8fd7774-bfb4-4a50-bc08-e8d673367ca9",
+        "photo": true,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-13T19:41:27.64957+00:00",
+        "id": "ea9d24b2-483d-4f1b-b7ca-637a1b5d409c",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-09T20:59:04.736516+00:00",
+        "id": "f0011280-77a7-483a-be3d-5b94555d07cd",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-05T11:07:25.4054+00:00",
+        "id": "fa8e0379-a748-47c6-8714-5c80736f21cb",
+        "photo": true,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-05T22:58:42.109392+00:00",
+        "id": "fe0a13f9-2772-48f0-973f-12ac12f45f0a",
+        "photo": false,
+        "reason": "eligible",
+        "retentionMode": "24h",
+        "type": "text"
+      }
+    ],
+    "finance": {
+      "account_financial_case_events": {
+        "count": 11,
+        "hash": "48a5cb1ee0124c07cdebd3806c9c3d59"
+      },
+      "account_financial_case_items": {
+        "count": 7,
+        "hash": "ebf3698320e8994e1c16da508ddbc63b"
+      },
+      "account_financial_cases": {
+        "count": 5,
+        "hash": "4eb177e2dc91956d430fcd05e6be3020"
+      },
+      "cash_purchases": {
+        "count": 19,
+        "hash": "9bdb57c21bc7dbd73ca36fac54d756e0"
+      },
+      "economy_transactions": {
+        "count": 103,
+        "hash": "70d9ab2f9c18d6cc493b259510a86b15"
+      },
+      "promotions": {
+        "count": 6,
+        "hash": "4e1e3d9f57992100a6beac8e4f70e9ac"
+      },
+      "wallets": {
+        "count": 3,
+        "hash": "c371efa6eee0f42caee31dc4e6dc5a79"
+      }
+    },
+    "photos": [
+      {
+        "canonical": true,
+        "objectExists": true,
+        "statusId": "0d5cfba5-bd98-4e5a-aaef-e3b93447fdac"
+      },
+      {
+        "canonical": true,
+        "objectExists": true,
+        "statusId": "68ba0a62-74e2-4542-b07b-907e3a3bfde7"
+      },
+      {
+        "canonical": true,
+        "objectExists": true,
+        "statusId": "d93f67c3-89f9-401f-b478-33d39cfda017"
+      },
+      {
+        "canonical": true,
+        "objectExists": true,
+        "statusId": "826f8a80-f58a-457d-81cd-ff83d6caaa0c"
+      },
+      {
+        "canonical": true,
+        "objectExists": true,
+        "statusId": "2d962605-198a-4a70-bfb3-5a6a7f0311ba"
+      },
+      {
+        "canonical": true,
+        "objectExists": true,
+        "statusId": "de719b53-63bd-4718-b9b0-900eba796c4b"
+      },
+      {
+        "canonical": true,
+        "objectExists": true,
+        "statusId": "fa8e0379-a748-47c6-8714-5c80736f21cb"
+      },
+      {
+        "canonical": true,
+        "objectExists": true,
+        "statusId": "ba21935b-e574-4382-b3bb-78f6368e1913"
+      },
+      {
+        "canonical": true,
+        "objectExists": true,
+        "statusId": "7aba60d0-a81b-4606-a7bb-3a2c1cefa331"
+      },
+      {
+        "canonical": true,
+        "objectExists": true,
+        "statusId": "d3e07746-23d9-4102-a3bd-f4b519483501"
+      },
+      {
+        "canonical": true,
+        "objectExists": true,
+        "statusId": "77710d3e-057d-4b84-8ece-10a814302dfc"
+      }
+    ],
+    "protectedPromotionDebitVerified": true
+  },
+  "after": {
+    "finance": {
+      "account_financial_case_events": {
+        "count": 11,
+        "hash": "48a5cb1ee0124c07cdebd3806c9c3d59"
+      },
+      "account_financial_case_items": {
+        "count": 7,
+        "hash": "ebf3698320e8994e1c16da508ddbc63b"
+      },
+      "account_financial_cases": {
+        "count": 5,
+        "hash": "4eb177e2dc91956d430fcd05e6be3020"
+      },
+      "cash_purchases": {
+        "count": 19,
+        "hash": "9bdb57c21bc7dbd73ca36fac54d756e0"
+      },
+      "economy_transactions": {
+        "count": 103,
+        "hash": "70d9ab2f9c18d6cc493b259510a86b15"
+      },
+      "promotions": {
+        "count": 6,
+        "hash": "4e1e3d9f57992100a6beac8e4f70e9ac"
+      },
+      "wallets": {
+        "count": 3,
+        "hash": "c371efa6eee0f42caee31dc4e6dc5a79"
+      }
+    },
+    "preserved": [
+      {
+        "expiresAt": "2026-10-13T19:42:33.184531+00:00",
+        "id": "004f6f4b-22d8-4f28-9bcb-11a978cc26b5",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "poll"
+      },
+      {
+        "expiresAt": "2026-10-13T19:42:33.650597+00:00",
+        "id": "1f4a2470-0989-4ec6-8927-6b3514e2861e",
+        "photo": true,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-13T19:40:33.329204+00:00",
+        "id": "4826a295-a4d9-4457-8663-1376516ecc9c",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "workout"
+      },
+      {
+        "expiresAt": "2026-10-13T19:38:41.430368+00:00",
+        "id": "5619d6b4-9bf0-484f-a577-5571bc401ff6",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-13T19:42:33.335104+00:00",
+        "id": "671ff3d9-44cb-46b5-bc11-e118f7ccdc56",
+        "photo": true,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-13T19:40:33.271366+00:00",
+        "id": "7de750a3-cc72-4450-b18a-08b3c115d297",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "poll"
+      },
+      {
+        "expiresAt": "2026-10-13T19:42:33.241587+00:00",
+        "id": "8b0b70ac-cba9-44d3-882c-906ee3a8d67b",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "workout"
+      },
+      {
+        "expiresAt": "2026-10-13T19:42:33.089514+00:00",
+        "id": "98c60b67-6890-45fa-9a4c-e5150b950231",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-13T19:38:41.753159+00:00",
+        "id": "b1887d86-199b-4454-97c4-8eb324906818",
+        "photo": true,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-13T19:38:41.651112+00:00",
+        "id": "c4118783-bc45-4ffe-91a8-c36aca79c0a4",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "workout"
+      },
+      {
+        "expiresAt": "2026-10-10T01:11:08.342901+00:00",
+        "id": "c73d8851-f50b-4d87-ada5-c1f99929d803",
+        "photo": false,
+        "reason": "active_promotion",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-13T19:40:33.167555+00:00",
+        "id": "c7f351ed-f03f-46d0-bcab-3d441cc452b5",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "text"
+      },
+      {
+        "expiresAt": "2026-10-13T19:38:41.540958+00:00",
+        "id": "e202f299-8658-4c2d-a789-bbfc8514b021",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "poll"
+      },
+      {
+        "expiresAt": "2026-10-13T19:40:33.410706+00:00",
+        "id": "e8fd7774-bfb4-4a50-bc08-e8d673367ca9",
+        "photo": true,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "photo"
+      },
+      {
+        "expiresAt": "2026-10-13T19:41:27.64957+00:00",
+        "id": "ea9d24b2-483d-4f1b-b7ca-637a1b5d409c",
+        "photo": false,
+        "reason": "not_expired",
+        "retentionMode": "24h",
+        "type": "text"
+      }
+    ],
+    "state": {
+      "at": "2026-10-13T14:19:06.865131+00:00",
+      "cron": [
+        {
+          "active": true,
+          "id": 3,
+          "name": "process-deletion-jobs",
+          "schedule": "* * * * *",
+          "user": "postgres"
+        },
+        {
+          "active": true,
+          "id": 13,
+          "name": "expire-statuses",
+          "schedule": "* * * * *",
+          "user": "postgres"
+        }
+      ],
+      "cron_runs": [
+        {
+          "end_time": "2026-10-13T14:19:00.119338+00:00",
+          "jobid": 3,
+          "return_message": "1 row",
+          "runid": 50538,
+          "start_time": "2026-10-13T14:19:00.099378+00:00",
+          "status": "succeeded"
+        },
+        {
+          "end_time": "2026-10-13T14:19:00.123728+00:00",
+          "jobid": 13,
+          "return_message": "1 row",
+          "runid": 50537,
+          "start_time": "2026-10-13T14:19:00.098245+00:00",
+          "status": "succeeded"
+        },
+        {
+          "end_time": "2026-10-13T14:18:00.220093+00:00",
+          "jobid": 3,
+          "return_message": "1 row",
+          "runid": 50534,
+          "start_time": "2026-10-13T14:18:00.190121+00:00",
+          "status": "succeeded"
+        },
+        {
+          "end_time": "2026-10-13T14:18:00.216601+00:00",
+          "jobid": 13,
+          "return_message": "1 row",
+          "runid": 50533,
+          "start_time": "2026-10-13T14:18:00.188882+00:00",
+          "status": "succeeded"
+        },
+        {
+          "end_time": "2026-10-13T14:17:00.162829+00:00",
+          "jobid": 3,
+          "return_message": "1 row",
+          "runid": 50530,
+          "start_time": "2026-10-13T14:17:00.140655+00:00",
+          "status": "succeeded"
+        },
+        {
+          "end_time": "2026-10-13T14:17:00.149284+00:00",
+          "jobid": 13,
+          "return_message": "1 row",
+          "runid": 50529,
+          "start_time": "2026-10-13T14:17:00.119125+00:00",
+          "status": "succeeded"
+        },
+        {
+          "end_time": "2026-10-13T14:16:00.137729+00:00",
+          "jobid": 3,
+          "return_message": "1 row",
+          "runid": 50525,
+          "start_time": "2026-10-13T14:16:00.118375+00:00",
+          "status": "succeeded"
+        },
+        {
+          "end_time": "2026-10-13T14:16:00.12723+00:00",
+          "jobid": 13,
+          "return_message": "1 row",
+          "runid": 50524,
+          "start_time": "2026-10-13T14:16:00.112428+00:00",
+          "status": "succeeded"
+        },
+        {
+          "end_time": "2026-10-13T14:15:00.081651+00:00",
+          "jobid": 3,
+          "return_message": "1 row",
+          "runid": 50521,
+          "start_time": "2026-10-13T14:15:00.068188+00:00",
+          "status": "succeeded"
+        },
+        {
+          "end_time": "2026-10-13T14:15:00.063967+00:00",
+          "jobid": 13,
+          "return_message": "1 row",
+          "runid": 50519,
+          "start_time": "2026-10-13T14:15:00.052418+00:00",
+          "status": "succeeded"
+        },
+        {
+          "end_time": "2026-10-13T14:14:00.136239+00:00",
+          "jobid": 3,
+          "return_message": "1 row",
+          "runid": 50516,
+          "start_time": "2026-10-13T14:14:00.128193+00:00",
+          "status": "succeeded"
+        },
+        {
+          "end_time": "2026-10-13T14:14:00.118886+00:00",
+          "jobid": 13,
+          "return_message": "1 row",
+          "runid": 50515,
+          "start_time": "2026-10-13T14:14:00.109297+00:00",
+          "status": "succeeded"
+        }
+      ],
+      "deletion_jobs": [
+        {
+          "count": 101,
+          "state": "complete"
+        },
+        {
+          "count": 1,
+          "state": "cancelled"
+        }
+      ],
+      "enabled": true,
+      "events": [
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "0d541ec6-832a-41bd-8811-474ef92b475e"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "0d5cfba5-bd98-4e5a-aaef-e3b93447fdac"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "177c0867-d819-48d3-8e14-c382366b5605"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "1fd5b9b6-f324-47b6-a17f-871dcef8af76"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "2d962605-198a-4a70-bfb3-5a6a7f0311ba"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "39c70365-73c1-4804-82ce-d567b3211890"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "46f13ee4-7f6a-47ed-8816-b3f222384c66"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "565ad458-38e9-4161-a631-8320b940ec03"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "579c34df-206f-4e3d-a8d8-a465f46b8b8c"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "68ba0a62-74e2-4542-b07b-907e3a3bfde7"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "6c73b6f5-e7d8-4593-b54d-36a31b0bacd0"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "77710d3e-057d-4b84-8ece-10a814302dfc"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "7aba60d0-a81b-4606-a7bb-3a2c1cefa331"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "826f8a80-f58a-457d-81cd-ff83d6caaa0c"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "84a8fd71-9f2f-473f-b3be-1724b4ee5c38"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "8563b506-fced-4a24-82cb-5e870a6279a9"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "8ddace3d-1d69-44f5-83f3-fdcb5fe31c75"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "8e4d8b6f-5058-4c2d-bc07-a0a19e3b6288"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "9833186d-8e7c-46c7-bf0e-4513aa058b41"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "b911b641-aa4b-4618-a2eb-a0543f61eec8"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "ba21935b-e574-4382-b3bb-78f6368e1913"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "c5efcc48-7908-4833-a6f5-5549cc377507"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "d3e07746-23d9-4102-a3bd-f4b519483501"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "d511ed1b-0fb6-437e-94da-7876fa948bba"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "d93f67c3-89f9-401f-b478-33d39cfda017"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "da7c71ad-483d-4fd3-8a01-6708460a80ce"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "de719b53-63bd-4718-b9b0-900eba796c4b"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "f0011280-77a7-483a-be3d-5b94555d07cd"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "fa8e0379-a748-47c6-8714-5c80736f21cb"
+        },
+        {
+          "outcome": "deleted",
+          "run_id": 1,
+          "status_id": "fe0a13f9-2772-48f0-973f-12ac12f45f0a"
+        }
+      ],
+      "new_versions": [
+        "20261028000001",
+        "20261028000002",
+        "20261028000003"
+      ],
+      "objects": 7,
+      "protected": {
+        "id": "c73d8851-f50b-4d87-ada5-c1f99929d803",
+        "promotedUntil": "2026-10-16T01:28:01.216846+00:00",
+        "queuedAt": "2026-10-16T01:28:01.216846+00:00",
+        "visible": true
+      },
+      "queue": {
+        "due": 0,
+        "errors": 0,
+        "total": 15
+      },
+      "remaining": 15,
+      "runs": [
+        {
+          "deleted": 0,
+          "duration_ms": 4.789,
+          "errors": 0,
+          "examined": 0,
+          "finished_at": "2026-10-13T14:19:00.11268+00:00",
+          "id": 4,
+          "preserved": 0,
+          "reasons": {},
+          "started_at": "2026-10-13T14:19:00.107891+00:00"
+        },
+        {
+          "deleted": 0,
+          "duration_ms": 5.118,
+          "errors": 0,
+          "examined": 0,
+          "finished_at": "2026-10-13T14:18:00.205921+00:00",
+          "id": 3,
+          "preserved": 0,
+          "reasons": {},
+          "started_at": "2026-10-13T14:18:00.200803+00:00"
+        },
+        {
+          "deleted": 0,
+          "duration_ms": 9.579,
+          "errors": 0,
+          "examined": 0,
+          "finished_at": "2026-10-13T14:17:00.138968+00:00",
+          "id": 2,
+          "preserved": 0,
+          "reasons": {},
+          "started_at": "2026-10-13T14:17:00.129389+00:00"
+        },
+        {
+          "deleted": 30,
+          "duration_ms": 148.586,
+          "errors": 0,
+          "examined": 30,
+          "finished_at": "2026-10-13T14:16:39.312509+00:00",
+          "id": 1,
+          "preserved": 0,
+          "reasons": {
+            "deleted": 30
+          },
+          "started_at": "2026-10-13T14:16:39.163923+00:00"
+        }
+      ],
+      "storage_tasks": [
+        {
+          "attempts": 1,
+          "completedAt": "2026-10-13T14:17:02.610032+00:00",
+          "id": "fcdab563-9ad7-4322-90c6-90bc28f0d307",
+          "lastError": null,
+          "objectExists": false,
+          "sourceId": "ba21935b-e574-4382-b3bb-78f6368e1913",
+          "state": "complete"
+        },
+        {
+          "attempts": 1,
+          "completedAt": "2026-10-13T14:17:02.743256+00:00",
+          "id": "e1014feb-d76e-4092-aba9-278ef524043f",
+          "lastError": null,
+          "objectExists": false,
+          "sourceId": "7aba60d0-a81b-4606-a7bb-3a2c1cefa331",
+          "state": "complete"
+        },
+        {
+          "attempts": 1,
+          "completedAt": "2026-10-13T14:17:02.935396+00:00",
+          "id": "11d2e510-cacb-48cf-be3c-972f8786eea2",
+          "lastError": null,
+          "objectExists": false,
+          "sourceId": "77710d3e-057d-4b84-8ece-10a814302dfc",
+          "state": "complete"
+        },
+        {
+          "attempts": 1,
+          "completedAt": "2026-10-13T14:17:03.07082+00:00",
+          "id": "dc05df7e-d73b-4fba-b67e-7a17670bf485",
+          "lastError": null,
+          "objectExists": false,
+          "sourceId": "826f8a80-f58a-457d-81cd-ff83d6caaa0c",
+          "state": "complete"
+        },
+        {
+          "attempts": 1,
+          "completedAt": "2026-10-13T14:17:03.218538+00:00",
+          "id": "465ae9bc-fc70-4f42-86c8-34d3ae7494b7",
+          "lastError": null,
+          "objectExists": false,
+          "sourceId": "0d5cfba5-bd98-4e5a-aaef-e3b93447fdac",
+          "state": "complete"
+        },
+        {
+          "attempts": 1,
+          "completedAt": "2026-10-13T14:17:03.338398+00:00",
+          "id": "6370b43f-135a-4360-bb97-1abe5f599552",
+          "lastError": null,
+          "objectExists": false,
+          "sourceId": "68ba0a62-74e2-4542-b07b-907e3a3bfde7",
+          "state": "complete"
+        },
+        {
+          "attempts": 1,
+          "completedAt": "2026-10-13T14:17:03.494803+00:00",
+          "id": "f558915a-37dc-40b8-bc27-fed61e09f26f",
+          "lastError": null,
+          "objectExists": false,
+          "sourceId": "de719b53-63bd-4718-b9b0-900eba796c4b",
+          "state": "complete"
+        },
+        {
+          "attempts": 1,
+          "completedAt": "2026-10-13T14:17:03.633488+00:00",
+          "id": "2d4679c2-bdb5-490d-90c0-489e0058b0c0",
+          "lastError": null,
+          "objectExists": false,
+          "sourceId": "2d962605-198a-4a70-bfb3-5a6a7f0311ba",
+          "state": "complete"
+        },
+        {
+          "attempts": 1,
+          "completedAt": "2026-10-13T14:17:03.754209+00:00",
+          "id": "69f0010a-987f-433c-97ef-63b9fd36f45c",
+          "lastError": null,
+          "objectExists": false,
+          "sourceId": "d93f67c3-89f9-401f-b478-33d39cfda017",
+          "state": "complete"
+        },
+        {
+          "attempts": 1,
+          "completedAt": "2026-10-13T14:17:03.927809+00:00",
+          "id": "16f64ce8-8a39-40f1-ab3c-57e5ea82c002",
+          "lastError": null,
+          "objectExists": false,
+          "sourceId": "d3e07746-23d9-4102-a3bd-f4b519483501",
+          "state": "complete"
+        },
+        {
+          "attempts": 1,
+          "completedAt": "2026-10-13T14:17:04.059049+00:00",
+          "id": "35f0049a-491c-4908-9291-85fb698af316",
+          "lastError": null,
+          "objectExists": false,
+          "sourceId": "fa8e0379-a748-47c6-8714-5c80736f21cb",
+          "state": "complete"
+        }
+      ],
+      "worker_responses": [
+        {
+          "content": {
+            "blocked": 0,
+            "cleanupCompleted": 0,
+            "cleanupErrored": 0,
+            "cleanupQueued": 0,
+            "errored": 0,
+            "processed": 10,
+            "queued": 10
+          },
+          "created": "2026-10-13T14:19:00.1128+00:00",
+          "id": 31012,
+          "status": 200,
+          "timedOut": false
+        },
+        {
+          "content": {
+            "blocked": 0,
+            "cleanupCompleted": 0,
+            "cleanupErrored": 0,
+            "cleanupQueued": 0,
+            "errored": 0,
+            "processed": 10,
+            "queued": 10
+          },
+          "created": "2026-10-13T14:18:00.216596+00:00",
+          "id": 31009,
+          "status": 200,
+          "timedOut": false
+        },
+        {
+          "content": {
+            "blocked": 0,
+            "cleanupCompleted": 11,
+            "cleanupErrored": 0,
+            "cleanupQueued": 11,
+            "errored": 0,
+            "processed": 10,
+            "queued": 10
+          },
+          "created": "2026-10-13T14:17:00.161135+00:00",
+          "id": 31007,
+          "status": 200,
+          "timedOut": false
+        },
+        {
+          "content": {
+            "blocked": 0,
+            "cleanupCompleted": 0,
+            "cleanupErrored": 0,
+            "cleanupQueued": 0,
+            "errored": 0,
+            "processed": 0,
+            "queued": 0
+          },
+          "created": "2026-10-13T14:16:00.137405+00:00",
+          "id": 31006,
+          "status": 200,
+          "timedOut": false
+        },
+        {
+          "content": {
+            "blocked": 0,
+            "cleanupCompleted": 0,
+            "cleanupErrored": 0,
+            "cleanupQueued": 0,
+            "errored": 0,
+            "processed": 0,
+            "queued": 0
+          },
+          "created": "2026-10-13T14:15:00.072237+00:00",
+          "id": 31004,
+          "status": 200,
+          "timedOut": false
+        }
+      ]
+    }
+  },
+  "tests": {
+    "javascript": {
+      "pass": 1890,
+      "fail": 0
+    },
+    "functions": {
+      "pass": 145,
+      "skip": 1,
+      "fail": 0
+    },
+    "sql_new": 35,
+    "sql_regression": 557,
+    "integration": 20,
+    "lint": {
+      "errors": 0,
+      "existingWarnings": 14
+    },
+    "build": "pass"
+  },
+  "performance": {
+    "fixtureStatuses": 20000,
+    "candidateQueryMs": 0.138,
+    "feedQueryMs": 1.154,
+    "delete20Ms": 16.888,
+    "productionDelete30Ms": 148.586
+  },
+  "productionSmoke": {
+    "cleanup_execute_denied": true,
+    "control_write_denied": true,
+    "expired_unpaid_visible": 0,
+    "paid_post_readable": true
+  }
+}

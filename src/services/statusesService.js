@@ -5,7 +5,7 @@ const UPCOMING_WORKOUTS_PAGE_SIZE = 20
 // deveria ter um objeto maior que isso no bucket, pois ele recusa upload além desse teto.
 const MAX_PHOTO_DOWNLOAD_BYTES = 5 * 1024 * 1024
 const STATUS_SUMMARY_COLUMNS =
-  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,retention_mode,comments_close_at,promoted,promoted_until,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_caption,progress_kind,progress_period_start,progress_period_end'
+  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,retention_mode,comments_close_at,promoted,promoted_until,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_caption,progress_kind,progress_period_start,progress_period_end,verified_promoted_until,interaction_expires_at,publication_expires_at'
 
 // Nome/selo são dicas de compatibilidade para o banco antigo; o banco atualizado
 // os sobrescreve. Retenção, promoção e contadores pertencem exclusivamente ao servidor.
@@ -30,9 +30,15 @@ export function mapStatusRow(row) {
     createdAt: row.created_at,
     expiresAt: row.expires_at,
     retentionMode: row.retention_mode,
-    commentsCloseAt: row.comments_close_at,
-    promoted: row.promoted,
-    promotedUntil: row.promoted_until,
+    commentsCloseAt: Object.hasOwn(row, 'interaction_expires_at')
+      ? row.interaction_expires_at
+      : row.comments_close_at,
+    promoted: Object.hasOwn(row, 'verified_promoted_until')
+      ? row.verified_promoted_until != null
+      : row.promoted,
+    promotedUntil: Object.hasOwn(row, 'verified_promoted_until')
+      ? row.verified_promoted_until
+      : row.promoted_until,
     activePromotionId: row.active_promotion_id,
     // Totais de reação denormalizados em statuses (cast_vote os mantém). Sem mapeá-los aqui, todo
     // carregamento da página os deixava undefined (exibidos como 0) e só o delta local da sessão os
@@ -86,7 +92,7 @@ export function mapStatusRow(row) {
 
 // Colunas que o card do feed realmente usa (mapStatusRow): evita levar a linha inteira (select *).
 export const FEED_COLUMNS =
-  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,retention_mode,comments_close_at,promoted,promoted_until,active_promotion_id,positive_vote_count,negative_vote_count,comment_count,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_path,photo_caption,progress_kind,progress_period_start,progress_period_end'
+  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,retention_mode,comments_close_at,promoted,promoted_until,active_promotion_id,positive_vote_count,negative_vote_count,comment_count,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_path,photo_caption,progress_kind,progress_period_start,progress_period_end,verified_promoted_until,interaction_expires_at,publication_expires_at'
 
 // Tamanho da página do feed: pequeno para abrir rápido e gastar pouco em celular/rede ruins;
 // as próximas páginas só vêm quando o usuário chega perto do fim.
@@ -117,11 +123,11 @@ export async function listCommunityFeedPage(
 ) {
   if (cursor && !isValidFeedCursor(cursor)) throw new Error('INVALID_FEED_CURSOR')
   let query = supabase
-    .from('statuses')
+    .from('status_publications')
     .select(FEED_COLUMNS)
     .eq('community_id', communityId)
-    // expires_at nulo = sem expiração automática (retention_mode no_auto_expiration).
-    .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+    // Expiração efetiva e promoção validada pelo servidor; nulo = permanente.
+    .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(pageSize + 1)
@@ -171,10 +177,12 @@ export function buildCommunityActivity(rows, avatars = {}) {
 async function listActivityBatch(ids, nowIso) {
   const { data, error } = await supabase
     .from('communities')
-    .select(`id,statuses(${ACTIVITY_PREVIEW_COLUMNS})`)
+    .select(`id,statuses:status_publications(${ACTIVITY_PREVIEW_COLUMNS})`)
     .in('id', ids)
-    // expires_at nulo = sem expiração automática (retention_mode no_auto_expiration).
-    .or(`expires_at.is.null,expires_at.gt.${nowIso}`, { referencedTable: 'statuses' })
+    // Expiração efetiva e promoção validada pelo servidor; nulo = permanente.
+    .or(`publication_expires_at.is.null,publication_expires_at.gt.${nowIso}`, {
+      referencedTable: 'statuses',
+    })
     .order('created_at', { referencedTable: 'statuses', ascending: false })
     .limit(1, { referencedTable: 'statuses' })
   if (error) throw error
@@ -380,13 +388,17 @@ export async function voteOnPoll(statusId, userId, optionId) {
 // Contagem real de confirmados (RPC): a leitura direta de status_participants só enxerga a PRÓPRIA linha
 // (RLS), então um count(*) direto mostraria 0/1 para qualquer pessoa.
 export async function countParticipants(statusId) {
-  const { data, error } = await supabase.rpc('count_workout_participants', { p_status_id: statusId })
+  const { data, error } = await supabase.rpc('count_workout_participants', {
+    p_status_id: statusId,
+  })
   if (error) throw error
   return data ?? 0
 }
 
 export async function joinWorkout(statusId, userId) {
-  const { error } = await supabase.from('status_participants').insert({ status_id: statusId, user_id: userId })
+  const { error } = await supabase
+    .from('status_participants')
+    .insert({ status_id: statusId, user_id: userId })
   if (error) throw error
 }
 
@@ -403,7 +415,7 @@ export async function leaveWorkout(statusId, userId) {
 // recente (que filtra por expires_at, sem relação com a data do evento).
 export async function listUpcomingWorkouts(communityId, pageSize = UPCOMING_WORKOUTS_PAGE_SIZE) {
   const { data, error } = await supabase
-    .from('statuses')
+    .from('status_publications')
     .select(FEED_COLUMNS)
     .eq('community_id', communityId)
     .eq('type', 'workout')
@@ -421,7 +433,7 @@ export async function listUpcomingWorkouts(communityId, pageSize = UPCOMING_WORK
 // devolve null.
 export async function getSharedStatus(statusId, communityId) {
   const { data, error } = await supabase
-    .from('statuses')
+    .from('status_publications')
     .select(FEED_COLUMNS)
     .eq('id', statusId)
     .eq('community_id', communityId)
@@ -434,7 +446,7 @@ export async function getSharedStatus(statusId, communityId) {
 // interativas (votos/participantes); retorna apenas os campos necessários ao resumo.
 export async function getStatusSummary(statusId) {
   const { data, error } = await supabase
-    .from('statuses')
+    .from('status_publications')
     .select(STATUS_SUMMARY_COLUMNS)
     .eq('id', statusId)
     .maybeSingle()

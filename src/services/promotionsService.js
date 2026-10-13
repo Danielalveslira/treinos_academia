@@ -78,18 +78,17 @@ export async function recordPromotionClick({ targetType, targetId, promotionId }
   return data
 }
 
-// Nunca lê a tabela promotions para decidir o que destacar -- só os campos
+// Posts usam a view com promoção validada no servidor. Comunidades usam os campos
 // denormalizados no próprio alvo (promoted/promoted_until), filtrados no servidor
 // (nunca limit() antes de tirar os expirados). Um post/comunidade cuja janela já
 // passou simplesmente não bate mais o filtro `promoted_until > agora`.
 export async function listFeaturedStatusesForCommunity(communityId) {
   const { data, error } = await supabase
-    .from('statuses')
+    .from('status_publications')
     .select(FEED_COLUMNS)
     .eq('community_id', communityId)
-    .eq('promoted', true)
-    .gt('promoted_until', new Date().toISOString())
-    .order('promoted_until', { ascending: true })
+    .gt('verified_promoted_until', new Date().toISOString())
+    .order('verified_promoted_until', { ascending: true })
     .limit(FEATURED_LIMIT)
   if (error) throw error
   return data.map(mapStatusRow)
