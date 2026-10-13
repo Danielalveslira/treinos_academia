@@ -1,3 +1,5 @@
+import { processStorageCleanup } from './storage-cleanup.js'
+
 // Orquestração do worker de exclusão, SEM dependência de Deno -- importável por node --test
 // (ver processor.test.js), no mesmo padrão de exercise-catalog-proxy/validation.js. `admin` é
 // o client do Supabase com a service role key (ou um fake nos testes).
@@ -18,9 +20,14 @@ export function isAuthUserAlreadyGone(error) {
 }
 
 export async function processDeletionJobs(admin, log = console) {
-  const { data: jobs, error: listError } = await admin.rpc('list_pending_deletion_jobs')
-  if (listError) {
-    log.error('[process-deletion-jobs] list_pending_deletion_jobs failed:', listError)
+  let jobs
+  try {
+    const { data, error } = await admin.rpc('list_pending_deletion_jobs')
+    if (error) throw new Error('LIST_FAILED')
+    jobs = data
+  } catch {
+    log.error('[process-deletion-jobs] list_pending_deletion_jobs failed')
+    await processStorageCleanup(admin, log)
     return { ok: false, error: 'INTERNAL_ERROR' }
   }
 
@@ -28,16 +35,18 @@ export async function processDeletionJobs(admin, log = console) {
 
   for (const job of jobs || []) {
     try {
-      const { data: result, error: runError } = await admin.rpc('run_deletion_job', { p_job_id: job.id })
+      const { data: result, error: runError } = await admin.rpc('run_deletion_job', {
+        p_job_id: job.id,
+      })
       if (runError) {
         summary.errored++
-        log.error('[process-deletion-jobs] run_deletion_job failed:', job.id, runError)
+        log.error('[process-deletion-jobs] run_deletion_job failed:', job.id)
         continue
       }
       // Falha do corpo da exclusão: já gravada em last_error pela própria RPC; job segue pending.
       if (result?.error) {
         summary.errored++
-        log.error('[process-deletion-jobs] job failed (last_error persisted):', job.id, result.message)
+        log.error('[process-deletion-jobs] job failed (last_error persisted):', job.id)
         continue
       }
       if (result?.blocked) {
@@ -46,58 +55,43 @@ export async function processDeletionJobs(admin, log = console) {
       }
       if (!result?.complete && !result?.authPending) continue
 
-      // Storage nunca trava o job (o registro já foi apagado no Postgres; arquivo órfão é limpável depois).
-      const photoPaths = result.photoPaths || []
-      if (photoPaths.length) {
-        await admin.storage
-          .from(STATUS_PHOTOS_BUCKET)
-          .remove(photoPaths)
-          .catch((error) => log.error('[process-deletion-jobs] status photo cleanup:', job.id, error))
-      }
-
+      // Photos and avatars are captured by deletion triggers in the same transaction.
+      // Cleanup runs independently below, even when deletion jobs are already complete.
       if (result.deleteAuthUser) {
-        try {
-          const { data: files } = await admin.storage.from(PROFILE_AVATARS_BUCKET).list(`${result.targetId}/`)
-          if (files?.length) {
-            await admin.storage
-              .from(PROFILE_AVATARS_BUCKET)
-              .remove(files.map((file) => `${result.targetId}/${file.name}`))
-          }
-        } catch (error) {
-          log.error('[process-deletion-jobs] avatar cleanup:', job.id, error)
-        }
-
         const { error: authError } = await admin.auth.admin.deleteUser(result.targetId)
         if (authError && !isAuthUserAlreadyGone(authError)) {
           summary.errored++
-          log.error('[process-deletion-jobs] auth.admin.deleteUser failed (will retry):', job.id, authError)
+          log.error('[process-deletion-jobs] auth.admin.deleteUser failed (will retry):', job.id)
           try {
             // await em try/catch (não .catch): o builder de rpc do supabase-js é PromiseLike, sem .catch garantido.
             await admin.rpc('record_deletion_job_error', {
               p_job_id: job.id,
-              p_error: `auth.admin.deleteUser: ${authError.status ?? ''} ${authError.message ?? authError}`.trim(),
+              p_error: `auth.admin.deleteUser: ${Number(authError.status) || 'unknown'}`,
             })
-          } catch (error) {
-            log.error('[process-deletion-jobs] record_deletion_job_error:', job.id, error)
+          } catch {
+            log.error('[process-deletion-jobs] record_deletion_job_error:', job.id)
           }
           continue
         }
 
-        const { error: confirmError } = await admin.rpc('confirm_auth_deletion', { p_job_id: job.id })
+        const { error: confirmError } = await admin.rpc('confirm_auth_deletion', {
+          p_job_id: job.id,
+        })
         if (confirmError) {
           // Auth já removido mas job ainda em auth_cleanup: o próximo ciclo repete (404 = sucesso).
           summary.errored++
-          log.error('[process-deletion-jobs] confirm_auth_deletion failed (will retry):', job.id, confirmError)
+          log.error('[process-deletion-jobs] confirm_auth_deletion failed (will retry):', job.id)
           continue
         }
       }
       summary.processed++
-    } catch (error) {
+    } catch {
       summary.errored++
-      log.error('[process-deletion-jobs] unexpected error:', job.id, error)
+      log.error('[process-deletion-jobs] unexpected error:', job.id)
     }
   }
 
+  Object.assign(summary, await processStorageCleanup(admin, log))
   log.log(JSON.stringify({ event: 'process_deletion_jobs', ...summary }))
   return { ok: true, ...summary }
 }

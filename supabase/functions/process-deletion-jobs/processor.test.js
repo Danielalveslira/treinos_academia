@@ -5,7 +5,12 @@ import { isAuthUserAlreadyGone, processDeletionJobs } from './processor.js'
 const silent = { log() {}, error() {} }
 
 // Fake do client Supabase: `rpcs` mapeia nome -> função(args) => { data, error }; registra chamadas.
-function makeAdmin({ jobs = [], rpcs = {}, deleteUser = async () => ({ error: null }), files = [] } = {}) {
+function makeAdmin({
+  jobs = [],
+  rpcs = {},
+  deleteUser = async () => ({ error: null }),
+  files = [],
+} = {}) {
   const calls = []
   const removed = []
   const admin = {
@@ -13,6 +18,7 @@ function makeAdmin({ jobs = [], rpcs = {}, deleteUser = async () => ({ error: nu
     removed,
     async rpc(name, args) {
       calls.push([name, args])
+      if (name === 'claim_storage_cleanup_tasks') return { data: [], error: null }
       if (name === 'list_pending_deletion_jobs') return { data: jobs, error: null }
       const handler = rpcs[name]
       return handler ? handler(args) : { data: null, error: null }
@@ -30,16 +36,29 @@ function makeAdmin({ jobs = [], rpcs = {}, deleteUser = async () => ({ error: nu
   }
   return admin
 }
-const names = (admin) => admin.calls.map(([name]) => name)
+const names = (admin) =>
+  admin.calls.map(([name]) => name).filter((name) => name !== 'claim_storage_cleanup_tasks')
 const authPending = (extra = {}) => ({
-  data: { authPending: true, kind: 'account', targetId: 'u1', photoPaths: [], deleteAuthUser: true, ...extra },
+  data: {
+    authPending: true,
+    kind: 'account',
+    targetId: 'u1',
+    photoPaths: [],
+    deleteAuthUser: true,
+    ...extra,
+  },
   error: null,
 })
 
 test('happy path: banco limpo, Auth removido, só então o job é confirmado', async () => {
   const admin = makeAdmin({ jobs: [{ id: 'j1' }], rpcs: { run_deletion_job: () => authPending() } })
   const summary = await processDeletionJobs(admin, silent)
-  assert.deepEqual(names(admin), ['list_pending_deletion_jobs', 'run_deletion_job', 'deleteUser', 'confirm_auth_deletion'])
+  assert.deepEqual(names(admin), [
+    'list_pending_deletion_jobs',
+    'run_deletion_job',
+    'deleteUser',
+    'confirm_auth_deletion',
+  ])
   assert.equal(summary.processed, 1)
   assert.equal(summary.errored, 0)
 })
@@ -64,7 +83,8 @@ test('retry: job em auth_cleanup é reentregue (retry:true), sem exclusão de da
   const admin = makeAdmin({
     jobs: [{ id: 'j1' }],
     rpcs: { run_deletion_job: () => authPending({ retry: true }) },
-    deleteUser: async () => (++attempt === 1 ? { error: { status: 500, message: 'boom' } } : { error: null }),
+    deleteUser: async () =>
+      ++attempt === 1 ? { error: { status: 500, message: 'boom' } } : { error: null },
   })
   const first = await processDeletionJobs(admin, silent)
   const second = await processDeletionJobs(admin, silent)
@@ -74,8 +94,15 @@ test('retry: job em auth_cleanup é reentregue (retry:true), sem exclusão de da
 })
 
 test('Auth já removido (404 / user_not_found) conta como sucesso e confirma o job', async () => {
-  for (const error of [{ status: 404, message: 'not found' }, { code: 'user_not_found', message: 'User not found' }]) {
-    const admin = makeAdmin({ jobs: [{ id: 'j1' }], rpcs: { run_deletion_job: () => authPending() }, deleteUser: async () => ({ error }) })
+  for (const error of [
+    { status: 404, message: 'not found' },
+    { code: 'user_not_found', message: 'User not found' },
+  ]) {
+    const admin = makeAdmin({
+      jobs: [{ id: 'j1' }],
+      rpcs: { run_deletion_job: () => authPending() },
+      deleteUser: async () => ({ error }),
+    })
     const summary = await processDeletionJobs(admin, silent)
     assert.equal(summary.processed, 1)
     assert.equal(summary.errored, 0)
@@ -89,7 +116,10 @@ test('Auth já removido (404 / user_not_found) conta como sucesso e confirma o j
 test('falha ao confirmar no banco depois de o Auth sair: erro, e o próximo ciclo repete (404 = sucesso)', async () => {
   const admin = makeAdmin({
     jobs: [{ id: 'j1' }],
-    rpcs: { run_deletion_job: () => authPending(), confirm_auth_deletion: () => ({ data: null, error: { message: 'db down' } }) },
+    rpcs: {
+      run_deletion_job: () => authPending(),
+      confirm_auth_deletion: () => ({ data: null, error: { message: 'db down' } }),
+    },
   })
   const summary = await processDeletionJobs(admin, silent)
   assert.equal(summary.errored, 1)
@@ -99,7 +129,9 @@ test('falha ao confirmar no banco depois de o Auth sair: erro, e o próximo cicl
 test('falha do corpo da exclusão (result.error) não toca em Storage nem Auth', async () => {
   const admin = makeAdmin({
     jobs: [{ id: 'j1' }],
-    rpcs: { run_deletion_job: () => ({ data: { error: true, message: 'P0001: falha' }, error: null }) },
+    rpcs: {
+      run_deletion_job: () => ({ data: { error: true, message: 'P0001: falha' }, error: null }),
+    },
   })
   const summary = await processDeletionJobs(admin, silent)
   assert.deepEqual(names(admin), ['list_pending_deletion_jobs', 'run_deletion_job'])
@@ -111,7 +143,9 @@ test('bloqueio financeiro e job ignorado nunca chamam Auth', async () => {
     jobs: [{ id: 'j1' }, { id: 'j2' }],
     rpcs: {
       run_deletion_job: ({ p_job_id }) =>
-        p_job_id === 'j1' ? { data: { blocked: true, reason: 'positive_cash_balance' }, error: null } : { data: { skipped: true }, error: null },
+        p_job_id === 'j1'
+          ? { data: { blocked: true, reason: 'positive_cash_balance' }, error: null }
+          : { data: { skipped: true }, error: null },
     },
   })
   const summary = await processDeletionJobs(admin, silent)
@@ -119,14 +153,25 @@ test('bloqueio financeiro e job ignorado nunca chamam Auth', async () => {
   assert.equal(names(admin).includes('deleteUser'), false)
 })
 
-test('job que não é de conta (status/comunidade) conclui direto e só limpa o Storage', async () => {
+test('job concluído preserva contrato; Storage só é removido pela outbox', async () => {
   const admin = makeAdmin({
     jobs: [{ id: 'j1' }],
-    rpcs: { run_deletion_job: () => ({ data: { complete: true, kind: 'status', targetId: 's1', photoPaths: ['a.webp'], deleteAuthUser: false }, error: null }) },
+    rpcs: {
+      run_deletion_job: () => ({
+        data: {
+          complete: true,
+          kind: 'status',
+          targetId: 's1',
+          photoPaths: ['a.webp'],
+          deleteAuthUser: false,
+        },
+        error: null,
+      }),
+    },
   })
   const summary = await processDeletionJobs(admin, silent)
   assert.equal(summary.processed, 1)
-  assert.deepEqual(admin.removed, [['status-photos', ['a.webp']]])
+  assert.deepEqual(admin.removed, [])
   assert.equal(names(admin).includes('deleteUser'), false)
   assert.equal(names(admin).includes('confirm_auth_deletion'), false)
 })
@@ -150,4 +195,15 @@ test('falha ao listar jobs devolve erro sem processar nada', async () => {
   const admin = makeAdmin()
   admin.rpc = async () => ({ data: null, error: { message: 'down' } })
   assert.deepEqual(await processDeletionJobs(admin, silent), { ok: false, error: 'INTERNAL_ERROR' })
+})
+
+test('listagem rejeitada ainda permite retomar a outbox independente', async () => {
+  const admin = makeAdmin()
+  const rpc = admin.rpc
+  admin.rpc = async (name, args) => {
+    if (name === 'list_pending_deletion_jobs') throw new Error('synthetic failure')
+    return rpc(name, args)
+  }
+  assert.deepEqual(await processDeletionJobs(admin, silent), { ok: false, error: 'INTERNAL_ERROR' })
+  assert.ok(admin.calls.some(([name]) => name === 'claim_storage_cleanup_tasks'))
 })
