@@ -1,6 +1,6 @@
 # Publicação AUD-04 — PUBLICADA no Supabase
 
-**GO executado e confirmado em 13/10/2026, 12:46 UTC.** Migration e worker publicados no projeto de produção correto. Push Git pendente da decisão sobre o redeploy automático do frontend na Vercel.
+**GO executado e confirmado em 13/10/2026, 12:46 UTC.** Migration e worker publicados no projeto de produção correto. Push para `origin/main` e redeploy automático da Vercel autorizados pelo responsável; esta etapa não reaplica migrations nem Edge Functions.
 
 ## Destinos, commit e autorização
 
@@ -65,7 +65,7 @@ A limpeza física, erro do SDK, retry, restart, ausência de objetos, concorrên
 
 ## Git/Vercel e próximos passos
 
-O commit do código publicado foi feito **localmente**. O push ainda não foi feito: main está ligado ao projeto Vercel `prj_WYVlCGYu021KZCrqfp62qRH2cbIE`, conta/equipe confirmadas, e pode gerar deploy de frontend. Foi solicitada escolha entre aceitar esse redeploy automático ou manter commit local; ausência de resposta não foi interpretada como autorização específica para ultrapassar o limite de frontend do prompt. Nenhuma configuração Vercel foi alterada para contornar isso. [Documentação oficial de Ignored Build Step](https://vercel.com/kb/guide/how-do-i-use-the-ignored-build-step-field-on-vercel).
+O código publicado está registrado nos commits locais `f6e866e` e `bb47f0c`. O responsável autorizou explicitamente o push para `origin/main`, incluindo as demais alterações concluídas/revisadas, e o redeploy automático da Vercel. Antes do envio foram confirmados conta/repositório/main, ausência de divergência remota e revisão dos arquivos, sem credenciais, backups ou temporários. Nenhuma configuração Vercel será alterada e nenhuma migration ou Edge Function será reaplicada. As evidências JSON desta publicação continuam sendo snapshots das verificações remotas realizadas em 13/10/2026, 12:46 UTC; o resultado do novo push/deployment será confirmado separadamente ao concluir esta etapa.
 
 Acompanhar as primeiras tarefas naturais, backlog/idade, erros e leases; casos failed devem permanecer disponíveis para revisão. Em incidente, preservar outbox/evidências e preparar correção progressiva; não apagar tarefas, reabrir grants ou executar rollback destrutivo. A fonte da versão 6 permanece recuperável, mas retornar ao worker antigo não escoa a fila durável.
 

@@ -1,0 +1,15 @@
+{
+  "journalVersions": 125,
+  "newVersions": [
+    "20261026000005",
+    "20261026000006"
+  ],
+  "financialRPCBodiesUnchanged": true,
+  "serverMetadataInsertDenied": true,
+  "legacyHintsAccepted": true,
+  "directStatusUpdateDenied": true,
+  "legacyAccountRollbackDenied": true,
+  "guardsVerified": true,
+  "allAffectedTablesRLS": true,
+  "passed": true
+}

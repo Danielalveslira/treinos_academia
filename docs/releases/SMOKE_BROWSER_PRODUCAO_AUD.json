@@ -1,0 +1,19 @@
+{
+  "checks": [
+    "desktop authenticated route and account menu loaded",
+    "real catalog snapshot prepared through published UI",
+    "offline exercise route reload keeps complete catalog snapshot",
+    "mobile hamburger scrolls within bounded viewport",
+    "published commit service creates text, poll, workout, photo and progress",
+    "real published posts preserve server authorship, counters and financial metadata",
+    "photo and progress upload/download use real authenticated Storage",
+    "EvoCash unchanged; no financial promotion/payment executed",
+    "PWA cache contains no Auth/PostgREST/private Storage responses",
+    "no unhandled browser exceptions during smoke",
+    "published PWA shell installed"
+  ],
+  "passed": true,
+  "financialTransactions": false,
+  "syntheticAccountOnly": true,
+  "customerDataRecorded": false
+}

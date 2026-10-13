@@ -1,3 +1,77 @@
+# Publicação AUD-01 / AUD-02 e catálogo offline
+
+**PUBLICADO — confirmado em 12/10/2026, 19:47 UTC.** Banco e frontend publicados, com verificações de produção aprovadas. A autorização já existente foi utilizada; nenhuma proteção foi desativada para publicar.
+
+## Commit, destinos e deployment
+
+- Commit: **68dbeb2196e19a1a8ceaf92d2315bdd0f900ed33** (`fix: protege autoria e exclusão e converge catálogo offline`). Push confirmado em `Danielalveslira/treinos_academia`, branch main.
+- Supabase: **ywrjojrjgozdfpddkkuy**, projeto treinos_academia, organização confirmada, plano Free.
+- Vercel: **prj_WYVlCGYu021KZCrqfp62qRH2cbIE**, equipe danielalvesliras-projects, vínculo GitHub/main confirmado.
+- Deployment: **dpl_74CPRcqrKiuMWbgAnZTBMDkjNGxp**, target production, **READY**, SHA igual ao commit acima.
+- URL pública: **https://treinosacademia-ten.vercel.app**.
+- URL específica: **https://treinosacademia-mt6p5yywk-danielalvesliras-projects.vercel.app**.
+
+## Migrations efetivamente aplicadas em produção
+
+1. **20261026000005_aud_security_atomic.sql** — quatro fontes AUD executadas em uma única transação da CLI, com limites lock 5 s/statement 60 s. Bloqueia rollback destrutivo, endurece INSERT/UPDATE e autoria, preserva dicas legadas e protege promoção de comunidades.
+2. **20261026000006_exercise_catalog_offline_converge.sql** — catálogo offline convergido de forma idempotente, mantendo as funções/trigger existentes e seus contratos de revisão/keyset.
+
+Journal final: **125 versões**, inicial 123 até 20261024000001. Nenhuma versão 01–04 ou 25 foi artificialmente registrada. Fontes arquivadas com hashes no manifesto. O schema de produção já continha os três objetos offline equivalentes à fonte 25 sem journal; a versão original não idempotente falhou no ensaio local, então foi substituída pela convergência 06. Nenhum repair ou edição manual do journal de produção. CLI 2.119.0, `--skip-vault`, sem seeds/roles/include-all ou migrations adicionais. O frontend foi enviado somente depois da aplicação e conferência do banco.
+
+Conferência pós-migration: versões corretas, RLS ativo em todos os objetos afetados, guards verificados, EXECUTE legado revogado, dicas de autoria aceitas somente no INSERT, metadados do servidor sem INSERT, UPDATE direto negado. Corpos de create_promotion/cancel_promotion/queue_deletion/run_deletion_job iguais aos anteriores. Não houve saneamento ou remoção de dados históricos.
+
+## Backup e recuperação comprovados
+
+Plano Free confirmado administrativamente; PITR desativado e nenhum backup listado pela API. Preparado manualmente um snapshot consistente do banco inteiro em formato custom pg_dump, incluindo schema, dados, ACLs, Auth, metadados Storage, journal, Vault e informações financeiras. Roles/memberships, configuração Auth/projeto, chaves de recuperação e arquivos Storage preservados separadamente, privadamente.
+
+Backup criptografado fora do Git: `/home/codespace/.local/share/evolutus-backups/release-aud-20261012/backup-payload.enc`. A chave está em arquivo separado e restrito no diretório pai; não imprimir, enviar no chat ou versionar. Payload e chave nunca integraram o commit. Decriptação comparada byte a byte e hashes do manifesto privado conferidos.
+
+Provas de recuperação:
+
+- PostgreSQL real restaurado em container **sem rede e sem portas expostas**, cron desativado. Schema/roles/owners/data/constraints/ACL/RLS restaurados com sucesso.
+- **130 tabelas** restauradas com conteúdo idêntico ao snapshot; Auth e financeiro incluídos. Preservados hashes de senhas, identidades e demais registros Auth sem expor valores.
+- Vault decriptado com chave recuperada, digest idêntico à origem, sem divulgar secrets.
+- **60 arquivos Storage** referenciados pelo snapshot copiados e restaurados no backend real sem rede; bytes, MIME e cache-control iguais. Ownership/metadados SQL permaneceram preservados. Três arquivos surgidos entre a cópia inicial e o snapshot foram recuperados por GET; objetos comuns não mudaram. Uploads posteriores não foram confundidos com aquele ponto de recuperação.
+- Pacote final ensaiado na cópia real pela CLI: journal 123 → 125, somente 05/06; **129 tabelas de dados fora do journal sem alterações**.
+- Container local com dados de produção **parado ao final**; não ficaram serviços locais expondo o backup ou jobs externos ativos.
+
+O backup é um ponto no tempo, não RPO zero. Deve ser conservado com sua chave em local durável antes de excluir o Codespaces. Não foi ativado PITR nem criado plano pago/rotina automática ou envio a outro provedor. O detalhe criptográfico/hashes individuais permanece fora do Git; apenas evidências agregadas foram registradas.
+
+## Verificações realizadas
+
+| Área | Resultado efetivo |
+|---|---|
+| Validações AUD anteriores | Reaproveitadas, sem reexecutar toda a suíte: 1.888 JS, 534 SQL, 105 HTTP, 21 PWA, 20 INSERTs concorrentes |
+| Offline auditado nesta etapa | **57 JS + 18 SQL**; corrigida apenas rotina auxiliar do teste SQL (alias UUID/ordenação/tipos bigint), assertions mantidas |
+| Offline após convergência na cópia real | **18 SQL** aprovados |
+| Lint/diff | Zero erros, 14 avisos conhecidos; diff-check aprovado |
+| Recuperação | Banco/Auth/financeiro/Vault/Storage e decriptação comprovados conforme acima |
+| Produção Auth/PostgREST | **6 GETs** de saúde/settings/contratos/catálogo aprovados, sem capturar dados de terceiros |
+| Auth/perfil reais | Conta sintética **comum**, login por senha emitindo JWT real, ensure_user_profile/set_username/set_birth_info/aceite legal/set_usage_profile por RPCs autorizadas; nenhuma conta de terceiros usada |
+| Navegador publicado | **11 checks** aprovados: desktop autenticado, catálogo preparado pela UI, reload offline com snapshot completo, menu mobile rolável, cinco publicações, autoria/metadados, Storage real, EvoCash inalterado, cache privado excluído, zero exceções não tratadas, SW shell instalado |
+| Publicações reais próprias | Texto, enquete, treino, foto e progresso pelo serviço extraído do commit publicado; upload/download autenticados reais para fotos/progresso; autoria/nome/selo/contadores/promoção confirmados |
+| EvoCash e promoções | Saldo próprio inalterado, zero promotion_purchase; grants/guard e corpos das RPCs financeiras conferidos. **Nenhuma promoção/pagamento real ou débito de teste**. Não se declara execução financeira de ponta a ponta em produção |
+| Vercel | READY, produção, SHA/alias corretos, sem deploy alternativo local com arquivos fora do commit |
+
+O primeiro teste de catálogo procurou o botão antes de abrir o catálogo; corrigida somente a sequência do verificador. A publicação de progresso falhou porque o verificador enviou `day` em vez do contrato `daily`; corrigido o teste, sem modificar a aplicação. O diagnóstico inicial de post_access não era a causa dessa falha. As demais publicações já tinham passado; o teste final completo passou. O verificador de perfil também foi corrigido para account_status e leitura de wallet opcional antes da inicialização normal, reaproveitando a mesma identidade. Esses erros de harness não foram ocultados nem apresentados como falhas resolvidas do produto.
+
+Não foram repetidos testes de cadastro interrompido com falhas artificiais em produção. A recuperação/interrupção havia sido aprovada localmente; em produção foram comprovados login real e preenchimento/aceite pelas RPCs do próprio fixture. Página Exercícios e menu mobile já estavam no HEAD anteriormente publicado e não foram anunciados como melhorias novas deste commit; seu funcionamento atual foi verificado.
+
+## Dados sintéticos e pendências
+
+- Uma conta de teste comum permanece para eventual revisão/exclusão **pelo fluxo oficial**; sem privilégios administrativos. As sessões refresh foram encerradas globalmente.
+- Comunidade de teste com apenas essa conta como membro foi **desativada pelo próprio dono**; seus registros ficaram ocultos nas leituras ordinárias pelo RLS. Foram preservadas **14 publicações sintéticas**, incluindo repetições do harness, e seus arquivos, sem apagamento destrutivo ou bypass do financeiro. Revisão/limpeza definitiva continua pendente pelo fluxo normal.
+- Conservar cópia durável do backup criptografado e da chave, separadamente; planejar rotina de backup/recuperação apropriada ao plano Free. PITR não está habilitado.
+- Testes reais de promoção/pagamento não foram executados nem autorizados; sua execução funcional já tinha sido provada localmente, e os controles/corpos em produção foram conferidos. AUD-03 a AUD-10 e saneamento de dados históricos permanecem fora deste release.
+- Relatório final e JSONs pós-publicação estão atualizados no workspace; não se criou um segundo deploy apenas para versionar evidências posteriores ao commit publicado. Alterações preexistentes da auditoria/prompts permanecem fora do commit. Nenhum código de produto incompleto ficou pendente neste release.
+
+## Recuperação em incidente
+
+Frontend: voltar ao deployment anterior READY compatível `dpl_DYLierFP1RvS7fyf5U3uzWSnBT6L` / commit f036475, preservando banco endurecido. Banco após COMMIT: não há ROLLBACK daquela transação; preparar migration corretiva testada, sem restaurar grants amplos ou RPC destrutiva. Restore de incidente exige ponto de decisão e reconciliação de transações/uploads posteriores ao snapshot, preservando financeiro/webhooks. A restauração de ensaio usa banco isolado e jobs/rede desativados; não ligar seus serviços externos automaticamente.
+
+Evidências atuais: `DEPLOYMENT_PUBLICADO_AUD.json`, `VERIFICACAO_BANCO_PUBLICADO_AUD.json`, `SAUDE_APIS_PRODUCAO_AUD.json`, `SMOKE_BROWSER_PRODUCAO_AUD.json`, `LIMPEZA_FIXTURE_PRODUCAO_AUD.json`, `RECUPERACAO_E_RELEASE_AUD_EVIDENCIAS.json` e manifesto deste diretório. Logs locais: `/tmp/release-production-migrations.log`, `/tmp/release-production-dry-run.log`, `/tmp/release-final-local-cli.log`, `/tmp/release-offline-targeted.log`, `/tmp/release-offline-converge-sql.log`, `/tmp/release-production-auth-smoke.log`, `/tmp/release-production-browser-smoke.log`. Dumps, envs, chaves, tokens, identidades e hashes detalhados privados não constam desses relatórios públicos.
+
+## Histórico das etapas anteriores
 # Publicação AUD-01 / AUD-02
 
 12/10/2026. O usuário autorizou publicar em produção: “Pode lançar tudo a produção”. Essa autorização substitui a restrição anterior de não fazer commit/push/deploy. Não é necessário pedir novamente a mesma autorização quando os bloqueios abaixo estiverem resolvidos.

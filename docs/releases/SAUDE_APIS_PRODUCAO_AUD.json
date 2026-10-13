@@ -1,0 +1,36 @@
+{
+  "checks": [
+    {
+      "endpoint": "/auth/v1/health",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "/auth/v1/settings",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "/rest/v1/rpc/get_exercise_catalog_revision",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "/rest/v1/rpc/list_exercise_catalog_for_sync",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "/rest/v1/statuses",
+      "status": 200,
+      "passed": true
+    },
+    {
+      "endpoint": "/rest/v1/communities",
+      "status": 200,
+      "passed": true
+    }
+  ],
+  "financialTransactionsExecuted": false,
+  "customerDataRecorded": false
+}
