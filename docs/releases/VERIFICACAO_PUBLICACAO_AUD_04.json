@@ -1,0 +1,166 @@
+{
+  "status": "PUBLISHED_SUPABASE",
+  "verified_at": "2026-10-13T12:46:08.573079+00:00",
+  "project_ref": "ywrjojrjgozdfpddkkuy",
+  "project_name": "treinos_academia",
+  "repository": "Danielalveslira/treinos_academia",
+  "branch": "main",
+  "source_commit": "f6e866ee8b999d63ac77532d8aa070febd7e4d58",
+  "commit_pushed": false,
+  "backup_external": "suspended_by_owner",
+  "migration": {
+    "name": "storage_cleanup_outbox",
+    "version": "20261027000001"
+  },
+  "journal_before": 125,
+  "journal_after": 126,
+  "other_migrations_applied": [],
+  "worker": {
+    "slug": "process-deletion-jobs",
+    "id": "5b69e52c-fde8-4a78-a921-173d98097a73",
+    "version_before": 6,
+    "version_after": 7,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "updated_at_utc": "2026-10-13T12:42:10.623000+00:00",
+    "published_source_matches_local": true
+  },
+  "grants": {
+    "anon_any": false,
+    "anon_capture": false,
+    "anon_claim": false,
+    "anon_finish": false,
+    "authenticated_any": false,
+    "authenticated_capture": false,
+    "authenticated_claim": false,
+    "authenticated_finish": false,
+    "service_capture": false,
+    "service_claim": true,
+    "service_finish": true,
+    "service_select": true,
+    "service_write": false
+  },
+  "outbox": {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=r/postgres}",
+    "owner": "postgres",
+    "policies": 0,
+    "rls": true,
+    "tasks_total": 0,
+    "states": {},
+    "attempts_max": 0,
+    "oldest_outstanding_seconds": null,
+    "expired_leases": 0,
+    "errors": {}
+  },
+  "existing_rpcs_unchanged": 8,
+  "cron": [
+    {
+      "active": true,
+      "correct_url": true,
+      "id": 3,
+      "schedule": "* * * * *"
+    }
+  ],
+  "cron_observation": {
+    "recent_cron_runs": [
+      {
+        "end": "2026-10-13T12:46:00.137893+00:00",
+        "start": "2026-10-13T12:46:00.120001+00:00",
+        "status": "succeeded"
+      },
+      {
+        "end": "2026-10-13T12:45:00.141448+00:00",
+        "start": "2026-10-13T12:45:00.129467+00:00",
+        "status": "succeeded"
+      },
+      {
+        "end": "2026-10-13T12:44:00.306566+00:00",
+        "start": "2026-10-13T12:44:00.265005+00:00",
+        "status": "succeeded"
+      },
+      {
+        "end": "2026-10-13T12:43:00.150194+00:00",
+        "start": "2026-10-13T12:43:00.1343+00:00",
+        "status": "succeeded"
+      },
+      {
+        "end": "2026-10-13T12:42:00.06756+00:00",
+        "start": "2026-10-13T12:42:00.055715+00:00",
+        "status": "succeeded"
+      }
+    ],
+    "responses": [
+      {
+        "created": "2026-10-13T12:43:00.149266+00:00",
+        "status": 200,
+        "summary": {
+          "blocked": 0,
+          "cleanupCompleted": 0,
+          "cleanupErrored": 0,
+          "cleanupQueued": 0,
+          "errored": 0,
+          "processed": 0,
+          "queued": 0
+        },
+        "timed_out": false
+      },
+      {
+        "created": "2026-10-13T12:44:00.312056+00:00",
+        "status": 200,
+        "summary": {
+          "blocked": 0,
+          "cleanupCompleted": 0,
+          "cleanupErrored": 0,
+          "cleanupQueued": 0,
+          "errored": 0,
+          "processed": 0,
+          "queued": 0
+        },
+        "timed_out": false
+      },
+      {
+        "created": "2026-10-13T12:45:00.145987+00:00",
+        "status": 200,
+        "summary": {
+          "blocked": 0,
+          "cleanupCompleted": 0,
+          "cleanupErrored": 0,
+          "cleanupQueued": 0,
+          "errored": 0,
+          "processed": 0,
+          "queued": 0
+        },
+        "timed_out": false
+      },
+      {
+        "created": "2026-10-13T12:46:00.135575+00:00",
+        "status": 200,
+        "summary": {
+          "blocked": 0,
+          "cleanupCompleted": 0,
+          "cleanupErrored": 0,
+          "cleanupQueued": 0,
+          "errored": 0,
+          "processed": 0,
+          "queued": 0
+        },
+        "timed_out": false
+      }
+    ]
+  },
+  "pending_deletion_jobs": 0,
+  "secrets_names_and_digests_unchanged": true,
+  "secret_metadata_timestamps_refreshed": true,
+  "only_function_version_changed": "process-deletion-jobs",
+  "dry_run_after_pending_migrations": [],
+  "checks_this_release": {
+    "processor_unit_passed": 11,
+    "storage_unit_passed": 9,
+    "eslint_worker_passed": true,
+    "diff_check_passed": true,
+    "edge_runtime_imports_passed": true
+  },
+  "production_destructive_smoke_executed": false,
+  "vercel_deploy_executed": false,
+  "aud05": "pending"
+}

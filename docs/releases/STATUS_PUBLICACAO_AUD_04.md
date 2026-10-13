@@ -1,170 +1,76 @@
-# Publicação AUD-04 — GO autorizado; aplicação em preparação
+# Publicação AUD-04 — PUBLICADA no Supabase
 
-**GO para o release AUD-04 após confirmação remota. Backup externo suspenso por decisão do responsável; ainda não há publicação nova nesta atualização preparatória.**
+**GO executado e confirmado em 13/10/2026, 12:46 UTC.** Migration e worker publicados no projeto de produção correto. Push Git pendente da decisão sobre o redeploy automático do frontend na Vercel.
 
-As seções iniciais abaixo registram o NO-GO anterior; a atualização mais recente está ao final.
+## Destinos, commit e autorização
 
-O prompt `docs/prompts/PROMPT_CODEX_RELEASE_AUD_04_EVOLUTUS.md` e o relatório `docs/CORRECAO_AUD_04.md` foram lidos integralmente. Existe autorização para publicar somente a AUD-04, condicionada à comprovação dos pré-requisitos. **A etapa de publicação foi interrompida antes de qualquer alteração de produção porque não há evidência disponível de backup recuperável externo ao Codespaces.**
+- GitHub: **Danielalveslira/treinos_academia**, branch **main**, conta Danielalveslira confirmada. HEAD remoto antes deste release: `68dbeb2196e19a1a8ceaf92d2315bdd0f900ed33`.
+- Commit local do código publicado: **`f6e866ee8b999d63ac77532d8aa070febd7e4d58`**, `fix: torna limpeza de fotos AUD-04 durável e verificável`. Inclui somente os 11 arquivos revisados da correção, testes, scripts e relatórios AUD-04. Alterações preexistentes não relacionadas permaneceram fora do commit.
+- Supabase: **treinos_academia / ywrjojrjgozdfpddkkuy**, us-east-2, ACTIVE_HEALTHY, acesso administrativo autenticado. CLI **2.119.0**, sem atualização automática.
+- O responsável suspendeu o backup e em seguida solicitou publicar em produção. Esta publicação seguiu essa orientação mais recente. **Não foi criada/comprovada cópia externa do backup nem guarda externa da chave nesta execução.** O backup local e a chave foram preservados. A declaração de que não há usuários reais veio do responsável, sem inspeção de dados pessoais para confirmá-la.
+- Nenhum deploy Vercel manual, configuração de frontend, cron duplicado, transferência de backup ou limpeza histórica foi executado.
 
-## Bloqueio obrigatório
+## Pré-deploy efetivamente confirmado
 
-O item 1.3 do prompt exige: “Confirme backup **externo ao Codespaces**, criptografado, com chave preservada separadamente e **evidência de restauração testada**. Se não for recuperável, **NO-GO**.”
+Histórico remoto tinha **125 versões**, correspondentes às migrations anteriores disponíveis. A única versão local adicional era `20261027000001`. O dry-run no pacote isolado confirmou **somente `20261027000001_storage_cleanup_outbox.sql`**, sem seeds/roles e com `--skip-vault`.
 
-As evidências anteriores são `RECUPERACAO_E_RELEASE_AUD_EVIDENCIAS.json`, `MANIFESTO_RELEASE_AUD_01_AUD_02.md` e `STATUS_PUBLICACAO_AUD_01_AUD_02.md`. Elas documentam:
+O schema não tinha outbox. Colunas necessárias, constraints pertinentes e triggers existentes foram inspecionados. As oito RPCs envolvidas tinham corpos equivalentes às definições atuais das migrations; após o release, suas definições inteiras continuaram idênticas às capturadas antes. Não se declara inspeção de todo o schema fora do escopo AUD-04.
 
-- Backup criptografado em diretório privado **dentro do Codespaces**, fora do Git, com chave separada.
-- Ensaio de recuperação de 130 tabelas, Auth/financeiro/Vault e 60 objetos Storage, com comparações aprovadas.
-- Necessidade de conservar cópia durável fora do ciclo de vida do Codespaces; nenhum envio a outro provedor havia sido executado naquela etapa.
+A função estava ACTIVE na **versão 6**, JWT habilitado; os dois arquivos da fonte remota correspondiam exatamente ao worker anterior esperado. A fonte foi preservada privadamente em `/tmp/aud04/worker-before`. O cron `process-deletion-jobs` era único, ativo, a cada minuto e com URL correta. Buckets `status-photos` e `profile-avatars` privados; nenhum job pending/auth_cleanup.
 
-Essas provas de restauração são históricas e relevantes, mas não comprovam que o arquivo e a chave estejam preservados fora deste ambiente. **Fora do Git não equivale a fora do Codespaces.** Não se afirma que um backup externo inexista; sua localização, integridade, disponibilidade da chave e vínculo com o restore testado não estão comprovados pelas evidências acessíveis nesta tentativa.
+Os secrets padrão necessários estavam presentes. Após publicação, nomes e digests de todos os secrets continuaram iguais, sem exposição de valores. Apenas timestamps de metadados de secrets reservados foram atualizados pelo serviço durante o deploy; nenhuma chamada de configuração/rotação de secrets foi feita.
 
-Não foram abertos dumps, chaves ou arquivos com dados pessoais. Não foi enviado backup a um provedor novo, criado plano pago ou iniciado restore de produção. Não há justificativa para tratar o backup local como cumprimento do gate externo exigido pelo usuário.
+## Publicação efetiva e ordem
 
-## Identidade, destinos e estado confirmado
+1. **Banco primeiro:** `supabase db push --linked --project-ref ywrjojrjgozdfpddkkuy --workdir /tmp/aud04/release-package --skip-vault --yes`. A CLI aplicou somente a migration AUD-04 pelo procedimento versionado/transacional. Não foi usado repair, escrita manual de journal, include-all, seed ou roles.
+2. A consulta seguinte confirmou journal **125 → 126**, versão **20261027000001 / storage_cleanup_outbox**, tabela, dois triggers e três funções, RLS e grants corretos. Só então houve deploy da função.
+3. **Worker depois:** `supabase functions deploy process-deletion-jobs --project-ref ywrjojrjgozdfpddkkuy --workdir /tmp/aud04/release-package --use-api`. Foram enviados somente `index.ts`, `processor.js` e `storage-cleanup.js`. JWT, secrets e cron preservados.
+4. Listagem administrativa confirmou **ACTIVE, versão 7, verify_jwt=true**. Somente essa função mudou de versão. O download posterior dos três arquivos comprovou correspondência byte a byte com o código publicado do commit local.
+5. Dry-run pós-publicação: **Remote database is up to date**, nenhuma migration pendente no pacote.
 
-| Verificação | Evidência desta tentativa |
+## Segurança e comportamento preservados
+
+RLS da outbox habilitada, sem policies de cliente; owner postgres. `anon`/`authenticated` não têm SELECT/INSERT/UPDATE/DELETE/TRUNCATE nem EXECUTE em claim/finish/capture. `service_role` tem SELECT e EXECUTE em claim/finish, sem escrita direta na tabela nem EXECUTE no helper de trigger. As três funções novas são SECURITY DEFINER, owner postgres e `search_path = ''`. Os dois triggers estão habilitados.
+
+As oito RPCs existentes, incluindo exclusão/Auth e bloqueio/revisão financeira, permaneceram idênticas. Nenhuma migration anterior foi editada. Não houve alteração de fluxo financeiro, retenção, frontend ou permissões de clientes fora da outbox.
+
+## Verificação pós-publicação não destrutiva
+
+| Verificação | Resultado real |
 |---|---|
-| Branch local | `main` |
-| HEAD local | `68dbeb2196e19a1a8ceaf92d2315bdd0f900ed33` |
-| Origin fetch/push | `https://github.com/Danielalveslira/treinos_academia` |
-| Conta GitHub | `gh auth status` confirmou **Danielalveslira** pela rede |
-| Repositório remoto | `gh repo view` confirmou **Danielalveslira/treinos_academia**, branch padrão `main` |
-| HEAD remoto `main` | API GitHub confirmou `68dbeb2196e19a1a8ceaf92d2315bdd0f900ed33`, igual ao HEAD local |
-| Projeto Supabase esperado | `treinos_academia`, ref **ywrjojrjgozdfpddkkuy** |
-| Configuração Supabase local | `supabase/.temp/linked-project.json` contém o nome/ref esperados; isso **não é confirmação administrativa remota atual** |
-| CLI Supabase | Versão instalada **2.119.0**; não foi atualizada |
-| Conta/projeto Supabase remotos atuais | Não consultados nesta tentativa; gate de backup impede prosseguir |
-| Versão remota atual de `process-deletion-jobs` | Não consultada; nenhum número de versão presumido |
-| Novo commit/versão de release | Nenhum; o HEAD citado ainda não inclui a correção AUD-04 do working tree |
+| Versão Edge | **7, ACTIVE, JWT habilitado** |
+| Fonte publicada | Três arquivos idênticos ao pacote revisado |
+| Cron | Um job, ID 3, ativo, `* * * * *`, URL correta |
+| Execução da versão nova pelo cron | **Quatro respostas HTTP 200**, 12:43, 12:44, 12:45 e 12:46 UTC; sem timeout |
+| Resposta sem jobs de exclusão | `queued=0`, `processed=0`, `errored=0`, `blocked=0`, `cleanupQueued=0`, `cleanupCompleted=0`, `cleanupErrored=0` |
+| Outbox total | **0 tarefas** |
+| pending / leased / complete / failed | **0 / 0 / 0 / 0** |
+| Maior número de tentativas | **0** |
+| Idade da tarefa pendente mais antiga | **Não aplicável**, nenhuma tarefa |
+| Leases vencidas | **0** |
+| INVALID_REFERENCE / STORAGE_RETRY / ATTEMPTS_EXHAUSTED persistidos | **0 ocorrências** |
+| Crescimento no intervalo observado | **0 → 0**, de 12:43 a 12:46 UTC |
+| Jobs de exclusão pending/auth_cleanup | **0** |
+| Migrations pendentes após release | **Nenhuma** |
 
-As primeiras verificações de `gh auth status` e versão da CLI encontraram restrições locais de sandbox. A repetição permitida fora do sandbox confirmou autenticação GitHub e versão da CLI; não se registra erro de autenticação persistente. Nenhum token foi impresso sem mascaramento ou salvo neste relatório.
+Foram consultados logs de execução de `cron.job_run_details`, respostas já registradas em `net._http_response` e métricas da outbox. As respostas confirmam que o worker novo executa o caminho de claim mesmo com deletion jobs vazios. Não houve invocação manual do worker nem criação/exclusão de usuários ou objetos reais como smoke. Logs de console do runtime hospedado não foram exportados via Logs API; não se afirma leitura desses logs. Esta observação curta comprova disponibilidade/execução da fila vazia, não uma remoção física nova em produção.
 
-O working tree contém arquivos preexistentes não relacionados: exclusão de outro prompt, mudanças no status AUD-01/AUD-02, auditoria e evidências daquele release. Eles foram preservados e não foram incluídos em commit. A nova migration e módulos de Storage ainda estão no working tree; não houve stage, commit, push ou deploy.
+## Testes nesta etapa e limites
 
-## Revisão local do candidato
+**Executados nesta publicação:** 11 unitários do processor e nove de Storage, todos aprovados; ESLint dos módulos, syntax checks dos scripts e diff-check aprovados. A função carregou imports no Edge Runtime v1.77.1 local e respondeu ao endpoint sintético indisponível com o erro esperado, sem portas expostas nem conexão a produção. O container descartável foi encerrado.
 
-Escopo de publicação candidato:
+**Provas locais anteriores reaproveitadas, sem repetir toda a suíte sem alteração de código:** 1.888 JS; 145 funções e um skip conhecido; 568 assertions SQL; 28 verificações de SQL/worker/Auth/Storage reais locais; concorrência/recuperação 20 + 5; lint/build aprovados. Não foram tratadas como novos testes de produção.
 
-- `supabase/migrations/20261027000001_storage_cleanup_outbox.sql`.
-- Edge Function `process-deletion-jobs`: `index.ts` existente e módulos `processor.js` / `storage-cleanup.js`.
-- Testes, scripts e relatórios da AUD-04 somente como evidências/versionamento local a revisar antes de eventual commit.
+A limpeza física, erro do SDK, retry, restart, ausência de objetos, concorrência e token antigo já tinham sido validados localmente. Como não há tarefas reais novas na outbox, não há evidência de retry/remoção física exercitados novamente em produção. Não foram enfileirados órfãos antigos nem apagados objetos retroativamente.
 
-A migration é aditiva; não redefine revisão financeira, `run_deletion_job`, Auth, ledger, retenção nem outras auditorias. RLS sem policies de cliente, revogação de leitura/escrita de `anon`/`authenticated`, RPCs administrativas somente para `service_role`, captura transacional via triggers e `search_path` restrito foram conferidos no arquivo atual. Não há backfill de órfãos.
+## Git/Vercel e próximos passos
 
-Os imports relativos `index.ts -> processor.js -> storage-cleanup.js` estão presentes. A entrada usa `Deno.env`, `Deno.serve` e o import JSR já existente do SDK. O client privilegiado usa `SUPABASE_SERVICE_ROLE_KEY`; a configuração local preserva `verify_jwt = true`. Isso constitui inspeção de código; **não comprova bundling no Edge remoto, disponibilidade/valores de secrets ou configuração JWT remota**. O cron original permanece sem alterações locais. Não foi invocada a função remota, pois ela pode executar exclusões reais pendentes.
+O commit do código publicado foi feito **localmente**. O push ainda não foi feito: main está ligado ao projeto Vercel `prj_WYVlCGYu021KZCrqfp62qRH2cbIE`, conta/equipe confirmadas, e pode gerar deploy de frontend. Foi solicitada escolha entre aceitar esse redeploy automático ou manter commit local; ausência de resposta não foi interpretada como autorização específica para ultrapassar o limite de frontend do prompt. Nenhuma configuração Vercel foi alterada para contornar isso. [Documentação oficial de Ignored Build Step](https://vercel.com/kb/guide/how-do-i-use-the-ignored-build-step-field-on-vercel).
 
-Hashes SHA-256 dos artefatos revisados:
+Acompanhar as primeiras tarefas naturais, backlog/idade, erros e leases; casos failed devem permanecer disponíveis para revisão. Em incidente, preservar outbox/evidências e preparar correção progressiva; não apagar tarefas, reabrir grants ou executar rollback destrutivo. A fonte da versão 6 permanece recuperável, mas retornar ao worker antigo não escoa a fila durável.
 
-| Arquivo | SHA-256 |
-|---|---|
-| Migration `20261027000001_storage_cleanup_outbox.sql` | `0505a299066df8f014fbd3383b8bf38394edc2471ac3ae12b6fc3a919dfa7550` |
-| `process-deletion-jobs/index.ts` | `514a1b948cf091d6b23843e9e0b2d6eaaf5945fd2d9731a2ed2e468ac0a98bc2` |
-| `process-deletion-jobs/processor.js` | `2f368b5437e4623feb538553ff0281a2123a8014782e3a3b6f75bcb2fd67ad8e` |
-| `process-deletion-jobs/storage-cleanup.js` | `151ac6b41672961c1ec4fa99ba2e8c2faa6c74e3854b202840d2b9ea2d4ad5dc` |
+**AUD-05 continua aberta**, inclusive a exclusão administrativa de publicação com foto existente. Não foi alterada nem declarada resolvida.
 
-## Testes e verificações
+## Evidências
 
-**Executados novamente nesta tentativa:** 11 unitários do processor e nove de Storage/normalização, todos aprovados; `git diff --check` aprovado. Logs locais: `/tmp/aud04/release-processor.log` e `/tmp/aud04/release-storage.log`.
-
-**Resultados da etapa local anterior, não anunciados como novos testes de release:** 1.888 JS; 145 funções aprovadas e um skip conhecido do push outbox; 34 assertions SQL da AUD-04 e 534 de regressão; 28 verificações reais locais SQL/worker/Storage/Auth; concorrência de transações 20 + 5 e recuperação sem perda; lint/build aprovados com avisos existentes. O relatório de correção e os logs `/tmp/aud04/` foram conferidos. Nenhum desses resultados confirma o estado remoto atual.
-
-## Publicação e métricas remotas efetivas
-
-| Item | Resultado desta tentativa |
-|---|---|
-| Migrations aplicadas em produção | **Nenhuma** |
-| `db push` / reparo de journal | Não executados |
-| Deploy da Edge Function | Não executado |
-| Commit / push | Não executados |
-| Deploy Vercel / frontend | Não executado |
-| Histórico/schema/grants remotos | Não consultados após identificar o gate impeditivo; ausência de drift **não comprovada** |
-| Registro remoto de `20261027000001` | Não consultado; não se presume aplicado ou ausente |
-| Cron / secrets / JWT remotos | Não conferidos nesta tentativa |
-| Versão anterior recuperável da Edge Function | Exportação/versionamento remoto ainda pendentes; Git contém fonte histórica, mas não prova equivalência ao deployment remoto atual |
-| Outbox `pending`, `leased`, `complete`, `failed` | Não consultada em produção; valores **não medidos**, não iguais a zero por presunção |
-| Tentativas, idade da tarefa mais antiga e crescimento | Não medidos em produção |
-| Logs remotos de erros/leases | Não coletados |
-| Smoke com limpeza real | Não executado; nenhuma autorização/isolamento adicional presumido |
-
-## Condições para retomar e plano de recuperação
-
-1. Comprovar backup criptografado em local durável **externo ao Codespaces**, com disponibilidade da chave em local separado. Informar somente metadados/evidências, nunca chaves ou tokens no chat. Demonstrar integridade da cópia externa e sua correspondência com o ponto de recuperação testado, ou realizar um ensaio isolado apropriado. Não é necessário repetir a autorização geral deste release; falta satisfazer o gate técnico.
-2. Retomar as consultas administrativas somente leitura: identidade/projeto Supabase, journal/schema/grants/owners/triggers, fontes vigentes da função e cron. Fechar comparação com o repositório e exigir que a única migration pendente/aplicável seja `20261027000001_storage_cleanup_outbox.sql`. Se houver drift ou versões extras, parar e reportar.
-3. Recuperar e preservar o pacote/configuração da versão anterior da Edge Function, conferir secrets por nomes/presença sem valores, validar runtime/imports e preparar a interrupção do consumidor preservando a outbox. Validar os efeitos de CI/CD antes de qualquer push: o release anterior documenta integração GitHub/main com Vercel, e não se autoriza um deploy de frontend como consequência desta tarefa.
-4. Somente com todos os gates aprovados: aplicar a migration primeiro, de forma transacional e auditável pela CLI, conferir journal/objetos/ACL/RLS e depois publicar exclusivamente `process-deletion-jobs`, preservando JWT/secrets/cron. Não editar manualmente o journal.
-5. Fazer verificação remota somente leitura de versão, agendamento, logs e métricas da fila. Não executar exclusão de usuários/objetos reais como teste nem limpar órfãos históricos.
-6. Em incidente, interromper novas ações, preservar tarefas e evidências e preparar correção progressiva. Não apagar outbox, desfazer schema destrutivamente ou restaurar grants inseguros. Nenhum comando de rollback de produção foi executado/preparado como ação automática nesta tentativa.
-
-**AUD-05 continua pendente**, inclusive a exclusão administrativa de publicação com foto existente. Não foi corrigida nem considerada resolvida pelo release AUD-04.
-
-
-## Continuação — backup externo antes do release AUD-04
-
-**NO-GO mantido: aguardando escolha/configuração do destino externo e, depois, comprovação da guarda separada da chave.** O novo prompt `PROMPT_CODEX_BACKUP_EXTERNO_E_RELEASE_AUD_04_EVOLUTUS.md` foi lido integralmente; a autorização de publicação continua condicionada aos gates e não precisa ser repetida.
-
-O arquivo criptografado existente foi localizado e seu hash foi calculado novamente por leitura, sem acessar ou imprimir conteúdo pessoal:
-
-| Item | Evidência nova |
-|---|---|
-| Identificador não sensível do artefato | `encrypted-release-aud-20261012` |
-| Última modificação do arquivo | **12/10/2026, 18:29:10 UTC**; mtime não comprova sozinho o instante do snapshot SQL |
-| Tamanho | **3.837.664 bytes** (aproximadamente 3,84 MB) |
-| SHA-256 | `79d7389dfd10159e3ec31e61acb3f93ad99d6c8b8ad1c6450d06a3c6f12810d9` |
-| Comparação com restore anterior | Hash **idêntico** ao registrado em `RECUPERACAO_E_RELEASE_AUD_EVIDENCIAS.json` |
-| Criptografia/formato | OpenSSL com cabeçalho `Salted__`, confirmado por leitura dos primeiros oito bytes; AES-256/PBKDF2 conforme manifesto anterior. Cabeçalho isoladamente não comprova algoritmo/parâmetros; não foi feito novo ensaio criptográfico |
-| Permissões do arquivo | `0600` |
-| Recuperação vinculada ao mesmo hash | Evidência anterior de 130 tabelas, Auth/financeiro/Vault, 60 arquivos Storage reais e comparação da decriptação; não anunciada como novo restore nesta continuação |
-| Material de recuperação local | Arquivo separado no diretório pai, com permissões `0600`; conteúdo não aberto nem exposto nesta verificação |
-| Destino externo privado/autorizado | **Não identificado** nos documentos/configuração disponível |
-| Configuração externa | Ausentes arquivos AWS config/credentials e variáveis específicas de destino de backup verificadas; isso não prova ausência de outros serviços, apenas não estabelece destino/autorização utilizáveis |
-| Cópia externa e comparação do hash | Não executadas |
-| Chave guardada fora do Codespaces | Ainda não comprovada pelo responsável |
-
-O pacote anterior documenta dump custom do banco completo, roles/memberships, configuração e material de recuperação privados, além dos bytes de Storage; não é somente backup de metadados. O inventário local foi conferido por contagem/tipo de arquivo, sem publicar nomes dos objetos, conteúdo dos dumps, chave ou credenciais. Nenhum desses arquivos foi adicionado ao Git ou incluído nos logs.
-
-**Recência permanece a validar.** O artefato é anterior à publicação AUD-01/AUD-02/catálogo e às operações posteriores documentadas naquele release. Não se pode afirmar que reflita todo o estado atual de produção. Após definir o destino, conferir por leitura o ponto de recuperação, as alterações posteriores e a cobertura necessária antes da AUD-04; caso insuficiente, preparar novo snapshot consistente com bytes de Storage e ensaio isolado conforme o novo prompt. Um backup antigo de hash válido não representa automaticamente o estado pré-migration atual.
-
-Foi solicitada ao responsável a escolha entre seu computador (download seguro feito por ele) e armazenamento privado da organização com destino/acesso identificados. O item 2.2 do novo prompt determina parar antes de transferir quando não existir destino externo autorizado. A confirmação de posse da chave em local externo separado só poderá fechar o gate após ação do responsável ou mecanismo seguro autorizado; **não solicitar/colar chave no chat**.
-
-Nenhuma transferência, criação de conta/serviço, novo snapshot de produção, migration remota, publicação de Edge Function, commit, push, alteração Vercel ou limpeza histórica foi executada nesta continuação. Backup e material de recuperação locais foram preservados. Sem alteração de código, as suítes completas não foram repetidas. O status/diff foram conferidos; os resultados locais anteriores continuam históricos.
-
-O prompt de release anterior não está mais presente no diretório `docs/prompts` nesta continuação. Seu conteúdo já havia sido lido integralmente na etapa anterior desta mesma sessão; as restrições foram mantidas e o arquivo ausente não foi recriado nem tratado como nova autorização. O novo prompt também repete os gates essenciais.
-
-**Ação exata pendente:** escolher/configurar destino externo privado e autorizado, sem credenciais no chat. Depois conferir recência/cobertura, transferir apenas o arquivo criptografado, comparar hashes e confirmar a guarda externa separada da chave. Somente com recuperação comprovada retomar os gates remotos e o release exclusivo da AUD-04. **AUD-05 permanece aberta.**
-
-
-## Suspensão da etapa de backup pelo responsável
-
-Registro em 13/10/2026, 12:26 UTC. O responsável pediu para não seguir com o backup no momento, informando que o Evolutus não tem usuários reais. A etapa de backup externo foi suspensa; não haverá transferência ou nova coleta enquanto essa orientação vigorar. A informação sobre ausência de usuários reais é declaração do responsável, sem nova verificação de dados de produção.
-
-A correção AUD-04 permanece preparada localmente. Nenhuma migration remota, atualização de Edge Function, commit, push ou deploy foi executado. A suspensão do backup não foi interpretada como instrução para publicar sem os gates anteriormente exigidos; o release permanece não publicado. AUD-05 continua aberta.
-
-
-## Retomada após solicitação de publicação em produção
-
-Atualização em 13/10/2026, 12:30 UTC. Após pedir para suspender o backup, o responsável solicitou: “Vamos subir tudo a produção”. O release foi retomado exclusivamente para a AUD-04, preservando o escopo da conversa e as alterações não relacionadas. A etapa de backup externo continua suspensa conforme a orientação mais recente; não há cópia externa comprovada nem transferência de chave realizada. A afirmação de ausência de usuários reais permanece informação do responsável, sem leitura de dados pessoais para confirmá-la.
-
-**Impedimento atual: autenticação Supabase indisponível.** `projects list` e `functions list --project-ref ywrjojrjgozdfpddkkuy` retornaram `AccessTokenRequiredError`, também fora do sandbox. Não existe `SUPABASE_ACCESS_TOKEN` no ambiente nem arquivo de token da CLI no local padrão verificado. Não foi tentado substituir a credencial administrativa por uma chave de cliente ou service role. Foi solicitado ao responsável concluir `npx supabase login` no terminal e informar somente a conclusão, sem token/código/link no chat.
-
-Verificações novas: GitHub autenticado como Danielalveslira; `main` remoto e local no commit `68dbeb2196e19a1a8ceaf92d2315bdd0f900ed33`; origin correto; último status Vercel success confirmado; Vercel CLI autenticada como danielalveslira. Os 11 testes do processor e nove de Storage passaram novamente; ESLint dos módulos do worker, syntax checks dos scripts e diff-check aprovados. Não foi repetida a suíte completa sem mudança de código.
-
-Pacote isolado preparado em `/tmp/aud04/release-package`, com 126 migrations para comparação do journal (125 anteriores + candidata AUD-04), configuração existente e somente os três arquivos de runtime da Edge Function. O pacote não foi aplicado ou publicado; arquivo adicional no diretório não torna migration anterior pendente/aplicável. Só se aceitará dry-run com `20261027000001` após inspeção remota. Hashes dos módulos continuam iguais à tabela deste relatório.
-
-**CI/CD:** o status remoto confirma integração Vercel/main. Um push pode disparar frontend; ainda não houve confirmação de regra existente que o dispense. Não se presume que um marcador de commit cancele Vercel. O push fica pendente dessa decisão/verificação, conforme o limite original do release. Documentação oficial: [Ignored Build Step](https://vercel.com/kb/guide/how-do-i-use-the-ignored-build-step-field-on-vercel). Nenhuma configuração Vercel foi alterada.
-
-Migration aplicada: nenhuma. Edge Function publicada: nenhuma. Commit/push: nenhum. Métricas remotas, drift, cron e versão do worker: ainda não verificados por falta de sessão administrativa. O próximo passo é o login, seguido dos checks somente leitura e aplicação primeiro da migration, depois do worker. AUD-05 permanece aberta.
-
-
-## Pré-deploy confirmado após login
-
-O login administrativo foi confirmado com `projects list`; projeto `treinos_academia`, ref `ywrjojrjgozdfpddkkuy`, região us-east-2, ACTIVE_HEALTHY. GitHub Danielalveslira/main continua no HEAD `68dbeb2196e19a1a8ceaf92d2315bdd0f900ed33`. O responsável já havia suspendido o backup e solicitado prosseguir com a publicação; a etapa externa permanece suspensa, sem alegação de backup externo recuperável.
-
-Consulta de produção em `BEGIN READ ONLY` confirmou 125 versões no journal, correspondentes às migrations anteriores locais, e ausência da outbox. A única versão local adicional é `20261027000001`. O dry-run da CLI 2.119.0 no pacote isolado apontou **somente `20261027000001_storage_cleanup_outbox.sql`**, sem seeds/roles e com `--skip-vault`.
-
-As oito RPCs envolvidas foram comparadas com suas últimas definições nas migrations: corpos equivalentes após normalização de comentários/whitespace. Colunas exigidas e triggers existentes foram conferidos; buckets status-photos/profile-avatars privados; zero jobs pending/auth_cleanup. O cron `process-deletion-jobs` é único, ativo, a cada minuto, com URL correta. A função remota está **ACTIVE, versão 6, verify_jwt=true**. Seu pacote de fonte foi baixado privadamente em `/tmp/aud04/worker-before`; os arquivos index.ts/processor.js são idênticos à versão anterior esperada. Os três secrets padrão necessários estão presentes, sem leitura/divulgação de valores.
-
-A nova função foi carregada no Edge Runtime v1.77.1 local, sem portas expostas e com chave/endpoint sintéticos. Respondeu HTTP 500 INTERNAL_ERROR ao backend sintético indisponível, com logs esperados de falha de listagem/claim: isto comprova carregamento dos imports no runtime sem executar ações em produção. Os 20 unitários afetados, ESLint dos módulos e diff-check passaram.
-
-Antes da escrita remota, ficam registrados: journal 125; outbox inexistente; função versão 6/JWT habilitado; cron único; jobs executáveis zero. Interrupção/recuperação: preservar tabela e fila se surgir erro, não fazer rollback destrutivo; manter fonte anterior recuperável, sem presumir que voltar ao worker antigo escoe a outbox. Preferir correção progressiva do consumidor.
-
-O push continua condicionado à decisão sobre o redeploy automático da Vercel. Foi solicitada preferência ao responsável; nenhuma configuração de frontend/Vercel foi alterada para evitar o build.
+[VERIFICACAO_PUBLICACAO_AUD_04.json](VERIFICACAO_PUBLICACAO_AUD_04.json) contém somente metadados/contagens sanitizados desta publicação. Logs operacionais e fontes de recuperação em `/tmp/aud04/`: `production-migration.log`, `production-function-deploy.log`, `predeploy-remote.json`, `post-migration.json`, `post-worker.json`, `post-final.json`, `cron-health-final.json`, `dry-run-after.log`, `worker-before/`, `worker-after/`. Tokens, valores de secrets, backups, chaves e dados pessoais não pertencem a este relatório ou ao commit.
