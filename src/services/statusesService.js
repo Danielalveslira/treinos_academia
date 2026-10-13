@@ -29,6 +29,9 @@ export function mapStatusRow(row) {
     type: row.type,
     createdAt: row.created_at,
     expiresAt: row.expires_at,
+    ...(Object.hasOwn(row, 'publication_expires_at')
+      ? { publicationExpiresAt: row.publication_expires_at }
+      : {}),
     retentionMode: row.retention_mode,
     commentsCloseAt: Object.hasOwn(row, 'interaction_expires_at')
       ? row.interaction_expires_at

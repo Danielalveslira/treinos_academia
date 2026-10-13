@@ -202,8 +202,8 @@ function CommunityDetail({ id }) {
   }, [adsSettled, bannerAds.length, feedAds.length, user.uid, id])
 
   // Fase 6 -- "destaques" (posts promovidos com EvoCash) precisam de uma consulta
-  // própria porque o feed normal só cobre a janela de retenção da comunidade (24h, 30d); uma
-  // promoção de 7/30 dias precisa continuar visível bem depois disso. Filtrado no
+  // própria porque a paginação de Recentes pode não incluir todos os posts promovidos.
+  // Recentes usa a expiração efetiva da view, que preserva a promoção vigente. Filtrado no
   // servidor por promotedUntil > agora (nunca limit() antes de tirar os expirados, ver
   // promotionsService.js) -- nunca lê promotions/{id} pra isto.
   const [promoteCommunityOpen, setPromoteCommunityOpen] = useState(false)

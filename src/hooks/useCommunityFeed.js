@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { listCommunityFeedPage, deleteStatus } from '../services/statusesService'
 import { describeQueryError } from '../utils/queryError'
 import { toMillis } from '../utils/expiry'
-import { isNeverExpiring } from '../utils/postRetention'
+import { eligiblePublications } from '../utils/publicationEligibility'
 import { getCached, onPageCacheClear, setCached } from '../utils/pageCache'
 import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta'
 import { mergeFirstPage } from '../utils/feedOrder'
@@ -57,7 +57,7 @@ export function useCommunityFeed(communityId, enabled = true, uid = 'anon') {
   const [state, setState] = useState(() => {
     const cached = enabled ? getCached(cacheKey) : undefined
     return {
-      items: cached?.items ?? [],
+      items: eligiblePublications(cached?.items ?? []),
       hasMore: cached?.hasMore ?? false,
       loadedAt: cached?.loadedAt ?? 0,
     }
@@ -82,7 +82,7 @@ export function useCommunityFeed(communityId, enabled = true, uid = 'anon') {
   // Toda mudança vai para o estado E para a cache. `loadedAt` só avança quando a mudança veio do servidor.
   const commit = useCallback(
     (items, hasMore, loadedAt = stateRef.current.loadedAt) => {
-      const next = { items, hasMore, loadedAt }
+      const next = { items: eligiblePublications(items), hasMore, loadedAt }
       stateRef.current = next
       setState(next)
       setCached(cacheKey, next, FEED_CACHE_MAX_AGE_MS)
@@ -177,7 +177,9 @@ export function useCommunityFeed(communityId, enabled = true, uid = 'anon') {
     }
     const cached = getCached(cacheKey)
     if (cached !== undefined) {
-      setState(cached)
+      const next = { ...cached, items: eligiblePublications(cached.items) }
+      stateRef.current = next
+      setState(next)
       setLoading(false)
       setReady(true)
       setError(null)
@@ -211,10 +213,9 @@ export function useCommunityFeed(communityId, enabled = true, uid = 'anon') {
   useEffect(() => {
     if (!enabled) return undefined
     return subscribeClock(() => {
-      const current = Date.now()
       const { items, hasMore } = stateRef.current
-      const next = items.filter((s) => isNeverExpiring(s) || toMillis(s.expiresAt) > current)
-      if (next.length !== items.length) commit(next, hasMore)
+      const next = eligiblePublications(items)
+      if (next !== items) commit(next, hasMore)
     })
   }, [enabled, commit])
 
@@ -334,7 +335,25 @@ export function useCommunityFeed(communityId, enabled = true, uid = 'anon') {
     (statusId, patch) => {
       const { items, hasMore } = stateRef.current
       commit(
-        items.map((s) => (s.id === statusId ? { ...s, ...patch } : s)),
+        items.map((s) => {
+          if (s.id !== statusId) return s
+          // Patch recebido somente após create_promotion confirmar a compra.
+          // Permanente continua permanente; os demais usam o novo prazo contratado.
+          return {
+            ...s,
+            ...patch,
+            ...(patch.promoted === true && toMillis(patch.promotedUntil) > Date.now()
+              ? {
+                  publicationExpiresAt:
+                    s.publicationExpiresAt === null || s.retentionMode === 'no_auto_expiration'
+                      ? null
+                      : new Date(
+                          Math.max(toMillis(s.expiresAt), toMillis(patch.promotedUntil))
+                        ).toISOString(),
+                }
+              : {}),
+          }
+        }),
         hasMore
       )
     },

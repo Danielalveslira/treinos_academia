@@ -18,7 +18,7 @@ before(async () => {
   const outfile = join(directory, 'out.cjs')
   await build({
     stdin: {
-      contents: `export { listCommunityFeedPage, isValidFeedCursor, FEED_PAGE_SIZE } from './statusesService.js'`,
+      contents: `export { listCommunityFeedPage, isValidFeedCursor, FEED_PAGE_SIZE, mapStatusRow } from './statusesService.js'`,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile,
@@ -148,4 +148,32 @@ test('erro do Supabase é lançado e o sinal de cancelamento é repassado', asyn
   const controller = new AbortController()
   await assert.rejects(() => svc.listCommunityFeedPage('c1', { signal: controller.signal }), /boom/)
   assert.equal(find('abortSignal')[0][1], controller.signal)
+})
+
+test('mapeamento preserva prazo efetivo e promoção validada, inclusive nulo permanente', () => {
+  const status = svc.mapStatusRow({
+    ...row(1),
+    expires_at: '2000-01-01T00:00:00Z',
+    promoted: true,
+    promoted_until: '2099-01-01T00:00:00Z',
+    publication_expires_at: '2026-10-16T01:28:01.216846Z',
+    verified_promoted_until: '2026-10-16T01:28:01.216846Z',
+  })
+  assert.equal(status.publicationExpiresAt, '2026-10-16T01:28:01.216846Z')
+  assert.equal(status.expiresAt, '2000-01-01T00:00:00Z')
+  assert.equal(status.promotedUntil, status.publicationExpiresAt)
+  const cancelled = svc.mapStatusRow({
+    ...row(2),
+    promoted: true,
+    promoted_until: '2099-01-01T00:00:00Z',
+    verified_promoted_until: null,
+    publication_expires_at: '2000-01-01T00:00:00Z',
+  })
+  assert.equal(cancelled.promoted, false)
+  assert.equal(cancelled.promotedUntil, null)
+  assert.equal(
+    svc.mapStatusRow({ ...row(3), publication_expires_at: null }).publicationExpiresAt,
+    null
+  )
+  assert.equal(Object.hasOwn(svc.mapStatusRow(row(4)), 'publicationExpiresAt'), false)
 })

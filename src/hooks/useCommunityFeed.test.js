@@ -20,8 +20,8 @@ before(async () => {
         import { createElement } from 'react'
         import TestRenderer, { act } from 'react-test-renderer'
         import { useCommunityFeed } from './useCommunityFeed.js'
-        import { invalidateCache, clearPageCache } from '../utils/pageCache'
-        export { invalidateCache, clearPageCache }
+        import { invalidateCache, clearPageCache, setCached } from '../utils/pageCache'
+        export { invalidateCache, clearPageCache, setCached }
         globalThis.IS_REACT_ACT_ENVIRONMENT = false
 
         export function mount(args) {
@@ -434,4 +434,96 @@ test('trocar de conta/encerrar a sessão (clearPageCache) apaga o feed em memór
   assert.equal(pageCalls.length, calls + 1)
   assert.equal(next.hook.statuses.length, 10, 'só a primeira página, de novo')
   next.unmount()
+})
+
+test('prazo efetivo mantém promoção vigente no tick, refresh e reabertura sem novas consultas', async () => {
+  const originalInterval = globalThis.setInterval
+  let clockTick
+  globalThis.setInterval = (callback, ms, ...args) => {
+    if (ms === 15000) clockTick = callback
+    return originalInterval(callback, ms, ...args)
+  }
+  db = [
+    {
+      ...makeItems(1)[0],
+      expiresAt: '2000-01-01T00:00:00Z',
+      retentionMode: '24h',
+      publicationExpiresAt: '2099-01-01T00:00:00Z',
+      promoted: true,
+      promotedUntil: '2099-01-01T00:00:00Z',
+    },
+  ]
+  let feed
+  try {
+    feed = api.mount({ id: 'c1', enabled: true, uid: 'u1' })
+    await tick()
+    assert.equal(feed.hook.statuses.length, 1)
+    clockTick()
+    assert.equal(feed.hook.statuses.length, 1, 'tick deve respeitar publication_expires_at')
+    assert.equal(pageCalls.length, 1)
+    await feed.hook.refresh()
+    clockTick()
+    assert.equal(feed.hook.statuses.length, 1)
+    feed.unmount()
+    feed = api.mount({ id: 'c1', enabled: true, uid: 'u1' })
+    assert.equal(feed.hook.statuses.length, 1)
+    assert.equal(pageCalls.length, 2, 'cache fresco não deve consultar novamente')
+  } finally {
+    feed?.unmount()
+    globalThis.setInterval = originalInterval
+  }
+})
+
+test('cache expirado nunca aparece na montagem, mesmo antes do primeiro tick', () => {
+  api.setCached('communityFeed:u1:c1', {
+    items: [{ ...makeItems(1)[0], publicationExpiresAt: '2000-01-01T00:00:00Z' }],
+    hasMore: false,
+    loadedAt: Date.now(),
+  })
+  const feed = api.mount({ id: 'c1', enabled: true, uid: 'u1' })
+  try {
+    assert.deepEqual(feed.hook.statuses, [])
+    assert.equal(pageCalls.length, 0)
+  } finally {
+    feed.unmount()
+  }
+})
+
+test('carga, inserção local e revalidação excluem vencidos sem confiar em flags; compra confirmada estende prazo', async () => {
+  const common = {
+    ...makeItems(1)[0],
+    expiresAt: '2099-01-01T00:00:00Z',
+    publicationExpiresAt: '2099-01-01T00:00:00Z',
+    retentionMode: '24h',
+  }
+  const expired = {
+    ...common,
+    id: 'expired',
+    expiresAt: '2000-01-01T00:00:00Z',
+    publicationExpiresAt: '2000-01-01T00:00:00Z',
+    promoted: true,
+    promotedUntil: '2099-01-01T00:00:00Z',
+  }
+  db = [common, expired]
+  const feed = api.mount({ id: 'c1', enabled: true, uid: 'u1' })
+  try {
+    await tick()
+    assert.deepEqual(
+      feed.hook.statuses.map((s) => s.id),
+      [common.id]
+    )
+    feed.hook.addStatusLocally(expired)
+    assert.equal(feed.hook.statuses.length, 1)
+    feed.hook.updatePostPromotion(common.id, {
+      promoted: true,
+      promotedUntil: '2100-01-01T00:00:00Z',
+    })
+    assert.equal(feed.hook.statuses[0].publicationExpiresAt, '2100-01-01T00:00:00.000Z')
+    // Promoção cancelada/encerrada: view retorna novamente o prazo normal vencido.
+    db = [{ ...expired, id: common.id, promoted: false, promotedUntil: null }]
+    await feed.hook.refresh()
+    assert.deepEqual(feed.hook.statuses, [])
+  } finally {
+    feed.unmount()
+  }
 })
