@@ -60,6 +60,7 @@ import { expiresAtForRetention } from '../utils/postRetention'
 import { readAdHint, writeAdHint } from '../utils/adSlotHint'
 import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta'
 import { publicationIdFromHash } from '../utils/share'
+import { publicationErrorMessage } from '../utils/publicationError'
 import { isStatusLoaded } from '../utils/sharedStatus'
 import '../styles/community-feed.css'
 
@@ -674,7 +675,7 @@ function CommunityDetail({ id }) {
       )
     } catch (err) {
       console.error('[CommunityDetail] createStatus:', err)
-      showToast('Erro ao publicar.', 'danger')
+      showToast(publicationErrorMessage(err), 'danger')
       throw err
     }
   }

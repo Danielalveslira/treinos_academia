@@ -35,6 +35,7 @@ import {
   statusDraftKey,
 } from '../utils/statusDraft'
 import { STATUS_TEXT_MAX_LENGTH } from '../utils/statusLimits'
+import { publicationErrorMessage } from '../utils/publicationError'
 
 const TYPES = [
   { value: 'text', label: 'Texto' },
@@ -191,7 +192,7 @@ export function StatusForm({ communityId, author, onSubmit, onCancel }) {
       // storage/canceled vem do botão "Cancelar envio" — não é um erro para o
       // usuário, só volta ao formulário como estava (com a foto ainda selecionada).
       if (error?.code !== 'storage/canceled') {
-        setErrors({ form: 'Não foi possível publicar. Tente novamente.' })
+        setErrors({ form: publicationErrorMessage(error) })
       }
     } finally {
       setSubmitting(false)
