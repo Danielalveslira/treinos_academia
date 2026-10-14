@@ -8,7 +8,8 @@ export function PushNotificationSettings({ userId = null } = {}) {
   const preferenceOff = push.device?.status?.enabled === false
   const registered =
     push.permission === 'granted' &&
-    Boolean(push.device?.endpoint && push.device?.status?.thisDevice)
+    Boolean(push.device?.endpoint && push.device?.status?.thisDevice) &&
+    !push.optedOut
   const title = installation
     ? 'Instalação necessária'
     : !push.support.supported
@@ -55,9 +56,8 @@ export function PushNotificationSettings({ userId = null } = {}) {
         )}
         {preferenceOff && (
           <p>
-            A entrega nesta conta ainda não está habilitada. Ative este dispositivo para concluir o
-            registro. Preferências da conta já desabilitadas não são alteradas; nesse caso, procure
-            o Atendimento no menu do app.
+            Ao ativar, as notificações serão habilitadas neste dispositivo. Outros dispositivos da
+            conta que estavam desligados continuarão dependendo de ativação própria.
           </p>
         )}
         {!push.active && push.device?.status?.activeSubscriptions > 0 && (
@@ -67,15 +67,20 @@ export function PushNotificationSettings({ userId = null } = {}) {
         )}
         <Button
           type="button"
-          variant={registered ? 'danger' : 'primary'}
-          onClick={registered ? push.disable : push.enable}
+          variant={push.active ? 'danger' : 'primary'}
+          onClick={push.active ? push.disable : push.enable}
           loading={push.busy}
           disabled={
             push.busy || !push.allowed || !push.support.supported || push.permission === 'denied'
           }
         >
-          {registered ? 'Desativar neste dispositivo' : 'Ativar notificações'}
+          {push.active ? 'Desativar neste dispositivo' : 'Ativar notificações'}
         </Button>
+        {registered && !push.active && (
+          <Button type="button" onClick={push.disable} disabled={push.busy || !push.allowed}>
+            Desativar neste dispositivo
+          </Button>
+        )}
         <p className="pwa-muted">
           Os avisos dependem da compatibilidade do dispositivo, permissão do navegador,
           configurações do sistema, conexão e entrega do provedor.

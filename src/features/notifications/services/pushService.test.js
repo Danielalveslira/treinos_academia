@@ -210,7 +210,7 @@ const VAPID = 'BAQAAQ' // base64url qualquer válido para decodificar
 function activatable({
   subscribe,
   status = { thisDevice: true, enabled: true },
-  register = { data: 'id', error: null },
+  register = { data: { welcome: 'queued' }, error: null },
 } = {}) {
   const created = {
     endpoint: 'https://fcm.googleapis.com/fcm/send/new',
@@ -220,17 +220,21 @@ function activatable({
     }),
     unsubscribe: async () => true,
   }
+  let current = null
   const registration = {
     pushManager: {
-      getSubscription: async () => null,
-      subscribe: subscribe || (async () => created),
+      getSubscription: async () => current,
+      subscribe: async () => {
+        current = await (subscribe ? subscribe() : created)
+        return current
+      },
     },
   }
   browser({ registration, ready: Promise.resolve(registration) })
   globalThis.__vapidKey = VAPID
   globalThis.__rpc = async (name, args) => {
     rpcCalls.push([name, args])
-    if (name === 'register_push_subscription') return register
+    if (name === 'activate_push_subscription') return register
     if (name === 'get_my_push_status')
       return status instanceof Error ? { data: null, error: status } : { data: status, error: null }
     return { data: null, error: null }
@@ -245,7 +249,7 @@ test('ativar: cria a subscription local, registra e só conclui com o endpoint a
   assert.equal(result.subscription.endpoint, created.endpoint)
   assert.deepEqual(
     rpcCalls.map(([name]) => name),
-    ['register_push_subscription', 'get_my_push_status']
+    ['activate_push_subscription', 'get_my_push_status']
   )
   assert.equal(rpcCalls[1][1].p_endpoint, created.endpoint)
 })
@@ -516,7 +520,7 @@ test('cliques simultâneos usam uma única permissão, inscrição, registro e c
   assert.equal(prompts, 1)
   assert.deepEqual(
     rpcCalls.map(([name]) => name),
-    ['register_push_subscription', 'get_my_push_status']
+    ['activate_push_subscription', 'get_my_push_status']
   )
 })
 
@@ -634,4 +638,61 @@ test('snapshot sem usuário e sem cache é seguro e não consulta servidor', () 
   assert.equal(mod.getCachedPushDevice(undefined), null)
   assert.equal(mod.getCachedPushDevice(null), null)
   assert.deepEqual(rpcCalls, [])
+})
+
+test('ativação usa RPC explícita e confirma antes de devolver boas-vindas solicitada', async () => {
+  activatable()
+  const result = await mod.enablePushNotifications({ userId: 'u1' })
+  assert.equal(result.welcome, 'queued')
+  assert.deepEqual(
+    rpcCalls.map(([name]) => name),
+    ['activate_push_subscription', 'get_my_push_status']
+  )
+})
+
+test('falha de boas-vindas não invalida ativação confirmada', async () => {
+  activatable({ register: { data: { welcome: 'unavailable' }, error: null } })
+  const result = await mod.enablePushNotifications({ userId: 'u1' })
+  assert.equal(result.status.thisDevice, true)
+  assert.equal(result.welcome, 'unavailable')
+})
+
+test('hold de outro dispositivo impede subscribe e registro automático', async () => {
+  const { calls } = restorable()
+  globalThis.__rpc = async (name, args) => {
+    rpcCalls.push([name, args])
+    return { data: { enabled: true, thisDevice: false, registrationAllowed: false }, error: null }
+  }
+  await mod.syncPushSubscription({ userId: 'u1' })
+  assert.equal(calls.subscribe, 0)
+  assert.deepEqual(
+    rpcCalls.map(([name]) => name),
+    ['get_my_push_status']
+  )
+})
+
+test('RPC explícita ausente não cai em registro legado nem ignora preferência', async () => {
+  activatable({
+    register: { data: null, error: Object.assign(new Error('missing'), { code: 'PGRST202' }) },
+  })
+  await assert.rejects(mod.enablePushNotifications({ userId: 'u1' }), {
+    code: 'PGRST202',
+    stage: 'register',
+  })
+  assert.deepEqual(
+    rpcCalls.map(([name]) => name),
+    ['activate_push_subscription']
+  )
+})
+
+test('releitura/sync durante ativação espera confirmação e não duplica RPC', async () => {
+  activatable()
+  const activation = mod.enablePushNotifications({ userId: 'u1' })
+  const read = mod.readPushDevice({ userId: 'u1' })
+  const sync = mod.syncPushSubscription({ userId: 'u1' })
+  await Promise.all([activation, read, sync])
+  assert.deepEqual(
+    rpcCalls.map(([name]) => name),
+    ['activate_push_subscription', 'get_my_push_status']
+  )
 })

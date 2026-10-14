@@ -91,3 +91,15 @@
     transition: none;
   }
 }
+/* Temporary confirmation is outside document flow; its expiry cannot shift the workout. */
+.push-notice-success {
+  position: fixed;
+  right: 16px;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  z-index: 30;
+  grid-template-columns: 16px minmax(0, 1fr);
+  max-width: min(360px, calc(100vw - 32px));
+  margin: 0;
+  padding: 12px;
+  pointer-events: none;
+}

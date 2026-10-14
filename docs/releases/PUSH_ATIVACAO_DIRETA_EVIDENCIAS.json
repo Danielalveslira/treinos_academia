@@ -1,0 +1,435 @@
+{
+  "status": "implemented_local_not_published",
+  "baselineCommit": "2a2d274339177812115292b7b7c1cfedf7349176",
+  "publication": {
+    "commit": false,
+    "push": false,
+    "deploy": false,
+    "productionMigrations": 0,
+    "productionTestMessages": 0
+  },
+  "migrations": [
+    "supabase/migrations/20261102000001_push_welcome_type.sql",
+    "supabase/migrations/20261102000002_push_explicit_activation_welcome.sql"
+  ],
+  "rollback": "supabase/rollbacks/20261102000002_disable_push_explicit_activation.sql",
+  "validation": {
+    "npm test": {
+      "tests": 1939,
+      "pass": 1939,
+      "fail": 0,
+      "log": "/tmp/push-direct/full-js-final.log"
+    },
+    "npm run test:functions": {
+      "tests": 156,
+      "pass": 153,
+      "fail": 0,
+      "skipped": 3,
+      "log": "/tmp/push-direct/functions.log"
+    },
+    "PG_TEST_CONTAINER=evolutus_push_activation_test PG_TEST_USER=supabase_admin node --test --test-concurrency=1 supabase/functions/*/*.test.js": {
+      "tests": 156,
+      "pass": 156,
+      "fail": 0,
+      "skipped": 0,
+      "log": "/tmp/push-direct/functions-final.log"
+    },
+    "focused service/calendar/logout": {
+      "tests": 65,
+      "pass": 65,
+      "fail": 0,
+      "log": "/tmp/push-direct/focused-final.log"
+    },
+    "npm run lint": {
+      "errors": 0,
+      "preexistingWarnings": 14,
+      "log": "/tmp/push-direct/lint-final.log"
+    },
+    "npm run format:check": {
+      "status": "preexisting_failure",
+      "files": 122,
+      "changedFilesFormat": "pass",
+      "log": "/tmp/push-direct/format-final.log"
+    },
+    "npm run build": {
+      "status": "pass",
+      "log": "/tmp/push-direct/build-final.log"
+    },
+    "npm run budget": {
+      "status": "pass",
+      "log": "/tmp/push-direct/budget-final.log"
+    },
+    "git diff --check": {
+      "status": "pass"
+    },
+    "sql": {
+      "suites": [
+        {
+          "suite": "push_explicit_activation",
+          "pass": true,
+          "assertions": 58
+        },
+        {
+          "suite": "web_push_notifications",
+          "pass": true,
+          "assertions": 33
+        },
+        {
+          "suite": "web_push_hardening",
+          "pass": true,
+          "assertions": 44
+        },
+        {
+          "suite": "push_delivery_telemetry",
+          "pass": true,
+          "assertions": 43
+        },
+        {
+          "suite": "notification_pipeline",
+          "pass": true,
+          "assertions": 70
+        },
+        {
+          "suite": "notification_antispam",
+          "pass": true,
+          "assertions": 35
+        },
+        {
+          "suite": "workout_reminders",
+          "pass": true,
+          "assertions": 79
+        },
+        {
+          "suite": "notification_security",
+          "pass": false,
+          "assertions": 61
+        },
+        {
+          "suite": "notifications_center",
+          "pass": true,
+          "assertions": 21
+        },
+        {
+          "suite": "notifications_realtime",
+          "pass": true,
+          "assertions": 8
+        },
+        {
+          "suite": "comment_like_notifications",
+          "pass": true,
+          "assertions": 25
+        }
+      ],
+      "totalAssertions": 477,
+      "failedAssertions": 1,
+      "newActivationAssertionsPassed": 58
+    },
+    "rollback": {
+      "status": "pass",
+      "rpcRevoked": true,
+      "welcomeDisabled": true,
+      "pendingWelcomeCancelled": true,
+      "ordinaryPipelineContinues": true,
+      "additiveSchemaRetained": true
+    }
+  },
+  "preexistingSqlFailure": {
+    "suite": "notification_security_test.sql",
+    "assertion": 52,
+    "functions": [
+      "public.cast_vote",
+      "public.create_promotion"
+    ],
+    "actualSearchPath": "public",
+    "reproducedWithoutNewMigrations": true,
+    "baselineLog": "/tmp/push-direct/baseline-security.log",
+    "baselineSetupLog": "/tmp/push-direct/baseline-setup.log",
+    "severity": "medium: failed existing security assertion; outside this feature"
+  },
+  "browser": {
+    "artifacts": "/tmp/push-home-browser-vcncIp",
+    "checks": 29,
+    "results": [
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 320,
+        "dark": false,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 320,
+        "dark": true,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 390,
+        "dark": false,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 390,
+        "dark": true,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 430,
+        "dark": false,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 430,
+        "dark": true,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 1366,
+        "dark": false,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 1366,
+        "dark": true,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "click/gesture/profile/disable/home",
+        "result": "pass"
+      },
+      {
+        "scenario": "granted/delayed-confirmation",
+        "topBefore": 186.15625,
+        "topAfter": 186.15625,
+        "calls": [
+          "get_my_push_status"
+        ],
+        "cls": 0.00048353513770180444
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "permission": "denied"
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "unsupported": true
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "optedOut": true,
+          "permission": "granted"
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "permission": "granted",
+          "auth": {
+            "offlineLocal": true
+          }
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "permission": "granted",
+          "auth": {
+            "serverAccessAllowed": false
+          }
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "permission": "granted",
+          "auth": {
+            "profile": {
+              "accountStatus": "disabled"
+            }
+          }
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "permission": "granted",
+          "auth": {
+            "profile": {
+              "accountStatus": "active",
+              "role": "user"
+            }
+          }
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "permission": "granted",
+          "auth": {
+            "user": null
+          }
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "open-home-midnight-plus-12h",
+        "result": "pass"
+      },
+      {
+        "scenario": "status-error-safe",
+        "result": "pass"
+      },
+      {
+        "scenario": "registration-error-no-false-success",
+        "result": "pass"
+      },
+      {
+        "scenario": "ios-installation-guidance",
+        "result": "pass"
+      },
+      {
+        "scenario": "real-storage-event-and-account-isolation",
+        "result": "pass"
+      },
+      {
+        "scenario": "direct-home-activation",
+        "options": {
+          "permission": "granted",
+          "enabled": false
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "direct-home-activation",
+        "options": {
+          "permission": "granted",
+          "enabled": false,
+          "local": true
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "direct-home-activation",
+        "options": {
+          "welcome": "unavailable"
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "direct-home-activation",
+        "options": {
+          "permissionVisibilityChange": true,
+          "delay": 120
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "temporary-success-no-extra-welcome",
+        "result": "pass"
+      },
+      {
+        "scenario": "denied-after-click-contextual-feedback",
+        "result": "pass"
+      }
+    ]
+  },
+  "performance": {
+    "bootGzipBefore": {
+      "jsBytes": 310015,
+      "cssBytes": 74043,
+      "files": 4
+    },
+    "bootGzipAfter": {
+      "jsBytes": 310124,
+      "cssBytes": 74043,
+      "files": 4
+    },
+    "homeChunkBeforeKB": {
+      "js": 42.44,
+      "jsGzip": 14.98,
+      "css": 1.68,
+      "cssGzip": 0.65
+    },
+    "homeChunkAfterKB": {
+      "js": 42.57,
+      "jsGzip": 14.96,
+      "css": 1.92,
+      "cssGzip": 0.75
+    },
+    "defaultRenderRpc": 0,
+    "explicitActivationRpc": 2,
+    "extraRpcDuringPermissionVisibilityChange": 0,
+    "newPolling": false,
+    "newDependencies": false
+  },
+  "serverLimits": {
+    "welcomeTtlSeconds": 600,
+    "minSecondsBetweenDeviceWelcomes": 86400,
+    "accountHourCap": 5,
+    "accountUtcDayCap": 10
+  },
+  "realVsSimulated": {
+    "postgresMigrationsLocksConcurrencyAndAcks": "real isolated Docker, no network, cron disabled",
+    "workerAndServiceWorkerCode": "actual worker implementation and SW template in VM",
+    "providerDelivery": "simulated, not homologated",
+    "chromium": "real renderer; Push/session/RPC simulated",
+    "physicalAndroidSafariFirefox": "not validated",
+    "productionSmoke": "not authorized or run"
+  },
+  "unchanged": [
+    "daily-dismissal schedule and its tests",
+    "Service Worker source",
+    "PWA plugin",
+    "package.json",
+    "package-lock.json"
+  ]
+}

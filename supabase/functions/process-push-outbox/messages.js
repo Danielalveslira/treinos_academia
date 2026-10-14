@@ -14,7 +14,9 @@ export const LIMITS = { title: 56, body: 110 }
 
 // Corta por pontos de código (não parte emoji) e, quando possível, em limite de palavra.
 export function fit(text, max) {
-  const value = String(text ?? '').replace(/\s+/g, ' ').trim()
+  const value = String(text ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
   const chars = Array.from(value)
   if (chars.length <= max) return value
   const window = chars.slice(0, max - 1)
@@ -31,6 +33,12 @@ export function pickIndex(seq, size) {
 }
 
 const POOLS = {
+  push_welcome: [
+    [
+      '💚 Boas-vindas ao Evolutus!',
+      'Obrigado por usar o Evolutus! As notificações estão ativadas neste dispositivo.',
+    ],
+  ],
   post_like: {
     single: [
       ['🔥 Seu post chamou atenção', '{actor} curtiu sua publicação.'],
@@ -104,7 +112,9 @@ const POOLS = {
   economy_payment: [['✅ Pagamento confirmado', 'Sua compra foi processada. Toque para conferir.']],
   economy_cash: [['🪙 Você recebeu EvoCash', 'Abra o Evolutus para conferir.']],
   economy_debit: [['Atualização na sua carteira', 'Houve um ajuste. Toque para conferir.']],
-  moderation_notice: [['Aviso da conta', 'Você recebeu uma atualização na sua conta. Toque para conferir.']],
+  moderation_notice: [
+    ['Aviso da conta', 'Você recebeu uma atualização na sua conta. Toque para conferir.'],
+  ],
   report_resolved: [['Atendimento', 'Seu caso teve uma atualização. Toque para ver.']],
   admin_report: {
     single: [['🛡️ Moderação', 'Há uma nova denúncia aguardando análise.']],
@@ -175,7 +185,9 @@ function whoLabel(job) {
 
 function formatAmount(value) {
   const amount = Number(value)
-  return Number.isFinite(amount) && amount > 0 && amount <= 1e9 ? amount.toLocaleString('pt-BR') : null
+  return Number.isFinite(amount) && amount > 0 && amount <= 1e9
+    ? amount.toLocaleString('pt-BR')
+    : null
 }
 
 function fill(template, values) {
@@ -203,13 +215,19 @@ export function renderPushMessage(job) {
   if (type === 'post_like' || type === 'comment_like') {
     const pool = POOLS[type]
     pair = isGroup(job) ? select(pool.group, job.variant) : select(pool.single, job.variant)
-  } else if (type === 'admin_report' || type === 'admin_appeal' || type === 'admin_privacy_request') {
+  } else if (
+    type === 'admin_report' ||
+    type === 'admin_appeal' ||
+    type === 'admin_privacy_request'
+  ) {
     const pool = POOLS[type]
     pair = isGroup(job) ? pool.group[0] : pool.single[0]
   } else if (type === 'economy_credit') {
     const amount = formatAmount(metadata.amount)
     if (metadata.asset === ASSET_COIN) {
-      pair = amount ? select(POOLS.economy_coin, job.variant) : select(POOLS.economy_coin_generic, job.variant)
+      pair = amount
+        ? select(POOLS.economy_coin, job.variant)
+        : select(POOLS.economy_coin_generic, job.variant)
     } else if (metadata.reason === 'cash_purchase_confirmed') {
       pair = POOLS.economy_payment[0]
     } else {
@@ -218,7 +236,11 @@ export function renderPushMessage(job) {
   } else if (type === 'workout_reminder_before' || type === 'workout_reminder_start') {
     const variant = Number.isInteger(metadata.variant) ? metadata.variant : job.variant
     pair = workoutReminderMessage(type, variant)
-  } else if (type === 'admin_broadcast' && typeof metadata.title === 'string' && typeof metadata.body === 'string') {
+  } else if (
+    type === 'admin_broadcast' &&
+    typeof metadata.title === 'string' &&
+    typeof metadata.body === 'string'
+  ) {
     pair = [metadata.title, metadata.body]
   } else if (Array.isArray(POOLS[type])) {
     pair = select(POOLS[type], job.variant)
@@ -231,5 +253,8 @@ export function renderPushMessage(job) {
     n: Number.isInteger(job.group_count) ? job.group_count : 1,
     amount: formatAmount(metadata.amount) ?? '',
   }
-  return { title: fit(fill(title, values), LIMITS.title), body: fit(fill(body, values), LIMITS.body) }
+  return {
+    title: fit(fill(title, values), LIMITS.title),
+    body: fit(fill(body, values), LIMITS.body),
+  }
 }

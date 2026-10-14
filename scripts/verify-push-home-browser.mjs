@@ -73,6 +73,7 @@ await build({
         const f = window.fixture; f.calls.push(name)
         if (f.delay && name === 'get_my_push_status') await new Promise(r => setTimeout(r, f.delay))
         if (f.fail) return {error: new Error('Network unavailable')}
+        if (name === 'activate_push_subscription') { f.registered = true; f.enabled = true; f.welcomes++; return {data:{welcome:f.welcome || 'queued'},error:null} }
         if (name === 'register_push_subscription') f.registered = true
         if (name === 'unregister_push_subscription') f.registered = false
         return {data: name === 'get_my_push_status' ? {enabled: f.enabled, thisDevice: f.registered && Boolean(args.p_endpoint), activeSubscriptions: f.other ? 1 : Number(f.registered)} : 'id', error: null}
@@ -121,6 +122,7 @@ async function pageFor(options = {}) {
       prompts: 0,
       unsubscribes: 0,
       subscriptions: 0,
+      welcomes: 0,
       registered: false,
       enabled: true,
       permission: 'default',
@@ -174,8 +176,9 @@ async function pageFor(options = {}) {
         requestPermission: () => {
           f.prompts++
           f.gesture = navigator.userActivation.isActive
-          f.permission = 'granted'
-          return Promise.resolve('granted')
+          f.permission = f.permissionResult || 'granted'
+          if (f.permissionVisibilityChange) document.dispatchEvent(new Event('visibilitychange'))
+          return Promise.resolve(f.permission)
         },
       },
     })
@@ -244,7 +247,10 @@ try {
   {
     const { page, errors } = await pageFor()
     await page.getByRole('button', { name: 'Ativar', exact: true }).click()
-    await page.locator('.push-activation-notice').waitFor({ state: 'detached' })
+    await page.locator('section.push-activation-notice').waitFor({ state: 'detached' })
+    await page
+      .getByText('Notificações ativadas! Teste de boas-vindas solicitado.', { exact: true })
+      .waitFor()
     assert.deepEqual(
       await page.evaluate(() => ({
         prompts: fixture.prompts,
@@ -256,7 +262,7 @@ try {
         prompts: 1,
         gesture: true,
         subscriptions: 1,
-        calls: ['register_push_subscription', 'get_my_push_status'],
+        calls: ['activate_push_subscription', 'get_my_push_status'],
       }
     )
     await page.evaluate(() => fixture.navigate('profile'))
@@ -282,9 +288,7 @@ try {
       registered: true,
       delay: 1200,
     })
-    await page
-      .getByText('Verificando as notificações deste dispositivo…', { exact: true })
-      .waitFor()
+    await page.getByRole('button', { name: 'Ativar', exact: true }).waitFor()
     const topBefore = await page
       .locator('#workout')
       .evaluate((el) => el.getBoundingClientRect().top)
@@ -328,11 +332,11 @@ try {
   {
     const { page } = await pageFor({ permission: 'granted', local: true, fail: true })
     await page
-      .getByText('Não foi possível verificar as notificações. Tente novamente pelo Perfil.', {
+      .getByText('Não foi possível verificar. Tente ativar novamente.', {
         exact: true,
       })
       .waitFor()
-    assert.equal(await page.getByRole('button', { name: 'Ativar', exact: true }).count(), 0)
+    assert.equal(await page.getByRole('button', { name: 'Ativar', exact: true }).count(), 1)
     assert.equal(await page.evaluate(() => fixture.prompts), 0)
     results.push({ scenario: 'status-error-safe', result: 'pass' })
     await page.close()
@@ -347,7 +351,9 @@ try {
       )
       .waitFor()
     assert.equal(
-      await page.getByText('Notificações ativadas neste dispositivo.', { exact: true }).count(),
+      await page
+        .getByText('Notificações ativadas! Teste de boas-vindas solicitado.', { exact: true })
+        .count(),
       0
     )
     assert.equal(await page.getByRole('button', { name: 'Ativar', exact: true }).count(), 1)
@@ -391,6 +397,58 @@ try {
     await page.getByRole('button', { name: 'Ativar', exact: true }).waitFor()
     assert.deepEqual(await page.evaluate(() => [fixture.calls, fixture.prompts]), [[], 0])
     results.push({ scenario: 'real-storage-event-and-account-isolation', result: 'pass' })
+    await page.close()
+  }
+  for (const options of [
+    { permission: 'granted', enabled: false },
+    { permission: 'granted', enabled: false, local: true },
+    { welcome: 'unavailable' },
+    { permissionVisibilityChange: true, delay: 120 },
+  ]) {
+    const { page } = await pageFor(options)
+    await page.getByRole('button', { name: 'Ativar', exact: true }).click()
+    const message =
+      options.welcome === 'unavailable'
+        ? 'Notificações ativadas! Não foi possível solicitar o teste agora.'
+        : 'Notificações ativadas! Teste de boas-vindas solicitado.'
+    await page.getByText(message, { exact: true }).waitFor()
+    assert.equal(await page.getByText('Ver no Perfil', { exact: true }).count(), 0)
+    assert.equal(await page.evaluate(() => fixture.welcomes), 1)
+    assert.equal(
+      await page.evaluate(() => fixture.prompts),
+      options.permission === 'granted' ? 0 : 1
+    )
+    assert.equal(await page.locator('section.push-activation-notice').count(), 0)
+    results.push({ scenario: 'direct-home-activation', options, result: 'pass' })
+    await page.close()
+  }
+  {
+    const { page } = await pageFor()
+    await page.clock.install()
+    await page.getByRole('button', { name: 'Ativar', exact: true }).click()
+    await page
+      .getByText('Notificações ativadas! Teste de boas-vindas solicitado.', { exact: true })
+      .waitFor()
+    await page.clock.fastForward(8100)
+    assert.equal(await page.locator('.push-notice-success').count(), 0)
+    assert.equal(await page.evaluate(() => fixture.welcomes), 1)
+    results.push({ scenario: 'temporary-success-no-extra-welcome', result: 'pass' })
+    await page.close()
+  }
+  {
+    const { page } = await pageFor({ permissionResult: 'denied' })
+    await page.getByRole('button', { name: 'Ativar', exact: true }).click()
+    await page
+      .getByText('Permissão bloqueada. Libere notificações nas configurações do navegador.', {
+        exact: true,
+      })
+      .waitFor()
+    assert.deepEqual(
+      await page.evaluate(() => [fixture.prompts, fixture.calls, fixture.welcomes]),
+      [1, [], 0]
+    )
+    assert.equal(await page.getByRole('button', { name: 'Ativar', exact: true }).count(), 0)
+    results.push({ scenario: 'denied-after-click-contextual-feedback', result: 'pass' })
     await page.close()
   }
   await writeFile(join(dir, 'results.json'), JSON.stringify(results, null, 2))

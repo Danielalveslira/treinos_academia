@@ -181,10 +181,13 @@ async function pushRpc(name, args) {
   }
 }
 
-async function registerSubscription(subscription) {
-  const { error } = await pushRpc('register_push_subscription', subscriptionParams(subscription))
+async function registerSubscription(subscription, explicit = false) {
+  const { data, error } = await pushRpc(
+    explicit ? 'activate_push_subscription' : 'register_push_subscription',
+    subscriptionParams(subscription)
+  )
   if (error) throw error
-  return subscription
+  return explicit ? data : subscription
 }
 
 // Estado DESTE dispositivo/contexto (navegador ou PWA instalado): permissão, Service Worker e
@@ -359,7 +362,7 @@ export function enablePushNotifications({ userId = null } = {}) {
         registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })
       )
     await assertIdentity(userId, generation)
-    await step('register', () => registerSubscription(subscription))
+    const activation = await step('register', () => registerSubscription(subscription, true))
     await assertIdentity(userId, generation)
     const status = await step('confirm', () => getPushStatus(subscription.endpoint))
     await assertIdentity(userId, generation)
@@ -378,7 +381,7 @@ export function enablePushNotifications({ userId = null } = {}) {
       value: { support: pushSupport(), permission, endpoint: subscription.endpoint, status },
     }
     for (const listener of listeners) listener()
-    return { permission, subscription, status }
+    return { permission, subscription, status, welcome: activation?.welcome || 'unavailable' }
   })
   enabling = { userId, promise }
   promise
@@ -392,6 +395,7 @@ export function enablePushNotifications({ userId = null } = {}) {
 // Shared, bounded cache and in-flight read for Layout, Home and Profile. Default/denied never
 // reach an RPC. Reconciliation only runs under an already granted permission and enabled preference.
 export function readPushDevice({ userId = null, refresh = false } = {}) {
+  if (enabling?.userId === userId) return enabling.promise.then(() => readPushDevice({ userId }))
   if (reading?.userId === userId && reading.generation === revision) return reading.promise
   const permission = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
   if (
@@ -431,7 +435,7 @@ export function readPushDevice({ userId = null, refresh = false } = {}) {
       local.endpoint = null
     let status = await getPushStatus(local.endpoint)
     await assertIdentity(userId, generation)
-    if (status?.enabled === true && !status.thisDevice) {
+    if (status?.enabled === true && status.registrationAllowed !== false && !status.thisDevice) {
       const registration = await currentRegistration()
       if (registration) {
         const key = import.meta.env.VITE_VAPID_PUBLIC_KEY
@@ -486,8 +490,12 @@ export async function syncPushSubscription({ userId = null } = {}) {
 }
 
 export function pushErrorMessage(error) {
+  if (error?.code === 'PGRST202')
+    return 'A ativação está sendo atualizada. Tente novamente em instantes.'
+  if (error?.message === 'PUSH_ENDPOINT_IN_USE')
+    return 'Este dispositivo ainda está vinculado a outra sessão. Saia e entre novamente.'
   if (error?.code === 'push-preference-disabled')
-    return 'As notificações da conta estão desligadas. Consulte as preferências no Perfil.'
+    return 'Não foi possível confirmar a preferência de notificações. Tente novamente.'
   if (error?.code === 'vapid-not-configured') return 'Push ainda não foi configurado pelo Evolutus.'
   if (error?.code === 'service-worker-unavailable')
     return 'O app ainda não está pronto. Recarregue e tente novamente.'

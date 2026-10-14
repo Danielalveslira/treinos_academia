@@ -38,8 +38,21 @@ export function useDevicePush(userId) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [failed, setFailed] = useState(false)
+  const [success, setSuccess] = useState(false)
   const lifetime = useRef(0)
   const inFlight = useRef(false)
+  const actionLifetime = useRef(0)
+  useEffect(() => {
+    actionLifetime.current += 1
+    inFlight.current = false
+    setBusy(false)
+    setSuccess(false)
+    setMessage('')
+    setFailed(false)
+    return () => {
+      actionLifetime.current += 1
+    }
+  }, [allowed, userId])
   const [version, setVersion] = useState(0)
   const support = pushSupport()
   const permission = typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
@@ -89,16 +102,17 @@ export function useDevicePush(userId) {
   function act(disable = false) {
     if (!allowed || inFlight.current) return
     inFlight.current = true
-    const generation = lifetime.current
+    const generation = actionLifetime.current
     setBusy(true)
     setMessage('')
+    setSuccess(false)
     // Do not await anything before the service starts the native permission request.
     const operation = disable
       ? disablePushNotifications({ explicit: true, userId })
       : enablePushNotifications({ userId })
     operation
       .then((result) => {
-        if (lifetime.current !== generation) return
+        if (actionLifetime.current !== generation) return
         if (disable) {
           setDevice(null)
           setMessage('Notificações desativadas neste dispositivo.')
@@ -110,7 +124,18 @@ export function useDevicePush(userId) {
             status: result.status,
             userId,
           })
-          setMessage('Notificações ativadas neste dispositivo.')
+          setSuccess(true)
+          const welcome =
+            result.welcome === 'queued' || result.welcome === 'already_requested'
+              ? 'Teste de boas-vindas solicitado.'
+              : result.welcome === 'cooldown'
+                ? 'O teste de boas-vindas já foi solicitado recentemente.'
+                : result.welcome === 'rate_limited'
+                  ? 'O teste atingiu o limite temporário de solicitações.'
+                  : result.welcome === 'category_disabled'
+                    ? 'O teste está desabilitado nas preferências da conta.'
+                    : 'Não foi possível solicitar o teste agora.'
+          setMessage(`Notificações ativadas! ${welcome}`)
         } else {
           setMessage(
             result.permission === 'denied'
@@ -120,11 +145,11 @@ export function useDevicePush(userId) {
         }
       })
       .catch((error) => {
-        if (lifetime.current === generation) setMessage(pushErrorMessage(error))
+        if (actionLifetime.current === generation) setMessage(pushErrorMessage(error))
       })
       .finally(() => {
-        inFlight.current = false
-        if (lifetime.current === generation) {
+        if (actionLifetime.current === generation) {
+          inFlight.current = false
           setBusy(false)
           setVersion((v) => v + 1)
         }
@@ -139,6 +164,7 @@ export function useDevicePush(userId) {
     busy,
     message,
     failed,
+    success,
     device: current,
     active: Boolean(
       !optedOut && current && isDevicePushActive({ ...current, permission }, current.status)
