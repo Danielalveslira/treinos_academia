@@ -243,7 +243,8 @@ async function coldStartWithoutManualWarmup(browser, origin, outDir) {
   await page.getByLabel('Peso (kg)').fill('30')
   await page.getByLabel('Repetições').fill('8')
   await page.getByRole('button', { name: 'Concluir série' }).click()
-  await page.getByRole('button', { name: 'Finalizar exercício' }).click()
+  // The current form saves each completed set immediately (rowSaver). There is
+  // no separate "Finalizar exercício" button; verify the persisted outbox below.
   await page.waitForFunction(async ({ dbName, dbVersion }) => new Promise((resolveDone) => {
     const open = indexedDB.open(dbName, dbVersion)
     open.onsuccess = () => {
@@ -359,7 +360,7 @@ async function main() {
     await page.getByLabel('Peso (kg)').fill('25')
     await page.getByLabel('Repetições').fill('10')
     await page.getByRole('button', { name: 'Concluir série' }).click()
-    await page.getByRole('button', { name: 'Finalizar exercício' }).click()
+    // Each completed set is already saved; the outbox is the assertion of success.
     await page.waitForFunction(async ({ dbName, dbVersion }) => new Promise((resolveDone) => {
       const open = indexedDB.open(dbName, dbVersion)
       open.onsuccess = () => {

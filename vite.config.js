@@ -5,6 +5,8 @@ import { pwaPlugin } from './scripts/pwa-plugin.js'
 export default defineConfig({
   plugins: [react(), pwaPlugin()],
   build: {
+    // Keep the previous Vite 5 browser contract while upgrading the build tools.
+    target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14'],
     rollupOptions: {
       output: {
         // Bibliotecas grandes e estáveis em chunks próprios: ficam em cache entre deploys (o hash
