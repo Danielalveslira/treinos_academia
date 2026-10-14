@@ -1,0 +1,354 @@
+{
+  "date": "2026-10-14",
+  "decision": "GO — 3 audits verified in production",
+  "base_sha": "5231cc45995ca4683d848dd13e3be7e1f999618a",
+  "commits": {
+    "AUD07": "d3940477c9cfc14979c0dbfb5ce8ca088ae95213",
+    "AUD08": "4c12dc2fa8748f189a711430aa5b0aebfea6aeaf",
+    "AUD09": "3a3731267c83cd05d36adddc2463a7b74ed8a27c"
+  },
+  "supabase": {
+    "ref": "ywrjojrjgozdfpddkkuy",
+    "migration": "20261101000001_aud07_status_publication_rate.sql",
+    "journal_before": 132,
+    "journal_after": 133,
+    "last": {
+      "name": "aud07_status_publication_rate",
+      "version": "20261101000001"
+    },
+    "unknown_migrations": [],
+    "other_migrations_applied": false,
+    "quota_rls": true
+  },
+  "quota": {
+    "minute": 5,
+    "hour": 30,
+    "day": 100,
+    "windows": "fixed UTC",
+    "api_checks": 21,
+    "concurrent_requests": 24,
+    "accepted": 5,
+    "rejected_http429": 19,
+    "http_burst_p95_ms": 216.36,
+    "independent_account_during_row_lock": true,
+    "sql_before": {
+      "p95_ms": 2.5868,
+      "mean_ms": 2.00722,
+      "samples": 50
+    },
+    "sql_after": {
+      "p95_ms": 2.94685,
+      "mean_ms": 2.16528,
+      "samples": 50
+    },
+    "production_smoke": {
+      "checks": 7,
+      "created": 5,
+      "existing_posts_unchanged": true,
+      "financial_rewards": 0,
+      "fixtures": "rollback",
+      "quota": 5,
+      "sixth_denied": true
+    }
+  },
+  "unchanged": {
+    "posts": true,
+    "votes": true,
+    "ledger": true,
+    "purchases": true,
+    "wallets": true,
+    "promotions": true,
+    "invariant_functions": true,
+    "status_policies": true,
+    "vote_policies": true,
+    "status_grants": true,
+    "crons": true
+  },
+  "audit_before": {
+    "info": 0,
+    "low": 0,
+    "moderate": 1,
+    "high": 3,
+    "critical": 0,
+    "total": 4
+  },
+  "audit_after": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "audit_production_after": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "npm_ci": "PASS",
+  "versions": {
+    "vite": "7.3.7",
+    "esbuild": "0.28.2",
+    "brace-expansion": "1.1.21",
+    "source-map-js": "1.2.2",
+    "plugin-react": "4.7.0 (unchanged)"
+  },
+  "bundle_before": {
+    "bootJsGzipBytes": 307092,
+    "bootCssGzipBytes": 74055,
+    "bootFiles": 4
+  },
+  "bundle_after": {
+    "bootJsGzipBytes": 308096,
+    "bootCssGzipBytes": 74043,
+    "bootFiles": 4
+  },
+  "budget_tolerance_unchanged": 0.03,
+  "legacy_budget_initial_failures": [
+    "bootCssGzipBytes: 74055 B > limite 73157 B (baseline 71027 B + 3%)"
+  ],
+  "tests": {
+    "javascript": 1913,
+    "edge": 152,
+    "scripts": 23,
+    "sql": 744,
+    "voting_api": 96,
+    "rate_api": 21,
+    "fail": 0,
+    "skip": 0,
+    "lint_errors": 0,
+    "lint_existing_warnings": 14,
+    "build": "PASS",
+    "budget": "PASS",
+    "offline_browser": "PASS (41 essential assets)"
+  },
+  "vercel_functional_release": {
+    "projectId": "prj_WYVlCGYu021KZCrqfp62qRH2cbIE",
+    "expectedSha": "3a3731267c83cd05d36adddc2463a7b74ed8a27c",
+    "release": {
+      "id": "dpl_44MrX3SQVPqdqM2887HDaqNDbh1W",
+      "sha": "3a3731267c83cd05d36adddc2463a7b74ed8a27c",
+      "state": "READY",
+      "url": "treinosacademia-46yjw07xb-danielalvesliras-projects.vercel.app",
+      "target": "production"
+    }
+  },
+  "http_verified": {
+    "origin": "https://treinosacademia-ten.vercel.app",
+    "routes": 14,
+    "results": [
+      {
+        "path": "/",
+        "status": 200,
+        "cacheControl": "public, max-age=0, must-revalidate",
+        "contentType": "text/html; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/login",
+        "status": 200,
+        "cacheControl": "public, max-age=0, must-revalidate",
+        "contentType": "text/html; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/cadastro",
+        "status": 200,
+        "cacheControl": "public, max-age=0, must-revalidate",
+        "contentType": "text/html; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/esqueci-senha",
+        "status": 200,
+        "cacheControl": "public, max-age=0, must-revalidate",
+        "contentType": "text/html; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/comunidades/00000000-0000-0000-0000-000000000000",
+        "status": 200,
+        "cacheControl": "public, max-age=0, must-revalidate",
+        "contentType": "text/html; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/manifest.webmanifest",
+        "status": 200,
+        "cacheControl": "public, max-age=0, must-revalidate",
+        "contentType": "application/manifest+json; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/sw.js",
+        "status": 200,
+        "cacheControl": "no-cache",
+        "contentType": "application/javascript; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/boot-theme.js",
+        "status": 200,
+        "cacheControl": "no-cache",
+        "contentType": "application/javascript; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/boot-fallback.js",
+        "status": 200,
+        "cacheControl": "no-cache",
+        "contentType": "application/javascript; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/icons/icon-192.png",
+        "status": 200,
+        "cacheControl": "public, max-age=0, must-revalidate",
+        "contentType": "image/png",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/assets/index-DAzNlo8T.js",
+        "status": 200,
+        "cacheControl": "public, max-age=31536000, immutable",
+        "contentType": "application/javascript; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/assets/primer-e7IFQoym.js",
+        "status": 200,
+        "cacheControl": "public, max-age=31536000, immutable",
+        "contentType": "application/javascript; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/assets/primer-DTSh1TNY.css",
+        "status": 200,
+        "cacheControl": "public, max-age=31536000, immutable",
+        "contentType": "text/css; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      },
+      {
+        "path": "/assets/index-DtEjj3U5.css",
+        "status": 200,
+        "cacheControl": "public, max-age=31536000, immutable",
+        "contentType": "text/css; charset=utf-8",
+        "securityHeaders": {
+          "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests",
+          "x-content-type-options": "nosniff",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "x-frame-options": "DENY",
+          "permissions-policy": "camera=(), microphone=(), geolocation=()"
+        }
+      }
+    ]
+  },
+  "browser_production": {
+    "origin": "https://treinosacademia-ten.vercel.app",
+    "fixturesOnly": true,
+    "results": [
+      {
+        "mode": "enforce",
+        "communityCases": 10,
+        "cspViolations": 0
+      },
+      {
+        "authScreens": 3,
+        "serviceWorker": true,
+        "pageErrors": 0,
+        "cspViolations": 0,
+        "injectedInlineScriptBlocked": true
+      }
+    ]
+  },
+  "csp_local_report_only": "PASS 10 community cases",
+  "csp_local_enforced": "PASS 10 community cases + Auth + SW + injection",
+  "auth06_modified": false,
+  "edge_deployed": false,
+  "financial_rules_modified": false,
+  "historical_cleanup": false,
+  "unrelated_changes_preserved": true,
+  "blockers": [],
+  "logs": "/tmp/aud789"
+}

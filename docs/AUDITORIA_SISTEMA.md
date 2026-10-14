@@ -63,6 +63,8 @@
 - **Correção:** impor limite transacional por usuário antes da gravação, preferencialmente na RPC de publicação.
 - **Validação:** enviar requisições concorrentes acima da quota e confirmar que somente o volume permitido é gravado.
 
+**14/10/2026 — corrigida em produção:** migration `20261101000001_aud07_status_publication_rate.sql`, quotas 5/minuto, 30/hora e 100/dia UTC por usuário, com concorrência, rollback e clientes legados validados. Journal remoto 133 versões; smoke sintético transacional sem recompensa aprovado. Ver `releases/AUD_07_08_09_CORRECOES.md`.
+
 ### AUD-08 — Média — Dependências de desenvolvimento com vulnerabilidades conhecidas
 
 `npm audit --json` retornou **4 pacotes afetados: 3 classificados como high e 1 moderate**. Prioridade contextual desta auditoria: média, pois as cadeias identificadas são de ferramentas de desenvolvimento/build; não foi demonstrada exploração no site estático publicado.
@@ -78,11 +80,15 @@
 
 As condições e versões afetadas estão nos avisos de [Vite](https://github.com/vitejs/vite/security/advisories/GHSA-4w7w-66w2-5vf9), [esbuild](https://github.com/evanw/esbuild/security/advisories/GHSA-67mh-4wv8-2f99), [brace-expansion](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr) e [source-map-js](https://github.com/advisories/GHSA-68fv-2mgg-jv7q).
 
+**14/10/2026 — AUD-08 corrigida:** Vite 7.3.7 e transitivas corrigidas; audit completo e de produção com zero vulnerabilidades, npm ci/build/testes/PWA aprovados e build Vercel READY. Ver `releases/AUD_07_08_09_CORRECOES.md`.
+
 ### AUD-09 — Baixa — Configuração de hospedagem não declara headers de proteção
 
 - **Evidência:** `vercel.json:8` configura apenas cache; não declara CSP, `frame-ancestors`/`X-Frame-Options`, `X-Content-Type-Options` ou `Referrer-Policy`.
 - **Impacto:** proteção contra enquadramento em sites externos e defesa adicional contra injeções não estão garantidas pelo repositório. Headers efetivos podem ser adicionados pela infraestrutura, que não foi consultada.
 - **Correção:** configurar headers globais e CSP compatível com os recursos utilizados; conferir respostas reais do ambiente publicado.
+
+**14/10/2026 — AUD-09 corrigida em produção:** CSP bloqueante e headers HTTP confirmados em 14 rotas/recursos Vercel; navegador mobile/desktop, Auth, SW e bloqueio de script injetado aprovados. Scripts inline do boot externalizados; caches preservados. Ver `releases/AUD_07_08_09_CORRECOES.md`.
 
 ### AUD-10 — Baixa — Teste do painel depende da data real e falha
 
