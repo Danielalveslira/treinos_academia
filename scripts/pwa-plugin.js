@@ -3,6 +3,8 @@ import { readFileSync } from 'node:fs'
 
 // Arquivos de public/ sem hash no nome: entram no cache do shell (versionado por build).
 const PUBLIC_SHELL_FILES = [
+  'boot-theme.js',
+  'boot-fallback.js',
   'manifest.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png',
