@@ -42,7 +42,7 @@ create or replace function pg_temp.as_user(p text) returns void language sql as
 -- === 1) metadados de segurança das RPCs novas (como superusuário) ===
 select is((select prosecdef from pg_proc where oid = 'public.get_poll_results_batch(uuid[])'::regprocedure), true, 'get_poll_results_batch é SECURITY DEFINER (precisa ler contagens que o RLS esconde)');
 select is((select prosecdef from pg_proc where oid = 'public.count_workout_participants_batch(uuid[])'::regprocedure), true, 'count_workout_participants_batch é SECURITY DEFINER');
-select ok((select proconfig::text like '%search_path=public, pg_temp%' from pg_proc where oid = 'public.get_poll_results_batch(uuid[])'::regprocedure), 'get_poll_results_batch tem search_path fixo');
+select ok((select proconfig @> array['search_path=""'] from pg_proc where oid = 'public.get_poll_results_batch(uuid[])'::regprocedure), 'get_poll_results_batch tem search_path vazio e nomes qualificados');
 select ok((select proconfig::text like '%search_path=public, pg_temp%' from pg_proc where oid = 'public.count_workout_participants_batch(uuid[])'::regprocedure), 'count_workout_participants_batch tem search_path fixo');
 select ok(not exists (select 1 from pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
   where p.oid in ('public.get_poll_results_batch(uuid[])'::regprocedure, 'public.count_workout_participants_batch(uuid[])'::regprocedure)
@@ -114,7 +114,7 @@ select throws_ok($$select * from public.get_poll_results_batch(array['c3000000-0
 select throws_ok($$select * from public.count_workout_participants_batch(array['c3000000-0000-0000-0000-0000000000b1']::uuid[])$$, '42501', null, 'anon: RPC de treinos negada');
 -- (anon tem o privilégio de tabela padrão do Supabase; quem barra é o RLS: nenhuma linha)
 select is((select count(*)::int from public.statuses), 0, 'anon: RLS não devolve nenhuma publicação');
-select is((select count(*)::int from public.status_votes), 0, 'anon: RLS não devolve nenhum voto');
+select throws_ok($$select * from public.status_votes$$, '42501', null, 'anon: grant de leitura de votos revogado');
 
 select * from finish();
 rollback;

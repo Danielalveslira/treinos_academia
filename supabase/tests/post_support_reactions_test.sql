@@ -9,6 +9,11 @@ insert into auth.users (
 select ('68000000-0000-0000-0000-0000000000' || n)::uuid, 'authenticated', 'authenticated',
        'u' || n || '-support@example.invalid', 'not-used', now(), '{}'::jsonb, '{}'::jsonb, now(), now()
 from unnest(array['01','02','03','04','05','06','07','08']) as n;
+-- A legitimate member must accept the published legal policy. Without this seed,
+-- the existing fail-closed supporters RPC rejects the supposed authorized actor.
+update public.users u set legal_acceptance_version=p.version,legal_acceptance_digest=p.digest,
+  legal_acceptance_accepted_at=now() from public.legal_policy p
+where p.id and p.published and u.id::text like '68000000-%';
 update public.users set role = 'superadmin' where id = '68000000-0000-0000-0000-000000000008';
 insert into public.public_profiles (user_id, username)
 select id, 'apoiador' || right(id::text, 2) from public.users where id::text like '68000000-%';

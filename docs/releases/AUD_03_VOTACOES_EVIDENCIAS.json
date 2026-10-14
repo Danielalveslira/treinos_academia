@@ -1,0 +1,1768 @@
+{
+  "date": "2026-10-14",
+  "decision": "GO — migration applied; Git/Vercel final confirmation in execution report",
+  "base_sha": "8742621dd22f7a99d09802c8d6826ab9efa73582",
+  "production_migration_applied": true,
+  "migration": "20261031000001_aud03_poll_vote_security.sql",
+  "migration_sha256": "6dcdbb1309473be178c445531b5b454f1384b63897ad6b3a47be5e9fc99339ac",
+  "before_reproductions": [
+    "nonmember INSERT",
+    "invented option",
+    "option from other poll",
+    "text publication",
+    "expired publication",
+    "cached promotion without valid history",
+    "nonstring option in JSON"
+  ],
+  "api_checks": 96,
+  "sql_suites": 18,
+  "sql_assertions": 730,
+  "javascript_pass": 1912,
+  "javascript_fail": 0,
+  "edge_file_suites_pass": 16,
+  "lint_errors": 0,
+  "lint_existing_warnings": 14,
+  "build": "PASS",
+  "sql_summary": [
+    "PASS aud03_poll_vote_security 1..20",
+    "PASS feed_batch_rpcs 1..14",
+    "PASS feed_security 1..42",
+    "PASS comments_system 1..41",
+    "PASS comments_read_access 1..9",
+    "PASS post_support_reactions 1..52",
+    "PASS supporters_failclosed 1..19",
+    "PASS workout_participants_rpc 1..37",
+    "PASS community_member_removal 1..81",
+    "PASS community_join_access_list 1..31",
+    "PASS community_promotion_security 1..15",
+    "PASS aud_01_aud_02_security 1..80",
+    "PASS aud05_status_deletion 1..32",
+    "PASS storage_cleanup_outbox 1..34",
+    "PASS status_expiration 1..35",
+    "PASS infinitepay_cash_purchases 1..57",
+    "PASS financial_case_retention 1..46",
+    "PASS account_deletion_financial_case 1..85"
+  ],
+  "benchmark": {
+    "polls": 20,
+    "voters": 200,
+    "votes": 4000,
+    "upserts": 1000,
+    "single_queries": 100,
+    "batch_queries": 100,
+    "before_ms": {
+      "upsert_ms": 3.550629,
+      "result_ms": 0.85786,
+      "batch_ms": 12.08158
+    },
+    "after_ms": {
+      "upsert_ms": 5.873196,
+      "result_ms": 1.09307,
+      "batch_ms": 21.83741
+    },
+    "fixtures_rolled_back": true,
+    "not_production_sla": true,
+    "security_not_relaxed": true
+  },
+  "local_final_counts": {
+    "votes": 0,
+    "statuses": 170,
+    "cleanup_tasks": 19
+  },
+  "local_poll_realtime_tables": [],
+  "local_journal": [
+    "20261026000001",
+    "20261026000002",
+    "20261026000003",
+    "20261026000004"
+  ],
+  "remote_journal": [
+    {
+      "name": "extensions",
+      "statement_count": 1,
+      "version": "20260926000001"
+    },
+    {
+      "name": "identity",
+      "statement_count": 7,
+      "version": "20260926000002"
+    },
+    {
+      "name": "communities",
+      "statement_count": 6,
+      "version": "20260926000003"
+    },
+    {
+      "name": "workouts",
+      "statement_count": 6,
+      "version": "20260926000004"
+    },
+    {
+      "name": "statuses",
+      "statement_count": 7,
+      "version": "20260926000005"
+    },
+    {
+      "name": "moderation",
+      "statement_count": 7,
+      "version": "20260926000006"
+    },
+    {
+      "name": "legal",
+      "statement_count": 4,
+      "version": "20260926000007"
+    },
+    {
+      "name": "server_only",
+      "statement_count": 6,
+      "version": "20260926000008"
+    },
+    {
+      "name": "rls_functions",
+      "statement_count": 4,
+      "version": "20260926000009"
+    },
+    {
+      "name": "rls_policies",
+      "statement_count": 47,
+      "version": "20260926000010"
+    },
+    {
+      "name": "profile_rpcs",
+      "statement_count": 4,
+      "version": "20260926000011"
+    },
+    {
+      "name": "account_rollback",
+      "statement_count": 3,
+      "version": "20260926000012"
+    },
+    {
+      "name": "realtime",
+      "statement_count": 1,
+      "version": "20260926000013"
+    },
+    {
+      "name": "workout_stats_rpcs",
+      "statement_count": 2,
+      "version": "20260926000014"
+    },
+    {
+      "name": "queue_deletion",
+      "statement_count": 2,
+      "version": "20260926000015"
+    },
+    {
+      "name": "storage",
+      "statement_count": 4,
+      "version": "20260926000016"
+    },
+    {
+      "name": "poll_results",
+      "statement_count": 1,
+      "version": "20260926000017"
+    },
+    {
+      "name": "status_author_badge",
+      "statement_count": 2,
+      "version": "20260926000018"
+    },
+    {
+      "name": "legal_support_admin_rpcs",
+      "statement_count": 7,
+      "version": "20260926000019"
+    },
+    {
+      "name": "support_requests_status_fk",
+      "statement_count": 2,
+      "version": "20260926000020"
+    },
+    {
+      "name": "auth_uid_guards",
+      "statement_count": 4,
+      "version": "20260926000021"
+    },
+    {
+      "name": "legal_acceptances_columns_fix",
+      "statement_count": 2,
+      "version": "20260926000022"
+    },
+    {
+      "name": "users_new_fields",
+      "statement_count": 5,
+      "version": "20260926000023"
+    },
+    {
+      "name": "update_user_profile_height",
+      "statement_count": 1,
+      "version": "20260926000024"
+    },
+    {
+      "name": "workouts_cardio_type",
+      "statement_count": 6,
+      "version": "20260926000025"
+    },
+    {
+      "name": "exercises_catalog_fields",
+      "statement_count": 4,
+      "version": "20260926000026"
+    },
+    {
+      "name": "communities_owner",
+      "statement_count": 10,
+      "version": "20260926000027"
+    },
+    {
+      "name": "community_member_ban",
+      "statement_count": 3,
+      "version": "20260926000028"
+    },
+    {
+      "name": "statuses_owner_and_post_access",
+      "statement_count": 5,
+      "version": "20260926000029"
+    },
+    {
+      "name": "support_evidence_and_deletion_review",
+      "statement_count": 12,
+      "version": "20260926000030"
+    },
+    {
+      "name": "communities_icon",
+      "statement_count": 1,
+      "version": "20260926000031"
+    },
+    {
+      "name": "save_exercise_order",
+      "statement_count": 1,
+      "version": "20260926000032"
+    },
+    {
+      "name": "submit_support_request_evidence",
+      "statement_count": 2,
+      "version": "20260926000033"
+    },
+    {
+      "name": "list_deletion_jobs_pending_only",
+      "statement_count": 1,
+      "version": "20260926000034"
+    },
+    {
+      "name": "wallet_stub",
+      "statement_count": 5,
+      "version": "20260926000035"
+    },
+    {
+      "name": "economy_wallet_ledger_activity",
+      "statement_count": 26,
+      "version": "20260927000001"
+    },
+    {
+      "name": "economy_voting_schema",
+      "statement_count": 12,
+      "version": "20260927000002"
+    },
+    {
+      "name": "economy_cast_vote",
+      "statement_count": 3,
+      "version": "20260927000003"
+    },
+    {
+      "name": "economy_reward_settlement",
+      "statement_count": 6,
+      "version": "20260927000004"
+    },
+    {
+      "name": "economy_privilege_create_community",
+      "statement_count": 4,
+      "version": "20260927000005"
+    },
+    {
+      "name": "economy_cash_purchases_promotions",
+      "statement_count": 37,
+      "version": "20260928000001"
+    },
+    {
+      "name": "community_creation_requests_fk_cascade",
+      "statement_count": 1,
+      "version": "20260928000002"
+    },
+    {
+      "name": "admin_account_deletion_review",
+      "statement_count": 5,
+      "version": "20260929000001"
+    },
+    {
+      "name": "body_measurements",
+      "statement_count": 5,
+      "version": "20260929000002"
+    },
+    {
+      "name": "progress_days",
+      "statement_count": 1,
+      "version": "20260929000003"
+    },
+    {
+      "name": "profile_avatar",
+      "statement_count": 15,
+      "version": "20260929000004"
+    },
+    {
+      "name": "professional_listings",
+      "statement_count": 38,
+      "version": "20260929000005"
+    },
+    {
+      "name": "sponsored_ads",
+      "statement_count": 11,
+      "version": "20260929000006"
+    },
+    {
+      "name": "exercise_provider_fields",
+      "statement_count": 14,
+      "version": "20260929000007"
+    },
+    {
+      "name": "exercise_catalog",
+      "statement_count": 17,
+      "version": "20260930000001"
+    },
+    {
+      "name": "deletion_worker",
+      "statement_count": 15,
+      "version": "20260930000002"
+    },
+    {
+      "name": "server_side_validations",
+      "statement_count": 6,
+      "version": "20260930000003"
+    },
+    {
+      "name": "professional_listing_drafts_owner_cascade",
+      "statement_count": 2,
+      "version": "20260930000004"
+    },
+    {
+      "name": "training_preferences",
+      "statement_count": 5,
+      "version": "20261001000001"
+    },
+    {
+      "name": "showcase_terms_acknowledgement",
+      "statement_count": 9,
+      "version": "20261001000002"
+    },
+    {
+      "name": "professional_listing_avatar_publish",
+      "statement_count": 1,
+      "version": "20261001000003"
+    },
+    {
+      "name": "professional_listing_publish_recovery",
+      "statement_count": 4,
+      "version": "20261002000001"
+    },
+    {
+      "name": "admin_vitrines_denuncias",
+      "statement_count": 14,
+      "version": "20261002000002"
+    },
+    {
+      "name": "comments_schema",
+      "statement_count": 23,
+      "version": "20261002000003"
+    },
+    {
+      "name": "comments_functions",
+      "statement_count": 27,
+      "version": "20261002000004"
+    },
+    {
+      "name": "comments_read_rls",
+      "statement_count": 15,
+      "version": "20261002000005"
+    },
+    {
+      "name": "comments_moderation",
+      "statement_count": 3,
+      "version": "20261002000006"
+    },
+    {
+      "name": "comment_notifications_read",
+      "statement_count": 2,
+      "version": "20261002000007"
+    },
+    {
+      "name": "notification_types_admin",
+      "statement_count": 6,
+      "version": "20261002000008"
+    },
+    {
+      "name": "notifications_center",
+      "statement_count": 29,
+      "version": "20261002000009"
+    },
+    {
+      "name": "reapply_admin_vitrines_denuncias",
+      "statement_count": 15,
+      "version": "20261003000001"
+    },
+    {
+      "name": "account_deletion_financial_case",
+      "statement_count": 56,
+      "version": "20261004000001"
+    },
+    {
+      "name": "deletion_hardening",
+      "statement_count": 23,
+      "version": "20261004000002"
+    },
+    {
+      "name": "financial_case_retention",
+      "statement_count": 20,
+      "version": "20261005000001"
+    },
+    {
+      "name": "cancelled_case_retention",
+      "statement_count": 11,
+      "version": "20261005000002"
+    },
+    {
+      "name": "case_items_traceability",
+      "statement_count": 17,
+      "version": "20261005000003"
+    },
+    {
+      "name": "post_support_reactions",
+      "statement_count": 11,
+      "version": "20261006000001"
+    },
+    {
+      "name": "supporters_failclosed_minimal",
+      "statement_count": 3,
+      "version": "20261006000002"
+    },
+    {
+      "name": "workout_participants_rpc",
+      "statement_count": 8,
+      "version": "20261006000003"
+    },
+    {
+      "name": "status_progress_metadata",
+      "statement_count": 2,
+      "version": "20261007000001"
+    },
+    {
+      "name": "support_moderation_final_versions",
+      "statement_count": 3,
+      "version": "20261007000002"
+    },
+    {
+      "name": "restore_comments_read_grant",
+      "statement_count": 1,
+      "version": "20261007000003"
+    },
+    {
+      "name": "community_creation_activity_days",
+      "statement_count": 13,
+      "version": "20261008000001"
+    },
+    {
+      "name": "community_tiers_post_retention",
+      "statement_count": 23,
+      "version": "20261008000002"
+    },
+    {
+      "name": "community_creation_rpcs",
+      "statement_count": 17,
+      "version": "20261008000003"
+    },
+    {
+      "name": "community_creation_converge",
+      "statement_count": 8,
+      "version": "20261008000004"
+    },
+    {
+      "name": "evocoins_daily_cap_schema",
+      "statement_count": 27,
+      "version": "20261009000001"
+    },
+    {
+      "name": "evocoins_award_engine",
+      "statement_count": 17,
+      "version": "20261009000002"
+    },
+    {
+      "name": "evocoins_activity_unified",
+      "statement_count": 6,
+      "version": "20261009000003"
+    },
+    {
+      "name": "evocoins_support_rewards",
+      "statement_count": 2,
+      "version": "20261009000004"
+    },
+    {
+      "name": "evocoins_pending_awards",
+      "statement_count": 21,
+      "version": "20261009000005"
+    },
+    {
+      "name": "evocoins_workout_completion",
+      "statement_count": 6,
+      "version": "20261009000006"
+    },
+    {
+      "name": "evocoins_day_rpc",
+      "statement_count": 3,
+      "version": "20261009000007"
+    },
+    {
+      "name": "admin_accounts_snapshot",
+      "statement_count": 26,
+      "version": "20261010000001"
+    },
+    {
+      "name": "user_activity",
+      "statement_count": 9,
+      "version": "20261011000001"
+    },
+    {
+      "name": "push_notification_type",
+      "statement_count": 1,
+      "version": "20261012000000"
+    },
+    {
+      "name": "web_push_notifications",
+      "statement_count": 35,
+      "version": "20261012000001"
+    },
+    {
+      "name": "web_push_hardening",
+      "statement_count": 6,
+      "version": "20261012000002"
+    },
+    {
+      "name": "push_worker_cron_secret",
+      "statement_count": 1,
+      "version": "20261012000003"
+    },
+    {
+      "name": "web_push_converge",
+      "statement_count": 24,
+      "version": "20261012000004"
+    },
+    {
+      "name": "notifications_realtime",
+      "statement_count": 1,
+      "version": "20261013000001"
+    },
+    {
+      "name": "notification_types_pipeline",
+      "statement_count": 5,
+      "version": "20261014000001"
+    },
+    {
+      "name": "notification_pipeline",
+      "statement_count": 32,
+      "version": "20261014000002"
+    },
+    {
+      "name": "workout_reminder_type",
+      "statement_count": 2,
+      "version": "20261014000003"
+    },
+    {
+      "name": "workout_reminders",
+      "statement_count": 32,
+      "version": "20261014000004"
+    },
+    {
+      "name": "security_hardening",
+      "statement_count": 23,
+      "version": "20261014000005"
+    },
+    {
+      "name": "notification_antispam_variants",
+      "statement_count": 27,
+      "version": "20261014000006"
+    },
+    {
+      "name": "push_delivery_telemetry",
+      "statement_count": 18,
+      "version": "20261014000007"
+    },
+    {
+      "name": "infinitepay_cash_purchases",
+      "statement_count": 22,
+      "version": "20261015000001"
+    },
+    {
+      "name": "infinitepay_checkout_failure",
+      "statement_count": 12,
+      "version": "20261015000002"
+    },
+    {
+      "name": "infinitepay_cancel_request",
+      "statement_count": 4,
+      "version": "20261015000003"
+    },
+    {
+      "name": "immediate_cash_purchase_cancel",
+      "statement_count": 13,
+      "version": "20261015000004"
+    },
+    {
+      "name": "remove_mercadopago_runtime",
+      "statement_count": 7,
+      "version": "20261015000005"
+    },
+    {
+      "name": "offline_workout_sync",
+      "statement_count": 15,
+      "version": "20261016000001"
+    },
+    {
+      "name": "security_hardening_followup",
+      "statement_count": 3,
+      "version": "20261016000002"
+    },
+    {
+      "name": "offline_runtime_control_telemetry",
+      "statement_count": 23,
+      "version": "20261016000003"
+    },
+    {
+      "name": "feed_batch_interaction_rpcs",
+      "statement_count": 6,
+      "version": "20261017000001"
+    },
+    {
+      "name": "feed_partial_indexes",
+      "statement_count": 2,
+      "version": "20261017000002"
+    },
+    {
+      "name": "status_text_limit_7000",
+      "statement_count": 2,
+      "version": "20261017000003"
+    },
+    {
+      "name": "sponsored_ad_metrics",
+      "statement_count": 25,
+      "version": "20261018000001"
+    },
+    {
+      "name": "sponsored_ad_metrics_dashboard",
+      "statement_count": 5,
+      "version": "20261018000002"
+    },
+    {
+      "name": "sponsored_ad_metrics_privacy_controls",
+      "statement_count": 10,
+      "version": "20261019000001"
+    },
+    {
+      "name": "exercise_visuals",
+      "statement_count": 51,
+      "version": "20261020000001"
+    },
+    {
+      "name": "exercise_visuals_v2",
+      "statement_count": 77,
+      "version": "20261021000001"
+    },
+    {
+      "name": "community_member_removal",
+      "statement_count": 18,
+      "version": "20261022000001"
+    },
+    {
+      "name": "exercise_visuals_function_hardening",
+      "statement_count": 3,
+      "version": "20261022000002"
+    },
+    {
+      "name": "community_join_and_access_list",
+      "statement_count": 9,
+      "version": "20261023000001"
+    },
+    {
+      "name": "greeting_personalization",
+      "statement_count": 8,
+      "version": "20261024000001"
+    },
+    {
+      "name": "aud_security_atomic",
+      "statement_count": 24,
+      "version": "20261026000005"
+    },
+    {
+      "name": "exercise_catalog_offline_converge",
+      "statement_count": 9,
+      "version": "20261026000006"
+    },
+    {
+      "name": "storage_cleanup_outbox",
+      "statement_count": 18,
+      "version": "20261027000001"
+    },
+    {
+      "name": "status_expiration",
+      "statement_count": 44,
+      "version": "20261028000001"
+    },
+    {
+      "name": "status_feed_pagination_index",
+      "statement_count": 6,
+      "version": "20261028000002"
+    },
+    {
+      "name": "activate_status_expiration",
+      "statement_count": 4,
+      "version": "20261028000003"
+    },
+    {
+      "name": "exercise_visual_deletion",
+      "statement_count": 37,
+      "version": "20261029000001"
+    },
+    {
+      "name": "aud05_status_deletion",
+      "statement_count": 3,
+      "version": "20261030000001"
+    },
+    {
+      "name": "aud03_poll_vote_security",
+      "statement_count": 25,
+      "version": "20261031000001"
+    }
+  ],
+  "remote_historical_vote_audit": {
+    "after_base_expiry_requires_historical_review": 0,
+    "currently_nonmember": 0,
+    "invalid_option": 0,
+    "missing_status": 0,
+    "non_poll": 0,
+    "total_votes": 1,
+    "duplicate_groups": 0,
+    "before_after_digest_equal": true,
+    "cleanup_performed": false
+  },
+  "github": {
+    "account": "Danielalveslira",
+    "repository": "Danielalveslira/treinos_academia",
+    "branch": "main",
+    "origin_correct": true,
+    "remote_sha_matches_base": true
+  },
+  "supabase": {
+    "expected_ref": "ywrjojrjgozdfpddkkuy",
+    "admin_precheck": "PASS via authenticated official CLI",
+    "status": "ACTIVE_HEALTHY",
+    "migration_applied_exclusively": true,
+    "vault_roles_seeds_changed": false
+  },
+  "public_frontend_readonly": {
+    "origin": "https://treinosacademia-ten.vercel.app",
+    "status": 200,
+    "asset": "/assets/index-DVB44N7H.js",
+    "localAsset": "/assets/index-r2BL3UKy.js",
+    "assetStatus": 200,
+    "assetSha256": "b9f5a381af5d224ce76383e468cfe95e0643d40343d5bf146e38b451253df727",
+    "matchesBuiltAsset": false,
+    "expectedSupabaseProject": true,
+    "votingServiceAsset": "assets/statusesService-Bd_2eawr.js",
+    "votingServiceSha256": "825cd9809a5734b7be0100e7119cbc57067e153efd6cb137f8b506b5cb731b9a",
+    "deployedPollUpsert": true
+  },
+  "vercel_administrative_ready": {
+    "projectId": "prj_WYVlCGYu021KZCrqfp62qRH2cbIE",
+    "deploymentId": "dpl_GQz78Qa181PMoLEUoD8FGYfU8yR3",
+    "readyState": "READY",
+    "target": "production",
+    "githubCommitSha": "8742621dd22f7a99d09802c8d6826ab9efa73582",
+    "githubCommitRef": "main",
+    "githubCommitOrg": "Danielalveslira",
+    "githubCommitRepo": "treinos_academia"
+  },
+  "production_vote_smoke": {
+    "checks": 16,
+    "existing_votes_unchanged": true,
+    "financial_rewards": 0,
+    "fixtures": "transactional rollback",
+    "legitimate_vote": true
+  },
+  "blockers": [],
+  "logs_root": "/tmp/aud03-final",
+  "unrelated_workspace_changes_preserved": true,
+  "edge_tests_pass": 152,
+  "edge_tests_skipped": 0,
+  "release_commit_reference": {
+    "branch": "main",
+    "base_sha": "8742621dd22f7a99d09802c8d6826ab9efa73582",
+    "exact_published_sha": "reported in final execution response; git log -1 --format=%H -- supabase/migrations/20261031000001_aud03_poll_vote_security.sql"
+  },
+  "remote_journal_before": [
+    {
+      "name": "extensions",
+      "statement_count": 1,
+      "version": "20260926000001"
+    },
+    {
+      "name": "identity",
+      "statement_count": 7,
+      "version": "20260926000002"
+    },
+    {
+      "name": "communities",
+      "statement_count": 6,
+      "version": "20260926000003"
+    },
+    {
+      "name": "workouts",
+      "statement_count": 6,
+      "version": "20260926000004"
+    },
+    {
+      "name": "statuses",
+      "statement_count": 7,
+      "version": "20260926000005"
+    },
+    {
+      "name": "moderation",
+      "statement_count": 7,
+      "version": "20260926000006"
+    },
+    {
+      "name": "legal",
+      "statement_count": 4,
+      "version": "20260926000007"
+    },
+    {
+      "name": "server_only",
+      "statement_count": 6,
+      "version": "20260926000008"
+    },
+    {
+      "name": "rls_functions",
+      "statement_count": 4,
+      "version": "20260926000009"
+    },
+    {
+      "name": "rls_policies",
+      "statement_count": 47,
+      "version": "20260926000010"
+    },
+    {
+      "name": "profile_rpcs",
+      "statement_count": 4,
+      "version": "20260926000011"
+    },
+    {
+      "name": "account_rollback",
+      "statement_count": 3,
+      "version": "20260926000012"
+    },
+    {
+      "name": "realtime",
+      "statement_count": 1,
+      "version": "20260926000013"
+    },
+    {
+      "name": "workout_stats_rpcs",
+      "statement_count": 2,
+      "version": "20260926000014"
+    },
+    {
+      "name": "queue_deletion",
+      "statement_count": 2,
+      "version": "20260926000015"
+    },
+    {
+      "name": "storage",
+      "statement_count": 4,
+      "version": "20260926000016"
+    },
+    {
+      "name": "poll_results",
+      "statement_count": 1,
+      "version": "20260926000017"
+    },
+    {
+      "name": "status_author_badge",
+      "statement_count": 2,
+      "version": "20260926000018"
+    },
+    {
+      "name": "legal_support_admin_rpcs",
+      "statement_count": 7,
+      "version": "20260926000019"
+    },
+    {
+      "name": "support_requests_status_fk",
+      "statement_count": 2,
+      "version": "20260926000020"
+    },
+    {
+      "name": "auth_uid_guards",
+      "statement_count": 4,
+      "version": "20260926000021"
+    },
+    {
+      "name": "legal_acceptances_columns_fix",
+      "statement_count": 2,
+      "version": "20260926000022"
+    },
+    {
+      "name": "users_new_fields",
+      "statement_count": 5,
+      "version": "20260926000023"
+    },
+    {
+      "name": "update_user_profile_height",
+      "statement_count": 1,
+      "version": "20260926000024"
+    },
+    {
+      "name": "workouts_cardio_type",
+      "statement_count": 6,
+      "version": "20260926000025"
+    },
+    {
+      "name": "exercises_catalog_fields",
+      "statement_count": 4,
+      "version": "20260926000026"
+    },
+    {
+      "name": "communities_owner",
+      "statement_count": 10,
+      "version": "20260926000027"
+    },
+    {
+      "name": "community_member_ban",
+      "statement_count": 3,
+      "version": "20260926000028"
+    },
+    {
+      "name": "statuses_owner_and_post_access",
+      "statement_count": 5,
+      "version": "20260926000029"
+    },
+    {
+      "name": "support_evidence_and_deletion_review",
+      "statement_count": 12,
+      "version": "20260926000030"
+    },
+    {
+      "name": "communities_icon",
+      "statement_count": 1,
+      "version": "20260926000031"
+    },
+    {
+      "name": "save_exercise_order",
+      "statement_count": 1,
+      "version": "20260926000032"
+    },
+    {
+      "name": "submit_support_request_evidence",
+      "statement_count": 2,
+      "version": "20260926000033"
+    },
+    {
+      "name": "list_deletion_jobs_pending_only",
+      "statement_count": 1,
+      "version": "20260926000034"
+    },
+    {
+      "name": "wallet_stub",
+      "statement_count": 5,
+      "version": "20260926000035"
+    },
+    {
+      "name": "economy_wallet_ledger_activity",
+      "statement_count": 26,
+      "version": "20260927000001"
+    },
+    {
+      "name": "economy_voting_schema",
+      "statement_count": 12,
+      "version": "20260927000002"
+    },
+    {
+      "name": "economy_cast_vote",
+      "statement_count": 3,
+      "version": "20260927000003"
+    },
+    {
+      "name": "economy_reward_settlement",
+      "statement_count": 6,
+      "version": "20260927000004"
+    },
+    {
+      "name": "economy_privilege_create_community",
+      "statement_count": 4,
+      "version": "20260927000005"
+    },
+    {
+      "name": "economy_cash_purchases_promotions",
+      "statement_count": 37,
+      "version": "20260928000001"
+    },
+    {
+      "name": "community_creation_requests_fk_cascade",
+      "statement_count": 1,
+      "version": "20260928000002"
+    },
+    {
+      "name": "admin_account_deletion_review",
+      "statement_count": 5,
+      "version": "20260929000001"
+    },
+    {
+      "name": "body_measurements",
+      "statement_count": 5,
+      "version": "20260929000002"
+    },
+    {
+      "name": "progress_days",
+      "statement_count": 1,
+      "version": "20260929000003"
+    },
+    {
+      "name": "profile_avatar",
+      "statement_count": 15,
+      "version": "20260929000004"
+    },
+    {
+      "name": "professional_listings",
+      "statement_count": 38,
+      "version": "20260929000005"
+    },
+    {
+      "name": "sponsored_ads",
+      "statement_count": 11,
+      "version": "20260929000006"
+    },
+    {
+      "name": "exercise_provider_fields",
+      "statement_count": 14,
+      "version": "20260929000007"
+    },
+    {
+      "name": "exercise_catalog",
+      "statement_count": 17,
+      "version": "20260930000001"
+    },
+    {
+      "name": "deletion_worker",
+      "statement_count": 15,
+      "version": "20260930000002"
+    },
+    {
+      "name": "server_side_validations",
+      "statement_count": 6,
+      "version": "20260930000003"
+    },
+    {
+      "name": "professional_listing_drafts_owner_cascade",
+      "statement_count": 2,
+      "version": "20260930000004"
+    },
+    {
+      "name": "training_preferences",
+      "statement_count": 5,
+      "version": "20261001000001"
+    },
+    {
+      "name": "showcase_terms_acknowledgement",
+      "statement_count": 9,
+      "version": "20261001000002"
+    },
+    {
+      "name": "professional_listing_avatar_publish",
+      "statement_count": 1,
+      "version": "20261001000003"
+    },
+    {
+      "name": "professional_listing_publish_recovery",
+      "statement_count": 4,
+      "version": "20261002000001"
+    },
+    {
+      "name": "admin_vitrines_denuncias",
+      "statement_count": 14,
+      "version": "20261002000002"
+    },
+    {
+      "name": "comments_schema",
+      "statement_count": 23,
+      "version": "20261002000003"
+    },
+    {
+      "name": "comments_functions",
+      "statement_count": 27,
+      "version": "20261002000004"
+    },
+    {
+      "name": "comments_read_rls",
+      "statement_count": 15,
+      "version": "20261002000005"
+    },
+    {
+      "name": "comments_moderation",
+      "statement_count": 3,
+      "version": "20261002000006"
+    },
+    {
+      "name": "comment_notifications_read",
+      "statement_count": 2,
+      "version": "20261002000007"
+    },
+    {
+      "name": "notification_types_admin",
+      "statement_count": 6,
+      "version": "20261002000008"
+    },
+    {
+      "name": "notifications_center",
+      "statement_count": 29,
+      "version": "20261002000009"
+    },
+    {
+      "name": "reapply_admin_vitrines_denuncias",
+      "statement_count": 15,
+      "version": "20261003000001"
+    },
+    {
+      "name": "account_deletion_financial_case",
+      "statement_count": 56,
+      "version": "20261004000001"
+    },
+    {
+      "name": "deletion_hardening",
+      "statement_count": 23,
+      "version": "20261004000002"
+    },
+    {
+      "name": "financial_case_retention",
+      "statement_count": 20,
+      "version": "20261005000001"
+    },
+    {
+      "name": "cancelled_case_retention",
+      "statement_count": 11,
+      "version": "20261005000002"
+    },
+    {
+      "name": "case_items_traceability",
+      "statement_count": 17,
+      "version": "20261005000003"
+    },
+    {
+      "name": "post_support_reactions",
+      "statement_count": 11,
+      "version": "20261006000001"
+    },
+    {
+      "name": "supporters_failclosed_minimal",
+      "statement_count": 3,
+      "version": "20261006000002"
+    },
+    {
+      "name": "workout_participants_rpc",
+      "statement_count": 8,
+      "version": "20261006000003"
+    },
+    {
+      "name": "status_progress_metadata",
+      "statement_count": 2,
+      "version": "20261007000001"
+    },
+    {
+      "name": "support_moderation_final_versions",
+      "statement_count": 3,
+      "version": "20261007000002"
+    },
+    {
+      "name": "restore_comments_read_grant",
+      "statement_count": 1,
+      "version": "20261007000003"
+    },
+    {
+      "name": "community_creation_activity_days",
+      "statement_count": 13,
+      "version": "20261008000001"
+    },
+    {
+      "name": "community_tiers_post_retention",
+      "statement_count": 23,
+      "version": "20261008000002"
+    },
+    {
+      "name": "community_creation_rpcs",
+      "statement_count": 17,
+      "version": "20261008000003"
+    },
+    {
+      "name": "community_creation_converge",
+      "statement_count": 8,
+      "version": "20261008000004"
+    },
+    {
+      "name": "evocoins_daily_cap_schema",
+      "statement_count": 27,
+      "version": "20261009000001"
+    },
+    {
+      "name": "evocoins_award_engine",
+      "statement_count": 17,
+      "version": "20261009000002"
+    },
+    {
+      "name": "evocoins_activity_unified",
+      "statement_count": 6,
+      "version": "20261009000003"
+    },
+    {
+      "name": "evocoins_support_rewards",
+      "statement_count": 2,
+      "version": "20261009000004"
+    },
+    {
+      "name": "evocoins_pending_awards",
+      "statement_count": 21,
+      "version": "20261009000005"
+    },
+    {
+      "name": "evocoins_workout_completion",
+      "statement_count": 6,
+      "version": "20261009000006"
+    },
+    {
+      "name": "evocoins_day_rpc",
+      "statement_count": 3,
+      "version": "20261009000007"
+    },
+    {
+      "name": "admin_accounts_snapshot",
+      "statement_count": 26,
+      "version": "20261010000001"
+    },
+    {
+      "name": "user_activity",
+      "statement_count": 9,
+      "version": "20261011000001"
+    },
+    {
+      "name": "push_notification_type",
+      "statement_count": 1,
+      "version": "20261012000000"
+    },
+    {
+      "name": "web_push_notifications",
+      "statement_count": 35,
+      "version": "20261012000001"
+    },
+    {
+      "name": "web_push_hardening",
+      "statement_count": 6,
+      "version": "20261012000002"
+    },
+    {
+      "name": "push_worker_cron_secret",
+      "statement_count": 1,
+      "version": "20261012000003"
+    },
+    {
+      "name": "web_push_converge",
+      "statement_count": 24,
+      "version": "20261012000004"
+    },
+    {
+      "name": "notifications_realtime",
+      "statement_count": 1,
+      "version": "20261013000001"
+    },
+    {
+      "name": "notification_types_pipeline",
+      "statement_count": 5,
+      "version": "20261014000001"
+    },
+    {
+      "name": "notification_pipeline",
+      "statement_count": 32,
+      "version": "20261014000002"
+    },
+    {
+      "name": "workout_reminder_type",
+      "statement_count": 2,
+      "version": "20261014000003"
+    },
+    {
+      "name": "workout_reminders",
+      "statement_count": 32,
+      "version": "20261014000004"
+    },
+    {
+      "name": "security_hardening",
+      "statement_count": 23,
+      "version": "20261014000005"
+    },
+    {
+      "name": "notification_antispam_variants",
+      "statement_count": 27,
+      "version": "20261014000006"
+    },
+    {
+      "name": "push_delivery_telemetry",
+      "statement_count": 18,
+      "version": "20261014000007"
+    },
+    {
+      "name": "infinitepay_cash_purchases",
+      "statement_count": 22,
+      "version": "20261015000001"
+    },
+    {
+      "name": "infinitepay_checkout_failure",
+      "statement_count": 12,
+      "version": "20261015000002"
+    },
+    {
+      "name": "infinitepay_cancel_request",
+      "statement_count": 4,
+      "version": "20261015000003"
+    },
+    {
+      "name": "immediate_cash_purchase_cancel",
+      "statement_count": 13,
+      "version": "20261015000004"
+    },
+    {
+      "name": "remove_mercadopago_runtime",
+      "statement_count": 7,
+      "version": "20261015000005"
+    },
+    {
+      "name": "offline_workout_sync",
+      "statement_count": 15,
+      "version": "20261016000001"
+    },
+    {
+      "name": "security_hardening_followup",
+      "statement_count": 3,
+      "version": "20261016000002"
+    },
+    {
+      "name": "offline_runtime_control_telemetry",
+      "statement_count": 23,
+      "version": "20261016000003"
+    },
+    {
+      "name": "feed_batch_interaction_rpcs",
+      "statement_count": 6,
+      "version": "20261017000001"
+    },
+    {
+      "name": "feed_partial_indexes",
+      "statement_count": 2,
+      "version": "20261017000002"
+    },
+    {
+      "name": "status_text_limit_7000",
+      "statement_count": 2,
+      "version": "20261017000003"
+    },
+    {
+      "name": "sponsored_ad_metrics",
+      "statement_count": 25,
+      "version": "20261018000001"
+    },
+    {
+      "name": "sponsored_ad_metrics_dashboard",
+      "statement_count": 5,
+      "version": "20261018000002"
+    },
+    {
+      "name": "sponsored_ad_metrics_privacy_controls",
+      "statement_count": 10,
+      "version": "20261019000001"
+    },
+    {
+      "name": "exercise_visuals",
+      "statement_count": 51,
+      "version": "20261020000001"
+    },
+    {
+      "name": "exercise_visuals_v2",
+      "statement_count": 77,
+      "version": "20261021000001"
+    },
+    {
+      "name": "community_member_removal",
+      "statement_count": 18,
+      "version": "20261022000001"
+    },
+    {
+      "name": "exercise_visuals_function_hardening",
+      "statement_count": 3,
+      "version": "20261022000002"
+    },
+    {
+      "name": "community_join_and_access_list",
+      "statement_count": 9,
+      "version": "20261023000001"
+    },
+    {
+      "name": "greeting_personalization",
+      "statement_count": 8,
+      "version": "20261024000001"
+    },
+    {
+      "name": "aud_security_atomic",
+      "statement_count": 24,
+      "version": "20261026000005"
+    },
+    {
+      "name": "exercise_catalog_offline_converge",
+      "statement_count": 9,
+      "version": "20261026000006"
+    },
+    {
+      "name": "storage_cleanup_outbox",
+      "statement_count": 18,
+      "version": "20261027000001"
+    },
+    {
+      "name": "status_expiration",
+      "statement_count": 44,
+      "version": "20261028000001"
+    },
+    {
+      "name": "status_feed_pagination_index",
+      "statement_count": 6,
+      "version": "20261028000002"
+    },
+    {
+      "name": "activate_status_expiration",
+      "statement_count": 4,
+      "version": "20261028000003"
+    },
+    {
+      "name": "exercise_visual_deletion",
+      "statement_count": 37,
+      "version": "20261029000001"
+    },
+    {
+      "name": "aud05_status_deletion",
+      "statement_count": 3,
+      "version": "20261030000001"
+    }
+  ],
+  "unrelated_function_digest_unchanged": true,
+  "permissions_before": [
+    {
+      "delete": true,
+      "insert": true,
+      "role": "anon",
+      "select": true,
+      "truncate": true,
+      "update": true
+    },
+    {
+      "delete": true,
+      "insert": true,
+      "role": "authenticated",
+      "select": true,
+      "truncate": true,
+      "update": true
+    },
+    {
+      "delete": true,
+      "insert": true,
+      "role": "service_role",
+      "select": true,
+      "truncate": true,
+      "update": true
+    }
+  ],
+  "permissions_after": [
+    {
+      "delete": false,
+      "insert": false,
+      "role": "anon",
+      "select": false,
+      "truncate": false,
+      "update": false
+    },
+    {
+      "delete": true,
+      "insert": false,
+      "role": "authenticated",
+      "select": true,
+      "truncate": false,
+      "update": false
+    },
+    {
+      "delete": true,
+      "insert": true,
+      "role": "service_role",
+      "select": true,
+      "truncate": true,
+      "update": true
+    }
+  ],
+  "column_permissions_after": [
+    {
+      "grantee": "authenticated",
+      "column_name": "created_at",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "column_name": "option_id",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "column_name": "option_id",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "column_name": "option_id",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "column_name": "status_id",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "column_name": "status_id",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "column_name": "status_id",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "authenticated",
+      "column_name": "user_id",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "authenticated",
+      "column_name": "user_id",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "authenticated",
+      "column_name": "user_id",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "created_at",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "created_at",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "created_at",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "created_at",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "option_id",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "option_id",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "option_id",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "option_id",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "status_id",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "status_id",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "status_id",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "status_id",
+      "privilege_type": "UPDATE"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "user_id",
+      "privilege_type": "INSERT"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "user_id",
+      "privilege_type": "REFERENCES"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "user_id",
+      "privilege_type": "SELECT"
+    },
+    {
+      "grantee": "service_role",
+      "column_name": "user_id",
+      "privilege_type": "UPDATE"
+    }
+  ],
+  "policies_before": [
+    {
+      "name": "status_votes_all",
+      "operation": "ALL"
+    }
+  ],
+  "policies_after": [
+    {
+      "name": "status_votes_delete",
+      "operation": "DELETE"
+    },
+    {
+      "name": "status_votes_insert",
+      "operation": "INSERT"
+    },
+    {
+      "name": "status_votes_select",
+      "operation": "SELECT"
+    },
+    {
+      "name": "status_votes_update",
+      "operation": "UPDATE"
+    }
+  ],
+  "privacy_regression": {
+    "confirmed_before": "nonmember could distinguish valid versus invented option by SQLSTATE",
+    "correction": "trigger checks permission before option validity",
+    "new_api_cases": 2
+  },
+  "production_http_smoke": {
+    "checks": 3,
+    "anonymous_select_and_aggregate_rpcs": "42501 HTTP 401/403",
+    "mutations": false
+  },
+  "vercel_admin_variable_names_only": [
+    {
+      "key": "VITE_GREETING_WELCOME_FROM",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "type": "encrypted"
+    },
+    {
+      "key": "VITE_GREETING_V2_ENABLED",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "type": "encrypted"
+    },
+    {
+      "key": "VITE_AD_METRICS_ENABLED",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "type": "encrypted"
+    },
+    {
+      "key": "VITE_OFFLINE_COLD_START_ENABLED",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "type": "encrypted"
+    },
+    {
+      "key": "VITE_OFFLINE_WRITE_ENABLED",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "type": "encrypted"
+    },
+    {
+      "key": "VITE_VAPID_PUBLIC_KEY",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted"
+    },
+    {
+      "key": "SUPABASE_SERVICE_ROLE_KEY",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive"
+    },
+    {
+      "key": "VITE_SUPABASE_ANON_KEY",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted"
+    },
+    {
+      "key": "VITE_SUPABASE_URL",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "type": "encrypted"
+    },
+    {
+      "key": "VITE_EXERCISE_CATALOG_ASSET_BASE_URL",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "type": "encrypted"
+    }
+  ]
+}

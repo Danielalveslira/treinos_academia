@@ -33,6 +33,8 @@
 - **Correção:** separar políticas por operação e validar filiação, acesso à conta, tipo `poll`, janela de interação e existência da opção no INSERT e UPDATE.
 - **Validação:** negar voto fora da comunidade, em publicação de texto e em opção inexistente; aceitar opção válida de enquete acessível.
 
+**Atualização em 14/10/2026 — corrigida em produção:** migration exclusiva `20261031000001_aud03_poll_vote_security.sql` aplicada e confirmada no journal remoto. A versão conflitante da candidata foi renomeada sem alterar migrations publicadas. Validação: 96 cenários API, 730 assertivas SQL, 1.912 testes JavaScript e 152 testes Edge, todos aprovados. Smoke de produção: 16 verificações com fixtures transacionais revertidas, zero recompensas; três leituras anônimas PostgREST recusadas. Um voto histórico auditado e preservado integralmente. Evidências em `docs/releases/AUD_03_VOTACOES.md` e `AUD_03_VOTACOES_EVIDENCIAS.json`.
+
 ### AUD-04 — Média — Worker não remove corretamente as fotos do Storage
 
 - **Evidência:** `supabase/migrations/20261005000003_case_items_traceability.sql:192` coleta caminhos como `statusPhotos/<comunidade>/<status>.webp`. `supabase/functions/process-deletion-jobs/processor.js:50` passa esses caminhos integralmente ao bucket `status-photos`, cujo caminho real não contém `statusPhotos/`. Além disso, `.remove()` retorna `{ error }`, mas o worker só trata rejeição da promessa.
