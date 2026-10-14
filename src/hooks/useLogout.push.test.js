@@ -37,13 +37,17 @@ before(async () => {
     platform: 'node',
     format: 'cjs',
     logLevel: 'silent',
-    plugins: [{
-      name: 'stubs',
-      setup(ctx) {
-        ctx.onResolve({ filter: /^react$/ }, () => ({ path: 'react', namespace: 'stub' }))
-        ctx.onResolve({ filter: /supabase\/config$/ }, () => ({ path: 'supabase', namespace: 'stub' }))
-        ctx.onLoad({ filter: /^react$/, namespace: 'stub' }, () => ({
-          contents: `
+    plugins: [
+      {
+        name: 'stubs',
+        setup(ctx) {
+          ctx.onResolve({ filter: /^react$/ }, () => ({ path: 'react', namespace: 'stub' }))
+          ctx.onResolve({ filter: /supabase\/config$/ }, () => ({
+            path: 'supabase',
+            namespace: 'stub',
+          }))
+          ctx.onLoad({ filter: /^react$/, namespace: 'stub' }, () => ({
+            contents: `
             const slots = []
             let index = 0
             export const __reset = () => { slots.length = 0; index = 0 }
@@ -53,15 +57,16 @@ before(async () => {
             export const useCallback = (fn) => fn
             export const useEffect = () => {}
           `,
-        }))
-        ctx.onLoad({ filter: /^supabase$/, namespace: 'stub' }, () => ({
-          contents: `export const supabase = {
-            auth: { signOut: (...a) => globalThis.__signOut(...a), getSession: () => globalThis.__getSession() },
+          }))
+          ctx.onLoad({ filter: /^supabase$/, namespace: 'stub' }, () => ({
+            contents: `export const supabase = {
+            auth: { onAuthStateChange: (fn) => { globalThis.__authChange = fn }, signOut: (...a) => globalThis.__signOut(...a), getSession: () => globalThis.__getSession() },
             rpc: (...a) => globalThis.__rpc(...a),
           }`,
-        }))
+          }))
+        },
       },
-    }],
+    ],
   })
   mod = createRequire(import.meta.url)(outfile)
 })
@@ -73,7 +78,14 @@ after(async () => {
 const ENDPOINT = 'https://fcm.googleapis.com/fcm/send/device'
 
 // rpc: 'ok' | 'fail' | 'hang' — unsubscribe: 'ok' | 'hang' — sw: 'ok' | 'none' | 'no-subscription'
-function environment({ sw = 'ok', rpc = 'ok', unsubscribe = 'ok', online = true, others = 'ok', local = 'ok' } = {}) {
+function environment({
+  sw = 'ok',
+  rpc = 'ok',
+  unsubscribe = 'ok',
+  online = true,
+  others = 'ok',
+  local = 'ok',
+} = {}) {
   events = []
   sessionAlive = true
   const subscription = {
@@ -83,9 +95,12 @@ function environment({ sw = 'ok', rpc = 'ok', unsubscribe = 'ok', online = true,
       return unsubscribe === 'hang' ? new Promise(() => {}) : Promise.resolve(true)
     },
   }
-  const registration = sw === 'ok' ? { pushManager: { getSubscription: async () => subscription } }
-    : sw === 'no-subscription' ? { pushManager: { getSubscription: async () => null } }
-      : undefined
+  const registration =
+    sw === 'ok'
+      ? { pushManager: { getSubscription: async () => subscription } }
+      : sw === 'no-subscription'
+        ? { pushManager: { getSubscription: async () => null } }
+        : undefined
   setGlobal('window', { PushManager: {}, Notification: {}, matchMedia: () => ({ matches: false }) })
   setGlobal('Notification', { permission: 'granted' })
   setGlobal('navigator', {
@@ -93,7 +108,10 @@ function environment({ sw = 'ok', rpc = 'ok', unsubscribe = 'ok', online = true,
     userAgent: 'Android Chrome',
     platform: 'Linux',
     maxTouchPoints: 0,
-    serviceWorker: sw === 'missing-api' ? undefined : { getRegistration: async () => registration, ready: new Promise(() => {}) },
+    serviceWorker:
+      sw === 'missing-api'
+        ? undefined
+        : { getRegistration: async () => registration, ready: new Promise(() => {}) },
   })
   globalThis.__rpc = (name, args) => {
     events.push(`rpc:${name}:${args.p_endpoint === null ? 'all' : 'device'}`)
@@ -103,14 +121,17 @@ function environment({ sw = 'ok', rpc = 'ok', unsubscribe = 'ok', online = true,
   }
   globalThis.__signOut = ({ scope }) => {
     events.push(`auth:${scope}`)
-    if (scope === 'others' && others === 'fail') return Promise.resolve({ error: new Error('network') })
+    if (scope === 'others' && others === 'fail')
+      return Promise.resolve({ error: new Error('network') })
     if (scope === 'local') {
       if (local === 'fail') return Promise.resolve({ error: new Error('network') })
       sessionAlive = false
+      globalThis.__authChange('SIGNED_OUT', null)
     }
     return Promise.resolve({ error: null })
   }
-  globalThis.__getSession = () => Promise.resolve({ data: { session: sessionAlive ? { access_token: 'x' } : null } })
+  globalThis.__getSession = () =>
+    Promise.resolve({ data: { session: sessionAlive ? { access_token: 'x' } : null } })
 }
 
 let store
@@ -149,7 +170,9 @@ async function runWithClock(kind, maxMs = 12000) {
   mock.timers.enable({ apis: ['setTimeout'] })
   const hook = render()
   let done = false
-  const pending = hook[kind]().finally(() => { done = true })
+  const pending = hook[kind]().finally(() => {
+    done = true
+  })
   for (let elapsed = 0; elapsed < maxMs && !done; elapsed += 250) {
     await waitForImmediate()
     mock.timers.tick(250)
@@ -161,7 +184,11 @@ async function runWithClock(kind, maxMs = 12000) {
 test('sair deste dispositivo com Push ativo: revoga o endpoint local e encerra a sessão', async () => {
   environment()
   const state = await run('logout')
-  assert.deepEqual(events, ['rpc:unregister_push_subscription:device', 'push:unsubscribe', 'auth:local'])
+  assert.deepEqual(events, [
+    'rpc:unregister_push_subscription:device',
+    'push:unsubscribe',
+    'auth:local',
+  ])
   assert.equal(sessionAlive, false)
   assert.equal(state.error, '')
 })
@@ -243,7 +270,10 @@ test('sair de todos: revogação de Push falhando não impede o logout', async (
   const state = await run('logoutAll')
   assert.equal(sessionAlive, false)
   assert.equal(state.error, '')
-  assert.deepEqual(events.filter((e) => e.startsWith('auth:')), ['auth:others', 'auth:local'])
+  assert.deepEqual(
+    events.filter((e) => e.startsWith('auth:')),
+    ['auth:others', 'auth:local']
+  )
 })
 
 test('sair de todos: Push travado não atrasa o logout além de ~3s', async () => {

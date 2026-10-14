@@ -1,127 +1,85 @@
-import { useEffect, useState } from 'react'
-import { BellIcon, CheckIcon } from '@primer/octicons-react'
+import { BellIcon } from '@primer/octicons-react'
 import { Button, Flash } from '@primer/react'
-import {
-  describePushError,
-  disablePushNotifications,
-  enablePushNotifications,
-  getLocalPushEndpoint,
-  getPushStatus,
-  pushSupport,
-} from '../services/pushService'
-
-const ENABLE_ERRORS = {
-  'vapid-not-configured': 'Push ainda não foi configurado pelo Evolutus.',
-  'service-worker-unavailable': 'O app ainda não está pronto para notificações. Recarregue a página e tente de novo.',
-}
+import { useDevicePush } from '../hooks/useDevicePush'
 
 export function PushNotificationSettings({ userId = null } = {}) {
-  const [status, setStatus] = useState(null)
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState(null)
-  const [support] = useState(pushSupport)
-  const permission = typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
-
-  // O estado é deste dispositivo (endpoint local), não a contagem de dispositivos da conta.
-  // Sem suporte a Push não há consulta nenhuma.
-  useEffect(() => {
-    if (!support.supported) return undefined
-    let active = true
-    getLocalPushEndpoint()
-      .catch(() => null)
-      .then((endpoint) => getPushStatus(endpoint))
-      .then((value) => active && setStatus(value))
-      .catch((error) => {
-        console.error('[Push] status failed', describePushError(error))
-        if (active) setStatus({ enabled: false, thisDevice: false, error: describePushError(error) })
-      })
-    return () => { active = false }
-  }, [support.supported])
-
-  async function enable() {
-    setBusy(true)
-    setMessage(null)
-    try {
-      const result = await enablePushNotifications({ userId })
-      if (result.permission === 'granted') {
-        setStatus(result.status)
-        setMessage({ variant: 'success', text: 'Notificações ativadas neste dispositivo.' })
-      } else if (result.permission === 'denied') {
-        setMessage({ variant: 'warning', text: 'Permissão bloqueada. Libere notificações nas configurações do navegador.' })
-      } else {
-        setMessage({ variant: 'warning', text: 'A permissão não foi concedida. Toque em ativar para tentar de novo.' })
-      }
-    } catch (error) {
-      const detail = describePushError(error)
-      console.error('[Push] enable failed', detail)
-      setMessage({
-        variant: 'danger',
-        text: ENABLE_ERRORS[error?.code] || 'Não foi possível ativar notificações.',
-        detail,
-      })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function disable() {
-    setBusy(true)
-    setMessage(null)
-    try {
-      await disablePushNotifications({ explicit: true, userId })
-      setStatus((current) => ({ ...current, thisDevice: false }))
-      setMessage({ variant: 'success', text: 'Notificações desativadas neste dispositivo.' })
-    } catch (error) {
-      const detail = describePushError(error)
-      console.error('[Push] disable failed', detail)
-      setMessage({ variant: 'danger', text: 'Não foi possível desativar notificações.', detail })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const active = permission === 'granted' && Boolean(status?.thisDevice)
+  const push = useDevicePush(userId)
+  const installation = push.support.reason === 'ios-install-required'
+  const preferenceOff = push.device?.status?.enabled === false
+  const registered =
+    push.permission === 'granted' &&
+    Boolean(push.device?.endpoint && push.device?.status?.thisDevice)
+  const title = installation
+    ? 'Instalação necessária'
+    : !push.support.supported
+      ? 'Indisponível'
+      : push.permission === 'denied'
+        ? 'Permissão bloqueada'
+        : push.failed
+          ? 'Erro de verificação'
+          : push.active
+            ? 'Ativo neste dispositivo'
+            : push.permission === 'granted' && !push.device && !push.optedOut
+              ? 'Verificando…'
+              : 'Desativado'
   return (
     <section className="profile-card" aria-labelledby="push-heading">
       <header className="profile-card-heading">
-        <span className="profile-section-icon"><BellIcon size={20} /></span>
+        <span className="profile-section-icon">
+          <BellIcon size={20} />
+        </span>
         <div>
           <h2 id="push-heading">Notificações no dispositivo</h2>
-          <p>Receba avisos mesmo quando o Evolutus estiver fechado.</p>
+          <p>{title}</p>
         </div>
       </header>
       <div className="profile-form">
-        {message && <Flash variant={message.variant} role="status">{message.variant === 'success' && <CheckIcon />} {message.text}
-          {message.detail && <small className="pwa-muted" style={{ display: 'block' }}>Detalhe técnico: {message.detail}</small>}
-        </Flash>}
-        {!support.supported && (
-          <Flash variant="warning">
-            {support.reason === 'ios-install-required'
-              ? 'Adicione o Evolutus à Tela de Início e abra o app instalado para ativar notificações.'
-              : 'Este navegador não oferece Web Push.'}
-          </Flash>
+        {push.message && <Flash role="status">{push.message}</Flash>}
+        {installation && (
+          <p>
+            Adicione o Evolutus à Tela de Início pelo menu Compartilhar do Safari e abra o app
+            instalado.
+          </p>
         )}
-        {status?.error && (
-          <Flash variant="warning">
-            Não foi possível verificar o estado deste dispositivo.
-            <small className="pwa-muted" style={{ display: 'block' }}>Detalhe técnico: {status.error}</small>
-          </Flash>
+        {!push.support.supported && !installation && <p>Este navegador não oferece Web Push.</p>}
+        {push.permission === 'denied' && (
+          <p>
+            A permissão está bloqueada. Libere notificações nas configurações do navegador e volte
+            ao app.
+          </p>
         )}
-        {!status?.thisDevice && status?.activeSubscriptions > 0 && !status?.error && (
-          <p className="pwa-muted">As notificações estão ativas em outro dispositivo da sua conta; este ainda não.</p>
+        {push.failed && (
+          <p>
+            Não foi possível verificar este dispositivo. Verifique sua conexão e tente novamente.
+          </p>
         )}
-        {permission === 'denied' && (
-          <p className="pwa-muted">A permissão está bloqueada. Altere-a nas configurações do navegador.</p>
+        {preferenceOff && (
+          <p>
+            A entrega nesta conta ainda não está habilitada. Ative este dispositivo para concluir o
+            registro. Preferências da conta já desabilitadas não são alteradas; nesse caso, procure
+            o Atendimento no menu do app.
+          </p>
+        )}
+        {!push.active && push.device?.status?.activeSubscriptions > 0 && (
+          <p className="pwa-muted">
+            Há notificações ativas em outro dispositivo da conta; este ainda não está confirmado.
+          </p>
         )}
         <Button
           type="button"
-          variant={active ? 'danger' : 'primary'}
-          onClick={active ? disable : enable}
-          loading={busy}
-          disabled={busy || !support.supported || (!active && permission === 'denied')}
+          variant={registered ? 'danger' : 'primary'}
+          onClick={registered ? push.disable : push.enable}
+          loading={push.busy}
+          disabled={
+            push.busy || !push.allowed || !push.support.supported || push.permission === 'denied'
+          }
         >
-          {active ? 'Desativar neste dispositivo' : 'Ativar notificações'}
+          {registered ? 'Desativar neste dispositivo' : 'Ativar notificações'}
         </Button>
+        <p className="pwa-muted">
+          Os avisos dependem da compatibilidade do dispositivo, permissão do navegador,
+          configurações do sistema, conexão e entrega do provedor.
+        </p>
       </div>
     </section>
   )

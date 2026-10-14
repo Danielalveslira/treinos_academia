@@ -431,6 +431,6 @@ test('o sync e o push só ligam com a sessão CONFIRMADA: o Layout os desliga no
   const layout = readFileSync(new URL('./Layout.jsx', import.meta.url), 'utf8')
   assert.match(layout, /useSyncScheduler\(syncAuthorized \? user\?\.uid : null\)/)
   assert.match(layout, /!offlineLocal\s*&&\s*serverAccessAllowed/)
-  assert.match(layout, /usePushSubscriptionSync\(Boolean\(profile\) && !offlineLocal/)
+  assert.match(layout, /usePushSubscriptionSync\(syncAuthorized, user\?\.uid\)/)
   assert.match(layout, /offlineLocal &&/) // aviso discreto de modo offline
 })

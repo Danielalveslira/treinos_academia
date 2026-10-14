@@ -1,0 +1,93 @@
+.push-activation-notice {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 20px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--fitness-radius-sm, 10px);
+  background: var(--bgColor-muted);
+  color: var(--fgColor-muted);
+}
+.push-notice-icon {
+  display: flex;
+  color: var(--fgColor-muted);
+}
+.push-notice-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 12px;
+  min-width: 0;
+}
+.push-notice-body p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.push-notice-body a,
+.push-notice-enable,
+.push-notice-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.push-notice-body a,
+.push-notice-enable {
+  color: var(--fitness-accent-strong);
+  font-weight: 600;
+  text-decoration: none;
+}
+.push-notice-dismiss {
+  width: 44px;
+  color: var(--fgColor-muted);
+}
+.push-notice-enable:hover:not(:disabled),
+.push-notice-body a:hover {
+  background: var(--fitness-accent-soft);
+}
+.push-notice-dismiss:hover {
+  background: var(--bgColor-neutral-muted);
+}
+.push-notice-enable:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.push-notice-feedback {
+  grid-column: 1 / -1;
+}
+.push-activation-notice button:focus-visible,
+.push-activation-notice a:focus-visible {
+  outline: 2px solid var(--fgColor-accent);
+  outline-offset: 2px;
+}
+@media (max-width: 430px) {
+  .push-activation-notice {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  .push-notice-body {
+    column-gap: 6px;
+  }
+  .push-notice-reserved {
+    min-height: 84px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .push-activation-notice button,
+  .push-notice-body a {
+    transition: none;
+  }
+}

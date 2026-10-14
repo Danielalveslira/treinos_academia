@@ -97,7 +97,6 @@ export function Layout() {
   useActivityHeartbeat()
   // Modo offline local (cold start): usuário reconhecido pelo aparelho, SEM sessão confirmada pelo servidor.
   // Push e sync só começam depois que a revalidação confirma sessão, perfil e termos (AuthContext).
-  usePushSubscriptionSync(Boolean(profile) && !offlineLocal, user?.uid)
   // Esvazia a outbox (treino salvo offline) ao abrir, no evento `online`, ao voltar ao primeiro plano.
   const syncAuthorized =
     !offlineLocal &&
@@ -105,6 +104,7 @@ export function Layout() {
     !deletionStatus &&
     profile?.accountStatus === 'active' &&
     resolveLegalGateState({ profile, access: legalAccess, loading: false, error: '' }) === 'allowed'
+  usePushSubscriptionSync(syncAuthorized, user?.uid)
   useSyncScheduler(syncAuthorized ? user?.uid : null)
   useWarmOfflineRoutes(!offlineLocal)
   // Escrita offline ligada: o app não é mais bloqueado sem rede, mas o que EXIGE servidor (EvoCash,

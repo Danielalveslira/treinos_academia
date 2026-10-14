@@ -1,0 +1,296 @@
+{
+  "scope": "Push Home e refinamento visual compacto; integração Chromium com Push/backend simulados",
+  "publication": {
+    "commit": false,
+    "push": false,
+    "deploy": false,
+    "productionWrites": false,
+    "migrations": 0
+  },
+  "performance": {
+    "bootGzipBefore": {
+      "jsBytes": 308096,
+      "cssBytes": 74043,
+      "files": 4
+    },
+    "bootGzipAfter": {
+      "jsBytes": 310015,
+      "cssBytes": 74043,
+      "files": 4
+    },
+    "homeBuildBefore": {
+      "jsKB": 39.16,
+      "jsGzipKB": 13.69
+    },
+    "homeBuildAfter": {
+      "jsKB": 42.44,
+      "jsGzipKB": 14.98,
+      "cssKB": 1.68,
+      "cssGzipKB": 0.65
+    },
+    "rpcMockCounts": {
+      "defaultMount": 0,
+      "dismiss": 0,
+      "grantedSubscribedShared": 1
+    },
+    "scopeLimit": "CLS e alturas de componentes isolados; não foi medido LCP/CLS da Home completa",
+    "newPollingIntervals": 0,
+    "dailyTimeoutsMaximum": 1
+  },
+  "browser": {
+    "artifacts": "/tmp/push-home-browser-6HSAJ5",
+    "checks": 23,
+    "results": [
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 320,
+        "dark": false,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 70.53125
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 320,
+        "dark": true,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 70.53125
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 390,
+        "dark": false,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 390,
+        "dark": true,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 430,
+        "dark": false,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 430,
+        "dark": true,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 1366,
+        "dark": false,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "layout/default/dismiss/reload",
+        "width": 1366,
+        "dark": true,
+        "overflow": false,
+        "calls": [],
+        "prompts": 0,
+        "cls": 0,
+        "height": 58
+      },
+      {
+        "scenario": "click/gesture/profile/disable/home",
+        "result": "pass"
+      },
+      {
+        "scenario": "granted/delayed-confirmation",
+        "topBefore": 186.15625,
+        "topAfter": 186.15625,
+        "calls": [
+          "get_my_push_status"
+        ],
+        "cls": 0
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "permission": "denied"
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "unsupported": true
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "optedOut": true,
+          "permission": "granted"
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "permission": "granted",
+          "auth": {
+            "offlineLocal": true
+          }
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "permission": "granted",
+          "auth": {
+            "serverAccessAllowed": false
+          }
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "permission": "granted",
+          "auth": {
+            "profile": {
+              "accountStatus": "disabled"
+            }
+          }
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "permission": "granted",
+          "auth": {
+            "profile": {
+              "accountStatus": "active",
+              "role": "user"
+            }
+          }
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "ineligible",
+        "options": {
+          "permission": "granted",
+          "auth": {
+            "user": null
+          }
+        },
+        "result": "pass"
+      },
+      {
+        "scenario": "open-home-midnight-plus-12h",
+        "result": "pass"
+      },
+      {
+        "scenario": "status-error-safe",
+        "result": "pass"
+      },
+      {
+        "scenario": "registration-error-no-false-success",
+        "result": "pass"
+      },
+      {
+        "scenario": "ios-installation-guidance",
+        "result": "pass"
+      },
+      {
+        "scenario": "real-storage-event-and-account-isolation",
+        "result": "pass"
+      }
+    ]
+  },
+  "validation": {
+    "npm run lint": {
+      "errors": 0,
+      "warnings": 14,
+      "warningsPreexisting": true
+    },
+    "npm test": {
+      "tests": 1934,
+      "pass": 1934,
+      "fail": 0,
+      "log": "/tmp/push-tests-refined.log",
+      "status": "pass"
+    },
+    "node --test src/features/notifications/services/pushService.test.js src/features/notifications/utils/pushNoticeSchedule.test.js src/hooks/useLogout.push.test.js": {
+      "tests": 60,
+      "pass": 60,
+      "fail": 0,
+      "log": "/tmp/push-focused-accepted.log"
+    },
+    "npm run test:functions": {
+      "tests": 152,
+      "pass": 151,
+      "fail": 0,
+      "skipped": 1,
+      "log": "/tmp/push-functions-complete.log"
+    },
+    "npm run build": {
+      "status": "pass",
+      "log": "/tmp/push-build-refined.log"
+    },
+    "npm run budget": {
+      "status": "pass",
+      "log": "/tmp/push-budget-refined.log"
+    },
+    "npm run format:check": {
+      "status": "preexisting-failure",
+      "filesBefore": 126,
+      "filesAfter": 122,
+      "log": "/tmp/push-format-refined.log"
+    },
+    "node scripts/verify-push-home-browser.mjs": {
+      "status": "pass",
+      "checks": 23,
+      "log": "/tmp/push-browser-refined.log"
+    },
+    "prettier (somente arquivos alterados)": {
+      "status": "pass"
+    },
+    "git diff --check": {
+      "status": "pass"
+    }
+  },
+  "notValidated": [
+    "Safari/iOS PWA físico",
+    "Android físico",
+    "Firefox desktop",
+    "Entrega real de Push",
+    "Lighthouse/Home completa",
+    "pgTAP SQL (nenhuma alteração SQL)"
+  ]
+}

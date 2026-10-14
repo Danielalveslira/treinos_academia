@@ -25,6 +25,7 @@ import { ErrorState } from '../components/ErrorState'
 import { LazyDialogBoundary } from '../components/LazyDialogBoundary'
 import { saveTrainingPreferences } from '../services/usersService'
 import { normalizeTrainingPreferences } from '../utils/trainingPlan'
+import { PushActivationNotice } from '../features/notifications/components/PushActivationNotice'
 import { DashboardGreeting } from '../features/greetings/DashboardGreeting'
 import { GREETING_V2_ENABLED } from '../features/greetings/config'
 import { isReminderDue } from '../features/greetings/clock'
@@ -174,6 +175,8 @@ export default function Dashboard() {
   return (
     <div className="dashboard fitness-dashboard">
       <DashboardGreeting greeting={greeting} onShown={onShown} dynamic={GREETING_V2_ENABLED} />
+
+      <PushActivationNotice key={user?.uid} userId={user?.uid} />
 
       <SponsoredAdBanner ads={bannerAds} placement="home_banner" />
 
