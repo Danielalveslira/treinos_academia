@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { FormControl, TextInput, Select, Textarea } from '@primer/react'
 import { validateCommunity } from '../utils/validators'
 import { DEFAULT_COMMUNITY_ICON_NAME } from '../constants/communityIcons'
 import { CommunityIconPicker } from './CommunityIconPicker'
+import { CommunityCoverPicker } from './CommunityCoverPicker'
 import { useFormState } from '../hooks/useFormState'
 import { FormShell } from './FormShell'
 
@@ -13,9 +15,19 @@ export function CommunityForm({ initialValue, onSubmit, onCancel, showPostAccess
     validate: validateCommunity,
     onSubmit,
   })
+  // A capa só existe depois que a comunidade existe (caminho no Storage é
+  // {communityId}.webp) -- por isso fica fora do useFormState/onSubmit, só em edição.
+  const [coverPath, setCoverPath] = useState(initialValue?.coverPath ?? null)
 
   return (
     <FormShell onSubmit={handleSubmit} onCancel={onCancel} submitting={submitting}>
+      {initialValue?.id && (
+        <CommunityCoverPicker
+          communityId={initialValue.id}
+          coverPath={coverPath}
+          onUploaded={setCoverPath}
+        />
+      )}
       <FormControl required>
         <FormControl.Label>Nome</FormControl.Label>
         <TextInput

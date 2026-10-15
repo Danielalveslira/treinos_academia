@@ -21,11 +21,7 @@ import { CommunityExploreCard } from '../components/CommunityExploreCard'
 import { ResponsivePicture } from '../components/ResponsivePicture'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { listFeaturedCommunities, recordPromotionClick } from '../services/promotionsService'
-import {
-  describeActivityPreview,
-  formatMemberCount,
-  formatRelativeTime,
-} from '../utils/communityActivity'
+import { formatMemberCount, formatRelativeTime } from '../utils/communityActivity'
 import { classifyReadError } from '../services/offline/readError'
 import { COMMUNITY_MESSAGES, describeJoinFailure } from '../utils/communityAccess'
 
@@ -59,41 +55,40 @@ function LeaveCommunityMenu({ onLeave, disabled }) {
   )
 }
 
-// Prévia discreta da última publicação: autor, tempo relativo e um trecho curto. Enquanto a
-// prévia ainda carrega não mostra nada (sem "pulo" de layout para o estado vazio).
-function CommunityActivityPreview({ activity, ready }) {
+// Status curto da comunidade: avatar do autor + "Última atividade: @fulano há 6d" numa
+// badge sutil -- sem o trecho da publicação (removido para reduzir carga visual do
+// cartão). Enquanto o status ainda carrega não mostra nada (sem "pulo" de layout).
+function CommunityActivityStatus({ activity, ready }) {
   if (activity) {
     const author = typeof activity.authorUsername === 'string' ? activity.authorUsername : null
     const time = formatRelativeTime(activity.createdAt)
-    const text = describeActivityPreview(activity)
+    const label = author
+      ? `Última atividade: @${author}${time ? ` ${time}` : ''}`
+      : 'Atividade recente'
     return (
-      <div className="community-card-preview">
+      <div className="community-card-status">
         <ProfileAvatar
           path={activity.authorAvatarPath}
           name={author || 'M'}
           className="community-card-avatar"
         />
-        <div className="community-card-preview-body">
-          <p className="community-card-preview-meta">
-            <strong>{author ? `@${author}` : 'Membro'}</strong>
-            {time && <span> · {time}</span>}
-          </p>
-          {text && <p className="community-card-preview-text">{text}</p>}
-        </div>
+        <span className="community-card-status-badge">{label}</span>
       </div>
     )
   }
   if (!ready) return null
   return (
-    <div className="community-card-preview community-card-preview--empty">
-      <p className="community-card-preview-text">Ainda sem publicações. Comece a conversa!</p>
+    <div className="community-card-status community-card-status--empty">
+      <span className="community-card-status-text">Comece a conversa!</span>
     </div>
   )
 }
 
 // O cartão inteiro é a área de toque (o link do nome estica por ::after sobre o cartão) e o
 // menu ⋯ fica acima dessa camada — assim não há botão aninhado em link e o alvo de toque
-// é o maior possível sem nenhum gesto novo.
+// é o maior possível sem nenhum gesto novo. A seta no canto inferior direito é só um
+// reforço visual de "entrar" (decorativa, aria-hidden) -- o alvo de toque continua sendo
+// o cartão inteiro, não só ela.
 function CommunityCard({ community, linkTo, onNavigate, menu, badge, children }) {
   return (
     <article className="community-card">
@@ -108,10 +103,12 @@ function CommunityCard({ community, linkTo, onNavigate, menu, badge, children })
             <span>{formatMemberCount(community.memberCount)}</span>
           </p>
         </div>
-        <ChevronRightIcon size={16} className="community-card-chevron" />
         {menu && <div className="community-card-menu">{menu}</div>}
       </div>
       {children}
+      <span className="community-card-chevron" aria-hidden="true">
+        <ChevronRightIcon size={16} />
+      </span>
     </article>
   )
 }
@@ -259,16 +256,15 @@ export default function Communities() {
           >
             Criar comunidade
           </Button>
-          <Button
+          <IconButton
             onClick={handleRefresh}
             loading={loading}
             disabled={loading}
             variant="invisible"
-            leadingVisual={SyncIcon}
+            icon={SyncIcon}
+            aria-label="Atualizar"
             className="communities-refresh-button"
-          >
-            Atualizar
-          </Button>
+          />
         </div>
       </header>
 
@@ -332,7 +328,7 @@ export default function Communities() {
                       />
                     }
                   >
-                    <CommunityActivityPreview
+                    <CommunityActivityStatus
                       activity={activity[community.id]}
                       ready={isActivityChecked(community.id)}
                     />
@@ -346,21 +342,12 @@ export default function Communities() {
             <SectionHeading
               icon={<Compass size={18} />}
               title="Explorar comunidades"
-              subtitle="Descubra grupos com os mesmos objetivos que você."
               id="communities-explore"
             />
             {exploreCommunities.length === 0 ? (
-              <div className="communities-empty">
-                <span className="communities-empty-icon" aria-hidden="true">
-                  <Compass size={18} />
-                </span>
-                <div>
-                  <p className="communities-empty-title">Você já está em todas</p>
-                  <p className="communities-empty-text">
-                    Quando surgirem novas comunidades, elas aparecem aqui.
-                  </p>
-                </div>
-              </div>
+              <p className="communities-explore-empty">
+                Você já participa de todas as comunidades disponíveis no momento.
+              </p>
             ) : (
               <div className="communities-grid communities-grid--explore">
                 {exploreCommunities.map((community) => (

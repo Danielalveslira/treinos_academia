@@ -7,7 +7,7 @@ import { createRequire } from 'node:module'
 import { build } from 'esbuild'
 
 // O cartão do Explorar reflete o estado de acesso que o SERVIDOR devolveu junto com a listagem. Banido nunca vê
-// "Entrar" (nem um clique que sabidamente será recusado); a segurança em si é coberta pelos testes SQL.
+// "Participar" (nem um clique que sabidamente será recusado); a segurança em si é coberta pelos testes SQL.
 let directory
 let render
 before(async () => {
@@ -44,6 +44,22 @@ before(async () => {
     jsx: 'automatic',
     loader: { '.css': 'empty' },
     logLevel: 'silent',
+    plugins: [
+      {
+        // Evita puxar communitiesService -> supabase/config (precisa de env vars reais)
+        // só porque o cartão agora mostra uma capa opcional -- aqui ela nunca é testada.
+        name: 'explore-card-dependencies',
+        setup(context) {
+          context.onResolve({ filter: /\/CommunityCoverImage(\.jsx)?$/ }, () => ({
+            path: 'cover',
+            namespace: 'stub',
+          }))
+          context.onLoad({ filter: /^cover$/, namespace: 'stub' }, () => ({
+            contents: `export const CommunityCoverImage = () => null`,
+          }))
+        },
+      },
+    ],
   })
   ;({ render } = createRequire(import.meta.url)(outfile))
 })
@@ -67,34 +83,34 @@ const community = (access) => ({
   access,
 })
 
-test('not_member: mostra Entrar e dispara a entrada', () => {
+test('not_member: mostra Participar e dispara a entrada', () => {
   const joined = []
   const component = render({ community: community('not_member'), onJoin: (c) => joined.push(c.id) })
-  const entrar = labelled(component, /^Entrar$/)
-  assert.equal(entrar.length, 1)
-  assert.equal(entrar[0].props.disabled, undefined)
-  entrar[0].props.onClick()
+  const participar = labelled(component, /^Participar$/)
+  assert.equal(participar.length, 1)
+  assert.equal(participar[0].props.disabled, undefined)
+  participar[0].props.onClick()
   assert.deepEqual(joined, ['c1'])
 })
 
 test('sem estado informado conta como not_member', () => {
   const component = render({ community: community(undefined), onJoin() {} })
-  assert.equal(labelled(component, /^Entrar$/).length, 1)
+  assert.equal(labelled(component, /^Participar$/).length, 1)
 })
 
-test('member: nunca mostra Entrar', () => {
+test('member: nunca mostra Participar', () => {
   const component = render({ community: community('member'), onJoin() {} })
-  assert.equal(labelled(component, /Entrar/).length, 0)
+  assert.equal(labelled(component, /Participar/).length, 0)
 })
 
-test('banned: mostra "Acesso bloqueado" desabilitado e nenhum Entrar', () => {
+test('banned: mostra "Acesso bloqueado" desabilitado e nenhum Participar', () => {
   const component = render({
     community: community('banned'),
     onJoin() {
       throw new Error('não deveria tentar entrar')
     },
   })
-  assert.equal(labelled(component, /Entrar/).length, 0)
+  assert.equal(labelled(component, /Participar/).length, 0)
   const blocked = labelled(component, /Acesso bloqueado/)
   assert.equal(blocked.length, 1)
   assert.equal(blocked[0].props.disabled, true)
@@ -113,9 +129,9 @@ test('banned: o aviso contextual só aparece depois de uma tentativa recusada, c
   assert.doesNotMatch(text, /Erro/)
 })
 
-test('unavailable: mensagem própria, desabilitado e sem Entrar', () => {
+test('unavailable: mensagem própria, desabilitado e sem Participar', () => {
   const component = render({ community: community('unavailable'), onJoin() {} })
-  assert.equal(labelled(component, /^Entrar$/).length, 0)
+  assert.equal(labelled(component, /^Participar$/).length, 0)
   const chip = labelled(component, /Indisponível/)
   assert.equal(chip.length, 1)
   assert.equal(chip[0].props.disabled, true)

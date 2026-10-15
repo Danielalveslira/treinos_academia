@@ -1393,8 +1393,9 @@ body:has(.pwa-offline) .app-shell {
   justify-content: center;
 }
 .communities-hero-actions .communities-refresh-button {
-  min-height: 44px;
-  padding-inline: 12px;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
   border: 1px solid rgb(240 246 252 / 16%);
   background: rgb(13 17 23 / 55%);
   color: #f0f6fc;
@@ -1467,18 +1468,13 @@ body:has(.pwa-offline) .app-shell {
 .community-card:active {
   transform: scale(0.99);
 }
-.community-card-top,
-.community-explore-head {
+.community-card-top {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px 6px 14px 14px;
 }
-.community-explore-head {
-  padding-right: 14px;
-}
-.community-card .community-icon,
-.community-explore-card .community-icon {
+.community-card .community-icon {
   border: 1px solid color-mix(in srgb, var(--fitness-accent) 35%, transparent);
 }
 .community-card-info {
@@ -1529,8 +1525,16 @@ body:has(.pwa-offline) .app-shell {
   font-weight: 700;
 }
 .community-card-chevron {
-  flex: 0 0 auto;
-  color: var(--fitness-muted);
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
 }
 .community-card-menu {
   position: relative;
@@ -1546,9 +1550,11 @@ body:has(.pwa-offline) .app-shell {
   padding-right: 14px;
 }
 
-.community-card-preview {
+/* Status curto ("Última atividade: @fulano há 6d" / "Comece a conversa!"), sem o
+   trecho da publicação -- ver CommunityActivityStatus em Communities.jsx. */
+.community-card-status {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   margin: 0 14px;
   padding: 12px 0 14px;
@@ -1559,50 +1565,72 @@ body:has(.pwa-offline) .app-shell {
   height: 28px;
   border-radius: 50%;
   font-size: 12px;
+  flex: 0 0 auto;
 }
 .community-card-avatar svg {
   width: 16px;
   height: 16px;
 }
-.community-card-preview-body {
-  flex: 1;
-  min-width: 0;
-}
-.community-card-preview-meta,
-.community-card-preview-text {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.4;
-}
-.community-card-preview-meta {
+.community-card-status-badge {
   overflow: hidden;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--fitness-accent-soft);
   color: var(--fitness-muted);
   font-size: 12px;
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.community-card-preview-meta strong {
-  color: var(--fgColor-default);
-  font-weight: 600;
-}
-.community-card-preview-text {
-  display: -webkit-box;
-  overflow: hidden;
-  color: var(--fgColor-default);
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-.community-card-preview--empty {
-  align-items: center;
+.community-card-status--empty {
+  justify-content: center;
   padding-block: 10px 12px;
 }
-.community-card-preview--empty .community-card-preview-text {
+.community-card-status-text {
   color: var(--fitness-muted);
   font-size: 12px;
 }
 
-/* Cartão de "Explorar": Entrar à direita do cabeçalho, descrição curta abaixo. */
+/* Cartão de "Explorar": capa no topo, ícone redondo sobrepondo a borda inferior dela,
+   corpo com nome/membros/descrição e um botão de largura total. */
+.community-explore-card {
+  display: flex;
+  flex-direction: column;
+}
+.community-explore-cover {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--fitness-radius-md) var(--fitness-radius-md) 0 0;
+  background: var(--fitness-accent-soft);
+  background-image: radial-gradient(
+    130% 140% at 15% 0%,
+    color-mix(in srgb, var(--fitness-accent) 32%, transparent),
+    transparent 72%
+  );
+}
+.community-explore-cover-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.community-explore-cover-icon {
+  position: absolute;
+  left: 14px;
+  bottom: -28px;
+}
+.community-explore-cover-icon .community-icon {
+  border-radius: 50% !important;
+  box-shadow: 0 0 0 3px var(--fitness-surface);
+}
+.community-explore-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 36px 14px 14px;
+}
 .community-explore-name {
   display: -webkit-box;
   overflow: hidden;
@@ -1617,8 +1645,8 @@ body:has(.pwa-offline) .app-shell {
 .community-explore-description {
   display: -webkit-box;
   overflow: hidden;
-  margin: 0;
-  padding: 0 14px 14px;
+  margin: 2px 0 0;
+  padding: 0;
   color: var(--fitness-muted);
   font-size: 13px;
   line-height: 1.5;
@@ -1626,10 +1654,19 @@ body:has(.pwa-offline) .app-shell {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
-.community-explore-head .community-join-button {
-  flex: 0 0 auto;
-  min-width: 76px;
-  min-height: 40px;
+.community-explore-card .community-join-button {
+  min-height: 44px;
+  margin-top: 10px;
+}
+
+/* Mensagem única quando não há nenhuma comunidade pra explorar. */
+.communities-explore-empty {
+  margin: 0;
+  padding: 18px 4px;
+  color: var(--fitness-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 /* Estado vazio compacto (sem bloco grande): ícone discreto + duas linhas curtas. */
@@ -4005,6 +4042,28 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   margin-bottom: 10px;
   color: var(--fgColor-muted);
   font-size: 13px;
+}
+
+/* Mesmo padrão visual de .profile-avatar-control (Profile.jsx): upload à parte do
+   submit do formulário, com sua própria pré-visualização. */
+.community-cover-picker {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 12px;
+}
+.community-cover-picker p {
+  margin: 4px 0 0;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+}
+.community-cover-picker-preview {
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  object-fit: cover;
 }
 
 .community-icon-grid {

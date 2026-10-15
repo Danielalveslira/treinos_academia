@@ -68,9 +68,10 @@ export function useAdminCommunities() {
   // superadmin que também navega em /comunidades continua vendo a versão antiga por até
   // 5min depois de mexer aqui (ver invalidateCommunitiesCache em utils/pageCache.js).
   async function add(community) {
-    await createCommunity(user.uid, community)
+    const id = await createCommunity(user.uid, community)
     invalidateCommunitiesCache(user.uid)
     await refresh()
+    return id
   }
 
   async function edit(communityId, community) {

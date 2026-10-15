@@ -3,6 +3,7 @@ import { Box, Heading, Text, Button, Spinner, Label } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PeopleIcon, PlusIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
 import { useAdminCommunities } from '../hooks/useAdminCommunities'
+import { getCommunity } from '../services/communitiesService'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { CommunityForm } from '../components/CommunityForm'
@@ -45,11 +46,20 @@ export default function AdminCommunities() {
     setBusyCommunityId(null)
   }
 
+  // Depois de criar, abre direto em edição -- é lá que mora o upload de capa (o caminho no
+  // Storage é {communityId}.webp, só existe depois que a comunidade já tem id). Sem isso o
+  // superadmin não tinha NENHUM jeito de colocar uma imagem ao criar uma comunidade.
   async function handleCreate(values) {
     try {
-      await add(values)
+      const id = await add(values)
       setFormOpen(false)
-      showToast('Comunidade criada.')
+      showToast('Comunidade criada. Agora você já pode adicionar uma capa.')
+      try {
+        const created = await getCommunity(id)
+        if (created) setEditingCommunity(created)
+      } catch (err) {
+        console.error('[AdminCommunities] getCommunity (post-create):', err)
+      }
     } catch (err) {
       console.error('[AdminCommunities] create:', err)
       showToast('Erro ao criar comunidade.', 'danger')
