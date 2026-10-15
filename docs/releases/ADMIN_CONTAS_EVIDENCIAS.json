@@ -1,0 +1,318 @@
+{
+  "generatedAt": "2026-10-15T14:35:39.360Z",
+  "scope": "Evidências locais e sintéticas acompanhando docs/releases/ADMIN_CONTAS_REDESIGN_AUDITORIA.md. Nenhum dado real, commit, push ou execução em produção.",
+  "security": {
+    "defensiveSqlAssertions": 70,
+    "deletionSqlAssertions": 32,
+    "financialSqlAssertions": 85,
+    "snapshotSqlAssertions": 75,
+    "concurrency": {
+      "environment": "local PostgreSQL",
+      "tests": [
+        {
+          "name": "simultaneous disable replay",
+          "auditRows": 1,
+          "passed": true
+        },
+        {
+          "name": "concurrent deletion replay",
+          "auditRows": 1,
+          "passed": true
+        },
+        {
+          "name": "status waits for deletion and rejects",
+          "passed": true
+        }
+      ]
+    }
+  },
+  "bundles": {
+    "note": "gzip nível 9 (Node zlib) nos dois lados; Vite reporta seu próprio gzip no build.log (ver logs/build.log).",
+    "adminAccounts": {
+      "before": {
+        "name": "AdminAccounts-B5AvSna5.js",
+        "gzipBytes": 12165
+      },
+      "after": {
+        "name": "AdminAccounts-TpGCZy_U.js",
+        "gzipBytes": 14568
+      },
+      "afterCss": {
+        "name": "AdminAccounts-BG3Gmaaj.css",
+        "gzipBytes": 1471
+      }
+    },
+    "primerShared": {
+      "before": {
+        "name": "primer-e7IFQoym.js",
+        "gzipBytes": 183007
+      },
+      "after": {
+        "name": "primer-DQUHNgB2.js",
+        "gzipBytes": 183840
+      }
+    },
+    "assetScan": {
+      "privilegedFindings": 0
+    }
+  },
+  "sqlPerformance": {
+    "environment": "local PostgreSQL; synthetic fixtures plus existing local fixture rows; every measurement rolled back",
+    "results": [
+      {
+        "total": 13,
+        "volume": 7,
+        "returned": 13,
+        "truncated": false,
+        "payload_bytes": 6590,
+        "execution_ms": 4.37,
+        "planning_ms": 0.011,
+        "shared_hit_blocks": 63
+      },
+      {
+        "total": 106,
+        "volume": 100,
+        "returned": 106,
+        "truncated": false,
+        "payload_bytes": 50490,
+        "execution_ms": 8.456,
+        "planning_ms": 0.012,
+        "shared_hit_blocks": 231
+      },
+      {
+        "total": 1006,
+        "volume": 1000,
+        "returned": 1000,
+        "truncated": true,
+        "payload_bytes": 473195,
+        "execution_ms": 46.546,
+        "planning_ms": 0.028,
+        "shared_hit_blocks": 69
+      },
+      {
+        "total": 1206,
+        "volume": 1200,
+        "returned": 1000,
+        "truncated": true,
+        "payload_bytes": 472359,
+        "execution_ms": 46.776,
+        "planning_ms": 0.026,
+        "shared_hit_blocks": 130
+      }
+    ]
+  },
+  "browserCaptures": {
+    "before": {
+      "entries": 14,
+      "overflowCount": 10,
+      "errorsTotal": 0
+    },
+    "after": {
+      "entries": 16,
+      "overflowCount": 0,
+      "errorsTotal": 0
+    }
+  },
+  "browserPerformance": {
+    "before": [
+      {
+        "listStartY": 942.3125,
+        "uiChecks": [],
+        "width": 390,
+        "theme": "light",
+        "overflow": true,
+        "calls": [
+          "admin_accounts_snapshot",
+          "admin_accounts_snapshot",
+          "admin_accounts_snapshot",
+          "admin_accounts_snapshot",
+          "admin_accounts_snapshot"
+        ],
+        "volumes": [
+          {
+            "heapBytes": 9792584,
+            "taskMs": 118,
+            "scriptMs": 42,
+            "layoutMs": 1,
+            "domNodes": 1103,
+            "n": 7,
+            "returned": 7,
+            "payloadBytes": 3122,
+            "refreshMs": 156
+          },
+          {
+            "heapBytes": 12522684,
+            "taskMs": 240,
+            "scriptMs": 99,
+            "layoutMs": 4,
+            "domNodes": 1787,
+            "n": 100,
+            "returned": 100,
+            "payloadBytes": 41469,
+            "refreshMs": 289
+          },
+          {
+            "heapBytes": 16843544,
+            "taskMs": 239,
+            "scriptMs": 91,
+            "layoutMs": 1,
+            "domNodes": 1879,
+            "n": 1000,
+            "returned": 1000,
+            "payloadBytes": 413401,
+            "refreshMs": 297
+          },
+          {
+            "heapBytes": 13988744,
+            "taskMs": 231,
+            "scriptMs": 85,
+            "layoutMs": 1,
+            "domNodes": 1977,
+            "n": 1200,
+            "returned": 1000,
+            "payloadBytes": 413400,
+            "refreshMs": 298
+          }
+        ],
+        "errors": []
+      },
+      {
+        "listStartY": 942.3125,
+        "uiChecks": [],
+        "width": 390,
+        "theme": "dark",
+        "overflow": true,
+        "calls": [
+          "admin_accounts_snapshot"
+        ],
+        "volumes": [],
+        "errors": []
+      }
+    ],
+    "after": [
+      {
+        "listStartY": 578.0625,
+        "uiChecks": [
+          "CSV from secondary menu matches filtered snapshot",
+          "combined filters + empty state",
+          "selection cleared on sort",
+          "bulk malformed response shows error"
+        ],
+        "width": 390,
+        "theme": "light",
+        "overflow": false,
+        "calls": [
+          "admin_accounts_snapshot",
+          "admin_account_financial",
+          "admin_account_communities",
+          "admin_list_audit_log",
+          "admin_accounts_snapshot",
+          "admin_accounts_snapshot",
+          "admin_accounts_snapshot",
+          "admin_accounts_snapshot",
+          "admin_set_accounts_status"
+        ],
+        "volumes": [
+          {
+            "heapBytes": 12073060,
+            "taskMs": 82,
+            "scriptMs": 25,
+            "layoutMs": 1,
+            "domNodes": 1466,
+            "n": 7,
+            "returned": 7,
+            "payloadBytes": 3122,
+            "refreshMs": 125
+          },
+          {
+            "heapBytes": 12155916,
+            "taskMs": 186,
+            "scriptMs": 58,
+            "layoutMs": 5,
+            "domNodes": 1825,
+            "n": 100,
+            "returned": 100,
+            "payloadBytes": 41469,
+            "refreshMs": 228
+          },
+          {
+            "heapBytes": 11140396,
+            "taskMs": 178,
+            "scriptMs": 49,
+            "layoutMs": 1,
+            "domNodes": 1837,
+            "n": 1000,
+            "returned": 1000,
+            "payloadBytes": 413401,
+            "refreshMs": 232
+          },
+          {
+            "heapBytes": 15840192,
+            "taskMs": 146,
+            "scriptMs": 36,
+            "layoutMs": 1,
+            "domNodes": 1855,
+            "n": 1200,
+            "returned": 1000,
+            "payloadBytes": 413400,
+            "refreshMs": 184
+          }
+        ],
+        "errors": []
+      },
+      {
+        "listStartY": 578.0625,
+        "uiChecks": [],
+        "width": 390,
+        "theme": "dark",
+        "overflow": false,
+        "calls": [
+          "admin_accounts_snapshot",
+          "admin_account_financial",
+          "admin_account_communities",
+          "admin_list_audit_log"
+        ],
+        "volumes": [],
+        "errors": []
+      }
+    ]
+  },
+  "testSuites": {
+    "npmTest": {
+      "tests": 1948,
+      "pass": 1948,
+      "fail": 0
+    },
+    "functionsTest": {
+      "tests": 18,
+      "pass": 18,
+      "fail": 0
+    },
+    "lint": {
+      "errors": 0,
+      "warnings": 14,
+      "warningsPreexisting": true
+    },
+    "prettier": "ok",
+    "build": "ok, aviso preexistente de chunk >500kB (Primer compartilhado)",
+    "budget": "ok dentro da tolerância existente"
+  },
+  "commands": [
+    "npm test",
+    "npm run test:functions",
+    "npm run lint",
+    "npm run build",
+    "npm run budget",
+    "node scripts/verify-admin-accounts-assets.mjs",
+    "node scripts/verify-admin-accounts-browser.mjs http://127.0.0.1:55447 after",
+    "node scripts/verify-admin-accounts-browser.mjs http://127.0.0.1:55447 after performance",
+    "node scripts/verify-admin-accounts-concurrency.mjs",
+    "node scripts/verify-admin-accounts-performance.mjs",
+    "git diff --check"
+  ],
+  "logs": "docs/releases/admin-contas/logs/*.log",
+  "screenshots": {
+    "before": "docs/releases/admin-contas/before/",
+    "after": "docs/releases/admin-contas/after/"
+  }
+}

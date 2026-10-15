@@ -1,0 +1,560 @@
+{
+  "findings": [],
+  "bundles": [
+    {
+      "name": "ActivityCalendarDialog-C30tC-mn.js",
+      "bytes": 3131,
+      "gzipBytes": 1264
+    },
+    {
+      "name": "AdMetricsTab-CenDNnsC.js",
+      "bytes": 19632,
+      "gzipBytes": 6579
+    },
+    {
+      "name": "AdminAccountDeletions-CMJ-dXZV.js",
+      "bytes": 11371,
+      "gzipBytes": 4157
+    },
+    {
+      "name": "AdminAccounts-BG3Gmaaj.css",
+      "bytes": 6013,
+      "gzipBytes": 1471
+    },
+    {
+      "name": "AdminAccounts-TpGCZy_U.js",
+      "bytes": 46980,
+      "gzipBytes": 14568
+    },
+    {
+      "name": "AdminCashPurchases-Deu3hE8M.js",
+      "bytes": 2999,
+      "gzipBytes": 1447
+    },
+    {
+      "name": "AdminCommunities-DTd_bkRO.js",
+      "bytes": 4139,
+      "gzipBytes": 1775
+    },
+    {
+      "name": "AdminExerciseVisuals-0y8bXLeD.js",
+      "bytes": 41701,
+      "gzipBytes": 14972
+    },
+    {
+      "name": "AdminModeration-BYxAgfo6.js",
+      "bytes": 7350,
+      "gzipBytes": 3025
+    },
+    {
+      "name": "AdminProfessionalListings-CLg8zf-Y.js",
+      "bytes": 8469,
+      "gzipBytes": 3100
+    },
+    {
+      "name": "AdminPromotions-DxnZ07TV.js",
+      "bytes": 4126,
+      "gzipBytes": 1882
+    },
+    {
+      "name": "AdminSponsoredAds-CIybeqLq.js",
+      "bytes": 11134,
+      "gzipBytes": 4072
+    },
+    {
+      "name": "CommentContextPage-B-KVN8Lc.js",
+      "bytes": 5162,
+      "gzipBytes": 2081
+    },
+    {
+      "name": "Communities-DE215j6K.js",
+      "bytes": 10064,
+      "gzipBytes": 3464
+    },
+    {
+      "name": "CommunityDetail-CNQAQUlU.css",
+      "bytes": 10926,
+      "gzipBytes": 2594
+    },
+    {
+      "name": "CommunityDetail-lcbq0o_W.js",
+      "bytes": 66663,
+      "gzipBytes": 22255
+    },
+    {
+      "name": "CommunityForm-BaATIIho.js",
+      "bytes": 2051,
+      "gzipBytes": 843
+    },
+    {
+      "name": "CommunityIcon-Cmv8S2wz.js",
+      "bytes": 487,
+      "gzipBytes": 344
+    },
+    {
+      "name": "CommunityIconPicker-bvk7--te.js",
+      "bytes": 791,
+      "gzipBytes": 465
+    },
+    {
+      "name": "CommunityMembersModeration-DizrBTl2.js",
+      "bytes": 5142,
+      "gzipBytes": 1904
+    },
+    {
+      "name": "CommunityProgressShare-odNaeOl6.js",
+      "bytes": 1636,
+      "gzipBytes": 837
+    },
+    {
+      "name": "CopyButton-BP1kIfn1.js",
+      "bytes": 884,
+      "gzipBytes": 534
+    },
+    {
+      "name": "CreateCommunity-7Vpkuiz1.js",
+      "bytes": 14959,
+      "gzipBytes": 5025
+    },
+    {
+      "name": "DailyChart-CMBaEmIO.js",
+      "bytes": 1852,
+      "gzipBytes": 950
+    },
+    {
+      "name": "Dashboard-BF4Aqpbv.js",
+      "bytes": 42571,
+      "gzipBytes": 14944
+    },
+    {
+      "name": "Dashboard-C5VfMioF.css",
+      "bytes": 1916,
+      "gzipBytes": 745
+    },
+    {
+      "name": "ErrorState-BQJv2wRu.js",
+      "bytes": 445,
+      "gzipBytes": 297
+    },
+    {
+      "name": "EvoCash-D6dLT8v9.js",
+      "bytes": 9452,
+      "gzipBytes": 3543
+    },
+    {
+      "name": "ExerciseCatalogImage-DKfX_2Q1.js",
+      "bytes": 785,
+      "gzipBytes": 506
+    },
+    {
+      "name": "ExerciseDetail-CVhGtU_P.js",
+      "bytes": 10361,
+      "gzipBytes": 3535
+    },
+    {
+      "name": "Exercises-yaP93CmJ.js",
+      "bytes": 28927,
+      "gzipBytes": 9885
+    },
+    {
+      "name": "ForgotPassword-LFGRAIfX.js",
+      "bytes": 1304,
+      "gzipBytes": 739
+    },
+    {
+      "name": "FormShell-CyY_zXvy.js",
+      "bytes": 1111,
+      "gzipBytes": 644
+    },
+    {
+      "name": "History-D3-jpJM5.js",
+      "bytes": 5625,
+      "gzipBytes": 2422
+    },
+    {
+      "name": "IndicatorCard-BXsvFjJe.js",
+      "bytes": 358,
+      "gzipBytes": 243
+    },
+    {
+      "name": "LazyDialogBoundary-Dp1FPcj2.js",
+      "bytes": 6448,
+      "gzipBytes": 2700
+    },
+    {
+      "name": "LegalDocument-D7s0OsjQ.js",
+      "bytes": 5598,
+      "gzipBytes": 2056
+    },
+    {
+      "name": "Login-Bwo_Kb1k.js",
+      "bytes": 1732,
+      "gzipBytes": 875
+    },
+    {
+      "name": "MarkdownViewer-CpG_oirN.js",
+      "bytes": 1120,
+      "gzipBytes": 670
+    },
+    {
+      "name": "MuscleIconBadge-CpWRuMon.js",
+      "bytes": 344,
+      "gzipBytes": 264
+    },
+    {
+      "name": "MyProfessionalListing-CDhysFfR.js",
+      "bytes": 16459,
+      "gzipBytes": 5503
+    },
+    {
+      "name": "MyPromotions-B65M2Emg.js",
+      "bytes": 4561,
+      "gzipBytes": 1960
+    },
+    {
+      "name": "NewWorkout-CnCb3dw3.js",
+      "bytes": 3847,
+      "gzipBytes": 1887
+    },
+    {
+      "name": "NotFound-Cl55oezF.js",
+      "bytes": 579,
+      "gzipBytes": 405
+    },
+    {
+      "name": "NotificationBell-BGVmn21M.js",
+      "bytes": 22640,
+      "gzipBytes": 7604
+    },
+    {
+      "name": "PostSupportersDialog-fiAm0x6p.js",
+      "bytes": 2423,
+      "gzipBytes": 1169
+    },
+    {
+      "name": "ProfessionalListing-Yu18okzt.js",
+      "bytes": 4283,
+      "gzipBytes": 1759
+    },
+    {
+      "name": "ProfessionalListingCard-DaXATIH0.js",
+      "bytes": 1223,
+      "gzipBytes": 534
+    },
+    {
+      "name": "Professionals-DjrI6JCR.js",
+      "bytes": 3708,
+      "gzipBytes": 1439
+    },
+    {
+      "name": "Profile-Chq5iMVT.js",
+      "bytes": 14526,
+      "gzipBytes": 4927
+    },
+    {
+      "name": "ProfileAvatar-yf7v5Jbb.js",
+      "bytes": 2213,
+      "gzipBytes": 1177
+    },
+    {
+      "name": "Progress-BaOAmBE-.js",
+      "bytes": 28232,
+      "gzipBytes": 8770
+    },
+    {
+      "name": "PromoteDialog-D-k9fEBt.js",
+      "bytes": 4239,
+      "gzipBytes": 1916
+    },
+    {
+      "name": "PublicProfile-CkbPYA-U.js",
+      "bytes": 3046,
+      "gzipBytes": 1265
+    },
+    {
+      "name": "Register-DjBNtUPZ.js",
+      "bytes": 5037,
+      "gzipBytes": 2175
+    },
+    {
+      "name": "RowActionsMenu-D0bOfN_s.js",
+      "bytes": 523,
+      "gzipBytes": 338
+    },
+    {
+      "name": "ShareProgressDialog-BkbbJrD3.js",
+      "bytes": 16736,
+      "gzipBytes": 7026
+    },
+    {
+      "name": "StatusForm-x4B2SlUI.js",
+      "bytes": 15364,
+      "gzipBytes": 5772
+    },
+    {
+      "name": "Support-yDvLlwHU.js",
+      "bytes": 7884,
+      "gzipBytes": 3078
+    },
+    {
+      "name": "SyncStatus-BARGcAsa.js",
+      "bytes": 2924,
+      "gzipBytes": 1309
+    },
+    {
+      "name": "ToastFlash-KKV4qUdt.js",
+      "bytes": 621,
+      "gzipBytes": 418
+    },
+    {
+      "name": "TrainingPlanDialog-CdiG5ZIp.js",
+      "bytes": 2349,
+      "gzipBytes": 1149
+    },
+    {
+      "name": "UsageProfileField-BzVRJ-qd.js",
+      "bytes": 746,
+      "gzipBytes": 436
+    },
+    {
+      "name": "WorkoutForm-C7PlHGnc.css",
+      "bytes": 12658,
+      "gzipBytes": 2800
+    },
+    {
+      "name": "WorkoutForm-D3qDq3Pg.js",
+      "bytes": 31248,
+      "gzipBytes": 10488
+    },
+    {
+      "name": "WorkoutParticipantsDialog-BSeEhmA1.js",
+      "bytes": 2330,
+      "gzipBytes": 1147
+    },
+    {
+      "name": "authErrors-BO7XcjqP.js",
+      "bytes": 858,
+      "gzipBytes": 403
+    },
+    {
+      "name": "bootstrapEntry-CCuM6L99.js",
+      "bytes": 2234,
+      "gzipBytes": 1028
+    },
+    {
+      "name": "cashPurchaseFlow-CqD6HfY5.js",
+      "bytes": 1575,
+      "gzipBytes": 722
+    },
+    {
+      "name": "charts-D50oJ3BK.js",
+      "bytes": 414227,
+      "gzipBytes": 111273
+    },
+    {
+      "name": "clipboard-CKKjOd1O.js",
+      "bytes": 123,
+      "gzipBytes": 122
+    },
+    {
+      "name": "communitiesService-IH9x8n7z.js",
+      "bytes": 2071,
+      "gzipBytes": 777
+    },
+    {
+      "name": "communityActivity-BShaRcMO.css",
+      "bytes": 1364,
+      "gzipBytes": 531
+    },
+    {
+      "name": "communityActivity-BYDN0c1E.js",
+      "bytes": 4674,
+      "gzipBytes": 2053
+    },
+    {
+      "name": "consistencySnapshot-DOn1j3zx.js",
+      "bytes": 6768,
+      "gzipBytes": 2381
+    },
+    {
+      "name": "exerciseCatalogService-D5IxJw5J.js",
+      "bytes": 8312,
+      "gzipBytes": 2940
+    },
+    {
+      "name": "exerciseOrder-BX2x9HX0.js",
+      "bytes": 322,
+      "gzipBytes": 232
+    },
+    {
+      "name": "greetingPreferencesService--QZEKiZy.js",
+      "bytes": 3246,
+      "gzipBytes": 1598
+    },
+    {
+      "name": "homeSnapshot-BePiahJA.js",
+      "bytes": 2099,
+      "gzipBytes": 1000
+    },
+    {
+      "name": "imageCompression-B7BM4wjB.js",
+      "bytes": 1233,
+      "gzipBytes": 734
+    },
+    {
+      "name": "index-B_CtYNxi.js",
+      "bytes": 3399,
+      "gzipBytes": 1313
+    },
+    {
+      "name": "index-DtEjj3U5.css",
+      "bytes": 304540,
+      "gzipBytes": 49905
+    },
+    {
+      "name": "index-DvjHG_zB.js",
+      "bytes": 432081,
+      "gzipBytes": 126599
+    },
+    {
+      "name": "index-Dwn2528J.css",
+      "bytes": 4839,
+      "gzipBytes": 879
+    },
+    {
+      "name": "markdown-DGwVgygq.js",
+      "bytes": 162452,
+      "gzipBytes": 49519
+    },
+    {
+      "name": "muscleGroupIcons-BL3ynKVr.js",
+      "bytes": 5615,
+      "gzipBytes": 2069
+    },
+    {
+      "name": "primer-DQUHNgB2.js",
+      "bytes": 780919,
+      "gzipBytes": 183840
+    },
+    {
+      "name": "primer-DTSh1TNY.css",
+      "bytes": 177979,
+      "gzipBytes": 24138
+    },
+    {
+      "name": "professionalListing-BODMtKaa.js",
+      "bytes": 561,
+      "gzipBytes": 366
+    },
+    {
+      "name": "professionalListingTaxonomy-DeYeAyMc.js",
+      "bytes": 1076,
+      "gzipBytes": 576
+    },
+    {
+      "name": "professionalListingsService-CeQdd7ru.js",
+      "bytes": 3981,
+      "gzipBytes": 1455
+    },
+    {
+      "name": "progressService-CI2qQs68.js",
+      "bytes": 178,
+      "gzipBytes": 167
+    },
+    {
+      "name": "promotionsService-nIwQ7a9S.js",
+      "bytes": 2347,
+      "gzipBytes": 908
+    },
+    {
+      "name": "publicProfilesService-DN-CIbXx.js",
+      "bytes": 985,
+      "gzipBytes": 503
+    },
+    {
+      "name": "realtimeOffline-CYHAgjhI.js",
+      "bytes": 601,
+      "gzipBytes": 334
+    },
+    {
+      "name": "runtime-DHXtkJJs.js",
+      "bytes": 6378,
+      "gzipBytes": 2859
+    },
+    {
+      "name": "showcaseLegal-B5SdzHEF.js",
+      "bytes": 8394,
+      "gzipBytes": 3272
+    },
+    {
+      "name": "sponsoredAds-CEtytQn2.js",
+      "bytes": 3056,
+      "gzipBytes": 1286
+    },
+    {
+      "name": "statusAvailability-9kOQrQIJ.js",
+      "bytes": 20003,
+      "gzipBytes": 7251
+    },
+    {
+      "name": "statusAvailability-B8OK3yDP.css",
+      "bytes": 540,
+      "gzipBytes": 321
+    },
+    {
+      "name": "statusesService-C0pzwo_y.js",
+      "bytes": 9413,
+      "gzipBytes": 3326
+    },
+    {
+      "name": "storagePersistence-Cz4HRwOn.js",
+      "bytes": 1175,
+      "gzipBytes": 591
+    },
+    {
+      "name": "supportReportCategories-CSHdAGbj.js",
+      "bytes": 4462,
+      "gzipBytes": 1773
+    },
+    {
+      "name": "syncScheduler-DGUrmZT8.js",
+      "bytes": 19434,
+      "gzipBytes": 7024
+    },
+    {
+      "name": "telemetry-bOiwCk_y.js",
+      "bytes": 3017,
+      "gzipBytes": 1455
+    },
+    {
+      "name": "useAdminCommunities-9SVt4DtC.js",
+      "bytes": 1309,
+      "gzipBytes": 661
+    },
+    {
+      "name": "useCashPurchases-Cqj04Ujg.js",
+      "bytes": 4130,
+      "gzipBytes": 1841
+    },
+    {
+      "name": "useConfirmDelete-tZW3Em53.js",
+      "bytes": 234,
+      "gzipBytes": 175
+    },
+    {
+      "name": "useExerciseCatalogDetail-LT659-Lh.js",
+      "bytes": 2338,
+      "gzipBytes": 1069
+    },
+    {
+      "name": "useSingleFlight-CPyOOW4j.js",
+      "bytes": 364,
+      "gzipBytes": 254
+    },
+    {
+      "name": "workoutsService-BoveOMTD.js",
+      "bytes": 9626,
+      "gzipBytes": 3431
+    }
+  ]
+}

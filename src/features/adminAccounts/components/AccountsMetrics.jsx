@@ -8,47 +8,34 @@ const CARDS = [
   { key: 'deletions', metric: 'pending_deletions', label: 'Exclusões pendentes' },
 ]
 
-// Os cartões vêm do mesmo snapshot da tabela e funcionam como filtro local: clicar de novo
-// no cartão ativo remove o filtro (o primeiro cartão, "Total", só limpa o filtro de cartão).
 export function AccountsMetrics({ metrics, activeCard, onSelectCard }) {
   return (
     <Box
+      className="accounts-metrics"
       role="group"
       aria-label="Resumo das contas"
-      sx={{
-        display: 'grid',
-        gridTemplateColumns: ['repeat(2, 1fr)', null, 'repeat(3, 1fr)', 'repeat(5, 1fr)'],
-        gap: 2,
-        mb: 3,
-      }}
+      sx={{ bg: 'canvas.subtle', borderRadius: 2, mb: 3 }}
     >
       {CARDS.map((card) => {
-        const pressed = card.key !== '' && activeCard === card.key
-        const isTotal = card.key === ''
+        const selected = card.key !== '' && activeCard === card.key
         return (
           <Box
             as="button"
             type="button"
             key={card.metric}
-            aria-pressed={isTotal ? activeCard === '' : pressed}
-            onClick={() => onSelectCard(isTotal || pressed ? '' : card.key)}
+            className="accounts-metric"
+            aria-pressed={card.key === '' ? activeCard === '' : selected}
+            onClick={() => onSelectCard(card.key === '' || selected ? '' : card.key)}
             sx={{
-              textAlign: 'left',
-              cursor: 'pointer',
-              p: 3,
-              borderRadius: 2,
-              border: '1px solid',
-              borderColor: (isTotal ? activeCard === '' : pressed)
-                ? 'accent.emphasis'
-                : 'border.default',
-              bg: 'canvas.subtle',
               color: 'fg.default',
-              font: 'inherit',
-              '&:hover': { borderColor: 'accent.fg' },
+              bg: selected ? 'accent.subtle' : 'transparent',
+              borderColor: selected ? 'accent.emphasis' : 'transparent',
             }}
           >
-            <Text sx={{ display: 'block', fontSize: 1, color: 'fg.muted' }}>{card.label}</Text>
-            <Text sx={{ display: 'block', fontSize: 4, fontWeight: 'bold', mt: 1 }}>
+            <Text className="accounts-metric-label" sx={{ color: 'fg.muted' }}>
+              {card.label}
+            </Text>
+            <Text className="accounts-metric-value">
               {Number(metrics[card.metric] ?? 0).toLocaleString('pt-BR')}
             </Text>
           </Box>

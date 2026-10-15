@@ -390,7 +390,7 @@ export function CommunityFeedSection({
         {/* Destaque compacto: uma linha, logo no começo de "Recentes" (antes de "Próximos treinos", que pode ter
             vários cards altos). Ver FeaturedSpotlight. */}
         {spotlightStatuses.length > 0 && (
-          <FeaturedSpotlight statuses={spotlightStatuses} onOpen={openFeatured} />
+          <FeaturedSpotlight statuses={spotlightStatuses} onOpen={openFeatured} now={now} />
         )}
 
         {/* Treino Marcado V1: seção própria, nunca misturada com Destaques -- Destaques é sobre posts

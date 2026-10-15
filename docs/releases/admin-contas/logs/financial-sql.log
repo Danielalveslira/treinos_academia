@@ -1,0 +1,572 @@
+BEGIN
+ no_plan 
+---------
+(0 rows)
+
+INSERT 0 7
+UPDATE 1
+UPDATE 1
+ _wallet_credit_cash 
+---------------------
+ 
+(1 row)
+
+ _ledger_record 
+----------------
+ 
+(1 row)
+
+ _wallet_credit_cash 
+---------------------
+ 
+(1 row)
+
+ _ledger_record 
+----------------
+ 
+(1 row)
+
+ _wallet_credit_cash 
+---------------------
+ 
+(1 row)
+
+ _ledger_record 
+----------------
+ 
+(1 row)
+
+ _wallet_credit_cash 
+---------------------
+ 
+(1 row)
+
+ _ledger_record 
+----------------
+ 
+(1 row)
+
+INSERT 0 2
+              set_config              
+--------------------------------------
+ 60000000-0000-0000-0000-000000000002
+(1 row)
+
+                  throws_ok                  
+---------------------------------------------
+ ok 1 - usuário comum não enfileira exclusão
+(1 row)
+
+                    throws_ok                    
+-------------------------------------------------
+ ok 2 - usuário comum não separa caso financeiro
+(1 row)
+
+                 throws_ok                 
+-------------------------------------------
+ ok 3 - usuário comum não cancela exclusão
+(1 row)
+
+                 throws_ok                  
+--------------------------------------------
+ ok 4 - usuário comum não revalida bloqueio
+(1 row)
+
+                throws_ok                 
+------------------------------------------
+ ok 5 - usuário comum não lista exclusões
+(1 row)
+
+                     throws_ok                      
+----------------------------------------------------
+ ok 6 - usuário comum não abre histórico financeiro
+(1 row)
+
+               throws_ok               
+---------------------------------------
+ ok 7 - usuário comum não resolve caso
+(1 row)
+
+              set_config              
+--------------------------------------
+ 60000000-0000-0000-0000-000000000001
+(1 row)
+
+ queue_deletion 
+----------------
+ 
+(1 row)
+
+                   is                   
+----------------------------------------
+ ok 8 - conta enfileirada vira deleting
+(1 row)
+
+                                     is                                      
+-----------------------------------------------------------------------------
+ ok 9 - sem saldo: o worker limpa o banco direto (falta só confirmar o Auth)
+(1 row)
+
+                    is                    
+------------------------------------------
+ ok 10 - sem saldo: public.users removido
+(1 row)
+
+                        is                        
+--------------------------------------------------
+ ok 11 - sem saldo: nenhum caso financeiro criado
+(1 row)
+
+ queue_deletion 
+----------------
+ 
+(1 row)
+
+                   is                    
+-----------------------------------------
+ ok 12 - saldo positivo: worker bloqueia
+(1 row)
+
+                   is                    
+-----------------------------------------
+ ok 13 - job em blocked_financial_review
+(1 row)
+
+              set_config              
+--------------------------------------
+ 60000000-0000-0000-0000-000000000012
+(1 row)
+
+                   throws_ok                    
+------------------------------------------------
+ ok 14 - conta em exclusão não abre compra nova
+(1 row)
+
+                  throws_ok                  
+---------------------------------------------
+ ok 15 - conta em exclusão não gasta EvoCash
+(1 row)
+
+                      is                       
+-----------------------------------------------
+ ok 16 - usuário: pendência ainda não separada
+(1 row)
+
+                               ok                               
+----------------------------------------------------------------
+ ok 17 - usuário: revisão não expõe saldo nem motivo financeiro
+(1 row)
+
+              set_config              
+--------------------------------------
+ 60000000-0000-0000-0000-000000000001
+(1 row)
+
+                 throws_ok                 
+-------------------------------------------
+ ok 18 - separar exige nota administrativa
+(1 row)
+
+                  throws_ok                  
+---------------------------------------------
+ ok 19 - revalidar exige nota administrativa
+(1 row)
+
+                      throws_ok                       
+------------------------------------------------------
+ ok 20 - job concluído sem caso não pode ser separado
+(1 row)
+
+                          is                          
+------------------------------------------------------
+ ok 21 - revalidar mantém bloqueado enquanto há saldo
+(1 row)
+
+                          is                          
+------------------------------------------------------
+ ok 22 - painel mostra saldo da solicitação bloqueada
+(1 row)
+
+SELECT 1
+                       is                        
+-------------------------------------------------
+ ok 23 - separação: primeira chamada cria o caso
+(1 row)
+
+               is               
+--------------------------------
+ ok 24 - snapshot do saldo = 50
+(1 row)
+
+                    is                     
+-------------------------------------------
+ ok 25 - job volta a pending para o worker
+(1 row)
+
+                  is                  
+--------------------------------------
+ ok 26 - separação NÃO altera o saldo
+(1 row)
+
+                     is                      
+---------------------------------------------
+ ok 27 - ledger do usuário vinculado ao caso
+(1 row)
+
+               is                
+---------------------------------
+ ok 28 - valor do ledger intacto
+(1 row)
+
+                   is                   
+----------------------------------------
+ ok 29 - retry devolve o caso existente
+(1 row)
+
+               is               
+--------------------------------
+ ok 30 - retry não duplica caso
+(1 row)
+
+                is                 
+-----------------------------------
+ ok 31 - retry não duplica eventos
+(1 row)
+
+                        throws_ok                         
+----------------------------------------------------------
+ ok 32 - caso só é resolvido depois da exclusão concluída
+(1 row)
+
+              set_config              
+--------------------------------------
+ 60000000-0000-0000-0000-000000000012
+(1 row)
+
+                 is                  
+-------------------------------------
+ ok 33 - usuário: pendência separada
+(1 row)
+
+                   is                   
+----------------------------------------
+ ok 34 - usuário vê o protocolo do caso
+(1 row)
+
+              set_config              
+--------------------------------------
+ 60000000-0000-0000-0000-000000000001
+(1 row)
+
+                               is                                
+-----------------------------------------------------------------
+ ok 35 - worker conclui e pede a remoção do Auth (Edge Function)
+(1 row)
+
+                           is                           
+--------------------------------------------------------
+ ok 36 - banco limpo: job aguarda a confirmação do Auth
+(1 row)
+
+        confirm_auth_deletion         
+--------------------------------------
+ {"replay": false, "confirmed": true}
+(1 row)
+
+                      is                       
+-----------------------------------------------
+ ok 37 - Auth confirmado: job chega a complete
+(1 row)
+
+              is               
+-------------------------------
+ ok 38 - public.users removido
+(1 row)
+
+                                is                                
+------------------------------------------------------------------
+ ok 39 - carteira removida com a conta (valor preservado no caso)
+(1 row)
+
+                    is                    
+------------------------------------------
+ ok 40 - caso financeiro permanece aberto
+(1 row)
+
+                             is                             
+------------------------------------------------------------
+ ok 41 - saldo final registrado no caso = 50 (nunca zerado)
+(1 row)
+
+                               is                               
+----------------------------------------------------------------
+ ok 42 - ledger preservado, referenciado pelo caso, sem user_id
+(1 row)
+
+                       is                        
+-------------------------------------------------
+ ok 43 - segunda execução do worker não faz nada
+(1 row)
+
+                           is                           
+--------------------------------------------------------
+ ok 44 - retry depois de concluído continua idempotente
+(1 row)
+
+                  throws_ok                   
+----------------------------------------------
+ ok 45 - caso financeiro não pode ser apagado
+(1 row)
+
+                     throws_ok                     
+---------------------------------------------------
+ ok 46 - depois de concluída não é mais reversível
+(1 row)
+
+                    is                     
+-------------------------------------------
+ ok 47 - caso resolvido depois da exclusão
+(1 row)
+
+                   ok                   
+----------------------------------------
+ ok 48 - resolução registra resolved_at
+(1 row)
+
+                            hasnt_column                             
+---------------------------------------------------------------------
+ ok 49 - nenhum prazo de retenção é assumido (PENDENTE DE DEFINIÇÃO)
+(1 row)
+
+                            is                             
+-----------------------------------------------------------
+ ok 50 - histórico financeiro acessível depois da exclusão
+(1 row)
+
+ queue_deletion 
+----------------
+ 
+(1 row)
+
+                is                
+----------------------------------
+ ok 51 - compra pendente bloqueia
+(1 row)
+
+                       is                        
+-------------------------------------------------
+ ok 52 - caso com compra pendente registra saldo
+(1 row)
+
+                   is                    
+-----------------------------------------
+ ok 53 - caso registra a compra pendente
+(1 row)
+
+                    is                    
+------------------------------------------
+ ok 54 - pagamento tardio vai para o caso
+(1 row)
+
+                       is                        
+-------------------------------------------------
+ ok 55 - pagamento tardio não credita a carteira
+(1 row)
+
+                     is                     
+--------------------------------------------
+ ok 56 - compra marcada como retida no caso
+(1 row)
+
+                     is                     
+--------------------------------------------
+ ok 57 - reentrega do webhook é idempotente
+(1 row)
+
+                     is                      
+---------------------------------------------
+ ok 58 - um único evento de pagamento retido
+(1 row)
+
+                               is                                
+-----------------------------------------------------------------
+ ok 59 - nenhum ledger de crédito criado para o pagamento retido
+(1 row)
+
+                           is                           
+--------------------------------------------------------
+ ok 60 - exclusão conclui no banco com pagamento retido
+(1 row)
+
+                           is                           
+--------------------------------------------------------
+ ok 61 - webhook depois da exclusão continua só retendo
+(1 row)
+
+                           is                           
+--------------------------------------------------------
+ ok 62 - pagamento tardio não recria conta nem carteira
+(1 row)
+
+                       is                       
+------------------------------------------------
+ ok 63 - compra continua referenciada pelo caso
+(1 row)
+
+INSERT 0 1
+                   throws_ok                   
+-----------------------------------------------
+ ok 64 - compra órfã sem caso não credita nada
+(1 row)
+
+                       is                        
+-------------------------------------------------
+ ok 65 - compra órfã segue pendente (rastreável)
+(1 row)
+
+ queue_deletion 
+----------------
+ 
+(1 row)
+
+                is                
+----------------------------------
+ ok 66 - status anterior guardado
+(1 row)
+
+                   run_deletion_job                   
+------------------------------------------------------
+ {"reason": "positive_cash_balance", "blocked": true}
+(1 row)
+
+                 is                 
+------------------------------------
+ ok 67 - cancela enquanto bloqueado
+(1 row)
+
+                          is                           
+-------------------------------------------------------
+ ok 68 - cancelar não promove conta desativada a ativa
+(1 row)
+
+          is           
+-----------------------
+ ok 69 - job cancelado
+(1 row)
+
+                is                 
+-----------------------------------
+ ok 70 - cancelar não altera saldo
+(1 row)
+
+                 is                  
+-------------------------------------
+ ok 71 - worker ignora job cancelado
+(1 row)
+
+               is               
+--------------------------------
+ ok 72 - cancelar é idempotente
+(1 row)
+
+                  throws_ok                  
+---------------------------------------------
+ ok 73 - job cancelado não pode ser separado
+(1 row)
+
+ queue_deletion 
+----------------
+ 
+(1 row)
+
+                   run_deletion_job                   
+------------------------------------------------------
+ {"reason": "pending_cash_purchase", "blocked": true}
+(1 row)
+
+                                       separate_financial_case_and_resume_deletion                                        
+--------------------------------------------------------------------------------------------------------------------------
+ {"caseId": "4b38b4d2-45d2-4448-8d1e-aa1ee7b97ef7", "replay": false, "protocol": "FIN-000124", "cashBalanceSnapshot": 30}
+(1 row)
+
+            confirm_infinitepay_cash_purchase            
+---------------------------------------------------------
+ {"reason": "held_in_financial_case", "credited": false}
+(1 row)
+
+                           is                           
+--------------------------------------------------------
+ ok 74 - retido: carteira intacta antes do cancelamento
+(1 row)
+
+       cancel_account_deletion        
+--------------------------------------
+ {"replay": false, "cancelled": true}
+(1 row)
+
+           is            
+-------------------------
+ ok 75 - conta reativada
+(1 row)
+
+                 is                  
+-------------------------------------
+ ok 76 - caso cancelado, não apagado
+(1 row)
+
+                                  is                                  
+----------------------------------------------------------------------
+ ok 77 - pagamento retido creditado na carteira ao cancelar (30 + 25)
+(1 row)
+
+                 is                  
+-------------------------------------
+ ok 78 - compra retida vira credited
+(1 row)
+
+             is             
+----------------------------
+ ok 79 - crédito com ledger
+(1 row)
+
+                      is                       
+-----------------------------------------------
+ ok 80 - ledger desvinculado do caso cancelado
+(1 row)
+
+                                 is                                  
+---------------------------------------------------------------------
+ ok 81 - eventos do caso preservados (retido, restaurado, cancelado)
+(1 row)
+
+ queue_deletion 
+----------------
+ 
+(1 row)
+
+                      is                      
+----------------------------------------------
+ ok 82 - job cancelado pode ser reenfileirado
+(1 row)
+
+                 ok                  
+-------------------------------------
+ ok 83 - novo pedido começa sem caso
+(1 row)
+
+                   is                    
+-----------------------------------------
+ ok 84 - continua um único job por conta
+(1 row)
+
+                                     is                                     
+----------------------------------------------------------------------------
+ ok 85 - painel (encerradas) mostra o histórico de revisão do job cancelado
+(1 row)
+
+ finish 
+--------
+ 1..85
+(1 row)
+
+ROLLBACK

@@ -1,0 +1,19 @@
+{
+  "environment": "local PostgreSQL",
+  "tests": [
+    {
+      "name": "simultaneous disable replay",
+      "auditRows": 1,
+      "passed": true
+    },
+    {
+      "name": "concurrent deletion replay",
+      "auditRows": 1,
+      "passed": true
+    },
+    {
+      "name": "status waits for deletion and rejects",
+      "passed": true
+    }
+  ]
+}

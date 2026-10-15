@@ -1,9 +1,19 @@
-import { ActionList, ActionMenu, Box, Checkbox, IconButton, Select, Text } from '@primer/react'
+import {
+  ActionList,
+  ActionMenu,
+  Box,
+  Checkbox,
+  IconButton,
+  Select,
+  Text,
+  useResponsiveValue,
+} from '@primer/react'
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   FlagIcon,
   KebabHorizontalIcon,
+  SortDescIcon,
   TriangleDownIcon,
   TriangleUpIcon,
 } from '@primer/octicons-react'
@@ -12,6 +22,8 @@ import {
   FINANCIAL_LABELS,
   PAGE_SIZES,
   ROLE_LABELS,
+  maskEmail,
+  SORT_ACCESSORS,
   canDelete,
   canManageStatus,
 } from '../utils/accounts'
@@ -140,6 +152,7 @@ export function AccountsTable({
   onPageChange,
   onPageSizeChange,
 }) {
+  const mobile = useResponsiveValue({ narrow: true, regular: false }, false)
   const allSelected = rows.length > 0 && rows.every((row) => selectedIds.has(row.id))
   const someSelected = rows.some((row) => selectedIds.has(row.id))
   const columns = COLUMNS.filter(
@@ -157,163 +170,272 @@ export function AccountsTable({
         overflow: 'hidden',
       }}
     >
-      <Box sx={{ overflowX: 'auto' }}>
-        <Box
-          as="table"
-          sx={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            fontSize: 1,
-            'th, td': { px: 3, py: 2, textAlign: 'left', whiteSpace: 'nowrap' },
-            th: { color: 'fg.muted', fontWeight: 'normal', bg: 'canvas.subtle' },
-            'tbody tr': { borderTop: '1px solid', borderColor: 'border.default' },
-          }}
-        >
-          <thead>
-            <tr>
-              <Box as="th" sx={{ width: 40 }}>
+      {mobile && (
+        <Box sx={{ display: ['block', null, 'none'] }}>
+          <Box
+            className="accounts-list-controls"
+            sx={{ borderBottom: '1px solid', borderColor: 'border.muted' }}
+          >
+            <Box as="label" className="accounts-page-selection">
+              <Checkbox
+                aria-label="Selecionar página na lista móvel"
+                checked={allSelected}
+                indeterminate={!allSelected && someSelected}
+                onChange={onTogglePage}
+                disabled={disabled}
+              />
+              <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Selecionar</Text>
+            </Box>
+            <ActionMenu>
+              <ActionMenu.Button variant="invisible" leadingVisual={SortDescIcon}>
+                Ordenar
+              </ActionMenu.Button>
+              <ActionMenu.Overlay align="end" width="medium">
+                <ActionList selectionVariant="single">
+                  {Object.keys(SORT_ACCESSORS).map((key) => (
+                    <ActionList.Item
+                      key={key}
+                      selected={sort.key === key}
+                      onSelect={() => onSort(key)}
+                    >
+                      {key === 'username'
+                        ? 'Usuário'
+                        : COLUMNS.find((c) => c.key === key)?.label || key}
+                    </ActionList.Item>
+                  ))}
+                  <ActionList.Divider />
+                  <ActionList.Item onSelect={() => onSort(sort.key)}>
+                    Inverter ordenação · {sort.direction === 'asc' ? 'crescente' : 'decrescente'}
+                  </ActionList.Item>
+                </ActionList>
+              </ActionMenu.Overlay>
+            </ActionMenu>
+          </Box>
+          {rows.map((account) => (
+            <Box
+              key={account.id}
+              className="accounts-mobile-row"
+              sx={{
+                borderBottom: '1px solid',
+                borderColor: 'border.muted',
+                bg: selectedIds.has(account.id) ? 'accent.subtle' : 'canvas.default',
+              }}
+            >
+              <Box as="label" className="accounts-row-selection">
                 <Checkbox
-                  aria-label="Selecionar todas as contas desta página"
-                  checked={allSelected}
-                  indeterminate={!allSelected && someSelected}
-                  onChange={onTogglePage}
+                  aria-label={`Selecionar @${account.username || 'sem usuário'} na lista móvel`}
+                  checked={selectedIds.has(account.id)}
+                  disabled={disabled}
+                  onChange={() => onToggleRow(account.id)}
                 />
               </Box>
-              <th
-                aria-sort={
-                  sort.key === 'username'
-                    ? sort.direction === 'asc'
-                      ? 'ascending'
-                      : 'descending'
-                    : 'none'
-                }
+              <Box
+                as="button"
+                type="button"
+                className="accounts-row-open"
+                aria-describedby={`account-email-${account.id} account-use-${account.id} account-state-${account.id}`}
+                aria-label={account.username ? `@${account.username}` : '(sem @usuário)'}
+                onClick={() => onOpen(account.id)}
+                sx={{ color: 'fg.default' }}
               >
-                <SortHeader label="Usuário" sortKey="username" sort={sort} onSort={onSort} />
-              </th>
-              <Box as="th" sx={hidden([null, 'table-cell'])}>
-                E-mail
+                <Box className="accounts-row-identity">
+                  <Text className="accounts-row-name">
+                    {account.username ? `@${account.username}` : '(sem @usuário)'}
+                  </Text>
+                  <Text id={`account-email-${account.id}`} sx={{ color: 'fg.muted', fontSize: 0 }}>
+                    {maskEmail(account.email)}
+                  </Text>
+                  <Text id={`account-use-${account.id}`} sx={{ color: 'fg.muted', fontSize: 0 }}>
+                    Uso:{' '}
+                    {account.last_active_at ? formatDate(account.last_active_at) : 'Sem registro'}
+                  </Text>
+                </Box>
+                <Box id={`account-state-${account.id}`} className="accounts-row-state">
+                  <AccountStatusBadge status={account.status} compact />
+                  <ChevronRightIcon size={16} />
+                </Box>
               </Box>
-              {columns.map((column) => (
-                <Box as="th" key={column.key} sx={hidden(column.show)}>
-                  <SortHeader
-                    label={column.label}
-                    sortKey={column.sort}
-                    sort={sort}
-                    onSort={onSort}
+            </Box>
+          ))}
+        </Box>
+      )}
+      {!mobile && (
+        <Box sx={{ overflowX: 'auto', display: ['none', null, 'block'] }}>
+          <Box
+            as="table"
+            sx={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              fontSize: 1,
+              'th, td': { px: 2, py: 2, textAlign: 'left', overflowWrap: 'anywhere' },
+              th: { color: 'fg.muted', fontWeight: 'normal', bg: 'canvas.subtle' },
+              'tbody tr': { borderTop: '1px solid', borderColor: 'border.default' },
+            }}
+          >
+            <thead>
+              <tr>
+                <Box as="th" sx={{ width: 40 }}>
+                  <Checkbox
+                    aria-label="Selecionar todas as contas desta página"
+                    checked={allSelected}
+                    indeterminate={!allSelected && someSelected}
+                    disabled={disabled}
+                    onChange={onTogglePage}
                   />
                 </Box>
-              ))}
-              <Box as="th" sx={{ width: 48 }}>
-                <Text
-                  sx={{
-                    position: 'absolute',
-                    width: 1,
-                    height: 1,
-                    overflow: 'hidden',
-                    clip: 'rect(0 0 0 0)',
-                  }}
+                <th
+                  aria-sort={
+                    sort.key === 'username'
+                      ? sort.direction === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : 'none'
+                  }
                 >
-                  Ações
-                </Text>
-              </Box>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((account) => {
-              const selected = selectedIds.has(account.id)
-              return (
-                <Box
-                  as="tr"
-                  key={account.id}
-                  data-testid="account-row"
-                  aria-selected={openId === account.id}
-                  onClick={() => onOpen(account.id)}
-                  sx={{
-                    cursor: 'pointer',
-                    bg: selected
-                      ? 'accent.subtle'
-                      : openId === account.id
-                        ? 'canvas.subtle'
-                        : 'transparent',
-                    '&:hover': { bg: 'canvas.subtle' },
-                  }}
-                >
-                  <td onClick={(event) => event.stopPropagation()}>
-                    <Checkbox
-                      aria-label={`Selecionar ${account.username ? `@${account.username}` : account.email || account.id}`}
-                      checked={selected}
-                      onChange={() => onToggleRow(account.id)}
-                    />
-                  </td>
-                  <td>
-                    <Box
-                      as="button"
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        onOpen(account.id)
-                      }}
-                      title={account.id}
-                      sx={{
-                        all: 'unset',
-                        cursor: 'pointer',
-                        fontWeight: 'bold',
-                        color: 'fg.default',
-                      }}
-                    >
-                      {account.username ? `@${account.username}` : '(sem @usuário)'}
-                    </Box>
-                    <Text sx={{ display: ['block', 'none'], fontSize: 0, color: 'fg.muted' }}>
-                      {account.email}
-                    </Text>
-                  </td>
-                  <Box as="td" sx={{ ...hidden([null, 'table-cell']), color: 'fg.muted' }}>
-                    {account.email || '—'}
-                  </Box>
-                  {columns.map((column) => (
-                    <Box as="td" key={column.key} sx={hidden(column.show)}>
-                      {cell(column.key, account)}
-                    </Box>
-                  ))}
-                  <td onClick={(event) => event.stopPropagation()}>
-                    {(canManageStatus(account) || canDelete(account)) && (
-                      <ActionMenu>
-                        <ActionMenu.Anchor>
-                          <IconButton
-                            icon={KebabHorizontalIcon}
-                            variant="invisible"
-                            disabled={disabled}
-                            aria-label={`Mais ações de ${account.username ? `@${account.username}` : account.id}`}
-                          />
-                        </ActionMenu.Anchor>
-                        <ActionMenu.Overlay align="end">
-                          <ActionList>
-                            {canManageStatus(account) &&
-                              (account.status === 'disabled' ? (
-                                <ActionList.Item onSelect={() => onEnable(account)}>
-                                  Reativar conta
-                                </ActionList.Item>
-                              ) : (
-                                <ActionList.Item onSelect={() => onDisable(account)}>
-                                  Desativar conta
-                                </ActionList.Item>
-                              ))}
-                            {canDelete(account) && (
-                              <ActionList.Item variant="danger" onSelect={() => onDelete(account)}>
-                                Excluir permanentemente
-                              </ActionList.Item>
-                            )}
-                          </ActionList>
-                        </ActionMenu.Overlay>
-                      </ActionMenu>
-                    )}
-                  </td>
+                  <SortHeader label="Usuário" sortKey="username" sort={sort} onSort={onSort} />
+                </th>
+                <Box as="th" sx={hidden([null, 'table-cell'])}>
+                  E-mail
                 </Box>
-              )
-            })}
-          </tbody>
+                {columns.map((column) => (
+                  <Box
+                    as="th"
+                    key={column.key}
+                    sx={hidden(column.show)}
+                    aria-sort={
+                      sort.key === column.sort
+                        ? sort.direction === 'asc'
+                          ? 'ascending'
+                          : 'descending'
+                        : undefined
+                    }
+                  >
+                    <SortHeader
+                      label={column.label}
+                      sortKey={column.sort}
+                      sort={sort}
+                      onSort={onSort}
+                    />
+                  </Box>
+                ))}
+                <Box as="th" sx={{ width: 48 }}>
+                  <Text
+                    sx={{
+                      position: 'absolute',
+                      width: 1,
+                      height: 1,
+                      overflow: 'hidden',
+                      clip: 'rect(0 0 0 0)',
+                    }}
+                  >
+                    Ações
+                  </Text>
+                </Box>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((account) => {
+                const selected = selectedIds.has(account.id)
+                return (
+                  <Box
+                    as="tr"
+                    key={account.id}
+                    data-testid="account-row"
+                    aria-selected={openId === account.id}
+                    onClick={() => onOpen(account.id)}
+                    sx={{
+                      cursor: 'pointer',
+                      bg: selected
+                        ? 'accent.subtle'
+                        : openId === account.id
+                          ? 'canvas.subtle'
+                          : 'transparent',
+                      '&:hover': { bg: 'canvas.subtle' },
+                    }}
+                  >
+                    <td onClick={(event) => event.stopPropagation()}>
+                      <Checkbox
+                        aria-label={`Selecionar ${account.username ? `@${account.username}` : account.email || account.id}`}
+                        disabled={disabled}
+                        checked={selected}
+                        onChange={() => onToggleRow(account.id)}
+                      />
+                    </td>
+                    <td>
+                      <Box
+                        as="button"
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onOpen(account.id)
+                        }}
+                        sx={{
+                          all: 'unset',
+                          cursor: 'pointer',
+                          fontWeight: 'bold',
+                          color: 'fg.default',
+                          minHeight: 44,
+                          overflowWrap: 'anywhere',
+                          '&:focus-visible': { outline: '2px solid', outlineColor: 'accent.fg' },
+                        }}
+                      >
+                        {account.username ? `@${account.username}` : '(sem @usuário)'}
+                      </Box>
+                      <Text sx={{ display: ['block', 'none'], fontSize: 0, color: 'fg.muted' }}>
+                        {maskEmail(account.email)}
+                      </Text>
+                    </td>
+                    <Box as="td" sx={{ ...hidden([null, 'table-cell']), color: 'fg.muted' }}>
+                      {maskEmail(account.email)}
+                    </Box>
+                    {columns.map((column) => (
+                      <Box as="td" key={column.key} sx={hidden(column.show)}>
+                        {cell(column.key, account)}
+                      </Box>
+                    ))}
+                    <td onClick={(event) => event.stopPropagation()}>
+                      {(canManageStatus(account) || canDelete(account)) && (
+                        <ActionMenu>
+                          <ActionMenu.Anchor>
+                            <IconButton
+                              icon={KebabHorizontalIcon}
+                              variant="invisible"
+                              disabled={disabled}
+                              aria-label={`Mais ações de ${account.username ? `@${account.username}` : account.id}`}
+                            />
+                          </ActionMenu.Anchor>
+                          <ActionMenu.Overlay align="end">
+                            <ActionList>
+                              {canManageStatus(account) &&
+                                (account.status === 'disabled' ? (
+                                  <ActionList.Item onSelect={() => onEnable(account)}>
+                                    Reativar conta
+                                  </ActionList.Item>
+                                ) : (
+                                  <ActionList.Item onSelect={() => onDisable(account)}>
+                                    Desativar conta
+                                  </ActionList.Item>
+                                ))}
+                              {canDelete(account) && (
+                                <ActionList.Item
+                                  variant="danger"
+                                  onSelect={() => onDelete(account)}
+                                >
+                                  Excluir permanentemente
+                                </ActionList.Item>
+                              )}
+                            </ActionList>
+                          </ActionMenu.Overlay>
+                        </ActionMenu>
+                      )}
+                    </td>
+                  </Box>
+                )
+              })}
+            </tbody>
+          </Box>
         </Box>
-      </Box>
+      )}
 
       <Box
         sx={{
@@ -339,23 +461,23 @@ export function AccountsTable({
           <IconButton
             icon={ChevronLeftIcon}
             aria-label="Página anterior"
-            size="small"
+            sx={{ minHeight: 44, minWidth: 44 }}
             disabled={pagination.page <= 1}
             onClick={() => onPageChange(pagination.page - 1)}
           />
-          <Text>
+          <Text sx={{ whiteSpace: 'nowrap' }}>
             {pagination.page} / {pagination.pageCount}
           </Text>
           <IconButton
             icon={ChevronRightIcon}
             aria-label="Próxima página"
-            size="small"
+            sx={{ minHeight: 44, minWidth: 44 }}
             disabled={pagination.page >= pagination.pageCount}
             onClick={() => onPageChange(pagination.page + 1)}
           />
           <Select
             aria-label="Itens por página"
-            size="small"
+            sx={{ minHeight: 44, minWidth: 44 }}
             value={String(pageSize)}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
           >

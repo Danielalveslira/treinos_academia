@@ -1,0 +1,427 @@
+BEGIN
+ no_plan 
+---------
+(0 rows)
+
+INSERT 0 9
+UPDATE 1
+UPDATE 1
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+INSERT 0 2
+UPDATE 1
+              set_config              
+--------------------------------------
+ 71000000-0000-0000-0000-000000000001
+(1 row)
+
+ queue_deletion 
+----------------
+ 
+(1 row)
+
+SELECT 1
+CREATE FUNCTION
+              set_config              
+--------------------------------------
+ 71000000-0000-0000-0000-000000000009
+(1 row)
+
+                  throws_ok                  
+---------------------------------------------
+ ok 1 - usuário comum não executa o snapshot
+(1 row)
+
+                    throws_ok                     
+--------------------------------------------------
+ ok 2 - usuário comum não lê comunidades da conta
+(1 row)
+
+                    throws_ok                    
+-------------------------------------------------
+ ok 3 - usuário comum não lê financeiro da conta
+(1 row)
+
+                throws_ok                
+-----------------------------------------
+ ok 4 - usuário comum não lê a auditoria
+(1 row)
+
+                   throws_ok                    
+------------------------------------------------
+ ok 5 - usuário comum não altera status em lote
+(1 row)
+
+               throws_ok                
+----------------------------------------
+ ok 6 - usuário comum não pede exclusão
+(1 row)
+
+ set_config 
+------------
+ 
+(1 row)
+
+                   throws_ok                   
+-----------------------------------------------
+ ok 7 - não autenticado não executa o snapshot
+(1 row)
+
+                 ok                  
+-------------------------------------
+ ok 8 - anon sem EXECUTE no snapshot
+(1 row)
+
+                  ok                   
+---------------------------------------
+ ok 9 - public sem EXECUTE no snapshot
+(1 row)
+
+                                 ok                                  
+---------------------------------------------------------------------
+ ok 10 - authenticated com EXECUTE (a checagem real é is_superadmin)
+(1 row)
+
+              set_config              
+--------------------------------------
+ 71000000-0000-0000-0000-000000000001
+(1 row)
+
+            is            
+--------------------------
+ ok 11 - accounts é array
+(1 row)
+
+                      is                      
+----------------------------------------------
+ ok 12 - total_accounts bate com public.users
+(1 row)
+
+           is            
+-------------------------
+ ok 13 - meta.total bate
+(1 row)
+
+                    is                    
+------------------------------------------
+ ok 14 - meta.returned = tamanho da lista
+(1 row)
+
+                  is                   
+---------------------------------------
+ ok 15 - não truncado com base pequena
+(1 row)
+
+             is              
+-----------------------------
+ ok 16 - teto de 1000 linhas
+(1 row)
+
+                         is                          
+-----------------------------------------------------
+ ok 17 - exclusões pendentes batem com deletion_jobs
+(1 row)
+
+              is              
+------------------------------
+ ok 18 - novas em 7 dias bate
+(1 row)
+
+                           is                           
+--------------------------------------------------------
+ ok 19 - suspensas: só a vigente (a expirada não conta)
+(1 row)
+
+               is                
+---------------------------------
+ ok 20 - community_count correto
+(1 row)
+
+                  is                  
+--------------------------------------
+ ok 21 - flags_count ignora no_action
+(1 row)
+
+                  is                   
+---------------------------------------
+ ok 22 - flags_count zero sem decisões
+(1 row)
+
+                is                
+----------------------------------
+ ok 23 - e-mail vem de auth.users
+(1 row)
+
+             is              
+-----------------------------
+ ok 24 - versão legal aceita
+(1 row)
+
+              is               
+-------------------------------
+ ok 25 - financeiro: com saldo
+(1 row)
+
+                 is                  
+-------------------------------------
+ ok 26 - financeiro: compra pendente
+(1 row)
+
+              is               
+-------------------------------
+ ok 27 - financeiro: sem saldo
+(1 row)
+
+                  is                  
+--------------------------------------
+ ok 28 - status deleting (job aberto)
+(1 row)
+
+               is               
+--------------------------------
+ ok 29 - deletion_status do job
+(1 row)
+
+             is              
+-----------------------------
+ ok 30 - sem exclusão = none
+(1 row)
+
+                      is                      
+----------------------------------------------
+ ok 31 - status suspended (restrição vigente)
+(1 row)
+
+            is             
+---------------------------
+ ok 32 - ação da restrição
+(1 row)
+
+                 is                  
+-------------------------------------
+ ok 33 - suspensão expirada = active
+(1 row)
+
+           is            
+-------------------------
+ ok 34 - status disabled
+(1 row)
+
+              is               
+-------------------------------
+ ok 35 - motivo da desativação
+(1 row)
+
+                ok                 
+-----------------------------------
+ ok 36 - contrato do item da lista
+(1 row)
+
+                ok                 
+-----------------------------------
+ ok 37 - não vaza campos de perfil
+(1 row)
+
+        lives_ok        
+------------------------
+ ok 38 - desativa conta
+(1 row)
+
+                is                
+----------------------------------
+ ok 39 - auditoria de desativação
+(1 row)
+
+       lives_ok        
+-----------------------
+ ok 40 - reativa conta
+(1 row)
+
+               is                
+---------------------------------
+ ok 41 - auditoria de reativação
+(1 row)
+
+                   lives_ok                    
+-----------------------------------------------
+ ok 42 - reativar conta já ativa é idempotente
+(1 row)
+
+                     is                     
+--------------------------------------------
+ ok 43 - no-op não gera auditoria duplicada
+(1 row)
+
+               throws_ok               
+---------------------------------------
+ ok 44 - não reativa conta em exclusão
+(1 row)
+
+                 throws_ok                 
+-------------------------------------------
+ ok 45 - motivo obrigatório para desativar
+(1 row)
+
+SELECT 1
+             is             
+----------------------------
+ ok 46 - lote deduplica ids
+(1 row)
+
+                  is                  
+--------------------------------------
+ ok 47 - lote: conta comum desativada
+(1 row)
+
+                        is                         
+---------------------------------------------------
+ ok 48 - lote: conta em exclusão falha sem abortar
+(1 row)
+
+                 is                 
+------------------------------------
+ ok 49 - lote: superadmin protegido
+(1 row)
+
+                  is                   
+---------------------------------------
+ ok 50 - lote persistiu a conta válida
+(1 row)
+
+                 is                 
+------------------------------------
+ ok 51 - lote audita só o que mudou
+(1 row)
+
+          throws_ok          
+-----------------------------
+ ok 52 - lote vazio recusado
+(1 row)
+
+          throws_ok          
+-----------------------------
+ ok 53 - lote > 100 recusado
+(1 row)
+
+           throws_ok           
+-------------------------------
+ ok 54 - exclusão exige motivo
+(1 row)
+
+       lives_ok        
+-----------------------
+ ok 55 - pede exclusão
+(1 row)
+
+                  is                   
+---------------------------------------
+ ok 56 - job criado por queue_deletion
+(1 row)
+
+               is               
+--------------------------------
+ ok 57 - conta marcada deleting
+(1 row)
+
+        lives_ok         
+-------------------------
+ ok 58 - repetir é no-op
+(1 row)
+
+                        is                         
+---------------------------------------------------
+ ok 59 - auditoria única da exclusão com protocolo
+(1 row)
+
+           throws_ok           
+-------------------------------
+ ok 60 - não exclui a si mesmo
+(1 row)
+
+              is              
+------------------------------
+ ok 61 - comunidades da conta
+(1 row)
+
+                is                 
+-----------------------------------
+ ok 62 - financeiro: saldo EvoCash
+(1 row)
+
+                   is                   
+----------------------------------------
+ ok 63 - financeiro: estado da exclusão
+(1 row)
+
+                  is                  
+--------------------------------------
+ ok 64 - financeiro: sem carteira = 0
+(1 row)
+
+                 is                  
+-------------------------------------
+ ok 65 - auditoria filtrada por alvo
+(1 row)
+
+            ok            
+--------------------------
+ ok 66 - auditoria global
+(1 row)
+
+               is               
+--------------------------------
+ ok 67 - auditoria traz o admin
+(1 row)
+
+             throws_ok              
+------------------------------------
+ ok 68 - limite máximo da auditoria
+(1 row)
+
+        throws_ok         
+--------------------------
+ ok 69 - update bloqueado
+(1 row)
+
+        throws_ok         
+--------------------------
+ ok 70 - delete bloqueado
+(1 row)
+
+         throws_ok          
+----------------------------
+ ok 71 - truncate bloqueado
+(1 row)
+
+INSERT 0 1001
+SELECT 1
+                   is                    
+-----------------------------------------
+ ok 72 - acima do teto: truncated = true
+(1 row)
+
+                   is                   
+----------------------------------------
+ ok 73 - acima do teto: devolve só 1000
+(1 row)
+
+                  is                   
+---------------------------------------
+ ok 74 - acima do teto: lista com 1000
+(1 row)
+
+                         is                          
+-----------------------------------------------------
+ ok 75 - métricas continuam cobrindo todas as contas
+(1 row)
+
+ finish 
+--------
+ 1..75
+(1 row)
+
+ROLLBACK

@@ -1,0 +1,87 @@
+[
+  {
+    "listStartY": 578.0625,
+    "uiChecks": [
+      "CSV from secondary menu matches filtered snapshot",
+      "combined filters + empty state",
+      "selection cleared on sort",
+      "bulk malformed response shows error"
+    ],
+    "width": 390,
+    "theme": "light",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_set_accounts_status"
+    ],
+    "volumes": [
+      {
+        "heapBytes": 12073060,
+        "taskMs": 82,
+        "scriptMs": 25,
+        "layoutMs": 1,
+        "domNodes": 1466,
+        "n": 7,
+        "returned": 7,
+        "payloadBytes": 3122,
+        "refreshMs": 125
+      },
+      {
+        "heapBytes": 12155916,
+        "taskMs": 186,
+        "scriptMs": 58,
+        "layoutMs": 5,
+        "domNodes": 1825,
+        "n": 100,
+        "returned": 100,
+        "payloadBytes": 41469,
+        "refreshMs": 228
+      },
+      {
+        "heapBytes": 11140396,
+        "taskMs": 178,
+        "scriptMs": 49,
+        "layoutMs": 1,
+        "domNodes": 1837,
+        "n": 1000,
+        "returned": 1000,
+        "payloadBytes": 413401,
+        "refreshMs": 232
+      },
+      {
+        "heapBytes": 15840192,
+        "taskMs": 146,
+        "scriptMs": 36,
+        "layoutMs": 1,
+        "domNodes": 1855,
+        "n": 1200,
+        "returned": 1000,
+        "payloadBytes": 413400,
+        "refreshMs": 184
+      }
+    ],
+    "errors": []
+  },
+  {
+    "listStartY": 578.0625,
+    "uiChecks": [],
+    "width": 390,
+    "theme": "dark",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log"
+    ],
+    "volumes": [],
+    "errors": []
+  }
+]

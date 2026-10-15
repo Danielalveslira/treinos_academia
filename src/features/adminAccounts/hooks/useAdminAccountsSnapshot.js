@@ -1,4 +1,4 @@
-import { useMemo, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { fetchAccountsSnapshot } from '../api/adminAccounts.api'
 import { createSnapshotStore } from '../utils/snapshotStore'
 
@@ -11,6 +11,7 @@ export function useAdminAccountsSnapshot() {
     storeRef.current = createSnapshotStore({ fetchSnapshot: fetchAccountsSnapshot })
   }
   const store = storeRef.current
+  useEffect(() => () => store.clear(), [store])
   const state = useSyncExternalStore(store.subscribe, store.getState, store.getState)
   return useMemo(
     () => ({ ...state, refresh: store.refresh, applyChanges: store.applyChanges }),

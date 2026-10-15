@@ -1,0 +1,75 @@
+[
+  {
+    "listStartY": 942.3125,
+    "uiChecks": [],
+    "width": 390,
+    "theme": "light",
+    "overflow": true,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [
+      {
+        "heapBytes": 9792584,
+        "taskMs": 118,
+        "scriptMs": 42,
+        "layoutMs": 1,
+        "domNodes": 1103,
+        "n": 7,
+        "returned": 7,
+        "payloadBytes": 3122,
+        "refreshMs": 156
+      },
+      {
+        "heapBytes": 12522684,
+        "taskMs": 240,
+        "scriptMs": 99,
+        "layoutMs": 4,
+        "domNodes": 1787,
+        "n": 100,
+        "returned": 100,
+        "payloadBytes": 41469,
+        "refreshMs": 289
+      },
+      {
+        "heapBytes": 16843544,
+        "taskMs": 239,
+        "scriptMs": 91,
+        "layoutMs": 1,
+        "domNodes": 1879,
+        "n": 1000,
+        "returned": 1000,
+        "payloadBytes": 413401,
+        "refreshMs": 297
+      },
+      {
+        "heapBytes": 13988744,
+        "taskMs": 231,
+        "scriptMs": 85,
+        "layoutMs": 1,
+        "domNodes": 1977,
+        "n": 1200,
+        "returned": 1000,
+        "payloadBytes": 413400,
+        "refreshMs": 298
+      }
+    ],
+    "errors": []
+  },
+  {
+    "listStartY": 942.3125,
+    "uiChecks": [],
+    "width": 390,
+    "theme": "dark",
+    "overflow": true,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  }
+]

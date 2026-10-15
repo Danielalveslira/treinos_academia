@@ -15,6 +15,7 @@ import {
 } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { useSupport } from '../hooks/useSupport'
+import AdminNav from '../components/AdminNav'
 import { decideSupportRequest, getModerationEvidenceBlob } from '../services/supportService'
 import { REPORT_CATEGORY_OPTIONS } from '../constants/supportReportCategories'
 import { LISTING_KIND_OPTIONS, optionLabel } from '../constants/professionalListingTaxonomy'
@@ -142,6 +143,7 @@ export default function AdminModeration() {
   }
   return (
     <div className="support-page">
+      <AdminNav current="/admin/moderacao" currentLabel="Atendimento e moderação" />
       <h1>Atendimento e moderação</h1>
       <p>
         Decisões exigem regra, evidências e fundamentação. Remoções e restrições são aplicadas ao
@@ -234,15 +236,21 @@ export default function AdminModeration() {
               >
                 <Text as="span">
                   Vitrine denunciada:{' '}
-                  {item.listingId ? item.listingDisplayName || item.listingId : 'Conteúdo não disponível'} (
-                  {optionLabel(LISTING_KIND_OPTIONS, item.listingKind)} ·{' '}
                   {item.listingId
-                    ? LISTING_STATE_LABELS[item.listingLifecycleState] || item.listingLifecycleState || '—'
+                    ? item.listingDisplayName || item.listingId
+                    : 'Conteúdo não disponível'}{' '}
+                  ({optionLabel(LISTING_KIND_OPTIONS, item.listingKind)} ·{' '}
+                  {item.listingId
+                    ? LISTING_STATE_LABELS[item.listingLifecycleState] ||
+                      item.listingLifecycleState ||
+                      '—'
                     : 'Excluída'}
                   )
                 </Text>
                 {item.listingId && (
-                  <Link to={`/admin/vitrines?busca=${encodeURIComponent(item.listingDisplayName || '')}`}>
+                  <Link
+                    to={`/admin/vitrines?busca=${encodeURIComponent(item.listingDisplayName || '')}`}
+                  >
                     Abrir no admin de Vitrines
                   </Link>
                 )}
@@ -328,7 +336,11 @@ export default function AdminModeration() {
                     ? 'ID do usuário atingido'
                     : 'ID da comunidade (em branco para todo o sistema)'}
                 </FormControl.Label>
-                <TextInput block value={draft[field]} onChange={(e) => edit(field, e.target.value)} />
+                <TextInput
+                  block
+                  value={draft[field]}
+                  onChange={(e) => edit(field, e.target.value)}
+                />
               </FormControl>
             ))
           )}

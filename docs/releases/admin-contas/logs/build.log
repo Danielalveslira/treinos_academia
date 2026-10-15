@@ -1,0 +1,134 @@
+
+> treinos-academia@1.0.0 build
+> vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 4056 modules transformed.
+rendering chunks...
+[plugin vite:reporter] 
+(!) /workspaces/treinos_academia/src/supabase/config.js is dynamically imported by /workspaces/treinos_academia/src/features/adMetrics/api/adMetrics.api.js, /workspaces/treinos_academia/src/features/adminAccounts/api/adminAccounts.api.js, /workspaces/treinos_academia/src/features/comments/api/comments.api.js, /workspaces/treinos_academia/src/features/notifications/api/notifications.api.js, /workspaces/treinos_academia/src/services/offline/rollout.js, /workspaces/treinos_academia/src/services/offline/telemetry.js but also statically imported by /workspaces/treinos_academia/src/contexts/AuthContext.jsx, /workspaces/treinos_academia/src/contexts/WalletContext.jsx, /workspaces/treinos_academia/src/features/notifications/services/pushService.js, /workspaces/treinos_academia/src/hooks/useCashPurchases.js, /workspaces/treinos_academia/src/hooks/useCommunityAuthorAvatars.js, /workspaces/treinos_academia/src/services/accountDeletionService.js, /workspaces/treinos_academia/src/services/activityService.js, /workspaces/treinos_academia/src/services/adMetrics/runtime.js, /workspaces/treinos_academia/src/services/adminAccountDeletionsService.js, /workspaces/treinos_academia/src/services/authService.js, /workspaces/treinos_academia/src/services/bodyMeasurementsService.js, /workspaces/treinos_academia/src/services/cashPurchaseService.js, /workspaces/treinos_academia/src/services/communitiesService.js, /workspaces/treinos_academia/src/services/communityCreationService.js, /workspaces/treinos_academia/src/services/communityMembersService.js, /workspaces/treinos_academia/src/services/communityModerationService.js, /workspaces/treinos_academia/src/services/economyService.js, /workspaces/treinos_academia/src/services/exerciseCatalogService.js, /workspaces/treinos_academia/src/services/exerciseVisualsService.js, /workspaces/treinos_academia/src/services/exercisesService.js, /workspaces/treinos_academia/src/services/greetingPreferencesService.js, /workspaces/treinos_academia/src/services/legalService.js, /workspaces/treinos_academia/src/services/offline/syncScheduler.js, /workspaces/treinos_academia/src/services/professionalListingsService.js, /workspaces/treinos_academia/src/services/profileAvatarService.js, /workspaces/treinos_academia/src/services/progressService.js, /workspaces/treinos_academia/src/services/promotionsService.js, /workspaces/treinos_academia/src/services/publicProfilesService.js, /workspaces/treinos_academia/src/services/sponsoredAdsService.js, /workspaces/treinos_academia/src/services/statusInteractionsService.js, /workspaces/treinos_academia/src/services/statusesService.js, /workspaces/treinos_academia/src/services/supportService.js, /workspaces/treinos_academia/src/services/usageProfileService.js, /workspaces/treinos_academia/src/services/usersService.js, /workspaces/treinos_academia/src/services/workoutsService.js, dynamic import will not move module into another chunk.
+
+[plugin vite:reporter] 
+(!) /workspaces/treinos_academia/src/services/offline/database.js is dynamically imported by /workspaces/treinos_academia/src/services/offline/rollout.js, /workspaces/treinos_academia/src/services/offline/rollout.js but also statically imported by /workspaces/treinos_academia/src/components/Layout.jsx, /workspaces/treinos_academia/src/components/PwaControls.jsx, /workspaces/treinos_academia/src/contexts/AuthContext.jsx, /workspaces/treinos_academia/src/hooks/useSyncStatus.js, /workspaces/treinos_academia/src/hooks/useWarmOfflineRoutes.js, /workspaces/treinos_academia/src/services/authService.js, /workspaces/treinos_academia/src/services/offline/bootState.js, /workspaces/treinos_academia/src/services/offline/bootstrap.js, /workspaces/treinos_academia/src/services/offline/bootstrapEntry.js, /workspaces/treinos_academia/src/services/offline/exerciseCache.js, /workspaces/treinos_academia/src/services/offline/historyCache.js, /workspaces/treinos_academia/src/services/offline/homeSnapshot.js, /workspaces/treinos_academia/src/services/offline/localWrites.js, /workspaces/treinos_academia/src/services/offline/outbox.js, /workspaces/treinos_academia/src/services/offline/readThrough.js, /workspaces/treinos_academia/src/services/offline/snapshotWriter.js, /workspaces/treinos_academia/src/services/offline/storagePersistence.js, /workspaces/treinos_academia/src/services/offline/telemetry.js, /workspaces/treinos_academia/src/services/offline/userExercisesCache.js, /workspaces/treinos_academia/src/services/offline/userScope.js, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                        1.24 kB │ gzip:   0.53 kB
+dist/sw.js                                            24.30 kB
+dist/assets/statusAvailability-B8OK3yDP.css            0.54 kB │ gzip:   0.32 kB
+dist/assets/communityActivity-BShaRcMO.css             1.36 kB │ gzip:   0.53 kB
+dist/assets/Dashboard-C5VfMioF.css                     1.92 kB │ gzip:   0.75 kB
+dist/assets/index-Dwn2528J.css                         4.84 kB │ gzip:   0.89 kB
+dist/assets/AdminAccounts-BG3Gmaaj.css                 6.01 kB │ gzip:   1.48 kB
+dist/assets/CommunityDetail-CNQAQUlU.css              10.93 kB │ gzip:   2.60 kB
+dist/assets/WorkoutForm-C7PlHGnc.css                  12.66 kB │ gzip:   2.81 kB
+dist/assets/primer-DTSh1TNY.css                      177.98 kB │ gzip:  24.37 kB
+dist/assets/index-DtEjj3U5.css                       304.54 kB │ gzip:  50.11 kB
+dist/assets/clipboard-CKKjOd1O.js                      0.12 kB │ gzip:   0.12 kB
+dist/assets/progressService-CI2qQs68.js                0.18 kB │ gzip:   0.17 kB
+dist/assets/useConfirmDelete-tZW3Em53.js               0.23 kB │ gzip:   0.18 kB
+dist/assets/exerciseOrder-BX2x9HX0.js                  0.32 kB │ gzip:   0.23 kB
+dist/assets/MuscleIconBadge-CpWRuMon.js                0.34 kB │ gzip:   0.26 kB
+dist/assets/IndicatorCard-BXsvFjJe.js                  0.36 kB │ gzip:   0.24 kB
+dist/assets/useSingleFlight-CPyOOW4j.js                0.36 kB │ gzip:   0.25 kB
+dist/assets/ErrorState-BQJv2wRu.js                     0.45 kB │ gzip:   0.30 kB
+dist/assets/CommunityIcon-Cmv8S2wz.js                  0.49 kB │ gzip:   0.34 kB
+dist/assets/RowActionsMenu-D0bOfN_s.js                 0.52 kB │ gzip:   0.34 kB
+dist/assets/professionalListing-BODMtKaa.js            0.56 kB │ gzip:   0.37 kB
+dist/assets/NotFound-Cl55oezF.js                       0.58 kB │ gzip:   0.41 kB
+dist/assets/realtimeOffline-CYHAgjhI.js                0.60 kB │ gzip:   0.33 kB
+dist/assets/ToastFlash-KKV4qUdt.js                     0.62 kB │ gzip:   0.42 kB
+dist/assets/UsageProfileField-BzVRJ-qd.js              0.75 kB │ gzip:   0.44 kB
+dist/assets/ExerciseCatalogImage-DKfX_2Q1.js           0.79 kB │ gzip:   0.51 kB
+dist/assets/CommunityIconPicker-bvk7--te.js            0.79 kB │ gzip:   0.47 kB
+dist/assets/authErrors-BO7XcjqP.js                     0.86 kB │ gzip:   0.40 kB
+dist/assets/CopyButton-BP1kIfn1.js                     0.88 kB │ gzip:   0.53 kB
+dist/assets/publicProfilesService-DN-CIbXx.js          0.99 kB │ gzip:   0.50 kB
+dist/assets/professionalListingTaxonomy-DeYeAyMc.js    1.08 kB │ gzip:   0.58 kB
+dist/assets/FormShell-CyY_zXvy.js                      1.11 kB │ gzip:   0.64 kB
+dist/assets/MarkdownViewer-CpG_oirN.js                 1.12 kB │ gzip:   0.67 kB
+dist/assets/storagePersistence-Cz4HRwOn.js             1.18 kB │ gzip:   0.59 kB
+dist/assets/ProfessionalListingCard-DaXATIH0.js        1.22 kB │ gzip:   0.53 kB
+dist/assets/imageCompression-B7BM4wjB.js               1.23 kB │ gzip:   0.73 kB
+dist/assets/ForgotPassword-LFGRAIfX.js                 1.30 kB │ gzip:   0.74 kB
+dist/assets/useAdminCommunities-9SVt4DtC.js            1.31 kB │ gzip:   0.66 kB
+dist/assets/cashPurchaseFlow-CqD6HfY5.js               1.58 kB │ gzip:   0.72 kB
+dist/assets/CommunityProgressShare-odNaeOl6.js         1.64 kB │ gzip:   0.84 kB
+dist/assets/Login-Bwo_Kb1k.js                          1.73 kB │ gzip:   0.88 kB
+dist/assets/DailyChart-CMBaEmIO.js                     1.85 kB │ gzip:   0.95 kB
+dist/assets/CommunityForm-BaATIIho.js                  2.05 kB │ gzip:   0.84 kB
+dist/assets/communitiesService-IH9x8n7z.js             2.07 kB │ gzip:   0.78 kB
+dist/assets/homeSnapshot-BePiahJA.js                   2.10 kB │ gzip:   1.00 kB
+dist/assets/ProfileAvatar-yf7v5Jbb.js                  2.21 kB │ gzip:   1.18 kB
+dist/assets/bootstrapEntry-CCuM6L99.js                 2.23 kB │ gzip:   1.03 kB
+dist/assets/WorkoutParticipantsDialog-BSeEhmA1.js      2.33 kB │ gzip:   1.15 kB
+dist/assets/useExerciseCatalogDetail-LT659-Lh.js       2.34 kB │ gzip:   1.07 kB
+dist/assets/promotionsService-nIwQ7a9S.js              2.35 kB │ gzip:   0.91 kB
+dist/assets/TrainingPlanDialog-CdiG5ZIp.js             2.35 kB │ gzip:   1.15 kB
+dist/assets/PostSupportersDialog-fiAm0x6p.js           2.42 kB │ gzip:   1.17 kB
+dist/assets/SyncStatus-BARGcAsa.js                     2.92 kB │ gzip:   1.31 kB
+dist/assets/AdminCashPurchases-Deu3hE8M.js             3.00 kB │ gzip:   1.45 kB
+dist/assets/telemetry-bOiwCk_y.js                      3.02 kB │ gzip:   1.46 kB
+dist/assets/PublicProfile-CkbPYA-U.js                  3.05 kB │ gzip:   1.27 kB
+dist/assets/sponsoredAds-CEtytQn2.js                   3.06 kB │ gzip:   1.29 kB
+dist/assets/ActivityCalendarDialog-C30tC-mn.js         3.13 kB │ gzip:   1.26 kB
+dist/assets/greetingPreferencesService--QZEKiZy.js     3.25 kB │ gzip:   1.60 kB
+dist/assets/index-B_CtYNxi.js                          3.40 kB │ gzip:   1.31 kB
+dist/assets/Professionals-DjrI6JCR.js                  3.71 kB │ gzip:   1.44 kB
+dist/assets/NewWorkout-CnCb3dw3.js                     3.85 kB │ gzip:   1.89 kB
+dist/assets/professionalListingsService-CeQdd7ru.js    3.98 kB │ gzip:   1.46 kB
+dist/assets/AdminPromotions-DxnZ07TV.js                4.13 kB │ gzip:   1.88 kB
+dist/assets/useCashPurchases-Cqj04Ujg.js               4.13 kB │ gzip:   1.84 kB
+dist/assets/AdminCommunities-DTd_bkRO.js               4.14 kB │ gzip:   1.78 kB
+dist/assets/PromoteDialog-D-k9fEBt.js                  4.24 kB │ gzip:   1.92 kB
+dist/assets/ProfessionalListing-Yu18okzt.js            4.28 kB │ gzip:   1.76 kB
+dist/assets/supportReportCategories-CSHdAGbj.js        4.46 kB │ gzip:   1.77 kB
+dist/assets/MyPromotions-B65M2Emg.js                   4.56 kB │ gzip:   1.96 kB
+dist/assets/communityActivity-BYDN0c1E.js              4.67 kB │ gzip:   2.05 kB
+dist/assets/Register-DjBNtUPZ.js                       5.04 kB │ gzip:   2.18 kB
+dist/assets/CommunityMembersModeration-DizrBTl2.js     5.14 kB │ gzip:   1.90 kB
+dist/assets/CommentContextPage-B-KVN8Lc.js             5.16 kB │ gzip:   2.08 kB
+dist/assets/LegalDocument-D7s0OsjQ.js                  5.60 kB │ gzip:   2.06 kB
+dist/assets/muscleGroupIcons-BL3ynKVr.js               5.62 kB │ gzip:   2.08 kB
+dist/assets/History-D3-jpJM5.js                        5.63 kB │ gzip:   2.42 kB
+dist/assets/runtime-DHXtkJJs.js                        6.38 kB │ gzip:   2.86 kB
+dist/assets/LazyDialogBoundary-Dp1FPcj2.js             6.45 kB │ gzip:   2.70 kB
+dist/assets/consistencySnapshot-DOn1j3zx.js            6.77 kB │ gzip:   2.38 kB
+dist/assets/AdminModeration-BYxAgfo6.js                7.35 kB │ gzip:   3.03 kB
+dist/assets/Support-yDvLlwHU.js                        7.88 kB │ gzip:   3.08 kB
+dist/assets/exerciseCatalogService-D5IxJw5J.js         8.31 kB │ gzip:   2.94 kB
+dist/assets/showcaseLegal-B5SdzHEF.js                  8.39 kB │ gzip:   3.27 kB
+dist/assets/AdminProfessionalListings-CLg8zf-Y.js      8.47 kB │ gzip:   3.10 kB
+dist/assets/statusesService-C0pzwo_y.js                9.41 kB │ gzip:   3.33 kB
+dist/assets/EvoCash-D6dLT8v9.js                        9.45 kB │ gzip:   3.55 kB
+dist/assets/workoutsService-BoveOMTD.js                9.63 kB │ gzip:   3.43 kB
+dist/assets/Communities-DE215j6K.js                   10.06 kB │ gzip:   3.47 kB
+dist/assets/ExerciseDetail-CVhGtU_P.js                10.36 kB │ gzip:   3.54 kB
+dist/assets/AdminSponsoredAds-CIybeqLq.js             11.13 kB │ gzip:   4.08 kB
+dist/assets/AdminAccountDeletions-CMJ-dXZV.js         11.37 kB │ gzip:   4.16 kB
+dist/assets/Profile-Chq5iMVT.js                       14.53 kB │ gzip:   4.93 kB
+dist/assets/CreateCommunity-7Vpkuiz1.js               14.96 kB │ gzip:   5.03 kB
+dist/assets/StatusForm-x4B2SlUI.js                    15.36 kB │ gzip:   5.78 kB
+dist/assets/MyProfessionalListing-CDhysFfR.js         16.46 kB │ gzip:   5.51 kB
+dist/assets/ShareProgressDialog-BkbbJrD3.js           16.74 kB │ gzip:   7.03 kB
+dist/assets/syncScheduler-DGUrmZT8.js                 19.43 kB │ gzip:   7.02 kB
+dist/assets/AdMetricsTab-CenDNnsC.js                  19.63 kB │ gzip:   6.58 kB
+dist/assets/statusAvailability-9kOQrQIJ.js            20.00 kB │ gzip:   7.25 kB
+dist/assets/NotificationBell-BGVmn21M.js              22.64 kB │ gzip:   7.61 kB
+dist/assets/Progress-BaOAmBE-.js                      28.23 kB │ gzip:   8.77 kB
+dist/assets/Exercises-yaP93CmJ.js                     28.93 kB │ gzip:   9.89 kB
+dist/assets/WorkoutForm-D3qDq3Pg.js                   31.25 kB │ gzip:  10.51 kB
+dist/assets/AdminExerciseVisuals-0y8bXLeD.js          41.70 kB │ gzip:  14.99 kB
+dist/assets/Dashboard-BF4Aqpbv.js                     42.57 kB │ gzip:  14.95 kB
+dist/assets/AdminAccounts-TpGCZy_U.js                 46.98 kB │ gzip:  14.59 kB
+dist/assets/CommunityDetail-lcbq0o_W.js               66.66 kB │ gzip:  22.27 kB
+dist/assets/markdown-DGwVgygq.js                     162.45 kB │ gzip:  49.59 kB
+dist/assets/charts-D50oJ3BK.js                       414.23 kB │ gzip: 111.54 kB
+dist/assets/index-DvjHG_zB.js                        432.08 kB │ gzip: 126.80 kB
+dist/assets/primer-DQUHNgB2.js                       780.92 kB │ gzip: 184.49 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 29.66s

@@ -82,9 +82,7 @@ export const COLUMN_OPTIONS = [
 ]
 
 // Colunas visíveis ao abrir a tela: "Último login" é secundário e fica atrás do seletor "Colunas".
-export const DEFAULT_VISIBLE_COLUMNS = COLUMN_OPTIONS.map((c) => c.key).filter(
-  (key) => key !== 'last_sign_in_at'
-)
+export const DEFAULT_VISIBLE_COLUMNS = ['role', 'last_active_at']
 
 // Filtro "Último uso" (campo last_active_at).
 export const LAST_ACCESS_OPTIONS = [
@@ -276,7 +274,7 @@ export const CSV_COLUMNS = [
 // dado do usuário, então essas células recebem um apóstrofo à frente.
 function csvCell(value) {
   let text = String(value ?? '')
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`
+  if (/^[\s]*[=+\-@]|^[\t\r\n]|^[＝＋－＠]/.test(text)) text = `'${text}`
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 
@@ -314,4 +312,27 @@ export const KNOWN_ERRORS = {
 export function describeActionError(error, fallback) {
   const key = typeof error === 'string' ? error : error?.message
   return KNOWN_ERRORS[key] || fallback
+}
+
+// Visual masking only; authorized search, details and CSV retain the original value.
+export function maskEmail(email) {
+  if (!email) return '—'
+  const at = email.lastIndexOf('@')
+  return at > 0 ? `${email[0]}•••${email.slice(at)}` : '•••'
+}
+
+export function validateStatusResults(results, ids) {
+  const expected = new Set(ids)
+  if (!Array.isArray(results) || results.length !== expected.size)
+    throw new Error('INVALID_RESPONSE')
+  for (const row of results) {
+    if (
+      !row ||
+      !expected.delete(row.id) ||
+      typeof row.ok !== 'boolean' ||
+      (row.ok && !['active', 'disabled'].includes(row.account_status))
+    )
+      throw new Error('INVALID_RESPONSE')
+  }
+  return results
 }

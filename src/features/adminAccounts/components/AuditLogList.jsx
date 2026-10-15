@@ -4,7 +4,7 @@ import { AUDIT_ACTION_LABELS } from '../utils/accounts'
 
 const who = (username, id) => (username ? `@${username}` : id ? `${id.slice(0, 8)}…` : '—')
 
-export function AuditLogList({ entries, showTarget = false }) {
+export function AuditLogList({ entries, showTarget = false, compact = false }) {
   if (entries.length === 0) {
     return <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Nenhum registro de auditoria.</Text>
   }
@@ -17,7 +17,15 @@ export function AuditLogList({ entries, showTarget = false }) {
         <Box
           as="li"
           key={entry.id}
-          sx={{ p: 2, border: '1px solid', borderColor: 'border.default', borderRadius: 2 }}
+          sx={{
+            py: 2,
+            px: compact ? 0 : 2,
+            border: compact ? 'none' : '1px solid',
+            borderBottom: '1px solid',
+            borderColor: 'border.muted',
+            borderRadius: compact ? 0 : 2,
+            overflowWrap: 'anywhere',
+          }}
         >
           <Text sx={{ display: 'block', fontWeight: 'bold', fontSize: 1 }}>
             {AUDIT_ACTION_LABELS[entry.action] || entry.action}

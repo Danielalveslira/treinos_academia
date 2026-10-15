@@ -1,0 +1,377 @@
+[
+  {
+    "listStartY": 578.0625,
+    "uiChecks": [],
+    "width": 320,
+    "theme": "light",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 578.0625,
+    "uiChecks": [],
+    "width": 320,
+    "theme": "dark",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 578.0625,
+    "uiChecks": [],
+    "width": 360,
+    "theme": "light",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 578.0625,
+    "uiChecks": [],
+    "width": 360,
+    "theme": "dark",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 578.0625,
+    "uiChecks": [],
+    "width": 375,
+    "theme": "light",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 578.0625,
+    "uiChecks": [],
+    "width": 375,
+    "theme": "dark",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 578.0625,
+    "uiChecks": [
+      "CSV from secondary menu matches filtered snapshot",
+      "combined filters + empty state",
+      "selection cleared on sort",
+      "bulk malformed response shows error"
+    ],
+    "width": 390,
+    "theme": "light",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_set_accounts_status"
+    ],
+    "volumes": [
+      {
+        "heapBytes": 11343784,
+        "taskMs": 126,
+        "scriptMs": 36,
+        "layoutMs": 1,
+        "domNodes": 2207,
+        "n": 7,
+        "returned": 7,
+        "payloadBytes": 3122,
+        "refreshMs": 170
+      },
+      {
+        "heapBytes": 15015404,
+        "taskMs": 102,
+        "scriptMs": 29,
+        "layoutMs": 4,
+        "domNodes": 2566,
+        "n": 100,
+        "returned": 100,
+        "payloadBytes": 41469,
+        "refreshMs": 140
+      },
+      {
+        "heapBytes": 12541908,
+        "taskMs": 186,
+        "scriptMs": 54,
+        "layoutMs": 1,
+        "domNodes": 2578,
+        "n": 1000,
+        "returned": 1000,
+        "payloadBytes": 413401,
+        "refreshMs": 242
+      },
+      {
+        "heapBytes": 17043760,
+        "taskMs": 161,
+        "scriptMs": 40,
+        "layoutMs": 1,
+        "domNodes": 2596,
+        "n": 1200,
+        "returned": 1000,
+        "payloadBytes": 413400,
+        "refreshMs": 216
+      }
+    ],
+    "errors": []
+  },
+  {
+    "listStartY": 578.0625,
+    "uiChecks": [],
+    "width": 390,
+    "theme": "dark",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 578.0625,
+    "uiChecks": [],
+    "width": 430,
+    "theme": "light",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 578.0625,
+    "uiChecks": [],
+    "width": 430,
+    "theme": "dark",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 543.75,
+    "uiChecks": [],
+    "width": 768,
+    "theme": "light",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 543.75,
+    "uiChecks": [],
+    "width": 768,
+    "theme": "dark",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 538.171875,
+    "uiChecks": [],
+    "width": 1024,
+    "theme": "light",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 538.171875,
+    "uiChecks": [],
+    "width": 1024,
+    "theme": "dark",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 538.171875,
+    "uiChecks": [],
+    "width": 1366,
+    "theme": "light",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "listStartY": 538.171875,
+    "uiChecks": [],
+    "width": 1366,
+    "theme": "dark",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_account_financial",
+      "admin_account_communities",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot",
+      "admin_account_communities",
+      "admin_account_financial",
+      "admin_list_audit_log",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  }
+]

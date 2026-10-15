@@ -158,3 +158,29 @@ test('assinantes são notificados nas mudanças e podem cancelar a assinatura', 
   store.applyChanges(new Map([['a', { status: 'disabled' }]]))
   assert.equal(notifications, 2)
 })
+
+test('clear invalida pedido pendente e mantém nova sessão vazia', async () => {
+  let release
+  const store = createSnapshotStore({
+    fetchSnapshot: () =>
+      new Promise((resolve) => {
+        release = resolve
+      }),
+  })
+  const pending = store.refresh()
+  store.clear()
+  release(snapshotOf([row('late')]))
+  assert.equal(await pending, false)
+  assert.equal(store.getState().snapshot, null)
+  assert.equal(store.getState().isRefreshing, false)
+})
+
+test('contrato malformado não aceita duplicados ou contadores inválidos', () => {
+  assert.equal(isValidSnapshot(snapshotOf([row('a'), row('a')])), false)
+  const bad = snapshotOf([row('a')])
+  bad.meta.returned = 2
+  assert.equal(isValidSnapshot(bad), false)
+  bad.meta.returned = 1
+  bad.metrics.active_accounts = -1
+  assert.equal(isValidSnapshot(bad), false)
+})

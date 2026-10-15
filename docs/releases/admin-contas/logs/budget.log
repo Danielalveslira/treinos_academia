@@ -1,0 +1,11 @@
+
+> treinos-academia@1.0.0 budget
+> node scripts/bundle-budget.mjs
+
+Boot (gzip): { bootJsGzipBytes: 310439, bootCssGzipBytes: 74043, bootFiles: 4 } | baseline: {
+  tolerance: 0.03,
+  bootJsGzipBytes: 307092,
+  bootCssGzipBytes: 74055,
+  bootFiles: 4
+}
+Budget OK

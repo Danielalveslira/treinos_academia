@@ -1,0 +1,191 @@
+[
+  {
+    "width": 320,
+    "theme": "light",
+    "overflow": true,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "width": 320,
+    "theme": "dark",
+    "overflow": true,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "width": 375,
+    "theme": "light",
+    "overflow": true,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "width": 375,
+    "theme": "dark",
+    "overflow": true,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "theme": "light",
+    "overflow": true,
+    "calls": [
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot",
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [
+      {
+        "heapBytes": 25493620,
+        "taskMs": 194,
+        "scriptMs": 97,
+        "layoutMs": 1,
+        "domNodes": 1311,
+        "n": 7,
+        "returned": 7,
+        "payloadBytes": 3122,
+        "refreshMs": 239
+      },
+      {
+        "heapBytes": 35119760,
+        "taskMs": 378,
+        "scriptMs": 212,
+        "layoutMs": 8,
+        "domNodes": 1995,
+        "n": 100,
+        "returned": 100,
+        "payloadBytes": 41469,
+        "refreshMs": 419
+      },
+      {
+        "heapBytes": 31296896,
+        "taskMs": 383,
+        "scriptMs": 218,
+        "layoutMs": 1,
+        "domNodes": 1542,
+        "n": 1000,
+        "returned": 1000,
+        "payloadBytes": 413401,
+        "refreshMs": 412
+      },
+      {
+        "heapBytes": 28861636,
+        "taskMs": 328,
+        "scriptMs": 188,
+        "layoutMs": 1,
+        "domNodes": 1640,
+        "n": 1200,
+        "returned": 1000,
+        "payloadBytes": 413400,
+        "refreshMs": 375
+      }
+    ],
+    "errors": []
+  },
+  {
+    "width": 390,
+    "theme": "dark",
+    "overflow": true,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "width": 430,
+    "theme": "light",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "width": 430,
+    "theme": "dark",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "width": 768,
+    "theme": "light",
+    "overflow": true,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "width": 768,
+    "theme": "dark",
+    "overflow": true,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "width": 1024,
+    "theme": "light",
+    "overflow": true,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "width": 1024,
+    "theme": "dark",
+    "overflow": true,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "width": 1366,
+    "theme": "light",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  },
+  {
+    "width": 1366,
+    "theme": "dark",
+    "overflow": false,
+    "calls": [
+      "admin_accounts_snapshot"
+    ],
+    "volumes": [],
+    "errors": []
+  }
+]

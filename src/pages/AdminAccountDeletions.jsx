@@ -19,6 +19,7 @@ import { getDeletionFinancialHistory } from '../services/adminAccountDeletionsSe
 import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
+import AdminNav from '../components/AdminNav'
 import { toDate } from '../utils/date'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
@@ -382,14 +383,7 @@ export default function AdminAccountDeletions() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-        <Button as={Link} to="/admin/contas" replace>
-          Contas
-        </Button>
-        <Button as={Link} to="/admin/compras-evocash" replace>
-          Compras de EvoCash
-        </Button>
-      </Box>
+      <AdminNav current="/admin/exclusao-contas" currentLabel="Exclusão de contas" />
       <ToastFlash toasts={toasts} />
       <Heading as="h1" sx={{ fontSize: 3, mb: 2 }}>
         Exclusão de contas

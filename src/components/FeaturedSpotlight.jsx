@@ -26,8 +26,13 @@ const isEligible = (status, now) => toMillis(status.promotedUntil) > now
 // Rotação: UM único setTimeout (reagendado a cada troca), só enquanto há mais de um destaque, o card está visível
 // na tela, a aba está em primeiro plano, o usuário não está interagindo e não há prefers-reduced-motion. Com um
 // único destaque não há timer, nem observador, nem controles. O card inteiro abre a publicação (onOpen).
-export function FeaturedSpotlight({ statuses, onOpen, random = Math.random }) {
-  const [now, setNow] = useState(() => Date.now())
+export function FeaturedSpotlight({ statuses, onOpen, random = Math.random, now: nowOverride }) {
+  // nowOverride (testes/estados congelados, mesmo contrato de CommunityFeedSection/clock.js) só
+  // fixa o instante INICIAL -- a rotação em si (abaixo) sempre usa o relógio real: travar o
+  // "agora" pro resto da vida do componente quebraria a troca automática a cada 7s.
+  const [now, setNow] = useState(() =>
+    nowOverride !== undefined && nowOverride !== null ? toMillis(nowOverride) : Date.now()
+  )
   const eligible = useMemo(
     () => statuses.filter((status) => isEligible(status, now)),
     [statuses, now]

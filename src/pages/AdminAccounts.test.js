@@ -64,6 +64,7 @@ before(async () => {
         import TestRenderer, { act } from 'react-test-renderer'
         import { MemoryRouter } from 'react-router-dom'
         import { ThemeProvider, BaseStyles } from '@primer/react'
+        import { AuthContext } from '../contexts/AuthContext.jsx'
         import AdminAccounts from './AdminAccounts.jsx'
 
         export function mount() {
@@ -76,19 +77,18 @@ before(async () => {
           global.window.removeEventListener = global.window.removeEventListener || (() => {})
           global.document = global.document || { addEventListener() {}, removeEventListener() {} }
           let renderer
-          act(() => {
-            renderer = TestRenderer.create(
-              createElement(ThemeProvider, null,
-                createElement(BaseStyles, null,
-                  createElement(MemoryRouter, null, createElement(AdminAccounts)))))
-          })
+          const tree = (userId) => createElement(ThemeProvider, null,
+            createElement(BaseStyles, null,
+              createElement(AuthContext.Provider, { value: { user: userId ? { uid: userId } : null, isSuperAdmin: Boolean(userId), loading: false } },
+                createElement(MemoryRouter, null, createElement(AdminAccounts)))))
+          act(() => { renderer = TestRenderer.create(tree('fixture-admin')) })
           const root = renderer.root
           const flat = (inst) =>
             inst.children.map((c) => (typeof c === 'string' ? c : flat(c))).join('')
           const tick = () => new Promise((resolve) => setTimeout(resolve, 15))
           // O Spinner do Primer acrescenta o texto "Loading" ao botão: cai para "termina com"/"começa com" (cartões: rótulo + número).
           const findButton = (label) => {
-            const buttons = root.findAll((n) => n.type === 'button')
+            const buttons = root.findAll((n) => n.type === 'button' && typeof n.props.onClick === 'function')
             return (
               buttons.find((n) => n.props['aria-label'] === label || flat(n) === label) ||
               buttons.find((n) => flat(n).endsWith(label)) ||
@@ -100,6 +100,10 @@ before(async () => {
           // espera um tick para as Promises e re-renderizações assentarem.
           return {
             text: () => flat(renderer.root),
+            closeDetails: async () => { root.findAll(n => n.props.account && typeof n.props.onClose === 'function')[0].props.onClose(); await tick() },
+            exportCsv: () => root.findAll(n => typeof n.props.onExport === 'function')[0].props.onExport(),
+            session: (id) => act(() => renderer.update(tree(id))),
+            unmount: () => act(() => renderer.unmount()),
             tick,
             async press(label) {
               const target = findButton(label)
@@ -141,7 +145,7 @@ before(async () => {
     platform: 'node',
     format: 'cjs',
     jsx: 'automatic',
-    loader: { '.js': 'jsx' },
+    loader: { '.js': 'jsx', '.css': 'empty' },
     logLevel: 'silent',
     plugins: [
       {
@@ -170,10 +174,11 @@ before(async () => {
               import { createElement } from 'react'
               const Pass = ({ children }) => children
               // Dialog do Primer usa portal (DOM real): renderiza inline, com os mesmos botões.
-              export const Dialog = ({ title, children, footerButtons = [] }) =>
+              export const Dialog = Object.assign(({ title, children, footerButtons = [], renderHeader }) =>
                 createElement('div', { role: 'dialog', 'aria-label': title },
-                  title, children,
-                  footerButtons.map((b) => createElement('button', { key: b.content, onClick: b.onClick, disabled: b.disabled }, b.content)))
+                  renderHeader ? createElement(renderHeader, { dialogLabelId: 'fixture-dialog' }) : title, children,
+                  footerButtons.map((b) => createElement('button', { key: b.content, onClick: b.onClick, disabled: b.disabled }, b.content))),
+                  { Header: Pass, Title: ({ children, ...props }) => createElement('h2', props, children) })
               export const ActionMenu = Object.assign(Pass, {
                 Button: real.Button,
                 Anchor: Pass,
@@ -253,14 +258,14 @@ test('Atualizar = 1 RPC; busca, filtro, ordenação, abas, painel e CSV = 0 RPC'
   await page.press('Ativas')
   assert.equal(page.rows().length, 3)
 
-  await page.press('Comunidades') // ordenação local
+  await page.press('Usuário') // ordenação local
   await page.press('Moderação / risco') // aba local
   assert.equal(page.rows().length, 1)
   await page.press('Todas as contas')
 
   await page.clickRow(0) // abrir painel: Visão geral não lê nada
   assert.match(page.text(), /Detalhes da conta|Fechar painel/)
-  await page.press('Exportar CSV')
+  page.exportCsv()
   assert.equal(downloads.length, 1)
 
   assert.deepEqual(names(), ['admin_accounts_snapshot'])
@@ -432,4 +437,88 @@ test('logs administrativos só são lidos ao clicar em Carregar logs', async () 
   await page.press('Carregar logs')
   assert.deepEqual(names(), ['admin_accounts_snapshot', 'admin_list_audit_log'])
   assert.match(page.text(), /Conta desativada/)
+})
+
+test('troca de sessão remove snapshot e ignora refresh antigo', async () => {
+  let release
+  setup(
+    () =>
+      new Promise((resolve) => {
+        release = resolve
+      })
+  )
+  const page = h.mount()
+  await page.press('Atualizar dados')
+  page.session('other-admin')
+  release({ data: snapshot([row(1)]), error: null })
+  await page.tick()
+  assert.equal(page.rows().length, 0)
+  assert.match(page.text(), /Dados ainda não carregados/)
+  page.session(null)
+  assert.equal(page.text(), '')
+  page.unmount()
+})
+
+test('filtro e paginação limpam seleção; abrir detalhes preserva', async () => {
+  setup(async () => ({ data: snapshot([row(1), row(2)]), error: null }))
+  const page = h.mount()
+  await page.press('Atualizar dados')
+  await page.check('Selecionar @user1')
+  assert.match(page.text(), /1 selecionada/)
+  await page.clickRow(0)
+  assert.match(page.text(), /1 selecionada/)
+  await page.closeDetails()
+  await page.type('Buscar por @usuário, e-mail ou UID', 'user2')
+  assert.doesNotMatch(page.text(), /1 selecionada/)
+  page.unmount()
+})
+
+test('detalhe tardio após fechar não retorna ao cache; aba pronta é reutilizada', async () => {
+  let release
+  setup(async (name) => {
+    if (name === 'admin_accounts_snapshot') return { data: snapshot([row(1)]), error: null }
+    return new Promise((resolve) => {
+      release = resolve
+    })
+  })
+  const page = h.mount()
+  await page.press('Atualizar dados')
+  await page.clickRow(0)
+  await page.press('Financeiro')
+  await page.closeDetails()
+  release({
+    data: { coin_balance: 999, cash_balance: 0, recent_purchases: [], deletion: null },
+    error: null,
+  })
+  await page.tick()
+  await page.clickRow(0)
+  await page.press('Financeiro')
+  assert.equal(names().filter((name) => name === 'admin_account_financial').length, 2)
+  release({
+    data: { coin_balance: 42, cash_balance: 0, recent_purchases: [], deletion: null },
+    error: null,
+  })
+  await page.tick()
+  assert.doesNotMatch(page.text(), /999/)
+  await page.closeDetails()
+  await page.clickRow(0)
+  await page.press('Financeiro')
+  assert.equal(names().filter((name) => name === 'admin_account_financial').length, 2)
+  page.unmount()
+})
+
+test('resposta de lote vazia não mostra sucesso nem atualiza status', async () => {
+  setup(async (name) => ({
+    data: name === 'admin_accounts_snapshot' ? snapshot([row(1)]) : [],
+    error: null,
+  }))
+  const page = h.mount()
+  await page.press('Atualizar dados')
+  await page.clickRow(0)
+  await page.press('Desativar')
+  await page.typeReason('Motivo sintético')
+  await page.press('Desativar conta')
+  assert.match(page.text(), /Erro ao alterar o status/)
+  assert.doesNotMatch(page.text(), /Conta desativada\./)
+  page.unmount()
 })

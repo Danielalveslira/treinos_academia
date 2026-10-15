@@ -4,8 +4,6 @@ import { ActionList, ActionMenu, IconButton } from '@primer/react'
 import {
   PersonIcon,
   ShieldLockIcon,
-  PeopleIcon,
-  MegaphoneIcon,
   RocketIcon,
   CreditCardIcon,
   SunIcon,
@@ -17,13 +15,13 @@ import {
   QuestionIcon,
   BriefcaseIcon,
   LocationIcon,
-  ImageIcon,
   ChevronDownIcon,
   ChevronUpIcon,
 } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useColorMode } from '../hooks/useColorMode'
 import { useLogoutNotice } from '../hooks/usePendingNotice'
+import { ADMIN_ITEMS } from '../constants/adminNav'
 
 // Fonte única das rotas "Minha conta" -- a mesma lista alimenta o dropdown do
 // desktop (achatado, como hoje) e as seções do painel mobile, pra nunca haver
@@ -32,7 +30,12 @@ import { useLogoutNotice } from '../hooks/usePendingNotice'
 // inteiro (que depende de Portal/DOM real -- ver AccountMenu.test.js).
 export const ACCOUNT_ITEMS = [
   { key: 'perfil', to: '/perfil', icon: PersonIcon, label: 'Meu perfil' },
-  { key: 'profissionais', to: '/profissionais', icon: LocationIcon, label: 'Profissionais e locais' },
+  {
+    key: 'profissionais',
+    to: '/profissionais',
+    icon: LocationIcon,
+    label: 'Profissionais e locais',
+  },
   // profile?.usageProfile === 'common' só esconde o atalho (declutter) -- a
   // rota /minha-vitrine continua acessível e decide por conta própria (com
   // dados reais) o que mostrar; ver MyProfessionalListing.jsx. Legado
@@ -49,17 +52,11 @@ export const ACCOUNT_ITEMS = [
   { key: 'promocoes', to: '/minhas-promocoes', icon: RocketIcon, label: 'Minhas promoções' },
 ]
 
-// Mesmas 7 rotas administrativas de sempre -- só muda como são apresentadas
-// (sempre expandidas no desktop, recolhíveis no mobile).
-export const ADMIN_ITEMS = [
-  { key: 'admin-comunidades', to: '/admin/comunidades', icon: PeopleIcon, label: 'Comunidades' },
-  { key: 'admin-parcerias', to: '/admin/parcerias', icon: MegaphoneIcon, label: 'Anúncios e parcerias' },
-  { key: 'admin-contas', to: '/admin/contas', icon: PersonIcon, label: 'Contas' },
-  { key: 'admin-moderacao', to: '/admin/moderacao', icon: ShieldLockIcon, label: 'Moderação' },
-  { key: 'admin-evocash', to: '/admin/compras-evocash', icon: CreditCardIcon, label: 'Compras de EvoCash' },
-  { key: 'admin-promocoes', to: '/admin/promocoes', icon: RocketIcon, label: 'Promoções (EvoCash)' },
-  { key: 'admin-imagens', to: '/admin/exercicios-imagens', icon: ImageIcon, label: 'Imagens dos exercícios' },
-]
+// Reexportada por compatibilidade (AccountMenu.test.js e código legado importam
+// ADMIN_ITEMS daqui) -- a lista em si vive em constants/adminNav.js, um módulo puro
+// sem hooks, pra AdminNav.jsx poder importá-la sem arrastar useAuth/useColorMode/
+// Supabase para dentro de cada página /admin/* que a usa (ver AdminNav.jsx).
+export { ADMIN_ITEMS }
 
 // replace: mesmo motivo do menu inferior em Layout.jsx -- esses links trocam
 // de seção do app, não deveriam empilhar histórico.
@@ -96,7 +93,9 @@ export function renderSessionItems({ onLogout, onLogoutAll, signingOut, logoutNo
           <SignOutIcon />
         </ActionList.LeadingVisual>
         {signingOut ? 'Saindo…' : 'Sair da conta'}
-        {logoutNotice && <ActionList.Description variant="block">{logoutNotice}</ActionList.Description>}
+        {logoutNotice && (
+          <ActionList.Description variant="block">{logoutNotice}</ActionList.Description>
+        )}
       </ActionList.Item>
       {/* Ação de segurança, separada do "Sair da conta": SEM preventDefault de propósito --
           o menu fecha normalmente (comportamento padrão do ActionMenu) e só então a
@@ -112,7 +111,7 @@ export function renderSessionItems({ onLogout, onLogoutAll, signingOut, logoutNo
 }
 
 // Item "Administração" recolhível (mobile) -- separado em função própria pra ser
-// testável direto (expande/recolhe, mostra as 7 rotas) sem precisar montar o
+// testável direto (expande/recolhe, mostra as 9 rotas) sem precisar montar o
 // ActionMenu.Overlay inteiro. `expanded`/`onToggle` vêm de fora: aqui não há
 // estado próprio, só apresentação.
 export function renderAdminSection({ expanded, onToggle, profile, onNavigate }) {
@@ -131,7 +130,9 @@ export function renderAdminSection({ expanded, onToggle, profile, onNavigate }) 
           <ShieldLockIcon />
         </ActionList.LeadingVisual>
         {label}
-        <ActionList.TrailingVisual>{expanded ? <ChevronUpIcon /> : <ChevronDownIcon />}</ActionList.TrailingVisual>
+        <ActionList.TrailingVisual>
+          {expanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+        </ActionList.TrailingVisual>
       </ActionList.Item>
       {/* `hidden` (não desmontar): aria-controls precisa de um elemento que exista de
           verdade, só oculto -- não um id "no ar" quando recolhido. */}
@@ -215,7 +216,9 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
                   })}
                 <ActionList.Group title="Preferências e ajuda">
                   <ActionList.Item onSelect={toggleColorMode}>
-                    <ActionList.LeadingVisual>{dark ? <SunIcon /> : <MoonIcon />}</ActionList.LeadingVisual>
+                    <ActionList.LeadingVisual>
+                      {dark ? <SunIcon /> : <MoonIcon />}
+                    </ActionList.LeadingVisual>
                     {dark ? 'Ativar tema claro' : 'Ativar tema escuro'}
                   </ActionList.Item>
                   <ActionList.LinkItem as={Link} to="/atendimento" replace onClick={closeMenu}>
@@ -230,11 +233,15 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
               <ActionList>
                 {renderNavItems(ACCOUNT_ITEMS, profile, closeMenu)}
                 {isSuperAdmin && (
-                  <ActionList.Group title="Administração">{renderNavItems(ADMIN_ITEMS, profile, closeMenu)}</ActionList.Group>
+                  <ActionList.Group title="Administração">
+                    {renderNavItems(ADMIN_ITEMS, profile, closeMenu)}
+                  </ActionList.Group>
                 )}
                 <ActionList.Divider />
                 <ActionList.Item onSelect={toggleColorMode}>
-                  <ActionList.LeadingVisual>{dark ? <SunIcon /> : <MoonIcon />}</ActionList.LeadingVisual>
+                  <ActionList.LeadingVisual>
+                    {dark ? <SunIcon /> : <MoonIcon />}
+                  </ActionList.LeadingVisual>
                   {dark ? 'Ativar tema claro' : 'Ativar tema escuro'}
                 </ActionList.Item>
                 <ActionList.LinkItem as={Link} to="/atendimento" replace onClick={closeMenu}>

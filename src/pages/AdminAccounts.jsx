@@ -1,10 +1,22 @@
-import { useCallback, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Box, Button, Flash, Heading, Spinner, Text, UnderlineNav } from '@primer/react'
+import '../features/adminAccounts/accounts.css'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Box,
+  Button,
+  Flash,
+  Heading,
+  Select,
+  Spinner,
+  Text,
+  UnderlineNav,
+  useResponsiveValue,
+} from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PersonIcon, SyncIcon } from '@primer/octicons-react'
+import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { ToastFlash } from '../components/ToastFlash'
+import AdminNav from '../components/AdminNav'
 import { formatDateTime } from '../utils/format'
 import { useAdminAccountsSnapshot } from '../features/adminAccounts/hooks/useAdminAccountsSnapshot'
 import { useAccountDetails } from '../features/adminAccounts/hooks/useAccountDetails'
@@ -57,9 +69,14 @@ function downloadCsv(accounts) {
 // geral) e CSV trabalham sobre o snapshot em memória. Nada aqui usa timer, foco de janela ou
 // realtime.
 export default function AdminAccounts() {
+  const { user, isSuperAdmin, loading } = useAuth()
+  if (loading || !isSuperAdmin || !user?.uid) return null
+  return <AdminAccountsSession key={user.uid} />
+}
+
+function AdminAccountsSession() {
   const { snapshot, isRefreshing, error, localChangeAt, syncedVersion, refresh, applyChanges } =
     useAdminAccountsSnapshot()
-  const details = useAccountDetails(syncedVersion)
   const { toasts, showToast } = useToast()
 
   const [tab, setTab] = useState('all')
@@ -69,9 +86,17 @@ export default function AdminAccounts() {
   const [pageSize, setPageSize] = useState(PAGE_SIZES[1])
   const [selection, setSelection] = useState(() => new Set())
   const [openId, setOpenId] = useState(null)
-  const [visibleColumns, setVisibleColumns] = useState(
-    () => new Set(DEFAULT_VISIBLE_COLUMNS)
-  )
+  const details = useAccountDetails(syncedVersion, openId)
+  const active = useRef(true)
+  const logRevision = useRef(0)
+  useEffect(() => {
+    active.current = true
+    return () => {
+      active.current = false
+      logRevision.current += 1
+    }
+  }, [])
+  const [visibleColumns, setVisibleColumns] = useState(() => new Set(DEFAULT_VISIBLE_COLUMNS))
   const [dialog, setDialog] = useState(null) // { type: 'status'|'delete', ... }
   const [busy, setBusy] = useState(false)
   const [logs, setLogs] = useState({ status: 'idle', data: [] })
@@ -90,9 +115,12 @@ export default function AdminAccounts() {
   function changeFilter(key, value) {
     setFilters((previous) => ({ ...previous, [key]: value }))
     setPage(1)
+    setSelection(new Set())
   }
 
   function changeSort(key) {
+    setSelection(new Set())
+    setPage(1)
     setSort((previous) =>
       previous.key === key
         ? { key, direction: previous.direction === 'asc' ? 'desc' : 'asc' }
@@ -135,13 +163,19 @@ export default function AdminAccounts() {
   )
 
   function afterAdminAction(ids) {
+    logRevision.current += 1
     for (const id of ids) details.invalidate(id, 'audit')
     setLogs((previous) => (previous.status === 'idle' ? previous : { status: 'idle', data: [] }))
   }
 
   async function handleRefresh() {
     const ok = await refresh()
-    if (ok) setLogs({ status: 'idle', data: [] })
+    if (!active.current) return
+    if (ok) {
+      logRevision.current += 1
+      setSelection(new Set())
+      setLogs({ status: 'idle', data: [] })
+    }
   }
 
   // Desativar/reativar 1..N contas: 1 escrita; o estado local é atualizado com o resultado e
@@ -153,6 +187,7 @@ export default function AdminAccounts() {
         disabled,
         reason
       )
+      if (!active.current) return
       const changes = new Map()
       const failures = []
       for (const result of results) {
@@ -173,7 +208,6 @@ export default function AdminAccounts() {
         )
       }
     } catch (err) {
-      console.error('[AdminAccounts] status:', err)
       return describeActionError(err, 'Erro ao alterar o status. Tente novamente.')
     }
   }
@@ -181,17 +215,22 @@ export default function AdminAccounts() {
   async function runDeletion(account, reason) {
     try {
       await requestAccountDeletion(account.id, reason)
+      if (!active.current) return
       applyChanges(new Map([[account.id, deletionRequestedChange]]))
       afterAdminAction([account.id])
       setDialog(null)
       showToast('Exclusão agendada. A conta já está bloqueada.')
     } catch (err) {
-      console.error('[AdminAccounts] delete:', err)
       return describeActionError(err, 'Erro ao excluir conta.')
     }
   }
 
   const openStatusDialog = (targets, disabled) => {
+    if (busy || isRefreshing) return
+    if (targets.length > 100) {
+      showToast('Selecione até 100 contas por ação.', 'danger')
+      return
+    }
     const eligible = targets.filter(
       (account) =>
         canManageStatus(account) &&
@@ -210,72 +249,63 @@ export default function AdminAccounts() {
   }
 
   async function loadLogs() {
+    const revision = ++logRevision.current
     setLogs((previous) => ({ ...previous, status: 'loading' }))
     try {
-      setLogs({ status: 'ready', data: await fetchAuditLog({ limit: 100 }) })
-    } catch (err) {
-      console.error('[AdminAccounts] logs:', err)
+      const data = await fetchAuditLog({ limit: 100 })
+      if (!active.current || revision !== logRevision.current) return
+      setLogs({ status: 'ready', data })
+    } catch {
+      if (!active.current || revision !== logRevision.current) return
       setLogs((previous) => ({ ...previous, status: 'error' }))
     }
   }
 
+  const mobile = useResponsiveValue({ narrow: true, regular: false }, false)
+  const changeTab = (next) => {
+    setTab(next)
+    setPage(1)
+    setSelection(new Set())
+  }
   const initial = !snapshot && !isRefreshing && !error
   const drawerOpen = Boolean(openAccount) && tab !== 'logs'
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-        <Button as={Link} to="/admin/comunidades" replace>
-          Administrar comunidades
-        </Button>
-        <Button as={Link} to="/admin/parcerias" replace>
-          Anúncios e parcerias
-        </Button>
-        <Button as={Link} to="/admin/moderacao" replace>
-          Atendimento e moderação
-        </Button>
-        <Button as={Link} to="/admin/vitrines" replace>
-          Vitrines
-        </Button>
-        <Button as={Link} to="/admin/exclusao-contas" replace>
-          Exclusão de contas
-        </Button>
-      </Box>
+    <Box
+      className="admin-accounts"
+      sx={{
+        minWidth: 0,
+        pb: 'calc(80px + env(safe-area-inset-bottom))',
+        button: { minHeight: 44 },
+      }}
+    >
+      <AdminNav current="/admin/contas" currentLabel="Contas" />
       <ToastFlash toasts={toasts} />
-
-      <Box
-        sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          alignItems: 'flex-end',
-          justifyContent: 'space-between',
-          gap: 2,
-          mb: 3,
-        }}
-      >
+      <Box className="accounts-heading">
         <Box>
-          <Heading as="h1" sx={{ fontSize: 3 }}>
+          <Heading as="h1" sx={{ fontSize: 4, letterSpacing: '-0.02em' }}>
             Contas
           </Heading>
-          <Text sx={{ color: 'fg.muted', fontSize: 1 }}>
-            Gerencie usuários, status, risco e solicitações de exclusão.
-          </Text>
+          <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Acesso, status e solicitações.</Text>
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          {snapshot && (
-            <Text sx={{ fontSize: 0, color: 'fg.muted' }} aria-live="polite">
-              Última atualização: {formatDateTime(snapshot.generated_at)}
-              {localChangeAt ? ` · alterações locais às ${formatDateTime(localChangeAt)}` : ''}
-            </Text>
-          )}
-          <Button
-            leadingVisual={isRefreshing ? Spinner : SyncIcon}
-            onClick={handleRefresh}
-            disabled={isRefreshing}
+        <Button
+          variant="invisible"
+          leadingVisual={isRefreshing ? Spinner : SyncIcon}
+          onClick={handleRefresh}
+          disabled={isRefreshing || busy}
+        >
+          {isRefreshing ? 'Atualizando...' : snapshot ? 'Atualizar' : 'Atualizar dados'}
+        </Button>
+        {snapshot && (
+          <Text
+            className="accounts-sync"
+            sx={{ fontSize: 0, color: 'fg.muted' }}
+            aria-live="polite"
           >
-            {isRefreshing ? 'Atualizando...' : snapshot ? 'Atualizar' : 'Atualizar dados'}
-          </Button>
-        </Box>
+            Última atualização: {formatDateTime(snapshot.generated_at)}
+            {localChangeAt ? ` · alterações locais às ${formatDateTime(localChangeAt)}` : ''}
+          </Text>
+        )}
       </Box>
 
       {error && (
@@ -287,7 +317,7 @@ export default function AdminAccounts() {
             </Text>
           )}
           <Box sx={{ mt: 2 }}>
-            <Button size="small" onClick={handleRefresh} disabled={isRefreshing}>
+            <Button size="small" onClick={handleRefresh} disabled={isRefreshing || busy}>
               Tentar novamente
             </Button>
           </Box>
@@ -317,7 +347,7 @@ export default function AdminAccounts() {
             <Flash variant="warning" sx={{ mb: 3 }}>
               O snapshot traz as {snapshot.meta.returned.toLocaleString('pt-BR')} contas mais
               recentes de {snapshot.meta.total.toLocaleString('pt-BR')}. Busca e filtros valem só
-              para elas.
+              para elas. O CSV também inclui somente contas deste snapshot.
             </Flash>
           )}
           <AccountsMetrics
@@ -334,6 +364,7 @@ export default function AdminAccounts() {
             onClearFilters={() => {
               setFilters(EMPTY_FILTERS)
               setPage(1)
+              setSelection(new Set())
             }}
             visibleColumns={visibleColumns}
             onToggleColumn={toggleColumn}
@@ -341,21 +372,51 @@ export default function AdminAccounts() {
             exportCount={sorted.length}
           />
 
-          <UnderlineNav aria-label="Seções de contas" sx={{ mb: 3 }}>
-            {TABS.map((item) => (
-              <UnderlineNav.Item
-                key={item.key}
-                as="button"
-                aria-current={tab === item.key ? 'page' : undefined}
-                onSelect={() => {
-                  setTab(item.key)
-                  setPage(1)
+          {mobile ? (
+            <Box className="accounts-context">
+              <Select
+                aria-label="Seção de contas"
+                className="accounts-context-select"
+                value={tab}
+                onChange={(event) => changeTab(event.target.value)}
+                sx={{
+                  border: 'none',
+                  boxShadow: 'none',
+                  bg: 'transparent',
+                  minHeight: 44,
+                  fontWeight: 'bold',
+                  minWidth: 0,
                 }}
               >
-                {item.label}
-              </UnderlineNav.Item>
-            ))}
-          </UnderlineNav>
+                {TABS.map((item) => (
+                  <Select.Option key={item.key} value={item.key}>
+                    {item.label}
+                  </Select.Option>
+                ))}
+              </Select>
+              {tab !== 'logs' && (
+                <Text
+                  sx={{ fontSize: 0, color: 'fg.muted', whiteSpace: 'nowrap' }}
+                  aria-live="polite"
+                >
+                  {sorted.length} contas
+                </Text>
+              )}
+            </Box>
+          ) : (
+            <UnderlineNav aria-label="Seções de contas" sx={{ mb: 2 }}>
+              {TABS.map((item) => (
+                <UnderlineNav.Item
+                  key={item.key}
+                  as="button"
+                  aria-current={tab === item.key ? 'page' : undefined}
+                  onSelect={() => changeTab(item.key)}
+                >
+                  {item.label}
+                </UnderlineNav.Item>
+              ))}
+            </UnderlineNav>
+          )}
 
           {tab === 'logs' ? (
             <Box>
@@ -404,12 +465,7 @@ export default function AdminAccounts() {
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: [
-                  'minmax(0, 1fr)',
-                  null,
-                  null,
-                  drawerOpen ? 'minmax(0, 1fr) 400px' : 'minmax(0, 1fr)',
-                ],
+                gridTemplateColumns: 'minmax(0, 1fr)',
                 gap: 3,
                 alignItems: 'start',
               }}
@@ -417,7 +473,7 @@ export default function AdminAccounts() {
               <Box sx={{ minWidth: 0 }}>
                 <BulkActionsBar
                   count={selectedAccounts.length}
-                  busy={busy}
+                  busy={busy || isRefreshing}
                   onDisable={() => openStatusDialog(selectedAccounts, true)}
                   onEnable={() => openStatusDialog(selectedAccounts, false)}
                   onExport={() => downloadCsv(selectedAccounts)}
@@ -440,8 +496,8 @@ export default function AdminAccounts() {
                     openId={openId}
                     sort={sort}
                     visibleColumns={visibleColumns}
-                    disabled={busy}
-                    compact={drawerOpen}
+                    disabled={busy || isRefreshing}
+                    compact={false}
                     pagination={pagination}
                     total={sorted.length}
                     pageSize={pageSize}
@@ -454,19 +510,24 @@ export default function AdminAccounts() {
                     onDelete={(account) =>
                       canDelete(account) && setDialog({ type: 'delete', account })
                     }
-                    onPageChange={setPage}
+                    onPageChange={(next) => {
+                      setPage(next)
+                      setSelection(new Set())
+                    }}
                     onPageSizeChange={(size) => {
                       setPageSize(size)
                       setPage(1)
+                      setSelection(new Set())
                     }}
                   />
                 )}
               </Box>
               {drawerOpen && (
                 <AccountDrawer
+                  key={openAccount.id}
                   account={openAccount}
                   entries={details.entries}
-                  busy={busy}
+                  busy={busy || isRefreshing}
                   onLoadSection={details.load}
                   onClose={() => setOpenId(null)}
                   onDisable={(account) => openStatusDialog([account], true)}

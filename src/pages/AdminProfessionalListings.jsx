@@ -19,6 +19,7 @@ import { useAdminProfessionalListings } from '../hooks/useAdminProfessionalListi
 import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
+import AdminNav from '../components/AdminNav'
 import { adminGetProfessionalListing } from '../services/professionalListingsService'
 import { LISTING_KIND_OPTIONS, optionLabel } from '../constants/professionalListingTaxonomy'
 import { toDate } from '../utils/date'
@@ -41,9 +42,11 @@ const STATE_LABELS = {
 }
 
 function actionError(error, fallback) {
-  return ['functions/failed-precondition', 'functions/invalid-argument', 'functions/not-found'].includes(
-    error?.code
-  )
+  return [
+    'functions/failed-precondition',
+    'functions/invalid-argument',
+    'functions/not-found',
+  ].includes(error?.code)
     ? error.message
     : fallback
 }
@@ -102,7 +105,11 @@ function DetailDialog({ listingId, onClose }) {
       })
       .catch((err) => {
         if (active)
-          setState({ loading: false, data: null, error: actionError(err, 'Erro ao carregar detalhes.') })
+          setState({
+            loading: false,
+            data: null,
+            error: actionError(err, 'Erro ao carregar detalhes.'),
+          })
       })
     return () => {
       active = false
@@ -127,13 +134,15 @@ function DetailDialog({ listingId, onClose }) {
         {listing && (
           <>
             <Text as="p" sx={{ m: 0 }}>
-              <strong>Titular:</strong> {state.data.ownerUsername || state.data.ownerEmail || listing.ownerId}
+              <strong>Titular:</strong>{' '}
+              {state.data.ownerUsername || state.data.ownerEmail || listing.ownerId}
             </Text>
             <Text as="p" sx={{ m: 0 }}>
               <strong>Tipo:</strong> {optionLabel(LISTING_KIND_OPTIONS, listing.kind)}
             </Text>
             <Text as="p" sx={{ m: 0 }}>
-              <strong>Estado:</strong> {STATE_LABELS[listing.lifecycleState]?.text || listing.lifecycleState}
+              <strong>Estado:</strong>{' '}
+              {STATE_LABELS[listing.lifecycleState]?.text || listing.lifecycleState}
             </Text>
             {listing.suspendedReason && (
               <Text as="p" sx={{ m: 0 }}>
@@ -147,8 +156,8 @@ function DetailDialog({ listingId, onClose }) {
             )}
             {published && (
               <Text as="p" sx={{ m: 0 }}>
-                <strong>Publicada:</strong> {published.displayName} · versão {published.publishedVersion} em{' '}
-                {formatDateTime(toDate(published.publishedAt))}
+                <strong>Publicada:</strong> {published.displayName} · versão{' '}
+                {published.publishedVersion} em {formatDateTime(toDate(published.publishedAt))}
               </Text>
             )}
             <Link to={`/atendimento?tipo=report&vitrine=${listing.id}`}>
@@ -165,8 +174,18 @@ export default function AdminProfessionalListings() {
   const [params] = useSearchParams()
   const [search, setSearch] = useState(params.get('busca') || '')
   const [lifecycleState, setLifecycleState] = useState('')
-  const { listings, loading, error, busy, hasMore, loadMore, refresh, suspend, reactivate, unpublish } =
-    useAdminProfessionalListings(search, lifecycleState)
+  const {
+    listings,
+    loading,
+    error,
+    busy,
+    hasMore,
+    loadMore,
+    refresh,
+    suspend,
+    reactivate,
+    unpublish,
+  } = useAdminProfessionalListings(search, lifecycleState)
   const { toasts, showToast } = useToast()
   const [dialog, setDialog] = useState(null) // { type: 'suspend'|'detail', listing }
 
@@ -184,7 +203,9 @@ export default function AdminProfessionalListings() {
   async function handleReactivate(listing) {
     try {
       await reactivate(listing.id)
-      showToast('Vitrine reativada (voltou para rascunho). O titular pode editar e publicar de novo.')
+      showToast(
+        'Vitrine reativada (voltou para rascunho). O titular pode editar e publicar de novo.'
+      )
     } catch (err) {
       console.error('[AdminProfessionalListings] reactivate:', err)
       showToast(actionError(err, 'Erro ao reativar vitrine.'), 'danger')
@@ -203,14 +224,7 @@ export default function AdminProfessionalListings() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-        <Button as={Link} to="/admin/contas" replace>
-          Contas
-        </Button>
-        <Button as={Link} to="/admin/moderacao" replace>
-          Atendimento e moderação
-        </Button>
-      </Box>
+      <AdminNav current="/admin/vitrines" currentLabel="Vitrines" />
       <ToastFlash toasts={toasts} />
       <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
         Vitrines
@@ -255,7 +269,14 @@ export default function AdminProfessionalListings() {
       )}
 
       {listings.length > 0 && (
-        <Box sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, overflow: 'hidden' }}>
+        <Box
+          sx={{
+            border: '1px solid',
+            borderColor: 'border.default',
+            borderRadius: 2,
+            overflow: 'hidden',
+          }}
+        >
           {listings.map((listing, index) => (
             <Box
               key={listing.id}
@@ -279,13 +300,17 @@ export default function AdminProfessionalListings() {
                 </Box>
                 <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
                   {optionLabel(LISTING_KIND_OPTIONS, listing.kind)} · titular:{' '}
-                  {listing.ownerUsername ? `@${listing.ownerUsername}` : listing.ownerEmail} · atualizado em{' '}
-                  {formatDateTime(toDate(listing.updatedAt))}
+                  {listing.ownerUsername ? `@${listing.ownerUsername}` : listing.ownerEmail} ·
+                  atualizado em {formatDateTime(toDate(listing.updatedAt))}
                 </Text>
               </Box>
 
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', flexShrink: 0 }}>
-                <Button size="small" disabled={!!busy} onClick={() => setDialog({ type: 'detail', listing })}>
+                <Button
+                  size="small"
+                  disabled={!!busy}
+                  onClick={() => setDialog({ type: 'detail', listing })}
+                >
                   Ver detalhes
                 </Button>
                 {listing.lifecycleState === 'suspended' && (
@@ -321,7 +346,11 @@ export default function AdminProfessionalListings() {
       )}
 
       {dialog?.type === 'suspend' && (
-        <SuspendDialog listing={dialog.listing} onClose={() => setDialog(null)} onConfirm={handleSuspend} />
+        <SuspendDialog
+          listing={dialog.listing}
+          onClose={() => setDialog(null)}
+          onConfirm={handleSuspend}
+        />
       )}
       {dialog?.type === 'detail' && (
         <DetailDialog listingId={dialog.listing.id} onClose={() => setDialog(null)} />

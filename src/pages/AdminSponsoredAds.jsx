@@ -1,5 +1,4 @@
 import { Suspense, lazy, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Box, Heading, Text, Button, Spinner, Label, UnderlineNav } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { MegaphoneIcon, PlusIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
@@ -12,6 +11,7 @@ import { SponsoredAdForm } from '../components/SponsoredAdForm'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { RowActionsMenu } from '../components/RowActionsMenu'
+import AdminNav from '../components/AdminNav'
 import { toMillis } from '../utils/expiry'
 import { SponsoredAdCapError, SponsoredAdGlobalCapError } from '../utils/validators'
 
@@ -116,17 +116,7 @@ export default function AdminSponsoredAds() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-        <Button as={Link} to="/admin/comunidades" replace>
-          Comunidades
-        </Button>
-        <Button as={Link} to="/admin/contas" replace>
-          Contas
-        </Button>
-        <Button as={Link} to="/admin/moderacao" replace>
-          Atendimento e moderação
-        </Button>
-      </Box>
+      <AdminNav current="/admin/parcerias" currentLabel="Anúncios e parcerias" />
       <ToastFlash toasts={toasts} />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Heading as="h1" sx={{ fontSize: 3 }}>

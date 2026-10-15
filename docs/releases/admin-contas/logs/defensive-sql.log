@@ -1,0 +1,225 @@
+BEGIN
+ no_plan 
+---------
+(0 rows)
+
+INSERT 0 4
+UPDATE 1
+UPDATE 1
+CREATE TABLE
+INSERT 0 7
+                                ok                                 
+-------------------------------------------------------------------
+ ok 1 - anon denied admin_accounts_snapshot()
+ ok 2 - anon denied admin_account_communities(uuid)
+ ok 3 - anon denied admin_account_financial(uuid)
+ ok 4 - anon denied admin_list_audit_log(uuid,integer)
+ ok 5 - anon denied admin_set_accounts_status(uuid[],boolean,text)
+ ok 6 - anon denied admin_request_account_deletion(uuid,text)
+ ok 7 - anon denied set_account_status(uuid,boolean,text)
+(7 rows)
+
+                                  ok                                  
+----------------------------------------------------------------------
+ ok 8 - PUBLIC denied admin_accounts_snapshot()
+ ok 9 - PUBLIC denied admin_account_communities(uuid)
+ ok 10 - PUBLIC denied admin_account_financial(uuid)
+ ok 11 - PUBLIC denied admin_list_audit_log(uuid,integer)
+ ok 12 - PUBLIC denied admin_set_accounts_status(uuid[],boolean,text)
+ ok 13 - PUBLIC denied admin_request_account_deletion(uuid,text)
+ ok 14 - PUBLIC denied set_account_status(uuid,boolean,text)
+(7 rows)
+
+                                        ok                                        
+----------------------------------------------------------------------------------
+ ok 15 - definer / controlled path admin_accounts_snapshot()
+ ok 16 - definer / controlled path admin_account_communities(uuid)
+ ok 17 - definer / controlled path admin_account_financial(uuid)
+ ok 18 - definer / controlled path admin_list_audit_log(uuid,integer)
+ ok 19 - definer / controlled path admin_set_accounts_status(uuid[],boolean,text)
+ ok 20 - definer / controlled path admin_request_account_deletion(uuid,text)
+ ok 21 - definer / controlled path set_account_status(uuid,boolean,text)
+(7 rows)
+
+GRANT
+SET
+              set_config              
+--------------------------------------
+ 78000000-0000-0000-0000-000000000002
+(1 row)
+
+                              throws_ok                               
+----------------------------------------------------------------------
+ ok 22 - member denied admin_accounts_snapshot()
+ ok 23 - member denied admin_account_communities(uuid)
+ ok 24 - member denied admin_account_financial(uuid)
+ ok 25 - member denied admin_list_audit_log(uuid,integer)
+ ok 26 - member denied admin_set_accounts_status(uuid[],boolean,text)
+ ok 27 - member denied admin_request_account_deletion(uuid,text)
+ ok 28 - member denied set_account_status(uuid,boolean,text)
+(7 rows)
+
+              set_config              
+--------------------------------------
+ 78000000-0000-0000-0000-000000000003
+(1 row)
+
+                                   throws_ok                                   
+-------------------------------------------------------------------------------
+ ok 29 - disabled member denied admin_accounts_snapshot()
+ ok 30 - disabled member denied admin_account_communities(uuid)
+ ok 31 - disabled member denied admin_account_financial(uuid)
+ ok 32 - disabled member denied admin_list_audit_log(uuid,integer)
+ ok 33 - disabled member denied admin_set_accounts_status(uuid[],boolean,text)
+ ok 34 - disabled member denied admin_request_account_deletion(uuid,text)
+ ok 35 - disabled member denied set_account_status(uuid,boolean,text)
+(7 rows)
+
+ set_config 
+------------
+ 
+(1 row)
+
+                                throws_ok                                 
+--------------------------------------------------------------------------
+ ok 36 - no session denied admin_accounts_snapshot()
+ ok 37 - no session denied admin_account_communities(uuid)
+ ok 38 - no session denied admin_account_financial(uuid)
+ ok 39 - no session denied admin_list_audit_log(uuid,integer)
+ ok 40 - no session denied admin_set_accounts_status(uuid[],boolean,text)
+ ok 41 - no session denied admin_request_account_deletion(uuid,text)
+ ok 42 - no session denied set_account_status(uuid,boolean,text)
+(7 rows)
+
+RESET
+SET
+                                 throws_ok                                  
+----------------------------------------------------------------------------
+ ok 43 - anon execute denied admin_accounts_snapshot()
+ ok 44 - anon execute denied admin_account_communities(uuid)
+ ok 45 - anon execute denied admin_account_financial(uuid)
+ ok 46 - anon execute denied admin_list_audit_log(uuid,integer)
+ ok 47 - anon execute denied admin_set_accounts_status(uuid[],boolean,text)
+ ok 48 - anon execute denied admin_request_account_deletion(uuid,text)
+ ok 49 - anon execute denied set_account_status(uuid,boolean,text)
+(7 rows)
+
+RESET
+SET
+                  is                  
+--------------------------------------
+ ok 50 - RLS denies direct audit read
+(1 row)
+
+                 throws_ok                 
+-------------------------------------------
+ ok 51 - cannot promote via generic update
+(1 row)
+
+RESET
+              set_config              
+--------------------------------------
+ 78000000-0000-0000-0000-000000000001
+(1 row)
+
+                     lives_ok                     
+--------------------------------------------------
+ ok 52 - superadmin reads authorized other object
+(1 row)
+
+          throws_ok           
+------------------------------
+ ok 53 - null target rejected
+(1 row)
+
+       throws_ok        
+------------------------
+ ok 54 - empty rejected
+(1 row)
+
+                 throws_ok                 
+-------------------------------------------
+ ok 55 - 101 rejected before deduplication
+(1 row)
+
+          throws_ok           
+------------------------------
+ ok 56 - null action rejected
+(1 row)
+
+              throws_ok              
+-------------------------------------
+ ok 57 - reactivation reason bounded
+(1 row)
+
+                 is                  
+-------------------------------------
+ ok 58 - duplicate IDs single result
+(1 row)
+
+        lives_ok         
+-------------------------
+ ok 59 - replay succeeds
+(1 row)
+
+                is                 
+-----------------------------------
+ ok 60 - replay no duplicate audit
+(1 row)
+
+                     is                     
+--------------------------------------------
+ ok 61 - replay preserves original evidence
+(1 row)
+
+                     is                     
+--------------------------------------------
+ ok 62 - partial result protects superadmin
+(1 row)
+
+          lives_ok           
+-----------------------------
+ ok 63 - uses existing queue
+(1 row)
+
+        lives_ok         
+-------------------------
+ ok 64 - deletion replay
+(1 row)
+
+                is                 
+-----------------------------------
+ ok 65 - deletion replay one audit
+(1 row)
+
+            throws_ok             
+----------------------------------
+ ok 66 - deleting not reactivated
+(1 row)
+
+        throws_ok        
+-------------------------
+ ok 67 - audit immutable
+(1 row)
+
+     throws_ok     
+-------------------
+ ok 68 - log bound
+(1 row)
+
+           throws_ok           
+-------------------------------
+ ok 69 - null log limit denied
+(1 row)
+
+              throws_ok              
+-------------------------------------
+ ok 70 - multidimensional IDs denied
+(1 row)
+
+ finish 
+--------
+ 1..70
+(1 row)
+
+ROLLBACK

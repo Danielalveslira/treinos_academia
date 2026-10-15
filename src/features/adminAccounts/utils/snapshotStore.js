@@ -9,14 +9,35 @@
 import { applyAccountChanges } from './accounts.js'
 
 export function isValidSnapshot(data) {
+  const count = (value) => Number.isSafeInteger(value) && value >= 0
   return Boolean(
     data &&
-    typeof data === 'object' &&
     Array.isArray(data.accounts) &&
+    data.accounts.length <= 1000 &&
+    data.accounts.every(
+      (row) =>
+        row &&
+        typeof row.id === 'string' &&
+        (row.email == null || typeof row.email === 'string') &&
+        (row.username == null || typeof row.username === 'string') &&
+        ['user', 'superadmin'].includes(row.role) &&
+        ['active', 'suspended', 'disabled', 'deleting'].includes(row.status)
+    ) &&
+    new Set(data.accounts.map((row) => row.id)).size === data.accounts.length &&
     data.metrics &&
-    typeof data.metrics === 'object' &&
+    [
+      'total_accounts',
+      'active_accounts',
+      'suspended_accounts',
+      'new_accounts_7d',
+      'pending_deletions',
+    ].every((key) => count(data.metrics[key])) &&
     data.meta &&
-    data.generated_at
+    count(data.meta.total) &&
+    data.meta.returned === data.accounts.length &&
+    data.meta.total >= data.meta.returned &&
+    typeof data.meta.truncated === 'boolean' &&
+    Number.isFinite(Date.parse(data.generated_at))
   )
 }
 
@@ -30,6 +51,7 @@ export function createSnapshotStore({ fetchSnapshot, onSynced = () => {} }) {
   }
   const listeners = new Set()
   let inFlight = null
+  let epoch = 0
 
   function set(patch) {
     state = { ...state, ...patch }
@@ -39,9 +61,11 @@ export function createSnapshotStore({ fetchSnapshot, onSynced = () => {} }) {
   function refresh() {
     if (inFlight) return inFlight
     set({ isRefreshing: true, error: null })
+    const current = epoch
     inFlight = (async () => {
       try {
         const data = await fetchSnapshot()
+        if (current !== epoch) return false
         if (!isValidSnapshot(data)) throw new Error('INVALID_SNAPSHOT')
         set({
           snapshot: data,
@@ -52,10 +76,11 @@ export function createSnapshotStore({ fetchSnapshot, onSynced = () => {} }) {
         onSynced(data)
         return true
       } catch (error) {
+        if (current !== epoch) return false
         set({ isRefreshing: false, error })
         return false
       } finally {
-        inFlight = null
+        if (current === epoch) inFlight = null
       }
     })()
     return inFlight
@@ -68,6 +93,17 @@ export function createSnapshotStore({ fetchSnapshot, onSynced = () => {} }) {
       return () => listeners.delete(listener)
     },
     refresh,
+    clear() {
+      epoch += 1
+      inFlight = null
+      set({
+        snapshot: null,
+        isRefreshing: false,
+        error: null,
+        localChangeAt: null,
+        syncedVersion: state.syncedVersion + 1,
+      })
+    },
     applyChanges(changes, at = new Date()) {
       if (!state.snapshot || changes.size === 0) return
       set({ snapshot: applyAccountChanges(state.snapshot, changes), localChangeAt: at })

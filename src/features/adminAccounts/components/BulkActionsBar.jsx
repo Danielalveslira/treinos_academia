@@ -24,16 +24,21 @@ export function BulkActionsBar({ count, busy, onDisable, onEnable, onExport, onC
       <Text sx={{ fontWeight: 'bold', mr: 2 }}>
         {count} {count === 1 ? 'selecionada' : 'selecionadas'}
       </Text>
-      <Button size="small" leadingVisual={BlockedIcon} disabled={busy} onClick={onDisable}>
+      <Button
+        sx={{ minHeight: 44 }}
+        leadingVisual={BlockedIcon}
+        disabled={busy}
+        onClick={onDisable}
+      >
         Desativar
       </Button>
-      <Button size="small" leadingVisual={CheckIcon} disabled={busy} onClick={onEnable}>
+      <Button sx={{ minHeight: 44 }} leadingVisual={CheckIcon} disabled={busy} onClick={onEnable}>
         Reativar
       </Button>
-      <Button size="small" leadingVisual={DownloadIcon} onClick={onExport}>
+      <Button sx={{ minHeight: 44 }} leadingVisual={DownloadIcon} onClick={onExport}>
         Exportar CSV
       </Button>
-      <Button size="small" variant="invisible" onClick={onClear} sx={{ ml: [0, 'auto'] }}>
+      <Button sx={{ minHeight: 44 }} variant="invisible" onClick={onClear}>
         Limpar seleção
       </Button>
     </Box>

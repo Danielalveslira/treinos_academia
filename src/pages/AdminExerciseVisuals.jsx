@@ -5,6 +5,7 @@ import { useAdminExerciseVisuals } from '../hooks/useAdminExerciseVisuals'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { ExerciseVisualDetail } from '../components/exerciseVisuals/ExerciseVisualDetail'
 import { formatCatalogLabel } from '../utils/exerciseCatalog.js'
+import AdminNav from '../components/AdminNav'
 
 function formatPercent(value) {
   return `${value.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
@@ -67,6 +68,7 @@ export default function AdminExerciseVisuals() {
 
   return (
     <div className="ev-page">
+      <AdminNav current="/admin/exercicios-imagens" currentLabel="Imagens dos exercícios" />
       <header className="ev-header">
         <h1>Imagens dos exercícios</h1>
         <p>Gerencie, revise e publique as imagens oficiais do catálogo.</p>

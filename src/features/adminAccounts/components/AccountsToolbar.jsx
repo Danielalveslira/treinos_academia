@@ -1,5 +1,12 @@
-import { ActionList, ActionMenu, Box, Button, TextInput } from '@primer/react'
-import { DownloadIcon, SearchIcon, XIcon } from '@primer/octicons-react'
+import { useState } from 'react'
+import { ActionList, ActionMenu, Box, Button, IconButton, TextInput } from '@primer/react'
+import {
+  DownloadIcon,
+  FilterIcon,
+  KebabHorizontalIcon,
+  SearchIcon,
+  XIcon,
+} from '@primer/octicons-react'
 import {
   COLUMN_OPTIONS,
   COMMUNITY_OPTIONS,
@@ -11,16 +18,19 @@ import {
 } from '../utils/accounts'
 
 const toOptions = (labels) => Object.entries(labels).map(([key, label]) => ({ key, label }))
-
-const STATUS_OPTIONS = toOptions(STATUS_LABELS)
-const ROLE_OPTIONS = toOptions(ROLE_LABELS)
-const FINANCIAL_OPTIONS = toOptions(FINANCIAL_LABELS)
+const FILTERS = [
+  { key: 'status', label: 'Status', options: toOptions(STATUS_LABELS) },
+  { key: 'role', label: 'Papel', options: toOptions(ROLE_LABELS) },
+  { key: 'lastAccess', label: 'Último uso', options: LAST_ACCESS_OPTIONS },
+  { key: 'community', label: 'Comunidade', options: COMMUNITY_OPTIONS },
+  { key: 'financial', label: 'Financeiro', options: toOptions(FINANCIAL_LABELS) },
+]
 
 function FilterMenu({ label, options, value, onChange }) {
   const selected = options.find((option) => option.key === value)
   return (
     <ActionMenu>
-      <ActionMenu.Button size="medium" variant={selected ? 'primary' : 'default'}>
+      <ActionMenu.Button variant="invisible">
         {selected ? `${label}: ${selected.label}` : label}
       </ActionMenu.Button>
       <ActionMenu.Overlay width="medium">
@@ -52,66 +62,60 @@ export function AccountsToolbar({
   onExport,
   exportCount,
 }) {
+  const [expanded, setExpanded] = useState(false)
+  const active = FILTERS.filter((filter) => filters[filter.key])
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
-      <TextInput
-        block
-        aria-label="Buscar por @usuário, e-mail ou UID"
-        placeholder="Buscar por @usuário, e-mail ou UID"
-        leadingVisual={SearchIcon}
-        trailingAction={
-          filters.search ? (
-            <TextInput.Action
-              onClick={() => onFilterChange('search', '')}
-              icon={XIcon}
-              aria-label="Limpar busca"
+    <Box sx={{ mb: 2 }}>
+      <Box className="accounts-search-row">
+        <TextInput
+          block
+          sx={{ minHeight: 44, minWidth: 0 }}
+          aria-label="Buscar por @usuário, e-mail ou UID"
+          placeholder="Buscar conta..."
+          leadingVisual={SearchIcon}
+          trailingAction={
+            filters.search ? (
+              <TextInput.Action
+                onClick={() => onFilterChange('search', '')}
+                icon={XIcon}
+                aria-label="Limpar busca"
+              />
+            ) : undefined
+          }
+          value={filters.search}
+          onChange={(event) => onFilterChange('search', event.target.value)}
+        />
+        <IconButton
+          icon={FilterIcon}
+          variant="invisible"
+          aria-label={`Filtros${active.length ? ` (${active.length})` : ''}`}
+          aria-expanded={expanded}
+          aria-controls="accounts-filters"
+          onClick={() => setExpanded(!expanded)}
+          sx={{ minWidth: 44, color: active.length ? 'accent.fg' : 'fg.muted' }}
+        />
+        <ActionMenu>
+          <ActionMenu.Anchor>
+            <IconButton
+              icon={KebabHorizontalIcon}
+              variant="invisible"
+              aria-label="Opções da lista"
+              sx={{ minWidth: 44 }}
             />
-          ) : undefined
-        }
-        value={filters.search}
-        onChange={(event) => onFilterChange('search', event.target.value)}
-      />
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
-        <FilterMenu
-          label="Status"
-          options={STATUS_OPTIONS}
-          value={filters.status}
-          onChange={(value) => onFilterChange('status', value)}
-        />
-        <FilterMenu
-          label="Papel"
-          options={ROLE_OPTIONS}
-          value={filters.role}
-          onChange={(value) => onFilterChange('role', value)}
-        />
-        <FilterMenu
-          label="Último uso"
-          options={LAST_ACCESS_OPTIONS}
-          value={filters.lastAccess}
-          onChange={(value) => onFilterChange('lastAccess', value)}
-        />
-        <FilterMenu
-          label="Comunidade"
-          options={COMMUNITY_OPTIONS}
-          value={filters.community}
-          onChange={(value) => onFilterChange('community', value)}
-        />
-        <FilterMenu
-          label="Financeiro"
-          options={FINANCIAL_OPTIONS}
-          value={filters.financial}
-          onChange={(value) => onFilterChange('financial', value)}
-        />
-        {hasActiveFilters(filters) && (
-          <Button variant="invisible" size="small" onClick={onClearFilters}>
-            Limpar filtros
-          </Button>
-        )}
-        <Box sx={{ display: 'flex', gap: 2, ml: [0, null, 'auto'] }}>
-          <ActionMenu>
-            <ActionMenu.Button>Colunas</ActionMenu.Button>
-            <ActionMenu.Overlay width="small">
-              <ActionList selectionVariant="multiple">
+          </ActionMenu.Anchor>
+          <ActionMenu.Overlay align="end" width="medium">
+            <ActionList>
+              <ActionList.Item onSelect={onExport} disabled={exportCount === 0}>
+                <ActionList.LeadingVisual>
+                  <DownloadIcon />
+                </ActionList.LeadingVisual>
+                Exportar CSV
+                <ActionList.Description variant="block">
+                  Lista filtrada · {exportCount} contas
+                </ActionList.Description>
+              </ActionList.Item>
+              <ActionList.Divider />
+              <ActionList.Group title="Colunas da tabela" selectionVariant="multiple">
                 {COLUMN_OPTIONS.map((column) => (
                   <ActionList.Item
                     key={column.key}
@@ -121,14 +125,56 @@ export function AccountsToolbar({
                     {column.label}
                   </ActionList.Item>
                 ))}
-              </ActionList>
-            </ActionMenu.Overlay>
-          </ActionMenu>
-          <Button leadingVisual={DownloadIcon} onClick={onExport} disabled={exportCount === 0}>
-            Exportar CSV
+              </ActionList.Group>
+            </ActionList>
+          </ActionMenu.Overlay>
+        </ActionMenu>
+      </Box>
+      {expanded && (
+        <Box
+          id="accounts-filters"
+          className="accounts-filter-panel"
+          sx={{ bg: 'canvas.subtle', borderRadius: 2 }}
+        >
+          {FILTERS.map((filter) => (
+            <FilterMenu
+              key={filter.key}
+              {...filter}
+              value={filters[filter.key]}
+              onChange={(value) => onFilterChange(filter.key, value)}
+            />
+          ))}
+        </Box>
+      )}
+      {hasActiveFilters(filters) && (
+        <Box className="accounts-active-filters">
+          {active.map((filter) => (
+            <Button
+              key={filter.key}
+              variant="invisible"
+              size="small"
+              trailingVisual={XIcon}
+              onClick={() => onFilterChange(filter.key, '')}
+              aria-label={`Remover filtro ${filter.label}`}
+            >
+              {filter.options.find((option) => option.key === filters[filter.key])?.label}
+            </Button>
+          ))}
+          {filters.card && (
+            <Button
+              variant="invisible"
+              size="small"
+              trailingVisual={XIcon}
+              onClick={() => onFilterChange('card', '')}
+            >
+              Remover indicador
+            </Button>
+          )}
+          <Button variant="invisible" size="small" onClick={onClearFilters}>
+            Limpar filtros
           </Button>
         </Box>
-      </Box>
+      )}
     </Box>
   )
 }

@@ -1,7 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ActionList, ActionMenu, Box, Button, IconButton, Spinner, Text } from '@primer/react'
-import { CopyIcon, KebabHorizontalIcon, XIcon } from '@primer/octicons-react'
+import {
+  ActionList,
+  ActionMenu,
+  Box,
+  Button,
+  Dialog,
+  Heading,
+  IconButton,
+  Label,
+  Spinner,
+  Text,
+} from '@primer/react'
+import { CheckIcon, CopyIcon, KebabHorizontalIcon, XIcon } from '@primer/octicons-react'
 import { formatCentavosBRL, formatDate, formatDateTime } from '../../../utils/format'
 import { copyTextToClipboard } from '../../../utils/clipboard'
 import {
@@ -23,29 +34,70 @@ const SECTIONS = [
   { key: 'financial', label: 'Financeiro' },
   { key: 'audit', label: 'Auditoria' },
 ]
+const count = (value) => (value == null ? '—' : Number(value).toLocaleString('pt-BR'))
 
-function Field({ label, children, action }) {
+function Group({ title, children }) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 1, minWidth: 0 }}>
-      <Text sx={{ width: 130, flexShrink: 0, fontSize: 1, color: 'fg.muted' }}>{label}</Text>
-      <Text sx={{ flex: 1, minWidth: 0, fontSize: 1, overflowWrap: 'anywhere' }}>{children}</Text>
-      {action}
+    <Box as="section" className="accounts-detail-group" aria-label={title}>
+      <Heading as="h3" className="accounts-detail-group-title" sx={{ fontSize: 1 }}>
+        {title}
+      </Heading>
+      {children}
+    </Box>
+  )
+}
+
+function Field({ label, children, action, stacked = false }) {
+  return (
+    <Box className={`accounts-detail-field${stacked ? ' accounts-detail-field-stacked' : ''}`}>
+      <Text className="accounts-detail-label" sx={{ color: 'fg.muted', fontSize: 1 }}>
+        {label}
+      </Text>
+      <Text className="accounts-detail-value" sx={{ fontSize: 1 }}>
+        {children}
+      </Text>
+      {action && <Box className="accounts-detail-copy">{action}</Box>}
     </Box>
   )
 }
 
 function CopyField({ label, value, onCopied }) {
+  const [copied, setCopied] = useState(null)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
   return (
     <Field
-      label={label}
+      stacked
+      label={
+        <>
+          {label}
+          {copied !== null && (
+            <Text
+              role="status"
+              sx={{ fontSize: 0, ml: 2, color: copied ? 'success.fg' : 'danger.fg' }}
+            >
+              {copied ? 'Copiado' : 'Não foi possível copiar'}
+            </Text>
+          )}
+        </>
+      }
       action={
         value ? (
           <IconButton
-            icon={CopyIcon}
-            size="small"
+            icon={copied ? CheckIcon : CopyIcon}
             variant="invisible"
             aria-label={`Copiar ${label}`}
-            onClick={async () => onCopied((await copyTextToClipboard(value)).copied, label)}
+            onClick={async () => {
+              const result = await copyTextToClipboard(value)
+              if (!mounted.current) return
+              setCopied(result.copied)
+              onCopied(result.copied, label)
+            }}
           />
         ) : null
       }
@@ -56,55 +108,183 @@ function CopyField({ label, value, onCopied }) {
 }
 
 function Section({ entry, onRetry, children }) {
-  if (entry?.status === 'error') {
+  if (entry?.status === 'error')
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
-        <Text sx={{ color: 'danger.fg', fontSize: 1 }}>Não foi possível carregar esta seção.</Text>
-        <Button size="small" onClick={onRetry}>
-          Tentar novamente
-        </Button>
+      <Box className="accounts-detail-empty">
+        <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Não foi possível carregar esta seção.</Text>
+        <Button onClick={onRetry}>Tentar novamente</Button>
       </Box>
     )
-  }
   if (entry?.data !== undefined) return children(entry.data)
-  return <Spinner size="small" />
+  if (!entry) return <Button onClick={onRetry}>Carregar seção</Button>
+  return (
+    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }} role="status">
+      <Spinner size="small" />
+      <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Carregando seção...</Text>
+    </Box>
+  )
 }
 
 function Overview({ account, onCopied }) {
   return (
-    <Box>
-      <CopyField label="E-mail" value={account.email} onCopied={onCopied} />
-      <CopyField label="UID" value={account.id} onCopied={onCopied} />
-      <Field label="Papel">{ROLE_LABELS[account.role] || account.role}</Field>
-      <Field label="Último uso">
-        {account.last_active_at ? formatDateTime(account.last_active_at) : 'Sem registro de uso'}
-      </Field>
-      <Field label="Último login">
-        {account.last_sign_in_at ? formatDateTime(account.last_sign_in_at) : 'Nunca'}
-      </Field>
-      <Field label="Criado em">{formatDate(account.created_at)}</Field>
-      <Field label="Versão legal aceita">{account.accepted_legal_version || '—'}</Field>
-      <Field label="Comunidades">{account.community_count}</Field>
-      <Field label="Vitrine">
-        {SHOWCASE_LABELS[account.showcase_status] || account.showcase_status}
-      </Field>
-      <Field label="Financeiro">
-        {FINANCIAL_LABELS[account.financial_status] || account.financial_status}
-      </Field>
-      <Field label="Flags">{account.flags_count}</Field>
-      <Field label="Exclusão">
-        {DELETION_LABELS[account.deletion_status] || account.deletion_status}
-      </Field>
-      {account.restriction_action && (
-        <Field label="Restrição">
-          {RESTRICTION_LABELS[account.restriction_action] || account.restriction_action}
-          {account.restriction_until ? ` até ${formatDateTime(account.restriction_until)}` : ''}
+    <>
+      <Group title="Identificação">
+        <CopyField label="E-mail" value={account.email} onCopied={onCopied} />
+        <CopyField label="UID" value={account.id} onCopied={onCopied} />
+      </Group>
+      <Group title="Atividade">
+        <Field label="Último uso">
+          {account.last_active_at ? formatDateTime(account.last_active_at) : 'Sem registro de uso'}
         </Field>
+        <Field label="Último login">
+          {account.last_sign_in_at ? formatDateTime(account.last_sign_in_at) : 'Nunca'}
+        </Field>
+        <Field label="Criado em">{formatDate(account.created_at)}</Field>
+      </Group>
+      <Group title="Situação da conta">
+        <Box className="accounts-detail-facts">
+          <Field label="Versão legal aceita">{account.accepted_legal_version || '—'}</Field>
+          <Field label="Comunidades">{count(account.community_count)}</Field>
+          <Field label="Vitrine">
+            {SHOWCASE_LABELS[account.showcase_status] || account.showcase_status}
+          </Field>
+          <Field label="Financeiro">
+            {account.financial_status === 'pending' ? (
+              <Label variant="attention">Pendente</Label>
+            ) : (
+              FINANCIAL_LABELS[account.financial_status] || account.financial_status
+            )}
+          </Field>
+          <Field label="Flags">{count(account.flags_count)}</Field>
+          <Field label="Exclusão">
+            {account.deletion_status === 'none' ? (
+              'Não solicitada'
+            ) : (
+              <Label variant="attention">
+                {DELETION_LABELS[account.deletion_status] || account.deletion_status}
+              </Label>
+            )}
+          </Field>
+        </Box>
+        {account.restriction_action && (
+          <Box className="accounts-detail-note">
+            <Text sx={{ color: 'fg.muted', fontSize: 0 }}>Restrição vigente</Text>
+            <Text sx={{ display: 'block', fontSize: 1 }}>
+              {RESTRICTION_LABELS[account.restriction_action] || account.restriction_action}
+              {account.restriction_until ? ` até ${formatDateTime(account.restriction_until)}` : ''}
+            </Text>
+          </Box>
+        )}
+        {account.status === 'disabled' && account.disabled_reason && (
+          <Box className="accounts-detail-note">
+            <Text sx={{ color: 'fg.muted', fontSize: 0 }}>Motivo da desativação</Text>
+            <Text sx={{ display: 'block', fontSize: 1 }}>{account.disabled_reason}</Text>
+          </Box>
+        )}
+      </Group>
+    </>
+  )
+}
+
+function Communities({ data }) {
+  const [limit, setLimit] = useState(10)
+  if (!data.length) return <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Nenhuma comunidade.</Text>
+  return (
+    <Group title="Vínculos com comunidades">
+      <Text sx={{ color: 'fg.muted', fontSize: 0 }}>
+        Mostrando {Math.min(limit, data.length)} de {data.length} vínculos carregados.
+      </Text>
+      <Box as="ul" className="accounts-detail-list">
+        {data.slice(0, limit).map((community) => (
+          <Box as="li" key={community.id} className="accounts-detail-list-row">
+            <Text sx={{ display: 'block', fontSize: 1, fontWeight: 600 }}>{community.name}</Text>
+            <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted' }}>
+              {community.is_owner ? 'Responsável' : 'Membro'} · {count(community.member_count)}{' '}
+              membros · desde {formatDate(community.joined_at)}
+              {community.is_active ? '' : ' · inativa'}
+            </Text>
+          </Box>
+        ))}
+      </Box>
+      {limit < data.length && (
+        <Button variant="invisible" onClick={() => setLimit((previous) => previous + 10)}>
+          Mostrar mais comunidades
+        </Button>
       )}
-      {account.status === 'disabled' && account.disabled_reason && (
-        <Field label="Motivo da desativação">{account.disabled_reason}</Field>
+    </Group>
+  )
+}
+
+function Financial({ data }) {
+  return (
+    <>
+      <Group title="Saldos">
+        <Box className="accounts-detail-balances">
+          <Box>
+            <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted' }}>EvoCoins</Text>
+            <Text sx={{ fontSize: 3, fontWeight: 600 }}>{count(data.coin_balance)}</Text>
+          </Box>
+          <Box>
+            <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted' }}>EvoCash</Text>
+            <Text sx={{ fontSize: 3, fontWeight: 600 }}>{count(data.cash_balance)}</Text>
+          </Box>
+        </Box>
+      </Group>
+      {data.deletion && (
+        <Group title="Revisão de exclusão">
+          <Field label="Situação">
+            {DELETION_LABELS[data.deletion.state] || data.deletion.state}
+          </Field>
+          <Field label="Solicitação">{data.deletion.protocol}</Field>
+          {data.deletion.financial_case_protocol && (
+            <Field label="Caso financeiro">{data.deletion.financial_case_protocol}</Field>
+          )}
+        </Group>
       )}
-    </Box>
+      <Group title="Últimas compras de EvoCash">
+        {!data.recent_purchases.length ? (
+          <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Nenhuma compra.</Text>
+        ) : (
+          <Box as="ul" className="accounts-detail-list">
+            {data.recent_purchases.map((purchase) => (
+              <Box as="li" key={purchase.id} className="accounts-detail-list-row">
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 2,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <Text sx={{ fontSize: 1, fontWeight: 600 }}>
+                    {count(purchase.cash_amount)} EvoCash
+                  </Text>
+                  <Text sx={{ fontSize: 1 }}>{formatCentavosBRL(purchase.amount_centavos)}</Text>
+                </Box>
+                <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted' }}>
+                  {formatDateTime(purchase.created_at)} ·{' '}
+                  {PURCHASE_STATUS_LABELS[purchase.status] || purchase.status}
+                </Text>
+              </Box>
+            ))}
+          </Box>
+        )}
+      </Group>
+    </>
+  )
+}
+
+function Audit({ data }) {
+  const [limit, setLimit] = useState(10)
+  return (
+    <Group title="Histórico administrativo">
+      <AuditLogList entries={data.slice(0, limit)} compact />
+      {limit < data.length && (
+        <Button variant="invisible" onClick={() => setLimit((previous) => previous + 10)}>
+          Mostrar mais registros
+        </Button>
+      )}
+    </Group>
   )
 }
 
@@ -119,211 +299,154 @@ export function AccountDrawer({
   onDelete,
   onCopied,
 }) {
+  const closeRef = useRef(null)
+  const bodyRef = useRef(null)
   const [section, setSection] = useState('overview')
-
   useEffect(() => {
     setSection('overview')
   }, [account.id])
-
   useEffect(() => {
     if (section !== 'overview') onLoadSection(account.id, section)
   }, [account.id, section, onLoadSection])
-
   useEffect(() => {
-    const onKeyDown = (event) => event.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
-
+    bodyRef.current?.parentElement?.scrollTo?.({ top: 0 })
+  }, [section, account.id])
   const entry = entries[`${account.id}:${section}`]
   const retry = () => onLoadSection(account.id, section, { force: true })
   const name = account.username ? `@${account.username}` : '(sem @usuário)'
-
+  const hasSecondaryActions =
+    canDelete(account) || account.flags_count > 0 || account.deletion_status !== 'none'
   return (
-    <Box
-      as="aside"
-      aria-label={`Detalhes da conta ${name}`}
-      sx={{
-        position: ['fixed', null, null, 'sticky'],
-        left: [0, null, null, 'auto'],
-        right: [0, null, null, 'auto'],
-        bottom: [0, null, null, 'auto'],
-        top: [0, null, null, 3],
-        zIndex: [100, null, null, 'auto'],
-        alignSelf: 'start',
-        height: ['100vh', null, null, 'auto'],
-        maxHeight: ['100vh', null, null, 'calc(100vh - 32px)'],
-        overflowY: 'auto',
-        p: 3,
-        bg: 'canvas.default',
-        border: ['none', null, null, '1px solid'],
-        borderColor: 'border.default',
-        borderRadius: [0, null, null, 2],
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 3 }}>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Text
-            sx={{ display: 'block', fontWeight: 'bold', fontSize: 2, overflowWrap: 'anywhere' }}
-          >
-            {name}
-          </Text>
-          <Box sx={{ mt: 1 }}>
-            <AccountStatusBadge status={account.status} />
-          </Box>
-        </Box>
-        <IconButton icon={XIcon} variant="invisible" aria-label="Fechar painel" onClick={onClose} />
-      </Box>
-
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-        {canManageStatus(account) &&
-          (account.status === 'disabled' ? (
-            <Button disabled={busy} onClick={() => onEnable(account)}>
-              Reativar
-            </Button>
-          ) : (
-            <Button disabled={busy} onClick={() => onDisable(account)}>
-              Desativar
-            </Button>
-          ))}
-        {account.deletion_status !== 'none' && (
-          <Button as={Link} to="/admin/exclusao-contas">
-            Abrir exclusão pendente
-          </Button>
-        )}
-        {account.flags_count > 0 && (
-          <Button as={Link} to="/admin/moderacao">
-            Revisar
-          </Button>
-        )}
-        {canDelete(account) && (
-          <ActionMenu>
-            <ActionMenu.Anchor>
-              <IconButton icon={KebabHorizontalIcon} disabled={busy} aria-label="Mais ações" />
-            </ActionMenu.Anchor>
-            <ActionMenu.Overlay align="end">
-              <ActionList>
-                <ActionList.Item variant="danger" onSelect={() => onDelete(account)}>
-                  Excluir permanentemente
-                </ActionList.Item>
-              </ActionList>
-            </ActionMenu.Overlay>
-          </ActionMenu>
-        )}
-      </Box>
-
-      <Box
-        role="tablist"
-        aria-label="Seções da conta"
-        sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 0,
-          borderBottom: '1px solid',
-          borderColor: 'border.default',
-        }}
-      >
-        {SECTIONS.map((item) => (
-          <Box
-            as="button"
-            type="button"
-            role="tab"
-            key={item.key}
-            aria-selected={section === item.key}
-            onClick={() => setSection(item.key)}
-            sx={{
-              all: 'unset',
-              cursor: 'pointer',
-              px: '6px',
-              py: 2,
-              fontSize: 1,
-              fontWeight: section === item.key ? 'bold' : 'normal',
-              color: section === item.key ? 'fg.default' : 'fg.muted',
-              borderBottom: '2px solid',
-              borderColor: section === item.key ? 'accent.emphasis' : 'transparent',
-              mb: '-1px',
-              '&:focus-visible': { outline: '2px solid', outlineColor: 'accent.fg' },
-            }}
-          >
-            {item.label}
-          </Box>
-        ))}
-      </Box>
-
-      <Box sx={{ mt: 3 }}>
-        {section === 'overview' && <Overview account={account} onCopied={onCopied} />}
-        {section === 'communities' && (
-          <Section entry={entry} onRetry={retry}>
-            {(data) =>
-              data.length === 0 ? (
-                <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Nenhuma comunidade.</Text>
-              ) : (
-                <Box
-                  as="ul"
-                  sx={{
-                    m: 0,
-                    p: 0,
-                    listStyle: 'none',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 1,
-                  }}
-                >
-                  {data.map((community) => (
-                    <Box as="li" key={community.id} sx={{ fontSize: 1 }}>
-                      <Text sx={{ fontWeight: 'bold' }}>{community.name}</Text>
-                      <Text sx={{ color: 'fg.muted' }}>
-                        {' '}
-                        · {community.is_owner ? 'dona' : 'membro'} desde{' '}
-                        {formatDate(community.joined_at)}
-                        {community.is_active ? '' : ' · inativa'}
-                      </Text>
-                    </Box>
-                  ))}
-                </Box>
-              )
-            }
-          </Section>
-        )}
-        {section === 'financial' && (
-          <Section entry={entry} onRetry={retry}>
-            {(data) => (
-              <Box>
-                <Field label="EvoCoins">{data.coin_balance}</Field>
-                <Field label="EvoCash">{data.cash_balance}</Field>
-                {data.deletion && (
-                  <Field label="Exclusão">
-                    {DELETION_LABELS[data.deletion.state] || data.deletion.state} ·{' '}
-                    {data.deletion.protocol}
-                    {data.deletion.financial_case_protocol
-                      ? ` · caso ${data.deletion.financial_case_protocol}`
-                      : ''}
-                  </Field>
-                )}
-                <Text sx={{ display: 'block', fontSize: 1, fontWeight: 'bold', mt: 2, mb: 1 }}>
-                  Últimas compras de EvoCash
+    <Dialog
+      className="admin-account-dialog accounts-detail-dialog"
+      title={`Detalhes da conta ${name}`}
+      onClose={onClose}
+      width="large"
+      height="large"
+      position={{ narrow: 'fullscreen', regular: 'right', wide: 'right' }}
+      initialFocusRef={closeRef}
+      renderHeader={({ dialogLabelId }) => (
+        <Dialog.Header className="accounts-detail-header">
+          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Dialog.Title
+                id={dialogLabelId}
+                sx={{ fontSize: 3, fontWeight: 600, overflowWrap: 'anywhere' }}
+              >
+                <span className="accounts-visually-hidden">Detalhes da conta </span>
+                {name}
+              </Dialog.Title>
+              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mt: 1 }}>
+                <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
+                  {ROLE_LABELS[account.role] || account.role}
                 </Text>
-                {data.recent_purchases.length === 0 ? (
-                  <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Nenhuma compra.</Text>
-                ) : (
-                  data.recent_purchases.map((purchase) => (
-                    <Text key={purchase.id} sx={{ display: 'block', fontSize: 1 }}>
-                      {formatDate(purchase.created_at)} · {purchase.cash_amount} EvoCash ·{' '}
-                      {formatCentavosBRL(purchase.amount_centavos)} ·{' '}
-                      {PURCHASE_STATUS_LABELS[purchase.status] || purchase.status}
-                    </Text>
-                  ))
+                <AccountStatusBadge status={account.status} />
+              </Box>
+            </Box>
+            <IconButton
+              ref={closeRef}
+              icon={XIcon}
+              variant="invisible"
+              aria-label="Fechar painel"
+              onClick={onClose}
+              sx={{ minWidth: 44 }}
+            />
+          </Box>
+          {(canManageStatus(account) || hasSecondaryActions) && (
+            <Box className="accounts-detail-actions">
+              <Text sx={{ fontSize: 0, color: 'fg.muted' }}>Gerenciar conta</Text>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                {canManageStatus(account) &&
+                  (account.status === 'disabled' ? (
+                    <Button variant="invisible" disabled={busy} onClick={() => onEnable(account)}>
+                      Reativar
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="invisible"
+                      disabled={busy}
+                      onClick={() => onDisable(account)}
+                      sx={{ color: 'danger.fg' }}
+                    >
+                      Desativar
+                    </Button>
+                  ))}
+                {hasSecondaryActions && (
+                  <ActionMenu>
+                    <ActionMenu.Anchor>
+                      <IconButton
+                        icon={KebabHorizontalIcon}
+                        variant="invisible"
+                        disabled={busy}
+                        aria-label="Mais ações da conta"
+                        sx={{ minWidth: 44 }}
+                      />
+                    </ActionMenu.Anchor>
+                    <ActionMenu.Overlay align="end" width="medium">
+                      <ActionList>
+                        {account.deletion_status !== 'none' && (
+                          <ActionList.LinkItem as={Link} to="/admin/exclusao-contas">
+                            Abrir exclusão pendente
+                          </ActionList.LinkItem>
+                        )}
+                        {account.flags_count > 0 && (
+                          <ActionList.LinkItem as={Link} to="/admin/moderacao">
+                            Revisar moderação
+                          </ActionList.LinkItem>
+                        )}
+                        {canDelete(account) && (
+                          <ActionList.Item variant="danger" onSelect={() => onDelete(account)}>
+                            Excluir permanentemente
+                          </ActionList.Item>
+                        )}
+                      </ActionList>
+                    </ActionMenu.Overlay>
+                  </ActionMenu>
                 )}
               </Box>
-            )}
-          </Section>
-        )}
-        {section === 'audit' && (
-          <Section entry={entry} onRetry={retry}>
-            {(data) => <AuditLogList entries={data} />}
-          </Section>
-        )}
-      </Box>
-    </Box>
+            </Box>
+          )}
+          <Box role="group" aria-label="Seções da conta" className="accounts-detail-tabs">
+            {SECTIONS.map((item) => (
+              <Box
+                as="button"
+                type="button"
+                key={item.key}
+                aria-pressed={section === item.key}
+                onClick={() => setSection(item.key)}
+                sx={{
+                  color: section === item.key ? 'fg.default' : 'fg.muted',
+                  borderColor: section === item.key ? 'accent.emphasis' : 'transparent',
+                }}
+              >
+                {item.label}
+              </Box>
+            ))}
+          </Box>
+        </Dialog.Header>
+      )}
+      renderBody={({ children }) => (
+        <Box ref={bodyRef} className="accounts-detail-body">
+          {children}
+        </Box>
+      )}
+    >
+      {section === 'overview' && <Overview account={account} onCopied={onCopied} />}
+      {section === 'communities' && (
+        <Section entry={entry} onRetry={retry}>
+          {(data) => <Communities data={data} />}
+        </Section>
+      )}
+      {section === 'financial' && (
+        <Section entry={entry} onRetry={retry}>
+          {(data) => <Financial data={data} />}
+        </Section>
+      )}
+      {section === 'audit' && (
+        <Section entry={entry} onRetry={retry}>
+          {(data) => <Audit data={data} />}
+        </Section>
+      )}
+    </Dialog>
   )
 }

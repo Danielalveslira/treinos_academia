@@ -20,6 +20,7 @@ function sources(dir) {
 const stripComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
 
 const FORBIDDEN = [
+  [/\b(localStorage|sessionStorage|indexedDB)\b/, 'persistent administrative data'],
   [/setInterval\s*\(/, 'setInterval'],
   [/\.channel\s*\(/, 'supabase realtime (.channel)'],
   [/\.subscribe\s*\(\s*\)?\s*$/m, 'subscription de realtime'],
@@ -45,6 +46,7 @@ test('a tela de Contas não cria leituras em segundo plano nem acessa tabelas di
 test('única leitura da lista: nenhum effect do hook do snapshot ou da página chama refresh', () => {
   const hook = stripComments(readFileSync(join(root, 'hooks/useAdminAccountsSnapshot.js'), 'utf8'))
   const pageText = stripComments(readFileSync(page, 'utf8'))
-  assert.doesNotMatch(hook, /useEffect/)
-  assert.doesNotMatch(pageText, /useEffect/)
+  assert.doesNotMatch(hook, /useEffect\([^]*?refresh\(/)
+  for (const effect of pageText.matchAll(/useEffect\(\(\) => \{([\s\S]*?)\}, \[\]\)/g))
+    assert.doesNotMatch(effect[1], /refresh\(/)
 })

@@ -16,6 +16,7 @@ export function StatusDialog({ targets, skipped = 0, disabled, onClose, onConfir
 
   return (
     <Dialog
+      className="admin-account-dialog"
       title={`${verb} ${subject}?`}
       onClose={saving ? () => {} : onClose}
       footerButtons={[
@@ -83,6 +84,7 @@ export function DeleteAccountDialog({ account, onClose, onConfirm }) {
   const [error, setError] = useState('')
   return (
     <Dialog
+      className="admin-account-dialog"
       title={`Excluir permanentemente ${label(account)}?`}
       onClose={saving ? () => {} : onClose}
       footerButtons={[

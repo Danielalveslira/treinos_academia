@@ -65,8 +65,14 @@ test('snapshot = 1 RPC sem argumentos', async () => {
 })
 
 test('leituras sob demanda: 1 RPC cada, com o uid certo', async () => {
+  globalThis.__rpcResult = { data: [], error: null }
   await api.fetchAccountCommunities('u1')
+  globalThis.__rpcResult = {
+    data: { coin_balance: 0, cash_balance: 0, recent_purchases: [] },
+    error: null,
+  }
   await api.fetchAccountFinancial('u1')
+  globalThis.__rpcResult = { data: [], error: null }
   await api.fetchAuditLog({ targetUserId: 'u1', limit: 50 })
   await api.fetchAuditLog()
   assert.deepEqual(
@@ -81,6 +87,10 @@ test('leituras sob demanda: 1 RPC cada, com o uid certo', async () => {
 })
 
 test('ações: 1 escrita por pedido, em lote numa única RPC', async () => {
+  globalThis.__rpcResult = {
+    data: ['a', 'b', 'c'].map((id) => ({ id, ok: true, account_status: 'disabled' })),
+    error: null,
+  }
   await api.setAccountsStatus(['a', 'b', 'c'], true, 'Spam recorrente')
   await api.requestAccountDeletion('a', 'Pedido do titular')
   assert.deepEqual(
@@ -98,4 +108,11 @@ test('ações: 1 escrita por pedido, em lote numa única RPC', async () => {
 test('erro da RPC é propagado (a UI decide o que mostrar)', async () => {
   globalThis.__rpcResult = { data: null, error: { message: 'PERMISSION_DENIED' } }
   await assert.rejects(api.fetchAccountsSnapshot(), { message: 'PERMISSION_DENIED' })
+})
+
+test('contratos de detalhe e logs malformados são rejeitados', async () => {
+  globalThis.__rpcResult = { data: {}, error: null }
+  await assert.rejects(api.fetchAccountCommunities('u1'), /INVALID_RESPONSE/)
+  await assert.rejects(api.fetchAccountFinancial('u1'), /INVALID_RESPONSE/)
+  await assert.rejects(api.fetchAuditLog(), /INVALID_RESPONSE/)
 })

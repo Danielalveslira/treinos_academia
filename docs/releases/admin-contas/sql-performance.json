@@ -1,0 +1,45 @@
+{
+  "environment": "local PostgreSQL; synthetic fixtures plus existing local fixture rows; every measurement rolled back",
+  "results": [
+    {
+      "total": 13,
+      "volume": 7,
+      "returned": 13,
+      "truncated": false,
+      "payload_bytes": 6590,
+      "execution_ms": 4.37,
+      "planning_ms": 0.011,
+      "shared_hit_blocks": 63
+    },
+    {
+      "total": 106,
+      "volume": 100,
+      "returned": 106,
+      "truncated": false,
+      "payload_bytes": 50490,
+      "execution_ms": 8.456,
+      "planning_ms": 0.012,
+      "shared_hit_blocks": 231
+    },
+    {
+      "total": 1006,
+      "volume": 1000,
+      "returned": 1000,
+      "truncated": true,
+      "payload_bytes": 473195,
+      "execution_ms": 46.546,
+      "planning_ms": 0.028,
+      "shared_hit_blocks": 69
+    },
+    {
+      "total": 1206,
+      "volume": 1200,
+      "returned": 1000,
+      "truncated": true,
+      "payload_bytes": 472359,
+      "execution_ms": 46.776,
+      "planning_ms": 0.026,
+      "shared_hit_blocks": 130
+    }
+  ]
+}

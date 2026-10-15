@@ -1,0 +1,259 @@
+BEGIN
+ no_plan 
+---------
+(0 rows)
+
+INSERT 0 3
+UPDATE 1
+ _wallet_credit_cash 
+---------------------
+ 
+(1 row)
+
+ _ledger_record 
+----------------
+ 
+(1 row)
+
+ _ledger_record 
+----------------
+ 
+(1 row)
+
+              set_config              
+--------------------------------------
+ 62000000-0000-0000-0000-000000000001
+(1 row)
+
+ queue_deletion 
+----------------
+ 
+(1 row)
+
+ queue_deletion 
+----------------
+ 
+(1 row)
+
+CREATE FUNCTION
+CREATE TRIGGER
+SELECT 1
+                                 is                                  
+---------------------------------------------------------------------
+ ok 1 - falha do job é devolvida ao worker (sem abortar a transação)
+(1 row)
+
+                  matches                   
+--------------------------------------------
+ ok 2 - last_error PERSISTE depois da falha
+(1 row)
+
+                                is                                 
+-------------------------------------------------------------------
+ ok 3 - falha mantém o job pending (reprocessável), nunca complete
+(1 row)
+
+                                  is                                  
+----------------------------------------------------------------------
+ ok 4 - falha desfaz as escritas do corpo: usuário continua existindo
+(1 row)
+
+                       is                        
+-------------------------------------------------
+ ok 5 - falha não desvincula o ledger do usuário
+(1 row)
+
+DROP TRIGGER
+                               is                                
+-----------------------------------------------------------------
+ ok 6 - retry do job depois de corrigida a causa conclui o banco
+(1 row)
+
+                ok                 
+-----------------------------------
+ ok 7 - sucesso limpa o last_error
+(1 row)
+
+              is              
+------------------------------
+ ok 8 - public.users removido
+(1 row)
+
+                               is                               
+----------------------------------------------------------------
+ ok 9 - banco limpo, Auth não confirmado: job NÃO está complete
+(1 row)
+
+                       is                        
+-------------------------------------------------
+ ok 10 - auth_cleanup continua na fila do worker
+(1 row)
+
+                       is                       
+------------------------------------------------
+ ok 11 - admin sem exclusão própria não vê nada
+(1 row)
+
+ record_deletion_job_error 
+---------------------------
+ 
+(1 row)
+
+                 matches                 
+-----------------------------------------
+ ok 12 - falha do Auth deixa diagnóstico
+(1 row)
+
+                    is                     
+-------------------------------------------
+ ok 13 - falha do Auth mantém auth_cleanup
+(1 row)
+
+                              ok                               
+---------------------------------------------------------------
+ ok 14 - Auth ainda presente (cenário banco limpo + Auth vivo)
+(1 row)
+
+              set_config              
+--------------------------------------
+ 62000000-0000-0000-0000-000000000021
+(1 row)
+
+DO
+                            is                             
+-----------------------------------------------------------
+ ok 15 - titular de banco limpo não vê revisão de exclusão
+(1 row)
+
+              set_config              
+--------------------------------------
+ 62000000-0000-0000-0000-000000000001
+(1 row)
+
+                          is                          
+------------------------------------------------------
+ ok 16 - Auth vivo não recria public.users nem wallet
+(1 row)
+
+                         is                          
+-----------------------------------------------------
+ ok 17 - retry devolve só a remoção do Auth pendente
+(1 row)
+
+              is               
+-------------------------------
+ ok 18 - retry não recria nada
+(1 row)
+
+                  is                  
+--------------------------------------
+ ok 19 - Auth confirmado: job conclui
+(1 row)
+
+                 is                 
+------------------------------------
+ ok 20 - conclusão final = complete
+(1 row)
+
+                      ok                       
+-----------------------------------------------
+ ok 21 - conclusão limpa o diagnóstico do Auth
+(1 row)
+
+                is                 
+-----------------------------------
+ ok 22 - confirmação é idempotente
+(1 row)
+
+               is                
+---------------------------------
+ ok 23 - job complete é ignorado
+(1 row)
+
+              is              
+------------------------------
+ ok 24 - complete sai da fila
+(1 row)
+
+                        throws_ok                        
+---------------------------------------------------------
+ ok 25 - só confirma Auth de job cujo banco já foi limpo
+(1 row)
+
+                          ok                          
+------------------------------------------------------
+ ok 26 - só service role executa as funções do worker
+(1 row)
+
+                   run_deletion_job                   
+------------------------------------------------------
+ {"reason": "positive_cash_balance", "blocked": true}
+(1 row)
+
+                is                
+----------------------------------
+ ok 27 - conta com saldo bloqueia
+(1 row)
+
+                                       separate_financial_case_and_resume_deletion                                        
+--------------------------------------------------------------------------------------------------------------------------
+ {"caseId": "d92c3af5-afa4-464a-bbb9-22b733f54c7b", "replay": false, "protocol": "FIN-000125", "cashBalanceSnapshot": 40}
+(1 row)
+
+                                                                     run_deletion_job                                                                      
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"kind": "account", "complete": false, "targetId": "62000000-0000-0000-0000-000000000022", "photoPaths": [], "authPending": true, "deleteAuthUser": true}
+(1 row)
+
+SELECT 1
+ record_deletion_job_error 
+---------------------------
+ 
+(1 row)
+
+                                                                   run_deletion_job                                                                    
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"kind": "account", "retry": true, "targetId": "62000000-0000-0000-0000-000000000022", "photoPaths": [], "authPending": true, "deleteAuthUser": true}
+(1 row)
+
+                                                                   run_deletion_job                                                                    
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"kind": "account", "retry": true, "targetId": "62000000-0000-0000-0000-000000000022", "photoPaths": [], "authPending": true, "deleteAuthUser": true}
+(1 row)
+
+                                         results_eq                                         
+--------------------------------------------------------------------------------------------
+ ok 28 - retries do Auth não alteram o caso financeiro (saldo final, finalized_at, eventos)
+(1 row)
+
+                         is                         
+----------------------------------------------------
+ ok 29 - saldo final preservado = 40 (nunca zerado)
+(1 row)
+
+                    is                     
+-------------------------------------------
+ ok 30 - ledger intacto depois dos retries
+(1 row)
+
+        confirm_auth_deletion         
+--------------------------------------
+ {"replay": false, "confirmed": true}
+(1 row)
+
+                     is                     
+--------------------------------------------
+ ok 31 - caso com retry termina em complete
+(1 row)
+
+                is                 
+-----------------------------------
+ ok 32 - caso financeiro permanece
+(1 row)
+
+ finish 
+--------
+ 1..32
+(1 row)
+
+ROLLBACK

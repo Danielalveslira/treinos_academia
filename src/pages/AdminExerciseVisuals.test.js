@@ -31,6 +31,11 @@ const STUBS = {
     export const restoreVisualSet = (...a) => call('restoreVisualSet', a, () => Promise.resolve({}))
   `,
   useOnlineStatus: `export function useOnlineStatus() { return globalThis.__online }`,
+  // AdminNav usa ActionMenu/Portal do Primer (precisa de document.createElement real, ver
+  // o shim em AdminAccounts.test.js) -- fora de escopo aqui, mesmo tratamento que outras
+  // páginas dão a componentes com Portal (ver RowActionsMenu em AdminSponsoredAds.test.js).
+  // Cobertura própria em AdminNav.test.js e AdminAccounts.test.js.
+  AdminNav: `export default function AdminNav() { return null }`,
 }
 
 before(async () => {

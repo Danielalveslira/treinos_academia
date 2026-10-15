@@ -24,6 +24,10 @@ const STUBS = {
   ErrorState: `export function ErrorState() { return null }`,
   ToastFlash: `export function ToastFlash() { return null }`,
   RowActionsMenu: `export function RowActionsMenu() { return null }`,
+  // AdminNav usa ActionMenu/Portal do Primer (precisa de document.createElement real,
+  // ver o shim em AdminAccounts.test.js) -- fora de escopo aqui, mesmo tratamento de
+  // RowActionsMenu. Cobertura própria em AdminNav.test.js e AdminAccounts.test.js.
+  AdminNav: `export default function AdminNav() { return null }`,
   AdMetricsTab: `import { useEffect, createElement } from 'react'
     export default function AdMetricsTab({ userId, ads }) {
       useEffect(() => { globalThis.__metricsMounts = (globalThis.__metricsMounts || 0) + 1 }, [])

@@ -1,0 +1,21 @@
+checked 320 false
+checked 320 true
+checked 360 false
+checked 360 true
+checked 375 false
+checked 375 true
+checked 390 false
+volume 7
+volume 100
+volume 1000
+volume 1200
+checked 390 true
+checked 430 false
+checked 430 true
+checked 768 false
+checked 768 true
+checked 1024 false
+checked 1024 true
+checked 1366 false
+checked 1366 true
+{"mode":"after","captures":32,"results":16}

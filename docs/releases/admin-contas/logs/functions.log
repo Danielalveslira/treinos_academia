@@ -1,0 +1,30 @@
+
+> treinos-academia@1.0.0 test:functions
+> node --test supabase/functions/*/*.test.js
+
+✔ supabase/functions/_shared/exerciseVisualPaths.test.js (402.314019ms)
+✔ supabase/functions/_shared/webp.test.js (363.26499ms)
+✔ supabase/functions/cleanup-exercise-visuals/cleanup.test.js (682.736873ms)
+✔ supabase/functions/delete-exercise-visual/delete.test.js (675.895553ms)
+✔ supabase/functions/exercise-catalog-proxy/validation.test.js (500.840175ms)
+✔ supabase/functions/exercise-visual-confirm/confirm.test.js (715.832432ms)
+✔ supabase/functions/infinitepay-create-checkout/core.test.js (273.788321ms)
+✔ supabase/functions/infinitepay-webhook/payment.test.js (525.773337ms)
+✔ supabase/functions/process-deletion-jobs/processor.test.js (701.250113ms)
+✔ supabase/functions/process-deletion-jobs/storage-cleanup.test.js (419.4912ms)
+✔ supabase/functions/process-push-outbox/activation.integration.test.js (657.906033ms)
+✔ supabase/functions/process-push-outbox/concurrency.test.js (469.871561ms)
+✔ supabase/functions/process-push-outbox/handler.test.js (690.152218ms)
+✔ supabase/functions/process-push-outbox/hygiene.test.js (1240.543059ms)
+✔ supabase/functions/process-push-outbox/messages.test.js (1033.698054ms)
+✔ supabase/functions/process-push-outbox/processor.test.js (532.599005ms)
+✔ supabase/functions/process-push-outbox/welcome.test.js (527.472006ms)
+✔ supabase/functions/publish-exercise-visual/publish.test.js (1179.974387ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11688.797123

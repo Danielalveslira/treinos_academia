@@ -1,6 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  maskEmail,
+  validateStatusResults,
   COLUMN_OPTIONS,
   CSV_COLUMNS,
   DEFAULT_VISIBLE_COLUMNS,
@@ -265,4 +267,27 @@ test('"Último login" fica atrás do seletor de colunas por padrão', () => {
   assert.ok(DEFAULT_VISIBLE_COLUMNS.includes('last_active_at'))
   assert.ok(!DEFAULT_VISIBLE_COLUMNS.includes('last_sign_in_at'))
   assert.ok(COLUMN_OPTIONS.some((column) => column.key === 'last_sign_in_at'))
+})
+
+test('CSV protege espaços, controles e operadores Unicode sem perder escape', () => {
+  for (const email of [' =1+2', '\n=1+2', '\t+SUM(A1)', '＝1+2', '＠SUM(A1)']) {
+    const csv = buildAccountsCsv([account({ email })])
+    assert.ok(csv.includes("'" + email), JSON.stringify(email))
+  }
+  assert.equal(maskEmail('private@example.invalid'), 'p•••@example.invalid')
+  assert.equal(maskEmail(null), '—')
+})
+
+test('resposta parcial malformada, repetida ou com alvo externo é rejeitada', () => {
+  for (const results of [
+    [],
+    null,
+    [{ id: 'x', ok: true, account_status: 'active' }],
+    [{ id: 'a', ok: true }],
+    [
+      { id: 'a', ok: true, account_status: 'active' },
+      { id: 'a', ok: false },
+    ],
+  ])
+    assert.throws(() => validateStatusResults(results, ['a']), /INVALID_RESPONSE/)
 })

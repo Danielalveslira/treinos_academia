@@ -146,22 +146,30 @@ test('renderNavItems aplica o filtro "show" e preserva rota/ícone/onClick por i
   const pro = mod.renderNavItems(mod.ACCOUNT_ITEMS, { usageProfile: 'professional' }, onNavigate)
   assert.equal(common.length, mod.ACCOUNT_ITEMS.length - 1)
   assert.equal(pro.length, mod.ACCOUNT_ITEMS.length)
-  assert.equal(common.some((el) => el.props.to === '/minha-vitrine'), false)
-  assert.equal(pro.some((el) => el.props.to === '/minha-vitrine'), true)
+  assert.equal(
+    common.some((el) => el.props.to === '/minha-vitrine'),
+    false
+  )
+  assert.equal(
+    pro.some((el) => el.props.to === '/minha-vitrine'),
+    true
+  )
   for (const el of pro) {
     assert.equal(el.props.onClick, onNavigate)
     assert.equal(el.props.replace, true)
   }
 })
 
-test('ADMIN_ITEMS continua com as mesmas 7 rotas administrativas', () => {
-  assert.equal(mod.ADMIN_ITEMS.length, 7)
+test('ADMIN_ITEMS continua com as mesmas 9 rotas administrativas', () => {
+  assert.equal(mod.ADMIN_ITEMS.length, 9)
   const routes = mod.ADMIN_ITEMS.map((item) => item.to)
   assert.deepEqual(routes, [
     '/admin/comunidades',
     '/admin/parcerias',
     '/admin/contas',
+    '/admin/exclusao-contas',
     '/admin/moderacao',
+    '/admin/vitrines',
     '/admin/compras-evocash',
     '/admin/promocoes',
     '/admin/exercicios-imagens',
@@ -170,7 +178,7 @@ test('ADMIN_ITEMS continua com as mesmas 7 rotas administrativas', () => {
 
 // -- Expansão da seção Administração (Cuidados 3 e 5) ---------------------------------
 
-test('renderAdminSection: recolhida por padrão não expõe as 7 rotas; expandida, expõe', () => {
+test('renderAdminSection: recolhida por padrão não expõe as 9 rotas; expandida, expõe', () => {
   const collapsed = mod.renderAdminSection({
     expanded: false,
     onToggle: () => {},
@@ -182,7 +190,7 @@ test('renderAdminSection: recolhida por padrão não expõe as 7 rotas; expandid
   assert.equal(trigger.props['aria-controls'], 'account-menu-admin-list')
   assert.equal(hiddenWrapper.props.hidden, true)
   assert.equal(hiddenWrapper.props.id, 'account-menu-admin-list')
-  assert.equal(hiddenWrapper.props.children.length, 7)
+  assert.equal(hiddenWrapper.props.children.length, 9)
 
   const expanded = mod.renderAdminSection({
     expanded: true,

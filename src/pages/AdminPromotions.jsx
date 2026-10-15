@@ -1,9 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Box, Button, Flash, FormControl, Heading, Label, Spinner, Text, Textarea } from '@primer/react'
+import {
+  Box,
+  Button,
+  Flash,
+  FormControl,
+  Heading,
+  Label,
+  Spinner,
+  Text,
+  Textarea,
+} from '@primer/react'
 import { listAllPromotionsForAdmin, cancelPromotion } from '../services/promotionsService'
 import { canSubmitCancellation } from '../utils/cashPurchaseFlow'
 import { formatDateTime } from '../utils/format'
 import { toDate } from '../utils/date.js'
+import AdminNav from '../components/AdminNav'
 
 const STATUS_LABELS = {
   active: { text: 'Ativa', variant: 'success' },
@@ -74,10 +85,11 @@ export default function AdminPromotions() {
 
   return (
     <div className="support-page">
+      <AdminNav current="/admin/promocoes" currentLabel="Promoções (EvoCash)" />
       <h1>Promoções (EvoCash)</h1>
       <p>
-        Moderação das promoções pagas por usuários — distinto do painel de Parcerias
-        (anúncios institucionais). Cancelar aqui nunca reembolsa o EvoCash já gasto.
+        Moderação das promoções pagas por usuários — distinto do painel de Parcerias (anúncios
+        institucionais). Cancelar aqui nunca reembolsa o EvoCash já gasto.
       </p>
 
       {loading && promotions.length === 0 && <Spinner aria-label="Carregando promoções" />}
@@ -94,7 +106,8 @@ export default function AdminPromotions() {
 
       {promotions.map((promotion) => {
         const expiresAtDate = toDate(promotion.expiresAt)
-        const isExpired = promotion.status === 'active' && expiresAtDate && expiresAtDate.getTime() < Date.now()
+        const isExpired =
+          promotion.status === 'active' && expiresAtDate && expiresAtDate.getTime() < Date.now()
         return (
           <Box
             as="article"
@@ -137,16 +150,23 @@ export default function AdminPromotions() {
                       StatusCard não tem um único "abrir" pra contar clique em cima, então
                       mostrar "0 clique(s)" para posts sugeriria falsamente que o clique
                       está sendo medido e simplesmente nunca acontece. */}
-                  {promotion.targetType === 'community' ? ` · ${promotion.clickCount ?? 0} clique(s)` : ''}
+                  {promotion.targetType === 'community'
+                    ? ` · ${promotion.clickCount ?? 0} clique(s)`
+                    : ''}
                 </Text>
               </Box>
-              <Label variant={isExpired ? 'attention' : STATUS_LABELS[promotion.status]?.variant || 'default'}>
+              <Label
+                variant={
+                  isExpired ? 'attention' : STATUS_LABELS[promotion.status]?.variant || 'default'
+                }
+              >
                 {isExpired ? 'Expirada' : STATUS_LABELS[promotion.status]?.text || promotion.status}
               </Label>
             </Box>
             {promotion.status === 'cancelled' && (
               <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-                Cancelada por {promotion.cancelledBy || 'sistema'} em {formatDateTime(toDate(promotion.cancelledAt))}
+                Cancelada por {promotion.cancelledBy || 'sistema'} em{' '}
+                {formatDateTime(toDate(promotion.cancelledAt))}
                 {promotion.cancelReason ? ` — ${promotion.cancelReason}` : ''}
               </Text>
             )}
