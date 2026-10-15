@@ -25,7 +25,7 @@ export function CommunityExploreCard({
       <div className="community-explore-cover">
         <CommunityCoverImage path={community.coverPath} className="community-explore-cover-image" />
         <span className="community-explore-cover-icon">
-          <CommunityIcon community={community} size={56} />
+          <CommunityIcon community={community} size={40} />
         </span>
       </div>
       <div className="community-explore-body">
@@ -40,6 +40,7 @@ export function CommunityExploreCard({
           <Button
             variant="primary"
             block
+            size="small"
             leadingVisual={PlusIcon}
             className="community-join-button"
             loading={joining}
@@ -53,6 +54,7 @@ export function CommunityExploreCard({
         {action === 'blocked' && (
           <Button
             block
+            size="small"
             className="community-join-button community-join-button--blocked"
             disabled
             aria-label={`${COMMUNITY_MESSAGES.blockedBadge} em ${community.name}`}
@@ -63,6 +65,7 @@ export function CommunityExploreCard({
         {action === 'unavailable' && (
           <Button
             block
+            size="small"
             className="community-join-button community-join-button--blocked"
             disabled
             aria-label={`${community.name}: ${COMMUNITY_MESSAGES.unavailable}`}

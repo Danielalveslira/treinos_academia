@@ -1599,7 +1599,7 @@ body:has(.pwa-offline) .app-shell {
 }
 .community-explore-cover {
   position: relative;
-  aspect-ratio: 16 / 9;
+  height: 72px;
   overflow: hidden;
   border-radius: var(--fitness-radius-md) var(--fitness-radius-md) 0 0;
   background: var(--fitness-accent-soft);
@@ -1618,24 +1618,24 @@ body:has(.pwa-offline) .app-shell {
 }
 .community-explore-cover-icon {
   position: absolute;
-  left: 14px;
-  bottom: -28px;
+  left: 10px;
+  bottom: -18px;
 }
 .community-explore-cover-icon .community-icon {
   border-radius: 50% !important;
-  box-shadow: 0 0 0 3px var(--fitness-surface);
+  box-shadow: 0 0 0 2px var(--fitness-surface);
 }
 .community-explore-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 36px 14px 14px;
+  gap: 1px;
+  padding: 22px 10px 10px;
 }
 .community-explore-name {
   display: -webkit-box;
   overflow: hidden;
   margin: 0;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 650;
   line-height: 1.3;
   overflow-wrap: anywhere;
@@ -1648,15 +1648,16 @@ body:has(.pwa-offline) .app-shell {
   margin: 2px 0 0;
   padding: 0;
   color: var(--fitness-muted);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 12px;
+  line-height: 1.4;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
 }
 .community-explore-card .community-join-button {
-  min-height: 44px;
-  margin-top: 10px;
+  min-height: 32px;
+  margin-top: 8px;
+  font-size: 12px;
 }
 
 /* Mensagem única quando não há nenhuma comunidade pra explorar. */
@@ -1729,10 +1730,20 @@ body:has(.pwa-offline) .app-shell {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
   }
+  /* Cartões do Explorar são bem mais compactos que os de "Minhas"/"Em destaque" -- cabem
+     mais por linha a partir do tablet (.communities-grid.communities--explore vence por
+     especificidade, não por ordem no arquivo). */
+  .communities-grid.communities-grid--explore {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
 }
 @media (min-width: 1100px) {
   .communities-grid:not(.communities-grid--explore) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .communities-grid.communities-grid--explore {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 @media (hover: hover) {

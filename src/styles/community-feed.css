@@ -39,15 +39,45 @@
   height: 44px;
   color: var(--fgColor-muted);
 }
+/* Banner estreito (só contexto visual, não o foco da tela) com o ícone sobrepondo a borda
+   inferior à esquerda -- mesma ideia do cartão de "Explorar", estilo capa de perfil. Só
+   aparece quando a comunidade tem cover_path; sem capa, cd-identity cai direto no fluxo
+   normal (ver CommunityHeader.jsx). */
+.cd-cover {
+  position: relative;
+  overflow: hidden;
+  height: 96px;
+  border-radius: var(--fitness-radius-md);
+  background: var(--fitness-accent-soft);
+  background-image: radial-gradient(
+    130% 160% at 15% 0%,
+    color-mix(in srgb, var(--fitness-accent) 28%, transparent),
+    transparent 75%
+  );
+}
+.cd-cover-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 .cd-identity {
   display: flex;
   align-items: flex-start;
   gap: 14px;
   padding-top: 2px;
 }
+.cd-identity--with-cover {
+  margin-top: 10px;
+}
 .cd-identity .community-icon {
   flex: 0 0 auto;
   border: 1px solid color-mix(in srgb, var(--fitness-accent) 35%, transparent);
+}
+.cd-identity--with-cover .community-icon {
+  margin-top: -32px;
+  border: 3px solid var(--fitness-surface);
 }
 .cd-identity-text {
   flex: 1;
@@ -451,6 +481,9 @@ button.status-poll-option:disabled {
   }
   .cd-back-label {
     display: inline;
+  }
+  .cd-cover {
+    height: 128px;
   }
   .main-content .community-page .cd-identity h1 {
     font-size: 28px;

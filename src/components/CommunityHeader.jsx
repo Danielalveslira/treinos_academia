@@ -11,6 +11,7 @@ import {
   SyncIcon,
 } from '@primer/octicons-react'
 import { CommunityIcon } from './CommunityIcon'
+import { CommunityCoverImage } from './CommunityCoverImage'
 import { PromotedBadge } from './PromotedBadge'
 import { formatMemberCount } from '../utils/communityActivity'
 import { toMillis } from '../utils/expiry'
@@ -104,8 +105,13 @@ export function CommunityHeader({ communityId, community, menuProps }) {
         </RouterLink>
         <CommunityMenu communityId={communityId} {...menuProps} />
       </div>
+      {community?.coverPath && (
+        <div className="cd-cover">
+          <CommunityCoverImage path={community.coverPath} className="cd-cover-image" />
+        </div>
+      )}
       {community && (
-        <div className="cd-identity">
+        <div className={`cd-identity${community.coverPath ? ' cd-identity--with-cover' : ''}`}>
           <CommunityIcon community={community} size={64} />
           <div className="cd-identity-text">
             <h1>{community.name}</h1>
