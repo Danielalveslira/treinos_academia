@@ -1,0 +1,144 @@
+{
+  "status": "published",
+  "commit": "8e8bcc55bc111c33d907418db024a9285607030a",
+  "deployment": {
+    "id": "dpl_u5fLCoyx1ww6fv6QJ589xoRZDQjR",
+    "url": "treinosacademia-myctoiv5m-danielalvesliras-projects.vercel.app",
+    "target": "production",
+    "readyState": "READY",
+    "sha": "8e8bcc55bc111c33d907418db024a9285607030a",
+    "projectId": "prj_WYVlCGYu021KZCrqfp62qRH2cbIE",
+    "gitSource": {
+      "ref": "main",
+      "repoId": 1361638594,
+      "sha": "8e8bcc55bc111c33d907418db024a9285607030a",
+      "type": "github",
+      "prId": null
+    },
+    "aliases": [
+      "treinosacademia-ten.vercel.app",
+      "treinosacademia-danielalvesliras-projects.vercel.app",
+      "treinosacademia-git-main-danielalvesliras-projects.vercel.app"
+    ],
+    "createdAt": 1791987782596,
+    "ready": 1791987802880
+  },
+  "backend": {
+    "verifiedAt": "2026-10-14T14:23:30.223Z",
+    "project": "ywrjojrjgozdfpddkkuy",
+    "checks": {
+      "activation_authenticated": true,
+      "activation_no_anon": true,
+      "activation_secure_path": true,
+      "catalog_ok": true,
+      "claim_service_only": true,
+      "helper_private": true,
+      "migrations_applied": true,
+      "rls_preserved": true,
+      "welcome_enum": true,
+      "worker_schedule_ok": true
+    },
+    "worker": {
+      "slug": "process-push-outbox",
+      "version": 9,
+      "status": "ACTIVE",
+      "verify_jwt": true
+    },
+    "backup": {
+      "schema": "/tmp/push-production/schema-before.sql",
+      "sha256": "ed383a7e24227acc5208caf37b647a7417bc8e51baa996e8a824114dd7de0888",
+      "previousWorker": "/tmp/push-production/previous-worker"
+    },
+    "scope": "Verificação de metadados; nenhuma ativação, mensagem de teste ou alteração de preferências de usuários."
+  },
+  "productionSmoke": {
+    "origin": "https://treinosacademia-ten.vercel.app",
+    "status": "pass",
+    "dashboardAsset": "/assets/Dashboard-VvEkVXnx.js",
+    "cssAsset": "/assets/Dashboard-C5VfMioF.css",
+    "checks": [
+      {
+        "path": "/",
+        "status": 200,
+        "bytes": 1237
+      },
+      {
+        "path": "/boot-theme.js",
+        "status": 200,
+        "bytes": 407
+      },
+      {
+        "path": "/assets/index-BuQc2IKE.js",
+        "status": 200,
+        "bytes": 434466
+      },
+      {
+        "path": "/assets/primer-e7IFQoym.js",
+        "status": 200,
+        "bytes": 779295
+      },
+      {
+        "path": "/assets/primer-DTSh1TNY.css",
+        "status": 200,
+        "bytes": 177979
+      },
+      {
+        "path": "/assets/index-DtEjj3U5.css",
+        "status": 200,
+        "bytes": 304540
+      },
+      {
+        "path": "/boot-fallback.js",
+        "status": 200,
+        "bytes": 956
+      },
+      {
+        "path": "/assets/Dashboard-VvEkVXnx.js",
+        "status": 200,
+        "bytes": 42786
+      },
+      {
+        "path": "/assets/Dashboard-C5VfMioF.css",
+        "status": 200,
+        "bytes": 1916
+      },
+      {
+        "path": "/sw.js",
+        "status": 200,
+        "bytes": 24300
+      },
+      {
+        "path": "/login",
+        "status": 200,
+        "bytes": 1237
+      },
+      {
+        "path": "/perfil",
+        "status": 200,
+        "bytes": 1237
+      }
+    ],
+    "browserChecks": [
+      {
+        "width": 390,
+        "url": "https://treinosacademia-ten.vercel.app/login",
+        "errors": [],
+        "unexpectedPermissionPrompts": 0,
+        "overflow": false
+      },
+      {
+        "width": 1366,
+        "url": "https://treinosacademia-ten.vercel.app/login",
+        "errors": [],
+        "unexpectedPermissionPrompts": 0,
+        "overflow": false
+      }
+    ],
+    "scope": "HTTP e Chromium anônimo em produção; nenhum login, RPC autenticada ou envio de Push real"
+  },
+  "pending": [
+    "Homologação física de Web Push em conta/dispositivo de teste autorizados.",
+    "Pendência SQL preexistente: search_path de cast_vote/create_promotion; funções fora do patch de Push."
+  ],
+  "unchanged": "Documentos locais de outros trabalhos preservados; nenhum teste invasivo em usuários de produção."
+}

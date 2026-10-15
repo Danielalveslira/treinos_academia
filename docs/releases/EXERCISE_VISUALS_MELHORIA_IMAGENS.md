@@ -1,4 +1,4 @@
-# Imagens de exercícios — publicação autorizada em andamento
+# Imagens de exercícios — publicado em produção
 
 Destinos confirmados: GitHub Danielalveslira/treinos_academia, conta Danielalveslira, branch main; Supabase ywrjojrjgozdfpddkkuy ACTIVE_HEALTHY; Vercel treinos_academia, prj_WYVlCGYu021KZCrqfp62qRH2cbIE, equipe danielalvesliras-projects.
 
@@ -6,7 +6,13 @@ Migration 20261029000001_exercise_visual_deletion aplicada isoladamente pela CLI
 
 Validação repetida nesta publicação: 1.910 JavaScript; 151 Edge/um skip preexistente; 307 SQL; 18 verificações de integração local; quatro casos de navegador mobile/desktop claro/escuro. Lint zero erros/14 avisos preexistentes e build aprovado. A primeira integração encontrou 502 durante inicialização do Storage local; a repetição após readiness passou integralmente.
 
-Frontend: commit/push e READY serão confirmados após esta etapa. Smoke real autorizado usará imagens V2 já publicadas do mesmo exercício para aprovação, seguido de restauração da versão original. A versão aprovada permanecerá protegida no histórico. Somente uma segunda versão nunca publicada, criada explicitamente para descarte, poderá ser excluída. Sem novos usuários, mudança de senha, envio de e-mail, mudança de estilo, exclusão antiga ou operação financeira.
+Frontend publicado: commit **9bc50db3d00709099e7a972d118dc51ac3a9847f**, push normal para origin/main. Vercel **dpl_Ecj9sNgWt6LFu9nr1cdv9x7cuv3V**, **READY / production**, build de 29 s e status GitHub success. Alias https://treinosacademia-ten.vercel.app. Smoke real usou imagens V2 já publicadas de Abdominais com Peso para aprovação e restaurou a versão original v2; suas referências e bytes SHA-256 permanecem idênticos. A nova v3 aprovada foi arquivada e preservada para rollback. Somente a v4 nunca publicada, criada explicitamente para descarte, foi excluída. Sem novos usuários, mudança de senha, envio de e-mail, mudança de estilo, exclusão antiga ou operação financeira.
+
+28 checks reais de produção passaram: prompts START/END e gate de referência, upload/prévias, confirmação, comparação/zoom, aprovação deliberada, rollback, rejeição rápida, histórico/lixeira, remoção física e retry idempotente. Quatro casos reais 390/1366 px claro/escuro incluindo reload: zero erros de console/page, zero HTTP falhos e nenhum overflow. Versões publicadas/arquivadas bloqueadas no servidor e sem lixeira; usuário comum não lê a fila nem solicita/claim/finaliza exclusão (transação de verificação revertida); anon sem permissão.
+
+Versão descartável `0a1bbad1-5333-4923-8d19-0eceb77d2f61`, v4, conclusão em 13/10/2026 18:32:27 UTC, uma tentativa e nenhum last_error. START/END/miniatura existiam antes do teste; após exclusão, nenhum asset/objeto próprio e seis GETs frescos retornaram Object not found. Uma primeira leitura reutilizou bytes em cache: confirmação final incluiu parâmetro único/no-cache e metadados SQL, sem nova exclusão. Nenhuma pendência na fila. Nova v3 aprovada `ff576cb3-9571-43d0-8a11-205345251249` permanece arquivada/protegida, conforme regra de nunca apagar publicadas.
+
+Todos os perfis de estilo e o hash das referências publicadas de **todo** o catálogo continuam iguais ao snapshot inicial. Nenhuma imagem antiga foi apagada e nenhuma escrita financeira foi feita. Limpeza legada consultada somente com dryRun=true (zero candidatos/expiração). Logs persistidos de auditoria, resultado HTTP e tarefa foram verificados; **os logs de console do runtime hospedado não foram exportados**, pois não há consulta disponível na CLI/conectores desta sessão. Essa é a pendência de observabilidade; não foi anunciada como verificação realizada. Evidências pós-deploy atualizadas no workspace, fora do commit já publicado, para evitar outro deploy apenas documental.
 
 ## Diagnóstico e prompts
 

@@ -1,6 +1,6 @@
-# Ajustes dos prompts e do zoom — publicação autorizada
+# Ajustes dos prompts e do zoom — publicado e validado
 
-Implementado sobre o commit 9bc50db; a publicação destes ajustes foi autorizada pelo responsável após a validação local. Conta GitHub Danielalveslira, repositório Danielalveslira/treinos_academia, branch main e remote origin confirmados sem divergência. Vercel: projeto treinos_academia, equipe danielalvesliras-projects, ID prj_WYVlCGYu021KZCrqfp62qRH2cbIE. As alterações preexistentes nos relatórios da publicação anterior e nos prompts estão fora deste release. Commit, SHA remoto, READY e resultado do smoke serão registrados após o push autorizado.
+Implementado sobre o commit 9bc50db; a publicação destes ajustes foi autorizada pelo responsável após a validação local. Conta GitHub Danielalveslira, repositório Danielalveslira/treinos_academia, branch main e remote origin confirmados sem divergência. Vercel: projeto treinos_academia, equipe danielalvesliras-projects, ID prj_WYVlCGYu021KZCrqfp62qRH2cbIE. As alterações preexistentes nos relatórios da publicação anterior e nos prompts estão fora deste release. Commit e SHA remoto: **9295d2aedcd9cadb82e2847080ab2abe229bb784**, push normal para origin/main. Vercel **dpl_57siGCxCebgYfHj3n5ZcTusYzH8E**, **READY / Production**, tempo até READY de 36,9 s; status GitHub success associado a esse deployment. Alias https://treinosacademia-ten.vercel.app. Nenhuma migration, Edge Function ou configuração Supabase reaplicada.
 
 ## Correções
 
@@ -46,6 +46,17 @@ Para reproduzir: iniciar Vite local na porta 55446 e executar `node scripts/veri
 
 ## Smoke de produção autorizado
 
-Somente leitura de catálogo/versões e ações locais de cópia, zoom, histórico, seleção de arquivos para prévia (sem enviar) e refresh. Requisições de mutação de imagens, versões, publicação ou exclusão serão bloqueadas no navegador de teste. Serão comparados os perfis de estilo, versões publicadas/arquivadas, referências de todo o catálogo ativo e os bytes da amostra publicada. Autenticação por sessão administrativa temporária, sem criar usuários, mudar senha ou enviar e-mail; encerramento exclusivo dessa sessão após o smoke.
+Somente leitura de catálogo/versões e ações locais de cópia, zoom, histórico, seleção de arquivos para prévia (sem enviar) e refresh. Requisições de mutação de imagens, versões, publicação ou exclusão foram bloqueadas preventivamente no navegador de teste; nenhuma foi solicitada. Foram comparados os perfis de estilo, versões publicadas/arquivadas, referências de todo o catálogo ativo e os bytes da amostra publicada, todos preservados. Autenticação por sessão administrativa temporária, sem criar usuários, mudar senha ou enviar e-mail; encerramento exclusivo dessa sessão após o smoke, preservando as demais sessões.
 
-Nenhuma migration, Edge Function ou configuração Supabase será publicada. Credenciais, snapshots operacionais e screenshots ficam somente em /tmp, fora do commit. Evidências pós-deploy serão atualizadas no workspace sem outro deploy apenas documental.
+Nenhuma migration, Edge Function ou configuração Supabase foi publicada. Credenciais, snapshots operacionais e screenshots ficam somente em /tmp, fora do commit. Evidências pós-deploy serão atualizadas no workspace sem outro deploy apenas documental.
+
+
+## Resultado em produção
+
+29 verificações concluídas, oito combinações 320/390/768/1366px × claro/escuro. Cópia real de INICIAL/FINAL com instruções completas e incompletas, aviso informativo 12px sem borda, referência START preservada, zoom compacto/centralizado/object-fit:contain, margens, X/Esc, foco, bloqueio de rolagem, ausência de novas consultas do zoom, histórico e proteção da versão publicada, seleção de arquivos apenas para prévia local, cancelamento sem envio e refresh passaram. Zero erros de console/página/HTTP e zero overflow.
+
+A primeira tentativa do guard do teste classificou HEAD como mutação e bloqueou consultas de contagem, causando erros no console do teste. Corrigido somente o helper em /tmp para permitir HEAD; smoke completo repetido e aprovado. Não houve falha ou alteração adicional de produto, nem outro deploy.
+
+V2 segue ativo; todos os perfis de estilo, versões publicadas/arquivadas, catálogo ativo e referências de mídia são idênticos ao snapshot anterior. START/END/miniatura da amostra permanecem idênticos em SHA-256. Nenhum arquivo ou versão existente foi excluído ou publicado. Fluxos de aprovação/rejeição/exclusão foram exercitados somente com fixtures locais, conforme a regra desta publicação de não modificar conteúdo em produção.
+
+Evidência final sanitizada: EXERCISE_VISUAL_PROMPT_ZOOM_PUBLICACAO_EVIDENCIAS.json. Screenshots reais em /tmp/exercise-prompt-final, incluindo [zoom 320px escuro](/tmp/exercise-prompt-final/320-dark-zoom.png), [aviso 390px claro](/tmp/exercise-prompt-final/390-light-incomplete-prompts.png) e [zoom desktop claro](/tmp/exercise-prompt-final/1366-light-zoom.png). Esses artefatos e a atualização pós-deploy deste relatório ficam no workspace, fora do commit publicado, evitando um deploy adicional apenas documental. Sem pendências deste release.

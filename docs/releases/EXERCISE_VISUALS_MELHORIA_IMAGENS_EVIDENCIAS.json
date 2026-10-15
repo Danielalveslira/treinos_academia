@@ -1,13 +1,12 @@
 {
-  "status": "implemented_and_tested_not_published",
+  "status": "published_production_ready_runtime_console_log_export_pending",
   "repository": "Danielalveslira/treinos_academia",
   "branch": "main",
-  "unchanged_head": "b3d364a1b5303eb60e8bf8234e65d028f6b30ae1",
   "production_project_confirmed_readonly": "ywrjojrjgozdfpddkkuy",
   "active_style_confirmed_readonly": "EVOLUTUS_FITNESS_V2",
   "active_reference_assets": 0,
-  "production_writes": false,
-  "commit_push_deploy_performed": false,
+  "production_writes": true,
+  "commit_push_deploy_performed": true,
   "tests": {
     "javascript_full": 1910,
     "functions_pass": 151,
@@ -246,7 +245,257 @@
       "lint_warnings_preexisting": 14,
       "build": "passed"
     },
-    "frontend": "awaiting commit/push",
-    "production_smoke": "pending"
-  }
+    "frontend": {
+      "commit": "9bc50db3d00709099e7a972d118dc51ac3a9847f",
+      "branch": "main",
+      "normal_push": true,
+      "github_status": "success",
+      "vercel": {
+        "id": "dpl_Ecj9sNgWt6LFu9nr1cdv9x7cuv3V",
+        "url": "treinosacademia-6u3eeu7pk-danielalvesliras-projects.vercel.app",
+        "target": "production",
+        "readyState": "READY",
+        "aliases": [
+          "treinosacademia-ten.vercel.app",
+          "treinosacademia-danielalvesliras-projects.vercel.app",
+          "treinosacademia-git-main-danielalvesliras-projects.vercel.app"
+        ],
+        "duration": {
+          "startTime": 1791916162365,
+          "endTime": 1791916211773,
+          "endTimeCapped": 1791916211773,
+          "timeToReady": 29248,
+          "timeToContainerExit": 49408,
+          "timeToContainerExitCapped": 49408,
+          "timeForBilling": 60000,
+          "cpuTimeForBilling": 120000
+        }
+      }
+    },
+    "production_smoke": {
+      "origin": "https://treinosacademia-ten.vercel.app",
+      "projectRef": "ywrjojrjgozdfpddkkuy",
+      "startedAt": "2026-10-13T18:31:45.120Z",
+      "originalSetId": "0eeb4398-71c4-491b-b40e-712de8f177aa",
+      "catalogId": "be2ce039-7544-4354-b2b7-e84354947f5a",
+      "checks": [
+        "original active publication matches snapshot",
+        "anon cannot request deletion",
+        "published deletion is blocked by server",
+        "cleanup dry-run never expires or removes versions",
+        "real authenticated panel opens 1366px light",
+        "START and END prompts copied with real reference gate",
+        "upload previews both selected files",
+        "real upload confirmed review v3",
+        "comparison and accessible zoom work",
+        "deliberate approval publishes copied original V2 images",
+        "original active publication restored",
+        "approved test version protected and retained as archived",
+        "real authenticated panel opens 390px dark",
+        "upload previews both selected files",
+        "real upload confirmed review v4",
+        "disposable version has three real Storage files before deletion",
+        "quick rejection retains version in real history",
+        "all six deletion paths confirmed absent with fresh uncached requests",
+        "Storage metadata and owned assets absent",
+        "zero pending deletion jobs",
+        "active V2 profile unchanged",
+        "completed deletion retry is idempotent",
+        "original published media refs restored exactly",
+        "original files unchanged byte for byte",
+        "real panel and refresh pass 390px light",
+        "real panel and refresh pass 390px dark",
+        "real panel and refresh pass 1366px light",
+        "real panel and refresh pass 1366px dark"
+      ],
+      "createdSets": [
+        {
+          "id": "ff576cb3-9571-43d0-8a11-205345251249",
+          "version": 3,
+          "purpose": "approval-and-restore"
+        },
+        {
+          "id": "0a1bbad1-5333-4923-8d19-0eceb77d2f61",
+          "version": 4,
+          "purpose": "disposable-deletion"
+        }
+      ],
+      "consoleErrors": [],
+      "pageErrors": [],
+      "httpErrors": [],
+      "cases": [
+        {
+          "width": 390,
+          "dark": false,
+          "refreshPassed": true,
+          "overflow": false,
+          "archivedProtected": true,
+          "deletedAbsentFromReview": true,
+          "navigations": 2,
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": []
+        },
+        {
+          "width": 390,
+          "dark": true,
+          "refreshPassed": true,
+          "overflow": false,
+          "archivedProtected": true,
+          "deletedAbsentFromReview": true,
+          "navigations": 2,
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": []
+        },
+        {
+          "width": 1366,
+          "dark": false,
+          "refreshPassed": true,
+          "overflow": false,
+          "archivedProtected": true,
+          "deletedAbsentFromReview": true,
+          "navigations": 2,
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": []
+        },
+        {
+          "width": 1366,
+          "dark": true,
+          "refreshPassed": true,
+          "overflow": false,
+          "archivedProtected": true,
+          "deletedAbsentFromReview": true,
+          "navigations": 2,
+          "errors": [],
+          "consoleErrors": [],
+          "httpErrors": []
+        }
+      ],
+      "cleanupDryRun": {
+        "dryRun": true,
+        "expired": 0,
+        "candidates": 0
+      },
+      "approvalCompleted": true,
+      "disposableSetId": "0a1bbad1-5333-4923-8d19-0eceb77d2f61",
+      "deletion": {
+        "id": "0a1bbad1-5333-4923-8d19-0eceb77d2f61",
+        "version": 4,
+        "status": "complete",
+        "attempts": 1,
+        "files": [
+          {
+            "path": "be2ce039-7544-4354-b2b7-e84354947f5a/0a1bbad1-5333-4923-8d19-0eceb77d2f61/start.webp",
+            "bucket": "exercise-visual-drafts"
+          },
+          {
+            "path": "be2ce039-7544-4354-b2b7-e84354947f5a/0a1bbad1-5333-4923-8d19-0eceb77d2f61/end.webp",
+            "bucket": "exercise-visual-drafts"
+          },
+          {
+            "path": "be2ce039-7544-4354-b2b7-e84354947f5a/0a1bbad1-5333-4923-8d19-0eceb77d2f61/thumb.webp",
+            "bucket": "exercise-visual-drafts"
+          },
+          {
+            "path": "be2ce039-7544-4354-b2b7-e84354947f5a/v4/start.webp",
+            "bucket": "exercise-visuals"
+          },
+          {
+            "path": "be2ce039-7544-4354-b2b7-e84354947f5a/v4/end.webp",
+            "bucket": "exercise-visuals"
+          },
+          {
+            "path": "be2ce039-7544-4354-b2b7-e84354947f5a/v4/thumb.webp",
+            "bucket": "exercise-visuals"
+          }
+        ],
+        "completedAt": "2026-10-13T18:32:27.603728+00:00"
+      },
+      "finishedAt": "2026-10-13T18:35:20.433Z",
+      "complete": true,
+      "cacheVerification": {
+        "initialSdkRead": "returned cached bytes after removal",
+        "freshRequestResult": "all six Object not found",
+        "metadata": 0
+      }
+    },
+    "permissions": {
+      "ordinary_claim_denied": true,
+      "ordinary_finish_denied": true,
+      "ordinary_request_denied": true,
+      "ordinary_rls_read_zero": true,
+      "transaction": "rolled_back"
+    },
+    "preservation": {
+      "all_original_catalog_refs_hash_unchanged": true,
+      "all_style_profiles_unchanged": true,
+      "original_published_bytes_sha256_unchanged": true,
+      "financial_operations": 0,
+      "old_version_deletions": 0,
+      "pending_deletions": 0,
+      "physical_absence_fresh_requests": [
+        {
+          "bucket": "exercise-visual-drafts",
+          "path": "be2ce039-7544-4354-b2b7-e84354947f5a/0a1bbad1-5333-4923-8d19-0eceb77d2f61/start.webp",
+          "status": 400,
+          "code": "not_found",
+          "message": "Object not found"
+        },
+        {
+          "bucket": "exercise-visual-drafts",
+          "path": "be2ce039-7544-4354-b2b7-e84354947f5a/0a1bbad1-5333-4923-8d19-0eceb77d2f61/end.webp",
+          "status": 400,
+          "code": "not_found",
+          "message": "Object not found"
+        },
+        {
+          "bucket": "exercise-visual-drafts",
+          "path": "be2ce039-7544-4354-b2b7-e84354947f5a/0a1bbad1-5333-4923-8d19-0eceb77d2f61/thumb.webp",
+          "status": 400,
+          "code": "not_found",
+          "message": "Object not found"
+        },
+        {
+          "bucket": "exercise-visuals",
+          "path": "be2ce039-7544-4354-b2b7-e84354947f5a/v4/start.webp",
+          "status": 400,
+          "code": "not_found",
+          "message": "Object not found"
+        },
+        {
+          "bucket": "exercise-visuals",
+          "path": "be2ce039-7544-4354-b2b7-e84354947f5a/v4/end.webp",
+          "status": 400,
+          "code": "not_found",
+          "message": "Object not found"
+        },
+        {
+          "bucket": "exercise-visuals",
+          "path": "be2ce039-7544-4354-b2b7-e84354947f5a/v4/thumb.webp",
+          "status": 400,
+          "code": "not_found",
+          "message": "Object not found"
+        }
+      ]
+    },
+    "logs": {
+      "edge_http_responses_and_db_audit_checked": true,
+      "deletion_attempts": 1,
+      "deletion_last_error": null,
+      "browser_errors": 0,
+      "hosted_runtime_console_exported": false,
+      "limitation": "CLI e conectores disponíveis não fornecem consulta aos logs de console hospedados; auditoria persistida, tarefa e respostas foram verificadas."
+    },
+    "post_deploy_evidence_committed": false,
+    "local_cleanup": {
+      "synthetic_catalogs_removed": 2,
+      "synthetic_users_removed": 2,
+      "containers_restored_stopped": true
+    }
+  },
+  "baseline_head_before_publication": "b3d364a1b5303eb60e8bf8234e65d028f6b30ae1",
+  "head": "9bc50db3d00709099e7a972d118dc51ac3a9847f",
+  "production_write_scope": "Somente migration de visuais, duas Edge Functions, aprovação/rollback de cópia das imagens já publicadas e exclusão da versão descartável; nenhuma operação financeira ou exclusão antiga."
 }

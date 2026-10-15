@@ -1,0 +1,140 @@
+{
+  "status": "published_production_ready_verified",
+  "verifiedAt": "2026-10-14T13:25:21.705522+00:00",
+  "repository": "Danielalveslira/treinos_academia",
+  "account": "Danielalveslira",
+  "remote": "origin",
+  "branch": "main",
+  "commit": "2a2d274339177812115292b7b7c1cfedf7349176",
+  "remoteSha": "2a2d274339177812115292b7b7c1cfedf7349176",
+  "githubAuth": "Git credential helper validated against /user and gh auth status; environment tokens rejected (401)",
+  "normalPush": true,
+  "deployment": {
+    "id": "dpl_26w4Gv32q28JzjhmWTrMxbtAJ4SS",
+    "url": "treinosacademia-67nrdqzod-danielalvesliras-projects.vercel.app",
+    "target": "production",
+    "readyState": "READY",
+    "sha": "2a2d274339177812115292b7b7c1cfedf7349176",
+    "projectId": "prj_WYVlCGYu021KZCrqfp62qRH2cbIE",
+    "gitSource": {
+      "ref": "main",
+      "repoId": 1361638594,
+      "sha": "2a2d274339177812115292b7b7c1cfedf7349176",
+      "type": "github",
+      "prId": null
+    },
+    "aliases": [
+      "treinosacademia-ten.vercel.app",
+      "treinosacademia-danielalvesliras-projects.vercel.app",
+      "treinosacademia-git-main-danielalvesliras-projects.vercel.app"
+    ],
+    "createdAt": 1791984160980,
+    "ready": 1791984180384
+  },
+  "productionSmoke": {
+    "origin": "https://treinosacademia-ten.vercel.app",
+    "status": "pass",
+    "dashboardAsset": "/assets/Dashboard-i8qs-VZP.js",
+    "cssAsset": "/assets/Dashboard-D8hjs8Cs.css",
+    "checks": [
+      {
+        "path": "/",
+        "status": 200,
+        "bytes": 1237
+      },
+      {
+        "path": "/boot-theme.js",
+        "status": 200,
+        "bytes": 407
+      },
+      {
+        "path": "/assets/index-1hpBe3jB.js",
+        "status": 200,
+        "bytes": 433994
+      },
+      {
+        "path": "/assets/primer-e7IFQoym.js",
+        "status": 200,
+        "bytes": 779295
+      },
+      {
+        "path": "/assets/primer-DTSh1TNY.css",
+        "status": 200,
+        "bytes": 177979
+      },
+      {
+        "path": "/assets/index-DtEjj3U5.css",
+        "status": 200,
+        "bytes": 304540
+      },
+      {
+        "path": "/boot-fallback.js",
+        "status": 200,
+        "bytes": 956
+      },
+      {
+        "path": "/assets/Dashboard-i8qs-VZP.js",
+        "status": 200,
+        "bytes": 42652
+      },
+      {
+        "path": "/assets/Dashboard-D8hjs8Cs.css",
+        "status": 200,
+        "bytes": 1683
+      },
+      {
+        "path": "/sw.js",
+        "status": 200,
+        "bytes": 24300
+      },
+      {
+        "path": "/login",
+        "status": 200,
+        "bytes": 1237
+      },
+      {
+        "path": "/perfil",
+        "status": 200,
+        "bytes": 1237
+      }
+    ],
+    "browserChecks": [
+      {
+        "width": 390,
+        "url": "https://treinosacademia-ten.vercel.app/login",
+        "errors": [],
+        "unexpectedPermissionPrompts": 0,
+        "overflow": false
+      },
+      {
+        "width": 1366,
+        "url": "https://treinosacademia-ten.vercel.app/login",
+        "errors": [],
+        "unexpectedPermissionPrompts": 0,
+        "overflow": false
+      }
+    ],
+    "scope": "HTTP e Chromium anônimo em produção; nenhum login, RPC autenticada ou envio de Push real"
+  },
+  "migrationsApplied": 0,
+  "edgeFunctionsDeployed": 0,
+  "productionDataWritesForTesting": false,
+  "realPushSent": false,
+  "validation": {
+    "javascriptTestsPassed": 1934,
+    "functionTestsPassed": 151,
+    "functionTestsSkipped": 1,
+    "chromiumMockedScenariosPassed": 23,
+    "prepublishFocusedTestsPassed": 60,
+    "lintErrors": 0,
+    "preexistingLintWarnings": 14,
+    "build": "pass",
+    "budget": "pass",
+    "format": "changed-files-pass; preexisting-global-failures"
+  },
+  "notes": [
+    "Preexisting unrelated documentation edits excluded from commit",
+    "Publication evidence recorded locally after deployment; no second deployment solely for documentation",
+    "First production harness missed the lazy CSS asset; only discovery was corrected, final smoke passed"
+  ]
+}

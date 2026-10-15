@@ -1,0 +1,323 @@
+{
+  "status": "published_production_ready_verified",
+  "repository": "Danielalveslira/treinos_academia",
+  "account": "Danielalveslira",
+  "branch": "main",
+  "remote": "origin",
+  "commit": "9295d2aedcd9cadb82e2847080ab2abe229bb784",
+  "remote_sha": "9295d2aedcd9cadb82e2847080ab2abe229bb784",
+  "normal_push": true,
+  "vercel": {
+    "id": "dpl_57siGCxCebgYfHj3n5ZcTusYzH8E",
+    "name": "treinos_academia",
+    "url": "treinosacademia-1sjweomkv-danielalvesliras-projects.vercel.app",
+    "target": "production",
+    "readyState": "READY",
+    "createdAt": 1791918556974,
+    "duration": {
+      "startTime": 1791918559276,
+      "timeToReady": 36946
+    },
+    "buildMachine": {
+      "cores": 2,
+      "memory": 8192,
+      "machine": "basic",
+      "selectionType": "fixed",
+      "selectionSource": "plan-default"
+    },
+    "aliases": [
+      "treinosacademia-ten.vercel.app",
+      "treinosacademia-danielalvesliras-projects.vercel.app",
+      "treinosacademia-git-main-danielalvesliras-projects.vercel.app"
+    ],
+    "builds": [
+      {
+        "id": "bld_qary5hdyt",
+        "deploymentId": "dpl_57siGCxCebgYfHj3n5ZcTusYzH8E",
+        "entrypoint": ".",
+        "readyState": "READY",
+        "readyStateAt": 1791918556842,
+        "createdAt": 1791918556842,
+        "createdIn": "sfo1",
+        "use": "@vercel/vc-build",
+        "config": {
+          "framework": "vite",
+          "nodeVersion": "24.x",
+          "projectCreatedAt": 1788894575457,
+          "vercelConfig": {
+            "rewrites": [
+              {
+                "source": "/((?!assets/|icons/|.*\\.[\\w]+$).*)",
+                "destination": "/index.html"
+              }
+            ],
+            "headers": [
+              {
+                "source": "/assets/(.*)",
+                "headers": [
+                  {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=31536000, immutable"
+                  }
+                ]
+              },
+              {
+                "source": "/img/(.*)",
+                "headers": [
+                  {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=2592000"
+                  }
+                ]
+              },
+              {
+                "source": "/sw.js",
+                "headers": [
+                  {
+                    "key": "Cache-Control",
+                    "value": "no-cache"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "middleware": [],
+        "output": [],
+        "fingerprint": null
+      }
+    ],
+    "contextName": "danielalvesliras-projects"
+  },
+  "github": {
+    "state": "success",
+    "statuses": [
+      {
+        "context": "Vercel",
+        "state": "success",
+        "target_url": "https://vercel.com/danielalvesliras-projects/treinos_academia/57siGCxCebgYfHj3n5ZcTusYzH8E"
+      }
+    ]
+  },
+  "tests": {
+    "javascript_pass": 1912,
+    "javascript_fail": 0,
+    "functions_pass": 151,
+    "functions_skip_preexisting": 1,
+    "local_browser_matrix": 16,
+    "local_browser_full_flow": 4,
+    "lint_errors": 0,
+    "lint_warnings_preexisting": 14,
+    "build": "passed"
+  },
+  "production_smoke": {
+    "origin": "https://treinosacademia-ten.vercel.app",
+    "startedAt": "2026-10-13T19:11:58.004Z",
+    "readOnlyContent": true,
+    "cases": [
+      {
+        "width": 320,
+        "dark": false,
+        "zoom": {
+          "x": 16,
+          "y": 275.5,
+          "width": 288,
+          "height": 337,
+          "imageWidth": 256,
+          "imageHeight": 256,
+          "objectFit": "contain"
+        },
+        "closeX": true,
+        "closeEscape": true,
+        "focusRestored": true,
+        "backgroundScrollLocked": true,
+        "noExtraZoomQueries": true,
+        "localFilePreviewOnly": true
+      },
+      {
+        "width": 320,
+        "dark": true,
+        "zoom": {
+          "x": 16,
+          "y": 275.5,
+          "width": 288,
+          "height": 337,
+          "imageWidth": 256,
+          "imageHeight": 256,
+          "objectFit": "contain"
+        },
+        "closeX": true,
+        "closeEscape": true,
+        "focusRestored": true,
+        "backgroundScrollLocked": true,
+        "noExtraZoomQueries": true,
+        "localFilePreviewOnly": true
+      },
+      {
+        "width": 390,
+        "dark": false,
+        "zoom": {
+          "x": 16,
+          "y": 240.5,
+          "width": 358,
+          "height": 407,
+          "imageWidth": 326,
+          "imageHeight": 326,
+          "objectFit": "contain"
+        },
+        "closeX": true,
+        "closeEscape": true,
+        "focusRestored": true,
+        "backgroundScrollLocked": true,
+        "noExtraZoomQueries": true,
+        "localFilePreviewOnly": true
+      },
+      {
+        "width": 390,
+        "dark": true,
+        "zoom": {
+          "x": 16,
+          "y": 240.5,
+          "width": 358,
+          "height": 407,
+          "imageWidth": 326,
+          "imageHeight": 326,
+          "objectFit": "contain"
+        },
+        "closeX": true,
+        "closeEscape": true,
+        "focusRestored": true,
+        "backgroundScrollLocked": true,
+        "noExtraZoomQueries": true,
+        "localFilePreviewOnly": true
+      },
+      {
+        "width": 768,
+        "dark": false,
+        "zoom": {
+          "x": 104,
+          "y": 177.5,
+          "width": 560,
+          "height": 609,
+          "imageWidth": 528,
+          "imageHeight": 528,
+          "objectFit": "contain"
+        },
+        "closeX": true,
+        "closeEscape": true,
+        "focusRestored": true,
+        "backgroundScrollLocked": true,
+        "noExtraZoomQueries": true,
+        "localFilePreviewOnly": true
+      },
+      {
+        "width": 768,
+        "dark": true,
+        "zoom": {
+          "x": 104,
+          "y": 177.5,
+          "width": 560,
+          "height": 609,
+          "imageWidth": 528,
+          "imageHeight": 528,
+          "objectFit": "contain"
+        },
+        "closeX": true,
+        "closeEscape": true,
+        "focusRestored": true,
+        "backgroundScrollLocked": true,
+        "noExtraZoomQueries": true,
+        "localFilePreviewOnly": true
+      },
+      {
+        "width": 1366,
+        "dark": false,
+        "zoom": {
+          "x": 403,
+          "y": 177.5,
+          "width": 560,
+          "height": 609,
+          "imageWidth": 528,
+          "imageHeight": 528,
+          "objectFit": "contain"
+        },
+        "closeX": true,
+        "closeEscape": true,
+        "focusRestored": true,
+        "backgroundScrollLocked": true,
+        "noExtraZoomQueries": true,
+        "localFilePreviewOnly": true
+      },
+      {
+        "width": 1366,
+        "dark": true,
+        "zoom": {
+          "x": 403,
+          "y": 177.5,
+          "width": 560,
+          "height": 609,
+          "imageWidth": 528,
+          "imageHeight": 528,
+          "objectFit": "contain"
+        },
+        "closeX": true,
+        "closeEscape": true,
+        "focusRestored": true,
+        "backgroundScrollLocked": true,
+        "noExtraZoomQueries": true,
+        "localFilePreviewOnly": true
+      }
+    ],
+    "checks": [
+      "production 320px light complete prompts and controls",
+      "production 320px light incomplete prompts and controls",
+      "production 320px light reload, console and responsiveness",
+      "production 320px dark complete prompts and controls",
+      "production 320px dark incomplete prompts and controls",
+      "production 320px dark reload, console and responsiveness",
+      "production 390px light complete prompts and controls",
+      "production 390px light incomplete prompts and controls",
+      "production 390px light reload, console and responsiveness",
+      "production 390px dark complete prompts and controls",
+      "production 390px dark incomplete prompts and controls",
+      "production 390px dark reload, console and responsiveness",
+      "production 768px light complete prompts and controls",
+      "production 768px light incomplete prompts and controls",
+      "production 768px light reload, console and responsiveness",
+      "production 768px dark complete prompts and controls",
+      "production 768px dark incomplete prompts and controls",
+      "production 768px dark reload, console and responsiveness",
+      "production 1366px light complete prompts and controls",
+      "production 1366px light incomplete prompts and controls",
+      "production 1366px light reload, console and responsiveness",
+      "production 1366px dark complete prompts and controls",
+      "production 1366px dark incomplete prompts and controls",
+      "production 1366px dark reload, console and responsiveness",
+      "all visual style profiles unchanged, V2 still active",
+      "existing published and archived versions and asset refs unchanged",
+      "active catalog and all published media refs unchanged",
+      "original published sample images unchanged byte for byte",
+      "no image or version mutation requested"
+    ],
+    "forbiddenRequests": [],
+    "consoleErrors": [],
+    "pageErrors": [],
+    "httpErrors": [],
+    "complete": true,
+    "finishedAt": "2026-10-13T19:12:38.075Z"
+  },
+  "backend_changes": {
+    "migrations_applied": 0,
+    "edge_functions_deployed": 0,
+    "supabase_config_changes": 0,
+    "image_uploads": 0,
+    "versions_published_or_deleted": 0
+  },
+  "prior_smoke_attempt": {
+    "test_guard_mistakenly_blocked_HEAD": true,
+    "product_change_required": false,
+    "corrected_and_full_smoke_passed": true
+  },
+  "pending": [],
+  "evidence_updated_after_deploy_not_committed": true
+}
