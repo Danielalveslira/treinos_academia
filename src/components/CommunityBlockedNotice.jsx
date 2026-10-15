@@ -1,14 +1,18 @@
 import { Ban } from 'lucide-react'
 import '../styles/community-access.css'
 
-// Aviso contextual compacto para acesso bloqueado: borda discreta, fundo vinho no tema escuro, ícone pequeno.
-// Banimento é um estado de autorização, não um erro técnico -- por isso NÃO usa o alerta vermelho de erro.
-// `role="status"` anuncia a mudança de estado (ex.: tentativa de entrada recusada) sem interromper.
-export function CommunityBlockedNotice({ title, text, children, className = '' }) {
+// Aviso contextual compacto, direto no cartão que disparou a ação (nunca um toast
+// flutuando no topo da página -- ver Communities.jsx): borda discreta, fundo vinho no
+// tema escuro, ícone pequeno. `icon` deixa o mesmo visual servir tanto o estado de
+// autorização (banimento, ícone padrão Ban) quanto um erro técnico genérico (entrar/sair
+// que falhou, chamador passa icon={AlertIcon}). `role="status"` anuncia a mudança sem
+// interromper.
+export function CommunityBlockedNotice({ title, text, children, className = '', icon }) {
+  const Icon = icon || Ban
   return (
     <div className={`community-blocked-notice ${className}`.trim()} role="status">
       <span className="community-blocked-notice-icon" aria-hidden="true">
-        <Ban size={16} />
+        <Icon size={16} />
       </span>
       <div className="community-blocked-notice-body">
         <p className="community-blocked-notice-title">{title}</p>

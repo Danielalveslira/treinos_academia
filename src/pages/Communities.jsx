@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Spinner, Button, ActionMenu, ActionList, IconButton } from '@primer/react'
 import {
+  AlertIcon,
   ChevronRightIcon,
   KebabHorizontalIcon,
   PeopleIcon,
@@ -13,11 +14,11 @@ import {
 import { Compass } from 'lucide-react'
 import { useCommunities } from '../hooks/useCommunities'
 import { useCommunityActivity } from '../hooks/useCommunityActivity'
-import { useToast } from '../hooks/useToast'
 import { ErrorState } from '../components/ErrorState'
-import { ToastFlash } from '../components/ToastFlash'
 import { CommunityIcon } from '../components/CommunityIcon'
+import { CommunityCoverImage } from '../components/CommunityCoverImage'
 import { CommunityExploreCard } from '../components/CommunityExploreCard'
+import { CommunityBlockedNotice } from '../components/CommunityBlockedNotice'
 import { ResponsivePicture } from '../components/ResponsivePicture'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { listFeaturedCommunities, recordPromotionClick } from '../services/promotionsService'
@@ -89,11 +90,25 @@ function CommunityActivityStatus({ activity, ready }) {
 // é o maior possível sem nenhum gesto novo. A seta no canto inferior direito é só um
 // reforço visual de "entrar" (decorativa, aria-hidden) -- o alvo de toque continua sendo
 // o cartão inteiro, não só ela.
-function CommunityCard({ community, linkTo, onNavigate, menu, badge, children }) {
+function CommunityCard({ community, linkTo, onNavigate, menu, badge, error, children }) {
+  const hasCover = Boolean(community.coverPath)
   return (
     <article className="community-card">
-      <div className="community-card-top">
-        <CommunityIcon community={community} size={48} />
+      {hasCover && (
+        <>
+          <div className="community-cover">
+            <CommunityCoverImage path={community.coverPath} className="community-cover-image" />
+          </div>
+          {/* O ícone escolhido na criação continua aparecendo mesmo com capa -- só sai da
+              linha do título e passa a sobrepor a borda da capa, menor (mesma classe
+              compartilhada com o cartão de Explorar, ver CommunityExploreCard.jsx). */}
+          <span className="community-cover-icon">
+            <CommunityIcon community={community} size={40} />
+          </span>
+        </>
+      )}
+      <div className={`community-card-top${hasCover ? ' community-card-top--with-cover' : ''}`}>
+        {!hasCover && <CommunityIcon community={community} size={48} />}
         <div className="community-card-info">
           <RouterLink to={linkTo} className="community-card-link" onClick={onNavigate}>
             {community.name}
@@ -106,6 +121,13 @@ function CommunityCard({ community, linkTo, onNavigate, menu, badge, children })
         {menu && <div className="community-card-menu">{menu}</div>}
       </div>
       {children}
+      {error && (
+        <CommunityBlockedNotice
+          className="community-blocked-notice--in-card"
+          icon={AlertIcon}
+          title={error}
+        />
+      )}
       <span className="community-card-chevron" aria-hidden="true">
         <ChevronRightIcon size={16} />
       </span>
@@ -149,11 +171,13 @@ export default function Communities() {
   const { activity, isActivityChecked, reloadActivity } = useCommunityActivity(
     myCommunities.map((community) => community.id)
   )
-  const { toasts, showToast } = useToast()
   const membershipLock = useRef(false)
   const [pendingCommunityId, setPendingCommunityId] = useState(null)
-  // Cartão cuja tentativa de entrada acabou de ser recusada por banimento (mostra o aviso compacto nele).
-  const [blockedNoticeId, setBlockedNoticeId] = useState(null)
+  // Erro da última entrada/saída, só no cartão que disparou a ação -- nunca um toast
+  // flutuando no topo da página (ficava atrás da imagem da capa do hero). Sucesso não
+  // mostra nenhum aviso: o cartão já muda de lista/seção sozinho, o que já é a
+  // confirmação visual. { communityId, kind: 'banned' | 'error', title?, text? } | null
+  const [actionError, setActionError] = useState(null)
 
   // Fase 6 -- "comunidades em destaque" (promovidas com EvoCash pelo próprio dono).
   // communities não é restrita por membership na leitura (ver policy communities_select),
@@ -183,23 +207,30 @@ export default function Communities() {
     setPendingCommunityId(null)
   }
 
+  function clearActionError(communityId) {
+    setActionError((current) => (current?.communityId === communityId ? null : current))
+  }
+
   // O servidor devolve um ESTADO ('joined' | 'already_member' | 'banned' | 'unavailable'). Banimento é
-  // autorização, não erro: o cartão passa a "Acesso bloqueado" com um aviso contextual, sem alerta vermelho no
-  // topo. Só falhas reais (rede, inesperado) viram toast de erro, com mensagem própria e sem texto técnico.
+  // autorização, não erro: o cartão passa a "Acesso bloqueado" com um aviso contextual nele mesmo. Só
+  // falhas reais (rede, inesperado) e indisponibilidade também viram aviso contextual, nunca um toast.
   async function handleJoin(community) {
     if (!beginMembershipChange(community.id)) return
+    clearActionError(community.id)
     try {
       const result = await join(community.id)
       if (result === 'banned') {
-        setBlockedNoticeId(community.id)
+        setActionError({ communityId: community.id, kind: 'banned' })
       } else if (result === 'unavailable') {
-        showToast(COMMUNITY_MESSAGES.unavailable, 'danger')
-      } else {
-        showToast(`Você entrou em ${community.name}.`)
+        setActionError({ communityId: community.id, kind: 'error', title: COMMUNITY_MESSAGES.unavailable })
       }
     } catch (err) {
       console.error('[Communities] join:', err)
-      showToast(describeJoinFailure(classifyReadError(err)), 'danger')
+      setActionError({
+        communityId: community.id,
+        kind: 'error',
+        title: describeJoinFailure(classifyReadError(err)),
+      })
     } finally {
       endMembershipChange()
     }
@@ -207,12 +238,12 @@ export default function Communities() {
 
   async function handleLeave(community) {
     if (!beginMembershipChange(community.id)) return
+    clearActionError(community.id)
     try {
       await leave(community.id)
-      showToast(`Você saiu de ${community.name}.`)
     } catch (err) {
       console.error('[Communities] leave:', err)
-      showToast('Erro ao sair da comunidade.', 'danger')
+      setActionError({ communityId: community.id, kind: 'error', title: 'Erro ao sair da comunidade.' })
     } finally {
       endMembershipChange()
     }
@@ -228,8 +259,6 @@ export default function Communities() {
 
   return (
     <div className="community-page community-page--hub">
-      <ToastFlash toasts={toasts} />
-
       <header className="communities-hero">
         <div className="communities-hero-media" aria-hidden="true">
           <ResponsivePicture
@@ -327,6 +356,9 @@ export default function Communities() {
                         disabled={pendingCommunityId !== null}
                       />
                     }
+                    error={
+                      actionError?.communityId === community.id ? actionError.title : null
+                    }
                   >
                     <CommunityActivityStatus
                       activity={activity[community.id]}
@@ -357,7 +389,7 @@ export default function Communities() {
                     joining={pendingCommunityId === community.id}
                     disabled={pendingCommunityId !== null}
                     onJoin={handleJoin}
-                    showBlockedNotice={blockedNoticeId === community.id}
+                    error={actionError?.communityId === community.id ? actionError : null}
                   />
                 ))}
               </div>

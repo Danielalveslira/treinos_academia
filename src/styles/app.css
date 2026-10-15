@@ -1474,6 +1474,11 @@ body:has(.pwa-offline) .app-shell {
   gap: 12px;
   padding: 14px 6px 14px 14px;
 }
+/* Com capa, o ícone some desta linha (vai pra cima, sobrepondo a borda da capa -- ver
+   .community-cover-icon) e sobra só espaço pro título/membros respirarem abaixo dela. */
+.community-card-top--with-cover {
+  padding-top: 22px;
+}
 .community-card .community-icon {
   border: 1px solid color-mix(in srgb, var(--fitness-accent) 35%, transparent);
 }
@@ -1591,13 +1596,14 @@ body:has(.pwa-offline) .app-shell {
   font-size: 12px;
 }
 
-/* Cartão de "Explorar": capa no topo, ícone redondo sobrepondo a borda inferior dela,
-   corpo com nome/membros/descrição e um botão de largura total. */
+/* Capa com ícone redondo sobrepondo a borda inferior -- compartilhada pelo cartão de
+   "Explorar" e pelo de "Minhas comunidades"/"Em destaque" (qualquer .community-card ou
+   .community-explore-card com community.coverPath usa a mesma capa/ícone). */
 .community-explore-card {
   display: flex;
   flex-direction: column;
 }
-.community-explore-cover {
+.community-cover {
   position: relative;
   height: 72px;
   overflow: hidden;
@@ -1609,19 +1615,21 @@ body:has(.pwa-offline) .app-shell {
     transparent 72%
   );
 }
-.community-explore-cover-image {
+.community-cover-image {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.community-explore-cover-icon {
+.community-cover-icon {
   position: absolute;
   left: 10px;
-  bottom: -18px;
+  /* Capa tem 72px de altura; ícone de 40px fica com o centro na borda inferior dela
+     (72 - 40/2 = 52px do topo do cartão), por isso não usa bottom/overflow da capa. */
+  top: 52px;
 }
-.community-explore-cover-icon .community-icon {
+.community-cover-icon .community-icon {
   border-radius: 50% !important;
   box-shadow: 0 0 0 2px var(--fitness-surface);
 }

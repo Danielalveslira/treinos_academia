@@ -122,11 +122,26 @@ test('banned: mostra "Acesso bloqueado" desabilitado e nenhum Participar', () =>
 test('banned: o aviso contextual só aparece depois de uma tentativa recusada, com a mensagem de produto', () => {
   const quiet = render({ community: community('banned'), onJoin() {} })
   assert.doesNotMatch(textContent(quiet.root), /bloqueado pelos administradores/)
-  const noticed = render({ community: community('banned'), onJoin() {}, showBlockedNotice: true })
+  const noticed = render({
+    community: community('banned'),
+    onJoin() {},
+    error: { kind: 'banned' },
+  })
   const text = textContent(noticed.root)
   assert.match(text, /Você não pode entrar nesta comunidade/)
   assert.match(text, /Seu acesso a esta comunidade foi bloqueado pelos administradores\./)
   assert.doesNotMatch(text, /Erro/)
+})
+
+test('erro genérico (rede/inesperado): mostra o título no próprio cartão, nunca o texto fixo de banimento', () => {
+  const component = render({
+    community: community('not_member'),
+    onJoin() {},
+    error: { kind: 'error', title: 'Não foi possível conectar. Verifique sua internet e tente novamente.' },
+  })
+  const text = textContent(component.root)
+  assert.match(text, /Não foi possível conectar/)
+  assert.doesNotMatch(text, /bloqueado pelos administradores/)
 })
 
 test('unavailable: mensagem própria, desabilitado e sem Participar', () => {

@@ -4,7 +4,7 @@ import { getCachedPhotoUrl, loadPhotoOnce } from '../utils/photoBlobCache'
 
 // Mesma estratégia de ProfileAvatar.jsx (cache de blob: por path, uma única requisição por
 // path mesmo com vários cards montando ao mesmo tempo). Sem cover_path, não renderiza nada
-// -- o chamador decide o fundo de substituição (ver .community-explore-cover em app.css).
+// -- o chamador decide o fundo de substituição (ver .community-cover em app.css).
 export function CommunityCoverImage({ path, className = '' }) {
   const [url, setUrl] = useState(() => (path ? getCachedPhotoUrl(path) || '' : ''))
 
