@@ -107,6 +107,68 @@ test('an active account never sees the disabled-account gate', () => {
   assert.match(html, /CONTEUDO_PROTEGIDO/)
 })
 
+// F1/F1.2 fecharam o gate de autorização no servidor (has_app_access()) para contas em
+// exclusão, suspensas e banidas; o frontend ainda não tinha uma tela dedicada pra nenhum
+// dos 3 -- caíam no genérico "Acesso indisponível" (sem logout nem link de atendimento) ou,
+// no caso de 'deleting', nem isso (nenhum gate reconhecia esse accountStatus).
+test('an account in deletion sees the account-blocked gate, never the protected content', () => {
+  const html = render({
+    ...baseAuth,
+    profile: { ...baseAuth.profile, accountStatus: 'deleting' },
+  })
+  assert.match(html, /Conta em exclusão/)
+  assert.match(html, /href="\/atendimento"/)
+  assert.match(html, /Sair da conta/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('a temporarily suspended account sees the account-blocked gate with the suspension deadline', () => {
+  const html = render({
+    ...baseAuth,
+    legalAccess: {
+      ...baseAuth.legalAccess,
+      restriction: { action: 'temporary_suspension', until: '2099-01-01T12:00:00Z' },
+    },
+  })
+  assert.match(html, /Conta suspensa temporariamente/)
+  assert.match(html, /href="\/atendimento"/)
+  assert.match(html, /Sair da conta/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('an expired temporary suspension never triggers the account-blocked gate', () => {
+  const html = render({
+    ...baseAuth,
+    legalAccess: {
+      ...baseAuth.legalAccess,
+      restriction: { action: 'temporary_suspension', until: '2020-01-01T12:00:00Z' },
+    },
+  })
+  assert.doesNotMatch(html, /Conta suspensa temporariamente/)
+  assert.match(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('a permanently banned account sees the account-blocked gate and the appeal-prefilled support link', () => {
+  const html = render({
+    ...baseAuth,
+    legalAccess: { ...baseAuth.legalAccess, restriction: { action: 'system_ban', until: null } },
+  })
+  assert.match(html, /Conta banida/)
+  assert.match(html, /href="\/atendimento\?tipo=appeal"/)
+  assert.match(html, /Sair da conta/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('accountStatus deleting/disabled take priority over an account_restrictions row (defensive, should never coexist)', () => {
+  const html = render({
+    ...baseAuth,
+    profile: { ...baseAuth.profile, accountStatus: 'disabled', disabledReason: 'Spam' },
+    legalAccess: { ...baseAuth.legalAccess, restriction: { action: 'system_ban', until: null } },
+  })
+  assert.match(html, /Conta desativada/)
+  assert.doesNotMatch(html, /Conta banida/)
+})
+
 test('legal state still loading shows only a neutral spinner', () => {
   const html = render({ ...baseAuth, legalAccess: null, legalLoading: true })
   assert.match(html, /Verificando acesso/)
@@ -244,7 +306,7 @@ test('a deletion blocked for financial review shows its own gate, never the gene
 // (link navegável, não só a palavra no texto) e nunca citar saldo/valor -- getMyDeletionStatus
 // já nunca devolve isso, mas a própria cópia da tela reforça essa garantia por conta
 // própria. "Sair da conta" precisa existir para permitir encerrar a sessão manualmente
-// (ver DisabledAccountGate, mesmo padrão), já que aqui a sessão não é encerrada sozinha.
+// (ver AccountBlockedGate, mesmo padrão), já que aqui a sessão não é encerrada sozinha.
 test('the financial-review gate links to /atendimento, offers a manual sign-out, and never mentions a balance', () => {
   const html = render({
     ...baseAuth,

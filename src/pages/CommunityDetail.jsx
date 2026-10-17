@@ -61,6 +61,7 @@ import { readAdHint, writeAdHint } from '../utils/adSlotHint'
 import { applyEconomyVoteCountDeltaToList } from '../utils/economyVoteCountDelta'
 import { publicationIdFromHash } from '../utils/share'
 import { publicationErrorMessage } from '../utils/publicationError'
+import { describeAccountAccessError } from '../utils/accountAccessErrors'
 import { isStatusLoaded } from '../utils/sharedStatus'
 import '../styles/community-feed.css'
 
@@ -512,7 +513,10 @@ function CommunityDetail({ id }) {
       showToast('Comunidade atualizada.')
     } catch (err) {
       console.error('[CommunityDetail] updateCommunity:', err)
-      showToast('Erro ao atualizar a comunidade.', 'danger')
+      showToast(
+        describeAccountAccessError(err?.message) || 'Erro ao atualizar a comunidade.',
+        'danger'
+      )
       throw err
     }
   }
@@ -532,7 +536,10 @@ function CommunityDetail({ id }) {
       showToast(community.isActive ? 'Comunidade desativada.' : 'Comunidade reativada.')
     } catch (err) {
       console.error('[CommunityDetail] setCommunityActive:', err)
-      showToast('Erro ao alterar o status da comunidade.', 'danger')
+      showToast(
+        describeAccountAccessError(err?.message) || 'Erro ao alterar o status da comunidade.',
+        'danger'
+      )
     }
   }
 
@@ -706,7 +713,10 @@ function CommunityDetail({ id }) {
       return true
     } catch (err) {
       console.error('[CommunityDetail] delete:', err)
-      throw new Error('Não foi possível excluir a publicação.', { cause: err })
+      throw new Error(
+        describeAccountAccessError(err?.message) || 'Não foi possível excluir a publicação.',
+        { cause: err }
+      )
     }
   }
 

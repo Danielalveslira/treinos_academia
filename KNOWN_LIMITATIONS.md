@@ -40,7 +40,7 @@ associado, risco de regressão maior que o benefício imediato).
 | # | Achado | Commit(s) |
 |---|---|---|
 | 1 | XSS via `ctaTarget` em anúncios patrocinados — `href="javascript:..."` executava no clique. Allowlist de esquema (`https://` para externo, uma barra só para interno) aplicada em `validateSponsoredAd()` e `isValidSponsoredAd()`. | `5a88814` |
-| 2 | Conta desativada (`accountStatus: 'disabled'`) não força logout — `setAccountStatus` nunca revoga o token do Auth, então não vira "sessão fantasma" detectável. `DisabledAccountGate` bloqueia em `ProtectedRoute` antes de qualquer outro gate. | `069f549` |
+| 2 | Conta desativada (`accountStatus: 'disabled'`) não força logout — `setAccountStatus` nunca revoga o token do Auth, então não vira "sessão fantasma" detectável. `DisabledAccountGate` bloqueia em `ProtectedRoute` antes de qualquer outro gate. (Substituído por `AccountBlockedGate`, que generaliza o mesmo bloqueio para deleting/suspensa/banida — ver tarefa de UI de conta bloqueada pós-F1/F1.2.) | `069f549` |
 | 3 | Sem rate limit de publicações — ver detalhe abaixo. | `502e8cc`, `c927e98`, `b68df3c`, `9b79a26` |
 
 ## Pendências aceitas

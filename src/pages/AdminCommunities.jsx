@@ -12,6 +12,7 @@ import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { RowActionsMenu } from '../components/RowActionsMenu'
 import AdminNav from '../components/AdminNav'
+import { describeAccountAccessError } from '../utils/accountAccessErrors'
 
 export default function AdminCommunities() {
   const {
@@ -73,7 +74,7 @@ export default function AdminCommunities() {
       showToast('Comunidade atualizada.')
     } catch (err) {
       console.error('[AdminCommunities] update:', err)
-      showToast('Erro ao atualizar comunidade.', 'danger')
+      showToast(describeAccountAccessError(err?.message) || 'Erro ao atualizar comunidade.', 'danger')
     }
   }
 
@@ -84,7 +85,7 @@ export default function AdminCommunities() {
       showToast(community.isActive ? 'Comunidade desativada.' : 'Comunidade ativada.')
     } catch (err) {
       console.error('[AdminCommunities] toggleActive:', err)
-      showToast('Erro ao alterar status.', 'danger')
+      showToast(describeAccountAccessError(err?.message) || 'Erro ao alterar status.', 'danger')
     } finally {
       endRowAction()
     }

@@ -4,6 +4,7 @@ import { useWallet } from '../hooks/useWallet'
 import { createPromotion, getPromotionPackages } from '../services/promotionsService'
 import { resolveRequestId } from '../utils/cashPurchaseFlow'
 import { formatDateTime } from '../utils/format'
+import { describeAccountAccessError } from '../utils/accountAccessErrors'
 
 // Fase 6 (promoções pagas com EvoCash) -- pacote fixo, duração fixa, sem CPC/CPM/
 // leilão. Mesmo fluxo idempotente de EvoCash.jsx/CreateCommunity.jsx
@@ -98,7 +99,10 @@ export function PromoteDialogBody({ targetType, targetId, onPromoted }) {
       dispatch({
         type: 'submit_error',
         pendingAttempt: { key: selectedPackageId, requestId },
-        message: KNOWN_ERRORS[err?.message] || 'Não foi possível criar a promoção. Tente novamente.',
+        message:
+          KNOWN_ERRORS[err?.message] ||
+          describeAccountAccessError(err?.message) ||
+          'Não foi possível criar a promoção. Tente novamente.',
       })
     }
   }

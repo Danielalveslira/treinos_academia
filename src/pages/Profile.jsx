@@ -21,6 +21,7 @@ import { setUsageProfile } from '../services/usageProfileService'
 import { toDate } from '../utils/date'
 import { ProfileAvatar } from '../components/ProfileAvatar'
 import { removeProfileAvatar, uploadProfileAvatar } from '../services/profileAvatarService'
+import { describeAccountAccessError } from '../utils/accountAccessErrors'
 import { PushNotificationSettings } from '../features/notifications/components/PushNotificationSettings'
 import { GREETING_V2_ENABLED } from '../features/greetings/config'
 import { GreetingVoiceSettings } from '../features/greetings/GreetingVoiceSettings'
@@ -95,7 +96,9 @@ export default function Profile() {
       } else {
         console.error('[Profile] save:', err)
         setFieldErrors({
-          form: 'Não foi possível salvar. Suas alterações foram mantidas. Tente novamente.',
+          form:
+            describeAccountAccessError(err.message) ||
+            'Não foi possível salvar. Suas alterações foram mantidas. Tente novamente.',
         })
       }
     } finally {
@@ -120,7 +123,7 @@ export default function Profile() {
       setAvatarError(
         error?.message === 'AVATAR_TOO_LARGE'
           ? 'A imagem compactada ultrapassou 1 MB. Escolha outra foto.'
-          : 'Não foi possível atualizar a foto.'
+          : describeAccountAccessError(error?.message) || 'Não foi possível atualizar a foto.'
       )
     } finally {
       setAvatarBusy(false)
