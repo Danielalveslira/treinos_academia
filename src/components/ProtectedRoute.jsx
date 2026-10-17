@@ -4,10 +4,10 @@ import { PublicLayout } from './PublicLayout'
 import { useAuth } from '../hooks/useAuth'
 import { LegalGate } from './LegalGate'
 import { EmailVerificationGate } from './EmailVerificationGate'
-import { DisabledAccountGate } from './DisabledAccountGate'
+import { AccountBlockedGate } from './AccountBlockedGate'
 import { AccountDeletionBlockedGate } from './AccountDeletionBlockedGate'
 import { requiresEmailVerification } from '../utils/emailVerification'
-import { resolveLegalGateState } from '../utils/legal'
+import { resolveAccountBlockState, resolveLegalGateState } from '../utils/legal'
 
 export function ProtectedRoute({ children }) {
   const {
@@ -62,18 +62,33 @@ export function ProtectedRoute({ children }) {
     )
   }
 
-  // Checado antes de tudo (inclusive verificação de e-mail): uma conta desativada não
-  // precisa nem deveria ver "confirme seu e-mail" ou "aceite os documentos" — o próprio
-  // motivo de estar aqui é não ter mais acesso, então esse é sempre o primeiro aviso.
-  // Ver DisabledAccountGate para por que este gate existe (setAccountStatus não revoga o
-  // token do Auth, então não vira uma "sessão fantasma" detectável por
-  // handlePossibleGhostSession).
-  if (profile?.accountStatus === 'disabled') {
-    return <DisabledAccountGate reason={profile.disabledReason} />
+  // Checado antes de tudo (inclusive verificação de e-mail): uma conta desativada, em
+  // exclusão, suspensa ou banida não precisa nem deveria ver "confirme seu e-mail" ou
+  // "aceite os documentos" — o próprio motivo de estar aqui é não ter mais acesso, então
+  // esse é sempre o primeiro aviso. setAccountStatus/aplicar uma restrição não revogam o
+  // token do Auth, então nunca viram uma "sessão fantasma" detectável por
+  // handlePossibleGhostSession — sem este gate a pessoa continuaria "logada" normalmente
+  // enquanto toda outra leitura/escrita do app já falha via RLS/has_app_access(), sem
+  // nunca dizer o motivo (ver AccountBlockedGate.jsx).
+  const blockState = resolveAccountBlockState({ profile, restriction: legalAccess?.restriction })
+  if (blockState) {
+    return (
+      <AccountBlockedGate
+        state={blockState}
+        reason={profile.disabledReason}
+        until={legalAccess?.restriction?.until}
+      />
+    )
   }
 
   // Um perfil legível não concede acesso: a RPC do servidor é a última autoridade. Pendência de
   // termos segue para o LegalGate; qualquer outra negativa não monta as telas protegidas.
+  // Na prática, com blockState acima já cobrindo deleting/disabled/restrição, o servidor só
+  // devolveria false aqui por um motivo que o cliente ainda não detectou (email/termos já
+  // tratados antes de chegar aqui, ou um desalinhamento momentâneo cliente/servidor) —
+  // mantido como última linha de defesa,
+  // nunca removido, pelo mesmo motivo de has_app_access() ficar como fallback em
+  // create_promotion no backend (defesa em profundidade, não um caminho esperado).
   if (
     !offlineLocal &&
     serverAccessAllowed === false &&

@@ -123,6 +123,20 @@ export function isAccountRestricted(restriction, now = Date.now()) {
   return restriction.action === 'temporary_suspension' && until > now
 }
 
+// Estado de bloqueio da conta para fins de UI (gate), numa ordem de precedência fixa --
+// 'deleting'/'disabled' (users.account_status) sempre primeiro, pois são mais definitivos que
+// uma restrição que pode já ter expirado. Usa a MESMA checagem de restrição de
+// isAccountRestricted (nunca reimplementada), só que distinguindo banida de suspensa (que
+// isAccountRestricted colapsa num booleano só, suficiente para o LegalGate mas não para
+// escolher qual aviso mostrar). null = conta sem bloqueio conhecido no momento.
+export function resolveAccountBlockState({ profile, restriction, now = Date.now() }) {
+  if (!profile) return null
+  if (profile.accountStatus === 'deleting') return 'deleting'
+  if (profile.accountStatus === 'disabled') return 'disabled'
+  if (!isAccountRestricted(restriction, now)) return null
+  return restriction.action === 'system_ban' ? 'banned' : 'suspended'
+}
+
 // LegalGate.jsx: a policy é considerada desatualizada quando a versão publicada em
 // legalPolicy/current diverge da versão que este bundle espera, ou quando ela ainda
 // não foi publicada -- nos dois casos, ninguém deveria conseguir aceitar (o servidor

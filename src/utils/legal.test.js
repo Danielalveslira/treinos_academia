@@ -12,6 +12,7 @@ import {
   isLegalPolicyOutdated,
   legalConsentDocumentLinks,
   needsLegalAcceptance,
+  resolveAccountBlockState,
   resolveLegalBundle,
   resolveLegalGateState,
   selectLegalDocument,
@@ -161,4 +162,48 @@ test('cliente que não conhece a versão publicada fica em "policy-unavailable" 
   // quem já aceitou a versão que o bundle conhece NÃO é mandado aceitar de novo (sem piscar a tela de aceite)
   const fresh = await active(LEGAL_MANIFEST.version)
   assert.equal(resolveLegalGateState({ profile: profile('user'), access: access(fresh), loading: false, error: null }), 'allowed')
+})
+
+// F1.2 (correção pós-F1): ProtectedRoute.jsx usa resolveAccountBlockState para decidir qual
+// aviso mostrar a uma conta bloqueada -- ver src/components/AccountBlockedGate.jsx. Testado
+// aqui como função pura (sem React) para cobrir a ordem de precedência e os limites de tempo
+// da suspensão sem precisar renderizar nada.
+test('resolveAccountBlockState: account_status (deleting/disabled) sempre vence restrição, mesmo coexistindo', () => {
+  const restriction = { action: 'system_ban', until: null }
+  assert.equal(resolveAccountBlockState({ profile: { accountStatus: 'deleting' }, restriction }), 'deleting')
+  assert.equal(resolveAccountBlockState({ profile: { accountStatus: 'disabled' }, restriction }), 'disabled')
+})
+
+test('resolveAccountBlockState: distingue banida (system_ban) de suspensa (temporary_suspension ainda vigente)', () => {
+  const now = Date.parse('2026-06-01T00:00:00Z')
+  assert.equal(
+    resolveAccountBlockState({
+      profile: { accountStatus: 'active' },
+      restriction: { action: 'system_ban', until: null },
+      now,
+    }),
+    'banned'
+  )
+  assert.equal(
+    resolveAccountBlockState({
+      profile: { accountStatus: 'active' },
+      restriction: { action: 'temporary_suspension', until: '2026-07-01T00:00:00Z' },
+      now,
+    }),
+    'suspended'
+  )
+})
+
+test('resolveAccountBlockState: suspensão já vencida e conta sem restrição não bloqueiam', () => {
+  const now = Date.parse('2026-06-01T00:00:00Z')
+  assert.equal(
+    resolveAccountBlockState({
+      profile: { accountStatus: 'active' },
+      restriction: { action: 'temporary_suspension', until: '2026-01-01T00:00:00Z' },
+      now,
+    }),
+    null
+  )
+  assert.equal(resolveAccountBlockState({ profile: { accountStatus: 'active' }, restriction: null }), null)
+  assert.equal(resolveAccountBlockState({ profile: null, restriction: { action: 'system_ban' } }), null)
 })
