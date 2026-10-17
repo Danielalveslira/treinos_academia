@@ -1,3 +1,16 @@
+-- PREMISSA DESTE TESTE: a rotina de expiração nasce pausada ("instalada mas não ativada", estado
+-- introduzido por 20261028000001_status_expiration.sql e só ligado depois, em produção, pela
+-- migration separada de ativação 20261028000003_activate_status_expiration.sql -- um gate manual
+-- de release, não uma migration qualquer). Numa base construída do zero com TODAS as migrations
+-- aplicadas em sequência (ex.: o baseline completo de supabase/tests), essa migration de ativação
+-- já roda antes deste arquivo, e com ela já roda um primeiro process_expired_statuses(50) --
+-- processando parte do backlog antes mesmo deste teste montar seus próprios dados. Por isso,
+-- dentro da própria transação com rollback deste arquivo, este teste redefine explicitamente o
+-- estado "pausado" que as duas primeiras asserções abaixo precisam, em vez de depender de onde,
+-- na cadeia de migrations, ele é executado. Isso preserva o objetivo original de cada asserção:
+-- as duas primeiras ainda verificam o comportamento da rotina quando pausada; a partir da
+-- ativação explícita (linha com "set enabled=true" mais abaixo), o resto do arquivo testa a
+-- rotina ativa exatamente como antes.
 begin;
 select no_plan();
 insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
@@ -43,6 +56,9 @@ create temp table finance_before as select
  (select jsonb_agg(to_jsonb(t) order by id) from public.economy_transactions t) ledger,
  (select jsonb_agg(to_jsonb(t) order by id) from public.cash_purchases t) purchases,
  (select jsonb_agg(to_jsonb(t)-'status'-'cancelled_at'-'cancelled_by'-'cancel_reason' order by id) from public.promotions t) promotions;
+-- Fixa o estado inicial que este teste precisa (ver nota no cabeçalho do arquivo), em vez de
+-- presumir que nenhuma migration de ativação já rodou antes dele.
+update public.status_expiration_control set enabled=false where id;
 select ok(not (select enabled from public.status_expiration_control where id),'install paused');
 select is(public.process_expired_statuses()->>'paused','true','paused routine never deletes');
 select throws_ok($$select public.process_expired_statuses(101)$$,'P0001','INVALID_BATCH_SIZE','bounded batch');

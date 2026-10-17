@@ -23,9 +23,13 @@ update private.comment_rate_limits set min_interval = interval '0 seconds', burs
 create or replace function pg_temp.as_user(p text) returns void language sql as
   $$select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-0000000000' || p, true)$$;
 -- Insere uma foto do jeito do app (createPhotoStatus): como o próprio usuário, passando pela RLS (invoker).
-create or replace function pg_temp.photo(p_id text, p_kind text default null, p_start date default null, p_end date default null) returns void language sql as
+-- p_author (padrão '01'): o 6º insert abaixo usa '02' para não acumular 6 publicações/minuto no
+-- mesmo usuário e tropeçar no limite de 5/min de 20261101000001_aud07_status_publication_rate.sql
+-- (migration posterior a este teste; o limite em si já é testado isoladamente e com sucesso em
+-- aud07_status_publication_rate_test.sql -- aqui só evitamos disparar o limite de outro teste).
+create or replace function pg_temp.photo(p_id text, p_kind text default null, p_start date default null, p_end date default null, p_author text default '01') returns void language sql as
   $f$insert into public.statuses (id, community_id, author_id, type, photo_path, photo_caption, progress_kind, progress_period_start, progress_period_end)
-     values (('93000000-0000-0000-0000-0000000000' || p_id)::uuid, '92000000-0000-0000-0000-000000000001', '91000000-0000-0000-0000-000000000001', 'photo',
+     values (('93000000-0000-0000-0000-0000000000' || p_id)::uuid, '92000000-0000-0000-0000-000000000001', ('91000000-0000-0000-0000-0000000000' || p_author)::uuid, 'photo',
              'statusPhotos/92000000-0000-0000-0000-000000000001/93000000-0000-0000-0000-0000000000' || p_id || '.webp',
              'Semana concluída 💪', p_kind, p_start, p_end)$f$;
 
@@ -38,7 +42,10 @@ select lives_ok($$select pg_temp.photo('11', 'perfect_week', '2026-09-28', '2026
 select lives_ok($$select pg_temp.photo('12', 'week', '2026-09-28', '2026-10-04')$$, 'week');
 select lives_ok($$select pg_temp.photo('13', 'month', '2026-10-01', '2026-10-31')$$, 'month');
 select lives_ok($$select pg_temp.photo('14', 'quarter', '2026-10-01', '2026-12-31')$$, 'quarter (92 dias)');
-select lives_ok($$select pg_temp.photo('15')$$, 'foto comum continua sem metadado');
+-- Usuário '02' (também membro da comunidade) só para este insert, por causa do limite de 5/min.
+select pg_temp.as_user('02');
+select lives_ok($$select pg_temp.photo('15', null, null, null, '02')$$, 'foto comum continua sem metadado');
+select pg_temp.as_user('01');
 select is((select count(*)::int from public.statuses where progress_kind is not null), 5, 'cinco publicações de progresso');
 select ok((select progress_kind is null and progress_period_start is null and progress_period_end is null from public.statuses where id = '93000000-0000-0000-0000-000000000015'), 'foto comum: todos os campos de progresso nulos');
 select is((select type from public.statuses where id = '93000000-0000-0000-0000-000000000012'), 'photo', 'progresso é uma publicação do tipo photo (mesmo pipeline/bucket)');
