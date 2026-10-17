@@ -4,6 +4,7 @@ import { ThumbsupIcon, ThumbsdownIcon } from '@primer/octicons-react'
 import { castVote } from '../services/economyService'
 import { LazyDialogBoundary } from './LazyDialogBoundary'
 import { economyVoteCountDelta } from '../utils/economyVoteCountDelta'
+import { describeAccountAccessError } from '../utils/accountAccessErrors'
 
 // "Quem curtiu" só baixa quando alguém toca no contador.
 const PostSupportersDialog = lazy(() =>
@@ -65,8 +66,11 @@ export function EconomyVoteBar({
       onActionSuccess?.()
     } catch (error) {
       console.error('[EconomyVoteBar] castVote:', error)
+      // error?.message bruto nunca é mostrado diretamente: para os códigos de bloqueio de
+      // conta (PERMISSION_DENIED etc.) era literalmente o código que aparecia no toast.
       showToast?.(
-        error?.message || 'Não foi possível registrar seu voto. Tente novamente.',
+        describeAccountAccessError(error?.message) ||
+          'Não foi possível registrar seu voto. Tente novamente.',
         'danger'
       )
     } finally {

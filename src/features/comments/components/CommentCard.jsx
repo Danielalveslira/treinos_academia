@@ -8,6 +8,7 @@ import { deleteComment, editComment, setCommentLike } from '../api/comments.api'
 import { useReplies } from '../hooks/useReplies'
 import { commentPlaceholder } from '../utils/comments'
 import { CommentComposer } from './CommentComposer'
+import { describeAccountAccessError } from '../../../utils/accountAccessErrors'
 import { CommentReportForm } from './CommentReportForm'
 
 export function CommentCard({
@@ -87,8 +88,8 @@ export function CommentCard({
       setEditing(false)
       setReplying(false)
       setConfirmingDelete(false)
-    } catch {
-      setMessage('Não foi possível excluir o comentário.')
+    } catch (err) {
+      setMessage(describeAccountAccessError(err?.message) || 'Não foi possível excluir o comentário.')
     } finally {
       setPending(false)
     }

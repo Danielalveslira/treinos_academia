@@ -30,6 +30,7 @@ import { EMPTY_LISTING_DRAFT } from '../utils/professionalListing'
 import { shouldShowShowcaseTermsBanner } from '../utils/showcaseLegal'
 import { isEligibleForListingCreation } from '../constants/usageProfile'
 import { UsageProfileField } from '../components/UsageProfileField'
+import { describeAccountAccessError } from '../utils/accountAccessErrors'
 
 // RPCs do Supabase lançam códigos curtos (ver migration
 // 20260929000005_professional_listings.sql), não frases prontas -- esta tela sempre
@@ -212,7 +213,10 @@ export default function MyProfessionalListing() {
     } catch (error) {
       setMessage({
         variant: 'danger',
-        text: KNOWN_ERRORS[error?.message] || 'Não foi possível criar a vitrine.',
+        text:
+          KNOWN_ERRORS[error?.message] ||
+          describeAccountAccessError(error?.message) ||
+          'Não foi possível criar a vitrine.',
       })
     } finally {
       setBusy('')
@@ -255,7 +259,13 @@ export default function MyProfessionalListing() {
       await reload()
       setMessage({ variant: 'success', text: 'Rascunho salvo.' })
     } catch (error) {
-      setMessage({ variant: 'danger', text: KNOWN_ERRORS[error?.message] || 'Não foi possível salvar.' })
+      setMessage({
+        variant: 'danger',
+        text:
+          KNOWN_ERRORS[error?.message] ||
+          describeAccountAccessError(error?.message) ||
+          'Não foi possível salvar.',
+      })
     } finally {
       setBusy('')
     }
@@ -306,7 +316,13 @@ export default function MyProfessionalListing() {
       } catch (reloadError) {
         console.error('[Vitrine] recarregamento após falha de publicação:', reloadError)
       }
-      setMessage({ variant: 'danger', text: KNOWN_ERRORS[error?.message] || 'Não foi possível publicar.' })
+      setMessage({
+        variant: 'danger',
+        text:
+          KNOWN_ERRORS[error?.message] ||
+          describeAccountAccessError(error?.message) ||
+          'Não foi possível publicar.',
+      })
     } finally {
       setBusy('')
     }
