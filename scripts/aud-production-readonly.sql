@@ -53,7 +53,7 @@ select n.nspname, p.proname, pg_get_function_identity_arguments(p.oid) as signat
 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
 where n.nspname in ('public','private') and p.prokind='f' and
  (p.proname in ('delete_own_account','statuses_initialize_identity',
- 'communities_guard_promotion_fields','create_promotion','cancel_promotion',
+ 'communities_guard_promotion_fields','create_promotion','cancel_promotion','cast_vote',
  'queue_deletion','run_deletion_job','ensure_user_profile','set_username','set_birth_info')
  or p.oid in (select tgfoid from pg_trigger where tgrelid in
  ('public.statuses'::regclass,'public.communities'::regclass) and not tgisinternal));

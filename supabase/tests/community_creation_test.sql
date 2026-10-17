@@ -211,19 +211,23 @@ insert into public.community_members (community_id, user_id)
 select (result ->> 'id')::uuid, pg_temp.uid('0a') from created where label in ('essential-coins', 'plus-cash', 'archive-cash');
 set local role authenticated;
 select pg_temp.as_user('0a');
--- o cliente tenta forçar uma data distante: o banco ignora
-insert into public.statuses (id, community_id, author_id, type, text, expires_at)
-select 'c3000000-0000-0000-0000-000000000001', (result ->> 'id')::uuid, pg_temp.uid('0a'), 'text', 'post 24h', now() + interval '100 years'
+-- O cliente nunca define expires_at (mesmo formato do app real, ver src/services/statusesService.js
+-- createPhotoStatus/baseStatusFields: a coluna nunca é incluída no insert). O grant por coluna em
+-- 20261026000005_aud_security_atomic.sql:94-95 nem concede expires_at a authenticated -- o cliente
+-- não consegue nem tentar enviá-la. O servidor decide o valor via gatilho statuses_apply_retention,
+-- a partir do tier da comunidade; é exatamente isso que as asserções abaixo verificam.
+insert into public.statuses (id, community_id, author_id, type, text)
+select 'c3000000-0000-0000-0000-000000000001', (result ->> 'id')::uuid, pg_temp.uid('0a'), 'text', 'post 24h'
   from created where label = 'essential-coins';
-insert into public.statuses (id, community_id, author_id, type, text, expires_at)
-select 'c3000000-0000-0000-0000-000000000002', (result ->> 'id')::uuid, pg_temp.uid('0a'), 'text', 'post 30d', now() + interval '1 hour'
+insert into public.statuses (id, community_id, author_id, type, text)
+select 'c3000000-0000-0000-0000-000000000002', (result ->> 'id')::uuid, pg_temp.uid('0a'), 'text', 'post 30d'
   from created where label = 'plus-cash';
-insert into public.statuses (id, community_id, author_id, type, text, expires_at)
-select 'c3000000-0000-0000-0000-000000000003', (result ->> 'id')::uuid, pg_temp.uid('0a'), 'text', 'post arquivo', now() + interval '1 hour'
+insert into public.statuses (id, community_id, author_id, type, text)
+select 'c3000000-0000-0000-0000-000000000003', (result ->> 'id')::uuid, pg_temp.uid('0a'), 'text', 'post arquivo'
   from created where label = 'archive-cash';
 reset role;
 select ok((select expires_at between now() + interval '23 hours 59 minutes' and now() + interval '24 hours 1 minute' from public.statuses where id = 'c3000000-0000-0000-0000-000000000001'),
-  '24h: expires_at = agora + 24h (o valor do cliente é ignorado)');
+  '24h: expires_at = agora + 24h (decidido pelo servidor a partir do tier, nunca pelo cliente)');
 select is((select retention_mode from public.statuses where id = 'c3000000-0000-0000-0000-000000000001'), '24h', 'post guarda retention_mode 24h');
 select ok((select expires_at between now() + interval '29 days 23 hours' and now() + interval '30 days 1 hour' from public.statuses where id = 'c3000000-0000-0000-0000-000000000002'),
   '30d: expires_at = agora + 30 dias');
