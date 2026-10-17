@@ -31,18 +31,31 @@ const KINDS = {
   privacy: 'Privacidade ou exclusão da conta',
 }
 
+// Regra de negócio: conta banida só pode abrir contestação ou privacidade -- nunca denúncia
+// contra terceiros. NÃO existe um kind "técnico" no backend (submit_support_request só aceita
+// 'report'/'appeal'/'privacy', ver 20261003000001_reapply_admin_vitrines_denuncias.sql:62) --
+// "privacy" já cobre pedidos técnicos/gerais por falta de uma categoria própria. Isto é só
+// uma conveniência de navegação: o backend ainda NÃO valida essa restrição (submit_support_request
+// só nega 'deleting', nunca checa account_restrictions nem recusa 'report' para banido --
+// achado J16 pré-existente da auditoria). Nunca tratar isto como um controle de segurança.
+const BANNED_ALLOWED_KINDS = ['appeal', 'privacy']
+
 const STATE_LABELS = {
   open: { text: 'Em análise', variant: 'attention' },
   closed: { text: 'Respondido', variant: 'success' },
 }
 
 export default function Support() {
-  const { user } = useAuth()
+  const { user, legalAccess } = useAuth()
+  const isBanned = legalAccess?.restriction?.action === 'system_ban'
+  const availableKinds = isBanned
+    ? Object.fromEntries(Object.entries(KINDS).filter(([value]) => BANNED_ALLOWED_KINDS.includes(value)))
+    : KINDS
   const confirm = useConfirm()
   const [params] = useSearchParams()
   const [cancelingId, setCancelingId] = useState(null)
   const [kind, setKind] = useState(
-    Object.hasOwn(KINDS, params.get('tipo')) ? params.get('tipo') : 'report'
+    Object.hasOwn(availableKinds, params.get('tipo')) ? params.get('tipo') : Object.keys(availableKinds)[0]
   )
   const [message, setMessage] = useState('')
   const [statusId, setStatusId] = useState(params.get('publicacao') || '')
@@ -244,7 +257,7 @@ export default function Support() {
               <FormControl disabled={saving}>
                 <FormControl.Label>Assunto</FormControl.Label>
                 <Select block value={kind} onChange={(e) => setKind(e.target.value)}>
-                  {Object.entries(KINDS).map(([value, label]) => (
+                  {Object.entries(availableKinds).map(([value, label]) => (
                     <Select.Option key={value} value={value}>
                       {label}
                     </Select.Option>
