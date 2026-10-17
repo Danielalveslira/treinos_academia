@@ -365,9 +365,14 @@ export async function getStatusPhotoBlob(photoPath) {
   return data
 }
 
+// .select('id') de propósito: um delete filtrado pela policy statuses_delete (ex.: dono de
+// comunidade bloqueado moderando post de terceiro -- ver has_app_access()) não gera `error`
+// nenhum no PostgREST, só afeta 0 linhas. Sem checar o retorno, o chamador (useCommunityFeed)
+// removeria o post da tela como se a exclusão tivesse funcionado, e ele reapareceria num reload.
 export async function deleteStatus(statusId) {
-  const { error } = await supabase.from('statuses').delete().eq('id', statusId)
+  const { data, error } = await supabase.from('statuses').delete().eq('id', statusId).select('id')
   if (error) throw error
+  if (!data?.length) throw new Error('PERMISSION_DENIED')
 }
 
 // Uma única query agregada no servidor (get_poll_results) — nunca escala com o número

@@ -107,8 +107,14 @@ export async function createCommunity(userId, community) {
   return data.id
 }
 
+// As duas funções abaixo pedem .select('id') de propósito: um update filtrado pela policy
+// communities_update (ex.: dono bloqueado -- ver has_app_access()) não gera `error` nenhum no
+// PostgREST, só afeta 0 linhas -- sem checar o retorno, a chamada "funciona" silenciosamente
+// mesmo sem alterar nada no banco. PERMISSION_DENIED aqui é o mesmo código que has_app_access()
+// usa nas RPCs, para os call sites poderem reaproveitar o mesmo mapa de mensagens
+// (ver src/utils/accountAccessErrors.js) em vez de inventar um texto novo.
 export async function updateCommunity(communityId, community) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('communities')
     .update({
       name: community.name.trim(),
@@ -118,12 +124,19 @@ export async function updateCommunity(communityId, community) {
       post_access: community.postAccess === 'admins' ? 'admins' : 'everyone',
     })
     .eq('id', communityId)
+    .select('id')
   if (error) throw error
+  if (!data?.length) throw new Error('PERMISSION_DENIED')
 }
 
 export async function setCommunityActive(communityId, isActive) {
-  const { error } = await supabase.from('communities').update({ is_active: isActive }).eq('id', communityId)
+  const { data, error } = await supabase
+    .from('communities')
+    .update({ is_active: isActive })
+    .eq('id', communityId)
+    .select('id')
   if (error) throw error
+  if (!data?.length) throw new Error('PERMISSION_DENIED')
 }
 
 export async function deleteCommunity(communityId) {
@@ -142,8 +155,17 @@ export async function uploadCommunityCover(communityId, file) {
     .from('community-covers')
     .upload(path, blob, { contentType: 'image/webp', upsert: true })
   if (uploadErr) throw uploadErr
-  const { error } = await supabase.from('communities').update({ cover_path: path }).eq('id', communityId)
+  // Mesmo motivo do .select('id') em updateCommunity/setCommunityActive acima: sem ele, um
+  // dono bloqueado entre o upload (que já teria sido negado pela policy de Storage, mas pode
+  // não estar nesse caso -- ver community_covers_insert) e este update ficaria com o arquivo
+  // órfão no bucket sem erro nenhum aqui.
+  const { data, error } = await supabase
+    .from('communities')
+    .update({ cover_path: path })
+    .eq('id', communityId)
+    .select('id')
   if (error) throw error
+  if (!data?.length) throw new Error('PERMISSION_DENIED')
   return path
 }
 

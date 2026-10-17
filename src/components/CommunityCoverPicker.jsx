@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button, Flash } from '@primer/react'
 import { uploadCommunityCover } from '../services/communitiesService'
 import { CommunityCoverImage } from './CommunityCoverImage'
+import { describeAccountAccessError } from '../utils/accountAccessErrors'
 
 // Mesmo padrão de uso do avatar de perfil (Profile.jsx): upload acontece à parte do
 // submit do formulário, assim que o arquivo é escolhido e confirmado -- não guarda o
@@ -27,7 +28,8 @@ export function CommunityCoverPicker({ communityId, coverPath, onUploaded }) {
       setError(
         err?.message === 'COVER_TOO_LARGE'
           ? 'A imagem compactada ultrapassou 4 MB. Escolha outra foto.'
-          : 'Não foi possível enviar a capa. Tente outra imagem.'
+          : describeAccountAccessError(err?.message) ||
+              'Não foi possível enviar a capa. Tente outra imagem.'
       )
     } finally {
       setBusy(false)
