@@ -204,10 +204,24 @@ export function AuthProvider({ children }) {
         checkDeletionStatus(supabaseUser.id, current)
       } else {
         console.error('[Auth] ensureUserProfile:', profileResult.reason)
-        setProfile(null)
-        setProfileError(
-          'Não foi possível carregar seu perfil. Recarregue a página para tentar novamente.'
-        )
+        // 23503 (foreign_key_violation): ensure_user_profile() só pode bater nisso se a
+        // linha de auth.users/public.users já não existe mais -- ou seja, a conta foi
+        // excluída fisicamente (hard delete do worker) e este JWT antigo ainda é
+        // assinaturalmente válido. Sem esta checagem, F5 repete esta mesma tela de
+        // "tentar novamente" indefinidamente até o JWT expirar (achado P02 da auditoria
+        // de segurança) -- 'account-deleted' existe em logoutReason.js desde então mas
+        // nunca era usado. Qualquer outro erro (rede, RPC fora do ar) continua mostrando
+        // o aviso genérico de "tentar novamente": só este código específico significa
+        // "a conta não existe mais", nunca uma falha transitória.
+        if (profileResult.reason?.code === '23503') {
+          setLogoutReason('account-deleted')
+          logoutUser().catch(() => {})
+        } else {
+          setProfile(null)
+          setProfileError(
+            'Não foi possível carregar seu perfil. Recarregue a página para tentar novamente.'
+          )
+        }
       }
 
       if (legalResult.status === 'fulfilled') {
