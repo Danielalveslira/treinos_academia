@@ -4203,9 +4203,10 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
    MuscleIconBadge.jsx). "solid" é o padrão (músculo/grupo principal); "muted" é mais leve,
    usado só pra músculo secundário, pra distinguir visualmente sem duplicar o ícone. */
 .muscle-icon-badge {
-  display: grid;
+  display: flex;
   flex: 0 0 auto;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 12px;
 }
 .muscle-icon-badge--sm { width: 28px; height: 28px; }
