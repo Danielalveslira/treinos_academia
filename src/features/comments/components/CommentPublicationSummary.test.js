@@ -26,9 +26,9 @@ before(async () => {
         import { renderToStaticMarkup } from 'react-dom/server'
         import { MemoryRouter } from 'react-router-dom'
         import { CommentPublicationSummary } from './CommentPublicationSummary.jsx'
-        export const renderSummary = (status) => renderToStaticMarkup(
+        export const renderSummary = (status, authorAvatarPath) => renderToStaticMarkup(
           createElement(MemoryRouter, null,
-            createElement(CommentPublicationSummary, { status, communityName: 'Academia' })
+            createElement(CommentPublicationSummary, { status, communityName: 'Academia', authorAvatarPath })
           )
         )
       `,
@@ -50,7 +50,7 @@ before(async () => {
           }))
           context.onLoad({ filter: /^avatar$/, namespace: 'stub' }, () => ({
             resolveDir: new URL('../../../', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
-            contents: `import { createElement } from 'react'; export const ProfileAvatar = () => createElement('span', {'data-avatar': true})`,
+            contents: `import { createElement } from 'react'; export const ProfileAvatar = ({ path, name }) => createElement('span', {'data-avatar': true, 'data-avatar-path': path || '', 'data-avatar-name': name || ''})`,
           }))
         },
       },
@@ -83,6 +83,23 @@ test('summary links to the canonical card anchor of every publication type', () 
     const html = renderSummary({ ...base, type, ...extra })
     assert.match(html, /href="\/comunidades\/community-1#publicacao-status-1"/)
   }
+})
+
+test('the author avatar path reaches ProfileAvatar (regression: used to render with no path at all)', () => {
+  const withAvatar = renderSummary(
+    { ...base, type: 'text', text: 'Olá, pessoal' },
+    'avatars/ana.webp'
+  )
+  assert.match(withAvatar, /data-avatar-path="avatars\/ana\.webp"/)
+  assert.match(withAvatar, /data-avatar-name="ana"/)
+})
+
+test('an author with no avatar passes an empty path, never a broken or invented URL', () => {
+  const noAvatar = renderSummary({ ...base, type: 'text', text: 'Olá, pessoal' }, null)
+  assert.match(noAvatar, /data-avatar-path=""/)
+
+  const undefinedAvatar = renderSummary({ ...base, type: 'text', text: 'Olá, pessoal' })
+  assert.match(undefinedAvatar, /data-avatar-path=""/)
 })
 
 test('summary shows the key information of each type', () => {
