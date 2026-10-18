@@ -24,6 +24,10 @@ where p.id and p.published
 insert into public.public_profiles (user_id, username)
 select id, 'commenter' || right(id::text, 2)
 from public.users where id::text like '81000000-%';
+-- Autor '02' tem avatar; '01' não -- cobre os dois casos na asserção de comment_context abaixo
+-- (campo presente vs. ausente, nunca uma URL inventada no lugar de um avatar_path nulo).
+update public.public_profiles set avatar_path = 'avatars/commenter02.webp'
+where user_id = '81000000-0000-0000-0000-000000000002';
 
 insert into public.communities (id, name, created_by, owner_id)
 values (
@@ -132,6 +136,19 @@ select is(
   jsonb_array_length(public.comment_context((select (row).id from reply_comment)) -> 'comments'),
   2,
   'deep link retorna alvo e ancestral excluído'
+);
+-- Regressão: comment_context já juntava public_profiles para o username, mas nunca
+-- selecionava avatar_path -- a tela de conversa (CommentContextPage) ficava sem a foto de
+-- todos os autores do fio, mesmo quando o perfil tinha avatar_path preenchido.
+select is(
+  public.comment_context((select (row).id from reply_comment)) -> 'comments' -> 0 ->> 'authorAvatarPath',
+  'avatars/commenter02.webp',
+  'comment_context inclui o avatar do autor quando o perfil tem um'
+);
+select is(
+  public.comment_context((select (row).id from reply_comment)) -> 'comments' -> 1 ->> 'authorAvatarPath',
+  null,
+  'autor sem avatar mantém authorAvatarPath nulo, nunca uma URL inventada'
 );
 reset role;
 

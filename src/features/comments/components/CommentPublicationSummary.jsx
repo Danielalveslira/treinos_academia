@@ -51,14 +51,18 @@ function SummaryContent({ status }) {
   return <StatusText value={status.text} />
 }
 
-export function CommentPublicationSummary({ status, communityName }) {
+export function CommentPublicationSummary({ status, communityName, authorAvatarPath }) {
   const authorName = status.authorUsername ? `@${status.authorUsername}` : 'Membro'
   const publicationAnchor =
     status.type === 'workout' ? `treino-${status.id}` : `publicacao-${status.id}`
   return (
     <article className="comment-publication-summary" aria-label="Publicação original">
       <header className="comment-publication-header">
-        <ProfileAvatar name={status.authorUsername || 'M'} className="comment-publication-avatar" />
+        <ProfileAvatar
+          path={authorAvatarPath}
+          name={status.authorUsername || 'M'}
+          className="comment-publication-avatar"
+        />
         <div>
           <strong>{authorName}</strong>
           <span>{formatDateTime(toDate(status.createdAt))}</span>

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button, Heading, Text } from '@primer/react'
 import { ChevronLeftIcon } from '@primer/octicons-react'
 import { useAuth } from '../../../hooks/useAuth'
+import { useCommunityAuthorAvatars } from '../../../hooks/useCommunityAuthorAvatars'
 import { getCommunitySummary } from '../../../services/communitiesService'
 import { getStatusSummary } from '../../../services/statusesService'
 import { canModerateCommunity } from '../../../utils/communityOwnership'
@@ -69,6 +70,7 @@ export default function CommentContextPage() {
     target?.focus({ preventScroll: true })
   }, [commentId, context?.statusId, loading, error])
 
+  const authorAvatars = useCommunityAuthorAvatars(Boolean(status), status ? [status] : [])
   const publicationAnchor =
     status?.type === 'workout' ? `treino-${statusId}` : `publicacao-${statusId}`
   const publicationPath = `/comunidades/${communityId}#${publicationAnchor}`
@@ -115,7 +117,11 @@ export default function CommentContextPage() {
             </Text>
           </div>
 
-          <CommentPublicationSummary status={status} communityName={community.name} />
+          <CommentPublicationSummary
+            status={status}
+            communityName={community.name}
+            authorAvatarPath={authorAvatars[status.authorId]}
+          />
 
           <section className="comment-context-conversation" aria-labelledby="conversation-title">
             <div className="comment-context-section-heading">
