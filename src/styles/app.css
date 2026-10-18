@@ -74,6 +74,10 @@ body {
   margin-bottom: 28px;
 }
 .indicator-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
   background: var(--bgColor-default);
   border: 1px solid var(--borderColor-default);
   border-radius: 8px;
@@ -86,7 +90,8 @@ body {
   gap: 8px;
   color: var(--fgColor-muted);
   font-size: 13px;
-  margin-bottom: 12px;
+  line-height: 1.3;
+  margin-bottom: 4px;
 }
 .indicator-label svg {
   flex-shrink: 0;
@@ -98,6 +103,65 @@ body {
   letter-spacing: -0.7px;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
+}
+.indicator-label .bmi-info-toggle {
+  margin-left: auto;
+  padding: 2px;
+}
+.bmi-info-flash p {
+  margin: 0;
+}
+.bmi-info-flash p + p {
+  margin-top: 8px;
+}
+.bmi-badge {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+}
+.bmi-badge-accent {
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+}
+.bmi-badge-attention {
+  background: var(--bgColor-attention-muted);
+  color: var(--fgColor-attention);
+}
+.bmi-badge-danger {
+  background: var(--bgColor-danger-muted);
+  color: var(--fgColor-danger);
+}
+.bmi-badge-neutral {
+  background: var(--bgColor-muted);
+  color: var(--fgColor-muted);
+}
+.bmi-scale {
+  position: relative;
+  height: 4px;
+  margin-top: 12px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--fgColor-attention) 0%,
+    var(--fitness-accent) 35%,
+    var(--fitness-accent) 55%,
+    var(--fgColor-attention) 70%,
+    var(--fgColor-danger) 100%
+  );
+}
+.bmi-scale-marker {
+  position: absolute;
+  top: -3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--bgColor-default);
+  border: 2px solid var(--fgColor-default);
+  transform: translateX(-50%);
 }
 .panel {
   border: 1px solid var(--borderColor-default);
@@ -154,7 +218,7 @@ button:focus-visible {
     gap: 10px;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .stats-grid > :last-child {
+  .stats-grid > :last-child:nth-child(odd) {
     grid-column: 1 / -1;
   }
   .indicator-card {
@@ -4203,9 +4267,10 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
    MuscleIconBadge.jsx). "solid" é o padrão (músculo/grupo principal); "muted" é mais leve,
    usado só pra músculo secundário, pra distinguir visualmente sem duplicar o ícone. */
 .muscle-icon-badge {
-  display: grid;
+  display: flex;
   flex: 0 0 auto;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border-radius: 12px;
 }
 .muscle-icon-badge--sm { width: 28px; height: 28px; }

@@ -1,9 +1,89 @@
 import { toDate } from './date.js'
 
 export function calculateBMI(weightKg, heightCm) {
-  if (!weightKg || !heightCm) return null
+  if (!weightKg || !heightCm || weightKg <= 0 || heightCm <= 0) return null
   const heightM = heightCm / 100
   return weightKg / (heightM * heightM)
+}
+
+// Faixas do Ministério da Saúde (linhas de cuidado — obesidade no adulto):
+// https://linhasdecuidado.saude.gov.br/portal/obesidade-no-adulto/unidade-de-atencao-primaria/definicao-obesidade-no-adulto/indice-massa-corporal/
+export const BMI_ADULT_RANGE = { min: 18.5, max: 24.99 }
+// Faixa adequada pra 60+ segundo o MS (caderneta de saúde da pessoa idosa / OPAS). O MS
+// não publica graus de obesidade específicos pra essa faixa etária, então acima do limite
+// é reportado como "excesso de peso" em vez de inventar um grau que não existe na fonte.
+export const BMI_ELDERLY_RANGE = { min: 22, max: 27 }
+export const BMI_ELDERLY_AGE = 60
+// Abaixo disso a tabela de adultos não vale — IMC-por-idade depende de curvas de
+// crescimento (SISVAN/OMS por sexo e idade em meses), fora do escopo deste indicador.
+export const BMI_YOUNG_ADULT_AGE = 20
+
+const ADULT_BMI_BANDS = [
+  { ceiling: 18.5, key: 'abaixoPeso', label: 'Abaixo do peso', tone: 'attention' },
+  { ceiling: 25, key: 'adequado', label: 'Faixa de peso adequada', tone: 'accent' },
+  { ceiling: 30, key: 'sobrepeso', label: 'Sobrepeso', tone: 'attention' },
+  { ceiling: 35, key: 'obesidade1', label: 'Obesidade grau I', tone: 'danger' },
+  { ceiling: 40, key: 'obesidade2', label: 'Obesidade grau II', tone: 'danger' },
+  { ceiling: Infinity, key: 'obesidade3', label: 'Obesidade grau III', tone: 'danger' },
+]
+
+// Classifica o IMC por faixa etária. Sem idade (perfil sem data de nascimento) não
+// classifica — é melhor dizer "sem dado" do que arriscar rótulo errado.
+export function classifyBMI(bmi, age) {
+  if (bmi == null || !Number.isFinite(bmi) || bmi <= 0) return null
+  if (age == null || !Number.isFinite(age) || age < 0) return null
+
+  if (age < BMI_YOUNG_ADULT_AGE) {
+    return {
+      key: 'naoDisponivel',
+      label: 'Classificação não disponível',
+      tone: 'neutral',
+      message:
+        'Para menores de 20 anos, a classificação de IMC segue curvas de crescimento por idade (SISVAN/OMS), diferentes da tabela de adultos usada aqui. Consulte um profissional de saúde para interpretar esse valor.',
+    }
+  }
+
+  if (age >= BMI_ELDERLY_AGE) {
+    if (bmi < BMI_ELDERLY_RANGE.min) return { key: 'abaixoPeso', label: 'Abaixo do peso', tone: 'attention' }
+    if (bmi <= BMI_ELDERLY_RANGE.max) return { key: 'adequado', label: 'Faixa de peso adequada', tone: 'accent' }
+    return { key: 'excessoPeso', label: 'Excesso de peso', tone: 'attention' }
+  }
+
+  const band = ADULT_BMI_BANDS.find((b) => bmi < b.ceiling)
+  return { key: band.key, label: band.label, tone: band.tone }
+}
+
+export function getBmiReferenceRange(age) {
+  if (age == null || !Number.isFinite(age) || age < BMI_YOUNG_ADULT_AGE) return null
+  return age >= BMI_ELDERLY_AGE ? { ...BMI_ELDERLY_RANGE } : { ...BMI_ADULT_RANGE }
+}
+
+export function getBmiReferenceWeightRange(heightCm, age) {
+  const range = getBmiReferenceRange(age)
+  if (!range || !heightCm || heightCm <= 0) return null
+  const heightM = heightCm / 100
+  return {
+    minKg: range.min * heightM * heightM,
+    maxKg: range.max * heightM * heightM,
+  }
+}
+
+// Diferença de peso até a faixa de referência adequada pra idade. Nunca sugere perda de
+// peso pra quem já está na faixa ou abaixo dela — só informa a distância até o limite.
+export function getBmiWeightGap(weightKg, heightCm, age) {
+  const weightRange = getBmiReferenceWeightRange(heightCm, age)
+  if (!weightRange || !weightKg || weightKg <= 0) return null
+  if (weightKg > weightRange.maxKg) return { status: 'acima', diffKg: weightKg - weightRange.maxKg }
+  if (weightKg < weightRange.minKg) return { status: 'abaixo', diffKg: weightRange.minKg - weightKg }
+  return { status: 'dentro', diffKg: 0 }
+}
+
+// Posição (0-100) do IMC numa escala visual fixa, só pro indicador gráfico do card —
+// clampa extremos pra não distorcer a barra com outliers.
+export function getBmiScalePosition(bmi, domainMin = 15, domainMax = 45) {
+  if (bmi == null || !Number.isFinite(bmi)) return null
+  const clamped = Math.min(Math.max(bmi, domainMin), domainMax)
+  return ((clamped - domainMin) / (domainMax - domainMin)) * 100
 }
 
 export function calculateWHR(waistCm, hipCm) {

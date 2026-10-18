@@ -6,6 +6,11 @@ import {
   calculateLeanMass,
   calculateFatMass,
   calculateWaistHeightRatio,
+  classifyBMI,
+  getBmiReferenceRange,
+  getBmiReferenceWeightRange,
+  getBmiScalePosition,
+  getBmiWeightGap,
   getBodyMetricChange,
   getBodyMetricSeries,
   getLatestBodyComposition,
@@ -15,6 +20,8 @@ import {
 test('calculateBMI/WHR/LeanMass return null instead of NaN when an input is missing', () => {
   assert.equal(calculateBMI(null, 180), null)
   assert.equal(calculateBMI(80, null), null)
+  assert.equal(calculateBMI(-80, 180), null)
+  assert.equal(calculateBMI(80, -180), null)
   assert.ok(Math.abs(calculateBMI(80, 180) - 24.69) < 0.01)
   assert.equal(calculateWHR(null, 100), null)
   assert.equal(calculateWHR(85, 100), 0.85)
@@ -153,4 +160,164 @@ test('body metric series respects the selected period and calculates change', ()
     [80, 79]
   )
   assert.deepEqual(getBodyMetricChange(series), { current: 79, change: -1, trend: 'Em queda' })
+})
+
+test('getBodyMetricSeries computes bodyFatPercent, leanMassKg and fatMassKg from real check-ins (not just weightKg)', () => {
+  const now = new Date(2026, 9, 17, 10)
+  // Peso e gordura não vêm sempre do mesmo check-in — leanMass/fatMass só podem usar um
+  // ponto quando ambos aparecem NO MESMO registro, nunca misturando datas diferentes.
+  const measurements = [
+    { date: new Date(2026, 9, 17), weightKg: 79.5, bodyFatPercent: 17 },
+    { date: new Date(2026, 9, 10), weightKg: 80 }, // só peso, sem gordura nesse dia
+    { date: new Date(2026, 8, 20), weightKg: 81, bodyFatPercent: 18 },
+    { date: new Date(2026, 8, 1), bodyFatPercent: 19 }, // só gordura, sem peso nesse dia
+  ]
+
+  const fat = getBodyMetricSeries(measurements, 'bodyFatPercent', 30, now)
+  assert.deepEqual(fat.map((p) => p.value), [18, 17]) // 01/09 (46 dias) fica fora da janela de 30 dias
+
+  const lean = getBodyMetricSeries(measurements, 'leanMassKg', 90, now)
+  assert.deepEqual(
+    lean.map((p) => p.value),
+    [81 * (1 - 18 / 100), 79.5 * (1 - 17 / 100)]
+  ) // 10/10 (só peso) e 01/09 (só gordura) nunca entram: faltaria metade do par
+
+  const fatMass = getBodyMetricSeries(measurements, 'fatMassKg', 90, now)
+  assert.deepEqual(
+    fatMass.map((p) => p.value),
+    [81 * (18 / 100), 79.5 * (17 / 100)]
+  )
+})
+
+test('each period (month/quarter/year) applies its own distinct window, not a shared one', () => {
+  const now = new Date(2026, 9, 17, 10)
+  const measurements = [
+    { date: new Date(2026, 9, 17), weightKg: 79.5 }, // hoje
+    { date: new Date(2026, 9, 10), weightKg: 80 }, // 7 dias atrás
+    { date: new Date(2026, 8, 20), weightKg: 81 }, // 27 dias atrás: dentro do mês
+    { date: new Date(2026, 6, 1), weightKg: 83 }, // 108 dias atrás: fora do mês/trimestre, dentro do ano
+    { date: new Date(2025, 9, 1), weightKg: 85 }, // 381 dias atrás: fora de todos
+  ]
+  assert.deepEqual(
+    getBodyMetricSeries(measurements, 'weightKg', 30, now).map((p) => p.value),
+    [81, 80, 79.5]
+  )
+  assert.deepEqual(
+    getBodyMetricSeries(measurements, 'weightKg', 90, now).map((p) => p.value),
+    [81, 80, 79.5] // mesmo resultado do mês aqui NÃO significa que o filtro é ignorado: é só
+    // que não há registros entre 30 e 90 dias nesse cenário (confirmado pelo teste de 365 abaixo)
+  )
+  assert.deepEqual(
+    getBodyMetricSeries(measurements, 'weightKg', 365, now).map((p) => p.value),
+    [83, 81, 80, 79.5] // o ano inclui o registro de 108 dias atrás que mês/trimestre excluem
+  )
+})
+
+test('getBodyMetricSeries ignores records with missing or invalid dates and re-sorts unordered input', () => {
+  const now = new Date(2026, 9, 17, 10)
+  // Reflete o formato real de listRecentMeasurements: ordem desc por data, não asc.
+  const messy = [
+    { date: new Date(2026, 9, 10), weightKg: 80 },
+    { date: null, weightKg: 999 },
+    { date: 'not-a-date', weightKg: 888 },
+    { date: new Date(2026, 9, 17), weightKg: 79.5 },
+    { date: new Date(2026, 9, 5), weightKg: 80.5 },
+  ]
+  const series = getBodyMetricSeries(messy, 'weightKg', 30, now)
+  assert.deepEqual(
+    series.map((p) => p.value),
+    [80.5, 80, 79.5] // cronológico, datas inválidas/ausentes nunca aparecem
+  )
+})
+
+test('getBodyMetricSeries window boundary is inclusive at local midnight of the first day', () => {
+  const now = new Date(2026, 9, 17, 10)
+  const boundary = [
+    { date: new Date(2026, 8, 18, 0, 0, 0), weightKg: 101 }, // início exato da janela de 30 dias: entra
+    { date: new Date(2026, 8, 17, 23, 59), weightKg: 999 }, // 1 minuto antes: fica de fora
+  ]
+  assert.deepEqual(
+    getBodyMetricSeries(boundary, 'weightKg', 30, now).map((p) => p.value),
+    [101]
+  )
+})
+
+test('the summary (current/change) shown above the chart always matches the plotted series, never a stale or unrelated metric', () => {
+  const now = new Date(2026, 9, 17, 10)
+  const measurements = [
+    { date: new Date(2026, 9, 17), weightKg: 79.5, bodyFatPercent: 17 },
+    { date: new Date(2026, 8, 20), weightKg: 81, bodyFatPercent: 18 },
+  ]
+  for (const metric of ['weightKg', 'bodyFatPercent']) {
+    const series = getBodyMetricSeries(measurements, metric, 90, now)
+    const change = getBodyMetricChange(series)
+    assert.equal(change.current, series.at(-1).value)
+    assert.equal(change.change, series.at(-1).value - series[0].value)
+  }
+})
+
+test('classifyBMI follows the Ministério da Saúde adult bands and their boundaries', () => {
+  assert.equal(classifyBMI(18.4, 30).key, 'abaixoPeso')
+  assert.equal(classifyBMI(18.5, 30).key, 'adequado')
+  assert.equal(classifyBMI(24.99, 30).key, 'adequado')
+  assert.equal(classifyBMI(25, 30).key, 'sobrepeso')
+  assert.equal(classifyBMI(29.99, 30).key, 'sobrepeso')
+  assert.equal(classifyBMI(30, 30).key, 'obesidade1')
+  assert.equal(classifyBMI(35, 30).key, 'obesidade2')
+  assert.equal(classifyBMI(40, 30).key, 'obesidade3')
+})
+
+test('classifyBMI uses the 22-27 reference band for 60+ instead of the adult bands', () => {
+  assert.equal(classifyBMI(21.9, 60).key, 'abaixoPeso')
+  assert.equal(classifyBMI(22, 60).key, 'adequado')
+  assert.equal(classifyBMI(27, 60).key, 'adequado')
+  assert.equal(classifyBMI(27.1, 60).key, 'excessoPeso')
+  // a mesma leitura seria "sobrepeso" pela tabela adulta — confirma que 60+ usa outra faixa
+  assert.equal(classifyBMI(27.1, 59).key, 'sobrepeso')
+})
+
+test('classifyBMI refuses to classify under-20s and anyone without a known age', () => {
+  const underTwenty = classifyBMI(22, 19)
+  assert.equal(underTwenty.key, 'naoDisponivel')
+  assert.equal(underTwenty.tone, 'neutral')
+  assert.ok(underTwenty.message.length > 0)
+
+  assert.equal(classifyBMI(22, null), null)
+  assert.equal(classifyBMI(null, 30), null)
+  assert.equal(classifyBMI(0, 30), null)
+})
+
+test('getBmiReferenceRange/WeightRange are age-aware and null without enough data', () => {
+  assert.equal(getBmiReferenceRange(19), null)
+  assert.deepEqual(getBmiReferenceRange(30), { min: 18.5, max: 24.99 })
+  assert.deepEqual(getBmiReferenceRange(60), { min: 22, max: 27 })
+
+  assert.equal(getBmiReferenceWeightRange(180, 19), null)
+  assert.equal(getBmiReferenceWeightRange(null, 30), null)
+  const adultRange = getBmiReferenceWeightRange(180, 30)
+  assert.ok(Math.abs(adultRange.minKg - 59.94) < 0.01)
+  assert.ok(Math.abs(adultRange.maxKg - 80.97) < 0.01)
+})
+
+test('getBmiWeightGap never suggests weight loss for someone at or below the reference range', () => {
+  assert.deepEqual(getBmiWeightGap(70, 180, 30), { status: 'dentro', diffKg: 0 })
+
+  const above = getBmiWeightGap(90, 180, 30)
+  assert.equal(above.status, 'acima')
+  assert.ok(above.diffKg > 0)
+
+  const below = getBmiWeightGap(50, 180, 30)
+  assert.equal(below.status, 'abaixo')
+  assert.ok(below.diffKg > 0)
+
+  // sem idade (sem faixa de referência) ou sem peso: não arrisca um resultado
+  assert.equal(getBmiWeightGap(70, 180, null), null)
+  assert.equal(getBmiWeightGap(null, 180, 30), null)
+})
+
+test('getBmiScalePosition clamps outliers to the visual domain', () => {
+  assert.equal(getBmiScalePosition(null), null)
+  assert.equal(getBmiScalePosition(5), 0)
+  assert.equal(getBmiScalePosition(60), 100)
+  assert.ok(getBmiScalePosition(30) > 0 && getBmiScalePosition(30) < 100)
 })
