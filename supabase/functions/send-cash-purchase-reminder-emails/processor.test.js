@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { processCashPurchaseReminders } from './processor.js'
+import { isValidEmail, processCashPurchaseReminders } from './processor.js'
 
 function job(overrides = {}) {
   return {
@@ -40,9 +40,72 @@ test('envio com sucesso marca sent e chama o Resend com from/to/subject corretos
   assert.deepEqual(result, { claimed: 1, sent: 1, retried: 0, failed: 0 })
   assert.equal(fetchCalls[0][1].to, 'josea@example.test')
   assert.equal(fetchCalls[0][1].from, 'Evolutus <no-reply@evolutus.app>')
+  assert.equal(fetchCalls[0][1].reply_to, 'suporte@evolutus.app')
   assert.match(fetchCalls[0][1].subject, /300 EvoCash/)
   assert.equal(calls[1][0], 'finish_cash_purchase_reminder_batch')
   assert.deepEqual(calls[1][1].p_results, [{ id: 'job-1', outcome: 'sent' }])
+})
+
+test('isValidEmail aceita formatos simples e rejeita vazio/sem @/sem domínio/tipo errado', () => {
+  for (const value of ['suporte@evolutus.com.br', 'a@b.co', 'nome.longo+tag@sub.dominio.com']) {
+    assert.equal(isValidEmail(value), true, value)
+  }
+  for (const value of ['', 'sem-arroba.com', '@sem-local.com', 'sem-dominio@', null, undefined, 123, 'a'.repeat(321) + '@b.com']) {
+    assert.equal(isValidEmail(value), false, String(value))
+  }
+})
+
+test('CASH_REMINDER_SUPPORT_EMAIL definido e válido: Resend recebe reply_to', async () => {
+  const { client } = adminWith([job()])
+  const fetchCalls = []
+  const fetcher = async (url, options) => {
+    fetchCalls.push(JSON.parse(options.body))
+    return { ok: true, status: 200 }
+  }
+  await processCashPurchaseReminders(client, {
+    resendApiKey: 'key', fromAddress: 'f', supportEmail: 'suporte@evolutus.com.br',
+    appUrl: 'https://evolutus.app', fetcher,
+  })
+  assert.equal(fetchCalls[0].reply_to, 'suporte@evolutus.com.br')
+})
+
+test('CASH_REMINDER_SUPPORT_EMAIL ausente (secret não definido): reply_to nunca é enviado, e o envio continua normalmente', async () => {
+  const { client } = adminWith([job()])
+  const fetchCalls = []
+  const fetcher = async (url, options) => {
+    fetchCalls.push(JSON.parse(options.body))
+    return { ok: true, status: 200 }
+  }
+  const result = await processCashPurchaseReminders(client, {
+    resendApiKey: 'key', fromAddress: 'f', supportEmail: undefined,
+    appUrl: 'https://evolutus.app', fetcher,
+  })
+  assert.equal('reply_to' in fetchCalls[0], false)
+  assert.deepEqual(result, { claimed: 1, sent: 1, retried: 0, failed: 0 })
+})
+
+test('CASH_REMINDER_SUPPORT_EMAIL com formato inválido: reply_to é omitido, nunca enviado malformado', async () => {
+  const { client } = adminWith([job()])
+  const fetchCalls = []
+  const fetcher = async (url, options) => {
+    fetchCalls.push(JSON.parse(options.body))
+    return { ok: true, status: 200 }
+  }
+  await processCashPurchaseReminders(client, {
+    resendApiKey: 'key', fromAddress: 'f', supportEmail: 'nao-e-um-email',
+    appUrl: 'https://evolutus.app', fetcher,
+  })
+  assert.equal('reply_to' in fetchCalls[0], false)
+})
+
+test('erro persistido nunca contém o endereço de reply-to (CASH_REMINDER_SUPPORT_EMAIL)', async () => {
+  const { client, calls } = adminWith([job({ attempt_count: 5 })])
+  const fetcher = async () => { throw new Error('conexão recusada ao notificar suporte@evolutus.com.br sobre a falha') }
+  await processCashPurchaseReminders(client, {
+    resendApiKey: 'key', fromAddress: 'f', supportEmail: 'suporte@evolutus.com.br',
+    appUrl: 'https://evolutus.app', fetcher,
+  })
+  assert.equal(calls.at(-1)[1].p_results[0].error.includes('suporte@evolutus.com.br'), false)
 })
 
 test('toda chamada ao Resend leva Idempotency-Key = id da linha da fila', async () => {

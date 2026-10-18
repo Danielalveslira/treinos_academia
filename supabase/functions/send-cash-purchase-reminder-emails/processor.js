@@ -12,10 +12,22 @@ function withTimeout(promise, ms) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
 }
 
-// Never a message that could carry the recipient's own address back into a log line.
-function safeEmailError(error, job) {
+// Deliberately loose (format only, no DNS/mailbox check): CASH_REMINDER_SUPPORT_EMAIL is an
+// operator-configured secret, not user input -- this only guards against a missing/malformed
+// secret value reaching the Resend API as an invalid reply_to, never a reason to fail the
+// whole send.
+const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+export function isValidEmail(value) {
+  return typeof value === 'string' && value.length <= 320 && EMAIL_FORMAT.test(value)
+}
+
+// Never a message that could carry the recipient's or the support reply-to address back
+// into a log line.
+function safeEmailError(error, job, supportEmail) {
   let message = String(error?.message || 'EMAIL_SEND_FAILED')
   if (typeof job.email === 'string' && job.email) message = message.split(job.email).join('[redacted]')
+  if (typeof supportEmail === 'string' && supportEmail) message = message.split(supportEmail).join('[redacted]')
   return message.slice(0, 500)
 }
 
@@ -67,7 +79,10 @@ export async function processCashPurchaseReminders(
               'Content-Type': 'application/json',
               'Idempotency-Key': job.id,
             },
-            body: JSON.stringify({ from: fromAddress, to: job.email, subject, html, text }),
+            body: JSON.stringify({
+              from: fromAddress, to: job.email, subject, html, text,
+              ...(isValidEmail(supportEmail) ? { reply_to: supportEmail } : {}),
+            }),
           }),
           sendTimeoutMs
         )
@@ -97,7 +112,7 @@ export async function processCashPurchaseReminders(
         return { id: job.id, outcome: 'failed', error: errorTag }
       } catch (error) {
         const outcome = job.attempt_count < MAX_ATTEMPTS ? 'retry' : 'failed'
-        return { id: job.id, outcome, error: safeEmailError(error, job) }
+        return { id: job.id, outcome, error: safeEmailError(error, job, supportEmail) }
       }
     })
   )
