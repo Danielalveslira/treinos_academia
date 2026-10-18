@@ -58,7 +58,7 @@ export function AuthLayout({ children, title, description, footer }) {
   return (
     <PublicLayout>
       <div className="auth-layout">
-        <section className="auth-intro" aria-label="Sobre o Treinos">
+        <section className="auth-intro" aria-label="Sobre o Evolutus">
           <ResponsivePicture
             className="auth-cover"
             name="capa_principal"

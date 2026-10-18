@@ -4,6 +4,7 @@ import { DownloadIcon, XIcon } from '@primer/octicons-react'
 import { isOfflineShellEnabled, isOfflineWriteEnabled } from '../services/offline/database'
 import { getOfflineRolloutRevision, subscribeOfflineRollout } from '../services/offline/rollout'
 import { BOOT_STATE, getBootState, subscribeBootState } from '../services/offline/bootState'
+import { getInstallPlatform, supportsSafariAddToDock } from './pwaInstallHelp'
 
 export function PwaControls() {
   useSyncExternalStore(subscribeOfflineRollout, getOfflineRolloutRevision)
@@ -19,22 +20,25 @@ export function PwaControls() {
   // SyncStatus, e o que exige servidor é barrado por tela (Layout) e por ação (Finalizar treino).
   // Desligada (padrão): comportamento anterior, tela cheia e conteúdo inerte.
   const offlineWrites = isOfflineWriteEnabled()
+  // Consultar sem rede (telas abrem com o que já está salvo neste aparelho) pode estar ligado mesmo
+  // sem a escrita offline (ver isOfflineShellEnabled): rollouts independentes de leitura/cold start e
+  // de escrita. As duas flags juntas decidem o que a mensagem do diálogo promete.
+  const shellEnabled = isOfflineShellEnabled()
   // O bloqueio só vale DEPOIS da restauração local (bootState): enquanto o AuthContext hidrata o IndexedDB
   // (initializing) o app mostra o próprio carregamento, e um cold start válido (offline_ready) nunca bloqueia.
   const blocking =
-    offline &&
-    boot !== BOOT_STATE.initializing &&
-    boot !== BOOT_STATE.offlineReady &&
-    !isOfflineShellEnabled()
+    offline && boot !== BOOT_STATE.initializing && boot !== BOOT_STATE.offlineReady && !shellEnabled
   const [updateAvailable, setUpdateAvailable] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [installing, setInstalling] = useState(false)
   const [updating, setUpdating] = useState(false)
   const dialog = useRef(null)
   const offlinePanel = useRef(null)
-  const ios =
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  const installPlatform = getInstallPlatform(
+    navigator.userAgent,
+    navigator.platform,
+    navigator.maxTouchPoints
+  )
 
   useEffect(() => {
     const prompt = (event) => {
@@ -171,13 +175,13 @@ export function PwaControls() {
         onClose={() => setHelp(false)}
       >
         <div className="pwa-dialog-heading">
-          <h2 id="install-title">Leve o Treinos com você</h2>
+          <h2 id="install-title">Leve o Evolutus com você</h2>
           <Button variant="invisible" aria-label="Fechar instruções" onClick={() => setHelp(false)}>
             <XIcon />
           </Button>
         </div>
         <p>Tenha um ícone na tela inicial e abra seu diário como um aplicativo.</p>
-        {ios ? (
+        {installPlatform === 'ios' ? (
           <ol>
             <li>Abra este site no Safari.</li>
             <li>
@@ -189,6 +193,21 @@ export function PwaControls() {
               <strong>Adicionar</strong>.
             </li>
           </ol>
+        ) : installPlatform === 'mac-safari' && supportsSafariAddToDock(navigator.userAgent) ? (
+          <ol>
+            <li>
+              No menu <strong>Arquivo</strong> do Safari (ou no ícone de Compartilhar da barra de
+              endereço), escolha <strong>Adicionar ao Dock</strong>.
+            </li>
+            <li>
+              Confirme o nome e clique em <strong>Adicionar</strong>.
+            </li>
+          </ol>
+        ) : installPlatform === 'firefox' ? (
+          <p>
+            O Firefox ainda não oferece suporte à instalação de aplicativos a partir do manifesto
+            da web. Abra este site no Chrome ou no Edge para instalar o Evolutus como aplicativo.
+          </p>
         ) : (
           <p>
             Abra o menu do navegador e procure <strong>Instalar app</strong> ou{' '}
@@ -197,9 +216,8 @@ export function PwaControls() {
           </p>
         )}
         <p className="pwa-muted">
-          {offlineWrites
-            ? 'Seus registros de treino ficam salvos no aparelho e sincronizam quando a conexão voltar.'
-            : 'Você precisa de internet para consultar e registrar seus treinos.'}
+          Seus treinos ficam salvos neste aparelho: você pode consultá-los e registrar novos sem
+          internet, e tudo sincroniza assim que a conexão voltar.
         </p>
         <Button variant="primary" block onClick={() => setHelp(false)}>
           Entendi
@@ -207,7 +225,7 @@ export function PwaControls() {
       </dialog>
       {updateAvailable && !offline && (
         <aside className="pwa-update" aria-label="Atualização do aplicativo" hidden={dismissed}>
-          <span>Uma nova versão do Treinos está disponível.</span>
+          <span>Uma nova versão do Evolutus está disponível.</span>
           <Button size="small" variant="primary" onClick={update} disabled={updating}>
             {updating ? 'Atualizando…' : 'Atualizar'}
           </Button>

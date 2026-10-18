@@ -38,7 +38,7 @@ export default function LegalDocument({ documentId }) {
   useEffect(() => {
     if (!documentTitle) return undefined
     const previousTitle = window.document.title
-    window.document.title = `${documentTitle} · Treinos`
+    window.document.title = `${documentTitle} · Evolutus`
     if (hash) {
       const section = window.document.getElementById(hash.slice(1))
       section?.scrollIntoView()
