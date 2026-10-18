@@ -106,6 +106,56 @@ export async function adminResolveCashPurchaseReview(purchaseId, resolution, not
   return data
 }
 
+// Pré-visualização para o diálogo de confirmação: nome e e-mail MASCARADO do destinatário
+// (nunca o e-mail real -- a máscara é calculada no servidor). Revalidado de novo, de forma
+// autoritativa, dentro de requestCashPurchaseReminder -- esta chamada é só para mostrar ao
+// admin antes do clique de confirmação.
+export async function getCashPurchaseReminderPreview(purchaseId) {
+  const { data, error } = await supabase.rpc('admin_get_cash_purchase_reminder_preview', {
+    p_purchase_id: purchaseId,
+  })
+  if (error) throw error
+  return {
+    username: data.username,
+    maskedEmail: data.maskedEmail,
+    lastSentAt: data.lastSentAt,
+    cooldownUntil: data.cooldownUntil,
+    canSend: data.canSend,
+    reason: data.reason,
+  }
+}
+
+// Só enfileira (fila + worker assíncrono, ver migration 20261105000004) -- nunca envia o
+// e-mail de forma síncrona aqui. Revalida tudo no servidor: compra pendente, conta ativa,
+// cooldown por compra e limite diário por destinatário.
+export async function requestCashPurchaseReminder(purchaseId) {
+  const { data, error } = await supabase.rpc('admin_request_cash_purchase_reminder', {
+    p_purchase_id: purchaseId,
+  })
+  if (error) throw error
+  return data
+}
+
+// Uma consulta para a página inteira (nunca uma por linha) -- reduz a `created_at` mais
+// recente por compra, no mesmo espírito de resolveUsernamesByIds.
+export async function getLatestCashPurchaseReminders(purchaseIds) {
+  const uniqueIds = [...new Set(purchaseIds)].filter(Boolean)
+  if (uniqueIds.length === 0) return {}
+  const { data, error } = await supabase
+    .from('cash_purchase_reminder_emails')
+    .select('purchase_id, status, created_at, sent_at')
+    .in('purchase_id', uniqueIds)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  const latestByPurchase = {}
+  for (const row of data) {
+    if (!latestByPurchase[row.purchase_id]) {
+      latestByPurchase[row.purchase_id] = { status: row.status, createdAt: row.created_at, sentAt: row.sent_at }
+    }
+  }
+  return latestByPurchase
+}
+
 export async function listMyCashPurchasesPage(userId, { cursor = null } = {}) {
   let q = supabase.from('cash_purchases').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(PAGE_SIZE)
   if (cursor) q = q.lt('created_at', cursor)

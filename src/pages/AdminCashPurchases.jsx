@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Box,
@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
 import { useUsernamesByIds } from '../hooks/useUsernamesByIds'
+import { useLatestCashPurchaseReminders } from '../hooks/useLatestCashPurchaseReminders'
 import { useToast } from '../hooks/useToast'
 import { ToastFlash } from '../components/ToastFlash'
 import AdminNav from '../components/AdminNav'
@@ -23,12 +24,20 @@ import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
   adminCancelInfinitepayCashPurchase,
   adminResolveCashPurchaseReview,
+  getCashPurchaseReminderPreview,
+  requestCashPurchaseReminder,
 } from '../services/cashPurchaseService'
 import {
   canSubmitAdminNote,
   cashPurchaseStatusLabel,
   ADMIN_CASH_PURCHASE_STATUS_LABELS as STATUS_LABELS,
 } from '../utils/cashPurchaseFlow'
+
+const REMINDER_BLOCK_REASON_LABELS = {
+  not_pending: 'Esta compra não está mais pendente.',
+  account_not_active: 'A conta do comprador não está ativa -- lembretes são só para contas ativas.',
+  daily_limit_reached: 'O limite diário de lembretes para este destinatário já foi atingido.',
+}
 
 const ADMIN_PURCHASE_ACTIONS = {
   cancel: {
@@ -111,6 +120,86 @@ function PurchaseActionDialog({ purchase, actionKey, onClose, onConfirm }) {
   )
 }
 
+// Passo 1 (confirmação): busca nome e e-mail MASCARADO no servidor antes de mostrar
+// qualquer botão de envio -- nunca monta a máscara no cliente, nunca recebe o e-mail real.
+// Passo 2 (envio): só enfileira (admin_request_cash_purchase_reminder); o envio real é
+// assíncrono, então o sucesso aqui significa "na fila", não "entregue".
+function ReminderDialog({ purchase, onClose, onConfirm }) {
+  const [state, setState] = useState({ status: 'loading', preview: null, error: '' })
+  const [sending, setSending] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    getCashPurchaseReminderPreview(purchase.id)
+      .then((preview) => {
+        if (active) setState({ status: 'ready', preview, error: '' })
+      })
+      .catch(() => {
+        if (active) setState({ status: 'ready', preview: null, error: 'Não foi possível carregar os dados do destinatário.' })
+      })
+    return () => {
+      active = false
+    }
+  }, [purchase.id])
+
+  const preview = state.preview
+  const blockReason = preview && !preview.canSend
+    ? preview.reason === 'cooldown'
+      ? `Lembrete já enviado recentemente -- próximo envio liberado em ${formatDateTime(new Date(preview.cooldownUntil))}.`
+      : REMINDER_BLOCK_REASON_LABELS[preview.reason] || 'Não é possível enviar um lembrete agora.'
+    : ''
+
+  return (
+    <Dialog
+      title={`Enviar lembrete -- ${purchase.id}`}
+      onClose={sending ? () => {} : onClose}
+      footerButtons={[
+        { content: 'Voltar', onClick: onClose, disabled: sending },
+        ...(preview?.canSend
+          ? [{
+              content: 'Enviar lembrete',
+              buttonType: 'primary',
+              disabled: sending,
+              onClick: async () => {
+                setSending(true)
+                const errorMessage = await onConfirm()
+                setSending(false)
+                if (errorMessage) setState((previous) => ({ ...previous, error: errorMessage }))
+              },
+            }]
+          : []),
+      ]}
+    >
+      <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {state.status === 'loading' && <Spinner aria-label="Carregando destinatário" />}
+        {state.error && (
+          <Flash variant="danger" role="alert">
+            {state.error}
+          </Flash>
+        )}
+        {preview && (
+          <>
+            <Text>
+              Enviar um e-mail avisando sobre a compra pendente para{' '}
+              <strong>@{preview.username || purchase.userId}</strong> ({preview.maskedEmail})?
+            </Text>
+            {preview.lastSentAt && (
+              <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+                Último lembrete enviado em {formatDateTime(new Date(preview.lastSentAt))}.
+              </Text>
+            )}
+            {blockReason && (
+              <Flash variant="attention" role="alert">
+                {blockReason}
+              </Flash>
+            )}
+          </>
+        )}
+      </Box>
+    </Dialog>
+  )
+}
+
 export default function AdminCashPurchases() {
   const { user } = useAuth()
   const [status, setStatus] = useState('pending')
@@ -120,8 +209,12 @@ export default function AdminCashPurchases() {
     status
   )
   const usernames = useUsernamesByIds(purchases.map((purchase) => purchase.userId))
+  const { latestReminderByPurchaseId, refreshLatestReminders } = useLatestCashPurchaseReminders(
+    purchases.map((purchase) => purchase.id)
+  )
   const { toasts, showToast } = useToast()
   const [dialog, setDialog] = useState(null) // { purchase, actionKey }
+  const [remindPurchase, setRemindPurchase] = useState(null)
   const [busyId, setBusyId] = useState(null)
 
   async function handleConfirm(note) {
@@ -144,6 +237,27 @@ export default function AdminCashPurchases() {
     } catch (err) {
       console.error('[AdminCashPurchases] action:', actionKey, err)
       return 'Não foi possível concluir a ação. Tente novamente.'
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function handleConfirmReminder() {
+    try {
+      setBusyId(remindPurchase.id)
+      const result = await requestCashPurchaseReminder(remindPurchase.id)
+      if (!result.queued) {
+        return result.reason === 'cooldown'
+          ? `Lembrete já enviado recentemente -- próximo envio liberado em ${formatDateTime(new Date(result.cooldownUntil))}.`
+          : REMINDER_BLOCK_REASON_LABELS[result.reason] || 'Não foi possível enfileirar o lembrete agora.'
+      }
+      showToast('Lembrete na fila -- o e-mail será enviado em poucos minutos.')
+      setRemindPurchase(null)
+      await refreshLatestReminders()
+      return ''
+    } catch (err) {
+      console.error('[AdminCashPurchases] reminder:', err)
+      return 'Não foi possível enfileirar o lembrete. Tente novamente.'
     } finally {
       setBusyId(null)
     }
@@ -228,6 +342,15 @@ export default function AdminCashPurchases() {
               Pago após cancelamento: {date(purchase.paidAfterCancelAt)}
             </Text>
           )}
+          {latestReminderByPurchaseId[purchase.id] && (
+            <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
+              {latestReminderByPurchaseId[purchase.id].status === 'sent'
+                ? `Último lembrete enviado em ${date(latestReminderByPurchaseId[purchase.id].sentAt)}.`
+                : latestReminderByPurchaseId[purchase.id].status === 'pending'
+                  ? 'Lembrete na fila, enviando em breve...'
+                  : 'Última tentativa de lembrete falhou.'}
+            </Text>
+          )}
           {purchase.userId && (
             <Link to={`/admin/contas?usuario=${encodeURIComponent(purchase.userId)}`}>
               Ver conta do comprador
@@ -237,13 +360,21 @@ export default function AdminCashPurchases() {
             purchase.paymentProvider === 'infinitepay' && (
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
                 {purchase.status === 'pending' && (
-                  <Button
-                    variant="danger"
-                    disabled={!!busyId}
-                    onClick={() => setDialog({ purchase, actionKey: 'cancel' })}
-                  >
-                    Cancelar compra
-                  </Button>
+                  <>
+                    <Button
+                      disabled={!!busyId}
+                      onClick={() => setRemindPurchase(purchase)}
+                    >
+                      Enviar lembrete
+                    </Button>
+                    <Button
+                      variant="danger"
+                      disabled={!!busyId}
+                      onClick={() => setDialog({ purchase, actionKey: 'cancel' })}
+                    >
+                      Cancelar compra
+                    </Button>
+                  </>
                 )}
                 {purchase.status === 'needs_review' && (
                   <>
@@ -278,6 +409,13 @@ export default function AdminCashPurchases() {
           actionKey={dialog.actionKey}
           onClose={() => setDialog(null)}
           onConfirm={handleConfirm}
+        />
+      )}
+      {remindPurchase && (
+        <ReminderDialog
+          purchase={remindPurchase}
+          onClose={() => setRemindPurchase(null)}
+          onConfirm={handleConfirmReminder}
         />
       )}
     </div>
