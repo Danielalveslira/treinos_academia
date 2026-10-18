@@ -53,8 +53,11 @@ test('hasPendingCashPurchase is true only when some purchase is still pending', 
 
 test('the user-facing and admin-facing status maps cover every purchase state', () => {
   for (const labels of [USER_CASH_PURCHASE_STATUS_LABELS, ADMIN_CASH_PURCHASE_STATUS_LABELS]) {
-    assert.deepEqual(Object.keys(labels).sort(), ['cancelled', 'checkout_failed', 'credited', 'held_in_case', 'pending'])
-    for (const status of ['pending', 'credited', 'cancelled', 'held_in_case', 'checkout_failed']) {
+    assert.deepEqual(
+      Object.keys(labels).sort(),
+      ['cancelled', 'checkout_failed', 'credited', 'held_in_case', 'needs_review', 'pending']
+    )
+    for (const status of ['pending', 'credited', 'cancelled', 'held_in_case', 'checkout_failed', 'needs_review']) {
       assert.equal(typeof labels[status].text, 'string')
       assert.ok(labels[status].text.length > 0)
       assert.equal(typeof labels[status].variant, 'string')

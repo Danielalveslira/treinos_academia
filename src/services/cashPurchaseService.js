@@ -27,6 +27,10 @@ export function mapPurchaseRow(row) {
     cancelledAt: row.cancelled_at,
     cancelledBy: row.cancelled_by,
     cancelReason: row.cancel_reason,
+    reviewReason: row.review_reason,
+    reviewFlaggedAt: row.review_flagged_at,
+    reviewResolvedAt: row.review_resolved_at,
+    reviewResolution: row.review_resolution,
   }
 }
 
@@ -72,6 +76,31 @@ export function checkInfinitepayPurchase(purchaseId, hints = {}) {
 export async function cancelMyCashPurchase(purchaseId) {
   const { data, error } = await supabase.rpc('cancel_my_cash_purchase', {
     p_purchase_id: purchaseId,
+  })
+  if (error) throw error
+  return data
+}
+
+// Fallback administrativo para uma compra InfinitePay pendente sem pagamento confirmado
+// (ex.: comprador com conta desativada, que nunca pode voltar ao app pra cancelar sozinho).
+// Nunca credita nada -- um pagamento confirmado tardiamente ainda é reconciliado depois.
+export async function adminCancelInfinitepayCashPurchase(purchaseId, reason) {
+  const { data, error } = await supabase.rpc('admin_cancel_infinitepay_cash_purchase', {
+    p_purchase_id: purchaseId,
+    p_reason: reason,
+  })
+  if (error) throw error
+  return data
+}
+
+// Registra a decisão humana (reembolso/reativação) para uma compra que
+// confirm_infinitepay_cash_purchase marcou como needs_review -- pagamento confirmado pelo
+// provedor numa conta desativada, nunca creditado automaticamente.
+export async function adminResolveCashPurchaseReview(purchaseId, resolution, note) {
+  const { data, error } = await supabase.rpc('admin_resolve_cash_purchase_review', {
+    p_purchase_id: purchaseId,
+    p_resolution: resolution,
+    p_note: note,
   })
   if (error) throw error
   return data

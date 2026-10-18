@@ -54,6 +54,7 @@ export const USER_CASH_PURCHASE_STATUS_LABELS = {
   cancelled: { text: 'Cancelado', variant: 'danger' },
   checkout_failed: { text: 'Checkout não iniciado', variant: 'danger' },
   held_in_case: { text: 'Retido em análise financeira', variant: 'attention' },
+  needs_review: { text: 'Em verificação', variant: 'attention' },
 }
 
 export const ADMIN_CASH_PURCHASE_STATUS_LABELS = {
@@ -62,7 +63,13 @@ export const ADMIN_CASH_PURCHASE_STATUS_LABELS = {
   cancelled: { text: 'Cancelada', variant: 'danger' },
   checkout_failed: { text: 'Falha no checkout', variant: 'danger' },
   held_in_case: { text: 'Retida em caso financeiro', variant: 'attention' },
+  needs_review: { text: 'Em análise (pagamento confirmado, conta desativada)', variant: 'attention' },
 }
+
+// Mesmo limite mínimo (>=5 caracteres) que o banco já exige em toda nota/motivo
+// administrativo de EvoCash (admin_cancel_infinitepay_cash_purchase,
+// admin_resolve_cash_purchase_review) -- reaproveita canSubmitCancellation de propósito.
+export const canSubmitAdminNote = canSubmitCancellation
 
 // Abrevia só a APRESENTAÇÃO de um protocolo (uuid, 36 caracteres) pra não estourar a
 // largura do card no mobile -- nunca usado pelo valor que é efetivamente copiado ou
