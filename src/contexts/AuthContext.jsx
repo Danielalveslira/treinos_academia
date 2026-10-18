@@ -34,7 +34,6 @@ import {
 // Leitura/decisão do cold start: só carregada quando o app abre sem rede (fora do bundle de boot online).
 const bootstrapEntry = () => import('../services/offline/bootstrapEntry')
 import { resolveLegalGateState } from '../utils/legal'
-import { requiresEmailVerification } from '../utils/emailVerification'
 
 export const AuthContext = createContext(null)
 
@@ -604,13 +603,8 @@ export function AuthProvider({ children }) {
     )
       return
     const gate = resolveLegalGateState({ profile, access: legalAccess, loading: false, error: '' })
-    const emailOk = user.emailVerified || !requiresEmailVerification(profile)
     const allowed =
-      serverAccessAllowed &&
-      gate === 'allowed' &&
-      profile.accountStatus === 'active' &&
-      !deletionStatus &&
-      emailOk
+      serverAccessAllowed && gate === 'allowed' && profile.accountStatus === 'active' && !deletionStatus
     const blockedReason = allowed
       ? null
       : !serverAccessAllowed
@@ -619,9 +613,7 @@ export function AuthProvider({ children }) {
           ? 'ACCOUNT_DELETING'
           : profile.accountStatus !== 'active'
             ? 'ACCOUNT_NOT_ACTIVE'
-            : !emailOk
-              ? 'EMAIL_UNVERIFIED'
-              : gate.toUpperCase().replace(/-/g, '_')
+            : gate.toUpperCase().replace(/-/g, '_')
     saveBootstrap(
       buildBootstrapRecord({
         userId: user.uid,

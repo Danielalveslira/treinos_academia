@@ -3,10 +3,8 @@ import { Box, Button, Flash, Spinner } from '@primer/react'
 import { PublicLayout } from './PublicLayout'
 import { useAuth } from '../hooks/useAuth'
 import { LegalGate } from './LegalGate'
-import { EmailVerificationGate } from './EmailVerificationGate'
 import { AccountBlockedGate } from './AccountBlockedGate'
 import { AccountDeletionBlockedGate } from './AccountDeletionBlockedGate'
-import { requiresEmailVerification } from '../utils/emailVerification'
 import { resolveAccountBlockState, resolveLegalGateState } from '../utils/legal'
 
 export function ProtectedRoute({ children }) {
@@ -106,16 +104,9 @@ export function ProtectedRoute({ children }) {
     )
   }
 
-  // Só monta o gate (e paga o custo de checar o status de verificação) para contas que
-  // realmente precisam disso — contas anteriores à mudança nunca entram aqui, mesmo que
-  // emailVerified esteja false (ver requiresEmailVerification/EMAIL_VERIFICATION_CUTOFF).
-  if (!user.emailVerified && requiresEmailVerification(profile)) {
-    return (
-      <EmailVerificationGate>
-        <LegalGate>{children}</LegalGate>
-      </EmailVerificationGate>
-    )
-  }
-
+  // Confirmação de e-mail agora é resolvida ANTES de existir sessão (Register.jsx/
+  // ConfirmEmail.jsx trocam o código por sessão via confirmSignupOtp) -- com "Confirm
+  // email" ligado, um usuário com user.emailVerified===false nunca chega a ter sessão
+  // para esta tela renderizar, então não há gate pós-login para manter aqui.
   return <LegalGate>{children}</LegalGate>
 }

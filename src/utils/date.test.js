@@ -3,7 +3,6 @@ import assert from 'node:assert/strict'
 import { toDate, toMillis } from './date.js'
 import { formatDate, formatDateTime, formatTime } from './format.js'
 import { formatPublicationDateTime } from './expiry.js'
-import { requiresEmailVerification, EMAIL_VERIFICATION_CUTOFF } from './emailVerification.js'
 import { isAccountRestricted } from './legal.js'
 
 const ISO = '2026-10-02T12:41:00.000Z'
@@ -72,17 +71,6 @@ test('expiry helpers keep working with ISO strings (timestamptz from Supabase)',
   assert.match(formatPublicationDateTime(ISO), /2026/)
   assert.equal(formatPublicationDateTime(null), '—')
   assert.equal(formatPublicationDateTime('lixo'), '—')
-})
-
-test('requiresEmailVerification reads createdAt as an ISO string, a Date or a legacy Timestamp', () => {
-  const after = new Date(EMAIL_VERIFICATION_CUTOFF.getTime() + 1000)
-  const before = new Date(EMAIL_VERIFICATION_CUTOFF.getTime() - 1000)
-  assert.equal(requiresEmailVerification({ createdAt: after.toISOString() }), true)
-  assert.equal(requiresEmailVerification({ createdAt: before.toISOString() }), false)
-  assert.equal(requiresEmailVerification({ createdAt: after }), true)
-  assert.equal(requiresEmailVerification({ createdAt: { toDate: () => after } }), true)
-  assert.equal(requiresEmailVerification({ createdAt: null }), false)
-  assert.equal(requiresEmailVerification(null), false)
 })
 
 test('isAccountRestricted handles ISO "until", missing "until" and system bans', () => {
