@@ -1,6 +1,6 @@
 import { AuthLayout } from '../components/PublicLayout'
 import { useState } from 'react'
-import { Link as RouterLink, useNavigate, Navigate } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { loginUser } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
@@ -11,6 +11,7 @@ import { OFFLINE_ENTRY_REQUIRES_INTERNET } from '../contexts/AuthContext'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, loading } = useAuth()
   const online = useOnlineStatus()
   const [email, setEmail] = useState('')
@@ -20,6 +21,9 @@ export default function Login() {
   // Lazy: lê e já limpa na primeira renderização -- uma sessão encerrada por
   // handlePossibleGhostSession (ver AuthContext.jsx) cai direto aqui.
   const [sessionNotice] = useState(consumeLogoutReason)
+  // Vem de ResetPassword.jsx (navigate state, não sessionStorage: é só esta
+  // navegação, não "a próxima tela de login" como consumeLogoutReason).
+  const passwordResetSuccess = Boolean(location.state?.passwordResetSuccess)
 
   if (!loading && user) return <Navigate to="/" replace />
 
@@ -35,6 +39,13 @@ export default function Login() {
       navigate('/', { replace: true })
     } catch (err) {
       console.error('[Auth] login:', err)
+      if (err?.code === 'email_not_confirmed') {
+        // Conta criada mas nunca confirmada (ex.: fechou a aba antes de digitar o
+        // código no cadastro). Sem sessão não há como mostrar nada dentro do app --
+        // /confirmar-email é a mesma etapa de código do Register, só que avulsa.
+        navigate('/confirmar-email', { state: { email } })
+        return
+      }
       setError(translateAuthError(err))
     } finally {
       setSubmitting(false)
@@ -63,6 +74,11 @@ export default function Login() {
           {sessionNotice && !error && (
             <Flash role="status" variant={sessionNotice.tone === 'warning' ? 'warning' : 'default'}>
               {sessionNotice.message}
+            </Flash>
+          )}
+          {passwordResetSuccess && !error && (
+            <Flash role="status" variant="success">
+              Senha redefinida. Entre com sua nova senha.
             </Flash>
           )}
           {error && (

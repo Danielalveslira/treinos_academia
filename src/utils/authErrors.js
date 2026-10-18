@@ -11,7 +11,7 @@ const MESSAGES = {
   email_exists:
     'Este e-mail já está cadastrado. Se você solicitou a exclusão desta conta e ela ainda não foi concluída, aguarde ou entre em contato pelo atendimento antes de tentar novamente.',
   email_address_invalid: 'E-mail inválido.',
-  weak_password: 'A senha deve ter pelo menos 6 caracteres.',
+  weak_password: 'A senha deve ter pelo menos 8 caracteres, com letras e números.',
   // GoTrue nunca distingue "não existe" de "senha errada" num login (só invalid_credentials),
   // ao contrário do Firebase Auth que tinha um código pra cada caso.
   invalid_credentials: 'E-mail ou senha incorretos.',
@@ -21,6 +21,9 @@ const MESSAGES = {
   // síncrono) -- uma tentativa de login logo em seguida já bate nesse código, não em
   // "senha incorreta".
   user_banned: 'Esta conta não está mais disponível.',
+  email_not_confirmed: 'Confirme seu e-mail para entrar. Enviamos um código de confirmação no cadastro.',
+  otp_expired: 'Código inválido ou expirado. Solicite um novo.',
+  same_password: 'A nova senha precisa ser diferente da atual.',
 }
 
 export function translateAuthError(error) {

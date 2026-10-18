@@ -5,19 +5,25 @@ import { isOfflineColdStartEnabled } from './offline/database'
 export async function registerUser(email, password) {
   const { data, error } = await supabase.auth.signUp({ email, password })
   if (error) throw error
-  return { user: { uid: data.user.id, email: data.user.email } }
+  // Com "Confirm email" ligado, data.session vem null: a conta existe no Auth mas sem
+  // sessão até o código de confirmação ser verificado (ver confirmSignupOtp). O chamador
+  // decide o que fazer com isso -- aqui só reportamos o que o GoTrue devolveu.
+  return {
+    user: { uid: data.user.id, email: data.user.email },
+    hasSession: Boolean(data.session),
+  }
 }
 
-// NOTA DE COMPATIBILIDADE: no Firebase, o cadastro loga na hora e a verificação de
-// e-mail é só um gate de acesso (emailVerifiedOk nas rules) — o usuário navega logado,
-// só vendo telas bloqueadas até clicar no link. No Supabase, "Confirm email" ligado
-// impede a sessão de existir até a confirmação (sem sessão pra sequer mostrar um
-// gate); com autoconfirm ligado (como está hoje, necessário pro cadastro completar
-// sem travar — ver conversa anterior), email_confirmed_at já vem preenchido na hora,
-// então esta função e has_app_access() não bloqueiam ninguém de verdade ainda. Fica
-// como TODO: replicar o gate completo exige decidir explicitamente o trade-off
-// (desativar autoconfirm e perder o "loga na hora", ou um mecanismo de verificação
-// paralelo próprio) — não decidi isso sozinho.
+// Confirmação de cadastro por código (OTP de 6 dígitos), não por link: um link de
+// confirmação clicável pode ser consumido por scanners de segurança de e-mail
+// corporativos antes do clique do usuário (ver comparação da Etapa 1). O código só é
+// usado se alguém de fato o digitar no app.
+export async function confirmSignupOtp(email, token) {
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' })
+  if (error) throw error
+  return { uid: data.user.id, email: data.user.email }
+}
+
 // Sem equivalente exato do %DISPLAY_NAME% do template do Firebase (o template de
 // e-mail do Supabase não tem essa variável) — mantido só para não quebrar a chamada em
 // Register.jsx, gravando em user_metadata (não afeta nada mais no app hoje).
@@ -26,17 +32,13 @@ export async function setDisplayName(_user, displayName) {
   if (error) throw error
 }
 
-export async function sendVerificationEmail() {
-  const { data } = await supabase.auth.getUser()
-  if (!data.user?.email) return
-  const { error } = await supabase.auth.resend({ type: 'signup', email: data.user.email })
+// Reenvia o código de confirmação de cadastro. Usada tanto na etapa "digite o código"
+// do próprio Register (sessão ainda não existe) quanto em ConfirmEmail.jsx (quem voltou
+// depois de fechar a aba) -- por isso aceita o e-mail em vez de ler supabase.auth.getUser(),
+// que não tem sessão para consultar antes da confirmação.
+export async function sendVerificationEmail(email) {
+  const { error } = await supabase.auth.resend({ type: 'signup', email })
   if (error) throw error
-}
-
-export async function refreshEmailVerified() {
-  const { data, error } = await supabase.auth.getUser()
-  if (error) throw error
-  return !!data.user?.email_confirmed_at
 }
 
 export async function loginUser(email, password) {
@@ -132,7 +134,82 @@ export function logoutAllDevices({ beforeLocalSignOut } = {}) {
   })
 }
 
+// Sem redirectTo: o template de recovery (supabase/templates/recovery.html) monta o
+// link com {{ .SiteURL }} direto para /redefinir-senha, que troca o token_hash por
+// sessão no cliente (ver ResetPassword.jsx) -- não depende do allow-list de
+// additional_redirect_urls, que só vale para o .ConfirmationURL/redirectTo padrão.
 export async function resetPassword(email) {
   const { error } = await supabase.auth.resetPasswordForEmail(email)
   if (error) throw error
+}
+
+// Troca o token_hash do link de recuperação por uma sessão autenticada. Só então
+// updateUser({ password }) é permitido -- é essa sessão temporária, não a senha antiga,
+// que autoriza a troca.
+export async function verifyRecoveryToken(tokenHash) {
+  const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+  if (error) throw error
+}
+
+export async function updatePassword(password) {
+  const { error } = await supabase.auth.updateUser({ password })
+  if (error) throw error
+}
+
+// Chamada só depois de confirmSignupOtp estabelecer sessão (ver confirmSignupAndSyncPassword):
+// alinha a senha da conta com o que está no formulário de cadastro NESTE momento. Necessária
+// contra um cenário de pre-account hijacking confirmado em teste local contra o GoTrue: um
+// atacante que sabe o e-mail da vítima pode fazer signUp primeiro com uma senha própria; se a
+// vítima então se cadastrar normalmente com o MESMO e-mail (sem saber que já existe uma
+// tentativa pendente), o GoTrue confirma a conta da vítima mas MANTÉM a senha do atacante --
+// um segundo signUp para um e-mail ainda não confirmado nunca atualiza a senha, só reenvia o
+// código. LANÇA em caso de falha (ao contrário de endOtherSessions/logoutUser best-effort
+// deste arquivo): o chamador DEVE falhar de forma fechada, nunca conceder acesso sem
+// confirmar que a senha da conta é a que esta pessoa digitou agora (ver
+// confirmSignupAndSyncPassword). Testado também com secure_password_change=true: a sessão
+// recém-criada pelo verifyOtp já conta como "logado recentemente", sem bloqueio extra.
+export async function syncSignupPassword(password) {
+  if (!password) throw new Error('MISSING_PASSWORD')
+  await updatePassword(password)
+}
+
+// Orquestra a confirmação de cadastro com o failsafe de senha acima: confirma o código e só
+// então alinha a senha. Se a senha não puder ser confirmada, encerra a sessão recém-criada
+// (nunca deixa uma conta logada com uma senha não comprovada por quem está confirmando) e
+// propaga um erro com code: 'PASSWORD_SYNC_FAILED' para o chamador decidir a UI (ver
+// Register.jsx) -- nunca a senha em si, nem aqui nem em nenhum log.
+export async function confirmSignupAndSyncPassword(email, token, password) {
+  await confirmSignupOtp(email, token)
+  try {
+    await syncSignupPassword(password)
+  } catch (err) {
+    console.error('[Auth] syncSignupPassword falhou após confirmar -- encerrando sessão:', err)
+    await logoutUser().catch(() => {})
+    const failure = new Error('PASSWORD_SYNC_FAILED')
+    failure.code = 'PASSWORD_SYNC_FAILED'
+    throw failure
+  }
+}
+
+// Usada por ConfirmEmail.jsx: ali não há NENHUMA senha conhecida (quem confirma pode ser a
+// vítima do mesmo cenário de hijacking acima, chegando por um caminho sem o formulário de
+// cadastro em memória). Por isso exige definir uma senha nova antes de qualquer acesso --
+// nunca reaproveita o que já estava na conta. endOtherSessions é best-effort (revoga sessões
+// de quem tiver cadastrado a conta antes, inclusive um possível atacante já logado);
+// logoutUser também não bloqueia o retorno -- o objetivo é sempre exigir um login explícito
+// com a senha nova a seguir, mas uma falha ao encerrar ESTA sessão não deve impedir a pessoa
+// de saber que a senha já foi trocada com sucesso.
+export async function setPasswordAfterConfirmation(password) {
+  await updatePassword(password)
+  await endOtherSessions()
+  await logoutUser().catch(() => {})
+}
+
+// Chamado depois de uma redefinição de senha bem-sucedida: revoga qualquer sessão que
+// alguém mais possa ter aberto com a senha antiga, sem encerrar esta (a sessão criada
+// agora pela própria recuperação). Best-effort de propósito -- diferente de
+// logoutAllDevices, uma falha aqui não desfaz a troca de senha, que já aconteceu.
+export async function endOtherSessions() {
+  const { error } = await supabase.auth.signOut({ scope: 'others' })
+  if (error) console.warn('[Auth] endOtherSessions:', error)
 }

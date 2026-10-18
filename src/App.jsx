@@ -13,6 +13,8 @@ import { COMMENTS_ENABLED } from './features/comments/config'
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ConfirmEmail = lazy(() => import('./pages/ConfirmEmail'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Dashboard = lazy(routeLoaders['/'])
 const Exercises = lazy(routeLoaders['/exercicios'])
 const ExerciseDetail = lazy(routeLoaders['/exercicios/:id'])
@@ -56,6 +58,8 @@ export function AppRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Register />} />
         <Route path="/esqueci-senha" element={<ForgotPassword />} />
+        <Route path="/confirmar-email" element={<ConfirmEmail />} />
+        <Route path="/redefinir-senha" element={<ResetPassword />} />
         <Route path="/regras-da-comunidade" element={<LegalDocument documentId="community" />} />
         <Route path="/termos-de-uso" element={<LegalDocument documentId="terms" />} />
         <Route path="/politica-de-privacidade" element={<LegalDocument documentId="privacy" />} />

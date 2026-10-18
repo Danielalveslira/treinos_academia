@@ -1,23 +1,41 @@
 import { AuthLayout } from '../components/PublicLayout'
-import { useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { resetPassword } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
 
+const RESEND_COOLDOWN_S = 60
+
 export default function ForgotPassword() {
-  const [email, setEmail] = useState('')
+  const location = useLocation()
+  // Vem de Register.jsx (etapa 'locked', ver confirmSignupAndSyncPassword) quando o
+  // e-mail já é conhecido -- só uma conveniência de preenchimento, nunca confiado como
+  // prova de posse do e-mail (resetPassword continua exigindo o link por e-mail de novo).
+  const [email, setEmail] = useState(location.state?.email || '')
   const [error, setError] = useState('')
   const [sent, setSent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
 
+  useEffect(() => {
+    if (cooldown <= 0) return undefined
+    const timer = setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000)
+    return () => clearInterval(timer)
+  }, [cooldown])
+
+  // Mensagem SEMPRE genérica (sucesso ou erro de validação por trás das cenas não
+  // distingue "e-mail existe" de "não existe") -- só uma falha real de rede/servidor
+  // mostra o erro técnico, nunca o resultado da busca pelo e-mail.
   async function handleSubmit(e) {
     e.preventDefault()
+    if (submitting || cooldown > 0) return
     setError('')
     setSubmitting(true)
     try {
       await resetPassword(email)
       setSent(true)
+      setCooldown(RESEND_COOLDOWN_S)
     } catch (err) {
       console.error('[Auth] resetPassword:', err)
       setError(translateAuthError(err))
@@ -46,36 +64,34 @@ export default function ForgotPassword() {
             </Flash>
           )}
 
-          {sent ? (
+          {sent && (
             <Flash variant="success" role="status">
               Se o e-mail existir, enviamos um link de recuperação. Confira também a caixa de spam.
             </Flash>
-          ) : (
-            <>
-              <FormControl required>
-                <FormControl.Label>E-mail</FormControl.Label>
-                <TextInput
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  size="large"
-                  block
-                />
-              </FormControl>
-
-              <Button
-                type="submit"
-                variant="primary"
-                size="large"
-                block
-                loading={submitting}
-                disabled={submitting}
-              >
-                Enviar link
-              </Button>
-            </>
           )}
+
+          <FormControl required>
+            <FormControl.Label>E-mail</FormControl.Label>
+            <TextInput
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              size="large"
+              block
+            />
+          </FormControl>
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="large"
+            block
+            loading={submitting}
+            disabled={submitting || cooldown > 0}
+          >
+            {sent ? (cooldown > 0 ? `Reenviar link (${cooldown}s)` : 'Reenviar link') : 'Enviar link'}
+          </Button>
         </Stack>
       </form>
     </AuthLayout>

@@ -1,8 +1,13 @@
 import { AuthLayout } from '../components/PublicLayout'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Button, FormControl, TextInput, Select, Link, Flash, Stack } from '@primer/react'
-import { registerUser, setDisplayName, sendVerificationEmail } from '../services/authService'
+import {
+  registerUser,
+  confirmSignupAndSyncPassword,
+  setDisplayName,
+  sendVerificationEmail,
+} from '../services/authService'
 import {
   ensureUserProfile,
   setUsername,
@@ -17,6 +22,7 @@ import {
   validateBirthDate,
   validateSexo,
   validateUsageProfile,
+  validatePassword,
   hasErrors,
 } from '../utils/validators'
 import { UsageProfileField } from '../components/UsageProfileField'
@@ -27,6 +33,8 @@ import {
   getActiveLegalBundle,
   isLegalPolicyChangedError,
 } from '../services/legalService'
+
+const RESEND_COOLDOWN_S = 60
 
 function todayString() {
   return new Date().toISOString().slice(0, 10)
@@ -54,6 +62,34 @@ export default function Register() {
   const [legalBundle, setLegalBundle] = useState(null)
   const [legalLoading, setLegalLoading] = useState(true)
   const [legalError, setLegalError] = useState('')
+  // 'form': formulário de cadastro normal. 'confirm': conta já criada no Auth, mas sem
+  // sessão (Confirm email exige o código antes de liberar auth.uid()) -- ver
+  // confirmSignupOtp. 'locked': código certo, mas não foi possível confirmar que a senha
+  // da conta é a que está neste formulário (ver confirmSignupAndSyncPassword) -- nunca
+  // concede acesso nesse estado. Os dados do formulário continuam em memória nos estados
+  // acima.
+  const [step, setStep] = useState('form')
+  const [otpCode, setOtpCode] = useState('')
+  const [confirmError, setConfirmError] = useState('')
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
+  const mounted = useRef(true)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+
+  // Cosmético (o Auth já recusa reenvios em excesso com over_email_send_rate_limit de
+  // qualquer forma) -- evita martelar o botão sem necessidade.
+  useEffect(() => {
+    if (cooldown <= 0) return undefined
+    const timer = setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000)
+    return () => clearInterval(timer)
+  }, [cooldown])
 
   useEffect(() => {
     let active = true
@@ -73,6 +109,50 @@ export default function Register() {
       active = false
     }
   }, [])
+
+  // Roda a sequência de RPCs que monta o perfil (username, nascimento, display name,
+  // usageProfile, aceite legal) e navega para o app. Chamada em dois pontos: logo após
+  // o signUp quando já há sessão (confirmação desligada/autoconfirm), e depois de
+  // confirmSignupOtp estabelecer a sessão (confirmação ligada). auth.uid() precisa
+  // existir nos dois casos -- sem sessão, todas essas RPCs falham com NOT_AUTHENTICATED.
+  async function completeProfile(uid) {
+    try {
+      await ensureUserProfile(uid)
+      await setUsername(uid, username)
+      await setBirthInfo(uid, { sexo, dataNascimento: birthDate })
+      await setDisplayName({ uid }, username)
+    } catch (postCreateErr) {
+      // Preserva identidade, perfil e reservas. Exclusão só pelo fluxo oficial.
+      console.error('[Auth] register profile incomplete:', postCreateErr)
+      setError(
+        'Sua conta foi criada, mas o perfil não foi concluído. Tente novamente para concluir nesta página ou entre com seu e-mail e senha para completar o perfil. Se quiser excluir a conta, use o atendimento e o fluxo oficial de exclusão.'
+      )
+      return false
+    }
+    // Também best-effort e pela mesma razão: se isto falhar, a conta segue existindo
+    // sem usageProfile e é recuperada pelo mesmo preenchimento contextual de contas
+    // legadas (Meu Perfil/fluxo da Vitrine) -- nunca precisa desfazer o cadastro.
+    setUsageProfile(usageProfile).catch((profileErr) => {
+      console.error('[Auth] setUsageProfile:', profileErr)
+    })
+    try {
+      if (legalBundle.manifest.published) await acceptLegalDocuments(confirmed, legalBundle)
+      await refreshProfile(uid)
+    } catch (err) {
+      setError(
+        isLegalPolicyChangedError(err) || err?.message === 'LEGAL_POLICY_INCOMPATIBLE'
+          ? 'Os documentos ativos mudaram. Recarregue a página, leia a versão atual e tente novamente.'
+          : err.code?.startsWith('functions/')
+          ? 'Sua conta foi criada, mas o aceite não foi registrado. Tente novamente ou entre na conta para concluir.'
+          : translateAuthError(err)
+      )
+      return false
+    }
+    // replace: mesmo motivo do Login — depois de autenticado, cadastro/login não devem
+    // continuar acessíveis pelo botão voltar.
+    navigate('/', { replace: true })
+    return true
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -97,6 +177,7 @@ export default function Register() {
       }),
       ...validateSexo(sexo),
       ...validateUsageProfile(usageProfile),
+      ...(createdAccount ? {} : validatePassword(password)),
     }
     setFieldErrors(validationErrors)
     if (hasErrors(validationErrors)) return
@@ -115,46 +196,170 @@ export default function Register() {
         uid = credential.user.uid
         // Retentativas desta página retomam as etapas idempotentes, sem outro signUp.
         setCreatedAccount(uid)
-        sendVerificationEmail(credential.user).catch((sendErr) => {
-          console.error('[Auth] sendVerificationEmail:', sendErr)
-        })
+        if (!credential.hasSession) {
+          // Confirm email ligado: sem sessão ainda, as RPCs de perfil abaixo falhariam
+          // com NOT_AUTHENTICATED. Aguarda o código antes de prosseguir. O signUp já
+          // disparou o e-mail com o código -- cooldown inicial evita um "reenviar"
+          // imediato que bateria no rate limit do próprio envio que acabou de ocorrer.
+          setStep('confirm')
+          setCooldown(RESEND_COOLDOWN_S)
+          return
+        }
       }
-      try {
-        await ensureUserProfile(uid)
-        await setUsername(uid, username)
-        await setBirthInfo(uid, { sexo, dataNascimento: birthDate })
-        await setDisplayName({ uid }, username)
-      } catch (postCreateErr) {
-        // Preserva identidade, perfil e reservas. Exclusão só pelo fluxo oficial.
-        console.error('[Auth] register profile incomplete:', postCreateErr)
-        setError(
-          'Sua conta foi criada, mas o perfil não foi concluído. Tente novamente para concluir nesta página ou entre com seu e-mail e senha para completar o perfil. Se quiser excluir a conta, use o atendimento e o fluxo oficial de exclusão.'
-        )
-        return
-      }
-      // Também best-effort e pela mesma razão: se isto falhar, a conta segue existindo
-      // sem usageProfile e é recuperada pelo mesmo preenchimento contextual de contas
-      // legadas (Meu Perfil/fluxo da Vitrine) -- nunca precisa desfazer o cadastro.
-      setUsageProfile(usageProfile).catch((profileErr) => {
-        console.error('[Auth] setUsageProfile:', profileErr)
-      })
-      if (legalBundle.manifest.published) await acceptLegalDocuments(confirmed, legalBundle)
-      await refreshProfile(uid)
-      // replace: mesmo motivo do Login — depois de autenticado, cadastro/login não devem
-      // continuar acessíveis pelo botão voltar.
-      navigate('/', { replace: true })
+      await completeProfile(uid)
     } catch (err) {
       console.error('[Auth] register:', err)
-      setError(
-        isLegalPolicyChangedError(err) || err?.message === 'LEGAL_POLICY_INCOMPATIBLE'
-          ? 'Os documentos ativos mudaram. Recarregue a página, leia a versão atual e tente novamente.'
-          : err.code?.startsWith('functions/')
-          ? 'Sua conta foi criada, mas o aceite não foi registrado. Tente novamente ou entre na conta para concluir.'
-          : translateAuthError(err)
-      )
+      setError(translateAuthError(err))
     } finally {
       setSubmitting(false)
     }
+  }
+
+  async function handleConfirmSubmit(e) {
+    e.preventDefault()
+    if (submitting) return
+    setConfirmError('')
+    setSubmitting(true)
+    try {
+      // Confirma o código e só então alinha a senha da conta com a deste formulário --
+      // nunca nas duas etapas separadas: se a senha não puder ser confirmada, a sessão já
+      // é encerrada aqui dentro (ver nota de pre-account hijacking em authService.js) e o
+      // catch abaixo cai no ramo 'locked', nunca em completeProfile.
+      await confirmSignupAndSyncPassword(email, otpCode.trim(), password)
+      const ok = await completeProfile(createdAccount)
+      // completeProfile já preenche `error`; volta para a etapa do formulário no modo
+      // de retentativa (createdAccount setado => handleSubmit pula o signUp e chama
+      // completeProfile direto de novo), igual ao caminho que já existia antes desta
+      // etapa de confirmação.
+      if (!ok) setStep('form')
+    } catch (err) {
+      console.error('[Auth] confirmSignupOtp:', err)
+      if (err?.code === 'PASSWORD_SYNC_FAILED') {
+        setStep('locked')
+      } else {
+        setConfirmError(translateAuthError(err))
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleResend() {
+    if (resending || cooldown > 0) return
+    setResending(true)
+    setConfirmError('')
+    setResent(false)
+    try {
+      await sendVerificationEmail(email)
+      if (mounted.current) {
+        setResent(true)
+        setCooldown(RESEND_COOLDOWN_S)
+      }
+    } catch (err) {
+      console.error('[Auth] sendVerificationEmail:', err)
+      if (mounted.current) setConfirmError(translateAuthError(err))
+    } finally {
+      if (mounted.current) setResending(false)
+    }
+  }
+
+  if (step === 'locked') {
+    return (
+      <AuthLayout
+        title="Confirme sua senha por segurança"
+        description="Seu e-mail foi confirmado, mas não foi possível garantir que esta é a senha da conta. Por segurança, defina uma senha nova para continuar."
+        footer={
+          <Link as={RouterLink} to="/login" replace>
+            Voltar para entrar
+          </Link>
+        }
+      >
+        <Stack gap="normal">
+          <Flash role="alert" variant="danger">
+            Não foi possível confirmar sua senha. Use &quot;Esqueci minha senha&quot; com este
+            e-mail para definir uma senha nova -- isso nunca falha por este motivo.
+          </Flash>
+          <Button
+            as={RouterLink}
+            to="/esqueci-senha"
+            state={{ email }}
+            variant="primary"
+            size="large"
+            block
+          >
+            Ir para &quot;Esqueci minha senha&quot;
+          </Button>
+        </Stack>
+      </AuthLayout>
+    )
+  }
+
+  if (step === 'confirm') {
+    return (
+      <AuthLayout
+        title="Confirme seu e-mail"
+        description={`Enviamos um código de 6 dígitos para ${email}. Digite-o abaixo para concluir o cadastro.`}
+        footer={
+          <Link as={RouterLink} to="/login" replace>
+            Voltar para entrar
+          </Link>
+        }
+      >
+        <form onSubmit={handleConfirmSubmit} className="public-form">
+          <Stack gap="normal">
+            {confirmError && (
+              <Flash role="alert" variant="danger">
+                {confirmError}
+              </Flash>
+            )}
+            {error && (
+              <Flash role="alert" variant="danger">
+                {error}
+              </Flash>
+            )}
+            {resent && !confirmError && (
+              <Flash variant="success" role="status">
+                Código reenviado para {email}.
+              </Flash>
+            )}
+
+            <FormControl required>
+              <FormControl.Label>Código de confirmação</FormControl.Label>
+              <TextInput
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="000000"
+                size="large"
+                block
+              />
+              <FormControl.Caption>Confira também a caixa de spam.</FormControl.Caption>
+            </FormControl>
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="large"
+              block
+              loading={submitting}
+              disabled={submitting || otpCode.trim().length !== 6}
+            >
+              Confirmar
+            </Button>
+            <Button
+              type="button"
+              block
+              onClick={handleResend}
+              loading={resending}
+              disabled={resending || cooldown > 0}
+            >
+              {cooldown > 0 ? `Reenviar código (${cooldown}s)` : 'Reenviar código'}
+            </Button>
+          </Stack>
+        </form>
+      </AuthLayout>
+    )
   }
 
   return (
@@ -228,11 +433,16 @@ export default function Register() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
-              minLength={6}
+              minLength={8}
               size="large"
               block
             />
-            <FormControl.Caption>Mínimo de 6 caracteres.</FormControl.Caption>
+            <FormControl.Caption>Mínimo de 8 caracteres, com letras e números.</FormControl.Caption>
+            {fieldErrors.password && (
+              <FormControl.Validation variant="error">
+                {fieldErrors.password}
+              </FormControl.Validation>
+            )}
           </FormControl>
 
           <FormControl required>

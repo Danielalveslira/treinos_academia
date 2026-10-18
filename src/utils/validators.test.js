@@ -5,6 +5,7 @@ import {
   validateBirthDate,
   validateSexo,
   validateUsageProfile,
+  validatePassword,
   validateExercise,
   validateWorkout,
   validateBodyMeasurement,
@@ -365,6 +366,15 @@ test('validateSponsoredAd: ctaTarget is restricted to a safe scheme per ctaType'
       `deveria rejeitar: ${malicious}`
     )
   }
+})
+
+test('validatePassword: espelha a política do servidor (8+ caracteres, letras e números)', () => {
+  assert.equal(hasErrors(validatePassword('senha1234')), false)
+  assert.match(validatePassword('abc123').password, /8 caracteres/)
+  assert.match(validatePassword('12345678').password, /letras e números/)
+  assert.match(validatePassword('abcdefgh').password, /letras e números/)
+  assert.match(validatePassword('').password, /8 caracteres/)
+  assert.match(validatePassword(undefined).password, /8 caracteres/)
 })
 
 test('validateSponsoredAd: expiresAt is optional but must be a parseable date when given', () => {

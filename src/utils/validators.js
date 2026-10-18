@@ -10,6 +10,29 @@ import { STATUS_TEXT_MAX_LENGTH } from './statusLimits.js'
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 export const SEXO_OPTIONS = ['masculino', 'feminino', 'nao_informar']
 const MAX_PLAUSIBLE_AGE = 120
+export const PASSWORD_MIN_LENGTH = 8
+
+// Espelha a política do servidor (supabase/config.toml: minimum_password_length = 8,
+// password_requirements = "letters_digits") -- validar aqui só adianta o feedback; o
+// GoTrue é sempre a autoridade final.
+export function validatePassword(password) {
+  const errors = {}
+  const value = password || ''
+  if (value.length < PASSWORD_MIN_LENGTH) {
+    errors.password = `A senha deve ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres`
+  } else if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+    errors.password = 'A senha deve ter letras e números'
+  }
+  return errors
+}
+
+// Usado nas duas telas de "defina uma senha nova" (ResetPassword.jsx e ConfirmEmail.jsx) --
+// mesma política + confirmação por digitação repetida.
+export function validatePasswordConfirmation(password, confirmPassword) {
+  const errors = validatePassword(password)
+  if (password !== confirmPassword) errors.confirmPassword = 'As senhas não coincidem'
+  return errors
+}
 
 function requiredText(value, max, requiredMessage, maxMessage) {
   if (!value || !value.trim()) return requiredMessage

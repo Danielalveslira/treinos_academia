@@ -108,3 +108,52 @@ Gap de cobertura pré-existente, encontrado de passagem durante a investigação
 achado #3 (não introduzido por ele). `tests/statuses-rules.test.mjs` cobre apenas o elo
 específico de que o rate limit depende (restrição automática bloqueia o próximo post);
 não é uma suíte completa da função de criação de publicações.
+
+### 7. Perfil do cadastro (username/data de nascimento/sexo/usageProfile) só persiste depois da confirmação, dentro da mesma aba
+
+Desde a confirmação de cadastro por código OTP (`Register.jsx`/`ConfirmEmail.jsx`,
+Supabase Auth): username, data de nascimento, sexo e usageProfile ficam só em `state` do
+React entre o `signUp` e a confirmação. Se a aba fechar antes de digitar o código, esses
+dados se perdem — a conta confirma normalmente mais tarde (via `/confirmar-email`), mas o
+perfil fica incompleto (sem username) até a pessoa completá-lo manualmente em "Meu
+Perfil". A divergência de **senha** no mesmo cenário tem tratamento próprio, fail-closed
+(ver item 8 abaixo); os demais campos de perfil, não.
+
+**Melhoria futura registrada, não implementada**: enviar esses campos em `options.data`
+do `supabase.auth.signUp(...)` — grava em `auth.users.raw_user_meta_data` na hora do
+cadastro, independente de confirmação. Depois de `confirmSignupOtp`/`verifyOtp`
+estabelecer sessão (em `Register.jsx` OU em `ConfirmEmail.jsx`, para quem voltou depois),
+ler `user_metadata` da resposta e rodar a mesma sequência de RPCs
+(`ensureUserProfile`/`setUsername`/`setBirthInfo`/`setUsageProfile`) a partir daí. O
+aceite legal ficaria de fora desse metadata (é versionado e pode ficar desatualizado
+entre o cadastro e a confirmação); o `LegalGate` já cobre isso de forma independente e
+testada. Exigiria compartilhar essa lógica de "aplicar perfil pendente" entre as duas
+páginas — mudança de porte médio, não trivial. Sem data definida.
+
+### 8. Risco residual de pre-account hijacking: janela entre verifyOtp e a troca de senha falhar
+
+Contexto: um atacante que sabe o e-mail da vítima pode se cadastrar primeiro com uma
+senha própria; um segundo `signUp` da vítima para o MESMO e-mail (ainda não confirmado)
+não é bloqueado pelo GoTrue — ele devolve 200 e reenvia o código, mas **mantém a senha do
+primeiro cadastro** (a do atacante). Reproduzido localmente contra o GoTrue (`supabase
+start`): sem nenhuma mitigação, o login do atacante com a senha antiga continua
+funcionando depois da vítima confirmar o próprio e-mail. Evidência é a reprodução local
+em si (script ad hoc, não comitado); não há um relato público do Supabase confirmando
+este comportamento especificamente — só a observação direta feita aqui.
+
+Mitigado na rota do Register: `confirmSignupAndSyncPassword` confirma o código e SÓ
+ENTÃO tenta alinhar a senha da conta com a do formulário (`syncSignupPassword`, que agora
+lança em vez de engolir erro). Na rota do ConfirmEmail (sem senha conhecida de antemão):
+`setPasswordAfterConfirmation` sempre força uma senha nova.
+
+**Risco residual explícito**: existe uma janela entre o `verifyOtp` (que já confirma o
+e-mail e cria sessão) e a chamada a `updateUser` que troca a senha. Se `updateUser`
+falhar nesse meio-tempo (rede, rate limit, etc.) — não por causa de um ataque, só uma
+falha transitória — a conta fica **confirmada** mas ainda com a senha do atacante até a
+vítima agir. A mitigação nesse caso é: `confirmSignupAndSyncPassword` encerra a sessão
+imediatamente (nunca deixa a conta logada nesse estado) e `Register.jsx` entra no passo
+`'locked'`, direcionando explicitamente para "Esqueci minha senha" — que troca a senha de
+novo (dessa vez por um link enviado ao e-mail, não dependente do formulário) e chama
+`endOtherSessions()`, revogando qualquer sessão que o atacante tenha aberto com a senha
+antiga. Ou seja: a janela existe, mas sempre termina em "a vítima precisa redefinir a
+senha pelo fluxo de recuperação" — nunca em acesso silencioso concedido ao atacante.
