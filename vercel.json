@@ -1,4 +1,12 @@
 {
+  "redirects": [
+    {
+      "source": "/:path((?!assets/|icons/|.*\\.[\\w]+$).*)",
+      "has": [{ "type": "host", "value": "treinosacademia-ten.vercel.app" }],
+      "destination": "https://evolutus.com.br/:path*",
+      "statusCode": 301
+    }
+  ],
   "rewrites": [
     {
       "source": "/((?!assets/|icons/|.*\\.[\\w]+$).*)",

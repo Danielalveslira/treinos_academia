@@ -1,8 +1,8 @@
 // Public GETs only. Verify the effective platform headers, MIME and cache contract.
 import assert from 'node:assert/strict'
 import {readFileSync,writeFileSync} from 'node:fs'
-const origin=process.argv[2]??'https://treinosacademia-ten.vercel.app'
-assert.match(origin,/^https:\/\/treinosacademia-[a-z0-9-]+\.vercel\.app$/)
+const origin=process.argv[2]??'https://evolutus.com.br'
+assert.match(origin,/^https:\/\/evolutus\.com\.br$/)
 const expected=Object.fromEntries(JSON.parse(readFileSync('vercel.json','utf8')).headers.find(x=>x.source==='/(.*)').headers.map(x=>[x.key.toLowerCase(),x.value]))
 const first=await fetch(origin+'/')
 const html=await first.text()

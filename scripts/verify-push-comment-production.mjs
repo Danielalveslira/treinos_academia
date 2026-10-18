@@ -4,10 +4,8 @@ import assert from 'node:assert/strict'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { chromium } from 'playwright-core'
-const origin = process.argv[2] || 'https://treinosacademia-ten.vercel.app'
-assert.ok(
-  /^https:\/\/treinosacademia-[a-z0-9-]+\.vercel\.app$|^http:\/\/127\.0\.0\.1:\d+$/.test(origin)
-)
+const origin = process.argv[2] || 'https://evolutus.com.br'
+assert.ok(/^https:\/\/evolutus\.com\.br$|^http:\/\/127\.0\.0\.1:\d+$/.test(origin))
 const dir = '/tmp/evolutus-push-layout/production'
 await mkdir(dir, { recursive: true })
 const uid = '44444444-4444-4444-8444-444444444444'

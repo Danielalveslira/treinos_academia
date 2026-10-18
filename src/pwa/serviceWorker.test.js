@@ -307,6 +307,40 @@ test('navegação: rede primeiro; offline cai no index.html em cache; sem cache,
   assert.equal(await fallback.response.text(), '<html>shell</html>')
 })
 
+// Migração de domínio: o redirect 301 (vercel.json, host condicional) acontece na borda da
+// Vercel. Correção importante em relação a uma suposição anterior: uma requisição de
+// NAVEGAÇÃO entregue a um Service Worker tem redirect mode "manual" (é uma propriedade do
+// próprio Request de navegação, não uma escolha do worker -- existe assim por segurança,
+// para o worker nunca conseguir ler/reescrever silenciosamente um redirect cross-origin
+// destinado ao contexto de navegação de verdade). Então fetch(request) aqui NUNCA segue o
+// 301 automaticamente: ele resolve (não rejeita) com uma Response tipo "opaqueredirect"
+// (status 0, ok false, corpo e headers inacessíveis a este código). O ponto crítico é que
+// isso é um RESOLVE, não um reject -- o .catch() da estratégia network-first abaixo nunca
+// dispara para esse caso, então a resposta opaqueredirect vai direto para event.respondWith()
+// sem o cache ser consultado. É exatamente essa resposta "opaca" que o navegador reconhece e
+// usa para completar a navegação de verdade no destino do redirect (inclusive cross-origin) --
+// e é também por isso que o código nunca precisou verificar `response.ok` para decidir entre
+// sucesso e fallback: só o reject da Promise (falha de rede) cai no cache.
+test('navegação cujo fetch() devolve opaqueredirect (redirect mode "manual", real para requisições de navegação): passa intacta, nunca cai no fallback de cache', async () => {
+  load({
+    responder: () => {
+      const response = new Response(null, { status: 200 })
+      Object.defineProperty(response, 'type', { value: 'opaqueredirect' })
+      Object.defineProperty(response, 'status', { value: 0 })
+      Object.defineProperty(response, 'ok', { value: false })
+      return response
+    },
+  })
+  const result = await dispatchFetch(navigation('/perfil'))
+  assert.equal(result.handled, true)
+  assert.equal(result.response.type, 'opaqueredirect')
+  assert.equal(result.response.status, 0)
+  assert.equal(result.response.ok, false)
+  // Cache nunca é aberto: um resolve (mesmo com status 0/ok false) nunca é tratado como
+  // falha -- só uma Promise REJEITADA (erro de rede real) cairia no fallback offline.
+  assert.equal(sw.caches.stores.size, 0)
+})
+
 test('navegação online com HTML mais novo que o worker NÃO contamina o shell offline', async () => {
   let html = '<html>v2</html>'
   load({ responder: (url) => (url.endsWith('/index.html') || !url.includes('/assets/')
