@@ -1,10 +1,17 @@
 import { useState } from 'react'
-import { Box, Button, Heading, Text } from '@primer/react'
+import { Box, Button, Flash, Heading, IconButton, Text } from '@primer/react'
+import { InfoIcon } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useBodyMeasurements } from '../hooks/useBodyMeasurements'
 import { useToast } from '../hooks/useToast'
 import { saveBodyCheckIn } from '../services/bodyMeasurementsService'
+import { calculateAge } from '../utils/age'
 import {
+  classifyBMI,
+  getBmiReferenceRange,
+  getBmiReferenceWeightRange,
+  getBmiScalePosition,
+  getBmiWeightGap,
   getBodyMetricChange,
   getBodyMetricSeries,
   getLatestBodyComposition,
@@ -56,12 +63,20 @@ export function BodyCompositionCard() {
   const [formOpen, setFormOpen] = useState(false)
   const [metric, setMetric] = useState('weightKg')
   const [period, setPeriod] = useState('quarter')
+  const [bmiInfoOpen, setBmiInfoOpen] = useState(false)
 
   const composition = getLatestBodyComposition(measurements, profile?.heightCm)
   const trend = getWeightTrend(measurements)
   const series = getBodyMetricSeries(measurements, metric, BODY_PERIODS[period])
   const metricChange = getBodyMetricChange(series)
   const metricConfig = BODY_METRICS[metric]
+
+  const age = profile?.dataNascimento ? calculateAge(profile.dataNascimento) : null
+  const bmiClassification = classifyBMI(composition.bmi, age)
+  const bmiScalePosition = getBmiScalePosition(composition.bmi)
+  const bmiReferenceRange = getBmiReferenceRange(age)
+  const bmiReferenceWeightRange = getBmiReferenceWeightRange(profile?.heightCm, age)
+  const bmiWeightGap = getBmiWeightGap(composition.weightKg, profile?.heightCm, age)
 
   async function handleSubmit(values) {
     try {
@@ -125,16 +140,39 @@ export function BodyCompositionCard() {
               />
             )}
             {trend.average != null && (
-              <IndicatorCard label="Tendência do peso · 7 dias" value={formatWeightTrend(trend)} />
+              <IndicatorCard label="Tendência · 7 dias" value={formatWeightTrend(trend)} />
             )}
             {composition.bodyFatPercent != null && (
               <IndicatorCard label="Gordura corporal" value={`${composition.bodyFatPercent}%`} />
             )}
             {composition.bmi != null && (
-              <IndicatorCard
-                label="IMC · referência"
-                value={composition.bmi.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
-              />
+              <div className="indicator-card">
+                <div className="indicator-label">
+                  <span>IMC · referência</span>
+                  <IconButton
+                    icon={InfoIcon}
+                    variant="invisible"
+                    size="small"
+                    aria-label="Sobre o IMC"
+                    aria-expanded={bmiInfoOpen}
+                    className="bmi-info-toggle"
+                    onClick={() => setBmiInfoOpen((open) => !open)}
+                  />
+                </div>
+                <div className="indicator-value">
+                  {composition.bmi.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}
+                </div>
+                {bmiClassification && (
+                  <span className={`bmi-badge bmi-badge-${bmiClassification.tone}`}>
+                    {bmiClassification.label}
+                  </span>
+                )}
+                {bmiScalePosition != null && bmiClassification && bmiClassification.tone !== 'neutral' && (
+                  <div className="bmi-scale" aria-hidden="true">
+                    <span className="bmi-scale-marker" style={{ left: `${bmiScalePosition}%` }} />
+                  </div>
+                )}
+              </div>
             )}
             {composition.leanMassKg != null && (
               <IndicatorCard
@@ -158,9 +196,38 @@ export function BodyCompositionCard() {
               <IndicatorCard label="Relação cintura/quadril" value={composition.whr.toFixed(2)} />
             )}
           </Box>
-          <Text as="p" sx={{ color: 'fg.muted', fontSize: 1 }}>
-            IMC é apenas uma referência. Valores de composição corporal variam conforme método e protocolo.
-          </Text>
+          {composition.bmi != null && bmiInfoOpen && (
+            <Flash variant="default" className="bmi-info-flash" sx={{ mb: 3, fontSize: 1 }}>
+              {bmiClassification?.tone === 'neutral' && <p>{bmiClassification.message}</p>}
+              {!bmiClassification && (
+                <p>Adicione sua data de nascimento no perfil para ver a classificação do IMC.</p>
+              )}
+              {bmiReferenceRange && (
+                <p>
+                  Faixa de IMC adequada para sua idade: {bmiReferenceRange.min.toLocaleString('pt-BR')} a{' '}
+                  {bmiReferenceRange.max.toLocaleString('pt-BR')}
+                  {bmiReferenceWeightRange &&
+                    ` (aproximadamente ${bmiReferenceWeightRange.minKg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg a ${bmiReferenceWeightRange.maxKg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg na sua altura)`}
+                  .
+                </p>
+              )}
+              {bmiWeightGap && (
+                <p>
+                  {bmiWeightGap.status === 'dentro' &&
+                    'Seu peso já está dentro da faixa de referência — nenhuma perda de peso é indicada por esse indicador.'}
+                  {bmiWeightGap.status === 'acima' &&
+                    `Estimativa: faltam cerca de ${bmiWeightGap.diffKg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg para alcançar o limite superior da faixa de referência.`}
+                  {bmiWeightGap.status === 'abaixo' &&
+                    `Seu peso está cerca de ${bmiWeightGap.diffKg.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg abaixo da faixa de referência. Isso não é uma recomendação de ganho de peso.`}
+                </p>
+              )}
+              <p>
+                IMC é uma estimativa matemática (peso ÷ altura²) e não mede diretamente gordura corporal ou
+                massa muscular. É apenas uma referência de triagem, não uma recomendação clínica
+                personalizada — valores de composição corporal variam conforme método e protocolo.
+              </p>
+            </Flash>
+          )}
 
           <div className="body-subsection-heading">
             <span className="eyebrow">MEDIDAS CORPORAIS</span>
