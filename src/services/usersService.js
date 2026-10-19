@@ -2,6 +2,7 @@ import { supabase } from '../supabase/config'
 import {
   dayKeyInTimezone,
   getDeviceTimezone,
+  isValidTrainingTime,
   normalizeTrainingPreferences,
 } from '../utils/trainingPlan'
 
@@ -45,11 +46,25 @@ export function mapUserRow(row) {
 }
 
 export async function saveTrainingPreferences(preferences) {
+  const normalized = normalizeTrainingPreferences(preferences)
+  const weeklyTimes = preferences.weeklyTimes ?? normalized.weeklyTimes
+  const selected = new Set(
+    normalized.plannedTrainingDays.map((day) =>
+      String(
+        ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].indexOf(
+          day
+        ) + 1
+      )
+    )
+  )
+  for (const [day, time] of Object.entries(weeklyTimes)) {
+    if (!selected.has(day) || !isValidTrainingTime(time)) throw new Error('INVALID_WEEKLY_TIME')
+  }
   const timezone = preferences.timezone || getDeviceTimezone()
   const payload = {
-    plannedTrainingDays: preferences.plannedTrainingDays,
+    plannedTrainingDays: normalized.plannedTrainingDays,
     reminderEnabled: Boolean(preferences.reminderEnabled),
-    reminderTime: preferences.reminderEnabled ? preferences.reminderTime : null,
+    weeklyTimes,
     timezone,
     effectiveFrom: dayKeyInTimezone(new Date(), timezone),
   }

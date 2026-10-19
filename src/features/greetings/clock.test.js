@@ -11,7 +11,15 @@ import {
 
 const HOUR = 3_600_000
 const prefs = (extra = {}) => ({
-  plannedTrainingDays: ['monday'],
+  plannedTrainingDays: [
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+  ],
   reminderEnabled: true,
   reminderTime: '19:00',
   timezone: 'America/Sao_Paulo',
@@ -79,4 +87,16 @@ test('assinatura do relógio só muda quando a frase pode mudar', () => {
   assert.notEqual(a, afterReminder)
   const nextDay = clockSignature(p, new Date('2026-10-11T03:00:00Z'))
   assert.notEqual(afterReminder, nextDay)
+})
+
+test('usa o horário do dia no fuso salvo e ignora descanso e dias sem horário', () => {
+  const plan = prefs({
+    plannedTrainingDays: ['monday', 'tuesday'],
+    weeklyTimes: { 1: '06:30', 2: '19:00' },
+  })
+  assert.equal(msUntilReminder(plan, new Date('2026-10-12T09:00:00Z')), 30 * 60_000)
+  assert.equal(isReminderDue(plan, new Date('2026-10-12T09:31:00Z')), true)
+  assert.equal(isReminderDue(plan, new Date('2026-10-13T09:31:00Z')), false)
+  assert.equal(msUntilReminder(plan, new Date('2026-10-13T21:00:00Z')), HOUR)
+  assert.equal(msUntilReminder(plan, new Date('2026-10-14T09:00:00Z')), null)
 })

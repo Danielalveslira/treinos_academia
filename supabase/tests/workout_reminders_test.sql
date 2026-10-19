@@ -232,7 +232,15 @@ select pg_temp.due('a9000000-0000-0000-0000-000000000011', 'start');
 select private.dispatch_due_workout_reminders(100);
 select is((select o.status from public.notification_push_outbox o join public.notifications n on n.id = o.notification_id
   where n.type = 'workout_reminder_start' and o.user_id = 'a9000000-0000-0000-0000-000000000011'), 'pending', '(B) Push das 18:00 enfileirado, ainda não enviado');
-select pg_temp.work('a9000000-0000-0000-0000-000000000011', 'a9000000-0000-0000-0000-0000000000b1', 'before');
+-- O aviso antecipado do próximo treino pode ser amanhã quando este teste roda após 17:00 UTC.
+-- Usar a data do Push recém-criado mantém este cenário independente da hora da suíte.
+insert into public.exercises (id, user_id, name, muscle_group)
+values ('a9000000-0000-0000-0000-0000000000b1', 'a9000000-0000-0000-0000-000000000011', 'Exercício B', 'Peito');
+insert into public.workouts (user_id, exercise_id, set_details, sets, date)
+select 'a9000000-0000-0000-0000-000000000011', 'a9000000-0000-0000-0000-0000000000b1',
+  '[{"weight":1,"reps":5}]'::jsonb, 1, (metadata->>'plannedDate')::date
+from public.notifications where recipient_id = 'a9000000-0000-0000-0000-000000000011'
+  and type = 'workout_reminder_start';
 select is((select o.status || '/' || coalesce(o.last_error, '') from public.notification_push_outbox o join public.notifications n on n.id = o.notification_id
   where n.type = 'workout_reminder_start' and o.user_id = 'a9000000-0000-0000-0000-000000000011'), 'cancelled/WORKOUT_PLAN_CHANGED', '(B) iniciar cancela o Push pendente');
 select ok((select n.archived_at is not null from public.notifications n where n.type = 'workout_reminder_start' and n.recipient_id = 'a9000000-0000-0000-0000-000000000011'),
@@ -389,6 +397,46 @@ select is((select count(*)::int from public.notifications where recipient_id = '
 reset role;
 select is((select count(*)::int from cron.job where jobname = 'dispatch-workout-reminders'), 1, '(J) cron de despacho único');
 select ok(exists (select 1 from pg_indexes where indexname = 'workout_reminder_jobs_due_idx' and indexdef ilike '%scheduled_at%' and indexdef ilike '%pending%'), '(J) índice parcial de vencimento');
+
+-- V2: a preferência semanal prevalece sobre o horário global e usa relógio local.
+select is(private.training_time_for_day('{"reminderTime":"18:00","weeklyTimes":{"1":"06:30","2":"19:00"}}'::jsonb, date '2026-10-19'), time '06:30', 'V2: segunda usa 06:30');
+select is(private.training_time_for_day('{"reminderTime":"18:00","weeklyTimes":{"1":"06:30","2":"19:00"}}'::jsonb, date '2026-10-20'), time '19:00', 'V2: terça usa 19:00');
+select is(private.training_time_for_day('{"reminderTime":"18:00","weeklyTimes":{"1":"06:30"}}'::jsonb, date '2026-10-20'), null::time, 'V2: dia sem horário não herda global');
+select is(private.training_time_for_day('{"reminderTime":"18:00"}'::jsonb, date '2026-10-19'), time '18:00', 'V2: plano legado mantém horário global');
+
+select pg_temp.mk_user('a9000000-0000-0000-0000-000000000021', 'rem-v2@example.invalid');
+update public.users u set legal_acceptance_version = p.version, legal_acceptance_digest = p.digest,
+  legal_acceptance_accepted_at = now()
+from public.legal_policy p where p.id and p.published and u.id = 'a9000000-0000-0000-0000-000000000021';
+update public.users set training_preferences = jsonb_build_object(
+  'plannedTrainingDays', to_jsonb(array['monday','tuesday']), 'reminderEnabled', true,
+  'reminderTime', '18:00', 'weeklyTimes', '{"1":"06:30","2":"19:00"}'::jsonb,
+  'timezone', 'UTC', 'effectiveFrom', '2026-01-01')
+where id = 'a9000000-0000-0000-0000-000000000021';
+select private.schedule_next_workout_reminder('a9000000-0000-0000-0000-000000000021', 'start', '2026-10-19 00:00:00+00');
+select is((select to_char(scheduled_at at time zone 'UTC', 'HH24:MI') from public.workout_reminder_jobs
+  where user_id = 'a9000000-0000-0000-0000-000000000021' and planned_date = '2026-10-19' and kind = 'start'), '06:30', 'V2: agendador usa segunda local');
+select private.schedule_next_workout_reminder('a9000000-0000-0000-0000-000000000021', 'start', '2026-10-19 07:00:00+00');
+select is((select to_char(scheduled_at at time zone 'UTC', 'HH24:MI') from public.workout_reminder_jobs
+  where user_id = 'a9000000-0000-0000-0000-000000000021' and planned_date = '2026-10-20' and kind = 'start'), '19:00', 'V2: agendador usa terça local');
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a9000000-0000-0000-0000-000000000021', true);
+select is((public.set_training_preferences('{"plannedTrainingDays":["monday"],"reminderEnabled":true,"weeklyTimes":{"1":"07:00"},"timezone":"UTC","effectiveFrom":"2026-10-19"}'::jsonb)->'weeklyTimes')::text, '{"1": "07:00"}', 'V2: RPC salva a semana em uma operação');
+select throws_ok($$select public.set_training_preferences('{"plannedTrainingDays":["monday"],"reminderEnabled":true,"weeklyTimes":{"1":"25:00"},"timezone":"UTC","effectiveFrom":"2026-10-19"}'::jsonb)$$, 'P0001', 'INVALID_WEEKLY_TIME', 'V2: rejeita horário inválido');
+select throws_ok($$select public.set_training_preferences('{"plannedTrainingDays":["monday"],"reminderEnabled":true,"weeklyTimes":{"2":"09:00"},"timezone":"UTC","effectiveFrom":"2026-10-19"}'::jsonb)$$, 'P0001', 'INVALID_WEEKLY_TIME', 'V2: rejeita horário em dia de descanso');
+select is((select training_preferences->'weeklyTimes' from public.users where id = 'a9000000-0000-0000-0000-000000000021')::text, '{"1": "07:00"}', 'V2: validação falha sem alterar o plano');
+select is((public.set_training_preferences('{"plannedTrainingDays":["monday","tuesday"],"reminderEnabled":true,"reminderTime":"18:00","timezone":"UTC","effectiveFrom":"2026-10-19"}'::jsonb)->'weeklyTimes')::text, '{"1": "07:00", "2": "18:00"}', 'V2: cliente antigo preserva horário personalizado e inicia novo dia');
+select set_config('request.jwt.claim.sub', '', true);
+reset role;
+select is((select training_preferences->'weeklyTimes' from public.users where id = 'a9000000-0000-0000-0000-000000000021')::text, '{"1": "07:00", "2": "18:00"}', 'V2: plano salvo conserva horários após validação');
+select is((select count(*)::int from public.workout_reminder_jobs where user_id = 'a9000000-0000-0000-0000-000000000021' and status = 'pending' and extract(isodow from planned_date) = 3), 0, 'V2: descanso não gera lembrete pendente');
+set local role authenticated;
+select set_config('request.jwt.claim.sub', 'a9000000-0000-0000-0000-000000000021', true);
+select public.set_training_preferences('{"plannedTrainingDays":["monday"],"reminderEnabled":true,"weeklyTimes":{"1":"07:00"},"timezone":"UTC","effectiveFrom":"2026-10-19"}'::jsonb);
+select set_config('request.jwt.claim.sub', '', true);
+reset role;
+select is((select count(*)::int from public.workout_reminder_jobs where user_id = 'a9000000-0000-0000-0000-000000000021' and status = 'pending' and extract(isodow from planned_date) = 2), 0, 'V2: desativar terça cancela seu lembrete');
 
 select * from finish();
 rollback;

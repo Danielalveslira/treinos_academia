@@ -1,8 +1,10 @@
 import { BUSINESS_TIME_ZONE, businessDayKey } from '../../utils/businessDate.js'
 import {
   getDeviceTimezone,
+  getTrainingTime,
   isPreferredReminderDue,
   normalizeTrainingPreferences,
+  weekdayInTimezone,
 } from '../../utils/trainingPlan.js'
 import { getTimePeriod } from './context.js'
 
@@ -64,9 +66,11 @@ export function isReminderDue(preferences, now = new Date()) {
 // Falta quanto para o horário do lembrete HOJE; null se não há lembrete ou ele já passou.
 export function msUntilReminder(preferences, now = new Date()) {
   for (const plan of reminderOptions(preferences)) {
-    if (!plan.reminderEnabled || !plan.reminderTime) return null
+    if (!plan.reminderEnabled) return null
     try {
-      const [hour, minute] = plan.reminderTime.split(':').map(Number)
+      const time = getTrainingTime(plan, weekdayInTimezone(now, plan.timezone))
+      if (!time) return null
+      const [hour, minute] = time.split(':').map(Number)
       const target = (hour * 3600 + minute * 60) * SECOND
       const current = secondsOfDayIn(plan.timezone, now) * SECOND + now.getMilliseconds()
       return target > current ? target - current : null

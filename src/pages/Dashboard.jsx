@@ -86,7 +86,7 @@ export default function Dashboard() {
   const { recentWorkouts, progressDays, progressAvailable, loading, error, refresh } =
     useHomeDashboard()
   const { exercises } = useExercises()
-  const { profile, user, refreshProfile, offlineLocal, patchProfile } = useAuth()
+  const { profile, user, offlineLocal, patchProfile } = useAuth()
   const { bannerAds } = useGlobalSponsoredAds(Boolean(user) && !offlineLocal)
   const heroImage = getProfileHeroImage(profile?.sexo)
   const exerciseNameById = useMemo(() => buildExerciseNameMap(exercises), [exercises])
@@ -150,8 +150,8 @@ export default function Dashboard() {
   })
 
   async function handleSaveTrainingPlan(preferences) {
-    await saveTrainingPreferences(preferences)
-    await refreshProfile(user.uid)
+    const saved = await saveTrainingPreferences(preferences)
+    patchProfile(user.uid, { trainingPreferences: saved })
   }
 
   if (loading && recentWorkouts.length === 0) {
