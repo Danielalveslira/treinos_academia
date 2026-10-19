@@ -71,7 +71,7 @@ export function InfoStep({ values, onChange, onBack, onNext }) {
           )}
         </FormControl>
         <FormControl>
-          <FormControl.Label>Imagem</FormControl.Label>
+          <FormControl.Label>Ícone</FormControl.Label>
           <CommunityIconPicker
             value={values.iconName}
             onChange={(v) => onChange('iconName', v)}

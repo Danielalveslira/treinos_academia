@@ -74,7 +74,10 @@ export default function AdminCommunities() {
       showToast('Comunidade atualizada.')
     } catch (err) {
       console.error('[AdminCommunities] update:', err)
-      showToast(describeAccountAccessError(err?.message) || 'Erro ao atualizar comunidade.', 'danger')
+      showToast(
+        describeAccountAccessError(err?.message) || 'Erro ao atualizar comunidade.',
+        'danger'
+      )
     }
   }
 
@@ -129,6 +132,10 @@ export default function AdminCommunities() {
         <CommunityForm
           initialValue={editingCommunity}
           onSubmit={handleUpdate}
+          onCoverUploaded={(coverPath) => {
+            setEditingCommunity((current) => ({ ...current, coverPath }))
+            refresh()
+          }}
           onCancel={() => setEditingCommunity(null)}
         />
       )}

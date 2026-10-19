@@ -1518,17 +1518,16 @@ body:has(.pwa-offline) .app-shell {
   border: 1px solid var(--borderColor-muted);
   border-radius: var(--fitness-radius-md);
   background: var(--fitness-surface);
-  background-image: radial-gradient(
-    120% 100% at 0% 0%,
-    color-mix(in srgb, var(--fitness-accent) 9%, transparent),
-    transparent 62%
-  );
+  overflow: visible;
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
 .community-card:hover,
-.community-card:focus-within {
+.community-card:focus-within,
+.community-explore-card:hover,
+.community-explore-card:focus-within {
   border-color: color-mix(in srgb, var(--fitness-accent) 55%, var(--borderColor-muted));
 }
+.community-card { display: flex; flex-direction: column; }
 .community-card:active {
   transform: scale(0.99);
 }
@@ -1536,12 +1535,11 @@ body:has(.pwa-offline) .app-shell {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 6px 14px 14px;
+  padding: 25px 14px 12px;
 }
-/* Com capa, o ícone some desta linha (vai pra cima, sobrepondo a borda da capa -- ver
-   .community-cover-icon) e sobra só espaço pro título/membros respirarem abaixo dela. */
+/* O ícone ocupa a transição entre a capa e o conteúdo em todos os cartões. */
 .community-card-top--with-cover {
-  padding-top: 22px;
+  padding-top: 25px;
 }
 .community-card .community-icon {
   border: 1px solid color-mix(in srgb, var(--fitness-accent) 35%, transparent);
@@ -1554,7 +1552,7 @@ body:has(.pwa-offline) .app-shell {
   display: -webkit-box;
   overflow: hidden;
   color: var(--fgColor-default);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 650;
   line-height: 1.3;
   overflow-wrap: anywhere;
@@ -1580,7 +1578,7 @@ body:has(.pwa-offline) .app-shell {
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 2px 0 0;
+  margin: 5px 0 0;
   color: var(--fitness-muted);
   font-size: 12px;
   line-height: 1.4;
@@ -1616,7 +1614,7 @@ body:has(.pwa-offline) .app-shell {
   color: var(--fitness-muted);
 }
 .community-card:not(:has(.community-card-menu)) .community-card-top {
-  padding-right: 14px;
+  padding-right: 48px;
 }
 
 /* Status curto ("Última atividade: @fulano há 6d" / "Comece a conversa!"), sem o
@@ -1625,9 +1623,9 @@ body:has(.pwa-offline) .app-shell {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 0 14px;
-  padding: 12px 0 14px;
-  border-top: 1px solid var(--borderColor-muted);
+  margin: 0 48px 0 14px;
+  margin-top: auto;
+  padding: 4px 0 14px;
 }
 .community-card-avatar {
   width: 28px;
@@ -1644,7 +1642,6 @@ body:has(.pwa-offline) .app-shell {
   overflow: hidden;
   padding: 4px 10px;
   border-radius: 999px;
-  background: var(--fitness-accent-soft);
   color: var(--fitness-muted);
   font-size: 12px;
   line-height: 1.4;
@@ -1660,16 +1657,15 @@ body:has(.pwa-offline) .app-shell {
   font-size: 12px;
 }
 
-/* Capa com ícone redondo sobrepondo a borda inferior -- compartilhada pelo cartão de
-   "Explorar" e pelo de "Minhas comunidades"/"Em destaque" (qualquer .community-card ou
-   .community-explore-card com community.coverPath usa a mesma capa/ícone). */
+/* Capa 2:1 e fallback compartilhados por Explorar, Minhas e Em destaque. */
 .community-explore-card {
   display: flex;
   flex-direction: column;
 }
 .community-cover {
   position: relative;
-  height: 72px;
+  width: 100%;
+  aspect-ratio: 2 / 1;
   overflow: hidden;
   border-radius: var(--fitness-radius-md) var(--fitness-radius-md) 0 0;
   background: var(--fitness-accent-soft);
@@ -1688,11 +1684,22 @@ body:has(.pwa-offline) .app-shell {
 }
 .community-cover-icon {
   position: absolute;
-  left: 10px;
-  /* Capa tem 72px de altura; ícone de 40px fica com o centro na borda inferior dela
-     (72 - 40/2 = 52px do topo do cartão), por isso não usa bottom/overflow da capa. */
-  top: 52px;
+  left: 14px;
+  top: auto;
+  transform: translateY(-50%);
+  margin-top: 0;
+  z-index: 1;
 }
+.community-cover + .community-cover-icon { top: calc((100cqw - 2px) / 2); }
+.community-card, .community-explore-card { container-type: inline-size; }
+.community-cover-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0.22;
+}
+.community-cover-fallback .community-icon { background: transparent; }
 .community-cover-icon .community-icon {
   border-radius: 50% !important;
   box-shadow: 0 0 0 2px var(--fitness-surface);
@@ -1701,13 +1708,14 @@ body:has(.pwa-offline) .app-shell {
   display: flex;
   flex-direction: column;
   gap: 1px;
-  padding: 22px 10px 10px;
+  padding: 26px 14px 14px;
+  flex: 1;
 }
 .community-explore-name {
   display: -webkit-box;
   overflow: hidden;
   margin: 0;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 650;
   line-height: 1.3;
   overflow-wrap: anywhere;
@@ -1726,10 +1734,21 @@ body:has(.pwa-offline) .app-shell {
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
-.community-explore-card .community-join-button {
-  min-height: 32px;
-  margin-top: 8px;
+.community-card-description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 8px 0 0;
+  color: var(--fitness-muted);
   font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.community-explore-card .community-join-button {
+  min-height: 44px;
+  margin-top: auto;
+  font-size: 13px;
 }
 
 /* Mensagem única quando não há nenhuma comunidade pra explorar. */
@@ -4118,14 +4137,85 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .community-icon { overflow: hidden; }
 .community-icon-image { width: 100%; height: 100%; object-fit: cover; }
 
+.community-icon-picker {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
 .community-icon-picker-preview {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  color: var(--fgColor-muted);
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 12px;
+  color: var(--fgColor-default);
+}
+.community-icon-picker-preview > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.community-icon-picker-preview strong { font-size: 14px; }
+.community-icon-picker-preview span:not(.community-icon) { color: var(--fitness-muted); font-size: 12px; }
+.community-icon-picker-preview small { color: var(--fitness-muted); overflow-wrap: anywhere; }
+.community-icon-filters {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 1px 6px;
+  scrollbar-width: thin;
+}
+.community-icon-filter {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fitness-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.community-icon-filter.is-active {
+  border-color: var(--fitness-accent);
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+  font-weight: 700;
+}
+.community-icon-filter:focus-visible,
+.community-icon-option:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 2px;
+}
+.community-icon-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 8px;
+  color: var(--fitness-muted);
+}
+.community-icon-search:focus-within {
+  border-color: var(--fitness-accent);
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 1px;
+}
+.community-icon-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--fgColor-default);
+  font: inherit;
   font-size: 13px;
 }
+.community-icon-search input::placeholder { color: var(--fitness-muted); }
+.community-icon-empty { margin: 0; color: var(--fitness-muted); font-size: 13px; }
 
 /* Mesmo padrão visual de .profile-avatar-control (Profile.jsx): upload à parte do
    submit do formulário, com sua própria pré-visualização. */
@@ -4141,39 +4231,111 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   color: var(--fgColor-muted);
   font-size: 12px;
 }
-.community-cover-picker-preview {
+.community-cover-picker-display {
   width: 100%;
-  max-width: 320px;
-  aspect-ratio: 16 / 9;
-  border-radius: 10px;
-  object-fit: cover;
+  max-width: 440px;
+}
+.community-cover-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.community-cover-picker-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed var(--borderColor-muted);
+  color: var(--fitness-accent-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.community-cover-picker-empty:hover { border-color: var(--fitness-accent); }
+.community-cover-picker-empty:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 2px; }
+.community-cover-dialog {
+  width: min(560px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 20px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: var(--fitness-radius-md);
+  background: var(--fitness-surface);
+  color: var(--fgColor-default);
+}
+.community-cover-dialog::backdrop { background: rgb(0 0 0 / 75%); }
+.community-cover-dialog h2 { margin: 0 0 6px; font-size: 20px; }
+.community-cover-original { display: block; max-width: 100%; max-height: 100px; margin: 10px auto; object-fit: contain; }
+.community-cover-editor-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 1;
+  border-radius: 8px;
+  touch-action: none;
+  cursor: grab;
+}
+.community-cover-editor-canvas:active { cursor: grabbing; }
+.community-cover-zoom { display: grid; gap: 6px; margin-top: 16px; }
+.community-cover-zoom input { width: 100%; accent-color: var(--fitness-accent); }
+.community-cover-position-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 10px; }
+.community-cover-position-controls label { display: grid; gap: 4px; font-size: 12px; color: var(--fitness-muted); }
+.community-cover-position-controls input { width: 100%; accent-color: var(--fitness-accent); }
+.community-cover-dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.community-form-card-preview { display: grid; gap: 10px; max-width: 440px; margin: 8px 0 16px; }
+.community-form-card-preview .community-explore-card { width: 100%; }
+@media (max-width: 480px) {
+  .community-cover-dialog { padding: 14px; }
+  .community-cover-dialog-actions > button { flex: 1; }
 }
 
 .community-icon-grid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
   gap: 8px;
+  max-height: 230px;
+  overflow-y: auto;
+  padding: 3px;
 }
 
 .community-icon-option {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 72px;
+  padding: 8px 5px;
   border: 1px solid var(--borderColor-muted);
   border-radius: 10px;
   background: transparent;
   color: var(--fgColor-muted);
   cursor: pointer;
 }
+.community-icon-option:hover { border-color: var(--fitness-accent); }
+.community-icon-option-label {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 11px;
+}
+.community-icon-option-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
 
 .community-icon-option.is-selected {
   border-color: var(--fitness-accent);
   background: var(--fitness-accent-soft);
   color: var(--fitness-accent-strong);
-}
-
-@media (max-width: 420px) {
-  .community-icon-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
 .main-content .workout-form {

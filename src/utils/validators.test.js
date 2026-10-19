@@ -164,6 +164,7 @@ test('validateBodyMeasurement: every field is optional, only format/range is che
 test('validateCommunity requires a name and only accepts an iconName from the known grid', () => {
   assert.equal(hasErrors(validateCommunity({ name: 'Academia X' })), false)
   assert.equal(hasErrors(validateCommunity({ name: 'Academia X', iconName: 'dumbbell' })), false)
+  assert.equal(hasErrors(validateCommunity({ name: 'Nutrição', iconName: 'apple' })), false)
   assert.match(validateCommunity({ name: '' }).name, /obrigatório/)
   assert.match(validateCommunity({ name: 'Academia X', iconName: 'not-real' }).iconName, /inválido/)
   // Comunidades de antes desse campo existir não mandam iconName nenhum — não é erro.

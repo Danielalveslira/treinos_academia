@@ -5,7 +5,29 @@ import {
   getCachedPhotoUrl,
   loadPhotoOnce,
   setCachedPhotoUrl,
+  subscribePhotoCache,
 } from './photoBlobCache.js'
+
+test('substituição no mesmo caminho avisa os cards e invalida download antigo', async () => {
+  clearPhotoCache()
+  const events = []
+  const unsubscribe = subscribePhotoCache((path) => events.push(path))
+  let resolveOld
+  const old = loadPhotoOnce(
+    'covers/c.webp',
+    () =>
+      new Promise((resolve) => {
+        resolveOld = resolve
+      })
+  )
+  await Promise.resolve()
+  setCachedPhotoUrl('covers/c.webp', 'blob:new')
+  resolveOld('blob:old')
+  assert.equal(await old, 'blob:new')
+  assert.equal(getCachedPhotoUrl('covers/c.webp'), 'blob:new')
+  assert.deepEqual(events, ['covers/c.webp'])
+  unsubscribe()
+})
 
 test('two concurrent loads of the same path share a single fetch and see the same URL', async () => {
   clearPhotoCache()
@@ -58,7 +80,9 @@ test('a failed fetch is never cached and a later call retries instead of repeati
   let calls = 0
   const fetcher = () => {
     calls += 1
-    return calls === 1 ? Promise.reject(new Error('network down')) : Promise.resolve('blob:recovered')
+    return calls === 1
+      ? Promise.reject(new Error('network down'))
+      : Promise.resolve('blob:recovered')
   }
   await assert.rejects(loadPhotoOnce('avatars/e.webp', fetcher), /network down/)
   assert.equal(getCachedPhotoUrl('avatars/e.webp'), undefined)

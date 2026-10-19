@@ -1,35 +1,97 @@
-import { COMMUNITY_ICON_NAMES, getCommunityIcon } from '../constants/communityIcons'
+import { useState } from 'react'
+import { CheckIcon, SearchIcon } from '@primer/octicons-react'
+import {
+  COMMUNITY_ICON_CATEGORIES,
+  COMMUNITY_ICON_OPTIONS,
+  getCommunityIconOption,
+} from '../constants/communityIcons'
 import { CommunityIcon } from './CommunityIcon'
 
-// Grade fixa (nunca upload livre -- COMMUNITY_ICON_NAMES é a lista fechada de nomes
-// aceitos) com preview no mesmo badge usado na listagem, pra quem está criando ver
-// exatamente como vai aparecer antes de salvar.
+function searchText(text) {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
 export function CommunityIconPicker({ value, onChange, name }) {
+  const selectedOption = getCommunityIconOption(value)
+  const [category, setCategory] = useState(() => selectedOption.category)
+  const [query, setQuery] = useState('')
+  const normalizedQuery = searchText(query.trim())
+  const options = COMMUNITY_ICON_OPTIONS.filter((option) => {
+    const inCategory = category === 'all' || option.category === category
+    const matchesQuery =
+      !normalizedQuery || searchText(`${option.label} ${option.purpose}`).includes(normalizedQuery)
+    return inCategory && matchesQuery
+  })
+
   return (
     <div className="community-icon-picker">
-      <div className="community-icon-picker-preview">
-        <CommunityIcon community={{ iconName: value }} size={48} />
-        <span>{name?.trim() || 'Pré-visualização'}</span>
+      <div className="community-icon-picker-preview" aria-live="polite">
+        <CommunityIcon community={{ iconName: selectedOption.name }} size={48} />
+        <div>
+          <strong>{selectedOption.label}</strong>
+          <span>{selectedOption.purpose}</span>
+          {name?.trim() && <small>{name.trim()}</small>}
+        </div>
       </div>
-      <div className="community-icon-grid" role="radiogroup" aria-label="Ícone da comunidade">
-        {COMMUNITY_ICON_NAMES.map((iconName) => {
-          const Icon = getCommunityIcon(iconName)
-          const selected = value === iconName
+
+      <div className="community-icon-filters" role="group" aria-label="Categorias de ícones">
+        {COMMUNITY_ICON_CATEGORIES.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={`community-icon-filter${category === item.id ? ' is-active' : ''}`}
+            aria-pressed={category === item.id}
+            onClick={() => {
+              setCategory(item.id)
+              setQuery('')
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <label className="community-icon-search">
+        <SearchIcon size={16} aria-hidden="true" />
+        <input
+          type="search"
+          value={query}
+          placeholder="Buscar ícone"
+          aria-label="Buscar ícone"
+          onChange={(event) => {
+            setQuery(event.target.value)
+            setCategory('all')
+          }}
+        />
+      </label>
+
+      <div className="community-icon-grid" role="group" aria-label="Ícones da comunidade">
+        {options.map((option) => {
+          const Icon = option.icon
+          const selected = selectedOption.name === option.name
           return (
             <button
-              key={iconName}
+              key={option.name}
               type="button"
-              role="radio"
-              aria-checked={selected}
-              aria-label={iconName}
+              aria-pressed={selected}
+              aria-label={`${option.label} — ${option.purpose}`}
+              title={`${option.label} — ${option.purpose}`}
               className={`community-icon-option${selected ? ' is-selected' : ''}`}
-              onClick={() => onChange(iconName)}
+              onClick={() => onChange(option.name)}
             >
-              <Icon size={20} strokeWidth={2} />
+              <Icon size={21} strokeWidth={2} aria-hidden="true" />
+              <span className="community-icon-option-label">{option.label}</span>
+              {selected && (
+                <CheckIcon className="community-icon-option-check" size={12} aria-hidden="true" />
+              )}
             </button>
           )
         })}
       </div>
+      {options.length === 0 && <p className="community-icon-empty">Nenhum ícone encontrado.</p>}
     </div>
   )
 }

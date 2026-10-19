@@ -4,12 +4,27 @@ import { validateCommunity } from '../utils/validators'
 import { DEFAULT_COMMUNITY_ICON_NAME } from '../constants/communityIcons'
 import { CommunityIconPicker } from './CommunityIconPicker'
 import { CommunityCoverPicker } from './CommunityCoverPicker'
+import { CommunityExploreCard } from './CommunityExploreCard'
 import { useFormState } from '../hooks/useFormState'
+import { useAuth } from '../hooks/useAuth'
+import { invalidateCommunitiesCache } from '../utils/pageCache'
 import { FormShell } from './FormShell'
 
-const EMPTY = { name: '', description: '', postAccess: 'everyone', iconName: DEFAULT_COMMUNITY_ICON_NAME }
+const EMPTY = {
+  name: '',
+  description: '',
+  postAccess: 'everyone',
+  iconName: DEFAULT_COMMUNITY_ICON_NAME,
+}
 
-export function CommunityForm({ initialValue, onSubmit, onCancel, showPostAccess = true }) {
+export function CommunityForm({
+  initialValue,
+  onSubmit,
+  onCancel,
+  onCoverUploaded,
+  showPostAccess = true,
+}) {
+  const { user } = useAuth()
   const { values, setField, errors, submitting, handleSubmit } = useFormState({
     initialValues: initialValue ? { ...EMPTY, ...initialValue } : EMPTY,
     validate: validateCommunity,
@@ -25,7 +40,11 @@ export function CommunityForm({ initialValue, onSubmit, onCancel, showPostAccess
         <CommunityCoverPicker
           communityId={initialValue.id}
           coverPath={coverPath}
-          onUploaded={setCoverPath}
+          onUploaded={(path) => {
+            setCoverPath(path)
+            invalidateCommunitiesCache(user.uid)
+            onCoverUploaded?.(path)
+          }}
         />
       )}
       <FormControl required>
@@ -40,6 +59,22 @@ export function CommunityForm({ initialValue, onSubmit, onCancel, showPostAccess
           <FormControl.Validation variant="error">{errors.name}</FormControl.Validation>
         )}
       </FormControl>
+
+      {initialValue?.id && (
+        <div className="community-form-card-preview">
+          <strong>Prévia na listagem</strong>
+          <CommunityExploreCard
+            preview
+            community={{
+              ...initialValue,
+              ...values,
+              coverPath,
+              name: values.name || 'Nome da comunidade',
+              memberCount: initialValue.memberCount ?? 0,
+            }}
+          />
+        </div>
+      )}
 
       <FormControl>
         <FormControl.Label>Descrição</FormControl.Label>
@@ -78,9 +113,9 @@ export function CommunityForm({ initialValue, onSubmit, onCancel, showPostAccess
             <Select.Option value="admins">Somente moderadores</Select.Option>
           </Select>
           <FormControl.Caption>
-            Com "Somente moderadores", membros comuns só podem visualizar as publicações
-            (ex: uma comunidade de avisos oficiais). Moderadores são o superadmin e, na
-            própria comunidade, o dono dela.
+            Com "Somente moderadores", membros comuns só podem visualizar as publicações (ex: uma
+            comunidade de avisos oficiais). Moderadores são o superadmin e, na própria comunidade, o
+            dono dela.
           </FormControl.Caption>
         </FormControl>
       )}

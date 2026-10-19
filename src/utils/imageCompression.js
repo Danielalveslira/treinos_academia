@@ -29,6 +29,41 @@ export function validateImageFile(file) {
   return null
 }
 
+// A mesma geometria alimenta a prévia do editor e o arquivo enviado.
+export function coverCropRect(width, height, zoom = 1, x = 0.5, y = 0.5) {
+  const cropWidth = Math.min(width, height * 2) / zoom
+  const cropHeight = cropWidth / 2
+  return {
+    sx: (width - cropWidth) * x,
+    sy: (height - cropHeight) * y,
+    width: cropWidth,
+    height: cropHeight,
+  }
+}
+
+export function drawCoverCrop(canvas, bitmap, crop) {
+  canvas.width = 960
+  canvas.height = 480
+  canvas
+    .getContext('2d')
+    .drawImage(bitmap, crop.sx, crop.sy, crop.width, crop.height, 0, 0, 960, 480)
+}
+
+export async function encodeCoverCrop(canvas) {
+  let blob = await encode(canvas, OUTPUT_TYPE, 0.82)
+  if (!blob || blob.type !== OUTPUT_TYPE) {
+    throw new UnsupportedImageError(
+      'Seu navegador não tem suporte a WebP. Atualize-o e tente novamente.'
+    )
+  }
+  if (blob.size > MAX_OUTPUT_BYTES) blob = (await encode(canvas, OUTPUT_TYPE, 0.6)) || blob
+  if (blob.size > MAX_OUTPUT_BYTES)
+    throw new UnsupportedImageError(
+      'Imagem muito grande mesmo após compressão. Escolha outra foto.'
+    )
+  return blob
+}
+
 function encode(canvas, type, quality) {
   return new Promise((resolve) => canvas.toBlob(resolve, type, quality))
 }

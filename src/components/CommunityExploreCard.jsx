@@ -15,11 +15,21 @@ import '../styles/community-access.css'
 // kind (rede/inesperado/indisponível) usa `error.title` com o ícone de erro genérico. Sucesso não
 // mostra nada aqui -- o cartão já sai da lista sozinho. A barreira de segurança continua no servidor;
 // isto só reflete o estado.
-export function CommunityExploreCard({ community, joining, disabled, onJoin, error = null }) {
+export function CommunityExploreCard({
+  community,
+  joining,
+  disabled,
+  onJoin,
+  error = null,
+  preview = false,
+}) {
   const action = exploreCardAction(community.access)
   return (
     <article className="community-explore-card" data-access={community.access ?? 'not_member'}>
       <div className="community-cover">
+        <span className="community-cover-fallback">
+          <CommunityIcon community={community} size={56} />
+        </span>
         <CommunityCoverImage path={community.coverPath} className="community-cover-image" />
       </div>
       {/* Fora de .community-cover de propósito: o container da capa tem overflow:hidden
@@ -37,7 +47,7 @@ export function CommunityExploreCard({ community, joining, disabled, onJoin, err
         {community.description && (
           <p className="community-explore-description">{community.description}</p>
         )}
-        {action === 'join' && (
+        {(action === 'join' || preview) && (
           <Button
             variant="primary"
             block
@@ -45,14 +55,14 @@ export function CommunityExploreCard({ community, joining, disabled, onJoin, err
             leadingVisual={PlusIcon}
             className="community-join-button"
             loading={joining}
-            disabled={disabled}
-            onClick={() => onJoin(community)}
+            disabled={preview ? true : disabled}
+            onClick={() => onJoin?.(community)}
             aria-label={`Participar de ${community.name}`}
           >
             Participar
           </Button>
         )}
-        {action === 'blocked' && (
+        {!preview && action === 'blocked' && (
           <Button
             block
             size="small"
@@ -63,7 +73,7 @@ export function CommunityExploreCard({ community, joining, disabled, onJoin, err
             {COMMUNITY_MESSAGES.blockedBadge}
           </Button>
         )}
-        {action === 'unavailable' && (
+        {!preview && action === 'unavailable' && (
           <Button
             block
             size="small"

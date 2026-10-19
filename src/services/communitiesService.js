@@ -1,6 +1,7 @@
 import { supabase } from '../supabase/config'
 import { COMMUNITY_ICON_NAMES, DEFAULT_COMMUNITY_ICON_NAME } from '../constants/communityIcons'
 import { compressImage } from '../utils/imageCompression'
+import { setCachedPhotoUrl } from '../utils/photoBlobCache'
 
 // Maior uso da capa é .community-explore-cover em cards de ~2 colunas (ver app.css) --
 // 960px cobre isso com folga de densidade de pixel, bem abaixo do teto genérico de
@@ -140,7 +141,10 @@ export async function setCommunityActive(communityId, isActive) {
 }
 
 export async function deleteCommunity(communityId) {
-  const { error } = await supabase.rpc('queue_deletion', { p_kind: 'community', p_target_id: communityId })
+  const { error } = await supabase.rpc('queue_deletion', {
+    p_kind: 'community',
+    p_target_id: communityId,
+  })
   if (error) throw error
 }
 
@@ -166,6 +170,7 @@ export async function uploadCommunityCover(communityId, file) {
     .select('id')
   if (error) throw error
   if (!data?.length) throw new Error('PERMISSION_DENIED')
+  setCachedPhotoUrl(path, URL.createObjectURL(blob))
   return path
 }
 

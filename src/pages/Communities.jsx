@@ -91,24 +91,18 @@ function CommunityActivityStatus({ activity, ready }) {
 // reforço visual de "entrar" (decorativa, aria-hidden) -- o alvo de toque continua sendo
 // o cartão inteiro, não só ela.
 function CommunityCard({ community, linkTo, onNavigate, menu, badge, error, children }) {
-  const hasCover = Boolean(community.coverPath)
   return (
     <article className="community-card">
-      {hasCover && (
-        <>
-          <div className="community-cover">
-            <CommunityCoverImage path={community.coverPath} className="community-cover-image" />
-          </div>
-          {/* O ícone escolhido na criação continua aparecendo mesmo com capa -- só sai da
-              linha do título e passa a sobrepor a borda da capa, menor (mesma classe
-              compartilhada com o cartão de Explorar, ver CommunityExploreCard.jsx). */}
-          <span className="community-cover-icon">
-            <CommunityIcon community={community} size={40} />
-          </span>
-        </>
-      )}
-      <div className={`community-card-top${hasCover ? ' community-card-top--with-cover' : ''}`}>
-        {!hasCover && <CommunityIcon community={community} size={48} />}
+      <div className="community-cover">
+        <span className="community-cover-fallback">
+          <CommunityIcon community={community} size={56} />
+        </span>
+        <CommunityCoverImage path={community.coverPath} className="community-cover-image" />
+      </div>
+      <span className="community-cover-icon">
+        <CommunityIcon community={community} size={40} />
+      </span>
+      <div className="community-card-top community-card-top--with-cover">
         <div className="community-card-info">
           <RouterLink to={linkTo} className="community-card-link" onClick={onNavigate}>
             {community.name}
@@ -117,6 +111,9 @@ function CommunityCard({ community, linkTo, onNavigate, menu, badge, error, chil
             {badge}
             <span>{formatMemberCount(community.memberCount)}</span>
           </p>
+          {community.description && (
+            <p className="community-card-description">{community.description}</p>
+          )}
         </div>
         {menu && <div className="community-card-menu">{menu}</div>}
       </div>
@@ -222,7 +219,11 @@ export default function Communities() {
       if (result === 'banned') {
         setActionError({ communityId: community.id, kind: 'banned' })
       } else if (result === 'unavailable') {
-        setActionError({ communityId: community.id, kind: 'error', title: COMMUNITY_MESSAGES.unavailable })
+        setActionError({
+          communityId: community.id,
+          kind: 'error',
+          title: COMMUNITY_MESSAGES.unavailable,
+        })
       }
     } catch (err) {
       console.error('[Communities] join:', err)
@@ -243,7 +244,11 @@ export default function Communities() {
       await leave(community.id)
     } catch (err) {
       console.error('[Communities] leave:', err)
-      setActionError({ communityId: community.id, kind: 'error', title: 'Erro ao sair da comunidade.' })
+      setActionError({
+        communityId: community.id,
+        kind: 'error',
+        title: 'Erro ao sair da comunidade.',
+      })
     } finally {
       endMembershipChange()
     }
@@ -356,9 +361,7 @@ export default function Communities() {
                         disabled={pendingCommunityId !== null}
                       />
                     }
-                    error={
-                      actionError?.communityId === community.id ? actionError.title : null
-                    }
+                    error={actionError?.communityId === community.id ? actionError.title : null}
                   >
                     <CommunityActivityStatus
                       activity={activity[community.id]}

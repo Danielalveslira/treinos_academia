@@ -771,6 +771,9 @@ function CommunityDetail({ id }) {
                 <CommunityForm
                   initialValue={community}
                   onSubmit={handleUpdateCommunity}
+                  onCoverUploaded={(coverPath) =>
+                    setCommunity((current) => ({ ...current, coverPath }))
+                  }
                   onCancel={() => setManaging(false)}
                 />
               </LazyDialogBoundary>

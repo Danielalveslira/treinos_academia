@@ -16,6 +16,9 @@ import { build } from 'esbuild'
 let directory
 let updateCommunity
 let setCommunityActive
+let uploadCommunityCover
+let getCachedPhotoUrl
+let clearPhotoCache
 let affectedRows
 
 before(async () => {
@@ -23,7 +26,8 @@ before(async () => {
   const outfile = join(directory, 'out.cjs')
   await build({
     stdin: {
-      contents: `export { updateCommunity, setCommunityActive } from './communitiesService.js'`,
+      contents: `export { updateCommunity, setCommunityActive, uploadCommunityCover } from './communitiesService.js'
+        export { getCachedPhotoUrl, clearPhotoCache } from '../utils/photoBlobCache.js'`,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
     outfile,
@@ -41,7 +45,12 @@ before(async () => {
           }))
           context.onLoad({ filter: /.*/, namespace: 'fake' }, () => ({
             contents: `
-              export const supabase = { from: (table) => ({ update: (patch) => ({ eq: (col, id) => ({
+              export const supabase = {
+                storage: { from: (bucket) => ({ upload: async (path, blob, options) => {
+                  globalThis.__upload = { bucket, path, blob, options }
+                  return { error: null }
+                } }) },
+                from: (table) => ({ update: (patch) => ({ eq: (col, id) => ({
                 select: (cols) => {
                   globalThis.__calls.push({ table, patch, col, id, cols })
                   return Promise.resolve({ data: globalThis.__rows, error: null })
@@ -49,11 +58,24 @@ before(async () => {
               }) }) }) }
             `,
           }))
+          context.onResolve({ filter: /\/utils\/imageCompression(\.js)?$/ }, () => ({
+            path: 'image-compression',
+            namespace: 'fake-image',
+          }))
+          context.onLoad({ filter: /.*/, namespace: 'fake-image' }, () => ({
+            contents: `export const compressImage = async () => new Blob(['cover'], { type: 'image/webp' })`,
+          }))
         },
       },
     ],
   })
-  ;({ updateCommunity, setCommunityActive } = createRequire(import.meta.url)(outfile))
+  ;({
+    updateCommunity,
+    setCommunityActive,
+    uploadCommunityCover,
+    getCachedPhotoUrl,
+    clearPhotoCache,
+  } = createRequire(import.meta.url)(outfile))
 })
 
 after(async () => {
@@ -68,7 +90,13 @@ beforeEach(() => {
 
 test('updateCommunity sucede quando a linha é realmente afetada (dono ok)', async () => {
   await assert.doesNotReject(
-    updateCommunity('c1', { name: 'Nova', description: '', iconName: 'x', isActive: true, postAccess: 'everyone' })
+    updateCommunity('c1', {
+      name: 'Nova',
+      description: '',
+      iconName: 'x',
+      isActive: true,
+      postAccess: 'everyone',
+    })
   )
   assert.equal(globalThis.__calls.length, 1)
   assert.equal(globalThis.__calls[0].cols, 'id')
@@ -77,7 +105,13 @@ test('updateCommunity sucede quando a linha é realmente afetada (dono ok)', asy
 test('updateCommunity lança PERMISSION_DENIED quando a policy filtra tudo (dono bloqueado) -- 0 linhas, sem error do PostgREST', async () => {
   globalThis.__rows = []
   await assert.rejects(
-    updateCommunity('c1', { name: 'Nova', description: '', iconName: 'x', isActive: true, postAccess: 'everyone' }),
+    updateCommunity('c1', {
+      name: 'Nova',
+      description: '',
+      iconName: 'x',
+      isActive: true,
+      postAccess: 'everyone',
+    }),
     /PERMISSION_DENIED/
   )
 })
@@ -89,4 +123,16 @@ test('setCommunityActive sucede quando a linha é afetada', async () => {
 test('setCommunityActive lança PERMISSION_DENIED com 0 linhas afetadas', async () => {
   globalThis.__rows = []
   await assert.rejects(setCommunityActive('c1', false), /PERMISSION_DENIED/)
+})
+
+test('upload da capa mantém caminho determinístico e atualiza o cache após confirmação no banco', async () => {
+  clearPhotoCache()
+  const path = await uploadCommunityCover('c1', new Blob(['input'], { type: 'image/png' }))
+  assert.equal(path, 'c1.webp')
+  assert.equal(globalThis.__upload.bucket, 'community-covers')
+  assert.equal(globalThis.__upload.path, path)
+  assert.equal(globalThis.__upload.blob.type, 'image/webp')
+  assert.deepEqual(globalThis.__upload.options, { contentType: 'image/webp', upsert: true })
+  assert.ok(getCachedPhotoUrl(path)?.startsWith('blob:'))
+  clearPhotoCache()
 })
