@@ -68,6 +68,11 @@ const baseAuth = {
   user: { uid: 'u1', emailVerified: true },
   profile: {
     role: 'user',
+    // ProfileCompletionGate (ver ProtectedRoute.jsx) dispara por !profile.username --
+    // toda conta simulada aqui é "completa" por padrão (como a maioria dos cenários
+    // reais já é). Os testes do próprio gate, mais abaixo, sobrescrevem isto de
+    // propósito para testar username ausente.
+    username: 'maria',
     createdAt: { toDate: () => new Date('2020-01-01') },
     legalAcceptance: {
       version: manifest.version,
@@ -104,6 +109,36 @@ test('an active account never sees the disabled-account gate', () => {
   const html = render(baseAuth)
   assert.doesNotMatch(html, /Conta desativada/)
   assert.doesNotMatch(html, /Antes de continuar/)
+  assert.match(html, /CONTEUDO_PROTEGIDO/)
+})
+
+// ProfileCompletionGate (ver ProtectedRoute.jsx): dispara por !profile.username, depois
+// das guardas de bloqueio/exclusão e antes do LegalGate.
+test('a loaded profile without username shows ProfileCompletionGate, never LegalGate nor protected content', () => {
+  const html = render({
+    ...baseAuth,
+    profile: { ...baseAuth.profile, username: null },
+  })
+  assert.match(html, /Complete seu cadastro/)
+  // id="legal-gate-title", não o texto "Antes de continuar" -- esse texto também
+  // aparece (coincidentemente) no corpo do próprio ProfileCompletionGate.
+  assert.doesNotMatch(html, /legal-gate-title/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('a blocked account without username still sees the block gate, never ProfileCompletionGate (block guards come first)', () => {
+  const html = render({
+    ...baseAuth,
+    profile: { ...baseAuth.profile, username: null, accountStatus: 'disabled', disabledReason: 'Spam' },
+  })
+  assert.match(html, /Conta desativada/)
+  assert.doesNotMatch(html, /Complete seu cadastro/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
+test('a profile with username goes straight to LegalGate/protected content, never ProfileCompletionGate', () => {
+  const html = render(baseAuth)
+  assert.doesNotMatch(html, /Complete seu cadastro/)
   assert.match(html, /CONTEUDO_PROTEGIDO/)
 })
 

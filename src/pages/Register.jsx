@@ -5,16 +5,10 @@ import { Button, FormControl, TextInput, Select, Link, Flash, Stack } from '@pri
 import {
   registerUser,
   confirmSignupAndSyncPassword,
-  setDisplayName,
   sendVerificationEmail,
 } from '../services/authService'
-import {
-  ensureUserProfile,
-  setUsername,
-  setBirthInfo,
-  isUsernameAvailable,
-} from '../services/usersService'
-import { setUsageProfile } from '../services/usageProfileService'
+import { isUsernameAvailable } from '../services/usersService'
+import { completeUserProfile } from '../services/profileCompletion'
 import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../utils/authErrors'
 import {
@@ -117,24 +111,17 @@ export default function Register() {
   // existir nos dois casos -- sem sessão, todas essas RPCs falham com NOT_AUTHENTICATED.
   async function completeProfile(uid) {
     try {
-      await ensureUserProfile(uid)
-      await setUsername(uid, username)
-      await setBirthInfo(uid, { sexo, dataNascimento: birthDate })
-      await setDisplayName({ uid }, username)
+      await completeUserProfile(uid, { username, sexo, birthDate, usageProfile })
     } catch (postCreateErr) {
-      // Preserva identidade, perfil e reservas. Exclusão só pelo fluxo oficial.
+      // Preserva identidade, perfil e reservas. Exclusão só pelo fluxo oficial. Se o
+      // usuário não voltar a esta aba, ProfileCompletionGate completa isso no próximo
+      // login (username ainda nulo é o gatilho) -- não precisa de retentativa aqui.
       console.error('[Auth] register profile incomplete:', postCreateErr)
       setError(
         'Sua conta foi criada, mas o perfil não foi concluído. Tente novamente para concluir nesta página ou entre com seu e-mail e senha para completar o perfil. Se quiser excluir a conta, use o atendimento e o fluxo oficial de exclusão.'
       )
       return false
     }
-    // Também best-effort e pela mesma razão: se isto falhar, a conta segue existindo
-    // sem usageProfile e é recuperada pelo mesmo preenchimento contextual de contas
-    // legadas (Meu Perfil/fluxo da Vitrine) -- nunca precisa desfazer o cadastro.
-    setUsageProfile(usageProfile).catch((profileErr) => {
-      console.error('[Auth] setUsageProfile:', profileErr)
-    })
     try {
       if (legalBundle.manifest.published) await acceptLegalDocuments(confirmed, legalBundle)
       await refreshProfile(uid)
@@ -300,9 +287,21 @@ export default function Register() {
         title="Confirme seu e-mail"
         description={`Enviamos um código de 6 dígitos para ${email}. Digite-o abaixo para concluir o cadastro.`}
         footer={
-          <Link as={RouterLink} to="/login" replace>
-            Voltar para entrar
-          </Link>
+          // Texto neutro de propósito -- nem confirma nem nega que já existe uma conta
+          // com este e-mail (um signUp repetido no Supabase hospedado pode devolver uma
+          // resposta indistinguível de sucesso, sem enviar e-mail, para um e-mail já
+          // confirmado). Quem já tem conta segue por aqui sem precisar decifrar a tela.
+          <>
+            Já tem uma conta?{' '}
+            <Link as={RouterLink} to="/login" replace>
+              Entre
+            </Link>{' '}
+            ou{' '}
+            <Link as={RouterLink} to="/esqueci-senha" state={{ email }} replace>
+              recupere sua senha
+            </Link>
+            .
+          </>
         }
       >
         <form onSubmit={handleConfirmSubmit} className="public-form">

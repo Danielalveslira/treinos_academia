@@ -109,26 +109,36 @@ achado #3 (não introduzido por ele). `tests/statuses-rules.test.mjs` cobre apen
 específico de que o rate limit depende (restrição automática bloqueia o próximo post);
 não é uma suíte completa da função de criação de publicações.
 
-### 7. Perfil do cadastro (username/data de nascimento/sexo/usageProfile) só persiste depois da confirmação, dentro da mesma aba
+### 7. Perfil do cadastro incompleto — causa raiz corrigida, gate de segurança adicionado (`options.data` avaliado e rejeitado)
 
-Desde a confirmação de cadastro por código OTP (`Register.jsx`/`ConfirmEmail.jsx`,
-Supabase Auth): username, data de nascimento, sexo e usageProfile ficam só em `state` do
-React entre o `signUp` e a confirmação. Se a aba fechar antes de digitar o código, esses
-dados se perdem — a conta confirma normalmente mais tarde (via `/confirmar-email`), mas o
-perfil fica incompleto (sem username) até a pessoa completá-lo manualmente em "Meu
-Perfil". A divergência de **senha** no mesmo cenário tem tratamento próprio, fail-closed
-(ver item 8 abaixo); os demais campos de perfil, não.
+**Causa raiz real** (não "fechou a aba", como se pensava inicialmente): `syncSignupPassword`
+chamava `updateUser({password})` com a MESMA senha que o `signUp` acabara de gravar — o
+caso comum, sem reload e sem ataque nenhum. O GoTrue rejeita isso com
+`422 same_password` ("New password should be different from the old password"),
+confirmado em produção e reproduzido localmente. O código tratava qualquer erro aqui como
+falha fechada (`PASSWORD_SYNC_FAILED`, sessão encerrada, passo `'locked'`) — ou seja, o
+cadastro normal praticamente sempre caía nesse estado, e `completeProfile`
+(username/data de nascimento/sexo/usageProfile/display name) nunca chegava a rodar.
+**Corrigido**: `same_password` agora é tratado como sucesso em `syncSignupPassword`
+(prova que a senha é a certa, não o contrário) — qualquer outro erro continua fail-closed.
 
-**Melhoria futura registrada, não implementada**: enviar esses campos em `options.data`
-do `supabase.auth.signUp(...)` — grava em `auth.users.raw_user_meta_data` na hora do
-cadastro, independente de confirmação. Depois de `confirmSignupOtp`/`verifyOtp`
-estabelecer sessão (em `Register.jsx` OU em `ConfirmEmail.jsx`, para quem voltou depois),
-ler `user_metadata` da resposta e rodar a mesma sequência de RPCs
-(`ensureUserProfile`/`setUsername`/`setBirthInfo`/`setUsageProfile`) a partir daí. O
-aceite legal ficaria de fora desse metadata (é versionado e pode ficar desatualizado
-entre o cadastro e a confirmação); o `LegalGate` já cobre isso de forma independente e
-testada. Exigiria compartilhar essa lógica de "aplicar perfil pendente" entre as duas
-páginas — mudança de porte médio, não trivial. Sem data definida.
+**Gate de segurança adicionado** (para qualquer OUTRA interrupção futura, não só esta):
+`ProfileCompletionGate.jsx`, montado em `ProtectedRoute.jsx` depois das guardas de
+bloqueio/exclusão, bloqueia contas com sessão válida mas `username` nulo até a própria
+pessoa completar o formulário (mesmos campos do cadastro, sem e-mail/senha). A sequência
+de RPCs foi extraída para `completeUserProfile` (`services/profileCompletion.js`) e
+REORDENADA: `setUsername` agora é a ÚLTIMA chamada de propósito, para que sua presença em
+`public.users.username` prove que todas as etapas anteriores (perfil, nascimento, display
+name) já rodaram — antes, `setUsername` era a segunda chamada, então username presente
+não garantia nada sobre o resto.
+
+**`options.data` no `signUp` avaliado e rejeitado** (não é mais a melhoria futura
+proposta): `user_metadata` vem do cliente, no corpo da própria chamada `signUp` — um
+atacante que pré-cadastra o e-mail da vítima poderia plantar ali valores que sobrevivem a
+um re-`signUp` da vítima (o GoTrue não limpa `user_metadata` nessa reconfirmação). Gravar
+qualquer dado de perfil a partir desse metadata abriria uma variante do risco de
+pre-account hijacking do item 8. A gravação continua exigindo sessão autenticada, via RPC
+— nunca a partir de dados que vieram do corpo do `signUp`.
 
 ### 8. Risco residual de pre-account hijacking: janela entre verifyOtp e a troca de senha falhar
 
@@ -157,3 +167,23 @@ novo (dessa vez por um link enviado ao e-mail, não dependente do formulário) e
 `endOtherSessions()`, revogando qualquer sessão que o atacante tenha aberto com a senha
 antiga. Ou seja: a janela existe, mas sempre termina em "a vítima precisa redefinir a
 senha pelo fluxo de recuperação" — nunca em acesso silencioso concedido ao atacante.
+
+### 9. `signUp` para e-mail já confirmado: comportamento diverge entre GoTrue local e o Supabase hospedado
+
+Confirmado contra o GoTrue local (`supabase start`): um segundo `signUp` para um e-mail
+JÁ CONFIRMADO, com "Confirm email" ligado, devolve `422 user_already_exists` — erro
+explícito, nenhum e-mail enviado.
+
+Confirmado nos **logs de Auth de produção** (evento "User repeated signup", e o `resend`
+correspondente): o mesmo cenário no Supabase **hospedado** devolve `200`, **sem erro**,
+usuário ofuscado (sem sessão, `identities` vazio) — também sem enviar e-mail, mas sem
+nenhum sinal de erro para o cliente. São comportamentos diferentes para o mesmo cenário,
+dependendo do ambiente (versão do GoTrue local vs. plataforma hospedada).
+
+**Por que isso não quebra nada aqui**: `registerUser`/`Register.jsx` nunca ramificam por
+`identities` ou por um erro específico de "já existe" — só por `hasSession`, que vem
+`false` nos dois casos (local E hospedado). A tela de código seguinte é neutra por
+construção (ver item 3 da Fase 2 do trabalho de auth), não por uma checagem explícita de
+qual dos dois comportamentos aconteceu. Testar contra o GoTrue local continua útil para
+tudo que NÃO é este caso específico (confirmação por código, recuperação de senha,
+hijacking) — só este cenário precisa ser lido nos logs do painel, não reproduzido local.

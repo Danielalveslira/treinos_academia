@@ -3,6 +3,7 @@ import { Box, Button, Flash, Spinner } from '@primer/react'
 import { PublicLayout } from './PublicLayout'
 import { useAuth } from '../hooks/useAuth'
 import { LegalGate } from './LegalGate'
+import { ProfileCompletionGate } from './ProfileCompletionGate'
 import { AccountBlockedGate } from './AccountBlockedGate'
 import { AccountDeletionBlockedGate } from './AccountDeletionBlockedGate'
 import { resolveAccountBlockState, resolveLegalGateState } from '../utils/legal'
@@ -108,5 +109,15 @@ export function ProtectedRoute({ children }) {
   // ConfirmEmail.jsx trocam o código por sessão via confirmSignupOtp) -- com "Confirm
   // email" ligado, um usuário com user.emailVerified===false nunca chega a ter sessão
   // para esta tela renderizar, então não há gate pós-login para manter aqui.
-  return <LegalGate>{children}</LegalGate>
+  //
+  // ProfileCompletionGate só é alcançado depois de todas as guardas de bloqueio/exclusão
+  // acima -- `profile` já está garantidamente carregado aqui (profileError || !profile já
+  // foi tratado na linha 49), então o gate nunca confunde "carregando" com "perfil vazio".
+  // Rotas de auth (/login, /esqueci-senha, /redefinir-senha, /confirmar-email) ficam fora
+  // de ProtectedRoute (ver App.jsx) -- este gate nunca chega a renderizar para elas.
+  return (
+    <ProfileCompletionGate>
+      <LegalGate>{children}</LegalGate>
+    </ProfileCompletionGate>
+  )
 }
