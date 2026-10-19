@@ -16,10 +16,18 @@ import { handleSheetKeyDown, viewportStyle } from '../utils/modalSheet'
 // continua acima do teclado; sem a API, 100dvh via CSS.
 
 // Marcação pura (sem portal/efeitos): é o que os testes renderizam.
-export function ModalSheetFrame({ titleId, title, subtitle, onClose, footer, children }) {
+export function ModalSheetFrame({
+  titleId,
+  title,
+  subtitle,
+  onClose,
+  footer,
+  children,
+  className = '',
+}) {
   return (
     <div
-      className="modal-sheet"
+      className={`modal-sheet ${className}`.trim()}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -43,7 +51,7 @@ export function ModalSheetFrame({ titleId, title, subtitle, onClose, footer, chi
   )
 }
 
-export function ModalSheet({ onClose, children }) {
+export function ModalSheet({ onClose, children, portalContainer }) {
   const rootRef = useRef(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
@@ -99,6 +107,6 @@ export function ModalSheet({ onClose, children }) {
     <div ref={rootRef} className="modal-sheet-backdrop" onMouseDown={onBackdropMouseDown}>
       {children}
     </div>,
-    document.body
+    portalContainer || document.body
   )
 }

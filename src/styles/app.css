@@ -3867,14 +3867,8 @@ body {
   to { transform: scale(1.04); opacity: 1; }
 }
 
-.training-plan-dialog { width: min(640px, calc(100dvw - 48px)); max-width: calc(100dvw - 48px); max-height: min(760px, calc(100dvh - 32px)); }
-.training-plan-dialog > [class*='DialogOverflowWrapper'] { min-height: 0; overflow: auto; scrollbar-gutter: stable; overscroll-behavior: contain; }
-.training-plan-dialog [class*='Dialog-Header'] { padding: 16px 22px; }
-.training-plan-dialog [class*='Dialog-Body'] { overflow: visible; padding: 20px 22px 24px; }
-.training-plan-dialog [class*='Dialog-Title'] { font-size: 18px; }
-.training-plan-dialog [class*='Dialog-Subtitle'] { font-size: 13px; }
-.training-plan-footer { padding: 12px 22px; padding-bottom: max(12px, env(safe-area-inset-bottom)); background: var(--overlay-bgColor, var(--bgColor-default)); }
-.training-plan-footer button { min-height: 40px; }
+.training-plan-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.training-plan-actions button { min-height: 40px; }
 .training-plan-form { display: grid; gap: 20px; min-width: 0; }
 .training-plan-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
 .training-plan-days legend { margin-bottom: 4px; font-size: 13px; font-weight: 700; }
@@ -3941,21 +3935,21 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .activity-legend .activity-day { flex: 0 0 auto; }
 
 @media (max-width: 767px) {
-  .training-plan-dialog[data-position-narrow='fullscreen'] { width: 100%; max-width: 100dvw; height: var(--training-viewport-height, 100dvh); max-height: var(--training-viewport-height, 100dvh); border-radius: 0; }
-  .training-plan-dialog [class*='Dialog-Header'] { padding: max(12px, env(safe-area-inset-top)) 16px 12px; }
-  .training-plan-dialog [class*='Dialog-Body'] { padding: 18px 16px 28px; }
-  .training-plan-dialog > [class*='DialogOverflowWrapper'] { scrollbar-gutter: stable; }
   .training-plan-form { gap: 18px; }
   .training-plan-days { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .training-plan-times { grid-template-columns: minmax(0, 1fr); }
-  .training-plan-footer { padding: 10px 16px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
-  .training-plan-footer button { min-height: 44px; }
+  .training-plan-actions button { min-height: 44px; }
   .activity-calendar-summary { grid-template-columns: 1fr; }
 }
 @media (max-width: 359px) {
   .training-plan-time-row { grid-template-columns: minmax(0, 1fr) 104px; }
-  .training-plan-footer { flex-wrap: nowrap; }
-  .training-plan-footer button { min-width: 0; padding-inline: 10px; }
+  .training-plan-actions button { min-width: 0; padding-inline: 10px; }
+}
+@media (max-width: 279px) {
+  .training-plan-days { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .training-plan-time-row { grid-template-columns: minmax(0, 1fr); }
+  .training-plan-actions { flex-direction: column; align-items: stretch; }
+  .training-plan-actions button { width: 100%; }
 }
 
 .progress-section {
@@ -5576,6 +5570,28 @@ body.modal-sheet-open { overflow: hidden; }
     overflow: hidden;
     box-shadow: var(--shadow-floating-large, 0 16px 48px rgb(0 0 0 / 40%));
   }
+}
+
+/* Planning uses the shared sheet so its viewport, focus and overlay rules stay in one place. */
+.modal-sheet.training-plan-dialog { box-sizing: border-box; overflow: hidden; }
+.training-plan-dialog .modal-sheet-body { overflow-x: hidden; scrollbar-gutter: stable; }
+@media (min-width: 768px) {
+  .modal-sheet.training-plan-dialog { width: min(640px, calc(100dvw - 48px)); max-height: min(760px, calc(100dvh - 32px)); }
+  .training-plan-dialog .modal-sheet-header { padding: 16px 22px; }
+  .training-plan-dialog .modal-sheet-body { padding: 20px 22px 24px; }
+  .training-plan-dialog .modal-sheet-footer { padding: 12px 22px; }
+}
+@media (max-width: 767px) {
+  .training-plan-dialog .modal-sheet-body { padding-block: 18px 28px; }
+}
+@media (max-width: 767px) and (max-height: 450px) {
+  .training-plan-dialog .modal-sheet-subtitle { display: none; }
+  .training-plan-dialog .modal-sheet-header { padding-block: 8px; }
+  .training-plan-dialog .modal-sheet-body { padding-block: 12px; }
+}
+@media (max-width: 279px) {
+  .training-plan-dialog .modal-sheet-header, .training-plan-dialog .modal-sheet-body { padding-inline: 12px; }
+  .training-plan-dialog .modal-sheet-footer { padding-inline: 12px; }
 }
 
 /* Compartilhar progresso (conteúdo da folha) ---------------------------------------------------------------- */
