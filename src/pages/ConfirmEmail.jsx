@@ -153,9 +153,19 @@ export default function ConfirmEmail() {
       title="Confirme seu e-mail"
       description="Digite o código de 6 dígitos que enviamos para concluir a confirmação."
       footer={
-        <Link as={RouterLink} to="/login" replace>
-          Voltar para entrar
-        </Link>
+        // Texto neutro de propósito (mesma razão do Register.jsx) -- nem confirma nem
+        // nega que já existe uma conta com este e-mail.
+        <>
+          Já tem uma conta?{' '}
+          <Link as={RouterLink} to="/login" replace>
+            Entre
+          </Link>{' '}
+          ou{' '}
+          <Link as={RouterLink} to="/esqueci-senha" state={{ email }} replace>
+            recupere sua senha
+          </Link>
+          .
+        </>
       }
     >
       <form onSubmit={handleOtpSubmit} className="public-form">
