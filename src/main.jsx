@@ -1,10 +1,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ThemeProvider, BaseStyles } from '@primer/react'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import App from './App.jsx'
 import { PwaControls } from './components/PwaControls'
 import { ThemeSync } from './components/ThemeSync'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { redactAnalyticsEvent } from './utils/analyticsRedaction'
 import '@primer/primitives/dist/css/functional/themes/light.css'
 import '@primer/primitives/dist/css/functional/themes/dark.css'
 import './styles/app.css'
@@ -38,6 +41,8 @@ createRoot(document.getElementById('root')).render(
             <App />
           </div>
           <PwaControls />
+          <Analytics beforeSend={redactAnalyticsEvent} />
+          <SpeedInsights beforeSend={redactAnalyticsEvent} />
         </ErrorBoundary>
       </BaseStyles>
     </ThemeProvider>

@@ -1,7 +1,7 @@
 {
   "redirects": [
     {
-      "source": "/:path((?!assets/|icons/|.*\\.[\\w]+$).*)",
+      "source": "/:path((?!assets/|icons/|_vercel/|.*\\.[\\w]+$).*)",
       "has": [{ "type": "host", "value": "treinosacademia-ten.vercel.app" }],
       "destination": "https://evolutus.com.br/:path*",
       "statusCode": 301
@@ -9,7 +9,7 @@
   ],
   "rewrites": [
     {
-      "source": "/((?!assets/|icons/|.*\\.[\\w]+$).*)",
+      "source": "/((?!assets/|icons/|_vercel/|.*\\.[\\w]+$).*)",
       "destination": "/index.html"
     }
   ],
