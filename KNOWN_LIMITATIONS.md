@@ -187,3 +187,28 @@ construção (ver item 3 da Fase 2 do trabalho de auth), não por uma checagem e
 qual dos dois comportamentos aconteceu. Testar contra o GoTrue local continua útil para
 tudo que NÃO é este caso específico (confirmação por código, recuperação de senha,
 hijacking) — só este cenário precisa ser lido nos logs do painel, não reproduzido local.
+
+### 10. Testes instáveis na suíte completa (`npm test` sem filtro) — hipótese NÃO provada
+
+Observado repetidas vezes durante o trabalho de auth: `npm test` (glob completo,
+`node --test "src/**/*.test.js"`) falha de forma não determinística — em cada tentativa,
+um teste DIFERENTE falha (às vezes em `authColdStart.test.js`, às vezes em outro arquivo
+sem relação nenhuma, ex. um teste de agrupamento de autores em feed), e repetir a mesma
+suíte sem nenhuma mudança no código produz resultados diferentes (falha, depois limpo,
+depois falha de novo em outro lugar). Isolar o arquivo que falhou (`node --test
+<arquivo>.test.js`) sempre passou 100% das vezes em que foi tentado durante este trabalho.
+
+**Hipótese (não provada)**: contenção de recursos no ambiente de execução — múltiplos
+processos `node --test` concorrentes (o próprio glob gera um processo por arquivo),
+possivelmente combinados com flags de depuração (`--inspect`) que aparecem injetadas nos
+processos filhos sem terem sido pedidas por `package.json` nem por `NODE_OPTIONS`
+(origem não identificada — suspeita de alguma integração do ambiente/IDE que anexa um
+depurador a processos Node recém-criados). Essa hipótese nunca foi comprovada com uma
+causa raiz isolada (ex.: não foi capturado um `strace`/profiling do momento exato da
+falha) — é só a explicação mais consistente com o padrão observado (sempre um teste
+diferente, sempre limpo isolado, sempre limpo ao repetir a suíte completa mais uma vez).
+
+**Pendência explícita**: investigar a causa raiz de verdade (ou aceitar formalmente que
+`npm test` precisa ser reexecutado quando falha, sem abrir um item isolado para investigar
+cada teste que aparecer na lista) antes de confiar em uma única rodada de `npm test` como
+critério de aceite em CI ou em qualquer automação sem repetição.
