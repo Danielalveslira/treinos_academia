@@ -108,6 +108,28 @@ test('registerUser: com Confirm email ligado, data.session vem null -> hasSessio
   assert.deepEqual(result, { user: { uid: 'u1', email: 'a@a.com' }, hasSession: false })
 })
 
+// Confirmado nos logs de Auth de PRODUÇÃO (evento "User repeated signup"): signUp num
+// e-mail JÁ CONFIRMADO, com Confirm email ligado, responde 200 sem erro e sem sessão --
+// um usuário ofuscado (identities vazio), sem enviar e-mail nenhum. Diverge do GoTrue
+// local (CLI), que devolve 422 user_already_exists para o mesmo caso (ver
+// KNOWN_LIMITATIONS.md). registerUser não distingue isso do caso legítimo "aguardando
+// confirmação" -- hasSession:false nos dois, de propósito: não há sinal nenhum (nem aqui
+// nem em Register.jsx/handleSubmit) que ramifique a UI por identities/erro específico, só
+// por hasSession. É isso que torna a tela de código seguinte neutra por construção, não
+// por uma checagem explícita de "é ofuscado?".
+test('registerUser: signUp ofuscado (e-mail já confirmado, hospedado) também dá hasSession:false', async () => {
+  globalThis.__signUp = () =>
+    Promise.resolve({
+      data: {
+        user: { id: 'u1', email: 'a@a.com', identities: [] },
+        session: null,
+      },
+      error: null,
+    })
+  const result = await mod.registerUser('a@a.com', 'outraSenhaQualquer')
+  assert.deepEqual(result, { user: { uid: 'u1', email: 'a@a.com' }, hasSession: false })
+})
+
 test('registerUser: erro do GoTrue (ex.: email já cadastrado) propaga', async () => {
   globalThis.__signUp = () => Promise.resolve({ data: null, error: new Error('email_exists') })
   await assert.rejects(mod.registerUser('a@a.com', 'senha1234'), /email_exists/)
@@ -194,6 +216,23 @@ test('syncSignupPassword: falha do updateUser PROPAGA (quem chama deve falhar de
   await assert.rejects(mod.syncSignupPassword('senhaMaisRecente1'), /network/)
 })
 
+test('syncSignupPassword: same_password é tratado como SUCESSO -- cadastro normal, sem reload', async () => {
+  // Reproduzido em produção e localmente: no cadastro normal (sem ataque, sem reload), a
+  // senha do formulário É a mesma que o signUp acabou de gravar -- updateUser rejeita
+  // com same_password, o que PROVA a senha certa, nunca o contrário.
+  const samePasswordError = new Error('same_password')
+  samePasswordError.code = 'same_password'
+  globalThis.__updateUser = () => Promise.resolve({ error: samePasswordError })
+  await mod.syncSignupPassword('senhaDoCadastro1')
+})
+
+test('syncSignupPassword: qualquer OUTRO erro continua fail-closed, same_password não abre exceção geral', async () => {
+  const otherError = new Error('rate limit')
+  otherError.code = 'over_request_rate_limit'
+  globalThis.__updateUser = () => Promise.resolve({ error: otherError })
+  await assert.rejects(mod.syncSignupPassword('senhaDoCadastro1'), /rate limit/)
+})
+
 // --- confirmSignupAndSyncPassword: reproduz em unidade a defesa contra pre-account
 // hijacking (ver nota em authService.js) -- updateUser SEMPRE recebe a senha do
 // formulário, nunca lê ou depende da senha que já estava na conta (seja ela a de um
@@ -216,6 +255,22 @@ test('confirmSignupAndSyncPassword: feliz -- confirma e alinha a senha do formul
   // A senha aplicada é exatamente a do formulário (nunca a que já estava na conta,
   // seja de um cadastro legítimo anterior ou de um atacante).
   assert.deepEqual(calls, [{ password: 'senhaDaVitima1' }])
+  assert.deepEqual(signOutCalls, [])
+})
+
+test('confirmSignupAndSyncPassword: cadastro NORMAL (same_password) completa sem cair em PASSWORD_SYNC_FAILED', async () => {
+  const signOutCalls = []
+  globalThis.__verifyOtp = () =>
+    Promise.resolve({ data: { user: { id: 'u1', email: 'pessoa@a.com' } }, error: null })
+  const samePasswordError = new Error('same_password')
+  samePasswordError.code = 'same_password'
+  globalThis.__updateUser = () => Promise.resolve({ error: samePasswordError })
+  globalThis.__signOut = (args) => {
+    signOutCalls.push(args)
+    return Promise.resolve({ error: null })
+  }
+  await mod.confirmSignupAndSyncPassword('pessoa@a.com', '123456', 'senhaDoCadastro1')
+  // Nenhum logout -- é exatamente o caminho que antes da correção caía em 'locked'.
   assert.deepEqual(signOutCalls, [])
 })
 

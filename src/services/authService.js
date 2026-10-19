@@ -170,7 +170,17 @@ export async function updatePassword(password) {
 // recém-criada pelo verifyOtp já conta como "logado recentemente", sem bloqueio extra.
 export async function syncSignupPassword(password) {
   if (!password) throw new Error('MISSING_PASSWORD')
-  await updatePassword(password)
+  try {
+    await updatePassword(password)
+  } catch (err) {
+    // same_password (confirmado em produção e reproduzido localmente): acontece no
+    // cadastro NORMAL, sem nada de ataque -- a senha do formulário já É a senha que o
+    // signUp acabou de gravar, então updateUser rejeita por ser igual à atual. Isso
+    // PROVA que é a senha certa (não a de um atacante), nunca o contrário -- tratado
+    // como sucesso. Qualquer outro erro continua fail-closed, sem exceção.
+    if (err?.code === 'same_password') return
+    throw err
+  }
 }
 
 // Orquestra a confirmação de cadastro com o failsafe de senha acima: confirma o código e só

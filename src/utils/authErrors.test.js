@@ -25,3 +25,16 @@ test('translateAuthError points a duplicate-email registration attempt toward su
   assert.match(message, /já está cadastrado/)
   assert.match(message, /atendimento/)
 })
+
+// same_password (GoTrue): o novo cadastro tenta alinhar a senha da conta com a do
+// formulário (syncSignupPassword) -- no caso normal, sem ataque, elas já são iguais, e o
+// GoTrue rejeita com este código. O chamador trata isso como sucesso (ver authService.js),
+// mas a mensagem continua mapeada para o caso raro de alguém bater nela diretamente (ex.:
+// trocar a senha por uma igual à atual em "Minha conta").
+test('translateAuthError: same_password tem mensagem própria', () => {
+  assert.match(translateAuthError({ code: 'same_password' }), /diferente da atual/)
+})
+
+test('translateAuthError: email_not_confirmed orienta a confirmar o cadastro', () => {
+  assert.match(translateAuthError({ code: 'email_not_confirmed' }), /[Cc]onfirme/)
+})
