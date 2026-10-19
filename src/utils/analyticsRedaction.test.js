@@ -21,6 +21,18 @@ test('redactAnalyticsUrl mantém intacta uma URL que já não tem query', () => 
   assert.equal(result, 'https://evolutus.com.br/historico')
 })
 
+test('redactAnalyticsUrl remove também o fragmento da URL (ex.: #access_token=... de um retorno de OAuth/implicit flow)', () => {
+  const result = redactAnalyticsUrl(
+    'https://evolutus.com.br/#access_token=abc123&token_type=bearer'
+  )
+  assert.equal(result, 'https://evolutus.com.br/')
+})
+
+test('redactAnalyticsUrl remove query e fragmento juntos, mantendo só origem + pathname', () => {
+  const result = redactAnalyticsUrl('https://evolutus.com.br/perfil?busca=joao#secao-privada')
+  assert.equal(result, 'https://evolutus.com.br/perfil')
+})
+
 test('redactAnalyticsUrl devolve a URL original (sem lançar) quando o valor não é uma URL válida', () => {
   assert.equal(redactAnalyticsUrl('não-é-uma-url'), 'não-é-uma-url')
   assert.equal(redactAnalyticsUrl(''), '')

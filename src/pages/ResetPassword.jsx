@@ -1,21 +1,16 @@
 import { AuthLayout } from '../components/PublicLayout'
 import { useEffect, useRef, useState } from 'react'
-import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Button, Link, Flash, Stack, Spinner, Box } from '@primer/react'
-import { verifyRecoveryToken, updatePassword, endOtherSessions } from '../services/authService'
+import { updatePassword, endOtherSessions } from '../services/authService'
+import { useRecoveryTokenExchange } from '../hooks/useRecoveryTokenExchange'
 import { translateAuthError } from '../utils/authErrors'
 import { validatePasswordConfirmation } from '../utils/validators'
 import { NewPasswordFields } from '../components/NewPasswordFields'
 
-// 'checking': trocando token_hash por sessão (verifyRecoveryToken). 'ready': sessão de
-// recuperação ativa, formulário de nova senha. 'invalid': link expirado/já usado/sem
-// token_hash -- nunca um erro genérico de servidor, sempre com saída para pedir um novo
-// link (ver recovery.html: o link aponta direto para esta rota, com token_hash próprio
-// -- nenhum outro fluxo chega aqui com um token válido).
 export default function ResetPassword() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const [status, setStatus] = useState('checking')
+  const status = useRecoveryTokenExchange()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
@@ -29,23 +24,6 @@ export default function ResetPassword() {
       mounted.current = false
     }
   }, [])
-
-  useEffect(() => {
-    const tokenHash = searchParams.get('token_hash')
-    const type = searchParams.get('type')
-    if (!tokenHash || type !== 'recovery') {
-      setStatus('invalid')
-      return
-    }
-    verifyRecoveryToken(tokenHash)
-      .then(() => {
-        if (mounted.current) setStatus('ready')
-      })
-      .catch((err) => {
-        console.error('[Auth] verifyRecoveryToken:', err)
-        if (mounted.current) setStatus('invalid')
-      })
-  }, [searchParams])
 
   async function handleSubmit(e) {
     e.preventDefault()
