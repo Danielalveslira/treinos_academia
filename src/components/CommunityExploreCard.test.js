@@ -98,6 +98,25 @@ test('sem estado informado conta como not_member', () => {
   assert.equal(labelled(component, /^Participar$/).length, 1)
 })
 
+test('card público renderiza a marca SVG nas duas versões responsivas', () => {
+  const component = render({
+    community: { ...community('not_member'), iconName: 'evolutus' },
+    onJoin() {},
+  })
+  assert.equal(
+    component.root
+      .findAllByType('svg')
+      .filter((svg) => svg.props.className?.includes('brand-mark-svg')).length,
+    2
+  )
+  assert.equal(
+    component.root
+      .findAllByType('path')
+      .filter((path) => path.props.className?.startsWith('brand-mark-')).length,
+    4
+  )
+})
+
 test('member: nunca mostra Participar', () => {
   const component = render({ community: community('member'), onJoin() {} })
   assert.equal(labelled(component, /Participar/).length, 0)
@@ -137,7 +156,10 @@ test('erro genérico (rede/inesperado): mostra o título no próprio cartão, nu
   const component = render({
     community: community('not_member'),
     onJoin() {},
-    error: { kind: 'error', title: 'Não foi possível conectar. Verifique sua internet e tente novamente.' },
+    error: {
+      kind: 'error',
+      title: 'Não foi possível conectar. Verifique sua internet e tente novamente.',
+    },
   })
   const text = textContent(component.root)
   assert.match(text, /Não foi possível conectar/)

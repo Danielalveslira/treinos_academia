@@ -20,13 +20,14 @@ let uploadCommunityCover
 let getCachedPhotoUrl
 let clearPhotoCache
 let affectedRows
+let mapCommunityRow
 
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'communities-service-tests-'))
   const outfile = join(directory, 'out.cjs')
   await build({
     stdin: {
-      contents: `export { updateCommunity, setCommunityActive, uploadCommunityCover } from './communitiesService.js'
+      contents: `export { updateCommunity, setCommunityActive, uploadCommunityCover, mapCommunityRow } from './communitiesService.js'
         export { getCachedPhotoUrl, clearPhotoCache } from '../utils/photoBlobCache.js'`,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
@@ -75,6 +76,7 @@ before(async () => {
     uploadCommunityCover,
     getCachedPhotoUrl,
     clearPhotoCache,
+    mapCommunityRow,
   } = createRequire(import.meta.url)(outfile))
 })
 
@@ -100,6 +102,17 @@ test('updateCommunity sucede quando a linha é realmente afetada (dono ok)', asy
   )
   assert.equal(globalThis.__calls.length, 1)
   assert.equal(globalThis.__calls[0].cols, 'id')
+})
+
+test('ícone oficial segue no payload de atualização e no mapeamento da leitura', async () => {
+  await updateCommunity('c1', {
+    name: 'Oficial',
+    iconName: 'evolutus',
+    isActive: true,
+    postAccess: 'everyone',
+  })
+  assert.equal(globalThis.__calls[0].patch.icon_name, 'evolutus')
+  assert.equal(mapCommunityRow({ icon_name: 'evolutus' }).iconName, 'evolutus')
 })
 
 test('updateCommunity lança PERMISSION_DENIED quando a policy filtra tudo (dono bloqueado) -- 0 linhas, sem error do PostgREST', async () => {

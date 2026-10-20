@@ -129,6 +129,8 @@ select throws_ok($$select public.create_community('', 'x', 'dumbbell', 'essentia
 select throws_ok($$select public.create_community('Arquivo', 'x', 'dumbbell', 'archive', 'evocoins', 'key-00000015')$$, 'PAYMENT_METHOD_UNAVAILABLE', 'Arquivo não é vendido em EvoCoins');
 -- rollback em falha: ícone inválido estoura a constraint DEPOIS de checar saldo -- nada cobrado
 select throws_ok($$select public.create_community('Icone ruim', 'x', 'bogus', 'essential', 'evocoins', 'key-00000016')$$, '23514', null, 'ícone inválido falha');
+select throws_ok($$select public.create_community('Falsa oficial', 'x', 'evolutus', 'essential', 'evocoins', 'key-0000001d')$$,
+  '42501', null, 'RPC de criação não pode usar o ícone oficial em comunidade particular');
 select is(pg_temp.coins('01') || '/' || pg_temp.owned('01'), '5000/0', 'falha no meio: rollback total (sem débito, sem comunidade)');
 
 create temp table created(label text, result jsonb);
@@ -178,6 +180,8 @@ set local role authenticated;
 select pg_temp.as_user('0a');
 select throws_ok($$insert into public.communities (name, created_by, owner_id) values ('Direta', pg_temp.uid('0a'), pg_temp.uid('0a'))$$,
   '42501', null, 'usuário comum não faz INSERT direto de comunidade (RLS)');
+select throws_ok($$insert into public.communities (name, created_by, icon_name) values ('Falsa oficial', pg_temp.uid('0a'), 'evolutus')$$,
+  '42501', null, 'usuário comum não insere comunidade oficial pela API direta');
 select throws_ok($$insert into public.communities (name, created_by, owner_id, tier, post_retention_mode) values ('Direta', pg_temp.uid('0a'), pg_temp.uid('0a'), 'archive', 'no_auto_expiration')$$,
   'TIER_IMMUTABLE', 'INSERT direto com tier forjado também é recusado');
 select throws_ok($$select public._wallet_debit_coins(pg_temp.uid('0a'), 1)$$, '42501', null, 'cliente não chama helper financeiro privilegiado');
@@ -193,12 +197,28 @@ select ok(not has_function_privilege('anon', 'public.create_community(text,text,
 select ok(not has_function_privilege('anon', 'public.get_my_community_creation_eligibility()', 'execute'), 'anon não executa a elegibilidade');
 select ok(not has_function_privilege('anon', 'public.upgrade_community_tier(uuid,text,text,text)', 'execute'), 'anon não executa o upgrade');
 reset role;
+set local role authenticated;
+select pg_temp.as_user('0b');
+select lives_ok($$insert into public.communities (name, created_by, icon_name) values ('Comunidade oficial', pg_temp.uid('0b'), 'evolutus')$$,
+  'superadmin cria comunidade oficial com o ícone da marca');
+select throws_ok($$insert into public.communities (name, created_by, owner_id, icon_name) values ('Particular', pg_temp.uid('0b'), pg_temp.uid('0b'), 'evolutus')$$,
+  '42501', null, 'nem superadmin aplica a marca a uma comunidade particular');
+select is((select icon_name from public.communities where name = 'Comunidade oficial'), 'evolutus', 'ícone oficial persiste e pode ser lido');
+select lives_ok($$update public.communities set icon_name = 'users' where name = 'Comunidade oficial'$$,
+  'superadmin pode trocar o ícone oficial por outro');
+select lives_ok($$update public.communities set icon_name = 'evolutus' where name = 'Comunidade oficial'$$,
+  'superadmin pode selecionar a marca na edição');
+select throws_ok($$update public.communities set owner_id = pg_temp.uid('0b') where name = 'Comunidade oficial'$$,
+  '42501', null, 'comunidade marcada como oficial não pode ganhar dono');
+reset role;
 select is(pg_temp.coins('0a') || '/' || pg_temp.cash('0a'), '10/0', 'cliente não altera o próprio saldo');
 select ok(to_regprocedure('public.create_community_with_cash(text,text,text,text)') is null, 'fluxo antigo (que ignorava o novo gate) foi removido');
 
 -- dono altera a própria comunidade, mas não tier/retenção nem fura o limite reativando
 set local role authenticated;
 select pg_temp.as_user('01');
+select throws_ok($$update public.communities set icon_name = 'evolutus' where owner_id = pg_temp.uid('01') and name = 'Corrida Evolutus'$$,
+  '42501', null, 'dono não marca comunidade própria como oficial por UPDATE direto');
 select lives_ok($$update public.communities set description = 'nova descrição' where owner_id = pg_temp.uid('01') and name = 'Corrida Evolutus'$$, 'dono edita descrição');
 select throws_ok($$update public.communities set tier = 'archive', post_retention_mode = 'no_auto_expiration' where name = 'Corrida Evolutus'$$, 'TIER_IMMUTABLE', 'dono não promove a própria comunidade por UPDATE direto');
 select throws_ok($$update public.communities set post_retention_mode = '30d' where name = 'Corrida Evolutus'$$, 'TIER_IMMUTABLE', 'dono não troca só a retenção');

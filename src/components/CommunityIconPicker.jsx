@@ -14,12 +14,13 @@ function searchText(text) {
     .toLowerCase()
 }
 
-export function CommunityIconPicker({ value, onChange, name }) {
+export function CommunityIconPicker({ value, onChange, name, allowOfficialIcon = false }) {
   const selectedOption = getCommunityIconOption(value)
   const [category, setCategory] = useState(() => selectedOption.category)
   const [query, setQuery] = useState('')
   const normalizedQuery = searchText(query.trim())
   const options = COMMUNITY_ICON_OPTIONS.filter((option) => {
+    if (option.name === 'evolutus' && !allowOfficialIcon) return false
     const inCategory = category === 'all' || option.category === category
     const matchesQuery =
       !normalizedQuery || searchText(`${option.label} ${option.purpose}`).includes(normalizedQuery)

@@ -127,9 +127,16 @@ export default function AdminCommunities() {
         )}
       </Box>
 
-      {formOpen && <CommunityForm onSubmit={handleCreate} onCancel={() => setFormOpen(false)} />}
+      {formOpen && (
+        <CommunityForm
+          allowOfficialIcon
+          onSubmit={handleCreate}
+          onCancel={() => setFormOpen(false)}
+        />
+      )}
       {editingCommunity && (
         <CommunityForm
+          allowOfficialIcon
           initialValue={editingCommunity}
           onSubmit={handleUpdate}
           onCoverUploaded={(coverPath) => {

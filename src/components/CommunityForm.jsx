@@ -23,6 +23,7 @@ export function CommunityForm({
   onCancel,
   onCoverUploaded,
   showPostAccess = true,
+  allowOfficialIcon = false,
 }) {
   const { user } = useAuth()
   const { values, setField, errors, submitting, handleSubmit } = useFormState({
@@ -92,6 +93,7 @@ export function CommunityForm({
       <FormControl>
         <FormControl.Label>Ícone</FormControl.Label>
         <CommunityIconPicker
+          allowOfficialIcon={allowOfficialIcon}
           value={values.iconName}
           onChange={(iconName) => setField('iconName', iconName)}
           name={values.name}

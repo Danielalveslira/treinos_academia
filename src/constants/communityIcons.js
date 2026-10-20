@@ -44,6 +44,7 @@ import {
   Wheat,
   Zap,
 } from 'lucide-react'
+import { BrandMark } from '../components/BrandMark.js'
 
 // Os IDs são gravados em communities.icon_name. Os 12 IDs originais permanecem
 // intactos; rótulos, categorias e componentes vêm desta mesma fonte.
@@ -236,6 +237,13 @@ export const COMMUNITY_ICON_OPTIONS = [
     icon: CalendarDays,
   },
   { name: 'book-open', label: 'Livro', purpose: 'Conhecimento', category: 'other', icon: BookOpen },
+  {
+    name: 'evolutus',
+    label: 'Evolutus',
+    purpose: 'Comunidade oficial do Evolutus',
+    category: 'other',
+    icon: BrandMark,
+  },
   {
     name: 'hand-heart',
     label: 'Mãos com coração',

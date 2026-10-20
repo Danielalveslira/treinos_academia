@@ -95,3 +95,27 @@ test('busca encontra opções com acento e mantém a escolha até salvar', () =>
   assert.ok(buttonByLabel(picker.tree, 'Café'))
   assert.ok(picker.tree.root.findByProps({ className: 'community-icon-picker-preview' }))
 })
+
+test('marca só aparece no seletor administrativo e usa o SVG da marca', () => {
+  const changes = []
+  const ordinary = mount({ value: 'users', onChange: (value) => changes.push(value) })
+  ordinary.search('Evolutus')
+  assert.equal(optionButtons(ordinary.tree).length, 0)
+
+  const admin = mount({
+    value: 'users',
+    allowOfficialIcon: true,
+    onChange: (value) => changes.push(value),
+  })
+  admin.search('Evolutus')
+  const button = buttonByLabel(admin.tree, 'Evolutus')
+  assert.ok(button)
+  assert.equal(button.findAllByType('svg').length, 1)
+  assert.equal(button.findAllByType('path').length, 2)
+  admin.click(button)
+  assert.deepEqual(changes, ['evolutus'])
+  admin.update({ value: 'evolutus', allowOfficialIcon: true, onChange: () => {} })
+  assert.equal(buttonByLabel(admin.tree, 'Evolutus').props['aria-pressed'], true)
+  const preview = admin.tree.root.findByProps({ className: 'community-icon-picker-preview' })
+  assert.equal(preview.findAllByType('path').length, 2)
+})
