@@ -57,6 +57,20 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 999px;
+}
+.wallet-header-badges:hover .wallet-badge {
+  border-color: var(--borderColor-accent-emphasis, var(--fgColor-accent));
+}
+.wallet-header-badges:focus-visible {
+  outline: 2px solid var(--fgColor-accent);
+  outline-offset: 3px;
+}
+.wallet-badges-help {
+  flex-shrink: 0;
+  color: var(--fgColor-muted);
 }
 .wallet-badge {
   display: inline-flex;

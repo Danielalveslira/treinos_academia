@@ -17,10 +17,12 @@ import { SponsoredAdCapError, SponsoredAdGlobalCapError } from '../utils/validat
 
 // Aba Métricas: módulo (e o gráfico) só são baixados quando o superadmin abre a aba; nada de leitura antes disso.
 const AdMetricsTab = lazy(() => import('../features/adMetrics/components/AdMetricsTab'))
+const CommercialAdmin = lazy(() => import('../components/CommercialAdmin'))
 
 const TABS = [
   { key: 'campaigns', label: 'Campanhas' },
   { key: 'metrics', label: 'Métricas' },
+  { key: 'commercial', label: 'Propostas e produtos' },
 ]
 
 function isExpired(ad, now) {
@@ -152,6 +154,8 @@ export default function AdminSponsoredAds() {
           </Suspense>
         </Box>
       )}
+
+      {tab === 'commercial' && <Suspense fallback={<Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}><CommercialAdmin /></Suspense>}
 
       <Box hidden={tab !== 'campaigns'}>
         {formOpen && (

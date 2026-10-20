@@ -1,0 +1,246 @@
+.economy-guide {
+  max-width: 980px;
+}
+.economy-guide-balances {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.economy-guide-balances > div {
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 12px;
+  background: var(--bgColor-muted);
+}
+.economy-guide-balances span,
+.economy-guide-balances strong {
+  display: block;
+}
+.economy-guide-balances span {
+  color: var(--fgColor-muted);
+  font-size: 12px;
+}
+.economy-guide-balances strong {
+  margin-top: 4px;
+  font-size: clamp(18px, 5vw, 22px);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.economy-guide-balances > a {
+  grid-column: 1 / -1;
+  width: fit-content;
+  padding: 7px 0;
+}
+.economy-guide-note,
+.economy-guide-fine {
+  color: var(--fgColor-muted);
+  font-size: 13px;
+}
+.economy-guide-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin: 24px 0 32px;
+}
+.economy-guide-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 16px;
+  background: var(--bgColor-muted);
+}
+.economy-guide-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.economy-guide-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.economy-guide-mark-coins {
+  background: color-mix(in srgb, var(--fitness-blue) 12%, transparent);
+}
+.economy-guide-mark-cash {
+  background: color-mix(in srgb, var(--fitness-accent) 12%, transparent);
+}
+.economy-guide-card h2 {
+  margin: 0;
+  font-size: 21px;
+}
+.economy-guide-card h3 {
+  margin: 20px 0 4px;
+  font-size: 14px;
+}
+.economy-guide-card p {
+  line-height: 1.55;
+}
+.economy-guide-card > a {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 6px 0;
+}
+.economy-guide-section {
+  padding: 24px 0;
+  border-top: 1px solid var(--borderColor-muted);
+}
+.economy-guide-section h2 {
+  margin: 0 0 8px;
+  font-size: 19px;
+}
+.economy-guide-section > p {
+  margin: 0 0 18px;
+  color: var(--fgColor-muted);
+}
+.economy-guide-steps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.economy-guide-steps li {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 0;
+  border-top: 1px solid var(--borderColor-muted);
+}
+.economy-guide-step-number {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.economy-guide-steps strong {
+  display: block;
+  margin: 3px 0 5px;
+  font-size: 15px;
+}
+.economy-guide-steps p {
+  margin: 0;
+  color: var(--fgColor-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.economy-guide-button {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 10px;
+  background: var(--bgColor-muted);
+  color: var(--fgColor-default);
+  cursor: pointer;
+}
+.economy-guide-inline-button {
+  border: 0;
+  background: none;
+  color: var(--fgColor-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.economy-guide-button:hover {
+  background: var(--bgColor-emphasis);
+}
+.economy-guide-button:focus-visible,
+.economy-guide-inline-button:focus-visible,
+.economy-guide a:focus-visible,
+.economy-guide summary:focus-visible {
+  outline: 2px solid var(--fgColor-accent);
+  outline-offset: 3px;
+}
+.economy-guide-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.economy-guide-history li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--borderColor-muted);
+}
+.economy-guide-transaction-main {
+  min-width: 0;
+}
+.economy-guide-history strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.economy-guide-history small {
+  display: block;
+  margin-top: 4px;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+}
+.economy-guide-history b {
+  flex: none;
+  max-width: 48%;
+  text-align: right;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.economy-guide-transaction-credit b {
+  color: var(--fgColor-success);
+}
+.economy-guide-history-toggle {
+  margin-top: 14px;
+}
+.economy-guide-section details {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--borderColor-muted);
+}
+.economy-guide-section summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.economy-guide-section details p {
+  margin-bottom: 0;
+  color: var(--fgColor-muted);
+}
+@media (min-width: 700px) {
+  .economy-guide-balances {
+    grid-template-columns: repeat(2, minmax(140px, 190px)) 1fr;
+  }
+  .economy-guide-balances > a {
+    grid-column: auto;
+    justify-self: end;
+  }
+  .economy-guide-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .economy-guide-card {
+    padding: 24px;
+  }
+  .economy-guide-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .economy-guide-steps li {
+    border-top: 0;
+    padding: 16px;
+    border-radius: 12px;
+    background: var(--bgColor-muted);
+  }
+}

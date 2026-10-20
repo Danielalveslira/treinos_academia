@@ -1224,6 +1224,7 @@ body:has(.pwa-offline) .app-shell {
   align-items: center;
   min-height: 40px;
   margin-top: 16px;
+  margin-right: 16px;
 }
 @media (max-width: 767px) {
   .profile-grid {

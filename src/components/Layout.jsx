@@ -41,7 +41,7 @@ const SyncStatus = lazy(() =>
 )
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Início', icon: HomeIcon, end: true },
+  { to: '/app', label: 'Início', icon: HomeIcon, end: true },
   { to: '/exercicios', label: 'Exercícios', icon: ListUnorderedIcon },
   { to: '/novo-treino', label: 'Treinar', icon: PlayIcon, action: true },
   { to: '/progresso', label: 'Progresso', icon: HistoryIcon },
@@ -119,11 +119,11 @@ export function Layout() {
       </a>
       <header className="app-header">
         <div className="header-top">
-          <Link to="/" replace className="brand" aria-label="Evolutus — início">
+          <Link to="/app" replace className="brand" aria-label="Evolutus.com — início">
             <span className="brand-mark">
               <BrandMark size={25} />
             </span>
-            <span>Evolutus</span>
+            <span>Evolutus.com</span>
           </Link>
           <Navigation />
           <div className="header-actions">

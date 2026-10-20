@@ -127,7 +127,7 @@ export function pwaPlugin() {
         .replace('__VERSION__', hash.digest('hex').slice(0, 16))
         .replace(
           '__SHELL_URLS__',
-          JSON.stringify(['/index.html', ...PUBLIC_SHELL_FILES.map((file) => `/${file}`)])
+          JSON.stringify(['/app-shell.html', ...PUBLIC_SHELL_FILES.map((file) => `/${file}`)])
         )
         .replace('__BOOT_ASSETS__', JSON.stringify(bootAssets))
         .replace('__OFFLINE_ASSETS__', JSON.stringify(collectOfflineAssets(bundle, bootAssets)))

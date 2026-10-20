@@ -7,7 +7,7 @@ import { collectBootAssets, collectOfflineAssets, exerciseVisualsPrefix, pushAck
 
 const TEMPLATE = readFileSync(new URL('../../scripts/service-worker.js', import.meta.url), 'utf8')
 const ORIGIN = 'https://app.test'
-const SHELL = ['/index.html', '/manifest.webmanifest', '/icons/icon-192.png']
+const SHELL = ['/app-shell.html', '/manifest.webmanifest', '/icons/icon-192.png']
 const BOOT = ['/assets/index-aaa.js', '/assets/index-aaa.css']
 const OFFLINE = ['/assets/Dashboard-bbb.js', '/assets/ExerciseDetail-ccc.js', '/assets/WorkoutForm-ddd.css']
 const CORE = [...BOOT, ...OFFLINE]
@@ -282,7 +282,7 @@ test('imagens: cache-first, e expiradas são buscadas de novo', async () => {
   assert.equal(network.length, 2)
 })
 
-test('navegação: rede primeiro; offline cai no index.html em cache; sem cache, erro de rede', async () => {
+test('navegação: rede primeiro; offline cai no app-shell.html em cache; sem cache, erro de rede', async () => {
   load({
     responder: (url) =>
       url.includes('/assets/')
@@ -298,7 +298,7 @@ test('navegação: rede primeiro; offline cai no index.html em cache; sem cache,
   assert.equal(await online.response.text(), '<html>shell</html>')
   await new Promise((resolve) => setTimeout(resolve, 0))
   // A rede NÃO regrava o shell do cache (pode ser de um deploy mais novo que este worker).
-  assert.ok(!sw.caches.stores.get('treinos-shell-v2')?.has(`${ORIGIN}/index.html`))
+  assert.ok(!sw.caches.stores.get('treinos-shell-v2')?.has(`${ORIGIN}/app-shell.html`))
 
   // O fallback offline é o shell do install, casado com os chunks que o install guardou.
   await lifecycle('install')
@@ -343,7 +343,7 @@ test('navegação cujo fetch() devolve opaqueredirect (redirect mode "manual", r
 
 test('navegação online com HTML mais novo que o worker NÃO contamina o shell offline', async () => {
   let html = '<html>v2</html>'
-  load({ responder: (url) => (url.endsWith('/index.html') || !url.includes('/assets/')
+  load({ responder: (url) => (url.endsWith('/app-shell.html') || !url.includes('/assets/')
     ? basic(html, { headers: { 'content-type': 'text/html' } })
     : basic('js', { headers: { 'content-type': 'text/javascript' } })) })
   await lifecycle('install')

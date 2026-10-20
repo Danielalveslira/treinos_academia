@@ -22,6 +22,7 @@ async function bundle(name, env) {
       contents: `
         import { createElement } from 'react'
         import TestRenderer, { act } from 'react-test-renderer'
+        import { MemoryRouter } from 'react-router-dom'
         import { AuthContext } from './AuthContext.jsx'
         import { WalletProvider } from './WalletContext.jsx'
         import { useWallet } from '../hooks/useWallet.js'
@@ -37,8 +38,9 @@ async function bundle(name, env) {
         export const wallet = () => latest
         export const mount = (auth) => {
           let tree
-          const tree$ = (value) => createElement(AuthContext.Provider, { value },
-            createElement(WalletProvider, null, createElement(Probe), createElement(WalletHeaderBadges)))
+          const tree$ = (value) => createElement(MemoryRouter, null,
+            createElement(AuthContext.Provider, { value },
+              createElement(WalletProvider, null, createElement(Probe), createElement(WalletHeaderBadges))))
           act(() => { tree = TestRenderer.create(tree$(auth)) })
           return { tree, update: (next) => act(() => tree.update(tree$(next))), unmount: () => act(() => tree.unmount()) }
         }

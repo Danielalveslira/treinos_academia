@@ -33,7 +33,9 @@ function buildCanary(outDir) {
     VITE_OFFLINE_WRITE_ENABLED: 'true',
     VITE_OFFLINE_COLD_START_ENABLED: 'true',
   }
-  const result = spawnSync('npm', ['run', 'build', '--', '--outDir', outDir], {
+  // Build only the app shell into the canary directory. npm run build appends
+  // --outDir to the public-page generator after &&, leaving this directory empty.
+  const result = spawnSync('node_modules/.bin/vite', ['build', '--outDir', outDir], {
     cwd: ROOT, env, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
   })
   if (result.status !== 0) throw new Error(`Build do canário falhou:\n${result.stderr || result.stdout}`)
@@ -42,7 +44,8 @@ function buildCanary(outDir) {
 async function startStaticServer(dir) {
   const server = createServer((request, response) => {
     const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname)
-    const file = resolve(dir, `.${pathname === '/' ? '/index.html' : pathname}`)
+    // The canary build keeps Vite's app shell as index.html in its temporary output.
+    const file = resolve(dir, `.${['/', '/app', '/app-shell.html'].includes(pathname) ? '/index.html' : pathname}`)
     if (!file.startsWith(`${dir}${sep}`)) {
       response.writeHead(403).end()
       return
@@ -54,7 +57,7 @@ async function startStaticServer(dir) {
       body = readFileSync(join(dir, 'index.html'))
     }
     response.writeHead(200, {
-      'Content-Type': MIME[extname(file)] || 'application/octet-stream',
+      'Content-Type': MIME[extname(file)] || 'text/html',
       'Cache-Control': 'no-store',
     }).end(body)
   })
@@ -149,7 +152,7 @@ async function seedSupabaseSession(page, { expired = false } = {}) {
 async function installOnline(browser, origin, outDir) {
   const context = await browser.newContext()
   const page = await context.newPage()
-  await page.goto(origin)
+  await page.goto(`${origin}/app`)
   await page.evaluate(() => navigator.serviceWorker.ready)
   if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller)))) await page.reload()
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller))
@@ -217,7 +220,7 @@ async function coldStartWithoutManualWarmup(browser, origin, outDir) {
   await watchOfflineFlash(page)
   const { problems, backend } = watchProblems(page)
 
-  await page.goto(origin, { waitUntil: 'domcontentloaded' })
+  await page.goto(`${origin}/app`, { waitUntil: 'domcontentloaded' })
   await page.getByText('Modo offline: você entrou com os dados salvos neste aparelho.', { exact: false }).waitFor({ timeout: 15_000 })
   await page.getByText('teste_offline', { exact: false }).first().waitFor({ timeout: 15_000 })
   // Home JÁ preenchida com o último valor conhecido (nada de 0 EvoCash -> 320 EvoCash).
@@ -254,7 +257,7 @@ async function coldStartWithoutManualWarmup(browser, origin, outDir) {
     }
   }), { dbName: DB_NAME, dbVersion: DB_VERSION })
   // O que acabou de ser registrado offline conta na Home (treino local junto do snapshot).
-  await page.goto(origin, { waitUntil: 'domcontentloaded' })
+  await page.goto(`${origin}/app`, { waitUntil: 'domcontentloaded' })
   await page.getByText('teste_offline', { exact: false }).first().waitFor({ timeout: 15_000 })
   deepStrictEqual(await headerBalances(page), ['20', '320'])
 
@@ -273,7 +276,7 @@ async function coldStartWithoutSnapshot(browser, origin, outDir) {
   await context.setOffline(true)
   const page = await context.newPage()
   await watchOfflineFlash(page)
-  await page.goto(origin, { waitUntil: 'domcontentloaded' })
+  await page.goto(`${origin}/app`, { waitUntil: 'domcontentloaded' })
   await page.getByText('teste_offline', { exact: false }).first().waitFor({ timeout: 15_000 })
   deepStrictEqual(await headerBalances(page), ['—', '—'], 'sem snapshot o header deve mostrar "—", nunca 0')
   deepStrictEqual(await homeStrip(page), { week: '—', volume: '—' })
@@ -295,7 +298,7 @@ async function coldStartWithExpiredToken(browser, origin, outDir) {
   const page = await context.newPage()
   await watchOfflineFlash(page)
   const started = Date.now()
-  await page.goto(origin, { waitUntil: 'domcontentloaded' })
+  await page.goto(`${origin}/app`, { waitUntil: 'domcontentloaded' })
   await page.getByText('teste_offline', { exact: false }).first().waitFor({ timeout: 15_000 })
   const elapsed = Date.now() - started
   assert(elapsed < 8000, `Cold start com token vencido demorou ${elapsed} ms (esperou o auth-js?)`)
@@ -306,7 +309,7 @@ async function coldStartWithExpiredToken(browser, origin, outDir) {
   await page.waitForTimeout(32_000)
   await page.getByText('Modo offline: você entrou com os dados salvos neste aparelho.', { exact: false }).waitFor({ timeout: 2000 })
   deepStrictEqual(await headerBalances(page), ['20', '320'])
-  assert(new URL(page.url()).pathname === '/', 'o app saiu da Home depois da sessão inicial vazia')
+  assert(new URL(page.url()).pathname === '/app', 'o app saiu da Home depois da sessão inicial vazia')
   await context.close()
 }
 
@@ -316,7 +319,7 @@ async function coldStartWithoutBootstrap(browser, origin, outDir) {
   await first.close()
   await context.setOffline(true)
   const page = await context.newPage()
-  await page.goto(origin, { waitUntil: 'domcontentloaded' })
+  await page.goto(`${origin}/app`, { waitUntil: 'domcontentloaded' })
   await page.getByText('Você está sem conexão', { exact: false }).waitFor({ timeout: 15_000 })
   await page.waitForFunction(() => document.getElementById('app-content')?.inert === true, null, { timeout: 5000 })
   await context.close()
@@ -339,7 +342,7 @@ async function main() {
     await coldStartWithoutBootstrap(browser, origin, outDir)
     const context = await browser.newContext()
     let page = await context.newPage()
-    await page.goto(origin)
+    await page.goto(`${origin}/app`)
     await page.evaluate(() => navigator.serviceWorker.ready)
     if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller)))) await page.reload()
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller))
@@ -350,7 +353,7 @@ async function main() {
 
     await context.setOffline(true)
     page = await context.newPage()
-    await page.goto(origin, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${origin}/app`, { waitUntil: 'domcontentloaded' })
     await page.getByText('Modo offline: você entrou com os dados salvos neste aparelho.', { exact: false }).waitFor()
     await page.getByText('teste_offline', { exact: false }).first().waitFor({ timeout: 15_000 })
     await page.getByText('1 alteração salva neste aparelho', { exact: false }).first().waitFor({ timeout: 15_000 })

@@ -147,7 +147,7 @@ export default function NewWorkout() {
           defaultExerciseId={defaultExerciseId}
           onCreate={handleCreate}
           onUpdate={handleUpdate}
-          onCancel={() => returnToOrigin(navigate, location, '/')}
+          onCancel={() => returnToOrigin(navigate, location, '/app')}
         />
       )}
 

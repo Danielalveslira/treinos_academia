@@ -313,7 +313,7 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .catch(
           async () =>
-            (await caches.open(SHELL_CACHE).then((c) => c.match('/index.html'))) || Response.error()
+            (await caches.open(SHELL_CACHE).then((c) => c.match('/app-shell.html'))) || Response.error()
         )
     )
   } else if (url.pathname.startsWith('/assets/')) {

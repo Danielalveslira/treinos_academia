@@ -5,7 +5,7 @@ import { useWallet } from '../hooks/useWallet'
 import { IndicatorCard } from './IndicatorCard'
 import { formatDailyProgress } from '../utils/evocoins'
 
-// "UI de saldo" da Fase 1 (seção 33 do prompt de economia): só exibição, sem extrato.
+// Carteira resumida do perfil; o extrato de leitura fica na central educativa.
 // EvoCash sempre aparece (mesmo zerado) para deixar claro, desde já, que é uma unidade
 // separada de EvoCoins. Fase 4: link para /evocash (pacotes/solicitar compra/minhas
 // compras) -- esta carteira em si nunca inicia uma compra sozinha.
@@ -35,6 +35,7 @@ export function WalletCard() {
       </Box>
       {dailyProgress && <p className="profile-wallet-daily">{dailyProgress}</p>}
       <Link to="/evocash">Comprar EvoCash</Link>
+      <Link to="/entenda-suas-moedas">Entenda suas moedas</Link>
     </div>
   )
 }

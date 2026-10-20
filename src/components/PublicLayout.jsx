@@ -17,16 +17,16 @@ export function PublicLayout({ children }) {
         Pular para o conteúdo
       </a>
       <header className="public-header">
-        <Link to={user ? '/' : '/login'} replace className="brand">
+        <Link to={user ? '/app' : '/'} reloadDocument={!user} replace className="brand">
           <span className="brand-mark">
             <BrandMark size={28} />
           </span>
-          Evolutus
+          Evolutus.com
         </Link>
         <nav aria-label="Navegação">
           <NavLink to="/profissionais">Profissionais</NavLink>
           {user ? (
-            <NavLink to="/" replace>
+            <NavLink to="/app" replace>
               Ir para o app
             </NavLink>
           ) : (

@@ -302,7 +302,7 @@ test('store: refresh de outro usuário não polui o estado do usuário atual', a
 
 test('offline: só leitura local e registro de treino funcionam; o resto exige servidor', () => {
   for (const path of [
-    '/',
+    '/app',
     '/exercicios',
     '/exercicios/abc',
     '/novo-treino',

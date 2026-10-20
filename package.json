@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/build-public-pages.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
-    "test": "node --test \"src/**/*.test.js\"",
+    "test": "node --test --test-concurrency=4 \"src/**/*.test.js\"",
     "test:backfill": "node --test scripts/*.test.mjs",
     "test:functions": "node --test supabase/functions/*/*.test.js",
     "release:offline-check": "node scripts/release-offline-check.mjs",

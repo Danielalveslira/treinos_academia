@@ -104,7 +104,7 @@ before(async () => {
             contents: `
               const page = () => Promise.resolve({ default: () => <span>página</span> })
               export const routeLoaders = {
-                '/': page,
+                '/app': page,
                 '/novo-treino': page,
                 '/historico': page,
                 '/progresso': page,
@@ -131,7 +131,7 @@ after(async () => {
 
 test('exercise data provider wraps only routes that consume exercise data', () => {
   for (const path of [
-    '/',
+    '/app',
     '/exercicios',
     '/exercicios/squat',
     '/novo-treino',
@@ -145,6 +145,7 @@ test('exercise data provider wraps only routes that consume exercise data', () =
 test('unrelated protected routes do not mount the exercise data provider', () => {
   for (const path of [
     '/perfil',
+    '/entenda-suas-moedas',
     '/comunidades',
     '/comunidades/community-1',
     '/admin/contas',

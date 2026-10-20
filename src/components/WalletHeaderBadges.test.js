@@ -20,8 +20,11 @@ before(async () => {
       contents: `
         import { createElement } from 'react'
         import { renderToStaticMarkup } from 'react-dom/server'
+        import { MemoryRouter } from 'react-router-dom'
         import { WalletHeaderBadgesView } from './WalletHeaderBadges.jsx'
-        export const renderStatic = (props) => renderToStaticMarkup(createElement(WalletHeaderBadgesView, props))
+        export const renderStatic = (props) => renderToStaticMarkup(
+          createElement(MemoryRouter, {}, createElement(WalletHeaderBadgesView, props))
+        )
       `,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
@@ -60,6 +63,12 @@ test('shows the real coinBalance/cashBalance values, formatted with thousands gr
   const html = renderStatic({ visible: true, loading: false, coinBalance: 1234, cashBalance: 56 })
   assert.match(html, /1\.234/)
   assert.match(html, />56</)
+})
+
+test('o saldo do cabeçalho abre a central educativa sem criar outro item de menu', () => {
+  const html = renderStatic({ visible: true, loading: false, coinBalance: 2, cashBalance: 5 })
+  assert.match(html, /href="\/entenda-suas-moedas"/)
+  assert.match(html, /aria-label="Entenda suas moedas e veja seus saldos de EvoCoins e EvoCash"/)
 })
 
 test('shows a discreet placeholder while loading, never a stale or invented number', () => {

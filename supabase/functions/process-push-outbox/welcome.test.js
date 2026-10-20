@@ -18,7 +18,7 @@ test('boas-vindas tem payload fixo, Home segura, ícones e TTL restante limitado
     payload.body,
     'Obrigado por usar o Evolutus! As notificações estão ativadas neste dispositivo.'
   )
-  assert.equal(payload.targetUrl, '/')
+  assert.equal(payload.targetUrl, '/app')
   assert.equal(payload.icon, '/icons/icon-192.png')
   assert.equal(payload.badge, '/icons/icon-192.png')
   assert.deepEqual(pushSendOptions(job, now), { urgency: 'high', ttl: 300 })

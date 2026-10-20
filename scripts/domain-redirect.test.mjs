@@ -24,7 +24,7 @@ test('existe exatamente um redirect para o domínio novo, condicionado ao Host a
   assert.ok(redirect, 'nenhum redirect para evolutus.com.br encontrado em vercel.json')
   assert.deepEqual(redirect.has, [{ type: 'host', value: 'treinosacademia-ten.vercel.app' }])
   assert.equal(redirect.statusCode, 301)
-  assert.equal(redirect.destination, 'https://evolutus.com.br/:path*')
+  assert.equal(redirect.destination, 'https://www.evolutus.com.br/:path*')
 })
 
 test('a condição `has` de Host nunca permite o redirect no domínio novo (sem loop) -- é a única porta de entrada da regra', () => {
@@ -54,9 +54,11 @@ test('assets e arquivos estáticos em uso por uma aba já aberta NUNCA são redi
   }
 })
 
-test('a classificação do redirect é idêntica à do rewrite do SPA (mesma regra, duas vezes por necessidade do formato, nunca divergente)', () => {
-  const rewrite = config.rewrites.find((r) => r.destination === '/index.html')
-  const redirectInner = redirect.source.match(/^\/:path\((.*)\)$/)[1]
-  const rewriteInner = rewrite.source.match(/^\/\((.*)\)$/)[1]
-  assert.equal(redirectInner, rewriteInner)
+test('fallback do app só cobre rotas conhecidas; páginas públicas ausentes ficam com 404', () => {
+  const rewrite = config.rewrites.find((r) => r.destination === '/app-shell.html')
+  const regex = sourceRegex(rewrite.source)
+  for (const path of ['app', 'login', 'admin/parcerias', 'comunidades/123', 'exercicios/123'])
+    assert.ok(regex.test(path), `${path} deve chegar ao app`)
+  for (const path of ['pagina-inexistente', 'vitrine/produto-removido', 'assets/x.js'])
+    assert.ok(!regex.test(path), `${path} deve retornar 404`)
 })

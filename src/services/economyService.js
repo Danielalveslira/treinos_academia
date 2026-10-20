@@ -79,6 +79,19 @@ export async function getMyEvocoinDay() {
   return data
 }
 
+// Extrato somente de leitura. A RLS de economy_transactions também limita a consulta
+// ao próprio usuário; o filtro explícito evita buscar linhas de outras contas.
+export async function listMyEconomyTransactions(uid, limit = 12) {
+  const { data, error } = await supabase
+    .from('economy_transactions')
+    .select('id,asset,direction,amount,reason,created_at')
+    .eq('user_id', uid)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return data ?? []
+}
+
 // Evento de conclusão do treino (servidor decide se há esforço suficiente hoje e quanto paga).
 // Devolve { awardedCoins, dailyEarned, dailyLimit, dailyRemaining, reason? }.
 export async function completeWorkoutSession() {

@@ -1,4 +1,6 @@
 import { BrandMark } from './BrandMark'
+import { Link } from 'react-router-dom'
+import { QuestionIcon } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { useWallet } from '../hooks/useWallet'
 import { formatDailyProgress } from '../utils/evocoins'
@@ -28,7 +30,12 @@ export function WalletHeaderBadgesView({
     : `${coinBalance} EvoCoins${dailyProgress ? ` · ${dailyProgress}` : ''}${known}`
 
   return (
-    <div className="wallet-header-badges" aria-label="Seu saldo de EvoCoins e EvoCash">
+    <Link
+      className="wallet-header-badges"
+      to="/entenda-suas-moedas"
+      aria-label="Entenda suas moedas e veja seus saldos de EvoCoins e EvoCash"
+      title="Entenda suas moedas"
+    >
       <span className="wallet-badge" title={coinTitle}>
         <BrandMark size={14} color="var(--fitness-blue)" className="wallet-badge-icon" />
         <span className="wallet-badge-value">{loading ? '—' : coinBalance.toLocaleString('pt-BR')}</span>
@@ -37,7 +44,8 @@ export function WalletHeaderBadgesView({
         <BrandMark size={14} color="var(--fitness-accent)" className="wallet-badge-icon" />
         <span className="wallet-badge-value">{loading ? '—' : cashBalance.toLocaleString('pt-BR')}</span>
       </span>
-    </div>
+      <QuestionIcon className="wallet-badges-help" size={16} aria-hidden="true" />
+    </Link>
   )
 }
 

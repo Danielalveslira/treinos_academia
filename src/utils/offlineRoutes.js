@@ -3,7 +3,7 @@
 // (EvoCash/InfinitePay, EvoCoins, comunidades, perfil, administração, vitrine...) e mostra um aviso em
 // vez de tentar e falhar.
 const OFFLINE_CAPABLE = [
-  /^\/$/,
+  /^\/app\/?$/,
   /^\/exercicios(\/[^/]+)?\/?$/,
   /^\/novo-treino\/?$/,
   /^\/historico\/?$/,

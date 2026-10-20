@@ -75,7 +75,7 @@ export class ErrorBoundary extends Component {
         </Text>
         <Box>
           {offlineChunk ? (
-            <Button variant="primary" onClick={() => window.location.assign('/')}>
+            <Button variant="primary" onClick={() => window.location.assign('/app')}>
               Voltar ao início
             </Button>
           ) : stale ? (

@@ -4,7 +4,7 @@
 // suspender de verdade. Fica num módulo à parte para as duas pontas nunca se duplicarem
 // nem divergirem, e para evitar import circular entre App e Layout.
 export const routeLoaders = {
-  '/': () => import('./pages/Dashboard'),
+  '/app': () => import('./pages/Dashboard'),
   '/novo-treino': () => import('./pages/NewWorkout'),
   '/historico': () => import('./pages/History'),
   '/progresso': () => import('./pages/Progress'),

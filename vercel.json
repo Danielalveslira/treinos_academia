@@ -3,17 +3,25 @@
     {
       "source": "/:path((?!assets/|icons/|_vercel/|.*\\.[\\w]+$).*)",
       "has": [{ "type": "host", "value": "treinosacademia-ten.vercel.app" }],
-      "destination": "https://evolutus.com.br/:path*",
+      "destination": "https://www.evolutus.com.br/:path*",
       "statusCode": 301
     }
   ],
   "rewrites": [
+    { "source": "/como-funciona", "destination": "/como-funciona.html" },
+    { "source": "/funcionalidades", "destination": "/funcionalidades.html" },
+    { "source": "/para-empresas", "destination": "/para-empresas.html" },
+    { "source": "/vitrine", "destination": "/vitrine.html" },
     {
-      "source": "/((?!assets/|icons/|_vercel/|.*\\.[\\w]+$).*)",
-      "destination": "/index.html"
+      "source": "/:path((?:app|login|cadastro|esqueci-senha|confirmar-email|redefinir-senha|regras-da-comunidade|termos-de-uso|politica-de-privacidade|termos-publicacao-vitrine|atendimento|profissionais(?:/[^/]+)?|exercicios(?:/[^/]+)?|novo-treino|historico|progresso|perfil|evocash|entenda-suas-moedas|minhas-promocoes|minha-vitrine|comunidades(?:/.*)?|admin/(?:compras-evocash|moderacao|contas|vitrines|exclusao-contas|comunidades|parcerias|promocoes|exercicios-imagens)))",
+      "destination": "/app-shell.html"
     }
   ],
   "headers": [
+    {
+      "source": "/(index|app-shell|como-funciona|funcionalidades|para-empresas|vitrine).html",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
     {
       "source": "/(.*)",
       "headers": [

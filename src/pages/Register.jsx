@@ -1,6 +1,7 @@
 import { AuthLayout } from '../components/PublicLayout'
 import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { track } from '@vercel/analytics'
 import { Button, FormControl, TextInput, Select, Link, Flash, Stack } from '@primer/react'
 import {
   registerUser,
@@ -137,7 +138,8 @@ export default function Register() {
     }
     // replace: mesmo motivo do Login — depois de autenticado, cadastro/login não devem
     // continuar acessíveis pelo botão voltar.
-    navigate('/', { replace: true })
+    track('Signup complete')
+    navigate('/app', { replace: true })
     return true
   }
 

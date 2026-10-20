@@ -4,7 +4,7 @@
   "short_name": "Evolutus",
   "description": "Organize seus treinos e acompanhe sua evolução na academia.",
   "lang": "pt-BR",
-  "start_url": "/",
+  "start_url": "/app",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0d1117",

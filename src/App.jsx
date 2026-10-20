@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { WalletProvider } from './contexts/WalletContext'
 import { ExercisesProvider } from './contexts/ExercisesContext'
@@ -15,7 +15,7 @@ const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const ConfirmEmail = lazy(() => import('./pages/ConfirmEmail'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
-const Dashboard = lazy(routeLoaders['/'])
+const Dashboard = lazy(routeLoaders['/app'])
 const Exercises = lazy(routeLoaders['/exercicios'])
 const ExerciseDetail = lazy(routeLoaders['/exercicios/:id'])
 const NewWorkout = lazy(routeLoaders['/novo-treino'])
@@ -34,6 +34,7 @@ const AdminAccounts = lazy(() => import('./pages/AdminAccounts'))
 const AdminProfessionalListings = lazy(() => import('./pages/AdminProfessionalListings'))
 const AdminAccountDeletions = lazy(() => import('./pages/AdminAccountDeletions'))
 const EvoCash = lazy(() => import('./pages/EvoCash'))
+const EconomyGuide = lazy(() => import('./pages/EconomyGuide'))
 const AdminCashPurchases = lazy(() => import('./pages/AdminCashPurchases'))
 const AdminPromotions = lazy(() => import('./pages/AdminPromotions'))
 const AdminExerciseVisuals = lazy(() => import('./pages/AdminExerciseVisuals'))
@@ -55,6 +56,8 @@ export function AppRoutes() {
           </Suspense>
         }
       >
+        {/* Shell antigo de um PWA instalado ainda pode abrir em / quando está offline. */}
+        <Route path="/" element={<Navigate to="/app" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Register />} />
         <Route path="/esqueci-senha" element={<ForgotPassword />} />
@@ -87,7 +90,7 @@ export function AppRoutes() {
             </ExercisesProvider>
           }
         >
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/app" element={<Dashboard />} />
           <Route path="/exercicios" element={<Exercises />} />
           <Route path="/exercicios/:id" element={<ExerciseDetail />} />
           <Route path="/novo-treino" element={<NewWorkout />} />
@@ -96,6 +99,7 @@ export function AppRoutes() {
         </Route>
         <Route path="/perfil" element={<Profile />} />
         <Route path="/evocash" element={<EvoCash />} />
+        <Route path="/entenda-suas-moedas" element={<EconomyGuide />} />
         <Route path="/minhas-promocoes" element={<MyPromotions />} />
         {/* O gate de Termos de Publicação (showcase_legal_policy.published) é responsabilidade
             de MyProfessionalListing.jsx, só na ação de publicar -- criar/editar rascunho não

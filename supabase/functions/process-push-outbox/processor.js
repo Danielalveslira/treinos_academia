@@ -55,7 +55,7 @@ export function buildPushPayload(job) {
     title,
     body,
     type: job.notification_type,
-    targetUrl: job.notification_type === 'push_welcome' ? '/' : safeTargetUrl(job.action_url),
+    targetUrl: job.notification_type === 'push_welcome' ? '/app' : safeTargetUrl(job.action_url),
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
   }
