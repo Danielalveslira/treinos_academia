@@ -352,31 +352,51 @@ body:has(.account-menu-overlay) .pwa-install {
     overflow: hidden;
   }
   .header-top {
-    /* minmax(0, 1fr), não só 1fr: com os indicadores de saldo ocupando espaço em
-       header-actions, essa faixa precisa poder encolher abaixo do tamanho natural do
-       conteúdo se a tela for muito estreita -- senão o grid inteiro estoura a viewport
-       em vez de simplesmente comprimir a marca (que já tem overflow/ellipsis, ver
-       .app-header .brand acima). */
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
     min-height: 60px;
-    padding: 6px 12px 6px 16px;
+    padding: 6px 8px 6px 10px;
+  }
+  .app-header .brand {
+    flex-shrink: 0;
+    min-width: auto;
+    gap: 4px;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  .app-header .brand-mark {
+    flex-shrink: 0;
+    width: 25px;
+    height: 25px;
   }
   .desktop-nav {
     display: none;
   }
   .header-actions {
-    gap: 6px;
+    min-width: 0;
+    gap: 3px;
   }
   .wallet-header-badges {
-    gap: 4px;
+    min-width: 0;
+    min-height: 44px;
+    gap: 2px;
   }
   .wallet-badge {
-    gap: 4px;
-    padding: 4px 7px;
-    font-size: 12px;
+    min-width: 0;
+    gap: 2px;
+    padding: 4px 5px;
+    font-size: 11px;
   }
   .wallet-badge-value {
-    max-width: 44px;
+    min-width: 0;
+    max-width: 36px;
+  }
+  .header-actions .notification-trigger {
+    width: 44px;
+    height: 44px;
   }
   .app-shell .main-content {
     padding-bottom: calc(var(--bottom-navigation-space) + 24px);
@@ -427,20 +447,9 @@ body:has(.account-menu-overlay) .pwa-install {
   }
 }
 
-/* Telefones bem estreitos (ex.: 320px) -- mais um degrau de compressão só pros
-   indicadores de saldo, pra sobrar espaço suficiente pra marca + hambúrguer. */
 @media (max-width: 359px) {
-  .header-actions {
-    gap: 4px;
-  }
-  .wallet-header-badges {
-    gap: 3px;
-  }
-  .wallet-badge {
-    padding: 3px 6px;
-  }
   .wallet-badge-value {
-    max-width: 34px;
+    max-width: 24px;
   }
 }
 

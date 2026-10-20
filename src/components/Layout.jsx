@@ -91,7 +91,7 @@ export function Layout() {
   const confirmLogoutAll = () => confirmAndLogoutAll(confirm, logoutAll)
   // Só o "ping" de atividade qualificada (seção 8/9 do prompt de economia) -- não é um
   // listener de saldo: a carteira em si só é lida sob demanda onde a UI precisa dela
-  // (ver WalletCard/useWallet.js).
+  // (ver EconomyGuide/useWallet.js).
   useQualifiedActivity()
   // "Último uso" para o admin: visível apenas, no máximo 1 chamada a cada 10 min.
   useActivityHeartbeat()
@@ -119,11 +119,11 @@ export function Layout() {
       </a>
       <header className="app-header">
         <div className="header-top">
-          <Link to="/app" replace className="brand" aria-label="Evolutus.com — início">
+          <Link to="/app" replace className="brand" aria-label="Evolutus — início">
             <span className="brand-mark">
               <BrandMark size={25} />
             </span>
-            <span>Evolutus.com</span>
+            <span>Evolutus</span>
           </Link>
           <Navigation />
           <div className="header-actions">

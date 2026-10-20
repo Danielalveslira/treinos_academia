@@ -2,7 +2,7 @@ import { BellIcon } from '@primer/octicons-react'
 import { Button, Flash } from '@primer/react'
 import { useDevicePush } from '../hooks/useDevicePush'
 
-export function PushNotificationSettings({ userId = null } = {}) {
+export function PushNotificationSettings({ userId = null, compact = false } = {}) {
   const push = useDevicePush(userId)
   const installation = push.support.reason === 'ios-install-required'
   const preferenceOff = push.device?.status?.enabled === false
@@ -24,17 +24,28 @@ export function PushNotificationSettings({ userId = null } = {}) {
               ? 'Verificando…'
               : 'Desativado'
   return (
-    <section className="profile-card" aria-labelledby="push-heading">
-      <header className="profile-card-heading">
-        <span className="profile-section-icon">
-          <BellIcon size={20} />
-        </span>
-        <div>
-          <h2 id="push-heading">Notificações no dispositivo</h2>
-          <p>{title}</p>
-        </div>
-      </header>
+    <section
+      className="profile-card"
+      aria-label={compact ? 'Configurações de notificações' : undefined}
+      aria-labelledby={compact ? undefined : 'push-heading'}
+    >
+      {!compact && (
+        <header className="profile-card-heading">
+          <span className="profile-section-icon">
+            <BellIcon size={20} />
+          </span>
+          <div>
+            <h2 id="push-heading">Notificações no dispositivo</h2>
+            <p>{title}</p>
+          </div>
+        </header>
+      )}
       <div className="profile-form">
+        {compact && (
+          <p className="profile-setting-help" role="status">
+            {title}
+          </p>
+        )}
         {push.message && <Flash role="status">{push.message}</Flash>}
         {installation && (
           <p>

@@ -65,10 +65,11 @@ test('shows the real coinBalance/cashBalance values, formatted with thousands gr
   assert.match(html, />56</)
 })
 
-test('o saldo do cabeçalho abre a central educativa sem criar outro item de menu', () => {
+test('os saldos e o ícone de ajuda abrem a central de moedas', () => {
   const html = renderStatic({ visible: true, loading: false, coinBalance: 2, cashBalance: 5 })
   assert.match(html, /href="\/entenda-suas-moedas"/)
   assert.match(html, /aria-label="Entenda suas moedas e veja seus saldos de EvoCoins e EvoCash"/)
+  assert.match(html, /<svg[^>]*wallet-badges-help[^>]*>[\s\S]*?<\/svg><\/a>/)
 })
 
 test('shows a discreet placeholder while loading, never a stale or invented number', () => {
@@ -88,6 +89,21 @@ test('never renders an emoji anywhere in the balance indicators', () => {
 test('a zero balance still renders as "0", never hidden or blank (never invents/omits real data)', () => {
   const html = renderStatic({ visible: true, loading: false, coinBalance: 0, cashBalance: 0 })
   assert.equal((html.match(/>0</g) || []).length, 2)
+})
+
+test('dois símbolos mantêm os saldos completos no title quando o CSS mobile trunca números longos', () => {
+  const html = renderStatic({
+    visible: true,
+    loading: false,
+    coinBalance: 123456789,
+    cashBalance: 987654321,
+    snapshot: true,
+  })
+  assert.equal((html.match(/wallet-badge-icon/g) || []).length, 2)
+  assert.match(html, /title="123456789 EvoCoins \(último saldo conhecido\)"/)
+  assert.match(html, /title="987654321 EvoCash \(último saldo conhecido\)"/)
+  assert.match(html, /123\.456\.789/)
+  assert.match(html, /987\.654\.321/)
 })
 
 test('mostra o progresso diário vindo do servidor no indicador de EvoCoins, sem alterar o saldo', () => {

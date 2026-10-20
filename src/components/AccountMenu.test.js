@@ -36,12 +36,13 @@ before(async () => {
           ACCOUNT_ITEMS,
           ADMIN_ITEMS,
           renderNavItems,
+          renderMobileWalletItem,
           renderSessionItems,
           renderAdminSection,
         } from './AccountMenu.jsx'
         import { authState } from '../hooks/useAuth'
 
-        export { authState, ACCOUNT_ITEMS, ADMIN_ITEMS, renderNavItems, renderSessionItems, renderAdminSection }
+        export { authState, ACCOUNT_ITEMS, ADMIN_ITEMS, renderNavItems, renderMobileWalletItem, renderSessionItems, renderAdminSection }
 
         // AccountMenu lê window.matchMedia num useState lazy, já na primeira renderização
         // (mesmo sob renderToStaticMarkup, que não roda efeitos mas roda o corpo da função).
@@ -158,6 +159,22 @@ test('renderNavItems aplica o filtro "show" e preserva rota/ícone/onClick por i
     assert.equal(el.props.onClick, onNavigate)
     assert.equal(el.props.replace, true)
   }
+})
+
+test('carteira aparece só no grupo mobile e fecha o menu ao navegar', () => {
+  let closed = false
+  const item = mod.renderMobileWalletItem(() => {
+    closed = true
+  })
+  assert.equal(item.props.to, '/entenda-suas-moedas')
+  assert.equal(item.props.replace, true)
+  assert.equal(item.props.children[1], 'Carteira e moedas')
+  item.props.onClick()
+  assert.equal(closed, true)
+  assert.equal(
+    mod.ACCOUNT_ITEMS.some((entry) => entry.to === '/entenda-suas-moedas'),
+    false
+  )
 })
 
 test('ADMIN_ITEMS continua com as mesmas 9 rotas administrativas', () => {

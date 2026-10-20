@@ -23,9 +23,9 @@ import { useColorMode } from '../hooks/useColorMode'
 import { useLogoutNotice } from '../hooks/usePendingNotice'
 import { ADMIN_ITEMS } from '../constants/adminNav'
 
-// Fonte única das rotas "Minha conta" -- a mesma lista alimenta o dropdown do
-// desktop (achatado, como hoje) e as seções do painel mobile, pra nunca haver
-// um atalho que exista num e não no outro. Exportadas (junto com as funções de
+// Rotas compartilhadas de "Minha conta" para desktop e mobile. A carteira tem
+// um atalho exclusivo no painel mobile porque seu indicador já aparece no header
+// desktop. Exportadas (junto com as funções de
 // render abaixo) pra serem testáveis sem precisar montar o ActionMenu.Overlay
 // inteiro (que depende de Portal/DOM real -- ver AccountMenu.test.js).
 export const ACCOUNT_ITEMS = [
@@ -71,6 +71,17 @@ export function renderNavItems(items, profile, onNavigate) {
         {item.label}
       </ActionList.LinkItem>
     ))
+}
+
+export function renderMobileWalletItem(onNavigate) {
+  return (
+    <ActionList.LinkItem as={Link} to="/entenda-suas-moedas" replace onClick={onNavigate}>
+      <ActionList.LeadingVisual>
+        <CreditCardIcon />
+      </ActionList.LeadingVisual>
+      Carteira e moedas
+    </ActionList.LinkItem>
+  )
 }
 
 // Os dois logouts, compartilhados entre o dropdown do desktop (inline, fim da
@@ -206,6 +217,7 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
               <ActionList>
                 <ActionList.Group title="Minha conta">
                   {renderNavItems(ACCOUNT_ITEMS, profile, closeMenu)}
+                  {renderMobileWalletItem(closeMenu)}
                 </ActionList.Group>
                 {isSuperAdmin &&
                   renderAdminSection({

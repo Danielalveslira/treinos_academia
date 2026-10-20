@@ -62,8 +62,23 @@ test('homepage mantém conteúdo indexável e encaminha apenas a rota raiz', () 
   assert.doesNotMatch(html, /<script>try/)
   assert.match(html, /<main id="content">[\s\S]*<h1>/)
   assert.doesNotMatch(html, /propaganda invasiva/)
-  for (const file of ['como-funciona.html', 'funcionalidades.html', 'para-empresas.html', 'vitrine.html'])
+  for (const file of [
+    'como-funciona.html',
+    'funcionalidades.html',
+    'para-empresas.html',
+    'vitrine.html',
+  ])
     assert.doesNotMatch(readFileSync(`dist/${file}`, 'utf8'), /public-home-redirect\.js/)
+})
+
+test('marca pública usa Evolutus no header e rodapé sem alterar o domínio canônico', () => {
+  for (const [, file] of routes) {
+    const html = readFileSync(`dist/${file}`, 'utf8')
+    assert.match(html, /aria-label="Evolutus, página inicial"/)
+    assert.equal((html.match(/<span>Evolutus<\/span>/g) || []).length, 2)
+    assert.doesNotMatch(html, /Evolutus\.com|brand-dot/)
+    assert.match(html, /https:\/\/www\.evolutus\.com\.br/)
+  }
 })
 
 test('links internos e âncoras das cinco páginas têm destino', () => {

@@ -13,11 +13,12 @@ const INITIAL_HISTORY_COUNT = 5
 export default function EconomyGuide() {
   const { user } = useAuth()
   const { display, loading, error, dailyCoins } = useWallet()
+  const currentDisplay = display?.uid === user?.uid ? display : null
   const [history, setHistory] = useState({ uid: null, rows: null, loading: false, error: false })
   const [showAllHistory, setShowAllHistory] = useState(false)
   const currentHistory =
     history.uid === user?.uid ? history : { rows: null, loading: false, error: false }
-  const dailyProgress = formatDailyProgress(dailyCoins)
+  const dailyProgress = currentDisplay ? formatDailyProgress(dailyCoins) : null
 
   async function loadTransactions() {
     if (currentHistory.loading || !user?.uid) return
@@ -37,10 +38,11 @@ export default function EconomyGuide() {
   }
 
   function balance(key) {
-    if (loading && !display) return 'Carregando…'
-    if (!display) return 'Indisponível'
-    const value = display[key]
-    return value == null || !Number.isFinite(Number(value))
+    if (loading && !currentDisplay) return 'Carregando…'
+    if (!currentDisplay) return 'Indisponível'
+    const value = currentDisplay[key]
+    return (typeof value !== 'number' && (typeof value !== 'string' || !value.trim())) ||
+      !Number.isFinite(Number(value))
       ? 'Indisponível'
       : Number(value).toLocaleString('pt-BR')
   }
@@ -62,18 +64,24 @@ export default function EconomyGuide() {
           <strong>{balance('coinBalance')}</strong>
         </div>
         <div>
+          <span>Reputação</span>
+          <strong>{balance('lifetimeCoinsEarned')}</strong>
+        </div>
+        <div>
           <span>EvoCash</span>
           <strong>{balance('cashBalance')}</strong>
         </div>
-        <Link to="/perfil">Ver minha carteira</Link>
       </section>
+      <p className="economy-guide-note">
+        Reputação é o total de EvoCoins já recebidos; não é saldo para gastar.
+      </p>
       {dailyProgress && <p className="economy-guide-note">{dailyProgress}</p>}
-      {display?.source === 'snapshot' && (
+      {currentDisplay?.source === 'snapshot' && (
         <p className="economy-guide-note" role="status">
           Saldo salvo neste aparelho. Conecte-se para ver o valor atualizado.
         </p>
       )}
-      {error && !display && (
+      {error && !currentDisplay && (
         <p className="economy-guide-note" role="status">
           Não foi possível consultar o saldo agora. Tente novamente mais tarde.
         </p>
@@ -150,8 +158,8 @@ export default function EconomyGuide() {
             <div>
               <strong>Confira o saldo</strong>
               <p>
-                Veja seus saldos acima ou na <Link to="/perfil">carteira</Link>. Acompanhe compras
-                de EvoCash em <Link to="/evocash">Minhas compras</Link>.
+                Veja seus saldos acima. Acompanhe compras de EvoCash em{' '}
+                <Link to="/evocash">Minhas compras</Link>.
               </p>
             </div>
           </li>

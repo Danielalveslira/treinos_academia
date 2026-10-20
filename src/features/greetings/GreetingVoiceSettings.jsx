@@ -19,7 +19,7 @@ const VOICE_OPTIONS = [
 // `feminino`, salvos antes dessa mudança, aparecem aqui como "Automático" (resolveGreetingVoice já os trata
 // como auto na hora de montar a frase).
 // Salva ao escolher (uma RPC, só na troca) e reflete na Home sem recarregar.
-export function GreetingVoiceSettings() {
+export function GreetingVoiceSettings({ compact = false }) {
   const { user, profile, offlineLocal, patchProfile } = useAuth()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -47,16 +47,22 @@ export function GreetingVoiceSettings() {
   }
 
   return (
-    <section className="profile-card" aria-labelledby="greeting-voice-heading">
-      <header className="profile-card-heading">
-        <span className="profile-section-icon">
-          <CommentIcon size={20} />
-        </span>
-        <div>
-          <h2 id="greeting-voice-heading">Como prefere as mensagens?</h2>
-          <p>Muda só o jeito de falar com você na tela inicial.</p>
-        </div>
-      </header>
+    <section
+      className="profile-card"
+      aria-label={compact ? 'Preferências das mensagens da Home' : undefined}
+      aria-labelledby={compact ? undefined : 'greeting-voice-heading'}
+    >
+      {!compact && (
+        <header className="profile-card-heading">
+          <span className="profile-section-icon">
+            <CommentIcon size={20} />
+          </span>
+          <div>
+            <h2 id="greeting-voice-heading">Como prefere as mensagens?</h2>
+            <p>Muda só o jeito de falar com você na tela inicial.</p>
+          </div>
+        </header>
+      )}
       <div className="profile-form">
         {saved && (
           <Flash variant="success" role="status">

@@ -21,7 +21,7 @@ export function PublicLayout({ children }) {
           <span className="brand-mark">
             <BrandMark size={28} />
           </span>
-          Evolutus.com
+          Evolutus
         </Link>
         <nav aria-label="Navegação">
           <NavLink to="/profissionais">Profissionais</NavLink>

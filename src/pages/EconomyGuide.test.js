@@ -75,31 +75,52 @@ after(async () => {
 
 test('zero balance and actions render without promising unavailable EvoCash community payment', () => {
   const html = render({
-    display: { coinBalance: 0, cashBalance: 0, source: 'server' },
+    display: {
+      uid: 'self',
+      coinBalance: 0,
+      lifetimeCoinsEarned: 0,
+      cashBalance: 0,
+      source: 'server',
+    },
     loading: false,
     error: null,
   })
   assert.match(html, /EvoCoins<\/span><strong>0<\/strong>/)
   assert.match(html, /EvoCash<\/span><strong>0<\/strong>/)
+  assert.match(html, /Reputação<\/span><strong>0<\/strong>/)
   assert.match(html, /href="\/evocash"/)
   assert.match(html, /href="\/minhas-promocoes"/)
   assert.doesNotMatch(html, /pagar comunidades com EvoCash/)
+  assert.doesNotMatch(html, /href="\/perfil"/)
 })
 
 test('existing balances render and offline snapshot is identified', () => {
   const html = render({
-    display: { coinBalance: 1250, cashBalance: 25, source: 'snapshot' },
+    display: {
+      uid: 'self',
+      coinBalance: 1250,
+      lifetimeCoinsEarned: 3470,
+      cashBalance: 25,
+      source: 'snapshot',
+    },
     loading: false,
     error: null,
   })
   assert.match(html, /1\.250/)
+  assert.match(html, /3\.470/)
   assert.match(html, /<strong>25<\/strong>/)
   assert.match(html, /Saldo salvo neste aparelho/)
 })
 
 test('daily limit comes from wallet context rather than a hardcoded promise', () => {
   const html = render({
-    display: { coinBalance: 5, cashBalance: 0, source: 'server' },
+    display: {
+      uid: 'self',
+      coinBalance: 5,
+      lifetimeCoinsEarned: 8,
+      cashBalance: 0,
+      source: 'server',
+    },
     loading: false,
     error: null,
     dailyCoins: { earned: 2, limit: 7 },
@@ -111,7 +132,7 @@ test('loading and unavailable balances do not invent zero', () => {
   const loading = render({ display: null, loading: true, error: null })
   const failed = render({ display: null, loading: false, error: new Error('network') })
   const incompleteSnapshot = render({
-    display: { coinBalance: 3, source: 'snapshot' },
+    display: { uid: 'self', coinBalance: 3, source: 'snapshot' },
     loading: false,
     error: null,
   })
@@ -119,4 +140,34 @@ test('loading and unavailable balances do not invent zero', () => {
   assert.match(failed, /Indisponível/)
   assert.match(failed, /Não foi possível consultar o saldo/)
   assert.match(incompleteSnapshot, /EvoCash<\/span><strong>Indisponível<\/strong>/)
+  assert.match(incompleteSnapshot, /Reputação<\/span><strong>Indisponível<\/strong>/)
+})
+
+test('dados de outra conta e valores vazios não são exibidos como saldo', () => {
+  const oldUser = render({
+    display: {
+      uid: 'other',
+      coinBalance: 900,
+      lifetimeCoinsEarned: 800,
+      cashBalance: 700,
+      source: 'server',
+    },
+    loading: true,
+    error: null,
+  })
+  const incomplete = render({
+    display: {
+      uid: 'self',
+      coinBalance: '',
+      lifetimeCoinsEarned: null,
+      cashBalance: 0,
+      source: 'snapshot',
+    },
+    loading: false,
+    error: null,
+  })
+  assert.doesNotMatch(oldUser, /<strong>900<\/strong>|<strong>800<\/strong>|<strong>700<\/strong>/)
+  assert.match(incomplete, /EvoCoins<\/span><strong>Indisponível<\/strong>/)
+  assert.match(incomplete, /Reputação<\/span><strong>Indisponível<\/strong>/)
+  assert.match(incomplete, /EvoCash<\/span><strong>0<\/strong>/)
 })

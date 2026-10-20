@@ -111,9 +111,6 @@ summary:focus-visible {
 .brand img {
   border-radius: 9px;
 }
-.brand-dot {
-  color: var(--green);
-}
 .desktop-nav {
   display: flex;
   align-items: center;
