@@ -8,6 +8,7 @@ const routes = [
   ['/como-funciona', 'como-funciona.html', true],
   ['/funcionalidades', 'funcionalidades.html', true],
   ['/para-empresas', 'para-empresas.html', true],
+  ['/guia-registro-treino', 'guia-registro-treino.html', true],
   ['/vitrine', 'vitrine.html', false],
 ]
 
@@ -32,7 +33,7 @@ test('build entrega HTML específico e completo antes de JavaScript', () => {
     assert.ok(!titles.has(title))
     titles.add(title)
     const schema = html.match(/<script type="application\/ld\+json">([^<]+)<\/script>/)?.[1]
-    assert.equal(JSON.parse(schema)['@type'], 'WebSite')
+    assert.equal(JSON.parse(schema)['@type'], path === '/' ? 'WebSite' : 'WebPage')
   }
 })
 
@@ -66,6 +67,7 @@ test('homepage mantém conteúdo indexável e encaminha apenas a rota raiz', () 
     'como-funciona.html',
     'funcionalidades.html',
     'para-empresas.html',
+    'guia-registro-treino.html',
     'vitrine.html',
   ])
     assert.doesNotMatch(readFileSync(`dist/${file}`, 'utf8'), /public-home-redirect\.js/)
@@ -108,4 +110,16 @@ test('rotas internas fazem fallback ao shell, URLs públicas desconhecidas não'
   assert.ok(regex.test('comunidades/abc'))
   assert.ok(!regex.test('nao-existe'))
   assert.ok(!regex.test('vitrine/produto-removido'))
+})
+
+test('variantes públicas redirecionam para URL limpa e o guia entra no sitemap', () => {
+  const config = JSON.parse(readFileSync('vercel.json', 'utf8'))
+  const redirectSources = config.redirects.map(({ source }) => source)
+  assert.ok(redirectSources.some((source) => source.endsWith('.html')))
+  assert.ok(redirectSources.some((source) => source.endsWith('/')))
+  assert.ok(config.rewrites.some((route) => route.source === '/guia-registro-treino'))
+  const html = readFileSync('dist/guia-registro-treino.html', 'utf8')
+  assert.match(html, /<h1>Como registrar séries, repetições e cargas<\/h1>/)
+  assert.match(html, /<source[^>]+sizes="\(max-width: 760px\) 100vw, 45vw"/)
+  assert.match(readFileSync('dist/sitemap.xml', 'utf8'), /<loc>https:\/\/www\.evolutus\.com\.br\/guia-registro-treino<\/loc>/)
 })

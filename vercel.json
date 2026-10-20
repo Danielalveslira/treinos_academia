@@ -1,5 +1,7 @@
 {
   "redirects": [
+    { "source": "/:page(como-funciona|funcionalidades|guia-registro-treino|para-empresas|vitrine).html", "destination": "/:page", "statusCode": 301 },
+    { "source": "/:page(como-funciona|funcionalidades|guia-registro-treino|para-empresas|vitrine)/", "destination": "/:page", "statusCode": 301 },
     {
       "source": "/:path((?!assets/|icons/|_vercel/|.*\\.[\\w]+$).*)",
       "has": [{ "type": "host", "value": "treinosacademia-ten.vercel.app" }],
@@ -10,6 +12,7 @@
   "rewrites": [
     { "source": "/como-funciona", "destination": "/como-funciona.html" },
     { "source": "/funcionalidades", "destination": "/funcionalidades.html" },
+    { "source": "/guia-registro-treino", "destination": "/guia-registro-treino.html" },
     { "source": "/para-empresas", "destination": "/para-empresas.html" },
     { "source": "/vitrine", "destination": "/vitrine.html" },
     {
@@ -19,7 +22,7 @@
   ],
   "headers": [
     {
-      "source": "/(index|app-shell|como-funciona|funcionalidades|para-empresas|vitrine).html",
+      "source": "/(index|app-shell|como-funciona|funcionalidades|guia-registro-treino|para-empresas|vitrine).html",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {

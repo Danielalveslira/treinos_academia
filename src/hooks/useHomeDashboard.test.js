@@ -94,6 +94,13 @@ after(async () => {
 
 const A = 'a0000000-0000-0000-0000-00000000000a'
 const settle = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms))
+async function waitFor(check, message, timeout = 5000) {
+  const deadline = Date.now() + timeout
+  while (!check()) {
+    if (Date.now() >= deadline) assert.fail(message)
+    await settle(20)
+  }
+}
 let calls
 let gate
 
@@ -162,7 +169,7 @@ async function readHome() {
 
 test('ONLINE: devolve a atividade do servidor e grava o snapshot enxuto para o próximo cold start', async () => {
   const view = api.mount(auth())
-  await settle(80)
+  await waitFor(() => api.home().progressDays.length > 0, 'atividade online não carregou')
   const home = api.home()
   assert.equal(home.progressAvailable, true)
   assert.equal(home.progressDays[0].strengthSets, 3, 'online usa o dado completo do servidor')

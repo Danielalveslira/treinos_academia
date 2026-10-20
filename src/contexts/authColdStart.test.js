@@ -130,6 +130,13 @@ const A = 'a0000000-0000-0000-0000-00000000000a'
 const B = 'b0000000-0000-0000-0000-00000000000b'
 const NETWORK = { message: 'TypeError: Failed to fetch', code: '', details: '', hint: '' }
 const settle = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms))
+async function waitFor(check, message, timeout = 5000) {
+  const deadline = Date.now() + timeout
+  while (!(await check())) {
+    if (Date.now() >= deadline) assert.fail(message)
+    await settle(20)
+  }
+}
 const NOW_ISO = '2026-10-05T10:00:00.000Z'
 
 let world
@@ -250,7 +257,19 @@ const login = (id) => {
 async function onlineLogin(bundleUnderTest, id) {
   login(id)
   const view = bundleUnderTest.mount()
-  await settle(80)
+  await waitFor(() => !bundleUnderTest.auth().loading, 'login não terminou')
+  const context = bundleUnderTest.auth()
+  if (
+    world.online &&
+    bundleUnderTest !== off &&
+    context.serverAccessAllowed &&
+    context.profile?.accountStatus === 'active'
+  ) {
+    await waitFor(
+      async () => (await bundleUnderTest.bootstrap.readActiveBootstrap())?.user_id === id,
+      'bootstrap online não foi persistido'
+    )
+  }
   return view
 }
 
@@ -376,7 +395,7 @@ test('PRIMEIRO acesso sem internet (sem bootstrap): não entra e diz o que fazer
   globalThis.__session = null
   globalThis.__initialSession = null
   const second = on.mount()
-  await settle(100)
+  await waitFor(() => !on.auth().loading && on.auth().user === null, 'sessão vazia não terminou')
   assert.equal(on.auth().user, null)
   assert.equal(on.auth().loading, false)
   second.unmount()
@@ -436,7 +455,7 @@ test('LOGOUT explícito invalida o cold start; a outbox pendente continua guarda
     },
   })
   await on.logoutUser() // authService: desliga o bootstrap ANTES do signOut, que dispara SIGNED_OUT
-  await settle(80)
+  await waitFor(() => on.auth().user === null, 'logout não terminou')
   assert.equal(on.auth().user, null)
   assert.equal(await on.bootstrap.readActiveBootstrap(), null)
   assert.equal((await on.outbox.listMutations(A)).length, 1)

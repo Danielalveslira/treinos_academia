@@ -23,6 +23,7 @@ export default function Professionals() {
     city: '*',
     serviceMode: '*',
   }))
+  const [cityQuery, setCityQuery] = useState('')
   const [result, setResult] = useState({ items: [], cursor: null })
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -31,6 +32,13 @@ export default function Professionals() {
   const latestFilterKey = useRef(filterKey)
   const loadingMoreRef = useRef(false)
   latestFilterKey.current = filterKey
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFilters((current) => ({ ...current, city: cityQuery || '*' }))
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [cityQuery])
 
   useEffect(() => {
     let active = true
@@ -125,8 +133,8 @@ export default function Professionals() {
           <label>
             Cidade
             <input
-              value={filters.city === '*' ? '' : filters.city}
-              onChange={(event) => change('city', event.target.value)}
+              value={cityQuery}
+              onChange={(event) => setCityQuery(event.target.value)}
               maxLength={80}
               placeholder="Todas"
             />

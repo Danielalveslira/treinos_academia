@@ -7,7 +7,7 @@ const executablePath =
   '/home/codespace/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome'
 const browser = await chromium.launch({ executablePath, headless: true, args: ['--no-sandbox'] })
 try {
-  for (const width of [390, 768, 1366, 1920]) {
+  for (const width of [320, 375, 768, 1024, 1366]) {
     const page = await browser.newPage({ viewport: { width, height: 850 } })
     // Route verification is independent of whether the commercial migration has been applied.
     await page.route('**/rest/v1/partner_products?**', (route) =>
@@ -22,6 +22,7 @@ try {
       ['/', 'Saiba o que treinou.Veja o que mudou.'],
       ['/como-funciona', 'Como usar o Evolutus'],
       ['/funcionalidades', 'Explore as ferramentas de treino.'],
+      ['/guia-registro-treino', 'Como registrar séries, repetições e cargas'],
       ['/para-empresas', 'Publicidade e produtos no Evolutus'],
       ['/vitrine', 'Produtos de parceiros'],
     ]) {
@@ -29,6 +30,9 @@ try {
       assert.equal(response.status(), 200, path)
       assert.equal((await page.locator('h1').textContent()).replace(/\s+/g, ' ').trim(), heading)
       assert.equal(await page.locator('h1').count(), 1)
+      await page.locator('.page-hero-visual img, .hero-art img').evaluateAll(async (images) => {
+        await Promise.all(images.map((img) => img.decode()))
+      })
       assert.ok(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         `${path} transborda em ${width}px`
@@ -50,6 +54,7 @@ try {
     for (const [href, heading] of [
       ['/como-funciona', 'Como usar o Evolutus'],
       ['/funcionalidades', 'Explore as ferramentas de treino.'],
+      ['/guia-registro-treino', 'Como registrar séries, repetições e cargas'],
       ['/para-empresas', 'Publicidade e produtos no Evolutus'],
       ['/vitrine', 'Produtos de parceiros'],
     ]) {

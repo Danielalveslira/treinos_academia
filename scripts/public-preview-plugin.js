@@ -4,6 +4,16 @@ import { loadEnv } from 'vite'
 import { publicPages, renderPublicConfig, renderPublicPage } from './public-pages-template.mjs'
 
 const routes = new Map(publicPages.map(({ path, file }) => [path, file]))
+const variant = (path) => {
+  const clean = path.endsWith('.html') ? path.slice(0, -5) : path.endsWith('/') ? path.slice(0, -1) : path
+  return clean !== path && routes.has(clean) && clean !== '/' ? clean : null
+}
+
+function redirect(response, request, path) {
+  response.statusCode = 301
+  response.setHeader('Location', path + new URL(request.url, 'http://localhost').search)
+  response.end()
+}
 
 function send(response, request, body, contentType) {
   response.statusCode = 200
@@ -20,6 +30,8 @@ export function publicPreviewPlugin() {
       server.middlewares.use((request, response, next) => {
         if (request.method !== 'GET' && request.method !== 'HEAD') return next()
         const path = new URL(request.url, 'http://localhost').pathname
+        const canonical = variant(path)
+        if (canonical) return redirect(response, request, canonical)
         if (path === '/public-config.js') {
           send(response, request, renderPublicConfig(env), 'application/javascript; charset=utf-8')
         } else if (routes.has(path)) {
@@ -35,6 +47,8 @@ export function publicPreviewPlugin() {
       server.middlewares.use((request, response, next) => {
         if (request.method !== 'GET' && request.method !== 'HEAD') return next()
         const path = new URL(request.url, 'http://localhost').pathname
+        const canonical = variant(path)
+        if (canonical) return redirect(response, request, canonical)
         const file = routes.get(path) || (appRoute.test(path.slice(1)) ? 'app-shell.html' : null)
         if (!file) {
           if (/\.[\w]+$/.test(path)) return next()
