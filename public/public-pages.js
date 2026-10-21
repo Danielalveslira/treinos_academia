@@ -1,3 +1,6 @@
+;(() => {
+if (window.__evolutusPublicPagesStarted) return
+window.__evolutusPublicPagesStarted = true
 const config = window.EVOLUTUS_PUBLIC_CONFIG || {}
 const endpoint =
   typeof config.url === 'string' && /^https:\/\//.test(config.url)
@@ -20,6 +23,42 @@ document.addEventListener('click', (event) => {
   if (anchor) window.va('event', { name: 'Public signup CTA', data: { page: location.pathname } })
 })
 
+const menuTrigger = document.getElementById('public-menu-trigger')
+const menuPanel = document.getElementById('public-menu-panel')
+if (menuTrigger && menuPanel) {
+  const closeMenu = ({ restoreFocus = false } = {}) => {
+    if (menuPanel.hidden) return
+    menuPanel.hidden = true
+    menuTrigger.setAttribute('aria-expanded', 'false')
+    if (restoreFocus) menuTrigger.focus()
+  }
+  menuTrigger.addEventListener('click', () => {
+    const opening = menuPanel.hidden
+    menuPanel.hidden = !opening
+    menuTrigger.setAttribute('aria-expanded', String(opening))
+    if (opening) menuPanel.querySelector('a[href]')?.focus()
+  })
+  document.addEventListener('pointerdown', (event) => {
+    if (!menuTrigger.contains(event.target) && !menuPanel.contains(event.target)) closeMenu()
+  })
+  document.addEventListener('focusin', (event) => {
+    if (!menuTrigger.contains(event.target) && !menuPanel.contains(event.target)) closeMenu()
+  })
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !menuPanel.hidden) {
+      event.preventDefault()
+      closeMenu({ restoreFocus: true })
+    }
+  })
+  menuPanel.addEventListener('click', (event) => {
+    if (event.target.closest('a[href]')) closeMenu()
+  })
+  window.addEventListener('resize', () => {
+    if (innerWidth > 1100) closeMenu()
+  })
+}
+
+function initCommercialForm(signal) {
 const form = document.getElementById('commercial-form')
 if (form) {
   const status = document.getElementById('form-status')
@@ -40,6 +79,7 @@ if (form) {
       const response = await fetch(`${endpoint}/rest/v1/rpc/submit_commercial_lead`, {
         method: 'POST',
         headers,
+        signal,
         body: JSON.stringify({
           p_company: values.company,
           p_contact: values.contact,
@@ -73,17 +113,23 @@ if (form) {
             ? 'Confira os dados informados e tente novamente.'
             : 'Não foi possível enviar a proposta. Confira sua conexão e tente novamente.'
     } finally {
-      button.disabled = false
+      if (!signal.aborted) button.disabled = false
     }
-  })
+  }, { signal })
+}
 }
 
+function initProducts(signal) {
 const products = document.getElementById('products')
 if (products) {
+  const productTemplate = document.getElementById('product-card-template')
   const status = document.getElementById('catalog-status')
   const category = document.getElementById('category')
+  const retry = document.querySelector('.catalog-retry')
+  let loadedRows = []
   const showEmpty = (title, message) => {
     products.replaceChildren()
+    products.setAttribute('aria-busy', 'false')
     const empty = document.createElement('div')
     empty.className = 'catalog-empty'
     const symbol = document.createElement('span')
@@ -113,7 +159,8 @@ if (products) {
   }
   const render = (rows) => {
     products.replaceChildren()
-    const visible = rows.filter((row) => !category.value || row.category === category.value)
+    products.setAttribute('aria-busy', 'false')
+    const visible = rows.filter((row) => (!category.value || row.category === category.value) && safeHttps(row.store_url))
     status.textContent = visible.length
       ? `${visible.length} produto${visible.length === 1 ? '' : 's'} disponível${visible.length === 1 ? '' : 's'}.`
       : category.value ? 'Ainda não há produtos nesta categoria.' : 'Ainda não há produtos disponíveis.'
@@ -124,9 +171,8 @@ if (products) {
       )
     for (const row of visible) {
       const href = safeHttps(row.store_url)
-      if (!href) continue
-      const card = document.createElement('article')
-      card.className = 'product-card'
+      const card = productTemplate.content.firstElementChild.cloneNode(true)
+      const imageSlot = card.querySelector('.product-image')
       if (row.image_url && safeHttps(row.image_url)) {
         const img = document.createElement('img')
         img.src = row.image_url
@@ -143,64 +189,107 @@ if (products) {
             })
           )
         })
-        card.append(img)
-      } else {
-        const placeholder = document.createElement('div')
-        placeholder.className = 'product-image product-placeholder'
-        placeholder.textContent = 'Imagem indisponível'
-        card.append(placeholder)
+        imageSlot.replaceWith(img)
       }
-      const brand = document.createElement('p')
-      brand.className = 'product-brand'
-      brand.textContent = row.brand
-      const title = document.createElement('h2')
-      title.textContent = row.name
-      const description = document.createElement('p')
-      description.textContent = row.description
-      const tag = document.createElement('p')
-      tag.textContent = row.sponsored ? 'Patrocinado · ' + row.category : row.category
-      tag.className = 'product-tag'
-      const link = document.createElement('a')
+      card.querySelector('.product-brand').textContent = row.brand
+      card.querySelector('.product-name').textContent = row.name
+      card.querySelector('.product-description').textContent = row.description
+      card.querySelector('.product-tag').textContent = row.sponsored ? 'Patrocinado · ' + row.category : row.category
+      const link = card.querySelector('.product-link')
       link.href = href
       link.target = '_blank'
       link.rel = row.sponsored ? 'noopener noreferrer sponsored' : 'noopener noreferrer'
-      link.className = 'button product-link'
-      link.textContent = 'Ver na loja ↗'
-      const body = document.createElement('div')
-      body.className = 'product-card-body'
-      body.append(brand, title, description, tag, link)
-      card.append(body)
       products.append(card)
     }
   }
-  if (!endpoint || !config.key) {
-    status.textContent = 'A vitrine está indisponível no momento.'
-    showEmpty(
-      'Voltamos em breve.',
-      'Não foi possível consultar os produtos agora. Tente novamente mais tarde.'
-    )
-  } else
-    fetch(
-      `${endpoint}/rest/v1/partner_products?select=name,brand,description,category,image_url,store_url,sponsored&order=created_at.desc&limit=100`,
-      { headers: { apikey: config.key } }
-    )
-      .then((response) => {
-        if (!response.ok) throw new Error('catalog_failed')
-        return response.json()
-      })
-      .then((rows) => {
-        const categories = [...new Set(rows.map((row) => row.category))].sort()
-        for (const name of categories) {
-          const option = document.createElement('option')
-          option.value = name
-          option.textContent = name
-          category.append(option)
-        }
-        category.addEventListener('change', () => render(rows))
-        render(rows)
-      })
-      .catch(() => {
-        status.textContent = 'Não foi possível carregar os produtos. Tente atualizar a página.'
-        showEmpty('Não conseguimos carregar a seleção.', 'Atualize a página para tentar novamente.')
-      })
+  const loadProducts = async () => {
+    retry.hidden = true
+    status.textContent = 'Carregando produtos…'
+    products.setAttribute('aria-busy', 'true')
+    products.replaceChildren(...Array.from({ length: 3 }, () => {
+      const skeleton = document.createElement('div')
+      skeleton.className = 'catalog-skeleton'
+      skeleton.setAttribute('aria-hidden', 'true')
+      return skeleton
+    }))
+    if (!endpoint || !config.key) {
+      status.textContent = 'A vitrine está indisponível no momento.'
+      showEmpty('Voltamos em breve.', 'Não foi possível consultar os produtos agora. Tente novamente mais tarde.')
+      return
+    }
+    try {
+      const response = await fetch(
+        `${endpoint}/rest/v1/partner_products?select=name,brand,description,category,image_url,store_url,sponsored&order=created_at.desc&limit=100`,
+        { headers: { apikey: config.key }, signal }
+      )
+      if (!response.ok) throw new Error('catalog_failed')
+      loadedRows = await response.json()
+      category.replaceChildren(category.options[0])
+      const categories = [...new Set(loadedRows.map((row) => row.category))].sort()
+      for (const name of categories) {
+        const option = document.createElement('option')
+        option.value = name
+        option.textContent = name
+        category.append(option)
+      }
+      render(loadedRows)
+    } catch {
+      if (signal.aborted) return
+      status.textContent = 'Não foi possível carregar os produtos.'
+      showEmpty('Não conseguimos carregar a seleção.', 'Tente novamente para consultar os produtos.')
+      retry.hidden = false
+    }
+  }
+  category.addEventListener('change', () => render(loadedRows), { signal })
+  retry.querySelector('button').addEventListener('click', loadProducts, { signal })
+  loadProducts()
 }
+
+}
+
+let currentBody = null
+let pageController = null
+let directoryCleanup = null
+function teardownPage() {
+  pageController?.abort()
+  directoryCleanup?.()
+  pageController = null
+  directoryCleanup = null
+  currentBody = null
+  const trigger = document.getElementById('public-menu-trigger')
+  const panel = document.getElementById('public-menu-panel')
+  if (trigger && panel) {
+    panel.hidden = true
+    trigger.setAttribute('aria-expanded', 'false')
+  }
+}
+function updateHeader() {
+  const path = location.pathname
+  document.querySelectorAll('#public-header a[aria-current]').forEach((anchor) => anchor.removeAttribute('aria-current'))
+  document.querySelectorAll('#public-header a[href]').forEach((anchor) => {
+    if (new URL(anchor.href).pathname === path) anchor.setAttribute('aria-current', 'page')
+  })
+}
+function initPage() {
+  if (currentBody === document.body) return
+  teardownPage()
+  currentBody = document.body
+  pageController = new AbortController()
+  const signal = pageController.signal
+  updateHeader()
+  initCommercialForm(signal)
+  initProducts(signal)
+  if (document.getElementById('professional-filters')) {
+    import('/public-professionals.js').then(({ initProfessionalDirectory }) => {
+      if (!signal.aborted) directoryCleanup = initProfessionalDirectory(signal)
+    }).catch(() => {
+      const status = document.getElementById('directory-status')
+      if (!signal.aborted && status) status.textContent = 'Não foi possível abrir o diretório. Atualize a página e tente novamente.'
+    })
+  }
+}
+document.addEventListener('DOMContentLoaded', initPage, { once: true })
+document.addEventListener('turbo:load', initPage)
+document.addEventListener('turbo:before-cache', teardownPage)
+if (document.readyState === 'complete') initPage()
+})()

@@ -145,60 +145,10 @@ export async function getShowcaseLegalVersion(version) {
   }
 }
 
-function mapPublishedRow(row) {
-  if (!row) return null
-  return {
-    id: row.listing_id,
-    kind: row.kind,
-    displayName: row.display_name,
-    sortKey: row.sort_key,
-    categoryKey: row.category_key,
-    modalityKeys: row.modality_keys,
-    specialties: row.specialties,
-    bio: row.bio,
-    city: row.city,
-    cityKey: row.city_key,
-    uf: row.uf,
-    serviceMode: row.service_mode,
-    publicContacts: row.public_contacts,
-    linkedCommunityId: row.linked_community_id,
-    linkedCommunity: row.linked_community_id
-      ? { id: row.linked_community_id, name: row.linked_community_name }
-      : null,
-    avatarPath: row.avatar_path,
-    avatarSourceMediaId: row.avatar_source_media_id,
-    publishedVersion: row.published_version,
-    publishedAt: row.published_at,
-    updatedAt: row.updated_at,
-  }
-}
-
 export async function getPublishedProfessionalListing(listingId) {
-  const { data, error } = await supabase
-    .from('published_professional_listings')
-    .select('*')
-    .eq('listing_id', listingId)
-    .maybeSingle()
+  const { data, error } = await supabase.rpc('public_get_professional', { p_listing_id: listingId })
   if (error) throw error
-  return mapPublishedRow(data)
-}
-
-// filters usa '*' como "qualquer" (mesma convenção das outras telas de busca do app) --
-// aqui vira null pra RPC tratar como filtro ausente.
-const orNull = (value) => (value && value !== '*' ? value : null)
-
-export async function listPublishedProfessionalListings(filters, cursor = null, pageSize = 20) {
-  const { data, error } = await supabase.rpc('list_published_professional_listings', {
-    p_kind: filters.kind,
-    p_modality: orNull(filters.modality),
-    p_uf: orNull(filters.uf),
-    p_city: orNull(filters.city),
-    p_service_mode: orNull(filters.serviceMode),
-    p_cursor: cursor,
-    p_limit: pageSize,
-  })
-  if (error) throw error
-  return { items: data.items, nextCursor: data.nextCursor }
+  return data
 }
 
 function unwrap({ data, error }) {

@@ -57,6 +57,10 @@ const MAX_EXERCISE_IMAGE_ENTRIES = 100
 const LOW_STORAGE_RATIO = 0.9 // mesmo limiar de storagePersistence.js (LOW_SPACE_RATIO) no app
 const IMAGE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 const CACHED_AT_HEADER = 'x-sw-cached-at'
+const PUBLIC_STATIC_ROUTES = new Set([
+  '/como-funciona', '/funcionalidades', '/guia-registro-treino',
+  '/para-empresas', '/vitrine', '/profissionais',
+])
 
 // Os caches deste worker compartilham o prefixo; só eles são limpos (nada de apagar caches
 // de terceiros da mesma origem).
@@ -304,6 +308,12 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET' || url.origin !== self.location.origin) return
 
   if (request.mode === 'navigate') {
+    // Uma página pública estática nunca deve receber o shell autenticado quando
+    // a rede falha; isso mostraria a rota errada (ou um 200 offline enganoso).
+    if (PUBLIC_STATIC_ROUTES.has(url.pathname)) {
+      event.respondWith(fetch(request))
+      return
+    }
     // Network-first: um refresh (inclusive hard refresh) deve sempre buscar o shell
     // mais atual quando há conexão. O cache só entra como fallback offline, nunca como fonte
     // primária. O shell do cache é SÓ o do install desta versão (casado com os chunks que o install

@@ -7,11 +7,14 @@ const executablePath =
   '/home/codespace/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome'
 const browser = await chromium.launch({ executablePath, headless: true, args: ['--no-sandbox'] })
 try {
-  for (const width of [320, 375, 768, 1024, 1366]) {
+  for (const width of [320, 375, 390, 768, 1024, 1366]) {
     const page = await browser.newPage({ viewport: { width, height: 850 } })
     // Route verification is independent of whether the commercial migration has been applied.
     await page.route('**/rest/v1/partner_products?**', (route) =>
       route.fulfill({ contentType: 'application/json', body: '[]' })
+    )
+    await page.route('**/rest/v1/rpc/public_list_professionals', (route) =>
+      route.fulfill({ contentType: 'application/json', body: '{"items":[],"nextOffset":null}' })
     )
     const errors = []
     page.on('console', (message) => {
@@ -19,18 +22,19 @@ try {
     })
     page.on('pageerror', (error) => errors.push(error.message))
     for (const [path, heading] of [
-      ['/', 'Saiba o que treinou.Veja o que mudou.'],
+      ['/', 'Seu treino, registrado com clareza.'],
       ['/como-funciona', 'Como usar o Evolutus'],
       ['/funcionalidades', 'Explore as ferramentas de treino.'],
       ['/guia-registro-treino', 'Como registrar séries, repetições e cargas'],
       ['/para-empresas', 'Publicidade e produtos no Evolutus'],
       ['/vitrine', 'Produtos de parceiros'],
+      ['/profissionais', 'Profissionais e locais para sua rotina.'],
     ]) {
       const response = await page.goto(`${base}${path}`)
       assert.equal(response.status(), 200, path)
       assert.equal((await page.locator('h1').textContent()).replace(/\s+/g, ' ').trim(), heading)
       assert.equal(await page.locator('h1').count(), 1)
-      await page.locator('.page-hero-visual img, .hero-art img').evaluateAll(async (images) => {
+      await page.locator('.official-banner img[loading="eager"]').evaluateAll(async (images) => {
         await Promise.all(images.map((img) => img.decode()))
       })
       assert.ok(
@@ -57,14 +61,17 @@ try {
       ['/guia-registro-treino', 'Como registrar séries, repetições e cargas'],
       ['/para-empresas', 'Publicidade e produtos no Evolutus'],
       ['/vitrine', 'Produtos de parceiros'],
+      ['/profissionais', 'Profissionais e locais para sua rotina.'],
     ]) {
-      if (width <= 900) await page.locator('.mobile-menu summary').click()
+      if (width <= 1100) await page.locator('#public-menu-trigger').click()
       await page
-        .locator(`${width <= 900 ? '.mobile-menu' : '.desktop-nav'} a[href="${href}"]`)
+        .locator(`${width <= 1100 ? '#public-menu-panel' : '.desktop-nav'} a[href="${href}"]`)
         .click()
+      await page.waitForURL(`${base}${href}`)
       assert.equal(new URL(page.url()).pathname, href)
       assert.equal((await page.locator('h1').textContent()).replace(/\s+/g, ' ').trim(), heading)
       await page.locator('.site-header .brand').click()
+      await page.waitForURL(base + '/')
       assert.equal(new URL(page.url()).pathname, '/')
     }
     assert.deepEqual(errors, [], `erros no console das páginas públicas em ${width}px`)
@@ -73,7 +80,7 @@ try {
     assert.equal(new URL(page.url()).pathname, '/')
     assert.equal(
       (await page.locator('h1').textContent()).replace(/\s+/g, ' ').trim(),
-      'Saiba o que treinou.Veja o que mudou.'
+      'Seu treino, registrado com clareza.'
     )
     await page.goto(`${base}/para-empresas`)
     await page.locator('#commercial-form button').click()
@@ -139,6 +146,20 @@ try {
   assert.match(await storeLink.getAttribute('rel'), /sponsored/)
   assert.match(await page.locator('#products').textContent(), /Patrocinado/)
   assert.deepEqual(catalogErrors, [], 'erros no console da vitrine')
+  let catalogAttempts = 0
+  await page.route('**/rest/v1/partner_products?**', (route) => {
+    catalogAttempts += 1
+    return route.fulfill(catalogAttempts === 1
+      ? { status: 503, contentType: 'application/json', body: '{}' }
+      : { contentType: 'application/json', body: JSON.stringify([{
+        name: 'Produto recuperado', brand: 'Marca de teste', description: 'Disponível após nova consulta',
+        category: 'Acessórios', image_url: null, store_url: 'https://example.com/recuperado', sponsored: false,
+      }]) })
+  })
+  await page.reload()
+  await page.getByRole('button', { name: 'Tentar novamente' }).click()
+  await page.getByText('Produto recuperado').waitFor()
+  assert.equal(catalogAttempts, 2)
   await page.close()
   console.log('PUBLIC_BROWSER_SMOKE_OK')
 } finally {

@@ -307,6 +307,20 @@ test('navegação: rede primeiro; offline cai no app-shell.html em cache; sem ca
   assert.equal(await fallback.response.text(), '<html>shell</html>')
 })
 
+test('rotas públicas estáticas nunca recebem o shell do app como fallback offline', async () => {
+  load({ responder: (url) => url.includes('/assets/')
+    ? basic('js', { headers: { 'content-type': 'text/javascript' } })
+    : basic('<html>público</html>', { headers: { 'content-type': 'text/html' } }) })
+  await lifecycle('install')
+  for (const path of ['/vitrine', '/profissionais', '/como-funciona']) {
+    const online = await dispatchFetch(navigation(path))
+    assert.equal(await online.response.text(), '<html>público</html>')
+  }
+  offline = true
+  for (const path of ['/vitrine', '/profissionais', '/como-funciona'])
+    await assert.rejects(() => dispatchFetch(navigation(path)))
+})
+
 // Migração de domínio: o redirect 301 (vercel.json, host condicional) acontece na borda da
 // Vercel. Correção importante em relação a uma suposição anterior: uma requisição de
 // NAVEGAÇÃO entregue a um Service Worker tem redirect mode "manual" (é uma propriedade do

@@ -15,6 +15,7 @@ import {
   QuestionIcon,
   BriefcaseIcon,
   LocationIcon,
+  PackageIcon,
   ChevronDownIcon,
   ChevronUpIcon,
 } from '@primer/octicons-react'
@@ -30,12 +31,6 @@ import { ADMIN_ITEMS } from '../constants/adminNav'
 // inteiro (que depende de Portal/DOM real -- ver AccountMenu.test.js).
 export const ACCOUNT_ITEMS = [
   { key: 'perfil', to: '/perfil', icon: PersonIcon, label: 'Meu perfil' },
-  {
-    key: 'profissionais',
-    to: '/profissionais',
-    icon: LocationIcon,
-    label: 'Profissionais e locais',
-  },
   // profile?.usageProfile === 'common' só esconde o atalho (declutter) -- a
   // rota /minha-vitrine continua acessível e decide por conta própria (com
   // dados reais) o que mostrar; ver MyProfessionalListing.jsx. Legado
@@ -52,6 +47,11 @@ export const ACCOUNT_ITEMS = [
   { key: 'promocoes', to: '/minhas-promocoes', icon: RocketIcon, label: 'Minhas promoções' },
 ]
 
+export const EXPLORE_ITEMS = [
+  { key: 'public-products', to: '/vitrine', icon: PackageIcon, label: 'Vitrine de produtos', document: true },
+  { key: 'public-professionals', to: '/profissionais', icon: LocationIcon, label: 'Profissionais e locais', document: true },
+]
+
 // Reexportada por compatibilidade (AccountMenu.test.js e código legado importam
 // ADMIN_ITEMS daqui) -- a lista em si vive em constants/adminNav.js, um módulo puro
 // sem hooks, pra AdminNav.jsx poder importá-la sem arrastar useAuth/useColorMode/
@@ -64,7 +64,12 @@ export function renderNavItems(items, profile, onNavigate) {
   return items
     .filter((item) => !item.show || item.show(profile))
     .map((item) => (
-      <ActionList.LinkItem key={item.key} as={Link} to={item.to} replace onClick={onNavigate}>
+      <ActionList.LinkItem
+        key={item.key}
+        as={item.document ? 'a' : Link}
+        {...(item.document ? { href: item.to } : { to: item.to, replace: true })}
+        onClick={onNavigate}
+      >
         <ActionList.LeadingVisual>
           <item.icon />
         </ActionList.LeadingVisual>
@@ -219,6 +224,9 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
                   {renderNavItems(ACCOUNT_ITEMS, profile, closeMenu)}
                   {renderMobileWalletItem(closeMenu)}
                 </ActionList.Group>
+                <ActionList.Group title="Explorar">
+                  {renderNavItems(EXPLORE_ITEMS, profile, closeMenu)}
+                </ActionList.Group>
                 {isSuperAdmin &&
                   renderAdminSection({
                     expanded: adminExpanded,
@@ -244,6 +252,9 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
             ) : (
               <ActionList>
                 {renderNavItems(ACCOUNT_ITEMS, profile, closeMenu)}
+                <ActionList.Group title="Explorar">
+                  {renderNavItems(EXPLORE_ITEMS, profile, closeMenu)}
+                </ActionList.Group>
                 {isSuperAdmin && (
                   <ActionList.Group title="Administração">
                     {renderNavItems(ADMIN_ITEMS, profile, closeMenu)}

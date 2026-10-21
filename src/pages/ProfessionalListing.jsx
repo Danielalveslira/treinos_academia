@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { Spinner } from '@primer/react'
 import { PublicLayout } from '../components/PublicLayout'
 import { ProfessionalListingView } from '../components/ProfessionalListingView'
@@ -44,9 +44,9 @@ export default function ProfessionalListing() {
   return (
     <PublicLayout>
       <div className="professional-detail-page">
-        <Link className="profile-back" to="/profissionais">
+        <a className="profile-back" href="/profissionais">
           ← Voltar ao diretório
-        </Link>
+        </a>
         {listing === undefined && !error ? (
           <div className="professional-state">
             <Spinner aria-label="Carregando vitrine" />

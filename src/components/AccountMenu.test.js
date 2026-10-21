@@ -34,6 +34,7 @@ before(async () => {
         import {
           AccountMenu,
           ACCOUNT_ITEMS,
+          EXPLORE_ITEMS,
           ADMIN_ITEMS,
           renderNavItems,
           renderMobileWalletItem,
@@ -42,7 +43,7 @@ before(async () => {
         } from './AccountMenu.jsx'
         import { authState } from '../hooks/useAuth'
 
-        export { authState, ACCOUNT_ITEMS, ADMIN_ITEMS, renderNavItems, renderMobileWalletItem, renderSessionItems, renderAdminSection }
+        export { authState, ACCOUNT_ITEMS, EXPLORE_ITEMS, ADMIN_ITEMS, renderNavItems, renderMobileWalletItem, renderSessionItems, renderAdminSection }
 
         // AccountMenu lê window.matchMedia num useState lazy, já na primeira renderização
         // (mesmo sob renderToStaticMarkup, que não roda efeitos mas roda o corpo da função).
@@ -175,6 +176,21 @@ test('carteira aparece só no grupo mobile e fecha o menu ao navegar', () => {
     mod.ACCOUNT_ITEMS.some((entry) => entry.to === '/entenda-suas-moedas'),
     false
   )
+})
+
+test('Explorar contém exatamente dois links de documento público para todos os perfis', () => {
+  assert.deepEqual(mod.EXPLORE_ITEMS.map((item) => [item.to, item.label]), [
+    ['/vitrine', 'Vitrine de produtos'],
+    ['/profissionais', 'Profissionais e locais'],
+  ])
+  const links = mod.renderNavItems(mod.EXPLORE_ITEMS, { usageProfile: 'common' }, () => {})
+  assert.deepEqual(links.map((link) => link.props.href), ['/vitrine', '/profissionais'])
+  for (const link of links) {
+    assert.equal(link.props.as, 'a')
+    assert.equal(link.props.to, undefined)
+    assert.equal(link.props.replace, undefined)
+  }
+  assert.equal(mod.ACCOUNT_ITEMS.some((item) => item.to === '/profissionais'), false)
 })
 
 test('ADMIN_ITEMS continua com as mesmas 9 rotas administrativas', () => {

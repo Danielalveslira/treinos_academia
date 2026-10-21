@@ -1,7 +1,7 @@
 {
   "redirects": [
-    { "source": "/:page(como-funciona|funcionalidades|guia-registro-treino|para-empresas|vitrine).html", "destination": "/:page", "statusCode": 301 },
-    { "source": "/:page(como-funciona|funcionalidades|guia-registro-treino|para-empresas|vitrine)/", "destination": "/:page", "statusCode": 301 },
+    { "source": "/:page(como-funciona|funcionalidades|guia-registro-treino|para-empresas|vitrine|profissionais).html", "destination": "/:page", "statusCode": 301 },
+    { "source": "/:page(como-funciona|funcionalidades|guia-registro-treino|para-empresas|vitrine|profissionais)/", "destination": "/:page", "statusCode": 301 },
     {
       "source": "/:path((?!assets/|icons/|_vercel/|.*\\.[\\w]+$).*)",
       "has": [{ "type": "host", "value": "treinosacademia-ten.vercel.app" }],
@@ -15,14 +15,15 @@
     { "source": "/guia-registro-treino", "destination": "/guia-registro-treino.html" },
     { "source": "/para-empresas", "destination": "/para-empresas.html" },
     { "source": "/vitrine", "destination": "/vitrine.html" },
+    { "source": "/profissionais", "destination": "/profissionais.html" },
     {
-      "source": "/:path((?:app|login|cadastro|esqueci-senha|confirmar-email|redefinir-senha|regras-da-comunidade|termos-de-uso|politica-de-privacidade|termos-publicacao-vitrine|atendimento|profissionais(?:/[^/]+)?|exercicios(?:/[^/]+)?|novo-treino|historico|progresso|perfil|evocash|entenda-suas-moedas|minhas-promocoes|minha-vitrine|comunidades(?:/.*)?|admin/(?:compras-evocash|moderacao|contas|vitrines|exclusao-contas|comunidades|parcerias|promocoes|exercicios-imagens)))",
+      "source": "/:path((?:app|login|cadastro|esqueci-senha|confirmar-email|redefinir-senha|regras-da-comunidade|termos-de-uso|politica-de-privacidade|termos-publicacao-vitrine|atendimento|profissionais/[^/]+|exercicios(?:/[^/]+)?|novo-treino|historico|progresso|perfil|evocash|entenda-suas-moedas|minhas-promocoes|minha-vitrine|comunidades(?:/.*)?|admin/(?:compras-evocash|moderacao|contas|vitrines|exclusao-contas|comunidades|parcerias|promocoes|exercicios-imagens)))",
       "destination": "/app-shell.html"
     }
   ],
   "headers": [
     {
-      "source": "/(index|app-shell|como-funciona|funcionalidades|guia-registro-treino|para-empresas|vitrine).html",
+      "source": "/(index|app-shell|como-funciona|funcionalidades|guia-registro-treino|para-empresas|vitrine|profissionais).html",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
     {

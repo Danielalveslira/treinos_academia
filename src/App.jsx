@@ -39,7 +39,6 @@ const AdminCashPurchases = lazy(() => import('./pages/AdminCashPurchases'))
 const AdminPromotions = lazy(() => import('./pages/AdminPromotions'))
 const AdminExerciseVisuals = lazy(() => import('./pages/AdminExerciseVisuals'))
 const MyPromotions = lazy(() => import('./pages/MyPromotions'))
-const Professionals = lazy(() => import('./pages/Professionals'))
 const ProfessionalListing = lazy(() => import('./pages/ProfessionalListing'))
 const MyProfessionalListing = lazy(() => import('./pages/MyProfessionalListing'))
 const CreateCommunity = lazy(() => import('./pages/CreateCommunity'))
@@ -71,7 +70,6 @@ export function AppRoutes() {
           element={<LegalDocument documentId="showcase-publication-terms" />}
         />
         <Route path="/atendimento" element={<Support />} />
-        <Route path="/profissionais" element={<Professionals />} />
         <Route path="/profissionais/:listingId" element={<ProfessionalListing />} />
         <Route path="*" element={<NotFound />} />
       </Route>

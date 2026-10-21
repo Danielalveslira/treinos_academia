@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react(), pwaPlugin(), publicPreviewPlugin()],
   build: {
     rollupOptions: {
-      input: { main: 'index.html', publicHomeRedirect: 'src/publicHomeRedirect.js' },
+      input: { main: 'index.html', publicHomeRedirect: 'src/publicHomeRedirect.js', publicTurbo: 'src/publicTurbo.js' },
       output: {
         entryFileNames: (chunk) =>
           chunk.name === 'publicHomeRedirect' ? 'assets/public-home-redirect.js' : 'assets/[name]-[hash].js',
