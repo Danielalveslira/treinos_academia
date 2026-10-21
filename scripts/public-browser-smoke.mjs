@@ -13,6 +13,13 @@ try {
     await page.route('**/rest/v1/partner_products?**', (route) =>
       route.fulfill({ contentType: 'application/json', body: '[]' })
     )
+    await page.route('**/rest/v1/rpc/public_product_catalog', (route) => {
+      if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204,
+        headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' } })
+      return route.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+        body: route.request().postDataJSON()?.p_mode === 'categories'
+          ? '[]' : '{"totalProducts":0,"totalBrands":0,"groups":[],"items":[]}' })
+    })
     await page.route('**/rest/v1/rpc/public_list_professionals', (route) =>
       route.fulfill({ contentType: 'application/json', body: '{"items":[],"nextOffset":null}' })
     )
@@ -68,10 +75,13 @@ try {
         .locator(`${width <= 1100 ? '#public-menu-panel' : '.desktop-nav'} a[href="${href}"]`)
         .click()
       await page.waitForURL(`${base}${href}`)
+      await page.waitForFunction((expected) =>
+        document.querySelector('h1')?.textContent?.replace(/\s+/g, ' ').trim() === expected, heading)
       assert.equal(new URL(page.url()).pathname, href)
       assert.equal((await page.locator('h1').textContent()).replace(/\s+/g, ' ').trim(), heading)
       await page.locator('.site-header .brand').click()
       await page.waitForURL(base + '/')
+      await page.waitForFunction(() => document.querySelector('h1')?.textContent?.includes('Seu treino, registrado com clareza.'))
       assert.equal(new URL(page.url()).pathname, '/')
     }
     assert.deepEqual(errors, [], `erros no console das páginas públicas em ${width}px`)
@@ -123,22 +133,18 @@ try {
       body: 'window.EVOLUTUS_PUBLIC_CONFIG={url:"https://ywrjojrjgozdfpddkkuy.supabase.co",key:"test-anon-key"}',
     })
   )
-  await page.route('**/rest/v1/partner_products?**', (route) =>
-    route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify([
-        {
-          name: 'Produto de teste',
-          brand: 'Marca de teste',
-          description: 'Descrição do teste de interface',
-          category: 'Acessórios',
-          image_url: null,
-          store_url: 'https://example.com/produto',
-          sponsored: true,
-        },
-      ]),
-    })
-  )
+  const catalogRow = (name, sponsored) => ({
+    id: '00000000-0000-0000-0000-000000000001', name, brand: 'Marca de teste',
+    description: 'Descrição do teste de interface', category: 'Acessórios', image_url: null,
+    store_url: `https://example.com/${name === 'Produto de teste' ? 'produto' : 'recuperado'}`, sponsored,
+  })
+  const catalogReply = (row) => ({ totalProducts: 1, totalBrands: 1,
+    groups: [{ key: 'marca de teste', brand: 'Marca de teste', count: 1, items: [row] }] })
+  await page.route('**/rest/v1/rpc/public_product_catalog', (route) => route.fulfill({
+    contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+    body: JSON.stringify(route.request().postDataJSON()?.p_mode === 'categories'
+      ? ['Acessórios'] : catalogReply(catalogRow('Produto de teste', true))),
+  }))
   await page.goto(`${base}/vitrine`)
   await page.getByText('Produto de teste').waitFor()
   const storeLink = page.getByRole('link', { name: 'Ver na loja ↗' })
@@ -147,14 +153,15 @@ try {
   assert.match(await page.locator('#products').textContent(), /Patrocinado/)
   assert.deepEqual(catalogErrors, [], 'erros no console da vitrine')
   let catalogAttempts = 0
-  await page.route('**/rest/v1/partner_products?**', (route) => {
+  await page.route('**/rest/v1/rpc/public_product_catalog', (route) => {
+    if (route.request().postDataJSON()?.p_mode === 'categories') return route.fulfill({
+      contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '["Acessórios"]',
+    })
     catalogAttempts += 1
     return route.fulfill(catalogAttempts === 1
-      ? { status: 503, contentType: 'application/json', body: '{}' }
-      : { contentType: 'application/json', body: JSON.stringify([{
-        name: 'Produto recuperado', brand: 'Marca de teste', description: 'Disponível após nova consulta',
-        category: 'Acessórios', image_url: null, store_url: 'https://example.com/recuperado', sponsored: false,
-      }]) })
+      ? { status: 503, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{}' }
+      : { contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify(catalogReply(catalogRow('Produto recuperado', false))) })
   })
   await page.reload()
   await page.getByRole('button', { name: 'Tentar novamente' }).click()

@@ -119,142 +119,17 @@ if (form) {
 }
 }
 
-function initProducts(signal) {
-const products = document.getElementById('products')
-if (products) {
-  const productTemplate = document.getElementById('product-card-template')
-  const status = document.getElementById('catalog-status')
-  const category = document.getElementById('category')
-  const retry = document.querySelector('.catalog-retry')
-  let loadedRows = []
-  const showEmpty = (title, message) => {
-    products.replaceChildren()
-    products.setAttribute('aria-busy', 'false')
-    const empty = document.createElement('div')
-    empty.className = 'catalog-empty'
-    const symbol = document.createElement('span')
-    symbol.className = 'catalog-empty-symbol'
-    symbol.textContent = '◇'
-    symbol.setAttribute('aria-hidden', 'true')
-    const heading = document.createElement('h3')
-    heading.textContent = title
-    const body = document.createElement('p')
-    body.textContent = message
-    empty.append(symbol, heading, body)
-    products.append(empty)
-  }
-  const safeHttps = (raw) => {
-    try {
-      const u = new URL(raw)
-      return u.protocol === 'https:' &&
-        !u.username &&
-        !u.password &&
-        /\.[a-z]{2,}$/i.test(u.hostname) &&
-        !/^[\d.]+$/.test(u.hostname)
-        ? u.href
-        : null
-    } catch {
-      return null
-    }
-  }
-  const render = (rows) => {
-    products.replaceChildren()
-    products.setAttribute('aria-busy', 'false')
-    const visible = rows.filter((row) => (!category.value || row.category === category.value) && safeHttps(row.store_url))
-    status.textContent = visible.length
-      ? `${visible.length} produto${visible.length === 1 ? '' : 's'} disponível${visible.length === 1 ? '' : 's'}.`
-      : category.value ? 'Ainda não há produtos nesta categoria.' : 'Ainda não há produtos disponíveis.'
-    if (!visible.length)
-      showEmpty(
-        category.value ? 'Nenhum produto nesta categoria.' : 'A vitrine está em preparação.',
-        category.value ? 'Escolha outra categoria para continuar.' : 'Produtos aprovados aparecerão aqui.'
-      )
-    for (const row of visible) {
-      const href = safeHttps(row.store_url)
-      const card = productTemplate.content.firstElementChild.cloneNode(true)
-      const imageSlot = card.querySelector('.product-image')
-      if (row.image_url && safeHttps(row.image_url)) {
-        const img = document.createElement('img')
-        img.src = row.image_url
-        img.alt = row.name
-        img.width = 480
-        img.height = 360
-        img.loading = 'lazy'
-        img.className = 'product-image'
-        img.addEventListener('error', () => {
-          img.replaceWith(
-            Object.assign(document.createElement('div'), {
-              className: 'product-image product-placeholder',
-              textContent: 'Imagem indisponível',
-            })
-          )
-        })
-        imageSlot.replaceWith(img)
-      }
-      card.querySelector('.product-brand').textContent = row.brand
-      card.querySelector('.product-name').textContent = row.name
-      card.querySelector('.product-description').textContent = row.description
-      card.querySelector('.product-tag').textContent = row.sponsored ? 'Patrocinado · ' + row.category : row.category
-      const link = card.querySelector('.product-link')
-      link.href = href
-      link.target = '_blank'
-      link.rel = row.sponsored ? 'noopener noreferrer sponsored' : 'noopener noreferrer'
-      products.append(card)
-    }
-  }
-  const loadProducts = async () => {
-    retry.hidden = true
-    status.textContent = 'Carregando produtos…'
-    products.setAttribute('aria-busy', 'true')
-    products.replaceChildren(...Array.from({ length: 3 }, () => {
-      const skeleton = document.createElement('div')
-      skeleton.className = 'catalog-skeleton'
-      skeleton.setAttribute('aria-hidden', 'true')
-      return skeleton
-    }))
-    if (!endpoint || !config.key) {
-      status.textContent = 'A vitrine está indisponível no momento.'
-      showEmpty('Voltamos em breve.', 'Não foi possível consultar os produtos agora. Tente novamente mais tarde.')
-      return
-    }
-    try {
-      const response = await fetch(
-        `${endpoint}/rest/v1/partner_products?select=name,brand,description,category,image_url,store_url,sponsored&order=created_at.desc&limit=100`,
-        { headers: { apikey: config.key }, signal }
-      )
-      if (!response.ok) throw new Error('catalog_failed')
-      loadedRows = await response.json()
-      category.replaceChildren(category.options[0])
-      const categories = [...new Set(loadedRows.map((row) => row.category))].sort()
-      for (const name of categories) {
-        const option = document.createElement('option')
-        option.value = name
-        option.textContent = name
-        category.append(option)
-      }
-      render(loadedRows)
-    } catch {
-      if (signal.aborted) return
-      status.textContent = 'Não foi possível carregar os produtos.'
-      showEmpty('Não conseguimos carregar a seleção.', 'Tente novamente para consultar os produtos.')
-      retry.hidden = false
-    }
-  }
-  category.addEventListener('change', () => render(loadedRows), { signal })
-  retry.querySelector('button').addEventListener('click', loadProducts, { signal })
-  loadProducts()
-}
-
-}
-
 let currentBody = null
 let pageController = null
 let directoryCleanup = null
+let productCleanup = null
 function teardownPage() {
   pageController?.abort()
   directoryCleanup?.()
+  productCleanup?.()
   pageController = null
   directoryCleanup = null
+  productCleanup = null
   currentBody = null
   const trigger = document.getElementById('public-menu-trigger')
   const panel = document.getElementById('public-menu-panel')
@@ -278,7 +153,14 @@ function initPage() {
   const signal = pageController.signal
   updateHeader()
   initCommercialForm(signal)
-  initProducts(signal)
+  if (document.getElementById('catalog-filters')) {
+    import('/public-products.js').then(({ initProducts }) => {
+      if (!signal.aborted) productCleanup = initProducts(signal)
+    }).catch(() => {
+      const status = document.getElementById('catalog-status')
+      if (!signal.aborted && status) status.textContent = 'Não foi possível abrir a vitrine. Atualize a página e tente novamente.'
+    })
+  }
   if (document.getElementById('professional-filters')) {
     import('/public-professionals.js').then(({ initProfessionalDirectory }) => {
       if (!signal.aborted) directoryCleanup = initProfessionalDirectory(signal)

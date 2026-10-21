@@ -54,10 +54,25 @@ insert into public.partner_products
 values
   ('Produto aprovado', 'Marca A', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/a', true, now() - interval '1 day', now() + interval '1 day'),
   ('Produto rascunho', 'Marca B', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/b', false, null, null),
-  ('Produto vencido', 'Marca C', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/c', true, now() - interval '2 days', now() - interval '1 day');
+  ('Produto vencido', 'Marca C', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/c', true, now() - interval '2 days', now() - interval '1 day'),
+  ('Produto futuro', 'Marca D', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/d', true, now() + interval '1 day', now() + interval '2 days');
 set local role anon;
 select is((select count(*)::int from public.partner_products where name like 'Produto %'), 1,
   'anonymous visitors see only approved and current products');
+select is((public.public_product_catalog('groups')->>'totalProducts')::int, 1,
+  'group count excludes draft and expired products');
+select is((public.public_product_catalog('groups')->>'totalBrands')::int, 1,
+  'group count includes only a published brand');
+select is((public.public_product_catalog('items', 'rascunho')->>'totalProducts')::int, 0,
+  'search cannot reveal a draft');
+select is((public.public_product_catalog('items', 'vencido')->>'totalProducts')::int, 0,
+  'search cannot reveal an expired product');
+select is((public.public_product_catalog('items', 'futuro')->>'totalProducts')::int, 0,
+  'search cannot reveal a product before its start date');
+select is((public.public_product_catalog('items', '', 'Acessórios', 'marca a')->>'totalProducts')::int, 1,
+  'brand and category filters combine under anon');
+select is(jsonb_array_length(public.public_product_catalog('categories')), 1,
+  'category facets use only published products');
 select throws_ok($$ insert into public.partner_products
   (name, brand, description, category, store_url, approved)
   values ('Produto externo', 'Marca D', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/d', true) $$,
