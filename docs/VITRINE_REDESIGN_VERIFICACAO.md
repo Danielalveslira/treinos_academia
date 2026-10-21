@@ -1,6 +1,6 @@
-# Vitrine: implementação e verificação local
+# Vitrine: implementação e verificação
 
-Data: 2026-10-21. Todas as alterações ficaram locais; a migração não foi aplicada ao Supabase remoto.
+Data: 2026-10-21. Publicado em produção no commit `5bfbb05d373a0de90d7de0aea0a1e4ff71c6d833` após a migração do banco.
 
 ## Dados e ordenação
 
@@ -8,7 +8,7 @@ Data: 2026-10-21. Todas as alterações ficaram locais; a migração não foi ap
 - Sem filtros: marcas em ordem alfabética pela chave normalizada; até cinco produtos por marca em ordem `created_at DESC, id DESC`; cinco marcas por página. `Ver todos` abre o filtro daquela marca.
 - Com busca, categoria ou marca: até 20 produtos por página, na mesma ordem de produtos. Busca cobre nome, marca e categoria. Contagens e categorias vêm apenas de itens publicados.
 - A função `public_product_catalog` é `SECURITY INVOKER`, respeita RLS e repete as condições de aprovação/vigência. O frontend usa somente a chave pública e recusa destinos que não sejam HTTPS. Não há cache de resposta ou snapshot Turbo para a Vitrine; a janela de publicação é reavaliada em cada consulta.
-- A migração local `20261108000002_public_product_catalog.sql` precisa ser aplicada antes de publicar o frontend. Sem ela, a página mostra erro e permite tentar novamente.
+- A migração `20261108000002_public_product_catalog.sql` foi aplicada antes do frontend e consta no journal remoto do projeto `ywrjojrjgozdfpddkkuy`.
 
 ## Verificações
 
@@ -21,8 +21,10 @@ Data: 2026-10-21. Todas as alterações ficaram locais; a migração não foi ap
 | `node scripts/public-browser-smoke.mjs` | Passou; mock atualizado para a nova RPC |
 | `node scripts/public-products-smoke.mjs` | Passou com 0, 1, 6, 36 e 205 produtos simulados; filtros, paginação, URL, modal, Turbo e larguras 320, 375, 390, 768, 1024 e 1440 px |
 | `supabase/tests/public_commercial_test.sql` em PostgreSQL local limpo | 20 verificações passaram, incluindo leitura `anon` para rascunhos, itens futuros e vencidos, contagens, categorias e filtros combinados |
+| Produção `https://www.evolutus.com.br/vitrine` | Deployment `dpl_6avF5rWKNbCx31L9pg1i5pW4Wqae` Ready; RPC `categories` e `groups` HTTP 200; um produto publicado, sem erros no console |
+| Navegador em produção | 320, 375, 390, 768, 1024 e 1440 px: dropdown, categoria + busca, URL, resultado vazio e ausência de overflow aprovados; quatro respostas RPC 200 por largura |
 
-As capturas do teste de navegador estão em `/tmp/vitrine-redesign-{320,375,390,768,1024,1440}.png`. Os produtos das capturas são simulados apenas pela interceptação de rede no navegador.
+As capturas de antes/depois estão em `docs/vitrine-filters/`. Os produtos das capturas locais são simulados apenas pela interceptação de rede no navegador.
 
 ## Medidas locais
 
