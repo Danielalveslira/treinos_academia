@@ -3,7 +3,7 @@ import { session } from '@hotwired/turbo'
 // These pages are HTML documents. Drive only handles links explicitly marked by
 // the static page generator; React, account, checkout and profile routes stay native.
 session.drive = false
-const paths = new Set(['/', '/como-funciona', '/funcionalidades', '/guia-registro-treino', '/para-empresas', '/vitrine', '/profissionais'])
+const paths = new Set(['/', '/como-funciona', '/para-empresas', '/vitrine', '/profissionais'])
 let visitAction = null
 
 const eligible = (raw) => {

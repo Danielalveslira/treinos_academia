@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadEnv } from 'vite'
-import { publicPages, renderPublicConfig, renderPublicPage } from './public-pages-template.mjs'
+import { publicPages, renderPublicPage } from './public-pages-template.mjs'
 
 const routes = new Map(publicPages.map(({ path, file }) => [path, file]))
 const variant = (path) => {
@@ -27,15 +27,22 @@ export function publicPreviewPlugin() {
     name: 'evolutus-public-preview',
     configureServer(server) {
       const env = loadEnv(server.config.mode, server.config.root, 'VITE_')
-      server.middlewares.use((request, response, next) => {
+      server.middlewares.use(async (request, response, next) => {
         if (request.method !== 'GET' && request.method !== 'HEAD') return next()
         const path = new URL(request.url, 'http://localhost').pathname
         const canonical = variant(path)
         if (canonical) return redirect(response, request, canonical)
-        if (path === '/public-config.js') {
-          send(response, request, renderPublicConfig(env), 'application/javascript; charset=utf-8')
-        } else if (routes.has(path)) {
-          send(response, request, renderPublicPage(path, env, { dev: true }), 'text/html; charset=utf-8')
+        if (routes.has(path)) {
+          try {
+            const html = renderPublicPage(path, env, { dev: true })
+            // Generated HTML bypasses Vite's normal index.html middleware. Apply its
+            // transforms so @vitejs/plugin-react installs the refresh preamble before
+            // the public menu island is imported.
+            const transformed = await server.transformIndexHtml(path, html, request.originalUrl)
+            send(response, request, transformed, 'text/html; charset=utf-8')
+          } catch (error) {
+            next(error)
+          }
         } else next()
       })
     },

@@ -464,6 +464,7 @@ test('collectBootAssets inclui entry + imports estáticos + CSS, e exclui chunks
       type: 'chunk',
       fileName: 'assets/index.js',
       isEntry: true,
+      name: 'main',
       imports: ['assets/primer.js'],
       dynamicImports: ['assets/Admin.js'],
       viteMetadata: { importedCss: new Set(['assets/index.css']) },
@@ -482,6 +483,14 @@ test('collectBootAssets inclui entry + imports estáticos + CSS, e exclui chunks
       imports: ['assets/primer.js'],
       viteMetadata: { importedCss: new Set() },
     },
+    'assets/publicTurbo.js': {
+      type: 'chunk',
+      fileName: 'assets/publicTurbo.js',
+      isEntry: true,
+      name: 'publicTurbo',
+      imports: [],
+      viteMetadata: { importedCss: new Set() },
+    },
     'index.html': { type: 'asset', fileName: 'index.html' },
   }
   assert.deepEqual(collectBootAssets(bundle), [
@@ -489,6 +498,7 @@ test('collectBootAssets inclui entry + imports estáticos + CSS, e exclui chunks
     '/assets/index.js',
     '/assets/primer.css',
     '/assets/primer.js',
+    '/assets/publicTurbo.js',
   ])
 })
 

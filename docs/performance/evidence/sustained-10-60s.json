@@ -1,0 +1,265 @@
+{
+    "metrics": {
+        "iterations": {
+            "count": 200,
+            "rate": 3.15539925162863
+        },
+        "http_req_duration": {
+            "avg": 11.008945725274724,
+            "med": 3.828091,
+            "p(90)": 30.379814400000004,
+            "p(95)": 49.74362239999987,
+            "p(99)": 97.34072515999996,
+            "max": 101.6469,
+            "thresholds": {
+                "p(95)<5000": false
+            }
+        },
+        "http_req_receiving": {
+            "p(95)": 0.2678005999999999,
+            "p(99)": 0.5435806399999944,
+            "max": 1.975145,
+            "avg": 0.09378039194139194,
+            "med": 0.060503,
+            "p(90)": 0.14601280000000008
+        },
+        "checks": {
+            "fails": 0,
+            "passes": 273,
+            "value": 1
+        },
+        "functional_failures": {
+            "passes": 0,
+            "fails": 273,
+            "thresholds": {
+                "rate<0.05": false
+            },
+            "value": 0
+        },
+        "http_req_duration{scenario:public}": {
+            "med": 0.8413155,
+            "p(90)": 5.0856835999999985,
+            "p(95)": 6.447226,
+            "p(99)": 16.579866819999985,
+            "max": 17.822819,
+            "avg": 1.9335409152542373,
+            "thresholds": {
+                "p(95)<500": false
+            }
+        },
+        "http_req_blocked": {
+            "avg": 0.05190958974358973,
+            "med": 0.005701,
+            "p(90)": 0.023766200000000053,
+            "p(95)": 0.241284,
+            "p(99)": 1.3100685999999986,
+            "max": 1.395926
+        },
+        "http_req_duration{scenario:write}": {
+            "avg": 12.155933824999998,
+            "med": 6.1389775,
+            "p(90)": 22.662526200000002,
+            "p(95)": 36.50069024999992,
+            "p(99)": 84.04068829999999,
+            "max": 96.932423,
+            "thresholds": {
+                "p(95)<1000": false
+            }
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 273,
+            "thresholds": {
+                "rate<0.05": false
+            },
+            "value": 0
+        },
+        "http_req_connecting": {
+            "p(95)": 0.16200399999999926,
+            "p(99)": 1.2412203199999978,
+            "max": 1.366121,
+            "avg": 0.04072063736263736,
+            "med": 0,
+            "p(90)": 0
+        },
+        "http_req_tls_handshaking": {
+            "p(95)": 0,
+            "p(99)": 0,
+            "max": 0,
+            "avg": 0,
+            "med": 0,
+            "p(90)": 0
+        },
+        "iteration_duration": {
+            "avg": 3111.912354034999,
+            "med": 3136.884639,
+            "p(90)": 3839.2613941,
+            "p(95)": 3960.0159633499998,
+            "p(99)": 4001.1732839300003,
+            "max": 4034.642697
+        },
+        "http_req_duration{scenario:read}": {
+            "med": 10.315696,
+            "p(90)": 50.86960160000005,
+            "p(95)": 77.37337629999999,
+            "p(99)": 99.71673404,
+            "max": 101.6469,
+            "avg": 19.922147843478257,
+            "thresholds": {
+                "p(95)<1000": false
+            }
+        },
+        "http_req_waiting": {
+            "max": 101.432449,
+            "avg": 10.877360820512825,
+            "med": 3.740248,
+            "p(90)": 30.307344800000003,
+            "p(95)": 49.44536359999988,
+            "p(99)": 97.21033751999997
+        },
+        "http_req_duration{expected_response:true}": {
+            "p(90)": 30.379814400000004,
+            "p(95)": 49.74362239999987,
+            "p(99)": 97.34072515999996,
+            "max": 101.6469,
+            "avg": 11.008945725274724,
+            "med": 3.828091
+        },
+        "vus_max": {
+            "value": 10,
+            "min": 10,
+            "max": 10
+        },
+        "vus": {
+            "value": 2,
+            "min": 2,
+            "max": 10
+        },
+        "data_received": {
+            "count": 1993298,
+            "rate": 31448.255087364225
+        },
+        "http_reqs": {
+            "count": 273,
+            "rate": 4.30711997847308
+        },
+        "http_req_sending": {
+            "p(99)": 0.22534671999999775,
+            "max": 2.208971,
+            "avg": 0.03780451282051283,
+            "med": 0.02132,
+            "p(90)": 0.038485600000000016,
+            "p(95)": 0.05735479999999967
+        },
+        "data_sent": {
+            "count": 200461,
+            "rate": 3162.672446903634
+        }
+    },
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "public / funcional": {
+                    "name": "public / funcional",
+                    "path": "::public / funcional",
+                    "id": "72261aeffdbab561e0796d4ae2e5cdc9",
+                    "passes": 20,
+                    "fails": 0
+                },
+                "workout write funcional": {
+                    "fails": 0,
+                    "name": "workout write funcional",
+                    "path": "::workout write funcional",
+                    "id": "82273e90b5cec310355000d1a16267f9",
+                    "passes": 32
+                },
+                "dashboard 0 funcional": {
+                    "name": "dashboard 0 funcional",
+                    "path": "::dashboard 0 funcional",
+                    "id": "180d60afe75f48208a7654cd1cfc6acc",
+                    "passes": 18,
+                    "fails": 0
+                },
+                "dashboard 1 funcional": {
+                    "name": "dashboard 1 funcional",
+                    "path": "::dashboard 1 funcional",
+                    "id": "f02420d2ec42fff3e6f5b7215388cefe",
+                    "passes": 18,
+                    "fails": 0
+                },
+                "public /funcionalidades funcional": {
+                    "name": "public /funcionalidades funcional",
+                    "path": "::public /funcionalidades funcional",
+                    "id": "6a3e695cc1da1088ab7fe788f1cfff49",
+                    "passes": 20,
+                    "fails": 0
+                },
+                "train selection funcional": {
+                    "id": "aea43c3c6b905514100cd7c02314c08a",
+                    "passes": 16,
+                    "fails": 0,
+                    "name": "train selection funcional",
+                    "path": "::train selection funcional"
+                },
+                "public /vitrine funcional": {
+                    "name": "public /vitrine funcional",
+                    "path": "::public /vitrine funcional",
+                    "id": "b0a2f58962d11b1079c2601950bc94d9",
+                    "passes": 20,
+                    "fails": 0
+                },
+                "directory funcional": {
+                    "path": "::directory funcional",
+                    "id": "e1c22ecdd5219de61ee63758a636db16",
+                    "passes": 39,
+                    "fails": 0,
+                    "name": "directory funcional"
+                },
+                "progress funcional": {
+                    "fails": 0,
+                    "name": "progress funcional",
+                    "path": "::progress funcional",
+                    "id": "f853aa4e03650cfe4f4a6da18397480b",
+                    "passes": 16
+                },
+                "public /profissionais funcional": {
+                    "path": "::public /profissionais funcional",
+                    "id": "b9fb9bf6eeee5f49da14f82ea50059e3",
+                    "passes": 19,
+                    "fails": 0,
+                    "name": "public /profissionais funcional"
+                },
+                "community 0 funcional": {
+                    "fails": 0,
+                    "name": "community 0 funcional",
+                    "path": "::community 0 funcional",
+                    "id": "a044cf760326a29fda951e0fb870d501",
+                    "passes": 16
+                },
+                "community 1 funcional": {
+                    "name": "community 1 funcional",
+                    "path": "::community 1 funcional",
+                    "id": "a410d1fd4babe275f74bc001ee37dfb3",
+                    "passes": 16,
+                    "fails": 0
+                },
+                "auth user funcional": {
+                    "passes": 15,
+                    "fails": 0,
+                    "name": "auth user funcional",
+                    "path": "::auth user funcional",
+                    "id": "d60f8c08a81c907fa7d1441a57cc6464"
+                },
+                "community write funcional": {
+                    "name": "community write funcional",
+                    "path": "::community write funcional",
+                    "id": "3057d03a631940134157714d2cc3f7bf",
+                    "passes": 8,
+                    "fails": 0
+                }
+            }
+    }
+}

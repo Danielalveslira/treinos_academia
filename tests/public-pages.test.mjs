@@ -1,14 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const origin = 'https://www.evolutus.com.br'
 const routes = [
   ['/', 'index.html', true],
   ['/como-funciona', 'como-funciona.html', true],
-  ['/funcionalidades', 'funcionalidades.html', true],
   ['/para-empresas', 'para-empresas.html', true],
-  ['/guia-registro-treino', 'guia-registro-treino.html', true],
   ['/vitrine', 'vitrine.html', false],
   ['/profissionais', 'profissionais.html', false],
 ]
@@ -18,7 +16,7 @@ test('build entrega HTML específico e completo antes de JavaScript', () => {
   for (const [path, file, indexable] of routes) {
     const html = readFileSync(`dist/${file}`, 'utf8')
     assert.match(html, /<html lang="pt-BR">/)
-    assert.match(html, /<h1>[\s\S]+?<\/h1>/)
+    assert.match(html, /<h1[^>]*>[\s\S]+?<\/h1>/)
     assert.match(html, /<meta name="description" content="[^"]+">/)
     assert.match(html, /<meta property="og:title" content="[^"]+">/)
     assert.match(
@@ -57,18 +55,19 @@ test('sitemap só inclui páginas indexáveis e o shell do app declara noindex',
 
 test('homepage mantém conteúdo indexável e encaminha apenas a rota raiz', () => {
   const html = readFileSync('dist/index.html', 'utf8')
-  for (const label of ['Seu treino, registrado com clareza.', 'Mais de 800 exercícios', 'séries', 'histórico'])
+  for (const label of ['Planeje, registre e acompanhe seus treinos.', 'Crie sua conta', 'séries', 'histórico'])
     assert.ok(html.includes(label), label)
+  assert.equal((html.match(/<h1\b/g) || []).length, 1)
+  assert.equal((html.match(/<picture\b/g) || []).length, 1)
+  assert.match(html, /href="\/public-home\.css"/)
   assert.match(html, /assets\/public-home-redirect\.js/)
   assert.match(html, /public-home-boot\.js/)
   assert.doesNotMatch(html, /<script>try/)
-  assert.match(html, /<main id="content" tabindex="-1">[\s\S]*<h1>/)
+  assert.match(html, /<main id="content" tabindex="-1">[\s\S]*<h1[^>]*>/)
   assert.doesNotMatch(html, /propaganda invasiva/)
   for (const file of [
     'como-funciona.html',
-    'funcionalidades.html',
     'para-empresas.html',
-    'guia-registro-treino.html',
     'vitrine.html',
     'profissionais.html',
   ])
@@ -82,6 +81,42 @@ test('marca pública usa Evolutus no header e rodapé sem alterar o domínio can
     assert.equal((html.match(/<span>Evolutus<\/span>/g) || []).length, 2)
     assert.doesNotMatch(html, /Evolutus\.com|brand-dot/)
     assert.match(html, /https:\/\/www\.evolutus\.com\.br/)
+  }
+})
+
+test('footer público compacto usa Primer e links existentes', () => {
+  for (const [, file] of routes) {
+    const html = readFileSync(`dist/${file}`, 'utf8')
+    const footer = html.match(/<footer[^>]*class="[^"]*site-footer[^"]*"[^>]*>[\s\S]*?<\/footer>/)?.[0]
+    assert.ok(footer, file)
+    assert.match(footer, /Box-sc-/)
+    assert.match(footer, /aria-label="Links do rodapé"/)
+    assert.match(footer, /class="footer-link prc-Link-/)
+    for (const path of ['/como-funciona', '/para-empresas', '/atendimento', '/termos-de-uso', '/politica-de-privacidade'])
+      assert.ok(footer.includes(`href="${path}"`), `${file}: ${path}`)
+    assert.doesNotMatch(footer, /\/funcionalidades|\/guia-registro-treino/)
+  }
+})
+
+test('header público concentra ações e menu em componentes Primer', () => {
+  for (const [, file] of routes) {
+    const html = readFileSync(`dist/${file}`, 'utf8')
+    assert.match(html, /<header id="public-header" data-turbo-permanent>/)
+    assert.match(html, /class="brand-mark-arrow"/)
+    assert.match(html, /class="brand-mark-letter"/)
+    assert.match(html, /assets\/publicHeaderMenu-[\w-]+\.js/)
+    assert.match(html, /assets\/publicHeaderMenu-[\w-]+\.css/)
+    assert.match(html, /assets\/dark-[\w-]+\.css/)
+    assert.doesNotMatch(html, /class="public-header-nav"/)
+    assert.match(html, /id="public-theme-root" class="public-theme-root"><button data-component="IconButton"[^>]*aria-label="Alternar tema"/)
+    assert.match(html, /class="[^"]*public-header-signup[^"]*"[^>]*data-variant="primary"/)
+    assert.match(html, /id="public-header-menu-root" class="public-header-menu-root"><button data-component="IconButton"[^>]*aria-label="Menu de navegação"/)
+    assert.equal((html.match(/id="public-theme-root"/g) || []).length, 1)
+    assert.equal((html.match(/id="public-header-menu-root"/g) || []).length, 1)
+    assert.doesNotMatch(html, /public-header-fallback|<summary/)
+    for (const href of ['/', '/login', '/cadastro'])
+      assert.match(html, new RegExp(`href="${href}"`))
+    assert.doesNotMatch(html, /public-menu-trigger|public-menu-panel|\/funcionalidades|\/guia-registro-treino/)
   }
 })
 
@@ -114,41 +149,37 @@ test('rotas internas fazem fallback ao shell, URLs públicas desconhecidas não'
   assert.ok(!regex.test('vitrine/produto-removido'))
 })
 
-test('variantes públicas redirecionam para URL limpa e o guia entra no sitemap', () => {
+test('variantes públicas redirecionam para URL limpa e como-funciona entra no sitemap', () => {
   const config = JSON.parse(readFileSync('vercel.json', 'utf8'))
   const redirectSources = config.redirects.map(({ source }) => source)
   assert.ok(redirectSources.some((source) => source.endsWith('.html')))
   assert.ok(redirectSources.some((source) => source.endsWith('/')))
-  assert.ok(config.rewrites.some((route) => route.source === '/guia-registro-treino'))
-  const html = readFileSync('dist/guia-registro-treino.html', 'utf8')
-  assert.match(html, /<h1>Como registrar séries, repetições e cargas<\/h1>/)
-  assert.match(html, /<source[^>]+sizes="\(max-width: 760px\) 100vw, \(max-width: 1240px\) 94vw, 1184px"/)
-  assert.match(readFileSync('dist/sitemap.xml', 'utf8'), /<loc>https:\/\/www\.evolutus\.com\.br\/guia-registro-treino<\/loc>/)
+  assert.ok(config.rewrites.some((route) => route.source === '/como-funciona'))
+  const html = readFileSync('dist/como-funciona.html', 'utf8')
+  assert.match(html, /<h1[^>]*>Como funciona<\/h1>/)
+  assert.match(readFileSync('dist/sitemap.xml', 'utf8'), /<loc>https:\/\/www\.evolutus\.com\.br\/como-funciona<\/loc>/)
 })
 
-test('banners oficiais substituem os mockups e carregam por prioridade', () => {
+test('home usa uma imagem oficial otimizada', () => {
   const expected = [
-    ['index.html', ['quadro-geral', 'exercicio']],
-    ['como-funciona.html', ['exercicio', 'progresso']],
-    ['funcionalidades.html', ['progresso', 'comunidade']],
-    ['guia-registro-treino.html', ['exercicio']],
+    ['index.html', ['quadro-geral']],
   ]
   for (const [file, banners] of expected) {
     const html = readFileSync(`dist/${file}`, 'utf8')
     assert.doesNotMatch(html, /product-preview|features-hero-art|feature-orbit/)
     assert.doesNotMatch(html, /capa_principal/)
-    const images = [...html.matchAll(/<img[^>]+src="\/img\/banners\/([\w-]+)-1774\.webp"[^>]*>/g)]
+    const images = [...html.matchAll(/<img[^>]+src="\/img\/banners\/([\w-]+)-960\.webp"[^>]*>/g)]
     assert.deepEqual(images.map((match) => match[1]), banners)
     assert.equal((html.match(/fetchpriority="high"/g) || []).length, 1)
-    assert.equal((html.match(/loading="lazy"/g) || []).length, banners.length - 1)
+    assert.equal((html.match(/loading="eager"/g) || []).length, 1)
     for (const banner of banners) {
       assert.ok(readFileSync(`dist/img/banners/${banner}-960.webp`).length > 0)
       assert.ok(readFileSync(`dist/img/banners/${banner}-1774.webp`).length > 0)
     }
   }
-  for (const file of ['para-empresas.html', 'vitrine.html', 'profissionais.html'])
-    assert.doesNotMatch(readFileSync(`dist/${file}`, 'utf8'), /capa_principal/)
-  assert.match(readFileSync('dist/funcionalidades.html', 'utf8'), /og:image" content="https:\/\/www\.evolutus\.com\.br\/img\/banners\/progresso-1774\.webp"/)
+  for (const file of ['como-funciona.html', 'para-empresas.html', 'vitrine.html', 'profissionais.html'])
+    assert.doesNotMatch(readFileSync(`dist/${file}`, 'utf8'), /capa_principal|official-banner/)
+  assert.match(readFileSync('dist/como-funciona.html', 'utf8'), /og:image" content="https:\/\/www\.evolutus\.com\.br\/img\/banners\/quadro-geral-1774\.webp"/)
 })
 
 test('Primer é renderizado no HTML público sem carregar o shell React', () => {
@@ -159,25 +190,39 @@ test('Primer é renderizado no HTML público sem carregar o shell React', () => 
     assert.match(html, /prc-(?:Button|Link|Heading)-/)
     assert.doesNotMatch(html, /<script[^>]+src="\/assets\/(?:main|primer)-/)
   }
-  const business = readFileSync('dist/para-empresas.html', 'utf8')
-  for (const name of ['company', 'contact', 'email', 'segment', 'website', 'modality', 'message']) {
-    const control = business.match(new RegExp(`<[^>]+name="${name}"[^>]*>`))?.[0]
-    assert.ok(control, name)
-    assert.match(control, /\brequired=/, name)
+})
+
+test('rotas em reconstrução têm esqueleto mínimo, sem UI legada', () => {
+  for (const [file, label] of [
+    ['como-funciona.html', 'Como funciona'],
+    ['para-empresas.html', 'Para empresas'],
+    ['vitrine.html', 'Vitrine'],
+    ['profissionais.html', 'Profissionais'],
+  ]) {
+    const html = readFileSync(`dist/${file}`, 'utf8')
+    assert.match(html, new RegExp(`<h1[^>]*>${label}</h1>`))
+    assert.equal((html.match(/<h1/g) || []).length, 1)
+    assert.match(html, /<main id="content" tabindex="-1"><section class="Box-[^"]+"><h1 class="prc-Heading-[^"]+">[^<]+<\/h1><\/section><\/main>/)
+    assert.doesNotMatch(html, /commercial-form|catalog-filters|professional-filters|product-preview-root|profile-preview-root|directory-grid|products-list|journey-row|faq-section/)
   }
-  assert.match(business, /prc-Select-Select-/)
-  assert.match(business, /prc-Textarea-TextArea-/)
-  const showcase = readFileSync('dist/vitrine.html', 'utf8')
-  assert.match(showcase, /id="products"[^>]*aria-busy="true"/)
-  assert.match(showcase, /class="catalog-skeleton"/)
-  const directory = readFileSync('dist/profissionais.html', 'utf8')
-  assert.match(directory, /id="professional-filters"/)
-  assert.match(readFileSync('public/public-pages.js', 'utf8'), /import\('\/public-professionals\.js'\)/)
-  assert.match(directory, /name="tipo"/)
-  assert.match(directory, /name="modalidade"/)
-  assert.match(directory, /name="uf"/)
-  assert.match(directory, /name="cidade"/)
-  assert.match(directory, /name="atendimento"/)
+  assert.ok(!existsSync('public/public-products.js'))
+  assert.ok(!existsSync('public/public-professionals.js'))
+  assert.ok(!existsSync('dist/public-config.js'))
+  for (const css of ['public-pages.css', 'public-redesign.css', 'public-foundation.css']) {
+    assert.doesNotMatch(readFileSync(`dist/${css}`, 'utf8'), /\.journey-|\.faq-|\.commercial-|\.lead-form|\.catalog-|\.directory-|\.product-/)
+  }
+})
+
+test('rotas excluídas não são geradas, anunciadas nem reescritas', () => {
+  const config = JSON.parse(readFileSync('vercel.json', 'utf8'))
+  const sitemap = readFileSync('dist/sitemap.xml', 'utf8')
+  for (const path of ['/funcionalidades', '/guia-registro-treino']) {
+    assert.ok(!existsSync(`dist/${path.slice(1)}.html`))
+    assert.ok(!config.rewrites.some(({ source }) => source === path))
+    assert.ok(!sitemap.includes(path))
+    for (const [, file] of routes)
+      assert.ok(!readFileSync(`dist/${file}`, 'utf8').includes(`href="${path}"`))
+  }
 })
 
 test('diretório público precede o shell e detalhes legados continuam no shell noindex', () => {
@@ -198,8 +243,7 @@ test('Turbo atua apenas nas rotas HTML públicas e preserva os metadados estáti
     assert.match(html, /<header id="public-header"[^>]*data-turbo-permanent/)
     assert.match(html, /<meta name="view-transition" content="same-origin">/)
     assert.match(html, /<script type="module" src="\/assets\/publicTurbo-[\w-]+\.js"/)
-    assert.match(html, /href="\/funcionalidades"[^>]*data-turbo="true"/)
+    assert.match(html, /href="\/como-funciona"[^>]*data-turbo="true"/)
     assert.doesNotMatch(html, /href="\/(?:login|cadastro|app|politica-de-privacidade)"[^>]*data-turbo="true"/)
   }
-  assert.match(readFileSync('dist/profissionais.html', 'utf8'), /turbo-cache-control" content="no-cache"/)
 })

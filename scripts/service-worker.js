@@ -58,8 +58,7 @@ const LOW_STORAGE_RATIO = 0.9 // mesmo limiar de storagePersistence.js (LOW_SPAC
 const IMAGE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 const CACHED_AT_HEADER = 'x-sw-cached-at'
 const PUBLIC_STATIC_ROUTES = new Set([
-  '/como-funciona', '/funcionalidades', '/guia-registro-treino',
-  '/para-empresas', '/vitrine', '/profissionais',
+  '/como-funciona', '/para-empresas', '/vitrine', '/profissionais',
 ])
 
 // Os caches deste worker compartilham o prefixo; só eles são limpos (nada de apagar caches

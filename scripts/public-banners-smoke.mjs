@@ -3,10 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { chromium } from 'playwright-core'
 
 const pages = [
-  ['/', 'home', ['quadro-geral', 'exercicio']],
-  ['/como-funciona', 'como-funciona', ['exercicio', 'progresso']],
-  ['/funcionalidades', 'funcionalidades', ['progresso', 'comunidade']],
-  ['/guia-registro-treino', 'guia-registro-treino', ['exercicio']],
+  ['/', 'home', ['quadro-geral']],
 ]
 const widths = [320, 375, 768, 1366, 1440]
 const folder = 'docs/banner-captures'
@@ -22,13 +19,13 @@ try {
     await page.addInitScript(() => localStorage.setItem('colorMode', 'dark'))
     for (const [route, slug, expected] of pages) {
       await page.goto(`http://127.0.0.1:4173${route}`, { waitUntil: 'networkidle' })
-      const images = page.locator('.official-banner img')
+      const images = page.locator('.home-image img')
       assert.equal(await images.count(), expected.length, `${route}: banner count`)
       assert.equal(await page.locator('.product-preview, .features-hero-art').count(), 0)
       for (let i = 0; i < expected.length; i++) {
         const image = images.nth(i)
-        assert.match(await image.getAttribute('src'), new RegExp(`${expected[i]}-1774\\.webp$`))
-        assert.equal(await image.getAttribute('loading'), i === 0 ? 'eager' : 'lazy')
+        assert.match(await image.getAttribute('src'), new RegExp(`${expected[i]}-960\\.webp$`))
+        assert.equal(await image.getAttribute('loading'), 'eager')
         await image.scrollIntoViewIfNeeded()
         await image.evaluate((node) => node.decode())
         const metrics = await image.evaluate((node) => ({
@@ -36,11 +33,9 @@ try {
           naturalHeight: node.naturalHeight,
           width: node.getBoundingClientRect().width,
           height: node.getBoundingClientRect().height,
-          objectFit: getComputedStyle(node).objectFit,
         }))
         assert.ok(metrics.naturalWidth > 0 && metrics.naturalHeight > 0, `${route}: image loaded`)
         assert.ok(Math.abs(metrics.width / metrics.height - 2) < 0.02, `${route}: no distortion`)
-        assert.equal(metrics.objectFit, 'contain')
       }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)
       assert.ok(overflow <= 1, `${route} at ${width}px overflows by ${overflow}px`)

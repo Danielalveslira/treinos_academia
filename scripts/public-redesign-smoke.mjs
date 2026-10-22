@@ -7,12 +7,10 @@ const browser = await chromium.launch({
   args: ['--no-sandbox'],
 })
 const base = process.env.PUBLIC_PREVIEW_URL || 'http://127.0.0.1:4173'
-const paths = ['/', '/como-funciona', '/funcionalidades', '/guia-registro-treino', '/para-empresas', '/vitrine', '/profissionais']
+const paths = ['/', '/como-funciona', '/para-empresas', '/vitrine', '/profissionais']
 try {
   for (const width of [320, 375, 390, 768, 1024, 1366]) {
     const context = await browser.newContext({ viewport: { width, height: 850 }, serviceWorkers: 'block' })
-    await context.route('**/rest/v1/partner_products?**', (route) => route.fulfill({ contentType: 'application/json', body: '[]' }))
-    await context.route('**/rest/v1/rpc/public_list_professionals', (route) => route.fulfill({ contentType: 'application/json', body: '{"items":[],"nextOffset":null}' }))
     const page = await context.newPage()
     for (const theme of ['dark', 'light']) {
       await page.goto(base)
@@ -38,30 +36,31 @@ try {
   await page.goto(`${base}/como-funciona`)
   await page.keyboard.press('Tab')
   assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('href')), '#content')
-  await page.locator('#public-menu-trigger').focus()
+  await page.locator('.public-header-trigger').focus()
   await page.keyboard.press('Enter')
-  assert.equal(await page.locator('#public-menu-trigger').getAttribute('aria-expanded'), 'true')
+  assert.equal(await page.locator('.public-header-trigger').getAttribute('aria-expanded'), 'true')
+  await page.locator('.public-header-overlay').waitFor({ state: 'visible' })
+  assert.ok(await page.locator('.public-header-overlay').evaluate((panel) => panel.getBoundingClientRect().width <= 280))
   await page.keyboard.press('Escape')
-  assert.equal(await page.locator('#public-menu-trigger').getAttribute('aria-expanded'), 'false')
-  assert.equal(await page.evaluate(() => document.activeElement?.id), 'public-menu-trigger')
+  assert.equal(await page.locator('.public-header-trigger').getAttribute('aria-expanded'), 'false')
+  assert.equal(await page.evaluate(() => document.activeElement?.classList.contains('public-header-trigger')), true)
   await page.keyboard.press('Enter')
-  await page.locator('#public-menu-panel a[href="/funcionalidades"]').focus()
+  await page.mouse.click(4, 150)
+  await page.locator('.public-header-overlay').waitFor({ state: 'detached' })
+  assert.equal(await page.locator('.public-header-trigger').getAttribute('aria-expanded'), 'false')
+  await page.locator('.public-header-trigger').focus()
   await page.keyboard.press('Enter')
-  await page.waitForURL('**/funcionalidades')
-  assert.equal(new URL(page.url()).pathname, '/funcionalidades')
-  await page.goto(`${base}/para-empresas`)
-  await page.locator('#commercial-form button').click()
-  assert.ok(await page.locator('#commercial-form input:invalid').count())
+  await page.locator('.public-header-overlay a[href="/para-empresas"]').focus()
+  await page.keyboard.press('Enter')
+  await page.waitForURL('**/para-empresas')
+  assert.equal(new URL(page.url()).pathname, '/para-empresas')
   await page.goto(`${base}/vitrine`)
-  await page.locator('#category').focus()
-  assert.equal(await page.locator('#category').evaluate((element) => element === document.activeElement), true)
+  for (const [saved, expected] of [['day', 'light'], ['night', 'dark'], ['light', 'light'], ['dark', 'dark'], ['auto', 'light']]) {
+    await page.evaluate((value) => localStorage.setItem('colorMode', value), saved)
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    assert.equal(await page.locator('html').getAttribute('data-public-theme'), expected)
+  }
   await context.close()
-  const reduced = await browser.newContext({ viewport: { width: 320, height: 850 }, reducedMotion: 'reduce', serviceWorkers: 'block' })
-  await reduced.route('**/rest/v1/partner_products?**', () => {})
-  const reducedPage = await reduced.newPage()
-  await reducedPage.goto(`${base}/vitrine`, { waitUntil: 'domcontentloaded' })
-  assert.equal(await reducedPage.locator('.catalog-skeleton').first().evaluate((element) => getComputedStyle(element).animationName), 'none')
-  await reduced.close()
   console.log('PUBLIC_REDESIGN_SMOKE_OK')
 } finally {
   await browser.close()

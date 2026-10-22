@@ -1,0 +1,934 @@
+{
+  "name": "sustained-25-60s",
+  "profile": "sustained",
+  "vus": 25,
+  "duration": "60s",
+  "started": "2026-10-21T16:19:14.850Z",
+  "finished": "2026-10-21T16:20:18.813Z",
+  "exitCode": 0,
+  "before": {
+    "connections": 15,
+    "stats": {
+      "blks_hit": 756419,
+      "blks_read": 1976,
+      "xact_commit": 2869,
+      "xact_rollback": 0
+    },
+    "statements": [
+      {
+        "id": "1820638418530984728",
+        "calls": 12,
+        "total_exec_time": 864.184406,
+        "mean_exec_time": 72.0153671666667,
+        "rows": 12,
+        "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"workouts\"(\"date\", \"exercise_id\", \"id\", \"note\", \"set_details\", \"sets\", \"type\", \"user_id\") SELECT \"pgrst_body\".\"date\","
+      },
+      {
+        "id": "7178205705129363512",
+        "calls": 28,
+        "total_exec_time": 571.648321,
+        "mean_exec_time": 20.4160114642857,
+        "rows": 28,
+        "query": "WITH pgrst_source AS ( SELECT \"public\".\"workouts\".* FROM \"public\".\"workouts\" WHERE \"public\".\"workouts\".\"user_id\" = $1 AND \"public\".\"workouts\".\"date\" >= $2 ORDER"
+      },
+      {
+        "id": "-3934679624494068506",
+        "calls": 1,
+        "total_exec_time": 342.590314,
+        "mean_exec_time": 342.590314,
+        "rows": 1,
+        "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"statuses\"(\"author_id\", \"author_username\", \"community_id\", \"text\", \"type\") SELECT \"pgrst_body\".\"author_id\", \"pgrst_bo"
+      },
+      {
+        "id": "8422814581017155896",
+        "calls": 11,
+        "total_exec_time": 289.715427,
+        "mean_exec_time": 26.3377660909091,
+        "rows": 11,
+        "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"statuses\"(\"author_id\", \"community_id\", \"text\", \"type\") SELECT \"pgrst_body\".\"author_id\", \"pgrst_body\".\"community_id\","
+      },
+      {
+        "id": "-4572368589999692790",
+        "calls": 1,
+        "total_exec_time": 274.835281,
+        "mean_exec_time": 274.835281,
+        "rows": 1,
+        "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"community_members\"(\"community_id\", \"user_id\") SELECT \"pgrst_body\".\"community_id\", \"pgrst_body\".\"user_id\" FROM (SELEC"
+      },
+      {
+        "id": "-5937561274247216083",
+        "calls": 24,
+        "total_exec_time": 224.775818,
+        "mean_exec_time": 9.36565908333333,
+        "rows": 24,
+        "query": "WITH pgrst_source AS ( SELECT \"public\".\"status_publications\".\"id\", \"public\".\"status_publications\".\"community_id\", \"public\".\"status_publications\".\"author_id\", \"p"
+      },
+      {
+        "id": "831661484694169496",
+        "calls": 57,
+        "total_exec_time": 183.896453,
+        "mean_exec_time": 3.22625356140351,
+        "rows": 57,
+        "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_kind\", \"p_offset\", \"p_limit\" FROM json_to_r"
+      },
+      {
+        "id": "-5114177447825266778",
+        "calls": 48,
+        "total_exec_time": 183.713912,
+        "mean_exec_time": 3.82737316666667,
+        "rows": 48,
+        "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"workouts\"(\"date\", \"exercise_id\", \"note\", \"set_details\", \"sets\", \"type\", \"user_id\") SELECT \"pgrst_body\".\"date\", \"pgrs"
+      },
+      {
+        "id": "-6914029866141697919",
+        "calls": 24,
+        "total_exec_time": 104.822261,
+        "mean_exec_time": 4.36759420833333,
+        "rows": 24,
+        "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_start\", \"p_end\" FROM json_to_record(pgrst_p"
+      },
+      {
+        "id": "3363807851313827068",
+        "calls": 24,
+        "total_exec_time": 25.049291,
+        "mean_exec_time": 1.04372045833333,
+        "rows": 24,
+        "query": "WITH pgrst_source AS (SELECT \"pgrst_call\".* FROM \"public\".\"list_my_community_access\"() pgrst_call) SELECT $1::bigint AS total_result_set, pg_catalog.count(_post"
+      },
+      {
+        "id": "-47984467073844030",
+        "calls": 25,
+        "total_exec_time": 22.980667,
+        "mean_exec_time": 0.91922668,
+        "rows": 25,
+        "query": "WITH pgrst_source AS ( SELECT \"public\".\"exercises\".* FROM \"public\".\"exercises\" WHERE \"public\".\"exercises\".\"user_id\" = $1 AND \"public\".\"exercises\".\"active\" = $2 "
+      },
+      {
+        "id": "8376906522332581914",
+        "calls": 1,
+        "total_exec_time": 5.474372,
+        "mean_exec_time": 5.474372,
+        "rows": 1,
+        "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"exercises\"(\"active\", \"id\", \"muscle_group\", \"name\", \"type\", \"user_id\") SELECT \"pgrst_body\".\"active\", \"pgrst_body\".\"id"
+      }
+    ]
+  },
+  "after": {
+    "connections": 15,
+    "stats": {
+      "blks_hit": 924647,
+      "blks_read": 1979,
+      "xact_commit": 3991,
+      "xact_rollback": 0
+    },
+    "statements": [
+      {
+        "id": "7178205705129363512",
+        "calls": 77,
+        "total_exec_time": 1492.572199,
+        "mean_exec_time": 19.3840545324675,
+        "rows": 77,
+        "query": "WITH pgrst_source AS ( SELECT \"public\".\"workouts\".* FROM \"public\".\"workouts\" WHERE \"public\".\"workouts\".\"user_id\" = $1 AND \"public\".\"workouts\".\"date\" >= $2 ORDER"
+      },
+      {
+        "id": "1820638418530984728",
+        "calls": 12,
+        "total_exec_time": 864.184406,
+        "mean_exec_time": 72.0153671666667,
+        "rows": 12,
+        "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"workouts\"(\"date\", \"exercise_id\", \"id\", \"note\", \"set_details\", \"sets\", \"type\", \"user_id\") SELECT \"pgrst_body\".\"date\","
+      },
+      {
+        "id": "-5937561274247216083",
+        "calls": 66,
+        "total_exec_time": 673.322665,
+        "mean_exec_time": 10.2018585606061,
+        "rows": 66,
+        "query": "WITH pgrst_source AS ( SELECT \"public\".\"status_publications\".\"id\", \"public\".\"status_publications\".\"community_id\", \"public\".\"status_publications\".\"author_id\", \"p"
+      },
+      {
+        "id": "8422814581017155896",
+        "calls": 25,
+        "total_exec_time": 382.467839,
+        "mean_exec_time": 15.29871356,
+        "rows": 25,
+        "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"statuses\"(\"author_id\", \"community_id\", \"text\", \"type\") SELECT \"pgrst_body\".\"author_id\", \"pgrst_body\".\"community_id\","
+      },
+      {
+        "id": "-6914029866141697919",
+        "calls": 68,
+        "total_exec_time": 351.726198,
+        "mean_exec_time": 5.17244408823529,
+        "rows": 68,
+        "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_start\", \"p_end\" FROM json_to_record(pgrst_p"
+      },
+      {
+        "id": "-3934679624494068506",
+        "calls": 1,
+        "total_exec_time": 342.590314,
+        "mean_exec_time": 342.590314,
+        "rows": 1,
+        "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"statuses\"(\"author_id\", \"author_username\", \"community_id\", \"text\", \"type\") SELECT \"pgrst_body\".\"author_id\", \"pgrst_bo"
+      },
+      {
+        "id": "-5114177447825266778",
+        "calls": 112,
+        "total_exec_time": 314.686655,
+        "mean_exec_time": 2.80970227678571,
+        "rows": 112,
+        "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"workouts\"(\"date\", \"exercise_id\", \"note\", \"set_details\", \"sets\", \"type\", \"user_id\") SELECT \"pgrst_body\".\"date\", \"pgrs"
+      },
+      {
+        "id": "-4572368589999692790",
+        "calls": 1,
+        "total_exec_time": 274.835281,
+        "mean_exec_time": 274.835281,
+        "rows": 1,
+        "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"community_members\"(\"community_id\", \"user_id\") SELECT \"pgrst_body\".\"community_id\", \"pgrst_body\".\"user_id\" FROM (SELEC"
+      },
+      {
+        "id": "831661484694169496",
+        "calls": 155,
+        "total_exec_time": 219.786884,
+        "mean_exec_time": 1.41797989677419,
+        "rows": 155,
+        "query": "WITH pgrst_source AS (SELECT pgrst_call.pgrst_scalar FROM (SELECT $1 AS json_data) pgrst_payload, LATERAL (SELECT \"p_kind\", \"p_offset\", \"p_limit\" FROM json_to_r"
+      },
+      {
+        "id": "3363807851313827068",
+        "calls": 66,
+        "total_exec_time": 72.494863,
+        "mean_exec_time": 1.09840701515152,
+        "rows": 66,
+        "query": "WITH pgrst_source AS (SELECT \"pgrst_call\".* FROM \"public\".\"list_my_community_access\"() pgrst_call) SELECT $1::bigint AS total_result_set, pg_catalog.count(_post"
+      },
+      {
+        "id": "-47984467073844030",
+        "calls": 70,
+        "total_exec_time": 57.495001,
+        "mean_exec_time": 0.821357157142857,
+        "rows": 70,
+        "query": "WITH pgrst_source AS ( SELECT \"public\".\"exercises\".* FROM \"public\".\"exercises\" WHERE \"public\".\"exercises\".\"user_id\" = $1 AND \"public\".\"exercises\".\"active\" = $2 "
+      },
+      {
+        "id": "8376906522332581914",
+        "calls": 1,
+        "total_exec_time": 5.474372,
+        "mean_exec_time": 5.474372,
+        "rows": 1,
+        "query": "WITH pgrst_source AS (INSERT INTO \"public\".\"exercises\"(\"active\", \"id\", \"muscle_group\", \"name\", \"type\", \"user_id\") SELECT \"pgrst_body\".\"active\", \"pgrst_body\".\"id"
+      }
+    ]
+  },
+  "samples": [
+    {
+      "at": "2026-10-21T16:19:19.947Z",
+      "connections": 15,
+      "resources": [
+        {
+          "name": "evolutus_homolog_db",
+          "cpu": "8.00%",
+          "mem": "201.3MiB / 7.756GiB",
+          "net": "1.52MB / 3.58MB"
+        },
+        {
+          "name": "evolutus_homolog_auth",
+          "cpu": "0.03%",
+          "mem": "44.06MiB / 7.756GiB",
+          "net": "1.52MB / 3.58MB"
+        },
+        {
+          "name": "evolutus_homolog_rest",
+          "cpu": "1.16%",
+          "mem": "33.42MiB / 7.756GiB",
+          "net": "1.52MB / 3.58MB"
+        },
+        {
+          "name": "evolutus_homolog_storage",
+          "cpu": "0.02%",
+          "mem": "150MiB / 7.756GiB",
+          "net": "1.51MB / 3.5MB"
+        },
+        {
+          "name": "evolutus_k6_load",
+          "cpu": "2.19%",
+          "mem": "23.51MiB / 7.756GiB",
+          "net": "0B / 0B"
+        }
+      ],
+      "hostLoad": 1.15
+    },
+    {
+      "at": "2026-10-21T16:19:24.971Z",
+      "connections": 15,
+      "resources": [
+        {
+          "name": "evolutus_homolog_db",
+          "cpu": "22.09%",
+          "mem": "203.3MiB / 7.756GiB",
+          "net": "1.57MB / 3.66MB"
+        },
+        {
+          "name": "evolutus_homolog_auth",
+          "cpu": "2.20%",
+          "mem": "44.11MiB / 7.756GiB",
+          "net": "1.57MB / 3.66MB"
+        },
+        {
+          "name": "evolutus_homolog_rest",
+          "cpu": "0.40%",
+          "mem": "33.25MiB / 7.756GiB",
+          "net": "1.57MB / 3.66MB"
+        },
+        {
+          "name": "evolutus_homolog_storage",
+          "cpu": "0.01%",
+          "mem": "150MiB / 7.756GiB",
+          "net": "1.57MB / 3.66MB"
+        },
+        {
+          "name": "evolutus_k6_load",
+          "cpu": "1.13%",
+          "mem": "23.91MiB / 7.756GiB",
+          "net": "0B / 0B"
+        }
+      ],
+      "hostLoad": 1.05
+    },
+    {
+      "at": "2026-10-21T16:19:29.956Z",
+      "connections": 15,
+      "resources": [
+        {
+          "name": "evolutus_homolog_db",
+          "cpu": "2.53%",
+          "mem": "203.5MiB / 7.756GiB",
+          "net": "1.61MB / 3.78MB"
+        },
+        {
+          "name": "evolutus_homolog_auth",
+          "cpu": "0.02%",
+          "mem": "44.14MiB / 7.756GiB",
+          "net": "1.61MB / 3.78MB"
+        },
+        {
+          "name": "evolutus_homolog_rest",
+          "cpu": "0.79%",
+          "mem": "33.33MiB / 7.756GiB",
+          "net": "1.61MB / 3.78MB"
+        },
+        {
+          "name": "evolutus_homolog_storage",
+          "cpu": "0.00%",
+          "mem": "150MiB / 7.756GiB",
+          "net": "1.61MB / 3.78MB"
+        },
+        {
+          "name": "evolutus_k6_load",
+          "cpu": "1.16%",
+          "mem": "24.69MiB / 7.756GiB",
+          "net": "0B / 0B"
+        }
+      ],
+      "hostLoad": 1.29
+    },
+    {
+      "at": "2026-10-21T16:19:34.959Z",
+      "connections": 15,
+      "resources": [
+        {
+          "name": "evolutus_homolog_db",
+          "cpu": "6.15%",
+          "mem": "203.7MiB / 7.756GiB",
+          "net": "1.66MB / 3.96MB"
+        },
+        {
+          "name": "evolutus_homolog_auth",
+          "cpu": "0.01%",
+          "mem": "44.14MiB / 7.756GiB",
+          "net": "1.66MB / 3.93MB"
+        },
+        {
+          "name": "evolutus_homolog_rest",
+          "cpu": "0.60%",
+          "mem": "33.54MiB / 7.756GiB",
+          "net": "1.66MB / 3.96MB"
+        },
+        {
+          "name": "evolutus_homolog_storage",
+          "cpu": "10.52%",
+          "mem": "143.5MiB / 7.756GiB",
+          "net": "1.66MB / 3.96MB"
+        },
+        {
+          "name": "evolutus_k6_load",
+          "cpu": "1.00%",
+          "mem": "25.05MiB / 7.756GiB",
+          "net": "0B / 0B"
+        }
+      ],
+      "hostLoad": 1.19
+    },
+    {
+      "at": "2026-10-21T16:19:39.999Z",
+      "connections": 15,
+      "resources": [
+        {
+          "name": "evolutus_homolog_db",
+          "cpu": "7.99%",
+          "mem": "204.6MiB / 7.756GiB",
+          "net": "1.71MB / 4.07MB"
+        },
+        {
+          "name": "evolutus_homolog_auth",
+          "cpu": "0.72%",
+          "mem": "44.2MiB / 7.756GiB",
+          "net": "1.71MB / 4.07MB"
+        },
+        {
+          "name": "evolutus_homolog_rest",
+          "cpu": "0.59%",
+          "mem": "33.31MiB / 7.756GiB",
+          "net": "1.71MB / 4.07MB"
+        },
+        {
+          "name": "evolutus_homolog_storage",
+          "cpu": "0.02%",
+          "mem": "143.5MiB / 7.756GiB",
+          "net": "1.7MB / 4.05MB"
+        },
+        {
+          "name": "evolutus_k6_load",
+          "cpu": "1.23%",
+          "mem": "25.69MiB / 7.756GiB",
+          "net": "0B / 0B"
+        }
+      ],
+      "hostLoad": 1.09
+    },
+    {
+      "at": "2026-10-21T16:19:44.974Z",
+      "connections": 15,
+      "resources": [
+        {
+          "name": "evolutus_homolog_db",
+          "cpu": "17.02%",
+          "mem": "206.6MiB / 7.756GiB",
+          "net": "1.76MB / 4.21MB"
+        },
+        {
+          "name": "evolutus_homolog_auth",
+          "cpu": "0.72%",
+          "mem": "44.39MiB / 7.756GiB",
+          "net": "1.76MB / 4.21MB"
+        },
+        {
+          "name": "evolutus_homolog_rest",
+          "cpu": "1.12%",
+          "mem": "33.53MiB / 7.756GiB",
+          "net": "1.76MB / 4.21MB"
+        },
+        {
+          "name": "evolutus_homolog_storage",
+          "cpu": "0.01%",
+          "mem": "143.5MiB / 7.756GiB",
+          "net": "1.76MB / 4.21MB"
+        },
+        {
+          "name": "evolutus_k6_load",
+          "cpu": "2.04%",
+          "mem": "25.75MiB / 7.756GiB",
+          "net": "0B / 0B"
+        }
+      ],
+      "hostLoad": 1
+    },
+    {
+      "at": "2026-10-21T16:19:50.009Z",
+      "connections": 15,
+      "resources": [
+        {
+          "name": "evolutus_homolog_db",
+          "cpu": "1.80%",
+          "mem": "207MiB / 7.756GiB",
+          "net": "1.8MB / 4.34MB"
+        },
+        {
+          "name": "evolutus_homolog_auth",
+          "cpu": "0.03%",
+          "mem": "44.39MiB / 7.756GiB",
+          "net": "1.8MB / 4.34MB"
+        },
+        {
+          "name": "evolutus_homolog_rest",
+          "cpu": "0.60%",
+          "mem": "33.35MiB / 7.756GiB",
+          "net": "1.8MB / 4.34MB"
+        },
+        {
+          "name": "evolutus_homolog_storage",
+          "cpu": "0.00%",
+          "mem": "143.5MiB / 7.756GiB",
+          "net": "1.8MB / 4.34MB"
+        },
+        {
+          "name": "evolutus_k6_load",
+          "cpu": "1.04%",
+          "mem": "25.77MiB / 7.756GiB",
+          "net": "0B / 0B"
+        }
+      ],
+      "hostLoad": 0.92
+    },
+    {
+      "at": "2026-10-21T16:19:55.000Z",
+      "connections": 15,
+      "resources": [
+        {
+          "name": "evolutus_homolog_db",
+          "cpu": "6.62%",
+          "mem": "208.8MiB / 7.756GiB",
+          "net": "1.84MB / 4.44MB"
+        },
+        {
+          "name": "evolutus_homolog_auth",
+          "cpu": "2.25%",
+          "mem": "44.3MiB / 7.756GiB",
+          "net": "1.85MB / 4.47MB"
+        },
+        {
+          "name": "evolutus_homolog_rest",
+          "cpu": "0.74%",
+          "mem": "33.46MiB / 7.756GiB",
+          "net": "1.85MB / 4.47MB"
+        },
+        {
+          "name": "evolutus_homolog_storage",
+          "cpu": "0.01%",
+          "mem": "143.5MiB / 7.756GiB",
+          "net": "1.85MB / 4.47MB"
+        },
+        {
+          "name": "evolutus_k6_load",
+          "cpu": "1.60%",
+          "mem": "26MiB / 7.756GiB",
+          "net": "0B / 0B"
+        }
+      ],
+      "hostLoad": 0.85
+    },
+    {
+      "at": "2026-10-21T16:19:59.970Z",
+      "connections": 15,
+      "resources": [
+        {
+          "name": "evolutus_homolog_db",
+          "cpu": "8.77%",
+          "mem": "207.7MiB / 7.756GiB",
+          "net": "1.89MB / 4.56MB"
+        },
+        {
+          "name": "evolutus_homolog_auth",
+          "cpu": "0.01%",
+          "mem": "44.31MiB / 7.756GiB",
+          "net": "1.89MB / 4.57MB"
+        },
+        {
+          "name": "evolutus_homolog_rest",
+          "cpu": "0.56%",
+          "mem": "33.61MiB / 7.756GiB",
+          "net": "1.89MB / 4.57MB"
+        },
+        {
+          "name": "evolutus_homolog_storage",
+          "cpu": "0.01%",
+          "mem": "143.5MiB / 7.756GiB",
+          "net": "1.89MB / 4.57MB"
+        },
+        {
+          "name": "evolutus_k6_load",
+          "cpu": "1.93%",
+          "mem": "26.02MiB / 7.756GiB",
+          "net": "0B / 0B"
+        }
+      ],
+      "hostLoad": 0.86
+    },
+    {
+      "at": "2026-10-21T16:20:04.974Z",
+      "connections": 15,
+      "resources": [
+        {
+          "name": "evolutus_homolog_db",
+          "cpu": "4.07%",
+          "mem": "207.8MiB / 7.756GiB",
+          "net": "1.94MB / 4.74MB"
+        },
+        {
+          "name": "evolutus_homolog_auth",
+          "cpu": "0.02%",
+          "mem": "44.33MiB / 7.756GiB",
+          "net": "1.94MB / 4.74MB"
+        },
+        {
+          "name": "evolutus_homolog_rest",
+          "cpu": "0.93%",
+          "mem": "33.46MiB / 7.756GiB",
+          "net": "1.94MB / 4.74MB"
+        },
+        {
+          "name": "evolutus_homolog_storage",
+          "cpu": "0.02%",
+          "mem": "143.6MiB / 7.756GiB",
+          "net": "1.94MB / 4.74MB"
+        },
+        {
+          "name": "evolutus_k6_load",
+          "cpu": "1.64%",
+          "mem": "26.05MiB / 7.756GiB",
+          "net": "0B / 0B"
+        }
+      ],
+      "hostLoad": 0.95
+    },
+    {
+      "at": "2026-10-21T16:20:09.977Z",
+      "connections": 15,
+      "resources": [
+        {
+          "name": "evolutus_homolog_db",
+          "cpu": "9.59%",
+          "mem": "207.8MiB / 7.756GiB",
+          "net": "1.98MB / 4.82MB"
+        },
+        {
+          "name": "evolutus_homolog_auth",
+          "cpu": "0.73%",
+          "mem": "44.34MiB / 7.756GiB",
+          "net": "1.98MB / 4.82MB"
+        },
+        {
+          "name": "evolutus_homolog_rest",
+          "cpu": "0.32%",
+          "mem": "33.53MiB / 7.756GiB",
+          "net": "1.98MB / 4.82MB"
+        },
+        {
+          "name": "evolutus_homolog_storage",
+          "cpu": "0.00%",
+          "mem": "143.6MiB / 7.756GiB",
+          "net": "1.98MB / 4.82MB"
+        },
+        {
+          "name": "evolutus_k6_load",
+          "cpu": "1.51%",
+          "mem": "26.49MiB / 7.756GiB",
+          "net": "0B / 0B"
+        }
+      ],
+      "hostLoad": 0.88
+    },
+    {
+      "at": "2026-10-21T16:20:14.982Z",
+      "connections": 15,
+      "resources": [
+        {
+          "name": "evolutus_homolog_db",
+          "cpu": "0.00%",
+          "mem": "207.9MiB / 7.756GiB",
+          "net": "2.02MB / 4.93MB"
+        },
+        {
+          "name": "evolutus_homolog_auth",
+          "cpu": "0.01%",
+          "mem": "44.36MiB / 7.756GiB",
+          "net": "2.02MB / 4.93MB"
+        },
+        {
+          "name": "evolutus_homolog_rest",
+          "cpu": "0.13%",
+          "mem": "33.59MiB / 7.756GiB",
+          "net": "2.02MB / 4.93MB"
+        },
+        {
+          "name": "evolutus_homolog_storage",
+          "cpu": "0.01%",
+          "mem": "143.6MiB / 7.756GiB",
+          "net": "2.02MB / 4.93MB"
+        },
+        {
+          "name": "evolutus_k6_load",
+          "cpu": "0.58%",
+          "mem": "27.91MiB / 7.756GiB",
+          "net": "0B / 0B"
+        }
+      ],
+      "hostLoad": 0.81
+    }
+  ],
+  "summary": {
+    "root_group": {
+      "name": "",
+      "path": "",
+      "id": "d41d8cd98f00b204e9800998ecf8427e",
+      "groups": {},
+      "checks": {
+        "public / funcional": {
+          "name": "public / funcional",
+          "path": "::public / funcional",
+          "id": "72261aeffdbab561e0796d4ae2e5cdc9",
+          "passes": 55,
+          "fails": 0
+        },
+        "workout write funcional": {
+          "name": "workout write funcional",
+          "path": "::workout write funcional",
+          "id": "82273e90b5cec310355000d1a16267f9",
+          "passes": 64,
+          "fails": 0
+        },
+        "dashboard 0 funcional": {
+          "path": "::dashboard 0 funcional",
+          "id": "180d60afe75f48208a7654cd1cfc6acc",
+          "passes": 49,
+          "fails": 0,
+          "name": "dashboard 0 funcional"
+        },
+        "dashboard 1 funcional": {
+          "name": "dashboard 1 funcional",
+          "path": "::dashboard 1 funcional",
+          "id": "f02420d2ec42fff3e6f5b7215388cefe",
+          "passes": 49,
+          "fails": 0
+        },
+        "public /funcionalidades funcional": {
+          "name": "public /funcionalidades funcional",
+          "path": "::public /funcionalidades funcional",
+          "id": "6a3e695cc1da1088ab7fe788f1cfff49",
+          "passes": 51,
+          "fails": 0
+        },
+        "train selection funcional": {
+          "name": "train selection funcional",
+          "path": "::train selection funcional",
+          "id": "aea43c3c6b905514100cd7c02314c08a",
+          "passes": 45,
+          "fails": 0
+        },
+        "progress funcional": {
+          "fails": 0,
+          "name": "progress funcional",
+          "path": "::progress funcional",
+          "id": "f853aa4e03650cfe4f4a6da18397480b",
+          "passes": 44
+        },
+        "public /vitrine funcional": {
+          "passes": 50,
+          "fails": 0,
+          "name": "public /vitrine funcional",
+          "path": "::public /vitrine funcional",
+          "id": "b0a2f58962d11b1079c2601950bc94d9"
+        },
+        "directory funcional": {
+          "name": "directory funcional",
+          "path": "::directory funcional",
+          "id": "e1c22ecdd5219de61ee63758a636db16",
+          "passes": 98,
+          "fails": 0
+        },
+        "community 0 funcional": {
+          "path": "::community 0 funcional",
+          "id": "a044cf760326a29fda951e0fb870d501",
+          "passes": 42,
+          "fails": 0,
+          "name": "community 0 funcional"
+        },
+        "community 1 funcional": {
+          "path": "::community 1 funcional",
+          "id": "a410d1fd4babe275f74bc001ee37dfb3",
+          "passes": 42,
+          "fails": 0,
+          "name": "community 1 funcional"
+        },
+        "public /profissionais funcional": {
+          "id": "b9fb9bf6eeee5f49da14f82ea50059e3",
+          "passes": 48,
+          "fails": 0,
+          "name": "public /profissionais funcional",
+          "path": "::public /profissionais funcional"
+        },
+        "auth user funcional": {
+          "name": "auth user funcional",
+          "path": "::auth user funcional",
+          "id": "d60f8c08a81c907fa7d1441a57cc6464",
+          "passes": 41,
+          "fails": 0
+        },
+        "community write funcional": {
+          "name": "community write funcional",
+          "path": "::community write funcional",
+          "id": "3057d03a631940134157714d2cc3f7bf",
+          "passes": 14,
+          "fails": 0
+        }
+      }
+    },
+    "metrics": {
+      "functional_failures": {
+        "passes": 0,
+        "fails": 692,
+        "thresholds": {
+          "rate<0.05": false
+        },
+        "value": 0
+      },
+      "http_req_receiving": {
+        "p(95)": 0.16719974999999979,
+        "p(99)": 0.29982026,
+        "max": 6.338277,
+        "avg": 0.08202659104046246,
+        "med": 0.057337,
+        "p(90)": 0.11212179999999998
+      },
+      "iterations": {
+        "rate": 7.9354825035873615,
+        "count": 503
+      },
+      "http_req_duration{scenario:public}": {
+        "med": 0.773794,
+        "p(90)": 2.729128500000003,
+        "p(95)": 4.1478817999999995,
+        "p(99)": 12.056103040000002,
+        "max": 17.84318,
+        "avg": 1.4940483509933764,
+        "thresholds": {
+          "p(95)<500": false
+        }
+      },
+      "vus_max": {
+        "max": 25,
+        "value": 25,
+        "min": 25
+      },
+      "iteration_duration": {
+        "p(95)": 3923.7906174,
+        "p(99)": 3980.47908976,
+        "max": 4023.96873,
+        "avg": 3062.9750519681907,
+        "med": 3085.039545,
+        "p(90)": 3857.4401258
+      },
+      "http_req_failed": {
+        "passes": 0,
+        "fails": 692,
+        "thresholds": {
+          "rate<0.05": false
+        },
+        "value": 0
+      },
+      "http_req_connecting": {
+        "max": 13.364432,
+        "avg": 0.18874525578034682,
+        "med": 0,
+        "p(90)": 0,
+        "p(95)": 0.24923284999999973,
+        "p(99)": 5.980757600000008
+      },
+      "http_req_duration{expected_response:true}": {
+        "med": 3.2333534999999998,
+        "p(90)": 24.6878033,
+        "p(95)": 48.712495649999894,
+        "p(99)": 105.70242666000013,
+        "max": 157.380591,
+        "avg": 10.521752225433522
+      },
+      "data_sent": {
+        "rate": 7894.195907738677,
+        "count": 500383
+      },
+      "data_received": {
+        "count": 5130719,
+        "rate": 80943.79891714363
+      },
+      "http_req_duration{scenario:read}": {
+        "p(95)": 83.61620194999996,
+        "p(99)": 115.13666875999996,
+        "max": 157.380591,
+        "avg": 20.139660358974353,
+        "med": 9.914653000000001,
+        "p(90)": 61.16346540000006,
+        "thresholds": {
+          "p(95)<1000": false
+        }
+      },
+      "http_req_sending": {
+        "med": 0.0193365,
+        "p(90)": 0.038945099999999996,
+        "p(95)": 0.10428834999999952,
+        "p(99)": 0.9795525600000008,
+        "max": 4.946208,
+        "avg": 0.06065169508670527
+      },
+      "http_req_waiting": {
+        "avg": 10.37907393930637,
+        "med": 3.1415655,
+        "p(90)": 24.632766499999995,
+        "p(95)": 48.48404634999991,
+        "p(99)": 105.42264644000011,
+        "max": 157.184084
+      },
+      "http_reqs": {
+        "count": 692,
+        "rate": 10.917204557619193
+      },
+      "http_req_blocked": {
+        "med": 0.0051445,
+        "p(90)": 0.020143399999999933,
+        "p(95)": 0.38469309999998863,
+        "p(99)": 6.059478090000008,
+        "max": 13.960684,
+        "avg": 0.21283707369942204
+      },
+      "http_req_tls_handshaking": {
+        "p(95)": 0,
+        "p(99)": 0,
+        "max": 0,
+        "avg": 0,
+        "med": 0,
+        "p(90)": 0
+      },
+      "checks": {
+        "passes": 692,
+        "fails": 0,
+        "value": 1
+      },
+      "vus": {
+        "min": 4,
+        "max": 25,
+        "value": 4
+      },
+      "http_req_duration": {
+        "p(90)": 24.6878033,
+        "p(95)": 48.712495649999894,
+        "p(99)": 105.70242666000013,
+        "max": 157.380591,
+        "avg": 10.521752225433522,
+        "med": 3.2333534999999998,
+        "thresholds": {
+          "p(95)<5000": false
+        }
+      },
+      "http_req_duration{scenario:write}": {
+        "med": 4.8375995,
+        "p(90)": 12.753171299999998,
+        "p(95)": 22.956027799999987,
+        "p(99)": 24.731391690000002,
+        "max": 25.227967,
+        "avg": 7.003537256410262,
+        "thresholds": {
+          "p(95)<1000": false
+        }
+      }
+    }
+  }
+}
