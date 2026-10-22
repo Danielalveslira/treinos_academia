@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadEnv } from 'vite'
-import { publicPages, renderPublicPage } from './public-pages-template.mjs'
+import { publicPages, renderPublicPage, renderRobots, renderSitemap } from './public-pages-template.mjs'
 
 const routes = new Map(publicPages.map(({ path, file }) => [path, file]))
 const variant = (path) => {
@@ -30,6 +30,8 @@ export function publicPreviewPlugin() {
       server.middlewares.use(async (request, response, next) => {
         if (request.method !== 'GET' && request.method !== 'HEAD') return next()
         const path = new URL(request.url, 'http://localhost').pathname
+        if (path === '/robots.txt') return send(response, request, renderRobots(), 'text/plain; charset=utf-8')
+        if (path === '/sitemap.xml') return send(response, request, renderSitemap(), 'application/xml; charset=utf-8')
         const canonical = variant(path)
         if (canonical) return redirect(response, request, canonical)
         if (routes.has(path)) {
