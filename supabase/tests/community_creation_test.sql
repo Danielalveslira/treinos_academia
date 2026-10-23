@@ -335,9 +335,15 @@ select is(pg_temp.cash('01'), (select v from t_cash_before), 'saldo de EvoCash i
 select is(pg_temp.owned('01'), (select v from t_communities_before), 'nenhuma comunidade nova criada pela tentativa com sessão revogada');
 
 -- Sessão ativa de novo (novo login): as mesmas ações voltam a funcionar sem mecanismo extra.
+-- create_community: '01' já está no limite de comunidades ativas a esta altura do arquivo (regra
+-- de negócio normal, nada a ver com sessão) -- em vez de exigir sucesso, prova que a checagem de
+-- sessão deixou de ser o bloqueio: chega até a regra de negócio (COMMUNITY_LIMIT_REACHED), não
+-- trava mais em SESSION_REVOKED.
 select pg_temp.as_user('01');
-select ok((public.create_community('Comunidade pós-revogação', '', null, 'essential', 'evocoins', 'sess-active-again')->>'id') is not null,
-  'sessão ativa de novo: create_community volta a funcionar');
+select throws_ok(
+  $$select public.create_community('Comunidade pós-revogação', '', null, 'essential', 'evocoins', 'sess-active-again')$$,
+  'COMMUNITY_LIMIT_REACHED', 'sessão ativa de novo: create_community passa da checagem de sessão (chega à regra de negócio real)'
+);
 select ok((public.get_my_community_creation_eligibility()->>'evoCoinsBalance') is not null,
   'sessão ativa de novo: get_my_community_creation_eligibility volta a funcionar');
 select is(jsonb_typeof(public.list_community_creation_products()), 'array', 'sessão ativa de novo: list_community_creation_products volta a funcionar');
