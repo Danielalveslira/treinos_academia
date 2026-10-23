@@ -38,7 +38,7 @@ function sql(input) {
       err += x
     })
     p.on('close', (code) => (code === 0 ? resolve(out.trim()) : reject(new Error(err))))
-    p.stdin.end(input)
+    p.stdin.end('\\ir /workspace/supabase/tests/_helpers/auth_session.sql\n' + input)
   })
 }
 async function setup() {
@@ -51,7 +51,7 @@ async function setup() {
 async function activate(user = uid, target = endpoint) {
   return JSON.parse(
     await sql(
-      `set role authenticated; set request.jwt.claim.sub=${lit(user)}; select public.activate_push_subscription(${lit(target)},repeat('p',32),repeat('a',16));`
+      `set role authenticated; do $$begin perform pg_temp.set_test_user(${lit(user)},false); end$$; select public.activate_push_subscription(${lit(target)},repeat('p',32),repeat('a',16));`
     )
   )
 }
@@ -66,7 +66,7 @@ test(
     await setup()
     try {
       await sql(
-        `set request.jwt.claim.sub=${lit(uid)}; select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/other-device',repeat('p',32),repeat('a',16));`
+        `do $$begin perform pg_temp.set_test_user(${lit(uid)},false); end$$; select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/other-device',repeat('p',32),repeat('a',16));`
       )
       const results = await Promise.all(Array.from({ length: 10 }, () => activate()))
       assert.equal(results.filter((x) => x.welcome === 'queued').length, 1)
@@ -179,7 +179,8 @@ test(
         },
       })
       await clicked
-      assert.deepEqual(opened, ['https://local.invalid/'])
+      // The authenticated application shell and the verified targetUrl above are /app.
+      assert.deepEqual(opened, ['https://local.invalid/app'])
       assert.deepEqual(acks.sort(), ['clicked', 'received', 'shown'])
       assert.equal(
         await sql(

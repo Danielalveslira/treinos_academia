@@ -3,7 +3,7 @@ select jsonb_pretty(jsonb_build_object(
    (select jsonb_agg((a.grantee::regrole::text||':'||a.privilege_type) order by a.grantee::regrole::text,a.privilege_type)
     from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner)))a)) order by p.oid::regprocedure::text)
  from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','private') and
- (p.proname ~ 'wallet|ledger|cash_purchase|cash_reversal|cash_debt|finance_recon|finance_findings|infinitepay|award_evocoins|has_reward_activity|reward_fingerprint|post_is_rewardable|record_activity_checkpoint|register_qualified_activity|create_promotion')),
+ (p.proname ~ 'has_app_access|user_app_access|current_session_active|is_session_active|is_superadmin|set_training_preferences|sync_workout_mutations|wallet|ledger|cash_purchase|cash_reversal|cash_debt|finance_recon|finance_findings|infinitepay|award_evocoins|has_reward_activity|reward_fingerprint|post_is_rewardable|record_activity_checkpoint|register_qualified_activity|create_promotion')),
  'relations',(select jsonb_agg(jsonb_build_object('name',c.oid::regclass::text,'rls',c.relrowsecurity,
  'columns',(select jsonb_agg(jsonb_build_object('name',a.attname,'type',format_type(a.atttypid,a.atttypmod),'notnull',a.attnotnull,'default',pg_get_expr(d.adbin,d.adrelid)) order by a.attnum)
    from pg_attribute a left join pg_attrdef d on d.adrelid=a.attrelid and d.adnum=a.attnum where a.attrelid=c.oid and a.attnum>0 and not a.attisdropped),

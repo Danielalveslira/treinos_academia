@@ -9,3 +9,6 @@ dist-ssr
 .vercel
 firestore-debug.log
 *-debug.log
+
+# Disposable financial validation runtime/logs (local synthetic keys only).
+.finance-local/

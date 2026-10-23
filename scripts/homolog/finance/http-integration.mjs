@@ -1,13 +1,17 @@
+import { runtime } from './prepare-runtime.mjs'
+import { waitReady } from './wait-ready.mjs'
 import assert from 'node:assert/strict'
 import { readFileSync,writeFileSync,mkdirSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
-const config=JSON.parse(readFileSync('/tmp/evolutus-finance-full-runtime/local.json','utf8'))
+const config=JSON.parse(readFileSync(runtime+'/local.json','utf8'))
 assert.equal(config.url,'http://127.0.0.1:55454')
 const options={auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}
 const admin=createClient(config.url,config.service,options)
 const client=()=>createClient(config.url,config.anon,options)
+const performanceNow=()=>globalThis.performance.now()
 const results=[]
+const performance=[]
 async function check(name,fn){await fn();results.push({name,passed:true});console.log('PASS '+name)}
 async function createUser(){
  const email=randomUUID()+'@example.invalid',password='Local-test-password-2026!'
@@ -21,14 +25,18 @@ async function edge(name,token,body){
 }
 async function fixture(body){const r=await fetch(config.url+'/__provider/config',{method:'POST',body:JSON.stringify(body)});assert.equal(r.status,200)}
 async function wallet(c){const {data,error}=await c.rpc('get_my_wallet');assert.ifError(error);return data}
+await waitReady()
 const a=await createUser(),b=await createUser();let purchase
 await check('real Auth issues session_id and financial RPC accepts active session',async()=>{
  assert.ok(JSON.parse(Buffer.from(a.token.split('.')[1],'base64url')).session_id)
  assert.equal((await wallet(a.c)).cash_balance,0)
+ assert.ifError((await a.c.rpc('sync_workout_mutations',{p_mutations:[]})).error)
 })
 await check('real Edge rejects missing auth; direct wallet/RPC mutation denied',async()=>{
  assert.equal((await edge('infinitepay-create-checkout',null,{packageId:'pack_25'})).status,401)
  const update=await a.c.from('wallets').update({cash_balance:999}).eq('user_id',a.id);assert.ok(update.error)
+ assert.equal((await edge('infinitepay-admin-reconcile',a.token,{mode:'batch',limit:2})).status,403)
+ const upload=await a.c.storage.from('exercise-visuals').upload('forbidden/'+randomUUID()+'.webp',new Uint8Array([82,73,70,70]),{contentType:'image/webp'});assert.ok(upload.error)
  const internal=await a.c.rpc('_wallet_credit_cash',{p_user_id:a.id,p_amount:999});assert.ok(internal.error)
  assert.equal((await wallet(a.c)).cash_balance,0)
 })
@@ -46,15 +54,25 @@ await check('browser request cannot check another account purchase or fabricate 
  const falseWebhook=await edge('infinitepay-webhook',null,hintBody());assert.equal(falseWebhook.status,400)
  assert.equal((await wallet(a.c)).cash_balance,0)
 })
-// The first unpaid check holds a durable cooldown. Wait by advancing only the local
-// fixture's lease via a strictly scoped synthetic database command in a separate script.
-writeFileSync('/tmp/evolutus-integrated/http-pending.json',JSON.stringify({user:a.id,purchase:purchase.id,hint:hintBody()}))
+// The first unpaid check holds a durable cooldown; respect it without modifying database clocks.
+writeFileSync(runtime+'/http-pending.json',JSON.stringify({user:a.id,purchase:purchase.id,hint:hintBody()}))
 await fixture({order_nsu:purchase.provider_order_nsu,transaction_nsu:hint.transaction_nsu,slug:hint.invoice_slug,paid:true,amount:590})
 // Respect the actual persistent call budget instead of bypassing it in the HTTP path.
 await new Promise(r=>setTimeout(r,31000))
 await check('100 webhook deliveries: one verified credit, ledger and wallet agree',async()=>{
  const outcomes=[]
- for(let start=0;start<100;start+=4)outcomes.push(...await Promise.all(Array.from({length:4},()=>edge('infinitepay-webhook',null,hintBody()))))
+ for (const [concurrency,requests] of [[1,8],[2,24],[4,68]]) {
+  const latencies=[],start=performanceNow()
+  for(let sent=0;sent<requests;sent+=concurrency) {
+   outcomes.push(...await Promise.all(Array.from({length:Math.min(concurrency,requests-sent)},async()=>{
+    const begin=performanceNow();const result=await edge('infinitepay-webhook',null,hintBody());latencies.push(performanceNow()-begin);return result
+   })))
+  }
+  latencies.sort((a,b)=>a-b)
+  const percentile=q=>Number(latencies[Math.max(0,Math.ceil(latencies.length*q)-1)].toFixed(2))
+  performance.push({concurrency,requests,p50_ms:percentile(.5),p95_ms:percentile(.95),p99_ms:percentile(.99),requests_per_second:Number((requests*1000/(performanceNow()-start)).toFixed(2))})
+ }
+ assert.ok(outcomes.every(r=>[200,400].includes(r.status)),JSON.stringify(outcomes.filter(r=>![200,400].includes(r.status))))
  assert.ok(outcomes.some(r=>r.status===200));assert.equal((await wallet(a.c)).cash_balance,25)
  const ledger=await admin.from('economy_transactions').select('amount').eq('user_id',a.id).eq('natural_key','cash-purchase:'+purchase.id);assert.ifError(ledger.error);assert.equal(ledger.data.length,1)
 })
@@ -69,6 +87,29 @@ await check('second real Auth session revokes the first, stale JWT cannot spend/
  const direct=await stale.from('wallets').select('*');assert.ifError(direct.error);assert.deepEqual(direct.data,[])
  assert.equal((await wallet(second)).cash_balance,25)
 })
+await check('provider mismatch, outage and timeout never grant cash',async()=>{
+ for(const scenario of [{name:'amount',amount:591},{name:'currency',currency:'USD'},{name:'outage',httpStatus:503},{name:'timeout',delayMs:13000}]) {
+  const user=await createUser()
+  const checkout=await edge('infinitepay-create-checkout',user.token,{packageId:'pack_25'});assert.equal(checkout.status,200)
+  const {data:p,error}=await admin.from('cash_purchases').select('*').eq('id',checkout.body.id).single();assert.ifError(error)
+  const identity={order_nsu:p.provider_order_nsu,transaction_nsu:'txn-'+randomUUID(),invoice_slug:'inv-'+randomUUID()}
+  await fixture({order_nsu:identity.order_nsu,transaction_nsu:identity.transaction_nsu,slug:identity.invoice_slug,paid:true,amount:590,...scenario})
+  assert.equal((await edge('infinitepay-webhook',null,identity)).status,400,scenario.name)
+  assert.equal((await wallet(user.c)).cash_balance,0,scenario.name)
+  const ledger=await admin.from('economy_transactions').select('id').eq('user_id',user.id);assert.ifError(ledger.error);assert.equal(ledger.data.length,0)
+ }
+})
+await check('locally cancelled checkout accepts verified late payment exactly once',async()=>{
+ const user=await createUser()
+ const checkout=await edge('infinitepay-create-checkout',user.token,{packageId:'pack_25'});assert.equal(checkout.status,200)
+ assert.ifError((await user.c.rpc('cancel_my_cash_purchase',{p_purchase_id:checkout.body.id})).error)
+ const {data:p,error}=await admin.from('cash_purchases').select('*').eq('id',checkout.body.id).single();assert.ifError(error);assert.equal(p.status,'cancelled')
+ const identity={order_nsu:p.provider_order_nsu,transaction_nsu:'txn-'+randomUUID(),invoice_slug:'inv-'+randomUUID()}
+ await fixture({order_nsu:identity.order_nsu,transaction_nsu:identity.transaction_nsu,slug:identity.invoice_slug,paid:true,amount:590})
+ for(let i=0;i<2;i++)assert.equal((await edge('infinitepay-webhook',null,identity)).status,200)
+ assert.equal((await wallet(user.c)).cash_balance,25)
+ const ledger=await admin.from('economy_transactions').select('amount').eq('user_id',user.id);assert.ifError(ledger.error);assert.equal(ledger.data.length,1)
+})
 mkdirSync('docs/audits/finance-integration',{recursive:true})
-writeFileSync('docs/audits/finance-integration/http-results.json',JSON.stringify({localOnly:true,realServices:['Auth','PostgreSQL','PostgREST','Storage','Edge Runtime'],provider:'local simulated responses; external payment network blocked',results},null,2)+'\n')
+writeFileSync('docs/audits/finance-integration/http-results.json',JSON.stringify({localOnly:true,realServices:['Auth','PostgreSQL','PostgREST','Storage','Edge Runtime'],provider:'local simulated responses; external payment network blocked',performance,results},null,2)+'\n')
 console.log(JSON.stringify({passed:results.length,failed:0}))
