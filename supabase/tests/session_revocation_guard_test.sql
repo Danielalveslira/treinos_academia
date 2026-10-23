@@ -100,7 +100,7 @@ create temp table c4_comment as
   select id from public.post_comments where status_id = 'c4300000-0000-0000-0000-000000000001' and author_id = (select a from ids)::uuid limit 1;
 
 insert into public.professional_listings (id, owner_id, kind, lifecycle_state, published_version)
-values ('c4400000-0000-0000-0000-000000000001', (select a from ids)::uuid, 'professional', 'draft', null);
+values ('c4400000-0000-0000-0000-000000000001', (select a from ids)::uuid, 'professional', 'draft', 1);
 
 -- Sessão revogada: nem o próprio autor consegue apagar o comentário ou a própria vitrine.
 select pg_temp.as_user_with_session((select a from ids), null);
