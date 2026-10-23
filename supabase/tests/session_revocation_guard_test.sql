@@ -89,11 +89,11 @@ select is(public.is_session_active(), true, 'sessão de B segue ativa, isolada d
 -- MODERADOR, não só a do próprio autor) ================================================
 select pg_temp.set_test_user((select a from ids), true);
 insert into public.communities (id, name, created_by, owner_id) values
-  ('c4200000-0000-0000-0000-000000000001', 'Guard A', (select a from ids), (select a from ids));
+  ('c4200000-0000-0000-0000-000000000001', 'Guard A', (select a from ids)::uuid, (select a from ids)::uuid);
 insert into public.community_members (community_id, user_id) values
-  ('c4200000-0000-0000-0000-000000000001', (select a from ids));
+  ('c4200000-0000-0000-0000-000000000001', (select a from ids)::uuid);
 insert into public.statuses (id, community_id, author_id, type, expires_at, text) values
-  ('c4300000-0000-0000-0000-000000000001', 'c4200000-0000-0000-0000-000000000001', (select a from ids),
+  ('c4300000-0000-0000-0000-000000000001', 'c4200000-0000-0000-0000-000000000001', (select a from ids)::uuid,
    'text', now() + interval '1 day', 'post para testar comment_delete');
 select public.comment_create('c4300000-0000-0000-0000-000000000001', null, 'comentário de A', gen_random_uuid());
 create temp table c4_comment as

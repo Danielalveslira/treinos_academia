@@ -63,6 +63,11 @@ select throws_ok($$select public.admin_set_accounts_status(array[['78000000-0000
 -- função via DO block, sem alterar is_superadmin(). Em QUALQUER uma das duas versões, o código
 -- observado para estas 3 chamadas é SESSION_REVOKED (a checagem explícita destas funções é que
 -- dispara, cedo ou tarde); o que nunca pode acontecer é a mutação ocorrer.
+-- Linha de base capturada AGORA, não um valor fixo: testes anteriores deste mesmo arquivo já
+-- desativam '...002' como efeito colateral (ex.: "partial result protects superadmin"), então
+-- "nenhum efeito" significa "sem mudança a partir do que já estava", não necessariamente 'active'.
+create temp table t_account_status_before as
+  select account_status from public.users where id = '78000000-0000-0000-0000-000000000002';
 select pg_temp.set_test_user('78000000-0000-0000-0000-000000000001',true);
 select pg_temp.revoke_test_session('78000000-0000-0000-0000-000000000001');
 select throws_ok($$select public.set_account_status('78000000-0000-0000-0000-000000000002',true,'fixture reason')$$,'SESSION_REVOKED','set_account_status nega sessão revogada mesmo sendo superadmin de verdade');
@@ -73,7 +78,7 @@ select throws_ok($$select public.set_account_status('78000000-0000-0000-0000-000
 select lives_ok($$select public.admin_set_accounts_status(array['78000000-0000-0000-0000-000000000002']::uuid[],true,'fixture reason')$$,'admin_set_accounts_status não propaga a excepção -- resultado por item');
 select is((public.admin_set_accounts_status(array['78000000-0000-0000-0000-000000000002']::uuid[],true,'fixture reason')->0->>'error'),'ACTION_FAILED','lote confirma SESSION_REVOKED mapeado para ACTION_FAILED, não um sucesso disfarçado');
 select throws_ok($$select public.admin_request_account_deletion('78000000-0000-0000-0000-000000000002','fixture reason')$$,'SESSION_REVOKED','admin_request_account_deletion nega sessão revogada');
-select is((select account_status from public.users where id='78000000-0000-0000-0000-000000000002'),'active','alvo não foi afetado pela tentativa com sessão revogada');
+select is((select account_status from public.users where id='78000000-0000-0000-0000-000000000002'),(select account_status from t_account_status_before),'alvo não foi afetado pela tentativa com sessão revogada');
 -- Sessão de novo ativa (novo login): as mesmas chamadas voltam a funcionar, sem precisar de nenhum mecanismo extra.
 select pg_temp.set_test_user('78000000-0000-0000-0000-000000000001',true);
 select lives_ok($$select public.set_account_status('78000000-0000-0000-0000-000000000002',true,'fixture reason')$$,'sessão ativa de novo: volta a funcionar');

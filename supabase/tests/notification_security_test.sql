@@ -28,7 +28,6 @@ grant select on ids to public;
 -- ===== Atacante A (usuário comum autenticado) =====
 set local role authenticated;
 select pg_temp.set_test_user( 'b1000000-0000-0000-0000-000000000001', true);
-select set_config('request.jwt.claims', '{"sub":"b1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
 
 select is((select count(*)::int from public.notifications), 1, 'A só enxerga as próprias notificações (RLS)');
 select is((select count(*)::int from public.notifications where recipient_id = 'b1000000-0000-0000-0000-000000000002'), 0, 'A não lê notificações de B');
