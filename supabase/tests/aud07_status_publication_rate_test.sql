@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 select ok((select relrowsecurity from pg_class where oid='private.status_publication_limits'::regclass),'quota RLS enabled');
@@ -12,7 +13,7 @@ from public.legal_policy p where p.id and u.id::text like 'e7100000-%';
 insert into public.communities(id,name,created_by)values('e7200000-0000-0000-0000-000000000001','Quota fixture','e7100000-0000-0000-0000-000000000001');
 insert into public.community_members(community_id,user_id)values('e7200000-0000-0000-0000-000000000001','e7100000-0000-0000-0000-000000000001');
 set local role authenticated;
-select set_config('request.jwt.claim.sub','e7100000-0000-0000-0000-000000000001',true);
+select pg_temp.set_test_user('e7100000-0000-0000-0000-000000000001',true);
 select lives_ok($$insert into public.statuses(community_id,author_id,type,text)select 'e7200000-0000-0000-0000-000000000001','e7100000-0000-0000-0000-000000000001','text','x' from generate_series(1,5)$$,'five posts accepted');
 select throws_ok($$insert into public.statuses(community_id,author_id,type,text)values('e7200000-0000-0000-0000-000000000001','e7100000-0000-0000-0000-000000000001','text','x')$$,'PT429','PUBLICATION_RATE_LIMITED','sixth post denied');
 select throws_ok($$select * from private.status_publication_limits$$,'42501',null,'quota contents protected');
@@ -22,7 +23,7 @@ select is((select count(*)::int from public.statuses where author_id='e7100000-0
 delete from public.statuses where author_id='e7100000-0000-0000-0000-000000000001';
 set local role authenticated;
 select throws_ok($$insert into public.statuses(community_id,author_id,type,text)values('e7200000-0000-0000-0000-000000000001','e7100000-0000-0000-0000-000000000001','text','x')$$,'PT429','PUBLICATION_RATE_LIMITED','deleting posts cannot reset history');
-select set_config('request.jwt.claim.sub','e7100000-0000-0000-0000-000000000002',true);
+select pg_temp.set_test_user('e7100000-0000-0000-0000-000000000002',true);
 select throws_ok($$insert into public.statuses(community_id,author_id,type,text)values('e7200000-0000-0000-0000-000000000001','e7100000-0000-0000-0000-000000000002','text','x')$$,'42501',null,'nonmember remains denied');
 reset role;
 select is((select count(*)::int from private.status_publication_limits where user_id='e7100000-0000-0000-0000-000000000002'),0,'nonmember attempts do not create counters');

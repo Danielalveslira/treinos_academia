@@ -46,10 +46,10 @@ export async function loginUser(email, password) {
   if (error) throw error
 }
 
-// Fluxo ÚNICO de logout. Chamadas concorrentes (duplo toque, menu + gate, logout forçado do
-// AuthContext) compartilham a mesma requisição: signOut roda exatamente uma vez. Com um logout
-// em andamento, qualquer outro pedido (inclusive de escopo diferente) recebe a mesma promessa --
-// os botões ficam travados juntos (useLogout), então isso só protege contra corrida.
+// Fluxo ÚNICO de logout. Chamadas concorrentes do MESMO escopo (duplo toque, duas abas do mesmo
+// hook) compartilham a mesma requisição: signOut roda exatamente uma vez para elas. Chamadas de
+// ESCOPO DIFERENTE só reaproveitam uma operação que já inclui o efeito pedido: local pode
+// aguardar all, mas all precisa executar a revogação de outras sessões mesmo após um local.
 //
 // Escopos (auth-js 2.117):
 //  - 'local' (PADRÃO do Evolutus, logoutUser): encerra só esta sessão; os outros aparelhos
@@ -70,7 +70,29 @@ export async function loginUser(email, password) {
 // O estado privado do frontend (caches, perfil, carteira, canais Realtime) é limpo pelo
 // AuthContext quando o evento SIGNED_OUT chega; o redirecionamento para /login (replace) é do
 // ProtectedRoute assim que `user` fica nulo.
+// { scope: 'local' | 'all', promise } da operação em andamento, ou null. Nunca um booleano/promise
+// solto: precisa do escopo para decidir se a próxima chamada pode reaproveitar ou tem que esperar.
 let logoutInFlight = null
+
+// Deduplica chamadas do MESMO escopo (retorna a mesma promessa). Um pedido 'local' pode aproveitar
+// com segurança uma operação 'all' já em andamento -- 'all' revoga as outras sessões E encerra esta
+// (um superconjunto estrito do que 'local' faria), então reaproveitar nunca relata menos do que
+// realmente aconteceu; por isso NÃO troca o estado em andamento, para pedidos seguintes ainda
+// encontrarem a MESMA operação 'all' (em vez de uma corrida reiniciar a cadeia a cada clique
+// misturado -- ver 'múltiplos cliques' em logoutScope.test.js). Já um pedido 'all' NUNCA aproveita
+// um 'local' em andamento (o inverso seria relatar outras sessões revogadas sem o terem sido):
+// espera o 'local' terminar e roda a sua própria sequência completa de verdade.
+function runExclusive(scope, task) {
+  const previous = logoutInFlight
+  if (previous?.scope === scope) return previous.promise
+  if (scope === 'local' && previous?.scope === 'all') return previous.promise
+  const start = previous ? previous.promise.catch(() => {}) : Promise.resolve()
+  const promise = start.then(task).finally(() => {
+    if (logoutInFlight?.promise === promise) logoutInFlight = null
+  })
+  logoutInFlight = { scope, promise }
+  return promise
+}
 
 async function signOutLocal() {
   const { error } = await supabase.auth.signOut({ scope: 'local' })
@@ -84,17 +106,8 @@ async function signOutLocal() {
   return { revoked: false }
 }
 
-function singleFlight(task) {
-  if (!logoutInFlight) {
-    logoutInFlight = task().finally(() => {
-      logoutInFlight = null
-    })
-  }
-  return logoutInFlight
-}
-
 export function logoutUser() {
-  return singleFlight(async () => {
+  return runExclusive('local', async () => {
     // LOGOUT EXPLÍCITO: antes de qualquer outra coisa, o aparelho deixa de poder abrir esta conta offline
     // (cold start). Sessão expirada/rede ruim NÃO passam por aqui -- só um logout pedido (ou forçado pelo
     // servidor, como exclusão de conta). A outbox não é tocada: o trabalho não sincronizado continua
@@ -106,12 +119,15 @@ export function logoutUser() {
   })
 }
 
-// Falha da etapa 1 carrega `logoutStep: 'others'` para a UI mostrar a mensagem certa.
-// `beforeLocalSignOut` roda DEPOIS de a etapa 1 dar certo e ANTES de encerrar esta sessão (ainda
-// há JWT para chamar o backend): é o gancho da revogação de Web Push, que é best-effort -- uma
-// falha dele nunca impede o logout e, se a etapa 1 falhar, ele nem chega a rodar.
+// Falha da etapa 1 carrega `logoutStep: 'others'`; falha DEPOIS dela (limpeza local deste
+// aparelho) carrega `logoutStep: 'local-cleanup'` -- a UI precisa saber que as OUTRAS sessões já
+// foram revogadas antes de mostrar a mensagem genérica de "não foi possível sair" (ver
+// useLogout.logoutAllErrorMessage). `beforeLocalSignOut` roda DEPOIS de a etapa 1 dar certo e
+// ANTES de encerrar esta sessão (ainda há JWT para chamar o backend): é o gancho da revogação de
+// Web Push, que é best-effort -- uma falha dele nunca impede o logout e, se a etapa 1 falhar, ele
+// nem chega a rodar.
 export function logoutAllDevices({ beforeLocalSignOut } = {}) {
-  return singleFlight(async () => {
+  return runExclusive('all', async () => {
     const { error } = await supabase.auth.signOut({ scope: 'others' })
     if (error) {
       error.logoutStep = 'others'
@@ -125,12 +141,22 @@ export function logoutAllDevices({ beforeLocalSignOut } = {}) {
       }
     }
     const disabled = await disableOfflineAccess()
-    if (!disabled && isOfflineColdStartEnabled())
-      throw new Error('Não foi possível concluir a saída neste aparelho. Tente novamente.') // logout explícito: também deste aparelho
-    await signOutLocal()
+    if (!disabled && isOfflineColdStartEnabled()) {
+      // As outras sessões JÁ foram revogadas (confirmado): só a saída DESTE aparelho não concluiu.
+      const failure = new Error('Não foi possível concluir a saída neste aparelho. Tente novamente.')
+      failure.logoutStep = 'local-cleanup'
+      throw failure
+    }
     // As outras sessões foram revogadas (confirmado); o que sobra incerto é só o token deste
-    // aparelho, que já saiu.
-    return { revoked: true }
+    // aparelho, que já saiu (ver signOutLocal: revoked:false não é erro, é só confirmação
+    // pendente) -- o resultado reflete o que realmente aconteceu na etapa local, nunca um
+    // `revoked:true` fixo independente do que signOutLocal confirmou.
+    try {
+      return await signOutLocal()
+    } catch (error) {
+      error.logoutStep = 'local-cleanup'
+      throw error
+    }
   })
 }
 

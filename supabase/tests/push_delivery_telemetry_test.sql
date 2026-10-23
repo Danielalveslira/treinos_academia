@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- Telemetria da última milha do Web Push: token opaco, ACK do Service Worker, tempos do worker,
 -- código HTTP real, idempotência, isolamento entre entregas e ausência de segredos.
 begin;
@@ -10,9 +11,9 @@ select ('c1000000-0000-0000-0000-0000000000' || n)::uuid, 'authenticated', 'auth
        'not-used', now(), '{}'::jsonb, '{}'::jsonb, now(), now()
 from unnest(array['01','02']) as n;
 
-select set_config('request.jwt.claim.sub', 'c1000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( 'c1000000-0000-0000-0000-000000000001', true);
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/tele-a', repeat('p', 32), repeat('a', 16), 'ua', 'phone', 'android');
-select set_config('request.jwt.claim.sub', 'c1000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( 'c1000000-0000-0000-0000-000000000002', true);
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/tele-b', repeat('q', 32), repeat('b', 16), 'ua', 'laptop', 'windows');
 
 insert into public.notifications (recipient_id, type, metadata) values
@@ -74,7 +75,7 @@ reset role;
 select is((select sw_received_at from public.notification_push_deliveries where id = (select a_id from tok)), (select ts from first_ts), 'retry do mesmo evento é idempotente (não sobrescreve o primeiro tempo)');
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'c1000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( 'c1000000-0000-0000-0000-000000000001', true);
 select public.push_delivery_ack((select a from tok), 'shown');
 select public.push_delivery_ack((select a from tok), 'clicked');
 reset role;

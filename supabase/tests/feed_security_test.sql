@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -37,7 +38,7 @@ insert into public.status_participants (status_id, user_id) values
   ('c3000000-0000-0000-0000-0000000000b1', 'c1000000-0000-0000-0000-000000000002');
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', case when p = '' then '' else 'c1000000-0000-0000-0000-0000000000' || p end, true)$$;
+  $$select pg_temp.set_test_user( case when p = '' then '' else 'c1000000-0000-0000-0000-0000000000' || p end, true)$$;
 
 -- === 1) metadados de segurança das RPCs novas (como superusuário) ===
 select is((select prosecdef from pg_proc where oid = 'public.get_poll_results_batch(uuid[])'::regprocedure), true, 'get_poll_results_batch é SECURITY DEFINER (precisa ler contagens que o RLS esconde)');

@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- pgTAP: coleta de métricas de patrocinados (migration 20261018000001_sponsored_ad_metrics.sql).
 -- Fixtures (prefixo a1...): usuários 01 superadmin | 02 membro C1+C2 | 03 não membro | 04 banido em C1 |
 -- 05 conta desativada | 06 membro C1 (segundo espectador) | 07 membro C1 (cliques sem impressão) |
@@ -59,7 +60,7 @@ create function pg_temp.ev(p_id integer, p_type text, p_ad integer, p_place text
        'ad', ('a3000000-0000-0000-0000-00000000000' || p_ad)::uuid, 'placement', p_place,
        'community', case when p_comm is null then null else ('a2000000-0000-0000-0000-00000000000' || p_comm)::uuid end))$f$;
 create function pg_temp.as_user(p_n integer) returns void language sql as
-  $f$select set_config('request.jwt.claim.sub', 'a1000000-0000-0000-0000-00000000000' || p_n, true)$f$;
+  $f$select pg_temp.set_test_user( 'a1000000-0000-0000-0000-00000000000' || p_n, true)$f$;
 -- [impressões, únicos, cliques] da linha do dia para a chave; null se a linha não existe.
 create function pg_temp.stat(p_ad integer, p_place text, p_ctx uuid) returns bigint[]
   language sql security definer set search_path = '' as
@@ -154,7 +155,7 @@ select is(private.ad_metrics_day('2026-10-11 00:00:00-03'), '2026-10-11'::date, 
 set local role anon;
 select throws_ok($$select public.record_ad_events('[]'::jsonb)$$, '42501', null, 'anon não executa a RPC');
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_test_user( '', true);
 select throws_ok($$select public.record_ad_events('[]'::jsonb)$$, 'P0001', 'NOT_AUTHENTICATED', 'sem login: NOT_AUTHENTICATED');
 
 select pg_temp.as_user(2);

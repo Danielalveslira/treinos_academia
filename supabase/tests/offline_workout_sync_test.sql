@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
@@ -14,9 +15,40 @@ insert into public.exercises (id, user_id, name, muscle_group) values
   ('c3e00000-0000-0000-0000-000000000001', 'c3000000-0000-0000-0000-000000000001', 'Supino A', 'Peito'),
   ('c3e00000-0000-0000-0000-000000000002', 'c3000000-0000-0000-0000-000000000002', 'Supino B', 'Peito');
 
+-- Sessão ATIVA de A e de B (private.current_session_active() -- ver 20261113000001). Uma delas é
+-- revogada mais abaixo, simulando "sair de todos os dispositivos" feito em outro aparelho.
+insert into auth.sessions (id, user_id, created_at, updated_at) values
+  ('c3900000-0000-0000-0000-000000000001', 'c3000000-0000-0000-0000-000000000001', now(), now()),
+  ('c3900000-0000-0000-0000-000000000002', 'c3000000-0000-0000-0000-000000000002', now(), now());
+
+-- Igual à sessão de A, mas sua janela (not_after) já venceu -- mesmo efeito de revogada.
+insert into auth.sessions (id, user_id, created_at, updated_at, not_after) values
+  ('c3900000-0000-0000-0000-000000000009', 'c3000000-0000-0000-0000-000000000001', now(), now(), now() - interval '1 minute');
+
 create or replace function pg_temp.as_user(p_uid text) returns void language plpgsql as $$
 begin
-  perform set_config('request.jwt.claim.sub', coalesce(p_uid, ''), true);
+  perform pg_temp.as_user_with_session(p_uid,
+    case p_uid
+      when 'c3000000-0000-0000-0000-000000000001' then 'c3900000-0000-0000-0000-000000000001'
+      when 'c3000000-0000-0000-0000-000000000002' then 'c3900000-0000-0000-0000-000000000002'
+      else null
+    end);
+end;
+$$;
+
+-- Simula um JWT com um session_id arbitrário (nulo, de outra sessão/usuário, vencido ou
+-- inexistente) -- único jeito de exercitar private.current_session_active() negando o acesso,
+-- já que o cliente NUNCA escolhe seu próprio session_id (ele vem do GoTrue, não de parâmetro).
+create or replace function pg_temp.as_user_with_session(p_uid text, p_session text) returns void language plpgsql as $$
+begin
+  perform pg_temp.set_test_user( coalesce(p_uid, ''), true);
+  perform set_config(
+    'request.jwt.claims',
+    case when p_uid is null or p_uid = '' then '{}'
+      else jsonb_build_object('sub', p_uid, 'session_id', p_session)::text
+    end,
+    true
+  );
 end;
 $$;
 
@@ -80,6 +112,30 @@ select is(public.sync_workout_mutations('[]'::jsonb, (select a::uuid from ids)),
 select throws_ok($$select public.sync_workout_mutations('{"a":1}'::jsonb)$$, 'INVALID_BATCH', 'lote que não é array é recusado');
 select throws_ok($$select public.sync_workout_mutations(null)$$, 'INVALID_BATCH', 'lote nulo é recusado');
 select throws_ok($$select public.sync_workout_mutations((select jsonb_agg('{}'::jsonb) from generate_series(1, 51)))$$, 'BATCH_TOO_LARGE', 'lote acima de 50 é recusado');
+
+-- ===== Sessão revogada (Etapa 3 do PROMPT_CORRECAO_LOGOUT_GLOBAL_EVOLUTUS) ==========================
+-- "Sair de todos os dispositivos" em outro aparelho apaga a sessão de auth.sessions, mas o access
+-- token já emitido continua assinaturalmente válido até expirar (jwt_expiry). Estas são a prova de
+-- que o JWT antigo, sozinho, não basta MAIS para escrever treino: o banco confirma a sessão.
+select pg_temp.as_user((select a from ids));
+select is(public.sync_workout_mutations('[]'::jsonb), '{"results": []}'::jsonb, 'sessão ativa de A: lote vazio passa');
+
+select pg_temp.as_user_with_session((select a from ids), null);
+select throws_ok($$select pg_temp.sync('[]'::jsonb)$$, 'SESSION_REVOKED', 'JWT sem claim session_id (token emitido antes deste deploy) é recusado, não aceito como sessão antiga válida');
+
+select pg_temp.as_user_with_session((select a from ids), 'nao-eh-um-uuid');
+select throws_ok($$select pg_temp.sync('[]'::jsonb)$$, 'SESSION_REVOKED', 'session_id malformado nunca lança erro de cast -- falha fechada como qualquer outra sessão sem correspondência');
+
+select pg_temp.as_user_with_session((select a from ids), 'c3900000-0000-0000-0000-000000000099');
+select throws_ok($$select pg_temp.sync('[]'::jsonb)$$, 'SESSION_REVOKED', 'session_id que não existe em auth.sessions (já revogada/nunca existiu) é recusado');
+
+select pg_temp.as_user_with_session((select a from ids), 'c3900000-0000-0000-0000-000000000002');
+select throws_ok($$select pg_temp.sync('[]'::jsonb)$$, 'SESSION_REVOKED', 'session_id de OUTRO usuário nunca autoriza -- confrontado também com auth.uid()');
+
+select pg_temp.as_user_with_session((select a from ids), 'c3900000-0000-0000-0000-000000000009');
+select throws_ok($$select pg_temp.sync('[]'::jsonb)$$, 'SESSION_REVOKED', 'sessão com not_after no passado é tratada como revogada mesmo com a linha ainda existindo em auth.sessions');
+
+select pg_temp.as_user((select a from ids)); -- restaura a sessão ativa normal de A para o resto do arquivo
 
 -- ===== Create =========================================================================================
 insert into snap select 'tx_before', to_jsonb((select count(*) from public.economy_transactions));

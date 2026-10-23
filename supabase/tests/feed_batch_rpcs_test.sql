@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -42,7 +43,7 @@ insert into public.status_participants (status_id, user_id) values
   ('a3000000-0000-0000-0000-0000000000c2', 'a1000000-0000-0000-0000-000000000003');
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', 'a1000000-0000-0000-0000-0000000000' || p, true)$$;
+  $$select pg_temp.set_test_user( 'a1000000-0000-0000-0000-0000000000' || p, true)$$;
 
 set local role authenticated;
 select pg_temp.as_user('01');

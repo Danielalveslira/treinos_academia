@@ -22,6 +22,7 @@ import { ToastFlash } from '../components/ToastFlash'
 import AdminNav from '../components/AdminNav'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
+  getAdminCashReversalEvents,
   adminCancelInfinitepayCashPurchase,
   adminResolveCashPurchaseReview,
   getCashPurchaseReminderPreview,
@@ -32,6 +33,55 @@ import {
   cashPurchaseStatusLabel,
   ADMIN_CASH_PURCHASE_STATUS_LABELS as STATUS_LABELS,
 } from '../utils/cashPurchaseFlow'
+
+function ReversalHistory({ purchaseId }) {
+  const [events, setEvents] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  async function load() {
+    if (loading) return
+    setLoading(true)
+    setError('')
+    try {
+      setEvents(await getAdminCashReversalEvents(purchaseId))
+    } catch {
+      setError('Não foi possível carregar os eventos. Tente novamente.')
+    } finally {
+      setLoading(false)
+    }
+  }
+  return (
+    <Box>
+      <Button onClick={load} disabled={loading}>
+        {loading ? 'Carregando eventos…' : 'Ver eventos do estorno'}
+      </Button>
+      {error && (
+        <Text as="p" role="alert">
+          {error}
+        </Text>
+      )}
+      {events?.map((event) => (
+        <Box key={event.id} sx={{ mt: 2 }}>
+          <Text as="p" sx={{ m: 0 }}>
+            {formatDateTime(new Date(event.confirmed_at))} ·{' '}
+            {event.kind === 'refund' ? 'Reembolso' : 'Chargeback'} ·{' '}
+            {formatCentavosBRL(event.amount_centavos)}
+          </Text>
+          <Text as="p" sx={{ m: 0, fontSize: 0 }}>
+            Evento: {event.provider_event_id} · Evidência: {event.evidence_reference}
+          </Text>
+          <Text as="p" sx={{ m: 0, fontSize: 0 }}>
+            EvoCash: {event.cash_units} · Recuperado: {event.recovered_units} · Pendente:{' '}
+            {event.cash_units - event.recovered_units}
+          </Text>
+          <Text as="p" sx={{ m: 0, fontSize: 0 }}>
+            Responsável: {event.confirmed_by || 'Conta excluída'} · Motivo: {event.note}
+          </Text>
+        </Box>
+      ))}
+    </Box>
+  )
+}
 
 const REMINDER_BLOCK_REASON_LABELS = {
   not_pending: 'Esta compra não está mais pendente.',
@@ -135,7 +185,12 @@ function ReminderDialog({ purchase, onClose, onConfirm }) {
         if (active) setState({ status: 'ready', preview, error: '' })
       })
       .catch(() => {
-        if (active) setState({ status: 'ready', preview: null, error: 'Não foi possível carregar os dados do destinatário.' })
+        if (active)
+          setState({
+            status: 'ready',
+            preview: null,
+            error: 'Não foi possível carregar os dados do destinatário.',
+          })
       })
     return () => {
       active = false
@@ -143,11 +198,12 @@ function ReminderDialog({ purchase, onClose, onConfirm }) {
   }, [purchase.id])
 
   const preview = state.preview
-  const blockReason = preview && !preview.canSend
-    ? preview.reason === 'cooldown'
-      ? `Lembrete já enviado recentemente -- próximo envio liberado em ${formatDateTime(new Date(preview.cooldownUntil))}.`
-      : REMINDER_BLOCK_REASON_LABELS[preview.reason] || 'Não é possível enviar um lembrete agora.'
-    : ''
+  const blockReason =
+    preview && !preview.canSend
+      ? preview.reason === 'cooldown'
+        ? `Lembrete já enviado recentemente -- próximo envio liberado em ${formatDateTime(new Date(preview.cooldownUntil))}.`
+        : REMINDER_BLOCK_REASON_LABELS[preview.reason] || 'Não é possível enviar um lembrete agora.'
+      : ''
 
   return (
     <Dialog
@@ -156,17 +212,19 @@ function ReminderDialog({ purchase, onClose, onConfirm }) {
       footerButtons={[
         { content: 'Voltar', onClick: onClose, disabled: sending },
         ...(preview?.canSend
-          ? [{
-              content: 'Enviar lembrete',
-              buttonType: 'primary',
-              disabled: sending,
-              onClick: async () => {
-                setSending(true)
-                const errorMessage = await onConfirm()
-                setSending(false)
-                if (errorMessage) setState((previous) => ({ ...previous, error: errorMessage }))
+          ? [
+              {
+                content: 'Enviar lembrete',
+                buttonType: 'primary',
+                disabled: sending,
+                onClick: async () => {
+                  setSending(true)
+                  const errorMessage = await onConfirm()
+                  setSending(false)
+                  if (errorMessage) setState((previous) => ({ ...previous, error: errorMessage }))
+                },
               },
-            }]
+            ]
           : []),
       ]}
     >
@@ -249,7 +307,8 @@ export default function AdminCashPurchases() {
       if (!result.queued) {
         return result.reason === 'cooldown'
           ? `Lembrete já enviado recentemente -- próximo envio liberado em ${formatDateTime(new Date(result.cooldownUntil))}.`
-          : REMINDER_BLOCK_REASON_LABELS[result.reason] || 'Não foi possível enfileirar o lembrete agora.'
+          : REMINDER_BLOCK_REASON_LABELS[result.reason] ||
+              'Não foi possível enfileirar o lembrete agora.'
       }
       showToast('Lembrete na fila -- o e-mail será enviado em poucos minutos.')
       setRemindPurchase(null)
@@ -337,6 +396,13 @@ export default function AdminCashPurchases() {
             <br />
             Cancelada: {date(purchase.cancelledAt)}
           </Text>
+          {purchase.reversedCentavos > 0 && (
+            <Text as="p" sx={{ color: 'attention.fg' }}>
+              Estorno confirmado: {formatCentavosBRL(purchase.reversedCentavos)}. Histórico
+              preservado para análise financeira.
+            </Text>
+          )}
+          {purchase.reversedCentavos > 0 && <ReversalHistory purchaseId={purchase.id} />}
           {purchase.paidAfterCancelAt && (
             <Text as="p" sx={{ color: 'attention.fg', fontWeight: 'bold' }}>
               Pago após cancelamento: {date(purchase.paidAfterCancelAt)}
@@ -361,10 +427,7 @@ export default function AdminCashPurchases() {
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
                 {purchase.status === 'pending' && (
                   <>
-                    <Button
-                      disabled={!!busyId}
-                      onClick={() => setRemindPurchase(purchase)}
-                    >
+                    <Button disabled={!!busyId} onClick={() => setRemindPurchase(purchase)}>
                       Enviar lembrete
                     </Button>
                     <Button

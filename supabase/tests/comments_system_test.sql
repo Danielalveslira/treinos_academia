@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
@@ -53,7 +54,7 @@ set min_interval = interval '0 seconds', burst_limit = 0
 where singleton;
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', '81000000-0000-0000-0000-0000000000' || p, true)$$;
+  $$select pg_temp.set_test_user( '81000000-0000-0000-0000-0000000000' || p, true)$$;
 
 select pg_temp.as_user('02');
 create temp table root_comment as

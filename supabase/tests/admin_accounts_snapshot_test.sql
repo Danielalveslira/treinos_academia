@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -37,7 +38,7 @@ insert into public.account_restrictions (user_id, action, until) values
   ('71000000-0000-0000-0000-000000000006', 'temporary_suspension', now() - interval '1 day');
 update public.users set account_status = 'disabled', disabled_reason = 'Motivo de teste' where id = '71000000-0000-0000-0000-000000000005';
 
-select set_config('request.jwt.claim.sub', '71000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '71000000-0000-0000-0000-000000000001', true);
 select public.queue_deletion('account', '71000000-0000-0000-0000-000000000003');
 
 create temp table _snap as select public.admin_accounts_snapshot() as s;
@@ -46,19 +47,19 @@ create function pg_temp.acc(p_n text) returns jsonb language sql as $$
 $$;
 
 -- === 1. autorização ===
-select set_config('request.jwt.claim.sub', '71000000-0000-0000-0000-000000000009', true);
+select pg_temp.set_test_user( '71000000-0000-0000-0000-000000000009', true);
 select throws_ok($$select public.admin_accounts_snapshot()$$, 'PERMISSION_DENIED', 'usuário comum não executa o snapshot');
 select throws_ok($$select public.admin_account_communities('71000000-0000-0000-0000-000000000002')$$, 'PERMISSION_DENIED', 'usuário comum não lê comunidades da conta');
 select throws_ok($$select public.admin_account_financial('71000000-0000-0000-0000-000000000002')$$, 'PERMISSION_DENIED', 'usuário comum não lê financeiro da conta');
 select throws_ok($$select public.admin_list_audit_log()$$, 'PERMISSION_DENIED', 'usuário comum não lê a auditoria');
 select throws_ok($$select public.admin_set_accounts_status(array['71000000-0000-0000-0000-000000000002']::uuid[], true, 'motivo de teste')$$, 'PERMISSION_DENIED', 'usuário comum não altera status em lote');
 select throws_ok($$select public.admin_request_account_deletion('71000000-0000-0000-0000-000000000008', 'motivo de teste')$$, 'PERMISSION_DENIED', 'usuário comum não pede exclusão');
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_test_user( '', true);
 select throws_ok($$select public.admin_accounts_snapshot()$$, 'PERMISSION_DENIED', 'não autenticado não executa o snapshot');
 select ok(not has_function_privilege('anon', 'public.admin_accounts_snapshot()', 'execute'), 'anon sem EXECUTE no snapshot');
 select ok(not has_function_privilege('public', 'public.admin_accounts_snapshot()', 'execute'), 'public sem EXECUTE no snapshot');
 select ok(has_function_privilege('authenticated', 'public.admin_accounts_snapshot()', 'execute'), 'authenticated com EXECUTE (a checagem real é is_superadmin)');
-select set_config('request.jwt.claim.sub', '71000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '71000000-0000-0000-0000-000000000001', true);
 
 -- === 2. conteúdo do snapshot (criado como superadmin lá em cima) ===
 select is((select jsonb_typeof(s->'accounts') from _snap), 'array', 'accounts é array');

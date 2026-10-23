@@ -18,25 +18,51 @@ export function resolveRequestId(pendingAttempt, key, generateId) {
 // backend já impede uma segunda compra pending via cashPurchaseLock, ver
 // cash-purchase-service.js); esta checagem só evita o clique que sabidamente falharia.
 export function hasPendingCashPurchase(purchases) {
-  return purchases.some((purchase) => purchase.status === 'pending' &&
-    (purchase.paymentProvider !== 'infinitepay' || !!purchase.checkoutUrl))
+  return purchases.some(
+    (purchase) =>
+      purchase.status === 'pending' &&
+      (purchase.paymentProvider !== 'infinitepay' || !!purchase.checkoutUrl)
+  )
 }
 
 export function cashPurchaseStatusLabel(purchase, labels) {
-  if (purchase.paymentProvider === 'infinitepay' && purchase.status === 'pending' && !purchase.checkoutUrl) {
+  if (
+    purchase.paymentProvider === 'infinitepay' &&
+    purchase.status === 'pending' &&
+    !purchase.checkoutUrl
+  ) {
     return purchase.checkoutUncertain
       ? { text: 'Checkout em conciliação', variant: 'attention' }
       : { text: 'Preparando checkout', variant: 'attention' }
   }
+  if (purchase.reversedCentavos > 0)
+    return {
+      text:
+        purchase.reversedCentavos >= purchase.amountCentavos
+          ? 'Reembolsado / estornado'
+          : 'Estorno parcial',
+      variant: 'attention',
+    }
+  if (purchase.reviewResolution === 'refunded_externally')
+    return { text: 'Reembolsado externamente', variant: 'default' }
   return labels[purchase.status] || { text: purchase.status, variant: 'default' }
 }
 
 export function openInfinitepayCheckout(value, navigate = (url) => window.location.assign(url)) {
   let url
-  try { url = new URL(value) } catch { throw new Error('INVALID_CHECKOUT_URL') }
-  if (url.protocol !== 'https:' ||
-      !['checkout.infinitepay.io', 'checkout.infinitepay.com.br'].includes(url.hostname) ||
-      url.username || url.password || url.port) throw new Error('INVALID_CHECKOUT_URL')
+  try {
+    url = new URL(value)
+  } catch {
+    throw new Error('INVALID_CHECKOUT_URL')
+  }
+  if (
+    url.protocol !== 'https:' ||
+    !['checkout.infinitepay.io', 'checkout.infinitepay.com.br'].includes(url.hostname) ||
+    url.username ||
+    url.password ||
+    url.port
+  )
+    throw new Error('INVALID_CHECKOUT_URL')
   navigate(url.toString())
 }
 
@@ -63,7 +89,10 @@ export const ADMIN_CASH_PURCHASE_STATUS_LABELS = {
   cancelled: { text: 'Cancelada', variant: 'danger' },
   checkout_failed: { text: 'Falha no checkout', variant: 'danger' },
   held_in_case: { text: 'Retida em caso financeiro', variant: 'attention' },
-  needs_review: { text: 'Em análise (pagamento confirmado, conta desativada)', variant: 'attention' },
+  needs_review: {
+    text: 'Em análise (pagamento confirmado, conta desativada)',
+    variant: 'attention',
+  },
 }
 
 // Mesmo limite mínimo (>=5 caracteres) que o banco já exige em toda nota/motivo

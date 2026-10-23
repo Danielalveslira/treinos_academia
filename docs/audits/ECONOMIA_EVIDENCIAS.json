@@ -1,0 +1,191 @@
+{
+  "base_commit": "7398d68ada86bec5eea29a44ff7e3815c5e097fe",
+  "scope": "financial candidates only; parallel auth/session work preserved",
+  "production_changes": false,
+  "migrations": [
+    {
+      "file": "supabase/migrations/20261112000001_finance_permissions.sql",
+      "sha256": "cfb9b475c37a601c6794493d1c978a8340bda380e0b7a4149bf8e84c97a0ea0a"
+    },
+    {
+      "file": "supabase/migrations/20261112000002_finance_integrity.sql",
+      "sha256": "784a0ba3d01bcf37644adafa380228f7d4d46d26d910fbe1f248bf9bec7afa88"
+    },
+    {
+      "file": "supabase/migrations/20261112000003_finance_payment_finality.sql",
+      "sha256": "d7792aaa1fe4ec4ca575aa45cf5c92fad053b436b6bd0a3bc95367022ebd4dd8"
+    },
+    {
+      "file": "supabase/migrations/20261112000004_finance_reversals.sql",
+      "sha256": "cb6fadb4817531c3c73a8b4ee4038ad9f9c73d57de593a8791d57d9f640d7c2b"
+    },
+    {
+      "file": "supabase/migrations/20261112000005_finance_reward_evidence.sql",
+      "sha256": "a172a7a0632a6d6f02ba8c77d1d93501e97beef19c1fb5390949b13bc1931d95"
+    },
+    {
+      "file": "supabase/migrations/20261112000006_finance_reconciliation_shadow.sql",
+      "sha256": "b8e19d1b2f82f244b8492529f2927717d9f750f6bb5af6076aff81b7a5972c53"
+    }
+  ],
+  "baseline_sql": {
+    "files": 62,
+    "passed_files": 55,
+    "failures": [
+      "aud_community_covers_gates_test.sql",
+      "aud_has_app_access_gates_test.sql",
+      "community_member_removal_test.sql",
+      "exercise_visuals_test.sql",
+      "exercise_visuals_v2_test.sql",
+      "notification_security_test.sql",
+      "security_followup_test.sql"
+    ]
+  },
+  "candidate_sql_comparison_snapshot": {
+    "files": 68,
+    "passed_files": 61,
+    "failures": [
+      "aud_community_covers_gates_test.sql",
+      "aud_has_app_access_gates_test.sql",
+      "community_member_removal_test.sql",
+      "exercise_visuals_test.sql",
+      "exercise_visuals_v2_test.sql",
+      "notification_security_test.sql",
+      "security_followup_test.sql"
+    ]
+  },
+  "final_financial_sql": {
+    "finance_integrity": 17,
+    "finance_payment_finality": 11,
+    "finance_reversals": 18,
+    "finance_reward_evidence": 10,
+    "finance_reconciliation": 8,
+    "all_passed": true
+  },
+  "final_financial_sql_execution_log": "NOTICE:  policy \"cash_reversals_read\" for relation \"public.cash_purchase_reversals\" does not exist, skipping\nPASS finance_integrity\n 1..17\nPASS finance_payment_finality\n 1..11\nPASS finance_reversals\n 1..18\nPASS finance_reward_evidence\n 1..10\nPASS finance_reconciliation\n 1..8\nok - teto global: 30 sessões concorrentes somam exatamente 10\nok - ledger == agregado do dia\nok - carteira == ledger\nok - reputação == ledger\nok - nenhum teto por ação estourado\nok - mesma natural_key concorrente: 1 linha no ledger\nok - mesma natural_key concorrente: paga 1 vez\nNOTICE:  relation \"cash_reversals_outstanding_idx\" already exists, skipping\nNOTICE:  policy \"cash_reversals_read\" for relation \"public.cash_purchase_reversals\" does not exist, skipping\nPASS clean/incremental schema contracts\n",
+  "application_tests": {
+    "tests": 2089,
+    "pass": 2087,
+    "fail": 2,
+    "skipped": 0,
+    "duration_ms": 268707.405983
+  },
+  "application_test_failures": [
+    "logoutScope: all-device return contract changed in parallel",
+    "logoutScope: mixed-scope serialization changed in parallel"
+  ],
+  "functions": {
+    "tests": 206,
+    "pass": 203,
+    "fail": 0,
+    "skipped": 3,
+    "duration_ms": 4746.65262
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 16
+  },
+  "build": {
+    "passed": true,
+    "vite_seconds": 18.31,
+    "existing_chunk_size_warning": true
+  },
+  "concurrency": {
+    "results": [
+      {
+        "name": "100 confirmations / one payment",
+        "requests": 100,
+        "concurrency": 4,
+        "p50_ms": 354.84,
+        "p95_ms": 523.55,
+        "p99_ms": 688.85,
+        "requests_per_second": 10.69,
+        "expected_rejections": 0,
+        "unexpected_errors": 0
+      },
+      {
+        "name": "100 promotion replays / one debit",
+        "requests": 100,
+        "concurrency": 4,
+        "p50_ms": 325.64,
+        "p95_ms": 442.68,
+        "p99_ms": 470.72,
+        "requests_per_second": 11.95,
+        "expected_rejections": 0,
+        "unexpected_errors": 0
+      },
+      {
+        "name": "100 insufficient balance spends",
+        "requests": 100,
+        "concurrency": 4,
+        "p50_ms": 363.85,
+        "p95_ms": 505.68,
+        "p99_ms": 529.66,
+        "requests_per_second": 10.65,
+        "expected_rejections": 100,
+        "unexpected_errors": 0
+      },
+      {
+        "name": "100 reversal/spend races",
+        "requests": 100,
+        "concurrency": 4,
+        "p50_ms": 368.69,
+        "p95_ms": 507.24,
+        "p99_ms": 553.78,
+        "requests_per_second": 10.73,
+        "expected_rejections": 0,
+        "unexpected_errors": 0
+      },
+      {
+        "name": "100 EvoCoin awards / daily cap",
+        "requests": 100,
+        "concurrency": 4,
+        "p50_ms": 341.65,
+        "p95_ms": 496.12,
+        "p99_ms": 542.91,
+        "requests_per_second": 11.33,
+        "expected_rejections": 0,
+        "unexpected_errors": 0
+      }
+    ],
+    "invariants": "passed",
+    "fixturesRetainedInDisposableContainer": true
+  },
+  "performance": {
+    "before": {
+      "calls_per_sample": 2000,
+      "samples_ms": [
+        532.494,
+        627.512,
+        532.891,
+        609.235,
+        631.429
+      ],
+      "median_ms": 609.235
+    },
+    "after": {
+      "calls_per_sample": 2000,
+      "samples_ms": [
+        771.19,
+        938.173,
+        761.701,
+        691.618,
+        855.525
+      ],
+      "median_ms": 771.19
+    }
+  },
+  "bundle_scan": {
+    "javascript_files": 123,
+    "sensitive_findings": []
+  },
+  "schema_contract_equal": true,
+  "schema_contract_sha256": "476e949b6737533460961f10170daf6e6a9652fe88c4ad028352bb02d1bd9ea2",
+  "limitations": [
+    "no real gateway transactions/refunds",
+    "no production migrations/deploy",
+    "Storage/Auth sessions service absent in synthetic database",
+    "parallel session guard migration outside financial scope",
+    "reversal policy feature flag defaults disabled"
+  ]
+}

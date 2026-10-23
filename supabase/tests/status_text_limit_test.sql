@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -17,7 +18,7 @@ create or replace function pg_temp.post(p_text text) returns void language sql a
      values ('b2000000-0000-0000-0000-00000000000a', 'b1000000-0000-0000-0000-000000000001', 'text', p_text)$f$;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'b1000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( 'b1000000-0000-0000-0000-000000000001', true);
 
 select lives_ok($$select pg_temp.post('x')$$, '1 caractere continua válido');
 select lives_ok($$select pg_temp.post(repeat('a', 500))$$, '500 caracteres (limite antigo) continuam válidos');

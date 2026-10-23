@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -48,7 +49,7 @@ insert into public.status_participants (status_id, user_id, joined_at) values
   ('73000000-0000-0000-0000-00000000000b', '71000000-0000-0000-0000-000000000011', now());
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', '71000000-0000-0000-0000-0000000000' || p, true)$$;
+  $$select pg_temp.set_test_user( '71000000-0000-0000-0000-0000000000' || p, true)$$;
 create or replace function pg_temp.names(j jsonb) returns text language sql as
   $$select coalesce(string_agg(coalesce(e ->> 'username', 'Membro'), ',' order by ord), '') from jsonb_array_elements(j -> 'participants') with ordinality t(e, ord)$$;
 
@@ -98,7 +99,7 @@ select pg_temp.as_user('04');
 select throws_ok($$select public.list_workout_participants('73000000-0000-0000-0000-00000000000a')$$, 'PERMISSION_DENIED', 'banido da comunidade: bloqueado');
 select pg_temp.as_user('05');
 select is(jsonb_array_length(public.list_workout_participants('73000000-0000-0000-0000-00000000000a') -> 'participants'), 7, 'superadmin: permitido (mesma regra de quem vê a publicação)');
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_test_user( '', true);
 select throws_ok($$select public.list_workout_participants('73000000-0000-0000-0000-00000000000a')$$, 'NOT_AUTHENTICATED', 'sem autenticação: bloqueado');
 select ok(not has_function_privilege('anon', 'public.list_workout_participants(uuid, timestamptz, uuid, integer)', 'execute')
       and not has_function_privilege('anon', 'public.count_workout_participants(uuid)', 'execute'), 'anon não executa as RPCs');

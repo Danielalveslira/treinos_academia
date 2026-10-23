@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- F1 (2026-11-05_close_has_app_access_gates): valida que cada objeto do achado P18 nega
 -- corretamente conta disabled/deleting/suspensa/banida e permite conta ativa e superadmin,
 -- e que o mínimo da decisão do responsável (notices, support_requests, leitura da própria
@@ -82,7 +83,7 @@ insert into public.statuses(id,community_id,author_id,type,text)
   from unnest(array['1','2','3','4','5','6']) as n;
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', '9a000000-0000-0000-0000-00000000000' || p, true)$$;
+  $$select pg_temp.set_test_user( '9a000000-0000-0000-0000-00000000000' || p, true)$$;
 
 -- ===== 0) P20: os 2 testes de invariante de search_path devem passar a verde =====
 select is((select count(*)::int from pg_proc p where p.prosecdef and p.prokind = 'f'
@@ -383,7 +384,7 @@ values ('9a100000-0000-0000-0000-000000000001','authenticated','authenticated','
 insert into public.public_profiles(user_id,username) values ('9a100000-0000-0000-0000-000000000001','f12prereg');
 
 create or replace function pg_temp.as_f1(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', '9a100000-0000-0000-0000-00000000000' || p, true)$$;
+  $$select pg_temp.set_test_user( '9a100000-0000-0000-0000-00000000000' || p, true)$$;
 
 set local role authenticated;
 select pg_temp.as_f1('1');
@@ -433,7 +434,7 @@ update public.users set legal_acceptance_version='versao-antiga', legal_acceptan
 insert into public.public_profiles(user_id,username) values ('9a100000-0000-0000-0000-000000000002','f12stale');
 
 create or replace function pg_temp.as_f1_2() returns void language sql as
-  $$select set_config('request.jwt.claim.sub', '9a100000-0000-0000-0000-000000000002', true)$$;
+  $$select pg_temp.set_test_user( '9a100000-0000-0000-0000-000000000002', true)$$;
 
 -- Checagem direta das 2 funcoes (sem "set local role authenticated"): private.has_account_standing()
 -- esta no schema private, que tem "revoke all ... from public, anon, authenticated" (ver

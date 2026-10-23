@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -17,7 +18,7 @@ select public._ledger_record(('63000000-0000-0000-0000-0000000000' || n)::uuid, 
   from unnest(array['31','32','33']) as n;
 
 -- Leva cada conta ao caso financeiro separado e, para A e B, até a exclusão concluída (job complete).
-select set_config('request.jwt.claim.sub', '63000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '63000000-0000-0000-0000-000000000001', true);
 select public.queue_deletion('account', ('63000000-0000-0000-0000-0000000000' || n)::uuid) from unnest(array['31','32','33']) as n;
 select public.run_deletion_job(id) from public.deletion_jobs where target_id in
   ('63000000-0000-0000-0000-000000000031', '63000000-0000-0000-0000-000000000032', '63000000-0000-0000-0000-000000000033');
@@ -76,12 +77,12 @@ select results_eq($$select protocol, cash_balance_snapshot from public.account_f
 select ok(exists (select 1 from jsonb_array_elements(public.admin_list_financial_cases_retention_due(500)) e where e ->> 'id' = (select id::text from _legacy)), 'caso legado vencido e sem hold é elegível');
 
 -- === hold ===
-select set_config('request.jwt.claim.sub', '63000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( '63000000-0000-0000-0000-000000000002', true);
 select throws_ok($$select public.set_financial_case_retention_hold((select id from _cases where k = '31'), true, 'usuário comum tentando')$$, 'PERMISSION_DENIED', 'usuário comum não liga hold');
 select throws_ok($$select public.set_financial_case_retention_hold((select id from _cases where k = '31'), false, 'usuário comum tentando')$$, 'PERMISSION_DENIED', 'usuário comum não remove hold');
 select throws_ok($$select public.admin_list_financial_cases_retention_due(10)$$, 'PERMISSION_DENIED', 'usuário comum não lista casos elegíveis');
 select throws_ok($$select public.resolve_account_financial_case((select id from _cases where k = '32'), 'usuário comum tentando')$$, 'PERMISSION_DENIED', 'usuário comum não resolve caso');
-select set_config('request.jwt.claim.sub', '63000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '63000000-0000-0000-0000-000000000001', true);
 
 select throws_ok($$select public.set_financial_case_retention_hold((select id from _legacy), true, '')$$, 'REASON_REQUIRED', 'hold exige motivo');
 select is((public.set_financial_case_retention_hold((select id from _legacy), true, 'disputa judicial em andamento') ->> 'replay'), 'false', 'liga hold');

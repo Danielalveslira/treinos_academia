@@ -1,0 +1,41 @@
+name: Supabase & app tests
+
+# Ambiente isolado e reproduzível (runner do GitHub, descartável a cada execução) para validar
+# as migrations de autenticação/sessão (20261113*, 20261114*) e financeiras (20261112*) sem usar
+# produção nem qualquer container local compartilhado com outra sessão de trabalho. Não precisa
+# de nenhum secret: supabase start cria um Postgres local só para este job e o apaga ao final.
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  sql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      # `supabase start` aplica todas as migrations em supabase/migrations/, em ordem, contra um
+      # Postgres novo -- é a própria prova de que elas se aplicam em sequência numa base limpa.
+      - run: supabase start
+      # pg_prove sobre supabase/tests/*.sql (pgTAP). Cada arquivo abre begin/rollback: nada fica
+      # persistido, mesmo com o guard de sessão testado com sessões de verdade em auth.sessions.
+      - run: supabase test db
+      - if: always()
+        run: supabase stop

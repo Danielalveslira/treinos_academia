@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -18,7 +19,7 @@ insert into public.community_members (community_id, user_id) values
 insert into public.statuses (id, community_id, author_id, type, text, expires_at)
 values ('b3000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000001', 'b1000000-0000-0000-0000-000000000001', 'text', 'post', now() + interval '1 day');
 update private.comment_rate_limits set min_interval = interval '0 seconds', burst_limit = 0 where singleton;
-select set_config('request.jwt.claim.sub', 'b1000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( 'b1000000-0000-0000-0000-000000000002', true);
 select public.comment_create('b3000000-0000-0000-0000-000000000001', null, 'Primeiro comentário', 'b4000000-0000-0000-0000-000000000001');
 
 select ok(has_function_privilege('authenticated', 'private.can_view_status(uuid, uuid)', 'execute'), 'authenticated tem EXECUTE em private.can_view_status (usada pela RLS)');
@@ -30,11 +31,11 @@ set local role authenticated;
 select is((select count(*)::int from public.comment_list_items where status_id = 'b3000000-0000-0000-0000-000000000001'), 1, 'membro lista comentários pela view comment_list_items');
 select is((select author_username from public.comment_list_items where status_id = 'b3000000-0000-0000-0000-000000000001'), 'reader02', 'view traz o autor');
 select is((select count(*)::int from public.post_comments where status_id = 'b3000000-0000-0000-0000-000000000001'), 1, 'membro lê post_comments (RLS)');
-select set_config('request.jwt.claim.sub', 'b1000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( 'b1000000-0000-0000-0000-000000000001', true);
 select is((select count(*)::int from public.comment_list_items where status_id = 'b3000000-0000-0000-0000-000000000001'), 1, 'o autor do post também lê');
 select is((select count(*)::int from public.comment_likes), 0, 'comment_likes legível (policy usa o helper) -- sem erro de permissão');
 -- não membro não enxerga (a RLS continua valendo)
-select set_config('request.jwt.claim.sub', 'b1000000-0000-0000-0000-000000000003', true);
+select pg_temp.set_test_user( 'b1000000-0000-0000-0000-000000000003', true);
 select is((select count(*)::int from public.comment_list_items where status_id = 'b3000000-0000-0000-0000-000000000001'), 0, 'não membro não vê comentários');
 reset role;
 

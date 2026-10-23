@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select plan(17);
 
@@ -11,7 +12,7 @@ insert into auth.users (
 );
 update public.users set usage_profile = 'professional'
   where id = '41000000-0000-0000-0000-000000000001';
-select set_config('request.jwt.claim.sub', '41000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '41000000-0000-0000-0000-000000000001', true);
 
 insert into public.professional_listings (id, owner_id, kind)
 values (

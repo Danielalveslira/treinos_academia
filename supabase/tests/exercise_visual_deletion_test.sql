@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
@@ -7,7 +8,7 @@ update public.users set role='superadmin' where id='97000000-0000-0000-0000-0000
 insert into public.exercise_catalog(id,provider,provider_exercise_id,name,primary_muscle,muscles,category,instructions)
 values('97aaaaaa-0000-0000-0000-000000000001','evolutus_dataset','delete-a','Delete A','peito',array['peito'],'forca',array['Puxe.']),
 ('97aaaaaa-0000-0000-0000-000000000002','evolutus_dataset','delete-b','Delete B','peito',array['peito'],'forca',array['Puxe.']);
-select set_config('request.jwt.claim.sub','97000000-0000-0000-0000-000000000001',true);
+select pg_temp.set_test_user('97000000-0000-0000-0000-000000000001',true);
 create temp table targets as select (public.allocate_exercise_visual_set('97aaaaaa-0000-0000-0000-000000000001','manual_upload','v2.1','{}','97111111-0000-0000-0000-000000000001')->>'visualSetId')::uuid id;
 create temp table shared as select (public.allocate_exercise_visual_set('97aaaaaa-0000-0000-0000-000000000002','manual_upload')->>'visualSetId')::uuid id;
 create temp table profile_snapshot as select id,name,base_prompt,active from public.exercise_visual_style_profiles;
@@ -16,12 +17,12 @@ select ok(not has_function_privilege('authenticated','public.claim_exercise_visu
 select ok(not has_function_privilege('authenticated','public.finish_exercise_visual_deletion(uuid,uuid,text)','execute'),'user cannot acknowledge storage');
 select ok(not has_table_privilege('authenticated','public.exercise_visual_deletions','insert'),'user cannot forge paths/jobs');
 select ok(not has_table_privilege('authenticated','public.exercise_visual_sets','delete'),'no direct version deletion');
-select set_config('request.jwt.claim.sub','97000000-0000-0000-0000-000000000002',true);
+select pg_temp.set_test_user('97000000-0000-0000-0000-000000000002',true);
 select throws_ok($$select public.request_exercise_visual_deletion((select id from targets))$$,'42501','FORBIDDEN','ordinary user rejected');
 set local role authenticated;
 select is((select count(*)::int from public.exercise_visual_deletions),0,'ordinary user sees no deletion records');
 reset role;
-select set_config('request.jwt.claim.sub','97000000-0000-0000-0000-000000000001',true);
+select pg_temp.set_test_user('97000000-0000-0000-0000-000000000001',true);
 -- Another set references the same private key; deletion must leave both versions untouched.
 update public.exercise_visual_assets set storage_path='97aaaaaa-0000-0000-0000-000000000001/'||(select id from targets)||'/start.webp' where visual_set_id=(select id from shared) and role='start';
 select throws_ok($$select public.request_exercise_visual_deletion((select id from targets))$$,'55000','VISUAL_FILE_REFERENCED','shared asset blocks deletion');

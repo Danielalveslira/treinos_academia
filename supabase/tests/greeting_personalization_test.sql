@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -15,7 +16,7 @@ update public.users u set legal_acceptance_version = p.version, legal_acceptance
 update public.users set account_status = 'disabled' where id = 'e1000000-0000-0000-0000-000000000003';
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', case when p = '' then '' else 'e1000000-0000-0000-0000-0000000000' || p end, true)$$;
+  $$select pg_temp.set_test_user( case when p = '' then '' else 'e1000000-0000-0000-0000-0000000000' || p end, true)$$;
 
 create or replace function pg_temp.error_of(q text) returns text language plpgsql as
   $$begin execute q; return null; exception when others then return sqlerrm; end$$;

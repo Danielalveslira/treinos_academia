@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -33,7 +34,7 @@ insert into public.sponsored_ads (id, partner_name, title, community_ids, is_glo
           now() + interval '30 days', 'd1000000-0000-0000-0000-000000000005');
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', case when p = '' then '' else 'd1000000-0000-0000-0000-0000000000' || p end, true)$$;
+  $$select pg_temp.set_test_user( case when p = '' then '' else 'd1000000-0000-0000-0000-0000000000' || p end, true)$$;
 
 create or replace function pg_temp.rows_affected(q text) returns bigint language plpgsql as
   $$declare n bigint; begin execute q; get diagnostics n = row_count; return n; end$$;
@@ -274,6 +275,31 @@ select is((select count(*) from public.community_members m join public.community
 
 -- === 13) leitura (índices) ===
 select is((select count(*) from pg_indexes where tablename in ('community_members','community_restrictions') and indexdef ~ '\(community_id, user_id\)'), 2::bigint, 'ambas as tabelas têm índice (community_id, user_id): não é preciso criar outro');
+
+-- === 14) sessão revogada (20261113000003): dono de verdade, mas "sair de todos os dispositivos"
+-- em outro aparelho já apagou a sessão -- fixture própria (06), sem tocar no estado das seções
+-- anteriores. A checagem vem antes de qualquer mutação: nenhum vínculo/restrição é criado.
+insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values ('d1000000-0000-0000-0000-000000000006', 'authenticated', 'authenticated', 'u06-removal@example.invalid', 'not-used', now(), '{}'::jsonb, '{}'::jsonb, now(), now());
+insert into public.community_members (community_id, user_id) values
+  ('d2000000-0000-0000-0000-00000000000a', 'd1000000-0000-0000-0000-000000000006');
+set local role authenticated;
+select pg_temp.as_user('01'); -- dono, continua autorizado por papel
+select pg_temp.revoke_test_session('d1000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$select public.set_community_member_ban('d2000000-0000-0000-0000-00000000000a', 'd1000000-0000-0000-0000-000000000006', true, 'tentativa com sessão revogada')$$,
+  'SESSION_REVOKED', 'set_community_member_ban nega sessão revogada mesmo sendo o dono de verdade'
+);
+reset role;
+select is((select count(*) from public.community_members where user_id = 'd1000000-0000-0000-0000-000000000006'), 1::bigint, 'vínculo intacto: a tentativa com sessão revogada não teve efeito nenhum');
+select is((select count(*) from public.community_restrictions where user_id = 'd1000000-0000-0000-0000-000000000006'), 0::bigint, 'nenhuma restrição criada pela tentativa com sessão revogada');
+set local role authenticated;
+select pg_temp.as_user('01'); -- novo login (nova sessão): a mesma ação volta a funcionar sem nenhum mecanismo extra
+select lives_ok(
+  $$select public.set_community_member_ban('d2000000-0000-0000-0000-00000000000a', 'd1000000-0000-0000-0000-000000000006', true, 'sessão ativa de novo')$$,
+  'sessão ativa de novo: volta a funcionar'
+);
+reset role;
 
 select * from finish();
 rollback;

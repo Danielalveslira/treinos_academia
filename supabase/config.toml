@@ -478,3 +478,7 @@ verify_jwt = false
 [functions.delete-exercise-visual]
 enabled = true
 verify_jwt = true
+
+[functions.infinitepay-admin-reconcile]
+enabled = true
+verify_jwt = true

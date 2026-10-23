@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -20,7 +21,7 @@ insert into public.community_members (community_id, user_id) values
   ('d6000000-0000-0000-0000-00000000000b', 'd5000000-0000-0000-0000-000000000004');
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', case when p = '' then '' else 'd5000000-0000-0000-0000-0000000000' || p end, true)$$;
+  $$select pg_temp.set_test_user( case when p = '' then '' else 'd5000000-0000-0000-0000-0000000000' || p end, true)$$;
 create or replace function pg_temp.rows_affected(q text) returns bigint language plpgsql as
   $$declare n bigint; begin execute q; get diagnostics n = row_count; return n; end$$;
 

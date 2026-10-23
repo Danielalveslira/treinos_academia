@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
@@ -12,7 +13,7 @@ insert into public.communities(id,name,created_by,owner_id) values ('fa200000-00
 insert into public.community_members(community_id,user_id) values ('fa200000-0000-0000-0000-000000000001','fa100000-0000-0000-0000-000000000001');
 select public._wallet_credit_cash('fa100000-0000-0000-0000-000000000001',300);
 set local role authenticated;
-select set_config('request.jwt.claim.sub','fa100000-0000-0000-0000-000000000001',true);
+select pg_temp.set_test_user('fa100000-0000-0000-0000-000000000001',true);
 select throws_ok($q$update public.communities set promoted=true where id='fa200000-0000-0000-0000-000000000001'$q$,'42501','COMMUNITY_PROMOTION_SERVER_ONLY','dono não fabrica promoção');
 select throws_ok($q$update public.communities set promoted_until=now()+interval '1 year' where id='fa200000-0000-0000-0000-000000000001'$q$,'42501','COMMUNITY_PROMOTION_SERVER_ONLY','dono não forja prazo');
 select throws_ok($q$update public.communities set active_promotion_id=gen_random_uuid() where id='fa200000-0000-0000-0000-000000000001'$q$,'42501','COMMUNITY_PROMOTION_SERVER_ONLY','dono não forja vínculo');
@@ -24,7 +25,7 @@ select ok((select promoted and active_promotion_id is not null and promoted_unti
 select throws_ok($q$update public.communities set promoted=false,promoted_until=null,active_promotion_id=null where id='fa200000-0000-0000-0000-000000000001'$q$,'42501','COMMUNITY_PROMOTION_SERVER_ONLY','cliente não cancela direto');
 select lives_ok($q$select public.cancel_promotion((select active_promotion_id from public.communities where id='fa200000-0000-0000-0000-000000000001'),null)$q$,'cancelamento pela RPC continua');
 select ok((select not promoted and active_promotion_id is null and promoted_until is null from public.communities where id='fa200000-0000-0000-0000-000000000001'),'cancelamento limpa flags');
-select set_config('request.jwt.claim.sub','fa100000-0000-0000-0000-000000000002',true);
+select pg_temp.set_test_user('fa100000-0000-0000-0000-000000000002',true);
 select throws_ok($q$insert into public.communities(name,created_by,promoted) values ('Admin forjado','fa100000-0000-0000-0000-000000000002',true)$q$,'42501','COMMUNITY_PROMOTION_SERVER_ONLY','admin autenticado também não forja INSERT');
 select lives_ok($q$insert into public.communities(name,created_by) values ('Admin legítimo','fa100000-0000-0000-0000-000000000002')$q$,'criação administrativa legítima preservada');
 select throws_ok($q$update public.communities set promoted=true where id='fa200000-0000-0000-0000-000000000001'$q$,'42501','COMMUNITY_PROMOTION_SERVER_ONLY','admin autenticado não forja UPDATE');

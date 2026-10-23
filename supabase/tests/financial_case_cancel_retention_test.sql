@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -15,7 +16,7 @@ select public._wallet_credit_cash(('65000000-0000-0000-0000-0000000000' || n)::u
 select public._ledger_record('65000000-0000-0000-0000-000000000041', 'seed:1', 'cash', 'credit', 25, 'cash_purchase_confirmed', 'cash_purchase', 'seed');
 select public._ledger_record('65000000-0000-0000-0000-000000000042', 'seed:1', 'cash', 'credit', 25, 'cash_purchase_confirmed', 'cash_purchase', 'seed');
 
-select set_config('request.jwt.claim.sub', '65000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '65000000-0000-0000-0000-000000000001', true);
 select public.queue_deletion('account', ('65000000-0000-0000-0000-0000000000' || n)::uuid) from unnest(array['41','42']) as n;
 select public.run_deletion_job(id) from public.deletion_jobs where target_id in
   ('65000000-0000-0000-0000-000000000041', '65000000-0000-0000-0000-000000000042');

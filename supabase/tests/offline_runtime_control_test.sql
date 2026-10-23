@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
@@ -31,7 +32,7 @@ values ('c5000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated'
   'telemetry-b@example.invalid', 'not-used', now(), '{}'::jsonb, '{}'::jsonb, now(), now());
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'c5000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( 'c5000000-0000-0000-0000-000000000001', true);
 select is((public.get_offline_feature_flags()->'offline_write'->>'rollout_percentage')::numeric, 0::numeric, 'RPC retorna 0%');
 select throws_ok($$update public.offline_feature_flags set enabled = true$$, '42501', null, 'cliente não liga flag');
 select throws_ok($$select count(*) from public.offline_telemetry$$, '42501', null, 'cliente não lê tabela de telemetria');
@@ -49,7 +50,7 @@ select is((select count(*)::int from public.offline_telemetry where user_id = 'c
 select is((select event_type from public.offline_telemetry where user_id = 'c5000000-0000-0000-0000-000000000001'), 'sync_retry', 'somente tipo técnico persiste');
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'c5000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( 'c5000000-0000-0000-0000-000000000002', true);
 select is(public.record_offline_telemetry((select jsonb_agg(jsonb_build_object('event_type','sync_started')) from generate_series(1,20))), 20, 'B pode registrar primeiro lote limitado');
 select is(public.record_offline_telemetry((select jsonb_agg(jsonb_build_object('event_type','sync_started')) from generate_series(1,20))), 20, 'B registra segundo lote');
 select is(public.record_offline_telemetry((select jsonb_agg(jsonb_build_object('event_type','sync_started')) from generate_series(1,20))), 20, 'B registra terceiro lote');

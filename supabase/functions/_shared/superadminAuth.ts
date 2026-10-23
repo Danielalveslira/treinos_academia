@@ -36,6 +36,8 @@ export async function authenticateSuperadmin(
   const { data: userData, error: userErr } = await userClient.auth.getUser()
   if (userErr || !userData?.user) return jsonError('NOT_AUTHENTICATED', 401)
   const uid = userData.user.id
+  const { data: sessionActive, error: sessionError } = await userClient.rpc('is_session_active')
+  if (sessionError || sessionActive !== true) return jsonError('SESSION_REVOKED', 401)
 
   const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
   const { data: profile, error: profileErr } = await adminClient

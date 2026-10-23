@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
@@ -29,7 +30,7 @@ select ok(not private.is_push_endpoint_allowed('http://fcm.googleapis.com/abc'),
 select ok(not private.is_push_endpoint_allowed('https://169.254.169.254/abc'), 'IP interno recusado');
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '95000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '95000000-0000-0000-0000-000000000001', true);
 select throws_ok(
   $$select public.register_push_subscription('https://push.example/x', repeat('p', 32), repeat('a', 16))$$,
   'INVALID_SUBSCRIPTION', 'registro recusa endpoint fora da allowlist'
@@ -46,14 +47,14 @@ select is(public.get_my_push_status()->>'thisDevice', 'false', 'status sem endpo
 reset role;
 update public.push_notification_preferences set enabled = false where user_id = '95000000-0000-0000-0000-000000000001';
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '95000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '95000000-0000-0000-0000-000000000001', true);
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/u1-a', repeat('p', 32), repeat('a', 16));
 reset role;
 select is((select enabled from public.push_notification_preferences where user_id = '95000000-0000-0000-0000-000000000001'),
   false, 'sync/registro não religa preferência desligada');
 update public.push_notification_preferences set enabled = true where user_id = '95000000-0000-0000-0000-000000000001';
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '95000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '95000000-0000-0000-0000-000000000001', true);
 select is(public.unregister_push_subscription(), 1, 'logout global revoga os dispositivos da conta');
 reset role;
 select is((select enabled from public.push_notification_preferences where user_id = '95000000-0000-0000-0000-000000000001'),
@@ -61,7 +62,7 @@ select is((select enabled from public.push_notification_preferences where user_i
 
 -- Troca de conta: entrega pendente da conta A não chega à conta B ---------------------------
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '95000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '95000000-0000-0000-0000-000000000001', true);
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/shared', repeat('p', 32), repeat('a', 16));
 reset role;
 insert into public.notifications (recipient_id, type, metadata)
@@ -73,7 +74,7 @@ select public.finish_push_batch('hard-w1',
 update public.notification_push_deliveries set next_attempt_at = now() - interval '1 second';
 update public.notification_push_outbox set next_attempt_at = now() - interval '1 second' where status = 'pending';
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '95000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( '95000000-0000-0000-0000-000000000002', true);
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/shared', repeat('q', 32), repeat('b', 16));
 reset role;
 select is((select status from public.notification_push_deliveries where last_error = 'SUBSCRIPTION_REASSIGNED'), 'cancelled',
@@ -85,7 +86,7 @@ select is((select status from public.notification_push_outbox o join public.noti
 
 -- Subscription revogada com entrega pendente não gera loop infinito ------------------------
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '95000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '95000000-0000-0000-0000-000000000001', true);
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/loop-a', repeat('p', 32), repeat('a', 16));
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/loop-b', repeat('p', 32), repeat('a', 16));
 reset role;
@@ -109,7 +110,7 @@ select is((select o.status from public.notification_push_outbox o join public.no
 
 -- Elegibilidade: conta bloqueada (gatilho da 02) e Push/categoria desligados (recheca no claim) --
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '95000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '95000000-0000-0000-0000-000000000001', true);
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/elig', repeat('p', 32), repeat('a', 16));
 reset role;
 insert into public.notifications (recipient_id, type, metadata)
@@ -126,7 +127,7 @@ update public.users set account_status = 'active' where id = '95000000-0000-0000
 
 -- Push/categoria desligados DEPOIS do enfileiramento: o claim cancela (não depende do gatilho).
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '95000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '95000000-0000-0000-0000-000000000001', true);
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/elig2', repeat('p', 32), repeat('a', 16));
 reset role;
 insert into public.notifications (recipient_id, type, metadata)
@@ -164,7 +165,7 @@ select throws_ok($$select public.finish_push_batch('x', '[{"outcome":"sent"}]')$
 
 -- Teto de dispositivos ativos por conta -----------------------------------------------------
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '95000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( '95000000-0000-0000-0000-000000000002', true);
 do $$ begin
   for i in 1..22 loop
     perform public.register_push_subscription('https://fcm.googleapis.com/fcm/send/cap-' || i, repeat('p', 32), repeat('a', 16));
@@ -173,7 +174,7 @@ end $$;
 select is((public.get_my_push_status()->>'activeSubscriptions')::int, 20, 'conta mantém no máximo 20 dispositivos ativos');
 
 -- Auditoria do broadcast sobrevive à exclusão do superadmin ----------------------------------
-select set_config('request.jwt.claim.sub', '95000000-0000-0000-0000-000000000003', true);
+select pg_temp.set_test_user( '95000000-0000-0000-0000-000000000003', true);
 select lives_ok($$select public.create_push_broadcast('96000000-0000-0000-0000-000000000001', 'Aviso', 'Mensagem', '/\evil.test', true)$$,
   'superadmin cria broadcast');
 reset role;

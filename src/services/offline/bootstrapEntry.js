@@ -8,8 +8,15 @@ import { homeSnapshotKey, validateHomeSnapshot } from './homeSnapshot.js'
 // sem rede) para não pesar no bundle de boot de quem está online; as regras e o formato do registro
 // continuam em bootstrap.js. Entra no precache offline do Service Worker (scripts/pwa-plugin.js).
 
+// Janela máxima para o cold start offline reabrir sem uma verificação online nova (Etapa 5 do
+// PROMPT_CORRECAO_LOGOUT_GLOBAL_EVOLUTUS). Limite conservador proposto -- sem ela, um aparelho que
+// nunca mais se conecta continuaria abrindo o conteúdo local indefinidamente. Constante de domínio:
+// mudar aqui (e nos testes que dependem dela) é a única alteração necessária para ajustar a regra.
+export const MAX_OFFLINE_ENTRY_AGE_MS = 24 * 60 * 60 * 1000
+
 // Decide se este registro permite abrir offline. Falha SEGURA: qualquer dúvida = não entra.
-export function evaluateOfflineEntry(record, { userId = null } = {}) {
+// `now`: injetável só para teste determinístico -- o chamador real nunca precisa informar.
+export function evaluateOfflineEntry(record, { userId = null, now = Date.now() } = {}) {
   if (!record || typeof record !== 'object') return { ok: false, reason: 'NO_BOOTSTRAP' }
   if (record.schema_version !== BOOTSTRAP_SCHEMA_VERSION)
     return { ok: false, reason: 'SCHEMA_MISMATCH' }
@@ -35,6 +42,11 @@ export function evaluateOfflineEntry(record, { userId = null } = {}) {
     return { ok: false, reason: 'LEGAL_NOT_CONFIRMED' }
   }
   if (!Number.isFinite(record.last_online_verified_at)) return { ok: false, reason: 'CORRUPTED' }
+  // Idade da última verificação online: negativa (relógio do aparelho regredido, ou registro com
+  // data futura) ou maior que a janela permitida -- as duas falham fechado, nunca "mais nova".
+  const age = now - record.last_online_verified_at
+  if (!Number.isFinite(age) || age < 0 || age > MAX_OFFLINE_ENTRY_AGE_MS)
+    return { ok: false, reason: 'STALE' }
   return { ok: true, reason: null }
 }
 

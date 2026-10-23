@@ -60,7 +60,10 @@ async function bundle(name, env) {
       {
         name: 'supabase-config-stub',
         setup(pluginBuild) {
-          pluginBuild.onResolve({ filter: /\/supabase\/config$/ }, (args) => ({ path: args.path, namespace: 'stub' }))
+          pluginBuild.onResolve({ filter: /\/supabase\/config$/ }, (args) => ({
+            path: args.path,
+            namespace: 'stub',
+          }))
           pluginBuild.onLoad({ filter: /.*/, namespace: 'stub' }, () => ({
             contents: `
               const thenable = (run) => ({ then: (res, rej) => Promise.resolve().then(run).then(res, rej) })
@@ -90,7 +93,11 @@ async function bundle(name, env) {
 
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'wallet-ctx-'))
-  const common = { VITE_SUPABASE_URL: 'http://backend.test', VITE_SUPABASE_ANON_KEY: 'k', PROD: false }
+  const common = {
+    VITE_SUPABASE_URL: 'http://backend.test',
+    VITE_SUPABASE_ANON_KEY: 'k',
+    PROD: false,
+  }
   on = await bundle('on', { ...common, VITE_OFFLINE_COLD_START_ENABLED: 'true' })
   off = await bundle('off', common)
 })
@@ -127,7 +134,8 @@ beforeEach(async () => {
       if (gate) await gate
       return { data: walletRows, error: null }
     }
-    if (name === 'get_my_evocoin_day') return { data: { dailyEarned: 3, dailyLimit: 10, day: on.saoPauloDayKey() }, error: null }
+    if (name === 'get_my_evocoin_day')
+      return { data: { dailyEarned: 3, dailyLimit: 10, day: on.saoPauloDayKey() }, error: null }
     return { data: null, error: null }
   }
   const store = new Map()
@@ -140,7 +148,10 @@ beforeEach(async () => {
       return store.size
     },
   }
-  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { onLine: true, userAgent: 'node' } })
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { onLine: true, userAgent: 'node' },
+  })
 })
 afterEach(() => {
   delete globalThis.__rpc
@@ -155,7 +166,9 @@ const authOf = (uid, extra = {}) => ({
 })
 const html = (tree) => JSON.stringify(tree.toJSON())
 const valuesIn = (tree) =>
-  tree.root.findAll((n) => n.props?.className === 'wallet-badge-value').map((n) => n.children.join(''))
+  tree.root
+    .findAll((n) => n.props?.className === 'wallet-badge-value')
+    .map((n) => n.children.join(''))
 
 const TODAY = () => on.saoPauloDayKey()
 const SNAPSHOT_HOME = (extra = {}) => ({
@@ -225,7 +238,10 @@ test('build SEM cold start não grava snapshot nenhum (ele nunca seria lido)', a
     request.onsuccess = () => resolve(request.result)
   })
   db.close()
-  assert.equal(rows.some((r) => r.key.endsWith(':home-snapshot')), false)
+  assert.equal(
+    rows.some((r) => r.key.endsWith(':home-snapshot')),
+    false
+  )
   view.unmount()
 })
 
@@ -277,7 +293,9 @@ test('OFFLINE sem snapshot: "—" nos dois indicadores, nunca 0', async () => {
 })
 
 test('saldo real ZERO guardado continua sendo mostrado como "0" (≠ indisponível)', async () => {
-  const home = SNAPSHOT_HOME({ wallet: { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0, saved_at: 1 } })
+  const home = SNAPSHOT_HOME({
+    wallet: { coinBalance: 0, lifetimeCoinsEarned: 0, cashBalance: 0, saved_at: 1 },
+  })
   const view = on.mount(authOf(A, { offlineLocal: true, offlineHome: home }))
   await settle(40)
   assert.deepEqual(valuesIn(view.tree), ['0', '0'])
@@ -285,7 +303,9 @@ test('saldo real ZERO guardado continua sendo mostrado como "0" (≠ indisponív
 })
 
 test('"EvoCoins de hoje" de um dia anterior NÃO é restaurado como se fosse de hoje', async () => {
-  const home = SNAPSHOT_HOME({ daily_coins: { earned: 9, limit: 10, day: '2020-01-01', saved_at: 1 } })
+  const home = SNAPSHOT_HOME({
+    daily_coins: { earned: 9, limit: 10, day: '2020-01-01', saved_at: 1 },
+  })
   const view = on.mount(authOf(A, { offlineLocal: true, offlineHome: home }))
   await settle(40)
   assert.equal(on.wallet().dailyCoins, null)
@@ -306,7 +326,11 @@ test('RECONEXÃO: o último valor fica na tela até o servidor responder (sem "0
   walletRows = row(26, 340, 41)
   view.update(authOf(A)) // voltou a rede: AuthContext virou online e limpou offlineHome
   await settle(30)
-  assert.deepEqual(valuesIn(view.tree), ['20', '320'], 'valor conhecido enquanto a leitura fresca não chega')
+  assert.deepEqual(
+    valuesIn(view.tree),
+    ['20', '320'],
+    'valor conhecido enquanto a leitura fresca não chega'
+  )
   release()
   await settle(40)
   assert.deepEqual(valuesIn(view.tree), ['26', '340'])
@@ -343,5 +367,30 @@ test('LOGOUT: sem usuário o header some e nenhum valor fica na memória', async
   await settle(30)
   assert.equal(on.wallet().display, null)
   assert.deepEqual(valuesIn(view.tree), [])
+  view.unmount()
+})
+
+test('cache de sessão é só exibição até confirmação fresca e falha de rede não autoriza saldo antigo', async () => {
+  sessionStorage.setItem(
+    `wallet:${A}`,
+    JSON.stringify({
+      wallet: { coinBalance: 999, cashBalance: 999, lifetimeCoinsEarned: 999 },
+      cachedAtMs: Date.now(),
+    })
+  )
+  let reject
+  gate = new Promise((_, fail) => {
+    reject = fail
+  })
+  const view = on.mount(authOf(A))
+  await settle(30)
+  assert.equal(on.wallet().display.source, 'snapshot')
+  assert.equal(on.wallet().display.cashBalance, 999)
+  assert.equal(on.wallet().wallet.cashBalance, 0)
+  reject(new Error('network unavailable'))
+  await settle(30)
+  assert.equal(on.wallet().wallet.cashBalance, 0)
+  assert.equal(on.wallet().loading, false)
+  assert.match(on.wallet().error, /confirmar o saldo/)
   view.unmount()
 })

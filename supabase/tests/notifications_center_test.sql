@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
@@ -88,14 +89,14 @@ select is(
 
 -- Leitura: cada usuário só enxerga as próprias notificações.
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '83000000-0000-0000-0000-000000000004', true);
+select pg_temp.set_test_user( '83000000-0000-0000-0000-000000000004', true);
 select is(
   (select count(*)::int from public.notification_items), 0,
   'um usuário comum não vê alertas dos superadmins'
 );
 select is(public.notifications_unread_count(), 0, 'badge do usuário comum é zero');
 
-select set_config('request.jwt.claim.sub', '83000000-0000-0000-0000-000000000003', true);
+select pg_temp.set_test_user( '83000000-0000-0000-0000-000000000003', true);
 select is(public.notifications_unread_count(), 2, 'badge conta só as não lidas do próprio admin');
 select throws_ok(
   $$insert into public.notifications (recipient_id, type) values (auth.uid(), 'admin_report')$$,

@@ -1,3 +1,4 @@
+import { readLimitedJson, bodyErrorStatus } from '../_shared/limitedJson.js'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import { createCheckout } from './core.js'
@@ -14,14 +15,14 @@ Deno.serve(async (req) => {
   try {
     const auth = req.headers.get('Authorization')
     if (!auth) return json({ error: 'NOT_AUTHENTICATED' }, 401)
-    const body = await req.json()
+    const body = await readLimitedJson(req)
     if (!body || Object.keys(body).some((key) => key !== 'packageId')) return json({ error: 'INVALID_REQUEST' }, 400)
     const userClient = createClient(url, anonKey, { global: { headers: { Authorization: auth } } })
     const { data, error } = await userClient.auth.getUser()
     if (error || !data.user) return json({ error: 'NOT_AUTHENTICATED' }, 401)
     const admin = createClient(url, serviceKey)
     const result = await createCheckout({ userClient, admin, userId: data.user.id,
-      packageId: body.packageId, handle, appUrl, supabaseUrl: url })
+      packageId: body.packageId, handle, apiKey: Deno.env.get('INFINITEPAY_API_KEY'), appUrl, supabaseUrl: url })
     return json(result, 200)
   } catch (error) {
     const code = error instanceof Error ? error.message : 'INTERNAL_ERROR'
@@ -36,7 +37,7 @@ Deno.serve(async (req) => {
       typeof error.providerCode === 'string' ? error.providerCode : null
     return json({ error: safe.includes(code) ? code : 'INTERNAL_ERROR',
       ...(providerStatus ? { providerStatus } : {}),
-      ...(providerCode ? { providerCode } : {}) }, code === 'CHECKOUT_IN_PROGRESS' ? 409 : 400)
+      ...(providerCode ? { providerCode } : {}) }, code === 'CHECKOUT_IN_PROGRESS' ? 409 : bodyErrorStatus(error))
   }
 })
 

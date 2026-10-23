@@ -85,6 +85,7 @@ async function bundle(name, env) {
                     return { data: { subscription: { unsubscribe: () => listeners.delete(cb) } } }
                   },
                   getSession: async () => globalThis.__getSession(),
+                  getUser: async () => globalThis.__getUser(),
                   signOut: async () => { globalThis.__session = null; await emit('SIGNED_OUT', null); return { error: null } },
                 },
                 rpc: (name, params) => thenable(() => globalThis.__rpc(name, params)),
@@ -180,6 +181,7 @@ beforeEach(async () => {
     policy: { version, digest, published: true, published_at: NOW_ISO },
     archive: { version, digest, manifest: on.LEGAL_MANIFEST, documents: on.LEGAL_DOCUMENTS },
     refreshFails: null, // erro devolvido por getSession ao tentar renovar
+    sessionActive: true, // is_session_active() -- false simula "sair de todos os dispositivos" em outro aparelho
     calls: [],
   }
   browser = {
@@ -195,10 +197,17 @@ beforeEach(async () => {
     globalThis.__session
       ? { data: { session: globalThis.__session }, error: null }
       : { data: { session: null }, error: world.refreshFails }
+  // revalidate() (AuthContext.jsx) usa getUser() como fonte autoritativa depois de getSession():
+  // mesma simulação (sessão presente -> usuário confirmado; ausente -> mesmo erro de getSession).
+  globalThis.__getUser = async () =>
+    globalThis.__session
+      ? { data: { user: globalThis.__session.user }, error: null }
+      : { data: { user: null }, error: world.refreshFails }
   globalThis.__rpc = async (name) => {
     world.calls.push(name)
     if (!world.online) return { data: null, error: NETWORK }
     if (name === 'has_app_access') return { data: world.access ?? true, error: null }
+    if (name === 'is_session_active') return { data: world.sessionActive, error: null }
     if (name === 'ensure_user_profile')
       return { data: world.users[globalThis.__session.user.id], error: null }
     return { data: null, error: null } // get_my_deletion_review etc.
@@ -614,6 +623,51 @@ test('RECONEXÃO: revalida sessão, perfil e termos, vira sessão CONFIRMADA e a
     world.calls.includes('ensure_user_profile') && world.calls.includes('from:legal_policy')
   ) // perfil e termos revalidados
   assert.ok((await on.bootstrap.readActiveBootstrap()).last_online_verified_at >= before)
+  view.unmount()
+})
+
+// getSession() sozinho confirmaria esta sessão (o access token local ainda não venceu); é
+// exatamente o JWT que "sair de todos os dispositivos" em OUTRO aparelho revogou enquanto este
+// ficava offline. getUser() (fonte autoritativa, ver AuthContext.jsx:revalidate) é quem detecta.
+test('RECONEXÃO com a sessão revogada em outro aparelho: getUser() nega mesmo com getSession() ainda "válido", e a tela exige login', async () => {
+  const view = await coldStartOffline()
+  world.online = true
+  setNavigator(true)
+  globalThis.__session = { user: supaUser(A), access_token: 'antigo-revogado', expires_at: 9e9 }
+  world.refreshFails = null
+  globalThis.__getUser = async () => ({
+    data: { user: null },
+    error: { name: 'AuthApiError', message: 'User from sub claim in JWT does not exist' },
+  })
+  window.__fire('online')
+  await settle(150)
+  const ctx = on.auth()
+  assert.equal(ctx.offlineLocal, false)
+  assert.equal(ctx.user, null) // getSession() sozinho nunca detectaria a revogação
+  view.unmount()
+})
+
+// Diferente do teste acima: aqui a sessão NUNCA ficou offline-local (authMode sempre 'online'),
+// então revalidate() nem roda -- é o efeito de rollout (Etapa 3 da 2ª auditoria) quem precisa
+// detectar a revogação enquanto o app segue aberto, sem esperar o access token vencer.
+test('SESSÃO ONLINE (nunca ficou offline) revogada em outro aparelho: is_session_active() detecta no próximo "online"/retorno de foco e desloga', async () => {
+  const view = await onlineLogin(on, A)
+  assert.equal(on.auth().offlineLocal, false)
+  world.sessionActive = false // "sair de todos os dispositivos" em outro aparelho
+  window.__fire('online')
+  await waitFor(() => on.auth().user === null, 'sessão revogada online não foi detectada')
+  assert.equal(on.auth().offlineLocal, false)
+  view.unmount()
+})
+
+test('falha transitória (rede/RPC fora do ar) ao consultar is_session_active() NUNCA é tratada como revogação', async () => {
+  const view = await onlineLogin(on, A)
+  const inner = globalThis.__rpc
+  globalThis.__rpc = async (name, params) =>
+    name === 'is_session_active' ? { data: null, error: NETWORK } : inner(name, params)
+  window.__fire('online')
+  await settle(100)
+  assert.notEqual(on.auth().user, null) // erro de RPC não pode virar logout
   view.unmount()
 })
 

@@ -31,6 +31,7 @@ export function mapPurchaseRow(row) {
     reviewFlaggedAt: row.review_flagged_at,
     reviewResolvedAt: row.review_resolved_at,
     reviewResolution: row.review_resolution,
+    reversedCentavos: row.reversed_centavos ?? 0,
   }
 }
 
@@ -39,7 +40,11 @@ export function mapPurchaseRow(row) {
 // client SDK (RLS já libera leitura de economy_config a qualquer autenticado), sem RPC
 // própria -- é só exibição; reserve_infinitepay_cash_purchase revalida no servidor.
 export async function getCashPurchaseSettings() {
-  const { data, error } = await supabase.from('economy_config').select('config').eq('id', true).maybeSingle()
+  const { data, error } = await supabase
+    .from('economy_config')
+    .select('config')
+    .eq('id', true)
+    .maybeSingle()
   if (error) throw error
   const cashPackages = data?.config?.cashPackages || {}
   const packages = Object.entries(cashPackages)
@@ -55,7 +60,10 @@ async function callPaymentFunction(name, body) {
   if (!sessionData.session) throw new Error('NOT_AUTHENTICATED')
   const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${name}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${sessionData.session.access_token}` },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+    },
     body: JSON.stringify(body),
   })
   const result = await response.json()
@@ -150,14 +158,23 @@ export async function getLatestCashPurchaseReminders(purchaseIds) {
   const latestByPurchase = {}
   for (const row of data) {
     if (!latestByPurchase[row.purchase_id]) {
-      latestByPurchase[row.purchase_id] = { status: row.status, createdAt: row.created_at, sentAt: row.sent_at }
+      latestByPurchase[row.purchase_id] = {
+        status: row.status,
+        createdAt: row.created_at,
+        sentAt: row.sent_at,
+      }
     }
   }
   return latestByPurchase
 }
 
 export async function listMyCashPurchasesPage(userId, { cursor = null } = {}) {
-  let q = supabase.from('cash_purchases').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(PAGE_SIZE)
+  let q = supabase
+    .from('cash_purchases')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(PAGE_SIZE)
   if (cursor) q = q.lt('created_at', cursor)
   const { data, error } = await q
   if (error) throw error
@@ -168,7 +185,11 @@ export async function listMyCashPurchasesPage(userId, { cursor = null } = {}) {
 }
 
 export async function listCashPurchasesForAdminPage({ status = '', cursor = null } = {}) {
-  let q = supabase.from('cash_purchases').select('*').order('created_at', { ascending: false }).limit(PAGE_SIZE)
+  let q = supabase
+    .from('cash_purchases')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(PAGE_SIZE)
   if (status === 'paid') q = q.in('status', ['credited', 'held_in_case'])
   else if (status === 'failed') q = q.eq('status', 'checkout_failed')
   else if (status) q = q.eq('status', status)
@@ -190,9 +211,20 @@ export async function resolveUsernamesByIds(userIds) {
   const usernameById = {}
   for (let i = 0; i < uniqueIds.length; i += USER_LOOKUP_CHUNK_SIZE) {
     const chunk = uniqueIds.slice(i, i + USER_LOOKUP_CHUNK_SIZE)
-    const { data, error } = await supabase.from('public_profiles').select('user_id, username').in('user_id', chunk)
+    const { data, error } = await supabase
+      .from('public_profiles')
+      .select('user_id, username')
+      .in('user_id', chunk)
     if (error) throw error
     for (const row of data) usernameById[row.user_id] = row.username || null
   }
   return usernameById
+}
+
+export async function getAdminCashReversalEvents(purchaseId) {
+  const { data, error } = await supabase.rpc('admin_cash_reversal_events', {
+    p_purchase_id: purchaseId,
+  })
+  if (error) throw error
+  return data ?? []
 }

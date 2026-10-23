@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -20,10 +21,7 @@ values
 
 create or replace function pg_temp.as_user(p_uid text) returns void language plpgsql as $$
 begin
-  perform set_config('request.jwt.claim.sub', coalesce(p_uid, ''), true);
-  perform set_config('request.jwt.claims', coalesce((
-    case when p_uid is null then null else jsonb_build_object('sub', p_uid, 'role', 'authenticated') end
-  )::text, ''), true);
+  perform pg_temp.set_test_user( coalesce(p_uid, ''), true);
 end;
 $$;
 
