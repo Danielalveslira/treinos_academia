@@ -305,5 +305,42 @@ select is((select qualified_seconds from public.community_creation_activity_days
 -- a atividade tem UMA fonte (community_creation_activity_days): nada de minutos paralelos em economy_daily
 select is((select coalesce(sum(active_minutes), 0) from public.economy_daily where user_id = pg_temp.uid('0a')), 0::numeric, 'economy_daily não acumula mais minutos de atividade');
 
+-- ============================================================ SESSÃO REVOGADA (20261114000003)
+-- '01' segue elegível e com saldo -- a ÚNICA coisa que pode barrar estas chamadas é a sessão.
+select pg_temp.as_user('01');
+create temp table t_coins_before as select pg_temp.coins('01') as v;
+create temp table t_cash_before as select pg_temp.cash('01') as v;
+create temp table t_communities_before as select pg_temp.owned('01') as v;
+select pg_temp.revoke_test_session('c1000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$select public.create_community('Comunidade pós-revogação', '', null, 'essential', 'evocoins', 'sess-revoked-create')$$,
+  'SESSION_REVOKED', 'create_community nega sessão revogada antes de qualquer débito/criação'
+);
+select throws_ok(
+  format($$select public.upgrade_community_tier(%L, 'archive', 'evocoins', 'sess-revoked-upgrade')$$,
+    (select (result ->> 'id')::uuid from created where label = 'essential-coins')),
+  'SESSION_REVOKED', 'upgrade_community_tier nega sessão revogada antes de qualquer débito'
+);
+select throws_ok(
+  $$select public.get_my_community_creation_eligibility()$$,
+  'SESSION_REVOKED', 'get_my_community_creation_eligibility nega sessão revogada (não expõe saldo)'
+);
+select is(public.list_community_creation_products(), null, 'list_community_creation_products devolve NULL (nunca os preços) com sessão revogada');
+select throws_ok(
+  $$select public.record_promotion_event('status', gen_random_uuid(), gen_random_uuid(), 'click')$$,
+  'SESSION_REVOKED', 'record_promotion_event nega sessão revogada antes de tocar na promoção'
+);
+select is(pg_temp.coins('01'), (select v from t_coins_before), 'saldo de EvoCoins intacto após as tentativas com sessão revogada');
+select is(pg_temp.cash('01'), (select v from t_cash_before), 'saldo de EvoCash intacto após as tentativas com sessão revogada');
+select is(pg_temp.owned('01'), (select v from t_communities_before), 'nenhuma comunidade nova criada pela tentativa com sessão revogada');
+
+-- Sessão ativa de novo (novo login): as mesmas ações voltam a funcionar sem mecanismo extra.
+select pg_temp.as_user('01');
+select ok((public.create_community('Comunidade pós-revogação', '', null, 'essential', 'evocoins', 'sess-active-again')->>'id') is not null,
+  'sessão ativa de novo: create_community volta a funcionar');
+select ok((public.get_my_community_creation_eligibility()->>'evoCoinsBalance') is not null,
+  'sessão ativa de novo: get_my_community_creation_eligibility volta a funcionar');
+select is(jsonb_typeof(public.list_community_creation_products()), 'array', 'sessão ativa de novo: list_community_creation_products volta a funcionar');
+
 select * from finish();
 rollback;

@@ -124,5 +124,23 @@ select is((public.comment_delete((select id from c4_comment))).status::text, 'de
 select is((public.delete_professional_listing('c4400000-0000-0000-0000-000000000001'))->>'deleted', 'true',
   'sessão ativa de novo: delete_professional_listing volta a funcionar');
 
+-- ===== list_deletion_jobs (20261114000003): language sql, pulada pela injeção automática =====
+insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values ('c4000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated',
+  'u03-sessionguard@example.invalid', 'not-used', now(), '{}'::jsonb, '{}'::jsonb, now(), now());
+update public.users set role = 'superadmin' where id = 'c4000000-0000-0000-0000-000000000003';
+insert into auth.sessions (id, user_id, created_at, updated_at) values
+  ('c4900000-0000-0000-0000-000000000003', 'c4000000-0000-0000-0000-000000000003', now(), now());
+insert into public.deletion_jobs (kind, target_id, state) values ('account', (select a from ids)::uuid, 'pending');
+
+select pg_temp.as_user_with_session('c4000000-0000-0000-0000-000000000003', 'c4900000-0000-0000-0000-000000000003');
+select ok((select count(*) from public.list_deletion_jobs()) > 0, 'superadmin com sessão ativa lista jobs pendentes');
+select pg_temp.as_user_with_session('c4000000-0000-0000-0000-000000000003', null);
+select is((select count(*) from public.list_deletion_jobs()), 0::bigint,
+  'list_deletion_jobs nega sessão revogada mesmo sendo superadmin de verdade (0 linhas, não erro)');
+select pg_temp.as_user_with_session('c4000000-0000-0000-0000-000000000003', 'c4900000-0000-0000-0000-000000000003');
+select ok((select count(*) from public.list_deletion_jobs()) > 0, 'sessão ativa de novo: list_deletion_jobs volta a listar');
+
 select * from finish();
 rollback;

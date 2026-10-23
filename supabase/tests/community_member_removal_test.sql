@@ -301,5 +301,20 @@ select lives_ok(
 );
 reset role;
 
+-- list_community_restrictions (20261114000003): language sql, pulada pela injeção automática de
+-- 20261114000001 -- precisa da checagem própria. '...06' está banido agora (linha acima): com
+-- sessão ativa a lista não vem vazia; com sessão revogada, mesmo sendo o dono de verdade, vem.
+set local role authenticated;
+select pg_temp.as_user('01');
+select ok((select count(*) from public.list_community_restrictions('d2000000-0000-0000-0000-00000000000a')) > 0,
+  'dono com sessão ativa lista as restrições (linha de base antes de revogar)');
+select pg_temp.revoke_test_session('d1000000-0000-0000-0000-000000000001');
+select is((select count(*) from public.list_community_restrictions('d2000000-0000-0000-0000-00000000000a')), 0::bigint,
+  'list_community_restrictions nega sessão revogada mesmo sendo o dono de verdade (0 linhas, não erro)');
+select pg_temp.as_user('01');
+select ok((select count(*) from public.list_community_restrictions('d2000000-0000-0000-0000-00000000000a')) > 0,
+  'sessão ativa de novo: list_community_restrictions volta a listar');
+reset role;
+
 select * from finish();
 rollback;
