@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 // Real isolated PostgreSQL + actual worker + actual SW code in VM. Provider delivery is simulated.
 import test from 'node:test'
 import process from 'node:process'
@@ -6,6 +7,7 @@ import { spawn } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import vm from 'node:vm'
 import { processPushOutbox } from './processor.js'
+const authSessionFixture = readFileSync(new URL('../../tests/_helpers/auth_session.sql', import.meta.url), 'utf8')
 const container = process.env.PG_TEST_CONTAINER
 const uid = 'd3000000-0000-0000-0000-000000000001'
 const otherUid = 'd3000000-0000-0000-0000-000000000002'
@@ -38,7 +40,7 @@ function sql(input) {
       err += x
     })
     p.on('close', (code) => (code === 0 ? resolve(out.trim()) : reject(new Error(err))))
-    p.stdin.end('\\ir /workspace/supabase/tests/_helpers/auth_session.sql\n' + input)
+    p.stdin.end(authSessionFixture + '\n' + input)
   })
 }
 async function setup() {

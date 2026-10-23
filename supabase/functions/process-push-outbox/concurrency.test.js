@@ -1,11 +1,13 @@
+import { readFileSync } from 'node:fs'
 // Concorrência REAL: vários workers disputando a mesma outbox em um Postgres de verdade.
-// Pulado por padrão (não há banco no CI); rode com:  PG_TEST_CONTAINER=pgtest npm run test:functions
+// Requer PostgreSQL descartável (habilitado no CI via PG_TEST_CONTAINER); nunca usar produção.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import process from 'node:process'
 import { processPushOutbox } from './processor.js'
 
+const authSessionFixture = readFileSync(new URL('../../tests/_helpers/auth_session.sql', import.meta.url), 'utf8')
 const CONTAINER = process.env.PG_TEST_CONTAINER
 const DB_USER = process.env.PG_TEST_USER || 'postgres'
 const DB_NAME = process.env.PG_TEST_DATABASE || 'postgres'
@@ -20,7 +22,7 @@ function psql(sql) {
     child.stdout.on('data', (chunk) => { out += chunk })
     child.stderr.on('data', (chunk) => { err += chunk })
     child.on('close', (code) => (code === 0 ? resolve(out.trim()) : reject(new Error(err || out))))
-    child.stdin.end('\\ir /workspace/supabase/tests/_helpers/auth_session.sql\n' + sql)
+    child.stdin.end(authSessionFixture + '\n' + sql)
   })
 }
 
