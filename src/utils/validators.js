@@ -391,3 +391,109 @@ export function validateSponsoredAd({
 
   return errors
 }
+
+function requiredTextRange(value, min, max, requiredMessage, rangeMessage) {
+  const trimmed = (value || '').trim()
+  if (!trimmed) return requiredMessage
+  if (trimmed.length < min || value.length > max) return rangeMessage
+  return undefined
+}
+
+// Mesma checagem de URL usada no cadastro de produtos da Vitrine (CommercialAdmin/
+// PartnerProductForm): https-only, sem usuário/senha embutidos na URL e com um host que
+// não seja um IP nu -- espelha (sem substituir) o constraint de formato em
+// partner_products.store_url/image_url (migration 20261108000001_public_commercial.sql).
+export function isValidPartnerProductUrl(value) {
+  try {
+    const url = new URL(value)
+    return (
+      url.protocol === 'https:' &&
+      !url.username &&
+      !url.password &&
+      /\.[a-z]{2,}$/i.test(url.hostname) &&
+      !/^[\d.]+$/.test(url.hostname)
+    )
+  } catch {
+    return false
+  }
+}
+
+// Mesmos limites do constraint check em partner_products (migration
+// 20261108000001_public_commercial.sql): name/brand 2-120, category 2-80, description
+// 10-500. ends_at > starts_at (quando ambos definidos) espelha o constraint da mesma
+// tabela -- validado aqui só para mostrar o erro perto do campo antes de ir ao servidor,
+// que continua sendo a autoridade final.
+export function validatePartnerProduct({
+  name,
+  brand,
+  category,
+  description,
+  storeUrl,
+  imageUrl,
+  startsAt,
+  endsAt,
+}) {
+  const errors = {}
+
+  const nameError = requiredTextRange(
+    name,
+    2,
+    120,
+    'Nome do produto é obrigatório',
+    'Nome deve ter de 2 a 120 caracteres'
+  )
+  if (nameError) errors.name = nameError
+
+  const brandError = requiredTextRange(
+    brand,
+    2,
+    120,
+    'Marca é obrigatória',
+    'Marca deve ter de 2 a 120 caracteres'
+  )
+  if (brandError) errors.brand = brandError
+
+  const categoryError = requiredTextRange(
+    category,
+    2,
+    80,
+    'Categoria é obrigatória',
+    'Categoria deve ter de 2 a 80 caracteres'
+  )
+  if (categoryError) errors.category = categoryError
+
+  const descriptionError = requiredTextRange(
+    description,
+    10,
+    500,
+    'Descrição é obrigatória',
+    'Descrição deve ter de 10 a 500 caracteres'
+  )
+  if (descriptionError) errors.description = descriptionError
+
+  if (!storeUrl || !storeUrl.trim()) {
+    errors.storeUrl = 'URL da loja é obrigatória'
+  } else if (storeUrl.length > 500) {
+    errors.storeUrl = 'URL da loja muito longa'
+  } else if (!isValidPartnerProductUrl(storeUrl.trim())) {
+    errors.storeUrl = 'Use uma URL HTTPS válida, sem usuário/senha na URL'
+  }
+
+  if (imageUrl && imageUrl.trim()) {
+    if (imageUrl.length > 500) {
+      errors.imageUrl = 'URL da imagem muito longa'
+    } else if (!isValidPartnerProductUrl(imageUrl.trim())) {
+      errors.imageUrl = 'Use uma URL HTTPS válida, sem usuário/senha na URL'
+    }
+  }
+
+  if (startsAt && endsAt) {
+    const starts = new Date(startsAt)
+    const ends = new Date(endsAt)
+    if (!Number.isNaN(starts.getTime()) && !Number.isNaN(ends.getTime()) && ends <= starts) {
+      errors.endsAt = 'O fim deve ser depois do início'
+    }
+  }
+
+  return errors
+}

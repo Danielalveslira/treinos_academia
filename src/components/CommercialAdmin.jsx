@@ -1,19 +1,30 @@
 import { useEffect, useState } from 'react'
+import { Box, Heading, Spinner } from '@primer/react'
 import { supabase } from '../supabase/config'
+import { validatePartnerProduct } from '../utils/validators'
+import { useToast } from '../hooks/useToast'
+import { useConfirmDelete } from '../hooks/useConfirmDelete'
+import { ToastFlash } from './ToastFlash'
+import { PartnerProductForm } from './PartnerProductForm'
+import { PartnerProductList } from './PartnerProductList'
 
 const empty = { name: '', brand: '', description: '', category: '', image_url: '', store_url: '', sponsored: false, approved: false, starts_at: '', ends_at: '' }
-const safeUrl = (value) => {
-  try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password && /\.[a-z]{2,}$/i.test(url.hostname) && !/^[\d.]+$/.test(url.hostname) }
-  catch { return false }
-}
+// store_url/image_url/ends_at usam nomes diferentes em validatePartnerProduct
+// (storeUrl/imageUrl/endsAt) -- este mapa só traduz as chaves de erro de volta pros
+// campos do formulário (que seguem o nome das colunas de partner_products).
+const ERROR_KEY_BY_FIELD = { store_url: 'storeUrl', image_url: 'imageUrl', ends_at: 'endsAt' }
 
 export default function CommercialAdmin() {
   const [leads, setLeads] = useState([])
   const [products, setProducts] = useState([])
+  const [productsLoading, setProductsLoading] = useState(true)
   const [form, setForm] = useState(empty)
   const [editing, setEditing] = useState(null)
+  const [productErrors, setProductErrors] = useState({})
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  const { toasts, showToast } = useToast()
+  const confirmDelete = useConfirmDelete()
 
   async function refresh() {
     const [leadResult, productResult] = await Promise.all([
@@ -22,6 +33,7 @@ export default function CommercialAdmin() {
     ])
     if (leadResult.error || productResult.error) setMessage('Não foi possível carregar os dados comerciais. Confira a migração e suas permissões.')
     else { setLeads(leadResult.data); setProducts(productResult.data); setMessage('') }
+    setProductsLoading(false)
   }
   useEffect(() => { refresh() }, [])
 
@@ -33,9 +45,39 @@ export default function CommercialAdmin() {
     else refresh()
   }
 
+  function onFieldChange(field, value) {
+    setForm((prev) => ({ ...prev, [field]: value }))
+    const errorKey = ERROR_KEY_BY_FIELD[field] || field
+    setProductErrors((prev) => (prev[errorKey] ? { ...prev, [errorKey]: undefined } : prev))
+  }
+
+  function cancelEdit() {
+    setEditing(null)
+    setForm(empty)
+    setProductErrors({})
+  }
+
+  function startEdit(product) {
+    setEditing(product.id)
+    setForm({ ...product, starts_at: product.starts_at?.slice(0, 16) || '', ends_at: product.ends_at?.slice(0, 16) || '' })
+    setProductErrors({})
+  }
+
   async function saveProduct(event) {
     event.preventDefault()
-    if (!safeUrl(form.store_url) || (form.image_url && !safeUrl(form.image_url))) { setMessage('Use URLs HTTPS válidas, sem credenciais.'); return }
+    const validationErrors = validatePartnerProduct({
+      name: form.name,
+      brand: form.brand,
+      category: form.category,
+      description: form.description,
+      storeUrl: form.store_url,
+      imageUrl: form.image_url,
+      startsAt: form.starts_at,
+      endsAt: form.ends_at,
+    })
+    setProductErrors(validationErrors)
+    if (Object.keys(validationErrors).length > 0) return
+
     setBusy(true)
     const payload = Object.fromEntries(Object.keys(empty).map((key) => [key, form[key]]))
     payload.image_url = form.image_url || null
@@ -45,17 +87,24 @@ export default function CommercialAdmin() {
       ? await supabase.from('partner_products').update(payload).eq('id', editing)
       : await supabase.from('partner_products').insert(payload)
     setBusy(false)
-    if (error) { setMessage('Não foi possível salvar o produto. Verifique os campos e suas permissões.'); return }
-    setForm(empty); setEditing(null); refresh()
+    if (error) { showToast('Não foi possível salvar o produto. Verifique os campos e suas permissões.', 'danger'); return }
+    showToast(editing ? 'Produto atualizado.' : 'Produto cadastrado.')
+    setForm(empty); setEditing(null); setProductErrors({}); refresh()
   }
 
-  async function removeProduct(id) {
-    if (!window.confirm('Excluir este produto da vitrine?')) return
+  async function removeProduct(product) {
+    const confirmed = await confirmDelete({
+      title: `Excluir "${product.name}"?`,
+      content: 'O produto deixa de aparecer imediatamente na Vitrine pública.',
+    })
+    if (!confirmed) return
     setBusy(true)
-    const { error } = await supabase.from('partner_products').delete().eq('id', id)
+    const { error } = await supabase.from('partner_products').delete().eq('id', product.id)
     setBusy(false)
-    if (error) setMessage('Não foi possível excluir o produto.')
-    else refresh()
+    if (error) { showToast('Não foi possível excluir o produto.', 'danger'); return }
+    showToast('Produto excluído.')
+    if (editing === product.id) cancelEdit()
+    refresh()
   }
 
   return <div className="commercial-admin">
@@ -69,17 +118,33 @@ export default function CommercialAdmin() {
       <p>{lead.message}</p>
       <label>Status <select value={lead.status} disabled={busy} onChange={(event) => changeStatus(lead.id, event.target.value)}><option value="novo">Novo</option><option value="em_contato">Em contato</option><option value="encerrado">Encerrado</option></select></label>
     </article>)}
-    <h2>Produtos da vitrine</h2>
-    <p>Somente produtos aprovados e no período definido aparecem publicamente. A compra ocorre na loja do parceiro.</p>
-    <form onSubmit={saveProduct} className="commercial-admin-form">
-      {['name', 'brand', 'description', 'category', 'store_url', 'image_url'].map((field) => <label key={field}>{({ name: 'Produto', brand: 'Marca', description: 'Descrição', category: 'Categoria', store_url: 'URL da loja (HTTPS)', image_url: 'URL da imagem (HTTPS, opcional)' })[field]}<input required={field !== 'image_url'} maxLength={field === 'description' ? 500 : field.includes('url') ? 500 : 120} minLength={field === 'description' ? 10 : 2} value={form[field]} onChange={(event) => setForm({ ...form, [field]: event.target.value })}/></label>)}
-      <label>Início (opcional)<input type="datetime-local" value={form.starts_at} onChange={(event) => setForm({ ...form, starts_at: event.target.value })}/></label>
-      <label>Fim (opcional)<input type="datetime-local" value={form.ends_at} onChange={(event) => setForm({ ...form, ends_at: event.target.value })}/></label>
-      <label><input type="checkbox" checked={form.sponsored} onChange={(event) => setForm({ ...form, sponsored: event.target.checked })}/> Patrocinado</label>
-      <label><input type="checkbox" checked={form.approved} onChange={(event) => setForm({ ...form, approved: event.target.checked })}/> Aprovado para publicação</label>
-      <button type="submit" disabled={busy}>{editing ? 'Salvar alterações' : 'Cadastrar produto'}</button>
-      {editing && <button type="button" onClick={() => { setEditing(null); setForm(empty) }}>Cancelar edição</button>}
-    </form>
-    {products.map((product) => <article key={product.id} className="commercial-admin-card"><h3>{product.name} · {product.brand}</h3><p>{product.approved ? 'Aprovado' : 'Rascunho'} · {product.sponsored ? 'Patrocinado' : 'Editorial'} · {product.category}</p><button type="button" disabled={busy} onClick={() => { setEditing(product.id); setForm({ ...product, starts_at: product.starts_at?.slice(0, 16) || '', ends_at: product.ends_at?.slice(0, 16) || '' }) }}>Editar</button> <button type="button" disabled={busy} onClick={() => removeProduct(product.id)}>Excluir</button></article>)}
+
+    <Box sx={{ mt: 5 }}>
+      <Heading as="h2" sx={{ fontSize: 2, mb: 3 }}>Produtos da vitrine</Heading>
+
+      <ToastFlash toasts={toasts} />
+
+      <PartnerProductForm
+        form={form}
+        errors={productErrors}
+        editing={Boolean(editing)}
+        busy={busy}
+        onFieldChange={onFieldChange}
+        onSubmit={saveProduct}
+        onCancel={cancelEdit}
+      />
+
+      {productsLoading ? (
+        <Spinner sx={{ display: 'block', mx: 'auto', my: 4 }} />
+      ) : (
+        <PartnerProductList
+          products={products}
+          now={Date.now()}
+          busy={busy}
+          onEdit={startEdit}
+          onDelete={removeProduct}
+        />
+      )}
+    </Box>
   </div>
 }
