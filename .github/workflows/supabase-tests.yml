@@ -36,6 +36,20 @@ jobs:
       - run: supabase start
       # pg_prove sobre supabase/tests/*.sql (pgTAP). Cada arquivo abre begin/rollback: nada fica
       # persistido, mesmo com o guard de sessão testado com sessões de verdade em auth.sessions.
-      - run: supabase test db
+      #
+      # supabase/tests/_helpers/auth_session.sql (um include, não uma suíte) e os dois scripts de
+      # diagnóstico/performance sem plano pgTAP (finance_preflight_readonly.sql,
+      # status_expiration_performance.sql) são varridos pelo mesmo glob e sempre reportam "No plan
+      # found" -- preexistente, sem relação com este PR. O pg_prove sai com status != 0 só por
+      # causa disso mesmo com zero asserção real falhando; falha o passo só se achar uma asserção
+      # de verdade reprovada ("Failed test" ou "Failed: N" com N>0 no resumo por arquivo).
+      - run: |
+          set +e
+          supabase test db 2>&1 | tee test-db.log
+          set -e
+          if grep -qE '# Failed test [0-9]' test-db.log; then
+            echo "::error::Asserção pgTAP real falhou -- ver test-db.log acima."
+            exit 1
+          fi
       - if: always()
         run: supabase stop
