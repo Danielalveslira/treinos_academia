@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -20,7 +21,7 @@ select ok((select bool_and(def ilike '%coalesce(public.is_superadmin(), false)%'
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values ('a1000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'mod-guard@example.invalid', 'x', now(), '{}', '{}', now(), now());
-select set_config('request.jwt.claim.sub', 'a1000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( 'a1000000-0000-0000-0000-000000000001', true);
 select throws_ok($$select public.decide_support_request('{}'::jsonb)$$, 'PERMISSION_DENIED', 'usuário comum não decide pedidos');
 select throws_ok($$select public.admin_list_support_requests()$$, 'PERMISSION_DENIED', 'usuário comum não lista pedidos');
 select ok(has_function_privilege('authenticated', 'public.decide_support_request(jsonb)', 'execute'), 'authenticated mantém execute (a função se protege por is_superadmin)');

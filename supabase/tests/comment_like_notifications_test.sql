@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- Regra de negócio ATUAL das curtidas x notificações (travada por este teste):
 --  * curtir um COMENTÁRIO de outra pessoa cria 1 notificação `comment_like` (dedupe por comentário+ator);
 --  * repetir a curtida (retry) não duplica; descurtir remove a notificação; curtir de novo recria;
@@ -27,7 +28,7 @@ values ('88000000-0000-0000-0000-000000000001', '87000000-0000-0000-0000-0000000
 update private.comment_rate_limits set min_interval = interval '0 seconds', burst_limit = 0 where singleton;
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', '86000000-0000-0000-0000-0000000000' || p, true)$$;
+  $$select pg_temp.set_test_user( '86000000-0000-0000-0000-0000000000' || p, true)$$;
 create or replace function pg_temp.likes_for_author() returns int language sql as
   $$select count(*)::int from public.notifications where recipient_id = '86000000-0000-0000-0000-000000000001' and type = 'comment_like'$$;
 create or replace function pg_temp.unread_for_author() returns int language sql as

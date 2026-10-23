@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- Pipeline único: evento -> notifications -> outbox -> claim do worker (payload/URL/urgência).
 -- Cobre todos os eventos que hoje geram notificação e valida os casos de borda do pipeline.
 begin;
@@ -33,7 +34,7 @@ values ('98000000-0000-0000-0000-000000000005', '97000000-0000-0000-0000-0000000
 update private.comment_rate_limits set min_interval = interval '0 seconds', burst_limit = 0 where singleton;
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', '96000000-0000-0000-0000-0000000000' || p, true)$$;
+  $$select pg_temp.set_test_user( '96000000-0000-0000-0000-0000000000' || p, true)$$;
 create or replace function pg_temp.notes(p_type text, p_user text) returns int language sql as
   $$select count(*)::int from public.notifications where type::text = p_type and recipient_id = ('96000000-0000-0000-0000-0000000000' || p_user)::uuid$$;
 create or replace function pg_temp.jobs(p_type text, p_user text) returns int language sql as
@@ -210,7 +211,7 @@ alter table public.notifications drop constraint zz_force_fail;
 
 select pg_temp.as_user('03');
 set local role authenticated;
-select set_config('request.jwt.claims', json_build_object('sub', '96000000-0000-0000-0000-000000000003', 'role', 'authenticated')::text, true);
+select pg_temp.set_test_user('96000000-0000-0000-0000-000000000003');
 create temp table trace as select jsonb_array_elements(public.admin_push_job_trace(null, 100)) as job;
 reset role;
 select ok((select count(*) from trace) >= 12, 'rastreio devolve os jobs');
@@ -222,7 +223,7 @@ select ok(position('fcm/send' in (select jsonb_agg(job)::text from trace)) = 0 a
   'o rastreio não expõe endpoint nem chaves');
 select pg_temp.as_user('02');
 set local role authenticated;
-select set_config('request.jwt.claims', json_build_object('sub', '96000000-0000-0000-0000-000000000002', 'role', 'authenticated')::text, true);
+select pg_temp.set_test_user('96000000-0000-0000-0000-000000000002');
 select throws_ok($$select public.admin_push_job_trace()$$, 'PERMISSION_DENIED', 'usuário comum não acessa o rastreio');
 reset role;
 

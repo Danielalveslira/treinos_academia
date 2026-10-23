@@ -3,7 +3,12 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Box, Button, Flash, Heading, Label, Spinner, Text } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
-import { cancelMyCashPurchase, checkInfinitepayPurchase, getCashPurchaseSettings, requestCashPurchase } from '../services/cashPurchaseService'
+import {
+  cancelMyCashPurchase,
+  checkInfinitepayPurchase,
+  getCashPurchaseSettings,
+  requestCashPurchase,
+} from '../services/cashPurchaseService'
 import { CashPackageCards } from '../components/CashPackageCards'
 import { CopyButton } from '../components/CopyButton'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
@@ -62,18 +67,30 @@ export default function EvoCash() {
     checkInfinitepayPurchase(purchaseId, hints)
       .then((result) => {
         if (!active) return
-        setCheckoutReturn(result.status === 'credited' ? 'credited' : 'pending')
+        setCheckoutReturn(
+          result.status === 'credited'
+            ? 'credited'
+            : result.status === 'needs_review' || result.status === 'held_in_case'
+              ? 'review'
+              : 'pending'
+        )
         refresh()
         if (result.status === 'credited') setSearchParams({}, { replace: true })
       })
-      .catch(() => { if (active) setCheckoutReturn('pending') })
-    return () => { active = false }
+      .catch(() => {
+        if (active) setCheckoutReturn('pending')
+      })
+    return () => {
+      active = false
+    }
   }, [searchParams, setSearchParams, refresh])
 
   useEffect(() => {
     if (checkoutReturn !== 'pending') return
     const purchaseId = searchParams.get('purchase_id')
-    if (purchases.some((purchase) => purchase.id === purchaseId && purchase.status === 'credited')) {
+    if (
+      purchases.some((purchase) => purchase.id === purchaseId && purchase.status === 'credited')
+    ) {
       setCheckoutReturn('credited')
       setSearchParams({}, { replace: true })
     }
@@ -99,7 +116,9 @@ export default function EvoCash() {
         CHECKOUT_IN_PROGRESS: 'Não foi possível abrir o pagamento. Tente novamente.',
         CHECKOUT_RECONCILIATION_REQUIRED: 'Não foi possível abrir o pagamento. Tente novamente.',
       }
-      setError(KNOWN_ERRORS[err?.message] || 'Não foi possível solicitar a compra. Tente novamente.')
+      setError(
+        KNOWN_ERRORS[err?.message] || 'Não foi possível solicitar a compra. Tente novamente.'
+      )
     } finally {
       setBuyingPackageId(null)
     }
@@ -124,7 +143,10 @@ export default function EvoCash() {
       <header className="profile-page-heading">
         <span className="profile-eyebrow">EVOCASH</span>
         <h1>Comprar EvoCash</h1>
-        <p>Compre créditos para promover suas publicações ou comunidades. O saldo é liberado após a confirmação do pagamento.</p>
+        <p>
+          Compre créditos para promover suas publicações ou comunidades. O saldo é liberado após a
+          confirmação do pagamento.
+        </p>
         <Link to="/entenda-suas-moedas">Entenda EvoCash e EvoCoins</Link>
       </header>
 
@@ -134,11 +156,17 @@ export default function EvoCash() {
         </Flash>
       )}
 
-      {checkoutReturn && <Flash sx={{ mb: 3 }} role="status">
-        {checkoutReturn === 'checking' ? 'Confirmando seu pagamento…' :
-          checkoutReturn === 'credited' ? 'Pagamento confirmado. Seu saldo foi atualizado.' :
-          'Pagamento ainda não confirmado. Acompanhe em Minhas compras.'}
-      </Flash>}
+      {checkoutReturn && (
+        <Flash sx={{ mb: 3 }} role="status">
+          {checkoutReturn === 'checking'
+            ? 'Confirmando seu pagamento…'
+            : checkoutReturn === 'credited'
+              ? 'Pagamento confirmado. Consulte seu saldo atualizado.'
+              : checkoutReturn === 'review'
+                ? 'Pagamento recebido e em análise financeira. O saldo ainda não foi liberado.'
+                : 'Pagamento ainda não confirmado. Acompanhe em Minhas compras.'}
+        </Flash>
+      )}
 
       <section aria-labelledby="packages-heading" style={{ marginBottom: '2rem' }}>
         <Heading as="h2" id="packages-heading" sx={{ fontSize: 2, mb: 2 }}>
@@ -151,7 +179,9 @@ export default function EvoCash() {
           </Text>
         )}
         {hasPendingPurchase && (
-          <Flash sx={{ mb: 3 }}>Você já tem uma compra em andamento — acompanhe em "Minhas compras" abaixo.</Flash>
+          <Flash sx={{ mb: 3 }}>
+            Você já tem uma compra em andamento — acompanhe em "Minhas compras" abaixo.
+          </Flash>
         )}
         {!loadingSettings && settings.packages.length > 0 && (
           <CashPackageCards
@@ -220,11 +250,25 @@ export default function EvoCash() {
               <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
                 Protocolo
               </Text>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, minWidth: 0 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: 2,
+                  minWidth: 0,
+                }}
+              >
                 <Text
                   as="span"
                   title={purchase.id}
-                  sx={{ fontSize: 0, fontFamily: 'mono', wordBreak: 'break-word', overflowWrap: 'anywhere', minWidth: 0 }}
+                  sx={{
+                    fontSize: 0,
+                    fontFamily: 'mono',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'anywhere',
+                    minWidth: 0,
+                  }}
                 >
                   {abbreviateProtocol(purchase.id)}
                 </Text>
@@ -243,23 +287,32 @@ export default function EvoCash() {
 
             {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                {purchase.checkoutUrl && <Button as="a" href={purchase.checkoutUrl}>Continuar pagamento</Button>}
-                <Button variant="danger" disabled={!!cancellingPurchaseId}
-                  onClick={() => cancelPurchase(purchase.id)}>
+                {purchase.checkoutUrl && (
+                  <Button as="a" href={purchase.checkoutUrl}>
+                    Continuar pagamento
+                  </Button>
+                )}
+                <Button
+                  variant="danger"
+                  disabled={!!cancellingPurchaseId}
+                  onClick={() => cancelPurchase(purchase.id)}
+                >
                   {cancellingPurchaseId === purchase.id ? 'Cancelando…' : 'Cancelar'}
                 </Button>
               </Box>
             )}
 
-            {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && !purchase.checkoutUrl && (
-              <Text as="p" sx={{ fontSize: 0, color: 'attention.fg', m: 0 }}>
-                {purchase.checkoutUncertain
-                  ? 'O checkout não abriu. Este pedido precisa de conciliação antes de pagar.'
-                  : 'O checkout está sendo preparado. Nenhum pagamento foi iniciado.'}
-              </Text>
-            )}
+            {purchase.status === 'pending' &&
+              purchase.paymentProvider === 'infinitepay' &&
+              !purchase.checkoutUrl && (
+                <Text as="p" sx={{ fontSize: 0, color: 'attention.fg', m: 0 }}>
+                  {purchase.checkoutUncertain
+                    ? 'O checkout não abriu. Este pedido precisa de conciliação antes de pagar.'
+                    : 'O checkout está sendo preparado. Nenhum pagamento foi iniciado.'}
+                </Text>
+              )}
 
-            {purchase.status === 'credited' && (
+            {purchase.status === 'credited' && !purchase.reversedCentavos && (
               <Box>
                 <Text as="p" sx={{ fontWeight: 'bold', color: 'success.fg', m: 0 }}>
                   Pagamento confirmado
@@ -270,6 +323,17 @@ export default function EvoCash() {
               </Box>
             )}
 
+            {purchase.reversedCentavos > 0 && (
+              <Text as="p" sx={{ fontSize: 0, m: 0 }}>
+                Estorno registrado: {formatCentavosBRL(purchase.reversedCentavos)}. Consulte o
+                atendimento para detalhes.
+              </Text>
+            )}
+            {purchase.status === 'needs_review' && (
+              <Text as="p" sx={{ fontSize: 0, m: 0 }}>
+                Pagamento recebido e em análise financeira. O saldo ainda não foi liberado.
+              </Text>
+            )}
             {purchase.paidAfterCancelAt && (
               <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
                 Pagamento recebido após o cancelamento e conciliado automaticamente.
@@ -279,7 +343,13 @@ export default function EvoCash() {
             {purchase.status === 'cancelled' && purchase.cancelReason && (
               <Text
                 as="p"
-                sx={{ fontSize: 0, color: 'fg.muted', m: 0, wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                sx={{
+                  fontSize: 0,
+                  color: 'fg.muted',
+                  m: 0,
+                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
+                }}
               >
                 Motivo: {purchase.cancelReason}
               </Text>

@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- F1.1 (verificação): teste pgTAP dedicado para community_covers_insert/update
 -- (não cobertos por aud_has_app_access_gates_test.sql), contra o Storage real local
 -- (procedimento da F0b/F1: imagem oficial storage-api, não um stub).
@@ -28,7 +29,7 @@ insert into public.communities(id,name,created_by,owner_id) values
   ('9c0f0000-0000-0000-0000-000000000005','Cover Banned','9f000000-0000-0000-0000-000000000005','9f000000-0000-0000-0000-000000000005');
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', '9f000000-0000-0000-0000-00000000000' || p, true)$$;
+  $$select pg_temp.set_test_user( '9f000000-0000-0000-0000-00000000000' || p, true)$$;
 
 -- ===== community_covers_insert =====
 set local role authenticated;

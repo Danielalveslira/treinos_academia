@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -18,7 +19,7 @@ values ('67000000-0000-0000-0000-000000000051', '66000000-0000-0000-0000-0000000
 select public._wallet_credit_cash('66000000-0000-0000-0000-000000000052', 10);
 select public._ledger_record('66000000-0000-0000-0000-000000000052', 'seed:1', 'cash', 'credit', 10, 'cash_purchase_confirmed', 'cash_purchase', 'seed');
 
-select set_config('request.jwt.claim.sub', '66000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '66000000-0000-0000-0000-000000000001', true);
 select public.queue_deletion('account', ('66000000-0000-0000-0000-0000000000' || n)::uuid) from unnest(array['51','52']) as n;
 select public.run_deletion_job(id) from public.deletion_jobs where target_id in
   ('66000000-0000-0000-0000-000000000051', '66000000-0000-0000-0000-000000000052');
@@ -64,10 +65,10 @@ select is((select cash_balance from public.wallets where user_id = '66000000-000
 select is((select count(*)::int from public.account_financial_case_events where case_id = (select id from _c) and kind = 'late_payment_held'), 0, 'nenhum pagamento retido no caso cancelado');
 select lives_ok($$select public._wallet_debit_cash('66000000-0000-0000-0000-000000000051', 5)$$, 'conta reativada pode gastar EvoCash');
 select is((select cash_balance from public.wallets where user_id = '66000000-0000-0000-0000-000000000051'), 45, 'débito aplicado');
-select set_config('request.jwt.claim.sub', '66000000-0000-0000-0000-000000000051', true);
+select pg_temp.set_test_user( '66000000-0000-0000-0000-000000000051', true);
 select lives_ok($$select public.reserve_infinitepay_cash_purchase('66000000-0000-0000-0000-000000000051', 'pack_25')$$, 'conta reativada pode comprar EvoCash');
 select throws_ok($$select public.admin_get_deletion_financial_history((select id from public.deletion_jobs where target_id = '66000000-0000-0000-0000-000000000051'))$$, 'PERMISSION_DENIED', 'usuário comum não vê histórico financeiro');
-select set_config('request.jwt.claim.sub', '66000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '66000000-0000-0000-0000-000000000001', true);
 
 -- sem duplicar ledger
 select is((select count(*)::int from public.economy_transactions where user_id = '66000000-0000-0000-0000-000000000051' and natural_key = 'seed:1'), 1, 'ledger original não duplicado');

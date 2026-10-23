@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- pgTAP: controles de privacidade da coleta (migration 20261019000001): menores de 18 anos e oposição.
 -- Fixtures (prefixo b6...): 01 superadmin | 02 adulto membro | 03 adolescente (15) membro | 04 sem data de nascimento, membro |
 -- 05 adulto membro (oposição) | 06 adolescente que vira 18 amanhã.
@@ -22,7 +23,7 @@ create function pg_temp.ev(p_id integer) returns jsonb language sql as
   $f$select jsonb_build_array(jsonb_build_object('id', ('e6000000-0000-4000-8000-' || lpad(p_id::text, 12, '0'))::uuid, 'type', 'impression',
      'ad', 'b8000000-0000-0000-0000-000000000001', 'placement', 'community_banner', 'community', 'b7000000-0000-0000-0000-000000000001'))$f$;
 create function pg_temp.as_user(p_n integer) returns void language sql as
-  $f$select set_config('request.jwt.claim.sub', 'b6000000-0000-0000-0000-00000000000' || p_n, true)$f$;
+  $f$select pg_temp.set_test_user( 'b6000000-0000-0000-0000-00000000000' || p_n, true)$f$;
 create function pg_temp.accepted(p jsonb) returns integer language sql as $f$select (p ->> 'accepted')::integer$f$;
 create function pg_temp.marks(p_n integer) returns bigint language sql security definer set search_path = '' as
   $f$select count(*) from public.sponsored_ad_event_marks where user_id = ('b6000000-0000-0000-0000-00000000000' || p_n)::uuid$f$;

@@ -4,23 +4,17 @@
 #
 # Uso (banco local com as migrations aplicadas):
 #   PSQL="docker exec -i pgtest psql -U postgres -d postgres" supabase/tests/evocoins_concurrency.sh
-# Cria um usuário de teste, dispara as sessões em paralelo e remove tudo no fim.
+# Cria um usuário de teste, dispara as sessões em paralelo e preserva fixtures no banco descartável (ledger imutável).
 set -euo pipefail
 
 PSQL=${PSQL:-"psql"}
-UID_T='e9000000-0000-0000-0000-000000000001'
+UID_T=$(python3 -c 'import uuid; print(uuid.uuid4())')
 FAIL=0
 q() { $PSQL -X -tA -v ON_ERROR_STOP=1 -c "$1"; }
 check() { if [ "$2" = "$3" ]; then echo "ok - $1"; else echo "not ok - $1 (esperado $3, obtido $2)"; FAIL=1; fi; }
 
-cleanup() {
-  q "delete from public.economy_transactions where user_id = '$UID_T'" >/dev/null 2>&1 || true
-  q "delete from auth.users where id = '$UID_T'" >/dev/null 2>&1 || true
-}
-trap cleanup EXIT
-cleanup
 q "insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-   values ('$UID_T', 'authenticated', 'authenticated', 'evc-conc@example.invalid', 'x', now(), '{}', '{}', now(), now())" >/dev/null
+   values ('$UID_T', 'authenticated', 'authenticated', 'evc-conc-$UID_T@example.invalid', 'x', now(), '{}', '{}', now(), now())" >/dev/null
 
 # 1) 30 sessões simultâneas, ações e chaves distintas (potencial de 3+2+2+3+3 = 13 > 10)
 run_award() { q "select private.award_evocoins('$UID_T', '$1', '$2', 'conc', '$2')" >/dev/null; }
@@ -44,10 +38,11 @@ over=$(q "select count(*) from (select key::text k, value::int v from public.eco
           join public.economy_reward_rules r on r.action = x.k where x.v > r.daily_max")
 check "nenhum teto por ação estourado" "$over" "0"
 
-# 2) mesma natural_key em 12 sessões simultâneas (retry/duplo clique): uma única linha no ledger
-cleanup
+# 2) Nova fixture: não apagar histórico para reutilizar usuário.
+# Mesma natural_key em 12 sessões simultâneas: uma única linha no ledger.
+UID_T=$(python3 -c 'import uuid; print(uuid.uuid4())')
 q "insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-   values ('$UID_T', 'authenticated', 'authenticated', 'evc-conc@example.invalid', 'x', now(), '{}', '{}', now(), now())" >/dev/null
+   values ('$UID_T', 'authenticated', 'authenticated', 'evc-conc-$UID_T@example.invalid', 'x', now(), '{}', '{}', now(), now())" >/dev/null
 pids=()
 for i in $(seq 1 12); do run_award post_published "same-key" & pids+=($!); done
 for p in "${pids[@]}"; do wait "$p"; done

@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- Local synthetic, rollback-only. Run before and after the correction: the first photo assertion regresses AUD-05.
 begin;
 select no_plan();
@@ -30,7 +31,7 @@ select '95000000-0000-4000-8000-000000000003','aud05-'||name,'post',id,'95100000
 update public.statuses s set active_promotion_id=p.id,promoted=true,promoted_until=p.expires_at from public.promotions p where p.request_id like 'aud05-%' and p.target_id=s.id;
 insert into public.economy_transactions(user_id,natural_key,asset,direction,amount,reason,reference_type,reference_id) select '95000000-0000-4000-8000-000000000003','aud05:'||id,'cash','debit',cash_amount,'promotion_purchase','promotion',id::text from public.promotions where request_id like 'aud05-%';
 create temp table finance_before as select (select jsonb_agg(to_jsonb(t) order by id) from public.economy_transactions t) ledger,(select jsonb_agg(to_jsonb(t) order by user_id) from public.wallets t) wallets,(select jsonb_agg(to_jsonb(t) order by id) from public.cash_purchases t) purchases,(select jsonb_agg(to_jsonb(t)-'status'-'cancelled_at'-'cancelled_by'-'cancel_reason' order by id) from public.promotions t) promotions;
-select set_config('request.jwt.claim.sub','95000000-0000-4000-8000-000000000001',true);
+select pg_temp.set_test_user('95000000-0000-4000-8000-000000000001',true);
 select public.queue_deletion('status',id) from fixture where name not in ('failure','author','owner','unauthorized');
 create temp table results as select f.name,public.run_deletion_job(j.id) result from fixture f join public.deletion_jobs j on j.target_id=f.id;
 select is((select result->>'complete' from results where name='photo'),'true','AUD05: photo deletion completes, not malformed array literal');
@@ -54,18 +55,18 @@ select is((select count(*)::integer from public.deletion_jobs where target_id=(s
 select is((select count(*)::integer from public.storage_cleanup_tasks where source_id=(select id from fixture where name='photo')),1,'repeated request does not duplicate outbox task');
 select ok(public.run_deletion_job(gen_random_uuid())->>'skipped'='true','missing job safely skips');
 set local role authenticated;
-select set_config('request.jwt.claim.sub','95000000-0000-4000-8000-000000000004',true);
+select pg_temp.set_test_user('95000000-0000-4000-8000-000000000004',true);
 select throws_ok($$select public.queue_deletion('status',(select id from fixture where name='unauthorized'))$$,'P0001','PERMISSION_DENIED','ordinary user cannot request administrative deletion');
 with deleted as (delete from public.statuses where id=(select id from fixture where name='unauthorized') returning id) select is((select count(*)::integer from deleted),0,'RLS denies foreign deletion');
-select set_config('request.jwt.claim.sub','95000000-0000-4000-8000-000000000003',true);
+select pg_temp.set_test_user('95000000-0000-4000-8000-000000000003',true);
 with deleted as (delete from public.statuses where id=(select id from fixture where name='author') returning id) select is((select count(*)::integer from deleted),1,'author direct deletion still works');
-select set_config('request.jwt.claim.sub','95000000-0000-4000-8000-000000000002',true);
+select pg_temp.set_test_user('95000000-0000-4000-8000-000000000002',true);
 with deleted as (delete from public.statuses where id=(select id from fixture where name='owner') returning id) select is((select count(*)::integer from deleted),1,'community owner direct moderation works');
 reset role;
 select ok(not has_function_privilege('authenticated','public.run_deletion_job(uuid)','EXECUTE'),'worker execution restricted from authenticated');
 select ok(not has_function_privilege('anon','public.run_deletion_job(uuid)','EXECUTE'),'worker execution restricted from anon');
 select is((select proconfig::text from pg_proc where oid='public.run_deletion_job(uuid)'::regprocedure),'{"search_path=public, pg_temp"}','deployed search_path retained');
-select set_config('request.jwt.claim.sub','95000000-0000-4000-8000-000000000001',true);
+select pg_temp.set_test_user('95000000-0000-4000-8000-000000000001',true);
 select public.queue_deletion('status',(select id from fixture where name='failure'));
 create function pg_temp.fail_aud05() returns trigger language plpgsql as $$begin if old.id=(select id from pg_temp.fixture where name='failure') then raise exception 'AUD05_SYNTHETIC_FAILURE';end if;return old;end $$;
 create trigger zz_aud05_failure after delete on public.statuses for each row execute function pg_temp.fail_aud05();

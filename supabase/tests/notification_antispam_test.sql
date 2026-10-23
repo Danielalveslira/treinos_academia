@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- Anti-spam e variação: agrupamento de rajadas, cooldown, teto por hora, variantes sem repetição
 -- e alertas críticos (que a preferência por categoria não silencia).
 begin;
@@ -22,9 +23,9 @@ from unnest(array['1','2','3']) n;
 
 create or replace function pg_temp.dev(p_user text, p_name text) returns void language plpgsql as $$
 begin
-  perform set_config('request.jwt.claim.sub', 'b3000000-0000-0000-0000-0000000000' || p_user, true);
+  perform pg_temp.set_test_user( 'b3000000-0000-0000-0000-0000000000' || p_user, true);
   perform public.register_push_subscription('https://fcm.googleapis.com/fcm/send/' || p_name, repeat('p', 32), repeat('a', 16), 'ua', p_name, 'android');
-  perform set_config('request.jwt.claim.sub', '', true);
+  perform pg_temp.set_test_user( '', true);
 end $$;
 select pg_temp.dev('05', 'b-phone');
 select pg_temp.dev('06', 's-desktop');

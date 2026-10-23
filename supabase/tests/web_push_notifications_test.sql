@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
@@ -11,14 +12,14 @@ values
 update public.users set role = 'superadmin' where id = '91000000-0000-0000-0000-000000000003';
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '91000000-0000-0000-0000-000000000001', true);
 select lives_ok(
   $$select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/device', repeat('p', 32), repeat('a', 16), 'test', 'phone', 'android')$$,
   'usuário registra subscription para a própria sessão'
 );
 select is((public.get_my_push_status()->>'activeSubscriptions')::int, 1, 'status não expõe segredos e conta a subscription');
 
-select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( '91000000-0000-0000-0000-000000000002', true);
 select lives_ok(
   $$select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/device', repeat('q', 32), repeat('b', 16), 'test', 'shared', 'desktop')$$,
   'mesmo endpoint é reassociado na troca de conta'
@@ -29,7 +30,7 @@ select is((select user_id from public.push_subscriptions where endpoint = 'https
 select is((select count(*)::int from public.push_subscriptions where endpoint = 'https://fcm.googleapis.com/fcm/send/device'), 1, 'endpoint é único');
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '91000000-0000-0000-0000-000000000001', true);
 select is(public.unregister_push_subscription('https://fcm.googleapis.com/fcm/send/device'), 0, 'usuário anterior não revoga endpoint reassociado');
 select throws_ok($$select * from public.notification_push_outbox$$, '42501', null, 'cliente não lê a outbox');
 select throws_ok($$select * from public.notification_push_deliveries$$, '42501', null, 'cliente não lê deliveries');
@@ -41,7 +42,7 @@ select throws_ok(
   'PERMISSION_DENIED', 'usuário comum não cria broadcast'
 );
 
-select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-000000000003', true);
+select pg_temp.set_test_user( '91000000-0000-0000-0000-000000000003', true);
 select lives_ok(
   $$select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/admin', repeat('r', 32), repeat('c', 16), 'test', 'admin', 'desktop')$$,
   'admin registra subscription própria'

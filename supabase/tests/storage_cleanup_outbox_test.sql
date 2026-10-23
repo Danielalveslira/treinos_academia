@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 insert into auth.users (id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
@@ -10,7 +11,7 @@ insert into public.statuses(id,community_id,author_id,type,photo_path) values
 ('76000000-0000-0000-0000-000000000002','75000000-0000-0000-0000-000000000001','74000000-0000-0000-0000-000000000002','photo','statusPhotos/75000000-0000-0000-0000-000000000001/76000000-0000-0000-0000-000000000002.webp');
 insert into public.profile_avatar_media(id,owner_id,storage_path) values
 ('77000000-0000-0000-0000-000000000001','74000000-0000-0000-0000-000000000001','74000000-0000-0000-0000-000000000001/77000000-0000-0000-0000-000000000001.webp');
-select set_config('request.jwt.claim.sub','74000000-0000-0000-0000-000000000003',true);
+select pg_temp.set_test_user('74000000-0000-0000-0000-000000000003',true);
 select public.queue_deletion('account','74000000-0000-0000-0000-000000000001');
 -- Force rollback after statuses were deleted: outbox must roll back too.
 create function pg_temp.fail_user_delete() returns trigger language plpgsql as $$begin raise exception 'synthetic failure'; end;$$;

@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -11,7 +12,7 @@ values
   ('74000000-0000-0000-0000-000000000005', 'authenticated', 'authenticated', 'remind-credited@example.invalid', 'unused', now(), '{}', '{}', now(), now()),
   ('74000000-0000-0000-0000-000000000006', 'authenticated', 'authenticated', 'remind-cancelled@example.invalid', 'unused', now(), '{}', '{}', now(), now());
 update public.users set role = 'superadmin' where id = '74000000-0000-0000-0000-000000000003';
-select set_config('request.jwt.claim.sub', '74000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '74000000-0000-0000-0000-000000000001', true);
 select public.set_username('reminderactive');
 
 create temp table _rm_active as
@@ -19,13 +20,13 @@ create temp table _rm_active as
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _rm_active), 'https://checkout.infinitepay.io/evolutus?lenc=remind');
 
 -- Autorização: só superadmin.
-select set_config('request.jwt.claim.sub', '74000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '74000000-0000-0000-0000-000000000001', true);
 select throws_ok($$select public.admin_request_cash_purchase_reminder('00000000-0000-0000-0000-000000000000')$$,
   'PERMISSION_DENIED', 'comprador não pode enfileirar seu próprio lembrete');
 select throws_ok($$select public.admin_get_cash_purchase_reminder_preview('00000000-0000-0000-0000-000000000000')$$,
   'PERMISSION_DENIED', 'comprador não pode ver a pré-visualização');
 
-select set_config('request.jwt.claim.sub', '74000000-0000-0000-0000-000000000003', true);
+select pg_temp.set_test_user( '74000000-0000-0000-0000-000000000003', true);
 
 -- Pré-visualização: username + e-mail mascarado, nunca o e-mail real.
 -- "remind-active" (13 chars) -> "re" + 11 asteriscos; "example.invalid" -> "e" + 6
@@ -136,7 +137,7 @@ values
 create temp table _rm_paid_meanwhile as
   select public.reserve_infinitepay_cash_purchase('74000000-0000-0000-0000-000000000007', 'pack_25') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _rm_paid_meanwhile), 'https://checkout.infinitepay.io/evolutus?lenc=paidmeanwhile');
-select set_config('request.jwt.claim.sub', '74000000-0000-0000-0000-000000000003', true);
+select pg_temp.set_test_user( '74000000-0000-0000-0000-000000000003', true);
 select is((public.admin_request_cash_purchase_reminder((select (r->>'id')::uuid from _rm_paid_meanwhile))->>'queued'),
   'true', 'lembrete enfileirado enquanto a compra ainda estava pendente');
 select public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _rm_paid_meanwhile),

@@ -2,7 +2,7 @@ import { AuthLayout } from '../components/PublicLayout'
 import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Button, Link, Flash, Stack, Spinner, Box } from '@primer/react'
-import { updatePassword, endOtherSessions } from '../services/authService'
+import { updatePassword, endOtherSessions, logoutUser } from '../services/authService'
 import { useRecoveryTokenExchange } from '../hooks/useRecoveryTokenExchange'
 import { translateAuthError } from '../utils/authErrors'
 import { validatePasswordConfirmation } from '../utils/validators'
@@ -38,6 +38,13 @@ export default function ResetPassword() {
       await updatePassword(password)
       // Best-effort: a senha já foi trocada mesmo se isto falhar (ver endOtherSessions).
       await endOtherSessions()
+      // A sessão criada por verifyRecoveryToken (useRecoveryTokenExchange) é de RECUPERAÇÃO, não um
+      // login explícito -- sem encerrá-la aqui, Login.jsx:28 (`if (!loading && user) return <Navigate
+      // to="/app" />`) redirecionaria quem chegou nesta tela direto para dentro do app, pulando o
+      // "entre com sua nova senha" que a própria mensagem de sucesso promete (mesmo padrão de
+      // setPasswordAfterConfirmation para o ConfirmEmail). Best-effort: a troca de senha já aconteceu
+      // e não pode ser desfeita por uma falha ao encerrar esta sessão.
+      await logoutUser().catch(() => {})
       navigate('/login', { replace: true, state: { passwordResetSuccess: true } })
     } catch (err) {
       console.error('[Auth] updatePassword:', err)

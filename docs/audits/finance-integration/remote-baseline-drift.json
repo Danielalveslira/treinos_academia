@@ -1,0 +1,27 @@
+{
+  "remote_latest": "20261111000001",
+  "local_latest": "20261111000001",
+  "function_differences": [
+    {
+      "function": "_touch_exercise_catalog_updated_at()",
+      "fields": [
+        "client_grants"
+      ]
+    },
+    {
+      "function": "enforce_partner_product_image()",
+      "fields": [
+        "client_grants"
+      ]
+    }
+  ],
+  "relation_differences": [
+    {
+      "table": "cash_purchase_reminder_emails",
+      "fields": [
+        "client_grants"
+      ]
+    }
+  ],
+  "normalization": "Exclude owner/grantor role differences; normalize deparser auth qualification only."
+}

@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -21,7 +22,7 @@ select public._wallet_credit_coins('91000000-0000-0000-0000-000000000002', 100);
 update private.comment_rate_limits set min_interval = interval '0 seconds', burst_limit = 0 where singleton;
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', '91000000-0000-0000-0000-0000000000' || p, true)$$;
+  $$select pg_temp.set_test_user( '91000000-0000-0000-0000-0000000000' || p, true)$$;
 -- Insere uma foto do jeito do app (createPhotoStatus): como o próprio usuário, passando pela RLS (invoker).
 -- p_author (padrão '01'): o 6º insert abaixo usa '02' para não acumular 6 publicações/minuto no
 -- mesmo usuário e tropeçar no limite de 5/min de 20261101000001_aud07_status_publication_rate.sql

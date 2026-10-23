@@ -1,0 +1,42 @@
+\ir _helpers/auth_session.sql
+begin;
+select no_plan();
+insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+values('f3000000-0000-0000-0000-000000000001','authenticated','authenticated','reverse-one@example.invalid','x',now(),'{}','{}',now(),now()),
+('f3000000-0000-0000-0000-000000000002','authenticated','authenticated','reverse-admin@example.invalid','x',now(),'{}','{}',now(),now());
+update public.users set role='superadmin' where id='f3000000-0000-0000-0000-000000000002';
+create temp table purchase as select public.reserve_infinitepay_cash_purchase('f3000000-0000-0000-0000-000000000001','pack_25') r;
+select public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from purchase),(select r->>'orderNsu' from purchase),'reverse-txn','reverse-inv',590,'pix',null);
+select pg_temp.set_test_user('f3000000-0000-0000-0000-000000000002',true);
+select throws_ok($$select public.admin_record_cash_reversal((select (r->>'id')::uuid from purchase),'refund-1','refund',295,'provider-ref-1','Confirmed in provider dashboard')$$,'REVERSALS_NOT_ENABLED','production flag defaults closed');
+update public.economy_config set config=jsonb_set(config,'{financialControls,reversalsEnabled}','true') where id;
+select is(public.admin_record_cash_reversal((select (r->>'id')::uuid from purchase),'refund-1','refund',295,'provider-ref-1','Confirmed in provider dashboard')->>'cashUnits','12','first half allocates floor of cumulative amount');
+select is((select cash_balance from public.wallets where user_id='f3000000-0000-0000-0000-000000000001'),13,'compensates available cash');
+select is(public.admin_record_cash_reversal((select (r->>'id')::uuid from purchase),'refund-1','refund',295,'provider-ref-1','Confirmed in provider dashboard')->>'replay','true','duplicate event is idempotent');
+select throws_ok($$select public.admin_record_cash_reversal((select (r->>'id')::uuid from purchase),'refund-1','refund',294,'provider-ref-1','Confirmed in provider dashboard')$$,'REVERSAL_EVENT_CONFLICT','event conflict rejected');
+select public._wallet_debit_cash('f3000000-0000-0000-0000-000000000001',13);
+select public._ledger_record('f3000000-0000-0000-0000-000000000001','synthetic-spend','cash','debit',13,'test','test','spend');
+select is(public.admin_record_cash_reversal((select (r->>'id')::uuid from purchase),'refund-2','chargeback',295,'provider-ref-2','Confirmed final reversal')->>'outstanding','13','spent credits become obligation, never negative available balance');
+select is((select cash_balance from public.wallets where user_id='f3000000-0000-0000-0000-000000000001'),0,'available balance remains zero');
+select is(private.cash_debt('f3000000-0000-0000-0000-000000000001'),13::bigint,'obligation separately recorded');
+select is(public._compute_financial_block_reason('f3000000-0000-0000-0000-000000000001'),'cash_reversal_debt','unsettled debt blocks unreviewed deletion');
+select throws_ok($$select public.admin_record_cash_reversal((select (r->>'id')::uuid from purchase),'refund-3','refund',1,'provider-ref-3','Invalid excess reversal')$$,'REVERSAL_EXCEEDS_PAYMENT','cumulative reversal cannot exceed payment');
+savepoint debt_deletion;
+select public.queue_deletion('account','f3000000-0000-0000-0000-000000000001');
+select public.run_deletion_job(id) from public.deletion_jobs where kind='account' and target_id='f3000000-0000-0000-0000-000000000001';
+select is((select block_reason from public.deletion_jobs where kind='account' and target_id='f3000000-0000-0000-0000-000000000001'),'cash_reversal_debt','deletion worker respects debt gate');
+select public.separate_financial_case_and_resume_deletion(id,'Retain verified reversal evidence in case') from public.deletion_jobs where kind='account' and target_id='f3000000-0000-0000-0000-000000000001';
+select public.run_deletion_job(id) from public.deletion_jobs where kind='account' and target_id='f3000000-0000-0000-0000-000000000001';
+select ok((select user_id is null and financial_case_id is not null from public.cash_purchases where id=(select (r->>'id')::uuid from purchase)),'purchase survives account removal linked to case');
+select is((select count(*)::integer from public.cash_purchase_reversals where purchase_id=(select (r->>'id')::uuid from purchase)),2,'both reversal events survive account removal');
+rollback to savepoint debt_deletion;
+select public._wallet_credit_cash('f3000000-0000-0000-0000-000000000001',20);
+select public._ledger_record('f3000000-0000-0000-0000-000000000001','synthetic-credit','cash','credit',20,'test','test','credit');
+select is(private.cash_debt('f3000000-0000-0000-0000-000000000001'),0::bigint,'new credit recovers only existing obligation');
+select is((select cash_balance from public.wallets where user_id='f3000000-0000-0000-0000-000000000001'),7,'unrelated remaining credits stay available');
+select is((select sum(case direction when 'credit' then amount else -amount end) from public.economy_transactions where user_id='f3000000-0000-0000-0000-000000000001'),7::numeric,'wallet equals ledger including recoveries');
+select throws_ok($$delete from public.cash_purchase_reversals$$,'REVERSAL_IMMUTABLE','reversal history protected');
+select pg_temp.set_test_user('f3000000-0000-0000-0000-000000000001',true);
+select throws_ok($$select public.admin_record_cash_reversal((select (r->>'id')::uuid from purchase),'refund-x','refund',1,'provider-ref-x','Unauthorized reversal')$$,'PERMISSION_DENIED','ordinary user cannot attest reversal');
+select * from finish();
+rollback;

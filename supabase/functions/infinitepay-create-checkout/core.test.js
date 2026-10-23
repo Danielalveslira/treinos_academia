@@ -12,7 +12,7 @@ function fixtures(overrides = {}) {
   } }
   const fetcher = async (_url, options) => {
     calls.push(['fetch', JSON.parse(options.body)])
-    return { ok: true, status: 200, json: async () => ({ url: 'https://checkout.infinitepay.io/tag?lenc=token' }) }
+    return Response.json({ url: 'https://checkout.infinitepay.io/tag?lenc=token' })
   }
   return { calls, userClient, admin, fetcher, userId: 'user-1', packageId: 'pack_25',
     handle: 'my-tag', appUrl: 'https://app.example', supabaseUrl: 'https://project.supabase.co',
@@ -54,8 +54,7 @@ test('retry reuses an existing checkout and never calls links again', async () =
 })
 
 test('4xx marks checkout_failed and allows a safe retry of the same purchase', async () => {
-  const deps = fixtures({ fetcher: async () => ({ ok: false, status: 422,
-    json: async () => ({ code: 'INVALID_HANDLE', message: 'Rejected' }) }) })
+  const deps = fixtures({ fetcher: async () => Response.json({ code: 'INVALID_HANDLE', message: 'Rejected' }, { status: 422 }) })
   await assert.rejects(createCheckout(deps), /INFINITEPAY_LINK_FAILED/)
   assert.equal(deps.calls.at(-1)[0], 'fail_infinitepay_checkout')
   assert.equal(deps.calls.at(-1)[1].p_http_status, 422)
@@ -65,8 +64,8 @@ test('4xx marks checkout_failed and allows a safe retry of the same purchase', a
 
 test('5xx, missing URL and timeout require reconciliation, without a second link', async () => {
   const failures = [
-    async () => ({ ok: false, status: 503, json: async () => ({ message: 'Unavailable' }) }),
-    async () => ({ ok: true, status: 200, json: async () => ({ success: true }) }),
+    async () => Response.json({ message: 'Unavailable' }, { status: 503 }),
+    async () => Response.json({ success: true }),
     async () => { throw new DOMException('Timed out', 'TimeoutError') },
   ]
   for (const fetcher of failures) {
@@ -90,4 +89,16 @@ test('external URLs are restricted to the actual InfinitePay checkout hosts', ()
     'https://checkout.infinitepay.com.br.evil.test/', 'https://user@checkout.infinitepay.com.br/'])
     assert.equal(validCheckoutUrl(url), false)
   assert.throws(() => checkoutPayload({ handle: 'x', orderNsu: reservation.orderNsu, amountCentavos: 590 }), /INVALID_CHECKOUT_INPUT/)
+})
+
+test('advanced single-payment/expiry options are sent only with the merchant API key', async () => {
+  const validUntil = '2026-10-30T12:00:00Z'
+  let sent
+  const deps = fixtures({ apiKey: 'synthetic-test-key',
+    admin: { rpc: async (name) => ({ data: name === 'reserve_infinitepay_cash_purchase' ? { ...reservation, checkoutValidUntil: validUntil } : null }) },
+    fetcher: async (_url, options) => { sent = options; return Response.json({ url: 'https://checkout.infinitepay.io/test' }) },
+  })
+  await createCheckout(deps)
+  assert.equal(sent.headers['X-Api-Key'], 'synthetic-test-key')
+  assert.deepEqual(JSON.parse(sent.body).options, { single_payment: true, valid_until: validUntil })
 })

@@ -16,10 +16,10 @@ before(async () => {
   await build({
     stdin: {
       contents: `
-        import { useLogout, logoutErrorMessage, logoutAllErrorMessage, confirmAndLogoutAll, LOGOUT_ALL_OTHERS_ERROR } from './useLogout.js'
-        import { logoutUser } from '../services/authService.js'
+        import { useLogout, logoutErrorMessage, logoutAllErrorMessage, confirmAndLogoutAll, LOGOUT_ALL_OTHERS_ERROR, LOGOUT_ALL_LOCAL_CLEANUP_ERROR } from './useLogout.js'
+        import { logoutUser, logoutAllDevices } from '../services/authService.js'
         import { consumeLogoutReason } from '../utils/logoutReason.js'
-        export { useLogout, logoutErrorMessage, logoutAllErrorMessage, confirmAndLogoutAll, LOGOUT_ALL_OTHERS_ERROR, logoutUser, consumeLogoutReason }
+        export { useLogout, logoutErrorMessage, logoutAllErrorMessage, confirmAndLogoutAll, LOGOUT_ALL_OTHERS_ERROR, LOGOUT_ALL_LOCAL_CLEANUP_ERROR, logoutUser, logoutAllDevices, consumeLogoutReason }
       `,
       resolveDir: new URL('.', import.meta.url).pathname,
     },
@@ -259,6 +259,58 @@ test('logout local não confirmado no servidor não vira aviso (o usuário já s
     console.warn = warn
   }
   assert.equal(mod.consumeLogoutReason().message, 'Você saiu da conta.')
+})
+
+test('mensagem de local-cleanup confirma que as outras sessões já saíram, nunca a mensagem genérica nem a de "others"', () => {
+  assert.equal(
+    mod.logoutAllErrorMessage({ logoutStep: 'local-cleanup' }),
+    mod.LOGOUT_ALL_LOCAL_CLEANUP_ERROR
+  )
+  assert.notEqual(mod.LOGOUT_ALL_LOCAL_CLEANUP_ERROR, mod.LOGOUT_ALL_OTHERS_ERROR)
+  assert.match(mod.LOGOUT_ALL_LOCAL_CLEANUP_ERROR, /outras sessões/i)
+})
+
+// Reproduz o cenário real da Falha 1 do diagnóstico: AuthContext força um logoutUser() (conta
+// excluída/sessão fantasma) chamando authService DIRETO, sem passar pelo useLogout -- o `inFlight`
+// do hook não protege essa chamada. Antes da correção, singleFlight() entregava a MESMA promessa
+// para qualquer chamada concorrente (do escopo que fosse): o pedido de logoutAllDevices() herdava
+// o resultado do logoutUser() local e nunca chegava a chamar scope:'others', mas o chamador via
+// sucesso igual. Agora os dois escopos são sempre serializados, nunca mesclados -- nas duas ordens.
+test('logoutUser() forçado (AuthContext) e logoutAllDevices() concorrentes: os dois escopos rodam de verdade, nunca um herda o resultado do outro', async () => {
+  const auth = fakeAuth()
+  let releaseLocal
+  const localGate = new Promise((resolve) => (releaseLocal = resolve))
+  const inner = globalThis.__signOut
+  globalThis.__signOut = async (options) => {
+    if (options.scope === 'local') await localGate
+    return inner(options)
+  }
+  const forced = mod.logoutUser() // chamada direta, como o AuthContext faria
+  await waitForImmediate()
+  const all = mod.logoutAllDevices() // usuário confirmou "sair de todos" quase ao mesmo tempo
+  releaseLocal()
+  await Promise.all([forced, all])
+  // 'others' REALMENTE foi chamado -- não foi substituído pelo resultado do logoutUser() local.
+  assert.deepEqual(auth.calls, ['local', 'others', 'local'])
+})
+
+test('mesmo cenário na ordem inversa (logoutAllDevices primeiro, logoutUser forçado depois): logoutUser() aproveita o "all" em andamento com segurança, sem chamada própria redundante', async () => {
+  const auth = fakeAuth()
+  let releaseOthers
+  const othersGate = new Promise((resolve) => (releaseOthers = resolve))
+  const inner = globalThis.__signOut
+  globalThis.__signOut = async (options) => {
+    if (options.scope === 'others') await othersGate
+    return inner(options)
+  }
+  const all = mod.logoutAllDevices()
+  await waitForImmediate()
+  const forced = mod.logoutUser() // AuthContext força o logout local enquanto 'all' já revoga tudo
+  releaseOthers()
+  await Promise.all([all, forced])
+  // 'all' já revoga as outras sessões E encerra esta -- um superconjunto do que o logoutUser()
+  // forçado precisava; por isso ele pode aproveitar o mesmo resultado sem repetir signOut('local').
+  assert.deepEqual(auth.calls, ['others', 'local'])
 })
 
 test('logout e logout global compartilham a trava: toques simultâneos fazem uma única chamada', async () => {

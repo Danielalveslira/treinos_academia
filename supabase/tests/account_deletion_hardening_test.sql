@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -15,7 +16,7 @@ select public._wallet_credit_cash('62000000-0000-0000-0000-000000000022', 40);
 select public._ledger_record('62000000-0000-0000-0000-000000000022', 'seed:1', 'cash', 'credit', 40, 'cash_purchase_confirmed', 'cash_purchase', 'seed');
 select public._ledger_record('62000000-0000-0000-0000-000000000021', 'seed:1', 'coin', 'credit', 3, 'daily_activity', 'activity', 'seed');
 
-select set_config('request.jwt.claim.sub', '62000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '62000000-0000-0000-0000-000000000001', true);
 select public.queue_deletion('account', '62000000-0000-0000-0000-000000000021');
 select public.queue_deletion('account', '62000000-0000-0000-0000-000000000022');
 
@@ -52,10 +53,10 @@ select is((select state from public.deletion_jobs where target_id = '62000000-00
 
 -- banco limpo + Auth ainda presente: login/retry não recria usuário nem carteira
 select ok(exists (select 1 from auth.users where id = '62000000-0000-0000-0000-000000000021'), 'Auth ainda presente (cenário banco limpo + Auth vivo)');
-select set_config('request.jwt.claim.sub', '62000000-0000-0000-0000-000000000021', true);
+select pg_temp.set_test_user( '62000000-0000-0000-0000-000000000021', true);
 do $$ begin perform public.ensure_user_profile(); exception when others then null; end $$;
 select is((select public.get_my_deletion_review()), null, 'titular de banco limpo não vê revisão de exclusão');
-select set_config('request.jwt.claim.sub', '62000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '62000000-0000-0000-0000-000000000001', true);
 select is((select count(*)::int from public.users where id = '62000000-0000-0000-0000-000000000021')
         + (select count(*)::int from public.wallets where user_id = '62000000-0000-0000-0000-000000000021'), 0, 'Auth vivo não recria public.users nem wallet');
 

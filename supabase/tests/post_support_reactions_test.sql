@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -31,7 +32,7 @@ select public._wallet_credit_coins(('68000000-0000-0000-0000-0000000000' || n)::
   from unnest(array['02','03','04','05','06']) as n;
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', '68000000-0000-0000-0000-0000000000' || p, true)$$;
+  $$select pg_temp.set_test_user( '68000000-0000-0000-0000-0000000000' || p, true)$$;
 create or replace function pg_temp.counts() returns text language sql as
   $$select positive_vote_count || '/' || negative_vote_count from public.statuses where id = '6a000000-0000-0000-0000-000000000001'$$;
 create or replace function pg_temp.myvote(p text) returns smallint language sql as
@@ -125,7 +126,7 @@ select throws_ok($$select public.list_post_supporters('6a000000-0000-0000-0000-0
 select ok(not has_function_privilege('anon', 'public.list_post_supporters(uuid, timestamptz, uuid, integer)', 'execute'), 'anon não executa a RPC');
 
 -- === conta excluída: lista e contadores seguem corretos ===
-select public._wallet_credit_cash('68000000-0000-0000-0000-000000000001', 0);
+select public._wallet_ensure_row('68000000-0000-0000-0000-000000000001');
 update public.users set role = 'superadmin' where id = '68000000-0000-0000-0000-000000000008';
 select pg_temp.as_user('08');
 select public.queue_deletion('account', '68000000-0000-0000-0000-000000000003');

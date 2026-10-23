@@ -131,18 +131,23 @@ export function WalletProvider({ children }) {
     // a base do "+N".
     const cachedWallet = peekCachedWallet(user.uid)
     if (cachedWallet) {
-      setWallet(cachedWallet)
-      setDisplay(toDisplay(user.uid, cachedWallet, 'server'))
+      setDisplay(toDisplay(user.uid, cachedWallet, 'snapshot'))
     }
     getWallet(user.uid, { forceRefresh: true })
       .then((fresh) => {
         if (!active || revision !== current || snapshotReceived) return
         baselineLifetime = fresh.lifetimeCoinsEarned
         setWallet(fresh)
+        setLoading(false)
+        setError(null)
         setDisplay(toDisplay(user.uid, fresh, 'server'))
         persistHomeSnapshot(user.uid, { wallet: fresh })
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!active || revision !== current || snapshotReceived) return
+        setLoading(false)
+        setError('Não foi possível confirmar o saldo. Tente novamente.')
+      })
     refreshDaily()
 
     channel = supabase
@@ -186,7 +191,9 @@ export function WalletProvider({ children }) {
   const shown = display && display.uid === user?.uid ? display : null
 
   return (
-    <WalletContext.Provider value={{ wallet, loading, error, dailyCoins, lastAward, display: shown }}>
+    <WalletContext.Provider
+      value={{ wallet, loading, error, dailyCoins, lastAward, display: shown }}
+    >
       {children}
     </WalletContext.Provider>
   )

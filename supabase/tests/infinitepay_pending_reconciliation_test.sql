@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -52,7 +53,7 @@ select is((public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid fro
   'already_needs_review', 'idempotent retry after needs_review does not re-flag or credit');
 
 -- Admin credita manualmente (ex.: conta foi reativada) -- idempotente.
-select set_config('request.jwt.claim.sub', '73000000-0000-0000-0000-000000000005', true);
+select pg_temp.set_test_user( '73000000-0000-0000-0000-000000000005', true);
 select is((public.admin_resolve_cash_purchase_review((select (r->>'id')::uuid from _r_disabled), 'credit', 'Conta reativada, creditar normalmente.')->>'status'),
   'credited', 'admin resolves needs_review by crediting');
 select is((select cash_balance::int from public.wallets where user_id = '73000000-0000-0000-0000-000000000002'), 25, 'wallet credited once after manual decision');
@@ -63,19 +64,21 @@ select is((public.admin_resolve_cash_purchase_review((select (r->>'id')::uuid fr
 select is((select cash_balance::int from public.wallets where user_id = '73000000-0000-0000-0000-000000000002'), 25, 'retry does not credit twice');
 
 -- Resolução por reembolso externo: nunca credita.
+update public.users set account_status='active' where id='73000000-0000-0000-0000-000000000002';
 create temp table _r_disabled2 as
   select public.reserve_infinitepay_cash_purchase('73000000-0000-0000-0000-000000000002', 'pack_25') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _r_disabled2), 'https://checkout.infinitepay.io/evolutus?lenc=disabled2');
+update public.users set account_status='disabled' where id='73000000-0000-0000-0000-000000000002';
 select public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _r_disabled2),
   (select r->>'orderNsu' from _r_disabled2), 'txn-disabled2', 'invoice-disabled2', 590, 'pix', null);
-select set_config('request.jwt.claim.sub', '73000000-0000-0000-0000-000000000005', true);
+select pg_temp.set_test_user( '73000000-0000-0000-0000-000000000005', true);
 select is((public.admin_resolve_cash_purchase_review((select (r->>'id')::uuid from _r_disabled2), 'refund_externally', 'Reembolsado fora do app, não creditar EvoCash.')->>'status'),
   'cancelled', 'admin resolves needs_review by external refund, never crediting');
 select is((select cash_balance::int from public.wallets where user_id = '73000000-0000-0000-0000-000000000002'), 25, 'external refund does not touch wallet');
 select is((select review_resolution from public.cash_purchases where id = (select (r->>'id')::uuid from _r_disabled2)),
   'refunded_externally', 'review resolution recorded');
 
-select set_config('request.jwt.claim.sub', '73000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( '73000000-0000-0000-0000-000000000002', true);
 select throws_ok($$select public.admin_resolve_cash_purchase_review('00000000-0000-0000-0000-000000000000', 'credit', 'tentativa sem permissao')$$,
   'PERMISSION_DENIED', 'ordinary user cannot resolve a review');
 
@@ -87,10 +90,10 @@ select throws_ok($$select public.admin_resolve_cash_purchase_review('00000000-00
 create temp table _r_unpaid as
   select public.reserve_infinitepay_cash_purchase('73000000-0000-0000-0000-000000000003', 'pack_25') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _r_unpaid), 'https://checkout.infinitepay.io/evolutus?lenc=unpaid');
-select set_config('request.jwt.claim.sub', '73000000-0000-0000-0000-000000000003', true);
+select pg_temp.set_test_user( '73000000-0000-0000-0000-000000000003', true);
 select throws_ok($$select public.admin_cancel_infinitepay_cash_purchase((select (r->>'id')::uuid from _r_unpaid), 'tentativa sem permissao')$$,
   'PERMISSION_DENIED', 'ordinary user cannot use the admin cancellation fallback');
-select set_config('request.jwt.claim.sub', '73000000-0000-0000-0000-000000000005', true);
+select pg_temp.set_test_user( '73000000-0000-0000-0000-000000000005', true);
 select throws_ok($$select public.admin_cancel_infinitepay_cash_purchase((select (r->>'id')::uuid from _r_unpaid), 'oi')$$,
   'REASON_REQUIRED', 'reason must be at least 5 characters');
 select is((public.admin_cancel_infinitepay_cash_purchase((select (r->>'id')::uuid from _r_unpaid), 'Sem pagamento confirmado na InfinitePay após verificação manual.')->>'status'),

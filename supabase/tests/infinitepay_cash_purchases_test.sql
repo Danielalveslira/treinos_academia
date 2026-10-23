@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -56,7 +57,7 @@ select is((select coalesce((select cash_balance::int from public.wallets where u
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _ip_d), 'https://checkout.infinitepay.io/evolutus?lenc=test');
 select is((select status from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
   'pending', 'payment becomes pending only after valid checkout is saved');
-select set_config('request.jwt.claim.sub', '72000000-0000-0000-0000-000000000004', true);
+select pg_temp.set_test_user( '72000000-0000-0000-0000-000000000004', true);
 select is((public.cancel_my_cash_purchase((select (r->>'id')::uuid from _ip_d))->>'status'),
   'cancelled', 'owner cancels immediately');
 select ok((select cancelled_at is not null and cancelled_by = user_id from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
@@ -118,12 +119,12 @@ select is((public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid fro
 create temp table _ip_c as
   select public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000003', 'pack_25') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _ip_c), 'https://checkout.infinitepay.io/evolutus?lenc=case');
-select set_config('request.jwt.claim.sub', '72000000-0000-0000-0000-000000000003', true);
+select pg_temp.set_test_user( '72000000-0000-0000-0000-000000000003', true);
 select public.cancel_my_cash_purchase((select (r->>'id')::uuid from _ip_c));
 select is(public._compute_financial_block_reason('72000000-0000-0000-0000-000000000003'),
   'pending_cash_purchase', 'cancelled payable link still blocks account deletion');
 update public.users set role = 'superadmin' where id = '72000000-0000-0000-0000-000000000001';
-select set_config('request.jwt.claim.sub', '72000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '72000000-0000-0000-0000-000000000001', true);
 select public.queue_deletion('account', '72000000-0000-0000-0000-000000000003');
 select public.run_deletion_job(id) from public.deletion_jobs where target_id = '72000000-0000-0000-0000-000000000003';
 select public.separate_financial_case_and_resume_deletion(id, 'separar compra pendente para teste')
@@ -147,7 +148,7 @@ select ok(to_regprocedure('public.confirm_cash_purchase(uuid,text)') is null,
   'manual confirmation RPC has been removed');
 select ok(to_regprocedure('public.cancel_cash_purchase(uuid,text)') is null,
   'manual cancellation RPC has been removed');
-select set_config('request.jwt.claim.sub', '72000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( '72000000-0000-0000-0000-000000000002', true);
 select ok(to_regprocedure('public.request_cash_purchase(text,text)') is null,
   'legacy purchase RPC has been removed');
 

@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
@@ -8,12 +9,12 @@ insert into auth.users (id, aud, role, email, encrypted_password, email_confirme
 values ('a9000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated',
   'reminder-test@example.invalid', 'not-used', now(), '{}'::jsonb, '{}'::jsonb, now(), now());
 
-select set_config('request.jwt.claim.sub', 'a9000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( 'a9000000-0000-0000-0000-000000000001', true);
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/reminder-phone',
   repeat('p', 32), repeat('a', 16), 'test', 'phone', 'android');
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/reminder-laptop',
   repeat('p', 32), repeat('a', 16), 'test', 'laptop', 'windows');
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_test_user( '', true);
 
 update public.users set training_preferences = jsonb_build_object(
   'plannedTrainingDays', to_jsonb(array['monday','tuesday','wednesday','thursday','friday','saturday','sunday']),
@@ -187,9 +188,9 @@ create or replace function pg_temp.plan(p_id uuid, p_time text, p_tz text defaul
 $$;
 create or replace function pg_temp.device(p_id uuid, p_name text) returns void language plpgsql as $$
 begin
-  perform set_config('request.jwt.claim.sub', p_id::text, true);
+  perform pg_temp.set_test_user( p_id::text, true);
   perform public.register_push_subscription('https://fcm.googleapis.com/fcm/send/' || p_name, repeat('p', 32), repeat('a', 16), 'test', p_name, 'android');
-  perform set_config('request.jwt.claim.sub', '', true);
+  perform pg_temp.set_test_user( '', true);
 end $$;
 create or replace function pg_temp.due(p_id uuid, p_kind text) returns void language sql as $$
   update public.workout_reminder_jobs set scheduled_at = now() - interval '1 minute'
@@ -390,9 +391,9 @@ select is((select urgency || ':' || ttl_seconds from k_claim where notification_
 select ok((select bool_and(action_url like '/novo-treino?planejado=____-__-__') from k_claim), '(J) deep link abre o fluxo do treino planejado');
 select ok(exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'notifications'), '(J) notifications está no Realtime');
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'a9000000-0000-0000-0000-000000000020', true);
+select pg_temp.set_test_user( 'a9000000-0000-0000-0000-000000000020', true);
 select is((select count(*)::int from public.notifications where type::text like 'workout_reminder%'), 2, '(J) o dono enxerga os próprios avisos (RLS)');
-select set_config('request.jwt.claim.sub', 'a9000000-0000-0000-0000-000000000010', true);
+select pg_temp.set_test_user( 'a9000000-0000-0000-0000-000000000010', true);
 select is((select count(*)::int from public.notifications where recipient_id = 'a9000000-0000-0000-0000-000000000020'), 0, '(J) outro usuário não enxerga');
 reset role;
 select is((select count(*)::int from cron.job where jobname = 'dispatch-workout-reminders'), 1, '(J) cron de despacho único');
@@ -421,20 +422,20 @@ select is((select to_char(scheduled_at at time zone 'UTC', 'HH24:MI') from publi
   where user_id = 'a9000000-0000-0000-0000-000000000021' and planned_date = '2026-10-20' and kind = 'start'), '19:00', 'V2: agendador usa terça local');
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'a9000000-0000-0000-0000-000000000021', true);
+select pg_temp.set_test_user( 'a9000000-0000-0000-0000-000000000021', true);
 select is((public.set_training_preferences('{"plannedTrainingDays":["monday"],"reminderEnabled":true,"weeklyTimes":{"1":"07:00"},"timezone":"UTC","effectiveFrom":"2026-10-19"}'::jsonb)->'weeklyTimes')::text, '{"1": "07:00"}', 'V2: RPC salva a semana em uma operação');
 select throws_ok($$select public.set_training_preferences('{"plannedTrainingDays":["monday"],"reminderEnabled":true,"weeklyTimes":{"1":"25:00"},"timezone":"UTC","effectiveFrom":"2026-10-19"}'::jsonb)$$, 'P0001', 'INVALID_WEEKLY_TIME', 'V2: rejeita horário inválido');
 select throws_ok($$select public.set_training_preferences('{"plannedTrainingDays":["monday"],"reminderEnabled":true,"weeklyTimes":{"2":"09:00"},"timezone":"UTC","effectiveFrom":"2026-10-19"}'::jsonb)$$, 'P0001', 'INVALID_WEEKLY_TIME', 'V2: rejeita horário em dia de descanso');
 select is((select training_preferences->'weeklyTimes' from public.users where id = 'a9000000-0000-0000-0000-000000000021')::text, '{"1": "07:00"}', 'V2: validação falha sem alterar o plano');
 select is((public.set_training_preferences('{"plannedTrainingDays":["monday","tuesday"],"reminderEnabled":true,"reminderTime":"18:00","timezone":"UTC","effectiveFrom":"2026-10-19"}'::jsonb)->'weeklyTimes')::text, '{"1": "07:00", "2": "18:00"}', 'V2: cliente antigo preserva horário personalizado e inicia novo dia');
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_test_user( '', true);
 reset role;
 select is((select training_preferences->'weeklyTimes' from public.users where id = 'a9000000-0000-0000-0000-000000000021')::text, '{"1": "07:00", "2": "18:00"}', 'V2: plano salvo conserva horários após validação');
 select is((select count(*)::int from public.workout_reminder_jobs where user_id = 'a9000000-0000-0000-0000-000000000021' and status = 'pending' and extract(isodow from planned_date) = 3), 0, 'V2: descanso não gera lembrete pendente');
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'a9000000-0000-0000-0000-000000000021', true);
+select pg_temp.set_test_user( 'a9000000-0000-0000-0000-000000000021', true);
 select public.set_training_preferences('{"plannedTrainingDays":["monday"],"reminderEnabled":true,"weeklyTimes":{"1":"07:00"},"timezone":"UTC","effectiveFrom":"2026-10-19"}'::jsonb);
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_test_user( '', true);
 reset role;
 select is((select count(*)::int from public.workout_reminder_jobs where user_id = 'a9000000-0000-0000-0000-000000000021' and status = 'pending' and extract(isodow from planned_date) = 2), 0, 'V2: desativar terça cancela seu lembrete');
 

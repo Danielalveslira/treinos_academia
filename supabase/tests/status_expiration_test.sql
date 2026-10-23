@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- PREMISSA DESTE TESTE: a rotina de expiração nasce pausada ("instalada mas não ativada", estado
 -- introduzido por 20261028000001_status_expiration.sql e só ligado depois, em produção, pela
 -- migration separada de ativação 20261028000003_activate_status_expiration.sql -- um gate manual
@@ -112,11 +113,11 @@ select throws_ok($$select public.process_expired_statuses()$$,'42501',null,'clie
 select throws_ok($$update public.status_expiration_control set enabled=true$$,'42501',null,'client cannot activate cleanup');
 select throws_ok($$select * from public.status_expiration_queue$$,'42501',null,'client cannot read queue');
 reset role;
-select set_config('request.jwt.claim.sub','84000000-0000-0000-0000-000000000002',true);
+select pg_temp.set_test_user('84000000-0000-0000-0000-000000000002',true);
 set local role authenticated;
 select is((select count(*)::integer from public.status_publications),3,'member reads surviving rows through invoker RLS');
 reset role;
-select set_config('request.jwt.claim.sub',gen_random_uuid()::text,true);
+select pg_temp.set_test_user(gen_random_uuid()::text,true);
 set local role authenticated;
 select is((select count(*)::integer from public.status_publications),0,'nonmember cannot read invoker view');
 reset role;

@@ -436,14 +436,29 @@ export function AuthProvider({ children }) {
           await loadSession(null)
           return
         }
-        if (session.user.id !== loadedUserIdRef.current) {
-          await loadSession(session.user) // identidade diferente: caminho completo (limpa o resto)
+        // getSession() só confirma o que o SDK já tem guardado localmente (ou renova se o access
+        // token já tiver vencido) -- não é prova de que o SERVIDOR ainda reconhece esta sessão.
+        // Outra sessão pode ter chamado "sair de todos os dispositivos" durante todo o tempo em que
+        // este aparelho ficou offline, com o access token desta sessão ainda sem expirar: getSession()
+        // continuaria devolvendo-o como válido. getUser() força uma verificação de verdade no GoTrue
+        // antes de reabrir qualquer coisa privada.
+        const { data: userData, error: userError } = await supabase.auth.getUser()
+        if (!active || authModeRef.current !== 'offline-local') return
+        if (!userData?.user) {
+          if (userError?.name === 'AuthRetryableFetchError') return // rede instável: tenta de novo depois
+          setLogoutReason('session-expired')
+          recordOfflineDiagnostic('revalidation_session_expired')
+          await loadSession(null)
+          return
+        }
+        if (userData.user.id !== loadedUserIdRef.current) {
+          await loadSession(userData.user) // identidade diferente: caminho completo (limpa o resto)
           return
         }
         const current = sessionRevisionRef.current
         const [profileResult, legalResult, accessResult] = await Promise.allSettled([
-          ensureUserProfile(session.user.id),
-          getLegalAccess(session.user.id),
+          ensureUserProfile(userData.user.id),
+          getLegalAccess(userData.user.id),
           getServerAppAccess(),
         ])
         if (!active || current !== sessionRevisionRef.current) return
@@ -456,7 +471,7 @@ export function AuthProvider({ children }) {
             ? 'revalidation_ok'
             : 'revalidation_denied'
         )
-        applyAccountResults(session.user, profileResult, legalResult, accessResult, current, {
+        applyAccountResults(userData.user, profileResult, legalResult, accessResult, current, {
           silent: true,
         })
       } finally {
@@ -539,6 +554,21 @@ export function AuthProvider({ children }) {
     // (chamadas simultâneas se fundem em uma só dentro de refreshRemoteRollout).
     const update = async () => {
       if (globalThis.navigator?.onLine === false) return
+      // Revalidação de sessão ONLINE (2ª auditoria, Etapa 3): diferente do modo offline-local,
+      // uma sessão que nunca ficou offline não tinha NENHUMA revalidação própria enquanto o app
+      // ficava aberto -- só o refresh automático do SDK, perto do vencimento do access token (até
+      // jwt_expiry depois de "sair de todos os dispositivos" em outro aparelho). is_session_active()
+      // confirma direto em auth.sessions (não depende de getUser() aceitar/rejeitar por conta
+      // própria). `error` (RPC fora do ar, rede) NUNCA é tratado como revogação -- só um `false`
+      // explícito é. Reaproveita a mesma cadência de verificação do rollout acima (sem timer novo).
+      const { data: sessionActive, error: sessionError } = await supabase.rpc('is_session_active')
+      if (!active || authModeRef.current !== 'online') return
+      if (!sessionError && sessionActive === false) {
+        setLogoutReason('session-expired')
+        recordOfflineDiagnostic('revalidation_session_expired')
+        await logoutUser().catch(() => {})
+        return
+      }
       await hydrateOfflineRollout(userId)
       if (active) {
         await refreshRemoteRollout(userId)

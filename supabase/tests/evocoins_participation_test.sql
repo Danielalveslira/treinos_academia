@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
@@ -36,9 +37,9 @@ update private.comment_rate_limits set min_interval = interval '0 seconds', burs
 create or replace function pg_temp.u(p text) returns uuid language sql as
   $$select ('e1000000-0000-0000-0000-0000000000' || p)::uuid$$;
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', ('e1000000-0000-0000-0000-0000000000' || p), true)$$;
+  $$select pg_temp.set_test_user( ('e1000000-0000-0000-0000-0000000000' || p), true)$$;
 create or replace function pg_temp.no_user() returns void language sql as
-  $$select set_config('request.jwt.claim.sub', '', true)$$;
+  $$select pg_temp.set_test_user( '', true)$$;
 create or replace function pg_temp.coins(p text) returns int language sql as
   $$select coalesce((select coin_balance from public.wallets where user_id = pg_temp.u(p)), 0)$$;
 create or replace function pg_temp.earned(p text) returns int language sql as
@@ -117,13 +118,12 @@ insert into public.economy_daily (user_id, day, earned_total, earned_by_action)
   values (pg_temp.u('0f'), private.sp_today() - 1, 10, '{"support_received": 3}')
   on conflict (user_id, day) do nothing;
 select is(pg_temp.earned('0f'), 3, 'o agregado de hoje é independente do de ontem');
+savepoint reward_day_rollover;
 select is(pg_temp.award('09', 'daily_activity', 'k:roll') ->> 'awardedCoins', '3', 'novo dia começa do zero');
 update public.economy_daily set day = private.sp_today() - 1 where user_id = pg_temp.u('09') and day = private.sp_today();
 select is(pg_temp.award('09', 'daily_activity', 'k:roll2') ->> 'awardedCoins', '3', 'depois da virada, o ganho de ontem não consome a cota de hoje');
 select is((select count(*)::int from public.economy_daily where user_id = pg_temp.u('09') and earned_total = 3), 2, 'uma linha por dia');
-delete from public.economy_daily where user_id = pg_temp.u('09');
-delete from public.economy_transactions where user_id = pg_temp.u('09');
-update public.wallets set coin_balance = 0, lifetime_coins_earned = 0 where user_id = pg_temp.u('09');
+rollback to savepoint reward_day_rollover;
 
 -- regra desligada / conta indisponível / argumentos inválidos
 update public.economy_reward_rules set enabled = false where action = 'post_published';
@@ -142,6 +142,12 @@ begin
   return public.register_qualified_activity();
 end $$;
 
+-- A verified active reward is now required; use a real persisted server-side event.
+insert into public.economy_transactions(user_id,natural_key,asset,direction,amount,reason,reference_type,reference_id) values(pg_temp.u('09'),'evidence-test','coin','credit',1,'comment_posted','test','verified');
+insert into public.economy_daily(user_id,day,earned_total,earned_by_action) values(pg_temp.u('09'),private.sp_today(),1,'{"comment_posted":1}');
+select public._wallet_credit_coins(pg_temp.u('09'),1);
+select public._wallet_debit_coins(pg_temp.u('09'),1);
+select public._ledger_record(pg_temp.u('09'),'evidence-test-neutralize','coin','debit',1,'test','test','verified');
 select pg_temp.ping('09') from generate_series(1, 5);
 select is((select qualified::text || '/' || checkpoints_count from public.community_creation_activity_days where user_id = pg_temp.u('09') and activity_date = private.sp_today()),
           'true/5', '10 min válidos qualificam o dia de criação de comunidade');
@@ -163,6 +169,10 @@ insert into public.economy_daily (user_id, day, earned_total, earned_by_action)
   values (pg_temp.u('10'), private.sp_today(), 10, '{"workout_completed": 2, "post_published": 2, "comment_posted": 3, "support_received": 3}');
 insert into public.community_creation_activity_days (user_id, activity_date, qualified_seconds, qualified, checkpoints_count, last_checkpoint_at)
   values (pg_temp.u('10'), private.sp_today(), 1790, true, 9, now() - interval '3 minutes');
+select public._wallet_credit_coins(pg_temp.u('10'),1);
+select public._ledger_record(pg_temp.u('10'),'full-cap-evidence','coin','credit',1,'workout_completed','test','verified');
+select public._wallet_debit_coins(pg_temp.u('10'),1);
+select public._ledger_record(pg_temp.u('10'),'full-cap-neutralize','coin','debit',1,'test','test','verified');
 select pg_temp.as_user('10');
 select is(public.register_qualified_activity() ->> 'reason', 'daily_cap_reached', 'teto cheio: atividade resolvida como daily_cap_reached');
 select is(pg_temp.coins('10'), 0, 'nada creditado');

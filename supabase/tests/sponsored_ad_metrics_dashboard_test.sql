@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- pgTAP: RPC get_sponsored_ad_metrics_dashboard (migration 20261018000002).
 -- Fixtures (prefixo b1...): 01 superadmin | 02 usuário comum. Comunidades C1/C2/C3. Anúncios A1 (C1 banner+feed) e A2 (global).
 -- Dias relativos a D = dia de hoje em America/Sao_Paulo (private.ad_metrics_day(now())).
@@ -26,7 +27,7 @@ create function pg_temp.dash(p_days integer default 30, p_from date default null
 create function pg_temp.err(p_sql text) returns text language plpgsql as
   $f$begin execute p_sql; return 'ok'; exception when others then return sqlerrm; end$f$;
 create function pg_temp.as_user(p_n integer) returns void language sql as
-  $f$select set_config('request.jwt.claim.sub', 'b1000000-0000-0000-0000-00000000000' || p_n, true)$f$;
+  $f$select pg_temp.set_test_user( 'b1000000-0000-0000-0000-00000000000' || p_n, true)$f$;
 create function pg_temp.today() returns date language sql security definer set search_path = '' as $f$select private.ad_metrics_day(now())$f$;
 
 -- ---------------------------------------------------------------------------------------------------
@@ -46,7 +47,7 @@ select ok((select prosrc !~* 'execute |event_marks|user_id|insert |update |delet
 set local role anon;
 select throws_ok($$select public.get_sponsored_ad_metrics_dashboard()$$, '42501', null, 'anon não executa');
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_test_user( '', true);
 select throws_ok($$select public.get_sponsored_ad_metrics_dashboard()$$, 'P0001', 'PERMISSION_DENIED', 'sem login: PERMISSION_DENIED');
 select pg_temp.as_user(2);
 select throws_ok($$select public.get_sponsored_ad_metrics_dashboard()$$, 'P0001', 'PERMISSION_DENIED', 'usuário comum: PERMISSION_DENIED');

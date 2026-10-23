@@ -1,5 +1,6 @@
+\ir _helpers/auth_session.sql
 begin;
-select plan(32);
+select plan(36);
 
 -- Fixtures: um dono de vitrine (reporter-alvo), um denunciante comum, um superadmin.
 insert into auth.users (
@@ -41,7 +42,7 @@ insert into public.published_professional_listings (
 );
 
 -- === usuário comum não lista Vitrines ===
-select set_config('request.jwt.claim.sub', '51000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( '51000000-0000-0000-0000-000000000002', true);
 select throws_ok(
   $$select public.admin_list_professional_listings()$$,
   'PERMISSION_DENIED',
@@ -117,7 +118,7 @@ select is(
 );
 
 -- === não pode denunciar a própria vitrine ===
-select set_config('request.jwt.claim.sub', '51000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '51000000-0000-0000-0000-000000000001', true);
 select throws_ok(
   $$select public.submit_support_request(jsonb_build_object(
     'kind', 'report', 'message', 'Tentando denunciar a própria vitrine.',
@@ -136,7 +137,7 @@ insert into public.statuses (id, community_id, author_id, type, text, expires_at
   ('54000000-0000-0000-0000-000000000001', '53000000-0000-0000-0000-000000000001',
    '51000000-0000-0000-0000-000000000001', 'text', 'Post de teste', now() + interval '1 day');
 
-select set_config('request.jwt.claim.sub', '51000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( '51000000-0000-0000-0000-000000000002', true);
 delete from public.support_limits where user_id = '51000000-0000-0000-0000-000000000002';
 select is(
   (public.submit_support_request(jsonb_build_object(
@@ -170,7 +171,7 @@ select is(
 );
 
 -- === superadmin lista Vitrines (com busca) e vê detalhe ===
-select set_config('request.jwt.claim.sub', '51000000-0000-0000-0000-000000000003', true);
+select pg_temp.set_test_user( '51000000-0000-0000-0000-000000000003', true);
 select is(
   (select count(*)::int from public.admin_list_professional_listings('Personal Trainer Teste Admin', '', null, 50)),
   1,
@@ -196,7 +197,7 @@ select is(
 );
 
 -- === suspensão via denúncia (decide_support_request com suspend_listing) ===
-select set_config('request.jwt.claim.sub', '51000000-0000-0000-0000-000000000003', true);
+select pg_temp.set_test_user( '51000000-0000-0000-0000-000000000003', true);
 select public.decide_support_request(jsonb_build_object(
   'requestId', (select id from public.support_requests where listing_id = '52000000-0000-0000-0000-000000000001' order by created_at desc limit 1),
   'action', 'suspend_listing',
@@ -272,7 +273,7 @@ insert into public.professional_listing_drafts (
   'São Paulo', 'sao paulo', 'SP', 'online', '{}'::jsonb, 1
 );
 
-select set_config('request.jwt.claim.sub', '56000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( '56000000-0000-0000-0000-000000000002', true);
 delete from public.support_limits where user_id = '56000000-0000-0000-0000-000000000002';
 select public.submit_support_request(jsonb_build_object(
   'kind', 'report', 'message', 'Denúncia que precisa sobreviver a exclusões de conta.',
@@ -299,7 +300,7 @@ select is(
   null,
   'user_id vira null quando o denunciante é excluído (nunca derruba a denúncia)'
 );
-select set_config('request.jwt.claim.sub', '51000000-0000-0000-0000-000000000003', true);
+select pg_temp.set_test_user( '51000000-0000-0000-0000-000000000003', true);
 select lives_ok(
   $$select public.admin_list_support_requests('', '57000000-0000-0000-0000-000000000001', null, 50)$$,
   'admin_list_support_requests não lança erro com denunciante excluído'
@@ -333,10 +334,36 @@ select is(
   'professional',
   'listing_kind sobrevive (coluna comum, não FK) mesmo com a vitrine excluída'
 );
-select set_config('request.jwt.claim.sub', '51000000-0000-0000-0000-000000000003', true);
+select pg_temp.set_test_user( '51000000-0000-0000-0000-000000000003', true);
 select lives_ok(
   $$select public.admin_list_support_requests('', null, null, 50)$$,
   'admin_list_support_requests não lança erro mesmo com vitrine e titular excluídos'
+);
+
+-- === sessão revogada (20261113000003): superadmin de verdade, mas "sair de todos os
+-- dispositivos" em outro aparelho já apagou a sessão -- a checagem vem ANTES até da busca da
+-- vitrine (SESSION_REVOKED, nunca LISTING_NOT_FOUND, mesmo com um id inexistente). ===
+select pg_temp.set_test_user( '51000000-0000-0000-0000-000000000003', true);
+select pg_temp.revoke_test_session('51000000-0000-0000-0000-000000000003');
+select throws_ok(
+  $$select public.suspend_professional_listing('00000000-0000-0000-0000-000000000000', 'tentativa com sessão revogada')$$,
+  'SESSION_REVOKED', 'suspend_professional_listing nega sessão revogada antes de buscar a vitrine'
+);
+select throws_ok(
+  $$select public.admin_reactivate_professional_listing('00000000-0000-0000-0000-000000000000')$$,
+  'SESSION_REVOKED', 'admin_reactivate_professional_listing nega sessão revogada antes de buscar a vitrine'
+);
+select is(
+  (select lifecycle_state from public.professional_listings where id = '52000000-0000-0000-0000-000000000001'),
+  'suspended',
+  'a vitrine real segue suspensa: a tentativa com sessão revogada não teve efeito nenhum'
+);
+-- Sessão de novo ativa (novo login): a mesma ação de admin volta a funcionar sem mecanismo extra.
+select pg_temp.set_test_user( '51000000-0000-0000-0000-000000000003', true);
+select is(
+  (public.admin_reactivate_professional_listing('52000000-0000-0000-0000-000000000001'))->>'state',
+  'draft',
+  'sessão ativa de novo: admin_reactivate_professional_listing volta a funcionar'
 );
 
 select * from finish();

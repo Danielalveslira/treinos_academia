@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
@@ -44,7 +45,7 @@ set local role anon;
 select throws_ok($$select public.mark_infinitepay_checkout_uncertain('c4a00000-0000-0000-0000-000000000001')$$, '42501', null, 'anon recebe permission denied');
 reset role;
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'c4000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( 'c4000000-0000-0000-0000-000000000001', true);
 select throws_ok($$select public.mark_infinitepay_checkout_uncertain('c4a00000-0000-0000-0000-000000000001')$$, '42501', null, 'nem o dono da compra a chama direto');
 reset role;
 select ok(not coalesce((select checkout_uncertain from public.cash_purchases where id = 'c4a00000-0000-0000-0000-000000000001'), false),
@@ -61,9 +62,9 @@ select ok(has_function_privilege('authenticated', 'public.review_blocked_account
 -- A função continua funcionando com o search_path vazio: usuário comum é barrado, superadmin passa da barreira.
 select pg_temp.public_can_execute('public.review_blocked_account_deletion(uuid, text)') is not null as sanity;
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'c4000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( 'c4000000-0000-0000-0000-000000000001', true);
 select throws_ok($$select public.review_blocked_account_deletion(gen_random_uuid(), 'nota de teste')$$, 'PERMISSION_DENIED', 'usuário comum é barrado');
-select set_config('request.jwt.claim.sub', 'c4000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( 'c4000000-0000-0000-0000-000000000002', true);
 select throws_ok($$select public.review_blocked_account_deletion(gen_random_uuid(), 'x')$$, 'NOTE_REQUIRED', 'superadmin passa da barreira e as validações (com o search_path vazio) funcionam');
 select throws_ok($$select public.review_blocked_account_deletion(gen_random_uuid(), 'nota válida de teste')$$, 'JOB_NOT_FOUND', 'o corpo resolve public.deletion_jobs sem search_path');
 reset role;
@@ -71,7 +72,7 @@ reset role;
 -- ===== Contrato global (o mesmo de notification_security_test, aqui como rede de segurança desta migration) ======
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.prosecdef and p.prokind = 'f' and has_function_privilege('anon', p.oid, 'execute')
-    and p.proname not in ('list_published_professional_listings', 'is_superadmin', 'has_app_access', 'is_community_member', 'is_community_owner', 'can_post_in_community', 'community_access_allowed', 'push_delivery_ack')),
+    and p.proname not in ('list_published_professional_listings', 'is_superadmin', 'has_app_access', 'is_community_member', 'is_community_owner', 'can_post_in_community', 'community_access_allowed', 'push_delivery_ack', 'submit_commercial_lead', 'public_list_professionals', 'public_get_professional', 'public_professional_avatar_visible')),
   0, 'nenhuma função SECURITY DEFINER fora da lista pública é executável por anon');
 select is((select count(*)::int from pg_proc p where p.prosecdef and p.prokind = 'f' and p.pronamespace in ('public'::regnamespace, 'private'::regnamespace)
   and exists (select 1 from unnest(p.proconfig) c where c ~ '^search_path=' and c <> 'search_path=""' and c !~ 'pg_temp')),

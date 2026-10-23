@@ -1,3 +1,4 @@
+import { readLimitedJson } from '../_shared/limitedJson.js'
 export function validCheckoutUrl(value) {
   if (typeof value !== 'string' || value.length > 2048) return false
   try {
@@ -8,17 +9,18 @@ export function validCheckoutUrl(value) {
   } catch { return false }
 }
 
-export function checkoutPayload({ handle, orderNsu, label, amountCentavos, redirectUrl, webhookUrl }) {
+export function checkoutPayload({ handle, orderNsu, label, amountCentavos, redirectUrl, webhookUrl, validUntil = null }) {
   if (!/^[a-zA-Z0-9_.-]{2,80}$/.test(handle || '') ||
       !/^evo_[0-9a-f]{32}$/.test(orderNsu || '') ||
       !Number.isSafeInteger(amountCentavos) || amountCentavos <= 0) throw new Error('INVALID_CHECKOUT_INPUT')
   return {
     handle, order_nsu: orderNsu, redirect_url: redirectUrl, webhook_url: webhookUrl,
     items: [{ quantity: 1, price: amountCentavos, description: `${label} EvoCash` }],
+    ...(validUntil ? { options: { single_payment: true, valid_until: validUntil } } : {}),
   }
 }
 
-export async function createCheckout({ userClient, admin, userId, packageId, handle, appUrl, supabaseUrl, fetcher = fetch, logger = console }) {
+export async function createCheckout({ userClient, admin, userId, packageId, handle, appUrl, supabaseUrl, fetcher = fetch, logger = console, apiKey = null }) {
   if (typeof packageId !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(packageId)) throw new Error('INVALID_REQUEST')
   const { data: access, error: accessError } = await userClient.rpc('has_app_access')
   if (accessError || access !== true) throw new Error('APP_ACCESS_DENIED')
@@ -47,13 +49,15 @@ export async function createCheckout({ userClient, admin, userId, packageId, han
       amountCentavos: reserved.amountCentavos,
       redirectUrl: new URL(`/evocash?checkout_return=1&purchase_id=${reserved.id}`, appUrl).toString(),
       webhookUrl: new URL('/functions/v1/infinitepay-webhook', supabaseUrl).toString(),
+      // Advanced options require the merchant API key; expiry reuses the existing 7-day pending window.
+      validUntil: apiKey ? reserved.checkoutValidUntil : null,
     })
     calledProvider = true
     const response = await fetcher('https://api.checkout.infinitepay.io/links', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...(apiKey ? { 'X-Api-Key': apiKey } : {}) },
       body: JSON.stringify(payload), signal: AbortSignal.timeout(12000),
     })
-    const body = await response.json().catch(() => null)
+    const body = await readLimitedJson(response, { maxBytes: 65536 }).catch(() => null)
     if (!response.ok) {
       const providerCode = typeof body?.code === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(body.code)
         ? body.code : null

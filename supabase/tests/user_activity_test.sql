@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -26,7 +27,7 @@ update public.users set role = 'superadmin', username = 'superadminactivity' whe
 
 create or replace function pg_temp.as_user(p_uid text, p_session text default null) returns void language plpgsql as $$
 begin
-  perform set_config('request.jwt.claim.sub', coalesce(p_uid, ''), true);
+  perform pg_temp.set_test_user( coalesce(p_uid, ''), true);
   perform set_config('request.jwt.claims', coalesce((
     case when p_uid is null then null else
       jsonb_build_object('sub', p_uid, 'role', 'authenticated')
@@ -130,11 +131,11 @@ update public.user_activity set last_active_at = '2026-10-01T10:00:00Z' where us
 create or replace function pg_temp.acc(p_id text) returns jsonb language sql as $$
   select a from jsonb_array_elements(public.admin_accounts_snapshot() -> 'accounts') a where a ->> 'id' = p_id
 $$;
-select pg_temp.as_user('81000000-0000-0000-0000-000000000001');
+select pg_temp.set_test_user('81000000-0000-0000-0000-000000000001');
 select is(pg_temp.acc('81000000-0000-0000-0000-000000000002') ->> 'last_active_at', '2026-10-01T10:00:00+00:00', 'snapshot traz last_active_at (Último uso)');
 select is(pg_temp.acc('81000000-0000-0000-0000-000000000002') ->> 'last_sign_in_at', '2026-01-02T03:04:05+00:00', 'snapshot mantém last_sign_in_at (Último login)');
 select is(pg_temp.acc('81000000-0000-0000-0000-000000000001') -> 'last_active_at', 'null'::jsonb, 'conta sem atividade registrada => null');
-select pg_temp.as_user('81000000-0000-0000-0000-000000000003');
+select pg_temp.set_test_user('81000000-0000-0000-0000-000000000003');
 select throws_ok($$ select public.admin_accounts_snapshot() $$, 'P0001', 'PERMISSION_DENIED', 'usuário comum continua sem acesso ao snapshot');
 
 -- Exclusão da conta leva a linha junto

@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- Auditoria de segurança das notificações: isolamento entre contas, impossibilidade de forjar alertas,
 -- privilégios mínimos, vazamento de segredos e recuperação de jobs presos.
 begin;
@@ -16,7 +17,7 @@ insert into public.notifications (recipient_id, type, metadata)
 values ('b1000000-0000-0000-0000-000000000002', 'admin_broadcast', '{"title":"so da B","body":"privado"}');
 insert into public.notifications (recipient_id, type, metadata)
 values ('b1000000-0000-0000-0000-000000000001', 'admin_broadcast', '{"title":"da A","body":"x"}');
-select set_config('request.jwt.claim.sub', 'b1000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( 'b1000000-0000-0000-0000-000000000002', true);
 select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/victim-device', repeat('p', 32), repeat('a', 16), 'ua', 'phone', 'android');
 
 create temp table ids as select
@@ -26,8 +27,7 @@ grant select on ids to public;
 
 -- ===== Atacante A (usuário comum autenticado) =====
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'b1000000-0000-0000-0000-000000000001', true);
-select set_config('request.jwt.claims', '{"sub":"b1000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+select pg_temp.set_test_user( 'b1000000-0000-0000-0000-000000000001', true);
 
 select is((select count(*)::int from public.notifications), 1, 'A só enxerga as próprias notificações (RLS)');
 select is((select count(*)::int from public.notifications where recipient_id = 'b1000000-0000-0000-0000-000000000002'), 0, 'A não lê notificações de B');
@@ -97,7 +97,7 @@ reset role;
 -- ===== Contrato de privilégios (estado, não comportamento) =====
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.prosecdef and p.prokind = 'f' and has_function_privilege('anon', p.oid, 'execute')
-    and p.proname not in ('list_published_professional_listings', 'is_superadmin', 'has_app_access', 'is_community_member', 'is_community_owner', 'can_post_in_community', 'community_access_allowed', 'push_delivery_ack')),
+    and p.proname not in ('list_published_professional_listings', 'is_superadmin', 'has_app_access', 'is_community_member', 'is_community_owner', 'can_post_in_community', 'community_access_allowed', 'push_delivery_ack', 'submit_commercial_lead', 'public_list_professionals', 'public_get_professional', 'public_professional_avatar_visible')),
   0, 'anon só executa a listagem pública, os auxiliares de RLS e o ACK de telemetria do Push');
 select is((select count(*)::int from pg_proc p where p.prosecdef and p.prokind = 'f' and p.pronamespace in ('public'::regnamespace, 'private'::regnamespace)
   and exists (select 1 from unnest(p.proconfig) c where c ~ '^search_path=' and c <> 'search_path=""' and c !~ 'pg_temp')),

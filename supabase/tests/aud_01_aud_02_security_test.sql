@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 -- Somente banco local/homologação; dados sintéticos e rollback integral.
 begin;
 create extension if not exists pgtap with schema extensions;
@@ -30,24 +31,24 @@ select public.reserve_infinitepay_cash_purchase('f1000000-0000-0000-0000-0000000
 
 -- AUD-01: contas antiga, recente limpa e recente com saldo/ledger, mesmo resultado.
 set local role authenticated;
-select set_config('request.jwt.claim.sub','f1000000-0000-0000-0000-000000000001',true);
+select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000001',true);
 select throws_ok('select public.delete_own_account()', '42501', null, 'conta antiga: RPC negada');
-select set_config('request.jwt.claim.sub','f1000000-0000-0000-0000-000000000002',true);
+select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000002',true);
 select throws_ok('select public.delete_own_account()', '42501', null, 'conta recente limpa: rollback desativado');
-select set_config('request.jwt.claim.sub','f1000000-0000-0000-0000-000000000003',true);
+select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000003',true);
 select throws_ok('select public.delete_own_account()', '42501', null, 'conta recente financeira: RPC negada');
 select throws_ok('delete from auth.users', '42501', null, 'Auth: DELETE direto negado');
 select throws_ok('delete from public.users', '42501', null, 'perfil: DELETE direto negado');
 select throws_ok('delete from public.public_profiles', '42501', null, 'perfil público: DELETE negado');
 select throws_ok('delete from public.usernames', '42501', null, 'reserva de nome: DELETE negado');
-select set_config('request.jwt.claim.sub','f1000000-0000-0000-0000-000000000004',true);
+select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000004',true);
 select throws_ok('select public.delete_own_account()', '42501', null, 'conta recente com compra pendente não chama rollback');
 set local role anon;
 select throws_ok('select public.delete_own_account()', '42501', null, 'anon não chama rollback');
 set local role service_role;
 select throws_ok('select public.delete_own_account()', '42501', null, 'service_role usa worker oficial, sem rollback');
 set local role anon;
-select set_config('request.jwt.claim.sub','',true);
+select pg_temp.set_test_user('',true);
 select throws_ok($q$insert into public.statuses(community_id,author_id,type,text) values
  ('f2000000-0000-0000-0000-000000000001','f1000000-0000-0000-0000-000000000001','text','anon')$q$,'42501',null,'anon não cria publicação');
 reset role;
@@ -57,7 +58,7 @@ select is((select cash_balance::int from public.wallets where user_id = 'f100000
 
 -- AUD-02: sessão real de papel SQL, não apenas auth.uid() executando como postgres.
 set local role authenticated;
-select set_config('request.jwt.claim.sub','f1000000-0000-0000-0000-000000000001',true);
+select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000001',true);
 select lives_ok($q$insert into public.statuses(id,community_id,author_id,type,text) values
  ('f3000000-0000-0000-0000-000000000001','f2000000-0000-0000-0000-000000000001','f1000000-0000-0000-0000-000000000001','text','legítima')$q$,'publicação legítima');
 select is((select author_username from public.statuses where id='f3000000-0000-0000-0000-000000000001'),'aud_1','nome derivado no banco');
@@ -105,17 +106,17 @@ select throws_ok($q$insert into public.statuses(community_id,author_id,type,text
  ('f2000000-0000-0000-0000-000000000002','f1000000-0000-0000-0000-000000000001','text','comunidade proibida')$q$,'42501',null,'comunidade sem filiação negada');
 select throws_ok($q$insert into public.statuses(id,community_id,author_id,type,text) values
  ('f3000000-0000-0000-0000-000000000001','f2000000-0000-0000-0000-000000000001','f1000000-0000-0000-0000-000000000001','text','upsert conteúdo') on conflict(id) do update set text=excluded.text$q$,'42501',null,'UPSERT somente conteúdo também não contorna UPDATE');
-select set_config('request.jwt.claim.sub','f1000000-0000-0000-0000-000000000002',true);
+select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000002',true);
 select throws_ok($q$update public.statuses set text='alterado' where id='f3000000-0000-0000-0000-000000000001'$q$,'42501',null,'UPDATE post alheio negado');
 reset role;
 -- Política post_access permanece efetiva com a allowlist.
 reset role;
 update public.communities set post_access='admins' where id='f2000000-0000-0000-0000-000000000001';
 set local role authenticated;
-select set_config('request.jwt.claim.sub','f1000000-0000-0000-0000-000000000002',true);
+select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000002',true);
 select throws_ok($q$insert into public.statuses(community_id,author_id,type,text) values
  ('f2000000-0000-0000-0000-000000000001','f1000000-0000-0000-0000-000000000002','text','membro sem permissão')$q$,'42501',null,'membro não publica quando post_access=admins');
-select set_config('request.jwt.claim.sub','f1000000-0000-0000-0000-000000000001',true);
+select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000001',true);
 select lives_ok($q$insert into public.statuses(community_id,author_id,type,poll_question,poll_options) values
  ('f2000000-0000-0000-0000-000000000001','f1000000-0000-0000-0000-000000000001','poll','Pergunta?','[{"id":"0","label":"A"},{"id":"1","label":"B"}]')$q$,'dono publica enquete em comunidade admins');
 select lives_ok($q$insert into public.statuses(community_id,author_id,type,workout_title,workout_date,workout_location) values
@@ -124,12 +125,12 @@ reset role;
 update public.communities set post_access='everyone' where id='f2000000-0000-0000-0000-000000000001';
 -- Fluxos autorizados atualizam metadados mesmo quando authenticated não tem UPDATE direto.
 set local role authenticated;
-select set_config('request.jwt.claim.sub','f1000000-0000-0000-0000-000000000002',true);
+select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000002',true);
 select lives_ok($q$select public.cast_vote('f3000000-0000-0000-0000-000000000001',1::smallint)$q$,'voto autorizado atualiza contador');
 select is((select positive_vote_count from public.statuses where id='f3000000-0000-0000-0000-000000000001'),1,'contador de voto legítimo');
 select lives_ok($q$select public.comment_create('f3000000-0000-0000-0000-000000000001',null,'Comentário legítimo','f5000000-0000-0000-0000-000000000001')$q$,'comentário autorizado');
 select is((select comment_count from public.statuses where id='f3000000-0000-0000-0000-000000000001'),1,'contador de comentário legítimo');
-select set_config('request.jwt.claim.sub','f1000000-0000-0000-0000-000000000001',true);
+select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000001',true);
 select lives_ok($q$select public.create_promotion('post','f3000000-0000-0000-0000-000000000001','post_boost_3d','aud:promo1')$q$,'promoção paga autorizada');
 select is((select cash_balance::int from public.wallets where user_id='f1000000-0000-0000-0000-000000000001'),75,'promoção debita EvoCash');
 select ok((select promoted and active_promotion_id is not null and promoted_until>now() from public.statuses where id='f3000000-0000-0000-0000-000000000001'),'promoção paga persiste');
@@ -143,7 +144,7 @@ select is((select count(*)::int from public.economy_transactions where user_id='
 create temp table aud_promo as select active_promotion_id id from public.statuses where id='f3000000-0000-0000-0000-000000000001';
 grant select on aud_promo to authenticated;
 set local role authenticated;
-select set_config('request.jwt.claim.sub','f1000000-0000-0000-0000-000000000005',true);
+select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000005',true);
 select lives_ok($q$select public.cancel_promotion((select id from aud_promo),'Moderação de teste')$q$,'admin cancela por RPC com motivo');
 select ok((select not promoted and positive_vote_count=1 and comment_count=1 from public.statuses where id='f3000000-0000-0000-0000-000000000001'),'moderação conserva contadores');
 reset role;
@@ -151,7 +152,7 @@ reset role;
 select ok(has_table_privilege('service_role','public.statuses','UPDATE'),'serviço conserva UPDATE');
 select ok(has_function_privilege('service_role','public.run_deletion_job(uuid)','EXECUTE'),'worker conserva execução');
 set local role authenticated;
-select set_config('request.jwt.claim.sub','f1000000-0000-0000-0000-000000000005',true);
+select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000005',true);
 select lives_ok($q$select public.queue_deletion('account','f1000000-0000-0000-0000-000000000003')$q$,'admin enfileira pedido oficial do titular');
 reset role;
 create temp table aud_job as select id from public.deletion_jobs where target_id='f1000000-0000-0000-0000-000000000003';

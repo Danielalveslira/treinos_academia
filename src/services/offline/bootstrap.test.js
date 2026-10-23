@@ -11,7 +11,12 @@ import {
   minimalProfile,
   saveBootstrap,
 } from './bootstrap.js'
-import { evaluateOfflineEntry, offlineIdentity, readActiveBootstrap } from './bootstrapEntry.js'
+import {
+  MAX_OFFLINE_ENTRY_AGE_MS,
+  evaluateOfflineEntry,
+  offlineIdentity,
+  readActiveBootstrap,
+} from './bootstrapEntry.js'
 import { OPERATIONS, enqueueWorkoutMutation, listMutations } from './outbox.js'
 import { purgePrivateData } from './userScope.js'
 import { recordWorkoutsPage, readCachedWorkouts } from './historyCache.js'
@@ -71,7 +76,7 @@ test('mensagens da Home offline: guarda só a voz escolhida (nunca o sexo); snap
   // Registro gravado ANTES desta feature (sem a chave) continua sendo aceito para abrir offline.
   const legacy = record()
   delete legacy.profile.greetingVoice
-  assert.equal(evaluateOfflineEntry(legacy).ok, true)
+  assert.equal(evaluateOfflineEntry(legacy, { now: NOW }).ok, true)
   assert.equal(offlineIdentity(legacy).profile.greetingVoice, undefined) // o app trata como 'auto' => neutro
 })
 
@@ -132,15 +137,33 @@ test('o perfil de uso (atalhos do menu) é restaurado offline; registro antigo s
   assert.equal(identity.profile.usageProfile, 'common')
   const legacy = record()
   delete legacy.profile.usageProfile // bootstrap gravado antes deste campo existir
-  assert.deepEqual(evaluateOfflineEntry(legacy), { ok: true, reason: null })
+  assert.deepEqual(evaluateOfflineEntry(legacy, { now: NOW }), { ok: true, reason: null })
   assert.equal(offlineIdentity(legacy).profile.usageProfile, undefined)
 })
 
 // ------------------------------------------------------------------------------ quem pode entrar
 
 test('registro confirmado online, ativo e com o aceite legal conhecido PODE abrir offline', () => {
-  assert.deepEqual(evaluateOfflineEntry(record()), { ok: true, reason: null })
-  assert.deepEqual(evaluateOfflineEntry(record(), { userId: A }), { ok: true, reason: null })
+  assert.deepEqual(evaluateOfflineEntry(record(), { now: NOW }), { ok: true, reason: null })
+  assert.deepEqual(evaluateOfflineEntry(record(), { userId: A, now: NOW }), { ok: true, reason: null })
+})
+
+test('janela máxima do cold start: fresco entra, vencido/futuro/relógio regredido falham fechado', () => {
+  const ok = record()
+  assert.deepEqual(evaluateOfflineEntry(ok, { now: NOW }), { ok: true, reason: null })
+  assert.deepEqual(evaluateOfflineEntry(ok, { now: NOW + MAX_OFFLINE_ENTRY_AGE_MS }), {
+    ok: true,
+    reason: null,
+  }) // exatamente no limite ainda entra
+  assert.deepEqual(evaluateOfflineEntry(ok, { now: NOW + MAX_OFFLINE_ENTRY_AGE_MS + 1 }), {
+    ok: false,
+    reason: 'STALE',
+  }) // 1 ms além do limite já não entra
+  assert.deepEqual(evaluateOfflineEntry(ok, { now: NOW - 1 }), { ok: false, reason: 'STALE' }) // registro "do futuro"
+  assert.deepEqual(evaluateOfflineEntry({ ...ok, last_online_verified_at: NOW + 60_000 }, { now: NOW }), {
+    ok: false,
+    reason: 'STALE',
+  }) // relógio do aparelho regredido depois de um registro "futuro"
 })
 
 test('falha SEGURA: sem registro, corrompido, schema diferente, outro usuário ou revogado NÃO entram', () => {
@@ -210,7 +233,7 @@ test('estado verificado online que NÃO permite acesso grava o bootstrap DESABIL
   const blocked = record({ allowed: false, blockedReason: 'RESTRICTED' })
   assert.equal(blocked.offline_access.enabled, false)
   assert.equal(blocked.offline_access.blocked_reason, 'RESTRICTED')
-  assert.deepEqual(evaluateOfflineEntry(blocked), { ok: false, reason: 'RESTRICTED' })
+  assert.deepEqual(evaluateOfflineEntry(blocked, { now: NOW }), { ok: false, reason: 'RESTRICTED' })
 })
 
 // ----------------------------------------------------------------------------------- persistência
@@ -292,7 +315,7 @@ test('SESSÃO EXPIRADA / limpeza de cache sem logout: o bootstrap continua valen
   await saveBootstrap(record())
   await purgePrivateData(null) // o que acontece quando a sessão some sem logout do usuário
   await purgePrivateData(A)
-  assert.equal(evaluateOfflineEntry(await readActiveBootstrap()).ok, true)
+  assert.equal(evaluateOfflineEntry(await readActiveBootstrap(), { now: NOW }).ok, true)
 })
 
 test('bloqueio visto online: markBootstrapBlocked desabilita a entrada offline até uma nova verificação liberar', async () => {
@@ -301,7 +324,7 @@ test('bloqueio visto online: markBootstrapBlocked desabilita a entrada offline a
   const blocked = await readActiveBootstrap()
   assert.deepEqual(evaluateOfflineEntry(blocked), { ok: false, reason: 'ACCEPTANCE_REQUIRED' })
   await saveBootstrap(record({ now: NOW + 2 })) // aceitou os novos termos online: libera de novo
-  assert.equal(evaluateOfflineEntry(await readActiveBootstrap()).ok, true)
+  assert.equal(evaluateOfflineEntry(await readActiveBootstrap(), { now: NOW + 2 }).ok, true)
   assert.equal(await markBootstrapBlocked('', 'X'), false)
   assert.equal(await markBootstrapBlocked('desconhecido', 'X'), false)
 })

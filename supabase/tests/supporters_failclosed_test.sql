@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -35,7 +36,7 @@ values ('6e000000-0000-0000-0000-000000000001', '6c000000-0000-0000-0000-0000000
        ('6e000000-0000-0000-0000-000000000001', '6c000000-0000-0000-0000-000000000008', '6c000000-0000-0000-0000-000000000009', -1);
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', '6c000000-0000-0000-0000-0000000000' || p, true)$$;
+  $$select pg_temp.set_test_user( '6c000000-0000-0000-0000-0000000000' || p, true)$$;
 
 -- === premissas: os três valores possíveis de has_app_access() ===
 select pg_temp.as_user('01');
@@ -68,7 +69,7 @@ select is(jsonb_array_length(public.list_post_supporters('6e000000-0000-0000-000
 select pg_temp.as_user('06');
 select throws_ok($$select public.list_post_supporters('6e000000-0000-0000-0000-000000000001')$$, 'PERMISSION_DENIED', 'membro com restrição na comunidade: bloqueado');
 -- === sem autenticação ===
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.set_test_user( '', true);
 select throws_ok($$select public.list_post_supporters('6e000000-0000-0000-0000-000000000001')$$, 'NOT_AUTHENTICATED', 'sem autenticação: bloqueado');
 
 -- === minimização: só userId e username; negativos nunca ===

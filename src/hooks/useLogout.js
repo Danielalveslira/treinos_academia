@@ -34,10 +34,19 @@ async function revokePushBestEffort(options) {
 export const LOGOUT_ALL_OTHERS_ERROR =
   'Não foi possível sair dos outros dispositivos. Tente novamente.'
 
-// Falha na etapa 1 (revogar as outras sessões): continua logado, mensagem específica. Falha só na
-// etapa 2 (sair deste aparelho): mensagem do logout comum.
+// Diferente do erro acima: aqui as outras sessões JÁ foram encerradas -- só a saída deste
+// aparelho não concluiu. Nunca reaproveitar LOGOUT_ALL_OTHERS_ERROR aqui (diria o oposto do que
+// aconteceu) nem a mensagem genérica de logout (esconderia que a parte de segurança já funcionou).
+export const LOGOUT_ALL_LOCAL_CLEANUP_ERROR =
+  'Outras sessões encerradas. Não foi possível concluir a saída deste aparelho — tente novamente.'
+
+// Falha na etapa 1 (revogar as outras sessões): continua logado, mensagem específica. Falha na
+// etapa 2 (sair deste aparelho, depois de as outras já terem sido revogadas): mensagem própria,
+// que confirma a parte que já funcionou. Qualquer outra falha usa a mensagem do logout comum.
 export function logoutAllErrorMessage(err) {
-  return err?.logoutStep === 'others' ? LOGOUT_ALL_OTHERS_ERROR : logoutErrorMessage()
+  if (err?.logoutStep === 'others') return LOGOUT_ALL_OTHERS_ERROR
+  if (err?.logoutStep === 'local-cleanup') return LOGOUT_ALL_LOCAL_CLEANUP_ERROR
+  return logoutErrorMessage()
 }
 
 // Confirmação explícita antes do logout em todos os dispositivos: cancelar não faz requisição nenhuma.

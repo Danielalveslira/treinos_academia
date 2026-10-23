@@ -105,16 +105,37 @@ test('others falha: local NÃO é chamado, a sessão continua e o erro indica a 
   )
 })
 
-test('others ok, local falha com a sessão ainda existindo: rejeita sem marcar a etapa others', async () => {
+test('others ok, local falha: identifica a limpeza local sem negar a revogação confirmada', async () => {
   globalThis.__signOut = (options) => {
     signOutCalls.push(options)
     return Promise.resolve({ error: options.scope === 'local' ? new Error('lock') : null })
   }
   globalThis.__getSession = () => Promise.resolve({ data: { session: { access_token: 'x' } } })
-  await assert.rejects(mod.logoutAllDevices(), (error) => error.logoutStep === undefined)
+  await assert.rejects(mod.logoutAllDevices(), (error) => error.logoutStep === 'local-cleanup')
   assert.deepEqual(
     signOutCalls.map((c) => c.scope),
     ['others', 'local']
+  )
+})
+
+// Cenário A da auditoria: logoutUser() (local) termina PRIMEIRO e some com a sessão do cliente;
+// logoutAllDevices() só é chamado depois disso. supabase-js não tem mais token para autenticar
+// signOut({scope:'others'}) -- a chamada falha "de verdade" (aqui simulada), mas o importante é
+// que isto NUNCA vira sucesso falso: rejeita com logoutStep:'others', nunca relata outras sessões
+// revogadas sem o terem sido.
+test('Cenário A: local esgota a sessão antes de all ser pedido -- all falha honestamente, nunca finge sucesso', async () => {
+  await mod.logoutUser() // sessão local encerrada; signOutCalls = [{scope:'local'}]
+  globalThis.__signOut = (options) => {
+    signOutCalls.push(options)
+    // Sem sessão no cliente para autenticar o pedido de 'others' -- erro real do SDK.
+    return options.scope === 'others'
+      ? Promise.resolve({ error: Object.assign(new Error('Auth session missing!'), { name: 'AuthSessionMissingError' }) })
+      : Promise.resolve({ error: null })
+  }
+  await assert.rejects(mod.logoutAllDevices(), (error) => error.logoutStep === 'others')
+  assert.deepEqual(
+    signOutCalls.map((c) => c.scope),
+    ['local', 'others']
   )
 })
 

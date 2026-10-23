@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -19,7 +20,7 @@ insert into public.public_profiles (user_id, username)
 select id, 'criador' || right(id::text, 2) from public.users where id::text like 'c1000000-%';
 
 create or replace function pg_temp.as_user(p text) returns void language sql as
-  $$select set_config('request.jwt.claim.sub', 'c1000000-0000-0000-0000-0000000000' || p, true)$$;
+  $$select pg_temp.set_test_user( 'c1000000-0000-0000-0000-0000000000' || p, true)$$;
 create or replace function pg_temp.uid(p text) returns uuid language sql as
   $$select ('c1000000-0000-0000-0000-0000000000' || p)::uuid$$;
 -- n dias ativos qualificados consecutivos terminando ontem (fuso America/Sao_Paulo)
@@ -297,12 +298,55 @@ select public.register_qualified_activity();
 select is((select qualified_seconds from public.community_creation_activity_days where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date), 300, 'intervalo real de 5 min soma 300s');
 update public.community_creation_activity_days set last_checkpoint_at = now() - interval '2 hours' where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date;
 select public.register_qualified_activity();
-select is((select qualified_seconds || '/' || qualified from public.community_creation_activity_days where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date), '1500/true', 'cada intervalo soma no máximo 20 min; >= 10 min qualifica o dia');
+select is((select qualified_seconds || '/' || qualified from public.community_creation_activity_days where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date), '1500/false', 'tempo sem evento verificado não qualifica o dia');
 update public.community_creation_activity_days set checkpoints_count = 40, last_checkpoint_at = now() - interval '10 minutes' where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date;
-select is((public.register_qualified_activity() ->> 'dayQualified')::boolean, true, 'resposta traz dayQualified = true depois que o dia qualificou');
+select is((public.register_qualified_activity() ->> 'dayQualified')::boolean, false, 'tempo isolado não qualifica sem evento verificado');
 select is((select qualified_seconds from public.community_creation_activity_days where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date), 1500, 'teto de 40 pings por dia (limita escritas, não minutos)');
 -- a atividade tem UMA fonte (community_creation_activity_days): nada de minutos paralelos em economy_daily
 select is((select coalesce(sum(active_minutes), 0) from public.economy_daily where user_id = pg_temp.uid('0a')), 0::numeric, 'economy_daily não acumula mais minutos de atividade');
+
+-- ============================================================ SESSÃO REVOGADA (20261114000003)
+-- '01' segue elegível e com saldo -- a ÚNICA coisa que pode barrar estas chamadas é a sessão.
+select pg_temp.as_user('01');
+create temp table t_coins_before as select pg_temp.coins('01') as v;
+create temp table t_cash_before as select pg_temp.cash('01') as v;
+create temp table t_communities_before as select pg_temp.owned('01') as v;
+select pg_temp.revoke_test_session('c1000000-0000-0000-0000-000000000001');
+select throws_ok(
+  $$select public.create_community('Comunidade pós-revogação', '', null, 'essential', 'evocoins', 'sess-revoked-create')$$,
+  'SESSION_REVOKED', 'create_community nega sessão revogada antes de qualquer débito/criação'
+);
+select throws_ok(
+  format($$select public.upgrade_community_tier(%L, 'archive', 'evocoins', 'sess-revoked-upgrade')$$,
+    (select (result ->> 'id')::uuid from created where label = 'essential-coins')),
+  'SESSION_REVOKED', 'upgrade_community_tier nega sessão revogada antes de qualquer débito'
+);
+select throws_ok(
+  $$select public.get_my_community_creation_eligibility()$$,
+  'SESSION_REVOKED', 'get_my_community_creation_eligibility nega sessão revogada (não expõe saldo)'
+);
+select is(public.list_community_creation_products(), null, 'list_community_creation_products devolve NULL (nunca os preços) com sessão revogada');
+select throws_ok(
+  $$select public.record_promotion_event('status', gen_random_uuid(), gen_random_uuid(), 'click')$$,
+  'SESSION_REVOKED', 'record_promotion_event nega sessão revogada antes de tocar na promoção'
+);
+select is(pg_temp.coins('01'), (select v from t_coins_before), 'saldo de EvoCoins intacto após as tentativas com sessão revogada');
+select is(pg_temp.cash('01'), (select v from t_cash_before), 'saldo de EvoCash intacto após as tentativas com sessão revogada');
+select is(pg_temp.owned('01'), (select v from t_communities_before), 'nenhuma comunidade nova criada pela tentativa com sessão revogada');
+
+-- Sessão ativa de novo (novo login): as mesmas ações voltam a funcionar sem mecanismo extra.
+-- create_community: '01' já está no limite de comunidades ativas a esta altura do arquivo (regra
+-- de negócio normal, nada a ver com sessão) -- em vez de exigir sucesso, prova que a checagem de
+-- sessão deixou de ser o bloqueio: chega até a regra de negócio (COMMUNITY_LIMIT_REACHED), não
+-- trava mais em SESSION_REVOKED.
+select pg_temp.as_user('01');
+select throws_ok(
+  $$select public.create_community('Comunidade pós-revogação', '', null, 'essential', 'evocoins', 'sess-active-again')$$,
+  'COMMUNITY_LIMIT_REACHED', 'sessão ativa de novo: create_community passa da checagem de sessão (chega à regra de negócio real)'
+);
+select ok((public.get_my_community_creation_eligibility()->>'evoCoinsBalance') is not null,
+  'sessão ativa de novo: get_my_community_creation_eligibility volta a funcionar');
+select is(jsonb_typeof(public.list_community_creation_products()), 'array', 'sessão ativa de novo: list_community_creation_products volta a funcionar');
 
 select * from finish();
 rollback;

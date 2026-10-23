@@ -1,3 +1,4 @@
+\ir _helpers/auth_session.sql
 begin;
 select no_plan();
 
@@ -37,7 +38,7 @@ values
   ('61000000-0000-0000-0000-000000000015', '60000000-0000-0000-0000-000000000015', 'req-15', 'pack_25', 'Essencial', 25, 590, 'pending', 'infinitepay', 'evo_15151515151515151515151515151515', 'https://checkout.infinitepay.io/test-15');
 
 -- === usuário comum não acessa nenhuma ação admin ===
-select set_config('request.jwt.claim.sub', '60000000-0000-0000-0000-000000000002', true);
+select pg_temp.set_test_user( '60000000-0000-0000-0000-000000000002', true);
 select throws_ok($$select public.queue_deletion('account', '60000000-0000-0000-0000-000000000011')$$, 'PERMISSION_DENIED', 'usuário comum não enfileira exclusão');
 select throws_ok($$select public.separate_financial_case_and_resume_deletion(gen_random_uuid(), 'tentativa de usuário comum')$$, 'PERMISSION_DENIED', 'usuário comum não separa caso financeiro');
 select throws_ok($$select public.cancel_account_deletion(gen_random_uuid(), 'tentativa de usuário comum')$$, 'PERMISSION_DENIED', 'usuário comum não cancela exclusão');
@@ -47,7 +48,7 @@ select throws_ok($$select public.admin_get_deletion_financial_history(gen_random
 select throws_ok($$select public.resolve_account_financial_case(gen_random_uuid(), 'tentativa de usuário comum')$$, 'PERMISSION_DENIED', 'usuário comum não resolve caso');
 
 -- === exclusão sem saldo: automática, sem caso ===
-select set_config('request.jwt.claim.sub', '60000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '60000000-0000-0000-0000-000000000001', true);
 select public.queue_deletion('account', '60000000-0000-0000-0000-000000000011');
 select is((select account_status from public.users where id = '60000000-0000-0000-0000-000000000011'), 'deleting', 'conta enfileirada vira deleting');
 select is(
@@ -64,13 +65,13 @@ select is(
 select is((select state from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000012'), 'blocked_financial_review', 'job em blocked_financial_review');
 
 -- gasto/compra comum bloqueados durante a exclusão
-select set_config('request.jwt.claim.sub', '60000000-0000-0000-0000-000000000012', true);
+select pg_temp.set_test_user( '60000000-0000-0000-0000-000000000012', true);
 select throws_ok($$select public.reserve_infinitepay_cash_purchase('60000000-0000-0000-0000-000000000012', 'pack_25')$$, 'ACCOUNT_UNAVAILABLE', 'conta em exclusão não abre compra nova');
 select throws_ok($$select public._wallet_debit_cash('60000000-0000-0000-0000-000000000012', 1)$$, 'ACCOUNT_DELETING', 'conta em exclusão não gasta EvoCash');
 select is((select public.get_my_deletion_review() ->> 'financialCaseSeparated'), 'false', 'usuário: pendência ainda não separada');
 select ok(not (public.get_my_deletion_review() ? 'cashBalance') and not (public.get_my_deletion_review() ? 'blockReason'),
   'usuário: revisão não expõe saldo nem motivo financeiro');
-select set_config('request.jwt.claim.sub', '60000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '60000000-0000-0000-0000-000000000001', true);
 
 select throws_ok(
   $$select public.separate_financial_case_and_resume_deletion((select id from public.deletion_jobs where target_id = '60000000-0000-0000-0000-000000000012'), '')$$,
@@ -118,10 +119,10 @@ select throws_ok(
   'DELETION_NOT_COMPLETE', 'caso só é resolvido depois da exclusão concluída');
 
 -- usuário vê a pendência separada (sem valores)
-select set_config('request.jwt.claim.sub', '60000000-0000-0000-0000-000000000012', true);
+select pg_temp.set_test_user( '60000000-0000-0000-0000-000000000012', true);
 select is((select public.get_my_deletion_review() ->> 'financialCaseSeparated'), 'true', 'usuário: pendência separada');
 select is((select public.get_my_deletion_review() ->> 'financialCaseProtocol'), (select protocol from public.account_financial_cases where original_user_id = '60000000-0000-0000-0000-000000000012'), 'usuário vê o protocolo do caso');
-select set_config('request.jwt.claim.sub', '60000000-0000-0000-0000-000000000001', true);
+select pg_temp.set_test_user( '60000000-0000-0000-0000-000000000001', true);
 
 -- worker conclui a exclusão
 select is(
