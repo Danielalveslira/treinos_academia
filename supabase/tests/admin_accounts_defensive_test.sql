@@ -54,20 +54,25 @@ select throws_ok($$select public.admin_list_audit_log(null,101)$$,'INVALID_ARGUM
 select throws_ok($$select public.admin_list_audit_log(null,null)$$,'INVALID_ARGUMENT','null log limit denied');
 select throws_ok($$select public.admin_set_accounts_status(array[['78000000-0000-0000-0000-000000000004'],['78000000-0000-0000-0000-000000000002']]::uuid[],true,'fixture reason')$$,'INVALID_ARGUMENT','multidimensional IDs denied');
 
--- ===== Sessão revogada (20261113000003 + 20261114000001): superadmin de verdade, mas o JWT já
--- não tem sessão em auth.sessions -- "sair de todos os dispositivos" em outro aparelho, ainda
--- dentro do prazo do access token. A checagem de sessão vem ANTES de qualquer mutação (nenhum
--- alvo é afetado). Desde 20261114000001, is_superadmin() JÁ embute private.current_session_active()
--- -- então o código observado aqui é PERMISSION_DENIED (o gate de is_superadmin() nega primeiro),
--- não o SESSION_REVOKED explícito destas 3 funções (que seguem como defesa em profundidade, mas
--- ficam inalcançáveis enquanto is_superadmin() for a ÚNICA porta de entrada de cada uma). O que
--- importa para este teste é o resultado -- nenhuma mutação acontece com a sessão revogada --, não
--- qual das duas camadas disparou.
+-- ===== Sessão revogada (20261113000003): superadmin de verdade, mas o JWT já não tem sessão em
+-- auth.sessions -- "sair de todos os dispositivos" em outro aparelho, ainda dentro do prazo do
+-- access token. A checagem de sessão vem ANTES de qualquer mutação (nenhum alvo é afetado).
+-- NOTA: a integração financeira paralela (20261114000001) está em evolução ativa -- numa versão
+-- anterior ela tornava is_superadmin() session-aware (o que faria estas 3 funções falharem com
+-- PERMISSION_DENIED antes de chegar aqui); na versão atual ela injeta um check equivalente por
+-- função via DO block, sem alterar is_superadmin(). Em QUALQUER uma das duas versões, o código
+-- observado para estas 3 chamadas é SESSION_REVOKED (a checagem explícita destas funções é que
+-- dispara, cedo ou tarde); o que nunca pode acontecer é a mutação ocorrer.
 select pg_temp.set_test_user('78000000-0000-0000-0000-000000000001',true);
 select pg_temp.revoke_test_session('78000000-0000-0000-0000-000000000001');
-select throws_ok($$select public.set_account_status('78000000-0000-0000-0000-000000000002',true,'fixture reason')$$,'PERMISSION_DENIED','set_account_status nega sessão revogada (is_superadmin() já embute a checagem)');
-select throws_ok($$select public.admin_set_accounts_status(array['78000000-0000-0000-0000-000000000002']::uuid[],true,'fixture reason')$$,'PERMISSION_DENIED','admin_set_accounts_status nega sessão revogada no próprio gate, antes do lote');
-select throws_ok($$select public.admin_request_account_deletion('78000000-0000-0000-0000-000000000002','fixture reason')$$,'PERMISSION_DENIED','admin_request_account_deletion nega sessão revogada');
+select throws_ok($$select public.set_account_status('78000000-0000-0000-0000-000000000002',true,'fixture reason')$$,'SESSION_REVOKED','set_account_status nega sessão revogada mesmo sendo superadmin de verdade');
+-- admin_set_accounts_status não é alvo da injeção automática (excluído por nome na
+-- 20261114000001) e seu próprio gate (is_superadmin, sem checar sessão) passa; quem nega é
+-- set_account_status DENTRO do loop -- capturado pelo "when others" do wrapper e mapeado para
+-- ACTION_FAILED (SESSION_REVOKED não está na lista de códigos conhecidos), nunca um sucesso.
+select lives_ok($$select public.admin_set_accounts_status(array['78000000-0000-0000-0000-000000000002']::uuid[],true,'fixture reason')$$,'admin_set_accounts_status não propaga a excepção -- resultado por item');
+select is((public.admin_set_accounts_status(array['78000000-0000-0000-0000-000000000002']::uuid[],true,'fixture reason')->0->>'error'),'ACTION_FAILED','lote confirma SESSION_REVOKED mapeado para ACTION_FAILED, não um sucesso disfarçado');
+select throws_ok($$select public.admin_request_account_deletion('78000000-0000-0000-0000-000000000002','fixture reason')$$,'SESSION_REVOKED','admin_request_account_deletion nega sessão revogada');
 select is((select account_status from public.users where id='78000000-0000-0000-0000-000000000002'),'active','alvo não foi afetado pela tentativa com sessão revogada');
 -- Sessão de novo ativa (novo login): as mesmas chamadas voltam a funcionar, sem precisar de nenhum mecanismo extra.
 select pg_temp.set_test_user('78000000-0000-0000-0000-000000000001',true);

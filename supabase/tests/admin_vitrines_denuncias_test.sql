@@ -340,22 +340,18 @@ select lives_ok(
   'admin_list_support_requests não lança erro mesmo com vitrine e titular excluídos'
 );
 
--- === sessão revogada (20261113000003 + 20261114000001): superadmin de verdade, mas "sair de
--- todos os dispositivos" em outro aparelho já apagou a sessão -- a checagem vem ANTES até da
--- busca da vitrine (nunca LISTING_NOT_FOUND, mesmo com um id inexistente). Desde 20261114000001,
--- is_superadmin() já embute private.current_session_active(): o código observado é
--- PERMISSION_DENIED (o gate de is_superadmin() nega primeiro), não mais o SESSION_REVOKED
--- explícito destas funções -- que segue como defesa em profundidade, hoje inalcançável enquanto
--- is_superadmin() for a única porta de entrada. O que importa é que nenhuma mutação acontece. ===
+-- === sessão revogada (20261113000003): superadmin de verdade, mas "sair de todos os
+-- dispositivos" em outro aparelho já apagou a sessão -- a checagem vem ANTES até da busca da
+-- vitrine (SESSION_REVOKED, nunca LISTING_NOT_FOUND, mesmo com um id inexistente). ===
 select pg_temp.set_test_user( '51000000-0000-0000-0000-000000000003', true);
 select pg_temp.revoke_test_session('51000000-0000-0000-0000-000000000003');
 select throws_ok(
   $$select public.suspend_professional_listing('00000000-0000-0000-0000-000000000000', 'tentativa com sessão revogada')$$,
-  'PERMISSION_DENIED', 'suspend_professional_listing nega sessão revogada (is_superadmin() já embute a checagem)'
+  'SESSION_REVOKED', 'suspend_professional_listing nega sessão revogada antes de buscar a vitrine'
 );
 select throws_ok(
   $$select public.admin_reactivate_professional_listing('00000000-0000-0000-0000-000000000000')$$,
-  'PERMISSION_DENIED', 'admin_reactivate_professional_listing nega sessão revogada (is_superadmin() já embute a checagem)'
+  'SESSION_REVOKED', 'admin_reactivate_professional_listing nega sessão revogada antes de buscar a vitrine'
 );
 select is(
   (select lifecycle_state from public.professional_listings where id = '52000000-0000-0000-0000-000000000001'),

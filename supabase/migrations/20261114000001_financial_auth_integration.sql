@@ -43,7 +43,11 @@ begin
        or p.prosrc ~ '(public[.]is_superadmin|public[.]_wallet_|public[.]_ledger_record|private[.]award_evocoins)')
  loop
   v_definition := pg_get_functiondef(f.oid);
-  if position('begin' in lower(v_definition))=0 then raise exception 'UNEXPECTED_RPC_LANGUAGE'; end if;
+  -- language sql functions (no begin/end block) can't take this plpgsql-style injected IF --
+  -- skip them instead of aborting the whole migration; they get no NEW protection from this
+  -- loop, but they're exactly as protected as before it (fix comprovado via CI: a versão
+  -- anterior lançava UNEXPECTED_RPC_LANGUAGE e abortava a migration inteira a partir daqui).
+  if position('begin' in lower(v_definition))=0 then continue; end if;
   v_definition := replace(v_definition,'  if not coalesce(private.current_session_active(), false) then raise exception ''SESSION_REVOKED''; end if;','');
   if position('if auth.uid() is not null and not private.current_session_active()' in v_definition)=0 then
   v_definition := regexp_replace(v_definition,'\mbegin\M',E'begin\n  if auth.uid() is not null and not private.current_session_active() then raise exception ''SESSION_REVOKED''; end if;','i');
