@@ -1,3 +1,5 @@
+> **Atualização de estabilização (2026-10-23):** os resultados atuais estão em [finance-integration/RELATORIO_FINAL.md](finance-integration/RELATORIO_FINAL.md) e na seção `stabilization` de `ECONOMIA_EVIDENCIAS.json`. Os resultados abaixo preservam a auditoria histórica, com falhas já superadas. Estado atual: validação local concluída; publicação BLOQUEADA pela confirmação remota/recuperação pendentes.
+
 # Auditoria e correção da economia Evolutus
 
 ## Escopo e evidência inicial — etapa 0
@@ -131,3 +133,17 @@ flowchart TD
   N --> C
   O[Conciliação shadow paginada] --> P[Detecção e alerta, sem reparação automática]
 ```
+
+## Estabilização do conjunto integrado após PR #65
+
+Base `0cdde0e`. Preservadas as seis migrations financeiras e as integrações Auth/offline. A falha administrativa histórica foi reproduzida e sua correção já integrada confirmada (76 assertivas). O wrapper local das Edge foi corrigido e tornou-se reproduzível após reinício do Codespace. Nenhuma proteção administrativa foi removida.
+
+Encontrado e corrigido shadowing do catálogo de fusos em `set_training_preferences`: migration forward-only `20261115000001`, com nove novas assertivas. Mocks administrativos e fixtures de sessão foram alinhados ao contrato atual; o teste de notificações passou a isolar seu próprio destinatário. Nenhuma migration histórica foi editada.
+
+Resultados finais: 68 suítes SQL/3.028 assertivas; subconjunto financeiro 73 assertivas após carga; 2.092 testes de aplicação; 207 Edge Functions sem skips; 26 logout; oito cenários HTTP com serviços reais e provedor simulado; Chromium offline aprovado. Lint zero erros/16 avisos existentes e build aprovado. Instalação limpa com 161 migrations e atualização com 148+13 preservaram dados e produziram contratos iguais.
+
+Carga de 500 tentativas, no máximo quatro conexões: invariantes preservadas, zero novos deadlocks e recursos amostrados no container limitado. Resultados/limites detalhados no relatório, sem extrapolar para produção. Flags de estorno e novos cron permanecem desativados.
+
+Disco recuperado de 100% para 59% (13 GB livres), removendo armazenamento antigo inativo e caches descartáveis; ambiente atual e arquivos do projeto preservados. `/app` volta a ser servido no Vite 5173.
+
+CLI Supabase sem sessão: o pré-check remoto atual NÃO foi executado. Script read-only revisado e validado localmente; journal/schema/dados reais e backup/recuperação precisam de confirmação antes de autorizar publicação. Nenhum push, deploy ou pagamento real nesta execução.

@@ -1,83 +1,143 @@
-# Economia Evolutus — homologação, rollout e incidentes
+# Economia Evolutus — validação local e publicação
 
-## Limites desta entrega
+Estado atual: consulte `finance-integration/RELATORIO_FINAL.md` e a seção `stabilization` de `ECONOMIA_EVIDENCIAS.json`. Publicação não autorizada. Este runbook substitui o procedimento antigo com schemas sintéticos; não existe homologação remota. O merge do PR #65 não comprova que suas migrations foram aplicadas no Supabase de produção.
 
-Nenhum deploy, migration remota, segredo real ou pagamento real foi executado. O Vite da porta 5173 permanece servindo `/app`; frontend usa a configuração Supabase já existente do Codespace. Atualizações React são locais, mas operações financeiras remotas continuam executando as funções publicadas anteriormente. Não apresentar testes locais como comprovação de produção.
+## Ambiente local reproduzível
 
-A API oficial legada confirma apenas pagamento aprovado (`payment_check`). A ajuda atual descreve API Key/opções avançadas e eventos de reembolso, mas não documenta esquema/autenticidade/consulta de reembolso parcial e chargeback suficiente para automatizar débito. O webhook continua sendo indicação; nenhum estorno é autorizado pelo payload público. A ausência de endpoint oficial de busca por pedido significa que compra sem transaction NSU/invoice slug precisa de consulta humana no painel do lojista. Não existem testes com pagamento real, nem autorização para fazê-los.
+Node 24, Docker e dependências do lockfile. Todos os comandos abaixo usam nomes fixos de containers descartáveis, senha/chaves sintéticas e portas somente em loopback. Nunca substituir por URL/credencial de produção.
 
-## Ordem de aplicação candidata
+```bash
+node scripts/homolog/finance/stack.mjs start
+node scripts/homolog/finance/migrate.mjs all
+node scripts/homolog/finance/sql-tests.mjs
+node scripts/homolog/finance/http-integration.mjs
+PG_TEST_CONTAINER=evolutus_integrated_db PG_TEST_USER=supabase_admin npm run test:functions
+node --test --test-concurrency=1 src/services/logoutScope.test.js src/hooks/useLogout.test.js
+npm test
+npm run lint
+npm run build
+```
 
-| Migration | Conteúdo | Compatibilidade / custo |
-|---|---|---|
-| 20261112000001 | grants explícitos, search_path dos helpers, trigger interno | assinaturas preservadas; nenhum rewrite |
-| 20261112000002 | unidades inteiras; constraints NOT VALID; ledger imutável; serialização de promoção por usuário | frações rejeitadas; preserva pseudonimização e vinculação aos casos; DDL breve |
-| 20261112000003 | NULL inválido, reembolso sem crédito é final, reserva revalida acesso; expiry congelada; lease de payment_check | depende da versão nova das functions para lease; banco primeiro; clientes antigos continuam |
-| 20261112000004 | reversões comprovadas e obrigação; recuperação compensatória; gate de exclusão | flag `financialControls.reversalsEnabled=false`; política proporcional exige aprovação antes de ativar |
-| 20261112000005 | evidência de negócio para atividade; mídia/treino existentes; fingerprint de conteúdo | muda elegibilidade; não modifica lifetime histórico; teto 10 preservado |
-| 20261112000006 | conciliação shadow com cursor/findings; lote externo com lease/backoff | sem cron novo ligado; jobs existentes preservados; sem reparo de saldo |
+`start` recusa sobrescrever containers existentes. Para retomar containers parados, usar `node scripts/homolog/finance/stack.mjs resume`; o preparador recompõe os arquivos locais em `.finance-local/runtime` (ignorada pelo Git), aguarda PostgreSQL TCP, Auth, Storage e gateway. `restart-edge.mjs` atualiza somente a cópia temporária das funções. O shim do provedor nunca entra em `supabase/functions` nem no bundle publicado; sua saída HTTP externa é bloqueada. JSR usado pelo runtime para resolver imports continua sendo download de dependências, não chamada de pagamento.
 
-Após histórico real e drift serem conferidos: aplicar banco em staging descartável → functions (`create-checkout`, `webhook`, `check-payment`, `admin-reconcile`) → frontend → smoke → somente observação shadow. Frontend anterior continua compatível; frontend novo só usa RPC de eventos quando a compra tem estorno. `INFINITEPAY_API_KEY` é opcional para manter compatibilidade com contrato legado; se configurada, habilita `options.single_payment` e `options.valid_until` documentados. Sem ela, proteção de pagamento único no provedor continua pendente, embora o banco sempre impeça dupla concessão. Não inferir que cancelamento local cancelou o link remoto. Não recriar checkout após resultado incerto.
+Instalação limpa e atualização com carteira/ledger/compra já existentes:
 
-## Pré-check, histórico e validação
+```bash
+node scripts/homolog/finance/install-check.mjs
+node scripts/homolog/finance/sql-tests.mjs evolutus_integrated_clean_db
+python3 scripts/finance-audit-local.py concurrency --container evolutus_integrated_clean_db
+python3 scripts/finance-audit-local.py performance --container evolutus_integrated_clean_db
+```
 
-1. Confirmar destino e baseline aplicada até 20261111000001; obter backup/restauração e janela operacional. Não editar/renomear migrations históricas. Verificar drift de funções, RLS, grants e schemas antes de publicação.
-2. Usar `supabase/tests/finance_preflight_readonly.sql` em transação read-only, com statement timeout. Ele retorna contagens de unidades inválidas, saldos negativos e constraints pendentes. Inspeção de discrepâncias em lotes é `private.finance_reconcile_shadow(50)`; ela grava apenas achados/cursor.
-3. Constraints NOT VALID protegem novas linhas imediatamente. Não arredondar nem atualizar históricos inválidos para fazer a migration passar. Investigar origem e aprovar lançamentos compensatórios. Uma fração no ledger histórico é evidência; precisa continuar preservada.
-4. Índices novos são fundamentados em queries: fingerprint único; reversões por compra e dívidas pendentes; fila por próximo retry; findings por cursor. Em base grande, estimar tamanho/tempo antes de publicar; construir índices de forma concorrente em preparação operacional autorizada, reconciliando DDL com a migration. A criação padrão em transação pode bloquear escritas; não declarar zero downtime sem medir no staging representativo.
-5. Só após diagnóstico limpo: `ALTER TABLE ... VALIDATE CONSTRAINT` separadamente, em janela autorizada. Não há backfill de saldo ou fingerprint antigo: fabricar saldo inicial ou inferir texto apagado violaria rastreabilidade.
-6. Smoke de staging: RLS A/B/anon, pagamento simulado e replay, pacote inválido, valor/moeda divergente, pedido cancelado pago tarde, usuário disabled/deleting, caso separado, fraude, idempotência e rollback. Nunca simular crédito com service role no banco remoto real.
+O ensaio recusa um `evolutus_integrated_clean_db` preexistente e valida imagem, endereço, senha sintética e segredo de teste dos serviços antes de copiá-los. Usa Auth/Storage reais para preparar os schemas, encerra esses dois serviços auxiliares e troca exclusivamente sua própria instância descartável entre as fases. Não recria o database padrão em uma instância viva: foi reproduzido crash do worker pg_net 0.20.4 nessa operação de infraestrutura; isso não é uma falha de migration. Não aplicar esse procedimento de reset em banco real.
 
-## Política candidata de reversão (desativada até aprovação)
+Executar suítes sequencialmente. PostgreSQL integrado limitado a 0,7 CPU/900 MiB, banco do ensaio a 0,5 CPU/900 MiB; Edge a 0,25 CPU/450 MiB. Concorrência financeira limitada a quatro conexões. Não executar carga enquanto executa build/testes gerais. Ao terminar, parar os containers fixos da auditoria, preservando Vite 5173 e processos alheios. Nenhum prune global.
 
-- Registrar apenas reversão **concluída e comprovada** no painel/relatório oficial, com ID único do evento, referência verificável, valor BRL em centavos, tipo, motivo e superadmin autenticado com acesso ao app. Nota ou webhook isolado não constitui prova.
-- `admin_record_cash_reversal` não manda reembolsar ao provedor nem confirma pagamento novo. Aceita só compra já creditada com identidade do provedor; acumula valores até o máximo realmente pago. Evento repetido retorna o evento original; identidade/valor conflitante é recusado.
-- Alocação inteira candidata: diferença entre `floor(EvoCash * BRL_revertido_acumulado / BRL_pago)` antes/depois. Duas metades de compra de 25 unidades recuperam 12 e 13, nunca 24/26. BRL não sofre arredondamento.
-- Recuperar apenas o crédito correspondente ao estorno; debitar o que houver disponível, com ledger compensatório. Se já gasto, registrar diferença em `cash_purchase_reversals.cash_units-recovered_units`. Nenhum saldo disponível negativo. Próximos créditos recuperam somente essa obrigação, deixando excedente livre; operações antigas permanecem auditáveis. Ativação desta política de compensação exige validação comercial/jurídica.
-- Caso sem conta: manter evento ligado à compra e ao caso financeiro existente; não recriar carteira nem alterar snapshots do caso. Atendimento precisa decidir como tratar saldo já retido no caso.
-- Serviços/promoções já prestados não são apagados. Serviços futuros vinculados à conta precisam de revisão humana antes de suspensão/cancelamento pelos fluxos administrativos existentes; não há regra comercial presumida para desfazer publicidade consumida.
-- Não registrar disputa em aberto como chargeback final, nem reembolso apenas solicitado como confirmado. Conservar evidência operacional até decisão. Reversão da própria contestação/ganho de disputa exige política e novo evento compensatório aprovado; esta entrega não transforma isso silenciosamente em crédito.
+## Destino e pré-check remoto — somente leitura
 
-## Conciliação e operação
+Destino esperado: projeto `ywrjojrjgozdfpddkkuy`, evolutus.com.br. Confirmar a organização/projeto na saída de `projects list`, o vínculo em `supabase/.temp/project-ref` e o histórico completo antes da consulta. Credenciais somente no terminal/cofre; não publicar tokens ou arquivos de ambiente. Identidade Git esperada: Danielalveslira / `124009137+Danielalveslira@users.noreply.github.com`. Um `GITHUB_TOKEN` antigo da sessão pode sobrepor a credencial pessoal do `gh`; isso não autentica a CLI Supabase.
 
-`private.finance_reconcile_shadow(50)` compara carteiras/ledger em lote com cursor persistente, bloqueio curto de cada carteira e chave de finding única. Diferença histórica pode ser saldo inicial legítimo não documentado: o achado sempre exige investigação, nunca reparo automático. Carteira comum continua por PK, sem somar ledger. Job não agenda outro job e não altera saldo.
+```bash
+node_modules/.bin/supabase projects list --output json
+cat supabase/.temp/project-ref
+node_modules/.bin/supabase migration list --linked
+node_modules/.bin/supabase db query --linked --file scripts/release/finance-production-readonly.sql --output json > /tmp/finance-production-preflight.json
+```
 
-`infinitepay-admin-reconcile` aceita `{ "mode": "batch", "limit": 10 }` com autorização superadmin. Reusa o mesmo `verifyAndConfirm`; lote sequencial, máximo 25, tentativas persistentes <=10, backoff exponencial e jitter. Compras sem identidade suficiente continuam visíveis nos findings para conciliação humana. A expiração existente continua separada de confirmação; nenhum cron duplicado foi criado. Agendamento backend só depois de staging, sem polling por usuário. Tempo máximo do lote é proporcional ao limite (12s de timeout por chamada); usar lote pequeno segundo o limite da Edge Function do ambiente.
+O SQL usa `BEGIN READ ONLY`, statement timeout de 10 s e lock timeout de 2 s. Retorna somente metadados/contagens: unidades inválidas, saldos negativos, divergência carteira/ledger/lifetime, compra creditada sem ledger/identidade, duplicidade e definições/grants/RLS/índices. Não grava cursor/findings. Não executar `finance_reconcile_shadow` sob a autorização de somente leitura: essa função grava evidências, embora não modifique saldos.
 
-Consultar `admin_finance_findings(cursor, limit)` e `admin_cash_reversal_events(purchase_id)` por RPC autorizada. Findings têm retenção operacional de 30 dias após última observação; cursor não contém dados pessoais. Eventos de estorno seguem a retenção financeira da compra/caso: não há purge automático. `confirmed_by` pode virar NULL na exclusão do ator, mantendo evidência financeira. Não inserir CPF, cartão, token, recibo completo ou segredo em notas/evidências.
+Comparar funções, RLS, grants, colunas, índices e constraints com uma baseline local até a última versão **realmente registrada remotamente**; normalizar apenas owner/grantor e qualificação equivalente do deparser. A evidência anterior `remote-baseline-drift.json` é histórica, não substitui consulta atual. Zero linhas inválidas não prova equivalência de schema; journal sozinho também não. Se houver divergência, parar publicação e revisar roll-forward. Não arredondar valores, fabricar ledger inicial ou reparar saldo automaticamente.
 
-Monitorar: falhas por código seguro; idade/quantidade de pendências; tentativas esgotadas; diferenças wallet/ledger; compra creditada sem identidade/ledger; casos sem conta; dívida pendente; latência e erros de payment_check. Limites de corpo e lease por pedido não substituem proteção de tráfego volumétrico do gateway. Ajustar alertas e limites de infraestrutura no ambiente autorizado.
+## Ordem das migrations
 
-## Incidentes e rollback operacional
+Aplicação em ordem lexicográfica, sem editar as 148 históricas até `20261111000001`:
 
-| Incidente | Contenção e recuperação |
-|---|---|
-| Crédito indevido | suspender fonte afetada na regra do servidor; preservar evidência/ledger; investigar referência; compensação aprovada, nunca DELETE/UPDATE de valor |
-| Pagamento aprovado sem saldo | buscar pedido no painel, copiar identidades; admin reconcile → payment_check; distinguir needs_review/held_in_case; conferir exatamente uma linha de crédito |
-| Cobrança duplicada | não criar novo link; identificar cada transação no provedor; conciliar um crédito por pedido; reembolso externo comprovado dos excedentes conforme contrato |
-| Contestação | confirmar se concluída; preservar evento/evidência; com política ativa registrar reversão; dívida separada se gasto; revisão de serviços futuros |
-| Divergência ledger | rodar shadow paginado; investigar saldo inicial/importação/eventos; reparo auditável aprovado; não somar/regravar saldo automaticamente |
-| Provedor indisponível | conservar pending/uncertain; respeitar leases/backoff; não repetir criação; verificar manualmente tentativas esgotadas |
-| Credencial comprometida | revogar/rotacionar no ambiente autorizado, revisar logs/eventos e grants; nunca copiar segredo para cliente |
-| Regressão após COMMIT | voltar frontend/functions compatíveis e desativar fontes/feature flag afetada; manter ledger/grants; preparar roll-forward testado. Reversões já registradas e dívidas não desaparecem ao desligar flag |
+| Versões | Conteúdo / dependência |
+| --- | --- |
+| `20261112000001` | permissões internas e search_path |
+| `20261112000002` | inteiros, constraints NOT VALID, ledger imutável, promoção serializada |
+| `20261112000003` | finalização/estados do pagamento e lease persistente de 30 s |
+| `20261112000004` | eventos compensatórios e obrigação; flag desativada |
+| `20261112000005` | evidência de recursos/eventos e fingerprint de recompensas |
+| `20261112000006` | conciliação paginada, lease/backoff com fencing token; sem novo cron |
+| `20261113000001` → `20261113000003` | sessão real em auth.sessions, RPC is_session_active, proteção administrativa |
+| `20261114000001` → `20261114000003` | integração financeira/Auth, RLS, operações de comunidade e exclusão |
+| `20261115000001` | catálogo de fusos qualificado em set_training_preferences |
 
-Antes de COMMIT, falha da migration reverte sua transação. Depois, não há `down` seguro que apague eventos, restaure saldo anterior ou reabra permissões. PITR/restauração requer decisão de incidente com RPO/RTO e conciliação dos pagamentos recebidos após o backup.
+São 13 pendentes se o remoto ainda estiver em `20261111000001`; confirmar, nunca presumir. O ensaio local aplica 161 no total. `NOT VALID` protege novas escritas sem alterar dados históricos. Validar constraints antigas separadamente após pré-check e janela aprovados. Estimar tempo dos índices com tamanho real: o DDL transacional pode bloquear escritas. Não prometer zero downtime.
 
-## Homologação local reproduzível e uso de recursos
+## Backup e recuperação — requisitos antes de publicar
 
-- `bash scripts/finance-prepare-local.sh baseline`: container fixo descartável, sem portas públicas, CPU 0,75 e RAM 1 GiB; cron desativado; schemas sintéticos Auth/Storage conforme baseline já existente no repositório; 148 migrations históricas.
-- `python3 scripts/finance-audit-local.py sql --container evolutus_finance_clean --baseline`: testes de HEAD, sem candidatas; distingue falhas pré-existentes/serviços ausentes.
-- `bash scripts/finance-prepare-local.sh candidate`: seis migrations novas, cada uma transacional.
-- `python3 scripts/finance-audit-local.py sql --container evolutus_finance_clean`: suíte candidata completa. Storage sintético não comprova fluxo do serviço Storage real.
-- `python3 scripts/finance-audit-local.py concurrency --container evolutus_finance_clean`: 100 tentativas/caso, máximo quatro sessões simultâneas; preserva fixtures sintéticas no banco descartável. Não rodar enquanto testa UI/build.
-- `python3 scripts/finance-audit-local.py performance --container evolutus_finance_clean`: cinco amostras antes/depois, 2.000 chamadas/amostra, mesma transação revertida/massa/limites.
-- `npm run lint`, `npm test`, `npm run test:functions`, `npm run build`: sequenciais; concorrência dos runners Node reduzida a 1 para preservar Codespace/Vite.
-- Ao terminar, parar os containers `evolutus_finance_audit`/`evolutus_finance_clean`. Vite da porta 5173 permanece ativo. Não remover containers/processos do usuário ou fazer prune global.
+Registrar responsável e aprovação, snapshot/PITR e horário do ponto recuperável, retenção, RPO/RTO aceitos e evidência de restauração em destino isolado. Incluir dados, schema, histórico de migrations, configuração/secrets de funções por cofre e objetos do Storage (dump SQL não inclui arquivos). Conferir transações/pagamentos recebidos após o ponto recuperável antes de qualquer recuperação. Não depender de um `down` destrutivo para desfazer publicação.
 
-## Pendências de produção
+Na janela autorizada: suspender criação de novos checkouts/debitos pela configuração operacional existente, manter recebimento/verificação de pagamentos e aguardar operações em curso. Conferir bloqueios e erros. DDL tem lock_timeout quando previsto; falha aborta sua migration, não autoriza ignorar erro ou mexer no journal. Se a operação financeira antiga já está em produção, planejar proteção equivalente antes de ampliar tráfego; não desligar webhooks de pagamentos já iniciados.
 
-Aprovação de publicação e janela de índices/constraints; drift e pré-check em dados reais; política de recuperação/reembolso e serviços prestados; contrato/autenticidade de estorno/chargeback InfinitePay; API Key para opções avançadas; homologação com provedor autorizado/contas de teste; Storage/Auth reais e fluxos de exclusão; limites/alertas/agendamento no backend; carga representativa e restauração operacional. Sem afirmar segurança absoluta ou baixa latência do provedor a partir de Docker local.
+## Publicação — comandos preparados, NÃO executados
 
-Um segundo pagamento comprovado em link legado reutilizável é registrado como `verified_payment_conflict`, com identidade do evento, em vez de ser creditado novamente ou ignorado. Sua evidência não entra no purge operacional de 30 dias; depende de resolução/retenção financeira aprovada. Alertar e resolver com o lojista, preservando a compra original. A API de registro é exclusiva do backend, depois de `payment_check`.
+Somente após autorização explícita, pré-check atual limpo e recuperação aprovada. Fixar commit e hashes revisados. Bloquear auto-publicação do frontend pela integração Git durante a janela; push/merge em main pode publicar frontend antes do banco. Não configurar integração CI nova nesta entrega.
 
-Há uma migration de revogação de sessão (`20261113000001`) produzida por outro trabalho paralelo. Ela não faz parte das seis candidatas financeiras nem foi aplicada por esta auditoria. O preparador local restringe a fase candidata ao prefixo 20261112 para não aplicar silenciosamente trabalho de outra sessão.
+```bash
+# Revisão final do destino e do plano. Não confirmar diferenças inesperadas.
+node_modules/.bin/supabase migration list --linked
+node_modules/.bin/supabase db push --linked --dry-run
+
+# 1. BANCO — ação remota: somente após autorização.
+node_modules/.bin/supabase db push --linked
+
+# 2. EDGE — inclui consumidores do helper administrativo alterado no PR #65.
+node_modules/.bin/supabase functions deploy infinitepay-create-checkout --project-ref ywrjojrjgozdfpddkkuy
+node_modules/.bin/supabase functions deploy infinitepay-check-payment --project-ref ywrjojrjgozdfpddkkuy
+node_modules/.bin/supabase functions deploy infinitepay-webhook --project-ref ywrjojrjgozdfpddkkuy
+node_modules/.bin/supabase functions deploy infinitepay-admin-reconcile --project-ref ywrjojrjgozdfpddkkuy
+node_modules/.bin/supabase functions deploy exercise-visual-confirm --project-ref ywrjojrjgozdfpddkkuy
+node_modules/.bin/supabase functions deploy publish-exercise-visual --project-ref ywrjojrjgozdfpddkkuy
+node_modules/.bin/supabase functions deploy cleanup-exercise-visuals --project-ref ywrjojrjgozdfpddkkuy
+node_modules/.bin/supabase functions deploy delete-exercise-visual --project-ref ywrjojrjgozdfpddkkuy
+```
+
+Preservar `verify_jwt=false` somente no webhook público; o webhook sempre confirma pelo provedor antes de crédito. As demais funções mantêm autenticação. Secrets de servidor nunca em VITE_ nem no cliente. Manter compatibilidade: o banco novo aceita as assinaturas anteriores; a Edge nova depende de `is_session_active()` e do RPC de término de conciliação, portanto banco antes de Edge/frontend.
+
+Frontend na Vercel: a identidade/equipe/projeto precisam ser confirmados no momento, não inferidos de login. Os comandos abaixo exigem CLI Vercel instalada em versão revisada e autorização da publicação. A última evidência do PR aponta para equipe `danielalvesliras-projects`, projeto `treinos_academia`; interromper em divergência/link_required. Não fazer link automático para contornar divergência.
+
+```bash
+vercel project inspect --non-interactive
+vercel whoami --format json
+vercel pull --environment=production --scope danielalvesliras-projects
+vercel build --prod
+# 3. FRONTEND — prepara build de produção sem atribuir domínio.
+vercel deploy --prebuilt --prod --skip-domain --scope danielalvesliras-projects
+# Inspecionar a URL retornada; DEPLOYMENT_URL é exatamente essa URL, após revisão.
+vercel inspect "$DEPLOYMENT_URL" --scope danielalvesliras-projects
+# 4. Somente após smoke e autorização: atribuir domínio ao MESMO build validado.
+vercel promote "$DEPLOYMENT_URL" --scope danielalvesliras-projects
+```
+
+Nenhum comando Vercel acima foi executado. Não incluir `.vercel`/env puxado como evidência pública. Não utilizar os scripts locais de fixtures/HTTP/carga contra a URL publicada.
+
+## Smoke e ativação
+
+1. Conferir journal e repetir SQL read-only; grants/RLS/search_path/constraints esperados, sem divergência nova de saldos.
+2. Com conta controlada autorizada: login, leitura de carteira e histórico, isolamento entre contas, logout global e rejeição do JWT revogado. Nenhum débito/crédito artificial. Consultas de autorização negativa não devem alterar valores.
+3. Verificar rotas `/app` e EvoCash, histórico e estados pending/needs_review/cancelled; observar erros de Auth, Edge, RLS e latências. Confirmar que snapshot offline é informativo e não autoriza gasto.
+4. Pagamento real ou reembolso exige autorização separada e transação controlada no provedor; nunca substituir essa confirmação por service_role/SQL. As opções com API Key dependem de validação do lojista; não presumir autenticidade de webhook de estorno.
+5. Manter `financialControls.reversalsEnabled=false`, estorno automático e novos cron financeiros desativados. Lote de conciliação externo: padrão 2, máximo 3, sequencial, até 10 tentativas e lease de 2 min com fencing token; somente iniciar sob aprovação operacional. Shadow: padrão 50, máximo 200, cursor persistente, sem correção de saldo e sem lock de carteira. Findings de segundo pagamento verificado não entram no purge operacional.
+
+## Contenção e compensação
+
+Erro do provedor: conservar pending/uncertain, leases e backoff; não criar checkout novo após resultado incerto. Pagamento tardio comprovado segue o settlement original. Segundo pagamento no link legado: finding auditável, nenhum crédito extra; investigação no painel.
+
+Divergência: conter a fonte pela configuração/versão revisada, preservar ledger e provas. Não executar UPDATE/DELETE de transações ou soma/regravação de carteira. Compensação requer política e registro auditável aprovados. Reembolso parcial acumula centavos e aloca unidades inteiras pela diferença de pisos cumulativos; dívida separada, sem saldo disponível negativo. A flag continua desativada até aprovação comercial/jurídica e prova do provedor.
+
+Regressão após COMMIT: restaurar frontend/Edge compatíveis e fazer roll-forward testado; manter grants, constraints, histórico e obrigações. Para Vercel, `vercel rollback` usa deployment revisado e não reverte banco; a autoatribuição precisa ser revista depois. Não restaurar snapshot antigo por rotina, pois pagamentos posteriores precisam de conciliação. Não reabrir permissões para contornar falha.
+
+## Retomada do desenvolvimento e evidências
+
+O runtime/logs de validação ficam em `.finance-local/`, preservados entre retomadas do workspace e ignorados pelo Git. Os resultados selecionados estão versionados em `docs/audits/finance-integration/`. Os serviços de testes são parados após a validação; o banco/containers atuais ficam preparados para `stack.mjs resume`, sem consumir CPU de testes. Caches do runtime anterior e o Chromium/bibliotecas temporárias usados no canário foram removidos.
+
+Para restaurar a mesma rota de desenvolvimento, sem publicar:
+
+```bash
+__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=organic-goldfish-r7w5rp9g754vhxp4v-5173.app.github.dev npm run dev -- --host 0.0.0.0 --port 5173 --strictPort
+```
+
+O frontend usa a configuração Supabase existente do Codespace. Não apontar o canário/fixtures/carga para ela; os testes financeiros usam exclusivamente o stack sintético em loopback.

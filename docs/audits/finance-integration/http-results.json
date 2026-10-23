@@ -1,0 +1,71 @@
+{
+  "localOnly": true,
+  "realServices": [
+    "Auth",
+    "PostgreSQL",
+    "PostgREST",
+    "Storage",
+    "Edge Runtime"
+  ],
+  "provider": "local simulated responses; external payment network blocked",
+  "performance": [
+    {
+      "concurrency": 1,
+      "requests": 8,
+      "p50_ms": 8.96,
+      "p95_ms": 608.09,
+      "p99_ms": 608.09,
+      "requests_per_second": 10.22
+    },
+    {
+      "concurrency": 2,
+      "requests": 24,
+      "p50_ms": 11.01,
+      "p95_ms": 75.61,
+      "p99_ms": 77.68,
+      "requests_per_second": 60.79
+    },
+    {
+      "concurrency": 4,
+      "requests": 68,
+      "p50_ms": 79.84,
+      "p95_ms": 103.55,
+      "p99_ms": 111.6,
+      "requests_per_second": 56.08
+    }
+  ],
+  "results": [
+    {
+      "name": "real Auth issues session_id and financial RPC accepts active session",
+      "passed": true
+    },
+    {
+      "name": "real Edge rejects missing auth; direct wallet/RPC mutation denied",
+      "passed": true
+    },
+    {
+      "name": "real Edge reserves server-priced checkout and safely reuses it",
+      "passed": true
+    },
+    {
+      "name": "browser request cannot check another account purchase or fabricate credit",
+      "passed": true
+    },
+    {
+      "name": "100 webhook deliveries: one verified credit, ledger and wallet agree",
+      "passed": true
+    },
+    {
+      "name": "second real Auth session revokes the first, stale JWT cannot spend/read/sync",
+      "passed": true
+    },
+    {
+      "name": "provider mismatch, outage and timeout never grant cash",
+      "passed": true
+    },
+    {
+      "name": "locally cancelled checkout accepts verified late payment exactly once",
+      "passed": true
+    }
+  ]
+}

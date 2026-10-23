@@ -1,0 +1,11 @@
+{
+  "migrations": 161,
+  "latest_migration": "20261115000001",
+  "reversals_enabled": false,
+  "anon_credit_execute": false,
+  "cron_launch_active_jobs": "off",
+  "authenticated_wallet_update": false,
+  "training_preferences_anon_execute": false,
+  "training_timezone_catalog_qualified": true,
+  "authenticated_internal_credit_execute": false
+}

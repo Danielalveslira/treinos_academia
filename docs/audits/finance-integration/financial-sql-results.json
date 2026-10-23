@@ -1,0 +1,50 @@
+[
+  {
+    "file": "finance_auth_integration_test.sql",
+    "passed": true,
+    "assertions": 9,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "7d2e8d79990eb6d325bb688315cbb6fe50f506280b6461e50a16c124688062af"
+  },
+  {
+    "file": "finance_integrity_test.sql",
+    "passed": true,
+    "assertions": 17,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "c19035e684acc29d85374145bfcb60dffbcbbba71b56a50abc969dd5fba77c64"
+  },
+  {
+    "file": "finance_payment_finality_test.sql",
+    "passed": true,
+    "assertions": 11,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "c3329217f09b3bf7c204293db790e03c5bdc2180fe4a4a4a9d01c54fcd5e6b74"
+  },
+  {
+    "file": "finance_reconciliation_test.sql",
+    "passed": true,
+    "assertions": 8,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "0917d168ac8561b34f24429c2bf3b8d6628690005cffe09bc23ebefd563812f7"
+  },
+  {
+    "file": "finance_reversals_test.sql",
+    "passed": true,
+    "assertions": 18,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "4f783f1a447db399f8639f4dc2d49e5d32b3df634716a7429d08a5186f9da25e"
+  },
+  {
+    "file": "finance_reward_evidence_test.sql",
+    "passed": true,
+    "assertions": 10,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "a7626a793333e3e312d27be133fc0ac2c757d4959cb8fc6e47fbfc0b8bc9d226"
+  }
+]
