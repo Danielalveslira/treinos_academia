@@ -2,6 +2,7 @@
 begin read only;
 set local statement_timeout='10s';
 set local lock_timeout='2s';
+set local search_path=pg_catalog;
 select jsonb_build_object(
  'latest_migration',(select max(version) from supabase_migrations.schema_migrations),
  'migration_versions',(select jsonb_agg(version order by version) from supabase_migrations.schema_migrations),

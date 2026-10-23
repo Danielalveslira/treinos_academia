@@ -3,6 +3,8 @@ import { execFileSync } from 'node:child_process'
 import { writeFileSync, readFileSync, mkdirSync } from 'node:fs'
 import { SECRET } from '../keys.mjs'
 import { createHash, randomUUID } from 'node:crypto'
+const baselineOnly=process.argv[2]==='--baseline-only'
+if(process.argv[2]&&!baselineOnly)throw new Error('Only --baseline-only is accepted')
 const db='evolutus_integrated_clean_db'
 const root=new URL('../../../',import.meta.url).pathname.replace(/\/$/,'')
 const logs=root+'/.finance-local/logs/install'
@@ -35,6 +37,15 @@ try {
  const baseline=run(['exec',db,'pg_dump','-U','supabase_admin','-d','postgres','--schema=auth','--schema=storage','--clean','--if-exists'])
  writeFileSync(logs+'/services-only.sql',baseline)
  const migrate=mode=>{const out=execFileSync(process.execPath,[root+'/scripts/homolog/finance/migrate.mjs',mode,db],{encoding:'utf8',maxBuffer:4*1024*1024});writeFileSync(logs+'/'+mode+'.log',out);console.log(out.trim())}
+ if(baselineOnly) {
+  migrate('baseline')
+  for(const [file,name] of [['finance-production-readonly.sql','baseline-metadata.json'],['finance-catalog-readonly.sql','baseline-catalog.json']]) {
+   const output=sql(readFileSync(root+'/scripts/release/'+file,'utf8'))
+   const row=output.split('\n').find(line=>line.startsWith('{'))
+   writeFileSync(logs+'/'+name,JSON.stringify(JSON.parse(row)))
+  }
+  console.log('Baseline metadata captured; no fixtures or candidate migrations applied')
+ } else {
  migrate('all')
  const contract=readFileSync(root+'/scripts/homolog/finance-schema-contract.sql','utf8')
  const clean=JSON.parse(sql(contract))
@@ -63,4 +74,5 @@ try {
  writeFileSync('docs/audits/finance-integration/install-results.json',JSON.stringify(result,null,2)+'\n')
  if(!result.financialSchemaEqual||!result.existingDataPreserved)throw new Error('Installation/schema/data preservation mismatch')
  console.log(JSON.stringify(result))
+ }
 } finally {for(const n of sidecars){try{run(['rm','-f',n])}catch{/* absent */}}}
