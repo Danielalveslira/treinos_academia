@@ -31,6 +31,17 @@ const homePicture = `<picture class="home-image"><source srcset="/img/banners/qu
 // reconstrução (ver PROMPT_LIMPEZA_ROTAS_PUBLICAS_PRIMER_EVOLUTUS.md).
 const skeleton = (label) => primerBox('section', '', primerHeading('h1', '', label), { sx: { px: 4, py: 5 } })
 
+// Cabeçalho compacto da Vitrine e o contêiner da ilha React do catálogo (ver
+// src/features/publicProducts/). O catálogo em si não tem SSR/prerender: a RPC pública é
+// lida em tempo real pelo cliente, então o HTML inicial mostra só o estado de carregamento.
+const vitrineHead = primerBox(
+  'section',
+  'vitrine-head',
+  `${primerHeading('h1', '', 'Vitrine')}${primerText('p', '', 'Produtos de marcas parceiras, em um só lugar.')}`
+)
+const vitrineLoading = primerBox('p', '', 'Carregando produtos…', { sx: { color: 'fg.muted', fontSize: 1, py: 5, textAlign: 'center' } })
+const vitrineBody = `${vitrineHead}<section class="vitrine-catalog" aria-label="Catálogo de produtos de marcas parceiras"><div id="vitrine-root">${vitrineLoading}</div></section>`
+
 export const publicPages = [
   {
     path: '/',
@@ -66,7 +77,7 @@ export const publicPages = [
     description:
       'Explore produtos aprovados de marcas parceiras do Evolutus. Veja os detalhes e siga para a loja externa do parceiro para comprar.',
     indexable: false,
-    body: skeleton('Vitrine'),
+    body: vitrineBody,
   },
   {
     path: '/profissionais',
@@ -110,7 +121,7 @@ export function renderPublicPage(path, env = {}, { dev = false } = {}) {
   if (!dev && (!headerCss || !headerJs || !darkCss || !primerCss)) throw new Error('Build público sem a ilha ou o CSS Primer do header')
   const socialImage = `${origin}/img/banners/quadro-geral-1774.webp`
   const body = page.body
-  return enableTurboLinks(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1117"><meta name="robots" content="${page.indexable === false ? 'noindex,follow' : 'index,follow'}">${verification}<meta name="view-transition" content="same-origin"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${canonical}"><meta property="og:type" content="website"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${canonical}"><meta property="og:image" content="${socialImage}"><meta property="og:locale" content="pt_BR"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${socialImage}"><link rel="icon" href="/icons/icon-192.png"><script src="/boot-public-theme.js"></script>${homeBootstrap}${!dev && primerCss ? `<link rel="stylesheet" href="/assets/${primerCss}">` : ''}${!dev && darkCss ? `<link rel="stylesheet" href="/assets/${darkCss}">` : ''}<link rel="stylesheet" href="/public-pages.css"><link rel="stylesheet" href="/public-redesign.css"><link rel="stylesheet" href="/public-foundation.css">${path === '/' ? '<link rel="stylesheet" href="/public-home.css">' : ''}<link rel="stylesheet" href="${dev ? '/src/styles/public-header.css' : `/assets/${headerCss}`}">${primerStyles()}<script type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script><script type="module" src="${dev ? '/src/publicTurbo.js' : `/assets/${publicTurboAsset}`}" data-turbo-track="reload"></script><script type="module" src="${dev ? '/src/PublicHeaderMenu.jsx' : `/assets/${headerJs}`}" data-turbo-track="reload"></script></head><body class="public-${page.path === '/' ? 'home' : page.path.slice(1)}" data-turbo-prefetch="false"><a class="skip" href="#content">Pular para o conteúdo</a>${nav}<main id="content" tabindex="-1">${body}</main>${footer}<script src="/public-pages.js" defer></script></body></html>`)
+  return enableTurboLinks(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1117"><meta name="robots" content="${page.indexable === false ? 'noindex,follow' : 'index,follow'}">${verification}<meta name="view-transition" content="same-origin"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${canonical}"><meta property="og:type" content="website"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${canonical}"><meta property="og:image" content="${socialImage}"><meta property="og:locale" content="pt_BR"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${socialImage}"><link rel="icon" href="/icons/icon-192.png"><script src="/boot-public-theme.js"></script>${homeBootstrap}${!dev && primerCss ? `<link rel="stylesheet" href="/assets/${primerCss}">` : ''}${!dev && darkCss ? `<link rel="stylesheet" href="/assets/${darkCss}">` : ''}<link rel="stylesheet" href="/public-pages.css"><link rel="stylesheet" href="/public-redesign.css"><link rel="stylesheet" href="/public-foundation.css">${path === '/' ? '<link rel="stylesheet" href="/public-home.css">' : ''}${path === '/vitrine' ? '<link rel="stylesheet" href="/public-products.css">' : ''}<link rel="stylesheet" href="${dev ? '/src/styles/public-header.css' : `/assets/${headerCss}`}">${primerStyles()}<script type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script><script type="module" src="${dev ? '/src/publicTurbo.js' : `/assets/${publicTurboAsset}`}" data-turbo-track="reload"></script><script type="module" src="${dev ? '/src/PublicHeaderMenu.jsx' : `/assets/${headerJs}`}" data-turbo-track="reload"></script></head><body class="public-${page.path === '/' ? 'home' : page.path.slice(1)}" data-turbo-prefetch="false"><a class="skip" href="#content">Pular para o conteúdo</a>${nav}<main id="content" tabindex="-1">${body}</main>${footer}<script src="/public-pages.js" defer></script></body></html>`)
 }
 
 export function renderRobots() {

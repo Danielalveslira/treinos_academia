@@ -196,7 +196,6 @@ test('rotas em reconstrução têm esqueleto mínimo, sem UI legada', () => {
   for (const [file, label] of [
     ['como-funciona.html', 'Como funciona'],
     ['para-empresas.html', 'Para empresas'],
-    ['vitrine.html', 'Vitrine'],
     ['profissionais.html', 'Profissionais'],
   ]) {
     const html = readFileSync(`dist/${file}`, 'utf8')
@@ -211,6 +210,23 @@ test('rotas em reconstrução têm esqueleto mínimo, sem UI legada', () => {
   for (const css of ['public-pages.css', 'public-redesign.css', 'public-foundation.css']) {
     assert.doesNotMatch(readFileSync(`dist/${css}`, 'utf8'), /\.journey-|\.faq-|\.commercial-|\.lead-form|\.catalog-|\.directory-|\.product-/)
   }
+})
+
+test('Vitrine reconstruída: cabeçalho compacto real e ilha do catálogo sob demanda', () => {
+  const html = readFileSync('dist/vitrine.html', 'utf8')
+  assert.match(html, /<h1[^>]*>Vitrine<\/h1>/)
+  assert.equal((html.match(/<h1/g) || []).length, 1)
+  assert.match(html, /Produtos de marcas parceiras, em um só lugar\./)
+  assert.match(html, /<section class="[^"]*\bvitrine-head\b[^"]*">/)
+  assert.match(html, /<section class="vitrine-catalog" aria-label="Catálogo de produtos de marcas parceiras">/)
+  assert.match(html, /<div id="vitrine-root">/)
+  assert.match(html, /Carregando produtos…/)
+  assert.match(html, /href="\/public-products\.css"/)
+  // Nenhuma UI legada ressuscitada e nenhum entry point novo: o catálogo chega via
+  // import() dinâmico dentro do bundle Turbo já existente (ver src/publicTurbo.js).
+  assert.doesNotMatch(html, /catalog-filters|product-card-template|product-dialog|EVOLUTUS_PUBLIC_CONFIG|<dialog\b/)
+  assert.doesNotMatch(html, /<script[^>]+src="\/assets\/(?:mountPublicProducts|ProductDialog)-/)
+  assert.doesNotMatch(readFileSync('dist/public-products.css', 'utf8'), /\.catalog-|\.product-|\.directory-|!important/)
 })
 
 test('rotas excluídas não são geradas, anunciadas nem reescritas', () => {

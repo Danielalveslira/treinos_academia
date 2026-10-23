@@ -30,6 +30,11 @@ document.addEventListener('turbo:load', () => {
   if (visitAction === 'advance' && !location.hash) document.getElementById('content')?.focus({ preventScroll: true })
   visitAction = null
 
+  // Chunk só desta tela, carregado sob demanda (ver mountPublicProducts.jsx): nada aqui
+  // entra no boot comum das outras páginas públicas.
+  if (document.getElementById('vitrine-root'))
+    import('./features/publicProducts/mountPublicProducts.jsx').then((module) => module.mountPublicProducts())
+
   // The head bootstrap runs on a direct Home load. Turbo may keep that script in
   // the merged head, so repeat the session check when navigating back to Home.
   if (location.pathname === '/') {

@@ -1,0 +1,23 @@
+/* Vitrine: só as medidas inevitáveis (largura, centralização, respiro vertical). Cor,
+   borda, tipografia e estado vêm de tokens Primer nos componentes React da ilha
+   (ver src/features/publicProducts/). */
+.public-vitrine #content {
+  width: 100%;
+  margin-inline: auto;
+}
+.vitrine-head,
+.vitrine-catalog {
+  padding-inline: 16px;
+}
+.vitrine-head {
+  padding-block: 32px 8px;
+}
+.vitrine-catalog {
+  padding-block: 16px 48px;
+}
+@media (min-width: 768px) {
+  .vitrine-head,
+  .vitrine-catalog {
+    padding-inline: 28px;
+  }
+}
