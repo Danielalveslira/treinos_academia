@@ -1,6 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { formatDate } from '../../../utils/format.js'
 import {
+  formatRelativeNotificationTime,
   isAdminNotification,
   mergeNotificationPage,
   newestCreatedAt,
@@ -131,6 +133,17 @@ test('metadados inesperados caem em texto genérico (nunca HTML nem valores inve
   assert.equal(weird.title, 'Você recebeu uma recompensa.')
   assert.equal(weird.description, undefined)
   assert.equal(notificationContent({ ...base, type: 'moderation_notice', metadata: { action: '<b>x</b>' } }).title, 'Você recebeu um aviso da moderação.')
+})
+
+test('formatRelativeNotificationTime: curta, com teto em "ontem" e virada para data absoluta', () => {
+  const now = new Date('2026-10-08T10:00:00+00:00')
+  assert.equal(formatRelativeNotificationTime('2026-10-08T09:59:40+00:00', now), 'agora')
+  assert.equal(formatRelativeNotificationTime('2026-10-08T09:55:00+00:00', now), 'há 5 min')
+  assert.equal(formatRelativeNotificationTime('2026-10-08T07:00:00+00:00', now), 'há 3 h')
+  assert.equal(formatRelativeNotificationTime('2026-10-07T09:00:00+00:00', now), 'ontem')
+  assert.equal(formatRelativeNotificationTime('2026-10-03T09:00:00+00:00', now), 'há 5 dias')
+  assert.equal(formatRelativeNotificationTime('2026-09-01T09:00:00+00:00', now), formatDate(new Date('2026-09-01T09:00:00+00:00')))
+  assert.equal(formatRelativeNotificationTime(null, now), '—')
 })
 
 test('deep links: curtida em publicação e eventos sem status usam o action_url do banco', () => {

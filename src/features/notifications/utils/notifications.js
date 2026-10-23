@@ -1,4 +1,6 @@
 import { workoutReminderMessage } from '../../../../supabase/functions/process-push-outbox/messages.js'
+import { toDate } from '../../../utils/date.js'
+import { formatDate } from '../../../utils/format.js'
 
 const ACTION_LABELS = {
   warning: 'Advertência',
@@ -178,6 +180,26 @@ export function notificationCursor(notification) {
 export function mergeNotificationPage(current, page) {
   const seen = new Set(current.map((item) => item.id))
   return [...current, ...page.filter((item) => !seen.has(item.id))]
+}
+
+const MINUTE_MS = 60 * 1000
+const HOUR_MS = 60 * MINUTE_MS
+const DAY_MS = 24 * HOUR_MS
+
+// Hora relativa curta (pt-BR) para a linha da lista. `now` é um parâmetro (não `new Date()` fixo no
+// corpo) só para o teste poder congelar o relógio -- não cria nenhum timer: o texto só muda no
+// próximo render (nova notificação, filtro, paginação), nunca por um intervalo contínuo. A data/hora
+// completa continua acessível via o `title`/`datetime` do <time> que envolve este texto.
+export function formatRelativeNotificationTime(value, now = new Date()) {
+  const date = toDate(value)
+  if (!date) return '—'
+  const diff = now.getTime() - date.getTime()
+  if (diff < MINUTE_MS) return 'agora'
+  if (diff < HOUR_MS) return `há ${Math.max(1, Math.floor(diff / MINUTE_MS))} min`
+  if (diff < DAY_MS) return `há ${Math.floor(diff / HOUR_MS)} h`
+  if (diff < 2 * DAY_MS) return 'ontem'
+  if (diff < 7 * DAY_MS) return `há ${Math.floor(diff / DAY_MS)} dias`
+  return formatDate(date)
 }
 
 // Limite superior seguro para "marcar todas"/"limpar": a notificação mais recente já exibida.

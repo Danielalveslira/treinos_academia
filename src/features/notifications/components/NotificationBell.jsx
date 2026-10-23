@@ -11,11 +11,16 @@ import {
   TrashIcon,
   ZapIcon,
 } from '@primer/octicons-react'
-import { Button, Spinner, Text } from '@primer/react'
+import { Button, IconButton, SegmentedControl, Spinner, Text } from '@primer/react'
 import { formatDateTime } from '../../../utils/format'
 import { toDate } from '../../../utils/date'
 import { useNotificationCenter } from '../hooks/useNotificationCenter'
-import { isAdminNotification, notificationContent, notificationHref } from '../utils/notifications'
+import {
+  formatRelativeNotificationTime,
+  isAdminNotification,
+  notificationContent,
+  notificationHref,
+} from '../utils/notifications'
 
 const FILTERS = [
   { id: 'all', label: 'Todas' },
@@ -53,13 +58,17 @@ export function NotificationItem({ notification, onSelect }) {
         <NotificationIcon notification={notification} />
       </span>
       <span className="notification-text">
-        <span className="notification-title">
+        <span className="notification-title" title={title}>
           {unread && <span className="sr-only">Não lida: </span>}
           {title}
         </span>
-        {description && <span className="notification-description">{description}</span>}
-        <time dateTime={notification.createdAt}>
-          {formatDateTime(toDate(notification.createdAt))}
+        {description && (
+          <span className="notification-description" title={description}>
+            {description}
+          </span>
+        )}
+        <time dateTime={notification.createdAt} title={formatDateTime(toDate(notification.createdAt))}>
+          {formatRelativeNotificationTime(notification.createdAt)}
         </time>
       </span>
       {unread && <span className="notification-dot" aria-hidden="true" />}
@@ -86,8 +95,14 @@ export function NotificationBell({ userId = null } = {}) {
   const [confirmingClear, setConfirmingClear] = useState(false)
   const rootRef = useRef(null)
   const buttonRef = useRef(null)
+  const popoverRef = useRef(null)
   const popoverId = useId()
   const { key: locationKey } = useLocation()
+
+  // Dialog não modal: ao abrir, o foco entra no painel (ARIA APG); Esc devolve ao sino.
+  useEffect(() => {
+    if (open) popoverRef.current?.focus()
+  }, [open])
 
   const close = useCallback((restoreFocus = false) => {
     setOpen(false)
@@ -168,29 +183,28 @@ export function NotificationBell({ userId = null } = {}) {
           id={popoverId}
           role="dialog"
           aria-label="Notificações"
+          ref={popoverRef}
+          tabIndex={-1}
         >
           <div className="notification-header">
             <Text as="h2">Notificações</Text>
             <div className="notification-header-actions">
-              <Button
+              <IconButton
+                icon={CheckIcon}
                 size="small"
                 variant="invisible"
-                leadingVisual={CheckIcon}
+                aria-label="Marcar todas como lidas"
                 disabled={unread === 0}
                 onClick={markAllRead}
-              >
-                Marcar todas como lidas
-              </Button>
-              <button
-                type="button"
-                className="notification-icon-button"
+              />
+              <IconButton
+                icon={TrashIcon}
+                size="small"
+                variant="invisible"
                 aria-label="Limpar notificações"
-                title="Limpar notificações"
                 disabled={!hasItems}
                 onClick={() => setConfirmingClear(true)}
-              >
-                <TrashIcon size={16} />
-              </button>
+              />
             </div>
           </div>
 
@@ -212,22 +226,21 @@ export function NotificationBell({ userId = null } = {}) {
             </div>
           )}
 
-          <div className="notification-tabs" role="tablist" aria-label="Filtrar notificações">
-            {FILTERS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                aria-selected={filter === item.id}
-                className={filter === item.id ? 'is-active' : undefined}
-                onClick={() => changeFilter(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
+          <div className="notification-filter">
+            <SegmentedControl
+              aria-label="Filtrar notificações"
+              size="small"
+              onChange={(index) => changeFilter(FILTERS[index].id)}
+            >
+              {FILTERS.map((item) => (
+                <SegmentedControl.Button key={item.id} selected={filter === item.id}>
+                  {item.label}
+                </SegmentedControl.Button>
+              ))}
+            </SegmentedControl>
           </div>
 
-          <div className="notification-list" role="tabpanel">
+          <div className="notification-list">
             {showInitialLoading && (
               <div
                 className="notification-loading"

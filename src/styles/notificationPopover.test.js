@@ -61,14 +61,17 @@ test('só a lista rola: título/abas fixos e lista com scroll interno', () => {
   assert.match(list, /min-height: 0/)
   const mobile = mediaBlock('max-width: 767px')
   assert.match(rule(mobile, '.notification-header'), /flex: 0 0 auto/)
-  assert.match(rule(mobile, '.notification-tabs'), /flex: 0 0 auto/)
+  assert.match(rule(mobile, '.notification-filter'), /flex: 0 0 auto/)
 })
 
-test('itens compactos com boa área de toque e não lida sutil', () => {
+test('itens compactos com boa área de toque e não lida sutil (faixa fina, nunca um fundo cheio)', () => {
   const mobile = mediaBlock('max-width: 767px')
   const item = rule(mobile, '.notification-item')
   assert.match(item, /min-height: 44px/)
   assert.match(item, /padding: 7px 8px/)
-  assert.match(rule(mobile, '.notification-icon'), /width: 24px/)
-  assert.match(rule(mobile, '.notification-item.is-unread'), /color-mix\(/)
+  assert.match(rule(mobile, '.notification-icon'), /width: 18px/)
+  const unreadMatch = css.match(/\n\.notification-item\.is-unread \{([^}]*)\}/)
+  assert.ok(unreadMatch, 'regra .notification-item.is-unread')
+  assert.match(unreadMatch[1], /box-shadow: inset 3px 0 0 var\(--borderColor-accent-emphasis\)/)
+  assert.doesNotMatch(unreadMatch[1], /background/)
 })
