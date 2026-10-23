@@ -34,22 +34,15 @@ jobs:
       # `supabase start` aplica todas as migrations em supabase/migrations/, em ordem, contra um
       # Postgres novo -- é a própria prova de que elas se aplicam em sequência numa base limpa.
       - run: supabase start
-      # pg_prove sobre supabase/tests/*.sql (pgTAP). Cada arquivo abre begin/rollback: nada fica
-      # persistido, mesmo com o guard de sessão testado com sessões de verdade em auth.sessions.
-      #
-      # supabase/tests/_helpers/auth_session.sql (um include, não uma suíte) e os dois scripts de
-      # diagnóstico/performance sem plano pgTAP (finance_preflight_readonly.sql,
-      # status_expiration_performance.sql) são varridos pelo mesmo glob e sempre reportam "No plan
-      # found" -- preexistente, sem relação com este PR. O pg_prove sai com status != 0 só por
-      # causa disso mesmo com zero asserção real falhando; falha o passo só se achar uma asserção
-      # de verdade reprovada ("Failed test" ou "Failed: N" com N>0 no resumo por arquivo).
-      - run: |
-          set +e
-          supabase test db 2>&1 | tee test-db.log
-          set -e
-          if grep -qE '# Failed test [0-9]' test-db.log; then
-            echo "::error::Asserção pgTAP real falhou -- ver test-db.log acima."
-            exit 1
-          fi
+      # pg_prove roda SÓ as suítes pgTAP de verdade (convenção do projeto: toda suíte termina em
+      # "_test.sql"). supabase/tests/_helpers/auth_session.sql é um include (\ir), não uma suíte, e
+      # finance_preflight_readonly.sql / status_expiration_performance.sql são scripts de
+      # diagnóstico/performance sem plano pgTAP -- nenhum dos três é um teste, então nenhum dos três
+      # deve ser invocado como um. Passar o glob explícito corrige a descoberta na raiz, sem
+      # precisar inspecionar log nem mascarar exit code: o status deste passo É o status real do
+      # pg_prove (bash -e do runner já propaga `run:` != 0 como falha do step).
+      - run: supabase test db supabase/tests/*_test.sql
+      # Limpeza roda sempre (sucesso ou falha do passo acima), mas sem alterar o motivo da falha:
+      # se o passo anterior falhou, o job já está marcado como falho antes deste rodar.
       - if: always()
         run: supabase stop
