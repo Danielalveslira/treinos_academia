@@ -30,7 +30,7 @@ const TWO_COLUMNS = ['1fr', null, '1fr 1fr']
 // uma coluna em telas pequenas, grade de duas colunas a partir do breakpoint "medium" do
 // Primer. Validação de campo fica em validatePartnerProduct (utils/validators.js); aqui
 // só exibimos o que já vem calculado em `errors`, sem duplicar regra de negócio.
-export function PartnerProductForm({ form, errors, editing, busy, onFieldChange, onSubmit, onCancel }) {
+export function PartnerProductForm({ form, errors, editing, requireImage, busy, onFieldChange, onSubmit, onCancel }) {
   const [imageFailed, setImageFailed] = useState(false)
   const trimmedImageUrl = form.image_url.trim()
   const imageUrlLooksValid = trimmedImageUrl !== '' && isValidPartnerProductUrl(trimmedImageUrl)
@@ -100,10 +100,14 @@ export function PartnerProductForm({ form, errors, editing, busy, onFieldChange,
           )}
         </FormControl>
 
-        <FormControl>
-          <FormControl.Label>URL da imagem (opcional)</FormControl.Label>
+        <FormControl required={requireImage}>
+          <FormControl.Label>{requireImage ? 'URL da imagem' : 'URL da imagem (opcional)'}</FormControl.Label>
           <TextInput type="url" value={form.image_url} maxLength={500} onChange={handleImageUrlChange} block />
-          <FormControl.Caption>Link HTTPS de uma imagem do produto.</FormControl.Caption>
+          <FormControl.Caption>
+            {requireImage
+              ? 'Obrigatória para cadastrar ou publicar o produto. Link HTTPS de uma imagem do produto.'
+              : 'Link HTTPS de uma imagem do produto. Obrigatória antes de publicar.'}
+          </FormControl.Caption>
           {errors.imageUrl && (
             <FormControl.Validation variant="error">{errors.imageUrl}</FormControl.Validation>
           )}

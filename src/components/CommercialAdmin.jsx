@@ -59,12 +59,25 @@ export default function CommercialAdmin() {
 
   function startEdit(product) {
     setEditing(product.id)
-    setForm({ ...product, starts_at: product.starts_at?.slice(0, 16) || '', ends_at: product.ends_at?.slice(0, 16) || '' })
+    // image_url é a única coluna de texto opcional (nullable) de partner_products que o
+    // formulário controla direto por valor -- produtos legados sem imagem chegam aqui com
+    // null, e PartnerProductForm chama .trim() nela para montar a prévia. Normaliza pra ''
+    // igual já se fazia com starts_at/ends_at, pra abrir/cancelar nunca derrubar a rota.
+    setForm({
+      ...product,
+      image_url: product.image_url || '',
+      starts_at: product.starts_at?.slice(0, 16) || '',
+      ends_at: product.ends_at?.slice(0, 16) || '',
+    })
     setProductErrors({})
   }
 
   async function saveProduct(event) {
     event.preventDefault()
+    // Imagem é obrigatória para todo cadastro novo e para qualquer publicação (approved),
+    // mesmo editando um produto legado sem imagem -- espelha o trigger
+    // enforce_partner_product_image (autoridade final no servidor).
+    const requireImage = !editing || form.approved
     const validationErrors = validatePartnerProduct({
       name: form.name,
       brand: form.brand,
@@ -74,6 +87,7 @@ export default function CommercialAdmin() {
       imageUrl: form.image_url,
       startsAt: form.starts_at,
       endsAt: form.ends_at,
+      requireImage,
     })
     setProductErrors(validationErrors)
     if (Object.keys(validationErrors).length > 0) return
@@ -128,6 +142,7 @@ export default function CommercialAdmin() {
         form={form}
         errors={productErrors}
         editing={Boolean(editing)}
+        requireImage={!editing || form.approved}
         busy={busy}
         onFieldChange={onFieldChange}
         onSubmit={saveProduct}

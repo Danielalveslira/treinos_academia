@@ -34,6 +34,15 @@
 #public-header .brand-mark-letter { fill: var(--fitness-ink); }
 #public-header .public-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
 #public-header .public-header-account { white-space: nowrap; }
+#public-header .public-header-guest-actions { display: inline-flex; align-items: center; gap: 8px; }
+/* Estado de autenticação do cabeçalho público (definido em publicHeaderAuth.js, a partir
+   da mesma sessão Supabase do app): por padrão (sem o atributo, ou 'guest') mostra
+   Entrar/Criar conta como hoje; 'pending' (public-header-auth-boot.js, antes da checagem
+   real) e 'authed' escondem os dois pra nunca piscar o estado de visitante errado. */
+:root[data-public-auth='authed'] #public-header .public-header-guest-actions,
+:root[data-public-auth='pending'] #public-header .public-header-guest-actions { display: none; }
+#public-header .public-header-app-link { display: none; }
+:root[data-public-auth='authed'] #public-header .public-header-app-link { display: inline-flex; }
 #public-header .public-theme-root { display: block; width: 44px; height: 44px; flex: 0 0 44px; }
 .public-theme-trigger { width: 44px; height: 44px; border-radius: 12px; }
 .public-theme-icon-sun, .public-theme-icon-moon { width: 16px; height: 16px; }

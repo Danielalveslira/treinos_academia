@@ -15,8 +15,23 @@ import {
   validateWorkoutStatus,
   validatePhotoStatus,
   validateSponsoredAd,
+  validatePartnerProduct,
+  isValidPartnerProductUrl,
   hasErrors,
 } from './validators.js'
+
+function basePartnerProduct(overrides = {}) {
+  return {
+    name: 'Tênis de corrida',
+    brand: 'Marca Parceira',
+    category: 'Calçados',
+    description: 'Descrição suficientemente detalhada do produto parceiro.',
+    storeUrl: 'https://loja.example.com/produto',
+    imageUrl: 'https://cdn.example.com/produto.jpg',
+    requireImage: true,
+    ...overrides,
+  }
+}
 
 test('validateBirthDate requires a real calendar date, never in the future', () => {
   assert.deepEqual(validateBirthDate(''), { birthDate: 'Data de nascimento é obrigatória' })
@@ -376,6 +391,50 @@ test('validatePassword: espelha a política do servidor (8+ caracteres, letras e
   assert.match(validatePassword('abcdefgh').password, /letras e números/)
   assert.match(validatePassword('').password, /8 caracteres/)
   assert.match(validatePassword(undefined).password, /8 caracteres/)
+})
+
+test('validatePartnerProduct: imageUrl é obrigatória quando requireImage=true (novo cadastro ou publicação)', () => {
+  assert.equal(hasErrors(validatePartnerProduct(basePartnerProduct())), false)
+  assert.match(
+    validatePartnerProduct(basePartnerProduct({ imageUrl: '' })).imageUrl,
+    /obrigatória/
+  )
+  assert.match(
+    validatePartnerProduct(basePartnerProduct({ imageUrl: '   ' })).imageUrl,
+    /obrigatória/
+  )
+  assert.match(
+    validatePartnerProduct(basePartnerProduct({ imageUrl: null })).imageUrl,
+    /obrigatória/
+  )
+})
+
+test('validatePartnerProduct: imageUrl permanece opcional ao editar um produto legado que não está sendo publicado (requireImage=false)', () => {
+  assert.equal(
+    hasErrors(validatePartnerProduct(basePartnerProduct({ imageUrl: '', requireImage: false }))),
+    false
+  )
+})
+
+test('validatePartnerProduct: formato de imageUrl é sempre validado quando preenchida, mesmo sem exigir a presença', () => {
+  assert.match(
+    validatePartnerProduct(
+      basePartnerProduct({ imageUrl: 'http://inseguro.example.com/x.jpg', requireImage: false })
+    ).imageUrl,
+    /HTTPS/
+  )
+  assert.match(
+    validatePartnerProduct(basePartnerProduct({ imageUrl: 'x'.repeat(501) })).imageUrl,
+    /longa/
+  )
+})
+
+test('isValidPartnerProductUrl: só aceita HTTPS, sem usuário/senha embutidos e com host que não seja IP nu', () => {
+  assert.equal(isValidPartnerProductUrl('https://exemplo.com/produto.jpg'), true)
+  assert.equal(isValidPartnerProductUrl('http://exemplo.com/produto.jpg'), false)
+  assert.equal(isValidPartnerProductUrl('https://user:pass@exemplo.com/x.jpg'), false)
+  assert.equal(isValidPartnerProductUrl('https://192.168.0.1/x.jpg'), false)
+  assert.equal(isValidPartnerProductUrl('not-a-url'), false)
 })
 
 test('validateSponsoredAd: expiresAt is optional but must be a parseable date when given', () => {

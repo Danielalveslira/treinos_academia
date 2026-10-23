@@ -7,10 +7,11 @@ export default defineConfig({
   plugins: [react(), pwaPlugin(), publicPreviewPlugin()],
   build: {
     rollupOptions: {
-      input: { main: 'index.html', publicHomeRedirect: 'src/publicHomeRedirect.js', publicTurbo: 'src/publicTurbo.js', publicHeaderMenu: 'src/PublicHeaderMenu.jsx' },
+      input: { main: 'index.html', publicHomeRedirect: 'src/publicHomeRedirect.js', publicHeaderAuth: 'src/publicHeaderAuth.js', publicTurbo: 'src/publicTurbo.js', publicHeaderMenu: 'src/PublicHeaderMenu.jsx' },
       output: {
         entryFileNames: (chunk) =>
-          chunk.name === 'publicHomeRedirect' ? 'assets/public-home-redirect.js' : 'assets/[name]-[hash].js',
+          chunk.name === 'publicHomeRedirect' ? 'assets/public-home-redirect.js' :
+          chunk.name === 'publicHeaderAuth' ? 'assets/public-header-auth.js' : 'assets/[name]-[hash].js',
         manualChunks: {
           charts: ['recharts'],
           primer: ['@primer/react', 'styled-components'],

@@ -422,7 +422,10 @@ export function isValidPartnerProductUrl(value) {
 // 20261108000001_public_commercial.sql): name/brand 2-120, category 2-80, description
 // 10-500. ends_at > starts_at (quando ambos definidos) espelha o constraint da mesma
 // tabela -- validado aqui só para mostrar o erro perto do campo antes de ir ao servidor,
-// que continua sendo a autoridade final.
+// que continua sendo a autoridade final. `requireImage` espelha o trigger
+// enforce_partner_product_image (migration 20261111000001_partner_products_require_image.sql):
+// o chamador (CommercialAdmin) passa true para todo cadastro novo e para qualquer
+// publicação (approved=true), mesmo em produtos legados sem imagem.
 export function validatePartnerProduct({
   name,
   brand,
@@ -432,6 +435,7 @@ export function validatePartnerProduct({
   imageUrl,
   startsAt,
   endsAt,
+  requireImage = false,
 }) {
   const errors = {}
 
@@ -479,12 +483,12 @@ export function validatePartnerProduct({
     errors.storeUrl = 'Use uma URL HTTPS válida, sem usuário/senha na URL'
   }
 
-  if (imageUrl && imageUrl.trim()) {
-    if (imageUrl.length > 500) {
-      errors.imageUrl = 'URL da imagem muito longa'
-    } else if (!isValidPartnerProductUrl(imageUrl.trim())) {
-      errors.imageUrl = 'Use uma URL HTTPS válida, sem usuário/senha na URL'
-    }
+  if (!imageUrl || !imageUrl.trim()) {
+    if (requireImage) errors.imageUrl = 'Imagem é obrigatória para cadastrar ou publicar o produto'
+  } else if (imageUrl.length > 500) {
+    errors.imageUrl = 'URL da imagem muito longa'
+  } else if (!isValidPartnerProductUrl(imageUrl.trim())) {
+    errors.imageUrl = 'Use uma URL HTTPS válida, sem usuário/senha na URL'
   }
 
   if (startsAt && endsAt) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ActionList, ActionMenu, IconButton, ThemeProvider } from '@primer/react'
 import {
+  ArrowRightIcon,
   HomeIcon,
   LocationIcon,
   OrganizationIcon,
@@ -26,6 +27,7 @@ const linkIcons = {
   '/profissionais': LocationIcon,
   '/login': SignInIcon,
   '/cadastro': PersonAddIcon,
+  '/app': ArrowRightIcon,
 }
 function leadingVisual(href) {
   const Icon = linkIcons[href]
@@ -36,10 +38,25 @@ function leadingVisual(href) {
   )
 }
 
+// Mesmo estado lido por public-header.css via data-public-auth em <html> (definido por
+// publicHeaderAuth.js, a partir da sessão já persistida pelo client único do app) --
+// o grupo "Conta" deste menu só espelha o que o CSS já decidiu pro resto do cabeçalho,
+// nunca cria outra fonte de verdade sobre quem está logado.
+function usePublicAuthState() {
+  const [state, setState] = useState(() => document.documentElement.dataset.publicAuth || 'guest')
+  useEffect(() => {
+    const update = () => setState(document.documentElement.dataset.publicAuth || 'guest')
+    window.addEventListener('public-auth-change', update)
+    return () => window.removeEventListener('public-auth-change', update)
+  }, [])
+  return state
+}
+
 export function PublicHeaderMenu() {
   const [open, setOpen] = useState(false)
   const [path, setPath] = useState(location.pathname)
   const [mobile, setMobile] = useState(() => matchMedia('(max-width: 767px)').matches)
+  const authState = usePublicAuthState()
 
   useEffect(() => {
     const breakpoint = matchMedia('(max-width: 767px)')
@@ -117,12 +134,19 @@ export function PublicHeaderMenu() {
                 ))}
               </ActionList.Group>
               <ActionList.Group title="Conta">
-                {ACCOUNT_PUBLIC_LINKS.map(([href, label]) => (
-                  <ActionList.LinkItem key={href} as="a" href={href} onClick={() => setOpen(false)}>
-                    {leadingVisual(href)}
-                    {label}
+                {authState === 'authed' ? (
+                  <ActionList.LinkItem as="a" href="/app" onClick={() => setOpen(false)}>
+                    {leadingVisual('/app')}
+                    Ir para o app
                   </ActionList.LinkItem>
-                ))}
+                ) : (
+                  ACCOUNT_PUBLIC_LINKS.map(([href, label]) => (
+                    <ActionList.LinkItem key={href} as="a" href={href} onClick={() => setOpen(false)}>
+                      {leadingVisual(href)}
+                      {label}
+                    </ActionList.LinkItem>
+                  ))
+                )}
               </ActionList.Group>
             </ActionList>
           </div>

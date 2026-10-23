@@ -49,13 +49,16 @@ select throws_ok($$ select public.submit_commercial_lead(
 reset role;
 
 -- Approval and dates gate the public catalog independently of the admin UI.
+-- Todo INSERT exige image_url (enforce_partner_product_image, migration
+-- 20261111000001_partner_products_require_image.sql) -- ver partner_products_require_image_test.sql
+-- pra a regra em si (incluindo o caso de um produto legado sem imagem).
 insert into public.partner_products
-  (name, brand, description, category, store_url, approved, starts_at, ends_at)
+  (name, brand, description, category, store_url, image_url, approved, starts_at, ends_at)
 values
-  ('Produto aprovado', 'Marca A', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/a', true, now() - interval '1 day', now() + interval '1 day'),
-  ('Produto rascunho', 'Marca B', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/b', false, null, null),
-  ('Produto vencido', 'Marca C', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/c', true, now() - interval '2 days', now() - interval '1 day'),
-  ('Produto futuro', 'Marca D', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/d', true, now() + interval '1 day', now() + interval '2 days');
+  ('Produto aprovado', 'Marca A', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/a', 'https://example.com/a.jpg', true, now() - interval '1 day', now() + interval '1 day'),
+  ('Produto rascunho', 'Marca B', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/b', 'https://example.com/b.jpg', false, null, null),
+  ('Produto vencido', 'Marca C', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/c', 'https://example.com/c.jpg', true, now() - interval '2 days', now() - interval '1 day'),
+  ('Produto futuro', 'Marca D', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/d', 'https://example.com/d.jpg', true, now() + interval '1 day', now() + interval '2 days');
 set local role anon;
 select is((select count(*)::int from public.partner_products where name like 'Produto %'), 1,
   'anonymous visitors see only approved and current products');
