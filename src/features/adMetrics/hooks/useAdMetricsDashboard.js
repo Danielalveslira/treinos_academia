@@ -6,8 +6,11 @@ import { cacheKey, classifyError } from '../utils/metrics'
 // um snapshot só é refeito quando o usuário toca em "Atualizar" (que descarta o cache da conta) ou quando os
 // filtros mudam para uma combinação ainda não vista.
 const cache = new Map()
+let generation = 0
+export const adMetricsGeneration = () => generation
 
 export function clearAdMetricsCache(userId = null) {
+  generation += 1
   for (const key of [...cache.keys()])
     if (!userId || key.startsWith(`${userId}|`)) cache.delete(key)
 }
@@ -24,12 +27,12 @@ export function useAdMetricsDashboard({
   enabled,
   fetcher = fetchAdMetricsDashboard,
 }) {
-  const key = `${userId}|${cacheKey(filters)}`
+  const key = `${userId}|${filters.accountId || 'admin'}|${filters.campaignOffset || 0}|${filters.contextOffset || 0}|${cacheKey(filters)}`
   const [state, setState] = useState(() => {
-    const hit = cache.get(key)
+    const hit = filters.accountId ? null : cache.get(key)
     return hit
-      ? { status: 'ready', snapshot: hit.snapshot, fetchedAt: hit.fetchedAt, error: null }
-      : { status: 'idle', snapshot: null, fetchedAt: null, error: null }
+      ? { key, status: 'ready', snapshot: hit.snapshot, fetchedAt: hit.fetchedAt, error: null }
+      : { key, status: 'idle', snapshot: null, fetchedAt: null, error: null }
   })
   const token = useRef(0)
   const filtersRef = useRef(filters)
@@ -39,31 +42,59 @@ export function useAdMetricsDashboard({
 
   const load = useCallback(
     async (force) => {
-      const hit = force ? null : cache.get(key)
+      const hit = force || filtersRef.current.accountId ? null : cache.get(key)
       if (hit) {
         token.current += 1
-        setState({ status: 'ready', snapshot: hit.snapshot, fetchedAt: hit.fetchedAt, error: null })
+        setState({
+          key,
+          status: 'ready',
+          snapshot: hit.snapshot,
+          fetchedAt: hit.fetchedAt,
+          error: null,
+        })
         return
       }
       const mine = ++token.current
+      const epoch = generation
       if (!isOnline()) {
-        setState((prev) => ({ ...prev, status: 'error', error: 'offline' }))
+        setState((prev) => ({
+          ...(filtersRef.current.accountId || prev.key !== key
+            ? { snapshot: null, fetchedAt: null }
+            : prev),
+          key,
+          status: 'error',
+          error: 'offline',
+        }))
         return
       }
-      setState((prev) => ({ ...prev, status: 'loading', error: null }))
+      setState((prev) => ({
+        ...(prev.key === key ? prev : { snapshot: null, fetchedAt: null }),
+        key,
+        status: 'loading',
+        error: null,
+      }))
       try {
         const snapshot = await fetcherRef.current(filtersRef.current)
-        if (mine !== token.current) return // chegou depois de outro filtro: descarta
+        if (mine !== token.current || epoch !== generation) return // chegou depois de outro filtro: descarta
         const entry = { snapshot, fetchedAt: Date.now() }
-        cache.set(key, entry)
-        setState({ status: 'ready', snapshot, fetchedAt: entry.fetchedAt, error: null })
+        if (!filtersRef.current.accountId) cache.set(key, entry)
+        setState({ key, status: 'ready', snapshot, fetchedAt: entry.fetchedAt, error: null })
       } catch (err) {
-        if (mine !== token.current) return
+        if (mine !== token.current || epoch !== generation) return
         console.error('[adMetrics] dashboard:', err)
-        setState((prev) => ({ ...prev, status: 'error', error: classifyError(err, isOnline()) }))
+        const error = classifyError(err, isOnline())
+        if (error === 'forbidden' || filtersRef.current.accountId) clearAdMetricsCache(userId)
+        setState((prev) => ({
+          ...(error === 'forbidden' || filtersRef.current.accountId
+            ? { snapshot: null, fetchedAt: null }
+            : prev),
+          key,
+          status: 'error',
+          error,
+        }))
       }
     },
-    [key]
+    [key, userId]
   )
 
   // Abre a aba / muda o filtro: usa o cache ou faz UMA leitura.
@@ -80,5 +111,10 @@ export function useAdMetricsDashboard({
     return load(true)
   }, [load, userId])
 
-  return { ...state, refresh }
+  return {
+    ...(state.key === key
+      ? state
+      : { status: 'loading', snapshot: null, error: null, fetchedAt: null }),
+    refresh,
+  }
 }

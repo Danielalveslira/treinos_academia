@@ -102,7 +102,8 @@ export function MetricsSummary({ summary }) {
         </Box>
         <Text sx={{ display: 'block', mt: 2, color: 'fg.muted', fontSize: 0 }}>
           “Alcance diário agregado” soma os únicos de cada dia: a mesma pessoa pode contar em dias,
-          comunidades e posicionamentos diferentes, então <b>não</b> é “pessoas únicas no período”.
+          campanhas, comunidades e posicionamentos diferentes, então <b>não</b> é “pessoas únicas no
+          período”.
         </Text>
       </Box>
       <Text sx={{ display: 'block', mt: 2, color: 'fg.muted', fontSize: 0 }}>

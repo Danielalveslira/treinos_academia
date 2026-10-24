@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { Box, Button, Flash, Spinner } from '@primer/react'
 import { PublicLayout } from './PublicLayout'
 import { useAuth } from '../hooks/useAuth'
@@ -9,6 +9,7 @@ import { AccountDeletionBlockedGate } from './AccountDeletionBlockedGate'
 import { resolveAccountBlockState, resolveLegalGateState } from '../utils/legal'
 
 export function ProtectedRoute({ children }) {
+  const location = useLocation()
   const {
     user,
     profile,
@@ -35,7 +36,18 @@ export function ProtectedRoute({ children }) {
       </Box>
     )
   }
-  if (!user) return <Navigate to="/login" replace />
+  if (!user)
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={
+          location.pathname === '/meus-anuncios'
+            ? { advertiserReturnTo: location.pathname + location.search }
+            : undefined
+        }
+      />
+    )
   // Checado antes do erro genérico de perfil abaixo: uma exclusão bloqueada para revisão
   // financeira NEGA a leitura do próprio perfil (mesma trava de deletionJobs/account_{uid}
   // que uma exclusão em andamento), então profileError/!profile também seriam verdadeiros

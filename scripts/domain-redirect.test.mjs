@@ -57,7 +57,7 @@ test('assets e arquivos estáticos em uso por uma aba já aberta NUNCA são redi
 test('fallback do app só cobre rotas conhecidas; páginas públicas ausentes ficam com 404', () => {
   const rewrite = config.rewrites.find((r) => r.destination === '/app-shell.html')
   const regex = sourceRegex(rewrite.source)
-  for (const path of ['app', 'login', 'admin/parcerias', 'comunidades/123', 'exercicios/123'])
+  for (const path of ['app', 'login', 'meus-anuncios', 'admin/parcerias', 'comunidades/123', 'exercicios/123'])
     assert.ok(regex.test(path), `${path} deve chegar ao app`)
   for (const path of ['pagina-inexistente', 'vitrine/produto-removido', 'assets/x.js'])
     assert.ok(!regex.test(path), `${path} deve retornar 404`)

@@ -30,6 +30,7 @@ import { ADMIN_ITEMS } from '../constants/adminNav'
 // render abaixo) pra serem testáveis sem precisar montar o ActionMenu.Overlay
 // inteiro (que depende de Portal/DOM real -- ver AccountMenu.test.js).
 export const ACCOUNT_ITEMS = [
+  { key: 'anuncios', to: '/meus-anuncios', icon: BriefcaseIcon, label: 'Meus anúncios' },
   { key: 'perfil', to: '/perfil', icon: PersonIcon, label: 'Meu perfil' },
   // profile?.usageProfile === 'common' só esconde o atalho (declutter) -- a
   // rota /minha-vitrine continua acessível e decide por conta própria (com

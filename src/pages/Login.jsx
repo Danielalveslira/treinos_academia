@@ -25,7 +25,12 @@ export default function Login() {
   // navegação, não "a próxima tela de login" como consumeLogoutReason).
   const passwordResetSuccess = Boolean(location.state?.passwordResetSuccess)
 
-  if (!loading && user) return <Navigate to="/app" replace />
+  const advertiserReturn = location.state?.advertiserReturnTo
+  const returnTo =
+    typeof advertiserReturn === 'string' && /^\/meus-anuncios(?:\?|$)/.test(advertiserReturn)
+      ? advertiserReturn
+      : '/app'
+  if (!loading && user) return <Navigate to={returnTo} replace />
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -36,7 +41,7 @@ export default function Login() {
       // replace: a tela de login não deve continuar no histórico depois de autenticado —
       // sem isso, o botão voltar reabre /login, que se redireciona de volta pra "/" (linha
       // acima), exigindo dois toques do voltar para sair de fato da tela de login.
-      navigate('/app', { replace: true })
+      navigate(returnTo, { replace: true })
     } catch (err) {
       console.error('[Auth] login:', err)
       if (err?.code === 'email_not_confirmed') {

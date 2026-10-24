@@ -4,6 +4,7 @@ import { ensureUserProfile, updateUserProfile, mapUserRow } from '../services/us
 import { logoutUser } from '../services/authService'
 import { getMyDeletionReview } from '../services/accountDeletionService'
 import { setLogoutReason } from '../utils/logoutReason'
+import { clearAdMetricsCache } from '../features/adMetrics/hooks/useAdMetricsDashboard'
 import { clearPageCache } from '../utils/pageCache'
 import { clearPhotoCache } from '../utils/photoBlobCache'
 import { getLegalAccess } from '../services/legalService'
@@ -323,6 +324,7 @@ export function AuthProvider({ children }) {
     }
 
     async function loadSession(supabaseUser) {
+      clearAdMetricsCache()
       const coldStart = isOfflineColdStartEnabled()
       const current = ++sessionRevisionRef.current
       if (supabaseUser) lastSessionUserIdRef.current = supabaseUser.id

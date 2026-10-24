@@ -23,8 +23,8 @@ const TOOLTIP = {
 
 // Carregado sob demanda (React.lazy em AdMetricsTab): só entra no bundle da aba Métricas, nunca no boot.
 // Barras = impressões visíveis (eixo esquerdo); linha = cliques (eixo direito, escala própria, porque cliques são
-// ordens de grandeza menores). Dias sem registro aparecem como zero, e o tooltip diz "sem registro".
-export default function DailyChart({ data, height = 220 }) {
+// ordens de grandeza menores). Dias sem registro são null; a linha tem lacunas.
+export default function DailyChart({ data, height = 220, mode = 'both' }) {
   const totalImpressions = data.reduce((sum, d) => sum + d.impressions, 0)
   const totalClicks = data.reduce((sum, d) => sum + d.clicks, 0)
   return (
@@ -75,24 +75,28 @@ export default function DailyChart({ data, height = 220 }) {
             }
             formatter={(value, name) => [formatCount(value), name]}
           />
-          <Bar
-            yAxisId="imp"
-            dataKey="impressions"
-            name="Impressões visíveis"
-            fill="var(--fgColor-accent)"
-            radius={[3, 3, 0, 0]}
-            maxBarSize={22}
-            isAnimationActive={false}
-          />
-          <Line
-            yAxisId="clk"
-            dataKey="clicks"
-            name="Cliques"
-            stroke="var(--fgColor-success)"
-            strokeWidth={2}
-            dot={false}
-            isAnimationActive={false}
-          />
+          {mode !== 'clicks' && (
+            <Bar
+              yAxisId="imp"
+              dataKey="impressions"
+              name="Impressões visíveis"
+              fill="var(--fgColor-accent)"
+              radius={[3, 3, 0, 0]}
+              maxBarSize={22}
+              isAnimationActive={false}
+            />
+          )}
+          {mode !== 'impressions' && (
+            <Line
+              yAxisId="clk"
+              dataKey="clicks"
+              name="Cliques"
+              stroke="var(--fgColor-success)"
+              strokeWidth={2}
+              dot={{ r: 2 }}
+              isAnimationActive={false}
+            />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

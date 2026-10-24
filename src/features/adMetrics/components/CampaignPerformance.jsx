@@ -1,12 +1,7 @@
+import { CampaignIdentity } from './CampaignIdentity'
 import { useMemo, useState } from 'react'
-import { Box, Button, Label, Select, Text, TextInput } from '@primer/react'
-import {
-  CAMPAIGN_SORTS,
-  campaignName,
-  formatCount,
-  formatPercent,
-  organizeCampaigns,
-} from '../utils/metrics'
+import { Box, Button, Select, Text, TextInput } from '@primer/react'
+import { CAMPAIGN_SORTS, formatCount, formatPercent, organizeCampaigns } from '../utils/metrics'
 
 // Desempenho por campanha. Busca e ordenação são locais (sem nova consulta); o detalhe de uma campanha abre
 // em AdMetricsTab com UMA leitura filtrada por campanha (cacheada).
@@ -24,7 +19,7 @@ export function CampaignPerformance({ rows, total, truncated, onOpen }) {
         <TextInput
           block
           aria-label="Buscar campanha"
-          placeholder="Buscar por empresa ou título"
+          placeholder="Buscar nesta página"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -41,6 +36,9 @@ export function CampaignPerformance({ rows, total, truncated, onOpen }) {
           ))}
         </Select>
       </Box>
+      <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted', mb: 2 }}>
+        Busca e ordenação desta página; totais e exportações seguem os filtros do relatório.
+      </Text>
       <Box
         sx={{
           border: '1px solid',
@@ -63,6 +61,7 @@ export function CampaignPerformance({ rows, total, truncated, onOpen }) {
               borderColor: 'border.default',
             }}
           >
+            <CampaignIdentity campaign={row} />
             <Box
               sx={{
                 display: 'flex',
@@ -71,26 +70,6 @@ export function CampaignPerformance({ rows, total, truncated, onOpen }) {
                 justifyContent: 'space-between',
               }}
             >
-              <Box sx={{ minWidth: 0 }}>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Text sx={{ fontWeight: 'bold', overflowWrap: 'anywhere' }}>
-                    {campaignName(row)}
-                  </Text>
-                  {row.deleted && <Label variant="secondary">Campanha excluída</Label>}
-                </Box>
-                {row.title && (
-                  <Text
-                    sx={{
-                      display: 'block',
-                      fontSize: 0,
-                      color: 'fg.muted',
-                      overflowWrap: 'anywhere',
-                    }}
-                  >
-                    {row.title}
-                  </Text>
-                )}
-              </Box>
               <Button
                 size="small"
                 onClick={() => onOpen(row)}
@@ -117,7 +96,7 @@ export function CampaignPerformance({ rows, total, truncated, onOpen }) {
       {truncated && (
         <Text sx={{ display: 'block', mt: 2, fontSize: 0, color: 'fg.muted' }}>
           Mostrando as {formatCount(rows.length)} campanhas com mais impressões de{' '}
-          {formatCount(total)}. Os totais acima incluem todas; use os filtros para ver as demais.
+          {formatCount(total)}. Os totais incluem todas; use “Mais campanhas” para continuar.
         </Text>
       )}
     </Box>
