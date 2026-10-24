@@ -7,6 +7,11 @@ language sql immutable set search_path = '' as $$
 $$;
 revoke all on function private.workout_sheet_limits() from public, anon, authenticated;
 
+create function private.sheet_trim(p_text text) returns text language sql immutable set search_path = '' as $$
+ select regexp_replace(p_text, '^\s+|\s+$', '', 'g')
+$$;
+revoke all on function private.sheet_trim(text) from public,anon,authenticated;
+
 create function private.valid_sheet_weekdays(p_days smallint[]) returns boolean
 language sql immutable set search_path = '' as $$
  select p_days is not null and cardinality(p_days)<=7
@@ -19,7 +24,7 @@ alter table public.exercises add constraint exercises_id_user_sheet_key unique(i
 create table public.workout_sheets (
  id uuid primary key default gen_random_uuid(),
  user_id uuid not null references public.users(id) on delete cascade,
- name text not null check(name=btrim(name) and char_length(name) between 1 and 80),
+ name text not null check(name=private.sheet_trim(name) and char_length(name) between 1 and 80),
  goal text check(goal in ('hipertrofia','forca','resistencia','condicionamento','mobilidade','other')),
  goal_description text not null default '' check(char_length(goal_description)<=500),
  weekdays smallint[] not null default '{}' check(private.valid_sheet_weekdays(weekdays)),
@@ -50,10 +55,12 @@ create index workout_sheets_list_idx on public.workout_sheets(user_id,archived_a
 create index workout_sheet_items_order_idx on public.workout_sheet_exercises(sheet_id,sort_order,id);
 alter table public.workout_sheets enable row level security;
 alter table public.workout_sheet_exercises enable row level security;
+-- has_app_access() is SECURITY DEFINER and checks current_session_active internally.
+-- Do not grant direct execution of the private session helper to authenticated.
 create policy sheets_read on public.workout_sheets for select to authenticated
- using(user_id=(select auth.uid()) and (select public.has_app_access()) and (select private.current_session_active()));
+ using(user_id=(select auth.uid()) and (select public.has_app_access()));
 create policy sheet_items_read on public.workout_sheet_exercises for select to authenticated
- using(user_id=(select auth.uid()) and (select public.has_app_access()) and (select private.current_session_active()));
+ using(user_id=(select auth.uid()) and (select public.has_app_access()));
 revoke all on public.workout_sheets,public.workout_sheet_exercises from public,anon,authenticated;
 grant select on public.workout_sheets,public.workout_sheet_exercises to authenticated;
 
@@ -89,7 +96,7 @@ begin
  if p_expected_revision is distinct from s.revision then raise exception 'SHEET_VERSION_CONFLICT'; end if;
  if jsonb_typeof(p_metadata) is distinct from 'object' or jsonb_typeof(p_items) is distinct from 'array'
  or jsonb_array_length(p_items)>(lim->>'items')::int then raise exception 'SHEET_INVALID_PAYLOAD'; end if;
- nm:=btrim(p_metadata->>'name'); gl:=nullif(p_metadata->>'goal',''); gd:=btrim(coalesce(p_metadata->>'goal_description',''));
+ nm:=private.sheet_trim(p_metadata->>'name'); gl:=nullif(p_metadata->>'goal',''); gd:=private.sheet_trim(coalesce(p_metadata->>'goal_description',''));
  if nm is null or char_length(nm) not between 1 and 80 or char_length(gd)>500
  or (gl is not null and gl not in ('hipertrofia','forca','resistencia','condicionamento','mobilidade','other'))
  or jsonb_typeof(p_metadata->'weekdays') is distinct from 'array' then raise exception 'SHEET_INVALID_PAYLOAD'; end if;
@@ -111,7 +118,7 @@ begin
   item.rest_seconds:=(r.value->>'rest_seconds')::int;
   item.target_duration_minutes:=(r.value->>'target_duration_minutes')::int;
   item.target_distance_km:=(r.value->>'target_distance_km')::numeric;
-  item.note:=btrim(coalesce(r.value->>'note',''));
+  item.note:=private.sheet_trim(coalesce(r.value->>'note',''));
   if (item.target_sets is not null and item.target_sets not between 1 and (lim->>'sets')::int)
   or (item.reps_min is not null and item.reps_min not between 1 and 1000)
   or (item.reps_max is not null and item.reps_max not between 1 and 1000)
@@ -135,7 +142,8 @@ begin
  from jsonb_populate_recordset(null::public.workout_sheet_exercises,normalized) x
  on conflict(sheet_id,exercise_id) do update set sort_order=excluded.sort_order,target_sets=excluded.target_sets,
  reps_min=excluded.reps_min,reps_max=excluded.reps_max,rest_seconds=excluded.rest_seconds,
- target_duration_minutes=excluded.target_duration_minutes,target_distance_km=excluded.target_distance_km,note=excluded.note,updated_at=now();
+ target_duration_minutes=excluded.target_duration_minutes,target_distance_km=excluded.target_distance_km,note=excluded.note,updated_at=now()
+ where (public.workout_sheet_exercises.sort_order,public.workout_sheet_exercises.target_sets,public.workout_sheet_exercises.reps_min,public.workout_sheet_exercises.reps_max,public.workout_sheet_exercises.rest_seconds,public.workout_sheet_exercises.target_duration_minutes,public.workout_sheet_exercises.target_distance_km,public.workout_sheet_exercises.note) is distinct from (excluded.sort_order,excluded.target_sets,excluded.reps_min,excluded.reps_max,excluded.rest_seconds,excluded.target_duration_minutes,excluded.target_distance_km,excluded.note);
  update public.workout_sheets set name=nm,goal=gl,goal_description=gd,weekdays=days,revision=revision+1,updated_at=now() where id=s.id;
  return jsonb_build_object('id',s.id,'revision',s.revision+1);
 exception when invalid_text_representation or numeric_value_out_of_range or invalid_parameter_value then raise exception 'SHEET_INVALID_PAYLOAD';

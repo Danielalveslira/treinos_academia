@@ -225,7 +225,9 @@ export default function Exercises() {
       console.error('[Exercises] delete:', err)
       showToast(
         err.code === '23503'
-          ? 'Este exercício tem treinos registrados. Inative-o para preservar o histórico.'
+          ? String(err.message).includes('workout_sheet')
+            ? 'Este exercício está em uma ficha. Remova-o das fichas antes de excluir da biblioteca.'
+            : 'Este exercício tem treinos registrados. Inative-o para preservar o histórico.'
           : 'Erro ao excluir exercício.',
         'danger'
       )

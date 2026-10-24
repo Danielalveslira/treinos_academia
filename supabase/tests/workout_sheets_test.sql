@@ -63,6 +63,25 @@ select is((public.get_my_workout_sheet((select id from current_sheet))->'items'-
 select throws_ok($$select public.get_my_workout_sheet((select id from current_sheet),true)$$,'P0001','SHEET_NOT_READY','retirado não inicia');
 select throws_ok($$select public.save_workout_sheet((select id from current_sheet),(select revision from public.workout_sheets where id=(select id from current_sheet)),'{"name":"A","weekdays":[]}','[{"exercise_id":"98e00000-0000-0000-0000-000000000002"}]')$$,'P0001','SHEET_EXERCISE_UNAVAILABLE','não anexa retirado');
 select lives_ok($$select public.save_workout_sheet((select id from current_sheet),(select revision from public.workout_sheets where id=(select id from current_sheet)),'{"name":"A editada","weekdays":[]}','[{"exercise_id":"98e00000-0000-0000-0000-000000000001","note":"Substituir"}]')$$,'retirado existente permite editar planejamento');
+-- Cardinality, unchanged saves and active limits remain enforced by the server.
+select throws_ok($$select public.save_workout_sheet((select id from current_sheet),(select revision from public.workout_sheets where id=(select id from current_sheet)),'{"name":"A","weekdays":[]}',(select jsonb_agg(jsonb_build_object('exercise_id',gen_random_uuid())) from generate_series(1,41)))$$,'P0001','SHEET_INVALID_PAYLOAD','limite de 40 itens validado antes de qualquer escrita');
+create temp table unchanged_before as select revision from public.workout_sheets where id=(select id from current_sheet);
+select lives_ok($$select public.save_workout_sheet((select id from current_sheet),(select revision from unchanged_before),'{"name":"A editada","weekdays":[]}','[{"exercise_id":"98e00000-0000-0000-0000-000000000001","note":"Substituir"}]')$$,'salvar sem mudança é permitido sem gravar');
+select is((select revision from public.workout_sheets where id=(select id from current_sheet)),(select revision from unchanged_before),'sem mudança não incrementa revisão');
+select throws_ok($$update public.workout_sheets set name='Bypass'$$,'42501',null,'update direto negado');
+select throws_ok($$delete from public.workout_sheets$$,'42501',null,'delete direto negado');
+select throws_ok($$insert into public.workout_sheet_exercises(sheet_id,user_id,exercise_id,sort_order) values((select id from current_sheet),auth.uid(),'98e00000-0000-0000-0000-000000000003',0)$$,'42501',null,'insert direto de item negado');
+select lives_ok($$select public.create_workout_sheet(gen_random_uuid(),'Ficha '||n) from generate_series(1,38) n$$,'até 40 fichas ativas');
+select is((select count(*)::int from public.workout_sheets where archived_at is null),40,'40 fichas ativas');
+select throws_ok($$select public.create_workout_sheet(gen_random_uuid(),'Excesso')$$,'P0001','SHEET_LIMIT_REACHED','limite ativo no servidor');
+select throws_ok($$select public.duplicate_workout_sheet((select id from current_sheet),gen_random_uuid())$$,'P0001','SHEET_LIMIT_REACHED','duplicação respeita limite');
+select lives_ok($$select public.set_workout_sheet_archived((select id from current_sheet),true,(select revision from public.workout_sheets where id=(select id from current_sheet)))$$,'arquivar libera uma vaga');
+select lives_ok($$select public.create_workout_sheet('98000000-0000-0000-0000-000000000099','Vaga')$$,'criação após arquivar');
+select throws_ok($$select public.set_workout_sheet_archived((select id from current_sheet),false,(select revision from public.workout_sheets where id=(select id from current_sheet)))$$,'P0001','SHEET_LIMIT_REACHED','restauração também respeita limite');
+select is(jsonb_array_length(public.list_my_workout_sheets()),40,'lista ativa limitada');
+select is(jsonb_array_length(public.list_my_workout_sheets(true)),1,'lista arquivada separada');
+explain (analyze,buffers) select id,name from public.workout_sheets where user_id=auth.uid() and archived_at is null order by sort_order,id limit 40;
+explain (analyze,buffers) select exercise_id,sort_order from public.workout_sheet_exercises where sheet_id=(select id from current_sheet) order by sort_order,id;
 reset role;
 select pg_temp.revoke_test_session('98a00000-0000-0000-0000-000000000001');
 set local role authenticated;
