@@ -1,15 +1,16 @@
 import { ActionMenu, ActionList, IconButton } from '@primer/react'
 import { KebabHorizontalIcon } from '@primer/octicons-react'
 
-export function RowActionsMenu({ actions, disabled = false }) {
+export function RowActionsMenu({ actions, disabled = false, label = 'Mais ações', triggerRef }) {
   return (
     <ActionMenu>
       <ActionMenu.Anchor>
         <IconButton
+          ref={triggerRef}
           disabled={disabled}
           icon={KebabHorizontalIcon}
           variant="invisible"
-          aria-label="Mais ações"
+          aria-label={label}
           sx={{ color: 'fg.muted' }}
         />
       </ActionMenu.Anchor>
