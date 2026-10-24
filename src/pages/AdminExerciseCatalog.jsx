@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Box,
   Button,
@@ -11,7 +11,7 @@ import {
   TextInput,
   Textarea,
 } from '@primer/react'
-import { PlusIcon, SearchIcon, TrashIcon } from '@primer/octicons-react'
+import { CheckCircleFillIcon, PlusIcon, SearchIcon, TrashIcon } from '@primer/octicons-react'
 import { useAdminExerciseCatalog } from '../hooks/useAdminExerciseCatalog'
 import { useAdminExerciseVisuals } from '../hooks/useAdminExerciseVisuals'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
@@ -113,11 +113,26 @@ function DynamicList({ label, values, onChange, placeholder, addLabel, multiline
 
 function ExerciseRow({ exercise, active, onSelect }) {
   const meta = [exercise.primary_muscle, exercise.equipment].filter(Boolean).map(formatCatalogLabel).join(' · ')
+  // published_media_refs só ganha a chave "version" quando apply_published_visual_set confirma
+  // AMBOS os assets start/end completos (ver migration) -- mesmo sinal que a tela antiga usava,
+  // já vem na própria listagem, sem consulta extra por linha.
+  const hasCompleteImages = Boolean(exercise.published_media_refs?.version)
   return (
     <li>
       <button type="button" className="ev-row" aria-pressed={active} onClick={() => onSelect(exercise)}>
         <span className="ev-row-text">
-          <span className="ev-row-name">{exercise.name}</span>
+          <span className="ev-row-name">
+            {exercise.name}
+            {hasCompleteImages && (
+              <CheckCircleFillIcon
+                size={14}
+                fill="success.fg"
+                aria-label="Imagens de início e fim completas"
+                data-testid={`has-images-${exercise.id}`}
+                style={{ marginLeft: 6, verticalAlign: 'middle' }}
+              />
+            )}
+          </span>
           <span className="ev-muted">{meta}</span>
         </span>
       </button>
@@ -288,6 +303,21 @@ export default function AdminExerciseCatalog() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog.selected?.id])
 
+  // visuals.coverage só ganha uma referência nova depois de publish:/restore: (useAdminExerciseVisuals
+  // já recarrega a cobertura só nesses dois casos -- os únicos que podem mudar
+  // published_media_refs; reject/delete nunca tocam a versão publicada). Reusa esse sinal já
+  // existente para atualizar o indicador verde/filtro "sem imagem" da listagem, sem nenhuma
+  // consulta nova; pula a própria carga inicial (catalog.loadList() já roda sozinho no mount).
+  const didMountCoverageRef = useRef(false)
+  useEffect(() => {
+    if (!didMountCoverageRef.current) {
+      didMountCoverageRef.current = true
+      return
+    }
+    catalog.loadList()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visuals.coverage])
+
   const lastPage = Math.max(Math.ceil(list.total / visuals.pageSize) - 1, 0)
   // visuals.select() roda num efeito (depois do commit que trocou catalog.selected) -- entre o
   // clique e o efeito rodar, visuals.selected ainda é o valor antigo (ou null). Só monta
@@ -345,6 +375,14 @@ export default function AdminExerciseCatalog() {
           />
           <Button type="submit">Buscar</Button>
         </form>
+        <label className="ev-check">
+          <input
+            type="checkbox"
+            checked={catalog.filters.onlyMissingImages}
+            onChange={catalog.toggleOnlyMissingImages}
+          />
+          <span>Somente sem imagem</span>
+        </label>
         <Button leadingVisual={PlusIcon} onClick={catalog.startNewDraft}>
           Novo exercício
         </Button>

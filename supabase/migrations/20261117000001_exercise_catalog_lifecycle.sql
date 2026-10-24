@@ -862,7 +862,8 @@ create or replace function public.admin_list_catalog_exercises(
   p_search text default null,
   p_muscle text default null,
   p_limit integer default 20,
-  p_offset integer default 0
+  p_offset integer default 0,
+  p_only_missing_images boolean default false
 ) returns table (
   id uuid, provider text, provider_exercise_id text, name text, status text, revision bigint,
   primary_muscle text, muscles text[], equipment text, category text, difficulty text,
@@ -890,13 +891,19 @@ begin
       and (p_muscle is null or ec.muscles @> array[p_muscle] or ec.primary_muscle = p_muscle)
       and (p_search is null or p_search = ''
            or ec.name_normalized ilike '%' || public._normalize_search_value(p_search) || '%')
+      -- Mesmo sinal que o antigo /admin/exercicios-imagens usava (onlyMissing via
+      -- published_media_refs->version): indicador de exibição/triagem, não o portão de
+      -- publicação (esse continua validando contra exercise_visual_sets/assets/storage.objects
+      -- de verdade em admin_publish_catalog_exercise). Filtra no SERVIDOR, contra a tabela
+      -- inteira -- nunca só a página já carregada.
+      and (not p_only_missing_images or not (ec.published_media_refs ? 'version'))
     order by ec.updated_at desc
     limit least(greatest(p_limit, 1), 50)
     offset greatest(p_offset, 0);
 end;
 $$;
-revoke all on function public.admin_list_catalog_exercises(text, text, text, integer, integer) from public, anon;
-grant execute on function public.admin_list_catalog_exercises(text, text, text, integer, integer) to authenticated;
+revoke all on function public.admin_list_catalog_exercises(text, text, text, integer, integer, boolean) from public, anon;
+grant execute on function public.admin_list_catalog_exercises(text, text, text, integer, integer, boolean) to authenticated;
 
 -- ============================================================================================
 -- 13) Auditoria: leitura filtrada (admin_audit_log já existe e é reaproveitada -- não cria

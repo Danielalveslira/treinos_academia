@@ -27,13 +27,21 @@ export function describeCatalogAdminError(error) {
   )
 }
 
-export async function listCatalogExercises({ status = null, search = null, muscle = null, limit = PAGE_SIZE, offset = 0 } = {}) {
+export async function listCatalogExercises({
+  status = null,
+  search = null,
+  muscle = null,
+  limit = PAGE_SIZE,
+  offset = 0,
+  onlyMissingImages = false,
+} = {}) {
   const { data, error } = await supabase.rpc('admin_list_catalog_exercises', {
     p_status: status,
     p_search: search || null,
     p_muscle: muscle || null,
     p_limit: limit,
     p_offset: offset,
+    p_only_missing_images: onlyMissingImages,
   })
   if (error) throw error
   const rows = data || []

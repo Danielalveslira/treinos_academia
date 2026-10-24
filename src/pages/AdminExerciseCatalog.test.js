@@ -80,6 +80,9 @@ before(async () => {
             button: (label) => buttons(label)[0],
             click: (node) => act(() => { node.props.onClick({ preventDefault() {} }) }),
             rowButtons: () => root.findAll((n) => n.type === 'button' && String(n.props.className) === 'ev-row'),
+            onlyMissingImagesCheckbox: () => root.findAll((n) => n.type === 'input' && n.props.type === 'checkbox')[0],
+            toggle: (node) => act(() => { node.props.onChange({ target: { checked: !node.props.checked } }) }),
+            hasImageIndicator: (id) => root.findAll((n) => n.props && n.props['data-testid'] === 'has-images-' + id).length > 0,
             nameInput: () => root.findAll((n) => n.type === 'input' && n.props['aria-label'] === undefined && n.props.value !== undefined && n.props.onChange)[0],
             setField: (ariaLabelOrFirst, value) => act(() => {
               const input = typeof ariaLabelOrFirst === 'string'
@@ -148,6 +151,12 @@ const EXERCISE = {
   pending_content: null,
   published_media_refs: { version: 1, images: [] },
   total_count: 1,
+}
+const EXERCISE_NO_IMAGE = {
+  ...EXERCISE,
+  id: 'cat-2',
+  name: 'Agachamento livre',
+  published_media_refs: { images: [] },
 }
 
 beforeEach(() => {
@@ -228,5 +237,37 @@ test('Criar rascunho começa desabilitado (sem seleção) e habilita ao digitar 
   const createButton = () => page.button('Criar rascunho')
   assert.ok(createButton(), 'botão existe quando nada está selecionado')
   assert.equal(createButton().props.disabled, true)
+  page.unmount()
+})
+
+test('indicador verde aparece só para exercícios com imagens START/END completas (published_media_refs.version)', async () => {
+  globalThis.__catalogSvc.list = { data: [EXERCISE, EXERCISE_NO_IMAGE], total: 2 }
+  const page = mount()
+  await tick()
+  assert.equal(page.hasImageIndicator('cat-1'), true, 'exercício com version publicada mostra o indicador')
+  assert.equal(page.hasImageIndicator('cat-2'), false, 'exercício sem imagem não mostra o indicador')
+  page.unmount()
+})
+
+test('filtro "Somente sem imagem" pede a página inteira filtrada no servidor, não a página carregada', async () => {
+  const page = mount()
+  await tick()
+  assert.deepEqual(called('__catalogSvc', 'listCatalogExercises').at(-1)[1], {
+    status: 'published',
+    search: '',
+    muscle: '',
+    limit: 20,
+    offset: 0,
+    onlyMissingImages: false,
+  })
+
+  page.toggle(page.onlyMissingImagesCheckbox())
+  await tick()
+  assert.equal(called('__catalogSvc', 'listCatalogExercises').at(-1)[1].onlyMissingImages, true, 'liga o filtro')
+  assert.equal(called('__catalogSvc', 'listCatalogExercises').at(-1)[1].offset, 0, 'volta pra primeira página ao ligar o filtro')
+
+  page.toggle(page.onlyMissingImagesCheckbox())
+  await tick()
+  assert.equal(called('__catalogSvc', 'listCatalogExercises').at(-1)[1].onlyMissingImages, false, 'desliga o filtro')
   page.unmount()
 })

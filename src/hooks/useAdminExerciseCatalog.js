@@ -70,7 +70,7 @@ function toFormState(row) {
 // nunca fala de imagem.
 export function useAdminExerciseCatalog() {
   const [section, setSection] = useState('published') // 'published' | 'draft' | 'in_review' | 'withdrawn'
-  const [filters, setFilters] = useState({ search: '', muscle: '' })
+  const [filters, setFilters] = useState({ search: '', muscle: '', onlyMissingImages: false })
   const [page, setPage] = useState(0)
   const [list, setList] = useState({ data: [], total: 0 })
   const [listLoading, setListLoading] = useState(true)
@@ -102,6 +102,7 @@ export function useAdminExerciseCatalog() {
         muscle: filters.muscle,
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
+        onlyMissingImages: filters.onlyMissingImages,
       })
       if (request === listRequest.current) setList(result)
     } catch (error) {
@@ -159,6 +160,11 @@ export function useAdminExerciseCatalog() {
   function setMuscleFilter(muscle) {
     setPage(0)
     setFilters((current) => ({ ...current, muscle }))
+  }
+
+  function toggleOnlyMissingImages() {
+    setPage(0)
+    setFilters((current) => ({ ...current, onlyMissingImages: !current.onlyMissingImages }))
   }
 
   async function run(name, action) {
@@ -224,6 +230,7 @@ export function useAdminExerciseCatalog() {
     list,
     listLoading,
     listError,
+    loadList,
     selected,
     formState,
     isDirty,
@@ -239,6 +246,7 @@ export function useAdminExerciseCatalog() {
     updateFormField,
     search,
     setMuscleFilter,
+    toggleOnlyMissingImages,
     saveContent,
     submitForReview,
     publish,

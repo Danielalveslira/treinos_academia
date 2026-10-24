@@ -282,6 +282,12 @@ select throws_ok(format($f$ update public.exercise_catalog set is_active = true 
 -- ----------------------------------------------------------------------------------------------
 select pg_temp.as_user('95000000-0000-0000-0000-000000000001');
 select is((select count(*)::int from (select public.admin_list_catalog_exercises('withdrawn')) t), 1, 'admin_list mostra retirados (d2)');
+select is((select count(*)::int from (select public.admin_list_catalog_exercises('withdrawn', null, null, 20, 0, true)) t), 1,
+  'filtro p_only_missing_images inclui d2 (retirado, nunca teve imagem publicada)');
+select is((select count(*)::int from (select public.admin_list_catalog_exercises('in_review', null, null, 20, 0, true)) t), 0,
+  'filtro p_only_missing_images exclui d1 (em revisão, mas já tem imagem publicada de antes)');
+select is((select count(*)::int from (select public.admin_list_catalog_exercises('in_review')) t) > 0, true,
+  'sem o filtro, d1 continua aparecendo em in_review (prova que o filtro é opcional, não uma segunda busca)');
 select pg_temp.as_user(null);
 select is((select count(*)::int from public.search_exercise_catalog(null,null,null,null,null,50,0) where id = (select (r).id from d2)), 0, 'busca pública nunca mostra retirado');
 select is((select count(*)::int from public.search_exercise_catalog(null,null,null,null,null,50,0) where id = (select (r).id from d3)), 1, 'busca pública mostra o republicado');
