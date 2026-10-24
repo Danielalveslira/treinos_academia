@@ -68,6 +68,35 @@ try {
         }
         assert.ok(await header.locator('a[href="/login"]').isVisible(), `${path}/${width}: login missing`)
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${path}/${width}: document overflow`)
+        // The signed-in access label is longer; verify the same layout contract too.
+        if (!staticRoutes.includes(path)) {
+          const signedInFits = await header.locator('a[href="/login"]').evaluate(element => {
+            const guestLabel = element.textContent
+            element.textContent = 'Ir para o app'
+            const header = element.closest('header')
+            const fits = [...header.querySelectorAll('a, button')].filter(item => item.getClientRects().length).every(item => {
+              const rect = item.getBoundingClientRect()
+              return rect.x >= 0 && rect.right <= innerWidth + 1
+            })
+            element.textContent = guestLabel
+            return fits
+          })
+          assert.ok(signedInFits, `${path}/${width}: signed-in header overflow`)
+        } else {
+          const signedInFits = await header.evaluate(element => {
+            const root = document.documentElement
+            const previous = root.getAttribute('data-public-auth')
+            root.dataset.publicAuth = 'authed'
+            const fits = [...element.querySelectorAll('a, button')].filter(item => item.getClientRects().length).every(item => {
+              const rect = item.getBoundingClientRect()
+              return rect.x >= 0 && rect.right <= innerWidth + 1
+            })
+            if (previous === null) root.removeAttribute('data-public-auth')
+            else root.setAttribute('data-public-auth', previous)
+            return fits
+          })
+          assert.ok(signedInFits, `${path}/${width}: signed-in public header overflow`)
+        }
         const trigger = header.getByRole('button', { name: 'Menu de navegação' })
         if (width < 768 || staticRoutes.includes(path)) {
           await trigger.click()

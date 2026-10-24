@@ -430,10 +430,11 @@ button:focus-visible {
 }
 @media (max-width: 767px) {
   .public-shell > .public-header {
-    padding: var(--base-size-8, 8px) var(--base-size-16, 16px);
+    padding: var(--base-size-8, 8px) var(--base-size-12, 12px);
     gap: var(--base-size-8, 8px);
   }
-  .public-shell .auth-header-actions { gap: var(--base-size-8, 8px); flex-shrink: 0; }
+  .public-shell > .public-header .brand { gap: var(--base-size-4, 4px); }
+  .public-shell .auth-header-actions { gap: var(--base-size-4, 4px); flex-shrink: 0; }
   .auth-header-discovery { display: none; }
   .auth-header-menu { display: block; }
 }
