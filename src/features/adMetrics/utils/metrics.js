@@ -75,7 +75,14 @@ const dayNumber = (iso) =>
 // Validação de UX do intervalo personalizado (o servidor valida de novo). Devolve a mensagem de erro ou null.
 export function validateCustomRange(from, to, today = null) {
   if (!from || !to) return 'Informe a data inicial e a final.'
-  if (!DAY_RE.test(from) || !DAY_RE.test(to)) return 'Datas inválidas.'
+  if (
+    !DAY_RE.test(from) ||
+    !DAY_RE.test(to) ||
+    [from, to].some(
+      (day) => new Date(dayNumber(day) * 86_400_000).toISOString().slice(0, 10) !== day
+    )
+  )
+    return 'Datas inválidas.'
   if (to < from) return 'A data final deve ser igual ou posterior à inicial.'
   if (dayNumber(to) - dayNumber(from) + 1 > MAX_RANGE_DAYS)
     return `O intervalo pode ter no máximo ${MAX_RANGE_DAYS} dias.`
@@ -84,7 +91,7 @@ export function validateCustomRange(from, to, today = null) {
   return null
 }
 
-// Série densa para o gráfico: dias sem registro entram com 0 e `recorded: false` (o gráfico não os apresenta como medição).
+// Série densa para o gráfico: dias sem registro entram com null e `recorded: false` (o gráfico não os apresenta como medição).
 export function fillDailySeries(daily, period) {
   if (!period) return []
   const byDay = new Map((daily || []).map((row) => [row.day, row]))
@@ -96,8 +103,8 @@ export function fillDailySeries(daily, period) {
     const row = byDay.get(day)
     out.push({
       day,
-      impressions: row ? row.visible_impressions : 0,
-      clicks: row ? row.clicks : 0,
+      impressions: row ? row.visible_impressions : null,
+      clicks: row ? row.clicks : null,
       recorded: Boolean(row),
     })
   }

@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom'
 import { Suspense, lazy, useMemo, useRef, useState } from 'react'
 import { Box, Heading, Text, Button, Spinner, Label, UnderlineNav } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
@@ -17,11 +18,13 @@ import { SponsoredAdCapError, SponsoredAdGlobalCapError } from '../utils/validat
 
 // Aba Métricas: módulo (e o gráfico) só são baixados quando o superadmin abre a aba; nada de leitura antes disso.
 const AdMetricsTab = lazy(() => import('../features/adMetrics/components/AdMetricsTab'))
+const AdvertiserAdmin = lazy(() => import('../features/adMetrics/components/AdvertiserAdmin'))
 const CommercialAdmin = lazy(() => import('../components/CommercialAdmin'))
 
 const TABS = [
   { key: 'campaigns', label: 'Campanhas' },
   { key: 'metrics', label: 'Métricas' },
+  { key: 'advertisers', label: 'Anunciantes' },
   { key: 'commercial', label: 'Propostas e produtos' },
 ]
 
@@ -33,8 +36,10 @@ export default function AdminSponsoredAds() {
   const { ads, loading, error, refresh, add, edit, remove } = useAdminSponsoredAds()
   const { communities } = useAdminCommunities()
   const { user } = useAuth()
-  const [tab, setTab] = useState('campaigns')
-  const [metricsOpened, setMetricsOpened] = useState(false)
+  const [params] = useSearchParams()
+  const reportRequested = params.get('report') === 'metrics'
+  const [tab, setTab] = useState(reportRequested ? 'metrics' : 'campaigns')
+  const [metricsOpened, setMetricsOpened] = useState(reportRequested)
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
   const [formOpen, setFormOpen] = useState(false)
@@ -150,12 +155,39 @@ export default function AdminSponsoredAds() {
       {metricsOpened && (
         <Box hidden={tab !== 'metrics'}>
           <Suspense fallback={<Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}>
-            <AdMetricsTab userId={user?.uid} ads={ads} communities={communities} />
+            <AdMetricsTab
+              userId={user?.uid}
+              ads={ads}
+              communities={communities}
+              initialFilters={
+                reportRequested
+                  ? {
+                      days: Number(params.get('days')) || 30,
+                      ...Object.fromEntries(
+                        ['from', 'to', 'adId', 'communityId', 'placement'].map((k) => [
+                          k,
+                          params.get(k) || null,
+                        ])
+                      ),
+                    }
+                  : undefined
+              }
+            />
           </Suspense>
         </Box>
       )}
 
-      {tab === 'commercial' && <Suspense fallback={<Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}><CommercialAdmin /></Suspense>}
+      {tab === 'advertisers' && (
+        <Suspense fallback={<Spinner />}>
+          <AdvertiserAdmin />
+        </Suspense>
+      )}
+
+      {tab === 'commercial' && (
+        <Suspense fallback={<Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}>
+          <CommercialAdmin />
+        </Suspense>
+      )}
 
       <Box hidden={tab !== 'campaigns'}>
         {formOpen && (

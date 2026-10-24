@@ -10,6 +10,7 @@ import { PageFallback } from './components/PageFallback'
 import { routeLoaders } from './routeLoaders'
 import { COMMENTS_ENABLED } from './features/comments/config'
 
+const MyAds = lazy(() => import('./pages/MyAds'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
@@ -95,6 +96,7 @@ export function AppRoutes() {
           <Route path="/historico" element={<History />} />
           <Route path="/progresso" element={<Progress />} />
         </Route>
+        <Route path="/meus-anuncios" element={<MyAds />} />
         <Route path="/perfil" element={<Profile />} />
         <Route path="/evocash" element={<EvoCash />} />
         <Route path="/entenda-suas-moedas" element={<EconomyGuide />} />

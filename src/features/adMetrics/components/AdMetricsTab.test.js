@@ -30,6 +30,8 @@ before(async () => {
           global.window.matchMedia = global.window.matchMedia || (() => ({
             matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {},
           }))
+          global.window.addEventListener ||= () => {}
+          global.window.removeEventListener ||= () => {}
           global.document = global.document || { addEventListener() {}, removeEventListener() {} }
           let renderer
           act(() => {
@@ -400,5 +402,55 @@ test('intervalo personalizado inválido não consulta; válido consulta uma vez 
   await tick()
   assert.equal(calls.length, 1, 'datas vazias: validação local, nenhuma leitura')
   assert.match(view.text(), /Informe a data inicial e a final/)
+  view.unmount()
+})
+
+test('revogação em nova leitura remove o snapshot anterior e o cache', async () => {
+  let revoked = false
+  const { props } = setup(async () => {
+    if (revoked) throw { code: '42501', message: 'PERMISSION_DENIED' }
+    return snapshot()
+  })
+  const view = lib.mount({ ...props, accountId: 'account-A' })
+  await tick()
+  assert.match(view.text(), /Impressões visíveis/)
+  revoked = true
+  view.click('Atualizar')
+  await tick()
+  assert.match(view.text(), /Acesso negado/)
+  assert.doesNotMatch(view.text(), /Impressões visíveis/)
+  view.unmount()
+})
+
+test('portal revalida no servidor ao reabrir; contas não compartilham snapshot', async () => {
+  const { props, calls } = setup(async () => snapshot())
+  const first = lib.mount({ ...props, accountId: 'A' })
+  await tick()
+  first.unmount()
+  const again = lib.mount({ ...props, accountId: 'A' })
+  await tick()
+  again.unmount()
+  const other = lib.mount({ ...props, accountId: 'B' })
+  await tick()
+  other.unmount()
+  assert.equal(calls.length, 3)
+  assert.deepEqual(
+    calls.map((c) => c.accountId),
+    ['A', 'A', 'B']
+  )
+})
+
+test('limpeza da sessão descarta resposta em voo', async () => {
+  let resolve
+  const pending = new Promise((r) => {
+    resolve = r
+  })
+  const { props } = setup(async () => pending)
+  const view = lib.mount({ ...props, accountId: 'A' })
+  await tick()
+  lib.clearAdMetricsCache()
+  resolve(snapshot())
+  await tick()
+  assert.doesNotMatch(view.text(), /Impressões visíveis/)
   view.unmount()
 })

@@ -83,16 +83,16 @@ test('validação do intervalo personalizado', () => {
   assert.match(validateCustomRange('01/09/2026', '30/09/2026'), /inválidas/)
 })
 
-test('série diária: preenche dias sem registro com zero e marca recorded=false', () => {
+test('série diária: preserva ausência de registro como null e marca recorded=false', () => {
   const period = { from: '2026-10-07', to: '2026-10-09' }
   const series = fillDailySeries(
     [{ day: '2026-10-08', visible_impressions: 10, clicks: 2 }],
     period
   )
   assert.deepEqual(series, [
-    { day: '2026-10-07', impressions: 0, clicks: 0, recorded: false },
+    { day: '2026-10-07', impressions: null, clicks: null, recorded: false },
     { day: '2026-10-08', impressions: 10, clicks: 2, recorded: true },
-    { day: '2026-10-09', impressions: 0, clicks: 0, recorded: false },
+    { day: '2026-10-09', impressions: null, clicks: null, recorded: false },
   ])
   assert.deepEqual(fillDailySeries([], null), [])
   // virada de mês/ano sem deslocamento de fuso
