@@ -19,6 +19,10 @@ import { loadDoneExerciseIds } from '../utils/doneExercisesStorage'
 import { canStartExercise, isLegacyExercise } from '../utils/personalExercises.js'
 import { originState, returnToOrigin } from '../utils/navigation'
 import { plannedWorkoutNotice } from '../utils/plannedWorkout'
+import { useWorkoutSheets } from '../features/workoutSheets/useWorkoutSheets.js'
+import { sheetError } from '../features/workoutSheets/workoutSheetsService.js'
+import { sheetScopeExercises } from '../features/workoutSheets/workoutSheetValidation.js'
+import '../features/workoutSheets/workoutSheets.css'
 import { businessDayKey, isBusinessDayKey } from '../utils/businessDate'
 
 // "Hoje" é o dia de NEGÓCIO (America/Sao_Paulo), não o do aparelho (ver utils/businessDate.js).
@@ -38,13 +42,43 @@ async function serverBusinessDay() {
 }
 
 export default function NewWorkout() {
+  const [params] = useSearchParams()
+  const { user } = useAuth()
+  const sheetId = params.get('ficha')
+  return sheetId ? <SheetWorkout key={`${user.uid}:${sheetId}`} id={sheetId} /> : <WorkoutSession />
+}
+
+function SheetWorkout({ id }) {
+  const { data, loading, error, refresh, online } = useWorkoutSheets(id, true)
+  const confirmed = useRef(null)
+  if (data) confirmed.current = data
+  if (confirmed.current && (!error || !online))
+    return <WorkoutSession sheetScope={confirmed.current} />
+  if (loading) return <Spinner aria-label="Validando ficha" />
+  if (error || !online)
+    return (
+      <Flash variant="danger" role="alert">
+        {sheetError(error || new Error('SHEET_NETWORK_REQUIRED'))}{' '}
+        <Button onClick={refresh}>Tentar novamente</Button>
+      </Flash>
+    )
+  return data ? <WorkoutSession sheetScope={data} /> : null
+}
+
+function WorkoutSession({ sheetScope }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const defaultExerciseId = searchParams.get('exercicio') || ''
   const plannedNotice = plannedWorkoutNotice(searchParams.get('planejado'), localDateKey())
 
-  const { exercises, loading, error, refresh } = useExercises()
+  const library = useExercises()
+  const exercises = sheetScope
+    ? sheetScope.items.map((item) => ({ ...item.exercise, catalogAvailable: item.available }))
+    : library.exercises
+  const loading = sheetScope ? false : library.loading
+  const error = sheetScope ? null : library.error
+  const refresh = library.refresh
   const { workouts, add, save } = useWorkouts()
   const { toasts, showToast } = useToast()
   const { user } = useAuth()
@@ -107,7 +141,7 @@ export default function NewWorkout() {
     }
   }
 
-  const activeExercises = exercises.filter(canStartExercise)
+  const activeExercises = sheetScopeExercises(exercises, sheetScope).filter(canStartExercise)
   const requestedLegacy = exercises.some(
     (exercise) => exercise.id === defaultExerciseId && isLegacyExercise(exercise)
   )
@@ -121,13 +155,19 @@ export default function NewWorkout() {
         </span>
         <div>
           <span className="eyebrow">SESSÃO DE TREINO</span>
-          <Heading as="h1">Vamos treinar</Heading>
+          <Heading as="h1">{sheetScope ? sheetScope.name : 'Vamos treinar'}</Heading>
           {plannedNotice && <p>{plannedNotice}</p>}
         </div>
       </header>
 
       {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
       <ErrorState error={error} onRetry={refresh} />
+      {sheetScope && !online && (
+        <Flash variant="warning" sx={{ mb: 3 }}>
+          Sem conexão. A ficha foi validada na última conexão; a disponibilidade dos exercícios será
+          confirmada ao sincronizar os registros.
+        </Flash>
+      )}
 
       {!loading && !error && activeExercises.length === 0 && (
         <Blankslate>
@@ -159,8 +199,9 @@ export default function NewWorkout() {
       {!loading && !error && activeExercises.length > 0 && (
         <WorkoutForm
           exercises={exercises}
+          sheetScope={sheetScope}
           history={workouts}
-          defaultExerciseId={defaultExerciseId}
+          defaultExerciseId={sheetScope ? '' : defaultExerciseId}
           onCreate={handleCreate}
           onUpdate={handleUpdate}
           onCancel={() => returnToOrigin(navigate, location, '/app')}

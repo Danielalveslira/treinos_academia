@@ -212,9 +212,12 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
     setFilters((current) => ({ ...current, [name]: value }))
   }
 
-  const advancedFilterCount = [filters.muscle, filters.equipment, filters.category, filters.level].filter(
-    Boolean
-  ).length
+  const advancedFilterCount = [
+    filters.muscle,
+    filters.equipment,
+    filters.category,
+    filters.level,
+  ].filter(Boolean).length
   const hasActiveFilters = Boolean(query || advancedFilterCount > 0)
 
   function clearFilters() {
@@ -277,6 +280,7 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
         <SearchIcon size={16} />
         <input
           type="search"
+          aria-label="Buscar no catálogo por nome"
           value={query}
           placeholder="Buscar por nome do exercício"
           onChange={(event) => setQuery(event.target.value)}

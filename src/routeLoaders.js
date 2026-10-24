@@ -8,7 +8,9 @@ export const routeLoaders = {
   '/novo-treino': () => import('./pages/NewWorkout'),
   '/historico': () => import('./pages/History'),
   '/progresso': () => import('./pages/Progress'),
-  '/exercicios': () => import('./pages/Exercises'),
+  '/exercicios': () => import('./pages/ExercisesArea'),
+  '/fichas/:id': () => import('./features/workoutSheets/WorkoutSheetDetailPage'),
+  '/fichas/editor': () => import('./features/workoutSheets/WorkoutSheetEditorPage'),
   '/exercicios/:id': () => import('./pages/ExerciseDetail'),
   '/comunidades': () => import('./pages/Communities'),
 }

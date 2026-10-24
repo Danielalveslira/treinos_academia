@@ -1,8 +1,15 @@
-import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useState } from 'react'
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Routes,
+  Route,
+  Outlet,
+  Navigate,
+} from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { WalletProvider } from './contexts/WalletContext'
-import { ExercisesProvider } from './contexts/ExercisesContext'
+import { ExercisesRouteProvider } from './components/ExercisesRouteProvider'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { SuperAdminRoute } from './components/SuperAdminRoute'
 import { Layout } from './components/Layout'
@@ -18,6 +25,8 @@ const ConfirmEmail = lazy(() => import('./pages/ConfirmEmail'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Dashboard = lazy(routeLoaders['/app'])
 const Exercises = lazy(routeLoaders['/exercicios'])
+const WorkoutSheetDetail = lazy(routeLoaders['/fichas/:id'])
+const WorkoutSheetEditor = lazy(routeLoaders['/fichas/editor'])
 const ExerciseDetail = lazy(routeLoaders['/exercicios/:id'])
 const NewWorkout = lazy(routeLoaders['/novo-treino'])
 const History = lazy(routeLoaders['/historico'])
@@ -84,13 +93,16 @@ export function AppRoutes() {
       >
         <Route
           element={
-            <ExercisesProvider>
+            <ExercisesRouteProvider>
               <Outlet />
-            </ExercisesProvider>
+            </ExercisesRouteProvider>
           }
         >
           <Route path="/app" element={<Dashboard />} />
           <Route path="/exercicios" element={<Exercises />} />
+          <Route path="/fichas/nova" element={<WorkoutSheetEditor />} />
+          <Route path="/fichas/:id/editar" element={<WorkoutSheetEditor />} />
+          <Route path="/fichas/:id" element={<WorkoutSheetDetail />} />
           <Route path="/exercicios/:id" element={<ExerciseDetail />} />
           <Route path="/novo-treino" element={<NewWorkout />} />
           <Route path="/historico" element={<History />} />
@@ -199,13 +211,21 @@ export function AppRoutes() {
 }
 
 export default function App() {
-  return (
-    <BrowserRouter>
-      <AuthProvider>
-        <WalletProvider>
-          <AppRoutes />
-        </WalletProvider>
-      </AuthProvider>
-    </BrowserRouter>
+  // The data router supplies a real navigation blocker for dirty sheet editors,
+  // including browser Back/Forward and programmatic navigation.
+  const [router] = useState(() =>
+    createBrowserRouter([
+      {
+        path: '*',
+        element: (
+          <AuthProvider>
+            <WalletProvider>
+              <AppRoutes />
+            </WalletProvider>
+          </AuthProvider>
+        ),
+      },
+    ])
   )
+  return <RouterProvider router={router} />
 }
