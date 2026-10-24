@@ -1,0 +1,23 @@
+{
+  "aggregate_job_cases": [
+    {
+      "sql_result": "success",
+      "exit_code": 0
+    },
+    {
+      "sql_result": "failure",
+      "exit_code": 1
+    },
+    {
+      "sql_result": "cancelled",
+      "exit_code": 1
+    },
+    {
+      "sql_result": "skipped",
+      "exit_code": 1
+    }
+  ],
+  "credential_canary_rejected": true,
+  "credential_not_printed": true,
+  "yaml_parse_passed": true
+}

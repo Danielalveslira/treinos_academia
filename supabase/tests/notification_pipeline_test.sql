@@ -116,7 +116,7 @@ insert into public.economy_transactions (user_id, natural_key, asset, direction,
 values ('96000000-0000-0000-0000-000000000002', 'pipe-cash-1', 'cash', 'credit', 25, 'cash_purchase_confirmed', 'cash_purchase', 'p1');
 select is(pg_temp.notes('economy_credit', '02'), 1, 'pagamento confirmado gera notification econômica');
 select is(pg_temp.jobs('economy_credit', '02'), 1, '…e Push');
-select is((select metadata->>'amount' from public.notifications where type = 'economy_credit'), '25', 'valor vem da ledger confirmada');
+select is((select metadata->>'amount' from public.notifications where type = 'economy_credit' and recipient_id = '96000000-0000-0000-0000-000000000002'), '25', 'valor vem da ledger confirmada');
 insert into public.economy_transactions (user_id, natural_key, asset, direction, amount, reason, reference_type, reference_id)
 values ('96000000-0000-0000-0000-000000000002', 'pipe-vote-1', 'coin', 'credit', 1, 'vote_reward', 'status_economy_vote', 'v1'),
        ('96000000-0000-0000-0000-000000000002', 'pipe-daily-1', 'coin', 'credit', 3, 'daily_activity', 'economy_daily', 'd1'),

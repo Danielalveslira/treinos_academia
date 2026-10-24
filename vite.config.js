@@ -5,6 +5,12 @@ import { publicPreviewPlugin } from './scripts/public-preview-plugin.js'
 
 export default defineConfig({
   plugins: [react(), pwaPlugin(), publicPreviewPlugin()],
+  server: {
+    fs: {
+      // Preserve Vite defaults and keep audit backups/credentials out of dev HTTP.
+      deny: ['.env', '.env.*', '*.{crt,pem}', '**/.git/**', '**/.finance-local/**'],
+    },
+  },
   build: {
     rollupOptions: {
       input: { main: 'index.html', publicHomeRedirect: 'src/publicHomeRedirect.js', publicHeaderAuth: 'src/publicHeaderAuth.js', publicTurbo: 'src/publicTurbo.js', publicHeaderMenu: 'src/PublicHeaderMenu.jsx' },

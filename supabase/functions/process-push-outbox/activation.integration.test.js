@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 // Real isolated PostgreSQL + actual worker + actual SW code in VM. Provider delivery is simulated.
 import test from 'node:test'
 import process from 'node:process'
@@ -6,6 +7,7 @@ import { spawn } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import vm from 'node:vm'
 import { processPushOutbox } from './processor.js'
+const authSessionFixture = readFileSync(new URL('../../tests/_helpers/auth_session.sql', import.meta.url), 'utf8')
 const container = process.env.PG_TEST_CONTAINER
 const uid = 'd3000000-0000-0000-0000-000000000001'
 const otherUid = 'd3000000-0000-0000-0000-000000000002'
@@ -38,7 +40,7 @@ function sql(input) {
       err += x
     })
     p.on('close', (code) => (code === 0 ? resolve(out.trim()) : reject(new Error(err))))
-    p.stdin.end(input)
+    p.stdin.end(authSessionFixture + '\n' + input)
   })
 }
 async function setup() {
@@ -51,7 +53,7 @@ async function setup() {
 async function activate(user = uid, target = endpoint) {
   return JSON.parse(
     await sql(
-      `set role authenticated; set request.jwt.claim.sub=${lit(user)}; select public.activate_push_subscription(${lit(target)},repeat('p',32),repeat('a',16));`
+      `set role authenticated; do $$begin perform pg_temp.set_test_user(${lit(user)},false); end$$; select public.activate_push_subscription(${lit(target)},repeat('p',32),repeat('a',16));`
     )
   )
 }
@@ -66,7 +68,7 @@ test(
     await setup()
     try {
       await sql(
-        `set request.jwt.claim.sub=${lit(uid)}; select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/other-device',repeat('p',32),repeat('a',16));`
+        `do $$begin perform pg_temp.set_test_user(${lit(uid)},false); end$$; select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/other-device',repeat('p',32),repeat('a',16));`
       )
       const results = await Promise.all(Array.from({ length: 10 }, () => activate()))
       assert.equal(results.filter((x) => x.welcome === 'queued').length, 1)
@@ -179,7 +181,8 @@ test(
         },
       })
       await clicked
-      assert.deepEqual(opened, ['https://local.invalid/'])
+      // The authenticated application shell and the verified targetUrl above are /app.
+      assert.deepEqual(opened, ['https://local.invalid/app'])
       assert.deepEqual(acks.sort(), ['clicked', 'received', 'shown'])
       assert.equal(
         await sql(

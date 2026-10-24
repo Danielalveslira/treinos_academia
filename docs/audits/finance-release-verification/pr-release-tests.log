@@ -1,0 +1,25 @@
+✔ validates CLI wrapper and refuses financial mismatch (1.277272ms)
+✔ missing fields and wrong limits cannot silently pass (0.270584ms)
+✔ postdeploy requires safe schema, flags and permissions (1.202092ms)
+✔ normalizes only privileged DBA duplicates, preserving equivalent application ACLs (56.35015ms)
+✔ detects a newly granted anonymous financial helper without printing definitions (53.241585ms)
+✔ reports modified code and unexpected ownership; never logs function body (54.919502ms)
+✔ detects extra trigger and journal divergence (49.882348ms)
+✔ detects privileged credentials without returning their values (2.586994ms)
+✔ distinguishes service role JWT from public anon JWT (0.915878ms)
+✔ checks browser references and literal private keys (0.33205ms)
+✔ allows synthetic local password but rejects embedded production credentials (0.315208ms)
+✔ CLI rejects tracked private runtime artifacts even when binary (63.527724ms)
+✔ default inspection cannot mutate remote configuration (1.773998ms)
+✔ approved hold changes only automatic domain assignment, preserving target (1.932554ms)
+✔ fails closed for wrong project and ineffective hold (1.101334ms)
+✔ already held project needs no further mutation (0.462152ms)
+✔ development HTTP denies private audit files while /app remains available (972.364377ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2616.561313

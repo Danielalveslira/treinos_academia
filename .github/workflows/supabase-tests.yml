@@ -8,32 +8,55 @@ on:
   workflow_dispatch:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, "finance-ci-*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: finance-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   js:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run lint
+      - run: node --test scripts/release/*.test.mjs
       - run: npm test
       - run: npm run build
+      - run: node scripts/release/scan-secrets.mjs --dist
 
   sql:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          version: latest
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Reuse the exact CLI installed by npm ci/package-lock; no floating setup action.
+      - run: node_modules/.bin/supabase --version
       # `supabase start` aplica todas as migrations em supabase/migrations/, em ordem, contra um
       # Postgres novo -- é a própria prova de que elas se aplicam em sequência numa base limpa.
-      - run: supabase start
+      - run: node_modules/.bin/supabase start
       # pg_prove roda SÓ as suítes pgTAP de verdade (convenção do projeto: toda suíte termina em
       # "_test.sql"). supabase/tests/_helpers/auth_session.sql é um include (\ir), não uma suíte, e
       # finance_preflight_readonly.sql / status_expiration_performance.sql são scripts de
@@ -41,8 +64,44 @@ jobs:
       # deve ser invocado como um. Passar o glob explícito corrige a descoberta na raiz, sem
       # precisar inspecionar log nem mascarar exit code: o status deste passo É o status real do
       # pg_prove (bash -e do runner já propaga `run:` != 0 como falha do step).
-      - run: supabase test db supabase/tests/*_test.sql
+      - run: node_modules/.bin/supabase test db supabase/tests/*_test.sql
+      # Include the real PostgreSQL integration scenarios; no production secrets.
+      # Container name follows project_id in supabase/config.toml.
+      - run: npm run test:functions
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
+          PG_TEST_USER: supabase_admin
       # Limpeza roda sempre (sucesso ou falha do passo acima), mas sem alterar o motivo da falha:
       # se o passo anterior falhou, o job já está marcado como falho antes deste rodar.
       - if: always()
-        run: supabase stop
+        run: node_modules/.bin/supabase stop
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - run: node scripts/release/scan-secrets.mjs
+
+  quality:
+    name: finance-quality
+    if: always()
+    needs: [js, sql, secrets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require every mandatory job to succeed
+        env:
+          JS_RESULT: ${{ needs.js.result }}
+          SQL_RESULT: ${{ needs.sql.result }}
+          SECRETS_RESULT: ${{ needs.secrets.result }}
+        run: |
+          set -euo pipefail
+          test "$JS_RESULT" = success
+          test "$SQL_RESULT" = success
+          test "$SECRETS_RESULT" = success

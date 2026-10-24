@@ -1,0 +1,227 @@
+{
+  "deadlocks_delta": 0,
+  "results": [
+    {
+      "name": "100 confirmations / one payment",
+      "requests": 100,
+      "concurrency": 4,
+      "p50_ms": 421.1,
+      "p95_ms": 566.8,
+      "p99_ms": 628.62,
+      "requests_per_second": 9.29,
+      "expected_rejections": 0,
+      "unexpected_errors": 0,
+      "resource_samples": [
+        {
+          "cpu_percent": 45.63,
+          "memory_percent": 12.98,
+          "memory": "116.8MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 54.02,
+          "memory_percent": 12.98,
+          "memory": "116.8MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 58.74,
+          "memory_percent": 13.11,
+          "memory": "118MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 53.87,
+          "memory_percent": 13.63,
+          "memory": "122.7MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 52.15,
+          "memory_percent": 13.55,
+          "memory": "121.9MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 38.23,
+          "memory_percent": 12.98,
+          "memory": "116.8MiB / 900MiB"
+        }
+      ],
+      "peak_sampled_cpu_percent": 58.74,
+      "peak_sampled_memory_percent": 13.63
+    },
+    {
+      "name": "100 promotion replays / one debit",
+      "requests": 100,
+      "concurrency": 4,
+      "p50_ms": 424.48,
+      "p95_ms": 606.39,
+      "p99_ms": 663.63,
+      "requests_per_second": 9.21,
+      "expected_rejections": 0,
+      "unexpected_errors": 0,
+      "resource_samples": [
+        {
+          "cpu_percent": 55.6,
+          "memory_percent": 12.98,
+          "memory": "116.8MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 55.8,
+          "memory_percent": 13.46,
+          "memory": "121.1MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 63.23,
+          "memory_percent": 13.61,
+          "memory": "122.5MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 51.85,
+          "memory_percent": 13.03,
+          "memory": "117.3MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 64.62,
+          "memory_percent": 13.65,
+          "memory": "122.8MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 1.11,
+          "memory_percent": 12.98,
+          "memory": "116.8MiB / 900MiB"
+        }
+      ],
+      "peak_sampled_cpu_percent": 64.62,
+      "peak_sampled_memory_percent": 13.65
+    },
+    {
+      "name": "100 insufficient balance spends",
+      "requests": 100,
+      "concurrency": 4,
+      "p50_ms": 420.82,
+      "p95_ms": 589.66,
+      "p99_ms": 616.06,
+      "requests_per_second": 9.29,
+      "expected_rejections": 100,
+      "unexpected_errors": 0,
+      "resource_samples": [
+        {
+          "cpu_percent": 67.45,
+          "memory_percent": 13.06,
+          "memory": "117.6MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 69.53,
+          "memory_percent": 13.75,
+          "memory": "123.8MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 63.62,
+          "memory_percent": 13.73,
+          "memory": "123.5MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 71.75,
+          "memory_percent": 14.45,
+          "memory": "130.1MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 70.21,
+          "memory_percent": 14.01,
+          "memory": "126.1MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 0.02,
+          "memory_percent": 12.98,
+          "memory": "116.8MiB / 900MiB"
+        }
+      ],
+      "peak_sampled_cpu_percent": 71.75,
+      "peak_sampled_memory_percent": 14.45
+    },
+    {
+      "name": "100 reversal/spend races",
+      "requests": 100,
+      "concurrency": 4,
+      "p50_ms": 445.52,
+      "p95_ms": 567.49,
+      "p99_ms": 605.69,
+      "requests_per_second": 9.02,
+      "expected_rejections": 50,
+      "unexpected_errors": 0,
+      "resource_samples": [
+        {
+          "cpu_percent": 49.61,
+          "memory_percent": 13.06,
+          "memory": "117.6MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 62.33,
+          "memory_percent": 13.03,
+          "memory": "117.3MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 63.0,
+          "memory_percent": 12.98,
+          "memory": "116.9MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 63.39,
+          "memory_percent": 13.28,
+          "memory": "119.5MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 63.32,
+          "memory_percent": 13.71,
+          "memory": "123.4MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 52.36,
+          "memory_percent": 12.98,
+          "memory": "116.8MiB / 900MiB"
+        }
+      ],
+      "peak_sampled_cpu_percent": 63.39,
+      "peak_sampled_memory_percent": 13.71
+    },
+    {
+      "name": "100 EvoCoin awards / daily cap",
+      "requests": 100,
+      "concurrency": 4,
+      "p50_ms": 379.23,
+      "p95_ms": 534.35,
+      "p99_ms": 551.62,
+      "requests_per_second": 10.16,
+      "expected_rejections": 0,
+      "unexpected_errors": 0,
+      "resource_samples": [
+        {
+          "cpu_percent": 64.56,
+          "memory_percent": 14.3,
+          "memory": "128.7MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 64.21,
+          "memory_percent": 13.62,
+          "memory": "122.6MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 62.44,
+          "memory_percent": 13.65,
+          "memory": "122.9MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 65.53,
+          "memory_percent": 12.98,
+          "memory": "116.8MiB / 900MiB"
+        },
+        {
+          "cpu_percent": 63.42,
+          "memory_percent": 13.19,
+          "memory": "118.8MiB / 900MiB"
+        }
+      ],
+      "peak_sampled_cpu_percent": 65.53,
+      "peak_sampled_memory_percent": 14.3
+    }
+  ],
+  "invariants": "passed",
+  "fixturesRetainedInDisposableContainer": true
+}

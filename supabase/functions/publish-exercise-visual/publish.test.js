@@ -252,3 +252,16 @@ test('V2: transição inválida barrada pelo banco chega como 409 INVALID_TRANSI
   const result = await call()
   assert.deepEqual([result.status, result.body.error], [409, 'INVALID_TRANSITION'])
 })
+
+// The shared administrative authenticator must fail closed before touching Storage or RPCs.
+test('sessão revogada ou consulta indisponível: 401 sem operações privilegiadas', async () => {
+  for (const unavailable of [false, true]) {
+    arrange()
+    fake.sessionActive = unavailable ? true : false
+    fake.fail.session = unavailable
+    const result = await call()
+    assert.deepEqual([result.status, result.body.error], [401, 'SESSION_REVOKED'])
+    assert.deepEqual(fake.authRpcCalls, ['is_session_active'])
+    assert.deepEqual([fake.rpcCalls.length, fake.downloads.length, fake.uploads.length, fake.removed.length], [0, 0, 0, 0])
+  }
+})

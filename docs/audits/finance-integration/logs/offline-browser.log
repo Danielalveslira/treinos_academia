@@ -1,0 +1,5 @@
+
+> treinos-academia@1.0.0 test:offline-browser
+> node scripts/offline-browser-smoke.mjs
+
+CHROMIUM_OFFLINE_OK: cold start sem pré-busca manual (49 assets do SW), sem flash de "sem conexão", Home restaurada do snapshot (saldo e atividade; "—" sem snapshot), sem RPC/Realtime no boot, IndexedDB, outbox=2, escrita, reconexão e atualização do SW

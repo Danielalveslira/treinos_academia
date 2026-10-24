@@ -1,0 +1,322 @@
+{
+  "recorded_at_utc": "2026-10-24T00:13:14.510530+00:00",
+  "inspected_head": "fa5df401f6293efa3558f65f00a27f2f905c2cb3",
+  "project_ref": "ywrjojrjgozdfpddkkuy",
+  "project_status": "ACTIVE_HEALTHY",
+  "remote_migration_count": 148,
+  "remote_latest": "20261111000001",
+  "financial_diagnostics": {
+    "credited_without_matching_ledger": 0,
+    "credited_without_provider_identity": 0,
+    "duplicate_cash_purchase_credits": 0,
+    "economy_sizes": {
+      "ledger": 166,
+      "purchases": 25,
+      "wallets": 6
+    },
+    "fractional_ledger": 0,
+    "invalid_cash_package_config": 0,
+    "invalid_promotion_units": 0,
+    "invalid_purchase_units": 0,
+    "invalid_wallets": 0,
+    "latest_migration": "20261111000001",
+    "reward_cap": 10,
+    "server_version": "17.6",
+    "wallet_ledger_discrepancies": 0
+  },
+  "catalog_diagnostics": {
+    "daily_cap_excess": 0,
+    "duplicate_provider_transactions": 0,
+    "disabled_fk_triggers": 0,
+    "invalid_constraints": null,
+    "invalid_purchase_snapshots": 0,
+    "orphan_wallets": 0,
+    "orphan_ledger_users": 0,
+    "orphan_purchase_users": 0,
+    "orphan_ledger_cases": 0,
+    "orphan_purchase_cases": 0,
+    "purchase_statuses": [
+      {
+        "count": 15,
+        "status": "cancelled"
+      },
+      {
+        "count": 9,
+        "status": "credited"
+      },
+      {
+        "count": 1,
+        "status": "pending"
+      }
+    ],
+    "pending_purchase_age": {
+      "missing_identity": 1,
+      "over_7_days": 0,
+      "uncertain": 0
+    },
+    "deadlocks": 0
+  },
+  "schema_comparison": {
+    "baseline_local_version": "20261111000001",
+    "remote_version": "20261111000001",
+    "versions_equal": true,
+    "local_only_versions": [],
+    "remote_only_versions": [],
+    "compared": {
+      "functions": 297,
+      "relations": 92,
+      "triggers": 66,
+      "views": 5,
+      "enums": 2,
+      "jobs": 14
+    },
+    "changes": [
+      {
+        "kind": "function_security",
+        "object": "public._touch_exercise_catalog_updated_at()",
+        "fields": [
+          "grants"
+        ],
+        "local_sha256": "031f1556893bb20371e178ac4d49769ad1bfb25086a95f1c2c0b91ec7823cb63",
+        "remote_sha256": "9fc07847b77a94d428dc20452830dac432af28dc6f7c0d4fe1a00d9c76380b3d"
+      },
+      {
+        "kind": "function_security",
+        "object": "public.enforce_partner_product_image()",
+        "fields": [
+          "grants"
+        ],
+        "local_sha256": "bd80d4be0a1c276e3f9c3896124107e30e5ee2b5d8e7e33791b46e8417108e5a",
+        "remote_sha256": "ddb3b632041523b5d62288b892d10f8aae883611b4c01384d4da919e2c4445ed"
+      },
+      {
+        "kind": "relation_security",
+        "object": "public.cash_purchase_reminder_emails",
+        "fields": [
+          "grants"
+        ],
+        "local_sha256": "c8858cf718de3a2d445afd2399a9397269f0d0715bd9299fe49bbb94bd0f572b",
+        "remote_sha256": "9dc8af443c75727ce8120882510a340337e6c68a22e7140d2274b06cd73a19ad"
+      }
+    ],
+    "normalization": "Only the privileged DBA/owner roles postgres/supabase_admin/pg_database_owner are normalized and their duplicate ACL entries collapsed; all client grants, function bodies, RLS, constraints, indexes and trigger states remain compared.",
+    "privileged_ownership": {
+      "local": {
+        "supabase_admin": 294,
+        "postgres": 3
+      },
+      "remote": {
+        "postgres": 293,
+        "supabase_admin": 4
+      }
+    },
+    "extensions": {
+      "local": [
+        {
+          "name": "pg_cron",
+          "version": "1.6.4"
+        },
+        {
+          "name": "pg_net",
+          "version": "0.20.4"
+        },
+        {
+          "name": "pg_stat_statements",
+          "version": "1.11"
+        },
+        {
+          "name": "pg_trgm",
+          "version": "1.6"
+        },
+        {
+          "name": "pgcrypto",
+          "version": "1.3"
+        },
+        {
+          "name": "pgtap",
+          "version": "1.3.3"
+        },
+        {
+          "name": "plpgsql",
+          "version": "1.0"
+        },
+        {
+          "name": "supabase_vault",
+          "version": "0.3.1"
+        },
+        {
+          "name": "unaccent",
+          "version": "1.1"
+        },
+        {
+          "name": "uuid-ossp",
+          "version": "1.1"
+        }
+      ],
+      "remote": [
+        {
+          "name": "pg_cron",
+          "version": "1.6.4"
+        },
+        {
+          "name": "pg_net",
+          "version": "0.20.4"
+        },
+        {
+          "name": "pg_stat_statements",
+          "version": "1.11"
+        },
+        {
+          "name": "pg_trgm",
+          "version": "1.6"
+        },
+        {
+          "name": "pgcrypto",
+          "version": "1.3"
+        },
+        {
+          "name": "plpgsql",
+          "version": "1.0"
+        },
+        {
+          "name": "supabase_vault",
+          "version": "0.3.1"
+        },
+        {
+          "name": "unaccent",
+          "version": "1.1"
+        },
+        {
+          "name": "uuid-ossp",
+          "version": "1.1"
+        }
+      ]
+    },
+    "disabled_fk_triggers": 0
+  },
+  "dependencies": {
+    "anon_confirmation_execute": false,
+    "anon_create_public": false,
+    "authenticated_confirmation_execute": false,
+    "authenticated_create_public": false,
+    "authenticated_credit_helper_execute": false,
+    "authenticated_ledger_insert": false,
+    "authenticated_wallet_update": false,
+    "migration_owner": "postgres",
+    "owner_auth_usage": true,
+    "owner_jwt_execute": true,
+    "owner_objects_select": true,
+    "owner_sessions_select": true,
+    "owner_storage_usage": true,
+    "owner_uid_execute": true,
+    "reversals_flag": false,
+    "service_role_wallet_update": true,
+    "session_columns": [
+      {
+        "name": "id",
+        "notnull": true,
+        "type": "uuid"
+      },
+      {
+        "name": "not_after",
+        "notnull": false,
+        "type": "timestamp with time zone"
+      },
+      {
+        "name": "user_id",
+        "notnull": true,
+        "type": "uuid"
+      }
+    ]
+  },
+  "dry_run": {
+    "upToDate": false,
+    "dryRun": true,
+    "migrations": [
+      "20261112000001_finance_permissions.sql",
+      "20261112000002_finance_integrity.sql",
+      "20261112000003_finance_payment_finality.sql",
+      "20261112000004_finance_reversals.sql",
+      "20261112000005_finance_reward_evidence.sql",
+      "20261112000006_finance_reconciliation_shadow.sql",
+      "20261113000001_session_revocation_guard.sql",
+      "20261113000002_session_active_rpc.sql",
+      "20261113000003_admin_session_revocation_guard.sql",
+      "20261114000001_financial_auth_integration.sql",
+      "20261114000002_remaining_sensitive_rpcs_guard.sql",
+      "20261114000003_community_economy_session_guard.sql",
+      "20261115000001_training_preferences_catalog.sql",
+      "20261115000002_cash_reminder_session_guard.sql"
+    ],
+    "seeds": [],
+    "roles": [],
+    "message": "Finished supabase db push."
+  },
+  "vercel": {
+    "team": "danielalvesliras-projects",
+    "project": "treinos_academia",
+    "productionBranch": "main",
+    "previousAutoAssign": true,
+    "autoAssignCustomDomains": true,
+    "productionDeploymentId": "dpl_2akHRitD4MDdf7WdCKNmup9mAoXv",
+    "applied": false,
+    "rootDirectory": null,
+    "gitProviderOptions": {
+      "createDeployments": "enabled"
+    },
+    "previewDeploymentsDisabled": null,
+    "matchingProjects": [
+      {
+        "id": "prj_WYVlCGYu021KZCrqfp62qRH2cbIE",
+        "name": "treinos_academia",
+        "productionBranch": "main",
+        "rootDirectory": null
+      }
+    ],
+    "projectListHasMore": false
+  },
+  "github": {
+    "effective_login": "Danielalveslira",
+    "main_sha": "0cdde0e666942af45ad448485b49a8ac60a7c685",
+    "main_protected": false,
+    "actions": {
+      "enabled": true,
+      "allowed_actions": "all",
+      "sha_pinning_required": false
+    },
+    "branch_exists_remotely": false,
+    "existing_prs": [],
+    "protection_api_status": 403,
+    "existing_six_ssh_signatures_verified": true,
+    "commits_rewritten": false
+  },
+  "backups_api": {
+    "backups": null,
+    "physical_backup_data": {},
+    "pitr_enabled": false,
+    "region": "us-east-2",
+    "walg_enabled": true
+  },
+  "local_backup": {
+    "encrypted_sha256_matches": true,
+    "decryption_key_present": true,
+    "previous_isolated_restore_verified": true,
+    "decrypted_container_removed": true,
+    "offsite_copy_verified": false,
+    "independent_key_custody_verified": false
+  },
+  "pending_authorization": {
+    "vercel_auto_assignment_hold": true,
+    "branch_push_draft_pr_ci": true
+  },
+  "branch_production_safety": {
+    "expected_project_production_branch": "main",
+    "candidate_branch": "chore/finance-release-readiness",
+    "git_deployment_disabled_in_candidate": true,
+    "repository_root_config_used": true,
+    "matching_projects_in_expected_team": 1,
+    "active_workflow_contains_production_deploy": false
+  },
+  "new_suite_runs": false,
+  "production_mutations_push_merge_deploy": false
+}

@@ -1,0 +1,31 @@
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 1
+f5000000-0000-0000-0000-000000000001
+ok 1 - real fixture session is active
+CREATE TABLE
+INSERT 0 1
+not ok 2 - temporary shadow cannot inject an invalid timezone
+# Failed test 2: "temporary shadow cannot inject an invalid timezone"
+#       caught: no exception
+#       wanted: an exception
+not ok 3 - catalog timezone remains available despite temporary shadow
+# Failed test 3: "catalog timezone remains available despite temporary shadow"
+#     died: P0001: INVALID_TIMEZONE
+#         CONTEXT:
+#             PL/pgSQL function public.set_training_preferences(jsonb) line 39 at RAISE
+#             SQL statement "select public.set_training_preferences('{"plannedTrainingDays":["monday"],"reminderEnabled":false,"timezone":"UTC","effectiveFrom":"2026-10-23"}')"
+#             PL/pgSQL function lives_ok(text,text) line 14 at EXECUTE
+ok 4 - anonymous preferences RPC denied
+{"sub":"f5000000-0000-0000-0000-000000000001","role":"authenticated","session_id":"malformed"}
+ok 5 - malformed session identifier safely rejected
+ok 6 - malformed session cannot read wallet
+ok 7 - malformed session cannot change preferences
+f5000000-0000-0000-0000-000000000001
+UPDATE 1
+ok 8 - expired database session rejected while JWT remains unexpired
+ok 9 - expired database session cannot read wallet
+1..9
+# Looks like you failed 2 tests of 9
+ROLLBACK

@@ -1,0 +1,15 @@
+2026-10-23 — recuperação de disco local
+
+Disco /workspaces atingiu 100% durante reconstrução dos serviços descartáveis.
+Docker atual: /var/lib/docker/containerd/daemon (configuração verificada).
+Armazenamento antigo: /var/lib/containerd; socket /run/containerd/containerd.sock ausente, sem montagens filhas.
+Removido somente cache regenerável de blobs do containerd antigo, após verificar separação do runtime atual.
+Caches npm/npx limpos, incluindo CLI Vercel; autenticação e dependências do projeto preservadas.
+Snapshots/metadados antigos em transferência para /tmp/evolutus-containerd-retired-20261023.
+Medição após limpar blobs: 32 GB total, 28 GB usados, 2,6 GB livres (92%).
+Nenhuma alteração de produção, arquivo do projeto ou histórico financeiro real.
+Não tratar /tmp como backup durável. Evidências de validação ficam no workspace; .finance-local é ignorado pelo Git.
+
+Conclusão: autorizado remover tudo sem uso. Transferência interrompida e armazenamento antigo/sua cópia temporária removidos, pois eram exclusivamente snapshots/caches dos antigos containers descartáveis da auditoria. Runtime atual e seus cinco serviços preservados.
+Medição final: /workspaces 32 GB total, 18 GB usados, 13 GB livres (59%); /tmp 26 GB livres (40% usado).
+Docker: cinco imagens ativas, cinco containers ativos, zero volumes/cache de build ou imagens ociosas para limpar.
