@@ -9,7 +9,7 @@ import {
 } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { WalletProvider } from './contexts/WalletContext'
-import { ExercisesProvider } from './contexts/ExercisesContext'
+import { ExercisesRouteProvider } from './components/ExercisesRouteProvider'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { SuperAdminRoute } from './components/SuperAdminRoute'
 import { Layout } from './components/Layout'
@@ -93,9 +93,9 @@ export function AppRoutes() {
       >
         <Route
           element={
-            <ExercisesProvider>
+            <ExercisesRouteProvider>
               <Outlet />
-            </ExercisesProvider>
+            </ExercisesRouteProvider>
           }
         >
           <Route path="/app" element={<Dashboard />} />

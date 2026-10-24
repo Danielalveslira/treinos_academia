@@ -61,7 +61,7 @@ reset()
 const stubs = {
   '/supabase/config': `import {createClient} from '@supabase/supabase-js';export const supabase=createClient(window.location.origin,'synthetic-browser-test',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{fetch:(url,init)=>fetch(url,{...init,headers:{...Object.fromEntries(new Headers(init.headers)), 'x-test-user':window.__uid||'a'}})}})`,
   '/hooks/useAuth': `import {useSyncExternalStore} from 'react';const subscribe=f=>{window.addEventListener('test-account',f);return()=>window.removeEventListener('test-account',f)};export function useAuth(){const uid=useSyncExternalStore(subscribe,()=>window.__uid||'a');return {user:{uid},offlineLocal:false}}`,
-  '/services/exercisesService': `export const listExercises=async()=>${JSON.stringify(exercises)};export const createCatalogExercise=async(uid,e)=>({added:true,exercise:e});export const updateExercise=async()=>{};export const deleteExercise=async()=>{};export const saveExerciseOrder=async()=>{}`,
+  '/services/exercisesService': `export const listExercises=async()=>{window.__libraryReads=(window.__libraryReads||0)+1;return ${JSON.stringify(exercises)}};export const createCatalogExercise=async(uid,e)=>({added:true,exercise:e});export const updateExercise=async()=>{};export const deleteExercise=async()=>{};export const saveExerciseOrder=async()=>{}`,
   '/hooks/useDashboard': `export const useDashboard=()=>({allWorkouts:[]})`,
   '/hooks/useWorkouts': `window.__workoutWrites=[];export const useWorkouts=()=>({workouts:[],add:async(values)=>{window.__workoutWrites.push(values);return{id:'real-row',synced:true}},save:async(id,values)=>{window.__workoutWrites.push(values);return{id,synced:true}}})`,
   '/hooks/useExerciseCatalogDetail.js': `export const useExerciseCatalogDetail=()=>({data:{instructions:['Movimento controlado'],images:[]},loading:false})`,
@@ -72,7 +72,7 @@ let browser, server
 try {
   await build({
     stdin: {
-      contents: `import React from 'react';import{createRoot}from'react-dom/client';import{createBrowserRouter,RouterProvider,Routes,Route}from'react-router-dom';import{ThemeProvider,BaseStyles}from'@primer/react';import{ExercisesProvider}from'./src/contexts/ExercisesContext';import Area from './src/pages/ExercisesArea';import Detail from './src/features/workoutSheets/WorkoutSheetDetailPage';import Editor from './src/features/workoutSheets/WorkoutSheetEditorPage';import NewWorkout from './src/pages/NewWorkout';import './src/styles/app.css';import '@primer/primitives/dist/css/functional/themes/light.css';import '@primer/primitives/dist/css/functional/themes/dark.css';createRoot(document.getElementById('root')).render(<ThemeProvider colorMode="auto"><BaseStyles><RouterProvider router={createBrowserRouter([{path:"*",element:<ExercisesProvider><main className="main-content"><Routes><Route path="/exercicios" element={<Area/>}/><Route path="/fichas/nova" element={<Editor/>}/><Route path="/fichas/:id/editar" element={<Editor/>}/><Route path="/fichas/:id" element={<Detail/>}/><Route path="/novo-treino" element={<NewWorkout/>}/></Routes></main></ExercisesProvider>}])}/></BaseStyles></ThemeProvider>)`,
+      contents: `import React from 'react';import{createRoot}from'react-dom/client';import{createBrowserRouter,RouterProvider,Routes,Route}from'react-router-dom';import{ThemeProvider,BaseStyles}from'@primer/react';import{ExercisesRouteProvider}from'./src/components/ExercisesRouteProvider';import Area from './src/pages/ExercisesArea';import Detail from './src/features/workoutSheets/WorkoutSheetDetailPage';import Editor from './src/features/workoutSheets/WorkoutSheetEditorPage';import NewWorkout from './src/pages/NewWorkout';import './src/styles/app.css';import '@primer/primitives/dist/css/functional/themes/light.css';import '@primer/primitives/dist/css/functional/themes/dark.css';createRoot(document.getElementById('root')).render(<ThemeProvider colorMode="auto"><BaseStyles><RouterProvider router={createBrowserRouter([{path:"*",element:<ExercisesRouteProvider><main className="main-content"><Routes><Route path="/exercicios" element={<Area/>}/><Route path="/fichas/nova" element={<Editor/>}/><Route path="/fichas/:id/editar" element={<Editor/>}/><Route path="/fichas/:id" element={<Detail/>}/><Route path="/novo-treino" element={<NewWorkout/>}/></Routes></main></ExercisesRouteProvider>}])}/></BaseStyles></ThemeProvider>)`,
       resolveDir: root,
       loader: 'jsx',
     },
@@ -301,6 +301,11 @@ try {
       const listMs = Date.now() - start
       assert.equal(images.length, 0, 'cards do not fetch images')
       assert.deepEqual(reads, ['list_my_workout_sheets'])
+      assert.equal(
+        await page.evaluate(() => window.__libraryReads || 0),
+        0,
+        'sheet list never queries the personal library'
+      )
       await page.getByRole('link', { name: 'Ficha A', exact: true }).click()
       await page.getByRole('heading', { name: 'Puxada oficial', exact: true }).waitFor()
       assert.deepEqual(await page.locator('.sheet-card h2').allTextContents(), [
@@ -309,7 +314,7 @@ try {
       ])
       assert.equal(await page.getByText('Agachamento fora da ficha', { exact: true }).count(), 0)
       assert.equal(images.length, 0, 'details do not eagerly fetch media')
-      await page.getByRole('link', { name: 'Iniciar treino', exact: true }).click()
+      await page.getByRole('button', { name: 'Iniciar treino', exact: true }).click()
       await page.getByRole('heading', { name: 'Escolha o exercício', exact: true }).waitFor()
       assert.deepEqual(await page.locator('.workout-exercise-card strong').allTextContents(), [
         'Puxada oficial',
@@ -326,6 +331,11 @@ try {
         await page.evaluate(() => window.__workoutWrites),
         [],
         'targets do not create sets'
+      )
+      assert.equal(
+        await page.evaluate(() => window.__libraryReads || 0),
+        0,
+        'sheet detail/execution never load unrelated library exercises'
       )
       // Once validated online, the running form stays mounted during a connectivity loss.
       await page.getByRole('textbox', { name: 'Peso (kg)', exact: true }).fill('20')
@@ -450,26 +460,22 @@ try {
         await archivedCard.locator('summary').click()
         await archivedCard.getByRole('button', { name: 'Restaurar', exact: true }).click()
         await page.getByRole('checkbox', { name: 'Mostrar arquivadas', exact: true }).uncheck()
-        await page.getByRole('link', { name: 'Criar ficha', exact: true }).click()
+        await page.getByRole('button', { name: 'Criar ficha', exact: true }).click()
         const draftName = page.getByRole('textbox', { name: 'Nome obrigatório', exact: true })
         await draftName.fill('Rascunho novo')
         await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click()
         await page.getByRole('heading', { name: 'Rascunho novo', exact: true }).waitFor()
         assert.equal(
-          await page
-            .getByRole('link', { name: 'Iniciar treino', exact: true })
-            .getAttribute('aria-disabled'),
-          'true'
+          await page.getByRole('button', { name: 'Iniciar treino', exact: true }).isDisabled(),
+          true
         )
         await page.getByRole('link', { name: 'Editar ficha', exact: true }).click()
         await page.getByRole('button', { name: 'Adicionar Supino oficial', exact: true }).click()
         await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click()
         await page.getByRole('heading', { name: 'Supino oficial', exact: true }).waitFor()
         assert.equal(
-          await page
-            .getByRole('link', { name: 'Iniciar treino', exact: true })
-            .getAttribute('aria-disabled'),
-          null
+          await page.getByRole('button', { name: 'Iniciar treino', exact: true }).isEnabled(),
+          true
         )
       }
       const heap = await cdp.send('Runtime.getHeapUsage')

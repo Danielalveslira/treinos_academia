@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button, Flash, Heading, Spinner } from '@primer/react'
 import { WorkoutExerciseGuide } from '../../components/WorkoutExerciseGuide'
 import { useWorkoutSheets } from './useWorkoutSheets.js'
@@ -8,6 +8,7 @@ import { prescription, SHEET_GOALS, WEEKDAYS } from './workoutSheetValidation.js
 import './workoutSheets.css'
 export default function WorkoutSheetDetailPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { data: sheet, loading, error, refresh, online } = useWorkoutSheets(id)
   const [guide, setGuide] = useState(null)
   const triggerRef = useRef(null)
@@ -68,8 +69,7 @@ export default function WorkoutSheetDetailPage() {
           </p>
           <Button
             variant="primary"
-            as={Link}
-            to={`/novo-treino?ficha=${id}`}
+            onClick={() => navigate(`/novo-treino?ficha=${id}`)}
             disabled={!ready || !online}
           >
             Iniciar treino

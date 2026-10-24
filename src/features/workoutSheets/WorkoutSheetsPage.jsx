@@ -54,7 +54,7 @@ export default function WorkoutSheetsPage() {
           <span className="eyebrow">SEU PLANEJAMENTO</span>
           <Heading as="h1">Minhas fichas</Heading>
         </div>
-        <Button as={Link} to="/fichas/nova" disabled={!online}>
+        <Button onClick={() => navigate('/fichas/nova')} disabled={!online}>
           Criar ficha
         </Button>
       </header>
@@ -85,7 +85,7 @@ export default function WorkoutSheetsPage() {
             Crie uma ficha A/B/C ou escolha um nome seu. Você pode salvar um rascunho e adicionar
             exercícios depois.
           </p>
-          <Button as={Link} to="/fichas/nova" disabled={!online}>
+          <Button onClick={() => navigate('/fichas/nova')} disabled={!online}>
             Criar ficha
           </Button>
           <p>

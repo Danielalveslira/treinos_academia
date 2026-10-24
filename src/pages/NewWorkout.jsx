@@ -72,7 +72,13 @@ function WorkoutSession({ sheetScope }) {
   const defaultExerciseId = searchParams.get('exercicio') || ''
   const plannedNotice = plannedWorkoutNotice(searchParams.get('planejado'), localDateKey())
 
-  const { exercises, loading, error, refresh } = useExercises()
+  const library = useExercises()
+  const exercises = sheetScope
+    ? sheetScope.items.map((item) => ({ ...item.exercise, catalogAvailable: item.available }))
+    : library.exercises
+  const loading = sheetScope ? false : library.loading
+  const error = sheetScope ? null : library.error
+  const refresh = library.refresh
   const { workouts, add, save } = useWorkouts()
   const { toasts, showToast } = useToast()
   const { user } = useAuth()

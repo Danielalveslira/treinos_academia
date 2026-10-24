@@ -18,7 +18,7 @@ function byName(a, b) {
   return a.name.localeCompare(b.name)
 }
 
-export function ExercisesProvider({ children }) {
+export function ExercisesProvider({ children, enabled = true }) {
   const { user, offlineLocal } = useAuth()
   const fetchValue = useCallback(
     () => listExercises(user.uid, { localOnly: offlineLocal }),
@@ -27,7 +27,7 @@ export function ExercisesProvider({ children }) {
   const { data, loading, error, refresh, setData } = useCachedQuery(
     `exercises:${user.uid}:${offlineLocal ? 'local' : 'online'}`,
     fetchValue,
-    { keepPreviousScope: user.uid }
+    { keepPreviousScope: user.uid, enabled }
   )
   const exercises = data || EMPTY
   const exercisesRef = useRef({ userId: user.uid, data: exercises })
