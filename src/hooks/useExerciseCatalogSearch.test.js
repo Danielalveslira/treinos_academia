@@ -84,12 +84,46 @@ beforeEach(() => {
 
 test('online: resultado nunca é marcado como cache', async () => {
   globalThis.__searchImpl = async () => ({ data: [{ id: 'c1', name: 'Supino' }], total: 1 })
-  const view = api.mount({ enabled: true, q: '', category: 'forca' }) // filtro ativo -- evita noQueryIntent
+  const view = api.mount({ enabled: true, q: '', category: 'forca' })
   await settle()
   const state = api.search()
   assert.equal(state.fromCache, false)
   assert.equal(state.isPartialCache, false)
   assert.equal(state.items.length, 1)
+  view.unmount()
+})
+
+test('abertura sem busca/filtros (noQueryIntent) carrega a primeira página automaticamente -- nunca fica vazia à espera de interação', async () => {
+  globalThis.__searchImpl = async (args) => {
+    assert.equal(args.offset, 0)
+    assert.equal(args.limit, 20)
+    return { data: [{ id: 'c1', name: 'Supino' }, { id: 'c2', name: 'Agachamento' }], total: 2 }
+  }
+  const view = api.mount({ enabled: true, q: '' })
+  await settle()
+  const state = api.search()
+  assert.equal(state.noQueryIntent, true)
+  assert.equal(state.items.length, 2)
+  assert.equal(state.loading, false)
+  assert.equal(globalThis.__searchCalls.length, 1)
+  view.unmount()
+})
+
+test('voltar ao estado vazio (depois de digitar e limpar) recarrega a vitrine inicial, não trava em branco', async () => {
+  let callCount = 0
+  globalThis.__searchImpl = async (args) => {
+    callCount += 1
+    return args.q ? { data: [{ id: 'c1', name: 'Supino' }], total: 1 } : { data: [{ id: 'c2', name: 'Agachamento' }], total: 1 }
+  }
+  const view = api.mount({ enabled: true, q: 'supino' })
+  await settle(500)
+  assert.equal(api.search().items[0]?.id, 'c1')
+
+  view.update({ enabled: true, q: '' })
+  await settle()
+  assert.equal(api.search().noQueryIntent, true)
+  assert.equal(api.search().items[0]?.id, 'c2')
+  assert.ok(callCount >= 2)
   view.unmount()
 })
 

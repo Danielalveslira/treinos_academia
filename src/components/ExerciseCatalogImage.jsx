@@ -20,6 +20,10 @@ export function ExerciseCatalogImage({
   alt = '',
   className = '',
   fallbackLabel,
+  // Identidade visual do grupo muscular no placeholder (seção 3.4 da Fase 4) -- um
+  // componente de ícone (ex.: getMuscleIcon(...)), nunca obrigatório: quando omitido o
+  // placeholder continua exatamente como antes (só o texto, ou nada com fallbackLabel="").
+  icon: Icon,
   hideOnError = false,
   loading = 'lazy',
   onLoad,
@@ -43,6 +47,7 @@ export function ExerciseCatalogImage({
         data-image-fallback
         data-fallback-reason={reason}
       >
+        {Icon && <Icon size={22} strokeWidth={1.75} />}
         {fallbackLabel ?? REASON_LABEL[reason]}
       </div>
     )

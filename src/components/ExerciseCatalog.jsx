@@ -1,6 +1,15 @@
 import { useState } from 'react'
 import { Box, Button, Heading, Spinner, Text } from '@primer/react'
-import { ArrowLeftIcon, CheckIcon, SearchIcon } from '@primer/octicons-react'
+import {
+  ArrowLeftIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  CloudIcon,
+  FilterIcon,
+  ImageIcon,
+  SearchIcon,
+  XIcon,
+} from '@primer/octicons-react'
 import { useExerciseCatalogSearch } from '../hooks/useExerciseCatalogSearch.js'
 import { useExerciseCatalogTaxonomy } from '../hooks/useExerciseCatalogTaxonomy.js'
 import {
@@ -11,6 +20,24 @@ import { getMuscleIcon } from '../constants/muscleGroupIcons.js'
 import { MuscleIconBadge } from './MuscleIconBadge.jsx'
 import { ExerciseCatalogImage } from './ExerciseCatalogImage.jsx'
 import { CatalogOfflineStatus } from './CatalogOfflineStatus.jsx'
+import { ModalSheet, ModalSheetFrame } from './ModalSheet.jsx'
+import { useSheetTitleId } from '../hooks/useSheetTitleId.js'
+
+// Atalhos de músculo (seção 3.3 da Fase 4): só os valores REAIS de primary_muscle mais
+// buscados -- nunca um grupo inventado (ex.: "Braços" juntaria vários slugs que a RPC
+// não sabe combinar num só filtro). Cada atalho é filtrado contra a taxonomia real antes
+// de aparecer (ver `shortcuts` abaixo); um valor que deixar de existir no catálogo some
+// da lista sozinho, nunca quebra.
+const MUSCLE_SHORTCUTS = [
+  'peito',
+  'dorsais',
+  'quadriceps',
+  'ombros',
+  'biceps',
+  'triceps',
+  'abdominais',
+  'gluteos',
+]
 
 function MuscleList({ muscles, tone }) {
   if (!muscles?.length) return null
@@ -45,85 +72,110 @@ function FilterSelect({ label, value, options, onChange }) {
   )
 }
 
-function ExerciseCatalogDetails({ exercise, added, adding, onAdd, onClose }) {
+// Conteúdo da ficha dentro da folha modal padrão do app (ModalSheet -- mesma base do
+// "Compartilhar progresso"/planejamento): foco preso, Escape, restauração de foco ao
+// elemento de origem e safe-area já vêm de lá, sem reimplementar nada aqui. Como a folha é
+// uma camada POR CIMA da listagem (nunca a substitui), fechar a ficha nunca perde busca,
+// filtros, página carregada nem posição de rolagem.
+function ExerciseCatalogDetailBody({ exercise, added, adding, onAdd, onClose }) {
+  const titleId = useSheetTitleId()
   const images = exercise.images?.length
     ? exercise.images.slice(0, 2)
     : exercise.thumbnail
       ? [exercise.thumbnail]
       : []
+
+  const footer = (
+    <Button
+      variant="primary"
+      block
+      size="large"
+      disabled={added || adding}
+      loading={adding}
+      onClick={() => onAdd(exercise)}
+    >
+      {added ? 'Já adicionado' : adding ? 'Adicionando...' : 'Adicionar aos meus exercícios'}
+    </Button>
+  )
+
   return (
-    <aside className="catalog-details" aria-labelledby="catalog-details-title">
-      <Button leadingVisual={ArrowLeftIcon} onClick={onClose}>
-        Voltar aos resultados
-      </Button>
-      <div className="catalog-details-images">
-        {images.length > 0 ? (
-          images.map((src, index) => (
+    <ModalSheetFrame
+      titleId={titleId}
+      title={exercise.name}
+      onClose={onClose}
+      footer={footer}
+      className="catalog-detail-dialog"
+    >
+      <div className="catalog-details">
+        <div className="catalog-details-images">
+          {images.length > 0 ? (
+            images.map((src, index) => (
+              <ExerciseCatalogImage
+                key={src}
+                src={src}
+                fallbackSrc={exercise.thumbnail}
+                alt={`Demonstração de ${exercise.name}, posição ${index + 1}`}
+                className="catalog-detail-image"
+              />
+            ))
+          ) : (
             <ExerciseCatalogImage
-              key={src}
-              src={src}
-              fallbackSrc={exercise.thumbnail}
-              alt={`Demonstração de ${exercise.name}, posição ${index + 1}`}
+              src={null}
+              alt=""
               className="catalog-detail-image"
+              icon={getMuscleIcon(exercise.primaryMuscles?.[0])}
             />
-          ))
-        ) : (
-          <ExerciseCatalogImage src={null} alt="" className="catalog-detail-image" />
-        )}
-      </div>
-      <Heading as="h2" id="catalog-details-title">
-        {exercise.name}
-      </Heading>
-      <dl>
-        <div>
-          <dt>Músculos primários</dt>
-          <dd>
-            <MuscleList muscles={exercise.primaryMuscles} tone="solid" />
-          </dd>
+          )}
         </div>
-        {exercise.secondaryMuscles?.length > 0 && (
+        <dl>
           <div>
-            <dt>Músculos secundários</dt>
+            <dt>Músculos primários</dt>
             <dd>
-              <MuscleList muscles={exercise.secondaryMuscles} tone="muted" />
+              <MuscleList muscles={exercise.primaryMuscles} tone="solid" />
             </dd>
           </div>
+          {exercise.secondaryMuscles?.length > 0 && (
+            <div>
+              <dt>Músculos secundários</dt>
+              <dd>
+                <MuscleList muscles={exercise.secondaryMuscles} tone="muted" />
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt>Equipamento</dt>
+            <dd>{displayValue(exercise.equipment)}</dd>
+          </div>
+          <div>
+            <dt>Nível</dt>
+            <dd>{displayValue(exercise.level)}</dd>
+          </div>
+          <div>
+            <dt>Categoria</dt>
+            <dd>{displayValue(exercise.category)}</dd>
+          </div>
+        </dl>
+        {exercise.instructions?.length > 0 && (
+          <section aria-labelledby="catalog-instructions-title">
+            <Heading as="h3" id="catalog-instructions-title">
+              Instruções
+            </Heading>
+            <ol>
+              {exercise.instructions.map((instruction, index) => (
+                <li key={index}>{instruction}</li>
+              ))}
+            </ol>
+          </section>
         )}
-        <div>
-          <dt>Equipamento</dt>
-          <dd>{displayValue(exercise.equipment)}</dd>
-        </div>
-        <div>
-          <dt>Nível</dt>
-          <dd>{displayValue(exercise.level)}</dd>
-        </div>
-        <div>
-          <dt>Categoria</dt>
-          <dd>{displayValue(exercise.category)}</dd>
-        </div>
-      </dl>
-      {exercise.instructions?.length > 0 && (
-        <section aria-labelledby="catalog-instructions-title">
-          <Heading as="h3" id="catalog-instructions-title">
-            Instruções
-          </Heading>
-          <ol>
-            {exercise.instructions.map((instruction, index) => (
-              <li key={index}>{instruction}</li>
-            ))}
-          </ol>
-        </section>
-      )}
-      <Button
-        variant="primary"
-        disabled={added || adding}
-        loading={adding}
-        onClick={() => onAdd(exercise)}
-      >
-        {added ? 'Já adicionado' : adding ? 'Adicionando...' : 'Adicionar aos meus exercícios'}
-      </Button>
-    </aside>
+      </div>
+    </ModalSheetFrame>
   )
+}
+
+function cacheNoticeText(isPartialCache) {
+  return isPartialCache
+    ? 'Mostrando resultados salvos neste aparelho (sem conexão agora) -- podem ser só parte do catálogo.'
+    : 'Mostrando o catálogo completo salvo neste aparelho (sem conexão agora).'
 }
 
 export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
@@ -142,7 +194,8 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
     loadMore,
     error,
     queryTooShort,
-    noQueryIntent,
+    fromCache,
+    isPartialCache,
   } = useExerciseCatalogSearch({
     q: query,
     category: filters.category || undefined,
@@ -151,13 +204,18 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
     level: filters.level || undefined,
   })
 
+  // Só os atalhos cujo valor existe de fato na taxonomia real (nunca um grupo que a RPC
+  // não reconheceria).
+  const shortcuts = MUSCLE_SHORTCUTS.filter((slug) => muscles.includes(slug))
+
   function changeFilter(name, value) {
     setFilters((current) => ({ ...current, [name]: value }))
   }
 
-  const hasActiveFilters = Boolean(
-    query || filters.muscle || filters.equipment || filters.category || filters.level
-  )
+  const advancedFilterCount = [filters.muscle, filters.equipment, filters.category, filters.level].filter(
+    Boolean
+  ).length
+  const hasActiveFilters = Boolean(query || advancedFilterCount > 0)
 
   function clearFilters() {
     setQuery('')
@@ -176,7 +234,7 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
   }
 
   async function handleAdd(exercise) {
-    if (isAdded(exercise)) return
+    if (isAdded(exercise) || addingId) return
     setAddingId(exercise.providerExerciseId)
     try {
       const result = await onAdd(exercise)
@@ -188,18 +246,6 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
     }
   }
 
-  if (selected) {
-    return (
-      <ExerciseCatalogDetails
-        exercise={selected}
-        added={isAdded(selected)}
-        adding={addingId === selected.providerExerciseId}
-        onAdd={handleAdd}
-        onClose={() => setSelected(null)}
-      />
-    )
-  }
-
   return (
     <section className="exercise-catalog" aria-labelledby="catalog-title">
       <Box className="catalog-heading">
@@ -208,14 +254,26 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
           <Heading as="h2" id="catalog-title">
             Catálogo Evolutus
           </Heading>
+          <Text as="p" className="catalog-subtitle">
+            Exercícios oficiais e gratuitos, com instruções e demonstração.
+          </Text>
         </div>
         <Button leadingVisual={ArrowLeftIcon} onClick={onClose}>
           Meus exercícios
         </Button>
       </Box>
 
+      <details className="catalog-offline-toggle">
+        <summary>
+          <CloudIcon size={14} aria-hidden="true" />
+          Uso offline
+          <ChevronDownIcon size={14} aria-hidden="true" className="catalog-disclosure-chevron" />
+        </summary>
+        <CatalogOfflineStatus personalExercises={personalExercises} />
+      </details>
+
       <label className="exercise-search catalog-search">
-        <span className="sr-only">Buscar no catálogo</span>
+        <span className="sr-only">Buscar no catálogo por nome</span>
         <SearchIcon size={16} />
         <input
           type="search"
@@ -223,56 +281,102 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
           placeholder="Buscar por nome do exercício"
           onChange={(event) => setQuery(event.target.value)}
         />
+        {query && (
+          <button
+            type="button"
+            className="catalog-search-clear"
+            aria-label="Limpar busca"
+            onClick={() => setQuery('')}
+          >
+            <XIcon size={14} />
+          </button>
+        )}
       </label>
-      <div className="catalog-filters">
-        <FilterSelect
-          label="Músculo"
-          value={filters.muscle}
-          options={muscles}
-          onChange={(value) => changeFilter('muscle', value)}
-        />
-        <FilterSelect
-          label="Equipamento"
-          value={filters.equipment}
-          options={equipment}
-          onChange={(value) => changeFilter('equipment', value)}
-        />
-        <FilterSelect
-          label="Categoria"
-          value={filters.category}
-          options={categories}
-          onChange={(value) => changeFilter('category', value)}
-        />
-        <FilterSelect
-          label="Nível"
-          value={filters.level}
-          options={levels}
-          onChange={(value) => changeFilter('level', value)}
-        />
-      </div>
-      <Box className="catalog-filters-footer">
+
+      {shortcuts.length > 0 && (
+        <div className="catalog-shortcuts" role="group" aria-label="Atalhos de grupo muscular">
+          <button
+            type="button"
+            className={`chip ${filters.muscle === '' ? 'is-active' : ''}`}
+            aria-pressed={filters.muscle === ''}
+            onClick={() => changeFilter('muscle', '')}
+          >
+            Todos
+          </button>
+          {shortcuts.map((slug) => {
+            const Icon = getMuscleIcon(slug)
+            return (
+              <button
+                key={slug}
+                type="button"
+                className={`chip ${filters.muscle === slug ? 'is-active' : ''}`}
+                aria-pressed={filters.muscle === slug}
+                onClick={() => changeFilter('muscle', filters.muscle === slug ? '' : slug)}
+              >
+                <Icon size={14} aria-hidden="true" />
+                {displayValue(slug)}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <details className="catalog-more-filters">
+        <summary>
+          <FilterIcon size={14} aria-hidden="true" />
+          Mais filtros{advancedFilterCount > 0 ? ` (${advancedFilterCount})` : ''}
+          <ChevronDownIcon size={14} aria-hidden="true" className="catalog-disclosure-chevron" />
+        </summary>
+        <div className="catalog-filters">
+          <FilterSelect
+            label="Músculo"
+            value={filters.muscle}
+            options={muscles}
+            onChange={(value) => changeFilter('muscle', value)}
+          />
+          <FilterSelect
+            label="Equipamento"
+            value={filters.equipment}
+            options={equipment}
+            onChange={(value) => changeFilter('equipment', value)}
+          />
+          <FilterSelect
+            label="Categoria"
+            value={filters.category}
+            options={categories}
+            onChange={(value) => changeFilter('category', value)}
+          />
+          <FilterSelect
+            label="Nível"
+            value={filters.level}
+            options={levels}
+            onChange={(value) => changeFilter('level', value)}
+          />
+        </div>
         <Text as="p" className="catalog-filter-hint">
           O filtro Músculo encontra o exercício pelo músculo principal ou secundário. Ao adicionar,
           o exercício é salvo na biblioteca só pelo músculo principal.
         </Text>
-        {hasActiveFilters && (
+      </details>
+
+      {hasActiveFilters && (
+        <Box className="catalog-filters-footer">
           <Button size="small" variant="invisible" onClick={clearFilters}>
             Limpar filtros
           </Button>
-        )}
-      </Box>
-
-      <CatalogOfflineStatus personalExercises={personalExercises} />
-
-      {noQueryIntent && (
-        <Box className="catalog-status">
-          Busque por nome ou escolha um filtro para ver exercícios do catálogo.
         </Box>
       )}
+
+      {fromCache && (
+        <Box className="catalog-cache-note" role="status">
+          {cacheNoticeText(isPartialCache)}
+        </Box>
+      )}
+
       {queryTooShort && (
         <Box className="catalog-status">Digite pelo menos 2 caracteres para buscar por nome.</Box>
       )}
-      {loading && items.length === 0 && !queryTooShort && !noQueryIntent && (
+      {loading && items.length === 0 && !queryTooShort && (
         <Box className="catalog-status" role="status">
           <Spinner /> Carregando catálogo
         </Box>
@@ -282,7 +386,7 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
           <Text>{error}</Text>
         </Box>
       )}
-      {!loading && !error && !queryTooShort && !noQueryIntent && (
+      {!loading && !error && !queryTooShort && (
         <>
           <Text as="p" className="catalog-result-count" aria-live="polite">
             {total == null
@@ -296,6 +400,7 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
               {items.map((exercise) => {
                 const added = isAdded(exercise)
                 const adding = addingId === exercise.providerExerciseId
+                const hasDemo = (exercise.images?.length || 0) >= 2
                 return (
                   <article className={`catalog-card${added ? ' is-added' : ''}`} key={exercise.id}>
                     <button
@@ -310,6 +415,7 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
                           alt=""
                           className="catalog-card-thumbnail"
                           fallbackLabel=""
+                          icon={getMuscleIcon(exercise.primaryMuscles?.[0])}
                         />
                         {added && (
                           <span
@@ -317,6 +423,11 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
                             aria-label="Já está na sua biblioteca"
                           >
                             <CheckIcon size={12} />
+                          </span>
+                        )}
+                        {hasDemo && (
+                          <span className="catalog-card-demo-badge">
+                            <ImageIcon size={10} /> Com demonstração
                           </span>
                         )}
                       </span>
@@ -329,13 +440,13 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
                           />
                           <span>{exercise.primaryMuscles.map(displayValue).join(', ')}</span>
                         </span>
-                        <small>
-                          {displayValue(exercise.equipment)} · {displayValue(exercise.level)} ·{' '}
-                          {displayValue(exercise.category)}
+                        <small className="catalog-card-meta">
+                          {displayValue(exercise.equipment || exercise.category)}
                         </small>
                       </span>
                     </button>
                     <Button
+                      block
                       size="small"
                       disabled={added || adding}
                       loading={adding}
@@ -354,6 +465,18 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
             </Button>
           )}
         </>
+      )}
+
+      {selected && (
+        <ModalSheet onClose={() => setSelected(null)}>
+          <ExerciseCatalogDetailBody
+            exercise={selected}
+            added={isAdded(selected)}
+            adding={addingId === selected.providerExerciseId}
+            onAdd={handleAdd}
+            onClose={() => setSelected(null)}
+          />
+        </ModalSheet>
       )}
     </section>
   )
