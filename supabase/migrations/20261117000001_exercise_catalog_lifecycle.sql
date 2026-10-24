@@ -174,6 +174,12 @@ create trigger exercises_validate_catalog_reference
   for each row
   when (new.source = 'catalog')
   execute function public._validate_catalog_exercise_reference();
+-- Funções de trigger SECURITY DEFINER nascem com EXECUTE para PUBLIC (todo CREATE FUNCTION
+-- concede por padrão) -- Postgres não deixa chamar uma função que retorna "trigger" via SELECT,
+-- mas o GRANT continua existindo em pg_proc independente disso. Revoga explicitamente, mesma
+-- rede de segurança que supabase/tests/security_followup_test.sql e notification_security_test.sql
+-- verificam para TODO SECURITY DEFINER em public/private.
+revoke all on function public._validate_catalog_exercise_reference() from public, anon, authenticated;
 
 -- ============================================================================================
 -- 7) Trigger em public.workouts: bloqueia INSERT/UPDATE OF exercise_id quando o exercício
@@ -228,6 +234,7 @@ $$;
 create trigger workouts_validate_exercise_published
   before insert or update of exercise_id on public.workouts
   for each row execute function public._validate_workout_exercise_published();
+revoke all on function public._validate_workout_exercise_published() from public, anon, authenticated;
 
 -- ============================================================================================
 -- 8) sync_workout_mutations: reconhece os erros de negócio acima como rejeição definitiva,

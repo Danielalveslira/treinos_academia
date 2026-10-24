@@ -12,15 +12,21 @@ select ('92000000-0000-0000-0000-0000000000' || n)::uuid, 'authenticated', 'auth
 from unnest(array['01','02']) as n;
 update public.users set role = 'superadmin', username = 'superadminvisuals' where id = '92000000-0000-0000-0000-000000000001';
 
-insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions, source_media_refs)
+-- status default passou a 'draft' (20261117000001_exercise_catalog_lifecycle.sql) -- um
+-- exercício novo nunca entra ao ar sozinho. Os fixtures abaixo que precisam ser lidos por
+-- anon/RLS pública (published_media_refs, busca) ou ter imagem alocada precisam de
+-- status='published' explícito; "92aaaaaa-...0003" testa especificamente o caso retirado,
+-- então usa status='withdrawn' em vez do antigo is_active=false direto (que não bloqueava
+-- allocate_exercise_visual_set no modelo novo -- só 'withdrawn' bloqueia).
+insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions, source_media_refs, status)
 values
-  ('92aaaaaa-0000-0000-0000-000000000001', 'evolutus_dataset', 'ev-visual-1', 'Supino reto teste', 'peito', array['peito'], 'força', array['Empurre.'], '{"images":["Bench_Press/0.jpg","Bench_Press/1.jpg"]}'),
-  ('92aaaaaa-0000-0000-0000-000000000002', 'evolutus_dataset', 'ev-visual-2', 'Agachamento teste', 'pernas', array['pernas'], 'força', array['Agache.'], '{"images":[]}');
+  ('92aaaaaa-0000-0000-0000-000000000001', 'evolutus_dataset', 'ev-visual-1', 'Supino reto teste', 'peito', array['peito'], 'força', array['Empurre.'], '{"images":["Bench_Press/0.jpg","Bench_Press/1.jpg"]}', 'published'),
+  ('92aaaaaa-0000-0000-0000-000000000002', 'evolutus_dataset', 'ev-visual-2', 'Agachamento teste', 'pernas', array['pernas'], 'força', array['Agache.'], '{"images":[]}', 'published');
 update public.exercise_catalog set media_refs = '{"images":["Legacy/0.jpg"]}' where id = '92aaaaaa-0000-0000-0000-000000000001';
-insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions)
-values ('92aaaaaa-0000-0000-0000-000000000004', 'evolutus_dataset', 'ev-visual-4', 'Rosca sem miniatura', 'biceps', array['biceps'], 'força', array['Flexione.']);
-insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions, is_active)
-values ('92aaaaaa-0000-0000-0000-000000000003', 'evolutus_dataset', 'ev-visual-3', 'Inativo teste', 'peito', array['peito'], 'força', array['x'], false);
+insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions, status)
+values ('92aaaaaa-0000-0000-0000-000000000004', 'evolutus_dataset', 'ev-visual-4', 'Rosca sem miniatura', 'biceps', array['biceps'], 'força', array['Flexione.'], 'published');
+insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions, status)
+values ('92aaaaaa-0000-0000-0000-000000000003', 'evolutus_dataset', 'ev-visual-3', 'Inativo teste', 'peito', array['peito'], 'força', array['x'], 'withdrawn');
 
 create or replace function pg_temp.as_user(p_uid text) returns void language plpgsql as $$
 begin
