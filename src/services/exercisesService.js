@@ -12,6 +12,62 @@ import {
 // Teto de defesa: ninguém cadastra centenas de exercícios de verdade, mas sem isso a
 // leitura escala com o tamanho da tabela — o app já funciona bem dentro desse limite.
 const MAX_EXERCISES = 300
+const CATALOG_BATCH_SIZE = 40
+const EXERCISE_COLUMNS =
+  '*, catalog:exercise_catalog!exercises_catalog_id_fkey(id, provider, provider_exercise_id, status)'
+const officialProvider = (provider) => ['evolutus_dataset', 'evolutus_original'].includes(provider)
+const referenceKey = (row) => JSON.stringify([row.provider, row.provider_exercise_id])
+
+function matchesPublishedCatalog(row, catalog) {
+  return Boolean(
+    catalog?.status === 'published' &&
+    catalog.id &&
+    officialProvider(row.provider) &&
+    typeof row.provider_exercise_id === 'string' &&
+    row.provider_exercise_id.trim() &&
+    catalog.provider === row.provider &&
+    catalog.provider_exercise_id === row.provider_exercise_id &&
+    (!row.catalog_id || row.catalog_id === catalog.id)
+  )
+}
+
+// Older links may have only provider + external id. Resolve them in bounded batches,
+// not per exercise; persist the result with the same private cache used by the list.
+async function resolveLegacyCatalog(rows) {
+  const references = [
+    ...new Map(
+      rows
+        .filter(
+          (row) =>
+            row.source === 'catalog' &&
+            !row.catalog_id &&
+            officialProvider(row.provider) &&
+            typeof row.provider_exercise_id === 'string' &&
+            row.provider_exercise_id.trim()
+        )
+        .map((row) => [referenceKey(row), row])
+    ).values(),
+  ]
+  if (!references.length) return rows
+  const resolved = new Map()
+  for (let offset = 0; offset < references.length; offset += CATALOG_BATCH_SIZE) {
+    const batch = references.slice(offset, offset + CATALOG_BATCH_SIZE)
+    const { data, error } = await supabase
+      .from('exercise_catalog')
+      .select('id, provider, provider_exercise_id, status')
+      .in('provider', [...new Set(batch.map((row) => row.provider))])
+      .in('provider_exercise_id', [...new Set(batch.map((row) => row.provider_exercise_id))])
+      .eq('status', 'published')
+      .limit(batch.length * 2)
+    if (error) throw error
+    for (const row of data || []) resolved.set(referenceKey(row), row)
+  }
+  return rows.map((row) =>
+    row.source === 'catalog' && !row.catalog_id
+      ? { ...row, catalog: resolved.get(referenceKey(row)) || null }
+      : row
+  )
+}
 
 function toDoc(row) {
   return {
@@ -28,7 +84,7 @@ function toDoc(row) {
     equipment: row.equipment,
     order: row.order,
     catalogAvailable: Object.hasOwn(row, 'catalog')
-      ? row.catalog?.status === 'published'
+      ? matchesPublishedCatalog(row, row.catalog)
       : row.catalogAvailable,
   }
 }
@@ -43,13 +99,13 @@ export function listExercises(userId, { localOnly = false } = {}) {
     remote: async () => {
       const { data, error } = await supabase
         .from('exercises')
-        .select('*, catalog:exercise_catalog!exercises_catalog_id_fkey(status)')
+        .select(EXERCISE_COLUMNS)
         .eq('user_id', userId)
         .order('name')
         .limit(MAX_EXERCISES)
       if (error) throw error
-      rows = data
-      return data.map(toDoc)
+      rows = await resolveLegacyCatalog(data)
+      return rows.map(toDoc)
     },
     persist: () => replaceCachedUserExercises(userId, rows),
     local: async () => {
@@ -80,23 +136,24 @@ export async function createCatalogExercise(userId, exercise) {
       equipment: exercise.equipment || null,
       order: Number.isInteger(exercise.order) ? exercise.order : null,
     })
-    .select()
+    .select(EXERCISE_COLUMNS)
     .single()
   if (error?.code === '23505') {
     const { data: existing, error: readError } = await supabase
       .from('exercises')
-      .select('*')
+      .select(EXERCISE_COLUMNS)
       .eq('user_id', userId)
       .eq('source', 'catalog')
       .eq('provider', exercise.provider)
       .eq('provider_exercise_id', exercise.providerExerciseId)
       .single()
     if (readError) throw readError
-    upsertCachedUserExercise(userId, existing)
-    return { added: false, exercise: toDoc({ ...existing, catalogAvailable: true }) }
+    const [confirmed] = await resolveLegacyCatalog([existing])
+    upsertCachedUserExercise(userId, confirmed)
+    return { added: false, exercise: toDoc(confirmed) }
   }
   if (error) throw error
-  const confirmed = { ...data, catalogAvailable: true }
+  const [confirmed] = await resolveLegacyCatalog([data])
   upsertCachedUserExercise(userId, confirmed)
   return { added: true, exercise: toDoc(confirmed) }
 }

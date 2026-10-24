@@ -918,3 +918,49 @@ test('old exercise.create is retained as a permanent failure while unrelated wor
   assert.equal(await retryFailed(A), 0, 'permanent exercise failure never returns to pending')
   assert.equal((await syncOutbox({ deps, force: true })).status, 'idle')
 })
+
+test('inconsistent catalog references fail definitively without discarding offline payload or blocking other workouts', async () => {
+  await enqueueWorkoutMutation(A, {
+    operation: OPERATIONS.create,
+    entityId: E1,
+    payload: strength(),
+    now: NOW,
+  })
+  await enqueueWorkoutMutation(A, {
+    operation: OPERATIONS.create,
+    entityId: E2,
+    payload: strength(),
+    now: NOW,
+  })
+  const server = makeServer()
+  const deps = makeDeps({ server })
+  const rpc = deps.rpc
+  deps.rpc = async (wire, ...args) => {
+    const response = await rpc(
+      wire.filter((item) => item.entity_id !== E1),
+      ...args
+    )
+    return {
+      results: [
+        ...response.results,
+        ...wire
+          .filter((item) => item.entity_id === E1)
+          .map((item) => ({
+            mutation_id: item.mutation_id,
+            status: 'rejected',
+            code: 'catalog_exercise_not_published',
+          })),
+      ],
+    }
+  }
+  const outcome = await syncOutbox({ deps, force: true })
+  assert.equal(outcome.failed, 1)
+  assert.equal(outcome.applied, 1)
+  const [failed] = await listMutations(A)
+  assert.equal(failed.status, STATUS.failed)
+  assert.equal(failed.last_error.code, 'catalog_exercise_not_published')
+  assert.deepEqual(failed.payload, strength())
+  const calls = deps.calls
+  assert.equal((await syncOutbox({ deps, force: true })).status, 'idle')
+  assert.equal(deps.calls, calls, 'no automatic retry loop')
+})

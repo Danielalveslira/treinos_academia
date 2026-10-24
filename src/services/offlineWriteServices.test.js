@@ -424,7 +424,13 @@ test('exercícios pessoais: gravações ONLINE atualizam o cache local (sem escr
     source: 'catalog',
     provider: 'evolutus_dataset',
     provider_exercise_id: 'official-remada',
-    catalog_id: null,
+    catalog_id: 'cat-remada',
+    catalog: {
+      id: 'cat-remada',
+      provider: 'evolutus_dataset',
+      provider_exercise_id: 'official-remada',
+      status: 'published',
+    },
     equipment: null,
     order: null,
   }
@@ -988,6 +994,13 @@ test('concurrent official duplicate returns the existing row without creating a 
     source: 'catalog',
     provider: 'evolutus_dataset',
     provider_exercise_id: 'pub',
+    catalog_id: 'cat-pub',
+    catalog: {
+      id: 'cat-pub',
+      provider: 'evolutus_dataset',
+      provider_exercise_id: 'pub',
+      status: 'published',
+    },
     active: true,
   }
   globalThis.__respond = (call) => {
@@ -1006,4 +1019,41 @@ test('concurrent official duplicate returns the existing row without creating a 
   assert.equal(result.added, false)
   assert.equal(result.exercise.name, 'Servidor')
   assert.equal(result.exercise.id, EX)
+})
+
+test('duplicate legacy link resolves the official tuple without changing its FK or preferences', async () => {
+  const row = {
+    id: EX,
+    user_id: A,
+    source: 'catalog',
+    provider: 'evolutus_dataset',
+    provider_exercise_id: 'pub',
+    catalog_id: null,
+    catalog: null,
+    name: 'Antigo snapshot',
+    note: 'Minha nota',
+    active: false,
+  }
+  globalThis.__respond = (call) => {
+    if (call.steps.some(([method]) => method === 'insert'))
+      return { data: null, error: { code: '23505' } }
+    return {
+      data:
+        call.table === 'exercise_catalog'
+          ? [{ id: 'c1', provider: row.provider, provider_exercise_id: 'pub', status: 'published' }]
+          : row,
+      error: null,
+    }
+  }
+  const result = await on.exercises.createCatalogExercise(A, {
+    provider: row.provider,
+    providerExerciseId: 'pub',
+    name: 'Cliente',
+    muscleGroup: 'Peito',
+  })
+  assert.equal(result.added, false)
+  assert.equal(result.exercise.catalogAvailable, true)
+  assert.equal(result.exercise.catalogId, null)
+  assert.equal(result.exercise.note, 'Minha nota')
+  assert.equal(result.exercise.active, false)
 })
