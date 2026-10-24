@@ -868,5 +868,13 @@
     "latest_remote_evidence": "finance-release-verification/remote-reverification.json",
     "remote_migrations_reconfirmed": true,
     "vercel_auto_assignment_disabled": false
+  },
+  "publication_policy": {
+    "automatic_vercel_main": true,
+    "production_hold_required": false,
+    "isolated_branch_git_deploy_disabled": true,
+    "push_pr_ci_authorized": true,
+    "merge_migrations_deploy_authorized": false,
+    "backend_before_merge_required": true
   }
 }

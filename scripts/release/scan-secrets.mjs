@@ -56,7 +56,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       continue
     }
     // Never follow a symlink outside the reviewed tree.
-    if (lstatSync(file).isSymbolicLink()) continue
+    let stat
+    try { stat=lstatSync(file) } catch(error) {
+      if(error.code==='ENOENT') continue // Tracked deletion in the reviewed working tree.
+      throw error
+    }
+    if (stat.isSymbolicLink()) continue
     const bytes=readFileSync(file)
     if (bytes.includes(0)) continue
     for(const item of inspectSecrets(bytes.toString('utf8'),{browser})) findings.push({file:relative(process.cwd(),resolve(file)),...item})

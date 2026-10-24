@@ -1,3 +1,8 @@
+
+## Decisão do proprietário — 2026-10-24
+
+Manter publicação automática Vercel pela main. O hold de promoção foi dispensado e os scripts/proposta/template que o implementavam foram removidos. Isso não é bloqueio de publicação. Apenas branches isoladas finance-ci-* e chore/finance-release-readiness não geram deploy Git; main permanece no comportamento padrão automático. Push da branch, PR draft e CI foram autorizados. Merge, migrations, Edge Functions e deploy não foram autorizados. Preparar/aplicar banco e oito Edge Functions sob autorização ANTES do merge, porque o merge dispara o frontend. Backup externo/chave independente e decisão sobre proteção da main seguem pendentes; commits existentes são preservados. As instruções anteriores de hold/promoção manual são históricas e foram substituídas por esta decisão.
+
 > **Estado mais recente do Codespace e PR:** [finance-release-verification/PR_READINESS.md](finance-release-verification/PR_READINESS.md). Branch local chore/finance-release-readiness, assinatura SSH válida; não houve push. Revalidação 2026-10-24: logins Supabase/Vercel válidos; 148 versões/14 pendentes confirmadas, zero divergências financeiras. Promoção automática Vercel ainda ativa; hold e envio isolado dependem de autorização.
 
 # Economia Evolutus — validação local e publicação

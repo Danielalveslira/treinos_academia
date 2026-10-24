@@ -1,3 +1,8 @@
+
+## Decisão do proprietário — 2026-10-24
+
+Manter publicação automática Vercel pela main. O hold de promoção foi dispensado e os scripts/proposta/template que o implementavam foram removidos. Isso não é bloqueio de publicação. Apenas branches isoladas finance-ci-* e chore/finance-release-readiness não geram deploy Git; main permanece no comportamento padrão automático. Push da branch, PR draft e CI foram autorizados. Nesta branch o CI será disparado pela abertura/sincronização do PR, evitando duas execuções completas para o mesmo envio; workflow_dispatch permanece disponível. Merge, migrations, Edge Functions e deploy não foram autorizados. Preparar/aplicar banco e oito Edge Functions sob autorização ANTES do merge, porque o merge dispara o frontend. Backup externo/chave independente e decisão sobre proteção da main seguem pendentes; commits existentes são preservados. As instruções anteriores de hold/promoção manual são históricas e foram substituídas por esta decisão.
+
 # Evolutus — preparação final do PR
 
 **PR preparado localmente; publicação em produção BLOQUEADA.** Revalidação remota de 2026-10-24: Supabase/Vercel autenticados, 14 pendentes confirmadas e promoção automática Vercel ainda ativa. Evidência: [remote-reverification.json](remote-reverification.json). Branch: `chore/finance-release-readiness`, sem push. Este documento sucede os estados antigos de assinatura e autenticação dos relatórios anteriores. Evidência atual: [pr-readiness-evidence.json](pr-readiness-evidence.json).

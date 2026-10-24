@@ -41,3 +41,17 @@ test('CLI rejects tracked private runtime artifacts even when binary',()=>{
   assert.equal(JSON.parse(r.stdout).findings[0].kind,'private_runtime_artifact')
  }finally {rmSync(dir,{recursive:true,force:true})}
 })
+
+test('CLI scans the working tree when a tracked file has been deleted',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'evolutus-scan-deletion-'))
+ try {
+  execFileSync('git',['init','-q',dir])
+  const file=join(dir,'removed.txt')
+  writeFileSync(file,'ordinary text')
+  execFileSync('git',['-C',dir,'add','removed.txt'])
+  rmSync(file)
+  const r=spawnSync(process.execPath,[fileURLToPath(new URL('./scan-secrets.mjs',import.meta.url))],{cwd:dir,encoding:'utf8'})
+  assert.equal(r.status,0)
+  assert.deepEqual(JSON.parse(r.stdout).findings,[])
+ }finally {rmSync(dir,{recursive:true,force:true})}
+})

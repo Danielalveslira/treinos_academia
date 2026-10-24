@@ -1,5 +1,5 @@
 {
-  "git": { "deploymentEnabled": { "main": false, "finance-ci-*": false, "chore/finance-release-readiness": false } },
+  "git": { "deploymentEnabled": { "finance-ci-*": false, "chore/finance-release-readiness": false } },
   "redirects": [
     { "source": "/:page(como-funciona|para-empresas|vitrine|profissionais).html", "destination": "/:page", "statusCode": 301 },
     { "source": "/:page(como-funciona|para-empresas|vitrine|profissionais)/", "destination": "/:page", "statusCode": 301 },
