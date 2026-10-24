@@ -162,6 +162,12 @@ function WorkoutSession({ sheetScope }) {
 
       {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
       <ErrorState error={error} onRetry={refresh} />
+      {sheetScope && !online && (
+        <Flash variant="warning" sx={{ mb: 3 }}>
+          Sem conexão. A ficha foi validada na última conexão; a disponibilidade dos exercícios será
+          confirmada ao sincronizar os registros.
+        </Flash>
+      )}
 
       {!loading && !error && activeExercises.length === 0 && (
         <Blankslate>
