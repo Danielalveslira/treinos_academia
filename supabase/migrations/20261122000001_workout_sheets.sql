@@ -107,11 +107,13 @@ begin
   if jsonb_typeof(r.value) is distinct from 'object' then raise exception 'SHEET_INVALID_PAYLOAD'; end if;
   select * into e from public.exercises where id=(r.value->>'exercise_id')::uuid and user_id=u for share;
   if e.id is null then raise exception 'SHEET_EXERCISE_UNAVAILABLE'; end if;
+  -- Lock the official row BEFORE validating, so a concurrent withdrawal cannot slip
+  -- between the availability check and the association commit.
+  select * into c from public.exercise_catalog where provider=e.provider and provider_exercise_id=e.provider_exercise_id for share;
   -- Existing withdrawn items stay intelligible and editable, but cannot be newly attached.
   if not private.sheet_exercise_available(e.id,u) and not exists(
    select 1 from public.workout_sheet_exercises where sheet_id=s.id and exercise_id=e.id
   ) then raise exception 'SHEET_EXERCISE_UNAVAILABLE'; end if;
-  select * into c from public.exercise_catalog where provider=e.provider and provider_exercise_id=e.provider_exercise_id for share;
   item:=null;
   item.exercise_id:=e.id; item.target_sets:=(r.value->>'target_sets')::smallint;
   item.reps_min:=(r.value->>'reps_min')::int; item.reps_max:=(r.value->>'reps_max')::int;
@@ -175,6 +177,12 @@ begin
  select * into dest from public.workout_sheets where user_id=u and create_request_id=p_request_id;
  if dest.id is not null then return jsonb_build_object('id',dest.id,'revision',dest.revision); end if;
  if (select count(*) from public.workout_sheets where user_id=u and archived_at is null)>=(private.workout_sheet_limits()->>'active')::int then raise exception 'SHEET_LIMIT_REACHED'; end if;
+ -- Copying is a new association: retired/inactive links must first be replaced.
+ perform 1 from public.exercises e join public.workout_sheet_exercises i on i.exercise_id=e.id
+ where i.sheet_id=s.id order by e.id for share of e;
+ perform 1 from public.exercise_catalog c join public.exercises e on e.provider=c.provider and e.provider_exercise_id=c.provider_exercise_id
+ join public.workout_sheet_exercises i on i.exercise_id=e.id where i.sheet_id=s.id order by c.id for share of c;
+ if exists(select 1 from public.workout_sheet_exercises i where i.sheet_id=s.id and not private.sheet_exercise_available(i.exercise_id,u)) then raise exception 'SHEET_EXERCISE_UNAVAILABLE'; end if;
  insert into public.workout_sheets(user_id,name,goal,goal_description,weekdays,sort_order,create_request_id)
  values(u,left(s.name,72)||' (cópia)',s.goal,s.goal_description,s.weekdays,coalesce((select max(sort_order)+1 from public.workout_sheets where user_id=u),0),p_request_id) returning * into dest;
  insert into public.workout_sheet_exercises(sheet_id,user_id,exercise_id,sort_order,target_sets,reps_min,reps_max,rest_seconds,target_duration_minutes,target_distance_km,note)
