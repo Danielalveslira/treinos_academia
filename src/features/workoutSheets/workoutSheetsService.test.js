@@ -98,9 +98,10 @@ test('criação envia metadados e itens juntos e reutiliza request id fornecido'
     calls.push({ name, args })
     return { data: { id: 'created', revision: 1 } }
   }
-  await service.saveWorkoutSheet({ ...sheet, id: null }, 'same-request')
-  await service.saveWorkoutSheet({ ...sheet, id: null }, 'same-request')
+  await service.saveWorkoutSheet({ ...sheet, id: null }, 'same-request', 'account-a')
+  await service.saveWorkoutSheet({ ...sheet, id: null }, 'same-request', 'account-a')
   assert.equal(calls[0].name, 'create_workout_sheet')
   assert.equal(calls[0].args.p_items[0].exercise_id, 'exercise')
   assert.equal(calls[0].args.p_request_id, calls[1].args.p_request_id)
+  assert.equal(calls[0].args.p_expected_user, 'account-a')
 })

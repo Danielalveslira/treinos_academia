@@ -1,0 +1,49 @@
+{
+  "baselineCommit": "9f30d1856a6c447b00736631e21a6b21d9f5649a (merge of main into original phase-4 branch; source-equivalent before sheets)",
+  "builds": [
+    {
+      "root": "/tmp/sheets-baseline/dist",
+      "totalGzipBytes": 829538,
+      "boot": {
+        "bootJsGzipBytes": 355512,
+        "bootCssGzipBytes": 77695,
+        "bootFiles": 13
+      },
+      "chunks": {
+        "main": 81179,
+        "Exercises": 10063,
+        "ExercisesArea": 0,
+        "NewWorkout": 2104,
+        "WorkoutForm": 10522,
+        "WorkoutSheetEditorPage": 0,
+        "WorkoutSheetDetailPage": 0,
+        "WorkoutSheetsPage": 0,
+        "workoutSheetValidation": 0,
+        "useWorkoutSheets": 0
+      }
+    },
+    {
+      "root": "/workspaces/treinos_academia/dist",
+      "totalGzipBytes": 863607,
+      "boot": {
+        "bootJsGzipBytes": 374924,
+        "bootCssGzipBytes": 77695,
+        "bootFiles": 13
+      },
+      "chunks": {
+        "main": 100229,
+        "Exercises": 4213,
+        "ExercisesArea": 1203,
+        "NewWorkout": 2566,
+        "WorkoutForm": 9658,
+        "WorkoutSheetEditorPage": 3979,
+        "WorkoutSheetDetailPage": 1282,
+        "WorkoutSheetsPage": 1688,
+        "workoutSheetValidation": 1215,
+        "useWorkoutSheets": 1693
+      }
+    }
+  ],
+  "totalGzipDeltaBytes": 34069,
+  "bootGzipDeltaBytes": 19412
+}

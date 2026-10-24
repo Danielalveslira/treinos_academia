@@ -1,0 +1,33 @@
+{
+  "fixture": "synthetic HTTP RPC server; real UI/client/services; CPU 4x; 150ms RTT; 200KB/s down",
+  "results": [
+    {
+      "theme": "light",
+      "width": 390,
+      "listMs": 3333,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 28119020,
+      "inputPaintMs": [
+        15.5,
+        5.6000000005587935,
+        4.5
+      ],
+      "volume": {
+        "list40Ms": 3606,
+        "editor40Ms": 3642,
+        "inputPaintMs": [
+          7,
+          1.6000000005587935,
+          7.3999999994412065,
+          5,
+          3.2999999998137355
+        ],
+        "overflow": false,
+        "heap": 28119020
+      },
+      "readRequests": 2,
+      "writeRequests": 0
+    }
+  ]
+}

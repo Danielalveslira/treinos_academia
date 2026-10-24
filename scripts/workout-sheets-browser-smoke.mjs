@@ -8,7 +8,11 @@ import { resolve, join } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright-core'
+const quick = process.argv.includes('--quick')
 const root = resolve(import.meta.dirname, '..')
+const vercelConfig = JSON.parse(await readFile(join(root, 'vercel.json'), 'utf8'))
+const spaRule = vercelConfig.rewrites.find((rule) => rule.source.startsWith('/:path(')).source
+const spaRoutes = new RegExp('^/' + spaRule.slice('/:path('.length, -1) + '$')
 const dir = await mkdtemp(join(tmpdir(), 'workout-sheets-'))
 const evidence = join(root, 'docs/workout-sheets-evidence')
 await mkdir(evidence, { recursive: true })
@@ -105,6 +109,27 @@ try {
     )
   )
   server = createServer(async (req, res) => {
+    if (req.url === '/__benchmark') {
+      reset()
+      const template = sheets[0]
+      sheets = Array.from({ length: 40 }, (_, n) => ({
+        ...structuredClone(template),
+        id: n === 0 ? sid : crypto.randomUUID(),
+        name: `Ficha de volume ${n + 1}`,
+        items: Array.from({ length: 40 }, (_, i) => {
+          const exerciseId = crypto.randomUUID()
+          return {
+            id: crypto.randomUUID(),
+            exercise_id: exerciseId,
+            sort_order: i,
+            available: true,
+            exercise: { ...exercises[i % 3], id: exerciseId, name: `Exercício oficial ${i + 1}` },
+          }
+        }),
+      }))
+      res.end('ok')
+      return
+    }
     if (req.url === '/__reset') {
       reset()
       res.end('ok')
@@ -257,6 +282,11 @@ try {
       res.end(assets[name])
       return
     }
+    if (!spaRoutes.test(req.url.split('?')[0])) {
+      res.statusCode = 404
+      res.end('No SPA rewrite for this route')
+      return
+    }
     res.setHeader('Content-Type', 'text/html')
     res.end(
       '<!doctype html><html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/app.css"><body><div id="root"></div><script src="/app.js"></script></body></html>'
@@ -270,8 +300,8 @@ try {
     executablePath: process.env.CHROMIUM_PATH,
   })
   const results = []
-  for (const theme of ['light', 'dark'])
-    for (const width of [320, 360, 390, 768, 1280]) {
+  for (const theme of quick ? ['light'] : ['light', 'dark'])
+    for (const width of quick ? [390] : [320, 360, 390, 768, 1280]) {
       await fetch(origin + '/__reset')
       const context = await browser.newContext({
         viewport: { width, height: 900 },
@@ -478,6 +508,48 @@ try {
           true
         )
       }
+      const flowReads = reads.length,
+        flowWrites = writes.length
+      let volume = null
+      if (theme === 'light' && width === 390) {
+        await fetch(origin + '/__benchmark')
+        await cdp.send('Network.emulateNetworkConditions', {
+          offline: false,
+          latency: 150,
+          downloadThroughput: 200000,
+          uploadThroughput: 100000,
+        })
+        const start = Date.now()
+        await page.goto(origin + '/exercicios')
+        await page.getByRole('link', { name: 'Ficha de volume 40', exact: true }).waitFor()
+        const list40Ms = Date.now() - start
+        assert.equal(await page.locator('.sheet-card').count(), 40)
+        assert.equal(await page.evaluate(() => window.__libraryReads || 0), 0)
+        const editorStart = Date.now()
+        await page.goto(origin + `/fichas/${sid}/editar`)
+        const volumeName = page.getByRole('textbox', { name: 'Nome obrigatório', exact: true })
+        await volumeName.waitFor()
+        await page.getByRole('heading', { name: '40. Exercício oficial 40', exact: true }).waitFor()
+        const editor40Ms = Date.now() - editorStart
+        await page.evaluate(() => {
+          window.__paint = []
+          document.addEventListener('input', () => {
+            const start = performance.now()
+            requestAnimationFrame(() => window.__paint.push(performance.now() - start))
+          })
+        })
+        for (let i = 0; i < 5; i++) await volumeName.fill('Ficha de volume alterada ' + i)
+        await page.waitForTimeout(100)
+        volume = {
+          list40Ms,
+          editor40Ms,
+          inputPaintMs: await page.evaluate(() => window.__paint),
+          overflow: await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+          heap: (await cdp.send('Runtime.getHeapUsage')).usedSize,
+        }
+        assert.equal(volume.overflow, false)
+        console.log('VOLUME ' + JSON.stringify(volume))
+      }
       const heap = await cdp.send('Runtime.getHeapUsage')
       assert.deepEqual(errors, [])
       results.push({
@@ -488,14 +560,15 @@ try {
         overflow,
         usedHeapBytes: heap.usedSize,
         inputPaintMs,
-        readRequests: reads.length,
-        writeRequests: writes.length,
+        volume,
+        readRequests: flowReads,
+        writeRequests: flowWrites,
       })
       await context.close()
       console.log(JSON.stringify(results.at(-1)))
     }
   await writeFile(
-    join(evidence, 'browser-results.json'),
+    join(evidence, quick ? 'browser-results-quick.json' : 'browser-results.json'),
     JSON.stringify(
       {
         fixture:

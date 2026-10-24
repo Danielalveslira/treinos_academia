@@ -3,7 +3,7 @@ set local lock_timeout = '5s';
 
 create function private.workout_sheet_limits() returns jsonb
 language sql immutable set search_path = '' as $$
- select '{"active":40,"items":40,"sets":10,"duration":1440,"distance":1000}'::jsonb
+ select '{"active":40,"items":40,"sets":10,"duration":600,"distance":500}'::jsonb
 $$;
 revoke all on function private.workout_sheet_limits() from public, anon, authenticated;
 
@@ -42,8 +42,8 @@ create table public.workout_sheet_exercises (
  target_sets smallint check(target_sets between 1 and 10),
  reps_min integer check(reps_min between 1 and 1000), reps_max integer check(reps_max between 1 and 1000),
  rest_seconds integer check(rest_seconds between 0 and 900),
- target_duration_minutes integer check(target_duration_minutes between 1 and 1440),
- target_distance_km numeric check(target_distance_km>0 and target_distance_km<=1000),
+ target_duration_minutes integer check(target_duration_minutes between 1 and 600),
+ target_distance_km numeric check(target_distance_km>0 and target_distance_km<=500),
  note text not null default '' check(char_length(note)<=300),
  created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
  check(reps_min is null or reps_max is null or reps_min<=reps_max),
@@ -151,11 +151,12 @@ begin
 exception when invalid_text_representation or numeric_value_out_of_range or invalid_parameter_value then raise exception 'SHEET_INVALID_PAYLOAD';
 end $$;
 
-create function public.create_workout_sheet(p_request_id uuid,p_name text,p_goal text default null,p_description text default '',p_weekdays smallint[] default '{}',p_items jsonb default '[]')
+create function public.create_workout_sheet(p_request_id uuid,p_name text,p_goal text default null,p_description text default '',p_weekdays smallint[] default '{}',p_items jsonb default '[]',p_expected_user uuid default null)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare u uuid:=private.sheet_actor(); s public.workout_sheets; result jsonb;
 begin
  if p_request_id is null then raise exception 'SHEET_INVALID_PAYLOAD'; end if;
+ if p_expected_user is not null and p_expected_user<>u then raise exception 'SHEET_ACCOUNT_CHANGED'; end if;
  -- Serialize per account: both retries and the active-sheet limit are race safe.
  perform 1 from public.users where id=u for update;
  select * into s from public.workout_sheets where user_id=u and create_request_id=p_request_id;
@@ -247,8 +248,8 @@ begin
  return to_jsonb(s)||jsonb_build_object('items',items);
 end $$;
 
-revoke all on function public.save_workout_sheet(uuid,bigint,jsonb,jsonb),public.create_workout_sheet(uuid,text,text,text,smallint[],jsonb),public.duplicate_workout_sheet(uuid,uuid),public.set_workout_sheet_archived(uuid,boolean,bigint),public.reorder_workout_sheets(uuid[]),public.list_my_workout_sheets(boolean,integer),public.get_my_workout_sheet(uuid,boolean) from public,anon,authenticated;
-grant execute on function public.save_workout_sheet(uuid,bigint,jsonb,jsonb),public.create_workout_sheet(uuid,text,text,text,smallint[],jsonb),public.duplicate_workout_sheet(uuid,uuid),public.set_workout_sheet_archived(uuid,boolean,bigint),public.reorder_workout_sheets(uuid[]),public.list_my_workout_sheets(boolean,integer),public.get_my_workout_sheet(uuid,boolean) to authenticated;
+revoke all on function public.save_workout_sheet(uuid,bigint,jsonb,jsonb),public.create_workout_sheet(uuid,text,text,text,smallint[],jsonb,uuid),public.duplicate_workout_sheet(uuid,uuid),public.set_workout_sheet_archived(uuid,boolean,bigint),public.reorder_workout_sheets(uuid[]),public.list_my_workout_sheets(boolean,integer),public.get_my_workout_sheet(uuid,boolean) from public,anon,authenticated;
+grant execute on function public.save_workout_sheet(uuid,bigint,jsonb,jsonb),public.create_workout_sheet(uuid,text,text,text,smallint[],jsonb,uuid),public.duplicate_workout_sheet(uuid,uuid),public.set_workout_sheet_archived(uuid,boolean,bigint),public.reorder_workout_sheets(uuid[]),public.list_my_workout_sheets(boolean,integer),public.get_my_workout_sheet(uuid,boolean) to authenticated;
 
 -- Existing account deletion cascades exercises before newer FK cascades may run.
 -- Remove only this account's planning first; keep RESTRICT for ordinary library deletion.

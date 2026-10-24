@@ -22,7 +22,15 @@ const output = execFileSync(
     '-v',
     'ON_ERROR_STOP=1',
   ],
-  { input: helper + '\n' + suite, encoding: 'utf8', maxBuffer: 4e6 }
+  {
+    input:
+      'create extension if not exists pgtap with schema extensions; set search_path=public,extensions;\n' +
+      helper +
+      '\n' +
+      suite,
+    encoding: 'utf8',
+    maxBuffer: 4e6,
+  }
 )
 console.log(output)
 if (/^not ok|Bail out!|Looks like you failed/m.test(output) || !/^1\.\.\d+/m.test(output))

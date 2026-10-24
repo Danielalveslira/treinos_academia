@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button, Flash, Heading, Spinner } from '@primer/react'
 import { useOnlineStatus as useOnline } from '../../hooks/useOnlineStatus'
@@ -9,6 +9,7 @@ import {
   EMPTY_SHEET,
   prescription,
   SHEET_GOALS,
+  SHEET_LIMITS,
   WEEKDAYS,
   sheetFingerprint,
   validateSheet,
@@ -17,14 +18,22 @@ import { WorkoutSheetExercisePicker } from './WorkoutSheetExercisePicker'
 import { useSheetDiscardGuard } from './useSheetDiscardGuard.js'
 import './workoutSheets.css'
 const fields = [
-  ['target_sets', 'Séries-alvo', 1, 10],
+  ['target_sets', 'Séries-alvo', 1, SHEET_LIMITS.sets],
   ['reps_min', 'Repetições mínimas', 1, 1000],
   ['reps_max', 'Repetições máximas', 1, 1000],
   ['rest_seconds', 'Descanso (segundos)', 0, 900],
-  ['target_duration_minutes', 'Duração (minutos)', 1, 1440],
-  ['target_distance_km', 'Distância (km)', 0.001, 1000],
+  ['target_duration_minutes', 'Duração (minutos)', 1, SHEET_LIMITS.duration],
+  ['target_distance_km', 'Distância (km)', 0.001, SHEET_LIMITS.distance],
 ]
 function Editor({ initial, online }) {
+  const { user } = useAuth()
+  const active = useRef(true)
+  useEffect(() => {
+    active.current = true
+    return () => {
+      active.current = false
+    }
+  }, [])
   const [sheet, setSheet] = useState(initial)
   const [baseline, setBaseline] = useState(() => sheetFingerprint(initial))
   const [busy, setBusy] = useState(false),
@@ -62,11 +71,13 @@ function Editor({ initial, online }) {
     setMessage('')
     requestId.current ||= crypto.randomUUID()
     try {
-      const result = await saveWorkoutSheet(sheet, requestId.current)
+      const result = await saveWorkoutSheet(sheet, requestId.current, user.uid)
+      if (!active.current) return
       setBaseline(sheetFingerprint(sheet))
       permitNavigation()
       navigate(`/fichas/${result.id}`, { replace: true })
     } catch (error) {
+      if (!active.current) return
       setMessage(sheetError(error))
       if (String(error.message).includes('SHEET_VERSION_CONFLICT')) {
         try {
@@ -77,7 +88,7 @@ function Editor({ initial, online }) {
       }
     } finally {
       lock.current = false
-      setBusy(false)
+      if (active.current) setBusy(false)
     }
   }
   function cancel() {

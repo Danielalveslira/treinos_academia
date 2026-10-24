@@ -1,0 +1,155 @@
+{
+  "fixture": "synthetic HTTP RPC server; real UI/client/services; CPU 4x; 150ms RTT; 200KB/s down",
+  "results": [
+    {
+      "theme": "light",
+      "width": 320,
+      "listMs": 3782,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 17425384,
+      "inputPaintMs": [
+        5.3999999994412065,
+        4.6000000005587935,
+        4
+      ],
+      "readRequests": 15,
+      "writeRequests": 1
+    },
+    {
+      "theme": "light",
+      "width": 360,
+      "listMs": 3432,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 17364796,
+      "inputPaintMs": [
+        1.5,
+        3.400000000372529,
+        21.90000000037253
+      ],
+      "readRequests": 15,
+      "writeRequests": 1
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "listMs": 3464,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 23467692,
+      "inputPaintMs": [
+        13.5,
+        6.6000000005587935,
+        3.2000000001862645
+      ],
+      "readRequests": 33,
+      "writeRequests": 6
+    },
+    {
+      "theme": "light",
+      "width": 768,
+      "listMs": 5803,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 15559916,
+      "inputPaintMs": [
+        7.699999999254942,
+        23.200000000186265,
+        1.1000000005587935
+      ],
+      "readRequests": 15,
+      "writeRequests": 1
+    },
+    {
+      "theme": "light",
+      "width": 1280,
+      "listMs": 3859,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 17361976,
+      "inputPaintMs": [
+        11,
+        3.6000000005587935,
+        21.299999999813735
+      ],
+      "readRequests": 15,
+      "writeRequests": 1
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "listMs": 4638,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 15897092,
+      "inputPaintMs": [
+        20.899999999441206,
+        8.5,
+        9.299999999813735
+      ],
+      "readRequests": 15,
+      "writeRequests": 1
+    },
+    {
+      "theme": "dark",
+      "width": 360,
+      "listMs": 4463,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 16170400,
+      "inputPaintMs": [
+        10,
+        10.900000000372529,
+        12.200000000186265
+      ],
+      "readRequests": 15,
+      "writeRequests": 1
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "listMs": 4745,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 15532420,
+      "inputPaintMs": [
+        15.299999999813735,
+        26.09999999962747,
+        8.599999999627471
+      ],
+      "readRequests": 15,
+      "writeRequests": 1
+    },
+    {
+      "theme": "dark",
+      "width": 768,
+      "listMs": 4623,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 17063672,
+      "inputPaintMs": [
+        27.200000000186265,
+        12,
+        5.800000000745058
+      ],
+      "readRequests": 15,
+      "writeRequests": 1
+    },
+    {
+      "theme": "dark",
+      "width": 1280,
+      "listMs": 4173,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 16169288,
+      "inputPaintMs": [
+        7,
+        8.100000000558794,
+        11.399999999441206
+      ],
+      "readRequests": 15,
+      "writeRequests": 1
+    }
+  ]
+}

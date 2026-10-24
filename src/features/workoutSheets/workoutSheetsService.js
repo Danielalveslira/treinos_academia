@@ -20,11 +20,12 @@ export const archiveWorkoutSheet = (sheet, archived) =>
     p_expected_revision: sheet.revision,
   })
 export const reorderWorkoutSheets = (ids) => rpc('reorder_workout_sheets', { p_ids: ids })
-export async function saveWorkoutSheet(sheet, requestId) {
+export async function saveWorkoutSheet(sheet, requestId, expectedUser = null) {
   const { items, ...metadata } = normalizeSheet(sheet)
   if (!sheet.id)
     return rpc('create_workout_sheet', {
       p_request_id: requestId,
+      p_expected_user: expectedUser,
       p_name: metadata.name,
       p_goal: metadata.goal,
       p_description: metadata.goal_description,
@@ -53,6 +54,12 @@ export async function saveWorkoutSheet(sheet, requestId) {
   }
 }
 const messages = {
+  SHEET_ACCOUNT_CHANGED: 'A conta mudou durante a operação. Reabra a ficha na conta correta.',
+  SHEET_INVALID_PAYLOAD: 'Revise nome, descrição, dias e limites da ficha.',
+  SHEET_INVALID_TARGET: 'Revise as metas e sua compatibilidade com o tipo oficial do exercício.',
+  SHEET_DUPLICATE_EXERCISE: 'Cada exercício pode aparecer apenas uma vez na ficha.',
+  SHEET_INVALID_ORDER: 'A lista mudou. Atualize antes de reordenar.',
+  NOT_AUTHENTICATED: 'Entre novamente para acessar suas fichas.',
   SHEET_VERSION_CONFLICT:
     'Esta ficha foi alterada em outra aba. Sua edição foi mantida. Compare com a versão atual antes de salvar.',
   SHEET_NOT_FOUND: 'Ficha indisponível ou sem permissão de acesso.',

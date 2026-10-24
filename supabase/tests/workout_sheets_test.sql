@@ -14,6 +14,7 @@ create temp table counts_before as select (select count(*) from public.workouts)
 select pg_temp.set_test_user('98a00000-0000-0000-0000-000000000001',true);
 set local role authenticated;
 select throws_ok($$insert into public.workout_sheets(user_id,name,create_request_id) values(auth.uid(),'Bypass',gen_random_uuid())$$,'42501',null,'escrita direta negada');
+select throws_ok($$select public.create_workout_sheet(gen_random_uuid(),'Outra conta',null,'','{}','[]','98a00000-0000-0000-0000-000000000002')$$,'P0001','SHEET_ACCOUNT_CHANGED','criação de formulário de outra conta é rejeitada');
 create temp table saved as select public.create_workout_sheet('98000000-0000-0000-0000-000000000001',' A ','forca','Meta',array[1,3]::smallint[]) result;
 select is((select count(*)::int from public.workout_sheets),1,'cria ficha própria');
 select is((select name from public.workout_sheets),'A','normaliza nome');

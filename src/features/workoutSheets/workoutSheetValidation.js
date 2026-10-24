@@ -1,4 +1,12 @@
-export const SHEET_LIMITS = { active: 40, items: 40, sets: 10, duration: 1440, distance: 1000 }
+import { MAX_DURATION_MINUTES, MAX_DISTANCE_KM } from '../../utils/cardioSessions.js'
+import { MAX_WORKOUT_SETS } from '../../utils/workoutSets.js'
+export const SHEET_LIMITS = {
+  active: 40,
+  items: 40,
+  sets: MAX_WORKOUT_SETS,
+  duration: MAX_DURATION_MINUTES,
+  distance: MAX_DISTANCE_KM,
+}
 export const SHEET_GOALS = {
   hipertrofia: 'Hipertrofia',
   forca: 'Força',
@@ -51,12 +59,12 @@ export function validateSheet(sheet) {
     return 'Exercício repetido na ficha.'
   for (const item of value.items) {
     for (const [key, min, max] of [
-      ['target_sets', 1, 10],
+      ['target_sets', 1, SHEET_LIMITS.sets],
       ['reps_min', 1, 1000],
       ['reps_max', 1, 1000],
       ['rest_seconds', 0, 900],
-      ['target_duration_minutes', 1, 1440],
-      ['target_distance_km', 0.001, 1000],
+      ['target_duration_minutes', 1, SHEET_LIMITS.duration],
+      ['target_distance_km', 0.001, SHEET_LIMITS.distance],
     ]) {
       const n = item[key]
       if (
