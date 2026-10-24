@@ -37,13 +37,13 @@ try {
       assert.equal(initial.mode, theme)
       assert.equal(await page.locator('#public-header .public-header-nav').count(), 0)
       assert.equal(await page.locator('#public-header .public-header-brand').isVisible(), true)
-      assert.equal(await page.locator('#public-header .public-header-signup').isVisible(), true)
+      assert.equal(await page.locator('#public-header .public-header-signup').isVisible(), width >= 768)
       assert.equal(await page.locator('.public-header-trigger').isVisible(), true)
       assert.equal(await themeButton.isVisible(), true)
-      assert.equal(await page.locator('#public-header .public-header-login').isVisible(), width >= 768)
+      assert.equal(await page.locator('#public-header .public-header-login').isVisible(), true)
       assert.equal(await page.locator('.public-theme-icon-sun').isVisible(), theme === 'dark')
       assert.equal(await page.locator('.public-theme-icon-moon').isVisible(), theme === 'light')
-      for (const selector of ['.public-header-brand', '.public-theme-trigger', '.public-header-signup', '.public-header-trigger']) {
+      for (const selector of ['.public-header-brand', '.public-theme-trigger', '.public-header-login', '.public-header-trigger']) {
         const box = await page.locator(`#public-header ${selector}`).boundingBox()
         assert.ok(box && box.x >= 0 && box.x + box.width <= width + 1, `${selector} clipped at ${width}`)
       }
@@ -77,8 +77,8 @@ try {
       await page.keyboard.press('Escape')
       assert.equal(await page.locator('.public-header-overlay').count(), 0)
       if (width === 390 && theme === 'light') {
-        await page.locator('#public-header .public-header-signup').click()
-        await page.waitForURL(`${base}/cadastro`)
+        await page.locator('#public-header .public-header-login').click()
+        await page.waitForURL(`${base}/login`)
       }
       if (width === 1440 && theme === 'light') {
         await page.locator('#public-header .public-header-login').click()
