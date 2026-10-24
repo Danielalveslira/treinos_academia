@@ -33,12 +33,12 @@ Comparativo dos builds reais (gzip):
 
 | Medida | Antes | Depois | Variação |
 |---|---:|---:|---:|
-| Todos os chunks JS | 829.538 B | 863.607 B | +34.069 B |
-| JS do boot/PWA (nível 9) | 355.512 B | 374.924 B | +19.412 B |
+| Todos os chunks JS | 829.538 B | 863.677 B | +34.139 B |
+| JS do boot/PWA (nível 9) | 355.512 B | 374.925 B | +19.413 B |
 | Arquivos no boot | 13 | 13 | 0 |
-| Chunk principal JS | 81.179 B | 100.229 B | +19.050 B |
+| Chunk principal JS | 81.179 B | 100.230 B | +19.051 B |
 
-Novos chunks gzip: lista 1.688 B, detalhe 1.282 B, editor 3.979 B, validação 1.215 B e hook/serviço 1.693 B. Mesmo somando incremento do principal e novos chunks do editor, o incremento fica abaixo de 35 KB gzip. O aumento do principal inclui o suporte real de bloqueio de navegação pelo data router. O CSS de boot não aumentou. Os números brutos reproduzíveis estão em `bundle-comparison.json`.
+Novos chunks gzip: lista 1.688 B, detalhe 1.279 B, editor 3.977 B, validação 1.216 B e hook/serviço 1.694 B. Mesmo somando incremento do principal e novos chunks do editor, o incremento fica abaixo de 35 KB gzip. O aumento do principal inclui o suporte real de bloqueio de navegação pelo data router. O CSS de boot não aumentou. Os números brutos reproduzíveis estão em `bundle-comparison.json`.
 
 O comando `npm run budget` tem baseline anterior já excedido na base da Fase 4. O relatório registra medidas dos dois builds; não foi aumentado esse orçamento para esconder o desvio existente.
 
