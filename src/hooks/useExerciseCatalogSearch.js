@@ -44,14 +44,16 @@ export function useExerciseCatalogSearch({ enabled = true, q = '', category, mus
   const effectiveQuery = debouncedQuery.trim()
   const queryTooShort = effectiveQuery.length > 0 && effectiveQuery.length < MIN_QUERY_LENGTH
   const hasAnyFilter = Boolean(category || muscle || equipment || level)
-  // Sem termo de busca válido E sem nenhum filtro: não existe intenção nenhuma do
-  // usuário ainda -- nunca busca "o catálogo inteiro" por padrão.
+  // Sem termo de busca válido E sem nenhum filtro: não é "sem intenção" -- é a vitrine
+  // inicial do catálogo (Fase 4, seção 3.2). Continua distinguida do estado de busca ativa
+  // só para a UI escolher o texto certo (ex.: "Catálogo" vs. "12 resultados para ..."),
+  // nunca mais para bloquear a consulta -- a primeira página SEMPRE carrega.
   const noQueryIntent = effectiveQuery.length === 0 && !hasAnyFilter
   const filterKey = JSON.stringify({ q: effectiveQuery, category, muscle, equipment, level })
 
   const load = useCallback(
     async (loadOffset, { append } = {}) => {
-      if (!enabled || queryTooShort || noQueryIntent) return
+      if (!enabled || queryTooShort) return
       const request = ++revision.current
       if (append) setLoadingMore(true)
       else setState((previous) => ({ ...previous, loading: true, error: null }))
@@ -89,17 +91,19 @@ export function useExerciseCatalogSearch({ enabled = true, q = '', category, mus
         if (request === revision.current) setLoadingMore(false)
       }
     },
-    [enabled, queryTooShort, noQueryIntent, effectiveQuery, category, muscle, equipment, level]
+    [enabled, queryTooShort, effectiveQuery, category, muscle, equipment, level]
   )
 
   useEffect(() => {
-    if (!enabled || queryTooShort || noQueryIntent) {
+    if (!enabled || queryTooShort) {
       setState({ items: [], total: null, loading: false, error: null, fromCache: false, isPartialCache: false })
       return
     }
+    // Sem termo/filtro: carrega a primeira página de publicados mesmo assim (vitrine do
+    // catálogo) -- nunca o catálogo inteiro, sempre pelo mesmo caminho paginado de 20.
     load(0)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, filterKey, queryTooShort, noQueryIntent])
+  }, [enabled, filterKey, queryTooShort])
 
   const hasMore = state.total != null && offset + PAGE_SIZE < state.total
   const loadMore = useCallback(() => {

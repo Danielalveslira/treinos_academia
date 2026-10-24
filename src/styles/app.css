@@ -4574,7 +4574,20 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   scrollbar-width: none;
 }
 .exercise-group-chips::-webkit-scrollbar { display: none; }
-.exercise-group-chips .chip {
+.catalog-shortcuts {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.catalog-shortcuts::-webkit-scrollbar { display: none; }
+.exercise-group-chips .chip,
+.catalog-shortcuts .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   flex: 0 0 auto;
   padding: 6px 13px;
   border: 1px solid var(--borderColor-default);
@@ -4586,7 +4599,8 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   white-space: nowrap;
   cursor: pointer;
 }
-.exercise-group-chips .chip.is-active {
+.exercise-group-chips .chip.is-active,
+.catalog-shortcuts .chip.is-active {
   border-color: var(--fitness-accent-strong);
   background: var(--fitness-accent-strong);
   color: var(--fgColor-onEmphasis);
@@ -4653,8 +4667,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .exercise-detail-page { max-width: 980px; margin: 0 auto; }
 
 .exercise-add-choice,
-.exercise-catalog,
-.catalog-details {
+.exercise-catalog {
   max-width: 980px;
   margin: 0 auto 28px;
   padding: 20px;
@@ -4887,20 +4900,79 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .catalog-heading h2,
 .catalog-details h2 { margin: 0; }
 
+/* Catálogo Evolutus (Fase 4, mobile-first): base = telas pequenas; min-width acima só
+   acrescenta densidade (2-3 colunas, filtros em linha) -- nunca reorganiza a hierarquia. */
+/* Mobile-first de verdade: empilhado por padrão (título, depois o botão) -- lado a lado só a
+   partir de 600px, onde os dois cabem numa linha sem empurrar nada pra fora da tela. */
 .catalog-heading {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
 }
+.catalog-heading > div { min-width: 0; }
+.catalog-heading > button,
+.catalog-heading > span[role="button"] { flex: 0 0 auto; }
+@media (min-width: 600px) {
+  .catalog-heading { flex-direction: row; align-items: flex-start; justify-content: space-between; }
+}
+.catalog-subtitle { margin: 4px 0 0; color: var(--fgColor-muted); font-size: 13px; max-width: 46ch; }
 
-.catalog-search { display: flex; margin-bottom: 16px; }
+.catalog-search { display: flex; margin-bottom: 12px; }
+.catalog-search-clear {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fgColor-muted);
+  cursor: pointer;
+}
+.catalog-search-clear:hover { background: var(--bgColor-muted); }
+.catalog-search-clear:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 1px; }
 
+/* "Mais filtros" (músculo/equipamento/categoria/nível completos) fica fechado por padrão --
+   os atalhos de músculo (.catalog-shortcuts, acima no JSX) já cobrem o caso comum. */
+.catalog-more-filters { margin-bottom: 4px; }
+/* Visual de botão de verdade (borda + fundo), não só texto com cursor:pointer -- senão fica
+   fácil de achar que "Mais filtros"/"Uso offline" não são clicáveis. */
+.catalog-more-filters summary,
+.catalog-offline-toggle summary {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 8px;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.catalog-more-filters summary::-webkit-details-marker,
+.catalog-offline-toggle summary::-webkit-details-marker { display: none; }
+.catalog-more-filters summary:hover,
+.catalog-offline-toggle summary:hover { background: var(--bgColor-muted); }
+.catalog-more-filters summary:focus-visible,
+.catalog-offline-toggle summary:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 2px; }
+.catalog-disclosure-chevron { color: var(--fgColor-muted); transition: transform .15s ease; }
+.catalog-more-filters[open] summary .catalog-disclosure-chevron,
+.catalog-offline-toggle[open] summary .catalog-disclosure-chevron { transform: rotate(180deg); }
 .catalog-filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
+  margin-top: 8px;
 }
 
 .catalog-filter { display: grid; gap: 6px; color: var(--fgColor-muted); font-size: 12px; font-weight: 600; }
@@ -4914,28 +4986,35 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   color: var(--fgColor-default);
 }
 .catalog-filter select:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 1px; }
-.catalog-filters-footer { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: 8px; }
-.catalog-filter-hint { margin: 0; color: var(--fgColor-muted); font-size: 11px; max-width: 46ch; }
-.catalog-result-count { margin: 16px 0 10px; color: var(--fgColor-muted); font-size: 13px; }
-.catalog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.catalog-filters-footer { display: flex; justify-content: flex-end; margin-top: 4px; margin-bottom: 8px; }
+.catalog-filter-hint { margin: 10px 0 0; color: var(--fgColor-muted); font-size: 11px; max-width: 46ch; }
+.catalog-cache-note {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bgColor-attention-muted, var(--bgColor-muted));
+  color: var(--fgColor-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.catalog-result-count { margin: 4px 0 10px; color: var(--fgColor-muted); font-size: 13px; }
+.catalog-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
 .catalog-card {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
   min-width: 0;
-  padding: 12px;
+  overflow: hidden;
   border: 1px solid var(--borderColor-muted);
-  border-radius: 8px;
+  border-radius: 12px;
+  background: var(--bgColor-default);
   transition: border-color .15s ease, background-color .15s ease;
 }
 .catalog-card.is-added { border-color: var(--fitness-accent-strong); background: var(--fitness-accent-soft); }
 .catalog-card-details {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  align-items: center;
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   min-width: 0;
-  gap: 12px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -4944,69 +5023,133 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   cursor: pointer;
 }
 .catalog-card-details:hover strong { text-decoration: underline; }
-.catalog-card-details:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 4px; }
-.catalog-card-copy { display: grid; min-width: 0; gap: 3px; }
-.catalog-card-copy strong,
-.catalog-card-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.catalog-card-copy small { color: var(--fgColor-muted); }
+.catalog-card-details:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: -2px; }
+.catalog-card-copy { display: grid; min-width: 0; gap: 4px; padding: 10px 12px 2px; }
+.catalog-card-copy strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.3;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.catalog-card-meta { margin: 0; overflow: hidden; color: var(--fgColor-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .catalog-card-copy .catalog-card-muscle {
   display: flex;
   align-items: center;
   gap: 6px;
   color: var(--fgColor-muted);
+  font-size: 12px;
 }
 .catalog-card-muscle span { overflow: hidden; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
-.catalog-card-thumb-wrap { position: relative; flex: 0 0 auto; }
+/* Proporção fixa -- nunca pula o layout enquanto a imagem carrega ou cai no placeholder. */
+.catalog-card-thumb-wrap { position: relative; width: 100%; aspect-ratio: 4 / 3; background: var(--bgColor-muted); }
 .catalog-card-thumbnail {
-  width: 72px;
-  height: 72px;
-  min-height: 72px;
-  border-radius: 7px;
+  display: block;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
+.catalog-card-thumb-wrap .catalog-image-placeholder { position: absolute; inset: 0; border-radius: 0; }
 .catalog-card-added-mark {
   position: absolute;
-  top: -6px;
-  right: -6px;
+  top: 8px;
+  right: 8px;
   display: grid;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   place-items: center;
   border-radius: 999px;
   background: var(--fitness-accent-strong);
   color: var(--fgColor-onEmphasis, #fff);
   box-shadow: 0 0 0 2px var(--bgColor-default);
 }
+.catalog-card-demo-badge {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bgColor-default) 82%, transparent);
+  color: var(--fgColor-default);
+  font-size: 10px;
+  font-weight: 700;
+}
+/* O Button "Adicionar" recebe `loading` -- o Primer sempre o envolve num <div> extra quando essa
+   prop existe (ConditionalWrapper, pro anúncio de carregamento), mesmo com loading=false. Esse
+   wrapper não é "button:last-child" (é um div), então mira na posição estrutural, não numa classe
+   interna do Primer que pode mudar -- e dá largura total a ELE antes do `block` do Button fazer
+   `width:100%` (senão 100% de um wrapper encolhido ao conteúdo também fica pequeno). */
+.catalog-card > div:last-child {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 12px 12px;
+}
+.catalog-card > div:last-child > button { width: 100%; }
 .catalog-load-more { display: flex !important; margin: 18px auto 0; }
-.catalog-status { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 160px; color: var(--fgColor-muted); }
+.catalog-status { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 160px; padding: 0 12px; color: var(--fgColor-muted); text-align: center; }
+
+/* Ficha do exercício (dentro do ModalSheet -- ver .catalog-detail-dialog mais abaixo). */
 .catalog-details { display: grid; gap: 18px; }
 .catalog-details-images,
 .personal-catalog-images { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.catalog-details > button:first-child { justify-self: start; }
 .catalog-details dl { display: grid; gap: 10px; margin: 0; }
-.catalog-details dl div { display: grid; grid-template-columns: minmax(130px, 180px) 1fr; gap: 12px; }
+.catalog-details dl div { display: grid; grid-template-columns: 1fr; gap: 2px; }
 .catalog-details dt { color: var(--fgColor-muted); font-weight: 600; }
 .catalog-details dd { margin: 0; }
 .catalog-details ol { display: grid; gap: 8px; padding-left: 22px; }
 .catalog-muscle-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .catalog-muscle-list li { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .catalog-image-placeholder {
-  display: grid;
-  min-height: 180px;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 120px;
+  padding: 8px;
   border-radius: 8px;
   background: var(--bgColor-muted);
   color: var(--fgColor-muted);
+  font-size: 11px;
+  text-align: center;
 }
 .catalog-detail-image {
   width: 100%;
-  min-height: 180px;
-  max-height: 360px;
+  min-height: 160px;
+  max-height: 320px;
   border-radius: 8px;
   object-fit: contain;
   background: var(--bgColor-muted);
 }
 .personal-catalog-images { margin-bottom: 24px; }
+@media (min-width: 768px) {
+  .catalog-details dl div { grid-template-columns: minmax(130px, 180px) 1fr; gap: 12px; }
+}
+
+/* Uso offline: fechado por padrão -- continua compacto (só um botão até abrir), mas logo no
+   topo da tela (antes da busca), pra nunca passar a impressão de que o recurso sumiu ou não
+   existe. Visual do <summary> fica junto de .catalog-more-filters, mais acima (mesmo padrão de
+   botão pros dois). */
+.catalog-offline-toggle { margin-bottom: 14px; }
+.catalog-offline-toggle[open] summary { margin-bottom: 8px; }
+
+@media (min-width: 600px) {
+  .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .catalog-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 700px) {
+  .catalog-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1100px) {
+  .catalog-filters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
 .exercise-visual-preview-image { width: 100%; min-height: 0; aspect-ratio: 1; border-radius: 8px; object-fit: contain; background: var(--bgColor-muted); }
 .exercise-visual-preview-image.catalog-image-placeholder { font-size: 12px; }
 .ev-page { display: grid; gap: 12px; }
@@ -5108,23 +5251,8 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 }
 
 @media (max-width: 767px) {
-  .catalog-filters,
-  .catalog-grid { grid-template-columns: 1fr; }
-  .catalog-heading { align-items: flex-start; flex-direction: column-reverse; }
-  .catalog-card { align-items: flex-start; flex-direction: column; }
-  .catalog-card > .catalog-card-details { width: 100%; }
-  .catalog-card > button:last-child { width: 100%; }
-  .catalog-card-copy strong {
-    display: -webkit-box;
-    overflow: hidden;
-    white-space: normal;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-  }
-  .catalog-filters-footer { flex-direction: column; align-items: stretch; }
   .catalog-details-images,
   .personal-catalog-images { grid-template-columns: 1fr; }
-  .catalog-details dl div { grid-template-columns: 1fr; gap: 2px; }
   .main-content { padding: 22px 16px calc(90px + env(safe-area-inset-bottom)); }
   .main-content h1 { font-size: 29px; }
   .dashboard-greeting--dynamic h1 { max-width: none; font-size: 22px; }
@@ -5472,6 +5600,16 @@ body.modal-sheet-open { overflow: hidden; }
 @media (max-width: 279px) {
   .training-plan-dialog .modal-sheet-header, .training-plan-dialog .modal-sheet-body { padding-inline: 12px; }
   .training-plan-dialog .modal-sheet-footer { padding-inline: 12px; }
+}
+
+/* Ficha do Catálogo Evolutus (Fase 4) usa a mesma folha compartilhada. */
+.modal-sheet.catalog-detail-dialog { box-sizing: border-box; overflow: hidden; }
+.catalog-detail-dialog .modal-sheet-body { overflow-x: hidden; scrollbar-gutter: stable; }
+@media (min-width: 768px) {
+  .modal-sheet.catalog-detail-dialog { width: min(640px, calc(100dvw - 48px)); max-height: min(820px, calc(100dvh - 32px)); }
+  .catalog-detail-dialog .modal-sheet-header { padding: 16px 22px; }
+  .catalog-detail-dialog .modal-sheet-body { padding: 20px 22px 24px; }
+  .catalog-detail-dialog .modal-sheet-footer { padding: 12px 22px; }
 }
 
 /* Compartilhar progresso (conteúdo da folha) ---------------------------------------------------------------- */

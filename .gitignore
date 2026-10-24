@@ -12,3 +12,6 @@ firestore-debug.log
 
 # Disposable financial validation runtime/logs (local synthetic keys only).
 .finance-local/
+
+# Local screenshot evidence from scripts/phase4-catalog-browser-smoke.mjs (regenerate on demand).
+.tmp-phase4-screenshots/

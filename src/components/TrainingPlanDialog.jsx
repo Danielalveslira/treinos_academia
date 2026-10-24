@@ -11,9 +11,6 @@ import {
 export function TrainingPlanDialog({ preferences, onSave, onClose }) {
   const titleId = useId()
   const errorRef = useRef(null)
-  const themeContainer =
-    document.getElementById('app-content')?.closest('[data-color-mode]') ||
-    document.querySelector('#root [data-color-mode]')
   const initial = normalizeTrainingPreferences(preferences)
   const [selectedDays, setSelectedDays] = useState(() => new Set(initial.plannedTrainingDays))
   const [reminderEnabled, setReminderEnabled] = useState(initial.reminderEnabled)
@@ -91,7 +88,7 @@ export function TrainingPlanDialog({ preferences, onSave, onClose }) {
   }
 
   return (
-    <ModalSheet onClose={onClose} portalContainer={themeContainer}>
+    <ModalSheet onClose={onClose}>
       <ModalSheetFrame
         className="training-plan-dialog"
         titleId={titleId}

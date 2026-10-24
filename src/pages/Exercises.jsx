@@ -237,33 +237,38 @@ export default function Exercises() {
   return (
     <Box className="exercises-page">
       <ToastFlash toasts={toasts} />
-      <header className="page-title-row exercises-header">
-        <div>
-          <span className="eyebrow">SUA BIBLIOTECA</span>
-          <Heading as="h1">Exercícios</Heading>
-          {hasAnyExercise && (
-            <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: 1, mb: 0 }}>
-              {exercises.length} exercício{exercises.length === 1 ? '' : 's'} · {distinctGroupCount}{' '}
-              {distinctGroupCount === 1 ? 'grupo' : 'grupos'}
-              {inactiveCount > 0 && !showInactive
-                ? ` · ${inactiveCount} inativo${inactiveCount === 1 ? '' : 's'} oculto${inactiveCount === 1 ? '' : 's'}`
-                : ''}
-            </Text>
-          )}
-        </div>
+      {/* Escondido com o catálogo aberto: ExerciseCatalog já tem seu próprio cabeçalho
+          ("Catálogo Evolutus") -- repetir "Exercícios/Sua biblioteca" por cima daria a
+          impressão de ainda estar na listagem pessoal (Fase 4, seção 3.1). */}
+      {!catalogOpen && (
+        <header className="page-title-row exercises-header">
+          <div>
+            <span className="eyebrow">SUA BIBLIOTECA</span>
+            <Heading as="h1">Exercícios</Heading>
+            {hasAnyExercise && (
+              <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: 1, mb: 0 }}>
+                {exercises.length} exercício{exercises.length === 1 ? '' : 's'} · {distinctGroupCount}{' '}
+                {distinctGroupCount === 1 ? 'grupo' : 'grupos'}
+                {inactiveCount > 0 && !showInactive
+                  ? ` · ${inactiveCount} inativo${inactiveCount === 1 ? '' : 's'} oculto${inactiveCount === 1 ? '' : 's'}`
+                  : ''}
+              </Text>
+            )}
+          </div>
 
-        {!editingExercise && !catalogOpen && (
-          <IconButton
-            icon={SyncIcon}
-            aria-label="Atualizar"
-            size="small"
-            variant="invisible"
-            onClick={refresh}
-            loading={loading}
-            disabled={loading}
-          />
-        )}
-      </header>
+          {!editingExercise && (
+            <IconButton
+              icon={SyncIcon}
+              aria-label="Atualizar"
+              size="small"
+              variant="invisible"
+              onClick={refresh}
+              loading={loading}
+              disabled={loading}
+            />
+          )}
+        </header>
+      )}
 
       {catalogOpen ? (
         <ExerciseCatalog
