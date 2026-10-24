@@ -18,6 +18,8 @@ const ConfirmEmail = lazy(() => import('./pages/ConfirmEmail'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Dashboard = lazy(routeLoaders['/app'])
 const Exercises = lazy(routeLoaders['/exercicios'])
+const WorkoutSheetDetail = lazy(routeLoaders['/fichas/:id'])
+const WorkoutSheetEditor = lazy(routeLoaders['/fichas/editor'])
 const ExerciseDetail = lazy(routeLoaders['/exercicios/:id'])
 const NewWorkout = lazy(routeLoaders['/novo-treino'])
 const History = lazy(routeLoaders['/historico'])
@@ -91,6 +93,9 @@ export function AppRoutes() {
         >
           <Route path="/app" element={<Dashboard />} />
           <Route path="/exercicios" element={<Exercises />} />
+          <Route path="/fichas/nova" element={<WorkoutSheetEditor />} />
+          <Route path="/fichas/:id/editar" element={<WorkoutSheetEditor />} />
+          <Route path="/fichas/:id" element={<WorkoutSheetDetail />} />
           <Route path="/exercicios/:id" element={<ExerciseDetail />} />
           <Route path="/novo-treino" element={<NewWorkout />} />
           <Route path="/historico" element={<History />} />

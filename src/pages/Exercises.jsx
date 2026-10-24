@@ -64,7 +64,11 @@ export default function Exercises() {
   const { allWorkouts } = useDashboard()
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
-  const [catalogOpen, setCatalogOpen] = useState(() => Boolean(location.state?.openCatalog))
+  const [catalogOpen, setCatalogOpen] = useState(
+    () =>
+      Boolean(location.state?.openCatalog) ||
+      new URLSearchParams(location.search).get('aba') === 'catalogo'
+  )
   const [editingExercise, setEditingExercise] = useState(null)
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState('')
@@ -247,8 +251,8 @@ export default function Exercises() {
             <Heading as="h1">Exercícios</Heading>
             {hasAnyExercise && (
               <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: 1, mb: 0 }}>
-                {exercises.length} exercício{exercises.length === 1 ? '' : 's'} · {distinctGroupCount}{' '}
-                {distinctGroupCount === 1 ? 'grupo' : 'grupos'}
+                {exercises.length} exercício{exercises.length === 1 ? '' : 's'} ·{' '}
+                {distinctGroupCount} {distinctGroupCount === 1 ? 'grupo' : 'grupos'}
                 {inactiveCount > 0 && !showInactive
                   ? ` · ${inactiveCount} inativo${inactiveCount === 1 ? '' : 's'} oculto${inactiveCount === 1 ? '' : 's'}`
                   : ''}
@@ -276,8 +280,10 @@ export default function Exercises() {
           onAdd={handleCatalogAdd}
           onClose={() =>
             location.state?.openCatalog
-              ? returnToOrigin(navigate, location, '/novo-treino')
-              : setCatalogOpen(false)
+              ? returnToOrigin(navigate, location, '/exercicios?aba=biblioteca')
+              : new URLSearchParams(location.search).get('aba') === 'catalogo'
+                ? navigate('/exercicios?aba=biblioteca')
+                : setCatalogOpen(false)
           }
         />
       ) : (

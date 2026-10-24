@@ -1,3 +1,7 @@
+import {
+  prescription,
+  sheetScopeExercises,
+} from '../features/workoutSheets/workoutSheetValidation.js'
 import { canStartExercise } from '../utils/personalExercises.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -96,6 +100,7 @@ const cardioValues = (workout) => ({
 
 export function WorkoutForm({
   exercises,
+  sheetScope,
   history = [],
   initialValue,
   defaultExerciseId,
@@ -117,7 +122,7 @@ export function WorkoutForm({
   // que não pode.
   const editingType = initialValue ? getExerciseType(initialValue) : null
   const availableExercises = useMemo(() => {
-    const active = exercises.filter(
+    const active = sheetScopeExercises(exercises, editingType ? null : sheetScope).filter(
       (exercise) => canStartExercise(exercise) || exercise.id === initialValue?.exerciseId
     )
     const scoped = editingType
@@ -142,7 +147,7 @@ export function WorkoutForm({
       ]
     }
     return scoped
-  }, [exercises, initialValue?.exerciseId, editingType])
+  }, [exercises, initialValue?.exerciseId, editingType, sheetScope])
   const initialExerciseId = initialValue?.exerciseId || defaultExerciseId || ''
   const initialExercise = availableExercises.find((exercise) => exercise.id === initialExerciseId)
 
@@ -193,7 +198,9 @@ export function WorkoutForm({
     setValues(next)
     return next
   }
-  const [step, setStep] = useState(() => (initialExercise ? 'register' : 'group'))
+  const [step, setStep] = useState(() =>
+    initialExercise ? 'register' : sheetScope ? 'exercise' : 'group'
+  )
   const [selectedGroup, setSelectedGroup] = useState(initialExercise?.muscleGroup || 'Outros')
   const [search, setSearch] = useState('')
   const drafts = useRef(new Map())
@@ -261,12 +268,14 @@ export function WorkoutForm({
   // exercício não concluído. exercisesInGroup (abaixo) é só a versão filtrada exibida na tela.
   const allExercisesInGroup = useMemo(
     () =>
-      sortExercisesInGroup(
-        availableExercises.filter(
-          (exercise) => (exercise.muscleGroup || 'Outros') === selectedGroup
-        )
-      ),
-    [availableExercises, selectedGroup]
+      sheetScope
+        ? availableExercises
+        : sortExercisesInGroup(
+            availableExercises.filter(
+              (exercise) => (exercise.muscleGroup || 'Outros') === selectedGroup
+            )
+          ),
+    [availableExercises, selectedGroup, sheetScope]
   )
   const exercisesInGroup = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('pt-BR')
@@ -411,7 +420,7 @@ export function WorkoutForm({
   }
 
   function showGroups() {
-    showStep('group')
+    showStep(sheetScope ? 'exercise' : 'group')
   }
 
   function showExercises() {
@@ -575,15 +584,16 @@ export function WorkoutForm({
   return (
     <Box as="form" ref={formRef} className="workout-form workout-execution" onSubmit={handleSubmit}>
       <nav className="workout-progress" aria-label="Etapas do treino">
-        {step === 'group' ? (
-          <span className="is-current" aria-current="step">
-            1 Grupo
-          </span>
-        ) : (
-          <button type="button" className="is-done" disabled={submitting} onClick={showGroups}>
-            1 Grupo
-          </button>
-        )}
+        {!sheetScope &&
+          (step === 'group' ? (
+            <span className="is-current" aria-current="step">
+              1 Grupo
+            </span>
+          ) : (
+            <button type="button" className="is-done" disabled={submitting} onClick={showGroups}>
+              1 Grupo
+            </button>
+          ))}
         {step === 'register' ? (
           <button type="button" className="is-done" disabled={submitting} onClick={showExercises}>
             2 Exercício
@@ -639,7 +649,7 @@ export function WorkoutForm({
       {step === 'exercise' && (
         <section className="workout-step" aria-labelledby="exercise-choice-title">
           <button className="workout-back" type="button" onClick={showGroups}>
-            <ChevronLeftIcon size={16} /> Trocar grupo
+            <ChevronLeftIcon size={16} /> {sheetScope ? 'Exercícios da ficha' : 'Trocar grupo'}
           </button>
           <div className="workout-step-heading">
             <h2 id="exercise-choice-title">Escolha o exercício</h2>
@@ -693,6 +703,14 @@ export function WorkoutForm({
         </section>
       )}
 
+      {sheetScope && (
+        <p className="sheet-reference">
+          Metas da ficha (referência):{' '}
+          {prescription(sheetScope.items.find((i) => i.exercise_id === values.exerciseId)) ||
+            'Selecione um exercício para ver as metas.'}{' '}
+          Nenhuma meta representa uma série realizada. Concluído hoje é por exercício/dia.
+        </p>
+      )}
       {step === 'register' && selectedExercise && (
         <div className="workout-step workout-register-step">
           <section className="exercise-context-bar" aria-label="Exercício selecionado">
