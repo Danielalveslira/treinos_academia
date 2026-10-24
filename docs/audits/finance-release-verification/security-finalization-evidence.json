@@ -1,0 +1,341 @@
+{
+  "recorded_at_utc": "2026-10-23T21:08:59.207285+00:00",
+  "status": "BLOQUEADO",
+  "project_ref": "ywrjojrjgozdfpddkkuy",
+  "supabase_plan": {
+    "organization": "Stockflow",
+    "slug": "bvgictlmomeysblyrqjf",
+    "plan_name_verified": false,
+    "reason": "CLI organization metadata does not expose subscription; no paid resources created"
+  },
+  "backup": {
+    "dump_exit_code": 0,
+    "seconds": 30.51,
+    "size_bytes": 5169098,
+    "read_only_connection": true,
+    "restore_executed": true,
+    "sha256": "4ece52cbeaf9b034fd7fefc74241da6311bed066924616d16e4c7338af25924e",
+    "restore_exit_code": 0,
+    "restore_seconds": 19.0,
+    "network": "none",
+    "published_ports": [],
+    "cron_launch_active_jobs": "off",
+    "owner_mapping": "--no-owner to existing local supabase_admin; grants retained",
+    "source_database_mutated": false,
+    "restore_attempts": [
+      {
+        "exit_code": 1,
+        "cause": "pg_cron absent from shared_preload_libraries in isolated container"
+      },
+      {
+        "exit_code": 1,
+        "cause": "isolated shared_preload_libraries list quoting; no SQL restore executed"
+      },
+      {
+        "exit_code": 1
+      },
+      {
+        "exit_code": 1,
+        "cause": "missing global role supabase_functions_admin in local base image; created NOLOGIN/NOSUPERUSER for ACL restoration"
+      },
+      {
+        "exit_code": 1,
+        "cause": "missing global role supabase_realtime_admin in local base image; created NOLOGIN/NOSUPERUSER for ACL restoration"
+      },
+      {
+        "exit_code": 0
+      }
+    ],
+    "local_missing_roles_created_nologin": [
+      "supabase_functions_admin",
+      "supabase_realtime_admin"
+    ],
+    "financial_and_configuration_fingerprints_equal": true,
+    "fingerprint_relations": 19,
+    "fingerprint_differences": [],
+    "encrypted": true,
+    "encryption": "GnuPG AES256 with integrity protection",
+    "decryption_sha256_verified": true,
+    "encrypted_sha256": "f13bc3c440fecc7e238f7f7f3aa6571265465096871e0c50035869df74a234db",
+    "offsite_copy_verified": false,
+    "key_stored_separately_offsite": false,
+    "restored_catalog_reviewed_difference": {
+      "table": "public.push_subscriptions",
+      "constraint": "push_subscription_key_lengths",
+      "difference": "pg_dump/reparse flattened nested AND; same immutable checks, SQL AND associativity including NULL; validation and all other constraints unchanged"
+    },
+    "archive_created_at": "Archive created at 2026-10-23 20:54:13 UTC",
+    "dump_includes_storage_object_bytes": false,
+    "provider_configuration_and_secrets_restored": false,
+    "api_state": {
+      "backups": null,
+      "physical_backup_data": {},
+      "pitr_enabled": false,
+      "region": "us-east-2",
+      "walg_enabled": true
+    },
+    "isolation": {
+      "migration_count": 148,
+      "orphan_auth_sessions": 0,
+      "cron_launch_active_jobs": "off",
+      "network_mode": "none",
+      "published_ports": {},
+      "mounts": [],
+      "memory_bytes": 943718400,
+      "nano_cpus": 500000000,
+      "auth_session_rows": 11
+    },
+    "restore_catalog_comparison": {
+      "baseline_local_version": "20261111000001",
+      "remote_version": "20261111000001",
+      "versions_equal": true,
+      "local_only_versions": [],
+      "remote_only_versions": [],
+      "compared": {
+        "functions": 297,
+        "relations": 92,
+        "triggers": 66,
+        "views": 5,
+        "enums": 2,
+        "jobs": 14
+      },
+      "changes": [
+        {
+          "kind": "relation",
+          "object": "public.push_subscriptions",
+          "fields": [
+            "constraints"
+          ],
+          "local_sha256": "3b66739afab0e95e21fcfdf974254ecf3df919bccd3e7447ca7fb5b77396d072",
+          "remote_sha256": "01bf4957ea17b7cf0b5e34aafc4528682745880d3ab9cfab2f613c1433912a29"
+        }
+      ],
+      "normalization": "Only the privileged DBA/owner roles postgres/supabase_admin/pg_database_owner are normalized and their duplicate ACL entries collapsed; all client grants, function bodies, RLS, constraints, indexes and trigger states remain compared.",
+      "privileged_ownership": {
+        "local": {
+          "postgres": 293,
+          "supabase_admin": 4
+        },
+        "remote": {
+          "supabase_admin": 297
+        }
+      },
+      "extensions": {
+        "local": [
+          {
+            "name": "pg_cron",
+            "version": "1.6.4"
+          },
+          {
+            "name": "pg_net",
+            "version": "0.20.4"
+          },
+          {
+            "name": "pg_stat_statements",
+            "version": "1.11"
+          },
+          {
+            "name": "pg_trgm",
+            "version": "1.6"
+          },
+          {
+            "name": "pgcrypto",
+            "version": "1.3"
+          },
+          {
+            "name": "plpgsql",
+            "version": "1.0"
+          },
+          {
+            "name": "supabase_vault",
+            "version": "0.3.1"
+          },
+          {
+            "name": "unaccent",
+            "version": "1.1"
+          },
+          {
+            "name": "uuid-ossp",
+            "version": "1.1"
+          }
+        ],
+        "remote": [
+          {
+            "name": "pg_cron",
+            "version": "1.6.4"
+          },
+          {
+            "name": "pg_net",
+            "version": "0.20.4"
+          },
+          {
+            "name": "pg_stat_statements",
+            "version": "1.11"
+          },
+          {
+            "name": "pg_trgm",
+            "version": "1.6"
+          },
+          {
+            "name": "pgcrypto",
+            "version": "1.3"
+          },
+          {
+            "name": "plpgsql",
+            "version": "1.0"
+          },
+          {
+            "name": "supabase_vault",
+            "version": "0.3.1"
+          },
+          {
+            "name": "unaccent",
+            "version": "1.1"
+          },
+          {
+            "name": "uuid-ossp",
+            "version": "1.1"
+          }
+        ]
+      },
+      "disabled_fk_triggers": 0
+    },
+    "current_source_fingerprints_compared": 19,
+    "storage_object_bytes_not_included": true,
+    "full_managed_project_restore_verified": false
+  },
+  "vercel": {
+    "inspection": {
+      "team": "danielalvesliras-projects",
+      "project": "treinos_academia",
+      "productionBranch": "main",
+      "previousAutoAssign": true,
+      "autoAssignCustomDomains": true,
+      "productionDeploymentId": "dpl_2akHRitD4MDdf7WdCKNmup9mAoXv",
+      "applied": false
+    },
+    "local_git_config": {
+      "deploymentEnabled": {
+        "main": false,
+        "finance-ci-*": false
+      }
+    },
+    "remote_hold_authorized": false,
+    "remote_hold_applied": false,
+    "production_workflow_template_active": false
+  },
+  "github": {
+    "main_sha": "0cdde0e666942af45ad448485b49a8ac60a7c685",
+    "main_protected": false,
+    "protection_api_http_status": 403,
+    "message": "Upgrade to GitHub Pro or make this repository public to enable this feature",
+    "required_checks_enforced": false,
+    "current_changes_ci_executed": false,
+    "push_performed": false,
+    "signing": {
+      "exit_code": 128,
+      "signature_created": false,
+      "author_invalid": false,
+      "project_repository_modified": false
+    },
+    "action_pins": {
+      "actions/checkout": "11bd71901bbe5b1630ceea73d27597364c9af683",
+      "actions/setup-node": "49933ea5288caeca8642d1e84afbd3f7d6820020",
+      "supabase_setup_action_removed": "v1 tag not found; CLI reused from package-lock"
+    }
+  },
+  "migrations": {
+    "remote_count": 148,
+    "remote_latest": "20261111000001",
+    "pending_files": [
+      "20261112000001_finance_permissions.sql",
+      "20261112000002_finance_integrity.sql",
+      "20261112000003_finance_payment_finality.sql",
+      "20261112000004_finance_reversals.sql",
+      "20261112000005_finance_reward_evidence.sql",
+      "20261112000006_finance_reconciliation_shadow.sql",
+      "20261113000001_session_revocation_guard.sql",
+      "20261113000002_session_active_rpc.sql",
+      "20261113000003_admin_session_revocation_guard.sql",
+      "20261114000001_financial_auth_integration.sql",
+      "20261114000002_remaining_sensitive_rpcs_guard.sql",
+      "20261114000003_community_economy_session_guard.sql",
+      "20261115000001_training_preferences_catalog.sql",
+      "20261115000002_cash_reminder_session_guard.sql"
+    ],
+    "historical_applied_files_modified": false,
+    "original_13_hashes_preserved": true,
+    "applied_remotely": false
+  },
+  "diagnostics": {
+    "credited_without_matching_ledger": 0,
+    "credited_without_provider_identity": 0,
+    "duplicate_cash_purchase_credits": 0,
+    "economy_sizes": {
+      "ledger": 166,
+      "purchases": 25,
+      "wallets": 6
+    },
+    "fractional_ledger": 0,
+    "invalid_cash_package_config": 0,
+    "invalid_promotion_units": 0,
+    "invalid_purchase_units": 0,
+    "invalid_wallets": 0,
+    "latest_migration": "20261111000001",
+    "reward_cap": 10,
+    "server_version": "17.6",
+    "wallet_ledger_discrepancies": 0
+  },
+  "tests": {
+    "release_node_tests": {
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    "workflow_guards": {
+      "aggregate_job_cases": [
+        {
+          "sql_result": "success",
+          "exit_code": 0
+        },
+        {
+          "sql_result": "failure",
+          "exit_code": 1
+        },
+        {
+          "sql_result": "cancelled",
+          "exit_code": 1
+        },
+        {
+          "sql_result": "skipped",
+          "exit_code": 1
+        }
+      ],
+      "credential_canary_rejected": true,
+      "credential_not_printed": true,
+      "yaml_parse_passed": true
+    },
+    "source_secret_scan": {
+      "mode": "working-tree",
+      "files": 1911,
+      "findings": []
+    },
+    "existing_bundle_secret_scan": {
+      "mode": "browser-build",
+      "files": 187,
+      "findings": []
+    },
+    "lint": {
+      "errors": 0,
+      "preexisting_warnings": 16
+    },
+    "full_application_sql_http_suites_repeated": false
+  },
+  "blockers": [
+    "Encrypted backup and independent key are not yet retained/verified outside the Codespace; managed project secrets/configuration and Storage object recovery not proven",
+    "Remote Vercel auto-assignment hold awaits explicit authorization; prepared git configuration is not published",
+    "Main protection unavailable through current GitHub plan/access; signed commit creation fails with missing GitHub signing key; exact current CI cannot run before authorized push"
+  ],
+  "no_production_financial_mutations": true,
+  "no_push_merge_deploy": true
+}

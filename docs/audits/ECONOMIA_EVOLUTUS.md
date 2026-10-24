@@ -1,3 +1,7 @@
+> **Finalização posterior:** [estado atual de segurança e publicação](finance-release-verification/LIBERACAO_SEGURANCA.md). Backup de banco restaurado; custódia externa, hold Vercel e CI/proteções continuam pendentes.
+
+> **Verificação remota posterior:** autenticação e diagnóstico concluídos. O estado atual está em [finance-release-verification/RELATORIO_FINAL.md](finance-release-verification/RELATORIO_FINAL.md). Publicação continua bloqueada por recuperação e controle de implantação. O conteúdo abaixo preserva a evidência da estabilização anterior.
+
 > **Atualização de estabilização (2026-10-23):** os resultados atuais estão em [finance-integration/RELATORIO_FINAL.md](finance-integration/RELATORIO_FINAL.md) e na seção `stabilization` de `ECONOMIA_EVIDENCIAS.json`. Os resultados abaixo preservam a auditoria histórica, com falhas já superadas. Estado atual: validação local concluída; publicação BLOQUEADA pela confirmação remota/recuperação pendentes.
 
 # Auditoria e correção da economia Evolutus

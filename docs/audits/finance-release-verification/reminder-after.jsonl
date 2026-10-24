@@ -1,0 +1,3 @@
+{"file":"cash_purchase_reminder_emails_test.sql","passed":true,"assertions":42,"skipped":0,"planComplete":true,"output_sha256":"7690ddf852f43064d6bcdbc2ebf79aa803d9fdd5c3aa9b605ead34ffa0a7d789"}
+{"file":"finance_reminder_session_guard_test.sql","passed":true,"assertions":7,"skipped":0,"planComplete":true,"output_sha256":"0eef3982daf633a09bf2618b94265933e7b7257976badbc45d8abde5427d0ca4"}
+{"file":"workout_reminders_test.sql","passed":true,"assertions":93,"skipped":0,"planComplete":true,"output_sha256":"db665c6e97792e70fbca8783bc3d5d0c8649b2598fe5c5340ff5c626cec382a4"}

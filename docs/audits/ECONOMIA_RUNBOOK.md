@@ -1,6 +1,8 @@
+> **Estado mais recente do Codespace e PR:** [finance-release-verification/PR_READINESS.md](finance-release-verification/PR_READINESS.md). Branch local chore/finance-release-readiness, assinatura SSH válida; não houve push. Leituras remotas atuais Supabase/Vercel bloqueadas por autenticação.
+
 # Economia Evolutus — validação local e publicação
 
-Estado atual: consulte `finance-integration/RELATORIO_FINAL.md` e a seção `stabilization` de `ECONOMIA_EVIDENCIAS.json`. Publicação não autorizada. Este runbook substitui o procedimento antigo com schemas sintéticos; não existe homologação remota. O merge do PR #65 não comprova que suas migrations foram aplicadas no Supabase de produção.
+Estado atual: consulte primeiro `finance-release-verification/LIBERACAO_SEGURANCA.md` e `security-finalization-evidence.json` nesse diretório; backup do banco restaurado, custódia externa e gates remotos ainda pendentes. Consulte também `finance-release-verification/RELATORIO_FINAL.md` e `finance-release-verification/evidencias.json`; a confirmação remota foi concluída, recuperação/publicação continuam bloqueadas. Consulte também `finance-integration/RELATORIO_FINAL.md` e a seção `stabilization` de `ECONOMIA_EVIDENCIAS.json`. Publicação não autorizada. Este runbook substitui o procedimento antigo com schemas sintéticos; não existe homologação remota. O merge do PR #65 não comprova que suas migrations foram aplicadas no Supabase de produção.
 
 ## Ambiente local reproduzível
 
@@ -46,7 +48,7 @@ node_modules/.bin/supabase db query --linked --file scripts/release/finance-prod
 
 O SQL usa `BEGIN READ ONLY`, statement timeout de 10 s e lock timeout de 2 s. Retorna somente metadados/contagens: unidades inválidas, saldos negativos, divergência carteira/ledger/lifetime, compra creditada sem ledger/identidade, duplicidade e definições/grants/RLS/índices. Não grava cursor/findings. Não executar `finance_reconcile_shadow` sob a autorização de somente leitura: essa função grava evidências, embora não modifique saldos.
 
-Comparar funções, RLS, grants, colunas, índices e constraints com uma baseline local até a última versão **realmente registrada remotamente**; normalizar apenas owner/grantor e qualificação equivalente do deparser. A evidência anterior `remote-baseline-drift.json` é histórica, não substitui consulta atual. Zero linhas inválidas não prova equivalência de schema; journal sozinho também não. Se houver divergência, parar publicação e revisar roll-forward. Não arredondar valores, fabricar ledger inicial ou reparar saldo automaticamente.
+Comparar funções, RLS, grants, colunas, índices e constraints com uma baseline local até a última versão **realmente registrada remotamente**; normalizar somente os owners DBA documentados e grants duplicados equivalentes; comparar corpos SQL literalmente. A evidência anterior `remote-baseline-drift.json` é histórica, não substitui consulta atual. Zero linhas inválidas não prova equivalência de schema; journal sozinho também não. Se houver divergência, parar publicação e revisar roll-forward. Não arredondar valores, fabricar ledger inicial ou reparar saldo automaticamente.
 
 ## Ordem das migrations
 
@@ -63,8 +65,9 @@ Aplicação em ordem lexicográfica, sem editar as 148 históricas até `2026111
 | `20261113000001` → `20261113000003` | sessão real em auth.sessions, RPC is_session_active, proteção administrativa |
 | `20261114000001` → `20261114000003` | integração financeira/Auth, RLS, operações de comunidade e exclusão |
 | `20261115000001` | catálogo de fusos qualificado em set_training_preferences |
+| `20261115000002` | RLS de lembretes financeiros exige sessão ativa, após as integrações |
 
-São 13 pendentes se o remoto ainda estiver em `20261111000001`; confirmar, nunca presumir. O ensaio local aplica 161 no total. `NOT VALID` protege novas escritas sem alterar dados históricos. Validar constraints antigas separadamente após pré-check e janela aprovados. Estimar tempo dos índices com tamanho real: o DDL transacional pode bloquear escritas. Não prometer zero downtime.
+São 14 pendentes se o remoto ainda estiver em `20261111000001`; confirmar, nunca presumir. O ensaio local aplica 162 no total. `NOT VALID` protege novas escritas sem alterar dados históricos. Validar constraints antigas separadamente após pré-check e janela aprovados. Estimar tempo dos índices com tamanho real: o DDL transacional pode bloquear escritas. Não prometer zero downtime.
 
 ## Backup e recuperação — requisitos antes de publicar
 
@@ -74,15 +77,15 @@ Na janela autorizada: suspender criação de novos checkouts/debitos pela config
 
 ## Publicação — comandos preparados, NÃO executados
 
-Somente após autorização explícita, pré-check atual limpo e recuperação aprovada. Fixar commit e hashes revisados. Bloquear auto-publicação do frontend pela integração Git durante a janela; push/merge em main pode publicar frontend antes do banco. Não configurar integração CI nova nesta entrega.
+Somente após autorização explícita, pré-check atual limpo e recuperação aprovada. Fixar commit e hashes revisados. Bloquear auto-publicação do frontend pela integração Git durante a janela; push/merge em main pode publicar frontend antes do banco. O template `finance-release-verification/finance-production.yml.disabled` permanece fora dos workflows ativos até aprovação e configuração de proteções.
 
 ```bash
 # Revisão final do destino e do plano. Não confirmar diferenças inesperadas.
 node_modules/.bin/supabase migration list --linked
-node_modules/.bin/supabase db push --linked --dry-run
+node_modules/.bin/supabase db push --linked --dry-run --skip-vault
 
 # 1. BANCO — ação remota: somente após autorização.
-node_modules/.bin/supabase db push --linked
+node_modules/.bin/supabase db push --linked --skip-vault
 
 # 2. EDGE — inclui consumidores do helper administrativo alterado no PR #65.
 node_modules/.bin/supabase functions deploy infinitepay-create-checkout --project-ref ywrjojrjgozdfpddkkuy
@@ -141,3 +144,73 @@ __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=organic-goldfish-r7w5rp9g754vhxp4v-5173.a
 ```
 
 O frontend usa a configuração Supabase existente do Codespace. Não apontar o canário/fixtures/carga para ela; os testes financeiros usam exclusivamente o stack sintético em loopback.
+
+## Evidência remota atual e monitoramento
+
+Ver `finance-release-verification/RELATORIO_FINAL.md`: 148 versões remotas, 14 pendentes, três diferenças de grants revisadas e zero divergências financeiras. Backup utilizável/restauração não comprovados e PITR desativado. Main publica frontend automaticamente na Vercel; estabelecer gate autorizado antes de push/merge. A verificação não autoriza publicação.
+
+Leituras complementares, após conferir destino:
+
+```bash
+node_modules/.bin/supabase db query --linked --file scripts/release/finance-catalog-readonly.sql --output json
+node_modules/.bin/supabase db query --linked --file scripts/release/finance-dependencies-readonly.sql --output json
+# Somente DEPOIS de todas as 14 migrations, leitura sem reparos:
+node_modules/.bin/supabase db query --linked --file scripts/release/finance-postdeploy-readonly.sql --output json
+```
+
+Guardar saídas de catálogo em diretório privado: definições históricas podem conter configuração sensível. Versionar somente contagens, nomes, hashes e diferenças revisadas. Não registrar valores/digests de secrets. Observar em 0/5/15/60 min e durante a janela seguinte; sem criar cron. Em divergência, conter novas origens afetadas mantendo webhooks e confirmação de pagamentos em curso.
+
+## Gates finais, antes de qualquer publicação
+
+O bloqueio remoto Vercel é uma mudança de configuração, depende de autorização específica e não é deploy. Injetar VERCEL_TOKEN diretamente do cofre/ambiente protegido, nunca por argumento ou arquivo versionado. Inspeção é o padrão:
+
+```bash
+node scripts/release/vercel-production-gate.mjs
+# SOMENTE após autorização específica do hold:
+node scripts/release/vercel-production-gate.mjs --apply-hold
+```
+
+Confirmar autoAssignCustomDomains=false e mesmo deployment atual. O `vercel.json` preparado desabilita deploy Git de main e finance-ci-*, mas só protege as revisões que contêm esse arquivo. Aplicar/verificar hold antes do primeiro push. As demais branches mantêm preview. Não atribuir domínio por outra automação durante o rollout.
+
+Resolver plano/acesso que permita proteção da main privada, aplicar o payload proposto somente sob autorização e exigir finance-quality (GitHub Actions app 15368), revisão do último push e proteção de admins. Assinatura segue habilitada; o ensaio atual em repo descartável falhou com chave GitHub ausente. Corrigir o assinador e validar Verified antes de criar/enviar os commits; preservar os três commits locais e suas referências ao reorganizar a branch. Não usar commit.gpgsign=false.
+
+Após o diff estar consolidado e assinado, com autorização específica de push, utilizar somente `chore/finance-release-readiness`; push nela dispara o workflow atualizado. Descobrir a execução pelo SHA exato e acompanhar sem disparar cópias redundantes:
+
+```bash
+# Execução futura: a branch e os commits precisam estar previamente preparados/revisados.
+git push origin HEAD:refs/heads/chore/finance-release-readiness
+# Selecionar o ID da execução que corresponde exatamente ao SHA enviado:
+env -u GITHUB_TOKEN -u GH_TOKEN gh run list --workflow supabase-tests.yml --branch chore/finance-release-readiness --commit "$APPROVED_SHA"
+env -u GITHUB_TOKEN -u GH_TOKEN gh run watch "$CI_RUN_ID" --exit-status
+```
+
+Nenhum push acima foi executado. Não inferir aprovação a partir do CI de 0cdde0e. Não integrar antes de finance-quality aprovado e branch protegida; o SHA final após merge também precisa de CI. Não executar merge automaticamente.
+
+Antes de executar o db push autorizado, além de revisão do schema/backup atual:
+
+```bash
+mkdir -p .finance-local/release
+chmod 700 .finance-local/release
+node_modules/.bin/supabase db query --linked --file scripts/release/finance-production-readonly.sql --output json > .finance-local/release/before.json
+node scripts/release/check-finance-diagnostics.mjs before .finance-local/release/before.json
+node_modules/.bin/supabase db push --linked --dry-run --skip-vault
+# Após as 14 migrations e oito Edge Functions, sob a autorização correspondente:
+node_modules/.bin/supabase db query --linked --file scripts/release/finance-postdeploy-readonly.sql --output json > .finance-local/release/after.json
+node scripts/release/check-finance-diagnostics.mjs after .finance-local/release/after.json
+```
+
+Erro, campo ausente, saldo divergente, flag de reversão ativa ou permissão perigosa bloqueiam o gate. Sucesso da requisição SQL sozinho não aprova integridade. Não chamar reconciliação que grave findings sob escopo de leitura. Tratar needs_review, pendentes com identidade e findings por política operacional, sem fabricar correções de saldo.
+
+O template de frontend requer environments com revisores obrigatórios (backend, stage, promote), acesso apenas a main, secrets mínimos por etapa, versões fixas de CLI e aprovação de backup/backend do mesmo SHA. Não basta copiar o YAML para ativar proteção: GitHub environments não configurados podem não impor aprovação. Só habilitar após conferir as proteções reais. Migrations/Edge permanecem na sequência autorizada acima; o template apenas verifica backend e prepara/promove frontend. A promoção exige smoke revisado do mesmo deployment, sem nova compilação.
+
+Recuperação comprovada do banco, ciphertext/key local, limitações de Storage/configuração, ponto do snapshot e RPO/RTO estão em `finance-release-verification/LIBERACAO_SEGURANCA.md`. Não publicar sem cópia externa/chave independente e responsabilidades confirmadas.
+
+### Identidade dos commits no ambiente automatizado
+
+Neste Codespace, o processo do agente também fornece GIT_COMMITTER_NAME/EMAIL=GitHub, que prevalecem sobre git config. Isso não muda o login HTTPS nem a chave SSH. Para novos commits com Daniel nos dois campos, usar no processo de commit:
+
+```bash
+GIT_COMMITTER_NAME=Danielalveslira GIT_COMMITTER_EMAIL=124009137+Danielalveslira@users.noreply.github.com git commit -S
+```
+
+Não reescrever os três commits anteriores automaticamente. Os cinco novos de código já assinados têm autor Daniel e committer GitHub; eventual normalização exige consentimento e referência preservada. A documentação seguinte é commitada com o committer explícito.

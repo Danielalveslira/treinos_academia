@@ -1,0 +1,11 @@
+✔ parallel activation -> one targeted outbox -> worker -> SW ACK and click; no repeat (5327.918826ms)
+✔ two accounts racing for an unowned endpoint cannot overwrite the winner (780.131405ms)
+✔ 6 workers em paralelo: cada entrega (notificação x dispositivo) sai exatamente uma vez (3242.536138ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9547.035715

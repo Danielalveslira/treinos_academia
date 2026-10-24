@@ -1,0 +1,535 @@
+{
+  "recorded_at_utc": "2026-10-23T20:44:10.174775+00:00",
+  "status": "BLOQUEADO",
+  "project_ref": "ywrjojrjgozdfpddkkuy",
+  "project_name": "evolutus.com.br",
+  "region": "us-east-2",
+  "remote_migration_count": 148,
+  "pending_migrations": [
+    "20261112000001_finance_permissions.sql",
+    "20261112000002_finance_integrity.sql",
+    "20261112000003_finance_payment_finality.sql",
+    "20261112000004_finance_reversals.sql",
+    "20261112000005_finance_reward_evidence.sql",
+    "20261112000006_finance_reconciliation_shadow.sql",
+    "20261113000001_session_revocation_guard.sql",
+    "20261113000002_session_active_rpc.sql",
+    "20261113000003_admin_session_revocation_guard.sql",
+    "20261114000001_financial_auth_integration.sql",
+    "20261114000002_remaining_sensitive_rpcs_guard.sql",
+    "20261114000003_community_economy_session_guard.sql",
+    "20261115000001_training_preferences_catalog.sql",
+    "20261115000002_cash_reminder_session_guard.sql"
+  ],
+  "financial_diagnostics": {
+    "credited_without_matching_ledger": 0,
+    "credited_without_provider_identity": 0,
+    "duplicate_cash_purchase_credits": 0,
+    "economy_sizes": {
+      "ledger": 166,
+      "purchases": 25,
+      "wallets": 6
+    },
+    "fractional_ledger": 0,
+    "invalid_cash_package_config": 0,
+    "invalid_promotion_units": 0,
+    "invalid_purchase_units": 0,
+    "invalid_wallets": 0,
+    "latest_migration": "20261111000001",
+    "reward_cap": 10,
+    "server_version": "17.6",
+    "wallet_ledger_discrepancies": 0,
+    "purchase_statuses": [
+      {
+        "count": 15,
+        "status": "cancelled"
+      },
+      {
+        "count": 9,
+        "status": "credited"
+      },
+      {
+        "count": 1,
+        "status": "pending"
+      }
+    ],
+    "pending_purchase_age": {
+      "missing_identity": 1,
+      "over_7_days": 0,
+      "uncertain": 0
+    },
+    "daily_cap_excess": 0,
+    "deadlocks": 0,
+    "active_transactions": 1,
+    "disabled_fk_triggers": 0,
+    "duplicate_provider_transactions": 0,
+    "invalid_constraints": null,
+    "invalid_purchase_snapshots": 0,
+    "orphan_wallets": 0,
+    "orphan_ledger_users": 0,
+    "orphan_purchase_users": 0,
+    "orphan_ledger_cases": 0,
+    "orphan_purchase_cases": 0
+  },
+  "schema_comparison": {
+    "baseline_local_version": "20261111000001",
+    "remote_version": "20261111000001",
+    "versions_equal": true,
+    "local_only_versions": [],
+    "remote_only_versions": [],
+    "compared": {
+      "functions": 297,
+      "relations": 92,
+      "triggers": 66,
+      "views": 5,
+      "enums": 2,
+      "jobs": 14
+    },
+    "changes": [
+      {
+        "kind": "function_security",
+        "object": "public._touch_exercise_catalog_updated_at()",
+        "fields": [
+          "grants"
+        ],
+        "local_sha256": "031f1556893bb20371e178ac4d49769ad1bfb25086a95f1c2c0b91ec7823cb63",
+        "remote_sha256": "9fc07847b77a94d428dc20452830dac432af28dc6f7c0d4fe1a00d9c76380b3d"
+      },
+      {
+        "kind": "function_security",
+        "object": "public.enforce_partner_product_image()",
+        "fields": [
+          "grants"
+        ],
+        "local_sha256": "bd80d4be0a1c276e3f9c3896124107e30e5ee2b5d8e7e33791b46e8417108e5a",
+        "remote_sha256": "ddb3b632041523b5d62288b892d10f8aae883611b4c01384d4da919e2c4445ed"
+      },
+      {
+        "kind": "relation_security",
+        "object": "public.cash_purchase_reminder_emails",
+        "fields": [
+          "grants"
+        ],
+        "local_sha256": "c8858cf718de3a2d445afd2399a9397269f0d0715bd9299fe49bbb94bd0f572b",
+        "remote_sha256": "9dc8af443c75727ce8120882510a340337e6c68a22e7140d2274b06cd73a19ad"
+      }
+    ],
+    "normalization": "Only the privileged DBA/owner roles postgres/supabase_admin/pg_database_owner are normalized and their duplicate ACL entries collapsed; all client grants, function bodies, RLS, constraints, indexes and trigger states remain compared.",
+    "privileged_ownership": {
+      "local": {
+        "supabase_admin": 294,
+        "postgres": 3
+      },
+      "remote": {
+        "postgres": 293,
+        "supabase_admin": 4
+      }
+    },
+    "extensions": {
+      "local": [
+        {
+          "name": "pg_cron",
+          "version": "1.6.4"
+        },
+        {
+          "name": "pg_net",
+          "version": "0.20.4"
+        },
+        {
+          "name": "pg_stat_statements",
+          "version": "1.11"
+        },
+        {
+          "name": "pg_trgm",
+          "version": "1.6"
+        },
+        {
+          "name": "pgcrypto",
+          "version": "1.3"
+        },
+        {
+          "name": "pgtap",
+          "version": "1.3.3"
+        },
+        {
+          "name": "plpgsql",
+          "version": "1.0"
+        },
+        {
+          "name": "supabase_vault",
+          "version": "0.3.1"
+        },
+        {
+          "name": "unaccent",
+          "version": "1.1"
+        },
+        {
+          "name": "uuid-ossp",
+          "version": "1.1"
+        }
+      ],
+      "remote": [
+        {
+          "name": "pg_cron",
+          "version": "1.6.4"
+        },
+        {
+          "name": "pg_net",
+          "version": "0.20.4"
+        },
+        {
+          "name": "pg_stat_statements",
+          "version": "1.11"
+        },
+        {
+          "name": "pg_trgm",
+          "version": "1.6"
+        },
+        {
+          "name": "pgcrypto",
+          "version": "1.3"
+        },
+        {
+          "name": "plpgsql",
+          "version": "1.0"
+        },
+        {
+          "name": "supabase_vault",
+          "version": "0.3.1"
+        },
+        {
+          "name": "unaccent",
+          "version": "1.1"
+        },
+        {
+          "name": "uuid-ossp",
+          "version": "1.1"
+        }
+      ]
+    },
+    "disabled_fk_triggers": 0
+  },
+  "dependencies": {
+    "anon_confirmation_execute": false,
+    "anon_create_public": false,
+    "authenticated_confirmation_execute": false,
+    "authenticated_create_public": false,
+    "authenticated_credit_helper_execute": false,
+    "authenticated_ledger_insert": false,
+    "authenticated_wallet_update": false,
+    "migration_owner": "postgres",
+    "owner_auth_usage": true,
+    "owner_jwt_execute": true,
+    "owner_objects_select": true,
+    "owner_sessions_select": true,
+    "owner_storage_usage": true,
+    "owner_uid_execute": true,
+    "reversals_flag": false,
+    "service_role_wallet_update": true,
+    "session_columns": [
+      {
+        "name": "id",
+        "notnull": true,
+        "type": "uuid"
+      },
+      {
+        "name": "not_after",
+        "notnull": false,
+        "type": "timestamp with time zone"
+      },
+      {
+        "name": "user_id",
+        "notnull": true,
+        "type": "uuid"
+      }
+    ]
+  },
+  "backups": {
+    "backups": null,
+    "physical_backup_data": {},
+    "pitr_enabled": false,
+    "region": "us-east-2",
+    "walg_enabled": true
+  },
+  "functions": [
+    {
+      "function": "cleanup-exercise-visuals",
+      "deployed_sha256": "14fab33895e2397a4f6768654d6be39710f14b62e7e75f8dcc2ce97b85b5b1bd",
+      "local_sha256": "14fab33895e2397a4f6768654d6be39710f14b62e7e75f8dcc2ce97b85b5b1bd",
+      "deployed_rpcs": [
+        "expire_stale_exercise_visual_sets",
+        "list_exercise_visual_purge_candidates",
+        "mark_exercise_visual_drafts_purged_internal"
+      ],
+      "local_rpcs": [
+        "expire_stale_exercise_visual_sets",
+        "list_exercise_visual_purge_candidates",
+        "mark_exercise_visual_drafts_purged_internal"
+      ],
+      "deployed_tables": [],
+      "environment_names": []
+    },
+    {
+      "function": "delete-exercise-visual",
+      "deployed_sha256": "923208795f5808c383e0473ac8cea6bf9cc8ea14e39f30874c4e9629a7d43cc2",
+      "local_sha256": "923208795f5808c383e0473ac8cea6bf9cc8ea14e39f30874c4e9629a7d43cc2",
+      "deployed_rpcs": [],
+      "local_rpcs": [],
+      "deployed_tables": [
+        "exercise_visual_deletions"
+      ],
+      "environment_names": []
+    },
+    {
+      "function": "exercise-visual-confirm",
+      "deployed_sha256": "1e2efa013762601a601c404d918d66d51490dccacec517702de6cd3bdcf1ace6",
+      "local_sha256": "1e2efa013762601a601c404d918d66d51490dccacec517702de6cd3bdcf1ace6",
+      "deployed_rpcs": [
+        "confirm_exercise_visual_internal",
+        "fail_exercise_visual_set_internal"
+      ],
+      "local_rpcs": [
+        "confirm_exercise_visual_internal",
+        "fail_exercise_visual_set_internal"
+      ],
+      "deployed_tables": [
+        "exercise_visual_assets",
+        "exercise_visual_sets"
+      ],
+      "environment_names": []
+    },
+    {
+      "function": "infinitepay-admin-reconcile",
+      "deployed_sha256": "82c463b33ebbf9f61b87d0af89f6796b9cb671c58c8982b1c608fd4a3a905843",
+      "local_sha256": "b53e339646ec00d54189b5b1e9a1cc540fec099fb35451ebcab50b185a9a4b69",
+      "deployed_rpcs": [],
+      "local_rpcs": [],
+      "deployed_tables": [
+        "cash_purchases"
+      ],
+      "environment_names": [
+        "INFINITEPAY_HANDLE"
+      ]
+    },
+    {
+      "function": "infinitepay-check-payment",
+      "deployed_sha256": "3845e9dd63ae230030827fe98823d10a8202bc480976ca74413100031d000839",
+      "local_sha256": "e252b2757c3c2a12d3850da723d4618cf7e037cdb8c0e20ea6e6fc396f9bf679",
+      "deployed_rpcs": [],
+      "local_rpcs": [
+        "is_session_active"
+      ],
+      "deployed_tables": [
+        "cash_purchases"
+      ],
+      "environment_names": [
+        "INFINITEPAY_HANDLE",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_URL"
+      ]
+    },
+    {
+      "function": "infinitepay-create-checkout",
+      "deployed_sha256": "4cc90ddeb6bdc0a7aa837992b780fbda9eb588f70b03301d5672ee53cf41ddae",
+      "local_sha256": "e51510b6d1aa37973f1f4da2dfbe8bd69a223d183dc6661cd3f15f2c4a5c2926",
+      "deployed_rpcs": [],
+      "local_rpcs": [],
+      "deployed_tables": [],
+      "environment_names": [
+        "APP_PUBLIC_URL",
+        "INFINITEPAY_HANDLE",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_URL"
+      ]
+    },
+    {
+      "function": "infinitepay-webhook",
+      "deployed_sha256": "edf1b7b9986e660de58b00bbd60a31e93cd38f8f76624f8d8443f3e8e8b4e5cd",
+      "local_sha256": "9ec5eea1df4013a1e171fa708319f5711e263cd94edb27a5e212c9a366efd8b6",
+      "deployed_rpcs": [],
+      "local_rpcs": [],
+      "deployed_tables": [],
+      "environment_names": [
+        "INFINITEPAY_HANDLE",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_URL"
+      ]
+    },
+    {
+      "function": "publish-exercise-visual",
+      "deployed_sha256": "39b08ce32757eb6052f0309e549961107656ff57d97282730a4beb775eeb8e18",
+      "local_sha256": "39b08ce32757eb6052f0309e549961107656ff57d97282730a4beb775eeb8e18",
+      "deployed_rpcs": [
+        "publish_exercise_visual_internal"
+      ],
+      "local_rpcs": [
+        "publish_exercise_visual_internal"
+      ],
+      "deployed_tables": [
+        "exercise_catalog",
+        "exercise_visual_assets",
+        "exercise_visual_sets"
+      ],
+      "environment_names": []
+    }
+  ],
+  "targeted_sql": [
+    {
+      "file": "cash_purchase_reminder_emails_test.sql",
+      "passed": true,
+      "assertions": 42,
+      "skipped": 0,
+      "planComplete": true,
+      "output_sha256": "7690ddf852f43064d6bcdbc2ebf79aa803d9fdd5c3aa9b605ead34ffa0a7d789"
+    },
+    {
+      "file": "finance_reminder_session_guard_test.sql",
+      "passed": true,
+      "assertions": 7,
+      "skipped": 0,
+      "planComplete": true,
+      "output_sha256": "0eef3982daf633a09bf2618b94265933e7b7257976badbc45d8abde5427d0ca4"
+    },
+    {
+      "file": "workout_reminders_test.sql",
+      "passed": true,
+      "assertions": 93,
+      "skipped": 0,
+      "planComplete": true,
+      "output_sha256": "db665c6e97792e70fbca8783bc3d5d0c8649b2598fe5c5340ff5c626cec382a4"
+    }
+  ],
+  "targeted_node_tests": {
+    "postgres_push": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    },
+    "catalog_comparator": {
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "lint": {
+    "errors": 0,
+    "preexisting_warnings": 16
+  },
+  "dry_run": {
+    "migrations": 14,
+    "seeds": [],
+    "roles": [],
+    "skip_vault": true,
+    "applied": false
+  },
+  "publication_blockers": [
+    "No usable recovery point or isolated restore verified; PITR disabled",
+    "Main auto-deploys frontend to production; controlled publication gate not established",
+    "Updated local CI not yet executed in GitHub; mandatory enforcement not established"
+  ],
+  "external_validation": [
+    "One pending purchase lacks provider transaction/invoice identity; merchant review required, no evidence of payment inferred"
+  ],
+  "local_runtime_revalidation": {
+    "infrastructure_error": "RWLayer unexpectedly nil on previous containers",
+    "recovered": true,
+    "baseline_migrations": 148,
+    "candidate_migrations": 14,
+    "local_total": 162,
+    "targeted_sql": [
+      {
+        "file": "cash_purchase_reminder_emails_test.sql",
+        "passed": true,
+        "assertions": 42,
+        "skipped": 0,
+        "planComplete": true,
+        "output_sha256": "cc596f074ac8801bccc7e0b3edd405a9fce2d4a8a7a489d2055ca81f4d99404f"
+      },
+      {
+        "file": "finance_reminder_session_guard_test.sql",
+        "passed": true,
+        "assertions": 7,
+        "skipped": 0,
+        "planComplete": true,
+        "output_sha256": "0eef3982daf633a09bf2618b94265933e7b7257976badbc45d8abde5427d0ca4"
+      },
+      {
+        "file": "workout_reminders_test.sql",
+        "passed": true,
+        "assertions": 93,
+        "skipped": 0,
+        "planComplete": true,
+        "output_sha256": "e14306aafb1bf3b0ca7c405ef6281099a9082f73e0e8689fa5f017fbf1b3dd98"
+      }
+    ],
+    "full_162_clean_incremental_comparison_repeated": false,
+    "test_database_stopped": true,
+    "postdeploy_query_passed": true
+  },
+  "remote_mutations": false,
+  "push_merge_deploy": false,
+  "disk": {
+    "used_percent": 69,
+    "available": "9.5G"
+  },
+  "migration_hashes": [
+    {
+      "file": "supabase/migrations/20261112000001_finance_permissions.sql",
+      "sha256": "cfb9b475c37a601c6794493d1c978a8340bda380e0b7a4149bf8e84c97a0ea0a"
+    },
+    {
+      "file": "supabase/migrations/20261112000002_finance_integrity.sql",
+      "sha256": "d7e7b0cd32886df1713dde08f9262fabd7708d436c15e34c6a051f8287bea82f"
+    },
+    {
+      "file": "supabase/migrations/20261112000003_finance_payment_finality.sql",
+      "sha256": "907201a887d0491c54d03eeb9276c07bef744ed2684c58ab05ce68f50b1a62bf"
+    },
+    {
+      "file": "supabase/migrations/20261112000004_finance_reversals.sql",
+      "sha256": "cb6fadb4817531c3c73a8b4ee4038ad9f9c73d57de593a8791d57d9f640d7c2b"
+    },
+    {
+      "file": "supabase/migrations/20261112000005_finance_reward_evidence.sql",
+      "sha256": "a172a7a0632a6d6f02ba8c77d1d93501e97beef19c1fb5390949b13bc1931d95"
+    },
+    {
+      "file": "supabase/migrations/20261112000006_finance_reconciliation_shadow.sql",
+      "sha256": "56936408a5642c0c090289fa7bd79f7e953bea6256bd1412c15a944a6a8d9da8"
+    },
+    {
+      "file": "supabase/migrations/20261113000001_session_revocation_guard.sql",
+      "sha256": "c17643985851ec41e32cec00ef4cde30071d63488378142204aa0711a04dcf43"
+    },
+    {
+      "file": "supabase/migrations/20261113000002_session_active_rpc.sql",
+      "sha256": "0691adadd260a25b55bac653eec2c4cd59a43cc7223847b0596329bdf47ac555"
+    },
+    {
+      "file": "supabase/migrations/20261113000003_admin_session_revocation_guard.sql",
+      "sha256": "a6e4142c0ba67573acf63e1b361e90fcfa3507371fb90a36ea3c7f6c1360ec09"
+    },
+    {
+      "file": "supabase/migrations/20261114000001_financial_auth_integration.sql",
+      "sha256": "1fbbe68f547ae9d5cad367ad60f8cfe3f9a0131416c85c9c598db08db0f23f9b"
+    },
+    {
+      "file": "supabase/migrations/20261114000002_remaining_sensitive_rpcs_guard.sql",
+      "sha256": "2ce3b40bdfb7f33c77a83181ba78394354280a4d73fde8cf441253b8ae7dfd90"
+    },
+    {
+      "file": "supabase/migrations/20261114000003_community_economy_session_guard.sql",
+      "sha256": "a51e2c0881828cb88620a8679c8d037d02694ec9aa65e2390f16fd7aaab4284b"
+    },
+    {
+      "file": "supabase/migrations/20261115000001_training_preferences_catalog.sql",
+      "sha256": "7cfecb4ca8cd7c5399b0a4b81ff44cde88d0163d3c8fe1fe68d2855d7ebe9780"
+    },
+    {
+      "file": "supabase/migrations/20261115000002_cash_reminder_session_guard.sql",
+      "sha256": "7d8df47ac3050ec139672fe67823dd61d2afef0727a39e00fcb6bdcd01484806"
+    }
+  ]
+}

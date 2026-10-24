@@ -825,5 +825,48 @@
       "obsolete_containerd_storage_removed": true,
       "temporary_chromium_and_libraries_removed": true
     }
+  },
+  "release_verification": {
+    "status": "BLOQUEADO",
+    "evidence": "finance-release-verification/evidencias.json",
+    "remote_project_verified": true,
+    "remote_readonly_preflight_completed": true,
+    "remote_migrations": 148,
+    "pending_migrations": 14,
+    "backup_restore_verified": false,
+    "pitr_enabled": false,
+    "historical_stabilization_preserved": true
+  },
+  "security_release_finalization": {
+    "status": "BLOQUEADO",
+    "evidence": "finance-release-verification/security-finalization-evidence.json",
+    "database_backup_restored_and_verified": true,
+    "offsite_backup_and_separate_key_verified": false,
+    "vercel_hold_applied": false,
+    "main_protection_enforced": false,
+    "ci_current_changes_executed": false,
+    "new_local_tests_passed": 15,
+    "remote_migrations_applied": false,
+    "pushed": false,
+    "deployed": false
+  },
+  "pr_readiness": {
+    "branch": "chore/finance-release-readiness",
+    "evidence": "finance-release-verification/pr-readiness-evidence.json",
+    "production_status": "BLOQUEADO",
+    "sql_suites": 69,
+    "sql_assertions": 3035,
+    "application_tests": 2092,
+    "functions_tests": 207,
+    "release_tests": 17,
+    "all_executed_tests_failed": 0,
+    "skipped": 0,
+    "ssh_signature_verified": true,
+    "backup_decrypted_container_removed": true,
+    "remote_authentication_requires_renewal": [
+      "Supabase CLI",
+      "Vercel"
+    ],
+    "push_performed": false
   }
 }

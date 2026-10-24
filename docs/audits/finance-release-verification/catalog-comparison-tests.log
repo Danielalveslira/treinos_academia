@@ -1,0 +1,12 @@
+✔ normalizes only privileged DBA duplicates, preserving equivalent application ACLs (64.656188ms)
+✔ detects a newly granted anonymous financial helper without printing definitions (63.423186ms)
+✔ reports modified code and unexpected ownership; never logs function body (60.297591ms)
+✔ detects extra trigger and journal divergence (68.115072ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 350.156397

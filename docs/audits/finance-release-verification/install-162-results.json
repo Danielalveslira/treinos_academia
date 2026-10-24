@@ -1,0 +1,12 @@
+{
+  "localOnly": true,
+  "realServiceSchemas": true,
+  "cleanInstall": true,
+  "populatedUpgrade": true,
+  "financialSchemaEqual": true,
+  "existingDataPreserved": true,
+  "cleanSchemaSha256": "88c9babcaf13e0ec65abd0ca1d5242f6a3ab2045c0b7de8b985735deb15a7b3a",
+  "incrementalSchemaSha256": "88c9babcaf13e0ec65abd0ca1d5242f6a3ab2045c0b7de8b985735deb15a7b3a",
+  "beforeDataSha256": "6cc1c2d44386f3fab3f20a0846797b587bc090077cc9579941b30da0a2711689",
+  "afterDataSha256": "6cc1c2d44386f3fab3f20a0846797b587bc090077cc9579941b30da0a2711689"
+}

@@ -1,0 +1,255 @@
+{
+  "recorded_at_utc": "2026-10-23T23:57:03.140046+00:00",
+  "branch": "chore/finance-release-readiness",
+  "production_status": "BLOQUEADO",
+  "github_identity": {
+    "gh_login": "Danielalveslira",
+    "git_https_effective_login": "Danielalveslira",
+    "repo_permissions": {
+      "admin": true,
+      "maintain": true,
+      "push": true,
+      "triage": true,
+      "pull": true
+    },
+    "repo_private": true,
+    "branch": "chore/finance-release-readiness",
+    "signing_format": "ssh",
+    "existing_key_reused": true,
+    "new_key_created": false
+  },
+  "signing_diagnostic": {
+    "signing_exit_code": 0,
+    "verification_exit_code": 0,
+    "good_git_signature": true,
+    "existing_ssh_key_reused": true,
+    "project_repository_modified": false
+  },
+  "registered_signing_key": {
+    "read_exit_code": 0,
+    "public_signing_key_registered": true
+  },
+  "commits_before_documentation": [
+    {
+      "sha": "4f77d8f912c6a9be85acb1e775e1593033541d78",
+      "signature": "G",
+      "author": "Danielalveslira",
+      "author_email": "124009137+Danielalveslira@users.noreply.github.com",
+      "committer": "GitHub",
+      "committer_email": "noreply@github.com",
+      "subject": "ci(finance): fail closed on quality and production release gates"
+    },
+    {
+      "sha": "e15d5a1466fcf1291001bd1cfa8c630cc28120d0",
+      "signature": "G",
+      "author": "Danielalveslira",
+      "author_email": "124009137+Danielalveslira@users.noreply.github.com",
+      "committer": "GitHub",
+      "committer_email": "noreply@github.com",
+      "subject": "tooling(finance): add read-only schema and recovery verification"
+    },
+    {
+      "sha": "e05ec5532d3c595d3270c788061c8fe44d9cdaab",
+      "signature": "G",
+      "author": "Danielalveslira",
+      "author_email": "124009137+Danielalveslira@users.noreply.github.com",
+      "committer": "GitHub",
+      "committer_email": "noreply@github.com",
+      "subject": "test(push): load session fixtures without container-specific paths"
+    },
+    {
+      "sha": "132ad992903ac2b441ede2e7601d1bf44148ca7e",
+      "signature": "G",
+      "author": "Danielalveslira",
+      "author_email": "124009137+Danielalveslira@users.noreply.github.com",
+      "committer": "GitHub",
+      "committer_email": "noreply@github.com",
+      "subject": "fix(dev): deny HTTP access to private finance audit files"
+    },
+    {
+      "sha": "8715f227023594caa56c3a1d11fed5edc0175962",
+      "signature": "G",
+      "author": "Danielalveslira",
+      "author_email": "124009137+Danielalveslira@users.noreply.github.com",
+      "committer": "GitHub",
+      "committer_email": "noreply@github.com",
+      "subject": "fix(security): require active sessions for cash reminder reads"
+    },
+    {
+      "sha": "341c819ce1fdf076f22917fd32f69f45a9f66f4f",
+      "signature": "N",
+      "author": "Danielalveslira",
+      "author_email": "124009137+Danielalveslira@users.noreply.github.com",
+      "committer": "Danielalveslira",
+      "committer_email": "124009137+Danielalveslira@users.noreply.github.com",
+      "subject": "docs(finance): consolidate stabilization evidence and release runbook"
+    },
+    {
+      "sha": "c3cb962b54c7efba2d8b0d7a1245fc0e619c7d48",
+      "signature": "N",
+      "author": "Danielalveslira",
+      "author_email": "124009137+Danielalveslira@users.noreply.github.com",
+      "committer": "Danielalveslira",
+      "committer_email": "124009137+Danielalveslira@users.noreply.github.com",
+      "subject": "test(finance): stabilize local Supabase and session validation"
+    },
+    {
+      "sha": "7b6738e6c70e4a5711848499c2dc868feac5c549",
+      "signature": "N",
+      "author": "Danielalveslira",
+      "author_email": "124009137+Danielalveslira@users.noreply.github.com",
+      "committer": "Danielalveslira",
+      "committer_email": "124009137+Danielalveslira@users.noreply.github.com",
+      "subject": "fix(security): qualify training preferences timezone catalog"
+    }
+  ],
+  "prior_three_commits_preserved": true,
+  "prior_three_unsigned_not_rewritten": true,
+  "new_commit_committer_environment": "GitHub <noreply@github.com>; new commit author and SSH key are Danielalveslira; normalization requested, not performed without consent",
+  "tests": {
+    "sql": {
+      "suites": 69,
+      "assertions": 3035,
+      "failures": 0,
+      "skipped": 0
+    },
+    "functions": {
+      "tests": 207,
+      "pass": 207,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "duration_ms": 12192.594888
+    },
+    "application": {
+      "tests": 2092,
+      "pass": 2092,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "duration_ms": 109167.305984
+    },
+    "release_scripts": {
+      "tests": 17,
+      "pass": 17,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "duration_ms": 2616.561313
+    },
+    "lint": {
+      "errors": 0,
+      "preexisting_warnings": 16
+    },
+    "build": {
+      "passed": true,
+      "vite_seconds": 14.33
+    },
+    "source_scan": {
+      "mode": "working-tree",
+      "files": 1926,
+      "findings": []
+    },
+    "bundle_scan": {
+      "mode": "browser-build",
+      "files": 187,
+      "findings": []
+    }
+  },
+  "install_162": {
+    "localOnly": true,
+    "realServiceSchemas": true,
+    "cleanInstall": true,
+    "populatedUpgrade": true,
+    "financialSchemaEqual": true,
+    "existingDataPreserved": true,
+    "cleanSchemaSha256": "88c9babcaf13e0ec65abd0ca1d5242f6a3ab2045c0b7de8b985735deb15a7b3a",
+    "incrementalSchemaSha256": "88c9babcaf13e0ec65abd0ca1d5242f6a3ab2045c0b7de8b985735deb15a7b3a",
+    "beforeDataSha256": "6cc1c2d44386f3fab3f20a0846797b587bc090077cc9579941b30da0a2711689",
+    "afterDataSha256": "6cc1c2d44386f3fab3f20a0846797b587bc090077cc9579941b30da0a2711689"
+  },
+  "install_comparison_scope": "Selected financial function/relation contract from scripts/homolog/finance-schema-contract.sql; reminder policy additionally validated by its seven-assertion SQL suite",
+  "backup": {
+    "ciphertext_sha256_equal": true,
+    "decryption_verified_in_current_codespace": true,
+    "decrypted_container_removed": true,
+    "offsite_copy_verified": false
+  },
+  "remote": {
+    "github_main_sha": "0cdde0e666942af45ad448485b49a8ac60a7c685",
+    "github_main_protected": false,
+    "branch_protection_api_status": 403,
+    "supabase_current_auth_available": false,
+    "supabase_error": "Access token not provided",
+    "vercel_current_read_succeeded": false,
+    "vercel_http_status": 403,
+    "current_vercel_hold_verified": false,
+    "historical_supabase_latest": "20261111000001",
+    "historical_pending_migrations": 14,
+    "current_remote_migrations_reconfirmed": false
+  },
+  "dev_http_fix": {
+    "private_canary_before": 200,
+    "private_canary_after": 403,
+    "paths_tested": [
+      "direct",
+      "@fs",
+      "raw",
+      "url"
+    ],
+    "app_after": 200,
+    "real_backup_or_key_requested_over_http": false
+  },
+  "pending_publication_authorization": true,
+  "push_merge_deploy_remote_migrations": false,
+  "logs": [
+    {
+      "file": ".finance-local/remote/pr-sql.jsonl",
+      "sha256": "20c4198e290476799a1b59bffcfb61415c8525d82b801f118c1b025cb0ee362f"
+    },
+    {
+      "file": ".finance-local/remote/pr-functions.log",
+      "sha256": "5ac7960e80a28a119b4a2e671fbfec783b8cd1c532e007d724244110c228d68d"
+    },
+    {
+      "file": ".finance-local/remote/pr-npm-test.log",
+      "sha256": "5496760e604bf6a56699fa06cedfd642609b6bcb4b59e0b8652030a0c7b74d5a"
+    },
+    {
+      "file": ".finance-local/remote/pr-release-tests.log",
+      "sha256": "08f43a741de2714e102ebda7f8f59cbdb36f65931d7db7b4afb8bb68a862b860"
+    },
+    {
+      "file": ".finance-local/remote/pr-lint.log",
+      "sha256": "36458453bf20c017aed6e62fed25b0c65f498e81541b272ef73a8db540aa0f0d"
+    },
+    {
+      "file": ".finance-local/remote/pr-build.log",
+      "sha256": "135c6fbb4f4bfa2eec24cc8df9f33e918aa3dd4ce3e99ac890402684239e4e5a"
+    },
+    {
+      "file": ".finance-local/remote/pr-projects.stderr",
+      "sha256": "56a015b35f3e24f58234be743e362dd39f8402e19f34bcf46c3474d58ca7b1f9"
+    },
+    {
+      "file": ".finance-local/remote/pr-protection.stderr",
+      "sha256": "dbf87ea4a345f4e73a9582fd3cefce7cc3f1871e16dba5e56523eff7fdf6cca4"
+    }
+  ],
+  "development_route": {
+    "url": "https://organic-goldfish-r7w5rp9g754vhxp4v-5173.app.github.dev/app",
+    "app_status": 200,
+    "synthetic_private_file_status": 403
+  },
+  "cleanup": {
+    "real_decrypted_recovery_container_removed": true,
+    "synthetic_database_stopped": true,
+    "vite_5173_active": true,
+    "encrypted_backup_and_key_preserved": true
+  },
+  "github_actions_permissions": {
+    "enabled": true,
+    "allowed_actions": "all",
+    "sha_pinning_required": false
+  }
+}

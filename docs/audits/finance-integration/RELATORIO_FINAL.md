@@ -1,3 +1,7 @@
+> **Finalização posterior:** [estado atual de segurança e publicação](../finance-release-verification/LIBERACAO_SEGURANCA.md). Backup de banco restaurado; custódia externa, hold Vercel e CI/proteções continuam pendentes.
+
+> **Verificação remota posterior:** autenticação e diagnóstico concluídos. O estado atual está em [finance-release-verification/RELATORIO_FINAL.md](../finance-release-verification/RELATORIO_FINAL.md). Publicação continua bloqueada por recuperação e controle de implantação. O conteúdo abaixo preserva a evidência da estabilização anterior.
+
 # Estabilização financeira Evolutus — 2026-10-23
 
 **BLOQUEADO PARA PUBLICAÇÃO. Validação local concluída, sem falhas ou skips nas suítes finais.** O impedimento atual é a ausência da autenticação CLI Supabase para confirmar destino, journal, schema e dados de produção. Backup/PITR e recuperação também precisam ser confirmados na janela de publicação. Não confundir aprovação local com aprovação do banco remoto.
