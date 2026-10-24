@@ -94,5 +94,9 @@ select is((select count(*) from public.workouts),(select workouts from counts_be
 select is((select count(*) from public.economy_transactions),(select coins from counts_before),'planejamento não altera recompensas');
 select ok(not has_function_privilege('anon','public.get_my_workout_sheet(uuid,boolean)','EXECUTE'),'anônimo sem execução');
 select ok(not has_function_privilege('authenticated','private.sheet_exercise_available(uuid,uuid)','EXECUTE'),'helper privado não exposto');
+select pg_temp.set_test_user('',true);
+select lives_ok($$delete from public.users where id='98a00000-0000-0000-0000-000000000001'$$,'exclusão autorizada da conta limpa planejamento antes das FKs RESTRICT');
+select is((select count(*)::int from public.workout_sheets where user_id='98a00000-0000-0000-0000-000000000001'),0,'nenhuma ficha órfã após exclusão de conta');
+select is((select count(*)::int from public.workout_sheet_exercises where user_id='98a00000-0000-0000-0000-000000000001'),0,'nenhum item órfão após exclusão de conta');
 select finish();
 rollback;

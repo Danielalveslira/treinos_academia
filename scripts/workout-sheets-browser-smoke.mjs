@@ -72,7 +72,7 @@ let browser, server
 try {
   await build({
     stdin: {
-      contents: `import React from 'react';import{createRoot}from'react-dom/client';import{BrowserRouter,Routes,Route}from'react-router-dom';import{ThemeProvider,BaseStyles}from'@primer/react';import{ExercisesProvider}from'./src/contexts/ExercisesContext';import Area from './src/pages/ExercisesArea';import Detail from './src/features/workoutSheets/WorkoutSheetDetailPage';import Editor from './src/features/workoutSheets/WorkoutSheetEditorPage';import NewWorkout from './src/pages/NewWorkout';import './src/styles/app.css';import '@primer/primitives/dist/css/functional/themes/light.css';import '@primer/primitives/dist/css/functional/themes/dark.css';createRoot(document.getElementById('root')).render(<ThemeProvider colorMode="auto"><BaseStyles><BrowserRouter><ExercisesProvider><main className="main-content"><Routes><Route path="/exercicios" element={<Area/>}/><Route path="/fichas/nova" element={<Editor/>}/><Route path="/fichas/:id/editar" element={<Editor/>}/><Route path="/fichas/:id" element={<Detail/>}/><Route path="/novo-treino" element={<NewWorkout/>}/></Routes></main></ExercisesProvider></BrowserRouter></BaseStyles></ThemeProvider>)`,
+      contents: `import React from 'react';import{createRoot}from'react-dom/client';import{createBrowserRouter,RouterProvider,Routes,Route}from'react-router-dom';import{ThemeProvider,BaseStyles}from'@primer/react';import{ExercisesProvider}from'./src/contexts/ExercisesContext';import Area from './src/pages/ExercisesArea';import Detail from './src/features/workoutSheets/WorkoutSheetDetailPage';import Editor from './src/features/workoutSheets/WorkoutSheetEditorPage';import NewWorkout from './src/pages/NewWorkout';import './src/styles/app.css';import '@primer/primitives/dist/css/functional/themes/light.css';import '@primer/primitives/dist/css/functional/themes/dark.css';createRoot(document.getElementById('root')).render(<ThemeProvider colorMode="auto"><BaseStyles><RouterProvider router={createBrowserRouter([{path:"*",element:<ExercisesProvider><main className="main-content"><Routes><Route path="/exercicios" element={<Area/>}/><Route path="/fichas/nova" element={<Editor/>}/><Route path="/fichas/:id/editar" element={<Editor/>}/><Route path="/fichas/:id" element={<Detail/>}/><Route path="/novo-treino" element={<NewWorkout/>}/></Routes></main></ExercisesProvider>}])}/></BaseStyles></ThemeProvider>)`,
       resolveDir: root,
       loader: 'jsx',
     },
@@ -337,7 +337,9 @@ try {
       await page.waitForTimeout(250)
       assert.equal(await page.locator('.workout-form').count(), 1)
       await context.setOffline(false)
-      await page.goto(origin + `/fichas/${sid}/editar`)
+      await page.goto(origin + `/fichas/${sid}`)
+      await page.getByRole('heading', { name: 'Puxada oficial', exact: true }).waitFor()
+      await page.getByRole('link', { name: 'Editar ficha', exact: true }).click()
       await page.getByRole('heading', { name: 'Editar ficha', exact: true }).waitFor()
       const save = page.getByRole('button', { name: 'Salvar ficha', exact: true })
       assert.equal(await save.isDisabled(), true)
@@ -349,6 +351,7 @@ try {
         })
       })
       const nameInput = page.getByRole('textbox', { name: 'Nome obrigatório', exact: true })
+      const mutationsBeforeTyping = writes.length
       await nameInput.fill('Modificada')
       assert.equal(await save.isEnabled(), true)
       await nameInput.fill('Ficha A')
@@ -361,6 +364,17 @@ try {
       await context.setOffline(false)
       await page.waitForTimeout(300)
       assert.equal(await nameInput.inputValue(), 'Nome mantido sem rede')
+      assert.equal(writes.length, mutationsBeforeTyping, 'typing never writes to server')
+      page.once('dialog', (d) => d.dismiss())
+      await page.evaluate(() => history.back())
+      await page.waitForTimeout(250)
+      assert.ok(page.url().endsWith('/editar'), 'rejecting browser back preserves editor')
+      assert.equal(
+        await nameInput.inputValue(),
+        'Nome mantido sem rede',
+        'browser back must preserve the local draft'
+      )
+      assert.equal(await save.isEnabled(), true)
       // Browser Back and links ask before discarding; rejecting preserves local editing.
       page.once('dialog', (d) => d.dismiss())
       await page.getByRole('button', { name: 'Voltar', exact: true }).click()
@@ -383,6 +397,7 @@ try {
         'Supino oficial',
         'Puxada oficial',
       ])
+      const inputPaintMs = await page.evaluate(() => window.__paint || [])
       await page.screenshot({
         path: join(evidence, `detail-${theme}-${width}.png`),
         fullPage: true,
@@ -407,6 +422,56 @@ try {
       })
       await page.getByRole('alert').filter({ hasText: 'sem permissão' }).waitFor()
       assert.equal(await page.locator('input[value="Nome mantido sem rede"]').count(), 0)
+      if (theme === 'light' && width === 390) {
+        await page.evaluate(() => {
+          window.__uid = 'a'
+          window.dispatchEvent(new Event('test-account'))
+        })
+        await page.goto(origin + '/exercicios')
+        await page.getByRole('link', { name: 'Nome mantido sem rede', exact: true }).waitFor()
+        await page.getByText('Ações de Nome mantido sem rede', { exact: true }).click()
+        await page.getByRole('button', { name: 'Duplicar', exact: true }).click()
+        await page.getByRole('textbox', { name: 'Nome obrigatório', exact: true }).waitFor()
+        assert.equal(
+          await page.getByRole('textbox', { name: 'Nome obrigatório', exact: true }).inputValue(),
+          'Nome mantido sem rede (cópia)'
+        )
+        await page.getByRole('button', { name: 'Voltar', exact: true }).click()
+        await page.getByRole('link', { name: 'Voltar para minhas fichas', exact: true }).click()
+        const card = page
+          .locator('.sheet-card')
+          .filter({ has: page.getByRole('link', { name: 'Nome mantido sem rede', exact: true }) })
+        await card.locator('summary').click()
+        await card.getByRole('button', { name: 'Arquivar', exact: true }).click()
+        await page.getByRole('checkbox', { name: 'Mostrar arquivadas', exact: true }).check()
+        const archivedCard = page
+          .locator('.sheet-card')
+          .filter({ has: page.getByRole('link', { name: 'Nome mantido sem rede', exact: true }) })
+        await archivedCard.locator('summary').click()
+        await archivedCard.getByRole('button', { name: 'Restaurar', exact: true }).click()
+        await page.getByRole('checkbox', { name: 'Mostrar arquivadas', exact: true }).uncheck()
+        await page.getByRole('link', { name: 'Criar ficha', exact: true }).click()
+        const draftName = page.getByRole('textbox', { name: 'Nome obrigatório', exact: true })
+        await draftName.fill('Rascunho novo')
+        await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click()
+        await page.getByRole('heading', { name: 'Rascunho novo', exact: true }).waitFor()
+        assert.equal(
+          await page
+            .getByRole('link', { name: 'Iniciar treino', exact: true })
+            .getAttribute('aria-disabled'),
+          'true'
+        )
+        await page.getByRole('link', { name: 'Editar ficha', exact: true }).click()
+        await page.getByRole('button', { name: 'Adicionar Supino oficial', exact: true }).click()
+        await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click()
+        await page.getByRole('heading', { name: 'Supino oficial', exact: true }).waitFor()
+        assert.equal(
+          await page
+            .getByRole('link', { name: 'Iniciar treino', exact: true })
+            .getAttribute('aria-disabled'),
+          null
+        )
+      }
       const heap = await cdp.send('Runtime.getHeapUsage')
       assert.deepEqual(errors, [])
       results.push({
@@ -416,7 +481,7 @@ try {
         images: images.length,
         overflow,
         usedHeapBytes: heap.usedSize,
-        inputPaintMs: await page.evaluate(() => window.__paint || []),
+        inputPaintMs,
         readRequests: reads.length,
         writeRequests: writes.length,
       })

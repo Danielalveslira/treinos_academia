@@ -241,3 +241,15 @@ end $$;
 
 revoke all on function public.save_workout_sheet(uuid,bigint,jsonb,jsonb),public.create_workout_sheet(uuid,text,text,text,smallint[],jsonb),public.duplicate_workout_sheet(uuid,uuid),public.set_workout_sheet_archived(uuid,boolean,bigint),public.reorder_workout_sheets(uuid[]),public.list_my_workout_sheets(boolean,integer),public.get_my_workout_sheet(uuid,boolean) from public,anon,authenticated;
 grant execute on function public.save_workout_sheet(uuid,bigint,jsonb,jsonb),public.create_workout_sheet(uuid,text,text,text,smallint[],jsonb),public.duplicate_workout_sheet(uuid,uuid),public.set_workout_sheet_archived(uuid,boolean,bigint),public.reorder_workout_sheets(uuid[]),public.list_my_workout_sheets(boolean,integer),public.get_my_workout_sheet(uuid,boolean) to authenticated;
+
+-- Existing account deletion cascades exercises before newer FK cascades may run.
+-- Remove only this account's planning first; keep RESTRICT for ordinary library deletion.
+create function private.delete_account_workout_sheets() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+ delete from public.workout_sheets where user_id=old.id;
+ return old;
+end $$;
+revoke all on function private.delete_account_workout_sheets() from public,anon,authenticated;
+create trigger users_delete_workout_sheets before delete on public.users
+for each row execute function private.delete_account_workout_sheets();

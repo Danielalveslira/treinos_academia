@@ -1,5 +1,12 @@
-import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useState } from 'react'
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Routes,
+  Route,
+  Outlet,
+  Navigate,
+} from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { WalletProvider } from './contexts/WalletContext'
 import { ExercisesProvider } from './contexts/ExercisesContext'
@@ -204,13 +211,21 @@ export function AppRoutes() {
 }
 
 export default function App() {
-  return (
-    <BrowserRouter>
-      <AuthProvider>
-        <WalletProvider>
-          <AppRoutes />
-        </WalletProvider>
-      </AuthProvider>
-    </BrowserRouter>
+  // The data router supplies a real navigation blocker for dirty sheet editors,
+  // including browser Back/Forward and programmatic navigation.
+  const [router] = useState(() =>
+    createBrowserRouter([
+      {
+        path: '*',
+        element: (
+          <AuthProvider>
+            <WalletProvider>
+              <AppRoutes />
+            </WalletProvider>
+          </AuthProvider>
+        ),
+      },
+    ])
   )
+  return <RouterProvider router={router} />
 }

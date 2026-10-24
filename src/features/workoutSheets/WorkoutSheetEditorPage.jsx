@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button, Flash, Heading, Spinner } from '@primer/react'
+import { useOnlineStatus as useOnline } from '../../hooks/useOnlineStatus'
 import { useAuth } from '../../hooks/useAuth'
 import { useWorkoutSheets } from './useWorkoutSheets.js'
 import { getWorkoutSheet, saveWorkoutSheet, sheetError } from './workoutSheetsService.js'
@@ -33,7 +34,7 @@ function Editor({ initial, online }) {
     lock = useRef(false)
   const navigate = useNavigate()
   const dirty = sheetFingerprint(sheet) !== baseline
-  useSheetDiscardGuard(dirty)
+  const permitNavigation = useSheetDiscardGuard(dirty)
   const change = (key, value) => setSheet((s) => ({ ...s, [key]: value }))
   function patchItem(index, key, value) {
     setSheet((s) => ({
@@ -63,6 +64,7 @@ function Editor({ initial, online }) {
     try {
       const result = await saveWorkoutSheet(sheet, requestId.current)
       setBaseline(sheetFingerprint(sheet))
+      permitNavigation()
       navigate(`/fichas/${result.id}`, { replace: true })
     } catch (error) {
       setMessage(sheetError(error))
@@ -79,8 +81,10 @@ function Editor({ initial, online }) {
     }
   }
   function cancel() {
-    if (!dirty || window.confirm('Descartar as alterações não salvas desta ficha?'))
+    if (!dirty || window.confirm('Descartar as alterações não salvas desta ficha?')) {
+      permitNavigation()
       navigate(initial.id ? `/fichas/${initial.id}` : '/exercicios')
+    }
   }
   function acceptServer() {
     setSheet(server)
@@ -300,7 +304,6 @@ function NewEditor() {
   const online = useOnline()
   return <Editor initial={EMPTY_SHEET} online={online && !offlineLocal} />
 }
-import { useOnlineStatus as useOnline } from '../../hooks/useOnlineStatus'
 function ExistingEditor({ id }) {
   const { data, loading, error, refresh, online } = useWorkoutSheets(id)
   const initial = useRef(null)
