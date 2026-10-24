@@ -1,3 +1,4 @@
+import { isPermanentExerciseFailure } from '../services/offline/outbox.js'
 import { useEffect, useState } from 'react'
 import { Button } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
@@ -68,9 +69,12 @@ export function SyncStatus({ criticalOnly = false }) {
           {failed.map((mutation) => (
             <li key={mutation.mutation_id}>
               <span>
-                Registro de {mutation.payload?.date || 'treino'} — {failureReason(mutation)}
+                Registro de {mutation.payload?.name || mutation.payload?.date || 'treino'} —{' '}
+                {failureReason(mutation)}
               </span>
               <span className="sync-status-actions">
+                {mutation.last_error?.code === 'CUSTOM_EXERCISES_DISABLED' &&
+                  mutation.payload?.note && <span>{mutation.payload.note}</span>}
                 {isConflict(mutation) ? (
                   <>
                     <Button
@@ -89,12 +93,14 @@ export function SyncStatus({ criticalOnly = false }) {
                   </>
                 ) : (
                   <>
-                    <Button
-                      size="small"
-                      onClick={() => resolveFailedMutation(userId, mutation, 'retry')}
-                    >
-                      Tentar de novo
-                    </Button>
+                    {!isPermanentExerciseFailure(mutation) && (
+                      <Button
+                        size="small"
+                        onClick={() => resolveFailedMutation(userId, mutation, 'retry')}
+                      >
+                        Tentar de novo
+                      </Button>
+                    )}
                     <Button
                       size="small"
                       variant="danger"

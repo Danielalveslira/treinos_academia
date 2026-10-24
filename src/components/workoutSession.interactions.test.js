@@ -117,8 +117,22 @@ beforeEach(() => {
 const textOf = (node) =>
   typeof node === 'string' ? node : (node.children || []).map((child) => textOf(child)).join('')
 
-const squat = { id: 'squat', name: 'Agachamento', muscleGroup: 'Pernas', active: true }
-const bench = { id: 'bench', name: 'Supino', muscleGroup: 'Pernas', active: true }
+const squat = {
+  id: 'squat',
+  name: 'Agachamento',
+  muscleGroup: 'Pernas',
+  source: 'catalog',
+  provider: 'evolutus_dataset',
+  active: true,
+}
+const bench = {
+  id: 'bench',
+  name: 'Supino',
+  muscleGroup: 'Pernas',
+  source: 'catalog',
+  provider: 'evolutus_dataset',
+  active: true,
+}
 
 function deferred() {
   let resolve, reject
@@ -397,7 +411,15 @@ test('"Finalizar com N séries" drops the untouched ones and finishes the exerci
 test('cardio: one action records the session and finishes the exercise', async () => {
   const form = await mount({
     exercises: [
-      { id: 'run', name: 'Corrida', muscleGroup: 'Cardio', active: true, type: 'cardio' },
+      {
+        id: 'run',
+        name: 'Corrida',
+        muscleGroup: 'Cardio',
+        source: 'catalog',
+        provider: 'evolutus_dataset',
+        active: true,
+        type: 'cardio',
+      },
     ],
     defaultExerciseId: 'run',
   })

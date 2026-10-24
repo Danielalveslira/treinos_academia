@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { freshDatabase, rawAll, workoutRow } from './testSupport.js'
+import { freshDatabase, rawAll, rawOpen, workoutRow } from './testSupport.js'
 import {
   OPERATIONS,
   STATUS,
@@ -857,4 +857,110 @@ test('o engine repassa `force` à sondagem: depois de uma falha recente, um pedi
   assert.equal((await sync(deps, { force: true })).status, 'synced')
   assert.deepEqual(seen, [false, true])
   assert.equal(server.rowsOf(A).length, 1)
+})
+
+test('old exercise.create is retained as a permanent failure while unrelated workouts sync', async () => {
+  const old = await enqueueWorkoutMutation(A, {
+    operation: OPERATIONS.create,
+    entityId: E1,
+    payload: strength(),
+    now: NOW,
+  })
+  const db = await rawOpen()
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction('outbox', 'readwrite')
+    const store = tx.objectStore('outbox')
+    const request = store.get(old.mutation_id)
+    request.onsuccess = () =>
+      store.put({
+        ...request.result,
+        operation: 'exercise.create',
+        entity_type: 'exercise',
+        payload: { name: 'Criação antiga', note: 'Anotação recuperável', source: 'custom' },
+      })
+    tx.oncomplete = resolve
+    tx.onerror = () => reject(tx.error)
+  })
+  db.close()
+  await enqueueWorkoutMutation(A, {
+    operation: OPERATIONS.create,
+    entityId: E2,
+    payload: strength(),
+    now: NOW,
+  })
+  const server = makeServer()
+  const deps = makeDeps({ server, getUser: () => A, extra: { now: () => NOW } })
+  const realRpc = deps.rpc
+  deps.rpc = async (wire, userId, signal) => {
+    const ordinary = wire.filter((item) => item.operation !== 'exercise.create')
+    const response = ordinary.length ? await realRpc(ordinary, userId, signal) : { results: [] }
+    return {
+      results: [
+        ...wire
+          .filter((item) => item.operation === 'exercise.create')
+          .map((item) => ({
+            mutation_id: item.mutation_id,
+            status: 'rejected',
+            code: 'CUSTOM_EXERCISES_DISABLED',
+          })),
+        ...response.results,
+      ],
+    }
+  }
+  const result = await syncOutbox({ deps, force: true })
+  assert.equal(result.failed, 1)
+  assert.equal(result.applied, 1)
+  const remaining = await listMutations(A)
+  assert.equal(remaining.length, 1)
+  assert.equal(remaining[0].status, STATUS.failed)
+  assert.equal(remaining[0].payload.name, 'Criação antiga')
+  assert.equal(remaining[0].payload.note, 'Anotação recuperável')
+  assert.equal(await retryFailed(A), 0, 'permanent exercise failure never returns to pending')
+  assert.equal((await syncOutbox({ deps, force: true })).status, 'idle')
+})
+
+test('inconsistent catalog references fail definitively without discarding offline payload or blocking other workouts', async () => {
+  await enqueueWorkoutMutation(A, {
+    operation: OPERATIONS.create,
+    entityId: E1,
+    payload: strength(),
+    now: NOW,
+  })
+  await enqueueWorkoutMutation(A, {
+    operation: OPERATIONS.create,
+    entityId: E2,
+    payload: strength(),
+    now: NOW,
+  })
+  const server = makeServer()
+  const deps = makeDeps({ server })
+  const rpc = deps.rpc
+  deps.rpc = async (wire, ...args) => {
+    const response = await rpc(
+      wire.filter((item) => item.entity_id !== E1),
+      ...args
+    )
+    return {
+      results: [
+        ...response.results,
+        ...wire
+          .filter((item) => item.entity_id === E1)
+          .map((item) => ({
+            mutation_id: item.mutation_id,
+            status: 'rejected',
+            code: 'catalog_exercise_not_published',
+          })),
+      ],
+    }
+  }
+  const outcome = await syncOutbox({ deps, force: true })
+  assert.equal(outcome.failed, 1)
+  assert.equal(outcome.applied, 1)
+  const [failed] = await listMutations(A)
+  assert.equal(failed.status, STATUS.failed)
+  assert.equal(failed.last_error.code, 'catalog_exercise_not_published')
+  assert.deepEqual(failed.payload, strength())
+  const calls = deps.calls
+  assert.equal((await syncOutbox({ deps, force: true })).status, 'idle')
+  assert.equal(deps.calls, calls, 'no automatic retry loop')
 })

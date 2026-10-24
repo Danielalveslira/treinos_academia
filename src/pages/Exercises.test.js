@@ -7,7 +7,7 @@ import { createRequire } from 'node:module'
 import { build } from 'esbuild'
 
 // Exercises.jsx puxa useExercises/useDashboard/useToast/useConfirmDelete (contexts/hooks
-// reais, que por sua vez puxam Supabase/@primer's ConfirmationDialog) e ExerciseForm/
+// reais, que por sua vez puxam Supabase/@primer's ConfirmationDialog) e ExercisePreferencesForm/
 // ExerciseCatalog (fora de escopo neste teste, que é sobre a lista/busca/filtro/grupo
 // redesenhados) -- todos trocados por fixtures em memória, mesmo padrão de stub via
 // esbuild já usado no resto do projeto (ver workout.test.js, WorkoutExerciseGuide.test.js).
@@ -15,22 +15,38 @@ let directory
 let render
 let clickChip
 let searchFor
+let openCatalog
 let toggleGroup
 
 const exercises = [
   {
     // equipment em formato cru de catálogo (snapshot direto de exercise_catalog.equipment,
     // hífen/sem acento) -- exerciseSubtitle deve formatar isso, não mostrar cru.
-    id: 'a', name: 'Abraçar a Bola', muscleGroup: 'Costas', equipment: 'bola-de-exercicio',
-    active: true, source: 'catalog', providerExerciseId: 'Hug_A_Ball',
+    id: 'a',
+    name: 'Abraçar a Bola',
+    muscleGroup: 'Costas',
+    equipment: 'bola-de-exercicio',
+    active: true,
+    source: 'catalog',
+    providerExerciseId: 'Hug_A_Ball',
   },
   {
-    id: 'b', name: 'Agachamento Livre', muscleGroup: 'Pernas', equipment: 'barra',
-    active: true, source: 'custom', providerExerciseId: null,
+    id: 'b',
+    name: 'Agachamento Livre',
+    muscleGroup: 'Pernas',
+    equipment: 'barra',
+    active: true,
+    source: 'custom',
+    providerExerciseId: null,
   },
   {
-    id: 'c', name: 'Supino Reto', muscleGroup: 'Peito', equipment: null,
-    active: true, source: 'custom', providerExerciseId: null,
+    id: 'c',
+    name: 'Supino Reto',
+    muscleGroup: 'Peito',
+    equipment: null,
+    active: true,
+    source: 'custom',
+    providerExerciseId: null,
   },
 ]
 
@@ -105,6 +121,13 @@ before(async () => {
           return result
         }
 
+        export const openCatalog = () => {
+          const component = makePage()
+          act(() => component.root.findAll((node) => node.type === 'button' && rowTexts(node).includes('Adicionar'))[0].props.onClick())
+          const result = component.root.findAllByProps({ 'data-testid': 'official-catalog' }).length
+          act(() => component.unmount())
+          return result
+        }
         export const clickChip = (label) => {
           const component = makePage()
           act(() => {
@@ -145,28 +168,35 @@ before(async () => {
         name: 'exercises-page-fixtures',
         setup(pluginBuild) {
           pluginBuild.onResolve({ filter: /\/contexts\/ExercisesContext$/ }, (args) => ({
-            path: args.path, namespace: 'fixture-exercises',
+            path: args.path,
+            namespace: 'fixture-exercises',
           }))
           pluginBuild.onResolve({ filter: /\/hooks\/useDashboard$/ }, (args) => ({
-            path: args.path, namespace: 'fixture-dashboard',
+            path: args.path,
+            namespace: 'fixture-dashboard',
           }))
           pluginBuild.onResolve({ filter: /\/hooks\/useToast$/ }, (args) => ({
-            path: args.path, namespace: 'fixture-toast',
+            path: args.path,
+            namespace: 'fixture-toast',
           }))
           pluginBuild.onResolve({ filter: /\/hooks\/useConfirmDelete$/ }, (args) => ({
-            path: args.path, namespace: 'fixture-confirm',
+            path: args.path,
+            namespace: 'fixture-confirm',
           }))
-          pluginBuild.onResolve({ filter: /\/components\/ExerciseForm$/ }, (args) => ({
-            path: args.path, namespace: 'fixture-noop-component',
+          pluginBuild.onResolve({ filter: /\/components\/ExercisePreferencesForm$/ }, (args) => ({
+            path: args.path,
+            namespace: 'fixture-noop-component',
           }))
           pluginBuild.onResolve({ filter: /\/components\/ExerciseCatalog$/ }, (args) => ({
-            path: args.path, namespace: 'fixture-noop-component',
+            path: args.path,
+            namespace: 'fixture-noop-component',
           }))
           // RowActionsMenu usa @primer/react ActionMenu, que toca `document` de verdade
           // (portal/click-outside) num efeito -- fora de escopo aqui (o teste é sobre
           // busca/filtro/grupo, não o menu de ações), então vira um placeholder simples.
           pluginBuild.onResolve({ filter: /\/components\/RowActionsMenu$/ }, (args) => ({
-            path: args.path, namespace: 'fixture-noop-component',
+            path: args.path,
+            namespace: 'fixture-noop-component',
           }))
           pluginBuild.onLoad({ filter: /.*/, namespace: 'fixture-exercises' }, () => ({
             contents: `
@@ -191,14 +221,18 @@ before(async () => {
             contents: `export function useConfirmDelete() { return async () => true }`,
           }))
           pluginBuild.onLoad({ filter: /.*/, namespace: 'fixture-noop-component' }, () => ({
-            contents: `export const ExerciseForm = () => null; export const ExerciseCatalog = () => null; export const RowActionsMenu = () => null`,
+            resolveDir: new URL('../../', import.meta.url).pathname,
+            loader: 'jsx',
+            contents: `export const ExercisePreferencesForm = () => null; export const ExerciseCatalog = () => <div data-testid="official-catalog">Catálogo Evolutus</div>; export const RowActionsMenu = () => null`,
           }))
         },
       },
     ],
     logLevel: 'silent',
   })
-  ;({ render, clickChip, searchFor, toggleGroup } = createRequire(import.meta.url)(outfile))
+  ;({ render, clickChip, searchFor, toggleGroup, openCatalog } = createRequire(import.meta.url)(
+    outfile
+  ))
 })
 
 after(async () => {
@@ -245,4 +279,11 @@ test('grupo é recolhível -- clicar no cabeçalho esconde a lista daquele grupo
   const { before, after: afterToggle } = toggleGroup('Costas')
   assert.equal(before, 3)
   assert.equal(afterToggle, 2)
+})
+
+test('Adicionar opens official catalog directly, without custom creation or source chooser', () => {
+  const html = render()
+  assert.doesNotMatch(html, /Criar personalizado|Escolha a origem|Cadastrar exercício/)
+  assert.match(html, /Exercício antigo/)
+  assert.equal(openCatalog(), 1)
 })

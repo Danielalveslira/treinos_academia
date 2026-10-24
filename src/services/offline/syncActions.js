@@ -16,6 +16,10 @@ export async function listFailedMutations(userId) {
 }
 
 const REASONS = {
+  CUSTOM_EXERCISES_DISABLED:
+    'A criação de exercícios próprios foi encerrada. Os dados continuam neste aparelho; escolha um exercício no Catálogo Evolutus.',
+  LEGACY_EXERCISE_READ_ONLY:
+    'Exercício antigo: novos treinos exigem um exercício do Catálogo Evolutus. Este registro permanece neste aparelho.',
   CONFLICT: 'Este treino foi alterado em outro aparelho.',
   NOT_FOUND: 'Este treino foi apagado em outro aparelho.',
   INVALID_PAYLOAD: 'Os dados deste registro não foram aceitos.',

@@ -157,8 +157,9 @@ select is(
 -- 8) exercises: inserir source=catalog apontando pro retirado falha; provider_exercise_id
 --    inexistente falha igual; provider='evolutus_original' funciona para item original publicado.
 -- ----------------------------------------------------------------------------------------------
-select pg_temp.as_user('95000000-0000-0000-0000-000000000002');
+select pg_temp.as_user(null);
 insert into public.exercises (user_id, name, muscle_group) values ('95000000-0000-0000-0000-000000000002', 'Exercicio pessoal', 'pernas');
+select pg_temp.as_user('95000000-0000-0000-0000-000000000002');
 select throws_ok(
   format($f$ insert into public.exercises (user_id, name, muscle_group, type, source, provider, provider_exercise_id)
     values ('95000000-0000-0000-0000-000000000002', 'Agachamento', 'pernas', 'strength', 'catalog', 'evolutus_original', %L) $f$,
@@ -173,8 +174,8 @@ select lives_ok(
   'adicionar exercício publicado (evolutus_dataset) funciona');
 
 -- source='custom' nunca passa pela trigger (sem provider/provider_exercise_id).
-select lives_ok($$ insert into public.exercises (user_id, name, muscle_group, type, source) values ('95000000-0000-0000-0000-000000000002', 'Personalizado', 'bracos', 'strength', 'custom') $$,
-  'source=custom nunca é bloqueado pela trigger de catálogo');
+select throws_ok($$ insert into public.exercises (user_id, name, muscle_group, type, source) values ('95000000-0000-0000-0000-000000000002', 'Personalizado', 'bracos', 'strength', 'custom') $$,
+  'P0001', 'CUSTOM_EXERCISES_DISABLED', 'Fase 3 bloqueia nova criação personalizada');
 
 -- admin_restore_catalog_exercise em si: withdrawn -> in_review (nunca direto a published).
 select pg_temp.as_user('95000000-0000-0000-0000-000000000001');
@@ -226,6 +227,7 @@ select throws_ok(
        '[{"weight":10,"reps":10}]'::jsonb, 1, current_date) $$,
   'P0001', 'catalog_exercise_not_published', 'novo treino com exercício em_review (restaurado, ainda não republicado) é bloqueado');
 
+select pg_temp.as_user(null);
 create temp table w1 as select gen_random_uuid() as id;
 insert into public.exercises (id, user_id, name, muscle_group, type, source) values
   ((select id from w1), '95000000-0000-0000-0000-000000000003', 'Rosca direta', 'bracos', 'strength', 'custom');
@@ -233,7 +235,8 @@ select lives_ok(
   format($f$ insert into public.workouts (id, user_id, exercise_id, set_details, sets, date)
      values (%L, '95000000-0000-0000-0000-000000000003', %L, '[{"weight":5,"reps":12}]'::jsonb, 1, current_date) $f$,
     gen_random_uuid(), (select id from w1)),
-  'treino com exercício source=custom nunca é bloqueado');
+  'fixture histórica personalizada é preservada');
+select pg_temp.as_user('95000000-0000-0000-0000-000000000003');
 
 select throws_ok(
   format($f$ update public.workouts set exercise_id = '95eeeeee-0000-0000-0000-000000000001' where exercise_id = %L $f$, (select id from w1)),

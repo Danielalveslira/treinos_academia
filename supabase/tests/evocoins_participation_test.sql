@@ -407,8 +407,11 @@ select is(pg_temp.earned('0d'), 10, 'teto do autor intacto');
 
 
 -- ============================================================ TREINO (marcador server-side)
-insert into public.exercises (id, user_id, name, muscle_group)
-select ('e7000000-0000-0000-0000-0000000000' || n)::uuid, pg_temp.u(u), 'Exercício ' || n, 'Peito'
+select pg_temp.no_user();
+insert into public.exercise_catalog (provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions, status)
+select 'evolutus_dataset','participation-strength-' || n,'Exercício ' || n,'peito',array['peito'],'forca',array['Empurre'],'published' from unnest(array['01','02','03','04','05','06','07','08']) n;
+insert into public.exercises (id, user_id, name, muscle_group, source, provider, provider_exercise_id)
+select ('e7000000-0000-0000-0000-0000000000' || n)::uuid, pg_temp.u(u), 'Exercício ' || n, 'Peito', 'catalog', 'evolutus_dataset', 'participation-strength-' || n
 from (values ('01','09'),('02','09'),('03','09'),('04','09'),('05','09'),('06','11'),('07','11'),('08','0a')) v(n, u);
 create or replace function pg_temp.sp_today_sql() returns date language sql as
   $$select (now() at time zone 'America/Sao_Paulo')::date$$;

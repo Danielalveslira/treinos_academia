@@ -95,25 +95,11 @@ export function validateUsername(rawUsername) {
   return errors
 }
 
-export function validateExercise({ name, muscleGroup, type, source, providerExerciseId }) {
+export function validateExercisePreferences({ note, active }) {
   const errors = {}
-  const nameError = requiredText(name, 100, 'Nome é obrigatório', 'Nome muito longo')
-  if (nameError) errors.name = nameError
-  const muscleGroupError = requiredText(
-    muscleGroup,
-    30,
-    'Grupo muscular é obrigatório',
-    'Nome do grupo muito longo'
-  )
-  if (muscleGroupError) errors.muscleGroup = muscleGroupError
-  if (type != null && !EXERCISE_TYPES.includes(type)) errors.type = 'Tipo inválido'
-  if (source != null && !['custom', 'catalog'].includes(source)) errors.source = 'Origem inválida'
-  if (source === 'catalog' && (!providerExerciseId || typeof providerExerciseId !== 'string')) {
-    errors.providerExerciseId = 'Exercício do catálogo inválido'
-  }
-  if (source !== 'catalog' && providerExerciseId != null) {
-    errors.providerExerciseId = 'Exercício personalizado não pode ter ID de catálogo'
-  }
+  if (typeof note !== 'string' || note.length > 300)
+    errors.note = 'A observação deve ter até 300 caracteres'
+  if (typeof active !== 'boolean') errors.active = 'Status inválido'
   return errors
 }
 

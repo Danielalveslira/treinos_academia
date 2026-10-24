@@ -97,8 +97,13 @@ export function providerExerciseToPersonal(exercise, { order } = {}) {
   return personal
 }
 
-export function isProviderExerciseAdded(personalExercises, providerExerciseId) {
-  return personalExercises.some((exercise) => exercise.providerExerciseId === providerExerciseId)
+export function isProviderExerciseAdded(personalExercises, providerExerciseId, provider) {
+  return personalExercises.some(
+    (exercise) =>
+      exercise.source === 'catalog' &&
+      exercise.providerExerciseId === providerExerciseId &&
+      (!provider || exercise.provider === provider)
+  )
 }
 
 export function getExerciseSource(exercise) {

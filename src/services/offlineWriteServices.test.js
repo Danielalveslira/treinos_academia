@@ -421,15 +421,27 @@ test('exercícios pessoais: gravações ONLINE atualizam o cache local (sem escr
     type: 'strength',
     note: '',
     active: true,
-    source: 'custom',
-    provider: null,
-    provider_exercise_id: null,
-    catalog_id: null,
+    source: 'catalog',
+    provider: 'evolutus_dataset',
+    provider_exercise_id: 'official-remada',
+    catalog_id: 'cat-remada',
+    catalog: {
+      id: 'cat-remada',
+      provider: 'evolutus_dataset',
+      provider_exercise_id: 'official-remada',
+      status: 'published',
+    },
     equipment: null,
     order: null,
   }
   respond.data = row
-  await on.exercises.createExercise(A, { name: 'Remada', muscleGroup: 'Costas', note: '' })
+  await on.exercises.createCatalogExercise(A, {
+    name: 'Remada',
+    muscleGroup: 'Costas',
+    provider: 'evolutus_dataset',
+    providerExerciseId: 'official-remada',
+    note: '',
+  })
   await settle()
   respond.data = [row]
   await on.exercises.listExercises(A)
@@ -438,11 +450,12 @@ test('exercícios pessoais: gravações ONLINE atualizam o cache local (sem escr
   await on.exercises.updateExercise(A, 'ex-new', {
     name: 'Remada Alta',
     muscleGroup: 'Costas',
-    note: '',
+    note: 'Minha preferência',
     active: true,
   })
   await settle()
-  assert.equal((await on.userExercises.readCachedUserExercises(A))[0].name, 'Remada Alta')
+  assert.equal((await on.userExercises.readCachedUserExercises(A))[0].name, 'Remada')
+  assert.equal((await on.userExercises.readCachedUserExercises(A))[0].note, 'Minha preferência')
   await on.exercises.saveExerciseOrder(A, ['ex-new'])
   await settle()
   assert.equal((await on.userExercises.readCachedUserExercises(A))[0].order, 0)
@@ -453,7 +466,13 @@ test('exercícios pessoais: gravações ONLINE atualizam o cache local (sem escr
   setNavigator(false)
   respond.network = true
   await assert.rejects(
-    on.exercises.createExercise(A, { name: 'X', muscleGroup: 'Peito', note: '' }),
+    on.exercises.createCatalogExercise(A, {
+      name: 'X',
+      muscleGroup: 'Peito',
+      provider: 'evolutus_dataset',
+      providerExerciseId: 'x',
+      note: '',
+    }),
     (e) => e === NETWORK
   )
   assert.deepEqual(await on.outbox.listMutations(A), [])
@@ -941,4 +960,100 @@ for (const [label, service, flag] of [
 test('createWorkout sem id do cliente mantém o comportamento anterior (erro de unicidade continua sendo erro)', async () => {
   respond.error = UNIQUE
   await assert.rejects(off.workouts.createWorkout(A, form()), (e) => e === UNIQUE)
+})
+
+test('personal exercise updates send only note/active and never identity; no custom creation API remains', async () => {
+  assert.equal(on.exercises.createExercise, undefined)
+  respond.data = null
+  await on.exercises.updateExercise(A, EX, {
+    name: 'forged',
+    muscleGroup: 'forged',
+    type: 'cardio',
+    source: 'custom',
+    provider: 'forged',
+    catalogId: 'forged',
+    note: '  minha nota  ',
+    active: false,
+  })
+  const call = globalThis.__calls.find(
+    (call) => call.table === 'exercises' && call.steps.some(([method]) => method === 'update')
+  )
+  assert.deepEqual(call.steps.find(([method]) => method === 'update')[1], {
+    note: 'minha nota',
+    active: false,
+  })
+})
+
+test('concurrent official duplicate returns the existing row without creating a second link', async () => {
+  let insert = true
+  const row = {
+    id: EX,
+    user_id: A,
+    name: 'Servidor',
+    muscle_group: 'Peito',
+    source: 'catalog',
+    provider: 'evolutus_dataset',
+    provider_exercise_id: 'pub',
+    catalog_id: 'cat-pub',
+    catalog: {
+      id: 'cat-pub',
+      provider: 'evolutus_dataset',
+      provider_exercise_id: 'pub',
+      status: 'published',
+    },
+    active: true,
+  }
+  globalThis.__respond = (call) => {
+    if (call.steps.some(([method]) => method === 'insert') && insert) {
+      insert = false
+      return { data: null, error: { code: '23505' } }
+    }
+    return { data: row, error: null }
+  }
+  const result = await on.exercises.createCatalogExercise(A, {
+    name: 'Cliente',
+    muscleGroup: 'Costas',
+    provider: 'evolutus_dataset',
+    providerExerciseId: 'pub',
+  })
+  assert.equal(result.added, false)
+  assert.equal(result.exercise.name, 'Servidor')
+  assert.equal(result.exercise.id, EX)
+})
+
+test('duplicate legacy link resolves the official tuple without changing its FK or preferences', async () => {
+  const row = {
+    id: EX,
+    user_id: A,
+    source: 'catalog',
+    provider: 'evolutus_dataset',
+    provider_exercise_id: 'pub',
+    catalog_id: null,
+    catalog: null,
+    name: 'Antigo snapshot',
+    note: 'Minha nota',
+    active: false,
+  }
+  globalThis.__respond = (call) => {
+    if (call.steps.some(([method]) => method === 'insert'))
+      return { data: null, error: { code: '23505' } }
+    return {
+      data:
+        call.table === 'exercise_catalog'
+          ? [{ id: 'c1', provider: row.provider, provider_exercise_id: 'pub', status: 'published' }]
+          : row,
+      error: null,
+    }
+  }
+  const result = await on.exercises.createCatalogExercise(A, {
+    provider: row.provider,
+    providerExerciseId: 'pub',
+    name: 'Cliente',
+    muscleGroup: 'Peito',
+  })
+  assert.equal(result.added, false)
+  assert.equal(result.exercise.catalogAvailable, true)
+  assert.equal(result.exercise.catalogId, null)
+  assert.equal(result.exercise.note, 'Minha nota')
+  assert.equal(result.exercise.active, false)
 })

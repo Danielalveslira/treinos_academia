@@ -24,6 +24,9 @@ export const STATUS = Object.freeze({ pending: 'pending', syncing: 'syncing', fa
 
 // Depois de tantas tentativas transitórias seguidas a mutação vira `failed` (RETRY_LIMIT): deixa de
 // tentar sozinha, mas continua aqui; "Sincronizar agora"/"Tentar de novo" a recoloca na fila.
+export const isPermanentExerciseFailure = (mutation) =>
+  ['CUSTOM_EXERCISES_DISABLED', 'LEGACY_EXERCISE_READ_ONLY'].includes(mutation.last_error?.code)
+
 export const MAX_ATTEMPTS = 10
 const BACKOFF_SECONDS = [2, 5, 15, 30, 60, 120, 300]
 
@@ -441,7 +444,7 @@ export function retryFailed(userId, { now = Date.now() } = {}) {
   return withTransaction([STORES.outbox], 'readwrite', async ({ outbox }) => {
     let count = 0
     for (const mutation of await mutationsOf(outbox, userId)) {
-      if (mutation.status !== STATUS.failed) continue
+      if (mutation.status !== STATUS.failed || isPermanentExerciseFailure(mutation)) continue
       reset(mutation, now)
       outbox.put(mutation)
       count += 1

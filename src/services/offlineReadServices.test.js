@@ -497,3 +497,158 @@ test('logout: depois da limpeza, nem o dono nem outro usuário leem o histórico
   await assert.rejects(api.workouts.listWorkoutsPage('user-b'), (e) => e === NETWORK)
   assert.equal((await api.catalog.searchExercises({ q: 'supino' })).data.length, 1) // público
 })
+
+test('official availability shares the personal list query and survives the private offline cache', async () => {
+  respond([
+    {
+      ...exerciseRow('user-a', 'e1', 'Publicado'),
+      source: 'catalog',
+      provider: 'evolutus_dataset',
+      catalog_id: 'c1',
+      provider_exercise_id: 'pub',
+      catalog: {
+        id: 'c1',
+        provider: 'evolutus_dataset',
+        provider_exercise_id: 'pub',
+        status: 'published',
+      },
+    },
+    {
+      ...exerciseRow('user-a', 'e2', 'Retirado'),
+      source: 'catalog',
+      provider: 'evolutus_dataset',
+      catalog: null,
+    },
+  ])
+  const online = await api.exercises.listExercises('user-a')
+  await settle()
+  assert.equal(online.find((row) => row.id === 'e1').catalogAvailable, true)
+  assert.equal(online.find((row) => row.id === 'e2').catalogAvailable, false)
+  fail(NETWORK)
+  const offline = await api.exercises.listExercises('user-a', { localOnly: true })
+  assert.equal(offline.find((row) => row.id === 'e1').catalogAvailable, true)
+  assert.equal(offline.find((row) => row.id === 'e2').catalogAvailable, false)
+})
+
+test('links without catalog_id resolve by provider tuple in bounded batches and stay available offline', async () => {
+  const rows = Array.from({ length: 85 }, (_, index) => ({
+    ...exerciseRow('user-a', `e-${index}`, `Oficial ${index}`),
+    source: 'catalog',
+    provider: index === 1 ? 'evolutus_original' : 'evolutus_dataset',
+    provider_exercise_id: index === 1 ? 'ref-0' : `ref-${index}`,
+    catalog_id: null,
+    catalog: null,
+  }))
+  const catalog = rows.slice(0, -1).map((row, index) => ({
+    id: `cat-${index}`,
+    provider: row.provider,
+    provider_exercise_id: row.provider_exercise_id,
+    status: 'published',
+  }))
+  online.handler = (call) => ({
+    data:
+      call.table === 'exercises'
+        ? rows
+        : catalog.filter((row) =>
+            call.steps
+              .find(([method, field]) => method === 'in' && field === 'provider_exercise_id')[2]
+              .includes(row.provider_exercise_id)
+          ),
+    error: null,
+  })
+  const result = await api.exercises.listExercises('user-a')
+  assert.equal(result.filter((row) => row.catalogAvailable).length, 84)
+  assert.equal(
+    result.find((row) => row.id === 'e-1').catalogAvailable,
+    true,
+    'provider is part of identity'
+  )
+  assert.equal(
+    result.find((row) => row.id === 'e-84').catalogAvailable,
+    false,
+    'unresolved/hidden unpublished row is unavailable'
+  )
+  assert.equal(
+    globalThis.__calls.filter((call) => call.table === 'exercise_catalog').length,
+    3,
+    '85 links use three bounded queries, never 85 queries'
+  )
+  assert.equal(
+    result.every((row) => row.catalogId === null),
+    true,
+    'legacy identity is not rewritten'
+  )
+  await settle()
+  const count = globalThis.__calls.length
+  fail(NETWORK)
+  const cached = await api.exercises.listExercises('user-a', { localOnly: true })
+  assert.deepEqual(
+    cached.map((row) => [row.id, row.catalogAvailable]),
+    [...result]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((row) => [row.id, row.catalogAvailable])
+  )
+  assert.equal(globalThis.__calls.length, count, 'offline mode never queries the catalog')
+  await assert.rejects(api.exercises.listExercises('user-b', { localOnly: true }))
+})
+
+test('a joined published row cannot hide mismatching provider, external id or catalog_id', async () => {
+  const base = {
+    ...exerciseRow('user-a', 'valid', 'Valid'),
+    source: 'catalog',
+    provider: 'evolutus_dataset',
+    provider_exercise_id: 'pub',
+    catalog_id: 'c1',
+  }
+  const joined = {
+    id: 'c1',
+    provider: 'evolutus_dataset',
+    provider_exercise_id: 'pub',
+    status: 'published',
+  }
+  respond([
+    { ...base, catalog: joined },
+    ...[
+      { provider: 'evolutus_original' },
+      { provider_exercise_id: 'other' },
+      { catalog_id: 'c2' },
+    ].map((patch, index) => ({ ...base, ...patch, id: `invalid-${index}`, catalog: joined })),
+    { ...base, id: 'unpublished', catalog: { ...joined, status: 'withdrawn' } },
+  ])
+  const result = await api.exercises.listExercises('user-a')
+  assert.deepEqual(
+    result.map((row) => row.catalogAvailable),
+    [true, false, false, false, false]
+  )
+  assert.equal(globalThis.__calls.length, 1, 'FK links do not cause fallback requests')
+})
+
+test('failed batch lookup preserves the last confirmed private cache instead of persisting false availability', async () => {
+  const row = {
+    ...exerciseRow('user-a', 'old', 'Oficial'),
+    source: 'catalog',
+    provider: 'evolutus_dataset',
+    provider_exercise_id: 'pub',
+    catalog_id: null,
+    catalog: null,
+  }
+  online.handler = (call) => ({
+    data:
+      call.table === 'exercises'
+        ? [row]
+        : [{ id: 'c1', provider: row.provider, provider_exercise_id: 'pub', status: 'published' }],
+    error: null,
+  })
+  await api.exercises.listExercises('user-a')
+  await settle()
+  online.handler = (call) =>
+    call.table === 'exercises' ? { data: [row], error: null } : { data: null, error: NETWORK }
+  const fallback = await api.exercises.listExercises('user-a')
+  assert.equal(api.isLocalFallback(fallback), true)
+  assert.equal(fallback[0].catalogAvailable, true)
+  await settle()
+  assert.equal(
+    (await api.exercises.listExercises('user-a', { localOnly: true }))[0].catalogAvailable,
+    true
+  )
+})

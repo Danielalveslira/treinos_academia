@@ -1,7 +1,7 @@
 import { Box, Button, Stack } from '@primer/react'
 
 // Moldura (borda, padding, Stack) e a linha de botões Cancelar/Salvar, idênticas hoje em
-// ExerciseForm, CommunityForm e BodyMeasurementForm. Os campos de cada formulário vão como
+// ExercisePreferencesForm, CommunityForm e BodyMeasurementForm. Os campos de cada formulário vão como
 // children; lógica de values/errors/submitting fica em useFormState.
 export function FormShell({ onSubmit, onCancel, submitting, children }) {
   return (

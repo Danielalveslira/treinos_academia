@@ -46,6 +46,7 @@ jobs:
       - name: Public and auth headers at mobile and desktop widths
         run: node scripts/public-auth-header-smoke.mjs
       - run: node scripts/ad-metrics-browser-smoke.mjs
+      - run: node scripts/phase3-exercises-browser-smoke.mjs
       - run: node scripts/release/scan-secrets.mjs --dist
 
   sql:
