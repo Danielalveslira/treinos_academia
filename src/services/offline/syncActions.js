@@ -22,6 +22,8 @@ const REASONS = {
   EXERCISE_NOT_FOUND: 'O exercício deste registro não existe mais.',
   TYPE_IMMUTABLE: 'O tipo deste registro não pode mudar.',
   RETRY_LIMIT: 'Não foi possível sincronizar este registro.',
+  catalog_exercise_not_published: 'Este exercício não está mais disponível no catálogo oficial.',
+  catalog_exercise_unavailable: 'Este exercício não está mais disponível no catálogo oficial.',
 }
 export const failureReason = (mutation) =>
   REASONS[mutation.last_error?.code] || 'Não foi possível sincronizar este registro.'

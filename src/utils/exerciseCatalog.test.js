@@ -178,6 +178,11 @@ test('providerExerciseToPersonal keeps equipment null when the exercise has none
   assert.equal(personal.equipment, null)
 })
 
+test('providerExerciseToPersonal preserves the real provider (evolutus_original), never forces evolutus_dataset', () => {
+  const personal = providerExerciseToPersonal({ ...sample[0], provider: 'evolutus_original' })
+  assert.equal(personal.provider, 'evolutus_original')
+})
+
 test('duplicate detection uses provider + providerExerciseId, not name', () => {
   const personal = [
     { id: 'legacy', name: 'Mesmo nome' },

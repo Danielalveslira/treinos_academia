@@ -38,7 +38,7 @@ const EvoCash = lazy(() => import('./pages/EvoCash'))
 const EconomyGuide = lazy(() => import('./pages/EconomyGuide'))
 const AdminCashPurchases = lazy(() => import('./pages/AdminCashPurchases'))
 const AdminPromotions = lazy(() => import('./pages/AdminPromotions'))
-const AdminExerciseVisuals = lazy(() => import('./pages/AdminExerciseVisuals'))
+const AdminExerciseCatalog = lazy(() => import('./pages/AdminExerciseCatalog'))
 const MyPromotions = lazy(() => import('./pages/MyPromotions'))
 const ProfessionalListing = lazy(() => import('./pages/ProfessionalListing'))
 const MyProfessionalListing = lazy(() => import('./pages/MyProfessionalListing'))
@@ -183,9 +183,13 @@ export function AppRoutes() {
         />
         <Route
           path="/admin/exercicios-imagens"
+          element={<Navigate to="/admin/exercicios" replace />}
+        />
+        <Route
+          path="/admin/exercicios"
           element={
             <SuperAdminRoute>
-              <AdminExerciseVisuals />
+              <AdminExerciseCatalog />
             </SuperAdminRoute>
           }
         />

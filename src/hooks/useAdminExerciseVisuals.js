@@ -27,7 +27,9 @@ import { describeQueryError } from '../utils/queryError'
 // Estado da tela /admin/exercicios-imagens: lista paginada do catálogo (com filtro "sem imagem"),
 // cobertura, exercício selecionado com seus conjuntos visuais e as ações de revisão. Tudo online-only:
 // nada aqui passa pelo IndexedDB/outbox -- a mídia oficial é conteúdo global read-only para o aluno.
-export function useAdminExerciseVisuals() {
+export function useAdminExerciseVisuals({ loadCatalog = true, onImagesChanged } = {}) {
+  const onImagesChangedRef = useRef(onImagesChanged)
+  onImagesChangedRef.current = onImagesChanged
   const [filters, setFilters] = useState({ q: '', onlyMissing: false })
   const [page, setPage] = useState(0)
   const [list, setList] = useState({ data: [], total: 0 })
@@ -90,8 +92,8 @@ export function useAdminExerciseVisuals() {
   }, [])
 
   useEffect(() => {
-    loadList()
-  }, [loadList])
+    if (loadCatalog) loadList()
+  }, [loadList, loadCatalog])
 
   const loadStyleProfile = useCallback(async () => {
     const request = ++styleProfileRequest.current
@@ -195,8 +197,13 @@ export function useAdminExerciseVisuals() {
         )
         await loadSets(catalogId, { background: true })
       }
-      if (name.startsWith('publish:') || name.startsWith('restore:'))
-        await Promise.all([loadList(), loadCoverage()])
+      if (['publish:', 'restore:', 'upload', 'delete:', 'retry:'].some((prefix) => name.startsWith(prefix))) {
+        await Promise.all([
+          ...(loadCatalog ? [loadList()] : []),
+          ...(name.startsWith('publish:') || name.startsWith('restore:') ? [loadCoverage()] : []),
+          onImagesChangedRef.current?.(),
+        ])
+      }
       return true
     } catch (error) {
       console.error(`[useAdminExerciseVisuals] ${name}:`, error)

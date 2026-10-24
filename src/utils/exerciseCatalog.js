@@ -85,7 +85,9 @@ export function providerExerciseToPersonal(exercise, { order } = {}) {
     type: mapCatalogCategoryToExerciseType(exercise.category),
     equipment: exercise.equipment || null,
     source: 'catalog',
-    provider: 'evolutus_dataset',
+    // Preserva a origem real (dataset importado vs. conteúdo autoral da equipe) -- nunca
+    // fixa um valor, exercise.provider já vem do mapRow do serviço de catálogo.
+    provider: exercise.provider || 'evolutus_dataset',
     providerExerciseId: exercise.providerExerciseId,
     catalogId: exercise.id,
     active: true,

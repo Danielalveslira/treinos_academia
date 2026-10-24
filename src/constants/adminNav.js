@@ -48,8 +48,8 @@ export const ADMIN_ITEMS = [
   },
   {
     key: 'admin-imagens',
-    to: '/admin/exercicios-imagens',
+    to: '/admin/exercicios',
     icon: ImageIcon,
-    label: 'Imagens dos exercícios',
+    label: 'Exercícios',
   },
 ]

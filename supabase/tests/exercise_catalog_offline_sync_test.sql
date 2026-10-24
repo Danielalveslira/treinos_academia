@@ -2,13 +2,16 @@ begin;
 select no_plan();
 
 -- Fixtures (prefixo 95...): catálogo de exercícios para os testes de sync offline.
-insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions)
+-- status default passou a 'draft' (20261117000001_exercise_catalog_lifecycle.sql) -- um
+-- exercício novo nunca entra ao ar sozinho. Este fixture precisa de ativo/publicado de
+-- propósito, então todo insert abaixo informa status='published' explicitamente.
+insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions, status)
 values
-  ('95aaaaaa-0000-0000-0000-000000000001', 'evolutus_dataset', 'ev-sync-1', 'Supino Sync Teste', 'peito', array['peito'], 'força', array['Empurre.']),
-  ('95aaaaaa-0000-0000-0000-000000000002', 'evolutus_dataset', 'ev-sync-2', 'Nome Duplicado Sync', 'pernas', array['pernas'], 'força', array['Agache.']),
-  ('95aaaaaa-0000-0000-0000-000000000003', 'evolutus_dataset', 'ev-sync-3', 'Nome Duplicado Sync', 'pernas', array['pernas'], 'força', array['Agache.']);
-insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions, is_active)
-values ('95aaaaaa-0000-0000-0000-000000000004', 'evolutus_dataset', 'ev-sync-4', 'Inativo Sync Teste', 'peito', array['peito'], 'força', array['x'], false);
+  ('95aaaaaa-0000-0000-0000-000000000001', 'evolutus_dataset', 'ev-sync-1', 'Supino Sync Teste', 'peito', array['peito'], 'força', array['Empurre.'], 'published'),
+  ('95aaaaaa-0000-0000-0000-000000000002', 'evolutus_dataset', 'ev-sync-2', 'Nome Duplicado Sync', 'pernas', array['pernas'], 'força', array['Agache.'], 'published'),
+  ('95aaaaaa-0000-0000-0000-000000000003', 'evolutus_dataset', 'ev-sync-3', 'Nome Duplicado Sync', 'pernas', array['pernas'], 'força', array['Agache.'], 'published');
+insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions, status)
+values ('95aaaaaa-0000-0000-0000-000000000004', 'evolutus_dataset', 'ev-sync-4', 'Inativo Sync Teste', 'peito', array['peito'], 'força', array['x'], 'withdrawn');
 
 -- Pagina list_exercise_catalog_for_sync inteiro (keyset por id) e devolve todos os ids vistos,
 -- na ordem em que a varredura completa os encontrou -- usado para verificar que a varredura não
@@ -54,10 +57,13 @@ update public.exercise_catalog set name = 'Supino Sync Teste Renomeado' where id
 select cmp_ok((select updated_at from public.exercise_catalog where id = '95aaaaaa-0000-0000-0000-000000000001'),
   '>', '2020-01-02T00:00:00Z'::timestamptz, 'trigger força updated_at ao mudar o nome');
 
-update public.exercise_catalog set is_active = false where id = '95aaaaaa-0000-0000-0000-000000000002';
+-- is_active agora é derivado de status (20261117000001_exercise_catalog_lifecycle.sql) --
+-- um CHECK garante as duas colunas nunca ficarem inconsistentes, inclusive em escrita direta;
+-- desativar passa a ser feito via status, nunca is_active direto.
+update public.exercise_catalog set status = 'withdrawn' where id = '95aaaaaa-0000-0000-0000-000000000002';
 select cmp_ok((select updated_at from public.exercise_catalog where id = '95aaaaaa-0000-0000-0000-000000000002'),
   '>', '2020-01-02T00:00:00Z'::timestamptz, 'trigger força updated_at ao desativar');
-update public.exercise_catalog set is_active = true where id = '95aaaaaa-0000-0000-0000-000000000002'; -- volta a ativo (fixture do keyset abaixo)
+update public.exercise_catalog set status = 'published' where id = '95aaaaaa-0000-0000-0000-000000000002'; -- volta a ativo (fixture do keyset abaixo)
 
 update public.exercise_catalog set published_media_refs = jsonb_build_object(
   'images', jsonb_build_array(jsonb_build_object('role', 'thumb', 'path', '95aaaaaa-0000-0000-0000-000000000003/v1/thumb.webp'))
@@ -70,8 +76,8 @@ select cmp_ok((select updated_at from public.exercise_catalog where id = '95aaaa
 -- ----------------------------------------------------------------------------
 create temp table rev_before as select * from public.get_exercise_catalog_revision();
 
-insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions)
-values ('95aaaaaa-0000-0000-0000-000000000005', 'evolutus_dataset', 'ev-sync-5', 'Novo Ativo Sync Teste', 'peito', array['peito'], 'força', array['y']);
+insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions, status)
+values ('95aaaaaa-0000-0000-0000-000000000005', 'evolutus_dataset', 'ev-sync-5', 'Novo Ativo Sync Teste', 'peito', array['peito'], 'força', array['y'], 'published');
 create temp table rev_after_insert as select * from public.get_exercise_catalog_revision();
 
 select isnt((select revision from rev_before), (select revision from rev_after_insert),
@@ -79,7 +85,7 @@ select isnt((select revision from rev_before), (select revision from rev_after_i
 select is((select total_active from rev_after_insert) - (select total_active from rev_before), 1::bigint,
   'total_active sobe exatamente 1 com a inserção');
 
-update public.exercise_catalog set is_active = false where id = '95aaaaaa-0000-0000-0000-000000000005';
+update public.exercise_catalog set status = 'withdrawn' where id = '95aaaaaa-0000-0000-0000-000000000005';
 create temp table rev_after_deactivate as select * from public.get_exercise_catalog_revision();
 
 select isnt((select revision from rev_after_insert), (select revision from rev_after_deactivate),

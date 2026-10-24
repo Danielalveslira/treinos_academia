@@ -205,7 +205,7 @@ test('ADMIN_ITEMS continua com as mesmas 9 rotas administrativas', () => {
     '/admin/vitrines',
     '/admin/compras-evocash',
     '/admin/promocoes',
-    '/admin/exercicios-imagens',
+    '/admin/exercicios',
   ])
 })
 
