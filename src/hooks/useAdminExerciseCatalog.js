@@ -104,7 +104,11 @@ export function useAdminExerciseCatalog() {
         offset: page * PAGE_SIZE,
         onlyMissingImages: filters.onlyMissingImages,
       })
-      if (request === listRequest.current) setList(result)
+      if (request === listRequest.current) {
+        const lastPage = Math.max(Math.ceil(result.total / PAGE_SIZE) - 1, 0)
+        if (page > lastPage) setPage(lastPage)
+        else setList(result)
+      }
     } catch (error) {
       if (request === listRequest.current)
         setListError(describeQueryError(error, 'useAdminExerciseCatalog.list'))
@@ -226,6 +230,7 @@ export function useAdminExerciseCatalog() {
     section,
     filters,
     page,
+    pageSize: PAGE_SIZE,
     setPage,
     list,
     listLoading,

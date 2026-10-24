@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Box,
   Button,
@@ -12,6 +12,7 @@ import {
   Textarea,
 } from '@primer/react'
 import { CheckCircleFillIcon, PlusIcon, SearchIcon, TrashIcon } from '@primer/octicons-react'
+import { hasCompleteExerciseImages } from '../utils/exerciseImages.js'
 import { useAdminExerciseCatalog } from '../hooks/useAdminExerciseCatalog'
 import { useAdminExerciseVisuals } from '../hooks/useAdminExerciseVisuals'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
@@ -113,10 +114,7 @@ function DynamicList({ label, values, onChange, placeholder, addLabel, multiline
 
 function ExerciseRow({ exercise, active, onSelect }) {
   const meta = [exercise.primary_muscle, exercise.equipment].filter(Boolean).map(formatCatalogLabel).join(' · ')
-  // published_media_refs só ganha a chave "version" quando apply_published_visual_set confirma
-  // AMBOS os assets start/end completos (ver migration) -- mesmo sinal que a tela antiga usava,
-  // já vem na própria listagem, sem consulta extra por linha.
-  const hasCompleteImages = Boolean(exercise.published_media_refs?.version)
+  const hasCompleteImages = hasCompleteExerciseImages(exercise)
   return (
     <li>
       <button type="button" className="ev-row" aria-pressed={active} onClick={() => onSelect(exercise)}>
@@ -124,13 +122,15 @@ function ExerciseRow({ exercise, active, onSelect }) {
           <span className="ev-row-name">
             {exercise.name}
             {hasCompleteImages && (
-              <CheckCircleFillIcon
-                size={14}
-                fill="success.fg"
+              <Box
+                as="span"
+                sx={{ color: 'success.fg', marginLeft: 1, display: 'inline-flex', verticalAlign: 'middle' }}
+                role="img"
                 aria-label="Imagens de início e fim completas"
                 data-testid={`has-images-${exercise.id}`}
-                style={{ marginLeft: 6, verticalAlign: 'middle' }}
-              />
+              >
+                <CheckCircleFillIcon size={14} />
+              </Box>
             )}
           </span>
           <span className="ev-muted">{meta}</span>
@@ -294,7 +294,7 @@ function AuditLog({ entries }) {
 export default function AdminExerciseCatalog() {
   const online = useOnlineStatus()
   const catalog = useAdminExerciseCatalog()
-  const visuals = useAdminExerciseVisuals()
+  const visuals = useAdminExerciseVisuals({ loadCatalog: false, onImagesChanged: catalog.loadList })
   const [searchDraft, setSearchDraft] = useState('')
   const { list, page, selected } = catalog
 
@@ -303,22 +303,7 @@ export default function AdminExerciseCatalog() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog.selected?.id])
 
-  // visuals.coverage só ganha uma referência nova depois de publish:/restore: (useAdminExerciseVisuals
-  // já recarrega a cobertura só nesses dois casos -- os únicos que podem mudar
-  // published_media_refs; reject/delete nunca tocam a versão publicada). Reusa esse sinal já
-  // existente para atualizar o indicador verde/filtro "sem imagem" da listagem, sem nenhuma
-  // consulta nova; pula a própria carga inicial (catalog.loadList() já roda sozinho no mount).
-  const didMountCoverageRef = useRef(false)
-  useEffect(() => {
-    if (!didMountCoverageRef.current) {
-      didMountCoverageRef.current = true
-      return
-    }
-    catalog.loadList()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visuals.coverage])
-
-  const lastPage = Math.max(Math.ceil(list.total / visuals.pageSize) - 1, 0)
+  const lastPage = Math.max(Math.ceil(list.total / catalog.pageSize) - 1, 0)
   // visuals.select() roda num efeito (depois do commit que trocou catalog.selected) -- entre o
   // clique e o efeito rodar, visuals.selected ainda é o valor antigo (ou null). Só monta
   // ExerciseVisualDetail quando os dois hooks já apontam pro MESMO exercício; senão ele lê
@@ -375,14 +360,13 @@ export default function AdminExerciseCatalog() {
           />
           <Button type="submit">Buscar</Button>
         </form>
-        <label className="ev-check">
-          <input
-            type="checkbox"
-            checked={catalog.filters.onlyMissingImages}
-            onChange={catalog.toggleOnlyMissingImages}
-          />
-          <span>Somente sem imagem</span>
-        </label>
+        <Button
+          aria-pressed={catalog.filters.onlyMissingImages}
+          variant={catalog.filters.onlyMissingImages ? 'primary' : 'default'}
+          onClick={catalog.toggleOnlyMissingImages}
+        >
+          Sem imagens
+        </Button>
         <Button leadingVisual={PlusIcon} onClick={catalog.startNewDraft}>
           Novo exercício
         </Button>

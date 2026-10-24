@@ -337,5 +337,28 @@ create temp table sync2 as select public.sync_workout_mutations(
 select is((select (r->'results'->0->>'code') from sync2), 'EXERCISE_NOT_FOUND', 'exercicio pessoal inexistente continua classificado corretamente (não-regressão, trigger nova não interfere)');
 drop table sync2;
 
+-- Global image filter: completeness, search, muscle and count run before LIMIT/OFFSET.
+select pg_temp.as_user('95000000-0000-0000-0000-000000000001');
+create temp table image_filter_fixtures as
+select n, (public.admin_create_catalog_exercise_draft(
+  'zzimagefilter ' || case when n <= 22 then 'needle ' else 'other ' end || n,
+  case when n % 2 = 0 then 'peito' else 'costas' end
+)).id as id from generate_series(1, 45) n;
+select pg_temp.publish_real_visuals((select id from image_filter_fixtures where n = 1), '95000000-0000-0000-0000-000000000001');
+select is((select total_count::int from public.admin_list_catalog_exercises('draft', 'zzimagefilter', null, 20, 0, true) limit 1), 44,
+  'total filtrado inclui todos os exercícios fora da página e exclui START/END completos');
+select is((select count(*)::int from public.admin_list_catalog_exercises('draft', 'zzimagefilter', null, 20, 20, true)), 20,
+  'segunda página do filtro tem 20 resultados');
+select is((select count(*)::int from public.admin_list_catalog_exercises('draft', 'zzimagefilter', null, 20, 40, true)), 4,
+  'última página do filtro contém os quatro restantes');
+select is((select total_count::int from public.admin_list_catalog_exercises('draft', 'zzimagefilter needle', 'peito', 20, 0, true) limit 1), 11,
+  'busca e músculo combinam com filtro global de imagens');
+select is((select total_count::int from public.admin_list_catalog_exercises('draft', 'zzimagefilter', null, 20, 0, false) limit 1), 45,
+  'desligar filtro recupera todos os exercícios');
+select is((select count(*)::int from (
+  select id from public.admin_list_catalog_exercises('draft', 'zzimagefilter', null, 20, 0, true)
+  intersect select id from public.admin_list_catalog_exercises('draft', 'zzimagefilter', null, 20, 20, true)
+) duplicates), 0, 'ordenação estável não repete exercícios entre páginas');
+
 select finish();
 rollback;
