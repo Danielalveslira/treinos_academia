@@ -497,3 +497,28 @@ test('logout: depois da limpeza, nem o dono nem outro usuário leem o histórico
   await assert.rejects(api.workouts.listWorkoutsPage('user-b'), (e) => e === NETWORK)
   assert.equal((await api.catalog.searchExercises({ q: 'supino' })).data.length, 1) // público
 })
+
+test('official availability shares the personal list query and survives the private offline cache', async () => {
+  respond([
+    {
+      ...exerciseRow('user-a', 'e1', 'Publicado'),
+      source: 'catalog',
+      provider: 'evolutus_dataset',
+      catalog: { status: 'published' },
+    },
+    {
+      ...exerciseRow('user-a', 'e2', 'Retirado'),
+      source: 'catalog',
+      provider: 'evolutus_dataset',
+      catalog: null,
+    },
+  ])
+  const online = await api.exercises.listExercises('user-a')
+  await settle()
+  assert.equal(online.find((row) => row.id === 'e1').catalogAvailable, true)
+  assert.equal(online.find((row) => row.id === 'e2').catalogAvailable, false)
+  fail(NETWORK)
+  const offline = await api.exercises.listExercises('user-a', { localOnly: true })
+  assert.equal(offline.find((row) => row.id === 'e1').catalogAvailable, true)
+  assert.equal(offline.find((row) => row.id === 'e2').catalogAvailable, false)
+})

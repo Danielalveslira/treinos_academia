@@ -11,9 +11,11 @@ select ('c3000000-0000-0000-0000-0000000000' || n)::uuid, 'authenticated', 'auth
   'u' || n || '-offlinesync@example.invalid', 'not-used', now(), '{}'::jsonb, '{}'::jsonb, now(), now()
 from unnest(array['01', '02']) as n;
 
-insert into public.exercises (id, user_id, name, muscle_group) values
-  ('c3e00000-0000-0000-0000-000000000001', 'c3000000-0000-0000-0000-000000000001', 'Supino A', 'Peito'),
-  ('c3e00000-0000-0000-0000-000000000002', 'c3000000-0000-0000-0000-000000000002', 'Supino B', 'Peito');
+insert into public.exercise_catalog (id, provider, provider_exercise_id, name, primary_muscle, muscles, category, instructions, status)
+values ('c3c00000-0000-0000-0000-000000000001','evolutus_dataset','offline-strength','Supino','peito',array['peito'],'forca',array['Empurre'],'published');
+insert into public.exercises (id, user_id, name, muscle_group, source, provider, provider_exercise_id) values
+  ('c3e00000-0000-0000-0000-000000000001', 'c3000000-0000-0000-0000-000000000001', 'Supino A', 'Peito', 'catalog','evolutus_dataset','offline-strength'),
+  ('c3e00000-0000-0000-0000-000000000002', 'c3000000-0000-0000-0000-000000000002', 'Supino B', 'Peito', 'catalog','evolutus_dataset','offline-strength');
 
 -- Sessão ATIVA de A e de B (private.current_session_active() -- ver 20261113000001). Uma delas é
 -- revogada mais abaixo, simulando "sair de todos os dispositivos" feito em outro aparelho.

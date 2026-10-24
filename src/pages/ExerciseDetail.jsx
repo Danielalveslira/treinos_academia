@@ -1,6 +1,7 @@
 import { formatWorkoutSets, getWorkoutLoad } from '../utils/workoutSets'
 import { toDate } from '../utils/date.js'
 import { useMemo } from 'react'
+import { canStartExercise, isLegacyExercise } from '../utils/personalExercises.js'
 import { originState } from '../utils/navigation'
 import { Link as RouterLink, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Box, Button, Heading, Text, Label, Link, Spinner, Flash } from '@primer/react'
@@ -78,7 +79,9 @@ export default function ExerciseDetail() {
   const cardioSummary = useMemo(() => getCardioSummary(workouts), [workouts])
 
   const loading = loadingExercises || loadingWorkouts
-  const GroupIcon = exercise?.muscleGroup ? getMuscleGroupIcon(exercise.muscleGroup) : GraphBarVerticalIcon
+  const GroupIcon = exercise?.muscleGroup
+    ? getMuscleGroupIcon(exercise.muscleGroup)
+    : GraphBarVerticalIcon
 
   return (
     <Box className="exercise-detail-page">
@@ -128,11 +131,13 @@ export default function ExerciseDetail() {
           <Button onClick={refresh} loading={loadingWorkouts} disabled={loadingWorkouts}>
             Atualizar
           </Button>
-          {(loading || error || workouts.length > 0) && (
+          {canStartExercise(exercise) && (
             <Button
               variant="primary"
               leadingVisual={PlayIcon}
-              onClick={() => navigate(`/novo-treino?exercicio=${id}`, { state: originState(location) })}
+              onClick={() =>
+                navigate(`/novo-treino?exercicio=${id}`, { state: originState(location) })
+              }
             >
               Treinar
             </Button>
@@ -140,19 +145,27 @@ export default function ExerciseDetail() {
         </Box>
       </Box>
 
+      {exercise && isLegacyExercise(exercise) && (
+        <Flash variant="warning" sx={{ mb: 3 }}>
+          Exercício antigo. Seu histórico e suas observações foram preservados. Para novos treinos,
+          escolha um exercício no Catálogo Evolutus.
+        </Flash>
+      )}
+
       {(catalogExercise?.images?.length > 0 || catalogExercise?.thumbnail) && (
         <section className="personal-catalog-images" aria-label={`Imagens de ${exercise.name}`}>
-          {(catalogExercise.images?.length ? catalogExercise.images.slice(0, 2) : [catalogExercise.thumbnail]).map(
-            (src, index) => (
-              <ExerciseCatalogImage
-                key={src}
-                src={src}
-                fallbackSrc={catalogExercise.thumbnail}
-                alt={`Demonstração de ${exercise.name}, posição ${index + 1}`}
-                className="catalog-detail-image"
-              />
-            )
-          )}
+          {(catalogExercise.images?.length
+            ? catalogExercise.images.slice(0, 2)
+            : [catalogExercise.thumbnail]
+          ).map((src, index) => (
+            <ExerciseCatalogImage
+              key={src}
+              src={src}
+              fallbackSrc={catalogExercise.thumbnail}
+              alt={`Demonstração de ${exercise.name}, posição ${index + 1}`}
+              className="catalog-detail-image"
+            />
+          ))}
         </section>
       )}
 
@@ -168,11 +181,15 @@ export default function ExerciseDetail() {
           <Blankslate.Description>
             Registre um treino para acompanhar a evolução deste exercício.
           </Blankslate.Description>
-          <Blankslate.PrimaryAction
-            onClick={() => navigate(`/novo-treino?exercicio=${id}`, { state: originState(location) })}
-          >
-            Registrar treino
-          </Blankslate.PrimaryAction>
+          {canStartExercise(exercise) && (
+            <Blankslate.PrimaryAction
+              onClick={() =>
+                navigate(`/novo-treino?exercicio=${id}`, { state: originState(location) })
+              }
+            >
+              Registrar treino
+            </Blankslate.PrimaryAction>
+          )}
         </Blankslate>
       )}
 

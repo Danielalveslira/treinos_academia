@@ -6,7 +6,7 @@ import {
   validateSexo,
   validateUsageProfile,
   validatePassword,
-  validateExercise,
+  validateExercisePreferences,
   validateWorkout,
   validateBodyMeasurement,
   validateCommunity,
@@ -75,57 +75,10 @@ test('validateUsageProfile accepts only the three declared options, unlike valid
   assert.equal(hasErrors(validateUsageProfile('superadmin')), true)
 })
 
-test('validateExercise requires name and muscleGroup, and bounds both lengths', () => {
-  assert.equal(hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'Peito' })), false)
-  assert.match(validateExercise({ name: '', muscleGroup: 'Peito' }).name, /obrigatório/)
-  assert.match(validateExercise({ name: 'x'.repeat(101), muscleGroup: 'Peito' }).name, /longo/)
-  assert.match(validateExercise({ name: 'Supino', muscleGroup: '' }).muscleGroup, /obrigatório/)
-  assert.match(validateExercise({ name: 'Supino', muscleGroup: '   ' }).muscleGroup, /obrigatório/)
-  // Grupo personalizado (digitado no formulário, não escolhido de uma lista fixa) —
-  // mesmo teto aplicado pelo check constraint exercises_muscle_group_check no Postgres,
-  // pra nunca aceitar no cliente o que o servidor recusaria.
-  assert.match(
-    validateExercise({ name: 'Supino', muscleGroup: 'x'.repeat(31) }).muscleGroup,
-    /longo/
-  )
-  assert.equal(hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'x'.repeat(30) })), false)
-  assert.equal(hasErrors(validateExercise({ name: 'x'.repeat(100), muscleGroup: 'Peito' })), false)
-  // type é opcional (exercícios de antes deste campo existir não o têm) e só aceita os
-  // dois valores conhecidos quando presente.
-  assert.equal(hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'Peito' })), false)
-  assert.equal(
-    hasErrors(validateExercise({ name: 'Supino', muscleGroup: 'Peito', type: 'cardio' })),
-    false
-  )
-  assert.match(
-    validateExercise({ name: 'Supino', muscleGroup: 'Peito', type: 'yoga' }).type,
-    /inválido/
-  )
-  assert.equal(
-    hasErrors(
-      validateExercise({
-        name: 'Supino',
-        muscleGroup: 'Peito',
-        source: 'catalog',
-        providerExerciseId: 'bench',
-      })
-    ),
-    false
-  )
-  assert.match(
-    validateExercise({ name: 'Supino', muscleGroup: 'Peito', source: 'catalog' })
-      .providerExerciseId,
-    /inválido/
-  )
-  assert.match(
-    validateExercise({
-      name: 'Supino',
-      muscleGroup: 'Peito',
-      source: 'custom',
-      providerExerciseId: 'bench',
-    }).providerExerciseId,
-    /personalizado/
-  )
+test('personal exercise preferences validate note and active only', () => {
+  assert.deepEqual(validateExercisePreferences({ note: 'Minha observação', active: true }), {})
+  assert.ok(validateExercisePreferences({ note: 'x'.repeat(301), active: true }).note)
+  assert.ok(validateExercisePreferences({ note: '', active: 'yes' }).active)
 })
 
 test('validateWorkout branches by type: strength needs setDetails, cardio needs duration', () => {
@@ -395,10 +348,7 @@ test('validatePassword: espelha a política do servidor (8+ caracteres, letras e
 
 test('validatePartnerProduct: imageUrl é obrigatória quando requireImage=true (novo cadastro ou publicação)', () => {
   assert.equal(hasErrors(validatePartnerProduct(basePartnerProduct())), false)
-  assert.match(
-    validatePartnerProduct(basePartnerProduct({ imageUrl: '' })).imageUrl,
-    /obrigatória/
-  )
+  assert.match(validatePartnerProduct(basePartnerProduct({ imageUrl: '' })).imageUrl, /obrigatória/)
   assert.match(
     validatePartnerProduct(basePartnerProduct({ imageUrl: '   ' })).imageUrl,
     /obrigatória/

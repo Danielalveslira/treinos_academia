@@ -1,5 +1,4 @@
 import { supabase } from '../supabase/config'
-import { getExerciseType } from '../utils/exerciseType'
 import { readThrough } from './offline/readThrough.js'
 import {
   patchCachedUserExercise,
@@ -28,6 +27,9 @@ function toDoc(row) {
     catalogId: row.catalog_id,
     equipment: row.equipment,
     order: row.order,
+    catalogAvailable: Object.hasOwn(row, 'catalog')
+      ? row.catalog?.status === 'published'
+      : row.catalogAvailable,
   }
 }
 
@@ -41,7 +43,7 @@ export function listExercises(userId, { localOnly = false } = {}) {
     remote: async () => {
       const { data, error } = await supabase
         .from('exercises')
-        .select('*')
+        .select('*, catalog:exercise_catalog!exercises_catalog_id_fkey(status)')
         .eq('user_id', userId)
         .order('name')
         .limit(MAX_EXERCISES)
@@ -55,27 +57,6 @@ export function listExercises(userId, { localOnly = false } = {}) {
       return cached && cached.map(toDoc).sort((a, b) => a.name.localeCompare(b.name))
     },
   })
-}
-
-export async function createExercise(userId, exercise) {
-  const { data, error } = await supabase
-    .from('exercises')
-    .insert({
-      user_id: userId,
-      name: exercise.name.trim(),
-      muscle_group: exercise.muscleGroup.trim(),
-      type: getExerciseType(exercise),
-      note: exercise.note?.trim() || '',
-      active: true,
-      source: 'custom',
-      provider: null,
-      provider_exercise_id: null,
-    })
-    .select()
-    .single()
-  if (error) throw error
-  upsertCachedUserExercise(userId, data) // cópia local em segundo plano; nunca lança
-  return { id: data.id }
 }
 
 // id NUNCA é derivado do ID do provedor (era o bug: 'catalog--<id-externo>' não é um
@@ -97,29 +78,36 @@ export async function createCatalogExercise(userId, exercise) {
       provider_exercise_id: exercise.providerExerciseId,
       catalog_id: exercise.catalogId || null,
       equipment: exercise.equipment || null,
+      order: Number.isInteger(exercise.order) ? exercise.order : null,
     })
     .select()
     .single()
+  if (error?.code === '23505') {
+    const { data: existing, error: readError } = await supabase
+      .from('exercises')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('source', 'catalog')
+      .eq('provider', exercise.provider)
+      .eq('provider_exercise_id', exercise.providerExerciseId)
+      .single()
+    if (readError) throw readError
+    upsertCachedUserExercise(userId, existing)
+    return { added: false, exercise: toDoc({ ...existing, catalogAvailable: true }) }
+  }
   if (error) throw error
-  upsertCachedUserExercise(userId, data)
-  return data.id
+  const confirmed = { ...data, catalogAvailable: true }
+  upsertCachedUserExercise(userId, confirmed)
+  return { added: true, exercise: toDoc(confirmed) }
 }
 
-export async function updateExercise(userId, exerciseId, exercise, { clearOrder = false } = {}) {
+// Only personal preferences are writable; official identity and snapshots never leave the client.
+export async function updateExercise(userId, exerciseId, exercise) {
   const patch = {
-    name: exercise.name.trim(),
-    muscle_group: exercise.muscleGroup.trim(),
-    // type nunca muda depois de criado (ver ExerciseForm.jsx — o campo vira somente
-    // leitura ao editar); reenviado aqui só pra "curar" exercícios antigos sem o campo
-    // com um valor explícito na próxima edição, sem exigir uma migração em massa.
-    type: getExerciseType(exercise),
-    note: exercise.note?.trim() || '',
-    active: exercise.active,
+    ...(Object.hasOwn(exercise, 'note') ? { note: exercise.note?.trim() || '' } : {}),
+    ...(Object.hasOwn(exercise, 'active') ? { active: exercise.active } : {}),
   }
-  // A posição salva em "Reordenar exercícios" só faz sentido dentro do grupo em que foi
-  // definida — ao trocar o exercício de grupo, ela precisa ser removida, não só deixada
-  // desatualizada, senão o exercício herda uma posição arbitrária do grupo anterior.
-  if (clearOrder) patch.order = null
+  if (!Object.keys(patch).length) return
   const { error } = await supabase
     .from('exercises')
     .update(patch)

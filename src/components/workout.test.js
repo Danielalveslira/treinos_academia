@@ -58,7 +58,15 @@ after(async () => {
 })
 
 const props = {
-  exercises: [{ id: 'squat', name: 'Agachamento', active: true }],
+  exercises: [
+    {
+      id: 'squat',
+      name: 'Agachamento',
+      source: 'catalog',
+      provider: 'evolutus_dataset',
+      active: true,
+    },
+  ],
   defaultExerciseId: 'squat',
 }
 
@@ -169,8 +177,22 @@ test('history opens with suggested values and an enabled one-touch completion', 
 test('with no exercise pre-selected, the form opens on the muscle group step, not the set fields', () => {
   const html = render({
     exercises: [
-      { id: 'squat', name: 'Agachamento', muscleGroup: 'Pernas', active: true },
-      { id: 'bench', name: 'Supino', muscleGroup: 'Peito', active: true },
+      {
+        id: 'squat',
+        name: 'Agachamento',
+        muscleGroup: 'Pernas',
+        source: 'catalog',
+        provider: 'evolutus_dataset',
+        active: true,
+      },
+      {
+        id: 'bench',
+        name: 'Supino',
+        muscleGroup: 'Peito',
+        source: 'catalog',
+        provider: 'evolutus_dataset',
+        active: true,
+      },
     ],
   })
   assert.match(html, /Qual grupo você vai treinar\?/)
@@ -228,7 +250,16 @@ test('previous sessions are collapsed, exercise-scoped and show dates, sets, vol
 test('previous sessions provide an empty state and support cardio history', () => {
   assert.match(render(props), /Nenhuma sessão anterior deste exercício nos registros carregados/)
   const html = render({
-    exercises: [{ id: 'run', name: 'Corrida', active: true, type: 'cardio' }],
+    exercises: [
+      {
+        id: 'run',
+        name: 'Corrida',
+        source: 'catalog',
+        provider: 'evolutus_dataset',
+        active: true,
+        type: 'cardio',
+      },
+    ],
     defaultExerciseId: 'run',
     history: [
       {
@@ -244,4 +275,36 @@ test('previous sessions provide an empty state and support cardio history', () =
   assert.match(html, /20 min/)
   assert.match(html, /3 km/)
   assert.doesNotMatch(html, /Volume total:/)
+})
+
+test('new sessions hide legacy exercises; historical edits retain their original legacy exercise', () => {
+  const legacy = {
+    id: 'old',
+    name: 'Legado pessoal',
+    muscleGroup: 'Peito',
+    source: 'custom',
+    active: true,
+  }
+  const official = {
+    id: 'official',
+    name: 'Oficial',
+    muscleGroup: 'Peito',
+    source: 'catalog',
+    provider: 'evolutus_dataset',
+    active: true,
+  }
+  const fresh = render({ exercises: [legacy, official], defaultExerciseId: 'old' })
+  assert.doesNotMatch(fresh, /Legado pessoal/)
+  const edit = render({
+    exercises: [legacy, official],
+    initialValue: {
+      id: 'w-old',
+      exerciseId: 'old',
+      date: '2026-10-05',
+      type: 'strength',
+      setDetails: [{ weight: 10, reps: 10 }],
+    },
+  })
+  assert.match(edit, /Legado pessoal/)
+  assert.match(edit, /Salvar alterações/)
 })

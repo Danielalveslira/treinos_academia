@@ -1,9 +1,8 @@
 import { useRef, useState } from 'react'
 import { hasErrors } from '../utils/validators'
 
-// Unifica o ciclo values/errors/submitting repetido em ExerciseForm, CommunityForm e
-// BodyMeasurementForm. `prepareSubmit` é opcional — só o ExerciseForm precisa dele hoje,
-// para resolver um grupo muscular novo antes de validar/enviar.
+// Unifica o ciclo values/errors/submitting repetido em ExercisePreferencesForm, CommunityForm e
+// BodyMeasurementForm. `prepareSubmit` permite normalizar valores antes de validar/enviar.
 export function useFormState({ initialValues, validate, onSubmit, prepareSubmit }) {
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState({})

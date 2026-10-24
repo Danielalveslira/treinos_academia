@@ -1,3 +1,4 @@
+import { canStartExercise } from '../utils/personalExercises.js'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Box, Button, FormControl, TextInput, Textarea, Text } from '@primer/react'
@@ -117,7 +118,7 @@ export function WorkoutForm({
   const editingType = initialValue ? getExerciseType(initialValue) : null
   const availableExercises = useMemo(() => {
     const active = exercises.filter(
-      (exercise) => exercise.active || exercise.id === initialValue?.exerciseId
+      (exercise) => canStartExercise(exercise) || exercise.id === initialValue?.exerciseId
     )
     const scoped = editingType
       ? active.filter(

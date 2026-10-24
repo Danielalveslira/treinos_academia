@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Box, Button, Heading, Text, Label, Spinner, Stack, IconButton } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import {
@@ -23,7 +23,7 @@ import { useExercises } from '../contexts/ExercisesContext'
 import { useDashboard } from '../hooks/useDashboard'
 import { useSingleFlight } from '../hooks/useSingleFlight'
 import { useToast } from '../hooks/useToast'
-import { ExerciseForm } from '../components/ExerciseForm'
+import { ExercisePreferencesForm } from '../components/ExercisePreferencesForm'
 import { ExerciseCatalog } from '../components/ExerciseCatalog'
 import { ErrorState } from '../components/ErrorState'
 import { RowActionsMenu } from '../components/RowActionsMenu'
@@ -35,6 +35,8 @@ import { formatDate } from '../utils/format'
 import { toDate } from '../utils/date.js'
 import { normalizeForSearch } from '../utils/text.js'
 import { formatCatalogLabel } from '../utils/exerciseCatalog.js'
+import { returnToOrigin } from '../utils/navigation.js'
+import { isLegacyExercise } from '../utils/personalExercises.js'
 import { sortExercisesInGroup, moveExerciseOrder } from '../utils/exerciseOrder'
 
 // Primeira ocorrência por exerciseId já é a mais recente: allWorkouts (useDashboard)
@@ -56,14 +58,13 @@ function exerciseSubtitle(exercise) {
 
 export default function Exercises() {
   const navigate = useNavigate()
-  const { exercises, loading, error, add, addFromCatalog, edit, remove, reorder, refresh } =
+  const location = useLocation()
+  const { exercises, loading, error, addFromCatalog, edit, remove, reorder, refresh } =
     useExercises()
   const { allWorkouts } = useDashboard()
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
-  const [formOpen, setFormOpen] = useState(false)
-  const [addChoiceOpen, setAddChoiceOpen] = useState(false)
-  const [catalogOpen, setCatalogOpen] = useState(false)
+  const [catalogOpen, setCatalogOpen] = useState(() => Boolean(location.state?.openCatalog))
   const [editingExercise, setEditingExercise] = useState(null)
   const [search, setSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState('')
@@ -163,17 +164,6 @@ export default function Exercises() {
     }
   }
 
-  async function handleCreate(values) {
-    try {
-      await add(values)
-      setFormOpen(false)
-      showToast('Exercício cadastrado.')
-    } catch (err) {
-      console.error('[Exercises] create:', err)
-      showToast('Erro ao cadastrar exercício.', 'danger')
-    }
-  }
-
   async function handleCatalogAdd(exercise) {
     try {
       const result = await addFromCatalog(exercise)
@@ -203,7 +193,7 @@ export default function Exercises() {
 
   async function handleToggleActive(exercise) {
     try {
-      await edit(exercise.id, { ...exercise, active: !exercise.active })
+      await edit(exercise.id, { active: !exercise.active })
       showToast(exercise.active ? 'Exercício inativado.' : 'Exercício ativado.')
     } catch (err) {
       console.error('[Exercises] toggle active:', err)
@@ -229,13 +219,20 @@ export default function Exercises() {
       showToast('Exercício excluído.')
     } catch (err) {
       console.error('[Exercises] delete:', err)
-      showToast('Erro ao excluir exercício.', 'danger')
+      showToast(
+        err.code === '23503'
+          ? 'Este exercício tem treinos registrados. Inative-o para preservar o histórico.'
+          : 'Erro ao excluir exercício.',
+        'danger'
+      )
     }
   }
 
   const hasAnyExercise = exercises.length > 0
   const hasVisibleExercise = visibleExercises.length > 0
-  const distinctGroupCount = new Set(exercises.filter((ex) => showInactive || ex.active).map((ex) => ex.muscleGroup)).size
+  const distinctGroupCount = new Set(
+    exercises.filter((ex) => showInactive || ex.active).map((ex) => ex.muscleGroup)
+  ).size
 
   return (
     <Box className="exercises-page">
@@ -255,7 +252,7 @@ export default function Exercises() {
           )}
         </div>
 
-        {!formOpen && !editingExercise && !addChoiceOpen && !catalogOpen && (
+        {!editingExercise && !catalogOpen && (
           <IconButton
             icon={SyncIcon}
             aria-label="Atualizar"
@@ -272,51 +269,16 @@ export default function Exercises() {
         <ExerciseCatalog
           personalExercises={exercises}
           onAdd={handleCatalogAdd}
-          onClose={() => setCatalogOpen(false)}
+          onClose={() =>
+            location.state?.openCatalog
+              ? returnToOrigin(navigate, location, '/novo-treino')
+              : setCatalogOpen(false)
+          }
         />
       ) : (
         <>
-          {addChoiceOpen && (
-            <Box className="exercise-add-choice" aria-labelledby="exercise-add-title">
-              <Heading as="h2" id="exercise-add-title">
-                Adicionar exercício
-              </Heading>
-              <Text as="p">Escolha a origem do exercício.</Text>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    setAddChoiceOpen(false)
-                    setCatalogOpen(true)
-                  }}
-                >
-                  Catálogo Evolutus
-                </Button>
-                <Button
-                  onClick={() => {
-                    setAddChoiceOpen(false)
-                    setFormOpen(true)
-                  }}
-                >
-                  Criar personalizado
-                </Button>
-                <Button variant="invisible" onClick={() => setAddChoiceOpen(false)}>
-                  Cancelar
-                </Button>
-              </Box>
-            </Box>
-          )}
-
-          {formOpen && (
-            <ExerciseForm
-              exercises={exercises}
-              onSubmit={handleCreate}
-              onCancel={() => setFormOpen(false)}
-            />
-          )}
           {editingExercise && (
-            <ExerciseForm
-              exercises={exercises}
+            <ExercisePreferencesForm
               initialValue={editingExercise}
               onSubmit={handleUpdate}
               onCancel={() => setEditingExercise(null)}
@@ -333,17 +295,17 @@ export default function Exercises() {
               <Blankslate.Visual>
                 <TasklistIcon size={24} />
               </Blankslate.Visual>
-              <Blankslate.Heading>Nenhum exercício cadastrado</Blankslate.Heading>
+              <Blankslate.Heading>Sua biblioteca está vazia</Blankslate.Heading>
               <Blankslate.Description>
-                Cadastre seu primeiro exercício para começar a registrar treinos.
+                Escolha exercícios no Catálogo Evolutus para começar a registrar treinos.
               </Blankslate.Description>
-              <Blankslate.PrimaryAction onClick={() => setAddChoiceOpen(true)}>
+              <Blankslate.PrimaryAction onClick={() => setCatalogOpen(true)}>
                 Adicionar exercício
               </Blankslate.PrimaryAction>
             </Blankslate>
           )}
 
-          {hasAnyExercise && !formOpen && !editingExercise && (
+          {hasAnyExercise && !editingExercise && (
             <Box className="exercises-toolbar">
               <label className="exercise-search">
                 <span className="sr-only">Buscar na biblioteca</span>
@@ -355,16 +317,24 @@ export default function Exercises() {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </label>
-              {!addChoiceOpen && (
-                <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setAddChoiceOpen(true)}>
+              {
+                <Button
+                  leadingVisual={PlusIcon}
+                  variant="primary"
+                  onClick={() => setCatalogOpen(true)}
+                >
                   Adicionar
                 </Button>
-              )}
+              }
             </Box>
           )}
 
           {hasAnyExercise && availableGroups.length > 1 && (
-            <div className="exercise-group-chips" role="tablist" aria-label="Filtrar por grupo muscular">
+            <div
+              className="exercise-group-chips"
+              role="tablist"
+              aria-label="Filtrar por grupo muscular"
+            >
               <button
                 type="button"
                 role="tab"
@@ -413,7 +383,7 @@ export default function Exercises() {
               const isReordering = reorderGroup === muscleGroup
               const isCollapsed = collapsedGroups.has(muscleGroup) && !isReordering
               const canReorder =
-                !reorderGroup && !formOpen && !editingExercise && groupSizeAll.get(muscleGroup) >= 2
+                !reorderGroup && !editingExercise && groupSizeAll.get(muscleGroup) >= 2
               return (
                 <section className="exercise-group" key={muscleGroup}>
                   <button
@@ -510,6 +480,7 @@ export default function Exercises() {
                                   <Text className={exercise.active ? '' : 'is-inactive'}>
                                     {exercise.name}
                                   </Text>
+                                  {isLegacyExercise(exercise) && <Label>Exercício antigo</Label>}
                                   {!exercise.active && <Label>Inativo</Label>}
                                 </Box>
                                 {subtitle && (
@@ -529,7 +500,7 @@ export default function Exercises() {
                               actions={[
                                 {
                                   key: 'edit',
-                                  label: 'Editar',
+                                  label: 'Preferências',
                                   icon: PencilIcon,
                                   onSelect: () => setEditingExercise(exercise),
                                 },

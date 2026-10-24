@@ -3,7 +3,10 @@ import { Box, Button, Heading, Spinner, Text } from '@primer/react'
 import { ArrowLeftIcon, CheckIcon, SearchIcon } from '@primer/octicons-react'
 import { useExerciseCatalogSearch } from '../hooks/useExerciseCatalogSearch.js'
 import { useExerciseCatalogTaxonomy } from '../hooks/useExerciseCatalogTaxonomy.js'
-import { formatCatalogLabel as displayValue, isProviderExerciseAdded } from '../utils/exerciseCatalog.js'
+import {
+  formatCatalogLabel as displayValue,
+  isProviderExerciseAdded,
+} from '../utils/exerciseCatalog.js'
 import { getMuscleIcon } from '../constants/muscleGroupIcons.js'
 import { MuscleIconBadge } from './MuscleIconBadge.jsx'
 import { ExerciseCatalogImage } from './ExerciseCatalogImage.jsx'
@@ -43,7 +46,11 @@ function FilterSelect({ label, value, options, onChange }) {
 }
 
 function ExerciseCatalogDetails({ exercise, added, adding, onAdd, onClose }) {
-  const images = exercise.images?.length ? exercise.images.slice(0, 2) : exercise.thumbnail ? [exercise.thumbnail] : []
+  const images = exercise.images?.length
+    ? exercise.images.slice(0, 2)
+    : exercise.thumbnail
+      ? [exercise.thumbnail]
+      : []
   return (
     <aside className="catalog-details" aria-labelledby="catalog-details-title">
       <Button leadingVisual={ArrowLeftIcon} onClick={onClose}>
@@ -126,37 +133,55 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
   const [addingId, setAddingId] = useState(null)
   const [addedIds, setAddedIds] = useState(() => new Set())
   const { muscles, equipment, categories, levels } = useExerciseCatalogTaxonomy()
-  const { items, total, loading, loadingMore, hasMore, loadMore, error, queryTooShort, noQueryIntent } =
-    useExerciseCatalogSearch({
-      q: query,
-      category: filters.category || undefined,
-      muscle: filters.muscle || undefined,
-      equipment: filters.equipment || undefined,
-      level: filters.level || undefined,
-    })
+  const {
+    items,
+    total,
+    loading,
+    loadingMore,
+    hasMore,
+    loadMore,
+    error,
+    queryTooShort,
+    noQueryIntent,
+  } = useExerciseCatalogSearch({
+    q: query,
+    category: filters.category || undefined,
+    muscle: filters.muscle || undefined,
+    equipment: filters.equipment || undefined,
+    level: filters.level || undefined,
+  })
 
   function changeFilter(name, value) {
     setFilters((current) => ({ ...current, [name]: value }))
   }
 
-  const hasActiveFilters = Boolean(query || filters.muscle || filters.equipment || filters.category || filters.level)
+  const hasActiveFilters = Boolean(
+    query || filters.muscle || filters.equipment || filters.category || filters.level
+  )
 
   function clearFilters() {
     setQuery('')
     setFilters({ muscle: '', equipment: '', category: '', level: '' })
   }
 
-  function isAdded(providerExerciseId) {
-    return addedIds.has(providerExerciseId) || isProviderExerciseAdded(personalExercises, providerExerciseId)
+  function isAdded(exercise) {
+    return (
+      addedIds.has(exercise.id) ||
+      isProviderExerciseAdded(
+        personalExercises,
+        exercise.providerExerciseId,
+        exercise.provider || 'evolutus_dataset'
+      )
+    )
   }
 
   async function handleAdd(exercise) {
-    if (isAdded(exercise.providerExerciseId)) return
+    if (isAdded(exercise)) return
     setAddingId(exercise.providerExerciseId)
     try {
       const result = await onAdd(exercise)
       if (result?.added !== false) {
-        setAddedIds((current) => new Set(current).add(exercise.providerExerciseId))
+        setAddedIds((current) => new Set(current).add(exercise.id))
       }
     } finally {
       setAddingId(null)
@@ -167,7 +192,7 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
     return (
       <ExerciseCatalogDetails
         exercise={selected}
-        added={isAdded(selected.providerExerciseId)}
+        added={isAdded(selected)}
         adding={addingId === selected.providerExerciseId}
         onAdd={handleAdd}
         onClose={() => setSelected(null)}
@@ -227,8 +252,8 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
       </div>
       <Box className="catalog-filters-footer">
         <Text as="p" className="catalog-filter-hint">
-          O filtro Músculo encontra o exercício pelo músculo principal ou secundário. Ao
-          adicionar, o exercício é salvo na biblioteca só pelo músculo principal.
+          O filtro Músculo encontra o exercício pelo músculo principal ou secundário. Ao adicionar,
+          o exercício é salvo na biblioteca só pelo músculo principal.
         </Text>
         {hasActiveFilters && (
           <Button size="small" variant="invisible" onClick={clearFilters}>
@@ -269,7 +294,7 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
           ) : (
             <div className="catalog-grid">
               {items.map((exercise) => {
-                const added = isAdded(exercise.providerExerciseId)
+                const added = isAdded(exercise)
                 const adding = addingId === exercise.providerExerciseId
                 return (
                   <article className={`catalog-card${added ? ' is-added' : ''}`} key={exercise.id}>
@@ -287,7 +312,10 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
                           fallbackLabel=""
                         />
                         {added && (
-                          <span className="catalog-card-added-mark" aria-label="Já está na sua biblioteca">
+                          <span
+                            className="catalog-card-added-mark"
+                            aria-label="Já está na sua biblioteca"
+                          >
                             <CheckIcon size={12} />
                           </span>
                         )}
@@ -295,7 +323,10 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
                       <span className="catalog-card-copy">
                         <strong>{exercise.name}</strong>
                         <span className="catalog-card-muscle">
-                          <MuscleIconBadge icon={getMuscleIcon(exercise.primaryMuscles[0])} size="sm" />
+                          <MuscleIconBadge
+                            icon={getMuscleIcon(exercise.primaryMuscles[0])}
+                            size="sm"
+                          />
                           <span>{exercise.primaryMuscles.map(displayValue).join(', ')}</span>
                         </span>
                         <small>

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { Box, Button, Heading, Spinner } from '@primer/react'
+import { Box, Button, Heading, Spinner, Flash } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PlayIcon, PulseIcon } from '@primer/octicons-react'
 import { useExercises } from '../contexts/ExercisesContext'
@@ -16,7 +16,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { FINISH_MESSAGES, FINISH_OFFLINE_MESSAGE, runFinishWorkout } from '../utils/finishWorkout'
 import { loadDoneExerciseIds } from '../utils/doneExercisesStorage'
-import { returnToOrigin } from '../utils/navigation'
+import { canStartExercise, isLegacyExercise } from '../utils/personalExercises.js'
+import { originState, returnToOrigin } from '../utils/navigation'
 import { plannedWorkoutNotice } from '../utils/plannedWorkout'
 import { businessDayKey, isBusinessDayKey } from '../utils/businessDate'
 
@@ -106,7 +107,10 @@ export default function NewWorkout() {
     }
   }
 
-  const activeExercises = exercises.filter((e) => e.active)
+  const activeExercises = exercises.filter(canStartExercise)
+  const requestedLegacy = exercises.some(
+    (exercise) => exercise.id === defaultExerciseId && isLegacyExercise(exercise)
+  )
 
   return (
     <Box className="workout-session-page">
@@ -132,12 +136,24 @@ export default function NewWorkout() {
           </Blankslate.Visual>
           <Blankslate.Heading>Nenhum exercício ativo</Blankslate.Heading>
           <Blankslate.Description>
-            Cadastre um exercício antes de registrar um treino.
+            Escolha exercícios ativos no Catálogo Evolutus. Exercícios antigos continuam disponíveis
+            no histórico; escolha um oficial para os próximos treinos.
           </Blankslate.Description>
-          <Blankslate.PrimaryAction onClick={() => navigate('/exercicios')}>
-            Cadastrar exercício
+          <Blankslate.PrimaryAction
+            onClick={() =>
+              navigate('/exercicios', { state: { ...originState(location), openCatalog: true } })
+            }
+          >
+            Escolher no Catálogo Evolutus
           </Blankslate.PrimaryAction>
         </Blankslate>
+      )}
+
+      {requestedLegacy && activeExercises.length > 0 && (
+        <Flash variant="warning" sx={{ mb: 3 }}>
+          Exercício antigo: o histórico foi preservado. Escolha um exercício oficial para este
+          treino.
+        </Flash>
       )}
 
       {!loading && !error && activeExercises.length > 0 && (

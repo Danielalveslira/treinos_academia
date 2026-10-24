@@ -1,15 +1,13 @@
-import { createContext, useCallback, useContext } from 'react'
+import { createContext, useCallback, useContext, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import {
   listExercises,
-  createExercise,
   createCatalogExercise,
   updateExercise,
   deleteExercise,
   saveExerciseOrder,
 } from '../services/exercisesService'
 import { useCachedQuery } from '../hooks/useCachedQuery'
-import { getExerciseType } from '../utils/exerciseType'
 import { providerExerciseToPersonal, isProviderExerciseAdded } from '../utils/exerciseCatalog.js'
 
 const EMPTY = []
@@ -18,19 +16,6 @@ const ExercisesContext = createContext(null)
 
 function byName(a, b) {
   return a.name.localeCompare(b.name)
-}
-
-function normalize(exercise) {
-  return {
-    name: exercise.name.trim(),
-    muscleGroup: exercise.muscleGroup.trim(),
-    type: getExerciseType(exercise),
-    note: exercise.note?.trim() || '',
-    ...(exercise.source ? { source: exercise.source } : {}),
-    ...(Object.hasOwn(exercise, 'providerExerciseId')
-      ? { providerExerciseId: exercise.providerExerciseId }
-      : {}),
-  }
 }
 
 export function ExercisesProvider({ children }) {
@@ -45,24 +30,26 @@ export function ExercisesProvider({ children }) {
     { keepPreviousScope: user.uid }
   )
   const exercises = data || EMPTY
-
-  async function add(exercise) {
-    const docRef = await createExercise(user.uid, exercise)
-    const created = {
-      id: docRef.id,
-      ...normalize(exercise),
-      active: true,
-      source: 'custom',
-      providerExerciseId: null,
-    }
-    setData([...exercises, created].sort(byName))
+  const exercisesRef = useRef({ userId: user.uid, data: exercises })
+  exercisesRef.current = { userId: user.uid, data: exercises }
+  function changeExercises(update) {
+    if (exercisesRef.current.userId !== user.uid) return
+    const next = update(exercisesRef.current.data)
+    exercisesRef.current.data = next
+    setData(next)
   }
 
   // catalogExercise vem no formato de resposta do nosso catálogo (id do catálogo,
   // providerExerciseId, name, primaryMuscles, equipment, category, ...) — ver
   // exerciseCatalogService.searchExercises.
   async function addFromCatalog(catalogExercise) {
-    if (isProviderExerciseAdded(exercises, catalogExercise.providerExerciseId))
+    if (
+      isProviderExerciseAdded(
+        exercises,
+        catalogExercise.providerExerciseId,
+        catalogExercise.provider || 'evolutus_dataset'
+      )
+    )
       return { added: false }
     const group = providerExerciseToPersonal(catalogExercise).muscleGroup
     const groupOrders = exercises
@@ -70,34 +57,29 @@ export function ExercisesProvider({ children }) {
       .map((exercise) => exercise.order)
     const order = groupOrders.length ? Math.min(299, Math.max(...groupOrders) + 1) : 0
     const personalExercise = providerExerciseToPersonal(catalogExercise, { order })
-    const id = await createCatalogExercise(user.uid, personalExercise)
-    setData([...exercises, { id, ...personalExercise }].sort(byName))
-    return { added: true, exercise: { id, ...personalExercise } }
+    const result = await createCatalogExercise(user.uid, personalExercise)
+    changeExercises((current) =>
+      [...(current || []).filter((item) => item.id !== result.exercise.id), result.exercise].sort(
+        byName
+      )
+    )
+    return result
   }
 
   async function edit(exerciseId, exercise) {
-    const current = exercises.find((ex) => ex.id === exerciseId)
-    // A posição salva por "Reordenar exercícios" só vale dentro do grupo em que
-    // foi definida — trocando de grupo, ela deixa de fazer sentido e precisa ser
-    // limpa dos dois lados (ver updateExercise/clearOrder), senão o exercício
-    // herda uma posição arbitrária do grupo anterior no grupo novo.
-    const groupChanged = current && current.muscleGroup !== exercise.muscleGroup.trim()
-    await updateExercise(user.uid, exerciseId, exercise, { clearOrder: groupChanged })
-    setData(
-      exercises
-        .map((ex) => {
-          if (ex.id !== exerciseId) return ex
-          const { order: _order, ...withoutOrder } = ex
-          const base = groupChanged ? withoutOrder : ex
-          return { ...base, ...normalize(exercise), active: exercise.active }
-        })
-        .sort(byName)
+    const preferences = {
+      ...(Object.hasOwn(exercise, 'note') ? { note: exercise.note?.trim() || '' } : {}),
+      ...(Object.hasOwn(exercise, 'active') ? { active: exercise.active } : {}),
+    }
+    await updateExercise(user.uid, exerciseId, preferences)
+    changeExercises((current) =>
+      (current || []).map((item) => (item.id === exerciseId ? { ...item, ...preferences } : item))
     )
   }
 
   async function remove(exerciseId) {
     await deleteExercise(user.uid, exerciseId)
-    setData(exercises.filter((ex) => ex.id !== exerciseId))
+    changeExercises((current) => current.filter((ex) => ex.id !== exerciseId))
   }
 
   // orderedIds: todos os exercícios de UM grupo muscular, na ordem desejada.
@@ -112,8 +94,8 @@ export function ExercisesProvider({ children }) {
     if (unchanged) return
     await saveExerciseOrder(user.uid, orderedIds)
     const orderById = new Map(orderedIds.map((id, index) => [id, index]))
-    setData(
-      exercises
+    changeExercises((current) =>
+      current
         .map((ex) => (orderById.has(ex.id) ? { ...ex, order: orderById.get(ex.id) } : ex))
         .sort(byName)
     )
@@ -121,7 +103,7 @@ export function ExercisesProvider({ children }) {
 
   return (
     <ExercisesContext.Provider
-      value={{ exercises, loading, error, add, addFromCatalog, edit, remove, reorder, refresh }}
+      value={{ exercises, loading, error, addFromCatalog, edit, remove, reorder, refresh }}
     >
       {children}
     </ExercisesContext.Provider>
