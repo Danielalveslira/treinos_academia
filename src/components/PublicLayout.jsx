@@ -1,4 +1,4 @@
-import { Link, NavLink } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { IconButton } from '@primer/react'
 import { useColorMode } from '../hooks/useColorMode'
 import { LegalLinks } from './LegalLinks'
@@ -6,9 +6,11 @@ import { useAuth } from '../hooks/useAuth'
 import { GraphIcon, SunIcon, MoonIcon, ChecklistIcon, HistoryIcon } from '@primer/octicons-react'
 import { BrandMark } from './BrandMark'
 import { ResponsivePicture } from './ResponsivePicture'
+import { PublicNavigationMenu } from './PublicNavigationMenu'
 
 export function PublicLayout({ children }) {
   const { user } = useAuth()
+  const { pathname } = useLocation()
   const { dark, toggleColorMode } = useColorMode()
 
   return (
@@ -23,9 +25,11 @@ export function PublicLayout({ children }) {
           </span>
           Evolutus
         </Link>
-        <nav aria-label="Navegação">
-          <a href="/vitrine">Vitrine de produtos</a>
-          <a href="/profissionais">Profissionais e locais</a>
+        <nav aria-label="Navegação" className="auth-header-actions">
+          <div className="auth-header-discovery">
+            <a href="/vitrine">Vitrine de produtos</a>
+            <a href="/profissionais">Profissionais e locais</a>
+          </div>
           {user ? (
             <NavLink to="/app" replace>
               Ir para o app
@@ -36,10 +40,14 @@ export function PublicLayout({ children }) {
             </NavLink>
           )}
           <IconButton
+            size="large"
             icon={dark ? SunIcon : MoonIcon}
             aria-label={dark ? 'Ativar tema claro' : 'Ativar tema escuro'}
             onClick={toggleColorMode}
           />
+          <div className="auth-header-menu">
+            <PublicNavigationMenu authState={user ? 'authed' : 'guest'} pathname={pathname} />
+          </div>
         </nav>
       </header>
       <main id="public-content" tabIndex={-1} className="public-main">

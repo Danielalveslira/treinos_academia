@@ -258,18 +258,23 @@ button:focus-visible {
   gap: 20px;
   border-bottom: 1px solid var(--borderColor-muted);
 }
+.public-header .brand { flex-shrink: 0; }
+.auth-header-discovery { display: flex; align-items: center; gap: var(--base-size-24, 24px); }
+.auth-header-menu { display: none; }
 .public-header nav {
   display: flex;
   align-items: center;
   gap: 24px;
 }
-.public-header nav > a {
+.public-header nav > a,
+.auth-header-discovery > a {
   font-size: 14px;
   text-decoration: none;
   color: var(--fgColor-muted);
 }
 .public-header nav > a:hover,
-.public-header nav > a.active {
+.public-header nav > a.active,
+.auth-header-discovery > a:hover {
   color: var(--fgColor-default);
 }
 .public-header nav > a.active {
@@ -423,10 +428,16 @@ button:focus-visible {
     grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
   }
 }
-@media (max-width: 700px) {
-  .public-header {
-    padding: 18px 20px;
+@media (max-width: 767px) {
+  .public-shell > .public-header {
+    padding: var(--base-size-8, 8px) var(--base-size-16, 16px);
+    gap: var(--base-size-8, 8px);
   }
+  .public-shell .auth-header-actions { gap: var(--base-size-8, 8px); flex-shrink: 0; }
+  .auth-header-discovery { display: none; }
+  .auth-header-menu { display: block; }
+}
+@media (max-width: 700px) {
   .public-header .brand {
     gap: 8px;
     font-size: 16px;
@@ -3335,7 +3346,6 @@ body {
 
 .public-header nav { gap: 16px; }
 .public-header nav > a { font-size: 13px; }
-.public-header nav button { width: 32px; height: 32px; min-width: 32px; }
 
 .main-content {
   max-width: 1180px;
