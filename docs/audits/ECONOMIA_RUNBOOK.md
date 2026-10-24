@@ -1,4 +1,4 @@
-> **Estado mais recente do Codespace e PR:** [finance-release-verification/PR_READINESS.md](finance-release-verification/PR_READINESS.md). Branch local chore/finance-release-readiness, assinatura SSH válida; não houve push. Leituras remotas atuais Supabase/Vercel bloqueadas por autenticação.
+> **Estado mais recente do Codespace e PR:** [finance-release-verification/PR_READINESS.md](finance-release-verification/PR_READINESS.md). Branch local chore/finance-release-readiness, assinatura SSH válida; não houve push. Revalidação 2026-10-24: logins Supabase/Vercel válidos; 148 versões/14 pendentes confirmadas, zero divergências financeiras. Promoção automática Vercel ainda ativa; hold e envio isolado dependem de autorização.
 
 # Economia Evolutus — validação local e publicação
 
@@ -172,7 +172,7 @@ node scripts/release/vercel-production-gate.mjs --apply-hold
 
 Confirmar autoAssignCustomDomains=false e mesmo deployment atual. O `vercel.json` preparado desabilita deploy Git de main e finance-ci-*, mas só protege as revisões que contêm esse arquivo. Aplicar/verificar hold antes do primeiro push. As demais branches mantêm preview. Não atribuir domínio por outra automação durante o rollout.
 
-Resolver plano/acesso que permita proteção da main privada, aplicar o payload proposto somente sob autorização e exigir finance-quality (GitHub Actions app 15368), revisão do último push e proteção de admins. Assinatura segue habilitada; o ensaio atual em repo descartável falhou com chave GitHub ausente. Corrigir o assinador e validar Verified antes de criar/enviar os commits; preservar os três commits locais e suas referências ao reorganizar a branch. Não usar commit.gpgsign=false.
+Resolver plano/acesso que permita proteção da main privada, aplicar o payload proposto somente sob autorização e exigir finance-quality (GitHub Actions app 15368), revisão do último push e proteção de admins. Assinatura SSH corrigida e validada localmente, com chave cadastrada em Daniel; verificar a marca Verified remota após push autorizado; preservar os três commits locais e suas referências ao reorganizar a branch. Não usar commit.gpgsign=false.
 
 Após o diff estar consolidado e assinado, com autorização específica de push, utilizar somente `chore/finance-release-readiness`; push nela dispara o workflow atualizado. Descobrir a execução pelo SHA exato e acompanhar sem disparar cópias redundantes:
 

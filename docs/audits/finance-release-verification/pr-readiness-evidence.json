@@ -251,5 +251,16 @@
     "enabled": true,
     "allowed_actions": "all",
     "sha_pinning_required": false
+  },
+  "latest_remote_reverification": {
+    "evidence": "remote-reverification.json",
+    "supabase_authenticated": true,
+    "remote_migrations_reconfirmed": true,
+    "pending_migrations": 14,
+    "vercel_authenticated": true,
+    "vercel_auto_assign": true,
+    "production_hold_applied_by_agent": false,
+    "status": "BLOQUEADO",
+    "prior_test_evidence_reused": true
   }
 }

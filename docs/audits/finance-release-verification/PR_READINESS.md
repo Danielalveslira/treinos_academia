@@ -1,6 +1,6 @@
 # Evolutus — preparação final do PR
 
-**PR preparado localmente; publicação em produção BLOQUEADA.** Branch: `chore/finance-release-readiness`, sem push. Este documento sucede os estados antigos de assinatura e autenticação dos relatórios anteriores. Evidência atual: [pr-readiness-evidence.json](pr-readiness-evidence.json).
+**PR preparado localmente; publicação em produção BLOQUEADA.** Revalidação remota de 2026-10-24: Supabase/Vercel autenticados, 14 pendentes confirmadas e promoção automática Vercel ainda ativa. Evidência: [remote-reverification.json](remote-reverification.json). Branch: `chore/finance-release-readiness`, sem push. Este documento sucede os estados antigos de assinatura e autenticação dos relatórios anteriores. Evidência atual: [pr-readiness-evidence.json](pr-readiness-evidence.json).
 
 ## Trabalho preservado
 
@@ -32,7 +32,7 @@ Cinco commits novos de código foram criados com assinatura válida (`git log` =
 | `e15d5a1` | auditoria de schema/recuperação somente leitura |
 | `4f77d8f` | CI e gates de release |
 
-**Atribuição transparente:** esses cinco têm Daniel como autor/chave SSH, mas o ambiente do agente ainda impôs `GIT_COMMITTER_NAME=GitHub` e `GIT_COMMITTER_EMAIL=noreply@github.com`, que prevalecem sobre git config. Não são commits de chatbotlira. A normalização somente desses cinco foi solicitada e não será feita automaticamente, respeitando a instrução de não reescrever commits. Comandos seguintes de commit usam explicitamente Daniel como committer. Os três antigos não serão tocados. A marca Verified no GitHub só poderá ser conferida após push autorizado; a verificação criptográfica local e o cadastro da chave já passaram.
+**Atribuição transparente:** esses cinco têm Daniel como autor/chave SSH, mas o ambiente do agente ainda impôs `GIT_COMMITTER_NAME=GitHub` e `GIT_COMMITTER_EMAIL=noreply@github.com`, que prevalecem sobre git config. Não são commits de chatbotlira. Todos os commits foram preservados conforme a instrução atual; não houve normalização ou reescrita de atribuição. Comandos seguintes de commit usam explicitamente Daniel como committer. Os três antigos não serão tocados. A marca Verified no GitHub só poderá ser conferida após push autorizado; a verificação criptográfica local e o cadastro da chave já passaram.
 
 ## Testes executados nesta preparação
 
@@ -57,17 +57,21 @@ O backup criptografado e a chave sobreviveram à retomada. SHA-256 e descriptogr
 
 Ainda falta comprovar guarda externa do ciphertext, chave em cofre separado, responsável, retenção e recuperação de configuração/Storage. O banco recuperável local não é proteção contra perda do próprio Codespace. Não foi contratado PITR/plano ou serviço novo.
 
-Neste Codespace, as verificações atuais retornaram:
+A revalidação remota de 2026-10-24 confirmou:
 
-- **Supabase:** `Access token not provided`. Não foi possível reconfirmar journal/schema/dry-run atuais. Último diagnóstico remoto bem-sucedido (histórico) tinha 148 versões, 14 pendentes e zero divergências financeiras. Não presumir que esse estado ainda seja o atual.
-- **Vercel:** leitura autenticada retornou **HTTP 403**. O último estado conhecido tinha autoatribuição ativa, mas não é confirmação atual. **Hold não comprovado**. Não utilizar o JSON antigo em cache como resultado de uma consulta que falhou.
-- **GitHub:** main observada em `0cdde0e`, protected=false; API de proteção continua **403**, com exigência de plano compatível para repositório privado. Permissão admin foi confirmada, mas os checks **não são obrigatórios para merge hoje**. `finance-quality` bloqueia seu pipeline, não impõe sozinho proteção de branch.
+- **Supabase:** autenticação válida, projeto `ywrjojrjgozdfpddkkuy` / evolutus.com.br / ACTIVE_HEALTHY. Journal com 148 versões até `20261111000001`; dry-run com exatamente 14 candidatas, sem seeds/roles, com `--skip-vault`. Zero divergência em seis carteiras, 166 lançamentos e 25 compras; teto diário 10; estornos desativados; cliente sem UPDATE de carteira. Comparação atual de 297 funções/92 relações/66 triggers preserva somente as três diferenças de grants já revisadas, sem novo drift. Nenhuma migration aplicada.
+- **Vercel:** sessão renovada pela CLI oficial, whoami `danielalveslira`. Equipe/projeto esperados e deployment atual confirmados. `productionBranch=main`, raiz do repositório, um único projeto desse time ligado ao repo; listagem completa. **autoAssignCustomDomains=true: promoção automática ainda não bloqueada.** O PATCH proposto altera somente esse valor para false e aguarda autorização. Nenhum PATCH ou deploy foi executado.
+- **GitHub:** identidade Daniel confirmada; main continua em `0cdde0e`, protected=false, API de proteção 403 por plano compatível. Actions habilitado. A branch não existe remotamente e não tem PR. Checks ainda não são requisito imposto de merge.
 
-É necessário restaurar login Supabase/Vercel no terminal, sem enviar tokens pelo chat. As consultas/alterações futuras continuam com seus limites de autorização. Nenhum PATCH Vercel foi executado.
+O envio isolado foi verificado no escopo do projeto esperado: `chore/finance-release-readiness` não é a branch de produção; o `vercel.json` dessa revisão desativa seu deploy Git; o workflow ativo executa somente testes em ambiente descartável, sem comandos de deploy ou credenciais de produção. A autorização para push, PR draft e CI foi solicitada separadamente do hold. Não houve envio.
+
+Backup: ciphertext existente com SHA-256 confirmado, chave presente e ensaio anterior de restauração preservado; container real descriptografado removido. Ainda **não existe evidência de custódia externa e chave independente**. Faltam destino externo privado aprovado, cofre separado para chave, comprovação de recuperação a partir dessas cópias, responsável, retenção e RPO/RTO aceitos. Também documentar custódia de configuração/secrets e objetos Storage, não incluídos como bytes no dump SQL; fazer cópia atual na janela de implantação. API gerenciada continua sem listar backup utilizável e com PITR=false. Nenhum serviço pago criado nem novo restore executado.
+
+As suítes já concluídas não foram repetidas: somente leitura, dry-run, verificação de assinaturas/hash do arquivo e gates leves. As falhas antigas de login preservadas em logs não representam o estado atual.
 
 ## PR e próximas ações
 
-Descrição pronta: [PR_DESCRIPTION.md](PR_DESCRIPTION.md). Depois dos logins, conferir equipe/projeto/productionBranch e hold Vercel; configurar proteção suportada sem tornar o repositório público ou enfraquecer políticas. O envio e a criação remota deste PR dependem de autorização explícita.
+Descrição pronta: [PR_DESCRIPTION.md](PR_DESCRIPTION.md). Com logins/equipe/projeto/productionBranch confirmados, autorizar o hold Vercel e seu envio isolado; configurar proteção suportada sem tornar o repositório público ou enfraquecer políticas. O envio e a criação remota deste PR dependem de autorização explícita.
 
 Comandos preparados, **não executados**:
 
@@ -81,10 +85,10 @@ env -u GITHUB_TOKEN -u GH_TOKEN gh run list --workflow supabase-tests.yml --bran
 env -u GITHUB_TOKEN -u GH_TOKEN gh run watch "$CI_RUN_ID" --exit-status
 ```
 
-Nenhum CI do conteúdo atual foi executado no GitHub; os testes locais estão aprovados. Resolver backup externo e proteção de publicação antes da implantação. As 14 candidatas estão listadas em [LIBERACAO_SEGURANCA.md](LIBERACAO_SEGURANCA.md); confirmar o plano remoto de novo depois do login. Ordem autorizada futura: backup atual e recuperação → CI/proteções → pré-check/dry-run → banco → oito Edge Functions → diagnóstico/smoke backend → build production sem domínio → smoke revisado → promover o mesmo build → monitorar. Estornos automáticos e novos agendamentos permanecem desativados.
+Nenhum CI do conteúdo atual foi executado no GitHub; os testes locais estão aprovados. Resolver backup externo e proteção de publicação antes da implantação. As 14 candidatas estão listadas em [LIBERACAO_SEGURANCA.md](LIBERACAO_SEGURANCA.md); o plano remoto foi reconfirmado no dry-run de 2026-10-24; revalidar na janela de publicação. Ordem autorizada futura: backup atual e recuperação → CI/proteções → pré-check/dry-run → banco → oito Edge Functions → diagnóstico/smoke backend → build production sem domínio → smoke revisado → promover o mesmo build → monitorar. Estornos automáticos e novos agendamentos permanecem desativados.
 
 Rollback operacional: preservar ledger/carteiras/casos/obrigações; conter novas origens afetadas e manter confirmação de pagamentos iniciados; retornar frontend/Edge a versão compatível e corrigir banco por roll-forward revisado. Não usar restauração destrutiva de snapshot como rollback rotineiro.
 
-**Resultado:** trabalho local validado e branch/descrição do PR preparados. Produção bloqueada por autenticação remota pendente, backup externo não comprovado, hold Vercel não confirmado e proteção/CI remoto ainda não efetivados. Sem push, merge, deploy ou migration remota.
+**Resultado:** trabalho local validado e branch/descrição do PR preparados. Produção bloqueada por backup externo/chave independente não comprovados, promoção automática Vercel ainda ativa e proteção/CI remoto ainda não efetivados. Logins Supabase/Vercel resolvidos. Sem push, merge, deploy ou migration remota.
 
 A rota de desenvolvimento foi restaurada: `/app` responde 200 na porta 5173, e o canário privado responde 403 no mesmo servidor. O banco sintético foi parado. Nenhuma limpeza global de imagens/caches de outros trabalhos foi executada.

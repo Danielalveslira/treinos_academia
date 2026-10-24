@@ -14,7 +14,7 @@ SQL: 69 suítes/3.035 assertivas; aplicação: 2.092; Functions: 207; scripts: 1
 
 - Backup lógico restaurado e conferido; custódia externa e chave independente ainda não comprovadas. Container temporário com cópia real descriptografada removido.
 - GitHub CLI/HTTPS autenticados como Danielalveslira, com admin; assinatura SSH verificada. Main sem proteção; API de proteção retorna 403 por plano. `finance-quality` falha corretamente, mas não é requisito de merge imposto pelo GitHub hoje.
-- Neste Codespace, Supabase CLI está sem sessão e Vercel retorna 403. Restabelecer logins para nova confirmação do journal/schema e do hold Vercel. A configuração local não comprova hold remoto ativo.
+- Logins Supabase/Vercel confirmados em 2026-10-24. Leitura/dry-run confirmam 148 versões/14 pendentes e zero divergências financeiras. Vercel ainda está com autoAssignCustomDomains=true; o hold depende de autorização. A configuração local não comprova hold remoto ativo.
 - Sem push, merge, deploy, pagamentos reais ou migrations remotas nesta entrega. O template de promoção continua desativado, fora de `.github/workflows`.
 
 Somente após sanar esses impedimentos e obter autorização: enviar esta branch, acompanhar CI do SHA exato e abrir este PR como draft. Banco → oito Edge Functions → validação backend → build production sem domínio → smoke aprovado → promover o mesmo build. Estornos automáticos e novos cron continuam desativados.

@@ -863,10 +863,10 @@
     "skipped": 0,
     "ssh_signature_verified": true,
     "backup_decrypted_container_removed": true,
-    "remote_authentication_requires_renewal": [
-      "Supabase CLI",
-      "Vercel"
-    ],
-    "push_performed": false
+    "remote_authentication_requires_renewal": [],
+    "push_performed": false,
+    "latest_remote_evidence": "finance-release-verification/remote-reverification.json",
+    "remote_migrations_reconfirmed": true,
+    "vercel_auto_assignment_disabled": false
   }
 }
