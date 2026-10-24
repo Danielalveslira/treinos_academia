@@ -242,6 +242,11 @@ export default function AdminExerciseCatalog() {
   }, [catalog.selected?.id])
 
   const lastPage = Math.max(Math.ceil(list.total / visuals.pageSize) - 1, 0)
+  // visuals.select() roda num efeito (depois do commit que trocou catalog.selected) -- entre o
+  // clique e o efeito rodar, visuals.selected ainda é o valor antigo (ou null). Só monta
+  // ExerciseVisualDetail quando os dois hooks já apontam pro MESMO exercício; senão ele lê
+  // `selected.primary_muscle` de um `selected` nulo/desatualizado e quebra.
+  const visualsReady = Boolean(selected && visuals.selected && visuals.selected.id === selected.id)
 
   return (
     <div className="ev-page">
@@ -352,7 +357,11 @@ export default function AdminExerciseCatalog() {
           {selected && (
             <Box sx={{ marginTop: 4, borderTop: '1px solid', borderColor: 'border.default', paddingTop: 3 }}>
               <h3 className="ev-eyebrow">Imagens (início/fim)</h3>
-              <ExerciseVisualDetail key={selected.id} visuals={visuals} online={online} />
+              {visualsReady ? (
+                <ExerciseVisualDetail key={selected.id} visuals={visuals} online={online} />
+              ) : (
+                <Spinner />
+              )}
             </Box>
           )}
         </section>

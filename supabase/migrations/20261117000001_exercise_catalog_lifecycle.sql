@@ -231,12 +231,19 @@ create trigger workouts_validate_exercise_published
 
 -- ============================================================================================
 -- 8) sync_workout_mutations: reconhece os erros de negócio acima como rejeição definitiva,
---    em vez de mascará-los como 'INTERNAL'. Mesma assinatura/corpo de
---    20261016000001_offline_workout_sync.sql, só a lista de sqlerrm reconhecidos ganha as duas
---    mensagens novas. settle() no frontend (src/services/offline/syncEngine.js) já trata
---    QUALQUER status='rejected' como falha terminal (nunca reenviado automaticamente) --
---    confirmado lendo o código: o ganho aqui é a mensagem/código correto para a UI
---    (src/services/offline/syncActions.js), não a ausência de retry (que já não existia).
+--    em vez de mascará-los como 'INTERNAL'. CORPO REAL extraído via pg_get_functiondef contra
+--    todas as migrations anteriores aplicadas (não o corpo original de
+--    20261016000001_offline_workout_sync.sql!): 20261113000001_session_revocation_guard.sql e
+--    20261114000001_financial_auth_integration.sql já tinham endurecido esta função depois da
+--    sua criação (guard de SESSION_REVOKED). Recriar a partir do corpo original, como uma
+--    primeira versão deste arquivo fez, reverteria esse hardening -- erro real encontrado pelo
+--    CI (offline_workout_sync_test.sql, testes 14-18 esperando SESSION_REVOKED e recebendo
+--    APP_ACCESS_DENIED). Só a lista de sqlerrm reconhecidos ganha as duas mensagens novas; o
+--    resto é idêntico ao estado real atual. settle() no frontend
+--    (src/services/offline/syncEngine.js) já trata QUALQUER status='rejected' como falha
+--    terminal (nunca reenviado automaticamente) -- confirmado lendo o código: o ganho aqui é a
+--    mensagem/código correto para a UI (src/services/offline/syncActions.js), não a ausência de
+--    retry (que já não existia).
 -- ============================================================================================
 create or replace function public.sync_workout_mutations(p_mutations jsonb, p_expected_user uuid default null)
 returns jsonb
@@ -251,8 +258,10 @@ declare
   v_failed_entities uuid[] := '{}';
   v_entity uuid;
 begin
+  if auth.uid() is not null and not private.current_session_active() then raise exception 'SESSION_REVOKED'; end if;
   if v_uid is null then raise exception 'NOT_AUTHENTICATED'; end if;
   if p_expected_user is not null and p_expected_user <> v_uid then raise exception 'USER_MISMATCH'; end if;
+  -- has_app_access() devolve NULL (não false) quando os termos não foram aceitos: sempre coalesce.
   if not coalesce(public.has_app_access(), false) then raise exception 'APP_ACCESS_DENIED'; end if;
   if p_mutations is null or jsonb_typeof(p_mutations) <> 'array' then raise exception 'INVALID_BATCH'; end if;
   if jsonb_array_length(p_mutations) > c_max_batch then raise exception 'BATCH_TOO_LARGE'; end if;
@@ -338,11 +347,16 @@ end;
 $$;
 
 -- ============================================================================================
--- 10) allocate_exercise_visual_set: mesma assinatura de 9 parâmetros, corpo idêntico ao de
---     20261021000001_exercise_visuals_v2.sql:373-475 -- só a linha 427 muda, de
---     "and is_active" para "and status <> 'withdrawn'" (libera draft/in_review para receber
---     imagem; continua bloqueando retirado). Sem essa correção, status='draft' nunca teria
---     is_active=true e ninguém conseguiria alocar imagem antes de publicar -- deadlock.
+-- 10) allocate_exercise_visual_set: CORPO REAL extraído via pg_get_functiondef (não o de
+--     20261021000001_exercise_visuals_v2.sql!): já tinha sido endurecido depois da criação --
+--     search_path termina em pg_temp e ganhou o guard de SESSION_REVOKED
+--     (20261113000001/20261114000001, mesma função atingida pelo DO block que varre
+--     SECURITY DEFINER cujo corpo chama public.is_superadmin()). Recriar do corpo original
+--     reverteria os dois; erro real encontrado pelo CI (security_followup_test.sql).
+--     Única mudança de conteúdo real: "and is_active" -> "and status <> 'withdrawn'" (libera
+--     draft/in_review para receber imagem; continua bloqueando retirado). Sem essa correção,
+--     status='draft' nunca teria is_active=true e ninguém conseguiria alocar imagem antes de
+--     publicar -- deadlock.
 -- ============================================================================================
 create or replace function public.allocate_exercise_visual_set(
   p_catalog_id uuid,
@@ -355,7 +369,7 @@ create or replace function public.allocate_exercise_visual_set(
   p_prompt_end_hash text default null,
   p_provider_hint text default null
 ) returns jsonb
-  language plpgsql security definer set search_path = public as $$
+  language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_uid uuid := auth.uid();
   v_version integer;
@@ -366,6 +380,7 @@ declare
   v_role text;
   v_path text;
 begin
+  if auth.uid() is not null and not private.current_session_active() then raise exception 'SESSION_REVOKED'; end if;
   if v_uid is null then raise exception 'NOT_AUTHENTICATED' using errcode = '28000'; end if;
   if not public.is_superadmin() then raise exception 'FORBIDDEN' using errcode = '42501'; end if;
   if p_generation_source not in ('manual_upload', 'gemini_manual') then
@@ -449,16 +464,22 @@ grant execute on function public.allocate_exercise_visual_set(uuid, text, text, 
 -- 11) private.apply_published_visual_set: núcleo COMPARTILHADO por publish_exercise_visual_internal
 --     E restore_exercise_visual_version (ambos só chamam esta função com p_from_status
 --     diferente) -- um único guard aqui cobre os dois, sem precisar recriar os wrappers
---     públicos (mesma assinatura 'private.apply_published_visual_set(uuid, uuid, text)', corpo
---     idêntico ao de 20261020000001_exercise_visuals.sql:391-470, só a adição do bloco
---     "CORREÇÃO" abaixo). Antes desta correção, só allocate_exercise_visual_set tinha o guard
---     de retirada -- um conjunto já alocado ANTES da retirada ainda podia ser publicado ou
---     restaurado depois.
+--     públicos. CORPO REAL extraído via pg_get_functiondef, não o de
+--     20261020000001_exercise_visuals.sql: o lock mudou de "for update" na linha de
+--     exercise_catalog para private.lock_exercise_visual_catalog() (advisory, mesma função que
+--     allocate_exercise_visual_set usa) e ganhou chamadas a
+--     private.set_visual_audit_context() para a auditoria atribuir o ator certo -- mudanças de
+--     alguma migration posterior a 20261021000001 que recriar do corpo antigo perderia. Única
+--     adição real: o bloco "CORREÇÃO" abaixo. Antes desta correção, só
+--     allocate_exercise_visual_set tinha o guard de retirada -- um conjunto já alocado ANTES da
+--     retirada ainda podia ser publicado ou restaurado depois.
 -- ============================================================================================
-create or replace function private.apply_published_visual_set(
-  p_set_id uuid, p_actor uuid, p_from_status text
-) returns jsonb
-  language plpgsql security definer set search_path = public as $$
+create or replace function private.apply_published_visual_set(p_set_id uuid, p_actor uuid, p_from_status text)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $$
 declare
   v_catalog_id uuid;
   v_set public.exercise_visual_sets;
@@ -466,20 +487,23 @@ declare
   v_role text;
   v_thumb text;
 begin
+  -- Ordem de locks: advisory do exercício (mesmo da alocação), depois o conjunto.
   select catalog_id into v_catalog_id from public.exercise_visual_sets where id = p_set_id;
   if v_catalog_id is null then raise exception 'INVALID_STATE' using errcode = '55000'; end if;
-  perform 1 from public.exercise_catalog where id = v_catalog_id for update;
   -- CORREÇÃO: exercício retirado depois da alocação não pode ganhar imagem publicada nem ter
   -- versão restaurada. Cobre publish (p_from_status='review') e restore
   -- (p_from_status='archived') de uma vez, pois ambos passam por aqui.
   if exists (select 1 from public.exercise_catalog where id = v_catalog_id and status = 'withdrawn') then
     raise exception 'CATALOG_WITHDRAWN' using errcode = '55000';
   end if;
+  perform private.lock_exercise_visual_catalog(v_catalog_id);
   select * into v_set from public.exercise_visual_sets where id = p_set_id for update;
   if v_set.status is distinct from p_from_status then
     raise exception 'INVALID_STATE' using errcode = '55000';
   end if;
 
+  -- Sem conjunto pela metade: start e end confirmados (revisão) ou já públicos (rollback). A miniatura,
+  -- quando existe, também precisa estar confirmada (linha sem metadados = upload incompleto).
   if (select count(*) from public.exercise_visual_assets
         where visual_set_id = p_set_id and role in ('start', 'end')
           and mime_type = 'image/webp' and byte_size > 0) <> 2
@@ -494,23 +518,26 @@ begin
     raise exception 'INCOMPLETE_VISUAL_SET' using errcode = '22023';
   end if;
 
-  update public.exercise_visual_sets set status = 'archived', updated_at = now()
+  perform private.set_visual_audit_context(p_actor, null);
+  update public.exercise_visual_sets set status = 'archived'
     where catalog_id = v_catalog_id and status = 'published' and id <> p_set_id;
 
+  perform private.set_visual_audit_context(p_actor, null);
   if p_from_status = 'review' then
+    -- Os bytes já foram copiados pra exercise-visuals/{catalog}/v{versão}/ pela Edge Function.
     foreach v_role in array array['start', 'end', 'thumbnail'] loop
+      -- (thumbnail ausente: o update não encontra linha e nada acontece)
       update public.exercise_visual_assets set
         storage_bucket = 'exercise-visuals',
         storage_path = v_catalog_id::text || '/v' || v_set.version::text || '/' || private.exercise_visual_file_name(v_role)
       where visual_set_id = p_set_id and role = v_role;
     end loop;
     update public.exercise_visual_sets set
-      status = 'published', approved_by = p_actor, approved_at = now(),
-      published_at = now(), updated_at = now()
+      status = 'published', approved_by = p_actor, approved_at = now(), published_at = now()
     where id = p_set_id;
   else
     update public.exercise_visual_sets set
-      status = 'published', published_at = now(), updated_at = now(),
+      status = 'published', published_at = now(),
       metadata = metadata || jsonb_build_object(
         'restoredBy', p_actor, 'restoredAt', now())
     where id = p_set_id;
