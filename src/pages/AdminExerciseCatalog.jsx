@@ -19,6 +19,49 @@ import { ExerciseVisualDetail } from '../components/exerciseVisuals/ExerciseVisu
 import { formatCatalogLabel } from '../utils/exerciseCatalog.js'
 import AdminNav from '../components/AdminNav'
 
+function formatPercent(value) {
+  return `${value.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+}
+
+// Indicadores de cobertura de imagem -- os mesmos que existiam em /admin/exercicios-imagens,
+// migrados para cá. Reaproveita visuals.coverage (useAdminExerciseVisuals, já composto nesta
+// página) e exerciseVisualsService.getVisualCoverage() sem alteração: a consulta já usa
+// count('exact', head: true) contra a tabela inteira, nunca o tamanho da página carregada.
+function CoverageStats({ coverage }) {
+  if (!coverage) return null
+  const stats = [
+    { label: 'Exercícios cadastrados', value: coverage.total },
+    { label: 'Com imagens completas', value: coverage.published },
+    { label: 'Pendentes ou incompletas', value: coverage.missing },
+    { label: 'Cobertura', value: formatPercent(coverage.percent) },
+  ]
+  return (
+    <Box
+      data-testid="visual-coverage"
+      sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 4,
+        marginBottom: 3,
+        paddingBottom: 3,
+        borderBottom: '1px solid',
+        borderColor: 'border.default',
+      }}
+    >
+      {stats.map((stat) => (
+        <Box key={stat.label} sx={{ minWidth: '140px' }}>
+          <Text as="p" sx={{ margin: 0, fontSize: 0, color: 'fg.muted' }}>
+            {stat.label}
+          </Text>
+          <Text as="p" sx={{ margin: 0, fontSize: 3, fontWeight: 'bold' }}>
+            {stat.value}
+          </Text>
+        </Box>
+      ))}
+    </Box>
+  )
+}
+
 const SECTIONS = [
   { key: 'published', label: 'Exercícios' },
   { key: 'draft', label: 'Novo exercício' },
@@ -161,12 +204,16 @@ function ContentForm({ catalog }) {
 }
 
 function LifecycleActions({ catalog }) {
-  const { selected, busy, withdrawReason, setWithdrawReason } = catalog
+  const { selected, busy, isDirty, withdrawReason, setWithdrawReason } = catalog
   const status = selected?.status
   return (
     <Box className="ev-actions" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <Button disabled={!!busy} onClick={catalog.saveContent}>
+        <Button
+          disabled={!!busy || !isDirty}
+          onClick={catalog.saveContent}
+          title={!isDirty ? 'Nenhuma alteração para salvar' : undefined}
+        >
           {busy === 'save' ? <Spinner size="small" /> : selected ? 'Salvar' : 'Criar rascunho'}
         </Button>
         {selected && status === 'draft' && (
@@ -261,6 +308,8 @@ export default function AdminExerciseCatalog() {
           Sem conexão. Salvar, publicar, retirar e gerenciar imagens exige internet.
         </Flash>
       )}
+
+      <CoverageStats coverage={visuals.coverage} />
 
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', marginBottom: 3 }} role="tablist" aria-label="Seções do catálogo">
         {SECTIONS.map((s) => (
