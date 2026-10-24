@@ -46,6 +46,7 @@ select lives_ok($$select public.set_workout_sheet_archived((select id from curre
 select throws_ok($$select public.get_my_workout_sheet((select id from current_sheet),true)$$,'P0001','SHEET_NOT_READY','arquivada não inicia');
 select lives_ok($$select public.set_workout_sheet_archived((select id from current_sheet),true,1)$$,'arquivar já arquivada é idempotente');
 select lives_ok($$select public.set_workout_sheet_archived((select id from current_sheet),false,(select revision from public.workout_sheets where id=(select id from current_sheet)))$$,'restaura ficha');
+select is((select count(distinct sort_order)::int from public.workout_sheets where archived_at is null),(select count(*)::int from public.workout_sheets where archived_at is null),'restauração após reorder não reutiliza posição ativa');
 reset role;
 select pg_temp.set_test_user('98a00000-0000-0000-0000-000000000002',true);
 set local role authenticated;

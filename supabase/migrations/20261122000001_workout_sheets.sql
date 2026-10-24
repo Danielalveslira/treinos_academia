@@ -202,7 +202,9 @@ begin
  if (s.archived_at is not null)=p_archived then return jsonb_build_object('id',s.id,'revision',s.revision); end if;
  if p_expected_revision is distinct from s.revision then raise exception 'SHEET_VERSION_CONFLICT'; end if;
  if not p_archived and (select count(*) from public.workout_sheets where user_id=u and archived_at is null)>=(private.workout_sheet_limits()->>'active')::int then raise exception 'SHEET_LIMIT_REACHED'; end if;
- update public.workout_sheets set archived_at=case when p_archived then now() end,revision=revision+1,updated_at=now() where id=s.id;
+ update public.workout_sheets set archived_at=case when p_archived then now() end,
+ sort_order=case when not p_archived then coalesce((select max(x.sort_order)+1 from public.workout_sheets x where x.user_id=u and x.archived_at is null and x.id<>s.id),0) else sort_order end,
+ revision=revision+1,updated_at=now() where id=s.id;
  return jsonb_build_object('id',s.id,'revision',s.revision+1);
 end $$;
 
