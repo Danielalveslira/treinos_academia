@@ -24,26 +24,26 @@
     },
     {
       "root": "/workspaces/treinos_academia/dist",
-      "totalGzipBytes": 863677,
+      "totalGzipBytes": 865805,
       "boot": {
-        "bootJsGzipBytes": 374925,
+        "bootJsGzipBytes": 374920,
         "bootCssGzipBytes": 77695,
         "bootFiles": 13
       },
       "chunks": {
-        "main": 100230,
+        "main": 100231,
         "Exercises": 4213,
-        "ExercisesArea": 1204,
-        "NewWorkout": 2638,
-        "WorkoutForm": 9654,
-        "WorkoutSheetEditorPage": 3977,
-        "WorkoutSheetDetailPage": 1279,
+        "ExercisesArea": 1205,
+        "NewWorkout": 2645,
+        "WorkoutForm": 9660,
+        "WorkoutSheetEditorPage": 6112,
+        "WorkoutSheetDetailPage": 1277,
         "WorkoutSheetsPage": 1688,
-        "workoutSheetValidation": 1216,
+        "workoutSheetValidation": 1217,
         "useWorkoutSheets": 1694
       }
     }
   ],
-  "totalGzipDeltaBytes": 34139,
-  "bootGzipDeltaBytes": 19413
+  "totalGzipDeltaBytes": 36267,
+  "bootGzipDeltaBytes": 19408
 }

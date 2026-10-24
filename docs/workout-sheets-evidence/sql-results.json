@@ -1,0 +1,21 @@
+{
+  "run": "https://github.com/Danielalveslira/treinos_academia/actions/runs/40118909692",
+  "head": "6ab510fb0a1409ea0cd41eb12bd26b46b33fded6",
+  "suites": 76,
+  "assertions": 3305,
+  "sheetAssertions": 74,
+  "passed": true,
+  "queryPlans": [
+    {
+      "query": "active list with 40 sheets and authenticated RLS",
+      "index": "workout_sheets_list_idx",
+      "executionMs": 0.541
+    },
+    {
+      "query": "ordered items with authenticated RLS",
+      "index": "workout_sheet_items_order_idx",
+      "executionMs": 0.432
+    }
+  ],
+  "scope": "PostgreSQL backend unchanged by the subsequent editor UX refinement"
+}

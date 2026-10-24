@@ -1,6 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Button, Flash, Heading, Spinner } from '@primer/react'
+import {
+  Box,
+  Button,
+  Checkbox,
+  Flash,
+  FormControl,
+  Heading,
+  Label,
+  Select,
+  Spinner,
+  Text,
+  Textarea,
+  TextInput,
+} from '@primer/react'
+import { ChevronDownIcon, ChevronUpIcon } from '@primer/octicons-react'
 import { useOnlineStatus as useOnline } from '../../hooks/useOnlineStatus'
 import { useAuth } from '../../hooks/useAuth'
 import { useWorkoutSheets } from './useWorkoutSheets.js'
@@ -14,17 +28,76 @@ import {
   sheetFingerprint,
   validateSheet,
 } from './workoutSheetValidation.js'
+import { WorkoutSheetItemEditor } from './WorkoutSheetItemEditor'
 import { WorkoutSheetExercisePicker } from './WorkoutSheetExercisePicker'
 import { useSheetDiscardGuard } from './useSheetDiscardGuard.js'
 import './workoutSheets.css'
-const fields = [
-  ['target_sets', 'Séries-alvo', 1, SHEET_LIMITS.sets],
-  ['reps_min', 'Repetições mínimas', 1, 1000],
-  ['reps_max', 'Repetições máximas', 1, 1000],
-  ['rest_seconds', 'Descanso (segundos)', 0, 900],
-  ['target_duration_minutes', 'Duração (minutos)', 1, SHEET_LIMITS.duration],
-  ['target_distance_km', 'Distância (km)', 0.001, SHEET_LIMITS.distance],
-]
+function EditorSection({
+  id,
+  title,
+  caption,
+  action,
+  children,
+  optional = false,
+  initiallyOpen = true,
+}) {
+  const [expanded, setExpanded] = useState(initiallyOpen)
+  const contentId = useId()
+  const open = !optional || expanded
+  return (
+    <Box
+      as="section"
+      aria-labelledby={id}
+      sx={{
+        border: '1px solid',
+        borderColor: 'border.default',
+        borderRadius: 2,
+        p: [3, 4],
+        minWidth: 0,
+        bg: 'canvas.default',
+      }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 2,
+          mb: open ? (caption ? 1 : 3) : 0,
+        }}
+      >
+        <Heading as="h2" id={id} sx={{ fontSize: 2, m: 0 }}>
+          {optional ? (
+            <Button
+              type="button"
+              variant="invisible"
+              trailingAction={expanded ? ChevronUpIcon : ChevronDownIcon}
+              aria-expanded={expanded}
+              aria-controls={contentId}
+              onClick={() => setExpanded((value) => !value)}
+              sx={{ p: 0, fontSize: 'inherit', fontWeight: 'inherit', textAlign: 'left' }}
+            >
+              {title}
+            </Button>
+          ) : (
+            title
+          )}
+        </Heading>
+        {action || (optional && !open && <Label>Opcional</Label>)}
+      </Box>
+      {open && (
+        <Box id={contentId}>
+          {caption && (
+            <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: 0, mb: 3 }}>
+              {caption}
+            </Text>
+          )}
+          {children}
+        </Box>
+      )}
+    </Box>
+  )
+}
 function Editor({ initial, online }) {
   const { user } = useAuth()
   const active = useRef(true)
@@ -45,19 +118,36 @@ function Editor({ initial, online }) {
   const dirty = sheetFingerprint(sheet) !== baseline
   const permitNavigation = useSheetDiscardGuard(dirty)
   const change = (key, value) => setSheet((s) => ({ ...s, [key]: value }))
-  function patchItem(index, key, value) {
+  const patchItem = useCallback((exerciseId, key, value) => {
     setSheet((s) => ({
       ...s,
-      items: s.items.map((item, i) => (i === index ? { ...item, [key]: value } : item)),
+      items: s.items.map((item) =>
+        item.exercise_id === exerciseId ? { ...item, [key]: value } : item
+      ),
     }))
-  }
-  function move(index, delta) {
+  }, [])
+  const move = useCallback((index, delta) => {
     setSheet((s) => {
       const items = [...s.items]
       ;[items[index], items[index + delta]] = [items[index + delta], items[index]]
       return { ...s, items }
     })
-  }
+  }, [])
+  const removeItem = useCallback(
+    (exerciseId) =>
+      setSheet((s) => ({ ...s, items: s.items.filter((item) => item.exercise_id !== exerciseId) })),
+    []
+  )
+  const addItem = useCallback(
+    (exercise) =>
+      setSheet((s) =>
+        s.items.some((item) => item.exercise_id === exercise.id) ||
+        s.items.length >= SHEET_LIMITS.items
+          ? s
+          : { ...s, items: [...s.items, { exercise_id: exercise.id, exercise, available: true }] }
+      ),
+    []
+  )
   async function save(event) {
     event.preventDefault()
     if (lock.current || !dirty || !online || server) return
@@ -109,201 +199,234 @@ function Editor({ initial, online }) {
     setServer(null)
     setMessage('Versão atual carregada para comparação. Revise sua edição e salve novamente.')
   }
+  const disabled = busy || !online
   return (
-    <section className="workout-sheets">
-      <Button onClick={cancel}>Voltar</Button>
-      <Heading as="h1">{initial.id ? 'Editar ficha' : 'Criar ficha'}</Heading>
+    <Box as="section" className="workout-sheets">
+      <Box sx={{ display: 'grid', gap: 2, mb: 3 }}>
+        <Button type="button" variant="invisible" onClick={cancel} sx={{ justifySelf: 'start' }}>
+          Voltar
+        </Button>
+        <Heading as="h1" sx={{ m: 0 }}>
+          {initial.id ? 'Editar ficha' : 'Criar ficha'}
+        </Heading>
+        <Text as="p" sx={{ color: 'fg.muted', m: 0 }}>
+          Organize sua rotina. Objetivo, dias e metas são opcionais.
+        </Text>
+      </Box>
       {!online && (
-        <Flash variant="warning">
+        <Flash variant="warning" sx={{ mb: 3 }}>
           Fichas exigem conexão. Sua edição permanece nesta tela; reconecte para salvar.
         </Flash>
       )}
       {message && (
-        <Flash role="alert" variant="warning">
+        <Flash role="alert" variant="warning" sx={{ mb: 3 }}>
           {message}
         </Flash>
       )}
       {server && (
-        <section className="sheet-card" aria-label="Conflito de versões">
-          <h2>Versão atual no servidor</h2>
-          <p>
+        <Box
+          as="section"
+          aria-label="Conflito de versões"
+          sx={{
+            border: '1px solid',
+            borderColor: 'attention.emphasis',
+            borderRadius: 2,
+            p: 3,
+            mb: 3,
+          }}
+        >
+          <Heading as="h2" sx={{ fontSize: 2 }}>
+            Versão atual no servidor
+          </Heading>
+          <Text as="p">
             {server.name} · revisão {server.revision}
-          </p>
-          <p>{server.goal_description}</p>
-          <ol>
-            {server.items.map((i) => (
-              <li key={i.id}>
-                {i.exercise.name}: {prescription(i)}
+          </Text>
+          <Text as="p">{server.goal_description}</Text>
+          <Box as="ol">
+            {server.items.map((item) => (
+              <li key={item.id}>
+                {item.exercise.name}: {prescription(item)}
               </li>
             ))}
-          </ol>
-          <Button onClick={acceptServer}>Usar versão do servidor</Button>
-          <Button onClick={keepMine}>Manter minha edição para revisão</Button>
-        </section>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Button onClick={acceptServer}>Usar versão do servidor</Button>
+            <Button onClick={keepMine}>Manter minha edição para revisão</Button>
+          </Box>
+        </Box>
       )}
-      <form onSubmit={save}>
-        <fieldset disabled={busy || !online}>
-          <legend>Identificação</legend>
-          <label className="sheet-field">
-            Nome obrigatório
-            <input
+      <Box
+        as="form"
+        onSubmit={save}
+        sx={{ '&&': { p: 0, m: 0, border: 0, bg: 'canvas.default', display: 'grid', gap: 3 } }}
+      >
+        <EditorSection id="sheet-identification" title="Identificação">
+          <FormControl required disabled={disabled}>
+            <FormControl.Label requiredIndicator={false}>Nome obrigatório</FormControl.Label>
+            <TextInput
+              block
               required
               maxLength={80}
+              placeholder="Ex.: Treino A — Peito e tríceps"
               value={sheet.name}
-              onChange={(e) => change('name', e.target.value)}
+              onChange={(event) => change('name', event.target.value)}
             />
-          </label>
-          <label className="sheet-field">
-            Objetivo opcional
-            <select value={sheet.goal || ''} onChange={(e) => change('goal', e.target.value)}>
-              <option value="">Sem objetivo</option>
-              {Object.entries(SHEET_GOALS).map(([key, label]) => (
-                <option value={key} key={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="sheet-field">
-            {sheet.goal === 'other' ? 'Descreva seu objetivo' : 'Descrição opcional'}
-            <textarea
-              maxLength={500}
-              value={sheet.goal_description}
-              onChange={(e) => change('goal_description', e.target.value)}
-            />
-          </label>
-          <fieldset>
-            <legend>Dias sugeridos (sem lembretes)</legend>
-            <div className="sheet-actions">
-              {WEEKDAYS.map((day, i) => (
-                <label className="sheet-check" key={day}>
-                  <input
-                    type="checkbox"
-                    checked={sheet.weekdays.includes(i)}
-                    onChange={(e) =>
-                      change(
-                        'weekdays',
-                        e.target.checked
-                          ? [...sheet.weekdays, i]
-                          : sheet.weekdays.filter((d) => d !== i)
-                      )
-                    }
-                  />
-                  {day}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        </fieldset>
-        <WorkoutSheetExercisePicker
-          items={sheet.items}
-          disabled={busy || !online || sheet.items.length >= 40}
-          onAdd={(exercise) =>
-            setSheet((s) =>
-              s.items.some((i) => i.exercise_id === exercise.id) || s.items.length >= 40
-                ? s
-                : {
-                    ...s,
-                    items: [...s.items, { exercise_id: exercise.id, exercise, available: true }],
-                  }
-            )
-          }
-        />
-        <h2>Metas opcionais</h2>
-        <p>Referências para o treino; nenhuma série será registrada ao salvar ou iniciar.</p>
-        {!sheet.items.length && (
-          <p>Rascunho sem exercícios. Você pode salvar e continuar depois.</p>
-        )}
-        <ol className="sheet-list">
-          {sheet.items.map((item, index) => (
-            <li key={item.exercise_id} className="sheet-card">
-              <h3>
-                {index + 1}. {item.exercise?.name || 'Exercício indisponível'}
-              </h3>
-              {item.available === false && (
-                <Flash variant="warning">
-                  Indisponível: substitua antes de iniciar novos treinos.
-                </Flash>
-              )}
-              <div className="sheet-actions">
-                <Button
-                  disabled={busy || !online || index === 0}
-                  aria-label={`Subir ${item.exercise?.name}`}
-                  onClick={() => move(index, -1)}
-                >
-                  Subir
-                </Button>
-                <Button
-                  disabled={busy || !online || index === sheet.items.length - 1}
-                  aria-label={`Descer ${item.exercise?.name}`}
-                  onClick={() => move(index, 1)}
-                >
-                  Descer
-                </Button>
-                <Button
-                  disabled={busy || !online}
-                  onClick={() =>
+            <FormControl.Caption>
+              Escolha um nome fácil de reconhecer. Até 80 caracteres.
+            </FormControl.Caption>
+          </FormControl>
+        </EditorSection>
+        <EditorSection
+          id="sheet-goal"
+          optional
+          initiallyOpen={Boolean(initial.goal || initial.goal_description)}
+          title="Objetivo e descrição"
+          caption="Conte o que você pretende alcançar, se quiser."
+        >
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: ['minmax(0,1fr)', 'minmax(0,1fr) minmax(0,2fr)'],
+              gap: 3,
+              alignItems: 'start',
+            }}
+          >
+            <FormControl disabled={disabled}>
+              <FormControl.Label>Objetivo opcional</FormControl.Label>
+              <Select
+                block
+                value={sheet.goal || ''}
+                onChange={(event) => change('goal', event.target.value)}
+              >
+                <Select.Option value="">Sem objetivo</Select.Option>
+                {Object.entries(SHEET_GOALS).map(([key, label]) => (
+                  <Select.Option key={key} value={key}>
+                    {label}
+                  </Select.Option>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl disabled={disabled}>
+              <FormControl.Label>
+                {sheet.goal === 'other' ? 'Descreva seu objetivo' : 'Descrição opcional'}
+              </FormControl.Label>
+              <Textarea
+                block
+                rows={2}
+                resize="vertical"
+                maxLength={500}
+                value={sheet.goal_description}
+                onChange={(event) => change('goal_description', event.target.value)}
+              />
+              <FormControl.Caption>Até 500 caracteres.</FormControl.Caption>
+            </FormControl>
+          </Box>
+        </EditorSection>
+        <EditorSection
+          id="sheet-days"
+          optional
+          initiallyOpen={initial.weekdays.length > 0}
+          title="Dias sugeridos"
+          caption="Apenas para organizar a semana. Nenhum lembrete será criado."
+        >
+          <Box
+            role="group"
+            aria-labelledby="sheet-days"
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: ['repeat(4,minmax(0,1fr))', 'repeat(7,minmax(0,1fr))'],
+              gap: 2,
+            }}
+          >
+            {WEEKDAYS.map((day, index) => (
+              <FormControl key={day} disabled={disabled} sx={{ minHeight: 44, gap: 1 }}>
+                <Checkbox
+                  checked={sheet.weekdays.includes(index)}
+                  onChange={(event) =>
                     change(
-                      'items',
-                      sheet.items.filter((_, i) => i !== index)
+                      'weekdays',
+                      event.target.checked
+                        ? [...sheet.weekdays, index]
+                        : sheet.weekdays.filter((d) => d !== index)
                     )
                   }
-                >
-                  Remover da ficha
-                </Button>
-              </div>
-              <details>
-                <summary>Editar metas de {item.exercise?.name}</summary>
-                <fieldset disabled={busy || !online}>
-                  <legend className="sr-only">Metas de {item.exercise?.name}</legend>
-                  {fields
-                    .filter(([key]) =>
-                      item.exercise?.type === 'cardio'
-                        ? !['target_sets', 'reps_min', 'reps_max'].includes(key)
-                        : !key.startsWith('target_d')
-                    )
-                    .map(([key, label, min, max]) => (
-                      <label className="sheet-field" key={key}>
-                        {label}
-                        <input
-                          type="number"
-                          min={min}
-                          max={max}
-                          step={key === 'target_distance_km' ? '0.001' : 1}
-                          value={item[key] ?? ''}
-                          onChange={(e) => patchItem(index, key, e.target.value)}
-                        />
-                      </label>
-                    ))}
-                  <label className="sheet-field">
-                    Observação pessoal
-                    <textarea
-                      maxLength={300}
-                      value={item.note || ''}
-                      onChange={(e) => patchItem(index, 'note', e.target.value)}
-                    />
-                  </label>
-                </fieldset>
-              </details>
-            </li>
-          ))}
-        </ol>
-        <div className="sheet-actions">
+                />
+                <FormControl.Label>{day}</FormControl.Label>
+              </FormControl>
+            ))}
+          </Box>
+        </EditorSection>
+        <EditorSection
+          id="sheet-exercises"
+          title="Exercícios da ficha"
+          caption="Escolha da biblioteca ou do catálogo. Ajuste a ordem e abra as metas somente quando precisar."
+          action={
+            <Label aria-live="polite">
+              {sheet.items.length}/{SHEET_LIMITS.items}
+            </Label>
+          }
+        >
+          <WorkoutSheetExercisePicker
+            items={sheet.items}
+            disabled={disabled || sheet.items.length >= SHEET_LIMITS.items}
+            onAdd={addItem}
+          />
+          {!sheet.items.length ? (
+            <Box sx={{ bg: 'canvas.subtle', p: 3, mt: 3, borderRadius: 2 }}>
+              <Text as="p" sx={{ m: 0, color: 'fg.muted', fontSize: 0 }}>
+                Sua ficha ainda não tem exercícios. Adicione o primeiro ou salve um rascunho para
+                continuar depois.
+              </Text>
+            </Box>
+          ) : (
+            <Box as="ol" sx={{ listStyle: 'none', p: 0, mb: 0, mt: 3, display: 'grid', gap: 2 }}>
+              {sheet.items.map((item, index) => (
+                <WorkoutSheetItemEditor
+                  key={item.exercise_id}
+                  item={item}
+                  index={index}
+                  total={sheet.items.length}
+                  disabled={disabled}
+                  onPatch={patchItem}
+                  onMove={move}
+                  onRemove={removeItem}
+                />
+              ))}
+            </Box>
+          )}
+          <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: 3, mb: 0 }}>
+            Metas são referências. Salvar a ficha não registra séries nem remove exercícios da
+            biblioteca.
+          </Text>
+        </EditorSection>
+        <Box
+          sx={{
+            bg: 'canvas.default',
+            borderTop: '1px solid',
+            borderColor: 'border.default',
+            py: 3,
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 2,
+          }}
+        >
+          <Button type="button" disabled={busy} onClick={cancel} sx={{ flex: ['1', 'initial'] }}>
+            Cancelar
+          </Button>
           <Button
             type="submit"
             variant="primary"
-            disabled={!dirty || busy || !online || Boolean(server)}
+            disabled={!dirty || disabled || Boolean(server)}
+            sx={{ flex: ['1', 'initial'] }}
           >
             {busy ? 'Salvando…' : 'Salvar ficha'}
           </Button>
-          <Button disabled={busy || !online} onClick={cancel}>
-            Cancelar
-          </Button>
-        </div>
-      </form>
-    </section>
+        </Box>
+      </Box>
+    </Box>
   )
 }
+
 export default function WorkoutSheetEditorPage() {
   const { id } = useParams()
   const { user } = useAuth()

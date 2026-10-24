@@ -11,6 +11,18 @@ Implementação na branch `feat/workout-sheets`, PR #74, baseada na Fase 4 do ca
 - `NewWorkout.jsx` e `WorkoutForm.jsx`: `sheetScope` explícito, ordem da ficha e metas como referências. Os snapshots limitados da ficha evitam carregar exercícios alheios ao escopo. Não altera biblioteca global, contratos de rowSaver, outbox, histórico, finalização ou economia.
 - `supabase/tests/workout_sheets_test.sql`, testes JS e `scripts/workout-sheets-*-smoke.mjs`/`workout-sheets-sql-evidence.mjs`: evidências de segurança, retries, limites, desempenho e fluxos no navegador. Os passos novos também fazem parte do CI oficial.
 
+## Editor mobile e catálogo delimitado
+
+O editor usa componentes e tokens do GitHub Primer: quatro blocos (Identificação, Objetivo e descrição, Dias sugeridos, Exercícios da ficha), sem a moldura genérica de formulário. Na criação, blocos opcionais e seletor começam fechados. Na edição, objetivo/dias existentes ficam visíveis. Abrir/fechar blocos preserva todos os valores. As ações ficam no fluxo da página, sem sobrepor campos.
+
+A seleção abre sob demanda e alterna Biblioteca/Catálogo em SegmentedControl. O painel mantém a mesma altura para as duas fontes: 26 rem no mobile, 32 rem em telas maiores, sempre limitado a 60 dvh, com `overflow-y: auto` e `overscroll-behavior: contain`. Paginação aumenta somente o conteúdo interno. O teste mede documento e painel antes/depois, exige crescimento de **0 px** na página e confirma que rolar o catálogo não rola o documento.
+
+O Catálogo Evolutus original é importado apenas no primeiro acesso e preservado enquanto se alterna a fonte. Busca, paginação e posição de rolagem não são descartadas, e a troca não repete consultas. Os botões Voltar à biblioteca e Meus exercícios retornam à mesma seleção; o foco volta à busca. O rótulo acessível da busca do catálogo é explícito e permanece estável quando aparece o botão Limpar busca.
+
+Linhas de exercícios são memoizadas. Metas fechadas não montam os campos; a fixture de 40 exercícios exige zero inputs/textareas de metas enquanto fechados. Callbacks estáveis evitam renderizar essas linhas ao digitar nome/descrição. Não há bibliotecas ou dependências novas. O smoke final passou nos 10 cenários (cinco tamanhos × dois temas): sem overflow, crescimento de 0 px do documento após paginação e nenhum refetch por alternar a fonte. Digitação até o próximo frame ficou em até 27,2 ms com CPU 4×; no editor de 40 exercícios, até 15,9 ms e zero campos de metas montados enquanto fechados.
+
+Arquivos deste refinamento: `WorkoutSheetEditorPage.jsx`, `WorkoutSheetExercisePicker.jsx`, novo `WorkoutSheetItemEditor.jsx`, `workoutSheets.css` (remoção de regras substituídas por Primer), `ExerciseCatalog.jsx` (rótulo), novo `workoutSheetEditor.test.js` e ampliação do smoke. Não altera tabelas, migrações ou RPCs.
+
 ## Rede, concorrência e dados
 
 Acesso inicial a fichas exige rede; não foi criado cache persistente nem fila de edição de fichas. O editor retém alterações durante perda de conexão, desabilita edição/salvar offline e confirma gravação somente após resposta do servidor. Uma execução validada online continua montada quando a rede cai e conserva o mecanismo existente de registro offline de séries.
@@ -25,20 +37,20 @@ Concluído hoje continua sendo exercício/dia. Não existem sessões históricas
 
 As medidas e os resultados finais estão em `docs/workout-sheets-evidence/`. O smoke utiliza páginas/componentes/hooks reais, o cliente HTTP real do Supabase e uma API RPC sintética local. Segurança e atomicidade são verificadas separadamente contra PostgreSQL real no runner oficial, com migrations desde a base limpa. Isso não equivale a teste integrado em produção.
 
-Matriz do smoke: 320/360/390/768/1280 px, claro/escuro, CPU 4× mais lenta, RTT 150 ms e 200 KB/s de download. Confere ordem, exclusão de exercícios externos ao escopo, nenhuma gravação ao iniciar, registro verdadeiro de uma série pelo rowSaver, perda de conexão durante execução, dirty-check/desfazer, confirmação de Voltar, falha de save, conflito e recuperação, troca de conta, duplicação, arquivo/restauração e criação de rascunho. Guias e catálogo existentes são reutilizados; não há download obrigatório de imagens em lista/detalhe. Rewrites do arquivo real da Vercel são usados pelo servidor do smoke.
+Matriz do smoke: 320×568, 360×740, 390×900, 768×900 e 1280×900, claro/escuro; toque nas três larguras menores, CPU 4× mais lenta, RTT 150 ms e 200 KB/s de download. Confere ordem, exclusão de exercícios externos ao escopo, nenhuma gravação ao iniciar, registro verdadeiro de uma série pelo rowSaver, perda de conexão durante execução, dirty-check/desfazer, confirmação de Voltar, rolagem interna e paginação sem crescimento da página, alternância de fontes, adição pelo catálogo, falha de save, conflito e recuperação, troca de conta, duplicação, arquivo/restauração e criação de rascunho. Guias e catálogo existentes são reutilizados; não há download obrigatório de imagens em lista/detalhe. Rewrites do arquivo real da Vercel são usados pelo servidor do smoke.
 
-Limites da medição: fluxos com dois exercícios e um cenário de volume com 40 fichas/40 exercícios, sem aparelho físico. O tempo de abertura inclui o bundle agregado do harness, que difere dos chunks lazy de produção. Heap representa apenas V8. O cenário de volume mediu lista em 3.606 ms e editor em 3.642 ms (abertura fria do harness), digitação até o próximo frame em 1,6–7,4 ms, sem overflow, e heap V8 de 28.119.020 bytes. Esses números são sintéticos, não resultados de produção. Há EXPLAIN ANALYZE/BUFFERS com 40 fichas e consultas com RLS no log do job SQL. Não foi feito benchmark comparativo de CPU/memória de um aparelho real antes/depois; o comparativo de bundle usa build real anterior/posterior.
+Limites da medição: fluxos com dois exercícios e um cenário de volume com 40 fichas/40 exercícios, sem aparelho físico. O tempo de abertura inclui o bundle agregado do harness, que difere dos chunks lazy de produção. Heap representa apenas V8. As medidas de abertura, digitação e heap V8 do cenário com 40 fichas/40 exercícios estão em `browser-results.json`; as metas fechadas mantêm zero campos montados. Os números são sintéticos, não resultados de produção. O CI aprovou 76 suítes/3.305 assertivas pgTAP, incluindo 74 assertivas de fichas. EXPLAIN ANALYZE/BUFFERS com 40 fichas e RLS usou `workout_sheets_list_idx` (0,541 ms) e `workout_sheet_items_order_idx` (0,432 ms) nesse runner; veja `sql-results.json`. A suíte local de frontend passou com 2.159 testes, incluindo dois novos testes de componentes. Não foi feito benchmark comparativo de CPU/memória de um aparelho real antes/depois; o comparativo de bundle usa build real anterior/posterior.
 
 Comparativo dos builds reais (gzip):
 
 | Medida | Antes | Depois | Variação |
 |---|---:|---:|---:|
-| Todos os chunks JS | 829.538 B | 863.677 B | +34.139 B |
-| JS do boot/PWA (nível 9) | 355.512 B | 374.925 B | +19.413 B |
+| Todos os chunks JS | 829.538 B | 865.805 B | +36.267 B |
+| JS do boot/PWA (nível 9) | 355.512 B | 374.920 B | +19.408 B |
 | Arquivos no boot | 13 | 13 | 0 |
-| Chunk principal JS | 81.179 B | 100.230 B | +19.051 B |
+| Chunk principal JS | 81.179 B | 100.231 B | +19.052 B |
 
-Novos chunks gzip: lista 1.688 B, detalhe 1.279 B, editor 3.977 B, validação 1.216 B e hook/serviço 1.694 B. Mesmo somando incremento do principal e novos chunks do editor, o incremento fica abaixo de 35 KB gzip. O aumento do principal inclui o suporte real de bloqueio de navegação pelo data router. O CSS de boot não aumentou. Os números brutos reproduzíveis estão em `bundle-comparison.json`.
+Novos chunks gzip: lista 1.688 B, detalhe 1.277 B, editor 6.112 B, validação 1.217 B e hook/serviço 1.694 B. Mesmo somando incremento do principal e novos chunks do editor, o incremento fica abaixo de 35 KB gzip por rota. O aumento do principal inclui o suporte real de bloqueio de navegação pelo data router. O CSS de boot não aumentou. Os números brutos reproduzíveis estão em `bundle-comparison.json`.
 
 O comando `npm run budget` tem baseline anterior já excedido na base da Fase 4. O relatório registra medidas dos dois builds; não foi aumentado esse orçamento para esconder o desvio existente.
 
