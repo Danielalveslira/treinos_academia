@@ -1,5 +1,6 @@
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
+import { businessDayKey } from '../../utils/businessDate.js'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -184,6 +185,38 @@ test('com histórico: mostra última ficha treinada e mais treinada no mês, sem
 test('atividade parcial não é apresentada como conclusão e avisa a limitação offline', () => {
   const html = render()
   assert.match(html, /não comprova conclusão da ficha/)
-  assert.match(html, /fila offline/)
+  assert.match(html, /salvos apenas offline/)
   assert.doesNotMatch(html, /execuções neste mês|sessões concluídas|Última execução/)
+})
+
+test('ficha já utilizada hoje informa atividade e não sugere que ainda falta concluí-la', () => {
+  setFixture({
+    online: true,
+    hasSheets: true,
+    recommendation: {
+      sheet: { id: 's1', name: 'Ficha de hoje', weekdays: [] },
+      reason: 'today',
+      lastDate: businessDayKey(),
+    },
+    refresh: () => {},
+  })
+  const html = render()
+  assert.match(html, /já tem atividade registrada hoje/)
+  assert.doesNotMatch(html, /Recomendado para hoje/)
+  assert.match(html, /Iniciar ficha/)
+})
+
+test('histórico arquivado permanece visível mesmo sem ficha recomendável', () => {
+  setFixture({
+    online: true,
+    hasSheets: true,
+    recommendation: null,
+    lastTrained: { sheet: { id: 'old', name: 'Ficha arquivada' }, date: '2026-01-01' },
+    mostTrained: null,
+    refresh: () => {},
+  })
+  const html = render()
+  assert.match(html, /Revise suas fichas/)
+  assert.match(html, /Ficha arquivada/)
+  assert.doesNotMatch(html, /Iniciar ficha/)
 })

@@ -201,7 +201,7 @@ export function RecommendedSheetPanel() {
 
   return (
     <section className="workout-hero" aria-labelledby="next-workout-title">
-      {photo && <HeroPhoto key={photo.name} photo={photo} />}
+      {photo && <HeroPhoto key={`${todayKey}:${photo.name}`} photo={photo} />}
       <div className="workout-hero-shade" />
       <div className="workout-hero-content">
         <span className="hero-kicker">
@@ -249,8 +249,8 @@ export function RecommendedSheetPanel() {
           todayKey={todayKey}
         />
         <p className="sheet-insights-disclosure">
-          Atividade registrada não comprova conclusão da ficha. Registros enviados pela fila offline
-          não têm vínculo com fichas e não entram nestes indicadores.
+          Atividade registrada não comprova conclusão da ficha. Novos registros salvos apenas offline
+          não são vinculados à ficha e ficam fora destes indicadores.
         </p>
       </div>
     </section>

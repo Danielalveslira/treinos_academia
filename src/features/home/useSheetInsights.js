@@ -20,7 +20,7 @@ export function useSheetInsights() {
   const fetchActivity = useCallback(() => getSheetInsights(), [])
   const activity = useCachedQuery(`home-sheet-activity:${user.uid}:${todayKey}`, fetchActivity, {
     enabled: online,
-    keepPreviousScope: user.uid,
+    keepPreviousScope: `${user.uid}:${todayKey}`,
     observeInvalidation: true,
   })
   const list = activity.data?.sheets || EMPTY
@@ -43,7 +43,7 @@ export function useSheetInsights() {
   )
   return {
     online,
-    loading: online && activity.loading,
+    loading: online && activity.loading && !activity.data,
     error: activity.error,
     hasSheets: list.length > 0,
     recommendation,

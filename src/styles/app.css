@@ -6095,3 +6095,9 @@ div:has(> .ev-zoom-dialog) {
   --fitness-photo-border: var(--borderColor-default);
   color: var(--fitness-ink);
 }
+.workout-hero-actions [data-component='leadingVisual'] { color: inherit; }
+.workout-hero-actions > a:not(.start-workout-button) {
+  --button-default-fgColor-rest: var(--fitness-photo-ink);
+  --button-default-bgColor-hover: #ffffff14;
+  --button-default-borderColor-hover: var(--fitness-photo-border);
+}

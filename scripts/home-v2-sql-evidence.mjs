@@ -141,14 +141,16 @@ try {
     select '${uid}','${eid}',(now() at time zone 'America/Sao_Paulo')::date-(n%730),1,'[{"weight":10,"reps":10}]','${sid}' from generate_series(1,2000)n;
     reset role; vacuum analyze public.workouts;`
   )
-  console.log(
-    sql(
-      actor +
-        `explain(analyze,buffers) select sheet_id,max(date),max(created_at),
-    count(distinct date) filter(where date>=date_trunc('month',(now() at time zone 'America/Sao_Paulo')::date)::date)
-    from public.workouts where user_id='${uid}' and sheet_id is not null and date<=(now() at time zone 'America/Sao_Paulo')::date group by sheet_id;`
-    )
+  const definition = sql(
+    "select pg_get_functiondef('public.get_my_sheet_insights()'::regprocedure);"
   )
+  const statement = definition.match(/with activity_days[\s\S]*?into result from selected;/i)?.[0]
+  assert.ok(statement, 'inspect the exact aggregate SQL, not an unrelated simplified plan')
+  const query = statement
+    .replace('into result', '')
+    .replace(/\bu\b/g, `'${uid}'::uuid`)
+    .replace(/(?<!')\btoday\b(?!')/g, "(now() at time zone 'America/Sao_Paulo')::date")
+  console.log(sql(actor + 'reset role; explain(analyze,buffers) ' + query))
   console.log(sql(actor + 'explain(analyze,buffers) select public.get_my_sheet_insights();'))
 } finally {
   sql(

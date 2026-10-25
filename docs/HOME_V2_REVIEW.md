@@ -55,7 +55,8 @@ O protocolo da outbox é uma lista fechada de campos, com compactação de creat
 recibos idempotentes, reconciliação de ACK perdido e controle de versões. Incluir `sheet_id`
 com segurança exigiria migrar em conjunto o payload, a compactação e a reconciliação entre
 clientes antigos/novos, inclusive quando uma ficha for arquivada antes do envio. Essa mudança
-fica fora desta correção. O treino offline continua sincronizando como treino livre, sem duplicar
+fica fora desta correção. Novos registros que só existem offline continuam sincronizando como treino livre. Atualizações de
+registros já atribuídos preservam o vínculo, inclusive na representação local, sem duplicar
 registros ou recompensas. A Home avisa essa exclusão dos indicadores e o registro pendente
 numa ficha emite aviso específico. Os indicadores não representam todas as execuções do usuário.
 
@@ -80,3 +81,33 @@ contra baseline antigo de 320.749 B / 75.572 B / 6 arquivos. A build inicial des
 375.168 B / 78.269 B / 13 arquivos: +712 B JS e +124 B CSS (sem aumentar arquivos nem limites).
 Parte do custo herdado vem das entradas públicas incluídas no precache. O baseline não foi
 alterado para ocultar a diferença. As medições finais e resultados oficiais são registrados no PR.
+
+## Arquivos da correção
+
+- Banco: `supabase/migrations/20261123000001_workout_sheet_attribution.sql`,
+  `supabase/tests/workout_sheet_attribution_test.sql`, `supabase/tests/home_sheet_insights_test.sql`.
+- Home: `src/features/home/RecommendedSheetPanel.jsx`, `recommendSheet.js`, `useSheetInsights.js`
+  e os testes de painel, recomendação e rotação (`useDailyBanner.test.js`).
+- Cache: `src/hooks/useCachedQuery.js` e teste novo, `src/utils/pageCache.js` e teste,
+  adaptação do stub em `src/hooks/useSponsoredAds.test.js`.
+- Escrita/sincronização: `src/services/workoutsService.js`, `src/pages/NewWorkout.jsx`,
+  `src/services/offline/syncScheduler.js`, `outbox.js` e teste de preservação local.
+- Fichas: `src/features/workoutSheets/workoutSheetsService.js` e teste de RPC.
+- Apresentação: `src/components/ResponsivePicture.jsx`, `src/styles/app.css`.
+- Verificação: `scripts/home-v2-browser-smoke.mjs`, `scripts/home-v2-sql-evidence.mjs`,
+  `.github/workflows/supabase-tests.yml` e este documento.
+
+## Evidência oficial
+
+A primeira execução corretiva no Actions (`40237032754`) aprovou o job SQL: 78 suítes,
+3.349 assertions pgTAP, quatro cenários reais de concorrência e 207 testes de funções.
+A RPC completa mediu 5,380 ms com 2.001 registros nessa execução. Uma consulta simplificada
+feita sob RLS custou 353,339 ms; a evidência final passou a extrair e explicar o SQL exato da RPC,
+executado no mesmo contexto privilegiado dela e com filtro explícito por dono. Não confundir
+os dois planos nem usar o plano simplificado para avaliar o custo real da Home.
+
+No Codespace, a inicialização dos serviços auxiliares e a rede Docker não são reproduzíveis:
+foi possível aplicar todas as migrations em base descartável com ajuste temporário de DNS,
+mas o health check do GoTrue encerrou a base antes da suíte completa local. O job SQL oficial,
+isolado no runner GitHub, é a prova completa do banco; não foram usados mocks para validar
+constraints, segurança, cascatas ou concorrência. Nenhuma conexão remota de produção foi usada.

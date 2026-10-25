@@ -153,6 +153,19 @@ try {
         await page.getByRole('link', { name: 'Iniciar ficha' }).getAttribute('href'),
         '/novo-treino?ficha=s1'
       )
+      const startLink = page.getByRole('link', { name: 'Iniciar ficha' })
+      await startLink.focus()
+      assert.equal(await startLink.evaluate((el) => el === document.activeElement), true)
+      await page.keyboard.press('Tab')
+      assert.match(await page.evaluate(() => document.activeElement.textContent), /Ver fichas/)
+      const secondary = page.getByRole('link', { name: 'Ver fichas' })
+      const contrast = await secondary.evaluate((el) => ({
+        text: getComputedStyle(el).color,
+        icon: getComputedStyle(el.querySelector('[data-component="leadingVisual"]')).color,
+      }))
+      assert.equal(contrast.text, 'rgb(255, 255, 255)')
+      assert.equal(contrast.icon, contrast.text)
+      assert.ok(await page.locator('.workout-hero img').getAttribute('alt'))
       await page.screenshot({ path: join(evidence, `home-${width}-${theme}.png`), fullPage: true })
       results.push({ width, theme, requests: reads - before, images: images.length, geometry })
       // A mounted view receives writes/ACKs, coalesces the batch, and ignores another account.

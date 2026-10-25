@@ -19,7 +19,8 @@ before(async () => {
     import {useCachedQuery} from './useCachedQuery.js';
     export {invalidateWorkoutCache,clearPageCache} from '../utils/pageCache.js';
     export {act}; let latest; let calls=0;
-    const read=async()=>++calls;
+    let reader = null; export const setReader = (value) => { reader = value };
+    const read=async()=>{calls++;return reader ? reader() : calls};
     function Probe({uid}) {latest=useCachedQuery('home-sheet-activity:'+uid+':day',read,{observeInvalidation:true,keepPreviousScope:uid});return null}
     export const mount=(uid)=>TestRenderer.create(React.createElement(Probe,{uid}));
     export const change=(r,uid)=>r.update(React.createElement(Probe,{uid}));
@@ -65,4 +66,37 @@ test('mounted Home refetches once per batch; other users stay isolated; account 
   api.invalidateWorkoutCache('bob')
   await Promise.resolve()
   assert.equal(api.count(), 3)
+})
+
+test('invalidação durante requisição ignora resposta antiga e não repopula o cache com ela', async () => {
+  let resolveOld, root
+  let reads = 0
+  api.setReader(() =>
+    ++reads === 1
+      ? new Promise((resolve) => {
+          resolveOld = resolve
+        })
+      : 'fresh'
+  )
+  api.act(() => {
+    root = api.mount('carol')
+  })
+  await flush()
+  assert.equal(api.state().data, undefined)
+  api.act(() => api.invalidateWorkoutCache('carol'))
+  await flush()
+  assert.equal(api.state().data, 'fresh')
+  resolveOld('stale')
+  await flush()
+  assert.equal(api.state().data, 'fresh')
+  assert.equal(reads, 2)
+  api.act(() => root.unmount())
+  api.act(() => {
+    root = api.mount('carol')
+  })
+  await flush()
+  assert.equal(api.state().data, 'fresh')
+  assert.equal(reads, 2)
+  api.act(() => root.unmount())
+  api.setReader(null)
 })

@@ -72,11 +72,15 @@ create function public.get_my_sheet_insights() returns jsonb
 language plpgsql security definer set search_path = '' as $$
 declare u uuid:=private.sheet_actor(); today date:=private.sp_today(); result jsonb;
 begin
-  with activity as materialized (
-    select w.sheet_id, max(w.date) last_date, max(w.created_at) last_registered_at,
-      count(distinct w.date) filter(where w.date>=date_trunc('month',today)::date)::int month_days
+  with activity_days as (
+    select w.sheet_id,w.date,max(w.created_at) last_registered_at
     from public.workouts w where w.user_id=u and w.sheet_id is not null and w.date<=today
-    group by w.sheet_id
+    group by w.sheet_id,w.date
+  ), activity as materialized (
+    select distinct on(sheet_id) sheet_id,date last_date,last_registered_at,
+      (count(*) filter(where date>=date_trunc('month',today)::date)
+        over(partition by sheet_id))::int month_days
+    from activity_days order by sheet_id,date desc
   ), summaries as materialized (
     select s.id,s.name,s.goal,s.weekdays,s.sort_order,s.archived_at,
       coalesce(i.exercise_count,0) exercise_count,coalesce(i.available,false) available,
