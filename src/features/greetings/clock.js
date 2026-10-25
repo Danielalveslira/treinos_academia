@@ -1,4 +1,8 @@
-import { BUSINESS_TIME_ZONE, businessDayKey } from '../../utils/businessDate.js'
+import {
+  msUntilNextBusinessDay,
+  secondsOfDayIn,
+  businessDayKey,
+} from '../../utils/businessDate.js'
 import {
   getDeviceTimezone,
   getTrainingTime,
@@ -18,21 +22,9 @@ const SAFETY_MARGIN = SECOND // cai já do lado novo da fronteira
 const MIN_DELAY = SECOND
 const MAX_DELAY = DAY
 
-function secondsOfDayIn(timeZone, now) {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(now)
-  const value = (type) => Number(parts.find((part) => part.type === type)?.value)
-  return value('hour') * 3600 + value('minute') * 60 + value('second')
-}
-
-export function msUntilNextBusinessDay(now = new Date()) {
-  return DAY - (secondsOfDayIn(BUSINESS_TIME_ZONE, now) * SECOND + now.getMilliseconds())
-}
+// Reexportado para não quebrar quem já importa daqui (ver clock.test.js); a implementação mora em
+// utils/businessDate.js, de onde a rotação diária de banners da Home também a usa.
+export { msUntilNextBusinessDay }
 
 export function msUntilNextLocalPeriod(now = new Date()) {
   const next = new Date(now)

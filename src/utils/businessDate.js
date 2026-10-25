@@ -22,6 +22,8 @@ const formatter = new Intl.DateTimeFormat('en-CA', {
 })
 
 const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/
+const SECOND = 1000
+const DAY = 86_400_000
 
 export function isBusinessDayKey(value) {
   return typeof value === 'string' && DAY_KEY.test(value)
@@ -56,4 +58,23 @@ export function isFutureBusinessDay(dayKey, now = new Date()) {
 export function entityDayKey(value) {
   const text = typeof value === 'string' ? value.slice(0, 10) : ''
   return isBusinessDayKey(text) ? text : null
+}
+
+export function secondsOfDayIn(timeZone, now) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now)
+  const value = (type) => Number(parts.find((part) => part.type === type)?.value)
+  return value('hour') * 3600 + value('minute') * 60 + value('second')
+}
+
+// Quanto falta (ms) para a próxima virada do dia de negócio (America/Sao_Paulo), a partir de `now`.
+// Única fonte para agendar um único setTimeout até a próxima fronteira -- sem polling -- usada tanto
+// pelas saudações (features/greetings/clock.js) quanto pela rotação diária de banners (features/home).
+export function msUntilNextBusinessDay(now = new Date()) {
+  return DAY - (secondsOfDayIn(BUSINESS_TIME_ZONE, now) * SECOND + now.getMilliseconds())
 }

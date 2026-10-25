@@ -367,6 +367,9 @@ export function WorkoutForm({
       type: getExerciseType(selectedExercise),
       date: current.date,
       note: current.note,
+      // Ficha em que este registro nasce (null em treino livre) -- ver workoutsService.createWorkout.
+      // Só importa na criação: updateWorkout nunca recebe/altera sheetId (imutável após criado).
+      sheetId: sheetScope?.id || null,
     }
     if (cardio) {
       const committed = current.cardioCommitted || cardioValues()

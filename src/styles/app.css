@@ -3513,6 +3513,136 @@ body {
   background: var(--fitness-accent-strong);
 }
 
+.workout-hero--loading {
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+}
+
+.hero-today-pill {
+  margin-left: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--fitness-accent);
+  border-radius: 999px;
+  color: var(--fitness-accent-strong);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.workout-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0 0 24px;
+  color: #c8cfc5;
+  font-size: 13px;
+}
+
+.workout-hero-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workout-hero-meta strong {
+  color: white;
+  font-weight: 700;
+}
+
+.workout-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.workout-hero-actions .start-workout-button {
+  flex: 1 1 auto;
+}
+
+.workout-hero-actions > a:not(.start-workout-button),
+.workout-hero-actions > button:not(.start-workout-button) {
+  min-height: 48px;
+  padding-inline: 18px;
+  border-color: #ffffff4a;
+  background: transparent;
+  color: white;
+  font-weight: 650;
+}
+
+.sheet-insights-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 520px;
+  padding-top: 20px;
+  border-top: 1px solid #ffffff22;
+}
+
+.sheet-insight-card {
+  display: flex;
+  flex: 1 1 220px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #ffffff22;
+  border-radius: var(--fitness-radius-md);
+  background: #ffffff0d;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sheet-insight-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ffffff14;
+  color: var(--fitness-accent-strong);
+}
+
+.sheet-insight-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.sheet-insight-eyebrow {
+  overflow: hidden;
+  color: #c8cfc5;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-insight-text strong {
+  overflow: hidden;
+  color: white;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-insight-text small {
+  color: #a7af9f;
+  font-size: 11px;
+}
+
+.sheet-insight-chevron {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: #a7af9f;
+}
+
 .performance-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3973,6 +4103,20 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   border-radius: var(--fitness-radius-lg);
   background: var(--fitness-surface);
   box-shadow: var(--fitness-shadow);
+}
+
+/* Estados sem foto (offline, erro, sem fichas ainda): uma coluna só, sem reservar espaço vazio
+   para a imagem que não existe aqui -- ver RecommendedSheetPanel.jsx. */
+.empty-workout:not(:has(picture)) {
+  grid-template-columns: 1fr;
+  min-height: 0;
+}
+.empty-workout:not(:has(picture)) .empty-workout-content {
+  max-width: 560px;
+  padding: 36px;
+}
+.empty-workout:not(:has(picture))::after {
+  content: none;
 }
 
 .empty-workout > picture > img {
@@ -5266,6 +5410,12 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .workout-hero-content h2 { max-width: 310px; font-size: 28px; }
   .workout-hero-content p { max-width: 320px; margin: 8px 0 18px; font-size: 14px; line-height: 1.45; }
   .start-workout-button[data-variant='primary'] { width: 100%; justify-content: center; min-height: 54px; font-size: 16px; border-radius: 12px; }
+  .hero-today-pill { display: block; margin: 6px 0 0; width: fit-content; }
+  .workout-hero-meta { margin-bottom: 18px; font-size: 12px; }
+  .workout-hero-actions { flex-direction: column; margin-bottom: 20px; }
+  .workout-hero-actions > a, .workout-hero-actions > button { width: 100%; justify-content: center; }
+  .sheet-insights-row { max-width: none; padding-top: 16px; }
+  .sheet-insight-card { flex: 1 1 100%; }
   .performance-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 8px 34px; border-radius: 0 0 16px 16px; }
   .performance-strip > div { padding: 16px 12px; }
   .performance-strip > div:last-child { grid-column: 1 / -1; border-top: 1px solid transparent; }
