@@ -363,8 +363,9 @@ try {
         'sheet list never queries the personal library'
       )
       await page.getByRole('link', { name: 'Ficha A', exact: true }).click()
-      await page.getByRole('heading', { name: 'Puxada oficial', exact: true }).waitFor()
-      assert.deepEqual(await page.locator('.sheet-card h2').allTextContents(), [
+      await page.getByRole('heading', { name: 'Ficha A', exact: true }).waitFor()
+      // Linhas compactas (índice + nome + meta), não um card grande por exercício.
+      assert.deepEqual(await page.locator('.sheet-row-name').allTextContents(), [
         'Puxada oficial',
         'Supino oficial',
       ])
@@ -375,8 +376,9 @@ try {
         0,
         'guides are fetched only on demand'
       )
+      // Tocar a linha (não um botão "Ver execução de [nome inteiro]") abre o guia.
       await page
-        .getByRole('button', { name: 'Ver execução de Puxada oficial', exact: true })
+        .getByRole('button', { name: 'Ver instruções e execução de Puxada oficial', exact: true })
         .click()
       const guide = page.getByRole('dialog', { name: 'Puxada oficial', exact: true })
       await guide.waitFor()
@@ -384,23 +386,22 @@ try {
       assert.ok(await page.evaluate(() => window.__guideReads > 0))
       await guide.getByRole('button', { name: 'Fechar', exact: true }).click()
       assert.equal(
-        await page.evaluate(() => document.activeElement.textContent),
-        'Ver execução de Puxada oficial'
+        await page.evaluate(() => document.activeElement.getAttribute('aria-label')),
+        'Ver instruções e execução de Puxada oficial'
       )
 
+      // Ao iniciar, vai direto para o PRIMEIRO exercício elegível na ordem da ficha
+      // (Puxada oficial) -- sem tela intermediária de escolha solta.
       await page.getByRole('button', { name: 'Iniciar treino', exact: true }).click()
-      await page.getByRole('heading', { name: 'Escolha o exercício', exact: true }).waitFor()
-      assert.deepEqual(await page.locator('.workout-exercise-card strong').allTextContents(), [
-        'Puxada oficial',
-        'Supino oficial',
-      ])
+      await page.getByRole('button', { name: 'Exercício 1 de 2', exact: true }).waitFor()
+      assert.equal(await page.locator('.workout-exercise-card').count(), 0)
+      await page.getByText('Puxada oficial', { exact: true }).waitFor()
       assert.deepEqual(
         await page.evaluate(() => window.__workoutWrites),
         [],
         'starting creates no workout rows'
       )
-      await page.getByRole('button', { name: 'Puxada oficial', exact: true }).click()
-      await page.getByText('Metas da ficha (referência):', { exact: false }).waitFor()
+      await page.getByText('Meta da ficha:', { exact: false }).waitFor()
       assert.deepEqual(
         await page.evaluate(() => window.__workoutWrites),
         [],
@@ -422,7 +423,8 @@ try {
       assert.equal(await page.locator('.workout-form').count(), 1)
       await context.setOffline(false)
       await page.goto(origin + `/fichas/${sid}`)
-      await page.getByRole('heading', { name: 'Puxada oficial', exact: true }).waitFor()
+      await page.getByRole('heading', { name: 'Ficha A', exact: true }).waitFor()
+      await page.getByText('Puxada oficial', { exact: true }).waitFor()
       await page.getByRole('link', { name: 'Editar ficha', exact: true }).click()
       await page.getByRole('heading', { name: 'Editar ficha', exact: true }).waitFor()
       // The editor uses one bounded viewport for both sources; pagination must not grow the page.
@@ -566,7 +568,7 @@ try {
         .click()
       await save.click()
       await page.getByRole('heading', { name: 'Nome mantido sem rede', exact: true }).waitFor()
-      assert.deepEqual(await page.locator('.sheet-card h2').allTextContents(), [
+      assert.deepEqual(await page.locator('.sheet-row-name').allTextContents(), [
         'Supino oficial',
         'Puxada oficial',
       ])
@@ -694,7 +696,7 @@ try {
         await page.getByRole('button', { name: 'Voltar à biblioteca', exact: true }).click()
         await page.getByRole('button', { name: 'Adicionar Supino oficial', exact: true }).click()
         await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click()
-        await page.getByRole('heading', { name: 'Supino oficial', exact: true }).waitFor()
+        await page.getByText('Supino oficial', { exact: true }).waitFor()
         assert.equal(
           await page.getByRole('button', { name: 'Iniciar treino', exact: true }).isEnabled(),
           true

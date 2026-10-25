@@ -5,6 +5,7 @@
 // nem divergirem, e para evitar import circular entre App e Layout.
 export const routeLoaders = {
   '/app': () => import('./pages/Dashboard'),
+  '/treinar': () => import('./features/workoutSheets/TreinarPage'),
   '/novo-treino': () => import('./pages/NewWorkout'),
   '/historico': () => import('./pages/History'),
   '/progresso': () => import('./pages/Progress'),

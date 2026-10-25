@@ -16,7 +16,7 @@
     { "source": "/vitrine", "destination": "/vitrine.html" },
     { "source": "/profissionais", "destination": "/profissionais.html" },
     {
-      "source": "/:path((?:app|login|cadastro|esqueci-senha|confirmar-email|redefinir-senha|regras-da-comunidade|termos-de-uso|politica-de-privacidade|termos-publicacao-vitrine|atendimento|profissionais/[^/]+|exercicios(?:/[^/]+)?|fichas(?:/[^/]+)?(?:/editar)?|novo-treino|historico|progresso|perfil|evocash|entenda-suas-moedas|minhas-promocoes|meus-anuncios|minha-vitrine|comunidades(?:/.*)?|admin/(?:compras-evocash|moderacao|contas|vitrines|exclusao-contas|comunidades|parcerias|promocoes|exercicios(?:-imagens)?)))",
+      "source": "/:path((?:app|login|cadastro|esqueci-senha|confirmar-email|redefinir-senha|regras-da-comunidade|termos-de-uso|politica-de-privacidade|termos-publicacao-vitrine|atendimento|profissionais/[^/]+|exercicios(?:/[^/]+)?|fichas(?:/[^/]+)?(?:/editar)?|treinar|novo-treino|historico|progresso|perfil|evocash|entenda-suas-moedas|minhas-promocoes|meus-anuncios|minha-vitrine|comunidades(?:/.*)?|admin/(?:compras-evocash|moderacao|contas|vitrines|exclusao-contas|comunidades|parcerias|promocoes|exercicios(?:-imagens)?)))",
       "destination": "/app-shell.html"
     }
   ],

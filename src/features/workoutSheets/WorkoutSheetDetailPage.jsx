@@ -1,20 +1,32 @@
 import { useCallback, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Button, Flash, Heading, Spinner } from '@primer/react'
+import { ChevronRightIcon } from '@primer/octicons-react'
 import { WorkoutExerciseGuide } from '../../components/WorkoutExerciseGuide'
 import { useWorkoutSheets } from './useWorkoutSheets.js'
 import { sheetError } from './workoutSheetsService.js'
 import { prescription, SHEET_GOALS, WEEKDAYS } from './workoutSheetValidation.js'
+import { originState } from '../../utils/navigation.js'
 import './workoutSheets.css'
 export default function WorkoutSheetDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { data: sheet, loading, error, refresh, online } = useWorkoutSheets(id)
   const [guide, setGuide] = useState(null)
   const triggerRef = useRef(null)
   const close = useCallback(() => setGuide(null), [])
   const ready =
     sheet && !sheet.archived_at && sheet.items.length > 0 && sheet.items.every((i) => i.available)
+  const metaLine = sheet
+    ? [
+        SHEET_GOALS[sheet.goal],
+        sheet.goal_description,
+        sheet.weekdays?.length > 0 && sheet.weekdays.map((d) => WEEKDAYS[d]).join(', '),
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : ''
   return (
     <section className="workout-sheets">
       <Link to="/exercicios">Voltar para minhas fichas</Link>
@@ -32,9 +44,7 @@ export default function WorkoutSheetDetailPage() {
               Editar ficha
             </Button>
           </header>
-          <p>{SHEET_GOALS[sheet.goal]}</p>
-          <p>{sheet.goal_description}</p>
-          <p>{sheet.weekdays.map((d) => WEEKDAYS[d]).join(' · ')}</p>
+          {metaLine && <p className="sheet-meta-line">{metaLine}</p>}
           {sheet.archived_at && (
             <Flash>Ficha arquivada. Restaure em Minhas fichas para iniciar.</Flash>
           )}
@@ -42,34 +52,46 @@ export default function WorkoutSheetDetailPage() {
             <Flash>Rascunho: adicione pelo menos um exercício para iniciar.</Flash>
           )}
           <ol className="sheet-list">
-            {sheet.items.map((item) => (
-              <li className="sheet-card" key={item.id}>
-                <h2>{item.exercise.name}</h2>
-                <p>{prescription(item) || 'Sem metas definidas'}</p>
-                {!item.available && (
-                  <Flash variant="warning">
-                    Indisponível para novos treinos. Substitua este exercício por um oficial
-                    publicado e ativo.
-                  </Flash>
-                )}
-                <Button
+            {sheet.items.map((item, index) => (
+              <li className="sheet-row-item" key={item.id}>
+                <button
+                  type="button"
+                  className="sheet-row"
                   onClick={(event) => {
                     triggerRef.current = event.currentTarget
                     setGuide(item.exercise)
                   }}
+                  aria-label={`Ver instruções e execução de ${item.exercise.name}`}
                 >
-                  Ver execução de {item.exercise.name}
-                </Button>
+                  <span className="sheet-row-index" aria-hidden="true">
+                    {index + 1}
+                  </span>
+                  <span className="sheet-row-main">
+                    <span className="sheet-row-name">{item.exercise.name}</span>
+                    {prescription(item) && (
+                      <span className="sheet-row-meta">{prescription(item)}</span>
+                    )}
+                  </span>
+                  <ChevronRightIcon size={16} aria-hidden="true" />
+                </button>
+                {!item.available && (
+                  <Flash variant="warning" className="sheet-row-warning">
+                    Indisponível para novos treinos. Substitua este exercício por um oficial
+                    publicado e ativo.
+                  </Flash>
+                )}
               </li>
             ))}
           </ol>
           <p>
-            As metas são referências. Séries e resultados reais serão informados durante o treino. A
-            marcação de concluído é por exercício no dia, compartilhada entre fichas.
+            As metas são referências. A marcação de concluído é por exercício no dia, compartilhada
+            entre fichas.
           </p>
           <Button
             variant="primary"
-            onClick={() => navigate(`/novo-treino?ficha=${id}`)}
+            onClick={() =>
+              navigate(`/novo-treino?ficha=${id}`, { state: originState(location) })
+            }
             disabled={!ready || !online}
           >
             Iniciar treino

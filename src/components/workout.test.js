@@ -308,3 +308,74 @@ test('new sessions hide legacy exercises; historical edits retain their original
   assert.match(edit, /Legado pessoal/)
   assert.match(edit, /Salvar alterações/)
 })
+
+// Abrir uma ficha vai direto para o primeiro exercício elegível na ordem planejada — sem a
+// tela de escolha solta de grupo/exercício (NewWorkout.jsx passa o primeiro id elegível como
+// defaultExerciseId; aqui garantimos que o formulário realmente abre nele).
+test('sheet scope: opens straight on the first eligible exercise, with a concise position indicator', () => {
+  const sheetScope = {
+    id: 'sheet-1',
+    name: 'Treino A',
+    items: [
+      {
+        id: 'item-1',
+        exercise_id: 'squat',
+        exercise: { id: 'squat', name: 'Agachamento' },
+        target_sets: 3,
+        reps_min: 8,
+        reps_max: 12,
+        rest_seconds: 90,
+        available: true,
+      },
+      {
+        id: 'item-2',
+        exercise_id: 'bench',
+        exercise: { id: 'bench', name: 'Supino' },
+        available: true,
+      },
+    ],
+  }
+  const html = render({
+    exercises: [
+      { id: 'squat', name: 'Agachamento', source: 'catalog', provider: 'evolutus_dataset', active: true },
+      { id: 'bench', name: 'Supino', source: 'catalog', provider: 'evolutus_dataset', active: true },
+    ],
+    sheetScope,
+    defaultExerciseId: 'squat',
+  })
+  // Nada de tela de grupo nem de escolha de exercício: o registro da primeira série já
+  // aparece no primeiro render.
+  assert.doesNotMatch(html, /Qual grupo você vai treinar\?/)
+  assert.doesNotMatch(html, /Escolha o exercício/)
+  assert.match(html, /<strong>Agachamento<\/strong>/)
+  assert.match(html, /Série 1 de 3/)
+  // Indicador textual conciso substitui os blocos "2 Exercício"/"3 Séries" (só usados fora de ficha).
+  assert.match(html, />Exercício 1 de 2</)
+  assert.doesNotMatch(html, />1 Grupo</)
+  assert.doesNotMatch(html, />2 Exercício</)
+  assert.doesNotMatch(html, />3 Séries</)
+  // Meta da ficha em uma linha, sem o aviso longo repetido nem o rótulo "Sem metas definidas".
+  assert.match(html, /Meta da ficha: 3 séries · 8–12 repetições · 90s de descanso/)
+  assert.doesNotMatch(html, /Sem metas definidas/)
+  assert.doesNotMatch(html, /Sobre as metas da ficha/)
+  assert.doesNotMatch(html, /Selecione um exercício para ver as metas/)
+})
+
+test('sheet scope: no reference line at all when the current exercise has no goals', () => {
+  const sheetScope = {
+    id: 'sheet-1',
+    name: 'Treino A',
+    items: [
+      { id: 'item-1', exercise_id: 'squat', exercise: { id: 'squat', name: 'Agachamento' }, available: true },
+    ],
+  }
+  const html = render({
+    exercises: [
+      { id: 'squat', name: 'Agachamento', source: 'catalog', provider: 'evolutus_dataset', active: true },
+    ],
+    sheetScope,
+    defaultExerciseId: 'squat',
+  })
+  assert.doesNotMatch(html, /sheet-reference/)
+  assert.match(html, />Exercício 1 de 1</)
+})

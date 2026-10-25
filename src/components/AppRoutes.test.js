@@ -105,6 +105,7 @@ before(async () => {
               const page = () => Promise.resolve({ default: () => <span>página</span> })
               export const routeLoaders = {
                 '/app': page,
+                '/treinar': page,
                 '/novo-treino': page,
                 '/historico': page,
                 '/progresso': page,
@@ -134,6 +135,7 @@ test('exercise data provider wraps only routes that consume exercise data', () =
     '/app',
     '/exercicios',
     '/exercicios/squat',
+    '/treinar',
     '/novo-treino',
     '/historico',
     '/progresso',
