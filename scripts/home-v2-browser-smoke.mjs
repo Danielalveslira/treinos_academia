@@ -181,8 +181,14 @@ try {
       activity = 1
       // Both photo failures settle on a fixed-size themed background without retry loops.
       const boxBefore = await page.locator('.workout-hero').boundingBox()
+      const firstSrc = await page.locator('.workout-hero img').getAttribute('src')
       await page.locator('.workout-hero img').dispatchEvent('error')
+      await page.waitForFunction((original) => {
+        const img = document.querySelector('.workout-hero img')
+        return img && img.getAttribute('src') !== original
+      }, firstSrc)
       await page.locator('.workout-hero img').dispatchEvent('error')
+      await page.locator('.workout-hero img').waitFor({ state: 'detached' })
       assert.equal(await page.locator('.workout-hero img').count(), 0)
       assert.deepEqual(await page.locator('.workout-hero').boundingBox(), boxBefore)
       // Network failures surface honestly and explicit retry recovers.
