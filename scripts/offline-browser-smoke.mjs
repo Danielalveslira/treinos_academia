@@ -89,7 +89,7 @@ async function seed(page, { snapshot = false } = {}) {
         } })
         tx.objectStore('syncMeta').put({ key: `user:${userId}:exercises:syncedAt`, value: now })
         tx.objectStore('syncMeta').put({ key: `user:${userId}:workouts:syncedAt`, value: now })
-        tx.objectStore('userExercises').put({ id: exerciseId, user_id: userId, name: 'Agachamento', muscle_group: 'quadriceps', type: 'strength', note: '', active: true, source: 'custom', order: 0 })
+        tx.objectStore('userExercises').put({ id: exerciseId, user_id: userId, name: 'Agachamento', muscle_group: 'Pernas', type: 'strength', note: '', active: true, source: 'catalog', provider: 'evolutus_dataset', provider_exercise_id: 'offline-fixture', catalog_id: 'f0000000-0000-4000-8000-000000000001', catalogAvailable: true, order: 0 })
         tx.objectStore('workouts').put({ id: workoutId, user_id: userId, exercise_id: exerciseId, date: '2026-10-05', created_at: '2026-10-05T10:00:00Z', type: 'strength', set_details: [{ weight: 20, reps: 10 }], sets: 1, note: '' })
         tx.objectStore('outbox').put({ mutation_id: mutationId, user_id: userId, seq: 1, entity_type: 'workout', entity_id: workoutId, operation: 'workout.update', payload: { exercise_id: exerciseId, date: '2026-10-05', type: 'strength', set_details: [{ weight: 20, reps: 10 }], sets: 1, note: '' }, dates: ['2026-10-05'], base_updated_at: null, created_at: '2026-10-05T10:00:00Z', updated_at: '2026-10-05T10:00:00Z', attempts: 0, last_attempt_at: null, next_attempt_at: null, last_error: null, status: 'pending' })
         if (snapshot) {

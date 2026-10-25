@@ -104,6 +104,7 @@ test('offline: aviso honesto e Treino livre, sem recomendação inventada', () =
   const html = render()
   assert.match(html, /Indisponível offline/)
   assert.match(html, />Treino livre</)
+  assert.match(html, /href="\/novo-treino"/)
   assert.doesNotMatch(html, /Iniciar ficha/)
 })
 

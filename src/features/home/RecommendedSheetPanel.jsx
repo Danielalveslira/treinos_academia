@@ -115,9 +115,11 @@ export function RecommendedSheetPanel() {
             A recomendação de ficha precisa de conexão. Seus registros continuam salvos normalmente.
           </p>
           <Button
+            as={RouterLink}
+            to="/novo-treino"
+            state={originState(location)}
             className="empty-workout-cta"
             leadingVisual={PlayIcon}
-            onClick={() => navigate('/novo-treino', { state: originState(location) })}
           >
             Treino livre
           </Button>
@@ -249,8 +251,8 @@ export function RecommendedSheetPanel() {
           todayKey={todayKey}
         />
         <p className="sheet-insights-disclosure">
-          Atividade registrada não comprova conclusão da ficha. Novos registros salvos apenas offline
-          não são vinculados à ficha e ficam fora destes indicadores.
+          Atividade registrada não comprova conclusão da ficha. Novos registros salvos apenas
+          offline não são vinculados à ficha e ficam fora destes indicadores.
         </p>
       </div>
     </section>
