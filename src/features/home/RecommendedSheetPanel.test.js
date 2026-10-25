@@ -54,11 +54,19 @@ before(async () => {
             path: 'use-banner',
             namespace: 'stub',
           }))
+          context.onResolve({ filter: /hooks\/useAuth$/ }, () => ({
+            path: 'auth',
+            namespace: 'stub',
+          }))
+          context.onLoad({ filter: /^auth$/, namespace: 'stub' }, () => ({
+            contents: `import {__getAuth} from './useSheetInsights.js'; export const useAuth = __getAuth`,
+          }))
           context.onLoad({ filter: /^use-insights$/, namespace: 'stub' }, () => ({
             contents: `
               let fixture = { online: true, loading: true, error: null, hasSheets: false, recommendation: null, lastTrained: null, mostTrained: null, refresh: () => {} }
               export const __setFixture = (next) => { fixture = next }
               export const useSheetInsights = () => fixture
+              export const __getAuth = () => ({user:{uid:'fixture-user'},profile:fixture.profile})
             `,
           }))
           context.onLoad({ filter: /^use-banner$/, namespace: 'stub' }, () => ({

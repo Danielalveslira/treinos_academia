@@ -3454,6 +3454,15 @@ body {
   object-position: 52% 31%;
 }
 
+/* Portrait originals retain the full athlete, blending into the dark hero background. */
+.workout-hero > picture > img.hero-photo--portrait {
+  width: auto;
+  max-width: 62%;
+  mask-image: linear-gradient(90deg, transparent, black 25%);
+  object-fit: contain;
+  object-position: right center;
+}
+
 .workout-hero-shade {
   position: absolute;
   inset: 0;
@@ -5411,6 +5420,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 
   .workout-hero { min-height: 340px; border-radius: 20px; }
   .workout-hero > picture > img { inset: 0; width: 100%; object-position: center 22%; opacity: .84; }
+  .workout-hero > picture > img.hero-photo--portrait { width: 100%; max-width: 100%; mask-image: none; object-position: center top; }
   .workout-hero-shade { background: linear-gradient(0deg, #090d09f5 3%, #090d09ba 43%, transparent 78%); }
   .workout-hero-content { justify-content: flex-end; width: 100%; min-height: 340px; padding: 20px; }
   .workout-hero-content h2 { max-width: 310px; font-size: 28px; }
@@ -6101,3 +6111,7 @@ div:has(> .ev-zoom-dialog) {
   --button-default-bgColor-hover: #ffffff14;
   --button-default-borderColor-hover: var(--fitness-photo-border);
 }
+
+.sheet-insights-disclosure summary { cursor: pointer; min-height: 24px; padding-block: 4px; }
+.workout-hero-content .sheet-insights-disclosure p { margin: 6px 0 0; font-size: 11px; line-height: 1.5; }
+.empty-workout .sheet-insights-disclosure { color: var(--fitness-muted); font-size: 12px; }

@@ -7,6 +7,8 @@ import { DASHBOARD_BANNER_PHOTOS } from './dashboardBanners.js'
 // recarregar a página: UM setTimeout até a próxima meia-noite -- sem setInterval, sem polling -- e
 // reavaliação ao voltar para o app (abas em segundo plano pausam timers; o celular pode ter dormido
 // atravessando a virada). Mesmo mecanismo de features/greetings/useGreetingClock.js.
+// A changed profile supplies a different stable sequence; selection updates immediately,
+// while the calendar effect keeps the same single timer (no image/profile dependency).
 export function useDailyBanner(photos = DASHBOARD_BANNER_PHOTOS) {
   const [dayKey, setDayKey] = useState(() => businessDayKey())
 

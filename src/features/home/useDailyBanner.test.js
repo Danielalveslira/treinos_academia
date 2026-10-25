@@ -18,17 +18,19 @@ before(async () => {
       contents: `
         import { createElement } from 'react'
         import TestRenderer, { act } from 'react-test-renderer'
+        import { getDashboardBannerSequence } from './dashboardBanners.js'
         import { useDailyBanner } from './useDailyBanner.js'
         export { act }
         const PHOTOS = [{ name: 'a' }, { name: 'b' }, { name: 'c' }]
-        function Probe() {
-          const photo = useDailyBanner(PHOTOS)
+        function Probe({sexo,personalized=false}) {
+          const photo = useDailyBanner(personalized ? getDashboardBannerSequence(sexo) : PHOTOS)
           globalThis.__seen.push(photo)
           return null
         }
-        export function render() {
+        export const updateProfile = (root,sexo) => act(()=>root.update(createElement(Probe,{sexo,personalized:true})))
+        export function render(props = {}) {
           let component
-          act(() => { component = TestRenderer.create(createElement(Probe)) })
+          act(() => { component = TestRenderer.create(createElement(Probe,props)) })
           return component
         }
       `,
@@ -137,3 +139,42 @@ test('suspensão prolongada e virada de mês: resume usa o dia atual, sem percor
     mock.timers.reset()
   }
 })
+
+test('perfil atualiza a foto sem recarregar nem reiniciar o relógio do dia', () => {
+  mock.timers.enable({ apis: ['setTimeout', 'Date'], now: new Date('2026-10-26T12:00:00-03:00') })
+  try {
+    const root = api.render({ sexo: 'masculino', personalized: true })
+    assert.equal(globalThis.__seen.at(-1).name, 'capa')
+    api.updateProfile(root, 'feminino')
+    assert.equal(globalThis.__seen.at(-1).name, 'sexo_mulher')
+    api.updateProfile(root, 'nao_informar')
+    assert.equal(globalThis.__seen.at(-1).name, 'home-banner-anilhas')
+    assert.equal(
+      [...listeners.values()].reduce((n, list) => n + list.length, 0),
+      2
+    )
+    api.act(() => root.unmount())
+  } finally {
+    mock.timers.reset()
+  }
+})
+
+for (const sexo of ['masculino', 'feminino', 'nao_informar'])
+  test(`meia-noite SP aplica sequência de ${sexo}`, () => {
+    mock.timers.enable({ apis: ['setTimeout', 'Date'], now: new Date('2026-10-26T23:59:00-03:00') })
+    try {
+      const root = api.render({ sexo, personalized: true })
+      assert.equal(
+        globalThis.__seen.at(-1).name,
+        sexo === 'masculino' ? 'capa' : sexo === 'feminino' ? 'sexo_mulher' : 'home-banner-anilhas'
+      )
+      api.act(() => mock.timers.tick(120000))
+      assert.equal(
+        globalThis.__seen.at(-1).name,
+        sexo === 'nao_informar' ? 'home-banner-equipe' : 'home-banner-anilhas'
+      )
+      api.act(() => root.unmount())
+    } finally {
+      mock.timers.reset()
+    }
+  })

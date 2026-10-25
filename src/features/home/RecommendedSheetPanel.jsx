@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { DASHBOARD_BANNER_PHOTOS } from './dashboardBanners.js'
+import { getDashboardBannerSequence, getDashboardBannerFallbacks } from './dashboardBanners.js'
+import { useAuth } from '../../hooks/useAuth'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { Button, Heading, Spinner } from '@primer/react'
 import {
@@ -69,20 +70,35 @@ function SheetActivityCards({ lastTrained, mostTrained, todayKey }) {
   )
 }
 
+function MetricsDisclosure() {
+  return (
+    <details className="sheet-insights-disclosure">
+      <summary>Sobre as métricas e o uso offline</summary>
+      <p>
+        Atividade registrada não comprova conclusão da ficha. Novos registros salvos apenas offline
+        não são vinculados à ficha e ficam fora destes indicadores.
+      </p>
+    </details>
+  )
+}
+
 function HeroPhoto({ photo }) {
   const [failed, setFailed] = useState([])
-  const current = [photo, ...DASHBOARD_BANNER_PHOTOS.filter((p) => p.name !== photo.name)].find(
-    (p) => !failed.includes(p.name)
-  )
+  const current = getDashboardBannerFallbacks(photo).find((p) => !failed.includes(p.name))
   return current ? (
     <ResponsivePicture
+      className={current.frame === 'portrait' ? 'hero-photo--portrait' : undefined}
       name={current.name}
       alt={current.alt}
       width={current.width}
       height={current.height}
       sizes="(max-width: 767px) 100vw, 60vw"
       priority
-      onError={() => setFailed((previous) => [...previous, current.name])}
+      onError={() =>
+        setFailed((previous) =>
+          previous.includes(current.name) ? previous : [...previous, current.name]
+        )
+      }
     />
   ) : null
 }
@@ -92,7 +108,9 @@ export function RecommendedSheetPanel() {
   const location = useLocation()
   const { online, loading, error, hasSheets, recommendation, lastTrained, mostTrained, refresh } =
     useSheetInsights()
-  const photo = useDailyBanner()
+  const { user, profile } = useAuth()
+  const sequence = getDashboardBannerSequence(profile?.sexo)
+  const photo = useDailyBanner(sequence)
   const todayKey = businessDayKey()
 
   if (loading) {
@@ -188,10 +206,7 @@ export function RecommendedSheetPanel() {
             mostTrained={mostTrained}
             todayKey={todayKey}
           />
-          <p>
-            Indicadores mostram dias com atividade registrada, sem comprovar conclusão. Registros da
-            fila offline não entram nestes indicadores.
-          </p>
+          <MetricsDisclosure />
         </div>
       </section>
     )
@@ -203,7 +218,12 @@ export function RecommendedSheetPanel() {
 
   return (
     <section className="workout-hero" aria-labelledby="next-workout-title">
-      {photo && <HeroPhoto key={`${todayKey}:${photo.name}`} photo={photo} />}
+      {photo && (
+        <HeroPhoto
+          key={`${user?.uid}:${todayKey}:${sequence[0].name}:${photo.name}`}
+          photo={photo}
+        />
+      )}
       <div className="workout-hero-shade" />
       <div className="workout-hero-content">
         <span className="hero-kicker">
@@ -250,10 +270,7 @@ export function RecommendedSheetPanel() {
           mostTrained={mostTrained}
           todayKey={todayKey}
         />
-        <p className="sheet-insights-disclosure">
-          Atividade registrada não comprova conclusão da ficha. Novos registros salvos apenas
-          offline não são vinculados à ficha e ficam fora destes indicadores.
-        </p>
+        <MetricsDisclosure />
       </div>
     </section>
   )

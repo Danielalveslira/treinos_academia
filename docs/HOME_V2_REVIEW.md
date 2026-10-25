@@ -1,7 +1,12 @@
 # Home V2 — integridade e métricas
 
 Esta alteração pertence ao PR #76, cuja base permanece `feat/workout-sheets` (#75).
-Não requer alteração de produção nesta rodada. A migration original ainda inédita em produção foi corrigida.
+Estado confirmado: a migration `20261123000001_workout_sheet_attribution.sql` foi aplicada ao banco
+de produção em **25/10/2026 às 22:34 UTC**, após backup completo, restauração isolada, 44 assertions
+pgTAP na cópia dos dados e 19 verificações pós-aplicação. Histórico, fichas e contratos de conclusão/
+sincronização permaneceram idênticos. A migration anterior de fichas já estava instalada.
+O frontend de produção ainda não foi publicado; os PRs #75 e #76 continuam abertos, sem merge.
+A correção de fotografias descrita abaixo não altera nem reaplica migrations e não acessa o banco de produção.
 
 ## Associação histórica
 
@@ -70,11 +75,53 @@ da foto, sem adicionar timer.
 
 ## Fotografias e desempenho
 
-As duas fotos aprovadas e os assets AVIF/WebP permanecem. Há um único timeout para meia-noite
-SP e revalidação em visibilitychange/pageshow; suspensão prolongada recalcula o dia diretamente.
-Só a foto necessária é carregada. Falha tenta a outra aprovada; se ambas falharem, permanece um
-fundo fixo com contraste, sem loop nem layout shift. Tokens próprios de contraste sobre fotografia
-são compartilhados pelos temas, sem usar texto escuro do tema claro sobre o fundo fotográfico.
+A seleção usa exclusivamente `useAuth().profile?.sexo`, sem consulta adicional. Os valores aceitos
+são `masculino`, `feminino` e `nao_informar`. Ausência, null, vazio ou qualquer valor desconhecido
+usam a sequência neutra; nunca se deduz sexo de nome, foto ou outro campo.
+
+| Posição no ciclo | Masculino | Feminino | Não informado/desconhecido |
+|---|---|---|---|
+| 1 | `capa` | `sexo_mulher` | `home-banner-anilhas` |
+| 2 | `home-banner-anilhas` | `home-banner-anilhas` | `home-banner-equipe` |
+| 3 | `capa` | `sexo_mulher` | `home-banner-anilhas` |
+| 4 | `home-banner-equipe` | `home-banner-equipe` | `home-banner-equipe` |
+
+O ciclo global começa no dia de época 1970-01-01, usando o contador de dias de `dailyRotationIndex`.
+Os dias 26–29/10/2026 correspondem às posições 1–4. Repetir as duas neutras num ciclo de quatro
+preserva exatamente a rotação neutra anterior. Recarregar não muda a escolha. As regras estão em
+`dashboardBanners.js`; `getProfileHeroImage` mantém o contrato de metadados e passa a ter fallback
+neutro explícito. O hook existente recebe a sequência e continua com **um único timeout** até a
+meia-noite SP, revalidado por visibilitychange/pageshow. Trocar o perfil seleciona imediatamente
+outra sequência sem reiniciar esse relógio nem buscar as fichas novamente.
+
+A fotografia escolhida é a única carregada. Em caso de falha, tenta apenas as neutras aprovadas,
+sem duplicar a selecionada nem usar o atleta de outro grupo. Depois de esgotar os candidatos,
+permanece o fundo estável. Erros são reiniciados por conta, grupo visual ou dia, inclusive quando
+a foto selecionada tem o mesmo nome. Atualizar dados dos treinos mantém o mesmo elemento de imagem.
+Retratos usam contain, com a pessoa inteira à direita no desktop e centralizada no topo no mobile;
+as horizontais mantêm cover e o enquadramento aprovado. O gradiente, o contraste, as alturas mínimas
+e os controles à esquerda permanecem. O aviso de métricas foi reunido num details/summary nativo,
+acessível por teclado e fechado inicialmente; continua explicando atividade versus conclusão e a
+limitação dos novos registros salvos apenas offline.
+
+### Assets reutilizados e origem
+
+Nenhuma imagem foi substituída, gerada novamente ou baixada nesta correção. Os originais continuam
+em `imports/images-source/`, e as variantes AVIF/WebP de **480, 800 e 1024 px** já existem em `public/img/`.
+`ResponsivePicture` suporta os quatro nomes sem mudar o componente genérico.
+
+| Asset | Original | Variantes (largura × altura) | Peso das variantes |
+|---|---|---|---|
+| `capa` | PNG 1145 × 1374 | 480 × 576; 800 × 960; 1024 × 1229 | 13–42 KB |
+| `sexo_mulher` | PNG 1024 × 1536 | 480 × 720; 800 × 1200; 1024 × 1536 | 15–50 KB |
+| `home-banner-anilhas` | PNG 1672 × 941 | 480 × 270; 800 × 450; 1024 × 576 | assets anteriores preservados |
+| `home-banner-equipe` | PNG 1672 × 941 | 480 × 270; 800 × 450; 1024 × 576 | assets anteriores preservados |
+
+O histórico Git rastreia o atleta masculino ao commit `5cee8a4` e a atleta feminina a `ad05811`;
+os arquivos foram movidos/otimizados em `8f28e10`. Os PNGs não contêm metadados de autoria/licença,
+e não foi encontrado registro individual de licença ou fonte externa no repositório. O reuso dos
+mesmos arquivos foi solicitado explicitamente; **a comprovação documental da origem/direitos dos
+assets preexistentes permanece uma pendência**, sem presumir que a licença do código a resolva.
 
 O budget existente já falha no HEAD anterior: 374.456 B JS gzip, 78.145 B CSS gzip e 13 arquivos,
 contra baseline antigo de 320.749 B / 75.572 B / 6 arquivos. A build inicial desta correção mediu
@@ -99,6 +146,10 @@ alterado para ocultar a diferença. As medições finais e resultados oficiais s
 
 ## Evidência oficial
 
+O CI completo anterior à restauração da personalização foi aprovado no commit `8cfb865`,
+run `40239642723` (js, sql, secrets e finance-quality). A alteração atual executa novamente
+o workflow completo sobre seu próprio commit; o link e o resultado final ficam no PR #76.
+
 A primeira execução corretiva no Actions (`40237032754`) aprovou o job SQL: 78 suítes,
 3.349 assertions pgTAP, quatro cenários reais de concorrência e 207 testes de funções.
 A RPC completa mediu 5,380 ms com 2.001 registros nessa execução. Uma consulta simplificada
@@ -110,4 +161,32 @@ No Codespace, a inicialização dos serviços auxiliares e a rede Docker não s�
 foi possível aplicar todas as migrations em base descartável com ajuste temporário de DNS,
 mas o health check do GoTrue encerrou a base antes da suíte completa local. O job SQL oficial,
 isolado no runner GitHub, é a prova completa do banco; não foram usados mocks para validar
-constraints, segurança, cascatas ou concorrência. Nenhuma conexão remota de produção foi usada.
+constraints, segurança, cascatas ou concorrência. Essa limitação local foi posteriormente complementada
+pela restauração do backup e verificação da aplicação autorizada em produção, descritas no início.
+Nesta rodada de fotografias não há acesso nem alteração de banco remoto.
+
+
+## Verificação da personalização
+
+`dashboardBanners.test.js` cobre os três grupos, valores desconhecidos, sequência completa,
+repetição, metadados e candidatos de fallback. `useDailyBanner.test.js` cobre mudança de perfil,
+meia-noite SP, suspensão e retorno sem recarregar; as regras do recomendador permanecem intactas.
+O harness `home-v2-browser-smoke.mjs` verifica 120 combinações (três perfis × quatro posições ×
+cinco larguras × dois temas), com imagens reais, perfil atualizado em tela, fallback, ausência de
+requisições extras, erro/retry, preservação do elemento de imagem após invalidar dados de treino,
+layout estável e aviso acessível. Evidências locais ficam em `.finance-local/home-v2-photos/`;
+os resultados do CI no commit final são registrados no PR #76.
+
+
+Arquivos desta rodada de fotografias: `src/constants/profileHeroImage.js`,
+`src/features/home/dashboardBanners.js` e novo teste, `useDailyBanner.js` e teste,
+`RecommendedSheetPanel.jsx` e teste, `src/styles/app.css`,
+`scripts/home-v2-browser-smoke.mjs` e este documento. `dailyRotation.js`, `ResponsivePicture`,
+as imagens binárias, migrations e serviços de métricas/escrita permanecem inalterados.
+
+
+Medição local da alteração de fotos (mesmas variáveis de build antes/depois): boot JS gzip
+375.185 → 375.179 B (-6 B), CSS gzip 78.405 → 78.517 B (+112 B), 13 arquivos em ambos.
+Nenhuma dependência nem variante de imagem nova. O budget global preexistente continua acima
+do limite e não foi alterado. A suíte JavaScript completa passou com 2.221 testes; lint sem erros
+(com os mesmos 16 avisos preexistentes) e build aprovado. O CI completo é novamente obrigatório.
