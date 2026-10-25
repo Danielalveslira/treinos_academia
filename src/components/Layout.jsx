@@ -3,9 +3,9 @@ import { ErrorBoundary } from './ErrorBoundary'
 import { Suspense, lazy } from 'react'
 import { Button, Flash, useConfirm } from '@primer/react'
 import {
+  ChecklistIcon,
   HomeIcon,
   HistoryIcon,
-  ListUnorderedIcon,
   PeopleIcon,
   PlayIcon,
 } from '@primer/octicons-react'
@@ -42,8 +42,10 @@ const SyncStatus = lazy(() =>
 
 const NAV_ITEMS = [
   { to: '/app', label: 'Início', icon: HomeIcon, end: true },
-  { to: '/exercicios', label: 'Exercícios', icon: ListUnorderedIcon },
-  { to: '/novo-treino', label: 'Treinar', icon: PlayIcon, action: true },
+  // Rótulo "Fichas": a área virou gestão de planejamento (criar/editar/arquivar fichas).
+  // O caminho /exercicios NÃO muda — preserva links antigos, histórico e PWA.
+  { to: '/exercicios', label: 'Fichas', icon: ChecklistIcon },
+  { to: '/treinar', label: 'Treinar', icon: PlayIcon, action: true },
   { to: '/progresso', label: 'Progresso', icon: HistoryIcon },
   { to: '/comunidades', label: 'Comunidades', icon: PeopleIcon },
 ]
@@ -60,12 +62,13 @@ function Navigation({ mobile = false }) {
           key={item.to}
           to={item.to}
           end={item.end}
-          // Troca de seção (Início/Exercícios/Progresso/Comunidades) substitui a entrada
+          // Troca de seção (Início/Fichas/Progresso/Comunidades) substitui a entrada
           // atual do histórico em vez de empilhar uma nova — sem isso, alternar entre
           // abas repetidamente faz o botão voltar do navegador/celular ter que passar por
           // cada aba visitada antes de sair do app de verdade. "Treinar" fica de fora
-          // (é uma ação, não uma aba) porque o Cancelar de NewWorkout.jsx depende de
-          // returnToOrigin (utils/navigation.js) para voltar à origem registrada em state.from.
+          // (é uma ação, não uma aba): abre /treinar (seletor rápido de fichas), e o
+          // Cancelar de NewWorkout.jsx depende de returnToOrigin (utils/navigation.js)
+          // para voltar à origem registrada em state.from.
           replace={!item.action}
           state={item.action ? originState(location) : undefined}
           className={`nav-link${item.action ? ' nav-link-action' : ''}`}

@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button, Flash, Heading, Spinner } from '@primer/react'
+import { PlayIcon } from '@primer/octicons-react'
 import { useWorkoutSheets } from './useWorkoutSheets.js'
+import { originState } from '../../utils/navigation.js'
 import {
   archiveWorkoutSheet,
   duplicateWorkoutSheet,
@@ -15,6 +17,7 @@ export default function WorkoutSheetsPage() {
   const [page, setPage] = useState(0)
   const { data, loading, error, refresh, online } = useWorkoutSheets(null, false, archived, page)
   const navigate = useNavigate()
+  const location = useLocation()
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const lock = useRef(false)
@@ -81,13 +84,12 @@ export default function WorkoutSheetsPage() {
       {!loading && !error && !visible.length && (
         <div className="sheet-card">
           <h2>{archived ? 'Nenhuma ficha arquivada' : 'Sua primeira ficha começa aqui'}</h2>
-          <p>
-            Crie uma ficha A/B/C ou escolha um nome seu. Você pode salvar um rascunho e adicionar
-            exercícios depois.
-          </p>
-          <Button onClick={() => navigate('/fichas/nova')} disabled={!online}>
-            Criar ficha
-          </Button>
+          {!archived && (
+            <p>
+              Crie uma ficha A/B/C ou escolha um nome seu. Você pode salvar um rascunho e
+              adicionar exercícios depois — use o botão acima.
+            </p>
+          )}
           <p>
             <Link to="/exercicios?aba=biblioteca">Abrir biblioteca</Link> ·{' '}
             <Link to="/exercicios?aba=catalogo">Catálogo Evolutus</Link>
@@ -125,8 +127,20 @@ export default function WorkoutSheetsPage() {
             )}
             {!sheet.exercise_count && <p>Rascunho — adicione um exercício para iniciar.</p>}
             <div className="sheet-actions">
+              {!archived && sheet.exercise_count > 0 && (
+                <Button
+                  variant="primary"
+                  leadingVisual={PlayIcon}
+                  disabled={!online}
+                  onClick={() =>
+                    navigate(`/novo-treino?ficha=${sheet.id}`, { state: originState(location) })
+                  }
+                >
+                  Iniciar
+                </Button>
+              )}
               <Button as={Link} to={`/fichas/${sheet.id}`}>
-                Abrir
+                {!archived && sheet.exercise_count > 0 ? 'Detalhes' : 'Abrir'}
               </Button>
               <details>
                 <summary>Ações de {sheet.name}</summary>

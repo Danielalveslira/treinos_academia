@@ -54,6 +54,7 @@
 .exercise-area-nav {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.5rem;
   margin-block: 1rem;
 }
@@ -68,10 +69,84 @@
   background: var(--bgColor-accent-muted);
   font-weight: 600;
 }
+.exercise-area-nav-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.exercise-area-nav-secondary a {
+  border: 1px solid var(--borderColor-default);
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+}
+.exercise-area-nav-secondary a[aria-current='page'] {
+  border-color: var(--borderColor-accent-emphasis);
+}
+/* Catálogo Evolutus é a porta de entrada para novos exercícios oficiais — fica com
+   destaque de ação (cor de marca), não como mais um link secundário discreto. */
+.exercise-area-nav-secondary a.exercise-area-nav-catalog {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-color: var(--fitness-accent);
+  color: var(--fitness-accent-strong);
+  background: var(--fitness-surface);
+}
 .sheet-reference {
   padding: 0.75rem;
   margin-block: 0.75rem;
   border: 1px solid var(--borderColor-default);
   border-radius: 0.5rem;
   overflow-wrap: anywhere;
+}
+.sheet-meta-line {
+  overflow-wrap: anywhere;
+  color: var(--fgColor-muted);
+}
+/* Linhas compactas do detalhe da ficha (índice + nome + meta), em vez de um card grande
+   por exercício — ver WorkoutSheetDetailPage.jsx. */
+.sheet-list:has(.sheet-row-item) {
+  gap: 0.5rem;
+}
+.sheet-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 0.5rem;
+  background: var(--bgColor-default);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sheet-row-index {
+  flex: 0 0 auto;
+  min-width: 1.25rem;
+  text-align: right;
+  color: var(--fgColor-muted);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.sheet-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  overflow-wrap: anywhere;
+}
+.sheet-row-name {
+  font-weight: 600;
+}
+.sheet-row-meta {
+  font-size: 0.85rem;
+  color: var(--fgColor-muted);
+}
+.sheet-row-warning {
+  margin-block: 0.4rem;
 }

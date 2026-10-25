@@ -11,8 +11,9 @@ export function ExercisesRouteProvider({ children }) {
     (!params.get('aba') || params.get('aba') === 'fichas')
   const sheetDetail = /^\/fichas\/[^/]+$/.test(pathname) && pathname !== '/fichas/nova'
   const sheetExecution = pathname === '/novo-treino' && Boolean(params.get('ficha'))
+  const trainPicker = pathname === '/treinar'
   return (
-    <ExercisesProvider enabled={!sheetsList && !sheetDetail && !sheetExecution}>
+    <ExercisesProvider enabled={!sheetsList && !sheetDetail && !sheetExecution && !trainPicker}>
       {children}
     </ExercisesProvider>
   )

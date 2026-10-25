@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Box, Button, Heading, Spinner, Flash } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PlayIcon, PulseIcon } from '@primer/octicons-react'
@@ -55,13 +55,23 @@ function SheetWorkout({ id }) {
   if (confirmed.current && (!error || !online))
     return <WorkoutSession sheetScope={confirmed.current} />
   if (loading) return <Spinner aria-label="Validando ficha" />
-  if (error || !online)
+  if (error || !online) {
+    // SHEET_NOT_READY: a ficha está arquivada, vazia ou com exercício indisponível — o
+    // servidor já recusou o início (nenhum bypass client-side). Dá o caminho direto para
+    // corrigir, em vez de só deixar "Tentar novamente".
+    const canEdit = String(error?.message || '').includes('SHEET_NOT_READY')
     return (
       <Flash variant="danger" role="alert">
         {sheetError(error || new Error('SHEET_NETWORK_REQUIRED'))}{' '}
-        <Button onClick={refresh}>Tentar novamente</Button>
+        <Button onClick={refresh}>Tentar novamente</Button>{' '}
+        {canEdit && (
+          <Button as={Link} to={`/fichas/${id}/editar`}>
+            Editar ficha
+          </Button>
+        )}
       </Flash>
     )
+  }
   return data ? <WorkoutSession sheetScope={data} /> : null
 }
 
@@ -145,6 +155,10 @@ function WorkoutSession({ sheetScope }) {
   const requestedLegacy = exercises.some(
     (exercise) => exercise.id === defaultExerciseId && isLegacyExercise(exercise)
   )
+  // Ao abrir uma ficha, o fluxo vai direto para o primeiro exercício elegível na sequência
+  // planejada (sem a tela de escolha solta) — ver WorkoutForm.jsx (step inicial = 'register'
+  // quando o exercício inicial já está nas opções disponíveis).
+  const sheetDefaultExerciseId = sheetScope ? activeExercises[0]?.id || '' : defaultExerciseId
 
   return (
     <Box className="workout-session-page">
@@ -201,7 +215,7 @@ function WorkoutSession({ sheetScope }) {
           exercises={exercises}
           sheetScope={sheetScope}
           history={workouts}
-          defaultExerciseId={sheetScope ? '' : defaultExerciseId}
+          defaultExerciseId={sheetDefaultExerciseId}
           onCreate={handleCreate}
           onUpdate={handleUpdate}
           onCancel={() => returnToOrigin(navigate, location, '/app')}

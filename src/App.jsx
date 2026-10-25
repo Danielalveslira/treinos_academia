@@ -25,6 +25,7 @@ const ConfirmEmail = lazy(() => import('./pages/ConfirmEmail'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const Dashboard = lazy(routeLoaders['/app'])
 const Exercises = lazy(routeLoaders['/exercicios'])
+const Treinar = lazy(routeLoaders['/treinar'])
 const WorkoutSheetDetail = lazy(routeLoaders['/fichas/:id'])
 const WorkoutSheetEditor = lazy(routeLoaders['/fichas/editor'])
 const ExerciseDetail = lazy(routeLoaders['/exercicios/:id'])
@@ -100,6 +101,7 @@ export function AppRoutes() {
         >
           <Route path="/app" element={<Dashboard />} />
           <Route path="/exercicios" element={<Exercises />} />
+          <Route path="/treinar" element={<Treinar />} />
           <Route path="/fichas/nova" element={<WorkoutSheetEditor />} />
           <Route path="/fichas/:id/editar" element={<WorkoutSheetEditor />} />
           <Route path="/fichas/:id" element={<WorkoutSheetDetail />} />

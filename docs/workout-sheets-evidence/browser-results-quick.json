@@ -1,0 +1,46 @@
+{
+  "fixture": "synthetic HTTP RPC server; real UI/client/services; CPU 4x; 150ms RTT; 200KB/s down",
+  "results": [
+    {
+      "theme": "light",
+      "width": 390,
+      "height": 900,
+      "listMs": 3288,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 23503916,
+      "inputPaintMs": [
+        8.200000000186265,
+        7,
+        9.5
+      ],
+      "pickerLayout": {
+        "before": {
+          "height": 414,
+          "scrollHeight": 4217,
+          "pageHeight": 2113
+        },
+        "after": {
+          "height": 414,
+          "pageHeight": 2113
+        }
+      },
+      "volume": {
+        "list40Ms": 2987,
+        "editor40Ms": 3212,
+        "mountedTargetFields": 0,
+        "inputPaintMs": [
+          4.899999999906868,
+          3.5,
+          2,
+          7.300000000279397,
+          3
+        ],
+        "overflow": false,
+        "heap": 23503916
+      },
+      "readRequests": 31,
+      "writeRequests": 6
+    }
+  ]
+}

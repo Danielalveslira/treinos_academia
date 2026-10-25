@@ -264,6 +264,15 @@ export function WorkoutForm({
     [availableExercises, values.exerciseId]
   )
   const cardio = isCardioExercise(selectedExercise)
+  // Posição do exercício atual na ordem planejada da ficha, para o indicador textual "Exercício
+  // X de N" (1-based; sem selectedExercise ainda, mostra a primeira posição).
+  const sheetPosition = sheetScope
+    ? Math.max(0, availableExercises.findIndex((exercise) => exercise.id === values.exerciseId)) +
+      1
+    : 0
+  const sheetGoal = sheetScope
+    ? prescription(sheetScope.items.find((item) => item.exercise_id === values.exerciseId))
+    : ''
   // Sem o filtro de busca -- é a lista "de verdade" do grupo, usada pra achar o próximo
   // exercício não concluído. exercisesInGroup (abaixo) é só a versão filtrada exibida na tela.
   const allExercisesInGroup = useMemo(
@@ -584,34 +593,59 @@ export function WorkoutForm({
   return (
     <Box as="form" ref={formRef} className="workout-form workout-execution" onSubmit={handleSubmit}>
       <nav className="workout-progress" aria-label="Etapas do treino">
-        {!sheetScope &&
-          (step === 'group' ? (
-            <span className="is-current" aria-current="step">
-              1 Grupo
-            </span>
-          ) : (
-            <button type="button" className="is-done" disabled={submitting} onClick={showGroups}>
-              1 Grupo
+        {sheetScope ? (
+          // Ficha: posição textual concisa ("Exercício X de N") em vez dos blocos de etapa —
+          // continua trocável (toca para ver a lista de exercícios da ficha).
+          step === 'register' ? (
+            <button type="button" className="is-done" disabled={submitting} onClick={showExercises}>
+              Exercício {sheetPosition} de {availableExercises.length}
             </button>
-          ))}
-        {step === 'register' ? (
-          <button type="button" className="is-done" disabled={submitting} onClick={showExercises}>
-            2 Exercício
-          </button>
+          ) : (
+            <span className="is-current" aria-current="step">
+              Exercício {sheetPosition} de {availableExercises.length}
+            </span>
+          )
         ) : (
-          <span
-            className={step === 'exercise' ? 'is-current' : ''}
-            aria-current={step === 'exercise' ? 'step' : undefined}
-          >
-            2 Exercício
-          </span>
+          <>
+            {step === 'group' ? (
+              <span className="is-current" aria-current="step">
+                1 Grupo
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="is-done"
+                disabled={submitting}
+                onClick={showGroups}
+              >
+                1 Grupo
+              </button>
+            )}
+            {step === 'register' ? (
+              <button
+                type="button"
+                className="is-done"
+                disabled={submitting}
+                onClick={showExercises}
+              >
+                2 Exercício
+              </button>
+            ) : (
+              <span
+                className={step === 'exercise' ? 'is-current' : ''}
+                aria-current={step === 'exercise' ? 'step' : undefined}
+              >
+                2 Exercício
+              </span>
+            )}
+            <span
+              className={step === 'register' ? 'is-current' : ''}
+              aria-current={step === 'register' ? 'step' : undefined}
+            >
+              3 {cardio ? 'Sessão' : 'Séries'}
+            </span>
+          </>
         )}
-        <span
-          className={step === 'register' ? 'is-current' : ''}
-          aria-current={step === 'register' ? 'step' : undefined}
-        >
-          3 {cardio ? 'Sessão' : 'Séries'}
-        </span>
       </nav>
 
       {step === 'group' && (
@@ -703,14 +737,7 @@ export function WorkoutForm({
         </section>
       )}
 
-      {sheetScope && (
-        <p className="sheet-reference">
-          Metas da ficha (referência):{' '}
-          {prescription(sheetScope.items.find((i) => i.exercise_id === values.exerciseId)) ||
-            'Selecione um exercício para ver as metas.'}{' '}
-          Nenhuma meta representa uma série realizada. Concluído hoje é por exercício/dia.
-        </p>
-      )}
+      {sheetScope && sheetGoal && <p className="sheet-reference">Meta da ficha: {sheetGoal}</p>}
       {step === 'register' && selectedExercise && (
         <div className="workout-step workout-register-step">
           <section className="exercise-context-bar" aria-label="Exercício selecionado">
