@@ -363,6 +363,9 @@ try {
         'sheet list never queries the personal library'
       )
       await page.getByRole('link', { name: 'Ficha A', exact: true }).click()
+      // The list already contains this heading; wait for the detail route and its rows.
+      await page.waitForURL(`**/fichas/${sid}`)
+      await page.locator('.sheet-row-name').first().waitFor()
       await page.getByRole('heading', { name: 'Ficha A', exact: true }).waitFor()
       // Linhas compactas (índice + nome + meta), não um card grande por exercício.
       assert.deepEqual(await page.locator('.sheet-row-name').allTextContents(), [
