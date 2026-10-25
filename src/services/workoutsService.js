@@ -380,20 +380,11 @@ export function listDashboardWorkouts(userId) {
   })
 }
 
-// Para o painel "próxima ficha"/"última treinada"/"mais treinada no mês" da Home: só as DUAS
-// colunas realmente necessárias (nada de set_details/note), já filtradas por ficha e por janela —
-// poucas linhas por mês, uma única consulta, sem RPC nova. Sem suporte offline: a recomendação por
-// ficha já exige o servidor (como o resto de fichas), e inventar um snapshot aqui seria arriscar
-// "mais treinada" errado. Usado só quando online (ver src/features/home/useSheetInsights.js).
-export async function listSheetActivitySince(userId, sinceDateKey) {
-  const { data, error } = await supabase
-    .from('workouts')
-    .select('sheet_id,date')
-    .eq('user_id', userId)
-    .not('sheet_id', 'is', null)
-    .gte('date', sinceDateKey)
+// Aggregate computed by the server: bounded sheet summaries, never raw workout history.
+export async function getSheetInsights() {
+  const { data, error } = await supabase.rpc('get_my_sheet_insights')
   if (error) throw error
-  return data.map((row) => ({ sheetId: row.sheet_id, date: row.date }))
+  return data
 }
 
 // Agregado no servidor: não transfere o histórico para exibir dois totais. sum(sets)

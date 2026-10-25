@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { DASHBOARD_BANNER_PHOTOS } from './dashboardBanners.js'
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import { Button, Heading, Spinner } from '@primer/react'
 import {
@@ -29,9 +31,7 @@ function weekdaysLabel(weekdays) {
 function InsightCard({ eyebrow, title, detail, to, icon: IconComponent }) {
   return (
     <RouterLink to={to} className="sheet-insight-card">
-      <span className="sheet-insight-icon">
-        {IconComponent && <IconComponent size={16} />}
-      </span>
+      <span className="sheet-insight-icon">{IconComponent && <IconComponent size={16} />}</span>
       <span className="sheet-insight-text">
         <span className="sheet-insight-eyebrow">{eyebrow}</span>
         <strong>{title}</strong>
@@ -40,6 +40,51 @@ function InsightCard({ eyebrow, title, detail, to, icon: IconComponent }) {
       <ChevronRightIcon size={14} className="sheet-insight-chevron" />
     </RouterLink>
   )
+}
+
+function SheetActivityCards({ lastTrained, mostTrained, todayKey }) {
+  return (
+    (lastTrained || mostTrained) && (
+      <div className="sheet-insights-row">
+        {lastTrained && (
+          <InsightCard
+            icon={PulseIcon}
+            eyebrow="ÚLTIMA FICHA UTILIZADA"
+            title={lastTrained.sheet.name}
+            detail={relativeDayLabel(lastTrained.date, todayKey)}
+            to={`/fichas/${lastTrained.sheet.id}`}
+          />
+        )}
+        {mostTrained && (
+          <InsightCard
+            icon={GraphIcon}
+            eyebrow="MAIS DIAS COM REGISTROS"
+            title={mostTrained.sheet.name}
+            detail={`${mostTrained.count} ${mostTrained.count === 1 ? 'dia com registros' : 'dias com registros'} neste mês`}
+            to={`/fichas/${mostTrained.sheet.id}`}
+          />
+        )}
+      </div>
+    )
+  )
+}
+
+function HeroPhoto({ photo }) {
+  const [failed, setFailed] = useState([])
+  const current = [photo, ...DASHBOARD_BANNER_PHOTOS.filter((p) => p.name !== photo.name)].find(
+    (p) => !failed.includes(p.name)
+  )
+  return current ? (
+    <ResponsivePicture
+      name={current.name}
+      alt={current.alt}
+      width={current.width}
+      height={current.height}
+      sizes="(max-width: 767px) 100vw, 60vw"
+      priority
+      onError={() => setFailed((previous) => [...previous, current.name])}
+    />
+  ) : null
 }
 
 export function RecommendedSheetPanel() {
@@ -66,7 +111,9 @@ export function RecommendedSheetPanel() {
           <Heading as="h1" id="sheet-offline-title">
             Indisponível offline
           </Heading>
-          <p>A recomendação de ficha precisa de conexão. Seus registros continuam salvos normalmente.</p>
+          <p>
+            A recomendação de ficha precisa de conexão. Seus registros continuam salvos normalmente.
+          </p>
           <Button
             className="empty-workout-cta"
             leadingVisual={PlayIcon}
@@ -121,9 +168,12 @@ export function RecommendedSheetPanel() {
         <div className="empty-workout-content">
           <span className="eyebrow">SUAS FICHAS</span>
           <Heading as="h1" id="empty-eligible-title">
-            Adicione exercícios à sua ficha.
+            Revise suas fichas para treinar.
           </Heading>
-          <p>Suas fichas ainda não têm exercícios suficientes para recomendar um treino.</p>
+          <p>
+            As fichas estão vazias ou contêm exercícios indisponíveis. Revise os exercícios para
+            receber uma recomendação.
+          </p>
           <Button
             className="empty-workout-cta"
             leadingVisual={ChecklistIcon}
@@ -131,6 +181,15 @@ export function RecommendedSheetPanel() {
           >
             Ver fichas
           </Button>
+          <SheetActivityCards
+            lastTrained={lastTrained}
+            mostTrained={mostTrained}
+            todayKey={todayKey}
+          />
+          <p>
+            Indicadores mostram dias com atividade registrada, sem comprovar conclusão. Registros da
+            fila offline não entram nestes indicadores.
+          </p>
         </div>
       </section>
     )
@@ -142,20 +201,14 @@ export function RecommendedSheetPanel() {
 
   return (
     <section className="workout-hero" aria-labelledby="next-workout-title">
-      {photo && (
-        <ResponsivePicture
-          name={photo.name}
-          alt={photo.alt}
-          width={photo.width}
-          height={photo.height}
-          sizes="(max-width: 767px) 100vw, 60vw"
-        />
-      )}
+      {photo && <HeroPhoto key={photo.name} photo={photo} />}
       <div className="workout-hero-shade" />
       <div className="workout-hero-content">
         <span className="hero-kicker">
           <PulseIcon size={14} /> PRÓXIMA FICHA RECOMENDADA
-          {reason === 'today' && <span className="hero-today-pill">Recomendado para hoje</span>}
+          {reason === 'today' && lastDate !== todayKey && (
+            <span className="hero-today-pill">Recomendado para hoje</span>
+          )}
         </span>
         <Heading as="h2" id="next-workout-title">
           {sheet.name}
@@ -169,11 +222,12 @@ export function RecommendedSheetPanel() {
             )}
             {lastLabel && (
               <span>
-                <ClockIcon size={14} /> Última execução <strong>{lastLabel}</strong>
+                <ClockIcon size={14} /> Última atividade <strong>{lastLabel}</strong>
               </span>
             )}
           </p>
         )}
+        {lastDate === todayKey && <p>Esta ficha já tem atividade registrada hoje.</p>}
         <div className="workout-hero-actions">
           <Button
             as={RouterLink}
@@ -189,28 +243,15 @@ export function RecommendedSheetPanel() {
             Ver fichas
           </Button>
         </div>
-        {(lastTrained || mostTrained) && (
-          <div className="sheet-insights-row">
-            {lastTrained && (
-              <InsightCard
-                icon={PulseIcon}
-                eyebrow="ÚLTIMA FICHA TREINADA"
-                title={lastTrained.sheet.name}
-                detail={relativeDayLabel(lastTrained.date, todayKey)}
-                to={`/fichas/${lastTrained.sheet.id}`}
-              />
-            )}
-            {mostTrained && (
-              <InsightCard
-                icon={GraphIcon}
-                eyebrow="MAIS TREINADA NO MÊS"
-                title={mostTrained.sheet.name}
-                detail={`${mostTrained.count} ${mostTrained.count === 1 ? 'execução' : 'execuções'} neste mês`}
-                to={`/fichas/${mostTrained.sheet.id}`}
-              />
-            )}
-          </div>
-        )}
+        <SheetActivityCards
+          lastTrained={lastTrained}
+          mostTrained={mostTrained}
+          todayKey={todayKey}
+        />
+        <p className="sheet-insights-disclosure">
+          Atividade registrada não comprova conclusão da ficha. Registros enviados pela fila offline
+          não têm vínculo com fichas e não entram nestes indicadores.
+        </p>
       </div>
     </section>
   )

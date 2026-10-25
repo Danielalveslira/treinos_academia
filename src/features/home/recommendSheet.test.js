@@ -139,3 +139,57 @@ test('daysBetweenKeys/relativeDayLabel: hoje, ontem e "há N dias"', () => {
   assert.equal(relativeDayLabel('2026-10-23', TODAY), 'ontem')
   assert.equal(relativeDayLabel('2026-10-20', TODAY), 'há 4 dias')
 })
+
+test('resumo agregado preserva recência além de 60 dias e dias mensais sem histórico no cliente', () => {
+  const index = buildSheetActivityIndex(
+    [
+      { sheetId: 'A', date: '2025-01-01', monthDays: 0 },
+      { sheetId: 'B', date: '2026-10-24', monthDays: 3 },
+    ],
+    '2026-10-01'
+  )
+  assert.equal(index.get('A').lastDate, '2025-01-01')
+  assert.equal(mostTrainedThisMonth([sheet('A'), sheet('B')], index).count, 3)
+  assert.equal(recommendSheet([sheet('A'), sheet('B')], index, TODAY).sheet.id, 'A')
+})
+
+test('empates são estáveis mesmo com ordem igual e entrada invertida', () => {
+  for (const sheets of [
+    [sheet('B'), sheet('A')],
+    [sheet('A'), sheet('B')],
+  ]) {
+    assert.equal(recommendSheet(sheets, new Map(), TODAY).sheet.id, 'A')
+    const index = buildSheetActivityIndex(
+      [
+        { sheetId: 'A', date: TODAY },
+        { sheetId: 'B', date: TODAY },
+      ],
+      '2026-10-01'
+    )
+    assert.equal(lastTrainedSheet(sheets, index).sheet.id, 'A')
+    assert.equal(mostTrainedThisMonth(sheets, index).sheet.id, 'A')
+  }
+})
+
+test('indisponível nunca é recomendada; atividade hoje prioriza outra ficha de hoje sem registros', () => {
+  const sheets = [
+    sheet('A', { weekdays: [6] }),
+    sheet('B', { weekdays: [6] }),
+    sheet('C', { available: false }),
+  ]
+  const index = buildSheetActivityIndex([{ sheetId: 'A', date: TODAY }], '2026-10-01')
+  assert.equal(recommendSheet(sheets, index, TODAY).sheet.id, 'B')
+  assert.equal(recommendSheet([sheet('C', { available: false })], index, TODAY), null)
+})
+
+test('virada de mês exclui dias do mês anterior e posterior', () => {
+  const index = buildSheetActivityIndex(
+    [
+      { sheetId: 'A', date: '2026-09-30' },
+      { sheetId: 'A', date: '2026-10-01' },
+      { sheetId: 'A', date: '2026-11-01' },
+    ],
+    '2026-10-01'
+  )
+  assert.equal(mostTrainedThisMonth([sheet('A')], index).count, 1)
+})

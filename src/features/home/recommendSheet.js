@@ -1,24 +1,21 @@
-// Motor de recomendação da Home: tudo puro (sem I/O), testável sem React nem rede. Entradas:
-//  - sheets: fichas ATIVAS do usuário (list_my_workout_sheets, já sem arquivadas), cada uma com
-//    { id, name, goal, weekdays, sort_order, exercise_count }.
-//  - activity: linhas { sheetId, date } de workouts.sheet_id (ver listSheetActivitySince), já
-//    restritas à janela buscada (ver useSheetInsights.js) -- nunca o histórico inteiro.
-//  - todayKey/monthStartKey: chaves 'YYYY-MM-DD' do dia de negócio (America/Sao_Paulo).
-//
-// Regras (na ordem -- ver docs/prompts, seção "Regras da recomendação"):
-//  1. Fichas ativas programadas para HOJE, priorizando a que está há mais tempo sem execução.
-//  2. Sem ficha para hoje: a próxima pelos dias cadastrados (menor distância, em dias).
-//  3. Fichas sem dias definidos: ordem determinística (recência, depois a ordem do usuário).
-//  4. Nunca arquivada (já fora de `sheets`) nem vazia (`exercise_count` 0 -- ninguém inicia um
-//     rascunho); a disponibilidade de cada exercício é revalidada pelo servidor ao iniciar, como em
-//     toda a área de fichas -- esta função só decide QUAL ficha sugerir, nunca libera o início.
+// Deterministic recommendations use registered activity, never inferred session completion.
+// Production receives all-time last dates and month day counts from get_my_sheet_insights.
+function stableOrder(a, b) {
+  return a.sort_order - b.sort_order || String(a.id).localeCompare(String(b.id), 'en')
+}
 
 function isRecommendable(sheet) {
-  return !sheet.archived_at && Number(sheet.exercise_count) > 0
+  return !sheet.archived_at && Number(sheet.exercise_count) > 0 && sheet.available !== false
 }
 
 export function daysBetweenKeys(fromKey, toKey) {
-  const toDays = (key) => Date.UTC(...key.split('-').map(Number).map((n, i) => (i === 1 ? n - 1 : n))) / 86_400_000
+  const toDays = (key) =>
+    Date.UTC(
+      ...key
+        .split('-')
+        .map(Number)
+        .map((n, i) => (i === 1 ? n - 1 : n))
+    ) / 86_400_000
   return Math.round(toDays(toKey) - toDays(fromKey))
 }
 
@@ -34,7 +31,7 @@ export function relativeDayLabel(dateKey, todayKey) {
 // { lastDate, monthDays } por sheetId -- monthDays só conta dias dentro de [monthStartKey, ...].
 export function buildSheetActivityIndex(activity, monthStartKey) {
   const bySheet = new Map()
-  for (const { sheetId, date } of activity || []) {
+  for (const { sheetId, date, monthDays, lastRegisteredAt } of activity || []) {
     if (!sheetId || !date) continue
     let entry = bySheet.get(sheetId)
     if (!entry) {
@@ -42,7 +39,10 @@ export function buildSheetActivityIndex(activity, monthStartKey) {
       bySheet.set(sheetId, entry)
     }
     if (!entry.lastDate || date > entry.lastDate) entry.lastDate = date
-    if (date >= monthStartKey) entry.monthDays.add(date)
+    if (Number.isInteger(monthDays)) entry.monthCount = monthDays
+    if (lastRegisteredAt) entry.lastRegisteredAt = lastRegisteredAt
+    if (date >= monthStartKey && date.slice(0, 7) === monthStartKey.slice(0, 7))
+      entry.monthDays.add(date)
   }
   return bySheet
 }
@@ -58,7 +58,7 @@ function byOverdueThenOrder(activityIndex, todayKey) {
     const da = daysSinceLast(a, activityIndex, todayKey)
     const db = daysSinceLast(b, activityIndex, todayKey)
     if (da !== db) return da === Infinity ? -1 : db === Infinity ? 1 : db - da
-    return a.sort_order - b.sort_order
+    return stableOrder(a, b)
   }
 }
 
@@ -74,7 +74,7 @@ function daysUntilWeekday(todayWeekday, weekdays) {
 export function recommendSheet(sheets, activityIndex, todayKey) {
   const pool = (sheets || []).filter(isRecommendable)
   if (!pool.length) return null
-  const todayWeekday = new Date(`${todayKey}T12:00:00`).getDay()
+  const todayWeekday = new Date(`${todayKey}T12:00:00Z`).getUTCDay()
   const lastDateOf = (sheet) => activityIndex.get(sheet.id)?.lastDate || null
 
   const scheduledToday = pool.filter((sheet) => (sheet.weekdays || []).includes(todayWeekday))
@@ -86,10 +86,16 @@ export function recommendSheet(sheets, activityIndex, todayKey) {
   const withSchedule = pool.filter((sheet) => (sheet.weekdays || []).length > 0)
   if (withSchedule.length) {
     const sheet = [...withSchedule].sort((a, b) => {
-      const diff = daysUntilWeekday(todayWeekday, a.weekdays) - daysUntilWeekday(todayWeekday, b.weekdays)
-      return diff !== 0 ? diff : a.sort_order - b.sort_order
+      const diff =
+        daysUntilWeekday(todayWeekday, a.weekdays) - daysUntilWeekday(todayWeekday, b.weekdays)
+      return diff !== 0 ? diff : stableOrder(a, b)
     })[0]
-    return { sheet, reason: 'scheduled', lastDate: lastDateOf(sheet), nextInDays: daysUntilWeekday(todayWeekday, sheet.weekdays) }
+    return {
+      sheet,
+      reason: 'scheduled',
+      lastDate: lastDateOf(sheet),
+      nextInDays: daysUntilWeekday(todayWeekday, sheet.weekdays),
+    }
   }
 
   const sheet = [...pool].sort(byOverdueThenOrder(activityIndex, todayKey))[0]
@@ -101,7 +107,15 @@ export function lastTrainedSheet(sheets, activityIndex) {
   let best = null
   for (const sheet of sheets || []) {
     const date = activityIndex.get(sheet.id)?.lastDate
-    if (date && (!best || date > best.date)) best = { sheet, date }
+    const at = activityIndex.get(sheet.id)?.lastRegisteredAt || ''
+    if (
+      date &&
+      (!best ||
+        date > best.date ||
+        (date === best.date &&
+          (at > best.at || (at === best.at && stableOrder(sheet, best.sheet) < 0))))
+    )
+      best = { sheet, date, at }
   }
   return best
 }
@@ -112,15 +126,17 @@ export function mostTrainedThisMonth(sheets, activityIndex) {
   let best = null
   for (const sheet of sheets || []) {
     const entry = activityIndex.get(sheet.id)
-    const count = entry?.monthDays.size || 0
+    const count = entry?.monthCount ?? entry?.monthDays.size ?? 0
     if (!count) continue
-    const candidate = { sheet, count, lastDate: entry.lastDate }
+    const candidate = { sheet, count, lastDate: entry.lastDate, at: entry.lastRegisteredAt || '' }
     if (
       !best ||
       count > best.count ||
       (count === best.count &&
         (candidate.lastDate > best.lastDate ||
-          (candidate.lastDate === best.lastDate && sheet.sort_order < best.sheet.sort_order)))
+          (candidate.lastDate === best.lastDate &&
+            (candidate.at > best.at ||
+              (candidate.at === best.at && stableOrder(sheet, best.sheet) < 0)))))
     )
       best = candidate
   }

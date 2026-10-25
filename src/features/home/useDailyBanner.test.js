@@ -119,3 +119,21 @@ test('voltar para o app (visibilitychange/pageshow) reavalia; desmontar remove o
     mock.timers.reset()
   }
 })
+
+test('suspensão prolongada e virada de mês: resume usa o dia atual, sem percorrer dias perdidos', () => {
+  mock.timers.enable({ apis: ['setTimeout', 'Date'], now: new Date('2026-12-31T23:50:00-03:00') })
+  try {
+    const component = api.render()
+    const first = globalThis.__seen.at(-1)
+    globalThis.document.visibilityState = 'hidden'
+    mock.timers.setTime(new Date('2027-01-05T00:05:00-03:00').getTime())
+    api.act(() => listeners.get('pageshow').forEach((fn) => fn()))
+    assert.deepEqual(globalThis.__seen.at(-1), first)
+    globalThis.document.visibilityState = 'visible'
+    api.act(() => listeners.get('visibilitychange').forEach((fn) => fn()))
+    assert.notEqual(globalThis.__seen.at(-1).name, first.name)
+    api.act(() => component.unmount())
+  } finally {
+    mock.timers.reset()
+  }
+})

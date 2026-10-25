@@ -17,6 +17,7 @@ export function ResponsivePicture({
   widths = WIDTHS,
   priority = false,
   className,
+  onError,
 }) {
   return (
     <picture>
@@ -24,6 +25,7 @@ export function ResponsivePicture({
       <source type="image/webp" srcSet={srcSet(name, 'webp', widths)} sizes={sizes} />
       <img
         className={className}
+        onError={onError}
         src={`/img/${name}-800.webp`}
         alt={alt}
         width={width}

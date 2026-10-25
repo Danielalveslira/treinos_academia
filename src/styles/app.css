@@ -3278,6 +3278,12 @@ body:has(.pwa-offline) .app-shell {
 
 /* Product UI -------------------------------------------------------------- */
 :root {
+  --fitness-photo-bg: #101410;
+  --fitness-photo-ink: var(--fgColor-onEmphasis, #fff);
+  --fitness-photo-muted: #c8cfc5;
+  --fitness-photo-subtle: #a7af9f;
+  --fitness-photo-border: #ffffff22;
+  --fitness-photo-accent: #56d364;
   --fitness-accent: #3fb950;
   --fitness-accent-strong: #27863a;
   --fitness-accent-soft: #eaf7ec;
@@ -3428,7 +3434,7 @@ body {
   margin-bottom: 0;
   overflow: hidden;
   border-radius: var(--fitness-radius-lg);
-  background: #101410;
+  background: var(--fitness-photo-bg);
   box-shadow: var(--fitness-shadow);
   isolation: isolate;
 }
@@ -3463,7 +3469,7 @@ body {
   width: 57%;
   min-height: 390px;
   padding: 46px;
-  color: white;
+  color: var(--fitness-photo-ink);
 }
 
 .hero-kicker {
@@ -3471,7 +3477,7 @@ body {
   align-items: center;
   gap: 7px;
   margin-bottom: 16px;
-  color: var(--fitness-accent);
+  color: var(--fitness-photo-accent);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .14em;
@@ -3480,7 +3486,7 @@ body {
 .workout-hero-content h2 {
   max-width: 520px;
   margin: 0;
-  color: white;
+  color: var(--fitness-photo-ink);
   font-size: clamp(30px, 4vw, 48px);
   font-weight: 760;
   line-height: 1.02;
@@ -3490,7 +3496,7 @@ body {
 .workout-hero-content p {
   max-width: 490px;
   margin: 18px 0 28px;
-  color: #c8cfc5;
+  color: var(--fitness-photo-muted);
   font-size: 15px;
   line-height: 1.6;
 }
@@ -3499,7 +3505,7 @@ body {
 .workout-form-actions button[data-variant='primary'] {
   min-height: 48px;
   padding-inline: 22px;
-  border-color: var(--fitness-accent);
+  border-color: var(--fitness-photo-accent);
   background: var(--fitness-accent);
   color: #11170b;
   font-size: 15px;
@@ -3509,7 +3515,7 @@ body {
 
 .start-workout-button[data-variant='primary']:hover,
 .workout-form-actions button[data-variant='primary']:hover {
-  border-color: var(--fitness-accent-strong);
+  border-color: var(--fitness-photo-accent);
   background: var(--fitness-accent-strong);
 }
 
@@ -3524,7 +3530,7 @@ body {
   padding: 4px 10px;
   border: 1px solid var(--fitness-accent);
   border-radius: 999px;
-  color: var(--fitness-accent-strong);
+  color: var(--fitness-photo-accent);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -3537,7 +3543,7 @@ body {
   flex-wrap: wrap;
   gap: 4px 18px;
   margin: 0 0 24px;
-  color: #c8cfc5;
+  color: var(--fitness-photo-muted);
   font-size: 13px;
 }
 
@@ -3548,7 +3554,7 @@ body {
 }
 
 .workout-hero-meta strong {
-  color: white;
+  color: var(--fitness-photo-ink);
   font-weight: 700;
 }
 
@@ -3569,7 +3575,7 @@ body {
   padding-inline: 18px;
   border-color: #ffffff4a;
   background: transparent;
-  color: white;
+  color: var(--fitness-photo-ink);
   font-weight: 650;
 }
 
@@ -3579,7 +3585,7 @@ body {
   gap: 10px;
   max-width: 520px;
   padding-top: 20px;
-  border-top: 1px solid #ffffff22;
+  border-top: 1px solid var(--fitness-photo-border);
 }
 
 .sheet-insight-card {
@@ -3589,7 +3595,7 @@ body {
   gap: 10px;
   min-width: 0;
   padding: 12px 14px;
-  border: 1px solid #ffffff22;
+  border: 1px solid var(--fitness-photo-border);
   border-radius: var(--fitness-radius-md);
   background: #ffffff0d;
   color: inherit;
@@ -3604,7 +3610,7 @@ body {
   height: 32px;
   border-radius: 50%;
   background: #ffffff14;
-  color: var(--fitness-accent-strong);
+  color: var(--fitness-photo-accent);
 }
 
 .sheet-insight-text {
@@ -3616,7 +3622,7 @@ body {
 
 .sheet-insight-eyebrow {
   overflow: hidden;
-  color: #c8cfc5;
+  color: var(--fitness-photo-muted);
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -3626,21 +3632,21 @@ body {
 
 .sheet-insight-text strong {
   overflow: hidden;
-  color: white;
+  color: var(--fitness-photo-ink);
   font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .sheet-insight-text small {
-  color: #a7af9f;
+  color: var(--fitness-photo-subtle);
   font-size: 11px;
 }
 
 .sheet-insight-chevron {
   flex: 0 0 auto;
   margin-left: auto;
-  color: #a7af9f;
+  color: var(--fitness-photo-subtle);
 }
 
 .performance-strip {
@@ -6074,4 +6080,18 @@ div:has(> .ev-zoom-dialog) {
   .profile-editor-avatar { align-items: flex-start; }
   .profile-editor-avatar-actions { flex: 1; }
   .profile-editor-actions button { width: 100%; }
+}
+
+.workout-hero-content .sheet-insights-disclosure {
+  margin: 12px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.hero-kicker { flex-wrap: wrap; }
+.empty-workout .sheet-insights-row {
+  --fitness-photo-ink: var(--fitness-ink);
+  --fitness-photo-muted: var(--fitness-muted);
+  --fitness-photo-subtle: var(--fitness-muted);
+  --fitness-photo-border: var(--borderColor-default);
+  color: var(--fitness-ink);
 }

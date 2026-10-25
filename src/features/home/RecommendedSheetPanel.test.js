@@ -141,7 +141,11 @@ test('com ficha recomendada: título, CTA direto, "Recomendado para hoje" e nenh
   assert.match(html, /href="\/novo-treino\?ficha=s1"/)
   assert.match(html, /Recomendado para hoje/)
   assert.match(html, /Próximo treino sugerido/)
-  assert.doesNotMatch(html, /sheet-insights-row/, 'sem última treinada/mais treinada, a linha some, não fica vazia')
+  assert.doesNotMatch(
+    html,
+    /sheet-insights-row/,
+    'sem última treinada/mais treinada, a linha some, não fica vazia'
+  )
 })
 
 test('com histórico: mostra última ficha treinada e mais treinada no mês, sem inventar dado que falta', () => {
@@ -156,15 +160,30 @@ test('com histórico: mostra última ficha treinada e mais treinada no mês, sem
       lastDate: null,
     },
     lastTrained: { sheet: { id: 's3', name: 'Treino C — Pernas' }, date: '2026-10-22' },
-    mostTrained: { sheet: { id: 's2', name: 'Treino B — Costas' }, count: 4, lastDate: '2026-10-23' },
+    mostTrained: {
+      sheet: { id: 's2', name: 'Treino B — Costas' },
+      count: 4,
+      lastDate: '2026-10-23',
+    },
     refresh: () => {},
   })
   const html = render()
-  assert.match(html, /ÚLTIMA FICHA TREINADA/)
+  assert.match(html, /ÚLTIMA FICHA UTILIZADA/)
   assert.match(html, /Treino C — Pernas/)
-  assert.match(html, /MAIS TREINADA NO MÊS/)
+  assert.match(html, /MAIS DIAS COM REGISTROS/)
   assert.match(html, /Treino B — Costas/)
-  assert.match(html, /4 execuções neste mês/)
+  assert.match(html, /4 dias com registros neste mês/)
   assert.doesNotMatch(html, /Recomendado para hoje/)
-  assert.doesNotMatch(html, /Próximo treino sugerido/, 'ficha sem dias cadastrados: não mostra a linha')
+  assert.doesNotMatch(
+    html,
+    /Próximo treino sugerido/,
+    'ficha sem dias cadastrados: não mostra a linha'
+  )
+})
+
+test('atividade parcial não é apresentada como conclusão e avisa a limitação offline', () => {
+  const html = render()
+  assert.match(html, /não comprova conclusão da ficha/)
+  assert.match(html, /fila offline/)
+  assert.doesNotMatch(html, /execuções neste mês|sessões concluídas|Última execução/)
 })

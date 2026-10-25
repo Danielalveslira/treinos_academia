@@ -1,3 +1,4 @@
+import { invalidateWorkoutCache } from '../../utils/pageCache.js'
 import { supabase } from '../../supabase/config'
 import { createProbe } from './connectivity.js'
 import { createSyncChannel } from './syncChannel.js'
@@ -63,7 +64,9 @@ function getDeps() {
       setSyncing(true)
       queueOfflineTelemetry('sync_started').catch(() => {})
     },
-    onConflict: () => { queueOfflineTelemetry('sync_conflict', { error_code: 'CONFLICT' }).catch(() => {}) },
+    onConflict: () => {
+      queueOfflineTelemetry('sync_conflict', { error_code: 'CONFLICT' }).catch(() => {})
+    },
   }
   return deps
 }
@@ -81,6 +84,7 @@ async function runOnce({ reason, force, filter = null }) {
     console.warn('[sync] falha inesperada:', error?.name || 'Error')
     result = { status: 'storage-error', userId: null }
   }
+  if (result.userId && result.applied > 0) invalidateWorkoutCache(result.userId)
   const diagnostic = `sync_${String(result.status).replaceAll('-', '_')}`
   recordOfflineDiagnostic(diagnostic)
   if (result.status === 'synced' && result.failed === 0 && result.applied > 0)
@@ -91,8 +95,14 @@ async function runOnce({ reason, force, filter = null }) {
     hadRetry = false
   }
   if (['auth', 'denied', 'storage-error', 'user-changed'].includes(result.status)) {
-    const errorCode = result.status === 'auth' ? 'AUTH' : result.status === 'denied'
-      ? 'ACCESS_DENIED' : result.status === 'storage-error' ? 'STORAGE' : 'UNKNOWN'
+    const errorCode =
+      result.status === 'auth'
+        ? 'AUTH'
+        : result.status === 'denied'
+          ? 'ACCESS_DENIED'
+          : result.status === 'storage-error'
+            ? 'STORAGE'
+            : 'UNKNOWN'
     queueOfflineTelemetry('sync_failed', { error_code: errorCode }).catch(() => {})
   }
   try {
@@ -197,7 +207,10 @@ export function startSyncScheduler(userId) {
   globalThis.document?.addEventListener('visibilitychange', onVisibility)
   // Outra aba mexeu na fila ou sincronizou: só atualiza o espelho (quem sincroniza é uma aba só).
   const unsubscribe = channel.subscribe((message) => {
-    if (message.userId === getSyncSnapshot().userId) refreshSyncStatus(message.userId)
+    if (message.userId === getSyncSnapshot().userId) {
+      refreshSyncStatus(message.userId)
+      if (message.type === 'sync-completed') invalidateWorkoutCache(message.userId)
+    }
   })
   setOnline(globalThis.navigator?.onLine !== false)
   refreshSyncStatus()
