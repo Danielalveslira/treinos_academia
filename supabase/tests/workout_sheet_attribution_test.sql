@@ -17,6 +17,10 @@ select pg_temp.set_test_user('97a00000-0000-0000-0000-000000000001',true);
 set local role authenticated;
 create temp table sheet_a as
   select (public.create_workout_sheet(gen_random_uuid(),'Ficha A')->>'id')::uuid id;
+-- Segunda ficha do MESMO dono: isola o teste de reatribuição (abaixo) da checagem de FK
+-- entre contas, que já é coberta à parte.
+create temp table sheet_a2 as
+  select (public.create_workout_sheet(gen_random_uuid(),'Ficha A2')->>'id')::uuid id;
 reset role;
 select pg_temp.set_test_user('97a00000-0000-0000-0000-000000000002',true);
 set local role authenticated;
@@ -55,13 +59,23 @@ select lives_ok(
 );
 select is((select sheet_id from public.workouts where id='97f00000-0000-0000-0000-000000000002'),null,'sem ficha fica null, não inventado');
 
-select throws_ok(
+-- Sem ficha ainda pode receber uma (não é o caminho do app -- só createWorkout grava sheet_id --,
+-- mas não é perigoso: a FK já garante que só pode ser uma ficha do próprio dono).
+select lives_ok(
   format($q$update public.workouts set sheet_id=%L where id='97f00000-0000-0000-0000-000000000002'$q$,(select id from sheet_a)),
-  'P0001','SHEET_ID_IMMUTABLE','não é possível atribuir uma ficha a um registro depois de criado'
+  'atribuir ficha a um registro que ainda não tinha nenhuma é permitido'
 );
+-- O que é bloqueado é REATRIBUIR: um registro já vinculado a uma ficha não pode "pular" para outra
+-- (mesmo dono, para isolar isto da checagem de FK entre contas, já coberta acima).
 select throws_ok(
-  $q$update public.workouts set sheet_id=null where id='97f00000-0000-0000-0000-000000000001'$q$,
-  'P0001','SHEET_ID_IMMUTABLE','não é possível apagar a ficha de um registro já atribuído'
+  format($q$update public.workouts set sheet_id=%L where id='97f00000-0000-0000-0000-000000000002'$q$,(select id from sheet_a2)),
+  'P0001','SHEET_ID_IMMUTABLE','reatribuir para uma ficha diferente depois de já ter uma é bloqueado'
+);
+-- Limpar o vínculo (-> null) continua permitido: é exatamente o que o ON DELETE SET NULL da FK faz
+-- por baixo (ver teste mais abaixo) -- se isso fosse bloqueado, excluir uma ficha quebraria.
+select lives_ok(
+  $q$update public.workouts set sheet_id=null where id='97f00000-0000-0000-0000-000000000002'$q$,
+  'limpar o vínculo (sheet_id -> null) é permitido'
 );
 select lives_ok(
   $q$update public.workouts set note='ajustada' where id='97f00000-0000-0000-0000-000000000001'$q$,

@@ -13,8 +13,11 @@ create index workouts_sheet_activity_idx on public.workouts(user_id, sheet_id, d
   where sheet_id is not null;
 
 -- sheet_id is a fact about when/how the row was CREATED, never an editable field: an unrelated
--- edit (fixing a weight/note from History.jsx) must never move or clear a row's sheet attribution.
+-- edit (fixing a weight/note from History.jsx) must never REASSIGN a row to a different sheet.
 -- Extends the existing immutability guard (created_at, type) rather than adding a second trigger.
+-- Clearing it to null stays allowed -- not just for a hypothetical direct UPDATE, but because
+-- workouts_sheet_id_fkey's own "on delete set null" (deleting a sheet must preserve history)
+-- is implemented as an UPDATE under the hood and would otherwise be rejected by this very trigger.
 create or replace function public.enforce_workout_immutable_fields() returns trigger
   language plpgsql as $$
 begin
@@ -24,7 +27,7 @@ begin
   if new.type <> old.type then
     raise exception 'TYPE_IMMUTABLE';
   end if;
-  if new.sheet_id is distinct from old.sheet_id then
+  if old.sheet_id is not null and new.sheet_id is not null and new.sheet_id <> old.sheet_id then
     raise exception 'SHEET_ID_IMMUTABLE';
   end if;
   return new;
