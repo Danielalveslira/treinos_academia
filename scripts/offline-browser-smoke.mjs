@@ -201,6 +201,13 @@ function watchProblems(page) {
   return { problems, backend }
 }
 
+// A saudação varia por dia e pode legitimamente não interpolar o nome do perfil.
+// A Home está pronta quando seu cabeçalho está visível e preenchido; os asserts
+// seguintes continuam conferindo saldo, atividade, sessão local, assets e outbox.
+async function waitForDashboard(page) {
+  await page.locator('.dashboard-greeting h1').filter({ hasText: /\S/ }).waitFor({ timeout: 15_000 })
+}
+
 const headerBalances = (page) => page.locator('.wallet-badge-value').allTextContents()
 const homeStrip = async (page) => ({
   week: (await page.locator('.performance-strip div').nth(0).locator('strong').textContent())?.trim(),
@@ -222,7 +229,7 @@ async function coldStartWithoutManualWarmup(browser, origin, outDir) {
 
   await page.goto(`${origin}/app`, { waitUntil: 'domcontentloaded' })
   await page.getByText('Modo offline: você entrou com os dados salvos neste aparelho.', { exact: false }).waitFor({ timeout: 15_000 })
-  await page.getByText('teste_offline', { exact: false }).first().waitFor({ timeout: 15_000 })
+  await waitForDashboard(page)
   // Home JÁ preenchida com o último valor conhecido (nada de 0 EvoCash -> 320 EvoCash).
   deepStrictEqual(await headerBalances(page), ['20', '320'], 'header sem o último saldo conhecido')
   deepStrictEqual(await homeStrip(page), { week: '1x', volume: '800 kg' }, 'Home sem a atividade restaurada')
@@ -258,7 +265,7 @@ async function coldStartWithoutManualWarmup(browser, origin, outDir) {
   }), { dbName: DB_NAME, dbVersion: DB_VERSION })
   // O que acabou de ser registrado offline conta na Home (treino local junto do snapshot).
   await page.goto(`${origin}/app`, { waitUntil: 'domcontentloaded' })
-  await page.getByText('teste_offline', { exact: false }).first().waitFor({ timeout: 15_000 })
+  await waitForDashboard(page)
   deepStrictEqual(await headerBalances(page), ['20', '320'])
 
   assert(problems.length === 0, `Falhas de chunk/asset offline:\n${problems.join('\n')}`)
@@ -277,7 +284,7 @@ async function coldStartWithoutSnapshot(browser, origin, outDir) {
   const page = await context.newPage()
   await watchOfflineFlash(page)
   await page.goto(`${origin}/app`, { waitUntil: 'domcontentloaded' })
-  await page.getByText('teste_offline', { exact: false }).first().waitFor({ timeout: 15_000 })
+  await waitForDashboard(page)
   deepStrictEqual(await headerBalances(page), ['—', '—'], 'sem snapshot o header deve mostrar "—", nunca 0')
   deepStrictEqual(await homeStrip(page), { week: '—', volume: '—' })
   assert((await page.getByText('Disponível quando houver conexão', { exact: false }).count()) === 1)
@@ -299,7 +306,7 @@ async function coldStartWithExpiredToken(browser, origin, outDir) {
   await watchOfflineFlash(page)
   const started = Date.now()
   await page.goto(`${origin}/app`, { waitUntil: 'domcontentloaded' })
-  await page.getByText('teste_offline', { exact: false }).first().waitFor({ timeout: 15_000 })
+  await waitForDashboard(page)
   const elapsed = Date.now() - started
   assert(elapsed < 8000, `Cold start com token vencido demorou ${elapsed} ms (esperou o auth-js?)`)
   deepStrictEqual(await headerBalances(page), ['20', '320'])
@@ -355,7 +362,7 @@ async function main() {
     page = await context.newPage()
     await page.goto(`${origin}/app`, { waitUntil: 'domcontentloaded' })
     await page.getByText('Modo offline: você entrou com os dados salvos neste aparelho.', { exact: false }).waitFor()
-    await page.getByText('teste_offline', { exact: false }).first().waitFor({ timeout: 15_000 })
+    await waitForDashboard(page)
     await page.getByText('1 alteração salva neste aparelho', { exact: false }).first().waitFor({ timeout: 15_000 })
     await page.locator('a[href="/novo-treino"]').first().click()
     await page.locator('.muscle-group-card').first().click()
