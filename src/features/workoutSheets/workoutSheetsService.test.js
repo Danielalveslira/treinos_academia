@@ -24,7 +24,8 @@ before(async () => {
             namespace: 'fake',
           }))
           b.onLoad({ filter: /.*/, namespace: 'fake' }, () => ({
-            contents: 'export const supabase={rpc:(name,args)=>globalThis.__sheetRpc(name,args)}',
+            contents:
+              "export const supabase={auth:{getSession:async()=>({data:{session:{user:{id:'test-user'}}}})},rpc:(name,args)=>globalThis.__sheetRpc(name,args)}",
           }))
         },
       },

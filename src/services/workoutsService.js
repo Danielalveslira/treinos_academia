@@ -45,6 +45,9 @@ function toDoc(row) {
     date: toWorkoutDate(row.date),
     note: row.note,
     createdAt: row.created_at,
+    // Ficha em que o registro nasceu (null em treino livre) -- ver sheet_id em
+    // supabase/migrations/20261123000001_workout_sheet_attribution.sql. Imutável após a criação.
+    sheetId: row.sheet_id ?? null,
   })
 }
 
@@ -188,10 +191,15 @@ const UNIQUE_VIOLATION = '23505'
 
 export async function createWorkout(userId, workout, { id: clientId } = {}) {
   const payload = workoutPayload(workout) // valida; inválido nunca chega nem na fila
+  // sheet_id só entra nos inserts ONLINE diretos abaixo -- nunca no `payload` da fila/outbox: a RPC
+  // de sincronização (sync_workout_mutations) valida um allowlist estrito de chaves e rejeitaria a
+  // mutação inteira com uma chave a mais. Um registro criado offline simplesmente nasce sem ficha
+  // vinculada (degrada honestamente; ver supabase/migrations/20261123000001_workout_sheet_attribution.sql).
+  const sheetId = workout.sheetId || null
   if (!(await canQueueLocally())) {
     let { data, error } = await supabase
       .from('workouts')
-      .insert({ ...(clientId ? { id: clientId } : {}), user_id: userId, ...payload })
+      .insert({ ...(clientId ? { id: clientId } : {}), user_id: userId, ...payload, sheet_id: sheetId })
       .select()
       .single()
     if (error?.code === UNIQUE_VIOLATION && clientId) {
@@ -216,7 +224,7 @@ export async function createWorkout(userId, workout, { id: clientId } = {}) {
     try {
       let { data, error } = await supabase
         .from('workouts')
-        .insert({ id, user_id: userId, ...payload })
+        .insert({ id, user_id: userId, ...payload, sheet_id: sheetId })
         .select()
         .single()
         .abortSignal(signal)
@@ -370,6 +378,13 @@ export function listDashboardWorkouts(userId) {
       return page && page.rows.map(toDoc)
     },
   })
+}
+
+// Aggregate computed by the server: bounded sheet summaries, never raw workout history.
+export async function getSheetInsights() {
+  const { data, error } = await supabase.rpc('get_my_sheet_insights')
+  if (error) throw error
+  return data
 }
 
 // Agregado no servidor: não transfere o histórico para exibir dois totais. sum(sets)

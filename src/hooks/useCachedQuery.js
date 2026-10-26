@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchCached, getCached, setCached, invalidateCache } from '../utils/pageCache'
+import {
+  fetchCached,
+  getCached,
+  setCached,
+  invalidateCache,
+  onCacheInvalidated,
+} from '../utils/pageCache'
 import { describeQueryError } from '../utils/queryError'
 
 // `keepPreviousScope`: enquanto a chave muda (ex.: voltou a rede e a consulta passa de 'local' para
@@ -8,7 +14,7 @@ import { describeQueryError } from '../utils/queryError'
 export function useCachedQuery(
   key,
   fetchValue,
-  { enabled = true, context = 'query', keepPreviousScope = null } = {}
+  { enabled = true, context = 'query', keepPreviousScope = null, observeInvalidation = false } = {}
 ) {
   const cached = enabled ? getCached(key) : undefined
   const [state, setState] = useState(() => ({
@@ -67,6 +73,25 @@ export function useCachedQuery(
       revision.current += 1
     }
   }, [enabled, run])
+
+  useEffect(() => {
+    if (!enabled || !observeInvalidation) return undefined
+    let active = true
+    let scheduled = false
+    const unsubscribe = onCacheInvalidated((prefix) => {
+      if (!key.startsWith(prefix) || scheduled) return
+      scheduled = true
+      // Coalesce a batch of writes/ACKs; fetchCached deduplicates mounted consumers.
+      queueMicrotask(() => {
+        scheduled = false
+        if (active) run(false)
+      })
+    })
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [enabled, key, observeInvalidation, run])
 
   const refresh = useCallback(() => run(true), [run])
   const setData = useCallback(

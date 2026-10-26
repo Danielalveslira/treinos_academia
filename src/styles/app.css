@@ -3278,6 +3278,12 @@ body:has(.pwa-offline) .app-shell {
 
 /* Product UI -------------------------------------------------------------- */
 :root {
+  --fitness-photo-bg: #101410;
+  --fitness-photo-ink: var(--fgColor-onEmphasis, #fff);
+  --fitness-photo-muted: #c8cfc5;
+  --fitness-photo-subtle: #a7af9f;
+  --fitness-photo-border: #ffffff22;
+  --fitness-photo-accent: #56d364;
   --fitness-accent: #3fb950;
   --fitness-accent-strong: #27863a;
   --fitness-accent-soft: #eaf7ec;
@@ -3428,7 +3434,7 @@ body {
   margin-bottom: 0;
   overflow: hidden;
   border-radius: var(--fitness-radius-lg);
-  background: #101410;
+  background: var(--fitness-photo-bg);
   box-shadow: var(--fitness-shadow);
   isolation: isolate;
 }
@@ -3448,6 +3454,15 @@ body {
   object-position: 52% 31%;
 }
 
+/* Portrait originals retain the full athlete, blending into the dark hero background. */
+.workout-hero > picture > img.hero-photo--portrait {
+  width: auto;
+  max-width: 62%;
+  mask-image: linear-gradient(90deg, transparent, black 25%);
+  object-fit: contain;
+  object-position: right center;
+}
+
 .workout-hero-shade {
   position: absolute;
   inset: 0;
@@ -3463,7 +3478,7 @@ body {
   width: 57%;
   min-height: 390px;
   padding: 46px;
-  color: white;
+  color: var(--fitness-photo-ink);
 }
 
 .hero-kicker {
@@ -3471,7 +3486,7 @@ body {
   align-items: center;
   gap: 7px;
   margin-bottom: 16px;
-  color: var(--fitness-accent);
+  color: var(--fitness-photo-accent);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .14em;
@@ -3480,7 +3495,7 @@ body {
 .workout-hero-content h2 {
   max-width: 520px;
   margin: 0;
-  color: white;
+  color: var(--fitness-photo-ink);
   font-size: clamp(30px, 4vw, 48px);
   font-weight: 760;
   line-height: 1.02;
@@ -3490,7 +3505,7 @@ body {
 .workout-hero-content p {
   max-width: 490px;
   margin: 18px 0 28px;
-  color: #c8cfc5;
+  color: var(--fitness-photo-muted);
   font-size: 15px;
   line-height: 1.6;
 }
@@ -3499,7 +3514,7 @@ body {
 .workout-form-actions button[data-variant='primary'] {
   min-height: 48px;
   padding-inline: 22px;
-  border-color: var(--fitness-accent);
+  border-color: var(--fitness-photo-accent);
   background: var(--fitness-accent);
   color: #11170b;
   font-size: 15px;
@@ -3509,8 +3524,138 @@ body {
 
 .start-workout-button[data-variant='primary']:hover,
 .workout-form-actions button[data-variant='primary']:hover {
-  border-color: var(--fitness-accent-strong);
+  border-color: var(--fitness-photo-accent);
   background: var(--fitness-accent-strong);
+}
+
+.workout-hero--loading {
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+}
+
+.hero-today-pill {
+  margin-left: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--fitness-accent);
+  border-radius: 999px;
+  color: var(--fitness-photo-accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.workout-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0 0 24px;
+  color: var(--fitness-photo-muted);
+  font-size: 13px;
+}
+
+.workout-hero-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workout-hero-meta strong {
+  color: var(--fitness-photo-ink);
+  font-weight: 700;
+}
+
+.workout-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.workout-hero-actions .start-workout-button {
+  flex: 1 1 auto;
+}
+
+.workout-hero-actions > a:not(.start-workout-button),
+.workout-hero-actions > button:not(.start-workout-button) {
+  min-height: 48px;
+  padding-inline: 18px;
+  border-color: #ffffff4a;
+  background: transparent;
+  color: var(--fitness-photo-ink);
+  font-weight: 650;
+}
+
+.sheet-insights-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 520px;
+  padding-top: 20px;
+  border-top: 1px solid var(--fitness-photo-border);
+}
+
+.sheet-insight-card {
+  display: flex;
+  flex: 1 1 220px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--fitness-photo-border);
+  border-radius: var(--fitness-radius-md);
+  background: #ffffff0d;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sheet-insight-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ffffff14;
+  color: var(--fitness-photo-accent);
+}
+
+.sheet-insight-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.sheet-insight-eyebrow {
+  overflow: hidden;
+  color: var(--fitness-photo-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-insight-text strong {
+  overflow: hidden;
+  color: var(--fitness-photo-ink);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sheet-insight-text small {
+  color: var(--fitness-photo-subtle);
+  font-size: 11px;
+}
+
+.sheet-insight-chevron {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--fitness-photo-subtle);
 }
 
 .performance-strip {
@@ -3973,6 +4118,20 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   border-radius: var(--fitness-radius-lg);
   background: var(--fitness-surface);
   box-shadow: var(--fitness-shadow);
+}
+
+/* Estados sem foto (offline, erro, sem fichas ainda): uma coluna só, sem reservar espaço vazio
+   para a imagem que não existe aqui -- ver RecommendedSheetPanel.jsx. */
+.empty-workout:not(:has(picture)) {
+  grid-template-columns: 1fr;
+  min-height: 0;
+}
+.empty-workout:not(:has(picture)) .empty-workout-content {
+  max-width: 560px;
+  padding: 36px;
+}
+.empty-workout:not(:has(picture))::after {
+  content: none;
 }
 
 .empty-workout > picture > img {
@@ -5261,11 +5420,18 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 
   .workout-hero { min-height: 340px; border-radius: 20px; }
   .workout-hero > picture > img { inset: 0; width: 100%; object-position: center 22%; opacity: .84; }
+  .workout-hero > picture > img.hero-photo--portrait { width: 100%; max-width: 100%; mask-image: none; object-position: center top; }
   .workout-hero-shade { background: linear-gradient(0deg, #090d09f5 3%, #090d09ba 43%, transparent 78%); }
   .workout-hero-content { justify-content: flex-end; width: 100%; min-height: 340px; padding: 20px; }
   .workout-hero-content h2 { max-width: 310px; font-size: 28px; }
   .workout-hero-content p { max-width: 320px; margin: 8px 0 18px; font-size: 14px; line-height: 1.45; }
   .start-workout-button[data-variant='primary'] { width: 100%; justify-content: center; min-height: 54px; font-size: 16px; border-radius: 12px; }
+  .hero-today-pill { display: block; margin: 6px 0 0; width: fit-content; }
+  .workout-hero-meta { margin-bottom: 18px; font-size: 12px; }
+  .workout-hero-actions { flex-direction: column; margin-bottom: 20px; }
+  .workout-hero-actions > a, .workout-hero-actions > button { width: 100%; justify-content: center; }
+  .sheet-insights-row { max-width: none; padding-top: 16px; }
+  .sheet-insight-card { flex: 1 1 100%; }
   .performance-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 8px 34px; border-radius: 0 0 16px 16px; }
   .performance-strip > div { padding: 16px 12px; }
   .performance-strip > div:last-child { grid-column: 1 / -1; border-top: 1px solid transparent; }
@@ -5925,3 +6091,27 @@ div:has(> .ev-zoom-dialog) {
   .profile-editor-avatar-actions { flex: 1; }
   .profile-editor-actions button { width: 100%; }
 }
+
+.workout-hero-content .sheet-insights-disclosure {
+  margin: 12px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.hero-kicker { flex-wrap: wrap; }
+.empty-workout .sheet-insights-row {
+  --fitness-photo-ink: var(--fitness-ink);
+  --fitness-photo-muted: var(--fitness-muted);
+  --fitness-photo-subtle: var(--fitness-muted);
+  --fitness-photo-border: var(--borderColor-default);
+  color: var(--fitness-ink);
+}
+.workout-hero-actions [data-component='leadingVisual'] { color: inherit; }
+.workout-hero-actions > a:not(.start-workout-button) {
+  --button-default-fgColor-rest: var(--fitness-photo-ink);
+  --button-default-bgColor-hover: #ffffff14;
+  --button-default-borderColor-hover: var(--fitness-photo-border);
+}
+
+.sheet-insights-disclosure summary { cursor: pointer; min-height: 24px; padding-block: 4px; }
+.workout-hero-content .sheet-insights-disclosure p { margin: 6px 0 0; font-size: 11px; line-height: 1.5; }
+.empty-workout .sheet-insights-disclosure { color: var(--fitness-muted); font-size: 12px; }

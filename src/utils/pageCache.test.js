@@ -40,15 +40,19 @@ test('a mutation invalidates all views of that user without touching another acc
     'workouts:alice:::',
     'exerciseHistory:alice:squat',
     'dashboard:bob',
+    'home-sheet-activity:alice:2026-10-25',
+    'home-sheet-activity:bob:2026-10-25',
   ])
     setCached(key, [1])
   invalidateWorkoutCache('alice')
   for (const key of ['dashboard:alice', 'workouts:alice:::', 'exerciseHistory:alice:squat'])
     assert.equal(getCached(key), undefined)
   assert.deepEqual(getCached('dashboard:bob'), [1])
+  assert.equal(getCached('home-sheet-activity:alice:2026-10-25'), undefined)
+  assert.deepEqual(getCached('home-sheet-activity:bob:2026-10-25'), [1])
 })
 
-test('invalidateCommunitiesCache clears only that user\'s communities list', () => {
+test("invalidateCommunitiesCache clears only that user's communities list", () => {
   setCached('communities:alice', { communities: [1], myCommunityIds: ['c1'] })
   setCached('communities:bob', { communities: [2], myCommunityIds: ['c2'] })
   invalidateCommunitiesCache('alice')

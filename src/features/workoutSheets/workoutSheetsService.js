@@ -1,10 +1,14 @@
 import { supabase } from '../../supabase/config'
+import { invalidateWorkoutCache } from '../../utils/pageCache.js'
 import { normalizeSheet, sheetFingerprint } from './workoutSheetValidation.js'
 
 async function rpc(name, args) {
   if (globalThis.navigator?.onLine === false) throw new Error('SHEET_NETWORK_REQUIRED')
+  const mutation = !['list_my_workout_sheets', 'get_my_workout_sheet'].includes(name)
+  const uid = mutation ? (await supabase.auth.getSession()).data?.session?.user?.id : null
   const { data, error } = await supabase.rpc(name, args)
   if (error) throw error
+  if (uid) invalidateWorkoutCache(uid)
   return data
 }
 export const listWorkoutSheets = (archived = false, page = 0) =>

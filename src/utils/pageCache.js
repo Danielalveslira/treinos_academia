@@ -43,9 +43,16 @@ export function fetchCached(key, fetchValue, { force = false } = {}) {
   return request
 }
 
+const invalidationListeners = new Set()
+export function onCacheInvalidated(listener) {
+  invalidationListeners.add(listener)
+  return () => invalidationListeners.delete(listener)
+}
+
 export function invalidateCache(prefix) {
   for (const key of store.keys()) if (key.startsWith(prefix)) store.delete(key)
   for (const key of pending.keys()) if (key.startsWith(prefix)) pending.delete(key)
+  invalidationListeners.forEach((listener) => listener(prefix))
 }
 
 // Único ponto que conhece a chave `communities:{uid}` -- entrar/sair/criar/editar/
@@ -56,7 +63,7 @@ export function invalidateCommunitiesCache(uid) {
 }
 
 export function invalidateWorkoutCache(uid) {
-  for (const prefix of ['dashboard', 'workouts', 'exerciseHistory', 'progress']) {
+  for (const prefix of ['dashboard', 'workouts', 'exerciseHistory', 'progress', 'home-sheet-activity']) {
     invalidateCache(`${prefix}:${uid}:`)
     // Dashboard keys historically have no suffix.
     store.delete(`${prefix}:${uid}`)

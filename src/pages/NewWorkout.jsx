@@ -23,6 +23,7 @@ import { useWorkoutSheets } from '../features/workoutSheets/useWorkoutSheets.js'
 import { sheetError } from '../features/workoutSheets/workoutSheetsService.js'
 import { sheetScopeExercises } from '../features/workoutSheets/workoutSheetValidation.js'
 import '../features/workoutSheets/workoutSheets.css'
+import { invalidateWorkoutCache } from '../utils/pageCache'
 import { businessDayKey, isBusinessDayKey } from '../utils/businessDate'
 
 // "Hoje" é o dia de NEGÓCIO (America/Sao_Paulo), não o do aparelho (ver utils/businessDate.js).
@@ -118,6 +119,7 @@ function WorkoutSession({ sheetScope }) {
       classifyError: classifyReadError,
     })
     if (outcome === 'done') {
+      invalidateWorkoutCache(user.uid)
       // replace: o formulário concluído não deve ser reaberto pelo botão Voltar.
       navigate('/historico', { replace: true })
       return
@@ -135,6 +137,11 @@ function WorkoutSession({ sheetScope }) {
     try {
       const result = await add(values, options)
       setHasRegistered(true)
+      if (sheetScope && result?.synced === false)
+        showToast(
+          'Registro salvo neste aparelho. A sincronização preserva o treino, mas não vincula a ficha; ele não entrará nos indicadores de fichas.',
+          'default'
+        )
       return result
     } catch (err) {
       console.error('[NewWorkout] create:', err)

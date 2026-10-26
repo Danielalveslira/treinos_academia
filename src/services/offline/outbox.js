@@ -56,6 +56,8 @@ export function buildLocalRow(userId, entityId, payload, existing, now) {
     user_id: userId,
     id: entityId,
     exercise_id: payload.exercise_id,
+    // Existing server attribution survives local edits; never accept a new link from payload.
+    ...(existing?.sheet_id ? { sheet_id: existing.sheet_id } : {}),
     date: payload.date,
     type: payload.type,
     set_details: strength ? payload.set_details : null,

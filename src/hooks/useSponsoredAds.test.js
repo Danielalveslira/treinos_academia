@@ -103,7 +103,8 @@ before(async () => {
             contents: `
               export const getCached = () => undefined
               export const setCached = () => {}
-              export const invalidateCache = () => {}
+              export const onCacheInvalidated = () => () => {};
+export const invalidateCache = () => {}
               export const fetchCached = (_key, fetchValue) => fetchValue()
             `,
           }))

@@ -1,22 +1,14 @@
 import { lazy, useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
-import { Box, Button, Heading, Spinner } from '@primer/react'
-import {
-  ArrowRightIcon,
-  CalendarIcon,
-  GraphIcon,
-  PlayIcon,
-  PulseIcon,
-} from '@primer/octicons-react'
+import { Link as RouterLink } from 'react-router-dom'
+import { Box, Heading, Spinner } from '@primer/react'
+import { ArrowRightIcon, CalendarIcon, GraphIcon } from '@primer/octicons-react'
 import { useHomeDashboard } from '../hooks/useHomeDashboard'
 import { useExercises } from '../contexts/ExercisesContext'
 import { useAuth } from '../hooks/useAuth'
 import { useGlobalSponsoredAds } from '../hooks/useGlobalSponsoredAds'
 import { SponsoredAdBanner } from '../components/SponsoredAdBanner'
-import { ResponsivePicture } from '../components/ResponsivePicture'
-import { originState } from '../utils/navigation'
-import { getProfileHeroImage } from '../constants/profileHeroImage'
 import { buildExerciseNameMap } from '../utils/format'
+import { RecommendedSheetPanel } from '../features/home/RecommendedSheetPanel'
 import { StreakCard } from '../components/StreakCard'
 import { buildShareOptions } from '../utils/shareProgress'
 import { buildConsistencySnapshot } from '../utils/consistencySnapshot'
@@ -75,8 +67,6 @@ export default function Dashboard() {
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [planOpen, setPlanOpen] = useState(false)
-  const navigate = useNavigate()
-  const location = useLocation()
   useEffect(() => {
     const idle = globalThis.requestIdleCallback || ((callback) => setTimeout(callback, 1500))
     const cancel = globalThis.cancelIdleCallback || clearTimeout
@@ -88,7 +78,6 @@ export default function Dashboard() {
   const { exercises } = useExercises()
   const { profile, user, offlineLocal, patchProfile } = useAuth()
   const { bannerAds } = useGlobalSponsoredAds(Boolean(user) && !offlineLocal)
-  const heroImage = getProfileHeroImage(profile?.sexo)
   const exerciseNameById = useMemo(() => buildExerciseNameMap(exercises), [exercises])
   const trainingPreferences = useMemo(
     () => normalizeTrainingPreferences(profile?.trainingPreferences),
@@ -124,10 +113,6 @@ export default function Dashboard() {
   const weeklyFrequency = progressDays.filter(
     (day) => day.dateKey >= weekStartKey && day.dateKey <= dayKey
   ).length
-  const lastWorkout = recentWorkouts[0]
-  const lastExercise = lastWorkout
-    ? exerciseNameById.get(lastWorkout.exerciseId) || 'seu último exercício'
-    : null
   const daysSinceLastActivity = useMemo(() => {
     const last = [...progressDays].reverse().find((day) => day.dateKey < dayKey)
     return last ? Math.floor((Date.parse(dayKey) - Date.parse(last.dateKey)) / 86400000) : null
@@ -180,66 +165,7 @@ export default function Dashboard() {
 
       <SponsoredAdBanner ads={bannerAds} placement="home_banner" />
 
-      {recentWorkouts.length === 0 ? (
-        <section className="empty-workout" aria-labelledby="empty-workout-title">
-          {!offlineLocal && (
-            <ResponsivePicture
-              name={heroImage.name}
-              alt={heroImage.alt}
-              width={heroImage.width}
-              height={heroImage.height}
-              sizes="(max-width: 767px) 100vw, 60vw"
-            />
-          )}
-          <div className="empty-workout-content">
-            <span className="eyebrow">COMECE HOJE</span>
-            <Heading as="h1" id="empty-workout-title">
-              Seu primeiro treino muda tudo.
-            </Heading>
-            <p>Registre cada série, acompanhe sua constância e veja a evolução acontecer.</p>
-            <Button
-              className="empty-workout-cta"
-              variant="primary"
-              leadingVisual={PlayIcon}
-              onClick={() => navigate('/novo-treino', { state: originState(location) })}
-            >
-              Iniciar primeiro treino
-            </Button>
-          </div>
-        </section>
-      ) : (
-        <section className="workout-hero" aria-labelledby="next-workout-title">
-          {!offlineLocal && (
-            <ResponsivePicture
-              name={heroImage.name}
-              alt={heroImage.alt}
-              width={heroImage.width}
-              height={heroImage.height}
-              sizes="(max-width: 767px) 100vw, 60vw"
-            />
-          )}
-          <div className="workout-hero-shade" />
-          <div className="workout-hero-content">
-            <span className="hero-kicker">
-              <PulseIcon size={14} /> SUGESTÃO DE TREINO
-            </span>
-            <Heading as="h2" id="next-workout-title">
-              Supere sua última sessão
-            </Heading>
-            <p>Continue por {lastExercise}.</p>
-            <Button
-              as={RouterLink}
-              to={`/novo-treino?exercicio=${lastWorkout.exerciseId}`}
-              state={originState(location)}
-              className="start-workout-button"
-              leadingVisual={PlayIcon}
-              variant="primary"
-            >
-              Iniciar treino
-            </Button>
-          </div>
-        </section>
-      )}
+      <RecommendedSheetPanel />
 
       <StreakCard
         unavailable={!progressAvailable}

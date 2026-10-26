@@ -10,6 +10,7 @@ import {
   entityDayKey,
   isBusinessDayKey,
   isFutureBusinessDay,
+  msUntilNextBusinessDay,
 } from './businessDate.js'
 import { validateWorkout } from './validators.js'
 import { saoPauloDayKey } from './qualifiedActivity.js'
@@ -153,4 +154,13 @@ test('isBusinessDayKey valida o formato', () => {
   assert.equal(isBusinessDayKey('2026-10-05'), true)
   assert.equal(isBusinessDayKey('2026-1-5'), false)
   assert.equal(isBusinessDayKey(20261005), false)
+})
+
+// Única fonte do "tempo até a próxima virada": usada tanto pelo relógio das saudações
+// (features/greetings/clock.js, que reexporta esta mesma função) quanto pela rotação diária
+// de banners da Home (features/home/useDailyBanner.js) -- nenhuma das duas reimplementa isso.
+test('msUntilNextBusinessDay: falta o que resta até 00:00 em São Paulo', () => {
+  assert.equal(msUntilNextBusinessDay(new Date('2026-10-11T02:59:00Z')), 60_000) // 23:59 SP
+  assert.equal(msUntilNextBusinessDay(new Date('2026-10-11T03:00:00Z')), 86_400_000) // 00:00 SP
+  assert.equal(msUntilNextBusinessDay(new Date('2026-10-10T15:00:00Z')), 12 * 3_600_000) // 12:00 SP
 })

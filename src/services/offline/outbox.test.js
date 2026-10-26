@@ -4,6 +4,7 @@ import { freshDatabase, rawAll, workoutRow } from './testSupport.js'
 import { closeDatabase } from './database.js'
 import {
   MAX_ATTEMPTS,
+  buildLocalRow,
   OPERATIONS,
   STATUS,
   backoffDelayMs,
@@ -709,4 +710,12 @@ test('sem a marca e SEM pendências continua não havendo histórico para mostra
   await recordWorkoutsPage(A, [workoutRow({ id: 'srv-1' })], { now: NOW })
   await purgePrivateData(null)
   assert.equal(await readCachedWorkouts(A), undefined)
+})
+
+test('edição offline preserva associação recebida do servidor, sem aceitar sheet_id no payload', () => {
+  const existing = { sheet_id: 'server-sheet', created_at: '2026-10-01T12:00:00Z' }
+  const row = buildLocalRow(A, 'workout', strength(), existing, NOW)
+  assert.equal(row.sheet_id, 'server-sheet')
+  const fresh = buildLocalRow(A, 'new', { ...strength(), sheet_id: 'forged-sheet' }, null, NOW)
+  assert.equal(fresh.sheet_id, undefined)
 })
