@@ -191,11 +191,14 @@ test('com histórico: mostra última ficha treinada e mais treinada no mês, sem
   )
 })
 
-test('atividade parcial não é apresentada como conclusão e avisa a limitação offline', () => {
+test('indicadores mostram atividade, sem inventar conclusão ou exibir o aviso técnico removido', () => {
   const html = render()
-  assert.match(html, /não comprova conclusão da ficha/)
-  assert.match(html, /salvos apenas offline/)
-  assert.doesNotMatch(html, /execuções neste mês|sessões concluídas|Última execução/)
+  assert.match(html, /ÚLTIMA FICHA UTILIZADA/)
+  assert.match(html, /MAIS DIAS COM REGISTROS/)
+  assert.doesNotMatch(
+    html,
+    /execuções neste mês|sessões concluídas|Última execução|Sobre as métricas e o uso offline|<details/
+  )
 })
 
 test('ficha já utilizada hoje informa atividade e não sugere que ainda falta concluí-la', () => {
