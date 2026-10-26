@@ -9,7 +9,7 @@
 
 ## Evidência e testes
 
-- Capturas reais, em tema claro: [início 390 px](evolutus-home-390.png), [início 1366 px](evolutus-home-1366.png), [empresas 390 px](evolutus-para-empresas-390.png), [Vitrine 390 px](evolutus-vitrine-390.png), [profissionais 390 px](evolutus-profissionais-390.png).
+- Capturas reais, em tema claro: início 390 px (captura removida), início 1366 px (captura removida), empresas 390 px (captura removida), Vitrine 390 px (captura removida), profissionais 390 px (captura removida).
 - `npm run build`: passou. `npm run lint`: zero erros, 17 avisos. `npm test`: 2070/2070 passaram em execução autorizada fora do sandbox; a tentativa dentro do sandbox teve `EPERM` ao criar subprocesso. Testes direcionados de menu, visuais de exercícios e detalhe profissional: 47/47.
 - `node --test tests/public-pages.test.mjs`: 11/11. `node scripts/security-headers.test.mjs`: 2/2. Smokes de Vitrine, profissionais, Turbo, banners, navegador geral e redesenho: passaram. O smoke de redesenho cobre 7 rotas, 6 larguras, temas claro/escuro e movimento reduzido.
 - `git diff --check`: passou.
