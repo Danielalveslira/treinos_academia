@@ -109,7 +109,11 @@ jobs:
   finance-e2e:
     name: finance-e2e
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Medido ~8 min num push isolado; um push para finance-ci-* dispara `push` E `pull_request`
+    # ao mesmo tempo (grupos de concorrência diferentes, ver `concurrency:` acima), e as duas
+    # execuções competem pelo mesmo runner -- 20 min cobre essa duplicação real sem ficar sem
+    # limite.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
