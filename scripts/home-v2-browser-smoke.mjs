@@ -204,6 +204,28 @@ try {
       assert.ok((await ad.getByRole('link', { name: 'Conhecer' }).boundingBox()).height >= 40)
       if (width < 768)
         assert.ok((await ad.boundingBox()).height <= 110, 'compact home advertisement')
+      if (width < 768) {
+        const actions = await page.locator('.workout-hero-actions').evaluate((el) => {
+          const [primary, secondary] = el.querySelectorAll('a')
+          const a = primary.getBoundingClientRect(),
+            b = secondary.getBoundingClientRect()
+          return {
+            primaryHeight: a.height,
+            secondaryHeight: b.height,
+            iconVisible: secondary.querySelector('svg').getBoundingClientRect().width > 0,
+            secondaryBorder: getComputedStyle(secondary).borderStyle,
+            right: b.right,
+            rowRight: el.getBoundingClientRect().right,
+          }
+        })
+        assert.ok(
+          actions.primaryHeight >= 48 && actions.secondaryHeight >= 48,
+          'both buttons keep desktop touch size'
+        )
+        assert.equal(actions.iconVisible, true, 'secondary keeps the desktop icon')
+        assert.equal(actions.secondaryBorder, 'solid', 'secondary keeps the desktop outline')
+        assert.ok(actions.right <= actions.rowRight + 1, 'secondary stays inside the action row')
+      }
       const geometry = await page.evaluate(() => ({
         scroll: document.documentElement.scrollWidth,
         width: innerWidth,

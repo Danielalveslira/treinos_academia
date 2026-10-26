@@ -5472,10 +5472,11 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .workout-hero-meta { gap: 0; }
   .workout-hero-meta span { gap: 5px; }
   .workout-hero-meta svg { flex-shrink: 0; }
-  .workout-hero-actions { width: 100%; align-items: center; flex-wrap: nowrap; gap: 16px; margin: 22px 0 0; padding: 0; }
-  .start-workout-button[data-variant='primary'] { min-height: 44px; padding-inline: 12px; font-size: 14px; border-radius: var(--fitness-radius-sm); }
-  .workout-hero-actions > a:not(.start-workout-button) { min-height: 44px; padding-inline: 0; border: 0; border-radius: 0; background: none; box-shadow: none; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
-  .workout-hero-actions > a:not(.start-workout-button) svg { display: none; }
+  .workout-hero-actions { width: 100%; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 10px; margin: 22px 0 0; padding: 0; }
+  .workout-hero-actions .start-workout-button { flex: 1 1 auto; }
+  .start-workout-button[data-variant='primary'] { min-height: 48px; padding-inline: 12px; font-size: 14px; border-radius: var(--fitness-radius-sm); }
+  /* Same secondary Button as desktop; only spacing adapts to the smaller viewport. */
+  .workout-hero-actions > a:not(.start-workout-button) { flex: 0 0 auto; padding-inline: 12px; }
   .sheet-activity-summary { width: 100%; padding: 14px 0 0; color: var(--fgColor-default); }
   .sheet-activity-summary .sheet-insights-row { gap: 0; max-width: none; padding: 0; border: 0; }
   .sheet-activity-summary .sheet-insight-card { flex: 1 1 100%; min-height: 48px; padding: 8px 2px; border: 0; border-radius: 0; background: none; }
