@@ -139,17 +139,10 @@ jobs:
           fi
       - name: Install isolated browser
         run: node node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell
-      # O AWS ECR Public tem um limite de dados/taxa para pulls ANÔNIMOS, compartilhado entre
-      # todo mundo saindo pelo IP do runner -- não é algo que autenticação deste repositório
-      # resolveria sozinho. Defesa aplicada: scripts/homolog/finance/stack.mjs tenta de novo com
-      # backoff quando o registro responde "too many requests"/"data limit exceeded", igual à CLI
-      # oficial da Supabase (job `sql`, que bate no mesmo limite e se recupera do mesmo jeito) --
-      # confirmado em execução real do GitHub Actions. Um cache de imagens entre execuções (via
-      # `docker save`/`load`) foi tentado e descartado: neste runner, o Docker (containerd image
-      # store) não preserva a referência tag@digest através do save/load -- testado à exaustão
-      # (ver histórico do PR) -- e a imagem já volta a ficar inacessível por referência depois de
-      # recarregada, quebrando o pull-by-digest abaixo. Preferível não ter cache a ter um cache que
-      # quebra o job. As imagens continuam fixadas por tag@digest no próprio script.
+      # GHCR oficial primeiro; ECR oficial somente em falha transitória, com o mesmo
+      # digest OCI fixado e verificação da imagem antes de iniciar qualquer container.
+      - name: Verify pinned image acquisition and secure fallback
+        run: node --test scripts/homolog/finance/images.test.mjs
       - name: Start disposable local stack (db + auth + storage + rest + edge)
         run: node scripts/homolog/finance/stack.mjs start
       - name: Apply all migrations to the disposable stack
