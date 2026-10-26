@@ -1,10 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { pwaPlugin } from './scripts/pwa-plugin.js'
+import { buildIdentityPlugin } from './scripts/release/build-identity-plugin.mjs'
 import { publicPreviewPlugin } from './scripts/public-preview-plugin.js'
 
 export default defineConfig({
-  plugins: [react(), pwaPlugin(), publicPreviewPlugin()],
+  plugins: [react(), pwaPlugin(), publicPreviewPlugin(), buildIdentityPlugin()],
   server: {
     fs: {
       // Preserve Vite defaults and keep audit backups/credentials out of dev HTTP.
