@@ -26,16 +26,16 @@ As APIs e os limites do tema foram conferidos na [documentação oficial do Prim
 
 ## Capturas do preview local
 
-Cada link aponta para uma captura de página inteira. O diretório contém também capturas posteriores em 320, 768 e 1024 px, menu móvel nos dois temas e formulário em várias larguras. As capturas da Vitrine usam resposta vazia simulada; [carregamento](redesign-captures/after/vitrine-loading-375.png) e [erro](redesign-captures/after/vitrine-error-375.png) foram capturados depois. Esses dois estados não tiveram captura anterior específica.
+Cada link aponta para uma captura de página inteira. O diretório contém também capturas posteriores em 320, 768 e 1024 px, menu móvel nos dois temas e formulário em várias larguras. As capturas da Vitrine usam resposta vazia simulada; carregamento (captura removida) e erro (captura removida) foram capturados depois. Esses dois estados não tiveram captura anterior específica.
 
 | Página | Antes desktop | Depois desktop | Antes mobile | Depois mobile |
 | --- | --- | --- | --- | --- |
-| Home | [1366](redesign-captures/before/home-dark-1366.png) | [1366](redesign-captures/after/home-dark-1366.png) | [375](redesign-captures/before/home-light-375.png) | [375](redesign-captures/after/home-light-375.png) |
-| Como funciona | [1366](redesign-captures/before/como-funciona-dark-1366.png) | [1366](redesign-captures/after/como-funciona-dark-1366.png) | [375](redesign-captures/before/como-funciona-light-375.png) | [375](redesign-captures/after/como-funciona-light-375.png) |
-| Funcionalidades | [1366](redesign-captures/before/funcionalidades-dark-1366.png) | [1366](redesign-captures/after/funcionalidades-dark-1366.png) | [375](redesign-captures/before/funcionalidades-light-375.png) | [375](redesign-captures/after/funcionalidades-light-375.png) |
-| Guia de registro | [1366](redesign-captures/before/guia-registro-treino-dark-1366.png) | [1366](redesign-captures/after/guia-registro-treino-dark-1366.png) | [375](redesign-captures/before/guia-registro-treino-light-375.png) | [375](redesign-captures/after/guia-registro-treino-light-375.png) |
-| Para empresas | [1366](redesign-captures/before/para-empresas-dark-1366.png) | [1366](redesign-captures/after/para-empresas-dark-1366.png) | [375](redesign-captures/before/para-empresas-light-375.png) | [375](redesign-captures/after/para-empresas-light-375.png) |
-| Vitrine | [1366](redesign-captures/before/vitrine-dark-1366.png) | [1366](redesign-captures/after/vitrine-dark-1366.png) | [375](redesign-captures/before/vitrine-light-375.png) | [375](redesign-captures/after/vitrine-light-375.png) |
+| Home | 1366 (captura removida) | 1366 (captura removida) | 375 (captura removida) | 375 (captura removida) |
+| Como funciona | 1366 (captura removida) | 1366 (captura removida) | 375 (captura removida) | 375 (captura removida) |
+| Funcionalidades | 1366 (captura removida) | 1366 (captura removida) | 375 (captura removida) | 375 (captura removida) |
+| Guia de registro | 1366 (captura removida) | 1366 (captura removida) | 375 (captura removida) | 375 (captura removida) |
+| Para empresas | 1366 (captura removida) | 1366 (captura removida) | 375 (captura removida) | 375 (captura removida) |
+| Vitrine | 1366 (captura removida) | 1366 (captura removida) | 375 (captura removida) | 375 (captura removida) |
 
 ## Validação e custo de transferência
 

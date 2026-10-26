@@ -15,3 +15,11 @@ firestore-debug.log
 
 # Local screenshot evidence from scripts/phase4-catalog-browser-smoke.mjs (regenerate on demand).
 .tmp-phase4-screenshots/
+
+# Screenshots/QA raster captures are disposable evidence, never source assets.
+/docs/**/*.png
+/docs/**/*.jpg
+/docs/**/*.jpeg
+/docs/**/*.webp
+/docs/**/*.avif
+!/docs/banner-sources/*.png
