@@ -233,13 +233,11 @@ try {
       }))
       assert.ok(geometry.scroll <= width, `horizontal overflow ${width}/${theme}`)
       assert.ok(geometry.hero.bottom < 852, 'content clears bottom navigation')
-      const disclosure = page.locator('.sheet-insights-disclosure')
-      assert.equal(await disclosure.getAttribute('open'), null)
-      await disclosure.locator('summary').focus()
-      await page.keyboard.press('Enter')
-      assert.match(await disclosure.innerText(), /não comprova conclusão/)
-      assert.match(await disclosure.innerText(), /salvos apenas offline/)
-      await page.keyboard.press('Enter')
+      assert.equal(
+        await page.locator('.sheet-insights-disclosure').count(),
+        0,
+        'technical disclosure removed from UI'
+      )
       assert.equal(
         await page.getByRole('link', { name: 'Iniciar ficha' }).getAttribute('href'),
         '/novo-treino?ficha=s1'
@@ -315,11 +313,6 @@ try {
             await page.getByRole('link', { name: 'Iniciar ficha' }).getAttribute('href'),
             '/novo-treino?ficha=s1'
           )
-          // A background must cover both disclosure states without replacing/reloading it.
-          const photoHandle = await page.locator('.workout-hero img').elementHandle()
-          const photoBox = await photoHandle.boundingBox()
-          const requestsBeforeDisclosure = images.length
-          const readsBeforeDisclosure = reads
           const assertBackground = async () => {
             const bounds = await page.evaluate(() => {
               const hero = document.querySelector('.workout-hero')
@@ -354,51 +347,7 @@ try {
             }
           }
           await assertBackground()
-          await disclosure.locator('summary').click()
-          assert.notEqual(await disclosure.getAttribute('open'), null)
-          await assertBackground()
-          assert.deepEqual(
-            await photoHandle.boundingBox(),
-            photoBox,
-            'disclosure must not change photo framing'
-          )
-          assert.deepEqual(
-            await page.locator('.workout-hero').boundingBox(),
-            {
-              x: layout.hero.x,
-              y: layout.hero.y,
-              width: layout.hero.width,
-              height: layout.hero.height,
-            },
-            'opening metrics must not resize or move hero'
-          )
-          if (day === 0)
-            await page.screenshot({
-              path: join(evidence, `${sexo}-disclosure-open-${width}-${theme}.png`),
-              fullPage: true,
-            })
-          await disclosure.locator('summary').click()
-          assert.equal(await disclosure.getAttribute('open'), null)
-          await assertBackground()
-          assert.deepEqual(
-            await page.locator('.workout-hero').boundingBox(),
-            {
-              x: layout.hero.x,
-              y: layout.hero.y,
-              width: layout.hero.width,
-              height: layout.hero.height,
-            },
-            'disclosure round trip must restore card geometry'
-          )
-          assert.equal(
-            await page
-              .locator('.workout-hero img')
-              .evaluate((img, original) => img === original, photoHandle),
-            true
-          )
-          assert.equal(images.length, requestsBeforeDisclosure, 'disclosure must not reload photos')
-          assert.equal(reads, readsBeforeDisclosure, 'disclosure must not query the backend')
-          await photoHandle.dispose()
+          assert.equal(await page.locator('.sheet-insights-disclosure').count(), 0)
           await page.screenshot({
             path: join(evidence, `${sexo}-day${day + 1}-${width}-${theme}.png`),
             fullPage: true,

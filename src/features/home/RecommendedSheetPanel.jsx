@@ -70,18 +70,6 @@ function SheetActivityCards({ lastTrained, mostTrained, todayKey }) {
   )
 }
 
-function MetricsDisclosure() {
-  return (
-    <details className="sheet-insights-disclosure">
-      <summary>Sobre as métricas e o uso offline</summary>
-      <p>
-        Atividade registrada não comprova conclusão da ficha. Novos registros salvos apenas offline
-        não são vinculados à ficha e ficam fora destes indicadores.
-      </p>
-    </details>
-  )
-}
-
 function HeroPhoto({ photo }) {
   const [failed, setFailed] = useState([])
   const current = getDashboardBannerFallbacks(photo).find((p) => !failed.includes(p.name))
@@ -206,7 +194,6 @@ export function RecommendedSheetPanel() {
             mostTrained={mostTrained}
             todayKey={todayKey}
           />
-          <MetricsDisclosure />
         </div>
       </section>
     )
@@ -277,17 +264,16 @@ export function RecommendedSheetPanel() {
             </div>
           </div>
         </div>
-        <div className="sheet-activity-summary" aria-label="Atividade das fichas">
-          <SheetActivityCards
-            lastTrained={lastTrained}
-            mostTrained={mostTrained}
-            todayKey={todayKey}
-          />
-        </div>
+        {(lastTrained || mostTrained) && (
+          <div className="sheet-activity-summary" aria-label="Atividade das fichas">
+            <SheetActivityCards
+              lastTrained={lastTrained}
+              mostTrained={mostTrained}
+              todayKey={todayKey}
+            />
+          </div>
+        )}
       </section>
-      <div className="sheet-metrics-note">
-        <MetricsDisclosure />
-      </div>
     </div>
   )
 }

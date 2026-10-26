@@ -3503,12 +3503,6 @@ body {
 .workout-recommendation .workout-hero-content { min-height: 0; padding-bottom: 0; }
 .workout-hero-intro { width: 100%; min-width: 0; }
 .hero-kicker-mobile { display: none; }
-.sheet-metrics-note { color: var(--fgColor-muted); }
-.sheet-metrics-note summary { display: flex; align-items: center; min-height: 44px; cursor: pointer; font-size: 12px; }
-.sheet-metrics-note summary::before { content: '+'; margin-right: 6px; }
-.sheet-metrics-note details[open] summary::before { content: '−'; }
-.sheet-metrics-note p { max-width: 65ch; margin: 0 0 12px; font-size: 12px; line-height: 1.5; }
-
 .sheet-activity-summary { width: 57%; padding: 0 46px 46px; color: var(--fitness-photo-ink); }
 
 .hero-kicker {
@@ -5484,7 +5478,6 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .sheet-activity-summary .sheet-insight-eyebrow { color: var(--fgColor-muted); font-size: 9px; }
   .sheet-activity-summary .sheet-insight-text strong { color: var(--fgColor-default); font-size: 13px; }
   .sheet-activity-summary .sheet-insight-text small, .sheet-activity-summary .sheet-insight-chevron { color: var(--fgColor-muted); }
-  .sheet-metrics-note summary { font-size: 11px; }
   .fitness-dashboard .dashboard-greeting { margin-bottom: 16px; }
   .fitness-dashboard .dashboard-greeting h1 { font-size: 20px; line-height: 1.3; }
   .sponsored-ad-banner--home {
