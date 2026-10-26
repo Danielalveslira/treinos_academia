@@ -1,0 +1,17 @@
+{
+  "simulated": true,
+  "networkCalls": 0,
+  "githubWrites": 0,
+  "vercelWrites": 0,
+  "baseline": {
+    "version": "v1.0.0",
+    "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "repeatedDryRunIdentical": true,
+  "proposedTag": {
+    "ref": "refs/tags/v1.0.1",
+    "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "planHash": "db688d81a0b8857a500e0369dae47276845eb736fbc484ddba0728c9a4963868",
+  "notes": "# Evolutus v1.0.1\n\nPublicação confirmada no domínio oficial.\n\n## Correções\n\n- Corrigimos o registro de fichas. ([PR #80](https://github.com/example/evolutus-fixture/pull/80))\n\n[Comparar com v1.0.0](https://github.com/example/evolutus-fixture/compare/v1.0.0...bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)\n\n## Publicação verificada\n\n- Domínio: https://evolutus.example\n- Commit: `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`\n- Deployment: `dpl_syntheticProduction`\n- CI: https://github.com/example/evolutus-fixture/actions/runs/901\n"
+}
