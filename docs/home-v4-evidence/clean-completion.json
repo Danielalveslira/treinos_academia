@@ -1,0 +1,10 @@
+[
+  {
+    "file": "home_sheet_completion_test.sql",
+    "passed": true,
+    "assertions": 23,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "35b90a3a40a394660c0a77dc64e99e2f0cab97cc4f46f368aed409b0821b7a0e"
+  }
+]

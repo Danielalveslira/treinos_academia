@@ -44,8 +44,15 @@ function checkSqlEnvironment() {
 }
 
 function runSqlTests() {
+  // Preserve relative \ir helper paths, including on containers without a workspace mount.
+  run('Preparar diretório SQL descartável', 'docker', [
+    'exec', container, 'mkdir', '-p', '/tmp/evolutus-release-tests',
+  ])
+  run('Copiar suítes SQL para o banco descartável', 'docker', [
+    'cp', `${join(ROOT, 'supabase/tests')}/.`, `${container}:/tmp/evolutus-release-tests`,
+  ])
   const files = readdirSync(join(ROOT, 'supabase/tests'))
-    .filter((name) => name.endsWith('.sql'))
+    .filter((name) => name.endsWith('_test.sql'))
     .sort()
   if (files.length < 32) throw new Error(`pgTAP incompleto: encontrei só ${files.length} arquivos SQL`)
   let assertions = 0
@@ -53,9 +60,10 @@ function runSqlTests() {
   let skipped = 0
   for (const file of files) {
     const output = run(`pgTAP ${file}`, 'docker', [
-      'exec', '-i', container, 'psql', '-X', '-U', dbUser, '-d', dbName,
-      '-v', 'ON_ERROR_STOP=1', '-P', 'tuples_only=on',
-    ], { input: readFileSync(join(ROOT, 'supabase/tests', file), 'utf8') })
+      'exec', '-i', '-w', '/tmp/evolutus-release-tests', container,
+      'psql', '-X', '-U', dbUser, '-d', dbName,
+      '-v', 'ON_ERROR_STOP=1', '-P', 'tuples_only=on', '-f', file,
+    ])
     const plan = [...output.matchAll(/^\s*1\.\.(\d+)\s*$/gm)]
     const ok = [...output.matchAll(/^\s*ok\s+\d+\b.*$/gm)]
     const notOk = [...output.matchAll(/^\s*not ok\s+\d+\b.*$/gm)]

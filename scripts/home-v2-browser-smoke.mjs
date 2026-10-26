@@ -15,9 +15,11 @@ let server,
   browser,
   reads = 0,
   activity = 1,
-  fail = false
+  fail = false,
+  v4 = null
 const errors = [],
-  results = []
+  results = [],
+  completionResults = []
 const stubs = {
   '/supabase/config': `import {createClient} from '@supabase/supabase-js'; export const supabase=createClient(location.origin,'fixture',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}})`,
   '/hooks/useAuth': `import {useSyncExternalStore} from 'react'; const subscribe=f=>{window.addEventListener('account',f);return()=>window.removeEventListener('account',f)}; export function useAuth(){const [uid,sexo]=JSON.parse(useSyncExternalStore(subscribe,()=>JSON.stringify([window.__uid||'alice',window.__sexo??null])));return {user:{uid},profile:{sexo},offlineLocal:false}}`,
@@ -72,20 +74,41 @@ try {
       res.end(
         JSON.stringify({
           today: '2026-10-25',
-          sheets: [
-            {
-              id: 's1',
-              name: 'Ficha A — Peito e tríceps',
-              weekdays: [],
-              sort_order: 0,
-              exercise_count: 3,
-              available: true,
-              archived_at: null,
-              last_date: '2026-10-24',
-              last_registered_at: '2026-10-24T15:00:00Z',
-              month_days: activity,
-            },
-          ],
+          sheets: v4
+            ? [
+                {
+                  id: 'a',
+                  name: 'Treino A',
+                  weekdays: [1, 3, 5],
+                  sort_order: 0,
+                  exercise_count: 3,
+                  available: true,
+                  last_date: v4 === 'not_started' ? null : '2026-10-26',
+                  completed_today: v4 === 'completed',
+                },
+                {
+                  id: 'b',
+                  name: 'Treino B',
+                  weekdays: [2, 4, 6],
+                  sort_order: 1,
+                  exercise_count: 3,
+                  available: true,
+                },
+              ]
+            : [
+                {
+                  id: 's1',
+                  name: 'Ficha A — Peito e tríceps',
+                  weekdays: [],
+                  sort_order: 0,
+                  exercise_count: 3,
+                  available: true,
+                  archived_at: null,
+                  last_date: '2026-10-24',
+                  last_registered_at: '2026-10-24T15:00:00Z',
+                  month_days: activity,
+                },
+              ],
         })
       )
       return
@@ -154,7 +177,7 @@ try {
       await disclosure.locator('summary').focus()
       await page.keyboard.press('Enter')
       assert.match(await disclosure.innerText(), /não comprova conclusão/)
-      assert.match(await disclosure.innerText(), /salvos apenas offline/)
+      assert.match(await disclosure.innerText(), /após sincronização/)
       await page.keyboard.press('Enter')
       assert.equal(
         await page.getByRole('link', { name: 'Iniciar ficha' }).getAttribute('href'),
@@ -314,8 +337,47 @@ try {
       await page.getByRole('heading', { name: 'Ficha A — Peito e tríceps' }).waitFor()
       await context.close()
     }
+  // Critical V4 regression with the real panel, cache invalidation, slow CPU and both themes.
+  for (const theme of ['light', 'dark']) {
+    v4 = 'not_started'
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      colorScheme: theme,
+    })
+    const page = await context.newPage()
+    const cdp = await context.newCDPSession(page)
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
+    await page.clock.setFixedTime(new Date('2026-10-26T15:00:00Z'))
+    await page.goto(url)
+    await page.getByRole('link', { name: 'Iniciar ficha' }).waitFor()
+    v4 = 'in_progress'
+    const progressStart = performance.now()
+    await page.evaluate(() => window.__invalidate('alice'))
+    await page.getByRole('link', { name: 'Continuar ficha' }).waitFor()
+    const progressMs = performance.now() - progressStart
+    v4 = 'completed'
+    const completionStart = performance.now()
+    await page.evaluate(() => window.__invalidate('alice'))
+    await page.getByRole('heading', { name: 'Treino B' }).waitFor()
+    const completionMs = performance.now() - completionStart
+    await page.getByText('Treino de hoje concluído', { exact: true }).waitFor()
+    assert.match(await page.locator('.workout-hero').innerText(), /terça-feira, 27\/10/)
+    assert.equal(await page.getByRole('link', { name: 'Iniciar ficha' }).count(), 0)
+    assert.equal(
+      await page.getByRole('link', { name: 'Ver próximo treino' }).getAttribute('href'),
+      '/fichas/b'
+    )
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth
+    )
+    assert.equal(overflow, false)
+    completionResults.push({ theme, width: 390, cpuSlowdown: 4, progressMs, completionMs, overflow })
+    await page.screenshot({ path: join(evidence, `v4-completed-${theme}.png`) })
+    await context.close()
+  }
   assert.deepEqual(errors, [])
   await writeFile(join(evidence, 'browser-results.json'), JSON.stringify(results, null, 2))
+  await writeFile(join(evidence, 'v4-results.json'), JSON.stringify(completionResults, null, 2))
   console.log(
     JSON.stringify({
       passed: results.length,

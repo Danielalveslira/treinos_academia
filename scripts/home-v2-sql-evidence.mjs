@@ -2,7 +2,15 @@
 import { execFileSync, spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import assert from 'node:assert/strict'
-const container = 'supabase_db_treinos_academia'
+const container = process.env.PG_TEST_CONTAINER || 'supabase_db_treinos_academia'
+if (
+  ![
+    'supabase_db_treinos_academia',
+    'evolutus_integrated_db',
+    'evolutus_integrated_clean_db',
+  ].includes(container)
+)
+  throw new Error('Disposable local container required')
 const uid = '96a00000-0000-0000-0000-000000000001'
 const eid = '96e00000-0000-0000-0000-000000000001'
 const sid = '96b00000-0000-0000-0000-000000000001'
@@ -144,7 +152,9 @@ try {
   const definition = sql(
     "select pg_get_functiondef('public.get_my_sheet_insights()'::regprocedure);"
   )
-  const statement = definition.match(/with activity_days[\s\S]*?into result from selected;/i)?.[0]
+  const statement = definition.match(
+    /with activity(?:_days)? as[\s\S]*?into result from selected;/i
+  )?.[0]
   assert.ok(statement, 'inspect the exact aggregate SQL, not an unrelated simplified plan')
   const query = statement
     .replace('into result', '')

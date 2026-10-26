@@ -1,6 +1,15 @@
 // Runs only against the disposable CI container. Never accepts a remote connection string.
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+const container = process.env.PG_TEST_CONTAINER || 'supabase_db_treinos_academia'
+if (
+  ![
+    'supabase_db_treinos_academia',
+    'evolutus_integrated_db',
+    'evolutus_integrated_clean_db',
+  ].includes(container)
+)
+  throw new Error('Disposable local container required')
 const helper = readFileSync('supabase/tests/_helpers/auth_session.sql', 'utf8')
 const suite = readFileSync('supabase/tests/workout_sheets_test.sql', 'utf8').replace(
   /^\\ir[^\n]*\n/,
@@ -11,7 +20,7 @@ const output = execFileSync(
   [
     'exec',
     '-i',
-    'supabase_db_treinos_academia',
+    container,
     'psql',
     '-U',
     'supabase_admin',
