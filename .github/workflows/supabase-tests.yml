@@ -132,37 +132,17 @@ jobs:
         run: node node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell
       # O AWS ECR Public tem um limite de dados/taxa para pulls ANÔNIMOS, compartilhado entre
       # todo mundo saindo pelo IP do runner -- não é algo que autenticação deste repositório
-      # resolveria sozinho. Duas defesas: (1) cache das 5 imagens entre execuções (restaura aqui,
-      # grava mais abaixo só quando não havia cache -- reduz pulls repetidos de verdade, não só
-      # tolera o limite); (2) scripts/homolog/finance/stack.mjs agora tenta de novo com backoff
-      # quando o registro responde "too many requests", igual à CLI oficial da Supabase (job
-      # `sql`, que bate no mesmo limite e se recupera do mesmo jeito). As imagens continuam
-      # fixadas por tag@digest no próprio script -- o cache nunca troca o conteúdo esperado.
-      - name: Restore cached Supabase images
-        id: image-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/docker-finance-images.tar
-          key: docker-finance-images-${{ hashFiles('scripts/homolog/finance/stack.mjs') }}
-      - name: Load cached images into Docker
-        if: steps.image-cache.outputs.cache-hit == 'true'
-        run: docker load -i ~/docker-finance-images.tar
-      # Stack local descartável (Postgres+Auth+Storage+PostgREST+Edge Runtime no MESMO namespace de
-      # rede do container do banco -- scripts/homolog/finance/stack.mjs) com limites de CPU/memória
-      # já embutidos no próprio script. Nenhum secret de produção; segredo do JWT local é fixo em
-      # scripts/homolog/keys.mjs, nunca usado fora deste job.
+      # resolveria sozinho. Defesa aplicada: scripts/homolog/finance/stack.mjs tenta de novo com
+      # backoff quando o registro responde "too many requests"/"data limit exceeded", igual à CLI
+      # oficial da Supabase (job `sql`, que bate no mesmo limite e se recupera do mesmo jeito) --
+      # confirmado em execução real do GitHub Actions. Um cache de imagens entre execuções (via
+      # `docker save`/`load`) foi tentado e descartado: neste runner, o Docker (containerd image
+      # store) não preserva a referência tag@digest através do save/load -- testado à exaustão
+      # (ver histórico do PR) -- e a imagem já volta a ficar inacessível por referência depois de
+      # recarregada, quebrando o pull-by-digest abaixo. Preferível não ter cache a ter um cache que
+      # quebra o job. As imagens continuam fixadas por tag@digest no próprio script.
       - name: Start disposable local stack (db + auth + storage + rest + edge)
         run: node scripts/homolog/finance/stack.mjs start
-      - name: Save images to cache (no-op upload if the cache above already had them)
-        if: steps.image-cache.outputs.cache-hit != 'true'
-        run: |
-          docker save \
-            public.ecr.aws/supabase/postgres:17.6.1.166 \
-            public.ecr.aws/supabase/gotrue:v2.197.0 \
-            public.ecr.aws/supabase/storage-api:v1.77.5 \
-            public.ecr.aws/supabase/postgrest:v14.5 \
-            public.ecr.aws/supabase/edge-runtime:v1.77.1 \
-            -o ~/docker-finance-images.tar
       - name: Apply all migrations to the disposable stack
         run: node scripts/homolog/finance/migrate.mjs all evolutus_integrated_db
       # Sessão real do GoTrue, RPC real via PostgREST, PostgreSQL real -- ver o cabeçalho do script.
