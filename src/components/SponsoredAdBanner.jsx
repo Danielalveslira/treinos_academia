@@ -152,7 +152,7 @@ export function SponsoredAdBanner({ ads, placement = 'community_banner', communi
   return (
     <aside
       ref={rootRef}
-      className="sponsored-ad-banner"
+      className={`sponsored-ad-banner${placement === 'home_banner' ? ' sponsored-ad-banner--home' : ''}`}
       onMouseEnter={pause}
       onMouseLeave={scheduleResume}
       onTouchStart={pause}

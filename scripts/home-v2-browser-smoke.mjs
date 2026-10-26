@@ -1,6 +1,7 @@
 // Real Home panel/hooks/cache/services with a synthetic Supabase HTTP boundary.
 // Security and aggregation are verified by PostgreSQL, never by this fixture.
 import { build } from 'esbuild'
+import { execFileSync } from 'node:child_process'
 import { createServer } from 'node:http'
 import { mkdtemp, readFile, rm, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -9,13 +10,20 @@ import assert from 'node:assert/strict'
 import { chromium } from 'playwright-core'
 const root = resolve(import.meta.dirname, '..')
 const dir = await mkdtemp(join(tmpdir(), 'home-v2-browser-'))
-const evidence = join(root, '.finance-local/home-v2-photos')
+const baselineRef = process.env.HOME_VISUAL_BASELINE
+// CPU throttling belongs in the isolated CI runner, keeping Codespace preview responsive.
+const cpuSlowdown = process.env.CI ? 4 : 1
+const evidence = join(
+  root,
+  baselineRef ? '.finance-local/home-v3-before' : '.finance-local/home-v3-after'
+)
 await mkdir(evidence, { recursive: true })
 let server,
   browser,
   reads = 0,
   activity = 1,
-  fail = false
+  fail = false,
+  variant = 'normal'
 const errors = [],
   results = []
 const stubs = {
@@ -29,10 +37,11 @@ try {
     import React from 'react';import{createRoot}from'react-dom/client';import{BrowserRouter}from'react-router-dom';
     import{ThemeProvider,BaseStyles}from'@primer/react';import{ThemeSync}from'./src/components/ThemeSync';
     import{RecommendedSheetPanel}from'./src/features/home/RecommendedSheetPanel';
+    import{SponsoredAdBanner}from'./src/components/SponsoredAdBanner';
     import{invalidateWorkoutCache}from'./src/utils/pageCache';
     import './src/styles/app.css';import '@primer/primitives/dist/css/functional/themes/light.css';import '@primer/primitives/dist/css/functional/themes/dark.css';
     window.__invalidate=invalidateWorkoutCache;
-    createRoot(document.getElementById('root')).render(<ThemeProvider colorMode="auto" dayScheme="light" nightScheme="dark"><BaseStyles><ThemeSync/><BrowserRouter><main style={{padding:16,maxWidth:1200,margin:'auto'}}><RecommendedSheetPanel/></main><nav style={{position:'fixed',bottom:0,height:48,background:'var(--bgColor-default)',width:'100%'}}>Navegação</nav></BrowserRouter></BaseStyles></ThemeProvider>);
+    createRoot(document.getElementById('root')).render(<ThemeProvider colorMode="auto" dayScheme="light" nightScheme="dark"><BaseStyles><ThemeSync/><BrowserRouter><main style={{padding:"16px 16px 80px",maxWidth:1200,margin:'auto'}}><SponsoredAdBanner placement="home_banner" ads={[{id:"fixture-ad",partnerName:"Academia Evolutus",title:"Seu próximo treino começa aqui",ctaLabel:"Conhecer",ctaType:"external",ctaTarget:"https://example.com/fitness"}]}/><RecommendedSheetPanel/></main><nav style={{position:'fixed',bottom:0,height:48,background:'var(--bgColor-default)',width:'100%'}}>Navegação</nav></BrowserRouter></BaseStyles></ThemeProvider>);
   `,
       resolveDir: root,
       loader: 'jsx',
@@ -44,6 +53,27 @@ try {
     define: { 'import.meta.env': '{}' },
     logLevel: 'silent',
     plugins: [
+      {
+        name: 'visual-baseline',
+        setup(b) {
+          if (!baselineRef) return
+          b.onLoad(
+            {
+              filter:
+                /src\/(styles\/app\.css|features\/home\/RecommendedSheetPanel\.jsx|components\/SponsoredAdBanner\.jsx)$/,
+            },
+            ({ path }) => ({
+              contents: execFileSync(
+                'git',
+                ['show', `${baselineRef}:${path.slice(root.length + 1)}`],
+                { cwd: root, encoding: 'utf8' }
+              ),
+              loader: path.endsWith('.css') ? 'css' : 'jsx',
+              resolveDir: path.slice(0, path.lastIndexOf('/')),
+            })
+          )
+        },
+      },
       {
         name: 'boundaries',
         setup(b) {
@@ -72,20 +102,26 @@ try {
       res.end(
         JSON.stringify({
           today: '2026-10-25',
-          sheets: [
-            {
-              id: 's1',
-              name: 'Ficha A — Peito e tríceps',
-              weekdays: [],
-              sort_order: 0,
-              exercise_count: 3,
-              available: true,
-              archived_at: null,
-              last_date: '2026-10-24',
-              last_registered_at: '2026-10-24T15:00:00Z',
-              month_days: activity,
-            },
-          ],
+          sheets:
+            variant === 'empty'
+              ? []
+              : [
+                  {
+                    id: 's1',
+                    name:
+                      variant === 'long'
+                        ? 'Ficha de fortalecimento completo de membros superiores, mobilidade e condicionamento — progressão personalizada'
+                        : 'Ficha A — Peito e tríceps',
+                    weekdays: [],
+                    sort_order: 0,
+                    exercise_count: 3,
+                    available: true,
+                    archived_at: null,
+                    last_date: variant === 'historyless' ? null : '2026-10-24',
+                    last_registered_at: variant === 'historyless' ? null : '2026-10-24T15:00:00Z',
+                    month_days: variant === 'historyless' ? 0 : activity,
+                  },
+                ],
         })
       )
       return
@@ -142,6 +178,32 @@ try {
         new Set(['capa']),
         'only selected photo loaded'
       )
+      if (baselineRef) {
+        await page.screenshot({
+          path: join(evidence, `before-${width}-${theme}.png`),
+          fullPage: true,
+        })
+        results.push({
+          width,
+          theme,
+          heroHeight: await page
+            .locator('.workout-hero')
+            .evaluate((el) => el.getBoundingClientRect().height),
+        })
+        await context.close()
+        continue
+      }
+      const client = await context.newCDPSession(page)
+      await client.send('Emulation.setCPUThrottlingRate', { rate: cpuSlowdown })
+      const ad = page.locator('.sponsored-ad-banner')
+      await ad.getByText('Patrocinado', { exact: true }).waitFor()
+      assert.equal(
+        await ad.getByRole('link', { name: 'Conhecer' }).getAttribute('href'),
+        'https://example.com/fitness'
+      )
+      assert.ok((await ad.getByRole('link', { name: 'Conhecer' }).boundingBox()).height >= 40)
+      if (width < 768)
+        assert.ok((await ad.boundingBox()).height <= 110, 'compact home advertisement')
       const geometry = await page.evaluate(() => ({
         scroll: document.documentElement.scrollWidth,
         width: innerWidth,
@@ -223,12 +285,98 @@ try {
           assert.ok(layout.hero.bottom < 852)
           assert.equal(
             layout.fit,
-            selected === 'capa' || selected === 'sexo_mulher' ? 'contain' : 'cover'
+            width >= 768 && (selected === 'capa' || selected === 'sexo_mulher')
+              ? 'contain'
+              : 'cover'
           )
           assert.equal(
             await page.getByRole('link', { name: 'Iniciar ficha' }).getAttribute('href'),
             '/novo-treino?ficha=s1'
           )
+          // A background must cover both disclosure states without replacing/reloading it.
+          const photoHandle = await page.locator('.workout-hero img').elementHandle()
+          const photoBox = await photoHandle.boundingBox()
+          const requestsBeforeDisclosure = images.length
+          const readsBeforeDisclosure = reads
+          const assertBackground = async () => {
+            const bounds = await page.evaluate(() => {
+              const hero = document.querySelector('.workout-hero')
+              const img = hero.querySelector('img')
+              return {
+                hero: hero.getBoundingClientRect().toJSON(),
+                image: img.getBoundingClientRect().toJSON(),
+                shade: hero.querySelector('.workout-hero-shade').getBoundingClientRect().toJSON(),
+                fit: getComputedStyle(img).objectFit,
+                position: getComputedStyle(img).objectPosition,
+                overflow: getComputedStyle(
+                  innerWidth < 768 ? hero : hero.closest('.workout-recommendation')
+                ).overflow,
+              }
+            })
+            assert.equal(bounds.overflow, 'hidden')
+            if (width < 768) {
+              assert.equal(bounds.fit, 'cover', 'mobile photo must fill the card')
+              for (const edge of ['left', 'top', 'right', 'bottom']) {
+                assert.ok(
+                  Math.abs(bounds.hero[edge] - bounds.image[edge]) < 1,
+                  `photo must fill ${edge}`
+                )
+                assert.ok(
+                  Math.abs(bounds.hero[edge] - bounds.shade[edge]) < 1,
+                  `gradient must fill ${edge}`
+                )
+              }
+              if (selected === 'capa' || selected === 'sexo_mulher') {
+                assert.equal(bounds.position, '50% 22%', 'keep athlete framing near the top')
+              }
+            }
+          }
+          await assertBackground()
+          await disclosure.locator('summary').click()
+          assert.notEqual(await disclosure.getAttribute('open'), null)
+          await assertBackground()
+          assert.deepEqual(
+            await photoHandle.boundingBox(),
+            photoBox,
+            'disclosure must not change photo framing'
+          )
+          assert.deepEqual(
+            await page.locator('.workout-hero').boundingBox(),
+            {
+              x: layout.hero.x,
+              y: layout.hero.y,
+              width: layout.hero.width,
+              height: layout.hero.height,
+            },
+            'opening metrics must not resize or move hero'
+          )
+          if (day === 0)
+            await page.screenshot({
+              path: join(evidence, `${sexo}-disclosure-open-${width}-${theme}.png`),
+              fullPage: true,
+            })
+          await disclosure.locator('summary').click()
+          assert.equal(await disclosure.getAttribute('open'), null)
+          await assertBackground()
+          assert.deepEqual(
+            await page.locator('.workout-hero').boundingBox(),
+            {
+              x: layout.hero.x,
+              y: layout.hero.y,
+              width: layout.hero.width,
+              height: layout.hero.height,
+            },
+            'disclosure round trip must restore card geometry'
+          )
+          assert.equal(
+            await page
+              .locator('.workout-hero img')
+              .evaluate((img, original) => img === original, photoHandle),
+            true
+          )
+          assert.equal(images.length, requestsBeforeDisclosure, 'disclosure must not reload photos')
+          assert.equal(reads, readsBeforeDisclosure, 'disclosure must not query the backend')
+          await photoHandle.dispose()
           await page.screenshot({
             path: join(evidence, `${sexo}-day${day + 1}-${width}-${theme}.png`),
             fullPage: true,
@@ -309,9 +457,39 @@ try {
       fail = true
       await page.evaluate(() => window.__invalidate('alice'))
       await page.getByRole('heading', { name: 'Não foi possível carregar suas fichas' }).waitFor()
-      fail = false
+      ;((fail = false), (variant = 'normal'))
       await page.getByRole('button', { name: /Tentar novamente/ }).click()
       await page.getByRole('heading', { name: 'Ficha A — Peito e tríceps' }).waitFor()
+      for (const state of ['long', 'historyless', 'empty']) {
+        variant = state
+        await page.evaluate(() => window.__invalidate('alice'))
+        if (state === 'empty')
+          await page.getByRole('button', { name: 'Criar primeira ficha' }).waitFor()
+        else {
+          await page
+            .getByRole('heading', {
+              name:
+                state === 'long'
+                  ? 'Ficha de fortalecimento completo de membros superiores, mobilidade e condicionamento — progressão personalizada'
+                  : 'Ficha A — Peito e tríceps',
+            })
+            .waitFor()
+          if (state === 'historyless')
+            assert.equal(await page.locator('.sheet-insight-card').count(), 0)
+          assert.ok(
+            (await page.getByRole('link', { name: 'Iniciar ficha' }).boundingBox()).height >= 44
+          )
+        }
+        assert.ok(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          `overflow ${state}/${width}`
+        )
+        await page.screenshot({
+          path: join(evidence, `${state}-${width}-${theme}.png`),
+          fullPage: true,
+        })
+      }
+      variant = 'normal'
       await context.close()
     }
   assert.deepEqual(errors, [])
@@ -319,7 +497,8 @@ try {
   console.log(
     JSON.stringify({
       passed: results.length,
-      photoCases: 120,
+      photoCases: baselineRef ? 0 : 120,
+      cpuSlowdown: baselineRef ? 1 : cpuSlowdown,
       profiles: ['masculino', 'feminino', 'nao_informar'],
       viewports: [320, 360, 390, 768, 1280],
       themes: ['light', 'dark'],
