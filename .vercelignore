@@ -1,0 +1,11 @@
+# Keep disposable validation evidence out of CLI deployment uploads.
+.finance-local/
+.tmp-phase4-screenshots/
+
+# Screenshots/QA raster captures are disposable evidence, never source assets.
+/docs/**/*.png
+/docs/**/*.jpg
+/docs/**/*.jpeg
+/docs/**/*.webp
+/docs/**/*.avif
+!/docs/banner-sources/*.png

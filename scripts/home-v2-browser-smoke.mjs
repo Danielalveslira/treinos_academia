@@ -1,7 +1,6 @@
 // Real Home panel/hooks/cache/services with a synthetic Supabase HTTP boundary.
 // Security and aggregation are verified by PostgreSQL, never by this fixture.
 import { build } from 'esbuild'
-import { execFileSync } from 'node:child_process'
 import { createServer } from 'node:http'
 import { mkdtemp, readFile, rm, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -10,13 +9,9 @@ import assert from 'node:assert/strict'
 import { chromium } from 'playwright-core'
 const root = resolve(import.meta.dirname, '..')
 const dir = await mkdtemp(join(tmpdir(), 'home-v2-browser-'))
-const baselineRef = process.env.HOME_VISUAL_BASELINE
 // CPU throttling belongs in the isolated CI runner, keeping Codespace preview responsive.
 const cpuSlowdown = process.env.CI ? 4 : 1
-const evidence = join(
-  root,
-  baselineRef ? '.finance-local/home-v3-before' : '.finance-local/home-v3-after'
-)
+const evidence = join(root, '.finance-local/home-v3-checks')
 await mkdir(evidence, { recursive: true })
 let server,
   browser,
@@ -53,27 +48,6 @@ try {
     define: { 'import.meta.env': '{}' },
     logLevel: 'silent',
     plugins: [
-      {
-        name: 'visual-baseline',
-        setup(b) {
-          if (!baselineRef) return
-          b.onLoad(
-            {
-              filter:
-                /src\/(styles\/app\.css|features\/home\/RecommendedSheetPanel\.jsx|components\/SponsoredAdBanner\.jsx)$/,
-            },
-            ({ path }) => ({
-              contents: execFileSync(
-                'git',
-                ['show', `${baselineRef}:${path.slice(root.length + 1)}`],
-                { cwd: root, encoding: 'utf8' }
-              ),
-              loader: path.endsWith('.css') ? 'css' : 'jsx',
-              resolveDir: path.slice(0, path.lastIndexOf('/')),
-            })
-          )
-        },
-      },
       {
         name: 'boundaries',
         setup(b) {
@@ -178,21 +152,6 @@ try {
         new Set(['capa']),
         'only selected photo loaded'
       )
-      if (baselineRef) {
-        await page.screenshot({
-          path: join(evidence, `before-${width}-${theme}.png`),
-          fullPage: true,
-        })
-        results.push({
-          width,
-          theme,
-          heroHeight: await page
-            .locator('.workout-hero')
-            .evaluate((el) => el.getBoundingClientRect().height),
-        })
-        await context.close()
-        continue
-      }
       const client = await context.newCDPSession(page)
       await client.send('Emulation.setCPUThrottlingRate', { rate: cpuSlowdown })
       const ad = page.locator('.sponsored-ad-banner')
@@ -286,6 +245,8 @@ try {
       }
       for (let day = 0; day < 4; day++) {
         await selectDay(`2026-10-${26 + day}`)
+        // Finish the current profile's day transition before measuring the next profile.
+        await expectPhoto(expected[day === 0 ? 'masculino' : 'nao_informar'][day])
         for (const sexo of Object.keys(expected)) {
           const beforeImages = images.length
           await selectProfile(sexo)
@@ -293,7 +254,7 @@ try {
           await expectPhoto(selected)
           assert.ok(
             imageNames(beforeImages).every((name) => name === selected),
-            'no unselected image download'
+            `no unselected image download: ${JSON.stringify({ day, sexo, selected, seen: imageNames(beforeImages) })}`
           )
           const layout = await page.evaluate(() => ({
             width: innerWidth,
@@ -348,10 +309,6 @@ try {
           }
           await assertBackground()
           assert.equal(await page.locator('.sheet-insights-disclosure').count(), 0)
-          await page.screenshot({
-            path: join(evidence, `${sexo}-day${day + 1}-${width}-${theme}.png`),
-            fullPage: true,
-          })
         }
       }
       // Changing profile within the same day never triggers another aggregate/database read.
@@ -368,7 +325,6 @@ try {
       await page.reload()
       await expectPhoto('sexo_mulher')
       assert.ok(imageNames(reloadImages).every((name) => name === 'sexo_mulher'))
-      await page.screenshot({ path: join(evidence, `home-${width}-${theme}.png`), fullPage: true })
       results.push({ width, theme, requests: reads - before, images: images.length, geometry })
       // A mounted view receives writes/ACKs, coalesces the batch, and ignores another account.
       const initial = reads
@@ -455,10 +411,6 @@ try {
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
           `overflow ${state}/${width}`
         )
-        await page.screenshot({
-          path: join(evidence, `${state}-${width}-${theme}.png`),
-          fullPage: true,
-        })
       }
       variant = 'normal'
       await context.close()
@@ -468,8 +420,8 @@ try {
   console.log(
     JSON.stringify({
       passed: results.length,
-      photoCases: baselineRef ? 0 : 120,
-      cpuSlowdown: baselineRef ? 1 : cpuSlowdown,
+      photoCases: 120,
+      cpuSlowdown,
       profiles: ['masculino', 'feminino', 'nao_informar'],
       viewports: [320, 360, 390, 768, 1280],
       themes: ['light', 'dark'],
