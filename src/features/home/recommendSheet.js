@@ -1,4 +1,5 @@
-// Deterministic recommendations use registered activity, never inferred session completion.
+import { addDaysToDayKey } from '../../utils/businessDate.js'
+// Completion is explicit server evidence; registered activity only establishes progress.
 // Production receives all-time last dates and month day counts from get_my_sheet_insights.
 function stableOrder(a, b) {
   return a.sort_order - b.sort_order || String(a.id).localeCompare(String(b.id), 'en')
@@ -6,6 +7,12 @@ function stableOrder(a, b) {
 
 function isRecommendable(sheet) {
   return !sheet.archived_at && Number(sheet.exercise_count) > 0 && sheet.available !== false
+}
+
+export function sheetState(sheet, activityIndex, todayKey) {
+  if (!isRecommendable(sheet)) return 'unavailable'
+  if (sheet.completed_today === true) return 'completed'
+  return activityIndex.get(sheet.id)?.lastDate === todayKey ? 'in_progress' : 'not_started'
 }
 
 export function daysBetweenKeys(fromKey, toKey) {
@@ -77,10 +84,26 @@ export function recommendSheet(sheets, activityIndex, todayKey) {
   const todayWeekday = new Date(`${todayKey}T12:00:00Z`).getUTCDay()
   const lastDateOf = (sheet) => activityIndex.get(sheet.id)?.lastDate || null
 
-  const scheduledToday = pool.filter((sheet) => (sheet.weekdays || []).includes(todayWeekday))
+  const stateOf = (sheet) => sheetState(sheet, activityIndex, todayKey)
+  const pending = pool.filter((sheet) => stateOf(sheet) !== 'completed')
+  const underway = pending
+    .filter((sheet) => stateOf(sheet) === 'in_progress')
+    .sort(
+      (a, b) =>
+        Number((b.weekdays || []).includes(todayWeekday)) -
+          Number((a.weekdays || []).includes(todayWeekday)) || stableOrder(a, b)
+    )
+  if (underway.length)
+    return {
+      sheet: underway[0],
+      reason: 'in_progress',
+      state: 'in_progress',
+      lastDate: lastDateOf(underway[0]),
+    }
+  const scheduledToday = pending.filter((sheet) => (sheet.weekdays || []).includes(todayWeekday))
   if (scheduledToday.length) {
     const sheet = [...scheduledToday].sort(byOverdueThenOrder(activityIndex, todayKey))[0]
-    return { sheet, reason: 'today', lastDate: lastDateOf(sheet) }
+    return { sheet, reason: 'today', state: 'not_started', lastDate: lastDateOf(sheet) }
   }
 
   const withSchedule = pool.filter((sheet) => (sheet.weekdays || []).length > 0)
@@ -95,10 +118,13 @@ export function recommendSheet(sheets, activityIndex, todayKey) {
       reason: 'scheduled',
       lastDate: lastDateOf(sheet),
       nextInDays: daysUntilWeekday(todayWeekday, sheet.weekdays),
+      nextDate: addDaysToDayKey(todayKey, daysUntilWeekday(todayWeekday, sheet.weekdays)),
+      completedToday: pool.some((s) => s.completed_today),
     }
   }
 
-  const sheet = [...pool].sort(byOverdueThenOrder(activityIndex, todayKey))[0]
+  if (!pending.length) return { reason: 'completed', completedToday: true }
+  const sheet = [...pending].sort(byOverdueThenOrder(activityIndex, todayKey))[0]
   return { sheet, reason: 'fallback', lastDate: lastDateOf(sheet) }
 }
 

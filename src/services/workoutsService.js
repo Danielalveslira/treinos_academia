@@ -191,15 +191,16 @@ const UNIQUE_VIOLATION = '23505'
 
 export async function createWorkout(userId, workout, { id: clientId } = {}) {
   const payload = workoutPayload(workout) // valida; inválido nunca chega nem na fila
-  // sheet_id só entra nos inserts ONLINE diretos abaixo -- nunca no `payload` da fila/outbox: a RPC
-  // de sincronização (sync_workout_mutations) valida um allowlist estrito de chaves e rejeitaria a
-  // mutação inteira com uma chave a mais. Um registro criado offline simplesmente nasce sem ficha
-  // vinculada (degrada honestamente; ver supabase/migrations/20261123000001_workout_sheet_attribution.sql).
   const sheetId = workout.sheetId || null
   if (!(await canQueueLocally())) {
     let { data, error } = await supabase
       .from('workouts')
-      .insert({ ...(clientId ? { id: clientId } : {}), user_id: userId, ...payload, sheet_id: sheetId })
+      .insert({
+        ...(clientId ? { id: clientId } : {}),
+        user_id: userId,
+        ...payload,
+        sheet_id: sheetId,
+      })
       .select()
       .single()
     if (error?.code === UNIQUE_VIOLATION && clientId) {
@@ -250,8 +251,8 @@ export async function createWorkout(userId, workout, { id: clientId } = {}) {
   return queueWorkoutWrite(userId, {
     operation: OPERATIONS.create,
     entityId: id,
-    payload,
-    workout: buildLocalRow(userId, id, payload, null, Date.now()),
+    payload: { ...payload, ...(sheetId ? { sheet_id: sheetId } : {}) },
+    workout: buildLocalRow(userId, id, { ...payload, sheet_id: sheetId }, null, Date.now()),
   })
 }
 

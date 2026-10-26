@@ -150,7 +150,7 @@ test('resumo agregado preserva recência além de 60 dias e dias mensais sem his
   )
   assert.equal(index.get('A').lastDate, '2025-01-01')
   assert.equal(mostTrainedThisMonth([sheet('A'), sheet('B')], index).count, 3)
-  assert.equal(recommendSheet([sheet('A'), sheet('B')], index, TODAY).sheet.id, 'A')
+  assert.equal(recommendSheet([sheet('A'), sheet('B')], index, TODAY).sheet.id, 'B')
 })
 
 test('empates são estáveis mesmo com ordem igual e entrada invertida', () => {
@@ -171,14 +171,14 @@ test('empates são estáveis mesmo com ordem igual e entrada invertida', () => {
   }
 })
 
-test('indisponível nunca é recomendada; atividade hoje prioriza outra ficha de hoje sem registros', () => {
+test('indisponível nunca é recomendada; atividade hoje prioriza continuidade', () => {
   const sheets = [
     sheet('A', { weekdays: [6] }),
     sheet('B', { weekdays: [6] }),
     sheet('C', { available: false }),
   ]
   const index = buildSheetActivityIndex([{ sheetId: 'A', date: TODAY }], '2026-10-01')
-  assert.equal(recommendSheet(sheets, index, TODAY).sheet.id, 'B')
+  assert.equal(recommendSheet(sheets, index, TODAY).sheet.id, 'A')
   assert.equal(recommendSheet([sheet('C', { available: false })], index, TODAY), null)
 })
 
@@ -192,4 +192,21 @@ test('virada de mês exclui dias do mês anterior e posterior', () => {
     '2026-10-01'
   )
   assert.equal(mostTrainedThisMonth([sheet('A')], index).count, 1)
+})
+
+test('segunda A inicia, continua e conclui; B terça; A sozinha volta quarta', () => {
+  const day = '2026-10-26'
+  const a = sheet('A', { weekdays: [1, 3, 5] })
+  const b = sheet('B', { weekdays: [2, 4, 6] })
+  assert.equal(recommendSheet([a, b], new Map(), day).reason, 'today')
+  const activity = buildSheetActivityIndex([{ sheetId: 'A', date: day }], '2026-10-01')
+  assert.equal(recommendSheet([a, b], activity, day).reason, 'in_progress')
+  const done = { ...a, completed_today: true }
+  const next = recommendSheet([done, b], activity, day)
+  assert.equal(next.sheet.id, 'B')
+  assert.equal(next.nextDate, '2026-10-27')
+  assert.equal(recommendSheet([done], activity, day).nextDate, '2026-10-28')
+  assert.equal(recommendSheet([done, { ...b, weekdays: [1] }], activity, day).sheet.id, 'B')
+  assert.equal(recommendSheet([{ ...done, weekdays: [] }], activity, day).reason, 'completed')
+  assert.equal(recommendSheet([a, b], new Map(), '2026-10-27').sheet.id, 'B')
 })

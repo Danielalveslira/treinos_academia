@@ -9,7 +9,11 @@ import { useToast } from '../hooks/useToast'
 import { WorkoutForm } from '../components/WorkoutForm'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
-import { completeWorkoutSession, getMyEvocoinDay } from '../services/economyService'
+import {
+  completeWorkoutSession,
+  completeWorkoutSheet,
+  getMyEvocoinDay,
+} from '../services/economyService'
 import { flushPending } from '../services/offline/syncScheduler'
 import { classifyReadError } from '../services/offline/readError'
 import { useAuth } from '../hooks/useAuth'
@@ -29,17 +33,11 @@ import { businessDayKey, isBusinessDayKey } from '../utils/businessDate'
 // "Hoje" é o dia de NEGÓCIO (America/Sao_Paulo), não o do aparelho (ver utils/businessDate.js).
 const localDateKey = () => businessDayKey()
 
-// Dia do treino a concluir: o que o SERVIDOR considera hoje (mesma regra da recompensa). Se a leitura
-// falhar por conectividade o erro sobe (finalizar exige servidor); por qualquer outro motivo cai no dia de
-// negócio calculado aqui (America/Sao_Paulo), que é a mesma definição, nunca o fuso do aparelho.
+// O servidor determina o dia que deve estar sincronizado; falhas bloqueiam a finalização.
 async function serverBusinessDay() {
-  try {
-    const result = await getMyEvocoinDay()
-    if (isBusinessDayKey(result?.day)) return result.day
-  } catch (error) {
-    if (classifyReadError(error) === 'connectivity') throw error
-  }
-  return businessDayKey()
+  const result = await getMyEvocoinDay()
+  if (!isBusinessDayKey(result?.day)) throw new Error('INVALID_SERVER_DAY')
+  return result.day
 }
 
 export default function NewWorkout() {
@@ -115,7 +113,8 @@ function WorkoutSession({ sheetScope }) {
       isOnline: () => navigator.onLine !== false,
       getDay: serverBusinessDay,
       flushPending: (day) => flushPending(user.uid, { date: day }),
-      completeSession: completeWorkoutSession,
+      completeSession: () =>
+        sheetScope ? completeWorkoutSheet(sheetScope.id) : completeWorkoutSession(),
       classifyError: classifyReadError,
     })
     if (outcome === 'done') {
@@ -139,7 +138,7 @@ function WorkoutSession({ sheetScope }) {
       setHasRegistered(true)
       if (sheetScope && result?.synced === false)
         showToast(
-          'Registro salvo neste aparelho. A sincronização preserva o treino, mas não vincula a ficha; ele não entrará nos indicadores de fichas.',
+          'Registro salvo neste aparelho. Aguarde a sincronização antes de finalizar esta ficha.',
           'default'
         )
       return result

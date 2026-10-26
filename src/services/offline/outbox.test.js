@@ -712,10 +712,30 @@ test('sem a marca e SEM pendências continua não havendo histórico para mostra
   assert.equal(await readCachedWorkouts(A), undefined)
 })
 
-test('edição offline preserva associação recebida do servidor, sem aceitar sheet_id no payload', () => {
+test('edição preserva associação; criação transporta identidade sujeita à validação do servidor', () => {
   const existing = { sheet_id: 'server-sheet', created_at: '2026-10-01T12:00:00Z' }
   const row = buildLocalRow(A, 'workout', strength(), existing, NOW)
   assert.equal(row.sheet_id, 'server-sheet')
   const fresh = buildLocalRow(A, 'new', { ...strength(), sheet_id: 'forged-sheet' }, null, NOW)
-  assert.equal(fresh.sheet_id, undefined)
+  assert.equal(fresh.sheet_id, 'forged-sheet')
+  assert.equal(
+    buildLocalRow(A, 'workout', { ...strength(), sheet_id: 'other' }, existing, NOW).sheet_id,
+    'server-sheet'
+  )
+})
+
+test('sheet creation survives compaction and ACK', async () => {
+  await enqueue(A, OPERATIONS.create, E1, strength(80, { sheet_id: E2 }))
+  await enqueue(A, OPERATIONS.update, E1, strength(90))
+  const [m] = await mutationsOf(A)
+  assert.equal(m.payload.sheet_id, E2)
+  assert.equal((await rawAll('workouts'))[0].sheet_id, E2)
+  const [claimed] = await claimNextBatch(A, { now: NOW })
+  await completeMutation(A, claimed, {
+    status: 'applied',
+    row: workoutRow({ user_id: A, id: E1, sheet_id: E2 }),
+    server_updated_at: '2026-10-05T12:00:00Z',
+  })
+  assert.equal((await rawAll('workouts'))[0].sheet_id, E2)
+  assert.equal((await mutationsOf(A)).length, 0)
 })
