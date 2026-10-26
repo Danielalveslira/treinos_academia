@@ -9,13 +9,16 @@ import assert from 'node:assert/strict'
 import { chromium } from 'playwright-core'
 const root = resolve(import.meta.dirname, '..')
 const dir = await mkdtemp(join(tmpdir(), 'home-v2-browser-'))
-const evidence = join(root, '.finance-local/home-v2-photos')
+// CPU throttling belongs in the isolated CI runner, keeping Codespace preview responsive.
+const cpuSlowdown = process.env.CI ? 4 : 1
+const evidence = join(root, '.finance-local/home-v3-checks')
 await mkdir(evidence, { recursive: true })
 let server,
   browser,
   reads = 0,
   activity = 1,
-  fail = false
+  fail = false,
+  variant = 'normal'
 const errors = [],
   results = []
 const stubs = {
@@ -29,10 +32,11 @@ try {
     import React from 'react';import{createRoot}from'react-dom/client';import{BrowserRouter}from'react-router-dom';
     import{ThemeProvider,BaseStyles}from'@primer/react';import{ThemeSync}from'./src/components/ThemeSync';
     import{RecommendedSheetPanel}from'./src/features/home/RecommendedSheetPanel';
+    import{SponsoredAdBanner}from'./src/components/SponsoredAdBanner';
     import{invalidateWorkoutCache}from'./src/utils/pageCache';
     import './src/styles/app.css';import '@primer/primitives/dist/css/functional/themes/light.css';import '@primer/primitives/dist/css/functional/themes/dark.css';
     window.__invalidate=invalidateWorkoutCache;
-    createRoot(document.getElementById('root')).render(<ThemeProvider colorMode="auto" dayScheme="light" nightScheme="dark"><BaseStyles><ThemeSync/><BrowserRouter><main style={{padding:16,maxWidth:1200,margin:'auto'}}><RecommendedSheetPanel/></main><nav style={{position:'fixed',bottom:0,height:48,background:'var(--bgColor-default)',width:'100%'}}>Navegação</nav></BrowserRouter></BaseStyles></ThemeProvider>);
+    createRoot(document.getElementById('root')).render(<ThemeProvider colorMode="auto" dayScheme="light" nightScheme="dark"><BaseStyles><ThemeSync/><BrowserRouter><main style={{padding:"16px 16px 80px",maxWidth:1200,margin:'auto'}}><SponsoredAdBanner placement="home_banner" ads={[{id:"fixture-ad",partnerName:"Academia Evolutus",title:"Seu próximo treino começa aqui",ctaLabel:"Conhecer",ctaType:"external",ctaTarget:"https://example.com/fitness"}]}/><RecommendedSheetPanel/></main><nav style={{position:'fixed',bottom:0,height:48,background:'var(--bgColor-default)',width:'100%'}}>Navegação</nav></BrowserRouter></BaseStyles></ThemeProvider>);
   `,
       resolveDir: root,
       loader: 'jsx',
@@ -72,20 +76,26 @@ try {
       res.end(
         JSON.stringify({
           today: '2026-10-25',
-          sheets: [
-            {
-              id: 's1',
-              name: 'Ficha A — Peito e tríceps',
-              weekdays: [],
-              sort_order: 0,
-              exercise_count: 3,
-              available: true,
-              archived_at: null,
-              last_date: '2026-10-24',
-              last_registered_at: '2026-10-24T15:00:00Z',
-              month_days: activity,
-            },
-          ],
+          sheets:
+            variant === 'empty'
+              ? []
+              : [
+                  {
+                    id: 's1',
+                    name:
+                      variant === 'long'
+                        ? 'Ficha de fortalecimento completo de membros superiores, mobilidade e condicionamento — progressão personalizada'
+                        : 'Ficha A — Peito e tríceps',
+                    weekdays: [],
+                    sort_order: 0,
+                    exercise_count: 3,
+                    available: true,
+                    archived_at: null,
+                    last_date: variant === 'historyless' ? null : '2026-10-24',
+                    last_registered_at: variant === 'historyless' ? null : '2026-10-24T15:00:00Z',
+                    month_days: variant === 'historyless' ? 0 : activity,
+                  },
+                ],
         })
       )
       return
@@ -142,6 +152,39 @@ try {
         new Set(['capa']),
         'only selected photo loaded'
       )
+      const client = await context.newCDPSession(page)
+      await client.send('Emulation.setCPUThrottlingRate', { rate: cpuSlowdown })
+      const ad = page.locator('.sponsored-ad-banner')
+      await ad.getByText('Patrocinado', { exact: true }).waitFor()
+      assert.equal(
+        await ad.getByRole('link', { name: 'Conhecer' }).getAttribute('href'),
+        'https://example.com/fitness'
+      )
+      assert.ok((await ad.getByRole('link', { name: 'Conhecer' }).boundingBox()).height >= 40)
+      if (width < 768)
+        assert.ok((await ad.boundingBox()).height <= 110, 'compact home advertisement')
+      if (width < 768) {
+        const actions = await page.locator('.workout-hero-actions').evaluate((el) => {
+          const [primary, secondary] = el.querySelectorAll('a')
+          const a = primary.getBoundingClientRect(),
+            b = secondary.getBoundingClientRect()
+          return {
+            primaryHeight: a.height,
+            secondaryHeight: b.height,
+            iconVisible: secondary.querySelector('svg').getBoundingClientRect().width > 0,
+            secondaryBorder: getComputedStyle(secondary).borderStyle,
+            right: b.right,
+            rowRight: el.getBoundingClientRect().right,
+          }
+        })
+        assert.ok(
+          actions.primaryHeight >= 48 && actions.secondaryHeight >= 48,
+          'both buttons keep desktop touch size'
+        )
+        assert.equal(actions.iconVisible, true, 'secondary keeps the desktop icon')
+        assert.equal(actions.secondaryBorder, 'solid', 'secondary keeps the desktop outline')
+        assert.ok(actions.right <= actions.rowRight + 1, 'secondary stays inside the action row')
+      }
       const geometry = await page.evaluate(() => ({
         scroll: document.documentElement.scrollWidth,
         width: innerWidth,
@@ -149,13 +192,11 @@ try {
       }))
       assert.ok(geometry.scroll <= width, `horizontal overflow ${width}/${theme}`)
       assert.ok(geometry.hero.bottom < 852, 'content clears bottom navigation')
-      const disclosure = page.locator('.sheet-insights-disclosure')
-      assert.equal(await disclosure.getAttribute('open'), null)
-      await disclosure.locator('summary').focus()
-      await page.keyboard.press('Enter')
-      assert.match(await disclosure.innerText(), /não comprova conclusão/)
-      assert.match(await disclosure.innerText(), /salvos apenas offline/)
-      await page.keyboard.press('Enter')
+      assert.equal(
+        await page.locator('.sheet-insights-disclosure').count(),
+        0,
+        'technical disclosure removed from UI'
+      )
       assert.equal(
         await page.getByRole('link', { name: 'Iniciar ficha' }).getAttribute('href'),
         '/novo-treino?ficha=s1'
@@ -204,6 +245,8 @@ try {
       }
       for (let day = 0; day < 4; day++) {
         await selectDay(`2026-10-${26 + day}`)
+        // Finish the current profile's day transition before measuring the next profile.
+        await expectPhoto(expected[day === 0 ? 'masculino' : 'nao_informar'][day])
         for (const sexo of Object.keys(expected)) {
           const beforeImages = images.length
           await selectProfile(sexo)
@@ -211,7 +254,7 @@ try {
           await expectPhoto(selected)
           assert.ok(
             imageNames(beforeImages).every((name) => name === selected),
-            'no unselected image download'
+            `no unselected image download: ${JSON.stringify({ day, sexo, selected, seen: imageNames(beforeImages) })}`
           )
           const layout = await page.evaluate(() => ({
             width: innerWidth,
@@ -223,16 +266,49 @@ try {
           assert.ok(layout.hero.bottom < 852)
           assert.equal(
             layout.fit,
-            selected === 'capa' || selected === 'sexo_mulher' ? 'contain' : 'cover'
+            width >= 768 && (selected === 'capa' || selected === 'sexo_mulher')
+              ? 'contain'
+              : 'cover'
           )
           assert.equal(
             await page.getByRole('link', { name: 'Iniciar ficha' }).getAttribute('href'),
             '/novo-treino?ficha=s1'
           )
-          await page.screenshot({
-            path: join(evidence, `${sexo}-day${day + 1}-${width}-${theme}.png`),
-            fullPage: true,
-          })
+          const assertBackground = async () => {
+            const bounds = await page.evaluate(() => {
+              const hero = document.querySelector('.workout-hero')
+              const img = hero.querySelector('img')
+              return {
+                hero: hero.getBoundingClientRect().toJSON(),
+                image: img.getBoundingClientRect().toJSON(),
+                shade: hero.querySelector('.workout-hero-shade').getBoundingClientRect().toJSON(),
+                fit: getComputedStyle(img).objectFit,
+                position: getComputedStyle(img).objectPosition,
+                overflow: getComputedStyle(
+                  innerWidth < 768 ? hero : hero.closest('.workout-recommendation')
+                ).overflow,
+              }
+            })
+            assert.equal(bounds.overflow, 'hidden')
+            if (width < 768) {
+              assert.equal(bounds.fit, 'cover', 'mobile photo must fill the card')
+              for (const edge of ['left', 'top', 'right', 'bottom']) {
+                assert.ok(
+                  Math.abs(bounds.hero[edge] - bounds.image[edge]) < 1,
+                  `photo must fill ${edge}`
+                )
+                assert.ok(
+                  Math.abs(bounds.hero[edge] - bounds.shade[edge]) < 1,
+                  `gradient must fill ${edge}`
+                )
+              }
+              if (selected === 'capa' || selected === 'sexo_mulher') {
+                assert.equal(bounds.position, '50% 22%', 'keep athlete framing near the top')
+              }
+            }
+          }
+          await assertBackground()
+          assert.equal(await page.locator('.sheet-insights-disclosure').count(), 0)
         }
       }
       // Changing profile within the same day never triggers another aggregate/database read.
@@ -249,7 +325,6 @@ try {
       await page.reload()
       await expectPhoto('sexo_mulher')
       assert.ok(imageNames(reloadImages).every((name) => name === 'sexo_mulher'))
-      await page.screenshot({ path: join(evidence, `home-${width}-${theme}.png`), fullPage: true })
       results.push({ width, theme, requests: reads - before, images: images.length, geometry })
       // A mounted view receives writes/ACKs, coalesces the batch, and ignores another account.
       const initial = reads
@@ -309,9 +384,35 @@ try {
       fail = true
       await page.evaluate(() => window.__invalidate('alice'))
       await page.getByRole('heading', { name: 'Não foi possível carregar suas fichas' }).waitFor()
-      fail = false
+      ;((fail = false), (variant = 'normal'))
       await page.getByRole('button', { name: /Tentar novamente/ }).click()
       await page.getByRole('heading', { name: 'Ficha A — Peito e tríceps' }).waitFor()
+      for (const state of ['long', 'historyless', 'empty']) {
+        variant = state
+        await page.evaluate(() => window.__invalidate('alice'))
+        if (state === 'empty')
+          await page.getByRole('button', { name: 'Criar primeira ficha' }).waitFor()
+        else {
+          await page
+            .getByRole('heading', {
+              name:
+                state === 'long'
+                  ? 'Ficha de fortalecimento completo de membros superiores, mobilidade e condicionamento — progressão personalizada'
+                  : 'Ficha A — Peito e tríceps',
+            })
+            .waitFor()
+          if (state === 'historyless')
+            assert.equal(await page.locator('.sheet-insight-card').count(), 0)
+          assert.ok(
+            (await page.getByRole('link', { name: 'Iniciar ficha' }).boundingBox()).height >= 44
+          )
+        }
+        assert.ok(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          `overflow ${state}/${width}`
+        )
+      }
+      variant = 'normal'
       await context.close()
     }
   assert.deepEqual(errors, [])
@@ -320,6 +421,7 @@ try {
     JSON.stringify({
       passed: results.length,
       photoCases: 120,
+      cpuSlowdown,
       profiles: ['masculino', 'feminino', 'nao_informar'],
       viewports: [320, 360, 390, 768, 1280],
       themes: ['light', 'dark'],
