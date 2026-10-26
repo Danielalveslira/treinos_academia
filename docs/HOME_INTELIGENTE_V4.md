@@ -1,5 +1,8 @@
 # Home Inteligente V4
 
+[PR #82](https://github.com/Danielalveslira/treinos_academia/pull/82), em rascunho,
+baseado na branch da PR #80 para separar esta entrega do trabalho anterior.
+
 A conclusão é um evento explícito persistido pelo servidor. Registrar séries significa atividade,
 não conclusão. Não há backfill de conclusões antigas. Segunda, 26/10/2026: A (seg/qua/sex) inicia,
 passa a “Continuar ficha” após registro e, depois de finalizar validamente, dá lugar a B
@@ -85,6 +88,7 @@ limitam a extrapolação. Planos completos: [sql-plans.json](home-v4-evidence/sq
 
 ## Validação e limitações
 
+- `npm ci`: instalação pelo lockfile aprovada (380 pacotes, auditoria sem vulnerabilidades).
 - `npm test`: 2.238 testes aprovados; lint e build aprovados.
 - SQL em banco local migrado: 79 suítes, 3.380 asserts, sem skips/falhas; a suíte V4 recebeu
   posteriormente mais dois casos (ficha vazia e criação offline de ficha arquivada), também
@@ -102,16 +106,22 @@ limitam a extrapolação. Planos completos: [sql-plans.json](home-v4-evidence/sq
   Atualização para “Continuar”: 157/188 ms; conclusão → B: 134/154 ms (claro/escuro,
   390 px), sem overflow. Tempos incluem a fronteira HTTP local, não latência de produção;
   [medição completa](home-v4-evidence/home-v4-cpu.json).
+- `workout-sheets-browser-smoke.mjs`: 10 cenários em 320/360/390/768/1280 px, claro/escuro,
+  sem overflow; inclui massa de 40 fichas. [Resultados](home-v4-evidence/sheets-browser.json).
 - `format:check` global já falha na base: 141 arquivos; candidato inicial: 140. Não houve
   formatação em massa; arquivos de código desta entrega foram verificados individualmente.
 - Budget global já falha na base: 374.740 B JS gzip, 78.517 B CSS, 13 arquivos. Candidato:
-  375.435 B JS, 78.517 B CSS, 13 arquivos; delta +695 B JS. Limites permanecem 330.371 B JS,
+  375.427 B JS, 78.517 B CSS, 13 arquivos; delta +687 B JS. Limites permanecem 330.371 B JS,
   77.839 B CSS e 6 arquivos. O gate não está verde, sem aumento de thresholds.
 
-As dependências já estavam instaladas nesta retomada; `npm ci` não foi repetido durante os
-processos de validação para preservar o ambiente em uso. O CI executa instalação pelo lockfile.
+- `release:offline-check`: JS, funções, 28 casos de backfill, 79 suítes SQL, security preflight e
+  build passaram; terminou com erro no budget, sem mascarar o exit code.
+- Smoke offline: `CHROMIUM_OFFLINE_OK`, cobrindo cold start, IndexedDB, outbox, reconexão e
+  atualização do SW. Testes de release: 88 aprovados; scanner de secrets: zero achados.
+
 O PR deve permanecer em rascunho enquanto gates globais falharem. Evidências são de ambiente
 local descartável, sem validação ou alteração de produção.
+Resumo verificável dos comandos e resultados: [validation.json](home-v4-evidence/validation.json).
 
 ## Rollout e rollback
 
