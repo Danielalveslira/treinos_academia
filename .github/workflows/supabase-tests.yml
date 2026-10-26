@@ -90,6 +90,17 @@ jobs:
         env:
           PG_TEST_CONTAINER: supabase_db_treinos_academia
           PG_TEST_USER: supabase_admin
+      # Concorrência real (processos/commits de verdade disputando o mesmo usuário/dia) --
+      # pgTAP roda numa transação só e não prova isto; por isso são scripts à parte, não
+      # arquivos `*_test.sql`. Mesmo container/usuário de test:functions acima.
+      - run: bash supabase/tests/evocoins_concurrency.sh
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
+          PG_TEST_USER: supabase_admin
+      - run: bash supabase/tests/user_activity_concurrency.sh
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
+          PG_TEST_USER: supabase_admin
       # Limpeza roda sempre (sucesso ou falha do passo acima), mas sem alterar o motivo da falha:
       # se o passo anterior falhou, o job já está marcado como falho antes deste rodar.
       - if: always()

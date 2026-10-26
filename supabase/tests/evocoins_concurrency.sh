@@ -4,9 +4,14 @@
 #
 # Uso (banco local com as migrations aplicadas):
 #   PSQL="docker exec -i pgtest psql -U postgres -d postgres" supabase/tests/evocoins_concurrency.sh
+# Ou, com o container/usuário já usados por npm run test:functions (ver .github/workflows):
+#   PG_TEST_CONTAINER=supabase_db_treinos_academia PG_TEST_USER=supabase_admin supabase/tests/evocoins_concurrency.sh
 # Cria um usuário de teste, dispara as sessões em paralelo e preserva fixtures no banco descartável (ledger imutável).
 set -euo pipefail
 
+if [ -z "${PSQL:-}" ] && [ -n "${PG_TEST_CONTAINER:-}" ]; then
+  PSQL="docker exec -i $PG_TEST_CONTAINER psql -U ${PG_TEST_USER:-postgres} -d postgres"
+fi
 PSQL=${PSQL:-"psql"}
 UID_T=$(python3 -c 'import uuid; print(uuid.uuid4())')
 FAIL=0

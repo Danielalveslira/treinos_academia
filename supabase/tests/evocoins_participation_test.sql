@@ -142,12 +142,9 @@ begin
   return public.register_qualified_activity();
 end $$;
 
--- A verified active reward is now required; use a real persisted server-side event.
-insert into public.economy_transactions(user_id,natural_key,asset,direction,amount,reason,reference_type,reference_id) values(pg_temp.u('09'),'evidence-test','coin','credit',1,'comment_posted','test','verified');
-insert into public.economy_daily(user_id,day,earned_total,earned_by_action) values(pg_temp.u('09'),private.sp_today(),1,'{"comment_posted":1}');
-select public._wallet_credit_coins(pg_temp.u('09'),1);
-select public._wallet_debit_coins(pg_temp.u('09'),1);
-select public._ledger_record(pg_temp.u('09'),'evidence-test-neutralize','coin','debit',1,'test','test','verified');
+-- Nenhum evento de negócio alheio (treino/post/comentário) é inserido aqui: 09 só navega
+-- (pg_temp.ping simula o ping real do app a cada 3 min). 20261124000001_finance_activity_reward_fix
+-- restaurou a recompensa de atividade para depender só de tempo + checkpoints reais.
 select pg_temp.ping('09') from generate_series(1, 5);
 select is((select qualified::text || '/' || checkpoints_count from public.community_creation_activity_days where user_id = pg_temp.u('09') and activity_date = private.sp_today()),
           'true/5', '10 min válidos qualificam o dia de criação de comunidade');

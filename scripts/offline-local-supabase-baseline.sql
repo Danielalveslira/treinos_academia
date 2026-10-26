@@ -12,9 +12,19 @@ create table if not exists storage.buckets (
 create table if not exists storage.objects (
   id uuid primary key default gen_random_uuid(),
   bucket_id text not null,
-  name text not null
+  name text not null,
+  owner uuid,
+  metadata jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 alter table storage.objects enable row level security;
+-- A imagem standalone não roda o serviço Storage real (dono supabase_storage_admin, GRANTs
+-- próprios): sem isto, anon/authenticated caem em "permission denied for table objects" antes
+-- mesmo de chegar nas policies do projeto (20260926000016 e seguintes), que são o gate real em
+-- produção. service_role já tem bypassrls na imagem base, igual à produção.
+grant select, insert, update, delete on storage.objects to anon, authenticated;
+grant select on storage.buckets to anon, authenticated;
 
 alter table auth.users
   add column if not exists email_confirmed_at timestamptz,
