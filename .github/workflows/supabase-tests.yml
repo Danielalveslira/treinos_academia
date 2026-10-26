@@ -4,17 +4,25 @@ name: Supabase & app tests
 # as migrations de autenticação/sessão (20261113*, 20261114*) e financeiras (20261112*) sem usar
 # produção nem qualquer container local compartilhado com outra sessão de trabalho. Não precisa
 # de nenhum secret: supabase start cria um Postgres local só para este job e o apaga ao final.
+# `pull_request` sozinho já cobre toda PR (qualquer branch, qualquer base) -- é o gatilho de
+# validação obrigatória. `push` fica só para `main` (estado pós-merge/deploy): um branch com PR
+# aberta nunca mais dispara os dois eventos para o MESMO commit (antes, "finance-ci-*" no push
+# fazia isso, dobrando os pulls de imagem Docker e deixando um "check" cancelado confuso na PR).
+# Para validar um branch ANTES de abrir a PR, use workflow_dispatch.
 on:
   workflow_dispatch:
   pull_request:
   push:
-    branches: [main, "finance-ci-*"]
+    branches: [main]
 
 permissions:
   contents: read
 
+# Pelo nome do branch (cobre push a main e pull_request do mesmo branch com o mesmo valor) --
+# evita que pushes rápidos em sequência para a mesma PR rodem em paralelo; a mais nova cancela
+# a mais velha em vez de as duas disputarem o runner.
 concurrency:
-  group: finance-ci-${{ github.event.pull_request.number || github.ref }}
+  group: finance-ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 defaults:
@@ -90,10 +98,63 @@ jobs:
         env:
           PG_TEST_CONTAINER: supabase_db_treinos_academia
           PG_TEST_USER: supabase_admin
+      # Concorrência real (processos/commits de verdade disputando o mesmo usuário/dia) --
+      # pgTAP roda numa transação só e não prova isto; por isso são scripts à parte, não
+      # arquivos `*_test.sql`. Mesmo container/usuário de test:functions acima.
+      - run: bash supabase/tests/evocoins_concurrency.sh
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
+          PG_TEST_USER: supabase_admin
+      - run: bash supabase/tests/user_activity_concurrency.sh
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
+          PG_TEST_USER: supabase_admin
       # Limpeza roda sempre (sucesso ou falha do passo acima), mas sem alterar o motivo da falha:
       # se o passo anterior falhou, o job já está marcado como falho antes deste rodar.
       - if: always()
         run: node_modules/.bin/supabase stop
+
+  finance-e2e:
+    name: finance-e2e
+    runs-on: ubuntu-latest
+    # Medido ~8 min num push isolado; um push para finance-ci-* dispara `push` E `pull_request`
+    # ao mesmo tempo (grupos de concorrência diferentes, ver `concurrency:` acima), e as duas
+    # execuções competem pelo mesmo runner -- 20 min cobre essa duplicação real sem ficar sem
+    # limite.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install isolated browser
+        run: node node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell
+      # O AWS ECR Public tem um limite de dados/taxa para pulls ANÔNIMOS, compartilhado entre
+      # todo mundo saindo pelo IP do runner -- não é algo que autenticação deste repositório
+      # resolveria sozinho. Defesa aplicada: scripts/homolog/finance/stack.mjs tenta de novo com
+      # backoff quando o registro responde "too many requests"/"data limit exceeded", igual à CLI
+      # oficial da Supabase (job `sql`, que bate no mesmo limite e se recupera do mesmo jeito) --
+      # confirmado em execução real do GitHub Actions. Um cache de imagens entre execuções (via
+      # `docker save`/`load`) foi tentado e descartado: neste runner, o Docker (containerd image
+      # store) não preserva a referência tag@digest através do save/load -- testado à exaustão
+      # (ver histórico do PR) -- e a imagem já volta a ficar inacessível por referência depois de
+      # recarregada, quebrando o pull-by-digest abaixo. Preferível não ter cache a ter um cache que
+      # quebra o job. As imagens continuam fixadas por tag@digest no próprio script.
+      - name: Start disposable local stack (db + auth + storage + rest + edge)
+        run: node scripts/homolog/finance/stack.mjs start
+      - name: Apply all migrations to the disposable stack
+        run: node scripts/homolog/finance/migrate.mjs all evolutus_integrated_db
+      # Sessão real do GoTrue, RPC real via PostgREST, PostgreSQL real -- ver o cabeçalho do script.
+      - name: Real activity-reward E2E (browser -> RPC -> Postgres -> ledger -> wallet -> UI)
+        run: node scripts/evocoins-activity-e2e-smoke.mjs
+      # Limpeza roda sempre, sem mascarar o motivo de uma falha anterior (mesmo padrão do job sql).
+      - if: always()
+        name: Stop disposable local stack
+        run: node scripts/homolog/finance/stack.mjs stop
 
   secrets:
     runs-on: ubuntu-latest
@@ -110,7 +171,7 @@ jobs:
   quality:
     name: finance-quality
     if: always()
-    needs: [js, sql, secrets]
+    needs: [js, sql, finance-e2e, secrets]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -118,9 +179,11 @@ jobs:
         env:
           JS_RESULT: ${{ needs.js.result }}
           SQL_RESULT: ${{ needs.sql.result }}
+          FINANCE_E2E_RESULT: ${{ needs.finance-e2e.result }}
           SECRETS_RESULT: ${{ needs.secrets.result }}
         run: |
           set -euo pipefail
           test "$JS_RESULT" = success
           test "$SQL_RESULT" = success
+          test "$FINANCE_E2E_RESULT" = success
           test "$SECRETS_RESULT" = success

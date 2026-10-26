@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # Concorrência real de touch_user_activity(): N conexões simultâneas (cada uma com seu session_id)
 # para o MESMO usuário. pgTAP roda numa única transação, então isto é um script à parte.
-#   Uso:  bash supabase/tests/user_activity_concurrency.sh        (container pgtest, ver memória do projeto)
+#   Uso:  PG_TEST_CONTAINER=supabase_db_treinos_academia PG_TEST_USER=supabase_admin \
+#         bash supabase/tests/user_activity_concurrency.sh
+# (mesma convenção de container/usuário de npm run test:functions, ver .github/workflows;
+# sem as duas variáveis, cai no container manual "pgtest"/"postgres" de antes.)
 # Esperado: 0 erros, 1 única linha em user_activity, last_session_id = uma das sessões usadas,
 # e (como o teto de 1 min já vale) uma única gravação efetiva.
 set -euo pipefail
-PSQL=(docker exec -i pgtest psql -U postgres -X -q -t -A -v ON_ERROR_STOP=1)
+# Trocar PG_TEST_USER sem "-d postgres" explícito faria o psql cair no banco default
+# (mesmo nome do usuário, ex. "supabase_admin"), que não existe -- sempre nomear o banco.
+PSQL=(docker exec -i "${PG_TEST_CONTAINER:-pgtest}" psql -U "${PG_TEST_USER:-postgres}" -d postgres -X -q -t -A -v ON_ERROR_STOP=1)
 UID_TEST='82000000-0000-0000-0000-000000000001'
 N=${N:-40}
 

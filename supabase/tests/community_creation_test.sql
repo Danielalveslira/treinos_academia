@@ -298,9 +298,9 @@ select public.register_qualified_activity();
 select is((select qualified_seconds from public.community_creation_activity_days where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date), 300, 'intervalo real de 5 min soma 300s');
 update public.community_creation_activity_days set last_checkpoint_at = now() - interval '2 hours' where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date;
 select public.register_qualified_activity();
-select is((select qualified_seconds || '/' || qualified from public.community_creation_activity_days where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date), '1500/false', 'tempo sem evento verificado não qualifica o dia');
+select is((select qualified_seconds || '/' || qualified from public.community_creation_activity_days where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date), '1500/true', 'tempo real sozinho qualifica o dia (20261124000001: sem depender de evento alheio)');
 update public.community_creation_activity_days set checkpoints_count = 40, last_checkpoint_at = now() - interval '10 minutes' where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date;
-select is((public.register_qualified_activity() ->> 'dayQualified')::boolean, false, 'tempo isolado não qualifica sem evento verificado');
+select is((public.register_qualified_activity() ->> 'dayQualified')::boolean, true, 'no teto de checkpoints, o dia já qualificado continua qualificado');
 select is((select qualified_seconds from public.community_creation_activity_days where user_id = pg_temp.uid('0a') and activity_date = (now() at time zone 'America/Sao_Paulo')::date), 1500, 'teto de 40 pings por dia (limita escritas, não minutos)');
 -- a atividade tem UMA fonte (community_creation_activity_days): nada de minutos paralelos em economy_daily
 select is((select coalesce(sum(active_minutes), 0) from public.economy_daily where user_id = pg_temp.uid('0a')), 0::numeric, 'economy_daily não acumula mais minutos de atividade');
