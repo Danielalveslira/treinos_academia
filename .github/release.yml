@@ -1,0 +1,14 @@
+changelog:
+  exclude:
+    labels: ["release:skip"]
+  categories:
+    - title: Segurança e estabilidade
+      labels: [security, stability, segurança]
+    - title: Novidades
+      labels: [feature, "semver:minor", "semver:major"]
+    - title: Melhorias
+      labels: [enhancement, ui, mobile, performance, accessibility]
+    - title: Correções
+      labels: [bug, fix, "semver:patch"]
+    - title: Alterações técnicas
+      labels: ["*"]
