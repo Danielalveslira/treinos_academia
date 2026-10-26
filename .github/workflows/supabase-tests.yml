@@ -106,6 +106,37 @@ jobs:
       - if: always()
         run: node_modules/.bin/supabase stop
 
+  finance-e2e:
+    name: finance-e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install isolated browser
+        run: node node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell
+      # Stack local descartável (Postgres+Auth+Storage+PostgREST+Edge Runtime no MESMO namespace de
+      # rede do container do banco -- scripts/homolog/finance/stack.mjs) com limites de CPU/memória
+      # já embutidos no próprio script. Nenhum secret de produção; segredo do JWT local é fixo em
+      # scripts/homolog/keys.mjs, nunca usado fora deste job.
+      - name: Start disposable local stack (db + auth + storage + rest + edge)
+        run: node scripts/homolog/finance/stack.mjs start
+      - name: Apply all migrations to the disposable stack
+        run: node scripts/homolog/finance/migrate.mjs all evolutus_integrated_db
+      # Sessão real do GoTrue, RPC real via PostgREST, PostgreSQL real -- ver o cabeçalho do script.
+      - name: Real activity-reward E2E (browser -> RPC -> Postgres -> ledger -> wallet -> UI)
+        run: node scripts/evocoins-activity-e2e-smoke.mjs
+      # Limpeza roda sempre, sem mascarar o motivo de uma falha anterior (mesmo padrão do job sql).
+      - if: always()
+        name: Stop disposable local stack
+        run: node scripts/homolog/finance/stack.mjs stop
+
   secrets:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -121,7 +152,7 @@ jobs:
   quality:
     name: finance-quality
     if: always()
-    needs: [js, sql, secrets]
+    needs: [js, sql, finance-e2e, secrets]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -129,9 +160,11 @@ jobs:
         env:
           JS_RESULT: ${{ needs.js.result }}
           SQL_RESULT: ${{ needs.sql.result }}
+          FINANCE_E2E_RESULT: ${{ needs.finance-e2e.result }}
           SECRETS_RESULT: ${{ needs.secrets.result }}
         run: |
           set -euo pipefail
           test "$JS_RESULT" = success
           test "$SQL_RESULT" = success
+          test "$FINANCE_E2E_RESULT" = success
           test "$SECRETS_RESULT" = success
