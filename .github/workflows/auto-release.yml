@@ -1,0 +1,93 @@
+name: Verified production release
+on:
+  # Opt-in recovery only: two lightweight checks/day, no polling in the app.
+  schedule:
+    - cron: '17 */12 * * *'
+  repository_dispatch:
+    types: [vercel.deployment.success, vercel.deployment.promoted]
+  workflow_run:
+    workflows: ["Supabase & app tests"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run verifica sem escrever; auto recupera; initialize cria baseline explícito"
+        type: choice
+        options: [dry-run, auto, initialize]
+        default: dry-run
+      baseline_sha:
+        description: "Somente initialize: SHA completo atualmente em produção"
+        type: string
+        required: false
+      baseline_version:
+        description: "Somente initialize: versão explícita, ex. v1.0.0"
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: evolutus-official-production-release
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: >-
+      github.repository == 'Danielalveslira/treinos_academia' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' || vars.EVOLUTUS_AUTO_RELEASE_ENABLED == 'true') &&
+      (github.event_name != 'schedule' || vars.EVOLUTUS_RELEASE_RECONCILE_ENABLED == 'true') &&
+      (github.event_name != 'repository_dispatch' || github.event.client_payload.environment == 'production') &&
+      (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      action: ${{ steps.verify.outputs.action }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - id: verify
+        run: node scripts/release/auto-release.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VERCEL_RELEASE_READ_TOKEN: ${{ secrets.VERCEL_RELEASE_READ_TOKEN }}
+          RELEASE_MODE: ${{ inputs.mode || 'auto' }}
+          RELEASE_BASELINE_SHA: ${{ inputs.baseline_sha }}
+          RELEASE_BASELINE_VERSION: ${{ inputs.baseline_version }}
+  publish:
+    needs: verify
+    if: >-
+      needs.verify.outputs.action == 'publish' &&
+      vars.EVOLUTUS_AUTO_RELEASE_ENABLED == 'true' &&
+      inputs.mode != 'dry-run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      # Rebuilds the plan from authoritative APIs, not from an artifact/event or shell input.
+      - run: node scripts/release/auto-release.mjs --publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VERCEL_RELEASE_READ_TOKEN: ${{ secrets.VERCEL_RELEASE_READ_TOKEN }}
+          EVOLUTUS_AUTO_RELEASE_ENABLED: ${{ vars.EVOLUTUS_AUTO_RELEASE_ENABLED }}
+          RELEASE_MODE: ${{ inputs.mode || 'auto' }}
+          RELEASE_BASELINE_SHA: ${{ inputs.baseline_sha }}
+          RELEASE_BASELINE_VERSION: ${{ inputs.baseline_version }}

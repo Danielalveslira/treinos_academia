@@ -4,6 +4,15 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default [
+  {
+    files: [
+      'scripts/release/auto-release*.mjs',
+      'scripts/release/auto-release/**/*.mjs',
+      'scripts/release/build-identity-plugin.mjs',
+    ],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node },
+    rules: { ...js.configs.recommended.rules },
+  },
   { ignores: ['dist'] },
   {
     files: ['**/*.{js,jsx}'],

@@ -21,6 +21,7 @@
     }
   ],
   "headers": [
+    { "source": "/.well-known/evolutus-build.json", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] },
     {
       "source": "/(index|app-shell|como-funciona|para-empresas|vitrine|profissionais).html",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
