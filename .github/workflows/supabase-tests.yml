@@ -4,20 +4,23 @@ name: Supabase & app tests
 # as migrations de autenticação/sessão (20261113*, 20261114*) e financeiras (20261112*) sem usar
 # produção nem qualquer container local compartilhado com outra sessão de trabalho. Não precisa
 # de nenhum secret: supabase start cria um Postgres local só para este job e o apaga ao final.
+# `pull_request` sozinho já cobre toda PR (qualquer branch, qualquer base) -- é o gatilho de
+# validação obrigatória. `push` fica só para `main` (estado pós-merge/deploy): um branch com PR
+# aberta nunca mais dispara os dois eventos para o MESMO commit (antes, "finance-ci-*" no push
+# fazia isso, dobrando os pulls de imagem Docker e deixando um "check" cancelado confuso na PR).
+# Para validar um branch ANTES de abrir a PR, use workflow_dispatch.
 on:
   workflow_dispatch:
   pull_request:
   push:
-    branches: [main, "finance-ci-*"]
+    branches: [main]
 
 permissions:
   contents: read
 
-# Chave pelo nome do branch (não pelo número da PR nem pelo ref bruto): uma PR aberta para um
-# branch finance-ci-* faz o MESMO push disparar `push` e `pull_request` ao mesmo tempo: sem
-# unificar a chave os dois rodavam em paralelo, concorrendo pelo mesmo runner e dobrando os
-# pulls de imagem Docker. head_ref (pull_request) e ref_name (push) são o mesmo branch em
-# formatos diferentes; unificados, a segunda execução cancela a primeira em vez de duplicar.
+# Pelo nome do branch (cobre push a main e pull_request do mesmo branch com o mesmo valor) --
+# evita que pushes rápidos em sequência para a mesma PR rodem em paralelo; a mais nova cancela
+# a mais velha em vez de as duas disputarem o runner.
 concurrency:
   group: finance-ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
