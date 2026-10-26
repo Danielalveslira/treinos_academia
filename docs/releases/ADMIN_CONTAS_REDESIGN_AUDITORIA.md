@@ -72,12 +72,12 @@ Capturas de React/CSS reais, usando Chromium com todas as chamadas externas inte
 
 | Evidência | Antes | Depois |
 | --- | --- | --- |
-| Celular claro, lista | [320 px](admin-contas/before/320-light-list.png) | [320 px](admin-contas/after/320-light-list.png) |
-| Celular escuro, detalhe | [390 px](admin-contas/before/390-dark-drawer.png) | [390 px](admin-contas/after/390-dark-drawer.png) |
-| Tablet claro | [768 px](admin-contas/before/768-light-list.png) | [768 px](admin-contas/after/768-light-list.png) |
-| Tablet escuro, detalhe | [768 px](admin-contas/before/768-dark-drawer.png) | [768 px](admin-contas/after/768-dark-drawer.png) |
-| Desktop claro | [1366 px](admin-contas/before/1366-light-list.png) | [1366 px](admin-contas/after/1366-light-list.png) |
-| Desktop escuro, detalhe | [1366 px](admin-contas/before/1366-dark-drawer.png) | [1366 px](admin-contas/after/1366-dark-drawer.png) |
+| Celular claro, lista | 320 px (captura removida) | 320 px (captura removida) |
+| Celular escuro, detalhe | 390 px (captura removida) | 390 px (captura removida) |
+| Tablet claro | 768 px (captura removida) | 768 px (captura removida) |
+| Tablet escuro, detalhe | 768 px (captura removida) | 768 px (captura removida) |
+| Desktop claro | 1366 px (captura removida) | 1366 px (captura removida) |
+| Desktop escuro, detalhe | 1366 px (captura removida) | 1366 px (captura removida) |
 
 A lista e o drawer têm verificações de overflow global. O modal possui checagem de foco, Tab, Escape, largura/altura móveis e hit testing para confirmar que a navegação fixa não o encobre. `accounts.css` eleva apenas a pilha de portais enquanto o detalhe está aberto; menus e confirmações aninhadas conservam a ordem do Primer. Busca, seleção, botões e paginação tiveram alvos ampliados; labels/cópia/erros têm nomes acessíveis e feedback. Temas mantêm tokens existentes e status textual. Contraste foi inspecionado visualmente; nenhuma razão numérica de contraste foi medida.
 

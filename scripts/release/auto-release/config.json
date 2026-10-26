@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "repository": "Danielalveslira/treinos_academia",
+  "repositoryId": 1361638594,
+  "branch": "main",
+  "vercelProjectId": "prj_WYVlCGYu021KZCrqfp62qRH2cbIE",
+  "vercelTeamId": "team_tQQ2dDGOWbWO9LmffGeLJlUb",
+  "productionDomain": "www.evolutus.com.br",
+  "identityPath": "/.well-known/evolutus-build.json",
+  "workflow": "supabase-tests.yml",
+  "requiredJobs": ["js", "sql", "secrets", "finance-quality"]
+}

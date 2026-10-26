@@ -28,7 +28,7 @@ Os quatro originais somam 7.419.802 B; as oito variantes WebP somam 1.098.510 B 
 
 ## Capturas e verificação
 
-O preview local foi capturado em [375](banner-captures/home-375.png), [768](banner-captures/home-768.png) e [1440 px](banner-captures/home-1440.png) para a Home; o diretório [banner-captures](banner-captures) contém as mesmas larguras das outras três páginas, além de 320 e 1366 px. No mobile, o banner mantém a proporção integral e o texto editorial externo garante leitura do conteúdo essencial. As imagens originais têm texto e telas compostos internamente; a inspeção desses detalhes é mais confortável na imagem em tamanho desktop.
+O preview local foi capturado em 375 (captura removida), 768 (captura removida) e 1440 px (captura removida) para a Home; o diretório [banner-captures](banner-captures) contém as mesmas larguras das outras três páginas, além de 320 e 1366 px. No mobile, o banner mantém a proporção integral e o texto editorial externo garante leitura do conteúdo essencial. As imagens originais têm texto e telas compostos internamente; a inspeção desses detalhes é mais confortável na imagem em tamanho desktop.
 
 `npm run build`, `npm run lint` (0 erros, 16 avisos), `node --test tests/public-pages.test.mjs` (11/11) e `node scripts/public-banners-smoke.mjs` (`PUBLIC_BANNERS_SMOKE_OK`) passaram após a substituição. O smoke dos banners verificou as quatro rotas em 320, 375, 768, 1366 e 1440 px, carregamento/decodificação, proporção sem distorção, prioridade/lazy e ausência de overflow.
 
