@@ -1,3 +1,4 @@
+import { invalidateSheetSnapshots } from '../../services/offline/sheetSnapshot.js'
 import { supabase } from '../../supabase/config'
 import { invalidateWorkoutCache } from '../../utils/pageCache.js'
 import { normalizeSheet, sheetFingerprint } from './workoutSheetValidation.js'
@@ -8,7 +9,10 @@ async function rpc(name, args) {
   const uid = mutation ? (await supabase.auth.getSession()).data?.session?.user?.id : null
   const { data, error } = await supabase.rpc(name, args)
   if (error) throw error
-  if (uid) invalidateWorkoutCache(uid)
+  if (uid) {
+    invalidateWorkoutCache(uid)
+    await invalidateSheetSnapshots(uid)
+  }
   return data
 }
 export const listWorkoutSheets = (archived = false, page = 0) =>

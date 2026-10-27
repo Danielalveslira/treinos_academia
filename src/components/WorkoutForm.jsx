@@ -13,9 +13,6 @@ import {
   ChevronRightIcon,
   SearchIcon,
 } from '@primer/octicons-react'
-import { MUSCLE_GROUPS } from '../constants/muscleGroups'
-import { getMuscleGroupIcon } from '../constants/muscleGroupIcons'
-import { MuscleIconBadge } from './MuscleIconBadge'
 import { validateWorkout, hasErrors } from '../utils/validators'
 import { getWorkoutSets, isValidSet } from '../utils/workoutSets'
 import { toDate } from '../utils/date'
@@ -30,7 +27,6 @@ import {
   saveDoneExerciseIds,
   cleanupStaleDoneExerciseKeys,
 } from '../utils/doneExercisesStorage'
-import { sortExercisesInGroup } from '../utils/exerciseOrder'
 import { businessDayKey } from '../utils/businessDate'
 import { nextActiveSetIndexAfterRemoval } from '../utils/setCardFlow'
 import { recentExerciseSessions } from '../utils/exerciseHistory'
@@ -71,16 +67,6 @@ function todayString() {
   return businessDayKey()
 }
 
-function orderedGroups(exercises) {
-  const present = new Set(exercises.map((exercise) => exercise.muscleGroup || 'Outros'))
-  return [
-    ...MUSCLE_GROUPS.filter((group) => present.has(group)),
-    ...[...present]
-      .filter((group) => !MUSCLE_GROUPS.includes(group))
-      .sort((a, b) => a.localeCompare(b, 'pt-BR')),
-  ]
-}
-
 const formatWeight = (weight) => Number(weight).toLocaleString('pt-BR')
 
 // Resumo curto do que foi registrado: "3 séries · 20 kg × 10" ou, se variam, "20×10 · 22,5×8 · …".
@@ -101,6 +87,7 @@ const cardioValues = (workout) => ({
 export function WorkoutForm({
   exercises,
   sheetScope,
+  progressScope,
   history = [],
   initialValue,
   defaultExerciseId,
@@ -109,7 +96,7 @@ export function WorkoutForm({
   onUpdate,
   onCancel,
 }) {
-  // Dois modos: SESSÃO (novo treino — cada série concluída já é gravada, ver utils/rowSaver.js) e
+  // Dois modos: SESSÃO DE FICHA (novo treino — cada série concluída já é gravada, ver utils/rowSaver.js) e
   // EDIÇÃO (initialValue vindo de History.jsx — todas as séries já existem e "Salvar alterações" grava
   // tudo de uma vez, como antes).
   const editing = Boolean(initialValue)
@@ -198,22 +185,19 @@ export function WorkoutForm({
     setValues(next)
     return next
   }
-  const [step, setStep] = useState(() =>
-    initialExercise ? 'register' : sheetScope ? 'exercise' : 'group'
-  )
-  const [selectedGroup, setSelectedGroup] = useState(initialExercise?.muscleGroup || 'Outros')
+  const [step, setStep] = useState(() => (initialExercise ? 'register' : 'exercise'))
   const [search, setSearch] = useState('')
   const drafts = useRef(new Map())
   // Exercícios finalizados HOJE, neste aparelho (localStorage, sem sync com o banco --
   // ver doneExercisesStorage.js). É por EXERCÍCIO, através de todo o fluxo de sessão
-  // (grupo -> exercício -> séries), e é o que marca "concluído" na lista e decide qual é o
+  // da ficha, e é o que marca "concluído" na lista e decide qual é o
   // próximo exercício. Não se aplica a edição avulsa vinda de History.jsx (initialValue
   // setado).
   const [doneExerciseIds, setDoneExerciseIds] = useState(() => {
     if (initialValue) return new Set()
     const today = todayString()
     cleanupStaleDoneExerciseKeys(today)
-    return loadDoneExerciseIds(today)
+    return loadDoneExerciseIds(today, progressScope)
   })
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
@@ -250,15 +234,6 @@ export function WorkoutForm({
     return saver
   }
 
-  const groups = useMemo(() => orderedGroups(availableExercises), [availableExercises])
-  const groupCounts = useMemo(() => {
-    const counts = new Map()
-    availableExercises.forEach((exercise) => {
-      const group = exercise.muscleGroup || 'Outros'
-      counts.set(group, (counts.get(group) || 0) + 1)
-    })
-    return counts
-  }, [availableExercises])
   const selectedExercise = useMemo(
     () => availableExercises.find((exercise) => exercise.id === values.exerciseId),
     [availableExercises, values.exerciseId]
@@ -267,31 +242,23 @@ export function WorkoutForm({
   // Posição do exercício atual na ordem planejada da ficha, para o indicador textual "Exercício
   // X de N" (1-based; sem selectedExercise ainda, mostra a primeira posição).
   const sheetPosition = sheetScope
-    ? Math.max(0, availableExercises.findIndex((exercise) => exercise.id === values.exerciseId)) +
-      1
+    ? Math.max(
+        0,
+        availableExercises.findIndex((exercise) => exercise.id === values.exerciseId)
+      ) + 1
     : 0
   const sheetGoal = sheetScope
     ? prescription(sheetScope.items.find((item) => item.exercise_id === values.exerciseId))
     : ''
-  // Sem o filtro de busca -- é a lista "de verdade" do grupo, usada pra achar o próximo
-  // exercício não concluído. exercisesInGroup (abaixo) é só a versão filtrada exibida na tela.
-  const allExercisesInGroup = useMemo(
-    () =>
-      sheetScope
-        ? availableExercises
-        : sortExercisesInGroup(
-            availableExercises.filter(
-              (exercise) => (exercise.muscleGroup || 'Outros') === selectedGroup
-            )
-          ),
-    [availableExercises, selectedGroup, sheetScope]
-  )
-  const exercisesInGroup = useMemo(() => {
+  // A sequência da ficha é preservada; a busca só filtra a lista exibida.
+  const orderedExercises = availableExercises
+  const selectedGroup = selectedExercise?.muscleGroup || 'Outros'
+  const filteredExercises = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('pt-BR')
-    return allExercisesInGroup.filter(
+    return orderedExercises.filter(
       (exercise) => !term || exercise.name.toLocaleLowerCase('pt-BR').includes(term)
     )
-  }, [allExercisesInGroup, search])
+  }, [orderedExercises, search])
   const exerciseHistory = useMemo(
     () => history.filter((workout) => workout.exerciseId === values.exerciseId),
     [history, values.exerciseId]
@@ -362,12 +329,13 @@ export function WorkoutForm({
   }, [step, values.exerciseId, formRef])
 
   function sessionPayload(current) {
+    if (!sheetScope?.id) throw new Error('SHEET_REQUIRED')
     const base = {
       exerciseId: current.exerciseId,
       type: getExerciseType(selectedExercise),
       date: current.date,
       note: current.note,
-      // Ficha em que este registro nasce (null em treino livre) -- ver workoutsService.createWorkout.
+      // Ficha validada em que este registro nasce -- ver workoutsService.createWorkout.
       // Só importa na criação: updateWorkout nunca recebe/altera sheetId (imutável após criado).
       sheetId: sheetScope?.id || null,
     }
@@ -395,7 +363,7 @@ export function WorkoutForm({
     if (editing || doneExerciseIds.has(exerciseId)) return
     const next = new Set(doneExerciseIds).add(exerciseId)
     setDoneExerciseIds(next)
-    saveDoneExerciseIds(todayString(), next)
+    saveDoneExerciseIds(todayString(), next, progressScope)
   }
 
   function rememberDraft() {
@@ -403,16 +371,11 @@ export function WorkoutForm({
     drafts.current.set(valuesRef.current.exerciseId, valuesRef.current)
   }
 
-  function showStep(next, group) {
+  function showStep(next) {
     rememberDraft()
-    if (group) setSelectedGroup(group)
     setSearch('')
     setErrors({})
     setStep(next)
-  }
-
-  function chooseGroup(group) {
-    showStep('exercise', group)
   }
 
   function chooseExercise(exercise) {
@@ -425,18 +388,13 @@ export function WorkoutForm({
       setActive(Math.max(0, nextPendingIndex(next.setDetails, -1)))
       setReviewing(false)
     }
-    setSelectedGroup(exercise.muscleGroup || 'Outros')
     setSearch('')
     setErrors({})
     setStep('register')
   }
 
-  function showGroups() {
-    showStep(sheetScope ? 'exercise' : 'group')
-  }
-
   function showExercises() {
-    showStep('exercise', selectedExercise ? selectedExercise.muscleGroup || 'Outros' : undefined)
+    showStep('exercise')
   }
 
   function setField(field, value) {
@@ -539,20 +497,19 @@ export function WorkoutForm({
     persist(current)
   }
 
-  // Próximo exercício NÃO CONCLUÍDO do mesmo grupo (na ordem do grupo, dando a volta); sem sobra, volta
-  // para a escolha de grupo. Só acontece por toque do usuário.
+  // Avança na sequência da ficha; ao terminar a lista, permite revisar seus exercícios.
   const nextExercise = useMemo(() => {
-    const list = allExercisesInGroup
+    const list = orderedExercises
     const index = list.findIndex((exercise) => exercise.id === values.exerciseId)
     return [...list.slice(index + 1), ...list.slice(0, Math.max(index, 0))].find(
       (exercise) => exercise.id !== values.exerciseId && !doneExerciseIds.has(exercise.id)
     )
-  }, [allExercisesInGroup, values.exerciseId, doneExerciseIds])
-  const nextLabel = nextExercise ? 'Próximo exercício' : 'Escolher outro grupo'
+  }, [orderedExercises, values.exerciseId, doneExerciseIds])
+  const nextLabel = nextExercise ? 'Próximo exercício' : 'Ver exercícios da ficha'
 
   function handleNext() {
     if (nextExercise) chooseExercise(nextExercise)
-    else showGroups()
+    else showExercises()
   }
 
   function handleReview() {
@@ -593,6 +550,9 @@ export function WorkoutForm({
     }
   }
 
+  if (!editing && !sheetScope?.id)
+    return <p role="alert">Escolha uma ficha para iniciar o treino.</p>
+
   return (
     <Box as="form" ref={formRef} className="workout-form workout-execution" onSubmit={handleSubmit}>
       <nav className="workout-progress" aria-label="Etapas do treino">
@@ -609,103 +569,39 @@ export function WorkoutForm({
             </span>
           )
         ) : (
-          <>
-            {step === 'group' ? (
-              <span className="is-current" aria-current="step">
-                1 Grupo
-              </span>
-            ) : (
-              <button
-                type="button"
-                className="is-done"
-                disabled={submitting}
-                onClick={showGroups}
-              >
-                1 Grupo
-              </button>
-            )}
-            {step === 'register' ? (
-              <button
-                type="button"
-                className="is-done"
-                disabled={submitting}
-                onClick={showExercises}
-              >
-                2 Exercício
-              </button>
-            ) : (
-              <span
-                className={step === 'exercise' ? 'is-current' : ''}
-                aria-current={step === 'exercise' ? 'step' : undefined}
-              >
-                2 Exercício
-              </span>
-            )}
-            <span
-              className={step === 'register' ? 'is-current' : ''}
-              aria-current={step === 'register' ? 'step' : undefined}
-            >
-              3 {cardio ? 'Sessão' : 'Séries'}
-            </span>
-          </>
+          <button type="button" disabled={submitting} onClick={showExercises}>
+            Editar exercício
+          </button>
         )}
       </nav>
 
-      {step === 'group' && (
-        <section className="workout-step" aria-labelledby="muscle-group-title">
-          <div className="workout-step-heading">
-            <h2 id="muscle-group-title">Qual grupo você vai treinar?</h2>
-          </div>
-          <div className="muscle-group-grid">
-            {groups.map((group) => {
-              const GroupIcon = getMuscleGroupIcon(group)
-              return (
-                <button
-                  className={`muscle-group-card${selectedGroup === group ? ' is-selected' : ''}`}
-                  type="button"
-                  key={group}
-                  aria-pressed={selectedGroup === group}
-                  onClick={() => chooseGroup(group)}
-                >
-                  <MuscleIconBadge icon={GroupIcon} size="md" />
-                  <span>
-                    <strong>{group}</strong>
-                    <small>{groupCounts.get(group)} exercícios</small>
-                  </span>
-                  <ChevronRightIcon size={16} />
-                </button>
-              )
-            })}
-          </div>
-          <Button type="button" className="workout-step-cancel" onClick={onCancel}>
-            Cancelar
-          </Button>
-        </section>
-      )}
-
       {step === 'exercise' && (
         <section className="workout-step" aria-labelledby="exercise-choice-title">
-          <button className="workout-back" type="button" onClick={showGroups}>
-            <ChevronLeftIcon size={16} /> {sheetScope ? 'Exercícios da ficha' : 'Trocar grupo'}
+          <button
+            className="workout-back"
+            type="button"
+            onClick={() => (selectedExercise ? setStep('register') : onCancel?.())}
+          >
+            <ChevronLeftIcon size={16} /> Voltar
           </button>
           <div className="workout-step-heading">
             <h2 id="exercise-choice-title">Escolha o exercício</h2>
           </div>
-          {groupCounts.get(selectedGroup) > 6 && (
+          {availableExercises.length > 6 && (
             <label className="exercise-search">
-              <span className="sr-only">Buscar exercício em {selectedGroup}</span>
+              <span className="sr-only">Buscar exercício</span>
               <SearchIcon size={16} />
               <input
                 type="search"
                 value={search}
-                placeholder={`Buscar em ${selectedGroup}`}
+                placeholder="Buscar exercício"
                 onChange={(event) => setSearch(event.target.value)}
                 autoFocus
               />
             </label>
           )}
           <div className="workout-exercise-list">
-            {exercisesInGroup.map((exercise) => {
+            {filteredExercises.map((exercise) => {
               const isDone = doneExerciseIds.has(exercise.id)
               return (
                 <button
@@ -734,7 +630,7 @@ export function WorkoutForm({
               )
             })}
           </div>
-          {exercisesInGroup.length === 0 && (
+          {filteredExercises.length === 0 && (
             <Text className="workout-no-results">Nenhum exercício encontrado.</Text>
           )}
         </section>

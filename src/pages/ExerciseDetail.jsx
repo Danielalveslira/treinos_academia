@@ -136,7 +136,7 @@ export default function ExerciseDetail() {
               variant="primary"
               leadingVisual={PlayIcon}
               onClick={() =>
-                navigate(`/novo-treino?exercicio=${id}`, { state: originState(location) })
+                navigate(`/treinar?exercicio=${id}`, { state: originState(location) })
               }
             >
               Treinar
@@ -184,7 +184,7 @@ export default function ExerciseDetail() {
           {canStartExercise(exercise) && (
             <Blankslate.PrimaryAction
               onClick={() =>
-                navigate(`/novo-treino?exercicio=${id}`, { state: originState(location) })
+                navigate(`/treinar?exercicio=${id}`, { state: originState(location) })
               }
             >
               Registrar treino

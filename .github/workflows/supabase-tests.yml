@@ -56,6 +56,8 @@ jobs:
         run: node scripts/public-auth-header-smoke.mjs
       - name: Workout sheets mobile, execution and conflict smoke
         run: node scripts/workout-sheets-browser-smoke.mjs
+      - name: Sheet entry redirects and exercise selection intent
+        run: node scripts/workout-sheets-browser-smoke.mjs --entries
       - name: Home V4 recommendation, completion, cache, photos and responsive themes
         run: node scripts/home-v2-browser-smoke.mjs
       - run: node scripts/ad-metrics-browser-smoke.mjs

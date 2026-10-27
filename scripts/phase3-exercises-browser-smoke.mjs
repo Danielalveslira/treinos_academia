@@ -23,6 +23,7 @@ const services = `
  export const saveExerciseOrder=async()=>{}
 `
 const stubs = {
+  '/useWorkoutSheets.js': `export const useWorkoutSheets=()=>({ data:[],loading:false,error:null,online:true,refresh(){} })`,
   '/services/exercisesService': services,
   '/hooks/useAuth': `export const useAuth=()=>({user:{uid:'local-user'},offlineLocal:false})`,
   '/hooks/useDashboard': `export const useDashboard=()=>({allWorkouts:[]})`,
@@ -48,9 +49,10 @@ try {
       import {ExercisesProvider} from './src/contexts/ExercisesContext.jsx'
       import Exercises from './src/pages/Exercises.jsx'
       import NewWorkout from './src/pages/NewWorkout.jsx'
+      import TreinarPage from './src/features/workoutSheets/TreinarPage.jsx'
       import './src/styles/app.css'
       import '@primer/primitives/dist/css/functional/themes/light.css'
-      createRoot(document.getElementById('root')).render(<ThemeProvider><BaseStyles><BrowserRouter><ExercisesProvider><main className="main-content"><Routes><Route path="/novo-treino" element={<NewWorkout/>}/><Route path="*" element={<Exercises/>}/></Routes></main></ExercisesProvider></BrowserRouter></BaseStyles></ThemeProvider>)
+      createRoot(document.getElementById('root')).render(<ThemeProvider><BaseStyles><BrowserRouter><ExercisesProvider><main className="main-content"><Routes><Route path="/treinar" element={<TreinarPage/>}/><Route path="/novo-treino" element={<NewWorkout/>}/><Route path="*" element={<Exercises/>}/></Routes></main></ExercisesProvider></BrowserRouter></BaseStyles></ThemeProvider>)
     `,
       resolveDir: root,
       loader: 'jsx',
@@ -134,20 +136,15 @@ try {
       (await page.evaluate(() => window.__writes)).filter((item) => item.kind === 'add').length,
       1
     )
-    console.log(`PHASE3_UI width=${width} empty workout`)
+    console.log(`PHASE3_UI width=${width} legacy entry redirects to sheets`)
     await page.goto(origin + '/novo-treino?legacyOnly=1')
-    await page.getByText('Nenhum exercício ativo', { exact: true }).waitFor()
-    await page
-      .getByRole('link', { name: 'Escolher no Catálogo Evolutus' })
-      .or(page.getByRole('button', { name: 'Escolher no Catálogo Evolutus' }))
-      .click()
-    await page.getByRole('heading', { name: 'Catálogo Evolutus' }).waitFor()
+    await page.getByRole('heading', { name: 'Treinar', exact: true }).waitFor()
+    assert(new URL(page.url()).pathname === '/treinar')
+    assert.equal(await page.locator('.muscle-group-card').count(), 0)
+    await page.getByRole('button', { name: 'Criar ficha', exact: true }).waitFor()
     await page.goto(origin + '/novo-treino?exercicio=old')
-    await page.getByRole('heading', { name: 'Qual grupo você vai treinar?' }).waitFor()
+    await page.getByRole('heading', { name: 'Treinar', exact: true }).waitFor()
     assert.equal(await page.getByRole('button', { name: /Legado pessoal/ }).count(), 0)
-    await page.getByRole('button', { name: /Peito/ }).click()
-    await page.getByRole('button', { name: /Oficial publicado/ }).click()
-    await page.getByText('Série 1 de 3', { exact: true }).waitFor()
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1),
       false

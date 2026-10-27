@@ -39,6 +39,7 @@ export function collectBootAssets(bundle, entryNames = null) {
 export const OFFLINE_ESSENTIAL_MODULES = [
   'src/pages/Dashboard.jsx',
   'src/pages/NewWorkout.jsx',
+  'src/features/workoutSheets/TreinarPage.jsx',
   'src/pages/History.jsx',
   'src/pages/Exercises.jsx',
   'src/pages/ExerciseDetail.jsx',

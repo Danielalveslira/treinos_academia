@@ -9,7 +9,7 @@ import { isOfflineColdStartEnabled } from '../services/offline/database'
 // rede precisam já estar no cache -- então, com a conta confirmada online e o navegador ocioso, o app busca
 // (e o SW guarda) só essas telas. Nada do resto do produto é pré-baixado. Respeita "economia de dados" e
 // rede 2G (preloadRoute já ignora) e deixa a tela de gráficos (chunk grande) só para conexão boa.
-const SMALL_OFFLINE_ROUTES = ['/', '/exercicios', '/exercicios/:id', '/novo-treino', '/historico']
+const SMALL_OFFLINE_ROUTES = ['/', '/treinar', '/exercicios', '/exercicios/:id', '/novo-treino', '/historico']
 
 export function useWarmOfflineRoutes(enabled) {
   useEffect(() => {

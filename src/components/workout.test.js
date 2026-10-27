@@ -58,6 +58,7 @@ after(async () => {
 })
 
 const props = {
+  sheetScope: { id: 'sheet-a', items: [{ exercise_id: 'squat', available: true }] },
   exercises: [
     {
       id: 'squat',
@@ -174,7 +175,7 @@ test('history opens with suggested values and an enabled one-touch completion', 
   assert.doesNotMatch(html, /Último treino</)
 })
 
-test('with no exercise pre-selected, the form opens on the muscle group step, not the set fields', () => {
+test('without a sheet the form blocks new creation and never opens free selection', () => {
   const html = render({
     exercises: [
       {
@@ -195,9 +196,8 @@ test('with no exercise pre-selected, the form opens on the muscle group step, no
       },
     ],
   })
-  assert.match(html, /Qual grupo você vai treinar\?/)
-  assert.match(html, /Pernas/)
-  assert.match(html, /Peito/)
+  assert.match(html, /Escolha uma ficha para iniciar o treino/)
+  assert.doesNotMatch(html, /Qual grupo você vai treinar|muscle-group-card/)
   assert.equal((html.match(/type="number"/g) || []).length, 0)
   assert.doesNotMatch(html, /Adicionar série/)
 })
@@ -260,6 +260,7 @@ test('previous sessions provide an empty state and support cardio history', () =
         type: 'cardio',
       },
     ],
+    sheetScope: { id: 'sheet-cardio', items: [{ exercise_id: 'run', available: true }] },
     defaultExerciseId: 'run',
     history: [
       {
