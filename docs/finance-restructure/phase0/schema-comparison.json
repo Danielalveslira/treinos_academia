@@ -1,0 +1,175 @@
+{
+  "baseline_local_version": "20261127000001",
+  "remote_version": "20261127000001",
+  "versions_equal": true,
+  "local_only_versions": [],
+  "remote_only_versions": [],
+  "compared": {
+    "functions": 356,
+    "relations": 104,
+    "triggers": 77,
+    "views": 5,
+    "enums": 2,
+    "jobs": 15
+  },
+  "changes": [
+    {
+      "kind": "function_definition",
+      "object": "private.apply_published_visual_set(uuid,uuid,text)",
+      "fields": [
+        "definition"
+      ],
+      "local_sha256": "96c16273f169494bdf9d816bdcb815d2a4cd63b81a2cea63368524b758d719cd",
+      "remote_sha256": "9dcfea371116dc96e90ca3c5b95a98020c24b8caad1041a86d3f0b00a3e8c484"
+    },
+    {
+      "kind": "function_definition",
+      "object": "public.admin_list_catalog_exercises(text,text,text,integer,integer)",
+      "change": "extra_remote"
+    },
+    {
+      "kind": "function_definition",
+      "object": "public.allocate_exercise_visual_set(uuid,text,text,jsonb,uuid,uuid,text,text,text)",
+      "fields": [
+        "definition"
+      ],
+      "local_sha256": "c2886b558b395074425eb085c2bcfa60f8c424ff2c8e35e62c26f39a8e4f9200",
+      "remote_sha256": "027d56a38ec064a02a999855dc2fa3c386e9999b6aec84491b3b53af274b6492"
+    },
+    {
+      "kind": "function_security",
+      "object": "private.apply_published_visual_set(uuid,uuid,text)",
+      "fields": [
+        "config"
+      ],
+      "local_sha256": "2862f800234e2034e51ee9486b99d4db710c9e10d2e379e6a26adc8d4f496552",
+      "remote_sha256": "dcc88f243380324a9e8b785b760459a6880d011a5004465f6436bdd6b9fd77f9"
+    },
+    {
+      "kind": "function_security",
+      "object": "public._bump_exercise_catalog_revision()",
+      "fields": [
+        "grants"
+      ],
+      "local_sha256": "350a86cf9f05b6182dd65b30d32e8a1da8fd3af835c170be8cb1fee8d0adf882",
+      "remote_sha256": "c4fd23c6199e34d3179335800efe11255c78f8f51315899729786f56792fd638"
+    },
+    {
+      "kind": "function_security",
+      "object": "public._sync_exercise_catalog_is_active()",
+      "fields": [
+        "grants"
+      ],
+      "local_sha256": "13f365122f7ff0c16091dfb29173d17637f93cc1ddb01161cee56346fe844fae",
+      "remote_sha256": "fff5b3f40db30db824542e84af09c8d0372d8e311234dc05dc089ab899a186df"
+    },
+    {
+      "kind": "function_security",
+      "object": "public.admin_list_catalog_exercises(text,text,text,integer,integer)",
+      "change": "extra_remote"
+    },
+    {
+      "kind": "function_security",
+      "object": "public.allocate_exercise_visual_set(uuid,text,text,jsonb,uuid,uuid,text,text,text)",
+      "fields": [
+        "config"
+      ],
+      "local_sha256": "f46cb97ffe4dbf19de63a5360a2043710ba07385c84820d1dfc608eb232f1782",
+      "remote_sha256": "0eccde454935ee3904444fddf5e64bc107bd65160936408ec68d81451c4e616b"
+    }
+  ],
+  "normalization": "Only the privileged DBA/owner roles postgres/supabase_admin/pg_database_owner are normalized and their duplicate ACL entries collapsed; all client grants, function bodies, RLS, constraints, indexes and trigger states remain compared.",
+  "privileged_ownership": {
+    "local": {
+      "supabase_admin": 353,
+      "postgres": 3
+    },
+    "remote": {
+      "postgres": 353,
+      "supabase_admin": 4
+    }
+  },
+  "extensions": {
+    "local": [
+      {
+        "name": "pg_cron",
+        "version": "1.6.4"
+      },
+      {
+        "name": "pg_net",
+        "version": "0.20.4"
+      },
+      {
+        "name": "pg_stat_statements",
+        "version": "1.11"
+      },
+      {
+        "name": "pg_trgm",
+        "version": "1.6"
+      },
+      {
+        "name": "pgcrypto",
+        "version": "1.3"
+      },
+      {
+        "name": "pgtap",
+        "version": "1.3.3"
+      },
+      {
+        "name": "plpgsql",
+        "version": "1.0"
+      },
+      {
+        "name": "supabase_vault",
+        "version": "0.3.1"
+      },
+      {
+        "name": "unaccent",
+        "version": "1.1"
+      },
+      {
+        "name": "uuid-ossp",
+        "version": "1.1"
+      }
+    ],
+    "remote": [
+      {
+        "name": "pg_cron",
+        "version": "1.6.4"
+      },
+      {
+        "name": "pg_net",
+        "version": "0.20.4"
+      },
+      {
+        "name": "pg_stat_statements",
+        "version": "1.11"
+      },
+      {
+        "name": "pg_trgm",
+        "version": "1.6"
+      },
+      {
+        "name": "pgcrypto",
+        "version": "1.3"
+      },
+      {
+        "name": "plpgsql",
+        "version": "1.0"
+      },
+      {
+        "name": "supabase_vault",
+        "version": "0.3.1"
+      },
+      {
+        "name": "unaccent",
+        "version": "1.1"
+      },
+      {
+        "name": "uuid-ossp",
+        "version": "1.1"
+      }
+    ]
+  },
+  "disabled_fk_triggers": 0
+}

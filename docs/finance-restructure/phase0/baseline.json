@@ -1,0 +1,341 @@
+{
+  "captured_at": "2026-10-27T18:13:38.167132+00:00",
+  "read_only": true,
+  "baseline_sha": "5b50b2605192c7684bdefa065ad3c21ab64f03ab",
+  "plan_sha256": "db9ee5c7378566dc2ed636571af6c81d29a8ef9e980b0de68e124e5a733f9562",
+  "scope": "Phase 0; no financial mutation, migration, checkout creation or payment reconciliation executed remotely.",
+  "financial": {
+    "reward_cap": 10,
+    "economy_sizes": {
+      "ledger": 175,
+      "wallets": 6,
+      "purchases": 26
+    },
+    "server_version": "17.6",
+    "invalid_wallets": 0,
+    "latest_migration": "20261127000001",
+    "fractional_ledger": 0,
+    "invalid_purchase_units": 0,
+    "invalid_promotion_units": 0,
+    "invalid_cash_package_config": 0,
+    "wallet_ledger_discrepancies": 0,
+    "duplicate_cash_purchase_credits": 0,
+    "credited_without_matching_ledger": 0,
+    "credited_without_provider_identity": 0
+  },
+  "purchase_statuses": [
+    {
+      "count": 16,
+      "status": "cancelled"
+    },
+    {
+      "count": 9,
+      "status": "credited"
+    },
+    {
+      "count": 1,
+      "status": "pending"
+    }
+  ],
+  "pending_purchase_age": {
+    "uncertain": 0,
+    "over_7_days": 0,
+    "missing_identity": 1
+  },
+  "commercial_counts": {
+    "ads": 5,
+    "listings": 1,
+    "products": 2,
+    "promotions": 8,
+    "expired_ads": 1,
+    "ads_without_expiry": 0,
+    "advertiser_members": 1,
+    "published_listings": 1,
+    "advertiser_accounts": 1,
+    "advertiser_campaigns": 3,
+    "approved_products_without_expiry": 0
+  },
+  "configuration_keys": [
+    "cashPackages",
+    "cashPurchaseReminders",
+    "cashPurchases",
+    "financialControls",
+    "promotionPackages"
+  ],
+  "financial_control_keys": [
+    "reversalsEnabled"
+  ],
+  "metrics_collection_enabled": true,
+  "security_checks": {
+    "reversals_flag": false,
+    "migration_owner": "postgres",
+    "session_columns": [
+      {
+        "name": "id",
+        "type": "uuid",
+        "notnull": true
+      },
+      {
+        "name": "not_after",
+        "type": "timestamp with time zone",
+        "notnull": false
+      },
+      {
+        "name": "user_id",
+        "type": "uuid",
+        "notnull": true
+      }
+    ],
+    "owner_auth_usage": true,
+    "owner_jwt_execute": true,
+    "owner_uid_execute": true,
+    "anon_create_public": false,
+    "owner_storage_usage": true,
+    "owner_objects_select": true,
+    "owner_sessions_select": true,
+    "anon_confirmation_execute": false,
+    "service_role_wallet_update": false,
+    "authenticated_create_public": false,
+    "authenticated_ledger_insert": false,
+    "authenticated_wallet_update": false,
+    "authenticated_confirmation_execute": false,
+    "authenticated_credit_helper_execute": false
+  },
+  "jobs": [
+    {
+      "name": "cleanup-offline-telemetry",
+      "active": true,
+      "schedule": "17 4 * * *",
+      "command_md5": "284f808132ef76fe55ccdc640e9dbe6a"
+    },
+    {
+      "name": "cleanup-push-history",
+      "active": true,
+      "schedule": "17 4 * * *",
+      "command_md5": "28b01f38ef43cd573adc4494eb924d55"
+    },
+    {
+      "name": "cleanup-sponsored-ad-marks",
+      "active": true,
+      "schedule": "11 * * * *",
+      "command_md5": "b461af554c653e70de79ad4cf64fdbcb"
+    },
+    {
+      "name": "cleanup-sponsored-ad-stats",
+      "active": true,
+      "schedule": "41 4 1 * *",
+      "command_md5": "b9d577c2c7dbedb0d30b87be79fe6884"
+    },
+    {
+      "name": "cleanup-workout-reminders",
+      "active": true,
+      "schedule": "23 4 * * *",
+      "command_md5": "44bba67a732f2e117e8c5faf24bac7ff"
+    },
+    {
+      "name": "dispatch-workout-reminders",
+      "active": true,
+      "schedule": "* * * * *",
+      "command_md5": "a48c30a60d79d0c0011ee149f86bf16b"
+    },
+    {
+      "name": "expire-stale-infinitepay-purchases",
+      "active": true,
+      "schedule": "34 4 * * *",
+      "command_md5": "72fd30f6701769d56506f93f1d2ebcea"
+    },
+    {
+      "name": "expire-statuses",
+      "active": true,
+      "schedule": "* * * * *",
+      "command_md5": "05028dd73aae45e7f2b2d592716f3015"
+    },
+    {
+      "name": "process-deletion-jobs",
+      "active": true,
+      "schedule": "* * * * *",
+      "command_md5": "9370ca0abbaf164e26220580e76b84c0"
+    },
+    {
+      "name": "process-push-outbox",
+      "active": true,
+      "schedule": "* * * * *",
+      "command_md5": "509ec672a0741ef5197b7164857f17fa"
+    },
+    {
+      "name": "purge-promotion-event-limits",
+      "active": true,
+      "schedule": "0 3 * * *",
+      "command_md5": "17c26059174e5a296ee146ccd1e9a3e7"
+    },
+    {
+      "name": "refresh-public-catalog-snapshot",
+      "active": true,
+      "schedule": "* * * * *",
+      "command_md5": "6ce69b5299124db5d87a6a94361a170a"
+    },
+    {
+      "name": "send-cash-purchase-reminder-emails",
+      "active": true,
+      "schedule": "* * * * *",
+      "command_md5": "e281d051cc6d114fb46edad5b59774d1"
+    },
+    {
+      "name": "settle-pending-awards",
+      "active": true,
+      "schedule": "2-59/5 * * * *",
+      "command_md5": "d44b96f587d221f522b56462fc7080ef"
+    },
+    {
+      "name": "settle-vote-rewards",
+      "active": true,
+      "schedule": "*/5 * * * *",
+      "command_md5": "dbfc3b3762639e3039a562d2735c76aa"
+    }
+  ],
+  "storage_buckets": [
+    {
+      "id": "community-covers",
+      "public": false,
+      "file_size_limit": 4194304,
+      "allowed_mime_types": [
+        "image/webp"
+      ]
+    },
+    {
+      "id": "exercise-visual-drafts",
+      "public": false,
+      "file_size_limit": 2097152,
+      "allowed_mime_types": [
+        "image/webp"
+      ]
+    },
+    {
+      "id": "exercise-visual-references",
+      "public": false,
+      "file_size_limit": 5242880,
+      "allowed_mime_types": [
+        "image/webp",
+        "image/png",
+        "image/jpeg"
+      ]
+    },
+    {
+      "id": "exercise-visuals",
+      "public": true,
+      "file_size_limit": 2097152,
+      "allowed_mime_types": [
+        "image/webp"
+      ]
+    },
+    {
+      "id": "moderation-evidence",
+      "public": false,
+      "file_size_limit": 4194304,
+      "allowed_mime_types": [
+        "image/webp"
+      ]
+    },
+    {
+      "id": "profile-avatars",
+      "public": false,
+      "file_size_limit": 1048576,
+      "allowed_mime_types": [
+        "image/webp"
+      ]
+    },
+    {
+      "id": "status-photos",
+      "public": false,
+      "file_size_limit": 4194304,
+      "allowed_mime_types": [
+        "image/webp"
+      ]
+    }
+  ],
+  "catalog_counts": {
+    "functions": 357,
+    "tables": 104,
+    "triggers": 77,
+    "views": 5,
+    "jobs": 15
+  },
+  "diagnostics": {
+    "orphan_wallets": 0,
+    "invalid_constraints": [
+      {
+        "name": "cash_purchases_whole_units",
+        "table": "public.cash_purchases"
+      },
+      {
+        "name": "economy_transactions_whole_units",
+        "table": "public.economy_transactions"
+      },
+      {
+        "name": "promotions_whole_units",
+        "table": "public.promotions"
+      },
+      {
+        "name": "wallets_cash_nonnegative",
+        "table": "public.wallets"
+      },
+      {
+        "name": "wallets_lifetime_nonnegative",
+        "table": "public.wallets"
+      }
+    ],
+    "orphan_ledger_cases": 0,
+    "orphan_ledger_users": 0,
+    "disabled_fk_triggers": 0,
+    "orphan_purchase_cases": 0,
+    "orphan_purchase_users": 0,
+    "invalid_purchase_snapshots": 0,
+    "duplicate_provider_transactions": 0
+  },
+  "not_valid_constraints": [
+    {
+      "table": "public.cash_purchases",
+      "name": "cash_purchases_whole_units"
+    },
+    {
+      "table": "public.economy_transactions",
+      "name": "economy_transactions_whole_units"
+    },
+    {
+      "table": "public.promotions",
+      "name": "promotions_whole_units"
+    },
+    {
+      "table": "public.wallets",
+      "name": "wallets_cash_nonnegative"
+    },
+    {
+      "table": "public.wallets",
+      "name": "wallets_lifetime_nonnegative"
+    }
+  ],
+  "vercel": {
+    "capturedAt": "2026-10-27T18:14:57.325Z",
+    "readOnly": true,
+    "productionBranch": "main",
+    "production": {
+      "id": "dpl_5dgWDZE8mrwAQPxNSxyXjbNnJWVV",
+      "sha": "5b50b2605192c7684bdefa065ad3c21ab64f03ab",
+      "readyState": "READY"
+    },
+    "configuredProductionFlags": {
+      "VITE_GREETING_V2_ENABLED": "true",
+      "VITE_AD_METRICS_ENABLED": "true",
+      "VITE_OFFLINE_COLD_START_ENABLED": "true",
+      "VITE_OFFLINE_WRITE_ENABLED": "true"
+    },
+    "note": "Project configuration at capture time; build flags require deployment verification."
+  },
+  "limitations": [
+    "Independent read-only snapshots, not one cross-query transaction.",
+    "Local Auth/Storage scaffolds are synthetic; comparison concerns public/private schema, not a real GoTrue/Storage integration test.",
+    "ZIP referenced in source plan unavailable in workspace.",
+    "GitHub branch protection details returned HTTP 403; protected=true confirmed.",
+    "Project environment flags do not prove values embedded in an existing deployment."
+  ]
+}
