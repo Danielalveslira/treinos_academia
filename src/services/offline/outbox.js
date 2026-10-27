@@ -56,8 +56,10 @@ export function buildLocalRow(userId, entityId, payload, existing, now) {
     user_id: userId,
     id: entityId,
     exercise_id: payload.exercise_id,
-    // Existing server attribution survives local edits; never accept a new link from payload.
-    ...(existing?.sheet_id ? { sheet_id: existing.sheet_id } : {}),
+    // Creation carries attribution for server validation; edits preserve the existing link.
+    ...(existing?.sheet_id || (!existing && payload.sheet_id)
+      ? { sheet_id: existing?.sheet_id || payload.sheet_id }
+      : {}),
     date: payload.date,
     type: payload.type,
     set_details: strength ? payload.set_details : null,
@@ -182,7 +184,10 @@ export async function enqueueWorkoutMutation(
         workouts.put(buildLocalRow(userId, entityId, payload, localRow, now))
         if (open) {
           // create+update vira create com o estado final; update+update vira o último update.
-          open.payload = payload
+          open.payload =
+            open.operation === OPERATIONS.create && open.payload.sheet_id
+              ? { ...payload, sheet_id: open.payload.sheet_id }
+              : payload
           open.dates = unionDates(open.dates ?? [], [payload.date], [localRow?.date])
           reset(open, now)
           outbox.put(open)

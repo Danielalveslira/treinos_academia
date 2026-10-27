@@ -23,6 +23,15 @@ const REASONS = {
   CONFLICT: 'Este treino foi alterado em outro aparelho.',
   NOT_FOUND: 'Este treino foi apagado em outro aparelho.',
   INVALID_PAYLOAD: 'Os dados deste registro não foram aceitos.',
+  SHEET_NOT_READY:
+    'A ficha foi arquivada. Seus registros continuam neste aparelho; revise a ficha e tente novamente.',
+  SHEET_NOT_FOUND: 'A ficha não está disponível. Seus registros continuam neste aparelho.',
+  SHEET_EXERCISE_UNAVAILABLE:
+    'Um exercício da ficha está indisponível. Revise a ficha antes de sincronizar.',
+  SHEET_EXERCISE_MISMATCH:
+    'O exercício foi removido da ficha. Revise a ficha antes de sincronizar.',
+  SHEET_ID_IMMUTABLE:
+    'O vínculo do registro diverge do servidor. Revise os detalhes da sincronização.',
   EXERCISE_NOT_FOUND: 'O exercício deste registro não existe mais.',
   TYPE_IMMUTABLE: 'O tipo deste registro não pode mudar.',
   RETRY_LIMIT: 'Não foi possível sincronizar este registro.',

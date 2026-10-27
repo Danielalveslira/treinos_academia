@@ -153,7 +153,10 @@ async function installOnline(browser, origin, outDir) {
   const context = await browser.newContext()
   const page = await context.newPage()
   await page.goto(`${origin}/app`)
-  await page.evaluate(() => navigator.serviceWorker.ready)
+  await page.evaluate(() => Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Service worker did not activate within 30 seconds')), 30000)),
+  ]))
   if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller)))) await page.reload()
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller))
   const cached = await page.evaluate(async () => {
@@ -350,7 +353,10 @@ async function main() {
     const context = await browser.newContext()
     let page = await context.newPage()
     await page.goto(`${origin}/app`)
-    await page.evaluate(() => navigator.serviceWorker.ready)
+    await page.evaluate(() => Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Service worker did not activate within 30 seconds')), 30000)),
+  ]))
     if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller)))) await page.reload()
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller))
     const assets = readdirSync(join(outDir, 'assets')).filter((name) => /\.(js|css)$/.test(name))
@@ -405,7 +411,10 @@ async function main() {
     console.log(`CHROMIUM_OFFLINE_OK: cold start sem pré-busca manual (${coreAssets} assets do SW), sem flash de "sem conexão", Home restaurada do snapshot (saldo e atividade; "—" sem snapshot), sem RPC/Realtime no boot, IndexedDB, outbox=${afterReconnect.outbox.length}, escrita, reconexão e atualização do SW`)
   } finally {
     await browser?.close()
-    if (server) await new Promise((resolveClosed) => server.close(resolveClosed))
+    if (server) {
+      server.closeAllConnections()
+      await new Promise((resolveClosed) => server.close(resolveClosed))
+    }
     rmSync(outDir, { recursive: true, force: true })
   }
 }

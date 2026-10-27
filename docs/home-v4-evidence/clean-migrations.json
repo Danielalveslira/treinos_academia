@@ -1,0 +1,694 @@
+[
+  {
+    "file": "20260926000001_extensions.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000002_identity.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000003_communities.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000004_workouts.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000005_statuses.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000006_moderation.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000007_legal.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000008_server_only.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000009_rls_functions.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000010_rls_policies.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000011_profile_rpcs.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000012_account_rollback.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000013_realtime.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000014_workout_stats_rpcs.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000015_queue_deletion.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000016_storage.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000017_poll_results.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000018_status_author_badge.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000019_legal_support_admin_rpcs.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000020_support_requests_status_fk.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000021_auth_uid_guards.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000022_legal_acceptances_columns_fix.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000023_users_new_fields.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000024_update_user_profile_height.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000025_workouts_cardio_type.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000026_exercises_catalog_fields.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000027_communities_owner.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000028_community_member_ban.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000029_statuses_owner_and_post_access.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000030_support_evidence_and_deletion_review.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000031_communities_icon.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000032_save_exercise_order.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000033_submit_support_request_evidence.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000034_list_deletion_jobs_pending_only.sql",
+    "passed": true
+  },
+  {
+    "file": "20260926000035_wallet_stub.sql",
+    "passed": true
+  },
+  {
+    "file": "20260927000001_economy_wallet_ledger_activity.sql",
+    "passed": true
+  },
+  {
+    "file": "20260927000002_economy_voting_schema.sql",
+    "passed": true
+  },
+  {
+    "file": "20260927000003_economy_cast_vote.sql",
+    "passed": true
+  },
+  {
+    "file": "20260927000004_economy_reward_settlement.sql",
+    "passed": true
+  },
+  {
+    "file": "20260927000005_economy_privilege_create_community.sql",
+    "passed": true
+  },
+  {
+    "file": "20260928000001_economy_cash_purchases_promotions.sql",
+    "passed": true
+  },
+  {
+    "file": "20260928000002_community_creation_requests_fk_cascade.sql",
+    "passed": true
+  },
+  {
+    "file": "20260929000001_admin_account_deletion_review.sql",
+    "passed": true
+  },
+  {
+    "file": "20260929000002_body_measurements.sql",
+    "passed": true
+  },
+  {
+    "file": "20260929000003_progress_days.sql",
+    "passed": true
+  },
+  {
+    "file": "20260929000004_profile_avatar.sql",
+    "passed": true
+  },
+  {
+    "file": "20260929000005_professional_listings.sql",
+    "passed": true
+  },
+  {
+    "file": "20260929000006_sponsored_ads.sql",
+    "passed": true
+  },
+  {
+    "file": "20260929000007_exercise_provider_fields.sql",
+    "passed": true
+  },
+  {
+    "file": "20260930000001_exercise_catalog.sql",
+    "passed": true
+  },
+  {
+    "file": "20260930000002_deletion_worker.sql",
+    "passed": true
+  },
+  {
+    "file": "20260930000003_server_side_validations.sql",
+    "passed": true
+  },
+  {
+    "file": "20260930000004_professional_listing_drafts_owner_cascade.sql",
+    "passed": true
+  },
+  {
+    "file": "20261001000001_training_preferences.sql",
+    "passed": true
+  },
+  {
+    "file": "20261001000002_showcase_terms_acknowledgement.sql",
+    "passed": true
+  },
+  {
+    "file": "20261001000003_professional_listing_avatar_publish.sql",
+    "passed": true
+  },
+  {
+    "file": "20261002000001_professional_listing_publish_recovery.sql",
+    "passed": true
+  },
+  {
+    "file": "20261002000002_admin_vitrines_denuncias.sql",
+    "passed": true
+  },
+  {
+    "file": "20261002000003_comments_schema.sql",
+    "passed": true
+  },
+  {
+    "file": "20261002000004_comments_functions.sql",
+    "passed": true
+  },
+  {
+    "file": "20261002000005_comments_read_rls.sql",
+    "passed": true
+  },
+  {
+    "file": "20261002000006_comments_moderation.sql",
+    "passed": true
+  },
+  {
+    "file": "20261002000007_comment_notifications_read.sql",
+    "passed": true
+  },
+  {
+    "file": "20261002000008_notification_types_admin.sql",
+    "passed": true
+  },
+  {
+    "file": "20261002000009_notifications_center.sql",
+    "passed": true
+  },
+  {
+    "file": "20261003000001_reapply_admin_vitrines_denuncias.sql",
+    "passed": true
+  },
+  {
+    "file": "20261004000001_account_deletion_financial_case.sql",
+    "passed": true
+  },
+  {
+    "file": "20261004000002_deletion_hardening.sql",
+    "passed": true
+  },
+  {
+    "file": "20261005000001_financial_case_retention.sql",
+    "passed": true
+  },
+  {
+    "file": "20261005000002_cancelled_case_retention.sql",
+    "passed": true
+  },
+  {
+    "file": "20261005000003_case_items_traceability.sql",
+    "passed": true
+  },
+  {
+    "file": "20261006000001_post_support_reactions.sql",
+    "passed": true
+  },
+  {
+    "file": "20261006000002_supporters_failclosed_minimal.sql",
+    "passed": true
+  },
+  {
+    "file": "20261006000003_workout_participants_rpc.sql",
+    "passed": true
+  },
+  {
+    "file": "20261007000001_status_progress_metadata.sql",
+    "passed": true
+  },
+  {
+    "file": "20261007000002_support_moderation_final_versions.sql",
+    "passed": true
+  },
+  {
+    "file": "20261007000003_restore_comments_read_grant.sql",
+    "passed": true
+  },
+  {
+    "file": "20261008000001_community_creation_activity_days.sql",
+    "passed": true
+  },
+  {
+    "file": "20261008000002_community_tiers_post_retention.sql",
+    "passed": true
+  },
+  {
+    "file": "20261008000003_community_creation_rpcs.sql",
+    "passed": true
+  },
+  {
+    "file": "20261008000004_community_creation_converge.sql",
+    "passed": true
+  },
+  {
+    "file": "20261009000001_evocoins_daily_cap_schema.sql",
+    "passed": true
+  },
+  {
+    "file": "20261009000002_evocoins_award_engine.sql",
+    "passed": true
+  },
+  {
+    "file": "20261009000003_evocoins_activity_unified.sql",
+    "passed": true
+  },
+  {
+    "file": "20261009000004_evocoins_support_rewards.sql",
+    "passed": true
+  },
+  {
+    "file": "20261009000005_evocoins_pending_awards.sql",
+    "passed": true
+  },
+  {
+    "file": "20261009000006_evocoins_workout_completion.sql",
+    "passed": true
+  },
+  {
+    "file": "20261009000007_evocoins_day_rpc.sql",
+    "passed": true
+  },
+  {
+    "file": "20261010000001_admin_accounts_snapshot.sql",
+    "passed": true
+  },
+  {
+    "file": "20261011000001_user_activity.sql",
+    "passed": true
+  },
+  {
+    "file": "20261012000000_push_notification_type.sql",
+    "passed": true
+  },
+  {
+    "file": "20261012000001_web_push_notifications.sql",
+    "passed": true
+  },
+  {
+    "file": "20261012000002_web_push_hardening.sql",
+    "passed": true
+  },
+  {
+    "file": "20261012000003_push_worker_cron_secret.sql",
+    "passed": true
+  },
+  {
+    "file": "20261012000004_web_push_converge.sql",
+    "passed": true
+  },
+  {
+    "file": "20261013000001_notifications_realtime.sql",
+    "passed": true
+  },
+  {
+    "file": "20261014000001_notification_types_pipeline.sql",
+    "passed": true
+  },
+  {
+    "file": "20261014000002_notification_pipeline.sql",
+    "passed": true
+  },
+  {
+    "file": "20261014000003_workout_reminder_type.sql",
+    "passed": true
+  },
+  {
+    "file": "20261014000004_workout_reminders.sql",
+    "passed": true
+  },
+  {
+    "file": "20261014000005_security_hardening.sql",
+    "passed": true
+  },
+  {
+    "file": "20261014000006_notification_antispam_variants.sql",
+    "passed": true
+  },
+  {
+    "file": "20261014000007_push_delivery_telemetry.sql",
+    "passed": true
+  },
+  {
+    "file": "20261015000001_infinitepay_cash_purchases.sql",
+    "passed": true
+  },
+  {
+    "file": "20261015000002_infinitepay_checkout_failure.sql",
+    "passed": true
+  },
+  {
+    "file": "20261015000003_infinitepay_cancel_request.sql",
+    "passed": true
+  },
+  {
+    "file": "20261015000004_immediate_cash_purchase_cancel.sql",
+    "passed": true
+  },
+  {
+    "file": "20261015000005_remove_mercadopago_runtime.sql",
+    "passed": true
+  },
+  {
+    "file": "20261016000001_offline_workout_sync.sql",
+    "passed": true
+  },
+  {
+    "file": "20261016000002_security_hardening_followup.sql",
+    "passed": true
+  },
+  {
+    "file": "20261016000003_offline_runtime_control_telemetry.sql",
+    "passed": true
+  },
+  {
+    "file": "20261017000001_feed_batch_interaction_rpcs.sql",
+    "passed": true
+  },
+  {
+    "file": "20261017000002_feed_partial_indexes.sql",
+    "passed": true
+  },
+  {
+    "file": "20261017000003_status_text_limit_7000.sql",
+    "passed": true
+  },
+  {
+    "file": "20261018000001_sponsored_ad_metrics.sql",
+    "passed": true
+  },
+  {
+    "file": "20261018000002_sponsored_ad_metrics_dashboard.sql",
+    "passed": true
+  },
+  {
+    "file": "20261019000001_sponsored_ad_metrics_privacy_controls.sql",
+    "passed": true
+  },
+  {
+    "file": "20261020000001_exercise_visuals.sql",
+    "passed": true
+  },
+  {
+    "file": "20261021000001_exercise_visuals_v2.sql",
+    "passed": true
+  },
+  {
+    "file": "20261022000001_community_member_removal.sql",
+    "passed": true
+  },
+  {
+    "file": "20261022000002_exercise_visuals_function_hardening.sql",
+    "passed": true
+  },
+  {
+    "file": "20261023000001_community_join_and_access_list.sql",
+    "passed": true
+  },
+  {
+    "file": "20261024000001_greeting_personalization.sql",
+    "passed": true
+  },
+  {
+    "file": "20261026000005_aud_security_atomic.sql",
+    "passed": true
+  },
+  {
+    "file": "20261026000006_exercise_catalog_offline_converge.sql",
+    "passed": true
+  },
+  {
+    "file": "20261027000001_storage_cleanup_outbox.sql",
+    "passed": true
+  },
+  {
+    "file": "20261028000001_status_expiration.sql",
+    "passed": true
+  },
+  {
+    "file": "20261028000002_status_feed_pagination_index.sql",
+    "passed": true
+  },
+  {
+    "file": "20261028000003_activate_status_expiration.sql",
+    "passed": true
+  },
+  {
+    "file": "20261029000001_exercise_visual_deletion.sql",
+    "passed": true
+  },
+  {
+    "file": "20261030000001_aud05_status_deletion.sql",
+    "passed": true
+  },
+  {
+    "file": "20261031000001_aud03_poll_vote_security.sql",
+    "passed": true
+  },
+  {
+    "file": "20261101000001_aud07_status_publication_rate.sql",
+    "passed": true
+  },
+  {
+    "file": "20261102000001_push_welcome_type.sql",
+    "passed": true
+  },
+  {
+    "file": "20261102000002_push_explicit_activation_welcome.sql",
+    "passed": true
+  },
+  {
+    "file": "20261103000001_admin_accounts_integrity.sql",
+    "passed": true
+  },
+  {
+    "file": "20261104000001_community_cover_image.sql",
+    "passed": true
+  },
+  {
+    "file": "20261105000001_close_has_app_access_gates.sql",
+    "passed": true
+  },
+  {
+    "file": "20261105000002_comment_context_author_avatar.sql",
+    "passed": true
+  },
+  {
+    "file": "20261105000003_infinitepay_pending_reconciliation.sql",
+    "passed": true
+  },
+  {
+    "file": "20261105000004_cash_purchase_reminder_emails.sql",
+    "passed": true
+  },
+  {
+    "file": "20261106000001_expand_community_icons.sql",
+    "passed": true
+  },
+  {
+    "file": "20261107000001_weekly_training_times.sql",
+    "passed": true
+  },
+  {
+    "file": "20261108000001_public_commercial.sql",
+    "passed": true
+  },
+  {
+    "file": "20261108000002_public_product_catalog.sql",
+    "passed": true
+  },
+  {
+    "file": "20261109000001_official_community_icon.sql",
+    "passed": true
+  },
+  {
+    "file": "20261110000001_public_professional_directory.sql",
+    "passed": true
+  },
+  {
+    "file": "20261111000001_partner_products_require_image.sql",
+    "passed": true
+  },
+  {
+    "file": "20261112000001_finance_permissions.sql",
+    "passed": true
+  },
+  {
+    "file": "20261112000002_finance_integrity.sql",
+    "passed": true
+  },
+  {
+    "file": "20261112000003_finance_payment_finality.sql",
+    "passed": true
+  },
+  {
+    "file": "20261112000004_finance_reversals.sql",
+    "passed": true
+  },
+  {
+    "file": "20261112000005_finance_reward_evidence.sql",
+    "passed": true
+  },
+  {
+    "file": "20261112000006_finance_reconciliation_shadow.sql",
+    "passed": true
+  },
+  {
+    "file": "20261113000001_session_revocation_guard.sql",
+    "passed": true
+  },
+  {
+    "file": "20261113000002_session_active_rpc.sql",
+    "passed": true
+  },
+  {
+    "file": "20261113000003_admin_session_revocation_guard.sql",
+    "passed": true
+  },
+  {
+    "file": "20261114000001_financial_auth_integration.sql",
+    "passed": true
+  },
+  {
+    "file": "20261114000002_remaining_sensitive_rpcs_guard.sql",
+    "passed": true
+  },
+  {
+    "file": "20261114000003_community_economy_session_guard.sql",
+    "passed": true
+  },
+  {
+    "file": "20261115000001_training_preferences_catalog.sql",
+    "passed": true
+  },
+  {
+    "file": "20261115000002_cash_reminder_session_guard.sql",
+    "passed": true
+  },
+  {
+    "file": "20261116000001_advertiser_metrics_v2.sql",
+    "passed": true
+  },
+  {
+    "file": "20261117000001_exercise_catalog_lifecycle.sql",
+    "passed": true
+  },
+  {
+    "file": "20261118000001_catalog_image_completeness.sql",
+    "passed": true
+  },
+  {
+    "file": "20261119000001_official_exercises_only.sql",
+    "passed": true
+  },
+  {
+    "file": "20261120000001_strict_exercise_references.sql",
+    "passed": true
+  },
+  {
+    "file": "20261121000001_catalog_search_order_tiebreak.sql",
+    "passed": true
+  },
+  {
+    "file": "20261122000001_workout_sheets.sql",
+    "passed": true
+  },
+  {
+    "file": "20261123000001_workout_sheet_attribution.sql",
+    "passed": true
+  },
+  {
+    "file": "20261124000001_finance_activity_reward_fix.sql",
+    "passed": true
+  },
+  {
+    "file": "20261125000001_home_sheet_completions.sql",
+    "passed": true
+  },
+  {
+    "file": "20261125000002_offline_sheet_attribution.sql",
+    "passed": true
+  }
+]

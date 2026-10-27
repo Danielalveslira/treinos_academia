@@ -1,4 +1,4 @@
-import { lazy, useEffect, useMemo, useState } from 'react'
+import { lazy, useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Heading, Spinner } from '@primer/react'
 import { ArrowRightIcon, CalendarIcon, GraphIcon } from '@primer/octicons-react'
@@ -38,15 +38,6 @@ const TrainingPlanDialog = lazy(() =>
   loadPlanDialog().then((module) => ({ default: module.TrainingPlanDialog }))
 )
 
-// Depois que a Home pintou e o aparelho ficou ocioso, baixa os diálogos (uma vez, só online): abrem na hora e o
-// service worker os guarda para funcionar offline também -- sem pesar no carregamento inicial.
-function warmDialogChunks() {
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return
-  loadShareDialog().catch(() => {})
-  loadCalendarDialog().catch(() => {})
-  loadPlanDialog().catch(() => {})
-}
-
 function getVolumeTrend(days) {
   const startCurrent = businessDayKeyDaysAgo(6)
   const startPrevious = businessDayKeyDaysAgo(13)
@@ -67,12 +58,6 @@ export default function Dashboard() {
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [planOpen, setPlanOpen] = useState(false)
-  useEffect(() => {
-    const idle = globalThis.requestIdleCallback || ((callback) => setTimeout(callback, 1500))
-    const cancel = globalThis.cancelIdleCallback || clearTimeout
-    const handle = idle(warmDialogChunks, { timeout: 4000 })
-    return () => cancel(handle)
-  }, [])
   const { recentWorkouts, progressDays, progressAvailable, loading, error, refresh } =
     useHomeDashboard()
   const { exercises } = useExercises()

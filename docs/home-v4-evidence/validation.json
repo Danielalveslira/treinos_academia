@@ -1,0 +1,108 @@
+{
+  "baseCommit": "7b34b97",
+  "commands": [
+    {
+      "command": "npm ci",
+      "passed": true,
+      "packages": 380,
+      "vulnerabilities": 0
+    },
+    {
+      "command": "npm run lint",
+      "passed": true
+    },
+    {
+      "command": "npm test",
+      "passed": true,
+      "tests": 2238
+    },
+    {
+      "command": "npm run test:functions",
+      "passed": true,
+      "tests": 207
+    },
+    {
+      "command": "node --test scripts/release/*.test.mjs",
+      "passed": true,
+      "tests": 88
+    },
+    {
+      "command": "npm run build",
+      "passed": true
+    },
+    {
+      "command": "node scripts/home-v2-browser-smoke.mjs",
+      "passed": true,
+      "cases": 10,
+      "photoCases": 120
+    },
+    {
+      "command": "node scripts/workout-sheets-browser-smoke.mjs",
+      "passed": true,
+      "cases": 10
+    },
+    {
+      "command": "node scripts/offline-browser-smoke.mjs",
+      "passed": true
+    },
+    {
+      "command": "node scripts/home-v2-sql-evidence.mjs",
+      "passed": true
+    },
+    {
+      "command": "node scripts/home-v4-sql-evidence.mjs",
+      "passed": true,
+      "concurrentCompletion": true
+    },
+    {
+      "command": "node scripts/workout-sheets-sql-evidence.mjs",
+      "passed": true
+    },
+    {
+      "command": "npm run release:offline-check",
+      "passed": false,
+      "reason": "Budget exceeded; JS/functions/backfill/3382 SQL assertions/security preflight/build passed"
+    },
+    {
+      "command": "npm run format:check",
+      "passed": false,
+      "reason": "Pre-existing formatting: base 141 files; initial candidate 140; changed src files individually pass"
+    },
+    {
+      "command": "npm run budget",
+      "passed": false,
+      "reason": "Pre-existing budget exceeded; thresholds unchanged"
+    },
+    {
+      "command": "node scripts/release/scan-secrets.mjs",
+      "passed": true,
+      "findings": 0
+    }
+  ],
+  "sql": {
+    "suites": 79,
+    "assertions": 3382,
+    "skipped": 0,
+    "cleanMigrations": 173,
+    "cleanCompletionAssertions": 23
+  },
+  "boot": {
+    "base": {
+      "jsGzip": 374740,
+      "cssGzip": 78517,
+      "files": 13
+    },
+    "candidate": {
+      "jsGzip": 375427,
+      "cssGzip": 78517,
+      "files": 13
+    },
+    "deltaJsGzip": 687,
+    "limits": {
+      "jsGzip": 330371,
+      "cssGzip": 77839,
+      "files": 6
+    }
+  },
+  "productionChanged": false
+}

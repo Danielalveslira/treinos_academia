@@ -339,6 +339,7 @@ const finishDeps = (overrides = {}) => {
       },
       completeSession: async () => {
         calls.complete += 1
+        return { awardedCoins: 0 }
       },
       classifyError: () => 'other',
       ...overrides,
@@ -365,6 +366,7 @@ test('finalizar online: esvazia a fila ANTES de pedir a conclusão (o servidor s
     },
     completeSession: async () => {
       order.push('complete')
+      return { awardedCoins: 0 }
     },
   })
   assert.equal((await runFinishWorkout(deps)).outcome, 'done')

@@ -49,13 +49,14 @@ jobs:
         env:
           VITE_SUPABASE_URL: https://header-smoke.invalid
           VITE_SUPABASE_ANON_KEY: header-smoke-public-key
+      - run: npm run budget
       - name: Install isolated browser
         run: node node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell
       - name: Public and auth headers at mobile and desktop widths
         run: node scripts/public-auth-header-smoke.mjs
       - name: Workout sheets mobile, execution and conflict smoke
         run: node scripts/workout-sheets-browser-smoke.mjs
-      - name: Home V2 metrics, cache, photos and responsive themes
+      - name: Home V4 recommendation, completion, cache, photos and responsive themes
         run: node scripts/home-v2-browser-smoke.mjs
       - run: node scripts/ad-metrics-browser-smoke.mjs
       - run: node scripts/phase3-exercises-browser-smoke.mjs
@@ -92,6 +93,8 @@ jobs:
         run: node scripts/workout-sheets-sql-evidence.mjs
       - name: Home V2 concurrency and aggregate query plans
         run: node scripts/home-v2-sql-evidence.mjs
+      - name: Home V4 completion concurrency and before/after query plans
+        run: node scripts/home-v4-sql-evidence.mjs
       # Include the real PostgreSQL integration scenarios; no production secrets.
       # Container name follows project_id in supabase/config.toml.
       - run: npm run test:functions

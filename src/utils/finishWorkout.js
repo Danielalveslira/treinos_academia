@@ -15,7 +15,7 @@ export const FINISH_ATTENTION_MESSAGE =
   'Há registros deste treino que precisam de atenção. Resolva em "Ver detalhes" antes de finalizar.'
 export const FINISH_ERROR_MESSAGE = 'Não foi possível finalizar o treino agora. Tente novamente.'
 
-// outcome: 'offline' | 'pending' | 'attention' | 'done' | 'error'
+// outcome: 'offline' | 'pending' | 'attention' | 'insufficient' | 'invalid' | 'done' | 'error'
 // getDay() devolve o DIA do treino a concluir ('YYYY-MM-DD'): o do SERVIDOR (get_my_evocoin_day), a mesma
 // definição que complete_workout_session usa para pagar -- nunca o relógio/fuso do aparelho. A seleção de
 // "quais mutações precisam estar sincronizadas" usa exatamente esse dia.
@@ -33,7 +33,16 @@ export async function runFinishWorkout({
     const { pending = 0, failed = 0 } = await flushPending(day)
     if (failed > 0) return { outcome: 'attention', failed }
     if (pending > 0) return { outcome: 'pending', remaining: pending }
-    await completeSession()
+    const result = await completeSession()
+    if (
+      ['not_enough_activity', 'insufficient_activity'].includes(result?.reason) ||
+      result?.status === 'insufficient_activity'
+    )
+      return { outcome: 'insufficient' }
+    if (result?.status && !['completed', 'already_completed'].includes(result.status))
+      return { outcome: 'invalid' }
+    if (!result || (!result.status && typeof result.awardedCoins !== 'number'))
+      return { outcome: 'error' }
     return { outcome: 'done' }
   } catch (error) {
     return { outcome: classifyError(error) === 'connectivity' ? 'offline' : 'error', error }
@@ -45,4 +54,6 @@ export const FINISH_MESSAGES = {
   pending: FINISH_PENDING_MESSAGE,
   attention: FINISH_ATTENTION_MESSAGE,
   error: FINISH_ERROR_MESSAGE,
+  insufficient: 'Registre atividade suficiente antes de finalizar o treino.',
+  invalid: 'Esta ficha não está disponível para finalizar. Revise suas fichas.',
 }

@@ -201,13 +201,13 @@ test('indicadores mostram atividade, sem inventar conclusão ou exibir o aviso t
   )
 })
 
-test('ficha já utilizada hoje informa atividade e não sugere que ainda falta concluí-la', () => {
+test('ficha em andamento oferece continuidade sem inferir conclusão', () => {
   setFixture({
     online: true,
     hasSheets: true,
     recommendation: {
       sheet: { id: 's1', name: 'Ficha de hoje', weekdays: [] },
-      reason: 'today',
+      reason: 'in_progress',
       lastDate: businessDayKey(),
     },
     refresh: () => {},
@@ -215,7 +215,7 @@ test('ficha já utilizada hoje informa atividade e não sugere que ainda falta c
   const html = render()
   assert.match(html, /já tem atividade registrada hoje/)
   assert.doesNotMatch(html, /Recomendado para hoje/)
-  assert.match(html, /Iniciar ficha/)
+  assert.match(html, /Continuar ficha/)
 })
 
 test('histórico arquivado permanece visível mesmo sem ficha recomendável', () => {
@@ -230,5 +230,35 @@ test('histórico arquivado permanece visível mesmo sem ficha recomendável', ()
   const html = render()
   assert.match(html, /Revise suas fichas/)
   assert.match(html, /Ficha arquivada/)
+  assert.doesNotMatch(html, /Iniciar ficha/)
+})
+
+test('conclusão confirmada mostra próxima data com link para consultar ficha', () => {
+  setFixture({
+    online: true,
+    hasSheets: true,
+    recommendation: {
+      sheet: { id: 'b', name: 'Treino B', weekdays: [2] },
+      reason: 'scheduled',
+      nextDate: '2026-10-27',
+      completedToday: true,
+    },
+    refresh: () => {},
+  })
+  const html = render()
+  assert.match(html, /Treino de hoje concluído/)
+  assert.match(html, /terça-feira, 27\/10/)
+  assert.match(html, /Ver próximo treino/)
+  assert.doesNotMatch(html, /Iniciar ficha/)
+})
+test('todas sem agenda concluídas não oferecem início', () => {
+  setFixture({
+    online: true,
+    hasSheets: true,
+    recommendation: { reason: 'completed' },
+    refresh: () => {},
+  })
+  const html = render()
+  assert.match(html, /Treinos de hoje concluídos/)
   assert.doesNotMatch(html, /Iniciar ficha/)
 })

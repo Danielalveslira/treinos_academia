@@ -170,17 +170,20 @@ export function RecommendedSheetPanel() {
     )
   }
 
-  if (!recommendation) {
+  if (!recommendation || recommendation.reason === 'completed') {
     return (
       <section className="empty-workout" aria-labelledby="empty-eligible-title">
         <div className="empty-workout-content">
           <span className="eyebrow">SUAS FICHAS</span>
           <Heading as="h1" id="empty-eligible-title">
-            Revise suas fichas para treinar.
+            {recommendation?.reason === 'completed'
+              ? 'Treinos de hoje concluídos'
+              : 'Revise suas fichas para treinar.'}
           </Heading>
           <p>
-            As fichas estão vazias ou contêm exercícios indisponíveis. Revise os exercícios para
-            receber uma recomendação.
+            {recommendation?.reason === 'completed'
+              ? 'Suas fichas continuam disponíveis na lista. Gerencie sua agenda para os próximos treinos.'
+              : 'As fichas estão vazias ou contêm exercícios indisponíveis. Revise os exercícios para receber uma recomendação.'}
           </p>
           <Button
             className="empty-workout-cta"
@@ -201,6 +204,14 @@ export function RecommendedSheetPanel() {
 
   const { sheet, reason, lastDate } = recommendation
   const days = weekdaysLabel(sheet.weekdays)
+  const nextLabel =
+    recommendation.nextDate &&
+    new Intl.DateTimeFormat('pt-BR', {
+      weekday: 'long',
+      day: '2-digit',
+      month: '2-digit',
+      timeZone: 'UTC',
+    }).format(new Date(`${recommendation.nextDate}T12:00:00Z`))
   const lastLabel = relativeDayLabel(lastDate, todayKey)
 
   return (
@@ -229,6 +240,8 @@ export function RecommendedSheetPanel() {
               <Heading as="h2" id="next-workout-title">
                 {sheet.name}
               </Heading>
+              {recommendation.completedToday && <p>Treino de hoje concluído</p>}
+              {nextLabel && <p>Próximo treino: {nextLabel}</p>}
               {(days || lastLabel) && (
                 <p className="workout-hero-meta">
                   {days && (
@@ -250,13 +263,19 @@ export function RecommendedSheetPanel() {
             <div className="workout-hero-actions">
               <Button
                 as={RouterLink}
-                to={`/novo-treino?ficha=${sheet.id}`}
+                to={
+                  reason === 'scheduled' ? `/fichas/${sheet.id}` : `/novo-treino?ficha=${sheet.id}`
+                }
                 state={originState(location)}
                 className="start-workout-button"
                 leadingVisual={PlayIcon}
                 variant="primary"
               >
-                Iniciar ficha
+                {reason === 'scheduled'
+                  ? 'Ver próximo treino'
+                  : reason === 'in_progress'
+                    ? 'Continuar ficha'
+                    : 'Iniciar ficha'}
               </Button>
               <Button as={RouterLink} to="/exercicios" leadingVisual={ChecklistIcon}>
                 Ver fichas

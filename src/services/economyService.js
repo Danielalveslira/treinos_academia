@@ -178,3 +178,9 @@ export function clearCachedWallet(storage = globalThis.sessionStorage) {
     // sessionStorage pode não existir ou estar bloqueado; nada a limpar nesse caso.
   }
 }
+
+export async function completeWorkoutSheet(sheetId) {
+  const { data, error } = await supabase.rpc('complete_workout_sheet', { p_sheet_id: sheetId })
+  if (error) throw error
+  return data
+}

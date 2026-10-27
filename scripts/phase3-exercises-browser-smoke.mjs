@@ -31,7 +31,7 @@ const stubs = {
   '/hooks/useExerciseCatalogSearch.js': `export const useExerciseCatalogSearch=()=>({items:[{id:'cat-new',name:'Oficial novo',provider:'evolutus_dataset',providerExerciseId:'new',primaryMuscles:['peito'],images:[],instructions:['Empurre'],category:'forca'}],total:1,loading:false,loadingMore:false,hasMore:false,queryTooShort:false,noQueryIntent:false})`,
   '/hooks/useExerciseCatalogTaxonomy.js': `export const useExerciseCatalogTaxonomy=()=>({muscles:[],equipment:[],categories:[],levels:[]})`,
   '/hooks/useExerciseCatalogDetail.js': `export const useExerciseCatalogDetail=()=>({data:null,loading:false,unavailable:true})`,
-  '/services/economyService': `export const completeWorkoutSession=async()=>({});export const getMyEvocoinDay=async()=>({})`,
+  '/services/economyService': `export const completeWorkoutSession=async()=>({});export const getMyEvocoinDay=async()=>({});export const completeWorkoutSheet=async()=>{throw new Error('Unexpected sheet completion in the free-workout catalog smoke')}`,
   '/services/offline/syncScheduler': `export const flushPending=async()=>({});export const requestSync=()=>{};export const announceOutboxChanged=()=>{}`,
   '/supabase/config': `export const supabase={}`,
 }

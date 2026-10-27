@@ -1,0 +1,18 @@
+[
+  {
+    "theme": "light",
+    "width": 390,
+    "cpuSlowdown": 4,
+    "progressMs": 157.19402100000298,
+    "completionMs": 134.49495700000261,
+    "overflow": false
+  },
+  {
+    "theme": "dark",
+    "width": 390,
+    "cpuSlowdown": 4,
+    "progressMs": 187.86636200000066,
+    "completionMs": 153.61215999998967,
+    "overflow": false
+  }
+]

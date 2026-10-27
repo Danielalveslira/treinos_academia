@@ -16,7 +16,7 @@ const PUBLIC_SHELL_FILES = [
 // ESTATICAMENTE (o <link rel="modulepreload"> do index.html) e o CSS desses chunks. Chunks de
 // rota (import() dinâmico: Admin, Comunidades, gráficos...) ficam de fora: são baixados e
 // guardados em cache só quando o usuário abre aquela tela.
-export function collectBootAssets(bundle) {
+export function collectBootAssets(bundle, entryNames = null) {
   const seen = new Set()
   const visit = (fileName) => {
     const chunk = bundle[fileName]
@@ -25,9 +25,10 @@ export function collectBootAssets(bundle) {
     for (const css of chunk.viteMetadata?.importedCss ?? []) seen.add(css)
     chunk.imports.forEach(visit)
   }
-  Object.values(bundle)
-    .filter((chunk) => chunk.type === 'chunk' && chunk.isEntry)
-    .forEach((chunk) => visit(chunk.fileName))
+  const entries = Object.values(bundle)
+    .filter((chunk) => chunk.type === 'chunk' && chunk.isEntry && (!entryNames || entryNames.includes(chunk.name)))
+  if (entryNames && entries.length !== entryNames.length) throw new Error('Entrada de boot ausente no bundle')
+  entries.forEach((chunk) => visit(chunk.fileName))
   return [...seen].sort().map((file) => `/${file}`)
 }
 
@@ -65,7 +66,10 @@ export function collectOfflineAssets(bundle, bootAssets, modules = OFFLINE_ESSEN
   }
   for (const module of modules) {
     const facade = Object.values(bundle).find(
-      (chunk) => chunk.type === 'chunk' && chunk.facadeModuleId?.replaceAll('\\', '/').endsWith(`/${module}`)
+      (chunk) => chunk.type === 'chunk' && (
+        chunk.facadeModuleId?.replaceAll('\\', '/').endsWith(`/${module}`) ||
+        Object.keys(chunk.modules || {}).some((id) => id.replaceAll('\\', '/').endsWith(`/${module}`))
+      )
     )
     if (!facade) throw new Error(`Módulo offline essencial não encontrado no bundle: ${module}`)
     visit(facade.fileName)
@@ -121,7 +125,10 @@ export function pwaPlugin() {
       for (const file of files) hash.update(bundle[file].code || bundle[file].source)
       for (const file of PUBLIC_SHELL_FILES) hash.update(readFileSync(`public/${file}`))
       const template = readFileSync('scripts/service-worker.js', 'utf8')
-      const bootAssets = collectBootAssets(bundle)
+      // Public-page entries are unrelated to starting /app. They remain available
+      // online and enter the runtime asset cache when visited; app offline routes
+      // and their complete dependency/CSS graphs still belong to CORE_ASSETS.
+      const bootAssets = collectBootAssets(bundle, ['main'])
       hash.update(template)
       const source = template
         .replace('__VERSION__', hash.digest('hex').slice(0, 16))
