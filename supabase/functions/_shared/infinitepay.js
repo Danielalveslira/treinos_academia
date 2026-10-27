@@ -15,7 +15,7 @@ export function paymentHint(input) {
 export async function verifyAndConfirm({ admin, handle, hint, userId = null, fetcher = fetch, apiKey = null }) {
   if (!handle) throw new Error('INFINITEPAY_NOT_CONFIGURED')
   let query = admin.from('cash_purchases')
-    .select('id,payment_provider,provider_order_nsu,provider_transaction_nsu,provider_invoice_slug,package_id,amount_centavos,currency,status,review_resolution')
+    .select('id,payment_provider,provider_order_nsu,provider_transaction_nsu,provider_invoice_slug,amount_centavos,currency,status,review_resolution')
     .eq('provider_order_nsu', hint.orderNsu).eq('payment_provider', 'infinitepay')
   if (userId) query = query.eq('user_id', userId)
   const { data: purchase, error: lookupError } = await query.maybeSingle()
@@ -45,7 +45,7 @@ export async function verifyAndConfirm({ admin, handle, hint, userId = null, fet
       (check.transaction_nsu !== undefined && check.transaction_nsu !== hint.transactionNsu) ||
       (check.slug !== undefined && check.slug !== hint.invoiceSlug) ||
       (check.invoice_slug !== undefined && check.invoice_slug !== hint.invoiceSlug) ||
-      purchase.currency !== 'BRL' || !purchase.package_id ||
+      purchase.currency !== 'BRL' ||
       !['pix', 'credit_card'].includes(check.capture_method)) throw new Error('PAYMENT_MISMATCH')
   if (identityConflict || purchase.status === 'checkout_failed') {
     const { error } = await admin.rpc('record_infinitepay_verified_conflict', {

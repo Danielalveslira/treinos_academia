@@ -80,7 +80,7 @@ const work = runtime
 prepareRuntime()
 await start('edge','edgeRuntime',{
  JWT_SECRET:SECRET,SUPABASE_URL:'https://local-supabase.invalid',SUPABASE_ANON_KEY:anon,SUPABASE_SERVICE_ROLE_KEY:service,
- INFINITEPAY_HANDLE:'local-fixture',APP_PUBLIC_URL:'https://local-fixture.invalid',
+ INFINITEPAY_HANDLE:'local-fixture',INFINITEPAY_API_KEY:'local-synthetic-test-key',INFINITEPAY_CHECKOUT_ENABLED:'true',APP_PUBLIC_URL:'https://local-fixture.invalid',
 },['-v',root+'/supabase/functions:/home/deno/functions:ro','-v',root+'/scripts/homolog/finance:/home/deno/main:ro',
  '-v',work+':/home/deno/wrappers:ro'],['start','--main-service','/home/deno/main','-p','9000'])
 

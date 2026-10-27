@@ -1,6 +1,6 @@
 \ir _helpers/auth_session.sql
 begin;
-truncate public.evocash_price_versions,public.evocash_pricing_state,public.evocash_price_audit,public.evocash_purchase_quotes restart identity;
+truncate public.evocash_price_versions,public.evocash_pricing_state,public.evocash_price_audit,public.evocash_purchase_quotes restart identity cascade;
 insert into public.evocash_pricing_state default values;
 select no_plan();
 insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)

@@ -33,6 +33,13 @@ def sql(source):
         raise RuntimeError(result.stderr[-2000:])
     return result.stdout.strip()
 
+def historical_purchase_fixture(user_id):
+    # Shared stress regression uses a retained historical snapshot, not retired checkout.
+    return json.loads(sql(f"""with p as (
+      insert into public.cash_purchases(user_id,request_id,package_id,package_label,cash_amount,amount_centavos,payment_provider,provider_order_nsu)
+      values('{user_id}',gen_random_uuid()::text,'historical-fixture','Synthetic historical purchase',25,590,'infinitepay','evo_'||replace(gen_random_uuid()::text,'-','')) returning *
+    ) select jsonb_build_object('id',id,'orderNsu',provider_order_nsu) from p;"""))
+
 def loadtest(name, statements, allow_errors=()):
     start = time.monotonic()
     stopped = threading.Event()
@@ -143,7 +150,7 @@ original_config = sql("select config from public.economy_config where id;")
 deadlocks_before = int(sql("select deadlocks from pg_stat_database where datname=current_database()"))
 try:
     sql(setup)
-    reservation = json.loads(sql(f"select public.reserve_infinitepay_cash_purchase('{uid}','pack_25');"))
+    reservation = historical_purchase_fixture(uid)
     pid, order = reservation['id'], reservation['orderNsu']
     confirm = f"select public.confirm_infinitepay_cash_purchase('{pid}','{order}','txn-{pid}','inv-{pid}',590,'pix',null);"
     results = [loadtest('100 confirmations / one payment', [confirm]*100)]
@@ -165,7 +172,7 @@ try:
     results.append(loadtest('100 insufficient balance spends', [promote(other_community, f'low-{i}') for i in range(100)], ('INSUFFICIENT_CASH',)))
     assert sql(f"select count(*) from public.promotions where owner_id='{uid}';") == '1'
     # Another payment, then race 50 duplicate reversals with 50 spends of the same balance.
-    reservation = json.loads(sql(f"select public.reserve_infinitepay_cash_purchase('{uid}','pack_25');"))
+    reservation = historical_purchase_fixture(uid)
     pid, order = reservation['id'], reservation['orderNsu']
     sql(f"select public.confirm_infinitepay_cash_purchase('{pid}','{order}','txn-{pid}','inv-{pid}',590,'pix',null);")
     sql("update public.economy_config set config=jsonb_set(config,'{financialControls,reversalsEnabled}','true') where id;")

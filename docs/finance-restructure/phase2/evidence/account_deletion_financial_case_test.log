@@ -1,0 +1,122 @@
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 7
+UPDATE 1
+UPDATE 1
+
+
+
+
+
+
+
+
+INSERT 0 2
+60000000-0000-0000-0000-000000000002
+ok 1 - usuário comum não enfileira exclusão
+ok 2 - usuário comum não separa caso financeiro
+ok 3 - usuário comum não cancela exclusão
+ok 4 - usuário comum não revalida bloqueio
+ok 5 - usuário comum não lista exclusões
+ok 6 - usuário comum não abre histórico financeiro
+ok 7 - usuário comum não resolve caso
+60000000-0000-0000-0000-000000000001
+
+ok 8 - conta enfileirada vira deleting
+ok 9 - sem saldo: o worker limpa o banco direto (falta só confirmar o Auth)
+ok 10 - sem saldo: public.users removido
+ok 11 - sem saldo: nenhum caso financeiro criado
+
+ok 12 - saldo positivo: worker bloqueia
+ok 13 - job em blocked_financial_review
+60000000-0000-0000-0000-000000000012
+ok 14 - conta em exclusão não gasta EvoCash
+ok 15 - usuário: pendência ainda não separada
+ok 16 - usuário: revisão não expõe saldo nem motivo financeiro
+60000000-0000-0000-0000-000000000001
+ok 17 - separar exige nota administrativa
+ok 18 - revalidar exige nota administrativa
+ok 19 - job concluído sem caso não pode ser separado
+ok 20 - revalidar mantém bloqueado enquanto há saldo
+ok 21 - painel mostra saldo da solicitação bloqueada
+SELECT 1
+ok 22 - separação: primeira chamada cria o caso
+ok 23 - snapshot do saldo = 50
+ok 24 - job volta a pending para o worker
+ok 25 - separação NÃO altera o saldo
+ok 26 - ledger do usuário vinculado ao caso
+ok 27 - valor do ledger intacto
+ok 28 - retry devolve o caso existente
+ok 29 - retry não duplica caso
+ok 30 - retry não duplica eventos
+ok 31 - caso só é resolvido depois da exclusão concluída
+60000000-0000-0000-0000-000000000012
+ok 32 - usuário: pendência separada
+ok 33 - usuário vê o protocolo do caso
+60000000-0000-0000-0000-000000000001
+ok 34 - worker conclui e pede a remoção do Auth (Edge Function)
+ok 35 - banco limpo: job aguarda a confirmação do Auth
+{"replay": false, "confirmed": true}
+ok 36 - Auth confirmado: job chega a complete
+ok 37 - public.users removido
+ok 38 - carteira removida com a conta (valor preservado no caso)
+ok 39 - caso financeiro permanece aberto
+ok 40 - saldo final registrado no caso = 50 (nunca zerado)
+ok 41 - ledger preservado, referenciado pelo caso, sem user_id
+ok 42 - segunda execução do worker não faz nada
+ok 43 - retry depois de concluído continua idempotente
+ok 44 - caso financeiro não pode ser apagado
+ok 45 - depois de concluída não é mais reversível
+ok 46 - caso resolvido depois da exclusão
+ok 47 - resolução registra resolved_at
+ok 48 - nenhum prazo de retenção é assumido (PENDENTE DE DEFINIÇÃO)
+ok 49 - histórico financeiro acessível depois da exclusão
+
+ok 50 - compra pendente bloqueia
+ok 51 - caso com compra pendente registra saldo
+ok 52 - caso registra a compra pendente
+ok 53 - pagamento tardio vai para o caso
+ok 54 - pagamento tardio não credita a carteira
+ok 55 - compra marcada como retida no caso
+ok 56 - reentrega do webhook é idempotente
+ok 57 - um único evento de pagamento retido
+ok 58 - nenhum ledger de crédito criado para o pagamento retido
+ok 59 - exclusão conclui no banco com pagamento retido
+ok 60 - webhook depois da exclusão continua só retendo
+ok 61 - pagamento tardio não recria conta nem carteira
+ok 62 - compra continua referenciada pelo caso
+INSERT 0 1
+ok 63 - compra órfã sem caso não credita nada
+ok 64 - compra órfã segue pendente (rastreável)
+
+ok 65 - status anterior guardado
+{"reason": "positive_cash_balance", "blocked": true}
+ok 66 - cancela enquanto bloqueado
+ok 67 - cancelar não promove conta desativada a ativa
+ok 68 - job cancelado
+ok 69 - cancelar não altera saldo
+ok 70 - worker ignora job cancelado
+ok 71 - cancelar é idempotente
+ok 72 - job cancelado não pode ser separado
+
+{"reason": "pending_cash_purchase", "blocked": true}
+{"caseId": "865c944e-2a1a-4fd4-b43f-549f81d7dc59", "replay": false, "protocol": "FIN-000003", "cashBalanceSnapshot": 30}
+{"reason": "held_in_financial_case", "credited": false}
+ok 73 - retido: carteira intacta antes do cancelamento
+{"replay": false, "cancelled": true}
+ok 74 - conta reativada
+ok 75 - caso cancelado, não apagado
+ok 76 - pagamento retido creditado na carteira ao cancelar (30 + 25)
+ok 77 - compra retida vira credited
+ok 78 - crédito com ledger
+ok 79 - ledger desvinculado do caso cancelado
+ok 80 - eventos do caso preservados (retido, restaurado, cancelado)
+
+ok 81 - job cancelado pode ser reenfileirado
+ok 82 - novo pedido começa sem caso
+ok 83 - continua um único job por conta
+ok 84 - painel (encerradas) mostra o histórico de revisão do job cancelado
+1..84
+ROLLBACK

@@ -194,8 +194,9 @@ function FinancialHistory({ jobId }) {
       {purchases.length === 0 && <Text sx={{ color: 'fg.muted' }}>Nenhuma compra.</Text>}
       {purchases.map((purchase) => (
         <Text as="p" key={purchase.id} sx={{ m: 0, color: 'fg.muted' }}>
-          {formatDateTime(toDate(purchase.createdAt))} · {purchase.packageLabel} ·{' '}
-          {purchase.cashAmount} EvoCash · {formatCentavosBRL(purchase.amountCentavos)} ·{' '}
+          {formatDateTime(toDate(purchase.createdAt))} ·{' '}
+          {purchase.packageLabel || `${purchase.cashAmount} EvoCash`} · {purchase.cashAmount}{' '}
+          EvoCash · {formatCentavosBRL(purchase.amountCentavos)} ·{' '}
           {PURCHASE_STATUS_LABELS[purchase.status] || purchase.status}
         </Text>
       ))}

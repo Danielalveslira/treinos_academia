@@ -27,7 +27,7 @@ select ok(has_function_privilege('service_role', 'public.mark_infinitepay_checko
 -- Todas as funções do fluxo InfinitePay que só a Edge Function usa seguem fechadas para clientes.
 select is((select count(*)::int from pg_proc p
   where p.pronamespace = 'public'::regnamespace
-    and p.proname in ('reserve_infinitepay_cash_purchase', 'finish_infinitepay_checkout', 'release_infinitepay_checkout',
+    and p.proname in ('finish_infinitepay_checkout', 'release_infinitepay_checkout',
                       'fail_infinitepay_checkout', 'mark_infinitepay_checkout_uncertain', 'confirm_infinitepay_cash_purchase')
     and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute')
          or pg_temp.public_can_execute(p.oid::regprocedure))), 0,

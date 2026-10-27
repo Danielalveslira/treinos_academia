@@ -4,7 +4,7 @@ import { paymentHint, verifyAndConfirm } from '../_shared/infinitepay.js'
 
 const hint = { orderNsu: `evo_${'a'.repeat(32)}`, transactionNsu: 'transaction-1', invoiceSlug: 'invoice-1' }
 const purchase = { id: 'purchase-1', payment_provider: 'infinitepay', provider_order_nsu: hint.orderNsu,
-  provider_transaction_nsu: null, provider_invoice_slug: null, package_id: 'pack_25',
+  provider_transaction_nsu: null, provider_invoice_slug: null,
   amount_centavos: 590, currency: 'BRL', status: 'pending' }
 function fixtures({ row = purchase, check = { success: true, paid: true, amount: 590, capture_method: 'pix' } } = {}) {
   const calls = []

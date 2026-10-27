@@ -1,3 +1,4 @@
+\ir _helpers/cash_purchase.sql
 \ir _helpers/auth_session.sql
 -- Somente banco local/homologação; dados sintéticos e rollback integral.
 begin;
@@ -27,7 +28,7 @@ insert into public.community_members(community_id,user_id) select 'f2000000-0000
 
 select public._wallet_credit_cash('f1000000-0000-0000-0000-000000000001',100);
 select public._wallet_credit_coins('f1000000-0000-0000-0000-000000000002',100);
-select public.reserve_infinitepay_cash_purchase('f1000000-0000-0000-0000-000000000004','pack_25');
+select pg_temp.cash_purchase_fixture('f1000000-0000-0000-0000-000000000004');
 
 -- AUD-01: contas antiga, recente limpa e recente com saldo/ledger, mesmo resultado.
 set local role authenticated;

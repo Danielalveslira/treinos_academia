@@ -119,7 +119,7 @@ export default function EconomyGuide() {
             <h2>EvoCash</h2>
           </div>
           <p>
-            Crédito interno adquirido em pacotes. O saldo é liberado após a confirmação do
+            Crédito interno adquirido na quantidade que você escolher. O saldo é liberado após a confirmação do
             pagamento.
           </p>
           <h3>Onde usar?</h3>
@@ -131,7 +131,7 @@ export default function EconomyGuide() {
             Uma compra pendente não aumenta o saldo. Cancelar uma promoção não devolve o EvoCash
             gasto.
           </p>
-          <Link to="/evocash">Ver pacotes de EvoCash →</Link>
+          <Link to="/evocash">Comprar EvoCash →</Link>
         </article>
       </section>
 

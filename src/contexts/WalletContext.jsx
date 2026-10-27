@@ -1,4 +1,4 @@
-import { createContext, useEffect, useRef, useState } from 'react'
+import { createContext, useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase/config'
 import { useAuth } from '../hooks/useAuth'
 import { getMyEvocoinDay, getWallet, peekCachedWallet } from '../services/economyService'
@@ -43,6 +43,8 @@ function toDisplay(uid, wallet, source, savedAt = null) {
 // Cada crédito dispara UMA leitura de get_my_evocoin_day (<= 10 por usuário/dia); sem polling.
 export function WalletProvider({ children }) {
   const { user, deletionStatus, offlineLocal, offlineHome } = useAuth()
+  const refreshRef = useRef(null)
+  const refresh = useCallback(() => refreshRef.current?.(), [])
   const [wallet, setWallet] = useState(EMPTY_WALLET)
   const [display, setDisplay] = useState(null)
   const displayUidRef = useRef(null)
@@ -56,6 +58,9 @@ export function WalletProvider({ children }) {
     let active = true
     let revision = 0
     let channel = null
+    let eventRevision = 0
+    let refreshRevision = 0
+    refreshRef.current = null
     // null = ainda sem base confiável (nada de "+N" até a primeira leitura fresca/evento).
     let baselineLifetime = null
 
@@ -150,6 +155,32 @@ export function WalletProvider({ children }) {
       })
     refreshDaily()
 
+    // One explicit server read after a verified checkout; Realtime remains the shared source.
+    refreshRef.current = async () => {
+      const request = ++refreshRevision
+      const observed = eventRevision
+      try {
+        const fresh = await getWallet(user.uid, { forceRefresh: true })
+        if (
+          !active ||
+          revision !== current ||
+          request !== refreshRevision ||
+          observed !== eventRevision
+        )
+          return
+        snapshotReceived = true
+        baselineLifetime = fresh.lifetimeCoinsEarned
+        setWallet(fresh)
+        setDisplay(toDisplay(user.uid, fresh, 'server'))
+        setLoading(false)
+        setError(null)
+        persistHomeSnapshot(user.uid, { wallet: fresh })
+      } catch {
+        if (active && revision === current)
+          setError('Não foi possível confirmar o saldo. Tente novamente.')
+      }
+    }
+
     channel = supabase
       .channel(`wallet-changes-${user.uid}`)
       .on(
@@ -158,6 +189,7 @@ export function WalletProvider({ children }) {
         (payload) => {
           if (!active || revision !== current) return
           snapshotReceived = true
+          eventRevision++
           const next = mapWalletRow(payload.new)
           const earned = awardDelta(baselineLifetime, next.lifetimeCoinsEarned)
           baselineLifetime = next.lifetimeCoinsEarned
@@ -182,6 +214,7 @@ export function WalletProvider({ children }) {
 
     return () => {
       active = false
+      refreshRef.current = null
       channel?.unsubscribe()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -192,7 +225,7 @@ export function WalletProvider({ children }) {
 
   return (
     <WalletContext.Provider
-      value={{ wallet, loading, error, dailyCoins, lastAward, display: shown }}
+      value={{ wallet, loading, error, dailyCoins, lastAward, display: shown, refresh }}
     >
       {children}
     </WalletContext.Provider>

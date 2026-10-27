@@ -47,5 +47,20 @@ const mixed = await Promise.allSettled([sql(publish(16,state.revision+3,randomUU
 assert.equal(mixed.filter(r=>r.status==='rejected').length,0)
 assert.equal(await sql(`select count(*) from public.evocash_purchase_quotes q join public.evocash_price_versions v on v.id=q.price_version_id where q.user_id=${quote(buyer)} and (q.unit_price_centavos<>v.unit_price_centavos or q.total_centavos<>q.quantity*v.unit_price_centavos)`),'0','No quote mixes two prices across publication race')
 assert.equal(await moneySnapshot(),before,'Concurrent pricing cannot change balances, ledger or purchases')
-await sql('update public.evocash_pricing_state set quoting_enabled=false where id')
-console.log(JSON.stringify({passed:true,localOnly:true,publishRace:{attempts:4,winners:1},publicationReplays:6,quoteReplays:6,publicationQuoteRace:7,moneyUnchanged:true,quotingPausedAfterTest:true,fixturesRetainedInDisposableDatabase:true}))
+
+// Phase 2: quote reservation and confirmation reuse the existing ledger atomically.
+await sql('update public.evocash_pricing_state set checkout_enabled=true where id')
+const phase2Quote = JSON.parse((await sql(createQuote(randomUUID())))).quoteId
+const checkoutId=randomUUID()
+const reserve = quoteId=>`begin;${claims(buyer,buyerSession)}select public.reserve_infinitepay_cash_purchase(${quote(quoteId)},${quote(checkoutId)});commit;`
+const orders=await Promise.all(Array.from({length:6},()=>sql(reserve(phase2Quote))))
+const parsedOrders=orders.map(JSON.parse)
+assert.equal(new Set(parsedOrders.map(o=>o.id)).size,1,'Concurrent checkout retries share one order')
+assert.equal(parsedOrders.filter(o=>o.createLink).length,1,'Exactly one caller may create a provider link')
+const order=parsedOrders[0]
+const confirmation=`select public.confirm_infinitepay_cash_purchase(${quote(order.id)},${quote(order.orderNsu)},'phase2-'||${quote(order.id)},'invoice-'||${quote(order.id)},${order.amountCentavos},'pix',null);`
+await Promise.all(Array.from({length:6},()=>sql(confirmation)))
+assert.equal(await sql(`select count(*) from public.economy_transactions where reference_type='cash_purchase' and reference_id=${quote(order.id)}`),'1')
+assert.equal(await sql(`select cash_balance from public.wallets where user_id=${quote(buyer)}`),'25')
+await sql('update public.evocash_pricing_state set quoting_enabled=false,checkout_enabled=false where id')
+console.log(JSON.stringify({passed:true,localOnly:true,publishRace:{attempts:4,winners:1},publicationReplays:6,quoteReplays:6,publicationQuoteRace:7,checkoutReplays:6,oneLinkCreator:true,confirmationReplays:6,oneLedgerCredit:true,quotingPausedAfterTest:true,fixturesRetainedInDisposableDatabase:true}))

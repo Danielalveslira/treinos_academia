@@ -57,7 +57,7 @@ export async function processCashPurchaseReminders(
       }
       const { subject, html, text } = buildReminderEmail({
         username: job.username,
-        packageLabel: job.package_label,
+        purchaseLabel: job.package_label || `${job.cash_amount} EvoCash`,
         cashAmount: job.cash_amount,
         amountCentavos: job.amount_centavos,
         createdAt: job.purchase_created_at,

@@ -1,0 +1,66 @@
+{
+  "passed": true,
+  "assertions": 432,
+  "suites": [
+    {
+      "suite": "account_deletion_financial_case_test",
+      "assertions": 84,
+      "passed": true
+    },
+    {
+      "suite": "aud_01_aud_02_security_test",
+      "assertions": 80,
+      "passed": true
+    },
+    {
+      "suite": "cash_purchase_reminder_emails_test",
+      "assertions": 42,
+      "passed": true
+    },
+    {
+      "suite": "evocash_pricing_test",
+      "assertions": 57,
+      "passed": true
+    },
+    {
+      "suite": "finance_integrity_test",
+      "assertions": 17,
+      "passed": true
+    },
+    {
+      "suite": "finance_payment_finality_test",
+      "assertions": 10,
+      "passed": true
+    },
+    {
+      "suite": "finance_reminder_session_guard_test",
+      "assertions": 7,
+      "passed": true
+    },
+    {
+      "suite": "finance_reversals_test",
+      "assertions": 18,
+      "passed": true
+    },
+    {
+      "suite": "financial_case_cancel_traceability_test",
+      "assertions": 34,
+      "passed": true
+    },
+    {
+      "suite": "infinitepay_cash_purchases_test",
+      "assertions": 32,
+      "passed": true
+    },
+    {
+      "suite": "infinitepay_pending_reconciliation_test",
+      "assertions": 32,
+      "passed": true
+    },
+    {
+      "suite": "security_followup_test",
+      "assertions": 19,
+      "passed": true
+    }
+  ]
+}

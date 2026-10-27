@@ -102,7 +102,7 @@ function PriceConfirmation({ action, state, preview, config, activeFrom, onClose
       else await pauseEvoCashQuotes({ ...body, requestId: operation.current.requestId })
       await onSaved(
         publishing
-          ? 'Novo preço publicado. As novas cobranças continuam desativadas nesta fase.'
+          ? 'Novo preço publicado. A disponibilidade das compras permanece inalterada.'
           : 'Novas cotações pausadas.'
       )
     } catch (err) {

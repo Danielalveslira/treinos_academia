@@ -363,7 +363,7 @@ function PurchasesPanel() {
         >
           <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
             <Heading as="h2" sx={{ fontSize: 1 }}>
-              {purchase.packageLabel}
+              {purchase.purchaseLabel}
             </Heading>
             <Label variant={cashPurchaseStatusLabel(purchase, STATUS_LABELS).variant}>
               {cashPurchaseStatusLabel(purchase, STATUS_LABELS).text}

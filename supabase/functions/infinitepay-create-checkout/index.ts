@@ -16,18 +16,20 @@ Deno.serve(async (req) => {
     const auth = req.headers.get('Authorization')
     if (!auth) return json({ error: 'NOT_AUTHENTICATED' }, 401)
     const body = await readLimitedJson(req)
-    if (!body || Object.keys(body).some((key) => key !== 'packageId')) return json({ error: 'INVALID_REQUEST' }, 400)
+    if (!body || Object.keys(body).some((key) => !['quoteId','requestId'].includes(key))) return json({ error: 'INVALID_REQUEST' }, 400)
     const userClient = createClient(url, anonKey, { global: { headers: { Authorization: auth } } })
     const { data, error } = await userClient.auth.getUser()
     if (error || !data.user) return json({ error: 'NOT_AUTHENTICATED' }, 401)
     const admin = createClient(url, serviceKey)
-    const result = await createCheckout({ userClient, admin, userId: data.user.id,
-      packageId: body.packageId, handle, apiKey: Deno.env.get('INFINITEPAY_API_KEY'), appUrl, supabaseUrl: url })
+    const result = await createCheckout({ userClient, admin, quoteId: body.quoteId, requestId: body.requestId,
+      enabled: Deno.env.get('INFINITEPAY_CHECKOUT_ENABLED') === 'true', handle, apiKey: Deno.env.get('INFINITEPAY_API_KEY'), appUrl, supabaseUrl: url })
     return json(result, 200)
   } catch (error) {
     const code = error instanceof Error ? error.message : 'INTERNAL_ERROR'
     const safe = ['INVALID_REQUEST', 'APP_ACCESS_DENIED', 'INFINITEPAY_NOT_CONFIGURED',
-      'PENDING_CASH_PURCHASE_EXISTS', 'CASH_PACKAGE_UNAVAILABLE', 'CHECKOUT_IN_PROGRESS',
+      'PENDING_CASH_PURCHASE_EXISTS', 'CHECKOUT_IN_PROGRESS', 'EVOCASH_PURCHASES_PAUSED',
+      'QUOTE_NOT_FOUND','QUOTE_EXPIRED','QUOTE_ALREADY_RESERVED','PURCHASE_ALREADY_FINAL','CHECKOUT_EXPIRED',
+      'IDEMPOTENCY_CONFLICT','PURCHASE_LIMIT_REACHED','CHECKOUT_RATE_LIMIT',
       'INFINITEPAY_LINK_FAILED', 'INVALID_CHECKOUT_URL', 'CHECKOUT_SAVE_FAILED',
       'CHECKOUT_RECONCILIATION_REQUIRED']
     if (!safe.includes(code)) console.error('[InfinitePay create] unexpected error class:', error?.constructor?.name)

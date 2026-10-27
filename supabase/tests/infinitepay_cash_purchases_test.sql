@@ -1,156 +1,89 @@
 \ir _helpers/auth_session.sql
 begin;
 select no_plan();
-
-insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at,
-  raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-values
-  ('72000000-0000-0000-0000-000000000001', 'authenticated', 'authenticated', 'buyer-a@example.invalid', 'unused', now(), '{}', '{}', now(), now()),
-  ('72000000-0000-0000-0000-000000000002', 'authenticated', 'authenticated', 'buyer-b@example.invalid', 'unused', now(), '{}', '{}', now(), now()),
-  ('72000000-0000-0000-0000-000000000003', 'authenticated', 'authenticated', 'buyer-c@example.invalid', 'unused', now(), '{}', '{}', now(), now()),
-  ('72000000-0000-0000-0000-000000000004', 'authenticated', 'authenticated', 'buyer-d@example.invalid', 'unused', now(), '{}', '{}', now(), now());
-
-select ok(not has_function_privilege('authenticated', 'public.reserve_infinitepay_cash_purchase(uuid,text)', 'EXECUTE'), 'ordinary user cannot reserve via privileged RPC');
-select ok(not has_function_privilege('authenticated', 'public.confirm_infinitepay_cash_purchase(uuid,text,text,text,integer,text,text)', 'EXECUTE'), 'ordinary user cannot credit');
-select ok(has_function_privilege('service_role', 'public.confirm_infinitepay_cash_purchase(uuid,text,text,text,integer,text,text)', 'EXECUTE'), 'service role can credit after provider check');
-select ok(not has_function_privilege('authenticated', 'public.fail_infinitepay_checkout(uuid,integer)', 'EXECUTE'), 'ordinary user cannot mark checkout failure');
-select ok(not has_function_privilege('anon', 'public.cancel_my_cash_purchase(uuid)', 'EXECUTE'), 'anonymous user cannot cancel');
-select ok(has_function_privilege('authenticated', 'public.cancel_my_cash_purchase(uuid)', 'EXECUTE'), 'authenticated buyer can cancel own purchase');
-select ok(has_function_privilege('authenticated', 'public.request_infinitepay_cash_purchase_cancellation(uuid)', 'EXECUTE'), 'older client RPC remains available');
-
-create temp table _ip_a as
-  select public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000001', 'pack_25') as r;
-select is((select r->>'amountCentavos' from _ip_a), '590', 'server chooses package price');
-select ok((select r->>'orderNsu' from _ip_a) like 'evo_%', 'server generated order');
-select is((select count(*)::int from public.cash_purchases where user_id = '72000000-0000-0000-0000-000000000001'), 1, 'one purchase created');
-select is((public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000001', 'pack_25')->>'inProgress'), 'true', 'retry while link is being created');
-select throws_ok($$select public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000001', 'pack_120')$$,
-  'PENDING_CASH_PURCHASE_EXISTS', 'different package cannot bypass pending purchase');
-select throws_ok($$select public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000002', 'missing')$$,
-  'CASH_PACKAGE_UNAVAILABLE', 'inactive or unknown package refused');
-
-select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _ip_a), 'https://checkout.infinitepay.com.br/tag?lenc=test');
-select is((public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000001', 'pack_25')->>'checkoutUrl'),
-  'https://checkout.infinitepay.com.br/tag?lenc=test', 'retry reuses saved checkout');
-
-create temp table _ip_b as
-  select public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000002', 'pack_25') as r;
-select public.mark_infinitepay_checkout_uncertain((select (r->>'id')::uuid from _ip_b));
-select throws_ok($$select public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000002', 'pack_25')$$,
-  'CHECKOUT_RECONCILIATION_REQUIRED', 'uncertain link cannot be recreated automatically');
-
-create temp table _ip_d as
-  select public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000004', 'pack_25') as r;
-select public.fail_infinitepay_checkout((select (r->>'id')::uuid from _ip_d), 422);
-select is((select status from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
-  'checkout_failed', '4xx is not shown as awaiting payment');
-select is((select checkout_url from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
-  null, 'failed checkout has no link');
-select is((public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000004', 'pack_25')->>'id'),
-  (select r->>'id' from _ip_d), 'retry reuses the failed purchase');
-select is((select count(*)::int from public.cash_purchases where user_id = '72000000-0000-0000-0000-000000000004'),
-  1, 'retry creates no second purchase');
-select is((select count(*)::int from public.economy_transactions where reference_id = (select r->>'id' from _ip_d)),
-  0, 'failed checkout writes no ledger');
-select is((select coalesce((select cash_balance::int from public.wallets where user_id = '72000000-0000-0000-0000-000000000004'), 0)),
-  0, 'failed checkout writes no wallet');
-select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _ip_d), 'https://checkout.infinitepay.io/evolutus?lenc=test');
-select is((select status from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
-  'pending', 'payment becomes pending only after valid checkout is saved');
-select pg_temp.set_test_user( '72000000-0000-0000-0000-000000000004', true);
-select is((public.cancel_my_cash_purchase((select (r->>'id')::uuid from _ip_d))->>'status'),
-  'cancelled', 'owner cancels immediately');
-select ok((select cancelled_at is not null and cancelled_by = user_id from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
-  'cancellation timestamp and owner recorded');
-select is((select status from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
-  'cancelled', 'cancelled purchase remains in audit history');
-select is((public.cancel_my_cash_purchase((select (r->>'id')::uuid from _ip_d))->>'replay'),
-  'true', 'duplicate cancellation is idempotent');
-select is((public.request_infinitepay_cash_purchase_cancellation((select (r->>'id')::uuid from _ip_d))->>'status'),
-  'cancelled', 'older client RPC follows immediate cancellation');
-select throws_ok($$select public.cancel_my_cash_purchase((select (r->>'id')::uuid from _ip_a))$$,
-  'PURCHASE_NOT_FOUND', 'user cannot cancel another buyer purchase');
-select is((select count(*)::int from public.economy_transactions where reference_id = (select r->>'id' from _ip_d)),
-  0, 'cancellation writes no ledger');
-select is((select coalesce((select cash_balance::int from public.wallets where user_id = '72000000-0000-0000-0000-000000000004'), 0)),
-  0, 'cancellation writes no wallet');
-create temp table _ip_d_new as select public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000004', 'pack_25') as r;
-select isnt((select r->>'id' from _ip_d_new), (select r->>'id' from _ip_d), 'cancel releases slot for new purchase');
-select is((public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _ip_d),
-  (select r->>'orderNsu' from _ip_d), 'txn-d', 'invoice-d', 590, 'pix', null)->>'credited'),
-  'true', 'verified late payment settles after local cancellation');
-select ok((select paid_after_cancel_at is not null from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_d)),
-  'late payment event recorded');
-select is((select count(*)::int from public.economy_transactions where reference_id = (select r->>'id' from _ip_d)),
-  1, 'late payment after cancellation writes one ledger row');
-select is((public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _ip_d),
-  (select r->>'orderNsu' from _ip_d), 'txn-d', 'invoice-d', 590, 'pix', null)->>'credited'),
-  'false', 'late payment retry does not credit twice');
-select is((select cash_balance::int from public.wallets where user_id = '72000000-0000-0000-0000-000000000004'),
-  25, 'late payment credits wallet once');
-select throws_ok($$select public.cancel_my_cash_purchase((select (r->>'id')::uuid from _ip_d))$$,
-  'PURCHASE_NOT_CANCELLABLE', 'credited purchase cannot be cancelled');
-
-select throws_ok($$select public.confirm_infinitepay_cash_purchase(
-  (select (r->>'id')::uuid from _ip_a), (select r->>'orderNsu' from _ip_a),
-  'txn-a', 'invoice-a', 591, 'pix', null)$$,
-  'PAYMENT_MISMATCH', 'wrong amount cannot credit');
-select is((select coalesce((select cash_balance::int from public.wallets where user_id = '72000000-0000-0000-0000-000000000001'), 0)), 0, 'wallet unchanged after bad amount');
-
-select is((public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _ip_a),
-  (select r->>'orderNsu' from _ip_a), 'txn-a', 'invoice-a', 590, 'pix', null)->>'credited'),
-  'true', 'verified Pix credits');
-select is((select cash_balance::int from public.wallets where user_id = '72000000-0000-0000-0000-000000000001'), 25, 'wallet credited once');
-select is((select count(*)::int from public.economy_transactions where reference_id = (select r->>'id' from _ip_a)), 1, 'one ledger row');
-select is((public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _ip_a),
-  (select r->>'orderNsu' from _ip_a), 'txn-a', 'invoice-a', 590, 'pix', null)->>'credited'),
-  'false', 'duplicate webhook does not credit');
-select is((select cash_balance::int from public.wallets where user_id = '72000000-0000-0000-0000-000000000001'), 25, 'retry leaves wallet unchanged');
-
-select throws_ok($$select public.confirm_infinitepay_cash_purchase(
-  (select (r->>'id')::uuid from _ip_b), (select r->>'orderNsu' from _ip_b),
-  'txn-a', 'invoice-b', 590, 'credit_card', null)$$,
-  '23505', null, 'same transaction cannot pay two purchases');
-select is((select coalesce((select cash_balance::int from public.wallets where user_id = '72000000-0000-0000-0000-000000000002'), 0)), 0, 'failed duplicate rolls back wallet');
-select is((public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _ip_b),
-  (select r->>'orderNsu' from _ip_b), 'txn-b', 'invoice-b', 590, 'credit_card', null)->>'credited'),
-  'true', 'verified card follows same credit path');
-
-create temp table _ip_c as
-  select public.reserve_infinitepay_cash_purchase('72000000-0000-0000-0000-000000000003', 'pack_25') as r;
-select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _ip_c), 'https://checkout.infinitepay.io/evolutus?lenc=case');
-select pg_temp.set_test_user( '72000000-0000-0000-0000-000000000003', true);
-select public.cancel_my_cash_purchase((select (r->>'id')::uuid from _ip_c));
-select is(public._compute_financial_block_reason('72000000-0000-0000-0000-000000000003'),
-  'pending_cash_purchase', 'cancelled payable link still blocks account deletion');
-update public.users set role = 'superadmin' where id = '72000000-0000-0000-0000-000000000001';
-select pg_temp.set_test_user( '72000000-0000-0000-0000-000000000001', true);
-select public.queue_deletion('account', '72000000-0000-0000-0000-000000000003');
-select public.run_deletion_job(id) from public.deletion_jobs where target_id = '72000000-0000-0000-0000-000000000003';
-select public.separate_financial_case_and_resume_deletion(id, 'separar compra pendente para teste')
-  from public.deletion_jobs where target_id = '72000000-0000-0000-0000-000000000003';
-select public.run_deletion_job(id) from public.deletion_jobs where target_id = '72000000-0000-0000-0000-000000000003';
-select is((select user_id from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_c)),
-  null, 'purchase survives deleted account without owner');
-select is((public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _ip_c),
-  (select r->>'orderNsu' from _ip_c), 'txn-c', 'invoice-c', 590, 'pix', null)->>'reason'),
-  'held_in_financial_case', 'late payment is held in financial case');
-select is((select status from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_c)),
-  'held_in_case', 'purchase marked held');
-select ok((select paid_after_cancel_at is not null from public.cash_purchases where id = (select (r->>'id')::uuid from _ip_c)),
-  'held late payment retains paid-after-cancel audit event');
-select is((select count(*)::int from public.economy_transactions where reference_id = (select r->>'id' from _ip_c)),
-  0, 'held payment creates no ledger credit');
-select is((select coalesce((select cash_balance::int from public.wallets where user_id = '72000000-0000-0000-0000-000000000003'), 0)),
-  0, 'held payment creates no wallet balance');
-
-select ok(to_regprocedure('public.confirm_cash_purchase(uuid,text)') is null,
-  'manual confirmation RPC has been removed');
-select ok(to_regprocedure('public.cancel_cash_purchase(uuid,text)') is null,
-  'manual cancellation RPC has been removed');
-select pg_temp.set_test_user( '72000000-0000-0000-0000-000000000002', true);
-select ok(to_regprocedure('public.request_cash_purchase(text,text)') is null,
-  'legacy purchase RPC has been removed');
-
+insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+select ('72000000-0000-0000-0000-'||lpad(i::text,12,'0'))::uuid,'authenticated','authenticated','quantity-'||i||'@example.invalid','x',now(),'{}','{}',now(),now() from generate_series(1,4)i;
+insert into public.evocash_price_versions(revision,unit_price_centavos,minimum_unit_price_centavos,min_quantity,max_quantity,daily_quantity_limit,total_quantity_limit,quote_ttl_seconds,large_change_threshold_bps,active_from,created_by,reason)
+values(9001,10,1,1,100,100,200,300,2000,clock_timestamp(),'72000000-0000-0000-0000-000000000004','Synthetic quantity tests');
+update public.evocash_pricing_state set quoting_enabled=true,checkout_enabled=false where id;
+create temp table results(name text primary key,value jsonb);
+grant select,insert on results to authenticated;
+select pg_temp.set_test_user('72000000-0000-0000-0000-000000000001',true);
+insert into results values('quote',public.create_evocash_purchase_quote('25','72100000-0000-0000-0000-000000000001'));
+set local role authenticated;
+select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')$$,'EVOCASH_PURCHASES_PAUSED','checkout gate defaults closed independently of quoting');
+select ok(not has_table_privilege('authenticated','public.cash_purchases','insert'),'client cannot insert financial rows');
+reset role;
+update public.evocash_pricing_state set checkout_enabled=true where id;
+set local role authenticated;
+insert into results values('order',public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001'));
+select is((select value->>'amountCentavos' from results where name='order'),'250','order uses quote total as an exact string');
+select is((select value->>'cashAmount' from results where name='order'),'25','order quantity is frozen');
+select is(public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')->>'createLink','false','concurrent retry cannot call provider twice');
+select throws_ok($$select public.reserve_infinitepay_cash_purchase('72100000-0000-0000-0000-000000000099','72200000-0000-0000-0000-000000000001')$$,'IDEMPOTENCY_CONFLICT','request key cannot change quote');
+select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000099')$$,'QUOTE_ALREADY_RESERVED','another key cannot buy the same quote twice');
+reset role;
+select ok(to_regprocedure('public.reserve_infinitepay_cash_purchase(uuid,text)') is null,'package reservation is removed');
+select ok(not (select config ? 'cashPackages' from public.economy_config where id),'package configuration is retired');
+select throws_ok($$update public.cash_purchases set amount_centavos=1 where id=(select(value->>'id')::uuid from results where name='order')$$,'42501','PURCHASE_SNAPSHOT_IMMUTABLE','immutable purchase total');
+select public.release_infinitepay_checkout((select(value->>'id')::uuid from results where name='order'));
+set local role authenticated;
+select is(public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')->>'createLink','true','known pre-provider failure releases lease safely');
+reset role;
+select public.finish_infinitepay_checkout((select(value->>'id')::uuid from results where name='order'),'https://checkout.infinitepay.io/fixture?lenc=test');
+select throws_ok($$select public.finish_infinitepay_checkout((select(value->>'id')::uuid from results where name='order'),'https://evil.test/')$$,'INVALID_CHECKOUT_URL','database also restricts URL host');
+insert into public.evocash_price_versions(revision,unit_price_centavos,minimum_unit_price_centavos,min_quantity,max_quantity,daily_quantity_limit,total_quantity_limit,quote_ttl_seconds,large_change_threshold_bps,active_from,created_by,reason)
+values(9002,20,1,1,100,100,200,300,2000,clock_timestamp(),'72000000-0000-0000-0000-000000000004','Synthetic price change');
+set local role authenticated;
+select is(public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')->>'amountCentavos','250','price change never changes accepted checkout');
+select public.cancel_my_cash_purchase((select(value->>'id')::uuid from results where name='order'));
+insert into results values('limit_quote',public.create_evocash_purchase_quote('100','72100000-0000-0000-0000-000000000002'));
+select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='limit_quote'),'72200000-0000-0000-0000-000000000002')$$,'PURCHASE_LIMIT_REACHED','cancelled but payable link retains limit reservation');
+reset role;
+select throws_ok($$select public.confirm_infinitepay_cash_purchase((select(value->>'id')::uuid from results where name='order'),(select value->>'orderNsu' from results where name='order'),'quantity-txn','quantity-invoice',251,'pix',null)$$,'PAYMENT_MISMATCH','divergent provider amount cannot credit');
+select is(public.confirm_infinitepay_cash_purchase((select(value->>'id')::uuid from results where name='order'),(select value->>'orderNsu' from results where name='order'),'quantity-txn','quantity-invoice',250,'pix',null)->>'credited','true','verified late payment credits the same order');
+select is(public.confirm_infinitepay_cash_purchase((select(value->>'id')::uuid from results where name='order'),(select value->>'orderNsu' from results where name='order'),'quantity-txn','quantity-invoice',250,'pix',null)->>'credited','false','duplicate webhook cannot credit twice');
+select is((select cash_balance from public.wallets where user_id='72000000-0000-0000-0000-000000000001'),25,'wallet receives exact quote quantity');
+select is((select count(*)::integer from public.economy_transactions where reference_id=(select value->>'id' from results where name='order')),1,'one order one ledger credit');
+update public.users set role='superadmin' where id='72000000-0000-0000-0000-000000000004';
+update public.economy_config set config=jsonb_set(config,'{financialControls,reversalsEnabled}','true') where id;
+select pg_temp.set_test_user('72000000-0000-0000-0000-000000000004',true);
+select is(public.admin_record_cash_reversal((select(value->>'id')::uuid from results where name='order'),'quantity-refund-1','refund',125,'local-provider-proof','Synthetic partial refund')->>'cashUnits','12','quantity refund reuses proportional reversal engine');
+select is(public.admin_record_cash_reversal((select(value->>'id')::uuid from results where name='order'),'quantity-refund-1','refund',125,'local-provider-proof','Synthetic partial refund')->>'replay','true','quantity refund event is idempotent');
+select public.admin_record_cash_reversal((select(value->>'id')::uuid from results where name='order'),'quantity-refund-2','refund',125,'local-provider-proof-2','Synthetic final refund');
+select is((select cash_balance from public.wallets where user_id='72000000-0000-0000-0000-000000000001'),0,'full quantity refund recovers only original credits');
+select public.confirm_infinitepay_cash_purchase((select(value->>'id')::uuid from results where name='order'),(select value->>'orderNsu' from results where name='order'),'quantity-txn','quantity-invoice',250,'pix',null);
+select is((select cash_balance from public.wallets where user_id='72000000-0000-0000-0000-000000000001'),0,'late paid replay cannot undo a refund');
+select pg_temp.set_test_user('72000000-0000-0000-0000-000000000002',true);
+set local role authenticated;
+select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000003')$$,'QUOTE_NOT_FOUND','another user cannot redeem quote');
+select is((select count(*)::integer from public.cash_purchases where id=(select(value->>'id')::uuid from results where name='order')),0,'RLS hides other user purchases');
+reset role;
+insert into public.evocash_purchase_quotes(user_id,request_id,quantity,unit_price_centavos,total_centavos,price_version_id,created_at,expires_at)
+select '72000000-0000-0000-0000-000000000002',gen_random_uuid(),1,unit_price_centavos,unit_price_centavos,id,now()-interval '10 minutes',now()-interval '5 minutes' from public.evocash_price_versions where revision=9002;
+set local role authenticated;
+select throws_ok($$select public.reserve_infinitepay_cash_purchase((select id from public.evocash_purchase_quotes where user_id=auth.uid() limit 1),'72200000-0000-0000-0000-000000000004')$$,'QUOTE_EXPIRED','expired quote cannot create payment');
+insert into results values('quote_b',public.create_evocash_purchase_quote('25','72100000-0000-0000-0000-000000000005'));
+insert into results values('order_b',public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005'));
+reset role;
+select public.mark_infinitepay_checkout_uncertain((select(value->>'id')::uuid from results where name='order_b'));
+set local role authenticated;
+select is(public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005')->>'uncertain','true','timeout stays uncertain on retry');
+reset role;
+select public.fail_infinitepay_checkout((select(value->>'id')::uuid from results where name='order_b'),422);
+set local role authenticated;
+select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005')$$,'PURCHASE_ALREADY_FINAL','failed order never silently reopens');
+reset role;
+select ok(not has_function_privilege('authenticated','public.confirm_infinitepay_cash_purchase(uuid,text,text,text,integer,text,text)','execute'),'confirmation remains backend only');
+select ok(not has_function_privilege('service_role','public.reserve_infinitepay_cash_purchase(uuid,uuid)','execute'),'no service reservation that bypasses caller session');
+update public.users set account_status='disabled' where id='72000000-0000-0000-0000-000000000002';
+set local role authenticated;
+select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005')$$,'42501','APP_ACCESS_DENIED','disabled account cannot reuse an order to reach provider');
+reset role;
+update public.users set account_status='active' where id='72000000-0000-0000-0000-000000000002';
+select pg_temp.revoke_test_session('72000000-0000-0000-0000-000000000002');
+set local role authenticated;
+select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005')$$,'42501','APP_ACCESS_DENIED','revoked session cannot reserve or replay checkout');
+reset role;
 select * from finish();
 rollback;

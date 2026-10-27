@@ -1,0 +1,47 @@
+{
+  "passed": true,
+  "realLocalAuth": true,
+  "realEdge": true,
+  "realPostgres": true,
+  "providerSimulated": true,
+  "invalidQuantityBlocked": true,
+  "confirmationInvalidatedOnEdit": true,
+  "providerReturn": true,
+  "walletRefreshedFromServer": true,
+  "balanceIncrease": 62,
+  "captures": [
+    {
+      "width": 320,
+      "mode": "light",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "mode": "dark",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "mode": "light",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "mode": "dark",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "mode": "light",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false
+    }
+  ],
+  "pageErrors": [],
+  "externalFinancialRequests": 0,
+  "checkoutCalls": 1
+}

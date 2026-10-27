@@ -6,8 +6,9 @@ export function mapPurchaseRow(row) {
   return {
     id: row.id,
     userId: row.user_id,
-    packageId: row.package_id,
-    packageLabel: row.package_label,
+    purchaseLabel: row.quote_id ? `${row.cash_amount} EvoCash` : row.package_label,
+    quoteId: row.quote_id,
+    checkoutValidUntil: row.checkout_valid_until,
     cashAmount: row.cash_amount,
     amountCentavos: row.amount_centavos,
     currency: row.currency,
@@ -35,25 +36,13 @@ export function mapPurchaseRow(row) {
   }
 }
 
-// Preço/quantidade sempre vêm daqui (economy_config), nunca de um valor digitado -- o
-// cliente só manda o packageId escolhido (ver requestCashPurchase). Lido direto via
-// client SDK (RLS já libera leitura de economy_config a qualquer autenticado), sem RPC
-// própria -- é só exibição; reserve_infinitepay_cash_purchase revalida no servidor.
+// Server-owned current price and public purchasing limits; no package catalog.
 export async function getCashPurchaseSettings() {
-  const { data, error } = await supabase
-    .from('economy_config')
-    .select('config')
-    .eq('id', true)
-    .maybeSingle()
+  const { data, error } = await supabase.rpc('get_evocash_purchase_settings')
   if (error) throw error
-  const cashPackages = data?.config?.cashPackages || {}
-  const packages = Object.entries(cashPackages)
-    .filter(([, pkg]) => pkg?.active === true)
-    .map(([packageId, pkg]) => ({ packageId, ...pkg }))
-  return { packages }
+  return data
 }
 
-// A função reserva a compra e gera order_nsu no servidor; o cliente envia só packageId.
 async function callPaymentFunction(name, body) {
   const { data: sessionData, error: sessionErr } = await supabase.auth.getSession()
   if (sessionErr) throw sessionErr
@@ -73,8 +62,8 @@ async function callPaymentFunction(name, body) {
   return result
 }
 
-export function requestCashPurchase({ packageId }) {
-  return callPaymentFunction('infinitepay-create-checkout', { packageId })
+export function requestCashPurchase({ quoteId, requestId }) {
+  return callPaymentFunction('infinitepay-create-checkout', { quoteId, requestId })
 }
 
 export function checkInfinitepayPurchase(purchaseId, hints = {}) {

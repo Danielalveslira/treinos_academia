@@ -2,14 +2,9 @@
 // ser testável sem renderizar nada (mesmo espírito de exerciseOrder.js): decisões de
 // UI que não dependem de chamadas de rede, só de dados já em mãos.
 
-// requestId reaproveitado enquanto a MESMA tentativa (mesma "chave" -- um packageId, ou
-// os valores do formulário serializados em CreateCommunity.jsx, ainda sem sucesso) está
-// em andamento -- gerar um novo a cada clique quebraria a idempotência do lado do
-// servidor (ver cash-purchase-core.js: cashPurchaseIdFromRequest/
-// createCommunityIdFromRequest). Uma chave diferente (ou nenhuma tentativa pendente)
-// sempre gera um requestId novo -- são intenções distintas, nunca deveriam colidir no
-// mesmo purchaseId/communityId. Genérica de propósito (campo `key`, não `packageId`):
-// reaproveitada tanto por EvoCash.jsx quanto por CreateCommunity.jsx.
+// Shared by community creation and promotions. A retry of the same business intent
+// keeps its key; a different intent gets a fresh key. EvoCash checkout persists its
+// quote-scoped UUID separately in quantityPurchase.js.
 export function resolveRequestId(pendingAttempt, key, generateId) {
   return pendingAttempt?.key === key ? pendingAttempt.requestId : generateId()
 }

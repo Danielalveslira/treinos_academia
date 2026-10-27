@@ -1,0 +1,62 @@
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 5
+UPDATE 1
+SELECT 1
+
+ok 1 - active account: confirmed payment credits normally
+ok 2 - active account purchase ends credited
+SELECT 1
+
+UPDATE 1
+ok 3 - disabled account: confirmed payment is parked for manual decision
+ok 4 - purchase status is needs_review
+ok 5 - review reason recorded
+ok 6 - review flagged timestamp recorded
+ok 7 - disabled account wallet is never credited automatically
+ok 8 - disabled account: no ledger entry written
+ok 9 - needs_review purchase still blocks account deletion like a pending one
+ok 10 - idempotent retry after needs_review does not re-flag or credit
+73000000-0000-0000-0000-000000000005
+ok 11 - admin resolves needs_review by crediting
+ok 12 - wallet credited once after manual decision
+ok 13 - exactly one ledger entry after manual credit
+ok 14 - repeating the resolve call is idempotent
+ok 15 - retry does not credit twice
+UPDATE 1
+SELECT 1
+
+UPDATE 1
+{"reason": "needs_review", "credited": false}
+73000000-0000-0000-0000-000000000005
+ok 16 - admin resolves needs_review by external refund, never crediting
+ok 17 - external refund does not touch wallet
+ok 18 - review resolution recorded
+73000000-0000-0000-0000-000000000002
+ok 19 - ordinary user cannot resolve a review
+SELECT 1
+
+73000000-0000-0000-0000-000000000003
+ok 20 - ordinary user cannot use the admin cancellation fallback
+73000000-0000-0000-0000-000000000005
+ok 21 - reason must be at least 5 characters
+ok 22 - admin cancels a stuck unpaid purchase
+ok 23 - admin identity recorded on the purchase
+ok 24 - duplicate admin cancellation is idempotent
+ok 25 - late confirmed payment after admin cancellation still settles
+SELECT 1
+
+UPDATE 1
+ok 26 - one stale pending purchase expired
+ok 27 - stale purchase is cancelled, not deleted
+ok 28 - cancellation reason explains automatic expiry
+ok 29 - expiry never credits anything
+ok 30 - running the cron body again is a no-op (idempotent)
+SELECT 1
+
+ok 31 - a fresh pending purchase within the window is left alone
+ok 32 - fresh purchase remains pending
+1..32
+ROLLBACK

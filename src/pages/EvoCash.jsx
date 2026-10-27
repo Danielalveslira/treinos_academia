@@ -3,19 +3,15 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Box, Button, Flash, Heading, Label, Spinner, Text } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
-import {
-  cancelMyCashPurchase,
-  checkInfinitepayPurchase,
-  getCashPurchaseSettings,
-  requestCashPurchase,
-} from '../services/cashPurchaseService'
-import { CashPackageCards } from '../components/CashPackageCards'
+import { cancelMyCashPurchase, checkInfinitepayPurchase } from '../services/cashPurchaseService'
+import { EvoCashQuantityPurchase } from '../components/EvoCashQuantityPurchase'
+import { useWallet } from '../hooks/useWallet'
+import { serverNow } from '../utils/serverClock'
 import { CopyButton } from '../components/CopyButton'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
   hasPendingCashPurchase,
   cashPurchaseStatusLabel,
-  openInfinitepayCheckout,
   abbreviateProtocol,
   USER_CASH_PURCHASE_STATUS_LABELS as STATUS_LABELS,
 } from '../utils/cashPurchaseFlow'
@@ -23,10 +19,13 @@ import {
 // O crédito é confirmado no backend após payment_check; esta página apenas abre o checkout.
 export default function EvoCash() {
   const { user } = useAuth()
-  const [settings, setSettings] = useState({ packages: [] })
-  const [loadingSettings, setLoadingSettings] = useState(true)
+  const {
+    display,
+    loading: walletLoading,
+    error: walletError,
+    refresh: refreshWallet,
+  } = useWallet()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [buyingPackageId, setBuyingPackageId] = useState(null)
   const [cancellingPurchaseId, setCancellingPurchaseId] = useState(null)
   const [error, setError] = useState('')
   const [checkoutReturn, setCheckoutReturn] = useState(null)
@@ -38,20 +37,6 @@ export default function EvoCash() {
     error: listError,
     refresh,
   } = useCashPurchases(user?.uid)
-
-  useEffect(() => {
-    let active = true
-    getCashPurchaseSettings()
-      .then((result) => {
-        if (active) setSettings(result)
-      })
-      .finally(() => {
-        if (active) setLoadingSettings(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [])
 
   useEffect(() => {
     if (searchParams.get('checkout_return') !== '1') return
@@ -75,7 +60,10 @@ export default function EvoCash() {
               : 'pending'
         )
         refresh()
-        if (result.status === 'credited') setSearchParams({}, { replace: true })
+        if (result.status === 'credited') {
+          refreshWallet()
+          setSearchParams({}, { replace: true })
+        }
       })
       .catch(() => {
         if (active) setCheckoutReturn('pending')
@@ -83,7 +71,7 @@ export default function EvoCash() {
     return () => {
       active = false
     }
-  }, [searchParams, setSearchParams, refresh])
+  }, [searchParams, setSearchParams, refresh, refreshWallet])
 
   useEffect(() => {
     if (checkoutReturn !== 'pending') return
@@ -91,38 +79,13 @@ export default function EvoCash() {
     if (
       purchases.some((purchase) => purchase.id === purchaseId && purchase.status === 'credited')
     ) {
+      refreshWallet()
       setCheckoutReturn('credited')
       setSearchParams({}, { replace: true })
     }
-  }, [checkoutReturn, purchases, searchParams, setSearchParams])
+  }, [checkoutReturn, purchases, searchParams, setSearchParams, refreshWallet])
 
   const hasPendingPurchase = hasPendingCashPurchase(purchases)
-
-  async function buy(packageId) {
-    if (buyingPackageId) return
-    setError('')
-    setBuyingPackageId(packageId)
-    try {
-      const result = await requestCashPurchase({ packageId })
-      openInfinitepayCheckout(result.checkoutUrl)
-    } catch (err) {
-      const KNOWN_ERRORS = {
-        PENDING_CASH_PURCHASE_EXISTS: 'Você já tem uma compra de EvoCash pendente.',
-        CASH_PACKAGE_UNAVAILABLE: 'Este pacote não está mais disponível.',
-        INFINITEPAY_NOT_CONFIGURED: 'Pagamentos estão temporariamente indisponíveis.',
-        INFINITEPAY_LINK_FAILED: 'Não foi possível abrir o pagamento. Tente novamente.',
-        INVALID_CHECKOUT_URL: 'Não foi possível abrir o pagamento. Tente novamente.',
-        CHECKOUT_SAVE_FAILED: 'Não foi possível abrir o pagamento. Tente novamente.',
-        CHECKOUT_IN_PROGRESS: 'Não foi possível abrir o pagamento. Tente novamente.',
-        CHECKOUT_RECONCILIATION_REQUIRED: 'Não foi possível abrir o pagamento. Tente novamente.',
-      }
-      setError(
-        KNOWN_ERRORS[err?.message] || 'Não foi possível solicitar a compra. Tente novamente.'
-      )
-    } finally {
-      setBuyingPackageId(null)
-    }
-  }
 
   async function cancelPurchase(purchaseId) {
     if (cancellingPurchaseId) return
@@ -168,35 +131,35 @@ export default function EvoCash() {
         </Flash>
       )}
 
-      <section aria-labelledby="packages-heading" style={{ marginBottom: '2rem' }}>
-        <Heading as="h2" id="packages-heading" sx={{ fontSize: 2, mb: 2 }}>
-          Pacotes disponíveis
-        </Heading>
-        {loadingSettings && <Spinner aria-label="Carregando pacotes" />}
-        {!loadingSettings && settings.packages.length === 0 && (
-          <Text as="p" sx={{ color: 'fg.muted' }}>
-            Nenhum pacote disponível no momento.
-          </Text>
-        )}
-        {hasPendingPurchase && (
-          <Flash sx={{ mb: 3 }}>
-            Você já tem uma compra em andamento — acompanhe em "Minhas compras" abaixo.
-          </Flash>
-        )}
-        {!loadingSettings && settings.packages.length > 0 && (
-          <CashPackageCards
-            packages={settings.packages}
-            buyingPackageId={buyingPackageId}
-            disabled={!!buyingPackageId || hasPendingPurchase}
-            onBuy={buy}
-          />
-        )}
-      </section>
+      <Box sx={{ mb: 3 }}>
+        <Text as="p" sx={{ fontWeight: 'bold' }}>
+          Seu saldo:{' '}
+          {walletLoading || walletError || !display || display.source !== 'server'
+            ? 'Em atualização'
+            : `${display.cashBalance} EvoCash`}
+        </Text>
+        <EvoCashQuantityPurchase
+          key={user.uid}
+          userId={user.uid}
+          hasPendingPurchase={hasPendingPurchase}
+          onPurchaseChanged={refresh}
+        />
+      </Box>
 
       <section aria-labelledby="my-purchases-heading">
         <Heading as="h2" id="my-purchases-heading" sx={{ fontSize: 2, mb: 2 }}>
           Minhas compras
         </Heading>
+        <Button
+          onClick={() => {
+            refresh()
+            refreshWallet()
+          }}
+          disabled={loading}
+          sx={{ mb: 3 }}
+        >
+          Atualizar histórico e saldo
+        </Button>
         {listError && (
           <Flash variant="danger" sx={{ mb: 3 }}>
             {listError} <Button onClick={refresh}>Tentar novamente</Button>
@@ -235,7 +198,7 @@ export default function EvoCash() {
               }}
             >
               <Text as="p" sx={{ fontWeight: 'bold', m: 0, minWidth: 0, wordBreak: 'break-word' }}>
-                {purchase.packageLabel}
+                {purchase.purchaseLabel}
               </Text>
               <Label variant={cashPurchaseStatusLabel(purchase, STATUS_LABELS).variant}>
                 {cashPurchaseStatusLabel(purchase, STATUS_LABELS).text}
@@ -287,11 +250,14 @@ export default function EvoCash() {
 
             {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && (
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                {purchase.checkoutUrl && (
-                  <Button as="a" href={purchase.checkoutUrl}>
-                    Continuar pagamento
-                  </Button>
-                )}
+                {purchase.checkoutUrl &&
+                  !purchase.checkoutUncertain &&
+                  (!purchase.checkoutValidUntil ||
+                    Date.parse(purchase.checkoutValidUntil) > serverNow()) && (
+                    <Button as="a" href={purchase.checkoutUrl}>
+                      Continuar pagamento
+                    </Button>
+                  )}
                 <Button
                   variant="danger"
                   disabled={!!cancellingPurchaseId}
@@ -304,11 +270,14 @@ export default function EvoCash() {
 
             {purchase.status === 'pending' &&
               purchase.paymentProvider === 'infinitepay' &&
-              !purchase.checkoutUrl && (
+              !purchase.checkoutUrl &&
+              !purchase.checkoutUncertain &&
+              (!purchase.checkoutValidUntil ||
+                Date.parse(purchase.checkoutValidUntil) > serverNow()) && (
                 <Text as="p" sx={{ fontSize: 0, color: 'attention.fg', m: 0 }}>
                   {purchase.checkoutUncertain
                     ? 'O checkout não abriu. Este pedido precisa de conciliação antes de pagar.'
-                    : 'O checkout está sendo preparado. Nenhum pagamento foi iniciado.'}
+                    : 'O checkout está sendo preparado. Aguarde a atualização deste pedido antes de tentar novamente.'}
                 </Text>
               )}
 

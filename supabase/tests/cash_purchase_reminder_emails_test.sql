@@ -1,3 +1,4 @@
+\ir _helpers/cash_purchase.sql
 \ir _helpers/auth_session.sql
 begin;
 select no_plan();
@@ -16,7 +17,7 @@ select pg_temp.set_test_user( '74000000-0000-0000-0000-000000000001', true);
 select public.set_username('reminderactive');
 
 create temp table _rm_active as
-  select public.reserve_infinitepay_cash_purchase('74000000-0000-0000-0000-000000000001', 'pack_25') as r;
+  select pg_temp.cash_purchase_fixture('74000000-0000-0000-0000-000000000001') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _rm_active), 'https://checkout.infinitepay.io/evolutus?lenc=remind');
 
 -- Autorização: só superadmin.
@@ -66,7 +67,7 @@ select is((public.admin_get_cash_purchase_reminder_preview((select (r->>'id')::u
 -- teste (o lock garante que a segunda sempre veja a primeira já commitada). Usuário dedicado
 -- (só 1 compra pendente por vez por usuário).
 create temp table _rm_concurrent as
-  select public.reserve_infinitepay_cash_purchase('74000000-0000-0000-0000-000000000004', 'pack_50_v2') as r;
+  select pg_temp.cash_purchase_fixture('74000000-0000-0000-0000-000000000004',50,1090) as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _rm_concurrent), 'https://checkout.infinitepay.io/evolutus?lenc=concurrent');
 select public.admin_request_cash_purchase_reminder((select (r->>'id')::uuid from _rm_concurrent));
 select public.admin_request_cash_purchase_reminder((select (r->>'id')::uuid from _rm_concurrent));
@@ -75,7 +76,7 @@ select is((select count(*)::int from public.cash_purchase_reminder_emails
 
 -- Compra CREDITADA: nunca enfileira. Usuário dedicado.
 create temp table _rm_credited as
-  select public.reserve_infinitepay_cash_purchase('74000000-0000-0000-0000-000000000005', 'pack_25') as r;
+  select pg_temp.cash_purchase_fixture('74000000-0000-0000-0000-000000000005') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _rm_credited), 'https://checkout.infinitepay.io/evolutus?lenc=credited');
 select public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _rm_credited),
   (select r->>'orderNsu' from _rm_credited), 'txn-remind-credited', 'invoice-remind-credited', 590, 'pix', null);
@@ -84,7 +85,7 @@ select throws_ok($$select public.admin_request_cash_purchase_reminder((select (r
 
 -- Compra CANCELADA: nunca enfileira. Usuário dedicado.
 create temp table _rm_cancelled as
-  select public.reserve_infinitepay_cash_purchase('74000000-0000-0000-0000-000000000006', 'pack_120') as r;
+  select pg_temp.cash_purchase_fixture('74000000-0000-0000-0000-000000000006',120,2390) as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _rm_cancelled), 'https://checkout.infinitepay.io/evolutus?lenc=cancelled');
 select public.admin_cancel_infinitepay_cash_purchase((select (r->>'id')::uuid from _rm_cancelled), 'teste de cancelamento antes do lembrete');
 select throws_ok($$select public.admin_request_cash_purchase_reminder((select (r->>'id')::uuid from _rm_cancelled))$$,
@@ -92,7 +93,7 @@ select throws_ok($$select public.admin_request_cash_purchase_reminder((select (r
 
 -- Conta DESATIVADA: mesmo com compra pendente, nunca enfileira (fora de escopo desta feature).
 create temp table _rm_disabled as
-  select public.reserve_infinitepay_cash_purchase('74000000-0000-0000-0000-000000000002', 'pack_25') as r;
+  select pg_temp.cash_purchase_fixture('74000000-0000-0000-0000-000000000002') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _rm_disabled), 'https://checkout.infinitepay.io/evolutus?lenc=disabledremind');
 update public.users set account_status = 'disabled' where id = '74000000-0000-0000-0000-000000000002';
 select throws_ok($$select public.admin_request_cash_purchase_reminder((select (r->>'id')::uuid from _rm_disabled))$$,
@@ -135,7 +136,7 @@ values
 
 -- Compra PAGA depois de enfileirado o lembrete, antes do worker reclamar.
 create temp table _rm_paid_meanwhile as
-  select public.reserve_infinitepay_cash_purchase('74000000-0000-0000-0000-000000000007', 'pack_25') as r;
+  select pg_temp.cash_purchase_fixture('74000000-0000-0000-0000-000000000007') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _rm_paid_meanwhile), 'https://checkout.infinitepay.io/evolutus?lenc=paidmeanwhile');
 select pg_temp.set_test_user( '74000000-0000-0000-0000-000000000003', true);
 select is((public.admin_request_cash_purchase_reminder((select (r->>'id')::uuid from _rm_paid_meanwhile))->>'queued'),
@@ -154,7 +155,7 @@ select is((select last_error from public.cash_purchase_reminder_emails
 
 -- Conta DESATIVADA depois de enfileirado o lembrete, antes do worker reclamar.
 create temp table _rm_disabled_meanwhile as
-  select public.reserve_infinitepay_cash_purchase('74000000-0000-0000-0000-000000000008', 'pack_25') as r;
+  select pg_temp.cash_purchase_fixture('74000000-0000-0000-0000-000000000008') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _rm_disabled_meanwhile), 'https://checkout.infinitepay.io/evolutus?lenc=disabledmeanwhile');
 select is((public.admin_request_cash_purchase_reminder((select (r->>'id')::uuid from _rm_disabled_meanwhile))->>'queued'),
   'true', 'lembrete enfileirado enquanto a conta ainda estava ativa');
@@ -180,7 +181,7 @@ insert into auth.users (id, aud, role, email, encrypted_password, email_confirme
 values ('74000000-0000-0000-0000-000000000009', 'authenticated', 'authenticated', 'remind-lease@example.invalid', 'unused', now(), '{}', '{}', now(), now());
 
 create temp table _rm_lease as
-  select public.reserve_infinitepay_cash_purchase('74000000-0000-0000-0000-000000000009', 'pack_25') as r;
+  select pg_temp.cash_purchase_fixture('74000000-0000-0000-0000-000000000009') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _rm_lease), 'https://checkout.infinitepay.io/evolutus?lenc=lease');
 select public.admin_request_cash_purchase_reminder((select (r->>'id')::uuid from _rm_lease));
 

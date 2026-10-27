@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { buildReminderEmail, formatBRL, formatDateBR } from './messages.js'
 
 const BASE = {
-  username: 'josea', packageLabel: 'Max', cashAmount: 300, amountCentavos: 4990,
+  username: 'josea', purchaseLabel: 'Max', cashAmount: 300, amountCentavos: 4990,
   createdAt: '2026-10-15T12:56:00Z', appUrl: 'https://evolutus.app',
   supportEmail: 'suporte@evolutus.app', purchaseId: '1b0c541b-50b1-4847-971a-f8d74f179abf',
 }
@@ -43,11 +43,11 @@ test('nenhum placeholder do template fica sem substituir', () => {
   assert.equal(/__[A-Z_]+__/.test(html), false, 'nenhum __PLACEHOLDER__ deve sobrar no HTML enviado')
 })
 
-test('buildReminderEmail nunca injeta HTML a partir do username, do nome do pacote ou do e-mail de suporte', () => {
+test('buildReminderEmail nunca injeta HTML a partir do username, do resumo da compra ou do e-mail de suporte', () => {
   const { html } = buildReminderEmail({
     ...BASE,
     username: '<img src=x onerror=alert(1)>',
-    packageLabel: '</a><script>alert(2)</script>',
+    purchaseLabel: '</a><script>alert(2)</script>',
     supportEmail: '"><script>alert(3)</script>',
   })
   assert.equal(html.includes('<script>'), false)
