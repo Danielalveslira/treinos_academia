@@ -1,5 +1,7 @@
 # Home V2 — integridade e métricas
 
+> Relatório histórico da Home V2. O trecho de offline descreve a limitação daquela versão; o vínculo offline e a execução exclusiva por fichas foram implementados posteriormente. Consulte [REMOVER_TREINO_LIVRE.md](REMOVER_TREINO_LIVRE.md) para o contrato vigente.
+
 Esta alteração pertence ao PR #76, cuja base permanece `feat/workout-sheets` (#75).
 Estado confirmado: a migration `20261123000001_workout_sheet_attribution.sql` foi aplicada ao banco
 de produção em **25/10/2026 às 22:34 UTC**, após backup completo, restauração isolada, 44 assertions

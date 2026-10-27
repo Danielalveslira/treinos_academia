@@ -32,6 +32,7 @@ Conclusão continua exclusivamente online: revalidação de sessão, sincroniza�
 - Concorrência de moedas e atividade aprovada; evidências SQL de fichas/agregados e conclusão concorrente aprovadas. E2E financeiro real aprovado: navegador → Auth/PostgREST → PostgreSQL → ledger/carteira → saldo relido na UI.
 - Browser de fichas: 320/360/390/768/1280 px, claro/escuro, CPU 4x, RTT 150 ms e 200 KB/s; sem overflow. Intenções legadas testadas em 320/360/390 px sem catálogo global. Home: 10 combinações e 120 casos de foto, sem erros.
 - PWA: cold start com assets exclusivamente do SW, ficha salva, criação offline com `sheet_id` verificado na outbox, reconexão, atualização de SW; ausência de snapshot não abre formulário. IndexedDB/engine também cobrem expiração, conta diferente, logout, compactação/ACK e rejeição preservada.
+- Login e cabeçalhos públicos: 256 verificações de browser aprovadas. Scanner de credenciais do build sem achados.
 - Artefatos reproduzíveis em `docs/sheet-only-evidence/` e `docs/workout-sheets-evidence/sheet-entry-results.json`. Scripts de browser e novo cenário de entrada fazem parte do CI.
 
 ## Performance e limites
@@ -43,3 +44,5 @@ Não se afirma ganho de tempo ou I/O: não foi feita comparação controlada ant
 Snapshots têm autorização histórica, não atual: alterações remotas podem ser recusadas no sync. Expiração exige reconectar para renovar o escopo. Marcações legadas locais permanecem compatíveis, mas não contaminam fichas. Armazenamento indisponível pode impedir cold start, preservando a sessão já aberta e as proteções da fila.
 
 Os containers desta tarefa foram descartados ao terminar; containers/dados antigos foram preservados. A limpeza de imagens dispensáveis recuperou espaço: aproximadamente 2,2 GB → 5,3 GB livres em `/workspaces`. O preview 5173 aponta para a worktree atualizada, sem publicação em produção.
+
+Busca estática final: referências restantes a Treino Livre pertencem aos prompts históricos preservados, ao relatório histórico explicitamente marcado, aos testes negativos e ao comentário de leitura de registros sem ficha. Não há CTA público de criação livre.
