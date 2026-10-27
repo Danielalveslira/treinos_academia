@@ -4,7 +4,7 @@ Base: `origin/main` em `429c33d`. Branch: `finance-ci-remove-free-workout` (pref
 
 ## Contratos e arquitetura
 
-Toda criação pela interface passa por `/treinar` e por uma ficha validada em `/novo-treino?ficha=<uuid>`. A RPC de execução continua verificando proprietário, estado e disponibilidade. O picker reutiliza o agregado e a chave de cache da Home, incluindo disponibilidade e conclusão confirmada; contagem de exercícios sozinha não habilita início. Só uma leitura de execução acontece ao iniciar. Filtro por intenção de exercício consulta detalhes limitados às fichas elegíveis, sem catálogo global. Não há polling nem dependências novas.
+Toda criação pela interface passa por `/treinar` e por uma ficha validada em `/novo-treino?ficha=<uuid>`. A RPC de execução continua verificando proprietário, estado e disponibilidade. O picker reutiliza o agregado e a chave de cache da Home, incluindo disponibilidade e conclusão confirmada; contagem de exercícios sozinha não habilita início. Só uma leitura de execução acontece ao iniciar. Filtro por intenção de exercício usa uma única RPC agregada autenticada, sem leituras paralelas por ficha nem catálogo global. Não há polling nem dependências novas.
 
 `WorkoutForm` permanece compartilhado: o contêiner de Histórico usa `initialValue`, inclusive com ficha nula/exercício removido; o contêiner de nova execução exige `sheetScope`. Essa escolha preserva o contrato de edição e evita duplicar saver, cardio e validações. Criação sem escopo é bloqueada no formulário e no handler de criação. Foram removidos a etapa de grupos, seus estados, ordenação por grupo, imports e estilos exclusivos. A sequência e a troca de exercícios pertencem à ficha; após o último exercício é possível revisar a mesma ficha.
 
@@ -46,3 +46,11 @@ Snapshots têm autorização histórica, não atual: alterações remotas podem 
 Os containers desta tarefa foram descartados ao terminar; containers/dados antigos foram preservados. A limpeza de imagens dispensáveis recuperou espaço: aproximadamente 2,2 GB → 5,3 GB livres em `/workspaces`. O preview 5173 aponta para a worktree atualizada, sem publicação em produção.
 
 Busca estática final: referências restantes a Treino Livre pertencem aos prompts históricos preservados, ao relatório histórico explicitamente marcado, aos testes negativos e ao comentário de leitura de registros sem ficha. Não há CTA público de criação livre.
+
+## Revisão final do PR #84
+
+- `useWorkoutSheets` conserva snapshots em falhas de rede, gateway, refresh de token e erros desconhecidos. Apenas códigos explícitos do servidor invalidam dados; recusa de ficha remove somente seu snapshot e revogação comprovada remove os snapshots da conta. A outbox permanece intocada.
+- `get_my_sheet_insights_for_exercise(uuid)` reutiliza o resumo existente e filtra associação/elegibilidade no servidor em uma única RPC. O retorno continua mínimo e ordenado, sem catálogo ou itens. Permissões autenticadas e `private.sheet_actor()` preservam o contrato de acesso; a leitura offline filtra somente snapshots previamente validados da conta.
+- Migration aditiva: `20261126000002_sheet_exercise_picker.sql`, sem DML ou mudanças financeiras/RLS. Reverter o frontend não exige apagar a função. A migration do lembrete e esta função devem ser aplicadas antes da promoção do frontend.
+- Validação manual limitada aos arquivos afetados: testes de hook/cache/serviço/páginas, lint direcionado e build/budget. A nova suíte pgTAP de 10 asserções cobre associação, vazio, arquivamento, dia de negócio, isolamento e sessão revogada no CI. Nenhuma suíte extensa foi repetida manualmente nesta revisão.
+- Budget local após os ajustes: JS de boot 325.454 bytes gzip, CSS 69.606, seis arquivos iniciais; thresholds preservados.

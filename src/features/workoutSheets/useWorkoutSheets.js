@@ -9,11 +9,22 @@ import {
   saveSheetSnapshot,
   invalidateSheetSnapshots,
 } from '../../services/offline/sheetSnapshot.js'
-import { getWorkoutSheet, listWorkoutSheets } from './workoutSheetsService.js'
-export function useWorkoutSheets(id = null, execution = false, archived = false, page = 0) {
+import { sheetSnapshotInvalidation } from './sheetReadPolicy.js'
+import {
+  getSheetInsightsForExercise,
+  getWorkoutSheet,
+  listWorkoutSheets,
+} from './workoutSheetsService.js'
+export function useWorkoutSheets(
+  id = null,
+  execution = false,
+  archived = false,
+  page = 0,
+  exerciseId = null
+) {
   const { user, offlineLocal } = useAuth()
   const online = useOnlineStatus()
-  const key = `${user.uid}:${id || 'list'}:${execution}:${online}:${offlineLocal}:${archived}:${page}`
+  const key = `${user.uid}:${id || 'list'}:${execution}:${online}:${offlineLocal}:${archived}:${page}:${exerciseId || ''}`
   const [attempt, setAttempt] = useState(0)
   const [state, setState] = useState({})
   useEffect(() => {
@@ -28,18 +39,30 @@ export function useWorkoutSheets(id = null, execution = false, archived = false,
               if (!sheet) throw new Error('SHEET_NETWORK_REQUIRED')
               return sheet
             }
-            return sheets.map((sheet) => ({
-              ...sheet,
-              exercise_count: sheet.items.length,
-              available: true,
-            }))
+            return sheets
+              .filter(
+                (sheet) =>
+                  !exerciseId ||
+                  sheet.items.some((item) => item.exercise_id === exerciseId && item.available)
+              )
+              .map((sheet) => ({
+                ...sheet,
+                exercise_count: sheet.items.length,
+                available: true,
+              }))
           })
         : id
           ? getWorkoutSheet(id, execution)
           : execution === 'picker'
-            ? fetchCached(`home-sheet-activity:${user.uid}:${businessDayKey()}`, getSheetInsights, {
-                force: attempt > 0,
-              }).then((result) => result.sheets)
+            ? fetchCached(
+                exerciseId
+                  ? `home-sheet-activity:${user.uid}:${businessDayKey()}:exercise:${exerciseId}`
+                  : `home-sheet-activity:${user.uid}:${businessDayKey()}`,
+                exerciseId ? () => getSheetInsightsForExercise(exerciseId) : getSheetInsights,
+                {
+                  force: attempt > 0,
+                }
+              ).then((result) => result.sheets)
             : listWorkoutSheets(archived, page)
     request.then(
       async (data) => {
@@ -48,14 +71,16 @@ export function useWorkoutSheets(id = null, execution = false, archived = false,
         if (active) setState({ key, data, loading: false })
       },
       async (error) => {
-        if (active && online && id && execution) await invalidateSheetSnapshots(user.uid)
+        const invalidation = sheetSnapshotInvalidation(error, id)
+        if (active && online && id && execution && invalidation !== undefined)
+          await invalidateSheetSnapshots(user.uid, invalidation)
         if (active) setState({ key, error, loading: false })
       }
     )
     return () => {
       active = false
     }
-  }, [key, id, execution, attempt, online, offlineLocal, archived, page, user.uid])
+  }, [key, id, execution, attempt, online, offlineLocal, archived, page, user.uid, exerciseId])
   const refresh = useCallback(() => setAttempt((n) => n + 1), [])
   return {
     ...(state.key === key ? state : { loading: true }),

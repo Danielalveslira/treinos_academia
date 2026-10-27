@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button, Flash, Heading, Spinner } from '@primer/react'
 import { useWorkoutSheets } from './useWorkoutSheets.js'
-import { getWorkoutSheet, sheetError } from './workoutSheetsService.js'
+import { sheetError } from './workoutSheetsService.js'
 import { originState } from '../../utils/navigation.js'
 import { validSheetId, validPlannedDate } from '../../utils/workoutEntry.js'
 import { plannedWorkoutNotice } from '../../utils/plannedWorkout.js'
@@ -12,7 +12,6 @@ import './workoutSheets.css'
 
 // Validate the complete server scope before enabling execution. Summary counts are not authority.
 export default function TreinarPage() {
-  const { data, loading, error, refresh, online } = useWorkoutSheets(null, 'picker', false, 0)
   const navigate = useNavigate()
   const location = useLocation()
   const [params] = useSearchParams()
@@ -22,41 +21,14 @@ export default function TreinarPage() {
   const notice = plannedWorkoutNotice(planned, businessDayKey())
   const [checking, setChecking] = useState(null)
   const starting = useRef(false)
-  const [validationError, setValidationError] = useState(null)
-  const [compatible, setCompatible] = useState(null)
-  useEffect(() => {
-    let active = true
-    setCompatible(null)
-    if (!exercise || !data) return undefined
-    Promise.all(
-      data
-        .filter(
-          (sheet) => !sheet.archived_at && sheet.exercise_count > 0 && sheet.available === true
-        )
-        .map(async (sheet) => {
-          const scope = online ? await getWorkoutSheet(sheet.id, true) : sheet
-          return scope.items.some((item) => item.available && item.exercise_id === exercise)
-            ? sheet.id
-            : null
-        })
-    ).then(
-      (ids) => {
-        if (active) setCompatible(ids)
-      },
-      (error) => {
-        if (active) {
-          setValidationError(error)
-          setCompatible([])
-        }
-      }
-    )
-    return () => {
-      active = false
-    }
-  }, [exercise, data, online])
-  const sheets = (data || [])
-    .filter((sheet) => !exercise || compatible?.includes(sheet.id))
-    .filter((sheet) => !sheet.archived_at)
+  const { data, loading, error, refresh, online } = useWorkoutSheets(
+    null,
+    'picker',
+    false,
+    0,
+    exercise
+  )
+  const sheets = (data || []).filter((sheet) => !sheet.archived_at)
 
   const recommendation = useMemo(() => {
     if (!online || !data) return null
@@ -113,16 +85,13 @@ export default function TreinarPage() {
           online nos últimos sete dias estão disponíveis. A conclusão exige conexão.
         </Flash>
       )}
-      {(error || validationError) && (
+      {error && (
         <Flash variant="danger" role="alert">
-          {validationError?.message?.startsWith('Esta ficha')
-            ? validationError.message
-            : sheetError(error || validationError)}{' '}
-          <Button onClick={refresh}>Tentar novamente</Button>
+          {sheetError(error)} <Button onClick={refresh}>Tentar novamente</Button>
         </Flash>
       )}
-      {(loading || (exercise && compatible === null)) && <Spinner aria-label="Carregando fichas" />}
-      {!loading && !error && (!exercise || compatible !== null) && sheets.length === 0 && (
+      {loading && <Spinner aria-label="Carregando fichas" />}
+      {!loading && !error && sheets.length === 0 && (
         <div className="sheet-card">
           <h2>
             {exercise

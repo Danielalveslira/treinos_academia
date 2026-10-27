@@ -133,3 +133,33 @@ test('rejected sheet binding preserves local sets, sheet and recoverable mutatio
   await purgePrivateData(null)
   assert.equal((await listMutations('a')).length, 1)
 })
+
+test('invalidating one sheet keeps other scopes and users intact', async () => {
+  await saveSheetSnapshot('a', sheet('first'))
+  await saveSheetSnapshot('a', sheet('second'))
+  const { enqueueWorkoutMutation, listMutations, OPERATIONS } = await import('./outbox.js')
+  await enqueueWorkoutMutation('a', {
+    operation: OPERATIONS.create,
+    entityId: 'pending-sheet-row',
+    payload: {
+      sheet_id: 'first',
+      exercise_id: 'e',
+      date: '2026-10-27',
+      type: 'strength',
+      set_details: [{ weight: 20, reps: 10 }],
+      sets: 1,
+      note: '',
+    },
+  })
+  await invalidateSheetSnapshots('a', 'first')
+  assert.equal((await listMutations('a'))[0].payload.sheet_id, 'first')
+  assert.deepEqual(
+    (await readSheetSnapshots('a')).map((s) => s.id),
+    ['second']
+  )
+  await invalidateSheetSnapshots('b', 'second')
+  assert.deepEqual(
+    (await readSheetSnapshots('a')).map((s) => s.id),
+    ['second']
+  )
+})

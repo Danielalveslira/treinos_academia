@@ -178,8 +178,8 @@ try {
         res.statusCode = 400
         res.end(JSON.stringify({ code: 'P0001', message }))
       }
-      if (name === 'get_my_sheet_insights') {
-        res.end(JSON.stringify({ sheets: sheets.filter((s) => s.user_id === uid).map((s) => ({ ...s, exercise_count: s.items.length, available: s.items.length > 0 && s.items.every((item) => item.available), completed_today: false })) }))
+      if (name === 'get_my_sheet_insights' || name === 'get_my_sheet_insights_for_exercise') {
+        res.end(JSON.stringify({ sheets: sheets.filter((s) => s.user_id === uid && (!args.p_exercise_id || (!s.archived_at && s.items.length > 0 && s.items.every(i => i.available) && s.items.some(i => i.exercise_id === args.p_exercise_id)))).map((s) => ({ ...s, exercise_count: s.items.length, available: s.items.length > 0 && s.items.every((item) => item.available), completed_today: false })) }))
         return
       }
       if (name === 'list_my_workout_sheets') {
@@ -329,6 +329,8 @@ try {
       await page.getByText('Lembrete de 01/01/2000.', { exact: false }).waitFor()
       await page.goto(origin + `/novo-treino?exercicio=${exercises[0].id}`)
       await page.getByRole('button', { name: 'Iniciar', exact: true }).waitFor()
+      assert.equal(reads.filter(name => name === 'get_my_sheet_insights_for_exercise').length, 1, 'one aggregate membership request')
+      assert.equal(reads.filter(name => name === 'get_my_workout_sheet').length, 0, 'no per-sheet membership requests')
       await page.getByRole('button', { name: 'Iniciar', exact: true }).click()
       await page.locator('.workout-form').waitFor()
       assert.equal(new URL(page.url()).searchParams.get('ficha'), sid)

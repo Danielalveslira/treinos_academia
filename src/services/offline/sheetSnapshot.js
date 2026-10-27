@@ -104,12 +104,21 @@ export function readSheetSnapshots(uid, now = Date.now()) {
   )
 }
 
-export function invalidateSheetSnapshots(uid) {
+export function invalidateSheetSnapshots(uid, sheetId = null) {
   return attempt(
     'sheet-snapshot:invalidate',
     () =>
-      withTransaction([STORES.syncMeta], 'readwrite', ({ syncMeta }) => {
-        syncMeta.delete(key(uid))
+      withTransaction([STORES.syncMeta], 'readwrite', async ({ syncMeta }) => {
+        if (sheetId === null) {
+          syncMeta.delete(key(uid))
+          return
+        }
+        const row = await request(syncMeta.get(key(uid)))
+        if (row)
+          syncMeta.put({
+            key: key(uid),
+            value: row.value.filter((value) => value.user_id !== uid || value.sheet.id !== sheetId),
+          })
       }),
     undefined
   )
