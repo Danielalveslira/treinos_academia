@@ -45,6 +45,8 @@ jobs:
       - run: npm run lint
       - run: node --test scripts/release/*.test.mjs
       - run: npm test
+      - name: Public catalogue snapshot and lazy counter regression
+        run: node --test tests/public-catalog-snapshot.test.mjs
       - run: npm run build
         env:
           VITE_SUPABASE_URL: https://header-smoke.invalid

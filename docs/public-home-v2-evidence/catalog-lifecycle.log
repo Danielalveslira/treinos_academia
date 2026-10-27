@@ -1,0 +1,137 @@
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 3
+UPDATE 1
+INSERT 0 2
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+
+ok 1 - comum não cria draft
+ok 2 - comum não edita conteúdo
+ok 3 - comum não submete
+ok 4 - comum não publica
+ok 5 - comum não retira
+ok 6 - comum não restaura
+ok 7 - comum não lista painel admin
+ok 8 - comum não lê auditoria
+
+ok 9 - anônimo não cria draft
+
+SELECT 1
+ok 10 - draft nasce em status=draft
+ok 11 - draft nasce com is_active=false
+ok 12 - draft nasce em revision=1
+ok 13 - conteúdo autoral vira evolutus_original, não evolutus_dataset
+ok 14 - draft sem músculos/categoria/instruções não publica
+(8033a622-cca2-44df-8538-e5a15ccc5ae7,evolutus_original,manual-02fe8881cfba43f1889b43e7dfa04294,"Agachamento livre","agachamento livre",pernas,"{pernas,gluteos}",barra,força,intermediario,empurrar,composto,"{Agache.,Suba.}",{},f,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": []}",draft,2,95000000-0000-0000-0000-000000000001,,,,,,"{""Mantenha a coluna neutra.""}",)
+ok 15 - texto completo mas sem nenhuma imagem alocada não publica
+UPDATE 1
+ok 16 - published_media_refs forjado sem exercise_visual_sets real não engana a publicação
+UPDATE 1
+
+
+ok 17 - com texto completo + imagem start/end real confirmada em storage.objects, publica
+ok 18 - status final published
+ok 19 - revision incrementou (criação->edição->publicação)
+SELECT 1
+(c82008ac-3de3-4a3e-9715-e1196d6be6c9,evolutus_original,manual-dd09ee80fa3c4141840ad041fc868812,"Levantamento terra","levantamento terra",pernas,"{pernas,costas}",barra,força,avancado,puxar,composto,{Levante.},{},f,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": []}",draft,2,95000000-0000-0000-0000-000000000001,,,,,,,)
+ok 20 - imagem publicada de OUTRO exercício não valida este
+(c82008ac-3de3-4a3e-9715-e1196d6be6c9,evolutus_original,manual-dd09ee80fa3c4141840ad041fc868812,"Levantamento terra","levantamento terra",pernas,"{pernas,costas}",barra,força,avancado,puxar,composto,{Levante.},{},f,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": []}",withdrawn,3,95000000-0000-0000-0000-000000000001,,,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,"teste de bloqueio de allocate",,)
+ok 21 - allocate numa linha withdrawn falha
+ok 22 - retirar sem motivo falha
+ok 23 - retirar com motivo vazio falha
+(8033a622-cca2-44df-8538-e5a15ccc5ae7,evolutus_original,manual-02fe8881cfba43f1889b43e7dfa04294,"Agachamento livre","agachamento livre",pernas,"{pernas,gluteos}",barra,força,intermediario,empurrar,composto,"{Agache.,Suba.}",{},f,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": [{""path"": ""8033a622-cca2-44df-8538-e5a15ccc5ae7/v1/start.webp"", ""role"": ""start""}, {""path"": ""8033a622-cca2-44df-8538-e5a15ccc5ae7/v1/end.webp"", ""role"": ""end""}], ""version"": 1}",withdrawn,7,95000000-0000-0000-0000-000000000001,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,"imagem incorreta reportada por usuário","{""Mantenha a coluna neutra.""}",)
+ok 24 - d1 retirado
+ok 25 - auditoria registra exercício retirado (responsável + exercício)
+ok 26 - auditoria registra o motivo real
+
+INSERT 0 1
+
+ok 27 - adicionar exercício retirado à biblioteca falha
+ok 28 - provider_exercise_id inexistente falha igual
+ok 29 - adicionar exercício publicado (evolutus_dataset) funciona
+ok 30 - Fase 3 bloqueia nova criação personalizada
+
+(8033a622-cca2-44df-8538-e5a15ccc5ae7,evolutus_original,manual-02fe8881cfba43f1889b43e7dfa04294,"Agachamento livre","agachamento livre",pernas,"{pernas,gluteos}",barra,força,intermediario,empurrar,composto,"{Agache.,Suba.}",{},f,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": [{""path"": ""8033a622-cca2-44df-8538-e5a15ccc5ae7/v1/start.webp"", ""role"": ""start""}, {""path"": ""8033a622-cca2-44df-8538-e5a15ccc5ae7/v1/end.webp"", ""role"": ""end""}], ""version"": 1}",in_review,8,95000000-0000-0000-0000-000000000001,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,,,,"{""Mantenha a coluna neutra.""}",)
+ok 31 - restaurar volta para in_review, nunca published direto
+ok 32 - restaurar algo que já não está withdrawn falha
+
+SELECT 1
+(7b087cb1-df80-4334-9ab3-0299c692700c,evolutus_original,manual-f11999e31f6540969b44078a95a4d0a5,"Supino reto","supino reto",peito,"{peito,triceps}",barra,força,intermediario,empurrar,composto,"{Desça.,Empurre.}",{},f,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": []}",draft,2,95000000-0000-0000-0000-000000000001,,,,,,,)
+
+
+(7b087cb1-df80-4334-9ab3-0299c692700c,evolutus_original,manual-f11999e31f6540969b44078a95a4d0a5,"Supino reto","supino reto",peito,"{peito,triceps}",barra,força,intermediario,empurrar,composto,"{Desça.,Empurre.}",{},t,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": [{""path"": ""7b087cb1-df80-4334-9ab3-0299c692700c/v1/start.webp"", ""role"": ""start""}, {""path"": ""7b087cb1-df80-4334-9ab3-0299c692700c/v1/end.webp"", ""role"": ""end""}], ""version"": 1}",published,4,95000000-0000-0000-0000-000000000001,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,,,,,)
+
+INSERT 0 1
+
+(7b087cb1-df80-4334-9ab3-0299c692700c,evolutus_original,manual-f11999e31f6540969b44078a95a4d0a5,"Supino reto","supino reto",peito,"{peito,triceps}",barra,força,intermediario,empurrar,composto,"{Desça.,Empurre.}",{},f,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": [{""path"": ""7b087cb1-df80-4334-9ab3-0299c692700c/v1/start.webp"", ""role"": ""start""}, {""path"": ""7b087cb1-df80-4334-9ab3-0299c692700c/v1/end.webp"", ""role"": ""end""}], ""version"": 1}",withdrawn,5,95000000-0000-0000-0000-000000000001,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,"recall de segurança",,)
+
+ok 33 - edição incidental (note) de item já adicionado sobrevive à retirada
+ok 34 - desativar item já adicionado sobrevive à retirada
+
+(7b087cb1-df80-4334-9ab3-0299c692700c,evolutus_original,manual-f11999e31f6540969b44078a95a4d0a5,"Supino reto","supino reto",peito,"{peito,triceps}",barra,força,intermediario,empurrar,composto,"{Desça.,Empurre.}",{},f,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": [{""path"": ""7b087cb1-df80-4334-9ab3-0299c692700c/v1/start.webp"", ""role"": ""start""}, {""path"": ""7b087cb1-df80-4334-9ab3-0299c692700c/v1/end.webp"", ""role"": ""end""}], ""version"": 1}",in_review,6,95000000-0000-0000-0000-000000000001,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,,,,,)
+ok 35 - restaurar d3 volta para in_review
+
+ok 36 - novo treino com exercício em_review (restaurado, ainda não republicado) é bloqueado
+
+SELECT 1
+INSERT 0 1
+ok 37 - fixture histórica personalizada é preservada
+
+ok 38 - UPDATE OF exercise_id repontando pra exercício não-published também é bloqueado
+
+ok 39 - republicar após editar conteúdo+mídia completos sucede
+ok 40 - d3 republicado
+
+ok 41 - depois de republicado, novo treino com o exercício funciona de novo
+
+ok 42 - nome ao vivo antes da edição
+(7b087cb1-df80-4334-9ab3-0299c692700c,evolutus_original,manual-f11999e31f6540969b44078a95a4d0a5,"Supino reto","supino reto",peito,"{peito,triceps}",barra,força,intermediario,empurrar,composto,"{Desça.,Empurre.}",{},f,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": [{""path"": ""7b087cb1-df80-4334-9ab3-0299c692700c/v1/start.webp"", ""role"": ""start""}, {""path"": ""7b087cb1-df80-4334-9ab3-0299c692700c/v1/end.webp"", ""role"": ""end""}], ""version"": 1}",in_review,8,95000000-0000-0000-0000-000000000001,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,,,,,"{""name"": ""Supino reto inclinado"", ""force"": ""empurrar"", ""muscles"": [""peito"", ""triceps"", ""ombros""], ""category"": ""força"", ""mechanic"": ""composto"", ""equipment"": ""barra"", ""difficulty"": ""avancado"", ""safetyNotes"": [""Use apoio para os pés.""], ""instructions"": [""Ajuste o banco."", ""Desça."", ""Empurre.""], ""primaryMuscle"": ""peito""}")
+ok 43 - nome AO VIVO não muda enquanto a edição está pendente de republicação
+ok 44 - editar um published move para in_review
+ok 45 - pending_content guarda o nome proposto
+(7b087cb1-df80-4334-9ab3-0299c692700c,evolutus_original,manual-f11999e31f6540969b44078a95a4d0a5,"Supino reto inclinado","supino reto inclinado",peito,"{peito,triceps,ombros}",barra,força,avancado,empurrar,composto,"{""Ajuste o banco."",Desça.,Empurre.}",{},t,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": [{""path"": ""7b087cb1-df80-4334-9ab3-0299c692700c/v1/start.webp"", ""role"": ""start""}, {""path"": ""7b087cb1-df80-4334-9ab3-0299c692700c/v1/end.webp"", ""role"": ""end""}], ""version"": 1}",published,10,95000000-0000-0000-0000-000000000001,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,,,,"{""Use apoio para os pés.""}",)
+ok 46 - republicar aplica o pending_content no conteúdo ao vivo
+ok 47 - pending_content é limpo após republicar
+ok 48 - escrita direta que desalinha is_active de status (draft/withdrawn != published) viola o CHECK
+
+ok 49 - admin_list mostra retirados (d2)
+ok 50 - filtro p_only_missing_images inclui d2 (retirado, nunca teve imagem publicada)
+ok 51 - filtro p_only_missing_images exclui d1 (em revisão, mas já tem imagem publicada de antes)
+ok 52 - sem o filtro, d1 continua aparecendo em in_review (prova que o filtro é opcional, não uma segunda busca)
+
+ok 53 - busca pública nunca mostra retirado
+ok 54 - busca pública mostra o republicado
+
+SELECT 1
+(0a27c35a-b8f2-4bf6-91a0-feaa5f2be1fc,evolutus_original,manual-a6e1b9ff86f54a9eabc6779852647190,"Leg press","leg press",pernas,{pernas},maquina,força,iniciante,empurrar,composto,"{""Empurre a plataforma.""}",{},f,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": []}",draft,2,95000000-0000-0000-0000-000000000001,,,,,,,)
+
+
+(0a27c35a-b8f2-4bf6-91a0-feaa5f2be1fc,evolutus_original,manual-a6e1b9ff86f54a9eabc6779852647190,"Leg press","leg press",pernas,{pernas},maquina,força,iniciante,empurrar,composto,"{""Empurre a plataforma.""}",{},t,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": [{""path"": ""0a27c35a-b8f2-4bf6-91a0-feaa5f2be1fc/v1/start.webp"", ""role"": ""start""}, {""path"": ""0a27c35a-b8f2-4bf6-91a0-feaa5f2be1fc/v1/end.webp"", ""role"": ""end""}], ""version"": 1}",published,4,95000000-0000-0000-0000-000000000001,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,,,,,)
+
+INSERT 0 1
+
+(0a27c35a-b8f2-4bf6-91a0-feaa5f2be1fc,evolutus_original,manual-a6e1b9ff86f54a9eabc6779852647190,"Leg press","leg press",pernas,{pernas},maquina,força,iniciante,empurrar,composto,"{""Empurre a plataforma.""}",{},f,"2026-10-27 15:02:06.868883+00","2026-10-27 15:02:06.868883+00",{},"{""images"": [{""path"": ""0a27c35a-b8f2-4bf6-91a0-feaa5f2be1fc/v1/start.webp"", ""role"": ""start""}, {""path"": ""0a27c35a-b8f2-4bf6-91a0-feaa5f2be1fc/v1/end.webp"", ""role"": ""end""}], ""version"": 1}",withdrawn,5,95000000-0000-0000-0000-000000000001,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,"2026-10-27 15:02:06.868883+00",95000000-0000-0000-0000-000000000001,"equipamento recolhido das academias parceiras",,)
+
+SELECT 1
+ok 55 - mutação de treino com exercício retirado é rejeitada (nunca aplicada)
+ok 56 - código é o erro de negócio real, não INTERNAL
+ok 57 - nenhum treino foi gravado (dados locais preservados, nada aplicado)
+DROP TABLE
+
+SELECT 1
+ok 58 - exercicio pessoal inexistente continua classificado corretamente (não-regressão, trigger nova não interfere)
+DROP TABLE
+
+SELECT 45
+
+ok 59 - total filtrado inclui todos os exercícios fora da página e exclui START/END completos
+ok 60 - segunda página do filtro tem 20 resultados
+ok 61 - última página do filtro contém os quatro restantes
+ok 62 - busca e músculo combinam com filtro global de imagens
+ok 63 - desligar filtro recupera todos os exercícios
+ok 64 - ordenação estável não repete exercícios entre páginas
+1..64
+ROLLBACK

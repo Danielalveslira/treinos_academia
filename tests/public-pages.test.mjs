@@ -106,7 +106,10 @@ test('header público concentra ações e menu em componentes Primer', () => {
     assert.match(html, /class="brand-mark-letter"/)
     assert.match(html, /assets\/publicHeaderMenu-[\w-]+\.js/)
     assert.match(html, /assets\/publicHeaderMenu-[\w-]+\.css/)
-    assert.match(html, /assets\/dark-[\w-]+\.css/)
+    const linkedCss = [...html.matchAll(/href="(\/assets\/[^"]+\.css)"/g)]
+      .map(([, file]) => readFileSync(`dist${file}`, 'utf8')).join('\n')
+    assert.match(linkedCss, /data-color-mode=dark/)
+    assert.match(linkedCss, /data-dark-theme=dark/)
     assert.doesNotMatch(html, /class="public-header-nav"/)
     assert.match(html, /id="public-theme-root" class="public-theme-root"><button data-component="IconButton"[^>]*aria-label="Alternar tema"/)
     assert.match(html, /class="[^"]*public-header-signup[^"]*"[^>]*data-variant="primary"/)
@@ -263,3 +266,13 @@ test('Turbo atua apenas nas rotas HTML públicas e preserva os metadados estáti
     assert.doesNotMatch(html, /href="\/(?:login|cadastro|app|politica-de-privacidade)"[^>]*data-turbo="true"/)
   }
 })
+
+ test('Home V2 renders truthful catalogue fallback and four real features without app hydration', () => {
+  const html = readFileSync('dist/index.html', 'utf8')
+  assert.ok(html.indexOf('home-hero') < html.indexOf('home-catalog'))
+  assert.ok(html.indexOf('home-catalog') < html.indexOf('home-steps'))
+  for (const text of ['Catálogo Evolutus','Exercícios para sua rotina','Fichas de treino','Catálogo oficial','Sua evolução','Comunidades','Organize suas fichas']) assert.ok(html.includes(text), text)
+  assert.match(html, /data-catalog-count/)
+  assert.match(html, /src="\/public-catalog-count.js"/)
+  assert.doesNotMatch(html, /[0-9]+ exercícios publicados|exercise_catalog|service_role/)
+ })

@@ -1,0 +1,25 @@
+✔ build entrega HTML específico e completo antes de JavaScript (7.282914ms)
+✔ sitemap só inclui páginas indexáveis e o shell do app declara noindex (0.541574ms)
+✔ homepage mantém conteúdo indexável e encaminha apenas a rota raiz (1.110076ms)
+✔ marca pública usa Evolutus no header e rodapé sem alterar o domínio canônico (0.742422ms)
+✔ footer público compacto usa Primer e links existentes (1.332367ms)
+✔ header público concentra ações e menu em componentes Primer (14.557926ms)
+✔ links internos e âncoras das cinco páginas têm destino (4.045321ms)
+✔ rotas internas fazem fallback ao shell, URLs públicas desconhecidas não (0.339444ms)
+✔ variantes públicas redirecionam para URL limpa e como-funciona entra no sitemap (2.582121ms)
+✔ home usa uma imagem oficial otimizada (4.346067ms)
+✔ Primer é renderizado no HTML público sem carregar o shell React (0.740408ms)
+✔ rotas em reconstrução têm esqueleto mínimo, sem UI legada (3.403018ms)
+✔ Vitrine reconstruída: cabeçalho compacto real e ilha do catálogo sob demanda (0.517367ms)
+✔ rotas excluídas não são geradas, anunciadas nem reescritas (1.928941ms)
+✔ diretório público precede o shell e detalhes legados continuam no shell noindex (0.415786ms)
+✔ Turbo atua apenas nas rotas HTML públicas e preserva os metadados estáticos (3.345533ms)
+✔ Home V2 renders truthful catalogue fallback and four real features without app hydration (0.434605ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 67.514485

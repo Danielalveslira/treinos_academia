@@ -1,0 +1,17 @@
+{
+  "readOnly": true,
+  "productionModified": false,
+  "checkedOn": "2026-10-27",
+  "appliedMigrations": [
+    "20261026000006",
+    "20261117000001",
+    "20261126000001",
+    "20261126000002"
+  ],
+  "pgCron": true,
+  "revisionRpc": true,
+  "published": 867,
+  "visibilityInvariant": true,
+  "catalogRls": true,
+  "newSnapshotAlreadyApplied": false
+}

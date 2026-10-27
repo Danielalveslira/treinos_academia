@@ -1,3 +1,4 @@
+import { mockPublicServices } from './public-smoke-fixtures.mjs'
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright-core'
 
@@ -7,6 +8,7 @@ const browser = await chromium.launch({ executablePath, headless: true, args: ['
 try {
   for (const width of [375, 1366]) {
     const page = await browser.newPage({ viewport: { width, height: 850 } })
+    await mockPublicServices(page)
     const pageErrors = []
     page.on('pageerror', (error) => pageErrors.push(error.message))
     await page.goto(base + '/')

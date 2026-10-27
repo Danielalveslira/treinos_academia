@@ -1,3 +1,4 @@
+import { mockPublicServices } from './public-smoke-fixtures.mjs'
 import assert from 'node:assert/strict'
 import { mkdirSync } from 'node:fs'
 import { chromium } from 'playwright-core'
@@ -58,6 +59,7 @@ try {
       viewport: { width: 390, height: 844 },
       colorScheme: theme,
     })
+    await mockPublicServices(page)
     await page.addInitScript((mode) => localStorage.setItem('colorMode', mode), theme)
     let releaseMenuChunk
     const menuChunkReady = new Promise((resolve) => {
@@ -96,7 +98,8 @@ try {
       page.on('console', (message) => {
         if (message.type() === 'error') errors.push(message.text())
       })
-      await page.addInitScript((mode) => localStorage.setItem('colorMode', mode), theme)
+      await mockPublicServices(page)
+    await page.addInitScript((mode) => localStorage.setItem('colorMode', mode), theme)
       for (const path of paths) {
         const response = await page.goto(base + path)
         assert.equal(response.status(), 200)
@@ -139,8 +142,7 @@ try {
             (node) => getComputedStyle(node).backgroundColor !== 'rgba(0, 0, 0, 0)'
           )
         )
-        if (width < 768) await page.locator('#__primerPortalRoot__ button').first().click()
-        else await trigger.click()
+        await trigger.click()
         await overlay.waitFor({ state: 'detached' })
         await trigger.click()
         await page.keyboard.press('Escape')

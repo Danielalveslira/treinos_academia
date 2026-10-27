@@ -11,6 +11,11 @@ const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 const server = process.env.PUBLIC_PREVIEW_URL ? null : createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname)
+    if (pathname === '/api/public-catalog-snapshot') {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ total_active: 0, revision: '1', updated_at: '2026-10-27T00:00:00Z' }))
+      return
+    }
     // These scripts are provided by Vercel, rather than the static build.
     if (['/_vercel/insights/script.js', '/_vercel/speed-insights/script.js'].includes(pathname)) {
       res.writeHead(200, { 'Content-Type': 'text/javascript' }); res.end(''); return
@@ -126,8 +131,7 @@ try {
         if (path === '/') {
           await trigger.click()
           const overlay = page.locator('.public-header-overlay')
-          if (width < 768) await overlay.getByRole('button', { name: 'Close', exact: true }).click()
-          else await page.keyboard.press('Escape')
+          await trigger.click()
           await overlay.waitFor({ state: 'detached' })
           await trigger.click()
           if (width < 768) {

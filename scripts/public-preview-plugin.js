@@ -1,6 +1,8 @@
+import process from 'node:process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadEnv } from 'vite'
+import catalogSnapshot from '../api/public-catalog-snapshot.js'
 import { publicPages, renderPublicPage, renderRobots, renderSitemap } from './public-pages-template.mjs'
 
 const routes = new Map(publicPages.map(({ path, file }) => [path, file]))
@@ -34,6 +36,11 @@ export function publicPreviewPlugin() {
         if (path === '/sitemap.xml') return send(response, request, renderSitemap(), 'application/xml; charset=utf-8')
         const canonical = variant(path)
         if (canonical) return redirect(response, request, canonical)
+        if (path === '/api/public-catalog-snapshot') {
+          for (const name of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
+            if (!process.env[name] && env[name]) process.env[name] = env[name]
+          return catalogSnapshot(request, response)
+        }
         if (routes.has(path)) {
           try {
             const html = renderPublicPage(path, env, { dev: true })

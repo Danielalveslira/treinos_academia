@@ -1,0 +1,52 @@
+BEGIN
+1..25
+ok 1 - bootstrap is exact
+ok 2 - bootstrap acknowledged
+ok 3 - one durable cron
+SELECT 1
+INSERT 0 1
+ok 4 - draft insert does not enqueue
+UPDATE 1
+ok 5 - draft edit does not enqueue
+UPDATE 1
+ok 6 - publication durably queued
+ok 7 - no premature success before processing
+
+ok 8 - publication recalculates current state
+SELECT 1
+UPDATE 1
+
+ok 9 - published pending content causes no count refresh
+ok 10 - no-op leaves original snapshot valid
+UPDATE 1
+
+ok 11 - withdrawal decrements real total
+UPDATE 1
+
+ok 12 - republication restores real total
+
+
+ok 13 - duplicate/out-of-order wakeups cannot regress
+CREATE FUNCTION
+CREATE TRIGGER
+UPDATE 1
+ok 14 - processing failure is visible
+ok 15 - failure remains pending for automatic retry
+DROP TRIGGER
+
+ok 16 - retry converges without event payload deltas
+ok 17 - retry acknowledges only the committed snapshot
+ok 18 - anonymous cannot run processor
+ok 19 - users cannot run processor
+ok 20 - anonymous cannot edit snapshot
+ok 21 - users cannot create snapshot
+ok 22 - queue private
+SET
+ok 23 - anonymous can read only public singleton
+ok 24 - anonymous write rejected
+RESET
+SAVEPOINT
+UPDATE 1
+ROLLBACK
+ok 25 - rolled-back event disappears with source transaction
+ROLLBACK

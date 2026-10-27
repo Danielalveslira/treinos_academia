@@ -1,0 +1,12 @@
+✔ endpoint reads only the precomputed singleton, caches public JSON and leaks no extras (6.661182ms)
+✔ endpoint denies mutation and returns uncached neutral errors for bad JSON/origin/config (4.198347ms)
+✔ client is lazy, mounts once, formats real zero and counts, aborts on Turbo cache (31.351008ms)
+✔ client preserves neutral HTML on offline, bad JSON, invalid totals/revision/date; old unchanged snapshot is valid (12.563908ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 70.139999

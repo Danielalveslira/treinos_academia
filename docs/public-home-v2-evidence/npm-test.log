@@ -1,0 +1,10 @@
+# Final summary excerpt of npm test; full local log: /tmp/public-home-v2-npm-test-final.log
+# Original SHA256: c3fd33ee030292f14187b6a5518e72b7d344d05953c0643bdae7cc2405772ee3
+ℹ tests 2255
+ℹ suites 0
+ℹ pass 2255
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 166423.690775

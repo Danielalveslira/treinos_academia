@@ -1,0 +1,53 @@
+{
+  "passed": true,
+  "productionModified": false,
+  "npmTest": {
+    "tests": 2255,
+    "pass": 2255,
+    "fail": 0
+  },
+  "counterTests": {
+    "tests": 4,
+    "pass": 4
+  },
+  "publicPagesTests": {
+    "tests": 17,
+    "pass": 17
+  },
+  "pgtap": {
+    "snapshotAssertions": 25,
+    "lifecycleAssertions": 64,
+    "revisionAssertions": 18,
+    "total": 107,
+    "pass": 107
+  },
+  "authHeaderChecks": 128,
+  "widths": [
+    320,
+    390,
+    768,
+    1440
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "menuGapPx": 8,
+  "lint": {
+    "errors": 0,
+    "warnings": 16
+  },
+  "budget": {
+    "passed": true,
+    "limitsChanged": false,
+    "bootJsGzipBytes": 325506,
+    "bootCssGzipBytes": 69512,
+    "bootFiles": 6
+  },
+  "cronRetry": true,
+  "concurrency": true,
+  "remaining": [
+    "Deploy and migration not authorized/applied",
+    "Real Vercel CDN HIT/TTL and propagation to validate after deployment"
+  ]
+}

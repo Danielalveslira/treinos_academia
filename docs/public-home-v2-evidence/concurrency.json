@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "concurrentPublications": 2,
+  "concurrentWithdrawals": 2,
+  "duplicateWorkers": 5,
+  "baseline": {
+    "total": 0,
+    "revision": "1"
+  },
+  "published": {
+    "total": 2,
+    "revision": "3"
+  },
+  "final": {
+    "total": 0,
+    "revision": "5"
+  },
+  "converged": true
+}
