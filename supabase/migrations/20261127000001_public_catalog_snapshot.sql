@@ -26,7 +26,7 @@ create policy public_catalog_snapshot_read on public.public_catalog_snapshot
   for select to anon, authenticated using (true);
 
 create function private.queue_public_catalog_refresh() returns trigger
-language plpgsql security definer set search_path = pg_catalog, public, private as $$
+language plpgsql security definer set search_path = pg_catalog, public, private, pg_temp as $$
 declare before_visible boolean := false; after_visible boolean := false;
 begin
   if tg_op <> 'INSERT' then before_visible := old.is_active and old.status = 'published'; end if;
@@ -44,7 +44,7 @@ create trigger exercise_catalog_public_snapshot_event
   for each row execute function private.queue_public_catalog_refresh();
 
 create function private.refresh_public_catalog_snapshot() returns void
-language plpgsql security definer set search_path = pg_catalog, public, private as $$
+language plpgsql security definer set search_path = pg_catalog, public, private, pg_temp as $$
 declare current_generation bigint; published bigint; total bigint;
 begin
   -- Serializes processors and visibility events. Read committed sees the state

@@ -107,3 +107,7 @@ PUBLIC_SMOKE_MOCKS=1 PUBLIC_PREVIEW_URL=http://127.0.0.1:4174 node scripts/publi
 PUBLIC_SMOKE_MOCKS=1 PUBLIC_PREVIEW_URL=http://127.0.0.1:4174 node scripts/public-home-primer-smoke.mjs
 HEADER_WIDTHS=320,390,768,1440 node scripts/public-auth-header-smoke.mjs
 ```
+
+## Endurecimento identificado no CI de publicação
+
+O primeiro CI do PR #85 identificou que os dois novos SECURITY DEFINER não listavam `pg_temp` explicitamente no fim do search_path. A migration ainda não havia sido aplicada em produção. O caminho foi corrigido para `pg_catalog, public, private, pg_temp`, mantendo as verificações globais sem exceções ou relaxamento. O pgTAP do snapshot ganhou uma asserção específica (26 no total); foram reexecutados somente ele e os três arquivos de segurança afetados. As evidências locais anteriores permanecem associadas ao commit a385ab2; a integração deve usar o CI do novo commit.

@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(26);
 select is((select total_active from public.public_catalog_snapshot),(select count(*) from public.exercise_catalog where status='published' and is_active),'bootstrap is exact');
 select ok((select generation=published_generation from private.public_catalog_refresh),'bootstrap acknowledged');
 select is((select count(*) from cron.job where jobname='refresh-public-catalog-snapshot'),1::bigint,'one durable cron');
@@ -38,6 +38,7 @@ drop trigger simulated_snapshot_failure on public.public_catalog_snapshot;
 select private.refresh_public_catalog_snapshot();
 select is((select total_active from public.public_catalog_snapshot),(select total_active from baseline),'retry converges without event payload deltas');
 select ok((select generation=published_generation from private.public_catalog_refresh),'retry acknowledges only the committed snapshot');
+select is((select count(*)::int from pg_proc p where p.pronamespace='private'::regnamespace and p.proname in ('queue_public_catalog_refresh','refresh_public_catalog_snapshot') and p.proconfig @> array['search_path=pg_catalog, public, private, pg_temp']),2,'both definer paths explicitly place pg_temp last');
 select ok(not has_function_privilege('anon','private.refresh_public_catalog_snapshot()','execute'),'anonymous cannot run processor');
 select ok(not has_function_privilege('authenticated','private.refresh_public_catalog_snapshot()','execute'),'users cannot run processor');
 select ok(not has_table_privilege('anon','public.public_catalog_snapshot','update'),'anonymous cannot edit snapshot');
