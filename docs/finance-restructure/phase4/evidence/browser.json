@@ -1,0 +1,70 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "storefrontId": "fb63e690-d5be-4928-aaff-a3dba988cc34",
+  "mediaId": "06cea404-c928-4720-9adb-5243ee479831",
+  "createEditUploadApproval": true,
+  "oneDebitOnDoubleClick": true,
+  "orders": [
+    {
+      "id": "c311b7a8-b897-4a48-afec-383ffd4edfd2",
+      "totalCash": "21"
+    },
+    {
+      "id": "a3217348-8bad-4e45-8adb-0c43e6e8186e",
+      "totalCash": "6"
+    }
+  ],
+  "walletDelta": "27",
+  "anonymousPublicListing": true,
+  "directHtml404AfterExpiry": true,
+  "media404AfterExpiry": true,
+  "openBrowserExpiry": true,
+  "renewalPreservesIdentity": true,
+  "suspensionEffective": true,
+  "ownerIsolation": true,
+  "authenticatedPublicSession": true,
+  "privatePreview": true,
+  "networkFailureClearsPublicContent": true,
+  "mediaReplacementCleaned": true,
+  "captures": [
+    {
+      "width": 320,
+      "mode": "light",
+      "ownerOverflow": false,
+      "publicOverflow": false
+    },
+    {
+      "width": 320,
+      "mode": "dark",
+      "ownerOverflow": false,
+      "publicOverflow": false
+    },
+    {
+      "width": 390,
+      "mode": "light",
+      "ownerOverflow": false,
+      "publicOverflow": false
+    },
+    {
+      "width": 390,
+      "mode": "dark",
+      "ownerOverflow": false,
+      "publicOverflow": false
+    },
+    {
+      "width": 1440,
+      "mode": "light",
+      "ownerOverflow": false,
+      "publicOverflow": false
+    },
+    {
+      "width": 1440,
+      "mode": "dark",
+      "ownerOverflow": false,
+      "publicOverflow": false
+    }
+  ],
+  "pageErrors": [],
+  "externalFinancialRequests": 0
+}

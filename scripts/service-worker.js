@@ -309,7 +309,7 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     // Uma página pública estática nunca deve receber o shell autenticado quando
     // a rede falha; isso mostraria a rota errada (ou um 200 offline enganoso).
-    if (PUBLIC_STATIC_ROUTES.has(url.pathname)) {
+    if (PUBLIC_STATIC_ROUTES.has(url.pathname) || /^\/vitrine\/[0-9a-f-]{36}$/i.test(url.pathname)) {
       event.respondWith(fetch(request))
       return
     }

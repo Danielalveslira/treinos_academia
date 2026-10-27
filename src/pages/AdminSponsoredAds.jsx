@@ -38,7 +38,7 @@ export default function AdminSponsoredAds() {
   const [params] = useSearchParams()
   const reportRequested = params.get('report') === 'metrics'
   const [tab, setTab] = useState(
-    params.get('tab') === 'engine' ? 'engine' : reportRequested ? 'metrics' : 'campaigns'
+    TABS.some((item) => item.key === params.get('tab')) ? params.get('tab') : reportRequested ? 'metrics' : 'campaigns'
   )
   const needsCampaigns = tab === 'campaigns' || tab === 'metrics'
   const { ads, loading, error, refresh, add, edit, remove } = useAdminSponsoredAds(needsCampaigns)

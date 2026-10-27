@@ -54,8 +54,8 @@ export function PartnerProductForm({ form, errors, editing, requireImage, busy, 
         {editing ? 'Editar produto' : 'Novo produto'}
       </Heading>
       <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block', mb: 3 }}>
-        Somente produtos aprovados e dentro do período definido aparecem publicamente. A
-        compra acontece na loja do parceiro.
+        Estes registros legados permanecem privados na administração. Publicação comercial exige
+        uma vitrine aprovada com contratação vigente.
       </Text>
 
       <SectionLabel>Produto</SectionLabel>
@@ -155,7 +155,7 @@ export function PartnerProductForm({ form, errors, editing, requireImage, busy, 
         </Box>
       )}
 
-      <SectionLabel>Publicação</SectionLabel>
+      <SectionLabel>Histórico editorial legado</SectionLabel>
       <Box sx={{ display: 'grid', gridTemplateColumns: TWO_COLUMNS, gap: 3, mb: 3 }}>
         <FormControl>
           <FormControl.Label>Início (opcional)</FormControl.Label>
@@ -177,7 +177,7 @@ export function PartnerProductForm({ form, errors, editing, requireImage, busy, 
 
         <FormControl>
           <Checkbox checked={form.approved} onChange={(e) => onFieldChange('approved', e.target.checked)} />
-          <FormControl.Label>Aprovado para publicação</FormControl.Label>
+          <FormControl.Label>Aprovação legada (não publica)</FormControl.Label>
         </FormControl>
       </Box>
 

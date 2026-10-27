@@ -47,10 +47,10 @@ const skeleton = (label) => primerBox('section', '', primerHeading('h1', '', lab
 const vitrineHead = primerBox(
   'section',
   'vitrine-head',
-  `${primerHeading('h1', '', 'Vitrine')}${primerText('p', '', 'Produtos de marcas parceiras, em um só lugar.')}`
+  `${primerHeading('h1', '', 'Vitrine')}${primerText('p', '', 'Produtos de vitrines aprovadas, em um só lugar.')}`
 )
 const vitrineLoading = primerBox('p', '', 'Carregando produtos…', { sx: { color: 'fg.muted', fontSize: 1, py: 5, textAlign: 'center' } })
-const vitrineBody = `${vitrineHead}<section class="vitrine-catalog" aria-label="Catálogo de produtos de marcas parceiras"><div id="vitrine-root">${vitrineLoading}</div></section>`
+const vitrineBody = `${vitrineHead}${primerLink('/vitrine/gerenciar','Gerenciar minhas vitrines')}<section class="vitrine-catalog" aria-label="Catálogo de produtos de marcas parceiras"><div id="vitrine-root">${vitrineLoading}</div></section>`
 
 export const publicPages = [
   {

@@ -1,0 +1,195 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+UPDATE 16
+INSERT 0 3
+UPDATE 1
+CREATE FUNCTION
+CREATE TABLE
+GRANT
+GRANT
+CREATE FUNCTION
+
+SET
+ok 1 - limits require explicit consent
+RESET
+UPDATE 1
+74000000-0000-0000-0000-000000000001
+SET
+ok 2 - no invented limits are implicitly approved
+RESET
+
+SET
+
+ok 3 - limits use CAS
+RESET
+74000000-0000-0000-0000-000000000001
+SET
+INSERT 0 1
+ok 4 - create replay yields same storefront
+ok 5 - create key cannot change payload
+ok 6 - new storefront is draft
+
+INSERT 0 1
+ok 7 - incomplete product drafts allowed without image
+ok 8 - incomplete product cannot be submitted
+ok 9 - ownership parameters rejected
+ok 10 - expiry cannot be edited by client
+ok 11 - only media backend may attest bytes
+ok 12 - missing media returns null safely
+RESET
+INSERT 0 1
+SET
+838f8d3c-ef98-4def-802f-5f2cc8e4ef15
+
+ok 13 - owner cannot approve self
+ok 14 - unpaid unapproved storefront remains private
+RESET
+
+SET
+
+ok 15 - moderator cannot overwrite newer revision
+RESET
+ok 16 - creation editing approval never create a financial order
+ok 17 - approval alone does not publish
+UPDATE 1
+{"revision": "6", "priceVersionId": "6712e38e-6859-4d6a-b4dc-e59103e6ebc0"}
+{"revision": "7", "salesEnabled": true}
+74000000-0000-0000-0000-000000000001
+SET
+INSERT 0 1
+ok 18 - insufficient cash cannot publish
+RESET
+
+
+SET
+{"id": "226ee121-140b-45cd-abc3-e3761d236ff9", "status": "fulfilled", "createdAt": "2026-10-27T22:14:09.748685+00:00", "periodEnd": "2026-11-03T22:14:09.796431+00:00", "totalCash": "49", "resourceId": "08cee17b-363b-47ac-837b-ddae9a5808e4", "fulfilledAt": "2026-10-27T22:14:09.796431+00:00", "periodStart": "2026-10-27T22:14:09.796431+00:00", "durationDays": "7", "offeringCode": "product_storefront", "unitPriceCash": "7", "priceVersionId": "6712e38e-6859-4d6a-b4dc-e59103e6ebc0", "quoteExpiresAt": "2026-10-27T22:19:09.748685+00:00", "contentRevision": "6"}
+{"id": "226ee121-140b-45cd-abc3-e3761d236ff9", "status": "fulfilled", "createdAt": "2026-10-27T22:14:09.748685+00:00", "periodEnd": "2026-11-03T22:14:09.796431+00:00", "totalCash": "49", "resourceId": "08cee17b-363b-47ac-837b-ddae9a5808e4", "fulfilledAt": "2026-10-27T22:14:09.796431+00:00", "periodStart": "2026-10-27T22:14:09.796431+00:00", "durationDays": "7", "offeringCode": "product_storefront", "unitPriceCash": "7", "priceVersionId": "6712e38e-6859-4d6a-b4dc-e59103e6ebc0", "quoteExpiresAt": "2026-10-27T22:19:09.748685+00:00", "contentRevision": "6"}
+RESET
+ok 19 - seven days debit once for the entire storefront
+ok 20 - one ledger record per commercial order
+ok 21 - exact 168-hour storefront period
+SET
+ok 22 - anonymous catalogue returns paid approved product
+ok 23 - direct detail is eligible
+ok 24 - public projection has no owner identifier
+ok 25 - eligible product media authorized anonymously
+ok 26 - anonymous direct storefront read denied
+ok 27 - legacy API cannot bypass commercial visibility
+RESET
+74000000-0000-0000-0000-000000000002
+SET
+ok 28 - another owner cannot list private storefront
+ok 29 - cannot edit another storefront
+ok 30 - cannot archive another owner product
+ok 31 - cannot upload into another storefront
+RESET
+UPDATE 1
+SET
+ok 32 - expired products disappear without cron
+ok 33 - expired direct detail returns no content
+ok 34 - expired content is absent from category filters
+ok 35 - expired media is denied
+RESET
+74000000-0000-0000-0000-000000000001
+SET
+ok 36 - expiry preserves editorial approval
+ok 37 - private management identifies expiry
+ok 38 - owner retains expired media privately
+INSERT 0 1
+{"id": "fc483411-a6e2-4de2-bece-2d12358918ec", "status": "fulfilled", "createdAt": "2026-10-27T22:14:09.882604+00:00", "periodEnd": "2026-10-29T22:14:09.885688+00:00", "totalCash": "14", "resourceId": "08cee17b-363b-47ac-837b-ddae9a5808e4", "fulfilledAt": "2026-10-27T22:14:09.885688+00:00", "periodStart": "2026-10-27T22:14:09.885688+00:00", "durationDays": "2", "offeringCode": "product_storefront", "unitPriceCash": "7", "priceVersionId": "6712e38e-6859-4d6a-b4dc-e59103e6ebc0", "quoteExpiresAt": "2026-10-27T22:19:09.882604+00:00", "contentRevision": "6"}
+RESET
+ok 39 - late renewal begins exactly 48 hours
+ok 40 - renewal reuses same right and content identity
+
+
+ok 41 - editorial suspension overrides paid contract
+ok 42 - suspension retains paid-period evidence
+74000000-0000-0000-0000-000000000001
+SET
+ok 43 - owner cannot remove suspension
+ok 44 - payment cannot reactivate suspension
+
+ok 45 - editing never removes suspension
+RESET
+
+
+74000000-0000-0000-0000-000000000001
+SET
+
+RESET
+
+
+74000000-0000-0000-0000-000000000001
+SET
+INSERT 0 1
+
+ok 46 - editorial revision changes atomically block payment
+RESET
+ok 47 - unreviewed edit stops public visibility
+ok 48 - failed stale order never debits
+ok 49 - bare commercial anchor cannot impersonate concrete storefront
+74000000-0000-0000-0000-000000000001
+
+
+
+74000000-0000-0000-0000-000000000001
+INSERT 0 1
+INSERT 0 1
+CREATE FUNCTION
+CREATE TRIGGER
+SET
+ok 50 - fault after debit cannot partially publish storefront
+RESET
+DROP TRIGGER
+ok 51 - grant fault preserves wallet
+ok 52 - grant fault preserves ledger
+ok 53 - grant fault leaves quote unfulfilled
+ok 54 - grant fault preserves right exactly
+
+{"id": "fc483411-a6e2-4de2-bece-2d12358918ec", "status": "reversed", "createdAt": "2026-10-27T22:14:09.882604+00:00", "periodEnd": "2026-10-29T22:14:09.885688+00:00", "totalCash": "14", "resourceId": "08cee17b-363b-47ac-837b-ddae9a5808e4", "fulfilledAt": "2026-10-27T22:14:09.885688+00:00", "periodStart": "2026-10-27T22:14:09.885688+00:00", "durationDays": "2", "offeringCode": "product_storefront", "unitPriceCash": "7", "priceVersionId": "6712e38e-6859-4d6a-b4dc-e59103e6ebc0", "quoteExpiresAt": "2026-10-27T22:19:09.882604+00:00", "contentRevision": "6"}
+{"id": "fc483411-a6e2-4de2-bece-2d12358918ec", "status": "reversed", "createdAt": "2026-10-27T22:14:09.882604+00:00", "periodEnd": "2026-10-29T22:14:09.885688+00:00", "totalCash": "14", "resourceId": "08cee17b-363b-47ac-837b-ddae9a5808e4", "fulfilledAt": "2026-10-27T22:14:09.885688+00:00", "periodStart": "2026-10-27T22:14:09.885688+00:00", "durationDays": "2", "offeringCode": "product_storefront", "unitPriceCash": "7", "priceVersionId": "6712e38e-6859-4d6a-b4dc-e59103e6ebc0", "quoteExpiresAt": "2026-10-27T22:19:09.882604+00:00", "contentRevision": "6"}
+ok 55 - concrete storefront reversal credits once
+ok 56 - concrete storefront refund has one ledger entry
+ok 57 - reversal removes public visibility immediately
+ok 58 - reversal preserves product data
+74000000-0000-0000-0000-000000000001
+SET
+INSERT 0 1
+ok 59 - product cannot move between storefronts
+ok 60 - storefront limits enforced by owner lock
+ok 61 - media cannot cross storefronts even for the same owner
+ok 62 - referenced media cannot be discarded
+3d8ad40d-db40-417c-a9e2-9dce300deffb
+997eafba-87fe-4e1e-aabb-f844e9af056a
+d2636aed-c69c-46be-930d-7afcdb08afd3
+ok 63 - product limits are enforced in PostgreSQL
+INSERT 0 1
+ok 64 - unused media cleanup claims a server-owned path
+ok 65 - pending cleanup media cannot be attached concurrently
+RESET
+ok 66 - storage failure can retain a tracked retryable cleanup row
+RESET
+UPDATE 1
+SET
+ok 67 - blocked account cannot manage
+ok 68 - blocked owner cannot read private media
+RESET
+UPDATE 1
+74000000-0000-0000-0000-000000000002
+INSERT 0 1
+UPDATE 1
+ok 69 - owner removal preserves referential integrity
+ok 70 - owner removal preserves storefront data without assigning it to someone else
+74000000-0000-0000-0000-000000000001
+
+SET
+ok 71 - revoked session cannot manage
+RESET
+ok 72 - private approval synchronization not exposed
+ok 73 - no direct media attestation or ownership changes
+ok 74 - media bucket is private
+1..74
+ROLLBACK

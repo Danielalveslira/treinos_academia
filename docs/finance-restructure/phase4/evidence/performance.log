@@ -1,0 +1,68 @@
+BEGIN
+SET
+INSERT 0 1
+INSERT 0 1000
+INSERT 0 1000
+UPDATE 1000
+INSERT 0 10000
+INSERT 0 10000
+INSERT 0 1
+INSERT 0 1000
+INSERT 0 1000
+ANALYZE
+ANALYZE
+ANALYZE
+ANALYZE
+                                                                               QUERY PLAN                                                                               
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=47.31..47.33 rows=10 width=36) (actual time=2.325..2.328 rows=10 loops=1)
+   Buffers: shared hit=336
+   ->  Sort  (cost=47.31..47.33 rows=10 width=36) (actual time=2.324..2.326 rows=10 loops=1)
+         Sort Key: p.display_order, p.id
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=336
+         ->  Nested Loop  (cost=4.64..47.14 rows=10 width=36) (actual time=2.307..2.315 rows=10 loops=1)
+               Buffers: shared hit=336
+               ->  Index Only Scan using product_storefronts_pkey on product_storefronts s  (cost=0.28..8.54 rows=1 width=16) (actual time=2.288..2.289 rows=1 loops=1)
+                     Index Cond: (id = '148f257c-804c-74fa-b1bb-b5d100955219'::uuid)
+                     Filter: private.commercial_resource_visible(id)
+                     Heap Fetches: 1
+                     Buffers: shared hit=332
+               ->  Bitmap Heap Scan on partner_products p  (cost=4.36..38.50 rows=10 width=36) (actual time=0.017..0.023 rows=10 loops=1)
+                     Recheck Cond: ((storefront_id = '148f257c-804c-74fa-b1bb-b5d100955219'::uuid) AND (NOT archived))
+                     Heap Blocks: exact=2
+                     Buffers: shared hit=4
+                     ->  Bitmap Index Scan on partner_products_storefront_idx  (cost=0.00..4.36 rows=10 width=0) (actual time=0.008..0.008 rows=10 loops=1)
+                           Index Cond: (storefront_id = '148f257c-804c-74fa-b1bb-b5d100955219'::uuid)
+                           Buffers: shared hit=2
+ Planning:
+   Buffers: shared hit=86
+ Planning Time: 0.483 ms
+ Execution Time: 2.360 ms
+(24 rows)
+
+                                      QUERY PLAN                                       
+---------------------------------------------------------------------------------------
+ Result  (cost=0.00..0.26 rows=1 width=32) (actual time=96.018..96.019 rows=1 loops=1)
+   Buffers: shared hit=12706
+ Planning Time: 0.010 ms
+ Execution Time: 96.029 ms
+(4 rows)
+
+                                       QUERY PLAN                                        
+-----------------------------------------------------------------------------------------
+ Result  (cost=0.00..0.26 rows=1 width=32) (actual time=158.194..158.195 rows=1 loops=1)
+   Buffers: shared hit=12532
+ Planning Time: 0.023 ms
+ Execution Time: 158.211 ms
+(4 rows)
+
+                                      QUERY PLAN                                       
+---------------------------------------------------------------------------------------
+ Result  (cost=0.00..0.26 rows=1 width=32) (actual time=89.401..89.402 rows=1 loops=1)
+   Buffers: shared hit=12382
+ Planning Time: 0.031 ms
+ Execution Time: 89.417 ms
+(4 rows)
+
+ROLLBACK

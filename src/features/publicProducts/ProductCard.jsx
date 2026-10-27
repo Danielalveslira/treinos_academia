@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { Box, Button, Label, Text } from '@primer/react'
-import { safeHttpsUrl } from './publicProductCatalogService'
+import {
+  safeHttpsUrl,
+  publicProductMediaUrl,
+  formatProductPrice,
+} from './publicProductCatalogService'
 
 export function ProductCard({ product, priority = false, hideBrand = false, onZoom }) {
   const [imageFailed, setImageFailed] = useState(false)
   const storeUrl = safeHttpsUrl(product.store_url)
-  const imageUrl = !imageFailed ? safeHttpsUrl(product.image_url) : null
+  const imageUrl = !imageFailed ? publicProductMediaUrl(product) : null
   if (!storeUrl) return null
   const rel = product.sponsored ? 'noopener noreferrer sponsored' : 'noopener noreferrer'
 
@@ -79,6 +83,9 @@ export function ProductCard({ product, priority = false, hideBrand = false, onZo
         <Text as="h3" sx={{ fontSize: 1, fontWeight: 600, m: 0, lineHeight: 1.3 }}>
           {product.name || 'Produto'}
         </Text>
+        {formatProductPrice(product.price_centavos) && (
+          <Text as="p">{formatProductPrice(product.price_centavos)}</Text>
+        )}
         {product.description && (
           <Text
             sx={{

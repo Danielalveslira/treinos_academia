@@ -1,6 +1,11 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
-import { Box, Button, Spinner, Text, ThemeProvider } from '@primer/react'
-import { CATALOG_GROUP_SIZE, CATALOG_PAGE_SIZE, CatalogError, fetchProductCatalog } from './publicProductCatalogService'
+import { Box, Button, Heading, Spinner, Text, ThemeProvider } from '@primer/react'
+import {
+  CATALOG_GROUP_SIZE,
+  CATALOG_PAGE_SIZE,
+  CatalogError,
+  fetchProductCatalog,
+} from './publicProductCatalogService'
 import { ProductFilters } from './ProductFilters'
 import { ProductGrid } from './ProductGrid'
 import { ProductGroups } from './ProductGroups'
@@ -12,7 +17,7 @@ function readUrlFilters() {
   return {
     search: (params.get('busca') || '').slice(0, 80),
     category: (params.get('categoria') || '').slice(0, 80),
-    brand: (params.get('marca') || '').slice(0, 120),
+    brand: (params.get('loja') || params.get('marca') || '').slice(0, 120),
   }
 }
 
@@ -20,7 +25,7 @@ function writeUrlFilters({ search, category, brand }) {
   const params = new URLSearchParams()
   if (search.trim()) params.set('busca', search.trim())
   if (category) params.set('categoria', category)
-  if (brand) params.set('marca', brand)
+  if (brand) params.set('loja', brand)
   const next = `${location.pathname}${params.size ? `?${params}` : ''}`
   if (next !== location.pathname + location.search) history.pushState(history.state, '', next)
 }
@@ -46,7 +51,7 @@ function statusMessage({ status, errorCode, totalProducts, totalBrands }) {
       ? 'A vitrine está temporariamente indisponível.'
       : 'Não foi possível carregar os produtos agora.'
   }
-  return `${totalProducts} produto${totalProducts === 1 ? '' : 's'} encontrado${totalProducts === 1 ? '' : 's'} · ${totalBrands} marca${totalBrands === 1 ? '' : 's'} representada${totalBrands === 1 ? '' : 's'}.`
+  return `${totalProducts} produto${totalProducts === 1 ? '' : 's'} encontrado${totalProducts === 1 ? '' : 's'} · ${totalBrands} vitrine${totalBrands === 1 ? '' : 's'}.`
 }
 
 function ProductCatalog() {
@@ -68,47 +73,92 @@ function ProductCatalog() {
   const requestIdRef = useRef(0)
   const controllerRef = useRef(null)
   const offsetRef = useRef(0)
+  const expiryTimer = useRef(null)
 
   const grouped = !committedSearch.trim() && !category && !brand
   const hasFilters = Boolean(searchInput || category || brand)
 
-  const load = useCallback((append) => {
-    controllerRef.current?.abort()
-    const controller = new AbortController()
-    controllerRef.current = controller
-    const requestId = ++requestIdRef.current
-    const nextOffset = append ? offsetRef.current : 0
-    setStatus(append ? 'loading-more' : 'loading')
-    setErrorCode(null)
-    fetchProductCatalog(
-      {
-        mode: grouped ? 'groups' : 'items',
-        search: committedSearch.trim(),
-        category,
-        brand,
-        offset: nextOffset,
-        limit: grouped ? CATALOG_GROUP_SIZE : CATALOG_PAGE_SIZE,
-      },
-      controller.signal
-    )
-      .then((page) => {
-        if (requestId !== requestIdRef.current) return
-        const list = grouped ? page.groups : page.items
-        const count = Array.isArray(list) ? list.length : 0
-        if (grouped) setGroups((prev) => (append ? [...prev, ...(list || [])] : list || []))
-        else setItems((prev) => (append ? [...prev, ...(list || [])] : list || []))
-        setTotalProducts(Number(page.totalProducts) || 0)
-        setTotalBrands(Number(page.totalBrands) || 0)
-        offsetRef.current = nextOffset + count
-        setOffset(offsetRef.current)
-        setStatus('ready')
-      })
-      .catch((error) => {
-        if (error.name === 'AbortError' || requestId !== requestIdRef.current) return
-        setErrorCode(error instanceof CatalogError ? error.code : 'UNKNOWN')
-        setStatus('error')
-      })
-  }, [grouped, committedSearch, category, brand])
+  const load = useCallback(
+    (append) => {
+      controllerRef.current?.abort()
+      const controller = new AbortController()
+      controllerRef.current = controller
+      const requestId = ++requestIdRef.current
+      const nextOffset = append ? offsetRef.current : 0
+      setStatus(append ? 'loading-more' : 'loading')
+      setErrorCode(null)
+      if (!append) {
+        setGroups([])
+        setItems([])
+        setZoomProduct(null)
+      }
+      const started = performance.now()
+      fetchProductCatalog(
+        {
+          mode: grouped ? 'groups' : 'items',
+          search: committedSearch.trim(),
+          category,
+          brand,
+          offset: nextOffset,
+          limit: grouped ? CATALOG_GROUP_SIZE : CATALOG_PAGE_SIZE,
+        },
+        controller.signal
+      )
+        .then((page) => {
+          if (requestId !== requestIdRef.current) return
+          clearTimeout(expiryTimer.current)
+          if (page.validUntil) {
+            const remaining =
+              Date.parse(page.validUntil) -
+              Date.parse(page.serverTime) -
+              (performance.now() - started)
+            if (!Number.isFinite(remaining) || remaining <= 0) {
+              setGroups([])
+              setItems([])
+              setZoomProduct(null)
+              setTotalProducts(0)
+              setTotalBrands(0)
+              setCategories([])
+              setStatus('ready')
+              return
+            }
+            expiryTimer.current = setTimeout(
+              () => {
+                setGroups([])
+                setItems([])
+                setZoomProduct(null)
+                setTotalProducts(0)
+                setTotalBrands(0)
+                setCategories([])
+                setStatus('ready')
+              },
+              Math.min(remaining, 2147483647)
+            )
+          }
+          const list = grouped ? page.groups : page.items
+          const count = Array.isArray(list) ? list.length : 0
+          if (grouped) setGroups((prev) => (append ? [...prev, ...(list || [])] : list || []))
+          else setItems((prev) => (append ? [...prev, ...(list || [])] : list || []))
+          setTotalProducts(Number(page.totalProducts) || 0)
+          setTotalBrands(Number(page.totalBrands) || 0)
+          offsetRef.current = nextOffset + count
+          setOffset(offsetRef.current)
+          setStatus('ready')
+        })
+        .catch((error) => {
+          if (error.name === 'AbortError' || requestId !== requestIdRef.current) return
+          setGroups([])
+          setItems([])
+          setZoomProduct(null)
+          setTotalProducts(0)
+          setTotalBrands(0)
+          setCategories([])
+          setErrorCode(error instanceof CatalogError ? error.code : 'UNKNOWN')
+          setStatus('error')
+        })
+    },
+    [grouped, committedSearch, category, brand]
+  )
 
   // Nova busca ao trocar qualquer filtro (sempre do zero, offset volta a 0). `load` muda de
   // identidade com os mesmos filtros, então não entra nas deps para não duplicar o disparo.
@@ -129,8 +179,12 @@ function ProductCatalog() {
   useEffect(() => {
     const controller = new AbortController()
     fetchProductCatalog({ mode: 'categories' }, controller.signal)
-      .then((values) => { if (Array.isArray(values)) setCategories(values) })
-      .catch(() => { /* a busca por categoria cai de volta para "Todas as categorias" */ })
+      .then((values) => {
+        if (Array.isArray(values)) setCategories(values)
+      })
+      .catch(() => {
+        /* a busca por categoria cai de volta para "Todas as categorias" */
+      })
     return () => controller.abort()
   }, [])
 
@@ -146,7 +200,24 @@ function ProductCatalog() {
     return () => window.removeEventListener('popstate', onPopState)
   }, [])
 
-  useEffect(() => () => controllerRef.current?.abort(), [])
+  useEffect(() => {
+    const hide = () => {
+      if (document.hidden) {
+        setGroups([])
+        setItems([])
+        setZoomProduct(null)
+      } else load(false)
+    }
+    const restore = () => load(false)
+    document.addEventListener('visibilitychange', hide)
+    window.addEventListener('pageshow', restore)
+    return () => {
+      controllerRef.current?.abort()
+      clearTimeout(expiryTimer.current)
+      document.removeEventListener('visibilitychange', hide)
+      window.removeEventListener('pageshow', restore)
+    }
+  }, [load])
 
   function clearFilters() {
     setSearchInput('')
@@ -155,15 +226,26 @@ function ProductCatalog() {
     setBrand('')
   }
 
-  function openZoom(product, triggerEl) {
+  async function openZoom(product, triggerEl) {
     zoomTriggerRef.current = triggerEl
-    setZoomProduct(product)
+    setZoomProduct(null)
+    try {
+      const current = await fetchProductCatalog({ mode: 'product', brand: product.id, limit: 1 })
+      if (current.items?.[0]) setZoomProduct(current.items[0])
+      else load(false)
+    } catch {
+      setGroups([])
+      setItems([])
+      setStatus('error')
+    }
   }
 
   const showGroups = grouped && groups.length > 0
   const showItems = !grouped && items.length > 0
   const showEmpty = status === 'ready' && !showGroups && !showItems
-  const canLoadMore = grouped ? groups.length < totalBrands && groups.length > 0 : items.length < totalProducts && items.length > 0
+  const canLoadMore = grouped
+    ? groups.length < totalBrands && groups.length > 0
+    : items.length < totalProducts && items.length > 0
 
   return (
     <Box>
@@ -176,7 +258,20 @@ function ProductCatalog() {
         hasFilters={hasFilters}
         onClear={clearFilters}
       />
-      <Box role="status" aria-live="polite" sx={{ display: 'flex', alignItems: 'center', gap: 2, fontSize: 1, color: 'fg.muted', mt: 3, mb: 3, minHeight: 20 }}>
+      <Box
+        role="status"
+        aria-live="polite"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          fontSize: 1,
+          color: 'fg.muted',
+          mt: 3,
+          mb: 3,
+          minHeight: 20,
+        }}
+      >
         {(status === 'loading' || status === 'loading-more') && <Spinner size="small" />}
         <span>{statusMessage({ status, errorCode, totalProducts, totalBrands })}</span>
       </Box>
@@ -185,21 +280,35 @@ function ProductCatalog() {
           <Button onClick={() => load(offset > 0)}>Tentar de novo</Button>
         </Box>
       )}
+      <Button onClick={() => load(false)} sx={{ mb: 3 }}>
+        Atualizar catálogo
+      </Button>
       {showEmpty && (
-        <Text sx={{ color: 'fg.muted' }}>Nenhum produto encontrado. Ajuste a busca ou a categoria.</Text>
+        <Text sx={{ color: 'fg.muted' }}>
+          Nenhum produto encontrado. Ajuste a busca ou a categoria.
+        </Text>
       )}
       {showGroups && <ProductGroups groups={groups} onZoom={openZoom} onViewAllBrand={setBrand} />}
+      {showItems && brand && (
+        <Heading as="h2" sx={{ fontSize: 2, mb: 3 }}>
+          {items[0]?.storefront_name}
+        </Heading>
+      )}
       {showItems && <ProductGrid items={items} onZoom={openZoom} allowPriority />}
       {canLoadMore && (
         <Box sx={{ textAlign: 'center', mt: 4 }}>
           <Button onClick={() => load(true)} disabled={status === 'loading-more'}>
-            {grouped ? 'Carregar mais marcas' : 'Carregar mais'}
+            {grouped ? 'Carregar mais vitrines' : 'Carregar mais'}
           </Button>
         </Box>
       )}
       {zoomProduct && (
         <Suspense fallback={null}>
-          <ProductDialog product={zoomProduct} onClose={() => setZoomProduct(null)} returnFocusRef={zoomTriggerRef} />
+          <ProductDialog
+            product={zoomProduct}
+            onClose={() => setZoomProduct(null)}
+            returnFocusRef={zoomTriggerRef}
+          />
         </Suspense>
       )}
     </Box>
@@ -209,7 +318,11 @@ function ProductCatalog() {
 export function PublicProductsIsland() {
   const mode = usePublicThemeMode()
   return (
-    <ThemeProvider colorMode={mode === 'dark' ? 'night' : 'day'} dayScheme="light" nightScheme="dark">
+    <ThemeProvider
+      colorMode={mode === 'dark' ? 'night' : 'day'}
+      dayScheme="light"
+      nightScheme="dark"
+    >
       <ProductCatalog />
     </ThemeProvider>
   )

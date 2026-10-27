@@ -2,12 +2,22 @@ import process from 'node:process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadEnv } from 'vite'
+import storefrontDetail from '../api/storefront.js'
 import catalogSnapshot from '../api/public-catalog-snapshot.js'
-import { publicPages, renderPublicPage, renderRobots, renderSitemap } from './public-pages-template.mjs'
+import {
+  publicPages,
+  renderPublicPage,
+  renderRobots,
+  renderSitemap,
+} from './public-pages-template.mjs'
 
 const routes = new Map(publicPages.map(({ path, file }) => [path, file]))
 const variant = (path) => {
-  const clean = path.endsWith('.html') ? path.slice(0, -5) : path.endsWith('/') ? path.slice(0, -1) : path
+  const clean = path.endsWith('.html')
+    ? path.slice(0, -5)
+    : path.endsWith('/')
+      ? path.slice(0, -1)
+      : path
   return clean !== path && routes.has(clean) && clean !== '/' ? clean : null
 }
 
@@ -32,8 +42,15 @@ export function publicPreviewPlugin() {
       server.middlewares.use(async (request, response, next) => {
         if (request.method !== 'GET' && request.method !== 'HEAD') return next()
         const path = new URL(request.url, 'http://localhost').pathname
-        if (path === '/robots.txt') return send(response, request, renderRobots(), 'text/plain; charset=utf-8')
-        if (path === '/sitemap.xml') return send(response, request, renderSitemap(), 'application/xml; charset=utf-8')
+        if (/^\/vitrine\/[0-9a-f-]{36}$/i.test(path)) {
+          for (const name of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
+            if (!process.env[name] && env[name]) process.env[name] = env[name]
+          return storefrontDetail(request, response)
+        }
+        if (path === '/robots.txt')
+          return send(response, request, renderRobots(), 'text/plain; charset=utf-8')
+        if (path === '/sitemap.xml')
+          return send(response, request, renderSitemap(), 'application/xml; charset=utf-8')
         const canonical = variant(path)
         if (canonical) return redirect(response, request, canonical)
         if (path === '/api/public-catalog-snapshot') {
@@ -73,7 +90,12 @@ export function publicPreviewPlugin() {
           response.end('Página não encontrada')
           return
         }
-        send(response, request, readFileSync(join(server.config.root, 'dist', file)), 'text/html; charset=utf-8')
+        send(
+          response,
+          request,
+          readFileSync(join(server.config.root, 'dist', file)),
+          'text/html; charset=utf-8'
+        )
       })
     },
   }

@@ -5,6 +5,7 @@ import { validatePartnerProduct } from '../utils/validators'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { ToastFlash } from './ToastFlash'
+import StorefrontManager from './StorefrontManager'
 import { PartnerProductForm } from './PartnerProductForm'
 import { PartnerProductList } from './PartnerProductList'
 
@@ -29,7 +30,7 @@ export default function CommercialAdmin() {
   async function refresh() {
     const [leadResult, productResult] = await Promise.all([
       supabase.from('commercial_leads').select('id,company,contact,email,whatsapp,segment,website,modality,message,status,created_at').order('created_at', { ascending: false }).limit(100),
-      supabase.from('partner_products').select('*').order('created_at', { ascending: false }).limit(100),
+      supabase.from('partner_products').select('*').is('storefront_id', null).order('created_at', { ascending: false }).limit(100),
     ])
     if (leadResult.error || productResult.error) setMessage('Não foi possível carregar os dados comerciais. Confira a migração e suas permissões.')
     else { setLeads(leadResult.data); setProducts(productResult.data); setMessage('') }
@@ -133,8 +134,10 @@ export default function CommercialAdmin() {
       <label>Status <select value={lead.status} disabled={busy} onChange={(event) => changeStatus(lead.id, event.target.value)}><option value="novo">Novo</option><option value="em_contato">Em contato</option><option value="encerrado">Encerrado</option></select></label>
     </article>)}
 
+    <Box sx={{ mt: 5 }}><StorefrontManager admin /></Box>
+
     <Box sx={{ mt: 5 }}>
-      <Heading as="h2" sx={{ fontSize: 2, mb: 3 }}>Produtos da vitrine</Heading>
+      <Heading as="h2" sx={{ fontSize: 2, mb: 3 }}>Produtos legados (somente administração)</Heading>
 
       <ToastFlash toasts={toasts} />
 
@@ -154,7 +157,6 @@ export default function CommercialAdmin() {
       ) : (
         <PartnerProductList
           products={products}
-          now={Date.now()}
           busy={busy}
           onEdit={startEdit}
           onDelete={removeProduct}

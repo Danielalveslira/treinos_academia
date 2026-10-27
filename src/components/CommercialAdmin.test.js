@@ -96,6 +96,8 @@ before(async () => {
       {
         name: 'commercial-admin-fixtures',
         setup(pluginBuild) {
+          pluginBuild.onResolve({filter:/\/StorefrontManager$/},()=>({path:'manager',namespace:'fixture-manager'}))
+          pluginBuild.onLoad({filter:/.*/,namespace:'fixture-manager'},()=>({contents:'export default function StorefrontManager(){return null}'}))
           pluginBuild.onResolve({ filter: /\/supabase\/config$/ }, (args) => ({
             path: args.path,
             namespace: 'fixture-supabase',
@@ -117,6 +119,7 @@ before(async () => {
                   order(...a) { ops.push(['order', a]); return node },
                   limit(...a) { ops.push(['limit', a]); return node },
                   eq(...a) { ops.push(['eq', a]); return node },
+                  is(...a) { ops.push(['is', a]); return node },
                   insert(payload) {
                     globalThis.__supaCalls.push({ table, op: 'insert', payload })
                     ops.push(['insert', payload])
@@ -279,7 +282,7 @@ test('marcar "Aprovado" num rascunho legado sem imagem é bloqueado até preench
   const page = mount()
   await tick()
   page.clickEdit(0)
-  page.setChecked('Aprovado para publicação', true)
+  page.setChecked('Aprovação legada (não publica)', true)
   page.submit()
   assert.equal(globalThis.__supaCalls.filter((c) => c.op === 'update').length, 0, 'publicar sem imagem é rejeitado')
   page.unmount()

@@ -34,7 +34,7 @@ Deno.serve(async(req:Request)=>{
  }
  const name=url.pathname.replace(/^\/functions\/v1\//,'').split('/')[0]
  if(!/^[a-z0-9-]+$/.test(name))return json({error:'NOT_FOUND'},404)
- if(name!=='infinitepay-webhook' && !await valid((req.headers.get('Authorization')||'').replace(/^Bearer /,'')))return json({error:'NOT_AUTHENTICATED'},401)
+ if(name!=='infinitepay-webhook' && name!=='storefront-media' && !await valid((req.headers.get('Authorization')||'').replace(/^Bearer /,'')))return json({error:'NOT_AUTHENTICATED'},401)
  try {
   const path=name.startsWith('infinitepay-')?'/home/deno/wrappers/functions/':'/home/deno/functions/'
   const worker=await (globalThis as any).EdgeRuntime.userWorkers.create({servicePath:path+name,memoryLimitMb:128,workerTimeoutMs:60000,noModuleCache:false,importMapPath:null,envVars:Object.entries(Deno.env.toObject()),forceCreate:false,netAccessDisabled:false,cpuTimeSoftLimitMs:10000,cpuTimeHardLimitMs:20000})
