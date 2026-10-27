@@ -16,8 +16,8 @@ O frontend mostra **“A vitrine está temporariamente indisponível”** e a a�
 
 Capturas reais de Chromium, com respostas de catálogo simuladas somente na rede do navegador:
 
-- [Antes, 390 px](/workspaces/treinos_academia/docs/vitrine-filters/before/390-closed.png) e [antes, 1440 px](/workspaces/treinos_academia/docs/vitrine-filters/before/1440-closed.png).
-- [Depois, 390 px, menu aberto](/workspaces/treinos_academia/docs/vitrine-filters/after/390-open.png), [seleção e resultado vazio](/workspaces/treinos_academia/docs/vitrine-filters/after/390-selected.png) e [tema claro](/workspaces/treinos_academia/docs/vitrine-filters/after/390-light-open.png).
-- [Depois, 1440 px, menu aberto](/workspaces/treinos_academia/docs/vitrine-filters/after/1440-open.png). Há capturas de menu fechado, aberto e selecionado para 320, 375, 390, 768, 1024 e 1440 px em `after/`.
+- Antes, 390 px (captura removida) e antes, 1440 px (captura removida).
+- Depois, 390 px, menu aberto (captura removida), seleção e resultado vazio (captura removida) e tema claro (captura removida).
+- Depois, 1440 px, menu aberto (captura removida). Há capturas de menu fechado, aberto e selecionado para 320, 375, 390, 768, 1024 e 1440 px em `after/`.
 
 `node scripts/public-products-smoke.mjs` passou com 0, 1, 6, 36 e 205 produtos simulados, seis larguras, altura uniforme, ausência de overflow, menu dentro da viewport, seleção por teclado e toque, fechamento por Escape, Tab e clique externo, busca combinada com categoria, URL, carregamento lento, erro PGRST202, modal e retorno por Turbo. `node scripts/public-browser-smoke.mjs` e `node scripts/public-turbo-smoke.mjs` passaram. `npm run build` passou; `npm run lint` terminou com 0 erros e 16 avisos preexistentes em outros arquivos. `git diff --check` passou.

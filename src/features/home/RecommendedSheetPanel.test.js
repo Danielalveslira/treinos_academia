@@ -191,11 +191,14 @@ test('com histórico: mostra última ficha treinada e mais treinada no mês, sem
   )
 })
 
-test('atividade parcial não é apresentada como conclusão e explica sincronização', () => {
+test('indicadores mostram atividade, sem inventar conclusão ou exibir o aviso técnico removido', () => {
   const html = render()
-  assert.match(html, /não comprova conclusão da ficha/)
-  assert.match(html, /após sincronização/)
-  assert.doesNotMatch(html, /execuções neste mês|sessões concluídas|Última execução/)
+  assert.match(html, /ÚLTIMA FICHA UTILIZADA/)
+  assert.match(html, /MAIS DIAS COM REGISTROS/)
+  assert.doesNotMatch(
+    html,
+    /execuções neste mês|sessões concluídas|Última execução|Sobre as métricas e o uso offline|<details/
+  )
 })
 
 test('ficha em andamento oferece continuidade sem inferir conclusão', () => {

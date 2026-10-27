@@ -70,18 +70,6 @@ function SheetActivityCards({ lastTrained, mostTrained, todayKey }) {
   )
 }
 
-function MetricsDisclosure() {
-  return (
-    <details className="sheet-insights-disclosure">
-      <summary>Sobre as métricas e o uso offline</summary>
-      <p>
-        Atividade registrada não comprova conclusão da ficha. Registros offline entram nos
-        indicadores após sincronização. Finalizar exige conexão.
-      </p>
-    </details>
-  )
-}
-
 function HeroPhoto({ photo }) {
   const [failed, setFailed] = useState([])
   const current = getDashboardBannerFallbacks(photo).find((p) => !failed.includes(p.name))
@@ -209,7 +197,6 @@ export function RecommendedSheetPanel() {
             mostTrained={mostTrained}
             todayKey={todayKey}
           />
-          <MetricsDisclosure />
         </div>
       </section>
     )
@@ -228,67 +215,84 @@ export function RecommendedSheetPanel() {
   const lastLabel = relativeDayLabel(lastDate, todayKey)
 
   return (
-    <section className="workout-hero" aria-labelledby="next-workout-title">
-      {photo && (
-        <HeroPhoto
-          key={`${user?.uid}:${todayKey}:${sequence[0].name}:${photo.name}`}
-          photo={photo}
-        />
-      )}
-      <div className="workout-hero-shade" />
-      <div className="workout-hero-content">
-        <span className="hero-kicker">
-          <PulseIcon size={14} /> PRÓXIMA FICHA RECOMENDADA
-          {reason === 'today' && lastDate !== todayKey && (
-            <span className="hero-today-pill">Recomendado para hoje</span>
+    <div className="sheet-recommendation-group">
+      <section className="workout-recommendation" aria-labelledby="next-workout-title">
+        <div className="workout-hero">
+          {photo && (
+            <HeroPhoto
+              key={`${user?.uid}:${todayKey}:${sequence[0].name}:${photo.name}`}
+              photo={photo}
+            />
           )}
-        </span>
-        <Heading as="h2" id="next-workout-title">
-          {sheet.name}
-        </Heading>
-        {recommendation.completedToday && <p>Treino de hoje concluído</p>}
-        {nextLabel && <p>Próximo treino: {nextLabel}</p>}
-        {(days || lastLabel) && (
-          <p className="workout-hero-meta">
-            {days && (
-              <span>
-                <CalendarIcon size={14} /> Próximo treino sugerido · <strong>{days}</strong>
+          <div className="workout-hero-shade" />
+          <div className="workout-hero-content">
+            <div className="workout-hero-intro">
+              <span className="hero-kicker">
+                <PulseIcon size={14} />
+                <span className="hero-kicker-desktop">PRÓXIMA FICHA RECOMENDADA</span>
+                <span className="hero-kicker-mobile">
+                  PRÓXIMA FICHA{reason === 'today' && lastDate !== todayKey ? ' · HOJE' : ''}
+                </span>
+                {reason === 'today' && lastDate !== todayKey && (
+                  <span className="hero-today-pill">Recomendado para hoje</span>
+                )}
               </span>
-            )}
-            {lastLabel && (
-              <span>
-                <ClockIcon size={14} /> Última atividade <strong>{lastLabel}</strong>
-              </span>
-            )}
-          </p>
-        )}
-        {lastDate === todayKey && <p>Esta ficha já tem atividade registrada hoje.</p>}
-        <div className="workout-hero-actions">
-          <Button
-            as={RouterLink}
-            to={reason === 'scheduled' ? `/fichas/${sheet.id}` : `/novo-treino?ficha=${sheet.id}`}
-            state={originState(location)}
-            className="start-workout-button"
-            leadingVisual={PlayIcon}
-            variant="primary"
-          >
-            {reason === 'scheduled'
-              ? 'Ver próximo treino'
-              : reason === 'in_progress'
-                ? 'Continuar ficha'
-                : 'Iniciar ficha'}
-          </Button>
-          <Button as={RouterLink} to="/exercicios" leadingVisual={ChecklistIcon}>
-            Ver fichas
-          </Button>
+              <Heading as="h2" id="next-workout-title">
+                {sheet.name}
+              </Heading>
+              {recommendation.completedToday && <p>Treino de hoje concluído</p>}
+              {nextLabel && <p>Próximo treino: {nextLabel}</p>}
+              {(days || lastLabel) && (
+                <p className="workout-hero-meta">
+                  {days && (
+                    <span>
+                      <CalendarIcon size={14} />
+                      <span className="hero-meta-prefix">Próximo treino sugerido · </span>
+                      <strong>{days}</strong>
+                    </span>
+                  )}
+                  {lastLabel && (
+                    <span className="hero-last-activity">
+                      <ClockIcon size={14} /> Última atividade <strong>{lastLabel}</strong>
+                    </span>
+                  )}
+                </p>
+              )}
+              {lastDate === todayKey && <p>Esta ficha já tem atividade registrada hoje.</p>}
+            </div>
+            <div className="workout-hero-actions">
+              <Button
+                as={RouterLink}
+                to={
+                  reason === 'scheduled' ? `/fichas/${sheet.id}` : `/novo-treino?ficha=${sheet.id}`
+                }
+                state={originState(location)}
+                className="start-workout-button"
+                leadingVisual={PlayIcon}
+                variant="primary"
+              >
+                {reason === 'scheduled'
+                  ? 'Ver próximo treino'
+                  : reason === 'in_progress'
+                    ? 'Continuar ficha'
+                    : 'Iniciar ficha'}
+              </Button>
+              <Button as={RouterLink} to="/exercicios" leadingVisual={ChecklistIcon}>
+                Ver fichas
+              </Button>
+            </div>
+          </div>
         </div>
-        <SheetActivityCards
-          lastTrained={lastTrained}
-          mostTrained={mostTrained}
-          todayKey={todayKey}
-        />
-        <MetricsDisclosure />
-      </div>
-    </section>
+        {(lastTrained || mostTrained) && (
+          <div className="sheet-activity-summary" aria-label="Atividade das fichas">
+            <SheetActivityCards
+              lastTrained={lastTrained}
+              mostTrained={mostTrained}
+              todayKey={todayKey}
+            />
+          </div>
+        )}
+      </section>
+    </div>
   )
 }
