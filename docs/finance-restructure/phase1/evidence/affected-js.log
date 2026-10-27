@@ -1,0 +1,12 @@
+✔ src/components/AppRoutes.test.js (2226.682963ms)
+✔ src/services/evocashPricingService.test.js (257.422505ms)
+✔ src/utils/cashPurchaseFlow.test.js (185.13322ms)
+✔ src/utils/evocashPricing.test.js (214.369241ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2946.093493
