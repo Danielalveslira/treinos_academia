@@ -20,7 +20,7 @@
       observer?.disconnect()
       try {
         const response = await fetch('/api/public-catalog-snapshot', {
-          signal: controller.signal, credentials: 'omit',
+          signal: controller.signal, credentials: 'same-origin',
         })
         if (!response.ok) return
         const value = await response.json()
