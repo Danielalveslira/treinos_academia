@@ -10,7 +10,7 @@ export function ExercisesRouteProvider({ children }) {
     !state?.openCatalog &&
     (!params.get('aba') || params.get('aba') === 'fichas')
   const sheetDetail = /^\/fichas\/[^/]+$/.test(pathname) && pathname !== '/fichas/nova'
-  const sheetExecution = pathname === '/novo-treino' && Boolean(params.get('ficha'))
+  const sheetExecution = pathname === '/novo-treino'
   const trainPicker = pathname === '/treinar'
   return (
     <ExercisesProvider enabled={!sheetsList && !sheetDetail && !sheetExecution && !trainPicker}>

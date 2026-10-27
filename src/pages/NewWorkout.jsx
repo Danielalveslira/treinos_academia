@@ -1,26 +1,21 @@
 import { useRef, useState } from 'react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Box, Button, Heading, Spinner, Flash } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PlayIcon, PulseIcon } from '@primer/octicons-react'
-import { useExercises } from '../contexts/ExercisesContext'
 import { useWorkouts } from '../hooks/useWorkouts'
 import { useToast } from '../hooks/useToast'
 import { WorkoutForm } from '../components/WorkoutForm'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
-import {
-  completeWorkoutSession,
-  completeWorkoutSheet,
-  getMyEvocoinDay,
-} from '../services/economyService'
+import { completeWorkoutSheet, getMyEvocoinDay } from '../services/economyService'
 import { flushPending } from '../services/offline/syncScheduler'
 import { classifyReadError } from '../services/offline/readError'
 import { useAuth } from '../hooks/useAuth'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { FINISH_MESSAGES, FINISH_OFFLINE_MESSAGE, runFinishWorkout } from '../utils/finishWorkout'
 import { loadDoneExerciseIds } from '../utils/doneExercisesStorage'
-import { canStartExercise, isLegacyExercise } from '../utils/personalExercises.js'
+import { canStartExercise } from '../utils/personalExercises.js'
 import { originState, returnToOrigin } from '../utils/navigation'
 import { plannedWorkoutNotice } from '../utils/plannedWorkout'
 import { useWorkoutSheets } from '../features/workoutSheets/useWorkoutSheets.js'
@@ -29,6 +24,7 @@ import { sheetScopeExercises } from '../features/workoutSheets/workoutSheetValid
 import '../features/workoutSheets/workoutSheets.css'
 import { invalidateWorkoutCache } from '../utils/pageCache'
 import { businessDayKey, isBusinessDayKey } from '../utils/businessDate'
+import { sheetPickerUrl, validSheetId } from '../utils/workoutEntry.js'
 
 // "Hoje" é o dia de NEGÓCIO (America/Sao_Paulo), não o do aparelho (ver utils/businessDate.js).
 const localDateKey = () => businessDayKey()
@@ -44,17 +40,23 @@ export default function NewWorkout() {
   const [params] = useSearchParams()
   const { user } = useAuth()
   const sheetId = params.get('ficha')
-  return sheetId ? <SheetWorkout key={`${user.uid}:${sheetId}`} id={sheetId} /> : <WorkoutSession />
+  const location = useLocation()
+  return validSheetId(sheetId) ? (
+    <SheetWorkout key={`${user.uid}:${sheetId}`} id={sheetId} />
+  ) : (
+    <Navigate to={sheetPickerUrl(params)} replace state={location.state} />
+  )
 }
 
 function SheetWorkout({ id }) {
   const { data, loading, error, refresh, online } = useWorkoutSheets(id, true)
-  const confirmed = useRef(null)
-  if (data) confirmed.current = data
-  if (confirmed.current && (!error || !online))
-    return <WorkoutSession sheetScope={confirmed.current} />
+  const retained = useRef(null)
+  if (online && error) retained.current = null
+  if (data) retained.current = data
+  if ((loading || !online) && retained.current)
+    return <WorkoutSession sheetScope={retained.current} />
   if (loading) return <Spinner aria-label="Validando ficha" />
-  if (error || !online) {
+  if (error || (!online && !data)) {
     // SHEET_NOT_READY: a ficha está arquivada, vazia ou com exercício indisponível — o
     // servidor já recusou o início (nenhum bypass client-side). Dá o caminho direto para
     // corrigir, em vez de só deixar "Tentar novamente".
@@ -63,6 +65,9 @@ function SheetWorkout({ id }) {
       <Flash variant="danger" role="alert">
         {sheetError(error || new Error('SHEET_NETWORK_REQUIRED'))}{' '}
         <Button onClick={refresh}>Tentar novamente</Button>{' '}
+        <Button as={Link} to="/treinar" replace>
+          Escolher ficha
+        </Button>{' '}
         {canEdit && (
           <Button as={Link} to={`/fichas/${id}/editar`}>
             Editar ficha
@@ -81,21 +86,22 @@ function WorkoutSession({ sheetScope }) {
   const defaultExerciseId = searchParams.get('exercicio') || ''
   const plannedNotice = plannedWorkoutNotice(searchParams.get('planejado'), localDateKey())
 
-  const library = useExercises()
-  const exercises = sheetScope
-    ? sheetScope.items.map((item) => ({ ...item.exercise, catalogAvailable: item.available }))
-    : library.exercises
-  const loading = sheetScope ? false : library.loading
-  const error = sheetScope ? null : library.error
-  const refresh = library.refresh
+  const exercises = sheetScope.items.map((item) => ({
+    ...item.exercise,
+    catalogAvailable: item.available,
+  }))
+  const loading = false
+  const error = null
+  const refresh = undefined
   const { workouts, add, save } = useWorkouts()
   const { toasts, showToast } = useToast()
-  const { user } = useAuth()
-  const online = useOnlineStatus()
+  const { user, offlineLocal } = useAuth()
+  const connected = useOnlineStatus()
+  const online = connected && !offlineLocal
   // O botão "Finalizar treino" só aparece depois de registrar ao menos um exercício hoje (nesta
   // sessão ou, após recarregar, pela marcação local de exercícios feitos hoje).
   const [hasRegistered, setHasRegistered] = useState(
-    () => loadDoneExerciseIds(localDateKey()).size > 0
+    () => loadDoneExerciseIds(localDateKey(), `${user.uid}:${sheetScope.id}`).size > 0
   )
   const [finishing, setFinishing] = useState(false)
   // O ref bloqueia cliques no mesmo ciclo de eventos (o state só reflete no próximo render).
@@ -110,11 +116,10 @@ function WorkoutSession({ sheetScope }) {
     setFinishing(true)
     // Regras (online-only, esvaziar a fila antes, nunca recompensa local) em utils/finishWorkout.js.
     const { outcome, error } = await runFinishWorkout({
-      isOnline: () => navigator.onLine !== false,
+      isOnline: () => online && navigator.onLine !== false,
       getDay: serverBusinessDay,
       flushPending: (day) => flushPending(user.uid, { date: day }),
-      completeSession: () =>
-        sheetScope ? completeWorkoutSheet(sheetScope.id) : completeWorkoutSession(),
+      completeSession: () => completeWorkoutSheet(sheetScope.id),
       classifyError: classifyReadError,
     })
     if (outcome === 'done') {
@@ -134,6 +139,11 @@ function WorkoutSession({ sheetScope }) {
   // pendente neste aparelho ou falhou; erros sobem para o saver, que oferece "Tentar novamente".
   async function handleCreate(values, options) {
     try {
+      if (
+        values.sheetId !== sheetScope.id ||
+        !sheetScope.items.some((item) => item.available && item.exercise_id === values.exerciseId)
+      )
+        throw new Error('SHEET_INVALID_PAYLOAD')
       const result = await add(values, options)
       setHasRegistered(true)
       if (sheetScope && result?.synced === false)
@@ -158,13 +168,13 @@ function WorkoutSession({ sheetScope }) {
   }
 
   const activeExercises = sheetScopeExercises(exercises, sheetScope).filter(canStartExercise)
-  const requestedLegacy = exercises.some(
-    (exercise) => exercise.id === defaultExerciseId && isLegacyExercise(exercise)
-  )
   // Ao abrir uma ficha, o fluxo vai direto para o primeiro exercício elegível na sequência
   // planejada (sem a tela de escolha solta) — ver WorkoutForm.jsx (step inicial = 'register'
   // quando o exercício inicial já está nas opções disponíveis).
-  const sheetDefaultExerciseId = sheetScope ? activeExercises[0]?.id || '' : defaultExerciseId
+  const sheetDefaultExerciseId =
+    activeExercises.find((exercise) => exercise.id === defaultExerciseId)?.id ||
+    activeExercises[0]?.id ||
+    ''
 
   return (
     <Box className="workout-session-page">
@@ -175,7 +185,7 @@ function WorkoutSession({ sheetScope }) {
         </span>
         <div>
           <span className="eyebrow">SESSÃO DE TREINO</span>
-          <Heading as="h1">{sheetScope ? sheetScope.name : 'Vamos treinar'}</Heading>
+          <Heading as="h1">{sheetScope.name}</Heading>
           {plannedNotice && <p>{plannedNotice}</p>}
         </div>
       </header>
@@ -184,7 +194,7 @@ function WorkoutSession({ sheetScope }) {
       <ErrorState error={error} onRetry={refresh} />
       {sheetScope && !online && (
         <Flash variant="warning" sx={{ mb: 3 }}>
-          Sem conexão. A ficha foi validada na última conexão; a disponibilidade dos exercícios será
+          Dados salvos neste aparelho — validação pendente. A disponibilidade dos exercícios será
           confirmada ao sincronizar os registros.
         </Flash>
       )}
@@ -209,17 +219,11 @@ function WorkoutSession({ sheetScope }) {
         </Blankslate>
       )}
 
-      {requestedLegacy && activeExercises.length > 0 && (
-        <Flash variant="warning" sx={{ mb: 3 }}>
-          Exercício antigo: o histórico foi preservado. Escolha um exercício oficial para este
-          treino.
-        </Flash>
-      )}
-
       {!loading && !error && activeExercises.length > 0 && (
         <WorkoutForm
           exercises={exercises}
           sheetScope={sheetScope}
+          progressScope={`${user.uid}:${sheetScope.id}`}
           history={workouts}
           defaultExerciseId={sheetDefaultExerciseId}
           onCreate={handleCreate}

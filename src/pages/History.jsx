@@ -230,7 +230,7 @@ export default function History() {
             ) : (
               <Blankslate.PrimaryAction
                 leadingVisual={PlayIcon}
-                onClick={() => navigate('/novo-treino', { state: originState(location) })}
+                onClick={() => navigate('/treinar', { state: originState(location) })}
               >
                 Iniciar treino
               </Blankslate.PrimaryAction>

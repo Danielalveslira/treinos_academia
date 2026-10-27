@@ -9,6 +9,7 @@ import { gzipSync } from 'node:zlib'
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright-core'
 const quick = process.argv.includes('--quick')
+const entryOnly = process.argv.includes('--entries')
 const root = resolve(import.meta.dirname, '..')
 const vercelConfig = JSON.parse(await readFile(join(root, 'vercel.json'), 'utf8'))
 const spaRule = vercelConfig.rewrites.find((rule) => rule.source.startsWith('/:path(')).source
@@ -78,7 +79,7 @@ let browser, server
 try {
   await build({
     stdin: {
-      contents: `import React from 'react';import{createRoot}from'react-dom/client';import{createBrowserRouter,RouterProvider,Routes,Route}from'react-router-dom';import{ThemeProvider,BaseStyles}from'@primer/react';import{ExercisesRouteProvider}from'./src/components/ExercisesRouteProvider';import {ThemeSync} from './src/components/ThemeSync';import Area from './src/pages/ExercisesArea';import Detail from './src/features/workoutSheets/WorkoutSheetDetailPage';import Editor from './src/features/workoutSheets/WorkoutSheetEditorPage';import NewWorkout from './src/pages/NewWorkout';import './src/styles/app.css';import '@primer/primitives/dist/css/functional/themes/light.css';import '@primer/primitives/dist/css/functional/themes/dark.css';createRoot(document.getElementById('root')).render(<ThemeProvider colorMode="auto" dayScheme="light" nightScheme="dark"><BaseStyles><ThemeSync/><RouterProvider router={createBrowserRouter([{path:"*",element:<ExercisesRouteProvider><main className="main-content"><Routes><Route path="/exercicios" element={<Area/>}/><Route path="/fichas/nova" element={<Editor/>}/><Route path="/fichas/:id/editar" element={<Editor/>}/><Route path="/fichas/:id" element={<Detail/>}/><Route path="/novo-treino" element={<NewWorkout/>}/></Routes></main></ExercisesRouteProvider>}])}/></BaseStyles></ThemeProvider>)`,
+      contents: `import React from 'react';import{createRoot}from'react-dom/client';import{createBrowserRouter,RouterProvider,Routes,Route}from'react-router-dom';import{ThemeProvider,BaseStyles}from'@primer/react';import{ExercisesRouteProvider}from'./src/components/ExercisesRouteProvider';import {ThemeSync} from './src/components/ThemeSync';import Area from './src/pages/ExercisesArea';import Detail from './src/features/workoutSheets/WorkoutSheetDetailPage';import Editor from './src/features/workoutSheets/WorkoutSheetEditorPage';import NewWorkout from './src/pages/NewWorkout';import TreinarPage from './src/features/workoutSheets/TreinarPage';import './src/styles/app.css';import '@primer/primitives/dist/css/functional/themes/light.css';import '@primer/primitives/dist/css/functional/themes/dark.css';createRoot(document.getElementById('root')).render(<ThemeProvider colorMode="auto" dayScheme="light" nightScheme="dark"><BaseStyles><ThemeSync/><RouterProvider router={createBrowserRouter([{path:"*",element:<ExercisesRouteProvider><main className="main-content"><Routes><Route path="/exercicios" element={<Area/>}/><Route path="/fichas/nova" element={<Editor/>}/><Route path="/fichas/:id/editar" element={<Editor/>}/><Route path="/fichas/:id" element={<Detail/>}/><Route path="/treinar" element={<TreinarPage/>}/><Route path="/novo-treino" element={<NewWorkout/>}/></Routes></main></ExercisesRouteProvider>}])}/></BaseStyles></ThemeProvider>)`,
       resolveDir: root,
       loader: 'jsx',
     },
@@ -176,6 +177,10 @@ try {
       const err = (message) => {
         res.statusCode = 400
         res.end(JSON.stringify({ code: 'P0001', message }))
+      }
+      if (name === 'get_my_sheet_insights' || name === 'get_my_sheet_insights_for_exercise') {
+        res.end(JSON.stringify({ sheets: sheets.filter((s) => s.user_id === uid && (!args.p_exercise_id || (!s.archived_at && s.items.length > 0 && s.items.every(i => i.available) && s.items.some(i => i.exercise_id === args.p_exercise_id)))).map((s) => ({ ...s, exercise_count: s.items.length, available: s.items.length > 0 && s.items.every((item) => item.available), completed_today: false })) }))
+        return
       }
       if (name === 'list_my_workout_sheets') {
         res.end(
@@ -312,7 +317,35 @@ try {
     executablePath: process.env.CHROMIUM_PATH,
   })
   const results = []
-  for (const theme of quick ? ['light'] : ['light', 'dark'])
+  if (entryOnly) {
+    for (const width of [320, 360, 390]) {
+      await fetch(origin + '/__reset')
+      const page = await browser.newPage({ viewport: { width, height: 800 } })
+      await page.goto(origin + '/novo-treino?planejado=2000-01-01&evil=ignored')
+      await page.getByRole('heading', { name: 'Treinar', exact: true }).waitFor()
+      assert.equal(new URL(page.url()).pathname, '/treinar')
+      assert.equal(new URL(page.url()).search, '?planejado=2000-01-01')
+      assert.equal(await page.locator('.workout-form').count(), 0)
+      await page.getByText('Lembrete de 01/01/2000.', { exact: false }).waitFor()
+      await page.goto(origin + `/novo-treino?exercicio=${exercises[0].id}`)
+      await page.getByRole('button', { name: 'Iniciar', exact: true }).waitFor()
+      assert.equal(reads.filter(name => name === 'get_my_sheet_insights_for_exercise').length, 1, 'one aggregate membership request')
+      assert.equal(reads.filter(name => name === 'get_my_workout_sheet').length, 0, 'no per-sheet membership requests')
+      await page.getByRole('button', { name: 'Iniciar', exact: true }).click()
+      await page.locator('.workout-form').waitFor()
+      assert.equal(new URL(page.url()).searchParams.get('ficha'), sid)
+      assert.equal(await page.locator('.muscle-group-card').count(), 0)
+      assert.equal(await page.evaluate(() => window.__libraryReads || 0), 0)
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false)
+      await page.goto(origin + '/novo-treino?ficha=malformed')
+      await page.getByRole('heading', { name: 'Treinar', exact: true }).waitFor()
+      assert.equal(await page.locator('.workout-form').count(), 0)
+      await page.close()
+      results.push({ width, legacyReplace: true, exerciseIntent: true, noGlobalCatalog: true, noOverflow: true })
+    }
+    console.log('SHEET_ENTRY_BROWSER_OK ' + JSON.stringify(results))
+  }
+  for (const theme of entryOnly ? [] : quick ? ['light'] : ['light', 'dark'])
     for (const width of quick ? [390] : [320, 360, 390, 768, 1280]) {
       await fetch(origin + '/__reset')
       const height = width === 320 ? 568 : width === 360 ? 740 : 900
@@ -772,7 +805,7 @@ try {
       console.log(JSON.stringify(results.at(-1)))
     }
   await writeFile(
-    join(evidence, quick ? 'browser-results-quick.json' : 'browser-results.json'),
+    join(evidence, entryOnly ? 'sheet-entry-results.json' : quick ? 'browser-results-quick.json' : 'browser-results.json'),
     JSON.stringify(
       {
         fixture:

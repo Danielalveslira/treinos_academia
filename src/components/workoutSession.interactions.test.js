@@ -160,6 +160,11 @@ async function mount(props = {}) {
     renderer = TestRenderer.create(
       React.createElement(WorkoutForm, {
         exercises: [squat, bench],
+        sheetScope: {
+          id: 'sheet-a',
+          items: [squat, bench].map((exercise) => ({ exercise_id: exercise.id, available: true })),
+        },
+        progressScope: 'user-a:sheet-a',
         defaultExerciseId: 'squat',
         ...handlers,
         ...props,
@@ -421,6 +426,7 @@ test('cardio: one action records the session and finishes the exercise', async (
         type: 'cardio',
       },
     ],
+    sheetScope: { id: 'sheet-a', items: [{ exercise_id: 'run', available: true }] },
     defaultExerciseId: 'run',
   })
   const duration = form.root.findAll(
@@ -492,4 +498,20 @@ test('a slow first save never produces a duplicate create: the next set waits an
   assert.equal(form.calls.create.length, 1)
   assert.equal(form.calls.update.length, 1)
   assert.equal(form.calls.update[0].payload.setDetails.length, 2)
+})
+
+test('after the last sheet exercise, review stays within the sheet and never opens groups', async () => {
+  const form = await mount({
+    exercises: [squat],
+    sheetScope: { id: 'sheet-a', items: [{ exercise_id: squat.id, available: true }] },
+  })
+  await form.conclude('20', '10')
+  await form.conclude('20', '10')
+  await form.conclude('20', '10')
+  await form.click('Ver exercícios da ficha')
+  assert.match(form.html(), /Escolha o exercício/)
+  assert.doesNotMatch(form.html(), /Qual grupo|Escolher outro grupo/)
+  assert.equal(form.calls.create[0].payload.sheetId, 'sheet-a')
+  assert.equal(form.calls.create.length, 1)
+  assert.equal(form.calls.update.length, 2)
 })

@@ -122,12 +122,12 @@ export function RecommendedSheetPanel() {
           </p>
           <Button
             as={RouterLink}
-            to="/novo-treino"
+            to="/treinar"
             state={originState(location)}
             className="empty-workout-cta"
             leadingVisual={PlayIcon}
           >
-            Treino livre
+            Escolher ficha
           </Button>
         </div>
       </section>

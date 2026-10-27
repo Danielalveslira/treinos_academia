@@ -78,6 +78,7 @@ before(async () => {
           }))
           context.onLoad({ filter: /^sheets-service$/, namespace: 'stub' }, () => ({
             contents: `
+              export const getWorkoutSheet = async () => ({ items: [] })
               export const archiveWorkoutSheet = async () => {}
               export const duplicateWorkoutSheet = async () => ({ id: 'dup' })
               export const reorderWorkoutSheets = async () => {}
@@ -227,7 +228,7 @@ test('sheet detail: start is blocked (disabled) while any item is unavailable', 
 
 // --- TreinarPage ---------------------------------------------------------------------------
 
-test('treinar: lists active sheets with a direct "Iniciar" and a secondary "Treino livre"', () => {
+test('treinar: lists active sheets with a direct "Iniciar" without free sessions', () => {
   setFixture({
     data: [
       {
@@ -235,6 +236,7 @@ test('treinar: lists active sheets with a direct "Iniciar" and a secondary "Trei
         name: 'Treino A',
         goal: 'hipertrofia',
         exercise_count: 4,
+        available: true,
       },
     ],
     loading: false,
@@ -243,14 +245,14 @@ test('treinar: lists active sheets with a direct "Iniciar" and a secondary "Trei
   })
   const html = renderTreinar()
   assert.match(html, />Iniciar</)
-  assert.match(html, />Treino livre</)
+  assert.doesNotMatch(html, />Treino livre</)
   assert.doesNotMatch(html, /Qual grupo você vai treinar/)
 })
 
-test('treinar: empty state offers "Criar ficha" and "Treino livre", no forced sheet', () => {
+test('treinar: empty state offers "Criar ficha" only; no free creation', () => {
   setFixture({ data: [], loading: false, error: null, online: true })
   const html = renderTreinar()
   assert.match(html, /Nenhuma ficha ativa/)
   assert.match(html, />Criar ficha</)
-  assert.match(html, />Treino livre</)
+  assert.doesNotMatch(html, />Treino livre</)
 })

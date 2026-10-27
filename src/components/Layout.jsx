@@ -176,7 +176,7 @@ export function Layout() {
             <p>
               Conecte-se para continuar. Seus registros de treino continuam salvos neste aparelho.
             </p>
-            <Button as={Link} to="/novo-treino" replace>
+            <Button as={Link} to="/treinar" replace>
               Ir para o treino
             </Button>
           </div>

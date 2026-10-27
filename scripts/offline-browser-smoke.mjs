@@ -13,6 +13,7 @@ import digests from '../legal/approved-digests.json' with { type: 'json' }
 
 const ROOT = resolve(import.meta.dirname, '..')
 const USER_ID = 'a0000000-0000-4000-8000-00000000000a'
+const SHEET_ID = 'd0000000-0000-4000-8000-000000000001'
 const EXERCISE_ID = 'e0000000-0000-4000-8000-000000000001'
 const WORKOUT_ID = 'b0000000-0000-4000-8000-000000000001'
 const MUTATION_ID = 'c0000000-0000-4000-8000-000000000001'
@@ -67,7 +68,7 @@ async function startStaticServer(dir) {
 
 async function seed(page, { snapshot = false } = {}) {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date())
-  await page.evaluate(({ dbName, dbVersion, userId, exerciseId, workoutId, mutationId, version, digest, snapshot, today }) =>
+  await page.evaluate(({ dbName, dbVersion, userId, exerciseId, workoutId, mutationId, version, digest, snapshot, today, sheetId }) =>
     new Promise((resolveDone, reject) => {
       const open = indexedDB.open(dbName, dbVersion)
       open.onerror = () => reject(open.error)
@@ -83,6 +84,7 @@ async function seed(page, { snapshot = false } = {}) {
           offline_access: { enabled: true, blocked_reason: null, revoked_locally_at: null }, updated_at: now,
         })
         tx.objectStore('syncMeta').put({ key: 'bootstrap:active-user', value: userId })
+        tx.objectStore('syncMeta').put({ key: `user:${userId}:sheet-snapshots`, value: [{ schema_version: 1, user_id: userId, validated_at: now, sheet: { id: sheetId, user_id: userId, name: 'Ficha offline', revision: 1, items: [{ exercise_id: exerciseId, available: true, exercise: { id: exerciseId, name: 'Agachamento', muscleGroup: 'Pernas', type: 'strength', active: true, source: 'catalog', provider: 'evolutus_dataset' } }] } }] })
         tx.objectStore('syncMeta').put({ key: `user:${userId}:offline-rollout`, value: {
           offline_write: { enabled: true, rollout_percentage: 100 },
           offline_cold_start: { enabled: true, rollout_percentage: 100 },
@@ -111,7 +113,7 @@ async function seed(page, { snapshot = false } = {}) {
     }), {
     dbName: DB_NAME, dbVersion: DB_VERSION, userId: USER_ID, exerciseId: EXERCISE_ID,
     workoutId: WORKOUT_ID, mutationId: MUTATION_ID, version: LEGAL_VERSION, digest: LEGAL_DIGEST,
-    snapshot, today,
+    snapshot, today, sheetId: SHEET_ID,
   })
 }
 
@@ -242,8 +244,8 @@ async function coldStartWithoutManualWarmup(browser, origin, outDir) {
   assert(!flash.inert, 'Conteúdo do app ficou inerte durante o cold start')
   await page.getByText('1 alteração salva neste aparelho', { exact: false }).first().waitFor({ timeout: 15_000 })
 
-  await page.locator('a[href="/novo-treino"]').first().click()
-  await page.locator('.muscle-group-card').first().waitFor({ timeout: 15_000 })
+  await page.locator('a[href="/treinar"]').first().click()
+  await page.getByRole('button', { name: 'Iniciar', exact: true }).waitFor({ timeout: 15_000 })
   // Detalhe do exercício: o chunk lazy precisa vir do cache (a tela pode mostrar seu próprio erro de dados).
   await page.goto(`${origin}/exercicios/${EXERCISE_ID}`, { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(1500)
@@ -251,8 +253,7 @@ async function coldStartWithoutManualWarmup(browser, origin, outDir) {
   await page.goto(`${origin}/historico`, { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(1000)
   await page.goto(`${origin}/novo-treino`, { waitUntil: 'domcontentloaded' })
-  await page.locator('.muscle-group-card').first().click()
-  await page.locator('.workout-exercise-card').first().click()
+  await page.getByRole('button', { name: 'Iniciar', exact: true }).click()
   await page.getByLabel('Peso (kg)').fill('30')
   await page.getByLabel('Repetições').fill('8')
   await page.getByRole('button', { name: 'Concluir série' }).click()
@@ -266,6 +267,15 @@ async function coldStartWithoutManualWarmup(browser, origin, outDir) {
       count.onsuccess = () => { db.close(); resolveDone(count.result >= 2) }
     }
   }), { dbName: DB_NAME, dbVersion: DB_VERSION })
+  const binding = await page.evaluate(({ dbName, uid }) => new Promise((done) => {
+    const open = indexedDB.open(dbName)
+    open.onsuccess = () => {
+      const db = open.result
+      const rows = db.transaction('outbox').objectStore('outbox').getAll()
+      rows.onsuccess = () => { db.close(); done(rows.result.filter((row) => row.user_id === uid && row.operation === 'workout.create').map((row) => row.payload.sheet_id)) }
+    }
+  }), { dbName: DB_NAME, uid: USER_ID })
+  deepStrictEqual(binding, [SHEET_ID], 'offline creation lost its sheet binding')
   // O que acabou de ser registrado offline conta na Home (treino local junto do snapshot).
   await page.goto(`${origin}/app`, { waitUntil: 'domcontentloaded' })
   await waitForDashboard(page)
@@ -275,6 +285,31 @@ async function coldStartWithoutManualWarmup(browser, origin, outDir) {
   assert(backend.length === 0, `Boot offline tentou falar com o backend/Realtime:\n${backend.join('\n')}`)
   await context.close()
   return expected.length
+}
+
+async function coldStartWithoutSheetSnapshot(browser, origin, outDir) {
+  const { context, page: first } = await installOnline(browser, origin, outDir)
+  await seed(first)
+  await seedSupabaseSession(first)
+  await first.evaluate(({ dbName, uid }) => new Promise((done, reject) => {
+    const open = indexedDB.open(dbName)
+    open.onsuccess = () => {
+      const db = open.result
+      const tx = db.transaction('syncMeta', 'readwrite')
+      tx.objectStore('syncMeta').delete(`user:${uid}:sheet-snapshots`)
+      tx.oncomplete = () => { db.close(); done() }
+      tx.onerror = () => reject(tx.error)
+    }
+  }), { dbName: DB_NAME, uid: USER_ID })
+  await first.close()
+  await context.setOffline(true)
+  const page = await context.newPage()
+  await page.goto(`${origin}/novo-treino`, { waitUntil: 'domcontentloaded' })
+  await page.getByRole('heading', { name: 'Nenhuma ficha salva disponível', exact: true }).waitFor()
+  assert(new URL(page.url()).pathname === '/treinar', 'legacy entry did not replace to picker')
+  assert(await page.locator('.workout-form').count() === 0, 'missing snapshot opened execution')
+  assert(await page.getByRole('button', { name: 'Criar ficha', exact: true }).isDisabled(), 'offline creation pretended to be available')
+  await context.close()
 }
 
 // Bootstrap válido mas NENHUM snapshot da Home gravado: o app abre, e onde não há dado real aparece "—".
@@ -347,6 +382,7 @@ async function main() {
     const origin = started.origin
     browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE || undefined })
     const coreAssets = await coldStartWithoutManualWarmup(browser, origin, outDir)
+    await coldStartWithoutSheetSnapshot(browser, origin, outDir)
     await coldStartWithoutSnapshot(browser, origin, outDir)
     await coldStartWithExpiredToken(browser, origin, outDir)
     await coldStartWithoutBootstrap(browser, origin, outDir)
@@ -370,9 +406,8 @@ async function main() {
     await page.getByText('Modo offline: você entrou com os dados salvos neste aparelho.', { exact: false }).waitFor()
     await waitForDashboard(page)
     await page.getByText('1 alteração salva neste aparelho', { exact: false }).first().waitFor({ timeout: 15_000 })
-    await page.locator('a[href="/novo-treino"]').first().click()
-    await page.locator('.muscle-group-card').first().click()
-    await page.locator('.workout-exercise-card').first().click()
+    await page.locator('a[href="/treinar"]').first().click()
+    await page.getByRole('button', { name: 'Iniciar', exact: true }).click()
     await page.getByLabel('Peso (kg)').fill('25')
     await page.getByLabel('Repetições').fill('10')
     await page.getByRole('button', { name: 'Concluir série' }).click()

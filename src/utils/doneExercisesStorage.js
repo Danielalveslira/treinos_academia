@@ -1,14 +1,14 @@
 const KEY_PREFIX = 'evolutus:done-exercises:'
-const keyFor = (dateKey) => `${KEY_PREFIX}${dateKey}`
+const keyFor = (dateKey, scope) => `${KEY_PREFIX}${dateKey}${scope ? `:${scope}` : ''}`
 
 // localStorage pode estar bloqueado (modo privado agressivo, quota cheia) ou nem existir
 // (ambiente de teste) -- qualquer falha aqui degrada pra um Set vazio, nunca quebra a
 // tela. Sem sync entre aparelhos de propósito: é só uma marcação visual de "já fiz esse
 // exercício hoje, neste aparelho", não um dado de treino de verdade (esse continua só no
 // banco).
-export function loadDoneExerciseIds(dateKey) {
+export function loadDoneExerciseIds(dateKey, scope) {
   try {
-    const raw = localStorage.getItem(keyFor(dateKey))
+    const raw = localStorage.getItem(keyFor(dateKey, scope))
     const ids = raw ? JSON.parse(raw) : []
     return new Set(Array.isArray(ids) ? ids : [])
   } catch {
@@ -16,9 +16,9 @@ export function loadDoneExerciseIds(dateKey) {
   }
 }
 
-export function saveDoneExerciseIds(dateKey, ids) {
+export function saveDoneExerciseIds(dateKey, ids, scope) {
   try {
-    localStorage.setItem(keyFor(dateKey), JSON.stringify([...ids]))
+    localStorage.setItem(keyFor(dateKey, scope), JSON.stringify([...ids]))
   } catch {
     // Sem storage disponível: a marcação fica só em memória para esta sessão.
   }
@@ -34,7 +34,8 @@ export function cleanupStaleDoneExerciseKeys(currentDateKey) {
     // localStorage reindexa as chaves restantes a cada removeItem.
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i)
-      if (key?.startsWith(KEY_PREFIX) && key !== currentKey) localStorage.removeItem(key)
+      if (key?.startsWith(KEY_PREFIX) && !key.startsWith(`${currentKey}:`) && key !== currentKey)
+        localStorage.removeItem(key)
     }
   } catch {
     // Limpeza é best-effort -- chaves antigas acumuladas não quebram nada.

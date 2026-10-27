@@ -75,14 +75,14 @@ after(async () => {
 })
 
 test('loads the exercise library on routes that consume it directly', () => {
-  for (const path of ['/app', '/exercicios?aba=biblioteca', '/fichas/nova', '/novo-treino']) {
+  for (const path of ['/app', '/exercicios?aba=biblioteca', '/fichas/nova']) {
     assert.equal(render(path), true, path)
   }
   assert.equal(render('/exercicios?aba=catalogo', { openCatalog: true }), true)
 })
 
 test('skips the full library on sheet-only screens, including the /treinar quick picker', () => {
-  for (const path of ['/exercicios', '/fichas/abc123', '/novo-treino?ficha=abc123', '/treinar']) {
+  for (const path of ['/novo-treino', '/exercicios', '/fichas/abc123', '/novo-treino?ficha=abc123', '/treinar']) {
     assert.equal(render(path), false, path)
   }
 })

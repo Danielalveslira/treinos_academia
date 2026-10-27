@@ -40,7 +40,7 @@ select is((select count(*)::int from public.notification_push_outbox o
 select is((select count(*)::int from public.claim_push_jobs('workout-reminder-test', 25)
   where notification_type = 'workout_reminder_before'), 2,
   'um job gera entrega para os dois dispositivos ativos');
-select ok((select action_url like '/novo-treino?planejado=%'
+select ok((select action_url like '/treinar?planejado=%'
   from public.notifications where type = 'workout_reminder_before'),
   'deep link abre o fluxo de treino');
 select is(private.dispatch_due_workout_reminders(100), 0, 'retry não duplica o aviso');
@@ -388,7 +388,7 @@ create temp table k_claim as select * from public.claim_push_jobs('rem-k', 100) 
 select is((select count(*)::int from k_claim), 4, '(J) 2 avisos x 2 dispositivos = 4 entregas');
 select is((select urgency || ':' || ttl_seconds from k_claim where notification_type = 'workout_reminder_before' limit 1), 'normal:3600', '(J) antecipado: urgência normal, TTL 1h');
 select is((select urgency || ':' || ttl_seconds from k_claim where notification_type = 'workout_reminder_start' limit 1), 'high:900', '(J) no horário: urgência alta, TTL 15 min');
-select ok((select bool_and(action_url like '/novo-treino?planejado=____-__-__') from k_claim), '(J) deep link abre o fluxo do treino planejado');
+select ok((select bool_and(action_url like '/treinar?planejado=____-__-__') from k_claim), '(J) deep link abre o fluxo do treino planejado');
 select ok(exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'notifications'), '(J) notifications está no Realtime');
 set local role authenticated;
 select pg_temp.set_test_user( 'a9000000-0000-0000-0000-000000000020', true);

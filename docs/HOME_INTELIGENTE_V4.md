@@ -34,7 +34,7 @@ datado de hoje e criado pelo servidor hoje. O esforço mínimo continua sendo o 
 de `complete_workout_session()`, chamado na mesma transação; não exige registrar todos os itens
 planejados. Não duplica o motor econômico. Atividade de outra ficha, sozinha, não basta. Um
 registro desta ficha pode bastar se o esforço diário já é suficiente. Zero moedas não impede
-conclusão. Treino livre e clientes antigos continuam usando a RPC original.
+conclusão. Clientes antigos e replay de treino livre legado continuam compatíveis com a RPC original; novas sessões na UI exigem ficha.
 
 A chave primária `(user_id,sheet_id,business_day)` e o advisory lock por ficha/dia serializam
 retries e abas concorrentes. A engine existente serializa o pagamento diário. A RPC e a inserção
@@ -57,7 +57,8 @@ pelos triggers existentes, mantém a imutabilidade e aceita clientes antigos sem
 Ficha arquivada/indisponível durante desconexão gera erro visível e preserva a pendência local;
 não se remove o vínculo para forçar sincronização. A data original da atividade é preservada.
 Atividade antiga sincronizada depois não vira conclusão retroativa. Sem rede, a Home oferece
-fallback de treino livre e não presume conclusão.
+a seleção de fichas previamente validadas neste aparelho e não presume conclusão. Cache, cold start
+e compatibilidade legada estão detalhados em [REMOVER_TREINO_LIVRE.md](REMOVER_TREINO_LIVRE.md).
 
 Diálogos pesados da Home agora usam importação sob demanda, sem aquecimento automático no idle.
 Fotos AVIF/WebP, seleção diária, prioridades e composição foram preservadas.

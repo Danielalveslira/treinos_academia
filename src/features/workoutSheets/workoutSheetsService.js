@@ -1,16 +1,26 @@
+import { invalidateSheetSnapshots } from '../../services/offline/sheetSnapshot.js'
 import { supabase } from '../../supabase/config'
 import { invalidateWorkoutCache } from '../../utils/pageCache.js'
 import { normalizeSheet, sheetFingerprint } from './workoutSheetValidation.js'
 
 async function rpc(name, args) {
   if (globalThis.navigator?.onLine === false) throw new Error('SHEET_NETWORK_REQUIRED')
-  const mutation = !['list_my_workout_sheets', 'get_my_workout_sheet'].includes(name)
+  const mutation = ![
+    'list_my_workout_sheets',
+    'get_my_workout_sheet',
+    'get_my_sheet_insights_for_exercise',
+  ].includes(name)
   const uid = mutation ? (await supabase.auth.getSession()).data?.session?.user?.id : null
   const { data, error } = await supabase.rpc(name, args)
   if (error) throw error
-  if (uid) invalidateWorkoutCache(uid)
+  if (uid) {
+    invalidateWorkoutCache(uid)
+    await invalidateSheetSnapshots(uid)
+  }
   return data
 }
+export const getSheetInsightsForExercise = (exerciseId) =>
+  rpc('get_my_sheet_insights_for_exercise', { p_exercise_id: exerciseId })
 export const listWorkoutSheets = (archived = false, page = 0) =>
   rpc('list_my_workout_sheets', { p_archived: archived, p_offset: page * 40 })
 export const getWorkoutSheet = (id, execution = false) =>

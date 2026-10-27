@@ -4486,13 +4486,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .workout-step-heading { margin-bottom: 18px; }
 .workout-step-heading h2 { margin: 0; font-size: 24px; letter-spacing: -.025em; }
 
-.muscle-group-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
 
-.muscle-group-card,
 .workout-exercise-card {
   display: flex;
   align-items: center;
@@ -4506,18 +4500,10 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   transition: border-color .15s ease, background-color .15s ease, transform .15s ease;
 }
 
-.muscle-group-card {
-  gap: 11px;
-  min-height: 70px;
-  padding: 11px 12px;
-}
 
-.muscle-group-card:hover,
 .workout-exercise-card:hover { transform: translateY(-1px); border-color: var(--borderColor-default); }
-.muscle-group-card:focus-visible,
 .workout-exercise-card:focus-visible,
 .workout-back:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 2px; }
-.muscle-group-card.is-selected,
 .workout-exercise-card.is-selected {
   border-color: var(--fitness-accent-strong);
   background: var(--fitness-accent-soft);
@@ -4540,10 +4526,9 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   background: var(--fitness-accent-soft);
   color: var(--fitness-accent-strong);
 }
-/* Dentro de um card que já tem fundo tingido (.muscle-group-card/.workout-exercise-card
+/* Dentro de um card que já tem fundo tingido (.workout-exercise-card
    usam --fitness-surface), o badge usa o fundo neutro da página pra manter contraste --
    repetir --fitness-accent-soft ali dava um dégradé indesejado de verde sobre verde. */
-.muscle-group-card .muscle-icon-badge--solid,
 .workout-exercise-card .muscle-icon-badge--solid {
   background: var(--bgColor-default);
 }
@@ -4554,13 +4539,9 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   color: var(--fgColor-muted);
 }
 
-.muscle-group-card > span:nth-child(2),
 .workout-exercise-card > span { display: grid; min-width: 0; gap: 2px; }
-.muscle-group-card strong,
 .workout-exercise-card strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
-.muscle-group-card small,
 .workout-exercise-card small { overflow: hidden; color: var(--fgColor-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.muscle-group-card > svg,
 .workout-exercise-card > svg { flex: 0 0 auto; margin-left: auto; color: var(--fgColor-muted); }
 /* Mais específico que a regra genérica acima -- mantém o margin-left: auto (senão o
    ícone gruda no texto em vez de ficar do lado do chevron), só troca a cor pra verde.
@@ -5511,10 +5492,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .workout-progress { position: sticky; top: 0; z-index: 0; margin-inline: -4px; padding: 4px; background: color-mix(in srgb, var(--bgColor-default) 94%, transparent); backdrop-filter: blur(10px); }
   .workout-progress span, .workout-progress button { padding-inline: 6px; font-size: 10px; }
   .workout-step-heading h2 { font-size: 22px; }
-  .muscle-group-grid { gap: 8px; }
-  .muscle-group-card { min-height: 66px; padding: 9px; }
   .muscle-icon-badge--md { width: 34px; height: 34px; }
-  .muscle-group-card strong { font-size: 13px; }
   /* .workout-form-actions (só na edição de um registro) é sticky: reserva essa faixa o tempo todo, então
      fica enxuto aqui. bottom vem de navigation.css (--bottom-navigation-space), que carrega depois. */
   .workout-form-actions {

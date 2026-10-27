@@ -106,3 +106,17 @@ test('criação envia metadados e itens juntos e reutiliza request id fornecido'
   assert.equal(calls[0].args.p_request_id, calls[1].args.p_request_id)
   assert.equal(calls[0].args.p_expected_user, 'account-a')
 })
+
+test('exercise picker is a single read RPC with a bounded intent', async () => {
+  const calls = []
+  globalThis.__sheetRpc = async (name, args) => {
+    calls.push({ name, args })
+    return { data: { sheets: [{ id: 'matching' }] } }
+  }
+  assert.deepEqual(await service.getSheetInsightsForExercise('exercise-1'), {
+    sheets: [{ id: 'matching' }],
+  })
+  assert.deepEqual(calls, [
+    { name: 'get_my_sheet_insights_for_exercise', args: { p_exercise_id: 'exercise-1' } },
+  ])
+})

@@ -1,0 +1,1 @@
+PASS: atividade de tela única (navegador real) -> RPC real -> PostgreSQL real -> ledger -> carteira -> saldo relido e exibido na interface

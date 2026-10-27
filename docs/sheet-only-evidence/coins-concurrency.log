@@ -1,0 +1,7 @@
+ok - teto global: 30 sessões concorrentes somam exatamente 10
+ok - ledger == agregado do dia
+ok - carteira == ledger
+ok - reputação == ledger
+ok - nenhum teto por ação estourado
+ok - mesma natural_key concorrente: 1 linha no ledger
+ok - mesma natural_key concorrente: paga 1 vez

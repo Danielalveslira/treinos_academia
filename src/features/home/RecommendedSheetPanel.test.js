@@ -98,7 +98,7 @@ test('carregando: mostra um indicador, sem conteúdo nem botões ainda', () => {
   assert.doesNotMatch(html, /Iniciar ficha/)
 })
 
-test('offline: aviso honesto e Treino livre, sem recomendação inventada', () => {
+test('offline: aviso honesto e escolha de ficha, sem recomendação inventada', () => {
   setFixture({
     online: false,
     loading: false,
@@ -111,8 +111,8 @@ test('offline: aviso honesto e Treino livre, sem recomendação inventada', () =
   })
   const html = render()
   assert.match(html, /Indisponível offline/)
-  assert.match(html, />Treino livre</)
-  assert.match(html, /href="\/novo-treino"/)
+  assert.doesNotMatch(html, />Treino livre</)
+  assert.match(html, /href="\/treinar"/)
   assert.doesNotMatch(html, /Iniciar ficha/)
 })
 

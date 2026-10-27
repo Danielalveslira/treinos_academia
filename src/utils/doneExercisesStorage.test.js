@@ -58,7 +58,10 @@ test('malformed stored JSON degrades to an empty Set instead of throwing', () =>
 
 test('a non-array stored value degrades to an empty Set instead of throwing', () => {
   globalThis.localStorage = fakeLocalStorage()
-  globalThis.localStorage.setItem('evolutus:done-exercises:2026-09-12', JSON.stringify({ not: 'an array' }))
+  globalThis.localStorage.setItem(
+    'evolutus:done-exercises:2026-09-12',
+    JSON.stringify({ not: 'an array' })
+  )
   assert.deepEqual(loadDoneExerciseIds('2026-09-12'), new Set())
 })
 
@@ -79,4 +82,19 @@ test('cleanupStaleDoneExerciseKeys leaves unrelated keys untouched', () => {
   saveDoneExerciseIds('2026-09-10', new Set(['old1']))
   cleanupStaleDoneExerciseKeys('2026-09-12')
   assert.equal(globalThis.localStorage.getItem('colorMode'), 'night')
+})
+
+test('progress is isolated by user + sheet + day, without importing ambiguous legacy marks', () => {
+  globalThis.localStorage = fakeLocalStorage()
+  const day = '2026-10-27'
+  saveDoneExerciseIds(day, new Set(['shared']))
+  assert.equal(loadDoneExerciseIds(day, 'a:sheet-1').size, 0)
+  saveDoneExerciseIds(day, new Set(['shared']), 'a:sheet-1')
+  assert.equal(loadDoneExerciseIds(day, 'a:sheet-1').has('shared'), true)
+  assert.equal(loadDoneExerciseIds(day, 'a:sheet-2').has('shared'), false)
+  assert.equal(loadDoneExerciseIds(day, 'b:sheet-1').has('shared'), false)
+  cleanupStaleDoneExerciseKeys(day)
+  assert.equal(loadDoneExerciseIds(day, 'a:sheet-1').has('shared'), true)
+  cleanupStaleDoneExerciseKeys('2026-10-28')
+  assert.equal(loadDoneExerciseIds(day, 'a:sheet-1').size, 0)
 })

@@ -1,0 +1,85 @@
+{
+  "concurrentCompletion": true,
+  "results": [
+    {
+      "rows": 2000,
+      "version": "before",
+      "payloadBytes": 11066,
+      "executionMs": [
+        15.279,
+        15.204,
+        21.524
+      ],
+      "sharedHits": [
+        727,
+        727,
+        727
+      ],
+      "sharedReads": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "rows": 2000,
+      "version": "after",
+      "payloadBytes": 12105,
+      "executionMs": [
+        5.877,
+        8.706,
+        5.821
+      ],
+      "sharedHits": [
+        1054,
+        1054,
+        1054
+      ],
+      "sharedReads": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "rows": 10000,
+      "version": "before",
+      "payloadBytes": 11066,
+      "executionMs": [
+        46.458,
+        40.151,
+        39.02
+      ],
+      "sharedHits": [
+        931,
+        931,
+        931
+      ],
+      "sharedReads": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "rows": 10000,
+      "version": "after",
+      "payloadBytes": 12105,
+      "executionMs": [
+        16.524,
+        10.158,
+        10.157
+      ],
+      "sharedHits": [
+        1390,
+        1390,
+        1390
+      ],
+      "sharedReads": [
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

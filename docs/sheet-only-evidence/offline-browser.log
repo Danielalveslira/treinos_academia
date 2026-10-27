@@ -1,0 +1,1 @@
+CHROMIUM_OFFLINE_OK: cold start sem pré-busca manual (73 assets do SW), sem flash de "sem conexão", Home restaurada do snapshot (saldo e atividade; "—" sem snapshot), sem RPC/Realtime no boot, IndexedDB, outbox=2, escrita, reconexão e atualização do SW
