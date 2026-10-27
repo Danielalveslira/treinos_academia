@@ -1,0 +1,257 @@
+{
+  "sourceCommit": "ffaedfc0ffe7d38152ff259c503e5c4cba81d656",
+  "method": "Anonymous GHCR Registry V2 GET by tag and pinned digest; SHA-256 computed from response bytes and compared to Docker-Content-Digest and original pin. No GitHub token used.",
+  "images": [
+    {
+      "image": "postgres:17.6.1.166@sha256:b3bfedb107413abb3b8cb0d0874b0414a1dceb3d55bc0c778de6ad22d1f7dc86",
+      "registry": "ghcr.io/supabase",
+      "checks": [
+        {
+          "ref": "17.6.1.166",
+          "status": 200,
+          "digest": "sha256:b3bfedb107413abb3b8cb0d0874b0414a1dceb3d55bc0c778de6ad22d1f7dc86",
+          "matchesExpected": true,
+          "platforms": [
+            {
+              "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+              },
+              "digest": "sha256:d5424e9f4d0c21d63991c3f3dd77881f23f722c3a212452a61bc91924b79e8c8"
+            },
+            {
+              "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+              },
+              "digest": "sha256:f20491444ff7818267e652ced923991fdab24fc07e0eb2bacfba26ab72a45563"
+            }
+          ]
+        },
+        {
+          "ref": "sha256:b3bfedb107413abb3b8cb0d0874b0414a1dceb3d55bc0c778de6ad22d1f7dc86",
+          "status": 200,
+          "digest": "sha256:b3bfedb107413abb3b8cb0d0874b0414a1dceb3d55bc0c778de6ad22d1f7dc86",
+          "matchesExpected": true,
+          "platforms": [
+            {
+              "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+              },
+              "digest": "sha256:d5424e9f4d0c21d63991c3f3dd77881f23f722c3a212452a61bc91924b79e8c8"
+            },
+            {
+              "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+              },
+              "digest": "sha256:f20491444ff7818267e652ced923991fdab24fc07e0eb2bacfba26ab72a45563"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "image": "gotrue:v2.197.0@sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b",
+      "registry": "ghcr.io/supabase",
+      "checks": [
+        {
+          "ref": "v2.197.0",
+          "status": 200,
+          "digest": "sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b",
+          "matchesExpected": true,
+          "platforms": [
+            {
+              "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+              },
+              "digest": "sha256:839f529492d116b4e8b7777c953a27c381d34c15a744b1bcefde5eefaa1f9f9f"
+            },
+            {
+              "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+              },
+              "digest": "sha256:3439d5affb9e96395d1348521f4c675eea7096d8d76d18d4e31fcc08df802116"
+            }
+          ]
+        },
+        {
+          "ref": "sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b",
+          "status": 200,
+          "digest": "sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b",
+          "matchesExpected": true,
+          "platforms": [
+            {
+              "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+              },
+              "digest": "sha256:839f529492d116b4e8b7777c953a27c381d34c15a744b1bcefde5eefaa1f9f9f"
+            },
+            {
+              "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+              },
+              "digest": "sha256:3439d5affb9e96395d1348521f4c675eea7096d8d76d18d4e31fcc08df802116"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "image": "storage-api:v1.77.5@sha256:4ae1890ba0c6fd24d975c34f3aa201a01d410171c8ba6eddeb675ef92341a62d",
+      "registry": "ghcr.io/supabase",
+      "checks": [
+        {
+          "ref": "v1.77.5",
+          "status": 200,
+          "digest": "sha256:4ae1890ba0c6fd24d975c34f3aa201a01d410171c8ba6eddeb675ef92341a62d",
+          "matchesExpected": true,
+          "platforms": [
+            {
+              "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+              },
+              "digest": "sha256:6882444b906cf82bf402f936a5689f8deb935898bc27f2e0e9e0ccd3dfbbaa21"
+            },
+            {
+              "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+              },
+              "digest": "sha256:ad3f465e69e390cfeff27c06a1fe3256875c12d795850e17ce604143dce8e63f"
+            }
+          ]
+        },
+        {
+          "ref": "sha256:4ae1890ba0c6fd24d975c34f3aa201a01d410171c8ba6eddeb675ef92341a62d",
+          "status": 200,
+          "digest": "sha256:4ae1890ba0c6fd24d975c34f3aa201a01d410171c8ba6eddeb675ef92341a62d",
+          "matchesExpected": true,
+          "platforms": [
+            {
+              "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+              },
+              "digest": "sha256:6882444b906cf82bf402f936a5689f8deb935898bc27f2e0e9e0ccd3dfbbaa21"
+            },
+            {
+              "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+              },
+              "digest": "sha256:ad3f465e69e390cfeff27c06a1fe3256875c12d795850e17ce604143dce8e63f"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "image": "postgrest:v14.5@sha256:b574528fe109c8343c1247155734d03df8c34b462f342dca0ccc20244fc36ef9",
+      "registry": "ghcr.io/supabase",
+      "checks": [
+        {
+          "ref": "v14.5",
+          "status": 200,
+          "digest": "sha256:b574528fe109c8343c1247155734d03df8c34b462f342dca0ccc20244fc36ef9",
+          "matchesExpected": true,
+          "platforms": [
+            {
+              "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+              },
+              "digest": "sha256:bb289d00570b569525e1e22fb77c49cd17c17ca3f41da9ee2b4351a35027551b"
+            },
+            {
+              "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+              },
+              "digest": "sha256:60f641667a5e0a024c2c990cf1d1c01a49996bad849d7b57f16afd97d486ade2"
+            }
+          ]
+        },
+        {
+          "ref": "sha256:b574528fe109c8343c1247155734d03df8c34b462f342dca0ccc20244fc36ef9",
+          "status": 200,
+          "digest": "sha256:b574528fe109c8343c1247155734d03df8c34b462f342dca0ccc20244fc36ef9",
+          "matchesExpected": true,
+          "platforms": [
+            {
+              "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+              },
+              "digest": "sha256:bb289d00570b569525e1e22fb77c49cd17c17ca3f41da9ee2b4351a35027551b"
+            },
+            {
+              "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+              },
+              "digest": "sha256:60f641667a5e0a024c2c990cf1d1c01a49996bad849d7b57f16afd97d486ade2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "image": "edge-runtime:v1.77.1@sha256:645d0e45446181f3e9d87efeef637b494615f32365befff00e2d2b0fe8535fef",
+      "registry": "ghcr.io/supabase",
+      "checks": [
+        {
+          "ref": "v1.77.1",
+          "status": 200,
+          "digest": "sha256:645d0e45446181f3e9d87efeef637b494615f32365befff00e2d2b0fe8535fef",
+          "matchesExpected": true,
+          "platforms": [
+            {
+              "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+              },
+              "digest": "sha256:86b538ff617f02be90a6959bced93644c185ac4fdb7d24ab70ad22ea89893af3"
+            },
+            {
+              "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+              },
+              "digest": "sha256:20b8deb97786dbcf765b9298b01890d7365d254fb7c47ed80b95000a5c81bffb"
+            }
+          ]
+        },
+        {
+          "ref": "sha256:645d0e45446181f3e9d87efeef637b494615f32365befff00e2d2b0fe8535fef",
+          "status": 200,
+          "digest": "sha256:645d0e45446181f3e9d87efeef637b494615f32365befff00e2d2b0fe8535fef",
+          "matchesExpected": true,
+          "platforms": [
+            {
+              "platform": {
+                "architecture": "amd64",
+                "os": "linux"
+              },
+              "digest": "sha256:86b538ff617f02be90a6959bced93644c185ac4fdb7d24ab70ad22ea89893af3"
+            },
+            {
+              "platform": {
+                "architecture": "arm64",
+                "os": "linux"
+              },
+              "digest": "sha256:20b8deb97786dbcf765b9298b01890d7365d254fb7c47ed80b95000a5c81bffb"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "checkedAt": "2026-10-26T23:42:22.342039+00:00"
+}
