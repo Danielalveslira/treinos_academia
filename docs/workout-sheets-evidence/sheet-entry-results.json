@@ -1,0 +1,26 @@
+{
+  "fixture": "synthetic HTTP RPC server; real UI/client/services; CPU 4x; 150ms RTT; 200KB/s down",
+  "results": [
+    {
+      "width": 320,
+      "legacyReplace": true,
+      "exerciseIntent": true,
+      "noGlobalCatalog": true,
+      "noOverflow": true
+    },
+    {
+      "width": 360,
+      "legacyReplace": true,
+      "exerciseIntent": true,
+      "noGlobalCatalog": true,
+      "noOverflow": true
+    },
+    {
+      "width": 390,
+      "legacyReplace": true,
+      "exerciseIntent": true,
+      "noGlobalCatalog": true,
+      "noOverflow": true
+    }
+  ]
+}

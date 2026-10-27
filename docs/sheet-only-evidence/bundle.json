@@ -1,0 +1,40 @@
+{
+  "baselineSha": "429c33d",
+  "samePublicEnvironment": true,
+  "baseline": {
+    "boot": {
+      "bootJsGzipBytes": 325477,
+      "bootCssGzipBytes": 69704,
+      "bootFiles": 6
+    },
+    "assets": {
+      "js": {
+        "count": 156,
+        "gzipBytes": 885203
+      },
+      "css": {
+        "count": 15,
+        "gzipBytes": 84161
+      }
+    }
+  },
+  "candidate": {
+    "boot": {
+      "bootJsGzipBytes": 325452,
+      "bootCssGzipBytes": 69606,
+      "bootFiles": 6
+    },
+    "assets": {
+      "js": {
+        "count": 156,
+        "gzipBytes": 887177
+      },
+      "css": {
+        "count": 15,
+        "gzipBytes": 84068
+      }
+    }
+  },
+  "runtimeRequestComparison": null,
+  "notes": "Boot asset graph measured by existing budget script; no runtime request/time improvement claimed."
+}

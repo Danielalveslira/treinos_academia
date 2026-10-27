@@ -160,7 +160,10 @@ async function mount(props = {}) {
     renderer = TestRenderer.create(
       React.createElement(WorkoutForm, {
         exercises: [squat, bench],
-        sheetScope: { id: 'sheet-a', items: [squat, bench].map((exercise) => ({ exercise_id: exercise.id, available: true })) },
+        sheetScope: {
+          id: 'sheet-a',
+          items: [squat, bench].map((exercise) => ({ exercise_id: exercise.id, available: true })),
+        },
         progressScope: 'user-a:sheet-a',
         defaultExerciseId: 'squat',
         ...handlers,
@@ -498,7 +501,10 @@ test('a slow first save never produces a duplicate create: the next set waits an
 })
 
 test('after the last sheet exercise, review stays within the sheet and never opens groups', async () => {
-  const form = await mount({ exercises: [squat], sheetScope: { id: 'sheet-a', items: [{ exercise_id: squat.id, available: true }] } })
+  const form = await mount({
+    exercises: [squat],
+    sheetScope: { id: 'sheet-a', items: [{ exercise_id: squat.id, available: true }] },
+  })
   await form.conclude('20', '10')
   await form.conclude('20', '10')
   await form.conclude('20', '10')

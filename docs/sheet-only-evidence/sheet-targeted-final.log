@@ -1,0 +1,14 @@
+✔ src/components/workout.test.js (4649.441892ms)
+✔ src/components/workoutSession.interactions.test.js (3045.697051ms)
+✔ src/features/workoutSheets/sheetsPages.test.js (2040.246742ms)
+✔ src/pwa/serviceWorker.test.js (1536.238308ms)
+✔ src/services/offline/sheetSnapshot.test.js (214.43248ms)
+✔ src/utils/workoutEntry.test.js (83.048489ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11641.971206

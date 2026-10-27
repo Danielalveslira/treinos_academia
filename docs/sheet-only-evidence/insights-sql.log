@@ -1,0 +1,112 @@
+PASS concurrency archive: waits, revalidates committed state, no partial insert
+PASS concurrency remove-item: waits, revalidates committed state, no partial insert
+PASS concurrency withdraw-catalog: waits, revalidates committed state, no partial insert
+ERROR:  canceling statement due to lock timeout
+CONTEXT:  while updating tuple (1,34) in relation "workout_sheets"
+PASS concurrency insert: archive waits for accepted attribution
+CREATE FUNCTION
+CREATE FUNCTION
+96a00000-0000-0000-0000-000000000001
+SET
+RESET
+Aggregate  (cost=35.46..35.48 rows=1 width=32) (actual time=3.166..3.190 rows=1 loops=1)
+  Buffers: shared hit=473
+  CTE activity
+    ->  Nested Loop Left Join  (cost=11.06..14.04 rows=1 width=32) (actual time=0.178..0.181 rows=1 loops=1)
+          Buffers: shared hit=9
+          ->  Nested Loop Left Join  (cost=0.50..3.46 rows=1 width=28) (actual time=0.118..0.120 rows=1 loops=1)
+                Buffers: shared hit=5
+                ->  Seq Scan on workout_sheets s  (cost=0.00..2.85 rows=1 width=16) (actual time=0.008..0.008 rows=1 loops=1)
+                      Filter: (user_id = '96a00000-0000-0000-0000-000000000001'::uuid)
+                      Buffers: shared hit=2
+                ->  Limit  (cost=0.50..0.60 rows=1 width=12) (actual time=0.108..0.109 rows=1 loops=1)
+                      Buffers: shared hit=3
+                      ->  Incremental Sort  (cost=0.50..198.92 rows=2001 width=12) (actual time=0.108..0.108 rows=1 loops=1)
+                            Sort Key: w.date DESC, w.created_at DESC
+                            Presorted Key: w.date
+                            Full-sort Groups: 1  Sort Method: top-N heapsort  Average Memory: 25kB  Peak Memory: 25kB
+                            Buffers: shared hit=3
+                            ->  Index Only Scan using workouts_sheet_activity_idx on workouts w  (cost=0.29..149.31 rows=2001 width=12) (actual time=0.071..0.072 rows=4 loops=1)
+                                  Index Cond: ((user_id = '96a00000-0000-0000-0000-000000000001'::uuid) AND (sheet_id = s.id) AND (date <= ((now() AT TIME ZONE 'America/Sao_Paulo'::text))::date))
+                                  Heap Fetches: 0
+                                  Buffers: shared hit=3
+          ->  Aggregate  (cost=10.56..10.57 rows=1 width=4) (actual time=0.059..0.059 rows=1 loops=1)
+                Buffers: shared hit=4
+                ->  Index Only Scan Backward using workouts_sheet_activity_idx on workouts w_1  (cost=0.30..10.35 rows=82 width=4) (actual time=0.023..0.043 rows=81 loops=1)
+                      Index Cond: ((user_id = '96a00000-0000-0000-0000-000000000001'::uuid) AND (sheet_id = s.id) AND (date >= (date_trunc('month'::text, (((now() AT TIME ZONE 'America/Sao_Paulo'::text))::date)::timestamp with time zone))::date) AND (date <= ((now() AT TIME ZONE 'America/Sao_Paulo'::text))::date))
+                      Heap Fetches: 0
+                      Buffers: shared hit=4
+  CTE summaries
+    ->  Nested Loop Left Join  (cost=10.01..21.10 rows=1 width=150) (actual time=2.869..2.873 rows=1 loops=1)
+          Buffers: shared hit=442
+          ->  Nested Loop Left Join  (cost=0.00..2.88 rows=1 width=140) (actual time=0.201..0.204 rows=1 loops=1)
+                Join Filter: (a.sheet_id = s_1.id)
+                Buffers: shared hit=11
+                ->  Seq Scan on workout_sheets s_1  (cost=0.00..2.85 rows=1 width=124) (actual time=0.017..0.017 rows=1 loops=1)
+                      Filter: (user_id = '96a00000-0000-0000-0000-000000000001'::uuid)
+                      Buffers: shared hit=2
+                ->  CTE Scan on activity a  (cost=0.00..0.02 rows=1 width=32) (actual time=0.182..0.184 rows=1 loops=1)
+                      Buffers: shared hit=9
+          ->  Aggregate  (cost=10.01..10.02 rows=1 width=9) (actual time=2.614..2.615 rows=1 loops=1)
+                Buffers: shared hit=430
+                ->  Bitmap Heap Scan on workout_sheet_exercises x  (cost=4.16..9.50 rows=2 width=16) (actual time=0.059..0.060 rows=1 loops=1)
+                      Recheck Cond: (sheet_id = s_1.id)
+                      Heap Blocks: exact=1
+                      Buffers: shared hit=2
+                      ->  Bitmap Index Scan on workout_sheet_items_order_idx  (cost=0.00..4.16 rows=2 width=0) (actual time=0.051..0.051 rows=2 loops=1)
+                            Index Cond: (sheet_id = s_1.id)
+                            Buffers: shared hit=1
+          SubPlan 2
+            ->  Index Only Scan using workout_sheet_completions_pkey on workout_sheet_completions c  (cost=0.16..8.18 rows=1 width=0) (actual time=0.046..0.046 rows=0 loops=1)
+                  Index Cond: ((user_id = '96a00000-0000-0000-0000-000000000001'::uuid) AND (sheet_id = s_1.id) AND (business_day = ((now() AT TIME ZONE 'America/Sao_Paulo'::text))::date))
+                  Heap Fetches: 0
+                  Buffers: shared hit=1
+  ->  Sort  (cost=0.30..0.31 rows=3 width=64) (actual time=3.115..3.136 rows=1 loops=1)
+        Sort Key: selected.sort_order, selected.id
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=473
+        ->  Subquery Scan on selected  (cost=0.15..0.27 rows=3 width=64) (actual time=3.033..3.099 rows=1 loops=1)
+              Buffers: shared hit=467
+              ->  Unique  (cost=0.15..0.24 rows=3 width=150) (actual time=3.028..3.093 rows=1 loops=1)
+                    Buffers: shared hit=467
+                    ->  Sort  (cost=0.15..0.15 rows=3 width=150) (actual time=3.028..3.049 rows=3 loops=1)
+                          Sort Key: summaries.id, summaries.name, summaries.goal, summaries.weekdays, summaries.sort_order, summaries.archived_at, summaries.exercise_count, summaries.available, summaries.last_date, summaries.last_registered_at, summaries.month_days, summaries.completed_today
+                          Sort Method: quicksort  Memory: 25kB
+                          Buffers: shared hit=464
+                          ->  Append  (cost=0.03..0.12 rows=3 width=150) (actual time=2.889..2.910 rows=3 loops=1)
+                                Buffers: shared hit=442
+                                ->  Limit  (cost=0.03..0.04 rows=1 width=150) (actual time=2.888..2.889 rows=1 loops=1)
+                                      Buffers: shared hit=442
+                                      ->  Sort  (cost=0.03..0.04 rows=1 width=150) (actual time=2.887..2.888 rows=1 loops=1)
+                                            Sort Key: summaries.sort_order, summaries.id
+                                            Sort Method: quicksort  Memory: 25kB
+                                            Buffers: shared hit=442
+                                            ->  CTE Scan on summaries  (cost=0.00..0.02 rows=1 width=150) (actual time=2.872..2.875 rows=1 loops=1)
+                                                  Filter: (archived_at IS NULL)
+                                                  Buffers: shared hit=442
+                                ->  Limit  (cost=0.03..0.04 rows=1 width=150) (actual time=0.011..0.011 rows=1 loops=1)
+                                      ->  Sort  (cost=0.03..0.04 rows=1 width=150) (actual time=0.010..0.010 rows=1 loops=1)
+                                            Sort Key: summaries_1.last_date DESC, summaries_1.last_registered_at DESC, summaries_1.sort_order, summaries_1.id
+                                            Sort Method: quicksort  Memory: 25kB
+                                            ->  CTE Scan on summaries summaries_1  (cost=0.00..0.02 rows=1 width=150) (actual time=0.001..0.001 rows=1 loops=1)
+                                                  Filter: (last_date IS NOT NULL)
+                                ->  Limit  (cost=0.03..0.04 rows=1 width=150) (actual time=0.007..0.008 rows=1 loops=1)
+                                      ->  Sort  (cost=0.03..0.04 rows=1 width=150) (actual time=0.007..0.007 rows=1 loops=1)
+                                            Sort Key: summaries_2.month_days DESC, summaries_2.last_date DESC, summaries_2.last_registered_at DESC, summaries_2.sort_order, summaries_2.id
+                                            Sort Method: quicksort  Memory: 25kB
+                                            ->  CTE Scan on summaries summaries_2  (cost=0.00..0.02 rows=1 width=150) (actual time=0.001..0.001 rows=1 loops=1)
+                                                  Filter: (month_days > 0)
+Planning:
+  Buffers: shared hit=417
+Planning Time: 3.036 ms
+Execution Time: 3.639 ms
+
+CREATE FUNCTION
+CREATE FUNCTION
+96a00000-0000-0000-0000-000000000001
+SET
+Result  (cost=0.00..0.26 rows=1 width=32) (actual time=8.929..8.930 rows=1 loops=1)
+  Buffers: shared hit=2259
+Planning Time: 0.009 ms
+Execution Time: 8.940 ms
+

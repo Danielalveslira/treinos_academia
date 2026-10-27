@@ -1,0 +1,24 @@
+✔ first workout: empty fields, completing a set saves it and advances with values carried over (332.024853ms)
+✔ every set after the first updates the same row; the last set finishes the exercise without navigating (20.775879ms)
+✔ "Próximo exercício" opens the next unfinished exercise only when tapped; "Revisar séries" shows the card again (10.956975ms)
+✔ double tap on "Concluir série" records a single set (3.585299ms)
+✔ editing a recorded set updates only that set and keeps the others (9.572531ms)
+✔ history suggestions are labelled, keep per-set progression and are not recorded (8.630302ms)
+✔ zero load is accepted; an empty weight is not (4.200171ms)
+✔ a failed save keeps the set, shows an error and retries the SAME row without duplicating it (6.16169ms)
+✔ a set saved only on this device is shown as pending, never as synced (6.641322ms)
+✔ connection coming back retries what failed (6.069555ms)
+✔ "Finalizar com N séries" drops the untouched ones and finishes the exercise (3.736333ms)
+✔ cardio: one action records the session and finishes the exercise (3.642403ms)
+✔ editing an existing workout keeps the old contract: all sets, one save (3.42414ms)
+✔ pressing Enter inside a field never records a set (2.934964ms)
+✔ a slow first save never produces a duplicate create: the next set waits and goes as one update (5.19096ms)
+✔ after the last sheet exercise, review stays within the sheet and never opens groups (11.386452ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 455.957882

@@ -65,6 +65,9 @@ function SheetWorkout({ id }) {
       <Flash variant="danger" role="alert">
         {sheetError(error || new Error('SHEET_NETWORK_REQUIRED'))}{' '}
         <Button onClick={refresh}>Tentar novamente</Button>{' '}
+        <Button as={Link} to="/treinar" replace>
+          Escolher ficha
+        </Button>{' '}
         {canEdit && (
           <Button as={Link} to={`/fichas/${id}/editar`}>
             Editar ficha
