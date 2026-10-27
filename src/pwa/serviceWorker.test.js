@@ -500,6 +500,19 @@ test('collectBootAssets inclui entry + imports estáticos + CSS, e exclui chunks
     '/assets/primer.js',
     '/assets/publicTurbo.js',
   ])
+  assert.deepEqual(collectBootAssets(bundle, ['main']), [
+    '/assets/index.css', '/assets/index.js', '/assets/primer.css', '/assets/primer.js',
+  ])
+  assert.throws(() => collectBootAssets(bundle, ['missing']), /Entrada de boot ausente/)
+})
+
+test('módulo offline mesclado continua incluindo seu chunk, dependências e CSS', () => {
+  const bundle = {
+    'merged.js': { type: 'chunk', fileName: 'merged.js', modules: { '/app/src/components/SyncStatus.jsx': {} }, imports: ['shared.js'], viteMetadata: { importedCss: new Set(['merged.css']) } },
+    'shared.js': { type: 'chunk', fileName: 'shared.js', imports: [], viteMetadata: { importedCss: new Set(['shared.css']) } },
+  }
+  assert.deepEqual(collectOfflineAssets(bundle, [], ['src/components/SyncStatus.jsx']), ['/merged.css', '/merged.js', '/shared.css', '/shared.js'])
+  assert.throws(() => collectOfflineAssets(bundle, [], ['src/components/Missing.jsx']), /não encontrado/)
 })
 
 test('push valida payload e usa fallback sem depender do React', async () => {

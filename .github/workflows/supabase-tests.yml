@@ -49,6 +49,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: https://header-smoke.invalid
           VITE_SUPABASE_ANON_KEY: header-smoke-public-key
+      - run: npm run budget
       - name: Install isolated browser
         run: node node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell
       - name: Public and auth headers at mobile and desktop widths
