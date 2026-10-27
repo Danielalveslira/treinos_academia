@@ -1,0 +1,1009 @@
+{
+  "labOnly": true,
+  "fieldINPMeasured": false,
+  "cpuSlowdown": 4,
+  "latencyMs": 40,
+  "downloadBytesPerSecond": 1500000,
+  "samplesPerCase": 3,
+  "standaloneCounterGzipBytes": 990,
+  "summary": [
+    {
+      "width": 390,
+      "phase": "before",
+      "lcpMedianMs": 444,
+      "clsMax": 0,
+      "maxObservedEventDurationMs": 200,
+      "initialRequests": 14,
+      "initialTransferredBytes": 359184
+    },
+    {
+      "width": 390,
+      "phase": "after",
+      "lcpMedianMs": 408,
+      "clsMax": 0,
+      "maxObservedEventDurationMs": 248,
+      "initialRequests": 16,
+      "initialTransferredBytes": 361012
+    },
+    {
+      "width": 1440,
+      "phase": "before",
+      "lcpMedianMs": 424,
+      "clsMax": 0,
+      "maxObservedEventDurationMs": 216,
+      "initialRequests": 14,
+      "initialTransferredBytes": 359184
+    },
+    {
+      "width": 1440,
+      "phase": "after",
+      "lcpMedianMs": 480,
+      "clsMax": 0,
+      "maxObservedEventDurationMs": 136,
+      "initialRequests": 16,
+      "initialTransferredBytes": 361012
+    }
+  ],
+  "measurements": [
+    {
+      "phase": "before",
+      "width": 390,
+      "sample": 0,
+      "metrics": {
+        "cls": 0,
+        "lcp": 472,
+        "eventDurations": [
+          184,
+          184,
+          184,
+          80,
+          72
+        ]
+      },
+      "initialRequests": 14,
+      "initialTransferredBytes": 359184,
+      "resources": [
+        {
+          "url": "/boot-public-theme.js",
+          "bytes": 870
+        },
+        {
+          "url": "/public-home-boot.js",
+          "bytes": 933
+        },
+        {
+          "url": "/assets/primer-CjVsHPOr.css",
+          "bytes": 44679
+        },
+        {
+          "url": "/public-pages.css",
+          "bytes": 915
+        },
+        {
+          "url": "/public-redesign.css",
+          "bytes": 928
+        },
+        {
+          "url": "/public-foundation.css",
+          "bytes": 1206
+        },
+        {
+          "url": "/public-home.css",
+          "bytes": 1100
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BY5Ekbth.css",
+          "bytes": 1005
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BQh3V-R1.js",
+          "bytes": 1053
+        },
+        {
+          "url": "/assets/publicTurbo-D7fBv_5j.js",
+          "bytes": 27994
+        },
+        {
+          "url": "/img/banners/quadro-geral-960.webp",
+          "bytes": 78756
+        },
+        {
+          "url": "/public-pages.js",
+          "bytes": 976
+        },
+        {
+          "url": "/assets/primer-CwG06UPS.js",
+          "bytes": 189463
+        },
+        {
+          "url": "/assets/index-Cw_vKgnq.js",
+          "bytes": 9306
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "sample": 1,
+      "metrics": {
+        "cls": 0,
+        "lcp": 400,
+        "eventDurations": [
+          200,
+          200,
+          200,
+          48,
+          56
+        ]
+      },
+      "initialRequests": 14,
+      "initialTransferredBytes": 359184,
+      "resources": [
+        {
+          "url": "/boot-public-theme.js",
+          "bytes": 870
+        },
+        {
+          "url": "/public-home-boot.js",
+          "bytes": 933
+        },
+        {
+          "url": "/assets/primer-CjVsHPOr.css",
+          "bytes": 44679
+        },
+        {
+          "url": "/public-pages.css",
+          "bytes": 915
+        },
+        {
+          "url": "/public-redesign.css",
+          "bytes": 928
+        },
+        {
+          "url": "/public-foundation.css",
+          "bytes": 1206
+        },
+        {
+          "url": "/public-home.css",
+          "bytes": 1100
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BY5Ekbth.css",
+          "bytes": 1005
+        },
+        {
+          "url": "/assets/publicTurbo-D7fBv_5j.js",
+          "bytes": 27994
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BQh3V-R1.js",
+          "bytes": 1053
+        },
+        {
+          "url": "/img/banners/quadro-geral-960.webp",
+          "bytes": 78756
+        },
+        {
+          "url": "/public-pages.js",
+          "bytes": 976
+        },
+        {
+          "url": "/assets/primer-CwG06UPS.js",
+          "bytes": 189463
+        },
+        {
+          "url": "/assets/index-Cw_vKgnq.js",
+          "bytes": 9306
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "width": 390,
+      "sample": 2,
+      "metrics": {
+        "cls": 0,
+        "lcp": 444,
+        "eventDurations": [
+          184,
+          184,
+          184,
+          72,
+          72
+        ]
+      },
+      "initialRequests": 14,
+      "initialTransferredBytes": 359184,
+      "resources": [
+        {
+          "url": "/boot-public-theme.js",
+          "bytes": 870
+        },
+        {
+          "url": "/public-home-boot.js",
+          "bytes": 933
+        },
+        {
+          "url": "/assets/primer-CjVsHPOr.css",
+          "bytes": 44679
+        },
+        {
+          "url": "/public-pages.css",
+          "bytes": 915
+        },
+        {
+          "url": "/public-redesign.css",
+          "bytes": 928
+        },
+        {
+          "url": "/public-foundation.css",
+          "bytes": 1206
+        },
+        {
+          "url": "/public-home.css",
+          "bytes": 1100
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BY5Ekbth.css",
+          "bytes": 1005
+        },
+        {
+          "url": "/assets/publicTurbo-D7fBv_5j.js",
+          "bytes": 27994
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BQh3V-R1.js",
+          "bytes": 1053
+        },
+        {
+          "url": "/img/banners/quadro-geral-960.webp",
+          "bytes": 78756
+        },
+        {
+          "url": "/public-pages.js",
+          "bytes": 976
+        },
+        {
+          "url": "/assets/primer-CwG06UPS.js",
+          "bytes": 189463
+        },
+        {
+          "url": "/assets/index-Cw_vKgnq.js",
+          "bytes": 9306
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "sample": 0,
+      "metrics": {
+        "cls": 0,
+        "lcp": 388,
+        "eventDurations": [
+          248,
+          248,
+          248,
+          72,
+          48
+        ]
+      },
+      "initialRequests": 16,
+      "initialTransferredBytes": 361012,
+      "resources": [
+        {
+          "url": "/boot-public-theme.js",
+          "bytes": 870
+        },
+        {
+          "url": "/public-home-boot.js",
+          "bytes": 933
+        },
+        {
+          "url": "/assets/primer-AfPZpJ-K.css",
+          "bytes": 44588
+        },
+        {
+          "url": "/public-pages.css",
+          "bytes": 915
+        },
+        {
+          "url": "/public-redesign.css",
+          "bytes": 928
+        },
+        {
+          "url": "/public-foundation.css",
+          "bytes": 1206
+        },
+        {
+          "url": "/public-home.css",
+          "bytes": 1314
+        },
+        {
+          "url": "/public-catalog-count.js",
+          "bytes": 1290
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BY5Ekbth.css",
+          "bytes": 1005
+        },
+        {
+          "url": "/assets/publicTurbo-Ctbwz4fb.js",
+          "bytes": 27995
+        },
+        {
+          "url": "/assets/publicHeaderMenu-D-vqMybG.js",
+          "bytes": 1052
+        },
+        {
+          "url": "/img/banners/quadro-geral-960.webp",
+          "bytes": 78756
+        },
+        {
+          "url": "/public-pages.js",
+          "bytes": 976
+        },
+        {
+          "url": "/assets/primer-qUz-aGDU.js",
+          "bytes": 189505
+        },
+        {
+          "url": "/assets/index-Cw_vKgnq.js",
+          "bytes": 9306
+        },
+        {
+          "url": "/api/public-catalog-snapshot",
+          "bytes": 373
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "sample": 1,
+      "metrics": {
+        "cls": 0,
+        "lcp": 408,
+        "eventDurations": [
+          128,
+          128,
+          128,
+          56,
+          56
+        ]
+      },
+      "initialRequests": 16,
+      "initialTransferredBytes": 361012,
+      "resources": [
+        {
+          "url": "/boot-public-theme.js",
+          "bytes": 870
+        },
+        {
+          "url": "/public-home-boot.js",
+          "bytes": 933
+        },
+        {
+          "url": "/public-pages.css",
+          "bytes": 915
+        },
+        {
+          "url": "/assets/primer-AfPZpJ-K.css",
+          "bytes": 44588
+        },
+        {
+          "url": "/public-redesign.css",
+          "bytes": 928
+        },
+        {
+          "url": "/public-foundation.css",
+          "bytes": 1206
+        },
+        {
+          "url": "/public-home.css",
+          "bytes": 1314
+        },
+        {
+          "url": "/public-catalog-count.js",
+          "bytes": 1290
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BY5Ekbth.css",
+          "bytes": 1005
+        },
+        {
+          "url": "/assets/publicTurbo-Ctbwz4fb.js",
+          "bytes": 27995
+        },
+        {
+          "url": "/assets/publicHeaderMenu-D-vqMybG.js",
+          "bytes": 1052
+        },
+        {
+          "url": "/img/banners/quadro-geral-960.webp",
+          "bytes": 78756
+        },
+        {
+          "url": "/public-pages.js",
+          "bytes": 976
+        },
+        {
+          "url": "/assets/primer-qUz-aGDU.js",
+          "bytes": 189505
+        },
+        {
+          "url": "/assets/index-Cw_vKgnq.js",
+          "bytes": 9306
+        },
+        {
+          "url": "/api/public-catalog-snapshot",
+          "bytes": 373
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "width": 390,
+      "sample": 2,
+      "metrics": {
+        "cls": 0,
+        "lcp": 500,
+        "eventDurations": [
+          144,
+          144,
+          144,
+          24,
+          16
+        ]
+      },
+      "initialRequests": 16,
+      "initialTransferredBytes": 361012,
+      "resources": [
+        {
+          "url": "/boot-public-theme.js",
+          "bytes": 870
+        },
+        {
+          "url": "/public-home-boot.js",
+          "bytes": 933
+        },
+        {
+          "url": "/assets/primer-AfPZpJ-K.css",
+          "bytes": 44588
+        },
+        {
+          "url": "/public-pages.css",
+          "bytes": 915
+        },
+        {
+          "url": "/public-redesign.css",
+          "bytes": 928
+        },
+        {
+          "url": "/public-foundation.css",
+          "bytes": 1206
+        },
+        {
+          "url": "/public-home.css",
+          "bytes": 1314
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BY5Ekbth.css",
+          "bytes": 1005
+        },
+        {
+          "url": "/public-catalog-count.js",
+          "bytes": 1290
+        },
+        {
+          "url": "/assets/publicTurbo-Ctbwz4fb.js",
+          "bytes": 27995
+        },
+        {
+          "url": "/assets/publicHeaderMenu-D-vqMybG.js",
+          "bytes": 1052
+        },
+        {
+          "url": "/img/banners/quadro-geral-960.webp",
+          "bytes": 78756
+        },
+        {
+          "url": "/public-pages.js",
+          "bytes": 976
+        },
+        {
+          "url": "/assets/primer-qUz-aGDU.js",
+          "bytes": 189505
+        },
+        {
+          "url": "/assets/index-Cw_vKgnq.js",
+          "bytes": 9306
+        },
+        {
+          "url": "/api/public-catalog-snapshot",
+          "bytes": 373
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "width": 1440,
+      "sample": 0,
+      "metrics": {
+        "cls": 0,
+        "lcp": 552,
+        "eventDurations": [
+          128,
+          128,
+          128,
+          64,
+          56
+        ]
+      },
+      "initialRequests": 14,
+      "initialTransferredBytes": 359184,
+      "resources": [
+        {
+          "url": "/boot-public-theme.js",
+          "bytes": 870
+        },
+        {
+          "url": "/public-home-boot.js",
+          "bytes": 933
+        },
+        {
+          "url": "/assets/primer-CjVsHPOr.css",
+          "bytes": 44679
+        },
+        {
+          "url": "/public-pages.css",
+          "bytes": 915
+        },
+        {
+          "url": "/public-redesign.css",
+          "bytes": 928
+        },
+        {
+          "url": "/public-foundation.css",
+          "bytes": 1206
+        },
+        {
+          "url": "/public-home.css",
+          "bytes": 1100
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BY5Ekbth.css",
+          "bytes": 1005
+        },
+        {
+          "url": "/assets/publicTurbo-D7fBv_5j.js",
+          "bytes": 27994
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BQh3V-R1.js",
+          "bytes": 1053
+        },
+        {
+          "url": "/img/banners/quadro-geral-960.webp",
+          "bytes": 78756
+        },
+        {
+          "url": "/public-pages.js",
+          "bytes": 976
+        },
+        {
+          "url": "/assets/primer-CwG06UPS.js",
+          "bytes": 189463
+        },
+        {
+          "url": "/assets/index-Cw_vKgnq.js",
+          "bytes": 9306
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "width": 1440,
+      "sample": 1,
+      "metrics": {
+        "cls": 0,
+        "lcp": 424,
+        "eventDurations": [
+          216,
+          216,
+          216,
+          48,
+          64
+        ]
+      },
+      "initialRequests": 14,
+      "initialTransferredBytes": 359184,
+      "resources": [
+        {
+          "url": "/boot-public-theme.js",
+          "bytes": 870
+        },
+        {
+          "url": "/assets/primer-CjVsHPOr.css",
+          "bytes": 44679
+        },
+        {
+          "url": "/public-home-boot.js",
+          "bytes": 933
+        },
+        {
+          "url": "/public-redesign.css",
+          "bytes": 928
+        },
+        {
+          "url": "/public-pages.css",
+          "bytes": 915
+        },
+        {
+          "url": "/public-foundation.css",
+          "bytes": 1206
+        },
+        {
+          "url": "/public-home.css",
+          "bytes": 1100
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BY5Ekbth.css",
+          "bytes": 1005
+        },
+        {
+          "url": "/assets/publicTurbo-D7fBv_5j.js",
+          "bytes": 27994
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BQh3V-R1.js",
+          "bytes": 1053
+        },
+        {
+          "url": "/img/banners/quadro-geral-960.webp",
+          "bytes": 78756
+        },
+        {
+          "url": "/public-pages.js",
+          "bytes": 976
+        },
+        {
+          "url": "/assets/primer-CwG06UPS.js",
+          "bytes": 189463
+        },
+        {
+          "url": "/assets/index-Cw_vKgnq.js",
+          "bytes": 9306
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "width": 1440,
+      "sample": 2,
+      "metrics": {
+        "cls": 0,
+        "lcp": 372,
+        "eventDurations": [
+          120,
+          120,
+          120,
+          24,
+          24
+        ]
+      },
+      "initialRequests": 14,
+      "initialTransferredBytes": 359184,
+      "resources": [
+        {
+          "url": "/boot-public-theme.js",
+          "bytes": 870
+        },
+        {
+          "url": "/public-home-boot.js",
+          "bytes": 933
+        },
+        {
+          "url": "/assets/primer-CjVsHPOr.css",
+          "bytes": 44679
+        },
+        {
+          "url": "/public-pages.css",
+          "bytes": 915
+        },
+        {
+          "url": "/public-redesign.css",
+          "bytes": 928
+        },
+        {
+          "url": "/public-foundation.css",
+          "bytes": 1206
+        },
+        {
+          "url": "/public-home.css",
+          "bytes": 1100
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BY5Ekbth.css",
+          "bytes": 1005
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BQh3V-R1.js",
+          "bytes": 1053
+        },
+        {
+          "url": "/assets/publicTurbo-D7fBv_5j.js",
+          "bytes": 27994
+        },
+        {
+          "url": "/img/banners/quadro-geral-960.webp",
+          "bytes": 78756
+        },
+        {
+          "url": "/public-pages.js",
+          "bytes": 976
+        },
+        {
+          "url": "/assets/primer-CwG06UPS.js",
+          "bytes": 189463
+        },
+        {
+          "url": "/assets/index-Cw_vKgnq.js",
+          "bytes": 9306
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "sample": 0,
+      "metrics": {
+        "cls": 0,
+        "lcp": 444,
+        "eventDurations": [
+          136,
+          136,
+          136,
+          64,
+          64
+        ]
+      },
+      "initialRequests": 16,
+      "initialTransferredBytes": 361012,
+      "resources": [
+        {
+          "url": "/boot-public-theme.js",
+          "bytes": 870
+        },
+        {
+          "url": "/public-home-boot.js",
+          "bytes": 933
+        },
+        {
+          "url": "/assets/primer-AfPZpJ-K.css",
+          "bytes": 44588
+        },
+        {
+          "url": "/public-pages.css",
+          "bytes": 915
+        },
+        {
+          "url": "/public-redesign.css",
+          "bytes": 928
+        },
+        {
+          "url": "/public-foundation.css",
+          "bytes": 1206
+        },
+        {
+          "url": "/public-home.css",
+          "bytes": 1314
+        },
+        {
+          "url": "/public-catalog-count.js",
+          "bytes": 1290
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BY5Ekbth.css",
+          "bytes": 1005
+        },
+        {
+          "url": "/assets/publicTurbo-Ctbwz4fb.js",
+          "bytes": 27995
+        },
+        {
+          "url": "/assets/publicHeaderMenu-D-vqMybG.js",
+          "bytes": 1052
+        },
+        {
+          "url": "/img/banners/quadro-geral-960.webp",
+          "bytes": 78756
+        },
+        {
+          "url": "/public-pages.js",
+          "bytes": 976
+        },
+        {
+          "url": "/assets/primer-qUz-aGDU.js",
+          "bytes": 189505
+        },
+        {
+          "url": "/assets/index-Cw_vKgnq.js",
+          "bytes": 9306
+        },
+        {
+          "url": "/api/public-catalog-snapshot",
+          "bytes": 373
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "sample": 1,
+      "metrics": {
+        "cls": 0,
+        "lcp": 480,
+        "eventDurations": [
+          136,
+          136,
+          136,
+          40,
+          48
+        ]
+      },
+      "initialRequests": 16,
+      "initialTransferredBytes": 361012,
+      "resources": [
+        {
+          "url": "/boot-public-theme.js",
+          "bytes": 870
+        },
+        {
+          "url": "/public-home-boot.js",
+          "bytes": 933
+        },
+        {
+          "url": "/assets/primer-AfPZpJ-K.css",
+          "bytes": 44588
+        },
+        {
+          "url": "/public-pages.css",
+          "bytes": 915
+        },
+        {
+          "url": "/public-redesign.css",
+          "bytes": 928
+        },
+        {
+          "url": "/public-foundation.css",
+          "bytes": 1206
+        },
+        {
+          "url": "/public-home.css",
+          "bytes": 1314
+        },
+        {
+          "url": "/public-catalog-count.js",
+          "bytes": 1290
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BY5Ekbth.css",
+          "bytes": 1005
+        },
+        {
+          "url": "/assets/publicHeaderMenu-D-vqMybG.js",
+          "bytes": 1052
+        },
+        {
+          "url": "/assets/publicTurbo-Ctbwz4fb.js",
+          "bytes": 27995
+        },
+        {
+          "url": "/img/banners/quadro-geral-960.webp",
+          "bytes": 78756
+        },
+        {
+          "url": "/public-pages.js",
+          "bytes": 976
+        },
+        {
+          "url": "/assets/primer-qUz-aGDU.js",
+          "bytes": 189505
+        },
+        {
+          "url": "/assets/index-Cw_vKgnq.js",
+          "bytes": 9306
+        },
+        {
+          "url": "/api/public-catalog-snapshot",
+          "bytes": 373
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "width": 1440,
+      "sample": 2,
+      "metrics": {
+        "cls": 0,
+        "lcp": 568,
+        "eventDurations": [
+          128,
+          128,
+          128,
+          80,
+          72
+        ]
+      },
+      "initialRequests": 16,
+      "initialTransferredBytes": 361012,
+      "resources": [
+        {
+          "url": "/boot-public-theme.js",
+          "bytes": 870
+        },
+        {
+          "url": "/public-home-boot.js",
+          "bytes": 933
+        },
+        {
+          "url": "/assets/primer-AfPZpJ-K.css",
+          "bytes": 44588
+        },
+        {
+          "url": "/public-pages.css",
+          "bytes": 915
+        },
+        {
+          "url": "/public-redesign.css",
+          "bytes": 928
+        },
+        {
+          "url": "/public-foundation.css",
+          "bytes": 1206
+        },
+        {
+          "url": "/public-home.css",
+          "bytes": 1314
+        },
+        {
+          "url": "/public-catalog-count.js",
+          "bytes": 1290
+        },
+        {
+          "url": "/assets/publicHeaderMenu-BY5Ekbth.css",
+          "bytes": 1005
+        },
+        {
+          "url": "/assets/publicTurbo-Ctbwz4fb.js",
+          "bytes": 27995
+        },
+        {
+          "url": "/assets/publicHeaderMenu-D-vqMybG.js",
+          "bytes": 1052
+        },
+        {
+          "url": "/img/banners/quadro-geral-960.webp",
+          "bytes": 78756
+        },
+        {
+          "url": "/public-pages.js",
+          "bytes": 976
+        },
+        {
+          "url": "/assets/primer-qUz-aGDU.js",
+          "bytes": 189505
+        },
+        {
+          "url": "/assets/index-Cw_vKgnq.js",
+          "bytes": 9306
+        },
+        {
+          "url": "/api/public-catalog-snapshot",
+          "bytes": 373
+        }
+      ]
+    }
+  ]
+}

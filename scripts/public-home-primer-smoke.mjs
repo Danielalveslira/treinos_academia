@@ -1,9 +1,10 @@
+import { mockPublicServices } from './public-smoke-fixtures.mjs'
 import assert from 'node:assert/strict'
 import { mkdirSync } from 'node:fs'
 import { chromium } from 'playwright-core'
 
 const base = process.env.PUBLIC_PREVIEW_URL || 'http://127.0.0.1:4173'
-const folder = 'docs/public-ui-qa/home-primer-2026-10-22'
+const folder = process.env.PUBLIC_PROOF_DIR || 'docs/public-ui-qa/home-primer-2026-10-22'
 mkdirSync(folder, { recursive: true })
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || '/home/codespace/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome',
@@ -24,7 +25,8 @@ try {
         if (response.url().startsWith(base) && response.status() >= 400)
           errors.push(`${response.status()} ${response.url()}`)
       })
-      await page.addInitScript((mode) => localStorage.setItem('colorMode', mode), theme)
+      await mockPublicServices(page)
+    await page.addInitScript((mode) => localStorage.setItem('colorMode', mode), theme)
       const response = await page.goto(base, { waitUntil: 'domcontentloaded' })
       assert.equal(response.status(), 200)
       await page.locator('.home-image img').evaluate((image) => image.decode())
@@ -77,6 +79,7 @@ try {
           await page.goto(base)
           await page.locator(`main a[href="${path}"]`).click()
           await page.waitForURL(`${base}${path}`)
+          await page.getByRole('heading', { name: heading, exact: true }).waitFor()
           assert.equal((await page.locator('h1').textContent()).trim(), heading)
         }
         await page.goto(base)
@@ -91,7 +94,7 @@ try {
   const noJs = await browser.newPage({ javaScriptEnabled: false })
   await noJs.goto(base)
   assert.equal(await noJs.locator('main h1').count(), 1)
-  assert.equal(await noJs.locator('main h2').count(), 3)
+  assert.equal(await noJs.locator('main h2').count(), 4)
   assert.equal(await noJs.locator('main a.home-primary').count(), 2)
   assert.equal(await noJs.locator('main picture').count(), 1)
   await noJs.close()

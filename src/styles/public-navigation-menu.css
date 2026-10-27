@@ -10,31 +10,14 @@
   background-color: var(--overlay-bgColor, var(--bgColor-default));
   border: 1px solid var(--borderColor-muted, var(--borderColor-default));
   overscroll-behavior: contain;
+  padding-bottom: env(safe-area-inset-bottom);
 }
-/* Fullscreen geometry comes from Primer, rather than overriding its size/position. */
+/* Use Primer anchoring at every width: one viewport-bounded scroll container. */
 .public-header-overlay[data-variant='anchored'] {
-  max-height: calc(100dvh - 96px - env(safe-area-inset-top));
+  max-height: calc(100dvh - var(--public-menu-top) - var(--base-size-8, 8px) - env(safe-area-inset-bottom));
   overflow-y: auto;
 }
 .public-header-overlay [aria-current='page'] {
   color: var(--fgColor-accent);
   background: var(--bgColor-muted);
-}
-@media (max-width: 767px) {
-  /* Same stacking policy as AccountMenu: Primer's portal is above the open header. */
-  body:has(.public-header-overlay) #public-header { z-index: 0; }
-  body:has(.public-header-overlay[data-variant='fullscreen']) { overflow: hidden; }
-  .public-header-menu-content { display: flex; flex-direction: column; height: 100%; }
-  .public-header-menu-title {
-    padding: var(--base-size-12, 12px) var(--base-size-16, 16px);
-    border-bottom: 1px solid var(--borderColor-muted, var(--borderColor-default));
-    font-weight: var(--base-text-weight-semibold, 600);
-  }
-  .public-header-menu-scroll {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    padding-bottom: env(safe-area-inset-bottom);
-  }
 }

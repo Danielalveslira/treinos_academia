@@ -1,0 +1,35 @@
+BEGIN
+INSERT 0 3
+INSERT 0 1
+CREATE FUNCTION
+ok 1 - anon chama a revisão
+ok 2 - authenticated chama a revisão
+ok 3 - anon chama a varredura de sync
+ok 4 - authenticated chama a varredura de sync
+UPDATE 3
+UPDATE 1
+ok 5 - trigger força updated_at ao mudar o nome
+UPDATE 1
+ok 6 - trigger força updated_at ao desativar
+UPDATE 1
+UPDATE 1
+ok 7 - trigger força updated_at ao publicar mídia (published_media_refs)
+SELECT 1
+INSERT 0 1
+SELECT 1
+ok 8 - revisão muda ao inserir um exercício ativo novo
+ok 9 - total_active sobe exatamente 1 com a inserção
+UPDATE 1
+SELECT 1
+ok 10 - revisão muda ao desativar um exercício (mesmo sem a reimportação tocar texto/instruções)
+ok 11 - total_active cai exatamente 1 ao desativar
+SELECT 3
+ok 12 - varredura completa nunca duplica um id
+ok 13 - varredura completa devolve exatamente total_active linhas (nenhuma ausente)
+ok 14 - os 3 ativos do fixture aparecem (inclusive os 2 com nome idêntico)
+ok 15 - exercícios inativos (fixture original + desativado no teste 2) não aparecem na varredura
+ok 16 - p_limit <= 0 é tratado como 1
+ok 17 - p_limit negativo é tratado como 1
+ok 18 - p_limit é sempre clampado em 50, como a RPC de busca
+1..18
+ROLLBACK

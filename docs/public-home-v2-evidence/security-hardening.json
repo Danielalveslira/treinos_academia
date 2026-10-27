@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "tests": [
+    {
+      "file": "public_catalog_snapshot_test.sql",
+      "pass": 26,
+      "failed": 0
+    },
+    {
+      "file": "aud_has_app_access_gates_test.sql",
+      "pass": 99,
+      "failed": 0
+    },
+    {
+      "file": "notification_security_test.sql",
+      "pass": 61,
+      "failed": 0
+    },
+    {
+      "file": "security_followup_test.sql",
+      "pass": 19,
+      "failed": 0
+    }
+  ]
+}

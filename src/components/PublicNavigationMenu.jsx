@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ActionList, ActionMenu, IconButton } from '@primer/react'
 import { ArrowRightIcon, HomeIcon, LocationIcon, OrganizationIcon, PackageIcon, PersonAddIcon, QuestionIcon, SignInIcon, ThreeBarsIcon, XIcon } from '@primer/octicons-react'
 import { ACCOUNT_PUBLIC_LINKS, DISCOVERY_PUBLIC_LINKS } from '../../scripts/public-navigation.mjs'
@@ -23,11 +23,26 @@ function leadingVisual(href) {
   )
 }
 
-// Same Primer ActionMenu/ActionList and responsive overlay used by AccountMenu in /app.
+// Primer owns anchoring, collision avoidance, focus and closing at every width.
 export function PublicNavigationMenu({ authState = 'guest', pathname }) {
   const [open, setOpen] = useState(false)
+  const anchorRef = useRef(null)
+  const [menuTop, setMenuTop] = useState(undefined)
   const [path, setPath] = useState(() => pathname || (typeof window === 'undefined' ? '/' : window.location.pathname))
-  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches)
+
+  useLayoutEffect(() => {
+    if (!open || !anchorRef.current) return
+    const anchor = anchorRef.current
+    const header = anchor.closest('header') || anchor
+    const update = () => {
+      const gap = Number.parseFloat(getComputedStyle(header).getPropertyValue('--base-size-8')) || 8
+      setMenuTop(header.getBoundingClientRect().bottom + gap)
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [open])
 
   useEffect(() => {
     setPath(pathname || location.pathname)
@@ -35,42 +50,22 @@ export function PublicNavigationMenu({ authState = 'guest', pathname }) {
   }, [pathname])
 
   useEffect(() => {
-    const breakpoint = matchMedia('(max-width: 767px)')
-    const updateBreakpoint = () => {
-      setMobile(breakpoint.matches)
-      setOpen(false)
-    }
     const updateRoute = () => {
       setPath(location.pathname)
       setOpen(false)
     }
-    breakpoint.addEventListener('change', updateBreakpoint)
     document.addEventListener('turbo:load', updateRoute)
     document.addEventListener('turbo:before-cache', updateRoute)
     window.addEventListener('popstate', updateRoute)
     return () => {
-      breakpoint.removeEventListener('change', updateBreakpoint)
       document.removeEventListener('turbo:load', updateRoute)
       document.removeEventListener('turbo:before-cache', updateRoute)
       window.removeEventListener('popstate', updateRoute)
     }
   }, [])
 
-  useEffect(() => {
-    // The fullscreen mobile overlay doesn't close on Escape through Primer's
-    // own handler (verified: the X button and outside clicks do close it).
-    if (!mobile || !open) return
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    // Capture phase: something inside the fullscreen overlay stops the keydown
-    // from bubbling to document, where Primer's own Escape handler listens.
-    document.addEventListener('keydown', onKeyDown, true)
-    return () => document.removeEventListener('keydown', onKeyDown, true)
-  }, [mobile, open])
-
   return (
-    <ActionMenu open={open} onOpenChange={setOpen}>
+    <ActionMenu open={open} onOpenChange={setOpen} anchorRef={anchorRef}>
       <ActionMenu.Anchor>
         <IconButton
           size="large"
@@ -82,52 +77,53 @@ export function PublicNavigationMenu({ authState = 'guest', pathname }) {
         />
       </ActionMenu.Anchor>
       <ActionMenu.Overlay
+        // Primer 37 anchors to the button with a 4px offset, inside the sticky
+        // header's bottom padding. Its portal is below that header's stacking
+        // context, so the header paints over the panel's top border/corners.
+        // Use supported Overlay coordinates for the measured HEADER bottom;
+        // keep Primer's horizontal anchoring, collision handling and focus logic.
         align="end"
+        side="outside-bottom"
+        position="fixed"
+        top={menuTop}
+        style={{ '--public-menu-top': `${menuTop || 0}px` }}
         width="small"
         className="public-header-overlay"
-        variant={{ regular: 'anchored', narrow: 'fullscreen' }}
+        variant={{ regular: 'anchored', narrow: 'anchored' }}
+        overflow="auto"
       >
-        <div className="public-header-menu-content">
-          {mobile && (
-            <div className="public-header-menu-title">
-              <strong>Menu</strong>
-            </div>
-          )}
-          <div className="public-header-menu-scroll">
-            <ActionList>
-              <ActionList.Group title="Descobrir">
-                {[['/', 'Início'], ...DISCOVERY_PUBLIC_LINKS].map(([href, label]) => (
-                  <ActionList.LinkItem
-                    key={href}
-                    as="a"
-                    href={href}
-                    aria-current={path === href ? 'page' : undefined}
-                    data-turbo="true"
-                    onClick={() => setOpen(false)}
-                  >
-                    {leadingVisual(href)}
-                    {label}
-                  </ActionList.LinkItem>
-                ))}
-              </ActionList.Group>
-              <ActionList.Group title="Conta">
-                {authState === 'authed' ? (
-                  <ActionList.LinkItem as="a" href="/app" onClick={() => setOpen(false)}>
-                    {leadingVisual('/app')}
-                    Ir para o app
-                  </ActionList.LinkItem>
-                ) : (
-                  ACCOUNT_PUBLIC_LINKS.map(([href, label]) => (
-                    <ActionList.LinkItem key={href} as="a" href={href} onClick={() => setOpen(false)}>
-                      {leadingVisual(href)}
-                      {label}
-                    </ActionList.LinkItem>
-                  ))
-                )}
-              </ActionList.Group>
-            </ActionList>
-          </div>
-        </div>
+        <ActionList>
+          <ActionList.Group title="Descobrir">
+            {[['/', 'Início'], ...DISCOVERY_PUBLIC_LINKS].map(([href, label]) => (
+              <ActionList.LinkItem
+                key={href}
+                as="a"
+                href={href}
+                aria-current={path === href ? 'page' : undefined}
+                data-turbo="true"
+                onClick={() => setOpen(false)}
+              >
+                {leadingVisual(href)}
+                {label}
+              </ActionList.LinkItem>
+            ))}
+          </ActionList.Group>
+          <ActionList.Group title="Conta">
+            {authState === 'authed' ? (
+              <ActionList.LinkItem as="a" href="/app" onClick={() => setOpen(false)}>
+                {leadingVisual('/app')}
+                Ir para o app
+              </ActionList.LinkItem>
+            ) : (
+              ACCOUNT_PUBLIC_LINKS.map(([href, label]) => (
+                <ActionList.LinkItem key={href} as="a" href={href} onClick={() => setOpen(false)}>
+                  {leadingVisual(href)}
+                  {label}
+                </ActionList.LinkItem>
+              ))
+            )}
+          </ActionList.Group>
+        </ActionList>
       </ActionMenu.Overlay>
     </ActionMenu>
   )
