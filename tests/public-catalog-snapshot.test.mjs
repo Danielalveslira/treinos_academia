@@ -56,7 +56,7 @@ test('client is lazy, mounts once, formats real zero and counts, aborts on Turbo
  const c=client();assert.equal(c.calls.length,0)
  c.listeners.get('turbo:load')();assert.equal(c.observed.length,1)
  vm.runInNewContext(c.source,c.context);assert.equal(c.observed.length,1)
- c.show();c.show();await flush();assert.equal(c.calls.length,1);assert.equal(c.target.textContent,'867 exercícios publicados')
+ c.show();c.show();await flush();assert.equal(c.calls.length,1);assert.equal(c.calls[0][1].credentials,'same-origin');assert.equal(c.target.textContent,'867 exercícios publicados')
  c.listeners.get('turbo:before-cache')();assert.equal(c.calls[0][1].signal.aborted,true);assert.equal(c.target.textContent,'Exercícios para sua rotina')
  c.listeners.get('turbo:load')();c.show();await flush();assert.equal(c.calls.length,2)
  const zero=client({...value,total_active:0});zero.show();await flush();assert.equal(zero.target.textContent,'0 exercícios publicados')
