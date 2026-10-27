@@ -74,6 +74,7 @@ function ProductCatalog() {
   const controllerRef = useRef(null)
   const offsetRef = useRef(0)
   const expiryTimer = useRef(null)
+  const expiryDeadline = useRef(Infinity)
 
   const grouped = !committedSearch.trim() && !category && !brand
   const hasFilters = Boolean(searchInput || category || brand)
@@ -88,6 +89,7 @@ function ProductCatalog() {
       setStatus(append ? 'loading-more' : 'loading')
       setErrorCode(null)
       if (!append) {
+        expiryDeadline.current = Infinity
         setGroups([])
         setItems([])
         setZoomProduct(null)
@@ -108,10 +110,20 @@ function ProductCatalog() {
           if (requestId !== requestIdRef.current) return
           clearTimeout(expiryTimer.current)
           if (page.validUntil) {
-            const remaining =
+            const pageRemaining =
               Date.parse(page.validUntil) -
               Date.parse(page.serverTime) -
+              (page.initialAgeMs || 0) -
               (performance.now() - started)
+            // Appending a later page must never extend the deadline of earlier items.
+            expiryDeadline.current = Math.min(
+              expiryDeadline.current,
+              performance.now() + pageRemaining
+            )
+          }
+          // An empty final page has no validUntil, but must keep earlier items' timer.
+          if (expiryDeadline.current !== Infinity) {
+            const remaining = expiryDeadline.current - performance.now()
             if (!Number.isFinite(remaining) || remaining <= 0) {
               setGroups([])
               setItems([])

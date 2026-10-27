@@ -17,6 +17,14 @@ const messages = {
   UPLOAD_FAILED: 'Não foi possível enviar a imagem. Tente novamente.',
   INVALID_IMAGE: 'Arquivo inválido. Escolha uma imagem JPEG, PNG ou WebP.',
   MODERATION_REASON_REQUIRED: 'Informe o motivo da decisão (mínimo de cinco caracteres).',
+  OWNERSHIP_EVIDENCE_REQUIRED:
+    'Informe a referência da comprovação de titularidade e confirme a associação.',
+  OWNER_NOT_VERIFIED:
+    'O titular comprovado deve corresponder ao proprietário da vitrine de destino.',
+  LEGACY_PRODUCT_CHANGED: 'O produto legado mudou. Atualize a lista antes de associar.',
+  LEGACY_PRODUCT_NOT_FOUND: 'Produto legado indisponível ou já associado.',
+  INVALID_CLEANUP_CONFIGURATION:
+    'Informe uma tolerância de 1 a 720 horas e confirme a configuração.',
 }
 export const storefrontError = (error) => messages[error?.message] || commercialError(error)
 export const editorialLabels = {

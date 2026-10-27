@@ -39,13 +39,20 @@ function ProductThumbnail({ src, alt }) {
 }
 
 // Legados sem vínculo permanecem privados; seus dados são preservados para administração.
-export function PartnerProductList({ products, busy, onEdit, onDelete }) {
+export function PartnerProductList({ products, busy, onEdit, onDelete, onAssociate }) {
   if (products.length === 0) {
     return <Text sx={{ fontSize: 1, color: 'fg.muted' }}>Nenhum produto cadastrado ainda.</Text>
   }
 
   return (
-    <Box sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, overflow: 'hidden' }}>
+    <Box
+      sx={{
+        border: '1px solid',
+        borderColor: 'border.default',
+        borderRadius: 2,
+        overflow: 'hidden',
+      }}
+    >
       {products.map((product, index) => {
         return (
           <Box
@@ -78,7 +85,17 @@ export function PartnerProductList({ products, busy, onEdit, onDelete }) {
               <Button size="small" disabled={busy} onClick={() => onEdit(product)}>
                 Editar
               </Button>
-              <Button size="small" variant="danger" disabled={busy} onClick={() => onDelete(product)}>
+              {onAssociate && (
+                <Button size="small" disabled={busy} onClick={() => onAssociate(product)}>
+                  Associar a vitrine
+                </Button>
+              )}
+              <Button
+                size="small"
+                variant="danger"
+                disabled={busy}
+                onClick={() => onDelete(product)}
+              >
                 Excluir
               </Button>
             </Box>

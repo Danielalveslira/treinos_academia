@@ -225,7 +225,15 @@ export default function StorefrontManager({ admin = false }) {
                 <Label>{editorialLabels[item.editorialState]}</Label>
                 <Label>{publicationLabels[item.publicationState]}</Label>
               </Box>
-              {admin && <Text as="p">Proprietário: {item.ownerUserId}</Text>}
+              {admin && (
+                <Text as="p">
+                  Proprietário: {item.ownerUserId} · ID da vitrine: {item.id}
+                </Text>
+              )}
+              <Text as="p">
+                Revisão em edição: {item.revision} · versão pública:{' '}
+                {item.publishedRevision || 'ainda não aprovada'}.
+              </Text>
               <Text as="p">{item.description}</Text>
               <Text as="p">{item.contact}</Text>
               {item.expiresAt && (
@@ -236,8 +244,8 @@ export default function StorefrontManager({ admin = false }) {
               )}
               {item.lastDecision && <Text as="p">Última decisão: {item.lastDecision}</Text>}
               <Text as="p">
-                Edições retiram a vitrine do público até nova aprovação. O prazo contratado continua
-                correndo.
+                A última versão aprovada continua pública durante a revisão das alterações, enquanto
+                o contrato estiver vigente.
               </Text>
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3 }}>
                 <Button disabled={busy} onClick={() => setPreview(true)}>
@@ -339,7 +347,7 @@ export default function StorefrontManager({ admin = false }) {
                   Mais produtos
                 </Button>
               )}
-              {!admin && item.editorialState === 'approved' && (
+              {!admin && item.canContract && (
                 <CommercialLeasePurchase
                   key={`${item.id}:${item.revision}`}
                   resourceId={item.id}

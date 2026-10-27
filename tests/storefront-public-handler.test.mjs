@@ -41,6 +41,7 @@ test('server detail escapes approved public fields and never publishes arbitrary
     assert.equal(JSON.parse(init.body).p_mode, 'detail')
     return new Response(
       JSON.stringify({
+        serverTime: new Date().toISOString(),
         groups: [
           {
             key: id,

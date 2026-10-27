@@ -1,0 +1,47 @@
+[
+  {
+    "name": "storefront_revisions_test.sql",
+    "passed": true,
+    "assertions": 67
+  },
+  {
+    "name": "product_storefronts_test.sql",
+    "passed": true,
+    "assertions": 75
+  },
+  {
+    "name": "commercial_engine_test.sql",
+    "passed": true,
+    "assertions": 58
+  },
+  {
+    "name": "evocash_pricing_test.sql",
+    "passed": true,
+    "assertions": 57
+  },
+  {
+    "name": "infinitepay_cash_purchases_test.sql",
+    "passed": true,
+    "assertions": 32
+  },
+  {
+    "name": "finance_integrity_test.sql",
+    "passed": true,
+    "assertions": 17
+  },
+  {
+    "name": "finance_reversals_test.sql",
+    "passed": true,
+    "assertions": 18
+  },
+  {
+    "name": "public_commercial_test.sql",
+    "passed": true,
+    "assertions": 20
+  },
+  {
+    "name": "partner_products_require_image_test.sql",
+    "passed": true,
+    "assertions": 6
+  }
+]

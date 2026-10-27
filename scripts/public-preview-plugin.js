@@ -2,6 +2,8 @@ import process from 'node:process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadEnv } from 'vite'
+import storefrontCatalog from '../api/storefront-catalog.js'
+import storefrontSitemap from '../api/storefront-sitemap.js'
 import storefrontDetail from '../api/storefront.js'
 import catalogSnapshot from '../api/public-catalog-snapshot.js'
 import {
@@ -42,6 +44,15 @@ export function publicPreviewPlugin() {
       server.middlewares.use(async (request, response, next) => {
         if (request.method !== 'GET' && request.method !== 'HEAD') return next()
         const path = new URL(request.url, 'http://localhost').pathname
+        if (path === '/vitrine' || path === '/sitemap.xml') {
+          for (const name of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
+            if (!process.env[name] && env[name]) process.env[name] = env[name]
+          if (path === '/sitemap.xml')
+            return storefrontSitemap(request, response, { staticXml: renderSitemap() })
+          const raw = renderPublicPage('/vitrine', env, { dev: true })
+          const html = await server.transformIndexHtml(path, raw, request.originalUrl)
+          return storefrontCatalog(request, response, { html })
+        }
         if (/^\/vitrine\/[0-9a-f-]{36}$/i.test(path)) {
           for (const name of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
             if (!process.env[name] && env[name]) process.env[name] = env[name]
@@ -49,8 +60,6 @@ export function publicPreviewPlugin() {
         }
         if (path === '/robots.txt')
           return send(response, request, renderRobots(), 'text/plain; charset=utf-8')
-        if (path === '/sitemap.xml')
-          return send(response, request, renderSitemap(), 'application/xml; charset=utf-8')
         const canonical = variant(path)
         if (canonical) return redirect(response, request, canonical)
         if (path === '/api/public-catalog-snapshot') {
@@ -80,6 +89,9 @@ export function publicPreviewPlugin() {
       server.middlewares.use((request, response, next) => {
         if (request.method !== 'GET' && request.method !== 'HEAD') return next()
         const path = new URL(request.url, 'http://localhost').pathname
+        if (path === '/vitrine') return storefrontCatalog(request, response)
+        if (path === '/sitemap.xml') return storefrontSitemap(request, response)
+        if (/^\/vitrine\/[0-9a-f-]{36}$/i.test(path)) return storefrontDetail(request, response)
         const canonical = variant(path)
         if (canonical) return redirect(response, request, canonical)
         const file = routes.get(path) || (appRoute.test(path.slice(1)) ? 'app-shell.html' : null)

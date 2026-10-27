@@ -1,0 +1,28 @@
+✔ abrir "Editar" em um produto legado sem imagem não derruba o formulário (defeito B: TypeError .trim() em null) (10545.897885ms)
+✔ abrir "Editar" em um produto publicado com imagem também funciona normalmente (110.358164ms)
+✔ "Editar" seguido de "Cancelar edição" não grava nada (nenhuma chamada de update/insert ao Supabase) (63.034562ms)
+✔ cadastrar um produto novo sem imagem é rejeitado: nenhum insert ocorre e o erro aparece junto ao campo (78.659994ms)
+✔ cadastrar um produto novo com imagem válida grava normalmente (173.479887ms)
+✔ editar um rascunho legado sem imagem SEM marcar "Aprovado" continua permitido (produto legado permanece editável) (52.988609ms)
+✔ marcar "Aprovado" num rascunho legado sem imagem é bloqueado até preencher a imagem (99.443598ms)
+✔ approved HTTP payload is consumed once and charged navigation age before expiration (4.182084ms)
+✔ filtered navigation cannot reuse unfiltered HTML data (0.383946ms)
+✔ editorial saves whitelist fields and never send owner, approval or financial values (56.082181ms)
+✔ moderation uses content CAS and reasons; new storefront includes persistent intent key (2.367257ms)
+✔ maintenance and legacy association preserve CAS, evidence and idempotency intent (0.544216ms)
+✔ editorial and publication states stay independent; blocked and stale failures are actionable (28.362814ms)
+✔ direct expired or unknown storefront responds 404, no-store and no commercial data (56.645463ms)
+✔ server detail escapes approved public fields and never publishes arbitrary HTML (113.612052ms)
+✔ backend failure and non-read requests fail safely without exposing configuration (0.808398ms)
+✔ crawler receives useful approved catalog HTML, escaped schema and no-store (87.13194ms)
+✔ empty catalog and unavailable detail cannot be indexed (1.761827ms)
+✔ sitemap excludes expired entries and fails closed when backend unavailable (1.355069ms)
+✔ a lease ending during upstream IO cannot leak through HTML, schema or bootstrap (70.053307ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12947.60398

@@ -112,3 +112,32 @@ export async function discardStorefrontImage(id) {
     },
   })
 }
+
+export const getStorefrontMaintenance = () => rpc('admin_storefront_maintenance')
+export const configureStorefrontCleanup = (values) =>
+  rpc('admin_configure_storefront_cleanup', {
+    p_enabled: values.enabled,
+    p_grace_seconds: values.graceSeconds,
+    p_revision: values.revision,
+    p_reason: values.reason,
+    p_confirm: values.confirm,
+  })
+export const listLegacyProducts = (before = null) =>
+  rpc('admin_list_legacy_products', { p_before: before })
+export const getLegacyTarget = (id) => rpc('admin_get_legacy_target', { p_id: id })
+export const associateLegacyProduct = (values) =>
+  rpc('admin_associate_legacy_product', {
+    p_product: values.product.id,
+    p_storefront: values.target.id,
+    p_revision: values.target.revision,
+    p_fingerprint: values.product.fingerprint,
+    p_verified_owner: values.target.ownerId,
+    p_evidence: values.evidence,
+    p_request: values.requestId,
+    p_confirm: values.confirm,
+  })
+export async function runStorefrontCleanup() {
+  const { data, error } = await supabase.functions.invoke('storefront-media-cleanup', { body: {} })
+  if (error) throw error
+  return data
+}

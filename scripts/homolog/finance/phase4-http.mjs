@@ -3,8 +3,11 @@ import assert from 'node:assert/strict'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { jwt } from '../keys.mjs'
+const evidence =
+  'docs/finance-restructure/phase4/' +
+  (process.argv.includes('--phase41') ? 'evidence41' : 'evidence')
 const a = JSON.parse(readFileSync('.finance-local/phase4-access.json', 'utf8')),
-  b = JSON.parse(readFileSync('docs/finance-restructure/phase4/evidence/browser.json', 'utf8'))
+  b = JSON.parse(readFileSync(evidence + '/browser.json', 'utf8'))
 const base = 'http://127.0.0.1:55554',
   anon = jwt({ role: 'anon' }),
   results = []
@@ -192,7 +195,7 @@ await check(
   }
 )
 writeFileSync(
-  'docs/finance-restructure/phase4/evidence/http.json',
+  evidence + '/http.json',
   JSON.stringify(
     { localOnly: true, realAuth: true, realStorage: true, realEdge: true, results },
     null,

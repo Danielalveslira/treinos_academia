@@ -10,11 +10,13 @@
       "statusCode": 301
     }
   ],
+  "functions": {"api/storefront-catalog.js":{"includeFiles":"dist/vitrine.html"},"api/storefront-sitemap.js":{"includeFiles":"dist/sitemap.xml"}},
   "rewrites": [
+    {"source":"/sitemap.xml","destination":"/api/storefront-sitemap"},
     { "source": "/como-funciona", "destination": "/como-funciona.html" },
     { "source": "/para-empresas", "destination": "/para-empresas.html" },
     { "source": "/vitrine/:id([0-9a-fA-F-]{36})", "destination": "/api/storefront?id=:id" },
-    { "source": "/vitrine", "destination": "/vitrine.html" },
+    { "source": "/vitrine", "destination": "/api/storefront-catalog" },
     { "source": "/profissionais", "destination": "/profissionais.html" },
     {
       "source": "/:path((?:app|login|cadastro|esqueci-senha|confirmar-email|redefinir-senha|regras-da-comunidade|termos-de-uso|politica-de-privacidade|termos-publicacao-vitrine|atendimento|profissionais/[^/]+|exercicios(?:/[^/]+)?|fichas(?:/[^/]+)?(?:/editar)?|treinar|novo-treino|historico|progresso|perfil|evocash|entenda-suas-moedas|minhas-promocoes|meus-anuncios|vitrine/gerenciar|minha-vitrine|comunidades(?:/.*)?|admin/(?:compras-evocash|moderacao|contas|vitrines|exclusao-contas|comunidades|parcerias|promocoes|exercicios(?:-imagens)?)))",

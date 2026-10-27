@@ -77,3 +77,26 @@ test('moderation uses content CAS and reasons; new storefront includes persisten
     },
   ])
 })
+test('maintenance and legacy association preserve CAS, evidence and idempotency intent', async () => {
+  globalThis.__storefrontCalls = []
+  await service.configureStorefrontCleanup({
+    enabled: true,
+    graceSeconds: 7200,
+    revision: '12',
+    reason: 'Approved grace',
+    confirm: true,
+  })
+  await service.associateLegacyProduct({
+    product: { id: 'legacy', fingerprint: 'original' },
+    target: { id: 'store', revision: '13', ownerId: 'verified' },
+    evidence: 'Recorded provenance',
+    requestId: 'intent',
+    confirm: true,
+  })
+  assert.equal(globalThis.__storefrontCalls[0].args.p_revision, '12')
+  const args = globalThis.__storefrontCalls[1].args
+  assert.equal(args.p_fingerprint, 'original')
+  assert.equal(args.p_verified_owner, 'verified')
+  assert.equal(args.p_request, 'intent')
+  assert.equal(args.p_revision, '13')
+})

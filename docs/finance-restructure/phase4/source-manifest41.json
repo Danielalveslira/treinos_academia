@@ -1,0 +1,8 @@
+{
+  "recovered": true,
+  "historicalBase": "cd54a79",
+  "migrations": {
+    "supabase/migrations/20261202000002_storefront_media_maintenance_legacy.sql": "4266071a0844f3a8dc33f5a03b88d5a0a40c781608405851a5ecdccee5881e04",
+    "supabase/migrations/20261202000001_storefront_editorial_revisions.sql": "10e605aaee1c6281cc923679b787558bfbd0f1b9c0d1485c025725f0d2ca5926"
+  }
+}

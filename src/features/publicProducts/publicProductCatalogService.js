@@ -47,6 +47,20 @@ export async function fetchProductCatalog(
   { mode, search = '', category = '', brand = '', offset = 0, limit = CATALOG_PAGE_SIZE },
   signal
 ) {
+  const initialNode = globalThis.document?.getElementById('storefront-catalog-initial')
+  if (initialNode && mode === 'groups') {
+    initialNode.remove()
+    if (!search && !category && !brand && offset === 0) {
+      try {
+        const page = JSON.parse(initialNode.textContent)
+        if (Array.isArray(page.groups) && Number.isFinite(Date.parse(page.serverTime))) {
+          return { ...page, initialAgeMs: globalThis.performance?.now() || 0 }
+        }
+      } catch {
+        /* Fall back to the authoritative RPC. */
+      }
+    }
+  }
   if (!endpoint || !anonKey) throw new CatalogError('UNCONFIGURED')
   const response = await fetch(`${endpoint}/rest/v1/rpc/public_product_catalog`, {
     method: 'POST',
