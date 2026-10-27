@@ -121,6 +121,10 @@ jobs:
         env:
           PG_TEST_CONTAINER: supabase_db_treinos_academia
           PG_TEST_USER: supabase_admin
+      - name: Commercial wallet, price and renewal concurrency
+        run: node scripts/commercial-engine-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
       # Limpeza roda sempre (sucesso ou falha do passo acima), mas sem alterar o motivo da falha:
       # se o passo anterior falhou, o job já está marcado como falho antes deste rodar.
       - if: always()

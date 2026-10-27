@@ -1,0 +1,32 @@
+{
+  "localOnly": true,
+  "migrationReinstalledWithRollback": true,
+  "noLivePricesSeeded": true,
+  "suites": [
+    {
+      "name": "commercial_engine_test.sql",
+      "assertions": 58,
+      "passed": true
+    },
+    {
+      "name": "evocash_pricing_test.sql",
+      "assertions": 57,
+      "passed": true
+    },
+    {
+      "name": "infinitepay_cash_purchases_test.sql",
+      "assertions": 32,
+      "passed": true
+    },
+    {
+      "name": "finance_integrity_test.sql",
+      "assertions": 17,
+      "passed": true
+    },
+    {
+      "name": "finance_reversals_test.sql",
+      "assertions": 18,
+      "passed": true
+    }
+  ]
+}

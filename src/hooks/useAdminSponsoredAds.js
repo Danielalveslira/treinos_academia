@@ -8,7 +8,7 @@ import {
 import { describeQueryError } from '../utils/queryError'
 import { useAuth } from './useAuth'
 
-export function useAdminSponsoredAds() {
+export function useAdminSponsoredAds(enabled = true) {
   const { user } = useAuth()
   const [ads, setAds] = useState([])
   const [loading, setLoading] = useState(true)
@@ -27,8 +27,8 @@ export function useAdminSponsoredAds() {
   }, [])
 
   useEffect(() => {
-    refresh()
-  }, [refresh])
+    if (enabled) refresh()
+  }, [refresh, enabled])
 
   // Recarrega a lista inteira em vez de atualizar localmente: o formulário admin deriva
   // o badge "X/6 anúncios" por comunidade a partir desta mesma lista (ver

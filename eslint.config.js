@@ -13,7 +13,7 @@ export default [
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node },
     rules: { ...js.configs.recommended.rules },
   },
-  { ignores: ['dist'] },
+  { ignores: ['dist', '.finance-local/**'] },
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {

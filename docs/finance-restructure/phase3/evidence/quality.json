@@ -1,0 +1,35 @@
+{
+  "localOnly": true,
+  "productionChanged": false,
+  "pushOrMerge": false,
+  "sqlAssertions": 182,
+  "releaseTestsPassed": 95,
+  "js": {
+    "files": 263,
+    "passedInInitialSandboxRun": 262,
+    "infrastructureBlockedFiles": 1,
+    "blockedFile": "src/utils/businessDate.test.js",
+    "targetedRetryOutsideSandbox": {
+      "passed": 18,
+      "failed": 0
+    }
+  },
+  "lint": {
+    "errors": 0,
+    "existingWarnings": 16
+  },
+  "build": true,
+  "bundleBudget": true,
+  "sourceSecretFindings": 0,
+  "distSecretFindings": 0,
+  "diffCheck": true,
+  "isolatedState": {
+    "lastMigration": "20261130000001",
+    "realOfferings": 8,
+    "realSalesEnabled": 0,
+    "realIntegrationReady": 0,
+    "realPrices": 0,
+    "commercialLedgerMismatch": 0
+  },
+  "remoteCiExecuted": false
+}

@@ -20,12 +20,14 @@ import { SponsoredAdCapError, SponsoredAdGlobalCapError } from '../utils/validat
 const AdMetricsTab = lazy(() => import('../features/adMetrics/components/AdMetricsTab'))
 const AdvertiserAdmin = lazy(() => import('../features/adMetrics/components/AdvertiserAdmin'))
 const CommercialAdmin = lazy(() => import('../components/CommercialAdmin'))
+const CommercialEngineAdmin = lazy(() => import('../components/CommercialEngineAdmin'))
 
 const TABS = [
   { key: 'campaigns', label: 'Campanhas' },
   { key: 'metrics', label: 'Métricas' },
   { key: 'advertisers', label: 'Anunciantes' },
   { key: 'commercial', label: 'Propostas e produtos' },
+  { key: 'engine', label: 'Motor comercial' },
 ]
 
 function isExpired(ad, now) {
@@ -33,12 +35,15 @@ function isExpired(ad, now) {
 }
 
 export default function AdminSponsoredAds() {
-  const { ads, loading, error, refresh, add, edit, remove } = useAdminSponsoredAds()
-  const { communities } = useAdminCommunities()
-  const { user } = useAuth()
   const [params] = useSearchParams()
   const reportRequested = params.get('report') === 'metrics'
-  const [tab, setTab] = useState(reportRequested ? 'metrics' : 'campaigns')
+  const [tab, setTab] = useState(
+    params.get('tab') === 'engine' ? 'engine' : reportRequested ? 'metrics' : 'campaigns'
+  )
+  const needsCampaigns = tab === 'campaigns' || tab === 'metrics'
+  const { ads, loading, error, refresh, add, edit, remove } = useAdminSponsoredAds(needsCampaigns)
+  const { communities } = useAdminCommunities(needsCampaigns)
+  const { user } = useAuth()
   const [metricsOpened, setMetricsOpened] = useState(reportRequested)
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
@@ -136,7 +141,10 @@ export default function AdminSponsoredAds() {
         )}
       </Box>
 
-      <UnderlineNav aria-label="Seções de anúncios e parcerias" sx={{ mb: 3 }}>
+      <UnderlineNav
+        aria-label="Seções de anúncios e parcerias"
+        sx={{ mb: 3, maxWidth: '100%', overflowX: 'auto' }}
+      >
         {TABS.map((item) => (
           <UnderlineNav.Item
             key={item.key}
@@ -183,105 +191,113 @@ export default function AdminSponsoredAds() {
         </Suspense>
       )}
 
+      {tab === 'engine' && (
+        <Suspense fallback={<Spinner />}>
+          <CommercialEngineAdmin />
+        </Suspense>
+      )}
+
       {tab === 'commercial' && (
         <Suspense fallback={<Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}>
           <CommercialAdmin />
         </Suspense>
       )}
 
-      <Box hidden={tab !== 'campaigns'}>
-        {formOpen && (
-          <SponsoredAdForm
-            communities={communities}
-            adCountByCommunityId={adCountByCommunityId}
-            globalAdCount={globalAdCount}
-            onSubmit={handleCreate}
-            onCancel={() => setFormOpen(false)}
-          />
-        )}
-        {editingAd && (
-          <SponsoredAdForm
-            initialValue={editingAd}
-            communities={communities}
-            adCountByCommunityId={adCountByCommunityId}
-            globalAdCount={globalAdCount}
-            onSubmit={handleUpdate}
-            onCancel={() => setEditingAd(null)}
-          />
-        )}
+      {tab === 'campaigns' && (
+        <Box>
+          {formOpen && (
+            <SponsoredAdForm
+              communities={communities}
+              adCountByCommunityId={adCountByCommunityId}
+              globalAdCount={globalAdCount}
+              onSubmit={handleCreate}
+              onCancel={() => setFormOpen(false)}
+            />
+          )}
+          {editingAd && (
+            <SponsoredAdForm
+              initialValue={editingAd}
+              communities={communities}
+              adCountByCommunityId={adCountByCommunityId}
+              globalAdCount={globalAdCount}
+              onSubmit={handleUpdate}
+              onCancel={() => setEditingAd(null)}
+            />
+          )}
 
-        {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
-        <ErrorState error={error} onRetry={refresh} />
+          {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
+          <ErrorState error={error} onRetry={refresh} />
 
-        {!loading && !error && ads.length === 0 && (
-          <Blankslate>
-            <Blankslate.Visual>
-              <MegaphoneIcon size={24} />
-            </Blankslate.Visual>
-            <Blankslate.Heading>Nenhum anúncio criado</Blankslate.Heading>
-            <Blankslate.PrimaryAction onClick={() => setFormOpen(true)}>
-              Criar anúncio
-            </Blankslate.PrimaryAction>
-          </Blankslate>
-        )}
+          {!loading && !error && ads.length === 0 && (
+            <Blankslate>
+              <Blankslate.Visual>
+                <MegaphoneIcon size={24} />
+              </Blankslate.Visual>
+              <Blankslate.Heading>Nenhum anúncio criado</Blankslate.Heading>
+              <Blankslate.PrimaryAction onClick={() => setFormOpen(true)}>
+                Criar anúncio
+              </Blankslate.PrimaryAction>
+            </Blankslate>
+          )}
 
-        {ads.length > 0 && (
-          <Box
-            sx={{
-              border: '1px solid',
-              borderColor: 'border.default',
-              borderRadius: 2,
-              overflow: 'hidden',
-            }}
-          >
-            {ads.map((ad, index) => (
-              <Box
-                key={ad.id}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2,
-                  px: 3,
-                  py: 2,
-                  borderTop: index === 0 ? 'none' : '1px solid',
-                  borderColor: 'border.default',
-                }}
-              >
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                    <Text sx={{ fontWeight: 'bold' }}>{ad.title}</Text>
-                    {ad.isGlobal && <Label variant="accent">Home</Label>}
-                    {isExpired(ad, now) && <Label variant="danger">Expirado</Label>}
+          {ads.length > 0 && (
+            <Box
+              sx={{
+                border: '1px solid',
+                borderColor: 'border.default',
+                borderRadius: 2,
+                overflow: 'hidden',
+              }}
+            >
+              {ads.map((ad, index) => (
+                <Box
+                  key={ad.id}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    px: 3,
+                    py: 2,
+                    borderTop: index === 0 ? 'none' : '1px solid',
+                    borderColor: 'border.default',
+                  }}
+                >
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                      <Text sx={{ fontWeight: 'bold' }}>{ad.title}</Text>
+                      {ad.isGlobal && <Label variant="accent">Home</Label>}
+                      {isExpired(ad, now) && <Label variant="danger">Expirado</Label>}
+                    </Box>
+                    <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+                      {ad.partnerName}
+                      {ad.communityIds.length > 0 &&
+                        ` · ${ad.communityIds.length} ${ad.communityIds.length === 1 ? 'comunidade' : 'comunidades'}`}
+                    </Text>
                   </Box>
-                  <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-                    {ad.partnerName}
-                    {ad.communityIds.length > 0 &&
-                      ` · ${ad.communityIds.length} ${ad.communityIds.length === 1 ? 'comunidade' : 'comunidades'}`}
-                  </Text>
+                  <RowActionsMenu
+                    disabled={busyAdId !== null}
+                    actions={[
+                      {
+                        key: 'edit',
+                        label: 'Editar',
+                        icon: PencilIcon,
+                        onSelect: () => setEditingAd(ad),
+                      },
+                      {
+                        key: 'delete',
+                        label: 'Excluir',
+                        icon: TrashIcon,
+                        variant: 'danger',
+                        onSelect: () => handleDelete(ad),
+                      },
+                    ]}
+                  />
                 </Box>
-                <RowActionsMenu
-                  disabled={busyAdId !== null}
-                  actions={[
-                    {
-                      key: 'edit',
-                      label: 'Editar',
-                      icon: PencilIcon,
-                      onSelect: () => setEditingAd(ad),
-                    },
-                    {
-                      key: 'delete',
-                      label: 'Excluir',
-                      icon: TrashIcon,
-                      variant: 'danger',
-                      onSelect: () => handleDelete(ad),
-                    },
-                  ]}
-                />
-              </Box>
-            ))}
-          </Box>
-        )}
-      </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+      )}
     </Box>
   )
 }

@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "concurrentPricePublishers": 2,
+  "onePublisher": true,
+  "competingWalletOrders": 2,
+  "oneAffordableDebit": true,
+  "confirmationReplays": 6,
+  "renewalReplays": 6,
+  "independentConcurrentRenewals": 2,
+  "oneEntitlement": true,
+  "exactPeriodSeconds": 432000,
+  "salesPausedAfterTest": true,
+  "fixtureCode": "synthetic_56f472af5a9845e99fe44bdc0ec2d06d"
+}

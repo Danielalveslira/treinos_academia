@@ -16,7 +16,7 @@ function resolveMemberCount(community) {
   return community.memberCount
 }
 
-export function useAdminCommunities() {
+export function useAdminCommunities(enabled = true) {
   const { user } = useAuth()
   const [communities, setCommunities] = useState([])
   const [cursor, setCursor] = useState(null)
@@ -42,8 +42,8 @@ export function useAdminCommunities() {
   }, [])
 
   useEffect(() => {
-    refresh()
-  }, [refresh])
+    if (enabled) refresh()
+  }, [refresh, enabled])
 
   async function loadMore() {
     if (!cursor || loading) return
