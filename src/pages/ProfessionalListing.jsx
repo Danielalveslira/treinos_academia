@@ -16,11 +16,26 @@ export default function ProfessionalListing() {
     let active = true
     setListing(undefined)
     setError(false)
+    let timer
+    const started = performance.now()
     getPublishedProfessionalListing(listingId)
-      .then((value) => active && setListing(value))
+      .then((value) => {
+        if (!active) return
+        const remaining =
+          Date.parse(value?.expiresAt) -
+          Date.parse(value?.serverTime) -
+          (performance.now() - started)
+        if (!Number.isFinite(remaining) || remaining <= 0) {
+          setListing(null)
+          return
+        }
+        setListing(value)
+        timer = setTimeout(() => setListing(null), Math.min(remaining, 2147483647))
+      })
       .catch(() => active && setError(true))
     return () => {
       active = false
+      clearTimeout(timer)
     }
   }, [listingId])
 

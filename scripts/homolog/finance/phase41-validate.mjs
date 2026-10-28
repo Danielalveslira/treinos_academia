@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
-const evidence = 'docs/finance-restructure/phase4/evidence41'
+const evidence = process.env.FINANCE_EVIDENCE_DIR || 'docs/finance-restructure/phase4/evidence41'
 mkdirSync(evidence, { recursive: true })
 const container = 'evolutus_price_phase1_db'
 execFileSync('docker', ['cp', 'supabase/tests/.', container + ':/tmp/commercial-phase3-tests'], {

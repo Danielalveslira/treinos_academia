@@ -145,13 +145,13 @@ set local role authenticated;
 select pg_temp.as_user('1');
 select lives_ok($$select public.create_professional_listing('professional')$$, 'create_professional_listing: ativa permitida');
 select pg_temp.as_user('2');
-select throws_ok($$select public.create_professional_listing('professional')$$, 'PERMISSION_DENIED', 'create_professional_listing: disabled negada');
+select throws_ok($$select public.create_professional_listing('professional')$$, 'APP_ACCESS_DENIED', 'create_professional_listing: disabled negada');
 select pg_temp.as_user('3');
-select throws_ok($$select public.create_professional_listing('professional')$$, 'PERMISSION_DENIED', 'create_professional_listing: deleting negada');
+select throws_ok($$select public.create_professional_listing('professional')$$, 'APP_ACCESS_DENIED', 'create_professional_listing: deleting negada');
 select pg_temp.as_user('4');
-select throws_ok($$select public.create_professional_listing('professional')$$, 'PERMISSION_DENIED', 'create_professional_listing: suspensao negada');
+select throws_ok($$select public.create_professional_listing('professional')$$, 'APP_ACCESS_DENIED', 'create_professional_listing: suspensao negada');
 select pg_temp.as_user('5');
-select throws_ok($$select public.create_professional_listing('professional')$$, 'PERMISSION_DENIED', 'create_professional_listing: banida negada');
+select throws_ok($$select public.create_professional_listing('professional')$$, 'APP_ACCESS_DENIED', 'create_professional_listing: banida negada');
 select pg_temp.as_user('6');
 select lives_ok($$select public.create_professional_listing('professional')$$, 'create_professional_listing: superadmin permitida');
 reset role;
@@ -164,37 +164,37 @@ grant all on listing_of to public;
 set local role authenticated;
 select pg_temp.as_user('1');
 select lives_ok($$select public.save_professional_listing_draft((select id from listing_of where n='1'),
-  '{"kind":"professional","displayName":"Gate Teste","categoryKey":"personal_trainer","modalityKeys":["musculacao"],"bio":"bio valida aqui com conteudo suficiente","city":"Sao Paulo","uf":"SP","serviceMode":"online"}'::jsonb)$$,
+  '{"kind":"professional","displayName":"Gate Teste","categoryKey":"personal_trainer","modalityKeys":["musculacao"],"bio":"bio valida aqui com conteudo suficiente","city":"Sao Paulo","uf":"SP","serviceMode":"online"}'::jsonb,0)$$,
   'save_professional_listing_draft: ativa permitida');
 select pg_temp.as_user('2');
-select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb)$$, 'PERMISSION_DENIED', 'save_professional_listing_draft: disabled negada (antes de chegar a LISTING_NOT_FOUND)');
+select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb,0)$$, 'APP_ACCESS_DENIED', 'save_professional_listing_draft: disabled negada (antes de chegar a LISTING_NOT_FOUND)');
 select pg_temp.as_user('3');
-select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb)$$, 'PERMISSION_DENIED', 'save_professional_listing_draft: deleting negada');
+select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb,0)$$, 'APP_ACCESS_DENIED', 'save_professional_listing_draft: deleting negada');
 select pg_temp.as_user('4');
-select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb)$$, 'PERMISSION_DENIED', 'save_professional_listing_draft: suspensao negada');
+select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb,0)$$, 'APP_ACCESS_DENIED', 'save_professional_listing_draft: suspensao negada');
 select pg_temp.as_user('5');
-select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb)$$, 'PERMISSION_DENIED', 'save_professional_listing_draft: banida negada');
+select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb,0)$$, 'APP_ACCESS_DENIED', 'save_professional_listing_draft: banida negada');
 select pg_temp.as_user('6');
 select lives_ok($$select public.save_professional_listing_draft((select id from listing_of where n='6'),
-  '{"kind":"professional","displayName":"Gate Super","categoryKey":"coach","modalityKeys":["yoga"],"bio":"bio valida aqui com conteudo suficiente","city":"Rio","uf":"RJ","serviceMode":"online"}'::jsonb)$$,
+  '{"kind":"professional","displayName":"Gate Super","categoryKey":"coach","modalityKeys":["yoga"],"bio":"bio valida aqui com conteudo suficiente","city":"Rio","uf":"RJ","serviceMode":"online"}'::jsonb,0)$$,
   'save_professional_listing_draft: superadmin permitida');
 reset role;
 
 -- ===== 7) prepare_professional_listing_publish =====
 set local role authenticated;
 select pg_temp.as_user('1');
-select lives_ok($$select public.prepare_professional_listing_publish((select id from listing_of where n='1'), 'gate-op-1')$$,
+select throws_ok($$select public.prepare_professional_listing_publish((select id from listing_of where n='1'), 'gate-op-1')$$, 'EDITORIAL_REVIEW_REQUIRED',
   'prepare_professional_listing_publish: ativa permitida');
 select pg_temp.as_user('2');
-select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-2')$$, 'PERMISSION_DENIED', 'prepare_professional_listing_publish: disabled negada');
+select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-2')$$, 'APP_ACCESS_DENIED', 'prepare_professional_listing_publish: disabled negada');
 select pg_temp.as_user('3');
-select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-3')$$, 'PERMISSION_DENIED', 'prepare_professional_listing_publish: deleting negada');
+select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-3')$$, 'APP_ACCESS_DENIED', 'prepare_professional_listing_publish: deleting negada');
 select pg_temp.as_user('4');
-select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-4')$$, 'PERMISSION_DENIED', 'prepare_professional_listing_publish: suspensao negada');
+select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-4')$$, 'APP_ACCESS_DENIED', 'prepare_professional_listing_publish: suspensao negada');
 select pg_temp.as_user('5');
-select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-5')$$, 'PERMISSION_DENIED', 'prepare_professional_listing_publish: banida negada');
+select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-5')$$, 'APP_ACCESS_DENIED', 'prepare_professional_listing_publish: banida negada');
 select pg_temp.as_user('6');
-select lives_ok($$select public.prepare_professional_listing_publish((select id from listing_of where n='6'), 'gate-op-6')$$,
+select throws_ok($$select public.prepare_professional_listing_publish((select id from listing_of where n='6'), 'gate-op-6')$$, 'EDITORIAL_REVIEW_REQUIRED',
   'prepare_professional_listing_publish: superadmin permitida');
 reset role;
 

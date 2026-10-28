@@ -1,6 +1,6 @@
 \ir _helpers/auth_session.sql
 begin;
-select plan(17);
+select no_plan();
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -49,7 +49,7 @@ select public.save_professional_listing_draft(
     ),
     'linkedCommunityId', '',
     'useProfileAvatar', false
-  )
+  ),1
 );
 select is(
   (select contacts from public.professional_listing_drafts
@@ -62,138 +62,19 @@ select is(
   'save persists every contact in the draft'
 );
 
-select is(
-  public.prepare_professional_listing_publish(
-    '42000000-0000-0000-0000-000000000001', 'operation-1'
-  )->>'resumed',
-  'false',
-  'first prepare starts a new operation'
-);
-select results_eq(
-  $$select review_state, publishing_operation_id
-      from public.professional_listing_drafts
-      where listing_id = '42000000-0000-0000-0000-000000000001'$$,
-  $$values ('publishing'::text, 'operation-1'::text)$$,
-  'prepare stores the operation lock'
-);
-select is(
-  public.prepare_professional_listing_publish(
-    '42000000-0000-0000-0000-000000000001', 'operation-1'
-  )->>'resumed',
-  'true',
-  'the same interrupted operation resumes immediately'
-);
-
-select public.abort_professional_listing_publish(
-  '42000000-0000-0000-0000-000000000001', 'operation-1'
-);
-select results_eq(
-  $$select review_state, publishing_operation_id
-      from public.professional_listing_drafts
-      where listing_id = '42000000-0000-0000-0000-000000000001'$$,
-  $$values ('draft'::text, null::text)$$,
-  'abort releases its own operation'
-);
-
-select public.prepare_professional_listing_publish(
-  '42000000-0000-0000-0000-000000000001', 'operation-2'
-);
-select public.abort_professional_listing_publish(
-  '42000000-0000-0000-0000-000000000001', 'operation-1'
-);
-select is(
-  (select publishing_operation_id from public.professional_listing_drafts
-    where listing_id = '42000000-0000-0000-0000-000000000001'),
-  'operation-2',
-  'a late abort cannot clear a newer operation'
-);
-
-select is(
-  public.finalize_professional_listing_publish(
-    '42000000-0000-0000-0000-000000000001', 'operation-2', null, null
-  )->>'repeated',
-  'false',
-  'first finalize writes the publication'
-);
-select is(
-  (select lifecycle_state from public.professional_listings
-    where id = '42000000-0000-0000-0000-000000000001'),
-  'published',
-  'finalize marks the listing published'
-);
-select is(
-  (select count(*)::integer from public.published_professional_listings
-    where listing_id = '42000000-0000-0000-0000-000000000001'),
-  1,
-  'finalize creates exactly one projection'
-);
-select ok(
-  (select public_contacts @> jsonb_build_array(
-      jsonb_build_object('type', 'whatsapp', 'url', 'https://wa.me/5511999999999'),
-      jsonb_build_object('type', 'instagram', 'url', 'https://instagram.com/vitrine.teste'),
-      jsonb_build_object('type', 'website', 'url', 'https://vitrine.example.com')
-    )
-    from public.published_professional_listings
-    where listing_id = '42000000-0000-0000-0000-000000000001'),
-  'finalize publishes all saved contacts'
-);
-select is(
-  public.finalize_professional_listing_publish(
-    '42000000-0000-0000-0000-000000000001', 'operation-2', null, null
-  )->>'repeated',
-  'true',
-  'finalize retry is idempotent'
-);
-select is(
-  (select count(*)::integer from public.published_professional_listings
-    where listing_id = '42000000-0000-0000-0000-000000000001'),
-  1,
-  'idempotent finalize does not duplicate the projection'
-);
-select is(
-  public.prepare_professional_listing_publish(
-    '42000000-0000-0000-0000-000000000001', 'operation-2'
-  )->>'repeated',
-  'true',
-  'prepare recognizes an operation that already finalized'
-);
-
-update public.professional_listing_drafts set
-  version = 2,
-  review_state = 'publishing',
-  publishing_operation_id = 'stale-operation',
-  publishing_started_at = now() - interval '5 minutes'
-where listing_id = '42000000-0000-0000-0000-000000000001';
-select is(
-  public.prepare_professional_listing_publish(
-    '42000000-0000-0000-0000-000000000001', 'replacement-operation'
-  )->>'resumed',
-  'false',
-  'a new operation atomically replaces a stale lock'
-);
-select is(
-  (select publishing_operation_id from public.professional_listing_drafts
-    where listing_id = '42000000-0000-0000-0000-000000000001'),
-  'replacement-operation',
-  'stale recovery stores only the replacement operation'
-);
-select throws_ok(
-  $$select public.prepare_professional_listing_publish(
-      '42000000-0000-0000-0000-000000000001', 'competing-operation'
-    )$$,
-  'PUBLISH_IN_PROGRESS',
-  'a different operation cannot steal a fresh lock'
-);
-
-select public.abort_professional_listing_publish(
-  '42000000-0000-0000-0000-000000000001', 'replacement-operation'
-);
-select is(
-  (select review_state from public.professional_listing_drafts
-    where listing_id = '42000000-0000-0000-0000-000000000001'),
-  'draft',
-  'replacement operation can be safely aborted'
-);
-
+-- Direct legacy publication is retired; a lost HTTP response is recovered by reading
+-- the committed revision, never by creating a second publication operation.
+select is((select version from public.professional_listing_drafts where listing_id='42000000-0000-0000-0000-000000000001'),2,'save advances revision once');
+select throws_ok($$select public.save_professional_listing_draft('42000000-0000-0000-0000-000000000001','{}',1)$$,'EDITORIAL_REVISION_CONFLICT','retry of stale save cannot overwrite committed draft');
+select is((public.get_my_professional_listing()->'draft'->>'version')::int,2,'owner reload recovers authoritative saved version');
+select throws_ok($$select public.prepare_professional_listing_publish('42000000-0000-0000-0000-000000000001','old-operation')$$,'EDITORIAL_REVIEW_REQUIRED','legacy prepare cannot self-publish');
+select throws_ok($$select public.finalize_professional_listing_publish('42000000-0000-0000-0000-000000000001','old-operation',null,null)$$,'EDITORIAL_REVIEW_REQUIRED','legacy finalize fails closed even for trusted invocation');
+select public.set_professional_listing_editorial('42000000-0000-0000-0000-000000000001',2,'submitted');
+select throws_ok($$select public.set_professional_listing_editorial('42000000-0000-0000-0000-000000000001',2,'submitted')$$,'EDITORIAL_REVISION_CONFLICT','lost submit response cannot submit a stale revision');
+select is((public.get_my_professional_listing()->'draft'->>'version')::int,3,'owner reload recovers authoritative submitted version');
+select is((select review_state from public.professional_listing_drafts where listing_id='42000000-0000-0000-0000-000000000001'),'submitted','retry leaves content submitted for moderation');
+select is((select count(*)::int from public.published_professional_listings where listing_id='42000000-0000-0000-0000-000000000001'),0,'no public snapshot is created by owner submission');
+select is(public.public_get_professional('42000000-0000-0000-0000-000000000001'),null::jsonb,'pending submission remains unavailable publicly');
+select is((select count(*)::int from public.commercial_orders where resource_id='42000000-0000-0000-0000-000000000001'),0,'save and retry never create a financial order');
 select * from finish();
 rollback;

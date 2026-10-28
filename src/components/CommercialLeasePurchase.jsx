@@ -4,7 +4,13 @@ import { Link } from 'react-router-dom'
 import { quoteCommercialOrder, confirmCommercialOrder } from '../services/commercialService'
 import { commercialDate, commercialError } from '../utils/commercial'
 import { useWallet } from '../hooks/useWallet'
-export default function CommercialLeasePurchase({ resourceId, tariff, expiresAt, onComplete }) {
+export default function CommercialLeasePurchase({
+  resourceId,
+  tariff,
+  expiresAt,
+  onComplete,
+  subjectLabel = 'vitrine',
+}) {
   const [days, setDays] = useState('1'),
     [quote, setQuote] = useState(null),
     [confirmed, setConfirmed] = useState(false),
@@ -44,7 +50,7 @@ export default function CommercialLeasePurchase({ resourceId, tariff, expiresAt,
         Contratar ou renovar publicação
       </Text>
       <Text as="p">
-        A contratação vale para toda a vitrine. Não há cobrança por produto nem renovação
+        A contratação publica este {subjectLabel} pelo período confirmado. Não há renovação
         automática.
       </Text>
       <Text as="p">

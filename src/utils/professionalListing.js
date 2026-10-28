@@ -1,22 +1,3 @@
-export function normalizeListingFilter(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-}
-
-export function listingFilterKey({
-  kind,
-  modality = '*',
-  uf = '*',
-  city = '*',
-  serviceMode = '*',
-}) {
-  return `${kind}|${modality}|${uf}|${normalizeListingFilter(city) || '*'}|${serviceMode}`
-}
-
 export function safeExternalContact(contact) {
   if (!contact || !['whatsapp', 'instagram', 'website'].includes(contact.type)) return null
   try {

@@ -32,8 +32,42 @@ export default async function handler(req, res, options = {}) {
     // Conservative monotonic adjustment; no device clock or cache extends a DB deadline.
     const now = serverStart + (performance.now() - started)
     const eligible = records.filter((r) => Date.parse(r.expiresAt) > now)
+    const listingRecords = []
+    let listingBefore = null,
+      listingComplete = false
+    for (let page = 0; page < 100; page++) {
+      const data = await publicRpc('public_listing_sitemap', {
+        p_before: listingBefore,
+        p_limit: 500,
+      })
+      const elapsed = performance.now() - started
+      const fresh = data.items.filter(
+        (row) =>
+          ['professional', 'space'].includes(row.kind) &&
+          Date.parse(row.expiresAt) > Date.parse(data.serverTime) + elapsed
+      )
+      listingRecords.push(...fresh)
+      if (data.items.length < 500) {
+        listingComplete = true
+        break
+      }
+      listingBefore = data.items.at(-1).id
+    }
+    if (!listingComplete) throw Error('SITEMAP_PARTITION_REQUIRED')
     const xml = options.staticXml || readFileSync('dist/sitemap.xml', 'utf8')
+    const listingUrls =
+      [...new Set(listingRecords.map((r) => (r.kind === 'space' ? '/locais' : '/profissionais')))]
+        .map((path) => `<url><loc>${canonicalOrigin}${path}</loc></url>`)
+        .join('') +
+      listingRecords
+        .filter((r) => Date.parse(r.expiresAt) > serverStart + (performance.now() - started))
+        .map(
+          (r) =>
+            `<url><loc>${canonicalOrigin}${r.kind === 'space' ? '/locais' : '/profissionais'}/${escape(r.id)}</loc><lastmod>${escape(r.updatedAt)}</lastmod></url>`
+        )
+        .join('')
     const urls =
+      listingUrls +
       (eligible.length ? `<url><loc>${canonicalOrigin}/vitrine</loc></url>` : '') +
       eligible
         .map(

@@ -1,33 +1,104 @@
 {
-  "git": { "deploymentEnabled": { "finance-ci-*": false, "chore/finance-release-readiness": false } },
+  "git": {
+    "deploymentEnabled": {
+      "finance-ci-*": false,
+      "chore/finance-release-readiness": false
+    }
+  },
   "redirects": [
-    { "source": "/:page(como-funciona|para-empresas|vitrine|profissionais).html", "destination": "/:page", "statusCode": 301 },
-    { "source": "/:page(como-funciona|para-empresas|vitrine|profissionais)/", "destination": "/:page", "statusCode": 301 },
+    {
+      "source": "/:page(como-funciona|para-empresas|vitrine|profissionais|locais).html",
+      "destination": "/:page",
+      "statusCode": 301
+    },
+    {
+      "source": "/:page(como-funciona|para-empresas|vitrine|profissionais|locais)/",
+      "destination": "/:page",
+      "statusCode": 301
+    },
     {
       "source": "/:path((?!assets/|icons/|_vercel/|.*\\.[\\w]+$).*)",
-      "has": [{ "type": "host", "value": "treinosacademia-ten.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "treinosacademia-ten.vercel.app"
+        }
+      ],
       "destination": "https://www.evolutus.com.br/:path*",
       "statusCode": 301
     }
   ],
-  "functions": {"api/storefront-catalog.js":{"includeFiles":"dist/vitrine.html"},"api/storefront-sitemap.js":{"includeFiles":"dist/sitemap.xml"}},
+  "functions": {
+    "api/storefront-catalog.js": {
+      "includeFiles": "dist/vitrine.html"
+    },
+    "api/storefront-sitemap.js": {
+      "includeFiles": "dist/sitemap.xml"
+    },
+    "api/listings.js": {
+      "includeFiles": "dist/{profissionais,locais}.html"
+    }
+  },
   "rewrites": [
-    {"source":"/sitemap.xml","destination":"/api/storefront-sitemap"},
-    { "source": "/como-funciona", "destination": "/como-funciona.html" },
-    { "source": "/para-empresas", "destination": "/para-empresas.html" },
-    { "source": "/vitrine/:id([0-9a-fA-F-]{36})", "destination": "/api/storefront?id=:id" },
-    { "source": "/vitrine", "destination": "/api/storefront-catalog" },
-    { "source": "/profissionais", "destination": "/profissionais.html" },
+    {
+      "source": "/profissionais/:id([0-9a-fA-F-]{36})",
+      "destination": "/api/listings?kind=professional&id=:id"
+    },
+    {
+      "source": "/locais/:id([0-9a-fA-F-]{36})",
+      "destination": "/api/listings?kind=space&id=:id"
+    },
+    {
+      "source": "/profissionais",
+      "destination": "/api/listings?kind=professional"
+    },
+    {
+      "source": "/locais",
+      "destination": "/api/listings?kind=space"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/storefront-sitemap"
+    },
+    {
+      "source": "/como-funciona",
+      "destination": "/como-funciona.html"
+    },
+    {
+      "source": "/para-empresas",
+      "destination": "/para-empresas.html"
+    },
+    {
+      "source": "/vitrine/:id([0-9a-fA-F-]{36})",
+      "destination": "/api/storefront?id=:id"
+    },
+    {
+      "source": "/vitrine",
+      "destination": "/api/storefront-catalog"
+    },
     {
       "source": "/:path((?:app|login|cadastro|esqueci-senha|confirmar-email|redefinir-senha|regras-da-comunidade|termos-de-uso|politica-de-privacidade|termos-publicacao-vitrine|atendimento|profissionais/[^/]+|exercicios(?:/[^/]+)?|fichas(?:/[^/]+)?(?:/editar)?|treinar|novo-treino|historico|progresso|perfil|evocash|entenda-suas-moedas|minhas-promocoes|meus-anuncios|vitrine/gerenciar|minha-vitrine|comunidades(?:/.*)?|admin/(?:compras-evocash|moderacao|contas|vitrines|exclusao-contas|comunidades|parcerias|promocoes|exercicios(?:-imagens)?)))",
       "destination": "/app-shell.html"
     }
   ],
   "headers": [
-    { "source": "/.well-known/evolutus-build.json", "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }] },
+    {
+      "source": "/.well-known/evolutus-build.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
     {
       "source": "/(index|app-shell|como-funciona|para-empresas|vitrine|profissionais).html",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
     },
     {
       "source": "/(.*)",
@@ -36,15 +107,32 @@
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://ywrjojrjgozdfpddkkuy.supabase.co wss://ywrjojrjgozdfpddkkuy.supabase.co https://firebasestorage.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
         },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
       ]
     },
     {
       "source": "/boot-(.*).js",
-      "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
     },
     {
       "source": "/assets/(.*)",

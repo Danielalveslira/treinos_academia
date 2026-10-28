@@ -3,6 +3,7 @@ export const DISCOVERY_PUBLIC_LINKS = [
   ['/para-empresas', 'Para empresas'],
   ['/vitrine', 'Vitrine'],
   ['/profissionais', 'Profissionais'],
+  ['/locais', 'Estabelecimentos'],
 ]
 
 export const ACCOUNT_PUBLIC_LINKS = [

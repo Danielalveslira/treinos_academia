@@ -1,6 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ActionList, ActionMenu, IconButton } from '@primer/react'
-import { ArrowRightIcon, HomeIcon, LocationIcon, OrganizationIcon, PackageIcon, PersonAddIcon, QuestionIcon, SignInIcon, ThreeBarsIcon, XIcon } from '@primer/octicons-react'
+import {
+  ArrowRightIcon,
+  HomeIcon,
+  LocationIcon,
+  OrganizationIcon,
+  PackageIcon,
+  PersonAddIcon,
+  QuestionIcon,
+  SignInIcon,
+  ThreeBarsIcon,
+  XIcon,
+} from '@primer/octicons-react'
 import { ACCOUNT_PUBLIC_LINKS, DISCOVERY_PUBLIC_LINKS } from '../../scripts/public-navigation.mjs'
 import '../styles/public-navigation-menu.css'
 
@@ -10,6 +21,7 @@ const linkIcons = {
   '/para-empresas': OrganizationIcon,
   '/vitrine': PackageIcon,
   '/profissionais': LocationIcon,
+  '/locais': LocationIcon,
   '/login': SignInIcon,
   '/cadastro': PersonAddIcon,
   '/app': ArrowRightIcon,
@@ -28,7 +40,9 @@ export function PublicNavigationMenu({ authState = 'guest', pathname }) {
   const [open, setOpen] = useState(false)
   const anchorRef = useRef(null)
   const [menuTop, setMenuTop] = useState(undefined)
-  const [path, setPath] = useState(() => pathname || (typeof window === 'undefined' ? '/' : window.location.pathname))
+  const [path, setPath] = useState(
+    () => pathname || (typeof window === 'undefined' ? '/' : window.location.pathname)
+  )
 
   useLayoutEffect(() => {
     if (!open || !anchorRef.current) return

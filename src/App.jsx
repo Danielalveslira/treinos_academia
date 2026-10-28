@@ -83,6 +83,7 @@ export function AppRoutes() {
         />
         <Route path="/atendimento" element={<Support />} />
         <Route path="/profissionais/:listingId" element={<ProfessionalListing />} />
+        <Route path="/locais/:listingId" element={<ProfessionalListing />} />
         <Route path="*" element={<NotFound />} />
       </Route>
 

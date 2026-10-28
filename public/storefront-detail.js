@@ -1,10 +1,19 @@
 // Presentation invalidation only; PostgreSQL and the media gateway remain authoritative.
-const content = document.getElementById('storefront-content')
+const content =
+  document.querySelector('[data-public-lease]') || document.getElementById('storefront-content')
 function clearExpired() {
   if (!content) return
+  document.title = 'Publicação indisponível | Evolutus'
+  document.querySelectorAll('script[type="application/ld+json"]').forEach((node) => node.remove())
+  document
+    .querySelectorAll(
+      'meta[name="description"], meta[property="og:title"], meta[property="og:description"], meta[name="twitter:title"], meta[name="twitter:description"]'
+    )
+    .forEach((node) => node.setAttribute('content', 'Publicação indisponível'))
+  document.querySelector('meta[name="robots"]')?.setAttribute('content', 'noindex,follow')
   content.replaceChildren(
     Object.assign(document.createElement('p'), {
-      textContent: 'Vitrine indisponível. Atualize a página para consultar novamente.',
+      textContent: 'Publicação indisponível. Atualize a página para consultar novamente.',
     })
   )
 }

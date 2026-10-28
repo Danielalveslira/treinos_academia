@@ -61,18 +61,26 @@ export async function fetchProductCatalog(
       }
     }
   }
-  if (!endpoint || !anonKey) throw new CatalogError('UNCONFIGURED')
-  const response = await fetch(`${endpoint}/rest/v1/rpc/public_product_catalog`, {
-    method: 'POST',
-    headers: { apikey: anonKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  return publicCommercialRpc(
+    'public_product_catalog',
+    {
       p_mode: mode,
       p_search: search,
       p_category: category,
       p_brand: brand,
       p_offset: offset,
       p_limit: limit,
-    }),
+    },
+    signal
+  )
+}
+
+export async function publicCommercialRpc(name, args, signal) {
+  if (!endpoint || !anonKey) throw new CatalogError('UNCONFIGURED')
+  const response = await fetch(`${endpoint}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: { apikey: anonKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
     signal,
     cache: 'no-store',
   })

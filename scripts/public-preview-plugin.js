@@ -1,3 +1,4 @@
+import listingDirectory from '../api/listings.js'
 import process from 'node:process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -44,6 +45,15 @@ export function publicPreviewPlugin() {
       server.middlewares.use(async (request, response, next) => {
         if (request.method !== 'GET' && request.method !== 'HEAD') return next()
         const path = new URL(request.url, 'http://localhost').pathname
+        if (/^\/(?:profissionais|locais)(?:\/[0-9a-f-]{36})?$/i.test(path)) {
+          for (const name of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
+            if (!process.env[name] && env[name]) process.env[name] = env[name]
+          const directory = path.startsWith('/locais') ? '/locais' : '/profissionais'
+          const raw = renderPublicPage(directory, env, { dev: true })
+          return listingDirectory(request, response, {
+            html: await server.transformIndexHtml(directory, raw, request.originalUrl),
+          })
+        }
         if (path === '/vitrine' || path === '/sitemap.xml') {
           for (const name of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
             if (!process.env[name] && env[name]) process.env[name] = env[name]
@@ -89,6 +99,8 @@ export function publicPreviewPlugin() {
       server.middlewares.use((request, response, next) => {
         if (request.method !== 'GET' && request.method !== 'HEAD') return next()
         const path = new URL(request.url, 'http://localhost').pathname
+        if (/^\/(?:profissionais|locais)(?:\/[0-9a-f-]{36})?$/i.test(path))
+          return listingDirectory(request, response)
         if (path === '/vitrine') return storefrontCatalog(request, response)
         if (path === '/sitemap.xml') return storefrontSitemap(request, response)
         if (/^\/vitrine\/[0-9a-f-]{36}$/i.test(path)) return storefrontDetail(request, response)

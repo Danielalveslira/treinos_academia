@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  adminListProfessionalListings,
-  adminReactivateProfessionalListing,
-  suspendProfessionalListing,
-  unpublishProfessionalListing,
-} from '../services/professionalListingsService'
+import { adminListProfessionalListings } from '../services/professionalListingsService'
 import { describeQueryError } from '../utils/queryError'
 
 export function useAdminProfessionalListings(search = '', lifecycleState = '') {
@@ -12,12 +7,10 @@ export function useAdminProfessionalListings(search = '', lifecycleState = '') {
   const [cursor, setCursor] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [busy, setBusy] = useState(null)
   const revision = useRef(0)
   const invalidate = useCallback(() => {
     revision.current++
   }, [])
-  const actionLock = useRef(false)
   const refresh = useCallback(async () => {
     const current = ++revision.current
     setLoading(true)
@@ -62,42 +55,12 @@ export function useAdminProfessionalListings(search = '', lifecycleState = '') {
       if (current === revision.current) setLoading(false)
     }
   }
-  async function runAction(listingId, action, patch) {
-    if (actionLock.current) throw new Error('Aguarde a operação atual.')
-    actionLock.current = true
-    setBusy(listingId)
-    try {
-      await action()
-      setListings((previous) =>
-        previous.map((listing) => (listing.id === listingId ? { ...listing, ...patch } : listing))
-      )
-    } finally {
-      actionLock.current = false
-      setBusy(null)
-    }
-  }
-  const suspend = (listingId, reason) =>
-    runAction(listingId, () => suspendProfessionalListing(listingId, reason), {
-      lifecycleState: 'suspended',
-    })
-  const reactivate = (listingId) =>
-    runAction(listingId, () => adminReactivateProfessionalListing(listingId), {
-      lifecycleState: 'draft',
-    })
-  const unpublish = (listingId) =>
-    runAction(listingId, () => unpublishProfessionalListing(listingId), {
-      lifecycleState: 'archived',
-    })
   return {
     listings,
     loading,
     error,
-    busy,
     hasMore: !!cursor,
     loadMore,
     refresh,
-    suspend,
-    reactivate,
-    unpublish,
   }
 }

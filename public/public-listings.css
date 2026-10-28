@@ -1,0 +1,36 @@
+.public-profissionais #content,
+.public-locais #content {
+  max-width: 1120px;
+  margin: auto;
+  padding: 24px;
+  overflow-wrap: anywhere;
+}
+.listing-public-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 16px;
+}
+.listing-public-grid article {
+  padding: 16px;
+  border: 1px solid var(--borderColor-default, #d0d7de);
+  border-radius: 8px;
+}
+.listing-public-grid img,
+.listing-main-image {
+  object-fit: contain;
+  border-radius: 8px;
+}
+.listing-public-grid h2 {
+  font-size: 1.1rem;
+}
+.public-profissionais select,
+.public-locais select {
+  max-width: 100%;
+}
+html[data-color-mode='dark'] .listing-public-grid article {
+  border-color: #30363d;
+}
+html[data-color-mode='dark'] .public-profissionais a,
+html[data-color-mode='dark'] .public-locais a {
+  color: #58a6ff;
+}

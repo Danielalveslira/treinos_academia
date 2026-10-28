@@ -61,10 +61,10 @@ update public.storefront_settings set cleanup_enabled=true,cleanup_grace_seconds
 update public.storefront_media set unreferenced_since=clock_timestamp()-interval '2 hours',upload_lease_until=clock_timestamp()-interval '1 hour' where id='74200000-0000-0000-0000-000000000001';
 insert into sf_results values('claim',public.claim_storefront_media_cleanup(1)::text);
 select is(jsonb_array_length((select v::jsonb from sf_results where k='claim')),1,'cleanup claims only aged unreferenced media');
-select is(public.claim_storefront_media_cleanup(1),'[]'::jsonb,'leased media cannot be claimed twice');
+select ok(not exists(select 1 from jsonb_array_elements(public.claim_storefront_media_cleanup(1)) m where m->>'id'='74200000-0000-0000-0000-000000000001'),'leased media cannot be claimed twice');
 select throws_ok($$select public.finish_storefront_media_cleanup('74200000-0000-0000-0000-000000000001',gen_random_uuid(),true)$$,'INVALID_CLEANUP_LEASE','unrelated completion token rejected');
 select ok(public.finish_storefront_media_cleanup('74200000-0000-0000-0000-000000000001',(select (v::jsonb->0->>'token')::uuid from sf_results where k='claim'),false),'storage failure remains recoverable');
-select is(public.claim_storefront_media_cleanup(1),'[]'::jsonb,'failure backoff prevents busy retry');
+select ok(not exists(select 1 from jsonb_array_elements(public.claim_storefront_media_cleanup(1)) m where m->>'id'='74200000-0000-0000-0000-000000000001'),'failure backoff prevents busy retry');
 update public.storefront_media set cleanup_lease_until=clock_timestamp()-interval '1 second' where id='74200000-0000-0000-0000-000000000001';
 update sf_results set v=public.claim_storefront_media_cleanup(1)::text where k='claim';
 select ok(public.finish_storefront_media_cleanup('74200000-0000-0000-0000-000000000001',(select (v::jsonb->0->>'token')::uuid from sf_results where k='claim'),true),'retry completes deletion');

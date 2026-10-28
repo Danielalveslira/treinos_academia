@@ -219,9 +219,7 @@ const evidence = {
   walletAfter: '8',
   fixtureOwner: owner,
 }
-mkdirSync('docs/finance-restructure/phase4/evidence41', { recursive: true })
-writeFileSync(
-  'docs/finance-restructure/phase4/evidence41/concurrency.json',
-  JSON.stringify(evidence, null, 2) + '\n'
-)
+const evidenceDir = process.env.FINANCE_EVIDENCE_DIR || 'docs/finance-restructure/phase4/evidence41'
+mkdirSync(evidenceDir, { recursive: true })
+writeFileSync(evidenceDir + '/concurrency.json', JSON.stringify(evidence, null, 2) + '\n')
 console.log(JSON.stringify(evidence))

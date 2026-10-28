@@ -7,7 +7,7 @@ import {
   ShareAndroidIcon,
   ReportIcon,
 } from '@primer/octicons-react'
-import { ProfileAvatar } from './ProfileAvatar'
+import StorefrontImage from './StorefrontImage'
 import {
   CATEGORY_OPTIONS,
   LISTING_KIND_OPTIONS,
@@ -26,12 +26,7 @@ export function ProfessionalListingView({ listing, listingId, user, notice, onSh
     <>
       {notice && <Flash role="status">{notice}</Flash>}
       <header className="professional-detail-hero">
-        <ProfileAvatar
-          path={listing.avatarPath}
-          name={listing.displayName}
-          professional={listing.kind === 'professional'}
-          className="professional-detail-avatar"
-        />
+        <StorefrontImage id={listing.mediaId} alt={listing.displayName} size={104} />
         <div className="professional-detail-identity">
           <span className="profile-eyebrow">
             {optionLabel(LISTING_KIND_OPTIONS, listing.kind).toUpperCase()}
@@ -56,6 +51,8 @@ export function ProfessionalListingView({ listing, listingId, user, notice, onSh
           <section className="professional-detail-section">
             <h2>Apresentação</h2>
             <p>{listing.bio}</p>
+            {listing.address && <p>{listing.address}</p>}
+            {listing.openingHours && <p>{listing.openingHours}</p>}
           </section>
           <section className="professional-detail-section">
             <h2>Modalidades</h2>
@@ -80,8 +77,7 @@ export function ProfessionalListingView({ listing, listingId, user, notice, onSh
           <div className="professional-contact-heading">
             <h2>Entre em contato</h2>
             <p>
-              Negocie diretamente com o profissional ou espaço. O Evolutus não processa
-              pagamentos.
+              Negocie diretamente com o profissional ou espaço. O Evolutus não processa pagamentos.
             </p>
           </div>
           {contacts.length > 0 && (

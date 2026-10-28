@@ -46,7 +46,7 @@ jobs:
       - run: node --test scripts/release/*.test.mjs
       - run: npm test
       - name: Public catalogue snapshot and lazy counter regression
-        run: node --test tests/public-catalog-snapshot.test.mjs tests/storefront-public-handler.test.mjs tests/storefront-seo.test.mjs
+        run: node --test tests/public-catalog-snapshot.test.mjs tests/storefront-public-handler.test.mjs tests/storefront-seo.test.mjs tests/professional-public-handler.test.mjs
       - run: npm run build
         env:
           VITE_SUPABASE_URL: https://header-smoke.invalid
@@ -127,6 +127,10 @@ jobs:
           PG_TEST_CONTAINER: supabase_db_treinos_academia
       - name: Concrete storefront purchase, renewal and moderation concurrency
         run: node scripts/storefront-revisions-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
+      - name: Professional and establishment editorial, renewal and media concurrency
+        run: node scripts/professional-listings-concurrency.mjs
         env:
           PG_TEST_CONTAINER: supabase_db_treinos_academia
       # Limpeza roda sempre (sucesso ou falha do passo acima), mas sem alterar o motivo da falha:
