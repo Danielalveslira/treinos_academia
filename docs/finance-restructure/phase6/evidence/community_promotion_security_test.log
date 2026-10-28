@@ -1,0 +1,45 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+CREATE EXTENSION
+SET
+CREATE FUNCTION
+INSERT 0 2
+UPDATE 1
+UPDATE 0
+INSERT 0 1
+INSERT 0 1
+
+SET
+fa100000-0000-0000-0000-000000000001
+ok 1 - dono não fabrica promoção
+ok 2 - dono não forja prazo
+ok 3 - dono não forja vínculo
+ok 4 - UPSERT não burla guard
+ok 5 - edição normal preservada
+ok 6 - novos pacotes são substituídos pelo motor único
+RESET
+
+SET
+ok 7 - debita 100 EvoCash
+ok 8 - flags pagas persistem
+ok 9 - eligible paid community is authorized in batch
+ok 10 - batch authorization supplies database time
+ok 11 - batch expiry is a live committed window
+ok 12 - unknown sources never gain authorization
+ok 13 - batch is bounded
+ok 14 - anonymous role cannot call authorization
+ok 15 - cliente não cancela direto
+ok 16 - cancelamento pela RPC continua
+ok 17 - cancelamento limpa flags
+ok 18 - cancelled promotion immediately loses batch authorization
+fa100000-0000-0000-0000-000000000002
+ok 19 - admin autenticado também não forja INSERT
+ok 20 - criação administrativa legítima preservada
+ok 21 - admin autenticado não forja UPDATE
+RESET
+ok 22 - cobrança auditada uma vez
+1..22
+ROLLBACK

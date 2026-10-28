@@ -449,7 +449,7 @@ test('destaque compacto: aparece UM resumo de uma linha no topo de Recentes, sem
     statuses: [makeStatus('a'), makeStatus('b'), makeStatus('c'), makeStatus('d')],
   })
   assert.equal(count(html, /class="cd-spotlight"/g), 1)
-  assert.match(html, /Em destaque · @ana/)
+  assert.match(html, /Destaque patrocinado · @ana/)
   assert.match(html, /Oferta de hoje: veja/)
   assert.doesNotMatch(html, /\*\*|\]\(/, 'sem sintaxe de markdown')
   assert.doesNotMatch(
@@ -484,7 +484,7 @@ test('destaque compacto: só UM por vez, mesmo com vários promovidos; com vári
   })
   assert.equal(count(html, /class="cd-spotlight"/g), 1)
   assert.equal(count(html, /@(primeira|segunda|terceira)/g) >= 1, true)
-  assert.equal(count(html, /Em destaque · @/g), 1, 'apenas um destaque na tela')
+  assert.equal(count(html, /Destaque patrocinado · @/g), 1, 'apenas um destaque na tela')
   assert.match(html, /cd-spotlight-count[^>]*>1\/3</)
   assert.match(html, /cd-spotlight-next/)
 })

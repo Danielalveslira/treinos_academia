@@ -8,9 +8,19 @@ const root = resolve(import.meta.dirname, '../../..')
 const run = (...args) => execFileSync('docker', args, { encoding: 'utf8' }).trim()
 const db = 'evolutus_price_phase1_db',
   edge = process.env.FINANCE_PREVIEW_EDGE || 'evolutus_profiles_phase5_edge'
-if (!['evolutus_profiles_phase5_edge', 'evolutus_profiles_phase51_edge'].includes(edge))
+if (
+  ![
+    'evolutus_profiles_phase5_edge',
+    'evolutus_profiles_phase51_edge',
+    'evolutus_advertising_phase6_edge',
+  ].includes(edge)
+)
   throw Error('LOCAL_PREVIEW_REQUIRED')
-for (const other of ['evolutus_profiles_phase5_edge', 'evolutus_profiles_phase51_edge'])
+for (const other of [
+  'evolutus_profiles_phase5_edge',
+  'evolutus_profiles_phase51_edge',
+  'evolutus_advertising_phase6_edge',
+])
   if (other !== edge) {
     try {
       run('stop', other)

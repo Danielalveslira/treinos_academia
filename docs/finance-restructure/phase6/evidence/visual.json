@@ -1,0 +1,490 @@
+{
+  "localOnly": true,
+  "officialRealtime": true,
+  "checks": [
+    {
+      "name": "home",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "banners": 1,
+      "cards": 0
+    },
+    {
+      "name": "community",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "banners": 1,
+      "cards": 1
+    },
+    {
+      "name": "central",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "admin",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "metrics",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "home",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 1,
+      "cards": 0
+    },
+    {
+      "name": "community",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 1,
+      "cards": 1
+    },
+    {
+      "name": "central",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "admin",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "metrics",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "home",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "banners": 1,
+      "cards": 0
+    },
+    {
+      "name": "community",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "banners": 1,
+      "cards": 1
+    },
+    {
+      "name": "central",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "admin",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "metrics",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "home",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 1,
+      "cards": 0
+    },
+    {
+      "name": "community",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 1,
+      "cards": 1
+    },
+    {
+      "name": "central",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "admin",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "metrics",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "home",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "banners": 1,
+      "cards": 0
+    },
+    {
+      "name": "community",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "banners": 1,
+      "cards": 1
+    },
+    {
+      "name": "central",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "admin",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "metrics",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "home",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 1,
+      "cards": 0
+    },
+    {
+      "name": "community",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 1,
+      "cards": 1
+    },
+    {
+      "name": "central",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "admin",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    },
+    {
+      "name": "metrics",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "banners": 0,
+      "cards": 0
+    }
+  ],
+  "errors": [],
+  "environmentWarnings": [
+    {
+      "name": "home",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "home",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "community",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "community",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "central",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "central",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "admin",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "admin",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "metrics",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "metrics",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "home",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "home",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "community",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "community",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "central",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "central",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "admin",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "admin",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "metrics",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "metrics",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "home",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "home",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "community",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "community",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "central",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "central",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "admin",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "admin",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "metrics",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "metrics",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "home",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "home",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "community",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "community",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "central",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "central",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "admin",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "admin",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "metrics",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "metrics",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "home",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "home",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "community",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "community",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "central",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "central",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "admin",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "admin",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "metrics",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "metrics",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "home",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "home",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "community",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "community",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "central",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "central",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "admin",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "admin",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "metrics",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    },
+    {
+      "name": "metrics",
+      "message": "Failed to load resource: net::ERR_FAILED"
+    }
+  ],
+  "httpFailures": []
+}

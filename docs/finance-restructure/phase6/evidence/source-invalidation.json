@@ -1,0 +1,12 @@
+{
+  "localOnly": true,
+  "syntheticOnly": true,
+  "officialRealtime": true,
+  "sourceChangedWithoutReload": true,
+  "operationalAuditRecorded": true,
+  "paidCommunityBadgeRemoved": true,
+  "organicPostPreserved": true,
+  "unaffectedAdPreserved": true,
+  "latencyMs": 797,
+  "errors": []
+}

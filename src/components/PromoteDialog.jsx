@@ -1,185 +1,102 @@
-import { useEffect, useReducer } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, Button, Dialog, Flash, Spinner, Text } from '@primer/react'
-import { useWallet } from '../hooks/useWallet'
-import { createPromotion, getPromotionPackages } from '../services/promotionsService'
-import { resolveRequestId } from '../utils/cashPurchaseFlow'
-import { formatDateTime } from '../utils/format'
-import { describeAccountAccessError } from '../utils/accountAccessErrors'
-
-// Fase 6 (promoções pagas com EvoCash) -- pacote fixo, duração fixa, sem CPC/CPM/
-// leilão. Mesmo fluxo idempotente de EvoCash.jsx/CreateCommunity.jsx
-// (resolveRequestId): um retry depois de uma falha reenvia o MESMO requestId, nunca
-// debita duas vezes (a garantia real está no servidor, ver promotion-service.js -- isto
-// é só a UI). Estado extraído como reducer puro (mesmo motivo de EconomyVotersDialog:
-// testável sem depender de act()/TestRenderer). Saldo vem de useWallet() (carteira
-// compartilhada, ver WalletContext.jsx) -- nunca uma leitura própria: promover debita
-// cashBalance, e o listener único já reflete isso sozinho, sem esta tela precisar saber.
-export function initialPromoteDialogState() {
-  return {
-    packages: [],
-    loadingPackages: true,
-    selectedPackageId: null,
-    submitting: false,
-    error: '',
-    pendingAttempt: null,
-    result: null,
-  }
-}
-
-export function promoteDialogReducer(state, action) {
-  switch (action.type) {
-    case 'packages_loaded':
-      return {
-        ...state,
-        packages: action.packages,
-        loadingPackages: false,
-        selectedPackageId: state.selectedPackageId ?? action.packages[0]?.packageId ?? null,
-      }
-    case 'select_package':
-      return { ...state, selectedPackageId: action.packageId }
-    case 'submit_start':
-      return { ...state, submitting: true, error: '' }
-    case 'submit_success':
-      return { ...state, submitting: false, result: action.result, pendingAttempt: null }
-    case 'submit_error':
-      return { ...state, submitting: false, error: action.message, pendingAttempt: action.pendingAttempt }
-    default:
-      return state
-  }
-}
-
-function newRequestId() {
-  return typeof crypto?.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `req-${Date.now()}-${Math.random().toString(36).slice(2)}`
-}
+import {
+  prepareCommercialPromotion,
+  resubmitCommercialPromotion,
+} from '../services/promotionsService'
+import CommercialLeasePurchase from './CommercialLeasePurchase'
+import CommercialOrderHistory from './CommercialOrderHistory'
+import { getAdvertisingOrders } from '../services/advertisingService'
+import { commercialError } from '../utils/commercial'
 
 export function PromoteDialogBody({ targetType, targetId, onPromoted }) {
-  const [state, dispatch] = useReducer(promoteDialogReducer, undefined, initialPromoteDialogState)
-  const { packages, loadingPackages, selectedPackageId, submitting, error, pendingAttempt, result } = state
-  const { wallet, loading: loadingWallet } = useWallet()
-
+  const [promotion, setPromotion] = useState(null)
+  const [error, setError] = useState('')
+  const [revision, setRevision] = useState(0)
   useEffect(() => {
-    let active = true
-    getPromotionPackages(targetType).then((loaded) => {
-      if (active) dispatch({ type: 'packages_loaded', packages: loaded })
-    })
-    return () => {
-      active = false
-    }
-  }, [targetType])
-
-  async function promote() {
-    if (submitting || !selectedPackageId) return
-    const requestId = resolveRequestId(pendingAttempt, selectedPackageId, newRequestId)
-    dispatch({ type: 'submit_start' })
-    const selectedPackage = packages.find((pkg) => pkg.packageId === selectedPackageId)
-    try {
-      const promotionResult = await createPromotion({ targetType, targetId, packageId: selectedPackageId, requestId })
-      const result = {
-        ...promotionResult,
-        cashAmount: selectedPackage?.cashAmount,
-        durationDays: selectedPackage?.durationDays,
-      }
-      dispatch({ type: 'submit_success', result })
-      onPromoted?.(result)
-    } catch (err) {
-      const KNOWN_ERRORS = {
-        TARGET_NOT_FOUND: 'Conteúdo não encontrado.',
-        NOT_OWNER: 'Você só pode promover o seu próprio conteúdo.',
-        ACCOUNT_DISABLED: 'Sua conta não está em condições de promover conteúdo.',
-        ACCOUNT_RESTRICTED: 'Sua conta está com uma restrição ativa.',
-        NOT_A_MEMBER: 'Você precisa ser membro desta comunidade.',
-        COMMUNITY_RESTRICTED: 'Você está restrito nesta comunidade.',
-        COMMUNITY_UNAVAILABLE: 'Esta comunidade não está disponível.',
-        ALREADY_PROMOTED: 'Este conteúdo já está promovido.',
-        INVALID_PACKAGE: 'Pacote de promoção indisponível no momento.',
-        INSUFFICIENT_CASH: 'Você não tem EvoCash suficiente.',
-      }
-      dispatch({
-        type: 'submit_error',
-        pendingAttempt: { key: selectedPackageId, requestId },
-        message:
-          KNOWN_ERRORS[err?.message] ||
-          describeAccountAccessError(err?.message) ||
-          'Não foi possível criar a promoção. Tente novamente.',
+    let live = true
+    setPromotion(null)
+    prepareCommercialPromotion(targetType, targetId)
+      .then((data) => {
+        if (live) setPromotion(data)
       })
+      .catch((e) => {
+        if (live) setError(commercialError(e))
+      })
+    return () => {
+      live = false
     }
-  }
-
-  if (result) {
-    return (
-      <Flash variant="success">
-        <Text as="p" sx={{ fontWeight: 'bold', m: 0 }}>
-          Promoção ativada — {result.cashAmount} EvoCash debitado.
-        </Text>
-        <Text as="p" sx={{ m: 0 }}>
-          Válida por {result.durationDays} {result.durationDays === 1 ? 'dia' : 'dias'}, até{' '}
-          {formatDateTime(new Date(result.expiresAt))}. Acompanhe ou cancele em &quot;Minhas
-          promoções&quot;.
-        </Text>
-      </Flash>
-    )
-  }
-
-  if (loadingPackages) return <Spinner aria-label="Carregando pacotes" />
-
-  const selectedPackage = packages.find((pkg) => pkg.packageId === selectedPackageId)
-
+  }, [targetType, targetId, revision])
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {!loadingWallet && (
-        <Text sx={{ fontSize: 0, color: 'fg.muted' }}>Saldo atual: {wallet.cashBalance} EvoCash</Text>
-      )}
-      {error && (
-        <Text as="p" role="alert" sx={{ color: 'danger.fg', fontSize: 0, m: 0 }}>
-          {error}
-        </Text>
-      )}
-      {packages.length === 0 && (
-        <Text sx={{ color: 'fg.muted' }}>Nenhum pacote de promoção disponível no momento.</Text>
-      )}
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {packages.map((pkg) => (
+    <Box>
+      <Text as="p">
+        O destaque preserva a autoria e o conteúdo original. A cobrança é por dias de 24 horas, sem
+        promessa de visualizações ou cliques. Não há renovação automática.
+      </Text>
+      {error && <Flash variant="danger">{error}</Flash>}
+      {!promotion && !error && <Spinner aria-label="Preparando impulsionamento" />}
+      {promotion && (
+        <>
+          <Text as="p">
+            {promotion.state === 'submitted'
+              ? 'Enviado para análise. Nenhum EvoCash foi debitado.'
+              : `Situação editorial: ${promotion.state}`}
+          </Text>
           <Button
-            key={pkg.packageId}
-            data-testid={`promo-package-${pkg.packageId}`}
-            variant={pkg.packageId === selectedPackageId ? 'primary' : 'default'}
-            aria-pressed={pkg.packageId === selectedPackageId}
-            block
-            onClick={() => dispatch({ type: 'select_package', packageId: pkg.packageId })}
+            onClick={async () => {
+              try {
+                await resubmitCommercialPromotion(promotion.resourceId)
+                setError('')
+                setRevision((n) => n + 1)
+              } catch (e) {
+                setError(commercialError(e))
+              }
+            }}
+            disabled={['suspended', 'archived', 'submitted'].includes(promotion.state)}
           >
-            {pkg.label} -- {pkg.cashAmount} EvoCash
+            Solicitar nova análise
           </Button>
-        ))}
-      </Box>
-      {selectedPackage && (
-        <Button
-          variant="primary"
-          block
-          loading={submitting}
-          disabled={packages.length === 0}
-          onClick={promote}
-        >
-          Promover por {selectedPackage.cashAmount} EvoCash
-        </Button>
+          <Button onClick={() => setRevision((n) => n + 1)}>Atualizar situação</Button>
+          {promotion.state === 'approved' && (
+            <CommercialLeasePurchase
+              key={promotion.resourceId}
+              resourceId={promotion.resourceId}
+              tariff={promotion.tariff}
+              expiresAt={promotion.expiresAt}
+              subjectLabel="destaque"
+              onComplete={async (order) => {
+                onPromoted?.({
+                  id: promotion.resourceId,
+                  expiresAt: order.periodEnd,
+                  cashAmount: order.totalCash,
+                  durationDays: order.durationDays,
+                })
+                setRevision((n) => n + 1)
+              }}
+            />
+          )}
+          <CommercialOrderHistory
+            resourceId={promotion.resourceId}
+            load={getAdvertisingOrders}
+            revision={revision}
+          />
+        </>
       )}
     </Box>
   )
 }
-
-export function PromoteDialog({ targetType, targetId, currentUserId, title, onClose, onPromoted }) {
+export function PromoteDialog({ targetType, targetId, title, onClose, onPromoted }) {
   return (
     <Dialog
-      title={title || 'Promover'}
-      subtitle="Pacote fixo, duração fixa -- pago com EvoCash"
+      title={title || 'Impulsionar'}
+      subtitle="Contratação por dias com EvoCash, após aprovação"
       onClose={onClose}
       width="medium"
     >
       <PromoteDialogBody
+        key={`${targetType}:${targetId}`}
         targetType={targetType}
         targetId={targetId}
-        currentUserId={currentUserId}
         onPromoted={onPromoted}
       />
     </Dialog>

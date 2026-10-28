@@ -27,12 +27,12 @@ export default function CommercialLeasePurchase({
     setError('')
     try {
       if (pay) {
-        await confirmCommercialOrder(quote.id, confirmed)
+        const purchase = await confirmCommercialOrder(quote.id, confirmed)
         intent.current = null
         setQuote(null)
         setConfirmed(false)
         await refresh()
-        await onComplete()
+        await onComplete(purchase)
       } else {
         intent.current ||= crypto.randomUUID()
         setQuote(await quoteCommercialOrder(resourceId, days, intent.current))

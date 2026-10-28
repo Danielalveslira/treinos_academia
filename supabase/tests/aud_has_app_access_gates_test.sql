@@ -320,17 +320,17 @@ reset role;
 update public.community_creation_products set evocash_price = 50 where tier='essential';
 set local role authenticated;
 select pg_temp.as_user('1');
-select lives_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000021','post_boost_3d','gate-promo-1')$$, 'create_promotion: ativa permitida');
+select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000021','post_boost_3d','gate-promo-1')$$, 'USE_COMMERCIAL_PROMOTION', 'create_promotion: active account must use the commercial engine');
 select pg_temp.as_user('2');
-select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000022','post_boost_3d','gate-promo-2')$$, 'ACCOUNT_DISABLED', 'create_promotion: disabled negada com codigo distinto (F1.2 -- PromoteDialog.jsx:89)');
+select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000022','post_boost_3d','gate-promo-2')$$, '42501', 'APP_ACCESS_DENIED', 'create_promotion: restricted account denied before legacy replay');
 select pg_temp.as_user('3');
-select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000023','post_boost_3d','gate-promo-3')$$, 'ACCOUNT_DELETING', 'create_promotion: deleting negada com codigo distinto (F1.2)');
+select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000023','post_boost_3d','gate-promo-3')$$, '42501', 'APP_ACCESS_DENIED', 'create_promotion: restricted account denied before legacy replay');
 select pg_temp.as_user('4');
-select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000024','post_boost_3d','gate-promo-4')$$, 'ACCOUNT_RESTRICTED', 'create_promotion: suspensao negada com codigo distinto (F1.2 -- PromoteDialog.jsx:90)');
+select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000024','post_boost_3d','gate-promo-4')$$, '42501', 'APP_ACCESS_DENIED', 'create_promotion: restricted account denied before legacy replay');
 select pg_temp.as_user('5');
-select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000025','post_boost_3d','gate-promo-5')$$, 'ACCOUNT_RESTRICTED', 'create_promotion: banida negada com codigo distinto (F1.2)');
+select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000025','post_boost_3d','gate-promo-5')$$, '42501', 'APP_ACCESS_DENIED', 'create_promotion: restricted account denied before legacy replay');
 select pg_temp.as_user('6');
-select lives_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000026','post_boost_3d','gate-promo-6')$$, 'create_promotion: superadmin permitida (comportamento existente -- has_app_access() nao faz excecao especial para superadmin alem do que a propria funcao ja concede)');
+select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000026','post_boost_3d','gate-promo-6')$$, 'USE_COMMERCIAL_PROMOTION', 'create_promotion: active account must use the commercial engine');
 reset role;
 
 -- ===== 14) sponsored_ads_select (leitura; braco global e braco de comunidade) =====
@@ -339,17 +339,17 @@ insert into public.sponsored_ads(id,created_by,partner_name,title,is_global,comm
   ('9d000000-0000-0000-0000-000000000002','9a000000-0000-0000-0000-000000000006','Parceiro Gate','Anuncio C1',false,array['9b000000-0000-0000-0000-000000000001']::uuid[],array['feed']);
 set local role authenticated;
 select pg_temp.as_user('1');
-select is((select count(*)::int from public.sponsored_ads), 2, 'sponsored_ads_select: ativa ve os 2 anuncios (global + da propria comunidade)');
+select is((select count(*)::int from public.sponsored_ads where id in('9d000000-0000-0000-0000-000000000001','9d000000-0000-0000-0000-000000000002')), 2, 'sponsored_ads_select: ativa ve os 2 anuncios (global + da propria comunidade)');
 select pg_temp.as_user('2');
-select is((select count(*)::int from public.sponsored_ads), 0, 'sponsored_ads_select: disabled nao ve nenhum anuncio (sem erro -- so 0 linhas)');
+select is((select count(*)::int from public.sponsored_ads where id in('9d000000-0000-0000-0000-000000000001','9d000000-0000-0000-0000-000000000002')), 0, 'sponsored_ads_select: disabled nao ve nenhum anuncio (sem erro -- so 0 linhas)');
 select pg_temp.as_user('3');
-select is((select count(*)::int from public.sponsored_ads), 0, 'sponsored_ads_select: deleting nao ve nenhum anuncio');
+select is((select count(*)::int from public.sponsored_ads where id in('9d000000-0000-0000-0000-000000000001','9d000000-0000-0000-0000-000000000002')), 0, 'sponsored_ads_select: deleting nao ve nenhum anuncio');
 select pg_temp.as_user('4');
-select is((select count(*)::int from public.sponsored_ads), 0, 'sponsored_ads_select: suspensao nao ve nenhum anuncio');
+select is((select count(*)::int from public.sponsored_ads where id in('9d000000-0000-0000-0000-000000000001','9d000000-0000-0000-0000-000000000002')), 0, 'sponsored_ads_select: suspensao nao ve nenhum anuncio');
 select pg_temp.as_user('5');
-select is((select count(*)::int from public.sponsored_ads), 0, 'sponsored_ads_select: banida nao ve nenhum anuncio');
+select is((select count(*)::int from public.sponsored_ads where id in('9d000000-0000-0000-0000-000000000001','9d000000-0000-0000-0000-000000000002')), 0, 'sponsored_ads_select: banida nao ve nenhum anuncio');
 select pg_temp.as_user('6');
-select is((select count(*)::int from public.sponsored_ads), 2, 'sponsored_ads_select: superadmin ve todos (comportamento existente)');
+select is((select count(*)::int from public.sponsored_ads where id in('9d000000-0000-0000-0000-000000000001','9d000000-0000-0000-0000-000000000002')), 2, 'sponsored_ads_select: superadmin ve todos (comportamento existente)');
 reset role;
 
 -- ===== 15) Mínimo preservado pela decisão: notices, support_requests, leitura da própria linha =====

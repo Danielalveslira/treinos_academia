@@ -1,0 +1,14 @@
+{
+  "localOnly": true,
+  "officialRealtime": true,
+  "noMockedEvents": true,
+  "paidBannerRendered": true,
+  "paidFeedRendered": true,
+  "suspensionWithoutReload": true,
+  "suspensionMs": 923,
+  "resumeWithoutReload": true,
+  "disconnectionFailClosed": true,
+  "reconnectedAfterServiceRestart": true,
+  "organicContentPreserved": true,
+  "errors": []
+}

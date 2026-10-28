@@ -1,0 +1,277 @@
+BEGIN
+DELETE 1
+TRUNCATE TABLE
+UPDATE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 9
+UPDATE 0
+UPDATE 9
+UPDATE 1
+UPDATE 1
+INSERT 0 2
+INSERT 0 8
+INSERT 0 1
+INSERT 0 6
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE TABLE
+INSERT 0 1
+GRANT
+ok 1 - tabela de agregados existe
+ok 2 - tabela de marcadores existe
+ok 3 - coleta nasce DESLIGADA no servidor
+ok 4 - configuração é singleton
+ok 5 - RLS ligada nos agregados
+ok 6 - RLS ligada nos marcadores
+ok 7 - RLS ligada na configuração
+ok 8 - marcadores sem nenhuma policy
+ok 9 - authenticated sem SELECT nos marcadores
+ok 10 - authenticated sem INSERT nos marcadores
+ok 11 - anon sem SELECT nos marcadores
+ok 12 - anon sem SELECT nos agregados
+ok 13 - authenticated tem SELECT (a RLS restringe ao superadmin)
+ok 14 - authenticated não escreve nos agregados
+ok 15 - authenticated não lê nem altera a configuração
+ok 16 - anon sem EXECUTE na RPC
+ok 17 - PUBLIC sem EXECUTE na RPC
+ok 18 - authenticated com EXECUTE na RPC
+ok 19 - limpeza não é executável por authenticated
+ok 20 - função de dia não é executável por authenticated
+ok 21 - RPC é SECURITY DEFINER (justificada: tabelas sem escrita para clientes)
+ok 22 - RPC com search_path vazio
+ok 23 - limpeza com search_path vazio
+ok 24 - limpeza de agregados com search_path vazio
+ok 25 - RPC sem SQL dinâmico
+ok 26 - agregado separa os cliques sem impressão retida
+ok 27 - cliques não qualificados nunca passam dos cliques
+ok 28 - clique sem nenhuma impressão é um estado válido do agregado
+ok 29 - home_banner exige contexto zero
+ok 30 - comunidade não aceita contexto zero
+ok 31 - contador negativo recusado
+ok 32 - único > impressões recusado
+ok 33 - posicionamento desconhecido recusado
+ok 34 - 02:59:59Z ainda é o dia anterior em São Paulo
+ok 35 - 03:00:00Z abre o dia seguinte em São Paulo
+ok 36 - 23:59:59 BRT ainda é o mesmo dia
+ok 37 - 00:00:00 BRT abre o dia seguinte
+SET
+ok 38 - anon não executa a RPC
+SET
+
+ok 39 - sem login: NOT_AUTHENTICATED
+
+ok 40 - com a chave do servidor DESLIGADA nada é aceito e o ACK avisa
+ok 41 - chave desligada: nenhum marcador
+ok 42 - chave desligada: nenhum agregado
+RESET
+UPDATE 1
+SET
+
+ok 43 - lote vazio é aceito e não grava
+ok 44 - impressão de banner da comunidade aceita (ACK mínimo)
+ok 45 - agregado: 1 impressão, 1 único, 0 cliques
+ok 46 - reenvio do MESMO evento (retry após timeout) é idempotente
+ok 47 - retry não dobrou contadores
+ok 48 - nova impressão do mesmo usuário (outra sessão de exibição) é aceita
+ok 49 - impressões 2, mas alcance único continua 1
+ok 50 - clique após impressão aceito
+ok 51 - reenvio do clique é idempotente
+ok 52 - agregado: 1 clique
+ok 53 - clique SEM impressão prévia (clique rápido) é contabilizado
+ok 54 - sem impressão fictícia: 0 impressões, 0 únicos, 1 clique
+ok 55 - e marcado como clique não qualificado
+ok 56 - sanidade do helper
+ok 57 - card no feed do mesmo anúncio aceito
+ok 58 - feed tem contador próprio
+ok 59 - banner da comunidade não foi alterado
+ok 60 - banner global na Home aceito sem comunidade
+ok 61 - segunda impressão na Home aceita (chave com contexto zero)
+ok 62 - repetição do evento da Home é idempotente
+ok 63 - Home: linha única com contexto zero, 2 impressões e 1 único
+ok 64 - clique no banner da Home aceito
+ok 65 - usuário comum não lê agregados (RLS)
+
+ok 66 - outro membro conta
+ok 67 - alcance único soma usuários distintos; impressões somam eventos
+
+ok 68 - o mesmo event id enviado por OUTRO usuário é um evento independente
+
+ok 69 - agregado coerente após os dois usuários
+
+ok 70 - lote misto: impressão+clique do mesmo anúncio e chaves diferentes
+ok 71 - anúncio sem validade (A6) conta; clique no mesmo lote após a impressão
+
+ok 72 - clique antes de completar 1 s visível (impressão inexistente) é aceito
+ok 73 - nenhuma impressão ou alcance único foi fabricado
+ok 74 - clique contado como não qualificado
+ok 75 - nenhum marcador de impressão foi criado para justificar o clique
+ok 76 - reenvio do clique rápido é idempotente
+ok 77 - retry não dobrou o clique
+ok 78 - lote com clique listado antes da impressão aceita os dois
+ok 79 - impressão real + 2 cliques
+ok 80 - o clique do mesmo lote da impressão é qualificado
+ok 81 - clique em lote posterior à impressão
+ok 82 - continua 1 não qualificado
+ok 83 - teto de 5 cliques por conta/chave/dia vale também sem impressão (3 já contados + 2)
+ok 84 - cliques param em 5; impressões intactas
+ok 85 - clique no banner da Home sem impressão aceito
+ok 86 - a única impressão da conta é a real (702)
+RESET
+SELECT 1
+GRANT
+SET
+
+ok 87 - cliques de anúncio vencido, comunidade falsificada, formato errado ou fora da Home não contam
+
+ok 88 - clique de não membro não conta
+
+ok 89 - clique de banido não conta
+
+ok 90 - clique de conta desativada não conta
+
+ok 91 - clique de superadmin não conta
+RESET
+ok 92 - cliques inelegíveis não deixaram marcador
+SET
+
+CREATE FUNCTION
+CREATE TABLE
+GRANT
+INSERT 0 1
+ok 93 - 25 lotes malformados repetidos são recusados
+ok 94 - 20 eventos de anúncios inexistentes: nada aceito
+ok 95 - 20 eventos de anúncio vencido: nada aceito
+ok 96 - 20 eventos de comunidade falsificada: nada aceito
+ok 97 - rejeições (malformado, inexistente, vencido, falsificado) não escreveram NENHUMA linha
+ok 98 - e não tomaram o lock por usuário
+ok 99 - evento elegível da mesma conta é aceito
+ok 100 - só o evento elegível tomou o lock
+UPDATE 1
+ok 101 - reenvio do lote já processado: nada aceito
+ok 102 - reenvio não escreveu nenhuma linha (nem marcador, nem agregado)
+RESET
+INSERT 0 99
+INSERT 0 150
+SET
+
+ok 103 - teto de 100 eventos/hora: com 99 recentes só 1 dos 3 eventos passa
+ok 104 - e a rajada seguinte é bloqueada
+
+ok 105 - 150 marcadores de ontem (criados há > 1 h) não contam para o teto horário
+RESET
+SELECT 1
+GRANT
+SET
+
+ok 106 - anúncio vencido (A3) não conta
+ok 107 - anúncio vencido não conta no feed
+ok 108 - feed de anúncio só-banner (A5) não conta
+ok 109 - banner de anúncio só-feed (A6) não conta
+ok 110 - anúncio não-global (A1) não conta na Home
+ok 111 - global só-feed (A4) não conta no banner da Home
+ok 112 - anúncio só global não conta dentro da comunidade
+ok 113 - comunidade FALSIFICADA (usuário é membro de C2, mas A1 só mira C1) não conta
+ok 114 - anúncio inexistente é ignorado
+
+ok 115 - não membro não conta
+ok 116 - não membro conta na Home (anúncio global é de todos)
+
+ok 117 - usuário banido da comunidade não conta
+
+ok 118 - conta desativada não conta (comunidade)
+ok 119 - conta desativada não conta (Home)
+
+ok 120 - superadmin (prévia) não conta
+ok 121 - superadmin não conta na comunidade
+RESET
+ok 122 - só o não membro na Home gerou marcador: nenhum evento inelegível deixou rastro
+ok 123 - agregados só subiram pela impressão válida da Home
+ok 124 - o marcador pertence ao usuário da sessão
+ok 125 - marcadores nascem com validade de 48 h
+SET
+
+CREATE FUNCTION
+ok 126 - null recusado
+ok 127 - objeto no lugar de array recusado
+ok 128 - string recusada
+ok 129 - elemento null recusado
+ok 130 - elemento escalar recusado
+ok 131 - 21 eventos recusados (máx. 20)
+ok 132 - JSON acima de 8 KiB recusado
+ok 133 - user_id enviado pelo cliente é campo inesperado
+ok 134 - campo de contador/extra recusado
+ok 135 - timestamp declarado pelo cliente recusado
+ok 136 - tipo desconhecido recusado
+ok 137 - posicionamento desconhecido recusado
+ok 138 - id numérico recusado
+ok 139 - id que não é uuid recusado
+ok 140 - ad null recusado
+ok 141 - ad ausente recusado
+ok 142 - Home com comunidade informada recusada
+ok 143 - posicionamento de comunidade sem comunidade recusado
+ok 144 - comunidade = uuid zero recusada
+ok 145 - comunidade numérica recusada
+ok 146 - um evento inválido derruba o lote
+RESET
+ok 147 - lote inválido não grava nada, nem os eventos válidos do mesmo lote
+SET
+
+ok 148 - uuid em caixa alta é aceito e normalizado
+
+ok 149 - 20 impressões na mesma chave no dia: só 10 contam (teto por usuário/anúncio/posição/dia)
+ok 150 - agregado reflete o teto (11 = 1 anterior do usuário 2 + 10)
+ok 151 - 20 cliques: só 5 contam
+ok 152 - clique além do teto no dia ignorado
+ok 153 - impressão além do teto ignorada
+ok 154 - contadores param no teto
+RESET
+INSERT 0 286
+ok 155 - usuário 02 no teto diário
+SET
+
+ok 156 - teto diário por usuário (300 eventos) bloqueia novos eventos
+
+ok 157 - usuário comum não lê marcadores
+ok 158 - usuário comum não escreve marcadores
+ok 159 - usuário comum não altera contadores
+ok 160 - usuário comum não apaga agregados
+ok 161 - usuário comum não insere agregados
+ok 162 - usuário comum não lê a chave do servidor
+ok 163 - usuário comum não altera a chave do servidor
+ok 164 - usuário comum não roda a limpeza
+ok 165 - RLS: usuário comum enxerga 0 linhas de agregados
+
+ok 166 - superadmin lê os agregados
+ok 167 - nem o superadmin escreve pelo cliente
+RESET
+INSERT 0 2
+ok 168 - limpeza remove só o marcador vencido
+ok 169 - marcador vencido sumiu
+ok 170 - marcador vigente permanece
+ok 171 - limpeza é idempotente
+INSERT 0 2
+ok 172 - agregados com mais de 24 meses são removidos
+ok 173 - agregado recente permanece
+ok 174 - cron horário dos marcadores agendado
+ok 175 - cron mensal dos agregados agendado
+ok 176 - exatamente 2 jobs (nenhum órfão ou duplicado)
+ok 177 - usuário 06 tem marcadores antes de excluir
+DELETE 1
+ok 178 - exclusão da conta apaga os marcadores do usuário
+UPDATE 1
+SET
+
+ok 179 - desligar a chave interrompe a gravação
+1..179
+ROLLBACK

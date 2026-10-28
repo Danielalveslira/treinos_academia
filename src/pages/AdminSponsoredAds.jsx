@@ -19,11 +19,13 @@ import { SponsoredAdCapError, SponsoredAdGlobalCapError } from '../utils/validat
 // Aba Métricas: módulo (e o gráfico) só são baixados quando o superadmin abre a aba; nada de leitura antes disso.
 const AdMetricsTab = lazy(() => import('../features/adMetrics/components/AdMetricsTab'))
 const AdvertiserAdmin = lazy(() => import('../features/adMetrics/components/AdvertiserAdmin'))
+const AdvertisingAdmin = lazy(() => import('../components/AdvertisingAdmin'))
 const CommercialAdmin = lazy(() => import('../components/CommercialAdmin'))
 const CommercialEngineAdmin = lazy(() => import('../components/CommercialEngineAdmin'))
 
 const TABS = [
   { key: 'campaigns', label: 'Campanhas' },
+  { key: 'autonomous', label: 'Publicidade autônoma' },
   { key: 'metrics', label: 'Métricas' },
   { key: 'advertisers', label: 'Anunciantes' },
   { key: 'commercial', label: 'Propostas e produtos' },
@@ -38,7 +40,11 @@ export default function AdminSponsoredAds() {
   const [params] = useSearchParams()
   const reportRequested = params.get('report') === 'metrics'
   const [tab, setTab] = useState(
-    TABS.some((item) => item.key === params.get('tab')) ? params.get('tab') : reportRequested ? 'metrics' : 'campaigns'
+    TABS.some((item) => item.key === params.get('tab'))
+      ? params.get('tab')
+      : reportRequested
+        ? 'metrics'
+        : 'campaigns'
   )
   const needsCampaigns = tab === 'campaigns' || tab === 'metrics'
   const { ads, loading, error, refresh, add, edit, remove } = useAdminSponsoredAds(needsCampaigns)
@@ -188,6 +194,12 @@ export default function AdminSponsoredAds() {
       {tab === 'advertisers' && (
         <Suspense fallback={<Spinner />}>
           <AdvertiserAdmin />
+        </Suspense>
+      )}
+
+      {tab === 'autonomous' && (
+        <Suspense fallback={<Spinner />}>
+          <AdvertisingAdmin />
         </Suspense>
       )}
 

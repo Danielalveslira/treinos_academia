@@ -1,0 +1,150 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+CREATE EXTENSION
+SET
+CREATE FUNCTION
+INSERT 0 5
+UPDATE 5
+UPDATE 1
+UPDATE 1
+UPDATE 1
+UPDATE 0
+INSERT 0 5
+INSERT 0 5
+
+
+INSERT 0 2
+INSERT 0 3
+
+
+{"id": "a40bfbde-a3b2-423d-b5f6-937a95a09e47", "orderNsu": "evo_f408275ba35b4021a84819ad15bd802d", "cashAmount": 25, "amountCentavos": 590, "checkoutValidUntil": "2026-11-04T17:14:37.274694+00:00"}
+SET
+f1000000-0000-0000-0000-000000000001
+ok 1 - conta antiga: RPC negada
+f1000000-0000-0000-0000-000000000002
+ok 2 - conta recente limpa: rollback desativado
+f1000000-0000-0000-0000-000000000003
+ok 3 - conta recente financeira: RPC negada
+ok 4 - Auth: DELETE direto negado
+ok 5 - perfil: DELETE direto negado
+ok 6 - perfil público: DELETE negado
+ok 7 - reserva de nome: DELETE negado
+f1000000-0000-0000-0000-000000000004
+ok 8 - conta recente com compra pendente não chama rollback
+SET
+ok 9 - anon não chama rollback
+SET
+ok 10 - service_role usa worker oficial, sem rollback
+SET
+
+ok 11 - anon não cria publicação
+RESET
+ok 12 - nenhuma identidade apagada
+ok 13 - nenhum perfil apagado
+ok 14 - saldo preservado
+SET
+f1000000-0000-0000-0000-000000000001
+ok 15 - publicação legítima
+ok 16 - nome derivado no banco
+ok 17 - metadados iniciais seguros
+ok 18 - INSERT promoted: negado
+ok 19 - UPDATE promoted: negado
+ok 20 - UPSERT promoted: negado
+ok 21 - INSERT promoted_until: negado
+ok 22 - UPDATE promoted_until: negado
+ok 23 - UPSERT promoted_until: negado
+ok 24 - INSERT active_promotion_id: negado
+ok 25 - UPDATE active_promotion_id: negado
+ok 26 - UPSERT active_promotion_id: negado
+ok 27 - INSERT positive_vote_count: negado
+ok 28 - UPDATE positive_vote_count: negado
+ok 29 - UPSERT positive_vote_count: negado
+ok 30 - INSERT negative_vote_count: negado
+ok 31 - UPDATE negative_vote_count: negado
+ok 32 - UPSERT negative_vote_count: negado
+ok 33 - INSERT comment_count: negado
+ok 34 - UPDATE comment_count: negado
+ok 35 - UPSERT comment_count: negado
+ok 36 - INSERT author_username legado: sobrescrito
+ok 37 - nome falso substituído pelo nome real
+ok 38 - UPDATE author_username: negado
+ok 39 - UPSERT author_username: negado
+ok 40 - INSERT author_is_superadmin legado: sobrescrito
+ok 41 - selo falso substituído pelo papel real
+ok 42 - UPDATE author_is_superadmin: negado
+ok 43 - UPSERT author_is_superadmin: negado
+ok 44 - INSERT created_at: negado
+ok 45 - UPDATE created_at: negado
+ok 46 - UPSERT created_at: negado
+ok 47 - INSERT expires_at: negado
+ok 48 - UPDATE expires_at: negado
+ok 49 - UPSERT expires_at: negado
+ok 50 - INSERT retention_mode: negado
+ok 51 - UPDATE retention_mode: negado
+ok 52 - UPSERT retention_mode: negado
+ok 53 - autoria alheia negada
+ok 54 - comunidade sem filiação negada
+ok 55 - UPSERT somente conteúdo também não contorna UPDATE
+f1000000-0000-0000-0000-000000000002
+ok 56 - UPDATE post alheio negado
+RESET
+RESET
+UPDATE 1
+SET
+f1000000-0000-0000-0000-000000000002
+ok 57 - membro não publica quando post_access=admins
+f1000000-0000-0000-0000-000000000001
+ok 58 - dono publica enquete em comunidade admins
+ok 59 - publicação de treino legítima
+RESET
+UPDATE 1
+SET
+f1000000-0000-0000-0000-000000000002
+ok 60 - voto autorizado atualiza contador
+ok 61 - contador de voto legítimo
+ok 62 - comentário autorizado
+ok 63 - contador de comentário legítimo
+f1000000-0000-0000-0000-000000000001
+ok 64 - novo pacote legado bloqueado
+RESET
+
+SET
+ok 65 - fixture histórica conserva débito
+ok 66 - promoção paga persiste
+ok 67 - cliente não altera promoção paga
+ok 68 - titular cancela pela RPC
+ok 69 - novo pacote legado bloqueado
+RESET
+
+SET
+ok 70 - histórico preserva duas contratações
+RESET
+ok 71 - duas cobranças auditadas
+SELECT 1
+GRANT
+SET
+f1000000-0000-0000-0000-000000000005
+{"amr": [{"method": "password", "timestamp": 1793207677}], "sub": "f1000000-0000-0000-0000-000000000005", "role": "authenticated", "session_id": "9efca81f-3e08-b9d9-03a0-f1e670002970"}
+ok 72 - admin cancela por RPC com motivo
+ok 73 - moderação conserva contadores
+RESET
+ok 74 - serviço conserva UPDATE
+ok 75 - worker conserva execução
+SET
+f1000000-0000-0000-0000-000000000005
+ok 76 - admin enfileira pedido oficial do titular
+RESET
+SELECT 1
+GRANT
+SET
+ok 77 - worker bloqueia pendência financeira
+RESET
+ok 78 - trilha financeira preservada
+ok 79 - perfil financeiro preservado após worker
+ok 80 - ataques não alteram conteúdo existente
+1..80
+ROLLBACK

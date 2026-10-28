@@ -1,3 +1,4 @@
+import { useAdvertisingValidity } from '../hooks/useAdvertisingValidity'
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { Box, Heading, Button, Spinner } from '@primer/react'
@@ -54,7 +55,10 @@ import { classifyReadError } from '../services/offline/readError'
 import { LazyDialogBoundary } from '../components/LazyDialogBoundary'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
-import { listFeaturedStatusesForCommunity } from '../services/promotionsService'
+import {
+  listFeaturedStatusesForCommunity,
+  authorizePromotionSources,
+} from '../services/promotionsService'
 import { toMillis } from '../utils/expiry.js'
 import { expiresAtForRetention } from '../utils/postRetention'
 import { readAdHint, writeAdHint } from '../utils/adSlotHint'
@@ -298,7 +302,10 @@ function CommunityDetail({ id }) {
   // vencer): atualiza o card na lista e rebusca os destaques no servidor.
   const handlePromoted = useCallback(
     (statusId, result) => {
-      updatePostPromotion(statusId, { promoted: true, promotedUntil: result.expiresAtMs })
+      updatePostPromotion(statusId, {
+        promoted: true,
+        promotedUntil: result.expiresAt || result.expiresAtMs,
+      })
       loadFeatured(true).catch((err) =>
         console.error('[CommunityDetail] listFeaturedStatusesForCommunity:', err)
       )
@@ -383,6 +390,47 @@ function CommunityDetail({ id }) {
       }
     },
     [id, pageKey]
+  )
+
+  const [promotionPostIds, setPromotionPostIds] = useState([])
+  const promotionSourceIds = [
+    ...new Set([...statuses, ...(sharedStatus ? [sharedStatus] : [])].map((s) => s.id)),
+  ]
+  const promotionSourceKey = promotionSourceIds.sort().join(',')
+  const revalidatePromotions = useCallback(async () => {
+    const [freshCommunity, freshFeatured] = await Promise.all([
+      getCommunity(id),
+      listFeaturedStatusesForCommunity(id),
+    ])
+    const ids = [
+      ...new Set([
+        ...promotionSourceKey.split(',').filter(Boolean),
+        ...freshFeatured.map((s) => s.id),
+      ]),
+    ]
+    const authorization = await authorizePromotionSources([id], ids)
+    setCommunity(
+      freshCommunity
+        ? { ...freshCommunity, promoted: authorization.communityIds.includes(id) }
+        : null
+    )
+    setFeaturedStatusesState(freshFeatured.filter((s) => authorization.statusIds.includes(s.id)))
+    setPromotionPostIds(authorization.statusIds)
+    return authorization.deadline
+  }, [id, promotionSourceKey])
+  const promotionValid = useAdvertisingValidity(
+    `community:${user.uid}:${id}`,
+    member,
+    revalidatePromotions
+  )
+  const visibleStatuses = useMemo(
+    () =>
+      statuses.map((status) =>
+        promotionValid && promotionPostIds.includes(status.id)
+          ? status
+          : { ...status, promoted: false, promotedUntil: null }
+      ),
+    [statuses, promotionValid, promotionPostIds]
   )
 
   useEffect(() => {
@@ -741,7 +789,13 @@ function CommunityDetail({ id }) {
       <ToastFlash toasts={toasts} />
       <CommunityHeader
         communityId={id}
-        community={!loadingCommunity && !communityError ? community : null}
+        community={
+          !loadingCommunity && !communityError
+            ? promotionValid
+              ? community
+              : { ...community, promoted: false, promotedUntil: null }
+            : null
+        }
         menuProps={{
           member,
           canManage: canModerate,
@@ -857,11 +911,15 @@ function CommunityDetail({ id }) {
               feedAds={cardsLate ? NO_ADS : feedAds}
               inlineFeedAds={cardsLate ? [...feedAds, ...inlineFeedAds] : inlineFeedAds}
               upcomingWorkouts={upcomingWorkouts}
-              sharedStatus={sharedStatus}
+              sharedStatus={
+                (promotionValid && promotionPostIds.includes(sharedStatus?.id)) || !sharedStatus
+                  ? sharedStatus
+                  : { ...sharedStatus, promoted: false, promotedUntil: null }
+              }
               loadingUpcomingWorkouts={loadingUpcomingWorkouts}
               upcomingWorkoutsError={upcomingWorkoutsError}
-              featuredStatuses={featuredStatuses}
-              statuses={statuses}
+              featuredStatuses={promotionValid ? featuredStatuses : NO_ADS}
+              statuses={visibleStatuses}
               authorAvatars={authorAvatars}
               loadingFeed={loadingFeed || loadingUpcomingWorkouts}
               feedError={feedError}

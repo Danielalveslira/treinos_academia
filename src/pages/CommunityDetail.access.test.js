@@ -84,6 +84,10 @@ before(async () => {
             `export const useUpcomingWorkouts = (id, enabled) => { globalThis.__enabled.workouts.push(enabled); return { workouts: [], loading: false, error: null, refresh() {}, setWorkouts() {} } }`
           )
           fake(
+            /\/hooks\/useAdvertisingValidity(\.js)?$/,
+            `export const useAdvertisingValidity = () => false`
+          )
+          fake(
             /\/hooks\/useSponsoredAds(\.js)?$/,
             `const none = []; export const useSponsoredAds = () => ({ feedAds: none, inlineFeedAds: none, bannerAds: none, loading: false, error: null })`
           )
@@ -120,7 +124,7 @@ before(async () => {
           )
           fake(
             /\/services\/promotionsService(\.js)?$/,
-            `export const listFeaturedStatusesForCommunity = async () => []`
+            `export const listFeaturedStatusesForCommunity = async () => []; export const authorizePromotionSources = async () => ({statusIds:[],communityIds:[],deadline:Infinity})`
           )
           fake(
             /\/components\/CommunityFeedSection(\.jsx)?$/,

@@ -298,7 +298,8 @@ test('login ONLINE confirma perfil+termos e grava o bootstrap MÍNIMO (cold star
   assert.ok(!('role' in record.profile))
   assert.ok(
     !JSON.stringify(record).includes('privada') &&
-      !JSON.stringify(record).includes('1990') &&
+      // Compare the full private fixture value: epoch timestamps can contain '1990'.
+      !JSON.stringify(record).includes('1990-01-01') &&
       !JSON.stringify(record).includes('@')
   )
   view.unmount()
@@ -852,12 +853,16 @@ test('RECONEXÃO: erro do SERVIDOR (não de rede) ao revalidar sai do modo offli
   view.unmount()
 })
 
-
 // ============================================================================ cold start NÃO depende da rede
 
 const rollout = (coldStart, extra = {}) => ({
   offline_write: { enabled: true, rollout_percentage: 100, updated_at: Date.now() },
-  offline_cold_start: { enabled: coldStart, rollout_percentage: 100, updated_at: Date.now(), ...extra },
+  offline_cold_start: {
+    enabled: coldStart,
+    rollout_percentage: 100,
+    updated_at: Date.now(),
+    ...extra,
+  },
 })
 
 test('COLD START (sessão válida + navegador offline): abre direto do snapshot local, SEM nenhuma RPC/consulta de perfil, termos, acesso ou carteira', async () => {
@@ -941,14 +946,20 @@ test('bootstrap INVÁLIDO (aceite legal adulterado/versão desconhecida) não li
   view.unmount()
 })
 
-
 // ============================================================================ snapshot da Home / boot sem rede
 
 const WALLET = { coinBalance: 20, lifetimeCoinsEarned: 35, cashBalance: 320 }
 const PROGRESS = {
   start: '2025-12-01',
   end: '2026-12-31',
-  days: [{ dateKey: '2026-10-07', workoutCount: 1, strengthVolumeKg: 800, exerciseStats: [{ exerciseId: 'e1' }] }],
+  days: [
+    {
+      dateKey: '2026-10-07',
+      workoutCount: 1,
+      strengthVolumeKg: 800,
+      exerciseStats: [{ exerciseId: 'e1' }],
+    },
+  ],
 }
 
 async function onlineWithSnapshot(id = A) {
@@ -1069,7 +1080,11 @@ test('BOOT: sem cold start válido o bloqueio legítimo não espera o auth-js (o
   globalThis.__initialSession = null
   globalThis.__initialDelay = 400
   const view = on.mount()
-  assert.equal(on.bootState.getBootState(), 'initializing', 'enquanto hidrata o bloqueio não aparece')
+  assert.equal(
+    on.bootState.getBootState(),
+    'initializing',
+    'enquanto hidrata o bloqueio não aparece'
+  )
   await settle(120)
   assert.equal(on.bootState.getBootState(), 'offline_unavailable')
   assert.equal(on.auth().offlineLocal, false)

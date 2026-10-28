@@ -1,0 +1,9 @@
+{
+  "localOnly": true,
+  "officialService": true,
+  "realPostgresChanges": true,
+  "rlsChecked": true,
+  "principal": "viewer",
+  "receivedRevision": 221,
+  "subscribeAndDeliveryMs": 631
+}

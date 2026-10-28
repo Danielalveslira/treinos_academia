@@ -1,0 +1,97 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+DELETE 1
+INSERT 0 4
+UPDATE 0
+UPDATE 1
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+INSERT 0 2
+INSERT 0 2
+INSERT 0 4
+SET
+a9100000-0000-0000-0000-000000000001
+ok 1 - admin vincula A
+ok 2 - admin vincula B
+ok 3 - admin concede leitura A
+ok 4 - admin concede leitura B
+ok 5 - transferência direta bloqueada
+ok 6 - RPC administrativa anterior preservada
+ok 7 - RPC administrativa V2
+a9100000-0000-0000-0000-000000000002
+ok 8 - A lista só sua conta
+ok 9 - A só agrega campanha atribuída, sem inferir nome
+ok 10 - CTR acima de 100 preservado
+ok 11 - período anterior equivalente
+ok 12 - janelas equivalentes
+ok 13 - A não lê B
+ok 14 - ad_id forjado B negado
+ok 15 - ad_id não atribuído negado
+ok 16 - RPC antiga continua somente admin
+ok 17 - RPC V2 admin não abre a leitor
+ok 18 - leitor não administra
+ok 19 - busca só admin
+ok 20 - RLS bloqueia estatísticas diretas
+ok 21 - membros sem leitura direta
+ok 22 - helper privado sem execute
+ok 23 - anon sem execute
+a9100000-0000-0000-0000-000000000004
+ok 24 - sem vínculo negado
+a9100000-0000-0000-0000-000000000001
+a9200000-0000-0000-0000-000000000002
+a9100000-0000-0000-0000-000000000002
+ok 25 - mesma pessoa em duas contas
+ok 26 - segunda conta isolada
+ok 27 - primeira conta permanece isolada
+a9100000-0000-0000-0000-000000000001
+a9200000-0000-0000-0000-000000000001
+a9100000-0000-0000-0000-000000000002
+ok 28 - revogação imediata
+a9100000-0000-0000-0000-000000000001
+a9200000-0000-0000-0000-000000000001
+a9200000-0000-0000-0000-000000000001
+a9100000-0000-0000-0000-000000000002
+ok 29 - conta inativa nega leitura
+a9100000-0000-0000-0000-000000000001
+a9200000-0000-0000-0000-000000000001
+DELETE 1
+a9100000-0000-0000-0000-000000000002
+ok 30 - exclusão mantém histórico e autorização
+ok 31 - campanha marcada removida
+ok 32 - identidade histórica preservada
+ok 33 - catálogo mantém removida
+ok 34 - intervalo limitado
+ok 35 - offset inválido negado
+
+ok 36 - sem sessão negado
+RESET
+INSERT 0 105
+INSERT 0 105
+SET
+a9100000-0000-0000-0000-000000000002
+ok 37 - primeira página limitada a 100
+ok 38 - segunda página completa
+ok 39 - paginação não altera totais
+ok 40 - total inclui todas
+ok 41 - filtro sem registros mantém null
+ok 42 - ausência não inventa série
+ok 43 - posicionamento soma apenas escopo autorizado
+ok 44 - comunidade sem registros não inclui dados de outra
+RESET
+INSERT 0 1
+SET
+a9100000-0000-0000-0000-000000000002
+ok 45 - zero comprovado preservado
+ok 46 - clique sem impressão mantém CTR null
+ok 47 - cliques sem impressão não viram qualificados
+
+ok 48 - sessão revogada nega leitura
+RESET
+ok 49 - operações auditadas
+ok 50 - coleta não ativada
+1..50
+ROLLBACK

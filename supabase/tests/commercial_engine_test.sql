@@ -1,6 +1,8 @@
 \ir _helpers/auth_session.sql
 begin;
 select no_plan();
+-- Fresh test offering isolates engine invariants from installed adapters and preview prices.
+insert into public.commercial_offerings(code,name,description) values('synthetic_engine_fixture','Synthetic engine fixture','Rollback-only independent offering');
 insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select ('73000000-0000-0000-0000-'||lpad(i::text,12,'0'))::uuid,'authenticated','authenticated','commercial-'||i||'@example.invalid','x',now(),'{}','{}',now(),now() from generate_series(1,3)i;
 update public.users set role='superadmin' where id='73000000-0000-0000-0000-000000000003';
@@ -11,20 +13,20 @@ end$$;
 select pg_temp.commercial_admin();
 set local role authenticated;
 select is((select count(*)::integer from jsonb_array_elements(public.admin_commercial_catalog()->'items') x where x->>'code' in('ad_community','ad_home','ad_network','post_boost','community_boost','product_storefront','professional_profile','establishment_profile')),8,'central catalog has eight services without invented prices');
-select throws_ok($$select public.admin_publish_commercial_price('post_boost','0',1,7,null,0,gen_random_uuid(),'Synthetic price',true)$$,'INVALID_COMMERCIAL_PRICE','zero price fails');
-select throws_ok($$select public.admin_publish_commercial_price('post_boost','2147483647',1,2,null,0,gen_random_uuid(),'Synthetic price',true)$$,'INVALID_COMMERCIAL_PRICE','overflow fails');
-select throws_ok($$select public.admin_publish_commercial_price('post_boost','2',0,2,null,0,gen_random_uuid(),'Synthetic price',true)$$,'INVALID_COMMERCIAL_PRICE','invalid limits fail');
-select throws_ok($$select public.admin_publish_commercial_price('post_boost','2',1,30,null,0,gen_random_uuid(),'Synthetic price',false)$$,'INVALID_COMMERCIAL_PRICE','explicit admin confirmation required');
-select public.admin_publish_commercial_price('post_boost','2',1,30,null,0,'73100000-0000-0000-0000-000000000001','Synthetic price only',true);
-select is(public.admin_publish_commercial_price('post_boost','2',1,30,null,0,'73100000-0000-0000-0000-000000000001','Synthetic price only',true)->>'revision','1','admin retry returns same version');
-select throws_ok($$select public.admin_publish_commercial_price('post_boost','3',1,30,null,1,'73100000-0000-0000-0000-000000000001','Synthetic price only',true)$$,'IDEMPOTENCY_CONFLICT','admin request cannot change payload');
-select throws_ok($$select public.admin_set_commercial_sales('post_boost',true,1,gen_random_uuid(),'Synthetic enable',true)$$,'COMMERCIAL_INTEGRATION_UNAVAILABLE','no live adapter can sell');
+select throws_ok($$select public.admin_publish_commercial_price('synthetic_engine_fixture','0',1,7,null,0,gen_random_uuid(),'Synthetic price',true)$$,'INVALID_COMMERCIAL_PRICE','zero price fails');
+select throws_ok($$select public.admin_publish_commercial_price('synthetic_engine_fixture','2147483647',1,2,null,0,gen_random_uuid(),'Synthetic price',true)$$,'INVALID_COMMERCIAL_PRICE','overflow fails');
+select throws_ok($$select public.admin_publish_commercial_price('synthetic_engine_fixture','2',0,2,null,0,gen_random_uuid(),'Synthetic price',true)$$,'INVALID_COMMERCIAL_PRICE','invalid limits fail');
+select throws_ok($$select public.admin_publish_commercial_price('synthetic_engine_fixture','2',1,30,null,0,gen_random_uuid(),'Synthetic price',false)$$,'INVALID_COMMERCIAL_PRICE','explicit admin confirmation required');
+select public.admin_publish_commercial_price('synthetic_engine_fixture','2',1,30,null,0,'73100000-0000-0000-0000-000000000001','Synthetic price only',true);
+select is(public.admin_publish_commercial_price('synthetic_engine_fixture','2',1,30,null,0,'73100000-0000-0000-0000-000000000001','Synthetic price only',true)->>'revision','1','admin retry returns same version');
+select throws_ok($$select public.admin_publish_commercial_price('synthetic_engine_fixture','3',1,30,null,1,'73100000-0000-0000-0000-000000000001','Synthetic price only',true)$$,'IDEMPOTENCY_CONFLICT','admin request cannot change payload');
+select throws_ok($$select public.admin_set_commercial_sales('synthetic_engine_fixture',true,1,gen_random_uuid(),'Synthetic enable',true)$$,'COMMERCIAL_INTEGRATION_UNAVAILABLE','no live adapter can sell');
 reset role;
-update public.commercial_offerings set integration_ready=true where code='post_boost';
-select public.admin_set_commercial_sales('post_boost',true,1,gen_random_uuid(),'Synthetic enable',true);
+update public.commercial_offerings set integration_ready=true where code='synthetic_engine_fixture';
+select public.admin_set_commercial_sales('synthetic_engine_fixture',true,1,gen_random_uuid(),'Synthetic enable',true);
 insert into private.commercial_resources(id,offering_code,owner_user_id,content_revision,approved_revision,moderation_state)
-values('73200000-0000-0000-0000-000000000001','post_boost','73000000-0000-0000-0000-000000000001',1,1,'approved'),
-('73200000-0000-0000-0000-000000000002','post_boost','73000000-0000-0000-0000-000000000001',1,null,'submitted');
+values('73200000-0000-0000-0000-000000000001','synthetic_engine_fixture','73000000-0000-0000-0000-000000000001',1,1,'approved'),
+('73200000-0000-0000-0000-000000000002','synthetic_engine_fixture','73000000-0000-0000-0000-000000000001',1,null,'submitted');
 select public._wallet_credit_cash('73000000-0000-0000-0000-000000000001',100);
 select public._ledger_record('73000000-0000-0000-0000-000000000001','synthetic-seed','cash','credit',100,'synthetic','fixture','commercial');
 select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
@@ -45,7 +47,7 @@ select throws_ok($$update public.visibility_entitlements set expires_at=now()+in
 select throws_ok($$select public.confirm_commercial_order((select(value->>'id')::uuid from results where name='q'),false)$$,'CONFIRMATION_REQUIRED','explicit buyer confirmation required');
 reset role;
 select pg_temp.commercial_admin();
-select public.admin_publish_commercial_price('post_boost','3',1,30,null,2,gen_random_uuid(),'Synthetic price increased',true);
+select public.admin_publish_commercial_price('synthetic_engine_fixture','3',1,30,null,2,gen_random_uuid(),'Synthetic price increased',true);
 select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
 set local role authenticated;
 insert into results values('paid',public.confirm_commercial_order((select(value->>'id')::uuid from results where name='q'),true));
@@ -60,9 +62,9 @@ insert into public.account_restrictions(user_id,action,until) values('73000000-0
 select ok(not private.commercial_resource_visible('73200000-0000-0000-0000-000000000001'),'owner restriction hides even a paid approved resource');
 delete from public.account_restrictions where user_id='73000000-0000-0000-0000-000000000001';
 select pg_temp.commercial_admin();
-select public.admin_set_commercial_sales('post_boost',false,3,gen_random_uuid(),'Synthetic pause sales',true);
+select public.admin_set_commercial_sales('synthetic_engine_fixture',false,3,gen_random_uuid(),'Synthetic pause sales',true);
 select ok(private.commercial_resource_visible('73200000-0000-0000-0000-000000000001'),'pausing sales preserves acquired right');
-select public.admin_set_commercial_sales('post_boost',true,4,gen_random_uuid(),'Synthetic resume sales',true);
+select public.admin_set_commercial_sales('synthetic_engine_fixture',true,4,gen_random_uuid(),'Synthetic resume sales',true);
 select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
 set local role authenticated;
 insert into results values('renew',public.quote_commercial_order('73200000-0000-0000-0000-000000000001','2',gen_random_uuid()));
@@ -80,7 +82,7 @@ reset role;
 select is((select extract(epoch from expires_at-starts_at)::bigint from public.visibility_entitlements where resource_id='73200000-0000-0000-0000-000000000001'),86400::bigint,'late renewal begins a new 24 hour period');
 -- Server time is authoritative; expired quotes and insufficient funds cannot debit.
 insert into public.commercial_orders(payer_user_id,request_id,resource_id,offering_code,price_version_id,content_revision,duration_days,unit_price_cash,total_cash,created_at,quote_expires_at)
-select '73000000-0000-0000-0000-000000000001',gen_random_uuid(),'73200000-0000-0000-0000-000000000001','post_boost',id,1,1,3,3,now()-interval '10 minutes',now()-interval '5 minutes' from public.commercial_price_versions where offering_code='post_boost' and revision=3;
+select '73000000-0000-0000-0000-000000000001',gen_random_uuid(),'73200000-0000-0000-0000-000000000001','synthetic_engine_fixture',id,1,1,3,3,now()-interval '10 minutes',now()-interval '5 minutes' from public.commercial_price_versions where offering_code='synthetic_engine_fixture' and revision=3;
 set local role authenticated;
 select throws_ok($$select public.confirm_commercial_order((select id from public.commercial_orders where quote_expires_at<now() limit 1),true)$$,'QUOTE_EXPIRED','expired quote cannot debit');
 insert into results values('insufficient',public.quote_commercial_order('73200000-0000-0000-0000-000000000001','30',gen_random_uuid()));

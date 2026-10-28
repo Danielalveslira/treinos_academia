@@ -1,6 +1,6 @@
-# Checklist consolidado de lançamento — Fases 1 a 5.1
+# Checklist consolidado de lançamento — Fases 1 a 6
 
-Controle vigente em 28/10/2026. Os relatórios anteriores permanecem como histórico. Desenvolvimento local concluído não autoriza lançamento, produção, pagamentos reais, push ou merge. A Fase 6 não integra esta entrega.
+Controle vigente em 28/10/2026. Os relatórios anteriores permanecem como histórico. Desenvolvimento local concluído não autoriza lançamento, produção, pagamentos reais, push ou merge. A Fase 6 possui entrega local própria, documentada abaixo.
 
 ## A. Correções técnicas do escopo, concluídas localmente
 
@@ -36,7 +36,7 @@ Não há falha técnica local conhecida que bloqueie a continuidade do desenvolv
 - [ ] Aprovar retenção/tolerância de mídia abandonada e frequência operacional de manutenção, sem apagar referências de versões aprovadas/pendentes.
 - [ ] Confirmar escopo de equipes empresariais e papéis: a carteira permanece pessoal; não pressupor carteira corporativa compartilhada.
 
-A plataforma implementada não habilita venda de fichas por terceiros, comissões, saques ou repasses. Publicidade autônoma depende da futura Fase 6 e de sua revisão própria; não é uma pendência a implementar nesta fase.
+A plataforma implementada não habilita venda de fichas por terceiros, comissões, saques ou repasses. Publicidade autônoma está implementada localmente na Fase 6 e depende de sua revisão própria e dos bloqueios de lançamento abaixo.
 
 ## C. Ambiente, autorização e validações externas, pendentes de lançamento
 
@@ -51,9 +51,25 @@ A plataforma implementada não habilita venda de fichas por terceiros, comissõe
 - [ ] Configurar segredos, gates comerciais, domínios, URLs de retorno/webhook e permissões no destino, preservando vendas pausadas até aprovação.
 - [ ] Validar handlers/rewrite/includeFiles, HTTP 200/404/308/503, canonical, sitemap, cache/CDN/service worker e gateway de mídia no deployment autorizado.
 - [ ] Configurar e observar jobs auxiliares (reconciliação, lembretes, manutenção, Vault/cron), com lotes limitados, leases e diagnóstico. Expiração permanece no PostgreSQL, sem depender desses jobs.
-- [ ] Validar Realtime de carteira/notificações no ambiente autorizado; a stack HTTP local de preview retorna 404 para WebSocket e registra essa limitação separadamente dos erros da aplicação.
+- [ ] Validar Realtime de carteira/notificações no ambiente autorizado. A Fase 6 acrescentou o serviço oficial local para invalidação publicitária; isso não homologa os demais canais nem a infraestrutura de destino.
 - [ ] Medir latência/cold start/Storage e tráfego no ambiente autorizado; amostras sintéticas locais não constituem SLA ou capacidade de produção.
 - [ ] Executar smoke integrado de compra EvoCash e contratação, monitorar conciliação carteira/ledger/pedidos, pedidos incertos e tentativas de exposição de vencidos.
 - [ ] Obter autorização explícita separada para integração, merge, deploy e ativação comercial.
 
 Enquanto B/C não forem concluídos, o lançamento permanece bloqueado. Nenhuma política, assinatura jurídica, homologação real ou autorização está sendo presumida.
+
+## D. Fase 6 — publicidade autônoma, revisão local
+
+Entrega e evidências: [phase6/ENTREGA.md](phase6/ENTREGA.md). Nenhum item desta seção autoriza produção.
+
+- [x] Central autônoma, revisão privada/aprovada, mídia protegida e moderação.
+- [x] Motor único, carteira pessoal, cotações versionadas, reservas por intervalo e contratação global indivisível.
+- [x] Locks concorrentes, idempotência, saldo, renovação manual, suspensão, sessão e RLS.
+- [x] Home e comunidades reais, identidade paga explícita, conteúdo orgânico preservado e expiração no servidor.
+- [x] Realtime oficial local com eventos PostgreSQL reais; suspensão/retomada sem reload e falha fechada na desconexão.
+- [x] Métricas existentes reutilizadas; eventos de homologação explicitamente sintéticos, sem CPC/CPM ou audiência prometida.
+- [x] Sequência acumulada de migrations com rollback e hashes financeiros/legados preservados.
+- [ ] Aprovar tarifas, capacidade e composição oficial do pacote global; não usar os seeds locais como política.
+- [ ] Aprovar publicidade, retenção/LGPD, tratamento do legado, cancelamento e compensações; não há política automática presumida.
+- [ ] Validar configuração, disponibilidade, roteamento e contenção de Realtime/inventário no destino autorizado.
+- [ ] Executar CI remoto e obter aprovação explícita para integração/deploy/ativação, mantendo os itens B/C pendentes.

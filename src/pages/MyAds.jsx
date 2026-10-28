@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Box, Heading, Select, Flash, Spinner, Text } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { readCatalog } from '../features/adMetrics/api/advertisers.api'
 import { CampaignIdentity } from '../features/adMetrics/components/CampaignIdentity'
 import AdMetricsTab from '../features/adMetrics/components/AdMetricsTab'
+import { Button, FormControl, TextInput } from '@primer/react'
+import { createAdvertisingAccount } from '../services/advertisingService'
+const AdvertisingCentral = lazy(() => import('../components/AdvertisingCentral'))
 
 export default function MyAds() {
   const { user } = useAuth()
@@ -16,6 +19,8 @@ function AdvertiserPortal({ userId }) {
   const [accounts, setAccounts] = useState(null)
   const [campaigns, setCampaigns] = useState(null)
   const [error, setError] = useState('')
+  const [accountName, setAccountName] = useState('')
+  const accountLock = useRef(false)
   useEffect(() => {
     let live = true
     readCatalog('list_advertiser_accounts')
@@ -67,7 +72,38 @@ function AdvertiserPortal({ userId }) {
         </Flash>
       )}
       {!accounts && <Spinner aria-label="Carregando contas" />}
-      {accounts?.length === 0 && !error && <Text>Nenhuma conta de anunciante autorizada.</Text>}
+      {accounts?.length === 0 && !error && (
+        <Box
+          as="form"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            if (accountLock.current) return
+            accountLock.current = true
+            try {
+              const id = await createAdvertisingAccount(accountName)
+              setAccounts(await readCatalog('list_advertiser_accounts'))
+              setParams({ accountId: id })
+            } catch (err) {
+              setError(err.message)
+            } finally {
+              accountLock.current = false
+            }
+          }}
+        >
+          <FormControl required>
+            <FormControl.Label>Nome do anunciante</FormControl.Label>
+            <TextInput
+              block
+              maxLength={120}
+              value={accountName}
+              onChange={(e) => setAccountName(e.target.value)}
+            />
+          </FormControl>
+          <Button type="submit" disabled={!accountName.trim()} sx={{ mt: 2 }}>
+            Criar minha conta de anunciante
+          </Button>
+        </Box>
+      )}
       {accounts?.length > 0 && (
         <Select
           aria-label="Conta de anunciante"
@@ -96,11 +132,14 @@ function AdvertiserPortal({ userId }) {
             {account.name}
           </Heading>
           <Text sx={{ display: 'block', fontSize: 0, mb: 2 }}>
-            Acesso somente de leitura. Compartilhamento exige login e autorização.
+            Relatórios exigem login e autorização. A gestão depende do seu papel na conta.
           </Text>
           {campaigns.rows.find((c) => c.id === initialFilters.adId) && (
             <CampaignIdentity campaign={campaigns.rows.find((c) => c.id === initialFilters.adId)} />
           )}
+          <Suspense fallback={<Spinner aria-label="Carregando central" />}>
+            {account.can_manage && <AdvertisingCentral key={accountId} accountId={accountId} />}
+          </Suspense>
           <AdMetricsTab
             key={params.toString()}
             userId={userId}

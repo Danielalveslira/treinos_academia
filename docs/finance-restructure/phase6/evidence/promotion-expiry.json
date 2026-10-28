@@ -1,0 +1,11 @@
+{
+  "localOnly": true,
+  "syntheticOnly": true,
+  "databaseTime": true,
+  "observedWaitMs": 31159,
+  "noPageReload": true,
+  "postAndCommunityBadgesExpired": true,
+  "organicPostPreserved": true,
+  "financialRecordsUnchanged": true,
+  "errors": []
+}
