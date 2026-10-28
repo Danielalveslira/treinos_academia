@@ -64,7 +64,11 @@ async function capture(page, label, width, mode) {
       false,
       label + ' dialog'
     )
-  await page.screenshot({ path: `${evidence}/${label}-${width}-${mode}.png`, fullPage: true })
+  await page.screenshot({
+    path: `${evidence}/${label}-${width}-${mode}.png`,
+    fullPage: !(await page.getByRole('dialog').count()),
+    animations: 'disabled',
+  })
   visual.push({ label, width, mode, contentLoaded: true, overflow: false })
 }
 try {
@@ -84,7 +88,8 @@ try {
         await page.getByRole('button', { name: 'Prévia privada', exact: true }).click()
         await page.getByRole('dialog').getByText(row.name, { exact: true }).waitFor()
         await capture(page, row.kind + '-owner-modal', width, mode)
-        await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'})
+        await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
+        await page.getByRole('dialog').waitFor({ state: 'hidden' })
         await theme(pub, width, mode)
         await pub.getByRole('button', { name: 'Detalhes de ' + row.name, exact: true }).waitFor()
         await capture(pub, row.kind + '-public', width, mode)
@@ -94,7 +99,8 @@ try {
           .getByText('Apresentação sintética do cadastro aprovado no Evolutus.', { exact: true })
           .waitFor()
         await capture(pub, row.kind + '-public-modal', width, mode)
-        await pub.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();await pub.getByRole('dialog').waitFor({state:'hidden'})
+        await pub.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
+        await pub.getByRole('dialog').waitFor({ state: 'hidden' })
       }
     await owner.close()
     await guest.close()
@@ -127,7 +133,8 @@ try {
           await page.getByRole('button', { name: 'Moderar cadastro', exact: true }).click()
           await page.getByRole('dialog').getByLabel('Decisão', { exact: true }).waitFor()
           await capture(page, 'admin-moderation-modal', width, mode)
-          await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'})
+          await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
+          await page.getByRole('dialog').waitFor({ state: 'hidden' })
         }
       }
   }

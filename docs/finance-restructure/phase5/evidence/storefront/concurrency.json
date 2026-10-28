@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "concreteStorefronts": 2,
+  "concurrentEditsSingleWinner": true,
+  "concurrentApprovalsSingleWinner": true,
+  "cleanupSkipsConcurrentAssociation": true,
+  "competingOrders": 2,
+  "oneAffordableDebit": true,
+  "confirmationReplays": 6,
+  "renewalReplays": 6,
+  "independentConcurrentRenewals": 2,
+  "oneEntitlement": true,
+  "periodSeconds": 2937600,
+  "suspensionWinsPendingConfirmation": true,
+  "walletAfter": "8",
+  "fixtureOwner": "99c3ed66-1d2d-4840-a407-fbb6e866ed85"
+}

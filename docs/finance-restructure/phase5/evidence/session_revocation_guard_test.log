@@ -1,0 +1,64 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+CREATE EXTENSION
+SET
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+SELECT 1
+CREATE FUNCTION
+CREATE FUNCTION
+ok 1 - anon NÃO executa is_session_active()
+ok 2 - authenticated executa is_session_active()
+ok 3 - SECURITY DEFINER com search_path fixo
+ok 4 - clientes nunca têm select direto em auth.sessions
+
+ok 5 - sessão ativa de A: current_session_active() = true
+
+ok 6 - JWT sem session_id: nega (falha fechada)
+
+ok 7 - session_id malformado: nega sem lançar erro de cast
+
+ok 8 - session_id inexistente (já revogado): nega
+
+ok 9 - session_id de OUTRO usuário nunca autoriza
+
+ok 10 - sessão com not_after vencido: nega mesmo a linha existindo
+
+ok 11 - sem auth.uid(): devolve NULL (nunca false "por engano")
+
+ok 12 - sessão ativa de A: a RPC pública confirma
+
+ok 13 - sessão revogada: a RPC pública nega (é o que AuthContext.jsx consulta)
+
+ok 14 - sessão de B segue ativa, isolada da de A
+c4000000-0000-0000-0000-000000000001
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+(f53b5035-075b-4808-80b9-7b2917b8c9e8,c4300000-0000-0000-0000-000000000001,c4000000-0000-0000-0000-000000000001,,f53b5035-075b-4808-80b9-7b2917b8c9e8,{},0,"comentário de A",active,0,0,0,3d3dafa2-a8d2-4505-93f9-bff2a8d8377f,"2026-10-28 01:03:54.996806+00","2026-10-28 01:03:54.996806+00",,)
+SELECT 1
+INSERT 0 1
+
+ok 15 - comment_delete nega sessão revogada mesmo sendo o próprio autor
+ok 16 - delete_professional_listing nega sessão revogada mesmo sendo o próprio titular
+ok 17 - comentário intacto: a tentativa com sessão revogada não teve efeito nenhum
+ok 18 - vitrine intacta: a tentativa com sessão revogada não teve efeito nenhum
+c4000000-0000-0000-0000-000000000001
+ok 19 - sessão ativa de novo: comment_delete volta a funcionar
+ok 20 - sessão ativa ainda exige arquivamento com revisão explícita
+INSERT 0 1
+UPDATE 1
+INSERT 0 1
+INSERT 0 1
+
+ok 21 - superadmin com sessão ativa lista jobs pendentes
+
+ok 22 - list_deletion_jobs nega sessão revogada mesmo sendo superadmin de verdade (0 linhas, não erro)
+
+ok 23 - sessão ativa de novo: list_deletion_jobs volta a listar
+1..23
+ROLLBACK

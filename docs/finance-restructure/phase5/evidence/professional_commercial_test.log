@@ -1,0 +1,180 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+UPDATE 11
+INSERT 0 4
+UPDATE 4
+UPDATE 1
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE TABLE
+GRANT
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+
+{"revision": "8", "priceVersionId": "ff5cd49d-e718-4eed-8404-b9ef5c3acb5e"}
+{"revision": "8", "priceVersionId": "c3c610ee-d9ad-4dbc-b878-b165d0cf53ab"}
+{"revision": "9", "salesEnabled": true}
+{"revision": "9", "salesEnabled": true}
+
+
+
+
+
+SET
+INSERT 0 1
+ok 1 - creation replay preserves identity
+ok 2 - existing one-listing constraint preserved
+ok 3 - new draft can be empty and free
+{"version": 1, "listingId": "745fd299-324d-4b38-be83-39d43a7d5738"}
+ok 4 - incomplete draft can be saved for free
+ok 5 - submission requires useful complete content
+ok 6 - unapproved draft cannot be charged
+ok 7 - old direct publish path fails closed
+ok 8 - old no-CAS edit cannot overwrite content
+ok 9 - client cannot bypass authorized getters
+ok 10 - owner cannot approve itself
+RESET
+INSERT 0 1
+
+SET
+{"version": 2, "listingId": "745fd299-324d-4b38-be83-39d43a7d5738"}
+ok 11 - stale edits rejected
+
+RESET
+
+SET
+INSERT 0 1
+{"version": 1, "listingId": "b73ce77c-e15b-4a93-9519-d55684fe7611"}
+
+ok 12 - owner cannot edit another professional
+RESET
+
+SET
+
+
+ok 13 - stale administrative decision rejected
+RESET
+ok 14 - create edit and moderation do not debit
+
+SET
+ok 15 - approved but unpaid stays private
+ok 16 - unpaid image stays private
+ok 17 - public table read cannot bypass entitlement
+ok 18 - guest cannot read admin draft
+RESET
+
+SET
+INSERT 0 1
+ok 19 - professional uses independent daily price
+{"id": "b53f4e5e-ca06-4965-9172-68783f2239ea", "status": "fulfilled", "createdAt": "2026-10-28T01:03:51.064982+00:00", "periodEnd": "2026-10-30T01:03:51.068745+00:00", "totalCash": "10", "resourceId": "745fd299-324d-4b38-be83-39d43a7d5738", "fulfilledAt": "2026-10-28T01:03:51.068745+00:00", "periodStart": "2026-10-28T01:03:51.068745+00:00", "durationDays": "2", "offeringCode": "professional_profile", "unitPriceCash": "5", "priceVersionId": "ff5cd49d-e718-4eed-8404-b9ef5c3acb5e", "quoteExpiresAt": "2026-10-28T01:08:51.064982+00:00", "contentRevision": "4"}
+RESET
+
+SET
+INSERT 0 1
+ok 20 - establishment uses independent daily price
+ok 21 - one owner cannot buy another resource
+RESET
+ok 22 - confirmation replay debits exactly once
+ok 23 - each day is 24 hours
+ok 24 - resource kind cannot change to reuse another tariff
+ok 25 - ownership cannot be reassigned silently
+
+SET
+ok 26 - paid approved professional is public
+ok 27 - approved establishment exposes its public address
+ok 28 - professional directory excludes establishments
+ok 29 - establishment directory excludes professionals
+ok 30 - modality filter stays on server
+ok 31 - public detail omits private owner identifier
+ok 32 - public approved image goes through the shared gateway
+ok 33 - personal avatar policy cannot bypass paid media
+ok 34 - sitemap contains only both eligible resources
+RESET
+SELECT 1
+
+SET
+{"version": 5, "listingId": "745fd299-324d-4b38-be83-39d43a7d5738"}
+
+RESET
+
+SET
+ok 35 - editing does not interrupt paid approved version
+ok 36 - removing draft image preserves approved public bytes
+RESET
+
+SET
+
+RESET
+ok 37 - editorial changes never move money
+ok 38 - editorial changes never extend or reset contracts
+ok 39 - rejection keeps approved publication
+ok 40 - foreign key prevents deleting media used by approved version
+
+SET
+ok 41 - discard checks public references
+INSERT 0 1
+{"id": "bfaf2260-430d-4a84-865d-fc0861934eb6", "status": "fulfilled", "createdAt": "2026-10-28T01:03:51.165219+00:00", "periodEnd": "2026-10-31T01:03:51.068745+00:00", "totalCash": "5", "resourceId": "745fd299-324d-4b38-be83-39d43a7d5738", "fulfilledAt": "2026-10-28T01:03:51.168183+00:00", "periodStart": "2026-10-30T01:03:51.068745+00:00", "durationDays": "1", "offeringCode": "professional_profile", "unitPriceCash": "5", "priceVersionId": "ff5cd49d-e718-4eed-8404-b9ef5c3acb5e", "quoteExpiresAt": "2026-10-28T01:08:51.165219+00:00", "contentRevision": "4"}
+RESET
+ok 42 - renewal during pending/rejected draft extends existing period only
+
+SET
+
+RESET
+UPDATE 1
+
+SET
+
+RESET
+
+SET
+ok 43 - approval after expiry does not reactivate
+ok 44 - expired image cannot be accessed directly
+ok 45 - expired resource removed from sitemap
+RESET
+
+SET
+INSERT 0 1
+{"id": "4a015cbe-db8e-4bdd-9d21-eaa2092174a6", "status": "fulfilled", "createdAt": "2026-10-28T01:03:51.189937+00:00", "periodEnd": "2026-10-29T01:03:51.193804+00:00", "totalCash": "5", "resourceId": "745fd299-324d-4b38-be83-39d43a7d5738", "fulfilledAt": "2026-10-28T01:03:51.193804+00:00", "periodStart": "2026-10-28T01:03:51.193804+00:00", "durationDays": "1", "offeringCode": "professional_profile", "unitPriceCash": "5", "priceVersionId": "ff5cd49d-e718-4eed-8404-b9ef5c3acb5e", "quoteExpiresAt": "2026-10-28T01:08:51.189937+00:00", "contentRevision": "9"}
+RESET
+ok 46 - expired renewal starts a new paid period
+ok 47 - only admin-approved revision replaces public snapshot
+
+SET
+INSERT 0 1
+RESET
+
+SET
+
+RESET
+
+SET
+ok 48 - payment cannot remove suspension
+ok 49 - only recent superadmin can remove suspension
+RESET
+
+SET
+ok 50 - suspended establishment excluded from direct API
+RESET
+
+SET
+INSERT 0 1
+ok 51 - adapter uses atomic shared insufficient-balance guard
+RESET
+ok 52 - insufficient balance never partially debits
+ok 53 - professional anchor binds its generated offering
+ok 54 - establishment anchor binds its independent offering
+INSERT 0 1
+ok 55 - restricted account hidden by relational eligibility
+
+SET
+ok 56 - blocked account cannot mutate or read private management
+RESET
+ok 57 - retired finalizer cannot publish even through direct RPC
+ok 58 - private snapshot serializer has no public execution
+ok 59 - clients cannot attest or delete media directly
+1..59
+ROLLBACK

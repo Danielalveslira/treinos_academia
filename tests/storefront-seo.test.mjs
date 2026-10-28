@@ -121,3 +121,40 @@ test('a lease ending during upstream IO cannot leak through HTML, schema or boot
   assert.equal(store.statusCode, 404)
   assert.doesNotMatch(store.body, /Approved item|Approved useful description/)
 })
+
+test('sitemap rechecks product and profile deadlines after every upstream page', async () => {
+  const start = new Date().toISOString()
+  globalThis.fetch = async (url) => {
+    if (String(url).endsWith('/public_storefront_sitemap'))
+      return new Response(
+        JSON.stringify({
+          serverTime: start,
+          items: [
+            {
+              id: 'short-product',
+              expiresAt: new Date(Date.parse(start) + 10).toISOString(),
+              updatedAt: start,
+            },
+          ],
+        })
+      )
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    return new Response(
+      JSON.stringify({
+        serverTime: start,
+        items: [
+          {
+            id: 'short-profile',
+            kind: 'professional',
+            expiresAt: new Date(Date.parse(start) + 10).toISOString(),
+            updatedAt: start,
+          },
+        ],
+      })
+    )
+  }
+  const res = response()
+  await sitemap({ method: 'GET' }, res, { staticXml: '<urlset></urlset>' })
+  assert.equal(res.statusCode, 200)
+  assert.doesNotMatch(res.body, /short-product|short-profile|\/vitrine|\/profissionais/)
+})

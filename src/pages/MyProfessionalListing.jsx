@@ -208,7 +208,8 @@ export default function MyProfessionalListing() {
           {record.commercial.expiresAt && (
             <Text as="p">
               Vencimento: {commercialDate(record.commercial.expiresAt)} ·{' '}
-              {record.commercial.remainingSeconds} segundos restantes no instante da consulta.
+              {Math.ceil(Number(record.commercial.remainingSeconds) / 86400)} dia(s) restantes na
+              consulta.
             </Text>
           )}
           <Text as="p">

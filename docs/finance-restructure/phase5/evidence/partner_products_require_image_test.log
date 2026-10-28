@@ -1,0 +1,14 @@
+BEGIN
+DELETE 1
+BEGIN
+ok 1 - novo cadastro sem imagem é rejeitado mesmo permanecendo rascunho (approved=false)
+ok 2 - novo cadastro publicado sem imagem é rejeitado
+ok 3 - novo cadastro com imagem válida é aceito
+ALTER TABLE
+INSERT 0 1
+ALTER TABLE
+ok 4 - produto legado sem imagem continua editável enquanto não for publicado
+ok 5 - produto legado sem imagem não pode ser publicado
+ok 6 - produto legado passa a ser publicável assim que recebe uma imagem válida
+1..6
+ROLLBACK

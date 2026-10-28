@@ -1,0 +1,449 @@
+NOTICE:  STAGE before
+NOTICE:  duration: 10.655 ms  plan:
+Query Text: select coalesce(jsonb_agg(jsonb_build_object(
+    'id', item.listing_id, 'kind', item.kind, 'displayName', item.display_name,
+    'categoryKey', item.category_key, 'modalityKeys', item.modality_keys,
+    'city', item.city, 'uf', item.uf, 'serviceMode', item.service_mode,
+    'avatarPath', item.avatar_path
+  ) order by item.sort_key, item.listing_id), '[]'::jsonb), count(*)
+                         from (
+    select p.listing_id, p.kind, p.display_name, p.category_key,
+      p.modality_keys, p.city, p.uf, p.service_mode, p.avatar_path, p.sort_key
+    from public.published_professional_listings p
+    join public.professional_listings l on l.id = p.listing_id
+    join public.users u on u.id = l.owner_id
+    where l.lifecycle_state = 'published' and u.account_status = 'active'
+      and not exists (select 1 from public.account_restrictions r
+        where r.user_id = u.id and not (r.action = 'temporary_suspension' and r.until <= now()))
+      and p.kind = p_kind
+      and (p_modality is null or p.modality_keys @> array[p_modality])
+      and (p_uf is null or p.uf = p_uf)
+      and (v_city is null or p.city_key = v_city)
+      and (p_service_mode is null or p.service_mode = p_service_mode)
+    order by p.sort_key, p.listing_id
+    limit p_limit + 1 offset p_offset
+  ) item
+Aggregate  (cost=153.08..153.09 rows=1 width=40) (actual rows=1 loops=1)
+  Buffers: shared hit=7105
+  ->  Limit  (cost=153.07..153.07 rows=1 width=167) (actual rows=21 loops=1)
+        Buffers: shared hit=7105
+        ->  Sort  (cost=153.07..153.07 rows=2 width=167) (actual rows=21 loops=1)
+              Sort Key: p.sort_key, p.listing_id
+              Sort Method: top-N heapsort  Memory: 30kB
+              Buffers: shared hit=7105
+              ->  Nested Loop Anti Join  (cost=0.71..153.06 rows=2 width=167) (actual rows=1003 loops=1)
+                    Buffers: shared hit=7105
+                    ->  Nested Loop  (cost=0.56..152.45 rows=3 width=183) (actual rows=1003 loops=1)
+                          Buffers: shared hit=6102
+                          ->  Nested Loop  (cost=0.28..151.06 rows=3 width=183) (actual rows=1003 loops=1)
+                                Buffers: shared hit=3093
+                                ->  Seq Scan on published_professional_listings p  (cost=0.00..126.16 rows=3 width=167) (actual rows=1004 loops=1)
+                                      Filter: ((($2 IS NULL) OR (modality_keys @> ARRAY[$2])) AND (($3 IS NULL) OR (uf = $3)) AND (($11 IS NULL) OR (city_key = $11)) AND (($5 IS NULL) OR (service_mode = $5)) AND (kind = $1))
+                                      Rows Removed by Filter: 1003
+                                      Buffers: shared hit=81
+                                ->  Index Scan using professional_listings_id_kind_key on professional_listings l  (cost=0.28..8.30 rows=1 width=32) (actual rows=1 loops=1004)
+                                      Index Cond: (id = p.listing_id)
+                                      Filter: (lifecycle_state = 'published'::text)
+                                      Rows Removed by Filter: 0
+                                      Buffers: shared hit=3012
+                          ->  Index Scan using users_pkey on users u  (cost=0.28..0.47 rows=1 width=16) (actual rows=1 loops=1003)
+                                Index Cond: (id = l.owner_id)
+                                Filter: (account_status = 'active'::text)
+                                Buffers: shared hit=3009
+                    ->  Index Scan using account_restrictions_pkey on account_restrictions r  (cost=0.15..0.20 rows=1 width=16) (actual rows=0 loops=1003)
+                          Index Cond: (user_id = u.id)
+                          Filter: ((action <> 'temporary_suspension'::text) OR (until > now()))
+                          Buffers: shared hit=1003
+NOTICE:  duration: 11.165 ms  plan:
+Query Text: explain(analyze,buffers)select public.public_list_professionals('professional');
+Result  (cost=0.00..0.26 rows=1 width=32) (actual rows=1 loops=1)
+  Buffers: shared hit=7117
+NOTICE:  duration: 9.991 ms  plan:
+Query Text: select coalesce(jsonb_agg(jsonb_build_object(
+    'id', item.listing_id, 'kind', item.kind, 'displayName', item.display_name,
+    'categoryKey', item.category_key, 'modalityKeys', item.modality_keys,
+    'city', item.city, 'uf', item.uf, 'serviceMode', item.service_mode,
+    'avatarPath', item.avatar_path
+  ) order by item.sort_key, item.listing_id), '[]'::jsonb), count(*)
+                         from (
+    select p.listing_id, p.kind, p.display_name, p.category_key,
+      p.modality_keys, p.city, p.uf, p.service_mode, p.avatar_path, p.sort_key
+    from public.published_professional_listings p
+    join public.professional_listings l on l.id = p.listing_id
+    join public.users u on u.id = l.owner_id
+    where l.lifecycle_state = 'published' and u.account_status = 'active'
+      and not exists (select 1 from public.account_restrictions r
+        where r.user_id = u.id and not (r.action = 'temporary_suspension' and r.until <= now()))
+      and p.kind = p_kind
+      and (p_modality is null or p.modality_keys @> array[p_modality])
+      and (p_uf is null or p.uf = p_uf)
+      and (v_city is null or p.city_key = v_city)
+      and (p_service_mode is null or p.service_mode = p_service_mode)
+    order by p.sort_key, p.listing_id
+    limit p_limit + 1 offset p_offset
+  ) item
+Aggregate  (cost=153.08..153.09 rows=1 width=40) (actual rows=1 loops=1)
+  Buffers: shared hit=7098
+  ->  Limit  (cost=153.07..153.07 rows=1 width=167) (actual rows=21 loops=1)
+        Buffers: shared hit=7098
+        ->  Sort  (cost=153.07..153.07 rows=2 width=167) (actual rows=21 loops=1)
+              Sort Key: p.sort_key, p.listing_id
+              Sort Method: top-N heapsort  Memory: 30kB
+              Buffers: shared hit=7098
+              ->  Nested Loop Anti Join  (cost=0.71..153.06 rows=2 width=167) (actual rows=1002 loops=1)
+                    Buffers: shared hit=7098
+                    ->  Nested Loop  (cost=0.56..152.45 rows=3 width=183) (actual rows=1002 loops=1)
+                          Buffers: shared hit=6096
+                          ->  Nested Loop  (cost=0.28..151.06 rows=3 width=183) (actual rows=1002 loops=1)
+                                Buffers: shared hit=3090
+                                ->  Seq Scan on published_professional_listings p  (cost=0.00..126.16 rows=3 width=167) (actual rows=1003 loops=1)
+                                      Filter: ((($2 IS NULL) OR (modality_keys @> ARRAY[$2])) AND (($3 IS NULL) OR (uf = $3)) AND (($11 IS NULL) OR (city_key = $11)) AND (($5 IS NULL) OR (service_mode = $5)) AND (kind = $1))
+                                      Rows Removed by Filter: 1004
+                                      Buffers: shared hit=81
+                                ->  Index Scan using professional_listings_id_kind_key on professional_listings l  (cost=0.28..8.30 rows=1 width=32) (actual rows=1 loops=1003)
+                                      Index Cond: (id = p.listing_id)
+                                      Filter: (lifecycle_state = 'published'::text)
+                                      Rows Removed by Filter: 0
+                                      Buffers: shared hit=3009
+                          ->  Index Scan using users_pkey on users u  (cost=0.28..0.47 rows=1 width=16) (actual rows=1 loops=1002)
+                                Index Cond: (id = l.owner_id)
+                                Filter: (account_status = 'active'::text)
+                                Buffers: shared hit=3006
+                    ->  Index Scan using account_restrictions_pkey on account_restrictions r  (cost=0.15..0.20 rows=1 width=16) (actual rows=0 loops=1002)
+                          Index Cond: (user_id = u.id)
+                          Filter: ((action <> 'temporary_suspension'::text) OR (until > now()))
+                          Buffers: shared hit=1002
+NOTICE:  duration: 10.407 ms  plan:
+Query Text: explain(analyze,buffers)select public.public_list_professionals('space');
+Result  (cost=0.00..0.26 rows=1 width=32) (actual rows=1 loops=1)
+  Buffers: shared hit=7098
+NOTICE:  duration: 4.927 ms  plan:
+Query Text: select coalesce(jsonb_agg(jsonb_build_object(
+    'id', item.listing_id, 'kind', item.kind, 'displayName', item.display_name,
+    'categoryKey', item.category_key, 'modalityKeys', item.modality_keys,
+    'city', item.city, 'uf', item.uf, 'serviceMode', item.service_mode,
+    'avatarPath', item.avatar_path
+  ) order by item.sort_key, item.listing_id), '[]'::jsonb), count(*)
+                         from (
+    select p.listing_id, p.kind, p.display_name, p.category_key,
+      p.modality_keys, p.city, p.uf, p.service_mode, p.avatar_path, p.sort_key
+    from public.published_professional_listings p
+    join public.professional_listings l on l.id = p.listing_id
+    join public.users u on u.id = l.owner_id
+    where l.lifecycle_state = 'published' and u.account_status = 'active'
+      and not exists (select 1 from public.account_restrictions r
+        where r.user_id = u.id and not (r.action = 'temporary_suspension' and r.until <= now()))
+      and p.kind = p_kind
+      and (p_modality is null or p.modality_keys @> array[p_modality])
+      and (p_uf is null or p.uf = p_uf)
+      and (v_city is null or p.city_key = v_city)
+      and (p_service_mode is null or p.service_mode = p_service_mode)
+    order by p.sort_key, p.listing_id
+    limit p_limit + 1 offset p_offset
+  ) item
+Aggregate  (cost=153.08..153.09 rows=1 width=40) (actual rows=1 loops=1)
+  Buffers: shared hit=2436
+  ->  Limit  (cost=153.07..153.07 rows=1 width=167) (actual rows=21 loops=1)
+        Buffers: shared hit=2436
+        ->  Sort  (cost=153.07..153.07 rows=2 width=167) (actual rows=101 loops=1)
+              Sort Key: p.sort_key, p.listing_id
+              Sort Method: top-N heapsort  Memory: 51kB
+              Buffers: shared hit=2436
+              ->  Nested Loop Anti Join  (cost=0.71..153.06 rows=2 width=167) (actual rows=336 loops=1)
+                    Buffers: shared hit=2436
+                    ->  Nested Loop  (cost=0.56..152.45 rows=3 width=183) (actual rows=336 loops=1)
+                          Buffers: shared hit=2100
+                          ->  Nested Loop  (cost=0.28..151.06 rows=3 width=183) (actual rows=336 loops=1)
+                                Buffers: shared hit=1092
+                                ->  Seq Scan on published_professional_listings p  (cost=0.00..126.16 rows=3 width=167) (actual rows=337 loops=1)
+                                      Filter: ((($2 IS NULL) OR (modality_keys @> ARRAY[$2])) AND (($3 IS NULL) OR (uf = $3)) AND (($11 IS NULL) OR (city_key = $11)) AND (($5 IS NULL) OR (service_mode = $5)) AND (kind = $1))
+                                      Rows Removed by Filter: 1670
+                                      Buffers: shared hit=81
+                                ->  Index Scan using professional_listings_id_kind_key on professional_listings l  (cost=0.28..8.30 rows=1 width=32) (actual rows=1 loops=337)
+                                      Index Cond: (id = p.listing_id)
+                                      Filter: (lifecycle_state = 'published'::text)
+                                      Rows Removed by Filter: 0
+                                      Buffers: shared hit=1011
+                          ->  Index Scan using users_pkey on users u  (cost=0.28..0.47 rows=1 width=16) (actual rows=1 loops=336)
+                                Index Cond: (id = l.owner_id)
+                                Filter: (account_status = 'active'::text)
+                                Buffers: shared hit=1008
+                    ->  Index Scan using account_restrictions_pkey on account_restrictions r  (cost=0.15..0.20 rows=1 width=16) (actual rows=0 loops=336)
+                          Index Cond: (user_id = u.id)
+                          Filter: ((action <> 'temporary_suspension'::text) OR (until > now()))
+                          Buffers: shared hit=336
+NOTICE:  duration: 1.090 ms  plan:
+Query Text: jsonb_build_object(
+    'items', (select coalesce(jsonb_agg(value), '[]'::jsonb)
+      from jsonb_array_elements(v_rows) with ordinality as entry(value, position)
+      where position <= p_limit),
+    'nextOffset', case when v_total > p_limit and p_offset + p_limit <= 1000
+      then p_offset + p_limit else null end
+  )
+Result  (cost=1.35..1.37 rows=1 width=32) (actual rows=1 loops=1)
+  InitPlan 1
+    ->  Aggregate  (cost=1.34..1.35 rows=1 width=32) (actual rows=1 loops=1)
+          ->  Function Scan on jsonb_array_elements entry  (cost=0.00..1.25 rows=33 width=32) (actual rows=20 loops=1)
+                Filter: ("position" <= $7)
+                Rows Removed by Filter: 1
+NOTICE:  duration: 6.344 ms  plan:
+Query Text: explain(analyze,buffers)select public.public_list_professionals('professional','musculacao','SP','São Paulo',null,80,20);
+Result  (cost=0.00..0.26 rows=1 width=32) (actual rows=1 loops=1)
+  Buffers: shared hit=2436
+NOTICE:  STAGE after
+NOTICE:  duration: 22.171 ms  plan:
+Query Text: with page as materialized(select p.* from private.live_professional_listings p where p.kind=p_kind
+ and(p_modality is null or p.modality_keys @> array[p_modality]) and(p_uf is null or p.uf=p_uf)
+ and(nullif(btrim(p_city),'') is null or p.city_key=public._normalize_search_value(p_city)) and(p_service_mode is null or p.service_mode=p_service_mode)
+ order by p.sort_key,p.listing_id limit p_limit+1 offset p_offset),
+ visible as(select * from page order by sort_key,listing_id limit p_limit)
+ select jsonb_build_object('serverTime',statement_timestamp(),'validUntil',(select min(expires_at) from visible),'nextOffset',case when(select count(*) from page)>p_limit and p_offset+p_limit<=10000 then p_offset+p_limit end,
+ 'items',coalesce((select jsonb_agg(jsonb_build_object('id',p.listing_id,'kind',p.kind,'displayName',p.display_name,'categoryKey',p.category_key,'modalityKeys',p.modality_keys,'city',p.city,'uf',p.uf,'serviceMode',p.service_mode,'mediaId',p.media_id,'avatarPath',null,'expiresAt',p.expires_at) order by p.sort_key,p.listing_id) from visible p),'[]'))
+Result  (cost=233.22..233.24 rows=1 width=32) (actual rows=1 loops=1)
+  Buffers: shared hit=16166
+  CTE page
+    ->  Limit  (cost=233.09..233.10 rows=1 width=360) (actual rows=21 loops=1)
+          Buffers: shared hit=16166
+          ->  Sort  (cost=233.09..233.10 rows=1 width=360) (actual rows=21 loops=1)
+                Sort Key: p.sort_key, p.listing_id
+                Sort Method: top-N heapsort  Memory: 35kB
+                Buffers: shared hit=16166
+                ->  Nested Loop Anti Join  (cost=17.11..233.08 rows=1 width=360) (actual rows=1000 loops=1)
+                      Buffers: shared hit=16166
+                      ->  Nested Loop  (cost=16.96..232.84 rows=1 width=376) (actual rows=1000 loops=1)
+                            Join Filter: (r.id = e.resource_id)
+                            Buffers: shared hit=15166
+                            ->  Nested Loop  (cost=16.69..231.58 rows=1 width=400) (actual rows=1000 loops=1)
+                                  Buffers: shared hit=12166
+                                  ->  Nested Loop  (cost=16.41..224.47 rows=1 width=400) (actual rows=1000 loops=1)
+                                        Join Filter: ((p.listing_id = r.id) AND (r.content_revision = p.published_version))
+                                        Buffers: shared hit=9166
+                                        ->  Nested Loop  (cost=16.13..223.11 rows=2 width=73) (actual rows=1000 loops=1)
+                                              Join Filter: (f.code = l.offering_code)
+                                              Buffers: shared hit=6166
+                                              ->  Hash Join  (cost=15.85..189.54 rows=5 width=101) (actual rows=2011 loops=1)
+                                                    Hash Cond: (r.offering_code = f.code)
+                                                    Buffers: shared hit=144
+                                                    ->  Seq Scan on commercial_resources r  (cost=0.00..173.66 rows=10 width=69) (actual rows=2011 loops=1)
+                                                          Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                                          Rows Removed by Filter: 33
+                                                          Buffers: shared hit=143
+                                                    ->  Hash  (cost=13.60..13.60 rows=180 width=32) (actual rows=7 loops=1)
+                                                          Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                          Buffers: shared hit=1
+                                                          ->  Seq Scan on commercial_offerings f  (cost=0.00..13.60 rows=180 width=32) (actual rows=7 loops=1)
+                                                                Filter: integration_ready
+                                                                Rows Removed by Filter: 5
+                                                                Buffers: shared hit=1
+                                              ->  Index Scan using professional_listings_pkey on professional_listings l  (cost=0.28..6.70 rows=1 width=46) (actual rows=0 loops=2011)
+                                                    Index Cond: (id = r.id)
+                                                    Filter: ((kind = 'professional'::text) AND (lifecycle_state = 'published'::text) AND (r.offering_code = offering_code))
+                                                    Rows Removed by Filter: 0
+                                                    Buffers: shared hit=6022
+                                        ->  Index Scan using published_professional_listings_pkey on published_professional_listings p  (cost=0.28..0.66 rows=1 width=352) (actual rows=1 loops=1000)
+                                              Index Cond: (listing_id = l.id)
+                                              Filter: (kind = 'professional'::text)
+                                              Buffers: shared hit=3000
+                                  ->  Index Scan using users_pkey on users u  (cost=0.28..7.10 rows=1 width=16) (actual rows=1 loops=1000)
+                                        Index Cond: (id = r.owner_user_id)
+                                        Filter: (account_status = 'active'::text)
+                                        Buffers: shared hit=3000
+                            ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..1.25 rows=1 width=24) (actual rows=1 loops=1000)
+                                  Index Cond: (resource_id = l.id)
+                                  Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                  Buffers: shared hit=3000
+                      ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.20 rows=1 width=16) (actual rows=0 loops=1000)
+                            Index Cond: (user_id = u.id)
+                            Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                            Buffers: shared hit=1000
+  CTE visible
+    ->  Limit  (cost=0.00..0.02 rows=1 width=604) (actual rows=20 loops=1)
+          Buffers: shared hit=16166
+          ->  CTE Scan on page  (cost=0.00..0.02 rows=1 width=604) (actual rows=20 loops=1)
+                Buffers: shared hit=16166
+  InitPlan 3
+    ->  Aggregate  (cost=0.02..0.03 rows=1 width=8) (actual rows=1 loops=1)
+          Buffers: shared hit=16166
+          ->  CTE Scan on visible  (cost=0.00..0.02 rows=1 width=8) (actual rows=20 loops=1)
+                Buffers: shared hit=16166
+  InitPlan 4
+    ->  Aggregate  (cost=0.02..0.03 rows=1 width=8) (actual rows=1 loops=1)
+          ->  CTE Scan on page page_1  (cost=0.00..0.02 rows=1 width=0) (actual rows=21 loops=1)
+  InitPlan 5
+    ->  Aggregate  (cost=0.03..0.04 rows=1 width=32) (actual rows=1 loops=1)
+          ->  CTE Scan on visible p_1  (cost=0.00..0.02 rows=1 width=296) (actual rows=20 loops=1)
+NOTICE:  duration: 38.536 ms  plan:
+Query Text: explain(analyze,buffers)select public.public_list_professionals('professional');
+Result  (cost=0.00..0.26 rows=1 width=32) (actual rows=1 loops=1)
+  Buffers: shared hit=16285
+NOTICE:  duration: 19.444 ms  plan:
+Query Text: with page as materialized(select p.* from private.live_professional_listings p where p.kind=p_kind
+ and(p_modality is null or p.modality_keys @> array[p_modality]) and(p_uf is null or p.uf=p_uf)
+ and(nullif(btrim(p_city),'') is null or p.city_key=public._normalize_search_value(p_city)) and(p_service_mode is null or p.service_mode=p_service_mode)
+ order by p.sort_key,p.listing_id limit p_limit+1 offset p_offset),
+ visible as(select * from page order by sort_key,listing_id limit p_limit)
+ select jsonb_build_object('serverTime',statement_timestamp(),'validUntil',(select min(expires_at) from visible),'nextOffset',case when(select count(*) from page)>p_limit and p_offset+p_limit<=10000 then p_offset+p_limit end,
+ 'items',coalesce((select jsonb_agg(jsonb_build_object('id',p.listing_id,'kind',p.kind,'displayName',p.display_name,'categoryKey',p.category_key,'modalityKeys',p.modality_keys,'city',p.city,'uf',p.uf,'serviceMode',p.service_mode,'mediaId',p.media_id,'avatarPath',null,'expiresAt',p.expires_at) order by p.sort_key,p.listing_id) from visible p),'[]'))
+Result  (cost=233.22..233.24 rows=1 width=32) (actual rows=1 loops=1)
+  Buffers: shared hit=16166
+  CTE page
+    ->  Limit  (cost=233.10..233.10 rows=1 width=360) (actual rows=21 loops=1)
+          Buffers: shared hit=16166
+          ->  Sort  (cost=233.10..233.10 rows=1 width=360) (actual rows=21 loops=1)
+                Sort Key: p.sort_key, p.listing_id
+                Sort Method: top-N heapsort  Memory: 35kB
+                Buffers: shared hit=16166
+                ->  Nested Loop Anti Join  (cost=17.11..233.09 rows=1 width=360) (actual rows=1000 loops=1)
+                      Buffers: shared hit=16166
+                      ->  Nested Loop  (cost=16.96..232.84 rows=1 width=376) (actual rows=1000 loops=1)
+                            Join Filter: (r.id = e.resource_id)
+                            Buffers: shared hit=15166
+                            ->  Nested Loop  (cost=16.69..231.58 rows=1 width=400) (actual rows=1000 loops=1)
+                                  Buffers: shared hit=12166
+                                  ->  Nested Loop  (cost=16.41..224.47 rows=1 width=400) (actual rows=1000 loops=1)
+                                        Join Filter: ((p.listing_id = r.id) AND (r.content_revision = p.published_version))
+                                        Buffers: shared hit=9166
+                                        ->  Nested Loop  (cost=16.13..223.11 rows=2 width=73) (actual rows=1000 loops=1)
+                                              Join Filter: (f.code = l.offering_code)
+                                              Buffers: shared hit=6166
+                                              ->  Hash Join  (cost=15.85..189.54 rows=5 width=101) (actual rows=2011 loops=1)
+                                                    Hash Cond: (r.offering_code = f.code)
+                                                    Buffers: shared hit=144
+                                                    ->  Seq Scan on commercial_resources r  (cost=0.00..173.66 rows=10 width=69) (actual rows=2011 loops=1)
+                                                          Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                                          Rows Removed by Filter: 33
+                                                          Buffers: shared hit=143
+                                                    ->  Hash  (cost=13.60..13.60 rows=180 width=32) (actual rows=7 loops=1)
+                                                          Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                          Buffers: shared hit=1
+                                                          ->  Seq Scan on commercial_offerings f  (cost=0.00..13.60 rows=180 width=32) (actual rows=7 loops=1)
+                                                                Filter: integration_ready
+                                                                Rows Removed by Filter: 5
+                                                                Buffers: shared hit=1
+                                              ->  Index Scan using professional_listings_pkey on professional_listings l  (cost=0.28..6.70 rows=1 width=46) (actual rows=0 loops=2011)
+                                                    Index Cond: (id = r.id)
+                                                    Filter: ((kind = 'space'::text) AND (lifecycle_state = 'published'::text) AND (r.offering_code = offering_code))
+                                                    Rows Removed by Filter: 0
+                                                    Buffers: shared hit=6022
+                                        ->  Index Scan using published_professional_listings_pkey on published_professional_listings p  (cost=0.28..0.67 rows=1 width=352) (actual rows=1 loops=1000)
+                                              Index Cond: (listing_id = l.id)
+                                              Filter: (kind = 'space'::text)
+                                              Buffers: shared hit=3000
+                                  ->  Index Scan using users_pkey on users u  (cost=0.28..7.10 rows=1 width=16) (actual rows=1 loops=1000)
+                                        Index Cond: (id = r.owner_user_id)
+                                        Filter: (account_status = 'active'::text)
+                                        Buffers: shared hit=3000
+                            ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..1.25 rows=1 width=24) (actual rows=1 loops=1000)
+                                  Index Cond: (resource_id = p.listing_id)
+                                  Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                  Buffers: shared hit=3000
+                      ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.20 rows=1 width=16) (actual rows=0 loops=1000)
+                            Index Cond: (user_id = u.id)
+                            Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                            Buffers: shared hit=1000
+  CTE visible
+    ->  Limit  (cost=0.00..0.02 rows=1 width=604) (actual rows=20 loops=1)
+          Buffers: shared hit=16166
+          ->  CTE Scan on page  (cost=0.00..0.02 rows=1 width=604) (actual rows=20 loops=1)
+                Buffers: shared hit=16166
+  InitPlan 3
+    ->  Aggregate  (cost=0.02..0.03 rows=1 width=8) (actual rows=1 loops=1)
+          Buffers: shared hit=16166
+          ->  CTE Scan on visible  (cost=0.00..0.02 rows=1 width=8) (actual rows=20 loops=1)
+                Buffers: shared hit=16166
+  InitPlan 4
+    ->  Aggregate  (cost=0.02..0.03 rows=1 width=8) (actual rows=1 loops=1)
+          ->  CTE Scan on page page_1  (cost=0.00..0.02 rows=1 width=0) (actual rows=21 loops=1)
+  InitPlan 5
+    ->  Aggregate  (cost=0.03..0.04 rows=1 width=32) (actual rows=1 loops=1)
+          ->  CTE Scan on visible p_1  (cost=0.00..0.02 rows=1 width=296) (actual rows=20 loops=1)
+NOTICE:  duration: 34.646 ms  plan:
+Query Text: explain(analyze,buffers)select public.public_list_professionals('space');
+Result  (cost=0.00..0.26 rows=1 width=32) (actual rows=1 loops=1)
+  Buffers: shared hit=16270
+NOTICE:  duration: 20.701 ms  plan:
+Query Text: with page as materialized(select p.* from private.live_professional_listings p where p.kind=p_kind
+ and(p_modality is null or p.modality_keys @> array[p_modality]) and(p_uf is null or p.uf=p_uf)
+ and(nullif(btrim(p_city),'') is null or p.city_key=public._normalize_search_value(p_city)) and(p_service_mode is null or p.service_mode=p_service_mode)
+ order by p.sort_key,p.listing_id limit p_limit+1 offset p_offset),
+ visible as(select * from page order by sort_key,listing_id limit p_limit)
+ select jsonb_build_object('serverTime',statement_timestamp(),'validUntil',(select min(expires_at) from visible),'nextOffset',case when(select count(*) from page)>p_limit and p_offset+p_limit<=10000 then p_offset+p_limit end,
+ 'items',coalesce((select jsonb_agg(jsonb_build_object('id',p.listing_id,'kind',p.kind,'displayName',p.display_name,'categoryKey',p.category_key,'modalityKeys',p.modality_keys,'city',p.city,'uf',p.uf,'serviceMode',p.service_mode,'mediaId',p.media_id,'avatarPath',null,'expiresAt',p.expires_at) order by p.sort_key,p.listing_id) from visible p),'[]'))
+Result  (cost=233.24..233.26 rows=1 width=32) (actual rows=1 loops=1)
+  Buffers: shared hit=11497
+  CTE page
+    ->  Limit  (cost=233.11..233.12 rows=1 width=360) (actual rows=21 loops=1)
+          Buffers: shared hit=11497
+          ->  Sort  (cost=233.11..233.11 rows=1 width=360) (actual rows=101 loops=1)
+                Sort Key: p.sort_key, p.listing_id
+                Sort Method: top-N heapsort  Memory: 76kB
+                Buffers: shared hit=11497
+                ->  Nested Loop Anti Join  (cost=17.11..233.10 rows=1 width=360) (actual rows=333 loops=1)
+                      Buffers: shared hit=11497
+                      ->  Nested Loop  (cost=16.96..232.85 rows=1 width=376) (actual rows=333 loops=1)
+                            Join Filter: (r.id = e.resource_id)
+                            Buffers: shared hit=11164
+                            ->  Nested Loop  (cost=16.69..231.59 rows=1 width=400) (actual rows=333 loops=1)
+                                  Buffers: shared hit=10165
+                                  ->  Nested Loop  (cost=16.41..224.48 rows=1 width=400) (actual rows=333 loops=1)
+                                        Join Filter: ((p.listing_id = r.id) AND (r.content_revision = p.published_version))
+                                        Buffers: shared hit=9166
+                                        ->  Nested Loop  (cost=16.13..223.11 rows=2 width=73) (actual rows=1000 loops=1)
+                                              Join Filter: (f.code = l.offering_code)
+                                              Buffers: shared hit=6166
+                                              ->  Hash Join  (cost=15.85..189.54 rows=5 width=101) (actual rows=2011 loops=1)
+                                                    Hash Cond: (r.offering_code = f.code)
+                                                    Buffers: shared hit=144
+                                                    ->  Seq Scan on commercial_resources r  (cost=0.00..173.66 rows=10 width=69) (actual rows=2011 loops=1)
+                                                          Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                                          Rows Removed by Filter: 33
+                                                          Buffers: shared hit=143
+                                                    ->  Hash  (cost=13.60..13.60 rows=180 width=32) (actual rows=7 loops=1)
+                                                          Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                          Buffers: shared hit=1
+                                                          ->  Seq Scan on commercial_offerings f  (cost=0.00..13.60 rows=180 width=32) (actual rows=7 loops=1)
+                                                                Filter: integration_ready
+                                                                Rows Removed by Filter: 5
+                                                                Buffers: shared hit=1
+                                              ->  Index Scan using professional_listings_pkey on professional_listings l  (cost=0.28..6.70 rows=1 width=46) (actual rows=0 loops=2011)
+                                                    Index Cond: (id = r.id)
+                                                    Filter: ((kind = 'professional'::text) AND (lifecycle_state = 'published'::text) AND (r.offering_code = offering_code))
+                                                    Rows Removed by Filter: 0
+                                                    Buffers: shared hit=6022
+                                        ->  Index Scan using published_professional_listings_pkey on published_professional_listings p  (cost=0.28..0.67 rows=1 width=352) (actual rows=0 loops=1000)
+                                              Index Cond: (listing_id = l.id)
+                                              Filter: ((modality_keys @> '{musculacao}'::text[]) AND (kind = 'professional'::text) AND (uf = 'SP'::text) AND (city_key = 'sao paulo'::text))
+                                              Rows Removed by Filter: 1
+                                              Buffers: shared hit=3000
+                                  ->  Index Scan using users_pkey on users u  (cost=0.28..7.10 rows=1 width=16) (actual rows=1 loops=333)
+                                        Index Cond: (id = r.owner_user_id)
+                                        Filter: (account_status = 'active'::text)
+                                        Buffers: shared hit=999
+                            ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..1.25 rows=1 width=24) (actual rows=1 loops=333)
+                                  Index Cond: (resource_id = l.id)
+                                  Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                  Buffers: shared hit=999
+                      ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.20 rows=1 width=16) (actual rows=0 loops=333)
+                            Index Cond: (user_id = u.id)
+                            Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                            Buffers: shared hit=333
+  CTE visible
+    ->  Limit  (cost=0.00..0.02 rows=1 width=604) (actual rows=20 loops=1)
+          Buffers: shared hit=11497
+          ->  CTE Scan on page  (cost=0.00..0.02 rows=1 width=604) (actual rows=20 loops=1)
+                Buffers: shared hit=11497
+  InitPlan 3
+    ->  Aggregate  (cost=0.02..0.03 rows=1 width=8) (actual rows=1 loops=1)
+          Buffers: shared hit=11497
+          ->  CTE Scan on visible  (cost=0.00..0.02 rows=1 width=8) (actual rows=20 loops=1)
+                Buffers: shared hit=11497
+  InitPlan 4
+    ->  Aggregate  (cost=0.02..0.03 rows=1 width=8) (actual rows=1 loops=1)
+          ->  CTE Scan on page page_1  (cost=0.00..0.02 rows=1 width=0) (actual rows=21 loops=1)
+  InitPlan 5
+    ->  Aggregate  (cost=0.03..0.04 rows=1 width=32) (actual rows=1 loops=1)
+          ->  CTE Scan on visible p_1  (cost=0.00..0.02 rows=1 width=296) (actual rows=20 loops=1)
+NOTICE:  duration: 33.204 ms  plan:
+Query Text: explain(analyze,buffers)select public.public_list_professionals('professional','musculacao','SP','São Paulo',null,80,20);
+Result  (cost=0.00..0.26 rows=1 width=32) (actual rows=1 loops=1)
+  Buffers: shared hit=11602
