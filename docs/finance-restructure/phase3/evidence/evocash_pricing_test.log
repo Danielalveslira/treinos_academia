@@ -1,0 +1,116 @@
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+TRUNCATE TABLE
+INSERT 0 1
+INSERT 0 3
+UPDATE 1
+CREATE TABLE
+INSERT 0 1
+SELECT 1
+CREATE TABLE
+GRANT
+GRANT
+ok 1 - anon cannot quote
+ok 2 - administrative price table is not readable directly
+ok 3 - service-role cannot publish through direct insert
+ok 4 - internal helper is not executable by clients
+e1000000-0000-0000-0000-000000000002
+SET
+ok 5 - buyer cannot inspect administration
+ok 6 - quoting starts paused
+RESET
+e1000000-0000-0000-0000-000000000001
+SET
+ok 7 - migration invents no initial price
+ok 8 - fresh JWT without AMR cannot publish
+RESET
+{"amr": [{"method": "password", "timestamp": 1793131635}, {"method": "token_refresh", "timestamp": 1793135235}], "sub": "e1000000-0000-0000-0000-000000000001", "role": "authenticated", "session_id": "9de62cf2-84ed-a612-b1be-3520909faabb"}
+SET
+ok 9 - refreshing an old login does not reauthenticate
+RESET
+{"amr": [{"method": "password", "timestamp": "invalid"}], "sub": "e1000000-0000-0000-0000-000000000001", "role": "authenticated", "session_id": "9de62cf2-84ed-a612-b1be-3520909faabb"}
+SET
+ok 10 - malformed AMR fails closed without a cast error
+RESET
+{"amr": [{"method": "password", "timestamp": 1793135235}], "sub": "e1000000-0000-0000-0000-000000000001", "role": "authenticated", "session_id": "9de62cf2-84ed-a612-b1be-3520909faabb"}
+SET
+ok 11 - fractional cents rejected
+ok 12 - overflow/provider ceiling rejected
+ok 13 - zero quantity rejected
+ok 14 - negative quantity rejected
+ok 15 - fractional quantity rejected
+ok 16 - oversized integer rejected before cast
+ok 17 - numeric JSON is not coerced into a financial string
+ok 18 - zero price rejected
+ok 19 - unknown config keys rejected
+ok 20 - server simulation returns exact integer strings
+INSERT 0 1
+ok 21 - publication replay returns exact original result despite stale revision
+ok 22 - same key cannot carry another payload
+ok 23 - stale publication rejected
+ok 24 - publishing never enables quoting
+ok 25 - history is paginated
+ok 26 - history cursor excludes returned version
+ok 27 - old version threshold protects large changes
+RESET
+UPDATE 1
+e1000000-0000-0000-0000-000000000002
+SET
+INSERT 0 1
+ok 28 - quote freezes exact total
+ok 29 - quote retry is idempotent
+ok 30 - quote retry cannot change quantity
+ok 31 - owner sees own quote
+ok 32 - quote enforces configured maximum
+ok 33 - bounded quote requests succeed
+ok 34 - eleventh new quote in a minute is rate limited
+ok 35 - idempotent replay does not consume rate budget
+ok 36 - owner cannot delete quotes
+RESET
+INSERT 0 1
+SET
+ok 37 - expired quote retry cannot silently issue a new quote
+RESET
+e1000000-0000-0000-0000-000000000003
+SET
+ok 38 - other user cannot read another quote
+RESET
+e1000000-0000-0000-0000-000000000001
+{"amr": [{"method": "password", "timestamp": 1793135235}], "sub": "e1000000-0000-0000-0000-000000000001", "role": "authenticated", "session_id": "9de62cf2-84ed-a612-b1be-3520909faabb"}
+SET
+ok 39 - large change accepts explicit additional confirmation
+RESET
+ok 40 - new price never rewrites old quote
+ok 41 - even owner cannot update historical price
+ok 42 - audit is append only
+ok 43 - quote snapshot is immutable
+SET
+ok 44 - future price can be scheduled
+ok 45 - scheduled price is not effective early
+ok 46 - scheduled latest version is explicit
+ok 47 - scheduled sequence cannot overlap or reorder
+ok 48 - admin can pause quotes independently of prices
+ok 49 - pause replay does not append twice
+RESET
+e1000000-0000-0000-0000-000000000002
+SET
+ok 50 - emergency pause stops new quotes
+RESET
+
+SET
+ok 51 - revoked owner session loses quote access
+ok 52 - revoked session cannot quote
+RESET
+ok 53 - pricing never changes purchases
+ok 54 - pricing never changes ledger
+ok 55 - pricing never changes cash balance
+ok 56 - each accepted mutation has exactly one audit event
+e1000000-0000-0000-0000-000000000001
+{"amr": [{"method": "password", "timestamp": 1793135235}], "sub": "e1000000-0000-0000-0000-000000000001", "role": "authenticated", "session_id": "9de62cf2-84ed-a612-b1be-3520909faabb"}
+INSERT 0 7
+SET
+ok 57 - publication rate limit is enforced in backend
+RESET
+1..57
+ROLLBACK

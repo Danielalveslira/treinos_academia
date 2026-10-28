@@ -1,0 +1,126 @@
+BEGIN
+SET
+LOAD
+SET
+SET
+SET
+SET
+SET
+UPDATE 9
+INSERT 0 2000
+INSERT 0 2000
+INSERT 0 2000
+INSERT 0 2
+INSERT 0 2000
+INSERT 0 2000
+UPDATE 2000
+UPDATE 2
+ANALYZE
+ANALYZE
+ANALYZE
+ANALYZE
+ANALYZE
+CREATE FUNCTION
+CREATE TABLE
+DO
+before|filter|6.805|8.399
+before|page|10.041|11.948
+before|professional|10.021|22.815
+before|space|21.898|27.154
+SET
+DO
+Result  (cost=0.00..0.26 rows=1 width=32) (actual time=11.164..11.165 rows=1 loops=1)
+  Buffers: shared hit=7117
+Planning Time: 0.020 ms
+Execution Time: 11.185 ms
+Result  (cost=0.00..0.26 rows=1 width=32) (actual time=10.406..10.406 rows=1 loops=1)
+  Buffers: shared hit=7098
+Planning Time: 0.024 ms
+Execution Time: 10.426 ms
+Result  (cost=0.00..0.26 rows=1 width=32) (actual time=6.343..6.343 rows=1 loops=1)
+  Buffers: shared hit=2436
+Planning Time: 0.010 ms
+Execution Time: 6.363 ms
+SET
+CREATE FUNCTION
+CREATE TABLE
+DO
+after|filter|37.205|44.271
+after|page|36.473|54.177
+after|professional|42.457|48.792
+after|space|32.589|55.207
+SET
+DO
+Result  (cost=0.00..0.26 rows=1 width=32) (actual time=38.534..38.535 rows=1 loops=1)
+  Buffers: shared hit=16285
+Planning Time: 0.020 ms
+Execution Time: 38.556 ms
+Result  (cost=0.00..0.26 rows=1 width=32) (actual time=34.644..34.644 rows=1 loops=1)
+  Buffers: shared hit=16270
+Planning Time: 0.024 ms
+Execution Time: 34.666 ms
+Result  (cost=0.00..0.26 rows=1 width=32) (actual time=33.202..33.203 rows=1 loops=1)
+  Buffers: shared hit=11602
+Planning Time: 0.016 ms
+Execution Time: 33.228 ms
+SET
+Limit  (cost=233.10..233.11 rows=1 width=35) (actual time=15.345..15.352 rows=21 loops=1)
+  Buffers: shared hit=11497
+  ->  Sort  (cost=233.10..233.11 rows=1 width=35) (actual time=15.344..15.348 rows=21 loops=1)
+        Sort Key: p.sort_key, p.listing_id
+        Sort Method: top-N heapsort  Memory: 26kB
+        Buffers: shared hit=11497
+        ->  Nested Loop Anti Join  (cost=17.11..233.09 rows=1 width=35) (actual time=0.210..15.171 rows=333 loops=1)
+              Buffers: shared hit=11497
+              ->  Nested Loop  (cost=16.96..232.85 rows=1 width=51) (actual time=0.206..14.777 rows=333 loops=1)
+                    Join Filter: (r.id = e.resource_id)
+                    Buffers: shared hit=11164
+                    ->  Nested Loop  (cost=16.69..231.59 rows=1 width=83) (actual time=0.200..13.939 rows=333 loops=1)
+                          Buffers: shared hit=10165
+                          ->  Nested Loop  (cost=16.41..224.48 rows=1 width=83) (actual time=0.194..12.751 rows=333 loops=1)
+                                Join Filter: ((p.listing_id = r.id) AND (r.content_revision = p.published_version))
+                                Buffers: shared hit=9166
+                                ->  Nested Loop  (cost=16.13..223.11 rows=2 width=73) (actual time=0.083..8.785 rows=1000 loops=1)
+                                      Join Filter: (f.code = l.offering_code)
+                                      Buffers: shared hit=6166
+                                      ->  Hash Join  (cost=15.85..189.54 rows=5 width=101) (actual time=0.033..1.499 rows=2011 loops=1)
+                                            Hash Cond: (r.offering_code = f.code)
+                                            Buffers: shared hit=144
+                                            ->  Seq Scan on commercial_resources r  (cost=0.00..173.66 rows=10 width=69) (actual time=0.013..0.719 rows=2011 loops=1)
+                                                  Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                                  Rows Removed by Filter: 33
+                                                  Buffers: shared hit=143
+                                            ->  Hash  (cost=13.60..13.60 rows=180 width=32) (actual time=0.014..0.014 rows=7 loops=1)
+                                                  Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                  Buffers: shared hit=1
+                                                  ->  Seq Scan on commercial_offerings f  (cost=0.00..13.60 rows=180 width=32) (actual time=0.008..0.010 rows=7 loops=1)
+                                                        Filter: integration_ready
+                                                        Rows Removed by Filter: 5
+                                                        Buffers: shared hit=1
+                                      ->  Index Scan using professional_listings_pkey on professional_listings l  (cost=0.28..6.70 rows=1 width=46) (actual time=0.002..0.002 rows=0 loops=2011)
+                                            Index Cond: (id = r.id)
+                                            Filter: ((kind = 'professional'::text) AND (lifecycle_state = 'published'::text) AND (r.offering_code = offering_code))
+                                            Rows Removed by Filter: 0
+                                            Buffers: shared hit=6022
+                                ->  Index Scan using published_professional_listings_pkey on published_professional_listings p  (cost=0.28..0.67 rows=1 width=48) (actual time=0.004..0.004 rows=0 loops=1000)
+                                      Index Cond: (listing_id = l.id)
+                                      Filter: ((kind = 'professional'::text) AND (uf = 'SP'::text) AND (city_key = 'sao paulo'::text))
+                                      Rows Removed by Filter: 1
+                                      Buffers: shared hit=3000
+                          ->  Index Scan using users_pkey on users u  (cost=0.28..7.10 rows=1 width=16) (actual time=0.003..0.003 rows=1 loops=333)
+                                Index Cond: (id = r.owner_user_id)
+                                Filter: (account_status = 'active'::text)
+                                Buffers: shared hit=999
+                    ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..1.25 rows=1 width=16) (actual time=0.002..0.002 rows=1 loops=333)
+                          Index Cond: (resource_id = l.id)
+                          Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                          Buffers: shared hit=999
+              ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.20 rows=1 width=16) (actual time=0.001..0.001 rows=0 loops=333)
+                    Index Cond: (user_id = u.id)
+                    Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                    Buffers: shared hit=333
+Planning:
+  Buffers: shared hit=104
+Planning Time: 18.707 ms
+Execution Time: 15.421 ms
+ROLLBACK

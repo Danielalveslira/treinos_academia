@@ -7,12 +7,13 @@ import { resolve } from 'node:path'
 import { SECRET, jwt } from '../keys.mjs'
 const action = process.argv[2]
 const root = resolve(import.meta.dirname, '../../..')
-const prefix = 'evolutus_integrated_'
+if (process.env.FINANCE_STACK_SCOPE && !['release', 'integrated'].includes(process.env.FINANCE_STACK_SCOPE)) throw Error('Local stack scope required')
+const prefix = process.env.FINANCE_STACK_SCOPE === 'release' ? 'evolutus_release_ci_' : 'evolutus_integrated_'
 const db = prefix + 'db'
 const localPassword = 'integrated-local-synthetic-password'
 const run = (...args) => execFileSync('docker', args, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim()
 const ready = async (check) => {
-  for (let i = 0; i < 60; i++) { try { if (check()) return } catch { /* starting */ } await new Promise(r => setTimeout(r, 500)) }
+  for (let i = 0; i < 120; i++) { try { if (check()) return } catch { /* starting */ } await new Promise(r => setTimeout(r, 500)) }
   throw new Error('Local service readiness timeout')
 }
 
@@ -80,7 +81,7 @@ const work = runtime
 prepareRuntime()
 await start('edge','edgeRuntime',{
  JWT_SECRET:SECRET,SUPABASE_URL:'https://local-supabase.invalid',SUPABASE_ANON_KEY:anon,SUPABASE_SERVICE_ROLE_KEY:service,
- INFINITEPAY_HANDLE:'local-fixture',APP_PUBLIC_URL:'https://local-fixture.invalid',
+ INFINITEPAY_HANDLE:'local-fixture',INFINITEPAY_API_KEY:'local-synthetic-test-key',INFINITEPAY_CHECKOUT_ENABLED:'true',APP_PUBLIC_URL:'https://local-fixture.invalid',
 },['-v',root+'/supabase/functions:/home/deno/functions:ro','-v',root+'/scripts/homolog/finance:/home/deno/main:ro',
  '-v',work+':/home/deno/wrappers:ro'],['start','--main-service','/home/deno/main','-p','9000'])
 

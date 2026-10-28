@@ -1,0 +1,15 @@
+✔ src/components/AppRoutes.test.js (624.92636ms)
+✔ src/components/CommercialAdmin.test.js (1600.602457ms)
+✔ src/pages/AdminSponsoredAds.test.js (2058.630005ms)
+✔ src/pwa/serviceWorker.test.js (1378.770899ms)
+✔ src/services/storefrontService.test.js (102.678495ms)
+✔ src/utils/storefront.test.js (125.179504ms)
+✔ tests/storefront-public-handler.test.mjs (141.873151ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6056.807148

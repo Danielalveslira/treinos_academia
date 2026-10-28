@@ -1,0 +1,109 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+DELETE 2
+INSERT 0 2
+UPDATE 0
+UPDATE 1
+INSERT 0 3
+INSERT 0 2
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+ok 1 - anon sem EXECUTE
+ok 2 - PUBLIC sem EXECUTE
+ok 3 - authenticated com EXECUTE (a checagem real é is_superadmin)
+ok 4 - helper privado não é executável
+ok 5 - search_path vazio
+ok 6 - SECURITY DEFINER e STABLE (somente leitura)
+ok 7 - sem SQL dinâmico, sem marcadores, sem user_id, sem escrita
+SET
+ok 8 - anon não executa
+SET
+
+ok 9 - sem login: PERMISSION_DENIED
+
+ok 10 - usuário comum: PERMISSION_DENIED
+ok 11 - usuário comum com filtros: PERMISSION_DENIED
+ok 12 - usuário comum com intervalo: PERMISSION_DENIED (antes de validar parâmetros)
+
+ok 13 - tabela vazia: has_data = false
+ok 14 - tabela vazia: nunca houve coleta
+ok 15 - chave do servidor desligada é informada
+ok 16 - sem último dia
+ok 17 - resumo zerado; CTR null (sem divisão por zero)
+ok 18 - série vazia
+ok 19 - campanhas vazias
+ok 20 - hoje = dia do servidor em America/Sao_Paulo
+ok 21 - fuso informado
+RESET
+INSERT 0 9
+SET
+
+ok 22 - resumo de 30 dias: somas, qualificados = cliques - sem impressão, CTRs
+ok 23 - janela de 30 dias começa em hoje-29
+ok 24 - sem impressão <= cliques
+ok 25 - agora há dados
+ok 26 - último dia com dados
+ok 27 - 7 dias exclui hoje-10 e hoje-40
+ok 28 - 90 dias inclui hoje-40 (1.000 impressões a mais)
+ok 29 - 1 dia = só hoje (100+40+10+300)
+ok 30 - série diária: 5 dias com registro
+ok 31 - dias em ordem crescente
+ok 32 - hoje soma banners, feed e Home (100+40+10+300)
+ok 33 - dia com 0 impressões e 2 cliques: CTR null, sem divisão por zero
+ok 34 - cliques sem impressão não viram qualificados
+ok 35 - por posicionamento (Home, banner da comunidade, feed)
+ok 36 - por campanha: ordenado, campanha inexistente aparece como excluída com o nome do retrato
+ok 37 - título vem da campanha existente
+ok 38 - sem título para campanha excluída (não inventa)
+ok 39 - total de campanhas
+ok 40 - sem truncamento
+ok 41 - por comunidade e posição (Home sem nome de comunidade)
+ok 42 - filtro por campanha
+ok 43 - filtro por comunidade (banner + feed + excluída)
+ok 44 - filtro por posicionamento
+ok 45 - filtros combinados
+ok 46 - filtro sem resultado: has_data = false (não inventa números)
+ok 47 - e distingue "sem dados no filtro" de "nunca coletou"
+ok 48 - série filtrada
+ok 49 - intervalo personalizado inclusivo nos dois extremos
+ok 50 - intervalo de 1 dia
+ok 51 - intervalo máximo de 366 dias é aceito
+ok 52 - p_days = 0
+ok 53 - p_days > 366
+ok 54 - p_days nulo sem intervalo
+ok 55 - só o início do intervalo
+ok 56 - só o fim do intervalo
+ok 57 - fim antes do início
+ok 58 - 367 dias
+ok 59 - fim no futuro
+ok 60 - início anterior a 2020
+ok 61 - posicionamento desconhecido
+ok 62 - posicionamento vazio
+RESET
+DELETE 1
+SET
+
+ok 63 - campanha excluída depois da coleta: números e nome preservados
+ok 64 - excluir campanha não altera o total
+ok 65 - resposta sem user_id, event_id ou e-mail
+ok 66 - chaves de topo estáveis e documentadas
+ok 67 - chaves do resumo
+ok 68 - resposta determinística
+RESET
+INSERT 0 60
+SET
+
+ok 69 - volume: o total soma TODAS as campanhas (1830 + 60 do feed anterior)
+ok 70 - volume: lista limitada a 50 campanhas
+ok 71 - volume: total real de campanhas informado (60 + A1 + excluída)
+ok 72 - volume: truncamento sinalizado
+ok 73 - volume: ordenado por impressões desc
+ok 74 - volume: contextos limitados a 50
+ok 75 - volume: contextos truncados sinalizados
+1..75
+ROLLBACK

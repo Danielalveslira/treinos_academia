@@ -1,0 +1,41 @@
+BEGIN
+DROP TRIGGER
+DROP FUNCTION
+DROP FUNCTION
+DROP FUNCTION
+DROP FUNCTION
+TRUNCATE TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE FUNCTION
+SET
+SET
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE FUNCTION
+CREATE TRIGGER
+REVOKE
+DROP FUNCTION
+UPDATE 1
+CREATE FUNCTION
+CREATE FUNCTION
+REVOKE
+CREATE FUNCTION
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+GRANT
+ ?column?
+----------
+        1
+(1 row)
+
+ROLLBACK
+NOTICE:  truncate cascades to table "deletion_financial_reviews"
+NOTICE:  truncate cascades to table "account_financial_case_events"
+NOTICE:  truncate cascades to table "account_financial_case_items"
+NOTICE:  truncate cascades to table "cash_purchase_reminder_emails"
+NOTICE:  truncate cascades to table "cash_purchase_reversals"

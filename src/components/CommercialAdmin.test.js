@@ -96,6 +96,13 @@ before(async () => {
       {
         name: 'commercial-admin-fixtures',
         setup(pluginBuild) {
+          pluginBuild.onResolve({ filter: /\/StorefrontManager$/ }, () => ({
+            path: 'manager',
+            namespace: 'fixture-manager',
+          }))
+          pluginBuild.onLoad({ filter: /.*/, namespace: 'fixture-manager' }, () => ({
+            contents: 'export default function StorefrontManager(){return null}',
+          }))
           pluginBuild.onResolve({ filter: /\/supabase\/config$/ }, (args) => ({
             path: args.path,
             namespace: 'fixture-supabase',
@@ -117,6 +124,7 @@ before(async () => {
                   order(...a) { ops.push(['order', a]); return node },
                   limit(...a) { ops.push(['limit', a]); return node },
                   eq(...a) { ops.push(['eq', a]); return node },
+                  is(...a) { ops.push(['is', a]); return node },
                   insert(payload) {
                     globalThis.__supaCalls.push({ table, op: 'insert', payload })
                     ops.push(['insert', payload])
@@ -142,7 +150,14 @@ before(async () => {
                 }
                 return node
               }
-              export const supabase = { from: (table) => chain(table) }
+              export const supabase = {
+                from: (table) => chain(table),
+                rpc(name) {
+                  if (name === 'admin_list_legacy_products') return Promise.resolve({ data: globalThis.__supaFixtures.partner_products || [], error: null })
+                  if (name === 'admin_storefront_maintenance') return Promise.resolve({ data: { settings: { enabled: false, revision: '0', graceSeconds: null }, pending: 0, events: [] }, error: null })
+                  throw Error('Unexpected RPC in legacy admin fixture: ' + name)
+                },
+              }
             `,
           }))
           pluginBuild.onLoad({ filter: /.*/, namespace: 'fixture-toast' }, () => ({
@@ -205,7 +220,11 @@ test('abrir "Editar" em um produto legado sem imagem não derruba o formulário 
   await tick()
   assert.doesNotThrow(() => page.clickEdit(0))
   assert.equal(page.nameValue(), 'Camiseta')
-  assert.equal(page.imageUrlValue(), '', 'image_url null é normalizado para string vazia no formulário')
+  assert.equal(
+    page.imageUrlValue(),
+    '',
+    'image_url null é normalizado para string vazia no formulário'
+  )
   page.unmount()
 })
 
@@ -279,8 +298,12 @@ test('marcar "Aprovado" num rascunho legado sem imagem é bloqueado até preench
   const page = mount()
   await tick()
   page.clickEdit(0)
-  page.setChecked('Aprovado para publicação', true)
+  page.setChecked('Aprovação legada (não publica)', true)
   page.submit()
-  assert.equal(globalThis.__supaCalls.filter((c) => c.op === 'update').length, 0, 'publicar sem imagem é rejeitado')
+  assert.equal(
+    globalThis.__supaCalls.filter((c) => c.op === 'update').length,
+    0,
+    'publicar sem imagem é rejeitado'
+  )
   page.unmount()
 })

@@ -1,0 +1,13 @@
+✔ crawler receives useful approved catalog HTML, escaped schema and no-store (109.270184ms)
+✔ empty catalog and unavailable detail cannot be indexed (2.230309ms)
+✔ sitemap excludes expired entries and fails closed when backend unavailable (2.379778ms)
+✔ a lease ending during upstream IO cannot leak through HTML, schema or bootstrap (72.505819ms)
+✔ sitemap rechecks product and profile deadlines after every upstream page (34.615887ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 387.005675

@@ -1,3 +1,4 @@
+\ir _helpers/cash_purchase.sql
 \ir _helpers/auth_session.sql
 begin;
 select no_plan();
@@ -5,7 +6,7 @@ insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,r
 values('f6000000-0000-0000-0000-000000000001','authenticated','authenticated','reminder-session-admin@example.invalid','x',now(),'{}','{}',now(),now()),
 ('f6000000-0000-0000-0000-000000000002','authenticated','authenticated','reminder-session-buyer@example.invalid','x',now(),'{}','{}',now(),now());
 update public.users set role='superadmin' where id='f6000000-0000-0000-0000-000000000001';
-create temp table reminder_purchase as select (public.reserve_infinitepay_cash_purchase('f6000000-0000-0000-0000-000000000002','pack_25')->>'id')::uuid id;
+create temp table reminder_purchase as select (pg_temp.cash_purchase_fixture('f6000000-0000-0000-0000-000000000002')->>'id')::uuid id;
 insert into public.cash_purchase_reminder_emails(purchase_id,user_id,requested_by)
 select id,'f6000000-0000-0000-0000-000000000002','f6000000-0000-0000-0000-000000000001' from reminder_purchase;
 grant select on reminder_purchase to authenticated;

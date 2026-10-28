@@ -2,20 +2,6 @@ import { useState } from 'react'
 import { Box, Text, Label, Button } from '@primer/react'
 import { ImageIcon } from '@primer/octicons-react'
 
-// Status derivado das mesmas regras da política pública de leitura (RLS
-// partner_products_public_read, migration 20261108000001_public_commercial.sql):
-// approved and (starts_at is null or starts_at <= now()) and (ends_at is null or ends_at > now()).
-// `now` chega por parâmetro (mesmo padrão de isExpired() em AdminSponsoredAds.jsx) --
-// mantém a função pura e fácil de testar com um instante fixo.
-function productStatus(product, now) {
-  if (!product.approved) return { label: 'Rascunho', variant: 'secondary' }
-  const startsAt = product.starts_at ? new Date(product.starts_at).getTime() : null
-  const endsAt = product.ends_at ? new Date(product.ends_at).getTime() : null
-  if (startsAt && startsAt > now) return { label: 'Agendado', variant: 'attention' }
-  if (endsAt && endsAt <= now) return { label: 'Expirado', variant: 'danger' }
-  return { label: 'Publicado', variant: 'success' }
-}
-
 function ProductThumbnail({ src, alt }) {
   const [failed, setFailed] = useState(false)
   const showImage = Boolean(src) && !failed
@@ -52,17 +38,22 @@ function ProductThumbnail({ src, alt }) {
   )
 }
 
-// Listagem compacta dos produtos da Vitrine (CommercialAdmin). `now` é injetado pelo
-// chamador para manter a derivação de status testável sem depender do relógio real.
-export function PartnerProductList({ products, now, busy, onEdit, onDelete }) {
+// Legados sem vínculo permanecem privados; seus dados são preservados para administração.
+export function PartnerProductList({ products, busy, onEdit, onDelete, onAssociate }) {
   if (products.length === 0) {
     return <Text sx={{ fontSize: 1, color: 'fg.muted' }}>Nenhum produto cadastrado ainda.</Text>
   }
 
   return (
-    <Box sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, overflow: 'hidden' }}>
+    <Box
+      sx={{
+        border: '1px solid',
+        borderColor: 'border.default',
+        borderRadius: 2,
+        overflow: 'hidden',
+      }}
+    >
       {products.map((product, index) => {
-        const status = productStatus(product, now)
         return (
           <Box
             key={product.id}
@@ -82,8 +73,8 @@ export function PartnerProductList({ products, now, busy, onEdit, onDelete }) {
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                 <Text sx={{ fontWeight: 'bold' }}>{product.name}</Text>
-                <Label variant={status.variant}>{status.label}</Label>
-                {product.sponsored && <Label variant="accent">Patrocinado</Label>}
+                <Label variant="secondary">Legado · privado</Label>
+                {product.sponsored && <Label variant="accent">Patrocínio legado</Label>}
               </Box>
               <Text sx={{ fontSize: 0, color: 'fg.muted', display: 'block' }}>
                 {product.brand} · {product.category}
@@ -94,7 +85,17 @@ export function PartnerProductList({ products, now, busy, onEdit, onDelete }) {
               <Button size="small" disabled={busy} onClick={() => onEdit(product)}>
                 Editar
               </Button>
-              <Button size="small" variant="danger" disabled={busy} onClick={() => onDelete(product)}>
+              {onAssociate && (
+                <Button size="small" disabled={busy} onClick={() => onAssociate(product)}>
+                  Associar a vitrine
+                </Button>
+              )}
+              <Button
+                size="small"
+                variant="danger"
+                disabled={busy}
+                onClick={() => onDelete(product)}
+              >
                 Excluir
               </Button>
             </Box>

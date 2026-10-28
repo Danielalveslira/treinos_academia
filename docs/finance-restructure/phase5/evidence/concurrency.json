@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "results": [
+    {
+      "kind": "professional",
+      "resource": "8d5e4b72-fe14-45a2-945a-83654bf6e921",
+      "replayDebitsOnce": true,
+      "independentRenewalsPreserveDuration": true,
+      "editAndApprovalSingleWinner": true,
+      "cleanupSkipsAssociation": true,
+      "suspensionBlocksPendingPayment": true,
+      "balance": 85
+    },
+    {
+      "kind": "space",
+      "resource": "d8fac9a1-053b-49cc-a1bf-e2b7c74c53f8",
+      "replayDebitsOnce": true,
+      "independentRenewalsPreserveDuration": true,
+      "editAndApprovalSingleWinner": true,
+      "cleanupSkipsAssociation": true,
+      "suspensionBlocksPendingPayment": true,
+      "balance": 85
+    }
+  ]
+}

@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useAuth } from '../hooks/useAuth'
+import { useAdvertisingValidity } from '../hooks/useAdvertisingValidity'
+import { useCallback, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Spinner, Button, ActionMenu, ActionList, IconButton } from '@primer/react'
 import {
@@ -21,7 +23,11 @@ import { CommunityExploreCard } from '../components/CommunityExploreCard'
 import { CommunityBlockedNotice } from '../components/CommunityBlockedNotice'
 import { ResponsivePicture } from '../components/ResponsivePicture'
 import { ProfileAvatar } from '../components/ProfileAvatar'
-import { listFeaturedCommunities, recordPromotionClick } from '../services/promotionsService'
+import {
+  listFeaturedCommunities,
+  recordPromotionClick,
+  authorizePromotionSources,
+} from '../services/promotionsService'
 import { formatMemberCount, formatRelativeTime } from '../utils/communityActivity'
 import { classifyReadError } from '../services/offline/readError'
 import { COMMUNITY_MESSAGES, describeJoinFailure } from '../utils/communityAccess'
@@ -163,6 +169,7 @@ function recordFeaturedCommunityClick(community) {
 }
 
 export default function Communities() {
+  const { user } = useAuth()
   const { myCommunities, exploreCommunities, loading, error, refresh, join, leave } =
     useCommunities()
   const { activity, isActivityChecked, reloadActivity } = useCommunityActivity(
@@ -180,17 +187,21 @@ export default function Communities() {
   // communities não é restrita por membership na leitura (ver policy communities_select),
   // então não precisa de nenhum gate de "só depois de confirmar participação" aqui.
   const [featuredCommunities, setFeaturedCommunities] = useState([])
-  useEffect(() => {
-    let active = true
-    listFeaturedCommunities()
-      .then((items) => {
-        if (active) setFeaturedCommunities(items)
-      })
-      .catch((err) => console.error('[Communities] listFeaturedCommunities:', err))
-    return () => {
-      active = false
+  const revalidatePromotions = useCallback(async () => {
+    const communities = await listFeaturedCommunities()
+    const authorization = await authorizePromotionSources(communities.map((c) => c.id))
+    return {
+      deadline: authorization.deadline,
+      commit() {
+        setFeaturedCommunities(communities.filter((c) => authorization.communityIds.includes(c.id)))
+      },
     }
   }, [])
+  const promotionValid = useAdvertisingValidity(
+    `discovery:${user?.uid}`,
+    Boolean(user?.uid),
+    revalidatePromotions
+  )
 
   function beginMembershipChange(communityId) {
     if (membershipLock.current) return false
@@ -307,11 +318,11 @@ export default function Communities() {
       )}
       <ErrorState error={error} onRetry={refresh} />
 
-      {featuredCommunities.length > 0 && (
+      {promotionValid && featuredCommunities.length > 0 && (
         <section className="communities-section" aria-labelledby="communities-featured">
           <SectionHeading
             icon={<StarFillIcon size={18} />}
-            title="Em destaque"
+            title="Comunidades patrocinadas"
             id="communities-featured"
           />
           <div className="communities-grid">

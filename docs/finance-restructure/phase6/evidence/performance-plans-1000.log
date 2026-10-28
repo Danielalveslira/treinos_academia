@@ -1,0 +1,1364 @@
+NOTICE:  duration: 0.154 ms  plan:
+Query Text:
+ select exists(select 1 from auth.sessions s
+  where s.id = case when (auth.jwt()->>'session_id') ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+   then (auth.jwt()->>'session_id')::uuid else null end
+  and s.user_id=auth.uid() and (s.not_after is null or s.not_after>now()))
+
+Result  (cost=8.24..8.25 rows=1 width=1) (actual time=0.152..0.152 rows=1 loops=1)
+  Buffers: shared hit=3
+  InitPlan 1
+    ->  Index Scan using sessions_user_id_idx on sessions s  (cost=0.17..8.24 rows=1 width=0) (actual time=0.151..0.151 rows=1 loops=1)
+          Index Cond: (user_id = (COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid)
+          Filter: (((not_after IS NULL) OR (not_after > now())) AND (id = CASE WHEN (((COALESCE(NULLIF(current_setting('request.jwt.claim'::text, true), ''::text), NULLIF(current_setting('request.jwt.claims'::text, true), ''::text)))::jsonb ->> 'session_id'::text) ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'::text) THEN (((COALESCE(NULLIF(current_setting('request.jwt.claim'::text, true), ''::text), NULLIF(current_setting('request.jwt.claims'::text, true), ''::text)))::jsonb ->> 'session_id'::text))::uuid ELSE NULL::uuid END))
+          Rows Removed by Filter: 4
+          Buffers: shared hit=3
+NOTICE:  duration: 0.051 ms  plan:
+Query Text:
+    select u.created_at < '2026-09-11 14:15:00+00'::timestamptz
+      or exists (select 1 from auth.users au where au.id = p_user_id and au.email_confirmed_at is not null)
+    from public.users u where u.id = p_user_id
+
+Query Parameters: $1 = 'b66ffd36-0f44-454b-99ba-abb364aa928b'
+Index Scan using users_pkey on users u  (cost=8.01..16.03 rows=1 width=1) (actual time=0.049..0.049 rows=1 loops=1)
+  Index Cond: (id = $1)
+  Buffers: shared hit=9
+  InitPlan 1
+    ->  Seq Scan on users au  (cost=0.00..7.74 rows=1 width=0) (actual time=0.042..0.042 rows=1 loops=1)
+          Filter: ((email_confirmed_at IS NOT NULL) AND (id = $1))
+          Rows Removed by Filter: 112
+          Buffers: shared hit=6
+NOTICE:  duration: 2.398 ms  plan:
+Query Text:
+ select case when not private.current_session_active() then false else (
+select
+      u.account_status <> 'deleting'
+      and (u.role = 'superadmin' or u.account_status <> 'disabled')
+      and (u.role = 'superadmin' or public.email_verified_ok(u.id))
+      and (
+        not exists (select 1 from public.legal_policy where id and published)
+        or (u.legal_acceptance_version = (select version from public.legal_policy where id)
+            and u.legal_acceptance_digest = (select digest from public.legal_policy where id))
+      )
+      and not exists (
+        select 1 from public.account_restrictions r
+        where r.user_id = auth.uid()
+          and not (r.action = 'temporary_suspension' and r.until <= now())
+      )
+    from public.users u where u.id = auth.uid()
+ ) end
+
+Result  (cost=33.20..33.46 rows=1 width=1) (actual time=2.395..2.396 rows=1 loops=1)
+  Buffers: shared hit=35
+  InitPlan 5
+    ->  Index Scan using users_pkey on users u  (cost=24.92..33.20 rows=1 width=1) (actual time=0.434..0.435 rows=1 loops=1)
+          Index Cond: (id = (COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid)
+          Buffers: shared hit=26
+          InitPlan 1
+            ->  Seq Scan on legal_policy  (cost=0.00..17.80 rows=195 width=0) (actual time=0.008..0.008 rows=1 loops=1)
+                  Filter: (id AND published)
+                  Buffers: shared hit=1
+          InitPlan 2
+            ->  Index Scan using legal_policy_pkey on legal_policy legal_policy_1  (cost=0.15..8.17 rows=390 width=32) (actual time=0.005..0.006 rows=1 loops=1)
+                  Index Cond: (id = true)
+                  Buffers: shared hit=2
+          InitPlan 3
+            ->  Index Scan using legal_policy_pkey on legal_policy legal_policy_2  (cost=0.15..8.17 rows=390 width=32) (actual time=0.003..0.003 rows=1 loops=1)
+                  Index Cond: (id = true)
+                  Buffers: shared hit=2
+          InitPlan 4
+            ->  Index Scan using account_restrictions_pkey on account_restrictions r  (cost=0.17..8.20 rows=1 width=0) (actual time=0.006..0.006 rows=0 loops=1)
+                  Index Cond: (user_id = (COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid)
+                  Filter: ((action <> 'temporary_suspension'::text) OR (until > now()))
+                  Buffers: shared hit=1
+NOTICE:  duration: 3.626 ms  plan:
+Query Text: auth.uid() is null or not coalesce(public.has_app_access(),false)
+ or not exists(select 1 from public.users where id=auth.uid() and account_status='active')
+Result  (cost=8.31..8.60 rows=1 width=1) (actual time=3.622..3.623 rows=1 loops=1)
+  Buffers: shared hit=47
+  InitPlan 1
+    ->  Index Scan using users_pkey on users  (cost=0.29..8.31 rows=1 width=0) (actual time=0.012..0.013 rows=1 loops=1)
+          Index Cond: (id = (COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid)
+          Filter: (account_status = 'active'::text)
+          Buffers: shared hit=3
+NOTICE:  duration: 3.897 ms  plan:
+Query Text: SELECT private.require_commercial_user()
+Result  (cost=0.00..0.26 rows=1 width=4) (actual time=3.894..3.894 rows=1 loops=1)
+  Buffers: shared hit=47
+NOTICE:  duration: 0.016 ms  plan:
+Query Text: select *        from public.advertising_placements where code=p_placement
+Seq Scan on advertising_placements  (cost=0.00..2.31 rows=1 width=178) (actual time=0.014..0.014 rows=1 loops=1)
+  Filter: (code = $1)
+  Rows Removed by Filter: 13
+  Buffers: shared hit=2
+NOTICE:  duration: 0.053 ms  plan:
+Query Text:
+ select exists(select 1 from private.live_commercial_resources where id=p_resource_id)
+
+Query Parameters: $1 = '1303cc80-306b-48bf-a7fe-32f12c0410cf'
+Result  (cost=33.82..33.83 rows=1 width=1) (actual time=0.049..0.051 rows=1 loops=1)
+  Buffers: shared hit=12
+  InitPlan 1
+    ->  Nested Loop Anti Join  (cost=1.11..33.82 rows=1 width=0) (actual time=0.048..0.049 rows=1 loops=1)
+          Buffers: shared hit=12
+          ->  Nested Loop  (cost=0.97..33.27 rows=1 width=16) (actual time=0.041..0.042 rows=1 loops=1)
+                Buffers: shared hit=11
+                ->  Nested Loop  (cost=0.69..24.96 rows=1 width=32) (actual time=0.034..0.035 rows=1 loops=1)
+                      Buffers: shared hit=8
+                      ->  Nested Loop  (cost=0.42..16.55 rows=1 width=32) (actual time=0.028..0.028 rows=1 loops=1)
+                            Buffers: shared hit=5
+                            ->  Index Scan using commercial_resources_id_offering_code_owner_user_id_key on commercial_resources r  (cost=0.27..8.29 rows=1 width=64) (actual time=0.014..0.014 rows=1 loops=1)
+                                  Index Cond: (id = $1)
+                                  Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                  Buffers: shared hit=3
+                            ->  Index Scan using commercial_offerings_pkey on commercial_offerings f  (cost=0.15..8.17 rows=1 width=32) (actual time=0.012..0.012 rows=1 loops=1)
+                                  Index Cond: (code = r.offering_code)
+                                  Filter: integration_ready
+                                  Buffers: shared hit=2
+                      ->  Index Scan using users_pkey on users u  (cost=0.27..8.29 rows=1 width=16) (actual time=0.005..0.005 rows=1 loops=1)
+                            Index Cond: (id = r.owner_user_id)
+                            Filter: (account_status = 'active'::text)
+                            Buffers: shared hit=3
+                ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..8.31 rows=1 width=16) (actual time=0.007..0.007 rows=1 loops=1)
+                      Index Cond: (resource_id = $1)
+                      Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                      Buffers: shared hit=3
+          ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.54 rows=1 width=16) (actual time=0.006..0.006 rows=0 loops=1)
+                Index Cond: (user_id = u.id)
+                Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                Buffers: shared hit=1
+NOTICE:  duration: 5.934 ms  plan:
+Query Text:
+select exists(select 1 from public.sponsored_ads a join private.advertising_drafts d on d.ad_id=a.id
+ join public.advertiser_accounts ac on ac.id=d.account_id
+ join private.advertising_resource_inventory i on i.resource_id=a.id and i.placement_code=p_placement and i.context_id=coalesce(p_context,'00000000-0000-0000-0000-000000000000'::uuid)
+ join public.advertising_placements p on p.code=i.placement_code
+ where a.id=p_id and ac.active and p.delivery_enabled and private.commercial_resource_visible(a.id)
+ and exists(select 1 from private.advertising_reservations res join public.commercial_orders o on o.id=res.order_id
+ where o.resource_id=a.id and o.status='fulfilled' and res.placement_code=i.placement_code and res.context_id=i.context_id
+ and res.starts_at<=statement_timestamp() and res.expires_at>statement_timestamp())
+ and (p.surface='home' or exists(select 1 from public.communities c where c.id=p_context and c.owner_id=ac.owner_user_id and c.is_active)))
+
+Query Parameters: $1 = '1303cc80-306b-48bf-a7fe-32f12c0410cf', $2 = 'home_banner', $3 = NULL
+Result  (cost=45.01..45.02 rows=1 width=1) (actual time=5.928..5.932 rows=1 loops=1)
+  Buffers: shared hit=45
+  InitPlan 3
+    ->  Nested Loop  (cost=4.71..45.01 rows=1 width=0) (actual time=5.927..5.931 rows=1 loops=1)
+          Join Filter: ((p.surface = 'home'::text) OR (ANY (ac.owner_user_id = (hashed SubPlan 2).col1)))
+          Buffers: shared hit=45
+          ->  Nested Loop  (cost=4.56..28.67 rows=1 width=22) (actual time=5.917..5.920 rows=1 loops=1)
+                Buffers: shared hit=43
+                ->  Nested Loop  (cost=4.56..26.34 rows=1 width=51) (actual time=5.904..5.906 rows=1 loops=1)
+                      Buffers: shared hit=41
+                      ->  Nested Loop Semi Join  (cost=4.56..24.28 rows=1 width=51) (actual time=5.891..5.893 rows=1 loops=1)
+                            Buffers: shared hit=39
+                            ->  Nested Loop  (cost=0.28..10.53 rows=1 width=67) (actual time=5.842..5.842 rows=1 loops=1)
+                                  Buffers: shared hit=29
+                                  ->  Index Only Scan using sponsored_ads_pkey on sponsored_ads a  (cost=0.28..8.54 rows=1 width=16) (actual time=5.821..5.821 rows=1 loops=1)
+                                        Index Cond: (id = $1)
+                                        Filter: private.commercial_resource_visible(id)
+                                        Heap Fetches: 1
+                                        Buffers: shared hit=28
+                                  ->  Seq Scan on advertising_resource_inventory i  (cost=0.00..1.98 rows=1 width=67) (actual time=0.018..0.018 rows=1 loops=1)
+                                        Filter: ((resource_id = $1) AND (placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)))
+                                        Rows Removed by Filter: 41
+                                        Buffers: shared hit=1
+                            ->  Nested Loop  (cost=4.29..13.74 rows=1 width=62) (actual time=0.049..0.049 rows=1 loops=1)
+                                  Join Filter: (res.order_id = o.id)
+                                  Rows Removed by Join Filter: 2
+                                  Buffers: shared hit=10
+                                  ->  Seq Scan on advertising_reservations res  (cost=0.00..1.93 rows=1 width=62) (actual time=0.010..0.014 rows=3 loops=1)
+                                        Filter: ((placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                        Rows Removed by Filter: 20
+                                        Buffers: shared hit=1
+                                  ->  Bitmap Heap Scan on commercial_orders o  (cost=4.29..11.80 rows=1 width=32) (actual time=0.008..0.009 rows=1 loops=3)
+                                        Recheck Cond: (resource_id = $1)
+                                        Filter: (status = 'fulfilled'::text)
+                                        Heap Blocks: exact=3
+                                        Buffers: shared hit=9
+                                        ->  Bitmap Index Scan on commercial_orders_resource_idx  (cost=0.00..4.29 rows=2 width=0) (actual time=0.004..0.004 rows=2 loops=3)
+                                              Index Cond: (resource_id = $1)
+                                              Buffers: shared hit=6
+                      ->  Seq Scan on advertising_drafts d  (cost=0.00..2.05 rows=1 width=32) (actual time=0.012..0.012 rows=1 loops=1)
+                            Filter: (ad_id = $1)
+                            Rows Removed by Filter: 8
+                            Buffers: shared hit=2
+                ->  Seq Scan on advertising_placements p  (cost=0.00..2.31 rows=1 width=48) (actual time=0.012..0.012 rows=1 loops=1)
+                      Filter: (delivery_enabled AND (code = $2))
+                      Rows Removed by Filter: 13
+                      Buffers: shared hit=2
+          ->  Index Scan using advertiser_accounts_pkey on advertiser_accounts ac  (cost=0.15..8.17 rows=1 width=32) (actual time=0.007..0.007 rows=1 loops=1)
+                Index Cond: (id = d.account_id)
+                Filter: active
+                Buffers: shared hit=2
+          SubPlan 2
+            ->  Index Scan using communities_pkey on communities c  (cost=0.14..8.16 rows=1 width=16) (never executed)
+                  Index Cond: (id = $3)
+                  Filter: is_active
+NOTICE:  duration: 0.042 ms  plan:
+Query Text:
+ select exists(select 1 from private.live_commercial_resources where id=p_resource_id)
+
+Query Parameters: $1 = '270224c2-e752-45e6-8602-9ebef9da5604'
+Result  (cost=33.82..33.83 rows=1 width=1) (actual time=0.039..0.040 rows=1 loops=1)
+  Buffers: shared hit=12
+  InitPlan 1
+    ->  Nested Loop Anti Join  (cost=1.11..33.82 rows=1 width=0) (actual time=0.038..0.039 rows=1 loops=1)
+          Buffers: shared hit=12
+          ->  Nested Loop  (cost=0.97..33.27 rows=1 width=16) (actual time=0.034..0.035 rows=1 loops=1)
+                Buffers: shared hit=11
+                ->  Nested Loop  (cost=0.69..24.96 rows=1 width=32) (actual time=0.028..0.029 rows=1 loops=1)
+                      Buffers: shared hit=8
+                      ->  Nested Loop  (cost=0.42..16.55 rows=1 width=32) (actual time=0.021..0.022 rows=1 loops=1)
+                            Buffers: shared hit=5
+                            ->  Index Scan using commercial_resources_id_offering_code_owner_user_id_key on commercial_resources r  (cost=0.27..8.29 rows=1 width=64) (actual time=0.012..0.012 rows=1 loops=1)
+                                  Index Cond: (id = $1)
+                                  Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                  Buffers: shared hit=3
+                            ->  Index Scan using commercial_offerings_pkey on commercial_offerings f  (cost=0.15..8.17 rows=1 width=32) (actual time=0.009..0.009 rows=1 loops=1)
+                                  Index Cond: (code = r.offering_code)
+                                  Filter: integration_ready
+                                  Buffers: shared hit=2
+                      ->  Index Scan using users_pkey on users u  (cost=0.27..8.29 rows=1 width=16) (actual time=0.006..0.006 rows=1 loops=1)
+                            Index Cond: (id = r.owner_user_id)
+                            Filter: (account_status = 'active'::text)
+                            Buffers: shared hit=3
+                ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..8.31 rows=1 width=16) (actual time=0.006..0.006 rows=1 loops=1)
+                      Index Cond: (resource_id = $1)
+                      Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                      Buffers: shared hit=3
+          ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.54 rows=1 width=16) (actual time=0.003..0.003 rows=0 loops=1)
+                Index Cond: (user_id = u.id)
+                Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                Buffers: shared hit=1
+NOTICE:  duration: 2.823 ms  plan:
+Query Text:
+select exists(select 1 from public.sponsored_ads a join private.advertising_drafts d on d.ad_id=a.id
+ join public.advertiser_accounts ac on ac.id=d.account_id
+ join private.advertising_resource_inventory i on i.resource_id=a.id and i.placement_code=p_placement and i.context_id=coalesce(p_context,'00000000-0000-0000-0000-000000000000'::uuid)
+ join public.advertising_placements p on p.code=i.placement_code
+ where a.id=p_id and ac.active and p.delivery_enabled and private.commercial_resource_visible(a.id)
+ and exists(select 1 from private.advertising_reservations res join public.commercial_orders o on o.id=res.order_id
+ where o.resource_id=a.id and o.status='fulfilled' and res.placement_code=i.placement_code and res.context_id=i.context_id
+ and res.starts_at<=statement_timestamp() and res.expires_at>statement_timestamp())
+ and (p.surface='home' or exists(select 1 from public.communities c where c.id=p_context and c.owner_id=ac.owner_user_id and c.is_active)))
+
+Query Parameters: $1 = '270224c2-e752-45e6-8602-9ebef9da5604', $2 = 'home_banner', $3 = NULL
+Result  (cost=45.01..45.02 rows=1 width=1) (actual time=2.819..2.822 rows=1 loops=1)
+  Buffers: shared hit=30
+  InitPlan 3
+    ->  Nested Loop  (cost=4.71..45.01 rows=1 width=0) (actual time=2.818..2.820 rows=1 loops=1)
+          Join Filter: ((p.surface = 'home'::text) OR (ANY (ac.owner_user_id = (hashed SubPlan 2).col1)))
+          Buffers: shared hit=30
+          ->  Nested Loop  (cost=4.56..28.67 rows=1 width=22) (actual time=2.808..2.810 rows=1 loops=1)
+                Buffers: shared hit=28
+                ->  Nested Loop  (cost=4.56..26.34 rows=1 width=51) (actual time=2.796..2.798 rows=1 loops=1)
+                      Buffers: shared hit=26
+                      ->  Nested Loop Semi Join  (cost=4.56..24.28 rows=1 width=51) (actual time=2.786..2.787 rows=1 loops=1)
+                            Buffers: shared hit=24
+                            ->  Nested Loop  (cost=0.28..10.53 rows=1 width=67) (actual time=2.721..2.722 rows=1 loops=1)
+                                  Buffers: shared hit=17
+                                  ->  Index Only Scan using sponsored_ads_pkey on sponsored_ads a  (cost=0.28..8.54 rows=1 width=16) (actual time=2.707..2.708 rows=1 loops=1)
+                                        Index Cond: (id = $1)
+                                        Filter: private.commercial_resource_visible(id)
+                                        Heap Fetches: 1
+                                        Buffers: shared hit=16
+                                  ->  Seq Scan on advertising_resource_inventory i  (cost=0.00..1.98 rows=1 width=67) (actual time=0.013..0.013 rows=1 loops=1)
+                                        Filter: ((resource_id = $1) AND (placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)))
+                                        Rows Removed by Filter: 12
+                                        Buffers: shared hit=1
+                            ->  Nested Loop  (cost=4.29..13.74 rows=1 width=62) (actual time=0.063..0.064 rows=1 loops=1)
+                                  Join Filter: (res.order_id = o.id)
+                                  Rows Removed by Join Filter: 1
+                                  Buffers: shared hit=7
+                                  ->  Seq Scan on advertising_reservations res  (cost=0.00..1.93 rows=1 width=62) (actual time=0.007..0.008 rows=2 loops=1)
+                                        Filter: ((placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                        Rows Removed by Filter: 6
+                                        Buffers: shared hit=1
+                                  ->  Bitmap Heap Scan on commercial_orders o  (cost=4.29..11.80 rows=1 width=32) (actual time=0.008..0.008 rows=1 loops=2)
+                                        Recheck Cond: (resource_id = $1)
+                                        Filter: (status = 'fulfilled'::text)
+                                        Heap Blocks: exact=2
+                                        Buffers: shared hit=6
+                                        ->  Bitmap Index Scan on commercial_orders_resource_idx  (cost=0.00..4.29 rows=2 width=0) (actual time=0.004..0.004 rows=1 loops=2)
+                                              Index Cond: (resource_id = $1)
+                                              Buffers: shared hit=4
+                      ->  Seq Scan on advertising_drafts d  (cost=0.00..2.05 rows=1 width=32) (actual time=0.009..0.009 rows=1 loops=1)
+                            Filter: (ad_id = $1)
+                            Rows Removed by Filter: 6
+                            Buffers: shared hit=2
+                ->  Seq Scan on advertising_placements p  (cost=0.00..2.31 rows=1 width=48) (actual time=0.011..0.011 rows=1 loops=1)
+                      Filter: (delivery_enabled AND (code = $2))
+                      Rows Removed by Filter: 13
+                      Buffers: shared hit=2
+          ->  Index Scan using advertiser_accounts_pkey on advertiser_accounts ac  (cost=0.15..8.17 rows=1 width=32) (actual time=0.006..0.006 rows=1 loops=1)
+                Index Cond: (id = d.account_id)
+                Filter: active
+                Buffers: shared hit=2
+          SubPlan 2
+            ->  Index Scan using communities_pkey on communities c  (cost=0.14..8.16 rows=1 width=16) (never executed)
+                  Index Cond: (id = $3)
+                  Filter: is_active
+NOTICE:  duration: 0.047 ms  plan:
+Query Text:
+ select exists(select 1 from private.live_commercial_resources where id=p_resource_id)
+
+Query Parameters: $1 = '37f2c299-bcec-4a2d-acd6-a5413b5faa0d'
+Result  (cost=33.82..33.83 rows=1 width=1) (actual time=0.044..0.045 rows=1 loops=1)
+  Buffers: shared hit=12
+  InitPlan 1
+    ->  Nested Loop Anti Join  (cost=1.11..33.82 rows=1 width=0) (actual time=0.043..0.044 rows=1 loops=1)
+          Buffers: shared hit=12
+          ->  Nested Loop  (cost=0.97..33.27 rows=1 width=16) (actual time=0.038..0.039 rows=1 loops=1)
+                Buffers: shared hit=11
+                ->  Nested Loop  (cost=0.69..24.96 rows=1 width=32) (actual time=0.031..0.031 rows=1 loops=1)
+                      Buffers: shared hit=8
+                      ->  Nested Loop  (cost=0.42..16.55 rows=1 width=32) (actual time=0.024..0.024 rows=1 loops=1)
+                            Buffers: shared hit=5
+                            ->  Index Scan using commercial_resources_id_offering_code_owner_user_id_key on commercial_resources r  (cost=0.27..8.29 rows=1 width=64) (actual time=0.013..0.014 rows=1 loops=1)
+                                  Index Cond: (id = $1)
+                                  Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                  Buffers: shared hit=3
+                            ->  Index Scan using commercial_offerings_pkey on commercial_offerings f  (cost=0.15..8.17 rows=1 width=32) (actual time=0.009..0.009 rows=1 loops=1)
+                                  Index Cond: (code = r.offering_code)
+                                  Filter: integration_ready
+                                  Buffers: shared hit=2
+                      ->  Index Scan using users_pkey on users u  (cost=0.27..8.29 rows=1 width=16) (actual time=0.006..0.006 rows=1 loops=1)
+                            Index Cond: (id = r.owner_user_id)
+                            Filter: (account_status = 'active'::text)
+                            Buffers: shared hit=3
+                ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..8.31 rows=1 width=16) (actual time=0.006..0.006 rows=1 loops=1)
+                      Index Cond: (resource_id = $1)
+                      Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                      Buffers: shared hit=3
+          ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.54 rows=1 width=16) (actual time=0.005..0.005 rows=0 loops=1)
+                Index Cond: (user_id = u.id)
+                Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                Buffers: shared hit=1
+NOTICE:  duration: 2.762 ms  plan:
+Query Text:
+select exists(select 1 from public.sponsored_ads a join private.advertising_drafts d on d.ad_id=a.id
+ join public.advertiser_accounts ac on ac.id=d.account_id
+ join private.advertising_resource_inventory i on i.resource_id=a.id and i.placement_code=p_placement and i.context_id=coalesce(p_context,'00000000-0000-0000-0000-000000000000'::uuid)
+ join public.advertising_placements p on p.code=i.placement_code
+ where a.id=p_id and ac.active and p.delivery_enabled and private.commercial_resource_visible(a.id)
+ and exists(select 1 from private.advertising_reservations res join public.commercial_orders o on o.id=res.order_id
+ where o.resource_id=a.id and o.status='fulfilled' and res.placement_code=i.placement_code and res.context_id=i.context_id
+ and res.starts_at<=statement_timestamp() and res.expires_at>statement_timestamp())
+ and (p.surface='home' or exists(select 1 from public.communities c where c.id=p_context and c.owner_id=ac.owner_user_id and c.is_active)))
+
+Query Parameters: $1 = '37f2c299-bcec-4a2d-acd6-a5413b5faa0d', $2 = 'home_banner', $3 = NULL
+Result  (cost=45.01..45.02 rows=1 width=1) (actual time=2.757..2.760 rows=1 loops=1)
+  Buffers: shared hit=39
+  InitPlan 3
+    ->  Nested Loop  (cost=4.71..45.01 rows=1 width=0) (actual time=2.757..2.759 rows=1 loops=1)
+          Join Filter: ((p.surface = 'home'::text) OR (ANY (ac.owner_user_id = (hashed SubPlan 2).col1)))
+          Buffers: shared hit=39
+          ->  Nested Loop  (cost=4.56..28.67 rows=1 width=22) (actual time=2.749..2.751 rows=1 loops=1)
+                Buffers: shared hit=37
+                ->  Nested Loop  (cost=4.56..26.34 rows=1 width=51) (actual time=2.736..2.738 rows=1 loops=1)
+                      Buffers: shared hit=35
+                      ->  Nested Loop Semi Join  (cost=4.56..24.28 rows=1 width=51) (actual time=2.728..2.729 rows=1 loops=1)
+                            Buffers: shared hit=33
+                            ->  Nested Loop  (cost=0.28..10.53 rows=1 width=67) (actual time=2.680..2.681 rows=1 loops=1)
+                                  Buffers: shared hit=17
+                                  ->  Index Only Scan using sponsored_ads_pkey on sponsored_ads a  (cost=0.28..8.54 rows=1 width=16) (actual time=2.581..2.581 rows=1 loops=1)
+                                        Index Cond: (id = $1)
+                                        Filter: private.commercial_resource_visible(id)
+                                        Heap Fetches: 1
+                                        Buffers: shared hit=16
+                                  ->  Seq Scan on advertising_resource_inventory i  (cost=0.00..1.98 rows=1 width=67) (actual time=0.098..0.098 rows=1 loops=1)
+                                        Filter: ((resource_id = $1) AND (placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)))
+                                        Rows Removed by Filter: 53
+                                        Buffers: shared hit=1
+                            ->  Nested Loop  (cost=4.29..13.74 rows=1 width=62) (actual time=0.047..0.047 rows=1 loops=1)
+                                  Join Filter: (res.order_id = o.id)
+                                  Rows Removed by Join Filter: 4
+                                  Buffers: shared hit=16
+                                  ->  Seq Scan on advertising_reservations res  (cost=0.00..1.93 rows=1 width=62) (actual time=0.009..0.013 rows=5 loops=1)
+                                        Filter: ((placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                        Rows Removed by Filter: 29
+                                        Buffers: shared hit=1
+                                  ->  Bitmap Heap Scan on commercial_orders o  (cost=4.29..11.80 rows=1 width=32) (actual time=0.005..0.005 rows=1 loops=5)
+                                        Recheck Cond: (resource_id = $1)
+                                        Filter: (status = 'fulfilled'::text)
+                                        Heap Blocks: exact=5
+                                        Buffers: shared hit=15
+                                        ->  Bitmap Index Scan on commercial_orders_resource_idx  (cost=0.00..4.29 rows=2 width=0) (actual time=0.002..0.002 rows=2 loops=5)
+                                              Index Cond: (resource_id = $1)
+                                              Buffers: shared hit=10
+                      ->  Seq Scan on advertising_drafts d  (cost=0.00..2.05 rows=1 width=32) (actual time=0.007..0.008 rows=1 loops=1)
+                            Filter: (ad_id = $1)
+                            Rows Removed by Filter: 11
+                            Buffers: shared hit=2
+                ->  Seq Scan on advertising_placements p  (cost=0.00..2.31 rows=1 width=48) (actual time=0.012..0.012 rows=1 loops=1)
+                      Filter: (delivery_enabled AND (code = $2))
+                      Rows Removed by Filter: 13
+                      Buffers: shared hit=2
+          ->  Index Scan using advertiser_accounts_pkey on advertiser_accounts ac  (cost=0.15..8.17 rows=1 width=32) (actual time=0.006..0.006 rows=1 loops=1)
+                Index Cond: (id = d.account_id)
+                Filter: active
+                Buffers: shared hit=2
+          SubPlan 2
+            ->  Index Scan using communities_pkey on communities c  (cost=0.14..8.16 rows=1 width=16) (never executed)
+                  Index Cond: (id = $3)
+                  Filter: is_active
+NOTICE:  duration: 0.040 ms  plan:
+Query Text:
+ select exists(select 1 from private.live_commercial_resources where id=p_resource_id)
+
+Query Parameters: $1 = '41881d11-381c-4e11-b08c-5a1e361c5c08'
+Result  (cost=33.82..33.83 rows=1 width=1) (actual time=0.037..0.039 rows=1 loops=1)
+  Buffers: shared hit=12
+  InitPlan 1
+    ->  Nested Loop Anti Join  (cost=1.11..33.82 rows=1 width=0) (actual time=0.037..0.038 rows=1 loops=1)
+          Buffers: shared hit=12
+          ->  Nested Loop  (cost=0.97..33.27 rows=1 width=16) (actual time=0.033..0.034 rows=1 loops=1)
+                Buffers: shared hit=11
+                ->  Nested Loop  (cost=0.69..24.96 rows=1 width=32) (actual time=0.028..0.029 rows=1 loops=1)
+                      Buffers: shared hit=8
+                      ->  Nested Loop  (cost=0.42..16.55 rows=1 width=32) (actual time=0.022..0.022 rows=1 loops=1)
+                            Buffers: shared hit=5
+                            ->  Index Scan using commercial_resources_id_offering_code_owner_user_id_key on commercial_resources r  (cost=0.27..8.29 rows=1 width=64) (actual time=0.015..0.015 rows=1 loops=1)
+                                  Index Cond: (id = $1)
+                                  Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                  Buffers: shared hit=3
+                            ->  Index Scan using commercial_offerings_pkey on commercial_offerings f  (cost=0.15..8.17 rows=1 width=32) (actual time=0.006..0.006 rows=1 loops=1)
+                                  Index Cond: (code = r.offering_code)
+                                  Filter: integration_ready
+                                  Buffers: shared hit=2
+                      ->  Index Scan using users_pkey on users u  (cost=0.27..8.29 rows=1 width=16) (actual time=0.005..0.005 rows=1 loops=1)
+                            Index Cond: (id = r.owner_user_id)
+                            Filter: (account_status = 'active'::text)
+                            Buffers: shared hit=3
+                ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..8.31 rows=1 width=16) (actual time=0.005..0.005 rows=1 loops=1)
+                      Index Cond: (resource_id = $1)
+                      Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                      Buffers: shared hit=3
+          ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.54 rows=1 width=16) (actual time=0.003..0.003 rows=0 loops=1)
+                Index Cond: (user_id = u.id)
+                Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                Buffers: shared hit=1
+NOTICE:  duration: 0.912 ms  plan:
+Query Text:
+select exists(select 1 from public.sponsored_ads a join private.advertising_drafts d on d.ad_id=a.id
+ join public.advertiser_accounts ac on ac.id=d.account_id
+ join private.advertising_resource_inventory i on i.resource_id=a.id and i.placement_code=p_placement and i.context_id=coalesce(p_context,'00000000-0000-0000-0000-000000000000'::uuid)
+ join public.advertising_placements p on p.code=i.placement_code
+ where a.id=p_id and ac.active and p.delivery_enabled and private.commercial_resource_visible(a.id)
+ and exists(select 1 from private.advertising_reservations res join public.commercial_orders o on o.id=res.order_id
+ where o.resource_id=a.id and o.status='fulfilled' and res.placement_code=i.placement_code and res.context_id=i.context_id
+ and res.starts_at<=statement_timestamp() and res.expires_at>statement_timestamp())
+ and (p.surface='home' or exists(select 1 from public.communities c where c.id=p_context and c.owner_id=ac.owner_user_id and c.is_active)))
+
+Query Parameters: $1 = '41881d11-381c-4e11-b08c-5a1e361c5c08', $2 = 'home_banner', $3 = NULL
+Result  (cost=45.01..45.02 rows=1 width=1) (actual time=0.909..0.911 rows=1 loops=1)
+  Buffers: shared hit=27
+  InitPlan 3
+    ->  Nested Loop  (cost=4.71..45.01 rows=1 width=0) (actual time=0.908..0.910 rows=1 loops=1)
+          Join Filter: ((p.surface = 'home'::text) OR (ANY (ac.owner_user_id = (hashed SubPlan 2).col1)))
+          Buffers: shared hit=27
+          ->  Nested Loop  (cost=4.56..28.67 rows=1 width=22) (actual time=0.903..0.904 rows=1 loops=1)
+                Buffers: shared hit=25
+                ->  Nested Loop  (cost=4.56..26.34 rows=1 width=51) (actual time=0.895..0.897 rows=1 loops=1)
+                      Buffers: shared hit=23
+                      ->  Nested Loop Semi Join  (cost=4.56..24.28 rows=1 width=51) (actual time=0.890..0.891 rows=1 loops=1)
+                            Buffers: shared hit=21
+                            ->  Nested Loop  (cost=0.28..10.53 rows=1 width=67) (actual time=0.874..0.875 rows=1 loops=1)
+                                  Buffers: shared hit=17
+                                  ->  Index Only Scan using sponsored_ads_pkey on sponsored_ads a  (cost=0.28..8.54 rows=1 width=16) (actual time=0.864..0.864 rows=1 loops=1)
+                                        Index Cond: (id = $1)
+                                        Filter: private.commercial_resource_visible(id)
+                                        Heap Fetches: 1
+                                        Buffers: shared hit=16
+                                  ->  Seq Scan on advertising_resource_inventory i  (cost=0.00..1.98 rows=1 width=67) (actual time=0.009..0.009 rows=1 loops=1)
+                                        Filter: ((resource_id = $1) AND (placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)))
+                                        Rows Removed by Filter: 5
+                                        Buffers: shared hit=1
+                            ->  Nested Loop  (cost=4.29..13.74 rows=1 width=62) (actual time=0.015..0.015 rows=1 loops=1)
+                                  Join Filter: (res.order_id = o.id)
+                                  Buffers: shared hit=4
+                                  ->  Seq Scan on advertising_reservations res  (cost=0.00..1.93 rows=1 width=62) (actual time=0.005..0.005 rows=1 loops=1)
+                                        Filter: ((placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                        Rows Removed by Filter: 3
+                                        Buffers: shared hit=1
+                                  ->  Bitmap Heap Scan on commercial_orders o  (cost=4.29..11.80 rows=1 width=32) (actual time=0.008..0.009 rows=1 loops=1)
+                                        Recheck Cond: (resource_id = $1)
+                                        Filter: (status = 'fulfilled'::text)
+                                        Heap Blocks: exact=1
+                                        Buffers: shared hit=3
+                                        ->  Bitmap Index Scan on commercial_orders_resource_idx  (cost=0.00..4.29 rows=2 width=0) (actual time=0.004..0.004 rows=1 loops=1)
+                                              Index Cond: (resource_id = $1)
+                                              Buffers: shared hit=2
+                      ->  Seq Scan on advertising_drafts d  (cost=0.00..2.05 rows=1 width=32) (actual time=0.005..0.005 rows=1 loops=1)
+                            Filter: (ad_id = $1)
+                            Rows Removed by Filter: 4
+                            Buffers: shared hit=2
+                ->  Seq Scan on advertising_placements p  (cost=0.00..2.31 rows=1 width=48) (actual time=0.007..0.007 rows=1 loops=1)
+                      Filter: (delivery_enabled AND (code = $2))
+                      Rows Removed by Filter: 13
+                      Buffers: shared hit=2
+          ->  Index Scan using advertiser_accounts_pkey on advertiser_accounts ac  (cost=0.15..8.17 rows=1 width=32) (actual time=0.004..0.004 rows=1 loops=1)
+                Index Cond: (id = d.account_id)
+                Filter: active
+                Buffers: shared hit=2
+          SubPlan 2
+            ->  Index Scan using communities_pkey on communities c  (cost=0.14..8.16 rows=1 width=16) (never executed)
+                  Index Cond: (id = $3)
+                  Filter: is_active
+NOTICE:  duration: 0.041 ms  plan:
+Query Text:
+ select exists(select 1 from private.live_commercial_resources where id=p_resource_id)
+
+Query Parameters: $1 = '5b0e669a-6446-41f0-a5b0-d1f3f9bddcda'
+Result  (cost=33.82..33.83 rows=1 width=1) (actual time=0.037..0.039 rows=1 loops=1)
+  Buffers: shared hit=12
+  InitPlan 1
+    ->  Nested Loop Anti Join  (cost=1.11..33.82 rows=1 width=0) (actual time=0.037..0.038 rows=1 loops=1)
+          Buffers: shared hit=12
+          ->  Nested Loop  (cost=0.97..33.27 rows=1 width=16) (actual time=0.032..0.033 rows=1 loops=1)
+                Buffers: shared hit=11
+                ->  Nested Loop  (cost=0.69..24.96 rows=1 width=32) (actual time=0.027..0.027 rows=1 loops=1)
+                      Buffers: shared hit=8
+                      ->  Nested Loop  (cost=0.42..16.55 rows=1 width=32) (actual time=0.021..0.022 rows=1 loops=1)
+                            Buffers: shared hit=5
+                            ->  Index Scan using commercial_resources_id_offering_code_owner_user_id_key on commercial_resources r  (cost=0.27..8.29 rows=1 width=64) (actual time=0.013..0.014 rows=1 loops=1)
+                                  Index Cond: (id = $1)
+                                  Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                  Buffers: shared hit=3
+                            ->  Index Scan using commercial_offerings_pkey on commercial_offerings f  (cost=0.15..8.17 rows=1 width=32) (actual time=0.006..0.007 rows=1 loops=1)
+                                  Index Cond: (code = r.offering_code)
+                                  Filter: integration_ready
+                                  Buffers: shared hit=2
+                      ->  Index Scan using users_pkey on users u  (cost=0.27..8.29 rows=1 width=16) (actual time=0.005..0.005 rows=1 loops=1)
+                            Index Cond: (id = r.owner_user_id)
+                            Filter: (account_status = 'active'::text)
+                            Buffers: shared hit=3
+                ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..8.31 rows=1 width=16) (actual time=0.005..0.005 rows=1 loops=1)
+                      Index Cond: (resource_id = $1)
+                      Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                      Buffers: shared hit=3
+          ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.54 rows=1 width=16) (actual time=0.003..0.004 rows=0 loops=1)
+                Index Cond: (user_id = u.id)
+                Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                Buffers: shared hit=1
+NOTICE:  duration: 3.285 ms  plan:
+Query Text:
+select exists(select 1 from public.sponsored_ads a join private.advertising_drafts d on d.ad_id=a.id
+ join public.advertiser_accounts ac on ac.id=d.account_id
+ join private.advertising_resource_inventory i on i.resource_id=a.id and i.placement_code=p_placement and i.context_id=coalesce(p_context,'00000000-0000-0000-0000-000000000000'::uuid)
+ join public.advertising_placements p on p.code=i.placement_code
+ where a.id=p_id and ac.active and p.delivery_enabled and private.commercial_resource_visible(a.id)
+ and exists(select 1 from private.advertising_reservations res join public.commercial_orders o on o.id=res.order_id
+ where o.resource_id=a.id and o.status='fulfilled' and res.placement_code=i.placement_code and res.context_id=i.context_id
+ and res.starts_at<=statement_timestamp() and res.expires_at>statement_timestamp())
+ and (p.surface='home' or exists(select 1 from public.communities c where c.id=p_context and c.owner_id=ac.owner_user_id and c.is_active)))
+
+Query Parameters: $1 = '5b0e669a-6446-41f0-a5b0-d1f3f9bddcda', $2 = 'home_banner', $3 = NULL
+Result  (cost=45.01..45.02 rows=1 width=1) (actual time=3.280..3.283 rows=1 loops=1)
+  Buffers: shared hit=36
+  InitPlan 3
+    ->  Nested Loop  (cost=4.71..45.01 rows=1 width=0) (actual time=3.280..3.282 rows=1 loops=1)
+          Join Filter: ((p.surface = 'home'::text) OR (ANY (ac.owner_user_id = (hashed SubPlan 2).col1)))
+          Buffers: shared hit=36
+          ->  Nested Loop  (cost=4.56..28.67 rows=1 width=22) (actual time=3.273..3.275 rows=1 loops=1)
+                Buffers: shared hit=34
+                ->  Nested Loop  (cost=4.56..26.34 rows=1 width=51) (actual time=3.264..3.265 rows=1 loops=1)
+                      Buffers: shared hit=32
+                      ->  Nested Loop Semi Join  (cost=4.56..24.28 rows=1 width=51) (actual time=3.257..3.258 rows=1 loops=1)
+                            Buffers: shared hit=30
+                            ->  Nested Loop  (cost=0.28..10.53 rows=1 width=67) (actual time=3.216..3.216 rows=1 loops=1)
+                                  Buffers: shared hit=17
+                                  ->  Index Only Scan using sponsored_ads_pkey on sponsored_ads a  (cost=0.28..8.54 rows=1 width=16) (actual time=3.201..3.201 rows=1 loops=1)
+                                        Index Cond: (id = $1)
+                                        Filter: private.commercial_resource_visible(id)
+                                        Heap Fetches: 1
+                                        Buffers: shared hit=16
+                                  ->  Seq Scan on advertising_resource_inventory i  (cost=0.00..1.98 rows=1 width=67) (actual time=0.014..0.014 rows=1 loops=1)
+                                        Filter: ((resource_id = $1) AND (placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)))
+                                        Rows Removed by Filter: 47
+                                        Buffers: shared hit=1
+                            ->  Nested Loop  (cost=4.29..13.74 rows=1 width=62) (actual time=0.040..0.041 rows=1 loops=1)
+                                  Join Filter: (res.order_id = o.id)
+                                  Rows Removed by Join Filter: 3
+                                  Buffers: shared hit=13
+                                  ->  Seq Scan on advertising_reservations res  (cost=0.00..1.93 rows=1 width=62) (actual time=0.006..0.010 rows=4 loops=1)
+                                        Filter: ((placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                        Rows Removed by Filter: 25
+                                        Buffers: shared hit=1
+                                  ->  Bitmap Heap Scan on commercial_orders o  (cost=4.29..11.80 rows=1 width=32) (actual time=0.005..0.005 rows=1 loops=4)
+                                        Recheck Cond: (resource_id = $1)
+                                        Filter: (status = 'fulfilled'::text)
+                                        Heap Blocks: exact=4
+                                        Buffers: shared hit=12
+                                        ->  Bitmap Index Scan on commercial_orders_resource_idx  (cost=0.00..4.29 rows=2 width=0) (actual time=0.003..0.003 rows=2 loops=4)
+                                              Index Cond: (resource_id = $1)
+                                              Buffers: shared hit=8
+                      ->  Seq Scan on advertising_drafts d  (cost=0.00..2.05 rows=1 width=32) (actual time=0.006..0.006 rows=1 loops=1)
+                            Filter: (ad_id = $1)
+                            Buffers: shared hit=2
+                ->  Seq Scan on advertising_placements p  (cost=0.00..2.31 rows=1 width=48) (actual time=0.008..0.009 rows=1 loops=1)
+                      Filter: (delivery_enabled AND (code = $2))
+                      Rows Removed by Filter: 13
+                      Buffers: shared hit=2
+          ->  Index Scan using advertiser_accounts_pkey on advertiser_accounts ac  (cost=0.15..8.17 rows=1 width=32) (actual time=0.005..0.005 rows=1 loops=1)
+                Index Cond: (id = d.account_id)
+                Filter: active
+                Buffers: shared hit=2
+          SubPlan 2
+            ->  Index Scan using communities_pkey on communities c  (cost=0.14..8.16 rows=1 width=16) (never executed)
+                  Index Cond: (id = $3)
+                  Filter: is_active
+NOTICE:  duration: 20.389 ms  plan:
+Query Text: coalesce((with candidates as (
+ select distinct o.resource_id as id from private.advertising_reservations r join public.commercial_orders o on o.id=r.order_id
+ where p.delivery_enabled and r.placement_code=p.code and r.context_id=coalesce(p_context,'00000000-0000-0000-0000-000000000000'::uuid)
+ and r.starts_at<=statement_timestamp() and r.expires_at>statement_timestamp() and o.status='fulfilled'
+ union all
+ select a.id from public.sponsored_ads a where a.commercial_resource_id is null and (a.expires_at is null or a.expires_at>statement_timestamp())
+ and p.content_type=any(a.display_mode) and ((p.surface='home' and a.is_global) or (p.surface='community' and p_context=any(a.community_ids)))
+ ) select jsonb_agg(to_jsonb(x)) from (
+ select a.id,a.partner_name,a.title,a.description,a.image_url,a.media_id,a.cta_label,a.cta_type,a.cta_target,
+ case when a.commercial_resource_id is null then a.expires_at else e.expires_at end expires_at,a.is_global,array[p.content_type] display_mode
+ from candidates c join public.sponsored_ads a on a.id=c.id left join public.visibility_entitlements e on e.resource_id=a.id
+ where a.commercial_resource_id is null or private.advertising_eligible(a.id,p.code,p_context)
+ order by random() limit p.display_limit)x),'[]'::jsonb)
+Result  (cost=77.64..77.65 rows=1 width=32) (actual time=20.382..20.387 rows=1 loops=1)
+  Buffers: shared hit=260
+  InitPlan 1
+    ->  Aggregate  (cost=77.63..77.64 rows=1 width=32) (actual time=20.379..20.384 rows=1 loops=1)
+          Buffers: shared hit=260
+          ->  Subquery Scan on x  (cost=77.61..77.63 rows=1 width=200) (actual time=20.345..20.351 rows=1 loops=1)
+                Buffers: shared hit=260
+                ->  Limit  (cost=77.61..77.62 rows=1 width=224) (actual time=20.338..20.343 rows=1 loops=1)
+                      Buffers: shared hit=260
+                      ->  Sort  (cost=77.61..77.62 rows=2 width=224) (actual time=20.336..20.340 rows=1 loops=1)
+                            Sort Key: (random())
+                            Sort Method: top-N heapsort  Memory: 25kB
+                            Buffers: shared hit=260
+                            ->  Nested Loop Left Join  (cost=10.79..77.60 rows=2 width=224) (actual time=8.940..20.323 rows=5 loops=1)
+                                  Buffers: shared hit=260
+                                  ->  Nested Loop  (cost=10.51..75.13 rows=2 width=200) (actual time=8.922..20.267 rows=5 loops=1)
+                                        Buffers: shared hit=245
+                                        ->  Append  (cost=10.24..58.02 rows=2 width=16) (actual time=0.878..1.269 rows=5 loops=1)
+                                              Buffers: shared hit=41
+                                              ->  Unique  (cost=10.24..10.25 rows=1 width=16) (actual time=0.878..0.888 rows=5 loops=1)
+                                                    Buffers: shared hit=16
+                                                    ->  Sort  (cost=10.24..10.24 rows=1 width=16) (actual time=0.877..0.882 rows=5 loops=1)
+                                                          Sort Key: o.resource_id
+                                                          Sort Method: quicksort  Memory: 25kB
+                                                          Buffers: shared hit=16
+                                                          ->  Result  (cost=0.27..10.23 rows=1 width=16) (actual time=0.022..0.872 rows=5 loops=1)
+                                                                One-Time Filter: $7
+                                                                Buffers: shared hit=16
+                                                                ->  Nested Loop  (cost=0.27..10.23 rows=1 width=16) (actual time=0.021..0.870 rows=5 loops=1)
+                                                                      Buffers: shared hit=16
+                                                                      ->  Seq Scan on advertising_reservations r  (cost=0.00..1.93 rows=1 width=16) (actual time=0.009..0.016 rows=5 loops=1)
+                                                                            Filter: ((placement_code = $8) AND (context_id = COALESCE($2, '00000000-0000-0000-0000-000000000000'::uuid)) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                                                            Rows Removed by Filter: 32
+                                                                            Buffers: shared hit=1
+                                                                      ->  Index Scan using commercial_orders_id_resource_id_key on commercial_orders o  (cost=0.27..8.29 rows=1 width=32) (actual time=0.169..0.169 rows=1 loops=5)
+                                                                            Index Cond: (id = r.order_id)
+                                                                            Filter: (status = 'fulfilled'::text)
+                                                                            Buffers: shared hit=15
+                                              ->  Seq Scan on sponsored_ads a_1  (cost=0.00..47.77 rows=1 width=16) (actual time=0.375..0.375 rows=0 loops=1)
+                                                    Filter: ((commercial_resource_id IS NULL) AND ($5 = ANY (display_mode)) AND ((expires_at IS NULL) OR (expires_at > statement_timestamp())) AND ((($6 = 'home'::text) AND is_global) OR (($6 = 'community'::text) AND ($2 = ANY (community_ids)))))
+                                                    Rows Removed by Filter: 1012
+                                                    Buffers: shared hit=25
+                                        ->  Index Scan using sponsored_ads_pkey on sponsored_ads a  (cost=0.28..8.54 rows=1 width=200) (actual time=3.797..3.797 rows=1 loops=5)
+                                              Index Cond: (id = o.resource_id)
+                                              Filter: ((commercial_resource_id IS NULL) OR private.advertising_eligible(id, $8, $2))
+                                              Buffers: shared hit=204
+                                  ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..1.24 rows=1 width=24) (actual time=0.005..0.006 rows=1 loops=5)
+                                        Index Cond: (resource_id = a.id)
+                                        Buffers: shared hit=15
+NOTICE:  duration: 25.996 ms  plan:
+Query Text: select public.select_advertising('home_banner',null);
+Result  (cost=0.00..0.26 rows=1 width=32) (actual time=25.985..25.986 rows=1 loops=1)
+  Buffers: shared hit=312
+NOTICE:  duration: 4.234 ms  plan:
+Query Text:
+ select exists(select 1 from auth.sessions s
+  where s.id = case when (auth.jwt()->>'session_id') ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+   then (auth.jwt()->>'session_id')::uuid else null end
+  and s.user_id=auth.uid() and (s.not_after is null or s.not_after>now()))
+
+Result  (cost=8.24..8.25 rows=1 width=1) (actual time=4.229..4.230 rows=1 loops=1)
+  Buffers: shared hit=3
+  InitPlan 1
+    ->  Index Scan using sessions_user_id_idx on sessions s  (cost=0.17..8.24 rows=1 width=0) (actual time=4.228..4.228 rows=1 loops=1)
+          Index Cond: (user_id = (COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid)
+          Filter: (((not_after IS NULL) OR (not_after > now())) AND (id = CASE WHEN (((COALESCE(NULLIF(current_setting('request.jwt.claim'::text, true), ''::text), NULLIF(current_setting('request.jwt.claims'::text, true), ''::text)))::jsonb ->> 'session_id'::text) ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'::text) THEN (((COALESCE(NULLIF(current_setting('request.jwt.claim'::text, true), ''::text), NULLIF(current_setting('request.jwt.claims'::text, true), ''::text)))::jsonb ->> 'session_id'::text))::uuid ELSE NULL::uuid END))
+          Rows Removed by Filter: 4
+          Buffers: shared hit=3
+NOTICE:  duration: 0.052 ms  plan:
+Query Text:
+    select u.created_at < '2026-09-11 14:15:00+00'::timestamptz
+      or exists (select 1 from auth.users au where au.id = p_user_id and au.email_confirmed_at is not null)
+    from public.users u where u.id = p_user_id
+
+Query Parameters: $1 = 'b66ffd36-0f44-454b-99ba-abb364aa928b'
+Index Scan using users_pkey on users u  (cost=8.01..16.03 rows=1 width=1) (actual time=0.051..0.051 rows=1 loops=1)
+  Index Cond: (id = $1)
+  Buffers: shared hit=9
+  InitPlan 1
+    ->  Seq Scan on users au  (cost=0.00..7.74 rows=1 width=0) (actual time=0.042..0.042 rows=1 loops=1)
+          Filter: ((email_confirmed_at IS NOT NULL) AND (id = $1))
+          Rows Removed by Filter: 112
+          Buffers: shared hit=6
+NOTICE:  duration: 5.115 ms  plan:
+Query Text:
+ select case when not private.current_session_active() then false else (
+select
+      u.account_status <> 'deleting'
+      and (u.role = 'superadmin' or u.account_status <> 'disabled')
+      and (u.role = 'superadmin' or public.email_verified_ok(u.id))
+      and (
+        not exists (select 1 from public.legal_policy where id and published)
+        or (u.legal_acceptance_version = (select version from public.legal_policy where id)
+            and u.legal_acceptance_digest = (select digest from public.legal_policy where id))
+      )
+      and not exists (
+        select 1 from public.account_restrictions r
+        where r.user_id = auth.uid()
+          and not (r.action = 'temporary_suspension' and r.until <= now())
+      )
+    from public.users u where u.id = auth.uid()
+ ) end
+
+Result  (cost=33.20..33.46 rows=1 width=1) (actual time=5.112..5.113 rows=1 loops=1)
+  Buffers: shared hit=26
+  InitPlan 5
+    ->  Index Scan using users_pkey on users u  (cost=24.92..33.20 rows=1 width=1) (actual time=0.393..0.394 rows=1 loops=1)
+          Index Cond: (id = (COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid)
+          Buffers: shared hit=23
+          InitPlan 1
+            ->  Seq Scan on legal_policy  (cost=0.00..17.80 rows=195 width=0) (actual time=0.008..0.008 rows=1 loops=1)
+                  Filter: (id AND published)
+                  Buffers: shared hit=1
+          InitPlan 2
+            ->  Index Scan using legal_policy_pkey on legal_policy legal_policy_1  (cost=0.15..8.17 rows=390 width=32) (actual time=0.005..0.006 rows=1 loops=1)
+                  Index Cond: (id = true)
+                  Buffers: shared hit=2
+          InitPlan 3
+            ->  Index Scan using legal_policy_pkey on legal_policy legal_policy_2  (cost=0.15..8.17 rows=390 width=32) (actual time=0.002..0.003 rows=1 loops=1)
+                  Index Cond: (id = true)
+                  Buffers: shared hit=2
+          InitPlan 4
+            ->  Index Scan using account_restrictions_pkey on account_restrictions r  (cost=0.17..8.20 rows=1 width=0) (actual time=0.008..0.008 rows=0 loops=1)
+                  Index Cond: (user_id = (COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid)
+                  Filter: ((action <> 'temporary_suspension'::text) OR (until > now()))
+                  Buffers: shared hit=1
+NOTICE:  duration: 5.798 ms  plan:
+Query Text: auth.uid() is null or not coalesce(public.has_app_access(),false)
+ or not exists(select 1 from public.users where id=auth.uid() and account_status='active')
+Result  (cost=8.31..8.60 rows=1 width=1) (actual time=5.796..5.797 rows=1 loops=1)
+  Buffers: shared hit=29
+  InitPlan 1
+    ->  Index Scan using users_pkey on users  (cost=0.29..8.31 rows=1 width=0) (actual time=0.011..0.011 rows=1 loops=1)
+          Index Cond: (id = (COALESCE(NULLIF(current_setting('request.jwt.claim.sub'::text, true), ''::text), ((NULLIF(current_setting('request.jwt.claims'::text, true), ''::text))::jsonb ->> 'sub'::text)))::uuid)
+          Filter: (account_status = 'active'::text)
+          Buffers: shared hit=3
+NOTICE:  duration: 5.890 ms  plan:
+Query Text: SELECT private.require_commercial_user()
+Result  (cost=0.00..0.26 rows=1 width=4) (actual time=5.888..5.888 rows=1 loops=1)
+  Buffers: shared hit=29
+NOTICE:  duration: 0.014 ms  plan:
+Query Text: select *        from public.advertising_placements where code=p_placement
+Seq Scan on advertising_placements  (cost=0.00..2.31 rows=1 width=178) (actual time=0.013..0.013 rows=1 loops=1)
+  Filter: (code = $1)
+  Rows Removed by Filter: 13
+  Buffers: shared hit=2
+NOTICE:  duration: 0.050 ms  plan:
+Query Text:
+ select exists(select 1 from private.live_commercial_resources where id=p_resource_id)
+
+Query Parameters: $1 = '1303cc80-306b-48bf-a7fe-32f12c0410cf'
+Result  (cost=33.82..33.83 rows=1 width=1) (actual time=0.047..0.048 rows=1 loops=1)
+  Buffers: shared hit=12
+  InitPlan 1
+    ->  Nested Loop Anti Join  (cost=1.11..33.82 rows=1 width=0) (actual time=0.046..0.047 rows=1 loops=1)
+          Buffers: shared hit=12
+          ->  Nested Loop  (cost=0.97..33.27 rows=1 width=16) (actual time=0.041..0.042 rows=1 loops=1)
+                Buffers: shared hit=11
+                ->  Nested Loop  (cost=0.69..24.96 rows=1 width=32) (actual time=0.033..0.034 rows=1 loops=1)
+                      Buffers: shared hit=8
+                      ->  Nested Loop  (cost=0.42..16.55 rows=1 width=32) (actual time=0.025..0.026 rows=1 loops=1)
+                            Buffers: shared hit=5
+                            ->  Index Scan using commercial_resources_id_offering_code_owner_user_id_key on commercial_resources r  (cost=0.27..8.29 rows=1 width=64) (actual time=0.014..0.014 rows=1 loops=1)
+                                  Index Cond: (id = $1)
+                                  Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                  Buffers: shared hit=3
+                            ->  Index Scan using commercial_offerings_pkey on commercial_offerings f  (cost=0.15..8.17 rows=1 width=32) (actual time=0.009..0.009 rows=1 loops=1)
+                                  Index Cond: (code = r.offering_code)
+                                  Filter: integration_ready
+                                  Buffers: shared hit=2
+                      ->  Index Scan using users_pkey on users u  (cost=0.27..8.29 rows=1 width=16) (actual time=0.007..0.007 rows=1 loops=1)
+                            Index Cond: (id = r.owner_user_id)
+                            Filter: (account_status = 'active'::text)
+                            Buffers: shared hit=3
+                ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..8.31 rows=1 width=16) (actual time=0.007..0.007 rows=1 loops=1)
+                      Index Cond: (resource_id = $1)
+                      Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                      Buffers: shared hit=3
+          ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.54 rows=1 width=16) (actual time=0.004..0.004 rows=0 loops=1)
+                Index Cond: (user_id = u.id)
+                Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                Buffers: shared hit=1
+NOTICE:  duration: 3.339 ms  plan:
+Query Text:
+select exists(select 1 from public.sponsored_ads a join private.advertising_drafts d on d.ad_id=a.id
+ join public.advertiser_accounts ac on ac.id=d.account_id
+ join private.advertising_resource_inventory i on i.resource_id=a.id and i.placement_code=p_placement and i.context_id=coalesce(p_context,'00000000-0000-0000-0000-000000000000'::uuid)
+ join public.advertising_placements p on p.code=i.placement_code
+ where a.id=p_id and ac.active and p.delivery_enabled and private.commercial_resource_visible(a.id)
+ and exists(select 1 from private.advertising_reservations res join public.commercial_orders o on o.id=res.order_id
+ where o.resource_id=a.id and o.status='fulfilled' and res.placement_code=i.placement_code and res.context_id=i.context_id
+ and res.starts_at<=statement_timestamp() and res.expires_at>statement_timestamp())
+ and (p.surface='home' or exists(select 1 from public.communities c where c.id=p_context and c.owner_id=ac.owner_user_id and c.is_active)))
+
+Query Parameters: $1 = '1303cc80-306b-48bf-a7fe-32f12c0410cf', $2 = 'home_banner', $3 = NULL
+Result  (cost=45.01..45.02 rows=1 width=1) (actual time=3.334..3.337 rows=1 loops=1)
+  Buffers: shared hit=33
+  InitPlan 3
+    ->  Nested Loop  (cost=4.71..45.01 rows=1 width=0) (actual time=3.332..3.335 rows=1 loops=1)
+          Join Filter: ((p.surface = 'home'::text) OR (ANY (ac.owner_user_id = (hashed SubPlan 2).col1)))
+          Buffers: shared hit=33
+          ->  Nested Loop  (cost=4.56..28.67 rows=1 width=22) (actual time=3.321..3.323 rows=1 loops=1)
+                Buffers: shared hit=31
+                ->  Nested Loop  (cost=4.56..26.34 rows=1 width=51) (actual time=3.308..3.310 rows=1 loops=1)
+                      Buffers: shared hit=29
+                      ->  Nested Loop Semi Join  (cost=4.56..24.28 rows=1 width=51) (actual time=3.298..3.299 rows=1 loops=1)
+                            Buffers: shared hit=27
+                            ->  Nested Loop  (cost=0.28..10.53 rows=1 width=67) (actual time=3.254..3.255 rows=1 loops=1)
+                                  Buffers: shared hit=17
+                                  ->  Index Only Scan using sponsored_ads_pkey on sponsored_ads a  (cost=0.28..8.54 rows=1 width=16) (actual time=3.234..3.235 rows=1 loops=1)
+                                        Index Cond: (id = $1)
+                                        Filter: private.commercial_resource_visible(id)
+                                        Heap Fetches: 1
+                                        Buffers: shared hit=16
+                                  ->  Seq Scan on advertising_resource_inventory i  (cost=0.00..1.98 rows=1 width=67) (actual time=0.018..0.018 rows=1 loops=1)
+                                        Filter: ((resource_id = $1) AND (placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)))
+                                        Rows Removed by Filter: 41
+                                        Buffers: shared hit=1
+                            ->  Nested Loop  (cost=4.29..13.74 rows=1 width=62) (actual time=0.042..0.043 rows=1 loops=1)
+                                  Join Filter: (res.order_id = o.id)
+                                  Rows Removed by Join Filter: 2
+                                  Buffers: shared hit=10
+                                  ->  Seq Scan on advertising_reservations res  (cost=0.00..1.93 rows=1 width=62) (actual time=0.008..0.011 rows=3 loops=1)
+                                        Filter: ((placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                        Rows Removed by Filter: 20
+                                        Buffers: shared hit=1
+                                  ->  Bitmap Heap Scan on commercial_orders o  (cost=4.29..11.80 rows=1 width=32) (actual time=0.007..0.008 rows=1 loops=3)
+                                        Recheck Cond: (resource_id = $1)
+                                        Filter: (status = 'fulfilled'::text)
+                                        Heap Blocks: exact=3
+                                        Buffers: shared hit=9
+                                        ->  Bitmap Index Scan on commercial_orders_resource_idx  (cost=0.00..4.29 rows=2 width=0) (actual time=0.004..0.004 rows=2 loops=3)
+                                              Index Cond: (resource_id = $1)
+                                              Buffers: shared hit=6
+                      ->  Seq Scan on advertising_drafts d  (cost=0.00..2.05 rows=1 width=32) (actual time=0.009..0.009 rows=1 loops=1)
+                            Filter: (ad_id = $1)
+                            Rows Removed by Filter: 8
+                            Buffers: shared hit=2
+                ->  Seq Scan on advertising_placements p  (cost=0.00..2.31 rows=1 width=48) (actual time=0.012..0.012 rows=1 loops=1)
+                      Filter: (delivery_enabled AND (code = $2))
+                      Rows Removed by Filter: 13
+                      Buffers: shared hit=2
+          ->  Index Scan using advertiser_accounts_pkey on advertiser_accounts ac  (cost=0.15..8.17 rows=1 width=32) (actual time=0.008..0.008 rows=1 loops=1)
+                Index Cond: (id = d.account_id)
+                Filter: active
+                Buffers: shared hit=2
+          SubPlan 2
+            ->  Index Scan using communities_pkey on communities c  (cost=0.14..8.16 rows=1 width=16) (never executed)
+                  Index Cond: (id = $3)
+                  Filter: is_active
+NOTICE:  duration: 0.049 ms  plan:
+Query Text:
+ select exists(select 1 from private.live_commercial_resources where id=p_resource_id)
+
+Query Parameters: $1 = '270224c2-e752-45e6-8602-9ebef9da5604'
+Result  (cost=33.82..33.83 rows=1 width=1) (actual time=0.047..0.048 rows=1 loops=1)
+  Buffers: shared hit=12
+  InitPlan 1
+    ->  Nested Loop Anti Join  (cost=1.11..33.82 rows=1 width=0) (actual time=0.046..0.047 rows=1 loops=1)
+          Buffers: shared hit=12
+          ->  Nested Loop  (cost=0.97..33.27 rows=1 width=16) (actual time=0.042..0.043 rows=1 loops=1)
+                Buffers: shared hit=11
+                ->  Nested Loop  (cost=0.69..24.96 rows=1 width=32) (actual time=0.034..0.035 rows=1 loops=1)
+                      Buffers: shared hit=8
+                      ->  Nested Loop  (cost=0.42..16.55 rows=1 width=32) (actual time=0.025..0.026 rows=1 loops=1)
+                            Buffers: shared hit=5
+                            ->  Index Scan using commercial_resources_id_offering_code_owner_user_id_key on commercial_resources r  (cost=0.27..8.29 rows=1 width=64) (actual time=0.014..0.014 rows=1 loops=1)
+                                  Index Cond: (id = $1)
+                                  Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                  Buffers: shared hit=3
+                            ->  Index Scan using commercial_offerings_pkey on commercial_offerings f  (cost=0.15..8.17 rows=1 width=32) (actual time=0.011..0.011 rows=1 loops=1)
+                                  Index Cond: (code = r.offering_code)
+                                  Filter: integration_ready
+                                  Buffers: shared hit=2
+                      ->  Index Scan using users_pkey on users u  (cost=0.27..8.29 rows=1 width=16) (actual time=0.008..0.008 rows=1 loops=1)
+                            Index Cond: (id = r.owner_user_id)
+                            Filter: (account_status = 'active'::text)
+                            Buffers: shared hit=3
+                ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..8.31 rows=1 width=16) (actual time=0.007..0.007 rows=1 loops=1)
+                      Index Cond: (resource_id = $1)
+                      Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                      Buffers: shared hit=3
+          ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.54 rows=1 width=16) (actual time=0.003..0.003 rows=0 loops=1)
+                Index Cond: (user_id = u.id)
+                Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                Buffers: shared hit=1
+NOTICE:  duration: 1.983 ms  plan:
+Query Text:
+select exists(select 1 from public.sponsored_ads a join private.advertising_drafts d on d.ad_id=a.id
+ join public.advertiser_accounts ac on ac.id=d.account_id
+ join private.advertising_resource_inventory i on i.resource_id=a.id and i.placement_code=p_placement and i.context_id=coalesce(p_context,'00000000-0000-0000-0000-000000000000'::uuid)
+ join public.advertising_placements p on p.code=i.placement_code
+ where a.id=p_id and ac.active and p.delivery_enabled and private.commercial_resource_visible(a.id)
+ and exists(select 1 from private.advertising_reservations res join public.commercial_orders o on o.id=res.order_id
+ where o.resource_id=a.id and o.status='fulfilled' and res.placement_code=i.placement_code and res.context_id=i.context_id
+ and res.starts_at<=statement_timestamp() and res.expires_at>statement_timestamp())
+ and (p.surface='home' or exists(select 1 from public.communities c where c.id=p_context and c.owner_id=ac.owner_user_id and c.is_active)))
+
+Query Parameters: $1 = '270224c2-e752-45e6-8602-9ebef9da5604', $2 = 'home_banner', $3 = NULL
+Result  (cost=45.01..45.02 rows=1 width=1) (actual time=1.978..1.982 rows=1 loops=1)
+  Buffers: shared hit=30
+  InitPlan 3
+    ->  Nested Loop  (cost=4.71..45.01 rows=1 width=0) (actual time=1.977..1.980 rows=1 loops=1)
+          Join Filter: ((p.surface = 'home'::text) OR (ANY (ac.owner_user_id = (hashed SubPlan 2).col1)))
+          Buffers: shared hit=30
+          ->  Nested Loop  (cost=4.56..28.67 rows=1 width=22) (actual time=1.967..1.969 rows=1 loops=1)
+                Buffers: shared hit=28
+                ->  Nested Loop  (cost=4.56..26.34 rows=1 width=51) (actual time=1.954..1.956 rows=1 loops=1)
+                      Buffers: shared hit=26
+                      ->  Nested Loop Semi Join  (cost=4.56..24.28 rows=1 width=51) (actual time=1.945..1.946 rows=1 loops=1)
+                            Buffers: shared hit=24
+                            ->  Nested Loop  (cost=0.28..10.53 rows=1 width=67) (actual time=1.911..1.912 rows=1 loops=1)
+                                  Buffers: shared hit=17
+                                  ->  Index Only Scan using sponsored_ads_pkey on sponsored_ads a  (cost=0.28..8.54 rows=1 width=16) (actual time=1.896..1.896 rows=1 loops=1)
+                                        Index Cond: (id = $1)
+                                        Filter: private.commercial_resource_visible(id)
+                                        Heap Fetches: 1
+                                        Buffers: shared hit=16
+                                  ->  Seq Scan on advertising_resource_inventory i  (cost=0.00..1.98 rows=1 width=67) (actual time=0.014..0.014 rows=1 loops=1)
+                                        Filter: ((resource_id = $1) AND (placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)))
+                                        Rows Removed by Filter: 12
+                                        Buffers: shared hit=1
+                            ->  Nested Loop  (cost=4.29..13.74 rows=1 width=62) (actual time=0.032..0.033 rows=1 loops=1)
+                                  Join Filter: (res.order_id = o.id)
+                                  Rows Removed by Join Filter: 1
+                                  Buffers: shared hit=7
+                                  ->  Seq Scan on advertising_reservations res  (cost=0.00..1.93 rows=1 width=62) (actual time=0.008..0.009 rows=2 loops=1)
+                                        Filter: ((placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                        Rows Removed by Filter: 6
+                                        Buffers: shared hit=1
+                                  ->  Bitmap Heap Scan on commercial_orders o  (cost=4.29..11.80 rows=1 width=32) (actual time=0.009..0.009 rows=1 loops=2)
+                                        Recheck Cond: (resource_id = $1)
+                                        Filter: (status = 'fulfilled'::text)
+                                        Heap Blocks: exact=2
+                                        Buffers: shared hit=6
+                                        ->  Bitmap Index Scan on commercial_orders_resource_idx  (cost=0.00..4.29 rows=2 width=0) (actual time=0.005..0.005 rows=1 loops=2)
+                                              Index Cond: (resource_id = $1)
+                                              Buffers: shared hit=4
+                      ->  Seq Scan on advertising_drafts d  (cost=0.00..2.05 rows=1 width=32) (actual time=0.009..0.009 rows=1 loops=1)
+                            Filter: (ad_id = $1)
+                            Rows Removed by Filter: 6
+                            Buffers: shared hit=2
+                ->  Seq Scan on advertising_placements p  (cost=0.00..2.31 rows=1 width=48) (actual time=0.012..0.012 rows=1 loops=1)
+                      Filter: (delivery_enabled AND (code = $2))
+                      Rows Removed by Filter: 13
+                      Buffers: shared hit=2
+          ->  Index Scan using advertiser_accounts_pkey on advertiser_accounts ac  (cost=0.15..8.17 rows=1 width=32) (actual time=0.008..0.008 rows=1 loops=1)
+                Index Cond: (id = d.account_id)
+                Filter: active
+                Buffers: shared hit=2
+          SubPlan 2
+            ->  Index Scan using communities_pkey on communities c  (cost=0.14..8.16 rows=1 width=16) (never executed)
+                  Index Cond: (id = $3)
+                  Filter: is_active
+NOTICE:  duration: 0.048 ms  plan:
+Query Text:
+ select exists(select 1 from private.live_commercial_resources where id=p_resource_id)
+
+Query Parameters: $1 = '37f2c299-bcec-4a2d-acd6-a5413b5faa0d'
+Result  (cost=33.82..33.83 rows=1 width=1) (actual time=0.045..0.047 rows=1 loops=1)
+  Buffers: shared hit=12
+  InitPlan 1
+    ->  Nested Loop Anti Join  (cost=1.11..33.82 rows=1 width=0) (actual time=0.044..0.045 rows=1 loops=1)
+          Buffers: shared hit=12
+          ->  Nested Loop  (cost=0.97..33.27 rows=1 width=16) (actual time=0.040..0.041 rows=1 loops=1)
+                Buffers: shared hit=11
+                ->  Nested Loop  (cost=0.69..24.96 rows=1 width=32) (actual time=0.032..0.033 rows=1 loops=1)
+                      Buffers: shared hit=8
+                      ->  Nested Loop  (cost=0.42..16.55 rows=1 width=32) (actual time=0.024..0.025 rows=1 loops=1)
+                            Buffers: shared hit=5
+                            ->  Index Scan using commercial_resources_id_offering_code_owner_user_id_key on commercial_resources r  (cost=0.27..8.29 rows=1 width=64) (actual time=0.014..0.014 rows=1 loops=1)
+                                  Index Cond: (id = $1)
+                                  Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                  Buffers: shared hit=3
+                            ->  Index Scan using commercial_offerings_pkey on commercial_offerings f  (cost=0.15..8.17 rows=1 width=32) (actual time=0.009..0.009 rows=1 loops=1)
+                                  Index Cond: (code = r.offering_code)
+                                  Filter: integration_ready
+                                  Buffers: shared hit=2
+                      ->  Index Scan using users_pkey on users u  (cost=0.27..8.29 rows=1 width=16) (actual time=0.007..0.007 rows=1 loops=1)
+                            Index Cond: (id = r.owner_user_id)
+                            Filter: (account_status = 'active'::text)
+                            Buffers: shared hit=3
+                ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..8.31 rows=1 width=16) (actual time=0.007..0.007 rows=1 loops=1)
+                      Index Cond: (resource_id = $1)
+                      Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                      Buffers: shared hit=3
+          ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.54 rows=1 width=16) (actual time=0.004..0.004 rows=0 loops=1)
+                Index Cond: (user_id = u.id)
+                Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                Buffers: shared hit=1
+NOTICE:  duration: 4.855 ms  plan:
+Query Text:
+select exists(select 1 from public.sponsored_ads a join private.advertising_drafts d on d.ad_id=a.id
+ join public.advertiser_accounts ac on ac.id=d.account_id
+ join private.advertising_resource_inventory i on i.resource_id=a.id and i.placement_code=p_placement and i.context_id=coalesce(p_context,'00000000-0000-0000-0000-000000000000'::uuid)
+ join public.advertising_placements p on p.code=i.placement_code
+ where a.id=p_id and ac.active and p.delivery_enabled and private.commercial_resource_visible(a.id)
+ and exists(select 1 from private.advertising_reservations res join public.commercial_orders o on o.id=res.order_id
+ where o.resource_id=a.id and o.status='fulfilled' and res.placement_code=i.placement_code and res.context_id=i.context_id
+ and res.starts_at<=statement_timestamp() and res.expires_at>statement_timestamp())
+ and (p.surface='home' or exists(select 1 from public.communities c where c.id=p_context and c.owner_id=ac.owner_user_id and c.is_active)))
+
+Query Parameters: $1 = '37f2c299-bcec-4a2d-acd6-a5413b5faa0d', $2 = 'home_banner', $3 = NULL
+Result  (cost=45.01..45.02 rows=1 width=1) (actual time=4.850..4.853 rows=1 loops=1)
+  Buffers: shared hit=39
+  InitPlan 3
+    ->  Nested Loop  (cost=4.71..45.01 rows=1 width=0) (actual time=4.849..4.852 rows=1 loops=1)
+          Join Filter: ((p.surface = 'home'::text) OR (ANY (ac.owner_user_id = (hashed SubPlan 2).col1)))
+          Buffers: shared hit=39
+          ->  Nested Loop  (cost=4.56..28.67 rows=1 width=22) (actual time=4.840..4.842 rows=1 loops=1)
+                Buffers: shared hit=37
+                ->  Nested Loop  (cost=4.56..26.34 rows=1 width=51) (actual time=4.828..4.829 rows=1 loops=1)
+                      Buffers: shared hit=35
+                      ->  Nested Loop Semi Join  (cost=4.56..24.28 rows=1 width=51) (actual time=4.817..4.818 rows=1 loops=1)
+                            Buffers: shared hit=33
+                            ->  Nested Loop  (cost=0.28..10.53 rows=1 width=67) (actual time=4.546..4.547 rows=1 loops=1)
+                                  Buffers: shared hit=17
+                                  ->  Index Only Scan using sponsored_ads_pkey on sponsored_ads a  (cost=0.28..8.54 rows=1 width=16) (actual time=4.504..4.504 rows=1 loops=1)
+                                        Index Cond: (id = $1)
+                                        Filter: private.commercial_resource_visible(id)
+                                        Heap Fetches: 1
+                                        Buffers: shared hit=16
+                                  ->  Seq Scan on advertising_resource_inventory i  (cost=0.00..1.98 rows=1 width=67) (actual time=0.041..0.041 rows=1 loops=1)
+                                        Filter: ((resource_id = $1) AND (placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)))
+                                        Rows Removed by Filter: 53
+                                        Buffers: shared hit=1
+                            ->  Nested Loop  (cost=4.29..13.74 rows=1 width=62) (actual time=0.269..0.270 rows=1 loops=1)
+                                  Join Filter: (res.order_id = o.id)
+                                  Rows Removed by Join Filter: 4
+                                  Buffers: shared hit=16
+                                  ->  Seq Scan on advertising_reservations res  (cost=0.00..1.93 rows=1 width=62) (actual time=0.008..0.013 rows=5 loops=1)
+                                        Filter: ((placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                        Rows Removed by Filter: 29
+                                        Buffers: shared hit=1
+                                  ->  Bitmap Heap Scan on commercial_orders o  (cost=4.29..11.80 rows=1 width=32) (actual time=0.048..0.048 rows=1 loops=5)
+                                        Recheck Cond: (resource_id = $1)
+                                        Filter: (status = 'fulfilled'::text)
+                                        Heap Blocks: exact=5
+                                        Buffers: shared hit=15
+                                        ->  Bitmap Index Scan on commercial_orders_resource_idx  (cost=0.00..4.29 rows=2 width=0) (actual time=0.003..0.004 rows=2 loops=5)
+                                              Index Cond: (resource_id = $1)
+                                              Buffers: shared hit=10
+                      ->  Seq Scan on advertising_drafts d  (cost=0.00..2.05 rows=1 width=32) (actual time=0.010..0.010 rows=1 loops=1)
+                            Filter: (ad_id = $1)
+                            Rows Removed by Filter: 11
+                            Buffers: shared hit=2
+                ->  Seq Scan on advertising_placements p  (cost=0.00..2.31 rows=1 width=48) (actual time=0.012..0.012 rows=1 loops=1)
+                      Filter: (delivery_enabled AND (code = $2))
+                      Rows Removed by Filter: 13
+                      Buffers: shared hit=2
+          ->  Index Scan using advertiser_accounts_pkey on advertiser_accounts ac  (cost=0.15..8.17 rows=1 width=32) (actual time=0.006..0.006 rows=1 loops=1)
+                Index Cond: (id = d.account_id)
+                Filter: active
+                Buffers: shared hit=2
+          SubPlan 2
+            ->  Index Scan using communities_pkey on communities c  (cost=0.14..8.16 rows=1 width=16) (never executed)
+                  Index Cond: (id = $3)
+                  Filter: is_active
+NOTICE:  duration: 0.034 ms  plan:
+Query Text:
+ select exists(select 1 from private.live_commercial_resources where id=p_resource_id)
+
+Query Parameters: $1 = '41881d11-381c-4e11-b08c-5a1e361c5c08'
+Result  (cost=33.82..33.83 rows=1 width=1) (actual time=0.031..0.033 rows=1 loops=1)
+  Buffers: shared hit=12
+  InitPlan 1
+    ->  Nested Loop Anti Join  (cost=1.11..33.82 rows=1 width=0) (actual time=0.030..0.032 rows=1 loops=1)
+          Buffers: shared hit=12
+          ->  Nested Loop  (cost=0.97..33.27 rows=1 width=16) (actual time=0.028..0.029 rows=1 loops=1)
+                Buffers: shared hit=11
+                ->  Nested Loop  (cost=0.69..24.96 rows=1 width=32) (actual time=0.023..0.023 rows=1 loops=1)
+                      Buffers: shared hit=8
+                      ->  Nested Loop  (cost=0.42..16.55 rows=1 width=32) (actual time=0.017..0.018 rows=1 loops=1)
+                            Buffers: shared hit=5
+                            ->  Index Scan using commercial_resources_id_offering_code_owner_user_id_key on commercial_resources r  (cost=0.27..8.29 rows=1 width=64) (actual time=0.010..0.010 rows=1 loops=1)
+                                  Index Cond: (id = $1)
+                                  Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                  Buffers: shared hit=3
+                            ->  Index Scan using commercial_offerings_pkey on commercial_offerings f  (cost=0.15..8.17 rows=1 width=32) (actual time=0.006..0.006 rows=1 loops=1)
+                                  Index Cond: (code = r.offering_code)
+                                  Filter: integration_ready
+                                  Buffers: shared hit=2
+                      ->  Index Scan using users_pkey on users u  (cost=0.27..8.29 rows=1 width=16) (actual time=0.005..0.005 rows=1 loops=1)
+                            Index Cond: (id = r.owner_user_id)
+                            Filter: (account_status = 'active'::text)
+                            Buffers: shared hit=3
+                ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..8.31 rows=1 width=16) (actual time=0.005..0.005 rows=1 loops=1)
+                      Index Cond: (resource_id = $1)
+                      Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                      Buffers: shared hit=3
+          ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.54 rows=1 width=16) (actual time=0.002..0.002 rows=0 loops=1)
+                Index Cond: (user_id = u.id)
+                Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                Buffers: shared hit=1
+NOTICE:  duration: 7.076 ms  plan:
+Query Text:
+select exists(select 1 from public.sponsored_ads a join private.advertising_drafts d on d.ad_id=a.id
+ join public.advertiser_accounts ac on ac.id=d.account_id
+ join private.advertising_resource_inventory i on i.resource_id=a.id and i.placement_code=p_placement and i.context_id=coalesce(p_context,'00000000-0000-0000-0000-000000000000'::uuid)
+ join public.advertising_placements p on p.code=i.placement_code
+ where a.id=p_id and ac.active and p.delivery_enabled and private.commercial_resource_visible(a.id)
+ and exists(select 1 from private.advertising_reservations res join public.commercial_orders o on o.id=res.order_id
+ where o.resource_id=a.id and o.status='fulfilled' and res.placement_code=i.placement_code and res.context_id=i.context_id
+ and res.starts_at<=statement_timestamp() and res.expires_at>statement_timestamp())
+ and (p.surface='home' or exists(select 1 from public.communities c where c.id=p_context and c.owner_id=ac.owner_user_id and c.is_active)))
+
+Query Parameters: $1 = '41881d11-381c-4e11-b08c-5a1e361c5c08', $2 = 'home_banner', $3 = NULL
+Result  (cost=45.01..45.02 rows=1 width=1) (actual time=7.072..7.074 rows=1 loops=1)
+  Buffers: shared hit=27
+  InitPlan 3
+    ->  Nested Loop  (cost=4.71..45.01 rows=1 width=0) (actual time=7.070..7.073 rows=1 loops=1)
+          Join Filter: ((p.surface = 'home'::text) OR (ANY (ac.owner_user_id = (hashed SubPlan 2).col1)))
+          Buffers: shared hit=27
+          ->  Nested Loop  (cost=4.56..28.67 rows=1 width=22) (actual time=7.063..7.064 rows=1 loops=1)
+                Buffers: shared hit=25
+                ->  Nested Loop  (cost=4.56..26.34 rows=1 width=51) (actual time=7.052..7.053 rows=1 loops=1)
+                      Buffers: shared hit=23
+                      ->  Nested Loop Semi Join  (cost=4.56..24.28 rows=1 width=51) (actual time=7.043..7.044 rows=1 loops=1)
+                            Buffers: shared hit=21
+                            ->  Nested Loop  (cost=0.28..10.53 rows=1 width=67) (actual time=7.020..7.021 rows=1 loops=1)
+                                  Buffers: shared hit=17
+                                  ->  Index Only Scan using sponsored_ads_pkey on sponsored_ads a  (cost=0.28..8.54 rows=1 width=16) (actual time=7.004..7.005 rows=1 loops=1)
+                                        Index Cond: (id = $1)
+                                        Filter: private.commercial_resource_visible(id)
+                                        Heap Fetches: 1
+                                        Buffers: shared hit=16
+                                  ->  Seq Scan on advertising_resource_inventory i  (cost=0.00..1.98 rows=1 width=67) (actual time=0.014..0.014 rows=1 loops=1)
+                                        Filter: ((resource_id = $1) AND (placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)))
+                                        Rows Removed by Filter: 5
+                                        Buffers: shared hit=1
+                            ->  Nested Loop  (cost=4.29..13.74 rows=1 width=62) (actual time=0.022..0.023 rows=1 loops=1)
+                                  Join Filter: (res.order_id = o.id)
+                                  Buffers: shared hit=4
+                                  ->  Seq Scan on advertising_reservations res  (cost=0.00..1.93 rows=1 width=62) (actual time=0.008..0.008 rows=1 loops=1)
+                                        Filter: ((placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                        Rows Removed by Filter: 3
+                                        Buffers: shared hit=1
+                                  ->  Bitmap Heap Scan on commercial_orders o  (cost=4.29..11.80 rows=1 width=32) (actual time=0.012..0.012 rows=1 loops=1)
+                                        Recheck Cond: (resource_id = $1)
+                                        Filter: (status = 'fulfilled'::text)
+                                        Heap Blocks: exact=1
+                                        Buffers: shared hit=3
+                                        ->  Bitmap Index Scan on commercial_orders_resource_idx  (cost=0.00..4.29 rows=2 width=0) (actual time=0.006..0.006 rows=1 loops=1)
+                                              Index Cond: (resource_id = $1)
+                                              Buffers: shared hit=2
+                      ->  Seq Scan on advertising_drafts d  (cost=0.00..2.05 rows=1 width=32) (actual time=0.008..0.008 rows=1 loops=1)
+                            Filter: (ad_id = $1)
+                            Rows Removed by Filter: 4
+                            Buffers: shared hit=2
+                ->  Seq Scan on advertising_placements p  (cost=0.00..2.31 rows=1 width=48) (actual time=0.010..0.011 rows=1 loops=1)
+                      Filter: (delivery_enabled AND (code = $2))
+                      Rows Removed by Filter: 13
+                      Buffers: shared hit=2
+          ->  Index Scan using advertiser_accounts_pkey on advertiser_accounts ac  (cost=0.15..8.17 rows=1 width=32) (actual time=0.006..0.006 rows=1 loops=1)
+                Index Cond: (id = d.account_id)
+                Filter: active
+                Buffers: shared hit=2
+          SubPlan 2
+            ->  Index Scan using communities_pkey on communities c  (cost=0.14..8.16 rows=1 width=16) (never executed)
+                  Index Cond: (id = $3)
+                  Filter: is_active
+NOTICE:  duration: 0.037 ms  plan:
+Query Text:
+ select exists(select 1 from private.live_commercial_resources where id=p_resource_id)
+
+Query Parameters: $1 = '5b0e669a-6446-41f0-a5b0-d1f3f9bddcda'
+Result  (cost=33.82..33.83 rows=1 width=1) (actual time=0.035..0.036 rows=1 loops=1)
+  Buffers: shared hit=12
+  InitPlan 1
+    ->  Nested Loop Anti Join  (cost=1.11..33.82 rows=1 width=0) (actual time=0.034..0.035 rows=1 loops=1)
+          Buffers: shared hit=12
+          ->  Nested Loop  (cost=0.97..33.27 rows=1 width=16) (actual time=0.031..0.032 rows=1 loops=1)
+                Buffers: shared hit=11
+                ->  Nested Loop  (cost=0.69..24.96 rows=1 width=32) (actual time=0.025..0.026 rows=1 loops=1)
+                      Buffers: shared hit=8
+                      ->  Nested Loop  (cost=0.42..16.55 rows=1 width=32) (actual time=0.019..0.020 rows=1 loops=1)
+                            Buffers: shared hit=5
+                            ->  Index Scan using commercial_resources_id_offering_code_owner_user_id_key on commercial_resources r  (cost=0.27..8.29 rows=1 width=64) (actual time=0.011..0.012 rows=1 loops=1)
+                                  Index Cond: (id = $1)
+                                  Filter: ((moderation_state = 'approved'::text) AND (content_revision = approved_revision))
+                                  Buffers: shared hit=3
+                            ->  Index Scan using commercial_offerings_pkey on commercial_offerings f  (cost=0.15..8.17 rows=1 width=32) (actual time=0.007..0.007 rows=1 loops=1)
+                                  Index Cond: (code = r.offering_code)
+                                  Filter: integration_ready
+                                  Buffers: shared hit=2
+                      ->  Index Scan using users_pkey on users u  (cost=0.27..8.29 rows=1 width=16) (actual time=0.005..0.006 rows=1 loops=1)
+                            Index Cond: (id = r.owner_user_id)
+                            Filter: (account_status = 'active'::text)
+                            Buffers: shared hit=3
+                ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..8.31 rows=1 width=16) (actual time=0.005..0.005 rows=1 loops=1)
+                      Index Cond: (resource_id = $1)
+                      Filter: ((administrative_state = 'enabled'::text) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                      Buffers: shared hit=3
+          ->  Index Scan using account_restrictions_pkey on account_restrictions a  (cost=0.15..0.54 rows=1 width=16) (actual time=0.002..0.002 rows=0 loops=1)
+                Index Cond: (user_id = u.id)
+                Filter: ((action <> 'temporary_suspension'::text) OR (until > statement_timestamp()))
+                Buffers: shared hit=1
+NOTICE:  duration: 6.509 ms  plan:
+Query Text:
+select exists(select 1 from public.sponsored_ads a join private.advertising_drafts d on d.ad_id=a.id
+ join public.advertiser_accounts ac on ac.id=d.account_id
+ join private.advertising_resource_inventory i on i.resource_id=a.id and i.placement_code=p_placement and i.context_id=coalesce(p_context,'00000000-0000-0000-0000-000000000000'::uuid)
+ join public.advertising_placements p on p.code=i.placement_code
+ where a.id=p_id and ac.active and p.delivery_enabled and private.commercial_resource_visible(a.id)
+ and exists(select 1 from private.advertising_reservations res join public.commercial_orders o on o.id=res.order_id
+ where o.resource_id=a.id and o.status='fulfilled' and res.placement_code=i.placement_code and res.context_id=i.context_id
+ and res.starts_at<=statement_timestamp() and res.expires_at>statement_timestamp())
+ and (p.surface='home' or exists(select 1 from public.communities c where c.id=p_context and c.owner_id=ac.owner_user_id and c.is_active)))
+
+Query Parameters: $1 = '5b0e669a-6446-41f0-a5b0-d1f3f9bddcda', $2 = 'home_banner', $3 = NULL
+Result  (cost=45.01..45.02 rows=1 width=1) (actual time=6.504..6.507 rows=1 loops=1)
+  Buffers: shared hit=36
+  InitPlan 3
+    ->  Nested Loop  (cost=4.71..45.01 rows=1 width=0) (actual time=6.503..6.506 rows=1 loops=1)
+          Join Filter: ((p.surface = 'home'::text) OR (ANY (ac.owner_user_id = (hashed SubPlan 2).col1)))
+          Buffers: shared hit=36
+          ->  Nested Loop  (cost=4.56..28.67 rows=1 width=22) (actual time=6.494..6.496 rows=1 loops=1)
+                Buffers: shared hit=34
+                ->  Nested Loop  (cost=4.56..26.34 rows=1 width=51) (actual time=6.484..6.485 rows=1 loops=1)
+                      Buffers: shared hit=32
+                      ->  Nested Loop Semi Join  (cost=4.56..24.28 rows=1 width=51) (actual time=6.477..6.478 rows=1 loops=1)
+                            Buffers: shared hit=30
+                            ->  Nested Loop  (cost=0.28..10.53 rows=1 width=67) (actual time=6.434..6.435 rows=1 loops=1)
+                                  Buffers: shared hit=17
+                                  ->  Index Only Scan using sponsored_ads_pkey on sponsored_ads a  (cost=0.28..8.54 rows=1 width=16) (actual time=6.416..6.416 rows=1 loops=1)
+                                        Index Cond: (id = $1)
+                                        Filter: private.commercial_resource_visible(id)
+                                        Heap Fetches: 1
+                                        Buffers: shared hit=16
+                                  ->  Seq Scan on advertising_resource_inventory i  (cost=0.00..1.98 rows=1 width=67) (actual time=0.017..0.017 rows=1 loops=1)
+                                        Filter: ((resource_id = $1) AND (placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)))
+                                        Rows Removed by Filter: 47
+                                        Buffers: shared hit=1
+                            ->  Nested Loop  (cost=4.29..13.74 rows=1 width=62) (actual time=0.042..0.043 rows=1 loops=1)
+                                  Join Filter: (res.order_id = o.id)
+                                  Rows Removed by Join Filter: 3
+                                  Buffers: shared hit=13
+                                  ->  Seq Scan on advertising_reservations res  (cost=0.00..1.93 rows=1 width=62) (actual time=0.007..0.011 rows=4 loops=1)
+                                        Filter: ((placement_code = $2) AND (context_id = COALESCE($3, '00000000-0000-0000-0000-000000000000'::uuid)) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                        Rows Removed by Filter: 25
+                                        Buffers: shared hit=1
+                                  ->  Bitmap Heap Scan on commercial_orders o  (cost=4.29..11.80 rows=1 width=32) (actual time=0.005..0.005 rows=1 loops=4)
+                                        Recheck Cond: (resource_id = $1)
+                                        Filter: (status = 'fulfilled'::text)
+                                        Heap Blocks: exact=4
+                                        Buffers: shared hit=12
+                                        ->  Bitmap Index Scan on commercial_orders_resource_idx  (cost=0.00..4.29 rows=2 width=0) (actual time=0.003..0.003 rows=2 loops=4)
+                                              Index Cond: (resource_id = $1)
+                                              Buffers: shared hit=8
+                      ->  Seq Scan on advertising_drafts d  (cost=0.00..2.05 rows=1 width=32) (actual time=0.006..0.006 rows=1 loops=1)
+                            Filter: (ad_id = $1)
+                            Buffers: shared hit=2
+                ->  Seq Scan on advertising_placements p  (cost=0.00..2.31 rows=1 width=48) (actual time=0.010..0.010 rows=1 loops=1)
+                      Filter: (delivery_enabled AND (code = $2))
+                      Rows Removed by Filter: 13
+                      Buffers: shared hit=2
+          ->  Index Scan using advertiser_accounts_pkey on advertiser_accounts ac  (cost=0.15..8.17 rows=1 width=32) (actual time=0.007..0.007 rows=1 loops=1)
+                Index Cond: (id = d.account_id)
+                Filter: active
+                Buffers: shared hit=2
+          SubPlan 2
+            ->  Index Scan using communities_pkey on communities c  (cost=0.14..8.16 rows=1 width=16) (never executed)
+                  Index Cond: (id = $3)
+                  Filter: is_active
+NOTICE:  duration: 42.147 ms  plan:
+Query Text: coalesce((with candidates as (
+ select distinct o.resource_id as id from private.advertising_reservations r join public.commercial_orders o on o.id=r.order_id
+ where p.delivery_enabled and r.placement_code=p.code and r.context_id=coalesce(p_context,'00000000-0000-0000-0000-000000000000'::uuid)
+ and r.starts_at<=statement_timestamp() and r.expires_at>statement_timestamp() and o.status='fulfilled'
+ union all
+ select a.id from public.sponsored_ads a where a.commercial_resource_id is null and (a.expires_at is null or a.expires_at>statement_timestamp())
+ and p.content_type=any(a.display_mode) and ((p.surface='home' and a.is_global) or (p.surface='community' and p_context=any(a.community_ids)))
+ ) select jsonb_agg(to_jsonb(x)) from (
+ select a.id,a.partner_name,a.title,a.description,a.image_url,a.media_id,a.cta_label,a.cta_type,a.cta_target,
+ case when a.commercial_resource_id is null then a.expires_at else e.expires_at end expires_at,a.is_global,array[p.content_type] display_mode
+ from candidates c join public.sponsored_ads a on a.id=c.id left join public.visibility_entitlements e on e.resource_id=a.id
+ where a.commercial_resource_id is null or private.advertising_eligible(a.id,p.code,p_context)
+ order by random() limit p.display_limit)x),'[]'::jsonb)
+Result  (cost=59.57..59.58 rows=1 width=32) (actual time=42.138..42.144 rows=1 loops=1)
+  Buffers: shared hit=213
+  InitPlan 1
+    ->  Aggregate  (cost=59.56..59.57 rows=1 width=32) (actual time=42.136..42.141 rows=1 loops=1)
+          Buffers: shared hit=213
+          ->  Subquery Scan on x  (cost=59.54..59.55 rows=1 width=200) (actual time=42.101..42.107 rows=1 loops=1)
+                Buffers: shared hit=213
+                ->  Limit  (cost=59.54..59.54 rows=1 width=224) (actual time=42.093..42.099 rows=1 loops=1)
+                      Buffers: shared hit=213
+                      ->  Sort  (cost=59.54..59.54 rows=2 width=224) (actual time=42.091..42.096 rows=1 loops=1)
+                            Sort Key: (random())
+                            Sort Method: top-N heapsort  Memory: 25kB
+                            Buffers: shared hit=213
+                            ->  Nested Loop Left Join  (cost=10.79..59.53 rows=2 width=224) (actual time=16.744..42.055 rows=5 loops=1)
+                                  Buffers: shared hit=213
+                                  ->  Nested Loop  (cost=10.51..57.05 rows=2 width=200) (actual time=16.723..41.950 rows=5 loops=1)
+                                        Buffers: shared hit=198
+                                        ->  Append  (cost=10.24..39.95 rows=2 width=16) (actual time=0.057..0.087 rows=5 loops=1)
+                                              Buffers: shared hit=18
+                                              ->  Unique  (cost=10.24..10.25 rows=1 width=16) (actual time=0.056..0.068 rows=5 loops=1)
+                                                    Buffers: shared hit=16
+                                                    ->  Sort  (cost=10.24..10.24 rows=1 width=16) (actual time=0.056..0.062 rows=5 loops=1)
+                                                          Sort Key: o.resource_id
+                                                          Sort Method: quicksort  Memory: 25kB
+                                                          Buffers: shared hit=16
+                                                          ->  Result  (cost=0.27..10.23 rows=1 width=16) (actual time=0.025..0.052 rows=5 loops=1)
+                                                                One-Time Filter: $7
+                                                                Buffers: shared hit=16
+                                                                ->  Nested Loop  (cost=0.27..10.23 rows=1 width=16) (actual time=0.025..0.050 rows=5 loops=1)
+                                                                      Buffers: shared hit=16
+                                                                      ->  Seq Scan on advertising_reservations r  (cost=0.00..1.93 rows=1 width=16) (actual time=0.012..0.017 rows=5 loops=1)
+                                                                            Filter: ((placement_code = $8) AND (context_id = COALESCE($2, '00000000-0000-0000-0000-000000000000'::uuid)) AND (starts_at <= statement_timestamp()) AND (expires_at > statement_timestamp()))
+                                                                            Rows Removed by Filter: 32
+                                                                            Buffers: shared hit=1
+                                                                      ->  Index Scan using commercial_orders_id_resource_id_key on commercial_orders o  (cost=0.27..8.29 rows=1 width=32) (actual time=0.006..0.006 rows=1 loops=5)
+                                                                            Index Cond: (id = r.order_id)
+                                                                            Filter: (status = 'fulfilled'::text)
+                                                                            Buffers: shared hit=15
+                                              ->  Bitmap Heap Scan on sponsored_ads a_1  (cost=8.40..29.70 rows=1 width=16) (actual time=0.012..0.013 rows=0 loops=1)
+                                                    Recheck Cond: (((expires_at IS NULL) AND (commercial_resource_id IS NULL)) OR ((expires_at > statement_timestamp()) AND (commercial_resource_id IS NULL)))
+                                                    Filter: (($5 = ANY (display_mode)) AND ((expires_at IS NULL) OR (expires_at > statement_timestamp())) AND ((($6 = 'home'::text) AND is_global) OR (($6 = 'community'::text) AND ($2 = ANY (community_ids)))))
+                                                    Buffers: shared hit=2
+                                                    ->  BitmapOr  (cost=8.40..8.40 rows=12 width=0) (actual time=0.007..0.008 rows=0 loops=1)
+                                                          Buffers: shared hit=2
+                                                          ->  Bitmap Index Scan on advertising_legacy_expiry_idx  (cost=0.00..4.24 rows=12 width=0) (actual time=0.004..0.004 rows=0 loops=1)
+                                                                Index Cond: (expires_at IS NULL)
+                                                                Buffers: shared hit=1
+                                                          ->  Bitmap Index Scan on advertising_legacy_expiry_idx  (cost=0.00..4.16 rows=1 width=0) (actual time=0.002..0.003 rows=0 loops=1)
+                                                                Index Cond: (expires_at > statement_timestamp())
+                                                                Buffers: shared hit=1
+                                        ->  Index Scan using sponsored_ads_pkey on sponsored_ads a  (cost=0.28..8.54 rows=1 width=200) (actual time=8.369..8.369 rows=1 loops=5)
+                                              Index Cond: (id = o.resource_id)
+                                              Filter: ((commercial_resource_id IS NULL) OR private.advertising_eligible(id, $8, $2))
+                                              Buffers: shared hit=180
+                                  ->  Index Scan using visibility_entitlements_resource_id_key on visibility_entitlements e  (cost=0.28..1.24 rows=1 width=24) (actual time=0.009..0.009 rows=1 loops=5)
+                                        Index Cond: (resource_id = a.id)
+                                        Buffers: shared hit=15
+NOTICE:  duration: 50.232 ms  plan:
+Query Text: select public.select_advertising('home_banner',null);
+Result  (cost=0.00..0.26 rows=1 width=32) (actual time=50.219..50.220 rows=1 loops=1)
+  Buffers: shared hit=244

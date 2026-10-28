@@ -1,0 +1,86 @@
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 6
+UPDATE 1
+74000000-0000-0000-0000-000000000001
+reminderactive
+SELECT 1
+
+74000000-0000-0000-0000-000000000001
+ok 1 - comprador não pode enfileirar seu próprio lembrete
+ok 2 - comprador não pode ver a pré-visualização
+74000000-0000-0000-0000-000000000003
+ok 3 - preview resolve o username
+ok 4 - preview mascara o email, nunca devolve o real
+ok 5 - preview nunca contém o e-mail real
+ok 6 - preview indica que o envio é permitido
+ok 7 - compra pendente de conta ativa pode ser enfileirada
+ok 8 - uma linha enfileirada
+ok 9 - linha começa pending (worker assíncrono ainda não rodou)
+ok 10 - admin que pediu o lembrete é registrado
+ok 11 - segunda tentativa dentro do cooldown é bloqueada
+ok 12 - motivo do bloqueio é cooldown
+ok 13 - nenhuma segunda linha foi criada (idempotente)
+ok 14 - preview reflete o cooldown
+SELECT 1
+
+{"id": "c00e0e4c-9a23-4f76-8db6-7c3e64e99267", "queued": true}
+{"queued": false, "reason": "cooldown", "cooldownUntil": "2026-10-28T19:25:02.967364+00:00"}
+ok 15 - duplo clique nunca gera dois lembretes para a mesma compra
+SELECT 1
+
+{"status": "credited", "credited": true}
+ok 16 - compra creditada nunca recebe lembrete
+SELECT 1
+
+{"id": "13bfc4ec-1847-432a-b4fe-106e18e75aba", "replay": false, "status": "cancelled"}
+ok 17 - compra cancelada nunca recebe lembrete
+SELECT 1
+
+UPDATE 1
+ok 18 - conta desativada nunca recebe lembrete por e-mail
+ok 19 - preview também recusa conta desativada
+ok 20 - motivo é account_not_active
+SELECT 2
+ok 21 - worker reclama os 2 lembretes pendentes (_rm_active e _rm_concurrent)
+ok 22 - claim resolve o e-mail real só para o worker (service_role)
+ok 23 - linhas ficam pending (locked) enquanto o worker processa
+ok 24 - linhas reclamadas ficam travadas para outro worker não pegar
+
+ok 25 - finish marca as duas linhas como enviadas
+ok 26 - sent_at gravado e o lock liberado em todas
+ok 27 - depois de enviado, nada mais fica pendente para outro worker
+INSERT 0 2
+SELECT 1
+
+74000000-0000-0000-0000-000000000003
+ok 28 - lembrete enfileirado enquanto a compra ainda estava pendente
+{"status": "credited", "credited": true}
+ok 29 - compra paga entre o clique e o envio NUNCA é devolvida ao worker (nenhum e-mail é enviado)
+ok 30 - o item é marcado cancelled em vez de ficar pronto para envio
+ok 31 - o motivo do cancelamento é registrado
+SELECT 1
+
+ok 32 - lembrete enfileirado enquanto a conta ainda estava ativa
+UPDATE 1
+ok 33 - conta desativada entre o clique e o envio NUNCA é devolvida ao worker
+ok 34 - o item é marcado cancelled em vez de ficar pronto para envio
+ok 35 - o motivo do cancelamento é registrado
+INSERT 0 1
+SELECT 1
+
+{"id": "c61d1d4a-ca6a-4bd7-819b-55d2cc795c8c", "queued": true}
+SELECT 1
+ok 36 - worker-crashed reclama o item
+ok 37 - primeira tentativa registrada
+ok 38 - item travado pelo worker-crashed
+ok 39 - lock fresco (< 5 min) nunca é reclamado por outro worker
+UPDATE 1
+SELECT 1
+ok 40 - lock expirado (> 5 min) É reclamado pelo próximo worker
+ok 41 - segunda tentativa registrada após o reclaim
+ok 42 - item agora travado pelo worker-recovered
+1..42
+ROLLBACK

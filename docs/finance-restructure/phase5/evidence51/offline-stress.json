@@ -1,0 +1,114 @@
+{
+  "passed": true,
+  "barrierBased": true,
+  "runs": [
+    {
+      "run": 1,
+      "passed": true,
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    {
+      "run": 2,
+      "passed": true,
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    {
+      "run": 3,
+      "passed": true,
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    {
+      "run": 4,
+      "passed": true,
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    {
+      "run": 5,
+      "passed": true,
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    {
+      "run": 6,
+      "passed": true,
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    {
+      "run": 7,
+      "passed": true,
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    {
+      "run": 8,
+      "passed": true,
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    {
+      "run": 9,
+      "passed": true,
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    {
+      "run": 10,
+      "passed": true,
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    {
+      "run": 11,
+      "passed": true,
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    },
+    {
+      "run": 12,
+      "passed": true,
+      "summary": [
+        "ℹ tests 3",
+        "ℹ pass 3",
+        "ℹ fail 0"
+      ]
+    }
+  ]
+}

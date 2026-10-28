@@ -27,7 +27,7 @@ select ok(has_function_privilege('service_role', 'public.mark_infinitepay_checko
 -- Todas as funções do fluxo InfinitePay que só a Edge Function usa seguem fechadas para clientes.
 select is((select count(*)::int from pg_proc p
   where p.pronamespace = 'public'::regnamespace
-    and p.proname in ('reserve_infinitepay_cash_purchase', 'finish_infinitepay_checkout', 'release_infinitepay_checkout',
+    and p.proname in ('finish_infinitepay_checkout', 'release_infinitepay_checkout',
                       'fail_infinitepay_checkout', 'mark_infinitepay_checkout_uncertain', 'confirm_infinitepay_cash_purchase')
     and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute')
          or pg_temp.public_can_execute(p.oid::regprocedure))), 0,
@@ -72,7 +72,7 @@ reset role;
 -- ===== Contrato global (o mesmo de notification_security_test, aqui como rede de segurança desta migration) ======
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.prosecdef and p.prokind = 'f' and has_function_privilege('anon', p.oid, 'execute')
-    and p.proname not in ('list_published_professional_listings', 'is_superadmin', 'has_app_access', 'is_community_member', 'is_community_owner', 'can_post_in_community', 'community_access_allowed', 'push_delivery_ack', 'submit_commercial_lead', 'public_list_professionals', 'public_get_professional', 'public_professional_avatar_visible')),
+    and p.proname not in ('list_published_professional_listings', 'is_superadmin', 'has_app_access', 'is_community_member', 'is_community_owner', 'can_post_in_community', 'community_access_allowed', 'push_delivery_ack', 'submit_commercial_lead', 'public_list_professionals', 'public_get_professional', 'public_professional_avatar_visible','public_product_catalog','authorize_storefront_media','public_storefront_sitemap','public_listing_sitemap')),
   0, 'nenhuma função SECURITY DEFINER fora da lista pública é executável por anon');
 select is((select count(*)::int from pg_proc p where p.prosecdef and p.prokind = 'f' and p.pronamespace in ('public'::regnamespace, 'private'::regnamespace)
   and exists (select 1 from unnest(p.proconfig) c where c ~ '^search_path=' and c <> 'search_path=""' and c !~ 'pg_temp')),

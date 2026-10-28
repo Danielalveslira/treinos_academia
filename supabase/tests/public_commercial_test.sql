@@ -1,5 +1,6 @@
 begin;
 select no_plan();
+update private.commercial_resources set moderation_state='draft' where offering_code='product_storefront';
 
 -- The public form may write only through its validated RPC.
 set local role anon;
@@ -48,7 +49,7 @@ select throws_ok($$ select public.submit_commercial_lead(
   'P0001', 'rate limited', 'fourth submission is rate limited');
 reset role;
 
--- Approval and dates gate the public catalog independently of the admin UI.
+-- Unbound legacy products remain private in Phase 4, with their data preserved.
 -- Todo INSERT exige image_url (enforce_partner_product_image, migration
 -- 20261111000001_partner_products_require_image.sql) -- ver partner_products_require_image_test.sql
 -- pra a regra em si (incluindo o caso de um produto legado sem imagem).
@@ -60,21 +61,20 @@ values
   ('Produto vencido', 'Marca C', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/c', 'https://example.com/c.jpg', true, now() - interval '2 days', now() - interval '1 day'),
   ('Produto futuro', 'Marca D', 'Descrição verificável do produto', 'Acessórios', 'https://example.com/d', 'https://example.com/d.jpg', true, now() + interval '1 day', now() + interval '2 days');
 set local role anon;
-select is((select count(*)::int from public.partner_products where name like 'Produto %'), 1,
-  'anonymous visitors see only approved and current products');
-select is((public.public_product_catalog('groups')->>'totalProducts')::int, 1,
-  'group count excludes draft and expired products');
-select is((public.public_product_catalog('groups')->>'totalBrands')::int, 1,
-  'group count includes only a published brand');
+select throws_ok($$select * from public.partner_products$$,'42501',null,'legacy table cannot bypass storefront contracts');
+select is((public.public_product_catalog('groups')->>'totalProducts')::int, 0,
+  'legacy approvals do not grant storefront rights');
+select is((public.public_product_catalog('groups')->>'totalBrands')::int, 0,
+  'unbound legacy brands remain private');
 select is((public.public_product_catalog('items', 'rascunho')->>'totalProducts')::int, 0,
   'search cannot reveal a draft');
 select is((public.public_product_catalog('items', 'vencido')->>'totalProducts')::int, 0,
   'search cannot reveal an expired product');
 select is((public.public_product_catalog('items', 'futuro')->>'totalProducts')::int, 0,
   'search cannot reveal a product before its start date');
-select is((public.public_product_catalog('items', '', 'Acessórios', 'marca a')->>'totalProducts')::int, 1,
-  'brand and category filters combine under anon');
-select is(jsonb_array_length(public.public_product_catalog('categories')), 1,
+select is((public.public_product_catalog('items', '', 'Acessórios', 'marca a')->>'totalProducts')::int, 0,
+  'filters cannot reveal unbound legacy products');
+select is(jsonb_array_length(public.public_product_catalog('categories')), 0,
   'category facets use only published products');
 select throws_ok($$ insert into public.partner_products
   (name, brand, description, category, store_url, approved)

@@ -1,0 +1,16 @@
+BEGIN
+     kind     | lifecycle_state | records | verified_owner | missing_draft | draft_identity_mismatch | snapshot_kind_mismatch | historical_personal_image_reference | protected_commercial_image | with_commercial_history | approved_anchor 
+--------------+-----------------+---------+----------------+---------------+-------------------------+------------------------+-------------------------------------+----------------------------+-------------------------+-----------------
+ professional | draft           |       2 |              2 |             0 |                       0 |                      0 |                                   0 |                          0 |                       0 |               0
+ professional | published       |       4 |              4 |             0 |                       0 |                      0 |                                   0 |                          4 |                       4 |               4
+ professional | suspended       |       2 |              2 |             0 |                       0 |                      0 |                                   0 |                          0 |                       2 |               0
+ space        | published       |       3 |              3 |             0 |                       0 |                      0 |                                   0 |                          3 |                       3 |               3
+ space        | suspended       |       2 |              2 |             0 |                       0 |                      0 |                                   0 |                          0 |                       2 |               0
+(5 rows)
+
+ detached_anchors_preserved_for_financial_history 
+--------------------------------------------------
+                                                0
+(1 row)
+
+ROLLBACK

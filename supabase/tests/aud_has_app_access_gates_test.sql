@@ -5,6 +5,8 @@
 -- linha) continua liberado mesmo bloqueado. Também valida P20 (search_path de cast_vote e
 -- create_promotion) via os dois testes de invariante já existentes.
 begin;
+insert into public.professional_listing_limits(kind,max_per_owner)values('professional',10),('space',10) on conflict(kind)do update set max_per_owner=10;
+
 select no_plan();
 
 -- ===== Fixture: 7 contas em cada estado relevante, 1 comunidade compartilhada (C1) =====
@@ -143,17 +145,17 @@ reset role;
 update public.users set usage_profile='professional' where id::text like '9a000000%';
 set local role authenticated;
 select pg_temp.as_user('1');
-select lives_ok($$select public.create_professional_listing('professional')$$, 'create_professional_listing: ativa permitida');
+select lives_ok($$select public.create_professional_listing('professional',gen_random_uuid())$$, 'create_professional_listing: ativa permitida');
 select pg_temp.as_user('2');
-select throws_ok($$select public.create_professional_listing('professional')$$, 'PERMISSION_DENIED', 'create_professional_listing: disabled negada');
+select throws_ok($$select public.create_professional_listing('professional',gen_random_uuid())$$, 'APP_ACCESS_DENIED', 'create_professional_listing: disabled negada');
 select pg_temp.as_user('3');
-select throws_ok($$select public.create_professional_listing('professional')$$, 'PERMISSION_DENIED', 'create_professional_listing: deleting negada');
+select throws_ok($$select public.create_professional_listing('professional',gen_random_uuid())$$, 'APP_ACCESS_DENIED', 'create_professional_listing: deleting negada');
 select pg_temp.as_user('4');
-select throws_ok($$select public.create_professional_listing('professional')$$, 'PERMISSION_DENIED', 'create_professional_listing: suspensao negada');
+select throws_ok($$select public.create_professional_listing('professional',gen_random_uuid())$$, 'APP_ACCESS_DENIED', 'create_professional_listing: suspensao negada');
 select pg_temp.as_user('5');
-select throws_ok($$select public.create_professional_listing('professional')$$, 'PERMISSION_DENIED', 'create_professional_listing: banida negada');
+select throws_ok($$select public.create_professional_listing('professional',gen_random_uuid())$$, 'APP_ACCESS_DENIED', 'create_professional_listing: banida negada');
 select pg_temp.as_user('6');
-select lives_ok($$select public.create_professional_listing('professional')$$, 'create_professional_listing: superadmin permitida');
+select lives_ok($$select public.create_professional_listing('professional',gen_random_uuid())$$, 'create_professional_listing: superadmin permitida');
 reset role;
 
 -- ===== 6) save_professional_listing_draft (usa a listing recem-criada de cada um) =====
@@ -164,37 +166,37 @@ grant all on listing_of to public;
 set local role authenticated;
 select pg_temp.as_user('1');
 select lives_ok($$select public.save_professional_listing_draft((select id from listing_of where n='1'),
-  '{"kind":"professional","displayName":"Gate Teste","categoryKey":"personal_trainer","modalityKeys":["musculacao"],"bio":"bio valida aqui com conteudo suficiente","city":"Sao Paulo","uf":"SP","serviceMode":"online"}'::jsonb)$$,
+  '{"kind":"professional","displayName":"Gate Teste","categoryKey":"personal_trainer","modalityKeys":["musculacao"],"bio":"bio valida aqui com conteudo suficiente","city":"Sao Paulo","uf":"SP","serviceMode":"online"}'::jsonb,0)$$,
   'save_professional_listing_draft: ativa permitida');
 select pg_temp.as_user('2');
-select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb)$$, 'PERMISSION_DENIED', 'save_professional_listing_draft: disabled negada (antes de chegar a LISTING_NOT_FOUND)');
+select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb,0)$$, 'APP_ACCESS_DENIED', 'save_professional_listing_draft: disabled negada (antes de chegar a LISTING_NOT_FOUND)');
 select pg_temp.as_user('3');
-select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb)$$, 'PERMISSION_DENIED', 'save_professional_listing_draft: deleting negada');
+select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb,0)$$, 'APP_ACCESS_DENIED', 'save_professional_listing_draft: deleting negada');
 select pg_temp.as_user('4');
-select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb)$$, 'PERMISSION_DENIED', 'save_professional_listing_draft: suspensao negada');
+select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb,0)$$, 'APP_ACCESS_DENIED', 'save_professional_listing_draft: suspensao negada');
 select pg_temp.as_user('5');
-select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb)$$, 'PERMISSION_DENIED', 'save_professional_listing_draft: banida negada');
+select throws_ok($$select public.save_professional_listing_draft(gen_random_uuid(), '{}'::jsonb,0)$$, 'APP_ACCESS_DENIED', 'save_professional_listing_draft: banida negada');
 select pg_temp.as_user('6');
 select lives_ok($$select public.save_professional_listing_draft((select id from listing_of where n='6'),
-  '{"kind":"professional","displayName":"Gate Super","categoryKey":"coach","modalityKeys":["yoga"],"bio":"bio valida aqui com conteudo suficiente","city":"Rio","uf":"RJ","serviceMode":"online"}'::jsonb)$$,
+  '{"kind":"professional","displayName":"Gate Super","categoryKey":"coach","modalityKeys":["yoga"],"bio":"bio valida aqui com conteudo suficiente","city":"Rio","uf":"RJ","serviceMode":"online"}'::jsonb,0)$$,
   'save_professional_listing_draft: superadmin permitida');
 reset role;
 
 -- ===== 7) prepare_professional_listing_publish =====
 set local role authenticated;
 select pg_temp.as_user('1');
-select lives_ok($$select public.prepare_professional_listing_publish((select id from listing_of where n='1'), 'gate-op-1')$$,
+select throws_ok($$select public.prepare_professional_listing_publish((select id from listing_of where n='1'), 'gate-op-1')$$, 'EDITORIAL_REVIEW_REQUIRED',
   'prepare_professional_listing_publish: ativa permitida');
 select pg_temp.as_user('2');
-select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-2')$$, 'PERMISSION_DENIED', 'prepare_professional_listing_publish: disabled negada');
+select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-2')$$, 'APP_ACCESS_DENIED', 'prepare_professional_listing_publish: disabled negada');
 select pg_temp.as_user('3');
-select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-3')$$, 'PERMISSION_DENIED', 'prepare_professional_listing_publish: deleting negada');
+select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-3')$$, 'APP_ACCESS_DENIED', 'prepare_professional_listing_publish: deleting negada');
 select pg_temp.as_user('4');
-select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-4')$$, 'PERMISSION_DENIED', 'prepare_professional_listing_publish: suspensao negada');
+select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-4')$$, 'APP_ACCESS_DENIED', 'prepare_professional_listing_publish: suspensao negada');
 select pg_temp.as_user('5');
-select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-5')$$, 'PERMISSION_DENIED', 'prepare_professional_listing_publish: banida negada');
+select throws_ok($$select public.prepare_professional_listing_publish(gen_random_uuid(), 'gate-op-5')$$, 'APP_ACCESS_DENIED', 'prepare_professional_listing_publish: banida negada');
 select pg_temp.as_user('6');
-select lives_ok($$select public.prepare_professional_listing_publish((select id from listing_of where n='6'), 'gate-op-6')$$,
+select throws_ok($$select public.prepare_professional_listing_publish((select id from listing_of where n='6'), 'gate-op-6')$$, 'EDITORIAL_REVIEW_REQUIRED',
   'prepare_professional_listing_publish: superadmin permitida');
 reset role;
 
@@ -318,17 +320,17 @@ reset role;
 update public.community_creation_products set evocash_price = 50 where tier='essential';
 set local role authenticated;
 select pg_temp.as_user('1');
-select lives_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000021','post_boost_3d','gate-promo-1')$$, 'create_promotion: ativa permitida');
+select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000021','post_boost_3d','gate-promo-1')$$, 'USE_COMMERCIAL_PROMOTION', 'create_promotion: active account must use the commercial engine');
 select pg_temp.as_user('2');
-select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000022','post_boost_3d','gate-promo-2')$$, 'ACCOUNT_DISABLED', 'create_promotion: disabled negada com codigo distinto (F1.2 -- PromoteDialog.jsx:89)');
+select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000022','post_boost_3d','gate-promo-2')$$, '42501', 'APP_ACCESS_DENIED', 'create_promotion: restricted account denied before legacy replay');
 select pg_temp.as_user('3');
-select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000023','post_boost_3d','gate-promo-3')$$, 'ACCOUNT_DELETING', 'create_promotion: deleting negada com codigo distinto (F1.2)');
+select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000023','post_boost_3d','gate-promo-3')$$, '42501', 'APP_ACCESS_DENIED', 'create_promotion: restricted account denied before legacy replay');
 select pg_temp.as_user('4');
-select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000024','post_boost_3d','gate-promo-4')$$, 'ACCOUNT_RESTRICTED', 'create_promotion: suspensao negada com codigo distinto (F1.2 -- PromoteDialog.jsx:90)');
+select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000024','post_boost_3d','gate-promo-4')$$, '42501', 'APP_ACCESS_DENIED', 'create_promotion: restricted account denied before legacy replay');
 select pg_temp.as_user('5');
-select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000025','post_boost_3d','gate-promo-5')$$, 'ACCOUNT_RESTRICTED', 'create_promotion: banida negada com codigo distinto (F1.2)');
+select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000025','post_boost_3d','gate-promo-5')$$, '42501', 'APP_ACCESS_DENIED', 'create_promotion: restricted account denied before legacy replay');
 select pg_temp.as_user('6');
-select lives_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000026','post_boost_3d','gate-promo-6')$$, 'create_promotion: superadmin permitida (comportamento existente -- has_app_access() nao faz excecao especial para superadmin alem do que a propria funcao ja concede)');
+select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-0000-000000000026','post_boost_3d','gate-promo-6')$$, 'USE_COMMERCIAL_PROMOTION', 'create_promotion: active account must use the commercial engine');
 reset role;
 
 -- ===== 14) sponsored_ads_select (leitura; braco global e braco de comunidade) =====
@@ -337,17 +339,17 @@ insert into public.sponsored_ads(id,created_by,partner_name,title,is_global,comm
   ('9d000000-0000-0000-0000-000000000002','9a000000-0000-0000-0000-000000000006','Parceiro Gate','Anuncio C1',false,array['9b000000-0000-0000-0000-000000000001']::uuid[],array['feed']);
 set local role authenticated;
 select pg_temp.as_user('1');
-select is((select count(*)::int from public.sponsored_ads), 2, 'sponsored_ads_select: ativa ve os 2 anuncios (global + da propria comunidade)');
+select is((select count(*)::int from public.sponsored_ads where id in('9d000000-0000-0000-0000-000000000001','9d000000-0000-0000-0000-000000000002')), 2, 'sponsored_ads_select: ativa ve os 2 anuncios (global + da propria comunidade)');
 select pg_temp.as_user('2');
-select is((select count(*)::int from public.sponsored_ads), 0, 'sponsored_ads_select: disabled nao ve nenhum anuncio (sem erro -- so 0 linhas)');
+select is((select count(*)::int from public.sponsored_ads where id in('9d000000-0000-0000-0000-000000000001','9d000000-0000-0000-0000-000000000002')), 0, 'sponsored_ads_select: disabled nao ve nenhum anuncio (sem erro -- so 0 linhas)');
 select pg_temp.as_user('3');
-select is((select count(*)::int from public.sponsored_ads), 0, 'sponsored_ads_select: deleting nao ve nenhum anuncio');
+select is((select count(*)::int from public.sponsored_ads where id in('9d000000-0000-0000-0000-000000000001','9d000000-0000-0000-0000-000000000002')), 0, 'sponsored_ads_select: deleting nao ve nenhum anuncio');
 select pg_temp.as_user('4');
-select is((select count(*)::int from public.sponsored_ads), 0, 'sponsored_ads_select: suspensao nao ve nenhum anuncio');
+select is((select count(*)::int from public.sponsored_ads where id in('9d000000-0000-0000-0000-000000000001','9d000000-0000-0000-0000-000000000002')), 0, 'sponsored_ads_select: suspensao nao ve nenhum anuncio');
 select pg_temp.as_user('5');
-select is((select count(*)::int from public.sponsored_ads), 0, 'sponsored_ads_select: banida nao ve nenhum anuncio');
+select is((select count(*)::int from public.sponsored_ads where id in('9d000000-0000-0000-0000-000000000001','9d000000-0000-0000-0000-000000000002')), 0, 'sponsored_ads_select: banida nao ve nenhum anuncio');
 select pg_temp.as_user('6');
-select is((select count(*)::int from public.sponsored_ads), 2, 'sponsored_ads_select: superadmin ve todos (comportamento existente)');
+select is((select count(*)::int from public.sponsored_ads where id in('9d000000-0000-0000-0000-000000000001','9d000000-0000-0000-0000-000000000002')), 2, 'sponsored_ads_select: superadmin ve todos (comportamento existente)');
 reset role;
 
 -- ===== 15) Mínimo preservado pela decisão: notices, support_requests, leitura da própria linha =====

@@ -1,0 +1,17 @@
+{
+  "localOnly": true,
+  "container": "evolutus_price_phase1_db",
+  "offering": "synthetic_a0fb2faaac9a42e4a7201e153236bb24",
+  "lastSlotRace": true,
+  "sixReplays": true,
+  "simultaneousRenewals": true,
+  "capacityReduction": true,
+  "globalAtomicity": true,
+  "editorialRevisionGuard": true,
+  "sameBalanceRace": true,
+  "globalLastSlotRace": true,
+  "suspensionDuringPayment": true,
+  "capacityDuringReservation": true,
+  "priceDuringQuote": true,
+  "isolatedDebitCount": 0
+}

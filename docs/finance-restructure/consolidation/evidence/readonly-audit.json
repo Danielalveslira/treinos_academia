@@ -1,0 +1,2357 @@
+{
+  "localOnly": true,
+  "capturedAt": "2026-10-28T18:17:20.461Z",
+  "integrity": {
+    "negative_wallet": 0,
+    "duplicate_natural_keys": 0,
+    "duplicate_order_debits": 0,
+    "wallet_ledger_mismatch": 0,
+    "fulfilled_without_debit": 0,
+    "reversed_without_refund": 0,
+    "orphan_commercial_ledger": 0,
+    "metrics_collection_enabled": false,
+    "wallet_update_service_role": false,
+    "credit_helper_authenticated": false,
+    "wallet_update_authenticated": false,
+    "credited_purchase_without_ledger": 0,
+    "entitlement_without_fulfilled_order": 0
+  },
+  "schema": {
+    "registered_versions": [
+      "20260926000001",
+      "20260926000002",
+      "20260926000003",
+      "20260926000004",
+      "20260926000005",
+      "20260926000006",
+      "20260926000007",
+      "20260926000008",
+      "20260926000009",
+      "20260926000010",
+      "20260926000011",
+      "20260926000012",
+      "20260926000013",
+      "20260926000014",
+      "20260926000015",
+      "20260926000016",
+      "20260926000017",
+      "20260926000018",
+      "20260926000019",
+      "20260926000020",
+      "20260926000021",
+      "20260926000022",
+      "20260926000023",
+      "20260926000024",
+      "20260926000025",
+      "20260926000026",
+      "20260926000027",
+      "20260926000028",
+      "20260926000029",
+      "20260926000030",
+      "20260926000031",
+      "20260926000032",
+      "20260926000033",
+      "20260926000034",
+      "20260926000035",
+      "20260927000001",
+      "20260927000002",
+      "20260927000003",
+      "20260927000004",
+      "20260927000005",
+      "20260928000001",
+      "20260928000002",
+      "20260929000001",
+      "20260929000002",
+      "20260929000003",
+      "20260929000004",
+      "20260929000005",
+      "20260929000006",
+      "20260929000007",
+      "20260930000001",
+      "20260930000002",
+      "20260930000003",
+      "20260930000004",
+      "20261001000001",
+      "20261001000002",
+      "20261001000003",
+      "20261002000001",
+      "20261002000002",
+      "20261002000003",
+      "20261002000004",
+      "20261002000005",
+      "20261002000006",
+      "20261002000007",
+      "20261002000008",
+      "20261002000009",
+      "20261003000001",
+      "20261004000001",
+      "20261004000002",
+      "20261005000001",
+      "20261005000002",
+      "20261005000003",
+      "20261006000001",
+      "20261006000002",
+      "20261006000003",
+      "20261007000001",
+      "20261007000002",
+      "20261007000003",
+      "20261008000001",
+      "20261008000002",
+      "20261008000003",
+      "20261008000004",
+      "20261009000001",
+      "20261009000002",
+      "20261009000003",
+      "20261009000004",
+      "20261009000005",
+      "20261009000006",
+      "20261009000007",
+      "20261010000001",
+      "20261011000001",
+      "20261012000000",
+      "20261012000001",
+      "20261012000002",
+      "20261012000003",
+      "20261012000004",
+      "20261013000001",
+      "20261014000001",
+      "20261014000002",
+      "20261014000003",
+      "20261014000004",
+      "20261014000005",
+      "20261014000006",
+      "20261014000007",
+      "20261015000001",
+      "20261015000002",
+      "20261015000003",
+      "20261015000004",
+      "20261015000005",
+      "20261016000001",
+      "20261016000002",
+      "20261016000003",
+      "20261017000001",
+      "20261017000002",
+      "20261017000003",
+      "20261018000001",
+      "20261018000002",
+      "20261019000001",
+      "20261020000001",
+      "20261021000001",
+      "20261022000001",
+      "20261022000002",
+      "20261023000001",
+      "20261024000001",
+      "20261026000005",
+      "20261026000006",
+      "20261027000001",
+      "20261028000001",
+      "20261028000002",
+      "20261028000003",
+      "20261029000001",
+      "20261030000001",
+      "20261031000001",
+      "20261101000001",
+      "20261102000001",
+      "20261102000002",
+      "20261103000001",
+      "20261104000001",
+      "20261105000001",
+      "20261105000002",
+      "20261105000003",
+      "20261105000004",
+      "20261106000001",
+      "20261107000001",
+      "20261108000001",
+      "20261108000002",
+      "20261109000001",
+      "20261110000001",
+      "20261111000001",
+      "20261112000001",
+      "20261112000002",
+      "20261112000003",
+      "20261112000004",
+      "20261112000005",
+      "20261112000006",
+      "20261113000001",
+      "20261113000002",
+      "20261113000003",
+      "20261114000001",
+      "20261114000002",
+      "20261114000003",
+      "20261115000001",
+      "20261115000002",
+      "20261116000001",
+      "20261117000001",
+      "20261118000001",
+      "20261119000001",
+      "20261120000001",
+      "20261121000001",
+      "20261122000001",
+      "20261123000001",
+      "20261124000001",
+      "20261125000001",
+      "20261125000002",
+      "20261126000001",
+      "20261126000002",
+      "20261127000001",
+      "20261128000001",
+      "20261129000001",
+      "20261130000001",
+      "20261201000001",
+      "20261202000001",
+      "20261202000002",
+      "20261203000001",
+      "20261204000001",
+      "20261204000002",
+      "20261205000001",
+      "20261205000002",
+      "20261205000003",
+      "20261205000004",
+      "20261205000005",
+      "20261205000006",
+      "20261205000007",
+      "20261205000008",
+      "20261205000009",
+      "20261205000010",
+      "20261205000011",
+      "20261205000012",
+      "20261205000013",
+      "20261205000014",
+      "20261205000015",
+      "20261205000016",
+      "20261205000017",
+      "20261205000018",
+      "20261206000001"
+    ],
+    "phase6_objects_exist": true,
+    "domain_tables_without_rls": [],
+    "duplicate_index_definitions": [],
+    "definers_without_fixed_search_path": [],
+    "private_functions_executable_by_authenticated": [
+      "private.community_advertising_windows()",
+      "private.community_owner_limit_reached(uuid,uuid)",
+      "private.can_view_status(uuid,uuid)",
+      "private.exercise_visual_audit_log_immutable()",
+      "private.status_interaction_expiry(statuses)",
+      "private.poll_has_option(jsonb,text)",
+      "private.can_access_poll(uuid)",
+      "private.has_account_standing()",
+      "private._exercise_has_valid_published_visuals(uuid)",
+      "private.advertising_eligible(uuid,text,uuid)",
+      "private.status_promotion_until(statuses)"
+    ]
+  },
+  "migrations": [
+    {
+      "name": "20260926000001_extensions.sql",
+      "sha256": "6a8fd2ab53a3253eff4f5a5ece4fceb2468baafde95749bd4e8d9501a607ecb8",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260926000002_identity.sql",
+      "sha256": "ca8b22ff3ffe8f13259629a7c7dac9ee66b5c48be2e045df62845aaa4429e021",
+      "registered": true,
+      "functions": [
+        "public.handle_new_user"
+      ]
+    },
+    {
+      "name": "20260926000003_communities.sql",
+      "sha256": "fbcdbecebf77d01e23eb9008a263d4ae5a2bd79a72323b6a53fef74595c24931",
+      "registered": true,
+      "functions": [
+        "public.bump_member_count"
+      ]
+    },
+    {
+      "name": "20260926000004_workouts.sql",
+      "sha256": "0e21994923bb755a6f82005122fdc3e8812901c76f2792400d653ddc2b3a77b7",
+      "registered": true,
+      "functions": [
+        "public.valid_set_details"
+      ]
+    },
+    {
+      "name": "20260926000005_statuses.sql",
+      "sha256": "10138f3620749a0ea1351143a9e2aa3e2d8e1ca85b7105021b4f43c8ecc88bb1",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260926000006_moderation.sql",
+      "sha256": "6760520ec03cfef0ca22b41fa357f71a2611e2738e4fc8ffa9de6dbc3d5afb96",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260926000007_legal.sql",
+      "sha256": "7b45713e195c2c32315cc094581b20b04b86e61995da0a7400ff75eb78bc26f6",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260926000008_server_only.sql",
+      "sha256": "8dc65273468559fee47fcf8f367e8741811ea26c3a5b508fb2eced29b27221b5",
+      "registered": true,
+      "functions": [
+        "public.queue_deletion_on_delete"
+      ]
+    },
+    {
+      "name": "20260926000009_rls_functions.sql",
+      "sha256": "23a1b4e9c602e34eaf9e9c86ff4e06c220888f98005f622811f47e31938467bc",
+      "registered": true,
+      "functions": [
+        "public.is_superadmin",
+        "public.has_app_access",
+        "public.community_access_allowed",
+        "public.is_community_member"
+      ]
+    },
+    {
+      "name": "20260926000010_rls_policies.sql",
+      "sha256": "e9fb79e7a2134b5bf3043a4a47a0f01aaf7660e3943fb95cd504f1f7da6e7e13",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260926000011_profile_rpcs.sql",
+      "sha256": "db789fde32a1c08f93b0dc28c20b6a0c7f49437bb068ef9635165e846138c1d9",
+      "registered": true,
+      "functions": [
+        "public.ensure_user_profile",
+        "public.set_username",
+        "public.update_user_profile",
+        "public.set_birth_info"
+      ]
+    },
+    {
+      "name": "20260926000012_account_rollback.sql",
+      "sha256": "825fa3adcf8a9fb61cfc45a874ea9cae2935a7541f9396da79681de38ee5d1dc",
+      "registered": true,
+      "functions": [
+        "public.delete_own_account"
+      ]
+    },
+    {
+      "name": "20260926000013_realtime.sql",
+      "sha256": "41e2c3d0b9b2831db0959862b959ff6578af376a9f139e4af4c64cc91e325689",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260926000014_workout_stats_rpcs.sql",
+      "sha256": "eda1d00b19855aa485894d13d4d7b5de4e732ec1082f1eea059ea385b6ba13eb",
+      "registered": true,
+      "functions": [
+        "public.get_workout_statistics",
+        "public.refresh_public_statistics"
+      ]
+    },
+    {
+      "name": "20260926000015_queue_deletion.sql",
+      "sha256": "ea4c70b85c3627a6999f6cb0bbff1945650521263c0dda04ceab222cd5a78334",
+      "registered": true,
+      "functions": [
+        "public.queue_deletion",
+        "public.list_deletion_jobs"
+      ]
+    },
+    {
+      "name": "20260926000016_storage.sql",
+      "sha256": "17881bb4733f38eeb4c19f62bacef3e1c0c7cd01dba7c7913fc5735cb8601913",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260926000017_poll_results.sql",
+      "sha256": "ce44f2c0e5001804ff5a1c50f9099d2b2b6a885894af559c4a2c092fa3a4dba6",
+      "registered": true,
+      "functions": [
+        "public.get_poll_results"
+      ]
+    },
+    {
+      "name": "20260926000018_status_author_badge.sql",
+      "sha256": "b8e65a42b7e85a7435d20fc8e3d458200f64e071f896ac545cff57f8b9b9a86d",
+      "registered": true,
+      "functions": [
+        "public.enforce_status_author_badge"
+      ]
+    },
+    {
+      "name": "20260926000019_legal_support_admin_rpcs.sql",
+      "sha256": "fb4a77d8f0566a1cc55bf7159c035c12e4b4733987b6f5e978a38b9cf49d71e0",
+      "registered": true,
+      "functions": [
+        "public.accept_legal_documents",
+        "public.submit_support_request",
+        "public.cancel_support_request",
+        "public.decide_support_request",
+        "public.set_account_status",
+        "public.admin_list_accounts"
+      ]
+    },
+    {
+      "name": "20260926000020_support_requests_status_fk.sql",
+      "sha256": "d9a11d0e3dee58b886786c01cd0777177eefe5f0baa5c2007cbd870f5da59467",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260926000021_auth_uid_guards.sql",
+      "sha256": "f92d9af35d25416b17cf51074ad7628f917fbada532ef36d5eb26bef378d55e1",
+      "registered": true,
+      "functions": [
+        "public.ensure_user_profile",
+        "public.set_username",
+        "public.update_user_profile",
+        "public.set_birth_info"
+      ]
+    },
+    {
+      "name": "20260926000022_legal_acceptances_columns_fix.sql",
+      "sha256": "dfda64486f71af50d53fd7c8cb82a981610530e72da9f28fb74ef0923ed8ae30",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260926000023_users_new_fields.sql",
+      "sha256": "48483a424247d12da5b1c93269a4586dcb51c38332af85379a0a3088b5949b88",
+      "registered": true,
+      "functions": [
+        "public.email_verified_ok",
+        "public.has_app_access",
+        "public.set_usage_profile"
+      ]
+    },
+    {
+      "name": "20260926000024_update_user_profile_height.sql",
+      "sha256": "194bcf591c23011c1096b177e743c75c80d1b66f597a2d535dc5de8b324299ef",
+      "registered": true,
+      "functions": [
+        "public.update_user_profile"
+      ]
+    },
+    {
+      "name": "20260926000025_workouts_cardio_type.sql",
+      "sha256": "72da08df7f94dad476115e06dfb72875ad096245e5a7a21b0b8c0cf63737cdd1",
+      "registered": true,
+      "functions": [
+        "public.enforce_workout_immutable_fields"
+      ]
+    },
+    {
+      "name": "20260926000026_exercises_catalog_fields.sql",
+      "sha256": "382789a6163b8efd2db3e6b253610d254690e691ff787a92472a321a1aa6f28b",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260926000027_communities_owner.sql",
+      "sha256": "9c67ad17e6ffd0726ea48238f689b189db2fe51f6ae8863318502042aeb78f26",
+      "registered": true,
+      "functions": [
+        "public.is_community_owner",
+        "public.enforce_community_immutable_fields"
+      ]
+    },
+    {
+      "name": "20260926000028_community_member_ban.sql",
+      "sha256": "28e20cab2c86afc8388552c9de055ca5cf76ebca2fea21fbe0d3de20038f83f7",
+      "registered": true,
+      "functions": [
+        "public.set_community_member_ban",
+        "public.list_community_restrictions"
+      ]
+    },
+    {
+      "name": "20260926000029_statuses_owner_and_post_access.sql",
+      "sha256": "132b826ad5180624d55e536932a3d76b44353044cf2605d4ddc09a46f12458d7",
+      "registered": true,
+      "functions": [
+        "public.can_post_in_community"
+      ]
+    },
+    {
+      "name": "20260926000030_support_evidence_and_deletion_review.sql",
+      "sha256": "5b173f3c818170d4fa052146735b04938304830c4ae424a3c57ca32955023b41",
+      "registered": true,
+      "functions": [
+        "public.record_support_evidence",
+        "public.get_my_deletion_status"
+      ]
+    },
+    {
+      "name": "20260926000031_communities_icon.sql",
+      "sha256": "0eb43090d411dc9a71e6353b342224a9db6d150b17659901022e5c939bdee095",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260926000032_save_exercise_order.sql",
+      "sha256": "ccb3abdca3c61b981f7bb983d826c9ee61d7e45686b1124132e3557d7851b79e",
+      "registered": true,
+      "functions": [
+        "public.save_exercise_order"
+      ]
+    },
+    {
+      "name": "20260926000033_submit_support_request_evidence.sql",
+      "sha256": "4ba21da76f9fd7d92d8a28de958694c563feebea94226dc46b20afc80c3306bf",
+      "registered": true,
+      "functions": [
+        "public.submit_support_request"
+      ]
+    },
+    {
+      "name": "20260926000034_list_deletion_jobs_pending_only.sql",
+      "sha256": "b8db0b55b397f6835e0eab20c6b201bad3aef6a262f0248919483e2731788385",
+      "registered": true,
+      "functions": [
+        "public.list_deletion_jobs"
+      ]
+    },
+    {
+      "name": "20260926000035_wallet_stub.sql",
+      "sha256": "7d11179ea938413020c204ffc4911a9e3b5b90dfce0e2fa78e9f04826f22eafc",
+      "registered": true,
+      "functions": [
+        "public.get_my_wallet"
+      ]
+    },
+    {
+      "name": "20260927000001_economy_wallet_ledger_activity.sql",
+      "sha256": "eaedd867cd0c7e2fc8ec7e34d8e0871c8dcc81b896b14bc3a70578563af206fc",
+      "registered": true,
+      "functions": [
+        "public._wallet_ensure_row",
+        "public._wallet_credit_coins",
+        "public._wallet_debit_coins",
+        "public._wallet_credit_cash",
+        "public._wallet_debit_cash",
+        "public._ledger_already_recorded",
+        "public._ledger_record",
+        "public.register_qualified_activity"
+      ]
+    },
+    {
+      "name": "20260927000002_economy_voting_schema.sql",
+      "sha256": "1a21e50c772d966555aa3f8ab755c83c8f89e2bb7be4d1e087e006eb80eca723",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260927000003_economy_cast_vote.sql",
+      "sha256": "2a0f6d39c3cf02c8ab00e7058f88935cf4e64a22022afee5560408e6672dfadd",
+      "registered": true,
+      "functions": [
+        "public.cast_vote",
+        "public.list_post_economy_voters"
+      ]
+    },
+    {
+      "name": "20260927000004_economy_reward_settlement.sql",
+      "sha256": "4b27328d66af1a71cade6a0587d76a46b277e1cf2d7e4cfed6178b65025b65ac",
+      "registered": true,
+      "functions": [
+        "public.evaluate_author_eligibility",
+        "public.settle_vote_rewards"
+      ]
+    },
+    {
+      "name": "20260927000005_economy_privilege_create_community.sql",
+      "sha256": "0d73998a62b03f366571d18b0ad4d905d5026c445366bd580fa05de502a825e5",
+      "registered": true,
+      "functions": [
+        "public.create_community_with_cash"
+      ]
+    },
+    {
+      "name": "20260928000001_economy_cash_purchases_promotions.sql",
+      "sha256": "c5cebc6ff646937ccc838a0342aa22b4df238a2f80311ff1368aed6702d6870f",
+      "registered": true,
+      "functions": [
+        "public.request_cash_purchase",
+        "public.attach_mercadopago_payment",
+        "public.credit_cash_purchase_from_webhook",
+        "public.confirm_cash_purchase",
+        "public.cancel_cash_purchase",
+        "public._reactivate_deletion_if_clear",
+        "public.create_promotion",
+        "public.cancel_promotion",
+        "public.record_promotion_event",
+        "public.mark_promotions_target_removed"
+      ]
+    },
+    {
+      "name": "20260928000002_community_creation_requests_fk_cascade.sql",
+      "sha256": "4a43eff495b7511b7b4890e34d39818b262fa121b78741634f54f1534b36fcbe",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260929000001_admin_account_deletion_review.sql",
+      "sha256": "7dab06c18a8fd7ef3d327b3a853b0c8edafeb9534bfe4b701f47db6855bd23f2",
+      "registered": true,
+      "functions": [
+        "public.list_blocked_account_deletions",
+        "public.review_blocked_account_deletion"
+      ]
+    },
+    {
+      "name": "20260929000002_body_measurements.sql",
+      "sha256": "811f34b950604ce97819743729b3524099f8046d2417bd6635c58e93d6db1f6d",
+      "registered": true,
+      "functions": [
+        "public.save_body_check_in"
+      ]
+    },
+    {
+      "name": "20260929000003_progress_days.sql",
+      "sha256": "1f55cccb1f37124affe71afe41dc43613f07e21d9d4dc9ec7f0f8a4df2c475ca",
+      "registered": true,
+      "functions": [
+        "public.list_progress_days"
+      ]
+    },
+    {
+      "name": "20260929000004_profile_avatar.sql",
+      "sha256": "5921ddc7df785bcf19410491ded66119e47c4847a26bf4b40180b86c5c4dcce9",
+      "registered": true,
+      "functions": [
+        "public.allocate_profile_avatar",
+        "public.confirm_profile_avatar_internal",
+        "public.remove_profile_avatar"
+      ]
+    },
+    {
+      "name": "20260929000005_professional_listings.sql",
+      "sha256": "4e4dd76e04e96f0ab04794d89d9e9653f25164de821280f43556925e2e5eed2a",
+      "registered": true,
+      "functions": [
+        "public._normalize_search_value",
+        "public.create_professional_listing",
+        "public.save_professional_listing_draft",
+        "public.prepare_professional_listing_publish",
+        "public.finalize_professional_listing_publish",
+        "public.abort_professional_listing_publish",
+        "public.unpublish_professional_listing",
+        "public.suspend_professional_listing",
+        "public.delete_professional_listing",
+        "public._to_json_listing",
+        "public._to_json_draft",
+        "public._to_json_published",
+        "public.get_my_professional_listing",
+        "public.list_published_professional_listings"
+      ]
+    },
+    {
+      "name": "20260929000006_sponsored_ads.sql",
+      "sha256": "4254376cbfe6895dac8d087f058eae6aee01cf5b12357918a13b6c25e56a85ea",
+      "registered": true,
+      "functions": [
+        "public.enforce_sponsored_ad_immutable_fields",
+        "public.enforce_sponsored_ad_caps"
+      ]
+    },
+    {
+      "name": "20260929000007_exercise_provider_fields.sql",
+      "sha256": "1b19b7b5e401f849d4ea2989b5156d35b882eea7092d298af2dc48dc54174f03",
+      "registered": true,
+      "functions": [
+        "public.check_exercise_catalog_rate_limit"
+      ]
+    },
+    {
+      "name": "20260930000001_exercise_catalog.sql",
+      "sha256": "4b90b4cc198b40b7ab3cc47b9c1f5e02629561a7131be12047a7325be835e17a",
+      "registered": true,
+      "functions": [
+        "public._set_exercise_catalog_name_normalized",
+        "public.search_exercise_catalog"
+      ]
+    },
+    {
+      "name": "20260930000002_deletion_worker.sql",
+      "sha256": "e2ea15bce9b6a959232aedd0b75c570892a235218c99372bfd71be753b796108",
+      "registered": true,
+      "functions": [
+        "public.queue_deletion",
+        "public._compute_financial_block_reason",
+        "public._reactivate_deletion_if_clear",
+        "public.run_deletion_job",
+        "public.list_pending_deletion_jobs"
+      ]
+    },
+    {
+      "name": "20260930000003_server_side_validations.sql",
+      "sha256": "7bda4a0ae065f535e18c3ae0b97bcf5ed1e2bd4fb000c68bfac3e6e12f4500a5",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20260930000004_professional_listing_drafts_owner_cascade.sql",
+      "sha256": "05cdf511212e0affd9595e078a6b15b87300a6fec0b7f2a01e0e3e50152e49ad",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261001000001_training_preferences.sql",
+      "sha256": "196c39713657d1c4dfda5c5c417c308aa6b7c73fb3f6d9921143e657babad3cb",
+      "registered": true,
+      "functions": [
+        "public.set_training_preferences"
+      ]
+    },
+    {
+      "name": "20261001000002_showcase_terms_acknowledgement.sql",
+      "sha256": "6450b8bd6fad820e8230942890273c60b5e210acfe0f5066dc08972fced04baa",
+      "registered": true,
+      "functions": [
+        "public.acknowledge_showcase_terms",
+        "public.prepare_professional_listing_publish"
+      ]
+    },
+    {
+      "name": "20261001000003_professional_listing_avatar_publish.sql",
+      "sha256": "f5c93c906b0c6e6286af5a4e7605f5daf371200ae096e058417ba59d4c95449a",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261002000001_professional_listing_publish_recovery.sql",
+      "sha256": "1ffa9c745577e1ea189f77da726fa642ddbf70b42758ad39ef7f73dbec321091",
+      "registered": true,
+      "functions": [
+        "public._to_json_draft",
+        "public.prepare_professional_listing_publish",
+        "public.finalize_professional_listing_publish"
+      ]
+    },
+    {
+      "name": "20261002000002_admin_vitrines_denuncias.sql",
+      "sha256": "9fbe06e719c3106b2de1a2b9379e4e4dab0487be00e918ada49cc643adca4d87",
+      "registered": true,
+      "functions": [
+        "public.submit_support_request",
+        "public.decide_support_request",
+        "public.unpublish_professional_listing",
+        "public.admin_list_professional_listings",
+        "public.admin_get_professional_listing",
+        "public.admin_reactivate_professional_listing",
+        "public.admin_list_support_requests"
+      ]
+    },
+    {
+      "name": "20261002000003_comments_schema.sql",
+      "sha256": "763d377c42119b604c412ff84ac03b1f7e4ab300200d70f834e2ad116789edb8",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261002000004_comments_functions.sql",
+      "sha256": "5681d3af2cd34dbabcc2d7982e0f9022236bbd0a471ec4264cac4de374d3d72d",
+      "registered": true,
+      "functions": [
+        "private.can_view_status",
+        "private.can_moderate_status",
+        "private.comments_open",
+        "private.comment_create",
+        "public.comment_create",
+        "private.comment_edit",
+        "public.comment_edit",
+        "private.comment_delete",
+        "public.comment_delete",
+        "private.comment_set_like",
+        "public.comment_set_like",
+        "private.comment_report",
+        "public.comment_report",
+        "public.notifications_mark_read"
+      ]
+    },
+    {
+      "name": "20261002000005_comments_read_rls.sql",
+      "sha256": "8b579b6ba384ba66fcb517c988c0d7d5ac7d598e1d39372a3d906e11b70a09fb",
+      "registered": true,
+      "functions": [
+        "public.comment_context"
+      ]
+    },
+    {
+      "name": "20261002000006_comments_moderation.sql",
+      "sha256": "a436fb1b1d340bed30c20b975f51110d9b5a8468e2404eb353c5f4fde39326f9",
+      "registered": true,
+      "functions": [
+        "public.decide_support_request",
+        "public.admin_list_support_requests"
+      ]
+    },
+    {
+      "name": "20261002000007_comment_notifications_read.sql",
+      "sha256": "3380aaeebf291c9b7c416ca2f04af1b9ae3c3e2fc86e09444dc14c4b11d63f63",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261002000008_notification_types_admin.sql",
+      "sha256": "5c2539e3a80a2292efd227c36c560eb562ae28935f371c8e67222d28244da67f",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261002000009_notifications_center.sql",
+      "sha256": "186a040a75f43576bf3be928b94df022b417e7eaa2f4c9495496c9f3e33da615",
+      "registered": true,
+      "functions": [
+        "public.notifications_unread_count",
+        "public.notifications_archive",
+        "private.notify_superadmins",
+        "private.support_request_notification",
+        "private.tg_notify_support_request",
+        "private.tg_notify_moderation_decision",
+        "private.tg_notify_deletion_review"
+      ]
+    },
+    {
+      "name": "20261003000001_reapply_admin_vitrines_denuncias.sql",
+      "sha256": "ba8fe14f2b4d73c661e57eb9110c4e34194149cf404046c17d1493e3643fda0e",
+      "registered": true,
+      "functions": [
+        "public.submit_support_request",
+        "public.decide_support_request",
+        "public.unpublish_professional_listing",
+        "public.admin_list_professional_listings",
+        "public.admin_get_professional_listing",
+        "public.admin_reactivate_professional_listing",
+        "public.admin_list_support_requests"
+      ]
+    },
+    {
+      "name": "20261004000001_account_deletion_financial_case.sql",
+      "sha256": "09754e72cee3ac5fc0efe3b292fa5433fe0c4fd414ff910c7544e0a34a4e0256",
+      "registered": true,
+      "functions": [
+        "public._forbid_financial_case_delete",
+        "public._wallet_debit_cash",
+        "public._wallet_credit_cash",
+        "public._hold_purchase_in_case",
+        "public.credit_cash_purchase_from_webhook",
+        "public.confirm_cash_purchase",
+        "public.cancel_cash_purchase",
+        "public.queue_deletion",
+        "public.get_my_deletion_status",
+        "public.get_my_deletion_review",
+        "public.run_deletion_job",
+        "public.review_blocked_account_deletion",
+        "public.separate_financial_case_and_resume_deletion",
+        "public.cancel_account_deletion",
+        "public.resolve_account_financial_case",
+        "public.admin_list_account_deletions",
+        "public.admin_get_deletion_financial_history"
+      ]
+    },
+    {
+      "name": "20261004000002_deletion_hardening.sql",
+      "sha256": "89d77e17dac79e66f471362be1e4ce7b2a8e3c025c54d9c001de3002f94d08cd",
+      "registered": true,
+      "functions": [
+        "public.run_deletion_job",
+        "public.confirm_auth_deletion",
+        "public.record_deletion_job_error",
+        "public.list_pending_deletion_jobs",
+        "public.get_my_deletion_status",
+        "public.get_my_deletion_review",
+        "public.admin_list_account_deletions",
+        "public.admin_get_deletion_financial_history",
+        "public.resolve_account_financial_case"
+      ]
+    },
+    {
+      "name": "20261005000001_financial_case_retention.sql",
+      "sha256": "3088bd0d8249761511460e3c455d3b0a023fd2f0e7473ecbaed89fa98bd20a09",
+      "registered": true,
+      "functions": [
+        "public._backfill_financial_case_retention",
+        "public.resolve_account_financial_case",
+        "public.set_financial_case_retention_hold",
+        "public.admin_list_financial_cases_retention_due",
+        "public.admin_get_deletion_financial_history"
+      ]
+    },
+    {
+      "name": "20261005000002_cancelled_case_retention.sql",
+      "sha256": "cf5ee60ce604b1608dc9b929d0c418b28e0ad16d78aa6004808e071a32b912c0",
+      "registered": true,
+      "functions": [
+        "public._backfill_financial_case_retention",
+        "public.cancel_account_deletion",
+        "public.admin_list_financial_cases_retention_due"
+      ]
+    },
+    {
+      "name": "20261005000003_case_items_traceability.sql",
+      "sha256": "27f50e1e0a96d1056ce7266b3b32377c27e09ff51d9d079087c4774c718a84d3",
+      "registered": true,
+      "functions": [
+        "public._backfill_financial_case_items",
+        "public.separate_financial_case_and_resume_deletion",
+        "public.run_deletion_job",
+        "public.admin_get_deletion_financial_history"
+      ]
+    },
+    {
+      "name": "20261006000001_post_support_reactions.sql",
+      "sha256": "7e7b13f392788e6268e9b2adb5ea95c547739d857dc62b6457934d2529c1ce14",
+      "registered": true,
+      "functions": [
+        "public.list_post_supporters",
+        "public._status_vote_deleted",
+        "public.cast_vote"
+      ]
+    },
+    {
+      "name": "20261006000002_supporters_failclosed_minimal.sql",
+      "sha256": "5038e91771506c14ea80869b18f73eb43d079ed33ccc5f7201f0141b67f3e6c5",
+      "registered": true,
+      "functions": [
+        "public.list_post_supporters"
+      ]
+    },
+    {
+      "name": "20261006000003_workout_participants_rpc.sql",
+      "sha256": "b69e91f8cbc7d951e92571f1ac7888609fae352abad2e918c94938d3333cf831",
+      "registered": true,
+      "functions": [
+        "public._can_view_workout_status",
+        "public.list_workout_participants",
+        "public.count_workout_participants"
+      ]
+    },
+    {
+      "name": "20261007000001_status_progress_metadata.sql",
+      "sha256": "e1f2204fffcc38b8161c33a87d577a44df3c7809548dad6ab443643b0c51fa08",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261007000002_support_moderation_final_versions.sql",
+      "sha256": "aaed63813e78c3d36036d81abfa3928fdf6b75de6d5820cd52116a9d18953628",
+      "registered": true,
+      "functions": [
+        "public.decide_support_request",
+        "public.admin_list_support_requests"
+      ]
+    },
+    {
+      "name": "20261007000003_restore_comments_read_grant.sql",
+      "sha256": "2689c852bc91292a13992c44bd9c904ea5b7d70da7a3fc7f59ff9db300cbf39c",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261008000001_community_creation_activity_days.sql",
+      "sha256": "15703fb87ddac797989257337025bc4df562cc38d12c399fc91d73f5b2a77362",
+      "registered": true,
+      "functions": [
+        "private.record_activity_checkpoint",
+        "public.register_qualified_activity"
+      ]
+    },
+    {
+      "name": "20261008000002_community_tiers_post_retention.sql",
+      "sha256": "34358642948ebdce439489a2632c470bb6ba5200c1cd6a7a778229aab06936e0",
+      "registered": true,
+      "functions": [
+        "private.statuses_apply_retention",
+        "private.comments_open",
+        "private.community_owner_limit_reached",
+        "public.enforce_community_immutable_fields",
+        "private.communities_guard_insert"
+      ]
+    },
+    {
+      "name": "20261008000003_community_creation_rpcs.sql",
+      "sha256": "b8ad9709acb88a77259af270ad99b1dd1d69d1d3ba28afadc4493663bf472616",
+      "registered": true,
+      "functions": [
+        "private.community_creation_state",
+        "private.community_creation_blocker",
+        "public.get_my_community_creation_eligibility",
+        "public.list_community_creation_products",
+        "public.create_community",
+        "public.upgrade_community_tier"
+      ]
+    },
+    {
+      "name": "20261008000004_community_creation_converge.sql",
+      "sha256": "29218f24d69cfd264d9eb71ad6cee92802ed55f520697e8835457974a4a67bea",
+      "registered": true,
+      "functions": [
+        "private.record_activity_checkpoint",
+        "public.register_qualified_activity"
+      ]
+    },
+    {
+      "name": "20261009000001_evocoins_daily_cap_schema.sql",
+      "sha256": "153130af12789f26d6b2fdff20c6dacbe99aa8abdd7254aaca6064a18f53dc97",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261009000002_evocoins_award_engine.sql",
+      "sha256": "b5c44d1e53f3d562dd629b39e109127d16200ff3529b4e46bf5696254199e914",
+      "registered": true,
+      "functions": [
+        "private.user_app_access",
+        "private.sp_today",
+        "private.evocoins_headroom",
+        "private.evocoins_day_snapshot",
+        "private._award_result",
+        "private.is_meaningful_text",
+        "private.post_is_rewardable",
+        "public._wallet_credit_coins",
+        "private.award_evocoins"
+      ]
+    },
+    {
+      "name": "20261009000003_evocoins_activity_unified.sql",
+      "sha256": "2661a659e2d36e9f6b0ffe8d9c1ab87f444466b9f6955e44cbebcab0d6ff1aa8",
+      "registered": true,
+      "functions": [
+        "private.record_activity_checkpoint",
+        "public.register_qualified_activity"
+      ]
+    },
+    {
+      "name": "20261009000004_evocoins_support_rewards.sql",
+      "sha256": "6203c36a16d96f9238d21418a949fd6529646e9d0603d6492d78772d747b593c",
+      "registered": true,
+      "functions": [
+        "public.settle_vote_rewards"
+      ]
+    },
+    {
+      "name": "20261009000005_evocoins_pending_awards.sql",
+      "sha256": "7fd45ed5c69f22153b0e770bd091ef8a7fda55b7749526da199d33a7e94cdb5f",
+      "registered": true,
+      "functions": [
+        "private.enqueue_pending_award",
+        "private.community_usable_by",
+        "private.comment_is_rewardable",
+        "private.pending_award_is_valid",
+        "private.statuses_enqueue_award",
+        "private.post_comments_enqueue_award",
+        "private.settle_pending_awards"
+      ]
+    },
+    {
+      "name": "20261009000006_evocoins_workout_completion.sql",
+      "sha256": "2ac8da2c04804115d5053718891662279b159cd90110a93362188bc6e6623285",
+      "registered": true,
+      "functions": [
+        "private.workouts_server_created_at",
+        "public.complete_workout_session"
+      ]
+    },
+    {
+      "name": "20261009000007_evocoins_day_rpc.sql",
+      "sha256": "4afda60c0dc80517edec48260ef8ed68fdd33a6a31bfcea92e2eb8cd4413f500",
+      "registered": true,
+      "functions": [
+        "public.get_my_evocoin_day"
+      ]
+    },
+    {
+      "name": "20261010000001_admin_accounts_snapshot.sql",
+      "sha256": "fd04a69632b4891bd07777afaa5d7c0cce0c9718e040ecbcd6cadeddee5548c6",
+      "registered": true,
+      "functions": [
+        "public._forbid_admin_audit_log_change",
+        "public.set_account_status",
+        "public.admin_set_accounts_status",
+        "public.admin_request_account_deletion",
+        "public.admin_accounts_snapshot",
+        "public.admin_account_communities",
+        "public.admin_account_financial",
+        "public.admin_list_audit_log"
+      ]
+    },
+    {
+      "name": "20261011000001_user_activity.sql",
+      "sha256": "be914b80dd9426623b52cca695161bf41c422494952eff604a162e9bb541cf18",
+      "registered": true,
+      "functions": [
+        "public.touch_user_activity",
+        "public.admin_accounts_snapshot"
+      ]
+    },
+    {
+      "name": "20261012000000_push_notification_type.sql",
+      "sha256": "fbcbee6c8cbe42575c01b7b8990c3a2606459134c0d668a76bb8b4f5838be71b",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261012000001_web_push_notifications.sql",
+      "sha256": "b78eeef2a27c2b4d21408ef1ba34b239b6042085f805a31b59161c33f573c7c2",
+      "registered": true,
+      "functions": [
+        "private.safe_push_target_url",
+        "private.notification_push_category",
+        "public.register_push_subscription",
+        "public.unregister_push_subscription",
+        "public.get_my_push_status",
+        "public.create_push_broadcast",
+        "private.enqueue_notification_push",
+        "public.claim_push_jobs",
+        "public.finish_push_batch",
+        "private.cleanup_push_history"
+      ]
+    },
+    {
+      "name": "20261012000002_web_push_hardening.sql",
+      "sha256": "445dae86a7220914eebf41d6716cc779df5a7b0444c470cfa6199332b4d9036b",
+      "registered": true,
+      "functions": [
+        "private.safe_push_target_url",
+        "public.register_push_subscription",
+        "public.claim_push_jobs",
+        "private.revoke_push_on_account_block"
+      ]
+    },
+    {
+      "name": "20261012000003_push_worker_cron_secret.sql",
+      "sha256": "6b2f4dd4ffa5c02a0c83955cb4d4d6766a36768b22deec2ac379045701adef06",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261012000004_web_push_converge.sql",
+      "sha256": "eaa6bfa20cadf55d17650371ded1afaf69106173b7e34e2cabf243b3bcb2f7ee",
+      "registered": true,
+      "functions": [
+        "private.safe_push_target_url",
+        "private.is_push_endpoint_allowed",
+        "private.push_category_enabled",
+        "public.register_push_subscription",
+        "public.unregister_push_subscription",
+        "public.get_my_push_status",
+        "private.enqueue_notification_push",
+        "public.claim_push_jobs",
+        "public.finish_push_batch",
+        "private.revoke_push_on_account_block"
+      ]
+    },
+    {
+      "name": "20261013000001_notifications_realtime.sql",
+      "sha256": "80b2f41a57a8ead8e9d3ad3ad87c229d7f5e02f61a30e12eb30251c8f6f48051",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261014000001_notification_types_pipeline.sql",
+      "sha256": "1a57600f251a0c2123519d3ebb3a42c748eba7c054ee3ef8dd9d11706a9316cc",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261014000002_notification_pipeline.sql",
+      "sha256": "c54d37376594a0004a25f557ae1b31a9094ec5411d602cd8b693e33779af2935",
+      "registered": true,
+      "functions": [
+        "private.notification_push_category",
+        "public.claim_push_jobs",
+        "private.notify_post_like",
+        "private.notify_economy_transaction",
+        "private.notify_moderation_notice",
+        "private.notify_support_closed",
+        "public.admin_push_job_trace"
+      ]
+    },
+    {
+      "name": "20261014000003_workout_reminder_type.sql",
+      "sha256": "3bb0957f5c69b941ecc929b6ddde59da00577190351789207fdf6f7a71ee4744",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261014000004_workout_reminders.sql",
+      "sha256": "6c579987c44170e31f666b1ad865d56d154ff59d0b4262f05814383353fd3b27",
+      "registered": true,
+      "functions": [
+        "private.schedule_next_workout_reminder",
+        "private.cancel_workout_reminder_push",
+        "private.refresh_workout_reminders",
+        "private.cancel_started_workout_reminders",
+        "private.dispatch_due_workout_reminders"
+      ]
+    },
+    {
+      "name": "20261014000005_security_hardening.sql",
+      "sha256": "3da4ef114f271bccc3d3d2c607fba1515a1e1140f3800fd5fdf35a64e413123b",
+      "registered": true,
+      "functions": [
+        "public.notifications_mark_read",
+        "public.notifications_archive",
+        "private.safe_push_target_url"
+      ]
+    },
+    {
+      "name": "20261014000006_notification_antispam_variants.sql",
+      "sha256": "b4c996b1c0b6d803a6767fb5486033a149b405d716e468836376a3534ccbf527",
+      "registered": true,
+      "functions": [
+        "private.enqueue_notification_push",
+        "private.release_push_cooldown",
+        "public.claim_push_jobs",
+        "private.cleanup_push_history",
+        "private.dispatch_due_workout_reminders"
+      ]
+    },
+    {
+      "name": "20261014000007_push_delivery_telemetry.sql",
+      "sha256": "b3cc8e707b681edb8195e89a82ae08c2176a1d8242be4d9b20e071322a5bcbd4",
+      "registered": true,
+      "functions": [
+        "private.push_clock",
+        "public.claim_push_jobs",
+        "public.finish_push_batch",
+        "public.push_delivery_ack"
+      ]
+    },
+    {
+      "name": "20261015000001_infinitepay_cash_purchases.sql",
+      "sha256": "40ef26101a6211b4add5e61b535ed76dd2e11b1f58b763c21a229235e27135f1",
+      "registered": true,
+      "functions": [
+        "public.reserve_infinitepay_cash_purchase",
+        "public.finish_infinitepay_checkout",
+        "public.release_infinitepay_checkout",
+        "public.mark_infinitepay_checkout_uncertain",
+        "public.confirm_infinitepay_cash_purchase",
+        "public.confirm_cash_purchase",
+        "public.cancel_cash_purchase"
+      ]
+    },
+    {
+      "name": "20261015000002_infinitepay_checkout_failure.sql",
+      "sha256": "79faaad76756c39f92f7c0a1e26ff06495799edc706bcef55499b711509e9e24",
+      "registered": true,
+      "functions": [
+        "public.fail_infinitepay_checkout",
+        "public.finish_infinitepay_checkout",
+        "public.reserve_infinitepay_cash_purchase"
+      ]
+    },
+    {
+      "name": "20261015000003_infinitepay_cancel_request.sql",
+      "sha256": "3b1963d682775ecfbdfa1e3669680ef3431de644a0d389463420ff6566ea1a23",
+      "registered": true,
+      "functions": [
+        "public.request_infinitepay_cash_purchase_cancellation"
+      ]
+    },
+    {
+      "name": "20261015000004_immediate_cash_purchase_cancel.sql",
+      "sha256": "3c4f63ac0c6c4ce882f22934ff6c6ac7abb117cecde7eebddf2581e8f7266d05",
+      "registered": true,
+      "functions": [
+        "public.cancel_my_cash_purchase",
+        "public.request_infinitepay_cash_purchase_cancellation",
+        "public.confirm_infinitepay_cash_purchase",
+        "public._compute_financial_block_reason",
+        "public.review_blocked_account_deletion"
+      ]
+    },
+    {
+      "name": "20261015000005_remove_mercadopago_runtime.sql",
+      "sha256": "87f49d2b46761116f9b899c858baf0700f528654906c576bbc1c7f5d25b01405",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261016000001_offline_workout_sync.sql",
+      "sha256": "a0d70cc7ee17e1dd4575751fee351c14baa23382f60ac48fb96162cb5efbe8b0",
+      "registered": true,
+      "functions": [
+        "private.workouts_touch_updated_at",
+        "private.apply_workout_mutation",
+        "public.sync_workout_mutations"
+      ]
+    },
+    {
+      "name": "20261016000002_security_hardening_followup.sql",
+      "sha256": "9c445f7ad16f3ae764b38c1ce69e95f22f79ccd3ea2c9e99c4e382c4c1e291ab",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261016000003_offline_runtime_control_telemetry.sql",
+      "sha256": "e0792928d9abe6c8b65b8ecf1b12955f42232e078d7142d6035bad45cb6df2ac",
+      "registered": true,
+      "functions": [
+        "private.touch_offline_feature_flags",
+        "public.get_offline_feature_flags",
+        "public.record_offline_telemetry",
+        "private.cleanup_offline_telemetry"
+      ]
+    },
+    {
+      "name": "20261017000001_feed_batch_interaction_rpcs.sql",
+      "sha256": "beb81829e97ab031ef94b4e9abe09f93f976af9f51c0ee69ea7d812db039f11f",
+      "registered": true,
+      "functions": [
+        "public.get_poll_results_batch",
+        "public.count_workout_participants_batch"
+      ]
+    },
+    {
+      "name": "20261017000002_feed_partial_indexes.sql",
+      "sha256": "db4604738239b16e7a350cc8912614e7dd1fec4c715e91ec81a6754b2ba7c813",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261017000003_status_text_limit_7000.sql",
+      "sha256": "9d5f210391ddd0af289fd23f3c3dbfc93393888a6b311ea137a82148649a4b6e",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261018000001_sponsored_ad_metrics.sql",
+      "sha256": "b4e1e4ca4036f928b019c035cf4e2ffc66f05549ab41f5ce9769b995a221d5ee",
+      "registered": true,
+      "functions": [
+        "private.ad_metrics_day",
+        "public.record_ad_events",
+        "private.cleanup_sponsored_ad_metrics",
+        "private.cleanup_sponsored_ad_stats"
+      ]
+    },
+    {
+      "name": "20261018000002_sponsored_ad_metrics_dashboard.sql",
+      "sha256": "f39ba44dbbea582b28472bc6661a2bc7ab04f83845f0641077243d85829d6c6b",
+      "registered": true,
+      "functions": [
+        "private.ad_metrics_object",
+        "public.get_sponsored_ad_metrics_dashboard"
+      ]
+    },
+    {
+      "name": "20261019000001_sponsored_ad_metrics_privacy_controls.sql",
+      "sha256": "deaaa71226285cb44503e645e43e266a42370a233b46b75e9ca70ac422cae0d4",
+      "registered": true,
+      "functions": [
+        "public.record_ad_events",
+        "public.admin_set_ad_metrics_opt_out"
+      ]
+    },
+    {
+      "name": "20261020000001_exercise_visuals.sql",
+      "sha256": "53077b65794578eed47ebe53c87ac58164e65f59b884f0ccd0f0db947081d6b7",
+      "registered": true,
+      "functions": [
+        "public.search_exercise_catalog",
+        "private.exercise_visual_file_name",
+        "public.allocate_exercise_visual_set",
+        "public.confirm_exercise_visual_internal",
+        "public.reject_exercise_visual_set",
+        "private.apply_published_visual_set",
+        "public.publish_exercise_visual_internal",
+        "public.restore_exercise_visual_version"
+      ]
+    },
+    {
+      "name": "20261021000001_exercise_visuals_v2.sql",
+      "sha256": "9a02a7e08dde756e4d04c1ab595c8b5d963510dabafd85cac2e18024c04b59db",
+      "registered": true,
+      "functions": [
+        "private.apply_style_profile_activation",
+        "public.activate_exercise_visual_style_profile",
+        "public.activate_exercise_visual_style_profile_internal",
+        "private.exercise_visual_audit_log_immutable",
+        "private.set_visual_audit_context",
+        "private.exercise_visual_transition_allowed",
+        "private.exercise_visual_sets_guard",
+        "private.exercise_visual_sets_audit",
+        "private.lock_exercise_visual_catalog",
+        "private.exercise_visual_allocation_payload",
+        "public.allocate_exercise_visual_set",
+        "public.confirm_exercise_visual_internal",
+        "public.fail_exercise_visual_set_internal",
+        "public.reject_exercise_visual_set",
+        "private.apply_published_visual_set",
+        "public.activate_exercise_visual_reference_set_internal",
+        "public.expire_stale_exercise_visual_sets",
+        "public.list_exercise_visual_purge_candidates",
+        "public.mark_exercise_visual_drafts_purged_internal"
+      ]
+    },
+    {
+      "name": "20261022000001_community_member_removal.sql",
+      "sha256": "1627eb8c2ca78dcef398d45d035d06e7bce3e79c99a9726ccf290feb20aa3327",
+      "registered": true,
+      "functions": [
+        "private.lock_membership",
+        "private.revoke_membership_on_restriction",
+        "private.guard_membership_insert",
+        "public.set_community_member_ban",
+        "public.remove_community_member",
+        "public.get_community_access"
+      ]
+    },
+    {
+      "name": "20261022000002_exercise_visuals_function_hardening.sql",
+      "sha256": "02e16c32783a422dec48c31c00ed7465dbc81244b2aadc903bb0af883dc75ec7",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261023000001_community_join_and_access_list.sql",
+      "sha256": "35708a2f9814d6d73714ea1028d68d4df3983a2f4686b2227ef5169c328158e2",
+      "registered": true,
+      "functions": [
+        "public.join_community",
+        "public.list_my_community_access",
+        "private.lock_membership"
+      ]
+    },
+    {
+      "name": "20261024000001_greeting_personalization.sql",
+      "sha256": "26227de2d173633e66228bb85fe10b909c2d7222ea9bded123c7c5b8d028d5c7",
+      "registered": true,
+      "functions": [
+        "public.set_greeting_voice",
+        "public.ack_greeting_welcome"
+      ]
+    },
+    {
+      "name": "20261026000005_aud_security_atomic.sql",
+      "sha256": "28c0623d9940e6b571212daa4e949a4e3ea1c18778c37c3f7fb6877124d83f61",
+      "registered": true,
+      "functions": [
+        "public.delete_own_account",
+        "private.statuses_initialize_identity",
+        "private.communities_guard_promotion_fields"
+      ]
+    },
+    {
+      "name": "20261026000006_exercise_catalog_offline_converge.sql",
+      "sha256": "2ae6d96c1c5954b275222d20071b5c38d8557eb335497e8bf6801bc140505d6b",
+      "registered": true,
+      "functions": [
+        "public._touch_exercise_catalog_updated_at",
+        "public.get_exercise_catalog_revision",
+        "public.list_exercise_catalog_for_sync"
+      ]
+    },
+    {
+      "name": "20261027000001_storage_cleanup_outbox.sql",
+      "sha256": "0505a299066df8f014fbd3383b8bf38394edc2471ac3ae12b6fc3a919dfa7550",
+      "registered": true,
+      "functions": [
+        "public.capture_deleted_photo_cleanup",
+        "public.claim_storage_cleanup_tasks",
+        "public.finish_storage_cleanup_task"
+      ]
+    },
+    {
+      "name": "20261028000001_status_expiration.sql",
+      "sha256": "88375d3de59afd78a9145a0107f2cf3afdab8157aa2ba41666dfc26c3012f73f",
+      "registered": true,
+      "functions": [
+        "private.status_promotion_until",
+        "private.status_interaction_expiry",
+        "private.comments_open",
+        "private.enqueue_status_expiration",
+        "private.track_status_expiration",
+        "public.process_expired_statuses",
+        "public.create_promotion",
+        "public.cast_vote",
+        "public.claim_storage_cleanup_tasks",
+        "private.guard_status_photo_reuse"
+      ]
+    },
+    {
+      "name": "20261028000002_status_feed_pagination_index.sql",
+      "sha256": "4721d5fc6ea60da4adf7cfe43045a9d4d32e28a9907414ebb1339bb7de48c07e",
+      "registered": true,
+      "functions": [
+        "private.guard_status_photo_reuse",
+        "private.lock_status_photo_delete"
+      ]
+    },
+    {
+      "name": "20261028000003_activate_status_expiration.sql",
+      "sha256": "c7822b57c4682478edc7facceb10a95b348a97096293448c8d808efcf179a34c",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261029000001_exercise_visual_deletion.sql",
+      "sha256": "eb0777696559f75de95a4181d6b051cdee2fe5aa05dde46d6f876b13ed0bbf1f",
+      "registered": true,
+      "functions": [
+        "private.lock_visual_file",
+        "private.visual_file_referenced",
+        "public.request_exercise_visual_deletion",
+        "private.guard_deleted_visual_file",
+        "private.guard_visual_reference_write",
+        "private.guard_visual_allocation_after_deletion",
+        "public.claim_exercise_visual_deletions",
+        "public.finish_exercise_visual_deletion"
+      ]
+    },
+    {
+      "name": "20261030000001_aud05_status_deletion.sql",
+      "sha256": "428aeb3d17f5815d6aa0941dbfd09f1c62ed8555a7a0858e1c4de2c08876e4e0",
+      "registered": true,
+      "functions": [
+        "public.run_deletion_job"
+      ]
+    },
+    {
+      "name": "20261031000001_aud03_poll_vote_security.sql",
+      "sha256": "6dcdbb1309473be178c445531b5b454f1384b63897ad6b3a47be5e9fc99339ac",
+      "registered": true,
+      "functions": [
+        "private.can_access_poll",
+        "private.poll_has_option",
+        "private.validate_poll_vote",
+        "public.get_poll_results",
+        "public.get_poll_results_batch"
+      ]
+    },
+    {
+      "name": "20261101000001_aud07_status_publication_rate.sql",
+      "sha256": "d7478963231a9c056b7140b2b638a272faac0f17f03d0963cc709d9fb5cbd0fe",
+      "registered": true,
+      "functions": [
+        "private.enforce_status_publication_rate"
+      ]
+    },
+    {
+      "name": "20261102000001_push_welcome_type.sql",
+      "sha256": "4afb8a0aa22ad61ece4664f5828ea6481dd36fd8e21faecf6e2bfaff18cfbc99",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261102000002_push_explicit_activation_welcome.sql",
+      "sha256": "28243f4310c563505641b1dca08e2c9732f214e0ac24646862805b96c803e2da",
+      "registered": true,
+      "functions": [
+        "private.push_activation_access",
+        "private.write_push_subscription",
+        "public.register_push_subscription",
+        "public.unregister_push_subscription",
+        "public.get_my_push_status",
+        "public.activate_push_subscription",
+        "public.claim_push_jobs"
+      ]
+    },
+    {
+      "name": "20261103000001_admin_accounts_integrity.sql",
+      "sha256": "a7bca4fcc7331ad3d3daa5b3e940629976bc5a9e4b346535eaa9d9bfe44b7694",
+      "registered": true,
+      "functions": [
+        "public.set_account_status",
+        "public.admin_set_accounts_status",
+        "public.admin_request_account_deletion",
+        "public.admin_list_audit_log"
+      ]
+    },
+    {
+      "name": "20261104000001_community_cover_image.sql",
+      "sha256": "10f9e73235ef8f77ff08eab62f7b642a9e0cbc311b1798dc1c4c5ceb4719a44b",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261105000001_close_has_app_access_gates.sql",
+      "sha256": "6ada7801e25762404a88ac934fbbd18928d0bf8441089e238b7b13f7a1838021",
+      "registered": true,
+      "functions": [
+        "private.has_account_standing",
+        "public.set_username",
+        "public.update_user_profile",
+        "public.create_professional_listing",
+        "public.save_professional_listing_draft",
+        "public.prepare_professional_listing_publish",
+        "public.allocate_profile_avatar",
+        "private.can_moderate_status",
+        "public.create_promotion",
+        "public.cast_vote"
+      ]
+    },
+    {
+      "name": "20261105000002_comment_context_author_avatar.sql",
+      "sha256": "d94576ce2604ce030b1fd6dda988bf1f40b677169648de9f294041c96299949b",
+      "registered": true,
+      "functions": [
+        "public.comment_context"
+      ]
+    },
+    {
+      "name": "20261105000003_infinitepay_pending_reconciliation.sql",
+      "sha256": "c2b1882effaac1664e27359730740744d8ccad6c445a68f3bc62832d2284dd57",
+      "registered": true,
+      "functions": [
+        "public._compute_financial_block_reason",
+        "public.confirm_infinitepay_cash_purchase",
+        "public.admin_cancel_infinitepay_cash_purchase",
+        "public.admin_resolve_cash_purchase_review",
+        "private.expire_stale_infinitepay_purchases"
+      ]
+    },
+    {
+      "name": "20261105000004_cash_purchase_reminder_emails.sql",
+      "sha256": "8a76746e9f98493c100a923220a2c675160ee512f3b006e1e110d8b880f28bb6",
+      "registered": true,
+      "functions": [
+        "private._mask_email",
+        "public.admin_request_cash_purchase_reminder",
+        "public.admin_get_cash_purchase_reminder_preview",
+        "public.claim_cash_purchase_reminder_jobs",
+        "public.finish_cash_purchase_reminder_batch"
+      ]
+    },
+    {
+      "name": "20261106000001_expand_community_icons.sql",
+      "sha256": "565b2cfe26c3aae6d95ac15e8a9ce9b0f1852593553bfe196962b63f62ee3171",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261107000001_weekly_training_times.sql",
+      "sha256": "27f04996397ca387da50ed68fc994a4cc7d5e01731c434087987f54ce5660874",
+      "registered": true,
+      "functions": [
+        "public.set_training_preferences",
+        "private.training_time_for_day",
+        "private.schedule_next_workout_reminder",
+        "private.refresh_workout_reminders"
+      ]
+    },
+    {
+      "name": "20261108000001_public_commercial.sql",
+      "sha256": "1d4329df32bf0a6844903b3998415df77603b882e5c5c70bd94604762504162d",
+      "registered": true,
+      "functions": [
+        "public.submit_commercial_lead"
+      ]
+    },
+    {
+      "name": "20261108000002_public_product_catalog.sql",
+      "sha256": "1d8b8afc4f87e75dce417f377ea16b0d9b7fe0079286cb313c8bce7e3481d486",
+      "registered": true,
+      "functions": [
+        "public.public_product_catalog"
+      ]
+    },
+    {
+      "name": "20261109000001_official_community_icon.sql",
+      "sha256": "64f3ffb6f052b5ada443811f573e649dedcf69c88870610a0ef25444b228ca29",
+      "registered": true,
+      "functions": [
+        "private.guard_official_community_icon"
+      ]
+    },
+    {
+      "name": "20261110000001_public_professional_directory.sql",
+      "sha256": "6b7c3d434a54aa9df23e12652fc204aa990046ac7d4910b988536b59155b0f7e",
+      "registered": true,
+      "functions": [
+        "public.public_list_professionals",
+        "public.public_get_professional",
+        "public.public_professional_avatar_visible"
+      ]
+    },
+    {
+      "name": "20261111000001_partner_products_require_image.sql",
+      "sha256": "478f09c52ffd6ac3b0e205f8c7ba125ae3c61351b898d0ceb895b491f44d0a40",
+      "registered": true,
+      "functions": [
+        "public.enforce_partner_product_image"
+      ]
+    },
+    {
+      "name": "20261112000001_finance_permissions.sql",
+      "sha256": "cfb9b475c37a601c6794493d1c978a8340bda380e0b7a4149bf8e84c97a0ea0a",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261112000002_finance_integrity.sql",
+      "sha256": "d7e7b0cd32886df1713dde08f9262fabd7708d436c15e34c6a051f8287bea82f",
+      "registered": true,
+      "functions": [
+        "private.require_money_units",
+        "public._wallet_credit_coins",
+        "public._wallet_debit_coins",
+        "public._wallet_credit_cash",
+        "public._wallet_debit_cash",
+        "public._ledger_record",
+        "private.protect_economy_ledger",
+        "public.create_promotion"
+      ]
+    },
+    {
+      "name": "20261112000003_finance_payment_finality.sql",
+      "sha256": "907201a887d0491c54d03eeb9276c07bef744ed2684c58ab05ce68f50b1a62bf",
+      "registered": true,
+      "functions": [
+        "public.admin_resolve_cash_purchase_review",
+        "public.confirm_infinitepay_cash_purchase",
+        "public.reserve_infinitepay_cash_purchase",
+        "public.claim_infinitepay_payment_check"
+      ]
+    },
+    {
+      "name": "20261112000004_finance_reversals.sql",
+      "sha256": "cb6fadb4817531c3c73a8b4ee4038ad9f9c73d57de593a8791d57d9f640d7c2b",
+      "registered": true,
+      "functions": [
+        "private.protect_cash_reversal",
+        "private.cash_debt",
+        "private.recover_cash_debt",
+        "public.admin_record_cash_reversal",
+        "public._wallet_credit_cash",
+        "public._wallet_debit_cash",
+        "public._compute_financial_block_reason",
+        "public.admin_cash_reversal_events"
+      ]
+    },
+    {
+      "name": "20261112000005_finance_reward_evidence.sql",
+      "sha256": "a172a7a0632a6d6f02ba8c77d1d93501e97beef19c1fb5390949b13bc1931d95",
+      "registered": true,
+      "functions": [
+        "private.has_reward_activity",
+        "private.record_activity_checkpoint",
+        "public.register_qualified_activity",
+        "private.post_is_rewardable",
+        "private.reward_fingerprint",
+        "private.award_evocoins"
+      ]
+    },
+    {
+      "name": "20261112000006_finance_reconciliation_shadow.sql",
+      "sha256": "56936408a5642c0c090289fa7bd79f7e953bea6256bd1412c15a944a6a8d9da8",
+      "registered": true,
+      "functions": [
+        "private.finance_reconcile_shadow",
+        "public.admin_finance_findings",
+        "public.claim_infinitepay_reconciliation_batch",
+        "public.record_infinitepay_verified_conflict",
+        "public.finish_infinitepay_reconciliation_item"
+      ]
+    },
+    {
+      "name": "20261113000001_session_revocation_guard.sql",
+      "sha256": "c17643985851ec41e32cec00ef4cde30071d63488378142204aa0711a04dcf43",
+      "registered": true,
+      "functions": [
+        "private.current_session_active",
+        "public.sync_workout_mutations"
+      ]
+    },
+    {
+      "name": "20261113000002_session_active_rpc.sql",
+      "sha256": "0691adadd260a25b55bac653eec2c4cd59a43cc7223847b0596329bdf47ac555",
+      "registered": true,
+      "functions": [
+        "public.is_session_active"
+      ]
+    },
+    {
+      "name": "20261113000003_admin_session_revocation_guard.sql",
+      "sha256": "a6e4142c0ba67573acf63e1b361e90fcfa3507371fb90a36ea3c7f6c1360ec09",
+      "registered": true,
+      "functions": [
+        "public.set_account_status",
+        "public.set_community_member_ban",
+        "public.suspend_professional_listing",
+        "public.admin_reactivate_professional_listing",
+        "public.admin_request_account_deletion"
+      ]
+    },
+    {
+      "name": "20261114000001_financial_auth_integration.sql",
+      "sha256": "1fbbe68f547ae9d5cad367ad60f8cfe3f9a0131416c85c9c598db08db0f23f9b",
+      "registered": true,
+      "functions": [
+        "private.current_session_active",
+        "public.has_app_access",
+        "public.set_training_preferences"
+      ]
+    },
+    {
+      "name": "20261114000002_remaining_sensitive_rpcs_guard.sql",
+      "sha256": "2ce3b40bdfb7f33c77a83181ba78394354280a4d73fde8cf441253b8ae7dfd90",
+      "registered": true,
+      "functions": [
+        "private.comment_delete",
+        "public.delete_professional_listing"
+      ]
+    },
+    {
+      "name": "20261114000003_community_economy_session_guard.sql",
+      "sha256": "a51e2c0881828cb88620a8679c8d037d02694ec9aa65e2390f16fd7aaab4284b",
+      "registered": true,
+      "functions": [
+        "public.create_community",
+        "public.upgrade_community_tier",
+        "public.get_my_community_creation_eligibility",
+        "public.record_promotion_event",
+        "public.list_community_creation_products",
+        "public.list_community_restrictions",
+        "public.list_deletion_jobs"
+      ]
+    },
+    {
+      "name": "20261115000001_training_preferences_catalog.sql",
+      "sha256": "7cfecb4ca8cd7c5399b0a4b81ff44cde88d0163d3c8fe1fe68d2855d7ebe9780",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261115000002_cash_reminder_session_guard.sql",
+      "sha256": "7d8df47ac3050ec139672fe67823dd61d2afef0727a39e00fcb6bdcd01484806",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261116000001_advertiser_metrics_v2.sql",
+      "sha256": "b3e9af00861d1f9146860b83478373acc6a9f013a3aad7a9581305ba8beab65d",
+      "registered": true,
+      "functions": [
+        "private.advertiser_immutable_owner",
+        "private.require_advertiser",
+        "private.advertiser_snapshot",
+        "public.get_advertiser_metrics",
+        "public.list_advertiser_accounts",
+        "public.admin_manage_advertiser",
+        "public.admin_advertiser_directory",
+        "public.list_advertiser_campaigns",
+        "public.get_admin_ad_metrics_v2"
+      ]
+    },
+    {
+      "name": "20261117000001_exercise_catalog_lifecycle.sql",
+      "sha256": "4ec7ccfabe6a702a42edfafeab42bfaa391d8e3ee20431eec0fd899d9d0bb979",
+      "registered": true,
+      "functions": [
+        "public._sync_exercise_catalog_is_active",
+        "public._bump_exercise_catalog_revision",
+        "public._validate_catalog_exercise_reference",
+        "public._validate_workout_exercise_published",
+        "public.sync_workout_mutations",
+        "private._exercise_has_valid_published_visuals",
+        "public.allocate_exercise_visual_set",
+        "private.apply_published_visual_set",
+        "public.admin_create_catalog_exercise_draft",
+        "public.admin_update_catalog_exercise_content",
+        "public.admin_submit_catalog_exercise_for_review",
+        "public.admin_publish_catalog_exercise",
+        "public.admin_withdraw_catalog_exercise",
+        "public.admin_restore_catalog_exercise",
+        "public.admin_list_catalog_exercises",
+        "public.admin_list_catalog_audit_log"
+      ]
+    },
+    {
+      "name": "20261118000001_catalog_image_completeness.sql",
+      "sha256": "42767ee88e38333ed4ab127698de47f3b28d47c703dd1c2d2b5e316b1b29f239",
+      "registered": true,
+      "functions": [
+        "public.catalog_has_complete_images",
+        "public.admin_list_catalog_exercises"
+      ]
+    },
+    {
+      "name": "20261119000001_official_exercises_only.sql",
+      "sha256": "200a1fd0b121a7de1b87ad690269658ea84cbc0e7166ffa33a7e8b9b9b7f1f02",
+      "registered": true,
+      "functions": [
+        "public._guard_personal_exercise_write",
+        "public._validate_catalog_exercise_reference",
+        "public._validate_workout_exercise_published",
+        "public.sync_workout_mutations"
+      ]
+    },
+    {
+      "name": "20261120000001_strict_exercise_references.sql",
+      "sha256": "aa589b831c5d9729ff041e2b7513c2a4a73e052dd524b4901ac7e8b5283ec9a5",
+      "registered": true,
+      "functions": [
+        "public._validate_workout_exercise_published"
+      ]
+    },
+    {
+      "name": "20261121000001_catalog_search_order_tiebreak.sql",
+      "sha256": "b5be4a315ec7f7f76b14782adb7f5efce835e241fe4ae7d71ee30b19f564d2c8",
+      "registered": true,
+      "functions": [
+        "public.search_exercise_catalog"
+      ]
+    },
+    {
+      "name": "20261122000001_workout_sheets.sql",
+      "sha256": "d234ef53a3923288869d09955a68b03dfba7b86a440a67c89e2fa78043764fbd",
+      "registered": true,
+      "functions": [
+        "private.workout_sheet_limits",
+        "private.sheet_trim",
+        "private.valid_sheet_weekdays",
+        "private.sheet_actor",
+        "private.sheet_exercise_available",
+        "public.save_workout_sheet",
+        "public.create_workout_sheet",
+        "public.duplicate_workout_sheet",
+        "public.set_workout_sheet_archived",
+        "public.reorder_workout_sheets",
+        "public.list_my_workout_sheets",
+        "public.get_my_workout_sheet",
+        "private.delete_account_workout_sheets"
+      ]
+    },
+    {
+      "name": "20261123000001_workout_sheet_attribution.sql",
+      "sha256": "d41dc63056b842971e4f79e3bdb25397df59dddde7ec65b82e86812b1e892197",
+      "registered": true,
+      "functions": [
+        "public.enforce_workout_immutable_fields",
+        "private.validate_workout_sheet_membership",
+        "public.get_my_sheet_insights"
+      ]
+    },
+    {
+      "name": "20261124000001_finance_activity_reward_fix.sql",
+      "sha256": "063531091ff1395022a4e842c4bdb92ece6a82903b39d68fc9797501e1f663b5",
+      "registered": true,
+      "functions": [
+        "private.record_activity_checkpoint",
+        "public.register_qualified_activity"
+      ]
+    },
+    {
+      "name": "20261125000001_home_sheet_completions.sql",
+      "sha256": "d691a03e099cec220a782de6ec189701faf98a03c30998078c23d707e972623f",
+      "registered": true,
+      "functions": [
+        "public.complete_workout_sheet",
+        "public.get_my_sheet_insights"
+      ]
+    },
+    {
+      "name": "20261125000002_offline_sheet_attribution.sql",
+      "sha256": "9d7b3ad1a0bf8f2300a588f6ecc184d243a95ddab2bc94640f86cef51cd81ed1",
+      "registered": true,
+      "functions": [
+        "private.apply_workout_mutation",
+        "public.sync_workout_mutations"
+      ]
+    },
+    {
+      "name": "20261126000001_sheet_only_reminder_entry.sql",
+      "sha256": "39e30b2c946a43bc216363fedc062e5687b9e80aae5773ba578b3dd6ca2d0575",
+      "registered": true,
+      "functions": [
+        "private.dispatch_due_workout_reminders"
+      ]
+    },
+    {
+      "name": "20261126000002_sheet_exercise_picker.sql",
+      "sha256": "9d3ef353a655238915f6ce42f82e732709de0fc5c37daf8e9dec5fcf91e47371",
+      "registered": true,
+      "functions": [
+        "public.get_my_sheet_insights_for_exercise"
+      ]
+    },
+    {
+      "name": "20261127000001_public_catalog_snapshot.sql",
+      "sha256": "f8b0ff0c0d1af7a8437e0af88e9150a64005b2f42ebab11392d7f4010f7f737d",
+      "registered": true,
+      "functions": [
+        "private.queue_public_catalog_refresh",
+        "private.refresh_public_catalog_snapshot"
+      ]
+    },
+    {
+      "name": "20261128000001_evocash_pricing.sql",
+      "sha256": "045cc410d832fae26e586e1665c1173f1b18ae2d75f10c591958e064fdc45793",
+      "registered": true,
+      "functions": [
+        "private.evocash_immutable",
+        "private.require_evocash_admin",
+        "private.evocash_validate_price",
+        "private.evocash_price_json",
+        "public.admin_get_evocash_pricing",
+        "public.admin_preview_evocash_price",
+        "public.admin_publish_evocash_price",
+        "public.admin_pause_evocash_quotes",
+        "public.admin_list_evocash_prices",
+        "private.evocash_quote_json",
+        "public.create_evocash_purchase_quote"
+      ]
+    },
+    {
+      "name": "20261129000001_evocash_quantity_checkout.sql",
+      "sha256": "344148010f3bc964b552e83a61a7d176e0e08d3a60875a5bc27c7bb90d41f747",
+      "registered": true,
+      "functions": [
+        "private.protect_cash_purchase_snapshot",
+        "public.get_evocash_purchase_settings",
+        "private.cash_checkout_reservation",
+        "public.reserve_infinitepay_cash_purchase",
+        "public.finish_infinitepay_checkout"
+      ]
+    },
+    {
+      "name": "20261130000001_commercial_engine.sql",
+      "sha256": "4ba6285d790361f8ee6cbb434d31885c4ef59c78727b0c138bc01a9cdaaa59a5",
+      "registered": true,
+      "functions": [
+        "private.commercial_immutable",
+        "private.commercial_order_snapshot",
+        "private.require_commercial_user",
+        "private.commercial_order_json",
+        "private.commercial_resource_visible",
+        "public.admin_commercial_catalog",
+        "public.admin_publish_commercial_price",
+        "public.admin_set_commercial_sales",
+        "public.quote_commercial_order",
+        "public.confirm_commercial_order",
+        "public.admin_set_commercial_entitlement",
+        "public.admin_reverse_commercial_order",
+        "public.get_my_commercial_order",
+        "public.admin_list_commercial"
+      ]
+    },
+    {
+      "name": "20261201000001_product_storefronts.sql",
+      "sha256": "1c11cdc73036b6b0c54e0ea78be1d8eb7e186264baa03d08cf9a8ddccc482a30",
+      "registered": true,
+      "functions": [
+        "public.enforce_partner_product_image",
+        "private.storefront_audit",
+        "private.lock_storefront",
+        "private.touch_storefront",
+        "public.admin_set_storefront_limits",
+        "public.create_product_storefront",
+        "public.save_product_storefront",
+        "public.save_storefront_product",
+        "public.archive_storefront_product",
+        "public.set_storefront_editorial",
+        "private.storefront_anchor_guard",
+        "private.storefront_json",
+        "public.list_managed_storefronts",
+        "public.list_storefront_products",
+        "public.list_storefront_orders",
+        "public.allocate_storefront_media",
+        "public.confirm_storefront_media_internal",
+        "public.authorize_storefront_media",
+        "public.public_product_catalog",
+        "public.discard_storefront_media_internal",
+        "public.discard_unused_storefront_media"
+      ]
+    },
+    {
+      "name": "20261202000001_storefront_editorial_revisions.sql",
+      "sha256": "10e605aaee1c6281cc923679b787558bfbd0f1b9c0d1485c025725f0d2ca5926",
+      "registered": true,
+      "functions": [
+        "private.touch_storefront",
+        "public.save_product_storefront",
+        "public.save_storefront_product",
+        "public.archive_storefront_product",
+        "private.storefront_json",
+        "public.set_storefront_editorial",
+        "public.authorize_storefront_media",
+        "public.public_product_catalog",
+        "public.public_storefront_sitemap"
+      ]
+    },
+    {
+      "name": "20261202000002_storefront_media_maintenance_legacy.sql",
+      "sha256": "4266071a0844f3a8dc33f5a03b88d5a0a40c781608405851a5ecdccee5881e04",
+      "registered": true,
+      "functions": [
+        "private.storefront_media_referenced",
+        "private.note_storefront_media_use",
+        "private.media_cleanup_event",
+        "public.confirm_storefront_media_internal",
+        "public.discard_unused_storefront_media",
+        "public.discard_storefront_media_internal",
+        "public.admin_configure_storefront_cleanup",
+        "public.claim_storefront_media_cleanup",
+        "public.finish_storefront_media_cleanup",
+        "public.admin_storefront_maintenance",
+        "public.admin_associate_legacy_product",
+        "public.admin_list_legacy_products",
+        "public.admin_get_legacy_target",
+        "private.enqueue_storefront_media_cleanup"
+      ]
+    },
+    {
+      "name": "20261203000001_professional_commercial_publication.sql",
+      "sha256": "c31c7007e84e43a0d56fa8fb415be57d3d5b89b8dfa430cda0d16f856424b9cd",
+      "registered": true,
+      "functions": [
+        "public._normalize_search_value",
+        "private.commercial_resource_visible",
+        "private.professional_anchor_create",
+        "private.professional_identity_guard",
+        "private.professional_anchor_guard",
+        "private.lock_commercial_editorial",
+        "private.lock_storefront",
+        "private.check_editorial_transition",
+        "private.apply_editorial_anchor",
+        "private.storefront_media_referenced",
+        "public.allocate_storefront_media",
+        "private.media_cleanup_event",
+        "private.listing_audit",
+        "public.create_professional_listing",
+        "public.save_professional_listing_draft",
+        "public.save_professional_listing_draft",
+        "public.prepare_professional_listing_publish",
+        "public.finalize_professional_listing_publish",
+        "public.abort_professional_listing_publish",
+        "public.set_professional_listing_editorial",
+        "private.public_listing_json",
+        "public.public_list_professionals",
+        "public.public_get_professional",
+        "public.list_published_professional_listings",
+        "public.public_professional_avatar_visible",
+        "public.authorize_storefront_media",
+        "public.public_listing_sitemap",
+        "private.listing_record",
+        "public.get_my_professional_listing",
+        "public.admin_get_professional_listing",
+        "public.list_listing_commercial_orders",
+        "public.unpublish_professional_listing",
+        "public.delete_professional_listing",
+        "public.suspend_professional_listing",
+        "public.admin_reactivate_professional_listing",
+        "public.admin_list_professional_listings",
+        "public.discard_unused_storefront_media",
+        "public.set_storefront_editorial"
+      ]
+    },
+    {
+      "name": "20261204000001_multiple_professional_listings.sql",
+      "sha256": "cfa324a9a3008642db1f075a580057d739a9a08ee489567d422926ee9d05d3e4",
+      "registered": true,
+      "functions": [
+        "public.get_professional_listing_limits",
+        "public.admin_set_professional_listing_limit",
+        "public.create_professional_listing",
+        "public.create_professional_listing",
+        "public.get_my_professional_listing",
+        "public.get_my_professional_listing",
+        "public.list_my_professional_listings"
+      ]
+    },
+    {
+      "name": "20261204000002_admin_account_listing_summary.sql",
+      "sha256": "50d3fd69e3c95041f32696c6a9a1e4d17916de56e672048baef1b62af8dc87f6",
+      "registered": true,
+      "functions": [
+        "public.admin_accounts_snapshot"
+      ]
+    },
+    {
+      "name": "20261205000001_advertising_inventory.sql",
+      "sha256": "d8007bd067c0f389b3cf052440e1ec76facf14ee46cddb9e6f52a14453082dcd",
+      "registered": true,
+      "functions": [
+        "private.advertising_peak",
+        "private.advertising_order_inventory_guard",
+        "public.admin_advertising_inventory",
+        "public.admin_configure_advertising_placement"
+      ]
+    },
+    {
+      "name": "20261205000002_advertising_campaigns.sql",
+      "sha256": "3d85f73f5db7e4bfbe30782d117783f0dfc78cdf8412191729ee795de6cb7ea9",
+      "registered": true,
+      "functions": [
+        "private.require_advertising_editor",
+        "public.create_advertising_account",
+        "public.enforce_sponsored_ad_caps",
+        "public.create_advertising_campaign",
+        "public.edit_advertising_campaign",
+        "public.admin_review_advertising_campaign",
+        "public.interrupt_advertising_campaign",
+        "private.advertising_eligible",
+        "public.get_advertising_campaigns",
+        "public.select_advertising"
+      ]
+    },
+    {
+      "name": "20261205000003_advertising_authorization_metrics.sql",
+      "sha256": "ca985a5ed35c5988fe2d245809a666c13f5724c475adbea2b27c439393a97b56",
+      "registered": true,
+      "functions": [
+        "public.admin_set_advertising_network",
+        "public.list_advertiser_accounts",
+        "private.advertising_financial_authorization",
+        "public.record_ad_events"
+      ]
+    },
+    {
+      "name": "20261205000004_advertising_delivery.sql",
+      "sha256": "1f1e549dc5ccb72edd39d199609bf2e6709f854735a2512e0eceb66b98807205",
+      "registered": true,
+      "functions": [
+        "private.invalidate_advertising_delivery",
+        "public.select_advertising",
+        "private.advertising_peak"
+      ]
+    },
+    {
+      "name": "20261205000005_commercial_promotions.sql",
+      "sha256": "a611fce33ee0b9fc1fdad0b3c3590a0fc34a5b4c07a902760120bfc22b347bbf",
+      "registered": true,
+      "functions": [
+        "public.configure_community_advertising",
+        "private.promotion_source_fingerprint",
+        "private.commercial_promotion_source_eligible",
+        "public.prepare_commercial_promotion",
+        "public.admin_review_commercial_promotion",
+        "private.commercial_promotion_order_guard",
+        "private.sync_commercial_promotion",
+        "private.status_promotion_until",
+        "public.list_commercial_featured_communities",
+        "public.create_promotion"
+      ]
+    },
+    {
+      "name": "20261205000006_advertising_operations.sql",
+      "sha256": "af4a1dc0bb8d744e2c99282213013cf18015df9b9d37b0f22a63961ea7241c5d",
+      "registered": true,
+      "functions": [
+        "public.cancel_promotion",
+        "public.admin_commercial_promotions",
+        "public.get_my_advertising_orders",
+        "public.admin_resume_advertising_campaign",
+        "public.get_community_advertising_permissions",
+        "public.admin_advertising_operations",
+        "public.admin_advertising_inventory",
+        "public.record_promotion_event"
+      ]
+    },
+    {
+      "name": "20261205000007_advertising_media.sql",
+      "sha256": "217ff8cc0dfe0609e2c5b7d8cbfe70b8f55e50160459bf20138ee132df39dc41",
+      "registered": true,
+      "functions": [
+        "private.storefront_media_referenced",
+        "private.lock_commercial_editorial",
+        "public.edit_advertising_campaign",
+        "private.publish_advertising_media",
+        "public.authorize_storefront_media",
+        "public.select_advertising"
+      ]
+    },
+    {
+      "name": "20261205000008_advertising_lock_order.sql",
+      "sha256": "20d8bb3e65f4bc6bbaf53f1f550b7fe8078041346074af6e0379c9827bd0e2ae",
+      "registered": true,
+      "functions": [
+        "private.advertising_order_inventory_guard",
+        "public.admin_configure_advertising_placement"
+      ]
+    },
+    {
+      "name": "20261205000009_advertising_editorial_history.sql",
+      "sha256": "b7dbd8ada92a58b14d62851ade08b6f83e14a9c9f02f8530f319c7b13ee63dee",
+      "registered": true,
+      "functions": [
+        "private.snapshot_advertising_revision",
+        "public.get_advertising_revisions",
+        "public.archive_advertising_campaign",
+        "public.resubmit_commercial_promotion",
+        "private.storefront_media_referenced",
+        "private.commercial_promotion_order_guard"
+      ]
+    },
+    {
+      "name": "20261205000010_advertising_selection.sql",
+      "sha256": "d84d606984d52cb6d16ce4e27ed64d4497f3c298d13cb2bdc666fb72064ae1e1",
+      "registered": true,
+      "functions": [
+        "public.select_advertising"
+      ]
+    },
+    {
+      "name": "20261205000011_advertising_legacy_expiry_index.sql",
+      "sha256": "5559ee4393eb2211032b58b7e9b7c68bc3f7c2df3e53668386308a382fff1e8d",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261205000012_advertising_summary.sql",
+      "sha256": "440623c5b433f598e4c169412377d246a450a36abd5623ffdc5b614b56663664",
+      "registered": true,
+      "functions": [
+        "public.get_advertising_campaigns"
+      ]
+    },
+    {
+      "name": "20261205000013_advertising_rls_gate.sql",
+      "sha256": "48557005e523b5e9935b5636f2c653b2f5b9f7ffe4d20178fa322e12e95c81bb",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261205000014_community_promotion_projection.sql",
+      "sha256": "19220e2d53e725219dfd4b2ddea9f4e3711c898b26395ad9e0ab89a9610935f8",
+      "registered": true,
+      "functions": [
+        "private.community_advertising_until"
+      ]
+    },
+    {
+      "name": "20261205000015_advertising_source_invalidation.sql",
+      "sha256": "e5020f9e6e9a1a9e200b11371763673c6ad2ee8f45879f864796d28ec10ec476",
+      "registered": true,
+      "functions": [
+        "private.audit_advertising_source"
+      ]
+    },
+    {
+      "name": "20261205000016_advertising_deleted_owner.sql",
+      "sha256": "b64b0062da821ec042a5175f0f9e0ef8cc671b5dc0103e539f0e28f68fa2bcbf",
+      "registered": true,
+      "functions": []
+    },
+    {
+      "name": "20261205000017_advertising_batch_authorization.sql",
+      "sha256": "374856c096b516ae41c3b48779cb382727671670e44f0735524751754e419064",
+      "registered": true,
+      "functions": [
+        "private.community_advertising_windows",
+        "public.get_advertising_promotion_authorizations",
+        "public.list_commercial_featured_statuses"
+      ]
+    },
+    {
+      "name": "20261205000018_advertising_context_audit.sql",
+      "sha256": "334aca2e60a0ad1c9377561a391f772e76850c6bb1dfc8a458c531f308d14935",
+      "registered": true,
+      "functions": [
+        "private.audit_advertising_source"
+      ]
+    },
+    {
+      "name": "20261206000001_finance_consolidation_guards.sql",
+      "sha256": "a7ed4f4763f7b2c8a68e525c2ecf8d5a906e5f9355a4827f406c13d386dc263d",
+      "registered": true,
+      "functions": []
+    }
+  ]
+}

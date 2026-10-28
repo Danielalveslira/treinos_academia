@@ -1,0 +1,60 @@
+{
+  "passed": true,
+  "localAuth": true,
+  "realPostgrest": true,
+  "serverSimulation": true,
+  "explicitConfirmation": true,
+  "publication": true,
+  "quotingPaused": true,
+  "history": true,
+  "purchasesTab": true,
+  "captures": [
+    {
+      "width": 320,
+      "mode": "light",
+      "pageOverflow": false
+    },
+    {
+      "width": 320,
+      "mode": "dark",
+      "pageOverflow": false
+    },
+    {
+      "width": 390,
+      "mode": "light",
+      "pageOverflow": false
+    },
+    {
+      "width": 390,
+      "mode": "dark",
+      "pageOverflow": false
+    },
+    {
+      "width": 1440,
+      "mode": "light",
+      "pageOverflow": false
+    },
+    {
+      "width": 1440,
+      "mode": "dark",
+      "pageOverflow": false
+    }
+  ],
+  "pageErrors": [],
+  "externalFinancialRequests": 0,
+  "rpcs": [
+    "ensure_user_profile",
+    "has_app_access",
+    "get_my_wallet",
+    "get_my_evocoin_day",
+    "get_my_deletion_review",
+    "touch_user_activity",
+    "is_session_active",
+    "get_offline_feature_flags",
+    "notifications_unread_count",
+    "admin_get_evocash_pricing",
+    "admin_preview_evocash_price",
+    "admin_publish_evocash_price",
+    "admin_list_evocash_prices"
+  ]
+}

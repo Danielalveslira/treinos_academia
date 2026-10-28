@@ -1,0 +1,24 @@
+✔ member: mostra feed e composer, habilita as leituras e o menu de membro (5570.462036ms)
+✔ not_member: só o fluxo público com Entrar; nenhum conteúdo interno e leituras desligadas (43.861969ms)
+✔ banned (URL direta): estado dedicado, sem feed, composer, membros, menu de membro nem Entrar (89.533952ms)
+✔ unavailable: mensagem própria, sem conteúdo e sem Entrar (48.846624ms)
+✔ estado desconhecido do servidor nega acesso (55.02555ms)
+✔ tela mostrava Entrar, mas o servidor recusa com banned: vira bloqueado na hora, sem refresh e sem erro (92.27349ms)
+✔ entrada recusada por indisponibilidade vira estado indisponível (82.799999ms)
+[CommunityDetail] join: { message: 'TypeError: Failed to fetch', code: '' }
+✔ falha de rede ao entrar: mensagem de rede, continua com Entrar e nenhum erro técnico (89.98752ms)
+[CommunityDetail] join: { message: 'relation "x" does not exist', code: '42P01' }
+✔ erro inesperado ao entrar: mensagem genérica (81.825508ms)
+✔ voltar para a aba revalida: quem era membro e foi removido perde feed e composer sem refresh (92.359061ms)
+✔ removido sem ban (not_member) ao voltar para a aba: volta ao fluxo público, sem conteúdo interno (65.749338ms)
+✔ server time produces a conservative deadline independent of the device date (10.351773ms)
+✔ missing server timestamps fail closed for expiring rows (0.27314ms)
+✔ the nearest timer removes only expired ads and can retain legacy nonexpiring rows (1.113882ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6968.140072

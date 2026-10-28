@@ -1,0 +1,92 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+CREATE EXTENSION
+SET
+INSERT 0 3
+UPDATE 1
+INSERT 0 1
+INSERT 0 1
+b1000000-0000-0000-0000-000000000002
+b8014dbd-b888-4006-93a5-65a88a13c370
+SELECT 1
+GRANT
+SET
+b1000000-0000-0000-0000-000000000001
+ok 1 - A só enxerga as próprias notificações (RLS)
+ok 2 - A não lê notificações de B
+ok 3 - a view da Central também isola por dono
+ok 4 - A não marca como lida a notificação de B
+ok 5 - A não arquiva a notificação de B
+ok 6 - arquivar "tudo" só alcança as próprias (1 linha)
+ok 7 - lista de ids gigante é recusada
+ok 8 - sem filtro nenhum é recusado
+ok 9 - A não cria notificação para B
+ok 10 - A não cria alerta administrativo nem para si
+ok 11 - A não reatribui o destinatário de uma notificação
+ok 12 - A não apaga notificações direto
+ok 13 - usuário comum não faz broadcast
+ok 14 - usuário comum não acessa o rastreio de Push
+ok 15 - A não chama a função que cria alertas administrativos
+ok 16 - A não forja EvoCoins na ledger
+ok 17 - A não forja aviso de moderação para B
+ok 18 - A não insere voto direto (forjaria curtida para B)
+ok 19 - A não altera a carteira
+ok 20 - A não forja decisão de moderação
+ok 21 - A não cria lembrete de treino para B
+ok 22 - A não dispara o despachante de lembretes
+ok 23 - A não altera o plano de treino de B (nem o próprio, fora da RPC)
+ok 24 - A não lista subscriptions
+ok 25 - A não grava subscription direto, nem em nome de B
+ok 26 - A registra o próprio dispositivo pela RPC
+ok 27 - A não lê a outbox
+ok 28 - A não lê as entregas
+ok 29 - A não lê preferências de Push
+ok 30 - A não lê a agenda de lembretes
+ok 31 - A não lê o catálogo privado
+ok 32 - A não revoga o dispositivo de B (mesmo sabendo o endpoint)
+ok 33 - A não descobre se um endpoint de B está ativo
+ok 34 - a view da Central é só leitura (sem privilégio de escrita)
+ok 35 - o oráculo email_verified_ok não é mais chamável
+RESET
+ok 36 - banco rejeita action_url com barra invertida
+ok 37 - banco rejeita action_url com tab (vira // no navegador)
+ok 38 - banco rejeita URL absoluta
+ok 39 - banco rejeita espaço no action_url
+ok 40 - banco rejeita separador de linha Unicode
+ok 41 - sanitizador do claim recusa controle
+ok 42 - sanitizador do claim preserva a âncora do deep link
+SET
+ok 43 - anon não lê notificações
+ok 44 - anon não lê avisos de moderação
+ok 45 - anon não lê denúncias
+ok 46 - anon não chama RPCs de notificação
+ok 47 - anon não registra subscription
+ok 48 - anon não chama funções administrativas
+ok 49 - anon não dispara recálculo de estatísticas
+ok 50 - auxiliares de RLS continuam acessíveis (as políticas dependem deles)
+RESET
+ok 51 - anon só executa a listagem pública, os auxiliares de RLS e o ACK de telemetria do Push
+ok 52 - todo SECURITY DEFINER tem search_path vazio ou com pg_temp por último
+ok 53 - nenhum SECURITY DEFINER sem search_path fixo
+ok 54 - funções de gatilho DEFINER não são chamáveis por clientes
+ok 55 - despachante de lembretes é interno
+ok 56 - claim/finish só do service_role
+ok 57 - ninguém escreve em notifications fora de RPC/trigger
+INSERT 0 1
+UPDATE 1
+INSERT 0 1
+service_role
+ok 58 - rastreio administrativo não expõe endpoint nem chaves
+
+UPDATE 1
+DELETE 1
+SELECT 1
+ok 59 - job preso há >10 min em processing é reassumido por outro worker
+ok 60 - e passa para o novo dono
+UPDATE 1
+ok 61 - job em processing recente NÃO é tomado por outro worker (sem duplicar o envio)
+1..61
+ROLLBACK

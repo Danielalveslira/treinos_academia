@@ -12,7 +12,8 @@ export function validCheckoutUrl(value) {
 export function checkoutPayload({ handle, orderNsu, label, amountCentavos, redirectUrl, webhookUrl, validUntil = null }) {
   if (!/^[a-zA-Z0-9_.-]{2,80}$/.test(handle || '') ||
       !/^evo_[0-9a-f]{32}$/.test(orderNsu || '') ||
-      !Number.isSafeInteger(amountCentavos) || amountCentavos <= 0) throw new Error('INVALID_CHECKOUT_INPUT')
+      !Number.isSafeInteger(amountCentavos) || amountCentavos <= 0 || amountCentavos>10000000 ||
+      typeof validUntil!=='string' || !Number.isFinite(Date.parse(validUntil))) throw new Error('INVALID_CHECKOUT_INPUT')
   return {
     handle, order_nsu: orderNsu, redirect_url: redirectUrl, webhook_url: webhookUrl,
     items: [{ quantity: 1, price: amountCentavos, description: `${label} EvoCash` }],
@@ -20,11 +21,13 @@ export function checkoutPayload({ handle, orderNsu, label, amountCentavos, redir
   }
 }
 
-export async function createCheckout({ userClient, admin, userId, packageId, handle, appUrl, supabaseUrl, fetcher = fetch, logger = console, apiKey = null }) {
-  if (typeof packageId !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(packageId)) throw new Error('INVALID_REQUEST')
+export async function createCheckout({ userClient, admin, quoteId, requestId, handle, appUrl, supabaseUrl, fetcher = fetch, logger = console, apiKey = null, enabled = false }) {
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!uuid.test(quoteId || '') || !uuid.test(requestId || '')) throw new Error('INVALID_REQUEST')
+  if (!enabled) throw new Error('EVOCASH_PURCHASES_PAUSED')
   const { data: access, error: accessError } = await userClient.rpc('has_app_access')
   if (accessError || access !== true) throw new Error('APP_ACCESS_DENIED')
-  if (!/^[a-zA-Z0-9_.-]{2,80}$/.test(handle || '') || !appUrl || !supabaseUrl) {
+  if (!apiKey || !/^[a-zA-Z0-9_.-]{2,80}$/.test(handle || '') || !appUrl || !supabaseUrl) {
     throw new Error('INFINITEPAY_NOT_CONFIGURED')
   }
   try {
@@ -36,21 +39,22 @@ export async function createCheckout({ userClient, admin, userId, packageId, han
       throw new Error('INFINITEPAY_NOT_CONFIGURED')
     }
   } catch { throw new Error('INFINITEPAY_NOT_CONFIGURED') }
-  const { data: reserved, error: reserveError } = await admin.rpc('reserve_infinitepay_cash_purchase', {
-    p_user_id: userId, p_package_id: packageId,
+  const { data: reserved, error: reserveError } = await userClient.rpc('reserve_infinitepay_cash_purchase', {
+    p_quote_id: quoteId, p_request_id: requestId,
   })
   if (reserveError) throw new Error(reserveError.message)
+  if (reserved.checkoutUrl && !validCheckoutUrl(reserved.checkoutUrl)) throw new Error('INVALID_CHECKOUT_URL')
   if (reserved.checkoutUrl) return { id: reserved.id, checkoutUrl: reserved.checkoutUrl, status: reserved.status }
   if (!reserved.createLink) throw new Error(reserved.uncertain ? 'CHECKOUT_RECONCILIATION_REQUIRED' : 'CHECKOUT_IN_PROGRESS')
   let calledProvider = false
   try {
     const payload = checkoutPayload({
-      handle, orderNsu: reserved.orderNsu, label: reserved.packageLabel,
-      amountCentavos: reserved.amountCentavos,
+      handle, orderNsu: reserved.orderNsu, label: reserved.cashAmount,
+      amountCentavos: Number(reserved.amountCentavos),
       redirectUrl: new URL(`/evocash?checkout_return=1&purchase_id=${reserved.id}`, appUrl).toString(),
       webhookUrl: new URL('/functions/v1/infinitepay-webhook', supabaseUrl).toString(),
-      // Advanced options require the merchant API key; expiry reuses the existing 7-day pending window.
-      validUntil: apiKey ? reserved.checkoutValidUntil : null,
+      // Quantity orders require authenticated single-payment links with server-frozen expiry.
+      validUntil: reserved.checkoutValidUntil,
     })
     calledProvider = true
     const response = await fetcher('https://api.checkout.infinitepay.io/links', {

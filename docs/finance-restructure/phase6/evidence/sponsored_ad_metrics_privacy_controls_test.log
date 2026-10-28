@@ -1,0 +1,79 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 6
+UPDATE 0
+UPDATE 1
+UPDATE 2
+UPDATE 1
+UPDATE 1
+INSERT 0 1
+INSERT 0 5
+INSERT 0 1
+UPDATE 1
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+ok 1 - padrão: menores de 18 anos FORA da medição
+ok 2 - RLS ligada nas oposições
+ok 3 - oposições não são legíveis por clientes
+ok 4 - anon sem EXECUTE na RPC de oposição
+ok 5 - RPC de oposição com search_path vazio
+ok 6 - record_ad_events mantém search_path vazio
+SET
+
+ok 7 - adulto é medido
+
+ok 8 - adolescente (15) não é medido
+ok 9 - e não deixa marcador
+
+ok 10 - conta sem data de nascimento não é medida
+
+ok 11 - quem completa 18 anos amanhã ainda não é medido
+ok 12 - só a impressão do adulto entrou nos agregados
+RESET
+UPDATE 1
+SET
+
+ok 13 - com exclude_minors=false o adolescente passa a ser medido
+
+ok 14 - e a conta sem data de nascimento também (decisão explícita do operador)
+RESET
+UPDATE 1
+SET
+
+ok 15 - usuário comum não registra oposição de ninguém
+ok 16 - nem desfaz a própria (só o atendimento)
+SET
+ok 17 - anon não executa
+SET
+
+ok 18 - conta inexistente é recusada
+ok 19 - parâmetro nulo é recusado
+
+ok 20 - antes da oposição a conta é medida
+ok 21 - e tem 1 marcador temporário
+
+ok 22 - superadmin registra a oposição
+ok 23 - os marcadores temporários da conta são apagados na hora
+
+ok 24 - depois da oposição a conta não é medida
+ok 25 - e não deixa rastro
+ok 26 - agregados não mudaram (a oposição não apaga totais anônimos)
+
+ok 27 - registrar duas vezes é idempotente
+ok 28 - superadmin desfaz a oposição
+
+ok 29 - desfeita a oposição, a conta volta a ser medida
+
+ok 30 - outras contas seguem medidas
+RESET
+INSERT 0 1
+DELETE 1
+ok 31 - exclusão da conta apaga a oposição em cascata
+1..31
+ROLLBACK

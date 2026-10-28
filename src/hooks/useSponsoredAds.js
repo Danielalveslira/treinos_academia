@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { listSponsoredAdsForCommunity } from '../services/sponsoredAdsService'
 import { composeCommunityAds } from '../utils/sponsoredAds'
 import { useAdExpiryTick } from './useAdExpiryTick'
-import { useCachedQuery } from './useCachedQuery'
+import { useAdvertisingSelection } from './useAdvertisingSelection'
 
 // Referência estável: um `[]` novo a cada render refaria a composição e o efeito de vencimento à toa.
 const NO_ADS = []
@@ -18,10 +18,7 @@ export function useSponsoredAds(communityId, enabled) {
     data: ads = NO_ADS,
     loading,
     error,
-  } = useCachedQuery(cacheKey, fetchAds, {
-    enabled: enabled && Boolean(communityId),
-    context: 'useSponsoredAds',
-  })
+  } = useAdvertisingSelection(cacheKey, enabled && Boolean(communityId), fetchAds)
 
   // expiresAt e displayMode não dão pra filtrar por completo na query (ver sponsoredAdsService.js) -- a
   // composição (validade, modos e posição banner x feed) roda uma vez por lista carregada.

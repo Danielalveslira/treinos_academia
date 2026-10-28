@@ -1,8 +1,8 @@
 // Template HTML fornecido pelo usuário (email-compra-pendente-v2.html, feito no editor do
 // Resend). Reproduzido aqui como string, com os placeholders {{{...}}} substituídos por
-// valor real já escapado -- nenhum dado dinâmico (username, nome do pacote) chega ao HTML
+// valor real já escapado -- nenhum dado dinâmico (username, resumo da compra) chega ao HTML
 // sem passar por escapeHtml antes, mesmo vindo de um admin autorizado: um username ou rótulo
-// de pacote com caracteres de marcação nunca deve injetar HTML num e-mail enviado em nome do
+// da compra com caracteres de marcação nunca deve injetar HTML num e-mail enviado em nome do
 // usuário. Versão texto simples é obrigatória junto (client req.) e listada abaixo, com os
 // MESMOS dados, nunca um resumo diferente do que o HTML mostra.
 function escapeHtml(value) {
@@ -49,7 +49,7 @@ const HTML_TEMPLATE = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional
   </head>
   <body dir="ltr" lang="pt-BR" style="margin:0;padding:0;background-color:#f6f7f9;">
     <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">
-      Finalize o pagamento do plano __PLANO__ e receba seus __EVOCASH__ EvoCash.&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
+      Finalize o pagamento do plano __COMPRA__ e receba seus __EVOCASH__ EvoCash.&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;
     </div>
 
     <table border="0" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#f6f7f9;">
@@ -88,7 +88,7 @@ const HTML_TEMPLATE = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional
                 <table border="0" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-top:1px solid #eceef1;">
                   <tr>
                     <td style="padding:14px 0;border-bottom:1px solid #eceef1;font-size:14px;line-height:20px;color:#6b7280;">Plano</td>
-                    <td align="right" style="padding:14px 0;border-bottom:1px solid #eceef1;font-size:15px;line-height:20px;font-weight:600;color:#0b0e14;">__PLANO__</td>
+                    <td align="right" style="padding:14px 0;border-bottom:1px solid #eceef1;font-size:15px;line-height:20px;font-weight:600;color:#0b0e14;">__COMPRA__</td>
                   </tr>
                   <tr>
                     <td style="padding:14px 0;border-bottom:1px solid #eceef1;font-size:14px;line-height:20px;color:#6b7280;">EvoCash</td>
@@ -144,7 +144,7 @@ const HTML_TEMPLATE = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional
 </html>`
 
 export function buildReminderEmail({
-  username, packageLabel, cashAmount, amountCentavos, createdAt, appUrl, supportEmail, purchaseId,
+  username, purchaseLabel, cashAmount, amountCentavos, createdAt, appUrl, supportEmail, purchaseId,
 }) {
   // No ?lembrete=1 (or any other) query param: EvoCash.jsx has no code path that reads one
   // (only checkout_return, used by the InfinitePay redirect itself) -- a tracking param
@@ -157,7 +157,7 @@ export function buildReminderEmail({
 
   const html = HTML_TEMPLATE
     .replaceAll('__NOME__', escapeHtml(nome))
-    .replaceAll('__PLANO__', escapeHtml(packageLabel))
+    .replaceAll('__COMPRA__', escapeHtml(purchaseLabel))
     .replaceAll('__EVOCASH__', escapeHtml(String(cashAmount)))
     .replaceAll('__VALOR__', escapeHtml(amount))
     .replaceAll('__DATA__', escapeHtml(date))
@@ -168,7 +168,7 @@ export function buildReminderEmail({
   const text = [
     `Olá, ${nome}. Finalize o pagamento para receber seus créditos.`,
     '',
-    `Plano: ${packageLabel}`,
+    `Compra: ${purchaseLabel}`,
     `EvoCash: ${cashAmount}`,
     `Valor: ${amount}`,
     `Data: ${date}`,

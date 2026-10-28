@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { Box, Button, Dialog, Text } from '@primer/react'
-import { safeHttpsUrl } from './publicProductCatalogService'
+import {
+  safeHttpsUrl,
+  publicProductMediaUrl,
+  formatProductPrice,
+} from './publicProductCatalogService'
 
 function ZoomBody({ children }) {
   return <Dialog.Body sx={{ p: 0 }}>{children}</Dialog.Body>
@@ -10,7 +14,7 @@ function ZoomBody({ children }) {
 // imagem: nenhum visitante que não amplia uma foto baixa este código.
 export default function ProductDialog({ product, onClose, returnFocusRef }) {
   const [imageFailed, setImageFailed] = useState(false)
-  const imageUrl = !imageFailed ? safeHttpsUrl(product.image_url) : null
+  const imageUrl = !imageFailed ? publicProductMediaUrl(product) : null
   const storeUrl = safeHttpsUrl(product.store_url)
   const rel = product.sponsored ? 'noopener noreferrer sponsored' : 'noopener noreferrer'
 
@@ -47,6 +51,9 @@ export default function ProductDialog({ product, onClose, returnFocusRef }) {
         )}
       </Box>
       <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {formatProductPrice(product.price_centavos) && (
+          <Text as="p">{formatProductPrice(product.price_centavos)}</Text>
+        )}
         {product.description && <Text sx={{ color: 'fg.muted' }}>{product.description}</Text>}
         {storeUrl && (
           <Button

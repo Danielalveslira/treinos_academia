@@ -1,0 +1,146 @@
+\ir _helpers/auth_session.sql
+begin;
+select no_plan();
+-- Isolate from committed synthetic preview fixtures. Every change rolls back.
+truncate private.advertising_reservations;
+update private.commercial_resources set moderation_state='suspended' where offering_code like 'ad_%';
+update public.advertising_placements set capacity=0,revision=0,sales_enabled=false,delivery_enabled=false where code='home_banner';
+update public.commercial_offerings set sales_enabled=false where code='ad_home';
+delete from private.advertising_network_bundle;
+
+insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+select ('76000000-0000-0000-0000-'||lpad(i::text,12,'0'))::uuid,'authenticated','authenticated','ads-phase6-'||i||'@example.invalid','x',now(),'{}','{}',now(),now() from generate_series(1,3)i;
+update public.users set role='superadmin' where id='76000000-0000-0000-0000-000000000003';
+create function pg_temp.ads_admin() returns void language plpgsql as $$begin
+ perform pg_temp.set_test_user('76000000-0000-0000-0000-000000000003',true);
+ perform set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb||jsonb_build_object('amr',jsonb_build_array(jsonb_build_object('method','password','timestamp',extract(epoch from clock_timestamp())::bigint))))::text,true);
+end$$;
+create temp table ads_results(name text primary key,value jsonb); grant all on ads_results to authenticated;
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
+set local role authenticated;
+insert into ads_results values('account',to_jsonb(public.create_advertising_account('Synthetic advertiser')));
+select throws_ok($$select public.create_advertising_account('Duplicate')$$,'AD_ACCOUNT_EXISTS','account creation cannot spam');
+insert into ads_results values('ad',to_jsonb(public.create_advertising_campaign((select(value#>>'{}')::uuid from ads_results where name='account'),'home_banner',null,'Synthetic campaign','Only synthetic content','https://example.invalid/ads','76100000-0000-0000-0000-000000000001')));
+select is(public.create_advertising_campaign((select(value#>>'{}')::uuid from ads_results where name='account'),'home_banner',null,'Synthetic campaign','Only synthetic content','https://example.invalid/ads','76100000-0000-0000-0000-000000000001'),'76100000-0000-0000-0000-000000000001'::uuid,'creation replay returns same resource');
+select throws_ok($$select public.create_advertising_campaign((select(value#>>'{}')::uuid from ads_results where name='account'),'home_banner',null,'Changed','Only synthetic content','https://example.invalid/ads','76100000-0000-0000-0000-000000000001')$$,'IDEMPOTENCY_CONFLICT','creation replay rejects changed content');
+select throws_ok($$select public.create_advertising_campaign((select(value#>>'{}')::uuid from ads_results where name='account'),'network',null,'Network','','https://example.invalid/ads',gen_random_uuid())$$,'AD_NETWORK_UNCONFIGURED','network does not include surfaces automatically');
+select throws_ok($$select public.create_advertising_campaign((select(value#>>'{}')::uuid from ads_results where name='account'),'home_banner',null,'Unsafe URL','','javascript:alert(1)',gen_random_uuid())$$,'23514',null,'unsafe destination protocol is rejected');
+select throws_ok($$select public.create_advertising_campaign((select(value#>>'{}')::uuid from ads_results where name='account'),'home_banner',null,'Unsafe authority','','https://user@example.invalid/',gen_random_uuid())$$,'23514',null,'destination authority cannot contain credentials');
+select is((select count(*)::integer from public.sponsored_ads where id='76100000-0000-0000-0000-000000000001'),0,'draft hidden by RLS');
+select is(public.select_advertising('home_banner',null),'[]'::jsonb,'unconfigured surface has no ad');
+select is(jsonb_array_length(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))),1,'owner sees private campaign summary');
+select throws_ok($$select public.quote_commercial_order('76100000-0000-0000-0000-000000000001','1',gen_random_uuid())$$,'COMMERCIAL_SALES_PAUSED','sales closed by default');
+select public.edit_advertising_campaign('76100000-0000-0000-0000-000000000001',1,'Synthetic campaign','Only synthetic content','https://example.invalid/ads',true);
+reset role;
+select pg_temp.ads_admin();
+set local role authenticated;
+select public.admin_review_advertising_campaign('76100000-0000-0000-0000-000000000001',2,true,'Synthetic editorial approval');
+select public.admin_configure_advertising_placement('home_banner',1,true,true,0,'Synthetic capacity only',true);
+-- Dynamic current revision: no assumptions about previous synthetic fixture configuration.
+reset role;
+insert into public.commercial_price_versions(offering_code,revision,unit_price_cash,min_days,max_days,active_from,created_by,reason)
+select 'ad_home',coalesce(max(revision),0)+1,7,1,30,clock_timestamp(),'76000000-0000-0000-0000-000000000003','Synthetic price only' from public.commercial_price_versions where offering_code='ad_home';
+update public.commercial_offerings set sales_enabled=true where code='ad_home';
+select public._wallet_credit_cash('76000000-0000-0000-0000-000000000001',100);
+select public._ledger_record('76000000-0000-0000-0000-000000000001','synthetic-ads-phase6','cash','credit',100,'synthetic','fixture','ads');
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
+set local role authenticated;
+insert into ads_results values('quote',public.quote_commercial_order('76100000-0000-0000-0000-000000000001','2',gen_random_uuid()));
+select is((select value->>'totalCash' from ads_results where name='quote'),'14','PostgreSQL computes daily price');
+select is(public.select_advertising('home_banner',null),'[]'::jsonb,'approved unpaid ad not delivered');
+insert into ads_results values('paid',public.confirm_commercial_order((select(value->>'id')::uuid from ads_results where name='quote'),true));
+select is(public.confirm_commercial_order((select(value->>'id')::uuid from ads_results where name='quote'),true),(select value from ads_results where name='paid'),'payment replay returns same order');
+select is(jsonb_array_length(public.select_advertising('home_banner',null)),1,'approved paid reserved ad delivered');
+select public.edit_advertising_campaign('76100000-0000-0000-0000-000000000001',2,'Pending secret revision','Not public','https://example.invalid/revision',true);
+select is(public.select_advertising('home_banner',null)->0->>'title','Synthetic campaign','pending revision never replaces projection');
+update public.sponsored_ads set title='Bypass' where id='76100000-0000-0000-0000-000000000001';
+reset role;
+select is((select title from public.sponsored_ads where id='76100000-0000-0000-0000-000000000001'),'Synthetic campaign','approved title unmodified');
+select is((select cash_balance from public.wallets where user_id='76000000-0000-0000-0000-000000000001'),86,'exactly one debit');
+select is((select count(*)::integer from private.advertising_reservations where order_id=(select(value->>'id')::uuid from ads_results where name='quote')),1,'exactly one reservation');
+select is((select extract(epoch from expires_at-starts_at)::bigint from private.advertising_reservations where order_id=(select(value->>'id')::uuid from ads_results where name='quote')),172800::bigint,'two days are exactly 48 hours');
+-- Real SQL permissions and protected-media identity; byte upload is tested separately.
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
+set local role authenticated;
+insert into ads_results values('media',public.allocate_storefront_media('76100000-0000-0000-0000-000000000001'));
+select public.create_advertising_campaign((select(value#>>'{}')::uuid from ads_results where name='account'),'home_banner',null,'Second private campaign','','https://example.invalid/second','76100000-0000-0000-0000-000000000002');
+insert into ads_results values('foreign_media',public.allocate_storefront_media('76100000-0000-0000-0000-000000000002'));
+reset role;
+update public.storefront_media set state='ready',width=100,height=100,byte_size=100 where id in(select(value->>'id')::uuid from ads_results where name in('media','foreign_media'));
+set local role authenticated;
+select throws_ok($$select public.edit_advertising_campaign('76100000-0000-0000-0000-000000000001',3,'Wrong media','','https://example.invalid/wrong',true,(select(value->>'id')::uuid from ads_results where name='foreign_media'))$$,'INVALID_AD_MEDIA','cannot associate media of another campaign even with same owner');
+select public.edit_advertising_campaign('76100000-0000-0000-0000-000000000001',3,'Approved image campaign','Synthetic image evidence','https://example.invalid/image',true,(select(value->>'id')::uuid from ads_results where name='media'));
+reset role;
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000002',true);
+select is(public.authorize_storefront_media((select(value->>'id')::uuid from ads_results where name='media')),null::text,'pending image is not public');
+select pg_temp.ads_admin();
+select public.admin_review_advertising_campaign('76100000-0000-0000-0000-000000000001',4,true,'Synthetic image review');
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000002',true);
+select ok(public.authorize_storefront_media((select(value->>'id')::uuid from ads_results where name='media')) is not null,'approved paid campaign image is authorized');
+select is(public.authorize_storefront_media((select(value->>'id')::uuid from ads_results where name='foreign_media')),null::text,'another campaign draft stays private');
+-- Team membership does not authorize spending the owner's personal wallet.
+insert into public.advertiser_members(account_id,user_id,permission,granted_by) values((select(value#>>'{}')::uuid from ads_results where name='account'),'76000000-0000-0000-0000-000000000002','manager','76000000-0000-0000-0000-000000000003');
+set local role authenticated;
+select is(jsonb_array_length(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))),2,'manager can prepare authorized account campaigns');
+select throws_ok($$select public.quote_commercial_order('76100000-0000-0000-0000-000000000001','1',gen_random_uuid())$$,'RESOURCE_NOT_ELIGIBLE','manager cannot debit the owner wallet');
+reset role;
+update public.advertiser_members set permission='viewer' where user_id='76000000-0000-0000-0000-000000000002';
+set local role authenticated;
+select throws_ok($$select public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))$$,'42501','AD_EDITOR_REQUIRED','analyst cannot edit campaigns');
+reset role;
+update public.advertiser_members set revoked_at=now() where user_id='76000000-0000-0000-0000-000000000002';
+-- Revision approval changes no paid time and keeps immutable submitted evidence.
+select is((select cash_balance from public.wallets where user_id='76000000-0000-0000-0000-000000000001'),86,'editorial review never debits');
+select is((select extract(epoch from expires_at-starts_at)::bigint from public.visibility_entitlements where resource_id='76100000-0000-0000-0000-000000000001'),172800::bigint,'editorial review never extends duration');
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
+select public.archive_advertising_campaign('76100000-0000-0000-0000-000000000002','Synthetic unpaid archive');
+select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000002'),'archived','archive preserves content privately');
+select pg_temp.ads_admin();
+select throws_ok($$select public.admin_configure_advertising_placement('home_banner',0,false,true,1,'Synthetic reduction attempt',true)$$,'AD_CAPACITY_COMMITTED','cannot reduce capacity below paid commitments');
+select public.admin_configure_advertising_placement('home_banner',1,false,true,1,'Synthetic pause sales only',true);
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
+select is(jsonb_array_length(public.select_advertising('home_banner',null)),1,'sales pause preserves existing delivery');
+select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic voluntary interruption');
+select is(public.select_advertising('home_banner',null),'[]'::jsonb,'suspension blocks server delivery immediately');
+select is(public.authorize_storefront_media((select(value->>'id')::uuid from ads_results where name='media')), (select storage_path from public.storefront_media where id=(select(value->>'id')::uuid from ads_results where name='media')), 'owner retains private media access during suspension');
+select is((select cash_balance from public.wallets where user_id='76000000-0000-0000-0000-000000000001'),86,'interruption does not grant automatic credit');
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000002',true);
+set local role authenticated;
+select throws_ok($$select public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))$$,'42501','PERMISSION_DENIED','other user cannot read private campaigns');
+select throws_ok($$select public.edit_advertising_campaign('76100000-0000-0000-0000-000000000001',3,'Attack','','https://example.invalid/attack',false)$$,'42501','PERMISSION_DENIED','other user cannot edit');
+select throws_ok($$select public.confirm_commercial_order((select(value->>'id')::uuid from ads_results where name='quote'),true)$$,'ORDER_NOT_FOUND','other user cannot spend original payer balance');
+reset role;
+-- A global campaign keeps its prepared scope even if the administrative bundle grows.
+select pg_temp.ads_admin();
+select public.admin_set_advertising_network(array['home_banner'],(select network_revision from private.advertising_configuration where id),'Synthetic global bundle version A',true);
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
+set local role authenticated;
+select public.create_advertising_campaign((select(value#>>'{}')::uuid from ads_results where name='account'),'network',null,'Frozen global campaign','','https://example.invalid/global','76100000-0000-0000-0000-000000000003');
+reset role;
+select pg_temp.ads_admin();
+select public.admin_set_advertising_network(array['home_banner','community_banner'],(select network_revision from private.advertising_configuration where id),'Synthetic global bundle version B',true);
+select is((select count(*)::integer from private.advertising_resource_inventory where resource_id='76100000-0000-0000-0000-000000000003'),1,'new placement never enters a prepared global campaign');
+select is((select placement_code from private.advertising_resource_inventory where resource_id='76100000-0000-0000-0000-000000000003'),'home_banner','global snapshot preserves its exact original placement');
+-- Revoked online sessions cannot quote or replay a confirmation.
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
+select pg_temp.revoke_test_session('76000000-0000-0000-0000-000000000001');
+set local role authenticated;
+select throws_ok($$select public.confirm_commercial_order((select(value->>'id')::uuid from ads_results where name='quote'),true)$$,'42501','APP_ACCESS_DENIED','revoked session blocks even a confirmation replay');
+reset role;
+select pg_temp.ads_admin();
+insert into ads_results values('refund',public.admin_reverse_commercial_order((select(value->>'id')::uuid from ads_results where name='quote'),'76200000-0000-0000-0000-000000000001','Synthetic explicitly authorized reversal',true));
+select is(public.admin_reverse_commercial_order((select(value->>'id')::uuid from ads_results where name='quote'),'76200000-0000-0000-0000-000000000001','Synthetic explicitly authorized reversal',true),(select value from ads_results where name='refund'),'administrative reversal replay is idempotent');
+select is((select cash_balance from public.wallets where user_id='76000000-0000-0000-0000-000000000001'),100,'explicit reversal restores exactly the paid amount');
+select is(private.advertising_peak('home_banner','00000000-0000-0000-0000-000000000000',now(),'infinity'),0,'reversed reservation releases capacity without deleting history');
+select is((select count(*)::integer from private.advertising_reservations where order_id=(select(value->>'id')::uuid from ads_results where name='quote')),1,'reversal retains reservation evidence');
+-- Deleted owners retain private evidence without an FK preventing authorized deletion.
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000002',true);
+set local role authenticated;
+insert into ads_results values('deleted_account',to_jsonb(public.create_advertising_account('Synthetic deleted advertiser')));
+select public.create_advertising_campaign((select(value#>>'{}')::uuid from ads_results where name='deleted_account'),'home_banner',null,'Deleted owner draft','','https://example.invalid/deleted','76100000-0000-0000-0000-000000000004');
+reset role;
+select lives_ok($$delete from auth.users where id='76000000-0000-0000-0000-000000000002'$$,'deletion of a nonfinancial synthetic owner is not blocked by advertiser FKs');
+select ok((select created_by is null and commercial_resource_id=id from public.sponsored_ads where id='76100000-0000-0000-0000-000000000004'),'deleted-owner campaign stays managed, never falls into legacy publication');
+select ok(not private.commercial_resource_visible('76100000-0000-0000-0000-000000000004'),'ownerless resource is not public');
+select * from finish();
+rollback;

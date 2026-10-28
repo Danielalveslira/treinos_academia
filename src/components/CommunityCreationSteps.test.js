@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { build } from 'esbuild'
 
-// Mesmo padrão de CashPackageCards.test.js: renderToStaticMarkup com ThemeProvider do Primer.
+// Mesmo padrão de CommercialAdmin.test.js: renderToStaticMarkup com ThemeProvider do Primer.
 let directory
 let render
 before(async () => {

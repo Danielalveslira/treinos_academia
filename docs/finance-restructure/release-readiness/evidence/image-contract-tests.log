@@ -1,0 +1,31 @@
+✔ all five original versions and OCI digests are fixed, with no mutable override (2.159581ms)
+✔ verified GHCR cache executes the immutable config ID without a pull (1.399742ms)
+✔ GHCR pull is pinned and must pass post-pull digest verification (1.02305ms)
+✔ transient GHCR limit falls back to ECR with the exact same version and digest (1.007762ms)
+✔ a transient retry can recover without switching registries (0.468034ms)
+✔ both registries unavailable fails after bounded attempts (0.721927ms)
+✔ security/auth/unknown errors fail closed without fallback: unauthorized (0.42308ms)
+✔ security/auth/unknown errors fail closed without fallback: forbidden: 503 (0.230009ms)
+✔ security/auth/unknown errors fail closed without fallback: certificate signed by unknown authority (0.304108ms)
+✔ security/auth/unknown errors fail closed without fallback: digest mismatch: timeout (0.409814ms)
+✔ security/auth/unknown errors fail closed without fallback: checksum mismatch (0.318655ms)
+✔ security/auth/unknown errors fail closed without fallback: unexpected digest (0.284812ms)
+✔ security/auth/unknown errors fail closed without fallback: unknown Docker failure (0.269323ms)
+✔ invalid cached image is rejected before any pull: {"RepoDigests":[]} (0.359471ms)
+✔ invalid cached image is rejected before any pull: {"Id":"mutable-tag"} (1.476868ms)
+✔ invalid cached image is rejected before any pull: {"Os":"windows"} (0.222845ms)
+✔ invalid cached image is rejected before any pull: {"Architecture":"unknown"} (0.113852ms)
+✔ successful pull with unexpected digest fails without fallback (0.222324ms)
+✔ daemon failure and invalid inspect JSON do not fall back (0.251079ms)
+✔ unknown image cannot select an unreviewed registry or version (0.12877ms)
+✔ PostgreSQL harness validates the config ID against its pinned OCI index, not equality of both digests (0.333523ms)
+✔ PostgreSQL CLI keeps supporting official versioned images (0.138869ms)
+✔ PostgreSQL image validation rejects wrong indexes, mismatched config IDs and unofficial names (0.352218ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 130.389307

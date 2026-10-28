@@ -312,12 +312,12 @@ test('rotas públicas estáticas nunca recebem o shell do app como fallback offl
     ? basic('js', { headers: { 'content-type': 'text/javascript' } })
     : basic('<html>público</html>', { headers: { 'content-type': 'text/html' } }) })
   await lifecycle('install')
-  for (const path of ['/vitrine', '/profissionais', '/como-funciona']) {
+  for (const path of ['/vitrine', '/vitrine/74500000-0000-0000-0000-000000000001', '/profissionais', '/como-funciona']) {
     const online = await dispatchFetch(navigation(path))
     assert.equal(await online.response.text(), '<html>público</html>')
   }
   offline = true
-  for (const path of ['/vitrine', '/profissionais', '/como-funciona'])
+  for (const path of ['/vitrine', '/vitrine/74500000-0000-0000-0000-000000000001', '/profissionais', '/como-funciona'])
     await assert.rejects(() => dispatchFetch(navigation(path)))
 })
 

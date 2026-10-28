@@ -1,0 +1,55 @@
+{
+  "localOnly": true,
+  "checks": [
+    {
+      "name": "advertising-metrics",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 4739,
+      "route": "/meus-anuncios"
+    },
+    {
+      "name": "advertising-metrics",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 4739,
+      "route": "/meus-anuncios"
+    },
+    {
+      "name": "advertising-metrics",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 4745,
+      "route": "/meus-anuncios"
+    },
+    {
+      "name": "advertising-metrics",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 4745,
+      "route": "/meus-anuncios"
+    },
+    {
+      "name": "advertising-metrics",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 4805,
+      "route": "/meus-anuncios"
+    },
+    {
+      "name": "advertising-metrics",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 4805,
+      "route": "/meus-anuncios"
+    }
+  ],
+  "errors": [],
+  "httpFailures": []
+}

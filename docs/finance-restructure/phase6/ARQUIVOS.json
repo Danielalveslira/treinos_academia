@@ -1,0 +1,765 @@
+{
+  "branch": "finance-advertising-phase6",
+  "base": "8cc0f26f859996e3ff129e3d561cd0cb84f153a5",
+  "selfExcluded": true,
+  "ignoredPreviewCredentialsAndRasterCapturesExcluded": true,
+  "fileCount": 126,
+  "files": [
+    {
+      "path": ".github/workflows/supabase-tests.yml",
+      "change": "modified",
+      "bytes": 11029,
+      "sha256": "751bab933792a33cead701577ef161d8b4040911495cd950a58263c3465c49d2"
+    },
+    {
+      "path": "docs/finance-restructure/CHECKLIST_LANCAMENTO.md",
+      "change": "modified",
+      "bytes": 9170,
+      "sha256": "3cbf14ac4594799cf7fc6406dbd45da81bb3855cb4bdd3e87425a94c739461ac"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/ENTREGA.md",
+      "change": "created",
+      "bytes": 25604,
+      "sha256": "fe167a38011a0cc7c07d52bef78e8b62d18f9f946c965e7cd80cc461e92169db"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/INVENTARIO.md",
+      "change": "created",
+      "bytes": 2897,
+      "sha256": "0ed34ad81345add120228969f2fa40483a105596d5ce362a5b07a35eeb67d014"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/advertiser_metrics_v2_test.log",
+      "change": "created",
+      "bytes": 2720,
+      "sha256": "be806cfb07883a80d4f0280e2ba3a87ba6270f1b97123680b3a5283743bc61f0"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/advertising_campaigns_test.log",
+      "change": "created",
+      "bytes": 6616,
+      "sha256": "15d60038a403c6fdbcb59531a592f32a712d805ddffc49ec42e47601259198d9"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/affected-javascript.log",
+      "change": "created",
+      "bytes": 1590,
+      "sha256": "8f6910c80bb370e22c18cdfbc6acfa0b4c4aa66963b7ae126942af2d9d07285d"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/aud_01_aud_02_security_test.log",
+      "change": "created",
+      "bytes": 4398,
+      "sha256": "dad35d23bf9294af5b462a80d11fd3d89bc6dda136ce56bb6e9ecb6061bc37d3"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/aud_has_app_access_gates_test.log",
+      "change": "created",
+      "bytes": 8085,
+      "sha256": "316883308b6c243b3ce940edf8db8e91716cf98f144efaea83342ccb0f6d573a"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/authorization-install.log",
+      "change": "created",
+      "bytes": 192,
+      "sha256": "7aab58047855dc1d98cf2804a872a32501aaf67555eab8aaded0f94c2377a384"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/browser.json",
+      "change": "created",
+      "bytes": 5905,
+      "sha256": "7e01d409e952d0fc8d5403508102e608d217400f34a7151aadbb74c7a154a048"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/budget.log",
+      "change": "created",
+      "bytes": 261,
+      "sha256": "5ff61e24c19ef5999b98eeb60a453e4cdc6993c1aba105021659810dd84c9bce"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/build.log",
+      "change": "created",
+      "bytes": 18714,
+      "sha256": "06c61c57cf642f6ea636a9740151bb027317090ea1fc6d3fdd8a9117a26d0491"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/campaign-install.log",
+      "change": "created",
+      "bytes": 440,
+      "sha256": "5de8e1078fd5ce9d2acfee3acc81bfce87d8cf895403e5ca0d1cef400cf448ba"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/commercial_engine_test.log",
+      "change": "created",
+      "bytes": 5443,
+      "sha256": "8a5aa70cffc51f0c1cc0acebafa0f4f1dca73519ce9006bdf3c8cab6887a4438"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/community-performance.json",
+      "change": "created",
+      "bytes": 21212,
+      "sha256": "2c5b3c972b32846d5c5e8094c549767eb8e0470f749458db90616c5aee78fe32"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/community_promotion_security_test.log",
+      "change": "created",
+      "bytes": 1162,
+      "sha256": "4052194c1b99a6a25cc4b18b27f77ea9af01953e7463ea1fa468451adca975e6"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/concurrency.json",
+      "change": "created",
+      "bytes": 479,
+      "sha256": "f74a08a9928b95a0eac231194aa355c07eae8b5a81f03e99423fe726352164d2"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/delivery-install.log",
+      "change": "created",
+      "bytes": 213,
+      "sha256": "eac02f049d1ae482cd3a90b62c79e43d1f0cb2922ab56fc719d6a96e9d785a28"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/edge-functions.log",
+      "change": "created",
+      "bytes": 21493,
+      "sha256": "b28e9a373c65f866f3f7fdce0dbb89e8a937ec40f65e009500549df60b90892d"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/evocash_pricing_test.log",
+      "change": "created",
+      "bytes": 4130,
+      "sha256": "6e8a61bf9e23a58e85d1e528dd7570125d61fa950b5eaa9934756677603b8ae6"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/finance_integrity_test.log",
+      "change": "created",
+      "bytes": 854,
+      "sha256": "13a033d56c90f4dc337882287f9165390d72de5bd8704a3b470ccf0d635b7712"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/finance_reversals_test.log",
+      "change": "created",
+      "bytes": 1416,
+      "sha256": "ebc7b9dfeeca0536764b26977d09d36cc51643e90fdf26f2ecfe386f40258c6c"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/format.log",
+      "change": "created",
+      "bytes": 66,
+      "sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/gates.json",
+      "change": "created",
+      "bytes": 2532,
+      "sha256": "e454e58e7046d47fc1f5128b6a83d0c6cb6a24c7cebe1fc570be8426d630c877"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/infinitepay_cash_purchases_test.log",
+      "change": "created",
+      "bytes": 2214,
+      "sha256": "564c95a6807bb792e2e582638150e5307bfdf57dbb62f75a2c3013b0a3e7adb4"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/inventory-install.log",
+      "change": "created",
+      "bytes": 336,
+      "sha256": "88e84c349b52db2e82d628820b56a467437f4ddf10e7a0008b282183c190e730"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/javascript.log",
+      "change": "created",
+      "bytes": 776695,
+      "sha256": "9927d8f9d41108a7634d5bc8be36e6baa4b859cf8ad9dd734ec769ddb5cd5b5f"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/lifecycle.json",
+      "change": "created",
+      "bytes": 922,
+      "sha256": "e885674afaa17bf98385956c951a69fb432c442515a3ebb6d50c329d8de430cc"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/lint.log",
+      "change": "created",
+      "bytes": 3113,
+      "sha256": "31bd651c68bc09c9a7e3b662cbdcf0a80f50f70e9a7e860e0412ce25da3da849"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/live-browser.json",
+      "change": "created",
+      "bytes": 353,
+      "sha256": "509d6b6d3513aebbc48f77111b2ff0b52bf86e7aeb74c032d77585490ad87cae"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/migrations-reinstall.log",
+      "change": "created",
+      "bytes": 5816,
+      "sha256": "a3c14be494357e096bb33b6778ae9c57aab867eef967ac48d12463f195d44d93"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/multiple_professional_listings_test.log",
+      "change": "created",
+      "bytes": 4915,
+      "sha256": "69564e5e9f06b1221c36a7419c5f05d5bd6a9ff143de43d4c16b48b0428cfc3f"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/operations-install.log",
+      "change": "created",
+      "bytes": 208,
+      "sha256": "42b7d7c227de0dfe21a6cc464061fc7833c119d4820b73f59f8b67c4d0ae79d2"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/performance-100.log",
+      "change": "created",
+      "bytes": 1571,
+      "sha256": "c5c93022a288f68240466b7ef8318049269a5bf6cb84556349dbefe8effea48b"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/performance-1000.log",
+      "change": "created",
+      "bytes": 1575,
+      "sha256": "df9d94ce2aa9c14fc0f75b1b7727b816d8a1ad03afe91c9a3e95d78368d0635b"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/performance-10000.log",
+      "change": "created",
+      "bytes": 1571,
+      "sha256": "fdc970305812a08fbcd4483d20800a2786ed71d8b664f67b40fcdb4c5a5588f7"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/performance-plans-100.log",
+      "change": "created",
+      "bytes": 110622,
+      "sha256": "a66b044416138194016b779aa0b9ac5d32cae5976fe1008f88366319521380cc"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/performance-plans-1000.log",
+      "change": "created",
+      "bytes": 111705,
+      "sha256": "4af93c934d844c7d4ed77d418238b0a1ebb36d5d4aace05f8277c206a40398bd"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/performance-plans-10000.log",
+      "change": "created",
+      "bytes": 114827,
+      "sha256": "7374ac37d26fcaadaeaab57180917be4fb137f226f98ca57071a96ad443ddb9e"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/product_storefronts_test.log",
+      "change": "created",
+      "bytes": 7766,
+      "sha256": "4674081a9a38aefcb856da447d471c2cab26914d14460030c26f3d4a5589752f"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/professional_commercial_test.log",
+      "change": "created",
+      "bytes": 5766,
+      "sha256": "c985f89726f60adb57f4407e82aed9ac2fbdb6d42386eec321263048cbbbc111"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/promotion-expiry.json",
+      "change": "created",
+      "bytes": 250,
+      "sha256": "57c5d5372f90e93360a9889fb11d309d101238a33027c9c146e40e4380fcb1f9"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/promotions-install.log",
+      "change": "created",
+      "bytes": 468,
+      "sha256": "e7be99eeaa3c46c3dacaa483acf402de3a5f6d8a1c4defc73126d15ecdff52eb"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/realtime-image.json",
+      "change": "created",
+      "bytes": 284,
+      "sha256": "4418a69ccc933be8f6e8e16efab40fd5fb55ba9176da543279a589d38e1cdcdb"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/realtime-viewer.json",
+      "change": "created",
+      "bytes": 189,
+      "sha256": "0ca84c20beb609b3156fea44549f15c968e695d7834b0bd38578d224f8db0cd6"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/realtime.json",
+      "change": "created",
+      "bytes": 164,
+      "sha256": "afcba1cfceb1cb98ae659a7b1fada2f1537bbdbe6c56decee225454867fb52af"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/secrets-dist.json",
+      "change": "created",
+      "bytes": 64,
+      "sha256": "9e77b31d2cb3cb59f9f625355cc26ffdf85aa6fa9a3ccc4b8aa0ef425dc529b0"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/secrets-source.json",
+      "change": "created",
+      "bytes": 64,
+      "sha256": "c0437ba6f294d5941eaa4d50fcbd61deca7ab7dbddbcb607145abffbcd2e7506"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/source-invalidation.json",
+      "change": "created",
+      "bytes": 289,
+      "sha256": "25c5734dd44b44c2133ecac7020344ef5f1eee0acb76e35ba60f3500fa229571"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/sponsored_ad_metrics_dashboard_test.log",
+      "change": "created",
+      "bytes": 3520,
+      "sha256": "0a6b1edfe196fd4bbd0fd2b6ac81e9466cfe52b4d439db0937003b055df424d8"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/sponsored_ad_metrics_privacy_controls_test.log",
+      "change": "created",
+      "bytes": 1814,
+      "sha256": "334d0dcf8ade7b3a24381f9b3d96dc0ed18f06dbbdea54ae360a410cfd95ab22"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/sponsored_ad_metrics_test.log",
+      "change": "created",
+      "bytes": 9667,
+      "sha256": "496ae5a6e1fb723d0030bbe6f4706be44e9a5c96be83fbba1ac24c183eb3abc2"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/sql-summary.json",
+      "change": "created",
+      "bytes": 1666,
+      "sha256": "8d71d2d3c5361cb1d1511826c014bb35b553ab872091bcd386cce85a12f4619c"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/storefront_revisions_test.log",
+      "change": "created",
+      "bytes": 6431,
+      "sha256": "51685ea13b8c676a857673a51662c6cda0eba2aa662c4ab19a7dc4e0820b08ad"
+    },
+    {
+      "path": "docs/finance-restructure/phase6/evidence/visual.json",
+      "change": "created",
+      "bytes": 10250,
+      "sha256": "26be6273161fa5f354e0893ff1e9c6167f4789473d179ddef68e24a902860e73"
+    },
+    {
+      "path": "scripts/advertising-concurrency.mjs",
+      "change": "created",
+      "bytes": 14871,
+      "sha256": "4d939e520389a9ffeb3d5f00cfa2640aa80a60c67c2e37d34b9980b31c196d24"
+    },
+    {
+      "path": "scripts/homolog/finance/phase5-preview.mjs",
+      "change": "modified",
+      "bytes": 4169,
+      "sha256": "5c516b67a5c2d4014a7b7c1c37de41d7353c93281c1d84b0305cd8b2652ddaba"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-browser-context.mjs",
+      "change": "created",
+      "bytes": 2181,
+      "sha256": "743a38fe472328f4c7e1ddd6bff3b99ff73b7066121367252a7885f17775db72"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-browser.mjs",
+      "change": "created",
+      "bytes": 5255,
+      "sha256": "20d2e263890bec201c71df58a2e723174d21b53b000df4e9382b15596c943a75"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-community-performance.mjs",
+      "change": "created",
+      "bytes": 2411,
+      "sha256": "2878faacd3e75e27ddec2b325f0a003c843e1feb39eab1af3a1aa2b1c0e394ea"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-lifecycle.mjs",
+      "change": "created",
+      "bytes": 12094,
+      "sha256": "ad0138e591f1566fb4537fbff4e6bc3b4a540dcebbbb955b9655c4af3254637a"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-live-browser.mjs",
+      "change": "created",
+      "bytes": 4469,
+      "sha256": "71de73ac4ba249b421d9f247ac13399340c5acc67aa301410b198e3722a6b5d3"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-performance.mjs",
+      "change": "created",
+      "bytes": 2822,
+      "sha256": "531934fade10ad5b1291ca1e2ae8157cf28ab87806948b376b2ab69ed9065468"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-preview.mjs",
+      "change": "created",
+      "bytes": 1518,
+      "sha256": "ddbd8e469574049093a36737f8b51e6c643e0e36335c7a9eed01565b53e5ac98"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-promotion-expiry.mjs",
+      "change": "created",
+      "bytes": 3878,
+      "sha256": "5d50b639d469031b757852e85c14fd56af49938b23dd6fcda149980155bdfb88"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-realtime-check.mjs",
+      "change": "created",
+      "bytes": 2357,
+      "sha256": "617af48ac4c2a4c58639414dabb962590700a8cef1aaad6eee9fe3fa71cdac41"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-realtime.mjs",
+      "change": "created",
+      "bytes": 3146,
+      "sha256": "bbb9724cf9b35efffb94d0fca96f12515fd299693ca1f1457e0adc333021c11d"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-reinstall.mjs",
+      "change": "created",
+      "bytes": 3253,
+      "sha256": "d276204f3f9802f0bd10864b31570a27ac15ebf1d3747e781cf93603123024b4"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-seed.mjs",
+      "change": "created",
+      "bytes": 3755,
+      "sha256": "c55adf753d8fc3948a11887c866194eb0d823cec972b67b67611181d98425088"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-source-invalidation.mjs",
+      "change": "created",
+      "bytes": 3393,
+      "sha256": "7d483d6d7cfc46e4957219ac43b9bba98588173cb56ef01f965045cc2e26725c"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-validate.mjs",
+      "change": "created",
+      "bytes": 2479,
+      "sha256": "67aa8a8fbf352d192856be553253b8ea50a5649580bf411cbc047ccce6673c8a"
+    },
+    {
+      "path": "scripts/homolog/finance/phase6-visual.mjs",
+      "change": "created",
+      "bytes": 4701,
+      "sha256": "653e23d8c74b5e45f0f2cf2de6957efd4b262c6c042ef9800cb13dee5a3c1fe2"
+    },
+    {
+      "path": "src/components/AdvertisingAdmin.jsx",
+      "change": "created",
+      "bytes": 11147,
+      "sha256": "8378e9486c456939b2443751a8a3f42e31a793e236e286b009d7b747ddeb5625"
+    },
+    {
+      "path": "src/components/AdvertisingCentral.jsx",
+      "change": "created",
+      "bytes": 13886,
+      "sha256": "f52d074ff6f0d38b8593b5c39e921312fd7f171bda627f5494e034298c50ce2c"
+    },
+    {
+      "path": "src/components/CommercialLeasePurchase.jsx",
+      "change": "modified",
+      "bytes": 4580,
+      "sha256": "e785676d9f59190f980058d42490adfe92f1c08c45a3ddb8413b4b524f9b36ce"
+    },
+    {
+      "path": "src/components/CommunityAdvertisingPermissions.jsx",
+      "change": "created",
+      "bytes": 2380,
+      "sha256": "79209a22458b753c41b71b1378bec875747cf467b7901765aafb24eadfedf5b3"
+    },
+    {
+      "path": "src/components/CommunityFeedSection.test.js",
+      "change": "modified",
+      "bytes": 27175,
+      "sha256": "84e44fbc0506928b6a18ea19d60b15ec8362e911f59261044c1be403019b98f2"
+    },
+    {
+      "path": "src/components/FeaturedSpotlight.jsx",
+      "change": "modified",
+      "bytes": 8142,
+      "sha256": "74749b9a090e008617e10c71904fbf9ce46fa092314af2b4ed76d7a438cf9377"
+    },
+    {
+      "path": "src/components/PromoteDialog.jsx",
+      "change": "modified",
+      "bytes": 3561,
+      "sha256": "7799894d4145beaa28aa2f793b599d0e77dbc59b34ff5f2773d9e1b8d88de348"
+    },
+    {
+      "path": "src/components/PromoteDialog.test.js",
+      "change": "modified",
+      "bytes": 4824,
+      "sha256": "199a3d4953d71c336c733d336c132ea56b9d0c902f6ad92f5a9676dc8e0db2bb"
+    },
+    {
+      "path": "src/components/PromotedBadge.jsx",
+      "change": "modified",
+      "bytes": 218,
+      "sha256": "15880d0b1e6874f05086cdd947940887627b780aaf7c4d1d7c6e1c2c4e91239a"
+    },
+    {
+      "path": "src/components/SponsoredAdCard.jsx",
+      "change": "modified",
+      "bytes": 3263,
+      "sha256": "7957c8c05480c2608ce160a70a5ac0e08a4404c22f00901f7fdd89c52552e225"
+    },
+    {
+      "path": "src/contexts/authColdStart.test.js",
+      "change": "modified",
+      "bytes": 42807,
+      "sha256": "1b2ee9338d68985aa0129be2c3e2ceeec4bfe0b0ee4c9d75a7ee00a840ed3ec4"
+    },
+    {
+      "path": "src/hooks/useAdvertisingSelection.js",
+      "change": "created",
+      "bytes": 3012,
+      "sha256": "0895638231fba3a717f6889e2b66bfbaec4290b4f943a0a1391b02b279050296"
+    },
+    {
+      "path": "src/hooks/useAdvertisingValidity.js",
+      "change": "created",
+      "bytes": 2204,
+      "sha256": "9df29542510d279d358f75ed0657e58289cc7d47f822655548f58aa8d7347975"
+    },
+    {
+      "path": "src/hooks/useGlobalSponsoredAds.js",
+      "change": "modified",
+      "bytes": 1401,
+      "sha256": "3a345c5e8197edf3687f83112a7d2b91ef983d715056a32238c37f826477fdda"
+    },
+    {
+      "path": "src/hooks/useSponsoredAds.js",
+      "change": "modified",
+      "bytes": 1594,
+      "sha256": "961d3efacfe083b55e7cc16fbea2da64aea89ec3e11f493359cc53deb6b02e28"
+    },
+    {
+      "path": "src/hooks/useSponsoredAds.test.js",
+      "change": "modified",
+      "bytes": 8874,
+      "sha256": "68ca9af7ac25a43b2fdd09ad4b8e3a6da2643175c48739debad39104be07e125"
+    },
+    {
+      "path": "src/pages/AdminSponsoredAds.jsx",
+      "change": "modified",
+      "bytes": 11786,
+      "sha256": "2af2069ef96c5adaff06452ce634de1374507484ecf8534f2ac988c6ad47a753"
+    },
+    {
+      "path": "src/pages/Communities.jsx",
+      "change": "modified",
+      "bytes": 15858,
+      "sha256": "7d07cb218b4963ea2cfb6197d5e148dc9e8ff820f39360784cba1c495efffd1b"
+    },
+    {
+      "path": "src/pages/CommunityDetail.access.test.js",
+      "change": "modified",
+      "bytes": 13752,
+      "sha256": "e24face7052a1ee6025df8416425c77fdfd01bf6c77fbf6e8d85cefba9ebd89f"
+    },
+    {
+      "path": "src/pages/CommunityDetail.jsx",
+      "change": "modified",
+      "bytes": 39156,
+      "sha256": "78613608d9da09b7f9b04939bb9b16b3cac9aa3fdfe760205151dfb0e5ceec40"
+    },
+    {
+      "path": "src/pages/MyAds.jsx",
+      "change": "modified",
+      "bytes": 6208,
+      "sha256": "b12223dfaee793436e7e0fb8e2533fffbc979760207ac488eabaf15a6fcc9402"
+    },
+    {
+      "path": "src/services/advertisingService.js",
+      "change": "created",
+      "bytes": 3442,
+      "sha256": "6689a5d6e609428d5acfa09adba3fcb3aee56ede864c7cab35db8b9baef60a13"
+    },
+    {
+      "path": "src/services/communitiesService.js",
+      "change": "modified",
+      "bytes": 7489,
+      "sha256": "c364d5932ed7008da645c87fa1f134637e3b5f49fca83ef55cb57c1c28272b45"
+    },
+    {
+      "path": "src/services/promotionsService.js",
+      "change": "modified",
+      "bytes": 5239,
+      "sha256": "14e1319985f542a25f84cc6e0eed1c3676cb8bb6f267ffe6e3312ea40586be47"
+    },
+    {
+      "path": "src/services/sponsoredAdsService.js",
+      "change": "modified",
+      "bytes": 4815,
+      "sha256": "038ed49335cf0b023d3d5576b4b09e324b0859c01ffe28551395eb1ba22fec4c"
+    },
+    {
+      "path": "src/utils/adAuthorization.js",
+      "change": "created",
+      "bytes": 778,
+      "sha256": "9e7bc2c6e7497896ae8f45f8538e0ea5169f28619aecd88141108cc7bd71af4a"
+    },
+    {
+      "path": "src/utils/adAuthorization.test.js",
+      "change": "created",
+      "bytes": 1327,
+      "sha256": "b0fd2dfdb3e2959075bb1082200db60f7d9a928d527d63408d4dfa113d1cf65c"
+    },
+    {
+      "path": "src/utils/commercial.js",
+      "change": "modified",
+      "bytes": 3253,
+      "sha256": "b4290df86643d0c7c4407a1ababb1615a2dfed593ff088f58374a1eab0a06efd"
+    },
+    {
+      "path": "src/utils/promotionStatus.js",
+      "change": "modified",
+      "bytes": 1245,
+      "sha256": "15ec5d42efdca4087c94effd0b385c72b299990a864eeed1f52ec5f0c04320cf"
+    },
+    {
+      "path": "supabase/migrations/20261205000001_advertising_inventory.sql",
+      "change": "created",
+      "bytes": 10888,
+      "sha256": "d8007bd067c0f389b3cf052440e1ec76facf14ee46cddb9e6f52a14453082dcd"
+    },
+    {
+      "path": "supabase/migrations/20261205000002_advertising_campaigns.sql",
+      "change": "created",
+      "bytes": 19013,
+      "sha256": "3d85f73f5db7e4bfbe30782d117783f0dfc78cdf8412191729ee795de6cb7ea9"
+    },
+    {
+      "path": "supabase/migrations/20261205000003_advertising_authorization_metrics.sql",
+      "change": "created",
+      "bytes": 19105,
+      "sha256": "ca985a5ed35c5988fe2d245809a666c13f5724c475adbea2b27c439393a97b56"
+    },
+    {
+      "path": "supabase/migrations/20261205000004_advertising_delivery.sql",
+      "change": "created",
+      "bytes": 4777,
+      "sha256": "1f1e549dc5ccb72edd39d199609bf2e6709f854735a2512e0eceb66b98807205"
+    },
+    {
+      "path": "supabase/migrations/20261205000005_commercial_promotions.sql",
+      "change": "created",
+      "bytes": 17446,
+      "sha256": "a611fce33ee0b9fc1fdad0b3c3590a0fc34a5b4c07a902760120bfc22b347bbf"
+    },
+    {
+      "path": "supabase/migrations/20261205000006_advertising_operations.sql",
+      "change": "created",
+      "bytes": 8747,
+      "sha256": "af4a1dc0bb8d744e2c99282213013cf18015df9b9d37b0f22a63961ea7241c5d"
+    },
+    {
+      "path": "supabase/migrations/20261205000007_advertising_media.sql",
+      "change": "created",
+      "bytes": 8139,
+      "sha256": "217ff8cc0dfe0609e2c5b7d8cbfe70b8f55e50160459bf20138ee132df39dc41"
+    },
+    {
+      "path": "supabase/migrations/20261205000008_advertising_lock_order.sql",
+      "change": "created",
+      "bytes": 4192,
+      "sha256": "20d8bb3e65f4bc6bbaf53f1f550b7fe8078041346074af6e0379c9827bd0e2ae"
+    },
+    {
+      "path": "supabase/migrations/20261205000009_advertising_editorial_history.sql",
+      "change": "created",
+      "bytes": 8164,
+      "sha256": "b7dbd8ada92a58b14d62851ade08b6f83e14a9c9f02f8530f319c7b13ee63dee"
+    },
+    {
+      "path": "supabase/migrations/20261205000010_advertising_selection.sql",
+      "change": "created",
+      "bytes": 2993,
+      "sha256": "d84d606984d52cb6d16ce4e27ed64d4497f3c298d13cb2bdc666fb72064ae1e1"
+    },
+    {
+      "path": "supabase/migrations/20261205000011_advertising_legacy_expiry_index.sql",
+      "change": "created",
+      "bytes": 317,
+      "sha256": "5559ee4393eb2211032b58b7e9b7c68bc3f7c2df3e53668386308a382fff1e8d"
+    },
+    {
+      "path": "supabase/migrations/20261205000012_advertising_summary.sql",
+      "change": "created",
+      "bytes": 1790,
+      "sha256": "440623c5b433f598e4c169412377d246a450a36abd5623ffdc5b614b56663664"
+    },
+    {
+      "path": "supabase/migrations/20261205000013_advertising_rls_gate.sql",
+      "change": "created",
+      "bytes": 923,
+      "sha256": "48557005e523b5e9935b5636f2c653b2f5b9f7ffe4d20178fa322e12e95c81bb"
+    },
+    {
+      "path": "supabase/migrations/20261205000014_community_promotion_projection.sql",
+      "change": "created",
+      "bytes": 1354,
+      "sha256": "19220e2d53e725219dfd4b2ddea9f4e3711c898b26395ad9e0ab89a9610935f8"
+    },
+    {
+      "path": "supabase/migrations/20261205000015_advertising_source_invalidation.sql",
+      "change": "created",
+      "bytes": 2240,
+      "sha256": "e5020f9e6e9a1a9e200b11371763673c6ad2ee8f45879f864796d28ec10ec476"
+    },
+    {
+      "path": "supabase/migrations/20261205000016_advertising_deleted_owner.sql",
+      "change": "created",
+      "bytes": 666,
+      "sha256": "b64b0062da821ec042a5175f0f9e0ef8cc671b5dc0103e539f0e28f68fa2bcbf"
+    },
+    {
+      "path": "supabase/migrations/20261205000017_advertising_batch_authorization.sql",
+      "change": "created",
+      "bytes": 3989,
+      "sha256": "374856c096b516ae41c3b48779cb382727671670e44f0735524751754e419064"
+    },
+    {
+      "path": "supabase/migrations/20261205000018_advertising_context_audit.sql",
+      "change": "created",
+      "bytes": 2010,
+      "sha256": "334aca2e60a0ad1c9377561a391f772e76850c6bb1dfc8a458c531f308d14935"
+    },
+    {
+      "path": "supabase/tests/_helpers/legacy_promotion.sql",
+      "change": "created",
+      "bytes": 1140,
+      "sha256": "56b844586d6282afc9ff99c42861f6ec0228c0b64e9a28809dc6251f96d2613c"
+    },
+    {
+      "path": "supabase/tests/advertising_campaigns_test.sql",
+      "change": "created",
+      "bytes": 17594,
+      "sha256": "c5f950a151f5d8aa4c929d4d8e036a3246e996723177e0c83bcc032332f70e52"
+    },
+    {
+      "path": "supabase/tests/aud_01_aud_02_security_test.sql",
+      "change": "modified",
+      "bytes": 23019,
+      "sha256": "ae1c0caff40c4007bcbafb195458ca54b5c5db64f7cb27b25c1d7d4a7e15b37a"
+    },
+    {
+      "path": "supabase/tests/aud_has_app_access_gates_test.sql",
+      "change": "modified",
+      "bytes": 39624,
+      "sha256": "77a09abf9d6dc3292e29772b37da546938971122522ed5529d4426183bd727a5"
+    },
+    {
+      "path": "supabase/tests/commercial_engine_test.sql",
+      "change": "modified",
+      "bytes": 18465,
+      "sha256": "d2d62dadd72ca696c3ea603703a3e09ee17366bc5094885a159c4b4191c7dace"
+    },
+    {
+      "path": "supabase/tests/community_promotion_security_test.sql",
+      "change": "modified",
+      "bytes": 6448,
+      "sha256": "81f8654e777006d1ad49b42eb518f292b3e7892f27bf9dd859a18002e9beb342"
+    }
+  ]
+}

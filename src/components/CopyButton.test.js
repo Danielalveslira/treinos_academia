@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { build } from 'esbuild'
 
-// Mesmo padrão de CashPackageCards.test.js: TestRenderer + act, mas o clique aqui
+// Mesmo padrão de CommercialAdmin.test.js: TestRenderer + act, mas o clique aqui
 // dispara um handler ASSÍNCRONO (copyTextToClipboard) -- por isso `renderAndClick`
 // aguarda a própria Promise devolvida por onClick() dentro do act(), garantindo que o
 // setStatus(...) posterior ao await já tenha sido aplicado antes de inspecionar o

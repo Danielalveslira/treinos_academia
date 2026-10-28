@@ -1,0 +1,83 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+1..36
+INSERT 0 3
+UPDATE 1
+UPDATE 1
+UPDATE 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+51000000-0000-0000-0000-000000000002
+ok 1 - usuário comum não pode listar Vitrines no admin
+ok 2 - usuário comum não pode ver detalhe de Vitrine no admin
+ok 3 - denúncia de vitrine é aceita com categoria válida
+ok 4 - listing_id persiste na denúncia (não é mais descartado)
+ok 5 - listing_owner_id é resolvido pelo próprio banco, não pelo cliente
+ok 6 - listing_kind é resolvido pelo próprio banco
+ok 7 - categoria da denúncia é salva corretamente
+DELETE 1
+ok 8 - não é possível denunciar uma vitrine inexistente
+ok 9 - denúncia (kind=report) exige categoria
+DELETE 0
+ok 10 - categoria other é aceita quando a descrição (message) está preenchida
+51000000-0000-0000-0000-000000000001
+ok 11 - titular não pode denunciar a própria vitrine
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+51000000-0000-0000-0000-000000000002
+DELETE 1
+ok 12 - denúncia de post/comunidade continua funcionando (regressão) e aceita categoria
+ok 13 - status_id de uma denúncia de post continua sendo gravado normalmente
+DELETE 1
+ok 14 - appeal continua exigindo decisionId válido (regressão, categoria não se aplica)
+DELETE 0
+ok 15 - privacy continua funcionando sem categoria (regressão)
+51000000-0000-0000-0000-000000000003
+ok 16 - superadmin encontra a vitrine pela busca por nome
+ok 17 - listagem admin resolve o titular (owner_username) sem N+1
+ok 18 - detalhe admin resolve o titular
+ok 19 - paginação respeita page_size
+51000000-0000-0000-0000-000000000003
+{"amr": [{"method": "password", "timestamp": 1793189657}], "sub": "51000000-0000-0000-0000-000000000003", "role": "authenticated", "session_id": "123999f2-7b92-6b77-dbdf-2404d55c7830"}
+b619552f-c68f-4eba-9483-237626b2137f
+ok 20 - suspend_listing suspende a vitrine de verdade (via suspend_professional_listing)
+ok 21 - suspensão preserva o snapshot aprovado para auditoria
+ok 22 - moderation_decisions guarda o listing_id da suspensão (histórico, sem sistema paralelo)
+ok 23 - vitrine suspensa aparece no admin com o lifecycle_state correto
+ok 24 - admin_list_support_requests resolve o nome da vitrine em lote
+ok 25 - admin_list_support_requests mostra o estado atual (ao vivo) da vitrine
+INSERT 0 2
+UPDATE 1
+UPDATE 1
+INSERT 0 1
+INSERT 0 1
+56000000-0000-0000-0000-000000000002
+DELETE 0
+{"id": "797197ff-751a-4c87-9e62-a94ce5ecd6d7", "sourcePhotoPath": null}
+INSERT 0 1
+{"kind": "account", "complete": false, "targetId": "56000000-0000-0000-0000-000000000002", "photoPaths": [], "authPending": true, "deleteAuthUser": true}
+ok 26 - denúncia sobrevive à exclusão da conta do denunciante
+ok 27 - user_id vira null quando o denunciante é excluído (nunca derruba a denúncia)
+51000000-0000-0000-0000-000000000003
+ok 28 - admin_list_support_requests não lança erro com denunciante excluído
+INSERT 0 1
+{"kind": "account", "complete": false, "targetId": "56000000-0000-0000-0000-000000000001", "photoPaths": [], "authPending": true, "deleteAuthUser": true}
+ok 29 - denúncia sobrevive também à exclusão da conta do titular da vitrine
+ok 30 - listing_id vira null quando a vitrine é excluída (cascade a partir do titular)
+ok 31 - listing_kind sobrevive (coluna comum, não FK) mesmo com a vitrine excluída
+51000000-0000-0000-0000-000000000003
+ok 32 - admin_list_support_requests não lança erro mesmo com vitrine e titular excluídos
+51000000-0000-0000-0000-000000000003
+
+ok 33 - suspend_professional_listing nega sessão revogada antes de buscar a vitrine
+ok 34 - admin_reactivate_professional_listing nega sessão revogada antes de buscar a vitrine
+ok 35 - a vitrine real segue suspensa: a tentativa com sessão revogada não teve efeito nenhum
+51000000-0000-0000-0000-000000000003
+{"amr": [{"method": "password", "timestamp": 1793189657}], "sub": "51000000-0000-0000-0000-000000000003", "role": "authenticated", "session_id": "123999f2-7b92-6b77-dbdf-2404d55c7830"}
+ok 36 - reativação exige revisão explícita no fluxo moderado
+ROLLBACK

@@ -11,7 +11,7 @@ test('bounded batch does not guess missing payment identities and empty retry is
 })
 
 test('provider failures do not abort subsequent batch items or fabricate success', async () => {
-  const row = { id: 'test', status: 'pending', package_id: 'pack_25', amount_centavos: 590, currency: 'BRL' }
+  const row = { id: 'test', status: 'pending',  amount_centavos: 590, currency: 'BRL' }
   const query = { select: () => query, eq: () => query, maybeSingle: async () => ({ data: row }) }
   let fetched = 0
   const admin = { from: () => query, rpc: async (name) => ({ data: name === 'claim_infinitepay_reconciliation_batch'

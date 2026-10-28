@@ -1,0 +1,25 @@
+{
+  "localOnly": true,
+  "base": "cd0fb0e",
+  "productionChanged": false,
+  "pushOrMerge": false,
+  "newDependencies": 0,
+  "sqlAssertions": 282,
+  "sqlSuites": 8,
+  "affectedJsFilesPassed": 7,
+  "releaseTestsPassed": 98,
+  "lintErrors": 0,
+  "existingLintWarnings": 16,
+  "build": true,
+  "bundleBudget": true,
+  "sourceSecretFindings": 0,
+  "browserBuildSecretFindings": 0,
+  "realProviderPayments": false,
+  "remoteCiExecuted": false,
+  "phase4SqlAssertions": 74,
+  "preview": {
+    "visibleStorefronts": 1,
+    "fulfilledWithoutLedger": 0,
+    "missingConcreteStorefront": 0
+  }
+}

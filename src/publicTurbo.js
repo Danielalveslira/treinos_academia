@@ -3,7 +3,14 @@ import { session } from '@hotwired/turbo'
 // These pages are HTML documents. Drive only handles links explicitly marked by
 // the static page generator; React, account, checkout and profile routes stay native.
 session.drive = false
-const paths = new Set(['/', '/como-funciona', '/para-empresas', '/vitrine', '/profissionais'])
+const paths = new Set([
+  '/',
+  '/como-funciona',
+  '/para-empresas',
+  '/vitrine',
+  '/profissionais',
+  '/locais',
+])
 let visitAction = null
 
 const eligible = (raw) => {
@@ -18,8 +25,15 @@ document.addEventListener('turbo:click', (event) => {
 document.addEventListener('turbo:before-prefetch', (event) => {
   const connection = navigator.connection
   const pathname = new URL(event.target.href).pathname
-  if (!eligible(event.target.href) || pathname === '/vitrine' || pathname === '/profissionais' ||
-    connection?.saveData || ['slow-2g', '2g'].includes(connection?.effectiveType)) event.preventDefault()
+  if (
+    !eligible(event.target.href) ||
+    pathname === '/vitrine' ||
+    pathname === '/profissionais' ||
+    pathname === '/locais' ||
+    connection?.saveData ||
+    ['slow-2g', '2g'].includes(connection?.effectiveType)
+  )
+    event.preventDefault()
 })
 
 document.addEventListener('turbo:visit', (event) => {
@@ -27,22 +41,35 @@ document.addEventListener('turbo:visit', (event) => {
 })
 
 document.addEventListener('turbo:load', () => {
-  if (visitAction === 'advance' && !location.hash) document.getElementById('content')?.focus({ preventScroll: true })
+  if (visitAction === 'advance' && !location.hash)
+    document.getElementById('content')?.focus({ preventScroll: true })
   visitAction = null
 
   // Chunk só desta tela, carregado sob demanda (ver mountPublicProducts.jsx): nada aqui
   // entra no boot comum das outras páginas públicas.
   if (document.getElementById('vitrine-root'))
-    import('./features/publicProducts/mountPublicProducts.jsx').then((module) => module.mountPublicProducts())
+    import('./features/publicProducts/mountPublicProducts.jsx').then((module) =>
+      module.mountPublicProducts()
+    )
+
+  if (document.getElementById('public-listings-root'))
+    import('./features/publicListings/mountPublicListings.jsx').then((module) =>
+      module.mountPublicListings()
+    )
 
   // The head bootstrap runs on a direct Home load. Turbo may keep that script in
   // the merged head, so repeat the session check when navigating back to Home.
   if (location.pathname === '/') {
     const bootstrap = document.querySelector('script[data-auth-ref]')
     try {
-      if (bootstrap?.dataset.authRef && localStorage.getItem(`sb-${bootstrap.dataset.authRef}-auth-token`)) {
+      if (
+        bootstrap?.dataset.authRef &&
+        localStorage.getItem(`sb-${bootstrap.dataset.authRef}-auth-token`)
+      ) {
         import(/* @vite-ignore */ bootstrap.dataset.redirectSrc)
       }
-    } catch { /* Storage may be unavailable. */ }
+    } catch {
+      /* Storage may be unavailable. */
+    }
   }
 })

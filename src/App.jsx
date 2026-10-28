@@ -17,6 +17,7 @@ import { PageFallback } from './components/PageFallback'
 import { routeLoaders } from './routeLoaders'
 import { COMMENTS_ENABLED } from './features/comments/config'
 
+const MyProductStorefronts = lazy(() => import('./pages/MyProductStorefronts'))
 const MyAds = lazy(() => import('./pages/MyAds'))
 const Login = lazy(() => import('./pages/Login'))
 const Register = lazy(() => import('./pages/Register'))
@@ -51,7 +52,7 @@ const AdminPromotions = lazy(() => import('./pages/AdminPromotions'))
 const AdminExerciseCatalog = lazy(() => import('./pages/AdminExerciseCatalog'))
 const MyPromotions = lazy(() => import('./pages/MyPromotions'))
 const ProfessionalListing = lazy(() => import('./pages/ProfessionalListing'))
-const MyProfessionalListing = lazy(() => import('./pages/MyProfessionalListing'))
+const MyProfessionalListing = lazy(() => import('./pages/ProfessionalListingsHub'))
 const CreateCommunity = lazy(() => import('./pages/CreateCommunity'))
 const CommentContextPage = lazy(() => import('./features/comments/pages/CommentContextPage'))
 const NotFound = lazy(() => import('./pages/NotFound'))
@@ -82,6 +83,7 @@ export function AppRoutes() {
         />
         <Route path="/atendimento" element={<Support />} />
         <Route path="/profissionais/:listingId" element={<ProfessionalListing />} />
+        <Route path="/locais/:listingId" element={<ProfessionalListing />} />
         <Route path="*" element={<NotFound />} />
       </Route>
 
@@ -120,6 +122,7 @@ export function AppRoutes() {
             depende disso (ver create_professional_listing/save_professional_listing_draft,
             nenhuma das duas consulta showcase_legal_policy). A rota sempre renderiza a
             página; ela decide sozinha o que mostrar com base no profile/listing reais. */}
+        <Route path="/vitrine/gerenciar" element={<MyProductStorefronts />} />
         <Route path="/minha-vitrine" element={<MyProfessionalListing />} />
         <Route path="/comunidades/criar" element={<CreateCommunity />} />
         <Route

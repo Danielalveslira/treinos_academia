@@ -1,5 +1,6 @@
 begin;
 select no_plan();
+update private.commercial_resources set moderation_state='draft' where offering_code in('professional_profile','establishment_profile');
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
@@ -23,6 +24,17 @@ values
    'personal_trainer', array['musculacao'], '{}', 'Nunca divulgar',
    'São Paulo', 'sao paulo', 'SP', 'online', '[]'::jsonb, null, 1);
 
+
+-- Published rows alone are legacy data, never a paid publication.
+select is(public.public_get_professional('52000000-0000-0000-0000-000000000001'),null::jsonb,'legacy publication without a right remains private');
+-- Minimal trusted contract fixtures for public-filter tests; actual debit/ledger is exercised
+-- by professional_commercial_test.sql and the browser. No financial fixture survives rollback.
+insert into public.commercial_price_versions(id,offering_code,revision,unit_price_cash,min_days,max_days,active_from,created_by,reason)
+values('52900000-0000-0000-0000-000000000001','professional_profile',1000000,1,1,30,clock_timestamp()-interval '1 second','51000000-0000-0000-0000-000000000001','Synthetic public directory fixture');
+insert into public.commercial_orders(id,payer_user_id,request_id,resource_id,offering_code,price_version_id,content_revision,duration_days,unit_price_cash,total_cash,quote_expires_at,status,fulfilled_at,period_start,period_end)
+select l.id,l.owner_id,gen_random_uuid(),l.id,'professional_profile','52900000-0000-0000-0000-000000000001',1,1,1,1,clock_timestamp()+interval '5 minutes','fulfilled',clock_timestamp(),statement_timestamp(),statement_timestamp()+interval '24 hours' from public.professional_listings l where l.id in('52000000-0000-0000-0000-000000000001','52000000-0000-0000-0000-000000000002');
+insert into public.visibility_entitlements(resource_id,origin_order_id,starts_at,expires_at) select id,id,period_start,period_end from public.commercial_orders where id in('52000000-0000-0000-0000-000000000001','52000000-0000-0000-0000-000000000002');
+update private.commercial_resources set content_revision=1,approved_revision=1,moderation_state='approved' where id in('52000000-0000-0000-0000-000000000001','52000000-0000-0000-0000-000000000002');
 set local role anon;
 select is(jsonb_array_length(public.public_list_professionals('professional')->'items'), 1,
   'anonymous list returns only active published records');
@@ -42,8 +54,8 @@ select throws_ok($$ select public.public_list_professionals('professional', null
   '22023', 'INVALID_ARGUMENT', 'server rejects an oversized page');
 select throws_ok($$ select public.public_list_professionals('professional', null, null, null, null, -1, 20) $$,
   '22023', 'INVALID_ARGUMENT', 'server rejects negative offset');
-select is(public.public_professional_avatar_visible('published/ana.webp'), true,
-  'published avatar path is readable without session');
+select is(public.public_professional_avatar_visible('published/ana.webp'), false,
+  'legacy personal avatar is not exposed as paid commercial media');
 reset role;
 
 set local role authenticated;

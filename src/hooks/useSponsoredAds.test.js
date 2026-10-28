@@ -154,7 +154,7 @@ export const invalidateCache = () => {}
             path: 'sponsored-ads-service',
             namespace: 'stub',
           }))
-          buildContext.onResolve({ filter: /useCachedQuery$/ }, () => ({
+          buildContext.onResolve({ filter: /useAdvertisingSelection$/ }, () => ({
             path: 'cached-query',
             namespace: 'stub',
           }))
@@ -180,8 +180,8 @@ export const invalidateCache = () => {}
                 { id: 'banner', expiresAt: 2000, displayMode: ['banner'] },
                 { id: 'expired', expiresAt: 50, displayMode: ['feed', 'banner'] },
               ]
-              export function useCachedQuery(_key, fetchValue, options) {
-                if (!options.enabled) return { data: undefined, loading: false, error: null }
+              export function useAdvertisingSelection(_key, enabled, fetchValue) {
+                if (!enabled) return { data: undefined, loading: false, error: null }
                 fetchValue()
                 return { data: ads, loading: false, error: null }
               }

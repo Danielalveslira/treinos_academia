@@ -121,8 +121,8 @@ select is((select count(*)::int from public.professional_listings where id = 'c4
 select pg_temp.set_test_user((select a from ids), true);
 select is((public.comment_delete((select id from c4_comment))).status::text, 'deleted_by_author',
   'sessão ativa de novo: comment_delete volta a funcionar');
-select is((public.delete_professional_listing('c4400000-0000-0000-0000-000000000001'))->>'deleted', 'true',
-  'sessão ativa de novo: delete_professional_listing volta a funcionar');
+select throws_ok($$select public.delete_professional_listing('c4400000-0000-0000-0000-000000000001')$$, 'EDITORIAL_REVISION_REQUIRED',
+  'sessão ativa ainda exige arquivamento com revisão explícita');
 
 -- ===== list_deletion_jobs (20261114000003): language sql, pulada pela injeção automática =====
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at,

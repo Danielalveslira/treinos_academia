@@ -1,0 +1,75 @@
+// Rollback-only owner paging/count plan comparison with identical rows and session.
+import { spawnSync } from 'node:child_process'
+import { writeFileSync, readFileSync } from 'node:fs'
+const volume = Number(process.argv[2] || 4000)
+if (![1000, 4000].includes(volume)) throw Error('SYNTHETIC_VOLUME_REQUIRED')
+const mode = process.argv[3] || 'owner'
+if (!['owner', 'order-index', 'flat-join'].includes(mode)) throw Error('INVALID_BENCHMARK_MODE')
+const owner = "md5('phase51-owner:1')::uuid"
+const fixture = `begin;set local statement_timeout='120s';
+insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)select md5('phase51-owner:'||i)::uuid,'authenticated','authenticated','multi-perf-'||i||'@example.invalid','x',now(),'{}','{}',now(),now() from generate_series(1,8)i;
+update public.users set legal_acceptance_version=(select version from public.legal_policy where id),legal_acceptance_digest=(select digest from public.legal_policy where id) where id in(select md5('phase51-owner:'||i)::uuid from generate_series(1,8)i);
+insert into public.professional_listings(id,owner_id,kind)select md5('phase51-resource:'||i)::uuid,md5('phase51-owner:'||((i%8)+1))::uuid,case when i%3=0 then 'professional' else 'space' end from generate_series(1,${volume})i;
+insert into public.professional_listing_drafts(listing_id,owner_id,kind,display_name)select id,owner_id,kind,'Synthetic owner listing' from public.professional_listings where id in(select md5('phase51-resource:'||i)::uuid from generate_series(1,${volume})i);
+insert into public.published_professional_listings(listing_id,kind,display_name,sort_key,category_key,modality_keys,specialties,bio,city,city_key,uf,service_mode,public_contacts,published_version)
+select l.id,l.kind,'Synthetic profile '||l.id,l.id::text,case when l.kind='space' then 'academia' else 'personal_trainer' end,array['musculacao'],'{}','Synthetic useful approved performance description','São Paulo','sao paulo','SP','in_person','[]',1 from public.professional_listings l where l.id in(select md5('phase51-resource:'||i)::uuid from generate_series(1,${volume})i);
+update public.professional_listings set lifecycle_state='published' where id in(select md5('phase51-resource:'||i)::uuid from generate_series(1,${volume})i);
+insert into public.commercial_price_versions(id,offering_code,revision,unit_price_cash,min_days,max_days,active_from,created_by,reason)select md5('phase51-price:'||code)::uuid,code,1000000,1,1,30,clock_timestamp()-interval '1 second',${owner},'Synthetic rollback-only benchmark' from public.commercial_offerings where code in('professional_profile','establishment_profile');
+insert into public.commercial_orders(id,payer_user_id,request_id,resource_id,offering_code,price_version_id,content_revision,duration_days,unit_price_cash,total_cash,quote_expires_at,status,fulfilled_at,period_start,period_end)select l.id,l.owner_id,gen_random_uuid(),l.id,l.offering_code,md5('phase51-price:'||l.offering_code)::uuid,1,1,1,1,clock_timestamp()+interval '5 minutes','fulfilled',clock_timestamp(),statement_timestamp(),statement_timestamp()+interval '24 hours' from public.professional_listings l where l.id in(select md5('phase51-resource:'||i)::uuid from generate_series(1,${volume})i);
+insert into public.visibility_entitlements(resource_id,origin_order_id,starts_at,expires_at)select id,id,period_start,period_end from public.commercial_orders where id in(select md5('phase51-resource:'||i)::uuid from generate_series(1,${volume})i);
+update private.commercial_resources set content_revision=1,approved_revision=1,moderation_state='approved' where id in(select md5('phase51-resource:'||i)::uuid from generate_series(1,${volume})i);
+analyze public.professional_listings;analyze public.professional_listing_drafts;analyze private.commercial_resources;analyze public.visibility_entitlements;analyze public.published_professional_listings;
+`
+const bench = (
+  stage
+) => `create temp table bench_${stage}(op text,ms numeric);do $$declare op text;t timestamptz;i integer;begin foreach op in array array['all','kind','count','public-professional','public-space','central','central-kind']loop for i in 1..12 loop t:=clock_timestamp();if op like 'central%' then perform public.list_my_professional_listings(case when op='central-kind' then 'space' end,null,12);elsif op like 'public-%' then perform public.public_list_professionals(case op when 'public-space' then 'space' else 'professional' end);elsif op='count' then perform count(*) from public.professional_listings where owner_id=${owner} and kind='space';else perform l.id,d.display_name from public.professional_listings l join public.professional_listing_drafts d on d.listing_id=l.id where l.owner_id=${owner} and(op='all' or l.kind='space') order by l.id desc limit 13;end if;insert into bench_${stage} values(op,extract(epoch from clock_timestamp()-t)*1000);end loop;end loop;end$$;select '${stage}',op,round(percentile_cont(0.5)within group(order by ms)::numeric,3)p50_ms,round(percentile_cont(0.95)within group(order by ms)::numeric,3)p95_ms from bench_${stage} group by op order by op;
+explain(analyze,buffers)select l.id,d.display_name from public.professional_listings l join public.professional_listing_drafts d on d.listing_id=l.id where l.owner_id=${owner} and l.kind='space' order by l.id desc limit 13;
+explain(analyze,buffers)select count(*) from public.professional_listings where owner_id=${owner} and kind='space';`
+const r = spawnSync(
+  'docker',
+  [
+    'exec',
+    '-i',
+    'evolutus_price_phase1_db',
+    'psql',
+    '-U',
+    'supabase_admin',
+    '-d',
+    'postgres',
+    '-v',
+    'ON_ERROR_STOP=1',
+  ],
+  {
+    input:
+      fixture +
+      readFileSync('supabase/tests/_helpers/auth_session.sql', 'utf8') +
+      `select pg_temp.set_test_user((${owner})::text,true);` +
+      'drop index public.professional_listing_owner_kind_id;' +
+      bench('before') +
+      `create index professional_listing_owner_kind_id on public.professional_listings(owner_id,kind,id desc);` +
+      (mode === 'order-index'
+        ? `create index professional_listing_public_order on public.published_professional_listings(kind,sort_key,listing_id);`
+        : mode === 'flat-join'
+          ? `create or replace view private.live_professional_listings as select p.*,r.expires_at from public.published_professional_listings p join public.professional_listings l on l.id=p.listing_id and l.kind=p.kind join private.live_commercial_resources r on r.id=l.id and r.offering_code=l.offering_code where l.lifecycle_state='published' and p.published_version=r.approved_revision;`
+          : '') +
+      bench('after') +
+      `explain(analyze,buffers)select public.list_my_professional_listings(null,null,12);explain(analyze,buffers)select public.public_list_professionals('professional','musculacao','SP','São Paulo',null,0,20);explain(analyze,buffers)select p.listing_id from private.live_professional_listings p where p.kind='space' order by p.sort_key,p.listing_id limit 21;rollback;`,
+    encoding: 'utf8',
+    maxBuffer: 8000000,
+  }
+)
+writeFileSync(
+  'docs/finance-restructure/phase5/evidence51/' +
+    (mode === 'owner' ? 'owner-performance' : 'candidate-' + mode) +
+    '-' +
+    volume +
+    '.log',
+  r.stdout + r.stderr
+)
+if (r.status !== 0) throw Error(r.stderr)
+console.log(
+  r.stdout
+    .split('\n')
+    .filter((l) => /before\s+\||after\s+\||Execution Time/.test(l))
+    .join('\n')
+)

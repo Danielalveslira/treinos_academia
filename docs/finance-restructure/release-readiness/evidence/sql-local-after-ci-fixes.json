@@ -1,0 +1,706 @@
+[
+  {
+    "file": "account_deletion_financial_case_test.sql",
+    "passed": true,
+    "assertions": 84,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "4172e606d7f3319c9771ea26257e764d1a1ef88350f1624ec68c3a9287f483f6"
+  },
+  {
+    "file": "account_deletion_hardening_test.sql",
+    "passed": true,
+    "assertions": 32,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "daea01872bc2c19e82cd876e7222def6b2f366215711d07e09c144910518bd54"
+  },
+  {
+    "file": "admin_accounts_defensive_test.sql",
+    "passed": true,
+    "assertions": 76,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "b41dbf8c0cffafcbb8a568d2c13ceb76ae8ed7a4d3e7371ed16d5de1bd4bd89a"
+  },
+  {
+    "file": "admin_accounts_snapshot_test.sql",
+    "passed": true,
+    "assertions": 75,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "970ddecbcdef59c204f83ac2d4cc762be5389040aa681ffa29a60f436c7757af"
+  },
+  {
+    "file": "admin_vitrines_denuncias_test.sql",
+    "passed": true,
+    "assertions": 36,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "ce36d8ec2013d5d686d27c9325222f6eace32a64d9b30d404a5fdf014836ba32"
+  },
+  {
+    "file": "advertiser_metrics_v2_test.sql",
+    "passed": true,
+    "assertions": 50,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "8c4ee3f57b5915ccf229e63388720b57a8c19da196075a2ccb3f721d6ae3c48a"
+  },
+  {
+    "file": "advertising_campaigns_test.sql",
+    "passed": true,
+    "assertions": 47,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "4d2370f61f9d4c583e1805213e759e77087611179ac0c1f3b11910ea24b0d702"
+  },
+  {
+    "file": "aud03_poll_vote_security_test.sql",
+    "passed": true,
+    "assertions": 20,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "e1ff8fb73d2f052208a774c99fe49a8af8489b3761be48728af4fece42d0fc43"
+  },
+  {
+    "file": "aud05_status_deletion_test.sql",
+    "passed": true,
+    "assertions": 32,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "a6ecde1e886beac9ec9dbc0665e32d2c39e0bd5a3cb835f5e9fccd87055bd488"
+  },
+  {
+    "file": "aud07_status_publication_rate_test.sql",
+    "passed": true,
+    "assertions": 14,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "91c4c490ff32505ff6be96297644383bd15f59e1c5e1c448f7befbcf203d467c"
+  },
+  {
+    "file": "aud_01_aud_02_security_test.sql",
+    "passed": true,
+    "assertions": 80,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "cfde7fa1be025accc3434073d8b7abaf5e648690a10e4764d4a83a4dd3876b14"
+  },
+  {
+    "file": "aud_community_covers_gates_test.sql",
+    "passed": true,
+    "assertions": 15,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "f8324d08780e65550b9bc2ff8bbc83a741afd69a8786b7ebffd588c5a19f4057"
+  },
+  {
+    "file": "aud_has_app_access_gates_test.sql",
+    "passed": true,
+    "assertions": 99,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "50de764cef931a75dbb8d589fe3e4863efc4cc058b5734b80bd7f73eb8336d93"
+  },
+  {
+    "file": "cash_purchase_reminder_emails_test.sql",
+    "passed": true,
+    "assertions": 42,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "15d5fd61ca736b200f08ca5ee2bc7899560e77901a5fcd9e790aaca7fb84ce0e"
+  },
+  {
+    "file": "catalog_image_completeness_test.sql",
+    "passed": true,
+    "assertions": 11,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "e60cbad69b5b12cdfbf23707b68f5655b76c54d038b00ff161056a26fc5ae5b8"
+  },
+  {
+    "file": "catalog_search_order_test.sql",
+    "passed": true,
+    "assertions": 7,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "78dc5e5a95f8bf179696bfc7145cb72fa7e7059bcb0c930158e327cf5d6400ee"
+  },
+  {
+    "file": "comment_like_notifications_test.sql",
+    "passed": true,
+    "assertions": 25,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "77ceebd1171a756c525bdf96bfd75989bfa0f2c63371a78bccb9c2436ee303c0"
+  },
+  {
+    "file": "comments_read_access_test.sql",
+    "passed": true,
+    "assertions": 9,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "15cc44e22c6ed13515aecd69aefa4c22313114fab53aadd492d3114658fca389"
+  },
+  {
+    "file": "comments_system_test.sql",
+    "passed": true,
+    "assertions": 43,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "df3c3e3128e527338bde3b559ae45b0ce84a1191a24c83cfacdc91dc754fa063"
+  },
+  {
+    "file": "commercial_engine_test.sql",
+    "passed": true,
+    "assertions": 58,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "6a4b2aae50d213dd2e25115754b8b5c1ba3eb341e90a28d2bfc983dd2b6ac8c8"
+  },
+  {
+    "file": "community_creation_test.sql",
+    "passed": true,
+    "assertions": 122,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "74cb55b3d5ecf70e16ac0a78ba249924866ada36f820fcea941ee6ec3e3c29ed"
+  },
+  {
+    "file": "community_join_access_list_test.sql",
+    "passed": true,
+    "assertions": 31,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "4da4a3a5024dac0ed1fae524f022effd64b9746ea49d234747eef51cc4beaa71"
+  },
+  {
+    "file": "community_member_removal_test.sql",
+    "passed": true,
+    "assertions": 88,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "025e51f67c88125af58a7161b8abdb21c51b41516497c70861b0ea52b80518a4"
+  },
+  {
+    "file": "community_promotion_security_test.sql",
+    "passed": true,
+    "assertions": 22,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "059dd266dee2ebe16ff64446b1897d425a23897011581ecfb30e86ab529e02a8"
+  },
+  {
+    "file": "evocash_pricing_test.sql",
+    "passed": true,
+    "assertions": 57,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "a2e1ec1f470cd2268a6153b452f90da87d41ae44a333a79d185dc00d6263b439"
+  },
+  {
+    "file": "evocoins_participation_test.sql",
+    "passed": true,
+    "assertions": 144,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "bedc0d8ad70d4fe1d1513d5d80f2a2af741da85e0c4d2001ecb1938730ebc766"
+  },
+  {
+    "file": "exercise_catalog_lifecycle_test.sql",
+    "passed": true,
+    "assertions": 64,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "b8406cd7477f66bffff539638d012a84dfc109a4d90639c55c425f00fb34eef8"
+  },
+  {
+    "file": "exercise_catalog_offline_sync_test.sql",
+    "passed": true,
+    "assertions": 18,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "ce78fa8f229dba762ef4521ca17c85b29571ac6ef55d52ad1f8cdb817b312227"
+  },
+  {
+    "file": "exercise_reference_integrity_test.sql",
+    "passed": true,
+    "assertions": 18,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "940e3ba976daca6d82f2be51ad89705317bed241a451992f8e45787c40a95037"
+  },
+  {
+    "file": "exercise_visual_deletion_test.sql",
+    "passed": true,
+    "assertions": 37,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "a06a61ac01f246eca9eed9140400f9db00279bb35bb6b3768038e47ad0df82da"
+  },
+  {
+    "file": "exercise_visuals_test.sql",
+    "passed": true,
+    "assertions": 95,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "ffcbb9615aaabfd39eced96183843858bb069edf863557e069eca9c8910654ab"
+  },
+  {
+    "file": "exercise_visuals_v2_test.sql",
+    "passed": true,
+    "assertions": 175,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "c9390eda5407859dcc09d85ebad779520a7c4c439130439d51460f7232257d7a"
+  },
+  {
+    "file": "feed_batch_rpcs_test.sql",
+    "passed": true,
+    "assertions": 14,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "34c57bf3a757375b0261b33580bb33e328f533e23ea2f01151b48ca433436913"
+  },
+  {
+    "file": "feed_security_test.sql",
+    "passed": true,
+    "assertions": 42,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "482772e3e7077d1f18d56ddacc0769b0eaade1ffebd2f7a46d58dab0d2ad56ad"
+  },
+  {
+    "file": "finance_auth_integration_test.sql",
+    "passed": true,
+    "assertions": 9,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "7d2e8d79990eb6d325bb688315cbb6fe50f506280b6461e50a16c124688062af"
+  },
+  {
+    "file": "finance_integrity_test.sql",
+    "passed": true,
+    "assertions": 17,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "c19035e684acc29d85374145bfcb60dffbcbbba71b56a50abc969dd5fba77c64"
+  },
+  {
+    "file": "finance_payment_finality_test.sql",
+    "passed": true,
+    "assertions": 10,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "cde7c20f8470fd691bcd1d06d9a8840e6f875a5ccca442fac6b54f6a423cc3af"
+  },
+  {
+    "file": "finance_reconciliation_test.sql",
+    "passed": true,
+    "assertions": 8,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "c5b2d4acc374f581377859bb3fd368a7e2a72253c622f10ac5befa8c7e38f6b0"
+  },
+  {
+    "file": "finance_reminder_session_guard_test.sql",
+    "passed": true,
+    "assertions": 7,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "fef7438f5bae9b4c77d9900e07190534fffc90533357dbcd1eb4966acac6bf94"
+  },
+  {
+    "file": "finance_reversals_test.sql",
+    "passed": true,
+    "assertions": 18,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "6ca1d5bafe6bf085eca745dc64ae1f429279c05443dba6357c41f85c4f51bbe0"
+  },
+  {
+    "file": "finance_reward_evidence_test.sql",
+    "passed": true,
+    "assertions": 20,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "d208d17838ef88027f06df431a764bc173d1b94138a7caa96bde3dca379542ad"
+  },
+  {
+    "file": "financial_case_cancel_retention_test.sql",
+    "passed": true,
+    "assertions": 33,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "2230434240cb716cb9a5356e10806f171b124e500a5192318f9deb971aa00dc8"
+  },
+  {
+    "file": "financial_case_cancel_traceability_test.sql",
+    "passed": true,
+    "assertions": 34,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "977a790d43ad5966b7fd2256aadbcef19fb194face5c001788c83ffe9749bd7a"
+  },
+  {
+    "file": "financial_case_retention_test.sql",
+    "passed": true,
+    "assertions": 46,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "830f0511fd45106e581496e9f88c86100747fa4a1ccc37e6bd878e3694a6c80f"
+  },
+  {
+    "file": "greeting_personalization_test.sql",
+    "passed": true,
+    "assertions": 35,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "dbe506ffb7787b47b9de2396ee91e46a82b1f8e85e8856d44c2a71673b44a166"
+  },
+  {
+    "file": "home_sheet_completion_test.sql",
+    "passed": true,
+    "assertions": 23,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "39d8f4e93a76a5612a7cea5287579f61958665a769a0199ba5a907d14e717368"
+  },
+  {
+    "file": "home_sheet_insights_test.sql",
+    "passed": true,
+    "assertions": 9,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "14964f6940900feeb35c82863339c708962905c7000ec979c35059cf35864918"
+  },
+  {
+    "file": "infinitepay_cash_purchases_test.sql",
+    "passed": true,
+    "assertions": 32,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "c1b7e6029eaa32149894e9168de5d985b48b1f981df3bbb2e09c5e8b986c2f30"
+  },
+  {
+    "file": "infinitepay_pending_reconciliation_test.sql",
+    "passed": true,
+    "assertions": 32,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "4610b7cb36d9fdf00ce382f10b3569cb37fddc46889bc1c5667dec25feb87546"
+  },
+  {
+    "file": "multiple_professional_listings_test.sql",
+    "passed": true,
+    "assertions": 34,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "764537cbe0c96778c69c09ff2115ff42a25c0933e9fe7c2042be49e2c403ee6a"
+  },
+  {
+    "file": "notification_antispam_test.sql",
+    "passed": true,
+    "assertions": 35,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "cb1794de27f1a14fa6d5b8c74f4397f017b06a59ff4d8d09faa8ca2de3db70c7"
+  },
+  {
+    "file": "notification_pipeline_test.sql",
+    "passed": true,
+    "assertions": 70,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "2dfd71b1bd411df60989ee4615cf52046ba0a3cbf91468eb14ae787cc1e8b00b"
+  },
+  {
+    "file": "notification_security_test.sql",
+    "passed": true,
+    "assertions": 61,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "54b830c9b72ab2f97de89d32893cd00ecd6326c7ee86c5abcbfa89da9b16e881"
+  },
+  {
+    "file": "notifications_center_test.sql",
+    "passed": true,
+    "assertions": 21,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "d591f8f541dd335051bdc0a7f97361a91dff774bbc0baa2738c720f9dc1373dd"
+  },
+  {
+    "file": "notifications_realtime_test.sql",
+    "passed": true,
+    "assertions": 8,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "1c1b517fd85aa8a7fde7f6f04d35569df68697fddf0594a62417d21d2ace8485"
+  },
+  {
+    "file": "official_exercises_only_test.sql",
+    "passed": true,
+    "assertions": 46,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "0c8395279281b9edf62d83a6ab2eef99514a795a1994b49ccee3481c7b97f478"
+  },
+  {
+    "file": "offline_runtime_control_test.sql",
+    "passed": true,
+    "assertions": 40,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "cde144776563af1598f674b6ed97af634cde035707894f7762e43a9d82a656dd"
+  },
+  {
+    "file": "offline_workout_sync_test.sql",
+    "passed": true,
+    "assertions": 100,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "9163ba15df5f3a27955933e7eeac0b63f7a346957f2c4b82e0e37cb6c05b5c2e"
+  },
+  {
+    "file": "partner_products_require_image_test.sql",
+    "passed": true,
+    "assertions": 6,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "e4b9c36cea5bf2af15882e54860bca5c0a7d1be940ac4e34474172408ca06215"
+  },
+  {
+    "file": "post_support_reactions_test.sql",
+    "passed": true,
+    "assertions": 52,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "2f52f7356660c3675ae89e76ad4b1e494aaf0fed7f9d27314e1209e972ca8d92"
+  },
+  {
+    "file": "product_storefronts_test.sql",
+    "passed": true,
+    "assertions": 75,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "7e7b8b2535feba87e713e52aa0ed7609472d0a4c9dfaa28b696e927ab4e9cd23"
+  },
+  {
+    "file": "professional_commercial_test.sql",
+    "passed": true,
+    "assertions": 59,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "fe7a7ea6b32531ea9bb8121b1ac13cbf225f3c5bd0ca34e60353bcf7599e7933"
+  },
+  {
+    "file": "public_catalog_snapshot_test.sql",
+    "passed": true,
+    "assertions": 26,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "1aff8c20aebac4dc0a2f68129b4ba97a6d75c90e5d5ea909fdfc198a4e5ca87c"
+  },
+  {
+    "file": "public_commercial_test.sql",
+    "passed": true,
+    "assertions": 20,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "d46db5959ba2c98b631c03cbf46d3479fcc296a7af14e62bb284444b0831fb3f"
+  },
+  {
+    "file": "public_professional_directory_test.sql",
+    "passed": true,
+    "assertions": 24,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "6cc6596737ce316aeb42e24195d5e3ce735f9fd67589bb3b12debdb31483d74d"
+  },
+  {
+    "file": "push_delivery_telemetry_test.sql",
+    "passed": true,
+    "assertions": 43,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "b1799e3f8c4c434b235df58d22a06849a32c8c009d7fec50d78dff4492e2dad2"
+  },
+  {
+    "file": "push_explicit_activation_test.sql",
+    "passed": true,
+    "assertions": 58,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "d01f49d868872f56951a30a065245c2ebf037b2983dd4c1fbcf954947bb97a04"
+  },
+  {
+    "file": "security_followup_test.sql",
+    "passed": true,
+    "assertions": 19,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "5c2a85b04b19f5f88e214442bc547ed7ad5e4796eec7751b6314be9eb286ceba"
+  },
+  {
+    "file": "session_revocation_guard_test.sql",
+    "passed": true,
+    "assertions": 23,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "246e176ec641e10eaf14e76e42b9c2042c055e02ad038e425339bcf5e6778578"
+  },
+  {
+    "file": "sheet_exercise_picker_test.sql",
+    "passed": true,
+    "assertions": 10,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "ae72a565a36b81eebf2554dd9fb2fdde797ac5582be4d3b1b06806b563c0d99c"
+  },
+  {
+    "file": "showcase_publish_recovery_test.sql",
+    "passed": true,
+    "assertions": 12,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "ad79c55185a3051dc52c6555e224350e2d1a57d4f81bfc502e137e85d59e6e61"
+  },
+  {
+    "file": "sponsored_ad_metrics_dashboard_test.sql",
+    "passed": true,
+    "assertions": 75,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "52254165dadbe4e3c37fd45b69884c0d55434c38da4c3ddf9cb9320fc8d92985"
+  },
+  {
+    "file": "sponsored_ad_metrics_privacy_controls_test.sql",
+    "passed": true,
+    "assertions": 31,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "d574ecb6b30b5758e1f022c5734912f7e21745690decd1ca558877350150e50e"
+  },
+  {
+    "file": "sponsored_ad_metrics_test.sql",
+    "passed": true,
+    "assertions": 179,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "0d29ac16222231a04ea234a32c1f8fe52ebcba065b7cb6d0c5411a7aab762a78"
+  },
+  {
+    "file": "status_expiration_test.sql",
+    "passed": true,
+    "assertions": 35,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "3bdb7bcfb296e9aca9da5fb6f0487dbb9b9098bea56a909d5fc3fef0a92cd485"
+  },
+  {
+    "file": "status_progress_metadata_test.sql",
+    "passed": true,
+    "assertions": 29,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "c71514eb8070adc4057b375a837b077f2415c05bfbfdc2b71c2d32b647aacdce"
+  },
+  {
+    "file": "status_text_limit_test.sql",
+    "passed": true,
+    "assertions": 9,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "459c082c9e61fd856f1c2df5e17400e879e801c94ebe9a09bcb8a2fdf145815d"
+  },
+  {
+    "file": "storage_cleanup_outbox_test.sql",
+    "passed": true,
+    "assertions": 34,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "55ba9abaf65ceffa8002f211d5be53382a5df45cff735c7f4536719799b87a46"
+  },
+  {
+    "file": "storefront_revisions_test.sql",
+    "passed": true,
+    "assertions": 67,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "37080ef5261234a50499b0717c557c80de042029af1949ac1062fa3fa087f984"
+  },
+  {
+    "file": "support_moderation_functions_test.sql",
+    "passed": true,
+    "assertions": 11,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "1438743a8508637ec97fad04510069a81095f4ad29355948e378ec454b698be2"
+  },
+  {
+    "file": "supporters_failclosed_test.sql",
+    "passed": true,
+    "assertions": 19,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "2cf767116d49db140c1eb8b4f204e2e6acb6ded447422c82a9efdad0ad5cf943"
+  },
+  {
+    "file": "user_activity_test.sql",
+    "passed": true,
+    "assertions": 28,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "bc83d8f8463fd5f9f68cb5f5aadcaa2399c0d2f0bfcd080b928b264157fbb467"
+  },
+  {
+    "file": "web_push_hardening_test.sql",
+    "passed": true,
+    "assertions": 44,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "a18db66ce5c0693f5ae395bd820c85233fba382377ca1ad13583b8c5f6e6fa44"
+  },
+  {
+    "file": "web_push_notifications_test.sql",
+    "passed": true,
+    "assertions": 33,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "55ed06d7e51421043ed7b56881e8504d7c709db88d32e36be627d61d49b7bfef"
+  },
+  {
+    "file": "workout_participants_rpc_test.sql",
+    "passed": true,
+    "assertions": 37,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "11dfa96ab348ca239a0da8541d741fd49fdea6b51a06112f50c1f0953acceba6"
+  },
+  {
+    "file": "workout_reminders_test.sql",
+    "passed": true,
+    "assertions": 93,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "77300e90d430916729bbf8648d874a392bcd90572025f0d1d64dad47dbbed247"
+  },
+  {
+    "file": "workout_sheet_attribution_test.sql",
+    "passed": true,
+    "assertions": 35,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "0f690d735096bfeaa8958a7f3394fd40208e0b440f96f82ca62ccd631113999a"
+  },
+  {
+    "file": "workout_sheets_test.sql",
+    "passed": true,
+    "assertions": 74,
+    "skipped": 0,
+    "planComplete": true,
+    "output_sha256": "12b145e8f120ecafec8d33b920f5722b8db8a39ebe5d079d4f6aab75d4bed018"
+  }
+]

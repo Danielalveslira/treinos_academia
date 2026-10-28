@@ -1,0 +1,100 @@
+{
+  "localOnly": true,
+  "syntheticOnly": true,
+  "base": "8cc0f26f859996e3ff129e3d561cd0cb84f153a5",
+  "branch": "finance-advertising-phase6",
+  "productionAuthorized": false,
+  "javascript": {
+    "tests": 2258,
+    "passed": 2258,
+    "failed": 0
+  },
+  "edge": {
+    "tests": 206,
+    "passed": 203,
+    "failed": 0,
+    "skipped": 3,
+    "skipReason": "Existing opt-in push/notification PostgreSQL cases; advertising concurrency tested separately"
+  },
+  "sql": {
+    "suites": 17,
+    "assertions": 1000,
+    "failed": 0
+  },
+  "visual": {
+    "checks": 30,
+    "errors": 0,
+    "httpFailures": 0,
+    "overflows": 0,
+    "paidHomeAndCommunityCases": 12
+  },
+  "financialConcurrency": {
+    "localOnly": true,
+    "container": "evolutus_price_phase1_db",
+    "offering": "synthetic_e0a024ede86f4627a8078c265515909a",
+    "lastSlotRace": true,
+    "sixReplays": true,
+    "simultaneousRenewals": true,
+    "capacityReduction": true,
+    "globalAtomicity": true,
+    "editorialRevisionGuard": true,
+    "sameBalanceRace": true,
+    "globalLastSlotRace": true,
+    "suspensionDuringPayment": true,
+    "capacityDuringReservation": true,
+    "priceDuringQuote": true,
+    "isolatedDebitCount": 0
+  },
+  "build": {
+    "passed": true,
+    "warning": "Existing Primer chunk exceeds Vite advisory threshold; bundle budget passes"
+  },
+  "lint": {
+    "errors": 0,
+    "inheritedWarnings": 14
+  },
+  "budget": {
+    "passed": true,
+    "baselineChanged": false
+  },
+  "secrets": {
+    "sourceFindings": 0,
+    "browserFindings": 0
+  },
+  "accumulatedMigrations": {
+    "count": 18,
+    "passed": true,
+    "financialAndLegacyHashesPreserved": true
+  },
+  "performance": {
+    "communityPaidEligibilityExecutions": 1
+  },
+  "preview": {
+    "authRestStorage": "Direct local Docker services",
+    "realtime": "Official Supabase Realtime v2.143.3",
+    "edge": "evolutus_advertising_phase6_edge"
+  },
+  "promotionNaturalExpiry": {
+    "localOnly": true,
+    "syntheticOnly": true,
+    "databaseTime": true,
+    "observedWaitMs": 31159,
+    "noPageReload": true,
+    "postAndCommunityBadgesExpired": true,
+    "organicPostPreserved": true,
+    "financialRecordsUnchanged": true,
+    "errors": []
+  },
+  "sourceInvalidation": {
+    "localOnly": true,
+    "syntheticOnly": true,
+    "officialRealtime": true,
+    "sourceChangedWithoutReload": true,
+    "operationalAuditRecorded": true,
+    "paidCommunityBadgeRemoved": true,
+    "organicPostPreserved": true,
+    "unaffectedAdPreserved": true,
+    "latencyMs": 797,
+    "errors": []
+  }
+}

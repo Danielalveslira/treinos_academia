@@ -1,0 +1,164 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+UPDATE 27
+INSERT 0 3
+UPDATE 1
+CREATE FUNCTION
+CREATE TABLE
+GRANT
+GRANT
+CREATE FUNCTION
+
+SET
+ok 1 - limits require explicit consent
+RESET
+UPDATE 1
+74000000-0000-0000-0000-000000000001
+SET
+ok 2 - no invented limits are implicitly approved
+RESET
+
+SET
+
+ok 3 - limits use CAS
+RESET
+74000000-0000-0000-0000-000000000001
+SET
+INSERT 0 1
+ok 4 - create replay yields same storefront
+ok 5 - create key cannot change payload
+ok 6 - new storefront is draft
+
+INSERT 0 1
+ok 7 - incomplete product drafts allowed without image
+ok 8 - incomplete product cannot be submitted
+ok 9 - ownership parameters rejected
+ok 10 - expiry cannot be edited by client
+ok 11 - only media backend may attest bytes
+ok 12 - missing media returns null safely
+RESET
+INSERT 0 1
+SET
+1c8e14da-b39a-4344-8d56-d296edee27a6
+
+ok 13 - owner cannot approve self
+ok 14 - unpaid unapproved storefront remains private
+RESET
+
+SET
+
+ok 15 - moderator cannot overwrite newer revision
+RESET
+ok 16 - creation editing approval never create a financial order
+ok 17 - approval alone does not publish
+UPDATE 1
+{"revision": "8", "priceVersionId": "d0150f59-b069-4a5c-9246-b982a02a2bb0"}
+{"revision": "9", "salesEnabled": true}
+74000000-0000-0000-0000-000000000001
+SET
+INSERT 0 1
+ok 18 - insufficient cash cannot publish
+RESET
+
+
+SET
+{"id": "dc3be5b5-5260-4c4e-8c29-5d2382fdfb7f", "status": "fulfilled", "createdAt": "2026-10-27T23:54:07.139493+00:00", "periodEnd": "2026-11-03T23:54:08.39668+00:00", "totalCash": "49", "resourceId": "fdecfcf5-e531-49eb-a546-0b2e2c4fa76a", "fulfilledAt": "2026-10-27T23:54:08.39668+00:00", "periodStart": "2026-10-27T23:54:08.39668+00:00", "durationDays": "7", "offeringCode": "product_storefront", "unitPriceCash": "7", "priceVersionId": "d0150f59-b069-4a5c-9246-b982a02a2bb0", "quoteExpiresAt": "2026-10-27T23:59:07.139493+00:00", "contentRevision": "6"}
+{"id": "dc3be5b5-5260-4c4e-8c29-5d2382fdfb7f", "status": "fulfilled", "createdAt": "2026-10-27T23:54:07.139493+00:00", "periodEnd": "2026-11-03T23:54:08.39668+00:00", "totalCash": "49", "resourceId": "fdecfcf5-e531-49eb-a546-0b2e2c4fa76a", "fulfilledAt": "2026-10-27T23:54:08.39668+00:00", "periodStart": "2026-10-27T23:54:08.39668+00:00", "durationDays": "7", "offeringCode": "product_storefront", "unitPriceCash": "7", "priceVersionId": "d0150f59-b069-4a5c-9246-b982a02a2bb0", "quoteExpiresAt": "2026-10-27T23:59:07.139493+00:00", "contentRevision": "6"}
+RESET
+ok 19 - seven days debit once for the entire storefront
+ok 20 - one ledger record per commercial order
+ok 21 - exact 168-hour storefront period
+SET
+ok 22 - anonymous catalogue returns paid approved product
+ok 23 - direct detail is eligible
+ok 24 - public projection has no owner identifier
+ok 25 - eligible product media authorized anonymously
+ok 26 - anonymous direct storefront read denied
+ok 27 - legacy API cannot bypass commercial visibility
+RESET
+SELECT 1
+74000000-0000-0000-0000-000000000001
+SET
+
+ok 28 - edits use draft compare-and-swap
+
+RESET
+
+SET
+ok 29 - pending material edits keep last approved snapshot
+ok 30 - private pending fields never in public products
+ok 31 - public snapshots have no direct table grants
+ok 32 - published products cannot bypass live predicate
+ok 33 - guest cannot read maintenance audit
+RESET
+
+
+ok 34 - reject preserves old approved snapshot
+ok 35 - edit submit and reject never debit
+ok 36 - edit and rejection preserve exact contracted period
+INSERT 0 1
+74000000-0000-0000-0000-000000000001
+1c8e14da-b39a-4344-8d56-d296edee27a6
+
+
+SET
+ok 37 - previous public image remains authorized
+ok 38 - pending image cannot be read by URL
+ok 39 - pending category excluded
+RESET
+ok 40 - public snapshot protects old media
+74000000-0000-0000-0000-000000000001
+ok 41 - owner cannot remove media used by public version
+INSERT 0 1
+{"id": "3c59c2fd-61d8-4f0d-8807-9e338757a62e", "status": "fulfilled", "createdAt": "2026-10-27T23:54:08.872106+00:00", "periodEnd": "2026-11-04T23:54:08.39668+00:00", "totalCash": "7", "resourceId": "fdecfcf5-e531-49eb-a546-0b2e2c4fa76a", "fulfilledAt": "2026-10-27T23:54:08.889225+00:00", "periodStart": "2026-11-03T23:54:08.39668+00:00", "durationDays": "1", "offeringCode": "product_storefront", "unitPriceCash": "7", "priceVersionId": "d0150f59-b069-4a5c-9246-b982a02a2bb0", "quoteExpiresAt": "2026-10-27T23:59:08.872106+00:00", "contentRevision": "6"}
+{"id": "3c59c2fd-61d8-4f0d-8807-9e338757a62e", "status": "fulfilled", "createdAt": "2026-10-27T23:54:08.872106+00:00", "periodEnd": "2026-11-04T23:54:08.39668+00:00", "totalCash": "7", "resourceId": "fdecfcf5-e531-49eb-a546-0b2e2c4fa76a", "fulfilledAt": "2026-10-27T23:54:08.889225+00:00", "periodStart": "2026-11-03T23:54:08.39668+00:00", "durationDays": "1", "offeringCode": "product_storefront", "unitPriceCash": "7", "priceVersionId": "d0150f59-b069-4a5c-9246-b982a02a2bb0", "quoteExpiresAt": "2026-10-27T23:59:08.872106+00:00", "contentRevision": "6"}
+ok 42 - pending revision renewal uses same motor, single debit
+ok 43 - renewal never approves pending content
+
+
+ok 44 - suspension immediately blocks every version
+ok 45 - approval cannot lift suspension
+
+74000000-0000-0000-0000-000000000001
+
+UPDATE 1
+
+
+ok 46 - new approval after expiry cannot reactivate publication
+ok 47 - expired revisions excluded from sitemap
+ok 48 - retired image becomes cleanup candidate only after approval
+ok 49 - new public snapshot keeps image even after expiry
+UPDATE 1
+{"role":"service_role"}
+ok 50 - cleanup disabled until policy configured
+UPDATE 1
+UPDATE 1
+INSERT 0 1
+ok 51 - cleanup claims only aged unreferenced media
+ok 52 - leased media cannot be claimed twice
+ok 53 - unrelated completion token rejected
+ok 54 - storage failure remains recoverable
+ok 55 - failure backoff prevents busy retry
+UPDATE 1
+UPDATE 1
+ok 56 - retry completes deletion
+ok 57 - completion replay idempotent
+ok 58 - expired public snapshot media never deleted
+ok 59 - failed deletion has audit evidence
+ok 60 - completed deletion has audit evidence
+INSERT 0 1
+INSERT 0 1
+
+ok 61 - cannot silently assign legacy ownership to wrong account
+74300000-0000-0000-0000-000000000001
+ok 62 - association replay does not duplicate or edit
+ok 63 - legacy image address preserved
+ok 64 - full legacy preimage audited
+ok 65 - cleanup moderation and association never touch wallet
+ok 66 - client cannot attest storage deletion
+ok 67 - client cannot replace approved snapshot directly
+1..67
+ROLLBACK

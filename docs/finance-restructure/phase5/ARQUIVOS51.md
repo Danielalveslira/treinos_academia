@@ -1,0 +1,51 @@
+# Arquivos da Fase 5.1
+
+Comparação com `8c802ea`; inclui código, testes, migrations e documentação. Evidências em `evidence51` são enumeradas no manifesto separado.
+
+- `.github/workflows/supabase-tests.yml`
+- `docs/finance-restructure/CHECKLIST_LANCAMENTO.md`
+- `docs/finance-restructure/phase5/CORRECOES_FINAIS.md`
+- `docs/finance-restructure/phase5/INVENTARIO51.md`
+- `scripts/homolog/finance/phase5-http.mjs`
+- `scripts/homolog/finance/phase5-media.mjs`
+- `scripts/homolog/finance/phase5-preview.mjs`
+- `scripts/homolog/finance/phase5-upload-failure.mjs`
+- `scripts/homolog/finance/phase51-browser.mjs`
+- `scripts/homolog/finance/phase51-media.mjs`
+- `scripts/homolog/finance/phase51-performance.mjs`
+- `scripts/homolog/finance/phase51-preview.mjs`
+- `scripts/homolog/finance/phase51-reinstall.mjs`
+- `scripts/homolog/finance/phase51-seed.mjs`
+- `scripts/homolog/finance/phase51-validate.mjs`
+- `scripts/homolog/finance/phase51-visual.mjs`
+- `scripts/multiple-listings-concurrency.mjs`
+- `scripts/professional-listings-concurrency.mjs`
+- `src/App.jsx`
+- `src/components/CommercialLeasePurchase.jsx`
+- `src/components/ProfessionalListingLimitsAdmin.jsx`
+- `src/features/adminAccounts/components/AccountDrawer.jsx`
+- `src/features/adminAccounts/utils/accounts.js`
+- `src/features/adminAccounts/utils/accounts.test.js`
+- `src/features/publicListings/PublicListingsIsland.jsx`
+- `src/features/publicListings/listingDirectoryService.js`
+- `src/features/publicProducts/publicProductCatalogService.js`
+- `src/pages/AdminProfessionalListings.jsx`
+- `src/pages/MyProfessionalListing.jsx`
+- `src/pages/MyProfessionalListing.test.js`
+- `src/pages/ProfessionalListingsHub.jsx`
+- `src/pages/ProfessionalListingsHub.test.js`
+- `src/services/communitiesOwned.test.js`
+- `src/services/communitiesService.js`
+- `src/services/offlineWriteServices.test.js`
+- `src/services/professionalListingsService.js`
+- `src/services/professionalListingsService.test.js`
+- `src/utils/publicNavigationAge.js`
+- `src/utils/publicNavigationAge.test.js`
+- `src/utils/storefront.js`
+- `supabase/migrations/20261204000001_multiple_professional_listings.sql`
+- `supabase/migrations/20261204000002_admin_account_listing_summary.sql`
+- `supabase/tests/aud_has_app_access_gates_test.sql`
+- `supabase/tests/multiple_professional_listings_test.sql`
+- `supabase/tests/professional_commercial_test.sql`
+- `supabase/tests/showcase_publish_recovery_test.sql`
+- `supabase/tests/storefront_revisions_test.sql`

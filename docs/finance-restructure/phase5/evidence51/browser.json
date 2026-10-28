@@ -1,0 +1,45 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "owner": "34fa56cc-d26c-438a-bd32-cd2b534d0cb9",
+  "resources": [
+    {
+      "id": "5ad4f601-f603-4789-a980-afd52fbfb55b",
+      "kind": "professional",
+      "name": "Profissional Multi 34fa56cc",
+      "path": "/profissionais",
+      "media": "c83507cd-41df-41fd-b8d7-2a9d35f9e40e",
+      "days": 1,
+      "cost": 5
+    },
+    {
+      "id": "8496041d-5bdc-4b6c-ad7e-13189edf272e",
+      "kind": "space",
+      "name": "Local 1 Multi 34fa56cc pendente",
+      "path": "/locais",
+      "media": "39ef63fb-db18-456e-8392-d087aa69e8e4",
+      "days": 2,
+      "cost": 16
+    },
+    {
+      "id": "4a371a9e-7216-4c8a-8125-05ce45a7c311",
+      "kind": "space",
+      "name": "Local 2 Multi 34fa56cc",
+      "path": "/locais",
+      "media": "54bd8699-69da-43f9-8fa9-55fac02d3a99",
+      "days": 3,
+      "cost": 24
+    }
+  ],
+  "paidDebits": 5,
+  "balance": 939,
+  "independentContracts": true,
+  "revisionPrivacy": true,
+  "foreignOwnerDenied": true,
+  "crossResourceMediaDenied": true,
+  "independentExpiryAndRenewal": true,
+  "independentSuspension": true,
+  "sitemap": true,
+  "legacyRedirect": true,
+  "consoleErrors": []
+}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -12,6 +12,7 @@ import {
   Spinner,
   Text,
   Textarea,
+  UnderlineNav,
 } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
@@ -20,6 +21,7 @@ import { useLatestCashPurchaseReminders } from '../hooks/useLatestCashPurchaseRe
 import { useToast } from '../hooks/useToast'
 import { ToastFlash } from '../components/ToastFlash'
 import AdminNav from '../components/AdminNav'
+import { EvoCashPricingPanel, EvoCashPriceHistory } from '../components/EvoCashPricing'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
 import {
   getAdminCashReversalEvents,
@@ -258,7 +260,7 @@ function ReminderDialog({ purchase, onClose, onConfirm }) {
   )
 }
 
-export default function AdminCashPurchases() {
+function PurchasesPanel() {
   const { user } = useAuth()
   const [status, setStatus] = useState('pending')
   const { purchases, loading, hasMore, loadMore, error, refresh } = useCashPurchases(
@@ -323,10 +325,8 @@ export default function AdminCashPurchases() {
   }
 
   return (
-    <div className="support-page">
-      <AdminNav current="/admin/compras-evocash" currentLabel="Compras de EvoCash" />
+    <Box>
       <ToastFlash toasts={toasts} />
-      <h1>Compras de EvoCash</h1>
       <Text as="p">Histórico de compras e conciliação automática de pagamentos.</Text>
       <FormControl sx={{ mb: 3 }}>
         <FormControl.Label>Mostrar compras</FormControl.Label>
@@ -363,7 +363,7 @@ export default function AdminCashPurchases() {
         >
           <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
             <Heading as="h2" sx={{ fontSize: 1 }}>
-              {purchase.packageLabel}
+              {purchase.purchaseLabel}
             </Heading>
             <Label variant={cashPurchaseStatusLabel(purchase, STATUS_LABELS).variant}>
               {cashPurchaseStatusLabel(purchase, STATUS_LABELS).text}
@@ -481,6 +481,39 @@ export default function AdminCashPurchases() {
           onConfirm={handleConfirmReminder}
         />
       )}
+    </Box>
+  )
+}
+
+const CASH_TABS = [
+  ['purchases', 'Compras'],
+  ['pricing', 'Precificação'],
+  ['prices', 'Histórico de preços'],
+]
+
+export default function AdminCashPurchases() {
+  const [params, setParams] = useSearchParams()
+  const selected = params.get('tab')
+  const tab = CASH_TABS.some(([key]) => key === selected) ? selected : 'purchases'
+  return (
+    <div className="support-page">
+      <AdminNav current="/admin/compras-evocash" currentLabel="Compras de EvoCash" />
+      <h1>Compras de EvoCash</h1>
+      <UnderlineNav aria-label="Seções de compras de EvoCash" sx={{ mb: 3 }}>
+        {CASH_TABS.map(([key, label]) => (
+          <UnderlineNav.Item
+            key={key}
+            as="button"
+            aria-current={tab === key ? 'page' : undefined}
+            onSelect={() => setParams({ tab: key })}
+          >
+            {label}
+          </UnderlineNav.Item>
+        ))}
+      </UnderlineNav>
+      {tab === 'purchases' && <PurchasesPanel />}
+      {tab === 'pricing' && <EvoCashPricingPanel />}
+      {tab === 'prices' && <EvoCashPriceHistory />}
     </div>
   )
 }

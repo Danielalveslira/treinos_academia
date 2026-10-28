@@ -1,104 +1,59 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { checkoutPayload, createCheckout, validCheckoutUrl } from './core.js'
-
-const reservation = { id: '123', orderNsu: `evo_${'a'.repeat(32)}`, packageLabel: 'Essencial', amountCentavos: 590, cashAmount: 25, createLink: true }
-function fixtures(overrides = {}) {
-  const calls = []
-  const userClient = { rpc: async () => ({ data: true, error: null }) }
-  const admin = { rpc: async (name, params) => {
-    calls.push([name, params])
-    return name === 'reserve_infinitepay_cash_purchase' ? { data: reservation, error: null } : { data: null, error: null }
-  } }
-  const fetcher = async (_url, options) => {
-    calls.push(['fetch', JSON.parse(options.body)])
-    return Response.json({ url: 'https://checkout.infinitepay.io/tag?lenc=token' })
-  }
-  return { calls, userClient, admin, fetcher, userId: 'user-1', packageId: 'pack_25',
-    handle: 'my-tag', appUrl: 'https://app.example', supabaseUrl: 'https://project.supabase.co',
-    logger: { warn: (...parts) => calls.push(['log', ...parts]), error: (...parts) => calls.push(['log', ...parts]) }, ...overrides }
+const quoteId='a1000000-0000-0000-0000-000000000001',requestId='a1000000-0000-0000-0000-000000000002'
+const reservation={id:'123',orderNsu:`evo_${'a'.repeat(32)}`,amountCentavos:'590',cashAmount:'59',createLink:true,checkoutValidUntil:'2027-01-01T00:00:00Z'}
+function fixtures(overrides={}) {
+ const calls=[]
+ const reserved=overrides.reserved??reservation
+ const userClient={rpc:async(name,args)=>{if(name==='has_app_access')return {data:true};calls.push([name,args]);return {data:reserved}}}
+ const admin={rpc:async(name,args)=>{calls.push([name,args]);return {data:null,error:null}}}
+ const fetcher=async(_url,options)=>{calls.push(['fetch',JSON.parse(options.body),options.headers]);return Response.json({url:'https://checkout.infinitepay.io/tag?lenc=token'})}
+ return {calls,userClient,admin,fetcher,quoteId,requestId,handle:'my-tag',apiKey:'synthetic-test-key',enabled:true,appUrl:'https://app.example',supabaseUrl:'https://local-supabase.invalid',logger:{warn(){},error(){}},...overrides}
 }
-
-test('checkout sends only the server price and order, then persists the validated URL', async () => {
-  const deps = fixtures()
-  const result = await createCheckout(deps)
-  assert.equal(result.checkoutUrl, 'https://checkout.infinitepay.io/tag?lenc=token')
-  assert.equal(deps.calls[0][0], 'reserve_infinitepay_cash_purchase')
-  assert.deepEqual(Object.keys(deps.calls[0][1]).sort(), ['p_package_id', 'p_user_id'])
-  assert.equal(deps.calls[1][1].items[0].price, 590)
-  assert.deepEqual(Object.keys(deps.calls[1][1]).sort(),
-    ['handle', 'items', 'order_nsu', 'redirect_url', 'webhook_url'])
-  assert.equal('address' in deps.calls[1][1], false)
-  assert.equal('customer' in deps.calls[1][1], false)
-  assert.equal(deps.calls[1][1].order_nsu, reservation.orderNsu)
-  assert.match(deps.calls[1][1].redirect_url, /purchase_id=123/)
-  assert.equal(deps.calls[2][0], 'finish_infinitepay_checkout')
+test('quantity checkout uses quote/session authority, integer cents and mandatory single-payment/expiry',async()=>{
+ const d=fixtures();const r=await createCheckout(d)
+ assert.equal(r.checkoutUrl,'https://checkout.infinitepay.io/tag?lenc=token')
+ assert.deepEqual(d.calls[0],['reserve_infinitepay_cash_purchase',{p_quote_id:quoteId,p_request_id:requestId}])
+ assert.deepEqual(d.calls[1][1].items,[{quantity:1,price:590,description:'59 EvoCash'}])
+ assert.deepEqual(d.calls[1][1].options,{single_payment:true,valid_until:reservation.checkoutValidUntil})
+ assert.equal(d.calls[1][2]['X-Api-Key'],'synthetic-test-key')
+ assert.equal(d.calls[2][0],'finish_infinitepay_checkout')
 })
-
-test('inactive/invalid package and app access do not create links', async () => {
-  const invalid = fixtures({ packageId: 'bad value' })
-  await assert.rejects(createCheckout(invalid), /INVALID_REQUEST/)
-  assert.equal(invalid.calls.length, 0)
-  const denied = fixtures({ userClient: { rpc: async () => ({ data: false }) } })
-  await assert.rejects(createCheckout(denied), /APP_ACCESS_DENIED/)
-  assert.equal(denied.calls.length, 0)
-  const badOrigin = fixtures({ appUrl: 'http://app.example' })
-  await assert.rejects(createCheckout(badOrigin), /INFINITEPAY_NOT_CONFIGURED/)
-  assert.equal(badOrigin.calls.length, 0)
+test('malformed IDs, paused sales, missing merchant key and invalid origin fail before provider/reservation',async()=>{
+ for(const [override,message] of [[{quoteId:'pack_25'},'INVALID_REQUEST'],[{enabled:false},'EVOCASH_PURCHASES_PAUSED'],[{apiKey:null},'INFINITEPAY_NOT_CONFIGURED'],[{appUrl:'http://app.example'},'INFINITEPAY_NOT_CONFIGURED']]) {
+  const d=fixtures(override);await assert.rejects(createCheckout(d),new RegExp(message));assert.equal(d.calls.length,0)
+ }
+ const d=fixtures({userClient:{rpc:async()=>({data:false})}});await assert.rejects(createCheckout(d),/APP_ACCESS_DENIED/)
 })
-
-test('retry reuses an existing checkout and never calls links again', async () => {
-  const deps = fixtures({ admin: { rpc: async () => ({ data: { id: '123', checkoutUrl: 'https://checkout.infinitepay.com.br/a', status: 'pending' } }) },
-    fetcher: () => { throw new Error('duplicate link') } })
-  assert.equal((await createCheckout(deps)).id, '123')
+test('replay returns the persisted URL without creating another link',async()=>{
+ const d=fixtures({reserved:{id:'123',checkoutUrl:'https://checkout.infinitepay.com.br/a',status:'pending'},fetcher:()=>{throw Error('duplicate link')}})
+ assert.equal((await createCheckout(d)).id,'123');assert.equal(d.calls.length,1)
 })
-
-test('4xx marks checkout_failed and allows a safe retry of the same purchase', async () => {
-  const deps = fixtures({ fetcher: async () => Response.json({ code: 'INVALID_HANDLE', message: 'Rejected' }, { status: 422 }) })
-  await assert.rejects(createCheckout(deps), /INFINITEPAY_LINK_FAILED/)
-  assert.equal(deps.calls.at(-1)[0], 'fail_infinitepay_checkout')
-  assert.equal(deps.calls.at(-1)[1].p_http_status, 422)
-  assert.deepEqual(deps.calls.find((call) => call[0] === 'log')[2],
-    { status: 422, providerCode: 'INVALID_HANDLE', responseKeys: ['code', 'message'] })
+test('definitive 4xx records failed checkout; ambiguous responses freeze automatic retry',async()=>{
+ const d=fixtures({fetcher:async()=>Response.json({code:'INVALID_HANDLE'},{status:422})})
+ await assert.rejects(createCheckout(d),/INFINITEPAY_LINK_FAILED/);assert.equal(d.calls.at(-1)[0],'fail_infinitepay_checkout')
+ for(const fetcher of [async()=>Response.json({}, {status:503}),async()=>Response.json({}, {status:408}),async()=>Response.json({}, {status:429}),async()=>Response.json({}),async()=>{throw new DOMException('timeout','TimeoutError')}]) {
+  const d=fixtures({fetcher});await assert.rejects(createCheckout(d));assert.equal(d.calls.at(-1)[0],'mark_infinitepay_checkout_uncertain')
+ }
 })
-
-test('5xx, missing URL and timeout require reconciliation, without a second link', async () => {
-  const failures = [
-    async () => Response.json({ message: 'Unavailable' }, { status: 503 }),
-    async () => Response.json({ success: true }),
-    async () => { throw new DOMException('Timed out', 'TimeoutError') },
-  ]
-  for (const fetcher of failures) {
-    const deps = fixtures({ fetcher })
-    await assert.rejects(createCheckout(deps))
-    assert.equal(deps.calls.at(-1)[0], 'mark_infinitepay_checkout_uncertain')
-  }
+test('uncertain/in-progress reservation never calls provider',async()=>{
+ for(const uncertain of [false,true]){
+  const d=fixtures({reserved:{id:'123',createLink:false,uncertain},fetcher:()=>{throw Error('duplicate')}})
+  await assert.rejects(createCheckout(d),uncertain?/CHECKOUT_RECONCILIATION_REQUIRED/:/CHECKOUT_IN_PROGRESS/);assert.equal(d.calls.length,1)
+ }
 })
-
-test('an uncertain purchase does not call links again', async () => {
-  const deps = fixtures({ admin: { rpc: async () => ({ data: { id: '123', createLink: false, uncertain: true } }) },
-    fetcher: () => { throw new Error('duplicate link') } })
-  await assert.rejects(createCheckout(deps), /CHECKOUT_RECONCILIATION_REQUIRED/)
+test('failure to persist a remotely created link freezes order; pre-provider validation can release safely',async()=>{
+ const d=fixtures({admin:{rpc:async name=>{d.calls.push([name]);return {error:name==='finish_infinitepay_checkout'?{message:'unavailable'}:null}}}})
+ await assert.rejects(createCheckout(d),/CHECKOUT_SAVE_FAILED/);assert.equal(d.calls.at(-1)[0],'mark_infinitepay_checkout_uncertain')
+ const invalid=fixtures({reserved:{...reservation,amountCentavos:'NaN'}})
+ await assert.rejects(createCheckout(invalid),/INVALID_CHECKOUT_INPUT/);assert.equal(invalid.calls.at(-1)[0],'release_infinitepay_checkout')
 })
-
-test('external URLs are restricted to the actual InfinitePay checkout hosts', () => {
-  assert.equal(validCheckoutUrl('https://checkout.infinitepay.io/tag?lenc=x'), true)
-  assert.equal(validCheckoutUrl('https://checkout.infinitepay.com.br/tag?lenc=x'), true)
-  for (const url of ['http://checkout.infinitepay.io/', 'https://evil.test/',
-    'https://checkout.infinitepay.io.evil.test/',
-    'https://checkout.infinitepay.com.br.evil.test/', 'https://user@checkout.infinitepay.com.br/'])
-    assert.equal(validCheckoutUrl(url), false)
-  assert.throws(() => checkoutPayload({ handle: 'x', orderNsu: reservation.orderNsu, amountCentavos: 590 }), /INVALID_CHECKOUT_INPUT/)
-})
-
-test('advanced single-payment/expiry options are sent only with the merchant API key', async () => {
-  const validUntil = '2026-10-30T12:00:00Z'
-  let sent
-  const deps = fixtures({ apiKey: 'synthetic-test-key',
-    admin: { rpc: async (name) => ({ data: name === 'reserve_infinitepay_cash_purchase' ? { ...reservation, checkoutValidUntil: validUntil } : null }) },
-    fetcher: async (_url, options) => { sent = options; return Response.json({ url: 'https://checkout.infinitepay.io/test' }) },
-  })
-  await createCheckout(deps)
-  assert.equal(sent.headers['X-Api-Key'], 'synthetic-test-key')
-  assert.deepEqual(JSON.parse(sent.body).options, { single_payment: true, valid_until: validUntil })
+test('persisted and returned checkout URLs share a strict HTTPS allowlist',async()=>{
+ assert.ok(validCheckoutUrl('https://checkout.infinitepay.io/a'))
+ for(const url of ['http://checkout.infinitepay.io/','https://evil.test/','https://checkout.infinitepay.io.evil.test/','https://user@checkout.infinitepay.io/','https://checkout.infinitepay.io:4433/']){
+  assert.equal(validCheckoutUrl(url),false)
+  const d=fixtures({reserved:{checkoutUrl:url}});await assert.rejects(createCheckout(d),/INVALID_CHECKOUT_URL/)
+ }
+ assert.throws(()=>checkoutPayload({handle:'x',orderNsu:reservation.orderNsu,amountCentavos:590}),/INVALID_CHECKOUT_INPUT/)
 })

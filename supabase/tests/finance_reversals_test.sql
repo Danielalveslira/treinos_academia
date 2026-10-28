@@ -1,3 +1,4 @@
+\ir _helpers/cash_purchase.sql
 \ir _helpers/auth_session.sql
 begin;
 select no_plan();
@@ -5,7 +6,7 @@ insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,r
 values('f3000000-0000-0000-0000-000000000001','authenticated','authenticated','reverse-one@example.invalid','x',now(),'{}','{}',now(),now()),
 ('f3000000-0000-0000-0000-000000000002','authenticated','authenticated','reverse-admin@example.invalid','x',now(),'{}','{}',now(),now());
 update public.users set role='superadmin' where id='f3000000-0000-0000-0000-000000000002';
-create temp table purchase as select public.reserve_infinitepay_cash_purchase('f3000000-0000-0000-0000-000000000001','pack_25') r;
+create temp table purchase as select pg_temp.cash_purchase_fixture('f3000000-0000-0000-0000-000000000001') r;
 select public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from purchase),(select r->>'orderNsu' from purchase),'reverse-txn','reverse-inv',590,'pix',null);
 select pg_temp.set_test_user('f3000000-0000-0000-0000-000000000002',true);
 select throws_ok($$select public.admin_record_cash_reversal((select (r->>'id')::uuid from purchase),'refund-1','refund',295,'provider-ref-1','Confirmed in provider dashboard')$$,'REVERSALS_NOT_ENABLED','production flag defaults closed');

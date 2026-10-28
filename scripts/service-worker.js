@@ -58,7 +58,11 @@ const LOW_STORAGE_RATIO = 0.9 // mesmo limiar de storagePersistence.js (LOW_SPAC
 const IMAGE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 const CACHED_AT_HEADER = 'x-sw-cached-at'
 const PUBLIC_STATIC_ROUTES = new Set([
-  '/como-funciona', '/para-empresas', '/vitrine', '/profissionais',
+  '/como-funciona',
+  '/para-empresas',
+  '/vitrine',
+  '/profissionais',
+  '/locais',
 ])
 
 // Os caches deste worker compartilham o prefixo; só eles são limpos (nada de apagar caches
@@ -309,7 +313,10 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate') {
     // Uma página pública estática nunca deve receber o shell autenticado quando
     // a rede falha; isso mostraria a rota errada (ou um 200 offline enganoso).
-    if (PUBLIC_STATIC_ROUTES.has(url.pathname)) {
+    if (
+      PUBLIC_STATIC_ROUTES.has(url.pathname) ||
+      /^\/(?:vitrine|profissionais|locais)\/[0-9a-f-]{36}$/i.test(url.pathname)
+    ) {
       event.respondWith(fetch(request))
       return
     }
@@ -319,11 +326,11 @@ self.addEventListener('fetch', (event) => {
     // guardou): regravá-lo com o HTML da rede, que pode ser de um deploy mais novo que este worker,
     // criaria "index novo + chunks que não estão no cache" e o app não abriria offline.
     event.respondWith(
-      fetch(request)
-        .catch(
-          async () =>
-            (await caches.open(SHELL_CACHE).then((c) => c.match('/app-shell.html'))) || Response.error()
-        )
+      fetch(request).catch(
+        async () =>
+          (await caches.open(SHELL_CACHE).then((c) => c.match('/app-shell.html'))) ||
+          Response.error()
+      )
     )
   } else if (url.pathname.startsWith('/assets/')) {
     event.respondWith(assetStrategy(request))

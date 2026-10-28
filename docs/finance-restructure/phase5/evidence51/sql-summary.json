@@ -1,0 +1,102 @@
+[
+  {
+    "name": "multiple_professional_listings_test.sql",
+    "passed": true,
+    "assertions": 34
+  },
+  {
+    "name": "professional_commercial_test.sql",
+    "passed": true,
+    "assertions": 59
+  },
+  {
+    "name": "storefront_revisions_test.sql",
+    "passed": true,
+    "assertions": 67
+  },
+  {
+    "name": "product_storefronts_test.sql",
+    "passed": true,
+    "assertions": 75
+  },
+  {
+    "name": "commercial_engine_test.sql",
+    "passed": true,
+    "assertions": 58
+  },
+  {
+    "name": "evocash_pricing_test.sql",
+    "passed": true,
+    "assertions": 57
+  },
+  {
+    "name": "infinitepay_cash_purchases_test.sql",
+    "passed": true,
+    "assertions": 32
+  },
+  {
+    "name": "finance_integrity_test.sql",
+    "passed": true,
+    "assertions": 17
+  },
+  {
+    "name": "finance_reversals_test.sql",
+    "passed": true,
+    "assertions": 18
+  },
+  {
+    "name": "public_professional_directory_test.sql",
+    "passed": true,
+    "assertions": 24
+  },
+  {
+    "name": "showcase_publish_recovery_test.sql",
+    "passed": true,
+    "assertions": 12
+  },
+  {
+    "name": "admin_vitrines_denuncias_test.sql",
+    "passed": true,
+    "assertions": 36
+  },
+  {
+    "name": "aud_has_app_access_gates_test.sql",
+    "passed": true,
+    "assertions": 99
+  },
+  {
+    "name": "session_revocation_guard_test.sql",
+    "passed": true,
+    "assertions": 23
+  },
+  {
+    "name": "notification_security_test.sql",
+    "passed": true,
+    "assertions": 61
+  },
+  {
+    "name": "security_followup_test.sql",
+    "passed": true,
+    "assertions": 19
+  },
+  {
+    "name": "public_commercial_test.sql",
+    "passed": true,
+    "assertions": 20
+  },
+  {
+    "name": "partner_products_require_image_test.sql",
+    "passed": true,
+    "assertions": 6
+  },
+  {
+    "name": "admin_accounts_snapshot_test.sql",
+    "passed": true,
+    "assertions": 75
+  },
+  {
+    "name": "admin_accounts_defensive_test.sql",
+    "passed": true,
+    "assertions": 76
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "realNetworkFailure": true,
+  "draftAndPublicImagePreserved": true,
+  "noFalseUploadSuccess": true,
+  "foreignUploadDenied": 403,
+  "demoDraftRestored": true
+}

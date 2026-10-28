@@ -1,0 +1,11 @@
+# Auditoria anterior às alterações — Fase 5.1
+
+Base `finance-profiles-phase5`, `8c802ea`; worktree/branch isolados `phase51` / `finance-profiles-phase5-1`. Planejamento mestre e inventários/entregas 0–5 consultados, incluindo segurança e evidências da Fase 5. Sem autorização de produção, push, deploy ou Fase 6.
+
+Restrição efetiva: `professional_listings_owner_id_key`; criação consulta `owner_id` e retorna o registro existente; getter sem argumento presume unicidade; página mantém um único record. FKs editoriais/comerciais já usam IDs concretos e não exigem alteração financeira. Criação precisa de chave idempotente independente de tipo/proprietário para distinguir reenvio de um novo recurso. Getter legado sem ID deve falhar de forma explícita quando houver ambiguidade.
+
+Plano: constraint substituída por índice de proprietário/tipo/ID para paginação e contagem de limites; criação serializada no proprietário, limites por tipo com revisão/auditoria e ausência bloqueando novas criações; parâmetros de ID no getter e seleção via querystring da rota existente; editor reaproveitado com key por recurso para isolar rascunho/cotação/histórico. Listagem retorna resumo paginado, não contratos completos.
+
+Mídia: `storefront_media.storefront_id` já possui FK para commercial_resources e FKs compostas por recurso. Não há compartilhamento autorizado entre cadastros, mesmo do mesmo dono; há referências compartilhadas entre rascunho/snapshot do mesmo cadastro. Renomear fisicamente a coluna não altera essas garantias e exige substituir dezenas de corpos PLpgSQL, testes e contratos de serviço já consolidados. Manter coluna única e comentário explícito; verificar a integridade com múltiplos recursos, coletor e Storage existentes. Não criar segundo bucket/gateway nem coluna duplicada.
+
+Offline: o teste de ACK perdido aguarda 40 ms para uma execução de background terminar e então troca a disponibilidade do RPC. Sob carga, o RPC pode ser liberado antes do background concluir, e o pedido online enfileirado termina em idle porque a rodada anterior já sincronizou. Investigar com barreira observável do scheduler, mantendo as verificações de fila/recibo/idempotência; não aumentar timeout nem desativar teste.

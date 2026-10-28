@@ -482,3 +482,12 @@ verify_jwt = true
 [functions.infinitepay-admin-reconcile]
 enabled = true
 verify_jwt = true
+
+# GET is public but authorizes every media request in PostgreSQL; mutations validate JWT.
+[functions.storefront-media]
+enabled = true
+verify_jwt = false
+
+[functions.storefront-media-cleanup]
+enabled = true
+verify_jwt = true

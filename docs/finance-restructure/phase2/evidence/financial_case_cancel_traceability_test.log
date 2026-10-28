@@ -1,0 +1,63 @@
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 3
+UPDATE 1
+
+
+INSERT 0 1
+
+
+66000000-0000-0000-0000-000000000001
+
+
+{"reason": "pending_cash_purchase", "blocked": true}
+{"reason": "positive_cash_balance", "blocked": true}
+{"caseId": "0c59f1bf-d5b5-40da-a526-723013bdb9b5", "replay": false, "protocol": "FIN-000005", "cashBalanceSnapshot": 25}
+{"caseId": "c6c7cdff-cfeb-4ca9-a7b4-fb913d023247", "replay": false, "protocol": "FIN-000006", "cashBalanceSnapshot": 10}
+SELECT 1
+SELECT 1
+ok 1 - ledger vinculado ao FIN
+ok 2 - compra vinculada ao FIN
+ok 3 - vínculo histórico gravado (1 ledger + 1 compra)
+SELECT 2
+ok 4 - cancela a exclusão
+ok 5 - conta volta ativa
+ok 6 - efeito funcional preservado: vínculo ativo zerado
+ok 7 - retenção +1 ano mantida
+SELECT 1
+ok 8 - histórico mostra o caso FIN depois do cancelamento
+ok 9 - admin identifica o lançamento que pertenceu ao caso
+ok 10 - valor do lançamento histórico
+ok 11 - admin identifica a compra que pertenceu ao caso
+ok 12 - valor da compra histórica
+ok 13 - evento com o motivo do cancelamento
+ok 14 - decisão original preservada
+ok 15 - listas gerais de ledger e compras continuam
+ok 16 - itens históricos inalterados pelo cancelamento
+ok 17 - pagamento confirmado credita normalmente na carteira
+ok 18 - compra antiga não é tratada como held_in_case
+ok 19 - carteira = 25 + 25
+ok 20 - nenhum pagamento retido no caso cancelado
+ok 21 - conta reativada pode gastar EvoCash
+ok 22 - débito aplicado
+66000000-0000-0000-0000-000000000051
+ok 23 - usuário comum não vê histórico financeiro
+66000000-0000-0000-0000-000000000001
+ok 24 - ledger original não duplicado
+ok 25 - ledger: original + 1 crédito da compra (nada duplicado)
+ok 26 - itens históricos continuam 2 (operações novas não entram no caso cancelado)
+ok 27 - retenção continua +1 ano depois das operações
+ok 28 - itens históricos não podem ser apagados
+
+ok 29 - antes do worker: só o lançamento da separação
+{"kind": "account", "complete": false, "targetId": "66000000-0000-0000-0000-000000000052", "photoPaths": [], "authPending": true, "deleteAuthUser": true}
+ok 30 - worker registra o retardatário como item do caso
+ok 31 - ledger do caso excluído preservado e vinculado
+INSERT 0 1
+ok 32 - backfill cria o item faltante
+ok 33 - backfill idempotente
+ok 34 - backfill não é chamável pelo cliente
+1..34
+ROLLBACK

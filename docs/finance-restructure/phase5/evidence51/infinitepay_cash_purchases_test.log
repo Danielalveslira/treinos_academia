@@ -1,0 +1,87 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 4
+INSERT 0 1
+UPDATE 1
+CREATE TABLE
+GRANT
+72000000-0000-0000-0000-000000000001
+INSERT 0 1
+SET
+ok 1 - checkout gate defaults closed independently of quoting
+ok 2 - client cannot insert financial rows
+RESET
+UPDATE 1
+SET
+INSERT 0 1
+ok 3 - order uses quote total as an exact string
+ok 4 - order quantity is frozen
+ok 5 - concurrent retry cannot call provider twice
+ok 6 - request key cannot change quote
+ok 7 - another key cannot buy the same quote twice
+RESET
+ok 8 - package reservation is removed
+ok 9 - package configuration is retired
+ok 10 - immutable purchase total
+
+SET
+ok 11 - known pre-provider failure releases lease safely
+RESET
+
+ok 12 - database also restricts URL host
+INSERT 0 1
+SET
+ok 13 - price change never changes accepted checkout
+{"id": "19200646-b81e-4497-a84e-dad22ea961a5", "replay": false, "status": "cancelled"}
+INSERT 0 1
+ok 14 - cancelled but payable link retains limit reservation
+RESET
+ok 15 - divergent provider amount cannot credit
+ok 16 - verified late payment credits the same order
+ok 17 - duplicate webhook cannot credit twice
+ok 18 - wallet receives exact quote quantity
+ok 19 - one order one ledger credit
+UPDATE 1
+UPDATE 1
+72000000-0000-0000-0000-000000000004
+ok 20 - quantity refund reuses proportional reversal engine
+ok 21 - quantity refund event is idempotent
+{"id": "b84c5e72-d37f-432c-b324-852784e3de68", "replay": false, "cashUnits": 13, "outstanding": 0}
+ok 22 - full quantity refund recovers only original credits
+{"reason": "already_credited", "credited": false}
+ok 23 - late paid replay cannot undo a refund
+72000000-0000-0000-0000-000000000002
+SET
+ok 24 - another user cannot redeem quote
+ok 25 - RLS hides other user purchases
+RESET
+INSERT 0 1
+SET
+ok 26 - expired quote cannot create payment
+INSERT 0 1
+INSERT 0 1
+RESET
+
+SET
+ok 27 - timeout stays uncertain on retry
+RESET
+
+SET
+ok 28 - failed order never silently reopens
+RESET
+ok 29 - confirmation remains backend only
+ok 30 - no service reservation that bypasses caller session
+UPDATE 1
+SET
+ok 31 - disabled account cannot reuse an order to reach provider
+RESET
+UPDATE 1
+
+SET
+ok 32 - revoked session cannot reserve or replay checkout
+RESET
+1..32
+ROLLBACK

@@ -1,0 +1,16 @@
+✔ src/components/AccountMenu.test.js (1674.298396ms)
+✔ src/components/AppRoutes.test.js (967.921718ms)
+✔ src/contexts/WalletContext.test.js (3605.795116ms)
+✔ src/pages/EconomyGuide.test.js (1012.857314ms)
+✔ src/utils/quantityPurchase.test.js (138.613664ms)
+✔ supabase/functions/send-cash-purchase-reminder-emails/handler.test.js (242.290002ms)
+✔ supabase/functions/send-cash-purchase-reminder-emails/messages.test.js (144.426715ms)
+✔ supabase/functions/send-cash-purchase-reminder-emails/processor.test.js (235.546189ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8054.896848

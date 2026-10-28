@@ -1,0 +1,34 @@
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 2
+UPDATE 1
+SELECT 1
+INSERT 0 1
+GRANT
+f6000000-0000-0000-0000-000000000001
+SET
+ok 1 - active superadmin retains the existing batched read
+RESET
+
+SET
+ok 2 - revoked JWT cannot read purchase reminder metadata
+RESET
+ok 3 - revocation never deletes reminder history
+f6000000-0000-0000-0000-000000000001
+{"sub":"f6000000-0000-0000-0000-000000000001","role":"authenticated","session_id":"malformed"}
+SET
+ok 4 - malformed session cannot read purchase reminder metadata
+RESET
+f6000000-0000-0000-0000-000000000001
+SET
+ok 5 - new active session restores authorized access
+RESET
+f6000000-0000-0000-0000-000000000002
+SET
+ok 6 - buyer cannot read administrative reminders
+RESET
+ok 7 - anonymous table read remains denied
+1..7
+ROLLBACK

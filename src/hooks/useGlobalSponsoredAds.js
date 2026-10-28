@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 import { listGlobalSponsoredAds } from '../services/sponsoredAdsService'
 import { selectBannerAds } from '../utils/sponsoredAds'
 import { useAdExpiryTick } from './useAdExpiryTick'
-import { useCachedQuery } from './useCachedQuery'
+import { useAdvertisingSelection } from './useAdvertisingSelection'
 
 const CACHE_KEY = 'sponsoredAds:global'
 
@@ -18,7 +18,7 @@ export function useGlobalSponsoredAds(enabled) {
     data: ads = NO_ADS,
     loading,
     error,
-  } = useCachedQuery(CACHE_KEY, fetchAds, { enabled, context: 'useGlobalSponsoredAds' })
+  } = useAdvertisingSelection(CACHE_KEY, enabled, fetchAds)
 
   // Só o modo "banner" importa aqui: a Home nunca renderiza card de feed, então um anúncio isGlobal com
   // displayMode apenas ['feed'] não deveria aparecer nela.

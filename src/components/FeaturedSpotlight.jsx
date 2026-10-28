@@ -154,7 +154,9 @@ export function FeaturedSpotlight({ statuses, onOpen, random = Math.random, now:
       >
         <StarIcon size={16} />
         <span className="cd-spotlight-body">
-          <span className="cd-spotlight-label">Em destaque{author ? ` · @${author}` : ''}</span>
+          <span className="cd-spotlight-label">
+            Destaque patrocinado{author ? ` · @${author}` : ''}
+          </span>
           <span className="cd-spotlight-text">{excerpt}</span>
         </span>
         {!multiple && <ChevronRightIcon size={16} />}

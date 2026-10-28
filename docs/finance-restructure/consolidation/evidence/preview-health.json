@@ -1,0 +1,21 @@
+{
+  "localOnly": true,
+  "checks": [
+    {
+      "path": "/app",
+      "status": 200
+    },
+    {
+      "path": "/evocash",
+      "status": 200
+    },
+    {
+      "path": "/meus-anuncios",
+      "status": 200
+    },
+    {
+      "path": "/_finance_local/__health",
+      "status": 200
+    }
+  ]
+}

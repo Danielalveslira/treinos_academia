@@ -1,771 +1,291 @@
 import { useEffect, useRef, useState } from 'react'
-import { Button, Flash, Spinner } from '@primer/react'
+import { Box, Button, Flash, Heading, Label, Spinner, Text, Dialog } from '@primer/react'
 import { Link } from 'react-router-dom'
-import { ProfessionalListingCard } from '../components/ProfessionalListingCard'
-import { ShowcaseTermsUpdateDialog } from '../components/ShowcaseTermsUpdateDialog'
-import {
-  BRAZIL_STATES,
-  CATEGORY_OPTIONS,
-  LISTING_KIND_OPTIONS,
-  MODALITY_OPTIONS,
-  SERVICE_MODE_OPTIONS,
-} from '../constants/professionalListingTaxonomy'
 import { useAuth } from '../hooks/useAuth'
 import { listActiveCommunities } from '../services/communitiesService'
 import {
-  acknowledgeShowcaseTerms,
-  createProfessionalListing,
-  deleteProfessionalListing,
-  finalizeProfessionalListingPublish,
-  getActiveShowcasePolicy,
   getMyProfessionalListing,
-  getShowcaseLegalAcknowledgement,
-  getShowcaseLegalVersion,
-  publishProfessionalListing,
   saveProfessionalListing,
-  unpublishProfessionalListing,
+  setProfessionalListingEditorial,
+  listListingCommercialOrders,
 } from '../services/professionalListingsService'
-import { setUsageProfile } from '../services/usageProfileService'
+import { uploadStorefrontImage } from '../services/storefrontService'
+import { commercialDate } from '../utils/commercial'
+import { editorialLabels, publicationLabels, storefrontError } from '../utils/storefront'
 import { EMPTY_LISTING_DRAFT } from '../utils/professionalListing'
-import { shouldShowShowcaseTermsBanner } from '../utils/showcaseLegal'
-import { isEligibleForListingCreation } from '../constants/usageProfile'
-import { UsageProfileField } from '../components/UsageProfileField'
-import { describeAccountAccessError } from '../utils/accountAccessErrors'
-
-// RPCs do Supabase lançam códigos curtos (ver migration
-// 20260929000005_professional_listings.sql), não frases prontas -- esta tela sempre
-// mostrou error.message direto pro usuário, então precisa traduzir aqui pra não vazar o
-// código cru.
-const KNOWN_ERRORS = {
-  INVALID_ARGUMENT: 'Dados inválidos para criar a vitrine.',
-  ACCOUNT_DELETING: 'A conta não pode alterar uma vitrine agora.',
-  ALREADY_EXISTS: 'Sua conta já possui uma vitrine de outro tipo.',
-  NOT_ELIGIBLE:
-    'Defina seu perfil de uso como profissional ou responsável por estabelecimento em Meu Perfil antes de criar uma vitrine.',
-  LISTING_NOT_FOUND: 'Vitrine não encontrada.',
-  LISTING_NOT_EDITABLE: 'A vitrine não pode ser alterada neste estado.',
-  KIND_IMMUTABLE: 'O tipo da vitrine não pode ser alterado.',
-  INVALID_DISPLAY_NAME: 'Informe um nome com até 80 caracteres.',
-  INVALID_CATEGORY: 'Categoria inválida.',
-  INVALID_MODALITIES: 'Selecione entre uma e cinco modalidades.',
-  TOO_MANY_SPECIALTIES: 'Informe no máximo dez especialidades.',
-  INVALID_BIO: 'Informe uma apresentação com até 1.500 caracteres.',
-  INVALID_CITY: 'Informe uma cidade com até 80 caracteres.',
-  INVALID_UF: 'Estado inválido.',
-  INVALID_SERVICE_MODE: 'Atendimento inválido.',
-  INVALID_CONTACTS: 'Use somente links HTTPS válidos para os contatos.',
-  INVALID_LINKED_COMMUNITY: 'Você só pode vincular uma comunidade ativa da qual é titular.',
-  PUBLISH_IN_PROGRESS: 'Uma publicação desta vitrine está em andamento.',
-  DRAFT_INCOMPLETE: 'Salve um rascunho completo antes de publicar.',
-}
-
-const STATE_LABELS = {
-  draft: 'Rascunho',
-  // Legado: vitrines com uma submissão presa no antigo fluxo de aprovação (antes da
-  // publicação direta). Some sozinho assim que o titular salvar o rascunho de novo.
-  pending_review: 'Em revisão (legado)',
-  published: 'Publicada',
-  suspended: 'Suspensa',
-  archived: 'Despublicada',
-  deleting: 'Exclusão pendente',
-}
-
-function editableDraft(data, kind) {
-  // Um rascunho recém-criado (create_professional_listing) vem do servidor com todo
-  // campo de texto opcional como null, não '' (professional_listing_drafts não tem
-  // default pra display_name/category_key/bio/city/uf/service_mode) -- um ...data por
-  // cima de EMPTY_LISTING_DRAFT sobrescreve o default com esse null (chave presente
-  // vence o spread anterior), e form.bio.length quebra a tela inteira. ?? troca só os
-  // null/undefined pelo default; '' explicitamente digitado pelo usuário continua ''.
+import ProfessionalListingForm from '../components/ProfessionalListingForm'
+import CommercialLeasePurchase from '../components/CommercialLeasePurchase'
+import CommercialOrderHistory from '../components/CommercialOrderHistory'
+import ListingLegalNotice from '../components/ListingLegalNotice'
+import StorefrontImage from '../components/StorefrontImage'
+function editable(draft, kind) {
   return {
     ...EMPTY_LISTING_DRAFT,
-    ...data,
-    displayName: data?.displayName ?? EMPTY_LISTING_DRAFT.displayName,
-    categoryKey: data?.categoryKey ?? EMPTY_LISTING_DRAFT.categoryKey,
-    bio: data?.bio ?? EMPTY_LISTING_DRAFT.bio,
-    city: data?.city ?? EMPTY_LISTING_DRAFT.city,
-    uf: data?.uf ?? EMPTY_LISTING_DRAFT.uf,
-    serviceMode: data?.serviceMode ?? EMPTY_LISTING_DRAFT.serviceMode,
+    ...draft,
     kind,
-    modalityKeys: Array.isArray(data?.modalityKeys) ? data.modalityKeys : [],
-    specialties: Array.isArray(data?.specialties) ? data.specialties : [],
-    contacts: {
-      whatsapp: data?.contacts?.whatsapp ?? '',
-      instagram: data?.contacts?.instagram ?? '',
-      website: data?.contacts?.website ?? '',
-    },
-    useProfileAvatar: data?.useProfileAvatar === true,
-    linkedCommunityId: data?.linkedCommunityId || '',
-    specialtiesText: data?.specialties?.join(', ') || '',
+    serviceMode: draft?.serviceMode || EMPTY_LISTING_DRAFT.serviceMode,
+    contacts: { ...EMPTY_LISTING_DRAFT.contacts, ...draft?.contacts },
+    specialtiesText: (draft?.specialties || []).join(', '),
   }
 }
-
-export default function MyProfessionalListing() {
-  const { user, profile } = useAuth()
-  const [record, setRecord] = useState(undefined)
-  const [loadError, setLoadError] = useState(false)
-  const [loadRevision, setLoadRevision] = useState(0)
-  const [form, setForm] = useState(null)
-  const [communities, setCommunities] = useState([])
-  const [busy, setBusy] = useState('')
-  const [message, setMessage] = useState(null)
-  // Ciência (não aceite) da versão vigente dos Termos -- só decide o aviso abaixo, nunca
-  // bloqueia salvar/publicar (ver decisão de produto em
-  // 20261001000002_showcase_terms_acknowledgement.sql).
-  const [showcasePolicy, setShowcasePolicy] = useState(null)
-  const [showcaseAcknowledgement, setShowcaseAcknowledgement] = useState(null)
-  // "Ler o que mudou" -- aberto sob demanda, nunca carrega o resumo antes de ser clicado.
-  const [showcaseTermsDialogOpen, setShowcaseTermsDialogOpen] = useState(false)
-  const [showcaseVersionChanges, setShowcaseVersionChanges] = useState(null)
-  const [loadingShowcaseVersion, setLoadingShowcaseVersion] = useState(false)
-  const submissionOperation = useRef(null)
-
+function message(e) {
+  return (
+    {
+      DRAFT_INCOMPLETE:
+        'Complete nome, apresentação, localização, categoria e modalidades antes de enviar.',
+      NOT_ELIGIBLE: 'Defina seu perfil de uso antes de criar um cadastro.',
+      INVALID_CONTACTS: 'Informe contatos HTTPS válidos.',
+      EDITORIAL_REVIEW_REQUIRED: 'Esta versão precisa de revisão administrativa.',
+      LISTING_NOT_FOUND: 'Cadastro indisponível ou sem permissão.',
+    }[e?.message] || storefrontError(e)
+  )
+}
+export default function MyProfessionalListing({ listingId }) {
+  const { user } = useAuth()
+  const [record, setRecord] = useState(undefined),
+    [form, setForm] = useState(null),
+    [communities, setCommunities] = useState([]),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(''),
+    [notice, setNotice] = useState(''),
+    [preview, setPreview] = useState(false),
+    [generation, setGeneration] = useState(0)
+  const lock = useRef(false)
   async function reload() {
-    const current = await getMyProfessionalListing(user.uid)
-    if (current && (!current.listing || !current.draft)) {
-      throw new Error('SHOWCASE_INCOMPLETE_RECORD')
-    }
-    setRecord(current)
-    if (current) setForm(editableDraft(current.draft, current.listing.kind))
-    return current
+    const row = await getMyProfessionalListing(listingId)
+    setRecord(row)
+    setForm(row ? editable(row.draft, row.listing.kind) : null)
+    return row
   }
-
   useEffect(() => {
     let active = true
-    setLoadError(false)
-    const timeout = window.setTimeout(() => {
-      if (active) setLoadError(true)
-    }, 15000)
-    getMyProfessionalListing(user.uid)
-      .then((current) => {
-        if (!active) return
-        if (current && (!current.listing || !current.draft)) {
-          throw new Error('SHOWCASE_INCOMPLETE_RECORD')
+    setError('')
+    getMyProfessionalListing(listingId)
+      .then((row) => {
+        if (active) {
+          setRecord(row)
+          setForm(row ? editable(row.draft, row.listing.kind) : null)
         }
-        setRecord(current)
-        if (current) setForm(editableDraft(current.draft, current.listing.kind))
       })
-      .catch((error) => {
-        if (!active) return
-        console.error('[Vitrine] carregamento inicial:', error)
-        setLoadError(true)
-      })
-      .finally(() => window.clearTimeout(timeout))
-    listActiveCommunities()
-      .then((allCommunities) => {
-        if (!active) return
-        setCommunities(allCommunities.filter((community) => community.ownerId === user.uid))
-      })
-      .catch(() => {
-        if (active)
-          setMessage({
-            variant: 'warning',
-            text: 'Não foi possível carregar suas comunidades. A vitrine pode ser editada sem vínculo por enquanto.',
-          })
-      })
-    // Ciência (não aceite) da versão vigente -- nunca bloqueia nada, então uma falha
-    // aqui só loga e segue (ver decisão de produto em
-    // 20261001000002_showcase_terms_acknowledgement.sql).
-    getActiveShowcasePolicy()
-      .then((policy) => {
-        if (!active) return
-        setShowcasePolicy(policy)
-        if (!policy.published || !policy.version) return Promise.resolve(null)
-        return getShowcaseLegalAcknowledgement(user.uid, policy.version)
-      })
-      .then((acknowledgement) => {
-        if (active) setShowcaseAcknowledgement(acknowledgement)
-      })
-      .catch((error) => console.error('[Vitrine] showcase terms state:', error))
+      .catch((e) => active && setError(message(e)))
     return () => {
       active = false
-      window.clearTimeout(timeout)
     }
-  }, [user.uid, loadRevision])
-
-  function edit(field, value) {
-    setForm((current) => ({ ...current, [field]: value }))
-    setMessage(null)
-  }
-
-  function editContact(field, value) {
-    setForm((current) => ({ ...current, contacts: { ...current.contacts, [field]: value } }))
-    setMessage(null)
-  }
-
-  function toggleModality(value) {
-    setForm((current) => ({
-      ...current,
-      modalityKeys: current.modalityKeys.includes(value)
-        ? current.modalityKeys.filter((item) => item !== value)
-        : current.modalityKeys.length < 5
-          ? [...current.modalityKeys, value]
-          : current.modalityKeys,
-    }))
-  }
-
-  async function create(kind) {
-    setBusy('create')
-    setMessage(null)
+  }, [user.uid, listingId, generation])
+  useEffect(() => {
+    let active = true
+    listActiveCommunities(user.uid)
+      .then((rows) => active && setCommunities(rows))
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [user.uid])
+  useEffect(() => {
+    if (record?.commercial?.state !== 'active') return
+    const remaining =
+      Date.parse(record.commercial.expiresAt) - Date.parse(record.commercial.serverTime)
+    if (!Number.isFinite(remaining) || remaining <= 0) return
+    const timer = setTimeout(() => setGeneration((v) => v + 1), Math.min(remaining, 2147483647))
+    return () => clearTimeout(timer)
+  }, [record])
+  useEffect(() => {
+    if (record?.id && globalThis.location?.hash === '#publicacao')
+      document.getElementById('publicacao')?.scrollIntoView({ block: 'start' })
+  }, [record?.id])
+  async function run(action) {
+    if (lock.current) return
+    lock.current = true
+    setBusy(true)
+    setError('')
+    setNotice('')
     try {
-      await createProfessionalListing(kind)
-      await reload()
-    } catch (error) {
-      setMessage({
-        variant: 'danger',
-        text:
-          KNOWN_ERRORS[error?.message] ||
-          describeAccountAccessError(error?.message) ||
-          'Não foi possível criar a vitrine.',
-      })
+      await action()
+    } catch (e) {
+      setError(message(e))
+      try {
+        await reload()
+      } catch {
+        /* Keep a visible error and require an explicit retry. */
+      }
     } finally {
-      setBusy('')
+      setBusy(false)
+      lock.current = false
     }
   }
-
-  // Preenchimento contextual para conta legada (usageProfile ainda ausente): o
-  // AuthContext mantém um listener ao vivo em users/{uid}, então profile.usageProfile
-  // já reflete o novo valor no próximo render, sem precisar recarregar nada aqui.
-  async function declareUsageProfile(value) {
-    setBusy('usageProfile')
-    setMessage(null)
-    try {
-      await setUsageProfile(value)
-    } catch {
-      setMessage({ variant: 'danger', text: 'Não foi possível salvar seu perfil de uso.' })
-    } finally {
-      setBusy('')
-    }
-  }
-
   function payload() {
     const { specialtiesText, ...draft } = form
     return {
       ...draft,
-      specialties: specialtiesText
+      specialties: (specialtiesText || '')
         .split(',')
-        .map((item) => item.trim())
+        .map((s) => s.trim())
         .filter(Boolean),
     }
   }
-
-  async function save(event) {
-    event.preventDefault()
-    setBusy('save')
-    setMessage(null)
-    try {
-      await saveProfessionalListing(record.id, payload())
-      submissionOperation.current = null
+  const save = (e) => {
+    e.preventDefault()
+    run(async () => {
+      await saveProfessionalListing(record.id, payload(), record.draft.version)
       await reload()
-      setMessage({ variant: 'success', text: 'Rascunho salvo.' })
-    } catch (error) {
-      setMessage({
-        variant: 'danger',
-        text:
-          KNOWN_ERRORS[error?.message] ||
-          describeAccountAccessError(error?.message) ||
-          'Não foi possível salvar.',
-      })
-    } finally {
-      setBusy('')
-    }
+      setNotice('Rascunho salvo. A versão pública aprovada foi preservada.')
+    })
   }
-
-  // Fase 1 (prepare) trava o rascunho; Fase 2 (Edge Function, finalize) de fato publica
-  // (copia o avatar autorizado e grava published_professional_listings). "Vitrine
-  // publicada" só aparece depois que as duas terminam -- nunca com base só na Fase 1.
-  // `repeated: true` = uma chamada anterior com este MESMO operationId já publicou de
-  // verdade (idempotência da própria Fase 1); nesse caso não há nada pra finalizar de
-  // novo, só confirmar o sucesso já conquistado.
-  async function publish() {
-    setBusy('publish')
-    setMessage(null)
-    try {
-      // Publicar também persiste o formulário atual. Antes, a Fase 1 usava somente o
-      // último rascunho salvo no banco; contatos recém-digitados eram descartados no
-      // reload posterior, apesar de ainda aparecerem na tela no momento do clique.
-      // Uma operação interrompida é a única exceção: o formulário está bloqueado e o
-      // mesmo operationId precisa ser retomado sem criar uma nova versão do rascunho.
-      if (!record.draft?.publishingOperationId) {
-        await saveProfessionalListing(record.id, payload())
-        submissionOperation.current = null
-      }
-      submissionOperation.current ||=
-        record.draft?.publishingOperationId || crypto.randomUUID().replaceAll('-', '')
-      const prepared = await publishProfessionalListing(record.id, submissionOperation.current)
-      if (!prepared.repeated) {
-        await finalizeProfessionalListingPublish(record.id, submissionOperation.current)
-      }
-      const current = await reload()
-      if (current?.listing?.lifecycleState !== 'published' || !current.published) {
-        throw new Error('PUBLISH_NOT_FINALIZED')
-      }
-      submissionOperation.current = null
-      setMessage({ variant: 'success', text: 'Vitrine publicada.' })
-    } catch (error) {
-      // A Edge Function tenta abortar a operação em qualquer falha. Recarregar reflete
-      // esse abort; se só a resposta se perdeu após um finalize real, também revela o
-      // estado publicado persistido no servidor.
-      try {
-        const current = await reload()
-        if (current?.listing?.lifecycleState === 'published' && current.published) {
-          submissionOperation.current = null
-          setMessage({ variant: 'success', text: 'Vitrine publicada.' })
-          return
-        }
-      } catch (reloadError) {
-        console.error('[Vitrine] recarregamento após falha de publicação:', reloadError)
-      }
-      setMessage({
-        variant: 'danger',
-        text:
-          KNOWN_ERRORS[error?.message] ||
-          describeAccountAccessError(error?.message) ||
-          'Não foi possível publicar.',
-      })
-    } finally {
-      setBusy('')
-    }
-  }
-
-  // Nunca é condição de salvar/publicar -- só esconde o aviso. "OK, entendi" pode falhar
-  // (rede) sem que o titular perca a capacidade de editar/publicar: por isso erro aqui
-  // vira mensagem de aviso, nunca bloqueia o resto da tela.
-  async function acknowledgeTerms() {
-    setBusy('acknowledge-terms')
-    try {
-      await acknowledgeShowcaseTerms()
-      setShowcaseAcknowledgement({ version: showcasePolicy.version, acknowledgedAt: new Date().toISOString() })
-      setShowcaseTermsDialogOpen(false)
-    } catch (error) {
-      console.error('[Vitrine] acknowledge terms:', error)
-      setMessage({
-        variant: 'warning',
-        text: 'Não foi possível registrar a confirmação agora. Tente novamente.',
-      })
-    } finally {
-      setBusy('')
-    }
-  }
-
-  // Abrir o diálogo só busca o resumo sob demanda -- fechar de qualquer jeito que não
-  // seja "OK, entendi" (X, Escape, clique fora) nunca registra ciência, o aviso continua.
-  async function openShowcaseTermsDialog() {
-    setShowcaseTermsDialogOpen(true)
-    if (!showcasePolicy?.version) return
-    setLoadingShowcaseVersion(true)
-    try {
-      const versionDetail = await getShowcaseLegalVersion(showcasePolicy.version)
-      setShowcaseVersionChanges(versionDetail?.manifest?.changes || [])
-    } catch (error) {
-      console.error('[Vitrine] showcase version detail:', error)
-      setShowcaseVersionChanges([])
-    } finally {
-      setLoadingShowcaseVersion(false)
-    }
-  }
-
-  async function unpublish() {
-    if (!window.confirm('Despublicar esta vitrine agora?')) return
-    setBusy('unpublish')
-    try {
-      await unpublishProfessionalListing(record.id)
+  const submit = () =>
+    run(async () => {
+      const saved = await saveProfessionalListing(record.id, payload(), record.draft.version)
+      await setProfessionalListingEditorial(record.id, saved.version, 'submitted')
       await reload()
-    } catch {
-      setMessage({ variant: 'danger', text: 'Não foi possível despublicar.' })
-    } finally {
-      setBusy('')
-    }
-  }
-
-  async function remove() {
-    if (!window.confirm('Excluir permanentemente sua vitrine e o rascunho?')) return
-    setBusy('delete')
-    try {
-      await deleteProfessionalListing(record.id)
-      setRecord(null)
-      setForm(null)
-    } catch {
-      setMessage({ variant: 'danger', text: 'Não foi possível excluir a vitrine.' })
-    } finally {
-      setBusy('')
-    }
-  }
-
-  const preview = form && {
-    id: record?.id || 'preview',
-    ...payload(),
-    avatarPath: form.useProfileAvatar ? profile?.avatarPath : null,
-  }
-
-  if (record === undefined)
-    return (
-      <div className="professional-state">
-        {loadError ? (
-          <>
-            <Flash variant="danger">Não foi possível carregar sua vitrine.</Flash>
-            <Button onClick={() => setLoadRevision((revision) => revision + 1)}>
-              Tentar novamente
-            </Button>
-          </>
-        ) : (
-          <Spinner aria-label="Carregando sua vitrine" />
-        )}
-      </div>
-    )
-  if (!record) {
-    const usageProfile = profile?.usageProfile
-    return (
-      <div className="my-listing-page">
-        <header className="profile-page-heading">
-          <span className="profile-eyebrow">SUA PRESENÇA PROFISSIONAL</span>
-          <h1>Minha vitrine</h1>
-          <p>Crie uma página pública para apresentar seu trabalho ou espaço.</p>
-        </header>
-        {message && <Flash variant={message.variant}>{message.text}</Flash>}
-        {!usageProfile ? (
-          // Conta legada: nunca declarou o perfil de uso. Preenchimento contextual
-          // aqui mesmo, no ponto em que isso passa a importar -- não bloqueia o resto
-          // do app nem classifica ninguém como "comum" por omissão.
-          <>
-            <p>Antes de continuar, diga como você pretende usar o Evolutus.</p>
-            <UsageProfileField
-              value=""
-              onChange={declareUsageProfile}
-              legend="Como você pretende utilizar o Evolutus?"
-              disabled={Boolean(busy)}
-            />
-          </>
-        ) : isEligibleForListingCreation(usageProfile) ? (
-          <section className="listing-kind-picker">
-            {LISTING_KIND_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => create(option.value)}
-                disabled={Boolean(busy)}
-              >
-                <strong>{option.label}</strong>
-                <span>
-                  {option.value === 'professional'
-                    ? 'Para personal trainers, treinadores e especialistas.'
-                    : 'Para academias, boxes, estúdios e assessorias.'}
-                </span>
-              </button>
-            ))}
-          </section>
-        ) : (
-          <Flash variant="warning">
-            A criação de Vitrine fica disponível para os perfis de uso Profissional e
-            Responsável por estabelecimento. Você pode mudar isso a qualquer momento em{' '}
-            <Link to="/perfil">Meu perfil</Link>.
-          </Flash>
-        )}
-      </div>
-    )
-  }
-  // record e form são setState separados feitos juntos (mesmo callback), mas nada
-  // garante que sempre cheguem no mesmo commit -- sem isto, um record já truthy com
-  // form ainda null quebraria form.displayName logo abaixo.
-  if (!form)
-    return (
-      <div className="professional-state">
-        <Spinner aria-label="Carregando sua vitrine" />
-      </div>
-    )
-
-  // 'publishing' é a trava transitória do publish() -- na prática o titular quase
-  // nunca observa isso (a chamada é síncrona do ponto de vista do cliente); só fica
-  // visível se uma tentativa anterior travou pela metade (ex.: função derrubada no
-  // meio da cópia do avatar) e o titular ainda não tentou de novo.
-  const publishing = record.draft?.reviewState === 'publishing'
-  const pending = record.listing.lifecycleState === 'pending_review'
-  const editorLocked = publishing || pending
-  const state = record.listing.lifecycleState
-  const showTermsBanner = shouldShowShowcaseTermsBanner({
-    policy: showcasePolicy,
-    acknowledgement: showcaseAcknowledgement,
-  })
+      setNotice('Versão enviada para aprovação. Nenhum EvoCash foi debitado.')
+    })
+  const archive = () =>
+    run(async () => {
+      await setProfessionalListingEditorial(record.id, record.draft.version, 'archived')
+      await reload()
+      setNotice('Cadastro arquivado. Dados e contratos foram preservados.')
+    })
+  const upload = (file) =>
+    run(async () => {
+      const id = await uploadStorefrontImage(record.id, file)
+      setForm((prev) => ({ ...prev, mediaId: id }))
+      setNotice('Imagem enviada privadamente. Salve o rascunho para associá-la.')
+    })
   return (
-    <div className="my-listing-page">
-      <header className="listing-dashboard-heading">
-        <div>
-          <span className="profile-eyebrow">MINHA VITRINE</span>
-          <h1>{form.displayName || 'Configure sua apresentação'}</h1>
-          <p>
-            Estado: <strong>{STATE_LABELS[state] || state}</strong>
-          </p>
-        </div>
-        {record.published && (
-          <Button as={Link} to={`/profissionais/${record.id}`}>
-            Ver página pública
-          </Button>
-        )}
-      </header>
-      {showTermsBanner && (
-        <section className="showcase-terms-banner" aria-label="Termos da Vitrine atualizados">
-          <div className="showcase-terms-banner-copy">
-            <strong>Termos da Vitrine atualizados</strong>
-            <span>Veja o que mudou nesta versão.</span>
-          </div>
-          <div className="showcase-terms-banner-actions">
-            <Button size="small" variant="invisible" onClick={openShowcaseTermsDialog}>
-              Ler alterações
+    <Box sx={{ maxWidth: 900, mx: 'auto', minWidth: 0, display: 'grid', gap: 3, pb: 4 }}>
+      <Button as={Link} to="/minha-vitrine">
+        ← Meus cadastros
+      </Button>
+      <Heading as="h1" sx={{ fontSize: 3 }}>
+        Meu perfil ou estabelecimento
+      </Heading>
+      <Text as="p">
+        Prepare gratuitamente. A publicação exige aprovação e contratação vigente em EvoCash.
+      </Text>
+      {import.meta.env.DEV && import.meta.env.VITE_FINANCE_LOCAL_PREVIEW === 'true' && (
+        <Flash>Ambiente isolado · dados e tarifas sintéticos · Fase 5 em desenvolvimento.</Flash>
+      )}
+      <ListingLegalNotice userId={user.uid} />
+      {error && <Flash variant="danger">{error}</Flash>}
+      {notice && <Flash variant="success">{notice}</Flash>}
+      <Button disabled={busy} onClick={() => setGeneration((v) => v + 1)}>
+        Atualizar cadastro
+      </Button>
+      {record === undefined && !error && <Spinner aria-label="Carregando cadastro" />}
+      {record && form && (
+        <>
+          <Heading as="h2" sx={{ fontSize: 2, overflowWrap: 'anywhere' }}>
+            {record.draft.displayName || 'Cadastro em preparação'}
+          </Heading>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Label>{editorialLabels[record.draft.reviewState] || record.draft.reviewState}</Label>
+            <Label>{publicationLabels[record.commercial.state] || record.commercial.state}</Label>
+            <Text>
+              Revisão {record.draft.version} · versão aprovada{' '}
+              {record.commercial.publishedRevision || 'nenhuma'}
+            </Text>
+          </Box>
+          {record.commercial.expiresAt && (
+            <Text as="p">
+              Vencimento: {commercialDate(record.commercial.expiresAt)} ·{' '}
+              {Math.ceil(Number(record.commercial.remainingSeconds) / 86400)} dia(s) restantes na
+              consulta.
+            </Text>
+          )}
+          <Text as="p">
+            A última versão aprovada permanece pública durante a revisão, enquanto o direito estiver
+            vigente. Suspensão e vencimento bloqueiam a publicação.
+          </Text>
+          {record.listing.lifecycleState === 'suspended' && (
+            <Flash variant="danger">
+              Publicação suspensa. {record.listing.suspendedReason} O pagamento não remove a
+              suspensão.
+            </Flash>
+          )}
+          {record.draft.rejectionSummary && (
+            <Flash variant="warning">Ajustes solicitados: {record.draft.rejectionSummary}</Flash>
+          )}
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Button onClick={() => setPreview(true)}>Prévia privada</Button>
+            <Button
+              as="a"
+              href={`${record.listing.kind === 'space' ? '/locais' : '/profissionais'}/${record.id}`}
+            >
+              Ver página pública
+            </Button>
+            <Button as={Link} to="/vitrine/gerenciar">
+              Minhas vitrines de produtos
+            </Button>
+          </Box>
+          <ProfessionalListingForm
+            form={form}
+            onChange={setForm}
+            onSubmit={save}
+            onUpload={upload}
+            busy={busy}
+            communities={communities}
+          />
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Button
+              variant="primary"
+              disabled={busy || record.listing.lifecycleState === 'suspended'}
+              onClick={submit}
+            >
+              Enviar para aprovação
             </Button>
             <Button
-              size="small"
-              variant="primary"
-              onClick={acknowledgeTerms}
-              loading={busy === 'acknowledge-terms'}
+              disabled={busy || record.listing.lifecycleState === 'suspended'}
+              onClick={archive}
             >
-              Entendi
+              Arquivar cadastro
             </Button>
-          </div>
-        </section>
-      )}
-      {showcaseTermsDialogOpen && (
-        <ShowcaseTermsUpdateDialog
-          version={showcasePolicy?.version}
-          changes={showcaseVersionChanges}
-          loading={loadingShowcaseVersion}
-          onClose={() => setShowcaseTermsDialogOpen(false)}
-          onAcknowledge={acknowledgeTerms}
-          acknowledging={busy === 'acknowledge-terms'}
-        />
-      )}
-      {message && <Flash variant={message.variant}>{message.text}</Flash>}
-      {state === 'published' &&
-        form.kind === 'professional' &&
-        profile?.avatarPath &&
-        !record.published?.avatarPath && (
-          <Flash variant="warning">
-            {form.useProfileAvatar
-              ? 'Sua foto global ainda não aparece nesta página pública. Publique esta versão para atualizá-la.'
-              : 'Sua foto global ainda não está autorizada nesta página pública. Marque a autorização abaixo, salve e publique novamente.'}
-          </Flash>
-        )}
-      {publishing && (
-        <Flash variant="warning">
-          <span>Uma publicação anterior foi interrompida.</span>{' '}
-          <Button
-            size="small"
-            onClick={publish}
-            loading={busy === 'publish'}
-            disabled={Boolean(busy)}
-          >
-            Retomar publicação
-          </Button>
-        </Flash>
-      )}
-      {pending && (
-        <Flash variant="warning">Esta vitrine ainda usa o fluxo legado de revisão.</Flash>
-      )}
-      {record.draft?.rejectionSummary && (
-        <Flash variant="warning">
-          <strong>Ajustes solicitados:</strong> {record.draft.rejectionSummary}
-        </Flash>
-      )}
-      {state === 'suspended' && (
-        <Flash variant="danger">
-          Esta vitrine foi suspensa pela moderação. Entre em contato com o suporte.
-        </Flash>
-      )}
-      <div className="listing-editor-grid">
-        <form className="listing-editor" onSubmit={save}>
-          <fieldset disabled={editorLocked || Boolean(busy)}>
-            <legend>Informações públicas</legend>
-            <label>
-              Nome profissional ou comercial
-              <input
-                required
-                maxLength={80}
-                value={form.displayName ?? ''}
-                onChange={(e) => edit('displayName', e.target.value)}
-              />
-            </label>
-            <label>
-              Categoria
-              <select
-                required
-                value={form.categoryKey ?? ''}
-                onChange={(e) => edit('categoryKey', e.target.value)}
-              >
-                <option value="">Selecione</option>
-                {CATEGORY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Apresentação
-              <textarea
-                required
-                maxLength={1500}
-                rows={7}
-                value={form.bio ?? ''}
-                onChange={(e) => edit('bio', e.target.value)}
-              />
-              <small>{form.bio.length}/1500</small>
-            </label>
-            <div className="listing-inline-fields">
-              <label>
-                Cidade
-                <input
-                  required
-                  maxLength={80}
-                  value={form.city ?? ''}
-                  onChange={(e) => edit('city', e.target.value)}
-                />
-              </label>
-              <label>
-                UF
-                <select required value={form.uf ?? ''} onChange={(e) => edit('uf', e.target.value)}>
-                  <option value="">Selecione</option>
-                  {BRAZIL_STATES.map((uf) => (
-                    <option key={uf}>{uf}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label>
-              Atendimento
-              <select
-                value={form.serviceMode ?? ''}
-                onChange={(e) => edit('serviceMode', e.target.value)}
-              >
-                {SERVICE_MODE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div>
-              <span className="listing-field-label">Modalidades (até 5)</span>
-              <div className="listing-check-grid">
-                {MODALITY_OPTIONS.map((option) => (
-                  <label key={option.value}>
-                    <input
-                      type="checkbox"
-                      checked={form.modalityKeys.includes(option.value)}
-                      onChange={() => toggleModality(option.value)}
-                    />{' '}
-                    {option.label}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <label>
-              Especialidades, separadas por vírgula
-              <input
-                maxLength={610}
-                value={form.specialtiesText ?? ''}
-                onChange={(e) => edit('specialtiesText', e.target.value)}
-              />
-            </label>
-          </fieldset>
-          <fieldset disabled={editorLocked || Boolean(busy)}>
-            <legend>Contatos externos</legend>
-            <label>
-              WhatsApp
-              <input
-                type="url"
-                maxLength={300}
-                placeholder="https://wa.me/5511999999999"
-                value={form.contacts.whatsapp ?? ''}
-                onChange={(e) => editContact('whatsapp', e.target.value)}
-              />
-            </label>
-            <label>
-              Instagram
-              <input
-                type="url"
-                maxLength={300}
-                placeholder="https://instagram.com/seuusuario"
-                value={form.contacts.instagram ?? ''}
-                onChange={(e) => editContact('instagram', e.target.value)}
-              />
-            </label>
-            <label>
-              Site
-              <input
-                type="url"
-                maxLength={300}
-                placeholder="https://seusite.com.br"
-                value={form.contacts.website ?? ''}
-                onChange={(e) => editContact('website', e.target.value)}
-              />
-            </label>
-          </fieldset>
-          <fieldset disabled={editorLocked || Boolean(busy)}>
-            <legend>Vínculos</legend>
-            {form.kind === 'professional' && (
-              <label className="listing-checkbox">
-                <input
-                  type="checkbox"
-                  checked={Boolean(form.useProfileAvatar)}
-                  disabled={!profile?.avatarPath}
-                  onChange={(e) => edit('useProfileAvatar', e.target.checked)}
-                />
-                <span>
-                  Autorizar o uso da minha foto global nesta vitrine ao publicar
-                  <small>
-                    {profile?.avatarPath
-                      ? 'Uma nova foto pessoal só aparecerá aqui depois que você publicar de novo.'
-                      : 'Adicione uma foto em Meu perfil primeiro.'}
-                  </small>
-                </span>
-              </label>
+          </Box>
+          <Box id="publicacao">
+            {!record.commercial.canContract && (
+              <Flash>
+                Para contratar, este cadastro precisa ter versão aprovada e estar liberado para
+                publicação.
+              </Flash>
             )}
-            <label>
-              Comunidade vinculada
-              <select
-                value={form.linkedCommunityId ?? ''}
-                onChange={(e) => edit('linkedCommunityId', e.target.value)}
-              >
-                <option value="">Nenhuma</option>
-                {communities.map((community) => (
-                  <option key={community.id} value={community.id}>
-                    {community.name}
-                  </option>
-                ))}
-              </select>
-              <small>Somente comunidades ativas das quais você é titular.</small>
-            </label>
-          </fieldset>
-          <div className="listing-editor-actions">
-            <Button type="submit" loading={busy === 'save'} disabled={editorLocked || Boolean(busy)}>
-              Salvar rascunho
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              onClick={publish}
-              loading={busy === 'publish'}
-              disabled={editorLocked || Boolean(busy) || !record.draft?.version}
-            >
-              Publicar
-            </Button>
-          </div>
-        </form>
-        <aside className="listing-preview">
-          <h2>Prévia do card</h2>
-          {preview && <ProfessionalListingCard listing={preview} />}
-        </aside>
-      </div>
-      <section className="listing-danger-zone">
-        <h2>Controle da publicação</h2>
-        {record.published && (
-          <Button onClick={unpublish} disabled={Boolean(busy)}>
-            Despublicar
-          </Button>
-        )}
-        <Button variant="danger" onClick={remove} disabled={editorLocked || Boolean(busy)}>
-          Excluir vitrine
-        </Button>
-      </section>
-    </div>
+            {record.commercial.canContract && (
+              <CommercialLeasePurchase
+                key={`${record.id}:${record.commercial.publishedRevision}`}
+                resourceId={record.id}
+                resourceName={record.published?.displayName || record.draft.displayName}
+                tariff={record.commercial.tariff}
+                expiresAt={record.commercial.expiresAt}
+                onComplete={reload}
+                subjectLabel={record.listing.kind === 'space' ? 'estabelecimento' : 'perfil'}
+              />
+            )}
+            <CommercialOrderHistory
+              resourceId={record.id}
+              load={listListingCommercialOrders}
+              revision={record.commercial.expiresAt}
+            />
+          </Box>
+          {preview && (
+            <Dialog title="Prévia privada" onClose={() => setPreview(false)}>
+              <Box sx={{ p: 3, overflowWrap: 'anywhere' }}>
+                <Heading as="h2" sx={{ fontSize: 2 }}>
+                  {form.displayName || 'Cadastro em preparação'}
+                </Heading>
+                <StorefrontImage id={form.mediaId} alt="Imagem privada" size={160} />
+                <Text as="p">{form.bio}</Text>
+                <Text as="p">
+                  {form.city} · {form.uf}
+                </Text>
+                {form.kind === 'space' && (
+                  <>
+                    <Text as="p">{form.address}</Text>
+                    <Text as="p">{form.openingHours}</Text>
+                  </>
+                )}
+                <Text as="p">Esta prévia não concede publicação.</Text>
+              </Box>
+            </Dialog>
+          )}
+        </>
+      )}
+    </Box>
   )
 }

@@ -198,6 +198,7 @@ select is(
 
 -- === suspensão via denúncia (decide_support_request com suspend_listing) ===
 select pg_temp.set_test_user( '51000000-0000-0000-0000-000000000003', true);
+select set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb||jsonb_build_object('amr',jsonb_build_array(jsonb_build_object('method','password','timestamp',extract(epoch from clock_timestamp())::bigint))))::text,true);
 select public.decide_support_request(jsonb_build_object(
   'requestId', (select id from public.support_requests where listing_id = '52000000-0000-0000-0000-000000000001' order by created_at desc limit 1),
   'action', 'suspend_listing',
@@ -212,8 +213,8 @@ select is(
 );
 select is(
   (select count(*)::int from public.published_professional_listings where listing_id = '52000000-0000-0000-0000-000000000001'),
-  0,
-  'vitrine suspensa via denúncia sai de published_professional_listings'
+  1,
+  'suspensão preserva o snapshot aprovado para auditoria'
 );
 
 -- === histórico de decisão (moderation_decisions.listing_id) ===
@@ -360,11 +361,8 @@ select is(
 );
 -- Sessão de novo ativa (novo login): a mesma ação de admin volta a funcionar sem mecanismo extra.
 select pg_temp.set_test_user( '51000000-0000-0000-0000-000000000003', true);
-select is(
-  (public.admin_reactivate_professional_listing('52000000-0000-0000-0000-000000000001'))->>'state',
-  'draft',
-  'sessão ativa de novo: admin_reactivate_professional_listing volta a funcionar'
-);
+select set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb||jsonb_build_object('amr',jsonb_build_array(jsonb_build_object('method','password','timestamp',extract(epoch from clock_timestamp())::bigint))))::text,true);
+select throws_ok($$select public.admin_reactivate_professional_listing('52000000-0000-0000-0000-000000000001')$$,'EDITORIAL_REVISION_REQUIRED','reativação exige revisão explícita no fluxo moderado');
 
 select * from finish();
 rollback;

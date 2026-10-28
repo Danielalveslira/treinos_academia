@@ -1,0 +1,103 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 4
+UPDATE 1
+UPDATE 1
+CREATE TABLE
+INSERT 0 7
+ok 1 - anon denied admin_accounts_snapshot()
+ok 2 - anon denied admin_account_communities(uuid)
+ok 3 - anon denied admin_account_financial(uuid)
+ok 4 - anon denied admin_list_audit_log(uuid,integer)
+ok 5 - anon denied admin_set_accounts_status(uuid[],boolean,text)
+ok 6 - anon denied admin_request_account_deletion(uuid,text)
+ok 7 - anon denied set_account_status(uuid,boolean,text)
+ok 8 - PUBLIC denied admin_accounts_snapshot()
+ok 9 - PUBLIC denied admin_account_communities(uuid)
+ok 10 - PUBLIC denied admin_account_financial(uuid)
+ok 11 - PUBLIC denied admin_list_audit_log(uuid,integer)
+ok 12 - PUBLIC denied admin_set_accounts_status(uuid[],boolean,text)
+ok 13 - PUBLIC denied admin_request_account_deletion(uuid,text)
+ok 14 - PUBLIC denied set_account_status(uuid,boolean,text)
+ok 15 - definer / controlled path admin_accounts_snapshot()
+ok 16 - definer / controlled path admin_account_communities(uuid)
+ok 17 - definer / controlled path admin_account_financial(uuid)
+ok 18 - definer / controlled path admin_list_audit_log(uuid,integer)
+ok 19 - definer / controlled path admin_set_accounts_status(uuid[],boolean,text)
+ok 20 - definer / controlled path admin_request_account_deletion(uuid,text)
+ok 21 - definer / controlled path set_account_status(uuid,boolean,text)
+GRANT
+SET
+78000000-0000-0000-0000-000000000002
+ok 22 - member denied admin_accounts_snapshot()
+ok 23 - member denied admin_account_communities(uuid)
+ok 24 - member denied admin_account_financial(uuid)
+ok 25 - member denied admin_list_audit_log(uuid,integer)
+ok 26 - member denied admin_set_accounts_status(uuid[],boolean,text)
+ok 27 - member denied admin_request_account_deletion(uuid,text)
+ok 28 - member denied set_account_status(uuid,boolean,text)
+78000000-0000-0000-0000-000000000003
+ok 29 - disabled member denied admin_accounts_snapshot()
+ok 30 - disabled member denied admin_account_communities(uuid)
+ok 31 - disabled member denied admin_account_financial(uuid)
+ok 32 - disabled member denied admin_list_audit_log(uuid,integer)
+ok 33 - disabled member denied admin_set_accounts_status(uuid[],boolean,text)
+ok 34 - disabled member denied admin_request_account_deletion(uuid,text)
+ok 35 - disabled member denied set_account_status(uuid,boolean,text)
+
+ok 36 - no session denied admin_accounts_snapshot()
+ok 37 - no session denied admin_account_communities(uuid)
+ok 38 - no session denied admin_account_financial(uuid)
+ok 39 - no session denied admin_list_audit_log(uuid,integer)
+ok 40 - no session denied admin_set_accounts_status(uuid[],boolean,text)
+ok 41 - no session denied admin_request_account_deletion(uuid,text)
+ok 42 - no session denied set_account_status(uuid,boolean,text)
+RESET
+SET
+ok 43 - anon execute denied admin_accounts_snapshot()
+ok 44 - anon execute denied admin_account_communities(uuid)
+ok 45 - anon execute denied admin_account_financial(uuid)
+ok 46 - anon execute denied admin_list_audit_log(uuid,integer)
+ok 47 - anon execute denied admin_set_accounts_status(uuid[],boolean,text)
+ok 48 - anon execute denied admin_request_account_deletion(uuid,text)
+ok 49 - anon execute denied set_account_status(uuid,boolean,text)
+RESET
+SET
+ok 50 - RLS denies direct audit read
+ok 51 - cannot promote via generic update
+RESET
+78000000-0000-0000-0000-000000000001
+ok 52 - superadmin reads authorized other object
+ok 53 - null target rejected
+ok 54 - empty rejected
+ok 55 - 101 rejected before deduplication
+ok 56 - null action rejected
+ok 57 - reactivation reason bounded
+ok 58 - duplicate IDs single result
+ok 59 - replay succeeds
+ok 60 - replay no duplicate audit
+ok 61 - replay preserves original evidence
+ok 62 - partial result protects superadmin
+ok 63 - uses existing queue
+ok 64 - deletion replay
+ok 65 - deletion replay one audit
+ok 66 - deleting not reactivated
+ok 67 - audit immutable
+ok 68 - log bound
+ok 69 - null log limit denied
+ok 70 - multidimensional IDs denied
+SELECT 1
+78000000-0000-0000-0000-000000000001
+
+ok 71 - set_account_status nega sessão revogada mesmo sendo superadmin de verdade
+ok 72 - admin_set_accounts_status não propaga a excepção -- resultado por item
+ok 73 - lote confirma SESSION_REVOKED mapeado para ACTION_FAILED, não um sucesso disfarçado
+ok 74 - admin_request_account_deletion nega sessão revogada
+ok 75 - alvo não foi afetado pela tentativa com sessão revogada
+78000000-0000-0000-0000-000000000001
+ok 76 - sessão ativa de novo: volta a funcionar
+1..76
+ROLLBACK

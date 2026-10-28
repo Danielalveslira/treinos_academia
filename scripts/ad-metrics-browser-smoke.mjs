@@ -65,6 +65,7 @@ await build({
   format: 'esm',
   outfile: join(dir, 'app.js'),
   jsx: 'automatic',
+  define: { 'import.meta.env': '{}' },
   loader: { '.css': 'css' },
   plugins: [
     {
@@ -75,11 +76,15 @@ await build({
           namespace: 'fixture',
         }))
         b.onResolve({ filter: /\/hooks\/useAuth$/ }, () => ({ path: 'auth', namespace: 'fixture' }))
+        b.onResolve({ filter: /\/supabase\/config(?:\.js)?$/ }, () => ({ path: 'backend', namespace: 'fixture' }))
         b.onLoad({ filter: /.*/, namespace: 'fixture' }, (args) => ({
           contents:
             args.path === 'rpc'
               ? fixture
-              : `export const useAuth=()=>({user:{uid:'reader'},isSuperAdmin:false})`,
+              : args.path === 'backend'
+                // This report-reader fixture must never issue commercial writes.
+                ? `export const supabase={rpc:async(name)=>{throw new Error('UNEXPECTED_COMMERCIAL_RPC:'+name)}}`
+                : `export const useAuth=()=>({user:{uid:'reader'},isSuperAdmin:false})`,
           loader: 'js',
         }))
       },

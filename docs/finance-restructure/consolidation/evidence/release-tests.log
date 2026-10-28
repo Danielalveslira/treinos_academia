@@ -1,0 +1,6 @@
+✖ scripts/release/auto-release.test.mjs (1076.737777ms)
+✔ scripts/release/build-manifest-assets.test.mjs (240.851863ms)
+✔ scripts/release/catalog-route.test.mjs (120.435327ms)
+✔ scripts/release/check-finance-diagnostics.test.mjs (224.760286ms)
+✖ scripts/release/compare-finance-catalog.test.mjs (572.74317ms)
+✖ scripts/release/scan-secrets.test.mjs (483.288285ms)

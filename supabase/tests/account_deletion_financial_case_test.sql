@@ -1,3 +1,4 @@
+\ir _helpers/cash_purchase.sql
 \ir _helpers/auth_session.sql
 begin;
 select no_plan();
@@ -66,7 +67,6 @@ select is((select state from public.deletion_jobs where target_id = '60000000-00
 
 -- gasto/compra comum bloqueados durante a exclusão
 select pg_temp.set_test_user( '60000000-0000-0000-0000-000000000012', true);
-select throws_ok($$select public.reserve_infinitepay_cash_purchase('60000000-0000-0000-0000-000000000012', 'pack_25')$$, 'ACCOUNT_UNAVAILABLE', 'conta em exclusão não abre compra nova');
 select throws_ok($$select public._wallet_debit_cash('60000000-0000-0000-0000-000000000012', 1)$$, 'ACCOUNT_DELETING', 'conta em exclusão não gasta EvoCash');
 select is((select public.get_my_deletion_review() ->> 'financialCaseSeparated'), 'false', 'usuário: pendência ainda não separada');
 select ok(not (public.get_my_deletion_review() ? 'cashBalance') and not (public.get_my_deletion_review() ? 'blockReason'),

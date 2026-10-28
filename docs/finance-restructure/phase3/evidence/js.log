@@ -1,0 +1,377 @@
+
+> treinos-academia@1.0.0 test
+> node --test --test-concurrency=1 "src/**/*.test.js"
+
+✔ src/components/AccountMenu.test.js (3858.328609ms)
+✔ src/components/AdminNav.test.js (1934.245686ms)
+✔ src/components/AppRoutes.test.js (1950.163122ms)
+✔ src/components/BrandMark.test.js (817.937384ms)
+✔ src/components/CatalogOfflineStatus.test.js (4811.24378ms)
+✔ src/components/CommercialAdmin.test.js (8882.390731ms)
+✔ src/components/CommunityAccessNotice.test.js (4665.926485ms)
+✔ src/components/CommunityCreationSteps.test.js (2365.013548ms)
+✔ src/components/CommunityExploreCard.test.js (2139.643292ms)
+✔ src/components/CommunityFeedSection.test.js (2951.290892ms)
+✔ src/components/CommunityIconPicker.test.js (1266.3243ms)
+✔ src/components/CopyButton.test.js (1448.67601ms)
+✔ src/components/EconomyVoteBar.test.js (2803.490873ms)
+✔ src/components/ErrorBoundary.test.js (1625.48635ms)
+✔ src/components/EvoCoinsAwardNotice.test.js (1024.205566ms)
+✔ src/components/ExerciseCatalog.test.js (2824.185234ms)
+✔ src/components/ExerciseCatalogImage.test.js (656.762928ms)
+✔ src/components/ExercisesRouteProvider.test.js (564.395438ms)
+✔ src/components/ExpiryBadge.test.js (439.300782ms)
+✔ src/components/FeaturedSpotlight.test.js (404.735954ms)
+✔ src/components/FormShell.test.js (560.751201ms)
+✔ src/components/Layout.test.js (658.104498ms)
+✔ src/components/MarkdownField.test.js (663.441787ms)
+✔ src/components/MuscleIconBadge.test.js (372.109888ms)
+✔ src/components/PostSupportersDialog.test.js (666.590051ms)
+✔ src/components/ProfessionalListingCard.test.js (331.962714ms)
+✔ src/components/ProfileAvatar.dedup.test.js (127.8085ms)
+✔ src/components/ProfileAvatar.test.js (250.211944ms)
+✔ src/components/ProgressPostUi.test.js (1154.259083ms)
+✔ src/components/PromoteDialog.test.js (578.688433ms)
+✔ src/components/ProtectedRoute.test.js (1397.604798ms)
+✔ src/components/RowActionsMenu.test.js (590.990196ms)
+✔ src/components/ShareProgress.test.js (2185.05243ms)
+✔ src/components/SponsoredAdBannerMarquee.test.js (1769.038912ms)
+✔ src/components/SponsoredAdForm.test.js (4955.542504ms)
+✔ src/components/SponsoredAdMetrics.test.js (3293.028844ms)
+✔ src/components/SponsoredAds.test.js (980.86151ms)
+✔ src/components/StatusCard.interactions.test.js (590.756722ms)
+✔ src/components/StatusCard.test.js (1483.989443ms)
+✔ src/components/SuperAdminRoute.test.js (1115.722186ms)
+✔ src/components/ThemeSync.test.js (720.93994ms)
+✔ src/components/WalletHeaderBadges.test.js (676.477336ms)
+✔ src/components/WorkoutExerciseGuide.test.js (1020.94267ms)
+✔ src/components/WorkoutParticipantsDialog.test.js (1272.158375ms)
+✔ src/components/markdown.test.js (2193.963835ms)
+✔ src/components/markdownSecurity.test.js (1935.8829ms)
+✔ src/components/offlineUi.test.js (6409.064466ms)
+✔ src/components/pwaInstallHelp.test.js (139.426144ms)
+✔ src/components/workout.test.js (2555.690209ms)
+✔ src/components/workoutSession.interactions.test.js (1241.732922ms)
+✔ src/constants/communityIcons.test.js (349.274844ms)
+✔ src/constants/muscleGroupIcons.test.js (572.562215ms)
+✔ src/contexts/ExercisesContext.test.js (640.603488ms)
+✔ src/contexts/WalletContext.test.js (3411.663437ms)
+✔ src/contexts/authColdStart.test.js (7834.119167ms)
+✔ src/features/adMetrics/components/AdMetricsTab.test.js (1755.097883ms)
+✔ src/features/adMetrics/hooks/useAdvertiserPage.test.js (355.745135ms)
+✔ src/features/adMetrics/utils/advertiserAdmin.test.js (132.590902ms)
+✔ src/features/adMetrics/utils/metrics.test.js (96.403187ms)
+✔ src/features/adMetrics/utils/reports.test.js (83.361925ms)
+✔ src/features/adminAccounts/api/adminAccounts.api.test.js (101.298592ms)
+✔ src/features/adminAccounts/noBackgroundReads.test.js (60.907795ms)
+✔ src/features/adminAccounts/utils/accounts.test.js (100.276383ms)
+✔ src/features/adminAccounts/utils/snapshotStore.test.js (118.73973ms)
+✔ src/features/comments/components/CommentCard.test.js (826.819906ms)
+✔ src/features/comments/components/CommentPublicationSummary.test.js (848.00922ms)
+✔ src/features/comments/utils/comments.test.js (59.563136ms)
+✔ src/features/greetings/DashboardGreeting.test.js (1023.84862ms)
+✔ src/features/greetings/catalog.test.js (125.150802ms)
+✔ src/features/greetings/clock.test.js (90.87418ms)
+✔ src/features/greetings/context.test.js (87.114198ms)
+✔ src/features/greetings/format.test.js (72.843872ms)
+✔ src/features/greetings/purity.test.js (62.585937ms)
+✔ src/features/greetings/select.test.js (99.676312ms)
+✔ src/features/greetings/useGreetingClock.test.js (206.89022ms)
+✔ src/features/greetings/welcome.test.js (59.534201ms)
+✔ src/features/home/RecommendedSheetPanel.test.js (890.744963ms)
+✔ src/features/home/dailyRotation.test.js (78.434973ms)
+✔ src/features/home/dashboardBanners.test.js (79.71388ms)
+✔ src/features/home/recommendSheet.test.js (90.890053ms)
+✔ src/features/home/useDailyBanner.test.js (212.878713ms)
+✔ src/features/notifications/api/notifications.api.test.js (88.698052ms)
+✔ src/features/notifications/components/NotificationBell.test.js (759.447623ms)
+✔ src/features/notifications/hooks/useNotificationCenter.test.js (135.546635ms)
+✔ src/features/notifications/services/pushService.test.js (176.637967ms)
+✔ src/features/notifications/utils/notifications.test.js (90.409114ms)
+✔ src/features/notifications/utils/pushNoticeSchedule.test.js (170.679743ms)
+✔ src/features/workoutSheets/sheetsPages.test.js (773.015356ms)
+✔ src/features/workoutSheets/useWorkoutSheets.test.js (149.145417ms)
+✔ src/features/workoutSheets/workoutSheetEditor.test.js (317.052289ms)
+✔ src/features/workoutSheets/workoutSheetValidation.test.js (61.674824ms)
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/services/offline/database.js:24:43:
+      24 │ export function isOfflineReadEnabled(env = import.meta.env) {
+         ╵                                            ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/services/offline/database.js:31:44:
+      31 │ ...OfflineWriteEnabled(env = import.meta.env, userId = getOfflineR...
+         ╵                              ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/services/offline/database.js:41:48:
+      41 │ ... isOfflineColdStartEnabled(env = import.meta.env, userId = null) {
+         ╵                                     ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/services/offline/database.js:53:44:
+      53 │ export function isOfflineShellEnabled(env = import.meta.env) {
+         ╵                                             ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/services/offline/telemetry.js:23:47:
+      23 │ ...-9A-Za-z._-]{1,32}$/.test(import.meta.env?.VITE_APP_VERSION || ...
+         ╵                              ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/services/offline/telemetry.js:24:9:
+      24 │       ? (import.meta.env?.VITE_APP_VERSION || '1.0.0') : '1.0.0',
+         ╵          ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+✔ src/features/workoutSheets/workoutSheetsService.test.js (104.573211ms)
+✔ src/hooks/useAdminCommunities.test.js (93.357944ms)
+✔ src/hooks/useCachedQuery.test.js (206.726195ms)
+✔ src/hooks/useCommunities.test.js (430.498703ms)
+✔ src/hooks/useCommunityAuthorAvatars.test.js (1214.623173ms)
+✔ src/hooks/useCommunityFeed.test.js (2112.623531ms)
+✔ src/hooks/useExerciseCatalogDetail.test.js (823.938342ms)
+✔ src/hooks/useExerciseCatalogSearch.test.js (1179.155654ms)
+✔ src/hooks/useFormState.test.js (89.938436ms)
+✔ src/hooks/useHomeDashboard.test.js (1274.384178ms)
+✔ src/hooks/useLogout.push.test.js (121.278276ms)
+✔ src/hooks/useLogout.test.js (150.259444ms)
+✔ src/hooks/useQualifiedActivity.test.js (152.9095ms)
+✔ src/hooks/useRecoveryTokenExchange.test.js (418.346089ms)
+✔ src/hooks/useSingleFlight.test.js (84.326336ms)
+✔ src/hooks/useSponsoredAds.test.js (95.249475ms)
+✔ src/pages/AdminAccounts.test.js (5200.20715ms)
+✔ src/pages/AdminExerciseCatalog.test.js (2241.189012ms)
+✔ src/pages/AdminExerciseVisuals.test.js (3410.208191ms)
+✔ src/pages/AdminSponsoredAds.test.js (1678.950418ms)
+✔ src/pages/CommunityDetail.access.test.js (1660.850557ms)
+✔ src/pages/Dashboard.offline.test.js (1249.069649ms)
+✔ src/pages/EconomyGuide.test.js (346.301397ms)
+✔ src/pages/Exercises.test.js (1163.038321ms)
+✔ src/pages/MyProfessionalListing.test.js (364.029191ms)
+✔ src/pages/ProfessionalListing.test.js (347.081032ms)
+✔ src/pages/Profile.test.js (434.151197ms)
+✔ src/pages/PublicProfile.test.js (794.273517ms)
+✔ src/pwa/serviceWorker.test.js (947.089622ms)
+✔ src/services/adMetrics/collector.test.js (257.122947ms)
+✔ src/services/authRecoveryFlow.test.js (133.796912ms)
+✔ src/services/commercialService.test.js (112.595578ms)
+✔ src/services/communitiesService.test.js (300.924689ms)
+✔ src/services/communityActivityService.test.js (117.460263ms)
+✔ src/services/communityMembersService.test.js (98.030673ms)
+✔ src/services/communityModerationService.test.js (90.663549ms)
+✔ src/services/economyGuideRead.test.js (105.641543ms)
+✔ src/services/economyPrivacy.test.js (131.338297ms)
+✔ src/services/evocashPricingService.test.js (98.851173ms)
+✔ src/services/evocoinsClient.test.js (105.544872ms)
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/services/offline/database.js:24:43:
+      24 │ export function isOfflineReadEnabled(env = import.meta.env) {
+         ╵                                            ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/services/offline/database.js:31:44:
+      31 │ ...OfflineWriteEnabled(env = import.meta.env, userId = getOfflineR...
+         ╵                              ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/services/offline/database.js:41:48:
+      41 │ ... isOfflineColdStartEnabled(env = import.meta.env, userId = null) {
+         ╵                                     ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/services/offline/database.js:53:44:
+      53 │ export function isOfflineShellEnabled(env = import.meta.env) {
+         ╵                                             ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/services/offline/telemetry.js:23:47:
+      23 │ ...-9A-Za-z._-]{1,32}$/.test(import.meta.env?.VITE_APP_VERSION || ...
+         ╵                              ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+▲ [WARNING] "import.meta" is not available with the "cjs" output format and will be empty [empty-import-meta]
+
+    src/services/offline/telemetry.js:24:9:
+      24 │       ? (import.meta.env?.VITE_APP_VERSION || '1.0.0') : '1.0.0',
+         ╵          ~~~~~~~~~~~
+
+  You need to set the output format to "esm" for "import.meta" to work correctly.
+
+✔ src/services/exerciseCatalogService.test.js (113.424774ms)
+✔ src/services/exerciseVisualsService.test.js (192.072236ms)
+✔ src/services/feedPageService.test.js (99.197178ms)
+✔ src/services/logoutScope.test.js (112.06614ms)
+✔ src/services/offline/appUpdate.test.js (2142.55387ms)
+✔ src/services/offline/bootState.test.js (147.954287ms)
+✔ src/services/offline/bootstrap.test.js (206.531471ms)
+✔ src/services/offline/catalogSnapshot.test.js (127.837844ms)
+✔ src/services/offline/database.test.js (116.962795ms)
+✔ src/services/offline/diagnostics.test.js (60.820311ms)
+✔ src/services/offline/exerciseCache.test.js (171.887176ms)
+✔ src/services/offline/exerciseImagePrep.test.js (266.205262ms)
+✔ src/services/offline/historyCache.test.js (1149.491036ms)
+✔ src/services/offline/homeSnapshot.test.js (175.731469ms)
+✔ src/services/offline/outbox.test.js (303.111207ms)
+✔ src/services/offline/readThrough.test.js (115.809843ms)
+✔ src/services/offline/rollout.test.js (1490.812953ms)
+✔ src/services/offline/sheetSnapshot.test.js (259.845247ms)
+✔ src/services/offline/syncEngine.test.js (460.734221ms)
+✔ src/services/offline/syncSupport.test.js (179.756235ms)
+✔ src/services/offline/telemetry.test.js (105.222743ms)
+✔ src/services/offline/userExercisesCache.test.js (119.535653ms)
+✔ src/services/offline/userScope.test.js (217.785648ms)
+✔ src/services/offlineReadServices.test.js (1361.360287ms)
+✔ src/services/offlineWriteServices.test.js (2347.577317ms)
+✔ src/services/profileCompletion.test.js (140.622085ms)
+✔ src/services/progressPhotoStatus.test.js (114.567365ms)
+✔ src/services/publicUsernames.test.js (131.295474ms)
+✔ src/services/sharedStatus.test.js (95.670211ms)
+✔ src/services/statusInteractionsService.test.js (275.958858ms)
+✔ src/services/statusVoteCounts.test.js (208.158797ms)
+✔ src/services/statusWriteContract.test.js (179.890468ms)
+✔ src/services/statusesService.deleteStatus.test.js (99.725935ms)
+✔ src/services/workoutParticipants.test.js (105.037268ms)
+✔ src/styles/notificationPopover.test.js (77.300057ms)
+✔ src/supabase/realtimeOffline.test.js (63.131151ms)
+✔ src/utils/accountAccessErrors.test.js (61.864689ms)
+✔ src/utils/accountDeletion.test.js (86.142385ms)
+✔ src/utils/achievements.test.js (69.645937ms)
+✔ src/utils/activityCalendar.test.js (101.610583ms)
+✔ src/utils/activityPing.test.js (96.274276ms)
+✔ src/utils/adImage.test.js (75.172608ms)
+✔ src/utils/adSlotHint.test.js (74.864653ms)
+✔ src/utils/age.test.js (97.773422ms)
+✔ src/utils/analyticsRedaction.test.js (71.700179ms)
+✔ src/utils/authErrors.test.js (67.969629ms)
+✔ src/utils/authSession.test.js (61.078653ms)
+✔ src/utils/bannerMarquee.test.js (64.148772ms)
+✔ src/utils/bodyComposition.test.js (98.293683ms)
+✖ src/utils/businessDate.test.js (901.034039ms)
+✔ src/utils/calculations.test.js (98.970014ms)
+✔ src/utils/cardioSessions.test.js (84.581493ms)
+✔ src/utils/cashPurchaseFlow.test.js (69.789464ms)
+✔ src/utils/clipboard.test.js (75.012277ms)
+✔ src/utils/collapseSnap.test.js (65.411937ms)
+✔ src/utils/commercial.test.js (60.531191ms)
+✔ src/utils/communityAccess.test.js (77.565492ms)
+✔ src/utils/communityActivity.test.js (89.129377ms)
+✔ src/utils/communityCoverCrop.test.js (65.479514ms)
+✔ src/utils/communityCreation.test.js (81.227314ms)
+✔ src/utils/communityOwnership.test.js (66.014229ms)
+✔ src/utils/consistencySnapshot.test.js (93.741381ms)
+✔ src/utils/date.test.js (92.937432ms)
+✔ src/utils/dayPeriod.test.js (89.60845ms)
+✔ src/utils/doneExercisesStorage.test.js (85.758218ms)
+✔ src/utils/economyGuide.test.js (77.384455ms)
+✔ src/utils/economyVoteCountDelta.test.js (80.494336ms)
+✔ src/utils/evocashPricing.test.js (127.9438ms)
+✔ src/utils/evocoins.test.js (120.184186ms)
+✔ src/utils/exerciseCatalog.test.js (74.505702ms)
+✔ src/utils/exerciseCatalogCache.test.js (79.41819ms)
+✔ src/utils/exerciseHistory.test.js (63.923128ms)
+✔ src/utils/exerciseOrder.test.js (78.376366ms)
+✔ src/utils/exerciseType.test.js (81.879021ms)
+✔ src/utils/exerciseVisualPromptBuilder.test.js (130.785073ms)
+✔ src/utils/exerciseVisualReview.test.js (64.950204ms)
+✔ src/utils/expiry.test.js (91.155517ms)
+✔ src/utils/feedOrder.test.js (107.391617ms)
+✔ src/utils/finishWorkout.test.js (62.515485ms)
+✔ src/utils/greeting.test.js (70.037277ms)
+✔ src/utils/icsExport.test.js (62.948801ms)
+✔ src/utils/imageCompression.test.js (62.046689ms)
+✔ src/utils/legacyRuntimeGuard.test.js (196.803512ms)
+✔ src/utils/legal.test.js (85.070726ms)
+✔ src/utils/legalV150.test.js (83.208651ms)
+✔ src/utils/markdownHint.test.js (62.754059ms)
+✔ src/utils/markdownPreview.test.js (67.190735ms)
+✔ src/utils/markdownToolbar.test.js (75.123016ms)
+✔ src/utils/memberHandle.test.js (62.253174ms)
+✔ src/utils/modalSheet.test.js (63.018931ms)
+✔ src/utils/moderation.test.js (108.172857ms)
+✔ src/utils/navigation.test.js (171.261779ms)
+✔ src/utils/pageCache.test.js (144.445178ms)
+✔ src/utils/perceptualHash.test.js (66.48618ms)
+✔ src/utils/personalExercises.test.js (57.794217ms)
+✔ src/utils/photoBlobCache.test.js (65.60693ms)
+✔ src/utils/plannedWorkout.test.js (60.222425ms)
+✔ src/utils/postRetention.test.js (67.594361ms)
+✔ src/utils/professionalListing.test.js (64.060685ms)
+✔ src/utils/profileCompletion.test.js (59.992427ms)
+✔ src/utils/progress.test.js (89.746488ms)
+✔ src/utils/progressOverlay.test.js (64.926422ms)
+✔ src/utils/promotionStatus.test.js (66.94553ms)
+✔ src/utils/publicationEligibility.test.js (69.591455ms)
+✔ src/utils/publicationError.test.js (59.189078ms)
+✔ src/utils/qualifiedActivity.test.js (81.7303ms)
+✔ src/utils/quantityPurchase.test.js (81.534417ms)
+✔ src/utils/rowSaver.test.js (85.140756ms)
+✔ src/utils/scheduledWorkout.test.js (84.214325ms)
+✔ src/utils/setCardFlow.test.js (68.202245ms)
+✔ src/utils/setSession.test.js (79.376891ms)
+✔ src/utils/setSuggestions.test.js (95.30155ms)
+✔ src/utils/share.test.js (77.133237ms)
+✔ src/utils/shareImage.test.js (88.136825ms)
+✔ src/utils/shareProgress.test.js (153.537541ms)
+✔ src/utils/shareProgressSvg.test.js (144.13536ms)
+✔ src/utils/shareText.test.js (69.886293ms)
+✔ src/utils/sharedStatus.test.js (84.07065ms)
+✔ src/utils/showcaseLegal.test.js (132.079948ms)
+✔ src/utils/showcasePublishState.test.js (93.337377ms)
+✔ src/utils/sponsoredAds.test.js (85.110878ms)
+✔ src/utils/spotlightCycle.test.js (109.717609ms)
+✔ src/utils/staleChunk.test.js (60.066373ms)
+✔ src/utils/statusAvailability.test.js (60.03721ms)
+✔ src/utils/statusDraft.test.js (72.015739ms)
+✔ src/utils/statusLimits.test.js (62.671945ms)
+✔ src/utils/streak.test.js (95.764887ms)
+✔ src/utils/text.test.js (64.162336ms)
+✔ src/utils/trainingPlan.test.js (98.08855ms)
+✔ src/utils/validators.test.js (225.434227ms)
+✔ src/utils/workoutEntry.test.js (77.349169ms)
+✔ src/utils/workoutSets.test.js (251.555081ms)
+ℹ tests 263
+ℹ suites 0
+ℹ pass 262
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 165371.050874
+
+✖ failing tests:
+
+test at src/utils/businessDate.test.js:1:1
+✖ src/utils/businessDate.test.js (901.034039ms)
+  'test failed'

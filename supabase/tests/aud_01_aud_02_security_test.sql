@@ -1,9 +1,11 @@
+\ir _helpers/cash_purchase.sql
 \ir _helpers/auth_session.sql
 -- Somente banco local/homologação; dados sintéticos e rollback integral.
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 select no_plan();
+\ir _helpers/legacy_promotion.sql
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at,
  raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 select ('f1000000-0000-0000-0000-00000000000' || n)::uuid, 'authenticated', 'authenticated',
@@ -27,7 +29,7 @@ insert into public.community_members(community_id,user_id) select 'f2000000-0000
 
 select public._wallet_credit_cash('f1000000-0000-0000-0000-000000000001',100);
 select public._wallet_credit_coins('f1000000-0000-0000-0000-000000000002',100);
-select public.reserve_infinitepay_cash_purchase('f1000000-0000-0000-0000-000000000004','pack_25');
+select pg_temp.cash_purchase_fixture('f1000000-0000-0000-0000-000000000004');
 
 -- AUD-01: contas antiga, recente limpa e recente com saldo/ledger, mesmo resultado.
 set local role authenticated;
@@ -131,13 +133,19 @@ select is((select positive_vote_count from public.statuses where id='f3000000-00
 select lives_ok($q$select public.comment_create('f3000000-0000-0000-0000-000000000001',null,'Comentário legítimo','f5000000-0000-0000-0000-000000000001')$q$,'comentário autorizado');
 select is((select comment_count from public.statuses where id='f3000000-0000-0000-0000-000000000001'),1,'contador de comentário legítimo');
 select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000001',true);
-select lives_ok($q$select public.create_promotion('post','f3000000-0000-0000-0000-000000000001','post_boost_3d','aud:promo1')$q$,'promoção paga autorizada');
-select is((select cash_balance::int from public.wallets where user_id='f1000000-0000-0000-0000-000000000001'),75,'promoção debita EvoCash');
+select throws_ok($q$select public.create_promotion('post','f3000000-0000-0000-0000-000000000001','post_boost_3d','aud:promo1')$q$,'USE_COMMERCIAL_PROMOTION','novo pacote legado bloqueado');
+reset role;
+select pg_temp.legacy_promotion_fixture('f1000000-0000-0000-0000-000000000001','post','f3000000-0000-0000-0000-000000000001','f2000000-0000-0000-0000-000000000001','aud:promo1');
+set local role authenticated;
+select is((select cash_balance::int from public.wallets where user_id='f1000000-0000-0000-0000-000000000001'),75,'fixture histórica conserva débito');
 select ok((select promoted and active_promotion_id is not null and promoted_until>now() from public.statuses where id='f3000000-0000-0000-0000-000000000001'),'promoção paga persiste');
 select throws_ok($q$update public.statuses set promoted=false where id='f3000000-0000-0000-0000-000000000001'$q$,'42501',null,'cliente não altera promoção paga');
 select lives_ok($q$select public.cancel_promotion((select active_promotion_id from public.statuses where id='f3000000-0000-0000-0000-000000000001'),null)$q$,'titular cancela pela RPC');
-select lives_ok($q$select public.create_promotion('post','f3000000-0000-0000-0000-000000000001','post_boost_3d','aud:promo2')$q$,'nova promoção exige novo pagamento');
-select is((select cash_balance::int from public.wallets where user_id='f1000000-0000-0000-0000-000000000001'),50,'renovação cobra novamente');
+select throws_ok($q$select public.create_promotion('post','f3000000-0000-0000-0000-000000000001','post_boost_3d','aud:promo2')$q$,'USE_COMMERCIAL_PROMOTION','novo pacote legado bloqueado');
+reset role;
+select pg_temp.legacy_promotion_fixture('f1000000-0000-0000-0000-000000000001','post','f3000000-0000-0000-0000-000000000001','f2000000-0000-0000-0000-000000000001','aud:promo2');
+set local role authenticated;
+select is((select cash_balance::int from public.wallets where user_id='f1000000-0000-0000-0000-000000000001'),50,'histórico preserva duas contratações');
 reset role;
 select is((select count(*)::int from public.economy_transactions where user_id='f1000000-0000-0000-0000-000000000001' and reason='promotion_purchase'),2,'duas cobranças auditadas');
 -- Admin authenticated sem filiação não lê post; id da promoção vem da operação administrativa.
@@ -145,6 +153,7 @@ create temp table aud_promo as select active_promotion_id id from public.statuse
 grant select on aud_promo to authenticated;
 set local role authenticated;
 select pg_temp.set_test_user('f1000000-0000-0000-0000-000000000005',true);
+select set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb||jsonb_build_object('amr',jsonb_build_array(jsonb_build_object('method','password','timestamp',extract(epoch from now())::bigint))))::text,true);
 select lives_ok($q$select public.cancel_promotion((select id from aud_promo),'Moderação de teste')$q$,'admin cancela por RPC com motivo');
 select ok((select not promoted and positive_vote_count=1 and comment_count=1 from public.statuses where id='f3000000-0000-0000-0000-000000000001'),'moderação conserva contadores');
 reset role;

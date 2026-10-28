@@ -1,0 +1,103 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 9
+UPDATE 1
+UPDATE 1
+INSERT 0 2
+INSERT 0 2
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+INSERT 0 2
+UPDATE 1
+71000000-0000-0000-0000-000000000001
+
+SELECT 1
+CREATE FUNCTION
+71000000-0000-0000-0000-000000000009
+ok 1 - usuário comum não executa o snapshot
+ok 2 - usuário comum não lê comunidades da conta
+ok 3 - usuário comum não lê financeiro da conta
+ok 4 - usuário comum não lê a auditoria
+ok 5 - usuário comum não altera status em lote
+ok 6 - usuário comum não pede exclusão
+
+ok 7 - não autenticado não executa o snapshot
+ok 8 - anon sem EXECUTE no snapshot
+ok 9 - public sem EXECUTE no snapshot
+ok 10 - authenticated com EXECUTE (a checagem real é is_superadmin)
+71000000-0000-0000-0000-000000000001
+ok 11 - accounts é array
+ok 12 - total_accounts bate com public.users
+ok 13 - meta.total bate
+ok 14 - meta.returned = tamanho da lista
+ok 15 - não truncado com base pequena
+ok 16 - teto de 1000 linhas
+ok 17 - exclusões pendentes batem com deletion_jobs
+ok 18 - novas em 7 dias bate
+ok 19 - suspensas: só a vigente (a expirada não conta)
+ok 20 - community_count correto
+ok 21 - flags_count ignora no_action
+ok 22 - flags_count zero sem decisões
+ok 23 - e-mail vem de auth.users
+ok 24 - versão legal aceita
+ok 25 - financeiro: com saldo
+ok 26 - financeiro: compra pendente
+ok 27 - financeiro: sem saldo
+ok 28 - status deleting (job aberto)
+ok 29 - deletion_status do job
+ok 30 - sem exclusão = none
+ok 31 - status suspended (restrição vigente)
+ok 32 - ação da restrição
+ok 33 - suspensão expirada = active
+ok 34 - status disabled
+ok 35 - motivo da desativação
+ok 36 - contrato do item da lista
+ok 37 - não vaza campos de perfil
+ok 38 - desativa conta
+ok 39 - auditoria de desativação
+ok 40 - reativa conta
+ok 41 - auditoria de reativação
+ok 42 - reativar conta já ativa é idempotente
+ok 43 - no-op não gera auditoria duplicada
+ok 44 - não reativa conta em exclusão
+ok 45 - motivo obrigatório para desativar
+SELECT 1
+ok 46 - lote deduplica ids
+ok 47 - lote: conta comum desativada
+ok 48 - lote: conta em exclusão falha sem abortar
+ok 49 - lote: superadmin protegido
+ok 50 - lote persistiu a conta válida
+ok 51 - lote audita só o que mudou
+ok 52 - lote vazio recusado
+ok 53 - lote > 100 recusado
+ok 54 - exclusão exige motivo
+ok 55 - pede exclusão
+ok 56 - job criado por queue_deletion
+ok 57 - conta marcada deleting
+ok 58 - repetir é no-op
+ok 59 - auditoria única da exclusão com protocolo
+ok 60 - não exclui a si mesmo
+ok 61 - comunidades da conta
+ok 62 - financeiro: saldo EvoCash
+ok 63 - financeiro: estado da exclusão
+ok 64 - financeiro: sem carteira = 0
+ok 65 - auditoria filtrada por alvo
+ok 66 - auditoria global
+ok 67 - auditoria traz o admin
+ok 68 - limite máximo da auditoria
+ok 69 - update bloqueado
+ok 70 - delete bloqueado
+ok 71 - truncate bloqueado
+INSERT 0 1001
+SELECT 1
+ok 72 - acima do teto: truncated = true
+ok 73 - acima do teto: devolve só 1000
+ok 74 - acima do teto: lista com 1000
+ok 75 - métricas continuam cobrindo todas as contas
+1..75
+ROLLBACK

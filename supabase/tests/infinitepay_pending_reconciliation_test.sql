@@ -1,3 +1,4 @@
+\ir _helpers/cash_purchase.sql
 \ir _helpers/auth_session.sql
 begin;
 select no_plan();
@@ -16,7 +17,7 @@ update public.users set role = 'superadmin' where id = '73000000-0000-0000-0000-
 -- Pagamento confirmado, conta ATIVA: comportamento existente, sem regressão.
 -- ============================================================================
 create temp table _r_active as
-  select public.reserve_infinitepay_cash_purchase('73000000-0000-0000-0000-000000000001', 'pack_25') as r;
+  select pg_temp.cash_purchase_fixture('73000000-0000-0000-0000-000000000001') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _r_active), 'https://checkout.infinitepay.io/evolutus?lenc=active');
 select is((public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _r_active),
   (select r->>'orderNsu' from _r_active), 'txn-active', 'invoice-active', 590, 'pix', null)->>'credited'),
@@ -28,7 +29,7 @@ select is((select status from public.cash_purchases where id = (select (r->>'id'
 -- Pagamento confirmado, conta DESATIVADA: nunca credita sozinho -- needs_review.
 -- ============================================================================
 create temp table _r_disabled as
-  select public.reserve_infinitepay_cash_purchase('73000000-0000-0000-0000-000000000002', 'pack_25') as r;
+  select pg_temp.cash_purchase_fixture('73000000-0000-0000-0000-000000000002') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _r_disabled), 'https://checkout.infinitepay.io/evolutus?lenc=disabled');
 update public.users set account_status = 'disabled' where id = '73000000-0000-0000-0000-000000000002';
 select is((public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _r_disabled),
@@ -66,7 +67,7 @@ select is((select cash_balance::int from public.wallets where user_id = '7300000
 -- Resolução por reembolso externo: nunca credita.
 update public.users set account_status='active' where id='73000000-0000-0000-0000-000000000002';
 create temp table _r_disabled2 as
-  select public.reserve_infinitepay_cash_purchase('73000000-0000-0000-0000-000000000002', 'pack_25') as r;
+  select pg_temp.cash_purchase_fixture('73000000-0000-0000-0000-000000000002') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _r_disabled2), 'https://checkout.infinitepay.io/evolutus?lenc=disabled2');
 update public.users set account_status='disabled' where id='73000000-0000-0000-0000-000000000002';
 select public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from _r_disabled2),
@@ -88,7 +89,7 @@ select throws_ok($$select public.admin_resolve_cash_purchase_review('00000000-00
 -- InfinitePay e foram removidos).
 -- ============================================================================
 create temp table _r_unpaid as
-  select public.reserve_infinitepay_cash_purchase('73000000-0000-0000-0000-000000000003', 'pack_25') as r;
+  select pg_temp.cash_purchase_fixture('73000000-0000-0000-0000-000000000003') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _r_unpaid), 'https://checkout.infinitepay.io/evolutus?lenc=unpaid');
 select pg_temp.set_test_user( '73000000-0000-0000-0000-000000000003', true);
 select throws_ok($$select public.admin_cancel_infinitepay_cash_purchase((select (r->>'id')::uuid from _r_unpaid), 'tentativa sem permissao')$$,
@@ -111,7 +112,7 @@ select is((public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid fro
 -- Expiração automática (prevenção de recorrência, independente do status da conta).
 -- ============================================================================
 create temp table _r_stale as
-  select public.reserve_infinitepay_cash_purchase('73000000-0000-0000-0000-000000000004', 'pack_25') as r;
+  select pg_temp.cash_purchase_fixture('73000000-0000-0000-0000-000000000004') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _r_stale), 'https://checkout.infinitepay.io/evolutus?lenc=stale');
 update public.cash_purchases set created_at = now() - interval '10 days' where id = (select (r->>'id')::uuid from _r_stale);
 select is(private.expire_stale_infinitepay_purchases(200), 1, 'one stale pending purchase expired');
@@ -124,7 +125,7 @@ select is((select coalesce((select cash_balance::int from public.wallets where u
 select is(private.expire_stale_infinitepay_purchases(200), 0, 'running the cron body again is a no-op (idempotent)');
 
 create temp table _r_fresh as
-  select public.reserve_infinitepay_cash_purchase('73000000-0000-0000-0000-000000000004', 'pack_25') as r;
+  select pg_temp.cash_purchase_fixture('73000000-0000-0000-0000-000000000004') as r;
 select public.finish_infinitepay_checkout((select (r->>'id')::uuid from _r_fresh), 'https://checkout.infinitepay.io/evolutus?lenc=fresh');
 select is(private.expire_stale_infinitepay_purchases(200), 0, 'a fresh pending purchase within the window is left alone');
 select is((select status from public.cash_purchases where id = (select (r->>'id')::uuid from _r_fresh)),

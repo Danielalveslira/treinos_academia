@@ -21,7 +21,7 @@ import {
   PURCHASE_STATUS_LABELS,
   RESTRICTION_LABELS,
   ROLE_LABELS,
-  SHOWCASE_LABELS,
+  showcaseSummary,
   canDelete,
   canManageStatus,
 } from '../utils/accounts'
@@ -145,9 +145,7 @@ function Overview({ account, onCopied }) {
         <Box className="accounts-detail-facts">
           <Field label="Versão legal aceita">{account.accepted_legal_version || '—'}</Field>
           <Field label="Comunidades">{count(account.community_count)}</Field>
-          <Field label="Vitrine">
-            {SHOWCASE_LABELS[account.showcase_status] || account.showcase_status}
-          </Field>
+          <Field label="Cadastros">{showcaseSummary(account)}</Field>
           <Field label="Financeiro">
             {account.financial_status === 'pending' ? (
               <Label variant="attention">Pendente</Label>

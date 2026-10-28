@@ -1,0 +1,16 @@
+✔ lease uses server duration and elapsed IO instead of the device clock (1.981194ms)
+✔ both public kinds keep distinct stable directory paths (1.0937ms)
+✔ approved HTTP payload is consumed once and charged navigation age before expiration (4.043471ms)
+✔ filtered navigation cannot reuse unfiltered HTML data (2.803255ms)
+✔ native navigation includes the complete monotonic request age (1.804195ms)
+✔ Turbo fresh HTML is not aged by an hours-old document clock (0.294459ms)
+✔ unrelated custom performance marks cannot change the navigation deadline (0.277567ms)
+✔ missing timing falls back conservatively instead of extending a DB lease (0.255697ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 425.031031

@@ -1,0 +1,113 @@
+{
+  "localOnly": true,
+  "accountId": "2acea5b3-c23b-4ae5-99a8-22b2e8000fcf",
+  "create": true,
+  "submit": true,
+  "approve": true,
+  "quote": true,
+  "purchase": true,
+  "snapshots": [
+    {
+      "width": 320,
+      "mode": "light",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "mode": "dark",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "mode": "light",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "mode": "dark",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "mode": "light",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false
+    }
+  ],
+  "errors": [],
+  "environmentWarnings": [
+    {
+      "message": "Failed to load resource: net::ERR_FAILED",
+      "location": {
+        "url": "https://va.vercel-scripts.com/v1/script.debug.js",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "message": "Failed to load resource: net::ERR_FAILED",
+      "location": {
+        "url": "https://va.vercel-scripts.com/v1/speed-insights/script.debug.js",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    "WebSocket connection to 'wss://organic-goldfish-r7w5rp9g754vhxp4v-5173.app.github.dev/_finance_local/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1sb2NhbCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkzMTk1MDI3LCJleHAiOjIxMDg1NTUwMjd9.xQ24yKa8m836KcFgVvtWzvoDX0rcszFFxczl3D35MFY&vsn=2.0.0' failed: Error during WebSocket handshake: Unexpected response code: 302",
+    "WebSocket connection to 'wss://organic-goldfish-r7w5rp9g754vhxp4v-5173.app.github.dev/_finance_local/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1sb2NhbCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkzMTk1MDI3LCJleHAiOjIxMDg1NTUwMjd9.xQ24yKa8m836KcFgVvtWzvoDX0rcszFFxczl3D35MFY&vsn=2.0.0' failed: Error during WebSocket handshake: Unexpected response code: 302",
+    "WebSocket connection to 'wss://organic-goldfish-r7w5rp9g754vhxp4v-5173.app.github.dev/_finance_local/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1sb2NhbCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkzMTk1MDI3LCJleHAiOjIxMDg1NTUwMjd9.xQ24yKa8m836KcFgVvtWzvoDX0rcszFFxczl3D35MFY&vsn=2.0.0' failed: Error during WebSocket handshake: Unexpected response code: 302",
+    {
+      "message": "Failed to load resource: net::ERR_FAILED",
+      "location": {
+        "url": "https://va.vercel-scripts.com/v1/script.debug.js",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "message": "Failed to load resource: net::ERR_FAILED",
+      "location": {
+        "url": "https://va.vercel-scripts.com/v1/speed-insights/script.debug.js",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    "WebSocket connection to 'wss://organic-goldfish-r7w5rp9g754vhxp4v-5173.app.github.dev/_finance_local/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1sb2NhbCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkzMTk1MDI3LCJleHAiOjIxMDg1NTUwMjd9.xQ24yKa8m836KcFgVvtWzvoDX0rcszFFxczl3D35MFY&vsn=2.0.0' failed: Error during WebSocket handshake: Unexpected response code: 302",
+    "WebSocket connection to 'wss://organic-goldfish-r7w5rp9g754vhxp4v-5173.app.github.dev/_finance_local/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1sb2NhbCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkzMTk1MDI3LCJleHAiOjIxMDg1NTUwMjd9.xQ24yKa8m836KcFgVvtWzvoDX0rcszFFxczl3D35MFY&vsn=2.0.0' failed: Error during WebSocket handshake: Unexpected response code: 302",
+    "WebSocket connection to 'wss://organic-goldfish-r7w5rp9g754vhxp4v-5173.app.github.dev/_finance_local/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1sb2NhbCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkzMTk1MDI3LCJleHAiOjIxMDg1NTUwMjd9.xQ24yKa8m836KcFgVvtWzvoDX0rcszFFxczl3D35MFY&vsn=2.0.0' failed: Error during WebSocket handshake: Unexpected response code: 302",
+    {
+      "message": "Failed to load resource: net::ERR_FAILED",
+      "location": {
+        "url": "https://va.vercel-scripts.com/v1/script.debug.js",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "message": "Failed to load resource: net::ERR_FAILED",
+      "location": {
+        "url": "https://va.vercel-scripts.com/v1/speed-insights/script.debug.js",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    "WebSocket connection to 'wss://organic-goldfish-r7w5rp9g754vhxp4v-5173.app.github.dev/_finance_local/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1sb2NhbCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkzMTk1MDI3LCJleHAiOjIxMDg1NTUwMjd9.xQ24yKa8m836KcFgVvtWzvoDX0rcszFFxczl3D35MFY&vsn=2.0.0' failed: Error during WebSocket handshake: Unexpected response code: 302",
+    "WebSocket connection to 'wss://organic-goldfish-r7w5rp9g754vhxp4v-5173.app.github.dev/_finance_local/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1sb2NhbCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkzMTk1MDI3LCJleHAiOjIxMDg1NTUwMjd9.xQ24yKa8m836KcFgVvtWzvoDX0rcszFFxczl3D35MFY&vsn=2.0.0' failed: Error during WebSocket handshake: Unexpected response code: 302",
+    "WebSocket connection to 'wss://organic-goldfish-r7w5rp9g754vhxp4v-5173.app.github.dev/_finance_local/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1sb2NhbCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzkzMTk1MDI3LCJleHAiOjIxMDg1NTUwMjd9.xQ24yKa8m836KcFgVvtWzvoDX0rcszFFxczl3D35MFY&vsn=2.0.0' failed: Error during WebSocket handshake: Unexpected response code: 302"
+  ]
+}

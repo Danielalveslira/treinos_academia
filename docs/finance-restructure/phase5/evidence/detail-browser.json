@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "results": [
+    {
+      "kind": "professional",
+      "noJavascriptUsefulHtml": true,
+      "openDetailExpires": true,
+      "approvedNameRemoved": true,
+      "structuredDataRemoved": true,
+      "imagesRemoved": true
+    },
+    {
+      "kind": "space",
+      "noJavascriptUsefulHtml": true,
+      "openDetailExpires": true,
+      "approvedNameRemoved": true,
+      "structuredDataRemoved": true,
+      "imagesRemoved": true
+    }
+  ]
+}

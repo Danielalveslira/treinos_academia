@@ -1,0 +1,15 @@
+{
+  "phase": 1,
+  "newSqlAssertions": 57,
+  "sqlPassed": true,
+  "concurrencyPassed": true,
+  "affectedJsFiles": 4,
+  "affectedJsPassed": true,
+  "buildPassed": true,
+  "browserPassed": true,
+  "productionMutations": 0,
+  "realChargesEnabled": false,
+  "developmentDataOnly": true,
+  "migration": "20261128000001_evocash_pricing.sql",
+  "warning": "Build retains existing >500kB chunk warning; no new performance benchmark claimed."
+}

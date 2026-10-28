@@ -1,0 +1,26 @@
+psql:/tmp/commercial-phase3-tests/advertising_campaigns_test.sql:2: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/sponsored_ad_metrics_test.sql:11: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/sponsored_ad_metrics_privacy_controls_test.sql:5: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/advertiser_metrics_v2_test.sql:2: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/sponsored_ad_metrics_dashboard_test.sql:5: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/commercial_engine_test.sql:2: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/evocash_pricing_test.sql:2: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/evocash_pricing_test.sql:3: NOTICE:  truncate cascades to table "cash_purchases"
+psql:/tmp/commercial-phase3-tests/evocash_pricing_test.sql:3: NOTICE:  truncate cascades to table "deletion_financial_reviews"
+psql:/tmp/commercial-phase3-tests/evocash_pricing_test.sql:3: NOTICE:  truncate cascades to table "account_financial_case_events"
+psql:/tmp/commercial-phase3-tests/evocash_pricing_test.sql:3: NOTICE:  truncate cascades to table "account_financial_case_items"
+psql:/tmp/commercial-phase3-tests/evocash_pricing_test.sql:3: NOTICE:  truncate cascades to table "cash_purchase_reminder_emails"
+psql:/tmp/commercial-phase3-tests/evocash_pricing_test.sql:3: NOTICE:  truncate cascades to table "cash_purchase_reversals"
+psql:/tmp/commercial-phase3-tests/infinitepay_cash_purchases_test.sql:2: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/finance_integrity_test.sql:2: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/finance_reversals_test.sql:3: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/professional_commercial_test.sql:2: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/multiple_professional_listings_test.sql:2: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/_helpers/storefront_fixture.sql:2: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/_helpers/storefront_fixture.sql:2: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/aud_01_aud_02_security_test.sql:4: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/aud_01_aud_02_security_test.sql:5: NOTICE:  extension "pgtap" already exists, skipping
+psql:/tmp/commercial-phase3-tests/community_promotion_security_test.sql:2: WARNING:  there is already a transaction in progress
+psql:/tmp/commercial-phase3-tests/community_promotion_security_test.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/tmp/commercial-phase3-tests/aud_has_app_access_gates_test.sql:7: WARNING:  there is already a transaction in progress
+[{"name":"advertising_campaigns_test.sql","passed":true,"assertions":47},{"name":"sponsored_ad_metrics_test.sql","passed":true,"assertions":179},{"name":"sponsored_ad_metrics_privacy_controls_test.sql","passed":true,"assertions":31},{"name":"advertiser_metrics_v2_test.sql","passed":true,"assertions":50},{"name":"sponsored_ad_metrics_dashboard_test.sql","passed":true,"assertions":75},{"name":"commercial_engine_test.sql","passed":true,"assertions":58},{"name":"evocash_pricing_test.sql","passed":true,"assertions":57},{"name":"infinitepay_cash_purchases_test.sql","passed":true,"assertions":32},{"name":"finance_integrity_test.sql","passed":true,"assertions":17},{"name":"finance_reversals_test.sql","passed":true,"assertions":18},{"name":"professional_commercial_test.sql","passed":true,"assertions":59},{"name":"multiple_professional_listings_test.sql","passed":true,"assertions":34},{"name":"storefront_revisions_test.sql","passed":true,"assertions":67},{"name":"product_storefronts_test.sql","passed":true,"assertions":75},{"name":"aud_01_aud_02_security_test.sql","passed":true,"assertions":80},{"name":"community_promotion_security_test.sql","passed":true,"assertions":22},{"name":"aud_has_app_access_gates_test.sql","passed":true,"assertions":99}]

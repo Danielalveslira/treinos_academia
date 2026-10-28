@@ -1,13 +1,26 @@
+import listingDirectory from '../api/listings.js'
 import process from 'node:process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadEnv } from 'vite'
+import storefrontCatalog from '../api/storefront-catalog.js'
+import storefrontSitemap from '../api/storefront-sitemap.js'
+import storefrontDetail from '../api/storefront.js'
 import catalogSnapshot from '../api/public-catalog-snapshot.js'
-import { publicPages, renderPublicPage, renderRobots, renderSitemap } from './public-pages-template.mjs'
+import {
+  publicPages,
+  renderPublicPage,
+  renderRobots,
+  renderSitemap,
+} from './public-pages-template.mjs'
 
 const routes = new Map(publicPages.map(({ path, file }) => [path, file]))
 const variant = (path) => {
-  const clean = path.endsWith('.html') ? path.slice(0, -5) : path.endsWith('/') ? path.slice(0, -1) : path
+  const clean = path.endsWith('.html')
+    ? path.slice(0, -5)
+    : path.endsWith('/')
+      ? path.slice(0, -1)
+      : path
   return clean !== path && routes.has(clean) && clean !== '/' ? clean : null
 }
 
@@ -32,8 +45,31 @@ export function publicPreviewPlugin() {
       server.middlewares.use(async (request, response, next) => {
         if (request.method !== 'GET' && request.method !== 'HEAD') return next()
         const path = new URL(request.url, 'http://localhost').pathname
-        if (path === '/robots.txt') return send(response, request, renderRobots(), 'text/plain; charset=utf-8')
-        if (path === '/sitemap.xml') return send(response, request, renderSitemap(), 'application/xml; charset=utf-8')
+        if (/^\/(?:profissionais|locais)(?:\/[0-9a-f-]{36})?$/i.test(path)) {
+          for (const name of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
+            if (!process.env[name] && env[name]) process.env[name] = env[name]
+          const directory = path.startsWith('/locais') ? '/locais' : '/profissionais'
+          const raw = renderPublicPage(directory, env, { dev: true })
+          return listingDirectory(request, response, {
+            html: await server.transformIndexHtml(directory, raw, request.originalUrl),
+          })
+        }
+        if (path === '/vitrine' || path === '/sitemap.xml') {
+          for (const name of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
+            if (!process.env[name] && env[name]) process.env[name] = env[name]
+          if (path === '/sitemap.xml')
+            return storefrontSitemap(request, response, { staticXml: renderSitemap() })
+          const raw = renderPublicPage('/vitrine', env, { dev: true })
+          const html = await server.transformIndexHtml(path, raw, request.originalUrl)
+          return storefrontCatalog(request, response, { html })
+        }
+        if (/^\/vitrine\/[0-9a-f-]{36}$/i.test(path)) {
+          for (const name of ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
+            if (!process.env[name] && env[name]) process.env[name] = env[name]
+          return storefrontDetail(request, response)
+        }
+        if (path === '/robots.txt')
+          return send(response, request, renderRobots(), 'text/plain; charset=utf-8')
         const canonical = variant(path)
         if (canonical) return redirect(response, request, canonical)
         if (path === '/api/public-catalog-snapshot') {
@@ -63,6 +99,11 @@ export function publicPreviewPlugin() {
       server.middlewares.use((request, response, next) => {
         if (request.method !== 'GET' && request.method !== 'HEAD') return next()
         const path = new URL(request.url, 'http://localhost').pathname
+        if (/^\/(?:profissionais|locais)(?:\/[0-9a-f-]{36})?$/i.test(path))
+          return listingDirectory(request, response)
+        if (path === '/vitrine') return storefrontCatalog(request, response)
+        if (path === '/sitemap.xml') return storefrontSitemap(request, response)
+        if (/^\/vitrine\/[0-9a-f-]{36}$/i.test(path)) return storefrontDetail(request, response)
         const canonical = variant(path)
         if (canonical) return redirect(response, request, canonical)
         const file = routes.get(path) || (appRoute.test(path.slice(1)) ? 'app-shell.html' : null)
@@ -73,7 +114,12 @@ export function publicPreviewPlugin() {
           response.end('Página não encontrada')
           return
         }
-        send(response, request, readFileSync(join(server.config.root, 'dist', file)), 'text/html; charset=utf-8')
+        send(
+          response,
+          request,
+          readFileSync(join(server.config.root, 'dist', file)),
+          'text/html; charset=utf-8'
+        )
       })
     },
   }

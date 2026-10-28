@@ -1,0 +1,90 @@
+✔ lease uses server duration and elapsed IO instead of the device clock (2.937348ms)
+✔ both public kinds keep distinct stable directory paths (0.205103ms)
+✔ owner submits current edited fields with the saved revision and never publishes directly (157.866072ms)
+✔ failed save never submits or reports success just because an old publication exists (14.448276ms)
+✔ rapid repeated submit has one save and one moderation request (16.117378ms)
+✔ uploaded image changes draft form without automatically saving or publishing it (10.591319ms)
+✔ suspended resource has no purchase component and cannot be resubmitted by owner (6.017362ms)
+✔ free creation offers the two real kinds without a financial prerequisite (6.186878ms)
+✔ archive keeps an explicit revision and never invokes a destructive delete (11.188677ms)
+✔ creation is gated by existing usage declaration, not EvoCash or entitlement (7.627315ms)
+✔ new drafts with a null mode submit the visible default instead of an empty value (11.285029ms)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18684:3)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at LinkWithRef (/tmp/professional-listing-tests-LXEx6f/listing.cjs:19402:5)
+    at div
+    at aside
+    at div
+    at ProfessionalListingView (/tmp/professional-listing-tests-LXEx6f/listing.cjs:20027:36)
+    at Router (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18727:13)
+    at MemoryRouter (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18684:3)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18684:3)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at LinkWithRef (/tmp/professional-listing-tests-LXEx6f/listing.cjs:19402:5)
+    at div
+    at aside
+    at div
+    at ProfessionalListingView (/tmp/professional-listing-tests-LXEx6f/listing.cjs:20027:36)
+    at Router (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18727:13)
+    at MemoryRouter (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18684:3)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18684:3)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at LinkWithRef (/tmp/professional-listing-tests-LXEx6f/listing.cjs:19402:5)
+    at div
+    at aside
+    at div
+    at ProfessionalListingView (/tmp/professional-listing-tests-LXEx6f/listing.cjs:20027:36)
+    at Router (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18727:13)
+    at MemoryRouter (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18684:3)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18684:3)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at LinkWithRef (/tmp/professional-listing-tests-LXEx6f/listing.cjs:19402:5)
+    at div
+    at aside
+    at div
+    at ProfessionalListingView (/tmp/professional-listing-tests-LXEx6f/listing.cjs:20027:36)
+    at Router (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18727:13)
+    at MemoryRouter (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18684:3)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at MemoryRouter (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18684:3)
+Warning: useLayoutEffect does nothing on the server, because its effect cannot be encoded into the server renderer's output format. This will lead to a mismatch between the initial, non-hydrated UI and the intended UI. To avoid this, useLayoutEffect should only be used in components that render exclusively on the client. See https://reactjs.org/link/uselayouteffect-ssr for common fixes.
+    at LinkWithRef (/tmp/professional-listing-tests-LXEx6f/listing.cjs:19402:5)
+    at div
+    at aside
+    at div
+    at ProfessionalListingView (/tmp/professional-listing-tests-LXEx6f/listing.cjs:20027:36)
+    at Router (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18727:13)
+    at MemoryRouter (/tmp/professional-listing-tests-LXEx6f/listing.cjs:18684:3)
+✔ a showcase without contacts renders no empty contact action (620.89622ms)
+✔ a showcase with 1 contact(s) renders exactly the available actions (5.467677ms)
+✔ a showcase with 2 contact(s) renders exactly the available actions (2.98131ms)
+✔ a showcase with 3 contact(s) renders exactly the available actions (3.119328ms)
+✔ a long name and every modality remain inside wrapping layout containers (4.882485ms)
+✔ mobile layout contract keeps safe gutters, wrapping content and full-width share action (0.576215ms)
+✔ editorial service sends CAS and approved editable fields only (42.07454ms)
+✔ moderation and history bind the exact resource and revision without financial mutation (1.916314ms)
+✔ server authorization failures are propagated rather than converted to success (0.898416ms)
+✔ external contacts accept only the expected HTTPS destinations (3.476063ms)
+✔ crawler gets approved HTML, canonical and Person schema without executing JS (50.326727ms)
+✔ LocalBusiness schema requires a complete reviewed commercial address (1.702224ms)
+✔ legacy professional URL of an eligible establishment redirects to its stable canonical (0.590541ms)
+✔ expired resources return neutral 404 and never ship old metadata or names (1.154633ms)
+✔ catalog returns useful HTML and consumes rewrite parameters without suppressing indexing (3.766374ms)
+✔ empty catalog and backend failures cannot create indexable empty pages (0.953728ms)
+✔ crawler receives useful approved catalog HTML, escaped schema and no-store (42.447255ms)
+✔ empty catalog and unavailable detail cannot be indexed (1.139054ms)
+✔ sitemap excludes expired entries and fails closed when backend unavailable (1.37252ms)
+✔ a lease ending during upstream IO cannot leak through HTML, schema or bootstrap (62.791609ms)
+✔ sitemap rechecks product and profile deadlines after every upstream page (31.378579ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2009.904063

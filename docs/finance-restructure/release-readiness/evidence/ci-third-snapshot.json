@@ -1,0 +1,595 @@
+{
+  "conclusion": "",
+  "jobs": [
+    {
+      "completedAt": "0001-01-01T00:00:00Z",
+      "conclusion": "",
+      "databaseId": 123054415670,
+      "name": "js",
+      "startedAt": "2026-10-28T19:36:48Z",
+      "status": "in_progress",
+      "steps": [
+        {
+          "completedAt": "2026-10-28T19:36:50Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-28T19:36:49Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:36:56Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "number": 2,
+          "startedAt": "2026-10-28T19:36:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:36:59Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "number": 3,
+          "startedAt": "2026-10-28T19:36:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:05Z",
+          "conclusion": "success",
+          "name": "Run npm ci",
+          "number": 4,
+          "startedAt": "2026-10-28T19:36:59Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:05Z",
+          "conclusion": "success",
+          "name": "Immutable migration history and unique forward versions",
+          "number": 5,
+          "startedAt": "2026-10-28T19:37:05Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:05Z",
+          "conclusion": "success",
+          "name": "Run node --test scripts/check-migration-integrity.test.mjs",
+          "number": 6,
+          "startedAt": "2026-10-28T19:37:05Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:12Z",
+          "conclusion": "success",
+          "name": "Run npm run lint",
+          "number": 7,
+          "startedAt": "2026-10-28T19:37:05Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:14Z",
+          "conclusion": "success",
+          "name": "Run node --test scripts/release/*.test.mjs",
+          "number": 8,
+          "startedAt": "2026-10-28T19:37:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:38:34Z",
+          "conclusion": "success",
+          "name": "Run npm test",
+          "number": 9,
+          "startedAt": "2026-10-28T19:37:14Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:38:34Z",
+          "conclusion": "success",
+          "name": "Public catalogue snapshot and lazy counter regression",
+          "number": 10,
+          "startedAt": "2026-10-28T19:38:34Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:38:45Z",
+          "conclusion": "success",
+          "name": "Run npm run build",
+          "number": 11,
+          "startedAt": "2026-10-28T19:38:34Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:38:45Z",
+          "conclusion": "success",
+          "name": "Run npm run budget",
+          "number": 12,
+          "startedAt": "2026-10-28T19:38:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:39:05Z",
+          "conclusion": "success",
+          "name": "Install isolated browser",
+          "number": 13,
+          "startedAt": "2026-10-28T19:38:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:43:35Z",
+          "conclusion": "success",
+          "name": "Public and auth headers at mobile and desktop widths",
+          "number": 14,
+          "startedAt": "2026-10-28T19:39:05Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:47:04Z",
+          "conclusion": "success",
+          "name": "Workout sheets mobile, execution and conflict smoke",
+          "number": 15,
+          "startedAt": "2026-10-28T19:43:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:47:07Z",
+          "conclusion": "success",
+          "name": "Sheet entry redirects and exercise selection intent",
+          "number": 16,
+          "startedAt": "2026-10-28T19:47:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:47:29Z",
+          "conclusion": "success",
+          "name": "Home V4 recommendation, completion, cache, photos and responsive themes",
+          "number": 17,
+          "startedAt": "2026-10-28T19:47:07Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:47:47Z",
+          "conclusion": "success",
+          "name": "Run node scripts/ad-metrics-browser-smoke.mjs",
+          "number": 18,
+          "startedAt": "2026-10-28T19:47:29Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:47:50Z",
+          "conclusion": "success",
+          "name": "Run node scripts/phase3-exercises-browser-smoke.mjs",
+          "number": 19,
+          "startedAt": "2026-10-28T19:47:47Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "0001-01-01T00:00:00Z",
+          "conclusion": "",
+          "name": "Offline cold start and synchronization regression",
+          "number": 20,
+          "startedAt": "2026-10-28T19:47:50Z",
+          "status": "in_progress"
+        },
+        {
+          "completedAt": "0001-01-01T00:00:00Z",
+          "conclusion": "",
+          "name": "Run node scripts/release/scan-secrets.mjs --dist",
+          "number": 21,
+          "startedAt": "0001-01-01T00:00:00Z",
+          "status": "pending"
+        },
+        {
+          "completedAt": "0001-01-01T00:00:00Z",
+          "conclusion": "",
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "number": 41,
+          "startedAt": "0001-01-01T00:00:00Z",
+          "status": "pending"
+        },
+        {
+          "completedAt": "0001-01-01T00:00:00Z",
+          "conclusion": "",
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "number": 42,
+          "startedAt": "0001-01-01T00:00:00Z",
+          "status": "pending"
+        }
+      ],
+      "url": "https://github.com/Danielalveslira/treinos_academia/actions/runs/40755850175/job/123054415670"
+    },
+    {
+      "completedAt": "2026-10-28T19:41:36Z",
+      "conclusion": "success",
+      "databaseId": 123054415924,
+      "name": "sql",
+      "startedAt": "2026-10-28T19:36:48Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-28T19:36:50Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-28T19:36:49Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:02Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "number": 2,
+          "startedAt": "2026-10-28T19:36:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:05Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "number": 3,
+          "startedAt": "2026-10-28T19:37:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:12Z",
+          "conclusion": "success",
+          "name": "Run npm ci",
+          "number": 4,
+          "startedAt": "2026-10-28T19:37:05Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:13Z",
+          "conclusion": "success",
+          "name": "Run node_modules/.bin/supabase --version",
+          "number": 5,
+          "startedAt": "2026-10-28T19:37:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:39:51Z",
+          "conclusion": "success",
+          "name": "Run node_modules/.bin/supabase start",
+          "number": 6,
+          "startedAt": "2026-10-28T19:37:13Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:40:30Z",
+          "conclusion": "success",
+          "name": "Run node_modules/.bin/supabase test db supabase/tests/*_test.sql",
+          "number": 7,
+          "startedAt": "2026-10-28T19:39:51Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:40:30Z",
+          "conclusion": "success",
+          "name": "Workout sheets SQL assertions and query plans",
+          "number": 8,
+          "startedAt": "2026-10-28T19:40:30Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:40:33Z",
+          "conclusion": "success",
+          "name": "Home V2 concurrency and aggregate query plans",
+          "number": 9,
+          "startedAt": "2026-10-28T19:40:30Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:40:37Z",
+          "conclusion": "success",
+          "name": "Home V4 completion concurrency and before/after query plans",
+          "number": 10,
+          "startedAt": "2026-10-28T19:40:33Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:40:42Z",
+          "conclusion": "success",
+          "name": "Run npm run test:functions",
+          "number": 11,
+          "startedAt": "2026-10-28T19:40:37Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:40:45Z",
+          "conclusion": "success",
+          "name": "Run bash supabase/tests/evocoins_concurrency.sh",
+          "number": 12,
+          "startedAt": "2026-10-28T19:40:42Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:40:47Z",
+          "conclusion": "success",
+          "name": "Run bash supabase/tests/user_activity_concurrency.sh",
+          "number": 13,
+          "startedAt": "2026-10-28T19:40:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:40:50Z",
+          "conclusion": "success",
+          "name": "EvoCash price publication and quote concurrency",
+          "number": 14,
+          "startedAt": "2026-10-28T19:40:47Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:40:52Z",
+          "conclusion": "success",
+          "name": "Commercial wallet, price and renewal concurrency",
+          "number": 15,
+          "startedAt": "2026-10-28T19:40:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:40:56Z",
+          "conclusion": "success",
+          "name": "Concrete storefront purchase, renewal and moderation concurrency",
+          "number": 16,
+          "startedAt": "2026-10-28T19:40:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:41:03Z",
+          "conclusion": "success",
+          "name": "Professional and establishment editorial, renewal and media concurrency",
+          "number": 17,
+          "startedAt": "2026-10-28T19:40:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:41:09Z",
+          "conclusion": "success",
+          "name": "Multiple resources per owner, creation limits and shared-wallet concurrency",
+          "number": 18,
+          "startedAt": "2026-10-28T19:41:03Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:41:14Z",
+          "conclusion": "success",
+          "name": "Advertising capacity, shared balance, global slots and replay concurrency",
+          "number": 19,
+          "startedAt": "2026-10-28T19:41:09Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:41:34Z",
+          "conclusion": "success",
+          "name": "Run node_modules/.bin/supabase stop",
+          "number": 20,
+          "startedAt": "2026-10-28T19:41:14Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:41:34Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "number": 39,
+          "startedAt": "2026-10-28T19:41:34Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:41:34Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "number": 40,
+          "startedAt": "2026-10-28T19:41:34Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:41:34Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 41,
+          "startedAt": "2026-10-28T19:41:34Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Danielalveslira/treinos_academia/actions/runs/40755850175/job/123054415924"
+    },
+    {
+      "completedAt": "2026-10-28T19:43:48Z",
+      "conclusion": "success",
+      "databaseId": 123054416044,
+      "name": "finance-e2e",
+      "startedAt": "2026-10-28T19:36:48Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-28T19:36:50Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-28T19:36:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:36:56Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "number": 2,
+          "startedAt": "2026-10-28T19:36:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:36:59Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "number": 3,
+          "startedAt": "2026-10-28T19:36:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:05Z",
+          "conclusion": "success",
+          "name": "Run npm ci",
+          "number": 4,
+          "startedAt": "2026-10-28T19:36:59Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:05Z",
+          "conclusion": "success",
+          "name": "Use official HTTPS Ubuntu mirror for browser dependencies",
+          "number": 5,
+          "startedAt": "2026-10-28T19:37:05Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:26Z",
+          "conclusion": "success",
+          "name": "Install isolated browser",
+          "number": 6,
+          "startedAt": "2026-10-28T19:37:05Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:37:26Z",
+          "conclusion": "success",
+          "name": "Verify pinned image acquisition and secure fallback",
+          "number": 7,
+          "startedAt": "2026-10-28T19:37:26Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:39:14Z",
+          "conclusion": "success",
+          "name": "Start disposable local stack (db + auth + storage + rest + edge)",
+          "number": 8,
+          "startedAt": "2026-10-28T19:37:26Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:39:37Z",
+          "conclusion": "success",
+          "name": "Apply all migrations to the disposable stack",
+          "number": 9,
+          "startedAt": "2026-10-28T19:39:14Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:43:41Z",
+          "conclusion": "success",
+          "name": "Real activity-reward E2E (browser -> RPC -> Postgres -> ledger -> wallet -> UI)",
+          "number": 10,
+          "startedAt": "2026-10-28T19:39:37Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:43:45Z",
+          "conclusion": "success",
+          "name": "Advertising capacity, shared balance, global slots and replay concurrency",
+          "number": 11,
+          "startedAt": "2026-10-28T19:43:41Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:43:46Z",
+          "conclusion": "success",
+          "name": "Stop disposable local stack",
+          "number": 12,
+          "startedAt": "2026-10-28T19:43:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:43:46Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "number": 23,
+          "startedAt": "2026-10-28T19:43:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:43:46Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "number": 24,
+          "startedAt": "2026-10-28T19:43:46Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:43:46Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 25,
+          "startedAt": "2026-10-28T19:43:46Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Danielalveslira/treinos_academia/actions/runs/40755850175/job/123054416044"
+    },
+    {
+      "completedAt": "2026-10-28T19:36:59Z",
+      "conclusion": "success",
+      "databaseId": 123054416217,
+      "name": "secrets",
+      "startedAt": "2026-10-28T19:36:48Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-28T19:36:50Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-28T19:36:49Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:36:55Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "number": 2,
+          "startedAt": "2026-10-28T19:36:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:36:56Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "number": 3,
+          "startedAt": "2026-10-28T19:36:55Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:36:56Z",
+          "conclusion": "success",
+          "name": "Run node scripts/release/scan-secrets.mjs",
+          "number": 4,
+          "startedAt": "2026-10-28T19:36:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:36:56Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "number": 7,
+          "startedAt": "2026-10-28T19:36:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:36:56Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "number": 8,
+          "startedAt": "2026-10-28T19:36:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-28T19:36:56Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 9,
+          "startedAt": "2026-10-28T19:36:56Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Danielalveslira/treinos_academia/actions/runs/40755850175/job/123054416217"
+    }
+  ],
+  "status": "in_progress",
+  "url": "https://github.com/Danielalveslira/treinos_academia/actions/runs/40755850175"
+}

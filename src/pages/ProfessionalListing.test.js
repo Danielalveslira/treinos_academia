@@ -46,10 +46,22 @@ before(async () => {
       {
         name: 'professional-listing-stubs',
         setup(context) {
-          context.onResolve({ filter: /^(react|react\/jsx-runtime|react-dom\/server|react-router-dom)$/ }, ({ path }) => ({ path: require.resolve(path) }))
-          context.onResolve({ filter: /^@primer\/react$/ }, () => ({ path: 'primer', namespace: 'stub' }))
-          context.onResolve({ filter: /^@primer\/octicons-react$/ }, () => ({ path: 'icons', namespace: 'stub' }))
-          context.onResolve({ filter: /ProfileAvatar$/ }, () => ({ path: 'avatar', namespace: 'stub' }))
+          context.onResolve(
+            { filter: /^(react|react\/jsx-runtime|react-dom\/server|react-router-dom)$/ },
+            ({ path }) => ({ path: require.resolve(path) })
+          )
+          context.onResolve({ filter: /^@primer\/react$/ }, () => ({
+            path: 'primer',
+            namespace: 'stub',
+          }))
+          context.onResolve({ filter: /^@primer\/octicons-react$/ }, () => ({
+            path: 'icons',
+            namespace: 'stub',
+          }))
+          context.onResolve({ filter: /StorefrontImage$/ }, () => ({
+            path: 'avatar',
+            namespace: 'stub',
+          }))
           context.onLoad({ filter: /^primer$/, namespace: 'stub' }, () => ({
             contents: `
               export const Button = ({ as: Tag = 'button', children, leadingVisual: Icon, block, ...props }) =>
@@ -70,7 +82,7 @@ before(async () => {
             loader: 'jsx',
           }))
           context.onLoad({ filter: /^avatar$/, namespace: 'stub' }, () => ({
-            contents: 'export const ProfileAvatar = ({ name, className }) => <span className={className}>{name.slice(0, 1)}</span>',
+            contents: 'export default function Image(){return null}',
             loader: 'jsx',
           }))
         },
@@ -124,8 +136,18 @@ for (const count of [1, 2, 3]) {
 test('a long name and every modality remain inside wrapping layout containers', () => {
   const longName = 'Centro Integrado de Treinamento e Performance de Alta Intensidade'
   const modalities = [
-    'musculacao', 'corrida', 'cross_training', 'funcional', 'ciclismo', 'natacao',
-    'lutas', 'yoga', 'pilates', 'triatlo', 'danca', 'outros',
+    'musculacao',
+    'corrida',
+    'cross_training',
+    'funcional',
+    'ciclismo',
+    'natacao',
+    'lutas',
+    'yoga',
+    'pilates',
+    'triatlo',
+    'danca',
+    'outros',
   ]
   const html = render({ ...BASE_LISTING, displayName: longName, modalityKeys: modalities })
 
@@ -139,6 +161,9 @@ test('mobile layout contract keeps safe gutters, wrapping content and full-width
   assert.match(styles, /\.professional-detail-page\s*\{[\s\S]*?env\(safe-area-inset-right\)/)
   assert.match(styles, /\.professional-detail-share\s*\{[^}]*width:\s*100%/)
   assert.match(styles, /\.professional-detail-hero h1\s*\{[^}]*overflow-wrap:\s*anywhere/)
-  assert.match(styles, /\.professional-tags span\s*\{[^}]*max-width:\s*100%[^}]*overflow-wrap:\s*anywhere/)
+  assert.match(
+    styles,
+    /\.professional-tags span\s*\{[^}]*max-width:\s*100%[^}]*overflow-wrap:\s*anywhere/
+  )
   assert.match(styles, /@media \(max-width:\s*359px\)/)
 })

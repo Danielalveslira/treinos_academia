@@ -1,0 +1,135 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+TRUNCATE TABLE
+UPDATE 17
+UPDATE 1
+UPDATE 1
+DELETE 3
+INSERT 0 3
+UPDATE 1
+CREATE FUNCTION
+CREATE TABLE
+GRANT
+76000000-0000-0000-0000-000000000001
+SET
+INSERT 0 1
+ok 1 - account creation cannot spam
+INSERT 0 1
+ok 2 - creation replay returns same resource
+ok 3 - creation replay rejects changed content
+ok 4 - network does not include surfaces automatically
+ok 5 - unsafe destination protocol is rejected
+ok 6 - destination authority cannot contain credentials
+ok 7 - draft hidden by RLS
+ok 8 - unconfigured surface has no ad
+ok 9 - owner sees private campaign summary
+ok 10 - sales closed by default
+{"ad_id": "76100000-0000-0000-0000-000000000001", "state": "submitted", "title": "Synthetic campaign", "version": 2, "media_id": null, "account_id": "473d931f-0db8-4992-abab-226dc23a0912", "description": "Only synthetic content", "destination": "https://example.invalid/ads", "review_reason": null, "approved_version": null, "creation_request": {"title": "Synthetic campaign", "community": null, "placement": "home_banner", "description": "Only synthetic content", "destination": "https://example.invalid/ads"}}
+RESET
+
+SET
+{"ad_id": "76100000-0000-0000-0000-000000000001", "state": "approved", "title": "Synthetic campaign", "version": 2, "media_id": null, "account_id": "473d931f-0db8-4992-abab-226dc23a0912", "description": "Only synthetic content", "destination": "https://example.invalid/ads", "review_reason": "Synthetic editorial approval", "approved_version": 2, "creation_request": {"title": "Synthetic campaign", "community": null, "placement": "home_banner", "description": "Only synthetic content", "destination": "https://example.invalid/ads"}}
+{"code": "home_banner", "name": "Banner da Home", "surface": "home", "capacity": 1, "revision": 1, "description": "Área patrocinada existente, sem substituir recomendações de treino.", "content_type": "banner", "display_limit": 1, "offering_code": "ad_home", "sales_enabled": true, "rotation_policy": "equal_random", "delivery_enabled": true}
+RESET
+INSERT 0 1
+UPDATE 1
+
+
+76000000-0000-0000-0000-000000000001
+SET
+INSERT 0 1
+ok 11 - PostgreSQL computes daily price
+ok 12 - approved unpaid ad not delivered
+INSERT 0 1
+ok 13 - payment replay returns same order
+ok 14 - approved paid reserved ad delivered
+{"ad_id": "76100000-0000-0000-0000-000000000001", "state": "submitted", "title": "Pending secret revision", "version": 3, "media_id": null, "account_id": "473d931f-0db8-4992-abab-226dc23a0912", "description": "Not public", "destination": "https://example.invalid/revision", "review_reason": null, "approved_version": 2, "creation_request": {"title": "Synthetic campaign", "community": null, "placement": "home_banner", "description": "Only synthetic content", "destination": "https://example.invalid/ads"}}
+ok 15 - pending revision never replaces projection
+UPDATE 0
+RESET
+ok 16 - approved title unmodified
+ok 17 - exactly one debit
+ok 18 - exactly one reservation
+ok 19 - two days are exactly 48 hours
+76000000-0000-0000-0000-000000000001
+SET
+INSERT 0 1
+76100000-0000-0000-0000-000000000002
+INSERT 0 1
+RESET
+UPDATE 2
+SET
+ok 20 - cannot associate media of another campaign even with same owner
+{"ad_id": "76100000-0000-0000-0000-000000000001", "state": "submitted", "title": "Approved image campaign", "version": 4, "media_id": "24898526-e2d9-4984-b970-ae38834ca6d0", "account_id": "473d931f-0db8-4992-abab-226dc23a0912", "description": "Synthetic image evidence", "destination": "https://example.invalid/image", "review_reason": null, "approved_version": 2, "creation_request": {"title": "Synthetic campaign", "community": null, "placement": "home_banner", "description": "Only synthetic content", "destination": "https://example.invalid/ads"}}
+RESET
+76000000-0000-0000-0000-000000000002
+ok 21 - pending image is not public
+
+{"ad_id": "76100000-0000-0000-0000-000000000001", "state": "approved", "title": "Approved image campaign", "version": 4, "media_id": "24898526-e2d9-4984-b970-ae38834ca6d0", "account_id": "473d931f-0db8-4992-abab-226dc23a0912", "description": "Synthetic image evidence", "destination": "https://example.invalid/image", "review_reason": "Synthetic image review", "approved_version": 4, "creation_request": {"title": "Synthetic campaign", "community": null, "placement": "home_banner", "description": "Only synthetic content", "destination": "https://example.invalid/ads"}}
+76000000-0000-0000-0000-000000000002
+ok 22 - approved paid campaign image is authorized
+ok 23 - another campaign draft stays private
+INSERT 0 1
+SET
+ok 24 - manager can prepare authorized account campaigns
+ok 25 - manager cannot debit the owner wallet
+RESET
+UPDATE 1
+SET
+ok 26 - analyst cannot edit campaigns
+RESET
+UPDATE 1
+ok 27 - editorial review never debits
+ok 28 - editorial review never extends duration
+76000000-0000-0000-0000-000000000001
+
+ok 29 - archive preserves content privately
+
+ok 30 - cannot reduce capacity below paid commitments
+{"code": "home_banner", "name": "Banner da Home", "surface": "home", "capacity": 1, "revision": 2, "description": "Área patrocinada existente, sem substituir recomendações de treino.", "content_type": "banner", "display_limit": 1, "offering_code": "ad_home", "sales_enabled": false, "rotation_policy": "equal_random", "delivery_enabled": true}
+76000000-0000-0000-0000-000000000001
+ok 31 - sales pause preserves existing delivery
+
+ok 32 - suspension blocks server delivery immediately
+ok 33 - owner retains private media access during suspension
+ok 34 - interruption does not grant automatic credit
+76000000-0000-0000-0000-000000000002
+SET
+ok 35 - other user cannot read private campaigns
+ok 36 - other user cannot edit
+ok 37 - other user cannot spend original payer balance
+RESET
+
+5
+76000000-0000-0000-0000-000000000001
+SET
+76100000-0000-0000-0000-000000000003
+RESET
+
+6
+ok 38 - new placement never enters a prepared global campaign
+ok 39 - global snapshot preserves its exact original placement
+76000000-0000-0000-0000-000000000001
+
+SET
+ok 40 - revoked session blocks even a confirmation replay
+RESET
+
+INSERT 0 1
+ok 41 - administrative reversal replay is idempotent
+ok 42 - explicit reversal restores exactly the paid amount
+ok 43 - reversed reservation releases capacity without deleting history
+ok 44 - reversal retains reservation evidence
+76000000-0000-0000-0000-000000000002
+SET
+INSERT 0 1
+76100000-0000-0000-0000-000000000004
+RESET
+ok 45 - deletion of a nonfinancial synthetic owner is not blocked by advertiser FKs
+ok 46 - deleted-owner campaign stays managed, never falls into legacy publication
+ok 47 - ownerless resource is not public
+1..47
+ROLLBACK

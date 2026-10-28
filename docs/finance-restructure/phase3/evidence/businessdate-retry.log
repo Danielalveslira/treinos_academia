@@ -1,0 +1,26 @@
+✔ o dia de negócio é America/Sao_Paulo e a abstração antiga aponta para a mesma fonte (1.775793ms)
+✔ meia-noite de São Paulo: 23:59:59 ainda é o dia 05; 00:00:00 já é o dia 06 (0.18173ms)
+✔ aparelho em America/Fortaleza: "hoje" do Evolutus continua sendo o de São Paulo, na virada da meia-noite (134.431426ms)
+✔ aparelho em America/Sao_Paulo: "hoje" do Evolutus continua sendo o de São Paulo, na virada da meia-noite (99.150733ms)
+✔ aparelho em America/Manaus: "hoje" do Evolutus continua sendo o de São Paulo, na virada da meia-noite (198.075174ms)
+✔ aparelho em America/New_York: "hoje" do Evolutus continua sendo o de São Paulo, na virada da meia-noite (186.619762ms)
+✔ aparelho em UTC: "hoje" do Evolutus continua sendo o de São Paulo, na virada da meia-noite (313.429798ms)
+✔ aparelho em Asia/Tokyo: "hoje" do Evolutus continua sendo o de São Paulo, na virada da meia-noite (113.855758ms)
+✔ o fuso do aparelho muda o "dia local" mas nunca o dia de negócio (contraste que justifica o helper) (1349.857626ms)
+✔ aritmética de dias no calendário do negócio (virada de mês/ano, sem depender de fuso) (1.918078ms)
+✔ janela de retenção e do dashboard usam o calendário do negócio (não UTC) (0.290462ms)
+✔ futuro é medido no dia de negócio: logo antes da meia-noite de SP, o dia "06" ainda é futuro (0.341518ms)
+✔ validateWorkout usa o dia de negócio: antes não aceitava "amanhã de SP" só porque em UTC já era o dia seguinte (1.849711ms)
+✔ o treino mantém a PRÓPRIA data: sincronizar no dia seguinte não a muda (entityDayKey não usa relógio nem fuso) (696.525121ms)
+✔ relevância para finalizar usa a data da entidade: um treino de 05/10 sincronizado em 06/10 continua sendo de 05/10 (7.490836ms)
+✔ treino que muda do dia A para o dia B: concluir A ou B não ignora a mutação (0.197939ms)
+✔ isBusinessDayKey valida o formato (0.235629ms)
+✔ msUntilNextBusinessDay: falta o que resta até 00:00 em São Paulo (9.801346ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3726.731462

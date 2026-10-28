@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "container": "evolutus_consolidation_clean_20261028173536",
+  "serviceBootstrap": "Auth/Storage service DDL excluding policies/triggers; no public/private schema or data imported",
+  "migrations": 203,
+  "versionsOutput": " count \n-------\n   203\n(1 row)\n\n",
+  "defaultsOutput": "DO\n"
+}

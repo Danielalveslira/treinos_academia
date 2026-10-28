@@ -1,0 +1,60 @@
+BEGIN
+DELETE 1
+BEGIN
+UPDATE 27
+INSERT 0 2
+INSERT 0 2
+INSERT 0 2
+ok 1 - legacy publication without a right remains private
+INSERT 0 1
+INSERT 0 2
+INSERT 0 2
+UPDATE 2
+SET
+ok 2 - anonymous list returns only active published records
+ok 3 - server-side filters match published fields
+ok 4 - modality filter excludes nonmatches
+ok 5 - anonymous detail returns publishable bio
+ok 6 - draft state is excluded even if a published row is stale
+ok 7 - projection omits owner ID
+ok 8 - projection omits internal email
+ok 9 - server rejects an oversized page
+ok 10 - server rejects negative offset
+ok 11 - legacy personal avatar is not exposed as paid commercial media
+RESET
+SET
+ok 12 - authenticated caller gets the same public projection
+ok 13 - authenticated caller cannot obtain stale draft through public endpoint
+RESET
+UPDATE 1
+SET
+ok 14 - first limited page provides the next offset
+ok 15 - second page is returned by server-side pagination
+RESET
+UPDATE 1
+UPDATE 1
+SET
+ok 16 - suspension removes listing
+ok 17 - suspension removes detail
+ok 18 - suspension revokes avatar access
+RESET
+UPDATE 1
+INSERT 0 1
+SET
+ok 19 - active account restriction hides a listing
+ok 20 - active account restriction revokes avatar access
+RESET
+DELETE 1
+UPDATE 1
+SET
+ok 21 - disabled owner is excluded
+ok 22 - disabled owner avatar is revoked
+RESET
+UPDATE 1
+DELETE 1
+SET
+ok 23 - unpublished record has no public detail
+ok 24 - unpublishing revokes avatar access
+RESET
+1..24
+ROLLBACK

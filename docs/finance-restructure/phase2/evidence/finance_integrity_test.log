@@ -1,0 +1,30 @@
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 2
+ok 1 - service API uses authorized RPC, not direct balance writes
+ok 2 - anon cannot write wallet
+ok 3 - client cannot create purchase directly
+ok 4 - internal credit denied
+ok 5 - anon cannot confirm
+ok 6 - legacy gateway reservation removed
+CREATE FUNCTION
+ok 7 - all helpers reject fractions, nonfinite, negative, NULL, zero and overflow
+
+
+ok 8 - insufficient balance
+ok 9 - failed debit leaves wallet intact
+ok 10 - ledger amount immutable
+ok 11 - ledger deletion denied
+ok 12 - duplicate key rejected
+CREATE FUNCTION
+ok 13 - forced failure rolled back subtransaction
+ok 14 - wallet rolled back together with ledger
+f1000000-0000-0000-0000-000000000002
+SET
+ok 15 - A cannot see B wallet
+ok 16 - direct RPC credit denied
+RESET
+ok 17 - storage overflow rejected atomically
+1..17
+ROLLBACK

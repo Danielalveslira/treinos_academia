@@ -1,359 +1,318 @@
-import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useState, useRef } from 'react'
 import {
   Box,
   Heading,
   Text,
   Button,
   Spinner,
-  Label,
   Dialog,
   FormControl,
   TextInput,
   Textarea,
   Select,
+  Checkbox,
+  Flash,
+  Label,
 } from '@primer/react'
-import { Blankslate } from '@primer/react/experimental'
-import { ListUnorderedIcon } from '@primer/octicons-react'
-import { useAdminProfessionalListings } from '../hooks/useAdminProfessionalListings'
-import { useToast } from '../hooks/useToast'
-import { ErrorState } from '../components/ErrorState'
-import { ToastFlash } from '../components/ToastFlash'
+import ProfessionalListingLimitsAdmin from '../components/ProfessionalListingLimitsAdmin'
 import AdminNav from '../components/AdminNav'
-import { adminGetProfessionalListing } from '../services/professionalListingsService'
-import { LISTING_KIND_OPTIONS, optionLabel } from '../constants/professionalListingTaxonomy'
-import { toDate } from '../utils/date'
-import { formatDateTime } from '../utils/format'
-
-const STATE_OPTIONS = [
-  { value: '', label: 'Todos os estados' },
-  { value: 'draft', label: 'Rascunho' },
-  { value: 'published', label: 'Publicada' },
-  { value: 'archived', label: 'Despublicada' },
-  { value: 'suspended', label: 'Suspensa' },
-]
-
-const STATE_LABELS = {
-  draft: { text: 'Rascunho', variant: 'secondary' },
-  published: { text: 'Publicada', variant: 'success' },
-  archived: { text: 'Despublicada', variant: 'secondary' },
-  suspended: { text: 'Suspensa', variant: 'danger' },
-  deleting: { text: 'Em exclusão', variant: 'danger' },
-}
-
-function actionError(error, fallback) {
-  return [
-    'functions/failed-precondition',
-    'functions/invalid-argument',
-    'functions/not-found',
-  ].includes(error?.code)
-    ? error.message
-    : fallback
-}
-
-function SuspendDialog({ listing, onClose, onConfirm }) {
-  const [reason, setReason] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  return (
-    <Dialog
-      title={`Suspender a vitrine de ${listing.displayName || listing.ownerUsername || listing.id}`}
-      onClose={saving ? () => {} : onClose}
-      footerButtons={[
-        { content: 'Cancelar', onClick: onClose, disabled: saving },
-        {
-          content: 'Suspender vitrine',
-          buttonType: 'danger',
-          disabled: reason.trim().length < 5 || saving,
-          onClick: async () => {
-            setSaving(true)
-            setError((await onConfirm(reason)) || '')
-            setSaving(false)
-          },
-        },
-      ]}
-    >
-      <Box sx={{ p: 3 }}>
-        {error && (
-          <Text as="p" role="alert" sx={{ color: 'danger.fg' }}>
-            {error}
-          </Text>
-        )}
-        <FormControl required>
-          <FormControl.Label>Motivo da suspensão</FormControl.Label>
-          <Textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={3}
-            maxLength={500}
-            block
-            placeholder="Descreva o motivo da suspensão"
-          />
-        </FormControl>
-      </Box>
-    </Dialog>
-  )
-}
-
-function DetailDialog({ listingId, onClose }) {
-  const [state, setState] = useState({ loading: true, data: null, error: '' })
-  useEffect(() => {
-    let active = true
-    adminGetProfessionalListing(listingId)
-      .then((data) => {
-        if (active) setState({ loading: false, data, error: '' })
-      })
-      .catch((err) => {
-        if (active)
-          setState({
-            loading: false,
-            data: null,
-            error: actionError(err, 'Erro ao carregar detalhes.'),
-          })
-      })
-    return () => {
-      active = false
-    }
-  }, [listingId])
-  const listing = state.data?.listing
-  const draft = state.data?.draft
-  const published = state.data?.published
-  return (
-    <Dialog
-      title="Detalhes da vitrine"
-      onClose={onClose}
-      footerButtons={[{ content: 'Fechar', onClick: onClose }]}
-    >
-      <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {state.loading && <Spinner aria-label="Carregando detalhes" />}
-        {state.error && (
-          <Text as="p" role="alert" sx={{ color: 'danger.fg' }}>
-            {state.error}
-          </Text>
-        )}
-        {listing && (
-          <>
-            <Text as="p" sx={{ m: 0 }}>
-              <strong>Titular:</strong>{' '}
-              {state.data.ownerUsername || state.data.ownerEmail || listing.ownerId}
-            </Text>
-            <Text as="p" sx={{ m: 0 }}>
-              <strong>Tipo:</strong> {optionLabel(LISTING_KIND_OPTIONS, listing.kind)}
-            </Text>
-            <Text as="p" sx={{ m: 0 }}>
-              <strong>Estado:</strong>{' '}
-              {STATE_LABELS[listing.lifecycleState]?.text || listing.lifecycleState}
-            </Text>
-            {listing.suspendedReason && (
-              <Text as="p" sx={{ m: 0 }}>
-                <strong>Motivo da suspensão:</strong> {listing.suspendedReason}
-              </Text>
-            )}
-            {draft && (
-              <Text as="p" sx={{ m: 0 }}>
-                <strong>Nome (rascunho atual):</strong> {draft.displayName} · versão {draft.version}
-              </Text>
-            )}
-            {published && (
-              <Text as="p" sx={{ m: 0 }}>
-                <strong>Publicada:</strong> {published.displayName} · versão{' '}
-                {published.publishedVersion} em {formatDateTime(toDate(published.publishedAt))}
-              </Text>
-            )}
-            <Link to={`/atendimento?tipo=report&vitrine=${listing.id}`}>
-              Ver denúncias desta vitrine na central de moderação
-            </Link>
-          </>
-        )}
-      </Box>
-    </Dialog>
-  )
-}
-
+import StorefrontImage from '../components/StorefrontImage'
+import CommercialOrderHistory from '../components/CommercialOrderHistory'
+import { useAdminProfessionalListings } from '../hooks/useAdminProfessionalListings'
+import {
+  adminGetProfessionalListing,
+  setProfessionalListingEditorial,
+  listListingCommercialOrders,
+} from '../services/professionalListingsService'
+import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
+import { commercialDate } from '../utils/commercial'
+import { storefrontError, editorialLabels, publicationLabels } from '../utils/storefront'
 export default function AdminProfessionalListings() {
-  const [params] = useSearchParams()
-  const [search, setSearch] = useState(params.get('busca') || '')
-  const [lifecycleState, setLifecycleState] = useState('')
+  const [showLimits, setShowLimits] = useState(false)
+  const [search, setSearch] = useState(''),
+    [state, setState] = useState(''),
+    [detail, setDetail] = useState(null),
+    [dialog, setDialog] = useState(false),
+    [decision, setDecision] = useState('approved'),
+    [reason, setReason] = useState(''),
+    [password, setPassword] = useState(''),
+    [confirmed, setConfirmed] = useState(false),
+    [error, setError] = useState(''),
+    [busy, setBusy] = useState(false)
+  const request = useRef(0),
+    lock = useRef(false)
   const {
     listings,
     loading,
-    error,
-    busy,
+    error: listError,
     hasMore,
     loadMore,
     refresh,
-    suspend,
-    reactivate,
-    unpublish,
-  } = useAdminProfessionalListings(search, lifecycleState)
-  const { toasts, showToast } = useToast()
-  const [dialog, setDialog] = useState(null) // { type: 'suspend'|'detail', listing }
-
-  async function handleSuspend(reason) {
+  } = useAdminProfessionalListings(search, state)
+  async function inspect(id) {
+    const generation = ++request.current
+    setError('')
+    setDetail(null)
     try {
-      await suspend(dialog.listing.id, reason)
-      setDialog(null)
-      showToast('Vitrine suspensa.')
-    } catch (err) {
-      console.error('[AdminProfessionalListings] suspend:', err)
-      return actionError(err, 'Erro ao suspender vitrine.')
+      const row = await adminGetProfessionalListing(id)
+      if (generation === request.current) setDetail(row)
+    } catch (e) {
+      if (generation === request.current) setError(storefrontError(e))
     }
   }
-
-  async function handleReactivate(listing) {
+  async function moderate(e) {
+    e.preventDefault()
+    if (lock.current) return
+    lock.current = true
+    setBusy(true)
+    setError('')
     try {
-      await reactivate(listing.id)
-      showToast(
-        'Vitrine reativada (voltou para rascunho). O titular pode editar e publicar de novo.'
-      )
-    } catch (err) {
-      console.error('[AdminProfessionalListings] reactivate:', err)
-      showToast(actionError(err, 'Erro ao reativar vitrine.'), 'danger')
+      await reauthenticatePricingAdmin(password)
+      await setProfessionalListingEditorial(detail.id, detail.draft.version, decision, reason)
+      setPassword('')
+      setDialog(false)
+      await inspect(detail.id)
+      await refresh()
+    } catch (e) {
+      setError(storefrontError(e))
+    } finally {
+      lock.current = false
+      setBusy(false)
     }
   }
-
-  async function handleUnpublish(listing) {
-    try {
-      await unpublish(listing.id)
-      showToast('Vitrine despublicada.')
-    } catch (err) {
-      console.error('[AdminProfessionalListings] unpublish:', err)
-      showToast(actionError(err, 'Erro ao despublicar vitrine.'), 'danger')
-    }
+  function open() {
+    setDecision('approved')
+    setReason('')
+    setPassword('')
+    setConfirmed(false)
+    setError('')
+    setDialog(true)
   }
-
   return (
-    <Box>
+    <Box sx={{ minWidth: 0 }}>
       <AdminNav current="/admin/vitrines" currentLabel="Vitrines" />
-      <ToastFlash toasts={toasts} />
-      <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
-        Vitrines
+      <Heading as="h1" sx={{ fontSize: 3 }}>
+        Profissionais e estabelecimentos
       </Heading>
-
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
-        <FormControl sx={{ flex: 1, minWidth: '200px' }}>
-          <FormControl.Label visuallyHidden>Buscar vitrine</FormControl.Label>
-          <TextInput
-            placeholder="Nome, @usuário ou e-mail do titular"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            block
-          />
+      <Text as="p">
+        Aprovação editorial e direito comercial são independentes. Moderar não cobra nem concede
+        prazo.
+      </Text>
+      <Button aria-expanded={showLimits} onClick={() => setShowLimits((v) => !v)}>
+        Configurar limites de cadastros
+      </Button>
+      {showLimits && <ProfessionalListingLimitsAdmin />}
+      {error && <Flash variant="danger">{error}</Flash>}
+      {listError && <Flash variant="danger">Não foi possível carregar a lista.</Flash>}
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', my: 3 }}>
+        <FormControl sx={{ flex: 1, minWidth: 160 }}>
+          <FormControl.Label>Buscar cadastro</FormControl.Label>
+          <TextInput block value={search} onChange={(e) => setSearch(e.target.value)} />
         </FormControl>
         <FormControl>
-          <FormControl.Label visuallyHidden>Estado</FormControl.Label>
-          <Select value={lifecycleState} onChange={(e) => setLifecycleState(e.target.value)}>
-            {STATE_OPTIONS.map((option) => (
-              <Select.Option key={option.value} value={option.value}>
-                {option.label}
+          <FormControl.Label>Estado do cadastro</FormControl.Label>
+          <Select value={state} onChange={(e) => setState(e.target.value)}>
+            {[
+              ['', 'Todos'],
+              ['draft', 'Rascunho'],
+              ['published', 'Versão aprovada'],
+              ['archived', 'Arquivado'],
+              ['suspended', 'Suspenso'],
+            ].map(([v, l]) => (
+              <Select.Option value={v} key={v}>
+                {l}
               </Select.Option>
             ))}
           </Select>
         </FormControl>
       </Box>
-
-      <Button onClick={refresh} disabled={loading || !!busy} sx={{ mb: 3 }}>
+      <Button disabled={loading || busy} onClick={refresh}>
         Atualizar lista
       </Button>
-
-      {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
-      <ErrorState error={error} onRetry={refresh} />
-
-      {!loading && !error && listings.length === 0 && (
-        <Blankslate>
-          <Blankslate.Visual>
-            <ListUnorderedIcon size={24} />
-          </Blankslate.Visual>
-          <Blankslate.Heading>Nenhuma vitrine encontrada</Blankslate.Heading>
-        </Blankslate>
-      )}
-
-      {listings.length > 0 && (
-        <Box
-          sx={{
-            border: '1px solid',
-            borderColor: 'border.default',
-            borderRadius: 2,
-            overflow: 'hidden',
-          }}
-        >
-          {listings.map((listing, index) => (
-            <Box
-              key={listing.id}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2,
-                flexWrap: 'wrap',
-                px: 3,
-                py: 2,
-                borderTop: index === 0 ? 'none' : '1px solid',
-                borderColor: 'border.default',
-              }}
+      {loading && <Spinner aria-label="Carregando cadastros" />}
+      <Box sx={{ display: 'grid', gap: 2, my: 3 }}>
+        {listings.map((row) => (
+          <Box
+            key={row.id}
+            sx={{
+              border: '1px solid',
+              borderColor: 'border.default',
+              p: 3,
+              borderRadius: 2,
+              minWidth: 0,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            <Text as="p">
+              {row.displayName || 'Cadastro em preparação'} ·{' '}
+              {row.kind === 'space' ? 'Estabelecimento' : 'Profissional'}
+            </Text>
+            <Text as="p" sx={{ fontSize: 0, color: 'fg.muted' }}>
+              Titular: {row.ownerUsername || row.ownerEmail || row.ownerId}
+            </Text>
+            <Button
+              aria-label={`Revisar ${row.displayName || row.id}`}
+              disabled={busy}
+              onClick={() => inspect(row.id)}
             >
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                  <Text sx={{ fontWeight: 'bold' }}>{listing.displayName || listing.id}</Text>
-                  <Label variant={STATE_LABELS[listing.lifecycleState]?.variant}>
-                    {STATE_LABELS[listing.lifecycleState]?.text || listing.lifecycleState}
-                  </Label>
-                </Box>
-                <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-                  {optionLabel(LISTING_KIND_OPTIONS, listing.kind)} · titular:{' '}
-                  {listing.ownerUsername ? `@${listing.ownerUsername}` : listing.ownerEmail} ·
-                  atualizado em {formatDateTime(toDate(listing.updatedAt))}
-                </Text>
-              </Box>
-
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', flexShrink: 0 }}>
-                <Button
-                  size="small"
-                  disabled={!!busy}
-                  onClick={() => setDialog({ type: 'detail', listing })}
-                >
-                  Ver detalhes
-                </Button>
-                {listing.lifecycleState === 'suspended' && (
-                  <Button size="small" disabled={!!busy} onClick={() => handleReactivate(listing)}>
-                    Reativar
-                  </Button>
-                )}
-                {listing.lifecycleState === 'published' && (
-                  <Button size="small" disabled={!!busy} onClick={() => handleUnpublish(listing)}>
-                    Despublicar
-                  </Button>
-                )}
-                {listing.lifecycleState !== 'suspended' && (
-                  <Button
-                    size="small"
-                    variant="danger"
-                    disabled={!!busy}
-                    onClick={() => setDialog({ type: 'suspend', listing })}
-                  >
-                    Suspender
-                  </Button>
-                )}
-              </Box>
-            </Box>
-          ))}
-        </Box>
-      )}
-
+              Revisar cadastro
+            </Button>
+          </Box>
+        ))}
+      </Box>
       {hasMore && (
-        <Button onClick={loadMore} disabled={loading} sx={{ mt: 3 }}>
-          Carregar mais vitrines
+        <Button disabled={loading} onClick={loadMore}>
+          Mais cadastros
         </Button>
       )}
-
-      {dialog?.type === 'suspend' && (
-        <SuspendDialog
-          listing={dialog.listing}
-          onClose={() => setDialog(null)}
-          onConfirm={handleSuspend}
-        />
+      {detail && (
+        <Box sx={{ borderTop: '1px solid', borderColor: 'border.default', pt: 3, minWidth: 0 }}>
+          <Heading as="h2" sx={{ fontSize: 2 }}>
+            Revisão de {detail.draft.displayName || detail.id}
+          </Heading>
+          <Text as="p" sx={{ overflowWrap: 'anywhere' }}>
+            Titular: {detail.ownerEmail || detail.listing.ownerId} · ID: {detail.id}
+          </Text>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Label>{editorialLabels[detail.draft.reviewState]}</Label>
+            <Label>{publicationLabels[detail.commercial.state]}</Label>
+          </Box>
+          <Text as="p">
+            Vencimento: {commercialDate(detail.commercial.expiresAt)} · revisão{' '}
+            {detail.draft.version}
+          </Text>
+          <Box
+            sx={{ display: 'grid', gridTemplateColumns: ['1fr', '1fr', '1fr 1fr'], gap: 3, my: 3 }}
+          >
+            {[
+              ['Versão em edição', detail.draft],
+              ['Última versão aprovada', detail.published],
+            ].map(([title, row]) => (
+              <Box
+                key={title}
+                sx={{
+                  border: '1px solid',
+                  borderColor: 'border.default',
+                  p: 3,
+                  borderRadius: 2,
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                <Heading as="h3" sx={{ fontSize: 1 }}>
+                  {title}
+                </Heading>
+                {row ? (
+                  <>
+                    <StorefrontImage id={row.mediaId} alt={title} size={96} />
+                    <Text as="p">{row.displayName}</Text>
+                    <Text as="p">{row.bio}</Text>
+                    <Text as="p">
+                      {row.city} · {row.uf}
+                    </Text>
+                    <Text as="p">{row.address}</Text>
+                    <Text as="p">{row.openingHours}</Text>
+                    <Text as="p">{(row.specialties || []).join(', ')}</Text>
+                    <Text as="p">{JSON.stringify(row.contacts || row.publicContacts)}</Text>
+                  </>
+                ) : (
+                  <Text as="p">Nenhuma versão aprovada.</Text>
+                )}
+              </Box>
+            ))}
+          </Box>
+          <Button disabled={busy} onClick={open}>
+            Moderar cadastro
+          </Button>
+          <CommercialOrderHistory
+            resourceId={detail.id}
+            load={listListingCommercialOrders}
+            revision={detail.commercial.expiresAt}
+          />
+          <details>
+            <summary>Eventos de auditoria</summary>
+            {detail.events?.map((event) => (
+              <Box key={event.id} sx={{ my: 2, overflowWrap: 'anywhere' }}>
+                <Text as="p">
+                  {event.action} · {event.reason} · {event.occurred_at}
+                </Text>
+                <Box as="pre" sx={{ fontSize: 0, whiteSpace: 'pre-wrap' }}>
+                  {JSON.stringify(event.payload, null, 2)}
+                </Box>
+              </Box>
+            ))}
+          </details>
+        </Box>
       )}
-      {dialog?.type === 'detail' && (
-        <DetailDialog listingId={dialog.listing.id} onClose={() => setDialog(null)} />
+      {dialog && (
+        <Dialog
+          title="Moderar cadastro"
+          onClose={() => {
+            if (!busy) {
+              setDialog(false)
+              setPassword('')
+            }
+          }}
+        >
+          <Box as="form" onSubmit={moderate} sx={{ p: 3, display: 'grid', gap: 3 }}>
+            <FormControl>
+              <FormControl.Label>Decisão</FormControl.Label>
+              <Select
+                block
+                value={decision}
+                onChange={(e) => {
+                  setDecision(e.target.value)
+                  setConfirmed(false)
+                }}
+              >
+                {[
+                  ['approved', 'Aprovar'],
+                  ['rejected', 'Reprovar'],
+                  ['suspended', 'Suspender'],
+                  ['draft', 'Devolver a rascunho'],
+                  ['archived', 'Arquivar'],
+                ].map(([v, l]) => (
+                  <Select.Option key={v} value={v}>
+                    {l}
+                  </Select.Option>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl>
+              <FormControl.Label>Justificativa</FormControl.Label>
+              <Textarea
+                block
+                maxLength={500}
+                value={reason}
+                onChange={(e) => {
+                  setReason(e.target.value)
+                  setConfirmed(false)
+                }}
+              />
+            </FormControl>
+            <FormControl>
+              <FormControl.Label>Confirme sua senha</FormControl.Label>
+              <TextInput
+                block
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </FormControl>
+            <FormControl>
+              <Checkbox checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+              <FormControl.Label>Confirmo esta decisão auditada</FormControl.Label>
+            </FormControl>
+            {error && <Flash variant="danger">{error}</Flash>}
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={busy || !confirmed || !password || reason.trim().length < 5}
+            >
+              Confirmar decisão
+            </Button>
+          </Box>
+        </Dialog>
       )}
     </Box>
   )

@@ -42,11 +42,14 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Immutable migration history and unique forward versions
+        run: node scripts/check-migration-integrity.mjs
+      - run: node --test scripts/check-migration-integrity.test.mjs
       - run: npm run lint
       - run: node --test scripts/release/*.test.mjs
       - run: npm test
       - name: Public catalogue snapshot and lazy counter regression
-        run: node --test tests/public-catalog-snapshot.test.mjs
+        run: node --test tests/public-catalog-snapshot.test.mjs tests/storefront-public-handler.test.mjs tests/storefront-seo.test.mjs tests/professional-public-handler.test.mjs
       - run: npm run build
         env:
           VITE_SUPABASE_URL: https://header-smoke.invalid
@@ -116,6 +119,31 @@ jobs:
         env:
           PG_TEST_CONTAINER: supabase_db_treinos_academia
           PG_TEST_USER: supabase_admin
+      - name: EvoCash price publication and quote concurrency
+        run: node scripts/evocash-pricing-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
+          PG_TEST_USER: supabase_admin
+      - name: Commercial wallet, price and renewal concurrency
+        run: node scripts/commercial-engine-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
+      - name: Concrete storefront purchase, renewal and moderation concurrency
+        run: node scripts/storefront-revisions-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
+      - name: Professional and establishment editorial, renewal and media concurrency
+        run: node scripts/professional-listings-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
+      - name: Multiple resources per owner, creation limits and shared-wallet concurrency
+        run: node scripts/multiple-listings-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
+      - name: Advertising capacity, shared balance, global slots and replay concurrency
+        run: node scripts/advertising-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
       # Limpeza roda sempre (sucesso ou falha do passo acima), mas sem alterar o motivo da falha:
       # se o passo anterior falhou, o job já está marcado como falho antes deste rodar.
       - if: always()
@@ -157,6 +185,10 @@ jobs:
       # Sessão real do GoTrue, RPC real via PostgREST, PostgreSQL real -- ver o cabeçalho do script.
       - name: Real activity-reward E2E (browser -> RPC -> Postgres -> ledger -> wallet -> UI)
         run: node scripts/evocoins-activity-e2e-smoke.mjs
+      - name: Advertising capacity, shared balance, global slots and replay concurrency
+        run: node scripts/advertising-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: evolutus_integrated_db
       # Limpeza roda sempre, sem mascarar o motivo de uma falha anterior (mesmo padrão do job sql).
       - if: always()
         name: Stop disposable local stack

@@ -1,0 +1,26 @@
+✔ crawler gets approved HTML, canonical and Person schema without executing JS (115.165306ms)
+✔ LocalBusiness schema requires a complete reviewed commercial address (6.756886ms)
+✔ legacy professional URL of an eligible establishment redirects to its stable canonical (0.694378ms)
+✔ expired resources return neutral 404 and never ship old metadata or names (0.909359ms)
+✔ catalog returns useful HTML and consumes rewrite parameters without suppressing indexing (6.010361ms)
+✔ empty catalog and backend failures cannot create indexable empty pages (6.099377ms)
+✔ endpoint reads only the precomputed singleton, caches public JSON and leaks no extras (22.207186ms)
+✔ endpoint denies mutation and returns uncached neutral errors for bad JSON/origin/config (12.00374ms)
+✔ client is lazy, mounts once, formats real zero and counts, aborts on Turbo cache (349.44641ms)
+✔ client preserves neutral HTML on offline, bad JSON, invalid totals/revision/date; old unchanged snapshot is valid (181.953736ms)
+✔ direct expired or unknown storefront responds 404, no-store and no commercial data (208.485603ms)
+✔ server detail escapes approved public fields and never publishes arbitrary HTML (6.733311ms)
+✔ backend failure and non-read requests fail safely without exposing configuration (1.499962ms)
+✔ crawler receives useful approved catalog HTML, escaped schema and no-store (285.974455ms)
+✔ empty catalog and unavailable detail cannot be indexed (18.553138ms)
+✔ sitemap excludes expired entries and fails closed when backend unavailable (20.198654ms)
+✔ a lease ending during upstream IO cannot leak through HTML, schema or bootstrap (130.600729ms)
+✔ sitemap rechecks product and profile deadlines after every upstream page (49.717351ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3077.809881

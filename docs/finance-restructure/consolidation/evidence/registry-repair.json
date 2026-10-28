@@ -1,0 +1,85 @@
+{
+  "localOnly": true,
+  "container": "evolutus_price_phase1_db",
+  "registered": [
+    {
+      "name": "20261205000001_advertising_inventory.sql",
+      "sha256": "d8007bd067c0f389b3cf052440e1ec76facf14ee46cddb9e6f52a14453082dcd"
+    },
+    {
+      "name": "20261205000002_advertising_campaigns.sql",
+      "sha256": "3d85f73f5db7e4bfbe30782d117783f0dfc78cdf8412191729ee795de6cb7ea9"
+    },
+    {
+      "name": "20261205000003_advertising_authorization_metrics.sql",
+      "sha256": "ca985a5ed35c5988fe2d245809a666c13f5724c475adbea2b27c439393a97b56"
+    },
+    {
+      "name": "20261205000004_advertising_delivery.sql",
+      "sha256": "1f1e549dc5ccb72edd39d199609bf2e6709f854735a2512e0eceb66b98807205"
+    },
+    {
+      "name": "20261205000005_commercial_promotions.sql",
+      "sha256": "a611fce33ee0b9fc1fdad0b3c3590a0fc34a5b4c07a902760120bfc22b347bbf"
+    },
+    {
+      "name": "20261205000006_advertising_operations.sql",
+      "sha256": "af4a1dc0bb8d744e2c99282213013cf18015df9b9d37b0f22a63961ea7241c5d"
+    },
+    {
+      "name": "20261205000007_advertising_media.sql",
+      "sha256": "217ff8cc0dfe0609e2c5b7d8cbfe70b8f55e50160459bf20138ee132df39dc41"
+    },
+    {
+      "name": "20261205000008_advertising_lock_order.sql",
+      "sha256": "20d8bb3e65f4bc6bbaf53f1f550b7fe8078041346074af6e0379c9827bd0e2ae"
+    },
+    {
+      "name": "20261205000009_advertising_editorial_history.sql",
+      "sha256": "b7dbd8ada92a58b14d62851ade08b6f83e14a9c9f02f8530f319c7b13ee63dee"
+    },
+    {
+      "name": "20261205000010_advertising_selection.sql",
+      "sha256": "d84d606984d52cb6d16ce4e27ed64d4497f3c298d13cb2bdc666fb72064ae1e1"
+    },
+    {
+      "name": "20261205000011_advertising_legacy_expiry_index.sql",
+      "sha256": "5559ee4393eb2211032b58b7e9b7c68bc3f7c2df3e53668386308a382fff1e8d"
+    },
+    {
+      "name": "20261205000012_advertising_summary.sql",
+      "sha256": "440623c5b433f598e4c169412377d246a450a36abd5623ffdc5b614b56663664"
+    },
+    {
+      "name": "20261205000013_advertising_rls_gate.sql",
+      "sha256": "48557005e523b5e9935b5636f2c653b2f5b9f7ffe4d20178fa322e12e95c81bb"
+    },
+    {
+      "name": "20261205000014_community_promotion_projection.sql",
+      "sha256": "19220e2d53e725219dfd4b2ddea9f4e3711c898b26395ad9e0ab89a9610935f8"
+    },
+    {
+      "name": "20261205000015_advertising_source_invalidation.sql",
+      "sha256": "e5020f9e6e9a1a9e200b11371763673c6ad2ee8f45879f864796d28ec10ec476"
+    },
+    {
+      "name": "20261205000016_advertising_deleted_owner.sql",
+      "sha256": "b64b0062da821ec042a5175f0f9e0ef8cc671b5dc0103e539f0e28f68fa2bcbf"
+    },
+    {
+      "name": "20261205000017_advertising_batch_authorization.sql",
+      "sha256": "374856c096b516ae41c3b48779cb382727671670e44f0735524751754e419064"
+    },
+    {
+      "name": "20261205000018_advertising_context_audit.sql",
+      "sha256": "334aca2e60a0ad1c9377561a391f772e76850c6bb1dfc8a458c531f308d14935"
+    },
+    {
+      "name": "20261206000001_finance_consolidation_guards.sql",
+      "sha256": "a7ed4f4763f7b2c8a68e525c2ecf8d5a906e5f9355a4827f406c13d386dc263d"
+    }
+  ],
+  "missingAfter": 0,
+  "sqlReplayed": false,
+  "financialDiagnosticsUnchanged": true
+}

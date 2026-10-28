@@ -1,3 +1,4 @@
+import { adAuthorizationDeadline } from '../utils/adAuthorization'
 import { supabase } from '../supabase/config'
 
 // Um anúncio só aparece nas comunidades listadas em communityIds — NUNCA em todas por
@@ -7,17 +8,19 @@ import { supabase } from '../supabase/config'
 
 const MAX_LIST = 200
 
-function toDoc(row) {
+function toDoc(row, requestStartedAt = performance.now()) {
   return {
     id: row.id,
     partnerName: row.partner_name,
     title: row.title,
     description: row.description,
     imageUrl: row.image_url,
+    mediaId: row.media_id,
     ctaLabel: row.cta_label,
     ctaType: row.cta_type,
     ctaTarget: row.cta_target,
     expiresAt: row.expires_at,
+    authorizationUntil: adAuthorizationDeadline(row.expires_at, row.server_time, requestStartedAt),
     communityIds: row.community_ids ?? [],
     isGlobal: row.is_global,
     displayMode: row.display_mode,
@@ -25,19 +28,6 @@ function toDoc(row) {
     createdAt: row.created_at,
   }
 }
-
-// Colunas que as telas públicas realmente renderizam. `select('*')` trazia também community_ids (até 50
-// UUIDs por anúncio), created_by e created_at, que nenhum card usa -- bytes à toa em cada leitura. O filtro
-// de comunidade/global continua sendo feito (e reforçado pela RLS) no servidor; os campos omitidos voltam
-// como undefined em toDoc.
-const PUBLIC_COLUMNS =
-  'id, partner_name, title, description, image_url, cta_label, cta_type, cta_target, expires_at, is_global, display_mode'
-
-// Campanha vencida nem sai do servidor, e o "agora" é o do PRÓPRIO Postgres: `now` é um valor especial de
-// timestamptz avaliado no banco, então um aparelho com a hora errada não ressuscita nem derruba campanhas.
-// A lista fica em cache; a revalidação durante esse tempo usa o relógio do servidor (utils/serverClock.js).
-// A RLS segue como regra de acesso; tornar a validade parte da policy exigiria migration.
-const NOT_EXPIRED_FILTER = 'expires_at.is.null,expires_at.gt.now'
 
 // Uso administrativo: todos os anúncios, ativos ou não, pra tela de gestão.
 export async function listAllSponsoredAds() {
@@ -47,31 +37,49 @@ export async function listAllSponsoredAds() {
     .order('created_at', { ascending: false })
     .limit(MAX_LIST)
   if (error) throw error
-  return data.map(toDoc)
+  return data.map((row) => toDoc(row))
 }
 
 // Consulta usada pelas telas de comunidade (card no feed / banner rotativo). expiresAt e
 // displayMode são filtrados no client logo depois deste fetch (ver useSponsoredAds.js).
 export async function listSponsoredAdsForCommunity(communityId) {
-  const { data, error } = await supabase
-    .from('sponsored_ads')
-    .select(PUBLIC_COLUMNS)
-    .contains('community_ids', [communityId])
-    .or(NOT_EXPIRED_FILTER)
-  if (error) throw error
-  return data.map(toDoc)
+  const results = await Promise.all(
+    ['community_banner', 'community_feed'].map(async (placement) => {
+      const requestStartedAt = performance.now()
+      const { data, error } = await supabase.rpc('select_advertising', {
+        p_placement: placement,
+        p_context: communityId,
+      })
+      if (error) throw error
+      return data.map((row) =>
+        toDoc(
+          { ...row, display_mode: [placement === 'community_banner' ? 'banner' : 'feed'] },
+          requestStartedAt
+        )
+      )
+    })
+  )
+  const merged = new Map()
+  for (const ad of results.flat()) {
+    const previous = merged.get(ad.id)
+    merged.set(
+      ad.id,
+      previous ? { ...previous, displayMode: [...previous.displayMode, ...ad.displayMode] } : ad
+    )
+  }
+  return [...merged.values()]
 }
 
 // Consulta usada pelo banner rotativo da Home: anúncios globais, sem relação com
 // comunidades do usuário.
 export async function listGlobalSponsoredAds() {
-  const { data, error } = await supabase
-    .from('sponsored_ads')
-    .select(PUBLIC_COLUMNS)
-    .eq('is_global', true)
-    .or(NOT_EXPIRED_FILTER)
+  const requestStartedAt = performance.now()
+  const { data, error } = await supabase.rpc('select_advertising', {
+    p_placement: 'home_banner',
+    p_context: null,
+  })
   if (error) throw error
-  return data.map(toDoc)
+  return data.map((row) => toDoc(row, requestStartedAt))
 }
 
 function sponsoredAdFields(ad) {

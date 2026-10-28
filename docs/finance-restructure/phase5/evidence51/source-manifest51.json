@@ -1,0 +1,821 @@
+{
+  "base": "8c802ea",
+  "checkpoint": "d7a2442",
+  "generatedAt": "2026-10-28T13:05:04.096Z",
+  "localOnly": true,
+  "historicalMigrations": {
+    "count": 183,
+    "unchanged": true,
+    "sha256": "5944d53d31c236705906e8f83d2bce8b21344bacb284ff90aec92e30352dfa28"
+  },
+  "files": [
+    {
+      "path": ".github/workflows/supabase-tests.yml",
+      "sha256": "f9eddffe5ea2bdea4ccd25ddfc64fab66436338230f3fe9138c5e03509b87c50"
+    },
+    {
+      "path": "docs/finance-restructure/CHECKLIST_LANCAMENTO.md",
+      "sha256": "28a01c36669ebaa28bd6a23f639d984dd371f77455e61ddb8ac510c76a828cdf"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/CORRECOES_FINAIS.md",
+      "sha256": "38fc861eb099d564c44d996fe3eeeec8719f8f246621219c70fe7d18d2a72110"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/INVENTARIO51.md",
+      "sha256": "a53224f4693075ae24ea8d487315e26fa94e5a403ecaa785f29ca1b3b0a3c6d4"
+    },
+    {
+      "path": "scripts/homolog/finance/phase5-http.mjs",
+      "sha256": "7507b9f465f1559c0906e736d6708871ac929074bd1a6ba89dfbd167ae26f61c"
+    },
+    {
+      "path": "scripts/homolog/finance/phase5-media.mjs",
+      "sha256": "7609f8ad75ad9943ae344a3e082a0cd91c685373b7baa6ce9b1f583aeec7568d"
+    },
+    {
+      "path": "scripts/homolog/finance/phase5-preview.mjs",
+      "sha256": "74ef6c81599bfae35ce556a4e18ac1e48815bed5e6726390ffe8883355622cf5"
+    },
+    {
+      "path": "scripts/homolog/finance/phase5-upload-failure.mjs",
+      "sha256": "3f93076763a33dda4da71729319137986220891802d0fe599953b5138a83e473"
+    },
+    {
+      "path": "scripts/homolog/finance/phase51-browser.mjs",
+      "sha256": "9b20a777d7577dcd17ec6b95d2f0fdf2da353954fdc8c2abc15ad13b43ed62c3"
+    },
+    {
+      "path": "scripts/homolog/finance/phase51-media.mjs",
+      "sha256": "f489286b9ad75bf60d291efc6e5c5af94a8786b078658f9bedd23cb520bffeb0"
+    },
+    {
+      "path": "scripts/homolog/finance/phase51-performance.mjs",
+      "sha256": "c1e09895a2322709a37effe0e0c1afc8bc6d8f27cf08bc5619b3f2ca09b90841"
+    },
+    {
+      "path": "scripts/homolog/finance/phase51-preview.mjs",
+      "sha256": "7e0373e31cdc8b95f072986fe55f80304b4af52adbd62f172e0929ce90ad4d82"
+    },
+    {
+      "path": "scripts/homolog/finance/phase51-reinstall.mjs",
+      "sha256": "1856263e47019b745459350bec83cba3e683dc69986479cead88d0f02fe0eea0"
+    },
+    {
+      "path": "scripts/homolog/finance/phase51-seed.mjs",
+      "sha256": "e2d3eda40e7cc12c6266613aadf37966167f72b4ab1dbe4ff54d5aa7369a26e3"
+    },
+    {
+      "path": "scripts/homolog/finance/phase51-validate.mjs",
+      "sha256": "bda86dba8a7d7192371131673b4080fe10f6ec6b04de572b308af2a897ae38b4"
+    },
+    {
+      "path": "scripts/homolog/finance/phase51-visual.mjs",
+      "sha256": "d3a3870519d5b8dcc4d9c081a00fc1b0432d79bcf0b16287cd36da6138a0eeb9"
+    },
+    {
+      "path": "scripts/multiple-listings-concurrency.mjs",
+      "sha256": "a577656845b539e48f1fa06f0341696f8e8e8e1ae89a5b8288097b3f4552c00b"
+    },
+    {
+      "path": "scripts/professional-listings-concurrency.mjs",
+      "sha256": "9be8aba5c96d9688f67d655dc7ece774020b34bbb0b438f56ef1259eee625f55"
+    },
+    {
+      "path": "src/App.jsx",
+      "sha256": "8cc61715e3794c0db7797abb92d45a4eff56d4fd07c7f7d2c227c0300dd75a0b"
+    },
+    {
+      "path": "src/components/CommercialLeasePurchase.jsx",
+      "sha256": "7489086db7cba981c9254c83bd7148d62a5aef27aae43675035f6c3459e5effc"
+    },
+    {
+      "path": "src/components/ProfessionalListingLimitsAdmin.jsx",
+      "sha256": "b238067cabba101ec79aaa28de920e45de663a90cb196d82a8ea10dad723ca35"
+    },
+    {
+      "path": "src/features/adminAccounts/components/AccountDrawer.jsx",
+      "sha256": "7533396d0de513542f29ac4f849b0b3d77e204408d319e7ba4f1d8083f19ddfe"
+    },
+    {
+      "path": "src/features/adminAccounts/utils/accounts.js",
+      "sha256": "16e7286902fe796e8dbb884b17b3cc317f06d2d296c0224dac8428802b71e624"
+    },
+    {
+      "path": "src/features/adminAccounts/utils/accounts.test.js",
+      "sha256": "04a447eba12d2e4ccca197d2367bc4356742f919535bb585bea64e0f685bb3d8"
+    },
+    {
+      "path": "src/features/publicListings/PublicListingsIsland.jsx",
+      "sha256": "f2bff9c1b986aecf20521282a4a30b5622cdc34b3e62bb8878ff0a385f21fc96"
+    },
+    {
+      "path": "src/features/publicListings/listingDirectoryService.js",
+      "sha256": "e3ecebc1620cad0f9c3a670f49483e1b4d3ba1deb7d49245ca0d0ac268fd93f3"
+    },
+    {
+      "path": "src/features/publicProducts/publicProductCatalogService.js",
+      "sha256": "1a291eebdc52980bbcf4589f6eb6675b0e9a26ceb61e84597f85e3370b583064"
+    },
+    {
+      "path": "src/pages/AdminProfessionalListings.jsx",
+      "sha256": "bdbb560e8aa8dae9e3fbb0f7032e17c753dc22bda9b7f32138d2e7fbe4d45b12"
+    },
+    {
+      "path": "src/pages/MyProfessionalListing.jsx",
+      "sha256": "f57bea357cbc49a90b6cdcd827746a1bb69d93ba044dc540236ffa1ad69902a9"
+    },
+    {
+      "path": "src/pages/MyProfessionalListing.test.js",
+      "sha256": "5c5d5c03f44ada1e3159e80ad69714deebe5282f26293231c06073a40e599c42"
+    },
+    {
+      "path": "src/pages/ProfessionalListingsHub.jsx",
+      "sha256": "1f3b590b19b6c1cf71a69b354c1e42628ac747500e5d33f1307307a1f2dbb331"
+    },
+    {
+      "path": "src/pages/ProfessionalListingsHub.test.js",
+      "sha256": "c2bdb3ab5f28a210f829984d7804170533494511b3359c71ace2a5fded32dfcc"
+    },
+    {
+      "path": "src/services/communitiesOwned.test.js",
+      "sha256": "91aa4e786dba49f34bbdb39b9915611db74bf87782c86712750492a8f58f0104"
+    },
+    {
+      "path": "src/services/communitiesService.js",
+      "sha256": "6f9fbacee1571515f65af15ca318a7fd165413c22ebc2393f2d8e4457e1cf8a5"
+    },
+    {
+      "path": "src/services/offlineWriteServices.test.js",
+      "sha256": "3b62c9f696b8e8fcbf35d72688041c13edec33737bf4cdb3b6f9a6f8d6683777"
+    },
+    {
+      "path": "src/services/professionalListingsService.js",
+      "sha256": "e91522a35e6b6fb640260f2f336bd532f9369fcb7ec73d60c17de9aa4c0eee57"
+    },
+    {
+      "path": "src/services/professionalListingsService.test.js",
+      "sha256": "214a17d9deb1d2c7da06a9cbffdd94419258419a141ed5389cbe2cc077c5bb88"
+    },
+    {
+      "path": "src/utils/publicNavigationAge.js",
+      "sha256": "f8ed9cfe335ace43a2484de4564dfe736d3259685d941231a45c61d446db7544"
+    },
+    {
+      "path": "src/utils/publicNavigationAge.test.js",
+      "sha256": "96b8e566c9a926ada9ad21d66c09676493eb9bac337e56548f110c31f1a8204f"
+    },
+    {
+      "path": "src/utils/storefront.js",
+      "sha256": "abde28c24fb4e6c38a5d8857c8e6ba4b8dc96253d12d8738979665b93be026d0"
+    },
+    {
+      "path": "supabase/migrations/20261204000001_multiple_professional_listings.sql",
+      "sha256": "cfa324a9a3008642db1f075a580057d739a9a08ee489567d422926ee9d05d3e4"
+    },
+    {
+      "path": "supabase/migrations/20261204000002_admin_account_listing_summary.sql",
+      "sha256": "50d3fd69e3c95041f32696c6a9a1e4d17916de56e672048baef1b62af8dc87f6"
+    },
+    {
+      "path": "supabase/tests/aud_has_app_access_gates_test.sql",
+      "sha256": "dbbc1579b802ec744d09b6c1e12f4482618f8282c9ed71e19a97b688fe54051f"
+    },
+    {
+      "path": "supabase/tests/multiple_professional_listings_test.sql",
+      "sha256": "42e6a3a6251e1df212822eae9f0b1e56a5dd1cc9be8816d257044292c7a5b816"
+    },
+    {
+      "path": "supabase/tests/professional_commercial_test.sql",
+      "sha256": "3229c96eaaceb8935d510ecd710aed2c5dfca0ae88ffa6d9b3f3bb23996fa212"
+    },
+    {
+      "path": "supabase/tests/showcase_publish_recovery_test.sql",
+      "sha256": "8bee17299a347e9963d2df238fdca1ab2e5e383246ca8abf933f785c99c6053e"
+    },
+    {
+      "path": "supabase/tests/storefront_revisions_test.sql",
+      "sha256": "bc31f6d93adf733c7ad1f1c1359014241ab5962bfb90b03bf384d45271314d42"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/ARQUIVOS51.md",
+      "sha256": "190572a2e35677e7f82192ab1d8109b7e84222d4c8f76da6063cbbd1b221d26b"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/accounts-js.log",
+      "sha256": "10141c8d2c075b8512cbf02c45f55972b56729f1fb670434e98c533aa95ff198"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin_accounts_defensive_test.log",
+      "sha256": "dd91f730a18f00e7ed68c390834f05a91d39117292a5f575b531ecaf74b4abc6"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin_accounts_snapshot_test.log",
+      "sha256": "69b0b7f55d706ff44df12d0249580246ebb365bfb034931da919719a0b44b5b1"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin_vitrines_denuncias_test.log",
+      "sha256": "11352f44c63ed5162b72055f66361287d75f2a02afe78992b9aa8aa4e2d2a47f"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/affected-js.log",
+      "sha256": "cb0ab74efeb7941352aaec922d538cd5599b8c20441631b0c637479cca2a4f2d"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/aud_has_app_access_gates_test.log",
+      "sha256": "09aeb4485dc600026d3f197d9b37cfb079f4c2830e1925fe6dc0f4f01c4d6909"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/browser.json",
+      "sha256": "2ef648a02edf33ae39fc6177c180560ad7b99307b8503d16747c7915761c526f"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/budget.log",
+      "sha256": "9e16064f8274fb8a8ade52703117bce355f963485bd54bbf59872154c7dfe975"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/build.log",
+      "sha256": "661e51c39e6fe9b119b734cec58542d5f974c7344233869c12e1c4ecaf2677d4"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/commercial_engine_test.log",
+      "sha256": "70df5ae152019327f9f29a5f01799d26c87ca3c1e8f25b0e54f6e7b968b75628"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/community-picker.log",
+      "sha256": "e21cc2d3b948c9b3f8f854220ebaac9102694ca2a8e7a281c81496794eb4feca"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/concurrency.json",
+      "sha256": "c2c9f1a0ce0c18d212c17bcc6b30a75e298fd2e836935c803c4cc587c3ab014f"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/dependencies.json",
+      "sha256": "12354e944c8d7c779801f9f65ecdb9801ef90cfc73915a7887c34cd89c314304"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/evocash_pricing_test.log",
+      "sha256": "056dcc3c0bf67e4187f6e23af124aba9c3a4cd3808952930d67bf11b78180a65"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/finance_integrity_test.log",
+      "sha256": "13a033d56c90f4dc337882287f9165390d72de5bd8704a3b470ccf0d635b7712"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/finance_reversals_test.log",
+      "sha256": "ff2aab2234f9478109eedfd348b4eedf0a154cca19f6ebf783fc9bf20475fc3e"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/financial-consistency.json",
+      "sha256": "d013d4713f367d22fd91ae2dbe0067db25983149fae93338a79724bd8868fada"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/functions.log",
+      "sha256": "e5e7236f550ffce480688a5b5c37ce329e67a55cbec2e1914c911faca6b41d26"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/hub-js.log",
+      "sha256": "18b32869e4b04f8ee7a62f08772dc9190eab9b0eb5af387a140ea3c85f437756"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/infinitepay_cash_purchases_test.log",
+      "sha256": "d44949a4dad45839d7da86f524bd04cb900414b74dbcc4454ed0a8758560d62c"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/initial-js.log",
+      "sha256": "fe70b55800fe88442d7d3fc906ee5945d2382bc41a1e8a02cf989db9e2e76c7c"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/javascript-all.log",
+      "sha256": "5df86b4b46054a830c0267214a741ca7dd273dcb3d94f5b3d3aac9bd3b889fb4"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/lint.log",
+      "sha256": "31f2ed54ccc471dbd8c52e1fbcff8a497669193bcc56b5b3612e186e6372da10"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/media-http.json",
+      "sha256": "d4c7d055699a4afbd420e3cae00de1e2618ac20427613f5b125fa6f8805aafd1"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/migration-install.log",
+      "sha256": "3240b9df3f9ac769d597a0be38f7e4ce32159153fc40f86e1ffc759619d32b20"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/migration-registry.json",
+      "sha256": "cf30969892c351f256bc775562a4036648b17765924b67358d9df27e53e8de6d"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/migrations-reinstall.log",
+      "sha256": "9b62ea903fcc403e59177e82f67919025296e6478cf93cb5375388f1fa90d828"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/multiple-concurrency.json",
+      "sha256": "844402497b16c4242fe41c51086c007bdb59ac9887b152ae5c040a1bc4d9b7aa"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/multiple_professional_listings_test.log",
+      "sha256": "7b42e5e40169219b99f1f2ac50b6e22cea434a89a316473f383f336b85b8cba6"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/navigation-age.log",
+      "sha256": "ff85ac813266e4899a1a87a11424eb475af6d9ae909fe424fb79819732724138"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/notification_security_test.log",
+      "sha256": "718dacbd789314d72ecd1180e18372d271b9bb9ca580c77526de88deea3bb430"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/offline-deterministic.log",
+      "sha256": "40f7066e8a345f89e2c29cc4009b71a96636dcb6b49937bab723479f74144878"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/offline-stress.json",
+      "sha256": "6e3f7532d9d523c3ab77ff81dad21fd48fde054f7e66f294c2000d64a3581ed3"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/owner-performance-1000.log",
+      "sha256": "bcd90f098d05b2f3140f4bac55b34fb34edcf3d58434600dd3ed4b3a2301ea6f"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/owner-performance-4000.log",
+      "sha256": "d337ecfd37dea74fa7114477032586b526c292108a92cb28afeda376da0636e8"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/partner_products_require_image_test.log",
+      "sha256": "c2c986a053f333072aa674e84930bdb29d593b0018b0451b4ac5e4bdca76e3bd"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/preview-routes.json",
+      "sha256": "64300cfe7fb341ed0bee0a9ef411d0e1b526b9a0aa7456320cadd8c9f9f6ddcc"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/product_storefronts_test.log",
+      "sha256": "940bb7d84db885340884aeb6b1556597a0501510de0f13a61a6d01f0a7880146"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional_commercial_test.log",
+      "sha256": "460d4fe7972099f49cd1838d6d36797b2226d514a0f27572d20a015bc927adad"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/public_commercial_test.log",
+      "sha256": "850686be27f695ce4019d27f1ef7915784e1d665b128aca322e2d5fcee749b2a"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/public_professional_directory_test.log",
+      "sha256": "71bf15a8cf23761ebaf8b662ba463dd1acddd430859943a232f90387f139536d"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/release-http-tests.log",
+      "sha256": "f4d65fbcb55967465c523454fc6acb8ee51309ae6b31b48df4709875baba3c4e"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/secrets-dist.log",
+      "sha256": "6991fdcbba0508f9e49e74c383d78afba2f62cf0d55403392e55794c438a1a6e"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/secrets.log",
+      "sha256": "1721a565680934687f33ec2fa0a8a5ed6d6e8a16b5fffcd1eedf53565c67bda8"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/security_followup_test.log",
+      "sha256": "b3013747e051a188d26471dee302bc02f3eb1bf59e0dea87662f87d5d4df0589"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/session_revocation_guard_test.log",
+      "sha256": "59eb91b241ff6781787e346ae5ada8525bbef7c42d520449e70048c86ef35f42"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/showcase_publish_recovery_test.log",
+      "sha256": "c282c87a5d0b2aa72fafc66c0d02470fef49e195cd688c8e093ad6544ea5c6cf"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/sql-summary.json",
+      "sha256": "36e8b5286de9ce99547d9e6b2197aa4ec099fe89f305c75eb0a26b08abd6487b"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/storefront/concurrency.json",
+      "sha256": "ae9265d5b7d309176e85e76035d5db4517c5405507b5170525b3dfcb6a50dc42"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/storefront_revisions_test.log",
+      "sha256": "ae576b40f51937b4006f6c5d449c4405d0707d88f9321f095e39905e2cd56708"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/visual.json",
+      "sha256": "81ae387c93f373478bdc7fb8c61cfca6c7211a1527a29401cd577b4a9f532072"
+    }
+  ],
+  "captures": [
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-owner-320-light.png",
+      "sha256": "983164e133a5daeb05309ef743e82e59c0e68b5987258ffaa72ffd5d09dc407f"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-owner-modal-320-light.png",
+      "sha256": "b2b5d6d39968c9c2c4d9cd0266641224b8e75c8c52aaac225c501f408dbc4d57"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-public-320-light.png",
+      "sha256": "94a8e584b5648918c5e1e3601ace0a1062a62344af9a8ec788c57340db26b2ea"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-public-modal-320-light.png",
+      "sha256": "af7b07f4e19f01dbdfb65034f08a6c39c1bf38a13dfc32c1239209081978081a"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-owner-320-dark.png",
+      "sha256": "f3f34c473bbd0b9e90ebdd3472cac1a88f3f0527915441640f11246feb1890b3"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-owner-modal-320-dark.png",
+      "sha256": "d8a3b696157526a36cf24e77c48197faa8df2177ee493ad09d6b09c21afda6ba"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-public-320-dark.png",
+      "sha256": "d69fec88adbed58dd591a5caf7d6ae6a081db0d72503783325586bcb6cf0af8c"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-public-modal-320-dark.png",
+      "sha256": "36602884c355e36ae3512dcb6fc9dcf12f82efe2da7498b00eee7c9425e1e69c"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-owner-390-light.png",
+      "sha256": "8bc8895553d0f77eccd2f8351ddc8db85b54c29aec28556088fcbb595aeb42e0"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-owner-modal-390-light.png",
+      "sha256": "c782ca231752869d82885dc0e9f3689009af0ae5aaa699147ae4a06f3061c55f"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-public-390-light.png",
+      "sha256": "97858dae5b729ae2b4f41fb9282442639292b33741f9c64f5e500bfea5e99648"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-public-modal-390-light.png",
+      "sha256": "e4450ba901ad1499a328d037d121c7ab46c4456a8c06cbb05a0f49de85e86e37"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-owner-390-dark.png",
+      "sha256": "f7b550d64af9797e18dc0c861bf0da8002b73b8109a878277054cc2c16b28930"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-owner-modal-390-dark.png",
+      "sha256": "13553b418fcac32a16ec7fba0aef222ebb1921f815e29384949c8f618feb79f6"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-public-390-dark.png",
+      "sha256": "c13b1dd8637207b6a466f0edf315aaa4c7d1e29669c503538ce1d2f03cd34a2b"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-public-modal-390-dark.png",
+      "sha256": "7024f5d3b735a23d211e20c6f04e1fe703798ea1c8c678a39303712688c0eadf"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-owner-1440-light.png",
+      "sha256": "5819461f640393881d610c0a15cf8779b99bb22c7d6b68e15f19b14fadc49c27"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-owner-modal-1440-light.png",
+      "sha256": "0a4f8e687c4da27d2285b6a30e85db99f1aaf738305c7d40cb578cd99e51de67"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-public-1440-light.png",
+      "sha256": "e1fae98cd804941b5cf0b7f8652fefafc793155495cb6ae4b2d6837493020207"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-public-modal-1440-light.png",
+      "sha256": "98a1dc4756cf699e0173107df31ebf3d0459635dbdb434eac7706011a0604860"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-owner-1440-dark.png",
+      "sha256": "dd3df21bb17818598d35076f284865365f5adf67fd16af4178326c881bd17aea"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-owner-modal-1440-dark.png",
+      "sha256": "d4ddf4d3902308caffa4d27bf9d13ac1227e7ceb75ca38af8e130b517b8bea64"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-public-1440-dark.png",
+      "sha256": "60295629742240a72a709938973f570a5f4a2af77063759476cfac1306b4bf7b"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/professional-0-public-modal-1440-dark.png",
+      "sha256": "1ef0e109ab1e23d9ef3634dd1afbc9093ba6466695cd8c1a3c5dd1574c301b07"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-owner-320-light.png",
+      "sha256": "663d44ddcafa583e2541ee12c21341d011ded1b0b2ff5b07700cd1baa3490598"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-owner-modal-320-light.png",
+      "sha256": "eb8629e1dbae2344b7b6d22f0ea4f3f5c7d90a9ad670dd57a250ce189775a783"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-public-320-light.png",
+      "sha256": "a73ff2a974f47659e91625bf3a92078fe9c83a4294cf8fe9561450bc2b5d1d59"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-public-modal-320-light.png",
+      "sha256": "b51b2f4b390c763a5d1f2558914c7aeed811eeb4570b1d986d7a6c0c3cf8a328"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-owner-320-dark.png",
+      "sha256": "d65f74278cd9d43f9976af9e14e97c822cee6f7cad336cfe4a45ee3c2427d741"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-owner-modal-320-dark.png",
+      "sha256": "b133b614642eb0bb35b70dc9aee1d8945c8db35c2f1240825b756f3780e22403"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-public-320-dark.png",
+      "sha256": "e37c08abf638e8c91ce6e074e9f1b6ca0f8edcd4c8784a6ec5826b8d62920572"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-public-modal-320-dark.png",
+      "sha256": "898918c5c8d7e007b290f515f047e394a34abf059239bbb88d7cb0cc703b8754"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-owner-390-light.png",
+      "sha256": "d506e6643f333fd1a0b37bf91c0b9c62e80e66db0947829236909fc93fd252b5"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-owner-modal-390-light.png",
+      "sha256": "1ec207bca0260f346d560a17166cbe44a40f755734e97dfea414565c32ea48ff"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-public-390-light.png",
+      "sha256": "c01d8d263eafa6faafc8d5e526d407dc2a9b99c7549b19a61bef5453993051d4"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-public-modal-390-light.png",
+      "sha256": "1e5af005fda7653a7b39237a797a1f8fae8c24e23c28f048898357958029dcfe"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-owner-390-dark.png",
+      "sha256": "f92d2cf0922ae1bb7513f929220f629a9183d859e432e7db61a6479ce8e6cb61"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-owner-modal-390-dark.png",
+      "sha256": "cb563162db09deb15934038ca55bf7e72ca1d5fce2c0db3a4e0ee2e9e6a19280"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-public-390-dark.png",
+      "sha256": "c7ddf46cc10c6a6f76a814dc6febf28d628583f7b598af1b8fd2cc65722795e3"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-public-modal-390-dark.png",
+      "sha256": "07d112cfcbfec89a98a201d49a756798d3035cd1964499157f376b982e275355"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-owner-1440-light.png",
+      "sha256": "7b0ac600a30d32569a59fa351e4e8ba230cc9ab102c2d320351512a6f6dffce9"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-owner-modal-1440-light.png",
+      "sha256": "af695d0b66698cb29976cdeeba325c1ed88043f52819db5e179ab8f99605808c"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-public-1440-light.png",
+      "sha256": "9991988edfd2b73d52213291f4caa2108fb4ead3622f31bc142b9f6bf1c9f7ed"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-public-modal-1440-light.png",
+      "sha256": "12f8034690bff7c4338fd90fb50c4024446dc6a2fb9dbdcec3a9e2b1b283ea12"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-owner-1440-dark.png",
+      "sha256": "3a446beb0c732499e5b09b067106a3e80fbeea347612b5a15a8f3d6c8bb78a0b"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-owner-modal-1440-dark.png",
+      "sha256": "becc03c785d1a64cf1b5f563e9e17721b6d8cc8fa8ec14e0dbd2ec1a995a82a6"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-public-1440-dark.png",
+      "sha256": "2574fd97af2408489f339ab421ff80d5c708310111ed31339d11b33f35a342b1"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-1-public-modal-1440-dark.png",
+      "sha256": "3d539d52420d89fd2f49246a578cf10b29c5472520a61fadcc349be4ed1c2c1b"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-owner-320-light.png",
+      "sha256": "493df78b0a26e71825a4f043fe471534b3efc5d134de524b3bcd7163d5ec11af"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-owner-modal-320-light.png",
+      "sha256": "ca24ee290d36f3701e5d67b68f69676e6ff1fd410fde6e6d0c69d8f449fc8381"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-public-320-light.png",
+      "sha256": "a73ff2a974f47659e91625bf3a92078fe9c83a4294cf8fe9561450bc2b5d1d59"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-public-modal-320-light.png",
+      "sha256": "1558c4840977bd9b718e910029ffbe86829dd7d274752bd219ce56cea6ca354a"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-owner-320-dark.png",
+      "sha256": "fb5e16952dd4ae7ab500bc2fafe0c2c95ce92f8b2db7ec72571c8185b51811f7"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-owner-modal-320-dark.png",
+      "sha256": "4c6bae62ef5ff04482e87c505407643cef0e961a48f15f27ececb9c625eeebf3"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-public-320-dark.png",
+      "sha256": "d6b94fbe5ee26725f914701262a2dbdbfb1aaa29abc41bfee75b8f137e8937b0"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-public-modal-320-dark.png",
+      "sha256": "89c6aa682b41927b00d54a3e1cb6f0620447e93ba8116d38a39acc5d026c32db"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-owner-390-light.png",
+      "sha256": "ea39333de9beb30a9af63fb619b741af265f9946b4ede14d7787a0eaf0dcf86f"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-owner-modal-390-light.png",
+      "sha256": "37a151875db9fa700a589258f529d810f07753598fb44de8d14ee7da1ebe5245"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-public-390-light.png",
+      "sha256": "36569ed47c026421bacb93a093699a13f6782d3f6b6327e5e050b2121d828c28"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-public-modal-390-light.png",
+      "sha256": "8f0ae1e43e51507be274b926ed0cf7c859ddee62e4117983dafc4c82c9e7af2a"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-owner-390-dark.png",
+      "sha256": "4a0cffaaab9ccbe31fda0a0231969c85eebbefe8bad2689c0687019259ec1872"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-owner-modal-390-dark.png",
+      "sha256": "72005e4dd090f8ddfda0aad62ef9bcdc7af435b76777054d7082b211c89e7659"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-public-390-dark.png",
+      "sha256": "d918b7def37d986230ad8e8d6bf0f291edd8e3f9ee88204e153a1ae1523a63a7"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-public-modal-390-dark.png",
+      "sha256": "abd6d2493380580d0b898784a2580afd823812998204a1a974d3a4f3adbe3d17"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-owner-1440-light.png",
+      "sha256": "5ec9cf8bc3c50efea3c0a3de2d5ef436a2215c21db3c697345225b4768e30ce5"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-owner-modal-1440-light.png",
+      "sha256": "75670b2d365e629434c5aaa5f4587b52fb5166817cb1343a2395cd11e923578c"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-public-1440-light.png",
+      "sha256": "38ee4b4634d0fa59e4d0bde282c78ea4a49353d28744f7706d8f43b3a8f5a25e"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-public-modal-1440-light.png",
+      "sha256": "c0d8c984a06e17364b377e0cfc0153dced457690daf50b2a9c8022666d0e3428"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-owner-1440-dark.png",
+      "sha256": "5597028ca4c13586dc2917a3e70e1aabffac73b0a99ec463d9d569d90de26ad0"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-owner-modal-1440-dark.png",
+      "sha256": "4961d0b349647841a047e7928d98a81d7c61b6d894245b8baaed441c853dab54"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-public-1440-dark.png",
+      "sha256": "2574fd97af2408489f339ab421ff80d5c708310111ed31339d11b33f35a342b1"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/space-2-public-modal-1440-dark.png",
+      "sha256": "2f89447c01588165b6d29a4b47b71fa559dedd3b818dacff47b67756fedc1e36"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/owner-central-320-light.png",
+      "sha256": "1b10f6dd35383de66c4d24afbb329f5a8cfb4fe43fa463dfab539412d0d99a2d"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/owner-central-320-dark.png",
+      "sha256": "684dce6d5b946d9695a7100da02a3f5c5c10771796fa9163d13d8e200aac4e08"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/owner-central-390-light.png",
+      "sha256": "0b23a51542bd40067d7fadc8e333d32ab249745199a296a6db4aa155dc7f96a2"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/owner-central-390-dark.png",
+      "sha256": "71a65514cafb4f58b45c0a0f8f5ede1286c4c641f8da99f63c7ef799f96343f6"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/owner-central-1440-light.png",
+      "sha256": "b7db21d6c2544082204bb1940327ee33658aaf8410219940445ce36dab8ff8de"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/owner-central-1440-dark.png",
+      "sha256": "26117bb7d642d2dbfc2894bc4c58d633c03e5a8b0d45a9deab2079ad62183711"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-moderation-320-light.png",
+      "sha256": "1b6ac115d57b573246a68dae685a58db44687de15674e0012b1f95e1a7917aab"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-moderation-modal-320-light.png",
+      "sha256": "9a5e45ebce3d598b349aaa8583666ce26425d7985d4fd7b796209efa4bbd9209"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-moderation-320-dark.png",
+      "sha256": "f96feac790ae9f764a35393c9ef38e15b065cb46913e70ae180d973eb835d500"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-moderation-modal-320-dark.png",
+      "sha256": "b14ec760bde867a2941cb4f0aa4857c77581d42b1f117e05097a0ba81d20794e"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-moderation-390-light.png",
+      "sha256": "c525af99f30d9ce2b4c8c7689c25e43446e9f00656c10488324e9b3fa1d86a99"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-moderation-modal-390-light.png",
+      "sha256": "82c7f603fa78941b4599e8acaf7c4a060d0544ac869b19beefdd685f61e3c762"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-moderation-390-dark.png",
+      "sha256": "74b512b7d50a3e9e57137a0e939562c4775914841662d937b1191608c36b9abb"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-moderation-modal-390-dark.png",
+      "sha256": "24e2d702906848ffa54230ca28068e54bee03a24b5619dd971787645c83b99c6"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-moderation-1440-light.png",
+      "sha256": "70f960fec301d8f06fa73f476ffe653519f0592e17632cb012ec188213d79589"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-moderation-modal-1440-light.png",
+      "sha256": "b9f210259ed38fb3a447b238039cc8d7f06ff5ef606e63515ad25eb5830501db"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-moderation-1440-dark.png",
+      "sha256": "c095691aa0dec77cf4e66e3982dcd06d20c3ccf46620eda1b047c613510b9201"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-moderation-modal-1440-dark.png",
+      "sha256": "e85f426c4a604b65a283797016e1136d5d4e4c052abb7274feba91e2f7975ef6"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-engine-320-light.png",
+      "sha256": "3ac8a2d80c29f2b6342a69ade08b9889f1a2d16ae820f5814e1e3b65b5242adc"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-engine-320-dark.png",
+      "sha256": "feb4988dd7198eb8c3b9aed01d8fd959e259b8e214e6202a48e81402d3a87f11"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-engine-390-light.png",
+      "sha256": "07405e10954d1c3547169365802dd286876790b1f2c2fa39438a5e3887af9ec1"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-engine-390-dark.png",
+      "sha256": "f2bbe2806c93e3cedd329f2fb7bdfae3a2f1160de7bc28637e2d4b98c7467fcf"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-engine-1440-light.png",
+      "sha256": "8dd603b8cf63dca73a1052bb87a06958af41246758798750719253c9ec87661f"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-engine-1440-dark.png",
+      "sha256": "53f824fd29021b570f2b4a50f65d348488ef04483d43c81a869325536d1bd8fe"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-listing-limits-320-light.png",
+      "sha256": "8513acc655b46abf4ebb20538d3f09545a42282b1e562048ae0943c5331f6dd8"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-listing-limits-320-dark.png",
+      "sha256": "35a9cddbe95bae877ed9a58dbd4ce44c9716704f15a50e8b1e09dce199873f80"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-listing-limits-390-light.png",
+      "sha256": "bbf6f304ac1aff092c0fb3322eec2dd52f312e7451c8d83147b628b750b0aae4"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-listing-limits-390-dark.png",
+      "sha256": "98187e6eb7102772a41b85d09d44da7e7a4b2b04deb77e7ded4455b40124150e"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-listing-limits-1440-light.png",
+      "sha256": "dd251c996d2324fd19634f600b5ca374a9773c6b4785713c0034a196aa2ca92d"
+    },
+    {
+      "path": "docs/finance-restructure/phase5/evidence51/admin-listing-limits-1440-dark.png",
+      "sha256": "2ff52a9b1b4118b77455776cdb6ae5034d2a1f46cc8f6747752f1067b48dca8a"
+    }
+  ]
+}

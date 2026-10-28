@@ -1,0 +1,35 @@
+{
+  "localOnly": true,
+  "syntheticInventory": true,
+  "audienceMetrics": false,
+  "statisticalGuarantee": false,
+  "samples": [
+    {
+      "draws": 500,
+      "placement": "home_banner",
+      "firstCandidateCounts": {
+        "11cf2c65-2504-46cc-bcf8-b508f791ee11": 58,
+        "1303cc80-306b-48bf-a7fe-32f12c0410cf": 73,
+        "270224c2-e752-45e6-8602-9ebef9da5604": 73,
+        "278b1a33-9b64-453b-821b-2c5493a6a39b": 71,
+        "37f2c299-bcec-4a2d-acd6-a5413b5faa0d": 89,
+        "41881d11-381c-4e11-b08c-5a1e361c5c08": 68,
+        "5b0e669a-6446-41f0-a5b0-d1f3f9bddcda": 68
+      }
+    },
+    {
+      "draws": 500,
+      "placement": "community_banner",
+      "firstCandidateCounts": {
+        "11cf2c65-2504-46cc-bcf8-b508f791ee11": 500
+      }
+    },
+    {
+      "draws": 500,
+      "placement": "community_feed",
+      "firstCandidateCounts": {
+        "11cf2c65-2504-46cc-bcf8-b508f791ee11": 500
+      }
+    }
+  ]
+}

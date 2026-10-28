@@ -1,0 +1,119 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 2
+UPDATE 27
+INSERT 0 4
+UPDATE 4
+UPDATE 1
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE TABLE
+GRANT
+GRANT
+CREATE FUNCTION
+CREATE FUNCTION
+
+{"revision": "15", "priceVersionId": "0c06a1a9-1997-4f51-9799-ce03677656d6"}
+{"revision": "16", "priceVersionId": "7bc22aab-97cf-4008-8b20-bd13cdeab86f"}
+{"revision": "16", "salesEnabled": true}
+{"revision": "17", "salesEnabled": true}
+
+
+
+
+DELETE 2
+
+SET
+ok 1 - missing policy blocks creation without inventing a default
+ok 2 - stale creation API cannot choose a resource implicitly
+ok 3 - stale getter cannot choose an arbitrary resource
+ok 4 - owner cannot configure its own limit
+RESET
+
+SET
+
+
+ok 5 - limit policy has compare-and-swap
+RESET
+
+SET
+INSERT 0 1
+INSERT 0 1
+ok 6 - retry retains exact resource identity
+ok 7 - same key cannot change kind
+INSERT 0 1
+INSERT 0 1
+ok 8 - same owner manages professional and two establishments
+ok 9 - kind filter works in PostgreSQL
+ok 10 - summary page is bounded
+ok 11 - summary exposes seek cursor
+ok 12 - configured type limit is enforced
+ok 13 - getter identifies exact selected resource
+{"version": 1, "listingId": "3ded6099-2f53-4b18-ba1c-2613548b80fa"}
+{"version": 1, "listingId": "09939fec-fa6c-4ce1-8edc-e4e5d2f2ccac"}
+{"version": 1, "listingId": "12105d9c-f4c4-4b2e-8dbb-5b0ff514d83e"}
+
+
+
+RESET
+
+SET
+
+
+
+RESET
+
+SET
+INSERT 0 1
+{"id": "2b7f964a-b886-4f89-a7f9-661f8f6d01f0", "status": "fulfilled", "createdAt": "2026-10-28T12:14:13.090356+00:00", "periodEnd": "2026-10-29T12:14:13.102458+00:00", "totalCash": "5", "resourceId": "3ded6099-2f53-4b18-ba1c-2613548b80fa", "fulfilledAt": "2026-10-28T12:14:13.102458+00:00", "periodStart": "2026-10-28T12:14:13.102458+00:00", "durationDays": "1", "offeringCode": "professional_profile", "unitPriceCash": "5", "priceVersionId": "0c06a1a9-1997-4f51-9799-ce03677656d6", "quoteExpiresAt": "2026-10-28T12:19:13.090356+00:00", "contentRevision": "3"}
+INSERT 0 1
+{"id": "a7271daa-4352-4c35-8e77-0c36f5778c7d", "status": "fulfilled", "createdAt": "2026-10-28T12:14:13.114878+00:00", "periodEnd": "2026-10-30T12:14:13.121766+00:00", "totalCash": "16", "resourceId": "09939fec-fa6c-4ce1-8edc-e4e5d2f2ccac", "fulfilledAt": "2026-10-28T12:14:13.121766+00:00", "periodStart": "2026-10-28T12:14:13.121766+00:00", "durationDays": "2", "offeringCode": "establishment_profile", "unitPriceCash": "8", "priceVersionId": "7bc22aab-97cf-4008-8b20-bd13cdeab86f", "quoteExpiresAt": "2026-10-28T12:19:13.114878+00:00", "contentRevision": "3"}
+{"id": "a7271daa-4352-4c35-8e77-0c36f5778c7d", "status": "fulfilled", "createdAt": "2026-10-28T12:14:13.114878+00:00", "periodEnd": "2026-10-30T12:14:13.121766+00:00", "totalCash": "16", "resourceId": "09939fec-fa6c-4ce1-8edc-e4e5d2f2ccac", "fulfilledAt": "2026-10-28T12:14:13.121766+00:00", "periodStart": "2026-10-28T12:14:13.121766+00:00", "durationDays": "2", "offeringCode": "establishment_profile", "unitPriceCash": "8", "priceVersionId": "7bc22aab-97cf-4008-8b20-bd13cdeab86f", "quoteExpiresAt": "2026-10-28T12:19:13.114878+00:00", "contentRevision": "3"}
+RESET
+ok 14 - two resources debit separately and replay does not debit twice
+ok 15 - paid professional remains public
+ok 16 - only paid establishment A is public
+ok 17 - same owner contract never publishes unpaid establishment B
+ok 18 - entitlement is per resource, not per owner
+INSERT 0 1
+
+SET
+ok 19 - media cannot cross resources even with the same owner
+{"version": 4, "listingId": "09939fec-fa6c-4ce1-8edc-e4e5d2f2ccac"}
+ok 20 - edit preserves approved paid version A
+ok 21 - editing A does not modify B
+RESET
+UPDATE 1
+ok 22 - expiration is independent for A
+ok 23 - A expiration does not expire professional
+
+SET
+ok 24 - another owner cannot retrieve selected draft
+ok 25 - another owner sees no rows
+ok 26 - another owner cannot buy an entitlement for B
+RESET
+
+SET
+ok 27 - account snapshot keeps one row for a multi-resource owner
+ok 28 - administrative account summary counts every concrete resource
+
+RESET
+
+SET
+ok 29 - pause in creation preserves management
+INSERT 0 1
+{"id": "e5efbe68-1630-4d8b-8ed6-b7b734c33c38", "status": "fulfilled", "createdAt": "2026-10-28T12:14:13.211203+00:00", "periodEnd": "2026-10-29T12:14:13.214859+00:00", "totalCash": "8", "resourceId": "09939fec-fa6c-4ce1-8edc-e4e5d2f2ccac", "fulfilledAt": "2026-10-28T12:14:13.214859+00:00", "periodStart": "2026-10-28T12:14:13.214859+00:00", "durationDays": "1", "offeringCode": "establishment_profile", "unitPriceCash": "8", "priceVersionId": "7bc22aab-97cf-4008-8b20-bd13cdeab86f", "quoteExpiresAt": "2026-10-28T12:19:13.211203+00:00", "contentRevision": "3"}
+RESET
+ok 30 - renewal targets only expired A despite pending review and paused creation
+ok 31 - renewal A still cannot activate B
+ok 32 - exactly one ledger debit per fulfilled order
+
+SET
+ok 33 - anonymous users cannot enumerate owner central
+ok 34 - configuration table is not directly public
+RESET
+1..34
+ROLLBACK

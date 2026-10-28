@@ -1,0 +1,17 @@
+✔ central lists compact summaries and links each resource explicitly (96.141482ms)
+✔ creation double-click has one idempotent intent and selects the returned resource (12.21145ms)
+✔ missing policy prevents creation without preventing existing management (7.862513ms)
+✔ backend page cursor is used instead of preloading all resources (11.360768ms)
+✔ explicit selection mounts only that editor and does not load summaries (5.933406ms)
+✔ editorial service sends CAS and approved editable fields only (22.982478ms)
+✔ moderation and history bind the exact resource and revision without financial mutation (0.759055ms)
+✔ server authorization failures are propagated rather than converted to success (0.560685ms)
+✔ creation, selection and seek pagination bind explicit resource/request IDs (0.489133ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 351.995673

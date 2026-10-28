@@ -10,7 +10,7 @@ export function prepareRuntime() {
   writeFileSync(runtime+'/functions/provider-mock.ts', readFileSync(new URL('./provider-mock.ts', import.meta.url)))
   for (const name of ['infinitepay-create-checkout','infinitepay-check-payment','infinitepay-webhook','infinitepay-admin-reconcile']) {
     const path = runtime+'/functions/'+name+'/index.ts'
-    writeFileSync(path, "import '../provider-mock.ts';\n" + readFileSync(path, 'utf8'))
+    writeFileSync(path, "import '../provider-mock.ts';\n" + readFileSync(path, 'utf8').replace("const url = Deno.env.get('SUPABASE_URL')!", "const url = 'https://local-supabase.invalid'"))
   }
   writeFileSync(runtime+'/local.json', JSON.stringify(config))
   return { ...config, secret: SECRET }

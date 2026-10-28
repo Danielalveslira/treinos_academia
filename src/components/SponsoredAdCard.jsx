@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
+const StorefrontImage = lazy(() => import('./StorefrontImage'))
 import { useAdClick, useAdImpression } from '../hooks/useAdMetrics'
 
 // Publicação patrocinada no feed: mesma superfície/raio dos cards do feed, mas com selo "Patrocinado"
@@ -29,7 +30,14 @@ export function SponsoredAdCard({ ad, communityId = null }) {
           próprio removeria o request de terceiro por completo, mas é uma peça de
           infraestrutura maior, fora do escopo desta correção pontual. A moldura
           16:9 é reservada no CSS: a imagem chegando não desloca o feed. */}
-      {ad.imageUrl && !imageFailed && (
+      {ad.mediaId && (
+        <div className="sponsored-ad-media">
+          <Suspense fallback={null}>
+            <StorefrontImage id={ad.mediaId} size="100%" />
+          </Suspense>
+        </div>
+      )}
+      {ad.imageUrl && !ad.mediaId && !imageFailed && (
         <div className="sponsored-ad-media">
           <img
             src={ad.imageUrl}

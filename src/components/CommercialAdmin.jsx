@@ -1,14 +1,28 @@
 import { useEffect, useState } from 'react'
-import { Box, Heading, Spinner } from '@primer/react'
+import { Box, Button, Heading, Spinner } from '@primer/react'
 import { supabase } from '../supabase/config'
 import { validatePartnerProduct } from '../utils/validators'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
 import { ToastFlash } from './ToastFlash'
+import { listLegacyProducts } from '../services/storefrontService'
+import StorefrontMaintenance from './StorefrontMaintenance'
+import StorefrontManager from './StorefrontManager'
 import { PartnerProductForm } from './PartnerProductForm'
 import { PartnerProductList } from './PartnerProductList'
 
-const empty = { name: '', brand: '', description: '', category: '', image_url: '', store_url: '', sponsored: false, approved: false, starts_at: '', ends_at: '' }
+const empty = {
+  name: '',
+  brand: '',
+  description: '',
+  category: '',
+  image_url: '',
+  store_url: '',
+  sponsored: false,
+  approved: false,
+  starts_at: '',
+  ends_at: '',
+}
 // store_url/image_url/ends_at usam nomes diferentes em validatePartnerProduct
 // (storeUrl/imageUrl/endsAt) -- este mapa só traduz as chaves de erro de volta pros
 // campos do formulário (que seguem o nome das colunas de partner_products).
@@ -18,7 +32,10 @@ export default function CommercialAdmin() {
   const [leads, setLeads] = useState([])
   const [products, setProducts] = useState([])
   const [productsLoading, setProductsLoading] = useState(true)
+  const [hasMoreProducts, setHasMoreProducts] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [form, setForm] = useState(empty)
+  const [legacyTarget, setLegacyTarget] = useState(null)
   const [editing, setEditing] = useState(null)
   const [productErrors, setProductErrors] = useState({})
   const [message, setMessage] = useState('')
@@ -28,14 +45,32 @@ export default function CommercialAdmin() {
 
   async function refresh() {
     const [leadResult, productResult] = await Promise.all([
-      supabase.from('commercial_leads').select('id,company,contact,email,whatsapp,segment,website,modality,message,status,created_at').order('created_at', { ascending: false }).limit(100),
-      supabase.from('partner_products').select('*').order('created_at', { ascending: false }).limit(100),
+      supabase
+        .from('commercial_leads')
+        .select(
+          'id,company,contact,email,whatsapp,segment,website,modality,message,status,created_at'
+        )
+        .order('created_at', { ascending: false })
+        .limit(100),
+      listLegacyProducts()
+        .then((data) => ({ data, error: null }))
+        .catch((error) => ({ error })),
     ])
-    if (leadResult.error || productResult.error) setMessage('Não foi possível carregar os dados comerciais. Confira a migração e suas permissões.')
-    else { setLeads(leadResult.data); setProducts(productResult.data); setMessage('') }
+    if (leadResult.error || productResult.error)
+      setMessage(
+        'Não foi possível carregar os dados comerciais. Confira a migração e suas permissões.'
+      )
+    else {
+      setLeads(leadResult.data)
+      setProducts(productResult.data)
+      setHasMoreProducts(productResult.data.length === 20)
+      setMessage('')
+    }
     setProductsLoading(false)
   }
-  useEffect(() => { refresh() }, [])
+  useEffect(() => {
+    refresh()
+  }, [])
 
   async function changeStatus(id, status) {
     setBusy(true)
@@ -101,9 +136,18 @@ export default function CommercialAdmin() {
       ? await supabase.from('partner_products').update(payload).eq('id', editing)
       : await supabase.from('partner_products').insert(payload)
     setBusy(false)
-    if (error) { showToast('Não foi possível salvar o produto. Verifique os campos e suas permissões.', 'danger'); return }
+    if (error) {
+      showToast(
+        'Não foi possível salvar o produto. Verifique os campos e suas permissões.',
+        'danger'
+      )
+      return
+    }
     showToast(editing ? 'Produto atualizado.' : 'Produto cadastrado.')
-    setForm(empty); setEditing(null); setProductErrors({}); refresh()
+    setForm(empty)
+    setEditing(null)
+    setProductErrors({})
+    refresh()
   }
 
   async function removeProduct(product) {
@@ -115,51 +159,111 @@ export default function CommercialAdmin() {
     setBusy(true)
     const { error } = await supabase.from('partner_products').delete().eq('id', product.id)
     setBusy(false)
-    if (error) { showToast('Não foi possível excluir o produto.', 'danger'); return }
+    if (error) {
+      showToast('Não foi possível excluir o produto.', 'danger')
+      return
+    }
     showToast('Produto excluído.')
     if (editing === product.id) cancelEdit()
     refresh()
   }
 
-  return <div className="commercial-admin">
-    <p role="status">{message}</p>
-    <h2>Propostas comerciais</h2>
-    {leads.length === 0 && <p>Nenhuma proposta recebida.</p>}
-    {leads.map((lead) => <article key={lead.id} className="commercial-admin-card">
-      <h3>{lead.company} · {lead.modality}</h3>
-      <p>{lead.contact} · <a href={`mailto:${lead.email}`}>{lead.email}</a>{lead.whatsapp ? ` · ${lead.whatsapp}` : ''}</p>
-      <p>{lead.segment} · <a href={lead.website} target="_blank" rel="noopener noreferrer">Site informado ↗</a></p>
-      <p>{lead.message}</p>
-      <label>Status <select value={lead.status} disabled={busy} onChange={(event) => changeStatus(lead.id, event.target.value)}><option value="novo">Novo</option><option value="em_contato">Em contato</option><option value="encerrado">Encerrado</option></select></label>
-    </article>)}
+  return (
+    <div className="commercial-admin">
+      <p role="status">{message}</p>
+      <h2>Propostas comerciais</h2>
+      {leads.length === 0 && <p>Nenhuma proposta recebida.</p>}
+      {leads.map((lead) => (
+        <article key={lead.id} className="commercial-admin-card">
+          <h3>
+            {lead.company} · {lead.modality}
+          </h3>
+          <p>
+            {lead.contact} · <a href={`mailto:${lead.email}`}>{lead.email}</a>
+            {lead.whatsapp ? ` · ${lead.whatsapp}` : ''}
+          </p>
+          <p>
+            {lead.segment} ·{' '}
+            <a href={lead.website} target="_blank" rel="noopener noreferrer">
+              Site informado ↗
+            </a>
+          </p>
+          <p>{lead.message}</p>
+          <label>
+            Status{' '}
+            <select
+              value={lead.status}
+              disabled={busy}
+              onChange={(event) => changeStatus(lead.id, event.target.value)}
+            >
+              <option value="novo">Novo</option>
+              <option value="em_contato">Em contato</option>
+              <option value="encerrado">Encerrado</option>
+            </select>
+          </label>
+        </article>
+      ))}
 
-    <Box sx={{ mt: 5 }}>
-      <Heading as="h2" sx={{ fontSize: 2, mb: 3 }}>Produtos da vitrine</Heading>
-
-      <ToastFlash toasts={toasts} />
-
-      <PartnerProductForm
-        form={form}
-        errors={productErrors}
-        editing={Boolean(editing)}
-        requireImage={!editing || form.approved}
-        busy={busy}
-        onFieldChange={onFieldChange}
-        onSubmit={saveProduct}
-        onCancel={cancelEdit}
+      <Box sx={{ mt: 5 }}>
+        <StorefrontManager admin />
+      </Box>
+      <StorefrontMaintenance
+        legacy={legacyTarget}
+        onCloseLegacy={() => setLegacyTarget(null)}
+        onAssociated={refresh}
       />
 
-      {productsLoading ? (
-        <Spinner sx={{ display: 'block', mx: 'auto', my: 4 }} />
-      ) : (
-        <PartnerProductList
-          products={products}
-          now={Date.now()}
+      <Box sx={{ mt: 5 }}>
+        <Heading as="h2" sx={{ fontSize: 2, mb: 3 }}>
+          Produtos legados (somente administração)
+        </Heading>
+
+        <ToastFlash toasts={toasts} />
+
+        <PartnerProductForm
+          form={form}
+          errors={productErrors}
+          editing={Boolean(editing)}
+          requireImage={!editing || form.approved}
           busy={busy}
-          onEdit={startEdit}
-          onDelete={removeProduct}
+          onFieldChange={onFieldChange}
+          onSubmit={saveProduct}
+          onCancel={cancelEdit}
         />
-      )}
-    </Box>
-  </div>
+
+        {productsLoading ? (
+          <Spinner sx={{ display: 'block', mx: 'auto', my: 4 }} />
+        ) : (
+          <PartnerProductList
+            products={products}
+            busy={busy}
+            onEdit={startEdit}
+            onDelete={removeProduct}
+            onAssociate={(product) =>
+              setLegacyTarget({ ...product, requestId: crypto.randomUUID() })
+            }
+          />
+        )}
+        {hasMoreProducts && (
+          <Button
+            disabled={loadingMore || busy}
+            onClick={async () => {
+              setLoadingMore(true)
+              try {
+                const next = await listLegacyProducts(products.at(-1).id)
+                setProducts((prev) => [...prev, ...next])
+                setHasMoreProducts(next.length === 20)
+              } catch {
+                setMessage('Não foi possível carregar mais registros legados.')
+              } finally {
+                setLoadingMore(false)
+              }
+            }}
+          >
+            Mais produtos legados
+          </Button>
+        )}
+      </Box>
+    </div>
+  )
 }

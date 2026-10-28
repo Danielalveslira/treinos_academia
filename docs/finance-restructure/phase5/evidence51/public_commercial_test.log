@@ -1,0 +1,33 @@
+BEGIN
+DELETE 1
+BEGIN
+UPDATE 34
+SET
+ok 1 - anonymous visitors cannot read commercial contacts
+ok 2 - anonymous visitors cannot insert contacts directly
+ok 3 - server rejects invalid email
+ok 4 - server rejects insecure website
+ok 5 - server requires privacy consent
+ok 6 - honeypot rejects automated submissions
+ok 7 - validated anonymous submission persists
+RESET
+ok 8 - email is normalized and exactly one contact was stored
+SET
+ok 9 - second submission within the daily allowance works
+ok 10 - third submission within the daily allowance works
+ok 11 - fourth submission is rate limited
+RESET
+INSERT 0 4
+SET
+ok 12 - legacy table cannot bypass storefront contracts
+ok 13 - legacy approvals do not grant storefront rights
+ok 14 - unbound legacy brands remain private
+ok 15 - search cannot reveal a draft
+ok 16 - search cannot reveal an expired product
+ok 17 - search cannot reveal a product before its start date
+ok 18 - filters cannot reveal unbound legacy products
+ok 19 - category facets use only published products
+ok 20 - anonymous visitors cannot publish products
+RESET
+1..20
+ROLLBACK

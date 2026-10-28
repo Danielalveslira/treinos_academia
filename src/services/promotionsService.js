@@ -1,15 +1,31 @@
 import { supabase } from '../supabase/config'
-import { mapStatusRow, FEED_COLUMNS } from './statusesService'
+import { mapStatusRow } from './statusesService'
 import { mapCommunityRow } from './communitiesService'
+import { adAuthorizationDeadline } from '../utils/adAuthorization'
 
-const FEATURED_LIMIT = 6
 const MY_PROMOTIONS_LIMIT = 50
 const ADMIN_LIST_LIMIT = 200
+
+export async function authorizePromotionSources(communityIds = [], statusIds = []) {
+  const started = performance.now()
+  const { data, error } = await supabase.rpc('get_advertising_promotion_authorizations', {
+    p_community_ids: communityIds,
+    p_status_ids: statusIds,
+  })
+  if (error) throw error
+  return {
+    communityIds: data.community_ids,
+    statusIds: data.status_ids,
+    deadline: adAuthorizationDeadline(data.expires_at, data.server_time, started),
+  }
+}
 
 function mapPromotionRow(row) {
   return {
     id: row.id,
     ownerId: row.owner_id,
+    billingMode: row.billing_mode,
+    resourceId: row.commercial_resource_id,
     targetType: row.target_type,
     targetId: row.target_id,
     communityId: row.community_id,
@@ -25,35 +41,6 @@ function mapPromotionRow(row) {
     clickCount: row.click_count,
     createdAt: row.created_at,
   }
-}
-
-// Preço/duração sempre vêm daqui (economy_config.promotionPackages), nunca digitados
-// pelo cliente; o servidor revalida tudo de novo antes de debitar (create_promotion).
-export async function getPromotionPackages(targetType) {
-  const { data, error } = await supabase
-    .from('economy_config')
-    .select('config')
-    .eq('id', true)
-    .maybeSingle()
-  if (error) throw error
-  const promotionPackages = data?.config?.promotionPackages || {}
-  return Object.entries(promotionPackages)
-    .filter(([, pkg]) => pkg?.active === true && (!targetType || pkg?.targetType === targetType))
-    .map(([packageId, pkg]) => ({ packageId, ...pkg }))
-}
-
-// requestId gerado uma vez pelo chamador e reenviado em qualquer retry -- mesmo
-// mecanismo de idempotência de requestCashPurchase/createCommunityWithCash (ver
-// resolveRequestId em utils/cashPurchaseFlow.js, reaproveitado pelo componente).
-export async function createPromotion({ targetType, targetId, packageId, requestId }) {
-  const { data, error } = await supabase.rpc('create_promotion', {
-    p_target_type: targetType,
-    p_target_id: targetId,
-    p_package_id: packageId,
-    p_request_id: requestId,
-  })
-  if (error) throw error
-  return data
 }
 
 export async function cancelPromotion({ promotionId, reason }) {
@@ -78,30 +65,17 @@ export async function recordPromotionClick({ targetType, targetId, promotionId }
   return data
 }
 
-// Posts usam a view com promoção validada no servidor. Comunidades usam os campos
-// denormalizados no próprio alvo (promoted/promoted_until), filtrados no servidor
-// (nunca limit() antes de tirar os expirados). Um post/comunidade cuja janela já
-// passou simplesmente não bate mais o filtro `promoted_until > agora`.
+// Server time and publication RLS authorize the bounded, equivalent rotation.
 export async function listFeaturedStatusesForCommunity(communityId) {
-  const { data, error } = await supabase
-    .from('status_publications')
-    .select(FEED_COLUMNS)
-    .eq('community_id', communityId)
-    .gt('verified_promoted_until', new Date().toISOString())
-    .order('verified_promoted_until', { ascending: true })
-    .limit(FEATURED_LIMIT)
+  const { data, error } = await supabase.rpc('list_commercial_featured_statuses', {
+    p_community: communityId,
+  })
   if (error) throw error
   return data.map(mapStatusRow)
 }
 
 export async function listFeaturedCommunities() {
-  const { data, error } = await supabase
-    .from('communities')
-    .select('*')
-    .eq('promoted', true)
-    .gt('promoted_until', new Date().toISOString())
-    .order('promoted_until', { ascending: true })
-    .limit(FEATURED_LIMIT)
+  const { data, error } = await supabase.rpc('list_commercial_featured_communities')
   if (error) throw error
   return data.map(mapCommunityRow)
 }
@@ -130,4 +104,18 @@ export async function listAllPromotionsForAdmin() {
     .limit(ADMIN_LIST_LIMIT)
   if (error) throw error
   return data.map(mapPromotionRow)
+}
+
+export async function prepareCommercialPromotion(targetType, targetId) {
+  const { data, error } = await supabase.rpc('prepare_commercial_promotion', {
+    p_type: targetType,
+    p_id: targetId,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function resubmitCommercialPromotion(id) {
+  const { error } = await supabase.rpc('resubmit_commercial_promotion', { p_id: id })
+  if (error) throw error
 }

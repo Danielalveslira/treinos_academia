@@ -1,0 +1,56 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "responses": [
+    {
+      "path": "/profissionais/4a45cef5-48cf-45f7-b5ad-0456a2a9e0f6",
+      "status": 200,
+      "robots": "index, follow",
+      "approvedHtml": true,
+      "pendingDataAbsent": true,
+      "canonical": true
+    },
+    {
+      "path": "/profissionais/4a45cef5-48cf-45f7-b5ad-0456a2a9e0f6",
+      "status": 404,
+      "expiredApiNull": true,
+      "expiredMedia404": true,
+      "removedFromSitemap": true
+    },
+    {
+      "path": "/locais/f0bdf7e7-e540-4929-91cf-5042d5e22d99",
+      "status": 200,
+      "robots": "index, follow",
+      "approvedHtml": true,
+      "pendingDataAbsent": true,
+      "canonical": true
+    },
+    {
+      "path": "/locais/f0bdf7e7-e540-4929-91cf-5042d5e22d99",
+      "status": 404,
+      "expiredApiNull": true,
+      "expiredMedia404": true,
+      "removedFromSitemap": true
+    }
+  ],
+  "security": [
+    {
+      "kind": "professional",
+      "foreignEditDenied": true,
+      "foreignAdminReadDenied": true,
+      "directDraftTableDenied": true,
+      "directPublishedTableDenied": true,
+      "ownershipPayloadDenied": true
+    },
+    {
+      "kind": "space",
+      "foreignEditDenied": true,
+      "foreignAdminReadDenied": true,
+      "directDraftTableDenied": true,
+      "directPublishedTableDenied": true,
+      "ownershipPayloadDenied": true
+    }
+  ],
+  "legacyRedirect308": true,
+  "sitemapEligibleOnly": true
+}

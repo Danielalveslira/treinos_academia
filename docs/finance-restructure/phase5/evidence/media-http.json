@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "ownerDenied": true,
+  "realStorageDeletion": true,
+  "allocatedAndReadyOrphansCleaned": true,
+  "lostUploadAssociationRecovered": true,
+  "referencedBytesPreserved": true,
+  "replaySafe": true,
+  "claimed": 6,
+  "completed": 6,
+  "failed": 0
+}

@@ -97,7 +97,7 @@ reset role;
 -- ===== Contrato de privilégios (estado, não comportamento) =====
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and p.prosecdef and p.prokind = 'f' and has_function_privilege('anon', p.oid, 'execute')
-    and p.proname not in ('list_published_professional_listings', 'is_superadmin', 'has_app_access', 'is_community_member', 'is_community_owner', 'can_post_in_community', 'community_access_allowed', 'push_delivery_ack', 'submit_commercial_lead', 'public_list_professionals', 'public_get_professional', 'public_professional_avatar_visible')),
+    and p.proname not in ('list_published_professional_listings', 'is_superadmin', 'has_app_access', 'is_community_member', 'is_community_owner', 'can_post_in_community', 'community_access_allowed', 'push_delivery_ack', 'submit_commercial_lead', 'public_list_professionals', 'public_get_professional', 'public_professional_avatar_visible','public_product_catalog','authorize_storefront_media','public_storefront_sitemap','public_listing_sitemap')),
   0, 'anon só executa a listagem pública, os auxiliares de RLS e o ACK de telemetria do Push');
 select is((select count(*)::int from pg_proc p where p.prosecdef and p.prokind = 'f' and p.pronamespace in ('public'::regnamespace, 'private'::regnamespace)
   and exists (select 1 from unnest(p.proconfig) c where c ~ '^search_path=' and c <> 'search_path=""' and c !~ 'pg_temp')),

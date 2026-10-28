@@ -26,12 +26,19 @@ export const FINANCIAL_LABELS = {
 }
 
 export const SHOWCASE_LABELS = {
+  multiple: 'Vários cadastros',
   none: 'Sem vitrine',
   draft: 'Rascunho',
   published: 'Ativo',
   archived: 'Arquivada',
   suspended: 'Suspensa',
   deleting: 'Em exclusão',
+}
+
+export function showcaseSummary(account) {
+  return account.showcase_count > 1
+    ? `${account.showcase_count} cadastros`
+    : SHOWCASE_LABELS[account.showcase_status] || account.showcase_status
 }
 
 // deletion_jobs.state de contas (mesmos rótulos do painel "Exclusão de contas").
@@ -265,7 +272,7 @@ export const CSV_COLUMNS = [
   ['Comunidades', (a) => a.community_count],
   ['Financeiro', (a) => FINANCIAL_LABELS[a.financial_status] || a.financial_status],
   ['Flags', (a) => a.flags_count],
-  ['Vitrine', (a) => SHOWCASE_LABELS[a.showcase_status] || a.showcase_status],
+  ['Cadastros', showcaseSummary],
   ['Exclusão', (a) => DELETION_LABELS[a.deletion_status] || a.deletion_status],
   ['Versão legal aceita', (a) => a.accepted_legal_version || ''],
 ]

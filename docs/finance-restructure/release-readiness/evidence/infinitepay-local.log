@@ -1,0 +1,13 @@
+✔ supabase/functions/infinitepay-admin-reconcile/batch.test.js (170.802708ms)
+✔ supabase/functions/infinitepay-create-checkout/core.test.js (248.012089ms)
+✔ supabase/functions/infinitepay-webhook/handler.test.js (197.101482ms)
+✔ supabase/functions/infinitepay-webhook/limitedJson.test.js (135.431144ms)
+✔ supabase/functions/infinitepay-webhook/payment.test.js (135.772546ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 905.924961

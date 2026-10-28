@@ -1,0 +1,10 @@
+{
+  "localOnly": true,
+  "activeDemoStorefront": "fb63e690-d5be-4928-aaff-a3dba988cc34",
+  "editorialDataDeleted": false,
+  "financialDataDeleted": false,
+  "visibleStorefronts": 1,
+  "fulfilledWithoutLedger": 0,
+  "missingConcreteStorefront": 0,
+  "otherFixturesPreserved": true
+}

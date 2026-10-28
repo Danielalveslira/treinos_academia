@@ -34,8 +34,12 @@ export function mapCommunityRow(row) {
     createdAt: row.created_at,
     ownerId: row.owner_id,
     deletionStatus: row.deletion_status,
-    promoted: row.promoted,
-    promotedUntil: row.promoted_until,
+    promoted: Object.hasOwn(row, 'verified_promoted_until')
+      ? row.verified_promoted_until != null
+      : row.promoted,
+    promotedUntil: Object.hasOwn(row, 'verified_promoted_until')
+      ? row.verified_promoted_until
+      : row.promoted_until,
     activePromotionId: row.active_promotion_id,
     tier: row.tier,
     postRetentionMode: row.post_retention_mode,
@@ -43,19 +47,19 @@ export function mapCommunityRow(row) {
   }
 }
 
-export async function listActiveCommunities() {
-  const { data, error } = await supabase
-    .from('communities')
-    .select('*')
+export async function listActiveCommunities(ownerId = null) {
+  let query = supabase
+    .from(ownerId ? 'communities' : 'communities_with_promotions')
+    .select(ownerId ? 'id,name,owner_id' : '*')
     .eq('is_active', true)
-    .order('name')
-    .limit(MAX_COMMUNITIES)
+  if (ownerId) query = query.eq('owner_id', ownerId)
+  const { data, error } = await query.order('name').limit(MAX_COMMUNITIES)
   if (error) throw error
   return data.map(mapCommunityRow)
 }
 
 export async function listCommunitiesPage(cursor = null, pageSize = 25) {
-  let q = supabase.from('communities').select('*').order('name').limit(pageSize)
+  let q = supabase.from('communities_with_promotions').select('*').order('name').limit(pageSize)
   if (cursor) q = q.gt('name', cursor)
   const { data, error } = await q
   if (error) throw error
@@ -67,7 +71,7 @@ export async function listCommunitiesPage(cursor = null, pageSize = 25) {
 
 export async function getCommunity(communityId) {
   const { data, error } = await supabase
-    .from('communities')
+    .from('communities_with_promotions')
     .select('*')
     .eq('id', communityId)
     .maybeSingle()

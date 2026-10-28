@@ -1,0 +1,59 @@
+{
+  "passed": true,
+  "realLocalAuth": true,
+  "realPostgres": true,
+  "adminPricePublished": true,
+  "quoteConfirmDebitGrant": true,
+  "balanceDelta": "42",
+  "ledger": [
+    {
+      "orderId": "a8f8a90a-10b5-40a4-bb4e-e470cc55904e",
+      "totalCash": "21",
+      "debits": 1
+    },
+    {
+      "orderId": "932132a9-0c8b-4005-8279-097e0a062f3a",
+      "totalCash": "21",
+      "debits": 1
+    }
+  ],
+  "oneClientConfirmationOnDoubleClick": true,
+  "expiryRecheckedByServer": true,
+  "renewalAfterExpiry": true,
+  "phase1And2PagesRender": true,
+  "externalFinancialRequests": 0,
+  "telemetryBlocked": 6,
+  "pageErrors": [],
+  "captures": [
+    {
+      "width": 320,
+      "mode": "light",
+      "overflow": false
+    },
+    {
+      "width": 320,
+      "mode": "dark",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "mode": "light",
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "mode": "dark",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "mode": "light",
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false
+    }
+  ]
+}

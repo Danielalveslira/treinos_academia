@@ -1,0 +1,26 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 1
+UPDATE 1
+41000000-0000-0000-0000-000000000001
+INSERT 0 1
+INSERT 0 1
+{"version": 2, "listingId": "42000000-0000-0000-0000-000000000001"}
+ok 1 - save persists every contact in the draft
+ok 2 - save advances revision once
+ok 3 - retry of stale save cannot overwrite committed draft
+ok 4 - owner reload recovers authoritative saved version
+ok 5 - legacy prepare cannot self-publish
+ok 6 - legacy finalize fails closed even for trusted invocation
+
+ok 7 - lost submit response cannot submit a stale revision
+ok 8 - owner reload recovers authoritative submitted version
+ok 9 - retry leaves content submitted for moderation
+ok 10 - no public snapshot is created by owner submission
+ok 11 - pending submission remains unavailable publicly
+ok 12 - save and retry never create a financial order
+1..12
+ROLLBACK

@@ -1,0 +1,25 @@
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 2
+UPDATE 1
+SELECT 1
+ok 1 - expiry frozen by server
+ok 2 - provider check claimed
+ok 3 - second concurrent/repeated check limited persistently
+ok 4 - client cannot claim check
+UPDATE 1
+{"reason": "needs_review", "credited": false}
+f2000000-0000-0000-0000-000000000002
+ok 5 - NULL resolution rejected
+{"id": "b20b3f27-466e-4b0a-9004-30c2170d5ffa", "replay": false, "status": "cancelled"}
+ok 6 - late replay cannot credit an externally refunded purchase
+ok 7 - no ledger credit after refund
+
+
+ok 8 - second real payment indication kept exactly once for review
+ok 9 - verified conflict never manufactures a second credit
+ok 10 - client cannot claim provider verification
+1..10
+ROLLBACK

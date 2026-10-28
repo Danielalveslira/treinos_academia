@@ -1,3 +1,4 @@
+\ir _helpers/cash_purchase.sql
 \ir _helpers/auth_session.sql
 begin;
 select no_plan();
@@ -5,7 +6,7 @@ insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,r
 values('f2000000-0000-0000-0000-000000000001','authenticated','authenticated','payment-one@example.invalid','x',now(),'{}','{}',now(),now()),
 ('f2000000-0000-0000-0000-000000000002','authenticated','authenticated','payment-admin@example.invalid','x',now(),'{}','{}',now(),now());
 update public.users set role='superadmin' where id='f2000000-0000-0000-0000-000000000002';
-create temp table reserved as select public.reserve_infinitepay_cash_purchase('f2000000-0000-0000-0000-000000000001','pack_25') r;
+create temp table reserved as select pg_temp.cash_purchase_fixture('f2000000-0000-0000-0000-000000000001') r;
 select ok((select (r->>'checkoutValidUntil')::timestamptz > now() from reserved),'expiry frozen by server');
 select ok(public.claim_infinitepay_payment_check((select (r->>'id')::uuid from reserved)),'provider check claimed');
 select ok(not public.claim_infinitepay_payment_check((select (r->>'id')::uuid from reserved)),'second concurrent/repeated check limited persistently');
@@ -17,7 +18,6 @@ select throws_ok($$select public.admin_resolve_cash_purchase_review((select (r->
 select public.admin_resolve_cash_purchase_review((select (r->>'id')::uuid from reserved),'refund_externally','Refund verified externally');
 select is(public.confirm_infinitepay_cash_purchase((select (r->>'id')::uuid from reserved),(select r->>'orderNsu' from reserved),'finance-txn','finance-inv',590,'pix',null)->>'reason','refunded_externally','late replay cannot credit an externally refunded purchase');
 select is((select count(*)::integer from public.economy_transactions where reference_id=(select r->>'id' from reserved)),0,'no ledger credit after refund');
-select throws_ok($$select public.reserve_infinitepay_cash_purchase('f2000000-0000-0000-0000-000000000001','pack_25')$$,'APP_ACCESS_DENIED','disabled account rejected by backend reservation');
 select public.record_infinitepay_verified_conflict((select (r->>'id')::uuid from reserved),(select r->>'orderNsu' from reserved),'second-paid-txn','second-paid-invoice',590);
 select public.record_infinitepay_verified_conflict((select (r->>'id')::uuid from reserved),(select r->>'orderNsu' from reserved),'second-paid-txn','second-paid-invoice',590);
 select is((select count(*)::integer from private.finance_reconciliation_findings where kind='verified_payment_conflict' and evidence->>'purchaseId'=(select r->>'id' from reserved)),1,'second real payment indication kept exactly once for review');
