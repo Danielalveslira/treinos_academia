@@ -52,7 +52,7 @@ const claims = (user) =>
 const asUser = (user, source) => sql(`begin;${claims(user)}${source};commit;`)
 for (const user of [admin, buyer, other])
   await sql(
-    `insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)values(${q(user)},'authenticated','authenticated',${q(user + '@example.invalid')},'x',now(),'{}','{}',now(),now());insert into auth.sessions(id,user_id,created_at,updated_at)values(${q(sessions.get(user))},${q(user)},now(),now())`
+    `insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)values(${q(user)},'authenticated','authenticated',${q(user + '@example.invalid')},'x',now(),'{}','{}',now(),now());insert into auth.sessions(id,user_id,created_at,updated_at)values(${q(sessions.get(user))},${q(user)},now(),now());update public.users set legal_acceptance_version=(select version from public.legal_policy where id),legal_acceptance_digest=(select digest from public.legal_policy where id) where id=${q(user)}`
   )
 await sql(
   `update public.users set role='superadmin' where id=${q(admin)};insert into public.commercial_offerings(code,name,description,integration_ready)values(${q(code)},'Synthetic concurrency','Synthetic fixture only',true)`

@@ -43,35 +43,6 @@ function mapPromotionRow(row) {
   }
 }
 
-// Preço/duração sempre vêm daqui (economy_config.promotionPackages), nunca digitados
-// pelo cliente; o servidor revalida tudo de novo antes de debitar (create_promotion).
-export async function getPromotionPackages(targetType) {
-  const { data, error } = await supabase
-    .from('economy_config')
-    .select('config')
-    .eq('id', true)
-    .maybeSingle()
-  if (error) throw error
-  const promotionPackages = data?.config?.promotionPackages || {}
-  return Object.entries(promotionPackages)
-    .filter(([, pkg]) => pkg?.active === true && (!targetType || pkg?.targetType === targetType))
-    .map(([packageId, pkg]) => ({ packageId, ...pkg }))
-}
-
-// requestId gerado uma vez pelo chamador e reenviado em qualquer retry -- mesmo
-// mecanismo de idempotência de requestCashPurchase/createCommunityWithCash (ver
-// resolveRequestId em utils/cashPurchaseFlow.js, reaproveitado pelo componente).
-export async function createPromotion({ targetType, targetId, packageId, requestId }) {
-  const { data, error } = await supabase.rpc('create_promotion', {
-    p_target_type: targetType,
-    p_target_id: targetId,
-    p_package_id: packageId,
-    p_request_id: requestId,
-  })
-  if (error) throw error
-  return data
-}
-
 export async function cancelPromotion({ promotionId, reason }) {
   const { data, error } = await supabase.rpc('cancel_promotion', {
     p_promotion_id: promotionId,

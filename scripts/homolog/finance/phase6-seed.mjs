@@ -76,7 +76,7 @@ for (const p of inv.placements.filter((p) =>
 ))
   await rpc('admin_configure_advertising_placement', {
     p_code: p.code,
-    p_capacity: 4,
+    p_capacity: Math.max(4, Number(p.capacity)),
     p_sales_enabled: true,
     p_delivery_enabled: true,
     p_expected_revision: p.revision,

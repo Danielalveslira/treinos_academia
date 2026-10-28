@@ -1,0 +1,32 @@
+SCHEMA_DIFFERENCES []
+{
+  "negative_wallet": 0,
+  "duplicate_natural_keys": 0,
+  "duplicate_order_debits": 0,
+  "wallet_ledger_mismatch": 0,
+  "fulfilled_without_debit": 0,
+  "reversed_without_refund": 0,
+  "orphan_commercial_ledger": 0,
+  "metrics_collection_enabled": false,
+  "wallet_update_service_role": false,
+  "credit_helper_authenticated": false,
+  "wallet_update_authenticated": false,
+  "credited_purchase_without_ledger": 0,
+  "entitlement_without_fulfilled_order": 0
+}
+{
+  "negative_wallet": 0,
+  "duplicate_natural_keys": 0,
+  "duplicate_order_debits": 0,
+  "wallet_ledger_mismatch": 0,
+  "fulfilled_without_debit": 0,
+  "reversed_without_refund": 0,
+  "orphan_commercial_ledger": 0,
+  "metrics_collection_enabled": false,
+  "wallet_update_service_role": false,
+  "credit_helper_authenticated": false,
+  "wallet_update_authenticated": false,
+  "credited_purchase_without_ledger": 0,
+  "entitlement_without_fulfilled_order": 0
+}
+LOCAL_REGISTRY_REPAIRED 19

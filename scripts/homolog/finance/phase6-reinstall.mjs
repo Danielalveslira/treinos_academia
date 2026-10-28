@@ -23,7 +23,7 @@ const early = [
   '20261204000002_admin_account_listing_summary.sql',
 ]
 const phase6 = readdirSync('supabase/migrations')
-  .filter((n) => n.startsWith('20261205'))
+  .filter((n) => n.startsWith('20261205') || n.startsWith('20261206'))
   .sort()
 const digest = `select jsonb_build_object('wallet',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by user_id)::text,'')) from public.wallets t),'ledger',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by id)::text,'')) from public.economy_transactions t),'orders',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by id)::text,'')) from public.commercial_orders t),'rights',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by id)::text,'')) from public.visibility_entitlements t),'prices',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by id)::text,'')) from public.commercial_price_versions t),'legacyAds',(select md5(coalesce(jsonb_agg(jsonb_build_array(id,title,description,expires_at,community_ids,is_global,display_mode) order by id)::text,'')) from public.sponsored_ads)) value`
 const source =

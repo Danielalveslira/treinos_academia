@@ -1,0 +1,37 @@
+BEGIN
+DROP INDEX
+SET
+LOAD
+SET
+SET
+SET
+SET
+SET
+INSERT 0 10000
+ANALYZE
+ANALYZE
+f4af5a8e-1989-4ad3-b894-dc1206475e5c
+{"sub":"f4af5a8e-1989-4ad3-b894-dc1206475e5c","aud":"","exp":1793212734,"iat":1793209134,"email":"publicidade-19961268-c97a-432f-bcaa-91b630c96c20@example.invalid","phone":"","app_metadata":{"provider":"email","providers":["email"]},"user_metadata":{"email_verified":true},"role":"authenticated","aal":"aal1","amr":[{"method":"password","timestamp":1793209134}],"session_id":"bab38506-7e9d-45bf-96ad-abb21f8a964b","is_anonymous":false}
+SET
+CREATE TABLE
+DO
+RESET
+before|13.3815|41.0567
+SET
+SET
+[{"id": "11cf2c65-2504-46cc-bcf8-b508f791ee11", "title": "Campanha sintética network", "cta_type": "external", "media_id": null, "cta_label": "Saiba mais", "image_url": null, "is_global": true, "cta_target": "https://example.invalid/phase6", "expires_at": "2026-10-29T17:37:23.134894+00:00", "description": "Sem oferta ou audiência real", "server_time": "2026-10-28T17:44:18.635622+00:00", "display_mode": ["banner"], "partner_name": "Empresa sintética Fase 6"}]
+RESET
+SET
+CREATE INDEX
+ANALYZE
+SET
+CREATE TABLE
+DO
+RESET
+after|12.63|18.38165
+SET
+SET
+[{"id": "41881d11-381c-4e11-b08c-5a1e361c5c08", "title": "Publicidade sintética de revisão Fase 6", "cta_type": "external", "media_id": null, "cta_label": "Saiba mais", "image_url": null, "is_global": true, "cta_target": "https://example.invalid/phase6", "expires_at": "2026-10-29T13:47:51.15423+00:00", "description": "Material sintético, sem oferta comercial real.", "server_time": "2026-10-28T17:44:19.019764+00:00", "display_mode": ["banner"], "partner_name": "Empresa sintética Fase 6"}]
+RESET
+SET
+ROLLBACK

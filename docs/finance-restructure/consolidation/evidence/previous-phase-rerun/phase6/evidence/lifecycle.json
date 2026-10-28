@@ -1,0 +1,34 @@
+{
+  "localOnly": true,
+  "syntheticOnly": true,
+  "account": "4559fadc-bee8-469f-9a40-54c5b3a2a573",
+  "community": "935e1287-78f8-4793-bbaf-6fa939fbda78",
+  "post": "68386be8-66f7-4a48-9a87-b0462faf2458",
+  "campaigns": [
+    {
+      "id": "dc3ea394-c4c3-4023-960b-0a337ba86811",
+      "placement": "community_banner"
+    },
+    {
+      "id": "03517fe8-92a0-442e-919c-4144c9165a11",
+      "placement": "community_feed"
+    },
+    {
+      "id": "11cf2c65-2504-46cc-bcf8-b508f791ee11",
+      "placement": "network"
+    }
+  ],
+  "postBoost": true,
+  "communityBoost": true,
+  "organicPostCopies": 1,
+  "realGatewayUpload": true,
+  "pendingMediaDenied": true,
+  "suspendedMediaDenied": true,
+  "expiredMediaDenied": true,
+  "manualSyntheticTimeTravel": true,
+  "renewal": true,
+  "metricsIngestion": true,
+  "metricsDeduplication": true,
+  "metricsAreSyntheticTestEvents": true,
+  "publicCollectionDisabledAfterTest": true
+}

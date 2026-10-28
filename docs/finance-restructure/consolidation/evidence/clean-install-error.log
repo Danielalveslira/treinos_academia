@@ -1,0 +1,11 @@
+file:///workspaces/treinos_academia/.finance-local/phase6/scripts/homolog/finance/migrate.mjs:24
+ } catch(e) {writeFileSync(logDir+'/migration-failure.log',String(e.stderr));throw new Error('Migration failed: '+name)}
+                                                                                   ^
+
+Error: Migration failed: 20260926000002_identity.sql
+    at file:///workspaces/treinos_academia/.finance-local/phase6/scripts/homolog/finance/migrate.mjs:24:84
+    at ModuleJob.run (node:internal/modules/esm/module_job:561:25)
+    at async node:internal/modules/esm/loader:647:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.21.0

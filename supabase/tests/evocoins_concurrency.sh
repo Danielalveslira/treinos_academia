@@ -19,7 +19,8 @@ q() { $PSQL -X -tA -v ON_ERROR_STOP=1 -c "$1"; }
 check() { if [ "$2" = "$3" ]; then echo "ok - $1"; else echo "not ok - $1 (esperado $3, obtido $2)"; FAIL=1; fi; }
 
 q "insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-   values ('$UID_T', 'authenticated', 'authenticated', 'evc-conc-$UID_T@example.invalid', 'x', now(), '{}', '{}', now(), now())" >/dev/null
+   values ('$UID_T', 'authenticated', 'authenticated', 'evc-conc-$UID_T@example.invalid', 'x', now(), '{}', '{}', now(), now());
+   update public.users set legal_acceptance_version=(select version from public.legal_policy where id),legal_acceptance_digest=(select digest from public.legal_policy where id) where id='$UID_T'" >/dev/null
 
 # 1) 30 sessões simultâneas, ações e chaves distintas (potencial de 3+2+2+3+3 = 13 > 10)
 run_award() { q "select private.award_evocoins('$UID_T', '$1', '$2', 'conc', '$2')" >/dev/null; }
@@ -47,7 +48,8 @@ check "nenhum teto por ação estourado" "$over" "0"
 # Mesma natural_key em 12 sessões simultâneas: uma única linha no ledger.
 UID_T=$(python3 -c 'import uuid; print(uuid.uuid4())')
 q "insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-   values ('$UID_T', 'authenticated', 'authenticated', 'evc-conc-$UID_T@example.invalid', 'x', now(), '{}', '{}', now(), now())" >/dev/null
+   values ('$UID_T', 'authenticated', 'authenticated', 'evc-conc-$UID_T@example.invalid', 'x', now(), '{}', '{}', now(), now());
+   update public.users set legal_acceptance_version=(select version from public.legal_policy where id),legal_acceptance_digest=(select digest from public.legal_policy where id) where id='$UID_T'" >/dev/null
 pids=()
 for i in $(seq 1 12); do run_award post_published "same-key" & pids+=($!); done
 for p in "${pids[@]}"; do wait "$p"; done

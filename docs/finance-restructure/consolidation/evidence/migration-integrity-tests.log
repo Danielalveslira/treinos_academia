@@ -1,0 +1,11 @@
+✔ migration gate accepts unchanged history and a forward additive migration (8.141443ms)
+✔ migration gate fails closed on history tampering or removal (0.814091ms)
+✔ migration gate rejects duplicate versions, backdating and empty sources (0.40652ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 251.072889

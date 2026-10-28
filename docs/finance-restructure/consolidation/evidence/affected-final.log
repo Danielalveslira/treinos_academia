@@ -1,0 +1,26 @@
+✔ advertising Selection: bounded backend recovery, old responses and teardown (37.510431ms)
+✔ advertising Validity: bounded backend recovery, old responses and teardown (22.216962ms)
+✔ disabled cached query stays idle, including explicit refresh (62.025069ms)
+✔ cached query ignores a response completed after effect cleanup (1.138007ms)
+✔ sponsored ad hooks honor enabled and retain mode and expiry filters (2.846068ms)
+✔ member: mostra feed e composer, habilita as leituras e o menu de membro (1447.505338ms)
+✔ not_member: só o fluxo público com Entrar; nenhum conteúdo interno e leituras desligadas (43.753196ms)
+✔ banned (URL direta): estado dedicado, sem feed, composer, membros, menu de membro nem Entrar (34.008869ms)
+✔ unavailable: mensagem própria, sem conteúdo e sem Entrar (32.225005ms)
+✔ estado desconhecido do servidor nega acesso (39.000556ms)
+✔ tela mostrava Entrar, mas o servidor recusa com banned: vira bloqueado na hora, sem refresh e sem erro (65.310556ms)
+✔ entrada recusada por indisponibilidade vira estado indisponível (60.248261ms)
+[CommunityDetail] join: { message: 'TypeError: Failed to fetch', code: '' }
+✔ falha de rede ao entrar: mensagem de rede, continua com Entrar e nenhum erro técnico (78.981501ms)
+[CommunityDetail] join: { message: 'relation "x" does not exist', code: '42P01' }
+✔ erro inesperado ao entrar: mensagem genérica (62.644366ms)
+✔ voltar para a aba revalida: quem era membro e foi removido perde feed e composer sem refresh (59.651697ms)
+✔ removido sem ban (not_member) ao voltar para a aba: volta ao fluxo público, sem conteúdo interno (55.512297ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2439.317966

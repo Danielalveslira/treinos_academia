@@ -76,8 +76,14 @@ try {
     fullPage: true,
   })
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false)
+  await page.evaluate(() => {
+    window.__advertisingOperations = []
+    window.addEventListener('advertising-operational', (e) => window.__advertisingOperations.push(e.detail))
+  })
   execFileSync('docker', ['stop', '--time', '2', 'evolutus_phase6_realtime'], { stdio: 'ignore' })
   try {
+    await page.waitForFunction(() => window.__advertisingOperations.some((e) => e.scope === 'sponsoredAds' && e.type === 'authorized'), null, { timeout: 20000 })
+    await page.waitForFunction(() => window.__advertisingOperations.some((e) => e.scope === 'sponsoredAds' && e.type === 'recovery_exhausted'), null, { timeout: 35000 })
     await banner.waitFor({ state: 'detached', timeout: 10000 })
     assert.ok((await page.locator('body').innerText()).includes('Publicação original sintética'))
   } finally {
@@ -99,6 +105,7 @@ try {
         resumeWithoutReload: true,
         disconnectionFailClosed: true,
         reconnectedAfterServiceRestart: true,
+        boundedBackendRecovery: true,
         organicContentPreserved: true,
         errors,
       },

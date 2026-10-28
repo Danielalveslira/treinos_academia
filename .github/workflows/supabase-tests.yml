@@ -42,6 +42,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Immutable migration history and unique forward versions
+        run: node scripts/check-migration-integrity.mjs
+      - run: node --test scripts/check-migration-integrity.test.mjs
       - run: npm run lint
       - run: node --test scripts/release/*.test.mjs
       - run: npm test
@@ -185,7 +188,7 @@ jobs:
       - name: Advertising capacity, shared balance, global slots and replay concurrency
         run: node scripts/advertising-concurrency.mjs
         env:
-          PG_TEST_CONTAINER: supabase_db_treinos_academia
+          PG_TEST_CONTAINER: evolutus_integrated_db
       # Limpeza roda sempre, sem mascarar o motivo de uma falha anterior (mesmo padrão do job sql).
       - if: always()
         name: Stop disposable local stack

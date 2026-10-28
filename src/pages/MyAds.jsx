@@ -66,6 +66,12 @@ function AdvertiserPortal({ userId }) {
       <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
         Meus anúncios
       </Heading>
+      {import.meta.env.DEV && import.meta.env.VITE_FINANCE_LOCAL_PREVIEW === 'true' && (
+        <Flash sx={{ my: 3 }}>
+          Ambiente local de homologação. Campanhas, preços e métricas são sintéticos; não
+          representam cobranças ou audiência reais.
+        </Flash>
+      )}
       {error && (
         <Flash variant="danger" sx={{ mb: 3 }}>
           {error}

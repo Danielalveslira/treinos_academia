@@ -1,0 +1,9 @@
+PASS real Auth issues session_id and financial RPC accepts active session
+PASS real Edge rejects missing auth; direct wallet/RPC mutation denied
+PASS real Edge reserves server-priced checkout and safely reuses it
+PASS browser request cannot check another account purchase or fabricate credit
+PASS 12 webhook deliveries: one verified credit, ledger and wallet agree
+PASS second real Auth session revokes the first, stale JWT cannot spend/read/sync
+PASS provider mismatch, outage and timeout never grant cash
+PASS locally cancelled checkout accepts verified late payment exactly once
+{"passed":8,"failed":0}

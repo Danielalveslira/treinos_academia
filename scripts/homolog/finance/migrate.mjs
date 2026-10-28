@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 const mode=process.argv[2]
 if(!['baseline','candidate','all'].includes(mode))throw new Error('baseline | candidate | all')
 const container=process.argv[3]||'evolutus_integrated_db'
-if(!['evolutus_integrated_db','evolutus_integrated_clean_db'].includes(container))throw new Error('Local test container required')
+if(!['evolutus_integrated_db','evolutus_integrated_clean_db'].includes(container) && !/^evolutus_consolidation_clean_[0-9]{14}$/.test(container))throw new Error('Local test container required')
 const root=resolve(import.meta.dirname,'../../..')
 const logDir=root+'/.finance-local/logs'
 mkdirSync(logDir,{recursive:true})

@@ -1,5 +1,7 @@
 # Checklist consolidado de lançamento — Fases 1 a 6
 
+Revisão definitiva da consolidação: [consolidation/CHECKLIST_LANCAMENTO.md](consolidation/CHECKLIST_LANCAMENTO.md), com correções efetivas, evidências atuais e pendências B/C. Esta página preserva o histórico das fases.
+
 Controle vigente em 28/10/2026. Os relatórios anteriores permanecem como histórico. Desenvolvimento local concluído não autoriza lançamento, produção, pagamentos reais, push ou merge. A Fase 6 possui entrega local própria, documentada abaixo.
 
 ## A. Correções técnicas do escopo, concluídas localmente

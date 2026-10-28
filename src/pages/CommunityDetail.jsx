@@ -409,14 +409,20 @@ function CommunityDetail({ id }) {
       ]),
     ]
     const authorization = await authorizePromotionSources([id], ids)
-    setCommunity(
-      freshCommunity
-        ? { ...freshCommunity, promoted: authorization.communityIds.includes(id) }
-        : null
-    )
-    setFeaturedStatusesState(freshFeatured.filter((s) => authorization.statusIds.includes(s.id)))
-    setPromotionPostIds(authorization.statusIds)
-    return authorization.deadline
+    return {
+      deadline: authorization.deadline,
+      commit() {
+        setCommunity(
+          freshCommunity
+            ? { ...freshCommunity, promoted: authorization.communityIds.includes(id) }
+            : null
+        )
+        setFeaturedStatusesState(
+          freshFeatured.filter((s) => authorization.statusIds.includes(s.id))
+        )
+        setPromotionPostIds(authorization.statusIds)
+      },
+    }
   }, [id, promotionSourceKey])
   const promotionValid = useAdvertisingValidity(
     `community:${user.uid}:${id}`,

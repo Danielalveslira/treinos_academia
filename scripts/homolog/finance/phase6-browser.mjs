@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { advertisingContext } from './phase6-browser-context.mjs'
 const a = JSON.parse(readFileSync('.finance-local/phase6-access.json'))
 const base = 'http://127.0.0.1:5173'
+const title = 'Publicidade sintética de revisão ' + a.owner.user.id.slice(0, 8)
 const browser = await chromium.launch({
   executablePath:
     process.env.PHASE6_CHROMIUM ||
@@ -36,12 +37,12 @@ try {
   await p.getByRole('button', { name: 'Criar minha conta de anunciante' }).click()
   await p.getByRole('heading', { name: 'Central de publicidade' }).waitFor()
   await p.getByRole('button', { name: 'Nova campanha', exact: true }).click()
-  await p.getByLabel('Nome e título do anúncio').fill('Publicidade sintética de revisão Fase 6')
+  await p.getByLabel('Nome e título do anúncio').fill(title)
   await p.getByLabel('Texto publicitário').fill('Material sintético, sem oferta comercial real.')
   await p.getByLabel('Destino HTTPS').fill('https://example.invalid/phase6')
   await p.getByRole('button', { name: 'Salvar rascunho' }).click()
   await p
-    .getByRole('heading', { name: 'Publicidade sintética de revisão Fase 6', exact: true })
+    .getByRole('heading', { name: title, exact: true })
     .waitFor()
   await p.getByRole('button', { name: 'Preparar revisão', exact: true }).click()
   await p.getByRole('button', { name: 'Salvar e enviar à moderação' }).click()
@@ -57,7 +58,7 @@ try {
     .locator('div')
     .filter({
       has: ad.getByRole('heading', {
-        name: 'Publicidade sintética de revisão Fase 6',
+        name: title,
         exact: true,
       }),
     })

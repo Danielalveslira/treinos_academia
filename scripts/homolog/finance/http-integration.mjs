@@ -6,6 +6,7 @@ import { readFileSync,writeFileSync,mkdirSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 const config=JSON.parse(readFileSync(runtime+'/local.json','utf8'))
+config.url=process.env.FINANCE_HTTP_URL||config.url
 assert.ok(['http://127.0.0.1:55454','http://127.0.0.1:55554'].includes(config.url))
 const options={auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}
 const admin=createClient(config.url,config.service,options)
@@ -18,6 +19,11 @@ async function createUser(){
  const email=randomUUID()+'@example.invalid',password='Local-test-password-2026!'
  const {data,error}=await admin.auth.admin.createUser({email,password,email_confirm:true});assert.ifError(error)
  const c=client();const login=await c.auth.signInWithPassword({email,password});assert.ifError(login.error)
+ // Synthetic users must satisfy the current legal/onboarding gate, just like
+ // the browser fixtures. Never remove the application access checks for tests.
+ assert.match(data.user.id, /^[0-9a-f-]{36}$/)
+ const db=config.url.endsWith(':55554')?'evolutus_price_phase1_db':'evolutus_integrated_db'
+ execFileSync('docker',['exec',db,'psql','-U','supabase_admin','-d','postgres','-X','-v','ON_ERROR_STOP=1','-c',`update public.users set usage_profile='professional',username='http_'||left(replace(id::text,'-',''),12),legal_acceptance_version=(select version from public.legal_policy where id),legal_acceptance_digest=(select digest from public.legal_policy where id),legal_acceptance_accepted_at=now() where id='${data.user.id}';`],{stdio:'pipe'})
  return {id:data.user.id,email,password,c,token:login.data.session.access_token}
 }
 async function edge(name,token,body){

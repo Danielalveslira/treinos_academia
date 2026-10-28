@@ -1,0 +1,631 @@
+{
+  "localOnly": true,
+  "checks": [
+    {
+      "name": "wallet",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 772,
+      "route": "/evocash"
+    },
+    {
+      "name": "cash-admin",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 2149,
+      "route": "/admin/compras-evocash"
+    },
+    {
+      "name": "commercial-admin",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 3987,
+      "route": "/admin/parcerias"
+    },
+    {
+      "name": "advertising-admin",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 11606,
+      "route": "/admin/parcerias"
+    },
+    {
+      "name": "products",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 998,
+      "route": "/vitrine"
+    },
+    {
+      "name": "manage-products",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 324,
+      "route": "/vitrine/gerenciar"
+    },
+    {
+      "name": "professionals",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 949,
+      "route": "/profissionais"
+    },
+    {
+      "name": "places",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 957,
+      "route": "/locais"
+    },
+    {
+      "name": "manage-profiles",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 372,
+      "route": "/minha-vitrine"
+    },
+    {
+      "name": "advertising-metrics",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 4617,
+      "route": "/meus-anuncios"
+    },
+    {
+      "name": "home",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 681,
+      "route": "/app"
+    },
+    {
+      "name": "communities",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 835,
+      "route": "/comunidades"
+    },
+    {
+      "name": "community",
+      "width": 320,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 684,
+      "route": "/comunidades/935e1287-78f8-4793-bbaf-6fa939fbda78"
+    },
+    {
+      "name": "wallet",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 772,
+      "route": "/evocash"
+    },
+    {
+      "name": "cash-admin",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 3217,
+      "route": "/admin/compras-evocash"
+    },
+    {
+      "name": "commercial-admin",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 3987,
+      "route": "/admin/parcerias"
+    },
+    {
+      "name": "advertising-admin",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 11606,
+      "route": "/admin/parcerias"
+    },
+    {
+      "name": "products",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 998,
+      "route": "/vitrine"
+    },
+    {
+      "name": "manage-products",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 101,
+      "route": "/vitrine/gerenciar"
+    },
+    {
+      "name": "professionals",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 949,
+      "route": "/profissionais"
+    },
+    {
+      "name": "places",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 957,
+      "route": "/locais"
+    },
+    {
+      "name": "manage-profiles",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 372,
+      "route": "/minha-vitrine"
+    },
+    {
+      "name": "advertising-metrics",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 4617,
+      "route": "/meus-anuncios"
+    },
+    {
+      "name": "home",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 696,
+      "route": "/app"
+    },
+    {
+      "name": "communities",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 835,
+      "route": "/comunidades"
+    },
+    {
+      "name": "community",
+      "width": 320,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 684,
+      "route": "/comunidades/935e1287-78f8-4793-bbaf-6fa939fbda78"
+    },
+    {
+      "name": "wallet",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 772,
+      "route": "/evocash"
+    },
+    {
+      "name": "cash-admin",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 3217,
+      "route": "/admin/compras-evocash"
+    },
+    {
+      "name": "commercial-admin",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 3987,
+      "route": "/admin/parcerias"
+    },
+    {
+      "name": "advertising-admin",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 101,
+      "route": "/admin/parcerias"
+    },
+    {
+      "name": "products",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 998,
+      "route": "/vitrine"
+    },
+    {
+      "name": "manage-products",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 324,
+      "route": "/vitrine/gerenciar"
+    },
+    {
+      "name": "professionals",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 949,
+      "route": "/profissionais"
+    },
+    {
+      "name": "places",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 957,
+      "route": "/locais"
+    },
+    {
+      "name": "manage-profiles",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 372,
+      "route": "/minha-vitrine"
+    },
+    {
+      "name": "advertising-metrics",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 4623,
+      "route": "/meus-anuncios"
+    },
+    {
+      "name": "home",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 681,
+      "route": "/app"
+    },
+    {
+      "name": "communities",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 835,
+      "route": "/comunidades"
+    },
+    {
+      "name": "community",
+      "width": 390,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 684,
+      "route": "/comunidades/935e1287-78f8-4793-bbaf-6fa939fbda78"
+    },
+    {
+      "name": "wallet",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 101,
+      "route": "/evocash"
+    },
+    {
+      "name": "cash-admin",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 97,
+      "route": "/admin/compras-evocash"
+    },
+    {
+      "name": "commercial-admin",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 3987,
+      "route": "/admin/parcerias"
+    },
+    {
+      "name": "advertising-admin",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 11606,
+      "route": "/admin/parcerias"
+    },
+    {
+      "name": "products",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 998,
+      "route": "/vitrine"
+    },
+    {
+      "name": "manage-products",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 324,
+      "route": "/vitrine/gerenciar"
+    },
+    {
+      "name": "professionals",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 949,
+      "route": "/profissionais"
+    },
+    {
+      "name": "places",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 957,
+      "route": "/locais"
+    },
+    {
+      "name": "manage-profiles",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 372,
+      "route": "/minha-vitrine"
+    },
+    {
+      "name": "advertising-metrics",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 4623,
+      "route": "/meus-anuncios"
+    },
+    {
+      "name": "home",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 681,
+      "route": "/app"
+    },
+    {
+      "name": "communities",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 835,
+      "route": "/comunidades"
+    },
+    {
+      "name": "community",
+      "width": 390,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 684,
+      "route": "/comunidades/935e1287-78f8-4793-bbaf-6fa939fbda78"
+    },
+    {
+      "name": "wallet",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 772,
+      "route": "/evocash"
+    },
+    {
+      "name": "cash-admin",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 3209,
+      "route": "/admin/compras-evocash"
+    },
+    {
+      "name": "commercial-admin",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 4017,
+      "route": "/admin/parcerias"
+    },
+    {
+      "name": "advertising-admin",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 11631,
+      "route": "/admin/parcerias"
+    },
+    {
+      "name": "products",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 998,
+      "route": "/vitrine"
+    },
+    {
+      "name": "manage-products",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 324,
+      "route": "/vitrine/gerenciar"
+    },
+    {
+      "name": "professionals",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 949,
+      "route": "/profissionais"
+    },
+    {
+      "name": "places",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 957,
+      "route": "/locais"
+    },
+    {
+      "name": "manage-profiles",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 372,
+      "route": "/minha-vitrine"
+    },
+    {
+      "name": "advertising-metrics",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 4683,
+      "route": "/meus-anuncios"
+    },
+    {
+      "name": "home",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 694,
+      "route": "/app"
+    },
+    {
+      "name": "communities",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 835,
+      "route": "/comunidades"
+    },
+    {
+      "name": "community",
+      "width": 1440,
+      "mode": "light",
+      "overflow": false,
+      "textLength": 696,
+      "route": "/comunidades/935e1287-78f8-4793-bbaf-6fa939fbda78"
+    },
+    {
+      "name": "wallet",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 772,
+      "route": "/evocash"
+    },
+    {
+      "name": "cash-admin",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 3209,
+      "route": "/admin/compras-evocash"
+    },
+    {
+      "name": "commercial-admin",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 4017,
+      "route": "/admin/parcerias"
+    },
+    {
+      "name": "advertising-admin",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 11631,
+      "route": "/admin/parcerias"
+    },
+    {
+      "name": "products",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 998,
+      "route": "/vitrine"
+    },
+    {
+      "name": "manage-products",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 324,
+      "route": "/vitrine/gerenciar"
+    },
+    {
+      "name": "professionals",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 949,
+      "route": "/profissionais"
+    },
+    {
+      "name": "places",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 957,
+      "route": "/locais"
+    },
+    {
+      "name": "manage-profiles",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 372,
+      "route": "/minha-vitrine"
+    },
+    {
+      "name": "advertising-metrics",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 4683,
+      "route": "/meus-anuncios"
+    },
+    {
+      "name": "home",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 681,
+      "route": "/app"
+    },
+    {
+      "name": "communities",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 835,
+      "route": "/comunidades"
+    },
+    {
+      "name": "community",
+      "width": 1440,
+      "mode": "dark",
+      "overflow": false,
+      "textLength": 696,
+      "route": "/comunidades/935e1287-78f8-4793-bbaf-6fa939fbda78"
+    }
+  ],
+  "errors": [],
+  "httpFailures": []
+}

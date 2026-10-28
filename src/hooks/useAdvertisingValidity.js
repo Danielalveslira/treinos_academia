@@ -1,33 +1,48 @@
 import { useEffect, useState } from 'react'
-// Paid prominence fails closed when the live invalidation channel is unavailable.
+import {
+  createAdvertisingRecovery,
+  advertisingOperationalEvent,
+  advertisingFailureType,
+} from '../utils/advertisingRecovery'
+// Paid prominence uses fresh backend decisions and bounded outage recovery.
 // Organic community content stays accessible throughout revalidation.
 export function useAdvertisingValidity(scope, enabled, revalidate) {
   const [state, setState] = useState({ scope, valid: false })
   useEffect(() => {
     if (!enabled) return undefined
     let live = true,
-      connected = false,
       generation = 0,
       expiryTimer,
       channel,
       client
+    const recovery = createAdvertisingRecovery()
     async function refresh() {
+      if (!live) return
       clearTimeout(expiryTimer)
       const current = ++generation
       setState({ scope, valid: false })
-      if (!connected || document.hidden) return
+      if (document.hidden) return
+      const lease = recovery.begin(performance.now())
+      if (lease === null) {
+        advertisingOperationalEvent(scope, 'recovery_exhausted')
+        return
+      }
       try {
-        const deadline = await revalidate()
-        if (live && connected && current === generation && deadline > performance.now()) {
+        const result = await revalidate()
+        const deadline = Math.min(result.deadline, lease)
+        if (live && current === generation && deadline > performance.now()) {
+          result.commit()
           setState({ scope, valid: true })
+          advertisingOperationalEvent(scope, 'authorized')
           if (Number.isFinite(deadline))
             expiryTimer = setTimeout(
               refresh,
               Math.min(2 ** 31 - 1, Math.max(1, deadline - performance.now()))
             )
         }
-      } catch {
-        /* A failed refresh never reauthorizes cached paid prominence. */
+      } catch (error) {
+        if (live && current === generation)
+          advertisingOperationalEvent(scope, advertisingFailureType(error))
       }
     }
     const foreground = () => refresh()
@@ -43,7 +58,12 @@ export function useAdvertisingValidity(scope, enabled, revalidate) {
             refresh
           )
           .subscribe((status) => {
-            connected = status === 'SUBSCRIBED'
+            if (!live) return
+            recovery.status(status)
+            advertisingOperationalEvent(
+              scope,
+              status === 'SUBSCRIBED' ? 'channel_recovered' : 'channel_unavailable'
+            )
             refresh()
           })
       })

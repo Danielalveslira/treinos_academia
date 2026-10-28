@@ -327,7 +327,7 @@ export function useCommunityFeed(communityId, enabled = true, uid = 'anon') {
     [commit]
   )
 
-  // Chamado só depois de createPromotion já ter confirmado sucesso (mesmo raciocínio de
+  // Chamado só depois de o motor comercial confirmar a contratação (mesmo raciocínio de
   // updateEconomyVoteCounts) -- sem isso o post promovido só ganharia o selo "Em
   // destaque" depois de um refresh(), já que promoted/promotedUntil só existem no
   // documento que o servidor gravou, nunca no array local até esta função rodar.
@@ -337,7 +337,7 @@ export function useCommunityFeed(communityId, enabled = true, uid = 'anon') {
       commit(
         items.map((s) => {
           if (s.id !== statusId) return s
-          // Patch recebido somente após create_promotion confirmar a compra.
+          // Patch recebido somente após o motor comercial confirmar a compra.
           // Permanente continua permanente; os demais usam o novo prazo contratado.
           return {
             ...s,

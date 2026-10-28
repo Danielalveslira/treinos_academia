@@ -1,6 +1,6 @@
 import { useAuth } from '../hooks/useAuth'
 import { useAdvertisingValidity } from '../hooks/useAdvertisingValidity'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Spinner, Button, ActionMenu, ActionList, IconButton } from '@primer/react'
 import {
@@ -190,25 +190,18 @@ export default function Communities() {
   const revalidatePromotions = useCallback(async () => {
     const communities = await listFeaturedCommunities()
     const authorization = await authorizePromotionSources(communities.map((c) => c.id))
-    setFeaturedCommunities(communities.filter((c) => authorization.communityIds.includes(c.id)))
-    return authorization.deadline
+    return {
+      deadline: authorization.deadline,
+      commit() {
+        setFeaturedCommunities(communities.filter((c) => authorization.communityIds.includes(c.id)))
+      },
+    }
   }, [])
   const promotionValid = useAdvertisingValidity(
     `discovery:${user?.uid}`,
     Boolean(user?.uid),
     revalidatePromotions
   )
-  useEffect(() => {
-    let active = true
-    listFeaturedCommunities()
-      .then((items) => {
-        if (active) setFeaturedCommunities(items)
-      })
-      .catch((err) => console.error('[Communities] listFeaturedCommunities:', err))
-    return () => {
-      active = false
-    }
-  }, [])
 
   function beginMembershipChange(communityId) {
     if (membershipLock.current) return false

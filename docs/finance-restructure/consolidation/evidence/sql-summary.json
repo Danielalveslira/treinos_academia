@@ -1,0 +1,87 @@
+[
+  {
+    "name": "advertising_campaigns_test.sql",
+    "passed": true,
+    "assertions": 47
+  },
+  {
+    "name": "sponsored_ad_metrics_test.sql",
+    "passed": true,
+    "assertions": 179
+  },
+  {
+    "name": "sponsored_ad_metrics_privacy_controls_test.sql",
+    "passed": true,
+    "assertions": 31
+  },
+  {
+    "name": "advertiser_metrics_v2_test.sql",
+    "passed": true,
+    "assertions": 50
+  },
+  {
+    "name": "sponsored_ad_metrics_dashboard_test.sql",
+    "passed": true,
+    "assertions": 75
+  },
+  {
+    "name": "commercial_engine_test.sql",
+    "passed": true,
+    "assertions": 58
+  },
+  {
+    "name": "evocash_pricing_test.sql",
+    "passed": true,
+    "assertions": 57
+  },
+  {
+    "name": "infinitepay_cash_purchases_test.sql",
+    "passed": true,
+    "assertions": 32
+  },
+  {
+    "name": "finance_integrity_test.sql",
+    "passed": true,
+    "assertions": 17
+  },
+  {
+    "name": "finance_reversals_test.sql",
+    "passed": true,
+    "assertions": 18
+  },
+  {
+    "name": "professional_commercial_test.sql",
+    "passed": true,
+    "assertions": 59
+  },
+  {
+    "name": "multiple_professional_listings_test.sql",
+    "passed": true,
+    "assertions": 34
+  },
+  {
+    "name": "storefront_revisions_test.sql",
+    "passed": true,
+    "assertions": 67
+  },
+  {
+    "name": "product_storefronts_test.sql",
+    "passed": true,
+    "assertions": 75
+  },
+  {
+    "name": "aud_01_aud_02_security_test.sql",
+    "passed": true,
+    "assertions": 80
+  },
+  {
+    "name": "community_promotion_security_test.sql",
+    "passed": true,
+    "assertions": 22
+  },
+  {
+    "name": "aud_has_app_access_gates_test.sql",
+    "passed": true,
+    "assertions": 99
+  }
+]
