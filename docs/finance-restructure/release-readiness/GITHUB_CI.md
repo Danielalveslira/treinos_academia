@@ -4,7 +4,7 @@
 
 Repositório `Danielalveslira/treinos_academia`, destino `main`, branch `finance-advertising-phase6`. HEAD inicial 5571e5c; onze commits acumulam Fases 0–6 sobre main 5b50b26. Consolidação posterior estava sem commit e será registrada sem rebase/reset ou alteração dos worktrees legítimos externos.
 
-204 migrations locais, 28 adicionais à main e 203 preservadas por hash relativamente à Fase 6. O PR inclui a cadeia inteira de dependências. Nenhum arquivo privado de `.finance-local`, `.env`, node_modules/dist/cache ou captura raster de QA é publicado; as evidências versionadas são textos/metadados de homologação.
+205 migrations locais, 29 adicionais à main e 203 preservadas por hash relativamente à Fase 6. O PR inclui a cadeia inteira de dependências. Nenhum arquivo privado de `.finance-local`, `.env`, node_modules/dist/cache ou captura raster de QA é publicado; as evidências versionadas são textos/metadados de homologação.
 
 ## Gates
 
@@ -36,3 +36,9 @@ Run [40753714834](https://github.com/Danielalveslira/treinos_academia/actions/ru
 O finance-e2e passou novamente pelo fluxo real de atividade, mas o guard comparava digest do índice OCI com ID de configuração Docker. O runner usou config f557… para o índice aprovado b3bf…; agora a verificação por ID consulta RepoDigests e mantém o pin, a plataforma e a correspondência com a imagem efetiva. O CLI mantém suporte aos nomes oficiais versionados (nesta execução, PostgreSQL 17.11). Helper compartilhado elimina a mesma comparação incorreta em dois harnesses. Testes negativos rejeitam índice errado, config divergente e nomes não oficiais. Nenhum pin foi alterado nem aceito SHA arbitrário.
 
 Validação local adicional: 23 testes de imagens, concorrência real e todos os smokes restantes (fichas, entradas, Home, métricas/admin, catálogo e offline) aprovados. Cabeçalhos: 272 verificações em oito larguras/temas. Evidências nesta pasta. A terceira rodada remota continua obrigatória antes de declarar a Etapa 1 aprovada.
+
+## Terceira rodada aprovada
+
+Commit bf8b556: [run 40755850175](https://github.com/Danielalveslira/treinos_academia/actions/runs/40755850175), js/sql/finance-e2e/secrets/finance-quality COMPLETED SUCCESS. Reconferido após retomada: PR OPEN, REVIEW_REQUIRED, autoMergeRequest=null. Supabase Preview SKIPPED (serviço externo, não gate obrigatório); Vercel Preview automático SUCCESS. Nenhum merge realizado. A main continua sujeita à revisão humana; não foi concedida aprovação pelo agente.
+
+A matriz pública local terminou com 272 verificações aprovadas. Novos documentos/probe/manifesto desta entrega serão commitados e o CI do novo HEAD será acompanhado; o verde anterior não substitui o gate desse HEAD.
