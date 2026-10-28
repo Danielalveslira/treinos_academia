@@ -44,12 +44,13 @@ export function mapCommunityRow(row) {
 }
 
 export async function listActiveCommunities(ownerId = null) {
-  let query = supabase.from('communities')
+  let query = supabase
+    .from('communities')
     .select(ownerId ? 'id,name,owner_id' : '*')
     .eq('is_active', true)
-  if(ownerId) query=query.eq('owner_id',ownerId)
-  const {data,error}=await query.order('name').limit(MAX_COMMUNITIES)
-  if(error) throw error
+  if (ownerId) query = query.eq('owner_id', ownerId)
+  const { data, error } = await query.order('name').limit(MAX_COMMUNITIES)
+  if (error) throw error
   return data.map(mapCommunityRow)
 }
 

@@ -1,0 +1,23 @@
+✔ carrega 40 comunidades com UMA consulta de comunidades e UMA de acesso (sem N+1) (174.140777ms)
+✔ tentativa recusada por banimento marca o cartão como banned na hora, sem recarregar a lista (42.716383ms)
+✔ entrada bem-sucedida move a comunidade para "Minhas" (42.190764ms)
+✔ comunidade indisponível vira indisponível no cartão (41.627924ms)
+✔ falha real ao entrar propaga e não altera o estado dos cartões (42.101704ms)
+✔ owner submits current edited fields with the saved revision and never publishes directly (97.786404ms)
+✔ failed save never submits or reports success just because an old publication exists (11.709338ms)
+✔ rapid repeated submit has one save and one moderation request (12.769167ms)
+✔ uploaded image changes draft form without automatically saving or publishing it (11.449323ms)
+✔ suspended resource has no purchase component and cannot be resubmitted by owner (6.041657ms)
+✔ archive keeps an explicit revision and never invokes a destructive delete (10.664529ms)
+✔ new drafts with a null mode submit the visible default instead of an empty value (8.685388ms)
+✔ editor loads and reloads the exact scalar ID supplied by the central (8.739963ms)
+✔ owner picker filters in PostgreSQL before the cap and transfers only identity fields (350.207119ms)
+✔ existing public consumers keep their complete community projection (0.617912ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1286.45232

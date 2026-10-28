@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "localOnly": true,
+  "ledgerNet": 939,
+  "cashBalance": 939,
+  "resourceRights": 3,
+  "fulfilledOrders": 5,
+  "commercialDebits": 5,
+  "orderLedgerMismatches": 0,
+  "resourceOwnerMismatches": 0
+}

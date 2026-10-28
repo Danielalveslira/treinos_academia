@@ -1,3 +1,4 @@
+import { publicNavigationAge } from '../../utils/publicNavigationAge.js'
 // Único ponto de contato com a RPC pública `public_product_catalog` (ver
 // supabase/migrations/20261201000001_product_storefronts.sql). Usa fetch direto com a
 // chave anon, não o cliente @supabase/supabase-js: a Vitrine não autentica ninguém e
@@ -54,7 +55,7 @@ export async function fetchProductCatalog(
       try {
         const page = JSON.parse(initialNode.textContent)
         if (Array.isArray(page.groups) && Number.isFinite(Date.parse(page.serverTime))) {
-          return { ...page, initialAgeMs: globalThis.performance?.now() || 0 }
+          return { ...page, initialAgeMs: publicNavigationAge() }
         }
       } catch {
         /* Fall back to the authoritative RPC. */

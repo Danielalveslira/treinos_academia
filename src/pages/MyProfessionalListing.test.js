@@ -234,7 +234,20 @@ test('new drafts with a null mode submit the visible default instead of an empty
   }
 })
 
-test('editor loads and reloads the exact scalar ID supplied by the central',async()=>{
- const reads=[],row=record(),p=await start(row,{get:async(...args)=>{reads.push(args);return row}})
- try{await act(async()=>p.button('Enviar para aprovação').props.onClick());assert.ok(reads.length>=2);for(const args of reads)assert.deepEqual(args,['profile-1'])}finally{await stop(p)}
+test('editor loads and reloads the exact scalar ID supplied by the central', async () => {
+  const reads = [],
+    row = record(),
+    p = await start(row, {
+      get: async (...args) => {
+        reads.push(args)
+        return row
+      },
+    })
+  try {
+    await act(async () => p.button('Enviar para aprovação').props.onClick())
+    assert.ok(reads.length >= 2)
+    for (const args of reads) assert.deepEqual(args, ['profile-1'])
+  } finally {
+    await stop(p)
+  }
 })

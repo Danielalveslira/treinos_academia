@@ -1,0 +1,42 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+CREATE EXTENSION
+SET
+INSERT 0 2
+UPDATE 1
+CREATE FUNCTION
+ok 1 - EXECUTE não está concedido a PUBLIC
+ok 2 - anon não executa
+ok 3 - authenticated não executa
+ok 4 - service_role (Edge Function de checkout) executa
+ok 5 - nenhuma função interna do checkout é executável por anon/authenticated/PUBLIC
+ok 6 - cancelar a própria compra: authenticated sim, anon não
+INSERT 0 1
+SET
+ok 7 - anon recebe permission denied
+RESET
+SET
+c4000000-0000-0000-0000-000000000001
+ok 8 - nem o dono da compra a chama direto
+RESET
+ok 9 - a compra não foi congelada por chamada de cliente
+ok 10 - search_path vazio (todas as referências do corpo são qualificadas)
+ok 11 - segue SECURITY DEFINER
+ok 12 - anon não executa
+ok 13 - PUBLIC não executa
+ok 14 - a tela admin (authenticated) ainda chama; a barreira é is_superadmin() dentro
+t
+SET
+c4000000-0000-0000-0000-000000000001
+ok 15 - usuário comum é barrado
+c4000000-0000-0000-0000-000000000002
+ok 16 - superadmin passa da barreira e as validações (com o search_path vazio) funcionam
+ok 17 - o corpo resolve public.deletion_jobs sem search_path
+RESET
+ok 18 - nenhuma função SECURITY DEFINER fora da lista pública é executável por anon
+ok 19 - todo SECURITY DEFINER tem search_path vazio ou com pg_temp por último
+1..19
+ROLLBACK

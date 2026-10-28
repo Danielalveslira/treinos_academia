@@ -1,0 +1,282 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 2
+INSERT 0 7
+UPDATE 0
+UPDATE 1
+UPDATE 1
+UPDATE 1
+INSERT 0 2
+INSERT 0 7
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+INSERT 0 1
+INSERT 0 7
+INSERT 0 5
+INSERT 0 5
+INSERT 0 5
+INSERT 0 5
+INSERT 0 5
+INSERT 0 5
+INSERT 0 1
+INSERT 0 6
+CREATE FUNCTION
+ok 1 - P20: nenhuma função SECURITY DEFINER com search_path=public isolado (cast_vote/create_promotion corrigidas)
+ok 2 - status_expiration_control.enabled tem DEFAULT false (nasce pausado por definição de coluna, não por acidente de ordem de migrations)
+SET
+
+ok 3 - authenticated nao tem privilegio de coluna para definir expires_at em public.statuses
+RESET
+SET
+
+ok 4 - set_username: ativa permitida
+
+ok 5 - set_username: disabled negada
+
+ok 6 - set_username: deleting negada
+
+ok 7 - set_username: suspensao temporaria negada
+
+ok 8 - set_username: banida (system_ban) negada
+
+ok 9 - set_username: superadmin permitida (comportamento existente)
+RESET
+SET
+
+ok 10 - update_user_profile: ativa permitida
+
+ok 11 - update_user_profile: disabled negada
+
+ok 12 - update_user_profile: deleting negada
+
+ok 13 - update_user_profile: suspensao negada
+
+ok 14 - update_user_profile: banida negada
+
+ok 15 - update_user_profile: superadmin permitida
+RESET
+UPDATE 7
+SET
+
+ok 16 - create_professional_listing: ativa permitida
+
+ok 17 - create_professional_listing: disabled negada
+
+ok 18 - create_professional_listing: deleting negada
+
+ok 19 - create_professional_listing: suspensao negada
+
+ok 20 - create_professional_listing: banida negada
+
+ok 21 - create_professional_listing: superadmin permitida
+RESET
+CREATE TABLE
+INSERT 0 2
+GRANT
+SET
+
+ok 22 - save_professional_listing_draft: ativa permitida
+
+ok 23 - save_professional_listing_draft: disabled negada (antes de chegar a LISTING_NOT_FOUND)
+
+ok 24 - save_professional_listing_draft: deleting negada
+
+ok 25 - save_professional_listing_draft: suspensao negada
+
+ok 26 - save_professional_listing_draft: banida negada
+
+ok 27 - save_professional_listing_draft: superadmin permitida
+RESET
+SET
+
+ok 28 - prepare_professional_listing_publish: ativa permitida
+
+ok 29 - prepare_professional_listing_publish: disabled negada
+
+ok 30 - prepare_professional_listing_publish: deleting negada
+
+ok 31 - prepare_professional_listing_publish: suspensao negada
+
+ok 32 - prepare_professional_listing_publish: banida negada
+
+ok 33 - prepare_professional_listing_publish: superadmin permitida
+RESET
+SET
+
+ok 34 - allocate_profile_avatar: ativa permitida
+
+ok 35 - allocate_profile_avatar: disabled negada
+
+ok 36 - allocate_profile_avatar: deleting negada
+
+ok 37 - allocate_profile_avatar: suspensao negada
+
+ok 38 - allocate_profile_avatar: banida negada
+
+ok 39 - allocate_profile_avatar: superadmin permitida
+RESET
+INSERT 0 1
+SET
+
+ok 40 - profile_avatars_insert: alocacao previa nao basta -- conta desativada ainda e negada no upload
+RESET
+SET
+
+ok 41 - communities_update: dono ativo permitido
+
+ok 42 - communities_update: dono desativado -- 0 linhas afetadas (RLS filtra silenciosamente)
+
+ok 43 - communities_update: dono em exclusao -- 0 linhas afetadas
+
+ok 44 - communities_update: dono suspenso -- 0 linhas afetadas
+
+ok 45 - communities_update: dono banido -- 0 linhas afetadas
+
+ok 46 - communities_update: superadmin atualiza comunidade de dono desativado (comportamento existente)
+RESET
+SET
+
+ok 47 - statuses_delete: dono ativo modera (apaga post de terceiro)
+
+ok 48 - statuses_delete: dono desativado nao modera mais -- 0 linhas
+
+ok 49 - statuses_delete: dono em exclusao nao modera -- 0 linhas
+
+ok 50 - statuses_delete: dono suspenso nao modera -- 0 linhas
+
+ok 51 - statuses_delete: dono banido nao modera -- 0 linhas
+
+ok 52 - statuses_delete: superadmin modera post em comunidade de dono desativado (comportamento existente)
+RESET
+SET
+
+ok 53 - comment_delete: dono ativo modera comentario de terceiro
+
+ok 54 - comment_delete: dono desativado nao modera comentario de terceiro
+
+ok 55 - comment_delete: dono em exclusao nao modera comentario de terceiro
+
+ok 56 - comment_delete: dono suspenso nao modera comentario de terceiro
+
+ok 57 - comment_delete: dono banido nao modera comentario de terceiro
+
+ok 58 - comment_delete: superadmin modera comentario em comunidade de dono em exclusao (comportamento existente)
+RESET
+SET
+
+ok 59 - cast_vote: ativa permitida
+
+ok 60 - cast_vote: disabled negada (achado original P18-d)
+
+ok 61 - cast_vote: deleting negada
+
+ok 62 - cast_vote: suspensao negada
+
+ok 63 - cast_vote: banida negada
+
+ok 64 - cast_vote: superadmin permitida
+RESET
+UPDATE 1
+SET
+
+ok 65 - create_promotion: ativa permitida
+
+ok 66 - create_promotion: disabled negada com codigo distinto (F1.2 -- PromoteDialog.jsx:89)
+
+ok 67 - create_promotion: deleting negada com codigo distinto (F1.2)
+
+ok 68 - create_promotion: suspensao negada com codigo distinto (F1.2 -- PromoteDialog.jsx:90)
+
+ok 69 - create_promotion: banida negada com codigo distinto (F1.2)
+
+ok 70 - create_promotion: superadmin permitida (comportamento existente -- has_app_access() nao faz excecao especial para superadmin alem do que a propria funcao ja concede)
+RESET
+INSERT 0 2
+SET
+
+ok 71 - sponsored_ads_select: ativa ve os 2 anuncios (global + da propria comunidade)
+
+ok 72 - sponsored_ads_select: disabled nao ve nenhum anuncio (sem erro -- so 0 linhas)
+
+ok 73 - sponsored_ads_select: deleting nao ve nenhum anuncio
+
+ok 74 - sponsored_ads_select: suspensao nao ve nenhum anuncio
+
+ok 75 - sponsored_ads_select: banida nao ve nenhum anuncio
+
+ok 76 - sponsored_ads_select: superadmin ve todos (comportamento existente)
+RESET
+INSERT 0 1
+SET
+
+ok 77 - disabled: ainda ve o proprio aviso de bloqueio (notices)
+ok 78 - disabled: ainda consegue abrir chamado de suporte (via submit_support_request -- nao ha INSERT direto de cliente em support_requests)
+ok 79 - disabled: ainda le a propria linha em public.users (users_select)
+
+ok 80 - banida: ainda consegue abrir chamado de suporte
+RESET
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+CREATE FUNCTION
+SET
+
+ok 81 - F1.2 16a: set_username sucede ANTES do aceite legal e da verificacao de e-mail (Register.jsx:124, corrige o bug bloqueante da F1.1)
+ok 82 - F1.2 16a: update_user_profile continua negado neste mesmo instante -- documentado, nao é um bug: o único call site real (Profile.jsx:89) nunca é atingido antes do LegalGate (ver tabela da tarefa 2), então esta chamada nunca ocorre na prática nesta janela
+RESET
+UPDATE 1
+SET
+
+ok 83 - F1.2 16a: accept_legal_documents sucede em Register.jsx:141, depois de set_username
+ok 84 - F1.2 16a: update_user_profile AINDA negado so apos o aceite legal -- e-mail continua nao confirmado (email_verified_ok() tambem exigido por has_app_access(), residual que nao afeta o cadastro pois este objeto nunca e chamado nele)
+RESET
+UPDATE 1
+SET
+
+ok 85 - F1.2 16a: update_user_profile sucede so depois do aceite legal E da verificacao de e-mail (ambos satisfeitos) -- confirma que o objeto continua com has_app_access() completo, sem afrouxamento indevido
+RESET
+INSERT 0 1
+UPDATE 1
+INSERT 0 1
+CREATE FUNCTION
+
+ok 86 - F1.2 16c: has_account_standing() ignora termos desatualizados (so checa account_status/account_restrictions)
+ok 87 - F1.2 16c: has_app_access() nega por versao/digest de termos desatualizados (comportamento pre-existente, nao mudou na F1.2)
+SET
+
+ok 88 - F1.2 16c: set_username sucede mesmo com termos desatualizados (usa o helper estreito)
+ok 89 - F1.2 16c: update_user_profile nega com termos desatualizados -- documentado: exige novo accept_legal_documents, igual a uma conta bloqueada do ponto de vista do codigo de erro
+RESET
+
+ok 90 - F1.2 16d: has_app_access() nega disabled
+ok 91 - F1.2 16d: has_account_standing() nega disabled (equivalente)
+
+ok 92 - F1.2 16d: has_app_access() nega deleting
+ok 93 - F1.2 16d: has_account_standing() nega deleting (equivalente)
+
+ok 94 - F1.2 16d: has_app_access() nega suspenso
+ok 95 - F1.2 16d: has_account_standing() nega suspenso (equivalente)
+
+ok 96 - F1.2 16d: has_app_access() nega banido
+ok 97 - F1.2 16d: has_account_standing() nega banido (equivalente)
+UPDATE 1
+
+ok 98 - F1.2 16d: has_app_access() permite superadmin (com termos aceitos -- ver nota acima: a clausula legal NAO isenta superadmin)
+ok 99 - F1.2 16d: has_account_standing() permite superadmin (mesma excecao)
+1..99
+ROLLBACK

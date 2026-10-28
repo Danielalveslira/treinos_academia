@@ -1,10 +1,51 @@
 // Rollback-only accumulated upgrade on the preserved isolated Phase 3 baseline.
-import{readFileSync,writeFileSync}from'node:fs'
-import{execFileSync}from'node:child_process'
-const db='evolutus_commercial_phase0_20261027';execFileSync('docker',['start',db],{stdio:'ignore'})
-let ready=false;for(let i=0;i<100;i++){try{execFileSync('docker',['exec',db,'pg_isready','-U','supabase_admin'],{stdio:'ignore'});ready=true;break}catch{await new Promise(r=>setTimeout(r,100))}}if(!ready)throw Error('LOCAL_BASELINE_NOT_READY')
-const early=['20261201000001_product_storefronts.sql','20261202000001_storefront_editorial_revisions.sql','20261202000002_storefront_media_maintenance_legacy.sql','20261203000001_professional_commercial_publication.sql']
-const final=['20261204000001_multiple_professional_listings.sql','20261204000002_admin_account_listing_summary.sql']
-const digest=`select jsonb_build_object('wallet',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by t.user_id)::text,'')) from public.wallets t),'ledger',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by t.id)::text,'')) from public.economy_transactions t),'orders',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by t.id)::text,'')) from public.commercial_orders t),'rights',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by t.id)::text,'')) from public.visibility_entitlements t)) value`
-const sql='begin;'+early.map(n=>(n.startsWith('20261203')?readFileSync('supabase/tests/professional_legacy_migration.sql','utf8'):'')+readFileSync('supabase/migrations/'+n,'utf8')).join('\n')+'create temp table before_finance as '+digest+';'+final.map(n=>readFileSync('supabase/migrations/'+n,'utf8')).join('\n')+'create temp table after_finance as '+digest+`;do $$begin if(select value from before_finance) is distinct from(select value from after_finance) then raise exception 'FINANCIAL_HISTORY_CHANGED';end if;if(select count(*) from public.professional_listing_limits)<>0 then raise exception 'POLICY_SEED_FORBIDDEN';end if;if not exists(select 1 from public.professional_listing_drafts where listing_id='75900000-0000-0000-0000-000000000002' and version=7 and display_name='Legacy preserved') then raise exception 'LEGACY_DATA_LOST';end if;if not exists(select 1 from public.published_professional_listings where listing_id='75900000-0000-0000-0000-000000000002' and avatar_path='historic/personal-avatar.webp')then raise exception 'LEGACY_IMAGE_LOST';end if;end$$;select 'UPGRADE_SAFE_NO_POLICY_SEED_FINANCIAL_HASHES_UNCHANGED';rollback;`
-const out=execFileSync('docker',['exec','-i',db,'psql','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{input:sql,encoding:'utf8',maxBuffer:8000000});writeFileSync('docs/finance-restructure/phase5/evidence51/migrations-reinstall.log',out);console.log('Accumulated Phase 4–5.1 upgrade rolled back; financial rows and legacy preserved')
+import { readFileSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+const db = 'evolutus_commercial_phase0_20261027'
+execFileSync('docker', ['start', db], { stdio: 'ignore' })
+let ready = false
+for (let i = 0; i < 100; i++) {
+  try {
+    execFileSync('docker', ['exec', db, 'pg_isready', '-U', 'supabase_admin'], { stdio: 'ignore' })
+    ready = true
+    break
+  } catch {
+    await new Promise((r) => setTimeout(r, 100))
+  }
+}
+if (!ready) throw Error('LOCAL_BASELINE_NOT_READY')
+const early = [
+  '20261201000001_product_storefronts.sql',
+  '20261202000001_storefront_editorial_revisions.sql',
+  '20261202000002_storefront_media_maintenance_legacy.sql',
+  '20261203000001_professional_commercial_publication.sql',
+]
+const final = [
+  '20261204000001_multiple_professional_listings.sql',
+  '20261204000002_admin_account_listing_summary.sql',
+]
+const digest = `select jsonb_build_object('wallet',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by t.user_id)::text,'')) from public.wallets t),'ledger',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by t.id)::text,'')) from public.economy_transactions t),'orders',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by t.id)::text,'')) from public.commercial_orders t),'rights',(select md5(coalesce(jsonb_agg(to_jsonb(t) order by t.id)::text,'')) from public.visibility_entitlements t)) value`
+const sql =
+  'begin;' +
+  early
+    .map(
+      (n) =>
+        (n.startsWith('20261203')
+          ? readFileSync('supabase/tests/professional_legacy_migration.sql', 'utf8')
+          : '') + readFileSync('supabase/migrations/' + n, 'utf8')
+    )
+    .join('\n') +
+  'create temp table before_finance as ' +
+  digest +
+  ';' +
+  final.map((n) => readFileSync('supabase/migrations/' + n, 'utf8')).join('\n') +
+  'create temp table after_finance as ' +
+  digest +
+  `;do $$begin if(select value from before_finance) is distinct from(select value from after_finance) then raise exception 'FINANCIAL_HISTORY_CHANGED';end if;if(select count(*) from public.professional_listing_limits)<>0 then raise exception 'POLICY_SEED_FORBIDDEN';end if;if not exists(select 1 from public.professional_listing_drafts where listing_id='75900000-0000-0000-0000-000000000002' and version=7 and display_name='Legacy preserved') then raise exception 'LEGACY_DATA_LOST';end if;if not exists(select 1 from public.published_professional_listings where listing_id='75900000-0000-0000-0000-000000000002' and avatar_path='historic/personal-avatar.webp')then raise exception 'LEGACY_IMAGE_LOST';end if;end$$;select 'UPGRADE_SAFE_NO_POLICY_SEED_FINANCIAL_HASHES_UNCHANGED';rollback;`
+const out = execFileSync(
+  'docker',
+  ['exec', '-i', db, 'psql', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'],
+  { input: sql, encoding: 'utf8', maxBuffer: 8000000 }
+)
+writeFileSync('docs/finance-restructure/phase5/evidence51/migrations-reinstall.log', out)
+console.log('Accumulated Phase 4–5.1 upgrade rolled back; financial rows and legacy preserved')

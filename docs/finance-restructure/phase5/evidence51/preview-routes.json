@@ -1,0 +1,29 @@
+{
+  "localOnly": true,
+  "results": [
+    {
+      "path": "/minha-vitrine",
+      "status": 200
+    },
+    {
+      "path": "/profissionais",
+      "status": 200
+    },
+    {
+      "path": "/locais",
+      "status": 200
+    },
+    {
+      "path": "/admin/vitrines",
+      "status": 200
+    },
+    {
+      "path": "/admin/parcerias?tab=engine",
+      "status": 200
+    },
+    {
+      "path": "/.finance-local/phase51-access.json",
+      "status": 403
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { publicNavigationAge } from '../../utils/publicNavigationAge.js'
 import { publicCommercialRpc } from '../publicProducts/publicProductCatalogService.js'
 export const directoryPath = (kind) => (kind === 'space' ? '/locais' : '/profissionais')
 export function remainingLeaseMs(data, elapsed = 0) {
@@ -16,17 +17,15 @@ export async function fetchListingPage(kind, filters = {}, offset = 0, signal) {
         data.offset === offset &&
         JSON.stringify(data.filters) === JSON.stringify(filters)
       ) {
+        const elapsed = publicNavigationAge()
         return {
           ...data.page,
           items: (data.page.items || []).map((item) => ({
             ...item,
-            remainingMs: remainingLeaseMs(
-              { ...item, serverTime: data.page.serverTime },
-              performance.now()
-            ),
+            remainingMs: remainingLeaseMs({ ...item, serverTime: data.page.serverTime }, elapsed),
           })),
           receivedAt: performance.now(),
-          remainingMs: remainingLeaseMs(data.page, performance.now()),
+          remainingMs: remainingLeaseMs(data.page, elapsed),
         }
       }
     } catch {

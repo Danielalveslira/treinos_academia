@@ -1,0 +1,37 @@
+✔ busca por @usuário, e-mail (sem diferenciar caixa) e UID (3.733045ms)
+✔ filtros de status, papel, financeiro, comunidade e último acesso (0.736895ms)
+✔ cartões de resumo e abas filtram sobre o mesmo snapshot (0.338251ms)
+✔ filtros combinam (E) e hasActiveFilters detecta filtro ativo (0.405185ms)
+✔ ordenação local, estável e sem mutar a entrada (0.499088ms)
+✔ paginação local limita a página ao intervalo válido (0.337109ms)
+✔ regras de quem pode ser alterado/excluído espelham o banco (0.232995ms)
+✔ applyAccountChanges atualiza a linha e ajusta as métricas por diferença (0.726999ms)
+✔ reativar conta com restrição vigente a deixa suspensa, não ativa (0.349081ms)
+✔ CSV: BOM, cabeçalho, escape de aspas/vírgulas e proteção contra fórmula (1.817279ms)
+✔ mensagens de erro conhecidas viram texto amigável; o resto cai no fallback (0.36454ms)
+✔ Último uso (last_active_at) e Último login (last_sign_in_at) são conceitos independentes (0.297325ms)
+✔ CSV exporta Último uso e Último login em colunas separadas (0.499171ms)
+✔ "Último login" fica atrás do seletor de colunas por padrão (0.212176ms)
+✔ CSV protege espaços, controles e operadores Unicode sem perder escape (1.712975ms)
+✔ resposta parcial malformada, repetida ou com alvo externo é rejeitada (0.645814ms)
+✔ abrir a página não chama o banco e mostra o estado inicial (1203.556588ms)
+✔ Atualizar = 1 RPC; busca, filtro, ordenação, abas, painel e CSV = 0 RPC (447.568555ms)
+✔ Atualizar fica bloqueado durante a chamada e não dispara duas leituras (111.59206ms)
+✔ falha no refresh mantém a tabela anterior e oferece nova tentativa (128.271079ms)
+✔ primeira carga que falha mostra erro com nova tentativa, sem lista vazia enganosa (37.122401ms)
+✔ desativar pelo painel: 1 escrita, linha e métricas atualizadas localmente, sem novo snapshot (300.927474ms)
+✔ ação em lote: 1 RPC para N contas e falha parcial é reportada sem apagar nada (234.545339ms)
+✔ administrador e conta em exclusão não entram na ação em lote (103.018354ms)
+✔ logs administrativos só são lidos ao clicar em Carregar logs (81.814851ms)
+✔ troca de sessão remove snapshot e ignora refresh antigo (39.51298ms)
+✔ filtro e paginação limpam seleção; abrir detalhes preserva (154.038224ms)
+✔ detalhe tardio após fechar não retorna ao cache; aba pronta é reutilizada (272.919758ms)
+✔ resposta de lote vazia não mostra sucesso nem atualiza status (195.138022ms)
+ℹ tests 29
+ℹ suites 0
+ℹ pass 29
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5805.716488

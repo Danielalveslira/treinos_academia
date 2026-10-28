@@ -1064,10 +1064,14 @@ test('ACK perdido: barreira aguarda RPC de background deliberadamente bloqueada 
   const state = postgresAppliesInsertThenClientLosesResponse({ viaTimeout: false })
   const respondBeforeGate = globalThis.__respond
   let entered, release
-  const started = new Promise(resolve => { entered = resolve })
-  const gate = new Promise(resolve => { release = resolve })
+  const started = new Promise((resolve) => {
+    entered = resolve
+  })
+  const gate = new Promise((resolve) => {
+    release = resolve
+  })
   let held = false
-  globalThis.__respond = async call => {
+  globalThis.__respond = async (call) => {
     if (call.kind === 'rpc' && call.name === 'sync_workout_mutations' && !held) {
       held = true
       entered()
@@ -1090,7 +1094,10 @@ test('ACK perdido: barreira aguarda RPC de background deliberadamente bloqueada 
     assert.equal(server.rowsOf(A).length, 1)
     assert.equal(server.receipts.size, 1)
     assert.deepEqual(await on.outbox.listMutations(A), [])
-    assert.equal((await on.history.readCachedWorkoutRow(A, state.id)).updated_at, state.row.updated_at)
+    assert.equal(
+      (await on.history.readCachedWorkoutRow(A, state.id)).updated_at,
+      state.row.updated_at
+    )
   } finally {
     release()
     globalThis.__respond = respondBeforeGate

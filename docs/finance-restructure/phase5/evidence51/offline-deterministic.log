@@ -1,0 +1,46 @@
+✔ flag ligada + ONLINE: o INSERT leva o id gerado no cliente, o servidor confirma e NADA vai para a outbox (613.399018ms)
+✔ flag ligada + OFFLINE: salva no aparelho + outbox e diz CLARAMENTE que não sincronizou (7.640559ms)
+✔ flag ligada: o ESTADO do servidor não é simulado — a outbox guarda o payload, nunca tokens, headers nem user_id (3.708035ms)
+✔ online MAS a rede falha no INSERT (resposta pode ter se perdido): cai para a fila com o MESMO id que foi enviado (4.820941ms)
+✔ erro que NÃO é de conectividade (validação/permissão) continua sendo erro: nada vai para a fila (6.226943ms)
+✔ registro inválido é recusado ANTES de qualquer coisa: nem rede, nem fila (1.568976ms)
+✔ update e delete OFFLINE entram na fila com a versão-base que este aparelho viu (48.062453ms)
+✔ criar e apagar OFFLINE o mesmo registro não deixa nada para enviar (5.784448ms)
+✔ com mutação PENDENTE para o registro, a edição NÃO vai direto ao servidor (ele ainda não o conhece) (45.601394ms)
+✔ LEITURA online mostra servidor + pendências (o que foi salvo offline não some quando a rede volta) (86.467838ms)
+✔ LEITURA sem rede devolve o estado local, inclusive o que está pendente (45.07368ms)
+✔ PONTA A PONTA: salva offline -> a internet volta -> sincroniza (RPC) -> fila vazia, sem duplicar no servidor (48.726562ms)
+✔ PONTA A PONTA com ACK perdido: o reenvio via scheduler não duplica no servidor (45.682786ms)
+✔ syncNow ("Sincronizar agora") recoloca falhas na fila e ignora a espera do backoff (46.228293ms)
+✔ sem sessão (logout) nada é enviado e a fila fica guardada; ao logar de novo sincroniza (46.100094ms)
+✔ exercícios pessoais: gravações ONLINE atualizam o cache local (sem escrita offline) (205.603403ms)
+✔ flag DESLIGADA: o INSERT é o de antes (sem id do cliente), o resultado é "synced" e a outbox nunca é usada (6.526492ms)
+✔ flag DESLIGADA: rede caindo continua sendo ERRO (nada é salvo localmente), mesmo com o navegador offline (3.412734ms)
+✔ flag DESLIGADA: update/delete são os de antes e leituras seguem iguais (4.604608ms)
+✔ CRÍTICO (queda de rede): INSERT confirmado, o cliente enfileira o MESMO id e a RPC reconhece a linha existente — sem duplicar (8.500163ms)
+✔ CRÍTICO (timeout (AbortSignal)): INSERT confirmado, o cliente enfileira o MESMO id e a RPC reconhece a linha existente — sem duplicar (39.876056ms)
+✔ CRÍTICO: INSERT confirmado + timeout e o usuário EDITA em seguida: a edição chega ao servidor e created_at não muda (108.558276ms)
+✔ CRÍTICO: INSERT confirmado + timeout, depois OUTRO aparelho altera: conflito explícito, servidor intacto, dado local preservado e as duas saídas funcionam (85.991736ms)
+✔ CRÍTICO (conflito): "Usar o do servidor" restaura a versão do servidor localmente e esvazia a fila (46.877598ms)
+✔ FINALIZAR: conflito antigo de ontem + 4 pendências de hoje -> sincroniza as 4, conclui e a antiga segue visível (135.031073ms)
+✔ FINALIZAR: conflito/falha de HOJE bloqueia (atenção), e nada é concluído com registro não confirmado (85.489513ms)
+✔ FINALIZAR: se o sync necessário falha (rede), as de hoje seguem pendentes e a conclusão é bloqueada; ontem não conta (141.770365ms)
+✔ FINALIZAR: sem nenhuma pendência o flush não chama o servidor (3.32459ms)
+✔ FINALIZAR: o flush de A nunca envia nem conta a fila de B (43.999808ms)
+✔ LOGOUT: A cria pendências, sai; B entra e NÃO vê nem sincroniza as de A; B sai; A volta, as pendências reaparecem e sincronizam (92.554894ms)
+✔ o aviso de logout só mostra a quantidade (nunca dado do treino) e some com a fila vazia (0.470768ms)
+✔ flag DESLIGADA: createWorkout com id do cliente envia esse id e repetir a criação vira UPDATE do mesmo registro (3.341241ms)
+✔ flag ligada: createWorkout com id do cliente envia esse id e repetir a criação vira UPDATE do mesmo registro (3.365035ms)
+✔ createWorkout sem id do cliente mantém o comportamento anterior (erro de unicidade continua sendo erro) (0.578338ms)
+✔ personal exercise updates send only note/active and never identity; no custom creation API remains (0.536681ms)
+✔ concurrent official duplicate returns the existing row without creating a second link (2.97564ms)
+✔ duplicate legacy link resolves the official tuple without changing its FK or preferences (1.725696ms)
+✔ ACK perdido: barreira aguarda RPC de background deliberadamente bloqueada antes de trocar o transporte (8.303446ms)
+ℹ tests 38
+ℹ suites 0
+ℹ pass 38
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6257.130284

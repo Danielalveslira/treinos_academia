@@ -84,14 +84,17 @@ test('server authorization failures are propagated rather than converted to succ
   globalThis.__proError = null
 })
 
-test('creation, selection and seek pagination bind explicit resource/request IDs', async()=>{
- globalThis.__proCalls=[]
- await service.createProfessionalListing('space','intent-uuid')
- await service.getMyProfessionalListing('selected-resource')
- await service.listMyProfessionalListings('space','cursor-uuid')
- assert.deepEqual(globalThis.__proCalls,[
- {name:'create_professional_listing',args:{p_kind:'space',p_request_id:'intent-uuid'}},
- {name:'get_my_professional_listing',args:{p_listing_id:'selected-resource'}},
- {name:'list_my_professional_listings',args:{p_kind:'space',p_before:'cursor-uuid',p_limit:12}}
- ])
+test('creation, selection and seek pagination bind explicit resource/request IDs', async () => {
+  globalThis.__proCalls = []
+  await service.createProfessionalListing('space', 'intent-uuid')
+  await service.getMyProfessionalListing('selected-resource')
+  await service.listMyProfessionalListings('space', 'cursor-uuid')
+  assert.deepEqual(globalThis.__proCalls, [
+    { name: 'create_professional_listing', args: { p_kind: 'space', p_request_id: 'intent-uuid' } },
+    { name: 'get_my_professional_listing', args: { p_listing_id: 'selected-resource' } },
+    {
+      name: 'list_my_professional_listings',
+      args: { p_kind: 'space', p_before: 'cursor-uuid', p_limit: 12 },
+    },
+  ])
 })

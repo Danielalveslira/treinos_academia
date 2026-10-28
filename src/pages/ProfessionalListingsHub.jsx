@@ -205,13 +205,22 @@ export default function ProfessionalListingsHub() {
               dia(s) restantes na consulta.
             </Text>
           )}
-          <Button
-            as={Link}
-            to={'?cadastro=' + item.id}
-            aria-label={'Gerenciar ' + item.displayName}
-          >
-            Gerenciar e renovar
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Button
+              as={Link}
+              to={'?cadastro=' + item.id}
+              aria-label={'Gerenciar ' + item.displayName}
+            >
+              Gerenciar
+            </Button>
+            <Button
+              as={Link}
+              to={'?cadastro=' + item.id + '#publicacao'}
+              aria-label={'Contratar ou renovar ' + item.displayName}
+            >
+              Contratar ou renovar
+            </Button>
+          </Box>
         </Box>
       ))}
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>

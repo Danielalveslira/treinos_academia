@@ -1,0 +1,146 @@
+BEGIN
+DELETE 1
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 3
+UPDATE 1
+CREATE FUNCTION
+
+SET
+ok 1 - central catalog has eight services without invented prices
+ok 2 - zero price fails
+ok 3 - overflow fails
+ok 4 - invalid limits fail
+ok 5 - explicit admin confirmation required
+{"revision": "1", "priceVersionId": "1a0f7aea-f65d-4103-ab17-ad09da50ca4f"}
+ok 6 - admin retry returns same version
+ok 7 - admin request cannot change payload
+ok 8 - no live adapter can sell
+RESET
+UPDATE 1
+{"revision": "2", "salesEnabled": true}
+INSERT 0 2
+
+
+73000000-0000-0000-0000-000000000001
+CREATE TABLE
+GRANT
+SET
+ok 9 - ordinary user cannot read admin catalog
+ok 10 - zero duration fails
+ok 11 - fractional duration fails
+ok 12 - oversized duration fails before cast
+ok 13 - awaiting approval is never charged
+ok 14 - nonexistent resource cannot buy rights
+INSERT 0 1
+ok 15 - server computes exact total as integer string
+ok 16 - quote replay returns same order
+ok 17 - request cannot mutate duration
+ok 18 - direct financial write denied
+ok 19 - direct expiry mutation denied
+ok 20 - explicit buyer confirmation required
+RESET
+
+{"revision": "3", "priceVersionId": "97404a5e-f92a-42bf-847b-c4592207a0a4"}
+73000000-0000-0000-0000-000000000001
+SET
+INSERT 0 1
+ok 21 - old quote survives price publication
+ok 22 - confirmation replay has no new debit
+RESET
+ok 23 - one exact debit
+ok 24 - one unique ledger entry
+ok 25 - seven days are exactly 168 hours
+ok 26 - approved paid resource is eligible
+INSERT 0 1
+ok 27 - owner restriction hides even a paid approved resource
+DELETE 1
+
+{"revision": "4", "salesEnabled": false}
+ok 28 - pausing sales preserves acquired right
+{"revision": "5", "salesEnabled": true}
+73000000-0000-0000-0000-000000000001
+SET
+INSERT 0 1
+ok 29 - renewal uses current price
+{"id": "d1ad79b6-28fb-4c73-8371-27528f985678", "status": "fulfilled", "createdAt": "2026-10-28T12:14:15.280952+00:00", "periodEnd": "2026-11-06T12:14:15.23026+00:00", "totalCash": "6", "resourceId": "73200000-0000-0000-0000-000000000001", "fulfilledAt": "2026-10-28T12:14:15.284524+00:00", "periodStart": "2026-11-04T12:14:15.23026+00:00", "durationDays": "2", "offeringCode": "post_boost", "unitPriceCash": "3", "priceVersionId": "97404a5e-f92a-42bf-847b-c4592207a0a4", "quoteExpiresAt": "2026-10-28T12:19:15.280952+00:00", "contentRevision": "1"}
+RESET
+ok 30 - early renewal extends remaining period by exact 48 hours
+UPDATE 1
+ok 31 - expired right denies access without cron
+SET
+INSERT 0 1
+{"id": "73c8a2c4-d82d-4841-91cd-bb0a91318dad", "status": "fulfilled", "createdAt": "2026-10-28T12:14:15.292157+00:00", "periodEnd": "2026-10-29T12:14:15.295437+00:00", "totalCash": "3", "resourceId": "73200000-0000-0000-0000-000000000001", "fulfilledAt": "2026-10-28T12:14:15.295437+00:00", "periodStart": "2026-10-28T12:14:15.295437+00:00", "durationDays": "1", "offeringCode": "post_boost", "unitPriceCash": "3", "priceVersionId": "97404a5e-f92a-42bf-847b-c4592207a0a4", "quoteExpiresAt": "2026-10-28T12:19:15.292157+00:00", "contentRevision": "1"}
+RESET
+ok 32 - late renewal begins a new 24 hour period
+INSERT 0 1
+SET
+ok 33 - expired quote cannot debit
+INSERT 0 1
+ok 34 - insufficient balance preserves order and right
+RESET
+SET
+INSERT 0 1
+RESET
+UPDATE 1
+SET
+ok 35 - approved revision rechecked inside financial transaction
+RESET
+UPDATE 1
+ok 36 - content suspension overrides payment
+SET
+ok 37 - payment cannot reactivate suspended content
+RESET
+UPDATE 1
+
+{"id": "10519b53-8558-47e0-8ead-e50f9047cff8", "revision": "4", "administrativeState": "suspended"}
+ok 38 - admin suspension stops eligibility immediately
+73000000-0000-0000-0000-000000000001
+SET
+ok 39 - renewal cannot override suspended right
+RESET
+
+{"id": "10519b53-8558-47e0-8ead-e50f9047cff8", "revision": "5", "administrativeState": "enabled"}
+INSERT 0 1
+CREATE FUNCTION
+CREATE TRIGGER
+73000000-0000-0000-0000-000000000001
+SET
+INSERT 0 1
+ok 40 - fault after debit rolls back entire transaction
+RESET
+ok 41 - fault preserves balance
+ok 42 - fault preserves ledger
+ok 43 - fault leaves order unfulfilled
+ok 44 - fault preserves entitlement dates and revision
+ok 45 - fault cannot record a fulfillment event
+DROP TRIGGER
+73000000-0000-0000-0000-000000000002
+SET
+ok 46 - RLS isolates orders
+ok 47 - cannot confirm another wallet order
+ok 48 - cannot buy another owner resource
+RESET
+73000000-0000-0000-0000-000000000001
+UPDATE 1
+SET
+ok 49 - blocked user cannot spend
+RESET
+UPDATE 1
+
+SET
+ok 50 - revoked session cannot replay
+RESET
+
+{"id": "73c8a2c4-d82d-4841-91cd-bb0a91318dad", "status": "reversed", "createdAt": "2026-10-28T12:14:15.292157+00:00", "periodEnd": "2026-10-29T12:14:15.295437+00:00", "totalCash": "3", "resourceId": "73200000-0000-0000-0000-000000000001", "fulfilledAt": "2026-10-28T12:14:15.295437+00:00", "periodStart": "2026-10-28T12:14:15.295437+00:00", "durationDays": "1", "offeringCode": "post_boost", "unitPriceCash": "3", "priceVersionId": "97404a5e-f92a-42bf-847b-c4592207a0a4", "quoteExpiresAt": "2026-10-28T12:19:15.292157+00:00", "contentRevision": "1"}
+ok 51 - refund replay is idempotent
+ok 52 - refund restores original exact debit
+ok 53 - refunded new period is revoked
+ok 54 - published price history immutable
+ok 55 - audit is append-only
+ok 56 - service role cannot debit arbitrary caller wallet
+ok 57 - private eligibility is no public resource oracle
+ok 58 - client cannot register arbitrary resource or approve it
+1..58
+ROLLBACK

@@ -89,6 +89,10 @@ export default function MyProfessionalListing({ listingId }) {
     const timer = setTimeout(() => setGeneration((v) => v + 1), Math.min(remaining, 2147483647))
     return () => clearTimeout(timer)
   }, [record])
+  useEffect(() => {
+    if (record?.id && globalThis.location?.hash === '#publicacao')
+      document.getElementById('publicacao')?.scrollIntoView({ block: 'start' })
+  }, [record?.id])
   async function run(action) {
     if (lock.current) return
     lock.current = true
@@ -169,7 +173,9 @@ export default function MyProfessionalListing({ listingId }) {
       {record === undefined && !error && <Spinner aria-label="Carregando cadastro" />}
       {record && form && (
         <>
-          <Heading as="h2" sx={{fontSize:2,overflowWrap:'anywhere'}}>{record.draft.displayName||'Cadastro em preparação'}</Heading>
+          <Heading as="h2" sx={{ fontSize: 2, overflowWrap: 'anywhere' }}>
+            {record.draft.displayName || 'Cadastro em preparação'}
+          </Heading>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Label>{editorialLabels[record.draft.reviewState] || record.draft.reviewState}</Label>
             <Label>{publicationLabels[record.commercial.state] || record.commercial.state}</Label>
@@ -233,22 +239,30 @@ export default function MyProfessionalListing({ listingId }) {
               Arquivar cadastro
             </Button>
           </Box>
-          {record.commercial.canContract && (
-            <CommercialLeasePurchase
-              key={`${record.id}:${record.commercial.publishedRevision}`}
+          <Box id="publicacao">
+            {!record.commercial.canContract && (
+              <Flash>
+                Para contratar, este cadastro precisa ter versão aprovada e estar liberado para
+                publicação.
+              </Flash>
+            )}
+            {record.commercial.canContract && (
+              <CommercialLeasePurchase
+                key={`${record.id}:${record.commercial.publishedRevision}`}
+                resourceId={record.id}
+                resourceName={record.published?.displayName || record.draft.displayName}
+                tariff={record.commercial.tariff}
+                expiresAt={record.commercial.expiresAt}
+                onComplete={reload}
+                subjectLabel={record.listing.kind === 'space' ? 'estabelecimento' : 'perfil'}
+              />
+            )}
+            <CommercialOrderHistory
               resourceId={record.id}
-              resourceName={record.published?.displayName||record.draft.displayName}
-              tariff={record.commercial.tariff}
-              expiresAt={record.commercial.expiresAt}
-              onComplete={reload}
-              subjectLabel={record.listing.kind === 'space' ? 'estabelecimento' : 'perfil'}
+              load={listListingCommercialOrders}
+              revision={record.commercial.expiresAt}
             />
-          )}
-          <CommercialOrderHistory
-            resourceId={record.id}
-            load={listListingCommercialOrders}
-            revision={record.commercial.expiresAt}
-          />
+          </Box>
           {preview && (
             <Dialog title="Prévia privada" onClose={() => setPreview(false)}>
               <Box sx={{ p: 3, overflowWrap: 'anywhere' }}>

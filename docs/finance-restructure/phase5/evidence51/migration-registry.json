@@ -1,0 +1,15 @@
+{
+  "localOnly": true,
+  "versions": [
+    {
+      "file": "20261204000001_multiple_professional_listings.sql",
+      "version": "20261204000001",
+      "sha256": "cfa324a9a3008642db1f075a580057d739a9a08ee489567d422926ee9d05d3e4"
+    },
+    {
+      "file": "20261204000002_admin_account_listing_summary.sql",
+      "version": "20261204000002",
+      "sha256": "50d3fd69e3c95041f32696c6a9a1e4d17916de56e672048baef1b62af8dc87f6"
+    }
+  ]
+}

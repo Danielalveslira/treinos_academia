@@ -14,7 +14,8 @@ const browser = await chromium.launch({
   args: ['--no-sandbox'],
 })
 const visual = [],
-  errors = []
+  errors = [],
+  environmentWarnings = []
 async function context(session) {
   const c = await browser.newContext()
   if (session)
@@ -33,8 +34,32 @@ async function context(session) {
       return route.continue()
     return route.abort()
   })
-  c.on('page', (p) => p.on('pageerror', (e) => errors.push(e.message)))
+  c.on('page', (p) => {
+    p.on('pageerror', (e) => errors.push(e.message))
+    p.on('console', (message) => {
+      if (message.type() === 'error') {
+        const url = message.location().url || ''
+        const text = message.text()
+        if (
+          text.startsWith(
+            "WebSocket connection to 'wss://" + host + '/_finance_local/realtime/v1/websocket?'
+          ) &&
+          text.endsWith('Unexpected response code: 404')
+        ) {
+          environmentWarnings.push({ service: 'local-realtime', status: 404 })
+          return
+        }
+        if (!url || url.startsWith(base) || url.includes('/_finance_local/'))
+          errors.push(message.text())
+      }
+    })
+  })
   return c
+}
+async function closeContext(context) {
+  // Drain proxy handlers before disposing their request context.
+  await context.unrouteAll({ behavior: 'wait' })
+  await context.close()
 }
 async function theme(page, width, mode) {
   await page.setViewportSize({ width, height: 900 })
@@ -104,8 +129,8 @@ try {
         await pub.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
         await pub.getByRole('dialog').waitFor({ state: 'hidden' })
       }
-    await owner.close()
-    await guest.close()
+    await closeContext(owner)
+    await closeContext(guest)
   }
   const central = await context(a.owner),
     hub = await central.newPage()
@@ -130,7 +155,19 @@ try {
     .waitFor({ state: 'hidden' })
   for (const row of story.resources.filter((r) => r.kind === 'space'))
     await hub.getByRole('heading', { name: row.name, exact: true }).waitFor()
-  await central.close()
+  const renewalTarget = story.resources[1]
+  await hub.locator('a[href$="?cadastro=' + renewalTarget.id + '#publicacao"]').click()
+  await hub.getByText('Publicação de ' + renewalTarget.name, { exact: true }).waitFor()
+  await hub.waitForFunction((name) => {
+    const p = [...document.querySelectorAll('p')].find(
+      (e) => e.textContent === 'Publicação de ' + name
+    )
+    if (!p) return false
+    const r = p.getBoundingClientRect()
+    return r.top >= 0 && r.bottom <= innerHeight
+  }, renewalTarget.name)
+  assert.equal(new URL(hub.url()).searchParams.get('cadastro'), renewalTarget.id)
+  await closeContext(central)
   const admin = await context(a.admin),
     page = await admin.newPage()
   for (const [tab, url, title] of [
@@ -185,9 +222,14 @@ try {
   assert.deepEqual(errors, [])
   writeFileSync(
     evidence + '/visual.json',
-    JSON.stringify({ passed: true, localOnly: true, visual, consoleErrors: errors }, null, 2) + '\n'
+    JSON.stringify(
+      { passed: true, localOnly: true, visual, consoleErrors: errors, environmentWarnings },
+      null,
+      2
+    ) + '\n'
   )
   console.log('Stable visual/content checks: ' + visual.length)
 } finally {
+  for (const context of browser.contexts()) await closeContext(context)
   await browser.close()
 }
