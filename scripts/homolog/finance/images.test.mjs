@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { IMAGES, pullImage } from './images.mjs'
+import { IMAGES, pullImage, verifyLocalPostgresImage } from './images.mjs'
 
 const id = 'sha256:' + 'a'.repeat(64)
 const ghcr = 'ghcr.io/supabase/'
@@ -108,4 +108,21 @@ test('daemon failure and invalid inspect JSON do not fall back', async () => {
 })
 test('unknown image cannot select an unreviewed registry or version', async () => {
   await assert.rejects(pullImage('latest', { ...quiet, run: () => assert.fail('must not call docker') }), /UNKNOWN_STACK_IMAGE/)
+})
+
+test('PostgreSQL harness validates the config ID against its pinned OCI index, not equality of both digests', () => {
+  const info = { Image: id, Config: { Image: id } }
+  verifyLocalPostgresImage(info, { run: (...args) => {
+    assert.deepEqual(args, ['image', 'inspect', id])
+    return image(ghcr)
+  } })
+})
+test('PostgreSQL CLI keeps supporting official versioned images', () => {
+  verifyLocalPostgresImage({ Config: { Image: 'ghcr.io/supabase/postgres:17.11.0.002' } }, { run: () => assert.fail('named CLI image needs no harness pull') })
+})
+test('PostgreSQL image validation rejects wrong indexes, mismatched config IDs and unofficial names', () => {
+  const info = { Image: id, Config: { Image: id } }
+  assert.throws(() => verifyLocalPostgresImage(info, { run: () => image(ghcr, { RepoDigests: [ghcr + 'postgres@sha256:' + 'b'.repeat(64)] }) }), /IMAGE_INTEGRITY_FAILED/)
+  assert.throws(() => verifyLocalPostgresImage(info, { run: () => image(ghcr, { Id: 'sha256:' + 'b'.repeat(64) }) }), /IMAGE_INTEGRITY_FAILED/)
+  assert.throws(() => verifyLocalPostgresImage({ Config: { Image: 'evil.invalid/supabase/postgres:17.6.1.166' } }), /IMAGE_INTEGRITY_FAILED/)
 })

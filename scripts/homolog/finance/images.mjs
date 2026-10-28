@@ -62,3 +62,19 @@ export async function pullImage(key, { run = docker, sleep = ms => new Promise(r
   }
   throw new Error('STACK_IMAGE_UNAVAILABLE: ' + ref)
 }
+
+// The CLI names a versioned official image; our isolated harness executes the
+// verified immutable config ID. An OCI index digest is not that config ID.
+export function verifyLocalPostgresImage(info, { run = docker } = {}) {
+  const requested = info?.Config?.Image || ''
+  if (/^(?:(?:ghcr\.io|public\.ecr\.aws)\/)?supabase\/postgres:[0-9.]+(?:@sha256:[a-f0-9]{64})?$/.test(requested)) return
+  if (!/^sha256:[a-f0-9]{64}$/.test(requested) || requested !== info?.Image)
+    throw new Error('IMAGE_INTEGRITY_FAILED: unrecognized PostgreSQL image')
+  const raw = run('image', 'inspect', info.Image)
+  let image
+  try { image = JSON.parse(raw)?.[0] } catch { throw new Error('IMAGE_INTEGRITY_FAILED: invalid inspect response') }
+  const digest = IMAGES.postgres.split('@')[1]
+  const registry = REGISTRIES.find((prefix) => image?.RepoDigests?.includes(prefix + 'postgres@' + digest))
+  if (!registry || verify(raw, IMAGES.postgres, registry, () => {}) !== info.Image)
+    throw new Error('IMAGE_INTEGRITY_FAILED: PostgreSQL config/index mismatch')
+}

@@ -28,3 +28,11 @@ PR [#87](https://github.com/Danielalveslira/treinos_academia/pull/87), commit 95
 Correções em validação local; a atualização seguinte do PR executará novamente todos os gates remotos. Auto-merge confirmado null, main protegida e revisão humana pendente.
 
 Validação local após as correções: 205 migrations instaladas na base nova, 88 suítes/3.790 asserções SQL aprovadas, concorrência publicitária real aprovada e 11 regressões de handlers públicos/SEO aprovadas. O smoke ampliado permanece em execução local (320/360/375/390 já aprovados nos temas claro/escuro); sua matriz completa também permanece obrigatória no CI.
+
+## Segunda rodada e correções adicionais
+
+Run [40753714834](https://github.com/Danielalveslira/treinos_academia/actions/runs/40753714834), commit ab6761e: SQL completo passou; frontend avançou pelos cabeçalhos, fichas, entradas e Home, mas o harness de métricas ainda não declarava import.meta.env nem isolava a importação Supabase da nova central. Ajustado o ambiente de build e usado backend estrito que falha em qualquer RPC comercial inesperada; as asserções de métricas/administração foram preservadas e passaram localmente.
+
+O finance-e2e passou novamente pelo fluxo real de atividade, mas o guard comparava digest do índice OCI com ID de configuração Docker. O runner usou config f557… para o índice aprovado b3bf…; agora a verificação por ID consulta RepoDigests e mantém o pin, a plataforma e a correspondência com a imagem efetiva. O CLI mantém suporte aos nomes oficiais versionados (nesta execução, PostgreSQL 17.11). Helper compartilhado elimina a mesma comparação incorreta em dois harnesses. Testes negativos rejeitam índice errado, config divergente e nomes não oficiais. Nenhum pin foi alterado nem aceito SHA arbitrário.
+
+Validação local adicional: 23 testes de imagens, concorrência real e todos os smokes restantes (fichas, entradas, Home, métricas/admin, catálogo e offline) aprovados. Cabeçalhos: 272 verificações em oito larguras/temas. Evidências nesta pasta. A terceira rodada remota continua obrigatória antes de declarar a Etapa 1 aprovada.

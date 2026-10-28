@@ -1,3 +1,4 @@
+import { verifyLocalPostgresImage } from './homolog/finance/images.mjs'
 // Synthetic fixtures in an allowlisted disposable PostgreSQL only. No remote URL.
 import assert from 'node:assert/strict'
 import { execFile, execFileSync } from 'node:child_process'
@@ -8,11 +9,7 @@ const container = process.env.PG_TEST_CONTAINER || 'supabase_db_treinos_academia
 if (!['supabase_db_treinos_academia', 'evolutus_price_phase1_db', 'evolutus_integrated_db', 'evolutus_release_ci_db'].includes(container))
   throw Error('DISPOSABLE_DATABASE_REQUIRED')
 const info = JSON.parse(execFileSync('docker', ['inspect', container], { encoding: 'utf8' }))[0]
-assert.ok(
-  /supabase\/postgres:/.test(info.Config.Image) ||
-    info.Config.Image === 'sha256:b3bfedb107413abb3b8cb0d0874b0414a1dceb3d55bc0c778de6ad22d1f7dc86',
-  'Pinned local Supabase PostgreSQL required'
-)
+verifyLocalPostgresImage(info)
 const execute = promisify(execFile)
 const q = (value) => `'${String(value).replaceAll("'", "''")}'`
 async function sql(source) {
