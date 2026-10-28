@@ -1,0 +1,26 @@
+{
+  "run": "https://github.com/Danielalveslira/treinos_academia/actions/runs/40751421633",
+  "head": "950988f0472646459fe4c70a0c85a09cf38ce957",
+  "conclusion": "failure",
+  "failures": [
+    {
+      "job": "js",
+      "cause": "Public menu expected 7 links; route /locais introduced the eighth; new route also revealed fallback CSS overflow at 320px"
+    },
+    {
+      "job": "sql",
+      "files": 88,
+      "assertions": 3790,
+      "failedAssertions": 1,
+      "test": "community_creation_test.sql #116",
+      "expected": "SESSION_REVOKED",
+      "actual": "APP_ACCESS_DENIED"
+    },
+    {
+      "job": "finance-e2e",
+      "activityRewardFlow": "passed",
+      "cause": "Advertising harness rejected its allowlisted CI container before starting SQL",
+      "error": "DISPOSABLE_DATABASE_REQUIRED"
+    }
+  ]
+}

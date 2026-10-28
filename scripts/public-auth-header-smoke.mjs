@@ -34,8 +34,8 @@ const server = process.env.PUBLIC_PREVIEW_URL ? null : createServer(async (req, 
 if (server) await new Promise(resolveListen => server.listen(0, '127.0.0.1', resolveListen))
 const base = process.env.PUBLIC_PREVIEW_URL || `http://127.0.0.1:${server.address().port}`
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] })
-const staticRoutes = ['/', '/como-funciona', '/para-empresas', '/vitrine', '/profissionais']
-const routes = ['/', '/como-funciona', '/para-empresas', '/vitrine', '/profissionais', '/login', '/cadastro', '/esqueci-senha', '/confirmar-email', '/redefinir-senha', '/termos-de-uso', '/politica-de-privacidade', '/regras-da-comunidade', '/termos-publicacao-vitrine', '/atendimento', '/pagina-inexistente']
+const staticRoutes = ['/', '/como-funciona', '/para-empresas', '/vitrine', '/profissionais', '/locais']
+const routes = ['/', '/como-funciona', '/para-empresas', '/vitrine', '/profissionais', '/locais', '/login', '/cadastro', '/esqueci-senha', '/confirmar-email', '/redefinir-senha', '/termos-de-uso', '/politica-de-privacidade', '/regras-da-comunidade', '/termos-publicacao-vitrine', '/atendimento', '/pagina-inexistente']
 let checked = 0
 try {
   for (const width of (process.env.HEADER_WIDTHS ? process.env.HEADER_WIDTHS.split(',').map(Number) : [320, 360, 375, 390, 414, 430, 768, 1440])) {
@@ -111,7 +111,11 @@ try {
           const box = await overlay.boundingBox()
           assert.ok(box.x >= -1 && box.x + box.width <= width + 1, `${path}/${width}: menu overflow`)
           assert.ok(await overlay.evaluate(element => getComputedStyle(element).opacity === '1' && /^rgb\(/.test(getComputedStyle(element).backgroundColor)), `${path}: transparent menu`)
-          assert.equal(await overlay.locator('a[href]').count(), 7)
+          assert.deepEqual(
+            await overlay.locator('a[href]').evaluateAll(links => links.map(link => link.getAttribute('href'))),
+            ['/', '/como-funciona', '/para-empresas', '/vitrine', '/profissionais', '/locais', '/login', '/cadastro'],
+            `${path}: public menu destinations differ from the supported navigation contract`
+          )
           assert.ok(await overlay.locator('a[href]').first().evaluate(element => {
             const r = element.getBoundingClientRect()
             return element.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2))

@@ -50,10 +50,11 @@ export function renderListingHtml(
       (_, opening) => opening + content + '</div>'
     )
   if (detail) html = html.replace(/<h1[^>]*>[\s\S]*?<\/h1>/, '')
+  const styles = html.includes('href="/public-listings.css"') ? '' : '<link rel="stylesheet" href="/public-listings.css">'
   return html
     .replace(
       '</head>',
-      `<link rel="stylesheet" href="/public-listings.css">${schema ? `<script type="application/ld+json">${jsonLd(schema)}</script>` : ''}${detail ? '<script src="/storefront-detail.js" defer></script>' : ''}</head>`
+      `${styles}${schema ? `<script type="application/ld+json">${jsonLd(schema)}</script>` : ''}${detail ? '<script src="/storefront-detail.js" defer></script>' : ''}</head>`
     )
     .replace(
       '</body>',

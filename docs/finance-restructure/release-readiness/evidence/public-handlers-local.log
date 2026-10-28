@@ -1,0 +1,19 @@
+✔ crawler gets approved HTML, canonical and Person schema without executing JS (192.52625ms)
+✔ LocalBusiness schema requires a complete reviewed commercial address (2.404188ms)
+✔ legacy professional URL of an eligible establishment redirects to its stable canonical (0.746734ms)
+✔ expired resources return neutral 404 and never ship old metadata or names (2.060536ms)
+✔ catalog returns useful HTML and consumes rewrite parameters without suppressing indexing (5.607948ms)
+✔ empty catalog and backend failures cannot create indexable empty pages (1.327578ms)
+✔ crawler receives useful approved catalog HTML, escaped schema and no-store (68.594867ms)
+✔ empty catalog and unavailable detail cannot be indexed (1.222362ms)
+✔ sitemap excludes expired entries and fails closed when backend unavailable (1.390004ms)
+✔ a lease ending during upstream IO cannot leak through HTML, schema or bootstrap (64.651244ms)
+✔ sitemap rechecks product and profile deadlines after every upstream page (33.282263ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 811.66471

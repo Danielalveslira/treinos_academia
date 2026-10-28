@@ -5,7 +5,7 @@ import { promisify } from 'node:util'
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
 const container = process.env.PG_TEST_CONTAINER || 'supabase_db_treinos_academia'
-if (!['supabase_db_treinos_academia', 'evolutus_price_phase1_db'].includes(container))
+if (!['supabase_db_treinos_academia', 'evolutus_price_phase1_db', 'evolutus_integrated_db', 'evolutus_release_ci_db'].includes(container))
   throw Error('DISPOSABLE_DATABASE_REQUIRED')
 const info = JSON.parse(execFileSync('docker', ['inspect', container], { encoding: 'utf8' }))[0]
 assert.ok(

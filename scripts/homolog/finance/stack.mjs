@@ -7,12 +7,13 @@ import { resolve } from 'node:path'
 import { SECRET, jwt } from '../keys.mjs'
 const action = process.argv[2]
 const root = resolve(import.meta.dirname, '../../..')
-const prefix = 'evolutus_integrated_'
+if (process.env.FINANCE_STACK_SCOPE && !['release', 'integrated'].includes(process.env.FINANCE_STACK_SCOPE)) throw Error('Local stack scope required')
+const prefix = process.env.FINANCE_STACK_SCOPE === 'release' ? 'evolutus_release_ci_' : 'evolutus_integrated_'
 const db = prefix + 'db'
 const localPassword = 'integrated-local-synthetic-password'
 const run = (...args) => execFileSync('docker', args, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim()
 const ready = async (check) => {
-  for (let i = 0; i < 60; i++) { try { if (check()) return } catch { /* starting */ } await new Promise(r => setTimeout(r, 500)) }
+  for (let i = 0; i < 120; i++) { try { if (check()) return } catch { /* starting */ } await new Promise(r => setTimeout(r, 500)) }
   throw new Error('Local service readiness timeout')
 }
 
