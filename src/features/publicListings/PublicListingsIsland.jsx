@@ -67,18 +67,25 @@ function Directory({ kind }) {
   }, [kind, query, offset, reload])
   useEffect(() => {
     if (!page?.items?.length) return
-    const remaining = page.remainingMs - (performance.now() - page.receivedAt)
-    const hide = () => {
-      generation.current++
-      detailAbort.current?.abort()
-      setPage(null)
-      setDialog(null)
-    }
+    const expire = () =>
+      setPage((current) =>
+        current
+          ? {
+              ...current,
+              items: current.items.filter(
+                (item) => item.remainingMs > performance.now() - current.receivedAt
+              ),
+            }
+          : current
+      )
+    const remaining =
+      Math.min(...page.items.map((item) => item.remainingMs)) -
+      (performance.now() - page.receivedAt)
     if (remaining <= 0) {
-      hide()
+      expire()
       return
     }
-    const timer = setTimeout(hide, Math.min(remaining, 2147483647))
+    const timer = setTimeout(expire, Math.min(remaining, 2147483647))
     return () => clearTimeout(timer)
   }, [page])
   useEffect(() => {

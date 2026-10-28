@@ -66,12 +66,12 @@ select is(
 -- the committed revision, never by creating a second publication operation.
 select is((select version from public.professional_listing_drafts where listing_id='42000000-0000-0000-0000-000000000001'),2,'save advances revision once');
 select throws_ok($$select public.save_professional_listing_draft('42000000-0000-0000-0000-000000000001','{}',1)$$,'EDITORIAL_REVISION_CONFLICT','retry of stale save cannot overwrite committed draft');
-select is((public.get_my_professional_listing()->'draft'->>'version')::int,2,'owner reload recovers authoritative saved version');
+select is((public.get_my_professional_listing('42000000-0000-0000-0000-000000000001')->'draft'->>'version')::int,2,'owner reload recovers authoritative saved version');
 select throws_ok($$select public.prepare_professional_listing_publish('42000000-0000-0000-0000-000000000001','old-operation')$$,'EDITORIAL_REVIEW_REQUIRED','legacy prepare cannot self-publish');
 select throws_ok($$select public.finalize_professional_listing_publish('42000000-0000-0000-0000-000000000001','old-operation',null,null)$$,'EDITORIAL_REVIEW_REQUIRED','legacy finalize fails closed even for trusted invocation');
 select public.set_professional_listing_editorial('42000000-0000-0000-0000-000000000001',2,'submitted');
 select throws_ok($$select public.set_professional_listing_editorial('42000000-0000-0000-0000-000000000001',2,'submitted')$$,'EDITORIAL_REVISION_CONFLICT','lost submit response cannot submit a stale revision');
-select is((public.get_my_professional_listing()->'draft'->>'version')::int,3,'owner reload recovers authoritative submitted version');
+select is((public.get_my_professional_listing('42000000-0000-0000-0000-000000000001')->'draft'->>'version')::int,3,'owner reload recovers authoritative submitted version');
 select is((select review_state from public.professional_listing_drafts where listing_id='42000000-0000-0000-0000-000000000001'),'submitted','retry leaves content submitted for moderation');
 select is((select count(*)::int from public.published_professional_listings where listing_id='42000000-0000-0000-0000-000000000001'),0,'no public snapshot is created by owner submission');
 select is(public.public_get_professional('42000000-0000-0000-0000-000000000001'),null::jsonb,'pending submission remains unavailable publicly');

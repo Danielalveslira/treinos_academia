@@ -10,7 +10,7 @@ before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'professional-owner-'))
   await build({
     stdin: {
-      contents: `import React from 'react';import TestRenderer,{act} from 'react-test-renderer';import Page from './MyProfessionalListing.jsx';export {act};export const mount=()=>TestRenderer.create(<Page/>);`,
+      contents: `import React from 'react';import TestRenderer,{act} from 'react-test-renderer';import Page from './MyProfessionalListing.jsx';export {act};export const mount=()=>TestRenderer.create(<Page listingId="profile-1"/>);`,
       resolveDir: new URL('.', import.meta.url).pathname,
       loader: 'jsx',
     },
@@ -212,16 +212,6 @@ test('suspended resource has no purchase component and cannot be resubmitted by 
     await stop(p)
   }
 })
-test('free creation offers the two real kinds without a financial prerequisite', async () => {
-  const p = await start(null)
-  try {
-    await act(async () => p.button('Criar estabelecimento').props.onClick())
-    assert.deepEqual(p.calls, [['create', 'space']])
-    assert.equal(globalThis.__lease, null)
-  } finally {
-    await stop(p)
-  }
-})
 test('archive keeps an explicit revision and never invokes a destructive delete', async () => {
   const p = await start()
   try {
@@ -232,19 +222,6 @@ test('archive keeps an explicit revision and never invokes a destructive delete'
     await stop(p)
   }
 })
-test('creation is gated by existing usage declaration, not EvoCash or entitlement', async () => {
-  const p = await start(null, {
-    auth: { user: { uid: 'owner' }, profile: { usageProfile: 'common' } },
-  })
-  try {
-    assert.equal(p.button('Criar perfil profissional'), undefined)
-    assert.match(p.text(), /perfil de uso/)
-    assert.equal(globalThis.__lease, null)
-  } finally {
-    await stop(p)
-  }
-})
-
 test('new drafts with a null mode submit the visible default instead of an empty value', async () => {
   const row = record()
   row.draft.serviceMode = null
@@ -255,4 +232,9 @@ test('new drafts with a null mode submit the visible default instead of an empty
   } finally {
     await stop(p)
   }
+})
+
+test('editor loads and reloads the exact scalar ID supplied by the central',async()=>{
+ const reads=[],row=record(),p=await start(row,{get:async(...args)=>{reads.push(args);return row}})
+ try{await act(async()=>p.button('Enviar para aprovação').props.onClick());assert.ok(reads.length>=2);for(const args of reads)assert.deepEqual(args,['profile-1'])}finally{await stop(p)}
 })

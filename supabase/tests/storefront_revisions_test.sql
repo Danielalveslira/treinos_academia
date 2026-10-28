@@ -58,6 +58,9 @@ update public.storefront_settings set cleanup_enabled=false,cleanup_grace_second
 select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select is(public.claim_storefront_media_cleanup(),'[]'::jsonb,'cleanup disabled until policy configured');
 update public.storefront_settings set cleanup_enabled=true,cleanup_grace_seconds=3600;
+-- Isolate this rollback-only fixture from old orphan uploads in a reused local DB.
+-- Keep all media of the tested resource eligible so reference protection stays exercised.
+update public.storefront_media set upload_lease_until=clock_timestamp()+interval '1 hour' where storefront_id<>(select v::uuid from sf_results where k='sf');
 update public.storefront_media set unreferenced_since=clock_timestamp()-interval '2 hours',upload_lease_until=clock_timestamp()-interval '1 hour' where id='74200000-0000-0000-0000-000000000001';
 insert into sf_results values('claim',public.claim_storefront_media_cleanup(1)::text);
 select is(jsonb_array_length((select v::jsonb from sf_results where k='claim')),1,'cleanup claims only aged unreferenced media');

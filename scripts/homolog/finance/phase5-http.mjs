@@ -44,7 +44,7 @@ const responses = [],
 for (const [i, row] of story.results.entries()) {
   const owner = i === 0 ? a.professional : a.establishment,
     other = i === 0 ? a.establishment : a.professional
-  const before = await rpc('get_my_professional_listing', {}, owner)
+  const before = await rpc('get_my_professional_listing', { p_listing_id: row.id }, owner)
   assert.equal(before.status, 200)
   const revision = before.body.draft.version
   const saved = await rpc(
@@ -148,7 +148,7 @@ for (const [i, row] of story.results.entries()) {
       `update public.visibility_entitlements set expires_at='${expiry}' where resource_id='${row.id}'`
     )
   }
-  const fresh = await rpc('get_my_professional_listing', {}, owner)
+  const fresh = await rpc('get_my_professional_listing', { p_listing_id: row.id }, owner)
   assert.equal(
     (
       await rpc(

@@ -10,6 +10,7 @@ export default function CommercialLeasePurchase({
   expiresAt,
   onComplete,
   subjectLabel = 'vitrine',
+  resourceName,
 }) {
   const [days, setDays] = useState('1'),
     [quote, setQuote] = useState(null),
@@ -49,6 +50,11 @@ export default function CommercialLeasePurchase({
       <Text as="h3" sx={{ fontSize: 2 }}>
         Contratar ou renovar publicação
       </Text>
+      {resourceName && (
+        <Text as="p" sx={{ overflowWrap: 'anywhere' }}>
+          Publicação de <strong>{resourceName}</strong>
+        </Text>
+      )}
       <Text as="p">
         A contratação publica este {subjectLabel} pelo período confirmado. Não há renovação
         automática.

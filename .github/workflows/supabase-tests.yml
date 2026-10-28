@@ -133,6 +133,10 @@ jobs:
         run: node scripts/professional-listings-concurrency.mjs
         env:
           PG_TEST_CONTAINER: supabase_db_treinos_academia
+      - name: Multiple resources per owner, creation limits and shared-wallet concurrency
+        run: node scripts/multiple-listings-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
       # Limpeza roda sempre (sucesso ou falha do passo acima), mas sem alterar o motivo da falha:
       # se o passo anterior falhou, o job já está marcado como falho antes deste rodar.
       - if: always()

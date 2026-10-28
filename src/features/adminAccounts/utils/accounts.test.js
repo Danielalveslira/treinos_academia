@@ -291,3 +291,10 @@ test('resposta parcial malformada, repetida ou com alvo externo é rejeitada', (
   ])
     assert.throws(() => validateStatusResults(results, ['a']), /INVALID_RESPONSE/)
 })
+
+test('multiple listing summary does not present an arbitrary resource as the whole account', async () => {
+  const { showcaseSummary } = await import('./accounts.js')
+  assert.equal(showcaseSummary({ showcase_count: 3, showcase_status: 'multiple' }), '3 cadastros')
+  assert.equal(showcaseSummary({ showcase_count: 1, showcase_status: 'draft' }), 'Rascunho')
+  assert.equal(showcaseSummary({ showcase_count: 0, showcase_status: 'none' }), 'Sem vitrine')
+})

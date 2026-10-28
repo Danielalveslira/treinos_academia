@@ -5,6 +5,8 @@
 -- linha) continua liberado mesmo bloqueado. Também valida P20 (search_path de cast_vote e
 -- create_promotion) via os dois testes de invariante já existentes.
 begin;
+insert into public.professional_listing_limits(kind,max_per_owner)values('professional',10),('space',10) on conflict(kind)do update set max_per_owner=10;
+
 select no_plan();
 
 -- ===== Fixture: 7 contas em cada estado relevante, 1 comunidade compartilhada (C1) =====
@@ -143,17 +145,17 @@ reset role;
 update public.users set usage_profile='professional' where id::text like '9a000000%';
 set local role authenticated;
 select pg_temp.as_user('1');
-select lives_ok($$select public.create_professional_listing('professional')$$, 'create_professional_listing: ativa permitida');
+select lives_ok($$select public.create_professional_listing('professional',gen_random_uuid())$$, 'create_professional_listing: ativa permitida');
 select pg_temp.as_user('2');
-select throws_ok($$select public.create_professional_listing('professional')$$, 'APP_ACCESS_DENIED', 'create_professional_listing: disabled negada');
+select throws_ok($$select public.create_professional_listing('professional',gen_random_uuid())$$, 'APP_ACCESS_DENIED', 'create_professional_listing: disabled negada');
 select pg_temp.as_user('3');
-select throws_ok($$select public.create_professional_listing('professional')$$, 'APP_ACCESS_DENIED', 'create_professional_listing: deleting negada');
+select throws_ok($$select public.create_professional_listing('professional',gen_random_uuid())$$, 'APP_ACCESS_DENIED', 'create_professional_listing: deleting negada');
 select pg_temp.as_user('4');
-select throws_ok($$select public.create_professional_listing('professional')$$, 'APP_ACCESS_DENIED', 'create_professional_listing: suspensao negada');
+select throws_ok($$select public.create_professional_listing('professional',gen_random_uuid())$$, 'APP_ACCESS_DENIED', 'create_professional_listing: suspensao negada');
 select pg_temp.as_user('5');
-select throws_ok($$select public.create_professional_listing('professional')$$, 'APP_ACCESS_DENIED', 'create_professional_listing: banida negada');
+select throws_ok($$select public.create_professional_listing('professional',gen_random_uuid())$$, 'APP_ACCESS_DENIED', 'create_professional_listing: banida negada');
 select pg_temp.as_user('6');
-select lives_ok($$select public.create_professional_listing('professional')$$, 'create_professional_listing: superadmin permitida');
+select lives_ok($$select public.create_professional_listing('professional',gen_random_uuid())$$, 'create_professional_listing: superadmin permitida');
 reset role;
 
 -- ===== 6) save_professional_listing_draft (usa a listing recem-criada de cada um) =====

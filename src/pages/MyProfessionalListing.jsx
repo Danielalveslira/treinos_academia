@@ -4,19 +4,15 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { listActiveCommunities } from '../services/communitiesService'
 import {
-  createProfessionalListing,
   getMyProfessionalListing,
   saveProfessionalListing,
   setProfessionalListingEditorial,
   listListingCommercialOrders,
 } from '../services/professionalListingsService'
-import { setUsageProfile } from '../services/usageProfileService'
 import { uploadStorefrontImage } from '../services/storefrontService'
 import { commercialDate } from '../utils/commercial'
 import { editorialLabels, publicationLabels, storefrontError } from '../utils/storefront'
 import { EMPTY_LISTING_DRAFT } from '../utils/professionalListing'
-import { isEligibleForListingCreation } from '../constants/usageProfile'
-import { UsageProfileField } from '../components/UsageProfileField'
 import ProfessionalListingForm from '../components/ProfessionalListingForm'
 import CommercialLeasePurchase from '../components/CommercialLeasePurchase'
 import CommercialOrderHistory from '../components/CommercialOrderHistory'
@@ -37,7 +33,6 @@ function message(e) {
     {
       DRAFT_INCOMPLETE:
         'Complete nome, apresentação, localização, categoria e modalidades antes de enviar.',
-      ALREADY_EXISTS: 'Esta conta já tem um cadastro de outro tipo.',
       NOT_ELIGIBLE: 'Defina seu perfil de uso antes de criar um cadastro.',
       INVALID_CONTACTS: 'Informe contatos HTTPS válidos.',
       EDITORIAL_REVIEW_REQUIRED: 'Esta versão precisa de revisão administrativa.',
@@ -45,8 +40,8 @@ function message(e) {
     }[e?.message] || storefrontError(e)
   )
 }
-export default function MyProfessionalListing() {
-  const { user, profile } = useAuth()
+export default function MyProfessionalListing({ listingId }) {
+  const { user } = useAuth()
   const [record, setRecord] = useState(undefined),
     [form, setForm] = useState(null),
     [communities, setCommunities] = useState([]),
@@ -57,7 +52,7 @@ export default function MyProfessionalListing() {
     [generation, setGeneration] = useState(0)
   const lock = useRef(false)
   async function reload() {
-    const row = await getMyProfessionalListing()
+    const row = await getMyProfessionalListing(listingId)
     setRecord(row)
     setForm(row ? editable(row.draft, row.listing.kind) : null)
     return row
@@ -65,7 +60,7 @@ export default function MyProfessionalListing() {
   useEffect(() => {
     let active = true
     setError('')
-    getMyProfessionalListing()
+    getMyProfessionalListing(listingId)
       .then((row) => {
         if (active) {
           setRecord(row)
@@ -76,11 +71,11 @@ export default function MyProfessionalListing() {
     return () => {
       active = false
     }
-  }, [user.uid, generation])
+  }, [user.uid, listingId, generation])
   useEffect(() => {
     let active = true
-    listActiveCommunities()
-      .then((rows) => active && setCommunities(rows.filter((c) => c.ownerId === user.uid)))
+    listActiveCommunities(user.uid)
+      .then((rows) => active && setCommunities(rows))
       .catch(() => {})
     return () => {
       active = false
@@ -124,11 +119,6 @@ export default function MyProfessionalListing() {
         .filter(Boolean),
     }
   }
-  const create = (kind) =>
-    run(async () => {
-      await createProfessionalListing(kind)
-      await reload()
-    })
   const save = (e) => {
     e.preventDefault()
     run(async () => {
@@ -158,6 +148,9 @@ export default function MyProfessionalListing() {
     })
   return (
     <Box sx={{ maxWidth: 900, mx: 'auto', minWidth: 0, display: 'grid', gap: 3, pb: 4 }}>
+      <Button as={Link} to="/minha-vitrine">
+        ← Meus cadastros
+      </Button>
       <Heading as="h1" sx={{ fontSize: 3 }}>
         Meu perfil ou estabelecimento
       </Heading>
@@ -174,29 +167,9 @@ export default function MyProfessionalListing() {
         Atualizar cadastro
       </Button>
       {record === undefined && !error && <Spinner aria-label="Carregando cadastro" />}
-      {record === null &&
-        (!isEligibleForListingCreation(profile?.usageProfile) ? (
-          <Box>
-            <Text as="p">Informe seu perfil de uso para criar um cadastro.</Text>
-            <UsageProfileField
-              value={profile?.usageProfile || ''}
-              onChange={(value) => run(() => setUsageProfile(value))}
-              disabled={busy}
-            />
-          </Box>
-        ) : (
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Button disabled={busy} onClick={() => create('professional')}>
-              Criar perfil profissional
-            </Button>
-            <Button disabled={busy} onClick={() => create('space')}>
-              Criar estabelecimento
-            </Button>
-            <Text as="p">O cadastro existente permite um perfil ou estabelecimento por conta.</Text>
-          </Box>
-        ))}
       {record && form && (
         <>
+          <Heading as="h2" sx={{fontSize:2,overflowWrap:'anywhere'}}>{record.draft.displayName||'Cadastro em preparação'}</Heading>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Label>{editorialLabels[record.draft.reviewState] || record.draft.reviewState}</Label>
             <Label>{publicationLabels[record.commercial.state] || record.commercial.state}</Label>
@@ -264,6 +237,7 @@ export default function MyProfessionalListing() {
             <CommercialLeasePurchase
               key={`${record.id}:${record.commercial.publishedRevision}`}
               resourceId={record.id}
+              resourceName={record.published?.displayName||record.draft.displayName}
               tariff={record.commercial.tariff}
               expiresAt={record.commercial.expiresAt}
               onComplete={reload}

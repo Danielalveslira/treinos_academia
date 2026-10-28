@@ -2,11 +2,17 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import assert from 'node:assert/strict'
 import { jwt } from '../keys.mjs'
-const access = JSON.parse(readFileSync('.finance-local/phase4-access.json'))
+const access = JSON.parse(
+  readFileSync(process.env.FINANCE_ACCESS_FILE || '.finance-local/phase4-access.json')
+)
 const base = 'http://127.0.0.1:55554',
   anon = jwt({ role: 'anon' }),
   service = JSON.parse(
-    execFileSync('docker', ['inspect', 'evolutus_profiles_phase5_edge'], { encoding: 'utf8' })
+    execFileSync(
+      'docker',
+      ['inspect', process.env.FINANCE_PREVIEW_EDGE || 'evolutus_profiles_phase5_edge'],
+      { encoding: 'utf8' }
+    )
   )[0]
     .Config.Env.find((v) => v.startsWith('SUPABASE_SERVICE_ROLE_KEY='))
     .slice('SUPABASE_SERVICE_ROLE_KEY='.length)
@@ -40,10 +46,15 @@ async function rpc(name, args, token = access.owner.access_token) {
   assert.equal(r.ok, true, JSON.stringify(data))
   return data
 }
-const story = JSON.parse(readFileSync('docs/finance-restructure/phase5/evidence/browser.json'))
-const sf = story.results[0].id
+const story = JSON.parse(
+  readFileSync(
+    process.env.FINANCE_MEDIA_STORY_FILE || 'docs/finance-restructure/phase5/evidence/browser.json'
+  )
+)
+const resources = story.results || story.resources
+const sf = resources[0].id
 const source = sql(
-  `select storage_path from public.storefront_media where id='${story.results[0].mediaId}'`
+  `select storage_path from public.storefront_media where id='${resources[0].mediaId || resources[0].media}'`
 )
 assert.ok(source)
 const bytes = await fetch(base + '/storage/v1/object/authenticated/storefront-media/' + source, {
@@ -101,7 +112,8 @@ assert.equal(
 )
 assert.equal((await job(service)).status, 200, 'bounded repeat safe')
 writeFileSync(
-  'docs/finance-restructure/phase5/evidence/media-http.json',
+  (process.env.FINANCE_EVIDENCE_DIR || 'docs/finance-restructure/phase5/evidence') +
+    '/media-http.json',
   JSON.stringify(
     {
       passed: true,

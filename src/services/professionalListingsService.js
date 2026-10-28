@@ -1,7 +1,9 @@
 import { supabase } from '../supabase/config'
 
-export function createProfessionalListing(kind) {
-  return supabase.rpc('create_professional_listing', { p_kind: kind }).then(unwrap)
+export function createProfessionalListing(kind, requestId) {
+  return supabase
+    .rpc('create_professional_listing', { p_kind: kind, p_request_id: requestId })
+    .then(unwrap)
 }
 
 const EDITABLE_FIELDS = [
@@ -45,8 +47,8 @@ export function listListingCommercialOrders(id, before = null) {
   return supabase.rpc('list_listing_commercial_orders', { p_id: id, p_before: before }).then(unwrap)
 }
 
-export function getMyProfessionalListing() {
-  return supabase.rpc('get_my_professional_listing').then(unwrap)
+export function getMyProfessionalListing(listingId) {
+  return supabase.rpc('get_my_professional_listing', { p_listing_id: listingId }).then(unwrap)
 }
 
 // Versão hoje publicada dos Termos da Vitrine, segundo o servidor -- nunca o manifesto
@@ -161,3 +163,19 @@ export async function adminListProfessionalListings({
 export function adminGetProfessionalListing(listingId) {
   return supabase.rpc('admin_get_professional_listing', { p_listing_id: listingId }).then(unwrap)
 }
+
+export const listMyProfessionalListings = (kind = null, before = null) =>
+  supabase
+    .rpc('list_my_professional_listings', { p_kind: kind, p_before: before, p_limit: 12 })
+    .then(unwrap)
+export const getProfessionalListingLimits = () =>
+  supabase.rpc('get_professional_listing_limits').then(unwrap)
+export const setProfessionalListingLimit = (kind, max, revision, reason) =>
+  supabase
+    .rpc('admin_set_professional_listing_limit', {
+      p_kind: kind,
+      p_max: max,
+      p_revision: revision,
+      p_reason: reason,
+    })
+    .then(unwrap)

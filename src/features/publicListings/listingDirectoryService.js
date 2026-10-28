@@ -18,6 +18,13 @@ export async function fetchListingPage(kind, filters = {}, offset = 0, signal) {
       ) {
         return {
           ...data.page,
+          items: (data.page.items || []).map((item) => ({
+            ...item,
+            remainingMs: remainingLeaseMs(
+              { ...item, serverTime: data.page.serverTime },
+              performance.now()
+            ),
+          })),
           receivedAt: performance.now(),
           remainingMs: remainingLeaseMs(data.page, performance.now()),
         }
@@ -42,6 +49,13 @@ export async function fetchListingPage(kind, filters = {}, offset = 0, signal) {
   )
   return {
     ...page,
+    items: (page.items || []).map((item) => ({
+      ...item,
+      remainingMs: remainingLeaseMs(
+        { ...item, serverTime: page.serverTime },
+        performance.now() - started
+      ),
+    })),
     receivedAt: performance.now(),
     remainingMs: remainingLeaseMs(page, performance.now() - started),
   }

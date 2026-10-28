@@ -24,7 +24,7 @@ const rpc = async (name, args, session) => {
 // Restore the test-only pending SEO marker from the approved snapshot for a useful demo.
 for (const [i, row] of story.results.entries()) {
   const session = i ? a.establishment : a.professional,
-    record = await rpc('get_my_professional_listing', {}, session),
+    record = await rpc('get_my_professional_listing', { p_listing_id: row.id }, session),
     p = await rpc('public_get_professional', { p_listing_id: row.id }, session)
   await rpc(
     'save_professional_listing_draft',
@@ -90,7 +90,11 @@ try {
   const page = await ctx.newPage()
   await page.goto(base + '/minha-vitrine')
   await page.getByRole('button', { name: 'Salvar rascunho', exact: true }).waitFor()
-  const before = await rpc('get_my_professional_listing', {}, a.professional),
+  const before = await rpc(
+      'get_my_professional_listing',
+      { p_listing_id: story.results[0].id },
+      a.professional
+    ),
     png = await page.screenshot({ clip: { x: 0, y: 0, width: 32, height: 32 } })
   await page
     .locator('input[type=file]')
@@ -99,7 +103,11 @@ try {
     .getByText('Não foi possível concluir. Atualize os dados e tente novamente.', { exact: true })
     .waitFor()
   assert.ok(attempted)
-  const after = await rpc('get_my_professional_listing', {}, a.professional)
+  const after = await rpc(
+    'get_my_professional_listing',
+    { p_listing_id: story.results[0].id },
+    a.professional
+  )
   assert.equal(after.draft.mediaId, before.draft.mediaId)
   assert.equal(after.draft.version, before.draft.version)
   assert.equal(after.published.mediaId, before.published.mediaId)

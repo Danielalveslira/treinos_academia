@@ -1,5 +1,7 @@
 \ir _helpers/auth_session.sql
 begin;
+insert into public.professional_listing_limits(kind,max_per_owner)values('professional',10),('space',10) on conflict(kind)do update set max_per_owner=10;
+
 select no_plan();
 -- Isolate public projections from unrelated local preview fixtures, without deleting them.
 update private.commercial_resources set moderation_state='draft' where offering_code in('professional_profile','establishment_profile');
@@ -24,12 +26,12 @@ select public._ledger_record('75000000-0000-0000-0000-000000000001','phase5-fixt
 select public._wallet_credit_cash('75000000-0000-0000-0000-000000000002',100);
 select public._ledger_record('75000000-0000-0000-0000-000000000002','phase5-fixture-space','cash','credit',100,'synthetic','fixture','phase5');
 select pg_temp.pro_user(1);set local role authenticated;
-insert into pro_ids values('pro',(public.create_professional_listing('professional')->>'listingId')::uuid);
-select is(public.create_professional_listing('professional')->>'created','false','creation replay preserves identity');
-select throws_ok($$select public.create_professional_listing('space')$$,'ALREADY_EXISTS','existing one-listing constraint preserved');
-select is(public.get_my_professional_listing()->'draft'->>'version','0','new draft can be empty and free');
+insert into pro_ids values('pro',(public.create_professional_listing('professional','75000000-0000-0000-0000-000000000011')->>'listingId')::uuid);
+select is(public.create_professional_listing('professional','75000000-0000-0000-0000-000000000011')->>'created','false','creation replay preserves identity');
+select throws_ok($$select public.create_professional_listing('space','75000000-0000-0000-0000-000000000011')$$,'LISTING_CREATION_KEY_CONFLICT','one creation key cannot change its type');
+select is(public.get_my_professional_listing((select v from pro_ids where k='pro'))->'draft'->>'version','0','new draft can be empty and free');
 select public.save_professional_listing_draft((select v from pro_ids where k='pro'),'{"kind":"professional","displayName":"Partial"}',0);
-select is(public.get_my_professional_listing()->'draft'->>'displayName','Partial','incomplete draft can be saved for free');
+select is(public.get_my_professional_listing((select v from pro_ids where k='pro'))->'draft'->>'displayName','Partial','incomplete draft can be saved for free');
 select throws_ok($$select public.set_professional_listing_editorial((select v from pro_ids where k='pro'),1,'submitted')$$,'DRAFT_INCOMPLETE','submission requires useful complete content');
 select throws_ok($$select public.quote_commercial_order((select v from pro_ids where k='pro'),'2',gen_random_uuid())$$,'RESOURCE_NOT_ELIGIBLE','unapproved draft cannot be charged');
 select throws_ok($$select public.prepare_professional_listing_publish((select v from pro_ids where k='pro'),'legacy')$$,'EDITORIAL_REVIEW_REQUIRED','old direct publish path fails closed');
@@ -44,7 +46,7 @@ select public.save_professional_listing_draft((select v from pro_ids where k='pr
 select throws_ok($$select public.save_professional_listing_draft((select v from pro_ids where k='pro'),pg_temp.pro_data('professional','Stale'),1)$$,'EDITORIAL_REVISION_CONFLICT','stale edits rejected');
 select public.set_professional_listing_editorial((select v from pro_ids where k='pro'),2,'submitted');
 reset role;select pg_temp.pro_user(2);set local role authenticated;
-insert into pro_ids values('space',(public.create_professional_listing('space')->>'listingId')::uuid);
+insert into pro_ids values('space',(public.create_professional_listing('space',gen_random_uuid())->>'listingId')::uuid);
 select public.save_professional_listing_draft((select v from pro_ids where k='space'),pg_temp.pro_data('space','Estabelecimento aprovado'),0);
 select public.set_professional_listing_editorial((select v from pro_ids where k='space'),1,'submitted');
 select throws_ok($$select public.save_professional_listing_draft((select v from pro_ids where k='pro'),pg_temp.pro_data('professional','Foreign'),3)$$,'LISTING_NOT_FOUND','owner cannot edit another professional');
@@ -139,7 +141,7 @@ select is((select offering_code from public.professional_listings where id=(sele
 insert into public.account_restrictions(user_id,action,until)values('75000000-0000-0000-0000-000000000001','temporary_suspension',clock_timestamp()+interval '1 day');
 select is(public.public_get_professional((select v from pro_ids where k='pro')),null::jsonb,'restricted account hidden by relational eligibility');
 select pg_temp.pro_user(1);set local role authenticated;
-select throws_ok($$select public.get_my_professional_listing()$$,'APP_ACCESS_DENIED','blocked account cannot mutate or read private management');
+select throws_ok($$select public.get_my_professional_listing((select v from pro_ids where k='pro'))$$,'APP_ACCESS_DENIED','blocked account cannot mutate or read private management');
 reset role;
 select ok(not has_function_privilege('authenticated','public.finalize_professional_listing_publish(uuid,text,text,uuid)','execute'),'retired finalizer cannot publish even through direct RPC');
 select ok(not has_function_privilege('anon','private.listing_record(uuid)','execute'),'private snapshot serializer has no public execution');

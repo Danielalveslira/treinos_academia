@@ -1,5 +1,14 @@
 import { commercialError } from './commercial'
 const messages = {
+  LISTING_LIMIT_UNCONFIGURED: 'A criação deste tipo aguarda configuração administrativa.',
+  LISTING_LIMIT_REACHED:
+    'O limite de cadastros deste tipo foi atingido. Seus cadastros existentes continuam disponíveis.',
+  LISTING_LIMIT_REVISION_CONFLICT: 'O limite mudou. Atualize antes de confirmar novamente.',
+  LISTING_ID_REQUIRED: 'Escolha um cadastro na central para continuar.',
+  LISTING_CREATION_KEY_REQUIRED: 'Atualize a página e crie o cadastro pela central.',
+  LISTING_CREATION_KEY_CONFLICT: 'Esta solicitação já foi usada para outro tipo de cadastro.',
+  LISTING_NOT_FOUND: 'Cadastro indisponível ou sem permissão.',
+
   STOREFRONT_RATE_LIMIT: 'Aguarde antes de alterar novamente o conteúdo.',
   INVALID_STOREFRONT_LIMITS: 'Informe limites inteiros válidos e confirme a alteração.',
   STOREFRONT_NOT_FOUND: 'Vitrine indisponível ou sem permissão de acesso.',

@@ -597,7 +597,9 @@ for (const viaTimeout of [false, true]) {
     assert.equal(server.rowsOf(A).length, 1) // já existe no servidor...
     assert.equal(server.receipts.size, 0) // ...e NÃO existe recibo
 
-    await settle() // a 1ª tentativa de sync em segundo plano falha (RPC fora do ar) e a mutação volta à fila
+    // A fixed sleep races a background RPC on slow runners. Drain every already
+    // queued round while the transport is still unavailable before changing it.
+    await on.scheduler.requestSync('test-transport-down-barrier', { force: true })
     respond.fn = null
     respond.rpcDown = false
     const sync = await on.scheduler.requestSync('online', { force: true })
@@ -1056,4 +1058,41 @@ test('duplicate legacy link resolves the official tuple without changing its FK 
   assert.equal(result.exercise.catalogId, null)
   assert.equal(result.exercise.note, 'Minha nota')
   assert.equal(result.exercise.active, false)
+})
+
+test('ACK perdido: barreira aguarda RPC de background deliberadamente bloqueada antes de trocar o transporte', async () => {
+  const state = postgresAppliesInsertThenClientLosesResponse({ viaTimeout: false })
+  const respondBeforeGate = globalThis.__respond
+  let entered, release
+  const started = new Promise(resolve => { entered = resolve })
+  const gate = new Promise(resolve => { release = resolve })
+  let held = false
+  globalThis.__respond = async call => {
+    if (call.kind === 'rpc' && call.name === 'sync_workout_mutations' && !held) {
+      held = true
+      entered()
+      await gate
+    }
+    return respondBeforeGate(call)
+  }
+  try {
+    await on.workouts.createWorkout(A, form('70'))
+    await started
+    const drained = on.scheduler.requestSync('test-transport-down-barrier', { force: true })
+    assert.equal(server.rowsOf(A).length, 1)
+    assert.equal(server.receipts.size, 0)
+    release()
+    await drained
+    respond.fn = null
+    respond.rpcDown = false
+    const result = await on.scheduler.requestSync('online', { force: true })
+    assert.equal(result.status, 'synced')
+    assert.equal(server.rowsOf(A).length, 1)
+    assert.equal(server.receipts.size, 1)
+    assert.deepEqual(await on.outbox.listMutations(A), [])
+    assert.equal((await on.history.readCachedWorkoutRow(A, state.id)).updated_at, state.row.updated_at)
+  } finally {
+    release()
+    globalThis.__respond = respondBeforeGate
+  }
 })

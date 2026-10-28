@@ -42,6 +42,9 @@ for (const id of [admin, ...owners])
     `insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)values(${q(id)},'authenticated','authenticated',${q(id + '@example.invalid')},'x',now(),'{}','{}',now(),now());insert into auth.sessions(id,user_id,created_at,updated_at)values(${q(sessions.get(id))},${q(id)},now(),now());update public.users set usage_profile='professional',legal_acceptance_version=(select version from public.legal_policy where id),legal_acceptance_digest=(select digest from public.legal_policy where id) where id=${q(id)}`
   )
 await sql(`update public.users set role='superadmin' where id=${q(admin)}`)
+await sql(
+  "insert into public.professional_listing_limits(kind,max_per_owner)values('professional',10),('space',10) on conflict(kind)do update set max_per_owner=10"
+)
 const results = []
 for (const [i, kind, offering] of [
   [0, 'professional', 'professional_profile'],
@@ -57,7 +60,7 @@ for (const [i, kind, offering] of [
   )
   await sql(`update public.commercial_offerings set sales_enabled=true where code=${q(offering)}`)
   const resource = JSON.parse(
-    await as(owner, `select public.create_professional_listing(${q(kind)})`)
+    await as(owner, `select public.create_professional_listing(${q(kind)},${q(randomUUID())})`)
   ).listingId
   const draft = {
     kind,

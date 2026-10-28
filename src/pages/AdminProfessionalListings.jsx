@@ -14,6 +14,7 @@ import {
   Flash,
   Label,
 } from '@primer/react'
+import ProfessionalListingLimitsAdmin from '../components/ProfessionalListingLimitsAdmin'
 import AdminNav from '../components/AdminNav'
 import StorefrontImage from '../components/StorefrontImage'
 import CommercialOrderHistory from '../components/CommercialOrderHistory'
@@ -27,6 +28,7 @@ import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
 import { commercialDate } from '../utils/commercial'
 import { storefrontError, editorialLabels, publicationLabels } from '../utils/storefront'
 export default function AdminProfessionalListings() {
+  const [showLimits, setShowLimits] = useState(false)
   const [search, setSearch] = useState(''),
     [state, setState] = useState(''),
     [detail, setDetail] = useState(null),
@@ -96,6 +98,10 @@ export default function AdminProfessionalListings() {
         Aprovação editorial e direito comercial são independentes. Moderar não cobra nem concede
         prazo.
       </Text>
+      <Button aria-expanded={showLimits} onClick={() => setShowLimits((v) => !v)}>
+        Configurar limites de cadastros
+      </Button>
+      {showLimits && <ProfessionalListingLimitsAdmin />}
       {error && <Flash variant="danger">{error}</Flash>}
       {listError && <Flash variant="danger">Não foi possível carregar a lista.</Flash>}
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', my: 3 }}>
