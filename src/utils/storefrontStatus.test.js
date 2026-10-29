@@ -66,6 +66,44 @@ test('approved with no entitlement yet is "aguardando contratação", never impl
   assert.equal(s.label, 'Aprovada — aguardando contratação')
 })
 
+test('sales disabled never shows a contracting CTA, even when canContract is true', () => {
+  const unpaid = deriveStorefrontStatus(
+    { ...base, editorialState: 'approved', draftState: 'approved', hasPublishedVersion: true, canContract: true },
+    { now: NOW, tariff: { salesEnabled: false } }
+  )
+  assert.equal(unpaid.primaryAction.type, 'wait')
+  assert.notEqual(unpaid.primaryAction.type, 'contract')
+
+  const ended = deriveStorefrontStatus(
+    {
+      ...base,
+      editorialState: 'approved',
+      draftState: 'approved',
+      hasPublishedVersion: true,
+      canContract: true,
+      publicationState: 'expired',
+      expiresAt: '2026-12-01T00:00:00Z',
+    },
+    { now: NOW, tariff: { salesEnabled: false } }
+  )
+  assert.equal(ended.key, 'ended')
+  assert.equal(ended.primaryAction.type, 'wait', '"Renovar" must not be offered while sales are off')
+})
+
+test('the backend\'s own canContract=false also blocks the contracting CTA, even if sales are enabled', () => {
+  const s = deriveStorefrontStatus(
+    { ...base, editorialState: 'approved', draftState: 'approved', hasPublishedVersion: true, canContract: false },
+    { now: NOW, tariff: { salesEnabled: true } }
+  )
+  assert.equal(s.primaryAction.type, 'wait')
+})
+
+test('missing tariff or backend permission fails closed', () => {
+  const item = { ...base, editorialState: 'approved', draftState: 'approved', hasPublishedVersion: true }
+  assert.equal(deriveStorefrontStatus(item, { now: NOW, tariff: { salesEnabled: true } }).primaryAction.type, 'wait')
+  assert.equal(deriveStorefrontStatus({ ...item, canContract: true }, { now: NOW }).primaryAction.type, 'wait')
+})
+
 test('approved + active entitlement is Publicada, with a real "Ver minha vitrine" action', () => {
   const s = deriveStorefrontStatus(
     {

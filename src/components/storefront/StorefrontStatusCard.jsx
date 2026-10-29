@@ -32,7 +32,7 @@ const BADGE_VARIANT = {
 // philosophy as AdStatusCard.jsx for ads), with editing/products/history behind "Ver
 // detalhes".
 export default function StorefrontStatusCard({ item, tariff, onChange }) {
-  const status = deriveStorefrontStatus(item)
+  const status = deriveStorefrontStatus(item, { tariff })
   const [expanded, setExpanded] = useState(false)
   const [preview, setPreview] = useState(false)
   const [dialog, setDialog] = useState(null) // null | 'edit-storefront' | { kind: 'product', product }
@@ -84,6 +84,7 @@ export default function StorefrontStatusCard({ item, tariff, onChange }) {
           {action.label}
         </Button>
       )
+    if (action.type === 'wait') return <Button disabled>{action.label}</Button>
     return (
       <Button variant={action.type === 'contract' ? 'primary' : 'default'} onClick={() => setExpanded(true)}>
         {action.label}

@@ -4,7 +4,9 @@ import {
   saveStorefrontProduct,
   uploadStorefrontImage,
   discardStorefrontImage,
+  isStorefrontImageLinked,
 } from '../../services/storefrontService'
+import { saveWithImage } from '../../utils/storefrontImageSave'
 import { storefrontError } from '../../utils/storefront'
 import { centavosToDigits } from '../../utils/currency'
 import { formatCentavosBRL } from '../../utils/format'
@@ -36,26 +38,30 @@ export default function ProductDialog({ storefront, product, onSaved, onCancel }
     lock.current = true
     setBusy(true)
     setError('')
-    let uploaded
     try {
       const fileInput = e.target.elements.productImage
       const file = fileInput?.files?.[0]
-      if (file) uploaded = await uploadStorefrontImage(storefront.id, file)
-      await saveStorefrontProduct(storefront, {
-        ...values,
-        priceCentavos: priceDigits || '',
-        mediaId: uploaded || values.mediaId,
+      await saveWithImage({
+        file,
+        upload: (image) => uploadStorefrontImage(storefront.id, image),
+        save: (uploaded) => saveStorefrontProduct(storefront, {
+          ...values,
+          priceCentavos: priceDigits || '',
+          mediaId: uploaded || values.mediaId,
+        }),
+        isLinked: (id) => isStorefrontImageLinked(storefront.id, id, { product: true }),
+        discard: discardStorefrontImage,
+        previousMediaId: values.mediaId,
       })
-      const previousMedia = values.mediaId
-      if (uploaded && previousMedia) await discardStorefrontImage(previousMedia)
-      onSaved()
     } catch (err) {
-      if (uploaded) await discardStorefrontImage(uploaded)
       setError(storefrontError(err))
-    } finally {
       lock.current = false
       setBusy(false)
+      return
     }
+    lock.current = false
+    setBusy(false)
+    onSaved()
   }
 
   return (

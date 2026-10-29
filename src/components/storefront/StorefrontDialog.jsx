@@ -5,7 +5,9 @@ import {
   saveStorefront,
   uploadStorefrontImage,
   discardStorefrontImage,
+  isStorefrontImageLinked,
 } from '../../services/storefrontService'
+import { saveWithImage } from '../../utils/storefrontImageSave'
 import { storefrontError } from '../../utils/storefront'
 import StorefrontImage from '../StorefrontImage'
 
@@ -26,25 +28,30 @@ export default function StorefrontDialog({ storefront, onSaved, onCancel }) {
     lock.current = true
     setBusy(true)
     setError('')
-    let uploaded
     try {
       if (!storefront) {
         await createStorefront(values.name, requestId.current)
       } else {
         const fileInput = e.target.elements.storefrontLogo
         const file = fileInput?.files?.[0]
-        if (file) uploaded = await uploadStorefrontImage(storefront.id, file)
-        await saveStorefront(storefront, { ...values, logoMediaId: uploaded || values.logoMediaId })
-        if (uploaded && values.logoMediaId) await discardStorefrontImage(values.logoMediaId)
+        await saveWithImage({
+          file,
+          upload: (image) => uploadStorefrontImage(storefront.id, image),
+          save: (uploaded) => saveStorefront(storefront, { ...values, logoMediaId: uploaded || values.logoMediaId }),
+          isLinked: (id) => isStorefrontImageLinked(storefront.id, id),
+          discard: discardStorefrontImage,
+          previousMediaId: values.logoMediaId,
+        })
       }
-      onSaved()
     } catch (err) {
-      if (uploaded) await discardStorefrontImage(uploaded)
       setError(storefrontError(err))
-    } finally {
       lock.current = false
       setBusy(false)
+      return
     }
+    lock.current = false
+    setBusy(false)
+    onSaved()
   }
 
   return (

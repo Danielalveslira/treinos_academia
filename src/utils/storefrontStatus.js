@@ -9,13 +9,17 @@
 // `hasPublishedVersion` becomes true at the moment of first approval, even before any
 // contract exists — that is exactly "Aprovada, aguardando contratação": approval and
 // publication are different facts, and this function never conflates them.
-export function deriveStorefrontStatus(item, { now = Date.now() } = {}) {
+export function deriveStorefrontStatus(item, { now = Date.now(), tariff } = {}) {
   const s = item || {}
   const nowMs = now instanceof Date ? now.getTime() : now
   const expiresAt = s.expiresAt ? new Date(s.expiresAt).getTime() : null
   const hasEntitlement = expiresAt != null
   const expired = hasEntitlement && expiresAt <= nowMs
   const remainingDays = hasEntitlement && !expired ? Math.ceil((expiresAt - nowMs) / 86400000) : null
+  // Whether contracting is actually possible right now (sales enabled platform-wide, and
+  // the backend's own canContract flag) is independent of who is allowed to click it —
+  // a closed sales gate must never be hidden behind a "Contratar"/"Renovar" CTA.
+  const contractingBlocked = tariff?.salesEnabled !== true || s.canContract !== true
 
   if (s.editorialState === 'archived') {
     return {
@@ -79,17 +83,21 @@ export function deriveStorefrontStatus(item, { now = Date.now() } = {}) {
     base = {
       key: 'approved_unpaid',
       label: 'Aprovada — aguardando contratação',
-      detail: null,
+      detail: contractingBlocked ? 'Contratações ainda indisponíveis.' : null,
       remainingDays: null,
-      primaryAction: { type: 'contract', label: 'Contratar publicação' },
+      primaryAction: contractingBlocked
+        ? { type: 'wait', label: 'Contratações ainda indisponíveis' }
+        : { type: 'contract', label: 'Contratar publicação' },
     }
   } else if (expired) {
     base = {
       key: 'ended',
       label: `Encerrada em ${new Date(expiresAt).toLocaleDateString('pt-BR')}`,
-      detail: null,
+      detail: contractingBlocked ? 'Contratações ainda indisponíveis.' : null,
       remainingDays: null,
-      primaryAction: { type: 'contract', label: 'Renovar' },
+      primaryAction: contractingBlocked
+        ? { type: 'wait', label: 'Contratações ainda indisponíveis' }
+        : { type: 'contract', label: 'Renovar' },
     }
   } else if (s.publicationState === 'active') {
     base = {

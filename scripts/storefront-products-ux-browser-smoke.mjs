@@ -19,6 +19,7 @@ window.__sfCalls = []
 const track = (name, args) => window.__sfCalls.push({ name, args })
 let seq = 0
 const store = new Map()
+const limits = { maxProducts: 20, maxStorefronts: 5, revision: '1' }
 const ISO = (daysFromNow) => new Date(Date.now() + daysFromNow * 86400000).toISOString()
 
 function seed(row) {
@@ -38,17 +39,19 @@ seed({ id: 'sf-draft', name: 'Rascunho inicial', draftState: 'draft', editorialS
 seed({ id: 'sf-submitted', name: 'Em análise agora', draftState: 'submitted', editorialState: 'submitted' })
 seed({ id: 'sf-rejected', name: 'Reprovada', draftState: 'rejected', editorialState: 'rejected', lastDecision: 'Descrição muito curta' })
 seed({ id: 'sf-approved-ok', name: 'Aprovada sem contrato', draftState: 'approved', editorialState: 'approved', hasPublishedVersion: true, canContract: true })
+seed({ id: 'sf-approved-blocked', name: 'Aprovada com contrato bloqueado', draftState: 'approved', editorialState: 'approved', hasPublishedVersion: true, canContract: false })
 seed({ id: 'sf-live', name: 'Minha Loja Publicada', draftState: 'approved', editorialState: 'approved', hasPublishedVersion: true, canContract: true, publicationState: 'active', expiresAt: ISO(5), logoMediaId: 'logo-live', products: [{ id: 'p1', name: 'Whey Protein', brand: 'Marca X', description: 'Suplemento', category: 'Suplementos', storeUrl: 'https://example.invalid/whey', mediaId: 'media-p1', priceCentavos: '4990', displayOrder: 0, archived: false }] })
 seed({ id: 'sf-suspended', name: 'Suspensa', draftState: 'approved', editorialState: 'suspended', hasPublishedVersion: true, lastDecision: 'Conteúdo incompleto' })
 seed({ id: 'sf-archived', name: 'Arquivada antiga', draftState: 'archived', editorialState: 'archived' })
 
 async function listStorefronts(admin, before) {
   track('list_managed_storefronts', { admin, before })
+  if (admin && new URLSearchParams(location.search).has('forbid')) throw Error('APP_ACCESS_DENIED')
   return {
     items: [...store.values()],
     nextCursor: null,
-    limits: { maxProducts: 20, maxStorefronts: 5, revision: '1' },
-    price: { salesEnabled: true, price: '7', minDays: 1, maxDays: 30 },
+    limits: { ...limits },
+    price: { salesEnabled: !new URLSearchParams(location.search).has('salesOff'), price: '7', minDays: 1, maxDays: 30 },
   }
 }
 async function createStorefront(name) {
@@ -92,15 +95,25 @@ async function setStorefrontEditorial(item, state) {
     throw Object.assign(new Error('STOREFRONT_INCOMPLETE'), {})
   s.draftState = state
   s.editorialState = state
+  if (state === 'approved') { s.hasPublishedVersion = true; s.canContract = true }
+  if (state === 'suspended') s.publicationState = 'suspended'
   s.revision += 1
 }
-async function listStorefrontOrders() { return [] }
+async function listStorefrontOrders(id) { track('list_storefront_orders', { id }); return [{ id: 'synthetic-order', durationDays: 7, totalCash: 49, status: 'fulfilled', periodStart: ISO(-1), periodEnd: ISO(6) }] }
 async function listStorefrontProducts() { return [] }
-async function setStorefrontLimits() { return null } // AdminStorefrontView import only; never exercised here
-async function reauthenticatePricingAdmin() { return null }
+async function setStorefrontLimits(values, revision, reason, confirm) {
+  track('admin_set_storefront_limits', { values, revision, reason, confirm })
+  if (!confirm || reason.length < 5) throw Error('ADMIN_CONFIRMATION_REQUIRED')
+  Object.assign(limits, { maxProducts: Number(values.maxProducts), maxStorefronts: Number(values.maxStorefronts), revision: String(Number(limits.revision) + 1) })
+}
+async function reauthenticatePricingAdmin(password) { track('reauthenticate_pricing_admin', { ok: !!password }); if (!password) throw Error('APP_ACCESS_DENIED') }
 async function uploadStorefrontImage(id, file) { track('upload_storefront_image', { id, name: file?.name }); return 'media-' + ++seq }
 async function loadStorefrontImage() { return new Blob(['fake'], { type: 'image/png' }) }
 async function discardStorefrontImage() {}
+async function isStorefrontImageLinked(id, mediaId, { product = false } = {}) {
+  const row = store.get(id)
+  return product ? row?.products.some((p) => p.mediaId === mediaId) : row?.logoMediaId === mediaId
+}
 
 const useAuth = () => ({ user: { uid: 'owner-1' } })
 const useWallet = () => ({ wallet: { cashBalance: '1000' }, refresh: async () => {} })
@@ -116,7 +129,7 @@ async function confirmCommercialOrder(orderId) {
 
 await build({
   stdin: {
-    contents: `import '@primer/primitives/dist/css/functional/themes/light.css';import '@primer/primitives/dist/css/functional/themes/dark.css';import './src/styles/app.css';import './src/styles/navigation.css';import {ThemeSync} from './src/components/ThemeSync.jsx';import React from 'react';import{createRoot}from'react-dom/client';import{MemoryRouter}from'react-router-dom';import{ThemeProvider,BaseStyles}from'@primer/react';import StorefrontManager from './src/components/StorefrontManager.jsx';const q=new URLSearchParams(location.search);createRoot(document.getElementById('root')).render(<ThemeProvider colorMode={q.get('theme')==='dark'?'night':'day'} dayScheme='light' nightScheme='dark'><BaseStyles><ThemeSync/><div className="app-shell"><main className="main-content"><MemoryRouter initialEntries={['/vitrine/gerenciar']}><StorefrontManager/></MemoryRouter></main></div></BaseStyles></ThemeProvider>)`,
+    contents: `import '@primer/primitives/dist/css/functional/themes/light.css';import '@primer/primitives/dist/css/functional/themes/dark.css';import './src/styles/app.css';import './src/styles/navigation.css';import {ThemeSync} from './src/components/ThemeSync.jsx';import React from 'react';import{createRoot}from'react-dom/client';import{MemoryRouter}from'react-router-dom';import{ThemeProvider,BaseStyles}from'@primer/react';import StorefrontManager from './src/components/StorefrontManager.jsx';const q=new URLSearchParams(location.search);createRoot(document.getElementById('root')).render(<ThemeProvider colorMode={q.get('theme')==='dark'?'night':'day'} dayScheme='light' nightScheme='dark'><BaseStyles><ThemeSync/><div className="app-shell"><main className="main-content"><MemoryRouter initialEntries={['/vitrine/gerenciar']}><StorefrontManager admin={q.has('admin')}/></MemoryRouter></main></div></BaseStyles></ThemeProvider>)`,
     resolveDir: root,
     loader: 'jsx',
   },
@@ -151,7 +164,7 @@ await build({
         b.onLoad({ filter: /.*/, namespace: 'fixture-storefront' }, () => ({
           contents:
             shared +
-            '\nexport { listStorefronts, createStorefront, saveStorefront, saveStorefrontProduct, archiveStorefrontProduct, setStorefrontEditorial, listStorefrontOrders, listStorefrontProducts, uploadStorefrontImage, loadStorefrontImage, discardStorefrontImage, setStorefrontLimits }',
+            '\nexport { listStorefronts, createStorefront, saveStorefront, saveStorefrontProduct, archiveStorefrontProduct, setStorefrontEditorial, listStorefrontOrders, listStorefrontProducts, uploadStorefrontImage, loadStorefrontImage, discardStorefrontImage, isStorefrontImageLinked, setStorefrontLimits }',
           loader: 'js',
         }))
         b.onLoad({ filter: /.*/, namespace: 'fixture-commercial' }, () => ({
@@ -233,6 +246,19 @@ try {
     assert.equal(await link.getAttribute('href'), '/vitrine/sf-live')
     assert.equal(await link.getAttribute('target'), '_blank')
     results.push({ verMinhaVitrineIsRealLink: true, passed: true })
+    await context.close()
+  }
+  {
+    const context = await browser.newContext({ viewport: { width: 320, height: 640 } })
+    const page = await context.newPage()
+    await page.goto(origin + '/?salesOff=1')
+    const approved = page.getByTestId('storefront-card-sf-approved-ok')
+    const blocked = page.getByTestId('storefront-card-sf-approved-blocked')
+    await approved.getByRole('button', { name: 'Contratações ainda indisponíveis' }).waitFor()
+    assert.equal(await approved.getByRole('button', { name: 'Contratações ainda indisponíveis' }).isDisabled(), true)
+    assert.equal(await blocked.getByRole('button', { name: 'Contratações ainda indisponíveis' }).isDisabled(), true)
+    assert.equal(await page.getByRole('button', { name: 'Contratar publicação' }).count(), 0)
+    results.push({ contractingUnavailableWhenSalesOrPermissionOff: true, passed: true })
     await context.close()
   }
 
@@ -323,6 +349,72 @@ try {
     assert.equal(await page.locator('a[href="/vitrine/gerenciar"]').textContent(), 'Vitrine de produtos')
     await new Promise((r) => menuServer.close(r))
     results.push({ meuNegocioNavigationGrouped: true, passed: true })
+    await context.close()
+  }
+
+  // Administrative actions use synthetic data only; verify every operation refreshes
+  // the rendered record and that a denied admin read exposes no records.
+  {
+    const context = await browser.newContext({ viewport: { width: 390, height: 700 } })
+    const page = await context.newPage()
+    await page.goto(origin + '/?admin=1&theme=dark')
+    await page.getByRole('heading', { name: 'Moderação de vitrines de produtos' }).waitFor()
+    await page.getByRole('button', { name: 'Em análise agora' }).click()
+    await page.getByRole('button', { name: 'Moderar vitrine' }).click()
+    await page.getByLabel('Decisão').selectOption('approved')
+    await page.getByLabel('Motivo obrigatório').fill('Conteúdo aprovado')
+    await page.getByLabel('Confirme sua senha').fill('synthetic-password')
+    await page.getByLabel('Confirmo esta alteração auditada').check()
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
+    await page.getByText('Revisão em edição: 2').waitFor()
+    await page.getByRole('button', { name: 'Histórico de contratações' }).click()
+    await page.getByText(/synthetic-order/).waitFor()
+
+    await page.getByRole('button', { name: 'Moderar vitrine' }).click()
+    await page.getByLabel('Decisão').selectOption('rejected')
+    await page.getByLabel('Motivo obrigatório').fill('Dados inconsistentes')
+    await page.getByLabel('Confirme sua senha').fill('synthetic-password')
+    await page.getByLabel('Confirmo esta alteração auditada').check()
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
+    await page.getByText('Revisão em edição: 3').waitFor()
+
+    await page.getByRole('button', { name: 'Moderar vitrine' }).click()
+    await page.getByLabel('Decisão').selectOption('suspended')
+    await page.getByLabel('Motivo obrigatório').fill('Suspensão sintética')
+    await page.getByLabel('Confirme sua senha').fill('synthetic-password')
+    await page.getByLabel('Confirmo esta alteração auditada').check()
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
+    await page.getByText('Revisão em edição: 4').waitFor()
+
+    await page.getByRole('button', { name: 'Editar vitrine' }).click()
+    await page.getByLabel('Nome comercial').fill('Vitrine administrada')
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
+    await page.getByRole('button', { name: 'Vitrine administrada' }).waitFor()
+
+    await page.getByRole('button', { name: 'Configurar limites' }).click()
+    await page.getByLabel('Produtos por vitrine').fill('21')
+    await page.getByLabel('Motivo obrigatório').fill('Ajuste sintético de limites')
+    await page.getByLabel('Confirme sua senha').fill('synthetic-password')
+    await page.getByLabel('Confirmo esta alteração auditada').check()
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
+    await page.getByRole('button', { name: 'Configurar limites' }).click()
+    assert.equal(await page.getByLabel('Produtos por vitrine').inputValue(), '21')
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false)
+    const calls = await page.evaluate(() => window.__sfCalls)
+    for (const name of ['set_storefront_editorial', 'save_product_storefront', 'admin_set_storefront_limits', 'list_storefront_orders', 'reauthenticate_pricing_admin'])
+      assert.ok(calls.some((c) => c.name === name), name)
+    assert.equal(calls.filter((c) => c.name === 'set_storefront_editorial').length, 3)
+    results.push({ adminModerationEditLimitsHistoryRefresh: true, passed: true })
+    await context.close()
+  }
+  {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+    await page.goto(origin + '/?admin=1&forbid=1')
+    await page.getByRole('heading', { name: 'Moderação de vitrines de produtos' }).waitFor()
+    await page.getByText('Sua sessão ou conta não está autorizada. Entre novamente.').waitFor()
+    assert.equal(await page.getByRole('button', { name: 'Em análise agora' }).count(), 0)
+    results.push({ adminPermissionDenied: true, passed: true })
     await context.close()
   }
 

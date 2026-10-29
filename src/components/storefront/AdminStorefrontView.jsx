@@ -25,7 +25,9 @@ import {
   setStorefrontLimits,
   uploadStorefrontImage,
   discardStorefrontImage,
+  isStorefrontImageLinked,
 } from '../../services/storefrontService'
+import { saveWithImage } from '../../utils/storefrontImageSave'
 import { reauthenticatePricingAdmin } from '../../services/evocashPricingService'
 import { editorialLabels, publicationLabels, storefrontError } from '../../utils/storefront'
 import { commercialDate } from '../../utils/commercial'
@@ -120,18 +122,17 @@ export default function AdminStorefrontView() {
         await reauthenticatePricingAdmin(password)
         await setStorefrontEditorial(item, form.state, reason)
       } else {
-        let uploaded
-        try {
-          if (file) uploaded = await uploadStorefrontImage(item.id, file)
-          if (dialog.kind === 'storefront')
-            await saveStorefront(item, { ...form, logoMediaId: uploaded || form.logoMediaId })
-          else await saveStorefrontProduct(item, { ...form, mediaId: uploaded || form.mediaId })
-          const previous = dialog.kind === 'storefront' ? form.logoMediaId : form.mediaId
-          if (uploaded && previous) await discardStorefrontImage(previous)
-        } catch (e) {
-          if (uploaded) await discardStorefrontImage(uploaded)
-          throw e
-        }
+        const product = dialog.kind !== 'storefront'
+        await saveWithImage({
+          file,
+          upload: (image) => uploadStorefrontImage(item.id, image),
+          save: (uploaded) => product
+            ? saveStorefrontProduct(item, { ...form, mediaId: uploaded || form.mediaId })
+            : saveStorefront(item, { ...form, logoMediaId: uploaded || form.logoMediaId }),
+          isLinked: (id) => isStorefrontImageLinked(item.id, id, { admin: true, product }),
+          discard: discardStorefrontImage,
+          previousMediaId: product ? form.mediaId : form.logoMediaId,
+        })
       }
     })
   }
