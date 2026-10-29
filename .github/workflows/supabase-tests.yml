@@ -156,6 +156,9 @@ jobs:
   finance-e2e:
     name: finance-e2e
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     # Run 40389672797: APT levou 13m12s com retries no mirror Azure, stack/migrations
     # ~1m32s e E2E ~5m06s; PASS coincidiu com o timeout de 20 min antes do cleanup.
     # 30 min deixa margem limitada para downloads e encerramento sem reduzir os testes.
@@ -182,6 +185,12 @@ jobs:
       # digest OCI fixado e verificação da imagem antes de iniciar qualquer container.
       - name: Verify pinned image acquisition and secure fallback
         run: node --test scripts/homolog/finance/images.test.mjs
+      - name: Authenticate GHCR image reads
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
       - name: Start disposable local stack (db + auth + storage + rest + edge)
         run: node scripts/homolog/finance/stack.mjs start
       - name: Apply all migrations to the disposable stack
