@@ -4,6 +4,7 @@ import {
   refundDate,
   refundError,
   withdrawalRemaining,
+  withdrawalRemainingLabel,
   refundCategories,
   publicRefundPolicy,
 } from './refunds.js'
@@ -15,6 +16,13 @@ test('monotonic elapsed time only shortens server authorization', () => {
   assert.equal(withdrawalRemaining(source, 100, 10100), 50000)
   assert.equal(withdrawalRemaining(source, 100, 60101), 0)
   assert.equal(withdrawalRemaining(source, 100, 90), 60000)
+})
+test('remaining-time guidance is rounded up and disappears at the deadline', () => {
+  assert.equal(withdrawalRemainingLabel(1), '1 min restantes (orientação)')
+  assert.equal(withdrawalRemainingLabel(60000), '1 min restantes (orientação)')
+  assert.equal(withdrawalRemainingLabel(3600001), '2 h restantes (orientação)')
+  assert.equal(withdrawalRemainingLabel(90000000), '1 dia e 1 h restantes (orientação)')
+  assert.equal(withdrawalRemainingLabel(0), null)
 })
 test('window error preserves other legal complaint channels', () => {
   assert.match(

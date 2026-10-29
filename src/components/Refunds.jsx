@@ -32,6 +32,7 @@ import {
   refundDate,
   refundError,
   withdrawalRemaining,
+  withdrawalRemainingLabel,
   publicRefundPolicy,
 } from '../utils/refunds'
 
@@ -154,6 +155,8 @@ function RefundSourceDialog({ type, id, close, returnFocusRef, onCreated }) {
       setBusy(false)
     }
   }
+  const withdrawalMaySubmit =
+    source?.requestsEnabled && (remaining > 0 || source.policy?.historicalUnverified)
   return (
     <Dialog
       title="Cancelamento, reembolso ou problema"
@@ -184,9 +187,11 @@ function RefundSourceDialog({ type, id, close, returnFocusRef, onCreated }) {
                   ` · R$ ${(BigInt(source.acquisition.paidCentavos) / 100n).toString()},${(BigInt(source.acquisition.paidCentavos) % 100n).toString().padStart(2, '0')}`}
               </Text>
               <Text as="p">
-                {source.withdrawalOpen && remaining > 0
-                  ? `Arrependimento disponível até ${refundDate(source.deadlineAt)}`
-                  : 'Prazo de arrependimento encerrado'}
+                {source.policy?.historicalUnverified
+                  ? 'Aquisição histórica: marco e prazo sujeitos à análise. Não presumimos que seu direito terminou.'
+                  : remaining > 0
+                    ? `Arrependimento disponível até ${refundDate(source.deadlineAt)} · ${withdrawalRemainingLabel(remaining)}`
+                    : 'Prazo de arrependimento encerrado'}
               </Text>
               <Text as="p">
                 Outros problemas e direitos continuam disponíveis. Origem de créditos e consumo
@@ -210,11 +215,7 @@ function RefundSourceDialog({ type, id, close, returnFocusRef, onCreated }) {
                     <Select.Option
                       key={value}
                       value={value}
-                      disabled={
-                        value === 'withdrawal' &&
-                        (!source.requestsEnabled ||
-                          (!source.withdrawalOpen && !source.policy.historicalUnverified))
-                      }
+                      disabled={value === 'withdrawal' && !withdrawalMaySubmit}
                     >
                       {label}
                     </Select.Option>
@@ -241,7 +242,10 @@ function RefundSourceDialog({ type, id, close, returnFocusRef, onCreated }) {
               <Button
                 variant="primary"
                 disabled={
-                  busy || !confirmed || (category !== 'withdrawal' && message.trim().length < 5)
+                  busy ||
+                  !confirmed ||
+                  (category === 'withdrawal' && !withdrawalMaySubmit) ||
+                  (category !== 'withdrawal' && message.trim().length < 5)
                 }
                 onClick={submit}
               >

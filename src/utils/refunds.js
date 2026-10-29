@@ -65,6 +65,17 @@ export function withdrawalRemaining(source, receivedAt, now = performance.now())
   )
 }
 
+export function withdrawalRemainingLabel(milliseconds) {
+  if (milliseconds <= 0) return null
+  const minutes = Math.ceil(milliseconds / 60000)
+  if (minutes < 60) return `${minutes} min restantes (orientação)`
+  const hours = Math.ceil(minutes / 60)
+  if (hours < 24) return `${hours} h restantes (orientação)`
+  const days = Math.floor(hours / 24)
+  const extraHours = hours % 24
+  return `${days} ${days === 1 ? 'dia' : 'dias'}${extraHours ? ` e ${extraHours} h` : ''} restantes (orientação)`
+}
+
 // An internal policy snapshot is not a published contractual policy. Keep it in
 // the backend audit trail; only publish its body after explicit approval.
 export function publicRefundPolicy(policy) {

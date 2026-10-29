@@ -112,9 +112,16 @@ node scripts/homolog/finance/refunds-visual.mjs
 
 `start` recusa containers existentes; `resume` retoma a stack preparada. Seed e concorrência persistem somente fixtures locais; instalação limpa cria outro container sem dados reais. O teste de migração não é runbook para produção. Secrets/sessões não integram os artefatos versionados.
 
+## Revalidação no Codespace atual (29/10/2026)
+
+A branch de reembolsos já estava integrada à `main` local antes desta revisão do prompt. Nesta execução, as 209 migrations foram aplicadas em `evolutus_refunds_db`, exclusivamente descartável. Dez suítes SQL passaram com 323 asserções; quatro cenários de concorrência passaram. Os testes JavaScript afetados passaram com 24 casos, assim como ESLint dos arquivos ajustados, integridade das migrations e build. Os logs SQL gerados com novos identificadores sintéticos não substituíram a evidência versionada anterior.
+
+A revisão acrescentou a orientação de tempo restante no formulário e impede enviar um novo pedido de arrependimento após o prazo expirar com o diálogo aberto; o backend continua decidindo a elegibilidade. Para aquisições históricas sem termos verificáveis, a interface agora evita declarar o prazo como encerrado. O Chromium não está instalado neste Codespace, portanto os testes de browser e teclado anteriores não foram reexecutados aqui.
+
 ## Pendências e ativação bloqueada
 
 - [ ] Aprovação jurídica/comercial da política completa, marco e contagem civil por modalidade, extensões mais favoráveis, consumo parcial, integralidade e atualização monetária legalmente devida, contratos acessórios, B2B, cancelamento voluntário e retenção/LGPD. Não há regra automática aprovada para esses casos.
+- [ ] Definir com o jurídico e a operação como comunicar tempestivamente o exercício do arrependimento à instituição financeira ou administradora, conforme o art. 5º, § 3º, do Decreto 7.962/2013. O alerta interno e o estorno manual desta entrega não comprovam, por si, essa comunicação externa.
 - [ ] Validar contrato efetivo e recursos habilitados na conta InfinitePay, procedimento de estorno original, identificação do lojista, evidências, divergências e eventual consulta autorizada. Nenhum estorno real ou API de devolução foi homologado. Valores adicionais/atualização monetária exigem procedimento aprovado; a liquidação técnica atual limita-se ao pagamento original integral.
 - [ ] Resolver remediações com créditos consumidos ou histórico sem lotes sem inventar precisão ou impedir restituição legal. O módulo registra e mantém esses casos em análise; não implementa uma política automática de compensação.
 - [ ] Definir atendimento de indisponibilidade, contas bloqueadas/excluídas e responsável operacional. O canal do módulo exige acesso ativo; isso não pode ser a única via de exercício de direitos para consumidores sem acesso à conta.
