@@ -17,6 +17,7 @@ const stubs = {
   '/hooks/useColorMode':
     'export const useColorMode=()=>({dark:window.__theme === "dark",toggleColorMode:()=>{}})',
   '/hooks/usePendingNotice': 'export const useLogoutNotice=()=>null',
+  '/hooks/useWallet': 'export const useWallet=()=>({dailyCoins:0,display:null})',
 }
 let server
 let browser
@@ -26,9 +27,11 @@ try {
       contents: `
         import React from 'react'
         import { createRoot } from 'react-dom/client'
-        import { BrowserRouter } from 'react-router-dom'
+        import { BrowserRouter, Link } from 'react-router-dom'
         import { BaseStyles, ThemeProvider } from '@primer/react'
         import { AccountMenu } from './src/components/AccountMenu.jsx'
+        import { BrandMark } from './src/components/BrandMark.jsx'
+        import { WalletHeaderBadgesView } from './src/components/WalletHeaderBadges.jsx'
         import './src/styles/app.css'
         import './src/styles/navigation.css'
         import '@primer/primitives/dist/css/functional/themes/light.css'
@@ -37,9 +40,13 @@ try {
           <ThemeProvider colorMode={window.__theme === 'dark' ? 'night' : 'day'} dayScheme="light" nightScheme="dark">
             <BaseStyles><BrowserRouter><div className="app-shell">
               <header className="app-header"><div className="header-top">
-                <a className="brand" href="/app">Evolutus</a>
-                <nav className="desktop-nav">Início</nav>
-                <div className="header-actions"><AccountMenu onLogout={()=>{}} onLogoutAll={()=>{}} signingOut={false}/></div>
+                <Link className="brand" to="/app" aria-label="Evolutus — início"><span className="brand-mark"><BrandMark size={25}/></span><span>Evolutus</span></Link>
+                <nav className="desktop-nav"><Link className="nav-link" to="/app">Início</Link></nav>
+                <div className="header-actions">
+                  <WalletHeaderBadgesView visible loading={false} coinBalance={123456789} cashBalance={987654321}/>
+                  <button className="notification-trigger" aria-label="Notificações">Sino</button>
+                  <AccountMenu onLogout={()=>{}} onLogoutAll={()=>{}} signingOut={false}/>
+                </div>
               </div></header>
               <main className="main-content" style={{minHeight:3000}}>Conteúdo extenso</main>
               <nav className="mobile-nav" aria-label="Navegação inferior">Início</nav>
@@ -101,12 +108,28 @@ try {
   for (const theme of ['light', 'dark'])
     for (const { width, height } of viewports) {
       const page = await browser.newPage({ viewport: { width, height }, colorScheme: theme })
+      page.on('pageerror', (error) => console.error(error.message))
       await page.addInitScript((mode) => {
         window.__theme = mode
       }, theme)
       await page.goto(url)
       const trigger = page.getByRole('button', { name: 'Menu da conta' })
-      await trigger.waitFor()
+      await trigger.waitFor({ timeout: 5000 })
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+        false,
+        `${theme} ${width}x${height}: header causes horizontal overflow`
+      )
+      assert.ok(
+        await page.evaluate(() => {
+          const brand = document.querySelector('.app-header .brand').getBoundingClientRect()
+          const wallet = document.querySelector('.wallet-header-badges').getBoundingClientRect()
+          const bell = document.querySelector('.notification-trigger').getBoundingClientRect()
+          const menu = document.querySelector('.account-menu-trigger').getBoundingClientRect()
+          return brand.right <= wallet.left && wallet.right <= bell.left && bell.right <= menu.left
+        }),
+        `${theme} ${width}x${height}: header actions overlap`
+      )
       for (const position of ['top', 'bottom']) {
         await page.evaluate(
           (where) => window.scrollTo(0, where === 'bottom' ? document.body.scrollHeight : 0),
@@ -149,6 +172,10 @@ try {
         )
         if (width < 768) {
           assert.equal(await overlay.getAttribute('data-variant'), 'anchored')
+          assert.ok(
+            (await overlay.getByRole('menuitem').first().boundingBox()).height >= 44,
+            `${theme} ${width}x${height}: first menu target is too small`
+          )
           await overlay.getByText('Ferramentas administrativas', { exact: false }).click()
           await overlay.evaluate((element) => {
             element.scrollTop = element.scrollHeight
