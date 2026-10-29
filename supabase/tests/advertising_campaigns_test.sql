@@ -53,6 +53,14 @@ select is(public.confirm_commercial_order((select(value->>'id')::uuid from ads_r
 select is(jsonb_array_length(public.select_advertising('home_banner',null)),1,'approved paid reserved ad delivered');
 select public.edit_advertising_campaign('76100000-0000-0000-0000-000000000001',2,'Pending secret revision','Not public','https://example.invalid/revision',true);
 select is(public.select_advertising('home_banner',null)->0->>'title','Synthetic campaign','pending revision never replaces projection');
+-- The owner-facing summary must say the same thing a different way: still delivering
+-- the last approved version, with a newer unreviewed revision on file (never "Em análise"
+-- as if the live campaign had gone dark).
+select is((select x->>'moderation_state' from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))) x where x->>'ad_id'='76100000-0000-0000-0000-000000000001'),'approved','live campaign stays approved while a revision is pending review');
+select is((select x->>'delivery_state' from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))) x where x->>'ad_id'='76100000-0000-0000-0000-000000000001'),'active','paid campaign keeps delivering its last approved version during a pending revision');
+select is((select (x->>'version')::bigint from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))) x where x->>'ad_id'='76100000-0000-0000-0000-000000000001'),3::bigint,'a newer unreviewed revision exists');
+select is((select (x->>'approved_version')::bigint from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))) x where x->>'ad_id'='76100000-0000-0000-0000-000000000001'),2::bigint,'the approved projection still points at the live version, not the pending one');
+select is((select x->>'placement_delivery_active' from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))) x where x->>'ad_id'='76100000-0000-0000-0000-000000000001'),'true','home_banner is delivery_enabled with an active reservation, so the consolidated signal is true without a per-card RPC');
 update public.sponsored_ads set title='Bypass' where id='76100000-0000-0000-0000-000000000001';
 reset role;
 select is((select title from public.sponsored_ads where id='76100000-0000-0000-0000-000000000001'),'Synthetic campaign','approved title unmodified');
