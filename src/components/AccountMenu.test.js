@@ -40,10 +40,12 @@ before(async () => {
           renderMobileWalletItem,
           renderSessionItems,
           renderAdminSection,
+          renderBusinessSection,
         } from './AccountMenu.jsx'
+        import { BUSINESS_ITEMS } from '../constants/businessNav.js'
         import { authState } from '../hooks/useAuth'
 
-        export { authState, ACCOUNT_ITEMS, EXPLORE_ITEMS, ADMIN_ITEMS, renderNavItems, renderMobileWalletItem, renderSessionItems, renderAdminSection }
+        export { authState, ACCOUNT_ITEMS, EXPLORE_ITEMS, ADMIN_ITEMS, BUSINESS_ITEMS, renderNavItems, renderMobileWalletItem, renderSessionItems, renderAdminSection, renderBusinessSection }
 
         // AccountMenu lê window.matchMedia num useState lazy, já na primeira renderização
         // (mesmo sob renderToStaticMarkup, que não roda efeitos mas roda o corpo da função).
@@ -131,23 +133,35 @@ test('trigger button renders closed, with the accessible label and no menu conte
 
 // -- Visibilidade por perfil (Cuidado: nenhuma rota some entre desktop/mobile) --------
 
-test('ACCOUNT_ITEMS: "Minha vitrine" só aparece fora do perfil "common"; os demais itens são incondicionais', () => {
-  const vitrine = mod.ACCOUNT_ITEMS.find((item) => item.key === 'vitrine')
+test('ACCOUNT_ITEMS agora só tem rotas pessoais incondicionais (negócio vive em BUSINESS_ITEMS)', () => {
+  for (const item of mod.ACCOUNT_ITEMS) {
+    assert.equal(item.show, undefined, `"${item.label}" não devia ter condição`)
+  }
+  assert.deepEqual(
+    mod.ACCOUNT_ITEMS.map((i) => i.key),
+    ['perfil', 'evocash', 'promocoes']
+  )
+})
+
+test('BUSINESS_ITEMS: "Minha vitrine profissional" só aparece fora do perfil "common"; anúncios e vitrine de produtos são incondicionais', () => {
+  const vitrine = mod.BUSINESS_ITEMS.find((item) => item.key === 'vitrine')
   assert.equal(vitrine.show({ usageProfile: 'common' }), false)
   assert.equal(vitrine.show({ usageProfile: 'professional' }), true)
   assert.equal(vitrine.show(undefined), true)
-  for (const item of mod.ACCOUNT_ITEMS) {
+  for (const item of mod.BUSINESS_ITEMS) {
     if (item.key === 'vitrine') continue
     assert.equal(item.show, undefined, `"${item.label}" não devia ter condição`)
   }
+  // The gap this PR closes: /vitrine/gerenciar previously had no direct menu entry at all.
+  assert.ok(mod.BUSINESS_ITEMS.some((item) => item.to === '/vitrine/gerenciar'))
 })
 
-test('renderNavItems aplica o filtro "show" e preserva rota/ícone/onClick por item', () => {
+test('renderNavItems aplica o filtro "show" e preserva rota/ícone/onClick por item (BUSINESS_ITEMS)', () => {
   const onNavigate = () => {}
-  const common = mod.renderNavItems(mod.ACCOUNT_ITEMS, { usageProfile: 'common' }, onNavigate)
-  const pro = mod.renderNavItems(mod.ACCOUNT_ITEMS, { usageProfile: 'professional' }, onNavigate)
-  assert.equal(common.length, mod.ACCOUNT_ITEMS.length - 1)
-  assert.equal(pro.length, mod.ACCOUNT_ITEMS.length)
+  const common = mod.renderNavItems(mod.BUSINESS_ITEMS, { usageProfile: 'common' }, onNavigate)
+  const pro = mod.renderNavItems(mod.BUSINESS_ITEMS, { usageProfile: 'professional' }, onNavigate)
+  assert.equal(common.length, mod.BUSINESS_ITEMS.length - 1)
+  assert.equal(pro.length, mod.BUSINESS_ITEMS.length)
   assert.equal(
     common.some((el) => el.props.to === '/minha-vitrine'),
     false
@@ -160,6 +174,22 @@ test('renderNavItems aplica o filtro "show" e preserva rota/ícone/onClick por i
     assert.equal(el.props.onClick, onNavigate)
     assert.equal(el.props.replace, true)
   }
+})
+
+test('renderBusinessSection agrupa as 3 rotas comerciais sob "Meu negócio" sem fundir vitrine profissional e vitrine de produtos', () => {
+  const onNavigate = () => {}
+  const section = mod.renderBusinessSection({ usageProfile: 'professional' }, onNavigate)
+  assert.equal(section.props.title, 'Meu negócio')
+  const items = section.props.children
+  assert.deepEqual(
+    items.map((i) => i.props.to),
+    ['/meus-anuncios', '/minha-vitrine', '/vitrine/gerenciar']
+  )
+  const commonSection = mod.renderBusinessSection({ usageProfile: 'common' }, onNavigate)
+  assert.deepEqual(
+    commonSection.props.children.map((i) => i.props.to),
+    ['/meus-anuncios', '/vitrine/gerenciar']
+  )
 })
 
 test('carteira aparece só no grupo mobile e fecha o menu ao navegar', () => {

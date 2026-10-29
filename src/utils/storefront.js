@@ -21,7 +21,7 @@ const messages = {
   STOREFRONT_LIMIT: 'Limite de vitrines atingido.',
   PRODUCT_LIMIT: 'Limite de produtos atingido.',
   INVALID_STOREFRONT_MEDIA: 'A imagem precisa ter sido enviada para esta vitrine.',
-  INVALID_PRODUCT_PRICE: 'Informe o preço em centavos inteiros.',
+  INVALID_PRODUCT_PRICE: 'Informe um preço válido em reais.',
   IMAGE_TOO_LARGE: 'A imagem deve ter até 1 MB após otimização.',
   UPLOAD_FAILED: 'Não foi possível enviar a imagem. Tente novamente.',
   INVALID_IMAGE: 'Arquivo inválido. Escolha uma imagem JPEG, PNG ou WebP.',

@@ -23,27 +23,17 @@ import { useAuth } from '../hooks/useAuth'
 import { useColorMode } from '../hooks/useColorMode'
 import { useLogoutNotice } from '../hooks/usePendingNotice'
 import { ADMIN_ITEMS } from '../constants/adminNav'
+import { BUSINESS_ITEMS } from '../constants/businessNav'
 
 // Rotas compartilhadas de "Minha conta" para desktop e mobile. A carteira tem
 // um atalho exclusivo no painel mobile porque seu indicador já aparece no header
 // desktop. Exportadas (junto com as funções de
 // render abaixo) pra serem testáveis sem precisar montar o ActionMenu.Overlay
-// inteiro (que depende de Portal/DOM real -- ver AccountMenu.test.js).
+// inteiro (que depende de Portal/DOM real -- ver AccountMenu.test.js). As rotas
+// comerciais (anúncios, vitrine profissional, vitrine de produtos) vivem à parte em
+// BUSINESS_ITEMS/"Meu negócio" -- ver constants/businessNav.js.
 export const ACCOUNT_ITEMS = [
-  { key: 'anuncios', to: '/meus-anuncios', icon: BriefcaseIcon, label: 'Meus anúncios' },
   { key: 'perfil', to: '/perfil', icon: PersonIcon, label: 'Meu perfil' },
-  // profile?.usageProfile === 'common' só esconde o atalho (declutter) -- a
-  // rota /minha-vitrine continua acessível e decide por conta própria (com
-  // dados reais) o que mostrar; ver MyProfessionalListing.jsx. Legado
-  // (usageProfile ausente) e profissional/estabelecimento continuam vendo o
-  // atalho normalmente.
-  {
-    key: 'vitrine',
-    to: '/minha-vitrine',
-    icon: BriefcaseIcon,
-    label: 'Minha vitrine',
-    show: (profile) => profile?.usageProfile !== 'common',
-  },
   { key: 'evocash', to: '/evocash', icon: CreditCardIcon, label: 'Comprar EvoCash' },
   { key: 'promocoes', to: '/minhas-promocoes', icon: RocketIcon, label: 'Minhas promoções' },
 ]
@@ -77,6 +67,18 @@ export function renderNavItems(items, profile, onNavigate) {
         {item.label}
       </ActionList.LinkItem>
     ))
+}
+
+// "Meu negócio": Meus anúncios, Minha vitrine profissional e Vitrine de produtos, grouped
+// under one label without merging or renaming any of the three routes (see
+// constants/businessNav.js). Not collapsible like renderAdminSection — it's always just
+// three items, not nine.
+export function renderBusinessSection(profile, onNavigate) {
+  return (
+    <ActionList.Group title="Meu negócio">
+      {renderNavItems(BUSINESS_ITEMS, profile, onNavigate)}
+    </ActionList.Group>
+  )
 }
 
 export function renderMobileWalletItem(onNavigate) {
@@ -225,6 +227,7 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
                   {renderNavItems(ACCOUNT_ITEMS, profile, closeMenu)}
                   {renderMobileWalletItem(closeMenu)}
                 </ActionList.Group>
+                {renderBusinessSection(profile, closeMenu)}
                 <ActionList.Group title="Explorar">
                   {renderNavItems(EXPLORE_ITEMS, profile, closeMenu)}
                 </ActionList.Group>
@@ -253,6 +256,7 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
             ) : (
               <ActionList>
                 {renderNavItems(ACCOUNT_ITEMS, profile, closeMenu)}
+                {renderBusinessSection(profile, closeMenu)}
                 <ActionList.Group title="Explorar">
                   {renderNavItems(EXPLORE_ITEMS, profile, closeMenu)}
                 </ActionList.Group>
