@@ -202,8 +202,8 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
     if (!open) setAdminExpanded(false)
   }, [open])
 
-  // Primer calcula o alinhamento horizontal pelo botão. O topo acompanha a base
-  // do cabeçalho sticky, inclusive após rolar até o fim do documento.
+  // Primer calcula o alinhamento horizontal pelo botão. O cabeçalho é sticky no
+  // topo; sua altura pode mudar em um resize, mas o scroll não muda sua base.
   useLayoutEffect(() => {
     if (!open || !anchorRef.current) return undefined
     const header = anchorRef.current.closest('.app-header')
@@ -212,11 +212,9 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
     update()
     const observer = new ResizeObserver(update)
     observer.observe(header)
-    window.addEventListener('scroll', update, { passive: true })
     window.addEventListener('resize', update)
     return () => {
       observer.disconnect()
-      window.removeEventListener('scroll', update)
       window.removeEventListener('resize', update)
     }
   }, [open])

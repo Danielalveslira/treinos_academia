@@ -2,17 +2,20 @@
 import assert from 'node:assert/strict'
 import { build } from 'esbuild'
 import { createServer } from 'node:http'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { chromium } from 'playwright-core'
 
 const root = resolve(import.meta.dirname, '..')
 const directory = await mkdtemp(join(tmpdir(), 'app-menu-viewport-'))
+const evidenceDirectory = process.env.APP_MENU_EVIDENCE_DIR
+if (evidenceDirectory) await mkdir(evidenceDirectory, { recursive: true })
 const stubs = {
   '/hooks/useAuth':
     'export const useAuth=()=>({isSuperAdmin:true,profile:{usageProfile:"professional"}})',
-  '/hooks/useColorMode': 'export const useColorMode=()=>({dark:false,toggleColorMode:()=>{}})',
+  '/hooks/useColorMode':
+    'export const useColorMode=()=>({dark:window.__theme === "dark",toggleColorMode:()=>{}})',
   '/hooks/usePendingNotice': 'export const useLogoutNotice=()=>null',
 }
 let server
@@ -85,9 +88,19 @@ try {
   await new Promise((done) => server.listen(0, '127.0.0.1', done))
   browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] })
   const url = `http://127.0.0.1:${server.address().port}/app`
+  const viewports = [
+    { width: 320, height: 700 },
+    { width: 320, height: 420 },
+    { width: 390, height: 700 },
+    { width: 390, height: 420 },
+    { width: 768, height: 700 },
+    { width: 844, height: 390 },
+    { width: 1024, height: 700 },
+    { width: 1440, height: 700 },
+  ]
   for (const theme of ['light', 'dark'])
-    for (const width of [320, 390, 768, 1024, 1440]) {
-      const page = await browser.newPage({ viewport: { width, height: 700 }, colorScheme: theme })
+    for (const { width, height } of viewports) {
+      const page = await browser.newPage({ viewport: { width, height }, colorScheme: theme })
       await page.addInitScript((mode) => {
         window.__theme = mode
       }, theme)
@@ -102,8 +115,8 @@ try {
         await page.waitForTimeout(50)
         const triggerBox = await trigger.boundingBox()
         assert.ok(
-          triggerBox && triggerBox.y >= 0 && triggerBox.y + triggerBox.height <= 701,
-          `${theme} ${width} ${position}: trigger left viewport ${JSON.stringify(triggerBox)}`
+          triggerBox && triggerBox.y >= 0 && triggerBox.y + triggerBox.height <= height + 1,
+          `${theme} ${width}x${height} ${position}: trigger left viewport ${JSON.stringify(triggerBox)}`
         )
         assert.ok(
           await trigger.evaluate((button) => {
@@ -117,10 +130,14 @@ try {
         const overlay = page.locator('.account-menu-overlay')
         await overlay.waitFor()
         await page.waitForTimeout(250)
+        assert.ok(
+          await overlay.evaluate((element) => element.contains(document.activeElement)),
+          `${theme} ${width}x${height} ${position}: focus did not enter menu`
+        )
         const box = await overlay.boundingBox()
         assert.ok(
-          box && box.y >= 0 && box.y + box.height <= 701,
-          `${theme} ${width} ${position}: overlay outside viewport ${JSON.stringify(box)}`
+          box && box.y >= 0 && box.y + box.height <= height + 1,
+          `${theme} ${width}x${height} ${position}: overlay outside viewport ${JSON.stringify(box)}`
         )
         assert.equal(await overlay.evaluate((element) => getComputedStyle(element).position), 'fixed')
         const headerBottom = await page
@@ -151,19 +168,35 @@ try {
         await page.waitForTimeout(50)
         const moved = await overlay.boundingBox()
         assert.ok(
-          moved && moved.y >= 0 && moved.y + moved.height <= 701,
-          `${theme} ${width} ${position}: open menu left viewport during scroll`
+          moved && moved.y >= 0 && moved.y + moved.height <= height + 1,
+          `${theme} ${width}x${height} ${position}: open menu left viewport during scroll`
         )
+        if (
+          evidenceDirectory &&
+          position === 'bottom' &&
+          (([320, 390, 1440].includes(width) && height === 700) ||
+            (width === 320 && height === 420))
+        )
+          await page.screenshot({ path: join(evidenceDirectory, `app-menu-${width}x${height}-${theme}.png`) })
+        await trigger.click()
+        await overlay.waitFor({ state: 'detached', timeout: 1500 })
+        await trigger.click()
+        await overlay.waitFor()
         await page.keyboard.press('Escape')
         await overlay.waitFor({ state: 'detached', timeout: 1500 })
+        assert.ok(await trigger.evaluate((button) => document.activeElement === button))
         await trigger.click()
         await overlay.waitFor()
         await page.mouse.click(4, 400)
         await overlay.waitFor({ state: 'detached', timeout: 1500 })
       }
+      await trigger.click()
+      await page.getByText('Meu perfil', { exact: true }).click()
+      assert.equal(new URL(page.url()).pathname, '/perfil')
+      await page.locator('.account-menu-overlay').waitFor({ state: 'detached' })
       await page.close()
     }
-  console.log('App menu viewport check passed: 20 scenarios')
+  console.log('App menu viewport check passed: 32 scenarios')
 } finally {
   await browser?.close()
   await new Promise((done) => server?.close(done))
