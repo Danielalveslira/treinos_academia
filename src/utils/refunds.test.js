@@ -1,6 +1,12 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { refundDate, refundError, withdrawalRemaining, refundCategories } from './refunds.js'
+import {
+  refundDate,
+  refundError,
+  withdrawalRemaining,
+  refundCategories,
+  publicRefundPolicy,
+} from './refunds.js'
 test('guidance uses Brasilia rather than browser timezone', () => {
   assert.match(refundDate('2026-10-30T01:30:00Z'), /29\/10\/2026.*22:30.*Brasília/)
 })
@@ -17,4 +23,19 @@ test('window error preserves other legal complaint channels', () => {
   )
   assert.ok(refundCategories.service_failure)
   assert.ok(refundCategories.duplicate_payment)
+})
+
+test('unapproved snapshot is not published as contractual policy or internal labels', () => {
+  const text = publicRefundPolicy({
+    version: 'draft-1',
+    approved: false,
+    body: 'Minuta pendente de aprovação jurídica/comercial',
+  })
+  assert.doesNotMatch(text, /draft-1|Minuta|aprovação|jurídica|comercial/)
+  assert.match(text, /cobrança indevida/)
+  assert.match(text, /não acrescentam condições/)
+  assert.equal(
+    publicRefundPolicy({ approved: true, body: 'Política publicada' }),
+    'Política publicada'
+  )
 })

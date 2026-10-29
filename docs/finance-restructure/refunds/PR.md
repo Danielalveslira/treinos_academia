@@ -1,9 +1,11 @@
 # Solicitações de arrependimento, cancelamento e reembolso com retenção auditada
 
-Clientes passam a registrar e acompanhar solicitações no histórico de EvoCash e dos contratos. O backend congela política e prazo por aquisição, preserva manifestações tempestivas, mantém os demais direitos após sete dias e gera protocolo imediato. A administração analisa, solicita informação e registra decisões com autenticação recente; aprovação não liquida dinheiro.
+O usuário registra e acompanha solicitações no histórico de EvoCash e de serviços, com protocolo imediato, prazo calculado no backend e manutenção das demais reclamações após sete dias. A administração analisa e comunica decisões auditadas; aprovação não liquida dinheiro.
 
-A reserva protege todos os débitos da carteira existente. Estorno em reais permanece manual na InfinitePay e exige evidência administrativa explícita; a conclusão reutiliza a reversão, o ledger e a dívida existentes. Cancelamento integral de serviço utiliza a compensação comercial e revoga seu período. Consumo parcial, origem desconhecida e estornos anteriores seguem para investigação. Gates financeiros nascem desligados e a política continua em minuta.
+Reservas protegem os débitos da carteira existente. Estorno BRL permanece manual na InfinitePay, com evidência e compensação única pelo ledger/reversão existentes. Consumo parcial, origem não rastreável e estorno anterior exigem investigação. Quatro migrations aditivas preservam as 205 anteriores; solicitações financeiras e liquidação nascem desligadas, sem ativar compras, checkout, vendas ou métricas.
 
-Quatro migrations aditivas, sem reescrever as 205 migrations da main. Homologação local com Auth/REST/PostgreSQL e provedor sintético. Evidências, matriz de testes, limitações, implantação e rollback em `ENTREGA.md`.
+Interface de compra usa os textos curtos solicitados, com seção expansível e política completa acessível. Snapshots não aprovados permanecem na auditoria e não são publicados como condições contratuais; a interface apresenta informações gerais dos direitos do consumidor, sem rótulos internos.
 
-**Publicação pendente:** o prompt exige autorização separada para push. Esta branch e este texto estão preparados para revisão; abrir a PR remota depende dessa autorização. Sem push, merge, deploy, cobrança ou estorno real.
+Validação: 323 asserções SQL, concorrência PostgreSQL real, fluxo Auth/REST/browser, teclado/mobile/temas, instalação limpa com hashes preservados e build/lint/budget/scanners. O ajuste final de texto tem regressão focada. CI obrigatório deve aprovar antes da integração, sem bypass de proteções.
+
+Autorização atual permite push/PR, integração técnica e implantação segura após os gates. Estornos reais, capacidades do provedor e políticas aplicáveis continuam condicionados à aprovação própria. Plano, evidências e limitações em `docs/finance-restructure/refunds/ENTREGA.md`; registro da publicação em `PUBLICACAO.md`.

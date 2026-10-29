@@ -32,6 +32,7 @@ import {
   refundDate,
   refundError,
   withdrawalRemaining,
+  publicRefundPolicy,
 } from '../utils/refunds'
 
 export function RefundPolicyNotice({ snapshot, purchase = false }) {
@@ -55,38 +56,19 @@ export function RefundPolicyNotice({ snapshot, purchase = false }) {
           : 'Arrependimento e reembolso: quando aplicável, até 7 dias conforme o marco legal e a data-limite da aquisição. Outros direitos continuam disponíveis após esse prazo. A duração comercial por dias é independente.'}
       </Text>
       <details>
-        <summary>
-          {purchase
-            ? 'Como funciona o reembolso?'
-            : `Política de arrependimento e reembolso ${policy?.version || ''}`}
-        </summary>
-        {purchase ? (
-          <>
-            <Text as="p">
-              Solicite o reembolso pelo aplicativo e acompanhe o andamento. O prazo de
-              arrependimento é de até 7 dias, conforme a legislação aplicável.
-            </Text>
-            <details>
-              <summary>Política completa {policy?.version}</summary>
-              <Text as="p">
-                {policy?.body || 'Não foi possível carregar a política. Tente novamente.'}
-              </Text>
-            </details>
-            {!policy?.approved && (
-              <Text as="p">Minuta pendente de aprovação jurídica/comercial.</Text>
-            )}
-          </>
-        ) : (
-          <>
-            <Text as="p">
-              {policy?.body ||
-                'Não foi possível consultar a versão da política. Atualize antes de contratar.'}
-            </Text>
-            {!policy?.approved && (
-              <Text as="p">Minuta pendente de aprovação jurídica/comercial.</Text>
-            )}
-          </>
+        <summary>{purchase ? 'Como funciona o reembolso?' : 'Arrependimento e reembolso'}</summary>
+        {purchase && (
+          <Text as="p">
+            Solicite o reembolso pelo aplicativo e acompanhe o andamento. O prazo de arrependimento
+            é de até 7 dias, conforme a legislação aplicável.
+          </Text>
         )}
+        <details>
+          <summary>Política completa</summary>
+          <Text as="p" sx={{ whiteSpace: 'pre-line' }}>
+            {publicRefundPolicy(policy)}
+          </Text>
+        </details>
       </details>
     </Box>
   )

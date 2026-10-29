@@ -64,3 +64,10 @@ export function withdrawalRemaining(source, receivedAt, now = performance.now())
     Date.parse(source.deadlineAt) - Date.parse(source.serverNow) - Math.max(0, now - receivedAt)
   )
 }
+
+// An internal policy snapshot is not a published contractual policy. Keep it in
+// the backend audit trail; only publish its body after explicit approval.
+export function publicRefundPolicy(policy) {
+  if (policy?.approved === true && policy.body) return policy.body
+  return 'Para contratações abrangidas pelo direito de arrependimento, você pode solicitar a desistência em até 7 dias, conforme a legislação aplicável. O prazo depende do marco legal da contratação ou do recebimento do produto ou serviço. A duração de um serviço não é o prazo de arrependimento.\n\nSolicite pelo aplicativo. Você recebe confirmação e protocolo e pode acompanhar a análise e enviar informações na mesma solicitação. O motivo é opcional para arrependimento.\n\nDepois desse prazo, permanecem seus direitos relativos a cobrança indevida, pagamento duplicado, falha de serviço, descumprimento da oferta e outras obrigações legais. O valor devido e a forma de restituição são analisados conforme a lei e a compra original, sem desconto automático por uso nem renúncia de direitos.\n\nEstas informações gerais não acrescentam condições de cancelamento ou reembolso à sua contratação.'
+}
