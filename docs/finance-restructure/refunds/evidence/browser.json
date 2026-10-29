@@ -1,0 +1,64 @@
+{
+  "checks": [
+    {
+      "flow": "lost response after server commit: original protocol recovered",
+      "passed": true
+    },
+    {
+      "flow": "customer submission",
+      "passed": true,
+      "confirmation": "Recebemos sua manifestação. Protocolo EVR-3A845F350D51474285487599695BD5EB · 28/10/2026, 23:05 (Brasília). Acompanhe em Minhas solicitações."
+    },
+    {
+      "flow": "admin recent authentication and review",
+      "passed": true
+    },
+    {
+      "flow": "approved, external evidence and unique settlement through UI",
+      "passed": true
+    },
+    {
+      "flow": "viewport and detail",
+      "width": 320,
+      "mode": "light",
+      "passed": true
+    },
+    {
+      "flow": "viewport and detail",
+      "width": 320,
+      "mode": "dark",
+      "passed": true
+    },
+    {
+      "flow": "viewport and detail",
+      "width": 390,
+      "mode": "light",
+      "passed": true
+    },
+    {
+      "flow": "viewport and detail",
+      "width": 390,
+      "mode": "dark",
+      "passed": true
+    },
+    {
+      "flow": "viewport and detail",
+      "width": 1440,
+      "mode": "light",
+      "passed": true
+    },
+    {
+      "flow": "viewport and detail",
+      "width": 1440,
+      "mode": "dark",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "blockedHosts": [
+    "va.vercel-scripts.com"
+  ],
+  "limitations": [
+    "No real provider calls. Realtime service is not provisioned in this isolated preview."
+  ]
+}

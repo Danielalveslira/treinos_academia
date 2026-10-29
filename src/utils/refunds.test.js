@@ -1,0 +1,49 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import {
+  refundDate,
+  refundError,
+  withdrawalRemaining,
+  withdrawalRemainingLabel,
+  refundCategories,
+  publicRefundPolicy,
+} from './refunds.js'
+test('guidance uses Brasilia rather than browser timezone', () => {
+  assert.match(refundDate('2026-10-30T01:30:00Z'), /29\/10\/2026.*22:30.*Brasília/)
+})
+test('monotonic elapsed time only shortens server authorization', () => {
+  const source = { deadlineAt: '2026-10-30T00:00:00Z', serverNow: '2026-10-29T23:59:00Z' }
+  assert.equal(withdrawalRemaining(source, 100, 10100), 50000)
+  assert.equal(withdrawalRemaining(source, 100, 60101), 0)
+  assert.equal(withdrawalRemaining(source, 100, 90), 60000)
+})
+test('remaining-time guidance is rounded up and disappears at the deadline', () => {
+  assert.equal(withdrawalRemainingLabel(1), '1 min restantes (orientação)')
+  assert.equal(withdrawalRemainingLabel(60000), '1 min restantes (orientação)')
+  assert.equal(withdrawalRemainingLabel(3600001), '2 h restantes (orientação)')
+  assert.equal(withdrawalRemainingLabel(90000000), '1 dia e 1 h restantes (orientação)')
+  assert.equal(withdrawalRemainingLabel(0), null)
+})
+test('window error preserves other legal complaint channels', () => {
+  assert.match(
+    refundError(new Error('WITHDRAWAL_WINDOW_CLOSED_USE_COMPLAINT')),
+    /continuam disponíveis/
+  )
+  assert.ok(refundCategories.service_failure)
+  assert.ok(refundCategories.duplicate_payment)
+})
+
+test('unapproved snapshot is not published as contractual policy or internal labels', () => {
+  const text = publicRefundPolicy({
+    version: 'draft-1',
+    approved: false,
+    body: 'Minuta pendente de aprovação jurídica/comercial',
+  })
+  assert.doesNotMatch(text, /draft-1|Minuta|aprovação|jurídica|comercial/)
+  assert.match(text, /cobrança indevida/)
+  assert.match(text, /não acrescentam condições/)
+  assert.equal(
+    publicRefundPolicy({ approved: true, body: 'Política publicada' }),
+    'Política publicada'
+  )
+})

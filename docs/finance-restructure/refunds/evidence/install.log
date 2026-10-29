@@ -1,0 +1,2 @@
+{"image":"postgres:17.6.1.166@sha256:b3bfedb107413abb3b8cb0d0874b0414a1dceb3d55bc0c778de6ad22d1f7dc86","registry":"ghcr.io/supabase/","verifiedDigest":"sha256:b3bfedb107413abb3b8cb0d0874b0414a1dceb3d55bc0c778de6ad22d1f7dc86","imageId":"sha256:b3bfedb107413abb3b8cb0d0874b0414a1dceb3d55bc0c778de6ad22d1f7dc86","platform":"linux/amd64"}
+{"container":"evolutus_consolidation_clean_20261029020158","total":209,"financialHashesEqual":true,"gatesClosed":true,"passed":true}

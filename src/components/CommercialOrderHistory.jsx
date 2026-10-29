@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Box, Button, Flash, Text } from '@primer/react'
+import { RefundSourceButton } from './Refunds'
 import { commercialDate, commercialError } from '../utils/commercial'
 export default function CommercialOrderHistory({ resourceId, load, revision }) {
   const [orders, setOrders] = useState([]),
@@ -45,11 +46,16 @@ export default function CommercialOrderHistory({ resourceId, load, revision }) {
       {error && <Flash variant="danger">{error}</Flash>}
       {!orders.length && !busy && <Text as="p">Nenhuma contratação.</Text>}
       {orders.map((order) => (
-        <Text as="p" key={order.id}>
-          {order.durationDays} dias · {order.totalCash} EvoCash · {order.status} ·{' '}
-          {commercialDate(order.createdAt)}
-          {order.periodEnd && ` · até ${commercialDate(order.periodEnd)}`}
-        </Text>
+        <Box key={order.id} sx={{ my: 3 }}>
+          <Text as="p">
+            {order.durationDays} dias · {order.totalCash} EvoCash · {order.status} ·{' '}
+            {commercialDate(order.createdAt)}
+            {order.periodEnd && ` · até ${commercialDate(order.periodEnd)}`}
+          </Text>
+          {['fulfilled', 'reversed'].includes(order.status) && (
+            <RefundSourceButton type="order" id={order.id} />
+          )}
+        </Box>
       ))}
       {more && (
         <Button disabled={busy} onClick={next}>

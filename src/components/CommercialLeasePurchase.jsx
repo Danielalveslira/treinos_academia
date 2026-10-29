@@ -1,3 +1,4 @@
+import { RefundPolicyNotice } from './Refunds'
 import { useRef, useState } from 'react'
 import { Box, Button, Checkbox, Flash, FormControl, Text, TextInput } from '@primer/react'
 import { Link } from 'react-router-dom'
@@ -47,6 +48,7 @@ export default function CommercialLeasePurchase({
   }
   return (
     <Box sx={{ borderTop: '1px solid', borderColor: 'border.default', pt: 3, mt: 3 }}>
+      <RefundPolicyNotice snapshot={quote?.refundPolicy} />
       <Text as="h3" sx={{ fontSize: 2 }}>
         Contratar ou renovar publicação
       </Text>

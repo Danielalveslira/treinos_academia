@@ -1,0 +1,11 @@
+/* Primer portals create a stacking context at z-index:1. Lower the existing
+   fixed navigation while this dialog is open, following the account menu pattern. */
+body:has(.refund-dialog) .app-header,
+body:has(.refund-dialog) .mobile-nav,
+body:has(.refund-dialog) .pwa-install {
+  z-index: 0;
+}
+.refund-dialog {
+  min-width: 0;
+  max-width: calc(100dvw - 24px);
+}

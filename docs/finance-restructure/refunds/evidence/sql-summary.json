@@ -1,0 +1,52 @@
+[
+  {
+    "name": "refund_requests_test.sql",
+    "assertions": 42,
+    "passed": true
+  },
+  {
+    "name": "refund_exceptions_test.sql",
+    "assertions": 29,
+    "passed": true
+  },
+  {
+    "name": "refund_services_test.sql",
+    "assertions": 11,
+    "passed": true
+  },
+  {
+    "name": "refund_chargeback_test.sql",
+    "assertions": 12,
+    "passed": true
+  },
+  {
+    "name": "finance_reversals_test.sql",
+    "assertions": 18,
+    "passed": true
+  },
+  {
+    "name": "finance_integrity_test.sql",
+    "assertions": 17,
+    "passed": true
+  },
+  {
+    "name": "commercial_engine_test.sql",
+    "assertions": 58,
+    "passed": true
+  },
+  {
+    "name": "evocash_pricing_test.sql",
+    "assertions": 57,
+    "passed": true
+  },
+  {
+    "name": "infinitepay_cash_purchases_test.sql",
+    "assertions": 32,
+    "passed": true
+  },
+  {
+    "name": "advertising_campaigns_test.sql",
+    "assertions": 47,
+    "passed": true
+  }
+]

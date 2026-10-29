@@ -1,3 +1,4 @@
+import { RefundPolicyNotice } from './Refunds'
 import { useEffect, useRef, useState } from 'react'
 import {
   Box,
@@ -146,6 +147,7 @@ export function EvoCashQuantityPurchase({ userId, hasPendingPurchase, onPurchase
         gap: 3,
       }}
     >
+      <RefundPolicyNotice snapshot={quote?.refundPolicy} purchase />
       <Heading as="h2" sx={{ fontSize: 2 }}>
         Quanto EvoCash você quer?
       </Heading>

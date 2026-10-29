@@ -1,0 +1,16 @@
+✔ src/components/CommercialAdmin.test.js (7914.860676ms)
+✔ src/features/notifications/utils/notifications.test.js (610.094011ms)
+✔ src/services/commercialService.test.js (363.091117ms)
+✔ src/services/evocashPricingService.test.js (307.919705ms)
+✔ src/utils/cashPurchaseFlow.test.js (496.305122ms)
+✔ src/utils/commercial.test.js (272.886941ms)
+✔ src/utils/evocashPricing.test.js (373.561745ms)
+✔ src/utils/refunds.test.js (600.962822ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11013.169359

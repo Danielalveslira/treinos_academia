@@ -152,3 +152,9 @@ test('deep links: curtida em publicação e eventos sem status usam o action_url
   assert.equal(notificationHref({ ...base, type: 'moderation_notice', actionUrl: '/atendimento' }), '/atendimento')
   assert.equal(notificationHref({ ...base, type: 'post_like', actionUrl: '/\\evil.test' }), null)
 })
+
+test('refund updates use neutral copy and the database action URL without financial payloads', () => {
+  const notification = { ...base, type: 'report_resolved', entityType: 'refund_request', actionUrl: '/evocash?request=synthetic', metadata: {} }
+  assert.equal(notificationContent(notification).title, 'Solicitação de reembolso atualizada')
+  assert.equal(notificationHref(notification), '/evocash?request=synthetic')
+})
