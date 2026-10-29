@@ -147,6 +147,18 @@ test('PostgreSQL harness validates the config ID against its pinned OCI index, n
     return image(ghcr)
   } })
 })
+test('PostgreSQL harness accepts only the verified cached config ID when cache is loaded', () => {
+  const previous = process.env.FINANCE_OCI_CACHE_LOADED
+  process.env.FINANCE_OCI_CACHE_LOADED = '1'
+  try {
+    const id = VERIFIED_AMD64_IDS.postgres
+    verifyLocalPostgresImage({ Image: id, Config: { Image: id } }, { run: () => JSON.stringify([{ Id: id, Os: 'linux', Architecture: 'amd64' }]) })
+    assert.throws(() => verifyLocalPostgresImage({ Image: id, Config: { Image: id } }, { run: () => JSON.stringify([{ Id: id, Os: 'linux', Architecture: 'arm64' }]) }), /IMAGE_INTEGRITY_FAILED/)
+  } finally {
+    if (previous === undefined) delete process.env.FINANCE_OCI_CACHE_LOADED
+    else process.env.FINANCE_OCI_CACHE_LOADED = previous
+  }
+})
 test('PostgreSQL CLI keeps supporting official versioned images', () => {
   verifyLocalPostgresImage({ Config: { Image: 'ghcr.io/supabase/postgres:17.11.0.002' } }, { run: () => assert.fail('named CLI image needs no harness pull') })
 })

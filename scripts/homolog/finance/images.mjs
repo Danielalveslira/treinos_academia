@@ -103,6 +103,8 @@ export function verifyLocalPostgresImage(info, { run = docker } = {}) {
   const raw = run('image', 'inspect', info.Image)
   let image
   try { image = JSON.parse(raw)?.[0] } catch { throw new Error('IMAGE_INTEGRITY_FAILED: invalid inspect response') }
+  if (process.env.FINANCE_OCI_CACHE_LOADED === '1' && info.Image === VERIFIED_AMD64_IDS.postgres &&
+      image?.Id === info.Image && image?.Os === 'linux' && image?.Architecture === 'amd64') return
   const digest = IMAGES.postgres.split('@')[1]
   const registry = REGISTRIES.find((prefix) => image?.RepoDigests?.includes(prefix + 'postgres@' + digest))
   if (!registry || verify(raw, IMAGES.postgres, registry, () => {}) !== info.Image)
