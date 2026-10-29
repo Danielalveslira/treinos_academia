@@ -10,12 +10,21 @@ export const IMAGES = Object.freeze({
   edgeRuntime: 'edge-runtime:v1.77.1@sha256:645d0e45446181f3e9d87efeef637b494615f32365befff00e2d2b0fe8535fef',
 })
 const REGISTRIES = ['ghcr.io/supabase/', 'public.ecr.aws/supabase/']
+const RETRY_DELAYS_MS = [2000, 8000]
 const docker = (...args) => execFileSync('docker', args, {
   encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 180000,
 }).trim()
 const message = error => String(error.stderr || error.message || error)
 const unavailable = error => /toomanyrequests|too many requests|rate exceeded|data limit exceeded|\b429\b|\b50[234]\b|timed?\s*out|ETIMEDOUT|ECONNRESET|EAI_AGAIN|connection reset|connection refused|temporary failure|no such host|manifest unknown/i.test(message(error))
 const integrityFailure = error => /digest mismatch|checksum mismatch|verification failed|unexpected digest|certificate|unauthorized|authentication required|denied|forbidden/i.test(message(error))
+const unavailableReason = error => {
+  const detail = message(error)
+  if (/toomanyrequests|too many requests|rate exceeded|data limit exceeded|\b429\b/i.test(detail)) return 'rate_limit'
+  if (/manifest unknown/i.test(detail)) return 'manifest_unavailable'
+  if (/\b50[234]\b/i.test(detail)) return 'server_unavailable'
+  if (/timed?\s*out|ETIMEDOUT/i.test(detail)) return 'timeout'
+  return 'network_unavailable'
+}
 
 function verify(raw, ref, registry, log) {
   let images
@@ -45,15 +54,16 @@ export async function pullImage(key, { run = docker, sleep = ms => new Promise(r
       if (!/no such image|not found/i.test(message(error)) || integrityFailure(error)) throw error
     }
     if (cached !== undefined) return verify(cached, ref, registry, log)
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= RETRY_DELAYS_MS.length + 1; attempt++) {
       try { run('pull', full) }
       catch (error) {
         // Only availability failures may retry/fall back. Security, auth, and unknown
         // failures remain fatal, even if their text also contains a transient marker.
         if (integrityFailure(error) || !unavailable(error)) throw error
-        log(`Image registry unavailable: ${full}; attempt ${attempt}/2`)
-        if (attempt === 2) break
-        await sleep(2000)
+        // Log only a safe category: Docker stderr may contain registry credentials.
+        log(`Image registry unavailable (${unavailableReason(error)}): ${full}; attempt ${attempt}/${RETRY_DELAYS_MS.length + 1}`)
+        if (attempt > RETRY_DELAYS_MS.length) break
+        await sleep(RETRY_DELAYS_MS[attempt - 1])
         continue
       }
       // A successful pull with a bad/missing digest must never try another registry.

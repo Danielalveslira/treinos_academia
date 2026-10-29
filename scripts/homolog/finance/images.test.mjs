@@ -52,8 +52,8 @@ test('transient GHCR limit falls back to ECR with the exact same version and dig
     return image(ecr)
   } })
   assert.equal(result, id)
-  assert.deepEqual(pulls, [ref(ghcr), ref(ghcr), ref(ecr)])
-  assert.deepEqual(waits, [2000])
+  assert.deepEqual(pulls, [ref(ghcr), ref(ghcr), ref(ghcr), ref(ecr)])
+  assert.deepEqual(waits, [2000, 8000])
 })
 test('a transient retry can recover without switching registries', async () => {
   let attempts = 0
@@ -68,12 +68,23 @@ test('a transient retry can recover without switching registries', async () => {
   assert.equal(attempts, 2)
 })
 test('both registries unavailable fails after bounded attempts', async () => {
-  const pulls = []
-  await assert.rejects(pullImage('postgres', { ...quiet, run: (...args) => {
+  const pulls = []; const waits = []; const logs = []
+  await assert.rejects(pullImage('postgres', { sleep: async ms => waits.push(ms), log: line => logs.push(line), run: (...args) => {
     if (args[0] !== 'pull') return missing()
     pulls.push(args.at(-1)); throw new Error('503 Service Unavailable')
   } }), /STACK_IMAGE_UNAVAILABLE/)
-  assert.deepEqual(pulls, [ref(ghcr), ref(ghcr), ref(ecr), ref(ecr)])
+  assert.deepEqual(pulls, [ref(ghcr), ref(ghcr), ref(ghcr), ref(ecr), ref(ecr), ref(ecr)])
+  assert.deepEqual(waits, [2000, 8000, 2000, 8000])
+  assert.ok(logs.every(line => line.includes('(server_unavailable)') && !line.includes('Service Unavailable')))
+})
+test('rate limiting is diagnosed without logging raw registry stderr', async () => {
+  const logs = []
+  await assert.rejects(pullImage('postgres', { ...quiet, log: line => logs.push(line), run: (...args) => {
+    if (args[0] !== 'pull') return missing()
+    throw new Error('toomanyrequests: 429 token=secret-value')
+  } }), /STACK_IMAGE_UNAVAILABLE/)
+  assert.equal(logs.length, 6)
+  assert.ok(logs.every(line => line.includes('(rate_limit)') && !line.includes('secret-value')))
 })
 for (const error of ['unauthorized', 'forbidden: 503', 'certificate signed by unknown authority', 'digest mismatch: timeout', 'checksum mismatch', 'unexpected digest', 'unknown Docker failure']) {
   test('security/auth/unknown errors fail closed without fallback: ' + error, async () => {
