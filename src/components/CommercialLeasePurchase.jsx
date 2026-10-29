@@ -3,8 +3,9 @@ import { useRef, useState } from 'react'
 import { Box, Button, Checkbox, Flash, FormControl, Text, TextInput } from '@primer/react'
 import { Link } from 'react-router-dom'
 import { quoteCommercialOrder, confirmCommercialOrder } from '../services/commercialService'
-import { commercialDate, commercialError } from '../utils/commercial'
+import { clampInitialDays, commercialDate, commercialError } from '../utils/commercial'
 import { useWallet } from '../hooks/useWallet'
+
 export default function CommercialLeasePurchase({
   resourceId,
   tariff,
@@ -12,8 +13,9 @@ export default function CommercialLeasePurchase({
   onComplete,
   subjectLabel = 'vitrine',
   resourceName,
+  initialDays = null,
 }) {
-  const [days, setDays] = useState('1'),
+  const [days, setDays] = useState(() => clampInitialDays(initialDays, tariff)),
     [quote, setQuote] = useState(null),
     [confirmed, setConfirmed] = useState(false),
     [error, setError] = useState(''),

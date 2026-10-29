@@ -66,6 +66,8 @@ jobs:
       - name: Home V4 recommendation, completion, cache, photos and responsive themes
         run: node scripts/home-v2-browser-smoke.mjs
       - run: node scripts/ad-metrics-browser-smoke.mjs
+      - name: Ads UX card list and 4-step creation wizard, mobile/desktop and themes
+        run: node scripts/ads-ux-browser-smoke.mjs
       - run: node scripts/phase3-exercises-browser-smoke.mjs
       - name: Offline cold start and synchronization regression
         run: node scripts/offline-browser-smoke.mjs

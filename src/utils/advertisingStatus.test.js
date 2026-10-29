@@ -58,6 +58,31 @@ test('approved without any entitlement never implies a contract exists (can_pay 
   assert.equal(s.label, 'Aprovado — aguardando contratação')
 })
 
+test('sales disabled never shows a contracting CTA, even to the account owner (can_pay=true)', () => {
+  const unpaid = deriveAdStatus(
+    { ...base, moderation_state: 'approved', state: 'approved', can_pay: true, tariff: { salesEnabled: false } },
+    { now: NOW }
+  )
+  assert.equal(unpaid.primaryAction.type, 'wait')
+  assert.notEqual(unpaid.primaryAction.type, 'contract')
+
+  const ended = deriveAdStatus(
+    {
+      ...base,
+      moderation_state: 'approved',
+      state: 'approved',
+      can_pay: true,
+      tariff: { salesEnabled: false },
+      starts_at: '2026-11-01T00:00:00Z',
+      expires_at: '2026-12-01T00:00:00Z',
+      delivery_state: 'expired',
+    },
+    { now: NOW }
+  )
+  assert.equal(ended.key, 'ended')
+  assert.equal(ended.primaryAction.type, 'wait', '"Renovar" must not be offered while sales are off')
+})
+
 test('approved with an entitlement that has not started yet is "aguardando início", not "No ar"', () => {
   const s = deriveAdStatus(
     {

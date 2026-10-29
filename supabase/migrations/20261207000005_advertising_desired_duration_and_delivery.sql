@@ -22,8 +22,12 @@ end $$;
 revoke all on function public.edit_advertising_campaign(uuid,bigint,text,text,text,boolean,uuid,integer) from public,anon,service_role;
 grant execute on function public.edit_advertising_campaign(uuid,bigint,text,text,text,boolean,uuid,integer) to authenticated;
 
--- Consolidated, per-row placement delivery signal reused from advertising_eligible's own
--- reservation-window predicate, so the UI never issues one eligibility check per card.
+-- Consolidated, per-row placement delivery signal. Reuses private.advertising_eligible
+-- as-is (the same audited predicate RLS relies on: advertiser account active, placement
+-- delivery_enabled, commercial_resource_visible, an active fulfilled reservation window,
+-- and — for community surfaces — the community still active and still owned by the same
+-- advertiser) instead of re-deriving a partial copy of those rules. Still one round trip
+-- from the UI: the aggregation runs over this resource's own small inventory set.
 create or replace function public.get_advertising_campaigns(p_account uuid default null,p_after uuid default null) returns jsonb
 language plpgsql stable security definer set search_path='' as $$
 begin
@@ -34,11 +38,8 @@ begin
  greatest(0,floor(extract(epoch from e.expires_at-statement_timestamp())))::bigint remaining_seconds,
  (a.owner_user_id=auth.uid()) as can_pay,
  (select jsonb_agg(jsonb_build_object('code',i.placement_code,'context',i.context_id)) from private.advertising_resource_inventory i where i.resource_id=d.ad_id) as placements,
- (select bool_or(p.delivery_enabled and exists(
-   select 1 from private.advertising_reservations res join public.commercial_orders o on o.id=res.order_id
-   where o.resource_id=d.ad_id and o.status='fulfilled' and res.placement_code=i.placement_code and res.context_id=i.context_id
-   and res.starts_at<=statement_timestamp() and res.expires_at>statement_timestamp()))
-  from private.advertising_resource_inventory i join public.advertising_placements p on p.code=i.placement_code where i.resource_id=d.ad_id) as placement_delivery_active,
+ (select bool_or(private.advertising_eligible(d.ad_id,i.placement_code,i.context_id))
+  from private.advertising_resource_inventory i where i.resource_id=d.ad_id) as placement_delivery_active,
  (select jsonb_build_object('salesEnabled',f.sales_enabled and f.integration_ready,'price',v.unit_price_cash::text,'minDays',v.min_days,'maxDays',v.max_days)
  from public.commercial_offerings f left join lateral(select * from public.commercial_price_versions where offering_code=f.code and active_from<=statement_timestamp() order by active_from desc limit 1)v on true where f.code=r.offering_code) as tariff
  from private.advertising_drafts d join private.commercial_resources r on r.id=d.ad_id

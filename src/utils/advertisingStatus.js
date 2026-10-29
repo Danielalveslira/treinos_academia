@@ -79,26 +79,30 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
 
   // Approved at least once: the live material's own status is driven by contracting
   // and delivery signals, never by whether a newer revision exists.
+  // Whether contracting is even possible right now (salesEnabled) is independent of
+  // whether THIS user is allowed to do it (can_pay, checked separately by the caller) —
+  // a disabled sales gate must never be hidden behind a "Contratar"/"Renovar" CTA.
+  const salesOff = c.tariff?.salesEnabled === false
   let base
   if (!hasEntitlement) {
     base = {
       key: 'approved_unpaid',
       label: 'Aprovado — aguardando contratação',
-      detail: null,
+      detail: salesOff ? 'Contratações ainda indisponíveis.' : null,
       remainingDays: null,
-      primaryAction: c.can_pay
-        ? { type: 'contract', label: 'Contratar publicação' }
-        : c.tariff?.salesEnabled === false
-          ? { type: 'wait', label: 'Contratações ainda indisponíveis' }
-          : { type: 'contract', label: 'Contratar publicação' },
+      primaryAction: salesOff
+        ? { type: 'wait', label: 'Contratações ainda indisponíveis' }
+        : { type: 'contract', label: 'Contratar publicação' },
     }
   } else if (expired) {
     base = {
       key: 'ended',
       label: `Encerrado em ${new Date(expiresAt).toLocaleDateString('pt-BR')}`,
-      detail: null,
+      detail: salesOff ? 'Contratações ainda indisponíveis.' : null,
       remainingDays: null,
-      primaryAction: { type: 'contract', label: 'Renovar' },
+      primaryAction: salesOff
+        ? { type: 'wait', label: 'Contratações ainda indisponíveis' }
+        : { type: 'contract', label: 'Renovar' },
     }
   } else if (notStartedYet) {
     base = {

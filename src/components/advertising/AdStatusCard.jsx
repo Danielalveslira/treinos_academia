@@ -117,7 +117,10 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
           <Text as="p" sx={{ fontSize: 0, color: 'fg.muted' }}>
             {placementsSummary(campaign.placements)}
           </Text>
-          <Label variant={BADGE_VARIANT[status.key] || 'default'} sx={{ mt: 1 }}>
+          <Label
+            variant={BADGE_VARIANT[status.key] || 'default'}
+            sx={{ mt: 1, display: 'inline', whiteSpace: 'normal', maxWidth: '100%' }}
+          >
             {status.label}
           </Label>
           {status.remainingDays != null && (
@@ -155,6 +158,30 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
             </Text>
           )}
 
+          {status.key === 'live' && (
+            <Box sx={{ mt: 2, p: 2, bg: 'canvas.subtle', borderRadius: 2 }} aria-label="Prévia do anúncio">
+              <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted', mb: 1 }}>
+                Prévia — a posição e a rotação reais no app variam.
+              </Text>
+              {campaign.media_id && <StorefrontImage id={campaign.media_id} size={160} />}
+              <Text as="p" sx={{ fontWeight: 'bold' }}>
+                {campaign.title}
+              </Text>
+              {campaign.description && <Text as="p">{campaign.description}</Text>}
+              {campaign.destination && (
+                <Button
+                  as="a"
+                  href={campaign.destination}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ mt: 1 }}
+                >
+                  Abrir destino do anúncio
+                </Button>
+              )}
+            </Box>
+          )}
+
           {status.primaryAction?.type === 'contract' && campaign.can_pay && (
             <CommercialLeasePurchase
               resourceId={campaign.ad_id}
@@ -162,6 +189,7 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
               subjectLabel="anúncio"
               tariff={campaign.tariff}
               expiresAt={campaign.expires_at}
+              initialDays={campaign.desired_duration_days}
               onComplete={onChange}
             />
           )}

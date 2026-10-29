@@ -126,7 +126,13 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
   const placementDisplay = existingDraft?.placements
     ? placementsSummary(existingDraft.placements)
     : PLACEMENT_LABELS[placement] || placement
-  const needsCommunity = placement && placement !== 'home_banner'
+  // community_banner/community_feed are unambiguously community placements. 'network'
+  // expands to an admin-configured bundle whose composition isn't readable from here
+  // (no advertiser-facing RPC exposes it) — offer the choice without forcing it; if the
+  // configured bundle does include a community surface, the server enforces
+  // AD_COMMUNITY_NOT_AUTHORIZED and the error is shown back on this same step.
+  const communityRequired = placement === 'community_banner' || placement === 'community_feed'
+  const communityOffered = communityRequired || placement === 'network'
   const minimumContentValid = values.title.trim().length > 0 && values.destination.startsWith('https://')
 
   async function saveDraft(submit) {
@@ -251,17 +257,27 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
               </Text>
             </Box>
           ))}
-          {needsCommunity && (
-            <FormControl required sx={{ mt: 2 }}>
+          {communityOffered && (
+            <FormControl required={communityRequired} sx={{ mt: 2 }}>
               <FormControl.Label>Comunidade que você administra</FormControl.Label>
               <Select block value={communityId} onChange={(e) => setCommunityId(e.target.value)}>
-                <Select.Option value="">Selecione sua comunidade</Select.Option>
+                <Select.Option value="">
+                  {placement === 'network'
+                    ? 'Nenhuma (se o pacote usar só posições gerais)'
+                    : 'Selecione sua comunidade'}
+                </Select.Option>
                 {communities.map((c) => (
                   <Select.Option key={c.id} value={c.id}>
                     {c.name}
                   </Select.Option>
                 ))}
               </Select>
+              {placement === 'network' && (
+                <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', mt: 1 }}>
+                  Deixe em branco se o pacote configurado não usar posições de comunidade. Se usar,
+                  o Evolutus pedirá a comunidade ao enviar.
+                </Text>
+              )}
               {communityId && <CommunityAdvertisingPermissions communityId={communityId} />}
             </FormControl>
           )}
@@ -269,7 +285,7 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
             {onCancel && <Button onClick={onCancel}>Cancelar</Button>}
             <Button
               variant="primary"
-              disabled={!placement || (needsCommunity && !communityId)}
+              disabled={!placement || (communityRequired && !communityId)}
               onClick={() => setStep(2)}
             >
               Avançar

@@ -66,5 +66,30 @@ set local role authenticated;
 select is((select x->>'delivery_state' from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from d_results where name='account'))) x where x->>'ad_id'='76510000-0000-0000-0000-000000000001'),'active','the resource-level signal alone still says active (the known gap)');
 select is((select x->>'placement_delivery_active' from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from d_results where name='account'))) x where x->>'ad_id'='76510000-0000-0000-0000-000000000001'),'false','the consolidated placement signal correctly flips to false once delivery is paused at the placement');
 
+-- Re-enable placement delivery, then prove the other half of the gap: commercial_resource_visible
+-- checks the USER''s account_status, never the advertiser ACCOUNT''s own active flag, so a
+-- deactivated advertiser account alone would otherwise still read as "active" too. Reusing
+-- private.advertising_eligible (rather than a hand-rolled copy) catches this for free.
+reset role;
+select pg_temp.ads_admin();
+set local role authenticated;
+select public.admin_configure_advertising_placement('home_banner',1,true,true,2,'Synthetic delivery resume',true);
+reset role;
+update public.advertiser_accounts set active=false where id=(select(value#>>'{}')::uuid from d_results where name='account');
+-- A deactivated account loses access to its own campaign summary entirely (defense in
+-- depth), so the per-row signal is exercised from the admin-wide read instead.
+select pg_temp.set_test_user('76500000-0000-0000-0000-000000000001',true);
+set local role authenticated;
+select throws_ok(
+  format('select public.get_advertising_campaigns(%L::uuid)', (select(value#>>'{}')::uuid from d_results where name='account')),
+  'PERMISSION_DENIED',
+  'a deactivated advertiser account loses read access to its own campaigns entirely'
+);
+reset role;
+select pg_temp.ads_admin();
+set local role authenticated;
+select is((select x->>'delivery_state' from jsonb_array_elements(public.get_advertising_campaigns(null)) x where x->>'ad_id'='76510000-0000-0000-0000-000000000001'),'active','the resource-level signal alone does not look at the advertiser account''s own active flag either');
+select is((select x->>'placement_delivery_active' from jsonb_array_elements(public.get_advertising_campaigns(null)) x where x->>'ad_id'='76510000-0000-0000-0000-000000000001'),'false','a deactivated advertiser account also correctly flips the consolidated signal to false');
+
 select * from finish();
 rollback;
