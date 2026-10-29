@@ -1,0 +1,24 @@
+[
+  {
+    "scenario": "six concurrent submissions: one protocol and hold",
+    "passed": true
+  },
+  {
+    "scenario": "six repeated rejections: one audited release",
+    "passed": true
+  },
+  {
+    "scenario": "spending concurrent with reservation",
+    "passed": true,
+    "held": 0,
+    "ledger": 0,
+    "balance": 0
+  },
+  {
+    "scenario": "six simultaneous completions: one existing reversal and ledger debit",
+    "passed": true,
+    "ledger": 1,
+    "reversals": 1,
+    "settlements": 1
+  }
+]

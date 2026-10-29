@@ -1,0 +1,82 @@
+BEGIN
+CREATE EXTENSION
+DELETE 1
+UPDATE 1
+UPDATE 1
+TRUNCATE TABLE
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+CREATE EXTENSION
+SET
+DELETE 0
+INSERT 0 3
+UPDATE 1
+CREATE FUNCTION
+SELECT 1
+{"status": "credited", "credited": true}
+fa000000-0000-0000-0000-000000000001
+ok 1 - policy is unapproved draft
+ok 2 - financial requests default closed
+ok 3 - receipt freezes exactly one policy
+ok 4 - withdrawal behind safe rollout
+SELECT 1
+ok 5 - immediate protocol
+ok 6 - creation appends one event
+ok 7 - network retry recovers protocol
+ok 8 - intent cannot be reused with another payload
+ok 9 - distinct click on active source returns existing case
+ok 10 - one active request per source
+fa000000-0000-0000-0000-000000000003
+ok 11 - cannot query another owner source
+ok 12 - cannot query another case
+ok 13 - list isolates accounts
+ok 14 - ordinary user cannot open admin queue
+fa000000-0000-0000-0000-000000000001
+{"id": "e0559183-a318-4b0b-9d07-274341010976", "cursor": "47", "policy": {"body": "Para contratações abrangidas pelo direito de arrependimento, solicite em até 7 dias conforme o marco legal aplicável. Receba protocolo imediatamente. Após o prazo, continuam acessíveis reclamações por cobrança indevida, falha do serviço e demais direitos. A duração comercial não é o prazo de arrependimento. Minuta pendente de aprovação jurídica/comercial; uso parcial e contratos acessórios exigem análise, sem desconto automático nem renúncia de direitos.", "days": 7, "version": "draft-1", "approved": false, "created_at": "2026-10-29T01:14:23.566895+00:00", "cash_origin": "receipt", "counting_rule": "civil_days_brasilia", "service_origin": "contract", "disclosureUnverified": true}, "status": "canceled_by_requester", "timely": true, "orderId": null, "category": "service_failure", "originAt": "2026-10-29T02:00:44.762009+00:00", "protocol": "EVR-938AAB3A0E7443608C32C7FE58ADFB3D", "revision": "2", "createdAt": "2026-10-29T02:00:45.140791+00:00", "serverNow": "2026-10-29T02:00:45.195463+00:00", "deadlineAt": "2026-11-05T02:59:59.999999+00:00", "purchaseId": "fdb61504-29e1-4bd2-8e40-a7731d408514", "resolution": null, "acquisition": {"id": "fdb61504-29e1-4bd2-8e40-a7731d408514", "type": "purchase", "status": "credited", "currency": "BRL", "cashUnits": "25", "provenance": "untracked", "paidCentavos": "590", "consumedUnits": "0", "creditedUnits": "25", "promotionalUnits": "not_classifiable_from_current_ledger", "reversedCentavos": "0", "unitPriceCentavos": null, "purchaseLotBalance": null, "activeContractCount": 0, "manualReviewRequired": true}, "requesterId": "fa000000-0000-0000-0000-000000000001", "reservedUnits": "0", "responseDueAt": "2026-11-03T02:00:45.147602+00:00"}
+UPDATE 1
+TRUNCATE TABLE
+INSERT 0 1
+ok 15 - timely request frozen on receipt
+ok 16 - specific contested aggregate units reserved atomically
+ok 17 - reservation is not consumption
+ok 18 - all existing spend paths respect reservation
+ok 19 - deadline immutable even via privileged update
+ok 20 - append-only events
+ok 21 - customer cannot consume audit sequence
+ok 22 - no direct case data access
+ok 23 - no direct state mutation
+ok 24 - internal projection not public
+fa000000-0000-0000-0000-000000000002
+ok 25 - admin decision needs recent signed authentication
+
+{"id": "18bb8071-fff3-41fa-97d6-b842672c02de", "cursor": "48", "policy": {"body": "Para contratações abrangidas pelo direito de arrependimento, solicite em até 7 dias conforme o marco legal aplicável. Receba protocolo imediatamente. Após o prazo, continuam acessíveis reclamações por cobrança indevida, falha do serviço e demais direitos. A duração comercial não é o prazo de arrependimento. Minuta pendente de aprovação jurídica/comercial; uso parcial e contratos acessórios exigem análise, sem desconto automático nem renúncia de direitos.", "days": 7, "version": "draft-1", "approved": false, "created_at": "2026-10-29T01:14:23.566895+00:00", "cash_origin": "receipt", "counting_rule": "civil_days_brasilia", "service_origin": "contract", "disclosureUnverified": true}, "status": "under_review", "timely": true, "orderId": null, "category": "withdrawal", "originAt": "2026-10-29T02:00:44.762009+00:00", "protocol": "EVR-56384B49C16E4A51B88C47EBAA74BF9B", "revision": "2", "createdAt": "2026-10-29T02:00:45.199583+00:00", "serverNow": "2026-10-29T02:00:45.226635+00:00", "deadlineAt": "2026-11-05T02:59:59.999999+00:00", "purchaseId": "fdb61504-29e1-4bd2-8e40-a7731d408514", "resolution": null, "acquisition": {"id": "fdb61504-29e1-4bd2-8e40-a7731d408514", "type": "purchase", "status": "credited", "currency": "BRL", "cashUnits": "25", "provenance": "untracked", "paidCentavos": "590", "consumedUnits": "0", "creditedUnits": "25", "promotionalUnits": "not_classifiable_from_current_ledger", "reversedCentavos": "0", "unitPriceCentavos": null, "purchaseLotBalance": null, "activeContractCount": 0, "manualReviewRequired": true}, "requesterId": "fa000000-0000-0000-0000-000000000001", "reservedUnits": "25", "responseDueAt": "2026-11-03T02:00:45.206739+00:00"}
+ok 26 - decision replay ignores now-stale revision
+ok 27 - approval does not complete payment
+ok 28 - partial use not automatically discounted
+{"id": "18bb8071-fff3-41fa-97d6-b842672c02de", "cursor": "48", "policy": {"body": "Para contratações abrangidas pelo direito de arrependimento, solicite em até 7 dias conforme o marco legal aplicável. Receba protocolo imediatamente. Após o prazo, continuam acessíveis reclamações por cobrança indevida, falha do serviço e demais direitos. A duração comercial não é o prazo de arrependimento. Minuta pendente de aprovação jurídica/comercial; uso parcial e contratos acessórios exigem análise, sem desconto automático nem renúncia de direitos.", "days": 7, "version": "draft-1", "approved": false, "created_at": "2026-10-29T01:14:23.566895+00:00", "cash_origin": "receipt", "counting_rule": "civil_days_brasilia", "service_origin": "contract", "disclosureUnverified": true}, "status": "approved", "timely": true, "orderId": null, "category": "withdrawal", "originAt": "2026-10-29T02:00:44.762009+00:00", "protocol": "EVR-56384B49C16E4A51B88C47EBAA74BF9B", "revision": "3", "createdAt": "2026-10-29T02:00:45.199583+00:00", "serverNow": "2026-10-29T02:00:45.251186+00:00", "deadlineAt": "2026-11-05T02:59:59.999999+00:00", "purchaseId": "fdb61504-29e1-4bd2-8e40-a7731d408514", "resolution": null, "acquisition": {"id": "fdb61504-29e1-4bd2-8e40-a7731d408514", "type": "purchase", "status": "credited", "currency": "BRL", "cashUnits": "25", "provenance": "untracked", "paidCentavos": "590", "consumedUnits": "0", "creditedUnits": "25", "promotionalUnits": "not_classifiable_from_current_ledger", "reversedCentavos": "0", "unitPriceCentavos": null, "purchaseLotBalance": null, "activeContractCount": 0, "manualReviewRequired": true}, "requesterId": "fa000000-0000-0000-0000-000000000001", "reservedUnits": "25", "responseDueAt": "2026-11-03T02:00:45.206739+00:00"}
+ok 29 - approved stays unpaid
+{"id": "18bb8071-fff3-41fa-97d6-b842672c02de", "cursor": "48", "policy": {"body": "Para contratações abrangidas pelo direito de arrependimento, solicite em até 7 dias conforme o marco legal aplicável. Receba protocolo imediatamente. Após o prazo, continuam acessíveis reclamações por cobrança indevida, falha do serviço e demais direitos. A duração comercial não é o prazo de arrependimento. Minuta pendente de aprovação jurídica/comercial; uso parcial e contratos acessórios exigem análise, sem desconto automático nem renúncia de direitos.", "days": 7, "version": "draft-1", "approved": false, "created_at": "2026-10-29T01:14:23.566895+00:00", "cash_origin": "receipt", "counting_rule": "civil_days_brasilia", "service_origin": "contract", "disclosureUnverified": true}, "status": "awaiting_provider_refund", "timely": true, "orderId": null, "category": "withdrawal", "originAt": "2026-10-29T02:00:44.762009+00:00", "protocol": "EVR-56384B49C16E4A51B88C47EBAA74BF9B", "revision": "4", "createdAt": "2026-10-29T02:00:45.199583+00:00", "serverNow": "2026-10-29T02:00:45.259637+00:00", "deadlineAt": "2026-11-05T02:59:59.999999+00:00", "purchaseId": "fdb61504-29e1-4bd2-8e40-a7731d408514", "resolution": null, "acquisition": {"id": "fdb61504-29e1-4bd2-8e40-a7731d408514", "type": "purchase", "status": "credited", "currency": "BRL", "cashUnits": "25", "provenance": "untracked", "paidCentavos": "590", "consumedUnits": "0", "creditedUnits": "25", "promotionalUnits": "not_classifiable_from_current_ledger", "reversedCentavos": "0", "unitPriceCentavos": null, "purchaseLotBalance": null, "activeContractCount": 0, "manualReviewRequired": true}, "requesterId": "fa000000-0000-0000-0000-000000000001", "reservedUnits": "25", "responseDueAt": "2026-11-03T02:00:45.206739+00:00"}
+SELECT 1
+ok 30 - settlement gate defaults closed
+UPDATE 1
+UPDATE 1
+ok 31 - partial reversal stays investigation; no invented proration
+{"id": "18bb8071-fff3-41fa-97d6-b842672c02de", "cursor": "48", "policy": {"body": "Para contratações abrangidas pelo direito de arrependimento, solicite em até 7 dias conforme o marco legal aplicável. Receba protocolo imediatamente. Após o prazo, continuam acessíveis reclamações por cobrança indevida, falha do serviço e demais direitos. A duração comercial não é o prazo de arrependimento. Minuta pendente de aprovação jurídica/comercial; uso parcial e contratos acessórios exigem análise, sem desconto automático nem renúncia de direitos.", "days": 7, "version": "draft-1", "approved": false, "created_at": "2026-10-29T01:14:23.566895+00:00", "cash_origin": "receipt", "counting_rule": "civil_days_brasilia", "service_origin": "contract", "disclosureUnverified": true}, "status": "provider_refund_confirmed", "timely": true, "orderId": null, "category": "withdrawal", "originAt": "2026-10-29T02:00:44.762009+00:00", "protocol": "EVR-56384B49C16E4A51B88C47EBAA74BF9B", "revision": "6", "createdAt": "2026-10-29T02:00:45.199583+00:00", "serverNow": "2026-10-29T02:00:45.279219+00:00", "deadlineAt": "2026-11-05T02:59:59.999999+00:00", "purchaseId": "fdb61504-29e1-4bd2-8e40-a7731d408514", "resolution": {"occurredAt": "2026-10-29T02:00:45.263909+00:00", "verification": "administrative_evidence_only", "amountCentavos": "590"}, "acquisition": {"id": "fdb61504-29e1-4bd2-8e40-a7731d408514", "type": "purchase", "status": "credited", "currency": "BRL", "cashUnits": "25", "provenance": "untracked", "paidCentavos": "590", "consumedUnits": "0", "creditedUnits": "25", "promotionalUnits": "not_classifiable_from_current_ledger", "reversedCentavos": "0", "unitPriceCentavos": null, "purchaseLotBalance": null, "activeContractCount": 0, "manualReviewRequired": true}, "requesterId": "fa000000-0000-0000-0000-000000000001", "reservedUnits": "25", "responseDueAt": "2026-11-03T02:00:45.206739+00:00"}
+ok 32 - evidence alone does not mutate wallet
+{"id": "18bb8071-fff3-41fa-97d6-b842672c02de", "cursor": "48", "policy": {"body": "Para contratações abrangidas pelo direito de arrependimento, solicite em até 7 dias conforme o marco legal aplicável. Receba protocolo imediatamente. Após o prazo, continuam acessíveis reclamações por cobrança indevida, falha do serviço e demais direitos. A duração comercial não é o prazo de arrependimento. Minuta pendente de aprovação jurídica/comercial; uso parcial e contratos acessórios exigem análise, sem desconto automático nem renúncia de direitos.", "days": 7, "version": "draft-1", "approved": false, "created_at": "2026-10-29T01:14:23.566895+00:00", "cash_origin": "receipt", "counting_rule": "civil_days_brasilia", "service_origin": "contract", "disclosureUnverified": true}, "status": "completed", "timely": true, "orderId": null, "category": "withdrawal", "originAt": "2026-10-29T02:00:44.762009+00:00", "protocol": "EVR-56384B49C16E4A51B88C47EBAA74BF9B", "revision": "8", "createdAt": "2026-10-29T02:00:45.199583+00:00", "serverNow": "2026-10-29T02:00:45.296178+00:00", "deadlineAt": "2026-11-05T02:59:59.999999+00:00", "purchaseId": "fdb61504-29e1-4bd2-8e40-a7731d408514", "resolution": {"occurredAt": "2026-10-29T02:00:45.263909+00:00", "verification": "administrative_evidence_only", "amountCentavos": "590"}, "acquisition": {"id": "fdb61504-29e1-4bd2-8e40-a7731d408514", "type": "purchase", "status": "credited", "currency": "BRL", "cashUnits": "25", "provenance": "untracked", "paidCentavos": "590", "consumedUnits": "0", "creditedUnits": "25", "promotionalUnits": "not_classifiable_from_current_ledger", "reversedCentavos": "0", "unitPriceCentavos": null, "purchaseLotBalance": null, "activeContractCount": 0, "manualReviewRequired": true}, "requesterId": "fa000000-0000-0000-0000-000000000001", "reservedUnits": "0", "responseDueAt": "2026-11-03T02:00:45.206739+00:00"}
+ok 33 - official reversal consumes reserved units exactly once
+ok 34 - one official reversal
+ok 35 - one settlement referencing original reversal
+ok 36 - completion replay returns original result
+ok 37 - one immutable ledger compensation
+ok 38 - wallet equals existing ledger
+ok 39 - civil calendar end-of-day, not 168 hours
+ok 40 - historical Brazil DST handled by database timezone
+ok 41 - notifications have no financial or complaint payload
+fa000000-0000-0000-0000-000000000001
+
+ok 42 - revoked session cannot access cases
+1..42
+ROLLBACK

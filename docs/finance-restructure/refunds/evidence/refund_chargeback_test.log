@@ -1,0 +1,40 @@
+BEGIN
+CREATE EXTENSION
+DELETE 1
+UPDATE 1
+UPDATE 1
+TRUNCATE TABLE
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+DELETE 0
+INSERT 0 2
+UPDATE 1
+SELECT 1
+{"status": "credited", "credited": true}
+UPDATE 1
+UPDATE 1
+fd000000-0000-0000-0000-000000000001
+SELECT 1
+fd000000-0000-0000-0000-000000000002
+ok 1 - verified external reversal survives a wallet hold
+ok 2 - external chargeback routes open claim to investigation
+ok 3 - existing debt records recovery still owed
+ok 4 - held units not consumed silently
+ok 5 - hold persists pending reviewed disposition
+ok 6 - one external reversal
+ok 7 - provider reversal aggregate retained
+fd000000-0000-0000-0000-000000000001
+ok 8 - held or owed credits not presented as spendable
+fd000000-0000-0000-0000-000000000002
+{"amr": [{"method": "password", "timestamp": 1793239247}], "sub": "fd000000-0000-0000-0000-000000000002", "role": "authenticated", "session_id": "7607aec0-e341-1d8d-3c29-0fa884a74e93"}
+ok 9 - previous chargeback prevents duplicate completion
+{"id": "7035c70e-1222-4b60-9a93-9282594395ea", "cursor": "53", "policy": {"body": "Para contratações abrangidas pelo direito de arrependimento, solicite em até 7 dias conforme o marco legal aplicável. Receba protocolo imediatamente. Após o prazo, continuam acessíveis reclamações por cobrança indevida, falha do serviço e demais direitos. A duração comercial não é o prazo de arrependimento. Minuta pendente de aprovação jurídica/comercial; uso parcial e contratos acessórios exigem análise, sem desconto automático nem renúncia de direitos.", "days": 7, "version": "draft-1", "approved": false, "created_at": "2026-10-29T01:14:23.566895+00:00", "cash_origin": "receipt", "counting_rule": "civil_days_brasilia", "service_origin": "contract", "disclosureUnverified": true}, "status": "rejected", "timely": true, "orderId": null, "category": "withdrawal", "originAt": "2026-10-29T02:00:46.969051+00:00", "protocol": "EVR-0B1DC3AE01824D8CB0D4B4A082328CBB", "revision": "3", "createdAt": "2026-10-29T02:00:47.423302+00:00", "serverNow": "2026-10-29T02:00:47.49221+00:00", "deadlineAt": "2026-11-05T02:59:59.999999+00:00", "purchaseId": "5d43f12c-b286-4055-9e0e-1cda1e6b7f81", "resolution": null, "acquisition": {"id": "5d43f12c-b286-4055-9e0e-1cda1e6b7f81", "type": "purchase", "status": "credited", "currency": "BRL", "cashUnits": "25", "provenance": "untracked", "paidCentavos": "590", "consumedUnits": "0", "creditedUnits": "25", "promotionalUnits": "not_classifiable_from_current_ledger", "reversedCentavos": "0", "unitPriceCentavos": null, "purchaseLotBalance": null, "activeContractCount": 0, "manualReviewRequired": true}, "requesterId": "fd000000-0000-0000-0000-000000000001", "reservedUnits": "0", "responseDueAt": "2026-11-03T02:00:47.436228+00:00"}
+
+
+ok 10 - released hold permits existing audited debt recovery
+ok 11 - only unrelated credit remains after recovery
+ok 12 - existing ledger and wallet still match
+1..12
+ROLLBACK

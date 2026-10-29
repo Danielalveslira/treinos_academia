@@ -87,6 +87,9 @@ function actorName(notification) {
 // Texto sempre montado a partir de tipo + metadados mínimos; nenhum conteúdo de denúncia é exibido.
 export function notificationContent(notification) {
   const metadata = notification.metadata || {}
+  if (notification.entityType === 'refund_request' || notification.entity_type === 'refund_request') {
+    return { title: 'Solicitação de reembolso atualizada', description: 'Consulte o protocolo e o histórico no aplicativo.' }
+  }
   switch (notification.type) {
     case 'workout_reminder_before':
     case 'workout_reminder_start': {

@@ -1,0 +1,47 @@
+BEGIN
+CREATE EXTENSION
+DELETE 1
+UPDATE 1
+UPDATE 1
+TRUNCATE TABLE
+CREATE FUNCTION
+CREATE FUNCTION
+CREATE FUNCTION
+BEGIN
+INSERT 0 2
+UPDATE 1
+SELECT 1
+{"status": "credited", "credited": true}
+f3000000-0000-0000-0000-000000000002
+ok 1 - production flag defaults closed
+UPDATE 1
+ok 2 - first half allocates floor of cumulative amount
+ok 3 - compensates available cash
+ok 4 - duplicate event is idempotent
+ok 5 - event conflict rejected
+
+
+ok 6 - spent credits become obligation, never negative available balance
+ok 7 - available balance remains zero
+ok 8 - obligation separately recorded
+ok 9 - unsettled debt blocks unreviewed deletion
+ok 10 - cumulative reversal cannot exceed payment
+SAVEPOINT
+
+{"reason": "cash_reversal_debt", "blocked": true}
+ok 11 - deletion worker respects debt gate
+{"caseId": "c0a5c352-758e-4693-a741-d61971cb4455", "replay": false, "protocol": "FIN-000004", "cashBalanceSnapshot": 0}
+{"kind": "account", "complete": false, "targetId": "f3000000-0000-0000-0000-000000000001", "photoPaths": [], "authPending": true, "deleteAuthUser": true}
+ok 12 - purchase survives account removal linked to case
+ok 13 - both reversal events survive account removal
+ROLLBACK
+
+
+ok 14 - new credit recovers only existing obligation
+ok 15 - unrelated remaining credits stay available
+ok 16 - wallet equals ledger including recoveries
+ok 17 - reversal history protected
+f3000000-0000-0000-0000-000000000001
+ok 18 - ordinary user cannot attest reversal
+1..18
+ROLLBACK

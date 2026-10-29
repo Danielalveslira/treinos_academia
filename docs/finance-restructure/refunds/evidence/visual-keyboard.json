@@ -1,0 +1,90 @@
+{
+  "checks": [
+    {
+      "role": "buyer",
+      "width": 320,
+      "mode": "light",
+      "keyboardEscape": true,
+      "passed": true
+    },
+    {
+      "role": "buyer",
+      "width": 320,
+      "mode": "dark",
+      "keyboardEscape": true,
+      "passed": true
+    },
+    {
+      "role": "buyer",
+      "width": 390,
+      "mode": "light",
+      "keyboardEscape": true,
+      "passed": true
+    },
+    {
+      "role": "buyer",
+      "width": 390,
+      "mode": "dark",
+      "keyboardEscape": true,
+      "passed": true
+    },
+    {
+      "role": "buyer",
+      "width": 1440,
+      "mode": "light",
+      "keyboardEscape": true,
+      "passed": true
+    },
+    {
+      "role": "buyer",
+      "width": 1440,
+      "mode": "dark",
+      "keyboardEscape": true,
+      "passed": true
+    },
+    {
+      "role": "admin",
+      "width": 320,
+      "mode": "light",
+      "keyboardEscape": true,
+      "passed": true
+    },
+    {
+      "role": "admin",
+      "width": 320,
+      "mode": "dark",
+      "keyboardEscape": true,
+      "passed": true
+    },
+    {
+      "role": "admin",
+      "width": 390,
+      "mode": "light",
+      "keyboardEscape": true,
+      "passed": true
+    },
+    {
+      "role": "admin",
+      "width": 390,
+      "mode": "dark",
+      "keyboardEscape": true,
+      "passed": true
+    },
+    {
+      "role": "admin",
+      "width": 1440,
+      "mode": "light",
+      "keyboardEscape": true,
+      "passed": true
+    },
+    {
+      "role": "admin",
+      "width": 1440,
+      "mode": "dark",
+      "keyboardEscape": true,
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "externalProviderCalls": 0
+}

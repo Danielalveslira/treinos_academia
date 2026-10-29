@@ -1,0 +1,18 @@
+✔ migration gate accepts unchanged history and a forward additive migration (4.494338ms)
+✔ migration gate fails closed on history tampering or removal (0.679236ms)
+✔ migration gate rejects duplicate versions, backdating and empty sources (0.436203ms)
+✔ detects privileged credentials without returning their values (3.3793ms)
+✔ distinguishes service role JWT from public anon JWT (1.232487ms)
+✔ checks browser references and literal private keys (0.439039ms)
+✔ allows synthetic local password but rejects embedded production credentials (0.482139ms)
+✔ CLI rejects tracked private runtime artifacts even when binary (90.447954ms)
+✔ CLI scans the working tree when a tracked file has been deleted (75.184327ms)
+✔ browser scan distinguishes private output from an ignored ancestor checkout (89.290817ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 479.544868

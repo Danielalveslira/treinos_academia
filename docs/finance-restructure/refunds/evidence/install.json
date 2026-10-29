@@ -1,0 +1,23 @@
+{
+  "container": "evolutus_consolidation_clean_20261029020158",
+  "baselineMigrations": 205,
+  "refundMigrations": 4,
+  "total": 209,
+  "financialHashesEqual": true,
+  "hashes": {
+    "ledger": "7f174149bbd397d442aba4c63971021c",
+    "orders": "d41d8cd98f00b204e9800998ecf8427e",
+    "rights": "d41d8cd98f00b204e9800998ecf8427e",
+    "wallets": "d2723648b43e90f25cf77f614bddad9c",
+    "purchases": "5f53e688760c173ab4129095c628ae8b"
+  },
+  "gates": {
+    "id": true,
+    "financial_requests_enabled": false,
+    "settlement_enabled": false,
+    "expected_merchant": null,
+    "policy_version": "draft-1"
+  },
+  "rollbackVerified": true,
+  "passed": true
+}

@@ -20,6 +20,7 @@ import { useUsernamesByIds } from '../hooks/useUsernamesByIds'
 import { useLatestCashPurchaseReminders } from '../hooks/useLatestCashPurchaseReminders'
 import { useToast } from '../hooks/useToast'
 import { ToastFlash } from '../components/ToastFlash'
+import { RefundRequestsPanel } from '../components/Refunds'
 import AdminNav from '../components/AdminNav'
 import { EvoCashPricingPanel, EvoCashPriceHistory } from '../components/EvoCashPricing'
 import { formatCentavosBRL, formatDateTime } from '../utils/format'
@@ -489,6 +490,7 @@ const CASH_TABS = [
   ['purchases', 'Compras'],
   ['pricing', 'Precificação'],
   ['prices', 'Histórico de preços'],
+  ['refunds', 'Reembolsos'],
 ]
 
 export default function AdminCashPurchases() {
@@ -514,6 +516,7 @@ export default function AdminCashPurchases() {
       {tab === 'purchases' && <PurchasesPanel />}
       {tab === 'pricing' && <EvoCashPricingPanel />}
       {tab === 'prices' && <EvoCashPriceHistory />}
+      {tab === 'refunds' && <RefundRequestsPanel admin />}
     </div>
   )
 }

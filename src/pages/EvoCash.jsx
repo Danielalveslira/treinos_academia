@@ -4,6 +4,7 @@ import { Box, Button, Flash, Heading, Label, Spinner, Text } from '@primer/react
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
 import { cancelMyCashPurchase, checkInfinitepayPurchase } from '../services/cashPurchaseService'
+import { RefundRequestsPanel, RefundSourceButton } from '../components/Refunds'
 import { EvoCashQuantityPurchase } from '../components/EvoCashQuantityPurchase'
 import { useWallet } from '../hooks/useWallet'
 import { serverNow } from '../utils/serverClock'
@@ -28,6 +29,7 @@ export default function EvoCash() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [cancellingPurchaseId, setCancellingPurchaseId] = useState(null)
   const [error, setError] = useState('')
+  const [refundRevision, setRefundRevision] = useState(0)
   const [checkoutReturn, setCheckoutReturn] = useState(null)
   const {
     purchases,
@@ -171,6 +173,7 @@ export default function EvoCash() {
             Você ainda não comprou EvoCash.
           </Text>
         )}
+        <RefundRequestsPanel initialId={searchParams.get('request')} revision={refundRevision} />
         {purchases.map((purchase) => (
           <Box
             as="article"
@@ -187,6 +190,11 @@ export default function EvoCash() {
               mb: 2,
             }}
           >
+            <RefundSourceButton
+              type="purchase"
+              id={purchase.id}
+              onCreated={() => setRefundRevision((value) => value + 1)}
+            />
             <Box
               sx={{
                 display: 'flex',
