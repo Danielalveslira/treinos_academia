@@ -49,8 +49,31 @@ test('as RPCs de EvoCoins são chamadas sem nenhum argumento: valor, ação e di
   assert.equal(found, rpcs.length, 'cada RPC é chamada em exatamente um lugar')
 })
 
-test('o cliente não envia valor de recompensa, ação nem dia ao servidor', () => {
+test('o cliente não envia valores de recompensa ao servidor', () => {
   for (const { file, text } of files) {
-    assert.doesNotMatch(text, /p_reward|p_coins|p_action\s*:|rewardCoins\s*:\s*\d/, file)
+    assert.doesNotMatch(text, /p_reward|p_coins|rewardCoins\s*:\s*\d/, file)
+  }
+})
+
+// `p_action` is also a legitimate command on non-reward administrative RPCs.
+// The no-arguments check above protects ALL EvoCoins calls (including action/day)
+// without confusing a refund state transition with a client-selected reward.
+test('a proteção de recompensa distingue RPC administrativa e rejeita ação em EvoCoins', () => {
+  const rewardCall =
+    /\.rpc\(\s*['"](?:register_qualified_activity|complete_workout_session|get_my_evocoin_day)['"][^)]*\)/g
+  const noArguments =
+    /\.rpc\(\s*['"](?:register_qualified_activity|complete_workout_session|get_my_evocoin_day)['"]\s*\)/
+  assert.deepEqual(
+    "supabase.rpc('act_on_refund_request', { p_action: action })".match(rewardCall),
+    null
+  )
+  for (const name of [
+    'register_qualified_activity',
+    'complete_workout_session',
+    'get_my_evocoin_day',
+  ]) {
+    const poisoned = `supabase.rpc('${name}', { p_action: 'workout' })`.match(rewardCall)
+    assert.equal(poisoned.length, 1)
+    assert.doesNotMatch(poisoned[0], noArguments)
   }
 })
