@@ -31,44 +31,81 @@ const exercises = ['Supino oficial', 'Puxada oficial', 'Agachamento fora da fich
     catalogAvailable: true,
   })
 )
-let personalLibrary
-let sheets, reads, writes, fail, conflict
-function reset() {
-  personalLibrary = [...exercises]
-  sheets = [
-    {
-      id: sid,
-      user_id: 'a',
-      name: 'Ficha A',
-      goal: 'forca',
-      goal_description: 'Minha meta',
-      weekdays: [1, 3],
-      revision: 1,
-      sort_order: 0,
-      archived_at: null,
-      items: [1, 0].map((n, i) => ({
-        id: `item-${i}`,
-        exercise_id: exercises[n].id,
-        exercise: exercises[n],
+// Each concurrent iteration gets its own entry here (keyed by a random session id, carried in
+// the `/s/<id>/...` URL prefix -- see `resolveSession` below), so parallel browser contexts never
+// share mutable fixture state (sheets/reads/writes/fail/conflict/library). `default` preserves
+// the single-session behaviour for callers that never adopt the prefix (currently `--entries`).
+const sessions = new Map()
+function freshState() {
+  return {
+    personalLibrary: [...exercises],
+    sheets: [
+      {
+        id: sid,
+        user_id: 'a',
+        name: 'Ficha A',
+        goal: 'forca',
+        goal_description: 'Minha meta',
+        weekdays: [1, 3],
+        revision: 1,
+        sort_order: 0,
+        archived_at: null,
+        items: [1, 0].map((n, i) => ({
+          id: `item-${i}`,
+          exercise_id: exercises[n].id,
+          exercise: exercises[n],
+          sort_order: i,
+          available: true,
+          target_sets: 3,
+          reps_min: 8,
+          reps_max: 12,
+          note: '',
+        })),
+      },
+    ],
+    reads: [],
+    writes: [],
+    fail: false,
+    conflict: false,
+  }
+}
+function reset(sessionId) {
+  const state = freshState()
+  sessions.set(sessionId, state)
+  return state
+}
+// Same 40-sheets/40-items volume fixture the old `/__benchmark` HTTP route built, now called
+// directly: this and `reset` only ever run from the Node side (never over the wire from a page).
+function benchmarkFixture(sessionId) {
+  const state = reset(sessionId)
+  const template = state.sheets[0]
+  state.sheets = Array.from({ length: 40 }, (_, n) => ({
+    ...structuredClone(template),
+    id: n === 0 ? sid : crypto.randomUUID(),
+    name: `Ficha de volume ${n + 1}`,
+    items: Array.from({ length: 40 }, (_, i) => {
+      const exerciseId = crypto.randomUUID()
+      return {
+        id: crypto.randomUUID(),
+        exercise_id: exerciseId,
         sort_order: i,
         available: true,
-        target_sets: 3,
-        reps_min: 8,
-        reps_max: 12,
-        note: '',
-      })),
-    },
-  ]
-  reads = []
-  writes = []
-  fail = false
-  conflict = false
+        exercise: { ...exercises[i % 3], id: exerciseId, name: `Exercício oficial ${i + 1}` },
+      }
+    }),
+  }))
+  return state
 }
-reset()
+function session(sessionId) {
+  const state = sessions.get(sessionId)
+  if (!state) throw new Error(`UNKNOWN_TEST_SESSION ${sessionId}`)
+  return state
+}
+reset('default')
 const stubs = {
-  '/supabase/config': `import {createClient} from '@supabase/supabase-js';export const supabase=createClient(window.location.origin,'synthetic-browser-test',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{fetch:(url,init)=>fetch(url,{...init,headers:{...Object.fromEntries(new Headers(init.headers)), 'x-test-user':window.__uid||'a'}})}})`,
+  '/supabase/config': `import {createClient} from '@supabase/supabase-js';export const supabase=createClient(window.location.origin+'/s/'+(window.__sid||'default'),'synthetic-browser-test',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{fetch:(url,init)=>fetch(url,{...init,headers:{...Object.fromEntries(new Headers(init.headers)), 'x-test-user':window.__uid||'a'}})}})`,
   '/hooks/useAuth': `import {useSyncExternalStore} from 'react';const subscribe=f=>{window.addEventListener('test-account',f);return()=>window.removeEventListener('test-account',f)};export function useAuth(){const uid=useSyncExternalStore(subscribe,()=>window.__uid||'a');return {user:{uid},offlineLocal:false}}`,
-  '/services/exercisesService': `export const listExercises=async()=>{window.__libraryReads=(window.__libraryReads||0)+1;return (await fetch('/__library')).json()};export const createCatalogExercise=async(uid,e)=>{const exercise={...e,id:crypto.randomUUID(),catalogAvailable:true};await fetch('/__library',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(exercise)});return {added:true,exercise}};export const updateExercise=async()=>{};export const deleteExercise=async()=>{};export const saveExerciseOrder=async()=>{}`,
+  '/services/exercisesService': `export const listExercises=async()=>{window.__libraryReads=(window.__libraryReads||0)+1;return (await fetch('/s/'+(window.__sid||'default')+'/__library')).json()};export const createCatalogExercise=async(uid,e)=>{const exercise={...e,id:crypto.randomUUID(),catalogAvailable:true};await fetch('/s/'+(window.__sid||'default')+'/__library',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(exercise)});return {added:true,exercise}};export const updateExercise=async()=>{};export const deleteExercise=async()=>{};export const saveExerciseOrder=async()=>{}`,
   '/hooks/useDashboard': `export const useDashboard=()=>({allWorkouts:[]})`,
   '/hooks/useWorkouts': `window.__workoutWrites=[];export const useWorkouts=()=>({workouts:[],add:async(values)=>{window.__workoutWrites.push(values);return{id:'real-row',synced:true}},save:async(id,values)=>{window.__workoutWrites.push(values);return{id,synced:true}}})`,
   '/hooks/useExerciseCatalogDetail.js': `export const useExerciseCatalogDetail=()=>{window.__guideReads=(window.__guideReads||0)+1;return {data:{instructions:['Movimento controlado'],images:[]},loading:false}}`,
@@ -112,184 +149,156 @@ try {
     )
   )
   server = createServer(async (req, res) => {
-    if (req.url === '/__library') {
-      if (req.method === 'POST') {
+    // Stateful endpoints are namespaced under `/s/<sessionId>/...` so concurrent iterations
+    // (each with its own sessionId) never see each other's sheets/reads/writes/fail/conflict.
+    // Static assets and SPA routes below stay unprefixed: they are shared, read-only content.
+    const prefixed = req.url.match(/^\/s\/([^/]+)(\/.*)$/)
+    if (prefixed) {
+      const sessionId = prefixed[1]
+      const path = prefixed[2].split('?')[0]
+      if (path === '/__library') {
+        const state = session(sessionId)
+        if (req.method === 'POST') {
+          const chunks = []
+          for await (const chunk of req) chunks.push(chunk)
+          state.personalLibrary.push(JSON.parse(Buffer.concat(chunks).toString()))
+        }
+        res.setHeader('Content-Type', 'application/json')
+        res.end(JSON.stringify(state.personalLibrary))
+        return
+      }
+      if (path.startsWith('/rest/v1/rpc/')) {
+        const state = session(sessionId)
+        const name = path.split('/').at(-1)
         const chunks = []
-        for await (const chunk of req) chunks.push(chunk)
-        personalLibrary.push(JSON.parse(Buffer.concat(chunks).toString()))
-      }
-      res.setHeader('Content-Type', 'application/json')
-      res.end(JSON.stringify(personalLibrary))
-      return
-    }
-    if (req.url === '/__benchmark') {
-      reset()
-      const template = sheets[0]
-      sheets = Array.from({ length: 40 }, (_, n) => ({
-        ...structuredClone(template),
-        id: n === 0 ? sid : crypto.randomUUID(),
-        name: `Ficha de volume ${n + 1}`,
-        items: Array.from({ length: 40 }, (_, i) => {
-          const exerciseId = crypto.randomUUID()
-          return {
-            id: crypto.randomUUID(),
-            exercise_id: exerciseId,
-            sort_order: i,
-            available: true,
-            exercise: { ...exercises[i % 3], id: exerciseId, name: `Exercício oficial ${i + 1}` },
-          }
-        }),
-      }))
-      res.end('ok')
-      return
-    }
-    if (req.url === '/__reset') {
-      reset()
-      res.end('ok')
-      return
-    }
-    if (req.url === '/__fail') {
-      fail = true
-      res.end('ok')
-      return
-    }
-    if (req.url === '/__conflict') {
-      conflict = true
-      res.end('ok')
-      return
-    }
-    if (req.url === '/__state') {
-      res.setHeader('Content-Type', 'application/json')
-      res.end(JSON.stringify({ reads, writes, sheets }))
-      return
-    }
-    if (req.url.startsWith('/rest/v1/rpc/')) {
-      const name = req.url.split('/').at(-1)
-      const chunks = []
-      for await (const c of req) chunks.push(c)
-      const args = JSON.parse(Buffer.concat(chunks).toString() || '{}')
-      const uid = req.headers['x-test-user'] || 'a'
-      reads.push(name)
-      const sheet = sheets.find(
-        (s) => s.id === (args.p_sheet_id || args.p_source_id) && s.user_id === uid
-      )
-      res.setHeader('Content-Type', 'application/json')
-      const err = (message) => {
-        res.statusCode = 400
-        res.end(JSON.stringify({ code: 'P0001', message }))
-      }
-      if (name === 'get_my_sheet_insights' || name === 'get_my_sheet_insights_for_exercise') {
-        res.end(JSON.stringify({ sheets: sheets.filter((s) => s.user_id === uid && (!args.p_exercise_id || (!s.archived_at && s.items.length > 0 && s.items.every(i => i.available) && s.items.some(i => i.exercise_id === args.p_exercise_id)))).map((s) => ({ ...s, exercise_count: s.items.length, available: s.items.length > 0 && s.items.every((item) => item.available), completed_today: false })) }))
-        return
-      }
-      if (name === 'list_my_workout_sheets') {
-        res.end(
-          JSON.stringify(
-            sheets
-              .filter(
-                (s) => s.user_id === uid && Boolean(s.archived_at) === Boolean(args.p_archived)
-              )
-              .map((s) => ({
-                ...s,
-                items: undefined,
-                exercise_count: s.items.length,
-                muscle_groups: ['Peito', 'Costas'],
-              }))
+        for await (const c of req) chunks.push(c)
+        const args = JSON.parse(Buffer.concat(chunks).toString() || '{}')
+        const uid = req.headers['x-test-user'] || 'a'
+        state.reads.push(name)
+        const sheet = state.sheets.find(
+          (s) => s.id === (args.p_sheet_id || args.p_source_id) && s.user_id === uid
+        )
+        res.setHeader('Content-Type', 'application/json')
+        const err = (message) => {
+          res.statusCode = 400
+          res.end(JSON.stringify({ code: 'P0001', message }))
+        }
+        if (name === 'get_my_sheet_insights' || name === 'get_my_sheet_insights_for_exercise') {
+          res.end(JSON.stringify({ sheets: state.sheets.filter((s) => s.user_id === uid && (!args.p_exercise_id || (!s.archived_at && s.items.length > 0 && s.items.every(i => i.available) && s.items.some(i => i.exercise_id === args.p_exercise_id)))).map((s) => ({ ...s, exercise_count: s.items.length, available: s.items.length > 0 && s.items.every((item) => item.available), completed_today: false })) }))
+          return
+        }
+        if (name === 'list_my_workout_sheets') {
+          res.end(
+            JSON.stringify(
+              state.sheets
+                .filter(
+                  (s) => s.user_id === uid && Boolean(s.archived_at) === Boolean(args.p_archived)
+                )
+                .map((s) => ({
+                  ...s,
+                  items: undefined,
+                  exercise_count: s.items.length,
+                  muscle_groups: ['Peito', 'Costas'],
+                }))
+            )
           )
-        )
-        return
-      }
-      if (name === 'create_workout_sheet') {
-        const prior = sheets.find((s) => s.request === args.p_request_id && s.user_id === uid)
-        if (prior) {
-          res.end(JSON.stringify(prior))
           return
         }
-        const created = {
-          id: crypto.randomUUID(),
-          user_id: uid,
-          request: args.p_request_id,
-          name: args.p_name,
-          goal: args.p_goal,
-          goal_description: args.p_description,
-          weekdays: args.p_weekdays,
-          items: args.p_items.map((i) => ({
-            ...i,
+        if (name === 'create_workout_sheet') {
+          const prior = state.sheets.find((s) => s.request === args.p_request_id && s.user_id === uid)
+          if (prior) {
+            res.end(JSON.stringify(prior))
+            return
+          }
+          const created = {
             id: crypto.randomUUID(),
-            exercise: personalLibrary.find((e) => e.id === i.exercise_id),
-            available: true,
-          })),
-          revision: 1,
-          sort_order: sheets.length,
-          archived_at: null,
-        }
-        sheets.push(created)
-        writes.push(name)
-        res.end(JSON.stringify(created))
-        return
-      }
-      if (!sheet) {
-        err('SHEET_NOT_FOUND')
-        return
-      }
-      if (name === 'get_my_workout_sheet') {
-        if (
-          args.p_for_execution &&
-          (sheet.archived_at || !sheet.items.length || sheet.items.some((i) => !i.available))
-        )
-          err('SHEET_NOT_READY')
-        else res.end(JSON.stringify(sheet))
-        return
-      }
-      if (name === 'save_workout_sheet') {
-        if (fail) {
-          fail = false
-          res.statusCode = 503
-          res.end(JSON.stringify({ message: 'network interruption' }))
+            user_id: uid,
+            request: args.p_request_id,
+            name: args.p_name,
+            goal: args.p_goal,
+            goal_description: args.p_description,
+            weekdays: args.p_weekdays,
+            items: args.p_items.map((i) => ({
+              ...i,
+              id: crypto.randomUUID(),
+              exercise: state.personalLibrary.find((e) => e.id === i.exercise_id),
+              available: true,
+            })),
+            revision: 1,
+            sort_order: state.sheets.length,
+            archived_at: null,
+          }
+          state.sheets.push(created)
+          state.writes.push(name)
+          res.end(JSON.stringify(created))
           return
         }
-        if (conflict) {
-          conflict = false
+        if (!sheet) {
+          err('SHEET_NOT_FOUND')
+          return
+        }
+        if (name === 'get_my_workout_sheet') {
+          if (
+            args.p_for_execution &&
+            (sheet.archived_at || !sheet.items.length || sheet.items.some((i) => !i.available))
+          )
+            err('SHEET_NOT_READY')
+          else res.end(JSON.stringify(sheet))
+          return
+        }
+        if (name === 'save_workout_sheet') {
+          if (state.fail) {
+            state.fail = false
+            res.statusCode = 503
+            res.end(JSON.stringify({ message: 'network interruption' }))
+            return
+          }
+          if (state.conflict) {
+            state.conflict = false
+            sheet.revision++
+            sheet.goal_description = 'Outra aba'
+            err('SHEET_VERSION_CONFLICT')
+            return
+          }
+          if (sheet.revision !== args.p_expected_revision) {
+            err('SHEET_VERSION_CONFLICT')
+            return
+          }
+          Object.assign(sheet, args.p_metadata, {
+            revision: sheet.revision + 1,
+            items: args.p_items.map((i) => ({
+              ...i,
+              id: crypto.randomUUID(),
+              exercise: state.personalLibrary.find((e) => e.id === i.exercise_id),
+              available: true,
+            })),
+          })
+          state.writes.push(name)
+          res.end(JSON.stringify(sheet))
+          return
+        }
+        if (name === 'set_workout_sheet_archived') {
+          sheet.archived_at = args.p_archived ? new Date().toISOString() : null
           sheet.revision++
-          sheet.goal_description = 'Outra aba'
-          err('SHEET_VERSION_CONFLICT')
+          state.writes.push(name)
+          res.end(JSON.stringify(sheet))
           return
         }
-        if (sheet.revision !== args.p_expected_revision) {
-          err('SHEET_VERSION_CONFLICT')
+        if (name === 'duplicate_workout_sheet') {
+          const copy = structuredClone(sheet)
+          copy.id = crypto.randomUUID()
+          copy.name += ' (cópia)'
+          copy.revision = 1
+          state.sheets.push(copy)
+          state.writes.push(name)
+          res.end(JSON.stringify(copy))
           return
         }
-        Object.assign(sheet, args.p_metadata, {
-          revision: sheet.revision + 1,
-          items: args.p_items.map((i) => ({
-            ...i,
-            id: crypto.randomUUID(),
-            exercise: personalLibrary.find((e) => e.id === i.exercise_id),
-            available: true,
-          })),
-        })
-        writes.push(name)
-        res.end(JSON.stringify(sheet))
+        err('UNKNOWN_RPC')
         return
       }
-      if (name === 'set_workout_sheet_archived') {
-        sheet.archived_at = args.p_archived ? new Date().toISOString() : null
-        sheet.revision++
-        writes.push(name)
-        res.end(JSON.stringify(sheet))
-        return
-      }
-      if (name === 'duplicate_workout_sheet') {
-        const copy = structuredClone(sheet)
-        copy.id = crypto.randomUUID()
-        copy.name += ' (cópia)'
-        copy.revision = 1
-        sheets.push(copy)
-        writes.push(name)
-        res.end(JSON.stringify(copy))
-        return
-      }
-      err('UNKNOWN_RPC')
+      res.statusCode = 404
+      res.end('No session route for this path')
       return
     }
     const name = req.url.split('?')[0].slice(1)
@@ -319,7 +328,7 @@ try {
   const results = []
   if (entryOnly) {
     for (const width of [320, 360, 390]) {
-      await fetch(origin + '/__reset')
+      const state = reset('default')
       const page = await browser.newPage({ viewport: { width, height: 800 } })
       await page.goto(origin + '/novo-treino?planejado=2000-01-01&evil=ignored')
       await page.getByRole('heading', { name: 'Treinar', exact: true }).waitFor()
@@ -329,8 +338,8 @@ try {
       await page.getByText('Lembrete de 01/01/2000.', { exact: false }).waitFor()
       await page.goto(origin + `/novo-treino?exercicio=${exercises[0].id}`)
       await page.getByRole('button', { name: 'Iniciar', exact: true }).waitFor()
-      assert.equal(reads.filter(name => name === 'get_my_sheet_insights_for_exercise').length, 1, 'one aggregate membership request')
-      assert.equal(reads.filter(name => name === 'get_my_workout_sheet').length, 0, 'no per-sheet membership requests')
+      assert.equal(state.reads.filter(name => name === 'get_my_sheet_insights_for_exercise').length, 1, 'one aggregate membership request')
+      assert.equal(state.reads.filter(name => name === 'get_my_workout_sheet').length, 0, 'no per-sheet membership requests')
       await page.getByRole('button', { name: 'Iniciar', exact: true }).click()
       await page.locator('.workout-form').waitFor()
       assert.equal(new URL(page.url()).searchParams.get('ficha'), sid)
@@ -345,9 +354,12 @@ try {
     }
     console.log('SHEET_ENTRY_BROWSER_OK ' + JSON.stringify(results))
   }
-  for (const theme of entryOnly ? [] : quick ? ['light'] : ['light', 'dark'])
-    for (const width of quick ? [390] : [320, 360, 390, 768, 1280]) {
-      await fetch(origin + '/__reset')
+  // One isolated server-side session (sheets/reads/writes/fail/conflict/library) per iteration,
+  // carried via `window.__sid` -> the `/s/<id>/...` URL prefix -- so iterations can run with
+  // bounded concurrency (see the worker pool below) without ever touching each other's state.
+  async function runIteration(theme, width) {
+      const sessionId = crypto.randomUUID()
+      const state = reset(sessionId)
       const height = width === 320 ? 568 : width === 360 ? 740 : 900
       const context = await browser.newContext({
         viewport: { width, height },
@@ -355,6 +367,7 @@ try {
         isMobile: width < 768,
         hasTouch: width < 768,
       })
+      await context.addInitScript((id) => { window.__sid = id }, sessionId)
       const page = await context.newPage()
       page.setDefaultTimeout(15000)
       const errors = [],
@@ -389,7 +402,7 @@ try {
         `theme background is correct: ${background}`
       )
       assert.equal(images.length, 0, 'cards do not fetch images')
-      assert.deepEqual(reads, ['list_my_workout_sheets'])
+      assert.deepEqual(state.reads, ['list_my_workout_sheets'])
       assert.equal(
         await page.evaluate(() => window.__libraryReads || 0),
         0,
@@ -554,7 +567,7 @@ try {
         })
       })
       const nameInput = page.getByRole('textbox', { name: 'Nome obrigatório', exact: true })
-      const mutationsBeforeTyping = writes.length
+      const mutationsBeforeTyping = state.writes.length
       await nameInput.fill('Modificada')
       assert.equal(await save.isEnabled(), true)
       await nameInput.fill('Ficha A')
@@ -567,7 +580,7 @@ try {
       await context.setOffline(false)
       await page.waitForTimeout(300)
       assert.equal(await nameInput.inputValue(), 'Nome mantido sem rede')
-      assert.equal(writes.length, mutationsBeforeTyping, 'typing never writes to server')
+      assert.equal(state.writes.length, mutationsBeforeTyping, 'typing never writes to server')
       async function dismissConfirmation(action) {
         const prompt = page.waitForEvent('dialog')
         const pending = action()
@@ -591,11 +604,11 @@ try {
       )
       assert.equal(await nameInput.inputValue(), 'Nome mantido sem rede')
       await page.getByRole('button', { name: 'Subir Supino oficial', exact: true }).click()
-      await fetch(origin + '/__fail')
+      state.fail = true
       await save.click()
       await page.getByRole('alert').filter({ hasText: 'Não foi possível concluir' }).waitFor()
       assert.equal(await nameInput.inputValue(), 'Nome mantido sem rede')
-      await fetch(origin + '/__conflict')
+      state.conflict = true
       await save.click()
       await page.getByRole('region', { name: 'Conflito de versões' }).waitFor()
       assert.equal(await nameInput.inputValue(), 'Nome mantido sem rede')
@@ -738,11 +751,11 @@ try {
           true
         )
       }
-      const flowReads = reads.length,
-        flowWrites = writes.length
+      const flowReads = state.reads.length,
+        flowWrites = state.writes.length
       let volume = null
       if (theme === 'light' && width === 390) {
-        await fetch(origin + '/__benchmark')
+        benchmarkFixture(sessionId)
         await cdp.send('Network.emulateNetworkConditions', {
           offline: false,
           latency: 150,
@@ -803,7 +816,24 @@ try {
       })
       await context.close()
       console.log(JSON.stringify(results.at(-1)))
+  }
+  const combos = entryOnly
+    ? []
+    : (quick ? ['light'] : ['light', 'dark']).flatMap((theme) =>
+        (quick ? [390] : [320, 360, 390, 768, 1280]).map((width) => ({ theme, width }))
+      )
+  // Each context/page/session below is fully isolated (own sheets/reads/writes/fail/conflict,
+  // own `/s/<id>` namespace), so running a few at once is safe; this stays short of true
+  // unbounded parallelism to avoid starving the shared 4x-CPU-throttle emulation on a CI runner.
+  const concurrency = Math.max(1, Math.min(combos.length, Number(process.env.WORKOUT_SHEETS_CONCURRENCY) || 3))
+  let nextCombo = 0
+  async function worker() {
+    while (nextCombo < combos.length) {
+      const { theme, width } = combos[nextCombo++]
+      await runIteration(theme, width)
     }
+  }
+  await Promise.all(Array.from({ length: concurrency }, worker))
   await writeFile(
     join(evidence, entryOnly ? 'sheet-entry-results.json' : quick ? 'browser-results-quick.json' : 'browser-results.json'),
     JSON.stringify(
