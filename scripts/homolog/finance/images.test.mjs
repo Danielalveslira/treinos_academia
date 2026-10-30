@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { IMAGES, pullImage, verifyLocalPostgresImage } from './images.mjs'
+import { IMAGES, VERIFIED_AMD64_IDS, pullImage, verifyLocalPostgresImage } from './images.mjs'
 
 const id = 'sha256:' + 'a'.repeat(64)
 const ghcr = 'ghcr.io/supabase/'
@@ -12,6 +12,25 @@ const image = (registry, overrides = {}) => JSON.stringify([{
 }])
 const missing = () => { throw new Error('No such image') }
 const quiet = { log() {}, sleep: async () => {} }
+
+test('trusted OCI cache uses only the pinned linux/amd64 config ID without registry access', async () => {
+  const previous = process.env.FINANCE_OCI_CACHE_LOADED
+  process.env.FINANCE_OCI_CACHE_LOADED = '1'
+  try {
+    assert.equal(Object.keys(VERIFIED_AMD64_IDS).length, Object.keys(IMAGES).length)
+    const id = VERIFIED_AMD64_IDS.postgres
+    const result = await pullImage('postgres', { ...quiet, run: (...args) => {
+      assert.deepEqual(args, ['image', 'inspect', id])
+      return JSON.stringify([{ Id: id, Os: 'linux', Architecture: 'amd64' }])
+    } })
+    assert.equal(result, id)
+    await assert.rejects(pullImage('postgres', { ...quiet, run: () => JSON.stringify([{ Id: id, Os: 'linux', Architecture: 'arm64' }]) }), /IMAGE_INTEGRITY_FAILED/)
+    await assert.rejects(pullImage('postgres', { ...quiet, run: () => { throw new Error('No such image') } }), /IMAGE_INTEGRITY_FAILED/)
+  } finally {
+    if (previous === undefined) delete process.env.FINANCE_OCI_CACHE_LOADED
+    else process.env.FINANCE_OCI_CACHE_LOADED = previous
+  }
+})
 
 test('all five original versions and OCI digests are fixed, with no mutable override', () => {
   assert.equal(Object.keys(IMAGES).length, 5)
@@ -127,6 +146,18 @@ test('PostgreSQL harness validates the config ID against its pinned OCI index, n
     assert.deepEqual(args, ['image', 'inspect', id])
     return image(ghcr)
   } })
+})
+test('PostgreSQL harness accepts only the verified cached config ID when cache is loaded', () => {
+  const previous = process.env.FINANCE_OCI_CACHE_LOADED
+  process.env.FINANCE_OCI_CACHE_LOADED = '1'
+  try {
+    const id = VERIFIED_AMD64_IDS.postgres
+    verifyLocalPostgresImage({ Image: id, Config: { Image: id } }, { run: () => JSON.stringify([{ Id: id, Os: 'linux', Architecture: 'amd64' }]) })
+    assert.throws(() => verifyLocalPostgresImage({ Image: id, Config: { Image: id } }, { run: () => JSON.stringify([{ Id: id, Os: 'linux', Architecture: 'arm64' }]) }), /IMAGE_INTEGRITY_FAILED/)
+  } finally {
+    if (previous === undefined) delete process.env.FINANCE_OCI_CACHE_LOADED
+    else process.env.FINANCE_OCI_CACHE_LOADED = previous
+  }
 })
 test('PostgreSQL CLI keeps supporting official versioned images', () => {
   verifyLocalPostgresImage({ Config: { Image: 'ghcr.io/supabase/postgres:17.11.0.002' } }, { run: () => assert.fail('named CLI image needs no harness pull') })
