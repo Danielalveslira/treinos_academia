@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ActionList, ActionMenu, IconButton } from '@primer/react'
 import {
@@ -49,8 +49,20 @@ export const ACCOUNT_ITEMS = [
 ]
 
 export const EXPLORE_ITEMS = [
-  { key: 'public-products', to: '/vitrine', icon: PackageIcon, label: 'Vitrine de produtos', document: true },
-  { key: 'public-professionals', to: '/profissionais', icon: LocationIcon, label: 'Profissionais e locais', document: true },
+  {
+    key: 'public-products',
+    to: '/vitrine',
+    icon: PackageIcon,
+    label: 'Vitrine de produtos',
+    document: true,
+  },
+  {
+    key: 'public-professionals',
+    to: '/profissionais',
+    icon: LocationIcon,
+    label: 'Profissionais e locais',
+    document: true,
+  },
 ]
 
 // Reexportada por compatibilidade (AccountMenu.test.js e código legado importam
@@ -91,7 +103,7 @@ export function renderMobileWalletItem(onNavigate) {
 }
 
 // Os dois logouts, compartilhados entre o dropdown do desktop (inline, fim da
-// lista) e o rodapé fixo do painel mobile -- mesmo onSelect/variant/disabled
+// lista) e a seção final do painel mobile -- mesmo onSelect/variant/disabled
 // nos dois, só o container ao redor muda.
 export function renderSessionItems({ onLogout, onLogoutAll, signingOut, logoutNotice }) {
   return (
@@ -166,6 +178,8 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
   const [open, setOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches)
   const [adminExpanded, setAdminExpanded] = useState(false)
+  const anchorRef = useRef(null)
+  const [menuTop, setMenuTop] = useState(undefined)
   const { key } = useLocation()
   const { isSuperAdmin, profile } = useAuth()
   const { dark, toggleColorMode } = useColorMode()
@@ -188,12 +202,29 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
     if (!open) setAdminExpanded(false)
   }, [open])
 
+  // Primer calcula o alinhamento horizontal pelo botão. O cabeçalho é sticky no
+  // topo; sua altura pode mudar em um resize, mas o scroll não muda sua base.
+  useLayoutEffect(() => {
+    if (!open || !anchorRef.current) return undefined
+    const header = anchorRef.current.closest('.app-header')
+    if (!header) return undefined
+    const update = () => setMenuTop(header.getBoundingClientRect().bottom + 8)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(header)
+    window.addEventListener('resize', update)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [open])
+
   function closeMenu() {
     setOpen(false)
   }
 
   return (
-    <ActionMenu open={open} onOpenChange={setOpen}>
+    <ActionMenu open={open} onOpenChange={setOpen} anchorRef={anchorRef}>
       <ActionMenu.Anchor>
         <IconButton
           icon={open ? XIcon : ThreeBarsIcon}
@@ -203,14 +234,17 @@ export function AccountMenu({ onLogout, onLogoutAll, signingOut }) {
           unsafeDisableTooltip
         />
       </ActionMenu.Anchor>
-      {/* variant: dropdown ancorado no desktop (≥768px, inalterado), folha cheia no mobile
-          (<768px) -- modo responsivo de primeira classe do próprio Primer (AnchoredOverlay),
-          não uma reconstrução própria de modal/foco/Escape. */}
+      {/* O Overlay do Primer cuida de foco, Escape e clique fora. A posição fixa
+          acompanha a viewport, e o topo medido começa abaixo do cabeçalho. */}
       <ActionMenu.Overlay
         align="end"
         width="small"
         className="account-menu-overlay"
-        variant={{ regular: 'anchored', narrow: 'fullscreen' }}
+        variant={{ regular: 'anchored', narrow: 'anchored' }}
+        position="fixed"
+        top={menuTop}
+        style={{ '--account-menu-top': `${menuTop || 0}px` }}
+        overflow="auto"
       >
         <div className="account-menu-content">
           {isMobile && (
