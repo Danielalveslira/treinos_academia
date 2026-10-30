@@ -51,7 +51,7 @@ try {
       page.on('pageerror', error => errors.push(error.message))
       page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
       for (const path of routes) {
-        assert.equal((await page.goto(`${base}${path}`, { waitUntil: 'networkidle' })).status(), 200)
+        assert.equal((await page.goto(`${base}${path}`, { waitUntil: 'domcontentloaded' })).status(), 200)
         const header = page.locator('header').first()
         await header.waitFor()
         const themeButton = header.getByRole('button', { name: /Ativar tema/ })
