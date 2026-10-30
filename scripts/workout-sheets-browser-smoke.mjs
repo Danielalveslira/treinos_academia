@@ -32,9 +32,10 @@ const exercises = ['Supino oficial', 'Puxada oficial', 'Agachamento fora da fich
   })
 )
 // Each concurrent iteration gets its own entry here (keyed by a random session id, carried in
-// the `/s/<id>/...` URL prefix -- see `resolveSession` below), so parallel browser contexts never
+// the `/s/<id>/...` URL prefix the server matches below), so parallel browser contexts never
 // share mutable fixture state (sheets/reads/writes/fail/conflict/library). `default` preserves
 // the single-session behaviour for callers that never adopt the prefix (currently `--entries`).
+// Each entry is deleted by its own iteration's `finally` once that iteration is done with it.
 const sessions = new Map()
 function freshState() {
   return {
@@ -357,7 +358,7 @@ try {
   // One isolated server-side session (sheets/reads/writes/fail/conflict/library) per iteration,
   // carried via `window.__sid` -> the `/s/<id>/...` URL prefix -- so iterations can run with
   // bounded concurrency (see the worker pool below) without ever touching each other's state.
-  async function runIteration(theme, width) {
+  async function runIteration(theme, width, index) {
       const sessionId = crypto.randomUUID()
       const state = reset(sessionId)
       const height = width === 320 ? 568 : width === 360 ? 740 : 900
@@ -367,6 +368,7 @@ try {
         isMobile: width < 768,
         hasTouch: width < 768,
       })
+      try {
       await context.addInitScript((id) => { window.__sid = id }, sessionId)
       const page = await context.newPage()
       page.setDefaultTimeout(15000)
@@ -800,7 +802,10 @@ try {
       }
       const heap = await cdp.send('Runtime.getHeapUsage')
       assert.deepEqual(errors, [])
-      results.push({
+      // Own slot by index, not `results.at(-1)`: another worker's iteration can finish (and push)
+      // during any of the `await`s above, so "the last pushed item" is not reliably "this one"
+      // under concurrency. Logged from the same local reference, never read back from the array.
+      const entry = {
         theme,
         width,
         height,
@@ -813,27 +818,43 @@ try {
         volume,
         readRequests: flowReads,
         writeRequests: flowWrites,
-      })
-      await context.close()
-      console.log(JSON.stringify(results.at(-1)))
+      }
+      results[index] = entry
+      console.log(JSON.stringify(entry))
+      } finally {
+        await context.close()
+        sessions.delete(sessionId)
+      }
   }
   const combos = entryOnly
     ? []
     : (quick ? ['light'] : ['light', 'dark']).flatMap((theme) =>
         (quick ? [390] : [320, 360, 390, 768, 1280]).map((width) => ({ theme, width }))
       )
-  // Each context/page/session below is fully isolated (own sheets/reads/writes/fail/conflict,
-  // own `/s/<id>` namespace), so running a few at once is safe; this stays short of true
-  // unbounded parallelism to avoid starving the shared 4x-CPU-throttle emulation on a CI runner.
+  // Pre-sized (not pushed into) so each iteration can write its own `results[index]` regardless
+  // of finishing order; entries stay `undefined` only if `runIteration` throws for that index.
+  if (combos.length) results.length = combos.length
+  // GitHub's standard hosted Linux runner for a private repo is 2 vCPUs, not 4. A concurrency of
+  // 3 oversubscribes by one; this is deliberate, not an oversight -- see the PR for the measured
+  // comparison against 2, taken on the real runner. It is only safe at all because each
+  // context/page/session below is fully isolated (own sheets/reads/writes/fail/conflict, own
+  // `/s/<id>` namespace), so running a few at once never lets one iteration see another's state.
   const concurrency = Math.max(1, Math.min(combos.length, Number(process.env.WORKOUT_SHEETS_CONCURRENCY) || 3))
   let nextCombo = 0
   async function worker() {
     while (nextCombo < combos.length) {
-      const { theme, width } = combos[nextCombo++]
-      await runIteration(theme, width)
+      const index = nextCombo++
+      const { theme, width } = combos[index]
+      await runIteration(theme, width, index)
     }
   }
-  await Promise.all(Array.from({ length: concurrency }, worker))
+  // Wait for every worker to settle (success or failure) before falling through to the outer
+  // `finally` that closes the browser and server -- a fast `Promise.all` rejection would leave
+  // other still-running iterations racing the teardown. The first real failure still fails the
+  // run; it is not swallowed.
+  const settled = await Promise.allSettled(Array.from({ length: concurrency }, worker))
+  const failure = settled.find((result) => result.status === 'rejected')
+  if (failure) throw failure.reason
   await writeFile(
     join(evidence, entryOnly ? 'sheet-entry-results.json' : quick ? 'browser-results-quick.json' : 'browser-results.json'),
     JSON.stringify(
