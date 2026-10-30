@@ -18,7 +18,7 @@ export const createAdvertisingCampaign = (accountId, values, requestId) =>
     p_destination: values.destination,
     p_request_id: requestId,
   })
-export const editAdvertisingCampaign = (campaign, values, submit) =>
+export const editAdvertisingCampaign = (campaign, values, submit, desiredDays = null) =>
   rpc('edit_advertising_campaign', {
     p_id: campaign.ad_id,
     p_version: campaign.version,
@@ -27,6 +27,7 @@ export const editAdvertisingCampaign = (campaign, values, submit) =>
     p_destination: values.destination,
     p_submit: submit,
     p_media_id: values.media_id || null,
+    p_desired_days: desiredDays,
   })
 export const reviewAdvertisingCampaign = (campaign, approve, reason) =>
   rpc('admin_review_advertising_campaign', {

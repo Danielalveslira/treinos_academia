@@ -17,9 +17,10 @@ const fixture = `
  const users=[{id:'reader',username:'leitor_existente'},{id:'already',username:'ja_autorizado'}]
  const metrics={visible_impressions:10,unique_viewers:5,clicks:20,unqualified_clicks:2,qualified_clicks:18,ctr_qualified:180,ctr_raw:200}
  window.__advertisers={accounts,linked,members,available,users}
- window.__calls=[];window.__pendingReads=[]
+ window.__calls=[];window.__pendingReads=[];window.__readCalls=[]
  const page=(rows,args)=>rows.slice(args.p_offset||0,(args.p_offset||0)+100).map(r=>({...r}))
  export async function readCatalog(name,args={}) {
+  window.__readCalls.push(name)
   if(name==='list_advertiser_accounts') return [...accounts]
   if(name==='list_advertiser_campaigns') return campaigns.map(c=>({...c,id:c.id.replace(/A$/,args.p_account_id)}))
   if(args.p_kind==='users') return page(users.filter(u=>u.username.includes(args.p_search||'')),args)
@@ -124,6 +125,21 @@ try {
       const errors = []
       page.on('pageerror', (e) => errors.push(e.message))
       await page.goto(origin + '/?theme=' + theme)
+      // "Resultados" is a separate, lazily-mounted tab: AdMetricsTab and
+      // list_advertiser_campaigns must never be requested on the default "Meus anúncios"
+      // load, only once the advertiser explicitly opens it.
+      await page.getByRole('button', { name: 'Resultados', exact: true }).waitFor()
+      assert.deepEqual(
+        await page.evaluate(() => window.__calls),
+        [],
+        'no metrics RPC before Resultados is opened'
+      )
+      assert.equal(
+        await page.evaluate(() => window.__readCalls.includes('list_advertiser_campaigns')),
+        false,
+        'list_advertiser_campaigns must not be requested before Resultados is opened'
+      )
+      await page.getByRole('button', { name: 'Resultados', exact: true }).click()
       await page.getByText('Impressões visíveis', { exact: true }).first().waitFor()
       assert.equal(await page.evaluate(() => document.documentElement.dataset.colorMode), theme)
       assert.ok(

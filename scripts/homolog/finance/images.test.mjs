@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { IMAGES, pullImage, verifyLocalPostgresImage } from './images.mjs'
+import { IMAGES, VERIFIED_AMD64_IDS, pullImage, verifyLocalPostgresImage } from './images.mjs'
 
 const id = 'sha256:' + 'a'.repeat(64)
 const ghcr = 'ghcr.io/supabase/'
@@ -12,6 +12,25 @@ const image = (registry, overrides = {}) => JSON.stringify([{
 }])
 const missing = () => { throw new Error('No such image') }
 const quiet = { log() {}, sleep: async () => {} }
+
+test('trusted OCI cache uses only the pinned linux/amd64 config ID without registry access', async () => {
+  const previous = process.env.FINANCE_OCI_CACHE_LOADED
+  process.env.FINANCE_OCI_CACHE_LOADED = '1'
+  try {
+    assert.equal(Object.keys(VERIFIED_AMD64_IDS).length, Object.keys(IMAGES).length)
+    const id = VERIFIED_AMD64_IDS.postgres
+    const result = await pullImage('postgres', { ...quiet, run: (...args) => {
+      assert.deepEqual(args, ['image', 'inspect', id])
+      return JSON.stringify([{ Id: id, Os: 'linux', Architecture: 'amd64' }])
+    } })
+    assert.equal(result, id)
+    await assert.rejects(pullImage('postgres', { ...quiet, run: () => JSON.stringify([{ Id: id, Os: 'linux', Architecture: 'arm64' }]) }), /IMAGE_INTEGRITY_FAILED/)
+    await assert.rejects(pullImage('postgres', { ...quiet, run: () => { throw new Error('No such image') } }), /IMAGE_INTEGRITY_FAILED/)
+  } finally {
+    if (previous === undefined) delete process.env.FINANCE_OCI_CACHE_LOADED
+    else process.env.FINANCE_OCI_CACHE_LOADED = previous
+  }
+})
 
 test('all five original versions and OCI digests are fixed, with no mutable override', () => {
   assert.equal(Object.keys(IMAGES).length, 5)
@@ -52,8 +71,8 @@ test('transient GHCR limit falls back to ECR with the exact same version and dig
     return image(ecr)
   } })
   assert.equal(result, id)
-  assert.deepEqual(pulls, [ref(ghcr), ref(ghcr), ref(ecr)])
-  assert.deepEqual(waits, [2000])
+  assert.deepEqual(pulls, [ref(ghcr), ref(ghcr), ref(ghcr), ref(ecr)])
+  assert.deepEqual(waits, [2000, 8000])
 })
 test('a transient retry can recover without switching registries', async () => {
   let attempts = 0
@@ -68,12 +87,23 @@ test('a transient retry can recover without switching registries', async () => {
   assert.equal(attempts, 2)
 })
 test('both registries unavailable fails after bounded attempts', async () => {
-  const pulls = []
-  await assert.rejects(pullImage('postgres', { ...quiet, run: (...args) => {
+  const pulls = []; const waits = []; const logs = []
+  await assert.rejects(pullImage('postgres', { sleep: async ms => waits.push(ms), log: line => logs.push(line), run: (...args) => {
     if (args[0] !== 'pull') return missing()
     pulls.push(args.at(-1)); throw new Error('503 Service Unavailable')
   } }), /STACK_IMAGE_UNAVAILABLE/)
-  assert.deepEqual(pulls, [ref(ghcr), ref(ghcr), ref(ecr), ref(ecr)])
+  assert.deepEqual(pulls, [ref(ghcr), ref(ghcr), ref(ghcr), ref(ecr), ref(ecr), ref(ecr)])
+  assert.deepEqual(waits, [2000, 8000, 2000, 8000])
+  assert.ok(logs.every(line => line.includes('(server_unavailable)') && !line.includes('Service Unavailable')))
+})
+test('rate limiting is diagnosed without logging raw registry stderr', async () => {
+  const logs = []
+  await assert.rejects(pullImage('postgres', { ...quiet, log: line => logs.push(line), run: (...args) => {
+    if (args[0] !== 'pull') return missing()
+    throw new Error('toomanyrequests: 429 token=secret-value')
+  } }), /STACK_IMAGE_UNAVAILABLE/)
+  assert.equal(logs.length, 6)
+  assert.ok(logs.every(line => line.includes('(rate_limit)') && !line.includes('secret-value')))
 })
 for (const error of ['unauthorized', 'forbidden: 503', 'certificate signed by unknown authority', 'digest mismatch: timeout', 'checksum mismatch', 'unexpected digest', 'unknown Docker failure']) {
   test('security/auth/unknown errors fail closed without fallback: ' + error, async () => {
@@ -116,6 +146,18 @@ test('PostgreSQL harness validates the config ID against its pinned OCI index, n
     assert.deepEqual(args, ['image', 'inspect', id])
     return image(ghcr)
   } })
+})
+test('PostgreSQL harness accepts only the verified cached config ID when cache is loaded', () => {
+  const previous = process.env.FINANCE_OCI_CACHE_LOADED
+  process.env.FINANCE_OCI_CACHE_LOADED = '1'
+  try {
+    const id = VERIFIED_AMD64_IDS.postgres
+    verifyLocalPostgresImage({ Image: id, Config: { Image: id } }, { run: () => JSON.stringify([{ Id: id, Os: 'linux', Architecture: 'amd64' }]) })
+    assert.throws(() => verifyLocalPostgresImage({ Image: id, Config: { Image: id } }, { run: () => JSON.stringify([{ Id: id, Os: 'linux', Architecture: 'arm64' }]) }), /IMAGE_INTEGRITY_FAILED/)
+  } finally {
+    if (previous === undefined) delete process.env.FINANCE_OCI_CACHE_LOADED
+    else process.env.FINANCE_OCI_CACHE_LOADED = previous
+  }
 })
 test('PostgreSQL CLI keeps supporting official versioned images', () => {
   verifyLocalPostgresImage({ Config: { Image: 'ghcr.io/supabase/postgres:17.11.0.002' } }, { run: () => assert.fail('named CLI image needs no harness pull') })
