@@ -1,0 +1,114 @@
+import { test, before, after } from 'node:test'
+import assert from 'node:assert/strict'
+import { build } from 'esbuild'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+let dir, service
+before(async () => {
+  dir = await mkdtemp(join(tmpdir(), 'advertising-service-'))
+  await build({
+    entryPoints: [new URL('./advertisingService.js', import.meta.url).pathname],
+    outfile: join(dir, 'service.mjs'),
+    bundle: true,
+    platform: 'node',
+    format: 'esm',
+    plugins: [
+      {
+        name: 'supabase-fixture',
+        setup(b) {
+          b.onResolve({ filter: /\/supabase\/config$/ }, () => ({
+            path: 'client',
+            namespace: 'fixture',
+          }))
+          b.onLoad({ filter: /.*/, namespace: 'fixture' }, () => ({
+            contents: 'export const supabase = globalThis.__adsClient',
+            loader: 'js',
+          }))
+        },
+      },
+    ],
+  })
+  globalThis.__adsClient = {
+    rpc: async (name, args) => {
+      globalThis.__adsCalls.push({ name, args })
+      return { data: { ok: true }, error: null }
+    },
+  }
+  service = await import(join(dir, 'service.mjs'))
+})
+after(async () => {
+  delete globalThis.__adsClient
+  delete globalThis.__adsCalls
+  await rm(dir, { recursive: true, force: true })
+})
+
+test('creating a campaign sends exactly the wizard fields and the idempotency key, nothing else', async () => {
+  globalThis.__adsCalls = []
+  await service.createAdvertisingCampaign(
+    'account-1',
+    { placement: 'home_banner', communityId: '', title: 'T', description: 'D', destination: 'https://x' },
+    'request-1'
+  )
+  assert.deepEqual(globalThis.__adsCalls, [
+    {
+      name: 'create_advertising_campaign',
+      args: {
+        p_account: 'account-1',
+        p_placement: 'home_banner',
+        p_community: null,
+        p_title: 'T',
+        p_description: 'D',
+        p_destination: 'https://x',
+        p_request_id: 'request-1',
+      },
+    },
+  ])
+})
+
+test('editing a campaign without a desired duration leaves the stored preference untouched (p_desired_days null)', async () => {
+  globalThis.__adsCalls = []
+  await service.editAdvertisingCampaign(
+    { ad_id: 'ad-1', version: 2 },
+    { title: 'T', description: 'D', destination: 'https://x' },
+    false
+  )
+  assert.deepEqual(globalThis.__adsCalls, [
+    {
+      name: 'edit_advertising_campaign',
+      args: {
+        p_id: 'ad-1',
+        p_version: 2,
+        p_title: 'T',
+        p_description: 'D',
+        p_destination: 'https://x',
+        p_submit: false,
+        p_media_id: null,
+        p_desired_days: null,
+      },
+    },
+  ])
+})
+
+test('editing a campaign with a chosen duration forwards it as an integer, and media stays separate from duration', async () => {
+  globalThis.__adsCalls = []
+  await service.editAdvertisingCampaign(
+    { ad_id: 'ad-1', version: 3 },
+    { title: 'T', description: 'D', destination: 'https://x', media_id: 'media-1' },
+    true,
+    7
+  )
+  assert.deepEqual(globalThis.__adsCalls[0].args.p_media_id, 'media-1')
+  assert.deepEqual(globalThis.__adsCalls[0].args.p_desired_days, 7)
+  assert.equal(globalThis.__adsCalls[0].args.p_submit, true)
+})
+
+test('reading campaigns forwards only the account and cursor, matching the card list and the wizard continuation flow', async () => {
+  globalThis.__adsCalls = []
+  await service.getAdvertisingCampaigns('account-1')
+  await service.getAdvertisingCampaigns('account-1', 'ad-20')
+  assert.deepEqual(globalThis.__adsCalls, [
+    { name: 'get_advertising_campaigns', args: { p_account: 'account-1', p_after: null } },
+    { name: 'get_advertising_campaigns', args: { p_account: 'account-1', p_after: 'ad-20' } },
+  ])
+})

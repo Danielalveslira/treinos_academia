@@ -1,13 +1,18 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Box, Heading, Select, Flash, Spinner, Text } from '@primer/react'
+import { Box, Heading, Select, Flash, Spinner, Text, UnderlineNav } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { readCatalog } from '../features/adMetrics/api/advertisers.api'
-import { CampaignIdentity } from '../features/adMetrics/components/CampaignIdentity'
-import AdMetricsTab from '../features/adMetrics/components/AdMetricsTab'
 import { Button, FormControl, TextInput } from '@primer/react'
 import { createAdvertisingAccount } from '../services/advertisingService'
+import { commercialError } from '../utils/commercial'
 const AdvertisingCentral = lazy(() => import('../components/AdvertisingCentral'))
+const AdResultsPanel = lazy(() => import('../features/adMetrics/components/AdResultsPanel'))
+
+const TABS = [
+  { key: 'campaigns', label: 'Meus anúncios' },
+  { key: 'results', label: 'Resultados' },
+]
 
 export default function MyAds() {
   const { user } = useAuth()
@@ -16,8 +21,9 @@ export default function MyAds() {
 function AdvertiserPortal({ userId }) {
   const [params, setParams] = useSearchParams()
   const accountId = params.get('accountId') || ''
+  const [tab, setTab] = useState(params.get('tab') === 'results' ? 'results' : 'campaigns')
+  const [resultsOpened, setResultsOpened] = useState(tab === 'results')
   const [accounts, setAccounts] = useState(null)
-  const [campaigns, setCampaigns] = useState(null)
   const [error, setError] = useState('')
   const [accountName, setAccountName] = useState('')
   const accountLock = useRef(false)
@@ -37,30 +43,12 @@ function AdvertiserPortal({ userId }) {
       live = false
     }
   }, [userId])
-  useEffect(() => {
-    let live = true
-    setCampaigns(null)
-    setError('')
-    if (accountId)
-      readCatalog('list_advertiser_campaigns', { p_account_id: accountId })
-        .then((rows) => {
-          if (live) setCampaigns({ accountId, rows })
-        })
-        .catch(() => {
-          if (live) {
-            setCampaigns(null)
-            setError('Acesso negado ou relatório indisponível. Nenhum dado foi carregado.')
-          }
-        })
-    return () => {
-      live = false
-    }
-  }, [accountId])
   const account = accounts?.find((a) => a.id === accountId)
-  const initialFilters = Object.fromEntries(
-    ['adId', 'communityId', 'placement', 'from', 'to'].map((k) => [k, params.get(k) || null])
-  )
-  initialFilters.days = Number(params.get('days')) || 30
+  useEffect(() => {
+    // A single account needs no explicit choice: pick it silently so a user with one
+    // account never has to understand "conta de anúncios".
+    if (accounts?.length === 1 && !accountId) setParams({ accountId: accounts[0].id })
+  }, [accounts, accountId, setParams])
   return (
     <Box>
       <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
@@ -90,7 +78,7 @@ function AdvertiserPortal({ userId }) {
               setAccounts(await readCatalog('list_advertiser_accounts'))
               setParams({ accountId: id })
             } catch (err) {
-              setError(err.message)
+              setError(commercialError(err))
             } finally {
               accountLock.current = false
             }
@@ -110,7 +98,7 @@ function AdvertiserPortal({ userId }) {
           </Button>
         </Box>
       )}
-      {accounts?.length > 0 && (
+      {accounts?.length > 1 && (
         <Select
           aria-label="Conta de anunciante"
           block
@@ -131,43 +119,42 @@ function AdvertiserPortal({ userId }) {
           Acesso negado.
         </Flash>
       )}
-      {account && !campaigns && !error && <Spinner aria-label="Carregando campanhas" />}
-      {account && campaigns?.accountId === accountId && (
+      {account && (
         <Box sx={{ mt: 3 }}>
-          <Heading as="h2" sx={{ fontSize: 2, mb: 2 }}>
-            {account.name}
-          </Heading>
-          <Text sx={{ display: 'block', fontSize: 0, mb: 2 }}>
-            Relatórios exigem login e autorização. A gestão depende do seu papel na conta.
-          </Text>
-          {campaigns.rows.find((c) => c.id === initialFilters.adId) && (
-            <CampaignIdentity campaign={campaigns.rows.find((c) => c.id === initialFilters.adId)} />
+          <UnderlineNav aria-label="Seções de Meus anúncios" sx={{ mb: 3 }}>
+            {TABS.map((item) => (
+              <UnderlineNav.Item
+                key={item.key}
+                as="button"
+                aria-current={tab === item.key ? 'page' : undefined}
+                onSelect={() => {
+                  setTab(item.key)
+                  setParams({ accountId, tab: item.key }, { replace: true })
+                  if (item.key === 'results') setResultsOpened(true)
+                }}
+              >
+                {item.label}
+              </UnderlineNav.Item>
+            ))}
+          </UnderlineNav>
+
+          <Box hidden={tab !== 'campaigns'}>
+            <Suspense fallback={<Spinner aria-label="Carregando anúncios" />}>
+              {account.can_manage ? (
+                <AdvertisingCentral key={accountId} accountId={accountId} />
+              ) : (
+                <Text as="p">Sua conta não tem permissão para gerenciar campanhas.</Text>
+              )}
+            </Suspense>
+          </Box>
+
+          {resultsOpened && (
+            <Box hidden={tab !== 'results'}>
+              <Suspense fallback={<Spinner aria-label="Carregando resultados" />}>
+                <AdResultsPanel userId={userId} accountId={accountId} />
+              </Suspense>
+            </Box>
           )}
-          <Suspense fallback={<Spinner aria-label="Carregando central" />}>
-            {account.can_manage && <AdvertisingCentral key={accountId} accountId={accountId} />}
-          </Suspense>
-          <AdMetricsTab
-            key={params.toString()}
-            userId={userId}
-            accountId={accountId}
-            initialFilters={initialFilters}
-            onAccessDenied={() => {
-              setCampaigns(null)
-              setError('Acesso negado a esta conta ou campanha.')
-            }}
-            ads={campaigns.rows.map((c) => ({
-              id: c.id,
-              title: `${c.title || 'Campanha histórica'}${c.deleted ? ' (removida — material indisponível)' : ''}`,
-              partnerName: c.partner_name,
-            }))}
-            communities={[]}
-            onFiltersChange={(filters) => {
-              const next = { accountId }
-              for (const k of ['adId', 'communityId', 'placement', 'days', 'from', 'to'])
-                if (filters[k] != null) next[k] = String(filters[k])
-              setParams(next, { replace: true })
-            }}
-          />
         </Box>
       )}
     </Box>

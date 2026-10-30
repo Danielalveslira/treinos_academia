@@ -45,6 +45,14 @@ export function commercialError(error) {
       : 'Não foi possível concluir. Atualize os dados e tente novamente.')
   )
 }
+// A desired duration chosen earlier (e.g. the ad wizard's draft) is only ever a
+// suggestion: the current tariff's minDays/maxDays always win.
+export function clampInitialDays(initialDays, tariff) {
+  if (!initialDays) return '1'
+  const min = Number(tariff?.minDays) || 1
+  const max = Number(tariff?.maxDays) || 3650
+  return String(Math.min(Math.max(Number(initialDays) || 1, min), max))
+}
 export function commercialDate(value) {
   return value
     ? new Date(value).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) + ' (Brasília)'
