@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Box, Button, Heading, Spinner } from '@primer/react'
+import { useSearchParams } from 'react-router-dom'
+import { Box, Button, Heading, Spinner, Text, UnderlineNav } from '@primer/react'
 import { supabase } from '../supabase/config'
 import { validatePartnerProduct } from '../utils/validators'
 import { useToast } from '../hooks/useToast'
@@ -28,7 +29,18 @@ const empty = {
 // campos do formulário (que seguem o nome das colunas de partner_products).
 const ERROR_KEY_BY_FIELD = { store_url: 'storeUrl', image_url: 'imageUrl', ends_at: 'endsAt' }
 
+// As três categorias têm regras e donos de dados diferentes (leads de contato,
+// vitrines modernas com direito de publicação, cadastros administrativos antigos) --
+// nunca devem aparecer misturadas na mesma tela sem distinção.
+const SUB_TABS = [
+  ['leads', 'Propostas comerciais'],
+  ['storefronts', 'Vitrines de produtos'],
+  ['legacy', 'Produtos legados'],
+]
+
 export default function CommercialAdmin() {
+  const [params, setParams] = useSearchParams()
+  const sub = SUB_TABS.some(([key]) => key === params.get('sub')) ? params.get('sub') : 'leads'
   const [leads, setLeads] = useState([])
   const [products, setProducts] = useState([])
   const [productsLoading, setProductsLoading] = useState(true)
@@ -43,41 +55,49 @@ export default function CommercialAdmin() {
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
 
-  async function refresh() {
-    const [leadResult, productResult] = await Promise.all([
-      supabase
-        .from('commercial_leads')
-        .select(
-          'id,company,contact,email,whatsapp,segment,website,modality,message,status,created_at'
-        )
-        .order('created_at', { ascending: false })
-        .limit(100),
-      listLegacyProducts()
-        .then((data) => ({ data, error: null }))
-        .catch((error) => ({ error })),
-    ])
-    if (leadResult.error || productResult.error)
-      setMessage(
-        'Não foi possível carregar os dados comerciais. Confira a migração e suas permissões.'
+  async function refreshLeads() {
+    const { data, error } = await supabase
+      .from('commercial_leads')
+      .select(
+        'id,company,contact,email,whatsapp,segment,website,modality,message,status,created_at'
       )
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (error)
+      setMessage('Não foi possível carregar as propostas. Confira a migração e suas permissões.')
     else {
-      setLeads(leadResult.data)
-      setProducts(productResult.data)
-      setHasMoreProducts(productResult.data.length === 20)
+      setLeads(data)
       setMessage('')
     }
-    setProductsLoading(false)
   }
+  async function refreshProducts() {
+    setProductsLoading(true)
+    try {
+      const data = await listLegacyProducts()
+      setProducts(data)
+      setHasMoreProducts(data.length === 20)
+      setMessage('')
+    } catch {
+      setMessage(
+        'Não foi possível carregar os produtos legados. Confira a migração e suas permissões.'
+      )
+    } finally {
+      setProductsLoading(false)
+    }
+  }
+  // Cada categoria carrega só quando é aberta -- a página nunca busca as três de uma vez.
   useEffect(() => {
-    refresh()
-  }, [])
+    setMessage('')
+    if (sub === 'leads') refreshLeads()
+    else if (sub === 'legacy') refreshProducts()
+  }, [sub])
 
   async function changeStatus(id, status) {
     setBusy(true)
     const { error } = await supabase.from('commercial_leads').update({ status }).eq('id', id)
     setBusy(false)
     if (error) setMessage('Não foi possível atualizar o lead.')
-    else refresh()
+    else refreshLeads()
   }
 
   function onFieldChange(field, value) {
@@ -147,7 +167,7 @@ export default function CommercialAdmin() {
     setForm(empty)
     setEditing(null)
     setProductErrors({})
-    refresh()
+    refreshProducts()
   }
 
   async function removeProduct(product) {
@@ -165,105 +185,140 @@ export default function CommercialAdmin() {
     }
     showToast('Produto excluído.')
     if (editing === product.id) cancelEdit()
-    refresh()
+    refreshProducts()
+  }
+
+  function selectSub(key) {
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('sub', key)
+        return next
+      },
+      { replace: true }
+    )
   }
 
   return (
     <div className="commercial-admin">
       <p role="status">{message}</p>
-      <h2>Propostas comerciais</h2>
-      {leads.length === 0 && <p>Nenhuma proposta recebida.</p>}
-      {leads.map((lead) => (
-        <article key={lead.id} className="commercial-admin-card">
-          <h3>
-            {lead.company} · {lead.modality}
-          </h3>
-          <p>
-            {lead.contact} · <a href={`mailto:${lead.email}`}>{lead.email}</a>
-            {lead.whatsapp ? ` · ${lead.whatsapp}` : ''}
-          </p>
-          <p>
-            {lead.segment} ·{' '}
-            <a href={lead.website} target="_blank" rel="noopener noreferrer">
-              Site informado ↗
-            </a>
-          </p>
-          <p>{lead.message}</p>
-          <label>
-            Status{' '}
-            <select
-              value={lead.status}
-              disabled={busy}
-              onChange={(event) => changeStatus(lead.id, event.target.value)}
-            >
-              <option value="novo">Novo</option>
-              <option value="em_contato">Em contato</option>
-              <option value="encerrado">Encerrado</option>
-            </select>
-          </label>
-        </article>
-      ))}
-
-      <Box sx={{ mt: 5 }}>
-        <StorefrontManager admin />
-      </Box>
-      <StorefrontMaintenance
-        legacy={legacyTarget}
-        onCloseLegacy={() => setLegacyTarget(null)}
-        onAssociated={refresh}
-      />
-
-      <Box sx={{ mt: 5 }}>
-        <Heading as="h2" sx={{ fontSize: 2, mb: 3 }}>
-          Produtos legados (somente administração)
-        </Heading>
-
-        <ToastFlash toasts={toasts} />
-
-        <PartnerProductForm
-          form={form}
-          errors={productErrors}
-          editing={Boolean(editing)}
-          requireImage={!editing || form.approved}
-          busy={busy}
-          onFieldChange={onFieldChange}
-          onSubmit={saveProduct}
-          onCancel={cancelEdit}
-        />
-
-        {productsLoading ? (
-          <Spinner sx={{ display: 'block', mx: 'auto', my: 4 }} />
-        ) : (
-          <PartnerProductList
-            products={products}
-            busy={busy}
-            onEdit={startEdit}
-            onDelete={removeProduct}
-            onAssociate={(product) =>
-              setLegacyTarget({ ...product, requestId: crypto.randomUUID() })
-            }
-          />
-        )}
-        {hasMoreProducts && (
-          <Button
-            disabled={loadingMore || busy}
-            onClick={async () => {
-              setLoadingMore(true)
-              try {
-                const next = await listLegacyProducts(products.at(-1).id)
-                setProducts((prev) => [...prev, ...next])
-                setHasMoreProducts(next.length === 20)
-              } catch {
-                setMessage('Não foi possível carregar mais registros legados.')
-              } finally {
-                setLoadingMore(false)
-              }
-            }}
+      <UnderlineNav aria-label="Categorias comerciais">
+        {SUB_TABS.map(([key, label]) => (
+          <UnderlineNav.Item
+            key={key}
+            as="button"
+            aria-current={sub === key ? 'page' : undefined}
+            onSelect={() => selectSub(key)}
           >
-            Mais produtos legados
-          </Button>
-        )}
-      </Box>
+            {label}
+          </UnderlineNav.Item>
+        ))}
+      </UnderlineNav>
+      {sub === 'leads' && (
+        <>
+          <h2>Propostas comerciais</h2>
+          {leads.length === 0 && <p>Nenhuma proposta recebida.</p>}
+          {leads.map((lead) => (
+            <article key={lead.id} className="commercial-admin-card">
+              <h3>
+                {lead.company} · {lead.modality}
+              </h3>
+              <p>
+                {lead.contact} · <a href={`mailto:${lead.email}`}>{lead.email}</a>
+                {lead.whatsapp ? ` · ${lead.whatsapp}` : ''}
+              </p>
+              <p>
+                {lead.segment} ·{' '}
+                <a href={lead.website} target="_blank" rel="noopener noreferrer">
+                  Site informado ↗
+                </a>
+              </p>
+              <p>{lead.message}</p>
+              <label>
+                Status{' '}
+                <select
+                  value={lead.status}
+                  disabled={busy}
+                  onChange={(event) => changeStatus(lead.id, event.target.value)}
+                >
+                  <option value="novo">Novo</option>
+                  <option value="em_contato">Em contato</option>
+                  <option value="encerrado">Encerrado</option>
+                </select>
+              </label>
+            </article>
+          ))}
+        </>
+      )}
+
+      {sub === 'storefronts' && (
+        <Box sx={{ mt: 3 }}>
+          <StorefrontManager admin />
+          <StorefrontMaintenance
+            legacy={legacyTarget}
+            onCloseLegacy={() => setLegacyTarget(null)}
+            onAssociated={refreshProducts}
+          />
+        </Box>
+      )}
+
+      {sub === 'legacy' && (
+        <Box sx={{ mt: 3 }}>
+          <Heading as="h2" sx={{ fontSize: 2, mb: 3 }}>
+            Produtos legados (somente administração)
+          </Heading>
+          <Text as="p" sx={{ color: 'fg.muted' }}>
+            Registros administrativos anteriores ao modelo atual de vitrines, preservados por
+            compatibilidade. Novos cadastros comerciais usam Vitrines de produtos.
+          </Text>
+
+          <ToastFlash toasts={toasts} />
+
+          <PartnerProductForm
+            form={form}
+            errors={productErrors}
+            editing={Boolean(editing)}
+            requireImage={!editing || form.approved}
+            busy={busy}
+            onFieldChange={onFieldChange}
+            onSubmit={saveProduct}
+            onCancel={cancelEdit}
+          />
+
+          {productsLoading ? (
+            <Spinner sx={{ display: 'block', mx: 'auto', my: 4 }} />
+          ) : (
+            <PartnerProductList
+              products={products}
+              busy={busy}
+              onEdit={startEdit}
+              onDelete={removeProduct}
+              onAssociate={(product) =>
+                setLegacyTarget({ ...product, requestId: crypto.randomUUID() })
+              }
+            />
+          )}
+          {hasMoreProducts && (
+            <Button
+              disabled={loadingMore || busy}
+              onClick={async () => {
+                setLoadingMore(true)
+                try {
+                  const next = await listLegacyProducts(products.at(-1).id)
+                  setProducts((prev) => [...prev, ...next])
+                  setHasMoreProducts(next.length === 20)
+                } catch {
+                  setMessage('Não foi possível carregar mais registros legados.')
+                } finally {
+                  setLoadingMore(false)
+                }
+              }}
+            >
+              Mais produtos legados
+            </Button>
+          )}
+        </Box>
+      )}
     </div>
   )
 }
