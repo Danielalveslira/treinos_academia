@@ -1,12 +1,13 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Button, Flash, Heading, Spinner } from '@primer/react'
+import { Button, Checkbox, Flash, Heading, Spinner } from '@primer/react'
 import { PlayIcon } from '@primer/octicons-react'
 import { useWorkoutSheets } from './useWorkoutSheets.js'
 import { originState } from '../../utils/navigation.js'
 import {
   archiveWorkoutSheet,
   duplicateWorkoutSheet,
+  listWorkoutSheets,
   reorderWorkoutSheets,
   sheetError,
 } from './workoutSheetsService.js'
@@ -15,6 +16,7 @@ import './workoutSheets.css'
 export default function WorkoutSheetsPage() {
   const [archived, setArchived] = useState(false)
   const [page, setPage] = useState(0)
+  const [hasNext, setHasNext] = useState(false)
   const { data, loading, error, refresh, online } = useWorkoutSheets(null, false, archived, page)
   const navigate = useNavigate()
   const location = useLocation()
@@ -38,6 +40,28 @@ export default function WorkoutSheetsPage() {
     }
   }
   const visible = (data || []).filter((s) => Boolean(s.archived_at) === archived)
+  useEffect(() => {
+    if (!archived || loading || error || visible.length < 40) {
+      setHasNext(false)
+      return
+    }
+    let active = true
+    listWorkoutSheets(true, page + 1).then(
+      (next) => {
+        if (active) setHasNext(next.some((sheet) => Boolean(sheet.archived_at)))
+      },
+      () => {
+        if (active) setHasNext(false)
+      }
+    )
+    return () => {
+      active = false
+    }
+  }, [archived, page, loading, error, visible.length])
+  useEffect(() => {
+    if (archived && !loading && !error && page > 0 && visible.length === 0)
+      setPage((current) => Math.max(0, current - 1))
+  }, [archived, loading, error, page, visible.length])
   async function duplicate(sheet) {
     if (!requests.current.has(sheet.id)) requests.current.set(sheet.id, crypto.randomUUID())
     const result = await duplicateWorkoutSheet(sheet.id, requests.current.get(sheet.id))
@@ -63,16 +87,14 @@ export default function WorkoutSheetsPage() {
       </header>
       <p>Organize exercícios e metas. Os resultados continuam no histórico de treinos.</p>
       <label className="sheet-check">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={archived}
-          onChange={(e) =>
-            (() => {
-              setArchived(e.target.checked)
-              setPage(0)
-            })()
-          }
-        />{' '}
+          onChange={(event) => {
+            setArchived(event.target.checked)
+            setPage(0)
+            setHasNext(false)
+          }}
+        />
         Mostrar arquivadas
       </label>
       {(error || message) && (
@@ -81,31 +103,34 @@ export default function WorkoutSheetsPage() {
         </Flash>
       )}
       {loading && <Spinner aria-label="Carregando fichas" />}
-      {!loading && !error && !visible.length && (
+      {!loading && !error && archived && !visible.length && page === 0 && (
+        <p className="sheet-empty" role="status">
+          Nenhuma ficha arquivada.
+        </p>
+      )}
+      {!loading && !error && !archived && !visible.length && (
         <div className="sheet-card">
-          <h2>{archived ? 'Nenhuma ficha arquivada' : 'Sua primeira ficha começa aqui'}</h2>
-          {!archived && (
-            <p>
-              Crie uma ficha A/B/C ou escolha um nome seu. Você pode salvar um rascunho e
-              adicionar exercícios depois — use o botão acima.
-            </p>
-          )}
+          <h2>Sua primeira ficha começa aqui</h2>
+          <p>
+            Crie uma ficha A/B/C ou escolha um nome seu. Você pode salvar um rascunho e adicionar
+            exercícios depois — use o botão acima.
+          </p>
           <p>
             <Link to="/exercicios?aba=biblioteca">Abrir biblioteca</Link> ·{' '}
             <Link to="/exercicios?aba=catalogo">Catálogo Evolutus</Link>
           </p>
         </div>
       )}
-      {archived && (
-        <div className="sheet-actions">
+      {archived && !loading && !error && visible.length > 0 && (page > 0 || hasNext) && (
+        <nav className="sheet-pagination" aria-label="Páginas de fichas arquivadas">
           <Button disabled={page === 0 || loading} onClick={() => setPage((p) => p - 1)}>
             Página anterior
           </Button>
-          <span>Página {page + 1}</span>
-          <Button disabled={loading || visible.length < 40} onClick={() => setPage((p) => p + 1)}>
+          <span aria-current="page">Página {page + 1}</span>
+          <Button disabled={!hasNext} onClick={() => setPage((p) => p + 1)}>
             Próxima página
           </Button>
-        </div>
+        </nav>
       )}
       <div className="sheet-list">
         {visible.map((sheet, index) => (

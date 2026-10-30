@@ -5,14 +5,14 @@
       "theme": "light",
       "width": 320,
       "height": 568,
-      "listMs": 7961,
+      "listMs": 4948,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 24020492,
+      "usedHeapBytes": 16211876,
       "inputPaintMs": [
-        18.5,
-        26.699999999254942,
-        171.09999999962747
+        18.699999999254942,
+        32.59999999962747,
+        24.5
       ],
       "pickerLayout": {
         "before": {
@@ -33,14 +33,14 @@
       "theme": "light",
       "width": 360,
       "height": 740,
-      "listMs": 6548,
+      "listMs": 4480,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 23420324,
+      "usedHeapBytes": 16218340,
       "inputPaintMs": [
-        12.299999999813735,
-        18,
-        13.5
+        26.40000000037253,
+        5.599999999627471,
+        9
       ],
       "pickerLayout": {
         "before": {
@@ -59,16 +59,44 @@
     },
     {
       "theme": "light",
-      "width": 390,
+      "width": 375,
       "height": 900,
-      "listMs": 4282,
+      "listMs": 5034,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 13485740,
+      "usedHeapBytes": 16184632,
       "inputPaintMs": [
-        8.799999999813735,
-        8.5,
-        5.2000000001862645
+        16.199999999254942,
+        14.5,
+        38.20000000111759
+      ],
+      "pickerLayout": {
+        "before": {
+          "height": 414,
+          "scrollHeight": 4105,
+          "pageHeight": 2113
+        },
+        "after": {
+          "height": 414,
+          "pageHeight": 2113
+        }
+      },
+      "volume": null,
+      "readRequests": 15,
+      "writeRequests": 1
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "height": 900,
+      "listMs": 4787,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 16663352,
+      "inputPaintMs": [
+        20.59999999962747,
+        6.099999999627471,
+        14.699999999254942
       ],
       "pickerLayout": {
         "before": {
@@ -82,18 +110,18 @@
         }
       },
       "volume": {
-        "list40Ms": 3426,
-        "editor40Ms": 3783,
+        "list40Ms": 4453,
+        "editor40Ms": 4816,
         "mountedTargetFields": 0,
         "inputPaintMs": [
-          17.200000000186265,
-          3,
-          4.6000000005587935,
-          2.800000000745058,
-          0.7000000001862645
+          17,
+          3.900000000372529,
+          8.400000000372529,
+          4.099999999627471,
+          0.8000000007450581
         ],
         "overflow": false,
-        "heap": 13485740
+        "heap": 16663352
       },
       "readRequests": 32,
       "writeRequests": 6
@@ -102,14 +130,14 @@
       "theme": "light",
       "width": 768,
       "height": 900,
-      "listMs": 3997,
+      "listMs": 4882,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 26157300,
+      "usedHeapBytes": 24226660,
       "inputPaintMs": [
-        4.7999999998137355,
-        19.5,
-        16.399999999441206
+        21.40000000037253,
+        21,
+        14.599999999627471
       ],
       "pickerLayout": {
         "before": {
@@ -130,14 +158,14 @@
       "theme": "light",
       "width": 1280,
       "height": 900,
-      "listMs": 3851,
+      "listMs": 4782,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 23821916,
+      "usedHeapBytes": 23403236,
       "inputPaintMs": [
-        18.40000000037253,
-        7.7000000001862645,
-        13.599999999627471
+        37.30000000074506,
+        13.900000000372529,
+        35.40000000037253
       ],
       "pickerLayout": {
         "before": {
@@ -158,14 +186,14 @@
       "theme": "dark",
       "width": 320,
       "height": 568,
-      "listMs": 4271,
+      "listMs": 3965,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 9933356,
+      "usedHeapBytes": 16189936,
       "inputPaintMs": [
-        7.599999999627471,
-        13.700000000186265,
-        12.799999999813735
+        7.099999999627471,
+        30.09999999962747,
+        6.5
       ],
       "pickerLayout": {
         "before": {
@@ -186,14 +214,14 @@
       "theme": "dark",
       "width": 360,
       "height": 740,
-      "listMs": 3619,
+      "listMs": 5073,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 13243372,
+      "usedHeapBytes": 16693508,
       "inputPaintMs": [
-        4.2999999998137355,
-        7.6000000005587935,
-        10
+        81,
+        15.900000000372529,
+        31.40000000037253
       ],
       "pickerLayout": {
         "before": {
@@ -212,16 +240,44 @@
     },
     {
       "theme": "dark",
-      "width": 390,
+      "width": 375,
       "height": 900,
-      "listMs": 4126,
+      "listMs": 4953,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 15164692,
+      "usedHeapBytes": 16050836,
       "inputPaintMs": [
-        35.60000000055879,
-        27.5,
-        16
+        46.5,
+        22.700000001117587,
+        56.30000000074506
+      ],
+      "pickerLayout": {
+        "before": {
+          "height": 414,
+          "scrollHeight": 4105,
+          "pageHeight": 2113
+        },
+        "after": {
+          "height": 414,
+          "pageHeight": 2113
+        }
+      },
+      "volume": null,
+      "readRequests": 15,
+      "writeRequests": 1
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "height": 900,
+      "listMs": 5343,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 13380136,
+      "inputPaintMs": [
+        27.90000000037253,
+        23.800000000745058,
+        51.69999999925494
       ],
       "pickerLayout": {
         "before": {
@@ -242,14 +298,14 @@
       "theme": "dark",
       "width": 768,
       "height": 900,
-      "listMs": 4436,
+      "listMs": 4784,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 17782692,
+      "usedHeapBytes": 10225244,
       "inputPaintMs": [
-        37.799999999813735,
-        9.900000000372529,
-        53.299999999813735
+        9,
+        5.100000001490116,
+        26.59999999962747
       ],
       "pickerLayout": {
         "before": {
@@ -270,14 +326,14 @@
       "theme": "dark",
       "width": 1280,
       "height": 900,
-      "listMs": 6087,
+      "listMs": 5264,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 15758568,
+      "usedHeapBytes": 10219648,
       "inputPaintMs": [
-        31.5,
-        16.299999999813735,
-        12.100000000558794
+        10.400000000372529,
+        7.5,
+        6.699999999254942
       ],
       "pickerLayout": {
         "before": {

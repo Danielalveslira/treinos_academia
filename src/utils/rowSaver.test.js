@@ -112,3 +112,40 @@ test('retry without a failure does nothing', async () => {
   await saver.retry()
   assert.equal(calls.length, 0)
 })
+
+test('resumed row keeps its identity and updates instead of creating a duplicate', async () => {
+  const calls = []
+  const saver = createRowSaver({
+    initialRow: { id: 'saved-row', persisted: { 0: '20|10' }, pendingSync: true },
+    createRow: async () => {
+      throw new Error('duplicate create')
+    },
+    updateRow: async (id, value) => {
+      calls.push([id, value])
+      return { pendingSync: false }
+    },
+  })
+  assert.equal(saver.getState().pendingSync, true)
+  await saver.save(payload('20', '25'))
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0][0], 'saved-row')
+  assert.equal(saver.getState().status, 'saved')
+  assert.equal(saver.getState().pendingSync, false)
+})
+
+test('finish barrier waits for an in-flight save and exposes failures', async () => {
+  let rejectSave
+  const saver = createRowSaver({
+    createRow: () =>
+      new Promise((resolve, reject) => {
+        rejectSave = reject
+      }),
+    updateRow: async () => ({}),
+    newId: () => 'stable-id',
+  })
+  saver.save(payload('20'))
+  const idle = saver.whenIdle()
+  rejectSave(new Error('write failed'))
+  assert.equal((await idle).status, 'error')
+  assert.equal(saver.getRowId(), 'stable-id')
+})

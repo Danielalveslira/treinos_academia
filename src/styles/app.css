@@ -500,6 +500,9 @@ button:focus-visible {
   right: 20px;
   z-index: 12;
 }
+body:has(.workout-session-page) .pwa-install {
+  display: none;
+}
 .pwa-dialog {
   width: min(440px, calc(100% - 32px));
   padding: 24px;

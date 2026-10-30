@@ -67,6 +67,7 @@ export function buildLocalRow(userId, entityId, payload, existing, now) {
     duration_minutes: strength ? null : payload.duration_minutes,
     distance_km: strength ? null : (payload.distance_km ?? null),
     note: payload.note ?? '',
+    exercise_completed: payload.exercise_completed ?? existing?.exercise_completed ?? false,
     // created_at/updated_at locais são só apresentação até o ACK: o servidor carimba os dele.
     created_at: existing?.created_at ?? iso(now),
     updated_at: existing?.updated_at ?? null,

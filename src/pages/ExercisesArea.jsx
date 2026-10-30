@@ -15,7 +15,7 @@ export default function ExercisesArea() {
           sem link redundante para ela mesma. Biblioteca e Catálogo Evolutus continuam
           acessíveis como navegação secundária e compacta; voltando dali, um link de volta
           para Fichas aparece no lugar. */}
-      <nav className="exercise-area-nav" aria-label="Área de exercícios">
+      <nav className="exercise-area-nav workout-sheets" aria-label="Área de exercícios">
         <span className="exercise-area-nav-secondary">
           {tab !== 'fichas' && <Link to="/exercicios?aba=fichas">← Minhas fichas</Link>}
           <Link
