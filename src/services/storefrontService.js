@@ -53,6 +53,29 @@ export const listStorefrontOrders = (id, before = null) =>
   rpc('list_storefront_orders', { p_id: id, p_before: before })
 export const listStorefrontProducts = (id, offset) =>
   rpc('list_storefront_products', { p_id: id, p_offset: offset })
+// Used only after an ambiguous save response. The read must be complete before
+// deciding an upload is orphaned; the DELETE endpoint also checks DB references.
+export async function isStorefrontImageLinked(storefrontId, mediaId, { admin = false, product = false } = {}) {
+  let before = null
+  let storefront
+  do {
+    const page = await listStorefronts(admin, before)
+    storefront = page.items.find((item) => item.id === storefrontId)
+    if (storefront) break
+    before = page.nextCursor
+  } while (before)
+  if (!storefront) throw new Error('STOREFRONT_UNAVAILABLE')
+  if (!product) return storefront.logoMediaId === mediaId
+  if (storefront.products.some((item) => item.mediaId === mediaId)) return true
+  let offset = storefront.products.length
+  while (offset < Number(storefront.productCount)) {
+    const page = await listStorefrontProducts(storefrontId, offset)
+    if (!Array.isArray(page) || page.length === 0) throw new Error('PRODUCT_LIST_INCOMPLETE')
+    if (page.some((item) => item.mediaId === mediaId)) return true
+    offset += page.length
+  }
+  return false
+}
 export const setStorefrontLimits = (limits, revision, reason, confirm) =>
   rpc('admin_set_storefront_limits', {
     p_max_products: Number(limits.maxProducts),
@@ -104,13 +127,14 @@ export async function discardStorefrontImage(id) {
   if (!id) return
   const { data } = await supabase.auth.getSession()
   if (!data.session) return
-  await fetch(storefrontMediaUrl(id), {
+  const response = await fetch(storefrontMediaUrl(id), {
     method: 'DELETE',
     headers: {
       Authorization: `Bearer ${data.session.access_token}`,
       apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
     },
   })
+  if (!response.ok) throw new Error('IMAGE_CLEANUP_FAILED')
 }
 
 export const getStorefrontMaintenance = () => rpc('admin_storefront_maintenance')
