@@ -15,9 +15,10 @@ create function pg_temp.rot_viewer() returns void language plpgsql as $$begin
 end$$;
 
 select pg_temp.rot_admin();
-set local role authenticated;
 -- 5 campanhas legadas (globais, sem contrato comercial) igualmente elegíveis -- nenhum ID,
 -- ordem de criação ou nome deveria pesar na amostra.
+-- O gatilho de compatibilidade só permite inserir fixtures legadas pelo papel
+-- supabase_admin; usuários autenticados devem usar o fluxo comercial.
 insert into public.sponsored_ads(id,partner_name,title,is_global,display_mode,created_by)
 select ('76910000-0000-0000-0000-'||lpad(i::text,12,'0'))::uuid,'Marca '||i,'Campanha '||i,true,array['banner'],'76900000-0000-0000-0000-000000000002'
 from generate_series(1,5)i;
@@ -27,8 +28,9 @@ values('76920000-0000-0000-0000-000000000001','Marca vencida','Campanha vencida'
 reset role;
 
 select pg_temp.rot_viewer();
-set local role authenticated;
 
+-- Configuração interna não é legível pelo papel authenticated; conferir como
+-- administrador antes de exercitar a RPC pública sob o papel do usuário.
 select is(
   (select display_limit from public.advertising_placements where code='home_banner'),
   4,
@@ -40,6 +42,7 @@ select is(
   'community_feed não é alterado por esta migration (cada linha retornada é um card próprio no feed)'
 );
 
+set local role authenticated;
 select is(jsonb_array_length(public.select_advertising('home_banner',null)),4,'amostra respeita display_limit mesmo com mais candidatos elegíveis');
 select is(
   (select (x->>'eligible_total')::integer from jsonb_array_elements(public.select_advertising('home_banner',null)) x limit 1),
@@ -72,7 +75,42 @@ end $$;
 select ok((select min(hits) from rot_tally)>180,'nenhuma campanha é sistematicamente excluída da amostra (mínimo de aparições acima do esperado por acaso)');
 select ok((select max(hits) from rot_tally)<300,'nenhuma campanha aparece em 100% das chamadas (sempre há chance real de ficar de fora, provando que a amostra não está fixa em 4 favoritos)');
 select ok((select max(hits)-min(hits) from rot_tally)<120,'dispersão entre as campanhas é compatível com seleção uniforme, não com favoritismo por id/ordem/posição');
+select diag('300 consultas, aparições por campanha: '||(select string_agg(right(ad_id::text,2)||'='||hits,', ' order by ad_id) from rot_tally));
 drop table rot_tally;
+
+-- Cardinais do mesmo seletor. O papel privilegiado prepara apenas fixtures de
+-- teste; todas as chamadas à RPC continuam sob authenticated.
+reset role;
+delete from public.sponsored_ads where is_global;
+insert into public.sponsored_ads(id,partner_name,title,is_global,display_mode,created_by)
+values('76910000-0000-0000-0000-000000000001','Marca 1','Campanha 1',true,array['banner'],'76900000-0000-0000-0000-000000000002');
+set local role authenticated;
+select is(jsonb_array_length(public.select_advertising('home_banner',null)),1,'1 elegível produz amostra de 1');
+select is((public.select_advertising('home_banner',null)->0->>'eligible_total')::integer,1,'contador real é 1 com uma campanha');
+
+reset role;
+insert into public.sponsored_ads(id,partner_name,title,is_global,display_mode,created_by)
+select ('76910000-0000-0000-0000-'||lpad(i::text,12,'0'))::uuid,'Marca '||i,'Campanha '||i,true,array['banner'],'76900000-0000-0000-0000-000000000002'
+from generate_series(2,4)i;
+set local role authenticated;
+select is(jsonb_array_length(public.select_advertising('home_banner',null)),4,'4 elegíveis produzem amostra de 4');
+select is((public.select_advertising('home_banner',null)->0->>'eligible_total')::integer,4,'contador real é 4 com quatro campanhas');
+
+reset role;
+insert into public.sponsored_ads(id,partner_name,title,is_global,display_mode,created_by)
+select ('76910000-0000-0000-0000-'||lpad(i::text,12,'0'))::uuid,'Marca '||i,'Campanha '||i,true,array['banner'],'76900000-0000-0000-0000-000000000002'
+from generate_series(5,20)i;
+set local role authenticated;
+select is(jsonb_array_length(public.select_advertising('home_banner',null)),4,'20 elegíveis mantêm amostra de 4');
+select is((public.select_advertising('home_banner',null)->0->>'eligible_total')::integer,20,'contador real é 20 com vinte campanhas');
+
+reset role;
+insert into public.sponsored_ads(id,partner_name,title,is_global,display_mode,created_by)
+select ('76910000-0000-0000-0000-'||lpad(i::text,12,'0'))::uuid,'Marca '||i,'Campanha '||i,true,array['banner'],'76900000-0000-0000-0000-000000000002'
+from generate_series(21,100)i;
+set local role authenticated;
+select is(jsonb_array_length(public.select_advertising('home_banner',null)),4,'100 elegíveis mantêm amostra de 4');
+select is((public.select_advertising('home_banner',null)->0->>'eligible_total')::integer,100,'contador real é 100 com cem campanhas');
 
 select * from finish();
 rollback;

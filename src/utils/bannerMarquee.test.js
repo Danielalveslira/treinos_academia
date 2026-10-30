@@ -54,9 +54,7 @@ test('teto de exposição: texto comprido demais pra velocidade confortável ace
   assert.equal(belowThreshold.scrollMs, Math.round(((300 + FADE_PX) / SCROLL_SPEED_PX_S) * 1000))
   assert.ok(belowThreshold.totalMs <= MAX_DWELL_MS)
 
-  // Um título real no limite de 100 caracteres (sponsored_ads_title_check) produz um excesso
-  // bem abaixo de 1000px nos layouts deste banner -- esse é o caso que o teto de exposição
-  // precisa cobrir de verdade.
+  // Um excesso moderado cabe com a velocidade preferida para textos longos.
   const near100CharTitle = marqueeTiming(900)
   assert.ok(near100CharTitle.totalMs <= MAX_DWELL_MS)
   const distance900 = 900 + FADE_PX
@@ -64,21 +62,20 @@ test('teto de exposição: texto comprido demais pra velocidade confortável ace
   assert.equal(
     Math.round(impliedSpeed900),
     MAX_SCROLL_SPEED_PX_S,
-    'título real no limite de tamanho rola à velocidade do teto, dentro do teto de exposição'
+    'excesso moderado rola à velocidade preferida, dentro do teto de exposição'
   )
 
-  // Excesso sintético bem além de qualquer título válido (só pra provar o limite do próprio
-  // mecanismo): a velocidade NUNCA passa do teto -- entre ler até o fim mais lento ou cortar a
-  // leitura, o código escolhe sempre completar a leitura, então o teto de EXPOSIÇÃO pode ser
-  // excedido num caso assim, mas o teto de VELOCIDADE (legibilidade) nunca é.
+  // Em uma tela estreita, até um título válido com glifos largos pode passar
+  // do orçamento a 90px/s. O teto de exposição continua valendo.
+  const widestValidTitle = marqueeTiming(1400)
+  assert.equal(widestValidTitle.totalMs, MAX_DWELL_MS)
+  assert.equal(widestValidTitle.scrollMs, MAX_DWELL_MS - START_PAUSE_MS - END_PAUSE_MS)
+
+  // Para um excesso arbitrário, a rolagem ainda percorre a distância inteira,
+  // mas o limite de tempo tem prioridade sobre a velocidade preferida.
   const pathological = marqueeTiming(5000)
-  const distancePathological = 5000 + FADE_PX
-  const impliedSpeedPathological = (distancePathological / pathological.scrollMs) * 1000
-  assert.equal(
-    Math.round(impliedSpeedPathological),
-    MAX_SCROLL_SPEED_PX_S,
-    'nunca acelera além do teto de velocidade, mesmo num excesso que nenhum título válido produz'
-  )
+  assert.equal(pathological.totalMs, MAX_DWELL_MS)
+  assert.equal(pathological.distance, 5000 + FADE_PX)
 })
 
 test('quadros-chave: parado, desliza e termina parado no deslocamento total', () => {
