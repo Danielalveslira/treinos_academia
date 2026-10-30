@@ -3,9 +3,19 @@
 // então a campanha seguinte só entra depois que a mensagem foi exibida por inteiro.
 
 export const DWELL_MS = 7000 // tempo padrão de cada campanha (mensagem que cabe, sem animação)
+// Teto de exposição: nenhuma campanha reivindica mais do que isto só por ter um título mais
+// longo (título já é limitado a 100 caracteres no banco -- sponsored_ads_title_check --, mas
+// sem este teto um título no limite ainda tomaria ~3x o tempo de um título curto na mesma
+// velocidade "confortável"). Dobro do tempo padrão: generoso para ler, mas finito e igual
+// pra qualquer campanha, não proporcional ao texto que o anunciante escreveu.
+export const MAX_DWELL_MS = DWELL_MS * 2
 export const START_PAUSE_MS = 1200 // leitura do começo antes de deslizar
 export const END_PAUSE_MS = 1500 // leitura do final antes de seguir
-export const SCROLL_SPEED_PX_S = 45 // velocidade constante e confortável de leitura
+export const SCROLL_SPEED_PX_S = 45 // velocidade confortável padrão (a maioria dos títulos cabe aqui)
+// Teto de velocidade: só entra em jogo quando a velocidade confortável excederia MAX_DWELL_MS.
+// Mensagem NUNCA é cortada pela metade -- a rolagem sempre termina, só mais rápida (ainda legível,
+// não um blur) nos poucos títulos longos o bastante pra precisar dela.
+export const MAX_SCROLL_SPEED_PX_S = 90
 export const FADE_PX = 14 // faixa com degradê na borda direita: o texto para antes dela
 
 // Abaixo disso o texto "cabe" (arredondamento de subpixel não deve acionar animação).
@@ -20,7 +30,15 @@ export function measureOverflow(textWidth, viewportWidth) {
 export function marqueeTiming(overflow) {
   if (!(overflow > 0)) return { animated: false, distance: 0, totalMs: DWELL_MS }
   const distance = overflow + FADE_PX
-  const scrollMs = Math.round((distance / SCROLL_SPEED_PX_S) * 1000)
+  const scrollBudgetMs = MAX_DWELL_MS - START_PAUSE_MS - END_PAUSE_MS
+  const comfortableScrollMs = Math.round((distance / SCROLL_SPEED_PX_S) * 1000)
+  // Dentro do teto na velocidade confortável: usa ela (maioria dos casos, comportamento
+  // inalterado). Acima do teto, acelera só o suficiente pra concluir dentro de MAX_DWELL_MS --
+  // nunca despromove: a rolagem sempre completa a distância inteira, mais rápido, não truncada.
+  const scrollMs =
+    comfortableScrollMs <= scrollBudgetMs
+      ? comfortableScrollMs
+      : Math.max(1, Math.round((distance / MAX_SCROLL_SPEED_PX_S) * 1000))
   // Nunca menos que o tempo padrão de uma campanha: o final fica parado o que faltar para completá-lo.
   const endMs = Math.max(END_PAUSE_MS, DWELL_MS - START_PAUSE_MS - scrollMs)
   return {

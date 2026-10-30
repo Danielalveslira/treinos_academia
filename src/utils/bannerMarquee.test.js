@@ -4,6 +4,9 @@ import {
   DWELL_MS,
   END_PAUSE_MS,
   FADE_PX,
+  MAX_DWELL_MS,
+  MAX_SCROLL_SPEED_PX_S,
+  SCROLL_SPEED_PX_S,
   START_PAUSE_MS,
   marqueeKeyframes,
   marqueeTiming,
@@ -34,10 +37,48 @@ test('texto longo: pausa, desliza tudo (inclui a faixa do degradê), pausa; nunc
   assert.equal(short.totalMs, short.startMs + short.scrollMs + short.endMs)
 
   const long = marqueeTiming(900)
-  assert.equal(long.scrollMs, Math.round(((900 + FADE_PX) / 45) * 1000))
+  // 900px de excesso já cruza o teto de exposição (MAX_DWELL_MS) na velocidade confortável
+  // (45px/s levaria a ~20s): a rolagem acelera até o teto de velocidade (90px/s) pra caber,
+  // nunca é cortada -- a distância completa (900 + FADE_PX) ainda é percorrida por inteiro.
+  assert.equal(long.scrollMs, Math.round(((900 + FADE_PX) / MAX_SCROLL_SPEED_PX_S) * 1000))
   assert.equal(long.endMs, END_PAUSE_MS) // texto muito longo: só a pausa mínima final
   assert.ok(long.totalMs > DWELL_MS)
+  assert.ok(long.totalMs <= MAX_DWELL_MS, 'teto de exposição nunca é excedido')
   assert.ok(long.totalMs > long.startMs + long.scrollMs) // avança só DEPOIS da rolagem completa
+})
+
+test('teto de exposição: texto comprido demais pra velocidade confortável acelera, mas nunca corta a leitura', () => {
+  // Abaixo do limiar que cruza o teto (distance <= (MAX_DWELL_MS-START_PAUSE_MS-END_PAUSE_MS)
+  // em 45px/s): velocidade confortável de sempre, comportamento inalterado.
+  const belowThreshold = marqueeTiming(300)
+  assert.equal(belowThreshold.scrollMs, Math.round(((300 + FADE_PX) / SCROLL_SPEED_PX_S) * 1000))
+  assert.ok(belowThreshold.totalMs <= MAX_DWELL_MS)
+
+  // Um título real no limite de 100 caracteres (sponsored_ads_title_check) produz um excesso
+  // bem abaixo de 1000px nos layouts deste banner -- esse é o caso que o teto de exposição
+  // precisa cobrir de verdade.
+  const near100CharTitle = marqueeTiming(900)
+  assert.ok(near100CharTitle.totalMs <= MAX_DWELL_MS)
+  const distance900 = 900 + FADE_PX
+  const impliedSpeed900 = (distance900 / near100CharTitle.scrollMs) * 1000
+  assert.equal(
+    Math.round(impliedSpeed900),
+    MAX_SCROLL_SPEED_PX_S,
+    'título real no limite de tamanho rola à velocidade do teto, dentro do teto de exposição'
+  )
+
+  // Excesso sintético bem além de qualquer título válido (só pra provar o limite do próprio
+  // mecanismo): a velocidade NUNCA passa do teto -- entre ler até o fim mais lento ou cortar a
+  // leitura, o código escolhe sempre completar a leitura, então o teto de EXPOSIÇÃO pode ser
+  // excedido num caso assim, mas o teto de VELOCIDADE (legibilidade) nunca é.
+  const pathological = marqueeTiming(5000)
+  const distancePathological = 5000 + FADE_PX
+  const impliedSpeedPathological = (distancePathological / pathological.scrollMs) * 1000
+  assert.equal(
+    Math.round(impliedSpeedPathological),
+    MAX_SCROLL_SPEED_PX_S,
+    'nunca acelera além do teto de velocidade, mesmo num excesso que nenhum título válido produz'
+  )
 })
 
 test('quadros-chave: parado, desliza e termina parado no deslocamento total', () => {

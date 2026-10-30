@@ -1939,6 +1939,18 @@ body:has(.pwa-offline) .app-shell {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
 }
+/* Selo "+N": visualmente separado do contador de posição (pílula, não só texto) pra nunca
+   ser lido como parte da mesma fração -- avisa que há mais elegíveis fora desta amostra,
+   sem parecer uma posição que dá pra navegar até ela. */
+.sponsored-ad-banner-pool {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--fitness-accent-soft);
+  color: var(--fitness-accent-strong);
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
 .sponsored-ad-banner-next {
   position: relative;
   display: inline-flex;

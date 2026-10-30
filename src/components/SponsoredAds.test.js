@@ -40,6 +40,7 @@ before(async () => {
           })
           const read = () => ({
             count: renderer.root.findAll((n) => n.props.className === 'sponsored-ad-banner-count').map((n) => textOf(n))[0],
+            pool: renderer.root.findAll((n) => n.props.className === 'sponsored-ad-banner-pool').map((n) => textOf(n))[0],
             partner: textOf(renderer.root.findByProps({ className: 'sponsored-ad-banner-partner' })),
             label: renderer.root.findByType('button').props['aria-label'],
           })
@@ -123,22 +124,42 @@ test('banner: CTA interno é link do roteador; sem CTA não há link; rodízio m
   assert.doesNotMatch(multi, /sponsored-ad-banner-dot/)
 })
 
-test('banner: amostra de 1 com eligibleTotal maior mostra o total real, sem botão de avanço inútil', () => {
+test('banner: amostra de 1 com eligibleTotal maior mostra "+N" (nunca uma posição falsa como "1/4")', () => {
   // select_advertising devolveu só 1 campanha nesta amostra (display_limit), mas 4 passaram a
-  // elegibilidade naquele instante -- o selo não pode mentir "1/1" quando há mais, e não há
-  // local pra onde avançar sem nova consulta ao banco, então o botão "próximo" não aparece.
+  // elegibilidade naquele instante. O contador numérico é SEMPRE a posição dentro da amostra
+  // local -- com só 1 item não há posição nenhuma a mostrar (nem "1/1", nem "1/4": esse último
+  // sugeriria falsamente 4 posições navegáveis quando só existe 1 nesta amostra). O selo "+3"
+  // avisa que há mais elegíveis sem fingir que dá pra avançar até eles sem nova consulta.
   const html = render('banner', { ads: [ad({ eligibleTotal: 4 })] })
-  assert.match(html, /1\/4/)
+  assert.doesNotMatch(html, /sponsored-ad-banner-count/)
+  assert.match(html, /<span class="sponsored-ad-banner-pool"[^>]*>\+3<\/span>/)
   assert.doesNotMatch(html, /sponsored-ad-banner-next/)
+})
+
+test('banner: 5 elegíveis, amostra de 4 -- contador roda 1/4..4/4 (nunca "5/5" ou um "1/5" que nunca chega lá) e o selo "+1" se mantém', () => {
+  // Reprodução exata do caso que a auditoria apontou: antes, o contador usava eligibleTotal
+  // como denominador (mostrava "1/5"->"4/5" e voltava pro "1/5", nunca "5/5" -- parecia haver
+  // uma 5ª posição alcançável que não existe nesta amostra). Agora o denominador é SEMPRE o
+  // tamanho real da amostra local.
+  const fiveEligible = [1, 2, 3, 4].map((i) => ad({ id: `a${i}`, eligibleTotal: 5 }))
+  const view = mountBanner(fiveEligible)
+  for (const expectedCount of ['1/4', '2/4', '3/4', '4/4', '1/4']) {
+    const read = view.read()
+    assert.equal(read.count, expectedCount)
+    assert.match(read.pool, /^\+1$/)
+    view.next()
+  }
+  view.unmount()
 })
 
 test('banner: eligibleTotal nunca encolhe abaixo do que foi de fato retornado', () => {
   // Defensivo: um valor inconsistente/desatualizado de eligibleTotal nunca esconde itens que
-  // já estão na amostra local.
+  // já estão na amostra local, nem produz um selo "+N" negativo.
   const html = render('banner', {
     ads: [ad({ eligibleTotal: 1 }), ad({ id: 'a2', eligibleTotal: 1 })],
   })
   assert.match(html, /1\/2/)
+  assert.doesNotMatch(html, /sponsored-ad-banner-pool/)
 })
 
 test('card do feed: selo Patrocinado sempre presente, título, descrição e CTA', () => {
@@ -173,12 +194,14 @@ test('banner: botão próximo avança, dá a volta e informa a posição; contad
   ])
   assert.deepEqual(view.read(), {
     count: '1/2',
+    pool: undefined,
     partner: 'Marca A',
     label: 'Próximo patrocínio (1 de 2)',
   })
   view.next()
   assert.deepEqual(view.read(), {
     count: '2/2',
+    pool: undefined,
     partner: 'Marca B',
     label: 'Próximo patrocínio (2 de 2)',
   })
