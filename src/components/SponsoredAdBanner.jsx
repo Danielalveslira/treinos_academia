@@ -67,6 +67,18 @@ export function SponsoredAdBanner({ ads, placement = 'community_banner', communi
   const multiple = ads.length > 1
   const current = index < ads.length ? index : 0
   const ad = ads[current]
+  const sampleSize = ads.length
+  // `eligibleTotal` vem do servidor (select_advertising): quantas campanhas passaram a
+  // elegibilidade NAQUELE instante, antes da amostra aleatória de `display_limit` ser
+  // recortada. É sempre >= sampleSize; cai para sampleSize só em linhas antigas sem o campo
+  // (nunca inventa um número maior que o que foi de fato retornado). O contador numérico
+  // (ex. "1/4") é SEMPRE a posição dentro da amostra local, nunca uma posição dentro do
+  // total elegível: com 5 elegíveis e amostra de 4 mostrar "1/5"..."4/5" voltaria pro "1/5"
+  // sem nunca passar por "5/5", sugerindo uma 5ª posição navegável que não existe nesta
+  // amostra. Quando há mais elegíveis do que a amostra trouxe, um selo "+N" avisa isso sem
+  // fingir que dá pra avançar até eles (só o próximo refresh pode trazê-los).
+  const eligibleTotal = Math.max(ad?.eligibleTotal ?? sampleSize, sampleSize)
+  const extraEligible = eligibleTotal - sampleSize
   const autoScroll = !reducedMotion && canAnimate()
   const holding = paused || hidden
   const timing = useMemo(() => marqueeTiming(autoScroll ? overflow : 0), [autoScroll, overflow])
@@ -181,31 +193,56 @@ export function SponsoredAdBanner({ ads, placement = 'community_banner', communi
         </div>
       </div>
       <div className="sponsored-ad-banner-side">
-        {/* Só com mais de uma campanha. O contador é discreto e fica acima do botão do anúncio (mobile) ou
-            ao lado dele (desktop); nunca disputa com o CTA. O rodízio automático não é anunciado por leitor de
-            tela (sem aria-live); o botão informa a posição atual. */}
-        {multiple && (
+        {/* Dois selos com sentidos DIFERENTES, nunca misturados num só número: o contador
+            (1/4) é a posição dentro da amostra local que de fato rotaciona; o selo "+N",
+            quando presente, só avisa que o servidor viu mais candidatos elegíveis do que
+            esta amostra trouxe -- não é clicável nem navegável (só o próximo refresh pode
+            trazer esses outros). O botão de avanço só existe quando a amostra local tem mais
+            de um item pra rotacionar. O rodízio automático não é anunciado por leitor de
+            tela (sem aria-live); o texto oculto abaixo e o botão informam a posição atual. */}
+        {(multiple || extraEligible > 0) && (
           <div className="sponsored-ad-banner-nav">
-            <span className="sponsored-ad-banner-count" aria-hidden="true">
-              {current + 1}/{ads.length}
+            {multiple && (
+              <span className="sponsored-ad-banner-count" aria-hidden="true">
+                {current + 1}/{sampleSize}
+              </span>
+            )}
+            {extraEligible > 0 && (
+              <span
+                className="sponsored-ad-banner-pool"
+                aria-hidden="true"
+                title={`${eligibleTotal} campanhas elegíveis no total, ${sampleSize} nesta rotação`}
+              >
+                +{extraEligible}
+              </span>
+            )}
+            <span className="sr-only">
+              {multiple
+                ? `Patrocínio ${current + 1} de ${sampleSize} nesta rotação`
+                : 'Uma campanha patrocinada em exibição'}
+              {extraEligible > 0
+                ? `; ${eligibleTotal} campanhas elegíveis no total, só ${sampleSize} nesta rotação`
+                : ''}
             </span>
-            <button
-              type="button"
-              className="sponsored-ad-banner-next"
-              onClick={showNext}
-              aria-label={`Próximo patrocínio (${current + 1} de ${ads.length})`}
-            >
-              <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                <path
-                  d="M6 3l5 5-5 5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+            {multiple && (
+              <button
+                type="button"
+                className="sponsored-ad-banner-next"
+                onClick={showNext}
+                aria-label={`Próximo patrocínio (${current + 1} de ${sampleSize})`}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                  <path
+                    d="M6 3l5 5-5 5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            )}
           </div>
         )}
         {hasCta &&

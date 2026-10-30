@@ -26,6 +26,10 @@ function toDoc(row, requestStartedAt = performance.now()) {
     displayMode: row.display_mode,
     createdBy: row.created_by,
     createdAt: row.created_at,
+    // Total elegível no instante da consulta, ANTES da amostra aleatória de `display_limit`
+    // ser recortada (ver select_advertising) -- ausente nas linhas de `listAllSponsoredAds`
+    // (consulta direta à tabela, sem RPC), por isso o fallback null.
+    eligibleTotal: row.eligible_total ?? null,
   }
 }
 
