@@ -1,4 +1,4 @@
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Suspense, lazy, useMemo, useRef, useState } from 'react'
 import { Box, Heading, Text, Button, Spinner, Label, UnderlineNav } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
@@ -22,35 +22,81 @@ const AdvertiserAdmin = lazy(() => import('../features/adMetrics/components/Adve
 const AdvertisingAdmin = lazy(() => import('../components/AdvertisingAdmin'))
 const CommercialAdmin = lazy(() => import('../components/CommercialAdmin'))
 const CommercialEngineAdmin = lazy(() => import('../components/CommercialEngineAdmin'))
+const CommercialOverview = lazy(() => import('../components/CommercialOverview'))
 
 const TABS = [
   { key: 'campaigns', label: 'Campanhas' },
-  { key: 'autonomous', label: 'Publicidade autônoma' },
-  { key: 'metrics', label: 'Métricas' },
   { key: 'advertisers', label: 'Anunciantes' },
-  { key: 'commercial', label: 'Propostas e produtos' },
-  { key: 'engine', label: 'Motor comercial' },
+  { key: 'metrics', label: 'Resultados' },
 ]
+
+const SECTIONS = [
+  { key: 'overview', label: 'Visão geral' },
+  { key: 'approvals', label: 'Aprovações' },
+  { key: 'advertising', label: 'Publicidade' },
+  { key: 'storefronts', label: 'Vitrines e parceiros' },
+  { key: 'finance', label: 'Financeiro' },
+  { key: 'settings', label: 'Configurações' },
+]
+const LEGACY_SECTIONS = {
+  campaigns: 'advertising',
+  metrics: 'advertising',
+  advertisers: 'advertising',
+  autonomous: 'settings',
+  commercial: 'storefronts',
+  engine: 'finance',
+}
+
+function TaskLinks({ items }) {
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: ['1fr', 'repeat(2,minmax(0,1fr))'], gap: 2 }}>
+      {items.map(({ to, title, description }) => (
+        <Box
+          key={title}
+          sx={{
+            border: '1px solid',
+            borderColor: 'border.default',
+            borderRadius: 2,
+            p: 3,
+            minWidth: 0,
+          }}
+        >
+          <Heading as="h2" sx={{ fontSize: 2, mb: 1 }}>
+            {title}
+          </Heading>
+          <Text as="p" sx={{ color: 'fg.muted', fontSize: 1, mt: 0 }}>
+            {description}
+          </Text>
+          <Button as={Link} to={to}>
+            Abrir
+          </Button>
+        </Box>
+      ))}
+    </Box>
+  )
+}
 
 function isExpired(ad, now) {
   return Boolean(ad.expiresAt) && toMillis(ad.expiresAt) < now
 }
 
 export default function AdminSponsoredAds() {
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const reportRequested = params.get('report') === 'metrics'
-  const [tab, setTab] = useState(
-    TABS.some((item) => item.key === params.get('tab'))
-      ? params.get('tab')
-      : reportRequested
-        ? 'metrics'
-        : 'campaigns'
-  )
-  const needsCampaigns = tab === 'campaigns' || tab === 'metrics'
+  const requestedTab = params.get('tab')
+  const section = SECTIONS.some((item) => item.key === params.get('section'))
+    ? params.get('section')
+    : LEGACY_SECTIONS[requestedTab] || (reportRequested ? 'advertising' : 'overview')
+  const tab = TABS.some((item) => item.key === requestedTab)
+    ? requestedTab
+    : reportRequested
+      ? 'metrics'
+      : 'campaigns'
+  const needsCampaigns = section === 'advertising' && (tab === 'campaigns' || tab === 'metrics')
   const { ads, loading, error, refresh, add, edit, remove } = useAdminSponsoredAds(needsCampaigns)
   const { communities } = useAdminCommunities(needsCampaigns)
   const { user } = useAuth()
-  const [metricsOpened, setMetricsOpened] = useState(reportRequested)
+  const [metricsOpened, setMetricsOpened] = useState(reportRequested || requestedTab === 'metrics')
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
   const [formOpen, setFormOpen] = useState(false)
@@ -134,40 +180,157 @@ export default function AdminSponsoredAds() {
 
   return (
     <Box>
-      <AdminNav current="/admin/parcerias" currentLabel="Anúncios e parcerias" />
+      <AdminNav current="/admin/parcerias" currentLabel="Central comercial" />
       <ToastFlash toasts={toasts} />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Heading as="h1" sx={{ fontSize: 3 }}>
-          Anúncios e parcerias
+          Central comercial
         </Heading>
-        {tab === 'campaigns' && !formOpen && !editingAd && (loading || error || ads.length > 0) && (
-          <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
-            Novo
-          </Button>
-        )}
+        {section === 'advertising' &&
+          tab === 'campaigns' &&
+          !formOpen &&
+          !editingAd &&
+          (loading || error || ads.length > 0) && (
+            <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
+              Novo
+            </Button>
+          )}
       </Box>
 
-      <UnderlineNav
-        aria-label="Seções de anúncios e parcerias"
-        sx={{ mb: 3, maxWidth: '100%', overflowX: 'auto' }}
+      <Box
+        role="navigation"
+        aria-label="Seções da central comercial"
+        sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}
       >
-        {TABS.map((item) => (
-          <UnderlineNav.Item
+        {SECTIONS.map((item) => (
+          <Button
             key={item.key}
-            as="button"
-            aria-current={tab === item.key ? 'page' : undefined}
-            onSelect={() => {
-              setTab(item.key)
-              if (item.key === 'metrics') setMetricsOpened(true)
-            }}
+            aria-current={section === item.key ? 'page' : undefined}
+            variant={section === item.key ? 'primary' : 'default'}
+            onClick={() => setParams({ section: item.key })}
           >
             {item.label}
-          </UnderlineNav.Item>
+          </Button>
         ))}
-      </UnderlineNav>
+      </Box>
+
+      {section === 'overview' && (
+        <Suspense fallback={<Spinner aria-label="Carregando visão geral" />}>
+          <CommercialOverview />
+        </Suspense>
+      )}
+
+      {section === 'approvals' && (
+        <TaskLinks
+          items={[
+            {
+              to: '/admin/parcerias?section=settings',
+              title: 'Anúncios comerciais',
+              description: 'Revisar conteúdo e campanhas enviadas.',
+            },
+            {
+              to: '/admin/vitrines',
+              title: 'Profissionais e estabelecimentos',
+              description: 'Analisar cadastros e publicação.',
+            },
+            {
+              to: '/admin/parcerias?tab=commercial',
+              title: 'Vitrines de produtos',
+              description: 'Analisar lojas e produtos comerciais.',
+            },
+            {
+              to: '/admin/promocoes',
+              title: 'Promoções',
+              description: 'Consultar e moderar promoções de EvoCash.',
+            },
+          ]}
+        />
+      )}
+
+      {section === 'advertising' && (
+        <UnderlineNav aria-label="Publicidade" sx={{ mb: 3, maxWidth: '100%', overflowX: 'auto' }}>
+          {TABS.map((item) => (
+            <UnderlineNav.Item
+              key={item.key}
+              as="button"
+              aria-current={tab === item.key ? 'page' : undefined}
+              onSelect={() => {
+                setParams({ section: 'advertising', tab: item.key })
+                if (item.key === 'metrics') setMetricsOpened(true)
+              }}
+            >
+              {item.label}
+            </UnderlineNav.Item>
+          ))}
+        </UnderlineNav>
+      )}
+
+      {section === 'storefronts' && (
+        <>
+          <TaskLinks
+            items={[
+              {
+                to: '/admin/vitrines',
+                title: 'Profissionais e estabelecimentos',
+                description: 'Cadastros, moderação e publicação.',
+              },
+              {
+                to: '/admin/parcerias?tab=commercial',
+                title: 'Propostas e produtos legados',
+                description: 'Registros anteriores e contatos comerciais.',
+              },
+            ]}
+          />
+          {requestedTab === 'commercial' && (
+            <Suspense fallback={<Spinner />}>
+              <CommercialAdmin />
+            </Suspense>
+          )}
+        </>
+      )}
+
+      {section === 'finance' && (
+        <>
+          <TaskLinks
+            items={[
+              {
+                to: '/admin/compras-evocash',
+                title: 'Compras de EvoCash',
+                description: 'Pagamentos em reais e reconciliação.',
+              },
+              {
+                to: '/admin/compras-evocash?tab=pricing',
+                title: 'Preço do EvoCash',
+                description: 'Valor de aquisição em reais.',
+              },
+              {
+                to: '/admin/compras-evocash?tab=refunds',
+                title: 'Reembolsos',
+                description: 'Solicitações e comprovações.',
+              },
+              {
+                to: '/admin/parcerias?tab=engine',
+                title: 'Preços e contratações',
+                description: 'Serviços cobrados em EvoCash.',
+              },
+            ]}
+          />
+          {requestedTab === 'engine' && (
+            <Suspense fallback={<Spinner />}>
+              <CommercialEngineAdmin />
+            </Suspense>
+          )}
+        </>
+      )}
+
+      {section === 'settings' && (
+        <Suspense fallback={<Spinner />}>
+          <AdvertisingAdmin />
+        </Suspense>
+      )}
 
       {metricsOpened && (
-        <Box hidden={tab !== 'metrics'}>
+        <Box hidden={section !== 'advertising' || tab !== 'metrics'}>
           <Suspense fallback={<Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}>
             <AdMetricsTab
               userId={user?.uid}
@@ -191,31 +354,13 @@ export default function AdminSponsoredAds() {
         </Box>
       )}
 
-      {tab === 'advertisers' && (
+      {section === 'advertising' && tab === 'advertisers' && (
         <Suspense fallback={<Spinner />}>
           <AdvertiserAdmin />
         </Suspense>
       )}
 
-      {tab === 'autonomous' && (
-        <Suspense fallback={<Spinner />}>
-          <AdvertisingAdmin />
-        </Suspense>
-      )}
-
-      {tab === 'engine' && (
-        <Suspense fallback={<Spinner />}>
-          <CommercialEngineAdmin />
-        </Suspense>
-      )}
-
-      {tab === 'commercial' && (
-        <Suspense fallback={<Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}>
-          <CommercialAdmin />
-        </Suspense>
-      )}
-
-      {tab === 'campaigns' && (
+      {section === 'advertising' && tab === 'campaigns' && (
         <Box>
           {formOpen && (
             <SponsoredAdForm

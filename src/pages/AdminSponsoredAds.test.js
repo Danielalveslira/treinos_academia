@@ -6,8 +6,8 @@ import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { build } from 'esbuild'
 
-// Página Anúncios e parcerias: abas Campanhas/Métricas. Dependências de dados são stubs; a aba Métricas é um stub
-// que registra quando é montada (a leitura real só acontece dentro dela).
+// Página Central comercial: seção Publicidade com abas Campanhas/Resultados. Dependências de dados são stubs;
+// a aba Resultados é um stub que registra quando é montada (a leitura real só acontece dentro dela).
 let directory
 let mount
 
@@ -33,6 +33,8 @@ const STUBS = {
       useEffect(() => { globalThis.__metricsMounts = (globalThis.__metricsMounts || 0) + 1 }, [])
       return createElement('div', { 'data-testid': 'metrics-tab' }, 'métricas de ' + userId + ' / ' + ads.length + ' campanhas')
     }`,
+  CommercialOverview: `import { createElement } from 'react'
+    export default function CommercialOverview() { return createElement('div', { 'data-testid': 'commercial-overview' }, 'Visão geral comercial') }`,
 }
 
 before(async () => {
@@ -48,7 +50,7 @@ before(async () => {
         import { ThemeProvider, BaseStyles } from '@primer/react'
         import AdminSponsoredAds from './AdminSponsoredAds.jsx'
         const textOf = (n) => (typeof n === 'string' ? n : (n.children || []).map(textOf).join(''))
-        export function mountPage() {
+        export function mountPage(path = '/admin/parcerias') {
           globalThis.IS_REACT_ACT_ENVIRONMENT = false
           globalThis.__metricsMounts = 0
           global.window = global.window || {}
@@ -56,7 +58,7 @@ before(async () => {
           global.document = global.document || { addEventListener() {}, removeEventListener() {} }
           let renderer
           act(() => {
-            renderer = TestRenderer.create(React.createElement(MemoryRouter, null, React.createElement(ThemeProvider, null, React.createElement(BaseStyles, null, React.createElement(React.Suspense, { fallback: 'carregando' }, React.createElement(AdminSponsoredAds))))))
+            renderer = TestRenderer.create(React.createElement(MemoryRouter, { initialEntries: [path] }, React.createElement(ThemeProvider, null, React.createElement(BaseStyles, null, React.createElement(React.Suspense, { fallback: 'carregando' }, React.createElement(AdminSponsoredAds))))))
           })
           const root = renderer.root
           return {
@@ -118,23 +120,25 @@ after(async () => {
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 30))
 
-test('abre em Campanhas: lista e botão Novo presentes, e a aba Métricas NÃO é montada (nenhuma leitura)', async () => {
+test('abre na Visão geral sem montar campanhas nem métricas', async () => {
   const page = mount()
   await tick()
-  assert.match(page.text(), /Anúncios e parcerias/)
-  assert.match(page.text(), /Campanhas/)
-  assert.match(page.text(), /Métricas/)
-  assert.match(page.text(), /Oferta/)
-  assert.equal(page.hasNovo(), true)
+  assert.match(page.text(), /Central comercial/)
+  assert.match(page.text(), /Visão geral comercial/)
+  assert.match(page.text(), /Publicidade/)
+  assert.doesNotMatch(page.text(), /Oferta/)
+  assert.equal(page.hasNovo(), false)
   assert.equal(page.mounts(), 0, 'o módulo de métricas nem foi carregado')
   assert.equal(page.wrapperHidden('metrics-tab'), null)
   page.unmount()
 })
 
-test('abrir Métricas monta a aba UMA vez, esconde Campanhas e o botão Novo; voltar não remonta nem recarrega', async () => {
-  const page = mount()
+test('link legado de Campanhas e aba Resultados preservam a navegação e o cache', async () => {
+  const page = mount('/admin/parcerias?tab=campaigns')
   await tick()
-  page.selectTab('Métricas')
+  assert.match(page.text(), /Oferta/)
+  assert.equal(page.hasNovo(), true)
+  page.selectTab('Resultados')
   await tick()
   assert.equal(page.mounts(), 1)
   assert.match(page.text(), /métricas de admin-1 \/ 1 campanhas/)
@@ -148,8 +152,17 @@ test('abrir Métricas monta a aba UMA vez, esconde Campanhas e o botão Novo; vo
     true,
     'aba de métricas fica escondida, mantendo estado e cache'
   )
-  page.selectTab('Métricas')
+  page.selectTab('Resultados')
   await tick()
   assert.equal(page.mounts(), 1, 'reabrir não monta de novo')
+  page.unmount()
+})
+
+test('link de relatório abre Resultados diretamente sem montar a lista visual de campanhas', async () => {
+  const page = mount('/admin/parcerias?report=metrics&adId=campanha-1')
+  await tick()
+  assert.equal(page.mounts(), 1)
+  assert.equal(page.hasNovo(), false)
+  assert.equal(page.wrapperHidden('metrics-tab'), false)
   page.unmount()
 })
