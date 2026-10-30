@@ -123,6 +123,24 @@ test('banner: CTA interno é link do roteador; sem CTA não há link; rodízio m
   assert.doesNotMatch(multi, /sponsored-ad-banner-dot/)
 })
 
+test('banner: amostra de 1 com eligibleTotal maior mostra o total real, sem botão de avanço inútil', () => {
+  // select_advertising devolveu só 1 campanha nesta amostra (display_limit), mas 4 passaram a
+  // elegibilidade naquele instante -- o selo não pode mentir "1/1" quando há mais, e não há
+  // local pra onde avançar sem nova consulta ao banco, então o botão "próximo" não aparece.
+  const html = render('banner', { ads: [ad({ eligibleTotal: 4 })] })
+  assert.match(html, /1\/4/)
+  assert.doesNotMatch(html, /sponsored-ad-banner-next/)
+})
+
+test('banner: eligibleTotal nunca encolhe abaixo do que foi de fato retornado', () => {
+  // Defensivo: um valor inconsistente/desatualizado de eligibleTotal nunca esconde itens que
+  // já estão na amostra local.
+  const html = render('banner', {
+    ads: [ad({ eligibleTotal: 1 }), ad({ id: 'a2', eligibleTotal: 1 })],
+  })
+  assert.match(html, /1\/2/)
+})
+
 test('card do feed: selo Patrocinado sempre presente, título, descrição e CTA', () => {
   const html = render('card', { ad: ad() })
   assert.match(html, /<article/)

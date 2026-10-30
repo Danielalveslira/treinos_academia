@@ -3862,7 +3862,10 @@ body {
 }
 
 @media (max-width: 767px) {
-  .streak-card { margin-inline: 8px; padding: 16px; }
+  /* Base: margin 20px 20px 24px (3 valores -- block ficaria 20/24, inline 20 nos dois lados).
+     Aqui só o vão vertical encolhe (20->14 em cima, 24->16 embaixo); margin-inline continua a
+     mesma encolhida de sempre. Menos espaço morto entre o card e o resumo de progresso abaixo. */
+  .streak-card { margin-inline: 8px; margin-block: 14px 16px; padding: 16px; }
   .streak-pip { border-radius: 9px; }
   .streak-actions { display: grid; grid-template-columns: 1fr; }
   .streak-action:last-child:not(:only-child) { margin-left: 0; }
@@ -5477,7 +5480,10 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .sponsored-ad-banner--home .sponsored-ad-banner-line { align-self: center; min-height: 20px; margin: 0; font-size: 13px; }
   .sponsored-ad-banner--home .sponsored-ad-banner-cta { width: auto; max-width: 110px; min-height: 44px; margin: 0; padding-inline: 10px; font-size: 12px; }
   .sponsored-ad-banner--home .sponsored-ad-banner-nav { grid-area: nav; }
-  .performance-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 8px 34px; border-radius: 0 0 16px 16px; }
+  /* 16px, não os 34px antigos: é o último bloco da Home e `.main-content` já reserva
+     calc(90px + safe-area) pra barra de navegação fixa -- o vão extra era espaço morto
+     duplicado antes dessa reserva, não respiro necessário. */
+  .performance-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 8px 16px; border-radius: 0 0 16px 16px; }
   .performance-strip > div { padding: 16px 12px; }
   .performance-strip > div:last-child { grid-column: 1 / -1; border-top: 1px solid transparent; }
   .performance-strip > div:last-child::before { inset: 0 10px auto; width: auto; height: 1px; }
