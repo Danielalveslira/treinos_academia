@@ -834,11 +834,14 @@ try {
   // Pre-sized (not pushed into) so each iteration can write its own `results[index]` regardless
   // of finishing order; entries stay `undefined` only if `runIteration` throws for that index.
   if (combos.length) results.length = combos.length
-  // GitHub's standard hosted Linux runner for a private repo is 2 vCPUs, not 4. A concurrency of
-  // 3 oversubscribes by one; this is deliberate, not an oversight -- see the PR for the measured
-  // comparison against 2, taken on the real runner. It is only safe at all because each
-  // context/page/session below is fully isolated (own sheets/reads/writes/fail/conflict, own
-  // `/s/<id>` namespace), so running a few at once never lets one iteration see another's state.
+  // GitHub's standard hosted Linux runner for a private repo is 2 vCPUs, not 4, so this
+  // oversubscribes by one -- deliberately: measured on the real runner, concurrency=3 finished
+  // this step in 97s versus 123s at concurrency=2 (both passing, zero failures), because the
+  // workload is latency-bound (simulated 150ms RTT, CDP round trips) rather than continuously
+  // CPU-bound, so a third context still finds idle core time while the other two wait on I/O.
+  // This is only safe because each context/page/session below is fully isolated (own
+  // sheets/reads/writes/fail/conflict, own `/s/<id>` namespace) -- no shared mutable state for
+  // concurrent iterations to contaminate.
   const concurrency = Math.max(1, Math.min(combos.length, Number(process.env.WORKOUT_SHEETS_CONCURRENCY) || 3))
   let nextCombo = 0
   async function worker() {
