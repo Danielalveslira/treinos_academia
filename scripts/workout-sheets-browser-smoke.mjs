@@ -168,6 +168,13 @@ try {
         res.end(JSON.stringify(state.personalLibrary))
         return
       }
+      if (path === '/rest/v1/workouts' && req.method === 'GET') {
+        // The execution page now reads today's confirmed rows before enabling
+        // the form. This fixture starts each isolated browser session empty.
+        res.setHeader('Content-Type', 'application/json')
+        res.end('[]')
+        return
+      }
       if (path.startsWith('/rest/v1/rpc/')) {
         const state = session(sessionId)
         const name = path.split('/').at(-1)
@@ -195,6 +202,7 @@ try {
                 .filter(
                   (s) => s.user_id === uid && Boolean(s.archived_at) === Boolean(args.p_archived)
                 )
+                .slice(Math.max(0, args.p_offset || 0), Math.max(0, args.p_offset || 0) + 40)
                 .map((s) => ({
                   ...s,
                   items: undefined,
@@ -328,7 +336,7 @@ try {
   })
   const results = []
   if (entryOnly) {
-    for (const width of [320, 360, 390]) {
+    for (const width of [320, 375, 390]) {
       const state = reset('default')
       const page = await browser.newPage({ viewport: { width, height: 800 } })
       await page.goto(origin + '/novo-treino?planejado=2000-01-01&evil=ignored')
@@ -391,6 +399,12 @@ try {
       await page.goto(origin + '/exercicios')
       await page.getByRole('heading', { name: 'Minhas fichas', exact: true }).waitFor()
       await page.getByRole('link', { name: 'Ficha A', exact: true }).waitFor()
+      const navAligned = await page.evaluate(() => {
+        const nav = document.querySelector('.exercise-area-nav')?.getBoundingClientRect()
+        const heading = document.querySelector('.sheet-heading')?.getBoundingClientRect()
+        return Boolean(nav && heading && Math.abs(nav.left - heading.left) <= 1)
+      })
+      assert.equal(navAligned, true, 'biblioteca e catálogo alinham com o conteúdo das fichas')
       const listMs = Date.now() - start
       assert.equal(await page.evaluate(() => document.documentElement.dataset.colorMode), theme)
       const background = await page.evaluate(
@@ -444,7 +458,11 @@ try {
       // Ao iniciar, vai direto para o PRIMEIRO exercício elegível na ordem da ficha
       // (Puxada oficial) -- sem tela intermediária de escolha solta.
       await page.getByRole('button', { name: 'Iniciar treino', exact: true }).click()
-      await page.getByRole('button', { name: 'Exercício 1 de 2', exact: true }).waitFor()
+      await page.locator('.workout-progress').getByText('Exercício 1 de 2').waitFor()
+      await page.getByRole('link', { name: 'Voltar às fichas' }).waitFor()
+      await page.getByRole('button', { name: 'Exercícios da ficha' }).click()
+      await page.getByRole('button', { name: 'Voltar ao exercício' }).click()
+      await page.locator('.set-card').waitFor()
       assert.equal(await page.locator('.workout-exercise-card').count(), 0)
       await page.getByText('Puxada oficial', { exact: true }).waitFor()
       assert.deepEqual(
@@ -696,11 +714,14 @@ try {
         await card.locator('summary').click()
         await card.getByRole('button', { name: 'Arquivar', exact: true }).click()
         await page.getByRole('checkbox', { name: 'Mostrar arquivadas', exact: true }).check()
+        assert.equal(await page.locator('.sheet-pagination').count(), 0, 'single archived page needs no pagination')
         const archivedCard = page
           .locator('.sheet-card')
           .filter({ has: page.getByRole('link', { name: 'Nome mantido sem rede', exact: true }) })
         await archivedCard.locator('summary').click()
         await archivedCard.getByRole('button', { name: 'Restaurar', exact: true }).click()
+        await page.getByText('Nenhuma ficha arquivada.', { exact: true }).waitFor()
+        assert.equal(await page.locator('.sheet-pagination').count(), 0, 'empty archive needs no pagination')
         await page.getByRole('checkbox', { name: 'Mostrar arquivadas', exact: true }).uncheck()
         await page.getByRole('button', { name: 'Criar ficha', exact: true }).click()
         const draftName = page.getByRole('textbox', { name: 'Nome obrigatório', exact: true })
@@ -757,7 +778,7 @@ try {
         flowWrites = state.writes.length
       let volume = null
       if (theme === 'light' && width === 390) {
-        benchmarkFixture(sessionId)
+        const volumeState = benchmarkFixture(sessionId)
         await cdp.send('Network.emulateNetworkConditions', {
           offline: false,
           latency: 150,
@@ -798,6 +819,17 @@ try {
           heap: (await cdp.send('Runtime.getHeapUsage')).usedSize,
         }
         assert.equal(volume.overflow, false)
+        volumeState.sheets.forEach((sheet) => { sheet.archived_at = new Date().toISOString() })
+        await page.goto(origin + '/exercicios')
+        await page.getByRole('checkbox', { name: 'Mostrar arquivadas', exact: true }).check()
+        await page.getByRole('link', { name: 'Ficha de volume 40', exact: true }).waitFor()
+        assert.equal(await page.locator('.sheet-pagination').count(), 0, 'exactly 40 archived sheets fit on one page')
+        volumeState.sheets.push({ ...structuredClone(volumeState.sheets[0]), id: crypto.randomUUID(), name: 'Ficha arquivada extra' })
+        await page.reload()
+        await page.getByRole('checkbox', { name: 'Mostrar arquivadas', exact: true }).check()
+        await page.getByRole('button', { name: 'Próxima página', exact: true }).click()
+        await page.getByRole('link', { name: 'Ficha arquivada extra', exact: true }).waitFor()
+        assert.equal(await page.getByText('Página 2', { exact: true }).count(), 1)
         console.log('VOLUME ' + JSON.stringify(volume))
       }
       const heap = await cdp.send('Runtime.getHeapUsage')
@@ -829,7 +861,7 @@ try {
   const combos = entryOnly
     ? []
     : (quick ? ['light'] : ['light', 'dark']).flatMap((theme) =>
-        (quick ? [390] : [320, 360, 390, 768, 1280]).map((width) => ({ theme, width }))
+        (quick ? [390] : [320, 360, 375, 390, 768, 1280]).map((width) => ({ theme, width }))
       )
   // Pre-sized (not pushed into) so each iteration can write its own `results[index]` regardless
   // of finishing order; entries stay `undefined` only if `runIteration` throws for that index.

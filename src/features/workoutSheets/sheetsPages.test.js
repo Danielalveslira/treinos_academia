@@ -81,6 +81,7 @@ before(async () => {
               export const getWorkoutSheet = async () => ({ items: [] })
               export const archiveWorkoutSheet = async () => {}
               export const duplicateWorkoutSheet = async () => ({ id: 'dup' })
+              export const listWorkoutSheets = async () => []
               export const reorderWorkoutSheets = async () => {}
               export const sheetError = (error) => (error && error.message) || 'Erro'
             `,
@@ -213,7 +214,12 @@ test('sheet detail: start is blocked (disabled) while any item is unavailable', 
       goal_description: '',
       weekdays: [],
       items: [
-        { id: 'i2', exercise_id: 'bench', exercise: { id: 'bench', name: 'Supino' }, available: false },
+        {
+          id: 'i2',
+          exercise_id: 'bench',
+          exercise: { id: 'bench', name: 'Supino' },
+          available: false,
+        },
       ],
     },
     loading: false,
