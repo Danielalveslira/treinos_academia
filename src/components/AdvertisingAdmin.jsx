@@ -280,20 +280,18 @@ export default function AdvertisingAdmin() {
           <Box sx={{ p: 3 }}>
             {dialog.kind === 'placement' && (
               <>
-                <FormControl sx={{ mb: 2 }}>
+                <FormControl sx={{ mb: 2 }} disabled={busy}>
                   <FormControl.Label>Campanhas simultâneas por contexto</FormControl.Label>
                   <TextInput
                     block
                     inputMode="numeric"
-                    disabled={busy}
                     value={form.capacity ?? ''}
                     onChange={(e) => setForm({ ...form, capacity: e.target.value })}
                   />
                 </FormControl>
-                <FormControl sx={{ mb: 2 }}>
+                <FormControl sx={{ mb: 2 }} disabled={busy}>
                   <Checkbox
                     checked={Boolean(form.salesEnabled)}
-                    disabled={busy}
                     onChange={(e) => setForm({ ...form, salesEnabled: e.target.checked })}
                   />
                   <FormControl.Label>Aceitar novas contratações</FormControl.Label>
@@ -301,10 +299,9 @@ export default function AdvertisingAdmin() {
                     Controla só a venda de novos períodos. Não afeta contratos já vigentes.
                   </FormControl.Caption>
                 </FormControl>
-                <FormControl sx={{ mb: 2 }}>
+                <FormControl sx={{ mb: 2 }} disabled={busy}>
                   <Checkbox
                     checked={Boolean(form.deliveryEnabled)}
-                    disabled={busy}
                     onChange={(e) => setForm({ ...form, deliveryEnabled: e.target.checked })}
                   />
                   <FormControl.Label>Permitir exibição</FormControl.Label>
@@ -341,23 +338,21 @@ export default function AdvertisingAdmin() {
                 {dialog.target.title} · {dialog.target.partner_name}
               </Text>
             )}
-            <FormControl sx={{ mt: 2 }} required>
+            <FormControl sx={{ mt: 2 }} required disabled={busy}>
               <FormControl.Label>Justificativa da operação</FormControl.Label>
               <TextInput
                 block
                 maxLength={500}
-                disabled={busy}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               />
             </FormControl>
-            <FormControl sx={{ mt: 2 }} required>
+            <FormControl sx={{ mt: 2 }} required disabled={busy}>
               <FormControl.Label>Confirme sua senha</FormControl.Label>
               <TextInput
                 block
                 type="password"
                 autoComplete="current-password"
-                disabled={busy}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
