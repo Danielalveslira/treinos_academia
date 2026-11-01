@@ -5,14 +5,14 @@
       "theme": "light",
       "width": 390,
       "height": 900,
-      "listMs": 3288,
+      "listMs": 3489,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 23503916,
+      "usedHeapBytes": 32218184,
       "inputPaintMs": [
-        8.200000000186265,
-        7,
-        9.5
+        8.699999999254942,
+        9.900000000372529,
+        5.199999999254942
       ],
       "pickerLayout": {
         "before": {
@@ -26,20 +26,20 @@
         }
       },
       "volume": {
-        "list40Ms": 2987,
-        "editor40Ms": 3212,
+        "list40Ms": 3183,
+        "editor40Ms": 3713,
         "mountedTargetFields": 0,
         "inputPaintMs": [
-          4.899999999906868,
-          3.5,
-          2,
-          7.300000000279397,
-          3
+          6.799999998882413,
+          5.599999999627471,
+          5,
+          0.8000000007450581,
+          3.099999999627471
         ],
         "overflow": false,
-        "heap": 23503916
+        "heap": 27380052
       },
-      "readRequests": 31,
+      "readRequests": 32,
       "writeRequests": 6
     }
   ]

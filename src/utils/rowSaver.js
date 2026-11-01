@@ -17,13 +17,19 @@ export function createRowSaver({
   updateRow,
   onChange,
   newId = () => crypto.randomUUID(),
+  initialRow = null,
 }) {
-  let rowId = null
-  let created = false
+  let rowId = initialRow?.id || null
+  let created = Boolean(rowId)
   let running = null
   let wanted = null
   let latest = null
-  let state = { status: 'idle', persisted: {}, pendingSync: false, error: null }
+  let state = {
+    status: initialRow ? 'saved' : 'idle',
+    persisted: initialRow?.persisted || {},
+    pendingSync: Boolean(initialRow?.pendingSync),
+    error: null,
+  }
 
   function emit(patch) {
     state = { ...state, ...patch }
@@ -73,5 +79,9 @@ export function createRowSaver({
       latest && state.status === 'error' ? save(latest) : (running ?? Promise.resolve()),
     getState: () => state,
     getRowId: () => rowId,
+    whenIdle: async () => {
+      while (running) await running
+      return state
+    },
   }
 }

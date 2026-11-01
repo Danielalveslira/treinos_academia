@@ -23,11 +23,17 @@ function sameValues(a, b) {
   return Boolean(a && b && isValidSet(a) && isValidSet(b) && setValueKey(a) === setValueKey(b))
 }
 
-export function buildSessionSets(historyWorkout, nextKey) {
+export function buildSessionSets(historyWorkout, nextKey, targetSets = null) {
   const fromHistory = suggestedSets(historyWorkout)
+  const planned =
+    Number.isInteger(Number(targetSets)) && Number(targetSets) > 0
+      ? Math.min(MAX_WORKOUT_SETS, Number(targetSets))
+      : null
   const sets = fromHistory.some((set) => set.source === 'history')
-    ? fromHistory
-    : Array.from({ length: DEFAULT_SET_COUNT }, () => ({ weight: '', reps: '', source: 'empty' }))
+    ? fromHistory.slice(0, planned || MAX_WORKOUT_SETS)
+    : []
+  const desiredCount = planned || sets.length || DEFAULT_SET_COUNT
+  while (sets.length < desiredCount) sets.push({ weight: '', reps: '', source: 'empty' })
   return sets.map((set) => ({
     ...set,
     key: nextKey(),
@@ -35,6 +41,30 @@ export function buildSessionSets(historyWorkout, nextKey) {
     committed: null,
     suggested: set.source === 'history' ? { weight: set.weight, reps: set.reps } : null,
   }))
+}
+
+// Confirmed rows have no client-side set keys. Rebuild them in their saved order, then
+// keep planned positions available without treating suggestions as completed work.
+export function restoreSessionSets(workout, historyWorkout, nextKey, targetSets = null) {
+  const confirmed = (workout?.setDetails || []).filter(isValidSet)
+  const suggested = buildSessionSets(historyWorkout, nextKey, targetSets)
+  const count =
+    workout?.exerciseCompleted === true
+      ? confirmed.length
+      : Math.max(confirmed.length, suggested.length)
+  return Array.from({ length: count }, (_, index) => {
+    const saved = confirmed[index]
+    if (!saved) return suggested[index]
+    const committed = { weight: String(saved.weight), reps: String(saved.reps) }
+    return {
+      key: suggested[index]?.key ?? nextKey(),
+      ...committed,
+      source: 'manual',
+      done: true,
+      committed,
+      suggested: null,
+    }
+  })
 }
 
 // Edição de um registro existente: tudo já foi registrado.
