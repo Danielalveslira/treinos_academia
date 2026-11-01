@@ -11,6 +11,24 @@ const routes = [
   ['/profissionais', 'profissionais.html', false],
 ]
 
+test('demo pública tem conteúdo inicial, SEO, navegação e bundle próprios', () => {
+  const html = readFileSync('dist/demo.html', 'utf8')
+  const home = readFileSync('dist/index.html', 'utf8')
+  const sitemap = readFileSync('dist/sitemap.xml', 'utf8')
+  const config = JSON.parse(readFileSync('vercel.json', 'utf8'))
+  assert.match(html, /<meta name="robots" content="index,follow">/)
+  assert.match(html, /<link rel="canonical" href="https:\/\/www\.evolutus\.com\.br\/demo">/)
+  assert.match(html, /<h1>Experimente registrar um treino<\/h1>/)
+  assert.match(html, /Demonstração · dados fictícios · nada é salvo/)
+  assert.match(html, /href="\/cadastro">Criar conta e registrar meus treinos/)
+  assert.equal((html.match(/id="public-header-menu-root"/g) || []).length, 1)
+  assert.equal((html.match(/id="demo-root"/g) || []).length, 1)
+  assert.match(html, /assets\/workoutDemo-[^" ]+\.js/)
+  assert.match(home, /href="\/demo"/)
+  assert.match(sitemap, /<loc>https:\/\/www\.evolutus\.com\.br\/demo<\/loc>/)
+  assert.ok(config.rewrites.some((route) => route.source === '/demo' && route.destination === '/demo.html'))
+})
+
 test('build entrega HTML específico e completo antes de JavaScript', () => {
   const titles = new Set()
   for (const [path, file, indexable] of routes) {
@@ -127,7 +145,7 @@ test('links internos e âncoras das cinco páginas têm destino', () => {
   const config = JSON.parse(readFileSync('vercel.json', 'utf8'))
   const fallback = config.rewrites.find((route) => route.destination === '/app-shell.html')
   const appRoute = new RegExp(`^${fallback.source.match(/^\/:path\((.*)\)$/)[1]}$`)
-  const publicPaths = new Set(routes.map(([path]) => path))
+  const publicPaths = new Set([...routes.map(([path]) => path), '/demo'])
   for (const [, file] of routes) {
     const html = readFileSync(`dist/${file}`, 'utf8')
     const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]))

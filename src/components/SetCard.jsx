@@ -33,14 +33,30 @@ function saveErrorText() {
     : 'Não foi possível salvar.'
 }
 
-function NumberControl({ field, value, disabled, placeholder, onChange }) {
+function NumberControl({ field, value, disabled, placeholder, onChange, demoMode = false }) {
   const weight = field === 'weight'
+  const step = weight ? 2.5 : 1
+  const adjust = (direction) => {
+    const current = Number(String(value).replace(',', '.')) || 0
+    onChange(String(Math.max(0, current + direction * step)))
+  }
   return (
     <div className="set-card-field">
       <label className="set-card-field-label" htmlFor={`set-${field}`}>
         {weight ? 'Peso (kg)' : 'Repetições'}
       </label>
       <div className="set-card-input-wrap">
+        {demoMode && (
+          <button
+            type="button"
+            className="set-card-adjust"
+            aria-label={`Diminuir ${weight ? 'carga' : 'repetições'}`}
+            disabled={disabled}
+            onClick={() => adjust(-1)}
+          >
+            −
+          </button>
+        )}
         <input
           id={`set-${field}`}
           className="set-card-value"
@@ -56,6 +72,17 @@ function NumberControl({ field, value, disabled, placeholder, onChange }) {
             if (parsed !== null) onChange(parsed)
           }}
         />
+        {demoMode && (
+          <button
+            type="button"
+            className="set-card-adjust"
+            aria-label={`Aumentar ${weight ? 'carga' : 'repetições'}`}
+            disabled={disabled}
+            onClick={() => adjust(1)}
+          >
+            +
+          </button>
+        )}
       </div>
     </div>
   )
@@ -96,6 +123,9 @@ export function SetCard({
   onFinishNow,
   onRetry,
   disabled,
+  demoMode = false,
+  previousSets = [],
+  onToggleDone,
 }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false)
   const timer = useRef(null)
@@ -155,6 +185,17 @@ export function SetCard({
           Ir para a série {pendingIndex + 1}
         </button>
       )
+    } else if (demoMode && onToggleDone) {
+      primary = (
+        <button
+          type="button"
+          className="set-card-complete is-secondary"
+          disabled={disabled}
+          onClick={onToggleDone}
+        >
+          Desmarcar série
+        </button>
+      )
     }
   }
 
@@ -174,10 +215,17 @@ export function SetCard({
         </div>
         {(sourceLabel || dirty || (activeSet.done && !editing)) && (
           <div className="set-card-tags">
-            {sourceLabel && <span className="set-card-source">{sourceLabel}</span>}
+            {sourceLabel && (
+              <span className="set-card-source">
+                {demoMode && activeSet.source === 'history'
+                  ? 'Sugerido do último treino (exemplo)'
+                  : sourceLabel}
+              </span>
+            )}
             {activeSet.done && !dirty && !editing && (
               <span className="set-card-source is-done">
-                <CheckCircleFillIcon size={12} /> Registrada
+                <CheckCircleFillIcon size={12} />{' '}
+                {demoMode ? 'Concluída na demonstração' : 'Registrada'}
               </span>
             )}
             {dirty && <span className="set-card-source is-dirty">Alterada · confirme abaixo</span>}
@@ -215,6 +263,7 @@ export function SetCard({
           placeholder="Ex.: 20"
           disabled={disabled}
           onChange={(value) => onChange('weight', value)}
+          demoMode={demoMode}
         />
         <NumberControl
           field="reps"
@@ -222,13 +271,25 @@ export function SetCard({
           placeholder="Ex.: 10"
           disabled={disabled}
           onChange={(value) => onChange('reps', value)}
+          demoMode={demoMode}
         />
       </div>
+      {demoMode && previousSets[activeSet.historyIndex] && (
+        <p className="set-card-previous">
+          Última vez: {Number(previousSets[activeSet.historyIndex].weight).toLocaleString('pt-BR')}{' '}
+          kg × {previousSets[activeSet.historyIndex].reps} · Meta: 8–12 repetições
+        </p>
+      )}
       {empty && (
         <p className="set-card-hint">Primeira vez? Informe peso e repetições. Sem carga, use 0.</p>
       )}
 
       {primary}
+      {demoMode && activeSet.done && onToggleDone && (dirty || pendingIndex !== -1) && (
+        <button type="button" className="set-card-link" disabled={disabled} onClick={onToggleDone}>
+          Desmarcar série
+        </button>
+      )}
       {!editing && doneCount > 0 && pendingCount > 0 && !activeSet.done && (
         <button type="button" className="set-card-link" disabled={disabled} onClick={onFinishNow}>
           Finalizar com {doneCount} {doneCount === 1 ? 'série' : 'séries'}

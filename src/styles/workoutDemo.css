@@ -1,0 +1,74 @@
+.public-demo { margin: 0; background: var(--bgColor-default); color: var(--fgColor-default); }
+.public-demo .public-theme-trigger { min-width: 44px; min-height: 44px; }
+.demo-page { --fitness-accent: #3fb950; --fitness-accent-strong: #27863a; --fitness-accent-soft: #eaf7ec; --fitness-blue: #218bff; --fitness-surface: var(--bgColor-muted); --fitness-radius-md: 16px; min-height: 100dvh; background: var(--bgColor-default); color: var(--fgColor-default); }
+[data-color-mode='dark'] .demo-page { --fitness-accent-strong: #56d364; --fitness-accent-soft: #17271a; --fitness-blue: #58a6ff; }
+.demo-page *, .demo-page *::before, .demo-page *::after { box-sizing: border-box; }
+.demo-page button:focus-visible, .demo-page a:focus-visible, .demo-page input:focus-visible { outline: 3px solid var(--fitness-blue); outline-offset: 2px; }
+.demo-layout { display: grid; grid-template-columns: minmax(0, 1fr); width: 100%; max-width: 1100px; margin: auto; }
+.demo-aside { display: none; }
+.demo-phone { min-width: 0; }
+.demo-screen { min-width: 0; padding: 20px 12px calc(32px + env(safe-area-inset-bottom)); }
+.demo-intro h1 { margin: 0 0 6px; font-size: clamp(22px, 6vw, 28px); line-height: 1.12; letter-spacing: -.03em; }
+.demo-intro p { margin: 0 0 12px; color: var(--fgColor-muted); font-size: 14px; line-height: 1.4; }
+.demo-badge { display: inline-block; margin: 0 0 18px; padding: 5px 9px; border: 1px solid var(--borderColor-default); border-radius: 999px; color: var(--fgColor-muted); font-size: 11px; line-height: 1.25; }
+.demo-session-header { margin-bottom: 12px; }
+.demo-session-top { display: flex; align-items: center; gap: 8px; color: var(--fgColor-muted); font-size: 11px; font-weight: 750; letter-spacing: .08em; }
+.demo-session-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--fitness-accent-soft); color: var(--fitness-accent-strong); }
+.demo-session-header h2 { margin: 8px 0 4px; font-size: clamp(20px, 5.6vw, 26px); line-height: 1.16; letter-spacing: -.03em; }
+.demo-sheet-goal { margin: 0 0 16px; color: var(--fgColor-muted); font-size: 12px; }
+.demo-progress-copy { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 7px; color: var(--fgColor-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.demo-progress-copy strong { color: var(--fgColor-default); }
+.demo-session-header progress { display: block; width: 100%; height: 8px; overflow: hidden; border: 0; border-radius: 99px; background: var(--borderColor-default); accent-color: var(--fitness-accent); }
+.demo-session-header progress::-webkit-progress-bar { background: var(--borderColor-default); }
+.demo-session-header progress::-webkit-progress-value { border-radius: 99px; background: var(--fitness-accent); }
+.demo-feedback { margin: 10px 0 0; color: var(--fitness-accent-strong); font-size: 12px; line-height: 1.4; }
+.demo-context-note { margin: 0 0 12px; padding: 10px 12px; border-left: 3px solid var(--fitness-accent); border-radius: 6px; background: var(--fitness-accent-soft); color: var(--fgColor-default); font-size: 12px; line-height: 1.4; }
+.demo-exercise-list { display: grid; gap: 10px; }
+.demo-exercise { min-width: 0; overflow: hidden; border: 1px solid var(--borderColor-default); border-radius: 16px; background: var(--bgColor-muted); }
+.demo-exercise-toggle { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 65px; padding: 10px; border: 0; background: transparent; color: var(--fgColor-default); font: inherit; text-align: left; cursor: pointer; }
+.demo-exercise-number { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border: 1px solid var(--borderColor-default); border-radius: 10px; color: var(--fitness-accent-strong); font-weight: 800; }
+.demo-exercise-heading { display: grid; flex: 1; min-width: 0; gap: 3px; }
+.demo-exercise-heading strong { font-size: 14px; line-height: 1.25; }
+.demo-exercise-heading small { color: var(--fgColor-muted); font-size: 12px; }
+.demo-exercise-toggle svg:last-child { flex: none; transition: rotate .2s; }
+.demo-exercise-toggle svg.is-open { rotate: 180deg; }
+.demo-exercise-panel { padding: 0 7px 7px; }
+.demo-exercise-panel .set-card { padding: 12px 9px 8px; border: 1px solid var(--borderColor-default); border-radius: 13px; background: var(--bgColor-default); }
+.demo-exercise-panel .set-card-segment, .demo-exercise-panel .set-card-quick-actions button, .demo-exercise-panel .set-card-link { min-height: 44px; }
+.demo-exercise-panel .set-card-input-wrap { display: flex; align-items: center; min-width: 0; }
+.demo-exercise-panel .set-card-value { flex: 1; width: 0; min-width: 0; height: 52px; padding: 0; font-size: 22px; }
+.demo-exercise-panel .set-card-adjust { flex: none; width: 44px; min-height: 52px; padding: 0; border: 0; background: transparent; color: var(--fgColor-default); font: inherit; font-size: 22px; font-weight: 700; cursor: pointer; }
+.demo-exercise-panel .set-card-fields { gap: 7px; }
+.demo-exercise-panel .set-card-previous { margin: 9px 2px 0; color: var(--fgColor-muted); font-size: 12px; line-height: 1.4; }
+.demo-exercise-panel .set-card-complete { min-height: 52px; }
+.demo-exercise-panel .set-card-quick-actions { gap: 7px; }
+.demo-exercise-panel .set-card-quick-actions button { flex: 1; justify-content: center; font-size: 12px; }
+.demo-rest-note { margin: 9px 3px 4px; color: var(--fgColor-muted); font-size: 12px; }
+.demo-exit-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 14px; }
+.demo-exit-actions button { min-height: 44px; padding: 0 9px; border: 0; background: transparent; color: var(--fgColor-muted); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+.demo-summary { display: grid; justify-items: center; gap: 12px; text-align: center; }
+.demo-summary-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; background: var(--fitness-accent-soft); color: var(--fitness-accent-strong); }
+.demo-summary h2 { margin: 0; font-size: 22px; }
+.demo-summary p { margin: 0; color: var(--fgColor-muted); font-size: 13px; line-height: 1.4; }
+.demo-summary-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; margin: 10px 0; }
+.demo-summary-grid div { display: grid; gap: 6px; padding: 13px 8px; border: 1px solid var(--borderColor-default); border-radius: 12px; background: var(--bgColor-muted); }
+.demo-summary-grid span { color: var(--fgColor-muted); font-size: 12px; }
+.demo-summary-grid strong { font-size: 19px; font-variant-numeric: tabular-nums; }
+.demo-summary .demo-summary-benefit { width: 100%; color: var(--fgColor-default); }
+.demo-summary-cta { display: grid; gap: 8px; width: 100%; margin-top: 10px; }
+.demo-primary-link { display: grid; place-items: center; min-height: 52px; padding: 8px 12px; border-radius: 12px; background: var(--fitness-accent); color: #08110a; font-weight: 800; text-decoration: none; }
+.demo-summary-cta button, .demo-summary-cta > a:not(.demo-primary-link) { display: grid; place-items: center; min-height: 44px; border: 0; background: transparent; color: var(--fgColor-muted); font: inherit; font-size: 13px; cursor: pointer; }
+.demo-aside li svg { flex: none; color: var(--fitness-accent-strong); }
+@media (min-width: 800px) {
+  .demo-layout { grid-template-columns: minmax(280px, 390px) minmax(320px, 390px); align-items: start; justify-content: center; gap: clamp(30px, 5vw, 75px); padding: 40px 24px 80px; }
+  .demo-aside { display: block; position: sticky; top: 95px; padding-top: 35px; }
+  .demo-eyebrow { display: block; margin-bottom: 10px; color: var(--fitness-accent-strong); font-size: 12px; font-weight: 800; letter-spacing: .1em; }
+  .demo-aside h1 { margin: 0 0 16px; font-size: 44px; line-height: 1.08; letter-spacing: -.04em; }
+  .demo-aside p { color: var(--fgColor-muted); font-size: 16px; line-height: 1.5; }
+  .demo-aside ul { display: grid; gap: 16px; margin: 25px 0; padding: 0; list-style: none; }
+  .demo-aside li { display: flex; gap: 9px; align-items: center; }
+  .demo-phone { border: 7px solid var(--borderColor-default); border-radius: 32px; box-shadow: var(--shadow-floating-small, 0 20px 55px rgba(0,0,0,.15)); }
+  .demo-screen { padding: 20px 12px 30px; }
+  .demo-intro { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .demo-page *, .demo-page *::before, .demo-page *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }

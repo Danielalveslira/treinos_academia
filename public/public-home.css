@@ -51,6 +51,9 @@
 }
 .home-secondary {
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 .home-image {
   display: block;
@@ -85,6 +88,15 @@
 .home-step,
 .home-feature {
   min-width: 0;
+}
+.public-home #content .home-steps-demo {
+  margin-top: 28px;
+}
+.home-steps-demo a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 600;
 }
 .home-step-number {
   margin-bottom: 12px;
