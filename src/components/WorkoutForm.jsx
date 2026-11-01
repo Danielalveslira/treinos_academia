@@ -3,7 +3,7 @@ import {
   sheetScopeExercises,
 } from '../features/workoutSheets/workoutSheetValidation.js'
 import { canStartExercise } from '../utils/personalExercises.js'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Box, Button, FormControl, TextInput, Textarea, Text } from '@primer/react'
 import {
@@ -11,6 +11,7 @@ import {
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ListUnorderedIcon,
   SearchIcon,
 } from '@primer/octicons-react'
 import { validateWorkout, hasErrors } from '../utils/validators'
@@ -22,11 +23,7 @@ import { calculateVolume } from '../utils/calculations'
 import { useFocusWithinBodyClass } from '../hooks/useFocusWithinBodyClass'
 import { getExerciseType, isCardioExercise } from '../utils/exerciseType'
 import { formatCardioSession, isValidCardioSession } from '../utils/cardioSessions'
-import {
-  loadDoneExerciseIds,
-  saveDoneExerciseIds,
-  cleanupStaleDoneExerciseKeys,
-} from '../utils/doneExercisesStorage'
+import { saveDoneExerciseIds, cleanupStaleDoneExerciseKeys } from '../utils/doneExercisesStorage'
 import { businessDayKey } from '../utils/businessDate'
 import { nextActiveSetIndexAfterRemoval } from '../utils/setCardFlow'
 import { recentExerciseSessions } from '../utils/exerciseHistory'
@@ -43,6 +40,7 @@ import {
   dropPendingSets,
   nextPendingIndex,
   removeSet,
+  restoreSessionSets,
   rowSyncStatus,
   setSyncStatus,
   updateSetField,
@@ -89,6 +87,11 @@ export function WorkoutForm({
   sheetScope,
   progressScope,
   history = [],
+  sessionRows = [],
+  finishGuard,
+  finishing = false,
+  onUnsafeChange,
+  backToSheets,
   initialValue,
   defaultExerciseId,
   onSubmit,
@@ -137,11 +140,17 @@ export function WorkoutForm({
   }, [exercises, initialValue?.exerciseId, editingType, sheetScope])
   const initialExerciseId = initialValue?.exerciseId || defaultExerciseId || ''
   const initialExercise = availableExercises.find((exercise) => exercise.id === initialExerciseId)
+  const sessionRowFor = (exerciseId) => sessionRows.find((row) => row.exerciseId === exerciseId)
+  const targetSetsFor = useCallback(
+    (exerciseId) => sheetScope?.items.find((item) => item.exercise_id === exerciseId)?.target_sets,
+    [sheetScope]
+  )
 
   // Valores de um exercício que ainda não foi tocado: sugestão do último treino quando existe
   // (marcada como 'history', nunca como concluída) e campos vazios quando não existe.
   function freshValues(exercise, { date = todayString(), note = '' } = {}) {
     const last = history.find((workout) => workout.exerciseId === exercise?.id)
+    const resumed = sessionRowFor(exercise?.id)
     const base = {
       exerciseId: exercise?.id || '',
       setDetails: [],
@@ -151,12 +160,27 @@ export function WorkoutForm({
       cardioCommitted: null,
       cardioSource: 'empty',
       date,
-      note,
+      note: resumed?.note ?? note,
     }
     if (isCardioExercise(exercise)) {
-      return last ? { ...base, ...cardioValues(last), cardioSource: 'history' } : base
+      return resumed
+        ? {
+            ...base,
+            ...cardioValues(resumed),
+            cardioCommitted: cardioValues(resumed),
+            cardioDone: true,
+            cardioSource: 'manual',
+          }
+        : last
+          ? { ...base, ...cardioValues(last), cardioSource: 'history' }
+          : base
     }
-    return { ...base, setDetails: buildSessionSets(last, nextKey) }
+    return {
+      ...base,
+      setDetails: resumed
+        ? restoreSessionSets(resumed, last, nextKey, targetSetsFor(exercise?.id))
+        : buildSessionSets(last, nextKey, targetSetsFor(exercise?.id)),
+    }
   }
 
   const [values, setValues] = useState(() => {
@@ -188,17 +212,25 @@ export function WorkoutForm({
   const [step, setStep] = useState(() => (initialExercise ? 'register' : 'exercise'))
   const [search, setSearch] = useState('')
   const drafts = useRef(new Map())
-  // Exercícios finalizados HOJE, neste aparelho (localStorage, sem sync com o banco --
-  // ver doneExercisesStorage.js). É por EXERCÍCIO, através de todo o fluxo de sessão
-  // da ficha, e é o que marca "concluído" na lista e decide qual é o
-  // próximo exercício. Não se aplica a edição avulsa vinda de History.jsx (initialValue
-  // setado).
+  // A retomada deriva a conclusão das linhas confirmadas no banco ou protegidas pela fila
+  // offline. A marca local acompanha a navegação durante esta montagem, mas não substitui
+  // o registro persistido após recarregar. Edição avulsa de histórico não usa esse estado.
   const [doneExerciseIds, setDoneExerciseIds] = useState(() => {
     if (initialValue) return new Set()
     const today = todayString()
     cleanupStaleDoneExerciseKeys(today)
-    return loadDoneExerciseIds(today, progressScope)
+    return new Set(
+      sessionRows
+        .filter(
+          (row) =>
+            row.exerciseCompleted === true ||
+            isCardioExercise(row) ||
+            getWorkoutSets(row).length >= (Number(targetSetsFor(row.exerciseId)) || 3)
+        )
+        .map((row) => row.exerciseId)
+    )
   })
+  const doneIdsRef = useRef(doneExerciseIds)
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
   const submitLock = useRef(false)
@@ -224,10 +256,27 @@ export function WorkoutForm({
   function saverFor(exerciseId) {
     let saver = savers.current.get(exerciseId)
     if (!saver) {
+      const resumed = sessionRowFor(exerciseId)
+      const currentSets =
+        valuesRef.current.exerciseId === exerciseId
+          ? valuesRef.current.setDetails
+          : drafts.current.get(exerciseId)?.setDetails || []
       saver = createRowSaver({
         createRow: (payload, options) => writers.current.onCreate(payload, options),
         updateRow: (id, payload) => writers.current.onUpdate(id, payload),
         onChange: (state) => setSaveStates((previous) => ({ ...previous, [exerciseId]: state })),
+        initialRow: resumed && {
+          id: resumed.id,
+          pendingSync: resumed.pendingSync,
+          persisted: Object.fromEntries(
+            currentSets
+              .filter((set) => set.done)
+              .map((set) => [
+                set.key,
+                `${Number(set.committed.weight)}|${Number(set.committed.reps)}`,
+              ])
+          ),
+        },
       })
       savers.current.set(exerciseId, saver)
     }
@@ -276,11 +325,31 @@ export function WorkoutForm({
       return
     }
     if (!current.setDetails.every((set) => set.source === 'empty' && !set.done)) return
-    update((previous) => ({ ...previous, setDetails: buildSessionSets(lastWorkout, nextKey) }))
-  }, [lastWorkout, initialValue, cardio])
+    update((previous) => ({
+      ...previous,
+      setDetails: buildSessionSets(lastWorkout, nextKey, targetSetsFor(previous.exerciseId)),
+    }))
+  }, [lastWorkout, initialValue, cardio, targetSetsFor])
 
   const sets = values.setDetails
-  const rowState = saveStates[values.exerciseId]
+  const resumedRow = sessionRowFor(values.exerciseId)
+  const rowState = useMemo(
+    () =>
+      saveStates[values.exerciseId] ||
+      (resumedRow && {
+        status: 'saved',
+        pendingSync: resumedRow.pendingSync,
+        persisted: Object.fromEntries(
+          sets
+            .filter((set) => set.done)
+            .map((set) => [
+              set.key,
+              `${Number(set.committed.weight)}|${Number(set.committed.reps)}`,
+            ])
+        ),
+      }),
+    [saveStates, values.exerciseId, resumedRow, sets]
+  )
   const syncStatuses = useMemo(
     () => (editing || cardio ? [] : sets.map((set) => setSyncStatus(set, rowState))),
     [editing, cardio, sets, rowState]
@@ -306,6 +375,14 @@ export function WorkoutForm({
   const hasUnsaved = Object.values(saveStates).some(
     (state) => state.status === 'saving' || state.status === 'error'
   )
+  useEffect(() => onUnsafeChange?.(hasUnsaved), [hasUnsaved, onUnsafeChange])
+  if (finishGuard)
+    finishGuard.current = async () => {
+      const states = await Promise.all(
+        [...savers.current.values()].map((saver) => saver.whenIdle())
+      )
+      return states.every((state) => state.status !== 'saving' && state.status !== 'error')
+    }
   useEffect(() => {
     if (!hasUnsaved) return undefined
     function warn(event) {
@@ -341,9 +418,13 @@ export function WorkoutForm({
     }
     if (cardio) {
       const committed = current.cardioCommitted || cardioValues()
-      return { ...base, ...committed }
+      return { ...base, ...committed, exerciseCompleted: current.cardioDone }
     }
-    return { ...base, setDetails: doneSetsPayload(current.setDetails) }
+    return {
+      ...base,
+      setDetails: doneSetsPayload(current.setDetails),
+      exerciseCompleted: allSetsDone(current.setDetails),
+    }
   }
 
   // Grava o estado confirmado do exercício (séries concluídas + data/observação). Sempre o estado
@@ -360,10 +441,36 @@ export function WorkoutForm({
   }
 
   function markExerciseDone(exerciseId) {
-    if (editing || doneExerciseIds.has(exerciseId)) return
-    const next = new Set(doneExerciseIds).add(exerciseId)
+    if (editing || doneIdsRef.current.has(exerciseId)) return
+    const next = new Set(doneIdsRef.current).add(exerciseId)
+    doneIdsRef.current = next
     setDoneExerciseIds(next)
     saveDoneExerciseIds(todayString(), next, progressScope)
+  }
+
+  function unmarkExerciseDone(exerciseId) {
+    if (!doneIdsRef.current.has(exerciseId)) return
+    const next = new Set(doneIdsRef.current)
+    next.delete(exerciseId)
+    doneIdsRef.current = next
+    setDoneExerciseIds(next)
+    saveDoneExerciseIds(todayString(), next, progressScope)
+  }
+
+  function markWhenProtected(exerciseId, saving) {
+    saving.then(() => {
+      const current =
+        valuesRef.current.exerciseId === exerciseId
+          ? valuesRef.current
+          : drafts.current.get(exerciseId)
+      const completed =
+        current &&
+        (isCardioExercise(availableExercises.find((exercise) => exercise.id === exerciseId))
+          ? current.cardioDone
+          : allSetsDone(current.setDetails))
+      if (completed && saverFor(exerciseId).getState().status === 'saved')
+        markExerciseDone(exerciseId)
+    })
   }
 
   function rememberDraft() {
@@ -422,9 +529,9 @@ export function WorkoutForm({
     const next = update((previous) => ({ ...previous, setDetails: result.sets }))
     setErrors({})
     setReviewing(false)
-    if (result.finished) markExerciseDone(next.exerciseId)
-    else setActive(result.nextIndex)
-    persist(next)
+    if (!result.finished) setActive(result.nextIndex)
+    const saving = persist(next)
+    if (result.finished) markWhenProtected(next.exerciseId, saving)
   }
 
   // Corrige uma série já concluída: só ela muda; as demais permanecem como foram registradas.
@@ -436,8 +543,11 @@ export function WorkoutForm({
   }
 
   function handleAddSet() {
+    const wasFinished = allSetsDone(valuesRef.current.setDetails)
     const index = valuesRef.current.setDetails.length
     changeSets((current) => addSet(current, nextKey))
+    if (wasFinished && valuesRef.current.setDetails.length > index)
+      unmarkExerciseDone(valuesRef.current.exerciseId)
     setActive(Math.min(index, valuesRef.current.setDetails.length - 1))
   }
 
@@ -451,8 +561,12 @@ export function WorkoutForm({
     }))
     setActive(nextActiveSetIndexAfterRemoval(activeRef.current, current.length))
     if (editing) return
-    if (target.done) persist(next)
-    if (allSetsDone(next.setDetails)) markExerciseDone(next.exerciseId)
+    if (!allSetsDone(next.setDetails)) unmarkExerciseDone(next.exerciseId)
+    const saving =
+      target.done || allSetsDone(next.setDetails)
+        ? persist(next)
+        : saverFor(next.exerciseId).whenIdle()
+    if (allSetsDone(next.setDetails)) markWhenProtected(next.exerciseId, saving)
   }
 
   function handleFinishNow() {
@@ -461,7 +575,7 @@ export function WorkoutForm({
       setDetails: dropPendingSets(previous.setDetails),
     }))
     setActive(0)
-    if (allSetsDone(next.setDetails)) markExerciseDone(next.exerciseId)
+    if (allSetsDone(next.setDetails)) markWhenProtected(next.exerciseId, persist(next))
   }
 
   function handleConcludeCardio() {
@@ -480,8 +594,7 @@ export function WorkoutForm({
     }))
     setErrors({})
     setReviewing(false)
-    markExerciseDone(next.exerciseId)
-    persist(next)
+    markWhenProtected(next.exerciseId, persist(next))
   }
 
   function handleRetry() {
@@ -492,7 +605,11 @@ export function WorkoutForm({
   // campo, para nunca ficarem só na tela.
   function handleMetaBlur() {
     const current = valuesRef.current
-    if (editing || !savedMeta.current.has(current.exerciseId)) return
+    if (
+      editing ||
+      (!savedMeta.current.has(current.exerciseId) && !sessionRowFor(current.exerciseId))
+    )
+      return
     if (savedMeta.current.get(current.exerciseId) === `${current.date}|${current.note}`) return
     persist(current)
   }
@@ -555,19 +672,27 @@ export function WorkoutForm({
 
   return (
     <Box as="form" ref={formRef} className="workout-form workout-execution" onSubmit={handleSubmit}>
+      {!editing && backToSheets && (
+        <nav className="workout-session-nav" aria-label="Navegação do treino">
+          <Button as={Link} to={backToSheets} size="small" leadingVisual={ChevronLeftIcon}>
+            Voltar às fichas
+          </Button>
+          <Button
+            type="button"
+            size="small"
+            leadingVisual={step === 'register' ? ListUnorderedIcon : ChevronLeftIcon}
+            onClick={step === 'register' ? showExercises : () => setStep('register')}
+            disabled={finishing}
+          >
+            {step === 'register' ? 'Exercícios da ficha' : 'Voltar ao exercício'}
+          </Button>
+        </nav>
+      )}
       <nav className="workout-progress" aria-label="Etapas do treino">
         {sheetScope ? (
-          // Ficha: posição textual concisa ("Exercício X de N") em vez dos blocos de etapa —
-          // continua trocável (toca para ver a lista de exercícios da ficha).
-          step === 'register' ? (
-            <button type="button" className="is-done" disabled={submitting} onClick={showExercises}>
-              Exercício {sheetPosition} de {availableExercises.length}
-            </button>
-          ) : (
-            <span className="is-current" aria-current="step">
-              Exercício {sheetPosition} de {availableExercises.length}
-            </span>
-          )
+          <span className="is-current" aria-current="step">
+            Exercício {sheetPosition} de {availableExercises.length}
+          </span>
         ) : (
           <button type="button" disabled={submitting} onClick={showExercises}>
             Editar exercício
@@ -577,13 +702,15 @@ export function WorkoutForm({
 
       {step === 'exercise' && (
         <section className="workout-step" aria-labelledby="exercise-choice-title">
-          <button
-            className="workout-back"
-            type="button"
-            onClick={() => (selectedExercise ? setStep('register') : onCancel?.())}
-          >
-            <ChevronLeftIcon size={16} /> Voltar
-          </button>
+          {editing && (
+            <button
+              className="workout-back"
+              type="button"
+              onClick={() => (selectedExercise ? setStep('register') : onCancel?.())}
+            >
+              <ChevronLeftIcon size={16} /> Voltar
+            </button>
+          )}
           <div className="workout-step-heading">
             <h2 id="exercise-choice-title">Escolha o exercício</h2>
           </div>
@@ -676,7 +803,7 @@ export function WorkoutForm({
           )}
 
           {cardio && !showComplete && (
-            <fieldset className="cardio-fieldset" disabled={submitting}>
+            <fieldset className="cardio-fieldset" disabled={submitting || finishing}>
               <legend>Sessão</legend>
               {values.cardioSource === 'history' && !values.cardioDone && (
                 <span className="set-card-source">Sugerido do último treino</span>
@@ -741,7 +868,7 @@ export function WorkoutForm({
           )}
 
           {!cardio && !showComplete && (
-            <fieldset className="sets-fieldset" disabled={submitting}>
+            <fieldset className="sets-fieldset" disabled={submitting || finishing}>
               <legend className="sr-only">Séries</legend>
               <SetCard
                 mode={editing ? 'edit' : 'session'}
@@ -758,7 +885,7 @@ export function WorkoutForm({
                 canRemove={canRemoveSet(sets, sets[activeSetIndex]?.key)}
                 onFinishNow={handleFinishNow}
                 onRetry={handleRetry}
-                disabled={submitting}
+                disabled={submitting || finishing}
               />
               {(errors.setDetails || errors[`set${activeSetIndex}`]) && (
                 <Text role="alert" className="form-error">

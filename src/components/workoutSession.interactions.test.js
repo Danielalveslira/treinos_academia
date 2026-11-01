@@ -51,7 +51,7 @@ before(async () => {
               import React from 'react'
               export const Box = React.forwardRef(({ as: Tag = 'div', sx, children, ...props }, ref) => <Tag {...props}>{children}</Tag>)
               export const Text = ({ children, ...props }) => <span {...props}>{children}</span>
-              export const Button = ({ leadingVisual, loading, variant, children, ...props }) => <button {...props}>{children}</button>
+              export const Button = ({ as: Component = 'button', leadingVisual, loading, variant, children, ...props }) => <Component {...props}>{children}</Component>
               export const TextInput = ({ block, size, ...props }) => <input {...props} />
               export const Textarea = ({ block, ...props }) => <textarea {...props} />
               export const FormControl = ({ children }) => <div>{children}</div>
@@ -64,7 +64,7 @@ before(async () => {
             contents: `
               const icon = () => null
               export const AlertIcon = icon, CheckCircleFillIcon = icon, CheckIcon = icon,
-                ChevronLeftIcon = icon, ChevronRightIcon = icon, ClockIcon = icon, SearchIcon = icon,
+                ChevronLeftIcon = icon, ChevronRightIcon = icon, ClockIcon = icon, ListUnorderedIcon = icon, SearchIcon = icon,
                 SyncIcon = icon, TrashIcon = icon
             `,
           }))
@@ -224,6 +224,68 @@ test('first workout: empty fields, completing a set saves it and advances with v
     [{ weight: '20.5', reps: '10' }]
   )
   assert.ok(form.calls.create[0].options.id)
+})
+
+test('reload restores confirmed sets and continues on the same row without creating a second one', async () => {
+  const row = {
+    id: 'existing-row',
+    exerciseId: 'squat',
+    sheetId: 'sheet-a',
+    type: 'strength',
+    setDetails: [{ weight: 32, reps: 8 }],
+    note: 'Controle de movimento',
+    pendingSync: true,
+  }
+  const form = await mount({ sessionRows: [row] })
+  assert.match(form.html(), /Série 2 de 3/)
+  assert.match(form.html(), /Salvo no aparelho/)
+  assert.equal(
+    form.root.findAll((node) => node.props?.['aria-label'] === 'Série 1, concluída').length,
+    1
+  )
+  await form.conclude('34', '8')
+  assert.equal(form.calls.create.length, 0)
+  assert.equal(form.calls.update.length, 1)
+  assert.equal(form.calls.update[0].id, 'existing-row')
+  assert.deepEqual(
+    form.calls.update[0].payload.setDetails.map((set) => set.weight),
+    ['32', '34']
+  )
+  assert.equal(form.calls.update[0].payload.note, 'Controle de movimento')
+})
+
+test('reload keeps an explicitly completed partial exercise completed', async () => {
+  const form = await mount({
+    sessionRows: [
+      {
+        id: 'partial-row',
+        exerciseId: 'squat',
+        sheetId: 'sheet-a',
+        type: 'strength',
+        setDetails: [{ weight: 20, reps: 10 }],
+        exerciseCompleted: true,
+        pendingSync: false,
+      },
+    ],
+  })
+  assert.match(form.html(), /Exercício concluído/)
+  assert.match(form.html(), /1 série · 20 kg × 10/)
+  assert.equal(form.calls.create.length, 0)
+  assert.equal(form.calls.update.length, 0)
+})
+
+test('navigation separates leaving the sheet from returning to its exercise list', async () => {
+  const form = await mount({ backToSheets: '/treinar' })
+  assert.equal(
+    form.root.findAll((node) => node.type === 'a' && node.props.href === '/treinar').length,
+    1
+  )
+  assert.equal(form.anyButton('Exercício 1 de 2'), undefined)
+  await form.click('Exercícios da ficha')
+  assert.match(form.html(), /Escolha o exercício/)
+  await form.click('Voltar ao exercício')
+  assert.match(form.html(), /Série 1 de 3/)
+  assert.equal(form.calls.create.length, 0)
 })
 
 test('every set after the first updates the same row; the last set finishes the exercise without navigating', async () => {
@@ -411,6 +473,27 @@ test('"Finalizar com N séries" drops the untouched ones and finishes the exerci
   await form.click('Finalizar com 1 série')
   assert.match(form.html(), /Exercício concluído/)
   assert.match(form.html(), /1 série · 20 kg × 10/)
+  assert.equal(form.calls.create.length, 1)
+  assert.equal(form.calls.create[0].payload.exerciseCompleted, false)
+  assert.equal(form.calls.update.length, 1)
+  assert.equal(form.calls.update[0].payload.exerciseCompleted, true)
+  assert.deepEqual(
+    form.calls.update[0].payload.setDetails.map(({ weight, reps }) => ({ weight, reps })),
+    [{ weight: '20', reps: '10' }]
+  )
+})
+
+test('removing the final pending sets persists partial completion on the same row', async () => {
+  const form = await mount()
+  await form.conclude('20', '10')
+  await form.click('Remover série 2')
+  await form.click('Toque para confirmar')
+  await form.click('Remover série 2')
+  await form.click('Toque para confirmar')
+  assert.match(form.html(), /Exercício concluído/)
+  assert.equal(form.calls.create.length, 1)
+  assert.equal(form.calls.update.length, 1)
+  assert.equal(form.calls.update[0].payload.exerciseCompleted, true)
 })
 
 test('cardio: one action records the session and finishes the exercise', async () => {

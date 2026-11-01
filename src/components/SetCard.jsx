@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Button } from '@primer/react'
 import {
   AlertIcon,
   CheckCircleFillIcon,
@@ -234,35 +235,34 @@ export function SetCard({
         </button>
       )}
 
-      <details className="set-card-adjust">
-        <summary>Ajustar séries</summary>
-        <div className="set-card-adjust-actions">
-          <button
-            type="button"
-            disabled={disabled || sets.length >= MAX_WORKOUT_SETS}
-            onClick={onAdd}
-          >
-            + Adicionar série
-          </button>
-          <button
-            type="button"
-            className={confirmingRemove ? 'is-confirming' : ''}
-            disabled={disabled || !canRemove}
-            onClick={() => {
-              if (confirmingRemove) {
-                onRemove()
-                setConfirmingRemove(false)
-                return
-              }
-              setConfirmingRemove(true)
-              timer.current = setTimeout(() => setConfirmingRemove(false), 2500)
-            }}
-          >
-            <TrashIcon size={14} />
-            {confirmingRemove ? 'Toque para confirmar' : `Remover série ${activeIndex + 1}`}
-          </button>
-        </div>
-      </details>
+      <div className="set-card-quick-actions">
+        <Button
+          type="button"
+          size="small"
+          disabled={disabled || sets.length >= MAX_WORKOUT_SETS}
+          onClick={onAdd}
+        >
+          + Adicionar série
+        </Button>
+        <Button
+          type="button"
+          size="small"
+          variant={confirmingRemove ? 'danger' : 'default'}
+          leadingVisual={TrashIcon}
+          disabled={disabled || !canRemove}
+          onClick={() => {
+            if (confirmingRemove) {
+              onRemove()
+              setConfirmingRemove(false)
+              return
+            }
+            setConfirmingRemove(true)
+            timer.current = setTimeout(() => setConfirmingRemove(false), 2500)
+          }}
+        >
+          {confirmingRemove ? 'Toque para confirmar' : `Remover série ${activeIndex + 1}`}
+        </Button>
+      </div>
     </div>
   )
 }
@@ -276,7 +276,15 @@ export function ExerciseComplete({ summary, syncStatus, onRetry, onNext, onRevie
         <CheckIcon size={24} />
       </span>
       <div>
-        <h3>Exercício concluído</h3>
+        <h3>
+          {syncStatus === 'error'
+            ? 'Registro não salvo'
+            : syncStatus === 'saving'
+              ? 'Salvando exercício'
+              : syncStatus === 'local'
+                ? 'Concluído no aparelho'
+                : 'Exercício concluído'}
+        </h3>
         <p>{summary}</p>
         <SaveStatus status={syncStatus} onRetry={onRetry} />
       </div>
