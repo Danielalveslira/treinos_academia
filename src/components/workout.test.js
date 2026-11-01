@@ -93,8 +93,10 @@ test('new form without history: empty fields, three pending sets and one main ac
   assert.doesNotMatch(html, /Volume estimado|Séries válidas|concluídas</)
   assert.doesNotMatch(html, /Trocar exercício|Trocar grupo|Repetir última sessão/)
   assert.doesNotMatch(html, /Finalizar exercício/)
-  // Configuração de séries fica recolhida; com várias séries remover está habilitado.
-  assert.match(html, /<details class="set-card-adjust"><summary>Ajustar séries<\/summary>/)
+  // As duas ações ficam visíveis juntas; remover mantém a confirmação em dois toques.
+  assert.match(html, /set-card-quick-actions/)
+  assert.match(html, /\+ Adicionar série/)
+  assert.doesNotMatch(html, /Ajustar séries/)
   assert.match(html, /Remover série 1/)
 })
 
@@ -138,10 +140,10 @@ test('editing legacy and individual sets preserves every set (not just the visib
     // nunca um terceiro segmento "+" (removido, ver primeiro teste) inflando a contagem.
     assert.match(html, /aria-label="Série 1, concluída"/)
     assert.match(html, /aria-label="Série 2, concluída"/)
+    assert.equal((html.match(/aria-label="Série \d+, concluída"/g) || []).length, expectedSets)
     assert.match(html, /Série 1 de 2/)
     // Com mais de uma série, "Remover série" fica habilitado.
-    assert.match(html, /Remover série 1<\/button>/)
-    assert.doesNotMatch(html, /Remover série 1<\/button>.*disabled/)
+    assert.match(html, /Remover série 1/)
     // Card abre na primeira série (30kg x 12).
     assert.match(html, /id="set-weight"[^>]*value="30"/)
     assert.match(html, /id="set-reps"[^>]*value="12"/)
@@ -338,8 +340,20 @@ test('sheet scope: opens straight on the first eligible exercise, with a concise
   }
   const html = render({
     exercises: [
-      { id: 'squat', name: 'Agachamento', source: 'catalog', provider: 'evolutus_dataset', active: true },
-      { id: 'bench', name: 'Supino', source: 'catalog', provider: 'evolutus_dataset', active: true },
+      {
+        id: 'squat',
+        name: 'Agachamento',
+        source: 'catalog',
+        provider: 'evolutus_dataset',
+        active: true,
+      },
+      {
+        id: 'bench',
+        name: 'Supino',
+        source: 'catalog',
+        provider: 'evolutus_dataset',
+        active: true,
+      },
     ],
     sheetScope,
     defaultExerciseId: 'squat',
@@ -367,12 +381,23 @@ test('sheet scope: no reference line at all when the current exercise has no goa
     id: 'sheet-1',
     name: 'Treino A',
     items: [
-      { id: 'item-1', exercise_id: 'squat', exercise: { id: 'squat', name: 'Agachamento' }, available: true },
+      {
+        id: 'item-1',
+        exercise_id: 'squat',
+        exercise: { id: 'squat', name: 'Agachamento' },
+        available: true,
+      },
     ],
   }
   const html = render({
     exercises: [
-      { id: 'squat', name: 'Agachamento', source: 'catalog', provider: 'evolutus_dataset', active: true },
+      {
+        id: 'squat',
+        name: 'Agachamento',
+        source: 'catalog',
+        provider: 'evolutus_dataset',
+        active: true,
+      },
     ],
     sheetScope,
     defaultExerciseId: 'squat',

@@ -68,8 +68,6 @@ jobs:
         run: node scripts/public-auth-header-smoke.mjs
       - name: Workout sheets mobile, execution and conflict smoke
         run: node scripts/workout-sheets-browser-smoke.mjs
-        env:
-          WORKOUT_SHEETS_CONCURRENCY: '2' # TEMP: real-runner A/B vs the default of 3, reverted next commit
       - name: Sheet entry redirects and exercise selection intent
         run: node scripts/workout-sheets-browser-smoke.mjs --entries
       - name: Home V4 recommendation, completion, cache, photos and responsive themes

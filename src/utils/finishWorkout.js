@@ -54,6 +54,7 @@ export const FINISH_MESSAGES = {
   pending: FINISH_PENDING_MESSAGE,
   attention: FINISH_ATTENTION_MESSAGE,
   error: FINISH_ERROR_MESSAGE,
-  insufficient: 'Registre atividade suficiente antes de finalizar o treino.',
+  insufficient:
+    'Para concluir hoje, registre três exercícios ou pelo menos 15 minutos de cardio. Registros ainda não sincronizados não contam.',
   invalid: 'Esta ficha não está disponível para finalizar. Revise suas fichas.',
 }

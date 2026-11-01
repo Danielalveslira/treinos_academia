@@ -58,7 +58,10 @@ export default function TreinarPage() {
   }
 
   return (
-    <section className="workout-sheets">
+    <section className="workout-sheets workout-picker">
+      <Button as={Link} to="/app" size="small">
+        Voltar ao início
+      </Button>
       <header className="sheet-heading">
         <div>
           <span className="eyebrow">SESSÃO DE TREINO</span>
