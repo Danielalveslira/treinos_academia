@@ -23,6 +23,7 @@ const AdvertisingAdmin = lazy(() => import('../components/AdvertisingAdmin'))
 const CommercialAdmin = lazy(() => import('../components/CommercialAdmin'))
 const CommercialEngineAdmin = lazy(() => import('../components/CommercialEngineAdmin'))
 const CommercialOverview = lazy(() => import('../components/CommercialOverview'))
+const ApprovalsQueue = lazy(() => import('../components/ApprovalsQueue'))
 
 const TABS = [
   { key: 'campaigns', label: 'Campanhas' },
@@ -221,30 +222,23 @@ export default function AdminSponsoredAds() {
       )}
 
       {section === 'approvals' && (
-        <TaskLinks
-          items={[
-            {
-              to: '/admin/parcerias?section=settings',
-              title: 'Anúncios comerciais',
-              description: 'Revisar conteúdo e campanhas enviadas.',
-            },
-            {
-              to: '/admin/vitrines',
-              title: 'Profissionais e estabelecimentos',
-              description: 'Analisar cadastros e publicação.',
-            },
-            {
-              to: '/admin/parcerias?tab=commercial',
-              title: 'Vitrines de produtos',
-              description: 'Analisar lojas e produtos comerciais.',
-            },
-            {
-              to: '/admin/promocoes',
-              title: 'Promoções',
-              description: 'Consultar e moderar promoções de EvoCash.',
-            },
-          ]}
-        />
+        <>
+          <Suspense fallback={<Spinner aria-label="Carregando aprovações" />}>
+            <ApprovalsQueue />
+          </Suspense>
+          <Heading as="h2" sx={{ fontSize: 2, mt: 4 }}>
+            Outras moderações
+          </Heading>
+          <TaskLinks
+            items={[
+              {
+                to: '/admin/vitrines',
+                title: 'Profissionais e estabelecimentos',
+                description: 'Analisar cadastros e publicação (fila própria).',
+              },
+            ]}
+          />
+        </>
       )}
 
       {section === 'advertising' && (
