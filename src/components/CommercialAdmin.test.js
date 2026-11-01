@@ -23,6 +23,7 @@ before(async () => {
       contents: `
         import React from 'react'
         import TestRenderer, { act } from 'react-test-renderer'
+        import { MemoryRouter } from 'react-router-dom'
         import { ThemeProvider, BaseStyles } from '@primer/react'
         import CommercialAdmin from './CommercialAdmin.jsx'
 
@@ -40,7 +41,7 @@ before(async () => {
           let renderer
           act(() => {
             renderer = TestRenderer.create(
-              React.createElement(ThemeProvider, null, React.createElement(BaseStyles, null, React.createElement(CommercialAdmin)))
+              React.createElement(MemoryRouter, { initialEntries: ['/?sub=legacy'] }, React.createElement(ThemeProvider, null, React.createElement(BaseStyles, null, React.createElement(CommercialAdmin))))
             )
           })
           const root = renderer.root

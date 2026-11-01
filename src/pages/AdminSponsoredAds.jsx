@@ -269,9 +269,19 @@ export default function AdminSponsoredAds() {
                 description: 'Cadastros, moderação e publicação.',
               },
               {
-                to: '/admin/parcerias?tab=commercial',
-                title: 'Propostas e produtos legados',
-                description: 'Registros anteriores e contatos comerciais.',
+                to: '/admin/parcerias?tab=commercial&sub=leads',
+                title: 'Propostas comerciais',
+                description: 'Contatos e solicitações de empresas.',
+              },
+              {
+                to: '/admin/parcerias?tab=commercial&sub=storefronts',
+                title: 'Vitrines de produtos',
+                description: 'Gerenciar lojas comerciais (aprovação fica em Aprovações).',
+              },
+              {
+                to: '/admin/parcerias?tab=commercial&sub=legacy',
+                title: 'Produtos legados',
+                description: 'Cadastros administrativos anteriores, preservados por compatibilidade.',
               },
             ]}
           />

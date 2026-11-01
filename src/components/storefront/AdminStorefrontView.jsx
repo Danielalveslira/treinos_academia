@@ -8,12 +8,20 @@ import {
   FormControl,
   Heading,
   Label,
-  Select,
   Spinner,
   Text,
   TextInput,
   Textarea,
 } from '@primer/react'
+import {
+  ArchiveIcon,
+  ClockIcon,
+  EyeIcon,
+  PlusIcon,
+  RocketIcon,
+  ShieldLockIcon,
+  SyncIcon,
+} from '@primer/octicons-react'
 import {
   listStorefronts,
   saveStorefront,
@@ -32,6 +40,7 @@ import { reauthenticatePricingAdmin } from '../../services/evocashPricingService
 import { editorialLabels, publicationLabels, storefrontError } from '../../utils/storefront'
 import { commercialDate } from '../../utils/commercial'
 import StorefrontImage from '../StorefrontImage'
+import { RowActionsMenu } from '../RowActionsMenu'
 
 // Administrative moderation, limits and the raw technical view over product storefronts.
 // Kept intentionally close to its pre-refactor shape: the owner-facing experience was
@@ -120,15 +129,16 @@ export default function AdminStorefrontView() {
         await setStorefrontLimits(form, data.limits.revision, reason, confirm)
       } else if (dialog.kind === 'moderate') {
         await reauthenticatePricingAdmin(password)
-        await setStorefrontEditorial(item, form.state, reason)
+        await setStorefrontEditorial(item, form.targetState, reason)
       } else {
         const product = dialog.kind !== 'storefront'
         await saveWithImage({
           file,
           upload: (image) => uploadStorefrontImage(item.id, image),
-          save: (uploaded) => product
-            ? saveStorefrontProduct(item, { ...form, mediaId: uploaded || form.mediaId })
-            : saveStorefront(item, { ...form, logoMediaId: uploaded || form.logoMediaId }),
+          save: (uploaded) =>
+            product
+              ? saveStorefrontProduct(item, { ...form, mediaId: uploaded || form.mediaId })
+              : saveStorefront(item, { ...form, logoMediaId: uploaded || form.logoMediaId }),
           isLinked: (id) => isStorefrontImageLinked(item.id, id, { admin: true, product }),
           discard: discardStorefrontImage,
           previousMediaId: product ? form.mediaId : form.logoMediaId,
@@ -234,53 +244,76 @@ export default function AdminStorefrontView() {
               )}
               {item.lastDecision && <Text as="p">Última decisão: {item.lastDecision}</Text>}
               <Text as="p">
-                A última versão aprovada continua pública durante a revisão das alterações,
-                enquanto o contrato estiver vigente.
+                A última versão aprovada continua pública durante a revisão das alterações, enquanto
+                o contrato estiver vigente.
               </Text>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3 }}>
-                <Button disabled={busy} onClick={() => setPreview(true)}>
-                  Prévia privada
-                </Button>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3, alignItems: 'center' }}>
                 <Button disabled={busy} onClick={() => open('storefront', item)}>
                   Editar vitrine
-                </Button>
-                <Button disabled={busy} onClick={() => open('product', emptyProduct)}>
-                  Adicionar produto
-                </Button>
-                {!['submitted', 'suspended', 'approved'].includes(item.editorialState) && (
-                  <Button
-                    disabled={busy}
-                    onClick={() => action(() => setStorefrontEditorial(item, 'submitted'))}
-                  >
-                    Enviar para aprovação
-                  </Button>
-                )}
-                {item.editorialState !== 'archived' && item.editorialState !== 'suspended' && (
-                  <Button
-                    disabled={busy}
-                    onClick={() => action(() => setStorefrontEditorial(item, 'archived'))}
-                  >
-                    Arquivar vitrine
-                  </Button>
-                )}
-                <Button disabled={busy} onClick={() => history()}>
-                  Histórico de contratações
-                </Button>
-                <Button
-                  disabled={busy}
-                  onClick={() =>
-                    open('moderate', {
-                      state: item.editorialState === 'submitted' ? 'approved' : 'suspended',
-                    })
-                  }
-                >
-                  Moderar vitrine
                 </Button>
                 {item.publicationState === 'active' && (
                   <Button as="a" href={`/vitrine/${item.id}`}>
                     Ver vitrine pública
                   </Button>
                 )}
+                <RowActionsMenu
+                  disabled={busy}
+                  actions={[
+                    {
+                      key: 'preview',
+                      label: 'Prévia privada',
+                      icon: EyeIcon,
+                      onSelect: () => setPreview(true),
+                    },
+                    {
+                      key: 'add-product',
+                      label: 'Adicionar produto',
+                      icon: PlusIcon,
+                      onSelect: () => open('product', emptyProduct),
+                    },
+                    ...(!['submitted', 'suspended', 'approved'].includes(item.editorialState)
+                      ? [
+                          {
+                            key: 'submit',
+                            label: 'Enviar para aprovação',
+                            icon: RocketIcon,
+                            onSelect: () => action(() => setStorefrontEditorial(item, 'submitted')),
+                          },
+                        ]
+                      : []),
+                    {
+                      key: 'history',
+                      label: 'Histórico de contratações',
+                      icon: ClockIcon,
+                      onSelect: () => history(),
+                    },
+                    item.editorialState === 'suspended'
+                      ? {
+                          key: 'resume',
+                          label: 'Retomar vitrine',
+                          icon: SyncIcon,
+                          onSelect: () => open('moderate', { targetState: 'draft' }),
+                        }
+                      : {
+                          key: 'suspend',
+                          label: 'Suspender vitrine',
+                          icon: ShieldLockIcon,
+                          variant: 'danger',
+                          onSelect: () => open('moderate', { targetState: 'suspended' }),
+                        },
+                    ...(item.editorialState !== 'archived' && item.editorialState !== 'suspended'
+                      ? [
+                          {
+                            key: 'archive',
+                            label: 'Arquivar vitrine',
+                            icon: ArchiveIcon,
+                            variant: 'danger',
+                            onSelect: () => action(() => setStorefrontEditorial(item, 'archived')),
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
               </Box>
               <Heading as="h4" sx={{ fontSize: 2 }}>
                 Produtos ({item.productCount})
@@ -354,8 +387,8 @@ export default function AdminStorefrontView() {
                 </Box>
               )}
               <Text as="p">
-                Preços, direitos, pagamentos e auditoria financeira permanecem na aba Motor
-                comercial.
+                Preços, publicações contratadas, pagamentos e histórico de operações permanecem em
+                Preços e contratações.
               </Text>
             </Box>
           )}
@@ -392,7 +425,9 @@ export default function AdminStorefrontView() {
             dialog.kind === 'product'
               ? 'Produto da vitrine'
               : dialog.kind === 'moderate'
-                ? 'Moderação editorial'
+                ? form.targetState === 'draft'
+                  ? 'Retomar vitrine'
+                  : 'Suspender vitrine'
                 : dialog.kind === 'limits'
                   ? 'Limites comerciais'
                   : 'Dados da vitrine'
@@ -414,30 +449,11 @@ export default function AdminStorefrontView() {
             sx={{ p: 3 }}
           >
             {dialog.kind === 'moderate' ? (
-              <FormControl>
-                <FormControl.Label>Decisão</FormControl.Label>
-                <Select
-                  block
-                  value={form.state}
-                  onChange={(e) => {
-                    setForm({ ...form, state: e.target.value })
-                    setConfirm(false)
-                  }}
-                  sx={{
-                    bg: 'canvas.default',
-                    color: 'fg.default',
-                    p: 2,
-                    borderColor: 'border.default',
-                    borderRadius: 2,
-                  }}
-                >
-                  {['approved', 'rejected', 'suspended', 'draft'].map((s) => (
-                    <Select.Option key={s} value={s}>
-                      {editorialLabels[s]}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </FormControl>
+              <Text as="p">
+                {form.targetState === 'draft'
+                  ? 'A vitrine volta ao fluxo normal. Aprovação e publicação continuam exigindo revisão e contratação vigentes, feitas na Central de Aprovações.'
+                  : 'A vitrine deixa de ficar disponível para novas aprovações e publicação até ser retomada. Aprovar ou reprovar o conteúdo enviado continua na Central de Aprovações.'}
+              </Text>
             ) : dialog.kind === 'limits' ? (
               <>
                 {[
@@ -497,7 +513,9 @@ export default function AdminStorefrontView() {
                 ))}
                 <FormControl sx={{ my: 2 }}>
                   <FormControl.Label>
-                    {dialog.kind === 'product' ? 'Imagem do produto' : 'Logotipo da vitrine (opcional)'}
+                    {dialog.kind === 'product'
+                      ? 'Imagem do produto'
+                      : 'Logotipo da vitrine (opcional)'}
                   </FormControl.Label>
                   <input
                     type="file"
