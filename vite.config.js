@@ -42,6 +42,7 @@ export default defineConfig({
         publicHeaderAuth: 'src/publicHeaderAuth.js',
         publicTurbo: 'src/publicTurbo.js',
         publicHeaderMenu: 'src/PublicHeaderMenu.jsx',
+        workoutDemo: 'src/workoutDemoEntry.jsx',
       },
       output: {
         onlyExplicitManualChunks: true,
