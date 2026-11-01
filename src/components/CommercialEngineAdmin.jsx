@@ -29,8 +29,8 @@ const tabs = {
   catalog: 'Serviços',
   prices: 'Preços',
   orders: 'Pedidos',
-  rights: 'Direitos',
-  events: 'Auditoria',
+  rights: 'Publicações contratadas',
+  events: 'Histórico de operações',
 }
 const stateLabels = {
   active: 'Ativo',
@@ -143,7 +143,7 @@ export default function CommercialEngineAdmin() {
   return (
     <Box sx={{ minWidth: 0 }}>
       <Heading as="h2" sx={{ fontSize: 3, mb: 2 }}>
-        Motor comercial
+        Preços e contratações
       </Heading>
       <Text as="p" sx={{ color: 'fg.muted' }}>
         Preços em EvoCash independentes do valor de aquisição em reais. Pausar novas vendas preserva

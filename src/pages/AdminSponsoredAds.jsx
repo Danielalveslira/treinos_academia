@@ -305,7 +305,12 @@ export default function AdminSponsoredAds() {
               {
                 to: '/admin/parcerias?tab=engine',
                 title: 'Preços e contratações',
-                description: 'Serviços cobrados em EvoCash.',
+                description: 'Serviços cobrados em EvoCash, publicações contratadas e histórico.',
+              },
+              {
+                to: '/admin/compras-evocash?tab=prices',
+                title: 'Histórico de preços do EvoCash',
+                description: 'Versões publicadas, autor e justificativa.',
               },
             ]}
           />
