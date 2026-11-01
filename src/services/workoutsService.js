@@ -48,6 +48,7 @@ function toDoc(row) {
     // Ficha em que o registro nasceu (null em treino livre) -- ver sheet_id em
     // supabase/migrations/20261123000001_workout_sheet_attribution.sql. Imutável após a criação.
     sheetId: row.sheet_id ?? null,
+    exerciseCompleted: row.exercise_completed === true,
   })
 }
 
@@ -57,6 +58,9 @@ function workoutPayload(workout) {
     exercise_id: workout.exerciseId,
     date: workout.date,
     note: workout.note?.trim() || '',
+    ...(typeof workout.exerciseCompleted === 'boolean'
+      ? { exercise_completed: workout.exerciseCompleted }
+      : {}),
   }
   if (workout.type === 'cardio') {
     return {
