@@ -249,7 +249,7 @@ function DetailPanel({ userId, filters, row, fetcher, onClose }) {
   )
 }
 
-// Aba "Métricas" de Administração → Anúncios e parcerias. Carregada sob demanda (React.lazy na página) e só lê o
+// Aba "Resultados" de Administração → Central comercial. Carregada sob demanda (React.lazy na página) e só lê o
 // servidor depois de aberta. `ads` e `communities` já estão em memória na página (nenhuma consulta extra aqui).
 export default function AdMetricsTab({
   userId,

@@ -23,7 +23,7 @@ export const ADMIN_ITEMS = [
     key: 'admin-parcerias',
     to: '/admin/parcerias',
     icon: MegaphoneIcon,
-    label: 'Anúncios e parcerias',
+    label: 'Central comercial',
   },
   { key: 'admin-contas', to: '/admin/contas', icon: PersonIcon, label: 'Contas' },
   {
