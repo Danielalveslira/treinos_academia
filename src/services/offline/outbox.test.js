@@ -70,6 +70,18 @@ test('create offline: grava o registro local E a mutação na mesma transação,
     assert.ok(!(forbidden in row))
 })
 
+test('conclusão parcial permanece na fila offline e no espelho após reabrir', async () => {
+  await enqueue(A, OPERATIONS.create, E1, strength(80, { exercise_completed: false }))
+  await enqueue(A, OPERATIONS.update, E1, strength(80, { exercise_completed: true }))
+  const [mutation] = await mutationsOf(A)
+  assert.equal(mutation.operation, OPERATIONS.create)
+  assert.equal(mutation.payload.exercise_completed, true)
+  assert.equal((await readCachedWorkouts(A)).rows[0].exercise_completed, true)
+  await closeDatabase()
+  assert.equal((await readCachedWorkouts(A)).rows[0].exercise_completed, true)
+  assert.equal((await mutationsOf(A))[0].payload.exercise_completed, true)
+})
+
 test('create de cardio monta a linha local sem set_details', async () => {
   await enqueue(A, OPERATIONS.create, E1, {
     exercise_id: 'ex-1',

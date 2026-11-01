@@ -14,6 +14,7 @@ import {
   isSetDirty,
   nextPendingIndex,
   removeSet,
+  restoreSessionSets,
   setSourceLabel,
   setSyncStatus,
   setValueKey,
@@ -40,6 +41,55 @@ test('without history there is a default number of empty sets and no invented va
       ['', '', 'empty', false, null, null]
     )
   }
+})
+
+test('planned quantity wins while history still suggests the known positions', () => {
+  const sets = buildSessionSets(history, counter(), 4)
+  assert.equal(sets.length, 4)
+  assert.deepEqual(
+    sets.slice(0, 2).map((set) => set.source),
+    ['history', 'history']
+  )
+  assert.deepEqual(
+    sets.slice(2).map((set) => set.source),
+    ['empty', 'empty']
+  )
+})
+
+test('resume marks only persisted positions done and keeps their values and keys', () => {
+  const nextKey = counter()
+  const restored = restoreSessionSets(
+    { setDetails: [{ weight: 30, reps: 6 }] },
+    history,
+    nextKey,
+    3
+  )
+  assert.equal(restored.length, 3)
+  assert.deepEqual(
+    restored.map((set) => set.done),
+    [true, false, false]
+  )
+  assert.deepEqual(restored[0].committed, { weight: '30', reps: '6' })
+  assert.deepEqual(
+    restored.map((set) => set.key),
+    [0, 1, 2]
+  )
+  assert.deepEqual(
+    doneSetsPayload(restored).map((set) => [set.weight, set.reps]),
+    [['30', '6']]
+  )
+})
+
+test('resume a partially completed exercise with only its confirmed sets', () => {
+  const restored = restoreSessionSets(
+    { setDetails: [{ weight: 30, reps: 6 }], exerciseCompleted: true },
+    history,
+    counter(),
+    3
+  )
+  assert.equal(restored.length, 1)
+  assert.equal(restored[0].done, true)
+  assert.deepEqual(restored[0].committed, { weight: '30', reps: '6' })
 })
 
 test('history becomes labelled suggestions — never completed sets', () => {
