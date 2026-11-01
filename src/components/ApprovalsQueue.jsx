@@ -257,23 +257,21 @@ export default function ApprovalsQueue() {
             )}
             {reviewing.status === 'submitted' ? (
               <>
-                <FormControl sx={{ mt: 3 }} required>
+                <FormControl sx={{ mt: 3 }} required disabled={busy}>
                   <FormControl.Label>Justificativa da decisão</FormControl.Label>
                   <Textarea
                     block
                     maxLength={500}
-                    disabled={busy}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                   />
                 </FormControl>
-                <FormControl sx={{ mt: 2 }} required>
+                <FormControl sx={{ mt: 2 }} required disabled={busy}>
                   <FormControl.Label>Confirme sua senha</FormControl.Label>
                   <TextInput
                     block
                     type="password"
                     autoComplete="current-password"
-                    disabled={busy}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
