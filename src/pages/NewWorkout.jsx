@@ -1,9 +1,18 @@
-import { useRef, useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import {
+  Link,
+  Navigate,
+  useBlocker,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom'
 import { Box, Button, Heading, Spinner, Flash } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PlayIcon, PulseIcon } from '@primer/octicons-react'
 import { useWorkouts } from '../hooks/useWorkouts'
+import { listWorkoutsPage } from '../services/workoutsService'
+import { hasPendingMutation } from '../services/offline/outbox.js'
 import { useToast } from '../hooks/useToast'
 import { WorkoutForm } from '../components/WorkoutForm'
 import { ErrorState } from '../components/ErrorState'
@@ -13,8 +22,8 @@ import { flushPending } from '../services/offline/syncScheduler'
 import { classifyReadError } from '../services/offline/readError'
 import { useAuth } from '../hooks/useAuth'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
+import { useWorkoutSessionLock } from '../hooks/useWorkoutSessionLock.js'
 import { FINISH_MESSAGES, FINISH_OFFLINE_MESSAGE, runFinishWorkout } from '../utils/finishWorkout'
-import { loadDoneExerciseIds } from '../utils/doneExercisesStorage'
 import { canStartExercise } from '../utils/personalExercises.js'
 import { originState, returnToOrigin } from '../utils/navigation'
 import { plannedWorkoutNotice } from '../utils/plannedWorkout'
@@ -25,6 +34,7 @@ import '../features/workoutSheets/workoutSheets.css'
 import { invalidateWorkoutCache } from '../utils/pageCache'
 import { businessDayKey, isBusinessDayKey } from '../utils/businessDate'
 import { sheetPickerUrl, validSheetId } from '../utils/workoutEntry.js'
+import { getWorkoutSets } from '../utils/workoutSets.js'
 
 // "Hoje" é o dia de NEGÓCIO (America/Sao_Paulo), não o do aparelho (ver utils/businessDate.js).
 const localDateKey = () => businessDayKey()
@@ -98,11 +108,51 @@ function WorkoutSession({ sheetScope }) {
   const { user, offlineLocal } = useAuth()
   const connected = useOnlineStatus()
   const online = connected && !offlineLocal
+  const writer = useWorkoutSessionLock(user.uid, sheetScope.id, localDateKey())
+  const [resume, setResume] = useState({ loading: true, rows: [] })
+  const [resumeAttempt, setResumeAttempt] = useState(0)
+  const [unsafeToLeave, setUnsafeToLeave] = useState(false)
+  const finishNavigation = useRef(false)
+  const blocker = useBlocker(() => unsafeToLeave && !finishNavigation.current)
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return
+    if (window.confirm('Há registros que ainda não foram salvos. Sair do treino agora?'))
+      blocker.proceed()
+    else blocker.reset()
+  }, [blocker])
+  const finishGuard = useRef(null)
+  useEffect(() => {
+    let active = true
+    const day = localDateKey()
+    setResume({ loading: true, rows: [] })
+    listWorkoutsPage(user.uid, {
+      startDate: day,
+      endDate: day,
+      pageSize: 500,
+      localOnly: offlineLocal,
+    }).then(
+      async ({ items }) => {
+        const rows = await Promise.all(
+          items
+            .filter((row) => row.sheetId === sheetScope.id)
+            .map(async (row) => ({
+              ...row,
+              pendingSync: await hasPendingMutation(user.uid, row.id),
+            }))
+        )
+        if (active) setResume({ loading: false, rows })
+      },
+      (error) => {
+        if (active) setResume({ loading: false, rows: [], error })
+      }
+    )
+    return () => {
+      active = false
+    }
+  }, [user.uid, sheetScope.id, offlineLocal, resumeAttempt])
   // O botão "Finalizar treino" só aparece depois de registrar ao menos um exercício hoje (nesta
   // sessão ou, após recarregar, pela marcação local de exercícios feitos hoje).
-  const [hasRegistered, setHasRegistered] = useState(
-    () => loadDoneExerciseIds(localDateKey(), `${user.uid}:${sheetScope.id}`).size > 0
-  )
+  const [hasRegistered, setHasRegistered] = useState(false)
   const [finishing, setFinishing] = useState(false)
   // O ref bloqueia cliques no mesmo ciclo de eventos (o state só reflete no próximo render).
   const finishingRef = useRef(false)
@@ -111,9 +161,18 @@ function WorkoutSession({ sheetScope }) {
   // cliente não envia valor nem data). A recompensa, se houver, chega pelo aviso discreto de
   // EvoCoins (WalletContext); aqui só se leva o usuário ao histórico.
   async function handleFinish() {
-    if (finishingRef.current) return
+    if (finishingRef.current || writer.state !== 'owner') return
     finishingRef.current = true
     setFinishing(true)
+    if (!(await finishGuard.current?.())) {
+      showToast(
+        'Aguarde ou tente salvar novamente os registros deste treino antes de finalizar.',
+        'danger'
+      )
+      finishingRef.current = false
+      setFinishing(false)
+      return
+    }
     // Regras (online-only, esvaziar a fila antes, nunca recompensa local) em utils/finishWorkout.js.
     const { outcome, error } = await runFinishWorkout({
       isOnline: () => online && navigator.onLine !== false,
@@ -124,6 +183,7 @@ function WorkoutSession({ sheetScope }) {
     })
     if (outcome === 'done') {
       invalidateWorkoutCache(user.uid)
+      finishNavigation.current = true
       // replace: o formulário concluído não deve ser reaberto pelo botão Voltar.
       navigate('/historico', { replace: true })
       return
@@ -139,6 +199,7 @@ function WorkoutSession({ sheetScope }) {
   // pendente neste aparelho ou falhou; erros sobem para o saver, que oferece "Tentar novamente".
   async function handleCreate(values, options) {
     try {
+      if (writer.state !== 'owner') throw new Error('SESSION_OPEN_IN_ANOTHER_TAB')
       if (
         values.sheetId !== sheetScope.id ||
         !sheetScope.items.some((item) => item.available && item.exercise_id === values.exerciseId)
@@ -160,6 +221,7 @@ function WorkoutSession({ sheetScope }) {
 
   async function handleUpdate(id, values) {
     try {
+      if (writer.state !== 'owner') throw new Error('SESSION_OPEN_IN_ANOTHER_TAB')
       return await save(id, values)
     } catch (err) {
       console.error('[NewWorkout] update:', err)
@@ -173,6 +235,14 @@ function WorkoutSession({ sheetScope }) {
   // quando o exercício inicial já está nas opções disponíveis).
   const sheetDefaultExerciseId =
     activeExercises.find((exercise) => exercise.id === defaultExerciseId)?.id ||
+    activeExercises.find((exercise) => {
+      const row = resume.rows.find((item) => item.exerciseId === exercise.id)
+      if (!row) return true
+      if (row.exerciseCompleted === true) return false
+      const planned =
+        Number(sheetScope.items.find((item) => item.exercise_id === exercise.id)?.target_sets) || 3
+      return row.type !== 'cardio' && getWorkoutSets(row).length < planned
+    })?.id ||
     activeExercises[0]?.id ||
     ''
 
@@ -192,6 +262,19 @@ function WorkoutSession({ sheetScope }) {
 
       {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
       <ErrorState error={error} onRetry={refresh} />
+      {resume.error && (
+        <ErrorState
+          error={resume.error}
+          onRetry={() => setResumeAttempt((attempt) => attempt + 1)}
+        />
+      )}
+      {resume.loading && <Spinner aria-label="Recuperando treino" />}
+      {writer.state === 'blocked' && (
+        <Flash variant="warning" role="alert">
+          Esta ficha está aberta em outra aba. Volte àquela aba ou feche-a antes de continuar aqui.{' '}
+          <Button onClick={writer.retry}>Tentar nesta aba</Button>
+        </Flash>
+      )}
       {sheetScope && !online && (
         <Flash variant="warning" sx={{ mb: 3 }}>
           Dados salvos neste aparelho — validação pendente. A disponibilidade dos exercícios será
@@ -219,27 +302,41 @@ function WorkoutSession({ sheetScope }) {
         </Blankslate>
       )}
 
-      {!loading && !error && activeExercises.length > 0 && (
-        <WorkoutForm
-          exercises={exercises}
-          sheetScope={sheetScope}
-          progressScope={`${user.uid}:${sheetScope.id}`}
-          history={workouts}
-          defaultExerciseId={sheetDefaultExerciseId}
-          onCreate={handleCreate}
-          onUpdate={handleUpdate}
-          onCancel={() => returnToOrigin(navigate, location, '/app')}
-        />
-      )}
+      {!loading &&
+        !error &&
+        !resume.loading &&
+        !resume.error &&
+        writer.state === 'owner' &&
+        activeExercises.length > 0 && (
+          <WorkoutForm
+            exercises={exercises}
+            sheetScope={sheetScope}
+            progressScope={`${user.uid}:${sheetScope.id}`}
+            history={workouts}
+            sessionRows={resume.rows}
+            finishGuard={finishGuard}
+            finishing={finishing}
+            onUnsafeChange={setUnsafeToLeave}
+            backToSheets="/treinar"
+            defaultExerciseId={sheetDefaultExerciseId}
+            onCreate={handleCreate}
+            onUpdate={handleUpdate}
+            onCancel={() => returnToOrigin(navigate, location, '/app')}
+          />
+        )}
 
-      {!loading && !error && hasRegistered && (
-        <div className="workout-finish">
-          <Button variant="primary" onClick={handleFinish} disabled={finishing || !online}>
-            {finishing ? 'Finalizando…' : 'Finalizar treino'}
-          </Button>
-          {!online && <p className="workout-finish-hint">{FINISH_OFFLINE_MESSAGE}</p>}
-        </div>
-      )}
+      {!loading &&
+        !error &&
+        !resume.loading &&
+        writer.state === 'owner' &&
+        (hasRegistered || resume.rows.length > 0) && (
+          <div className="workout-finish">
+            <Button variant="primary" onClick={handleFinish} disabled={finishing || !online}>
+              {finishing ? 'Finalizando…' : 'Finalizar treino'}
+            </Button>
+            {!online && <p className="workout-finish-hint">{FINISH_OFFLINE_MESSAGE}</p>}
+          </div>
+        )}
     </Box>
   )
 }
