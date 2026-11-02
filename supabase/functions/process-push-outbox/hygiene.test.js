@@ -79,7 +79,7 @@ test('armazenamento local permite apenas opt-out e calendário não sensível do
     join(ROOT, 'src/features/notifications/utils/pushNoticeSchedule.js'),
     'utf8'
   )
-  assert.match(schedule, /const record = \{ day: businessDayKey\(now\), at: now \}/)
+  assert.match(schedule, /const record = \{ day: businessDayKey\(now\), at: now, count: /)
   assert.match(schedule, /setItem\(key, JSON.stringify\(record\)\)/)
   assert.ok(!/endpoint|p256dh|subscription|token|email|password/i.test(schedule))
   const service = await readFile(

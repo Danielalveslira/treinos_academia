@@ -6,8 +6,8 @@
 // {who} "@fulano e mais N pessoas" (grupos) e {amount} (EvoCoins). A essência vem nas primeiras
 // palavras (Android/Windows cortam cedo) e tudo passa por `fit`.
 //
-// Tom: social/recompensas/treino têm personalidade (curto, caloroso, sem pressão negativa);
-// moderação, segurança, privacidade, dinheiro e administração são OBJETIVOS e genéricos
+// Tom: curto, direto e em português brasileiro, sem emojis. Social/treino podem variar a frase para não
+// repetir; moderação, segurança, privacidade, dinheiro e administração são OBJETIVOS e genéricos
 // (a tela bloqueada nunca mostra motivo, ação detalhada nem valor em EvoCash).
 
 export const LIMITS = { title: 56, body: 110 }
@@ -34,133 +34,116 @@ export function pickIndex(seq, size) {
 
 const POOLS = {
   push_welcome: [
-    [
-      '💚 Boas-vindas ao Evolutus!',
-      'Obrigado por usar o Evolutus! As notificações estão ativadas neste dispositivo.',
-    ],
+    ['Boas-vindas ao Evolutus!', 'As notificações estão ativas neste dispositivo.'],
   ],
   post_like: {
     single: [
-      ['🔥 Seu post chamou atenção', '{actor} curtiu sua publicação.'],
-      ['👀 Alguém gostou disso', '{actor} deixou uma curtida no seu post.'],
-      ['💚 Mandou bem!', '{actor} curtiu sua publicação.'],
-      ['⚡ Mais uma curtida', '{actor} curtiu o que você publicou.'],
-      ['🙌 Boa!', '{actor} curtiu seu post.'],
-      ['✨ Seu post brilhou', '{actor} curtiu sua publicação.'],
-      ['👏 Post aprovado', '{actor} curtiu sua publicação.'],
-      ['💪 Reconhecimento chegando', '{actor} curtiu o seu post.'],
+      ['Nova curtida', '{actor} curtiu sua publicação.'],
+      ['Seu post recebeu uma curtida', '{actor} curtiu o que você publicou.'],
+      ['Curtida na sua publicação', '{actor} curtiu seu post.'],
+      ['Alguém gostou do seu post', '{actor} curtiu sua publicação.'],
+      ['Mais uma curtida', '{actor} curtiu o seu post.'],
+      ['Seu post agradou', '{actor} curtiu sua publicação.'],
     ],
     group: [
-      ['🔥 Seu post está em alta', '{who} curtiram sua publicação.'],
-      ['👀 Chuva de curtidas', '{who} curtiram seu post.'],
-      ['💚 Seu post fez sucesso', '{who} curtiram o que você publicou.'],
-      ['⚡ Curtida em dobro (e mais)', '{who} curtiram sua publicação.'],
-      ['🙌 A galera aprovou', '{who} curtiram seu post.'],
+      ['Novas curtidas', '{who} curtiram sua publicação.'],
+      ['Seu post está em alta', '{who} curtiram seu post.'],
+      ['Curtidas na sua publicação', '{who} curtiram o que você publicou.'],
+      ['Seu post agradou', '{who} curtiram sua publicação.'],
     ],
   },
   comment_like: {
     single: [
-      ['💬 Esse comentário bateu bem', '{actor} curtiu o que você disse.'],
-      ['👏 Concordância detectada', '{actor} curtiu seu comentário.'],
-      ['🔥 Você disse tudo', '{actor} curtiu seu comentário.'],
-      ['💚 Comentário aprovado', '{actor} curtiu o que você comentou.'],
-      ['👀 Alguém concordou', '{actor} curtiu seu comentário.'],
-      ['✨ Boa colocação', '{actor} curtiu o seu comentário.'],
+      ['Curtida no seu comentário', '{actor} curtiu seu comentário.'],
+      ['Seu comentário agradou', '{actor} curtiu o que você disse.'],
+      ['Nova curtida', '{actor} curtiu seu comentário.'],
+      ['Alguém concordou com você', '{actor} curtiu o seu comentário.'],
     ],
     group: [
-      ['💬 Seu comentário fez sucesso', '{who} curtiram o que você disse.'],
-      ['👏 Todo mundo concordou', '{who} curtiram seu comentário.'],
-      ['🔥 Comentário em alta', '{who} curtiram seu comentário.'],
-      ['💚 Aprovação em grupo', '{who} curtiram o que você comentou.'],
+      ['Curtidas no seu comentário', '{who} curtiram seu comentário.'],
+      ['Seu comentário agradou', '{who} curtiram o que você disse.'],
+      ['Novas curtidas', '{who} curtiram o seu comentário.'],
     ],
   },
   post_reply: [
-    ['💬 Tem conversa nova', '{actor} comentou na sua publicação.'],
-    ['👀 Chegou comentário', '{actor} comentou no seu post.'],
-    ['🗣️ Seu post gerou papo', '{actor} comentou na sua publicação.'],
-    ['✍️ Alguém falou sobre o seu post', '{actor} deixou um comentário.'],
-    ['🔔 Novo comentário', '{actor} comentou na sua publicação.'],
-    ['💭 Opinião chegando', '{actor} comentou no seu post.'],
+    ['Novo comentário', '{actor} comentou na sua publicação.'],
+    ['Comentaram no seu post', '{actor} deixou um comentário.'],
+    ['Seu post tem conversa nova', '{actor} comentou no seu post.'],
+    ['Comentário na sua publicação', '{actor} comentou na sua publicação.'],
   ],
   comment_reply: [
-    ['👀 Você recebeu uma resposta', '{actor} respondeu seu comentário.'],
-    ['🗣️ A conversa continua', '{actor} respondeu você.'],
-    ['🔔 Chamaram você de volta', 'Tem uma nova resposta esperando por você.'],
-    ['💬 Resposta na área', '{actor} respondeu o que você disse.'],
-    ['✍️ Alguém te respondeu', '{actor} respondeu você por aqui.'],
-    ['📬 Resposta nova', '{actor} respondeu seu comentário.'],
+    ['Nova resposta', '{actor} respondeu seu comentário.'],
+    ['Responderam você', '{actor} respondeu o que você disse.'],
+    ['A conversa continua', '{actor} respondeu você.'],
+    ['Resposta ao seu comentário', '{actor} respondeu seu comentário.'],
   ],
   comment_mention: [
-    ['📣 Você foi mencionado', '{actor} mencionou você em um comentário.'],
-    ['👀 Falaram de você', '{actor} citou você em um comentário.'],
-    ['🔔 Chamaram seu nome', '{actor} mencionou você.'],
-    ['💬 Tem menção nova', '{actor} marcou você em um comentário.'],
+    ['Você foi mencionado', '{actor} mencionou você em um comentário.'],
+    ['Nova menção', '{actor} marcou você em um comentário.'],
+    ['Falaram com você', '{actor} citou você em um comentário.'],
   ],
   // Só moedas (EvoCoins) mostram valor; EvoCash e saldo nunca aparecem no Push.
   economy_coin: [
-    ['🪙 +{amount} EvoCoins', 'Sua recompensa acabou de chegar.'],
-    ['💰 Recompensa desbloqueada', 'Você ganhou {amount} EvoCoins.'],
-    ['✨ Caiu recompensa', '{amount} EvoCoins novos na sua carteira.'],
-    ['🪙 EvoCoins chegando!', 'Sua carteira acabou de ganhar {amount}.'],
-    ['🎉 Mais moedas pra você', '{amount} EvoCoins foram creditados.'],
+    ['+{amount} EvoCoins', 'Sua recompensa chegou.'],
+    ['Recompensa recebida', 'Você ganhou {amount} EvoCoins.'],
+    ['EvoCoins na carteira', '{amount} EvoCoins foram creditados.'],
   ],
   economy_coin_generic: [
-    ['🪙 EvoCoins chegando!', 'Sua carteira acabou de ganhar um reforço.'],
-    ['💰 Recompensa desbloqueada', 'Tem EvoCoins novos esperando por você.'],
-    ['✨ Caiu recompensa', 'Abra o Evolutus para conferir.'],
+    ['Recompensa recebida', 'Você ganhou EvoCoins. Toque para conferir.'],
+    ['EvoCoins na carteira', 'Sua carteira recebeu EvoCoins.'],
+    ['Nova recompensa', 'Abra o Evolutus para conferir.'],
   ],
-  economy_payment: [['✅ Pagamento confirmado', 'Sua compra foi processada. Toque para conferir.']],
-  economy_cash: [['🪙 Você recebeu EvoCash', 'Abra o Evolutus para conferir.']],
+  economy_payment: [['Pagamento confirmado', 'Sua compra foi processada. Toque para conferir.']],
+  economy_cash: [['Crédito na carteira', 'Você recebeu EvoCash. Toque para conferir.']],
   economy_debit: [['Atualização na sua carteira', 'Houve um ajuste. Toque para conferir.']],
   moderation_notice: [
     ['Aviso da conta', 'Você recebeu uma atualização na sua conta. Toque para conferir.'],
   ],
   report_resolved: [['Atendimento', 'Seu caso teve uma atualização. Toque para ver.']],
+  // Reembolso: sem valor, motivo nem status na tela bloqueada.
+  refund_update: [['Solicitação de reembolso', 'Sua solicitação teve uma atualização. Toque para ver.']],
+  admin_refund: [['Reembolsos', 'Há uma solicitação de reembolso para analisar.']],
   admin_report: {
-    single: [['🛡️ Moderação', 'Há uma nova denúncia aguardando análise.']],
-    group: [['🛡️ Moderação', '{n} novas denúncias aguardando análise.']],
+    single: [['Moderação', 'Há uma nova denúncia aguardando análise.']],
+    group: [['Moderação', '{n} novas denúncias aguardando análise.']],
   },
   admin_appeal: {
-    single: [['🛡️ Moderação', 'Há um novo recurso aguardando análise.']],
-    group: [['🛡️ Moderação', '{n} novos recursos aguardando análise.']],
+    single: [['Moderação', 'Há um novo recurso aguardando análise.']],
+    group: [['Moderação', '{n} novos recursos aguardando análise.']],
   },
   admin_privacy_request: {
-    single: [['🔒 Privacidade', 'Há um novo pedido aguardando análise.']],
-    group: [['🔒 Privacidade', '{n} novos pedidos aguardando análise.']],
+    single: [['Privacidade', 'Há um novo pedido aguardando análise.']],
+    group: [['Privacidade', '{n} novos pedidos aguardando análise.']],
   },
   admin_moderation_decision: [['Moderação', 'Uma decisão foi registrada.']],
   admin_restriction: [['Moderação', 'Uma restrição foi aplicada.']],
   admin_deletion_review: [['Exclusão de conta', 'Há uma revisão aguardando análise.']],
   admin_broadcast: [['Aviso do Evolutus', 'Você recebeu um aviso importante.']],
-  // Treinos: famílias motivacional, divertida, desafiadora (sem pressão negativa), contextual e leve.
-  // O plano semanal não guarda grupo muscular, então o "contextual" fala de horário, não de exercício.
+  // Treinos: a ficha só aparece quando o banco gravou uma associação confiável (ficha do usuário,
+  // ativa, com exercícios válidos e marcada para aquele dia da semana). Sem ela, texto genérico.
   workout_reminder_before: [
-    ['🏋️ Treino daqui a 1 hora', 'Seu plano está pronto. Bora se preparar?'],
-    ['🔥 Hoje tem treino', 'Falta 1 hora. Seu plano está pronto.'],
-    ['👀 Seu treino está chegando', 'Daqui a 1 hora o plano entra em ação.'],
-    ['⏰ Contagem regressiva', '1 hora para o seu treino. Hora de se organizar.'],
-    ['⚡ Já já é hora', 'Seu treino começa em 1 hora.'],
-    ['🎯 Missão do dia a caminho', 'Em 1 hora: completar o treino que você planejou.'],
-    ['👟 Separe o tênis', 'O treino começa em 1 hora.'],
-    ['💧 Hidratação ligada', 'Garrafinha na mão: o treino começa em 1 hora.'],
-    ['🫡 Seu treino já se apresentou', 'Começa em 1 hora. Falta você.'],
-    ['🔔 Faltando pouco', 'Seu treino de hoje começa em 1 hora.'],
-    ['💪 O plano está de pé', '1 hora para colocá-lo em prática.'],
-    ['🏃 Aquecendo os motores', 'Seu treino começa em 1 hora. Vamos?'],
+    ['Treino daqui a 1 hora', 'Seu treino de hoje começa em 1 hora.'],
+    ['Seu treino começa em 1 hora', 'Dá tempo de se organizar com calma.'],
+    ['Treino de hoje em 1 hora', 'Seu planejamento da semana está em dia.'],
+    ['Falta 1 hora para o treino', 'Separe o que precisa e bom treino.'],
   ],
   workout_reminder_start: [
-    ['⏰ Seu treino começa agora', 'Tudo pronto para você começar.'],
-    ['🏋️ Hora de treinar!', 'Seu treino de hoje está esperando.'],
-    ['🔥 Bora?', 'Você marcou este horário por um motivo.'],
-    ['👀 Seu treino percebeu que você sumiu', 'Ele está te esperando.'],
-    ['🏋️ Alô, músculos?', 'Tem treino marcado por aqui.'],
-    ['⚡ Hora de colocar o plano em prática', 'Seu treino está pronto.'],
-    ['🎯 Missão do dia', 'Completar o treino que você planejou.'],
-    ['👟 Roupa de treino: opcional.', 'Aparecer: recomendado 😄'],
-    ['🫡 Seu treino se apresentou para o serviço', 'Agora falta você.'],
-    ['💪 É agora', 'O plano está feito. Falta só começar.'],
-    ['🚀 Decolagem autorizada', 'Seu treino de hoje já pode começar.'],
-    ['✅ Tudo no lugar', 'Seu plano está pronto. Pode começar quando quiser.'],
+    ['Hora de treinar!', 'Seu treino de hoje está esperando por você.'],
+    ['Seu horário de treino chegou', 'Escolha uma ficha e comece quando quiser.'],
+    ['Hora do treino', 'O treino planejado para hoje começa agora.'],
+    ['É hora de treinar', 'Abra o Evolutus para começar.'],
+  ],
+  workout_reminder_before_sheet: [
+    ['Treino daqui a 1 hora!', 'Sua ficha {sheet} está programada para hoje.'],
+  ],
+  workout_reminder_start_sheet: [
+    ['Hora de treinar!', 'Sua ficha {sheet} está esperando por você.'],
+  ],
+  workout_reminder_before_sheets: [
+    ['Treino daqui a 1 hora!', 'Você tem {count} fichas programadas para hoje.'],
+  ],
+  workout_reminder_start_sheets: [
+    ['Hora de treinar!', 'Escolha uma das {count} fichas programadas para hoje.'],
   ],
 }
 
@@ -198,12 +181,47 @@ function select(pool, seq) {
   return pool[pickIndex(seq, pool.length)]
 }
 
-// Título de lembrete de treino (Central e Push usam o mesmo): a variante vem de metadata.variant,
-// que o banco grava SEM módulo; aqui reduzimos pelo tamanho do catálogo.
+// Frase base de lembrete de treino: a variante vem de metadata.variant, que o banco grava SEM
+// módulo; aqui reduzimos pelo tamanho do catálogo.
 export function workoutReminderMessage(type, variant) {
   const pool = POOLS[type]
   if (!Array.isArray(pool)) return null
   return pool[pickIndex(variant, pool.length)]
+}
+
+// Nome de ficha vindo do banco (texto do próprio usuário): sem controles, espaço normalizado e curto o
+// bastante para o corpo continuar legível ("Sua ficha … está programada para hoje.").
+export function safeSheetName(value) {
+  if (typeof value !== 'string') return null
+  // eslint-disable-next-line no-control-regex
+  const clean = value.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, ' ').replace(/\s+/g, ' ').trim()
+  return clean ? fit(clean, 40) : null
+}
+
+// [título, corpo] do lembrete (Push e Central usam o mesmo texto). Ficha nomeada só quando o banco
+// gravou `sheetName` (associação única e válida); várias fichas no dia viram a contagem; nada
+// disso = frase genérica rotativa.
+export function workoutReminderText(type, metadata = {}, fallbackVariant = 0) {
+  if (type !== 'workout_reminder_before' && type !== 'workout_reminder_start') return null
+  const sheet = safeSheetName(metadata.sheetName)
+  const count = Number(metadata.sheetCount)
+  if (sheet) {
+    const [title, body] = POOLS[`${type}_sheet`][0]
+    return [title, fill(body, { sheet })]
+  }
+  if (Number.isInteger(count) && count > 1 && count <= 7) {
+    const [title, body] = POOLS[`${type}_sheets`][0]
+    return [title, fill(body, { count })]
+  }
+  const variant = Number.isInteger(metadata.variant) ? metadata.variant : fallbackVariant
+  return workoutReminderMessage(type, variant)
+}
+
+// Reembolsos reutilizam report_resolved/admin_appeal com metadata vazia (nada financeiro no aviso):
+// são reconhecidos pelo destino, fixado pelo banco.
+const REFUND_URL = /^\/(evocash\?solicitacoes=|admin\/compras-evocash\?tab=refunds)/
+export function isRefundNotification(actionUrl) {
+  return typeof actionUrl === 'string' && REFUND_URL.test(actionUrl)
 }
 
 // Texto final do Push. Sempre devolve título/corpo dentro de LIMITS.
@@ -212,7 +230,14 @@ export function renderPushMessage(job) {
   const metadata = job.metadata && typeof job.metadata === 'object' ? job.metadata : {}
   let pair
 
-  if (type === 'post_like' || type === 'comment_like') {
+  if (type === 'workout_reminder_before' || type === 'workout_reminder_start') {
+    // Já preenchido: o nome da ficha é texto do usuário e não passa por outros marcadores.
+    const [title, body] = workoutReminderText(type, metadata, job.variant)
+    return { title: fit(title, LIMITS.title), body: fit(body, LIMITS.body) }
+  }
+  if (type === 'admin_appeal' && isRefundNotification(job.action_url)) {
+    pair = POOLS.admin_refund[0]
+  } else if (type === 'post_like' || type === 'comment_like') {
     const pool = POOLS[type]
     pair = isGroup(job) ? select(pool.group, job.variant) : select(pool.single, job.variant)
   } else if (
@@ -233,9 +258,8 @@ export function renderPushMessage(job) {
     } else {
       pair = POOLS.economy_cash[0]
     }
-  } else if (type === 'workout_reminder_before' || type === 'workout_reminder_start') {
-    const variant = Number.isInteger(metadata.variant) ? metadata.variant : job.variant
-    pair = workoutReminderMessage(type, variant)
+  } else if (type === 'report_resolved' && isRefundNotification(job.action_url)) {
+    pair = POOLS.refund_update[0]
   } else if (
     type === 'admin_broadcast' &&
     typeof metadata.title === 'string' &&

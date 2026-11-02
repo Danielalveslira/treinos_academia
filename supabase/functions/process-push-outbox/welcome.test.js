@@ -13,10 +13,10 @@ test('boas-vindas tem payload fixo, Home segura, ícones e TTL restante limitado
     metadata: { title: 'injetado', body: 'texto livre', expiresAt: '2026-10-14T12:05:00Z' },
   }
   const payload = buildPushPayload(job)
-  assert.equal(payload.title, '💚 Boas-vindas ao Evolutus!')
+  assert.equal(payload.title, 'Boas-vindas ao Evolutus!')
   assert.equal(
     payload.body,
-    'Obrigado por usar o Evolutus! As notificações estão ativadas neste dispositivo.'
+    'As notificações estão ativas neste dispositivo.'
   )
   assert.equal(payload.targetUrl, '/app')
   assert.equal(payload.icon, '/icons/icon-192.png')

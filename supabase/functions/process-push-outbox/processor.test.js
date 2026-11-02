@@ -287,3 +287,14 @@ test('telemetria: não muda urgency, TTL nem o fluxo de envio', async () => {
   assert.deepEqual(seen[0], { urgency: 'high', ttl: 900 })
   assert.deepEqual(summary, { claimed: 1, sent: 1, failed: 0 })
 })
+
+test('lembretes do mesmo dia compartilham a tag: o do horário substitui o de 1 hora antes', () => {
+  const before = buildPushPayload({ notification_id: 1, notification_type: 'workout_reminder_before', action_url: '/treinar?planejado=2026-12-10', metadata: { plannedDate: '2026-12-10', variant: 1 } })
+  const start = buildPushPayload({ notification_id: 2, notification_type: 'workout_reminder_start', action_url: '/treinar?planejado=2026-12-10', metadata: { plannedDate: '2026-12-10', variant: 1 } })
+  assert.equal(before.tag, 'workout:2026-12-10')
+  assert.equal(start.tag, before.tag)
+  const other = buildPushPayload({ notification_id: 3, notification_type: 'workout_reminder_start', action_url: '/x', metadata: { plannedDate: '2026-12-11' } })
+  assert.notEqual(other.tag, before.tag)
+  const invalid = buildPushPayload({ notification_id: 4, notification_type: 'workout_reminder_start', action_url: '/x', metadata: { plannedDate: '../x' } })
+  assert.equal(invalid.tag, undefined)
+})

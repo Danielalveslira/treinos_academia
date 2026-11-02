@@ -12,6 +12,8 @@ const PUSH_ENDPOINT_PATTERN =
 
 const ACK_TOKEN_PATTERN = /^[0-9a-f]{64}$/
 
+const WORKOUT_REMINDER_TYPES = new Set(['workout_reminder_before', 'workout_reminder_start'])
+
 const COALESCED_TYPES = new Set([
   'post_like',
   'comment_like',
@@ -63,6 +65,16 @@ export function buildPushPayload(job) {
   // anterior no aparelho em vez de empilhar (o Service Worker usa renotify para ainda avisar).
   if (COALESCED_TYPES.has(job.notification_type)) {
     payload.tag = `${job.notification_type}:${shortHash(job.action_url || job.notification_type)}`
+  }
+  // Os dois lembretes do mesmo dia (1 hora antes e no horário) ocupam o mesmo lugar no aparelho: o
+  // do horário substitui o anterior em vez de empilhar dois avisos sobre o mesmo treino.
+  const plannedDate = job.metadata?.plannedDate
+  if (
+    WORKOUT_REMINDER_TYPES.has(job.notification_type) &&
+    typeof plannedDate === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(plannedDate)
+  ) {
+    payload.tag = `workout:${plannedDate}`
   }
   // Token opaco da entrega (telemetria). Viaja DENTRO do payload criptografado, só o aparelho o lê;
   // o Service Worker o devolve para registrar quando o Push chegou. Formato inválido = sem telemetria.
