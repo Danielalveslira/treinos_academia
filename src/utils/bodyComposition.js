@@ -1,4 +1,5 @@
 import { toDate } from './date.js'
+import { addDaysToDayKey, businessDayKey } from './businessDate.js'
 
 export function calculateBMI(weightKg, heightCm) {
   if (!weightKg || !heightCm || weightKg <= 0 || heightCm <= 0) return null
@@ -18,7 +19,7 @@ export const BMI_ELDERLY_AGE = 60
 // crescimento (SISVAN/OMS por sexo e idade em meses), fora do escopo deste indicador.
 export const BMI_YOUNG_ADULT_AGE = 20
 
-const ADULT_BMI_BANDS = [
+export const ADULT_BMI_BANDS = [
   { ceiling: 18.5, key: 'abaixoPeso', label: 'Abaixo do peso', tone: 'attention' },
   { ceiling: 25, key: 'adequado', label: 'Faixa de peso adequada', tone: 'accent' },
   { ceiling: 30, key: 'sobrepeso', label: 'Sobrepeso', tone: 'attention' },
@@ -44,8 +45,10 @@ export function classifyBMI(bmi, age) {
   }
 
   if (age >= BMI_ELDERLY_AGE) {
-    if (bmi < BMI_ELDERLY_RANGE.min) return { key: 'abaixoPeso', label: 'Abaixo do peso', tone: 'attention' }
-    if (bmi <= BMI_ELDERLY_RANGE.max) return { key: 'adequado', label: 'Faixa de peso adequada', tone: 'accent' }
+    if (bmi < BMI_ELDERLY_RANGE.min)
+      return { key: 'abaixoPeso', label: 'Abaixo do peso', tone: 'attention' }
+    if (bmi <= BMI_ELDERLY_RANGE.max)
+      return { key: 'adequado', label: 'Faixa de peso adequada', tone: 'accent' }
     return { key: 'excessoPeso', label: 'Excesso de peso', tone: 'attention' }
   }
 
@@ -74,7 +77,8 @@ export function getBmiWeightGap(weightKg, heightCm, age) {
   const weightRange = getBmiReferenceWeightRange(heightCm, age)
   if (!weightRange || !weightKg || weightKg <= 0) return null
   if (weightKg > weightRange.maxKg) return { status: 'acima', diffKg: weightKg - weightRange.maxKg }
-  if (weightKg < weightRange.minKg) return { status: 'abaixo', diffKg: weightRange.minKg - weightKg }
+  if (weightKg < weightRange.minKg)
+    return { status: 'abaixo', diffKg: weightRange.minKg - weightKg }
   return { status: 'dentro', diffKg: 0 }
 }
 
@@ -110,6 +114,11 @@ export function calculateWaistHeightRatio(waistCm, heightCm) {
 // usa o check-in mais recente que TEM esse dado — nunca precisa ser o mesmo documento
 // pra todos (o usuário pode ter medido cintura/quadril numa data e peso em outra).
 export function getLatestBodyComposition(measurements, heightCm) {
+  measurements = [...measurements].sort(
+    (a, b) =>
+      (toDate(b.date)?.getTime() || 0) - (toDate(a.date)?.getTime() || 0) ||
+      String(b.id || '').localeCompare(String(a.id || ''))
+  )
   const withWeight = measurements.find((m) => m.weightKg != null)
   const withBodyFat = measurements.find((m) => m.bodyFatPercent != null)
   const withWaist = measurements.find((m) => m.waistCm != null)
@@ -146,9 +155,28 @@ export function getLatestBodyComposition(measurements, heightCm) {
     }
   }
 
-  const latest = (field) => measurements.find((measurement) => measurement[field] != null)?.[field] ?? null
+  const latestEntry = (field) => measurements.find((measurement) => measurement[field] != null)
+  const latest = (field) => latestEntry(field)?.[field] ?? null
+  const dates = Object.fromEntries(
+    [
+      'weightKg',
+      'bodyFatPercent',
+      'abdomenCm',
+      'waistCm',
+      'hipCm',
+      'chestCm',
+      'armCm',
+      'thighCm',
+      'calfCm',
+      'leanMassKg',
+      'fatMassKg',
+    ].map((field) => [field, latestEntry(field)?.date ?? null])
+  )
+  dates.leanMassKg = leanMassEntry?.date ?? null
+  dates.fatMassKg = fatMassEntry?.date ?? null
 
   return {
+    dates,
     weightKg: withWeight?.weightKg ?? null,
     bmi: withWeight && heightCm ? calculateBMI(withWeight.weightKg, heightCm) : null,
     bodyFatPercent: withBodyFat?.bodyFatPercent ?? null,
@@ -187,14 +215,27 @@ const BODY_FIELDS = {
 export function getBodyMetricSeries(measurements, metric, days, now = new Date()) {
   const read = BODY_FIELDS[metric]
   if (!read) return []
-  const start = new Date(now)
-  start.setDate(start.getDate() - days + 1)
-  start.setHours(0, 0, 0, 0)
-  return measurements
-    .map((measurement) => ({ date: toDate(measurement.date), value: read(measurement) }))
-    .filter((point) => point.value != null && point.date >= start)
-    .sort((a, b) => a.date - b.date)
-    .map((point) => ({
+  const startKey = addDaysToDayKey(businessDayKey(now), 1 - days)
+  const endKey = businessDayKey(now)
+  const latestByDay = new Map()
+  const sorted = [...measurements].sort(
+    (a, b) =>
+      (toDate(b.createdAt || b.date)?.getTime() || 0) -
+        (toDate(a.createdAt || a.date)?.getTime() || 0) ||
+      String(b.id || '').localeCompare(String(a.id || ''))
+  )
+  for (const measurement of sorted) {
+    const date = toDate(measurement.date)
+    const value = read(measurement)
+    if (!date || value == null || !Number.isFinite(Number(value))) continue
+    const key = businessDayKey(date)
+    if (key >= startKey && key <= endKey && !latestByDay.has(key)) {
+      latestByDay.set(key, { date, value: Number(value) })
+    }
+  }
+  return [...latestByDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([, point]) => ({
       ...point,
       label: point.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
     }))
@@ -213,27 +254,42 @@ export function getBodyMetricChange(series) {
 // água/comida de um único dia. Roda sobre o que já veio de listRecentMeasurements
 // (janela de ~1 ano, poucas dezenas de documentos no máximo — medida corporal não se
 // registra com a frequência de um treino), nunca sobre o histórico inteiro.
-export function getWeightTrend(measurements, windowDays = 7) {
-  const points = measurements
-    .filter((m) => m.weightKg != null)
-    .map((m) => ({ date: toDate(m.date), weightKg: m.weightKg }))
-    .sort((a, b) => b.date - a.date)
-
-  if (points.length === 0) return { average: null, percentChange: null }
-
-  const windowMs = windowDays * 86400000
-  const mostRecent = points[0].date
-  const average = (list) => list.reduce((sum, p) => sum + p.weightKg, 0) / list.length
-
-  const currentWindow = points.filter((p) => mostRecent - p.date < windowMs)
-  const previousWindow = points.filter(
-    (p) => mostRecent - p.date >= windowMs && mostRecent - p.date < windowMs * 2
-  )
-
-  const currentAverage = average(currentWindow)
-  const percentChange = previousWindow.length
-    ? ((currentAverage - average(previousWindow)) / average(previousWindow)) * 100
-    : null
-
-  return { average: currentAverage, percentChange }
+export function getWeightTrend(measurements, windowDays = 7, now = new Date()) {
+  const today = businessDayKey(now)
+  const currentStart = addDaysToDayKey(today, 1 - windowDays)
+  const previousStart = addDaysToDayKey(today, 1 - 2 * windowDays)
+  const daily = new Map()
+  for (const measurement of [...measurements].sort(
+    (a, b) =>
+      (toDate(a.date)?.getTime() || 0) - (toDate(b.date)?.getTime() || 0) ||
+      String(a.id || '').localeCompare(String(b.id || ''))
+  )) {
+    const date = toDate(measurement.date)
+    const weight = Number(measurement.weightKg)
+    if (!date || !Number.isFinite(weight) || weight <= 0) continue
+    const key = businessDayKey(date)
+    if (key <= today && key >= previousStart) daily.set(key, weight)
+  }
+  if (!daily.size)
+    return {
+      status: measurements.some((m) => m.weightKg != null) ? 'stale' : 'empty',
+      average: null,
+      changeKg: null,
+      percentChange: null,
+    }
+  const current = [...daily].filter(([key]) => key >= currentStart).map(([, weight]) => weight)
+  const previous = [...daily].filter(([key]) => key < currentStart).map(([, weight]) => weight)
+  if (!current.length)
+    return { status: 'stale', average: null, changeKg: null, percentChange: null }
+  const average = current.reduce((sum, weight) => sum + weight, 0) / current.length
+  if (current.length < 2 || previous.length < 2)
+    return { status: 'insufficient', average, changeKg: null, percentChange: null }
+  const baseline = previous.reduce((sum, weight) => sum + weight, 0) / previous.length
+  const changeKg = average - baseline
+  return {
+    status: 'recent',
+    average,
+    changeKg,
+    percentChange: baseline > 0 ? (changeKg / baseline) * 100 : null,
+  }
 }

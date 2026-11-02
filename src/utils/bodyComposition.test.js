@@ -100,7 +100,35 @@ test('getWeightTrend has no previous-window comparison when history is too short
   const result = getWeightTrend([{ date: new Date(), weightKg: 80 }])
   assert.equal(result.average, 80)
   assert.equal(result.percentChange, null)
-  assert.deepEqual(getWeightTrend([]), { average: null, percentChange: null })
+  assert.deepEqual(getWeightTrend([]), {
+    status: 'empty',
+    average: null,
+    changeKg: null,
+    percentChange: null,
+  })
+})
+
+test('weight trend ignores stale readings and selects one observation per business day', () => {
+  const now = new Date('2026-11-02T15:00:00Z')
+  const measurements = [
+    { id: 'a', date: '2026-11-02T15:00:00Z', weightKg: 80 },
+    { id: 'b', date: '2026-11-02T16:00:00Z', weightKg: 82 },
+    { id: 'c', date: '2026-11-01T15:00:00Z', weightKg: 78 },
+    { id: 'd', date: '2026-10-25T15:00:00Z', weightKg: 84 },
+    { id: 'e', date: '2026-10-24T15:00:00Z', weightKg: 86 },
+  ]
+  const trend = getWeightTrend(measurements.reverse(), 7, now)
+  assert.equal(trend.status, 'recent')
+  assert.equal(trend.average, 80)
+  assert.equal(trend.changeKg, -5)
+  assert.equal(
+    getWeightTrend([{ date: '2026-10-01T15:00:00Z', weightKg: 79 }], 7, now).status,
+    'stale'
+  )
+  assert.equal(
+    getWeightTrend([{ date: '2026-11-02T15:00:00Z', weightKg: 80 }], 7, now).status,
+    'insufficient'
+  )
 })
 
 test('derives fat mass and waist-height ratio only from compatible values', () => {
@@ -162,6 +190,39 @@ test('body metric series respects the selected period and calculates change', ()
   assert.deepEqual(getBodyMetricChange(series), { current: 79, change: -1, trend: 'Em queda' })
 })
 
+test('body metric series uses the latest observation per day across month and year boundaries', () => {
+  const now = new Date('2027-01-02T15:00:00Z')
+  const measurements = [
+    { id: 'old', date: '2026-01-10T15:00:00Z', weightKg: 83, waistCm: 91 },
+    { id: 'dec', date: '2026-12-20T15:00:00Z', weightKg: 81, waistCm: 88 },
+    { id: 'jan-a', date: '2027-01-01T15:00:00Z', weightKg: 80, waistCm: 87 },
+    { id: 'jan-b', date: '2027-01-01T16:00:00Z', weightKg: 79.8, waistCm: 86.5 },
+  ]
+  for (const metric of ['weightKg', 'waistCm']) {
+    assert.deepEqual(
+      getBodyMetricSeries(measurements, metric, 30, now).map((point) => point.value),
+      metric === 'weightKg' ? [81, 79.8] : [88, 86.5]
+    )
+    assert.equal(getBodyMetricSeries(measurements, metric, 90, now).length, 2)
+    assert.equal(getBodyMetricSeries(measurements, metric, 365, now).length, 3)
+  }
+})
+
+test('same-day chart point uses server creation time and keeps the source history intact', () => {
+  const measurements = [
+    { id: 'z', date: '2026-10-27T15:00:00Z', createdAt: '2026-10-27T16:00:00Z', weightKg: 147.332 },
+    { id: 'a', date: '2026-10-27T15:00:00Z', createdAt: '2026-10-27T18:00:00Z', weightKg: 80 },
+    { id: 'b', date: '2026-11-02T15:00:00Z', createdAt: '2026-11-02T16:00:00Z', weightKg: 110 },
+  ]
+  const series = getBodyMetricSeries(measurements, 'weightKg', 30, new Date('2026-11-02T20:00:00Z'))
+  assert.deepEqual(
+    series.map((point) => point.value),
+    [80, 110]
+  )
+  assert.equal(measurements.length, 3)
+  assert.equal(measurements[0].weightKg, 147.332)
+})
+
 test('getBodyMetricSeries computes bodyFatPercent, leanMassKg and fatMassKg from real check-ins (not just weightKg)', () => {
   const now = new Date(2026, 9, 17, 10)
   // Peso e gordura não vêm sempre do mesmo check-in — leanMass/fatMass só podem usar um
@@ -174,7 +235,10 @@ test('getBodyMetricSeries computes bodyFatPercent, leanMassKg and fatMassKg from
   ]
 
   const fat = getBodyMetricSeries(measurements, 'bodyFatPercent', 30, now)
-  assert.deepEqual(fat.map((p) => p.value), [18, 17]) // 01/09 (46 dias) fica fora da janela de 30 dias
+  assert.deepEqual(
+    fat.map((p) => p.value),
+    [18, 17]
+  ) // 01/09 (46 dias) fica fora da janela de 30 dias
 
   const lean = getBodyMetricSeries(measurements, 'leanMassKg', 90, now)
   assert.deepEqual(
@@ -230,11 +294,11 @@ test('getBodyMetricSeries ignores records with missing or invalid dates and re-s
   )
 })
 
-test('getBodyMetricSeries window boundary is inclusive at local midnight of the first day', () => {
+test('getBodyMetricSeries window boundary is inclusive at Sao Paulo midnight of the first day', () => {
   const now = new Date(2026, 9, 17, 10)
   const boundary = [
-    { date: new Date(2026, 8, 18, 0, 0, 0), weightKg: 101 }, // início exato da janela de 30 dias: entra
-    { date: new Date(2026, 8, 17, 23, 59), weightKg: 999 }, // 1 minuto antes: fica de fora
+    { date: new Date('2026-09-18T03:00:00Z'), weightKg: 101 },
+    { date: new Date('2026-09-18T02:59:00Z'), weightKg: 999 },
   ]
   assert.deepEqual(
     getBodyMetricSeries(boundary, 'weightKg', 30, now).map((p) => p.value),

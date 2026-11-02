@@ -1,4 +1,4 @@
-const DAY_MS = 86400000
+import { businessDayKey } from './businessDate.js'
 
 export const PROGRESS_PERIODS = ['today', 'week', 'month', 'quarter', 'year']
 
@@ -23,7 +23,8 @@ export function dateKey(value) {
 }
 
 export function getProgressPeriod(period, now = new Date()) {
-  const end = startOfDay(now)
+  const [year, month, day] = businessDayKey(now).split('-').map(Number)
+  const end = new Date(year, month - 1, day)
   let start
   if (period === 'today') start = new Date(end)
   else if (period === 'week') start = addDays(end, -6)
@@ -32,7 +33,12 @@ export function getProgressPeriod(period, now = new Date()) {
     start = new Date(end.getFullYear(), Math.floor(end.getMonth() / 3) * 3, 1)
   } else start = new Date(end.getFullYear(), 0, 1)
 
-  const elapsedDays = Math.round((end - start) / DAY_MS) + 1
+  const elapsedDays =
+    Math.round(
+      (Date.UTC(end.getFullYear(), end.getMonth(), end.getDate()) -
+        Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())) /
+        86400000
+    ) + 1
   let previousStart
   if (period === 'month') previousStart = new Date(start.getFullYear(), start.getMonth() - 1, 1)
   else if (period === 'quarter') {
@@ -50,7 +56,8 @@ export function aggregateProgress(days) {
   const totals = days.reduce(
     (result, day) => {
       result.trainingDays += day.workoutCount > 0 ? 1 : 0
-      result.workoutCount += Number(day.workoutCount) || 0
+      // O contrato legado chama cada registro de exercício de workoutCount.
+      result.exerciseRecords += Number(day.workoutCount) || 0
       result.volumeKg += Number(day.strengthVolumeKg) || 0
       result.sets += Number(day.strengthSets) || 0
       result.reps += Number(day.strengthReps) || 0
@@ -61,7 +68,7 @@ export function aggregateProgress(days) {
     },
     {
       trainingDays: 0,
-      workoutCount: 0,
+      exerciseRecords: 0,
       volumeKg: 0,
       sets: 0,
       reps: 0,
@@ -71,14 +78,13 @@ export function aggregateProgress(days) {
   )
   return {
     ...totals,
-    averageVolumePerWorkout: totals.workoutCount ? totals.volumeKg / totals.workoutCount : 0,
     averageVolumePerActiveDay: totals.trainingDays ? totals.volumeKg / totals.trainingDays : 0,
     distinctExercises: exerciseIds.size,
   }
 }
 
 export function percentChange(current, previous) {
-  if (!previous) return current ? null : 0
+  if (!previous) return null
   return ((current - previous) / previous) * 100
 }
 
@@ -93,9 +99,27 @@ function weekStart(value) {
   return addDays(date, 1 - weekday)
 }
 
+function chartGroupKey(date, period, start) {
+  if (period === 'month' || period === 'quarter') {
+    const day = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+    const first = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate())
+    return dateKey(addDays(start, Math.floor((day - first) / 86400000 / 7) * 7))
+  }
+  if (period === 'year') return dateKey(new Date(date.getFullYear(), date.getMonth(), 1))
+  return dateKey(date)
+}
+
 export function buildProgressChart(days, period, metric, range, exerciseNames = new Map()) {
   if (period === 'today') {
-    const exerciseMetric = metric === 'trainingDays' ? 'workoutCount' : metric
+    if (metric === 'trainingDays')
+      return [
+        {
+          key: dateKey(range.start),
+          label: range.start.toLocaleDateString('pt-BR'),
+          value: days.some((day) => day.workoutCount > 0) ? 1 : 0,
+        },
+      ]
+    const exerciseMetric = metric
     return (days[0]?.exerciseStats || [])
       .map((item) => ({
         key: item.exerciseId,
@@ -109,28 +133,23 @@ export function buildProgressChart(days, period, metric, range, exerciseNames = 
   const groups = new Map()
   const cursor = new Date(range.start)
   while (cursor <= range.end) {
-    const key =
-      period === 'quarter'
-        ? dateKey(weekStart(cursor))
-        : period === 'year'
-          ? dateKey(new Date(cursor.getFullYear(), cursor.getMonth(), 1))
-          : dateKey(cursor)
+    const key = chartGroupKey(cursor, period, range.start)
     if (!groups.has(key)) groups.set(key, { key, date: new Date(cursor), value: 0 })
+    groups.get(key).endDate = new Date(cursor)
     cursor.setDate(cursor.getDate() + 1)
   }
   for (const day of days) {
     const date = new Date(`${day.dateKey}T12:00:00`)
-    const key =
-      period === 'quarter'
-        ? dateKey(weekStart(date))
-        : period === 'year'
-          ? dateKey(new Date(date.getFullYear(), date.getMonth(), 1))
-          : day.dateKey
+    const key = chartGroupKey(date, period, range.start)
     const group = groups.get(key)
     if (group) group.value += sumMetric(day, metric)
   }
   return [...groups.values()].map((item) => ({
     ...item,
+    dateRange:
+      dateKey(item.date) === dateKey(item.endDate)
+        ? dateKey(item.date)
+        : `${dateKey(item.date)} a ${dateKey(item.endDate)}`,
     label:
       period === 'year'
         ? item.date.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
@@ -157,9 +176,23 @@ export function buildProgressComparisonChart(
     exerciseNames
   )
   const previousByExercise = new Map(previous.map((point) => [point.key, point.value]))
-  return current.map((point, index) => ({
+  const points =
+    period === 'today' && metric !== 'trainingDays'
+      ? [
+          ...current,
+          ...previous
+            .filter((point) => !current.some((item) => item.key === point.key))
+            .map((point) => ({ ...point, value: 0 })),
+        ]
+      : current
+  return points.map((point, index) => ({
     ...point,
     currentValue: point.value,
+    currentDate: period === 'today' ? dateKey(range.start) : point.dateRange,
+    previousDate:
+      period === 'today'
+        ? dateKey(range.previousStart)
+        : previous[index]?.dateRange || dateKey(range.previousStart),
     previousValue:
       period === 'today' ? previousByExercise.get(point.key) || 0 : previous[index]?.value || 0,
   }))
@@ -191,14 +224,8 @@ export function summarizeExerciseStrength(days, exerciseId) {
         result.bestWeightKg = weight
         result.reps = reps
       }
-      result.bestSetVolumeKg = Math.max(
-        result.bestSetVolumeKg,
-        Number(item.bestSetVolumeKg) || 0
-      )
-      result.estimated1RMKg = Math.max(
-        result.estimated1RMKg,
-        Number(item.estimated1RMKg) || 0
-      )
+      result.bestSetVolumeKg = Math.max(result.bestSetVolumeKg, Number(item.bestSetVolumeKg) || 0)
+      result.estimated1RMKg = Math.max(result.estimated1RMKg, Number(item.estimated1RMKg) || 0)
       result.sets += Number(item.strengthSets) || 0
       result.totalReps += Number(item.strengthReps) || 0
       return result
@@ -227,10 +254,7 @@ export function buildStrengthWeeklySeries(days, exerciseId) {
       estimated1RMKg: 0,
     }
     current.maxWeightKg = Math.max(current.maxWeightKg, Number(item.maxWeightKg) || 0)
-    current.estimated1RMKg = Math.max(
-      current.estimated1RMKg,
-      Number(item.estimated1RMKg) || 0
-    )
+    current.estimated1RMKg = Math.max(current.estimated1RMKg, Number(item.estimated1RMKg) || 0)
     groups.set(key, current)
   }
   return [...groups.values()]

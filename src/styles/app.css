@@ -104,14 +104,14 @@ body {
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
-.indicator-label .bmi-info-toggle {
+.indicator-label .body-info-toggle {
   margin-left: auto;
   padding: 2px;
 }
-.bmi-info-flash p {
+.body-info-flash p {
   margin: 0;
 }
-.bmi-info-flash p + p {
+.body-info-flash p + p {
   margin-top: 8px;
 }
 .bmi-badge {
@@ -141,27 +141,67 @@ body {
 }
 .bmi-scale {
   position: relative;
-  height: 4px;
-  margin-top: 12px;
-  border-radius: 2px;
-  background: linear-gradient(
-    to right,
-    var(--fgColor-attention) 0%,
-    var(--fitness-accent) 35%,
-    var(--fitness-accent) 55%,
-    var(--fgColor-attention) 70%,
-    var(--fgColor-danger) 100%
-  );
+  height: 10px;
+  margin: 18px 7px 0;
+  border-radius: 5px;
+}
+.bmi-scale-segment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+.bmi-scale-segment:first-child {
+  border-radius: 5px 0 0 5px;
+}
+.bmi-scale-segment:nth-last-child(2) {
+  border-radius: 0 5px 5px 0;
+}
+.bmi-scale-below {
+  background: var(--fgColor-accent);
+}
+.bmi-scale-adequate {
+  top: -2px;
+  height: 14px;
+  background: var(--fgColor-success);
+  box-shadow: 0 0 0 1px var(--bgColor-default);
+  z-index: 1;
+}
+.bmi-scale-overweight {
+  background: var(--fgColor-attention);
+}
+.bmi-scale-obesity-one {
+  background: color-mix(in srgb, var(--fgColor-danger) 55%, var(--bgColor-default));
+}
+.bmi-scale-obesity-two {
+  background: color-mix(in srgb, var(--fgColor-danger) 75%, var(--bgColor-default));
+}
+.bmi-scale-obesity-three {
+  background: var(--fgColor-danger);
 }
 .bmi-scale-marker {
   position: absolute;
-  top: -3px;
-  width: 10px;
-  height: 10px;
+  top: -4px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: var(--bgColor-default);
-  border: 2px solid var(--fgColor-default);
+  border: 3px solid var(--fgColor-default);
+  box-shadow: 0 0 0 1px var(--bgColor-default);
   transform: translateX(-50%);
+  z-index: 2;
+}
+.bmi-scale-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 10px;
+  color: var(--fgColor-muted);
+  font-size: 11px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+.bmi-scale-caption span:nth-child(2) {
+  text-align: center;
 }
 .panel {
   border: 1px solid var(--borderColor-default);
@@ -765,7 +805,8 @@ body:has(.pwa-offline) .app-shell {
   border-radius: 20px;
   background: var(--bgColor-default);
   box-shadow: 0 8px 24px rgb(0 0 0 / 6%);
-  transition: transform 160ms ease, box-shadow 160ms ease;
+  transition: transform 160ms ease,
+    box-shadow 160ms ease;
 }
 .professional-card:hover {
   transform: translateY(-2px);
@@ -1124,7 +1165,7 @@ body:has(.pwa-offline) .app-shell {
 .admin-listing-copy strong { font-size: 17px; overflow-wrap: anywhere; }
 .admin-listing-copy span,
 .admin-listing-copy small { color: var(--fgColor-muted); }
-.admin-listing-copy .admin-listing-status { color: var(--fgColor-attention); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
+.admin-listing-copy .admin-listing-status { color: var(--fgColor-attention); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
 .admin-listing-copy p { max-width: 700px; margin: 5px 0; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .admin-listing-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; min-width: max-content; }
 .admin-listing-actions button { min-width: 110px; white-space: nowrap; }
@@ -1402,7 +1443,9 @@ body:has(.pwa-offline) .app-shell {
   font-weight: 600;
   overflow-wrap: anywhere;
 }
-/* Comunidade: mesma largura, ritmo e superfície para listas, posts e formulários. */
+
+/* Cartão de "Minhas comunidades": o link do nome estica por ::after sobre o cartão
+   inteiro (alvo de toque máximo) e o menu ⋯ fica numa camada acima. */
 .community-page {
   width: 100%;
   max-width: 720px;
@@ -1410,8 +1453,7 @@ body:has(.pwa-offline) .app-shell {
   font-size: 14px;
   line-height: 1.5;
 }
-
-/* Hub de Comunidades (mobile-first: 320-430px é o desenho base; ≥768px vira grade) ------ */
+/* O ícone ocupa a transição entre a capa e o conteúdo em todos os cartões. */
 .community-page--hub {
   max-width: none;
 }
@@ -1432,11 +1474,9 @@ body:has(.pwa-offline) .app-shell {
   padding-bottom: 28px;
   isolation: isolate;
 }
-/* Imagem só atrás do topo: sangra sobre o padding do .main-content (até as bordas no
-   celular, logo abaixo da navegação; os insets espelham aquele padding: 22/16px, 12px
-   abaixo de 360px e 34/28px a partir de 768px) e desce até o fim da margem do hero. Os
-   controles ficam sempre sobre a parte opaca: a máscara só começa a esmaecer
-   (--hero-fade, = padding-bottom + margin-bottom) abaixo deles. */
+
+/* Status curto ("Última atividade: @fulano há 6d" / "Comece a conversa!"), sem o
+   trecho da publicação -- ver CommunityActivityStatus em Communities.jsx. */
 .communities-hero-media {
   position: absolute;
   z-index: -1;
@@ -1444,7 +1484,11 @@ body:has(.pwa-offline) .app-shell {
   overflow: hidden;
   background: var(--hero-base);
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - var(--hero-fade)), transparent 100%);
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - var(--hero-fade)),
+    transparent 100%
+  );
   mask-image: linear-gradient(to bottom, #000 calc(100% - var(--hero-fade)), transparent 100%);
 }
 @media (max-width: 359px) {
@@ -1461,8 +1505,8 @@ body:has(.pwa-offline) .app-shell {
   object-fit: cover;
   object-position: 72% 22%;
 }
-/* Overlays independentes (a imagem fica com as cores originais): escurece à esquerda,
-   onde fica o texto, e um véu leve no topo; os personagens, à direita, ficam intactos. */
+
+/* Capa 2:1 e fallback compartilhados por Explorar, Minhas e Em destaque. */
 .communities-hero-media::after {
   content: '';
   position: absolute;
@@ -1475,7 +1519,11 @@ body:has(.pwa-offline) .app-shell {
       color-mix(in srgb, var(--hero-base) 12%, transparent) 78%,
       transparent 100%
     ),
-    linear-gradient(to bottom, color-mix(in srgb, var(--hero-base) 40%, transparent), transparent 35%);
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--hero-base) 40%, transparent),
+      transparent 35%
+    );
 }
 .main-content .community-page .communities-hero h1 {
   margin: 0;
@@ -1552,8 +1600,7 @@ body:has(.pwa-offline) .app-shell {
   gap: 12px;
 }
 
-/* Cartão de "Minhas comunidades": o link do nome estica por ::after sobre o cartão
-   inteiro (alvo de toque máximo) e o menu ⋯ fica numa camada acima. */
+/* Mensagem única quando não há nenhuma comunidade pra explorar. */
 .community-card,
 .community-explore-card {
   position: relative;
@@ -1562,7 +1609,8 @@ body:has(.pwa-offline) .app-shell {
   border-radius: var(--fitness-radius-md);
   background: var(--fitness-surface);
   overflow: visible;
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.15s ease,
+    transform 0.15s ease;
 }
 .community-card:hover,
 .community-card:focus-within,
@@ -1580,7 +1628,8 @@ body:has(.pwa-offline) .app-shell {
   gap: 12px;
   padding: 25px 14px 12px;
 }
-/* O ícone ocupa a transição entre a capa e o conteúdo em todos os cartões. */
+
+/* Estado vazio compacto (sem bloco grande): ícone discreto + duas linhas curtas. */
 .community-card-top--with-cover {
   padding-top: 25px;
 }
@@ -1659,9 +1708,8 @@ body:has(.pwa-offline) .app-shell {
 .community-card:not(:has(.community-card-menu)) .community-card-top {
   padding-right: 48px;
 }
-
-/* Status curto ("Última atividade: @fulano há 6d" / "Comece a conversa!"), sem o
-   trecho da publicação -- ver CommunityActivityStatus em Communities.jsx. */
+/* Publicidade (Patrocinado). Só propriedades baratas: sem blur, sem sombras, sem animação; cores por token,
+   então vale nos dois temas. O selo "Patrocinado" tem contraste próprio (texto forte sobre fundo suave). */
 .community-card-status {
   display: flex;
   align-items: center;
@@ -1700,7 +1748,10 @@ body:has(.pwa-offline) .app-shell {
   font-size: 12px;
 }
 
-/* Capa 2:1 e fallback compartilhados por Explorar, Minhas e Em destaque. */
+/* patrocínio da comunidade. Mobile = coluna organizada em 4 linhas de altura fixa: [selo | 1/N], marca (discreta,
+   uma vez), mensagem (área própria, rola sozinha se for longa) e o CTA em linha própria, de largura total.
+   ≥640px = layout horizontal: selo+marca e mensagem à esquerda, 1/N+CTA à direita. As alturas são reservadas
+   (min-height + linhas fixas), então trocar de campanha no rodízio nunca desloca o que vem abaixo. */
 .community-explore-card {
   display: flex;
   flex-direction: column;
@@ -1734,7 +1785,10 @@ body:has(.pwa-offline) .app-shell {
   z-index: 1;
 }
 .community-cover + .community-cover-icon { top: calc((100cqw - 2px) / 2); }
-.community-card, .community-explore-card { container-type: inline-size; }
+.community-card,
+.community-explore-card {
+  container-type: inline-size;
+}
 .community-cover-fallback {
   position: absolute;
   inset: 0;
@@ -1793,8 +1847,7 @@ body:has(.pwa-offline) .app-shell {
   margin-top: auto;
   font-size: 13px;
 }
-
-/* Mensagem única quando não há nenhuma comunidade pra explorar. */
+/* no mobile os blocos só agrupam: os itens entram direto na grade */
 .communities-explore-empty {
   margin: 0;
   padding: 18px 4px;
@@ -1803,8 +1856,8 @@ body:has(.pwa-offline) .app-shell {
   line-height: 1.5;
   text-align: center;
 }
-
-/* Estado vazio compacto (sem bloco grande): ícone discreto + duas linhas curtas. */
+/* Área exclusiva da mensagem, de altura fixa. Se passar da largura, o texto desliza por transform (animado por
+   Element.animate no componente); selo, marca, contador e CTA ficam fora dela e nunca se mexem. */
 .communities-empty {
   display: flex;
   align-items: center;
@@ -1900,8 +1953,7 @@ body:has(.pwa-offline) .app-shell {
   font-size: 24px;
   overflow-wrap: anywhere;
 }
-/* Publicidade (Patrocinado). Só propriedades baratas: sem blur, sem sombras, sem animação; cores por token,
-   então vale nos dois temas. O selo "Patrocinado" tem contraste próprio (texto forte sobre fundo suave). */
+/* degradê na borda direita: sinaliza que há mais texto; a rolagem termina antes dele (FADE_PX) */
 .sponsored-ad-pill {
   flex: 0 0 auto;
   padding: 1px 8px;
@@ -1915,11 +1967,7 @@ body:has(.pwa-offline) .app-shell {
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
-
-/* patrocínio da comunidade. Mobile = coluna organizada em 4 linhas de altura fixa: [selo | 1/N], marca (discreta,
-   uma vez), mensagem (área própria, rola sozinha se for longa) e o CTA em linha própria, de largura total.
-   ≥640px = layout horizontal: selo+marca e mensagem à esquerda, 1/N+CTA à direita. As alturas são reservadas
-   (min-height + linhas fixas), então trocar de campanha no rodízio nunca desloca o que vem abaixo. */
+/* sem animação (prefers-reduced-motion): região rolável à mão, por toque ou teclado, sem barra de rolagem */
 .sponsored-ad-banner {
   position: relative;
   display: grid;
@@ -1941,7 +1989,7 @@ body:has(.pwa-offline) .app-shell {
   border-radius: var(--fitness-radius-md);
   background: var(--fitness-surface);
 }
-/* no mobile os blocos só agrupam: os itens entram direto na grade */
+/* CTA em linha própria: largura total, texto centralizado e com respiro de 16px nas laterais */
 .sponsored-ad-banner-content,
 .sponsored-ad-banner-meta,
 .sponsored-ad-banner-side {
@@ -1965,8 +2013,7 @@ body:has(.pwa-offline) .app-shell {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Área exclusiva da mensagem, de altura fixa. Se passar da largura, o texto desliza por transform (animado por
-   Element.animate no componente); selo, marca, contador e CTA ficam fora dela e nunca se mexem. */
+/* altura reservada (sem conteúdo) enquanto os anúncios carregam, só para comunidades que já tiveram banner */
 .sponsored-ad-banner-line {
   grid-area: line;
   position: relative;
@@ -1986,7 +2033,8 @@ body:has(.pwa-offline) .app-shell {
 .is-scrolling .sponsored-ad-banner-text {
   will-change: transform;
 }
-/* degradê na borda direita: sinaliza que há mais texto; a rolagem termina antes dele (FADE_PX) */
+
+/* [contador 1/N + próximo] no canto da primeira linha (mobile) / ao lado do CTA (desktop) */
 .sponsored-ad-banner-line.is-scrolling::after {
   content: '';
   position: absolute;
@@ -1995,7 +2043,9 @@ body:has(.pwa-offline) .app-shell {
   background: linear-gradient(to right, transparent, var(--fitness-surface));
   pointer-events: none;
 }
-/* sem animação (prefers-reduced-motion): região rolável à mão, por toque ou teclado, sem barra de rolagem */
+/* Selo "+N": visualmente separado do contador de posição (pílula, não só texto) pra nunca
+   ser lido como parte da mesma fração -- avisa que há mais elegíveis fora desta amostra,
+   sem parecer uma posição que dá pra navegar até ela. */
 .sponsored-ad-banner-line.is-manual {
   overflow-x: auto;
   overscroll-behavior-x: contain;
@@ -2028,7 +2078,7 @@ body:has(.pwa-offline) .app-shell {
   text-align: center;
   text-decoration: none;
 }
-/* CTA em linha própria: largura total, texto centralizado e com respiro de 16px nas laterais */
+/* área de toque maior (≥44px) sem ocupar espaço no layout */
 .sponsored-ad-banner-cta {
   grid-area: cta;
   width: 100%;
@@ -2046,7 +2096,9 @@ body:has(.pwa-offline) .app-shell {
   outline: 2px solid var(--focus-outlineColor);
   outline-offset: 2px;
 }
-/* altura reservada (sem conteúdo) enquanto os anúncios carregam, só para comunidades que já tiveram banner */
+
+/* bloco de cards no topo do feed (sempre na primeira tela): sem content-visibility, para o card não nascer com
+   a altura estimada e crescer depois (deslocamento de layout). Mesma margem do espaço reservado (hint). */
 .sponsored-ad-banner-slot {
   box-sizing: border-box;
   height: 152px;
@@ -2058,7 +2110,7 @@ body:has(.pwa-offline) .app-shell {
   }
 }
 
-/* [contador 1/N + próximo] no canto da primeira linha (mobile) / ao lado do CTA (desktop) */
+/* publicação patrocinada no feed: mesma superfície dos cards do feed */
 .sponsored-ad-banner-nav {
   grid-area: nav;
   display: flex;
@@ -2073,9 +2125,8 @@ body:has(.pwa-offline) .app-shell {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
 }
-/* Selo "+N": visualmente separado do contador de posição (pílula, não só texto) pra nunca
-   ser lido como parte da mesma fração -- avisa que há mais elegíveis fora desta amostra,
-   sem parecer uma posição que dá pra navegar até ela. */
+
+/* Documentos legais e atendimento: leitura confortável, inclusive sem autenticação. */
 .sponsored-ad-banner-pool {
   padding: 1px 5px;
   border-radius: 999px;
@@ -2099,7 +2150,7 @@ body:has(.pwa-offline) .app-shell {
   color: inherit;
   cursor: pointer;
 }
-/* área de toque maior (≥44px) sem ocupar espaço no layout */
+/* Não lida: um único indicador discreto (faixa fina + ponto), nunca um fundo cheio. */
 .sponsored-ad-banner-next::after {
   content: '';
   position: absolute;
@@ -2113,9 +2164,10 @@ body:has(.pwa-offline) .app-shell {
   outline: 2px solid var(--focus-outlineColor);
   outline-offset: 1px;
 }
-
-/* bloco de cards no topo do feed (sempre na primeira tela): sem content-visibility, para o card não nascer com
-   a altura estimada e crescer depois (deslocamento de layout). Mesma margem do espaço reservado (hint). */
+/* Mobile: card flutuante compacto logo abaixo do header (que é sticky e contém o sino), nunca a
+   tela inteira. Só a lista rola; título, abas e ações ficam sempre visíveis. A altura reserva o
+   espaço da navegação inferior (--bottom-navigation-space já inclui safe-area-inset-bottom), então
+   o card nunca fica atrás dela. */
 .sponsored-ad-feed-top {
   margin-bottom: 16px;
 }
@@ -2123,7 +2175,7 @@ body:has(.pwa-offline) .app-shell {
   content-visibility: visible;
 }
 
-/* publicação patrocinada no feed: mesma superfície dos cards do feed */
+/* Product UI -------------------------------------------------------------- */
 .sponsored-ad-card {
   min-width: 0;
   padding: 14px;
@@ -2387,7 +2439,9 @@ body:has(.pwa-offline) .app-shell {
   }
 }
 
-/* Documentos legais e atendimento: leitura confortável, inclusive sem autenticação. */
+/* Frases curtas e variáveis (features/greetings): tamanho um pouco menor que um título de página, quebra
+   equilibrada e altura mínima de duas linhas -- trocar de 1 para 2 linhas não empurra a Home para baixo.
+   Só com a Greeting V2 ligada (--dynamic): com a flag desligada o cabeçalho legado fica exatamente como era. */
 .legal-links {
   display: flex;
   flex-wrap: wrap;
@@ -2441,7 +2495,8 @@ body:has(.pwa-offline) .app-shell {
   border: 1px solid var(--borderColor-muted);
   border-radius: 10px;
   background: var(--bgColor-muted);
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+  transition: border-color 120ms ease,
+    box-shadow 120ms ease;
 }
 .comment-composer:focus-within {
   border-color: var(--borderColor-accent-emphasis);
@@ -2993,7 +3048,8 @@ body:has(.pwa-offline) .app-shell {
 .notification-item:focus-visible {
   background: var(--bgColor-muted);
 }
-/* Não lida: um único indicador discreto (faixa fina + ponto), nunca um fundo cheio. */
+
+/* Home */
 .notification-item.is-unread {
   box-shadow: inset 3px 0 0 var(--borderColor-accent-emphasis);
 }
@@ -3079,10 +3135,8 @@ body:has(.pwa-offline) .app-shell {
   justify-content: center;
   padding-top: 4px;
 }
-/* Mobile: card flutuante compacto logo abaixo do header (que é sticky e contém o sino), nunca a
-   tela inteira. Só a lista rola; título, abas e ações ficam sempre visíveis. A altura reserva o
-   espaço da navegação inferior (--bottom-navigation-space já inclui safe-area-inset-bottom), então
-   o card nunca fica atrás dela. */
+
+/* Portrait originals retain the full athlete, blending into the dark hero background. */
 @media (max-width: 767px) {
   .notification-bell {
     position: static;
@@ -3096,7 +3150,9 @@ body:has(.pwa-offline) .app-shell {
     max-height: calc(100vh - 160px);
     max-height: min(
       68dvh,
-      calc(100dvh - 72px - env(safe-area-inset-top, 0px) - var(--bottom-navigation-space, 76px) - 12px)
+      calc(
+        100dvh - 72px - env(safe-area-inset-top, 0px) - var(--bottom-navigation-space, 76px) - 12px
+      )
     );
     border-radius: 14px;
   }
@@ -3202,6 +3258,7 @@ body:has(.pwa-offline) .app-shell {
     padding-left: 10px;
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   .comment-card.is-entering,
   .comment-loading span,
@@ -3404,7 +3461,11 @@ body:has(.pwa-offline) .app-shell {
   }
 }
 @media print {
-  .public-header, .public-footer, .legal-sidebar, .mobile-nav, .legal-content button {
+  .public-header,
+  .public-footer,
+  .legal-sidebar,
+  .mobile-nav,
+  .legal-content button {
     display: none !important;
   }
   .legal-layout {
@@ -3422,7 +3483,7 @@ body:has(.pwa-offline) .app-shell {
   }
 }
 
-/* Product UI -------------------------------------------------------------- */
+/* Keep desktop composition while giving mobile media and activity independent boxes. */
 :root {
   --fitness-photo-bg: #101410;
   --fitness-photo-ink: var(--fgColor-onEmphasis, #fff);
@@ -3467,8 +3528,13 @@ body:has(.pwa-offline) .app-shell {
 }
 
 body {
-  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-feature-settings: "ss01", "cv02", "cv03";
+  font-family: Inter,
+    ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-feature-settings: 'ss01', 'cv02', 'cv03';
 }
 
 .public-header .brand-mark {
@@ -3494,7 +3560,7 @@ body {
   gap: 9px;
   font-size: 13px;
   font-weight: 800;
-  letter-spacing: .12em;
+  letter-spacing: 0.12em;
 }
 
 .public-header nav { gap: 16px; }
@@ -3513,11 +3579,11 @@ body {
   font-size: clamp(28px, 4vw, 40px);
   font-weight: 750;
   line-height: 1.08;
-  letter-spacing: -.045em;
+  letter-spacing: -0.045em;
 }
 
 .main-content h2 {
-  letter-spacing: -.025em;
+  letter-spacing: -0.025em;
 }
 
 .eyebrow {
@@ -3525,7 +3591,7 @@ body {
   color: var(--fitness-accent-strong);
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: .16em;
+  letter-spacing: 0.16em;
 }
 
 .page-title-row,
@@ -3543,9 +3609,8 @@ body {
   margin: 0;
 }
 
-/* Frases curtas e variáveis (features/greetings): tamanho um pouco menor que um título de página, quebra
-   equilibrada e altura mínima de duas linhas -- trocar de 1 para 2 linhas não empurra a Home para baixo.
-   Só com a Greeting V2 ligada (--dynamic): com a flag desligada o cabeçalho legado fica exatamente como era. */
+/* Estados sem foto (offline, erro, sem fichas ainda): uma coluna só, sem reservar espaço vazio
+   para a imagem que não existe aqui -- ver RecommendedSheetPanel.jsx. */
 .dashboard-greeting--dynamic > div {
   min-width: 0;
   max-width: 100%;
@@ -3573,7 +3638,7 @@ body {
   place-items: center;
 }
 
-/* Home */
+/* Workout logger */
 .workout-hero {
   position: relative;
   min-height: 390px;
@@ -3600,7 +3665,7 @@ body {
   object-position: 52% 31%;
 }
 
-/* Portrait originals retain the full athlete, blending into the dark hero background. */
+/* Upload de capa independente do formulário, com sua própria pré-visualização. */
 .workout-hero > picture > img.hero-photo--portrait {
   width: auto;
   max-width: 62%;
@@ -3627,7 +3692,10 @@ body {
   color: var(--fitness-photo-ink);
 }
 
-/* Keep desktop composition while giving mobile media and activity independent boxes. */
+/* Badge de ícone compartilhado por grupo/músculo (Exercises.jsx, WorkoutForm.jsx,
+   ExerciseCatalog.jsx, ExerciseDetail.jsx, WorkoutExerciseGuide.jsx, Progress.jsx -- ver
+   MuscleIconBadge.jsx). "solid" é o padrão (músculo/grupo principal); "muted" é mais leve,
+   usado só pra músculo secundário, pra distinguir visualmente sem duplicar o ícone. */
 .workout-recommendation {
   position: relative;
   min-height: 390px;
@@ -3659,7 +3727,7 @@ body {
   color: var(--fitness-photo-accent);
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: .14em;
+  letter-spacing: 0.14em;
 }
 
 .workout-hero-content h2 {
@@ -3669,7 +3737,7 @@ body {
   font-size: clamp(30px, 4vw, 48px);
   font-weight: 760;
   line-height: 1.02;
-  letter-spacing: -.05em;
+  letter-spacing: -0.05em;
 }
 
 .workout-hero-content p {
@@ -3942,7 +4010,7 @@ body {
   background: repeating-linear-gradient(135deg, transparent 0 3px, var(--bgColor-muted) 3px 6px);
 }
 
-.streak-rest-icon { flex: 0 0 auto; color: var(--fgColor-default); opacity: .75; }
+.streak-rest-icon { flex: 0 0 auto; color: var(--fgColor-default); opacity: 0.75; }
 
 .streak-day.is-today .streak-pip:not(.is-completed) {
   border-color: var(--fitness-accent);
@@ -3970,7 +4038,7 @@ body {
   border-top: 1px solid var(--borderColor-muted);
 }
 .streak-today > div { display: grid; gap: 2px; min-width: 0; }
-.streak-today-label { color: var(--fgColor-muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.streak-today-label { color: var(--fgColor-muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .streak-today strong { font-size: 15px; line-height: 1.3; }
 .streak-today small { color: var(--fgColor-muted); font-size: 12px; line-height: 1.4; }
 
@@ -4021,10 +4089,11 @@ body {
   .streak-actions { grid-template-columns: 1fr 1fr; }
   .streak-action:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
-
 @media (prefers-reduced-motion: reduce) {
   .consistency-flame.is-active,
-  .consistency-flame.is-active .consistency-flame-inner { animation: none; }
+  .consistency-flame.is-active .consistency-flame-inner {
+    animation: none;
+  }
 }
 
 .streak-summary {
@@ -4057,12 +4126,16 @@ body {
 .consistency-flame.is-active .consistency-flame-inner { animation: consistency-flame-inner 1.8s ease-in-out infinite alternate; transform-origin: 50% 80%; }
 
 @keyframes consistency-flame-pulse {
-  0%, 100% { transform: translateY(0) scale(1); filter: drop-shadow(0 0 3px rgb(56 216 107 / 42%)); }
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 0 3px rgb(56 216 107 / 42%));
+  }
   50% { transform: translateY(-1px) scale(1.035); filter: drop-shadow(0 0 7px rgb(56 216 107 / 62%)); }
 }
 
 @keyframes consistency-flame-inner {
-  from { transform: scale(.96); opacity: .86; }
+  from { transform: scale(0.96); opacity: 0.86; }
   to { transform: scale(1.04); opacity: 1; }
 }
 
@@ -4082,15 +4155,42 @@ body {
 .training-reminder-toggle { display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer; }
 .training-reminder-toggle input { width: 18px; height: 18px; flex: none; accent-color: var(--fitness-accent); }
 .training-plan-times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; min-width: 0; }
-.training-plan-times > strong, .training-plan-times > small { grid-column: 1 / -1; }
+.training-plan-times > strong,
+.training-plan-times > small {
+  grid-column: 1 / -1;
+}
 .training-plan-times > strong { font-size: 13px; }
-.training-plan-times > small, .training-plan-form > small { color: var(--fgColor-muted); line-height: 1.5; }
+.training-plan-times > small,
+.training-plan-form > small {
+  color: var(--fgColor-muted);
+  line-height: 1.5;
+}
 .training-plan-time-row { display: grid; grid-template-columns: minmax(0, 1fr) 112px; align-items: center; gap: 8px; min-width: 0; min-height: 46px; padding: 5px 9px; border: 1px solid var(--borderColor-default); border-radius: 8px; background: var(--bgColor-muted); font-size: 13px; }
-.training-plan-time-row input, .training-plan-copy select { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; min-height: 36px; padding: 4px 6px; border: 1px solid var(--borderColor-default); border-radius: 6px; background: var(--bgColor-default); color: var(--fgColor-default); font: inherit; }
+.training-plan-time-row input,
+.training-plan-copy select {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 4px 6px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 6px;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  font: inherit;
+}
 .training-plan-dialog { color-scheme: light dark; }
 [data-color-mode='light'] .training-plan-dialog { color-scheme: light; }
-[data-color-mode='dark'] .training-plan-dialog, [data-color-mode='night'] .training-plan-dialog { color-scheme: dark; }
-.training-plan-time-row input:focus-visible, .training-plan-copy select:focus-visible { outline: 2px solid var(--fitness-accent); outline-offset: 1px; }
+[data-color-mode='dark'] .training-plan-dialog,
+[data-color-mode='night'] .training-plan-dialog {
+  color-scheme: dark;
+}
+.training-plan-time-row input:focus-visible,
+.training-plan-copy select:focus-visible {
+  outline: 2px solid var(--fitness-accent);
+  outline-offset: 1px;
+}
 .training-plan-rest { color: var(--fgColor-muted); text-align: right; }
 .training-plan-copy { font-size: 13px; }
 .training-plan-copy summary { color: var(--fgColor-muted); cursor: pointer; }
@@ -4127,7 +4227,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .activity-day.is-planned,
 .activity-day.is-in_progress { border-color: var(--fitness-accent); border-style: dashed; }
 .activity-day.is-rest { border-color: var(--fgColor-muted); background: repeating-linear-gradient(135deg, transparent 0 3px, var(--bgColor-muted) 3px 6px); }
-.activity-day:disabled { opacity: .35; }
+.activity-day:disabled { opacity: 0.35; }
 .activity-calendar-detail { min-height: 38px; margin: 8px 0 12px; padding: 10px 12px; border-radius: 8px; background: var(--bgColor-muted); font-size: 13px; }
 .activity-legend { display: flex; flex-wrap: wrap; gap: 12px 18px; margin: 0; padding: 0; list-style: none; color: var(--fgColor-muted); font-size: 11px; }
 .activity-legend li { display: inline-flex; align-items: center; gap: 6px; }
@@ -4261,6 +4361,17 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   color: var(--fitness-accent-strong);
   background: var(--fitness-accent-soft);
 }
+.progress-page .metric-tabs,
+.body-chart-controls .metric-tabs {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.progress-page .metric-tabs button:focus-visible,
+.body-chart-controls .metric-tabs button:focus-visible,
+.chart-data-table summary:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 2px;
+}
 
 .text-link {
   display: inline-flex;
@@ -4284,7 +4395,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .empty-workout {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(340px, .82fr) minmax(0, 1.18fr);
+  grid-template-columns: minmax(340px, 0.82fr) minmax(0, 1.18fr);
   min-height: 460px;
   place-items: stretch;
   overflow: hidden;
@@ -4292,9 +4403,9 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   background: var(--fitness-surface);
   box-shadow: var(--fitness-shadow);
 }
-
-/* Estados sem foto (offline, erro, sem fichas ainda): uma coluna só, sem reservar espaço vazio
-   para a imagem que não existe aqui -- ver RecommendedSheetPanel.jsx. */
+/* Dentro de um card que já tem fundo tingido (.workout-exercise-card
+   usam --fitness-surface), o badge usa o fundo neutro da página pra manter contraste --
+   repetir --fitness-accent-soft ali dava um dégradé indesejado de verde sobre verde. */
 .empty-workout:not(:has(picture)) {
   grid-template-columns: 1fr;
   min-height: 0;
@@ -4315,7 +4426,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   height: 100%;
   object-fit: cover;
   object-position: center 28%;
-  opacity: .92;
+  opacity: 0.92;
 }
 
 .empty-workout::after {
@@ -4360,8 +4471,10 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   color: #08110a;
 }
 .empty-workout-cta[data-variant='primary']:hover { background: var(--fitness-accent-strong); }
-
-/* Workout logger */
+/* Mais específico que a regra genérica acima -- mantém o margin-left: auto (senão o
+   ícone gruda no texto em vez de ficar do lado do chevron), só troca a cor pra verde.
+   Ícone, não fundo/borda: .is-selected já usa fundo+borda verdes pro exercício ATUAL, e
+   os dois estados podem coexistir sem se confundir. */
 .session-heading {
   display: flex;
   gap: 16px;
@@ -4466,7 +4579,8 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .community-icon-search input::placeholder { color: var(--fitness-muted); }
 .community-icon-empty { margin: 0; color: var(--fitness-muted); font-size: 13px; }
 
-/* Upload de capa independente do formulário, com sua própria pré-visualização. */
+/* 44px é o mínimo recomendado de alvo de toque (WCAG 2.5.5) — reduzido dos 48px
+   originais pra ocupar menos altura sem ficar abaixo desse piso de acessibilidade. */
 .community-cover-picker {
   display: grid;
   gap: 12px;
@@ -4625,7 +4739,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   cursor: pointer;
 }
 
-.workout-step { animation: workout-step-in .18s ease-out; }
+.workout-step { animation: workout-step-in 0.18s ease-out; }
 
 @keyframes workout-step-in {
   from { opacity: 0; transform: translateY(5px); }
@@ -4633,7 +4747,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 }
 
 .workout-step-heading { margin-bottom: 18px; }
-.workout-step-heading h2 { margin: 0; font-size: 24px; letter-spacing: -.025em; }
+.workout-step-heading h2 { margin: 0; font-size: 24px; letter-spacing: -0.025em; }
 
 
 .workout-exercise-card {
@@ -4646,7 +4760,9 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   color: var(--fgColor-default);
   cursor: pointer;
   text-align: left;
-  transition: border-color .15s ease, background-color .15s ease, transform .15s ease;
+  transition: border-color 0.15s ease,
+    background-color 0.15s ease,
+    transform 0.15s ease;
 }
 
 
@@ -4658,10 +4774,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   background: var(--fitness-accent-soft);
 }
 
-/* Badge de ícone compartilhado por grupo/músculo (Exercises.jsx, WorkoutForm.jsx,
-   ExerciseCatalog.jsx, ExerciseDetail.jsx, WorkoutExerciseGuide.jsx, Progress.jsx -- ver
-   MuscleIconBadge.jsx). "solid" é o padrão (músculo/grupo principal); "muted" é mais leve,
-   usado só pra músculo secundário, pra distinguir visualmente sem duplicar o ícone. */
+/* History */
 .muscle-icon-badge {
   display: flex;
   flex: 0 0 auto;
@@ -4675,9 +4788,8 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   background: var(--fitness-accent-soft);
   color: var(--fitness-accent-strong);
 }
-/* Dentro de um card que já tem fundo tingido (.workout-exercise-card
-   usam --fitness-surface), o badge usa o fundo neutro da página pra manter contraste --
-   repetir --fitness-accent-soft ali dava um dégradé indesejado de verde sobre verde. */
+
+/* Exercise library and progress */
 .workout-exercise-card .muscle-icon-badge--solid {
   background: var(--bgColor-default);
 }
@@ -4692,10 +4804,9 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .workout-exercise-card strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .workout-exercise-card small { overflow: hidden; color: var(--fgColor-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .workout-exercise-card > svg { flex: 0 0 auto; margin-left: auto; color: var(--fgColor-muted); }
-/* Mais específico que a regra genérica acima -- mantém o margin-left: auto (senão o
-   ícone gruda no texto em vez de ficar do lado do chevron), só troca a cor pra verde.
-   Ícone, não fundo/borda: .is-selected já usa fundo+borda verdes pro exercício ATUAL, e
-   os dois estados podem coexistir sem se confundir. */
+
+/* Catálogo Evolutus (Fase 4, mobile-first): base = telas pequenas; min-width acima só
+   acrescenta densidade (2-3 colunas, filtros em linha) -- nunca reorganiza a hierarquia. */
 .workout-exercise-card > .workout-exercise-done-icon {
   margin-right: 4px;
   color: var(--fitness-accent-strong);
@@ -4773,7 +4884,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   padding: 0;
   border: 0;
 }
-.cardio-fieldset legend { padding: 0; font-size: 20px; font-weight: 750; letter-spacing: -.02em; }
+.cardio-fieldset legend { padding: 0; font-size: 20px; font-weight: 750; letter-spacing: -0.02em; }
 
 .form-error { display: block; margin-top: 8px; color: var(--fgColor-danger); }
 
@@ -4798,12 +4909,12 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   background: color-mix(in srgb, var(--bgColor-default) 94%, transparent);
   backdrop-filter: blur(12px);
 }
-
-/* 44px é o mínimo recomendado de alvo de toque (WCAG 2.5.5) — reduzido dos 48px
-   originais pra ocupar menos altura sem ficar abaixo desse piso de acessibilidade. */
+/* Mobile-first de verdade: empilhado por padrão (título, depois o botão) -- lado a lado só a
+   partir de 600px, onde os dois cabem numa linha sem empurrar nada pra fora da tela. */
 .workout-form-actions button { min-height: 44px; border-radius: 12px; }
 
-/* History */
+/* "Mais filtros" (músculo/equipamento/categoria/nível completos) fica fechado por padrão --
+   os atalhos de músculo (.catalog-shortcuts, acima no JSX) já cobrem o caso comum. */
 .history-filters {
   display: grid;
   grid-template-columns: minmax(220px, 1.25fr) minmax(320px, 1fr) auto;
@@ -4828,7 +4939,11 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   place-items: center;
   border-radius: var(--fitness-radius-lg);
   background:
-    radial-gradient(circle at 50% 0, color-mix(in srgb, var(--fitness-accent) 9%, transparent), transparent 55%),
+    radial-gradient(
+      circle at 50% 0,
+      color-mix(in srgb, var(--fitness-accent) 9%, transparent),
+      transparent 55%
+    ),
     var(--fitness-surface);
 }
 
@@ -4866,10 +4981,10 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .history-note { display: block; margin-top: 5px; color: var(--fgColor-muted); font-size: 11px; font-style: italic; }
 .history-volume { display: grid; grid-template-columns: auto auto; gap: 2px 5px; min-width: 105px; }
 .history-volume svg { grid-row: 1 / 3; margin-top: 2px; color: var(--fitness-accent-strong); }
-.history-volume span { color: var(--fgColor-muted); font-size: 9px; font-weight: 750; letter-spacing: .08em; }
+.history-volume span { color: var(--fgColor-muted); font-size: 9px; font-weight: 750; letter-spacing: 0.08em; }
 .history-volume strong { font-size: 13px; }
-
-/* Exercise library and progress */
+/* Visual de botão de verdade (borda + fundo), não só texto com cursor:pointer -- senão fica
+   fácil de achar que "Mais filtros"/"Uso offline" não são clicáveis. */
 .exercises-toolbar {
   display: flex;
   align-items: center;
@@ -4947,7 +5062,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 }
 .exercise-group-heading h2 { margin: 0; font-size: 15px; }
 .exercise-group-heading .exercise-group-count { margin-left: auto; color: var(--fgColor-muted); font-size: 11px; }
-.exercise-group-chevron { color: var(--fgColor-muted); transition: transform .15s ease; }
+.exercise-group-chevron { color: var(--fgColor-muted); transition: transform 0.15s ease; }
 .exercise-group-chevron.is-collapsed { transform: rotate(-90deg); }
 .exercise-row-reorder { gap: 12px; }
 .exercise-list { border-top: 1px solid var(--borderColor-muted); }
@@ -4975,7 +5090,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   cursor: pointer;
   min-height: 42px;
 }
-.exercise-row .is-inactive { opacity: .55; }
+.exercise-row .is-inactive { opacity: 0.55; }
 
 .exercise-detail-page { max-width: 980px; margin: 0 auto; }
 
@@ -5041,9 +5156,31 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   min-width: 0;
   margin-top: 20px;
   padding: 20px 12px 8px;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 16px;
   background: var(--fitness-surface);
+}
+.chart-data-table {
+  margin-top: 12px;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+}
+.chart-data-table summary {
+  cursor: pointer;
+  width: fit-content;
+  padding: 6px 0;
+}
+.chart-data-table table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  table-layout: fixed;
+}
+.chart-data-table th,
+.chart-data-table td {
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--borderColor-muted);
+  overflow-wrap: anywhere;
 }
 
 .body-metric-chart-surface {
@@ -5065,16 +5202,16 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 }
 
 .progress-chart-legend i.is-current {
-  background: #2f81f7;
+  background: var(--fgColor-accent);
 }
 
 .progress-chart-legend i.is-previous {
-  background: #8b949e;
+  background: var(--fgColor-muted);
 }
 
 .progress-chart-legend i.is-estimate {
   background: transparent;
-  border: 2px dashed #a371f7;
+  border: 2px dashed var(--fgColor-muted);
   border-radius: 50%;
 }
 
@@ -5185,8 +5322,8 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   }
 
   .progress-chart-surface {
-    margin-inline: -4px;
-    padding: 16px 4px 4px;
+    margin-inline: 0;
+    padding: 12px 4px 4px;
   }
 
   .muscle-distribution {
@@ -5212,11 +5349,12 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .exercise-add-choice h2,
 .catalog-heading h2,
 .catalog-details h2 { margin: 0; }
-
-/* Catálogo Evolutus (Fase 4, mobile-first): base = telas pequenas; min-width acima só
-   acrescenta densidade (2-3 colunas, filtros em linha) -- nunca reorganiza a hierarquia. */
-/* Mobile-first de verdade: empilhado por padrão (título, depois o botão) -- lado a lado só a
-   partir de 600px, onde os dois cabem numa linha sem empurrar nada pra fora da tela. */
+/* Proporção fixa -- nunca pula o layout enquanto a imagem carrega ou cai no placeholder. */
+/* O Button "Adicionar" recebe `loading` -- o Primer sempre o envolve num <div> extra quando essa
+   prop existe (ConditionalWrapper, pro anúncio de carregamento), mesmo com loading=false. Esse
+   wrapper não é "button:last-child" (é um div), então mira na posição estrutural, não numa classe
+   interna do Primer que pode mudar -- e dá largura total a ELE antes do `block` do Button fazer
+   `width:100%` (senão 100% de um wrapper encolhido ao conteúdo também fica pequeno). */
 .catalog-heading {
   display: flex;
   flex-direction: column;
@@ -5226,7 +5364,9 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 }
 .catalog-heading > div { min-width: 0; }
 .catalog-heading > button,
-.catalog-heading > span[role="button"] { flex: 0 0 auto; }
+.catalog-heading > span[role='button'] {
+  flex: 0 0 auto;
+}
 @media (min-width: 600px) {
   .catalog-heading { flex-direction: row; align-items: flex-start; justify-content: space-between; }
 }
@@ -5250,11 +5390,13 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .catalog-search-clear:hover { background: var(--bgColor-muted); }
 .catalog-search-clear:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 1px; }
 
-/* "Mais filtros" (músculo/equipamento/categoria/nível completos) fica fechado por padrão --
-   os atalhos de músculo (.catalog-shortcuts, acima no JSX) já cobrem o caso comum. */
+/* Ficha do exercício (dentro do ModalSheet -- ver .catalog-detail-dialog mais abaixo). */
 .catalog-more-filters { margin-bottom: 4px; }
-/* Visual de botão de verdade (borda + fundo), não só texto com cursor:pointer -- senão fica
-   fácil de achar que "Mais filtros"/"Uso offline" não são clicáveis. */
+
+/* Uso offline: fechado por padrão -- continua compacto (só um botão até abrir), mas logo no
+   topo da tela (antes da busca), pra nunca passar a impressão de que o recurso sumiu ou não
+   existe. Visual do <summary> fica junto de .catalog-more-filters, mais acima (mesmo padrão de
+   botão pros dois). */
 .catalog-more-filters summary,
 .catalog-offline-toggle summary {
   display: inline-flex;
@@ -5278,7 +5420,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .catalog-offline-toggle summary:hover { background: var(--bgColor-muted); }
 .catalog-more-filters summary:focus-visible,
 .catalog-offline-toggle summary:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 2px; }
-.catalog-disclosure-chevron { color: var(--fgColor-muted); transition: transform .15s ease; }
+.catalog-disclosure-chevron { color: var(--fgColor-muted); transition: transform 0.15s ease; }
 .catalog-more-filters[open] summary .catalog-disclosure-chevron,
 .catalog-offline-toggle[open] summary .catalog-disclosure-chevron { transform: rotate(180deg); }
 .catalog-filters {
@@ -5320,7 +5462,8 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   border: 1px solid var(--borderColor-muted);
   border-radius: 12px;
   background: var(--bgColor-default);
-  transition: border-color .15s ease, background-color .15s ease;
+  transition: border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 .catalog-card.is-added { border-color: var(--fitness-accent-strong); background: var(--fitness-accent-soft); }
 .catalog-card-details {
@@ -5356,7 +5499,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   font-size: 12px;
 }
 .catalog-card-muscle span { overflow: hidden; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
-/* Proporção fixa -- nunca pula o layout enquanto a imagem carrega ou cai no placeholder. */
+/* `.main-content form` (acima) dá fundo/borda/24px a QUALQUER formulário: aqui os da tela de imagens são compactos. */
 .catalog-card-thumb-wrap { position: relative; width: 100%; aspect-ratio: 4 / 3; background: var(--bgColor-muted); }
 .catalog-card-thumbnail {
   display: block;
@@ -5392,11 +5535,8 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   font-size: 10px;
   font-weight: 700;
 }
-/* O Button "Adicionar" recebe `loading` -- o Primer sempre o envolve num <div> extra quando essa
-   prop existe (ConditionalWrapper, pro anúncio de carregamento), mesmo com loading=false. Esse
-   wrapper não é "button:last-child" (é um div), então mira na posição estrutural, não numa classe
-   interna do Primer que pode mudar -- e dá largura total a ELE antes do `block` do Button fazer
-   `width:100%` (senão 100% de um wrapper encolhido ao conteúdo também fica pequeno). */
+
+/* Authentication artwork: shared by login, registration and password recovery. */
 .catalog-card > div:last-child {
   box-sizing: border-box;
   width: 100%;
@@ -5406,7 +5546,10 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .catalog-load-more { display: flex !important; margin: 18px auto 0; }
 .catalog-status { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 160px; padding: 0 12px; color: var(--fgColor-muted); text-align: center; }
 
-/* Ficha do exercício (dentro do ModalSheet -- ver .catalog-detail-dialog mais abaixo). */
+/* Folha modal (ModalSheet): base da Home e das Comunidades ---------------------------------------------------
+   Mobile-first: ocupa a viewport inteira; cabeçalho (título + X 44x44) e rodapé (CTA) FORA da área rolável, com
+   safe-area (notch/Dynamic Island/barra de gestos); só o corpo rola. Altura = viewport visual (teclado aberto
+   encolhe a folha e o rodapé continua visível) com fallback 100dvh. */
 .catalog-details { display: grid; gap: 18px; }
 .catalog-details-images,
 .personal-catalog-images { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -5444,10 +5587,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .catalog-details dl div { grid-template-columns: minmax(130px, 180px) 1fr; gap: 12px; }
 }
 
-/* Uso offline: fechado por padrão -- continua compacto (só um botão até abrir), mas logo no
-   topo da tela (antes da busca), pra nunca passar a impressão de que o recurso sumiu ou não
-   existe. Visual do <summary> fica junto de .catalog-more-filters, mais acima (mesmo padrão de
-   botão pros dois). */
+/* Planning uses the shared sheet so its viewport, focus and overlay rules stay in one place. */
 .catalog-offline-toggle { margin-bottom: 14px; }
 .catalog-offline-toggle[open] summary { margin-bottom: 8px; }
 
@@ -5469,7 +5609,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .ev-header h1 { margin: 0; font-size: 22px; line-height: 1.2; }
 .ev-header p { margin: 2px 0 0; color: var(--fgColor-muted); font-size: 14px; }
 .ev-muted { color: var(--fgColor-muted); font-size: 12px; }
-.ev-eyebrow { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fgColor-muted); }
+.ev-eyebrow { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fgColor-muted); }
 .ev-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 12px; border: 1px solid var(--borderColor-default); border-radius: 8px; background: var(--bgColor-default); }
 .ev-search { display: flex; flex: 1 1 280px; gap: 8px; min-width: 0; }
 .ev-search > :first-child { flex: 1; min-width: 0; }
@@ -5477,13 +5617,25 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .ev-stats { flex: 1 1 100%; margin: 0; min-height: 18px; font-size: 12px; color: var(--fgColor-muted); }
 .exercise-visuals-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 @media (min-width: 960px) { .exercise-visuals-layout { grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); align-items: start; } }
-.ev-list, .ev-detail { display: grid; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--borderColor-default); border-radius: 8px; background: var(--bgColor-default); }
+.ev-list,
+.ev-detail {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 8px;
+  background: var(--bgColor-default);
+}
 .ev-list-scroll { min-height: 120px; max-height: 420px; overflow-y: auto; margin-inline: -4px; padding-inline: 4px; }
 @media (min-width: 960px) { .ev-list-scroll { max-height: calc(100vh - 320px); min-height: 240px; } }
 .ev-list ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
 .ev-row { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; }
 .ev-row:hover { background: var(--bgColor-muted); }
-.ev-row[aria-pressed="true"] { border-color: var(--borderColor-accent-emphasis); background: var(--bgColor-accent-muted); }
+.ev-row[aria-pressed='true'] {
+  border-color: var(--borderColor-accent-emphasis);
+  background: var(--bgColor-accent-muted);
+}
 .ev-row:focus-visible { outline: 2px solid var(--focus-outlineColor); outline-offset: 1px; }
 .ev-row-text { display: grid; min-width: 0; }
 .ev-row-name { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
@@ -5496,16 +5648,26 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
 .ev-detail-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .ev-detail-head h2 { margin: 0; font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
 .ev-preview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 360px; }
-.ev-preview[data-size="sm"] { grid-template-columns: repeat(3, minmax(0, 96px)); gap: 8px; max-width: none; }
+.ev-preview[data-size='sm'] {
+  grid-template-columns: repeat(3, minmax(0, 96px));
+  gap: 8px;
+  max-width: none;
+}
 .ev-figure { display: grid; gap: 4px; margin: 0; }
-.ev-figure figcaption { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--fgColor-muted); }
+.ev-figure figcaption { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--fgColor-muted); }
 .ev-section { display: grid; gap: 8px; }
 .ev-section h3 { margin: 0; font-size: 14px; }
 .ev-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.ev-prompt summary, .ev-history summary { cursor: pointer; font-size: 13px; color: var(--fgColor-muted); }
+.ev-prompt summary,
+.ev-history summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--fgColor-muted);
+}
 .ev-prompt pre { margin: 8px 0 0; padding: 8px; max-height: 240px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; border-radius: 6px; background: var(--bgColor-muted); }
 .ev-upload { display: grid; gap: 8px; padding: 10px; border: 1px dashed var(--borderColor-default); border-radius: 6px; }
-/* `.main-content form` (acima) dá fundo/borda/24px a QUALQUER formulário: aqui os da tela de imagens são compactos. */
+
+/* Ficha do Catálogo Evolutus (Fase 4) usa a mesma folha compartilhada. */
 .main-content .ev-search { padding: 0; border: 0; border-radius: 0; background: transparent; }
 .main-content .ev-upload { padding: 10px; background: transparent; border: 1px dashed var(--borderColor-default); border-radius: 6px; }
 .ev-upload p { margin: 0; }
@@ -5584,14 +5746,26 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   }
   .workout-hero > picture { display: contents; }
   .workout-hero > picture > img,
-  .workout-hero > picture > img.hero-photo--portrait { inset: 0; width: 100%; max-width: 100%; height: 100%; mask-image: none; object-fit: cover; object-position: center 22%; opacity: .9; z-index: -2; }
-  .workout-hero-shade { position: absolute; inset: 0; pointer-events: none; z-index: -1; background: linear-gradient(0deg, var(--fitness-photo-bg) 0%, #090d09e6 30%, #090d0980 65%, #090d0933 100%); }
+  .workout-hero > picture > img.hero-photo--portrait { inset: 0; width: 100%; max-width: 100%; height: 100%; mask-image: none; object-fit: cover; object-position: center 22%; opacity: 0.9; z-index: -2; }
+  .workout-hero-shade { position: absolute; inset: 0; pointer-events: none; z-index: -1; background: linear-gradient(
+      0deg,
+      var(--fitness-photo-bg) 0%,
+      #090d09e6 30%,
+      #090d0980 65%,
+      #090d0933 100%
+    ); }
   .workout-recommendation .workout-hero-content { display: flex; justify-content: flex-end; width: 100%; min-height: 18rem; padding: 22px 20px 20px; }
   .workout-hero-intro { width: 100%; padding: 0; }
-  .hero-kicker { gap: 0; margin-bottom: 10px; font-size: 10px; letter-spacing: .08em; }
-  .hero-kicker-desktop, .hero-kicker > svg, .hero-today-pill, .hero-meta-prefix, .hero-last-activity { display: none !important; }
+  .hero-kicker { gap: 0; margin-bottom: 10px; font-size: 10px; letter-spacing: 0.08em; }
+  .hero-kicker-desktop,
+  .hero-kicker > svg,
+  .hero-today-pill,
+  .hero-meta-prefix,
+  .hero-last-activity {
+    display: none !important;
+  }
   .hero-kicker-mobile { display: inline; }
-  .workout-hero-content h2 { max-width: none; font-size: clamp(24px, 6vw, 28px); line-height: 1.12; letter-spacing: -.035em; overflow-wrap: anywhere; }
+  .workout-hero-content h2 { max-width: none; font-size: clamp(24px, 6vw, 28px); line-height: 1.12; letter-spacing: -0.035em; overflow-wrap: anywhere; }
   .workout-hero-content p { margin: 10px 0 0; font-size: 12px; line-height: 1.45; }
   .workout-hero-meta { gap: 0; }
   .workout-hero-meta span { gap: 5px; }
@@ -5607,7 +5781,10 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .sheet-activity-summary .sheet-insight-icon { width: 28px; height: 28px; border-radius: var(--fitness-radius-sm); background: var(--bgColor-muted); color: var(--fgColor-muted); }
   .sheet-activity-summary .sheet-insight-eyebrow { color: var(--fgColor-muted); font-size: 9px; }
   .sheet-activity-summary .sheet-insight-text strong { color: var(--fgColor-default); font-size: 13px; }
-  .sheet-activity-summary .sheet-insight-text small, .sheet-activity-summary .sheet-insight-chevron { color: var(--fgColor-muted); }
+  .sheet-activity-summary .sheet-insight-text small,
+  .sheet-activity-summary .sheet-insight-chevron {
+    color: var(--fgColor-muted);
+  }
   .fitness-dashboard .dashboard-greeting { margin-bottom: 16px; }
   .fitness-dashboard .dashboard-greeting h1 { font-size: 20px; line-height: 1.3; }
   .sponsored-ad-banner--home {
@@ -5642,7 +5819,11 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
      acima de 0 já sobrepõe o menu da conta e outros ActionMenu do Primer, que aqui
      não usam portal pra fora da página (ficam em z-index: 1 na própria árvore). */
   .workout-progress { position: sticky; top: 0; z-index: 0; margin-inline: -4px; padding: 4px; background: color-mix(in srgb, var(--bgColor-default) 94%, transparent); backdrop-filter: blur(10px); }
-  .workout-progress span, .workout-progress button { padding-inline: 6px; font-size: 10px; }
+  .workout-progress span,
+  .workout-progress button {
+    padding-inline: 6px;
+    font-size: 10px;
+  }
   .workout-step-heading h2 { font-size: 22px; }
   .muscle-icon-badge--md { width: 34px; height: 34px; }
   /* .workout-form-actions (só na edição de um registro) é sticky: reserva essa faixa o tempo todo, então
@@ -5653,7 +5834,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
     margin-top: 6px;
     padding-block: 8px calc(8px + env(safe-area-inset-bottom));
   }
-  .workout-form-actions button:first-child { flex: .7; }
+  .workout-form-actions button:first-child { flex: 0.7; }
   .workout-form-actions button:last-child { flex: 1.3; }
 
   .history-filters { grid-template-columns: 1fr; gap: 10px; margin-inline: -4px; padding: 14px; }
@@ -5688,7 +5869,13 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   }
   .empty-workout::after {
     inset: 0;
-    background: linear-gradient(0deg, rgb(9 13 9 / 92%) 8%, rgb(9 13 9 / 55%) 42%, rgb(9 13 9 / 8%) 72%, transparent 92%);
+    background: linear-gradient(
+      0deg,
+      rgb(9 13 9 / 92%) 8%,
+      rgb(9 13 9 / 55%) 42%,
+      rgb(9 13 9 / 8%) 72%,
+      transparent 92%
+    );
   }
   .empty-workout-content {
     grid-column: 1;
@@ -5711,7 +5898,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .workout-form-actions { margin-inline: -12px; padding-inline: 12px; }
 }
 
-/* Authentication artwork: shared by login, registration and password recovery. */
+/* Compartilhar progresso (conteúdo da folha) ---------------------------------------------------------------- */
 .auth-layout {
   grid-template-columns: minmax(0, 1.25fr) minmax(360px, 420px);
   align-items: stretch;
@@ -5846,6 +6033,59 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .auth-intro-content > p { max-width: 330px; font-size: 12px; line-height: 1.45; }
   .auth-intro .auth-benefits { display: none; }
 }
+/* textarea >= 16px: o iOS dá zoom no foco abaixo disso */
+.auth-layout--signup .auth-intro .auth-benefits {
+  display: none;
+}
+.auth-layout--signup .auth-intro,
+.auth-layout--signup .auth-intro-content {
+  min-height: 480px;
+}
+.auth-layout--signup .auth-form-section {
+  align-self: start;
+}
+@media (max-width: 900px) {
+  .auth-layout.auth-layout--signup {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 520px;
+    padding-block: 20px 28px;
+  }
+  .auth-layout--signup .auth-intro {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  .auth-layout.auth-layout--signup {
+    padding: 12px 16px 24px;
+    gap: 0;
+  }
+  .auth-layout--signup .auth-form-card {
+    padding: 4px 0 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .auth-layout--signup .auth-heading-icon {
+    display: none;
+  }
+  .auth-layout--signup .auth-form-card h1 {
+    font-size: 22px;
+  }
+  .auth-layout--signup .auth-description {
+    margin-bottom: 18px;
+  }
+  .auth-layout--signup .auth-switch {
+    margin-top: 20px;
+    padding: 12px;
+  }
+}
+.auth-layout--signup #auth-title:focus {
+  outline: none;
+}
+.auth-layout--signup #auth-title:focus-visible {
+  outline: 2px solid var(--focus-outlineColor, var(--borderColor-accent-emphasis));
+  outline-offset: 2px;
+}
 
 /* Cadastro (AuthLayout variant="signup"): no desktop a arte fica mais enxuta (sem os cards de
    benefícios); até 900px o formulário vem sozinho, em coluna única e largura confortável. */
@@ -5891,10 +6131,7 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .auth-intro h2 { font-size: 22px; }
 }
 
-/* Folha modal (ModalSheet): base da Home e das Comunidades ---------------------------------------------------
-   Mobile-first: ocupa a viewport inteira; cabeçalho (título + X 44x44) e rodapé (CTA) FORA da área rolável, com
-   safe-area (notch/Dynamic Island/barra de gestos); só o corpo rola. Altura = viewport visual (teclado aberto
-   encolhe a folha e o rodapé continua visível) com fallback 100dvh. */
+/* Card de progresso no feed (foto + metadado): rótulo discreto acima da imagem */
 .modal-sheet-backdrop {
   position: fixed;
   inset: 0;
@@ -5924,7 +6161,8 @@ body.modal-sheet-open { overflow: hidden; }
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: calc(8px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) 8px calc(16px + env(safe-area-inset-left, 0px));
+  padding: calc(8px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) 8px
+    calc(16px + env(safe-area-inset-left, 0px));
   border-bottom: 1px solid var(--borderColor-muted);
   background: var(--bgColor-default);
 }
@@ -5955,11 +6193,13 @@ body.modal-sheet-open { overflow: hidden; }
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
-  padding: 12px calc(16px + env(safe-area-inset-right, 0px)) 12px calc(16px + env(safe-area-inset-left, 0px));
+  padding: 12px calc(16px + env(safe-area-inset-right, 0px)) 12px
+    calc(16px + env(safe-area-inset-left, 0px));
 }
 .modal-sheet-footer {
   flex: 0 0 auto;
-  padding: 10px calc(16px + env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
+  padding: 10px calc(16px + env(safe-area-inset-right, 0px))
+    calc(10px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
   border-top: 1px solid var(--borderColor-muted);
   background: var(--bgColor-default);
 }
@@ -5976,7 +6216,7 @@ body.modal-sheet-open { overflow: hidden; }
   }
 }
 
-/* Planning uses the shared sheet so its viewport, focus and overlay rules stay in one place. */
+/* Criação de comunidade: wizard em 5 etapas, mobile first (alvos de toque >= 44px). */
 .modal-sheet.training-plan-dialog { box-sizing: border-box; overflow: hidden; }
 .training-plan-dialog .modal-sheet-body { overflow-x: hidden; scrollbar-gutter: stable; }
 @media (min-width: 768px) {
@@ -5994,11 +6234,14 @@ body.modal-sheet-open { overflow: hidden; }
   .training-plan-dialog .modal-sheet-body { padding-block: 12px; }
 }
 @media (max-width: 279px) {
-  .training-plan-dialog .modal-sheet-header, .training-plan-dialog .modal-sheet-body { padding-inline: 12px; }
+  .training-plan-dialog .modal-sheet-header,
+  .training-plan-dialog .modal-sheet-body {
+    padding-inline: 12px;
+  }
   .training-plan-dialog .modal-sheet-footer { padding-inline: 12px; }
 }
 
-/* Ficha do Catálogo Evolutus (Fase 4) usa a mesma folha compartilhada. */
+/* Finalizar treino: marcador server-side de conclusão (ver NewWorkout.jsx). */
 .modal-sheet.catalog-detail-dialog { box-sizing: border-box; overflow: hidden; }
 .catalog-detail-dialog .modal-sheet-body { overflow-x: hidden; scrollbar-gutter: stable; }
 @media (min-width: 768px) {
@@ -6008,7 +6251,7 @@ body.modal-sheet-open { overflow: hidden; }
   .catalog-detail-dialog .modal-sheet-footer { padding: 12px 22px; }
 }
 
-/* Compartilhar progresso (conteúdo da folha) ---------------------------------------------------------------- */
+/* SyncStatus: indicador discreto do que está salvo neste aparelho (Fase 3 offline). Nunca modal. */
 .activity-calendar-share { display: flex; justify-content: flex-end; margin: 0 0 10px; }
 .share-progress { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .share-progress-tabs { display: flex; gap: 8px; min-width: 0; max-width: 100%; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
@@ -6040,7 +6283,8 @@ body.modal-sheet-open { overflow: hidden; }
   box-shadow: 0 10px 40px rgb(0 0 0 / 30%);
   user-select: none;
 }
-/* textarea >= 16px: o iOS dá zoom no foco abaixo disso */
+
+/* Administrative comparison: full poses stay legible on narrow screens. */
 .share-progress textarea { font-size: 16px; }
 .share-progress-footer { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .share-progress-actions { display: grid; gap: 8px; }
@@ -6050,12 +6294,11 @@ body.modal-sheet-open { overflow: hidden; }
   .share-progress-actions { grid-template-columns: 1fr 1fr; }
   .share-progress-tabs { justify-content: center; }
 }
-
-/* Card de progresso no feed (foto + metadado): rótulo discreto acima da imagem */
-.status-progress-tag { display: inline-flex; align-items: center; gap: 5px; margin: 0 0 8px; color: var(--fgColor-muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+/* Reserve the app header and mobile navigation even though Dialog is portaled outside the shell. */
+.status-progress-tag { display: inline-flex; align-items: center; gap: 5px; margin: 0 0 8px; color: var(--fgColor-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 .status-progress-tag svg { color: var(--fitness-accent); }
 
-/* Criação de comunidade: wizard em 5 etapas, mobile first (alvos de toque >= 44px). */
+/* Editor pessoal compacto; estilos de cartões antigos continuam nas páginas públicas. */
 .community-wizard { max-width: 560px; }
 .community-wizard-card {
   padding: 16px;
@@ -6104,13 +6347,16 @@ body.modal-sheet-open { overflow: hidden; }
   background: var(--fitness-accent-soft);
 }
 .community-choice-title { font-weight: 600; font-size: 15px; }
-.community-choice-text, .community-choice-meta { color: var(--fgColor-muted); font-size: 13px; }
+.community-choice-text,
+.community-choice-meta {
+  color: var(--fgColor-muted);
+  font-size: 13px;
+}
 
 .community-review { display: grid; gap: 12px; margin: 0 0 16px; }
 .community-review > div { display: flex; justify-content: space-between; gap: 16px; }
 .community-review dt { color: var(--fgColor-muted); font-size: 14px; }
 .community-review dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
-
 /* Finalizar treino: marcador server-side de conclusão (ver NewWorkout.jsx). */
 .workout-finish {
   display: flex;
@@ -6121,7 +6367,6 @@ body.modal-sheet-open { overflow: hidden; }
 .workout-finish .btn {
   min-height: 44px;
 }
-
 /* SyncStatus: indicador discreto do que está salvo neste aparelho (Fase 3 offline). Nunca modal. */
 .sync-status {
   margin: 0 0 12px;
@@ -6192,10 +6437,17 @@ body.modal-sheet-open { overflow: hidden; }
   text-align: center;
   color: var(--fgColor-muted);
 }
-
 /* Administrative comparison: full poses stay legible on narrow screens. */
-.ev-preview[data-size="review"] { max-width: none; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-.ev-preview[data-size="review"] .ev-figure:last-child:nth-child(3) { grid-column: 1 / -1; width: 42%; justify-self: center; }
+.ev-preview[data-size='review'] {
+  max-width: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+.ev-preview[data-size='review'] .ev-figure:last-child:nth-child(3) {
+  grid-column: 1 / -1;
+  width: 42%;
+  justify-self: center;
+}
 .ev-image-zoom { display: block; width: 100%; min-width: 0; padding: 0; border: 1px solid var(--borderColor-muted); border-radius: 6px; background: var(--bgColor-muted); cursor: zoom-in; color: inherit; }
 .ev-image-zoom:focus-visible { outline: 2px solid var(--focus-outlineColor); }
 .ev-image-zoom .exercise-visual-preview-image { display: block; width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; }
@@ -6209,9 +6461,12 @@ div:has(> .ev-zoom-dialog) {
   box-sizing: border-box;
   height: 100dvh;
   bottom: auto;
-  padding: calc(var(--ev-zoom-top) + var(--ev-zoom-gap)) max(var(--ev-zoom-gap), env(safe-area-inset-right, 0px)) calc(var(--ev-zoom-bottom) + var(--ev-zoom-gap)) max(var(--ev-zoom-gap), env(safe-area-inset-left, 0px));
+  padding: calc(var(--ev-zoom-top) + var(--ev-zoom-gap))
+    max(var(--ev-zoom-gap), env(safe-area-inset-right, 0px))
+    calc(var(--ev-zoom-bottom) + var(--ev-zoom-gap))
+    max(var(--ev-zoom-gap), env(safe-area-inset-left, 0px));
 }
-.ev-zoom-dialog[role="dialog"][aria-modal="true"] {
+.ev-zoom-dialog[role='dialog'][aria-modal='true'] {
   width: min(560px, 100%);
   min-width: 0;
   max-width: 100%;
@@ -6222,7 +6477,13 @@ div:has(> .ev-zoom-dialog) {
 .ev-zoom-image {
   display: block;
   max-width: 100%;
-  max-height: min(60dvh, max(0px, calc(100dvh - var(--ev-zoom-top) - var(--ev-zoom-bottom) - 2 * var(--ev-zoom-gap) - 120px)));
+  max-height: min(
+    60dvh,
+    max(
+      0px,
+      calc(100dvh - var(--ev-zoom-top) - var(--ev-zoom-bottom) - 2 * var(--ev-zoom-gap) - 120px)
+    )
+  );
   object-fit: contain;
 }
 @media (max-width: 767px) {
@@ -6230,15 +6491,24 @@ div:has(> .ev-zoom-dialog) {
 }
 .ev-inspection { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; }
 .ev-inspection input { margin-top: 3px; flex-shrink: 0; }
-.ev-rejection, .ev-delete { display: grid; gap: 8px; min-width: 0; }
+.ev-rejection,
+.ev-delete {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
 .ev-delete p { margin: 0; font-size: 13px; }
 .ev-deletion-status { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-block: 8px; font-size: 13px; }
 @media (min-width: 720px) {
-  .ev-preview[data-size="review"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .ev-preview[data-size="review"] .ev-figure:last-child:nth-child(3) { grid-column: auto; width: 100%; }
+  .ev-preview[data-size='review'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .ev-preview[data-size='review'] .ev-figure:last-child:nth-child(3) {
+    grid-column: auto;
+    width: 100%;
+  }
 }
 .ev-upload-preview { width: 100%; max-width: 240px; height: 180px; object-fit: contain; background: var(--bgColor-muted); border-radius: 6px; }
-
 /* Editor pessoal compacto; estilos de cartões antigos continuam nas páginas públicas. */
 .profile-editor {
   width: min(100%, 680px);

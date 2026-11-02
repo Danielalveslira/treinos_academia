@@ -3,7 +3,6 @@ import { invalidateCache } from '../utils/pageCache'
 
 // Medida corporal é esparsa. A janela anual sustenta os gráficos sem uma coleção
 // agregada adicional; o teto mantém o custo previsível mesmo em uso atípico.
-const RECENT_WINDOW_DAYS = 371
 const SAFETY_LIMIT = 500
 const MEASUREMENT_FIELDS = [
   'weightKg',
@@ -39,7 +38,7 @@ function cleanNumber(value) {
 }
 
 function toDoc(row) {
-  const doc = { id: row.id, date: row.date }
+  const doc = { id: row.id, date: row.date, createdAt: row.created_at }
   for (const [field, column] of Object.entries(COLUMN_BY_FIELD)) {
     if (row[column] != null) doc[field] = Number(row[column])
   }
@@ -48,13 +47,13 @@ function toDoc(row) {
 }
 
 export async function listRecentMeasurements(userId) {
-  const since = new Date(Date.now() - RECENT_WINDOW_DAYS * 86400000).toISOString()
   const { data, error } = await supabase
     .from('body_measurements')
     .select('*')
     .eq('user_id', userId)
-    .gte('date', since)
     .order('date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(SAFETY_LIMIT)
   if (error) throw error
   return {
@@ -75,10 +74,10 @@ export async function saveBodyCheckIn(userId, values = {}) {
     const value = cleanNumber(values[field])
     if (value != null) measurement[field] = value
   }
-  if (values.note?.trim()) measurement.note = values.note.trim()
+  const hasMeasurement = Object.keys(measurement).length > 0
+  if (hasMeasurement && values.note?.trim()) measurement.note = values.note.trim()
 
   const height = cleanNumber(values.heightCm)
-  const hasMeasurement = Object.keys(measurement).length > 0
   if (height == null && !hasMeasurement) return false
 
   const payload = { ...measurement }
