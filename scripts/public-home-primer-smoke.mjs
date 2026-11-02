@@ -74,7 +74,7 @@ try {
         for (const [path, heading] of [
           ['/profissionais', 'Profissionais'],
           ['/vitrine', 'Vitrine'],
-          ['/para-empresas', 'Para empresas'],
+          ['/para-empresas', 'Sua marca no universo fitness.'],
         ]) {
           await page.goto(base)
           await page.locator(`main a[href="${path}"]`).click()

@@ -21,7 +21,7 @@ try {
     page.on('request', (request) => { if (request.resourceType() === 'document') documents.push(request.url()) })
     for (const [path, heading] of [
       ['/como-funciona', 'Seu treino organizado. Sua evolução visível.'],
-      ['/para-empresas', 'Para empresas'],
+      ['/para-empresas', 'Sua marca no universo fitness.'],
       ['/vitrine', 'Vitrine'],
       ['/profissionais', 'Profissionais'],
     ]) {

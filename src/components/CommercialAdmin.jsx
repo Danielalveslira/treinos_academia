@@ -229,9 +229,13 @@ export default function CommercialAdmin() {
               </p>
               <p>
                 {lead.segment} ·{' '}
-                <a href={lead.website} target="_blank" rel="noopener noreferrer">
-                  Site informado ↗
-                </a>
+                {lead.website ? (
+                  <a href={lead.website} target="_blank" rel="noopener noreferrer">
+                    Site informado ↗
+                  </a>
+                ) : (
+                  'Site não informado'
+                )}
               </p>
               <p>{lead.message}</p>
               <label>
