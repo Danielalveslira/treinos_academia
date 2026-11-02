@@ -3,13 +3,11 @@ import { Flash, FormControl, IconButton, TextInput, Textarea } from '@primer/rea
 import { InfoIcon } from '@primer/octicons-react'
 import { validateBodyMeasurement } from '../utils/validators'
 import { useFormState } from '../hooks/useFormState'
+import { businessDayKey } from '../utils/businessDate'
 import { FormShell } from './FormShell'
 
 function todayString() {
-  const today = new Date()
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
-    today.getDate()
-  ).padStart(2, '0')}`
+  return businessDayKey()
 }
 
 const GENERAL_FIELDS = [
@@ -77,6 +75,9 @@ export function BodyMeasurementForm({ initialHeightCm, onSubmit, onCancel }) {
           max={todayString()}
           block
         />
+        {errors.date && (
+          <FormControl.Validation variant="error">{errors.date}</FormControl.Validation>
+        )}
       </FormControl>
 
       <fieldset className="measurement-fieldset">
@@ -97,10 +98,7 @@ export function BodyMeasurementForm({ initialHeightCm, onSubmit, onCancel }) {
         <span className="measurement-fieldset-caption">Todas em centímetros.</span>
         <div className="measurement-form-grid">
           {CIRCUMFERENCE_FIELDS.map(([field, label]) => (
-            <NumericField
-              key={field}
-              {...{ field, label, unit: 'cm', values, setField, errors }}
-            />
+            <NumericField key={field} {...{ field, label, unit: 'cm', values, setField, errors }} />
           ))}
         </div>
       </fieldset>
@@ -119,16 +117,13 @@ export function BodyMeasurementForm({ initialHeightCm, onSubmit, onCancel }) {
         </legend>
         {infoOpen && (
           <Flash variant="default" sx={{ mb: 2, fontSize: 0 }}>
-            Valores de composição variam conforme método e protocolo. Se deixar as massas em
-            branco, peso e gordura permitem estimativas.
+            Valores de composição variam conforme método e protocolo. Se deixar as massas em branco,
+            peso e gordura permitem estimativas.
           </Flash>
         )}
         <div className="measurement-form-grid">
           {COMPOSITION_FIELDS.map(([field, label]) => (
-            <NumericField
-              key={field}
-              {...{ field, label, unit: 'kg', values, setField, errors }}
-            />
+            <NumericField key={field} {...{ field, label, unit: 'kg', values, setField, errors }} />
           ))}
         </div>
       </fieldset>
