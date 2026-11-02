@@ -1,3 +1,4 @@
+import { commercialTermsError } from './commercialTerms.js'
 export function checkoutRequestId(
   userId,
   quoteId,
@@ -44,6 +45,7 @@ export function purchaseError(error) {
         'O link não pôde ser confirmado. Consulte Minhas compras antes de tentar novamente.',
       APP_ACCESS_DENIED: 'Sua sessão ou conta não permite realizar esta compra.',
     }[error?.message] ||
+    commercialTermsError(error) ||
     'Não foi possível concluir a solicitação. Consulte Minhas compras e tente novamente.'
   )
 }

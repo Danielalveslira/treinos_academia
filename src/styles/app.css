@@ -3403,6 +3403,65 @@ body:has(.pwa-offline) .app-shell {
   margin-top: 2px;
   accent-color: var(--bgColor-accent-emphasis);
 }
+.legal-consent-groups {
+  display: grid;
+  gap: 4px;
+}
+.legal-consent .legal-consent-note,
+.legal-consent-info p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--fgColor-muted);
+}
+.legal-consent-info h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.legal-consent-groups .legal-consent label {
+  margin-bottom: 4px;
+}
+.legal-history-notice {
+  margin-bottom: 16px;
+}
+.legal-rights-panel {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--borderColor-muted);
+}
+.legal-rights-panel summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+.commercial-terms-box {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 8px;
+  background: var(--bgColor-muted);
+  overflow-wrap: anywhere;
+}
+.commercial-terms-box dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 14px;
+}
+.commercial-terms-box dl > div {
+  display: contents;
+}
+.commercial-terms-box dt {
+  color: var(--fgColor-muted);
+}
+.commercial-terms-box dd {
+  margin: 0;
+}
 .support-page {
   width: 100%;
   max-width: 760px;

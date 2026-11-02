@@ -1,3 +1,4 @@
+import { commercialTermsError } from './commercialTerms.js'
 const errors = {
   AD_CAPACITY_UNAVAILABLE:
     'Não há disponibilidade para todo o período. Nenhum EvoCash foi debitado.',
@@ -40,6 +41,7 @@ const errors = {
 export function commercialError(error) {
   return (
     errors[error?.message] ||
+    commercialTermsError(error) ||
     (error?.message === 'Saldo de EvoCash insuficiente.'
       ? error.message
       : 'Não foi possível concluir. Atualize os dados e tente novamente.')

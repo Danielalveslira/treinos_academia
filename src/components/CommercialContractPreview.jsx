@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react'
 import { Box, Button, Checkbox, Flash, FormControl, Text, TextInput } from '@primer/react'
-import { confirmCommercialOrder, quoteCommercialOrder } from '../services/commercialService'
+import {
+  confirmCommercialOrderWithTerms,
+  quoteCommercialOrder,
+} from '../services/commercialService'
 import { commercialDate, commercialError } from '../utils/commercial'
 import { useWallet } from '../hooks/useWallet'
 // Only mounted in an explicitly configured local development preview.
@@ -26,7 +29,7 @@ export default function CommercialContractPreview() {
     setError('')
     try {
       const result = pay
-        ? await confirmCommercialOrder(quote.id, confirmed)
+        ? await confirmCommercialOrderWithTerms(quote.id, quote.terms)
         : await quoteCommercialOrder(resource, days, crypto.randomUUID())
       setQuote(result)
       setConfirmed(false)

@@ -1,17 +1,10 @@
 import { RefundPolicyNotice } from './Refunds'
 import { useEffect, useRef, useState } from 'react'
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flash,
-  FormControl,
-  Heading,
-  Spinner,
-  Text,
-  TextInput,
-} from '@primer/react'
+import { Box, Button, Flash, FormControl, Heading, Spinner, Text, TextInput } from '@primer/react'
 import { getCashPurchaseSettings, requestCashPurchase } from '../services/cashPurchaseService'
+import { acceptCommercialTerms } from '../services/commercialService'
+import { CommercialTermsAcceptance } from './CommercialTermsAcceptance'
+import { commercialTermsState } from '../utils/commercialTerms'
 import { createEvoCashQuote } from '../services/evocashPricingService'
 import { formatPriceBRL, priceDate } from '../utils/evocashPricing'
 import { openInfinitepayCheckout } from '../utils/cashPurchaseFlow'
@@ -108,6 +101,7 @@ export function EvoCashQuantityPurchase({ userId, hasPendingPurchase, onPurchase
   }
   async function checkout() {
     if (locked.current || !confirmed || !quote || hasPendingPurchase) return
+    if (commercialTermsState(quote.terms) !== 'ready') return
     if (performance.now() >= quote.deadline) {
       setExpired(true)
       setConfirmed(false)
@@ -117,6 +111,9 @@ export function EvoCashQuantityPurchase({ userId, hasPendingPurchase, onPurchase
     setBusy(true)
     setError('')
     try {
+      // Aceite das Condições do EvoCash vinculado a esta cotação (idempotente). O servidor
+      // recusa reservar o checkout sem ele.
+      await acceptCommercialTerms('evocash_quote', quote.quoteId, quote.terms)
       const requestId = checkoutRequestId(userId, quote.quoteId)
       const result = await requestCashPurchase({ quoteId: quote.quoteId, requestId })
       openInfinitepayCheckout(result.checkoutUrl)
@@ -250,12 +247,23 @@ export function EvoCashQuantityPurchase({ userId, hasPendingPurchase, onPurchase
                   Esta cotação expirou. Atualize a cotação para continuar.
                 </Flash>
               )}
-              <FormControl disabled={expired || busy || hasPendingPurchase}>
-                <Checkbox checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-                <FormControl.Label>
-                  Confirmo a quantidade e o valor total desta compra.
-                </FormControl.Label>
-              </FormControl>
+              <CommercialTermsAcceptance
+                terms={quote.terms}
+                checked={confirmed}
+                onChange={setConfirmed}
+                disabled={expired || busy || hasPendingPurchase}
+                summary={[
+                  ['Quantidade', `${quote.quantity} EvoCash`],
+                  ['Preço unitário', formatPriceBRL(quote.unitPriceCentavos)],
+                  ['Total a pagar', formatPriceBRL(quote.totalCentavos)],
+                  [
+                    'Uso',
+                    'Créditos para contratar serviços dentro do Evolutus, sem saque nem rendimento',
+                  ],
+                  ['Liberação', 'Somente após a confirmação do pagamento pela InfinitePay'],
+                  ['Cotação válida até', priceDate(quote.expiresAt)],
+                ]}
+              />
               <Text as="p" sx={{ m: 0, fontSize: 0, color: 'fg.muted' }}>
                 O pagamento acontece na InfinitePay, com as opções disponíveis no checkout. O
                 EvoCash será liberado somente após a confirmação do pagamento. Não há renovação
@@ -265,7 +273,13 @@ export function EvoCashQuantityPurchase({ userId, hasPendingPurchase, onPurchase
                 <Button
                   variant="primary"
                   onClick={checkout}
-                  disabled={!confirmed || expired || busy || hasPendingPurchase}
+                  disabled={
+                    !confirmed ||
+                    expired ||
+                    busy ||
+                    hasPendingPurchase ||
+                    commercialTermsState(quote.terms) !== 'ready'
+                  }
                 >
                   {busy ? 'Preparando pagamento…' : 'Ir para o pagamento seguro'}
                 </Button>

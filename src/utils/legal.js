@@ -77,32 +77,76 @@ export async function resolveLegalBundle(policy, archive) {
   }
 }
 
-export function selectLegalDocument(bundle, documentId, requestedVersion = '') {
-  if (!bundle?.manifest || (requestedVersion && requestedVersion !== bundle.manifest.version)) {
-    return null
-  }
+export function selectLegalDocument(bundle, documentId) {
+  if (!bundle?.manifest || !Array.isArray(bundle.documents)) return null
   return bundle.documents.find((document) => document.id === documentId) || null
 }
 
+// Só o aceite contratual (Termos de Uso + Regras da Comunidade) é condição da conta. A
+// Política de Privacidade é informada (ciência), e o consentimento de dados de saúde é
+// opcional e específico -- nenhum dos dois bloqueia o cadastro.
 export function canSubmitLegalRegistration({ bundle, loading, confirmed }) {
   return Boolean(
     !loading &&
-      bundle?.manifest?.published === true &&
-      Object.hasOwn(APPROVED_LEGAL_DIGESTS, bundle?.manifest?.version) &&
-      bundle?.digest === APPROVED_LEGAL_DIGESTS[bundle.manifest.version] &&
-      confirmed?.accepted === true &&
-      confirmed?.healthDataConsent === true
+    bundle?.manifest?.published === true &&
+    Object.hasOwn(APPROVED_LEGAL_DIGESTS, bundle?.manifest?.version) &&
+    bundle?.digest === APPROVED_LEGAL_DIGESTS[bundle.manifest.version] &&
+    confirmed?.accepted === true
   )
+}
+
+function versionedLink(path, version) {
+  return `${path}?version=${encodeURIComponent(version)}`
 }
 
 export function legalConsentDocumentLinks(bundle) {
   const version = bundle?.manifest?.version
   if (!version || !Object.hasOwn(APPROVED_LEGAL_DIGESTS, version)) return []
   return [
-    { label: 'Termos de Uso', to: `/termos-de-uso?version=${version}` },
-    { label: 'Regras da Comunidade', to: `/regras-da-comunidade?version=${version}` },
-    { label: 'Política de Privacidade', to: `/politica-de-privacidade?version=${version}` },
+    { id: 'terms', label: 'Termos de Uso', to: versionedLink('/termos-de-uso', version) },
+    {
+      id: 'community',
+      label: 'Regras da Comunidade',
+      to: versionedLink('/regras-da-comunidade', version),
+    },
+    {
+      id: 'privacy',
+      label: 'Política de Privacidade',
+      to: versionedLink('/politica-de-privacidade', version),
+    },
   ]
+}
+
+// Payload enviado a accept_legal_documents. Nunca inclui conteúdo jurídico: o servidor só
+// aceita a versão/digest previamente registrados. O consentimento de saúde só segue quando
+// marcado, com a versão exata do texto exibido.
+export function buildLegalAcceptancePayload({ bundle, confirmed, source, healthTextVersion }) {
+  const payload = {
+    version: bundle.manifest.version,
+    digest: bundle.digest,
+    accepted: confirmed?.accepted === true,
+    source,
+  }
+  if (confirmed?.healthDataConsent === true) payload.healthConsentTextVersion = healthTextVersion
+  return payload
+}
+
+// Versão histórica para leitura (?version=). Conteúdo vem do arquivo imutável do servidor;
+// quando este app conhece o digest aprovado daquela versão, ele precisa coincidir.
+export function resolveHistoricalLegalBundle(version, row) {
+  if (!row || row.version !== version || row.manifest?.version !== version) return null
+  if (!Array.isArray(row.documents) || row.documents.length === 0) return null
+  if (
+    Object.hasOwn(APPROVED_LEGAL_DIGESTS, version) &&
+    APPROVED_LEGAL_DIGESTS[version] !== row.digest
+  ) {
+    throw new Error('LEGAL_HISTORY_INTEGRITY')
+  }
+  return { manifest: row.manifest, documents: row.documents, digest: row.digest }
+}
+
+export function isValidLegalVersionParam(value) {
+  return typeof value === 'string' && /^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$/.test(value)
 }
 
 export function needsLegalAcceptance(acceptance, policy) {

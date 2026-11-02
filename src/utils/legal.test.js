@@ -7,6 +7,9 @@ import {
   LEGAL_DOCUMENTS,
   LEGAL_MANIFEST,
   canSubmitLegalRegistration,
+  buildLegalAcceptancePayload,
+  resolveHistoricalLegalBundle,
+  isValidLegalVersionParam,
   clearCachedLegalAccess,
   isAccountRestricted,
   isLegalPolicyOutdated,
@@ -81,8 +84,8 @@ test('loads and displays the complete immutable archive matching active versions
       ),
       /LEGAL_POLICY_INCOMPATIBLE/
     )
-    assert.ok(selectLegalDocument(bundle, 'privacy', version)?.sections.length)
-    assert.equal(selectLegalDocument(bundle, 'privacy', version === '1.3.0' ? '1.4.0' : '1.3.0'), null)
+    assert.ok(selectLegalDocument(bundle, 'privacy')?.sections.length)
+    assert.equal(selectLegalDocument(bundle, 'missing-document'), null)
     assert.deepEqual(
       legalConsentDocumentLinks(bundle).map((link) => link.to),
       ['/termos-de-uso', '/regras-da-comunidade', '/politica-de-privacidade'].map(
@@ -119,13 +122,38 @@ test('digest, archive version, policy publication, and archive content must all 
   )
 })
 
-test('registration requires the active published bundle and both explicit confirmations', async () => {
+test('registration requires the active published bundle and only the contractual acceptance', async () => {
   const bundle = await active('1.3.0')
   assert.equal(canSubmitLegalRegistration({ bundle, loading: false, confirmed: { accepted: true, healthDataConsent: true } }), true)
-  assert.equal(canSubmitLegalRegistration({ bundle, loading: true, confirmed: { accepted: true, healthDataConsent: true } }), false)
+  assert.equal(canSubmitLegalRegistration({ bundle, loading: false, confirmed: { accepted: true, healthDataConsent: false } }), true, 'health consent is optional')
+  assert.equal(canSubmitLegalRegistration({ bundle, loading: true, confirmed: { accepted: true } }), false)
   assert.equal(canSubmitLegalRegistration({ bundle, loading: false, confirmed: { accepted: false, healthDataConsent: true } }), false)
-  assert.equal(canSubmitLegalRegistration({ bundle, loading: false, confirmed: { accepted: true, healthDataConsent: false } }), false)
-  assert.equal(canSubmitLegalRegistration({ bundle: null, loading: false, confirmed: { accepted: true, healthDataConsent: true } }), false)
+  assert.equal(canSubmitLegalRegistration({ bundle, loading: false, confirmed: { accepted: 'true' } }), false)
+  assert.equal(canSubmitLegalRegistration({ bundle: null, loading: false, confirmed: { accepted: true } }), false)
+})
+
+test('acceptance payload never carries legal content and only sends health consent when chosen', async () => {
+  const bundle = await active('1.4.0')
+  const base = buildLegalAcceptancePayload({ bundle, confirmed: { accepted: true }, source: 'signup', healthTextVersion: 'health-data-1' })
+  assert.deepEqual(Object.keys(base).sort(), ['accepted', 'digest', 'source', 'version'])
+  assert.equal(base.digest, APPROVED_LEGAL_DIGESTS['1.4.0'])
+  const withHealth = buildLegalAcceptancePayload({ bundle, confirmed: { accepted: true, healthDataConsent: true }, source: 'reacceptance', healthTextVersion: 'health-data-1' })
+  assert.equal(withHealth.healthConsentTextVersion, 'health-data-1')
+  assert.equal('manifest' in withHealth || 'documents' in withHealth, false)
+})
+
+test('historical versions open their own immutable text and reject tampered digests', () => {
+  const archive = ARCHIVES['1.3.0']
+  const row = { version: '1.3.0', manifest: archive.manifest, documents: archive.documents, digest: APPROVED_LEGAL_DIGESTS['1.3.0'] }
+  const historical = resolveHistoricalLegalBundle('1.3.0', row)
+  assert.equal(historical.manifest.version, '1.3.0')
+  assert.ok(selectLegalDocument(historical, 'terms'))
+  assert.throws(() => resolveHistoricalLegalBundle('1.3.0', { ...row, digest: 'f'.repeat(64) }), /LEGAL_HISTORY_INTEGRITY/)
+  assert.equal(resolveHistoricalLegalBundle('1.3.0', null), null, 'unpublished or missing versions do not render')
+  assert.equal(resolveHistoricalLegalBundle('1.4.0', row), null, 'row must match the requested version')
+  assert.equal(isValidLegalVersionParam('1.3.0'), true)
+  assert.equal(isValidLegalVersionParam('../1'), false)
+  assert.equal(isValidLegalVersionParam(''), false)
 })
 
 test('acceptance transitions force 1.4.0 after 1.3.0 and incompatible tabs remain blocked', async () => {

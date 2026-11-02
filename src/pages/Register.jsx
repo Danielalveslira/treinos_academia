@@ -255,7 +255,7 @@ export default function Register() {
       ...validateUsageProfile(usageProfile),
       ...(legalBundle &&
       !canSubmitLegalRegistration({ bundle: legalBundle, loading: legalLoading, confirmed })
-        ? { legal: 'Confirme os documentos e a autorização para seus dados de treino.' }
+        ? { legal: 'Aceite os Termos de Uso e as Regras da Comunidade para criar a conta.' }
         : {}),
     }
   }
@@ -358,7 +358,8 @@ export default function Register() {
       return false
     }
     try {
-      if (legalBundle.manifest.published) await acceptLegalDocuments(confirmed, legalBundle)
+      if (legalBundle.manifest.published)
+        await acceptLegalDocuments(confirmed, legalBundle, 'signup')
       await refreshProfile(uid)
     } catch (err) {
       setError(

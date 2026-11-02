@@ -65,7 +65,7 @@ const STUBS = {
     export const isLegalPolicyChangedError = () => false
   `,
   legal: `export const canSubmitLegalRegistration = ({ bundle, loading, confirmed }) =>
-    !loading && bundle?.manifest?.published === true && confirmed.accepted && confirmed.healthDataConsent`,
+    !loading && bundle?.manifest?.published === true && confirmed.accepted === true`,
   useAuth: `export const useAuth = () => globalThis.__reg.auth`,
   online: `export const useOnlineStatus = () => globalThis.__reg.online`,
   city: `
@@ -232,8 +232,9 @@ async function fillStep2(view, sexo = 'nao_informar') {
   await chooseSexo(view, sexo)
 }
 
-async function acceptConsents(view) {
-  for (const key of ['accepted', 'health']) {
+// Só o aceite contratual é obrigatório; o consentimento de saúde é opcional.
+async function acceptConsents(view, keys = ['accepted']) {
+  for (const key of keys) {
     const box = view.root().findByProps({ 'data-consent': key })
     await act(async () => box.props.onChange({ target: { checked: true } }))
   }
@@ -320,7 +321,7 @@ test('3 etapas: avança, volta preservando tudo e cria a conta uma única vez', 
 
   await view.click('Criar conta')
   assert.ok(view.errors().some((e) => /como você pretende utilizar/i.test(e)))
-  assert.ok(view.errors().some((e) => /Confirme os documentos/.test(e)))
+  assert.ok(view.errors().some((e) => /Aceite os Termos de Uso/.test(e)))
   assert.equal(count('registerUser'), 0)
 
   await chooseUsage(view)
@@ -342,6 +343,10 @@ test('3 etapas: avança, volta preservando tudo e cria a conta uma única vez', 
     residenceMunicipalityCode: 2412500,
   })
   assert.equal(count('accept'), 1)
+  const accept = calls.find((c) => c[0] === 'accept')
+  assert.equal(accept[1].accepted, true)
+  assert.notEqual(accept[1].healthDataConsent, true, 'consentimento de saúde nunca é presumido')
+  assert.equal(accept[3], 'signup')
   assert.deepEqual(calls.find((c) => c[0] === 'navigate').slice(1), ['/app', { replace: true }])
 })
 
@@ -379,6 +384,20 @@ async function reachFinal(view) {
   await chooseUsage(view)
   await acceptConsents(view)
 }
+
+test('consentimento opcional de medidas corporais segue ao aceite apenas quando marcado', async () => {
+  const view = await mount()
+  await fillStep1(view)
+  await view.click('Continuar')
+  await fillStep2(view)
+  await view.click('Continuar')
+  await chooseUsage(view)
+  await acceptConsents(view, ['accepted', 'health'])
+  await view.click('Criar conta')
+  const accept = calls.find((c) => c[0] === 'accept')
+  assert.equal(accept[1].healthDataConsent, true)
+  assert.equal(accept[3], 'signup')
+})
 
 test('e-mail já cadastrado: volta à etapa 1 com o erro no campo e tudo preenchido', async () => {
   globalThis.__reg.api.registerUser = () =>

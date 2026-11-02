@@ -1,8 +1,13 @@
 import { RefundPolicyNotice } from './Refunds'
 import { useRef, useState } from 'react'
-import { Box, Button, Checkbox, Flash, FormControl, Text, TextInput } from '@primer/react'
+import { Box, Button, Flash, FormControl, Text, TextInput } from '@primer/react'
 import { Link } from 'react-router-dom'
-import { quoteCommercialOrder, confirmCommercialOrder } from '../services/commercialService'
+import {
+  quoteCommercialOrder,
+  confirmCommercialOrderWithTerms,
+} from '../services/commercialService'
+import { CommercialTermsAcceptance } from './CommercialTermsAcceptance'
+import { commercialTermsState } from '../utils/commercialTerms'
 import { clampInitialDays, commercialDate, commercialError } from '../utils/commercial'
 import { useWallet } from '../hooks/useWallet'
 
@@ -30,7 +35,8 @@ export default function CommercialLeasePurchase({
     setError('')
     try {
       if (pay) {
-        const purchase = await confirmCommercialOrder(quote.id, confirmed)
+        if (!confirmed || commercialTermsState(quote.terms) !== 'ready') return
+        const purchase = await confirmCommercialOrderWithTerms(quote.id, quote.terms)
         intent.current = null
         setQuote(null)
         setConfirmed(false)
@@ -121,14 +127,27 @@ export default function CommercialLeasePurchase({
               e confirme a contratação.
             </Flash>
           )}
-          <FormControl disabled={busy}>
-            <Checkbox checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-            <FormControl.Label>Autorizo o débito de {quote.totalCash} EvoCash</FormControl.Label>
-          </FormControl>
+          <CommercialTermsAcceptance
+            terms={quote.terms}
+            checked={confirmed}
+            onChange={setConfirmed}
+            disabled={busy}
+            summary={[
+              [
+                'Serviço',
+                resourceName ? `Publicação de ${resourceName}` : `Publicação de ${subjectLabel}`,
+              ],
+              ['Duração', `${quote.durationDays} dias, sem renovação automática`],
+              ['Preço', `${quote.unitPriceCash} EvoCash por dia`],
+              ['Total a debitar', `${quote.totalCash} EvoCash`],
+              ['Publicação', 'Somente enquanto o conteúdo estiver aprovado e o direito ativo'],
+              ['Cotação válida até', commercialDate(quote.quoteExpiresAt)],
+            ]}
+          />
           <Button
             variant="primary"
             sx={{ mt: 2 }}
-            disabled={busy || !confirmed}
+            disabled={busy || !confirmed || commercialTermsState(quote.terms) !== 'ready'}
             onClick={() => run(true)}
           >
             Confirmar contratação

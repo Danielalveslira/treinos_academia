@@ -16,6 +16,8 @@ import {
   getWeightTrend,
 } from '../utils/bodyComposition'
 import { BodyMeasurementForm } from './BodyMeasurementForm'
+import { HealthConsentSettings } from './HealthConsentSettings'
+import { isHealthConsentRequiredError } from '../utils/privacyConsent'
 import { ErrorState } from './ErrorState'
 import { ToastFlash } from './ToastFlash'
 import { IndicatorCard } from './IndicatorCard'
@@ -82,6 +84,7 @@ export function BodyCompositionCard() {
     useBodyMeasurements()
   const { toasts, showToast } = useToast()
   const [formOpen, setFormOpen] = useState(false)
+  const [consentNeeded, setConsentNeeded] = useState(false)
   const [metric, setMetric] = useState('weightKg')
   const [period, setPeriod] = useState('quarter')
   const [trendInfoOpen, setTrendInfoOpen] = useState(false)
@@ -114,6 +117,12 @@ export function BodyCompositionCard() {
           refresh()
       }
     } catch (err) {
+      // Medidas corporais exigem o consentimento específico (servidor). O formulário fica
+      // aberto com os valores, e a autorização é pedida aqui mesmo, sem perder o que foi digitado.
+      if (isHealthConsentRequiredError(err)) {
+        setConsentNeeded(true)
+        return
+      }
       console.error('[BodyCompositionCard] save:', err)
       showToast('Não foi possível salvar. Tente novamente.', 'danger')
     }
@@ -136,6 +145,18 @@ export function BodyCompositionCard() {
         )}
       </div>
 
+      {formOpen && consentNeeded && (
+        <Flash variant="attention" sx={{ mb: 3 }}>
+          <HealthConsentSettings
+            source="feature_prompt"
+            compact
+            onChange={(state) => state.granted && setConsentNeeded(false)}
+          />
+          <Text as="p" sx={{ mt: 2, mb: 0, fontSize: 1 }}>
+            Depois de autorizar, salve as medidas novamente.
+          </Text>
+        </Flash>
+      )}
       {formOpen && (
         <BodyMeasurementForm
           initialHeightCm={profile?.heightCm}
