@@ -2,6 +2,10 @@ import { useEffect, useReducer, useRef } from 'react'
 import { track } from '@vercel/analytics'
 import { CheckIcon, ChevronDownIcon, PulseIcon } from '@primer/octicons-react'
 import { ExerciseComplete, SetCard } from '../components/SetCard'
+import { RestTimer } from '../components/RestTimer'
+import { useRestTimer } from '../hooks/useRestTimer'
+import { resolveRestSeconds } from '../utils/restTimer'
+import { concludeSet } from '../utils/setSession'
 import {
   DEMO_SHEET_NAME,
   demoReducer,
@@ -16,7 +20,28 @@ export default function WorkoutDemo() {
   const firstDone = useRef(false)
   const startedTracked = useRef(false)
   const lastConcludeAt = useRef(0)
+  // A mesma contagem usada no treino, sem sessionStorage ou outros serviços na demo.
+  const restTimer = useRestTimer('public-demo', { persist: false })
   const totals = demoTotals(state)
+  const activeRest = restTimer.rest
+  const restExercise = state.exercises.find((exercise) => exercise.id === activeRest?.exerciseId)
+  const restInCard = !!(
+    activeRest &&
+    !state.summary &&
+    state.openId === activeRest.exerciseId &&
+    restExercise &&
+    (!restExercise.sets.every((set) => set.done) || state.reviewingId === restExercise.id)
+  )
+  const renderRest = (compact) => (
+    <RestTimer
+      key={activeRest.id}
+      rest={activeRest}
+      compact={compact}
+      exerciseName={restExercise?.name}
+      onExtend={restTimer.extend}
+      onSkip={restTimer.stop}
+    />
+  )
   useEffect(() => {
     if (!startedTracked.current) {
       startedTracked.current = true
@@ -27,14 +52,27 @@ export default function WorkoutDemo() {
   function conclude(id) {
     const now = Date.now()
     if (now - lastConcludeAt.current < 400) return
+    const exercise = state.exercises.find((item) => item.id === id)
+    if (!exercise) return
+    const index = Math.min(state.active[id] || 0, exercise.sets.length - 1)
+    const result = concludeSet(exercise.sets, index)
+    if (!result) return
     lastConcludeAt.current = now
-    dispatch({ type: 'conclude', id })
+    dispatch({ type: 'conclude', id, result })
+    if (result.finished) restTimer.stop()
+    else
+      restTimer.start({
+        exerciseId: id,
+        setKey: exercise.sets[index].key,
+        restSeconds: resolveRestSeconds(null, null),
+      })
     if (!firstDone.current) {
       firstDone.current = true
       track('demo_first_set_completed')
     }
   }
   function reset() {
+    restTimer.stop()
     dispatch({ type: 'reset' })
     firstDone.current = false
     lastConcludeAt.current = 0
@@ -42,6 +80,7 @@ export default function WorkoutDemo() {
   }
   function showSummary() {
     if (!totals.done) return
+    restTimer.stop()
     dispatch({ type: 'summary' })
     track('demo_workout_finished')
   }
@@ -162,6 +201,7 @@ export default function WorkoutDemo() {
                     <strong>Concluir série</strong> para experimentar.
                   </p>
                 )}
+                {activeRest && !restInCard && renderRest(true)}
                 <div className="demo-exercise-list">
                   {state.exercises.map((exercise, exerciseIndex) => {
                     const expanded = state.openId === exercise.id
@@ -215,17 +255,29 @@ export default function WorkoutDemo() {
                                   }
                                   onConclude={() => conclude(exercise.id)}
                                   onCommitEdit={() => dispatch({ type: 'commit', id: exercise.id })}
-                                  onToggleDone={() => dispatch({ type: 'undo', id: exercise.id })}
+                                  onToggleDone={() => {
+                                    if (activeRest?.exerciseId === exercise.id &&
+                                        activeRest.setKey === exercise.sets[index]?.key) restTimer.stop()
+                                    dispatch({ type: 'undo', id: exercise.id })
+                                  }}
                                   onAdd={() => dispatch({ type: 'add', id: exercise.id })}
-                                  onRemove={() => dispatch({ type: 'remove', id: exercise.id })}
+                                  onRemove={() => {
+                                    if (activeRest?.exerciseId === exercise.id &&
+                                        (activeRest.setKey === exercise.sets[index]?.key ||
+                                          exercise.sets.every((set, position) => position === index || set.done)))
+                                      restTimer.stop()
+                                    dispatch({ type: 'remove', id: exercise.id })
+                                  }}
                                   canRemove={
                                     exercise.sets.length > 1 &&
                                     (!exercise.sets[index].done || doneCount > 1)
                                   }
-                                  onFinishNow={() =>
+                                  onFinishNow={() => {
+                                    if (activeRest?.exerciseId === exercise.id) restTimer.stop()
                                     dispatch({ type: 'finishExercise', id: exercise.id })
-                                  }
+                                  }}
                                   demoMode
+                                  restSlot={restInCard && activeRest.exerciseId === exercise.id ? renderRest(false) : null}
                                   previousSets={exercise.previous.map(([weight, reps]) => ({
                                     weight,
                                     reps,
