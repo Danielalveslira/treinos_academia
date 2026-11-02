@@ -53,17 +53,15 @@ export default function WorkoutDemo() {
           <span className="demo-eyebrow">EXPERIMENTE NA PRÁTICA</span>
           <h1>Experimente registrar um treino</h1>
           <p>
-            Marque uma série, acompanhe suas cargas e veja como fica seu histórico. Sem cadastro.
+            Toque em <strong>Concluir série</strong> na tela ao lado e acompanhe seu progresso. Sem
+            cadastro.
           </p>
           <ul>
             <li>
-              <CheckIcon size={18} /> Uma série por vez, como no aplicativo
+              <CheckIcon size={18} /> Registre cargas e repetições
             </li>
             <li>
-              <CheckIcon size={18} /> Sugestões do último treino ao seu alcance
-            </li>
-            <li>
-              <CheckIcon size={18} /> Progresso calculado conforme você registra
+              <CheckIcon size={18} /> Veja sugestões e o resumo do treino
             </li>
           </ul>
         </aside>

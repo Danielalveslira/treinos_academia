@@ -17,6 +17,7 @@ import {
   primerThemeTrigger,
 } from './public-primer.mjs'
 import { DISCOVERY_PUBLIC_LINKS, LEGAL_PUBLIC_LINKS } from './public-navigation.mjs'
+import { howItWorksBody } from './public-how-it-works.mjs'
 
 // Production currently redirects apex to www (measured 2026-10-19).
 const origin = 'https://www.evolutus.com.br'
@@ -28,7 +29,13 @@ const escape = (value) =>
   )
 const link = primerLink
 const discoveryLinks = DISCOVERY_PUBLIC_LINKS
-const publicPaths = new Set(['/', '/locais', ...discoveryLinks.map(([href]) => href)])
+const publicPaths = new Set([
+  '/',
+  '/locais',
+  '/demo',
+  '/demo-preview',
+  ...discoveryLinks.map(([href]) => href),
+])
 const enableTurboLinks = (html) =>
   html.replace(/<a\b([^>]*\bhref="([^"]+)"[^>]*)>/g, (match, attributes, href) =>
     publicPaths.has(href) ? `<a${attributes} data-turbo="true">` : match
@@ -89,6 +96,10 @@ const vitrineLoading = primerBox('p', '', 'Carregando produtos…', {
   sx: { color: 'fg.muted', fontSize: 1, py: 5, textAlign: 'center' },
 })
 const vitrineBody = `${vitrineHead}${primerLink('/vitrine/gerenciar', 'Gerenciar minhas vitrines')}<section class="vitrine-catalog" aria-label="Catálogo de produtos de marcas parceiras"><div id="vitrine-root">${vitrineLoading}</div></section>`
+const demoBody = `<div id="demo-root"><div class="demo-page"><div class="demo-layout">
+  <aside class="demo-aside demo-static-aside"><span class="demo-eyebrow">EXPERIMENTE NA PRÁTICA</span><h1>Experimente registrar um treino</h1><p>Toque em <strong>Concluir série</strong> na tela ao lado e acompanhe seu progresso. Sem cadastro.</p><ul><li>Registre cargas e repetições</li><li>Veja sugestões e o resumo do treino</li></ul></aside>
+  <div class="demo-phone"><div class="demo-screen"><div class="demo-intro"><h1>Experimente registrar um treino</h1><p>Marque uma série, acompanhe suas cargas e veja como fica seu histórico. Sem cadastro.</p></div><p class="demo-badge">Demonstração · dados fictícios · nada é salvo</p><header class="demo-session-header"><div class="demo-session-top"><span class="demo-session-icon">✓</span><span>FICHA DE EXEMPLO</span></div><h2>Treino A — Peito e Tríceps</h2><p class="demo-sheet-goal">Objetivo: peito e tríceps · 3 séries por exercício (ajustável)</p><div class="demo-progress-copy"><strong>0 de 12 séries concluídas</strong><span>0%</span></div><progress max="12" value="0" aria-label="Progresso da ficha de exemplo"></progress></header><p class="demo-context-note">Você não precisa lembrar a carga anterior: veja a sugestão e toque em <strong>Concluir série</strong> para experimentar.</p><div class="demo-exercise-list"><section class="demo-exercise"><div class="demo-exercise-toggle"><span class="demo-exercise-number">1</span><span class="demo-exercise-heading"><strong>Supino reto com barra</strong><small>Peito · 0/3 séries</small></span></div><div class="demo-static-card" role="status"><span>Preparando demonstração interativa…</span><a href="/cadastro">Criar conta e registrar meus treinos</a></div></section><section class="demo-exercise"><div class="demo-exercise-toggle"><span class="demo-exercise-number">2</span><span class="demo-exercise-heading"><strong>Supino inclinado com halteres</strong><small>Peito · 0/3 séries</small></span></div></section><section class="demo-exercise"><div class="demo-exercise-toggle"><span class="demo-exercise-number">3</span><span class="demo-exercise-heading"><strong>Crucifixo na máquina</strong><small>Peito · 0/3 séries</small></span></div></section><section class="demo-exercise"><div class="demo-exercise-toggle"><span class="demo-exercise-number">4</span><span class="demo-exercise-heading"><strong>Tríceps na polia</strong><small>Tríceps · 0/3 séries</small></span></div></section></div></div></div>
+</div></div></div>`
 
 export const publicPages = [
   {
@@ -109,15 +120,24 @@ export const publicPages = [
     title: 'Experimente o registro de treino | Demo Evolutus',
     description:
       'Teste uma ficha de treino interativa do Evolutus: registre cargas e repetições, consulte a carga anterior e veja seu resumo. Sem cadastro e sem salvar dados.',
-    body: '<div id="demo-root"><section class="demo-static-intro"><h1>Experimente registrar um treino</h1><p>Marque uma série, acompanhe suas cargas e veja como fica seu histórico. Sem cadastro.</p><p>Demonstração · dados fictícios · nada é salvo</p><a href="/cadastro">Criar conta e registrar meus treinos</a></section></div>',
+    body: demoBody,
+  },
+  {
+    path: '/demo-preview',
+    file: 'demo-preview.html',
+    title: 'Prévia da demonstração | Evolutus',
+    description: 'Prévia da demonstração interativa de treino do Evolutus.',
+    canonicalPath: '/demo',
+    indexable: false,
+    body: demoBody,
   },
   {
     path: '/como-funciona',
     file: 'como-funciona.html',
-    title: 'Como Funciona o Evolutus | Do Primeiro Treino à Evolução',
+    title: 'Como funciona o Evolutus | Organize e acompanhe seus treinos',
     description:
-      'Veja como criar sua conta, organizar a rotina, registrar séries, repetições e cargas e acompanhar seu histórico e indicadores no Evolutus.',
-    body: skeleton('Como funciona'),
+      'Organize fichas, registre cargas e repetições e acompanhe histórico e indicadores. Veja como funciona o Evolutus e experimente sem cadastro.',
+    body: howItWorksBody,
   },
   {
     path: '/para-empresas',
@@ -165,7 +185,7 @@ export function renderPublicPage(path, env = {}, { dev = false } = {}) {
     .filter(([, value]) => typeof value === 'string' && /^[a-zA-Z0-9_-]{10,200}$/.test(value))
     .map(([name, value]) => `<meta name="${name}" content="${escape(value)}">`)
     .join('')
-  const canonical = `${origin}${page.path}`
+  const canonical = `${origin}${page.canonicalPath || page.path}`
   const description = escape(page.description)
   const title = escape(page.title)
   const authRef = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(env.VITE_SUPABASE_URL || '')
@@ -210,18 +230,21 @@ export function renderPublicPage(path, env = {}, { dev = false } = {}) {
     : header.css.map((file) => `<link rel="stylesheet" href="/${file}">`).join('')
   const socialImage = `${origin}/img/banners/quadro-geral-1774.webp`
   const body = page.body
-  if (path === '/demo') {
+  if (path === '/demo' || path === '/demo-preview') {
     const demo = dev ? null : resolveManifestEntry(manifest, 'src/workoutDemoEntry.jsx')
     const demoStyles = demo
       ? [...demo.importedCss, ...demo.css]
+          .filter((file) => !header.importedCss.includes(file))
           .map((file) => `<link rel="stylesheet" href="/${file}">`)
           .join('')
-      : ''
-    const demoScript = dev ? '/src/workoutDemoEntry.jsx' : `/${demo.file}`
-    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0d1117"><meta name="robots" content="index,follow">${verification}<title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${canonical}"><meta property="og:type" content="website"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${canonical}"><meta property="og:image" content="${socialImage}"><meta property="og:locale" content="pt_BR"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${socialImage}"><link rel="icon" href="/icons/icon-192.png"><script src="/boot-public-theme.js"></script>${headerAuthBoot}${sharedStyles}<link rel="stylesheet" href="/public-pages.css"><link rel="stylesheet" href="/public-redesign.css"><link rel="stylesheet" href="/public-foundation.css">${headerStyles}${primerStyles()}${demoStyles}<script type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script><script type="module" src="${dev ? '/src/PublicHeaderMenu.jsx' : `/${header.file}`}"></script>${headerAuthScript}<script type="module" src="${demoScript}"></script></head><body class="public-demo"><a class="skip" href="#content">Pular para o conteúdo</a>${nav}<main id="content" tabindex="-1">${body}</main>${footer}<script src="/public-pages.js" defer></script></body></html>`
+      : '<link rel="stylesheet" href="/src/styles/workoutDemo.css">'
+    const demoPreload = dev ? '/src/workoutDemoEntry.jsx' : `/${demo.file}`
+    return enableTurboLinks(
+      `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0d1117"><meta name="robots" content="${page.indexable === false ? 'noindex,follow' : 'index,follow'}">${verification}<meta name="turbo-cache-control" content="no-cache"><meta name="view-transition" content="same-origin"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${canonical}"><meta property="og:type" content="website"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${canonical}"><meta property="og:image" content="${socialImage}"><meta property="og:locale" content="pt_BR"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${socialImage}"><link rel="icon" href="/icons/icon-192.png"><script src="/boot-public-theme.js"></script>${headerAuthBoot}${sharedStyles}<link rel="stylesheet" href="/public-pages.css"><link rel="stylesheet" href="/public-redesign.css"><link rel="stylesheet" href="/public-foundation.css">${headerStyles}${primerStyles()}${demoStyles}<link rel="modulepreload" href="${demoPreload}"><script type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script><script type="module" src="${dev ? '/src/publicTurbo.js' : `/${turbo.file}`}" data-turbo-track="reload"></script><script type="module" src="${dev ? '/src/PublicHeaderMenu.jsx' : `/${header.file}`}" data-turbo-track="reload"></script>${headerAuthScript}</head><body class="public-demo" data-turbo-prefetch="false"><a class="skip" href="#content">Pular para o conteúdo</a>${nav}<main id="content" tabindex="-1">${body}</main>${footer}<script src="/public-pages.js" defer></script></body></html>`
+    )
   }
   return enableTurboLinks(
-    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1117"><meta name="robots" content="${page.indexable === false ? 'noindex,follow' : 'index,follow'}">${verification}<meta name="view-transition" content="same-origin"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${canonical}"><meta property="og:type" content="website"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${canonical}"><meta property="og:image" content="${socialImage}"><meta property="og:locale" content="pt_BR"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${socialImage}"><link rel="icon" href="/icons/icon-192.png"><script src="/boot-public-theme.js"></script>${homeBootstrap}${headerAuthBoot}${sharedStyles}<link rel="stylesheet" href="/public-pages.css"><link rel="stylesheet" href="/public-redesign.css"><link rel="stylesheet" href="/public-foundation.css">${path === '/' ? '<link rel="stylesheet" href="/public-home.css"><script src="/public-catalog-count.js" defer></script>' : ''}${path === '/vitrine' ? '<link rel="stylesheet" href="/public-products.css">' : ''}${['/profissionais', '/locais'].includes(path) ? '<link rel="stylesheet" href="/public-listings.css">' : ''}${headerStyles}${primerStyles()}<script type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script><script type="module" src="${dev ? '/src/publicTurbo.js' : `/${turbo.file}`}" data-turbo-track="reload"></script><script type="module" src="${dev ? '/src/PublicHeaderMenu.jsx' : `/${header.file}`}" data-turbo-track="reload"></script>${headerAuthScript}</head><body class="public-${page.path === '/' ? 'home' : page.path.slice(1)}" data-turbo-prefetch="false"><a class="skip" href="#content">Pular para o conteúdo</a>${nav}<main id="content" tabindex="-1">${body}</main>${footer}<script src="/public-pages.js" defer></script></body></html>`
+    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1117"><meta name="robots" content="${page.indexable === false ? 'noindex,follow' : 'index,follow'}">${verification}<meta name="view-transition" content="same-origin"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${canonical}"><meta property="og:type" content="website"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${canonical}"><meta property="og:image" content="${socialImage}"><meta property="og:locale" content="pt_BR"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${socialImage}"><link rel="icon" href="/icons/icon-192.png"><script src="/boot-public-theme.js"></script>${homeBootstrap}${headerAuthBoot}${sharedStyles}<link rel="stylesheet" href="/public-pages.css"><link rel="stylesheet" href="/public-redesign.css"><link rel="stylesheet" href="/public-foundation.css">${path === '/' ? '<link rel="stylesheet" href="/public-home.css"><script src="/public-catalog-count.js" defer></script>' : ''}${path === '/como-funciona' ? '<link rel="stylesheet" href="/public-how-it-works.css">' : ''}${path === '/vitrine' ? '<link rel="stylesheet" href="/public-products.css">' : ''}${['/profissionais', '/locais'].includes(path) ? '<link rel="stylesheet" href="/public-listings.css">' : ''}${headerStyles}${primerStyles()}<script type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script><script type="module" src="${dev ? '/src/publicTurbo.js' : `/${turbo.file}`}" data-turbo-track="reload"></script><script type="module" src="${dev ? '/src/PublicHeaderMenu.jsx' : `/${header.file}`}" data-turbo-track="reload"></script>${headerAuthScript}</head><body class="public-${page.path === '/' ? 'home' : page.path.slice(1)}" data-turbo-prefetch="false"><a class="skip" href="#content">Pular para o conteúdo</a>${nav}<main id="content" tabindex="-1">${body}</main>${footer}<script src="/public-pages.js" defer></script></body></html>`
   )
 }
 

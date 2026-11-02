@@ -51,7 +51,7 @@ try {
       assert.ok(authAssets.length > 0, 'a sessão válida carrega a checagem de autenticação')
       await page.goto(`${base}/como-funciona`)
       assert.equal(new URL(page.url()).pathname, '/como-funciona')
-      assert.equal(await page.locator('h1').textContent(), 'Como funciona')
+      assert.equal(await page.locator('h1').textContent(), 'Seu treino organizado. Sua evolução visível.')
       await page.reload()
       assert.equal(new URL(page.url()).pathname, '/como-funciona')
       await page.locator('#public-header .public-header-brand').click()

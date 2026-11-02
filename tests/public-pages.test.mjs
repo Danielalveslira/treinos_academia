@@ -23,10 +23,19 @@ test('demo pública tem conteúdo inicial, SEO, navegação e bundle próprios',
   assert.match(html, /href="\/cadastro">Criar conta e registrar meus treinos/)
   assert.equal((html.match(/id="public-header-menu-root"/g) || []).length, 1)
   assert.equal((html.match(/id="demo-root"/g) || []).length, 1)
+  assert.match(html, /class="demo-phone"/)
+  assert.match(html, /class="demo-static-card"/)
+  assert.match(html, /assets\/workoutDemo-[^" ]+\.css/)
+  assert.match(html, /assets\/publicTurbo-[^" ]+\.js/)
   assert.match(html, /assets\/workoutDemo-[^" ]+\.js/)
-  assert.match(home, /href="\/demo"/)
+  assert.match(home, /href="\/demo"[^>]*data-turbo="true"/)
   assert.match(sitemap, /<loc>https:\/\/www\.evolutus\.com\.br\/demo<\/loc>/)
   assert.ok(config.rewrites.some((route) => route.source === '/demo' && route.destination === '/demo.html'))
+  const preview = readFileSync('dist/demo-preview.html', 'utf8')
+  assert.match(preview, /<meta name="robots" content="noindex,follow">/)
+  assert.match(preview, /<link rel="canonical" href="https:\/\/www\.evolutus\.com\.br\/demo">/)
+  assert.ok(!sitemap.includes('<loc>https://www.evolutus.com.br/demo-preview</loc>'))
+  assert.ok(config.rewrites.some((route) => route.source === '/demo-preview' && route.destination === '/demo-preview.html'))
 })
 
 test('build entrega HTML específico e completo antes de JavaScript', () => {
@@ -177,8 +186,28 @@ test('variantes públicas redirecionam para URL limpa e como-funciona entra no s
   assert.ok(redirectSources.some((source) => source.endsWith('/')))
   assert.ok(config.rewrites.some((route) => route.source === '/como-funciona'))
   const html = readFileSync('dist/como-funciona.html', 'utf8')
-  assert.match(html, /<h1[^>]*>Como funciona<\/h1>/)
+  assert.match(html, /<h1[^>]*>Seu treino organizado\. Sua evolução visível\.<\/h1>/)
   assert.match(readFileSync('dist/sitemap.xml', 'utf8'), /<loc>https:\/\/www\.evolutus\.com\.br\/como-funciona<\/loc>/)
+})
+
+test('como-funciona entrega seis seções, exemplos honestos e CTA da demo no HTML inicial', () => {
+  const html = readFileSync('dist/como-funciona.html', 'utf8')
+  assert.match(html, /href="\/public-how-it-works\.css"/)
+  assert.equal((html.match(/<h1\b/g) || []).length, 1)
+  assert.equal((html.match(/<section class="[^"]*how-(?:hero|steps-section|demo-section|insights-section|more-section|final)\b/g) || []).length, 6)
+  for (const text of [
+    'Seu treino organizado. Sua evolução visível.',
+    'Entenda em três passos',
+    'Não precisa imaginar. Experimente.',
+    'Seus registros organizados para você acompanhar seu progresso.',
+    'Conheça mais possibilidades',
+    'Seu próximo treino pode ser mais organizado.',
+    'Exemplo ilustrativo',
+  ]) assert.ok(html.includes(text), text)
+  assert.match(html, /href="\/demo"[^>]*data-turbo="true"/)
+  assert.match(html, /href="\/cadastro"/)
+  assert.match(html, /<link rel="canonical" href="https:\/\/www\.evolutus\.com\.br\/como-funciona">/)
+  assert.doesNotMatch(html, /<script[^>]+src="\/assets\/(?:main|workoutDemo)-/)
 })
 
 test('home usa uma imagem oficial otimizada', () => {
@@ -215,7 +244,6 @@ test('Primer é renderizado no HTML público sem carregar o shell React', () => 
 
 test('rotas em reconstrução têm esqueleto mínimo, sem UI legada', () => {
   for (const [file, label] of [
-    ['como-funciona.html', 'Como funciona'],
     ['para-empresas.html', 'Para empresas'],
     ['profissionais.html', 'Profissionais'],
   ]) {

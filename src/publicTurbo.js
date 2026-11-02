@@ -10,6 +10,8 @@ const paths = new Set([
   '/vitrine',
   '/profissionais',
   '/locais',
+  '/demo',
+  '/demo-preview',
 ])
 let visitAction = null
 
@@ -56,6 +58,9 @@ document.addEventListener('turbo:load', () => {
     import('./features/publicListings/mountPublicListings.jsx').then((module) =>
       module.mountPublicListings()
     )
+
+  if (document.getElementById('demo-root'))
+    import('./workoutDemoEntry.jsx').then((module) => module.mountWorkoutDemo())
 
   // The head bootstrap runs on a direct Home load. Turbo may keep that script in
   // the merged head, so repeat the session check when navigating back to Home.
