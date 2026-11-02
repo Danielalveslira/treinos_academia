@@ -3,6 +3,7 @@ import { useAuth } from '../../../hooks/useAuth'
 import { useOnlineStatus } from '../../../hooks/useOnlineStatus'
 import { resolveLegalGateState } from '../../../utils/legal'
 import {
+  describePushError,
   disablePushNotifications,
   enablePushNotifications,
   isDevicePushActive,
@@ -125,17 +126,12 @@ export function useDevicePush(userId) {
             userId,
           })
           setSuccess(true)
-          const welcome =
-            result.welcome === 'queued' || result.welcome === 'already_requested'
-              ? 'Teste de boas-vindas solicitado.'
-              : result.welcome === 'cooldown'
-                ? 'O teste de boas-vindas já foi solicitado recentemente.'
-                : result.welcome === 'rate_limited'
-                  ? 'O teste atingiu o limite temporário de solicitações.'
-                  : result.welcome === 'category_disabled'
-                    ? 'O teste está desabilitado nas preferências da conta.'
-                    : 'Não foi possível solicitar o teste agora.'
-          setMessage(`Notificações ativadas! ${welcome}`)
+          // O teste é a própria mensagem de boas-vindas (fila do servidor), não um botão separado.
+          setMessage(
+            result.welcome === 'queued'
+              ? 'Notificações ativadas. Você receberá uma mensagem de boas-vindas em instantes.'
+              : 'Notificações ativadas neste dispositivo.'
+          )
         } else {
           setMessage(
             result.permission === 'denied'
@@ -145,6 +141,8 @@ export function useDevicePush(userId) {
         }
       })
       .catch((error) => {
+        // Diagnóstico da etapa (permission, subscribe, register, confirm…) sem endpoint nem chaves.
+        console.warn('[Push]', disable ? 'disable failed' : 'enable failed', describePushError(error))
         if (actionLifetime.current === generation) setMessage(pushErrorMessage(error))
       })
       .finally(() => {
@@ -156,7 +154,27 @@ export function useDevicePush(userId) {
       })
   }
   const current = device?.userId === userId ? device : null
+  const active = Boolean(
+    !optedOut && current && isDevicePushActive({ ...current, permission }, current.status)
+  )
+  // Um estado só para a interface: ativo, desativado, bloqueado, indisponível, instalação
+  // necessária (iOS), verificando ou erro de verificação.
+  const state =
+    support.reason === 'ios-install-required'
+      ? 'install'
+      : !support.supported
+        ? 'unavailable'
+        : permission === 'denied'
+          ? 'blocked'
+          : active
+            ? 'active'
+            : failed
+              ? 'error'
+              : allowed && permission === 'granted' && !current && !optedOut
+                ? 'checking'
+                : 'inactive'
   return {
+    state,
     allowed,
     support,
     permission,
@@ -166,9 +184,7 @@ export function useDevicePush(userId) {
     failed,
     success,
     device: current,
-    active: Boolean(
-      !optedOut && current && isDevicePushActive({ ...current, permission }, current.status)
-    ),
+    active,
     enable: () => act(),
     disable: () => act(true),
   }

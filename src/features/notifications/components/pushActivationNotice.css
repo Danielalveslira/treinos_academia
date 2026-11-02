@@ -81,9 +81,6 @@
   .push-notice-body {
     column-gap: 6px;
   }
-  .push-notice-reserved {
-    min-height: 84px;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   .push-activation-notice button,

@@ -696,3 +696,42 @@ test('releitura/sync durante ativação espera confirmação e não duplica RPC'
     ['activate_push_subscription', 'get_my_push_status']
   )
 })
+
+test('Brave com serviço Push desligado: falha no subscribe vira orientação específica', async () => {
+  activatable({
+    subscribe: async () => {
+      throw Object.assign(new Error('Registration failed - push service error'), {
+        name: 'AbortError',
+      })
+    },
+  })
+  let caught
+  try {
+    await mod.enablePushNotifications()
+  } catch (error) {
+    caught = error
+  }
+  assert.equal(mod.classifyPushError(caught), 'push-service')
+  assert.doesNotMatch(mod.pushErrorMessage(caught), /Brave/)
+  navigator.brave = { isBrave: async () => true }
+  assert.match(mod.pushErrorMessage(caught), /brave:\/\/settings\/privacy/)
+  assert.match(mod.pushErrorMessage(caught), /serviços do Google para mensagens push/)
+})
+
+test('erros de ativação distinguem bloqueio, incompatível, rede e servidor', () => {
+  const at = (stage, extra) => Object.assign(new Error(extra.message || 'x'), { stage, ...extra })
+  assert.equal(mod.classifyPushError(at('permission', { name: 'NotAllowedError' })), 'blocked')
+  assert.equal(mod.classifyPushError(at('support', { code: 'unsupported' })), 'unsupported')
+  assert.equal(mod.classifyPushError(at('support', { code: 'ios-install-required' })), 'ios-install-required')
+  assert.equal(mod.classifyPushError(at('network', { code: 'offline' })), 'network')
+  assert.equal(mod.classifyPushError(at('register', { code: 'push-network-timeout' })), 'network')
+  assert.equal(mod.classifyPushError(at('register', { message: 'TypeError: Failed to fetch' })), 'network')
+  assert.equal(mod.classifyPushError(at('register', { code: 'P0001', message: 'INVALID_SUBSCRIPTION' })), 'server')
+  assert.equal(mod.classifyPushError(at('confirm', { code: 'push-not-confirmed' })), 'server')
+  assert.equal(mod.classifyPushError(at('service-worker', { code: 'service-worker-unavailable' })), 'service-worker')
+  assert.match(mod.pushErrorMessage(at('register', { code: 'offline' })), /internet/)
+  assert.match(mod.pushErrorMessage(at('permission', { name: 'NotAllowedError' })), /bloqueadas/)
+  assert.match(mod.pushErrorMessage(at('support', { code: 'ios-install-required' })), /Tela de Início/)
+  assert.match(mod.pushErrorMessage(at('confirm', { code: 'push-not-confirmed' })), /servidor/)
+  assert.match(mod.pushErrorMessage(new Error('PUSH_ENDPOINT_IN_USE')), /outra conta/)
+})

@@ -1,4 +1,4 @@
-import { workoutReminderMessage } from '../../../../supabase/functions/process-push-outbox/messages.js'
+import { workoutReminderText } from '../../../../supabase/functions/process-push-outbox/messages.js'
 import { toDate } from '../../../utils/date.js'
 import { formatDate } from '../../../utils/format.js'
 
@@ -93,10 +93,10 @@ export function notificationContent(notification) {
   switch (notification.type) {
     case 'workout_reminder_before':
     case 'workout_reminder_start': {
-      // Mesmo catálogo do Push: a Central mostra exatamente o título que o aparelho recebeu.
-      const [title] = workoutReminderMessage(notification.type, metadata.variant)
-      return { title, description: notification.type === 'workout_reminder_before'
-        ? 'Seu treino começa em uma hora.' : 'Seu horário de treino chegou.' }
+      // Mesmo catálogo do Push: a Central mostra exatamente o texto que o aparelho recebeu
+      // (com o nome da ficha só quando o banco gravou uma associação confiável).
+      const [title, description] = workoutReminderText(notification.type, metadata)
+      return { title, description }
     }
     case 'comment_like':
       return { title: `${actorName(notification)} curtiu seu comentário.` }

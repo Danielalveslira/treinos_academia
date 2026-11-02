@@ -5,7 +5,10 @@ import {
   BellIcon,
   CheckIcon,
   CheckCircleIcon,
+  ClockIcon,
   CommentIcon,
+  CreditCardIcon,
+  MegaphoneIcon,
   ShieldIcon,
   ThumbsupIcon,
   TrashIcon,
@@ -28,7 +31,13 @@ const FILTERS = [
 ]
 
 function NotificationIcon({ notification }) {
+  if (notification.entityType === 'refund_request') return <CreditCardIcon size={16} />
   switch (notification.type) {
+    case 'workout_reminder_before':
+    case 'workout_reminder_start':
+      return <ClockIcon size={16} />
+    case 'admin_broadcast':
+      return <MegaphoneIcon size={16} />
     case 'post_like':
     case 'comment_like':
       return <ThumbsupIcon size={16} />

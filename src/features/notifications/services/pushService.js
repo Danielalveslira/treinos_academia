@@ -309,7 +309,8 @@ export function enablePushNotifications({ userId = null } = {}) {
     const support = pushSupport()
     if (!support.supported)
       throw Object.assign(new Error(support.reason), { code: support.reason, stage: 'support' })
-    if (globalThis.navigator?.onLine === false) throw new Error('OFFLINE')
+    if (globalThis.navigator?.onLine === false)
+      throw Object.assign(new Error('OFFLINE'), { code: 'offline', stage: 'network' })
     if (!import.meta.env.VITE_VAPID_PUBLIC_KEY)
       throw Object.assign(new Error('VAPID_NOT_CONFIGURED'), {
         code: 'vapid-not-configured',
@@ -489,21 +490,71 @@ export async function syncPushSubscription({ userId = null } = {}) {
   return readPushDevice({ userId, refresh: true })
 }
 
+// O Brave expõe `navigator.brave`; o user agent é idêntico ao do Chrome, então não serve para isso.
+export function isBraveBrowser() {
+  return typeof globalThis.navigator?.brave?.isBrave === 'function'
+}
+
+const SERVER_CODES = new Set(['PGRST202', 'P0001', '42501', '42883', '57014'])
+
+// Classifica ONDE a ativação falhou: bloqueio do navegador, navegador incompatível, serviço de Push
+// do navegador (ex.: Brave com o serviço desligado), rede, Service Worker ou servidor do Evolutus.
+export function classifyPushError(error) {
+  const code = error?.code || ''
+  const name = error?.name || ''
+  const message = String(error?.message || '')
+  if (code === 'ios-install-required') return 'ios-install-required'
+  if (code === 'unsupported') return 'unsupported'
+  if (code === 'vapid-not-configured') return 'config'
+  if (code === 'push-context-changed') return 'context'
+  if (code === 'offline' || code === 'push-network-timeout') return 'network'
+  if (code === 'service-worker-unavailable' || error?.stage === 'service-worker') return 'service-worker'
+  if (error?.stage === 'permission') return name === 'NotAllowedError' ? 'blocked' : 'unknown'
+  if (error?.stage === 'subscribe') return 'push-service'
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(message))
+    return 'network'
+  if (
+    error?.stage === 'register' ||
+    error?.stage === 'confirm' ||
+    SERVER_CODES.has(code) ||
+    code === 'push-not-confirmed' ||
+    code === 'push-preference-disabled'
+  )
+    return 'server'
+  return 'unknown'
+}
+
 export function pushErrorMessage(error) {
+  if (error?.message === 'PUSH_ENDPOINT_IN_USE')
+    return 'Este dispositivo ainda está vinculado a outra conta. Saia e entre novamente.'
+  if (error?.message === 'ACCOUNT_UNAVAILABLE')
+    return 'Sua conta não pode ativar notificações no momento.'
   if (error?.code === 'PGRST202')
     return 'A ativação está sendo atualizada. Tente novamente em instantes.'
-  if (error?.message === 'PUSH_ENDPOINT_IN_USE')
-    return 'Este dispositivo ainda está vinculado a outra sessão. Saia e entre novamente.'
-  if (error?.code === 'push-preference-disabled')
-    return 'Não foi possível confirmar a preferência de notificações. Tente novamente.'
-  if (error?.code === 'vapid-not-configured') return 'Push ainda não foi configurado pelo Evolutus.'
-  if (error?.code === 'service-worker-unavailable')
-    return 'O app ainda não está pronto. Recarregue e tente novamente.'
-  if (error?.name === 'NotAllowedError')
-    return 'Verifique a permissão nas configurações do navegador.'
-  if (error?.name === 'AbortError')
-    return 'O serviço de notificações interrompeu a ativação. Tente novamente.'
-  return 'Não foi possível confirmar as notificações. Verifique sua conexão e tente novamente.'
+  switch (classifyPushError(error)) {
+    case 'ios-install-required':
+      return 'No iPhone e no iPad, adicione o Evolutus à Tela de Início (Compartilhar → Adicionar à Tela de Início) e ative pelo app instalado.'
+    case 'unsupported':
+      return 'Este navegador não oferece notificações Push.'
+    case 'config':
+      return 'As notificações ainda não foram configuradas pelo Evolutus.'
+    case 'context':
+      return 'A sessão mudou durante a ativação. Tente novamente.'
+    case 'network':
+      return 'Sem conexão com o Evolutus. Verifique sua internet e tente novamente.'
+    case 'service-worker':
+      return 'O app ainda não está pronto. Recarregue a página e tente novamente.'
+    case 'blocked':
+      return 'As notificações estão bloqueadas para este site. Libere nas configurações do navegador.'
+    case 'push-service':
+      return isBraveBrowser()
+        ? 'O Brave está com o serviço de mensagens Push desligado. Ative “Usar os serviços do Google para mensagens push” em brave://settings/privacy, reinicie o navegador e tente novamente.'
+        : 'O serviço de notificações do navegador não respondeu. Verifique se as notificações estão habilitadas no navegador e no sistema e tente novamente.'
+    case 'server':
+      return 'O servidor do Evolutus não confirmou a ativação. Tente novamente em instantes.'
+    default:
+      return 'Não foi possível ativar as notificações. Tente novamente.'
+  }
 }
 
 async function revokePush({ allDevices, userId, generation }) {
