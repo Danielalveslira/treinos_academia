@@ -386,7 +386,7 @@ select pg_temp.due('a9000000-0000-0000-0000-000000000020', 'start');
 select is(private.dispatch_due_workout_reminders(100), 2, '(J) os dois lembretes saem');
 create temp table k_claim as select * from public.claim_push_jobs('rem-k', 100) where endpoint like '%k-%';
 select is((select count(*)::int from k_claim), 4, '(J) 2 avisos x 2 dispositivos = 4 entregas');
-select is((select urgency || ':' || ttl_seconds from k_claim where notification_type = 'workout_reminder_before' limit 1), 'normal:3600', '(J) antecipado: urgência normal, TTL 1h');
+select is((select urgency || ':' || ttl_seconds from k_claim where notification_type = 'workout_reminder_before' limit 1), 'normal:1800', '(J) antecipado: urgência normal, TTL 30 min (nunca chega no horário dizendo "daqui a 1 hora")');
 select is((select urgency || ':' || ttl_seconds from k_claim where notification_type = 'workout_reminder_start' limit 1), 'high:900', '(J) no horário: urgência alta, TTL 15 min');
 select ok((select bool_and(action_url like '/treinar?planejado=____-__-__') from k_claim), '(J) deep link abre o fluxo do treino planejado');
 select ok(exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'notifications'), '(J) notifications está no Realtime');

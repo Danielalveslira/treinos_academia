@@ -1,33 +1,42 @@
 import { BellIcon } from '@primer/octicons-react'
-import { Button, Flash } from '@primer/react'
+import { Box, Button, Flash, Label, Text } from '@primer/react'
 import { useDevicePush } from '../hooks/useDevicePush'
+
+// Um único controle para TODAS as categorias de Push, por dispositivo. Não há switches por
+// categoria nem botão de teste: a confirmação é a mensagem de boas-vindas enviada pelo servidor.
+// A Central de Notificações funciona independentemente deste controle.
+const STATES = {
+  active: { label: 'Ativo neste dispositivo', variant: 'success' },
+  inactive: { label: 'Desativado', variant: 'secondary' },
+  checking: { label: 'Verificando…', variant: 'secondary' },
+  blocked: { label: 'Bloqueado no navegador', variant: 'danger' },
+  unavailable: { label: 'Indisponível', variant: 'secondary' },
+  install: { label: 'Instalação necessária', variant: 'attention' },
+  error: { label: 'Não verificado', variant: 'attention' },
+}
+
+const HELP = {
+  blocked:
+    'As notificações estão bloqueadas para este site. Libere nas configurações do navegador e volte ao app.',
+  unavailable: 'Este navegador não oferece notificações Push.',
+  install:
+    'No iPhone e no iPad, adicione o Evolutus à Tela de Início (Compartilhar → Adicionar à Tela de Início) e ative pelo app instalado.',
+  error: 'Não foi possível verificar este dispositivo. Verifique sua conexão.',
+}
 
 export function PushNotificationSettings({ userId = null, compact = false } = {}) {
   const push = useDevicePush(userId)
-  const installation = push.support.reason === 'ios-install-required'
-  const preferenceOff = push.device?.status?.enabled === false
-  const registered =
-    push.permission === 'granted' &&
-    Boolean(push.device?.endpoint && push.device?.status?.thisDevice) &&
-    !push.optedOut
-  const title = installation
-    ? 'Instalação necessária'
-    : !push.support.supported
-      ? 'Indisponível'
-      : push.permission === 'denied'
-        ? 'Permissão bloqueada'
-        : push.failed
-          ? 'Erro de verificação'
-          : push.active
-            ? 'Ativo neste dispositivo'
-            : push.permission === 'granted' && !push.device && !push.optedOut
-              ? 'Verificando…'
-              : 'Desativado'
+  const status = STATES[push.state] || STATES.inactive
+  const canAct =
+    push.allowed && !push.busy && ['active', 'inactive', 'error'].includes(push.state)
+  // Mensagem do último clique substitui a ajuda genérica do estado (nunca duas explicações juntas).
+  const help = push.message ? null : HELP[push.state]
   return (
     <section
       className="profile-card"
       aria-label={compact ? 'Configurações de notificações' : undefined}
       aria-labelledby={compact ? undefined : 'push-heading'}
+      aria-busy={push.busy || push.state === 'checking'}
     >
       {!compact && (
         <header className="profile-card-heading">
@@ -35,68 +44,42 @@ export function PushNotificationSettings({ userId = null, compact = false } = {}
             <BellIcon size={20} />
           </span>
           <div>
-            <h2 id="push-heading">Notificações no dispositivo</h2>
-            <p>{title}</p>
+            <h2 id="push-heading">Notificações</h2>
           </div>
         </header>
       )}
-      <div className="profile-form">
-        {compact && (
-          <p className="profile-setting-help" role="status">
-            {title}
-          </p>
+      <Box sx={{ display: 'grid', gap: 3 }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2 }}>
+          <Text as="p" sx={{ m: 0, flex: '1 1 220px', color: 'fg.muted', fontSize: 1 }}>
+            Receba lembretes de treino, interações e atualizações importantes.
+          </Text>
+          <Label variant={status.variant} role="status">
+            {status.label}
+          </Label>
+        </Box>
+        {push.message && (
+          <Flash variant={push.success ? 'success' : 'default'} role="status">
+            {push.message}
+          </Flash>
         )}
-        {push.message && <Flash role="status">{push.message}</Flash>}
-        {installation && (
-          <p>
-            Adicione o Evolutus à Tela de Início pelo menu Compartilhar do Safari e abra o app
-            instalado.
-          </p>
+        {help && (
+          <Text as="p" sx={{ m: 0, color: 'fg.muted', fontSize: 1 }}>
+            {help}
+          </Text>
         )}
-        {!push.support.supported && !installation && <p>Este navegador não oferece Web Push.</p>}
-        {push.permission === 'denied' && (
-          <p>
-            A permissão está bloqueada. Libere notificações nas configurações do navegador e volte
-            ao app.
-          </p>
-        )}
-        {push.failed && (
-          <p>
-            Não foi possível verificar este dispositivo. Verifique sua conexão e tente novamente.
-          </p>
-        )}
-        {preferenceOff && (
-          <p>
-            Ao ativar, as notificações serão habilitadas neste dispositivo. Outros dispositivos da
-            conta que estavam desligados continuarão dependendo de ativação própria.
-          </p>
-        )}
-        {!push.active && push.device?.status?.activeSubscriptions > 0 && (
-          <p className="pwa-muted">
-            Há notificações ativas em outro dispositivo da conta; este ainda não está confirmado.
-          </p>
-        )}
-        <Button
-          type="button"
-          variant={push.active ? 'danger' : 'primary'}
-          onClick={push.active ? push.disable : push.enable}
-          loading={push.busy}
-          disabled={
-            push.busy || !push.allowed || !push.support.supported || push.permission === 'denied'
-          }
-        >
-          {push.active ? 'Desativar neste dispositivo' : 'Ativar notificações'}
-        </Button>
-        {registered && !push.active && (
-          <Button type="button" onClick={push.disable} disabled={push.busy || !push.allowed}>
-            Desativar neste dispositivo
+        <Box>
+          <Button
+            type="button"
+            variant={push.active ? 'default' : 'primary'}
+            onClick={push.active ? push.disable : push.enable}
+            loading={push.busy}
+            disabled={!canAct}
+            block
+          >
+            {push.active ? 'Desativar neste dispositivo' : 'Ativar notificações'}
           </Button>
-        )}
-        <p className="pwa-muted">
-          Os avisos dependem da compatibilidade do dispositivo, permissão do navegador,
-          configurações do sistema, conexão e entrega do provedor.
-        </p>
-      </div>
+        </Box>
+      </Box>
     </section>
   )
 }

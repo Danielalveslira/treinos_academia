@@ -10,6 +10,9 @@ import {
 } from '../utils/pushNoticeSchedule'
 import './pushActivationNotice.css'
 
+// Convite da Home: só quando o navegador ainda NÃO perguntou (permissão "default") ou quando o iOS
+// exige instalar o app. Com a permissão já concedida, a sincronização em segundo plano reinscreve
+// o dispositivo e o Perfil é o único lugar de controle: nada de cartão "verificando"/"ativo" aqui.
 export function PushActivationNotice({ userId }) {
   const push = useDevicePush(userId)
   const key = noticeKey(userId, isStandalone())
@@ -22,14 +25,15 @@ export function PushActivationNotice({ userId }) {
     const timer = setTimeout(() => setShowFeedback(false), 8000)
     return () => clearTimeout(timer)
   }, [push.success, push.permission, push.message])
-  // Reserve a real card during granted-state verification. It becomes useful status text, never
-  // a permanent skeleton or a late inserted invitation that pushes the workout below it.
-  const [reserved] = useState(() => push.permission === 'granted' && !push.active)
+  const installation = push.state === 'install'
   const eligible =
     push.allowed &&
     !push.optedOut &&
-    push.permission !== 'denied' &&
-    (push.support.supported || push.support.reason === 'ios-install-required')
+    (installation ||
+      (push.state === 'inactive' && push.permission === 'default') ||
+      push.busy ||
+      // Falha da tentativa feita aqui (ex.: serviço Push do Brave desligado): a orientação fica visível.
+      (Boolean(push.message) && !push.success && push.state !== 'blocked'))
   useEffect(() => {
     if (!eligible) return undefined
     const update = () => {
@@ -51,46 +55,32 @@ export function PushActivationNotice({ userId }) {
     }
   }, [key, record, now, eligible])
 
-  if (
-    !push.allowed ||
-    push.optedOut ||
-    (!push.support.supported && push.support.reason !== 'ios-install-required') ||
-    nextNoticeAt(record, now) > now
-  )
-    return null
-  const feedback = showFeedback ? (
-    <div className="push-activation-notice push-notice-success" role="status">
-      <span className="push-notice-icon" aria-hidden="true">
-        <BellIcon size={16} />
-      </span>
-      <div className="push-notice-body">
-        <p>{push.message}</p>
+  // Confirmação temporária (fora do fluxo do documento): ativou ou acabou de bloquear.
+  if (showFeedback && push.message) {
+    return (
+      <div className="push-activation-notice push-notice-success" role="status">
+        <span className="push-notice-icon" aria-hidden="true">
+          <BellIcon size={16} />
+        </span>
+        <div className="push-notice-body">
+          <p>{push.message}</p>
+        </div>
       </div>
-    </div>
-  ) : null
-  if (push.success || push.permission === 'denied') return feedback
-  const informational = reserved && push.active
-  if (push.active && !reserved) return null
-  const installation = push.support.reason === 'ios-install-required'
+    )
+  }
+  if (!eligible || nextNoticeAt(record, now) > now) return null
   return (
-    <section
-      className={`push-activation-notice${reserved ? ' push-notice-reserved' : ''}`}
-      aria-label="Notificações do Evolutus"
-    >
+    <section className="push-activation-notice" aria-label="Notificações do Evolutus">
       <span className="push-notice-icon" aria-hidden="true">
         <BellIcon size={16} />
       </span>
       <div className="push-notice-body">
         <p>
-          {informational
-            ? 'Notificações ativas neste dispositivo.'
-            : installation
-              ? 'No Safari, toque em Compartilhar → Adicionar à Tela de Início. Depois abra o app instalado.'
-              : push.failed
-                ? 'Não foi possível verificar. Tente ativar novamente.'
-                : 'Receba seus lembretes e novidades por aqui.'}
+          {installation
+            ? 'Para receber lembretes no iPhone, toque em Compartilhar → Adicionar à Tela de Início e abra o app instalado.'
+            : 'Receba lembretes das suas fichas e avisos importantes.'}
         </p>
-        {!informational && !installation && (
+        {!installation && (
           <button
             className="push-notice-enable"
             type="button"

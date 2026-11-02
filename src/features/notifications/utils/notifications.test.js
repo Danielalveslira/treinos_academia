@@ -29,7 +29,18 @@ test('lembrete de treino varia na Central e leva ao fluxo planejado', () => {
   const next = { ...first, metadata: { variant: 1 } }
   assert.notEqual(notificationContent(first).title, notificationContent(next).title)
   assert.equal(notificationHref(first), '/novo-treino?planejado=2026-10-06')
-  assert.match(notificationContent({ ...first, type: 'workout_reminder_start' }).description, /horário/)
+  assert.match(notificationContent({ ...first, type: 'workout_reminder_start' }).title, /trein/i)
+})
+
+test('lembrete com ficha mostra o mesmo texto do Push e abre a execução da ficha', () => {
+  const notification = { ...base, type: 'workout_reminder_start',
+    actionUrl: '/novo-treino?ficha=11111111-1111-4111-8111-111111111111&planejado=2026-12-10',
+    metadata: { variant: 2, sheetName: 'Costas e Bíceps', sheetId: '11111111-1111-4111-8111-111111111111' } }
+  assert.deepEqual(notificationContent(notification), {
+    title: 'Hora de treinar!', description: 'Sua ficha Costas e Bíceps está esperando por você.' })
+  assert.equal(notificationHref(notification), notification.actionUrl)
+  const before = notificationContent({ ...notification, type: 'workout_reminder_before' })
+  assert.equal(before.description, 'Sua ficha Costas e Bíceps está programada para hoje.')
 })
 
 test('comment notifications keep the comment deep link', () => {

@@ -1,6 +1,12 @@
 import { businessDayKey } from '../../../utils/businessDate.js'
 
 export const NOTICE_COOLDOWN = 12 * 60 * 60 * 1000
+const DAY = 24 * 60 * 60 * 1000
+// Recuo progressivo: quem dispensa o convite várias vezes não é cobrado todo dia. 1ª dispensa:
+// próximo dia; 2ª: 7 dias; a partir da 3ª: 30 dias.
+const BACKOFF = [0, 0, 7 * DAY, 30 * DAY]
+const dismissals = (record) =>
+  Number.isSafeInteger(record?.count) && record.count > 0 ? Math.min(record.count, 1000) : 1
 const memory = new Map()
 export const noticeKey = (userId, standalone) =>
   `evolutus:push-notice:${standalone ? 'pwa' : 'web'}:${userId}`
@@ -17,11 +23,13 @@ export function nextNoticeAt(record, now = Date.now()) {
     if (businessDayKey(mid) > record.day) high = mid
     else low = mid
   }
-  return Math.max(high, record.at + NOTICE_COOLDOWN)
+  const backoff = BACKOFF[Math.min(dismissals(record), BACKOFF.length - 1)]
+  return Math.max(high, record.at + NOTICE_COOLDOWN, record.at + backoff)
 }
 
 export function dismissPushNotice(key, now = Date.now()) {
-  const record = { day: businessDayKey(now), at: now }
+  const previous = memory.get(key)
+  const record = { day: businessDayKey(now), at: now, count: previous ? dismissals(previous) + 1 : 1 }
   memory.set(key, record)
   try {
     globalThis.localStorage?.setItem(key, JSON.stringify(record))

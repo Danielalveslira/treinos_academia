@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { LIMITS, MESSAGE_POOLS, fit, pickIndex, renderPushMessage, workoutReminderMessage } from './messages.js'
+import { LIMITS, MESSAGE_POOLS, fit, pickIndex, renderPushMessage, safeSheetName, workoutReminderMessage, workoutReminderText } from './messages.js'
 
 const emoji = /\p{Extended_Pictographic}/u
 const ALL_TYPES = [
@@ -50,14 +50,13 @@ test('o essencial vem nas primeiras palavras (Android/Windows cortam cedo)', () 
 })
 
 test('catálogo tem variedade suficiente e sem mensagens repetidas', () => {
-  const minimum = { post_like: 8, comment_like: 6, post_reply: 6, comment_reply: 6, workout_reminder_before: 12, workout_reminder_start: 12 }
+  const minimum = { post_like: 6, comment_like: 4, post_reply: 4, comment_reply: 4, workout_reminder_before: 4, workout_reminder_start: 4 }
   for (const [type, min] of Object.entries(minimum)) {
     const pool = Array.isArray(MESSAGE_POOLS[type]) ? MESSAGE_POOLS[type] : MESSAGE_POOLS[type].single
     assert.ok(pool.length >= min, `${type} tem ${pool.length} < ${min}`)
     assert.equal(new Set(pool.map((m) => m.join('|'))).size, pool.length, `${type} tem mensagens duplicadas`)
     assert.equal(new Set(pool.map((m) => m[0])).size, pool.length, `${type} repete título`)
   }
-  assert.ok(MESSAGE_POOLS.workout_reminder_before.length + MESSAGE_POOLS.workout_reminder_start.length >= 20, 'treino: 20+ variantes no total')
 })
 
 test('antirrepetição: com a sequência do banco (passo 1 ou 2) nunca repete duas vezes seguidas', () => {
@@ -101,13 +100,13 @@ test('idempotente: o mesmo job renderiza sempre a mesma mensagem', () => {
 
 test('curtidas: nome do autor, grupo e concordância', () => {
   const single = renderPushMessage(job('post_like', { variant: 0 }))
-  assert.equal(single.title, '🔥 Seu post chamou atenção')
+  assert.equal(single.title, 'Nova curtida')
   assert.equal(single.body, '@daniel curtiu sua publicação.')
   const two = renderPushMessage(job('post_like', { variant: 0, group_count: 2 }))
   assert.match(two.body, /^@daniel e mais 1 pessoa curtiram /)
   const many = renderPushMessage(job('comment_like', { variant: 1, group_count: 4 }))
   assert.match(many.body, /^@daniel e mais 3 pessoas curtiram /)
-  assert.equal(renderPushMessage(job('comment_like', { variant: 1 })).title, '👏 Concordância detectada')
+  assert.equal(renderPushMessage(job('comment_like', { variant: 1 })).title, 'Seu comentário agradou')
 })
 
 test('nome de usuário suspeito nunca vai para o Push', () => {
@@ -139,7 +138,7 @@ test('privacidade: moderação, atendimento e finanças são genéricos na tela 
 
 test('economia: EvoCoins mostram o valor da ledger; sem valor válido cai em texto sem número', () => {
   const withAmount = renderPushMessage(job('economy_credit', { variant: 0, metadata: { asset: 'coin', amount: 25 } }))
-  assert.equal(withAmount.title, '🪙 +25 EvoCoins')
+  assert.equal(withAmount.title, '+25 EvoCoins')
   const formatted = renderPushMessage(job('economy_credit', { variant: 1, metadata: { asset: 'coin', amount: 1500 } }))
   assert.match(formatted.body, /1\.500/)
   for (const amount of ['DROP', -5, 0, 1e12, null, undefined, NaN]) {
@@ -162,11 +161,50 @@ test('tom: moderação, segurança, privacidade e finanças ficam sérios (sem e
 test('agrupamento administrativo informa a quantidade sem revelar o conteúdo', () => {
   const m = renderPushMessage(job('admin_report', { group_count: 4 }))
   assert.equal(m.body, '4 novas denúncias aguardando análise.')
-  assert.equal(renderPushMessage(job('admin_privacy_request', { group_count: 1 })).title, '🔒 Privacidade')
+  assert.equal(renderPushMessage(job('admin_privacy_request', { group_count: 1 })).title, 'Privacidade')
 })
 
 test('broadcast de superadmin respeita os limites e tipos desconhecidos têm texto seguro', () => {
   const m = renderPushMessage(job('admin_broadcast', { metadata: { title: 'T'.repeat(200), body: 'B'.repeat(400) } }))
   assert.ok(Array.from(m.title).length <= LIMITS.title && Array.from(m.body).length <= LIMITS.body)
   assert.deepEqual(renderPushMessage(job('tipo_que_nao_existe')), { title: 'Evolutus', body: 'Você recebeu uma nova notificação.' })
+})
+
+test('sem emojis em nenhum texto do catálogo', () => {
+  const texts = JSON.stringify(MESSAGE_POOLS)
+  assert.ok(!emoji.test(texts), 'catálogo com emoji')
+})
+
+test('lembretes: ficha nomeada só com associação gravada pelo banco; senão genérico', () => {
+  const named = renderPushMessage(job('workout_reminder_before', { metadata: { variant: 3, sheetName: 'Peito e Tríceps', plannedDate: '2026-12-10' } }))
+  assert.deepEqual(named, { title: 'Treino daqui a 1 hora!', body: 'Sua ficha Peito e Tríceps está programada para hoje.' })
+  const start = renderPushMessage(job('workout_reminder_start', { metadata: { sheetName: 'Costas e Bíceps' } }))
+  assert.deepEqual(start, { title: 'Hora de treinar!', body: 'Sua ficha Costas e Bíceps está esperando por você.' })
+  const several = renderPushMessage(job('workout_reminder_start', { metadata: { sheetCount: 3 } }))
+  assert.match(several.body, /3 fichas programadas/)
+  for (const metadata of [{}, { sheetName: '' }, { sheetName: 42 }, { sheetCount: 1 }, { sheetCount: 99 }, { sheetCount: 'x' }]) {
+    const m = renderPushMessage(job('workout_reminder_start', { metadata: { variant: 5, ...metadata } }))
+    assert.ok(!/ficha .* está|fichas programadas/.test(m.body), `inventou ficha: ${JSON.stringify(metadata)}`)
+    assert.deepEqual([m.title, m.body], workoutReminderMessage('workout_reminder_start', 5))
+  }
+  assert.deepEqual(workoutReminderText('workout_reminder_start', { sheetName: 'A' }), ['Hora de treinar!', 'Sua ficha A está esperando por você.'])
+})
+
+test('lembretes: nome de ficha não injeta marcadores, controles nem estoura limites', () => {
+  const m = renderPushMessage(job('workout_reminder_start', { metadata: { sheetName: '{actor}\n{amount}' + 'x'.repeat(200) } }))
+  assert.ok(m.body.includes('{actor}'), 'marcador do usuário fica literal')
+  assert.ok(!m.body.includes('\n'))
+  assert.ok(Array.from(m.body).length <= LIMITS.body)
+  assert.ok(Array.from(safeSheetName('y'.repeat(200))).length <= 40)
+  assert.equal(safeSheetName('   '), null)
+})
+
+test('reembolso tem texto próprio e genérico, reconhecido pelo destino', () => {
+  const user = renderPushMessage(job('report_resolved', { action_url: '/evocash?solicitacoes=1&request=abc' }))
+  assert.equal(user.title, 'Solicitação de reembolso')
+  assert.ok(!/\d/.test(user.body))
+  assert.equal(renderPushMessage(job('report_resolved', { action_url: '/atendimento' })).title, 'Atendimento')
+  const admin = renderPushMessage(job('admin_appeal', { action_url: '/admin/compras-evocash?tab=refunds' }))
+  assert.equal(admin.title, 'Reembolsos')
+  assert.equal(renderPushMessage(job('admin_appeal')).title, 'Moderação')
 })

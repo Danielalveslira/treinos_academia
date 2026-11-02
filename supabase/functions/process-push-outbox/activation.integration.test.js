@@ -171,7 +171,7 @@ test(
       )
       assert.deepEqual(sends, [endpoint])
       assert.equal(shown.length, 1)
-      assert.equal(shown[0].title, '💚 Boas-vindas ao Evolutus!')
+      assert.equal(shown[0].title, 'Boas-vindas ao Evolutus!')
       assert.equal(shown[0].options.data.targetUrl, '/app')
       let clicked
       events.notificationclick({
