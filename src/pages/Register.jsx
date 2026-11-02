@@ -793,7 +793,7 @@ export default function Register() {
                   size="large"
                   block
                 />
-                <FormControl.Caption>Cadastro disponível apenas para maiores de 18 anos.</FormControl.Caption>
+                <FormControl.Caption>Cadastro disponível somente para pessoas com 18 anos completos ou mais.</FormControl.Caption>
                 {fieldErrors.birthDate && (
                   <FormControl.Validation variant="error">
                     {fieldErrors.birthDate}
