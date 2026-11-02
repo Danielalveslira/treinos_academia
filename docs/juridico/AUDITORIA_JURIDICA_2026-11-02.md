@@ -47,9 +47,11 @@ Scripts: `seed-legal.mjs` endurecido; novo `publish-legal-document.mjs`; fixture
 
 ## 4. Decisões humanas pendentes
 
+**Decisão registrada em 02/11/2026:** o Evolutus passa a aceitar **novos cadastros somente de pessoas com 18 anos completos ou mais**. A verificação é feita no frontend e no backend, inclusive em retomadas de cadastros incompletos. A minuta geral 2.0.0 foi adaptada; documentos históricos 1.x permanecem imutáveis. Contas preexistentes de menores, caso existam, não são apagadas automaticamente. Esta decisão não equivale à publicação jurídica.
+
 **Jurídicas**
 
-1. **ECA Digital (Lei 15.211/2025, art. 24)**: a lei prevê, para redes sociais, a vinculação de contas de até 16 anos a um responsável legal. O Evolutus aceita contas a partir de 12 anos e tem comunidades. É preciso decidir o enquadramento e, conforme o caso: elevar a idade mínima, implementar vínculo e supervisão de responsável ou restringir recursos sociais para essa faixa. A decisão é crítica e foi deixada sem implementação de propósito.
+1. **Idade mínima: decisão resolvida (18+)**. Restam a validação da estratégia para contas preexistentes identificadas como menores e a revisão das salvaguardas do ECA Digital aplicáveis ao serviço. Não promover a versão jurídica 2.0.0 sem aprovação.
 2. O que fazer com as medidas corporais depois da revogação: eliminação automática ou manutenção até pedido do titular.
 3. Bases legais marcadas como pendentes na minuta 2.0.0: sexo/altura, analytics e leads comerciais.
 4. Mecanismo de transferência internacional por provedor, prazos de retenção por categoria e aplicabilidade do art. 15 do Marco Civil.

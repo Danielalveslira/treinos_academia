@@ -43,6 +43,14 @@ test('minutas jurídicas do repositório nunca estão marcadas como aprovadas ou
   }
 })
 
+test('minuta geral 2.0.0 exige 18+ e não reutiliza o nome antigo da plataforma', () => {
+  const draftManifest = read('../legal/drafts/general-2.0.0.manifest.json')
+  const draftDocuments = read('../legal/drafts/general-2.0.0.documents.json')
+  assert.equal(draftManifest.minimumAge, 18)
+  assert.match(JSON.stringify(draftDocuments), /Evolutus/)
+  assert.doesNotMatch(JSON.stringify(draftDocuments), /\bO Treinos\b/)
+})
+
 test('publicação de documento comercial aprovado exige confirmação nominal', () => {
   const content = { documentId: 'evocash-terms', version: '1.0.0', approved: true, title: 'X' }
   assert.equal(planDocumentPublication(content, { publish: false }).publish, false)

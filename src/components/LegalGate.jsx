@@ -10,6 +10,7 @@ import { logoutUser } from '../services/authService'
 import { LogoutButton } from './LogoutButton'
 import { resolveLegalGateState } from '../utils/legal'
 import { validateBirthDate, hasErrors } from '../utils/validators'
+import { MINIMUM_REGISTRATION_AGE } from '../constants/accountAge'
 
 // Comprovantes e reembolsos continuam acessíveis sem o aceite da versão vigente (o servidor
 // usa private.require_rights_user nessas RPCs). Carregado só quando o painel é aberto.
@@ -98,7 +99,7 @@ export function LegalGate({ children }) {
     if (saving || confirmed.accepted !== true) return
     if (needsBirthDate) {
       const errors = validateBirthDate(birthDate, {
-        minimumAge: legalBundle.manifest.minimumAge,
+        minimumAge: Math.max(MINIMUM_REGISTRATION_AGE, legalBundle.manifest.minimumAge ?? 0),
       })
       setBirthDateError(errors.birthDate || '')
       if (hasErrors(errors)) return
@@ -118,6 +119,10 @@ export function LegalGate({ children }) {
       if (err?.message === 'A conta está em exclusão.') {
         setError('Sua sessão não é mais válida. Você será desconectado.')
         await logoutUser().catch(() => {})
+        return
+      }
+      if (err?.message === 'MINIMUM_AGE') {
+        setError('O cadastro no Evolutus é exclusivo para pessoas com 18 anos completos ou mais.')
         return
       }
       if (isLegalPolicyChangedError(err) || err?.message === 'LEGAL_POLICY_INCOMPATIBLE') {
@@ -196,7 +201,7 @@ export function LegalGate({ children }) {
                   block
                 />
                 <FormControl.Caption>
-                  Necessária para confirmar a idade mínima ({legalBundle.manifest.minimumAge} anos)
+                  Necessária para confirmar a idade mínima ({Math.max(MINIMUM_REGISTRATION_AGE, legalBundle.manifest.minimumAge ?? 0)} anos)
                   — sua conta ainda não tinha essa informação.
                 </FormControl.Caption>
                 {birthDateError && (

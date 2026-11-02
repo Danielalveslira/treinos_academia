@@ -33,6 +33,7 @@ import { CitySelector } from '../components/CitySelector'
 import { SignupProgress } from '../components/SignupProgress'
 import { LegalConsent } from '../components/LegalConsent'
 import { canSubmitLegalRegistration } from '../utils/legal'
+import { MINIMUM_REGISTRATION_AGE } from '../constants/accountAge'
 import {
   acceptLegalDocuments,
   getActiveLegalBundle,
@@ -234,7 +235,7 @@ export default function Register() {
 
   function birthDateRules() {
     return {
-      minimumAge: legalBundle?.manifest.published ? legalBundle.manifest.minimumAge : undefined,
+      minimumAge: Math.max(MINIMUM_REGISTRATION_AGE, legalBundle?.manifest?.minimumAge ?? 0),
     }
   }
 
@@ -387,7 +388,7 @@ export default function Register() {
     }
 
     // Revalida TUDO (inclusive etapas anteriores): um erro leva de volta à etapa dele. A idade
-    // mínima só é exigida junto do aceite legal publicado. O backend continua sendo a autoridade.
+    // mínima de 18 anos é exigida antes de criar a identidade. O backend valida novamente.
     const validationErrors = { ...stepErrors(1), ...stepErrors(2), ...stepErrors(3) }
     if (hasErrors(validationErrors)) {
       showFieldErrors(validationErrors)
@@ -792,6 +793,7 @@ export default function Register() {
                   size="large"
                   block
                 />
+                <FormControl.Caption>Cadastro disponível apenas para maiores de 18 anos.</FormControl.Caption>
                 {fieldErrors.birthDate && (
                   <FormControl.Validation variant="error">
                     {fieldErrors.birthDate}

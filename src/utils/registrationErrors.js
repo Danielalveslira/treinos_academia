@@ -16,6 +16,9 @@ const FIELD_ERRORS = {
     message: 'Use de 3 a 20 letras minúsculas, números ou _ (sem espaços ou acentos)',
   },
   INVALID_SEXO: { field: 'sexo', message: 'Selecione uma opção para Sexo' },
+  MINIMUM_AGE: { field: 'birthDate', message: 'É necessário ter pelo menos 18 anos para se cadastrar' },
+  INVALID_BIRTHDATE: { field: 'birthDate', message: 'Data de nascimento inválida' },
+  BIRTHDATE_REQUIRED: { field: 'birthDate', message: 'Informe sua data de nascimento' },
   INVALID_MUNICIPALITY: {
     field: 'city',
     message: 'Cidade não reconhecida. Escolha uma cidade da lista de sugestões.',

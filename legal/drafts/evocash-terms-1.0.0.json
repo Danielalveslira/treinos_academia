@@ -12,7 +12,7 @@
     "EvoCash é um crédito de uso dentro do Evolutus, comprado na quantidade que você escolhe.",
     "O valor em reais e a quantidade aparecem antes do pagamento e ficam registrados na compra.",
     "EvoCash não rende juros, não é investimento e não pode ser sacado. Restituições devidas por lei são feitas pelo meio de pagamento original.",
-    "Menores de 18 anos não podem comprar EvoCash."
+    "A compra de EvoCash é exclusiva para contas de pessoas com 18 anos completos ou mais."
   ],
   "sections": [
     {
@@ -58,7 +58,7 @@
       "id": "restricoes",
       "title": "5. Restrições",
       "items": [
-        "Compras não estão disponíveis para contas de menores de 18 anos.",
+        "Somente pessoas com 18 anos completos ou mais podem abrir conta e comprar EvoCash.",
         "Contas em exclusão, suspensas ou com acesso restrito não fazem novas compras, mas continuam com acesso a comprovantes e pedidos de reembolso.",
         "Uso fraudulento pode levar ao bloqueio do saldo envolvido durante a apuração, com motivo registrado e direito de recurso."
       ]

@@ -12,7 +12,7 @@
     "Anúncios e impulsionamentos são contratados por dias, pagos em EvoCash e só entram no ar depois de aprovados.",
     "Todo conteúdo pago é identificado como “Patrocinado”.",
     "Não garantimos visualizações, cliques ou resultados. A exibição é por rotação entre anúncios ativos.",
-    "Não há direcionamento por perfil, e menores de 18 anos não contratam."
+    "A contratação é exclusiva para maiores de 18 anos; anúncios não são direcionados por perfil."
   ],
   "sections": [
     {
@@ -79,9 +79,9 @@
     },
     {
       "id": "menores",
-      "title": "8. Menores de idade",
+      "title": "Elegibilidade e proteção de menores",
       "items": [
-        "Contas de menores de 18 anos não contratam publicidade nem impulsionamento.",
+        "Somente contas de pessoas com 18 anos completos ou mais podem contratar publicidade ou impulsionamento.",
         "O Evolutus não usa perfilamento para direcionar publicidade a crianças e adolescentes (Lei nº 15.211/2025, art. 22)."
       ]
     }

@@ -13,7 +13,7 @@
     "A vitrine é contratada por dias, paga em EvoCash, e só é publicada depois de aprovada.",
     "Ao fim do período contratado ela sai do ar e pode ser contratada de novo.",
     "O titular responde pelas informações publicadas. O Evolutus não certifica credenciais nem intermedeia contratações feitas pelos contatos externos.",
-    "Menores de 18 anos não contratam vitrines."
+    "Somente contas de pessoas com 18 anos completos ou mais podem contratar vitrines."
   ],
   "sections": [
     {
@@ -73,9 +73,9 @@
     },
     {
       "id": "menores",
-      "title": "7. Menores de idade",
+      "title": "Elegibilidade",
       "items": [
-        "Contas de menores de 18 anos não contratam vitrines."
+        "A contratação de vitrines é exclusiva para contas de pessoas com 18 anos completos ou mais."
       ]
     },
     {

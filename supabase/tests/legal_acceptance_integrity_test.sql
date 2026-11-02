@@ -96,6 +96,11 @@ select throws_ok(format($$select public.accept_legal_documents(jsonb_build_objec
   'MINIMUM_AGE','idade mínima calculada no servidor');
 reset role;
 update public.users set data_nascimento=(now()-interval '16 years')::date where id='71000000-0000-0000-0000-000000000002';
+set local role authenticated;
+select pg_temp.set_test_user('71000000-0000-0000-0000-000000000002',true);
+select throws_ok(format($select public.accept_legal_documents(jsonb_build_object('version','71.0.0','digest',%L,'accepted',true))$,repeat('a',64)),
+  'MINIMUM_AGE','política antiga com 12 anos não permite novo aceite de menor de 18');
+reset role;
 select ok(private.is_known_minor('71000000-0000-0000-0000-000000000002'),'16 anos é menor');
 select ok(not private.is_known_minor('71000000-0000-0000-0000-000000000001'),'30 anos não é menor');
 select throws_ok($$select pg_temp.cash_purchase_fixture('71000000-0000-0000-0000-000000000002')$$,'MINOR_PURCHASE_BLOCKED','menor não inicia compra de EvoCash, nem por API direta');

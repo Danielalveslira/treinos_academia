@@ -353,8 +353,9 @@ begin
   end if;
 
   if v_birth is null then raise exception 'BIRTHDATE_REQUIRED'; end if;
-  v_min := coalesce(v_policy.minimum_age::int,
-    case when v_archive.manifest->>'minimumAge' ~ '^[0-9]{1,2}$' then (v_archive.manifest->>'minimumAge')::int end, 18);
+  -- A regra de cadastro 18+ é independente da versão histórica ainda publicada.
+  v_min := greatest(18, coalesce(v_policy.minimum_age::int,
+    case when v_archive.manifest->>'minimumAge' ~ '^[0-9]{1,2}$' then (v_archive.manifest->>'minimumAge')::int end, 18));
   v_age := extract(year from age((now() at time zone 'America/Sao_Paulo')::date, v_birth));
   if v_age < v_min then raise exception 'MINIMUM_AGE'; end if;
 

@@ -372,8 +372,9 @@ test('idade mínima e data futura são recusadas na etapa 2', async () => {
   young.setFullYear(young.getFullYear() - 10)
   await view.change('birthDate', young.toISOString().slice(0, 10))
   await view.click('Continuar')
-  assert.ok(view.errors().some((e) => /pelo menos 16 anos/.test(e)))
+  assert.ok(view.errors().some((e) => /pelo menos 18 anos/.test(e)))
   assert.equal(view.title(), 'Conte um pouco sobre você')
+  assert.equal(count('registerUser'), 0, 'não cria identidade para pessoa menor de idade')
 })
 
 async function reachFinal(view) {

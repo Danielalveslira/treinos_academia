@@ -4,12 +4,12 @@
   "published": false,
   "controllerName": "Wellington Daniel Alves de Lira",
   "contactEmail": "dnllira1@gmail.com",
-  "minimumAge": 12,
+  "minimumAge": 18,
   "changes": [
     "Termos de Uso: marca padronizada como Evolutus; separação entre aceite contratual (Termos e Regras da Comunidade), informação de privacidade e consentimentos opcionais; inclusão das regras gerais para EvoCash, publicidade, vitrines e fichas, com remissão aos documentos comerciais específicos.",
-    "Termos de Uso: contas de menores de 18 anos não fazem compras nem contratações; regras de proteção de crianças e adolescentes explicitadas.",
+    "Termos de Uso: cadastro exclusivamente para pessoas com 18 anos completos ou mais; compras e contratações continuam restritas a adultos e permanecem bloqueadas sem aceite comercial.",
     "Política de Privacidade: dados obrigatórios e opcionais conforme o cadastro atual (nome de usuário, e-mail, data de nascimento, sexo, município do IBGE); consentimento específico e revogável para medidas corporais, que deixa de ser condição para criar a conta.",
     "Política de Privacidade: provedores efetivamente integrados (Supabase, Vercel — inclusive Vercel Analytics e Speed Insights —, InfinitePay, Resend para e-mails transacionais de compra, serviços de push do navegador/sistema e ExerciseAPI para o catálogo de exercícios) e registros de aceite por contratação.",
-    "Regras da Comunidade: identificação de conteúdo patrocinado e regras para interação com menores."
+    "Regras da Comunidade: identificação de conteúdo patrocinado, proteção contra exploração de menores e moderação de interações."
   ]
 }

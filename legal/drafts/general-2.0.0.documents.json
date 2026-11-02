@@ -99,7 +99,7 @@
     "summary": [
       "Para criar a conta você aceita estes Termos e as Regras da Comunidade. A Política de Privacidade informa como tratamos seus dados.",
       "Você mantém os direitos sobre o que publica. Registros e indicadores são informativos e não substituem orientação de profissional de saúde.",
-      "Compras e contratações têm condições próprias, exibidas antes da confirmação, e não estão disponíveis para menores de 18 anos.",
+      "A plataforma é destinada exclusivamente a pessoas com 18 anos completos ou mais. Compras e contratações têm condições próprias antes da confirmação.",
       "Seus direitos de consumidor e de titular de dados continuam valendo mesmo se você não aceitar uma nova versão destes Termos."
     ],
     "sections": [
@@ -116,7 +116,7 @@
         "title": "2. Sua conta",
         "items": [
           "O cadastro pede e-mail, senha, nome de usuário, data de nascimento, sexo (com opção de não informar), município de residência e perfil de uso.",
-          "Idade mínima para criar conta: 12 anos, calculada a partir da data de nascimento informada. [PENDENTE: decisão sobre idade mínima e vinculação a responsável legal — ver seção 8.]",
+          "O Evolutus aceita novos cadastros exclusivamente de pessoas com 18 anos completos ou mais. A idade é verificada a partir da data de nascimento informada, sujeita a verificações adicionais quando necessárias.",
           "Mantenha seus dados corretos e sua senha protegida. A conta é pessoal e intransferível.",
           "Você pode excluir sua conta pelo Perfil. Alguns registros podem ser mantidos pelo tempo necessário ao cumprimento de obrigação legal, à defesa de direitos ou à prevenção de fraude, como descrito na Política de Privacidade."
         ]
@@ -172,11 +172,11 @@
       },
       {
         "id": "menores",
-        "title": "8. Crianças e adolescentes",
+        "title": "8. Idade mínima e contas preexistentes",
         "items": [
-          "Contas de menores de 18 anos não podem comprar EvoCash nem contratar anúncios, impulsionamentos ou vitrines.",
-          "Contas de menores de 18 anos não entram na medição de anúncios e não recebem publicidade baseada em perfil. O Evolutus não cria perfis comportamentais para direcionar publicidade.",
-          "[PENDENTE — decisão jurídica: a Lei nº 15.211/2025 (ECA Digital) prevê, para determinados serviços, vinculação de contas de menores de 16 anos a um responsável legal e ferramentas de supervisão. Definir se o Evolutus se enquadra, e então: elevar a idade mínima, implementar vínculo e supervisão de responsável ou restringir recursos sociais para essa faixa.]"
+          "Não são permitidos novos cadastros de pessoas menores de 18 anos, inclusive para comunidades, vitrines, anúncios ou compra de EvoCash.",
+          "Se identificarmos conta preexistente de pessoa menor de 18 anos, avaliaremos as medidas apropriadas de proteção e restrição de acesso, preservando atendimento, privacidade e direitos legalmente assegurados.",
+          "O Evolutus não é direcionado a crianças e adolescentes e não utiliza perfilamento comportamental para publicidade."
         ]
       },
       {
@@ -236,7 +236,7 @@
     "summary": [
       "Usamos seus dados para manter sua conta, seus treinos e os recursos que você escolhe usar.",
       "Medidas corporais são dados de saúde e só são registradas com seu consentimento específico, que você pode revogar no Perfil.",
-      "Não vendemos seus dados, não criamos perfil para publicidade e não incluímos menores de 18 anos na medição de anúncios.",
+      "Não vendemos seus dados nem criamos perfis comportamentais para publicidade.",
       "Você pode pedir acesso, correção, exclusão, portabilidade quando aplicável, e se opor a tratamentos pelo atendimento."
     ],
     "sections": [
@@ -268,7 +268,7 @@
             {
               "cells": [
                 "Data de nascimento",
-                "Confirmar a idade mínima e aplicar as proteções para menores (como o bloqueio de compras)",
+                "Confirmar idade mínima de 18 anos para cadastro e aplicar proteções a contas preexistentes eventualmente identificadas como menores",
                 "Execução do contrato e cumprimento de obrigação legal (art. 7º, II e V)"
               ]
             },
@@ -406,7 +406,7 @@
         "items": [
           "Anúncios são identificados como “Patrocinado” e exibidos por rotação, sem uso do seu perfil ou histórico.",
           "Contamos visualizações e cliques em totais por anúncio, posição, comunidade e dia, mantidos por até 24 meses. Para evitar contagem duplicada, um registro temporário ligado à conta é guardado por até 48 horas.",
-          "Anunciantes recebem apenas totais. Contas de menores de 18 anos e contas sem data de nascimento não entram na medição.",
+          "Contas sem data de nascimento ou identificadas como pertencentes a menores de 18 anos não entram na medição.",
           "Você pode se opor à medição pelo atendimento."
         ]
       },
@@ -431,11 +431,11 @@
       },
       {
         "id": "menores",
-        "title": "9. Crianças e adolescentes",
+        "title": "9. Idade mínima e proteção de dados de menores",
         "items": [
-          "O tratamento de dados de adolescentes segue o melhor interesse deles (art. 14 da LGPD).",
-          "Contas de menores de 18 anos não fazem compras, não entram na medição de anúncios e não recebem publicidade direcionada por perfil.",
-          "[PENDENTE: adequação à Lei nº 15.211/2025 — supervisão parental, vinculação de contas de menores de 16 anos e configuração padrão mais protetiva.]"
+          "O Evolutus é destinado somente a pessoas com 18 anos completos ou mais. A data de nascimento é solicitada para aplicar essa restrição.",
+          "Se for identificada uma conta preexistente pertencente a pessoa menor de idade, seus dados e direitos serão tratados conforme a LGPD e a legislação de proteção infantojuvenil, inclusive os direitos de atendimento e eliminação quando aplicáveis.",
+          "Não fazemos direcionamento de publicidade por perfil comportamental; menores identificados não entram na medição de anúncios."
         ]
       },
       {

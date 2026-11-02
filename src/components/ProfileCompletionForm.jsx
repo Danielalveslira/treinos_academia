@@ -17,6 +17,7 @@ import {
 import { USAGE_PROFILES } from '../constants/usageProfile'
 import { UsageProfileField } from './UsageProfileField'
 import { CitySelector } from './CitySelector'
+import { MINIMUM_REGISTRATION_AGE } from '../constants/accountAge'
 import { LogoutButton } from './LogoutButton'
 
 function todayString() {
@@ -55,7 +56,7 @@ export default function ProfileCompletionForm() {
     setError('')
     const validationErrors = {
       ...validateUsername(username),
-      ...validateBirthDate(birthDate),
+      ...validateBirthDate(birthDate, { minimumAge: MINIMUM_REGISTRATION_AGE }),
       ...validateResidenceMunicipality(cityCode),
       ...validateSexo(sexo, { required: true }),
       ...validateUsageProfile(usageProfile),
@@ -147,6 +148,7 @@ export default function ProfileCompletionForm() {
                 size="large"
                 block
               />
+              <FormControl.Caption>Cadastro disponível apenas para maiores de 18 anos.</FormControl.Caption>
               {fieldErrors.birthDate && (
                 <FormControl.Validation variant="error">
                   {fieldErrors.birthDate}
