@@ -46,6 +46,10 @@ before(async () => {
       "export const GreetingVoiceSettings = () => <div data-greeting='true' />",
     ],
     [
+      '../components/ResidenceCitySettings',
+      "export const ResidenceCitySettings = () => <div data-city='true' />",
+    ],
+    [
       '../components/RestPreferenceSettings',
       "export const RestPreferenceSettings = () => <div data-rest='true' />",
     ],

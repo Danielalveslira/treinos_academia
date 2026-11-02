@@ -16,6 +16,7 @@ import { PushNotificationSettings } from '../features/notifications/components/P
 import { GREETING_V2_ENABLED } from '../features/greetings/config'
 import { GreetingVoiceSettings } from '../features/greetings/GreetingVoiceSettings'
 import { RestPreferenceSettings } from '../components/RestPreferenceSettings'
+import { ResidenceCitySettings } from '../components/ResidenceCitySettings'
 import { restPreferenceSummary } from '../utils/restPreference'
 
 function Setting({ id, title, summary, open, onToggle, children }) {
@@ -451,6 +452,22 @@ function ProfileContent({
           >
             Salvar perfil de uso
           </Button>
+        </Setting>
+        <Setting
+          id="city"
+          title="Cidade onde mora"
+          summary={
+            profile
+              ? profile.residenceMunicipalityCode
+                ? 'Informada'
+                : 'Não informada'
+              : undefined
+          }
+          open={Boolean(expanded.city)}
+          onToggle={() => toggle('city')}
+        >
+          {/* Montado só ao abrir: o catálogo de municípios (chunk próprio) não é baixado por quem não usa. */}
+          {visited.city && <ResidenceCitySettings />}
         </Setting>
         <Setting
           id="rest"

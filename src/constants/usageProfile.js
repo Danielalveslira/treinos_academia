@@ -23,6 +23,21 @@ export const USAGE_PROFILE_OPTIONS = [
 
 export const USAGE_PROFILES = USAGE_PROFILE_OPTIONS.map((option) => option.value)
 
+// Textos curtos da etapa final do cadastro -- mesmos valores internos (e mesma ordem) acima.
+export const SIGNUP_USAGE_PROFILE_OPTIONS = [
+  { value: 'common', label: 'Usuário', description: 'Acompanhar meus treinos e evolução.' },
+  {
+    value: 'professional',
+    label: 'Profissional',
+    description: 'Divulgar meus serviços profissionais.',
+  },
+  {
+    value: 'establishment_owner',
+    label: 'Estabelecimento',
+    description: 'Gerenciar meu negócio no Evolutus.',
+  },
+]
+
 // Profissional e responsável por estabelecimento podem criar uma Vitrine de
 // QUALQUER um dos dois tipos -- a escolha aqui não restringe o tipo da Vitrine, só
 // libera o acesso à criação. Ausente (conta legada que nunca declarou) não é

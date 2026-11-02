@@ -932,6 +932,121 @@ body:has(.pwa-offline) .app-shell {
 .usage-profile-option span { display: grid; gap: 2px; }
 .usage-profile-option small { color: var(--fgColor-muted); line-height: 1.5; }
 .usage-profile-field:disabled .usage-profile-option { cursor: not-allowed; opacity: 0.7; }
+
+/* Cadastro em 3 etapas (Register.jsx + SignupProgress) e seletor de cidade (CitySelector). */
+.signup-progress { display: grid; gap: 8px; }
+.signup-progress-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.signup-progress-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.signup-progress-step { display: grid; gap: 6px; min-width: 0; }
+.signup-progress-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--borderColor-default);
+}
+.signup-progress-step.is-done .signup-progress-bar,
+.signup-progress-step.is-current .signup-progress-bar { background: var(--bgColor-accent-emphasis); }
+.signup-progress-label {
+  overflow: hidden;
+  color: var(--fgColor-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.signup-progress-step.is-current .signup-progress-label { color: var(--fgColor-default); font-weight: 600; }
+.signup-ok,
+.signup-password-rules .is-met { color: var(--fgColor-success); }
+.signup-ok svg,
+.signup-password-rules svg { vertical-align: -1px; }
+.signup-password-rules { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.signup-actions { display: grid; gap: 10px; margin-top: 4px; }
+.signup-actions.has-back { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+.signup-actions button { min-height: 44px; }
+/* Consentimentos: sem moldura extra, área de toque confortável (linha inteira clicável, ≥44px). */
+.signup-consent .legal-consent { margin: 4px 0 0; }
+.signup-consent .legal-consent legend { margin-bottom: 4px; font-size: 14px; }
+.signup-consent .legal-consent label {
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.signup-consent .legal-consent label + label { border-top: 1px solid var(--borderColor-muted); }
+/* Perfil de uso compacto (só no cadastro): linhas baixas, seleção por rádio + contorno. */
+.usage-profile-field--compact { gap: 8px; }
+.usage-profile-field--compact .usage-profile-option {
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+.usage-profile-field--compact .usage-profile-option input { width: 18px; height: 18px; margin: 0; }
+.usage-profile-field--compact .usage-profile-option small { font-size: 12px; line-height: 1.35; }
+.usage-profile-field[aria-invalid='true'] .usage-profile-option { border-color: var(--borderColor-danger-emphasis, var(--fgColor-danger)); }
+
+.city-selector { min-width: 0; }
+.city-selector-list {
+  display: grid;
+  box-sizing: border-box;
+  width: 100%;
+  max-height: min(352px, 45vh);
+  margin: 4px 0 0;
+  padding: 4px;
+  overflow-y: auto;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 12px;
+  background: var(--bgColor-default);
+  list-style: none;
+  overscroll-behavior: contain;
+}
+/* `display: grid` acima venceria o atributo hidden: a lista vazia (só padding + borda arredondada)
+   aparecia como uma "bolinha" sob o campo. */
+.city-selector-list[hidden] { display: none; }
+.city-selector-option {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--fgColor-default);
+  cursor: pointer;
+}
+.city-selector-option[aria-selected='true'] {
+  background: var(--bgColor-accent-muted);
+  box-shadow: inset 2px 0 0 var(--borderColor-accent-emphasis);
+}
+.city-selector-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.city-selector-uf { flex-shrink: 0; color: var(--fgColor-muted); white-space: pre; }
+.city-selector-status { margin: 0; color: var(--fgColor-muted); font-size: 12px; }
+.city-selector-status:empty { display: none; }
+.city-selector-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--fgColor-danger);
+  font-size: 13px;
+}
+.profile-city { display: grid; gap: 12px; }
+.profile-city-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .rest-preference { display: grid; gap: 10px; container-type: inline-size; }
 .rest-preference-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .rest-preference-option.is-custom { grid-column: 1 / -1; }
@@ -5730,6 +5845,42 @@ button.activity-day:focus-visible { z-index: 1; outline: 2px solid var(--fgColor
   .auth-intro h2 { margin: 10px 0 7px; font-size: 25px; }
   .auth-intro-content > p { max-width: 330px; font-size: 12px; line-height: 1.45; }
   .auth-intro .auth-benefits { display: none; }
+}
+
+/* Cadastro (AuthLayout variant="signup"): no desktop a arte fica mais enxuta (sem os cards de
+   benefícios); até 900px o formulário vem sozinho, em coluna única e largura confortável. */
+.auth-layout--signup .auth-intro .auth-benefits { display: none; }
+.auth-layout--signup .auth-intro,
+.auth-layout--signup .auth-intro-content { min-height: 480px; }
+.auth-layout--signup .auth-form-section { align-self: start; }
+
+@media (max-width: 900px) {
+  .auth-layout.auth-layout--signup {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 520px;
+    padding-block: 20px 28px;
+  }
+  .auth-layout--signup .auth-intro { display: none; }
+}
+
+@media (max-width: 700px) {
+  .auth-layout.auth-layout--signup { padding: 12px 16px 24px; gap: 0; }
+  .auth-layout--signup .auth-form-card {
+    padding: 4px 0 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .auth-layout--signup .auth-heading-icon { display: none; }
+  .auth-layout--signup .auth-form-card h1 { font-size: 22px; }
+  .auth-layout--signup .auth-description { margin-bottom: 18px; }
+  .auth-layout--signup .auth-switch { margin-top: 20px; padding: 12px; }
+}
+
+.auth-layout--signup #auth-title:focus { outline: none; }
+.auth-layout--signup #auth-title:focus-visible {
+  outline: 2px solid var(--focus-outlineColor, var(--borderColor-accent-emphasis));
+  outline-offset: 2px;
 }
 
 @media (max-width: 359px) {
