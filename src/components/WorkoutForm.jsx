@@ -47,6 +47,9 @@ import {
 } from '../utils/setSession'
 import { createRowSaver } from '../utils/rowSaver'
 import { WorkoutExerciseVisual } from './WorkoutExerciseGuide'
+import { RestTimer } from './RestTimer'
+import { useRestTimer } from '../hooks/useRestTimer'
+import { resolveRestSeconds } from '../utils/restTimer'
 import '../styles/workoutExecution.css'
 
 // Enquanto o teclado virtual está provavelmente aberto (um campo do formulário tem
@@ -88,6 +91,7 @@ export function WorkoutForm({
   progressScope,
   history = [],
   sessionRows = [],
+  defaultRestSeconds = null,
   finishGuard,
   finishing = false,
   onUnsafeChange,
@@ -246,6 +250,19 @@ export function WorkoutForm({
     setActiveSetIndexState(index)
   }
   const lastConcludeAt = useRef(0)
+  // Descanso entre séries: um por sessão (usuário + ficha + dia de negócio), fixado na montagem para
+  // não trocar de escopo à meia-noite no meio do treino. Edição de histórico não tem descanso.
+  const [restScope] = useState(() =>
+    !initialValue && progressScope && sheetScope?.id ? `${progressScope}:${todayString()}` : null
+  )
+  const restTimer = useRestTimer(restScope)
+  // Exercício > padrão do usuário > 90s. Lido na conclusão: mudar a preferência não altera uma contagem
+  // já em andamento, só as próximas.
+  const restSecondsFor = (exerciseId) =>
+    resolveRestSeconds(
+      sheetScope?.items.find((item) => item.exercise_id === exerciseId)?.rest_seconds,
+      defaultRestSeconds
+    )
 
   // Gravação: um saver por exercício (linha do dia) e o estado dele para a interface.
   const savers = useRef(new Map())
@@ -362,6 +379,26 @@ export function WorkoutForm({
   const showComplete = !editing && exerciseFinished && !reviewing && !cardioDirty
   const completeStatus = cardio ? rowSyncStatus(rowState) : aggregateSyncStatus(syncStatuses)
   const rowStatus = rowState?.status || 'idle'
+  // Um só indicador por vez: completo no card do exercício de origem, compacto em qualquer outra tela.
+  const activeRest = restTimer.rest
+  const restInCard =
+    activeRest &&
+    step === 'register' &&
+    !cardio &&
+    !showComplete &&
+    activeRest.exerciseId === values.exerciseId
+  const restExerciseName =
+    activeRest && availableExercises.find((exercise) => exercise.id === activeRest.exerciseId)?.name
+  const renderRest = (compact) => (
+    <RestTimer
+      key={activeRest.id}
+      rest={activeRest}
+      compact={compact}
+      exerciseName={restExerciseName}
+      onExtend={restTimer.extend}
+      onSkip={restTimer.stop}
+    />
+  )
 
   // Reenvia o que ficou sem gravar assim que a conexão volta. Enquanto algo está gravando ou falhou,
   // fechar a aba pede confirmação: é o único jeito de uma série concluída se perder.
@@ -523,7 +560,8 @@ export function WorkoutForm({
   function handleConclude() {
     const now = Date.now()
     if (now - lastConcludeAt.current < CONCLUDE_COOLDOWN_MS) return
-    const result = concludeSet(valuesRef.current.setDetails, activeRef.current)
+    const concludedIndex = activeRef.current
+    const result = concludeSet(valuesRef.current.setDetails, concludedIndex)
     if (!result) return
     lastConcludeAt.current = now
     const next = update((previous) => ({ ...previous, setDetails: result.sets }))
@@ -532,6 +570,15 @@ export function WorkoutForm({
     if (!result.finished) setActive(result.nextIndex)
     const saving = persist(next)
     if (result.finished) markWhenProtected(next.exerciseId, saving)
+    // Registro já aceito localmente (o saver grava/enfileira sozinho): o descanso não espera o servidor.
+    // Sem série pendente não há o que descansar — e concluir uma série encerra o descanso anterior.
+    if (result.finished) restTimer.stop()
+    else
+      restTimer.start({
+        exerciseId: next.exerciseId,
+        setKey: next.setDetails[concludedIndex]?.key,
+        restSeconds: restSecondsFor(next.exerciseId),
+      })
   }
 
   // Corrige uma série já concluída: só ela muda; as demais permanecem como foram registradas.
@@ -561,6 +608,13 @@ export function WorkoutForm({
     }))
     setActive(nextActiveSetIndexAfterRemoval(activeRef.current, current.length))
     if (editing) return
+    // Desfazer a série que originou o descanso (ou ficar sem pendentes) invalida a contagem.
+    const rest = restTimer.rest
+    if (
+      rest?.exerciseId === next.exerciseId &&
+      (rest.setKey === target.key || allSetsDone(next.setDetails))
+    )
+      restTimer.stop()
     if (!allSetsDone(next.setDetails)) unmarkExerciseDone(next.exerciseId)
     const saving =
       target.done || allSetsDone(next.setDetails)
@@ -575,6 +629,7 @@ export function WorkoutForm({
       setDetails: dropPendingSets(previous.setDetails),
     }))
     setActive(0)
+    if (restTimer.rest?.exerciseId === next.exerciseId) restTimer.stop()
     if (allSetsDone(next.setDetails)) markWhenProtected(next.exerciseId, persist(next))
   }
 
@@ -699,6 +754,7 @@ export function WorkoutForm({
           </button>
         )}
       </nav>
+      {activeRest && !restInCard && renderRest(true)}
 
       {step === 'exercise' && (
         <section className="workout-step" aria-labelledby="exercise-choice-title">
@@ -886,6 +942,7 @@ export function WorkoutForm({
                 onFinishNow={handleFinishNow}
                 onRetry={handleRetry}
                 disabled={submitting || finishing}
+                restSlot={restInCard ? renderRest(false) : null}
               />
               {(errors.setDetails || errors[`set${activeSetIndex}`]) && (
                 <Text role="alert" className="form-error">

@@ -10,6 +10,7 @@ import { clearPhotoCache } from '../utils/photoBlobCache'
 import { getLegalAccess } from '../services/legalService'
 import { clearCachedLegalAccess } from '../utils/legal'
 import { clearCachedWallet } from '../services/economyService'
+import { clearStoredRest } from '../utils/restTimer'
 import { isSameSessionIdentity } from '../utils/authSession'
 import { clearActivityPingThrottle } from '../utils/activityPing'
 import { clearAllCommentDrafts } from '../features/comments/utils/drafts'
@@ -498,6 +499,8 @@ export function AuthProvider({ children }) {
         clearAllCommentDrafts()
         // Um novo login (outra sessão) deve registrar o uso logo, sem esperar os 10 min.
         clearActivityPingThrottle()
+        // Descanso em andamento é da sessão de treino de quem saiu (o escopo já inclui o uid).
+        clearStoredRest()
       }
       // Aberto offline pelo snapshot local: o auth-js (token vencido, sem rede) acaba entregando uma sessão
       // inicial vazia depois de tentar renovar por dezenas de segundos. Isso NÃO é logout: o app continua
