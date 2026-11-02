@@ -1,5 +1,10 @@
 import { MAX_DURATION_MINUTES, MAX_DISTANCE_KM } from '../../utils/cardioSessions.js'
 import { MAX_WORKOUT_SETS } from '../../utils/workoutSets.js'
+import {
+  configuredRestSeconds,
+  formatRestDuration,
+  resolveRestSeconds,
+} from '../../utils/restTimer.js'
 export const SHEET_LIMITS = {
   active: 40,
   items: 40,
@@ -89,13 +94,24 @@ export function sheetScopeExercises(exercises, scope) {
     .filter((i) => i.available !== false && byId.has(i.exercise_id))
     .map((i) => byId.get(i.exercise_id))
 }
-export function prescription(item) {
+// Descanso no resumo da meta. Com `defaultRestSeconds` informado (mesmo null), o exercício que herda o
+// padrão mostra o valor efetivo; sem a opção, só o tempo próprio do exercício aparece (como antes).
+function restLabel(item, options) {
+  const own = configuredRestSeconds(item.rest_seconds)
+  if (own !== null) return own === 0 ? 'sem descanso' : `${formatRestDuration(own)} de descanso`
+  if (!Object.hasOwn(options, 'defaultRestSeconds')) return null
+  const effective = resolveRestSeconds(null, options.defaultRestSeconds)
+  return effective === 0
+    ? 'sem descanso (seu padrão)'
+    : `${formatRestDuration(effective)} de descanso (seu padrão)`
+}
+export function prescription(item, options = {}) {
   if (!item) return ''
   return [
     item.target_sets && `${item.target_sets} séries`,
     (item.reps_min || item.reps_max) &&
       `${item.reps_min || '…'}–${item.reps_max || '…'} repetições`,
-    item.rest_seconds != null && `${item.rest_seconds}s de descanso`,
+    restLabel(item, options),
     item.target_duration_minutes && `${item.target_duration_minutes} min`,
     item.target_distance_km && `${item.target_distance_km} km`,
     item.note,

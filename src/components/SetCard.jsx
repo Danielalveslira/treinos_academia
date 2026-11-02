@@ -106,7 +106,7 @@ export function SaveStatus({ status, onRetry }) {
 
 // Um card, uma série por vez. `mode="session"` (registro ao vivo): o botão principal conclui a série e
 // o card avança sozinho. `mode="edit"` (corrigir um registro existente): sem botão de concluir — o
-// formulário salva tudo de uma vez.
+// formulário salva tudo de uma vez. `restSlot`: descanso ativo deste exercício, logo acima da ação principal.
 export function SetCard({
   mode = 'session',
   sets,
@@ -126,6 +126,7 @@ export function SetCard({
   demoMode = false,
   previousSets = [],
   onToggleDone,
+  restSlot = null,
 }) {
   const [confirmingRemove, setConfirmingRemove] = useState(false)
   const timer = useRef(null)
@@ -284,6 +285,7 @@ export function SetCard({
         <p className="set-card-hint">Primeira vez? Informe peso e repetições. Sem carga, use 0.</p>
       )}
 
+      {restSlot}
       {primary}
       {demoMode && activeSet.done && onToggleDone && (dirty || pendingIndex !== -1) && (
         <button type="button" className="set-card-link" disabled={disabled} onClick={onToggleDone}>

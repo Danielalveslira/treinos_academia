@@ -5,6 +5,7 @@ import {
   isValidTrainingTime,
   normalizeTrainingPreferences,
 } from '../utils/trainingPlan'
+import { configuredRestSeconds } from '../utils/restTimer'
 
 export const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 export const BIO_MAX_LENGTH = 300
@@ -31,6 +32,8 @@ export function mapUserRow(row) {
     // Mensagens da Home. greetingWelcomeSeenAt: null = ainda não confirmada; undefined = coluna ausente (nunca
     // tratado como "não vista"). A voz padrão é 'auto'.
     greetingVoice: row.greeting_voice ?? 'auto',
+    // Descanso padrão entre séries: null = sem preferência (o cronômetro usa 90s); 0 = desativado.
+    defaultRestSeconds: configuredRestSeconds(row.default_rest_seconds),
     greetingWelcomeSeenAt: row.greeting_welcome_seen_at,
     disabledAt: row.disabled_at,
     disabledBy: row.disabled_by,
@@ -71,6 +74,15 @@ export async function saveTrainingPreferences(preferences) {
   const { data, error } = await supabase.rpc('set_training_preferences', { payload })
   if (error) throw error
   return normalizeTrainingPreferences(data)
+}
+
+// Descanso padrão entre séries (0–900; 0 desativa). Validado aqui e de novo na RPC.
+export async function setDefaultRestSeconds(seconds) {
+  const value = configuredRestSeconds(seconds)
+  if (value === null) throw new Error('INVALID_REST_SECONDS')
+  const { data, error } = await supabase.rpc('set_default_rest_seconds', { p_seconds: value })
+  if (error) throw error
+  return configuredRestSeconds(data) ?? value
 }
 
 // userId é mantido nas assinaturas abaixo só por compatibilidade com os call sites

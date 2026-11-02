@@ -140,3 +140,75 @@ test('catálogo carrega somente na primeira abertura e mantém busca ao voltar p
   assert.equal(globalThis.__catalogMounts, 1)
   ui.act(() => tree.unmount())
 })
+test('descanso: herda o padrão do usuário mostrando o valor efetivo, ou vira tempo específico', () => {
+  const changes = []
+  const base = {
+    index: 0,
+    total: 1,
+    disabled: false,
+    defaultRestSeconds: 60,
+    onPatch: (...args) => changes.push(args),
+    onMove: () => {},
+    onRemove: () => {},
+  }
+  const text = (tree) => JSON.stringify(tree.toJSON())
+  const restButtons = (tree) =>
+    tree.root
+      .findAllByType('button')
+      .filter((node) => /Usar meu padrão|Tempo específico/.test(node.children.join('')))
+  // Ficha antiga: rest_seconds nulo => herda e o resumo mostra o valor efetivo.
+  const inherited = { ...item, rest_seconds: null }
+  const tree = ui.mountItem({ ...base, item: inherited })
+  assert.match(text(tree), /1min de descanso \(seu padrão\)/)
+  ui.act(() => button(tree, 'Editar metas de Supino').props.onClick())
+  const [useDefault, specific] = restButtons(tree)
+  assert.equal(useDefault.children.join(''), 'Usar meu padrão')
+  assert.equal(useDefault.props.selected, true)
+  assert.match(text(tree), /Usando 1min, o padrão definido no seu Perfil/)
+  assert.equal(
+    tree.root.findAllByType('input').some((node) => node.props.max === 900),
+    false,
+    'herdando: sem campo de segundos'
+  )
+  // Passar para tempo específico grava o valor efetivo atual como ponto de partida.
+  ui.act(() => specific.props.onClick())
+  assert.deepEqual(changes.at(-1), ['one', 'rest_seconds', '60'])
+
+  // Tempo específico (inclusive 0) aparece como escolha própria e pode voltar a herdar.
+  ui.updateItem(tree, { ...base, item: { ...item, rest_seconds: 0 } })
+  assert.match(text(tree), /sem descanso/)
+  assert.doesNotMatch(text(tree), /seu padrão\)/)
+  const seconds = tree.root.findAllByType('input').find((node) => node.props.max === 900)
+  assert.equal(seconds.props.value, 0)
+  ui.act(() => seconds.props.onChange({ target: { value: '45' } }))
+  assert.deepEqual(changes.at(-1), ['one', 'rest_seconds', '45'])
+  ui.act(() => restButtons(tree)[0].props.onClick())
+  assert.deepEqual(changes.at(-1), ['one', 'rest_seconds', null])
+
+  // Usuário sem preferência: o padrão exibido é o do sistema.
+  ui.updateItem(tree, { ...base, defaultRestSeconds: null, item: inherited })
+  assert.match(text(tree), /Usando 1min30s, o padrão definido no seu Perfil/)
+  ui.act(() => tree.unmount())
+})
+test('cardio mantém o campo numérico de descanso de antes', () => {
+  const tree = ui.mountItem({
+    item: { exercise_id: 'run', exercise: { name: 'Corrida', type: 'cardio' }, rest_seconds: null },
+    index: 0,
+    total: 1,
+    disabled: false,
+    defaultRestSeconds: 60,
+    onPatch: () => {},
+    onMove: () => {},
+    onRemove: () => {},
+  })
+  assert.doesNotMatch(JSON.stringify(tree.toJSON()), /seu padrão/)
+  ui.act(() => button(tree, 'Editar metas de Corrida').props.onClick())
+  assert.equal(
+    tree.root
+      .findAllByType('button')
+      .some((node) => /Usar meu padrão/.test(node.children.join(''))),
+    false
+  )
+  assert.ok(tree.root.findAllByType('input').some((node) => node.props.max === 900))
+  ui.act(() => tree.unmount())
+})

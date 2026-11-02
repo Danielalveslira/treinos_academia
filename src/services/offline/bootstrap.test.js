@@ -80,11 +80,22 @@ test('mensagens da Home offline: guarda só a voz escolhida (nunca o sexo); snap
   assert.equal(offlineIdentity(legacy).profile.greetingVoice, undefined) // o app trata como 'auto' => neutro
 })
 
+test('descanso padrão offline: guarda a preferência (inclusive 0); snapshot antigo segue válido', () => {
+  assert.equal(minimalProfile(fullProfile(A, { defaultRestSeconds: 60 })).defaultRestSeconds, 60)
+  assert.equal(minimalProfile(fullProfile(A, { defaultRestSeconds: 0 })).defaultRestSeconds, 0)
+  assert.equal(minimalProfile(fullProfile()).defaultRestSeconds, null) // sem escolha: o cronômetro usa 90s
+  const legacy = record()
+  delete legacy.profile.defaultRestSeconds
+  assert.equal(evaluateOfflineEntry(legacy, { now: NOW }).ok, true)
+  assert.equal(offlineIdentity(legacy).profile.defaultRestSeconds, undefined)
+})
+
 test('o bootstrap guarda só o perfil MÍNIMO: sem role, e-mail, nascimento, sexo, altura, bio, avatar nem tokens', () => {
   const rec = record()
   assert.deepEqual(Object.keys(rec.profile).sort(), [
     'accountStatus',
     'createdAt',
+    'defaultRestSeconds', // descanso padrão entre séries (segundos) — preferência de treino, não dado pessoal
     'greetingVoice', // só o estilo (auto/masculino/feminino/neutro) do texto da Home; o sexo continua fora
     'id',
     'trainingPreferences',
@@ -145,7 +156,10 @@ test('o perfil de uso (atalhos do menu) é restaurado offline; registro antigo s
 
 test('registro confirmado online, ativo e com o aceite legal conhecido PODE abrir offline', () => {
   assert.deepEqual(evaluateOfflineEntry(record(), { now: NOW }), { ok: true, reason: null })
-  assert.deepEqual(evaluateOfflineEntry(record(), { userId: A, now: NOW }), { ok: true, reason: null })
+  assert.deepEqual(evaluateOfflineEntry(record(), { userId: A, now: NOW }), {
+    ok: true,
+    reason: null,
+  })
 })
 
 test('janela máxima do cold start: fresco entra, vencido/futuro/relógio regredido falham fechado', () => {
@@ -160,10 +174,13 @@ test('janela máxima do cold start: fresco entra, vencido/futuro/relógio regred
     reason: 'STALE',
   }) // 1 ms além do limite já não entra
   assert.deepEqual(evaluateOfflineEntry(ok, { now: NOW - 1 }), { ok: false, reason: 'STALE' }) // registro "do futuro"
-  assert.deepEqual(evaluateOfflineEntry({ ...ok, last_online_verified_at: NOW + 60_000 }, { now: NOW }), {
-    ok: false,
-    reason: 'STALE',
-  }) // relógio do aparelho regredido depois de um registro "futuro"
+  assert.deepEqual(
+    evaluateOfflineEntry({ ...ok, last_online_verified_at: NOW + 60_000 }, { now: NOW }),
+    {
+      ok: false,
+      reason: 'STALE',
+    }
+  ) // relógio do aparelho regredido depois de um registro "futuro"
 })
 
 test('falha SEGURA: sem registro, corrompido, schema diferente, outro usuário ou revogado NÃO entram', () => {

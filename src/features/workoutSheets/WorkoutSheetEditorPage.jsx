@@ -99,7 +99,8 @@ function EditorSection({
   )
 }
 function Editor({ initial, online }) {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
+  const defaultRestSeconds = profile?.defaultRestSeconds ?? null
   const active = useRef(true)
   useEffect(() => {
     active.current = true
@@ -387,6 +388,7 @@ function Editor({ initial, online }) {
                   index={index}
                   total={sheet.items.length}
                   disabled={disabled}
+                  defaultRestSeconds={defaultRestSeconds}
                   onPatch={patchItem}
                   onMove={move}
                   onRemove={removeItem}

@@ -68,3 +68,44 @@ test('escopo mantém ordem própria, bloqueia indisponíveis e não modifica bib
   assert.match(prescription(sheet.items[0]), /3 séries/)
   assert.ok(!prescription(sheet.items[0]).includes('conclu'))
 })
+test('descanso no resumo: tempo próprio, 0 = sem descanso e valor efetivo herdado só quando informado', () => {
+  const base = { exercise_id: 'one', target_sets: 3 }
+  assert.equal(prescription({ ...base, rest_seconds: 90 }), '3 séries · 1min30s de descanso')
+  assert.equal(
+    prescription({ ...base, rest_seconds: 45 }, { defaultRestSeconds: 120 }),
+    '3 séries · 45s de descanso'
+  )
+  assert.equal(
+    prescription({ ...base, rest_seconds: 0 }, { defaultRestSeconds: 120 }),
+    '3 séries · sem descanso'
+  )
+  // Ficha antiga (sem rest_seconds): sem a opção nada muda; com ela, mostra o padrão efetivo.
+  assert.equal(prescription(base), '3 séries')
+  assert.equal(
+    prescription(base, { defaultRestSeconds: 60 }),
+    '3 séries · 1min de descanso (seu padrão)'
+  )
+  assert.equal(
+    prescription(base, { defaultRestSeconds: null }),
+    '3 séries · 1min30s de descanso (seu padrão)'
+  )
+  assert.equal(
+    prescription(base, { defaultRestSeconds: 0 }),
+    '3 séries · sem descanso (seu padrão)'
+  )
+})
+test('ficha antiga continua válida e rest_seconds nulo segue nulo ao salvar (herda o padrão)', () => {
+  const old = { ...sheet, items: [{ exercise_id: 'one', target_sets: 3 }] }
+  assert.equal(validateSheet(old), null)
+  assert.equal(normalizeSheet(old).items[0].rest_seconds, null)
+  assert.equal(
+    normalizeSheet({ ...old, items: [{ exercise_id: 'one', rest_seconds: '' }] }).items[0]
+      .rest_seconds,
+    null
+  )
+  assert.equal(
+    normalizeSheet({ ...old, items: [{ exercise_id: 'one', rest_seconds: '0' }] }).items[0]
+      .rest_seconds,
+    0
+  )
+})

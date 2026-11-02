@@ -6,6 +6,7 @@ import {
   FormControl,
   Heading,
   IconButton,
+  SegmentedControl,
   Text,
   Textarea,
   TextInput,
@@ -18,6 +19,7 @@ import {
   TrashIcon,
 } from '@primer/octicons-react'
 import { prescription, SHEET_LIMITS } from './workoutSheetValidation.js'
+import { formatRestDuration, resolveRestSeconds } from '../../utils/restTimer.js'
 const fields = [
   ['target_sets', 'Séries-alvo', 1, SHEET_LIMITS.sets],
   ['reps_min', 'Repetições mínimas', 1, 1000],
@@ -26,11 +28,67 @@ const fields = [
   ['target_duration_minutes', 'Duração (minutos)', 1, SHEET_LIMITS.duration],
   ['target_distance_km', 'Distância (km)', 0.001, SHEET_LIMITS.distance],
 ]
+// Descanso de um exercício de força: herda o padrão do usuário (rest_seconds nulo) ou tem tempo próprio
+// (qualquer número, inclusive 0 = sem descanso). Vazio no modo específico volta a herdar ao salvar.
+function RestField({ item, name, disabled, defaultRestSeconds, onPatch }) {
+  const inputId = useId()
+  const usesDefault = item.rest_seconds == null
+  const effectiveDefault = resolveRestSeconds(null, defaultRestSeconds)
+  const defaultLabel = formatRestDuration(effectiveDefault)
+  return (
+    <Box sx={{ gridColumn: '1 / -1', display: 'grid', gap: 2 }}>
+      <Text as="span" sx={{ fontSize: 1, fontWeight: 'semibold' }}>
+        Descanso entre séries
+      </Text>
+      <SegmentedControl
+        aria-label={`Descanso de ${name}`}
+        fullWidth
+        // Mesma altura do seletor Biblioteca/Catálogo: .workout-sheets button força 44px de toque.
+        sx={{ height: 44 }}
+        onChange={(selected) => {
+          if (selected === 0 && !usesDefault) onPatch(item.exercise_id, 'rest_seconds', null)
+          if (selected === 1 && usesDefault)
+            onPatch(item.exercise_id, 'rest_seconds', String(effectiveDefault))
+        }}
+      >
+        <SegmentedControl.Button selected={usesDefault} disabled={disabled}>
+          Usar meu padrão
+        </SegmentedControl.Button>
+        <SegmentedControl.Button selected={!usesDefault} disabled={disabled}>
+          Tempo específico
+        </SegmentedControl.Button>
+      </SegmentedControl>
+      {usesDefault ? (
+        <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
+          {`Usando ${defaultLabel}, o padrão definido no seu Perfil.`}
+        </Text>
+      ) : (
+        <FormControl disabled={disabled} id={inputId}>
+          <FormControl.Label>Descanso (segundos)</FormControl.Label>
+          <TextInput
+            type="number"
+            inputMode="numeric"
+            block
+            min={0}
+            max={900}
+            step={1}
+            value={item.rest_seconds ?? ''}
+            onChange={(event) => onPatch(item.exercise_id, 'rest_seconds', event.target.value)}
+          />
+          <FormControl.Caption>
+            0 desativa o descanso. Vazio volta para o seu padrão.
+          </FormControl.Caption>
+        </FormControl>
+      )}
+    </Box>
+  )
+}
 export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
   item,
   index,
   total,
   disabled,
+  defaultRestSeconds = null,
   onPatch,
   onMove,
   onRemove,
@@ -38,6 +96,9 @@ export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
   const [expanded, setExpanded] = useState(false)
   const panelId = useId()
   const name = item.exercise?.name || 'Exercício indisponível'
+  const cardio = item.exercise?.type === 'cardio'
+  // O cronômetro de descanso só existe entre séries: cardio mantém o campo numérico de antes.
+  const summary = prescription(item, cardio ? {} : { defaultRestSeconds })
   return (
     <Box
       as="li"
@@ -54,12 +115,12 @@ export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
       <Heading as="h3" sx={{ fontSize: 1, m: 0, overflowWrap: 'anywhere' }}>
         {index + 1}. {name}
       </Heading>
-      {prescription(item) && (
+      {summary && (
         <Text
           as="p"
           sx={{ fontSize: 0, color: 'fg.muted', mt: 1, mb: 2, overflowWrap: 'anywhere' }}
         >
-          {prescription(item)}
+          {summary}
         </Text>
       )}
       {item.available === false && (
@@ -136,9 +197,9 @@ export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
         >
           {fields
             .filter(([key]) =>
-              item.exercise?.type === 'cardio'
+              cardio
                 ? !['target_sets', 'reps_min', 'reps_max'].includes(key)
-                : !key.startsWith('target_d')
+                : !key.startsWith('target_d') && key !== 'rest_seconds'
             )
             .map(([key, label, min, max]) => (
               <FormControl key={key} disabled={disabled}>
@@ -154,6 +215,15 @@ export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
                 />
               </FormControl>
             ))}
+          {!cardio && (
+            <RestField
+              item={item}
+              name={name}
+              disabled={disabled}
+              defaultRestSeconds={defaultRestSeconds}
+              onPatch={onPatch}
+            />
+          )}
           <FormControl disabled={disabled} sx={{ gridColumn: '1 / -1' }}>
             <FormControl.Label>Observação pessoal</FormControl.Label>
             <Textarea

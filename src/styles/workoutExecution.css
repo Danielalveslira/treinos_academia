@@ -451,6 +451,80 @@
   text-decoration: underline;
   cursor: pointer;
 }
+.rest-timer {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--borderColor-muted);
+  border-radius: 12px;
+  background: var(--bgColor-default);
+}
+.rest-timer.is-compact {
+  margin: 0 0 10px;
+}
+.rest-timer-row,
+.rest-timer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+}
+.rest-timer-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--fgColor-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.rest-timer-origin {
+  font-weight: 400;
+}
+.rest-timer-clock {
+  color: var(--fgColor-default);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.rest-timer-track {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--borderColor-muted);
+}
+.rest-timer-bar {
+  display: block;
+  height: 100%;
+  background: var(--fitness-accent);
+  transform-origin: left center;
+  transition: transform 1s linear;
+}
+.rest-timer-duration {
+  color: var(--fgColor-muted);
+  font-size: 12px;
+}
+.rest-timer-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.rest-timer-action {
+  min-width: 56px;
+  min-height: 36px;
+}
+.rest-timer.is-done {
+  border-color: var(--fitness-accent);
+}
+.rest-timer.is-done .rest-timer-label {
+  color: var(--fitness-accent-strong);
+}
+.workout-execution .set-card .rest-timer + .set-card-complete {
+  margin-top: 10px;
+}
 .set-card-quick-actions {
   display: flex;
   flex-wrap: wrap;
@@ -544,7 +618,8 @@
     animation: none;
   }
   .set-card-complete,
-  .set-card-segment {
+  .set-card-segment,
+  .rest-timer-bar {
     transition: none;
   }
 }
