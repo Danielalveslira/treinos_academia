@@ -20,8 +20,8 @@ try {
     const documents = []
     page.on('request', (request) => { if (request.resourceType() === 'document') documents.push(request.url()) })
     for (const [path, heading] of [
-      ['/como-funciona', 'Como funciona'],
-      ['/para-empresas', 'Para empresas'],
+      ['/como-funciona', 'Seu treino organizado. Sua evolução visível.'],
+      ['/para-empresas', 'Sua marca no universo fitness.'],
       ['/vitrine', 'Vitrine'],
       ['/profissionais', 'Profissionais'],
     ]) {
@@ -65,14 +65,14 @@ try {
   noJs.on('request', (request) => { if (request.resourceType() === 'document') nativeDocuments++ })
   await noJs.locator('footer a[href="/como-funciona"]').click()
   await noJs.waitForURL(base + '/como-funciona')
-  assert.equal(await noJs.locator('h1').textContent(), 'Como funciona')
+  assert.equal(await noJs.locator('h1').textContent(), 'Seu treino organizado. Sua evolução visível.')
   assert.equal(nativeDocuments, 1)
   await noJs.close()
   const noJsMobile = await browser.newPage({ viewport: { width: 390, height: 800 }, javaScriptEnabled: false })
   await noJsMobile.goto(base + '/')
   await noJsMobile.locator('footer a[href="/como-funciona"]').click()
   await noJsMobile.waitForURL(base + '/como-funciona')
-  assert.equal(await noJsMobile.locator('h1').textContent(), 'Como funciona')
+  assert.equal(await noJsMobile.locator('h1').textContent(), 'Seu treino organizado. Sua evolução visível.')
   await noJsMobile.close()
   const fallback = await browser.newPage()
   await fallback.goto(base + '/')
@@ -87,7 +87,7 @@ try {
   })
   await fallback.locator('footer a[href="/como-funciona"]').click()
   await fallback.waitForURL(base + '/como-funciona')
-  await fallback.locator('h1').getByText('Como funciona').waitFor()
+  await fallback.locator('h1').getByText('Seu treino organizado. Sua evolução visível.').waitFor()
   assert.ok(aborted)
   assert.equal(await fallback.evaluate(() => window.failedVisitProof), undefined)
   await fallback.close()

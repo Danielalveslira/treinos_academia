@@ -147,7 +147,7 @@ export function demoReducer(state, action) {
       updateSetField(sets, key, action.field, action.value)
     )
   if (action.type === 'conclude') {
-    const result = concludeSet(exercise.sets, index)
+    const result = action.result || concludeSet(exercise.sets, index)
     if (!result) return state
     const next = changeExercise(state, action.id, () => result.sets)
     return {

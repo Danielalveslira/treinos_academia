@@ -16,8 +16,8 @@ try {
     page.on('pageerror', (error) => errors.push(error.message))
     for (const [path, heading] of [
       ['/', 'Planeje, registre e acompanhe seus treinos.'],
-      ['/como-funciona', 'Como funciona'],
-      ['/para-empresas', 'Para empresas'],
+      ['/como-funciona', 'Seu treino organizado. Sua evolução visível.'],
+      ['/para-empresas', 'Sua marca no universo fitness.'],
       ['/vitrine', 'Vitrine'],
       ['/profissionais', 'Profissionais'],
     ]) {
@@ -55,8 +55,8 @@ try {
     }
     await page.goto(base)
     for (const [href, heading] of [
-      ['/como-funciona', 'Como funciona'],
-      ['/para-empresas', 'Para empresas'],
+      ['/como-funciona', 'Seu treino organizado. Sua evolução visível.'],
+      ['/para-empresas', 'Sua marca no universo fitness.'],
       ['/vitrine', 'Vitrine'],
       ['/profissionais', 'Profissionais'],
     ]) {

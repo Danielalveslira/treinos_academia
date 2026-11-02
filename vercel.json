@@ -7,12 +7,12 @@
   },
   "redirects": [
     {
-      "source": "/:page(como-funciona|para-empresas|vitrine|profissionais|locais|demo).html",
+      "source": "/:page(como-funciona|para-empresas|vitrine|profissionais|locais|demo|demo-preview).html",
       "destination": "/:page",
       "statusCode": 301
     },
     {
-      "source": "/:page(como-funciona|para-empresas|vitrine|profissionais|locais|demo)/",
+      "source": "/:page(como-funciona|para-empresas|vitrine|profissionais|locais|demo|demo-preview)/",
       "destination": "/:page",
       "statusCode": 301
     },
@@ -69,6 +69,10 @@
       "destination": "/demo.html"
     },
     {
+      "source": "/demo-preview",
+      "destination": "/demo-preview.html"
+    },
+    {
       "source": "/para-empresas",
       "destination": "/para-empresas.html"
     },
@@ -96,7 +100,7 @@
       ]
     },
     {
-      "source": "/(index|app-shell|como-funciona|para-empresas|vitrine|profissionais|demo).html",
+      "source": "/(index|app-shell|como-funciona|para-empresas|vitrine|profissionais|demo|demo-preview).html",
       "headers": [
         {
           "key": "Cache-Control",

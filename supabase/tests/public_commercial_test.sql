@@ -31,9 +31,15 @@ select lives_ok($$ select public.submit_commercial_lead(
   'Empresa', 'Contato', 'LEAD@example.com', null, 'Fitness', 'https://example.com',
   'Publicidade', 'Mensagem comercial suficientemente longa', true, '') $$,
   'validated anonymous submission persists');
+select lives_ok($$ select public.submit_commercial_lead(
+  'Empresa sem site', 'Contato', 'sem-site@example.com', null, 'Fitness', '',
+  'Vitrine de produtos', 'Proposta comercial sem site para avaliação', true, '') $$,
+  'website is optional for a validated anonymous proposal');
 reset role;
 select is((select count(*)::int from public.commercial_leads where email = 'lead@example.com'), 1,
   'email is normalized and exactly one contact was stored');
+select is((select website from public.commercial_leads where email = 'sem-site@example.com'), '',
+  'missing website is stored without inventing a URL');
 set local role anon;
 select lives_ok($$ select public.submit_commercial_lead(
   'Empresa', 'Contato', 'lead@example.com', null, 'Fitness', 'https://example.com',

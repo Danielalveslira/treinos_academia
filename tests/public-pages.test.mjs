@@ -23,10 +23,19 @@ test('demo pública tem conteúdo inicial, SEO, navegação e bundle próprios',
   assert.match(html, /href="\/cadastro">Criar conta e registrar meus treinos/)
   assert.equal((html.match(/id="public-header-menu-root"/g) || []).length, 1)
   assert.equal((html.match(/id="demo-root"/g) || []).length, 1)
+  assert.match(html, /class="demo-phone"/)
+  assert.match(html, /class="demo-static-card"/)
+  assert.match(html, /assets\/workoutDemo-[^" ]+\.css/)
+  assert.match(html, /assets\/publicTurbo-[^" ]+\.js/)
   assert.match(html, /assets\/workoutDemo-[^" ]+\.js/)
-  assert.match(home, /href="\/demo"/)
+  assert.match(home, /href="\/demo"[^>]*data-turbo="true"/)
   assert.match(sitemap, /<loc>https:\/\/www\.evolutus\.com\.br\/demo<\/loc>/)
   assert.ok(config.rewrites.some((route) => route.source === '/demo' && route.destination === '/demo.html'))
+  const preview = readFileSync('dist/demo-preview.html', 'utf8')
+  assert.match(preview, /<meta name="robots" content="noindex,follow">/)
+  assert.match(preview, /<link rel="canonical" href="https:\/\/www\.evolutus\.com\.br\/demo">/)
+  assert.ok(!sitemap.includes('<loc>https://www.evolutus.com.br/demo-preview</loc>'))
+  assert.ok(config.rewrites.some((route) => route.source === '/demo-preview' && route.destination === '/demo-preview.html'))
 })
 
 test('build entrega HTML específico e completo antes de JavaScript', () => {
@@ -134,7 +143,8 @@ test('header público concentra ações e menu em componentes Primer', () => {
     assert.match(html, /id="public-header-menu-root" class="public-header-menu-root"><button data-component="IconButton"[^>]*aria-label="Menu de navegação"/)
     assert.equal((html.match(/id="public-theme-root"/g) || []).length, 1)
     assert.equal((html.match(/id="public-header-menu-root"/g) || []).length, 1)
-    assert.doesNotMatch(html, /public-header-fallback|<summary/)
+    const header = html.match(/<header id="public-header"[\s\S]*?<\/header>/)?.[0] || ''
+    assert.doesNotMatch(header, /public-header-fallback|<summary/)
     for (const href of ['/', '/login', '/cadastro'])
       assert.match(html, new RegExp(`href="${href}"`))
     assert.doesNotMatch(html, /public-menu-trigger|public-menu-panel|\/funcionalidades|\/guia-registro-treino/)
@@ -145,7 +155,7 @@ test('links internos e âncoras das cinco páginas têm destino', () => {
   const config = JSON.parse(readFileSync('vercel.json', 'utf8'))
   const fallback = config.rewrites.find((route) => route.destination === '/app-shell.html')
   const appRoute = new RegExp(`^${fallback.source.match(/^\/:path\((.*)\)$/)[1]}$`)
-  const publicPaths = new Set([...routes.map(([path]) => path), '/demo'])
+  const publicPaths = new Set([...routes.map(([path]) => path), '/demo', '/locais'])
   for (const [, file] of routes) {
     const html = readFileSync(`dist/${file}`, 'utf8')
     const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]))
@@ -177,8 +187,43 @@ test('variantes públicas redirecionam para URL limpa e como-funciona entra no s
   assert.ok(redirectSources.some((source) => source.endsWith('/')))
   assert.ok(config.rewrites.some((route) => route.source === '/como-funciona'))
   const html = readFileSync('dist/como-funciona.html', 'utf8')
-  assert.match(html, /<h1[^>]*>Como funciona<\/h1>/)
+  assert.match(html, /<h1[^>]*>Seu treino organizado\. Sua evolução visível\.<\/h1>/)
   assert.match(readFileSync('dist/sitemap.xml', 'utf8'), /<loc>https:\/\/www\.evolutus\.com\.br\/como-funciona<\/loc>/)
+})
+
+test('como-funciona entrega seis seções, exemplos honestos e CTA da demo no HTML inicial', () => {
+  const html = readFileSync('dist/como-funciona.html', 'utf8')
+  assert.match(html, /href="\/public-how-it-works\.css"/)
+  assert.equal((html.match(/<h1\b/g) || []).length, 1)
+  assert.equal((html.match(/<section class="[^"]*how-(?:hero|steps-section|demo-section|insights-section|more-section|final)\b/g) || []).length, 6)
+  for (const text of [
+    'Seu treino organizado. Sua evolução visível.',
+    'Entenda em três passos',
+    'Não precisa imaginar. Experimente.',
+    'Seus registros organizados para você acompanhar seu progresso.',
+    'Conheça mais possibilidades',
+    'Seu próximo treino pode ser mais organizado.',
+    'Exemplo ilustrativo',
+  ]) assert.ok(html.includes(text), text)
+  assert.match(html, /href="\/demo"[^>]*data-turbo="true"/)
+  assert.match(html, /href="\/cadastro"/)
+  assert.match(html, /<link rel="canonical" href="https:\/\/www\.evolutus\.com\.br\/como-funciona">/)
+  assert.doesNotMatch(html, /<script[^>]+src="\/assets\/(?:main|workoutDemo)-/)
+})
+
+test('para-empresas entrega quatro seções e formulário comercial no HTML inicial', () => {
+  const html = readFileSync('dist/para-empresas.html', 'utf8')
+  assert.match(html, /href="\/public-for-business\.css"/)
+  assert.match(html, /<link rel="canonical" href="https:\/\/www\.evolutus\.com\.br\/para-empresas">/)
+  assert.equal((html.match(/<h1\b/g) || []).length, 1)
+  assert.equal((html.match(/<section class="[^"]*business-(?:hero|offerings|process|contact)\b/g) || []).length, 4)
+  for (const text of ['Sua marca no universo fitness.', 'Anúncios patrocinados', 'Vitrine de produtos', 'Simples de começar.', 'Vamos conversar sobre seu negócio?'])
+    assert.ok(html.includes(text), text)
+  for (const name of ['company', 'contact', 'email', 'segment', 'modality', 'message', 'whatsapp', 'website', 'privacy', 'honeypot'])
+    assert.match(html, new RegExp(`name="${name}"`))
+  assert.match(html, /href="#proposta"/)
+  assert.match(html, /id="proposta"/)
+  assert.doesNotMatch(html, /<script[^>]+src="\/assets\/(?:main|CommercialAdmin)-/)
 })
 
 test('home usa uma imagem oficial otimizada', () => {
@@ -213,18 +258,11 @@ test('Primer é renderizado no HTML público sem carregar o shell React', () => 
   }
 })
 
-test('rotas em reconstrução têm esqueleto mínimo, sem UI legada', () => {
-  for (const [file, label] of [
-    ['como-funciona.html', 'Como funciona'],
-    ['para-empresas.html', 'Para empresas'],
-    ['profissionais.html', 'Profissionais'],
-  ]) {
-    const html = readFileSync(`dist/${file}`, 'utf8')
-    assert.match(html, new RegExp(`<h1[^>]*>${label}</h1>`))
-    assert.equal((html.match(/<h1/g) || []).length, 1)
-    assert.match(html, /<main id="content" tabindex="-1"><section class="Box-[^"]+"><h1 class="prc-Heading-[^"]+">[^<]+<\/h1><\/section><\/main>/)
-    assert.doesNotMatch(html, /commercial-form|catalog-filters|professional-filters|product-preview-root|profile-preview-root|directory-grid|products-list|journey-row|faq-section/)
-  }
+test('páginas informativas não reintroduzem interfaces legadas', () => {
+  const html = readFileSync('dist/profissionais.html', 'utf8')
+  assert.match(html, /<h1[^>]*>Profissionais<\/h1>/)
+  assert.equal((html.match(/<h1/g) || []).length, 1)
+  assert.doesNotMatch(html, /commercial-form|catalog-filters|professional-filters|product-preview-root|profile-preview-root|directory-grid|products-list|journey-row|faq-section/)
   assert.ok(!existsSync('public/public-products.js'))
   assert.ok(!existsSync('public/public-professionals.js'))
   assert.ok(!existsSync('dist/public-config.js'))
@@ -237,7 +275,7 @@ test('Vitrine reconstruída: cabeçalho compacto real e ilha do catálogo sob de
   const html = readFileSync('dist/vitrine.html', 'utf8')
   assert.match(html, /<h1[^>]*>Vitrine<\/h1>/)
   assert.equal((html.match(/<h1/g) || []).length, 1)
-  assert.match(html, /Produtos de marcas parceiras, em um só lugar\./)
+  assert.match(html, /Produtos de vitrines aprovadas, em um só lugar\./)
   assert.match(html, /<section class="[^"]*\bvitrine-head\b[^"]*">/)
   assert.match(html, /<section class="vitrine-catalog" aria-label="Catálogo de produtos de marcas parceiras">/)
   assert.match(html, /<div id="vitrine-root">/)
@@ -267,7 +305,7 @@ test('diretório público precede o shell e detalhes legados continuam no shell 
   const directory = config.rewrites.findIndex((route) => route.source === '/profissionais')
   const shell = config.rewrites.findIndex((route) => route.destination === '/app-shell.html')
   assert.ok(directory >= 0 && directory < shell)
-  assert.equal(config.rewrites[directory].destination, '/profissionais.html')
+  assert.equal(config.rewrites[directory].destination, '/api/listings?kind=professional')
   const fallback = new RegExp(`^${config.rewrites[shell].source.match(/^\/:path\((.*)\)$/)[1]}$`)
   assert.equal(fallback.test('profissionais'), false)
   assert.equal(fallback.test('profissionais/11111111-1111-1111-1111-111111111111'), true)

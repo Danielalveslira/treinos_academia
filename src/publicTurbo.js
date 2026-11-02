@@ -10,6 +10,8 @@ const paths = new Set([
   '/vitrine',
   '/profissionais',
   '/locais',
+  '/demo',
+  '/demo-preview',
 ])
 let visitAction = null
 
@@ -55,6 +57,14 @@ document.addEventListener('turbo:load', () => {
   if (document.getElementById('public-listings-root'))
     import('./features/publicListings/mountPublicListings.jsx').then((module) =>
       module.mountPublicListings()
+    )
+
+  if (document.getElementById('demo-root'))
+    import('./workoutDemoEntry.jsx').then((module) => module.mountWorkoutDemo())
+
+  if (document.getElementById('commercial-lead-form'))
+    import('./features/publicCommercial/mountCommercialLeadForm.js').then((module) =>
+      module.mountCommercialLeadForm()
     )
 
   // The head bootstrap runs on a direct Home load. Turbo may keep that script in

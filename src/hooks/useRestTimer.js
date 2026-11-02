@@ -10,17 +10,18 @@ import {
 // Um único descanso ativo por sessão de treino. O estado só muda ao iniciar, acrescentar, pular ou
 // expirar — nunca a cada segundo (o tique visual fica isolado em RestTimer.jsx). `scope` identifica a
 // sessão (usuário + ficha + dia); sem scope (edição de histórico) o cronômetro fica desligado.
+// `persist: false` mantém a mesma contagem apenas em memória para a demonstração pública.
 //
 // Nenhuma função daqui lança: uma falha do cronômetro nunca pode atrapalhar o registro da série.
-export function useRestTimer(scope) {
-  const [rest, setRest] = useState(() => (scope ? loadStoredRest(scope) : null))
+export function useRestTimer(scope, { persist = true } = {}) {
+  const [rest, setRest] = useState(() => (scope && persist ? loadStoredRest(scope) : null))
   const restRef = useRef(rest)
 
   const commit = useCallback((next) => {
     restRef.current = next
     setRest(next)
-    saveStoredRest(next)
-  }, [])
+    if (persist) saveStoredRest(next)
+  }, [persist])
 
   const start = useCallback(
     ({ exerciseId, setKey, restSeconds }) => {

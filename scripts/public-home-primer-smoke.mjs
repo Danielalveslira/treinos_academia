@@ -69,12 +69,12 @@ try {
       await page.goto(base)
       await page.locator('main a[href="/como-funciona"]').click()
       await page.waitForURL(`${base}/como-funciona`)
-      assert.equal((await page.locator('h1').textContent()).trim(), 'Como funciona')
+      assert.equal((await page.locator('h1').textContent()).trim(), 'Seu treino organizado. Sua evolução visível.')
       if (width === 390 && theme === 'light') {
         for (const [path, heading] of [
           ['/profissionais', 'Profissionais'],
           ['/vitrine', 'Vitrine'],
-          ['/para-empresas', 'Para empresas'],
+          ['/para-empresas', 'Sua marca no universo fitness.'],
         ]) {
           await page.goto(base)
           await page.locator(`main a[href="${path}"]`).click()
