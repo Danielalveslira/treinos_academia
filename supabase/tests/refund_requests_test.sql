@@ -75,6 +75,11 @@ select is((select sum(case when direction='credit' then amount else -amount end)
 select is(private.refund_deadline('2026-10-29T23:30:00-03:00',7),'2026-11-05T23:59:59.999999-03:00'::timestamptz,'civil calendar end-of-day, not 168 hours');
 select is(private.refund_deadline('2018-11-03T22:30:00-03:00',7),'2018-11-10T23:59:59.999999-02:00'::timestamptz,'historical Brazil DST handled by database timezone');
 select ok(not exists(select 1 from public.notifications where entity_type='refund_request' and metadata<>'{}'::jsonb),'notifications have no financial or complaint payload');
+select ok(not exists(select 1 from public.notifications n join public.refund_request_events e on n.dedupe_key='refund-event:'||e.id
+  where n.recipient_id=e.actor_id),'requester is never notified about an event they authored');
+select ok(exists(select 1 from public.notifications n join public.refund_request_events e on n.dedupe_key='refund-event:'||e.id
+  join public.refund_requests r on r.id=e.request_id where n.recipient_id=r.requester_id and e.actor_id<>r.requester_id),
+  'requester is still notified about administrative actions');
 select pg_temp.set_test_user('fa000000-0000-0000-0000-000000000001',true);
 select pg_temp.revoke_test_session('fa000000-0000-0000-0000-000000000001');
 select throws_ok($$select public.list_refund_requests()$$,'42501','APP_ACCESS_DENIED','revoked session cannot access cases');

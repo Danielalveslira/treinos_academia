@@ -58,7 +58,9 @@ select is(public.get_my_push_status()->>'registrationAllowed','false','dispositi
 select throws_ok($$select public.register_push_subscription('https://fcm.googleapis.com/fcm/send/new-after-global-off',repeat('q',32),repeat('b',16))$$,'PUSH_ACTIVATION_REQUIRED','trocar endpoint não ressuscita dispositivo via sync');
 select ok(not has_function_privilege('authenticated','private.write_push_subscription(text,text,text,text,text,text,boolean)','execute'),'bypass explícito privado não é executável por clientes');
 reset role;
-select is((select categories from public.push_notification_preferences where user_id='d2000000-0000-0000-0000-000000000001'),'{"social":false,"account":true}'::jsonb,'categorias preservadas');
+-- Controle único (20261210000001): a ativação geral religa TODAS as categorias; não há interface por categoria.
+select ok((select bool_and(value='true') from public.push_notification_preferences p, jsonb_each_text(p.categories)
+  where p.user_id='d2000000-0000-0000-0000-000000000001'),'ativação geral não deixa categoria silenciada');
 select ok((select activation_required and revoked_at is not null from public.push_subscriptions where endpoint like '%/direct-other'),'hold persistido no servidor');
 set local role authenticated;
 select pg_temp.set_test_user('d2000000-0000-0000-0000-000000000001',true);
