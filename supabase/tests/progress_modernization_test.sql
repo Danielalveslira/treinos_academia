@@ -32,6 +32,9 @@ select is((public.get_my_progress_sheet_summary((now() at time zone 'America/Sao
 select is((public.get_my_progress_sheet_summary((now() at time zone 'America/Sao_Paulo')::date,(now() at time zone 'America/Sao_Paulo')::date)->>'completedOccurrences')::int,0,'sets do not conclude a sheet');
 select is((public.get_my_progress_sheet_summary((now() at time zone 'America/Sao_Paulo')::date,(now() at time zone 'America/Sao_Paulo')::date)->>'exerciseRecords')::int,3,'legacy unlinked row stays counted');
 select is((public.get_my_progress_sheet_summary((now() at time zone 'America/Sao_Paulo')::date,(now() at time zone 'America/Sao_Paulo')::date)->>'completedExercises')::int,1,'explicit exercise completion only for partial rows');
+-- 20261212000001: medida corporal exige o consentimento específico vigente.
+select throws_ok('select public.save_body_check_in(jsonb_build_object(''date'',(now() at time zone ''America/Sao_Paulo'')::date,''weightKg'',80))','42501','HEALTH_CONSENT_REQUIRED','body measurement needs specific health consent');
+select lives_ok($$select public.set_privacy_consent('health_data',true,'health-data-1','feature_prompt')$$,'user grants specific health consent');
 select throws_ok('select public.save_body_check_in(''{"date":"2999-01-01","weightKg":80}''::jsonb)','P0001','INVALID_DATE','future measurement rejected atomically');
 select throws_ok('select public.save_body_check_in(jsonb_build_object(''date'',(now() at time zone ''America/Sao_Paulo'')::date,''weightKg'',401))','P0001','INVALID_MEASUREMENT','implausible weight rejected by server');
 select throws_ok('select public.save_body_check_in(jsonb_build_object(''date'',(now() at time zone ''America/Sao_Paulo'')::date,''weightKg'',80,''note'',repeat(''x'',301)))','23514',null,'note limit matches the form');
