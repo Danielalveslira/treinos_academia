@@ -1,0 +1,82 @@
+{
+  "approved": false,
+  "date": "AAAA-MM-DD",
+  "documentId": "cancellation-refund-policy",
+  "version": "1.0.0",
+  "title": "Política de Cancelamento, Arrependimento e Reembolsos",
+  "description": "Como desistir de uma compra, pedir reembolso e acompanhar o pedido.",
+  "changes": [
+    "Primeira versão pública. Substitui a minuta interna draft-1 após aprovação."
+  ],
+  "summary": [
+    "Quando aplicável, você pode desistir em até 7 dias da compra ou contratação, sem precisar justificar.",
+    "Depois desse prazo continuam valendo pedidos por cobrança indevida, falha do serviço ou descumprimento da oferta.",
+    "Cada pedido recebe protocolo, pode ser acompanhado no app e, se recusado, contestado.",
+    "A duração contratada (dias de vitrine ou anúncio) não é o prazo de arrependimento."
+  ],
+  "sections": [
+    {
+      "id": "arrependimento",
+      "title": "1. Direito de arrependimento",
+      "items": [
+        "Nas compras feitas pelo aplicativo, quando aplicável o art. 49 do Código de Defesa do Consumidor, você pode desistir em até 7 dias.",
+        "Para compra de EvoCash o prazo conta a partir da confirmação do pagamento e da liberação dos créditos; para contratações de anúncios, impulsionamentos e vitrines, a partir da confirmação da contratação. [PENDENTE — validação jurídica do marco inicial por modalidade.]",
+        "O motivo é opcional no pedido por arrependimento.",
+        "[PENDENTE — decisão jurídica: efeitos do arrependimento sobre serviço já iniciado ou créditos já consumidos, sem fórmula automática até aprovação.]"
+      ]
+    },
+    {
+      "id": "outros",
+      "title": "2. Outros pedidos",
+      "items": [
+        "Cobrança em duplicidade, cobrança indevida, créditos não liberados, falha do serviço, suspensão indevida e descumprimento da oferta podem ser pedidos a qualquer tempo, observados os prazos legais.",
+        "Nesses casos, descreva o ocorrido para permitir a análise."
+      ]
+    },
+    {
+      "id": "como",
+      "title": "3. Como pedir e acompanhar",
+      "items": [
+        "Pelo aplicativo, na compra ou contratação correspondente. O pedido recebe protocolo e data de recebimento.",
+        "Você acompanha o andamento, as mensagens e a decisão no mesmo protocolo.",
+        "Nunca pedimos senha, número completo do cartão ou dados bancários.",
+        "Se o aplicativo estiver indisponível, use o atendimento e informe a tentativa; o atraso causado pela indisponibilidade não prejudica seu direito."
+      ]
+    },
+    {
+      "id": "analise",
+      "title": "4. Análise e decisão",
+      "items": [
+        "A decisão é fundamentada e pode ser contestada no próprio protocolo.",
+        "A classificação de quem contrata (pessoa física, profissional ou empresa) é analisada caso a caso, sem exclusão automática do Código de Defesa do Consumidor.",
+        "Durante a análise de reembolso de EvoCash, créditos disponíveis podem ficar reservados; reserva não é consumo."
+      ]
+    },
+    {
+      "id": "devolucao",
+      "title": "5. Como o valor é devolvido",
+      "items": [
+        "Valores em reais, quando devidos, são devolvidos pelo canal oficial da InfinitePay para o meio de pagamento original. O prazo de crédito depende do meio de pagamento e do emissor.",
+        "Reembolso de contratação paga com EvoCash é feito em EvoCash, com o encerramento do período correspondente, sem prejuízo de restituição em dinheiro quando a lei exigir.",
+        "Não há desconto, taxa ou fórmula proporcional automática."
+      ]
+    },
+    {
+      "id": "comprovantes",
+      "title": "6. Comprovantes",
+      "items": [
+        "Comprovantes, condições aceitas e protocolos continuam acessíveis mesmo após novas versões dos documentos ou o fim da contratação, inclusive para quem ainda não aceitou uma nova versão dos Termos de Uso."
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "label": "Código de Defesa do Consumidor — Lei nº 8.078/1990",
+      "href": "https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm"
+    },
+    {
+      "label": "Decreto nº 7.962/2013 (comércio eletrônico)",
+      "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm"
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "approved": false,
+  "date": "AAAA-MM-DD",
+  "documentId": "advertising-terms",
+  "version": "1.0.0",
+  "title": "Termos de Publicidade e Impulsionamento",
+  "description": "Condições para contratar anúncios e impulsionar publicações ou comunidades no Evolutus.",
+  "changes": [
+    "Primeira versão dos Termos de Publicidade e Impulsionamento."
+  ],
+  "summary": [
+    "Anúncios e impulsionamentos são contratados por dias, pagos em EvoCash e só entram no ar depois de aprovados.",
+    "Todo conteúdo pago é identificado como “Patrocinado”.",
+    "Não garantimos visualizações, cliques ou resultados. A exibição é por rotação entre anúncios ativos.",
+    "Não há direcionamento por perfil, e menores de 18 anos não contratam."
+  ],
+  "sections": [
+    {
+      "id": "oferta",
+      "title": "1. O que pode ser contratado",
+      "items": [
+        "Anúncios na Home, em comunidades (banner e feed) e em posicionamentos elegíveis exibidos na contratação.",
+        "Impulsionamento de publicações e de comunidades elegíveis.",
+        "Apenas os serviços com contratação disponível no aplicativo podem ser contratados. Recursos desativados não são vendidos."
+      ]
+    },
+    {
+      "id": "contratacao",
+      "title": "2. Contratação, preço e período",
+      "items": [
+        "A contratação é por número inteiro de dias, ao preço diário vigente em EvoCash, dentro dos limites mínimo e máximo exibidos.",
+        "A cotação mostra duração, preço por dia, total e validade. Ao confirmar você aceita estes Termos na versão exibida, e o aceite é registrado com essas condições.",
+        "Não há renovação automática. Uma nova contratação começa depois do período em vigor."
+      ]
+    },
+    {
+      "id": "revisao",
+      "title": "3. Análise e aprovação",
+      "items": [
+        "Todo conteúdo passa por análise antes de ser exibido e pode ser recusado se violar estes Termos, as Regras da Comunidade ou a lei.",
+        "Alterações no conteúdo exigem nova análise. Enquanto isso, a última versão aprovada continua sendo a exibida, quando aplicável.",
+        "Pagamento não garante aprovação nem afasta suspensão."
+      ]
+    },
+    {
+      "id": "exibicao",
+      "title": "4. Exibição e métricas",
+      "items": [
+        "Anúncios são identificados como “Patrocinado”.",
+        "A escolha do anúncio exibido é feita por rotação aleatória entre os anúncios ativos de cada posição, sem uso de perfil do usuário.",
+        "O anunciante recebe totais de visualizações e cliques, sem dados de pessoas. Contas de menores de 18 anos não entram na contagem.",
+        "Não há garantia de número mínimo de exibições, cliques, contatos ou vendas."
+      ]
+    },
+    {
+      "id": "conteudo",
+      "title": "5. Conteúdo proibido",
+      "items": [
+        "Produtos ou serviços ilegais, substâncias controladas ou anabolizantes sem prescrição, promessas enganosas de resultado físico ou de saúde, conteúdo sexual, discriminatório ou que viole direitos de terceiros.",
+        "Publicidade dirigida a crianças ou que explore a vulnerabilidade de adolescentes."
+      ]
+    },
+    {
+      "id": "suspensao",
+      "title": "6. Suspensão e encerramento",
+      "items": [
+        "Um anúncio pode ser suspenso por irregularidade, denúncia procedente ou ordem legal, com motivo registrado e direito de recurso.",
+        "[PENDENTE — decisão comercial/jurídica: compensação ou reembolso proporcional de dias não exibidos por suspensão sem culpa do anunciante e por indisponibilidade técnica.]",
+        "Arrependimento, cancelamento e reembolso seguem a Política de Cancelamento, Arrependimento e Reembolsos vigente na data da contratação, cuja versão fica registrada no comprovante."
+      ]
+    },
+    {
+      "id": "responsabilidade",
+      "title": "7. Responsabilidade do anunciante",
+      "items": [
+        "O anunciante é responsável pela veracidade do conteúdo, pelos direitos sobre textos, imagens e marcas e pela oferta anunciada.",
+        "Relações entre anunciante e público são de responsabilidade do anunciante. O Evolutus não intermedeia essas vendas."
+      ]
+    },
+    {
+      "id": "menores",
+      "title": "8. Menores de idade",
+      "items": [
+        "Contas de menores de 18 anos não contratam publicidade nem impulsionamento.",
+        "O Evolutus não usa perfilamento para direcionar publicidade a crianças e adolescentes (Lei nº 15.211/2025, art. 22)."
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "label": "Código de Defesa do Consumidor — Lei nº 8.078/1990",
+      "href": "https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm"
+    },
+    {
+      "label": "Decreto nº 7.962/2013 (comércio eletrônico)",
+      "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm"
+    },
+    {
+      "label": "ECA Digital — Lei nº 15.211/2025",
+      "href": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15211.htm"
+    }
+  ]
+}

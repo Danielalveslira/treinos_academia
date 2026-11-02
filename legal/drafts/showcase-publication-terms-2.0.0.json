@@ -1,0 +1,104 @@
+{
+  "approved": false,
+  "date": "AAAA-MM-DD",
+  "documentId": "showcase-publication-terms",
+  "version": "2.0.0",
+  "title": "Termos das Vitrines",
+  "description": "Condições para contratar e manter vitrines públicas de profissionais, espaços e produtos.",
+  "changes": [
+    "Substitui as versões 1.x: a vitrine passa a ser contratada por período em EvoCash, publicada só depois de aprovada e retirada ao fim do período contratado.",
+    "Contratação registrada com aceite da versão exata e das condições."
+  ],
+  "summary": [
+    "A vitrine é contratada por dias, paga em EvoCash, e só é publicada depois de aprovada.",
+    "Ao fim do período contratado ela sai do ar e pode ser contratada de novo.",
+    "O titular responde pelas informações publicadas. O Evolutus não certifica credenciais nem intermedeia contratações feitas pelos contatos externos.",
+    "Menores de 18 anos não contratam vitrines."
+  ],
+  "sections": [
+    {
+      "id": "finalidade",
+      "title": "1. Finalidade",
+      "paragraphs": [
+        "A Vitrine apresenta profissionais, espaços de prática física e produtos no diretório público do Evolutus e permite contato por canais externos.",
+        "O contato e eventual contratação acontecem diretamente entre visitante e titular, fora do Evolutus. O Evolutus não vende esses serviços ou produtos nem intermedeia pagamentos entre eles."
+      ]
+    },
+    {
+      "id": "contratacao",
+      "title": "2. Contratação e período",
+      "items": [
+        "A publicação é contratada por número inteiro de dias, ao preço diário vigente em EvoCash para o tipo de vitrine, dentro dos limites exibidos.",
+        "Ao confirmar você aceita estes Termos na versão exibida; o aceite é registrado com duração, preço e total.",
+        "Não há renovação automática. Contratar novamente estende a publicação a partir do fim do período em vigor."
+      ]
+    },
+    {
+      "id": "aprovacao",
+      "title": "3. Análise, publicação e alterações",
+      "items": [
+        "A vitrine só é publicada depois de aprovada e enquanto houver período contratado ativo. Pagar não garante aprovação.",
+        "Alterações exigem nova análise; até a aprovação, a última versão aprovada continua sendo a exibida.",
+        "[PENDENTE — decisão comercial: tratamento do valor pago quando a vitrine não é aprovada ou é recusada após a contratação.]"
+      ]
+    },
+    {
+      "id": "dados-publicos",
+      "title": "4. Dados exibidos publicamente",
+      "items": [
+        "Nome profissional ou comercial, tipo, categoria, modalidades e especialidades, apresentação, cidade e UF, forma de atendimento, links externos de contato, imagens e produtos cadastrados.",
+        "Avatar de vitrine profissional só com autorização específica do titular.",
+        "Qualquer visitante, inclusive sem login, vê a vitrine publicada."
+      ]
+    },
+    {
+      "id": "responsabilidade",
+      "title": "5. Responsabilidade do titular",
+      "items": [
+        "O titular declara ter autorização para divulgar nomes, textos, imagens, marcas e contatos fornecidos e mantê-los corretos e lícitos.",
+        "É proibido informação enganosa, identidade de terceiros, promessa falsa, conteúdo ilícito ou que viole direitos.",
+        "A aprovação não certifica formação, registro profissional, qualidade ou resultados."
+      ]
+    },
+    {
+      "id": "expiracao",
+      "title": "6. Expiração, arquivamento, suspensão e exclusão",
+      "items": [
+        "Ao fim do período contratado a vitrine sai do diretório; os dados ficam guardados para nova contratação até você excluí-la.",
+        "A vitrine pode ser suspensa por irregularidade, denúncia procedente, perda das condições de divulgação ou ordem legal, com motivo registrado e direito de recurso. Pagamento não remove a suspensão.",
+        "[PENDENTE — decisão comercial/jurídica: compensação de dias perdidos por suspensão sem culpa do titular ou por indisponibilidade técnica.]",
+        "A exclusão remove a vitrine e suas mídias operacionais, ressalvados registros de contratação, aceite e moderação mantidos por obrigação legal ou defesa de direitos.",
+        "Arrependimento, cancelamento e reembolso seguem a Política de Cancelamento, Arrependimento e Reembolsos vigente na data da contratação, cuja versão fica registrada no comprovante."
+      ]
+    },
+    {
+      "id": "menores",
+      "title": "7. Menores de idade",
+      "items": [
+        "Contas de menores de 18 anos não contratam vitrines."
+      ]
+    },
+    {
+      "id": "versoes",
+      "title": "8. Atualizações",
+      "items": [
+        "Novas versões valem para novas contratações. Contratações anteriores seguem a versão aceita, registrada no comprovante.",
+        "Vitrines já publicadas não são retiradas do ar apenas por existir nova versão destes Termos."
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "label": "Código de Defesa do Consumidor — Lei nº 8.078/1990",
+      "href": "https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm"
+    },
+    {
+      "label": "Decreto nº 7.962/2013 (comércio eletrônico)",
+      "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm"
+    },
+    {
+      "label": "LGPD — Lei nº 13.709/2018",
+      "href": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm"
+    }
+  ]
+}
