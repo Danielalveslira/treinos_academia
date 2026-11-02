@@ -83,6 +83,7 @@ main#content { max-width: 1200px; }
   width: 100%;
 }
 .site-footer .footer-link,
+.site-footer .footer-link:visited,
 .footer-copyright {
   color: var(--fgColor-muted);
   font-size: 12px;
@@ -94,8 +95,8 @@ main#content { max-width: 1200px; }
   min-height: 28px;
   text-decoration: none;
 }
-.site-footer .footer-link:hover,
-.footer-brand:hover { color: var(--fitness-accent-strong); text-decoration: underline; }
+.site-footer .footer-link:is(:hover, :focus-visible, :active),
+.footer-brand:is(:hover, :focus-visible, :active) { color: var(--fitness-accent-strong); text-decoration: underline; }
 .footer-copyright { white-space: nowrap; }
 @media (min-width: 900px) {
   .site-footer { padding: 14px 32px; }

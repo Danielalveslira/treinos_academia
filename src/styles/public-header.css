@@ -34,6 +34,13 @@
 #public-header .brand-mark-letter { fill: var(--fitness-ink); }
 #public-header .public-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
 #public-header .public-header-account { white-space: nowrap; }
+#public-header .public-header-signup:is(:link, :visited, :hover, :focus, :active),
+#public-header .public-header-app-link:is(:link, :visited, :hover, :focus, :active) {
+  color: var(--fgColor-onEmphasis, #fff);
+}
+#public-header .public-header-login:is(:link, :visited, :hover, :focus, :active) {
+  color: var(--fgColor-default);
+}
 #public-header .public-header-guest-actions { display: inline-flex; align-items: center; gap: 8px; }
 /* Estado de autenticação do cabeçalho público (definido em publicHeaderAuth.js, a partir
    da mesma sessão Supabase do app): por padrão (sem o atributo, ou 'guest') mostra
