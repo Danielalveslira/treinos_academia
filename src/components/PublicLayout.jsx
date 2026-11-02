@@ -63,10 +63,13 @@ export function PublicLayout({ children }) {
   )
 }
 
-export function AuthLayout({ children, title, description, footer }) {
+// `variant="signup"`: cadastro em etapas -- arte lateral simplificada no desktop e oculta em telas
+// estreitas (formulário primeiro). `titleRef`: permite à página levar o foco ao título (troca de etapa).
+// Sem essas props, Login/recuperação continuam exatamente como antes.
+export function AuthLayout({ children, title, description, footer, variant, titleRef }) {
   return (
     <PublicLayout>
-      <div className="auth-layout">
+      <div className={variant ? `auth-layout auth-layout--${variant}` : 'auth-layout'}>
         <section className="auth-intro" aria-label="Sobre o Evolutus">
           <ResponsivePicture
             className="auth-cover"
@@ -125,7 +128,9 @@ export function AuthLayout({ children, title, description, footer }) {
             <span className="auth-heading-icon">
               <BrandMark size={26} />
             </span>
-            <h1 id="auth-title">{title}</h1>
+            <h1 id="auth-title" ref={titleRef} tabIndex={titleRef ? -1 : undefined}>
+              {title}
+            </h1>
             <p className="auth-description">{description}</p>
             {children}
           </div>

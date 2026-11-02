@@ -69,9 +69,13 @@ export function validateBirthDate(dateString, { minimumAge } = {}) {
   return errors
 }
 
-export function validateSexo(value) {
+// `required`: cadastro e conclusão de perfil exigem uma escolha explícita ("Não informar" vale como
+// escolha). Sem `required` (contas antigas), ausência continua aceita -- só valor desconhecido falha.
+export function validateSexo(value, { required = false } = {}) {
   const errors = {}
-  if (value != null && !SEXO_OPTIONS.includes(value)) errors.sexo = 'Opção inválida'
+  if (required && !SEXO_OPTIONS.includes(value)) errors.sexo = 'Selecione uma opção para Sexo'
+  else if (value != null && value !== '' && !SEXO_OPTIONS.includes(value))
+    errors.sexo = 'Opção inválida'
   return errors
 }
 
@@ -82,6 +86,26 @@ export function validateUsageProfile(value) {
   if (!USAGE_PROFILES.includes(value)) {
     errors.usageProfile = 'Selecione como você pretende utilizar o Evolutus'
   }
+  return errors
+}
+
+// Só o formato básico (algo@dominio.tld, até 254 caracteres) para dar o erro junto do campo antes de
+// criar a conta; o GoTrue continua sendo a autoridade (email_address_invalid).
+export function validateEmail(rawEmail) {
+  const errors = {}
+  const email = (rawEmail || '').trim()
+  if (!email) errors.email = 'Informe seu e-mail'
+  else if (email.length > 254 || !/^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(email))
+    errors.email = 'E-mail inválido. Confira se está no formato nome@exemplo.com'
+  return errors
+}
+
+// Cidade onde mora: precisa ser um código escolhido no seletor (CitySelector). Texto digitado sem
+// escolher uma sugestão chega aqui como null. A existência do código é conferida no servidor.
+export function validateResidenceMunicipality(code) {
+  const errors = {}
+  if (!Number.isInteger(code) || code < 1100000 || code > 5399999)
+    errors.city = 'Selecione a cidade onde você mora na lista de sugestões'
   return errors
 }
 

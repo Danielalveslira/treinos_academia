@@ -6,6 +6,7 @@ import {
   normalizeTrainingPreferences,
 } from '../utils/trainingPlan'
 import { configuredRestSeconds } from '../utils/restTimer'
+import { isMunicipalityCodeFormat } from '../utils/municipalities'
 
 export const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
 export const BIO_MAX_LENGTH = 300
@@ -27,6 +28,9 @@ export function mapUserRow(row) {
     avatarMediaId: row.avatar_media_id,
     avatarPath: row.avatar_path,
     usageProfile: row.usage_profile,
+    // Cidade onde mora: só o código IBGE (nome/UF vêm do catálogo). null = não informada (contas
+    // anteriores ao campo); undefined nunca -- a coluna ausente também vira null.
+    residenceMunicipalityCode: row.residence_municipality_code ?? null,
     accountStatus: row.account_status,
     trainingPreferences: normalizeTrainingPreferences(row.training_preferences),
     // Mensagens da Home. greetingWelcomeSeenAt: null = ainda não confirmada; undefined = coluna ausente (nunca
@@ -83,6 +87,21 @@ export async function setDefaultRestSeconds(seconds) {
   const { data, error } = await supabase.rpc('set_default_rest_seconds', { p_seconds: value })
   if (error) throw error
   return configuredRestSeconds(data) ?? value
+}
+
+// Cidade onde mora (código IBGE). O formato é conferido aqui só para não gastar uma chamada; a
+// existência do município é decidida pelo servidor (catálogo public.ibge_municipalities + FK), que
+// responde INVALID_MUNICIPALITY para qualquer código fora dele. Idempotente: repetir é seguro.
+export async function setResidenceMunicipality(code) {
+  if (!isMunicipalityCodeFormat(code)) throw new Error('INVALID_MUNICIPALITY')
+  const { data, error } = await supabase.rpc('set_residence_municipality', { p_code: code })
+  if (error) {
+    const KNOWN = ['INVALID_MUNICIPALITY', 'NOT_AUTHENTICATED', 'PERMISSION_DENIED']
+    const failure = new Error(KNOWN.find((c) => error.message?.includes(c)) || error.message)
+    failure.code = error.code
+    throw failure
+  }
+  return data ?? code
 }
 
 // userId é mantido nas assinaturas abaixo só por compatibilidade com os call sites

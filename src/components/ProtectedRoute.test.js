@@ -119,7 +119,9 @@ test('a loaded profile without username shows ProfileCompletionGate, never Legal
     ...baseAuth,
     profile: { ...baseAuth.profile, username: null },
   })
-  assert.match(html, /Complete seu cadastro/)
+  // O formulário do gate é carregado sob demanda (lazy): no render estático aparece o fallback
+  // dele -- o que importa aqui é que é o gate, e não o LegalGate nem o conteúdo protegido.
+  assert.match(html, /Complete seu cadastro|profile-completion-loading/)
   // id="legal-gate-title", não o texto "Antes de continuar" -- esse texto também
   // aparece (coincidentemente) no corpo do próprio ProfileCompletionGate.
   assert.doesNotMatch(html, /legal-gate-title/)
