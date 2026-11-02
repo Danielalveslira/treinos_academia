@@ -1,4 +1,5 @@
 \ir _helpers/auth_session.sql
+\ir _helpers/commercial_terms.sql
 begin;
 insert into public.professional_listing_limits(kind,max_per_owner)values('professional',10),('space',10) on conflict(kind)do update set max_per_owner=10;
 
@@ -33,6 +34,7 @@ select is(public.get_my_professional_listing((select v from pro_ids where k='pro
 select public.save_professional_listing_draft((select v from pro_ids where k='pro'),'{"kind":"professional","displayName":"Partial"}',0);
 select is(public.get_my_professional_listing((select v from pro_ids where k='pro'))->'draft'->>'displayName','Partial','incomplete draft can be saved for free');
 select throws_ok($$select public.set_professional_listing_editorial((select v from pro_ids where k='pro'),1,'submitted')$$,'DRAFT_INCOMPLETE','submission requires useful complete content');
+select pg_temp.publish_test_commercial_terms(); -- 20261212000002: termos comerciais sintéticos publicados
 select throws_ok($$select public.quote_commercial_order((select v from pro_ids where k='pro'),'2',gen_random_uuid())$$,'RESOURCE_NOT_ELIGIBLE','unapproved draft cannot be charged');
 select throws_ok($$select public.prepare_professional_listing_publish((select v from pro_ids where k='pro'),'legacy')$$,'EDITORIAL_REVIEW_REQUIRED','old direct publish path fails closed');
 select throws_ok($$select public.save_professional_listing_draft((select v from pro_ids where k='pro'),'{}')$$,'EDITORIAL_REVISION_REQUIRED','old no-CAS edit cannot overwrite content');
@@ -63,11 +65,11 @@ select throws_ok($$select * from public.published_professional_listings$$,'42501
 select throws_ok($$select public.admin_get_professional_listing((select v from pro_ids where k='pro'))$$,'42501',null,'guest cannot read admin draft');
 reset role;select pg_temp.pro_user(1);set local role authenticated;
 insert into pro_ids values('order-pro',(public.quote_commercial_order((select v from pro_ids where k='pro'),'2',gen_random_uuid())->>'id')::uuid);
-select is(public.confirm_commercial_order((select v from pro_ids where k='order-pro'),true)->>'totalCash','10','professional uses independent daily price');
-select public.confirm_commercial_order((select v from pro_ids where k='order-pro'),true);
+select is(pg_temp.confirm_with_terms((select v from pro_ids where k='order-pro'),true)->>'totalCash','10','professional uses independent daily price');
+select pg_temp.confirm_with_terms((select v from pro_ids where k='order-pro'),true);
 reset role;select pg_temp.pro_user(2);set local role authenticated;
 insert into pro_ids values('order-space',(public.quote_commercial_order((select v from pro_ids where k='space'),'3',gen_random_uuid())->>'id')::uuid);
-select is(public.confirm_commercial_order((select v from pro_ids where k='order-space'),true)->>'totalCash','24','establishment uses independent daily price');
+select is(pg_temp.confirm_with_terms((select v from pro_ids where k='order-space'),true)->>'totalCash','24','establishment uses independent daily price');
 select throws_ok($$select public.quote_commercial_order((select v from pro_ids where k='pro'),'1',gen_random_uuid())$$,'RESOURCE_NOT_ELIGIBLE','one owner cannot buy another resource');
 reset role;
 select is((select cash_balance from public.wallets where user_id='75000000-0000-0000-0000-000000000001'),90,'confirmation replay debits exactly once');
@@ -102,7 +104,7 @@ select throws_ok($$delete from public.storefront_media where id='75100000-0000-0
 select pg_temp.pro_user(1);set local role authenticated;
 select is(public.discard_unused_storefront_media('75100000-0000-0000-0000-000000000001'),null::text,'discard checks public references');
 insert into pro_ids values('renew',(public.quote_commercial_order((select v from pro_ids where k='pro'),'1',gen_random_uuid())->>'id')::uuid);
-select public.confirm_commercial_order((select v from pro_ids where k='renew'),true);
+select pg_temp.confirm_with_terms((select v from pro_ids where k='renew'),true);
 reset role;
 select is((select expires_at-starts_at from public.visibility_entitlements where resource_id=(select v from pro_ids where k='pro')),interval '72 hours','renewal during pending/rejected draft extends existing period only');
 select pg_temp.pro_user(1);set local role authenticated;
@@ -117,7 +119,7 @@ select is(public.authorize_storefront_media('75100000-0000-0000-0000-00000000000
 select is(jsonb_array_length(public.public_listing_sitemap()->'items'),1,'expired resource removed from sitemap');
 reset role;select pg_temp.pro_user(1);set local role authenticated;
 insert into pro_ids values('after-expiry',(public.quote_commercial_order((select v from pro_ids where k='pro'),'1',gen_random_uuid())->>'id')::uuid);
-select public.confirm_commercial_order((select v from pro_ids where k='after-expiry'),true);
+select pg_temp.confirm_with_terms((select v from pro_ids where k='after-expiry'),true);
 reset role;
 select is((select expires_at-starts_at from public.visibility_entitlements where resource_id=(select v from pro_ids where k='pro')),interval '24 hours','expired renewal starts a new paid period');
 select is(public.public_get_professional((select v from pro_ids where k='pro'))->>'displayName','PRIVATE PENDING NAME','only admin-approved revision replaces public snapshot');
@@ -126,14 +128,14 @@ insert into pro_ids values('pending-space-order',(public.quote_commercial_order(
 reset role;select pg_temp.pro_admin();set local role authenticated;
 select public.set_professional_listing_editorial((select v from pro_ids where k='space'),3,'suspended','Suspend synthetic establishment');
 reset role;select pg_temp.pro_user(2);set local role authenticated;
-select throws_ok($$select public.confirm_commercial_order((select v from pro_ids where k='pending-space-order'),true)$$,'RESOURCE_NOT_ELIGIBLE','payment cannot remove suspension');
+select throws_ok($$select pg_temp.confirm_with_terms((select v from pro_ids where k='pending-space-order'),true)$$,'RESOURCE_NOT_ELIGIBLE','payment cannot remove suspension');
 select throws_ok($$select public.set_professional_listing_editorial((select v from pro_ids where k='space'),4,'draft','Attempt to remove suspension')$$,'42501','PERMISSION_DENIED','only recent superadmin can remove suspension');
 reset role;select pg_temp.set_test_user(null,true);set local role anon;
 select is(public.public_get_professional((select v from pro_ids where k='space')),null::jsonb,'suspended establishment excluded from direct API');
 reset role;
 select pg_temp.pro_user(1);set local role authenticated;
 insert into pro_ids values('insufficient',(public.quote_commercial_order((select v from pro_ids where k='pro'),'30',gen_random_uuid())->>'id')::uuid);
-select throws_ok($$select public.confirm_commercial_order((select v from pro_ids where k='insufficient'),true)$$,'Saldo de EvoCash insuficiente.','adapter uses atomic shared insufficient-balance guard');
+select throws_ok($$select pg_temp.confirm_with_terms((select v from pro_ids where k='insufficient'),true)$$,'Saldo de EvoCash insuficiente.','adapter uses atomic shared insufficient-balance guard');
 reset role;
 select is((select cash_balance from public.wallets where user_id='75000000-0000-0000-0000-000000000001'),80,'insufficient balance never partially debits');
 select is((select offering_code from public.professional_listings where id=(select v from pro_ids where k='pro')),'professional_profile','professional anchor binds its generated offering');

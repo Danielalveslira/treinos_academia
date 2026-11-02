@@ -4,6 +4,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
+import { SYNTHETIC_COMMERCIAL_TERMS_SQL, confirmWithTermsSql } from './lib/commercial-terms-fixture.mjs'
 const db = process.env.PG_TEST_CONTAINER || 'supabase_db_treinos_academia'
 if (!['supabase_db_treinos_academia', 'evolutus_price_phase1_db'].includes(db))
   throw Error('DISPOSABLE_DATABASE_REQUIRED')
@@ -46,6 +47,7 @@ await sql(
   "insert into public.professional_listing_limits(kind,max_per_owner)values('professional',10),('space',10) on conflict(kind)do update set max_per_owner=10"
 )
 const results = []
+await sql(SYNTHETIC_COMMERCIAL_TERMS_SQL) // 20261212000002: termos comerciais sintéticos
 for (const [i, kind, offering] of [
   [0, 'professional', 'professional_profile'],
   [1, 'space', 'establishment_profile'],
@@ -90,7 +92,7 @@ for (const [i, kind, offering] of [
           `select public.quote_commercial_order(${q(resource)},${q(days)},${q(randomUUID())})`
         )
       ),
-    confirm = (o) => as(owner, `select public.confirm_commercial_order(${q(o.id)},true)`)
+    confirm = (o) => as(owner, confirmWithTermsSql(o.id))
   const first = await quote('2')
   await Promise.all(Array.from({ length: 6 }, () => confirm(first)))
   assert.equal(await sql(`select cash_balance from public.wallets where user_id=${q(owner)}`), '94')

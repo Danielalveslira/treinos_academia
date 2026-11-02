@@ -5,6 +5,7 @@ import { execFile, execFileSync } from 'node:child_process'
 import { promisify } from 'node:util'
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
+import { SYNTHETIC_COMMERCIAL_TERMS_SQL, confirmWithTermsSql } from './lib/commercial-terms-fixture.mjs'
 const container = process.env.PG_TEST_CONTAINER || 'supabase_db_treinos_academia'
 if (!['supabase_db_treinos_academia', 'evolutus_price_phase1_db'].includes(container))
   throw Error('DISPOSABLE_DATABASE_REQUIRED')
@@ -69,6 +70,7 @@ await asUser(
 await sql(
   `insert into private.commercial_resources(id,offering_code,owner_user_id,content_revision,approved_revision,moderation_state)values(${q(resource)},${q(code)},${q(buyer)},1,1,'approved'),(${q(resource2)},${q(code)},${q(buyer)},1,1,'approved');select public._wallet_credit_cash(${q(buyer)},100);select public._ledger_record(${q(buyer)},'synthetic','cash','credit',100,'synthetic','fixture',${q(code)})`
 )
+await sql(SYNTHETIC_COMMERCIAL_TERMS_SQL) // 20261212000002: termos comerciais sintéticos
 const quote = async (r, days = '1') =>
   JSON.parse(
     await asUser(
@@ -76,7 +78,7 @@ const quote = async (r, days = '1') =>
       `select public.quote_commercial_order(${q(r)},${q(days)},${q(randomUUID())})`
     )
   )
-const confirm = (o) => asUser(buyer, `select public.confirm_commercial_order(${q(o.id)},true)`)
+const confirm = (o) => asUser(buyer, confirmWithTermsSql(o.id))
 const [a, b] = await Promise.all([quote(resource), quote(resource2)])
 const spend = await Promise.allSettled([confirm(a), confirm(b)])
 assert.equal(

@@ -119,10 +119,15 @@ const useAuth = () => ({ user: { uid: 'owner-1' } })
 const useWallet = () => ({ wallet: { cashBalance: '1000' }, refresh: async () => {} })
 async function quoteCommercialOrder(resourceId, days) {
   track('quote_commercial_order', { resourceId, days })
-  return { id: 'quote-1', durationDays: days, unitPriceCash: '7', totalCash: String(Number(days) * 7), createdAt: new Date().toISOString(), quoteExpiresAt: new Date(Date.now() + 300000).toISOString() }
+  return { id: 'quote-1', durationDays: days, unitPriceCash: '7', totalCash: String(Number(days) * 7), createdAt: new Date().toISOString(), quoteExpiresAt: new Date(Date.now() + 300000).toISOString(),
+    terms: { documentId: 'showcase-publication-terms', version: '0.0.1', digest: 'synthetic', conditionsDigest: 'synthetic', current: true, title: 'Fixture sintética' } }
 }
 async function confirmCommercialOrder(orderId) {
   track('confirm_commercial_order', { orderId })
+  return { id: orderId }
+}
+async function confirmCommercialOrderWithTerms(orderId, terms) {
+  track('confirm_commercial_order_with_terms', { orderId, version: terms?.version })
   return { id: orderId }
 }
 `
@@ -168,7 +173,7 @@ await build({
           loader: 'js',
         }))
         b.onLoad({ filter: /.*/, namespace: 'fixture-commercial' }, () => ({
-          contents: shared + '\nexport { quoteCommercialOrder, confirmCommercialOrder }',
+          contents: shared + '\nexport { quoteCommercialOrder, confirmCommercialOrder, confirmCommercialOrderWithTerms }',
           loader: 'js',
         }))
         b.onLoad({ filter: /.*/, namespace: 'fixture-pricing-admin' }, () => ({

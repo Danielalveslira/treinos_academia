@@ -1,4 +1,5 @@
 \ir _helpers/auth_session.sql
+\ir _helpers/commercial_terms.sql
 begin;
 select no_plan();
 insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
@@ -9,36 +10,37 @@ update public.evocash_pricing_state set quoting_enabled=true,checkout_enabled=fa
 create temp table results(name text primary key,value jsonb);
 grant select,insert on results to authenticated;
 select pg_temp.set_test_user('72000000-0000-0000-0000-000000000001',true);
+select pg_temp.publish_test_commercial_terms(); -- 20261212000002: termos comerciais sintéticos publicados
 insert into results values('quote',public.create_evocash_purchase_quote('25','72100000-0000-0000-0000-000000000001'));
 set local role authenticated;
-select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')$$,'EVOCASH_PURCHASES_PAUSED','checkout gate defaults closed independently of quoting');
+select throws_ok($$select pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')$$,'EVOCASH_PURCHASES_PAUSED','checkout gate defaults closed independently of quoting');
 select ok(not has_table_privilege('authenticated','public.cash_purchases','insert'),'client cannot insert financial rows');
 reset role;
 update public.evocash_pricing_state set checkout_enabled=true where id;
 set local role authenticated;
-insert into results values('order',public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001'));
+insert into results values('order',pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001'));
 select is((select value->>'amountCentavos' from results where name='order'),'250','order uses quote total as an exact string');
 select is((select value->>'cashAmount' from results where name='order'),'25','order quantity is frozen');
-select is(public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')->>'createLink','false','concurrent retry cannot call provider twice');
-select throws_ok($$select public.reserve_infinitepay_cash_purchase('72100000-0000-0000-0000-000000000099','72200000-0000-0000-0000-000000000001')$$,'IDEMPOTENCY_CONFLICT','request key cannot change quote');
-select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000099')$$,'QUOTE_ALREADY_RESERVED','another key cannot buy the same quote twice');
+select is(pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')->>'createLink','false','concurrent retry cannot call provider twice');
+select throws_ok($$select pg_temp.reserve_with_terms('72100000-0000-0000-0000-000000000099','72200000-0000-0000-0000-000000000001')$$,'IDEMPOTENCY_CONFLICT','request key cannot change quote');
+select throws_ok($$select pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000099')$$,'QUOTE_ALREADY_RESERVED','another key cannot buy the same quote twice');
 reset role;
-select ok(to_regprocedure('public.reserve_infinitepay_cash_purchase(uuid,text)') is null,'package reservation is removed');
+select ok(to_regprocedure('pg_temp.reserve_with_terms(uuid,text)') is null,'package reservation is removed');
 select ok(not (select config ? 'cashPackages' from public.economy_config where id),'package configuration is retired');
 select throws_ok($$update public.cash_purchases set amount_centavos=1 where id=(select(value->>'id')::uuid from results where name='order')$$,'42501','PURCHASE_SNAPSHOT_IMMUTABLE','immutable purchase total');
 select public.release_infinitepay_checkout((select(value->>'id')::uuid from results where name='order'));
 set local role authenticated;
-select is(public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')->>'createLink','true','known pre-provider failure releases lease safely');
+select is(pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')->>'createLink','true','known pre-provider failure releases lease safely');
 reset role;
 select public.finish_infinitepay_checkout((select(value->>'id')::uuid from results where name='order'),'https://checkout.infinitepay.io/fixture?lenc=test');
 select throws_ok($$select public.finish_infinitepay_checkout((select(value->>'id')::uuid from results where name='order'),'https://evil.test/')$$,'INVALID_CHECKOUT_URL','database also restricts URL host');
 insert into public.evocash_price_versions(revision,unit_price_centavos,minimum_unit_price_centavos,min_quantity,max_quantity,daily_quantity_limit,total_quantity_limit,quote_ttl_seconds,large_change_threshold_bps,active_from,created_by,reason)
 values(9002,20,1,1,100,100,200,300,2000,clock_timestamp(),'72000000-0000-0000-0000-000000000004','Synthetic price change');
 set local role authenticated;
-select is(public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')->>'amountCentavos','250','price change never changes accepted checkout');
+select is(pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')->>'amountCentavos','250','price change never changes accepted checkout');
 select public.cancel_my_cash_purchase((select(value->>'id')::uuid from results where name='order'));
 insert into results values('limit_quote',public.create_evocash_purchase_quote('100','72100000-0000-0000-0000-000000000002'));
-select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='limit_quote'),'72200000-0000-0000-0000-000000000002')$$,'PURCHASE_LIMIT_REACHED','cancelled but payable link retains limit reservation');
+select throws_ok($$select pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='limit_quote'),'72200000-0000-0000-0000-000000000002')$$,'PURCHASE_LIMIT_REACHED','cancelled but payable link retains limit reservation');
 reset role;
 select throws_ok($$select public.confirm_infinitepay_cash_purchase((select(value->>'id')::uuid from results where name='order'),(select value->>'orderNsu' from results where name='order'),'quantity-txn','quantity-invoice',251,'pix',null)$$,'PAYMENT_MISMATCH','divergent provider amount cannot credit');
 select is(public.confirm_infinitepay_cash_purchase((select(value->>'id')::uuid from results where name='order'),(select value->>'orderNsu' from results where name='order'),'quantity-txn','quantity-invoice',250,'pix',null)->>'credited','true','verified late payment credits the same order');
@@ -56,34 +58,34 @@ select public.confirm_infinitepay_cash_purchase((select(value->>'id')::uuid from
 select is((select cash_balance from public.wallets where user_id='72000000-0000-0000-0000-000000000001'),0,'late paid replay cannot undo a refund');
 select pg_temp.set_test_user('72000000-0000-0000-0000-000000000002',true);
 set local role authenticated;
-select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000003')$$,'QUOTE_NOT_FOUND','another user cannot redeem quote');
+select throws_ok($$select pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000003')$$,'QUOTE_NOT_FOUND','another user cannot redeem quote');
 select is((select count(*)::integer from public.cash_purchases where id=(select(value->>'id')::uuid from results where name='order')),0,'RLS hides other user purchases');
 reset role;
 insert into public.evocash_purchase_quotes(user_id,request_id,quantity,unit_price_centavos,total_centavos,price_version_id,created_at,expires_at)
 select '72000000-0000-0000-0000-000000000002',gen_random_uuid(),1,unit_price_centavos,unit_price_centavos,id,now()-interval '10 minutes',now()-interval '5 minutes' from public.evocash_price_versions where revision=9002;
 set local role authenticated;
-select throws_ok($$select public.reserve_infinitepay_cash_purchase((select id from public.evocash_purchase_quotes where user_id=auth.uid() limit 1),'72200000-0000-0000-0000-000000000004')$$,'QUOTE_EXPIRED','expired quote cannot create payment');
+select throws_ok($$select pg_temp.reserve_with_terms((select id from public.evocash_purchase_quotes where user_id=auth.uid() limit 1),'72200000-0000-0000-0000-000000000004')$$,'QUOTE_EXPIRED','expired quote cannot create payment');
 insert into results values('quote_b',public.create_evocash_purchase_quote('25','72100000-0000-0000-0000-000000000005'));
-insert into results values('order_b',public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005'));
+insert into results values('order_b',pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005'));
 reset role;
 select public.mark_infinitepay_checkout_uncertain((select(value->>'id')::uuid from results where name='order_b'));
 set local role authenticated;
-select is(public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005')->>'uncertain','true','timeout stays uncertain on retry');
+select is(pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005')->>'uncertain','true','timeout stays uncertain on retry');
 reset role;
 select public.fail_infinitepay_checkout((select(value->>'id')::uuid from results where name='order_b'),422);
 set local role authenticated;
-select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005')$$,'PURCHASE_ALREADY_FINAL','failed order never silently reopens');
+select throws_ok($$select pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005')$$,'PURCHASE_ALREADY_FINAL','failed order never silently reopens');
 reset role;
 select ok(not has_function_privilege('authenticated','public.confirm_infinitepay_cash_purchase(uuid,text,text,text,integer,text,text)','execute'),'confirmation remains backend only');
 select ok(not has_function_privilege('service_role','public.reserve_infinitepay_cash_purchase(uuid,uuid)','execute'),'no service reservation that bypasses caller session');
 update public.users set account_status='disabled' where id='72000000-0000-0000-0000-000000000002';
 set local role authenticated;
-select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005')$$,'42501','APP_ACCESS_DENIED','disabled account cannot reuse an order to reach provider');
+select throws_ok($$select pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005')$$,'42501','APP_ACCESS_DENIED','disabled account cannot reuse an order to reach provider');
 reset role;
 update public.users set account_status='active' where id='72000000-0000-0000-0000-000000000002';
 select pg_temp.revoke_test_session('72000000-0000-0000-0000-000000000002');
 set local role authenticated;
-select throws_ok($$select public.reserve_infinitepay_cash_purchase((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005')$$,'42501','APP_ACCESS_DENIED','revoked session cannot reserve or replay checkout');
+select throws_ok($$select pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote_b'),'72200000-0000-0000-0000-000000000005')$$,'42501','APP_ACCESS_DENIED','revoked session cannot reserve or replay checkout');
 reset role;
 select * from finish();
 rollback;
