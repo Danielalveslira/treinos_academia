@@ -76,5 +76,5 @@
 #commercial-lead-status[data-state='success'] { color: var(--fgColor-success); }
 #opcoes, #proposta { scroll-margin-top: 90px; }
 @media (min-width: 650px) { .business-offering-grid, .business-form-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-@media (min-width: 850px) { .business-hero { grid-template-columns: minmax(0,1.1fr) minmax(0,.9fr); gap: clamp(40px,6vw,90px); } .business-steps { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 25px; } .business-step { grid-template-columns: 34px minmax(0,1fr); } .business-step-icon { display: none; } .business-step p { grid-column: 2; } }
+@media (min-width: 850px) { .business-hero { grid-template-columns: minmax(0,1.1fr) minmax(0,.9fr); gap: clamp(40px,6vw,90px); } .business-steps { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 25px; } }
 @media (max-width: 359px) { .business-offering { padding: 16px; } .business-products-preview { gap: 6px; } .business-product { padding: 6px; } }
