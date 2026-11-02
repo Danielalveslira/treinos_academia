@@ -15,6 +15,8 @@ import { describeAccountAccessError } from '../utils/accountAccessErrors'
 import { PushNotificationSettings } from '../features/notifications/components/PushNotificationSettings'
 import { GREETING_V2_ENABLED } from '../features/greetings/config'
 import { GreetingVoiceSettings } from '../features/greetings/GreetingVoiceSettings'
+import { RestPreferenceSettings } from '../components/RestPreferenceSettings'
+import { restPreferenceSummary } from '../utils/restPreference'
 
 function Setting({ id, title, summary, open, onToggle, children }) {
   return (
@@ -449,6 +451,15 @@ function ProfileContent({
           >
             Salvar perfil de uso
           </Button>
+        </Setting>
+        <Setting
+          id="rest"
+          title="Descanso entre séries"
+          summary={profile ? restPreferenceSummary(profile.defaultRestSeconds) : undefined}
+          open={Boolean(expanded.rest)}
+          onToggle={() => toggle('rest')}
+        >
+          {visited.rest && <RestPreferenceSettings />}
         </Setting>
         <Setting
           id="push"

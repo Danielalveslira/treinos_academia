@@ -7,7 +7,6 @@ import {
   remainingSeconds,
   restProgress,
 } from '../utils/restTimer.js'
-import '../styles/restTimer.css'
 
 // Relógio local do componente: só ele re-renderiza a cada segundo (a ficha não). Para sozinho quando a
 // contagem termina e recalcula na hora quando a aba volta a ficar visível.

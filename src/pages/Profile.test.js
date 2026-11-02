@@ -45,6 +45,10 @@ before(async () => {
       '../features/greetings/GreetingVoiceSettings',
       "export const GreetingVoiceSettings = () => <div data-greeting='true' />",
     ],
+    [
+      '../components/RestPreferenceSettings',
+      "export const RestPreferenceSettings = () => <div data-rest='true' />",
+    ],
     ['../features/greetings/config', 'export const GREETING_V2_ENABLED = true'],
     [
       'react-router-dom',

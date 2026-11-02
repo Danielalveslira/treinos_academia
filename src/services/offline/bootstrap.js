@@ -33,6 +33,8 @@ export function minimalProfile(profile) {
     // Preferência de estilo das mensagens da Home (texto); sem ela o offline cairia em "neutro" mesmo com
     // escolha explícita. O sexo NÃO é guardado: com 'auto' offline a frase é neutra.
     greetingVoice: profile.greetingVoice ?? 'auto',
+    // Descanso padrão entre séries: o cronômetro offline usa a mesma preferência da conta.
+    defaultRestSeconds: profile.defaultRestSeconds ?? null,
   }
 }
 

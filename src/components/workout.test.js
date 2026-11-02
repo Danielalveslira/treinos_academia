@@ -370,7 +370,7 @@ test('sheet scope: opens straight on the first eligible exercise, with a concise
   assert.doesNotMatch(html, />2 Exercício</)
   assert.doesNotMatch(html, />3 Séries</)
   // Meta da ficha em uma linha, sem o aviso longo repetido nem o rótulo "Sem metas definidas".
-  assert.match(html, /Meta da ficha: 3 séries · 8–12 repetições · 90s de descanso/)
+  assert.match(html, /Meta da ficha: 3 séries · 8–12 repetições · 1min30s de descanso/)
   assert.doesNotMatch(html, /Sem metas definidas/)
   assert.doesNotMatch(html, /Sobre as metas da ficha/)
   assert.doesNotMatch(html, /Selecione um exercício para ver as metas/)

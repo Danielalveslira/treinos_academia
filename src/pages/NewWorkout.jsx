@@ -15,6 +15,7 @@ import { listWorkoutsPage } from '../services/workoutsService'
 import { hasPendingMutation } from '../services/offline/outbox.js'
 import { useToast } from '../hooks/useToast'
 import { WorkoutForm } from '../components/WorkoutForm'
+import { clearStoredRest } from '../utils/restTimer'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { completeWorkoutSheet, getMyEvocoinDay } from '../services/economyService'
@@ -105,7 +106,7 @@ function WorkoutSession({ sheetScope }) {
   const refresh = undefined
   const { workouts, add, save } = useWorkouts()
   const { toasts, showToast } = useToast()
-  const { user, offlineLocal } = useAuth()
+  const { user, profile, offlineLocal } = useAuth()
   const connected = useOnlineStatus()
   const online = connected && !offlineLocal
   const writer = useWorkoutSessionLock(user.uid, sheetScope.id, localDateKey())
@@ -183,6 +184,8 @@ function WorkoutSession({ sheetScope }) {
     })
     if (outcome === 'done') {
       invalidateWorkoutCache(user.uid)
+      // Treino encerrado: um descanso pendente não pode reaparecer numa nova sessão.
+      clearStoredRest()
       finishNavigation.current = true
       // replace: o formulário concluído não deve ser reaberto pelo botão Voltar.
       navigate('/historico', { replace: true })
@@ -314,6 +317,7 @@ function WorkoutSession({ sheetScope }) {
             progressScope={`${user.uid}:${sheetScope.id}`}
             history={workouts}
             sessionRows={resume.rows}
+            defaultRestSeconds={profile?.defaultRestSeconds ?? null}
             finishGuard={finishGuard}
             finishing={finishing}
             onUnsafeChange={setUnsafeToLeave}
