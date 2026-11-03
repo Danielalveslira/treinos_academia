@@ -116,7 +116,7 @@
         "title": "2. Sua conta",
         "items": [
           "O cadastro pede e-mail, senha, nome de usuário, data de nascimento, sexo (com opção de não informar), município de residência e perfil de uso.",
-          "O Evolutus aceita novos cadastros exclusivamente de pessoas com 18 anos completos ou mais. A idade é verificada a partir da data de nascimento informada, sujeita a verificações adicionais quando necessárias.",
+          "O Evolutus aceita novos cadastros exclusivamente de pessoas com 18 anos completos ou mais. A idade é calculada a partir da data de nascimento informada pela própria pessoa no cadastro; o Evolutus não faz verificação documental de idade. [PENDENTE — decisão jurídica: necessidade de aferição adicional de idade proporcional ao risco (Lei nº 15.211/2025).]",
           "Mantenha seus dados corretos e sua senha protegida. A conta é pessoal e intransferível.",
           "Você pode excluir sua conta pelo Perfil. Alguns registros podem ser mantidos pelo tempo necessário ao cumprimento de obrigação legal, à defesa de direitos ou à prevenção de fraude, como descrito na Política de Privacidade."
         ]

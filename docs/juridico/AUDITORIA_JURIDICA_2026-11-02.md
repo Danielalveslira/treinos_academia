@@ -80,3 +80,22 @@ Scripts: `seed-legal.mjs` endurecido; novo `publish-legal-document.mjs`; fixture
 - Rollbacks aplicados e revertidos numa transação sem erro.
 - `npm test`: 2476/2476. `npm run test:backfill`: 43/43. `npm run lint`: 0 erros (14 avisos já existentes). `npm run build` e `npm run budget` OK (+1,7 KB gzip no boot).
 - Navegador (Playwright, 320/390/1440, claro e escuro): documentos, versão histórica, versão inexistente, documento não publicado, `LegalGate` com aceite e painel de direitos, confirmação de EvoCash. Sem overflow horizontal e sem erros de página. Os smokes de UI de vitrine e de anúncios foram aprovados.
+
+## 7. Auditoria do cadastro 18+ e da marca (02/11/2026)
+
+Revisão do HEAD `c7f6fe5` (commits `885129c`, `9a9c133` e `c7f6fe5`), feita sem considerar o CI anterior como prova.
+
+| Problema | Gravidade | Onde | Correção |
+|---|---|---|---|
+| Idade e "data futura" calculadas pelo fuso do aparelho ou em UTC. O servidor usa `America/Sao_Paulo` (perto da meia-noite, 17 anos podiam passar no cliente; o teste antigo falhava com `TZ=UTC`) | Média | `src/utils/age.js` (`calculateAge`), `validateBirthDate`, `todayString()` de Register/ProfileCompletionForm/LegalGate | Dia civil de Brasília (`businessDayKey`); 29/02 conta a partir de 01/03, igual a `age()`; testes com instantes explícitos em 5 fusos |
+| Uma conta concluída podia trocar a data de nascimento por API direta. Uma conta preexistente de menor podia se declarar adulta e liberar compras | Alta | `public.set_birth_info` | `BIRTHDATE_LOCKED` depois de concluído o perfil (`username` gravado); mesmo valor é idempotente; a retomada de perfil incompleto continua corrigível (sempre 18+); lock por linha |
+| Regra `Math.max(18, manifest)` repetida em três telas | Baixa | Register, LegalGate | `registrationMinimumAge()` e `MINIMUM_AGE_MESSAGE` em `src/constants/accountAge.js` |
+| Mensagem sem o ponto final exigido; no `LegalGate`, `MINIMUM_AGE` aparecia como erro geral | Baixa | validators, registrationErrors, LegalGate | Mensagem exata no campo de nascimento |
+| Minuta prometia "verificações adicionais" de idade | Média (jurídica) | Termos 2.0.0 §2 | Texto informa que a idade é autodeclarada; pendência de aferição proporcional registrada |
+| A Política de Reembolsos não identificava a plataforma; seções 7 e 8 sem numeração | Baixa | minutas comerciais | Corrigido; teste de integridade passa a cobrir todas as minutas |
+
+**Limitação conhecida:** `supabase.auth.signUp` cria a identidade antes de o servidor receber a data. A UI recusa menores antes do `signUp`. Por API direta, a identidade criada fica inutilizável: `set_birth_info` recusa datas abaixo de 18 anos, e `accept_legal_documents` exige data 18+ (mesmo com o manifesto 1.5.0 declarando 12), sem o que `has_app_access()` é falso. A garantia depende de `legal_policy` estar publicada, como em produção. Bloquear antes da criação exigiria um Auth Hook com idade autodeclarada em metadados, sem ganho real de verificação; não foi implementado.
+
+**Contas preexistentes:** nada é apagado. Menores identificados continuam sem compras, sem medição de anúncios e sem poder trocar a própria data. Na próxima versão jurídica, o reaceite será recusado (`MINIMUM_AGE`), com atendimento, privacidade e reembolsos ainda disponíveis. Falta decidir a política de transição: aviso, prazo e encerramento assistido.
+
+**Marca:** as minutas usam Evolutus. A palavra "treino/treinos" foi mantida onde descreve atividade física. A versão 1.5.0 publicada continua com "Treinos" e "12 anos" por ser histórico imutável (digest verificado em teste). Até a 2.0.0 ser aprovada e publicada, a página `/termos-de-uso` vigente contradiz o cadastro 18+.

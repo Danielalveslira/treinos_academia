@@ -4,7 +4,7 @@
   "documentId": "cancellation-refund-policy",
   "version": "1.0.0",
   "title": "Política de Cancelamento, Arrependimento e Reembolsos",
-  "description": "Como desistir de uma compra, pedir reembolso e acompanhar o pedido.",
+  "description": "Como desistir de uma compra feita no Evolutus, pedir reembolso e acompanhar o pedido.",
   "changes": [
     "Primeira versão pública. Substitui a minuta interna draft-1 após aprovação."
   ],
@@ -19,6 +19,7 @@
       "id": "arrependimento",
       "title": "1. Direito de arrependimento",
       "items": [
+        "Esta política vale para compras de EvoCash e contratações de anúncios, impulsionamentos e vitrines feitas no Evolutus.",
         "Nas compras feitas pelo aplicativo, quando aplicável o art. 49 do Código de Defesa do Consumidor, você pode desistir em até 7 dias.",
         "Para compra de EvoCash o prazo conta a partir da confirmação do pagamento e da liberação dos créditos; para contratações de anúncios, impulsionamentos e vitrines, a partir da confirmação da contratação. [PENDENTE — validação jurídica do marco inicial por modalidade.]",
         "O motivo é opcional no pedido por arrependimento.",

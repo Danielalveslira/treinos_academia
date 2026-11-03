@@ -43,12 +43,26 @@ test('minutas jurídicas do repositório nunca estão marcadas como aprovadas ou
   }
 })
 
-test('minuta geral 2.0.0 exige 18+ e não reutiliza o nome antigo da plataforma', () => {
+test('minutas exigem 18+, usam a marca Evolutus e não prometem verificação de identidade', () => {
+  const dir = new URL('../legal/drafts/', import.meta.url)
   const draftManifest = read('../legal/drafts/general-2.0.0.manifest.json')
-  const draftDocuments = read('../legal/drafts/general-2.0.0.documents.json')
   assert.equal(draftManifest.minimumAge, 18)
-  assert.match(JSON.stringify(draftDocuments), /Evolutus/)
-  assert.doesNotMatch(JSON.stringify(draftDocuments), /\bO Treinos\b/)
+  assert.equal(draftManifest.published, false)
+  assert.equal(draftManifest.date, 'AAAA-MM-DD', 'data efetiva só após aprovação')
+  const files = readdirSync(dir).filter((name) => name.endsWith('.json') && !name.endsWith('.manifest.json'))
+  for (const name of files) {
+    const text = readFileSync(new URL(name, dir), 'utf8')
+    assert.match(text, /Evolutus/, `${name}: identifica a plataforma como Evolutus`)
+    // "Treinos" como nome da plataforma (marca antiga); a palavra comum treino/treinos continua válida.
+    assert.doesNotMatch(text, /\b(?:[Oo]|[Dd]o|[Nn]o|[Pp]elo|app|aplicativo|plataforma) Treinos\b/, `${name}: sem marca antiga`)
+    assert.doesNotMatch(text, /a partir de (?:12|13|14|15|16|17) anos|minimumAge"\s*:\s*(?:1[0-7])\b/, `${name}: sem idade inferior a 18`)
+    assert.doesNotMatch(text, /verifica(?:mos|ção documental de) (?:sua )?identidade|comprovamos sua idade/i, `${name}: sem promessa de verificação documental`)
+    const draft = JSON.parse(text)
+    if (draft.documentId) assert.equal(draft.date, 'AAAA-MM-DD', `${name}: data pendente`)
+  }
+  // O histórico publicado segue com o texto e o digest aprovados (marca e idade antigas preservadas).
+  assert.equal(legalBundleDigest(manifest, documents), approvedDigests['1.5.0'])
+  assert.equal(manifest.minimumAge, 12, 'versão 1.5.0 histórica não é reescrita')
 })
 
 test('publicação de documento comercial aprovado exige confirmação nominal', () => {
