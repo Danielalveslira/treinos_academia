@@ -158,14 +158,14 @@
           "Vitrines de profissionais, espaços e produtos são publicadas por período contratado, somente após aprovação e enquanto o direito estiver ativo. Ao fim do período a vitrine sai do ar e pode ser contratada novamente. Regras completas nos Termos das Vitrines.",
           "Fichas de treino, quando oferecidas para venda, são vendidas exclusivamente pelo Evolutus. Profissionais não vendem fichas pela plataforma.",
           "Antes de cada contratação mostramos preço, quantidade ou duração, condições de publicação, cancelamento e reembolso, e o documento aplicável. O aceite é registrado junto com essas condições, e o comprovante continua mostrando as condições daquela compra mesmo depois de novas versões.",
-          "Recursos implementados mas comercialmente desativados não podem ser contratados até serem anunciados no aplicativo."
+          "Recursos comercialmente desativados não podem ser contratados; a publicação dos documentos não habilita vendas."
         ]
       },
       {
         "id": "cancelamento",
         "title": "7. Cancelamento, arrependimento e reembolso",
         "items": [
-          "Quando aplicável, você pode desistir da contratação em até 7 dias, nos termos do art. 49 do Código de Defesa do Consumidor. A duração contratada (dias de vitrine ou de anúncio) não se confunde com esse prazo.",
+          "Nas contratações realizadas fora de estabelecimento comercial, o direito de arrependimento de 7 dias corridos é observado, quando aplicável, conforme o art. 49 do CDC. A contagem decorre da assinatura ou do recebimento do produto ou serviço, conforme a modalidade e a legislação. A duração da veiculação não se confunde com o prazo de arrependimento.",
           "Depois desse prazo continuam disponíveis pedidos por cobrança indevida, falha do serviço ou descumprimento da oferta.",
           "Pedidos são feitos pelo aplicativo, com protocolo e acompanhamento. Regras completas na Política de Cancelamento, Arrependimento e Reembolsos."
         ]
@@ -274,9 +274,9 @@
             },
             {
               "cells": [
-                "Sexo (opcional, com opção “não informar”) e altura",
-                "Calcular indicadores como faixas de IMC e personalizar mensagens",
-                "Execução do contrato (art. 7º, V) [PENDENTE: validar base legal]"
+                "Sexo (escolha obrigatória, incluindo “não informar”) e altura, quando fornecida",
+                "Personalizar mensagens e calcular indicadores solicitados",
+                "Execução das funcionalidades solicitadas (art. 7º, V, LGPD). Se o dado revelar condição de saúde, requer hipótese específica do art. 11 — validar antes da publicação."
               ]
             },
             {
@@ -372,7 +372,7 @@
         "items": [
           "Medidas corporais só são registradas depois que você autoriza, no cadastro ou no momento de registrar. Criar a conta não depende dessa autorização.",
           "Você pode revogar a autorização no Perfil, em “Dados de saúde e direitos”. Depois da revogação, novas medidas deixam de ser registradas. As medidas anteriores continuam visíveis só para você e podem ser excluídas.",
-          "[PENDENTE — decisão jurídica: eliminação automática das medidas após a revogação (art. 8º, §5º, e art. 16 da LGPD) ou manutenção até pedido do titular.]",
+          "Revogar o consentimento impede novos registros de medidas corporais, mas não apaga automaticamente o histórico. A pessoa pode solicitar a eliminação dos dados registrados sob consentimento pelo atendimento, ressalvadas as hipóteses legais de conservação. O Evolutus não inicia novos tratamentos que dependam exclusivamente do consentimento revogado.",
           "Dados de saúde não são usados em publicidade nem compartilhados com anunciantes."
         ]
       },
@@ -394,7 +394,7 @@
           "InfinitePay: processamento do pagamento de EvoCash. O Evolutus não recebe os dados completos do seu cartão.",
           "Resend: envio de e-mails transacionais sobre compras pendentes.",
           "Serviços de push do seu navegador ou sistema (como Google, Apple, Mozilla ou Microsoft), se você ativar notificações.",
-          "ExerciseAPI: consulta ao catálogo de exercícios, sem envio de dados da sua conta. [PENDENTE: confirmar se a integração está ativa em produção.]",
+          "Um catálogo externo de exercícios pode ser consultado ou importado pelo Evolutus, conforme a disponibilidade, sem envio das informações pessoais da conta às consultas públicas.",
           "Autoridades, quando houver obrigação legal ou ordem judicial.",
           "Alguns provedores podem tratar dados fora do Brasil. [PENDENTE: indicar o mecanismo de transferência internacional aplicável (art. 33 da LGPD) para cada provedor.]",
           "Não vendemos dados pessoais."

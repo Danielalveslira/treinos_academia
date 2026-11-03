@@ -29,7 +29,7 @@
       "title": "2. Como comprar",
       "items": [
         "Você escolhe a quantidade dentro dos limites exibidos. O preço por unidade é o vigente no momento da cotação, informado em reais.",
-        "[PENDENTE: confirmar se o preço por unidade inclui taxa administrativa ou custos de pagamento e, se houver taxa destacada, informar seu valor.]",
+        "O preço total em reais é informado na cotação e inclui as cobranças do Evolutus pela compra. Não haverá taxa administrativa adicional cobrada pelo Evolutus fora desse total; eventuais encargos de terceiros deverão ser exibidos antes da confirmação.",
         "A cotação mostra quantidade, preço unitário, total e prazo de validade. Se a cotação vencer, é preciso gerar outra; o preço pode ter mudado.",
         "Antes de seguir para o pagamento você aceita estas Condições na versão exibida; o aceite fica registrado com a quantidade e o valor.",
         "O pagamento é feito no checkout da InfinitePay, com as opções oferecidas por ela. Os créditos são liberados somente após a confirmação do pagamento.",
@@ -67,7 +67,8 @@
       "id": "encerramento",
       "title": "6. Encerramento da conta",
       "items": [
-        "[PENDENTE — decisão comercial/jurídica: tratamento do saldo não utilizado quando o titular exclui a conta ou quando o Evolutus descontinua o EvoCash (prazo para uso, restituição proporcional ou outra solução compatível com o CDC).]"
+        "Ao encerrar a conta ou descontinuar o EvoCash, a pessoa pode solicitar pelo atendimento a restituição do valor correspondente aos créditos adquiridos e não consumidos. O valor será apurado por compra, consumo e reembolso; saldo pago não é confiscado automaticamente.",
+        "Créditos promocionais ou gratuitos não são automaticamente convertidos em dinheiro, sem afastar direitos previstos em lei. Comprovantes e protocolos permanecem acessíveis pelos canais de atendimento."
       ]
     }
   ],
