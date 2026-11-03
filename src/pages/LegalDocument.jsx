@@ -3,37 +3,56 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { Button, Flash } from '@primer/react'
 import { ShieldLockIcon, ReportIcon } from '@primer/octicons-react'
 import { PublicLayout } from '../components/PublicLayout'
-import { selectLegalDocument } from '../utils/legal'
-import { getActiveLegalBundle } from '../services/legalService'
-import { SHOWCASE_LEGAL_DOCUMENT, SHOWCASE_LEGAL_MANIFEST } from '../utils/showcaseLegal'
+import { loadLegalDocumentView } from '../services/legalService'
+import { COMMERCIAL_DOCUMENTS, commercialDocumentLink } from '../utils/commercialTerms'
+
+const GENERAL_IDS = ['terms', 'privacy', 'community']
+const COMMERCIAL_IDS = Object.keys(COMMERCIAL_DOCUMENTS)
+
+function brDate(value) {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)
+    ? value.slice(0, 10).split('-').reverse().join('/')
+    : ''
+}
+
+function documentPath(documentId, fallbackPath) {
+  return COMMERCIAL_DOCUMENTS[documentId]?.path || fallbackPath || '/'
+}
+
+function StatusPage({ title, children, role }) {
+  return (
+    <PublicLayout>
+      <section className="support-page" role={role} aria-live={role ? undefined : 'polite'}>
+        <h1>{title}</h1>
+        {children}
+      </section>
+    </PublicLayout>
+  )
+}
 
 export default function LegalDocument({ documentId }) {
-  const showcase = documentId === SHOWCASE_LEGAL_DOCUMENT.id
-  const [bundle, setBundle] = useState(null)
+  const [view, setView] = useState(null)
   const [loadError, setLoadError] = useState(false)
   const [searchParams] = useSearchParams()
   const requestedVersion = searchParams.get('version') || ''
   const { hash } = useLocation()
+
   useEffect(() => {
     let active = true
-    getActiveLegalBundle()
-      .then((activeBundle) => active && setBundle(activeBundle))
+    setView(null)
+    setLoadError(false)
+    loadLegalDocumentView(documentId, requestedVersion, {
+      generalIds: GENERAL_IDS,
+      commercialIds: COMMERCIAL_IDS,
+    })
+      .then((result) => active && setView(result))
       .catch(() => active && setLoadError(true))
     return () => {
       active = false
     }
-  }, [])
+  }, [documentId, requestedVersion])
 
-  const document = showcase
-    ? SHOWCASE_LEGAL_DOCUMENT
-    : selectLegalDocument(bundle, documentId, requestedVersion)
-  const documentManifest = showcase ? SHOWCASE_LEGAL_MANIFEST : bundle?.manifest
-  const relatedDocuments = showcase
-    ? bundle?.documents || []
-    : (bundle?.documents || []).filter((item) => item.id !== documentId)
-  const staleTab = Boolean(
-    !showcase && bundle && requestedVersion && requestedVersion !== bundle.manifest.version
-  )
+  const document = view?.status === 'ok' ? view.document : null
   const documentTitle = document?.title
   useEffect(() => {
     if (!documentTitle) return undefined
@@ -49,37 +68,52 @@ export default function LegalDocument({ documentId }) {
     }
   }, [documentTitle, hash])
 
+  const currentPath = documentPath(documentId, document?.path)
+
   if (loadError) {
     return (
-      <PublicLayout>
-        <section className="support-page" role="alert">
-          <h1>Documento indisponível</h1>
-          <p>Não foi possível confirmar a versão ativa. Verifique sua conexão e recarregue.</p>
-          <Button onClick={() => window.location.reload()}>Recarregar</Button>
-        </section>
-      </PublicLayout>
+      <StatusPage title="Documento indisponível" role="alert">
+        <p>Não foi possível carregar o documento. Verifique sua conexão e tente novamente.</p>
+        <Button onClick={() => window.location.reload()}>Recarregar</Button>
+      </StatusPage>
     )
   }
-  if (!bundle) {
-    return <PublicLayout><section className="support-page" aria-live="polite"><h1>Carregando documento</h1></section></PublicLayout>
+  if (!view) {
+    return <StatusPage title="Carregando documento" />
   }
-  if (staleTab) {
+  if (view.status === 'not-published') {
     return (
-      <PublicLayout>
-        <section className="support-page" role="alert">
-          <h1>Esta página está desatualizada</h1>
-          <p>
-            O link abriu a versão {requestedVersion}, mas a versão ativa é {bundle.manifest.version}.
-            Recarregue para consultar o conteúdo correto.
-          </p>
-          <Button onClick={() => window.location.reload()}>Recarregar</Button>
-        </section>
-      </PublicLayout>
+      <StatusPage title="Documento ainda não está em vigor">
+        <p>
+          Este documento ainda não foi publicado. Enquanto isso, a contratação correspondente
+          permanece indisponível. Dúvidas? Use o <Link to="/atendimento">atendimento</Link>.
+        </p>
+      </StatusPage>
+    )
+  }
+  if (view.status === 'version-not-found') {
+    return (
+      <StatusPage title="Versão não encontrada">
+        <p>
+          A versão {requestedVersion} não existe ou nunca foi publicada.
+          {view.currentVersion && ' A versão vigente continua disponível.'}
+        </p>
+        {view.currentVersion && (
+          <Button as={Link} to={currentPath}>
+            Ler a versão vigente
+          </Button>
+        )}
+      </StatusPage>
     )
   }
   if (!document) {
-    return <PublicLayout><section className="support-page"><h1>Documento não encontrado</h1></section></PublicLayout>
+    return <StatusPage title="Documento não encontrado" />
   }
+
+  const manifest = view.manifest
+  const historical = Boolean(view.currentVersion && manifest.version !== view.currentVersion)
+  const contact = view.contact || {}
+  const related = view.related || []
 
   return (
     <PublicLayout>
@@ -89,16 +123,20 @@ export default function LegalDocument({ documentId }) {
             <ShieldLockIcon /> CONFIANÇA E CONVIVÊNCIA
           </span>
           <h1>{document.title}</h1>
-          <p>{document.description}</p>
+          {document.description && <p>{document.description}</p>}
           <p className="legal-meta">
-            Versão {documentManifest.version} ·{' '}
-            <time dateTime={documentManifest.date}>
-              {documentManifest.date.split('-').reverse().join('/')}
-            </time>
+            Versão {manifest.version}
+            {brDate(manifest.date) && (
+              <>
+                {' · '}
+                <time dateTime={manifest.date}>{brDate(manifest.date)}</time>
+              </>
+            )}
           </p>
-          {!documentManifest.published && (
-            <Flash variant="warning">
-              Minuta para revisão jurídica. Estes documentos ainda não entraram em vigor.
+          {historical && (
+            <Flash variant="attention" className="legal-history-notice" role="status">
+              Você está lendo a versão {manifest.version}, mantida para consulta. A versão vigente é
+              a {view.currentVersion}. <Link to={currentPath}>Ler a versão vigente</Link>
             </Flash>
           )}
         </header>
@@ -106,8 +144,8 @@ export default function LegalDocument({ documentId }) {
           <aside className="legal-sidebar">
             <nav aria-label="Seções desta página">
               <h2>Nesta página</h2>
-              <a href="#resumo">Resumo</a>
-              {document.sections.map((section) => (
+              {document.summary?.length > 0 && <a href="#resumo">Resumo</a>}
+              {(document.sections || []).map((section) => (
                 <a key={section.id} href={`#${section.id}`}>
                   {section.title}
                 </a>
@@ -120,20 +158,22 @@ export default function LegalDocument({ documentId }) {
             </Button>
           </aside>
           <article className="legal-content">
-            <section
-              id="resumo"
-              tabIndex={-1}
-              className="legal-summary"
-              aria-labelledby="resumo-title"
-            >
-              <h2 id="resumo-title">O essencial</h2>
-              <ul>
-                {document.summary.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </section>
-            {document.sections.map((section) => (
+            {document.summary?.length > 0 && (
+              <section
+                id="resumo"
+                tabIndex={-1}
+                className="legal-summary"
+                aria-labelledby="resumo-title"
+              >
+                <h2 id="resumo-title">O essencial</h2>
+                <ul>
+                  {document.summary.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {(document.sections || []).map((section) => (
               <section
                 key={section.id}
                 id={section.id}
@@ -192,29 +232,29 @@ export default function LegalDocument({ documentId }) {
             <section id="contato" tabIndex={-1} aria-labelledby="contato-title">
               <h2 id="contato-title">Contato e documentos relacionados</h2>
               <p>
-                {bundle.manifest.controllerName
-                  ? `Responsável: ${bundle.manifest.controllerName}.`
-                  : 'Identificação do responsável pendente na minuta.'}
+                {contact.controllerName
+                  ? `Responsável: ${contact.controllerName}.`
+                  : 'A identificação do responsável consta da Política de Privacidade vigente.'}
               </p>
-              {bundle.manifest.contactEmail ? (
+              {contact.contactEmail && (
                 <p>
-                  E-mail:{' '}
-                  <a href={`mailto:${bundle.manifest.contactEmail}`}>
-                    {bundle.manifest.contactEmail}
-                  </a>
-                  .
+                  E-mail: <span className="legal-contact-email">{contact.contactEmail}</span> (
+                  <a href={`mailto:${contact.contactEmail}`}>escrever</a>).
                 </p>
-              ) : (
-                <p>O e-mail de contato será informado antes da entrada em vigor.</p>
               )}
               <p>
-                Para denúncias, recursos, cancelamentos e pedidos de privacidade, acesse o{' '}
-                <Link to="/atendimento">atendimento</Link>.
+                Para denúncias, recursos, cancelamentos, reembolsos e pedidos de privacidade, acesse
+                o <Link to="/atendimento">atendimento</Link>.
               </p>
               <ul>
-                {relatedDocuments.map((item) => (
+                {related.map((item) => (
                   <li key={item.id}>
-                    <Link to={`${item.path}?version=${bundle.manifest.version}`}>{item.title}</Link>
+                    <Link to={item.path}>{item.title}</Link>
+                  </li>
+                ))}
+                {COMMERCIAL_IDS.filter((id) => id !== documentId).map((id) => (
+                  <li key={id}>
+                    <Link to={commercialDocumentLink(id)}>{COMMERCIAL_DOCUMENTS[id].label}</Link>
                   </li>
                 ))}
               </ul>
@@ -222,24 +262,33 @@ export default function LegalDocument({ documentId }) {
             <section id="historico" tabIndex={-1} aria-labelledby="historico-title">
               <h2 id="historico-title">Histórico e referências</h2>
               <p>
-                {documentManifest.date.split('-').reverse().join('/')} · Versão{' '}
-                {documentManifest.version}
+                {brDate(manifest.date) && `${brDate(manifest.date)} · `}Versão {manifest.version}
               </p>
-              <ul>
-                {documentManifest.changes.map((change) => (
-                  <li key={change}>{change}</li>
-                ))}
-              </ul>
-              <p>Referências para consulta:</p>
-              <ul>
-                {document.sources.map((source) => (
-                  <li key={source.href}>
-                    <a href={source.href} target="_blank" rel="noopener noreferrer">
-                      {source.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              {manifest.changes?.length > 0 && (
+                <ul>
+                  {manifest.changes.map((change) => (
+                    <li key={change}>{change}</li>
+                  ))}
+                </ul>
+              )}
+              <p>
+                Versões anteriores continuam disponíveis para consulta pelo endereço deste documento
+                com <code>?version=</code> seguido do número da versão.
+              </p>
+              {document.sources?.length > 0 && (
+                <>
+                  <p>Referências para consulta:</p>
+                  <ul>
+                    {document.sources.map((source) => (
+                      <li key={source.href}>
+                        <a href={source.href} target="_blank" rel="noopener noreferrer">
+                          {source.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
               <Button type="button" onClick={() => window.print()}>
                 Imprimir ou salvar em PDF
               </Button>

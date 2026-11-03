@@ -1,4 +1,5 @@
 \ir _helpers/storefront_fixture.sql
+-- termos comerciais: ver _helpers/storefront_fixture.sql
 create temp table finance_before as select (select cash_balance from public.wallets where user_id='74000000-0000-0000-0000-000000000001') balance,(select to_jsonb(e) from public.visibility_entitlements e where resource_id=(select v::uuid from sf_results where k='sf')) entitlement;
 select pg_temp.set_test_user('74000000-0000-0000-0000-000000000001',true);
 set local role authenticated;
@@ -35,8 +36,8 @@ select ok(private.storefront_media_referenced('74200000-0000-0000-0000-000000000
 select pg_temp.set_test_user('74000000-0000-0000-0000-000000000001',true);
 select is(public.discard_unused_storefront_media('74200000-0000-0000-0000-000000000001'),null::text,'owner cannot remove media used by public version');
 insert into sf_results values('pending_renew',public.quote_commercial_order((select v::uuid from sf_results where k='sf'),'1',gen_random_uuid())->>'id');
-select public.confirm_commercial_order((select v::uuid from sf_results where k='pending_renew'),true);
-select public.confirm_commercial_order((select v::uuid from sf_results where k='pending_renew'),true);
+select pg_temp.confirm_with_terms((select v::uuid from sf_results where k='pending_renew'),true);
+select pg_temp.confirm_with_terms((select v::uuid from sf_results where k='pending_renew'),true);
 select is((select cash_balance from public.wallets where user_id='74000000-0000-0000-0000-000000000001'),144,'pending revision renewal uses same motor, single debit');
 select is(public.public_product_catalog('detail','','',(select v from sf_results where k='sf'))->'groups'->0->>'brand','Synthetic storefront','renewal never approves pending content');
 select pg_temp.sf_admin();

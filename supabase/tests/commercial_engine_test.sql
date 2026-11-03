@@ -1,4 +1,5 @@
 \ir _helpers/auth_session.sql
+\ir _helpers/commercial_terms.sql
 begin;
 select no_plan();
 -- Fresh test offering isolates engine invariants from installed adapters and preview prices.
@@ -33,6 +34,7 @@ select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
 create temp table results(name text primary key,value jsonb); grant all on results to authenticated;
 set local role authenticated;
 select throws_ok($$select public.admin_commercial_catalog()$$,'42501','PERMISSION_DENIED','ordinary user cannot read admin catalog');
+select pg_temp.publish_test_commercial_terms(); -- 20261212000002: termos comerciais sintéticos publicados
 select throws_ok($$select public.quote_commercial_order('73200000-0000-0000-0000-000000000001','0',gen_random_uuid())$$,'INVALID_DURATION','zero duration fails');
 select throws_ok($$select public.quote_commercial_order('73200000-0000-0000-0000-000000000001','1.5',gen_random_uuid())$$,'INVALID_DURATION','fractional duration fails');
 select throws_ok($$select public.quote_commercial_order('73200000-0000-0000-0000-000000000001','999999999999999999',gen_random_uuid())$$,'INVALID_DURATION','oversized duration fails before cast');
@@ -44,15 +46,15 @@ select is(public.quote_commercial_order('73200000-0000-0000-0000-000000000001','
 select throws_ok($$select public.quote_commercial_order('73200000-0000-0000-0000-000000000001','8','73300000-0000-0000-0000-000000000001')$$,'IDEMPOTENCY_CONFLICT','request cannot mutate duration');
 select throws_ok($$update public.commercial_orders set total_cash=1$$,'42501',null,'direct financial write denied');
 select throws_ok($$update public.visibility_entitlements set expires_at=now()+interval '1 year'$$,'42501',null,'direct expiry mutation denied');
-select throws_ok($$select public.confirm_commercial_order((select(value->>'id')::uuid from results where name='q'),false)$$,'CONFIRMATION_REQUIRED','explicit buyer confirmation required');
+select throws_ok($$select pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='q'),false)$$,'CONFIRMATION_REQUIRED','explicit buyer confirmation required');
 reset role;
 select pg_temp.commercial_admin();
 select public.admin_publish_commercial_price('synthetic_engine_fixture','3',1,30,null,2,gen_random_uuid(),'Synthetic price increased',true);
 select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
 set local role authenticated;
-insert into results values('paid',public.confirm_commercial_order((select(value->>'id')::uuid from results where name='q'),true));
+insert into results values('paid',pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='q'),true));
 select is((select value->>'totalCash' from results where name='paid'),'14','old quote survives price publication');
-select is(public.confirm_commercial_order((select(value->>'id')::uuid from results where name='q'),true),(select value from results where name='paid'),'confirmation replay has no new debit');
+select is(pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='q'),true),(select value from results where name='paid'),'confirmation replay has no new debit');
 reset role;
 select is((select cash_balance from public.wallets where user_id='73000000-0000-0000-0000-000000000001'),86,'one exact debit');
 select is((select count(*)::integer from public.economy_transactions where reference_type='commercial_order' and user_id='73000000-0000-0000-0000-000000000001'),1,'one unique ledger entry');
@@ -69,7 +71,7 @@ select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
 set local role authenticated;
 insert into results values('renew',public.quote_commercial_order('73200000-0000-0000-0000-000000000001','2',gen_random_uuid()));
 select is((select value->>'totalCash' from results where name='renew'),'6','renewal uses current price');
-select public.confirm_commercial_order((select(value->>'id')::uuid from results where name='renew'),true);
+select pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='renew'),true);
 reset role;
 select is((select extract(epoch from expires_at-starts_at)::bigint from public.visibility_entitlements where resource_id='73200000-0000-0000-0000-000000000001'),777600::bigint,'early renewal extends remaining period by exact 48 hours');
 -- Artificial time travel changes only disposable fixture, never production mechanism.
@@ -77,16 +79,16 @@ update public.visibility_entitlements set starts_at=clock_timestamp()-interval '
 select ok(not private.commercial_resource_visible('73200000-0000-0000-0000-000000000001'),'expired right denies access without cron');
 set local role authenticated;
 insert into results values('late',public.quote_commercial_order('73200000-0000-0000-0000-000000000001','1',gen_random_uuid()));
-select public.confirm_commercial_order((select(value->>'id')::uuid from results where name='late'),true);
+select pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='late'),true);
 reset role;
 select is((select extract(epoch from expires_at-starts_at)::bigint from public.visibility_entitlements where resource_id='73200000-0000-0000-0000-000000000001'),86400::bigint,'late renewal begins a new 24 hour period');
 -- Server time is authoritative; expired quotes and insufficient funds cannot debit.
 insert into public.commercial_orders(payer_user_id,request_id,resource_id,offering_code,price_version_id,content_revision,duration_days,unit_price_cash,total_cash,created_at,quote_expires_at)
 select '73000000-0000-0000-0000-000000000001',gen_random_uuid(),'73200000-0000-0000-0000-000000000001','synthetic_engine_fixture',id,1,1,3,3,now()-interval '10 minutes',now()-interval '5 minutes' from public.commercial_price_versions where offering_code='synthetic_engine_fixture' and revision=3;
 set local role authenticated;
-select throws_ok($$select public.confirm_commercial_order((select id from public.commercial_orders where quote_expires_at<now() limit 1),true)$$,'QUOTE_EXPIRED','expired quote cannot debit');
+select throws_ok($$select pg_temp.confirm_with_terms((select id from public.commercial_orders where quote_expires_at<now() limit 1),true)$$,'QUOTE_EXPIRED','expired quote cannot debit');
 insert into results values('insufficient',public.quote_commercial_order('73200000-0000-0000-0000-000000000001','30',gen_random_uuid()));
-select throws_ok($$select public.confirm_commercial_order((select(value->>'id')::uuid from results where name='insufficient'),true)$$,'Saldo de EvoCash insuficiente.','insufficient balance preserves order and right');
+select throws_ok($$select pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='insufficient'),true)$$,'Saldo de EvoCash insuficiente.','insufficient balance preserves order and right');
 reset role;
 -- Approved version changes after quote must fail before debit.
 set local role authenticated;
@@ -94,7 +96,7 @@ insert into results values('stale',public.quote_commercial_order('73200000-0000-
 reset role;
 update private.commercial_resources set content_revision=2,approved_revision=2 where id='73200000-0000-0000-0000-000000000001';
 set local role authenticated;
-select throws_ok($$select public.confirm_commercial_order((select(value->>'id')::uuid from results where name='stale'),true)$$,'RESOURCE_NOT_ELIGIBLE','approved revision rechecked inside financial transaction');
+select throws_ok($$select pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='stale'),true)$$,'RESOURCE_NOT_ELIGIBLE','approved revision rechecked inside financial transaction');
 reset role;
 update private.commercial_resources set moderation_state='suspended' where id='73200000-0000-0000-0000-000000000001';
 select ok(not private.commercial_resource_visible('73200000-0000-0000-0000-000000000001'),'content suspension overrides payment');
@@ -118,7 +120,7 @@ create trigger commercial_test_fault before update on public.visibility_entitlem
 select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
 set local role authenticated;
 insert into results values('fault',public.quote_commercial_order('73200000-0000-0000-0000-000000000001','1',gen_random_uuid()));
-select throws_ok($$select public.confirm_commercial_order((select(value->>'id')::uuid from results where name='fault'),true)$$,'SYNTHETIC_GRANT_FAILURE','fault after debit rolls back entire transaction');
+select throws_ok($$select pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='fault'),true)$$,'SYNTHETIC_GRANT_FAILURE','fault after debit rolls back entire transaction');
 reset role;
 select is((select cash_balance from public.wallets where user_id='73000000-0000-0000-0000-000000000001'),77,'fault preserves balance');
 select is((select count(*)::integer from public.economy_transactions where reference_type='commercial_order' and user_id='73000000-0000-0000-0000-000000000001'),3,'fault preserves ledger');
@@ -129,18 +131,18 @@ drop trigger commercial_test_fault on public.visibility_entitlements;
 select pg_temp.set_test_user('73000000-0000-0000-0000-000000000002',true);
 set local role authenticated;
 select is((select count(*)::integer from public.commercial_orders),0,'RLS isolates orders');
-select throws_ok($$select public.confirm_commercial_order((select(value->>'id')::uuid from results where name='q'),true)$$,'ORDER_NOT_FOUND','cannot confirm another wallet order');
+select throws_ok($$select pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='q'),true)$$,'ORDER_NOT_FOUND','cannot confirm another wallet order');
 select throws_ok($$select public.quote_commercial_order('73200000-0000-0000-0000-000000000001','1',gen_random_uuid())$$,'RESOURCE_NOT_ELIGIBLE','cannot buy another owner resource');
 reset role;
 select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
 update public.users set account_status='disabled' where id='73000000-0000-0000-0000-000000000001';
 set local role authenticated;
-select throws_ok($$select public.confirm_commercial_order((select(value->>'id')::uuid from results where name='fault'),true)$$,'42501','APP_ACCESS_DENIED','blocked user cannot spend');
+select throws_ok($$select pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='fault'),true)$$,'42501','APP_ACCESS_DENIED','blocked user cannot spend');
 reset role;
 update public.users set account_status='active' where id='73000000-0000-0000-0000-000000000001';
 select pg_temp.revoke_test_session('73000000-0000-0000-0000-000000000001');
 set local role authenticated;
-select throws_ok($$select public.confirm_commercial_order((select(value->>'id')::uuid from results where name='q'),true)$$,'42501','APP_ACCESS_DENIED','revoked session cannot replay');
+select throws_ok($$select pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='q'),true)$$,'42501','APP_ACCESS_DENIED','revoked session cannot replay');
 reset role;
 select pg_temp.commercial_admin();
 select public.admin_reverse_commercial_order((select(value->>'id')::uuid from results where name='late'),'73400000-0000-0000-0000-000000000001','Synthetic refund last contract',true);

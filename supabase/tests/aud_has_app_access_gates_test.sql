@@ -372,10 +372,14 @@ reset role;
 --     scripts/seed-legal.mjs, fora do pipeline de migrations/pgTAP) só agora, no fim do
 --     arquivo, para não alterar o resultado das secoes 0-15 acima (já executadas).
 -- =====================================================================================
+-- Desde 20261212000001 a versão aceita precisa estar registrada previamente em
+-- legal_versions (o aceite não grava mais conteúdo enviado pelo cliente).
+insert into public.legal_versions (version, manifest, documents, digest)
+  values ('91.2.1', '{"version":"91.2.1","published":true,"minimumAge":18}'::jsonb, '[]'::jsonb, 'f12aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
 insert into public.legal_policy (id, version, published, digest, published_at, minimum_age)
-  values (true, 'f12-v1', true, 'f12-digest', now(), 18)
+  values (true, '91.2.1', true, 'f12aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', now(), 18)
   on conflict (id) do update set
-    version = 'f12-v1', published = true, digest = 'f12-digest', published_at = now(), minimum_age = 18;
+    version = '91.2.1', published = true, digest = 'f12aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', published_at = now(), minimum_age = 18;
 
 -- 16a) Sequencia exata de Register.jsx: usuario novo, criado DEPOIS do corte de
 -- verificacao de e-mail (email_verified_ok exige confirmed_at), com e-mail ainda NAO
@@ -404,7 +408,7 @@ update public.users set data_nascimento = (now() - interval '30 years')::date
 set local role authenticated;
 select pg_temp.as_f1('1');
 select lives_ok($$select public.accept_legal_documents(jsonb_build_object(
-    'version','f12-v1','digest','f12-digest','accepted',true,'healthDataConsent',true,
+    'version','91.2.1','digest','f12aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa','accepted',true,'healthDataConsent',true,
     'manifest','{}'::jsonb,'documents','{}'::jsonb))$$,
   'F1.2 16a: accept_legal_documents sucede em Register.jsx:141, depois de set_username');
 select throws_ok($$select public.update_user_profile('{"bio":"x"}'::jsonb)$$, 'PERMISSION_DENIED',
@@ -482,7 +486,7 @@ select is((select private.has_account_standing()), false, 'F1.2 16d: has_account
 -- legal_policy nao tem "u.role = 'superadmin' or" como as outras). Sem aceite valido da
 -- politica publicada acima, retornaria NULL mesmo para superadmin -- aceite aqui pra isolar
 -- exatamente o que esta secao quer medir (a excecao de account_status/restrictions).
-update public.users set legal_acceptance_version='f12-v1', legal_acceptance_digest='f12-digest', legal_acceptance_accepted_at=now()
+update public.users set legal_acceptance_version='91.2.1', legal_acceptance_digest='f12aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', legal_acceptance_accepted_at=now()
   where id='9a000000-0000-0000-0000-000000000006';
 select pg_temp.as_user('6');
 select is((select public.has_app_access()), true, 'F1.2 16d: has_app_access() permite superadmin (com termos aceitos -- ver nota acima: a clausula legal NAO isenta superadmin)');

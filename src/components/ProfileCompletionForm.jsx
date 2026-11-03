@@ -17,10 +17,12 @@ import {
 import { USAGE_PROFILES } from '../constants/usageProfile'
 import { UsageProfileField } from './UsageProfileField'
 import { CitySelector } from './CitySelector'
+import { MINIMUM_REGISTRATION_AGE } from '../constants/accountAge'
+import { businessDayKey } from '../utils/businessDate'
 import { LogoutButton } from './LogoutButton'
 
 function todayString() {
-  return new Date().toISOString().slice(0, 10)
+  return businessDayKey()
 }
 
 // Formulário de conclusão de cadastro (carregado sob demanda por ProfileCompletionGate).
@@ -55,7 +57,7 @@ export default function ProfileCompletionForm() {
     setError('')
     const validationErrors = {
       ...validateUsername(username),
-      ...validateBirthDate(birthDate),
+      ...validateBirthDate(birthDate, { minimumAge: MINIMUM_REGISTRATION_AGE }),
       ...validateResidenceMunicipality(cityCode),
       ...validateSexo(sexo, { required: true }),
       ...validateUsageProfile(usageProfile),
@@ -147,6 +149,9 @@ export default function ProfileCompletionForm() {
                 size="large"
                 block
               />
+              <FormControl.Caption>
+                Cadastro disponível somente para pessoas com 18 anos completos ou mais.
+              </FormControl.Caption>
               {fieldErrors.birthDate && (
                 <FormControl.Validation variant="error">
                   {fieldErrors.birthDate}

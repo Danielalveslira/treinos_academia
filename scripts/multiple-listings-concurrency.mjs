@@ -4,6 +4,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { randomUUID } from 'node:crypto'
 import { mkdirSync, writeFileSync } from 'node:fs'
+import { SYNTHETIC_COMMERCIAL_TERMS_SQL, confirmWithTermsSql } from './lib/commercial-terms-fixture.mjs'
 const db = process.env.PG_TEST_CONTAINER || 'supabase_db_treinos_academia'
 if (!['supabase_db_treinos_academia', 'evolutus_price_phase1_db'].includes(db))
   throw Error('DISPOSABLE_DATABASE_REQUIRED')
@@ -107,6 +108,7 @@ for (const id of resources) {
 await sql(
   `select public._wallet_credit_cash(${q(owner)},100);select public._ledger_record(${q(owner)},'multiple-race-seed','cash','credit',100,'synthetic','fixture','phase51')`
 )
+await sql(SYNTHETIC_COMMERCIAL_TERMS_SQL) // 20261212000002: termos comerciais sintéticos
 const quote = async (id, days) =>
     JSON.parse(
       await as(
@@ -114,7 +116,7 @@ const quote = async (id, days) =>
         `select public.quote_commercial_order(${q(id)},${q(days)},${q(randomUUID())})`
       )
     ),
-  confirm = (o) => as(owner, `select public.confirm_commercial_order(${q(o.id)},true)`)
+  confirm = (o) => as(owner, confirmWithTermsSql(o.id))
 const orders = await Promise.all(resources.map((id) => quote(id, '30'))),
   payments = await Promise.allSettled(orders.map(confirm))
 assert.equal(payments.filter((r) => r.status === 'fulfilled').length, 1)

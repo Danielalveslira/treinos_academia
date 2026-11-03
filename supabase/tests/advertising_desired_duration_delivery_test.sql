@@ -1,4 +1,5 @@
 \ir _helpers/auth_session.sql
+\ir _helpers/commercial_terms.sql
 begin;
 select no_plan();
 -- Isolate from committed synthetic preview fixtures. Every change rolls back.
@@ -47,8 +48,9 @@ select public._ledger_record('76500000-0000-0000-0000-000000000001','synthetic-a
 -- per-placement signal must be true.
 select pg_temp.set_test_user('76500000-0000-0000-0000-000000000001',true);
 set local role authenticated;
+select pg_temp.publish_test_commercial_terms(); -- 20261212000002: termos comerciais sintéticos publicados
 insert into d_results values('quote',public.quote_commercial_order('76510000-0000-0000-0000-000000000001','2',gen_random_uuid()));
-insert into d_results values('paid',public.confirm_commercial_order((select(value->>'id')::uuid from d_results where name='quote'),true));
+insert into d_results values('paid',pg_temp.confirm_with_terms((select(value->>'id')::uuid from d_results where name='quote'),true));
 select is((select x->>'delivery_state' from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from d_results where name='account'))) x where x->>'ad_id'='76510000-0000-0000-0000-000000000001'),'active','paid approved campaign is visible to the resource-level check');
 select is((select x->>'placement_delivery_active' from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from d_results where name='account'))) x where x->>'ad_id'='76510000-0000-0000-0000-000000000001'),'true','home_banner is delivery_enabled with an active fulfilled reservation');
 

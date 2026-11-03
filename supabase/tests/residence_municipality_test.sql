@@ -106,6 +106,8 @@ select is(pg_temp.error_of($$select public.set_birth_info('{"sexo":"outro"}'::js
 select lives_ok($$select public.set_birth_info('{"sexo":"feminino"}'::jsonb)$$, 'opção válida aceita');
 select pg_temp.as_user('02');
 select lives_ok($$select public.set_birth_info('{"dataNascimento":"1985-03-04"}'::jsonb)$$, 'sem a chave sexo (LegalGate de conta antiga) continua funcionando');
+select is(pg_temp.error_of($$select public.set_birth_info('{"dataNascimento":"2010-01-01"}'::jsonb)$$), 'MINIMUM_AGE', 'retomada de cadastro não aceita menor de 18 anos');
+select is(pg_temp.error_of($$select public.set_birth_info('{"dataNascimento":null}'::jsonb)$$), 'BIRTHDATE_REQUIRED', 'nascimento não pode ser apagado via cadastro');
 reset role;
 select is((select sexo from public.users where id = 'e3000000-0000-0000-0000-000000000001'), 'feminino', 'sexo persistido');
 select is((select sexo from public.users where id = 'e3000000-0000-0000-0000-000000000002'), null, 'conta antiga sem sexo não foi alterada');

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { execFile, execFileSync } from 'node:child_process'
 import { promisify } from 'node:util'
 import { randomUUID } from 'node:crypto'
+import { SYNTHETIC_COMMERCIAL_TERMS_SQL, acceptCashQuoteTermsSql } from './lib/commercial-terms-fixture.mjs'
 const container = process.env.PG_TEST_CONTAINER || 'supabase_db_treinos_academia'
 if (!['supabase_db_treinos_academia', 'evolutus_commercial_phase0_20261027'].includes(container)) throw Error('DISPOSABLE_DATABASE_REQUIRED')
 const info = JSON.parse(execFileSync('docker', ['inspect', container], { encoding: 'utf8' }))[0]
@@ -50,7 +51,9 @@ assert.equal(await moneySnapshot(),before,'Concurrent pricing cannot change bala
 
 // Phase 2: quote reservation and confirmation reuse the existing ledger atomically.
 await sql('update public.evocash_pricing_state set checkout_enabled=true where id')
+await sql(SYNTHETIC_COMMERCIAL_TERMS_SQL) // 20261212000002: Condições do EvoCash sintéticas
 const phase2Quote = JSON.parse((await sql(createQuote(randomUUID())))).quoteId
+await sql(`begin;${claims(buyer,buyerSession)}${acceptCashQuoteTermsSql(phase2Quote)};commit;`)
 const checkoutId=randomUUID()
 const reserve = quoteId=>`begin;${claims(buyer,buyerSession)}select public.reserve_infinitepay_cash_purchase(${quote(quoteId)},${quote(checkoutId)});commit;`
 const orders=await Promise.all(Array.from({length:6},()=>sql(reserve(phase2Quote))))

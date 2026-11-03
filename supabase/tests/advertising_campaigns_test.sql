@@ -1,4 +1,5 @@
 \ir _helpers/auth_session.sql
+\ir _helpers/commercial_terms.sql
 begin;
 select no_plan();
 -- Isolate from committed synthetic preview fixtures. Every change rolls back.
@@ -29,6 +30,7 @@ select throws_ok($$select public.create_advertising_campaign((select(value#>>'{}
 select is((select count(*)::integer from public.sponsored_ads where id='76100000-0000-0000-0000-000000000001'),0,'draft hidden by RLS');
 select is(public.select_advertising('home_banner',null),'[]'::jsonb,'unconfigured surface has no ad');
 select is(jsonb_array_length(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))),1,'owner sees private campaign summary');
+select pg_temp.publish_test_commercial_terms(); -- 20261212000002: termos comerciais sintéticos publicados
 select throws_ok($$select public.quote_commercial_order('76100000-0000-0000-0000-000000000001','1',gen_random_uuid())$$,'COMMERCIAL_SALES_PAUSED','sales closed by default');
 select public.edit_advertising_campaign('76100000-0000-0000-0000-000000000001',1,'Synthetic campaign','Only synthetic content','https://example.invalid/ads',true);
 reset role;
@@ -48,8 +50,8 @@ set local role authenticated;
 insert into ads_results values('quote',public.quote_commercial_order('76100000-0000-0000-0000-000000000001','2',gen_random_uuid()));
 select is((select value->>'totalCash' from ads_results where name='quote'),'14','PostgreSQL computes daily price');
 select is(public.select_advertising('home_banner',null),'[]'::jsonb,'approved unpaid ad not delivered');
-insert into ads_results values('paid',public.confirm_commercial_order((select(value->>'id')::uuid from ads_results where name='quote'),true));
-select is(public.confirm_commercial_order((select(value->>'id')::uuid from ads_results where name='quote'),true),(select value from ads_results where name='paid'),'payment replay returns same order');
+insert into ads_results values('paid',pg_temp.confirm_with_terms((select(value->>'id')::uuid from ads_results where name='quote'),true));
+select is(pg_temp.confirm_with_terms((select(value->>'id')::uuid from ads_results where name='quote'),true),(select value from ads_results where name='paid'),'payment replay returns same order');
 select is(jsonb_array_length(public.select_advertising('home_banner',null)),1,'approved paid reserved ad delivered');
 select public.edit_advertising_campaign('76100000-0000-0000-0000-000000000001',2,'Pending secret revision','Not public','https://example.invalid/revision',true);
 select is(public.select_advertising('home_banner',null)->0->>'title','Synthetic campaign','pending revision never replaces projection');
@@ -116,7 +118,7 @@ select pg_temp.set_test_user('76000000-0000-0000-0000-000000000002',true);
 set local role authenticated;
 select throws_ok($$select public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))$$,'42501','PERMISSION_DENIED','other user cannot read private campaigns');
 select throws_ok($$select public.edit_advertising_campaign('76100000-0000-0000-0000-000000000001',3,'Attack','','https://example.invalid/attack',false)$$,'42501','PERMISSION_DENIED','other user cannot edit');
-select throws_ok($$select public.confirm_commercial_order((select(value->>'id')::uuid from ads_results where name='quote'),true)$$,'ORDER_NOT_FOUND','other user cannot spend original payer balance');
+select throws_ok($$select pg_temp.confirm_with_terms((select(value->>'id')::uuid from ads_results where name='quote'),true)$$,'ORDER_NOT_FOUND','other user cannot spend original payer balance');
 reset role;
 -- A global campaign keeps its prepared scope even if the administrative bundle grows.
 select pg_temp.ads_admin();
@@ -133,7 +135,7 @@ select is((select placement_code from private.advertising_resource_inventory whe
 select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
 select pg_temp.revoke_test_session('76000000-0000-0000-0000-000000000001');
 set local role authenticated;
-select throws_ok($$select public.confirm_commercial_order((select(value->>'id')::uuid from ads_results where name='quote'),true)$$,'42501','APP_ACCESS_DENIED','revoked session blocks even a confirmation replay');
+select throws_ok($$select pg_temp.confirm_with_terms((select(value->>'id')::uuid from ads_results where name='quote'),true)$$,'42501','APP_ACCESS_DENIED','revoked session blocks even a confirmation replay');
 reset role;
 select pg_temp.ads_admin();
 insert into ads_results values('refund',public.admin_reverse_commercial_order((select(value->>'id')::uuid from ads_results where name='quote'),'76200000-0000-0000-0000-000000000001','Synthetic explicitly authorized reversal',true));

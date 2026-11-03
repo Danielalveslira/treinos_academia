@@ -1,4 +1,5 @@
 \ir _helpers/auth_session.sql
+\ir _helpers/commercial_terms.sql
 begin;
 select no_plan();
 delete from public.legal_policy;
@@ -19,12 +20,13 @@ values('fc000000-0000-0000-0000-000000000003','synthetic_refund_service','fc0000
 select public._wallet_credit_cash('fc000000-0000-0000-0000-000000000001',100);
 select public._ledger_record('fc000000-0000-0000-0000-000000000001','synthetic-service-seed','cash','credit',100,'synthetic','fixture','refund-services');
 select pg_temp.set_test_user('fc000000-0000-0000-0000-000000000001',true);
+select pg_temp.publish_test_commercial_terms(); -- 20261212000002: termos comerciais sintéticos publicados
 create temp table quote as select public.quote_commercial_order('fc000000-0000-0000-0000-000000000003','7',gen_random_uuid()) q;
 select is((select q->'refundPolicy'->>'version' from quote),'draft-1','service quote freezes offered policy');
 insert into public.refund_policies(version,approved,body,counting_rule,days,cash_origin,service_origin)
 values('draft-extension-test',false,'Synthetic more favorable extension','civil_days_brasilia',10,'receipt','contract');
 update private.refund_settings set policy_version='draft-extension-test',financial_requests_enabled=true,settlement_enabled=true where id;
-select public.confirm_commercial_order((select(q->>'id')::uuid from quote),true);
+select pg_temp.confirm_with_terms((select(q->>'id')::uuid from quote),true);
 select is(public.get_refund_source('order',(select(q->>'id')::uuid from quote))->'policy'->>'version','draft-1','later policy does not rewrite accepted contract');
 select is((select origin_kind from public.refund_contract_terms where order_id=(select(q->>'id')::uuid from quote)),'contract','service origin differs from cash receipt');
 create temp table req as select public.create_refund_request('order',(select(q->>'id')::uuid from quote),'withdrawal','',gen_random_uuid()) r;

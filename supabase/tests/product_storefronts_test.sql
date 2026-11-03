@@ -1,4 +1,5 @@
 \ir _helpers/storefront_fixture.sql
+-- termos comerciais: ver _helpers/storefront_fixture.sql
 select pg_temp.set_test_user('74000000-0000-0000-0000-000000000002',true);
 set local role authenticated;
 select is(public.list_managed_storefronts()->'items','[]'::jsonb,'another owner cannot list private storefront');
@@ -20,7 +21,7 @@ select is(public.list_managed_storefronts()->'items'->0->>'editorialState','appr
 select is(public.list_managed_storefronts()->'items'->0->>'publicationState','expired','private management identifies expiry');
 select ok(public.authorize_storefront_media('74200000-0000-0000-0000-000000000001') is not null,'owner retains expired media privately');
 insert into sf_results values('renew',public.quote_commercial_order((select v::uuid from sf_results where k='sf'),'2',gen_random_uuid())->>'id');
-select public.confirm_commercial_order((select v::uuid from sf_results where k='renew'),true);
+select pg_temp.confirm_with_terms((select v::uuid from sf_results where k='renew'),true);
 reset role;
 select is((select extract(epoch from expires_at-starts_at)::bigint from public.visibility_entitlements where resource_id=(select v::uuid from sf_results where k='sf')),172800::bigint,'late renewal begins exactly 48 hours');
 select is((select count(*)::integer from public.visibility_entitlements where resource_id=(select v::uuid from sf_results where k='sf')),1,'renewal reuses same right and content identity');
@@ -64,7 +65,7 @@ insert into sf_results values('right_before',(select to_jsonb(e)::text from publ
 create function pg_temp.fail_storefront_grant() returns trigger language plpgsql as $$begin raise exception 'SYNTHETIC_STOREFRONT_GRANT_FAILURE';end$$;
 create trigger storefront_fault before update on public.visibility_entitlements for each row execute function pg_temp.fail_storefront_grant();
 set local role authenticated;
-select throws_ok($$select public.confirm_commercial_order((select v::uuid from sf_results where k='fault'),true)$$,'SYNTHETIC_STOREFRONT_GRANT_FAILURE','fault after debit cannot partially publish storefront');
+select throws_ok($$select pg_temp.confirm_with_terms((select v::uuid from sf_results where k='fault'),true)$$,'SYNTHETIC_STOREFRONT_GRANT_FAILURE','fault after debit cannot partially publish storefront');
 reset role;
 drop trigger storefront_fault on public.visibility_entitlements;
 select is((select cash_balance from public.wallets where user_id='74000000-0000-0000-0000-000000000001'),137,'grant fault preserves wallet');

@@ -18,6 +18,7 @@ import { GreetingVoiceSettings } from '../features/greetings/GreetingVoiceSettin
 import { RestPreferenceSettings } from '../components/RestPreferenceSettings'
 import { ResidenceCitySettings } from '../components/ResidenceCitySettings'
 import { restPreferenceSummary } from '../utils/restPreference'
+import { HealthConsentSettings } from '../components/HealthConsentSettings'
 
 function Setting({ id, title, summary, open, onToggle, children }) {
   return (
@@ -477,6 +478,25 @@ function ProfileContent({
           onToggle={() => toggle('rest')}
         >
           {visited.rest && <RestPreferenceSettings />}
+        </Setting>
+        <Setting
+          id="healthConsent"
+          title="Dados de saúde e direitos"
+          summary="Autorizações"
+          open={Boolean(expanded.healthConsent)}
+          onToggle={() => toggle('healthConsent')}
+        >
+          {visited.healthConsent && (
+            <>
+              <HealthConsentSettings compact />
+              <p>
+                Para acessar, corrigir, excluir ou exportar seus dados, ou se opor a um tratamento,
+                use o <Link to="/atendimento?tipo=privacy">atendimento de privacidade</Link>. A{' '}
+                <Link to="/politica-de-privacidade">Política de Privacidade</Link> explica cada
+                finalidade.
+              </p>
+            </>
+          )}
         </Setting>
         <Setting
           id="push"

@@ -1,4 +1,5 @@
 \ir _helpers/auth_session.sql
+\ir _helpers/commercial_terms.sql
 begin;
 insert into public.professional_listing_limits(kind,max_per_owner)values('professional',10),('space',10) on conflict(kind)do update set max_per_owner=10;
 
@@ -59,11 +60,12 @@ select public.set_professional_listing_editorial((select v from pro_ids where k=
 select public.set_professional_listing_editorial((select v from pro_ids where k='a'),2,'approved','Synthetic multi approval');
 select public.set_professional_listing_editorial((select v from pro_ids where k='b'),2,'approved','Synthetic multi approval');
 reset role;select pg_temp.pro_user(1);set local role authenticated;
+select pg_temp.publish_test_commercial_terms(); -- 20261212000002: termos comerciais sintéticos publicados
 insert into pro_ids values('order-pro',(public.quote_commercial_order((select v from pro_ids where k='pro'),'1',gen_random_uuid())->>'id')::uuid);
-select public.confirm_commercial_order((select v from pro_ids where k='order-pro'),true);
+select pg_temp.confirm_with_terms((select v from pro_ids where k='order-pro'),true);
 insert into pro_ids values('order-a',(public.quote_commercial_order((select v from pro_ids where k='a'),'2',gen_random_uuid())->>'id')::uuid);
-select public.confirm_commercial_order((select v from pro_ids where k='order-a'),true);
-select public.confirm_commercial_order((select v from pro_ids where k='order-a'),true);
+select pg_temp.confirm_with_terms((select v from pro_ids where k='order-a'),true);
+select pg_temp.confirm_with_terms((select v from pro_ids where k='order-a'),true);
 reset role;
 select is((select cash_balance from public.wallets where user_id='75000000-0000-0000-0000-000000000001'),79,'two resources debit separately and replay does not debit twice');
 select is(public.public_get_professional((select v from pro_ids where k='pro'))->>'displayName','Multi professional','paid professional remains public');
@@ -91,7 +93,7 @@ select public.admin_set_professional_listing_limit('space',0,1,'Pause only new e
 reset role;select pg_temp.pro_user(1);set local role authenticated;
 select lives_ok($$select public.get_my_professional_listing((select v from pro_ids where k='a'))$$,'pause in creation preserves management');
 insert into pro_ids values('renew',(public.quote_commercial_order((select v from pro_ids where k='a'),'1',gen_random_uuid())->>'id')::uuid);
-select public.confirm_commercial_order((select v from pro_ids where k='renew'),true);
+select pg_temp.confirm_with_terms((select v from pro_ids where k='renew'),true);
 reset role;
 select is((select expires_at-starts_at from public.visibility_entitlements where resource_id=(select v from pro_ids where k='a')),interval '24 hours','renewal targets only expired A despite pending review and paused creation');
 select is(public.public_get_professional((select v from pro_ids where k='b')),null::jsonb,'renewal A still cannot activate B');

@@ -81,6 +81,15 @@ export function AppRoutes() {
           path="/termos-publicacao-vitrine"
           element={<LegalDocument documentId="showcase-publication-terms" />}
         />
+        <Route path="/condicoes-evocash" element={<LegalDocument documentId="evocash-terms" />} />
+        <Route
+          path="/termos-publicidade"
+          element={<LegalDocument documentId="advertising-terms" />}
+        />
+        <Route
+          path="/politica-de-reembolso"
+          element={<LegalDocument documentId="cancellation-refund-policy" />}
+        />
         <Route path="/atendimento" element={<Support />} />
         <Route path="/profissionais/:listingId" element={<ProfessionalListing />} />
         <Route path="/locais/:listingId" element={<ProfessionalListing />} />

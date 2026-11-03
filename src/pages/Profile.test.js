@@ -53,6 +53,10 @@ before(async () => {
       '../components/RestPreferenceSettings',
       "export const RestPreferenceSettings = () => <div data-rest='true' />",
     ],
+    [
+      '../components/HealthConsentSettings',
+      "export const HealthConsentSettings = () => <div data-health-consent='true' />",
+    ],
     ['../features/greetings/config', 'export const GREETING_V2_ENABLED = true'],
     [
       'react-router-dom',

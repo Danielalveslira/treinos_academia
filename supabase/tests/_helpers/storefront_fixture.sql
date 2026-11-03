@@ -1,4 +1,5 @@
 \ir auth_session.sql
+\ir commercial_terms.sql
 begin;
 select no_plan();
 update private.commercial_resources set moderation_state='draft' where offering_code='product_storefront';
@@ -63,14 +64,15 @@ select public.admin_publish_commercial_price('product_storefront','7',1,30,null,
 select public.admin_set_commercial_sales('product_storefront',true,(select revision from public.commercial_offerings where code='product_storefront'),gen_random_uuid(),'Synthetic sales only',true);
 select pg_temp.set_test_user('74000000-0000-0000-0000-000000000001',true);
 set local role authenticated;
+select pg_temp.publish_test_commercial_terms(); -- 20261212000002: termos comerciais sintéticos publicados
 insert into sf_results values('quote',public.quote_commercial_order((select v::uuid from sf_results where k='sf'),'7',gen_random_uuid())->>'id');
-select throws_ok($$select public.confirm_commercial_order((select v::uuid from sf_results where k='quote'),true)$$,'Saldo de EvoCash insuficiente.','insufficient cash cannot publish');
+select throws_ok($$select pg_temp.confirm_with_terms((select v::uuid from sf_results where k='quote'),true)$$,'Saldo de EvoCash insuficiente.','insufficient cash cannot publish');
 reset role;
 select public._wallet_credit_cash('74000000-0000-0000-0000-000000000001',200);
 select public._ledger_record('74000000-0000-0000-0000-000000000001','sf-test-seed','cash','credit',200,'synthetic','fixture','phase4');
 set local role authenticated;
-select public.confirm_commercial_order((select v::uuid from sf_results where k='quote'),true);
-select public.confirm_commercial_order((select v::uuid from sf_results where k='quote'),true);
+select pg_temp.confirm_with_terms((select v::uuid from sf_results where k='quote'),true);
+select pg_temp.confirm_with_terms((select v::uuid from sf_results where k='quote'),true);
 reset role;
 select is((select cash_balance from public.wallets where user_id='74000000-0000-0000-0000-000000000001'),151,'seven days debit once for the entire storefront');
 select is((select count(*)::integer from public.economy_transactions where reference_id=(select v from sf_results where k='quote') and direction='debit'),1,'one ledger record per commercial order');

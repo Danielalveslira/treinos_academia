@@ -4,7 +4,8 @@ import { EXERCISE_TYPES } from './exerciseType.js'
 import { isValidCardioSession, MAX_DURATION_MINUTES, MAX_DISTANCE_KM } from './cardioSessions.js'
 import { COMMUNITY_ICON_NAMES } from '../constants/communityIcons.js'
 import { USAGE_PROFILES } from '../constants/usageProfile.js'
-import { isFutureBusinessDay } from './businessDate.js'
+import { businessDayKey, isFutureBusinessDay } from './businessDate.js'
+import { MINIMUM_AGE_MESSAGE, MINIMUM_REGISTRATION_AGE } from '../constants/accountAge.js'
 import { STATUS_TEXT_MAX_LENGTH } from './statusLimits.js'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,20}$/
@@ -49,7 +50,7 @@ function optionalText(value, max, maxMessage) {
 // rejeitar datas de calendário inexistentes, ex.: 2025-02-30) — replicado aqui em vez
 // de reaproveitado porque as duas mensagens de erro e a regra de idade mínima são
 // específicas de data de nascimento.
-export function validateBirthDate(dateString, { minimumAge } = {}) {
+export function validateBirthDate(dateString, { minimumAge, now = new Date() } = {}) {
   const errors = {}
   if (!dateString) {
     errors.birthDate = 'Data de nascimento é obrigatória'
@@ -59,12 +60,15 @@ export function validateBirthDate(dateString, { minimumAge } = {}) {
     new Date(dateString).toISOString().slice(0, 10) !== dateString
   ) {
     errors.birthDate = 'Data de nascimento inválida'
-  } else if (dateString > new Date().toISOString().slice(0, 10)) {
+  } else if (dateString > businessDayKey(now)) {
     errors.birthDate = 'A data de nascimento não pode ser no futuro'
-  } else if (calculateAge(dateString) > MAX_PLAUSIBLE_AGE) {
+  } else if (calculateAge(dateString, now) > MAX_PLAUSIBLE_AGE) {
     errors.birthDate = 'Data de nascimento inválida'
-  } else if (minimumAge != null && calculateAge(dateString) < minimumAge) {
-    errors.birthDate = `É necessário ter pelo menos ${minimumAge} anos para se cadastrar`
+  } else if (minimumAge != null && calculateAge(dateString, now) < minimumAge) {
+    errors.birthDate =
+      minimumAge === MINIMUM_REGISTRATION_AGE
+        ? MINIMUM_AGE_MESSAGE
+        : `É necessário ter pelo menos ${minimumAge} anos para se cadastrar.`
   }
   return errors
 }

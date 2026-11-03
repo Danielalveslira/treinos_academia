@@ -60,5 +60,23 @@ export const confirmCommercialOrder = (orderId, confirm) =>
     p_order_id: orderId,
     p_confirm: confirm === true,
   })
+// Aceite + confirmação atômicos no servidor: o débito só ocorre com a evidência gravada.
+export const confirmCommercialOrderWithTerms = (orderId, terms) =>
+  rpc('confirm_commercial_order_with_terms', {
+    p_order_id: orderId,
+    p_document_version: terms?.version ?? null,
+    p_document_digest: terms?.digest ?? null,
+    p_conditions_digest: terms?.conditionsDigest ?? null,
+  })
+export const acceptCommercialTerms = (sourceType, sourceId, terms) =>
+  rpc('accept_commercial_terms', {
+    p_source_type: sourceType,
+    p_source_id: sourceId,
+    p_document_version: terms?.version ?? null,
+    p_document_digest: terms?.digest ?? null,
+    p_conditions_digest: terms?.conditionsDigest ?? null,
+  })
+export const getMyCommercialTerms = (sourceType, sourceId) =>
+  rpc('get_my_commercial_terms', { p_source_type: sourceType, p_source_id: sourceId })
 export const getMyCommercialOrder = (orderId) =>
   rpc('get_my_commercial_order', { p_order_id: orderId })
