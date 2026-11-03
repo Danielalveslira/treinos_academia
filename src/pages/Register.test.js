@@ -153,10 +153,12 @@ afterEach(async () => {
 })
 beforeEach(() => {
   calls = []
-  const log = (name, result) => (...args) => {
-    calls.push([name, ...args])
-    return typeof result === 'function' ? result(...args) : Promise.resolve(result)
-  }
+  const log =
+    (name, result) =>
+    (...args) => {
+      calls.push([name, ...args])
+      return typeof result === 'function' ? result(...args) : Promise.resolve(result)
+    }
   globalThis.__reg = {
     navigate: (...args) => calls.push(['navigate', ...args]),
     auth: { user: null, loading: false, refreshProfile: log('refreshProfile') },
@@ -168,7 +170,8 @@ beforeEach(() => {
       available: log('available', true),
       complete: log('complete'),
       accept: log('accept'),
-      bundle: () => Promise.resolve({ manifest: { published: true, minimumAge: 16, version: '1' } }),
+      bundle: () =>
+        Promise.resolve({ manifest: { published: true, minimumAge: 16, version: '1' } }),
     },
   }
 })
@@ -199,9 +202,15 @@ async function mount() {
     await act(async () => fields[name]().props.onBlur?.())
   }
   const button = (label) =>
-    root().findAllByType('button').find((b) => b.children.join('') === label)
+    root()
+      .findAllByType('button')
+      .find((b) => b.children.join('') === label)
   const submit = async () => {
-    await act(async () => root().findByType('form').props.onSubmit({ preventDefault() {} }))
+    await act(async () =>
+      root()
+        .findByType('form')
+        .props.onSubmit({ preventDefault() {} })
+    )
   }
   const click = async (label) => {
     const target = button(label)
@@ -209,13 +218,32 @@ async function mount() {
     if (target.props.type === 'submit') return submit()
     await act(async () => target.props.onClick())
   }
-  const errors = () => root().findAllByProps({ 'data-validation': 'true' }).map((n) => n.children.join(''))
+  const errors = () =>
+    root()
+      .findAllByProps({ 'data-validation': 'true' })
+      .map((n) => n.children.join(''))
   const progress = () =>
     root().findAllByProps({ 'aria-current': 'step' })[0].findAllByType('span')[1].children[0]
-  return { renderer, text, title, change, blur, button, submit, click, errors, progress, fields, root }
+  return {
+    renderer,
+    text,
+    title,
+    change,
+    blur,
+    button,
+    submit,
+    click,
+    errors,
+    progress,
+    fields,
+    root,
+  }
 }
 
-async function fillStep1(view, { username = 'maria_fit', email = 'maria@exemplo.com', password = 'senha123' } = {}) {
+async function fillStep1(
+  view,
+  { username = 'maria_fit', email = 'maria@exemplo.com', password = 'senha123' } = {}
+) {
   await view.change('username', username)
   await view.change('email', email)
   await view.change('password', password)
@@ -241,7 +269,10 @@ async function acceptConsents(view, keys = ['accepted']) {
 }
 
 async function chooseUsage(view, value = 'professional') {
-  const radio = view.root().findAllByType('input').find((i) => i.props.type === 'radio' && i.props.value === value)
+  const radio = view
+    .root()
+    .findAllByType('input')
+    .find((i) => i.props.type === 'radio' && i.props.value === value)
   await act(async () => radio.props.onChange())
 }
 
@@ -301,7 +332,10 @@ test('3 etapas: avança, volta preservando tudo e cria a conta uma única vez', 
 
   await view.click('Continuar')
   assert.ok(view.errors().some((e) => /Data de nascimento é obrigatória/.test(e)))
-  assert.ok(view.errors().some((e) => /Selecione a cidade/.test(e)), 'cidade não selecionada')
+  assert.ok(
+    view.errors().some((e) => /Selecione a cidade/.test(e)),
+    'cidade não selecionada'
+  )
   assert.ok(view.errors().includes('Selecione uma opção para Sexo'), 'sexo não escolhido')
   assert.equal(sexoSelect(view).props.value, '', 'começa em "Selecione uma opção"')
   await fillStep2(view, 'feminino')
@@ -333,7 +367,10 @@ test('3 etapas: avança, volta preservando tudo e cria a conta uma única vez', 
     form.props.onSubmit({ preventDefault() {} })
   })
   assert.equal(count('registerUser'), 1)
-  assert.deepEqual(calls.find((c) => c[0] === 'registerUser').slice(1), ['maria@exemplo.com', 'senha123'])
+  assert.deepEqual(calls.find((c) => c[0] === 'registerUser').slice(1), [
+    'maria@exemplo.com',
+    'senha123',
+  ])
   const complete = calls.find((c) => c[0] === 'complete')
   assert.deepEqual(complete[2], {
     username: 'maria_fit',
@@ -468,7 +505,11 @@ test('confirmação por código: OTP, reenvio com espera e conclusão do perfil'
   await act(async () => otp.props.onChange({ target: { value: '12a3456' } }))
   assert.equal(view.root().findByProps({ autoComplete: 'one-time-code' }).props.value, '123456')
   await view.submit()
-  assert.deepEqual(calls.find((c) => c[0] === 'confirm').slice(1), ['maria@exemplo.com', '123456', 'senha123'])
+  assert.deepEqual(calls.find((c) => c[0] === 'confirm').slice(1), [
+    'maria@exemplo.com',
+    '123456',
+    'senha123',
+  ])
   assert.equal(count('complete'), 1)
   assert.equal(count('registerUser'), 1)
   assert.equal(calls.at(-1)[0], 'navigate')
@@ -518,4 +559,38 @@ test('INVALID_SEXO do servidor leva de volta à etapa 2 com o erro no campo', as
   }
   assert.equal(view.title(), 'Conte um pouco sobre você')
   assert.ok(view.errors().includes('Selecione uma opção para Sexo'))
+})
+
+test('MINIMUM_AGE do servidor (relógio do aparelho adiantado/API) volta à etapa 2 com o erro no campo', async () => {
+  globalThis.__reg.api.complete = () => Promise.reject(new Error('MINIMUM_AGE'))
+  const view = await mount()
+  await reachFinal(view)
+  const original = console.error
+  console.error = () => {}
+  try {
+    await view.click('Criar conta')
+  } finally {
+    console.error = original
+  }
+  assert.equal(view.title(), 'Conte um pouco sobre você')
+  assert.ok(view.errors().includes('É necessário ter pelo menos 18 anos para se cadastrar.'))
+  assert.equal(count('accept'), 0, 'nenhum aceite jurídico é tentado')
+  assert.equal(
+    calls.some((c) => c[0] === 'navigate'),
+    false,
+    'não entra no app'
+  )
+})
+
+test('menor de 18 anos é recusado na etapa 2, antes de qualquer criação de identidade', async () => {
+  const view = await mount()
+  await fillStep1(view)
+  await view.click('Continuar')
+  const minor = new Date(Date.now() - 17 * 365.25 * 86_400_000).toISOString().slice(0, 10)
+  await view.change('birthDate', minor)
+  await view.click('Continuar')
+  assert.ok(view.errors().includes('É necessário ter pelo menos 18 anos para se cadastrar.'))
+  assert.equal(view.title(), 'Conte um pouco sobre você')
+  assert.equal(count('registerUser'), 0)
+  assert.equal(count('available'), 1, 'só a checagem do @ da etapa 1 foi feita')
 })

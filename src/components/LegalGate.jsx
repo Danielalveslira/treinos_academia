@@ -10,7 +10,8 @@ import { logoutUser } from '../services/authService'
 import { LogoutButton } from './LogoutButton'
 import { resolveLegalGateState } from '../utils/legal'
 import { validateBirthDate, hasErrors } from '../utils/validators'
-import { MINIMUM_REGISTRATION_AGE } from '../constants/accountAge'
+import { MINIMUM_AGE_MESSAGE, registrationMinimumAge } from '../constants/accountAge'
+import { businessDayKey } from '../utils/businessDate'
 
 // Comprovantes e reembolsos continuam acessíveis sem o aceite da versão vigente (o servidor
 // usa private.require_rights_user nessas RPCs). Carregado só quando o painel é aberto.
@@ -24,7 +25,7 @@ const RefundRequestsPanel = lazy(() =>
 const LEGAL_RECHECK_MIN_INTERVAL_MS = 30 * 1000
 
 function todayString() {
-  return new Date().toISOString().slice(0, 10)
+  return businessDayKey()
 }
 
 export function LegalGate({ children }) {
@@ -99,7 +100,7 @@ export function LegalGate({ children }) {
     if (saving || confirmed.accepted !== true) return
     if (needsBirthDate) {
       const errors = validateBirthDate(birthDate, {
-        minimumAge: Math.max(MINIMUM_REGISTRATION_AGE, legalBundle.manifest.minimumAge ?? 0),
+        minimumAge: registrationMinimumAge(legalBundle.manifest),
       })
       setBirthDateError(errors.birthDate || '')
       if (hasErrors(errors)) return
@@ -122,7 +123,10 @@ export function LegalGate({ children }) {
         return
       }
       if (err?.message === 'MINIMUM_AGE') {
-        setError('O cadastro no Evolutus é exclusivo para pessoas com 18 anos completos ou mais.')
+        // Data recém-informada: o erro fica no campo. Conta antiga já com data (preexistente de
+        // menor): aviso geral; atendimento, privacidade e reembolsos seguem disponíveis abaixo.
+        if (needsBirthDate) setBirthDateError(MINIMUM_AGE_MESSAGE)
+        else setError('O Evolutus é exclusivo para pessoas com 18 anos completos ou mais.')
         return
       }
       if (isLegalPolicyChangedError(err) || err?.message === 'LEGAL_POLICY_INCOMPATIBLE') {
@@ -201,8 +205,9 @@ export function LegalGate({ children }) {
                   block
                 />
                 <FormControl.Caption>
-                  Necessária para confirmar a idade mínima ({Math.max(MINIMUM_REGISTRATION_AGE, legalBundle.manifest.minimumAge ?? 0)} anos)
-                  — sua conta ainda não tinha essa informação.
+                  Necessária para confirmar a idade mínima (
+                  {registrationMinimumAge(legalBundle.manifest)} anos) — sua conta ainda não tinha
+                  essa informação.
                 </FormControl.Caption>
                 {birthDateError && (
                   <FormControl.Validation variant="error">{birthDateError}</FormControl.Validation>

@@ -33,7 +33,8 @@ import { CitySelector } from '../components/CitySelector'
 import { SignupProgress } from '../components/SignupProgress'
 import { LegalConsent } from '../components/LegalConsent'
 import { canSubmitLegalRegistration } from '../utils/legal'
-import { MINIMUM_REGISTRATION_AGE } from '../constants/accountAge'
+import { registrationMinimumAge } from '../constants/accountAge'
+import { businessDayKey } from '../utils/businessDate'
 import {
   acceptLegalDocuments,
   getActiveLegalBundle,
@@ -70,7 +71,7 @@ const STEP_OF_FIELD = {
 }
 
 function todayString() {
-  return new Date().toISOString().slice(0, 10)
+  return businessDayKey()
 }
 
 function firstStepWithError(errors) {
@@ -235,7 +236,7 @@ export default function Register() {
 
   function birthDateRules() {
     return {
-      minimumAge: Math.max(MINIMUM_REGISTRATION_AGE, legalBundle?.manifest?.minimumAge ?? 0),
+      minimumAge: registrationMinimumAge(legalBundle?.manifest),
     }
   }
 
@@ -793,7 +794,9 @@ export default function Register() {
                   size="large"
                   block
                 />
-                <FormControl.Caption>Cadastro disponível somente para pessoas com 18 anos completos ou mais.</FormControl.Caption>
+                <FormControl.Caption>
+                  Cadastro disponível somente para pessoas com 18 anos completos ou mais.
+                </FormControl.Caption>
                 {fieldErrors.birthDate && (
                   <FormControl.Validation variant="error">
                     {fieldErrors.birthDate}

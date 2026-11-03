@@ -1,3 +1,4 @@
+import { MINIMUM_AGE_MESSAGE } from '../constants/accountAge.js'
 import { translateAuthError } from './authErrors.js'
 import { describeAccountAccessError } from './accountAccessErrors.js'
 
@@ -16,9 +17,13 @@ const FIELD_ERRORS = {
     message: 'Use de 3 a 20 letras minúsculas, números ou _ (sem espaços ou acentos)',
   },
   INVALID_SEXO: { field: 'sexo', message: 'Selecione uma opção para Sexo' },
-  MINIMUM_AGE: { field: 'birthDate', message: 'É necessário ter pelo menos 18 anos para se cadastrar' },
+  MINIMUM_AGE: { field: 'birthDate', message: MINIMUM_AGE_MESSAGE },
   INVALID_BIRTHDATE: { field: 'birthDate', message: 'Data de nascimento inválida' },
   BIRTHDATE_REQUIRED: { field: 'birthDate', message: 'Informe sua data de nascimento' },
+  BIRTHDATE_LOCKED: {
+    field: 'birthDate',
+    message: 'A data de nascimento já está registrada. Para corrigi-la, use o atendimento.',
+  },
   INVALID_MUNICIPALITY: {
     field: 'city',
     message: 'Cidade não reconhecida. Escolha uma cidade da lista de sugestões.',
