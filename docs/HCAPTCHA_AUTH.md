@@ -13,6 +13,8 @@ Antes de publicar:
 3. Teste cadastro, login, recuperação, reenvio de OTP e reautenticação administrativa em preview, incluindo expiração, erro de rede e nova tentativa. Não use contas reais de produção para esses testes.
 4. Verifique que o bundle da Home não contém o widget e que a chave secreta não aparece nos artefatos ou logs.
 
+A CSP de `vercel.json` autoriza os domínios do hCaptcha apenas em `script-src`, `style-src`, `connect-src` e `frame-src`, conforme a [orientação oficial](https://docs.hcaptcha.com/#content-security-policy-settings). Preserve essas entradas ao alterar os headers: sem elas, o widget é bloqueado pelo navegador antes de gerar qualquer token.
+
 O token é mantido apenas em memória, consumido uma vez e descartado após cada tentativa. A aplicação não valida o token por conta própria.
 
 ## Ativação controlada em produção
