@@ -19,6 +19,7 @@ let Register
 const STUBS = {
   primer: `
     import { forwardRef } from 'react'
+    export const useTheme = () => ({ resolvedColorMode: 'day' })
     export const FormControl = ({ children, disabled }) => <div data-disabled={disabled ? 'true' : undefined}>{children}</div>
     FormControl.Label = ({ children }) => <label>{children}</label>
     FormControl.Caption = ({ children }) => <small>{children}</small>
@@ -165,7 +166,7 @@ beforeEach(() => {
     online: true,
     api: {
       registerUser: log('registerUser', { user: { uid: 'u1' }, hasSession: true }),
-      confirm: log('confirm'),
+      confirm: log('confirm', { uid: 'u1', email: 'maria@exemplo.com' }),
       resend: log('resend'),
       available: log('available', true),
       complete: log('complete'),
@@ -370,6 +371,7 @@ test('3 etapas: avança, volta preservando tudo e cria a conta uma única vez', 
   assert.deepEqual(calls.find((c) => c[0] === 'registerUser').slice(1), [
     'maria@exemplo.com',
     'senha123',
+    undefined,
   ])
   const complete = calls.find((c) => c[0] === 'complete')
   assert.deepEqual(complete[2], {
@@ -437,16 +439,21 @@ test('consentimento opcional de medidas corporais segue ao aceite apenas quando 
   assert.equal(accept[3], 'signup')
 })
 
-test('e-mail já cadastrado: volta à etapa 1 com o erro no campo e tudo preenchido', async () => {
-  globalThis.__reg.api.registerUser = () =>
-    Promise.reject(Object.assign(new Error('exists'), { code: 'user_already_exists' }))
+test('retorno sem sessão não afirma envio nem prende o usuário na confirmação', async () => {
+  globalThis.__reg.api.registerUser = (...args) => {
+    calls.push(['registerUser', ...args])
+    return Promise.resolve({ user: null, hasSession: false })
+  }
   const view = await mount()
   await reachFinal(view)
   await view.click('Criar conta')
+  assert.equal(view.title(), 'Confirme seu e-mail')
+  assert.doesNotMatch(view.text(), /[Ee]nviamos|[Cc]ódigo reenviado|[Jj]á está cadastrado/)
+  assert.equal(count('complete'), 0)
+  await view.click('Corrigir e-mail')
   assert.equal(view.title(), 'Crie sua conta')
-  assert.ok(view.errors().includes('Este e-mail já está cadastrado.'))
   assert.equal(view.fields.email().props.value, 'maria@exemplo.com')
-  assert.match(view.text(), /já está cadastrado/)
+  assert.equal(view.fields.email().props.disabled, undefined)
 })
 
 test('falha de rede ao criar: mensagem específica, dados mantidos, nova tentativa possível', async () => {
@@ -493,13 +500,13 @@ test('@ ocupado ao concluir o perfil: volta à etapa 1 sem criar outra conta', a
 test('confirmação por código: OTP, reenvio com espera e conclusão do perfil', async () => {
   globalThis.__reg.api.registerUser = (...args) => {
     calls.push(['registerUser', ...args])
-    return Promise.resolve({ user: { uid: 'u1' }, hasSession: false })
+    return Promise.resolve({ user: null, hasSession: false })
   }
   const view = await mount()
   await reachFinal(view)
   await view.click('Criar conta')
   assert.equal(view.title(), 'Confirme seu e-mail')
-  assert.match(view.text(), /maria@exemplo.com/)
+  assert.doesNotMatch(view.text(), /[Ee]nviamos|[Jj]á está cadastrado/)
   assert.equal(view.button('Reenviar código (60s)').props.disabled, true)
   const otp = view.root().findByProps({ autoComplete: 'one-time-code' })
   await act(async () => otp.props.onChange({ target: { value: '12a3456' } }))
@@ -513,6 +520,34 @@ test('confirmação por código: OTP, reenvio com espera e conclusão do perfil'
   assert.equal(count('complete'), 1)
   assert.equal(count('registerUser'), 1)
   assert.equal(calls.at(-1)[0], 'navigate')
+})
+
+test('dois envios imediatos do mesmo OTP fazem uma verificação e uma conclusão', async () => {
+  globalThis.__reg.api.registerUser = (...args) => {
+    calls.push(['registerUser', ...args])
+    return Promise.resolve({ user: null, hasSession: false })
+  }
+  let releaseConfirmation
+  globalThis.__reg.api.confirm = (...args) => {
+    calls.push(['confirm', ...args])
+    return new Promise((resolve) => {
+      releaseConfirmation = resolve
+    })
+  }
+  const view = await mount()
+  await reachFinal(view)
+  await view.click('Criar conta')
+  const otp = view.root().findByProps({ autoComplete: 'one-time-code' })
+  await act(async () => otp.props.onChange({ target: { value: '123456' } }))
+  await act(async () => {
+    const form = view.root().findByType('form')
+    form.props.onSubmit({ preventDefault() {} })
+    form.props.onSubmit({ preventDefault() {} })
+  })
+  assert.equal(count('confirm'), 1)
+  releaseConfirmation({ uid: 'u1', email: 'maria@exemplo.com' })
+  await act(async () => {})
+  assert.equal(count('complete'), 1)
 })
 
 test('usuário já autenticado que abre /cadastro vai para o app', async () => {

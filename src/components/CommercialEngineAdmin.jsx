@@ -23,6 +23,8 @@ import {
   setCommercialSales,
 } from '../services/commercialService'
 import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
+import { AuthCaptcha } from './AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 import { commercialDate, commercialError, validCommercialPrice } from '../utils/commercial'
 const LocalContractPreview = lazy(() => import('./CommercialContractPreview'))
 const tabs = {
@@ -62,6 +64,8 @@ export default function CommercialEngineAdmin() {
   const [confirmed, setConfirmed] = useState(false)
   const [saving, setSaving] = useState(false)
   const lock = useRef(false)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
   const selected = catalog.find((item) => item.code === code)
   useEffect(() => {
     let current = true
@@ -107,7 +111,7 @@ export default function CommercialEngineAdmin() {
     setSaving(true)
     setError('')
     try {
-      await reauthenticatePricingAdmin(password)
+      await reauthenticatePricingAdmin(password, takeCaptchaToken(captcha))
       const values = {
         ...action.item,
         code: action.item.code,
@@ -134,6 +138,7 @@ export default function CommercialEngineAdmin() {
     } catch (e) {
       setError(commercialError(e))
     } finally {
+      captcha.current?.reset()
       setPassword('')
       lock.current = false
       setSaving(false)
@@ -477,6 +482,7 @@ export default function CommercialEngineAdmin() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </FormControl>
+              <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
               <FormControl disabled={saving} sx={{ my: 3 }}>
                 <Checkbox checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
                 <FormControl.Label>
@@ -495,7 +501,7 @@ export default function CommercialEngineAdmin() {
                 <Button
                   variant="primary"
                   disabled={
-                    saving || !confirmed || !password || reason.trim().length < 5 || changeInvalid
+                    saving || !confirmed || !password || !captchaVerified || reason.trim().length < 5 || changeInvalid
                   }
                   onClick={save}
                 >

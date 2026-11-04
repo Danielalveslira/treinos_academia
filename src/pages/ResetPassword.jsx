@@ -17,6 +17,7 @@ export default function ResetPassword() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const mounted = useRef(true)
+  const inFlight = useRef(false)
 
   useEffect(() => {
     mounted.current = true
@@ -27,12 +28,13 @@ export default function ResetPassword() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (submitting) return
+    if (inFlight.current) return
     setError('')
     const validationErrors = validatePasswordConfirmation(password, confirmPassword)
     setFieldErrors(validationErrors)
     if (Object.keys(validationErrors).length) return
 
+    inFlight.current = true
     setSubmitting(true)
     try {
       await updatePassword(password)
@@ -50,6 +52,7 @@ export default function ResetPassword() {
       console.error('[Auth] updatePassword:', err)
       setError(translateAuthError(err))
     } finally {
+      inFlight.current = false
       if (mounted.current) setSubmitting(false)
     }
   }

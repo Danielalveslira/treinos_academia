@@ -10,6 +10,8 @@ import {
 import { translateAuthError } from '../utils/authErrors'
 import { validatePasswordConfirmation } from '../utils/validators'
 import { NewPasswordFields } from '../components/NewPasswordFields'
+import { AuthCaptcha } from '../components/AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 
 const RESEND_COOLDOWN_S = 60
 
@@ -36,6 +38,10 @@ export default function ConfirmEmail() {
   const [resent, setResent] = useState(false)
   const [cooldown, setCooldown] = useState(0)
   const mounted = useRef(true)
+  const submitInFlight = useRef(false)
+  const resendInFlight = useRef(false)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
 
   useEffect(() => {
     mounted.current = true
@@ -52,8 +58,15 @@ export default function ConfirmEmail() {
 
   async function handleOtpSubmit(e) {
     e.preventDefault()
-    if (submitting || !email.trim() || otpCode.trim().length !== 6) return
+    if (
+      submitInFlight.current ||
+      resendInFlight.current ||
+      !email.trim() ||
+      otpCode.trim().length !== 6
+    )
+      return
     setError('')
+    submitInFlight.current = true
     setSubmitting(true)
     try {
       await confirmSignupOtp(email.trim(), otpCode.trim())
@@ -62,18 +75,20 @@ export default function ConfirmEmail() {
       console.error('[Auth] confirmSignupOtp:', err)
       setError(translateAuthError(err))
     } finally {
+      submitInFlight.current = false
       if (mounted.current) setSubmitting(false)
     }
   }
 
   async function handlePasswordSubmit(e) {
     e.preventDefault()
-    if (submitting) return
+    if (submitInFlight.current) return
     setError('')
     const validationErrors = validatePasswordConfirmation(password, confirmPassword)
     setFieldErrors(validationErrors)
     if (Object.keys(validationErrors).length) return
 
+    submitInFlight.current = true
     setSubmitting(true)
     try {
       await setPasswordAfterConfirmation(password)
@@ -82,17 +97,19 @@ export default function ConfirmEmail() {
       console.error('[Auth] setPasswordAfterConfirmation:', err)
       if (mounted.current) setError(translateAuthError(err))
     } finally {
+      submitInFlight.current = false
       if (mounted.current) setSubmitting(false)
     }
   }
 
   async function handleResend() {
-    if (resending || cooldown > 0 || !email.trim()) return
+    if (submitInFlight.current || resendInFlight.current || cooldown > 0 || !email.trim()) return
+    resendInFlight.current = true
     setResending(true)
     setError('')
     setResent(false)
     try {
-      await sendVerificationEmail(email.trim())
+      await sendVerificationEmail(email.trim(), takeCaptchaToken(captcha))
       if (mounted.current) {
         setResent(true)
         setCooldown(RESEND_COOLDOWN_S)
@@ -101,6 +118,8 @@ export default function ConfirmEmail() {
       console.error('[Auth] sendVerificationEmail:', err)
       if (mounted.current) setError(translateAuthError(err))
     } finally {
+      captcha.current?.reset()
+      resendInFlight.current = false
       if (mounted.current) setResending(false)
     }
   }
@@ -151,7 +170,7 @@ export default function ConfirmEmail() {
   return (
     <AuthLayout
       title="Confirme seu e-mail"
-      description="Digite o código de 6 dígitos que enviamos para concluir a confirmação."
+      description="Se houver uma confirmação pendente para este e-mail, digite o código recebido para continuar."
       footer={
         // Texto neutro de propósito (mesma razão do Register.jsx) -- nem confirma nem
         // nega que já existe uma conta com este e-mail.
@@ -177,7 +196,7 @@ export default function ConfirmEmail() {
           )}
           {resent && !error && (
             <Flash variant="success" role="status">
-              Código reenviado para {email}.
+              Solicitação de reenvio recebida. Se houver confirmação pendente, confira seu e-mail.
             </Flash>
           )}
 
@@ -213,16 +232,17 @@ export default function ConfirmEmail() {
             size="large"
             block
             loading={submitting}
-            disabled={submitting || !email.trim() || otpCode.trim().length !== 6}
+            disabled={submitting || resending || !email.trim() || otpCode.trim().length !== 6}
           >
             Confirmar
           </Button>
+          <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
           <Button
             type="button"
             block
             onClick={handleResend}
             loading={resending}
-            disabled={resending || cooldown > 0 || !email.trim()}
+            disabled={submitting || resending || cooldown > 0 || !email.trim() || !captchaVerified}
           >
             {cooldown > 0 ? `Reenviar código (${cooldown}s)` : 'Reenviar código'}
           </Button>

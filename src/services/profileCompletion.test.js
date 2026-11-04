@@ -74,7 +74,9 @@ test('completeUserProfile: chama todas as RPCs com os dados do formulário', asy
   assert.ok(names.includes('updateUser'))
   assert.ok(names.includes('set_usage_profile'))
   assert.ok(names.includes('set_username'))
-  assert.deepEqual(calls.find((c) => c.fn === 'set_residence_municipality')?.args, { p_code: 2412500 })
+  assert.deepEqual(calls.find((c) => c.fn === 'set_residence_municipality')?.args, {
+    p_code: 2412500,
+  })
 })
 
 test('completeUserProfile: set_username é a ÚLTIMA chamada (prova que o resto já rodou)', async () => {
@@ -86,13 +88,18 @@ test('completeUserProfile: set_username é a ÚLTIMA chamada (prova que o resto 
     residenceMunicipalityCode: 2412500,
   })
   const names = calls.map((c) => c.fn)
-  assert.equal(names.at(-1), 'set_username', `última chamada foi "${names.at(-1)}", esperado "set_username"`)
+  assert.equal(
+    names.at(-1),
+    'set_username',
+    `última chamada foi "${names.at(-1)}", esperado "set_username"`
+  )
   // E não é só a última -- as outras três (as que precisam ter sucesso) vêm antes dela.
   const usernameIndex = names.indexOf('set_username')
   assert.ok(names.indexOf('ensure_user_profile') < usernameIndex)
   assert.ok(names.indexOf('set_birth_info') < usernameIndex)
   assert.ok(names.indexOf('updateUser') < usernameIndex)
   assert.ok(names.indexOf('set_residence_municipality') < usernameIndex)
+  assert.ok(names.indexOf('set_usage_profile') < usernameIndex)
 })
 
 test('completeUserProfile: falha em ensureUserProfile nunca chega a chamar set_username', async () => {
@@ -102,39 +109,50 @@ test('completeUserProfile: falha em ensureUserProfile nunca chega a chamar set_u
     return Promise.resolve({ error: null, data: null })
   }
   await assert.rejects(
-    mod.completeUserProfile('u1', { username: 'maria', sexo: 'feminino', birthDate: '2000-01-01', usageProfile: 'common', residenceMunicipalityCode: 2412500 })
-  )
-  assert.ok(!calls.some((c) => c.fn === 'set_username'))
-})
-
-test('completeUserProfile: set_usage_profile é best-effort -- a falha não impede set_username', async () => {
-  globalThis.__rpc = (name, args) => {
-    calls.push({ fn: name, args })
-    if (name === 'set_usage_profile') return Promise.resolve({ error: new Error('boom') })
-    return Promise.resolve({ error: null, data: null })
-  }
-  const warn = console.error
-  console.error = () => {}
-  try {
-    await mod.completeUserProfile('u1', {
+    mod.completeUserProfile('u1', {
       username: 'maria',
       sexo: 'feminino',
       birthDate: '2000-01-01',
       usageProfile: 'common',
       residenceMunicipalityCode: 2412500,
     })
-  } finally {
-    console.error = warn
-  }
-  assert.ok(calls.some((c) => c.fn === 'set_username'))
+  )
+  assert.ok(!calls.some((c) => c.fn === 'set_username'))
 })
 
-const base = { username: 'maria', sexo: 'feminino', birthDate: '2000-01-01', usageProfile: 'common' }
+test('completeUserProfile: falha em set_usage_profile mantém o perfil incompleto', async () => {
+  globalThis.__rpc = (name, args) => {
+    calls.push({ fn: name, args })
+    if (name === 'set_usage_profile') return Promise.resolve({ error: new Error('boom') })
+    return Promise.resolve({ error: null, data: null })
+  }
+  await assert.rejects(
+    mod.completeUserProfile('u1', {
+      username: 'maria',
+      sexo: 'feminino',
+      birthDate: '2000-01-01',
+      usageProfile: 'common',
+      residenceMunicipalityCode: 2412500,
+    }),
+    /boom/
+  )
+  assert.ok(!calls.some((c) => c.fn === 'set_username'))
+})
+
+const base = {
+  username: 'maria',
+  sexo: 'feminino',
+  birthDate: '2000-01-01',
+  usageProfile: 'common',
+}
 
 test('completeUserProfile: sem cidade selecionada não grava nada da cidade nem o username', async () => {
-  await assert.rejects(mod.completeUserProfile('u1', { ...base, residenceMunicipalityCode: null }), {
-    message: 'INVALID_MUNICIPALITY',
-  })
+  await assert.rejects(
+    mod.completeUserProfile('u1', { ...base, residenceMunicipalityCode: null }),
+    {
+      message: 'INVALID_MUNICIPALITY',
+    }
+  )
   assert.ok(!calls.some((c) => c.fn === 'set_residence_municipality'))
   assert.ok(!calls.some((c) => c.fn === 'set_username'))
 })
@@ -142,9 +160,12 @@ test('completeUserProfile: sem cidade selecionada não grava nada da cidade nem 
 test('completeUserProfile: código com formato inválido é barrado antes do servidor', async () => {
   for (const code of ['2412500', 123, 99999999, Number.NaN]) {
     calls = []
-    await assert.rejects(mod.completeUserProfile('u1', { ...base, residenceMunicipalityCode: code }), {
-      message: 'INVALID_MUNICIPALITY',
-    })
+    await assert.rejects(
+      mod.completeUserProfile('u1', { ...base, residenceMunicipalityCode: code }),
+      {
+        message: 'INVALID_MUNICIPALITY',
+      }
+    )
     assert.ok(!calls.some((c) => c.fn === 'set_username'))
   }
 })
@@ -156,9 +177,12 @@ test('completeUserProfile: código recusado pelo servidor (fora do catálogo) ma
       return Promise.resolve({ error: { message: 'INVALID_MUNICIPALITY', code: 'P0001' } })
     return Promise.resolve({ error: null, data: null })
   }
-  await assert.rejects(mod.completeUserProfile('u1', { ...base, residenceMunicipalityCode: 1234567 }), {
-    message: 'INVALID_MUNICIPALITY',
-  })
+  await assert.rejects(
+    mod.completeUserProfile('u1', { ...base, residenceMunicipalityCode: 1234567 }),
+    {
+      message: 'INVALID_MUNICIPALITY',
+    }
+  )
   assert.ok(!calls.some((c) => c.fn === 'set_username'))
 })
 
@@ -167,5 +191,8 @@ test('completeUserProfile: retomada repete a sequência inteira com os mesmos da
   const first = calls.map((c) => c.fn)
   calls = []
   await mod.completeUserProfile('u1', { ...base, residenceMunicipalityCode: 2412500 })
-  assert.deepEqual(calls.map((c) => c.fn), first)
+  assert.deepEqual(
+    calls.map((c) => c.fn),
+    first
+  )
 })

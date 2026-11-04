@@ -1,5 +1,5 @@
 import { AuthLayout } from '../components/PublicLayout'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link as RouterLink, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { loginUser } from '../services/authService'
@@ -8,6 +8,8 @@ import { consumeLogoutReason } from '../utils/logoutReason'
 import { useAuth } from '../hooks/useAuth'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { OFFLINE_ENTRY_REQUIRES_INTERNET } from '../contexts/AuthContext'
+import { AuthCaptcha } from '../components/AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -18,6 +20,9 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const inFlight = useRef(false)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
   // Lazy: lê e já limpa na primeira renderização -- uma sessão encerrada por
   // handlePossibleGhostSession (ver AuthContext.jsx) cai direto aqui.
   const [sessionNotice] = useState(consumeLogoutReason)
@@ -34,10 +39,12 @@ export default function Login() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (inFlight.current) return
+    inFlight.current = true
     setError('')
     setSubmitting(true)
     try {
-      await loginUser(email, password)
+      await loginUser(email, password, takeCaptchaToken(captcha))
       // replace: a tela de login não deve continuar no histórico depois de autenticado —
       // sem isso, o botão voltar reabre /login, que se redireciona de volta pra "/" (linha
       // acima), exigindo dois toques do voltar para sair de fato da tela de login.
@@ -53,6 +60,8 @@ export default function Login() {
       }
       setError(translateAuthError(err))
     } finally {
+      captcha.current?.reset()
+      inFlight.current = false
       setSubmitting(false)
     }
   }
@@ -116,13 +125,15 @@ export default function Login() {
             />
           </FormControl>
 
+          <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
+
           <Button
             type="submit"
             variant="primary"
             size="large"
             block
             loading={submitting}
-            disabled={submitting}
+            disabled={submitting || !captchaVerified}
           >
             Entrar
           </Button>

@@ -21,6 +21,8 @@ import {
 } from '../services/advertisingService'
 import { listStorefronts, setStorefrontEditorial } from '../services/storefrontService'
 import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
+import { AuthCaptcha } from './AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 import { commercialError } from '../utils/commercial'
 import { storefrontError } from '../utils/storefront'
 import { TYPE_LABELS, STATUS_LABELS, buildApprovalItems, filterApprovalItems } from '../utils/approvalsQueue'
@@ -53,6 +55,8 @@ export default function ApprovalsQueue() {
   const [busy, setBusy] = useState(false)
   const [dialogError, setDialogError] = useState('')
   const lock = useRef(false)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
 
   function loadAds() {
     setAds(emptySource)
@@ -111,7 +115,7 @@ export default function ApprovalsQueue() {
     try {
       if (reason.trim().length < 5)
         throw new Error('Informe uma justificativa de pelo menos cinco caracteres.')
-      await reauthenticatePricingAdmin(password)
+      await reauthenticatePricingAdmin(password, takeCaptchaToken(captcha))
       if (reviewing.type === 'ad') {
         await reviewAdvertisingCampaign(reviewing.raw, approve, reason)
         loadAds()
@@ -127,6 +131,7 @@ export default function ApprovalsQueue() {
     } catch (e) {
       setDialogError(reviewing.type === 'storefront' ? storefrontError(e) : commercialError(e))
     } finally {
+      captcha.current?.reset()
       lock.current = false
       setBusy(false)
     }
@@ -276,6 +281,7 @@ export default function ApprovalsQueue() {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </FormControl>
+                <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
                 {dialogError && (
                   <Flash variant="danger" sx={{ mt: 2 }}>
                     {dialogError}
@@ -287,14 +293,14 @@ export default function ApprovalsQueue() {
                   </Button>
                   <Button
                     variant="danger"
-                    disabled={busy || reason.trim().length < 5 || !password}
+                    disabled={busy || reason.trim().length < 5 || !password || !captchaVerified}
                     onClick={() => decide(false)}
                   >
                     {busy ? 'Enviando…' : 'Reprovar'}
                   </Button>
                   <Button
                     variant="primary"
-                    disabled={busy || reason.trim().length < 5 || !password}
+                    disabled={busy || reason.trim().length < 5 || !password || !captchaVerified}
                     onClick={() => decide(true)}
                   >
                     {busy ? 'Enviando…' : 'Aprovar'}

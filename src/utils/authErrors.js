@@ -1,15 +1,12 @@
 // Códigos em error.code vêm do GoTrue (Supabase Auth), não de strings livres --
 // ver node_modules/@supabase/auth-js/src/lib/error-codes.ts para a lista completa.
 const MESSAGES = {
-  // Uma conta em exclusão continua reservando o e-mail no Auth até a etapa final do job
-  // (auth.admin.deleteUser, ver run_deletion_job na migration do deletion worker) -- que
-  // nunca roda enquanto o job estiver bloqueado por revisão financeira (só um admin
-  // resolve isso). Sem esta pista, quem tentasse recadastrar com o mesmo e-mail ficaria
-  // preso num "já está cadastrado" sem nenhum caminho a seguir.
+  // Fallback neutro para qualquer fluxo que receba estes códigos diretamente.
+  // A interface de cadastro trata ambos como retorno sem sessão em registerUser.
   user_already_exists:
-    'Este e-mail já está cadastrado. Se você solicitou a exclusão desta conta e ela ainda não foi concluída, aguarde ou entre em contato pelo atendimento antes de tentar novamente.',
+    'Não foi possível concluir esta tentativa. Você pode entrar, recuperar o acesso ou conferir o e-mail informado.',
   email_exists:
-    'Este e-mail já está cadastrado. Se você solicitou a exclusão desta conta e ela ainda não foi concluída, aguarde ou entre em contato pelo atendimento antes de tentar novamente.',
+    'Não foi possível concluir esta tentativa. Você pode entrar, recuperar o acesso ou conferir o e-mail informado.',
   email_address_invalid: 'E-mail inválido.',
   weak_password: 'A senha deve ter pelo menos 8 caracteres, com letras e números.',
   // GoTrue nunca distingue "não existe" de "senha errada" num login (só invalid_credentials),
@@ -21,9 +18,15 @@ const MESSAGES = {
   // síncrono) -- uma tentativa de login logo em seguida já bate nesse código, não em
   // "senha incorreta".
   user_banned: 'Esta conta não está mais disponível.',
-  email_not_confirmed: 'Confirme seu e-mail para entrar. Enviamos um código de confirmação no cadastro.',
+  email_not_confirmed:
+    'Confirme seu e-mail para entrar. Se houver confirmação pendente, solicite um código.',
   otp_expired: 'Código inválido ou expirado. Solicite um novo.',
   same_password: 'A nova senha precisa ser diferente da atual.',
+  captcha_failed: 'A verificação de segurança não foi aceita. Conclua uma nova verificação.',
+  CAPTCHA_REQUIRED: 'Conclua a verificação de segurança para continuar.',
+  CAPTCHA_EXPIRED: 'A verificação expirou. Conclua-a novamente.',
+  CAPTCHA_CONFIGURATION_MISSING:
+    'A verificação de segurança não está disponível neste ambiente. Tente novamente mais tarde.',
 }
 
 export function translateAuthError(error) {

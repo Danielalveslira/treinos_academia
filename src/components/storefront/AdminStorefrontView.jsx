@@ -37,6 +37,8 @@ import {
 } from '../../services/storefrontService'
 import { saveWithImage } from '../../utils/storefrontImageSave'
 import { reauthenticatePricingAdmin } from '../../services/evocashPricingService'
+import { AuthCaptcha } from '../AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../../utils/authCaptcha'
 import { editorialLabels, publicationLabels, storefrontError } from '../../utils/storefront'
 import { commercialDate } from '../../utils/commercial'
 import StorefrontImage from '../StorefrontImage'
@@ -76,6 +78,8 @@ export default function AdminStorefrontView() {
     [confirm, setConfirm] = useState(false)
   const lock = useRef(false),
     request = useRef(0)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
   const item = data?.items.find((s) => s.id === selected)
   async function load(before = null) {
     const revision = ++request.current
@@ -118,6 +122,7 @@ export default function AdminStorefrontView() {
     } catch (e) {
       setError(storefrontError(e))
     } finally {
+      captcha.current?.reset()
       lock.current = false
       setBusy(false)
     }
@@ -125,10 +130,10 @@ export default function AdminStorefrontView() {
   async function save() {
     await action(async () => {
       if (dialog.kind === 'limits') {
-        await reauthenticatePricingAdmin(password)
+        await reauthenticatePricingAdmin(password, takeCaptchaToken(captcha))
         await setStorefrontLimits(form, data.limits.revision, reason, confirm)
       } else if (dialog.kind === 'moderate') {
-        await reauthenticatePricingAdmin(password)
+        await reauthenticatePricingAdmin(password, takeCaptchaToken(captcha))
         await setStorefrontEditorial(item, form.targetState, reason)
       } else {
         const product = dialog.kind !== 'storefront'
@@ -554,6 +559,7 @@ export default function AdminStorefrontView() {
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </FormControl>
+                <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
                 <FormControl sx={{ my: 2 }}>
                   <Checkbox checked={confirm} onChange={(e) => setConfirm(e.target.checked)} />
                   <FormControl.Label>Confirmo esta alteração auditada</FormControl.Label>
@@ -581,7 +587,7 @@ export default function AdminStorefrontView() {
                 disabled={
                   busy ||
                   (['moderate', 'limits'].includes(dialog.kind) &&
-                    (!confirm || !password || reason.trim().length < 5))
+                    (!confirm || !password || !captchaVerified || reason.trim().length < 5))
                 }
               >
                 {busy ? 'Salvando…' : 'Salvar'}

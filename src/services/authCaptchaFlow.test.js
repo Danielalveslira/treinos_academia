@@ -1,0 +1,134 @@
+import { after, before, test } from 'node:test'
+import assert from 'node:assert/strict'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { createRequire } from 'node:module'
+import { build } from 'esbuild'
+
+let directory
+let auth
+let pricing
+let missingConfig
+const calls = []
+
+before(async () => {
+  directory = await mkdtemp(join(tmpdir(), 'auth-captcha-flow-'))
+  const outfile = join(directory, 'flow.cjs')
+  await build({
+    stdin: {
+      contents: `export * as auth from './authService.js'; export * as pricing from './evocashPricingService.js'`,
+      resolveDir: new URL('.', import.meta.url).pathname,
+    },
+    outfile,
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    define: {
+      'import.meta.env.PROD': 'true',
+      'import.meta.env.VITE_HCAPTCHA_ENABLED': '"true"',
+      'import.meta.env.VITE_HCAPTCHA_SITE_KEY': '"public-test-key"',
+    },
+    plugins: [
+      {
+        name: 'supabase-stub',
+        setup(context) {
+          context.onResolve({ filter: /supabase\/config$/ }, () => ({
+            path: 'supabase',
+            namespace: 'stub',
+          }))
+          context.onLoad({ filter: /^supabase$/, namespace: 'stub' }, () => ({
+            contents: `export const supabase = { auth: {
+            signUp: (arg) => globalThis.__captchaCall('signUp', arg),
+            signInWithPassword: (arg) => globalThis.__captchaCall('signInWithPassword', arg),
+            resend: (arg) => globalThis.__captchaCall('resend', arg),
+            resetPasswordForEmail: (...arg) => globalThis.__captchaCall('resetPasswordForEmail', ...arg),
+            getUser: () => Promise.resolve({ data: { user: { id: 'u1', email: 'a@example.com' } }, error: null }),
+          } }`,
+          }))
+        },
+      },
+    ],
+  })
+  ;({ auth, pricing } = createRequire(import.meta.url)(outfile))
+  const missingFile = join(directory, 'missing.cjs')
+  await build({
+    entryPoints: [new URL('../utils/authCaptcha.js', import.meta.url).pathname],
+    outfile: missingFile,
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    define: {
+      'import.meta.env.PROD': 'true',
+      'import.meta.env.VITE_HCAPTCHA_ENABLED': '"false"',
+      'import.meta.env.VITE_HCAPTCHA_SITE_KEY': '""',
+    },
+  })
+  missingConfig = createRequire(import.meta.url)(missingFile)
+  globalThis.__captchaCall = (name, ...args) => {
+    calls.push([name, ...args])
+    if (name === 'signUp')
+      return Promise.resolve({
+        data: { user: { id: 'u1', email: 'a@example.com' }, session: {} },
+        error: null,
+      })
+    return Promise.resolve({ data: { user: { id: 'u1' } }, error: null })
+  }
+})
+
+after(async () => {
+  delete globalThis.__captchaCall
+  if (directory) await rm(directory, { recursive: true, force: true })
+})
+
+test('token público é enviado em cadastro, login, recuperação, reenvio e reautenticação', async () => {
+  calls.length = 0
+  await auth.registerUser('a@example.com', 'password', 'signup-token')
+  await auth.loginUser('a@example.com', 'password', 'login-token')
+  await auth.resetPassword('a@example.com', 'recovery-token')
+  await auth.sendVerificationEmail('a@example.com', 'resend-token')
+  await pricing.reauthenticatePricingAdmin('password', 'admin-token')
+  assert.deepEqual(
+    calls.map(([name]) => name),
+    ['signUp', 'signInWithPassword', 'resetPasswordForEmail', 'resend', 'signInWithPassword']
+  )
+  assert.equal(calls[0][1].options.captchaToken, 'signup-token')
+  assert.equal(calls[1][1].options.captchaToken, 'login-token')
+  assert.equal(calls[2][2].captchaToken, 'recovery-token')
+  assert.equal(calls[3][1].options.captchaToken, 'resend-token')
+  assert.equal(calls[4][1].options.captchaToken, 'admin-token')
+})
+
+test('token ausente bloqueia todas as operações antes de chamar Supabase', async () => {
+  calls.length = 0
+  for (const action of [
+    () => auth.registerUser('a@example.com', 'password'),
+    () => auth.loginUser('a@example.com', 'password'),
+    () => auth.resetPassword('a@example.com'),
+    () => auth.sendVerificationEmail('a@example.com'),
+    () => pricing.reauthenticatePricingAdmin('password'),
+  ])
+    await assert.rejects(action(), { code: 'CAPTCHA_REQUIRED' })
+  assert.equal(calls.length, 0)
+})
+
+test('rejeição do servidor é propagada para permitir novo desafio', async () => {
+  calls.length = 0
+  globalThis.__captchaCall = (name, ...args) => {
+    calls.push([name, ...args])
+    return Promise.resolve({
+      error: Object.assign(new Error('rejected'), { code: 'captcha_failed' }),
+    })
+  }
+  await assert.rejects(auth.loginUser('a@example.com', 'password', 'rejected-token'), {
+    code: 'captcha_failed',
+  })
+  assert.equal(calls.length, 1)
+})
+
+test('produção sem chave pública falha fechada', () => {
+  assert.equal(missingConfig.authCaptchaRequired, true)
+  assert.throws(() => missingConfig.captchaOptions('any-token'), {
+    code: 'CAPTCHA_CONFIGURATION_MISSING',
+  })
+})
