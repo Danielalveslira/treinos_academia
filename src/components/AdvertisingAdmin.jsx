@@ -23,6 +23,8 @@ import {
   interruptAdvertisingCampaign,
 } from '../services/advertisingService'
 import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
+import { AuthCaptcha } from './AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 import { commercialError } from '../utils/commercial'
 
 // Aprovar/reprovar campanhas e impulsionamentos vive na fila unificada (ApprovalsQueue.jsx,
@@ -41,6 +43,8 @@ export default function AdvertisingAdmin() {
   const [reason, setReason] = useState('')
   const [password, setPassword] = useState('')
   const lock = useRef(false)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
 
   const refresh = useCallback(async () => {
     const [inventory, campaigns] = await Promise.all([
@@ -79,7 +83,7 @@ export default function AdvertisingAdmin() {
     try {
       if (reason.trim().length < 5)
         throw new Error('Informe uma justificativa de pelo menos cinco caracteres.')
-      await reauthenticatePricingAdmin(password)
+      await reauthenticatePricingAdmin(password, takeCaptchaToken(captcha))
       await work()
       setDialog(null)
       setPassword('')
@@ -87,6 +91,7 @@ export default function AdvertisingAdmin() {
     } catch (e) {
       setError(commercialError(e))
     } finally {
+      captcha.current?.reset()
       lock.current = false
       setBusy(false)
     }
@@ -357,6 +362,7 @@ export default function AdvertisingAdmin() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </FormControl>
+            <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
             {error && (
               <Flash variant="danger" sx={{ mt: 2 }}>
                 {error}
@@ -372,6 +378,7 @@ export default function AdvertisingAdmin() {
                   busy ||
                   reason.trim().length < 5 ||
                   !password ||
+                  !captchaVerified ||
                   (dialog.kind === 'placement' && !/^(0|[1-9][0-9]?|100)$/.test(form.capacity))
                 }
                 onClick={() =>

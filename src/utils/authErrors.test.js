@@ -15,15 +15,11 @@ test('translateAuthError gives a clear, specific message for a login attempt on 
   assert.equal(translateAuthError({ code: 'user_banned' }), 'Esta conta não está mais disponível.')
 })
 
-// Bug "conta com exclusão bloqueada": o e-mail continua reservado no Auth enquanto o job
-// de exclusão não chega na etapa final (auth.admin.deleteUser), o que nunca acontece
-// sozinho enquanto o job estiver blocked_financial_review (só um admin resolve). Um
-// recadastro com o mesmo e-mail precisa de uma saída clara, não um "já cadastrado" sem
-// próximo passo.
-test('translateAuthError points a duplicate-email registration attempt toward support, in case it belongs to a pending deletion', () => {
+test('translateAuthError does not reveal whether an account exists', () => {
   const message = translateAuthError({ code: 'user_already_exists' })
-  assert.match(message, /já está cadastrado/)
-  assert.match(message, /atendimento/)
+  assert.equal(message, translateAuthError({ code: 'email_exists' }))
+  assert.doesNotMatch(message, /já está cadastrado|conta existente/)
+  assert.match(message, /recuperar o acesso/)
 })
 
 // same_password (GoTrue): o novo cadastro tenta alinhar a senha da conta com a do

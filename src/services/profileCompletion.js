@@ -13,9 +13,9 @@ import { setUsageProfile } from './usageProfileService'
 // ORDEM IMPORTA: setUsername é a ÚLTIMA chamada de propósito. public.users.username é o
 // sinal que ProfileCompletionGate usa para considerar as etapas anteriores concluídas
 // (ver needsProfileCompletion em utils/profileCompletion.js) -- se username viesse antes
-// de setBirthInfo/setResidenceMunicipality/setDisplayName, uma falha nessas depois dele
-// deixaria o perfil "aparentemente completo" (username presente) mas sem data de
-// nascimento/cidade/display name. Não inverta esta ordem sem revisar o gate também.
+// de setBirthInfo/setResidenceMunicipality/setDisplayName/setUsageProfile, uma falha
+// nessas depois dele deixaria o perfil aparentemente completo sem dados obrigatórios.
+// Não inverta esta ordem sem revisar o gate também.
 //
 // Toda etapa é idempotente (repetir com os mesmos dados não duplica nada): uma retomada depois de
 // falha de rede, recarga da página ou confirmação de e-mail em outro momento simplesmente refaz a
@@ -30,11 +30,6 @@ export async function completeUserProfile(
   // (INVALID_MUNICIPALITY) e, falhando, o username não é gravado -- o perfil continua incompleto.
   await setResidenceMunicipality(residenceMunicipalityCode)
   await setDisplayName({ uid }, username)
-  // Best-effort e recuperável por outro caminho (preenchimento contextual de contas
-  // legadas em Meu Perfil/fluxo da Vitrine) -- despachado antes de setUsername, mas sem
-  // bloquear nem precisar ter sucesso para o perfil ser considerado completo.
-  setUsageProfile(usageProfile).catch((err) => {
-    console.error('[Auth] setUsageProfile:', err)
-  })
+  await setUsageProfile(usageProfile)
   await setUsername(uid, username)
 }

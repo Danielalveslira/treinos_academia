@@ -30,6 +30,8 @@ import {
 import { SIGNUP_USAGE_PROFILE_OPTIONS } from '../constants/usageProfile'
 import { UsageProfileField } from '../components/UsageProfileField'
 import { CitySelector } from '../components/CitySelector'
+import { AuthCaptcha } from '../components/AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 import { SignupProgress } from '../components/SignupProgress'
 import { LegalConsent } from '../components/LegalConsent'
 import { canSubmitLegalRegistration } from '../utils/legal'
@@ -103,6 +105,7 @@ export default function Register() {
   const [usernameStatus, setUsernameStatus] = useState({ value: '', state: 'idle' })
   const usernameCheck = useRef(0)
   const [checkingStep, setCheckingStep] = useState(false)
+  const continueInFlight = useRef(false)
   // Trava síncrona contra envio duplo (duplo toque/Enter repetido antes do re-render de `submitting`).
   const inFlight = useRef(false)
   // Marcado ANTES do signUp: a partir daí a sessão que aparecer é a desta página, não uma conta que
@@ -122,9 +125,8 @@ export default function Register() {
   const [legalBundle, setLegalBundle] = useState(null)
   const [legalLoading, setLegalLoading] = useState(true)
   const [legalError, setLegalError] = useState('')
-  // 'form': formulário de cadastro normal. 'confirm': conta já criada no Auth, mas sem
-  // sessão (Confirm email exige o código antes de liberar auth.uid()) -- ver
-  // confirmSignupOtp. 'locked': código certo, mas não foi possível confirmar que a senha
+  // 'form': formulário de cadastro normal. 'confirm': resposta sem sessão, que não
+  // comprova criação de conta nem entrega de e-mail. 'locked': código certo, mas não foi possível confirmar que a senha
   // da conta é a que está neste formulário (ver confirmSignupAndSyncPassword) -- nunca
   // concede acesso nesse estado. Os dados do formulário continuam em memória nos estados
   // acima.
@@ -135,6 +137,9 @@ export default function Register() {
   const [resent, setResent] = useState(false)
   const [cooldown, setCooldown] = useState(0)
   const mounted = useRef(true)
+  const resendInFlight = useRef(false)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
 
   useEffect(() => {
     mounted.current = true
@@ -296,7 +301,7 @@ export default function Register() {
   }
 
   async function handleContinue() {
-    if (checkingStep || inFlight.current) return
+    if (continueInFlight.current || inFlight.current) return
     setError('')
     const errors = stepErrors(formStep)
     if (hasErrors(errors)) {
@@ -305,10 +310,16 @@ export default function Register() {
     }
     setFieldErrors({})
     if (formStep === 1 && !createdAccount) {
+      continueInFlight.current = true
       setCheckingStep(true)
-      const available = await checkUsernameAvailability()
+      let available
+      try {
+        available = await checkUsernameAvailability()
+      } finally {
+        continueInFlight.current = false
+        if (mounted.current) setCheckingStep(false)
+      }
       if (!mounted.current) return
-      setCheckingStep(false)
       if (!available) {
         showFieldErrors({ username: USERNAME_TAKEN })
         return
@@ -416,34 +427,31 @@ export default function Register() {
           setError('Esse nome de usuário acabou de ser ocupado. Escolha outro para continuar.')
           return
         }
+        const captchaToken = takeCaptchaToken(captcha)
         signupStarted.current = true
-        const credential = await registerUser(email.trim(), password)
-        uid = credential.user.uid
-        // Retentativas desta página retomam as etapas idempotentes, sem outro signUp.
-        setCreatedAccount(uid)
+        const credential = await registerUser(email.trim(), password, captchaToken)
         if (!credential.hasSession) {
-          // Confirm email ligado: sem sessão ainda, as RPCs de perfil abaixo falhariam
-          // com NOT_AUTHENTICATED. Aguarda o código antes de prosseguir. O signUp já
-          // disparou o e-mail com o código -- cooldown inicial evita um "reenviar"
-          // imediato que bateria no rate limit do próprio envio que acabou de ocorrer.
+          // O retorno pode ser ofuscado para uma identidade existente. Sem sessão,
+          // não vinculamos o UID ao formulário nem afirmamos que houve envio.
           setStep('confirm')
           setCooldown(RESEND_COOLDOWN_S)
           return
         }
+        uid = credential.user.uid
+        // Retentativas com sessão retomam as etapas idempotentes, sem outro signUp.
+        setCreatedAccount(uid)
       }
       await completeProfile(uid)
     } catch (err) {
-      console.error('[Auth] register:', err)
       // signUp não criou nada (ou não se sabe): libera um novo envio pelo caminho normal.
       if (!createdAccount) signupStarted.current = false
       const described = describeRegistrationError(err)
       if (err?.code === 'email_address_invalid') showFieldErrors({ email: described.message })
       else if (err?.code === 'weak_password') showFieldErrors({ password: described.message })
-      else if (err?.code === 'user_already_exists' || err?.code === 'email_exists')
-        showFieldErrors({ email: 'Este e-mail já está cadastrado.' })
       else if (described.field) showFieldErrors({ [described.field]: described.message })
       setError(described.message)
     } finally {
+      captcha.current?.reset()
       inFlight.current = false
       if (mounted.current) setSubmitting(false)
     }
@@ -458,7 +466,7 @@ export default function Register() {
 
   async function handleConfirmSubmit(e) {
     e.preventDefault()
-    if (inFlight.current) return
+    if (inFlight.current || resendInFlight.current) return
     setConfirmError('')
     inFlight.current = true
     setSubmitting(true)
@@ -467,14 +475,18 @@ export default function Register() {
       // nunca nas duas etapas separadas: se a senha não puder ser confirmada, a sessão já
       // é encerrada aqui dentro (ver nota de pre-account hijacking em authService.js) e o
       // catch abaixo cai no ramo 'locked', nunca em completeProfile.
-      await confirmSignupAndSyncPassword(email.trim(), otpCode.trim(), password)
-      const ok = await completeProfile(createdAccount)
+      const confirmedAccount = await confirmSignupAndSyncPassword(
+        email.trim(),
+        otpCode.trim(),
+        password
+      )
+      setCreatedAccount(confirmedAccount.uid)
+      const ok = await completeProfile(confirmedAccount.uid)
       // completeProfile já preenche `error` (e a etapa do campo a corrigir, se houver); volta ao
       // formulário no modo de retentativa (createdAccount setado => o envio pula o signUp e chama
       // completeProfile direto de novo).
       if (!ok) setStep('form')
     } catch (err) {
-      console.error('[Auth] confirmSignupOtp:', err)
       if (err?.code === 'PASSWORD_SYNC_FAILED') {
         setStep('locked')
       } else {
@@ -487,20 +499,22 @@ export default function Register() {
   }
 
   async function handleResend() {
-    if (resending || cooldown > 0) return
+    if (inFlight.current || resendInFlight.current || cooldown > 0) return
+    resendInFlight.current = true
     setResending(true)
     setConfirmError('')
     setResent(false)
     try {
-      await sendVerificationEmail(email.trim())
+      await sendVerificationEmail(email.trim(), takeCaptchaToken(captcha))
       if (mounted.current) {
         setResent(true)
         setCooldown(RESEND_COOLDOWN_S)
       }
     } catch (err) {
-      console.error('[Auth] sendVerificationEmail:', err)
       if (mounted.current) setConfirmError(describeRegistrationError(err).message)
     } finally {
+      captcha.current?.reset()
+      resendInFlight.current = false
       if (mounted.current) setResending(false)
     }
   }
@@ -550,7 +564,7 @@ export default function Register() {
       <AuthLayout
         variant="signup"
         title="Confirme seu e-mail"
-        description={`Enviamos um código de 6 dígitos para ${email}. Digite-o abaixo para concluir o cadastro.`}
+        description="Se este endereço puder receber uma confirmação, um código poderá chegar em breve. Digite o código para continuar."
         footer={
           // Texto neutro de propósito -- nem confirma nem nega que já existe uma conta
           // com este e-mail (um signUp repetido no Supabase hospedado pode devolver uma
@@ -583,7 +597,7 @@ export default function Register() {
             )}
             {resent && !confirmError && (
               <Flash variant="success" role="status">
-                Código reenviado para {email}.
+                Solicitação de reenvio recebida. Se houver confirmação pendente, confira seu e-mail.
               </Flash>
             )}
 
@@ -607,18 +621,33 @@ export default function Register() {
               size="large"
               block
               loading={submitting}
-              disabled={submitting || otpCode.trim().length !== 6}
+              disabled={submitting || resending || otpCode.trim().length !== 6}
             >
               Confirmar
             </Button>
+            <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
             <Button
               type="button"
               block
               onClick={handleResend}
               loading={resending}
-              disabled={resending || cooldown > 0}
+              disabled={submitting || resending || cooldown > 0 || !captchaVerified}
             >
               {cooldown > 0 ? `Reenviar código (${cooldown}s)` : 'Reenviar código'}
+            </Button>
+            <Button
+              type="button"
+              block
+              disabled={submitting || resending}
+              onClick={() => {
+                setStep('form')
+                setFormStep(1)
+                setOtpCode('')
+                setConfirmError('')
+                signupStarted.current = false
+              }}
+            >
+              Corrigir e-mail
             </Button>
           </Stack>
         </form>
@@ -894,6 +923,10 @@ export default function Register() {
             </>
           )}
 
+          {formStep === 3 && !createdAccount && (
+            <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
+          )}
+
           <div className={formStep > 1 ? 'signup-actions has-back' : 'signup-actions'}>
             {formStep > 1 && (
               <Button type="button" size="large" onClick={handleBack} disabled={submitting}>
@@ -907,7 +940,12 @@ export default function Register() {
               block
               loading={busy}
               disabled={
-                busy || (formStep === 3 && (legalLoading || !legalBundle || Boolean(legalError)))
+                busy ||
+                (formStep === 3 &&
+                  (legalLoading ||
+                    !legalBundle ||
+                    Boolean(legalError) ||
+                    (!createdAccount && !captchaVerified)))
               }
             >
               {formStep < 3 ? 'Continuar' : createdAccount ? 'Concluir cadastro' : 'Criar conta'}

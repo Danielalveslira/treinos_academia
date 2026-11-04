@@ -30,6 +30,8 @@ import {
   priceForm,
   pricingError,
 } from '../utils/evocashPricing'
+import { AuthCaptcha } from './AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 
 function PriceSummary({ version, title }) {
   return (
@@ -75,11 +77,14 @@ function PriceConfirmation({ action, state, preview, config, activeFrom, onClose
   const [error, setError] = useState('')
   // Same request ID and payload survive ambiguous errors/retries within this dialog.
   const operation = useRef(null)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
   const publishing = action === 'publish'
   const valid =
     reason.trim().length >= 5 &&
     password.length > 0 &&
     confirmed &&
+    captchaVerified &&
     (!preview?.requiresAdditionalConfirmation || largeChange)
   async function save() {
     if (busy || !valid) return
@@ -96,7 +101,7 @@ function PriceConfirmation({ action, state, preview, config, activeFrom, onClose
       const signature = JSON.stringify(body)
       if (!operation.current || operation.current.signature !== signature)
         operation.current = { signature, requestId: crypto.randomUUID() }
-      await reauthenticatePricingAdmin(password)
+      await reauthenticatePricingAdmin(password, takeCaptchaToken(captcha))
       setPassword('')
       if (publishing) await publishEvoCashPrice({ ...body, requestId: operation.current.requestId })
       else await pauseEvoCashQuotes({ ...body, requestId: operation.current.requestId })
@@ -109,6 +114,7 @@ function PriceConfirmation({ action, state, preview, config, activeFrom, onClose
       setPassword('')
       setError(pricingError(err))
     } finally {
+      captcha.current?.reset()
       setBusy(false)
     }
   }
@@ -162,6 +168,7 @@ function PriceConfirmation({ action, state, preview, config, activeFrom, onClose
             disabled={busy}
           />
         </FormControl>
+        <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
         <FormControl>
           <Checkbox
             checked={confirmed}

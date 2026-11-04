@@ -1015,6 +1015,9 @@ body:has(.pwa-offline) .app-shell {
 .signup-password-rules svg { vertical-align: -1px; }
 .signup-password-rules { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .signup-actions { display: grid; gap: 10px; margin-top: 4px; }
+.auth-captcha { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: 100%; min-width: 0; }
+.auth-captcha p { margin: 0; color: var(--fgColor-muted, #656d76); font-size: 0.875rem; }
+.auth-captcha iframe { max-width: 100%; }
 .signup-actions.has-back { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
 .signup-actions button { min-height: 44px; }
 /* Consentimentos: sem moldura extra, área de toque confortável (linha inteira clicável, ≥44px). */

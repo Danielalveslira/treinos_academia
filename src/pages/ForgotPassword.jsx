@@ -1,9 +1,11 @@
 import { AuthLayout } from '../components/PublicLayout'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink, useLocation } from 'react-router-dom'
 import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { resetPassword } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
+import { AuthCaptcha } from '../components/AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 
 const RESEND_COOLDOWN_S = 60
 
@@ -17,6 +19,9 @@ export default function ForgotPassword() {
   const [sent, setSent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [cooldown, setCooldown] = useState(0)
+  const inFlight = useRef(false)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
 
   useEffect(() => {
     if (cooldown <= 0) return undefined
@@ -29,17 +34,20 @@ export default function ForgotPassword() {
   // mostra o erro técnico, nunca o resultado da busca pelo e-mail.
   async function handleSubmit(e) {
     e.preventDefault()
-    if (submitting || cooldown > 0) return
+    if (inFlight.current || cooldown > 0) return
     setError('')
+    inFlight.current = true
     setSubmitting(true)
     try {
-      await resetPassword(email)
+      await resetPassword(email, takeCaptchaToken(captcha))
       setSent(true)
       setCooldown(RESEND_COOLDOWN_S)
     } catch (err) {
       console.error('[Auth] resetPassword:', err)
       setError(translateAuthError(err))
     } finally {
+      captcha.current?.reset()
+      inFlight.current = false
       setSubmitting(false)
     }
   }
@@ -66,7 +74,8 @@ export default function ForgotPassword() {
 
           {sent && (
             <Flash variant="success" role="status">
-              Se o e-mail existir, enviamos um link de recuperação. Confira também a caixa de spam.
+              Se este e-mail tiver acesso à recuperação, um link poderá chegar em breve. Confira
+              também a caixa de spam.
             </Flash>
           )}
 
@@ -82,15 +91,21 @@ export default function ForgotPassword() {
             />
           </FormControl>
 
+          <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
+
           <Button
             type="submit"
             variant="primary"
             size="large"
             block
             loading={submitting}
-            disabled={submitting || cooldown > 0}
+            disabled={submitting || cooldown > 0 || !captchaVerified}
           >
-            {sent ? (cooldown > 0 ? `Reenviar link (${cooldown}s)` : 'Reenviar link') : 'Enviar link'}
+            {sent
+              ? cooldown > 0
+                ? `Reenviar link (${cooldown}s)`
+                : 'Reenviar link'
+              : 'Enviar link'}
           </Button>
         </Stack>
       </form>

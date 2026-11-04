@@ -26,6 +26,8 @@ import {
 import { formatCentavosBRL } from '../utils/format'
 import './Refunds.css'
 import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
+import { AuthCaptcha } from './AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 import {
   refundCategories,
   refundStates,
@@ -482,6 +484,8 @@ function RefundDetail({ request: r, admin, close, changed, returnFocusRef }) {
   })
   const lock = useRef(false),
     intent = useRef(null)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
   function edit(fn) {
     intent.current = null
     fn()
@@ -494,7 +498,8 @@ function RefundDetail({ request: r, admin, close, changed, returnFocusRef }) {
     setError('')
     try {
       intent.current ||= crypto.randomUUID()
-      if (admin && action !== 'comment') await reauthenticatePricingAdmin(password)
+      if (admin && action !== 'comment')
+        await reauthenticatePricingAdmin(password, takeCaptchaToken(captcha))
       setPassword('')
       await actOnRefundRequest(
         r.id,
@@ -508,6 +513,7 @@ function RefundDetail({ request: r, admin, close, changed, returnFocusRef }) {
     } catch (e) {
       setError(refundError(e))
     } finally {
+      captcha.current?.reset()
       lock.current = false
       setBusy(false)
     }
@@ -698,16 +704,19 @@ function RefundDetail({ request: r, admin, close, changed, returnFocusRef }) {
               />
             </FormControl>
             {admin && action !== 'comment' && (
-              <FormControl sx={{ mt: 3 }}>
-                <FormControl.Label>Confirme sua senha</FormControl.Label>
-                <TextInput
-                  block
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </FormControl>
+              <>
+                <FormControl sx={{ mt: 3 }}>
+                  <FormControl.Label>Confirme sua senha</FormControl.Label>
+                  <TextInput
+                    block
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </FormControl>
+                <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
+              </>
             )}
             <FormControl sx={{ my: 3 }}>
               <Checkbox checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
@@ -726,7 +735,7 @@ function RefundDetail({ request: r, admin, close, changed, returnFocusRef }) {
                 busy ||
                 !confirmed ||
                 message.trim().length < 5 ||
-                (admin && action !== 'comment' && !password)
+                (admin && action !== 'comment' && (!password || !captchaVerified))
               }
               onClick={submit}
             >

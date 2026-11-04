@@ -15,6 +15,8 @@ import {
   setProfessionalListingLimit,
 } from '../services/professionalListingsService'
 import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
+import { AuthCaptcha } from './AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 import { storefrontError } from '../utils/storefront'
 export default function ProfessionalListingLimitsAdmin() {
   const [rows, setRows] = useState(null),
@@ -28,6 +30,8 @@ export default function ProfessionalListingLimitsAdmin() {
     [message, setMessage] = useState(''),
     [error, setError] = useState('')
   const lock = useRef(false)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
   useEffect(() => {
     let active = true
     getProfessionalListingLimits()
@@ -46,7 +50,7 @@ export default function ProfessionalListingLimitsAdmin() {
     setError('')
     setMessage('')
     try {
-      await reauthenticatePricingAdmin(password)
+      await reauthenticatePricingAdmin(password, takeCaptchaToken(captcha))
       await setProfessionalListingLimit(
         kind,
         unlimited ? null : Number(max),
@@ -63,6 +67,7 @@ export default function ProfessionalListingLimitsAdmin() {
         .then(setRows)
         .catch(() => {})
     } finally {
+      captcha.current?.reset()
       setBusy(false)
       lock.current = false
     }
@@ -138,6 +143,7 @@ export default function ProfessionalListingLimitsAdmin() {
           onChange={(e) => setPassword(e.target.value)}
         />
       </FormControl>
+      <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
       <FormControl disabled={busy}>
         <Checkbox checked={confirm} onChange={(e) => setConfirm(e.target.checked)} />
         <FormControl.Label>Confirmo esta configuração auditada</FormControl.Label>
@@ -149,6 +155,7 @@ export default function ProfessionalListingLimitsAdmin() {
           busy ||
           !confirm ||
           !password ||
+          !captchaVerified ||
           reason.trim().length < 5 ||
           (!unlimited && (!/^(0|[1-9][0-9]{0,9})$/.test(max) || Number(max) > 2147483647))
         }
