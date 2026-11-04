@@ -86,7 +86,13 @@ export default function Login() {
             <Flash role="status">{OFFLINE_ENTRY_REQUIRES_INTERNET}</Flash>
           )}
           {sessionNotice && !error && (
-            <Flash role="status" variant={sessionNotice.tone === 'warning' ? 'warning' : 'default'}>
+            <Flash
+              role="status"
+              variant={sessionNotice.tone === 'warning' ? 'warning' : 'default'}
+              // Avisos de severidade padrão (ex.: "Você saiu da conta") são só uma confirmação, não um
+              // alerta -- um Flash compacto evita que disputem espaço visual com o formulário abaixo.
+              className={sessionNotice.tone === 'warning' ? undefined : 'auth-session-notice'}
+            >
               {sessionNotice.message}
             </Flash>
           )}
