@@ -7,12 +7,12 @@
   },
   "redirects": [
     {
-      "source": "/:page(como-funciona|para-empresas|vitrine|profissionais|locais|demo|demo-preview).html",
+      "source": "/:page(como-funciona|para-empresas|informacoes-do-fornecedor|vitrine|profissionais|locais|demo|demo-preview).html",
       "destination": "/:page",
       "statusCode": 301
     },
     {
-      "source": "/:page(como-funciona|para-empresas|vitrine|profissionais|locais|demo|demo-preview)/",
+      "source": "/:page(como-funciona|para-empresas|informacoes-do-fornecedor|vitrine|profissionais|locais|demo|demo-preview)/",
       "destination": "/:page",
       "statusCode": 301
     },
@@ -77,6 +77,10 @@
       "destination": "/para-empresas.html"
     },
     {
+      "source": "/informacoes-do-fornecedor",
+      "destination": "/informacoes-do-fornecedor.html"
+    },
+    {
       "source": "/vitrine/:id([0-9a-fA-F-]{36})",
       "destination": "/api/storefront?id=:id"
     },
@@ -100,7 +104,7 @@
       ]
     },
     {
-      "source": "/(index|app-shell|como-funciona|para-empresas|vitrine|profissionais|demo|demo-preview).html",
+      "source": "/(index|app-shell|como-funciona|para-empresas|informacoes-do-fornecedor|vitrine|profissionais|demo|demo-preview).html",
       "headers": [
         {
           "key": "Cache-Control",
