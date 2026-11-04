@@ -6,15 +6,29 @@ insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,r
 select ('72000000-0000-0000-0000-'||lpad(i::text,12,'0'))::uuid,'authenticated','authenticated','quantity-'||i||'@example.invalid','x',now(),'{}','{}',now(),now() from generate_series(1,4)i;
 insert into public.evocash_price_versions(revision,unit_price_centavos,minimum_unit_price_centavos,min_quantity,max_quantity,daily_quantity_limit,total_quantity_limit,quote_ttl_seconds,large_change_threshold_bps,active_from,created_by,reason)
 values(9001,10,1,1,100,100,200,300,2000,clock_timestamp(),'72000000-0000-0000-0000-000000000004','Synthetic quantity tests');
-update public.evocash_pricing_state set quoting_enabled=true,checkout_enabled=false where id;
+update public.evocash_pricing_state set quoting_enabled=true,checkout_enabled=true where id;
 create temp table results(name text primary key,value jsonb);
 grant select,insert on results to authenticated;
 select pg_temp.set_test_user('72000000-0000-0000-0000-000000000001',true);
 select pg_temp.publish_test_commercial_terms(); -- 20261212000002: termos comerciais sintéticos publicados
-insert into results values('quote',public.create_evocash_purchase_quote('25','72100000-0000-0000-0000-000000000001'));
 set local role authenticated;
-select throws_ok($$select pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')$$,'EVOCASH_PURCHASES_PAUSED','checkout gate defaults closed independently of quoting');
+select is((public.get_evocash_purchase_settings()->>'enabled')::boolean,false,'supplier gate hides purchase availability');
+select throws_ok($$select public.create_evocash_purchase_quote('25','72100000-0000-0000-0000-000000000001')$$,'SUPPLIER_INFO_NOT_CONFIGURED','supplier gate blocks EvoCash quotes');
+reset role;
+-- A cotação criada durante aprovação administrativa continua incapaz de abrir
+-- checkout se a trava for fechada depois; todos os dados da fixture são descartados.
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
+insert into results values('quote',public.create_evocash_purchase_quote('25','72100000-0000-0000-0000-000000000001'));
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', false)) where id;
+set local role authenticated;
+select throws_ok($$select pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')$$,'SUPPLIER_INFO_NOT_CONFIGURED','supplier gate blocks checkout even before other controls');
 select ok(not has_table_privilege('authenticated','public.cash_purchases','insert'),'client cannot insert financial rows');
+reset role;
+-- Only this rollback-only fixture opts into the supplier gate before checkout.
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
+update public.evocash_pricing_state set checkout_enabled=false where id;
+set local role authenticated;
+select throws_ok($$select pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')$$,'EVOCASH_PURCHASES_PAUSED','checkout remains paused independently of supplier approval');
 reset role;
 update public.evocash_pricing_state set checkout_enabled=true where id;
 set local role authenticated;

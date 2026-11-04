@@ -1,6 +1,8 @@
 \ir _helpers/auth_session.sql
 \ir _helpers/commercial_terms.sql
 begin;
+-- Fixture only: the production supplier gate defaults to closed.
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
 insert into public.professional_listing_limits(kind,max_per_owner)values('professional',10),('space',10) on conflict(kind)do update set max_per_owner=10;
 
 select no_plan();

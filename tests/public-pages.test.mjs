@@ -7,6 +7,7 @@ const routes = [
   ['/', 'index.html', true],
   ['/como-funciona', 'como-funciona.html', true],
   ['/para-empresas', 'para-empresas.html', true],
+  ['/informacoes-do-fornecedor', 'informacoes-do-fornecedor.html', true],
   ['/vitrine', 'vitrine.html', false],
   ['/profissionais', 'profissionais.html', false],
 ]
@@ -95,6 +96,7 @@ test('homepage mantém conteúdo indexável e encaminha apenas a rota raiz', () 
   for (const file of [
     'como-funciona.html',
     'para-empresas.html',
+    'informacoes-do-fornecedor.html',
     'vitrine.html',
     'profissionais.html',
   ])
@@ -119,7 +121,7 @@ test('footer público compacto usa Primer e links existentes', () => {
     assert.match(footer, /Box-sc-/)
     assert.match(footer, /aria-label="Links do rodapé"/)
     assert.match(footer, /class="footer-link prc-Link-/)
-    for (const path of ['/como-funciona', '/para-empresas', '/atendimento', '/termos-de-uso', '/politica-de-privacidade'])
+    for (const path of ['/como-funciona', '/para-empresas', '/atendimento', '/informacoes-do-fornecedor', '/termos-de-uso', '/politica-de-privacidade'])
       assert.ok(footer.includes(`href="${path}"`), `${file}: ${path}`)
     assert.doesNotMatch(footer, /\/funcionalidades|\/guia-registro-treino/)
   }
@@ -219,11 +221,42 @@ test('para-empresas entrega quatro seções e formulário comercial no HTML inic
   assert.equal((html.match(/<section class="[^"]*business-(?:hero|offerings|process|contact)\b/g) || []).length, 4)
   for (const text of ['Sua marca no universo fitness.', 'Anúncios patrocinados', 'Vitrine de produtos', 'Simples de começar.', 'Vamos conversar sobre seu negócio?'])
     assert.ok(html.includes(text), text)
-  for (const name of ['company', 'contact', 'email', 'segment', 'modality', 'message', 'whatsapp', 'website', 'privacy', 'honeypot'])
+  for (const name of ['company', 'contact', 'email', 'segment', 'modality', 'message', 'whatsapp', 'website', 'honeypot'])
     assert.match(html, new RegExp(`name="${name}"`))
+  assert.doesNotMatch(html, /type="checkbox"/)
+  assert.match(html, /href="\/politica-de-privacidade"/)
   assert.match(html, /href="#proposta"/)
   assert.match(html, /id="proposta"/)
   assert.doesNotMatch(html, /<script[^>]+src="\/assets\/(?:main|CommercialAdmin)-/)
+})
+
+test('informações do fornecedor identifica o responsável sem inventar dados pendentes', () => {
+  const html = readFileSync('dist/informacoes-do-fornecedor.html', 'utf8')
+  assert.match(html, /href="\/public-supplier-info\.css"/)
+  assert.match(html, /<link rel="canonical" href="https:\/\/www\.evolutus\.com\.br\/informacoes-do-fornecedor">/)
+  assert.equal((html.match(/<h1\b/g) || []).length, 1)
+  for (const text of [
+    'Evolutus',
+    'Pessoa física (sem CNPJ)',
+    'InfinitePay',
+    'dnllira1@gmail.com',
+  ])
+    assert.ok(html.includes(text), text)
+  assert.match(html, /href="mailto:dnllira1@gmail\.com"/)
+  assert.match(html, /href="\/politica-de-privacidade"/)
+  // Nome civil, CPF e endereço nunca são inventados: sem as variáveis de ambiente
+  // SUPPLIER_LEGAL_NAME/SUPPLIER_CPF/SUPPLIER_ADDRESS, a página mostra "Em configuração"
+  // para esses três campos, e não um valor fabricado.
+  assert.equal((html.match(/Em configuração/g) || []).length, 3)
+  assert.doesNotMatch(html, /\d{3}\.\d{3}\.\d{3}-\d{2}/)
+})
+
+test('rodapé e áreas comerciais/jurídicas linkam para informações do fornecedor sem duplicar os dados', () => {
+  const forBusiness = readFileSync('dist/para-empresas.html', 'utf8')
+  assert.match(forBusiness, /href="\/informacoes-do-fornecedor"/)
+  assert.doesNotMatch(forBusiness, /Em configuração/)
+  const legalDocument = readFileSync('src/pages/LegalDocument.jsx', 'utf8')
+  assert.match(legalDocument, /href="\/informacoes-do-fornecedor"/)
 })
 
 test('home usa uma imagem oficial otimizada', () => {
@@ -243,7 +276,7 @@ test('home usa uma imagem oficial otimizada', () => {
       assert.ok(readFileSync(`dist/img/banners/${banner}-1774.webp`).length > 0)
     }
   }
-  for (const file of ['como-funciona.html', 'para-empresas.html', 'vitrine.html', 'profissionais.html'])
+  for (const file of ['como-funciona.html', 'para-empresas.html', 'informacoes-do-fornecedor.html', 'vitrine.html', 'profissionais.html'])
     assert.doesNotMatch(readFileSync(`dist/${file}`, 'utf8'), /capa_principal|official-banner/)
   assert.match(readFileSync('dist/como-funciona.html', 'utf8'), /og:image" content="https:\/\/www\.evolutus\.com\.br\/img\/banners\/quadro-geral-1774\.webp"/)
 })
