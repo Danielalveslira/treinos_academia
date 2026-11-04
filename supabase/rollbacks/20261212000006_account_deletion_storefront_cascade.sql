@@ -1,4 +1,4 @@
--- Rollback de 20261212000005: restaura run_deletion_job e capture_deleted_photo_cleanup
+-- Rollback de 20261212000006: restaura run_deletion_job e capture_deleted_photo_cleanup
 -- pré-cascata de vitrines, remove os dois novos gatilhos e volta o outbox aos dois
 -- buckets originais. Não apaga nem recria dados -- linhas de storage_cleanup_tasks já
 -- inseridas para storefront-media/community-covers continuam existindo (ficam 'pending'

@@ -1,4 +1,4 @@
--- Cobertura de 20261212000005: conteúdo pessoal de vitrine some na exclusão de conta,
+-- Cobertura de 20261212000006: conteúdo pessoal de vitrine some na exclusão de conta,
 -- o anchor financeiro (commercial_resources) nunca é apagado, e capas de comunidade
 -- entram no outbox de limpeza de Storage.
 \ir _helpers/auth_session.sql
