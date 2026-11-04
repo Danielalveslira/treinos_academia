@@ -57,6 +57,7 @@ before(async () => {
               export const Textarea = ({ block, ...props }) => <textarea {...props} />
               export const FormControl = ({ children }) => <div>{children}</div>
               FormControl.Label = ({ children }) => <label>{children}</label>
+              FormControl.Caption = ({ children }) => <span>{children}</span>
               FormControl.Validation = ({ children }) => <span>{children}</span>
             `,
           }))
