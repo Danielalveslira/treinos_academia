@@ -52,3 +52,27 @@ begin
     'textVersion', v_last.text_version, 'occurredAt', v_last.occurred_at, 'changed', true);
 end $$;
 revoke all on function private.record_privacy_consent(uuid, text, boolean, text, text) from public, anon, authenticated, service_role;
+
+-- A inserção precisa disputar o mesmo lock da revogação. Sem isso, uma transação
+-- iniciada antes da revogação poderia ler o consentimento antigo e inserir uma
+-- medida depois do DELETE, deixando dados de saúde apesar da revogação confirmada.
+create or replace function private.require_health_consent() returns trigger
+language plpgsql volatile security definer set search_path = '' as $$
+declare
+  v_uid uuid := (select auth.uid());
+  v_granted boolean;
+begin
+  if v_uid is not null then
+    perform pg_catalog.pg_advisory_xact_lock(84202, pg_catalog.hashtext(new.user_id::text || ':health_data'));
+    -- Consulta nova após adquirir o lock; a função STABLE has_privacy_consent
+    -- poderia reutilizar o snapshot do INSERT iniciado antes da revogação.
+    select granted into v_granted from public.privacy_consent_events
+      where user_id = new.user_id and purpose = 'health_data'
+      order by id desc limit 1;
+    if not coalesce(v_granted, false) then
+      raise exception 'HEALTH_CONSENT_REQUIRED' using errcode = '42501';
+    end if;
+  end if;
+  return new;
+end $$;
+revoke all on function private.require_health_consent() from public, anon, authenticated, service_role;
