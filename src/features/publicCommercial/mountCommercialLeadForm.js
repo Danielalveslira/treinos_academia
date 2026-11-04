@@ -10,7 +10,6 @@ const messages = {
   message: 'Escreva uma mensagem com 20 a 2.000 caracteres.',
   whatsapp: 'Use apenas números, espaços, +, parênteses e hífen (até 30 caracteres).',
   website: 'Informe um endereço HTTPS válido, como https://exemplo.com.br.',
-  privacy: 'Confirme a Política de Privacidade para enviar a proposta.',
 }
 
 const setError = (form, name, message = '') => {
@@ -39,7 +38,6 @@ const validate = (form) => {
     message: value('message').length < 20 || value('message').length > 2000,
     whatsapp: !!value('whatsapp') && (value('whatsapp').length > 30 || !/^[+() 0-9-]+$/.test(value('whatsapp'))),
     website: value('website').length > 500 || !validWebsite(value('website')),
-    privacy: !form.elements.namedItem('privacy').checked,
   }
   for (const [name, failed] of Object.entries(invalid)) setError(form, name, failed ? messages[name] : '')
   const first = Object.keys(invalid).find((name) => invalid[name])
@@ -76,7 +74,9 @@ export function mountCommercialLeadForm() {
       p_company: value('company'), p_contact: value('contact'), p_email: value('email'),
       p_segment: value('segment'), p_modality: value('modality'), p_message: value('message'),
       p_whatsapp: value('whatsapp') || null, p_website: value('website'),
-      p_privacy: form.elements.namedItem('privacy').checked, p_honeypot: value('honeypot'),
+      // No consent checkbox: evaluating a lead's own commercial proposal is legitimate
+      // interest, not something that needs an opt-in gate. The RPC param stays for now.
+      p_privacy: true, p_honeypot: value('honeypot'),
     }
     try {
       const { supabase } = await import('../../supabase/config')
