@@ -1,15 +1,24 @@
 // The DB checks the key against the deleted row's identity. The worker checks syntax again.
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
 const KEY = new RegExp(`^${UUID}/${UUID}\\.webp$`)
+// community-covers has no owner segment: one file per community, path is just "{id}.webp".
+const SINGLE_SEGMENT_KEY = new RegExp(`^${UUID}\\.webp$`)
+const TWO_SEGMENT_BUCKETS = ['status-photos', 'profile-avatars', 'storefront-media']
+const SINGLE_SEGMENT_BUCKETS = ['community-covers']
 
 export function normalizePhotoPath(reference, bucket = 'status-photos') {
-  if (typeof reference !== 'string' || !['status-photos', 'profile-avatars'].includes(bucket))
-    return null
-  const key =
-    bucket === 'status-photos' && reference.startsWith('statusPhotos/')
-      ? reference.slice('statusPhotos/'.length)
-      : reference
-  return KEY.test(key) ? key : null
+  if (typeof reference !== 'string') return null
+  if (TWO_SEGMENT_BUCKETS.includes(bucket)) {
+    const key =
+      bucket === 'status-photos' && reference.startsWith('statusPhotos/')
+        ? reference.slice('statusPhotos/'.length)
+        : reference
+    return KEY.test(key) ? key : null
+  }
+  if (SINGLE_SEGMENT_BUCKETS.includes(bucket)) {
+    return SINGLE_SEGMENT_KEY.test(reference) ? reference : null
+  }
+  return null
 }
 
 // Generic HTTP 404 can mean a missing bucket/route. Only an explicit object error is idempotent.
