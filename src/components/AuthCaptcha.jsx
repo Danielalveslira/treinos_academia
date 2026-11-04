@@ -92,9 +92,13 @@ export const AuthCaptcha = forwardRef(function AuthCaptcha({ onVerifiedChange },
         sitekey={authCaptchaSiteKey}
         size="compact"
         theme={resolvedColorMode === 'night' ? 'dark' : 'light'}
-        onLoad={() => {
+        // onReady (não onLoad): quando o script já está em window.hcaptcha (2ª+ tela desta SPA),
+        // @hcaptcha/react-hcaptcha renderiza o widget sem passar pelo callback que dispara onLoad --
+        // só onReady roda nos dois caminhos. Usar onLoad aqui deixava o widget funcional visualmente
+        // enquanto o timeout de 15s abaixo seguia agindo sozinho e marcava erro.
+        onReady={() => {
           clearTimeout(loadTimer.current)
-          setStatus('ready')
+          setStatus((value) => (value === 'loading' ? 'ready' : value))
         }}
         onVerify={(value) => {
           if (!value) {

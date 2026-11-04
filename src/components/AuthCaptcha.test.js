@@ -86,7 +86,7 @@ test('token é consumido uma vez; expiração e erro permitem nova tentativa', a
   assert.equal(widget().props['data-sitekey'], 'public-test-key')
   assert.throws(() => ref.current.takeToken(), { code: 'CAPTCHA_REQUIRED' })
 
-  await act(async () => widget().parent.props.onLoad())
+  await act(async () => widget().parent.props.onReady())
   await act(async () => widget().parent.props.onVerify('first-token'))
   assert.equal(ref.current.takeToken(), 'first-token')
   assert.throws(() => ref.current.takeToken(), { code: 'CAPTCHA_REQUIRED' })
@@ -105,5 +105,44 @@ test('token é consumido uma vez; expiração e erro permitem nova tentativa', a
   await act(async () => renderer.root.findByType('button').props.onClick())
   assert.ok(verified.includes(true))
   assert.equal(verified.at(-1), false)
+  await act(async () => renderer.unmount())
+})
+
+test('onReady evita o falso erro de carregamento quando o script já estava em window.hcaptcha', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const ref = createRef()
+  let renderer
+  await act(async () => {
+    renderer = TestRenderer.create(React.createElement(AuthCaptcha, { ref }))
+  })
+  const widget = () => renderer.root.findByProps({ 'data-widget': 'true' })
+  // Caminho "script já carregado" de @hcaptcha/react-hcaptcha: só onReady dispara, nunca onLoad.
+  await act(async () => widget().parent.props.onReady())
+  await act(async () => t.mock.timers.tick(15_000))
+  assert.equal(
+    renderer.root.findByType('p').children.join(''),
+    'Conclua a verificação de segurança para continuar.'
+  )
+  assert.equal(
+    renderer.root
+      .findAllByType('button')
+      .some((button) => button.children.join('') === 'Tentar novamente'),
+    false
+  )
+  await act(async () => renderer.unmount())
+})
+
+test('timeout de carregamento ainda marca erro quando o widget nunca fica pronto', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const ref = createRef()
+  let renderer
+  await act(async () => {
+    renderer = TestRenderer.create(React.createElement(AuthCaptcha, { ref }))
+  })
+  await act(async () => t.mock.timers.tick(15_000))
+  assert.equal(
+    renderer.root.findByType('p').children.join(''),
+    'Não foi possível carregar a verificação. Verifique sua conexão e tente novamente.'
+  )
   await act(async () => renderer.unmount())
 })
