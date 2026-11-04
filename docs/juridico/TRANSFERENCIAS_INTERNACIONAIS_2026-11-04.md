@@ -1,13 +1,3 @@
-# Transferências internacionais: mapa simples para decisão
+# Transferências internacionais — análise consolidada
 
-A [Resolução CD/ANPD nº 19/2024](https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd/resolucao-cd-anpd-no-19-de-23-de-agosto-de-2024) exige mecanismo válido para transferências internacionais conforme o art. 33 da LGPD. A sede de um fornecedor ou a região principal do banco, sozinhas, não provam onde todos os dados são tratados. Cláusulas europeias não substituem automaticamente as cláusulas-padrão brasileiras.
-
-| Fornecedor | Para quê | Países ou regiões possíveis, segundo fonte pública | Mecanismo para o fluxo Evolutus | Evidência disponível / falta confirmar |
-|---|---|---|---|---|
-| Supabase | Auth, banco, arquivos e funções | A instância do Evolutus está em `us-east-2` (EUA). O [guia de residência](https://supabase.com/legal/privacy-resources/data-residency-and-transfers-faq) também prevê suporte global, logs na UE e CDN fora da região. | **Não confirmado.** | [DPA público](https://supabase.com/legal/customer-resources/data-processing-addendum); conferir o contrato aceito, subprocessadores e fluxos reais. |
-| Vercel, Analytics e Speed Insights | Site, logs e métricas | EUA e outras regiões usadas por subprocessadores, conforme o [DPA público](https://vercel.com/legal/dpa). | **Não confirmado.** | Conferir DPA aceito, [subprocessadores](https://security.vercel.com), regiões efetivas e mecanismo aplicável. |
-| Resend | E-mails transacionais e metadados de entrega | EUA e demais locais dos [subprocessadores publicados](https://resend.com/legal/subprocessors); fluxo exato da conta não confirmado. | **Não confirmado.** | [DPA público](https://resend.com/legal/dpa); conferir contrato aceito e entrega real. |
-| InfinitePay | Pagamento e dados necessários à transação | O [aviso de privacidade](https://www.infinitepay.io/legal/aviso-de-privacidade) informa transferências para os **EUA** para nuvem e mensageria. | O aviso diz observar a LGPD, mas o instrumento de cada fluxo **não foi conferido**. | Conferir termos aceitos, papel das partes e cláusulas aplicáveis ao Evolutus. |
-| Serviços de push do navegador/sistema | Entrega de notificações opt-in | Depende de Google, Apple, Mozilla, Microsoft e do aparelho; países não mapeados para esta operação. | **Não confirmado.** | Mapear provedores efetivos, metadados, regiões e contratos ou outra hipótese válida. |
-
-**Próximo passo:** guardar, fora do repositório se houver dados contratuais sensíveis, as versões efetivamente aceitas dos contratos e a decisão jurídica por fluxo. Se faltar mecanismo válido, corrigir ou suspender o fluxo específico antes de declarar conformidade. A minuta 2.0.0 descreve a possibilidade de tratamento fora do Brasil, mas não afirma que esta verificação já foi concluída.
+O mapa de fornecedores, países possíveis, documentos públicos e evidências contratuais faltantes consta do [dossiê jurídico 2.0.0](DOSSIE_DECISAO_LEGAL_2_0.md#5-transferências-internacionais). Este arquivo foi mantido apenas para preservar os links internos anteriores.

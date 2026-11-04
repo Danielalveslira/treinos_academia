@@ -172,8 +172,8 @@ Pedimos apenas o necessário para as funções usadas. A tabela separa dados obr
 | E-mail, senha no provedor de autenticação e nome de usuário | Criar conta, entrar e identificar você | Execução do contrato — art. 7º, V |
 | Data de nascimento | Aplicar a idade mínima de 18 anos e proteger contas antigas de menores | Execução do contrato e obrigação legal — art. 7º, II e V |
 | Município e perfil de uso | Mostrar recursos e conteúdos pertinentes | Execução do contrato — art. 7º, V |
-| Sexo, com opção “não informar”, e altura quando fornecida | Personalizar mensagens e indicadores solicitados | Execução do contrato — art. 7º, V. Se revelarem saúde, a hipótese do art. 11 precisa ser validada antes da vigência desta versão. |
-| Fichas, exercícios, séries, cargas e notas | Manter seu diário e histórico de treino | Execução do contrato — art. 7º, V. Notas podem revelar saúde; evite dados clínicos. |
+| Sexo escolhido no cadastro (inclusive “não informar”) e altura opcional | Personalizar mensagens e, com medidas autorizadas, calcular indicadores | Sexo: execução do contrato — art. 7º, V. Altura e indicadores que possam revelar saúde: consentimento específico — art. 11, I. |
+| Fichas, exercícios, séries, cargas e observações de treino | Manter seu diário e histórico de treino | Execução do contrato — art. 7º, V. Os campos de observação servem ao treino; não peça nem informe diagnósticos ou dados médicos. |
 | Peso, gordura, circunferências e outras medidas corporais | Mostrar histórico e indicadores fitness | Consentimento específico, opcional e revogável — art. 11, I |
 | Foto, descrição, publicações, comentários, votos e comunidades | Operar perfil e convivência | Execução do contrato — art. 7º, V |
 | Vitrines: apresentação, cidade, contatos, imagens e produtos | Exibir vitrine aprovada | Execução do contrato — art. 7º, V |
@@ -181,14 +181,14 @@ Pedimos apenas o necessário para as funções usadas. A tabela separa dados obr
 | Atendimento, denúncias e decisões de moderação | Responder pedidos e apurar violações | Contrato e defesa de direitos — art. 7º, V e VI |
 | Endereço e dados técnicos de push, se ativado | Enviar notificações ao aparelho | Consentimento — art. 7º, I; desativável no Perfil |
 | Último uso, sincronização offline e registros de segurança | Manter o serviço seguro e funcional | Legítimo interesse — art. 7º, IX, sujeito a necessidade e proporcionalidade |
-| Visualizações e cliques em anúncios | Medir campanhas e evitar contagem duplicada | Legítimo interesse proposto — art. 7º, IX; avaliação e oposição precisam estar comprovadas antes da vigência |
-| Navegação e desempenho no Vercel Analytics e Speed Insights | Entender uso e velocidade das páginas | Legítimo interesse proposto — art. 7º, IX; avaliação e oposição precisam estar comprovadas antes da vigência |
+| Visualizações e cliques em anúncios | Medir campanhas e evitar contagem duplicada | Legítimo interesse — art. 7º, IX, com minimização, descarte dos marcadores e oposição pelo atendimento. |
+| Navegação e desempenho no Vercel Analytics e Speed Insights | Entender uso das páginas e desempenho do site | Legítimo interesse — art. 7º, IX, para dados técnicos não sensíveis. Se a navegação revelar saúde, esse fundamento não basta. |
 | Propostas enviadas em Para Empresas | Responder ao contato e possível contratação | Procedimentos preliminares de contrato — art. 7º, V |
 
 ### 3. Medidas corporais e saúde
 
-- Peso, gordura, circunferências e indicadores derivados, como IMC, podem revelar dados de saúde. Pedimos sua autorização específica antes de guardar medidas. Criar conta não depende disso.
-- Você pode retirar a autorização em Perfil → “Dados de saúde e direitos”. A retirada bloqueia novos registros e apaga automaticamente as medidas já guardadas sob esse consentimento.
+- Peso, gordura, circunferências, altura e indicadores derivados, como IMC, podem revelar dados de saúde. Pedimos autorização específica para registrar medidas e usar a altura em indicadores. Criar conta não depende disso.
+- Você pode retirar a autorização em Perfil → “Dados de saúde e direitos”. A retirada bloqueia novos registros e apaga as medidas guardadas e a altura do perfil.
 - Guardamos apenas a prova de que a autorização foi dada e retirada, com datas e versão do texto, sem o conteúdo das medidas. Hoje não há outra base de conservação para essas medidas.
 - Não usamos dados de saúde em anúncios nem os compartilhamos com anunciantes.
 
@@ -202,19 +202,19 @@ Pedimos apenas o necessário para as funções usadas. A tabela separa dados obr
 - Supabase opera login, banco, arquivos e funções. Vercel hospeda o site e recebe métricas de navegação e desempenho. Resend envia e-mails transacionais de compras. InfinitePay processa pagamentos; não recebemos o número completo do cartão.
 - Se você ativar push, o navegador e o sistema podem usar serviços de Google, Apple, Mozilla ou Microsoft para entregar notificações. Consultas públicas ao catálogo externo de exercícios não enviam os dados pessoais da conta.
 - Autoridades podem receber dados por obrigação legal ou ordem judicial. Não vendemos dados pessoais.
-- Alguns provedores podem tratar dados fora do Brasil. Países e mecanismo jurídico de cada fluxo dependem de conferência contratual antes da publicação desta versão.
+- Alguns fornecedores podem tratar dados fora do Brasil, inclusive nos Estados Unidos. Você pode pedir detalhes sobre esses fluxos e suas garantias pelo canal de privacidade.
 
 ### 6. Anúncios e métricas
 
 - Anúncios aparecem como “Patrocinado” e rodam sem usar seu histórico ou perfil de saúde.
 - Contamos visualizações e cliques por anúncio, posição, comunidade e dia. Um identificador ligado à conta evita duplicações por até 48 horas; totais agregados ficam por até 24 meses.
 - Contas sem idade confirmada ou identificadas como de menores não entram nessa medição. Você pode se opor às métricas próprias de anúncios pelo atendimento.
-- Vercel Analytics e Speed Insights podem receber caminho da página, referenciador, horário, dados de dispositivo e desempenho. Retiramos parâmetros e fragmentos da URL antes do envio, mas isso não torna os dados necessariamente anônimos. A base legal e a oposição a essa coleta ainda exigem validação antes da vigência desta versão.
+- Vercel Analytics e Speed Insights medem navegação e desempenho. Removemos parâmetros e fragmentos da URL antes do envio; caminho da página, referenciador, horário, dispositivo e desempenho ainda podem ser tratados. Isso não garante anonimato.
 
 ### 7. Quanto tempo guardamos
 
 - Dados operacionais da conta são mantidos enquanto ela existir e removidos pelo fluxo de exclusão. Medidas corporais são apagadas quando você retira a autorização, mesmo sem excluir a conta.
-- Aceites, compras, contratações, reembolsos, moderação e segurança podem continuar pelo tempo necessário a deveres legais ou defesa de direitos, com acesso restrito. O prazo e a rotina de descarte de cada categoria precisam ser confirmados antes da vigência desta versão.
+- Aceites, compras, contratações, reembolsos, atendimentos, moderação e segurança podem continuar pelo tempo necessário a deveres legais ou defesa de direitos, com acesso restrito. Pedidos de exclusão são analisados pelo canal de privacidade.
 - Registros temporários de anúncios duram até 48 horas; totais agregados, até 24 meses; dados de sincronização offline, até 30 dias. Registros de acesso seguem as exigências legais aplicáveis, incluindo o mínimo de seis meses do Marco Civil quando cabível.
 
 ### 8. Suas escolhas e direitos
@@ -477,4 +477,4 @@ Como cancelar, exercer o arrependimento e acompanhar reembolsos.
 
 ## Antes de aprovar
 
-As questões que ainda exigem documentos externos ou decisão profissional estão em [Decisões pendentes](../../docs/juridico/DECISOES_PENDENTES_LEGAL_2_0.md) e no [Checklist de publicação](../../docs/juridico/CHECKLIST_PUBLICACAO_LEGAL_2_0.md). Este arquivo não substitui a aprovação jurídica nem autoriza ativação ou vendas.
+As questões que ainda exigem documentos externos ou decisão profissional estão em [Dossiê jurídico](../../docs/juridico/DOSSIE_DECISAO_LEGAL_2_0.md) e no [Checklist de publicação](../../docs/juridico/CHECKLIST_PUBLICACAO_LEGAL_2_0.md). Este arquivo não substitui a aprovação jurídica nem autoriza ativação ou vendas.

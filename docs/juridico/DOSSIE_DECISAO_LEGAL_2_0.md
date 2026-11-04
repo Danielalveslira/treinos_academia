@@ -1,0 +1,77 @@
+# Evolutus 2.0.0 — decisão jurídica e condições de publicação
+
+**Estado em 04/11/2026:** sete minutas do PR #123 aguardam aprovação. A versão 1.5.0 continua vigente. Este dossiê reúne fatos de código, informação declarada pelo proprietário, conclusões jurídicas e evidências ainda necessárias. Nenhuma conclusão aqui ativa documentos ou vendas.
+
+## 1. Encarregado de dados
+
+**Fatos:** o operador é pessoa física, sem CNPJ; o proprietário informa que não há usuários nem transações financeiras reais. Medidas corporais são opcionais. Há canal de privacidade em `/atendimento` e `dnllira1@gmail.com`. Não há evidência de tratamento em larga escala.
+
+**Regra e decisão atual:** a [Resolução CD/ANPD nº 2/2022](https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd/resolucao-cd-anpd-no-2-de-27-de-janeiro-de-2022), arts. 2º, 3º, 4º e 11, admite pessoa natural como agente de pequeno porte e dispensa a indicação de encarregado se o regime se aplicar, mantendo canal de comunicação. Alto risco exige **critério geral e específico juntos**. Dado de saúde pode cumprir o específico, mas, na escala atual informada, não há prova de larga escala nem de impacto significativo. **É sustentável operar agora sem encarregado formal**, sob os fatos declarados e com o canal ativo. Isto não dispensa as demais obrigações da LGPD.
+
+**Reavaliar** se houver usuários reais em escala relevante, tratamento sistemático de saúde, decisão automatizada com efeito significativo, incidente grave, mudança de receita/grupo econômico ou exigência da ANPD. O responsável deve registrar a dimensão real da operação nessa reavaliação; não precisa coletar documentos dos usuários para isso.
+
+## 2. Idade mínima
+
+**Fatos:** o cadastro exige data de nascimento e barra menores de 18 anos no servidor; não exige CPF, RG, selfie ou biometria. Comunidades, perfis, vitrines e conteúdo fitness são funções reais; conteúdo sexual, exploração de menores, anúncios enganosos de saúde e anabolizantes sem prescrição são proibidos. Compras e vendas estão desativadas.
+
+**Decisão:** manter 18+ e a coleta mínima. A autodeclaração **não deve ser declarada suficiente para todo cenário**: a [orientação da ANPD](https://www.gov.br/anpd/pt-br/assuntos/eca-digital/mecanismos-confiaveis-de-afericao-de-idade-orientacoes-preliminares.pdf) a considera de baixa confiabilidade, especialmente para barrar acesso a conteúdo ou serviço impróprio a menores. A [Lei nº 15.211/2025](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15211.htm) e o [Decreto nº 12.880/2026](https://www.gov.br/mj/pt-br/assuntos/arquivos-imprensa/sedigi/decretos-eca-digital.pdf) exigem avaliação proporcional para serviços direcionados a menores ou de acesso provável por eles. O simples rótulo “18+” não resolve se o serviço é de acesso provável.
+
+**Decisão profissional específica antes da publicação:** classificar o acesso provável e o risco por função (cadastro, comunidade, conteúdo público e futura compra). Se for necessário sinal adicional, preferir um atributo de faixa etária confiável oferecido por sistema operacional, loja ou provedor idôneo, com armazenamento apenas do resultado e data. Só escolher outro método depois de demonstrar que esse sinal não atende; nenhum documento ou biometria é introduzido neste PR.
+
+## 3. Dados de saúde e fitness
+
+| Tratamento | Qualificação e base | Controle real / condição |
+|---|---|---|
+| Peso, gordura, circunferências, massa e observação do check-in corporal | Podem revelar saúde: consentimento específico e opcional, LGPD art. 11, I. | Trigger exige consentimento; revogação apaga `body_measurements`. |
+| Altura e IMC/cintura-altura | Altura isolada pode ser dado comum; combinada com peso revela saúde. Por prudência, mesma base do art. 11, I. | Migration **00009 ainda não aplicada** exige consentimento para nova altura e a apaga na revogação. Indicadores são calculados das medidas; não formam outro banco de saúde. |
+| Sexo escolhido, inclusive “não informar” | Dado comum neste cadastro e personalização de mensagem: execução do contrato, art. 7º, V. Não inferir condição clínica. | Campo não é enviado a publicidade. A inferência de saúde em novo uso exigirá outra análise. |
+| Fichas, séries, cargas e histórico | Diário de treino comum: execução do contrato, art. 7º, V. | Privados por padrão; não são usados para anúncios. Se um uso novo produzir perfil de saúde, aplicar art. 11 antes dele. |
+| Observações livres de treino | Feitas para técnica/rotina: art. 7º, V. Texto clínico pode se tornar sensível. | Telas passam a pedir que não sejam inseridos diagnósticos ou dados médicos. Isso não impede tecnicamente toda entrada clínica. Titular pode pedir correção/exclusão. |
+
+A [LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm) não permite usar legítimo interesse do art. 7º, IX, para dados sensíveis. **Validação jurídica específica:** decidir se o aviso e a finalidade restrita das observações livres bastam para dados clínicos inseridos espontaneamente; se não, restringir esse tipo de texto ou solicitar consentimento próprio, sem tornar o cadastro médico. Não publicar uma promessa de exclusão da altura antes de aplicar a migration 00009.
+
+## 4. Analytics e métricas de anúncios
+
+**Fato técnico:** Vercel Analytics e Speed Insights funcionam nas rotas React; Analytics também é carregado nas páginas públicas. Eventos manuais de cadastro e demonstração continuam. `redactAnalyticsEvent` remove parâmetros e fragmentos das URLs antes do envio. Caminho, referenciador, horário, dispositivo e métricas de desempenho ainda podem ser tratados. Isso não prova anonimização nem impede inferência de interesse em saúde por contexto. [Vercel Analytics](https://vercel.com/docs/analytics/privacy-policy) e [Speed Insights](https://vercel.com/docs/speed-insights/privacy-policy) descrevem suas coletas. Nenhuma ferramenta foi desligada ou limitada neste PR.
+
+**Hipótese a avaliar:** legítimo interesse (LGPD art. 7º, IX) para medir uso e desempenho com dados técnicos **não sensíveis**. A finalidade é detectar páginas lentas e problemas de navegação; a necessidade deve ser comparada com alternativas menos intrusivas. Salvaguardas existentes: retirada de query/fragmento e ausência de medidas corporais nos eventos manuais. Faltam captura dirigida do payload real, teste de balanceamento por rota e mecanismo efetivo de oposição quando exigido. Caminhos que possam revelar saúde não são cobertos pelo art. 7º, IX. A continuidade da ferramenta é decisão do proprietário; a base jurídica **não está declarada comprovada**. Uma revisão profissional deve indicar base/salvaguarda adequada antes de ativar a Política 2.0.0.
+
+**Métricas próprias:** `record_ad_events` usa conta, anúncio, tipo, posição e comunidade quando aplicável para medir entrega e evitar duplicação. Não recebe peso, altura, IMC ou diário. Marcas individuais expiram em até 48 horas; totais por até 24 meses. Jobs `cleanup-sponsored-ad-marks` e `cleanup-sponsored-ad-stats` constam das migrations. Oposição é feita pelo atendimento via `admin_set_ad_metrics_opt_out`, que remove marcadores individuais; não há oposição direta no Perfil. A execução dos jobs no remoto deve ser confirmada antes de anunciar prazo como garantia.
+
+**Teste de balanceamento das métricas próprias:** finalidade legítima é conferir a entrega e contagem de anúncios contratados; a contagem de eventos é necessária para essa prestação e menor que um perfil de interesses. Salvaguardas: sem saúde, sem direcionamento comportamental, deduplicação temporária, totais agregados, acesso restrito e oposição. Para dados **não sensíveis**, o art. 7º, IX, é defensável enquanto essas salvaguardas e a necessidade se mantiverem, segundo o [guia da ANPD](https://www.gov.br/anpd/pt-br/assuntos/noticias/anpd-lanca-guia-orientativo-sobre-legitimo-interesse). Reavaliar se houver segmentação, integração com saúde ou mudança de prazo. As vendas continuam bloqueadas.
+
+## 5. Transferências internacionais
+
+A [Resolução CD/ANPD nº 19/2024](https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd/resolucao-cd-anpd-no-19-de-23-de-agosto-de-2024) exige base legal e mecanismo do art. 33 por transferência. A [ANPD informa](https://www.gov.br/anpd/pt-br/assuntos/assuntos-internacionais/transferencia-internacional-de-dados) que cláusulas estrangeiras não são automaticamente equivalentes às brasileiras. Um DPA público não prova qual versão foi aceita pela conta Evolutus.
+
+| Fornecedor e dados | Finalidade | Países/regiões identificáveis | Documento público | Mecanismo do fluxo Evolutus e evidência faltante |
+|---|---|---|---|---|
+| Supabase: conta, treinos, medidas, arquivos, logs | Auth, banco e funções | Instância registrada como `us-east-2` (EUA); suporte/CDN podem variar | [Residência](https://supabase.com/legal/privacy-resources/data-residency-and-transfers-faq), [DPA](https://supabase.com/legal/customer-resources/data-processing-addendum) | **Não comprovado:** contrato aceito, subprocessadores e mecanismo brasileiro para cada fluxo. Essencial; não desligar sem migração segura. |
+| Vercel: páginas e dados técnicos de requisição | Hospedagem, segurança, Analytics e Speed Insights | EUA e regiões de subprocessadores; rota efetiva não apurada | [DPA](https://vercel.com/legal/dpa) | **Não comprovado:** versão aceita, subprocessadores e mecanismo brasileiro. Hospedagem e telemetria continuam ativas; base legal e oposição da telemetria dependem da avaliação acima. |
+| Resend: e-mail, destinatário e metadados de entrega | E-mails transacionais comerciais | EUA e regiões de [subprocessadores](https://resend.com/legal/subprocessors) | [DPA](https://resend.com/legal/dpa) | **Não comprovado:** contrato aceito e mecanismo brasileiro. Compras estão bloqueadas; não enviar e-mails comerciais até comprovar. |
+| InfinitePay: dados necessários à transação | Checkout e estorno | [Aviso oficial](https://www.infinitepay.io/legal/aviso-de-privacidade) indica EUA para nuvem/mensageria | Aviso e termos da conta | **Não comprovado:** papel e mecanismo de cada fluxo Evolutus; compras bloqueadas. A InfinitePay declara ser controladora dos seus próprios fluxos. |
+| Push do navegador/sistema: endpoint, chaves e conteúdo cifrado | Notificações opcionais | Depende de Google, Apple, Mozilla ou Microsoft e do aparelho | Políticas de cada provedor, ainda sem contrato do fluxo | **Não comprovado:** provedor, país e hipótese de transferência por navegador. Opt-in existe; avaliação antes da publicação. |
+| ExerciseAPI via proxy: busca de catálogo | Catálogo de exercícios | País não apurado | Contrato/termos da conta não conferidos | O proxy não envia identidade de conta ao fornecedor; confirmar cabeçalhos, logs e contrato se houver dado pessoal transferido. |
+
+**Ação mínima:** obter, fora do Git, contratos/termos efetivamente aceitos e lista de subprocessadores da conta; registrar por fluxo a hipótese do art. 33 ou adotar cláusulas-padrão brasileiras quando aplicável. Se uma transferência opcional continuar sem mecanismo, suspendê-la; para Supabase/Vercel, resolver contratualmente antes de declarar conformidade. **Este é um bloqueio real à aprovação jurídica final.**
+
+## 6. Retenção e descarte
+
+| Categoria | Finalidade e regra operacional | Estado |
+|---|---|---|
+| Medidas e altura | Enquanto consentimento ativo; revogação elimina medidas e, após 00009, altura. Evidência mínima de consentimento permanece. | Medidas implementadas; altura depende de 00009. |
+| Marcas/totais de anúncios | Deduplicação por até 48 h; totais de campanha por até 24 meses. | Jobs no código; confirmar agendamento remoto. |
+| Sincronização offline | Janela de até 30 dias. | Implementada no código. |
+| Propostas comerciais | Responder e negociar. Proposta: eliminar 12 meses após encerramento da conversa, salvo disputa ou obrigação concreta. | `commercial_leads` não tem data de encerramento nem descarte; prazo é **interno e não anunciado** até implementar rotina segura. |
+| Atendimento e denúncias | Resolver pedido e preservar prova de moderação/defesa. Proposta: revisão 24 meses após fechamento, com retenção justificada de casos em disputa. | Sem descarte automático seguro; não anunciar prazo numérico. |
+| Financeiro e reembolsos | Obrigações fiscais, consumidor, pagamentos e defesa de direitos. | Sem operações reais; jurídico/contabilidade devem definir prazo por tipo e marco inicial antes de cobrar. Não há prazo universal. |
+| Aceites, consentimentos e histórico jurídico | Provar a versão aceita, a escolha e os direitos exercidos. | Histórico imutável e acesso restrito; revisão de necessidade sem alterar digests. |
+| Logs de acesso e segurança | Segurança, incidentes e requisitos legais. | Confirmar retenção contratada em Supabase/Vercel. Art. 15 do Marco Civil impõe seis meses a provedor de aplicações **pessoa jurídica** que cumpra as condições do artigo; não presumir esse dever universal para pessoa física. |
+
+**Decisão:** não criar um cron que apague indiscriminadamente atendimentos, provas de infração ou finanças. O canal de privacidade atende pedidos individuais; propostas de prazo para leads/suporte exigem evento de encerramento, exceções de retenção e rotina verificável antes de virar promessa pública. Esta parte **não está pronta para aprovação final**.
+
+## 7. Fornecedor, travas e conclusão
+
+A consulta somente de leitura a `https://www.evolutus.com.br/informacoes-do-fornecedor` retornou HTTP 200 e confirmou campos não vazios para nome civil, CPF e endereço, sem “Em configuração”. Os valores não foram copiados para arquivos ou logs. Não houve alteração de variáveis. A configuração `supplierInfo.configured` não foi alterada; o gate comercial continua fechado na versão conhecida.
+
+**Publicação:** bloqueada até (1) aprovar a avaliação de idade e o tratamento de observações clínicas, (2) comprovar mecanismo de transferências essenciais, (3) aplicar e verificar 00009 antes da promessa de exclusão da altura, (4) definir rotina real para retenções ainda sem prazo, (5) confirmar a base legal e os controles para Vercel Analytics/Speed Insights e conferir os jobs remotos, e (6) obter aprovação humana dos textos e digests. Publicar documentos não deve liberar EvoCash, checkout, ofertas ou a trava do fornecedor.

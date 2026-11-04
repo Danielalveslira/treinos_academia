@@ -4,6 +4,17 @@ window.__evolutusPublicPagesStarted = true
 window.va ||= function (...args) {
   ;(window.vaq ||= []).push(args)
 }
+// A versão sem React também remove query e fragmento antes de enviar o evento.
+window.va('beforeSend', (event) => {
+  try {
+    const url = new URL(event.url)
+    url.search = ''
+    url.hash = ''
+    return { ...event, url: url.toString() }
+  } catch {
+    return event
+  }
+})
 if (location.hostname === 'www.evolutus.com.br' || location.hostname.endsWith('.vercel.app')) {
   const analytics = document.createElement('script')
   analytics.src = '/_vercel/insights/script.js'

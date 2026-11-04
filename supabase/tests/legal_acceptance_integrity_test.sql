@@ -116,11 +116,13 @@ set local role authenticated;
 select pg_temp.set_test_user('71000000-0000-0000-0000-000000000001',true);
 select throws_ok($$select public.save_body_check_in(jsonb_build_object('date',(now() at time zone 'America/Sao_Paulo')::date,'weightKg',80))$$,
   'HEALTH_CONSENT_REQUIRED','nova medida corporal exige consentimento específico');
-select lives_ok($$select public.save_body_check_in('{"heightCm":180}'::jsonb)$$,'altura isolada não depende do consentimento de medidas');
+select throws_ok($$select public.save_body_check_in('{"heightCm":180}'::jsonb)$$,
+  'HEALTH_CONSENT_REQUIRED','altura isolada também exige consentimento de saúde');
 select throws_ok($$select public.set_privacy_consent('health_data',true,'health-data-0','settings')$$,'CONSENT_TEXT_OUTDATED','concessão exige texto vigente');
 select throws_ok($$select public.set_privacy_consent('health_data',true,'health-data-1','signup')$$,'INVALID_CONSENT_SOURCE','origem controlada pelo servidor');
 select is((public.set_privacy_consent('health_data',true,'health-data-1','feature_prompt')->>'changed')::boolean,true,'concessão registrada');
 select is((public.set_privacy_consent('health_data',true,'health-data-1','settings')->>'changed')::boolean,false,'concessão repetida não duplica evidência');
+select lives_ok($$select public.save_body_check_in('{"heightCm":180}'::jsonb)$$,'altura autorizada é salva');
 select lives_ok($$select public.save_body_check_in(jsonb_build_object('date',(now() at time zone 'America/Sao_Paulo')::date,'weightKg',80))$$,'com consentimento a medida é salva');
 select throws_ok($$update public.privacy_consent_events set granted=false$$,'42501',null,'titular não reescreve histórico');
 reset role;
@@ -134,6 +136,9 @@ select is((public.set_privacy_consent('health_data',false,null,'settings')->>'gr
 select throws_ok($$select public.save_body_check_in(jsonb_build_object('date',(now() at time zone 'America/Sao_Paulo')::date,'weightKg',81))$$,
   'HEALTH_CONSENT_REQUIRED','revogação bloqueia novas medidas');
 select is((select count(*)::int from public.body_measurements where user_id='71000000-0000-0000-0000-000000000001'),0,'revogação elimina as medidas já registradas (20261212000005)');
+select is((select height_cm from public.users where id='71000000-0000-0000-0000-000000000001'),null::smallint,'revogação elimina também a altura do perfil');
+select throws_ok($$select public.save_body_check_in('{"heightCm":181}'::jsonb)$$,
+  'HEALTH_CONSENT_REQUIRED','revogação bloqueia nova altura');
 select is((select count(*)::int from public.privacy_consent_events where user_id='71000000-0000-0000-0000-000000000003'),0,'titular não lê consentimentos de terceiros');
 reset role;
 select is((select count(*)::int from public.privacy_consent_events where user_id='71000000-0000-0000-0000-000000000001'),2,'concessão e revogação sobrevivem como histórico mínimo de comprovação, mesmo após eliminar a medida');

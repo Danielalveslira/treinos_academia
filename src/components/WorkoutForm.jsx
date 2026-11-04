@@ -989,6 +989,7 @@ export function WorkoutForm({
                   maxLength={300}
                   block
                 />
+                <FormControl.Caption>Use para o treino; evite diagnósticos e outros dados médicos.</FormControl.Caption>
                 {errors.note && (
                   <FormControl.Validation variant="error">{errors.note}</FormControl.Validation>
                 )}

@@ -82,8 +82,8 @@ export function HealthConsentSettings({ source = 'settings', onChange, compact =
       ) : confirmRevoke ? (
         <div role="group" aria-label="Confirmar revogação">
           <Text as="p" sx={{ fontSize: 1 }}>
-            Ao revogar, novas medidas deixam de ser registradas e as medidas corporais já salvas
-            são eliminadas. Esta ação não pode ser desfeita.
+            Ao revogar, novas medidas deixam de ser registradas. As medidas salvas e a altura do
+            perfil são eliminadas. Esta ação não pode ser desfeita.
           </Text>
           <Button variant="danger" onClick={() => save(false)} disabled={saving} loading={saving}>
             Confirmar revogação
