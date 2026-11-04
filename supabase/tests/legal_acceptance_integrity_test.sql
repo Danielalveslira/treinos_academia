@@ -138,12 +138,27 @@ select is((select count(*)::int from public.privacy_consent_events where user_id
 reset role;
 select is((select count(*)::int from public.privacy_consent_events where user_id='71000000-0000-0000-0000-000000000001'),2,'concessão e revogação sobrevivem como histórico mínimo de comprovação, mesmo após eliminar a medida');
 
--- 4c) 20261212000005: eliminação ao revogar não se aplica a quem nunca concedeu -----
+-- Simula uma medida legada deixada por manutenção antes da correção. Revogar de novo
+-- mantém o histórico idempotente, mas garante que nenhum dado corporal sobreviva.
+select pg_temp.set_test_user(null,true);
+insert into public.body_measurements(user_id,date,weight_kg)
+values ('71000000-0000-0000-0000-000000000001',now(),80);
+set local role authenticated;
+select pg_temp.set_test_user('71000000-0000-0000-0000-000000000001',true);
+select is((public.set_privacy_consent('health_data',false,null,'settings')->>'changed')::boolean,false,'revogação repetida não cria evento');
+select is((select count(*)::int from public.body_measurements where user_id='71000000-0000-0000-0000-000000000001'),0,'revogação repetida também elimina medida legada');
+reset role;
+
+-- 4c) 20261212000005: revogação sem evento anterior também elimina legado -----
+select pg_temp.set_test_user(null,true);
+insert into public.body_measurements(user_id,date,weight_kg)
+values ('71000000-0000-0000-0000-000000000002',now(),81);
 set local role authenticated;
 select pg_temp.set_test_user('71000000-0000-0000-0000-000000000002',true);
 select lives_ok($$select public.set_privacy_consent('health_data',false,null,'settings')$$,'revogar sem nunca ter concedido não falha');
 select is((public.set_privacy_consent('health_data',false,null,'settings')->>'changed')::boolean,false,'revogação repetida sem histórico prévio é no-op idempotente');
 select is((select count(*)::int from public.privacy_consent_events where user_id='71000000-0000-0000-0000-000000000002'),0,'nenhum evento é criado para quem nunca concedeu');
+select is((select count(*)::int from public.body_measurements where user_id='71000000-0000-0000-0000-000000000002'),0,'revogação sem evento anterior apaga medida legada');
 reset role;
 update public.users set account_status='disabled' where id='71000000-0000-0000-0000-000000000001';
 set local role authenticated;
