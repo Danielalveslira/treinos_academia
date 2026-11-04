@@ -51,6 +51,55 @@ begin
     jsonb_build_object('configured', v_configured));
   return jsonb_build_object('configured', v_configured);
 end $$;
+
+-- A disponibilidade exibida ao usuário e a criação de cotação de EvoCash também
+-- obedecem à trava. A reserva do checkout continua sendo a checagem autoritativa.
+create or replace function public.get_evocash_purchase_settings() returns jsonb
+language plpgsql stable security definer set search_path='' as $$
+declare s public.evocash_pricing_state; v public.evocash_price_versions; supplier_ready boolean;
+begin
+  if not coalesce(public.has_app_access(),false) then raise exception 'PERMISSION_DENIED' using errcode='42501'; end if;
+  select * into s from public.evocash_pricing_state where id;
+  select * into v from public.evocash_price_versions where active_from<=statement_timestamp() order by active_from desc limit 1;
+  select coalesce((config -> 'supplierInfo' ->> 'configured')::boolean,false) into supplier_ready
+    from public.economy_config where id;
+  return jsonb_build_object('enabled',s.quoting_enabled and s.checkout_enabled and v.id is not null and coalesce(supplier_ready,false),
+    'serverTime',statement_timestamp(),'priceVersionId',v.id,'unitPriceCentavos',v.unit_price_centavos::text,
+    'minQuantity',v.min_quantity::text,'maxQuantity',v.max_quantity::text,
+    'dailyQuantityLimit',v.daily_quantity_limit::text,'totalQuantityLimit',v.total_quantity_limit::text,
+    'quoteTtlSeconds',v.quote_ttl_seconds::text);
+end $$;
+
+create or replace function public.create_evocash_purchase_quote(p_quantity text,p_request_id uuid) returns jsonb
+language plpgsql security definer set search_path='' set lock_timeout='5s' as $$
+declare s public.evocash_pricing_state; v public.evocash_price_versions; q public.evocash_purchase_quotes; v_now timestamptz; daily numeric; total numeric;
+begin
+  if auth.uid() is null or not coalesce(public.has_app_access(),false)
+    or not exists(select 1 from public.users where id=auth.uid() and account_status='active') then raise exception 'PERMISSION_DENIED' using errcode='42501'; end if;
+  if p_request_id is null or p_quantity is null or p_quantity !~ '^[1-9][0-9]{0,9}$' then raise exception 'INVALID_QUANTITY'; end if;
+  select * into s from public.evocash_pricing_state where id for share;
+  perform pg_catalog.pg_advisory_xact_lock(82101,pg_catalog.hashtext(auth.uid()::text));
+  v_now := clock_timestamp();
+  if not coalesce(public.has_app_access(),false) or not exists(select 1 from public.users where id=auth.uid() and account_status='active') then raise exception 'PERMISSION_DENIED' using errcode='42501'; end if;
+  select * into q from public.evocash_purchase_quotes where user_id=auth.uid() and request_id=p_request_id;
+  if found then
+    if q.quantity<>p_quantity::bigint then raise exception 'IDEMPOTENCY_CONFLICT'; end if;
+    if q.expires_at<=v_now then raise exception 'QUOTE_EXPIRED'; end if;
+    return private.evocash_quote_json(q);
+  end if;
+  if not s.quoting_enabled then raise exception 'EVOCASH_QUOTES_PAUSED'; end if;
+  if not private.supplier_info_configured() then raise exception 'SUPPLIER_INFO_NOT_CONFIGURED'; end if;
+  select * into v from public.evocash_price_versions where active_from<=v_now order by active_from desc limit 1;
+  if not found then raise exception 'EVOCASH_PRICE_UNAVAILABLE'; end if;
+  if p_quantity::bigint not between v.min_quantity and v.max_quantity then raise exception 'INVALID_QUANTITY'; end if;
+  if (select count(*) from public.evocash_purchase_quotes where user_id=auth.uid() and created_at>v_now-interval '1 minute')>=10 then raise exception 'QUOTE_RATE_LIMIT'; end if;
+  select coalesce(sum(cash_amount) filter(where created_at >= date_trunc('day',v_now at time zone 'UTC') at time zone 'UTC'),0),coalesce(sum(cash_amount),0)
+    into daily,total from public.cash_purchases where user_id=auth.uid() and status in ('pending','credited','held_in_case','needs_review');
+  if daily+p_quantity::bigint>v.daily_quantity_limit or total+p_quantity::bigint>v.total_quantity_limit then raise exception 'PURCHASE_LIMIT_REACHED'; end if;
+  insert into public.evocash_purchase_quotes(user_id,request_id,quantity,unit_price_centavos,total_centavos,price_version_id,created_at,expires_at)
+    values(auth.uid(),p_request_id,p_quantity::bigint,v.unit_price_centavos,p_quantity::bigint*v.unit_price_centavos,v.id,v_now,v_now+make_interval(secs=>v.quote_ttl_seconds)) returning * into q;
+  return private.evocash_quote_json(q);
+end $$;
 revoke all on function public.admin_set_supplier_info_configured(boolean, text, boolean) from public, anon, service_role;
 grant execute on function public.admin_set_supplier_info_configured(boolean, text, boolean) to authenticated;
 

@@ -107,6 +107,7 @@ reset role;
 insert into public.evocash_price_versions(revision,unit_price_centavos,minimum_unit_price_centavos,min_quantity,max_quantity,daily_quantity_limit,total_quantity_limit,quote_ttl_seconds,large_change_threshold_bps,active_from,created_by,reason)
 values(9101,10,1,1,100,100,200,300,2000,clock_timestamp(),'7c000000-0000-0000-0000-000000000003','Synthetic terms tests');
 update public.evocash_pricing_state set quoting_enabled=true,checkout_enabled=true where id;
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
 select pg_temp.set_test_user('7c000000-0000-0000-0000-000000000002',true);
 insert into r values('cq',public.create_evocash_purchase_quote('5',gen_random_uuid()));
 set local role authenticated;

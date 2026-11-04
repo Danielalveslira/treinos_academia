@@ -41,6 +41,7 @@ const replays = await Promise.all(Array.from({length:6},()=>sql(publish(15,state
 assert.equal(new Set(replays).size,1,'Publication retries return the same response')
 assert.equal(await sql(`select count(*) from public.evocash_price_audit where actor_user_id=${quote(admin)} and request_id=${quote(requestId)}`),'1')
 await sql('update public.evocash_pricing_state set quoting_enabled=true where id')
+await sql("update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id")
 const quoteRequest = randomUUID()
 const quotes = await Promise.all(Array.from({length:6},()=>sql(createQuote(quoteRequest))))
 assert.equal(new Set(quotes).size,1,'Concurrent quote replays share one frozen quote')

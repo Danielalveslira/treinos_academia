@@ -60,6 +60,7 @@ select is(public.admin_list_evocash_prices(1,20)->'items','[]'::jsonb,'history c
 select throws_ok($$select public.admin_publish_evocash_price(jsonb_set((select value from cfg),'{unitPriceCentavos}','"15"'),null,1,'e2000000-0000-0000-0000-000000000003','Large test change')$$,'ADDITIONAL_CONFIRMATION_REQUIRED','old version threshold protects large changes');
 reset role;
 update public.evocash_pricing_state set quoting_enabled=true where id; -- local test fixture only
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id; -- rollback-only fixture
 select pg_temp.set_test_user('e1000000-0000-0000-0000-000000000002',true);
 set local role authenticated;
 insert into results values('quote',public.create_evocash_purchase_quote('25','e2000000-0000-0000-0000-000000000004'));
