@@ -1,6 +1,8 @@
 \ir _helpers/auth_session.sql
 \ir _helpers/commercial_terms.sql
 begin;
+-- Fixture only: the production supplier gate defaults to closed.
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
 select no_plan();
 delete from public.legal_policy;
 insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)

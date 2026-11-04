@@ -108,7 +108,7 @@
         "title": "1. Quem oferece o Evolutus",
         "paragraphs": [
           "O Evolutus é uma plataforma de registro e acompanhamento de treinos, com fichas de treino, catálogo oficial de exercícios, comunidades, perfis e vitrines de profissionais e espaços, créditos EvoCash, anúncios e impulsionamentos.",
-          "Responsável: Wellington Daniel Alves de Lira. Contato: dnllira1@gmail.com e a página de atendimento do aplicativo. A operação é feita por pessoa física, sem CNPJ; a identificação completa está centralizada em /informacoes-do-fornecedor."
+          "O Evolutus é operado por pessoa física, sem CNPJ. A identificação completa do responsável está centralizada em /informacoes-do-fornecedor. Contato: dnllira1@gmail.com e a página de atendimento do aplicativo."
         ]
       },
       {
@@ -116,7 +116,7 @@
         "title": "2. Sua conta",
         "items": [
           "O cadastro pede e-mail, senha, nome de usuário, data de nascimento, sexo (com opção de não informar), município de residência e perfil de uso.",
-          "O Evolutus aceita novos cadastros exclusivamente de pessoas com 18 anos completos ou mais. A idade é calculada a partir da data de nascimento informada pela própria pessoa no cadastro; o Evolutus não faz verificação documental de idade. [PENDENTE — decisão jurídica: necessidade de aferição adicional de idade proporcional ao risco (Lei nº 15.211/2025).]",
+          "O Evolutus aceita novos cadastros exclusivamente de pessoas com 18 anos completos ou mais. A idade é calculada a partir da data de nascimento informada pela própria pessoa no cadastro; o Evolutus não faz verificação documental de idade.",
           "Mantenha seus dados corretos e sua senha protegida. A conta é pessoal e intransferível.",
           "Você pode excluir sua conta pelo Perfil. Alguns registros podem ser mantidos pelo tempo necessário ao cumprimento de obrigação legal, à defesa de direitos ou à prevenção de fraude, como descrito na Política de Privacidade."
         ]
@@ -244,8 +244,7 @@
         "id": "controlador",
         "title": "1. Quem é responsável pelos seus dados",
         "paragraphs": [
-          "Controlador: Wellington Daniel Alves de Lira, pessoa física, sem CNPJ. Identificação completa em /informacoes-do-fornecedor. Contato para privacidade: dnllira1@gmail.com ou o atendimento do aplicativo, opção “Privacidade ou exclusão da conta”.",
-          "[PENDENTE: indicar o encarregado pelo tratamento de dados (art. 41 da LGPD) ou a dispensa aplicável.]"
+          "O controlador é a pessoa física responsável pelo Evolutus, sem CNPJ. Sua identificação completa está em /informacoes-do-fornecedor. Contato para privacidade: dnllira1@gmail.com ou o atendimento do aplicativo, opção “Privacidade ou exclusão da conta”."
         ]
       },
       {
@@ -353,14 +352,14 @@
               "cells": [
                 "Métricas de navegação e desempenho (Vercel Analytics e Speed Insights)",
                 "Entender uso e desempenho das páginas, sem parâmetros de URL",
-                "Legítimo interesse (art. 7º, IX) [PENDENTE: validar avaliação de legítimo interesse]"
+                "Legítimo interesse (art. 7º, IX), sujeito a avaliação documentada de necessidade, proporcionalidade e oposição"
               ]
             },
             {
               "cells": [
                 "Propostas comerciais enviadas pela página Para Empresas",
                 "Responder ao contato comercial",
-                "Procedimentos preliminares de contrato (art. 7º, V) [PENDENTE: definir retenção]"
+                "Procedimentos preliminares de contrato (art. 7º, V)"
               ]
             }
           ]
@@ -396,7 +395,7 @@
           "Serviços de push do seu navegador ou sistema (como Google, Apple, Mozilla ou Microsoft), se você ativar notificações.",
           "Um catálogo externo de exercícios pode ser consultado ou importado pelo Evolutus, conforme a disponibilidade, sem envio das informações pessoais da conta às consultas públicas.",
           "Autoridades, quando houver obrigação legal ou ordem judicial.",
-          "Alguns provedores podem tratar dados fora do Brasil. [PENDENTE: indicar o mecanismo de transferência internacional aplicável (art. 33 da LGPD) para cada provedor.]",
+          "Alguns provedores podem tratar dados fora do Brasil. As transferências internacionais devem observar um dos mecanismos previstos no art. 33 da LGPD e as regras da ANPD.",
           "Não vendemos dados pessoais."
         ]
       },
@@ -415,8 +414,8 @@
         "title": "7. Por quanto tempo guardamos",
         "items": [
           "Dados da conta: enquanto a conta existir. Ao excluir a conta, os dados operacionais são removidos.",
-          "Registros de aceite, compras, contratações, reembolsos, moderação e segurança podem ser mantidos pelo prazo necessário a obrigações legais e à defesa de direitos. [PENDENTE: fixar prazos por categoria.]",
-          "Registros de acesso a aplicações: ao menos 6 meses, conforme o art. 15 do Marco Civil da Internet. [PENDENTE: confirmar prática atual dos provedores.]",
+          "Registros de aceite, compras, contratações, reembolsos, moderação e segurança podem ser mantidos pelo prazo necessário a obrigações legais e à defesa de direitos, com acesso restrito e revisão periódica.",
+          "Registros de acesso a aplicações devem observar o prazo mínimo de 6 meses previsto no art. 15 do Marco Civil da Internet.",
           "Registro temporário de medição de anúncios: até 48 horas. Totais: até 24 meses. Sincronização offline: até 30 dias."
         ]
       },

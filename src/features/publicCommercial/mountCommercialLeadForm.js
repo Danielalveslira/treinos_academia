@@ -24,7 +24,11 @@ const setError = (form, name, message = '') => {
 const validWebsite = (value) => {
   if (!value) return true
   if (!/^https:\/\/[a-z0-9.-]+\.[a-z]{2,}(?::[0-9]+)?(?:[/?#][^\s]*)?$/i.test(value)) return false
-  try { return new URL(value).protocol === 'https:' } catch { return false }
+  try {
+    return new URL(value).protocol === 'https:'
+  } catch {
+    return false
+  }
 }
 
 const validate = (form) => {
@@ -36,12 +40,16 @@ const validate = (form) => {
     segment: value('segment').length < 2 || value('segment').length > 80,
     modality: !['Publicidade', 'Vitrine de produtos', 'Ambos'].includes(value('modality')),
     message: value('message').length < 20 || value('message').length > 2000,
-    whatsapp: !!value('whatsapp') && (value('whatsapp').length > 30 || !/^[+() 0-9-]+$/.test(value('whatsapp'))),
+    whatsapp:
+      !!value('whatsapp') &&
+      (value('whatsapp').length > 30 || !/^[+() 0-9-]+$/.test(value('whatsapp'))),
     website: value('website').length > 500 || !validWebsite(value('website')),
   }
-  for (const [name, failed] of Object.entries(invalid)) setError(form, name, failed ? messages[name] : '')
+  for (const [name, failed] of Object.entries(invalid))
+    setError(form, name, failed ? messages[name] : '')
   const first = Object.keys(invalid).find((name) => invalid[name])
-  if (first === 'whatsapp' || first === 'website') form.querySelector('.business-optional').open = true
+  if (first === 'whatsapp' || first === 'website')
+    form.querySelector('.business-optional').open = true
   if (first) form.elements.namedItem(first).focus()
   return !first
 }
@@ -59,7 +67,10 @@ export function mountCommercialLeadForm() {
   const clearField = (event) => {
     const name = event.target.name
     if (name in messages) setError(form, name)
-    if (status.dataset.state === 'error') { status.textContent = ''; delete status.dataset.state }
+    if (status.dataset.state === 'error') {
+      status.textContent = ''
+      delete status.dataset.state
+    }
   }
   const submit = async (event) => {
     event.preventDefault()
@@ -71,23 +82,27 @@ export function mountCommercialLeadForm() {
     delete status.dataset.state
     const value = (name) => form.elements.namedItem(name).value.trim()
     const payload = {
-      p_company: value('company'), p_contact: value('contact'), p_email: value('email'),
-      p_segment: value('segment'), p_modality: value('modality'), p_message: value('message'),
-      p_whatsapp: value('whatsapp') || null, p_website: value('website'),
-      // No consent checkbox: evaluating a lead's own commercial proposal is legitimate
-      // interest, not something that needs an opt-in gate. The RPC param stays for now.
-      p_privacy: true, p_honeypot: value('honeypot'),
+      p_company: value('company'),
+      p_contact: value('contact'),
+      p_email: value('email'),
+      p_segment: value('segment'),
+      p_modality: value('modality'),
+      p_message: value('message'),
+      p_whatsapp: value('whatsapp') || null,
+      p_website: value('website'),
+      p_honeypot: value('honeypot'),
     }
     try {
       const { supabase } = await import('../../supabase/config')
       const { error } = await supabase.rpc('submit_commercial_lead', payload)
       if (!active) return
       if (error) {
-        status.textContent = error.code === 'P0001'
-          ? 'Limite de propostas atingido. Tente novamente mais tarde.'
-          : error.code === '22023'
-            ? 'Confira os dados informados e tente novamente.'
-            : 'Não foi possível enviar a proposta. Tente novamente em instantes.'
+        status.textContent =
+          error.code === 'P0001'
+            ? 'Limite de propostas atingido. Tente novamente mais tarde.'
+            : error.code === '22023'
+              ? 'Confira os dados informados e tente novamente.'
+              : 'Não foi possível enviar a proposta. Tente novamente em instantes.'
         status.dataset.state = 'error'
         return
       }
@@ -98,11 +113,15 @@ export function mountCommercialLeadForm() {
       status.focus?.()
     } catch {
       if (!active) return
-      status.textContent = 'Não foi possível enviar a proposta. Verifique sua conexão e tente novamente.'
+      status.textContent =
+        'Não foi possível enviar a proposta. Verifique sua conexão e tente novamente.'
       status.dataset.state = 'error'
     } finally {
       pending = false
-      if (active) { button.disabled = false; button.textContent = 'Enviar proposta' }
+      if (active) {
+        button.disabled = false
+        button.textContent = 'Enviar proposta'
+      }
     }
   }
   form.addEventListener('submit', submit)

@@ -3,6 +3,8 @@
 -- 20261212000002: registro de documentos comerciais, snapshot na cotação e aceite
 -- comprovável por operação (pedido comercial e cotação de EvoCash).
 begin;
+-- Fixture only: the production supplier gate defaults to closed.
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
 select no_plan();
 
 insert into public.commercial_offerings(code,name,description,integration_ready) values('synthetic_terms_fixture','Synthetic terms fixture','Rollback-only offering',true);
@@ -122,6 +124,14 @@ select is((select value->'terms'->'conditions'->>'totalCentavos' from r where na
 select lives_ok($$select public.accept_commercial_terms('evocash_quote',(select (value->>'quoteId')::uuid from r where name='cq2'),
   (select value->'terms'->>'version' from r where name='cq2'),(select value->'terms'->>'digest' from r where name='cq2'),(select value->'terms'->>'conditionsDigest' from r where name='cq2'))$$,
   'aceite das Condições do EvoCash');
+reset role;
+update public.economy_config set config = jsonb_set(config,'{supplierInfo,configured}','false'::jsonb) where id;
+set local role authenticated;
+select throws_ok($$select public.reserve_infinitepay_cash_purchase((select (value->>'quoteId')::uuid from r where name='cq2'),gen_random_uuid())$$,
+  'SUPPLIER_INFO_NOT_CONFIGURED','fornecedor incompleto bloqueia reserva antes de criar cobrança');
+reset role;
+update public.economy_config set config = jsonb_set(config,'{supplierInfo,configured}','true'::jsonb) where id;
+set local role authenticated;
 select lives_ok($$select public.reserve_infinitepay_cash_purchase((select (value->>'quoteId')::uuid from r where name='cq2'),gen_random_uuid())$$,
   'checkout reservado depois do aceite');
 select is(public.get_my_commercial_terms('purchase',(select id from public.cash_purchases where quote_id=(select (value->>'quoteId')::uuid from r where name='cq2')))->>'version','1.0.0',

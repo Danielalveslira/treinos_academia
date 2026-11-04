@@ -1,6 +1,8 @@
 \ir _helpers/auth_session.sql
 \ir _helpers/commercial_terms.sql
 begin;
+-- Fixture only: the production supplier gate defaults to closed.
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
 select no_plan();
 -- Isolate from committed synthetic preview fixtures. Every change rolls back.
 update private.commercial_resources set moderation_state='suspended' where offering_code='ad_home';

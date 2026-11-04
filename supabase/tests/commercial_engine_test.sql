@@ -2,6 +2,10 @@
 \ir _helpers/commercial_terms.sql
 begin;
 select no_plan();
+select is(private.supplier_info_configured(), false, 'supplier gate starts closed');
+select ok(not has_function_privilege('anon','public.admin_set_supplier_info_configured(boolean,text,boolean)','execute'), 'anonymous cannot change supplier gate');
+-- Fixture only: the production supplier gate defaults to closed.
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
 -- Fresh test offering isolates engine invariants from installed adapters and preview prices.
 insert into public.commercial_offerings(code,name,description) values('synthetic_engine_fixture','Synthetic engine fixture','Rollback-only independent offering');
 insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
@@ -34,12 +38,24 @@ select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
 create temp table results(name text primary key,value jsonb); grant all on results to authenticated;
 set local role authenticated;
 select throws_ok($$select public.admin_commercial_catalog()$$,'42501','PERMISSION_DENIED','ordinary user cannot read admin catalog');
+select throws_ok($$select public.admin_set_supplier_info_configured(false,'Unapproved change',true)$$,'42501','PERMISSION_DENIED','ordinary user cannot change supplier gate');
 select pg_temp.publish_test_commercial_terms(); -- 20261212000002: termos comerciais sintéticos publicados
 select throws_ok($$select public.quote_commercial_order('73200000-0000-0000-0000-000000000001','0',gen_random_uuid())$$,'INVALID_DURATION','zero duration fails');
 select throws_ok($$select public.quote_commercial_order('73200000-0000-0000-0000-000000000001','1.5',gen_random_uuid())$$,'INVALID_DURATION','fractional duration fails');
 select throws_ok($$select public.quote_commercial_order('73200000-0000-0000-0000-000000000001','999999999999999999',gen_random_uuid())$$,'INVALID_DURATION','oversized duration fails before cast');
 select throws_ok($$select public.quote_commercial_order('73200000-0000-0000-0000-000000000002','1',gen_random_uuid())$$,'RESOURCE_NOT_ELIGIBLE','awaiting approval is never charged');
 select throws_ok($$select public.quote_commercial_order(gen_random_uuid(),'1',gen_random_uuid())$$,'RESOURCE_NOT_ELIGIBLE','nonexistent resource cannot buy rights');
+reset role;
+select pg_temp.commercial_admin();
+select is((public.admin_set_supplier_info_configured(false,'Test closure',true)->>'configured')::boolean, false, 'admin can close supplier gate');
+select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
+set local role authenticated;
+select throws_ok($$select public.quote_commercial_order('73200000-0000-0000-0000-000000000001','7',gen_random_uuid())$$,'SUPPLIER_INFO_NOT_CONFIGURED','closed supplier gate blocks paid order');
+reset role;
+select pg_temp.commercial_admin();
+select is((public.admin_set_supplier_info_configured(true,'Fixture approval',true)->>'configured')::boolean, true, 'admin can reopen gate explicitly');
+select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
+set local role authenticated;
 insert into results values('q',public.quote_commercial_order('73200000-0000-0000-0000-000000000001','7','73300000-0000-0000-0000-000000000001'));
 select is((select value->>'totalCash' from results where name='q'),'14','server computes exact total as integer string');
 select is(public.quote_commercial_order('73200000-0000-0000-0000-000000000001','7','73300000-0000-0000-0000-000000000001')->>'id',(select value->>'id' from results where name='q'),'quote replay returns same order');
@@ -50,6 +66,13 @@ select throws_ok($$select pg_temp.confirm_with_terms((select(value->>'id')::uuid
 reset role;
 select pg_temp.commercial_admin();
 select public.admin_publish_commercial_price('synthetic_engine_fixture','3',1,30,null,2,gen_random_uuid(),'Synthetic price increased',true);
+select public.admin_set_supplier_info_configured(false,'Test confirmation closure',true);
+select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
+set local role authenticated;
+select throws_ok($$select pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='q'),true)$$,'SUPPLIER_INFO_NOT_CONFIGURED','closed supplier gate blocks paid confirmation and debit');
+reset role;
+select pg_temp.commercial_admin();
+select public.admin_set_supplier_info_configured(true,'Fixture confirmation approval',true);
 select pg_temp.set_test_user('73000000-0000-0000-0000-000000000001',true);
 set local role authenticated;
 insert into results values('paid',pg_temp.confirm_with_terms((select(value->>'id')::uuid from results where name='q'),true));

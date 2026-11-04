@@ -3,6 +3,8 @@
 -- 20261212000001: fronteira de confiança do aceite jurídico, histórico imutável,
 -- publicação controlada, consentimento específico de saúde e trava de compras de menores.
 begin;
+-- Fixture only: the production supplier gate defaults to closed.
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
 select no_plan();
 
 -- Fixtures: duas versões registradas (uma publicada, uma minuta), usuários adulto,
