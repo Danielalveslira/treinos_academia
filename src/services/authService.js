@@ -1,15 +1,20 @@
 import { supabase } from '../supabase/config'
 import { disableOfflineAccess } from './offline/bootstrap'
 import { isOfflineColdStartEnabled } from './offline/database'
+import { captchaOptions } from '../utils/authCaptcha'
 
-export async function registerUser(email, password) {
-  const { data, error } = await supabase.auth.signUp({ email, password })
+export async function registerUser(email, password, captchaToken) {
+  const options = captchaOptions(captchaToken)
+  const { data, error } = await supabase.auth.signUp({ email, password, ...(options && { options }) })
+  // GoTrue hospedado pode devolver um usuário fictício sem sessão; outras configurações
+  // devolvem erro para o mesmo e-mail. A interface não distingue esses resultados.
+  if (error?.code === 'user_already_exists' || error?.code === 'email_exists') {
+    return { user: null, hasSession: false }
+  }
   if (error) throw error
-  // Com "Confirm email" ligado, data.session vem null: a conta existe no Auth mas sem
-  // sessão até o código de confirmação ser verificado (ver confirmSignupOtp). O chamador
-  // decide o que fazer com isso -- aqui só reportamos o que o GoTrue devolveu.
+  if (!data?.user) throw new Error('SIGNUP_RESPONSE_INCOMPLETE')
   return {
-    user: { uid: data.user.id, email: data.user.email },
+    user: data.session ? { uid: data.user.id, email: data.user.email } : null,
     hasSession: Boolean(data.session),
   }
 }
@@ -36,13 +41,23 @@ export async function setDisplayName(_user, displayName) {
 // do próprio Register (sessão ainda não existe) quanto em ConfirmEmail.jsx (quem voltou
 // depois de fechar a aba) -- por isso aceita o e-mail em vez de ler supabase.auth.getUser(),
 // que não tem sessão para consultar antes da confirmação.
-export async function sendVerificationEmail(email) {
-  const { error } = await supabase.auth.resend({ type: 'signup', email })
+export async function sendVerificationEmail(email, captchaToken) {
+  const options = captchaOptions(captchaToken)
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    ...(options && { options }),
+  })
   if (error) throw error
 }
 
-export async function loginUser(email, password) {
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+export async function loginUser(email, password, captchaToken) {
+  const options = captchaOptions(captchaToken)
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+    ...(options && { options }),
+  })
   if (error) throw error
 }
 
@@ -143,7 +158,9 @@ export function logoutAllDevices({ beforeLocalSignOut } = {}) {
     const disabled = await disableOfflineAccess()
     if (!disabled && isOfflineColdStartEnabled()) {
       // As outras sessões JÁ foram revogadas (confirmado): só a saída DESTE aparelho não concluiu.
-      const failure = new Error('Não foi possível concluir a saída neste aparelho. Tente novamente.')
+      const failure = new Error(
+        'Não foi possível concluir a saída neste aparelho. Tente novamente.'
+      )
       failure.logoutStep = 'local-cleanup'
       throw failure
     }
@@ -164,8 +181,11 @@ export function logoutAllDevices({ beforeLocalSignOut } = {}) {
 // link com {{ .SiteURL }} direto para /redefinir-senha, que troca o token_hash por
 // sessão no cliente (ver ResetPassword.jsx) -- não depende do allow-list de
 // additional_redirect_urls, que só vale para o .ConfirmationURL/redirectTo padrão.
-export async function resetPassword(email) {
-  const { error } = await supabase.auth.resetPasswordForEmail(email)
+export async function resetPassword(email, captchaToken) {
+  const options = captchaOptions(captchaToken)
+  const { error } = options
+    ? await supabase.auth.resetPasswordForEmail(email, options)
+    : await supabase.auth.resetPasswordForEmail(email)
   if (error) throw error
 }
 
@@ -215,7 +235,7 @@ export async function syncSignupPassword(password) {
 // propaga um erro com code: 'PASSWORD_SYNC_FAILED' para o chamador decidir a UI (ver
 // Register.jsx) -- nunca a senha em si, nem aqui nem em nenhum log.
 export async function confirmSignupAndSyncPassword(email, token, password) {
-  await confirmSignupOtp(email, token)
+  const confirmed = await confirmSignupOtp(email, token)
   try {
     await syncSignupPassword(password)
   } catch (err) {
@@ -225,6 +245,7 @@ export async function confirmSignupAndSyncPassword(email, token, password) {
     failure.code = 'PASSWORD_SYNC_FAILED'
     throw failure
   }
+  return confirmed
 }
 
 // Usada por ConfirmEmail.jsx: ali não há NENHUMA senha conhecida (quem confirma pode ser a

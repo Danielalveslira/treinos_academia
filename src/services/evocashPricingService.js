@@ -1,4 +1,5 @@
 import { supabase } from '../supabase/config'
+import { captchaOptions } from '../utils/authCaptcha'
 
 async function rpc(name, args) {
   const { data, error } = await supabase.rpc(name, args)
@@ -17,13 +18,16 @@ export const previewEvoCashPrice = (config, quantities, revision) =>
   })
 
 // Password goes exclusively to Supabase Auth; never to pricing RPCs, logs or storage.
-export async function reauthenticatePricingAdmin(password) {
+export async function reauthenticatePricingAdmin(password, captchaToken) {
+  const options = captchaOptions(captchaToken)
   const { data: current, error: currentError } = await supabase.auth.getUser()
   if (currentError || !current.user?.email) throw new Error('RECENT_AUTH_REQUIRED')
   const { data, error } = await supabase.auth.signInWithPassword({
     email: current.user.email,
     password,
+    ...(options && { options }),
   })
+  if (error?.code === 'captcha_failed') throw error
   if (error) throw new Error('REAUTHENTICATION_FAILED')
   if (data.user?.id !== current.user.id) throw new Error('REAUTHENTICATION_FAILED')
 }

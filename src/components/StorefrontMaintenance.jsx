@@ -20,6 +20,8 @@ import {
   runStorefrontCleanup,
 } from '../services/storefrontService'
 import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
+import { AuthCaptcha } from './AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 import { storefrontError } from '../utils/storefront'
 export default function StorefrontMaintenance({ legacy, onCloseLegacy, onAssociated }) {
   const [data, setData] = useState(null),
@@ -35,6 +37,8 @@ export default function StorefrontMaintenance({ legacy, onCloseLegacy, onAssocia
     [destination, setDestination] = useState(''),
     [target, setTarget] = useState(null)
   const lock = useRef(false)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
   const destinationRequest = useRef(0)
   async function refresh() {
     try {
@@ -81,7 +85,7 @@ export default function StorefrontMaintenance({ legacy, onCloseLegacy, onAssocia
     setBusy(true)
     setError('')
     try {
-      await reauthenticatePricingAdmin(password)
+      await reauthenticatePricingAdmin(password, takeCaptchaToken(captcha))
       if (dialog === 'legacy') {
         await associateLegacyProduct({
           product: legacy,
@@ -116,6 +120,7 @@ export default function StorefrontMaintenance({ legacy, onCloseLegacy, onAssocia
     } catch (e) {
       setError(storefrontError(e))
     } finally {
+      captcha.current?.reset()
       lock.current = false
       setBusy(false)
     }
@@ -283,6 +288,7 @@ export default function StorefrontMaintenance({ legacy, onCloseLegacy, onAssocia
                 onChange={(e) => setPassword(e.target.value)}
               />
             </FormControl>
+            <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
             <FormControl sx={{ my: 3 }}>
               <Checkbox checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
               <FormControl.Label>
@@ -305,6 +311,7 @@ export default function StorefrontMaintenance({ legacy, onCloseLegacy, onAssocia
                   busy ||
                   !confirmed ||
                   !password ||
+                  !captchaVerified ||
                   (dialog !== 'run' && reason.trim().length < (dialog === 'legacy' ? 10 : 5)) ||
                   (dialog === 'legacy' && !target) ||
                   (dialog === 'config' && (!/^[1-9][0-9]{0,2}$/.test(hours) || Number(hours) > 720))

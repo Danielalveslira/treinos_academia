@@ -5,8 +5,14 @@ const config=JSON.parse(readFileSync('vercel.json','utf8'))
 const headers=Object.fromEntries(config.headers.find(x=>x.source==='/(.*)').headers.map(x=>[x.key,x.value]))
 test('CSP blocks injected scripts and framing while preserving real API/image/PWA integrations',()=>{
  const csp=headers['Content-Security-Policy']
- assert.match(csp,/script-src 'self';/)
- assert.ok(!csp.includes('unsafe-eval')&&!/script-src[^;]*unsafe-inline/.test(csp)&&!csp.includes('*'))
+ assert.match(csp,/script-src 'self' https:\/\/hcaptcha\.com https:\/\/\*\.hcaptcha\.com;/)
+ assert.ok(!csp.includes('unsafe-eval')&&!/script-src[^;]*unsafe-inline/.test(csp))
+ assert.ok(!csp.replaceAll('https://*.hcaptcha.com','').includes('*'))
+ for(const directive of ['script-src','style-src','connect-src','frame-src']) {
+  const sources=csp.match(new RegExp(`(?:^|; )${directive} ([^;]+)`))?.[1]
+  assert.ok(sources?.includes('https://hcaptcha.com'),directive)
+  assert.ok(sources?.includes('https://*.hcaptcha.com'),directive)
+ }
  for(const rule of ["object-src 'none'","frame-ancestors 'none'","worker-src 'self'","manifest-src 'self'",'https://ywrjojrjgozdfpddkkuy.supabase.co','wss://ywrjojrjgozdfpddkkuy.supabase.co','https://firebasestorage.googleapis.com']) assert.ok(csp.includes(rule),rule)
  assert.equal(headers['X-Content-Type-Options'],'nosniff')
  assert.equal(headers['X-Frame-Options'],'DENY')

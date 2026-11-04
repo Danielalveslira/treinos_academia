@@ -101,22 +101,19 @@ test('registerUser: com Confirm email desligado (autoconfirm), devolve hasSessio
   assert.deepEqual(result, { user: { uid: 'u1', email: 'a@a.com' }, hasSession: true })
 })
 
-test('registerUser: com Confirm email ligado, data.session vem null -> hasSession:false', async () => {
+test('registerUser: sem sessão não usa o UID como identidade confirmada', async () => {
   globalThis.__signUp = () =>
     Promise.resolve({ data: { user: { id: 'u1', email: 'a@a.com' }, session: null }, error: null })
   const result = await mod.registerUser('a@a.com', 'senha1234')
-  assert.deepEqual(result, { user: { uid: 'u1', email: 'a@a.com' }, hasSession: false })
+  assert.deepEqual(result, { user: null, hasSession: false })
 })
 
 // Confirmado nos logs de Auth de PRODUÇÃO (evento "User repeated signup"): signUp num
 // e-mail JÁ CONFIRMADO, com Confirm email ligado, responde 200 sem erro e sem sessão --
 // um usuário ofuscado (identities vazio), sem enviar e-mail nenhum. Diverge do GoTrue
 // local (CLI), que devolve 422 user_already_exists para o mesmo caso (ver
-// KNOWN_LIMITATIONS.md). registerUser não distingue isso do caso legítimo "aguardando
-// confirmação" -- hasSession:false nos dois, de propósito: não há sinal nenhum (nem aqui
-// nem em Register.jsx/handleSubmit) que ramifique a UI por identities/erro específico, só
-// por hasSession. É isso que torna a tela de código seguinte neutra por construção, não
-// por uma checagem explícita de "é ofuscado?".
+// KNOWN_LIMITATIONS.md). registerUser normaliza ambos para hasSession:false e não
+// entrega o UID sem uma sessão confirmada; a interface segue pelo mesmo caminho.
 test('registerUser: signUp ofuscado (e-mail já confirmado, hospedado) também dá hasSession:false', async () => {
   globalThis.__signUp = () =>
     Promise.resolve({
@@ -127,12 +124,24 @@ test('registerUser: signUp ofuscado (e-mail já confirmado, hospedado) também d
       error: null,
     })
   const result = await mod.registerUser('a@a.com', 'outraSenhaQualquer')
-  assert.deepEqual(result, { user: { uid: 'u1', email: 'a@a.com' }, hasSession: false })
+  assert.deepEqual(result, { user: null, hasSession: false })
 })
 
-test('registerUser: erro do GoTrue (ex.: email já cadastrado) propaga', async () => {
-  globalThis.__signUp = () => Promise.resolve({ data: null, error: new Error('email_exists') })
-  await assert.rejects(mod.registerUser('a@a.com', 'senha1234'), /email_exists/)
+test('registerUser: erro explícito de e-mail existente tem o mesmo resultado sem sessão', async () => {
+  const error = new Error('email_exists')
+  error.code = 'email_exists'
+  globalThis.__signUp = () => Promise.resolve({ data: null, error })
+  assert.deepEqual(await mod.registerUser('a@a.com', 'senha1234'), {
+    user: null,
+    hasSession: false,
+  })
+})
+
+test('registerUser: falha real de envio não é tratada como confirmação pendente', async () => {
+  const error = new Error('smtp unavailable')
+  error.code = 'email_provider_disabled'
+  globalThis.__signUp = () => Promise.resolve({ data: null, error })
+  await assert.rejects(mod.registerUser('a@a.com', 'senha1234'), /smtp unavailable/)
 })
 
 test('confirmSignupOtp: troca o código pelo tipo signup e devolve uid/email', async () => {
@@ -251,7 +260,12 @@ test('confirmSignupAndSyncPassword: feliz -- confirma e alinha a senha do formul
     signOutCalls.push(args)
     return Promise.resolve({ error: null })
   }
-  await mod.confirmSignupAndSyncPassword('vitima@a.com', '123456', 'senhaDaVitima1')
+  const confirmed = await mod.confirmSignupAndSyncPassword(
+    'vitima@a.com',
+    '123456',
+    'senhaDaVitima1'
+  )
+  assert.deepEqual(confirmed, { uid: 'u1', email: 'vitima@a.com' })
   // A senha aplicada é exatamente a do formulário (nunca a que já estava na conta,
   // seja de um cadastro legítimo anterior ou de um atacante).
   assert.deepEqual(calls, [{ password: 'senhaDaVitima1' }])
@@ -282,7 +296,10 @@ test('confirmSignupAndSyncPassword: código errado/expirado propaga sem tocar em
   globalThis.__signOut = () => {
     throw new Error('não deveria ser chamado')
   }
-  await assert.rejects(mod.confirmSignupAndSyncPassword('a@a.com', '000000', 'senha1'), /otp_expired/)
+  await assert.rejects(
+    mod.confirmSignupAndSyncPassword('a@a.com', '000000', 'senha1'),
+    /otp_expired/
+  )
 })
 
 test('confirmSignupAndSyncPassword: FALHA FECHADA -- código certo mas senha não confirmável encerra a sessão', async () => {

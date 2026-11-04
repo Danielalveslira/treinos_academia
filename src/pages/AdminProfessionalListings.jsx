@@ -25,6 +25,8 @@ import {
   listListingCommercialOrders,
 } from '../services/professionalListingsService'
 import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
+import { AuthCaptcha } from '../components/AuthCaptcha'
+import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 import { commercialDate } from '../utils/commercial'
 import { storefrontError, editorialLabels, publicationLabels } from '../utils/storefront'
 export default function AdminProfessionalListings() {
@@ -41,6 +43,8 @@ export default function AdminProfessionalListings() {
     [busy, setBusy] = useState(false)
   const request = useRef(0),
     lock = useRef(false)
+  const captcha = useRef(null)
+  const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
   const {
     listings,
     loading,
@@ -67,7 +71,7 @@ export default function AdminProfessionalListings() {
     setBusy(true)
     setError('')
     try {
-      await reauthenticatePricingAdmin(password)
+      await reauthenticatePricingAdmin(password, takeCaptchaToken(captcha))
       await setProfessionalListingEditorial(detail.id, detail.draft.version, decision, reason)
       setPassword('')
       setDialog(false)
@@ -76,6 +80,7 @@ export default function AdminProfessionalListings() {
     } catch (e) {
       setError(storefrontError(e))
     } finally {
+      captcha.current?.reset()
       lock.current = false
       setBusy(false)
     }
@@ -299,6 +304,7 @@ export default function AdminProfessionalListings() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </FormControl>
+            <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
             <FormControl>
               <Checkbox checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
               <FormControl.Label>Confirmo esta decisão auditada</FormControl.Label>
@@ -307,7 +313,7 @@ export default function AdminProfessionalListings() {
             <Button
               type="submit"
               variant="primary"
-              disabled={busy || !confirmed || !password || reason.trim().length < 5}
+              disabled={busy || !confirmed || !password || !captchaVerified || reason.trim().length < 5}
             >
               Confirmar decisão
             </Button>
