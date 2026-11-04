@@ -131,10 +131,18 @@ select pg_temp.set_test_user('71000000-0000-0000-0000-000000000001',true);
 select is((public.set_privacy_consent('health_data',false,null,'settings')->>'granted')::boolean,false,'revogação aceita mesmo com termos desatualizados');
 select throws_ok($$select public.save_body_check_in(jsonb_build_object('date',(now() at time zone 'America/Sao_Paulo')::date,'weightKg',81))$$,
   'HEALTH_CONSENT_REQUIRED','revogação bloqueia novas medidas');
-select is((select count(*)::int from public.body_measurements where user_id='71000000-0000-0000-0000-000000000001'),1,'medidas anteriores continuam acessíveis ao titular');
+select is((select count(*)::int from public.body_measurements where user_id='71000000-0000-0000-0000-000000000001'),0,'revogação elimina as medidas já registradas (20261212000005)');
 select is((select count(*)::int from public.privacy_consent_events where user_id='71000000-0000-0000-0000-000000000003'),0,'titular não lê consentimentos de terceiros');
 reset role;
-select is((select count(*)::int from public.privacy_consent_events where user_id='71000000-0000-0000-0000-000000000001'),2,'concessão e revogação ficam no histórico');
+select is((select count(*)::int from public.privacy_consent_events where user_id='71000000-0000-0000-0000-000000000001'),2,'concessão e revogação sobrevivem como histórico mínimo de comprovação, mesmo após eliminar a medida');
+
+-- 4c) 20261212000005: eliminação ao revogar não se aplica a quem nunca concedeu -----
+set local role authenticated;
+select pg_temp.set_test_user('71000000-0000-0000-0000-000000000002',true);
+select lives_ok($$select public.set_privacy_consent('health_data',false,null,'settings')$$,'revogar sem nunca ter concedido não falha');
+select is((public.set_privacy_consent('health_data',false,null,'settings')->>'changed')::boolean,false,'revogação repetida sem histórico prévio é no-op idempotente');
+select is((select count(*)::int from public.privacy_consent_events where user_id='71000000-0000-0000-0000-000000000002'),0,'nenhum evento é criado para quem nunca concedeu');
+reset role;
 update public.users set account_status='disabled' where id='71000000-0000-0000-0000-000000000001';
 set local role authenticated;
 select pg_temp.set_test_user('71000000-0000-0000-0000-000000000001',true);
