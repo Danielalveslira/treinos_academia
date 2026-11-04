@@ -4,6 +4,31 @@ window.__evolutusPublicPagesStarted = true
 window.va ||= function (...args) {
   ;(window.vaq ||= []).push(args)
 }
+// A versão sem React também remove query e fragmento antes de enviar o evento.
+window.va('beforeSend', (event) => {
+  try {
+    const url = new URL(event.url)
+    url.search = ''
+    url.hash = ''
+    return { ...event, url: url.toString() }
+  } catch {
+    return event
+  }
+})
+window.si ||= function (...args) {
+  ;(window.siq ||= []).push(args)
+}
+// Speed Insights usa a mesma proteção de URL das métricas de navegação.
+window.si('beforeSend', (event) => {
+  try {
+    const url = new URL(event.url)
+    url.search = ''
+    url.hash = ''
+    return { ...event, url: url.toString() }
+  } catch {
+    return event
+  }
+})
 if (location.hostname === 'www.evolutus.com.br' || location.hostname.endsWith('.vercel.app')) {
   const analytics = document.createElement('script')
   analytics.src = '/_vercel/insights/script.js'
@@ -11,6 +36,12 @@ if (location.hostname === 'www.evolutus.com.br' || location.hostname.endsWith('.
   analytics.dataset.sdkv = '2.0.1'
   analytics.defer = true
   document.head.append(analytics)
+  const speedInsights = document.createElement('script')
+  speedInsights.src = '/_vercel/speed-insights/script.js'
+  speedInsights.dataset.sdkn = '@vercel/speed-insights'
+  speedInsights.dataset.sdkv = '2.0.0'
+  speedInsights.defer = true
+  document.head.append(speedInsights)
 }
 document.addEventListener('click', (event) => {
   const anchor = event.target.closest?.('a[href="/cadastro"]')

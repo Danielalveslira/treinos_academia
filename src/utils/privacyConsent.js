@@ -6,7 +6,7 @@ export const HEALTH_CONSENT_TEXT =
   'Autorizo o Evolutus a armazenar e usar as medidas corporais que eu registrar (como peso, percentual de gordura, circunferências, massa magra e massa gorda) para manter meu histórico privado e calcular meus indicadores. Posso revogar esta autorização a qualquer momento no Perfil. Ela não autoriza divulgação na comunidade nem uso em publicidade.'
 
 export const HEALTH_CONSENT_CONSEQUENCE =
-  'Sem esta autorização você usa normalmente o Evolutus; apenas o registro de novas medidas corporais fica indisponível. Revogar não apaga as medidas já registradas: você continua podendo consultá-las e excluí-las.'
+  'Sem esta autorização você usa normalmente o Evolutus; apenas o registro de novas medidas corporais fica indisponível. Ao revogar, apagamos as medidas registradas e a altura do perfil. Esta ação não pode ser desfeita.'
 
 export function isHealthConsentRequiredError(error) {
   return String(error?.message || '').includes('HEALTH_CONSENT_REQUIRED')

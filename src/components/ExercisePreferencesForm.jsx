@@ -22,6 +22,7 @@ export function ExercisePreferencesForm({ initialValue, onSubmit, onCancel }) {
           value={values.note}
           onChange={(event) => setField('note', event.target.value)}
         />
+        <FormControl.Caption>Use para o treino; evite diagnósticos e outros dados médicos.</FormControl.Caption>
         {errors.note && (
           <FormControl.Validation variant="error">{errors.note}</FormControl.Validation>
         )}
