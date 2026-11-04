@@ -246,6 +246,10 @@ export default function LegalDocument({ documentId }) {
                 Para denúncias, recursos, cancelamentos, reembolsos e pedidos de privacidade, acesse
                 o <Link to="/atendimento">atendimento</Link>.
               </p>
+              <p>
+                Identificação completa do fornecedor e do controlador de dados:{' '}
+                <a href="/informacoes-do-fornecedor">Informações do fornecedor</a>.
+              </p>
               <ul>
                 {related.map((item) => (
                   <li key={item.id}>

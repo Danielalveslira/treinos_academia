@@ -3,6 +3,8 @@
 -- 20261212000002: registro de documentos comerciais, snapshot na cotação e aceite
 -- comprovável por operação (pedido comercial e cotação de EvoCash).
 begin;
+-- Fixture only: the production supplier gate defaults to closed.
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
 select no_plan();
 
 insert into public.commercial_offerings(code,name,description,integration_ready) values('synthetic_terms_fixture','Synthetic terms fixture','Rollback-only offering',true);
@@ -105,6 +107,7 @@ reset role;
 insert into public.evocash_price_versions(revision,unit_price_centavos,minimum_unit_price_centavos,min_quantity,max_quantity,daily_quantity_limit,total_quantity_limit,quote_ttl_seconds,large_change_threshold_bps,active_from,created_by,reason)
 values(9101,10,1,1,100,100,200,300,2000,clock_timestamp(),'7c000000-0000-0000-0000-000000000003','Synthetic terms tests');
 update public.evocash_pricing_state set quoting_enabled=true,checkout_enabled=true where id;
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
 select pg_temp.set_test_user('7c000000-0000-0000-0000-000000000002',true);
 insert into r values('cq',public.create_evocash_purchase_quote('5',gen_random_uuid()));
 set local role authenticated;
@@ -122,6 +125,14 @@ select is((select value->'terms'->'conditions'->>'totalCentavos' from r where na
 select lives_ok($$select public.accept_commercial_terms('evocash_quote',(select (value->>'quoteId')::uuid from r where name='cq2'),
   (select value->'terms'->>'version' from r where name='cq2'),(select value->'terms'->>'digest' from r where name='cq2'),(select value->'terms'->>'conditionsDigest' from r where name='cq2'))$$,
   'aceite das Condições do EvoCash');
+reset role;
+update public.economy_config set config = jsonb_set(config,'{supplierInfo,configured}','false'::jsonb) where id;
+set local role authenticated;
+select throws_ok($$select public.reserve_infinitepay_cash_purchase((select (value->>'quoteId')::uuid from r where name='cq2'),gen_random_uuid())$$,
+  'SUPPLIER_INFO_NOT_CONFIGURED','fornecedor incompleto bloqueia reserva antes de criar cobrança');
+reset role;
+update public.economy_config set config = jsonb_set(config,'{supplierInfo,configured}','true'::jsonb) where id;
+set local role authenticated;
 select lives_ok($$select public.reserve_infinitepay_cash_purchase((select (value->>'quoteId')::uuid from r where name='cq2'),gen_random_uuid())$$,
   'checkout reservado depois do aceite');
 select is(public.get_my_commercial_terms('purchase',(select id from public.cash_purchases where quote_id=(select (value->>'quoteId')::uuid from r where name='cq2')))->>'version','1.0.0',

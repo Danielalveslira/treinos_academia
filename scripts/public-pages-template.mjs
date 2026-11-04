@@ -19,6 +19,7 @@ import {
 import { DISCOVERY_PUBLIC_LINKS, LEGAL_PUBLIC_LINKS } from './public-navigation.mjs'
 import { howItWorksBody } from './public-how-it-works.mjs'
 import { forBusinessBody } from './public-for-business.mjs'
+import { supplierInfoBody } from './public-supplier-info.mjs'
 
 // Production currently redirects apex to www (measured 2026-10-19).
 const origin = 'https://www.evolutus.com.br'
@@ -35,6 +36,7 @@ const publicPaths = new Set([
   '/locais',
   '/demo',
   '/demo-preview',
+  '/informacoes-do-fornecedor',
   ...discoveryLinks.map(([href]) => href),
 ])
 const enableTurboLinks = (html) =>
@@ -57,7 +59,7 @@ const nav = `<header id="public-header" data-turbo-permanent><div class="public-
 const footer = primerBox(
   'footer',
   'site-footer',
-  `<div class="footer-inner"><a class="footer-brand" href="/" aria-label="Evolutus, página inicial"><span class="footer-brand-mark" aria-hidden="true">${brandMark}</span><span>Evolutus</span></a><nav aria-label="Links do rodapé">${[['/como-funciona', 'Como funciona'], ['/para-empresas', 'Para empresas'], ['/atendimento', 'Atendimento'], ...LEGAL_PUBLIC_LINKS].map(([href, label]) => link(href, label, 'footer-link')).join('')}</nav><small class="footer-copyright">© Evolutus</small></div>`
+  `<div class="footer-inner"><a class="footer-brand" href="/" aria-label="Evolutus, página inicial"><span class="footer-brand-mark" aria-hidden="true">${brandMark}</span><span>Evolutus</span></a><nav aria-label="Links do rodapé">${[['/como-funciona', 'Como funciona'], ['/para-empresas', 'Para empresas'], ['/atendimento', 'Atendimento'], ['/informacoes-do-fornecedor', 'Informações do fornecedor'], ...LEGAL_PUBLIC_LINKS].map(([href, label]) => link(href, label, 'footer-link')).join('')}</nav><small class="footer-copyright">© Evolutus</small></div>`
 )
 const homeStep = (number, title, body) =>
   primerBox(
@@ -147,6 +149,14 @@ export const publicPages = [
     description:
       'Apresente sua marca ao público fitness por meio de publicidade patrocinada ou vitrine de produtos. Envie uma proposta para análise do Evolutus.',
     body: forBusinessBody,
+  },
+  {
+    path: '/informacoes-do-fornecedor',
+    file: 'informacoes-do-fornecedor.html',
+    title: 'Informações do fornecedor | Evolutus',
+    description:
+      'Identificação do fornecedor responsável pelo Evolutus, do processador de pagamentos e do controlador de dados pessoais.',
+    body: supplierInfoBody,
   },
   {
     path: '/vitrine',
@@ -245,7 +255,7 @@ export function renderPublicPage(path, env = {}, { dev = false } = {}) {
     )
   }
   return enableTurboLinks(
-    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1117"><meta name="robots" content="${page.indexable === false ? 'noindex,follow' : 'index,follow'}">${verification}<meta name="view-transition" content="same-origin"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${canonical}"><meta property="og:type" content="website"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${canonical}"><meta property="og:image" content="${socialImage}"><meta property="og:locale" content="pt_BR"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${socialImage}"><link rel="icon" href="/icons/icon-192.png"><script src="/boot-public-theme.js"></script>${homeBootstrap}${headerAuthBoot}${sharedStyles}<link rel="stylesheet" href="/public-pages.css"><link rel="stylesheet" href="/public-redesign.css"><link rel="stylesheet" href="/public-foundation.css">${path === '/' ? '<link rel="stylesheet" href="/public-home.css"><script src="/public-catalog-count.js" defer></script>' : ''}${path === '/como-funciona' ? '<link rel="stylesheet" href="/public-how-it-works.css">' : ''}${path === '/para-empresas' ? '<link rel="stylesheet" href="/public-for-business.css">' : ''}${path === '/vitrine' ? '<link rel="stylesheet" href="/public-products.css">' : ''}${['/profissionais', '/locais'].includes(path) ? '<link rel="stylesheet" href="/public-listings.css">' : ''}${headerStyles}${primerStyles()}<script type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script><script type="module" src="${dev ? '/src/publicTurbo.js' : `/${turbo.file}`}" data-turbo-track="reload"></script><script type="module" src="${dev ? '/src/PublicHeaderMenu.jsx' : `/${header.file}`}" data-turbo-track="reload"></script>${headerAuthScript}</head><body class="public-${page.path === '/' ? 'home' : page.path.slice(1)}" data-turbo-prefetch="false"><a class="skip" href="#content">Pular para o conteúdo</a>${nav}<main id="content" tabindex="-1">${body}</main>${footer}<script src="/public-pages.js" defer></script></body></html>`
+    `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0d1117"><meta name="robots" content="${page.indexable === false ? 'noindex,follow' : 'index,follow'}">${verification}<meta name="view-transition" content="same-origin"><title>${title}</title><meta name="description" content="${description}"><link rel="canonical" href="${canonical}"><meta property="og:type" content="website"><meta property="og:title" content="${title}"><meta property="og:description" content="${description}"><meta property="og:url" content="${canonical}"><meta property="og:image" content="${socialImage}"><meta property="og:locale" content="pt_BR"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${title}"><meta name="twitter:description" content="${description}"><meta name="twitter:image" content="${socialImage}"><link rel="icon" href="/icons/icon-192.png"><script src="/boot-public-theme.js"></script>${homeBootstrap}${headerAuthBoot}${sharedStyles}<link rel="stylesheet" href="/public-pages.css"><link rel="stylesheet" href="/public-redesign.css"><link rel="stylesheet" href="/public-foundation.css">${path === '/' ? '<link rel="stylesheet" href="/public-home.css"><script src="/public-catalog-count.js" defer></script>' : ''}${path === '/como-funciona' ? '<link rel="stylesheet" href="/public-how-it-works.css">' : ''}${path === '/para-empresas' ? '<link rel="stylesheet" href="/public-for-business.css">' : ''}${path === '/informacoes-do-fornecedor' ? '<link rel="stylesheet" href="/public-supplier-info.css">' : ''}${path === '/vitrine' ? '<link rel="stylesheet" href="/public-products.css">' : ''}${['/profissionais', '/locais'].includes(path) ? '<link rel="stylesheet" href="/public-listings.css">' : ''}${headerStyles}${primerStyles()}<script type="application/ld+json">${JSON.stringify(schema).replace(/</g, '\\u003c')}</script><script type="module" src="${dev ? '/src/publicTurbo.js' : `/${turbo.file}`}" data-turbo-track="reload"></script><script type="module" src="${dev ? '/src/PublicHeaderMenu.jsx' : `/${header.file}`}" data-turbo-track="reload"></script>${headerAuthScript}</head><body class="public-${page.path === '/' ? 'home' : page.path.slice(1)}" data-turbo-prefetch="false"><a class="skip" href="#content">Pular para o conteúdo</a>${nav}<main id="content" tabindex="-1">${body}</main>${footer}<script src="/public-pages.js" defer></script></body></html>`
   )
 }
 

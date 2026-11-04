@@ -108,7 +108,7 @@
         "title": "1. Quem oferece o Evolutus",
         "paragraphs": [
           "O Evolutus é uma plataforma de registro e acompanhamento de treinos, com fichas de treino, catálogo oficial de exercícios, comunidades, perfis e vitrines de profissionais e espaços, créditos EvoCash, anúncios e impulsionamentos.",
-          "Responsável: Wellington Daniel Alves de Lira. Contato: dnllira1@gmail.com e a página de atendimento do aplicativo. [PENDENTE: confirmar se a operação é feita por pessoa física ou jurídica e, se jurídica, razão social, CNPJ e endereço.]"
+          "O Evolutus é operado por pessoa física, sem CNPJ. A identificação completa do responsável está centralizada em /informacoes-do-fornecedor. Contato: dnllira1@gmail.com e a página de atendimento do aplicativo."
         ]
       },
       {
@@ -116,7 +116,7 @@
         "title": "2. Sua conta",
         "items": [
           "O cadastro pede e-mail, senha, nome de usuário, data de nascimento, sexo (com opção de não informar), município de residência e perfil de uso.",
-          "O Evolutus aceita novos cadastros exclusivamente de pessoas com 18 anos completos ou mais. A idade é calculada a partir da data de nascimento informada pela própria pessoa no cadastro; o Evolutus não faz verificação documental de idade. [PENDENTE — decisão jurídica: necessidade de aferição adicional de idade proporcional ao risco (Lei nº 15.211/2025).]",
+          "O Evolutus aceita novos cadastros exclusivamente de pessoas com 18 anos completos ou mais. A idade é calculada a partir da data de nascimento informada pela própria pessoa no cadastro; o Evolutus não faz verificação documental de idade.",
           "Mantenha seus dados corretos e sua senha protegida. A conta é pessoal e intransferível.",
           "Você pode excluir sua conta pelo Perfil. Alguns registros podem ser mantidos pelo tempo necessário ao cumprimento de obrigação legal, à defesa de direitos ou à prevenção de fraude, como descrito na Política de Privacidade."
         ]
@@ -158,14 +158,14 @@
           "Vitrines de profissionais, espaços e produtos são publicadas por período contratado, somente após aprovação e enquanto o direito estiver ativo. Ao fim do período a vitrine sai do ar e pode ser contratada novamente. Regras completas nos Termos das Vitrines.",
           "Fichas de treino, quando oferecidas para venda, são vendidas exclusivamente pelo Evolutus. Profissionais não vendem fichas pela plataforma.",
           "Antes de cada contratação mostramos preço, quantidade ou duração, condições de publicação, cancelamento e reembolso, e o documento aplicável. O aceite é registrado junto com essas condições, e o comprovante continua mostrando as condições daquela compra mesmo depois de novas versões.",
-          "Recursos implementados mas comercialmente desativados não podem ser contratados até serem anunciados no aplicativo."
+          "Recursos comercialmente desativados não podem ser contratados; a publicação dos documentos não habilita vendas."
         ]
       },
       {
         "id": "cancelamento",
         "title": "7. Cancelamento, arrependimento e reembolso",
         "items": [
-          "Quando aplicável, você pode desistir da contratação em até 7 dias, nos termos do art. 49 do Código de Defesa do Consumidor. A duração contratada (dias de vitrine ou de anúncio) não se confunde com esse prazo.",
+          "Nas contratações realizadas fora de estabelecimento comercial, o direito de arrependimento de 7 dias corridos é observado, quando aplicável, conforme o art. 49 do CDC. A contagem decorre da assinatura ou do recebimento do produto ou serviço, conforme a modalidade e a legislação. A duração da veiculação não se confunde com o prazo de arrependimento.",
           "Depois desse prazo continuam disponíveis pedidos por cobrança indevida, falha do serviço ou descumprimento da oferta.",
           "Pedidos são feitos pelo aplicativo, com protocolo e acompanhamento. Regras completas na Política de Cancelamento, Arrependimento e Reembolsos."
         ]
@@ -244,8 +244,7 @@
         "id": "controlador",
         "title": "1. Quem é responsável pelos seus dados",
         "paragraphs": [
-          "Controlador: Wellington Daniel Alves de Lira. Contato para privacidade: dnllira1@gmail.com ou o atendimento do aplicativo, opção “Privacidade ou exclusão da conta”.",
-          "[PENDENTE: confirmar identificação do controlador (pessoa física ou jurídica) e indicar o encarregado pelo tratamento de dados (art. 41 da LGPD) ou a dispensa aplicável.]"
+          "O controlador é a pessoa física responsável pelo Evolutus, sem CNPJ. Sua identificação completa está em /informacoes-do-fornecedor. Contato para privacidade: dnllira1@gmail.com ou o atendimento do aplicativo, opção “Privacidade ou exclusão da conta”."
         ]
       },
       {
@@ -274,9 +273,9 @@
             },
             {
               "cells": [
-                "Sexo (opcional, com opção “não informar”) e altura",
-                "Calcular indicadores como faixas de IMC e personalizar mensagens",
-                "Execução do contrato (art. 7º, V) [PENDENTE: validar base legal]"
+                "Sexo (escolha obrigatória, incluindo “não informar”) e altura, quando fornecida",
+                "Personalizar mensagens e calcular indicadores solicitados",
+                "Execução das funcionalidades solicitadas (art. 7º, V, LGPD). Se o dado revelar condição de saúde, requer hipótese específica do art. 11 — validar antes da publicação."
               ]
             },
             {
@@ -345,22 +344,22 @@
             {
               "cells": [
                 "Visualizações e cliques em anúncios",
-                "Medir patrocínios sem identificar você",
-                "Legítimo interesse (art. 7º, IX), com direito de oposição"
+                "Medir patrocínios; o identificador da conta é usado temporariamente para deduplicar eventos e os resultados são agregados",
+                "Legítimo interesse (art. 7º, IX), sujeito a avaliação documentada de necessidade e proporcionalidade, com direito de oposição"
               ]
             },
             {
               "cells": [
                 "Métricas de navegação e desempenho (Vercel Analytics e Speed Insights)",
                 "Entender uso e desempenho das páginas, sem parâmetros de URL",
-                "Legítimo interesse (art. 7º, IX) [PENDENTE: validar avaliação de legítimo interesse]"
+                "Legítimo interesse (art. 7º, IX), sujeito a avaliação documentada de necessidade, proporcionalidade e oposição"
               ]
             },
             {
               "cells": [
                 "Propostas comerciais enviadas pela página Para Empresas",
                 "Responder ao contato comercial",
-                "Procedimentos preliminares de contrato (art. 7º, V) [PENDENTE: definir retenção]"
+                "Procedimentos preliminares de contrato (art. 7º, V)"
               ]
             }
           ]
@@ -371,8 +370,8 @@
         "title": "3. Dados de saúde",
         "items": [
           "Medidas corporais só são registradas depois que você autoriza, no cadastro ou no momento de registrar. Criar a conta não depende dessa autorização.",
-          "Você pode revogar a autorização no Perfil, em “Dados de saúde e direitos”. Depois da revogação, novas medidas deixam de ser registradas. As medidas anteriores continuam visíveis só para você e podem ser excluídas.",
-          "[PENDENTE — decisão jurídica: eliminação automática das medidas após a revogação (art. 8º, §5º, e art. 16 da LGPD) ou manutenção até pedido do titular.]",
+          "Você pode revogar a autorização no Perfil, em “Dados de saúde e direitos”. A revogação impede novos registros de medidas corporais e também apaga, de forma automática e imediata, as medidas já registradas sob esse consentimento.",
+          "Essa eliminação é incondicional hoje, porque nenhuma medida corporal está vinculada a um registro com base legal própria de conservação. O histórico mínimo de que você concedeu e revogou o consentimento (datas e versão do texto aceito, sem o conteúdo das medidas) é mantido como comprovação. O Evolutus não inicia novos tratamentos que dependam exclusivamente do consentimento revogado.",
           "Dados de saúde não são usados em publicidade nem compartilhados com anunciantes."
         ]
       },
@@ -394,9 +393,9 @@
           "InfinitePay: processamento do pagamento de EvoCash. O Evolutus não recebe os dados completos do seu cartão.",
           "Resend: envio de e-mails transacionais sobre compras pendentes.",
           "Serviços de push do seu navegador ou sistema (como Google, Apple, Mozilla ou Microsoft), se você ativar notificações.",
-          "ExerciseAPI: consulta ao catálogo de exercícios, sem envio de dados da sua conta. [PENDENTE: confirmar se a integração está ativa em produção.]",
+          "Um catálogo externo de exercícios pode ser consultado ou importado pelo Evolutus, conforme a disponibilidade, sem envio das informações pessoais da conta às consultas públicas.",
           "Autoridades, quando houver obrigação legal ou ordem judicial.",
-          "Alguns provedores podem tratar dados fora do Brasil. [PENDENTE: indicar o mecanismo de transferência internacional aplicável (art. 33 da LGPD) para cada provedor.]",
+          "Alguns provedores podem tratar dados fora do Brasil. As transferências internacionais devem observar um dos mecanismos previstos no art. 33 da LGPD e as regras da ANPD.",
           "Não vendemos dados pessoais."
         ]
       },
@@ -415,8 +414,8 @@
         "title": "7. Por quanto tempo guardamos",
         "items": [
           "Dados da conta: enquanto a conta existir. Ao excluir a conta, os dados operacionais são removidos.",
-          "Registros de aceite, compras, contratações, reembolsos, moderação e segurança podem ser mantidos pelo prazo necessário a obrigações legais e à defesa de direitos. [PENDENTE: fixar prazos por categoria.]",
-          "Registros de acesso a aplicações: ao menos 6 meses, conforme o art. 15 do Marco Civil da Internet. [PENDENTE: confirmar prática atual dos provedores.]",
+          "Registros de aceite, compras, contratações, reembolsos, moderação e segurança podem ser mantidos pelo prazo necessário a obrigações legais e à defesa de direitos, com acesso restrito e revisão periódica.",
+          "Registros de acesso a aplicações devem observar o prazo mínimo de 6 meses previsto no art. 15 do Marco Civil da Internet.",
           "Registro temporário de medição de anúncios: até 48 horas. Totais: até 24 meses. Sincronização offline: até 30 dias."
         ]
       },

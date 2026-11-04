@@ -19,10 +19,15 @@ select throws_ok($$ select public.submit_commercial_lead(
   'Empresa', 'Contato', 'lead@example.com', null, 'Fitness', 'http://example.com',
   'Publicidade', 'Mensagem comercial suficientemente longa', true, '') $$,
   '22023', 'invalid submission', 'server rejects insecure website');
-select throws_ok($$ select public.submit_commercial_lead(
-  'Empresa', 'Contato', 'lead@example.com', null, 'Fitness', 'https://example.com',
+select lives_ok($$ select public.submit_commercial_lead(
+  'Empresa', 'Contato', 'legacy@example.com', null, 'Fitness', 'https://example.com',
   'Publicidade', 'Mensagem comercial suficientemente longa', false, '') $$,
-  '22023', 'invalid submission', 'server requires privacy consent');
+  'legacy false flag does not block a proposal or record consent');
+select lives_ok($$ select public.submit_commercial_lead(
+  p_company => 'Empresa', p_contact => 'Contato', p_email => 'new@example.com',
+  p_whatsapp => null, p_segment => 'Fitness', p_website => '',
+  p_modality => 'Publicidade', p_message => 'Mensagem comercial suficientemente longa') $$,
+  'new clients may omit the legacy privacy flag');
 select throws_ok($$ select public.submit_commercial_lead(
   'Empresa', 'Contato', 'lead@example.com', null, 'Fitness', 'https://example.com',
   'Publicidade', 'Mensagem comercial suficientemente longa', true, 'spam') $$,

@@ -1,5 +1,6 @@
 import { supabase } from '../supabase/config'
 import { HEALTH_CONSENT_TEXT_VERSION, mapPrivacyConsents } from '../utils/privacyConsent'
+import { invalidateCache } from '../utils/pageCache'
 
 export async function getMyPrivacyConsents() {
   const { data, error } = await supabase.rpc('get_my_privacy_consents')
@@ -16,5 +17,8 @@ export async function setHealthDataConsent(granted, source = 'settings') {
     p_source: source,
   })
   if (error) throw error
+  // Revogar elimina as medidas já registradas no servidor (20261212000005) -- a lista
+  // em cache fica desatualizada e precisa ser buscada de novo, não só a autorização.
+  if (granted !== true) invalidateCache('bodyMeasurements:')
   return data
 }

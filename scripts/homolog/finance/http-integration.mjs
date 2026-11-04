@@ -35,7 +35,7 @@ async function wallet(c){const {data,error}=await c.rpc('get_my_wallet');assert.
 await waitReady(config.url)
 const container=config.url.endsWith(':55554')?'evolutus_price_phase1_db':'evolutus_integrated_db'
 const pricingAdmin=await createUser()
-execFileSync('docker',['exec',container,'psql','-U','supabase_admin','-d','postgres','-X','-v','ON_ERROR_STOP=1','-c',`update public.users set role='superadmin' where id='${pricingAdmin.id}';update public.evocash_pricing_state set quoting_enabled=true,checkout_enabled=true where id;`],{stdio:'pipe'})
+execFileSync('docker',['exec',container,'psql','-U','supabase_admin','-d','postgres','-X','-v','ON_ERROR_STOP=1','-c',`update public.users set role='superadmin' where id='${pricingAdmin.id}';update public.evocash_pricing_state set quoting_enabled=true,checkout_enabled=true where id;update public.economy_config set config=config||jsonb_build_object('supplierInfo',jsonb_build_object('configured',true)) where id;`],{stdio:'pipe'})
 const initial=await pricingAdmin.c.rpc('admin_get_evocash_pricing');assert.ifError(initial.error)
 const setup=await pricingAdmin.c.rpc('admin_publish_evocash_price',{p_config:{unitPriceCentavos:'10',minimumUnitPriceCentavos:'1',minQuantity:'1',maxQuantity:'1000',dailyQuantityLimit:'2000',totalQuantityLimit:'10000',quoteTtlSeconds:'300',largeChangeThresholdBps:'2000'},p_active_from:null,p_expected_revision:initial.data.revision,p_request_id:randomUUID(),p_reason:'Synthetic phase 2 HTTP verification',p_confirm_large_change:true});assert.ifError(setup.error)
 const intents=new Map()
