@@ -108,7 +108,7 @@
         "title": "1. Quem oferece o Evolutus",
         "paragraphs": [
           "O Evolutus é uma plataforma de registro e acompanhamento de treinos, com fichas de treino, catálogo oficial de exercícios, comunidades, perfis e vitrines de profissionais e espaços, créditos EvoCash, anúncios e impulsionamentos.",
-          "Responsável: Wellington Daniel Alves de Lira. Contato: dnllira1@gmail.com e a página de atendimento do aplicativo. [PENDENTE: confirmar se a operação é feita por pessoa física ou jurídica e, se jurídica, razão social, CNPJ e endereço.]"
+          "Responsável: Wellington Daniel Alves de Lira. Contato: dnllira1@gmail.com e a página de atendimento do aplicativo. A operação é feita por pessoa física, sem CNPJ; a identificação completa está centralizada em /informacoes-do-fornecedor."
         ]
       },
       {
@@ -244,8 +244,8 @@
         "id": "controlador",
         "title": "1. Quem é responsável pelos seus dados",
         "paragraphs": [
-          "Controlador: Wellington Daniel Alves de Lira. Contato para privacidade: dnllira1@gmail.com ou o atendimento do aplicativo, opção “Privacidade ou exclusão da conta”.",
-          "[PENDENTE: confirmar identificação do controlador (pessoa física ou jurídica) e indicar o encarregado pelo tratamento de dados (art. 41 da LGPD) ou a dispensa aplicável.]"
+          "Controlador: Wellington Daniel Alves de Lira, pessoa física, sem CNPJ. Identificação completa em /informacoes-do-fornecedor. Contato para privacidade: dnllira1@gmail.com ou o atendimento do aplicativo, opção “Privacidade ou exclusão da conta”.",
+          "[PENDENTE: indicar o encarregado pelo tratamento de dados (art. 41 da LGPD) ou a dispensa aplicável.]"
         ]
       },
       {
@@ -371,8 +371,8 @@
         "title": "3. Dados de saúde",
         "items": [
           "Medidas corporais só são registradas depois que você autoriza, no cadastro ou no momento de registrar. Criar a conta não depende dessa autorização.",
-          "Você pode revogar a autorização no Perfil, em “Dados de saúde e direitos”. Depois da revogação, novas medidas deixam de ser registradas. As medidas anteriores continuam visíveis só para você e podem ser excluídas.",
-          "Revogar o consentimento impede novos registros de medidas corporais, mas não apaga automaticamente o histórico. A pessoa pode solicitar a eliminação dos dados registrados sob consentimento pelo atendimento, ressalvadas as hipóteses legais de conservação. O Evolutus não inicia novos tratamentos que dependam exclusivamente do consentimento revogado.",
+          "Você pode revogar a autorização no Perfil, em “Dados de saúde e direitos”. A revogação impede novos registros de medidas corporais e também apaga, de forma automática e imediata, as medidas já registradas sob esse consentimento.",
+          "Essa eliminação é incondicional hoje, porque nenhuma medida corporal está vinculada a um registro com base legal própria de conservação. O histórico mínimo de que você concedeu e revogou o consentimento (datas e versão do texto aceito, sem o conteúdo das medidas) é mantido como comprovação. O Evolutus não inicia novos tratamentos que dependam exclusivamente do consentimento revogado.",
           "Dados de saúde não são usados em publicidade nem compartilhados com anunciantes."
         ]
       },
