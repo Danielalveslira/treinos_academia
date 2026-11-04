@@ -17,6 +17,7 @@
 -- (20260929000002) -- confirmado lendo 20260930000002_deletion_worker.sql.
 -- Bloqueia gravações durante a substituição das funções e o saneamento dirigido;
 -- quando o lock for liberado no commit, o novo trigger já estará visível.
+begin;
 set local lock_timeout = '5s';
 lock table public.body_measurements in share row exclusive mode;
 
@@ -92,3 +93,4 @@ begin
   return new;
 end $$;
 revoke all on function private.require_health_consent() from public, anon, authenticated, service_role;
+commit;
