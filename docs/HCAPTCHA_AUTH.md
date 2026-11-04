@@ -2,7 +2,7 @@
 
 Configure `VITE_HCAPTCHA_SITE_KEY` com a chave **pública** do site no build da Vercel. A chave secreta fica somente na configuração de CAPTCHA do Supabase Auth. Não a coloque em variáveis `VITE_*`, arquivos do repositório ou logs.
 
-Em produção, a interface exige CAPTCHA. Sem a Site Key, as telas mostram uma mensagem de indisponibilidade e as funções de autenticação não chamam o Supabase. Em preview e desenvolvimento, defina `VITE_HCAPTCHA_ENABLED=true` quando o projeto Supabase usado exigir CAPTCHA; a ausência da flag deixa o widget desativado apenas nesses builds. O servidor continua sendo o responsável pela validação. Se uma preview apontar para o Supabase de produção, habilite a flag e configure uma Site Key autorizada para o domínio dessa preview.
+Todo build de produção do Vite, inclusive previews da Vercel, exige CAPTCHA e uma Site Key pública válida para o respectivo domínio. Sem a Site Key, as telas mostram uma mensagem de indisponibilidade e as funções de autenticação não chamam o Supabase. A flag `VITE_HCAPTCHA_ENABLED=true` serve para habilitar o widget durante `vite dev`; ela não desliga a exigência em builds de produção. O servidor continua sendo o responsável pela validação. Se uma preview apontar para o Supabase de produção, configure uma Site Key autorizada também para o domínio dessa preview.
 
 Para desenvolvimento local com CAPTCHA habilitado, use as [chaves oficiais de teste do hCaptcha](https://docs.hcaptcha.com/#integration-testing-test-keys) e configure a chave secreta correspondente apenas na instância **local** do Supabase. Não configure a chave de teste no Supabase hospedado.
 
