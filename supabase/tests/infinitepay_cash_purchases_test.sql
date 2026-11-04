@@ -16,6 +16,8 @@ set local role authenticated;
 select throws_ok($$select pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001')$$,'EVOCASH_PURCHASES_PAUSED','checkout gate defaults closed independently of quoting');
 select ok(not has_table_privilege('authenticated','public.cash_purchases','insert'),'client cannot insert financial rows');
 reset role;
+-- Only this rollback-only fixture opts into the supplier gate before checkout.
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
 update public.evocash_pricing_state set checkout_enabled=true where id;
 set local role authenticated;
 insert into results values('order',pg_temp.reserve_with_terms((select(value->>'quoteId')::uuid from results where name='quote'),'72200000-0000-0000-0000-000000000001'));

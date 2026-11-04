@@ -89,7 +89,7 @@ for each row execute function public.capture_deleted_photo_cleanup();
 -- nunca é apagado (commercial_orders não tem cascade pra ele); só vira 'archived', o que
 -- também já tira a vitrine de private.live_storefronts (exige moderation_state='approved').
 create or replace function public.run_deletion_job(p_job_id uuid) returns jsonb
-  language plpgsql security definer set search_path = public as $$
+  language plpgsql security definer set search_path = public, pg_temp as $$
 declare
   v_job public.deletion_jobs;
   v_reason text;
@@ -188,8 +188,8 @@ begin
       delete from public.communities where id = v_job.target_id;
 
     else -- status
-      select photo_path into v_photo_paths from public.statuses where id = v_job.target_id;
-      v_photo_paths := case when v_photo_paths[1] is not null then v_photo_paths else '{}' end;
+      select coalesce(array_agg(photo_path), '{}'::text[]) into v_photo_paths
+        from public.statuses where id = v_job.target_id and photo_path is not null;
       delete from public.statuses where id = v_job.target_id;
     end if;
 
