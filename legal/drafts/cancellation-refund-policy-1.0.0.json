@@ -4,69 +4,68 @@
   "documentId": "cancellation-refund-policy",
   "version": "1.0.0",
   "title": "Política de Cancelamento, Arrependimento e Reembolsos",
-  "description": "Como desistir de uma compra feita no Evolutus, pedir reembolso e acompanhar o pedido.",
+  "description": "Como cancelar, exercer o arrependimento e acompanhar reembolsos.",
   "changes": [
     "Primeira versão pública. Substitui a minuta interna draft-1 após aprovação."
   ],
   "summary": [
-    "Quando aplicável, você pode desistir em até 7 dias da compra ou contratação, sem precisar justificar.",
-    "Depois desse prazo continuam valendo pedidos por cobrança indevida, falha do serviço ou descumprimento da oferta.",
-    "Cada pedido recebe protocolo, pode ser acompanhado no app e, se recusado, contestado.",
-    "A duração contratada (dias de vitrine ou anúncio) não é o prazo de arrependimento."
+    "Você pode pedir arrependimento em até 7 dias corridos quando o art. 49 do Código de Defesa do Consumidor se aplicar.",
+    "Cobrança indevida, falha ou serviço não prestado também podem gerar cancelamento e devolução conforme a lei.",
+    "O pedido recebe protocolo e decisão fundamentada. Você pode acompanhar e contestar pelo aplicativo.",
+    "A análise e os estornos são manuais; não prometemos devolução automática."
   ],
   "sections": [
     {
       "id": "arrependimento",
-      "title": "1. Direito de arrependimento",
+      "title": "1. Arrependimento em 7 dias",
       "items": [
-        "Esta política vale para compras de EvoCash e contratações de anúncios, impulsionamentos e vitrines feitas no Evolutus.",
-        "Nas compras feitas pelo aplicativo, quando aplicável o art. 49 do Código de Defesa do Consumidor, você pode desistir em até 7 dias.",
-        "O prazo legal de 7 dias conta da assinatura ou do recebimento do produto ou serviço, conforme art. 49 do CDC. Para EvoCash consideram-se a compra e disponibilização dos créditos; para vitrines, anúncios e impulsionamentos, a contratação e disponibilização do serviço. Dúvidas razoáveis sobre o marco serão interpretadas a favor do consumidor.",
-        "O motivo é opcional no pedido por arrependimento.",
-        "O início da execução ou utilização de créditos durante os 7 dias não configura renúncia automática ao arrependimento legal. Quando houver serviço iniciado ou crédito consumido, o pedido será analisado individualmente, sem cobrança ou desconto incompatível com o CDC."
+        "Esta política cobre compras de EvoCash e contratações de anúncios, impulsionamentos e vitrines no Evolutus.",
+        "Em compras feitas pelo aplicativo, o art. 49 do Código de Defesa do Consumidor garante até 7 dias corridos para desistir quando aplicável. O prazo começa na assinatura ou no recebimento do produto ou serviço, conforme o caso. Dúvidas razoáveis sobre esse marco são interpretadas a favor do consumidor.",
+        "Você não precisa explicar o motivo. Usar parte dos créditos ou iniciar o serviço nesse período não elimina automaticamente o direito. Se houver consumo ou entrega parcial, analisamos o caso sem desconto contrário à lei."
       ]
     },
     {
       "id": "outros",
-      "title": "2. Outros pedidos",
+      "title": "2. Outros motivos para pedir",
       "items": [
-        "Cobrança em duplicidade, cobrança indevida, créditos não liberados, falha do serviço, suspensão indevida e descumprimento da oferta podem ser pedidos a qualquer tempo, observados os prazos legais.",
-        "Nesses casos, descreva o ocorrido para permitir a análise."
+        "Cobrança duplicada ou indevida, créditos não liberados, falha, suspensão indevida e oferta não cumprida podem ser questionados mesmo depois dos 7 dias, observados os prazos legais.",
+        "Conte o que ocorreu e envie o que tiver de comprovante para facilitar a análise."
       ]
     },
     {
       "id": "como",
       "title": "3. Como pedir e acompanhar",
       "items": [
-        "Pelo aplicativo, na compra ou contratação correspondente. O pedido recebe protocolo e data de recebimento.",
-        "Você acompanha o andamento, as mensagens e a decisão no mesmo protocolo.",
-        "Nunca pedimos senha, número completo do cartão ou dados bancários.",
-        "Se o aplicativo estiver indisponível, use o atendimento e informe a tentativa; o atraso causado pela indisponibilidade não prejudica seu direito."
+        "Abra o pedido na compra ou contratação correspondente no aplicativo. Você recebe protocolo e data de recebimento e acompanha mensagens e decisão ali mesmo.",
+        "Se o aplicativo estiver indisponível, use /atendimento e informe a tentativa. Uma falha do nosso canal não prejudica seu direito.",
+        "Nunca pedimos sua senha, número completo do cartão ou dados bancários pelo atendimento."
       ]
     },
     {
       "id": "analise",
-      "title": "4. Análise e decisão",
+      "title": "4. Análise e recurso",
       "items": [
-        "A decisão é fundamentada e pode ser contestada no próprio protocolo.",
-        "A classificação de quem contrata (pessoa física, profissional ou empresa) é analisada caso a caso, sem exclusão automática do Código de Defesa do Consumidor.",
-        "Durante a análise de reembolso de EvoCash, créditos disponíveis podem ficar reservados; reserva não é consumo."
+        "Analisamos o pedido manualmente e explicamos a decisão. Você pode contestar uma negativa no mesmo protocolo.",
+        "Ser pessoa física, profissional ou empresa não exclui automaticamente a proteção do Código de Defesa do Consumidor; o caso é avaliado conforme a lei.",
+        "Durante a análise de EvoCash, créditos disponíveis podem ficar reservados. Reserva não é consumo."
       ]
     },
     {
       "id": "devolucao",
-      "title": "5. Como o valor é devolvido",
+      "title": "5. Como calculamos e devolvemos",
       "items": [
-        "Valores em reais, quando devidos, são devolvidos pelo canal oficial da InfinitePay para o meio de pagamento original. O prazo de crédito depende do meio de pagamento e do emissor.",
-        "Reembolso de contratação paga com EvoCash é feito em EvoCash, com o encerramento do período correspondente, sem prejuízo de restituição em dinheiro quando a lei exigir.",
-        "Não se cobra taxa de desistência pelo exercício regular do arrependimento legal. Para falhas ou entregas parciais fora desse prazo, pode ser considerada restituição proporcional pelo período comprovadamente não prestado, sem prejuízo dos demais direitos legais."
+        "Quando a devolução em reais for devida, usamos o canal oficial da InfinitePay para o pagamento original. O prazo de crédito depende do meio de pagamento e do emissor; não há estorno automático pelo aplicativo.",
+        "Serviços pagos em EvoCash e não prestados podem ser devolvidos em EvoCash ou compensados pelo período, após análise. Isso não afasta restituição em dinheiro quando a lei exigir.",
+        "Saldo de EvoCash pago e não consumido é apurado por compra, uso e reembolso quando a conta termina ou o produto é descontinuado. Não cobramos taxa pelo exercício regular do arrependimento.",
+        "Fora do arrependimento, falha ou entrega parcial pode gerar devolução proporcional ao que não foi prestado, sem retirar outros direitos legais."
       ]
     },
     {
       "id": "comprovantes",
-      "title": "6. Comprovantes",
+      "title": "6. Comprovantes e histórico",
       "items": [
-        "Comprovantes, condições aceitas e protocolos continuam acessíveis mesmo após novas versões dos documentos ou o fim da contratação, inclusive para quem ainda não aceitou uma nova versão dos Termos de Uso."
+        "Comprovantes, condições aceitas e protocolos continuam acessíveis pelos canais de atendimento mesmo após uma nova versão dos documentos ou o fim da contratação.",
+        "Você pode consultar e contestar seu caso mesmo sem aceitar uma versão nova dos Termos de Uso."
       ]
     }
   ],

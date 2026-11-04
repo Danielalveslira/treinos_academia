@@ -1,30 +1,26 @@
-# Evolutus — fechamento jurídico antes da publicação 2.0.0
+# Antes de publicar a versão jurídica 2.0.0
 
-## Cláusulas consolidadas para decisão
-- Idade mínima 18+ e marca Evolutus.
-- Arrependimento de 7 dias corridos quando aplicável, sem renúncia automática por início de uso.
-- EvoCash: valor total claro; sem taxa administrativa adicional do Evolutus fora da cotação; restituição do saldo pago e não consumido ao encerrar a conta ou descontinuar o produto.
-- Anúncios e vitrines: recusa antes da entrega não gera perda da quantia paga; dias não prestados por falha ou suspensão sem culpa geram análise de compensação ou restituição proporcional.
-- Reembolsos continuam com atendimento e processamento manual — sem prometer automação.
-- **Decisão de 04/11/2026:** revogar o consentimento de medidas de saúde apaga automática e imediatamente o histórico de medidas, sem exigir solicitação pelo atendimento — ressalvada apenas uma base legal independente de conservação, que hoje não existe em nenhuma medida (nenhuma FK de tabela financeira/jurídica aponta para `body_measurements`). O evento de concessão/revogação do consentimento é mantido como comprovação mínima, sem o conteúdo das medidas. Texto já corrigido na minuta geral 2.0.0.
-- Documentos 1.x e seus digests são históricos imutáveis.
+**Estado:** minutas revisadas para leitura e aprovação humana. A versão vigente continua sendo a **1.5.0**. As migrations `20261212000005` a `00008` já foram aplicadas; `supplierInfo.configured` permanece `false`. Nenhuma minuta foi ativada e vendas continuam bloqueadas.
 
-## Bloqueios para publicar (não preenchidos por suposição)
-1. ~~Identificação do fornecedor e controlador~~ **Resolvido em texto (04/11/2026):** Evolutus opera por pessoa física, sem CNPJ; a minuta geral aponta para `/informacoes-do-fornecedor` em vez de listar os dados. **Ainda pendente, fora do texto:** os valores reais de nome civil, CPF e endereço, que só serão configurados depois diretamente na hospedagem (variáveis `SUPPLIER_LEGAL_NAME`/`SUPPLIER_CPF`/`SUPPLIER_ADDRESS`), nunca no repositório. A página fica "Em configuração" até lá.
-2. **Ainda aberto:** encarregado de dados ou enquadramento comprovado na dispensa para agentes de pequeno porte, considerando que o Evolutus trata dados de saúde — decisão jurídica não resolvida nesta sessão, não presumir nem a dispensa nem a obrigação. O canal de privacidade já existe independentemente disso (atendimento + `get_my_privacy_consents`/`set_privacy_consent` + `/informacoes-do-fornecedor`). Análise preliminar em `DISPENSA_DPO_PEQUENO_PORTE_2026-11-04.md`; confirmar com os dados reais de porte.
-3. Hipóteses legais para indicadores que revelem saúde e avaliação de legítimo interesse para analytics seguem **abertas**. A retenção dos registros gerais da conta (aceite, compras, contratações, reembolsos, moderação, segurança) já está descrita corretamente no texto e é compatível com a exclusão de conta implementada; só os **prazos exatos por categoria** e a **retenção dos leads do formulário Para Empresas** continuam pendentes de decisão.
-4. Mapeamento de países, transferências de dados e mecanismo do art. 33 da LGPD em contratos de cada prestador (Resolução ANPD 19/2024) — **ainda aberto**, não declarar conformidade sem fundamentação. Levantamento preliminar em `TRANSFERENCIAS_INTERNACIONAIS_2026-11-04.md`; verificar os contratos efetivamente aceitos pelo Evolutus. O prazo geral de adequação já terminou em agosto de 2025.
-5. Confirmar que os fluxos operacionais e financeiros conseguem atender aos compromissos de estorno, devolução de saldo pago e compensação.
-6. O formulário Para Empresas e a RPC devem ser publicados juntos: o parâmetro legado `p_privacy` deixa de representar consentimento, enquanto validações, RLS e limite de propostas permanecem.
-7. Aprovação humana dos textos completos e definição das datas reais de publicação. As cláusulas da minuta geral não contêm marcadores de pendência; **isso não resolve** as decisões de DPO, idade, analytics, retenção e transferências documentadas em `DECISOES_PENDENTES_LEGAL_2_0.md` e nos dois levantamentos específicos. As datas `AAAA-MM-DD` permanecem somente nas minutas não vigentes até a aprovação.
-8. Configurar `SUPPLIER_LEGAL_NAME`, `SUPPLIER_CPF` e `SUPPLIER_ADDRESS` na hospedagem, validar a página pública sem registrar os valores em logs; só depois um superadmin com autenticação recente pode aprovar `admin_set_supplier_info_configured(true, razão, true)`. A trava inicia fechada e não libera oferta alguma automaticamente.
+## Regras já refletidas nos textos
 
-## Sequência após resolução
-1. Após todas as decisões e aprovação humana, mover documentos gerais revisados para `legal/manifest.json` e `legal/documents.json`; preservar o histórico 1.5.0 e adicionar o digest **aprovado** da 2.0.0. Não registrar digest de minuta como aprovado.
-2. Publicar frontend que reconhece a versão 2.0.0.
-3. Registrar com `seed-legal.mjs` e ativar com `--activate` e `CONFIRM_LEGAL_ACTIVATION=2.0.0`.
-4. Aprovar os quatro documentos comerciais e publicar um a um por `publish-legal-document.mjs` com confirmação nominal.
-5. Verificar as rotas públicas e as versões históricas; não liberar vendas. Em particular, desabilitar `ad_home` antes de disponibilizar contratação comercial.
-6. Não repetir testes já aprovados, apenas verificações dirigidas às mudanças.
+- Cadastro somente a partir de 18 anos, sem CPF, documento, selfie ou biometria do usuário.
+- Evolutus operado inicialmente por pessoa física, sem CNPJ; identificação completa na página `/informacoes-do-fornecedor`.
+- Medidas corporais opcionais; revogação apaga as medidas guardadas sob o consentimento e mantém só a evidência mínima do evento.
+- EvoCash por quantidade, pagamento pela InfinitePay, análise manual de reembolsos e respeito ao arrependimento de sete dias quando aplicável.
+- Anúncios e vitrines por período, com aprovação, sem garantia de resultado e com tratamento de serviço não prestado.
+- Versões `1.x`, digests, aceites e comprovantes históricos preservados.
 
-**Estado:** revisão de redação em branch; textos `approved:false`/`published:false` e nada publicado em produção. A revisão de informações empresariais e transferência internacional é indispensável.
+## Evidências e decisões ainda necessárias
+
+1. Confirmar os dados reais do fornecedor diretamente na hospedagem e conferir a página pública, sem pôr nome civil, CPF ou endereço no Git ou em logs.
+2. Concluir e registrar a análise de [pequeno porte e encarregado](DISPENSA_DPO_PEQUENO_PORTE_2026-11-04.md).
+3. Avaliar, por funcionalidade, a suficiência da autodeclaração de idade à luz do ECA Digital, sem impor coleta excessiva.
+4. Validar a base do art. 11 da LGPD para dados derivados ou notas que possam revelar saúde.
+5. Fechar o [mapa de transferências internacionais](TRANSFERENCIAS_INTERNACIONAIS_2026-11-04.md) com contratos aceitos e mecanismo válido por fluxo.
+6. Documentar legítimo interesse e oposição para métricas próprias e Vercel Analytics/Speed Insights; suspender apenas a coleta opcional sem base suficiente.
+7. Definir e implementar descarte de contatos comerciais e atendimentos; conferir retenção de logs e decisões legais/contábeis sobre financeiro e aceites. Não anunciar prazos que o sistema não cumpre.
+8. Confirmar que atendimento, estornos e devolução de saldo pago conseguem cumprir os textos antes de habilitar cobranças.
+9. Obter aprovação humana do texto completo, datas, versões e digests. Publicação e ativação são operações futuras distintas.
+
+O detalhamento de cada ponto está em [Decisões pendentes](DECISOES_PENDENTES_LEGAL_2_0.md). O [procedimento de publicação](PROCEDIMENTO_PUBLICACAO_2_0.md) não é autorização para executá-lo neste PR.

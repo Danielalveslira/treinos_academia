@@ -1,15 +1,13 @@
-# Transferências internacionais — evidência contratual necessária
+# Transferências internacionais: mapa simples para decisão
 
-**Estado:** não foi possível confirmar os contratos, as regiões reais nem os subprocessadores da conta Evolutus. Não declarar conformidade ou inexistência de transferência para qualquer fornecedor com base apenas no país de sua sede.
+A [Resolução CD/ANPD nº 19/2024](https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd/resolucao-cd-anpd-no-19-de-23-de-agosto-de-2024) exige mecanismo válido para transferências internacionais conforme o art. 33 da LGPD. A sede de um fornecedor ou a região principal do banco, sozinhas, não provam onde todos os dados são tratados. Cláusulas europeias não substituem automaticamente as cláusulas-padrão brasileiras.
 
-A [Resolução CD/ANPD nº 19/2024](https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd/resolucao-cd-anpd-no-19-de-23-de-agosto-de-2024) regula os mecanismos do art. 33 da LGPD. O prazo geral de 12 meses para incorporação das cláusulas-padrão brasileiras terminou em agosto de 2025. As SCC europeias **não são automaticamente equivalentes** às cláusulas-padrão da ANPD; a [ANPD informa o estado de reconhecimento de cláusulas estrangeiras](https://www.gov.br/anpd/pt-br/assuntos/assuntos-internacionais/transferencia-internacional-de-dados).
+| Fornecedor | Para quê | Países ou regiões possíveis, segundo fonte pública | Mecanismo para o fluxo Evolutus | Evidência disponível / falta confirmar |
+|---|---|---|---|---|
+| Supabase | Auth, banco, arquivos e funções | A instância do Evolutus está em `us-east-2` (EUA). O [guia de residência](https://supabase.com/legal/privacy-resources/data-residency-and-transfers-faq) também prevê suporte global, logs na UE e CDN fora da região. | **Não confirmado.** | [DPA público](https://supabase.com/legal/customer-resources/data-processing-addendum); conferir o contrato aceito, subprocessadores e fluxos reais. |
+| Vercel, Analytics e Speed Insights | Site, logs e métricas | EUA e outras regiões usadas por subprocessadores, conforme o [DPA público](https://vercel.com/legal/dpa). | **Não confirmado.** | Conferir DPA aceito, [subprocessadores](https://security.vercel.com), regiões efetivas e mecanismo aplicável. |
+| Resend | E-mails transacionais e metadados de entrega | EUA e demais locais dos [subprocessadores publicados](https://resend.com/legal/subprocessors); fluxo exato da conta não confirmado. | **Não confirmado.** | [DPA público](https://resend.com/legal/dpa); conferir contrato aceito e entrega real. |
+| InfinitePay | Pagamento e dados necessários à transação | O [aviso de privacidade](https://www.infinitepay.io/legal/aviso-de-privacidade) informa transferências para os **EUA** para nuvem e mensageria. | O aviso diz observar a LGPD, mas o instrumento de cada fluxo **não foi conferido**. | Conferir termos aceitos, papel das partes e cláusulas aplicáveis ao Evolutus. |
+| Serviços de push do navegador/sistema | Entrega de notificações opt-in | Depende de Google, Apple, Mozilla, Microsoft e do aparelho; países não mapeados para esta operação. | **Não confirmado.** | Mapear provedores efetivos, metadados, regiões e contratos ou outra hipótese válida. |
 
-| Serviço | Dados e fluxo a confirmar | Evidência exigida |
-|---|---|---|
-| Supabase | Banco, Auth, Storage e Edge Functions; região e subprocessadores | Região da instância, DPA aceito e mecanismo do art. 33 para cada fluxo internacional |
-| Vercel, Analytics e Speed Insights | Hospedagem, logs e métricas de navegação | DPA aceito, subprocessadores, regiões e mecanismo aplicável |
-| Resend | E-mails transacionais e metadados de entrega | DPA, subprocessadores, regiões e mecanismo aplicável |
-| InfinitePay | Pagamentos e metadados financeiros | Termos aceitos, subprocessadores e eventual fluxo transfronteiriço |
-| Web Push (Google, Apple, Mozilla, Microsoft, conforme navegador) | Metadados de entrega; conteúdo cifrado pelo protocolo | Mapa de fluxo, região, papel dos provedores e análise do mecanismo aplicável |
-
-**Próxima decisão:** obter os documentos contratuais efetivos e um mapa de dados da operação; formalizar mecanismo válido por fluxo ou interromper o fluxo sem base suficiente. A Política de Privacidade 2.0.0 não deve ser ativada como declaração de conformidade internacional antes dessa verificação jurídica.
+**Próximo passo:** guardar, fora do repositório se houver dados contratuais sensíveis, as versões efetivamente aceitas dos contratos e a decisão jurídica por fluxo. Se faltar mecanismo válido, corrigir ou suspender o fluxo específico antes de declarar conformidade. A minuta 2.0.0 descreve a possibilidade de tratamento fora do Brasil, mas não afirma que esta verificação já foi concluída.

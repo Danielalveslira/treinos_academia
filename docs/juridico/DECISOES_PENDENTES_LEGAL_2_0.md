@@ -1,28 +1,48 @@
-# Decisões jurídicas e operacionais pendentes — 2.0.0
+# Decisões para aprovar a versão jurídica 2.0.0
 
-Esta lista separa os pontos que exigem evidência ou aprovação humana das correções técnicas já integradas. As minutas não estão aprovadas nem vigentes.
+As minutas foram simplificadas, mas **não estão aprovadas nem vigentes**. Esta lista distingue o que o produto já faz do que ainda depende de comprovação. Não transformar uma hipótese jurídica em promessa ao usuário.
 
-## Idade mínima e aferição
+## 1. Idade mínima: 18 anos, sem documentos do usuário
 
-O cadastro atual exige 18 anos pela data de nascimento informada e não coleta documento ou biometria. A [Lei nº 15.211/2025](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15211.htm), o [Decreto nº 12.880/2026](https://www.gov.br/mj/pt-br/assuntos/arquivos-imprensa/sedigi/decretos-eca-digital.pdf) e as [orientações preliminares da ANPD](https://www.gov.br/anpd/pt-br/assuntos/noticias/anpd-publica-orientacoes-preliminares-e-cronograma-para-afericao-de-idade-no-ambiente-digital) exigem análise proporcional por serviço e risco. **Decisão necessária:** avaliação jurídica documentada sobre se a autodeclaração basta para as funções atuais e, caso não baste, qual mecanismo de mínima coleta pode ser usado. Não coletar CPF, documento, selfie ou biometria sem decisão específica.
+**Decidido e implementado:** novos cadastros exigem 18 anos completos, calculados da data informada. O Evolutus não coleta CPF, RG, selfie ou biometria para isso. Contas antigas eventualmente identificadas como de menores recebem tratamento protetivo; anúncios não usam perfil comportamental para menores.
 
-## Analytics e métricas de anúncios
+**Ainda é preciso decidir:** se o serviço, com comunidades, vitrines e conteúdo fitness, é de acesso provável por crianças ou adolescentes ou oferece algum conteúdo ou serviço inadequado a eles. A [Lei nº 15.211/2025](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15211.htm), o [Decreto nº 12.880/2026](https://www.gov.br/mj/pt-br/assuntos/arquivos-imprensa/sedigi/decretos-eca-digital.pdf) e as [orientações da ANPD](https://www.gov.br/anpd/pt-br/assuntos/noticias/anpd-publica-orientacoes-preliminares-e-cronograma-para-afericao-de-idade-no-ambiente-digital) pedem análise proporcional ao serviço e ao risco. A autodeclaração isolada não deve ser tratada como mecanismo suficiente para conteúdo proibido a menores. Registrar avaliação jurídica por funcionalidade e, se necessário, escolher sinal de idade ou método com mínima coleta. **Não** adicionar documentos ou biometria por suposição.
 
-O app usa Vercel Analytics e Speed Insights; as métricas de anúncios são agregadas por campanha e têm um identificador temporário para deduplicação. O legítimo interesse do art. 7º, IX, da LGPD somente pode embasar dados pessoais **não sensíveis** após análise documentada de finalidade, necessidade, balanceamento e salvaguardas, conforme o [guia da ANPD](https://www.gov.br/anpd/pt-br/assuntos/noticias/anpd-lanca-guia-orientativo-sobre-legitimo-interesse). Não usar medidas corporais ou inferências de saúde para analytics ou anúncios. **Decisão necessária:** inventário de dados efetivamente enviados aos provedores, avaliação de legítimo interesse e mecanismo efetivo de oposição. Se a base não se sustentar, alterar ou desativar a coleta antes de ativar a política 2.0.0.
+## 2. Encarregado de dados
 
-**Inventário técnico confirmado no código (04/11/2026):** `src/main.jsx` carrega Web Analytics e Speed Insights em todas as rotas React. `src/utils/analyticsRedaction.js` retira query string e fragmento da URL antes do envio, inclusive tokens de recuperação e identificadores de pagamento; o caminho da rota, o referenciador e metadados do dispositivo ainda podem ser tratados pelo provedor. O [inventário do Web Analytics da Vercel](https://vercel.com/docs/analytics/privacy-policy) descreve URL, rota, referenciador, horário, localização aproximada e dispositivo; o [Speed Insights](https://vercel.com/docs/speed-insights/privacy-policy) descreve rota, URL, rede, navegador, dispositivo, país e Web Vitals. O caminho de uma página pode revelar interesses ou informações de saúde pelo contexto, mesmo sem query string. Não assumir anonimização jurídica apenas pela descrição comercial do serviço.
+A [análise de pequeno porte](DISPENSA_DPO_PEQUENO_PORTE_2026-11-04.md) mostra que pessoa física pode se enquadrar e que dado sensível, sozinho, não prova alto risco. Ainda faltam fatos de porte, escala e impacto para concluir a dispensa. Manter o canal de privacidade já existente e obter decisão jurídica documentada antes de declarar uma posição pública.
 
-As métricas próprias de anúncios (`record_ad_events`) recebem identificador de usuário autenticado, ID do evento, tipo (impressão/clique), anúncio, posição e, nas comunidades, ID da comunidade. `sponsored_ad_event_marks` conserva esses dados para deduplicação até a limpeza horária após 48 horas; `sponsored_ad_daily_stats` conserva totais por dia, anúncio, posição e comunidade até a limpeza mensal após 24 meses. A oposição já é implementada por `sponsored_ad_metrics_opt_outs` e apaga os marcadores individuais. Verificar no ambiente publicado que os jobs `cleanup-sponsored-ad-marks` e `cleanup-sponsored-ad-stats` estão ativos. A base jurídica e eventual mecanismo de oposição para **Vercel Analytics/Speed Insights** continuam pendentes de avaliação específica; a oposição às métricas próprias não desativa automaticamente a coleta da Vercel.
+## 3. Transferências internacionais
 
-## Retenção por categoria
+O [mapa por fornecedor](TRANSFERENCIAS_INTERNACIONAIS_2026-11-04.md) registra países possíveis e fontes públicas. Faltam contratos realmente aceitos, subprocessadores da conta, fluxos efetivos e o mecanismo do art. 33 da LGPD para cada transferência. Não afirmar conformidade apenas porque há DPA público ou servidor em uma região.
 
-Prazos comprovados no código: deduplicação de anúncios até 48 horas; totais agregados até 24 meses; sincronização offline até 30 dias. O art. 15 do Marco Civil da Internet prevê guarda de registros de acesso a aplicações por seis meses, sob as condições legais. A implementação do provedor deve ser confirmada. Medidas corporais são eliminadas ao revogar o consentimento; o histórico mínimo de consentimento continua como evidência.
+## 4. Analytics e métricas próprias
 
-| Categoria | Situação | Decisão necessária |
+**O que o código já mostra:** `src/main.jsx` usa Vercel Analytics e Speed Insights nas rotas React. `src/utils/analyticsRedaction.js` retira query string e fragmento, inclusive tokens, antes do envio. Caminho, referenciador, horário, localização aproximada, dispositivo e desempenho ainda podem chegar ao fornecedor, conforme [Web Analytics](https://vercel.com/docs/analytics/privacy-policy) e [Speed Insights](https://vercel.com/docs/speed-insights/privacy-policy). Caminhos também podem revelar interesse em saúde por contexto; não chamar os dados de anônimos sem prova.
+
+As métricas próprias de anúncios registram conta, anúncio, tipo de evento, posição e comunidade quando aplicável. `sponsored_ad_event_marks` usa identificador temporário por até 48 horas; `sponsored_ad_daily_stats` guarda totais por até 24 meses. `sponsored_ad_metrics_opt_outs` implementa oposição às **métricas próprias**, não à Vercel. Medidas corporais e inferências de saúde não devem alimentar publicidade.
+
+**Antes da publicação:** documentar teste de legítimo interesse para cada coleta não sensível, necessidade, balanceamento, minimização e oposição efetiva. Confirmar os jobs de descarte das métricas próprias no ambiente publicado. Se a coleta opcional da Vercel não tiver base e oposição sustentáveis, **suspender somente Analytics/Speed Insights** até resolver; não eliminar logs de segurança ou métricas necessárias e lícitas. O art. 7º, IX, não cobre dados sensíveis do art. 11 da LGPD.
+
+## 5. Bases para dados que possam revelar saúde
+
+Medidas corporais têm consentimento específico e opcional; revogá-lo apaga as medidas armazenadas. Porém sexo, altura, indicadores derivados e notas de treino também podem revelar saúde conforme o contexto. Confirmar quais desses dados são usados, se há hipótese específica do art. 11 e se a implementação a respeita. Se não houver fundamento, ajustar **esse tratamento** antes de ativar a versão 2.0.0. Não retirar medidas, IMC ou o diário de treino por padrão.
+
+## 6. Retenção: prazos só com rotina real
+
+| Categoria | Regra já comprovada | Decisão operacional antes de anunciar prazo novo |
 |---|---|---|
-| Suporte e contatos comerciais | Não há prazo de descarte validado | Definir finalidade, prazo e rotina de eliminação; aplicar à tabela `commercial_leads` |
-| Operações financeiras, reembolsos e casos financeiros | Conservação necessária, sem prazo final validado | Contabilidade/jurídico definirem prazos por base legal e evento inicial |
-| Aceites, consentimentos e auditoria | Evidência mínima preservada, sem prazo final validado | Definir prazo e regra de anonimização ou eliminação compatível com defesa de direitos |
-| Logs de acesso e segurança | Prazo mínimo legal aplicável; prática real não verificada | Confirmar região, retenção e acesso nos provedores; ajustar política e controles |
+| Medidas corporais | Apagadas na revogação do consentimento; evidência mínima do evento fica sem medidas. | Confirmar esse fluxo na publicação; sem novo prazo. |
+| Marcas de anúncios e totais | Até 48 horas e 24 meses, respectivamente. | Confirmar os jobs de limpeza ativos. |
+| Sincronização offline | Até 30 dias. | Manter o limite implementado. |
+| Propostas comerciais | Sem descarte automático validado. | **Proposta interna:** 12 meses após o último contato; implementar e verificar a rotina antes de prometer ao público. |
+| Atendimentos e denúncias | Sem prazo final validado. | **Proposta interna:** 24 meses após encerramento, com retenção maior só para caso aberto ou defesa de direitos; implementar antes de anunciar. |
+| Compras, reembolsos e registros financeiros | Devem preservar obrigações legais, comprovantes e defesa de direitos. | Jurídico e contabilidade definem prazo, evento inicial e exceções; não inventar um número universal. |
+| Aceites, consentimentos e histórico jurídico | Versões e evidências mínimas são preservadas. | Definir revisão e descarte compatíveis com direitos e exigências legais, sem alterar digests históricos. |
+| Logs de acesso e segurança | O art. 15 do Marco Civil prevê seis meses para registros de acesso a aplicações nas condições legais. | Confirmar retenção real, região e acesso nos provedores; ajustar rotina se necessário. |
 
-Não publicar prazo numérico além dos já comprovados sem política operacional que o cumpra. O histórico 1.5.0 e seus digests permanecem imutáveis.
+A Política de Privacidade informa apenas os prazos já ligados a rotinas ou a exigências legais, e descreve as demais retenções por finalidade. As propostas de 12 e 24 meses **não** são promessas públicas.
+
+## 7. Condições de publicação e vendas
+
+Configurar e conferir, fora do repositório, nome civil, CPF e endereço em `/informacoes-do-fornecedor`. Conferir o fluxo manual de estornos, devolução de saldo pago e compensação de período não prestado antes de vender. Aprovar textos, datas, versões e digests em operações separadas. A versão 1.5.0 e seus aceites não podem ser alterados. Publicar documentos **não** ativa ofertas, EvoCash ou a trava do fornecedor.
