@@ -538,10 +538,13 @@ button:focus-visible {
 body:has(.workout-session-page) .pwa-install {
   display: none;
 }
-/* Telas de autenticação (login, cadastro, recuperação): o botão flutuante "Instalar app"
-   sobrepunha o CTA principal do formulário em telas estreitas. Quem está criando conta ou
-   entrando pode instalar depois, de dentro do app. */
-body:has(.public-shell) .pwa-install {
+/* Telas de autenticação (login, cadastro, recuperação, confirmação de e-mail, redefinição de
+   senha -- as únicas que renderizam .auth-layout, dentro de AuthLayout em PublicLayout.jsx):
+   o botão flutuante "Instalar app" sobrepunha o CTA principal do formulário em telas estreitas.
+   Quem está criando conta ou entrando pode instalar depois, de dentro do app. Escopo em
+   .auth-layout, não em .public-shell: este último também envolve Atendimento, documentos
+   jurídicos, perfil público de profissional e a 404, que devem continuar oferecendo o atalho. */
+body:has(.auth-layout) .pwa-install {
   display: none;
 }
 .pwa-dialog {
@@ -638,6 +641,11 @@ body:has(.pwa-offline) .app-shell {
   .pwa-update {
     bottom: calc(116px + env(safe-area-inset-bottom));
     right: 16px;
+  }
+  /* Deslocamento de 72px acima é para a barra de navegação inferior do app autenticado --
+     páginas públicas (Atendimento, jurídico, perfil de profissional, 404) não têm essa barra. */
+  body:has(.public-shell) .pwa-install {
+    bottom: calc(16px + env(safe-area-inset-bottom));
   }
   body:has(.public-shell) .pwa-update {
     bottom: calc(64px + env(safe-area-inset-bottom));
