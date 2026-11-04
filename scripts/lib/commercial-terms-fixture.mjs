@@ -5,6 +5,8 @@
 const DOCUMENTS = ['advertising-terms', 'showcase-publication-terms', 'evocash-terms']
 
 export const SYNTHETIC_COMMERCIAL_TERMS_SQL = `do $fixture$ declare d text; begin
+-- Disposable local database only: test purchases explicitly opt into the supplier gate.
+update public.economy_config set config = config || jsonb_build_object('supplierInfo', jsonb_build_object('configured', true)) where id;
 foreach d in array array[${DOCUMENTS.map((d) => `'${d}'`).join(',')}] loop
   perform private.publish_legal_document(jsonb_build_object('documentId', d, 'version', '0.0.1',
     'approved', true, 'title', 'Fixture sintética de teste (' || d || ')', 'sections', '[]'::jsonb));
