@@ -78,7 +78,10 @@ export function AuthLayout({ children, title, description, footer, variant, titl
             width={1145}
             height={1374}
             sizes="(max-width: 900px) 100vw, 50vw"
-            priority
+            // auth-layout--signup esconde .auth-intro inteira abaixo de 900px (ver app.css) --
+            // carregá-la eager/high-priority nesse variant só para ficar em display:none desperdiça
+            // banda exatamente no cadastro, o fluxo mais sensível a performance em celular.
+            priority={variant !== 'signup'}
           />
           <div className="auth-intro-content">
             <span className="public-eyebrow">

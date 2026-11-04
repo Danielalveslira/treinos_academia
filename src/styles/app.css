@@ -462,11 +462,9 @@ button:focus-visible {
 .auth-switch a {
   margin-left: 4px;
 }
-@media (max-width: 900px) {
-  .auth-layout {
-    gap: 36px;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
-  }
+.auth-session-notice {
+  padding: 8px 12px;
+  font-size: 12px;
 }
 @media (max-width: 767px) {
   .public-shell > .public-header {
@@ -493,9 +491,6 @@ button:focus-visible {
     font-size: 30px;
     letter-spacing: -1px;
     margin: 16px 0 12px;
-  }
-  .auth-benefits {
-    display: none;
   }
   .auth-form-card {
     padding: 24px;
@@ -541,6 +536,12 @@ button:focus-visible {
   z-index: 12;
 }
 body:has(.workout-session-page) .pwa-install {
+  display: none;
+}
+/* Telas de autenticação (login, cadastro, recuperação): o botão flutuante "Instalar app"
+   sobrepunha o CTA principal do formulário em telas estreitas. Quem está criando conta ou
+   entrando pode instalar depois, de dentro do app. */
+body:has(.public-shell) .pwa-install {
   display: none;
 }
 .pwa-dialog {
@@ -637,9 +638,6 @@ body:has(.pwa-offline) .app-shell {
   .pwa-update {
     bottom: calc(116px + env(safe-area-inset-bottom));
     right: 16px;
-  }
-  body:has(.public-shell) .pwa-install {
-    bottom: calc(16px + env(safe-area-inset-bottom));
   }
   body:has(.public-shell) .pwa-update {
     bottom: calc(64px + env(safe-area-inset-bottom));
