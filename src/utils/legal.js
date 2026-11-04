@@ -14,15 +14,22 @@ const approvedArchives = {
   // banco segue funcionando até a 1.5.0 ser publicada em legal_policy.
   '1.3.0': archive13,
   '1.4.0': archive14,
-  '1.5.0': { manifest, documents },
+  ...(manifest.version === '1.5.0' ? {} : { [manifest.version]: { manifest, documents } }),
+}
+// A 1.5.0 já publicada contém a identificação civil do responsável. Guardamos
+// apenas o hash do conteúdo canônico para continuar verificando esse histórico
+// quando legal/manifest.json passar a apontar para a 2.0.0.
+const archive15CanonicalDigest = '24e9d906c2657a1f95be45f7066a4a7963a199e164c9bc721b0ba3acb1b8db7b'
+
+async function sha256(value) {
+  if (!globalThis.crypto?.subtle) throw new Error('LEGAL_CRYPTO_UNAVAILABLE')
+  const bytes = new TextEncoder().encode(value)
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes)
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
 async function calculateLegalDigest(versionManifest, versionDocuments) {
-  if (!globalThis.crypto?.subtle) throw new Error('LEGAL_CRYPTO_UNAVAILABLE')
-  const payload = JSON.stringify({ manifest: versionManifest, documents: versionDocuments })
-  const bytes = new TextEncoder().encode(payload)
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes)
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+  return sha256(JSON.stringify({ manifest: versionManifest, documents: versionDocuments }))
 }
 
 function canonicalJson(value) {
@@ -36,10 +43,14 @@ function canonicalJson(value) {
   return JSON.stringify(value)
 }
 
-export function legalArchiveContentMatches(version, archive) {
+export async function legalArchiveContentMatches(version, archive) {
+  if (!archive) return false
+  if (version === '1.5.0') {
+    return (await sha256(canonicalJson({ manifest: archive.manifest, documents: archive.documents }))) === archive15CanonicalDigest
+  }
   if (!Object.hasOwn(approvedArchives, version)) return false
   const approved = approvedArchives[version]
-  if (!approved || !archive) return false
+  if (!approved) return false
   return (
     canonicalJson({ manifest: archive.manifest, documents: archive.documents }) ===
     canonicalJson({ manifest: approved.manifest, documents: approved.documents })
@@ -62,12 +73,12 @@ export async function resolveLegalBundle(policy, archive) {
     archive.manifest?.published !== true ||
     !Array.isArray(archive.documents) ||
     archive.documents.length === 0 ||
-    !legalArchiveContentMatches(version, archive)
+    !(await legalArchiveContentMatches(version, archive))
   ) {
     throw new Error('LEGAL_POLICY_INCOMPATIBLE')
   }
   const approved = approvedArchives[version]
-  if ((await calculateLegalDigest(approved.manifest, approved.documents)) !== expectedDigest) {
+  if (approved && (await calculateLegalDigest(approved.manifest, approved.documents)) !== expectedDigest) {
     throw new Error('LEGAL_POLICY_INCOMPATIBLE')
   }
   return {
