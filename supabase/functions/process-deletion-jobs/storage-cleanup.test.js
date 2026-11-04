@@ -43,6 +43,18 @@ test('normalization refuses duplicate prefix, other buckets, URLs, traversal and
   assert.equal(normalizePhotoPath(key, 'other'), null)
   assert.equal(normalizePhotoPath(`statusPhotos/${key}`, 'profile-avatars'), null)
 })
+test('storefront-media: same two-segment shape, no statusPhotos prefix quirk', () => {
+  assert.equal(normalizePhotoPath(key, 'storefront-media'), key)
+  assert.equal(normalizePhotoPath(`statusPhotos/${key}`, 'storefront-media'), null)
+})
+test('community-covers: single-segment shape, no owner folder', () => {
+  const cover = `${folder}.webp`
+  assert.equal(normalizePhotoPath(cover, 'community-covers'), cover)
+  assert.equal(normalizePhotoPath(key, 'community-covers'), null, 'two-segment key rejected')
+  assert.equal(normalizePhotoPath(cover, 'storefront-media'), null, 'single-segment key rejected by two-segment bucket')
+  assert.equal(normalizePhotoPath(`../${cover}`, 'community-covers'), null)
+  assert.equal(normalizePhotoPath(`${cover}\n`, 'community-covers'), null)
+})
 function fake(
   tasks,
   remove = async () => ({ error: null }),
