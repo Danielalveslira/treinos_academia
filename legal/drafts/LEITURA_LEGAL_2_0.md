@@ -2,7 +2,7 @@
 
 > **Minutas não vigentes.** Este arquivo facilita a revisão humana. A versão geral em vigor continua sendo a 1.5.0. Nenhum texto abaixo foi publicado ou ativado.
 
-A identificação completa do responsável será mostrada em [Informações do fornecedor](https://www.evolutus.com.br/informacoes-do-fornecedor). O canal de contato é `dnllira1@gmail.com` e o [atendimento](https://www.evolutus.com.br/atendimento).
+A identificação completa do responsável está em [Informações do fornecedor](https://www.evolutus.com.br/informacoes-do-fornecedor). O canal de contato é `dnllira1@gmail.com` e o [atendimento](https://www.evolutus.com.br/atendimento).
 
 ## Índice
 
@@ -202,12 +202,12 @@ Pedimos apenas o necessário para as funções usadas. A tabela separa dados obr
 - Supabase opera login, banco, arquivos e funções. Vercel hospeda o site e recebe métricas de navegação e desempenho. Resend envia e-mails transacionais de compras. InfinitePay processa pagamentos; não recebemos o número completo do cartão.
 - Se você ativar push, o navegador e o sistema podem usar serviços de Google, Apple, Mozilla ou Microsoft para entregar notificações. Consultas públicas ao catálogo externo de exercícios não enviam os dados pessoais da conta.
 - Autoridades podem receber dados por obrigação legal ou ordem judicial. Não vendemos dados pessoais.
-- Alguns fornecedores podem tratar dados fora do Brasil, inclusive nos Estados Unidos. Você pode pedir detalhes sobre esses fluxos e suas garantias pelo canal de privacidade.
+- O Supabase armazena dados em uma região dos Estados Unidos. Vercel e outros fornecedores também podem tratar dados fora do Brasil. Peça informações sobre destinos e mecanismos de proteção pelo canal de privacidade.
 
 ### 6. Anúncios e métricas
 
 - Anúncios aparecem como “Patrocinado” e rodam sem usar seu histórico ou perfil de saúde.
-- Contamos visualizações e cliques por anúncio, posição, comunidade e dia. Um identificador ligado à conta evita duplicações por até 48 horas; totais agregados ficam por até 24 meses.
+- Contamos visualizações e cliques por anúncio, posição, comunidade e dia. Um identificador ligado à conta evita duplicações e recebe validade de 48 horas; os totais agregados têm descarte programado após 24 meses.
 - Contas sem idade confirmada ou identificadas como de menores não entram nessa medição. Você pode se opor às métricas próprias de anúncios pelo atendimento.
 - Vercel Analytics e Speed Insights medem navegação e desempenho no app e nas páginas públicas. Removemos parâmetros e fragmentos da URL antes do envio; caminho da página, referenciador, horário, dispositivo e desempenho ainda podem ser tratados. Isso não garante anonimato.
 
@@ -215,7 +215,7 @@ Pedimos apenas o necessário para as funções usadas. A tabela separa dados obr
 
 - Dados operacionais da conta são mantidos enquanto ela existir e removidos pelo fluxo de exclusão. Medidas corporais são apagadas quando você retira a autorização, mesmo sem excluir a conta.
 - Aceites, compras, contratações, reembolsos, atendimentos, moderação e segurança podem continuar pelo tempo necessário a deveres legais ou defesa de direitos, com acesso restrito. Pedidos de exclusão são analisados pelo canal de privacidade.
-- Registros temporários de anúncios duram até 48 horas; totais agregados, até 24 meses; dados de sincronização offline, até 30 dias. Registros de acesso seguem as exigências legais aplicáveis, incluindo o mínimo de seis meses do Marco Civil quando cabível.
+- Marcadores de anúncios recebem validade de 48 horas e os totais agregados têm descarte programado após 24 meses; dados de sincronização offline duram até 30 dias. Registros de acesso seguem as exigências legais aplicáveis, incluindo o mínimo de seis meses do Marco Civil quando cabível.
 
 ### 8. Suas escolhas e direitos
 
