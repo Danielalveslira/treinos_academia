@@ -122,6 +122,16 @@ test('digest, archive version, policy publication, and archive content must all 
   )
 })
 
+test('a 1.5.0 permanece íntegra mesmo quando o banco reordena as chaves do arquivo histórico', async () => {
+  const archive = reverseKeys(newArchive)
+  const policy = { version: '1.5.0', digest: APPROVED_LEGAL_DIGESTS['1.5.0'], published: true }
+  assert.equal((await resolveLegalBundle(policy, archive)).manifest.version, '1.5.0')
+  await assert.rejects(
+    resolveLegalBundle(policy, { ...archive, documents: [{ ...archive.documents[0], title: 'Alterado' }, ...archive.documents.slice(1)] }),
+    /LEGAL_POLICY_INCOMPATIBLE/
+  )
+})
+
 test('registration requires the active published bundle and only the contractual acceptance', async () => {
   const bundle = await active('1.3.0')
   assert.equal(canSubmitLegalRegistration({ bundle, loading: false, confirmed: { accepted: true, healthDataConsent: true } }), true)

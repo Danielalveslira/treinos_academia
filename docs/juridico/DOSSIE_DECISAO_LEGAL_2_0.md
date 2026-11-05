@@ -23,12 +23,12 @@
 | Tratamento | Qualificação e base | Controle real / condição |
 |---|---|---|
 | Peso, gordura, circunferências, massa e observação do check-in corporal | Podem revelar saúde: consentimento específico e opcional, LGPD art. 11, I. | Trigger exige consentimento; revogação apaga `body_measurements`. |
-| Altura e IMC/cintura-altura | Altura isolada pode ser dado comum; combinada com peso revela saúde. Por prudência, mesma base do art. 11, I. | Migration **00009 ainda não aplicada** exige consentimento para nova altura e a apaga na revogação. Indicadores são calculados das medidas; não formam outro banco de saúde. |
+| Altura e IMC/cintura-altura | Altura isolada pode ser dado comum; combinada com peso revela saúde. Por prudência, mesma base do art. 11, I. | Migration **00009 aplicada em produção** exige consentimento para nova altura e a apaga na revogação. Indicadores são calculados das medidas; não formam outro banco de saúde. |
 | Sexo escolhido, inclusive “não informar” | Dado comum neste cadastro e personalização de mensagem: execução do contrato, art. 7º, V. Não inferir condição clínica. | Campo não é enviado a publicidade. A inferência de saúde em novo uso exigirá outra análise. |
 | Fichas, séries, cargas e histórico | Diário de treino comum: execução do contrato, art. 7º, V. | Privados por padrão; não são usados para anúncios. Se um uso novo produzir perfil de saúde, aplicar art. 11 antes dele. |
 | Observações livres de treino | Feitas para técnica/rotina: art. 7º, V. Texto clínico pode se tornar sensível. | Telas passam a pedir que não sejam inseridos diagnósticos ou dados médicos. Isso não impede tecnicamente toda entrada clínica. Titular pode pedir correção/exclusão. |
 
-A [LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm) não permite usar legítimo interesse do art. 7º, IX, para dados sensíveis. **Validação jurídica específica:** decidir se o aviso e a finalidade restrita das observações livres bastam para dados clínicos inseridos espontaneamente; se não, restringir esse tipo de texto ou solicitar consentimento próprio, sem tornar o cadastro médico. Não publicar uma promessa de exclusão da altura antes de aplicar a migration 00009.
+A [LGPD](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm) não permite usar legítimo interesse do art. 7º, IX, para dados sensíveis. **Validação jurídica específica:** decidir se o aviso e a finalidade restrita das observações livres bastam para dados clínicos inseridos espontaneamente; se não, restringir esse tipo de texto ou solicitar consentimento próprio, sem tornar o cadastro médico. A exclusão da altura foi verificada em transação reversível após aplicar 00009.
 
 ## 4. Analytics e métricas de anúncios
 
@@ -59,7 +59,7 @@ A [Resolução CD/ANPD nº 19/2024](https://www.gov.br/anpd/pt-br/acesso-a-infor
 
 | Categoria | Finalidade e regra operacional | Estado |
 |---|---|---|
-| Medidas e altura | Enquanto consentimento ativo; revogação elimina medidas e, após 00009, altura. Evidência mínima de consentimento permanece. | Medidas implementadas; altura depende de 00009. |
+| Medidas e altura | Enquanto consentimento ativo; revogação elimina medidas e altura. Evidência mínima de consentimento permanece. | Implementado e verificado após 00009. |
 | Marcas/totais de anúncios | Deduplicação por até 48 h; totais de campanha por até 24 meses. | Jobs no código; confirmar agendamento remoto. |
 | Sincronização offline | Janela de até 30 dias. | Implementada no código. |
 | Propostas comerciais | Responder e negociar. Proposta: eliminar 12 meses após encerramento da conversa, salvo disputa ou obrigação concreta. | `commercial_leads` não tem data de encerramento nem descarte; prazo é **interno e não anunciado** até implementar rotina segura. |
