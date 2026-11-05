@@ -1,0 +1,81 @@
+{
+  "approved": true,
+  "date": "2026-11-05",
+  "documentId": "evocash-terms",
+  "version": "1.0.0",
+  "title": "Condições do EvoCash",
+  "description": "Compra, uso e devolução de créditos EvoCash, em linguagem direta.",
+  "changes": [
+    "Primeira versão das Condições do EvoCash."
+  ],
+  "summary": [
+    "EvoCash é crédito pré-pago para serviços disponíveis dentro do Evolutus. Você escolhe a quantidade e vê o total em reais antes de pagar.",
+    "Não é investimento, não rende juros, não pode ser sacado nem transferido a outra conta. EvoCoins são diferentes e não são vendidos.",
+    "Compras, uso, cancelamentos e devoluções ficam registrados. Reembolsos em dinheiro, quando devidos, passam por análise manual.",
+    "Só pessoas com 18 anos completos ou mais podem comprar. Serviços desativados não estão à venda."
+  ],
+  "sections": [
+    {
+      "id": "natureza",
+      "title": "1. O que você compra",
+      "items": [
+        "EvoCash é crédito pré-pago para contratar anúncios, impulsionamentos, vitrines e outros serviços que estiverem disponíveis no Evolutus.",
+        "Não é moeda nem investimento, não rende juros e não pode ser sacado ou enviado a outra conta.",
+        "EvoCoins reconhecem participação e reputação; não são comprados e não viram EvoCash."
+      ]
+    },
+    {
+      "id": "compra",
+      "title": "2. Preço e pagamento",
+      "items": [
+        "Você escolhe uma quantidade dentro dos limites exibidos. A cotação mostra preço por unidade, total em reais e validade. Se ela vencer, peça outra; o preço pode mudar.",
+        "O total inclui as cobranças do Evolutus pela compra. Não cobramos taxa administrativa adicional fora da cotação; encargos de terceiros, se houver, devem aparecer antes da confirmação.",
+        "Antes do checkout, mostramos estas Condições e registramos a versão aceita, a quantidade e o valor. O pagamento é processado pela InfinitePay; os créditos entram no saldo após a confirmação.",
+        "A tela de compra informa os limites diários e totais por conta. Recursos comerciais desativados não podem ser comprados."
+      ]
+    },
+    {
+      "id": "uso",
+      "title": "3. Uso e histórico",
+      "items": [
+        "Ao confirmar um serviço, debitamos o valor mostrado na cotação daquela contratação.",
+        "Compras, débitos e reembolsos aparecem na área EvoCash. Durante um pedido de reembolso, créditos podem ficar reservados; reserva não é consumo."
+      ]
+    },
+    {
+      "id": "restituicao",
+      "title": "4. Cancelar e pedir devolução",
+      "items": [
+        "A Política de Cancelamento, Arrependimento e Reembolsos explica os direitos aplicáveis. O comprovante guarda a versão aceita na compra.",
+        "Quando houver devolução em dinheiro, analisamos o pedido e usamos o canal oficial da InfinitePay para o pagamento original. O aplicativo não faz estorno automático.",
+        "Créditos já usados em serviços prestados entram na análise, sem afastar direitos garantidos por lei."
+      ]
+    },
+    {
+      "id": "restricoes",
+      "title": "5. Quem pode usar",
+      "items": [
+        "A compra é exclusiva para contas de maiores de 18 anos. Contas suspensas, restritas ou em exclusão não fazem novas compras, mas conservam acesso a comprovantes e pedidos de reembolso.",
+        "Suspeita de fraude pode bloquear o saldo envolvido durante a apuração. Registramos o motivo e oferecemos recurso pelo atendimento."
+      ]
+    },
+    {
+      "id": "encerramento",
+      "title": "6. Saldo ao encerrar a conta",
+      "items": [
+        "Ao encerrar a conta ou se o EvoCash for descontinuado, peça pelo atendimento a devolução do valor pago por créditos ainda não consumidos. A análise considera cada compra, uso e reembolso; saldo pago não é confiscado.",
+        "Créditos promocionais ou gratuitos não viram dinheiro automaticamente. Seus direitos legais e o acesso a comprovantes e protocolos permanecem."
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "label": "Código de Defesa do Consumidor — Lei nº 8.078/1990",
+      "href": "https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm"
+    },
+    {
+      "label": "Decreto nº 7.962/2013 (comércio eletrônico)",
+      "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm"
+    }
+  ]
+}

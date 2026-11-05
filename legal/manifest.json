@@ -1,12 +1,14 @@
 {
-  "version": "1.5.0",
-  "date": "2026-10-09",
+  "version": "2.0.0",
+  "date": "2026-11-05",
   "published": true,
-  "controllerName": "Wellington Daniel Alves de Lira",
+  "controllerName": "Evolutus — identificação do responsável em /informacoes-do-fornecedor",
   "contactEmail": "dnllira1@gmail.com",
-  "minimumAge": 12,
+  "minimumAge": 18,
   "changes": [
-    "Política de Privacidade: explica a contagem de visualizações e cliques em anúncios patrocinados (totais por anúncio, posição, comunidade e dia; registro temporário de até 48 horas ligado à conta), a base legal (legítimo interesse), o direito de oposição e que menores de 18 anos ficam fora dessa contagem.",
-    "Política de Privacidade: corrige os provedores (Supabase e Vercel, em vez de Google Firebase) e passa a citar a InfinitePay, as notificações push e os prazos de retenção dos dados técnicos."
+    "Termos de Uso e Regras da Comunidade em linguagem direta, com idade mínima de 18 anos, moderação e recursos claros.",
+    "Política de Privacidade com dados, finalidades, bases legais, visibilidade, direitos, retenção e provedores em linguagem simples.",
+    "Medidas corporais continuam opcionais; a revogação apaga as medidas registradas e a altura.",
+    "EvoCash, EvoCoins, publicidade, vitrines e reembolsos remetem às condições específicas; nenhuma venda é ativada por estes textos."
   ]
 }

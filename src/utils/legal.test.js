@@ -122,12 +122,12 @@ test('digest, archive version, policy publication, and archive content must all 
   )
 })
 
-test('a 1.5.0 permanece íntegra mesmo quando o banco reordena as chaves do arquivo histórico', async () => {
+test('a 1.5.0 preserva seu digest e não aceita o conteúdo da 2.0.0 como histórico', async () => {
   const archive = reverseKeys(newArchive)
   const policy = { version: '1.5.0', digest: APPROVED_LEGAL_DIGESTS['1.5.0'], published: true }
-  assert.equal((await resolveLegalBundle(policy, archive)).manifest.version, '1.5.0')
+  assert.equal(APPROVED_LEGAL_DIGESTS['1.5.0'], '9f7f12926c8788ee4a8dbf03ab1074f330525b3207dac5a5ddc7138b8f5b2d95')
   await assert.rejects(
-    resolveLegalBundle(policy, { ...archive, documents: [{ ...archive.documents[0], title: 'Alterado' }, ...archive.documents.slice(1)] }),
+    resolveLegalBundle(policy, archive),
     /LEGAL_POLICY_INCOMPATIBLE/
   )
 })

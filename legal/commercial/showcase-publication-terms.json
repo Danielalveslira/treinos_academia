@@ -1,0 +1,101 @@
+{
+  "approved": true,
+  "date": "2026-11-05",
+  "documentId": "showcase-publication-terms",
+  "version": "2.0.0",
+  "title": "Termos das Vitrines",
+  "description": "Publicação, duração e responsabilidades das vitrines do Evolutus.",
+  "changes": [
+    "Substitui as versões 1.x: a vitrine passa a ser contratada por período em EvoCash, publicada só depois de aprovada e retirada ao fim do período contratado.",
+    "Contratação registrada com aceite da versão exata e das condições."
+  ],
+  "summary": [
+    "A vitrine mostra profissionais, espaços e produtos no diretório público; contatos e vendas externas ocorrem entre os envolvidos.",
+    "A publicação depende de aprovação e de período ativo, contratado em EvoCash. Pagar não garante aprovação.",
+    "Ao vencer, a vitrine sai do ar. Não há renovação automática; você pode contratar novo período.",
+    "Recusa ou período não prestado são analisados para devolução ou compensação, sem afastar direitos legais."
+  ],
+  "sections": [
+    {
+      "id": "finalidade",
+      "title": "1. O que é uma vitrine",
+      "items": [
+        "A vitrine apresenta profissionais, espaços de prática física e produtos no diretório público do Evolutus, com canais externos de contato.",
+        "Se um visitante entrar em contato ou comprar fora da plataforma, a negociação e o pagamento acontecem entre as partes. O Evolutus não vende esses produtos ou serviços nem recebe esse pagamento."
+      ]
+    },
+    {
+      "id": "contratacao",
+      "title": "2. Preço e período",
+      "items": [
+        "Você contrata um número inteiro de dias. Antes de confirmar, mostramos preço diário em EvoCash para o tipo de vitrine, duração, limites e total.",
+        "Registramos a versão destes Termos aceita com as condições da contratação. Não há renovação automática; novo período contratado começa ao fim do período vigente."
+      ]
+    },
+    {
+      "id": "aprovacao",
+      "title": "3. Cadastro e aprovação",
+      "items": [
+        "Cadastre informações e produtos corretos. A vitrine só aparece após aprovação e enquanto o período contratado estiver ativo. Pagar não garante aprovação.",
+        "Alterações exigem nova análise; até lá, a última versão aprovada pode continuar visível.",
+        "Se a vitrine for recusada antes de ir ao ar, o serviço não prestado é devolvido em EvoCash. A recusa deve ter motivo e pode ser contestada; restituição em dinheiro continua possível quando a lei exigir."
+      ]
+    },
+    {
+      "id": "dados-publicos",
+      "title": "4. O que fica público",
+      "items": [
+        "Visitantes com ou sem conta podem ver nome profissional ou comercial, categoria, especialidades, cidade e UF, apresentação, atendimento, contatos externos, imagens e produtos aprovados.",
+        "Avatar de profissional só é usado com autorização específica do titular."
+      ]
+    },
+    {
+      "id": "responsabilidade",
+      "title": "5. Responsabilidade por informações",
+      "items": [
+        "O titular deve ter autorização para divulgar textos, imagens, marcas, nomes e contatos, e mantê-los corretos e lícitos.",
+        "Não são aceitas informações enganosas, identidade de terceiros, promessas falsas ou conteúdo ilícito. A aprovação da vitrine não certifica formação, registro profissional, qualidade ou resultados."
+      ]
+    },
+    {
+      "id": "expiracao",
+      "title": "6. Expiração, exclusão e reembolso",
+      "items": [
+        "Ao vencer o período, a vitrine sai do diretório. Seus dados operacionais podem ficar guardados para uma nova contratação até você excluí-la.",
+        "Podemos suspender a vitrine por irregularidade, denúncia procedente, perda das condições de divulgação ou ordem legal. Registramos o motivo e oferecemos recurso; pagar não remove a suspensão.",
+        "Dias não prestados por falha do Evolutus ou suspensão sem culpa do titular podem gerar extensão ou devolução proporcional em EvoCash, após pedido e análise. Não há compensação automática nem perda dos direitos a restituição em dinheiro.",
+        "Excluir a vitrine remove dados e mídias operacionais. Comprovantes, aceites e decisões de moderação podem continuar quando necessários por lei ou para defesa de direitos.",
+        "Arrependimento e demais reembolsos seguem a Política de Cancelamento, Arrependimento e Reembolsos registrada na contratação."
+      ]
+    },
+    {
+      "id": "menores",
+      "title": "7. Quem pode contratar",
+      "items": [
+        "A contratação é exclusiva para contas de pessoas com 18 anos completos ou mais."
+      ]
+    },
+    {
+      "id": "versoes",
+      "title": "8. Mudanças destes Termos",
+      "items": [
+        "Uma versão nova vale para contratações novas. A anterior continua vinculada ao comprovante de quem a aceitou.",
+        "Uma vitrine aprovada não sai do ar apenas porque estes Termos mudaram."
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "label": "Código de Defesa do Consumidor — Lei nº 8.078/1990",
+      "href": "https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm"
+    },
+    {
+      "label": "Decreto nº 7.962/2013 (comércio eletrônico)",
+      "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm"
+    },
+    {
+      "label": "LGPD — Lei nº 13.709/2018",
+      "href": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm"
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "approved": true,
+  "date": "2026-11-05",
+  "documentId": "cancellation-refund-policy",
+  "version": "1.0.0",
+  "title": "Política de Cancelamento, Arrependimento e Reembolsos",
+  "description": "Como cancelar, exercer o arrependimento e acompanhar reembolsos.",
+  "changes": [
+    "Primeira versão pública. Substitui a minuta interna draft-1 após aprovação."
+  ],
+  "summary": [
+    "Você pode pedir arrependimento em até 7 dias corridos quando o art. 49 do Código de Defesa do Consumidor se aplicar.",
+    "Cobrança indevida, falha ou serviço não prestado também podem gerar cancelamento e devolução conforme a lei.",
+    "O pedido recebe protocolo e decisão fundamentada. Você pode acompanhar e contestar pelo aplicativo.",
+    "A análise e os estornos são manuais; não prometemos devolução automática."
+  ],
+  "sections": [
+    {
+      "id": "arrependimento",
+      "title": "1. Arrependimento em 7 dias",
+      "items": [
+        "Esta política cobre compras de EvoCash e contratações de anúncios, impulsionamentos e vitrines no Evolutus.",
+        "Em compras feitas pelo aplicativo, o art. 49 do Código de Defesa do Consumidor garante até 7 dias corridos para desistir quando aplicável. O prazo começa na assinatura ou no recebimento do produto ou serviço, conforme o caso. Dúvidas razoáveis sobre esse marco são interpretadas a favor do consumidor.",
+        "Você não precisa explicar o motivo. Usar parte dos créditos ou iniciar o serviço nesse período não elimina automaticamente o direito. Se houver consumo ou entrega parcial, analisamos o caso sem desconto contrário à lei."
+      ]
+    },
+    {
+      "id": "outros",
+      "title": "2. Outros motivos para pedir",
+      "items": [
+        "Cobrança duplicada ou indevida, créditos não liberados, falha, suspensão indevida e oferta não cumprida podem ser questionados mesmo depois dos 7 dias, observados os prazos legais.",
+        "Conte o que ocorreu e envie o que tiver de comprovante para facilitar a análise."
+      ]
+    },
+    {
+      "id": "como",
+      "title": "3. Como pedir e acompanhar",
+      "items": [
+        "Abra o pedido na compra ou contratação correspondente no aplicativo. Você recebe protocolo e data de recebimento e acompanha mensagens e decisão ali mesmo.",
+        "Se o aplicativo estiver indisponível, use /atendimento e informe a tentativa. Uma falha do nosso canal não prejudica seu direito.",
+        "Nunca pedimos sua senha, número completo do cartão ou dados bancários pelo atendimento."
+      ]
+    },
+    {
+      "id": "analise",
+      "title": "4. Análise e recurso",
+      "items": [
+        "Analisamos o pedido manualmente e explicamos a decisão. Você pode contestar uma negativa no mesmo protocolo.",
+        "Ser pessoa física, profissional ou empresa não exclui automaticamente a proteção do Código de Defesa do Consumidor; o caso é avaliado conforme a lei.",
+        "Durante a análise de EvoCash, créditos disponíveis podem ficar reservados. Reserva não é consumo."
+      ]
+    },
+    {
+      "id": "devolucao",
+      "title": "5. Como calculamos e devolvemos",
+      "items": [
+        "Quando a devolução em reais for devida, usamos o canal oficial da InfinitePay para o pagamento original. O prazo de crédito depende do meio de pagamento e do emissor; não há estorno automático pelo aplicativo.",
+        "Serviços pagos em EvoCash e não prestados podem ser devolvidos em EvoCash ou compensados pelo período, após análise. Isso não afasta restituição em dinheiro quando a lei exigir.",
+        "Saldo de EvoCash pago e não consumido é apurado por compra, uso e reembolso quando a conta termina ou o produto é descontinuado. Não cobramos taxa pelo exercício regular do arrependimento.",
+        "Fora do arrependimento, falha ou entrega parcial pode gerar devolução proporcional ao que não foi prestado, sem retirar outros direitos legais."
+      ]
+    },
+    {
+      "id": "comprovantes",
+      "title": "6. Comprovantes e histórico",
+      "items": [
+        "Comprovantes, condições aceitas e protocolos continuam acessíveis pelos canais de atendimento mesmo após uma nova versão dos documentos ou o fim da contratação.",
+        "Você pode consultar e contestar seu caso mesmo sem aceitar uma versão nova dos Termos de Uso."
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "label": "Código de Defesa do Consumidor — Lei nº 8.078/1990",
+      "href": "https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm"
+    },
+    {
+      "label": "Decreto nº 7.962/2013 (comércio eletrônico)",
+      "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm"
+    }
+  ]
+}
