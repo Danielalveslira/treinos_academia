@@ -2,7 +2,7 @@ import { BellIcon } from '@primer/octicons-react'
 import { Box, Button, Flash, Label, Text } from '@primer/react'
 import { useDevicePush } from '../hooks/useDevicePush'
 
-// Um único controle para TODAS as categorias de Push, por dispositivo. Não há switches por
+// Um único controle para TODAS as categorias de Push da conta. Não há switches por
 // categoria nem botão de teste: a confirmação é a mensagem de boas-vindas enviada pelo servidor.
 // A Central de Notificações funciona independentemente deste controle.
 const STATES = {
@@ -26,9 +26,12 @@ const HELP = {
 
 export function PushNotificationSettings({ userId = null, compact = false } = {}) {
   const push = useDevicePush(userId)
-  const status = STATES[push.state] || STATES.inactive
-  const canAct =
-    push.allowed && !push.busy && ['active', 'inactive', 'error'].includes(push.state)
+  const accountEnabled = push.device?.status?.enabled === true
+  const status =
+    accountEnabled && !push.active
+      ? { label: 'Ativo na conta; este dispositivo não está inscrito', variant: 'attention' }
+      : STATES[push.state] || STATES.inactive
+  const canAct = push.allowed && !push.busy && ['active', 'inactive', 'error'].includes(push.state)
   // Mensagem do último clique substitui a ajuda genérica do estado (nunca duas explicações juntas).
   const help = push.message ? null : HELP[push.state]
   return (
@@ -70,13 +73,13 @@ export function PushNotificationSettings({ userId = null, compact = false } = {}
         <Box>
           <Button
             type="button"
-            variant={push.active ? 'default' : 'primary'}
-            onClick={push.active ? push.disable : push.enable}
+            variant={accountEnabled ? 'default' : 'primary'}
+            onClick={accountEnabled ? push.disable : push.enable}
             loading={push.busy}
             disabled={!canAct}
             block
           >
-            {push.active ? 'Desativar neste dispositivo' : 'Ativar notificações'}
+            {accountEnabled ? 'Desativar notificações Push' : 'Ativar notificações Push'}
           </Button>
         </Box>
       </Box>

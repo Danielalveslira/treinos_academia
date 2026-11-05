@@ -354,7 +354,8 @@ export function enablePushNotifications({ userId = null } = {}) {
     const applicationServerKey = decodeVapidPublicKey(import.meta.env.VITE_VAPID_PUBLIC_KEY)
     let subscription = await step('subscribe', () => registration.pushManager.getSubscription())
     if (subscription && !sameApplicationServerKey(subscription, applicationServerKey)) {
-      await step('subscribe', () => subscription.unsubscribe())
+      const removed = await step('subscribe', () => subscription.unsubscribe())
+      if (!removed) throw stageError('subscribe', new Error('OLD_SUBSCRIPTION_NOT_REMOVED'))
       subscription = null
     }
     await assertIdentity(userId, generation)
@@ -428,12 +429,10 @@ export function readPushDevice({ userId = null, refresh = false } = {}) {
     const existing = await registration.pushManager.getSubscription()
     const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
     if (!existing && !publicKey) return { ...local, status: null }
-    if (
-      existing &&
-      publicKey &&
-      !sameApplicationServerKey(existing, decodeVapidPublicKey(publicKey))
+    const outdated = Boolean(
+      existing && publicKey && !sameApplicationServerKey(existing, decodeVapidPublicKey(publicKey))
     )
-      local.endpoint = null
+    if (outdated) local.endpoint = null
     let status = await getPushStatus(local.endpoint)
     await assertIdentity(userId, generation)
     if (status?.enabled === true && status.registrationAllowed !== false && !status.thisDevice) {
@@ -441,13 +440,17 @@ export function readPushDevice({ userId = null, refresh = false } = {}) {
       if (registration) {
         const key = import.meta.env.VITE_VAPID_PUBLIC_KEY
         let subscription = await registration.pushManager.getSubscription()
+        let outdatedEndpoint = null
         if (
+          outdated &&
           subscription &&
-          key &&
           !sameApplicationServerKey(subscription, decodeVapidPublicKey(key))
         ) {
-          // Rotation needs the explicit activation flow; never treat an incompatible key as active.
-          return { ...local, endpoint: null, status }
+          if (status.registrationAllowed !== true) return { ...local, endpoint: null, status }
+          outdatedEndpoint = subscription.endpoint
+          const removed = await step('subscribe', () => subscription.unsubscribe())
+          if (!removed) return { ...local, endpoint: null, status }
+          subscription = null
         }
         await assertIdentity(userId, generation)
         if (!subscription && key) {
@@ -469,6 +472,17 @@ export function readPushDevice({ userId = null, refresh = false } = {}) {
           local.endpoint = subscription.endpoint
           status = await getPushStatus(local.endpoint)
           await assertIdentity(userId, generation)
+          if (
+            outdatedEndpoint &&
+            outdatedEndpoint !== local.endpoint &&
+            status?.enabled === true &&
+            status.thisDevice === true
+          ) {
+            const { error } = await pushRpc('unregister_push_subscription', {
+              p_endpoint: outdatedEndpoint,
+            })
+            if (error) throw error
+          }
         }
       }
     }
@@ -508,7 +522,8 @@ export function classifyPushError(error) {
   if (code === 'vapid-not-configured') return 'config'
   if (code === 'push-context-changed') return 'context'
   if (code === 'offline' || code === 'push-network-timeout') return 'network'
-  if (code === 'service-worker-unavailable' || error?.stage === 'service-worker') return 'service-worker'
+  if (code === 'service-worker-unavailable' || error?.stage === 'service-worker')
+    return 'service-worker'
   if (error?.stage === 'permission') return name === 'NotAllowedError' ? 'blocked' : 'unknown'
   if (error?.stage === 'subscribe') return 'push-service'
   if (/failed to fetch|networkerror|load failed|network request failed/i.test(message))
@@ -557,19 +572,23 @@ export function pushErrorMessage(error) {
   }
 }
 
-async function revokePush({ allDevices, userId, generation }) {
+async function revokePush({ allDevices, explicit, userId, generation }) {
   await assertIdentity(userId, generation)
-  const registration = await currentRegistration()
+  const registration = explicit
+    ? await currentRegistration().catch(() => null)
+    : await currentRegistration()
   const subscription = registration ? await registration.pushManager.getSubscription() : null
   // Sem subscription local não há o que revogar neste dispositivo: nunca cair em
   // `p_endpoint = null`, que revogaria todos os dispositivos da conta.
-  if (!allDevices && !subscription) return
+  if (!allDevices && !explicit && !subscription) return
   await assertIdentity(userId, generation)
   let failure = null
   try {
-    const { error } = await pushRpc('unregister_push_subscription', {
-      p_endpoint: allDevices ? null : subscription.endpoint,
-    })
+    const { error } = explicit
+      ? await pushRpc('disable_my_push', {})
+      : await pushRpc('unregister_push_subscription', {
+          p_endpoint: allDevices ? null : subscription.endpoint,
+        })
     if (error) failure = error
   } catch (error) {
     failure = error
@@ -596,7 +615,7 @@ export function disablePushNotifications({
   changed()
   const generation = revision
   return withTimeout(
-    enqueue(() => revokePush({ allDevices, userId, generation })),
+    enqueue(() => revokePush({ allDevices, explicit, userId, generation })),
     REVOKE_TIMEOUT_MS,
     'push-revoke-timeout'
   )
