@@ -411,7 +411,7 @@ test('idade mínima e data futura são recusadas na etapa 2', async () => {
   young.setFullYear(young.getFullYear() - 10)
   await view.change('birthDate', young.toISOString().slice(0, 10))
   await view.click('Continuar')
-  assert.ok(view.errors().some((e) => /pelo menos 18 anos/.test(e)))
+  assert.ok(view.errors().some((e) => /pelo menos 16 anos/.test(e)))
   assert.equal(view.title(), 'Conte um pouco sobre você')
   assert.equal(count('registerUser'), 0, 'não cria identidade para pessoa menor de idade')
 })
@@ -608,7 +608,7 @@ test('MINIMUM_AGE do servidor (relógio do aparelho adiantado/API) volta à etap
     console.error = original
   }
   assert.equal(view.title(), 'Conte um pouco sobre você')
-  assert.ok(view.errors().includes('É necessário ter pelo menos 18 anos para se cadastrar.'))
+  assert.ok(view.errors().includes('É necessário ter pelo menos 16 anos para se cadastrar.'))
   assert.equal(count('accept'), 0, 'nenhum aceite jurídico é tentado')
   assert.equal(
     calls.some((c) => c[0] === 'navigate'),
@@ -617,14 +617,14 @@ test('MINIMUM_AGE do servidor (relógio do aparelho adiantado/API) volta à etap
   )
 })
 
-test('menor de 18 anos é recusado na etapa 2, antes de qualquer criação de identidade', async () => {
+test('menor de 16 anos é recusado na etapa 2, antes de qualquer criação de identidade', async () => {
   const view = await mount()
   await fillStep1(view)
   await view.click('Continuar')
-  const minor = new Date(Date.now() - 17 * 365.25 * 86_400_000).toISOString().slice(0, 10)
+  const minor = new Date(Date.now() - 15 * 365.25 * 86_400_000).toISOString().slice(0, 10)
   await view.change('birthDate', minor)
   await view.click('Continuar')
-  assert.ok(view.errors().includes('É necessário ter pelo menos 18 anos para se cadastrar.'))
+  assert.ok(view.errors().includes('É necessário ter pelo menos 16 anos para se cadastrar.'))
   assert.equal(view.title(), 'Conte um pouco sobre você')
   assert.equal(count('registerUser'), 0)
   assert.equal(count('available'), 1, 'só a checagem do @ da etapa 1 foi feita')

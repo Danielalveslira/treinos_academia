@@ -126,7 +126,7 @@ export function LegalGate({ children }) {
         // Data recém-informada: o erro fica no campo. Conta antiga já com data (preexistente de
         // menor): aviso geral; atendimento, privacidade e reembolsos seguem disponíveis abaixo.
         if (needsBirthDate) setBirthDateError(MINIMUM_AGE_MESSAGE)
-        else setError('O Evolutus é exclusivo para pessoas com 18 anos completos ou mais.')
+        else setError(`O Evolutus é exclusivo para pessoas com ${registrationMinimumAge(legalBundle.manifest)} anos completos ou mais.`)
         return
       }
       if (isLegalPolicyChangedError(err) || err?.message === 'LEGAL_POLICY_INCOMPATIBLE') {

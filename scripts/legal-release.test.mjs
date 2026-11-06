@@ -43,24 +43,34 @@ test('minutas jurídicas do repositório nunca estão marcadas como aprovadas ou
   }
 })
 
-test('minutas exigem 18+, usam a marca Evolutus e não prometem verificação de identidade', () => {
+test('minutas exigem 16+, usam a marca Evolutus e não prometem verificação de identidade', () => {
   const dir = new URL('../legal/drafts/', import.meta.url)
-  const draftManifest = read('../legal/drafts/general-2.0.0.manifest.json')
-  assert.equal(draftManifest.minimumAge, 18)
-  assert.equal(draftManifest.published, false)
-  assert.equal(draftManifest.date, 'AAAA-MM-DD', 'data efetiva só após aprovação')
+  // 2.0.0 já foi publicada (ver legal/manifest.json); a minuta na pasta drafts/ é mantida como
+  // registro histórico e continua com published:false/date placeholder propositalmente.
+  const draftManifest20 = read('../legal/drafts/general-2.0.0.manifest.json')
+  assert.equal(draftManifest20.minimumAge, 18)
+  assert.equal(draftManifest20.published, false)
+  assert.equal(draftManifest20.date, 'AAAA-MM-DD', 'data efetiva só após aprovação')
+  // 2.1.0 é a minuta em revisão: idade mínima de cadastro cai para 16 (compras/contratações
+  // continuam 18+, ver legal/commercial/*).
+  const draftManifest21 = read('../legal/drafts/general-2.1.0.manifest.json')
+  assert.equal(draftManifest21.minimumAge, 16)
+  assert.equal(draftManifest21.published, false)
+  assert.equal(draftManifest21.date, 'AAAA-MM-DD', 'data efetiva só após aprovação')
   const files = readdirSync(dir).filter((name) => name.endsWith('.json') && !name.endsWith('.manifest.json'))
   for (const name of files) {
     const text = readFileSync(new URL(name, dir), 'utf8')
     assert.match(text, /Evolutus/, `${name}: identifica a plataforma como Evolutus`)
     // "Treinos" como nome da plataforma (marca antiga); a palavra comum treino/treinos continua válida.
     assert.doesNotMatch(text, /\b(?:[Oo]|[Dd]o|[Nn]o|[Pp]elo|app|aplicativo|plataforma) Treinos\b/, `${name}: sem marca antiga`)
-    assert.doesNotMatch(text, /a partir de (?:12|13|14|15|16|17) anos|minimumAge"\s*:\s*(?:1[0-7])\b/, `${name}: sem idade inferior a 18`)
+    // Piso vigente: 16 anos (20261213000002). Nenhuma minuta pode declarar idade abaixo disso.
+    assert.doesNotMatch(text, /a partir de (?:12|13|14|15) anos|minimumAge"\s*:\s*(?:1[0-5])\b/, `${name}: sem idade inferior a 16`)
     assert.doesNotMatch(text, /verifica(?:mos|ção documental de) (?:sua )?identidade|comprovamos sua idade/i, `${name}: sem promessa de verificação documental`)
     const draft = JSON.parse(text)
     if (draft.documentId) assert.equal(draft.date, 'AAAA-MM-DD', `${name}: data pendente`)
   }
-  // A versão ativa passa a ser 2.0.0; o digest histórico de 1.5.0 permanece registrado.
+  // A versão ativa continua 2.0.0 até a promoção explícita de 2.1.0; os digests históricos
+  // (1.5.0 incluído) permanecem registrados sem alteração.
   assert.equal(manifest.version, '2.0.0')
   assert.equal(manifest.minimumAge, 18)
   assert.equal(approvedDigests['1.5.0'], '9f7f12926c8788ee4a8dbf03ab1074f330525b3207dac5a5ddc7138b8f5b2d95')

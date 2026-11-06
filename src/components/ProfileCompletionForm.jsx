@@ -150,7 +150,7 @@ export default function ProfileCompletionForm() {
                 block
               />
               <FormControl.Caption>
-                Cadastro disponível somente para pessoas com 18 anos completos ou mais.
+                Cadastro disponível somente para pessoas com {MINIMUM_REGISTRATION_AGE} anos completos ou mais.
               </FormControl.Caption>
               {fieldErrors.birthDate && (
                 <FormControl.Validation variant="error">
