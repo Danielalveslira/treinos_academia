@@ -60,7 +60,7 @@ before(async () => {
     format: 'cjs',
     define: {
       'import.meta.env.PROD': 'true',
-      'import.meta.env.VITE_HCAPTCHA_ENABLED': '"false"',
+      'import.meta.env.VITE_HCAPTCHA_ENABLED': 'undefined',
       'import.meta.env.VITE_HCAPTCHA_SITE_KEY': '""',
     },
   })

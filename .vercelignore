@@ -9,3 +9,8 @@
 /docs/**/*.webp
 /docs/**/*.avif
 !/docs/banner-sources/*.png
+
+.env*
+.vercel
+node_modules
+dist

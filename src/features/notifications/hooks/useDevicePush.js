@@ -116,7 +116,7 @@ export function useDevicePush(userId) {
         if (actionLifetime.current !== generation) return
         if (disable) {
           setDevice(null)
-          setMessage('Notificações desativadas neste dispositivo.')
+          setMessage('Notificações Push desativadas na conta.')
         } else if (result.permission === 'granted') {
           setDevice({
             support,
@@ -142,7 +142,11 @@ export function useDevicePush(userId) {
       })
       .catch((error) => {
         // Diagnóstico da etapa (permission, subscribe, register, confirm…) sem endpoint nem chaves.
-        console.warn('[Push]', disable ? 'disable failed' : 'enable failed', describePushError(error))
+        console.warn(
+          '[Push]',
+          disable ? 'disable failed' : 'enable failed',
+          describePushError(error)
+        )
         if (actionLifetime.current === generation) setMessage(pushErrorMessage(error))
       })
       .finally(() => {
