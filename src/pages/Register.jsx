@@ -125,12 +125,13 @@ export default function Register() {
   const [legalBundle, setLegalBundle] = useState(null)
   const [legalLoading, setLegalLoading] = useState(true)
   const [legalError, setLegalError] = useState('')
-  // 'form': formulário de cadastro normal. 'confirm': resposta sem sessão, que não
-  // comprova criação de conta nem entrega de e-mail. 'locked': código certo, mas não foi possível confirmar que a senha
+  // 'form': formulário; 'outcome': resposta sem sessão, sem prova de envio;
+  // 'confirm': código informado pela pessoa; 'locked': código certo, mas não foi possível confirmar que a senha
   // da conta é a que está neste formulário (ver confirmSignupAndSyncPassword) -- nunca
   // concede acesso nesse estado. Os dados do formulário continuam em memória nos estados
   // acima.
   const [step, setStep] = useState('form')
+  const [signupOutcome, setSignupOutcome] = useState(null)
   const [otpCode, setOtpCode] = useState('')
   const [confirmError, setConfirmError] = useState('')
   const [resending, setResending] = useState(false)
@@ -432,9 +433,11 @@ export default function Register() {
         signupStarted.current = true
         const credential = await registerUser(email.trim(), password, captchaToken)
         if (!credential.hasSession) {
-          // O retorno pode ser ofuscado para uma identidade existente. Sem sessão,
-          // não vinculamos o UID ao formulário nem afirmamos que houve envio.
-          setStep('confirm')
+          // Sem sessão não sabemos se houve envio. O código é uma opção, não a
+          // próxima etapa obrigatória; uma duplicidade explícita também chega aqui.
+          setSignupOutcome(credential.outcome)
+          signupStarted.current = false
+          setStep('outcome')
           setCooldown(RESEND_COOLDOWN_S)
           return
         }
@@ -554,6 +557,50 @@ export default function Register() {
             block
           >
             Ir para &quot;Esqueci minha senha&quot;
+          </Button>
+        </Stack>
+      </AuthLayout>
+    )
+  }
+
+  if (step === 'outcome') {
+    return (
+      <AuthLayout
+        variant="signup"
+        title="Continue com seu e-mail"
+        description={
+          signupOutcome === 'duplicate'
+            ? 'Não foi possível criar uma nova conta com este e-mail. Escolha como continuar.'
+            : 'Não foi possível confirmar a criação da conta nem o envio de um código. Escolha como continuar.'
+        }
+      >
+        <Stack gap="normal">
+          <Button
+            type="button"
+            variant="primary"
+            size="large"
+            block
+            onClick={() => setStep('confirm')}
+          >
+            Tenho um código
+          </Button>
+          <Button as={RouterLink} to="/login" size="large" block>
+            Entrar
+          </Button>
+          <Button as={RouterLink} to="/esqueci-senha" state={{ email }} size="large" block>
+            Recuperar acesso
+          </Button>
+          <Button
+            type="button"
+            size="large"
+            block
+            onClick={() => {
+              setStep('form')
+              setFormStep(1)
+              signupStarted.current = false
+            }}
+          >
+            Corrigir e-mail
           </Button>
         </Stack>
       </AuthLayout>
@@ -825,7 +872,8 @@ export default function Register() {
                   block
                 />
                 <FormControl.Caption>
-                  Cadastro disponível somente para pessoas com {birthDateRules().minimumAge} anos completos ou mais.
+                  Cadastro disponível somente para pessoas com {birthDateRules().minimumAge} anos
+                  completos ou mais.
                 </FormControl.Caption>
                 {fieldErrors.birthDate && (
                   <FormControl.Validation variant="error">

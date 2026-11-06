@@ -48,7 +48,7 @@ export default defineConfig({
         onlyExplicitManualChunks: true,
         entryFileNames: (chunk) =>
           chunk.name === 'publicHomeRedirect'
-            ? 'assets/public-home-redirect.js'
+            ? 'assets/public-home-redirect-[hash].js'
             : chunk.name === 'publicHeaderAuth'
               ? 'assets/public-header-auth.js'
               : 'assets/[name]-[hash].js',

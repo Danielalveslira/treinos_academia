@@ -88,7 +88,7 @@ test('homepage mantém conteúdo indexável e encaminha apenas a rota raiz', () 
   assert.equal((html.match(/<h1\b/g) || []).length, 1)
   assert.equal((html.match(/<picture\b/g) || []).length, 1)
   assert.match(html, /href="\/public-home\.css"/)
-  assert.match(html, /assets\/public-home-redirect\.js/)
+  assert.match(html, /assets\/public-home-redirect-[\w-]+\.js/)
   assert.match(html, /public-home-boot\.js/)
   assert.doesNotMatch(html, /<script>try/)
   assert.match(html, /<main id="content" tabindex="-1">[\s\S]*<h1[^>]*>/)
@@ -100,7 +100,7 @@ test('homepage mantém conteúdo indexável e encaminha apenas a rota raiz', () 
     'vitrine.html',
     'profissionais.html',
   ])
-    assert.doesNotMatch(readFileSync(`dist/${file}`, 'utf8'), /public-home-redirect\.js/)
+    assert.doesNotMatch(readFileSync(`dist/${file}`, 'utf8'), /public-home-redirect-[\w-]+\.js/)
 })
 
 test('marca pública usa Evolutus no header e rodapé sem alterar o domínio canônico', () => {

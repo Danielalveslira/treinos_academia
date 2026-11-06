@@ -35,7 +35,7 @@ try {
     const page = await context.newPage()
     const authAssets = []
     page.on('request', (request) => {
-      if (request.url().includes('public-home-redirect.js')) authAssets.push(request.url())
+      if (request.url().includes('public-home-redirect-')) authAssets.push(request.url())
     })
     await page.route('**/auth/v1/user**', (route) =>
       route.fulfill(mode === 'valid'

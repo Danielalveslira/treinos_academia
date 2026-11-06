@@ -6,16 +6,17 @@ import { captchaOptions } from '../utils/authCaptcha'
 export async function registerUser(email, password, captchaToken) {
   const options = captchaOptions(captchaToken)
   const { data, error } = await supabase.auth.signUp({ email, password, ...(options && { options }) })
-  // GoTrue hospedado pode devolver um usuário fictício sem sessão; outras configurações
-  // devolvem erro para o mesmo e-mail. A interface não distingue esses resultados.
+  // Apenas um erro explícito permite identificar duplicidade. Uma resposta sem sessão
+  // pode ser um cadastro pendente ou uma resposta ofuscada; não inspecione identities.
   if (error?.code === 'user_already_exists' || error?.code === 'email_exists') {
-    return { user: null, hasSession: false }
+    return { user: null, hasSession: false, outcome: 'duplicate' }
   }
   if (error) throw error
   if (!data?.user) throw new Error('SIGNUP_RESPONSE_INCOMPLETE')
   return {
     user: data.session ? { uid: data.user.id, email: data.user.email } : null,
     hasSession: Boolean(data.session),
+    outcome: data.session ? 'authenticated' : 'ambiguous',
   }
 }
 

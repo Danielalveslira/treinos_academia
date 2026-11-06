@@ -447,6 +447,9 @@ test('retorno sem sessão não afirma envio nem prende o usuário na confirmaç�
   const view = await mount()
   await reachFinal(view)
   await view.click('Criar conta')
+  assert.equal(view.title(), 'Continue com seu e-mail')
+  assert.match(view.text(), /Não foi possível confirmar a criação/)
+  await view.click('Tenho um código')
   assert.equal(view.title(), 'Confirme seu e-mail')
   assert.doesNotMatch(view.text(), /[Ee]nviamos|[Cc]ódigo reenviado|[Jj]á está cadastrado/)
   assert.equal(count('complete'), 0)
@@ -454,6 +457,22 @@ test('retorno sem sessão não afirma envio nem prende o usuário na confirmaç�
   assert.equal(view.title(), 'Crie sua conta')
   assert.equal(view.fields.email().props.value, 'maria@exemplo.com')
   assert.equal(view.fields.email().props.disabled, undefined)
+})
+
+test('duplicidade explícita oferece entrada e recuperação sem exigir OTP', async () => {
+  globalThis.__reg.api.registerUser = (...args) => {
+    calls.push(['registerUser', ...args])
+    return Promise.resolve({ user: null, hasSession: false, outcome: 'duplicate' })
+  }
+  const view = await mount()
+  await reachFinal(view)
+  await view.click('Criar conta')
+  assert.equal(view.title(), 'Continue com seu e-mail')
+  assert.match(view.text(), /Não foi possível criar uma nova conta/)
+  assert.doesNotMatch(view.text(), /[Ee]nviamos|[Cc]ódigo reenviado/)
+  assert.equal(count('confirm'), 0)
+  await view.click('Corrigir e-mail')
+  assert.equal(view.fields.email().props.value, 'maria@exemplo.com')
 })
 
 test('falha de rede ao criar: mensagem específica, dados mantidos, nova tentativa possível', async () => {
@@ -505,6 +524,9 @@ test('confirmação por código: OTP, reenvio com espera e conclusão do perfil'
   const view = await mount()
   await reachFinal(view)
   await view.click('Criar conta')
+  assert.equal(view.title(), 'Continue com seu e-mail')
+  assert.match(view.text(), /Não foi possível confirmar a criação/)
+  await view.click('Tenho um código')
   assert.equal(view.title(), 'Confirme seu e-mail')
   assert.doesNotMatch(view.text(), /[Ee]nviamos|[Jj]á está cadastrado/)
   assert.equal(view.button('Reenviar código (60s)').props.disabled, true)
@@ -537,6 +559,7 @@ test('dois envios imediatos do mesmo OTP fazem uma verificação e uma conclusã
   const view = await mount()
   await reachFinal(view)
   await view.click('Criar conta')
+  await view.click('Tenho um código')
   const otp = view.root().findByProps({ autoComplete: 'one-time-code' })
   await act(async () => otp.props.onChange({ target: { value: '123456' } }))
   await act(async () => {

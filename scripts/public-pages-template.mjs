@@ -199,12 +199,13 @@ export function renderPublicPage(path, env = {}, { dev = false } = {}) {
   const canonical = `${origin}${page.canonicalPath || page.path}`
   const description = escape(page.description)
   const title = escape(page.title)
+  const manifest = dev ? null : JSON.parse(readFileSync('dist/.vite/manifest.json', 'utf8'))
   const authRef = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/.test(env.VITE_SUPABASE_URL || '')
     ? new URL(env.VITE_SUPABASE_URL).hostname.split('.')[0]
     : ''
   const homeBootstrap =
     path === '/' && authRef
-      ? `<script src="/public-home-boot.js" data-auth-ref="${authRef}" data-redirect-src="${dev ? '/src/publicHomeRedirect.js' : '/assets/public-home-redirect.js'}"></script>`
+      ? `<script src="/public-home-boot.js" data-auth-ref="${authRef}" data-redirect-src="${dev ? '/src/publicHomeRedirect.js' : `/${resolveManifestEntry(manifest, 'src/publicHomeRedirect.js').file}`}"></script>`
       : ''
   // Fora da Home: ela já tem seu próprio redirecionamento completo (acima) e nunca chega a
   // mostrar o cabeçalho de visitante pra quem está logado -- sincronizar o cabeçalho aqui
@@ -230,7 +231,6 @@ export function renderPublicPage(path, env = {}, { dev = false } = {}) {
           url: canonical,
           inLanguage: 'pt-BR',
         }
-  const manifest = dev ? null : JSON.parse(readFileSync('dist/.vite/manifest.json', 'utf8'))
   const header = dev ? null : resolveManifestEntry(manifest, 'src/PublicHeaderMenu.jsx')
   const turbo = dev ? null : resolveManifestEntry(manifest, 'src/publicTurbo.js')
   const sharedStyles = header
