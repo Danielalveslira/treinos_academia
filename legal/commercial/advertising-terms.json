@@ -1,0 +1,100 @@
+{
+  "approved": true,
+  "date": "2026-11-05",
+  "documentId": "advertising-terms",
+  "version": "1.0.0",
+  "title": "Termos de Publicidade e Impulsionamento",
+  "description": "Como contratar, publicar e acompanhar anúncios e impulsionamentos.",
+  "changes": [
+    "Primeira versão dos Termos de Publicidade e Impulsionamento."
+  ],
+  "summary": [
+    "Anúncios e impulsionamentos são contratados por dias, com preço diário e total mostrados antes da confirmação.",
+    "O conteúdo passa por análise e, quando exibido, aparece como patrocinado. Pagar não garante aprovação.",
+    "A rotação não garante visualizações, cliques, contatos ou vendas.",
+    "Recusa antes da entrega e dias não prestados são avaliados para compensação ou devolução, conforme a lei e a política de reembolsos."
+  ],
+  "sections": [
+    {
+      "id": "oferta",
+      "title": "1. O que está disponível",
+      "items": [
+        "Você pode contratar anúncios em posições elegíveis da Home e das comunidades, ou impulsionar publicações e comunidades elegíveis, quando a opção estiver habilitada no aplicativo.",
+        "Uma função desativada não está à venda."
+      ]
+    },
+    {
+      "id": "contratacao",
+      "title": "2. Preço por dia e duração",
+      "items": [
+        "A contratação usa um número inteiro de dias. Antes de confirmar, mostramos preço diário em EvoCash, duração, total, limites e validade da cotação.",
+        "Registramos a versão destes Termos aceita com as condições da compra. Não há renovação automática; uma nova contratação começa após o período vigente."
+      ]
+    },
+    {
+      "id": "revisao",
+      "title": "3. Aprovação do conteúdo",
+      "items": [
+        "Analisamos o anúncio antes de exibi-lo. Podemos recusá-lo se contrariar a lei, estes Termos ou as Regras da Comunidade. Pagamento não garante aprovação.",
+        "Mudanças no conteúdo exigem nova análise. Quando couber, a versão aprovada anterior continua no ar até a decisão.",
+        "Se recusarmos a campanha antes de qualquer exibição, devolvemos em EvoCash a parte não prestada; eventual restituição em dinheiro segue os direitos legais e a Política de Reembolsos."
+      ]
+    },
+    {
+      "id": "exibicao",
+      "title": "4. Exibição e resultados",
+      "items": [
+        "Anúncios exibidos são marcados como “Patrocinado” e entram na rotação aleatória da posição, sem usar o perfil de quem vê.",
+        "O anunciante recebe totais de visualizações e cliques, sem dados individuais. Contas identificadas como de menores não entram na contagem.",
+        "Não prometemos quantidade mínima de exibições, cliques, contatos ou vendas."
+      ]
+    },
+    {
+      "id": "conteudo",
+      "title": "5. O que não pode ser anunciado",
+      "items": [
+        "Produtos ou serviços ilegais, substâncias controladas ou anabolizantes sem prescrição, promessas enganosas de saúde ou resultado físico e conteúdo sexual ou discriminatório.",
+        "Também são proibidos uso indevido de imagem, marca ou dados de terceiros e publicidade dirigida a crianças ou que explore adolescentes."
+      ]
+    },
+    {
+      "id": "suspensao",
+      "title": "6. Suspensão, cancelamento e devolução",
+      "items": [
+        "Podemos suspender conteúdo irregular, com denúncia procedente ou por ordem legal. Registramos o motivo e oferecemos recurso.",
+        "Dias não exibidos por falha do Evolutus ou suspensão sem culpa do anunciante podem gerar extensão equivalente ou devolução proporcional em EvoCash, após análise dos registros. A compensação não é automática; direitos a restituição em dinheiro continuam válidos.",
+        "Arrependimento e outros pedidos seguem a Política de Cancelamento, Arrependimento e Reembolsos aceita na contratação."
+      ]
+    },
+    {
+      "id": "responsabilidade",
+      "title": "7. Responsabilidade do anunciante",
+      "items": [
+        "Quem anuncia responde pela veracidade da oferta e pelos direitos sobre textos, imagens e marcas usados.",
+        "Contatos e vendas com o público acontecem entre as partes. O Evolutus não intermedeia essas operações externas."
+      ]
+    },
+    {
+      "id": "menores",
+      "title": "8. Idade e proteção de menores",
+      "items": [
+        "Só contas de pessoas com 18 anos completos ou mais podem contratar.",
+        "O Evolutus não usa perfil comportamental para dirigir publicidade a crianças e adolescentes."
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "label": "Código de Defesa do Consumidor — Lei nº 8.078/1990",
+      "href": "https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm"
+    },
+    {
+      "label": "Decreto nº 7.962/2013 (comércio eletrônico)",
+      "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm"
+    },
+    {
+      "label": "ECA Digital — Lei nº 15.211/2025",
+      "href": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15211.htm"
+    }
+  ]
+}

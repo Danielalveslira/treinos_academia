@@ -60,9 +60,10 @@ test('minutas exigem 18+, usam a marca Evolutus e não prometem verificação de
     const draft = JSON.parse(text)
     if (draft.documentId) assert.equal(draft.date, 'AAAA-MM-DD', `${name}: data pendente`)
   }
-  // O histórico publicado segue com o texto e o digest aprovados (marca e idade antigas preservadas).
-  assert.equal(legalBundleDigest(manifest, documents), approvedDigests['1.5.0'])
-  assert.equal(manifest.minimumAge, 12, 'versão 1.5.0 histórica não é reescrita')
+  // A versão ativa passa a ser 2.0.0; o digest histórico de 1.5.0 permanece registrado.
+  assert.equal(manifest.version, '2.0.0')
+  assert.equal(manifest.minimumAge, 18)
+  assert.equal(approvedDigests['1.5.0'], '9f7f12926c8788ee4a8dbf03ab1074f330525b3207dac5a5ddc7138b8f5b2d95')
 })
 
 test('publicação de documento comercial aprovado exige confirmação nominal', () => {
