@@ -61,7 +61,7 @@ before(async () => {
           context.onResolve(
             {
               filter:
-                /\/(AchievementSummary|MarkdownViewer|PhotoStatus|ProfileAvatar|ShareMenu|PromoteDialog|ExpiryBadge|WorkoutParticipantsDialog)$/,
+                /\/(AchievementSummary|MarkdownViewer|PhotoStatus|ProfileAvatar|ShareMenu|PromoteDialog|ExpiryBadge|WorkoutParticipantsDialog|AuthorRoleBadge|StatusEditForm)$/,
             },
             ({ path }) => ({ path, namespace: 'component-stub' })
           )
@@ -85,7 +85,7 @@ before(async () => {
             export const TrashIcon=()=>null; export const PersonIcon=()=>null; export const LocationIcon=()=>null;
             export const ClockIcon=()=>null; export const ShieldCheckIcon=()=>null; export const CheckIcon=()=>null;
             export const CalendarIcon=()=>null; export const PeopleIcon=()=>null; export const ThumbsupIcon=()=>null;
-            export const ThumbsdownIcon=()=>null; export const XIcon=()=>null;
+            export const ThumbsdownIcon=()=>null; export const XIcon=()=>null; export const PencilIcon=()=>null;
             export const ChevronDownIcon=()=>null; export const ChevronUpIcon=()=>null;
           `,
           }))

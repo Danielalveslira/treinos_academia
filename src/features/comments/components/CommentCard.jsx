@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, Spinner, Text } from '@primer/react'
 import { ProfileAvatar } from '../../../components/ProfileAvatar'
+import { AuthorRoleBadge } from '../../../components/AuthorRoleBadge'
 import { formatDateTime } from '../../../utils/format'
 import { toDate } from '../../../utils/date'
 import { deleteComment, editComment, setCommentLike } from '../api/comments.api'
@@ -138,13 +139,19 @@ export function CommentCard({
           className="comment-avatar"
         />
         <div className="comment-meta">
-          <Text className="comment-author">
-            {current.authorId
-              ? current.authorUsername
-                ? `@${current.authorUsername}`
-                : 'Membro'
-              : 'Usuário indisponível'}
-          </Text>
+          <span className="comment-author-row">
+            <Text className="comment-author">
+              {current.authorId
+                ? current.authorUsername
+                  ? `@${current.authorUsername}`
+                  : 'Membro'
+                : 'Usuário indisponível'}
+            </Text>
+            <AuthorRoleBadge
+              isSuperAdmin={current.authorIsSuperAdmin}
+              isCommunityAdmin={current.authorIsCommunityAdmin}
+            />
+          </span>
           <Text className="comment-date">
             {formatDateTime(toDate(current.createdAt))}
             {current.editedAt ? ' · editado' : ''}

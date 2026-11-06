@@ -5,7 +5,7 @@ const UPCOMING_WORKOUTS_PAGE_SIZE = 20
 // deveria ter um objeto maior que isso no bucket, pois ele recusa upload além desse teto.
 const MAX_PHOTO_DOWNLOAD_BYTES = 5 * 1024 * 1024
 const STATUS_SUMMARY_COLUMNS =
-  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,retention_mode,comments_close_at,promoted,promoted_until,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_caption,progress_kind,progress_period_start,progress_period_end,verified_promoted_until,interaction_expires_at,publication_expires_at'
+  'id,community_id,author_id,author_username,author_is_superadmin,author_is_community_admin,type,created_at,expires_at,edited_at,retention_mode,comments_close_at,promoted,promoted_until,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_caption,progress_kind,progress_period_start,progress_period_end,verified_promoted_until,interaction_expires_at,publication_expires_at'
 
 // Nome/selo são dicas de compatibilidade para o banco antigo; o banco atualizado
 // os sobrescreve. Retenção, promoção e contadores pertencem exclusivamente ao servidor.
@@ -26,9 +26,15 @@ export function mapStatusRow(row) {
     authorId: row.author_id,
     authorUsername: row.author_username,
     authorIsSuperAdmin: row.author_is_superadmin,
+    // Ausente quando a linha vem de uma RPC de escrita (ex.: update_own_status_content, que
+    // devolve a tabela crua) em vez da view status_publications -- nunca inventa `true` por
+    // omissão, já que esse selo é ao vivo (dono atual da comunidade) e um default errado
+    // poderia exibir/ocultar o selo incorretamente.
+    authorIsCommunityAdmin: row.author_is_community_admin ?? false,
     type: row.type,
     createdAt: row.created_at,
     expiresAt: row.expires_at,
+    editedAt: row.edited_at ?? null,
     ...(Object.hasOwn(row, 'publication_expires_at')
       ? { publicationExpiresAt: row.publication_expires_at }
       : {}),
@@ -95,7 +101,7 @@ export function mapStatusRow(row) {
 
 // Colunas que o card do feed realmente usa (mapStatusRow): evita levar a linha inteira (select *).
 export const FEED_COLUMNS =
-  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,retention_mode,comments_close_at,promoted,promoted_until,active_promotion_id,positive_vote_count,negative_vote_count,comment_count,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_path,photo_caption,progress_kind,progress_period_start,progress_period_end,verified_promoted_until,interaction_expires_at,publication_expires_at'
+  'id,community_id,author_id,author_username,author_is_superadmin,author_is_community_admin,type,created_at,expires_at,edited_at,retention_mode,comments_close_at,promoted,promoted_until,active_promotion_id,positive_vote_count,negative_vote_count,comment_count,text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,achievement_text,achievement_entries,achievement_sets,photo_path,photo_caption,progress_kind,progress_period_start,progress_period_end,verified_promoted_until,interaction_expires_at,publication_expires_at'
 
 // Tamanho da página do feed: pequeno para abrir rápido e gastar pouco em celular/rede ruins;
 // as próximas páginas só vêm quando o usuário chega perto do fim.
@@ -373,6 +379,28 @@ export async function deleteStatus(statusId) {
   const { data, error } = await supabase.from('statuses').delete().eq('id', statusId).select('id')
   if (error) throw error
   if (!data?.length) throw new Error('PERMISSION_DENIED')
+}
+
+// Edição da própria publicação (texto ou legenda de foto -- único caminho de escrita, RPC
+// update_own_status_content, nunca UPDATE direto na tabela: ver 20261213000005_status_edit.sql).
+// Devolve a linha CRUA de public.statuses (não a view), de propósito: o chamador (StatusEditForm)
+// só lê os 2-3 campos que ele mesmo pediu para mudar, nunca repassa a linha inteira para
+// mapStatusRow -- um campo só existente na view (como author_is_community_admin) viraria um
+// default errado no meio de um patch local.
+export async function updateStatusContent(
+  statusId,
+  { text = null, photoCaption = null, expectedEditedAt = null } = {}
+) {
+  const { data, error } = await supabase
+    .rpc('update_own_status_content', {
+      p_status_id: statusId,
+      p_text: text,
+      p_photo_caption: photoCaption,
+      p_expected_edited_at: expectedEditedAt,
+    })
+    .single()
+  if (error) throw error
+  return data
 }
 
 // Uma única query agregada no servidor (get_poll_results) — nunca escala com o número

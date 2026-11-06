@@ -127,3 +127,20 @@ test('long links stay in the comment body for CSS wrapping without truncation', 
   const html = renderComment(makeComment({ body: link, replyCount: 0 }))
   assert.match(html, new RegExp(link.replaceAll('/', '\\/')))
 })
+
+test('superadmin badge appears on a comment, takes priority over community admin, and neither leaks to a plain user', () => {
+  const superadmin = renderComment(
+    makeComment({ authorIsSuperAdmin: true, authorIsCommunityAdmin: true, replyCount: 0 })
+  )
+  assert.match(superadmin, /aria-label="Superadmin"/)
+  assert.doesNotMatch(superadmin, /aria-label="Administrador da comunidade"/)
+
+  const admin = renderComment(
+    makeComment({ authorIsSuperAdmin: false, authorIsCommunityAdmin: true, replyCount: 0 })
+  )
+  assert.match(admin, /aria-label="Administrador da comunidade"/)
+  assert.doesNotMatch(admin, /aria-label="Superadmin"/)
+
+  const plain = renderComment(makeComment({ replyCount: 0 }))
+  assert.doesNotMatch(plain, /aria-label="Superadmin"|aria-label="Administrador da comunidade"/)
+})

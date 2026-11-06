@@ -263,11 +263,6 @@
   color: var(--fgColor-accent);
   text-decoration: underline;
 }
-.status-superadmin-badge {
-  display: inline-flex;
-  flex-shrink: 0;
-  color: var(--fgColor-attention);
-}
 .status-time {
   display: block;
   color: var(--fitness-muted);
@@ -321,6 +316,22 @@
   margin: 8px 0 0;
   font-size: 14px;
   line-height: 1.5;
+}
+.status-edit-form {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+.status-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.status-edit-error {
+  display: block;
+  color: var(--fgColor-danger);
+  font-size: 12px;
 }
 
 /* Ações: curtir/contadores à esquerda e comentários à direita numa só linha; a seção de comentários

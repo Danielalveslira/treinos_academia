@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom'
 import { Box, Text, Button, Flash, IconButton } from '@primer/react'
 import {
   TrashIcon,
+  PencilIcon,
   PersonIcon,
   LocationIcon,
   ClockIcon,
-  ShieldCheckIcon,
   CheckIcon,
   CalendarIcon,
   PeopleIcon,
@@ -17,8 +17,10 @@ import { loadPollState, loadWorkoutState } from '../services/statusInteractionsS
 import { ExpiryBadge } from './ExpiryBadge'
 import { EconomyVoteBar } from './EconomyVoteBar'
 import { AchievementSummary } from './AchievementSummary'
+import { AuthorRoleBadge } from './AuthorRoleBadge'
 import { StatusText } from './StatusText'
 import { PhotoStatus } from './PhotoStatus'
+import { StatusEditForm } from './StatusEditForm'
 import { ProfileAvatar } from './ProfileAvatar'
 import { ShareMenu } from './ShareMenu'
 import { PromotedBadge } from './PromotedBadge'
@@ -56,18 +58,17 @@ const WorkoutParticipantsDialog = lazy(() =>
 // antes disso.
 const ACTION_ERROR_AUTO_DISMISS_MS = 6000
 
-// Selo dourado e discreto — o valor vem de authorIsSuperAdmin, gravado no status pelo
-// trigger enforce_status_author_badge no momento da publicação (ver
-// statusesService.js), nunca de um campo que o próprio cliente poderia forjar.
-function SuperAdminBadge() {
-  return (
-    <span className="status-superadmin-badge" title="Superadmin" aria-label="Superadmin">
-      <ShieldCheckIcon size={14} />
-    </span>
-  )
-}
-
-function StatusHeader({ status, authorAvatarPath, now, canDelete, onDelete, deleting, showToast }) {
+function StatusHeader({
+  status,
+  authorAvatarPath,
+  now,
+  canDelete,
+  onDelete,
+  deleting,
+  canEdit,
+  onEdit,
+  showToast,
+}) {
   // author_username é uma coluna text (nulo ou string por natureza), mas nunca custa
   // nada tratar dado inesperado com cuidado aqui também — um valor de outro tipo (ex.:
   // number) não deveria derrubar o card inteiro, só cair no "M" padrão.
@@ -85,13 +86,28 @@ function StatusHeader({ status, authorAvatarPath, now, canDelete, onDelete, dele
           <Link to={`/comunidades/perfil/${status.authorId}`} className="status-author">
             {authorUsername ? `@${authorUsername}` : 'Membro'}
           </Link>
-          {status.authorIsSuperAdmin && <SuperAdminBadge />}
+          <AuthorRoleBadge
+            isSuperAdmin={status.authorIsSuperAdmin}
+            isCommunityAdmin={status.authorIsCommunityAdmin}
+          />
         </div>
-        <span className="status-time">{formatDateTime(toDate(status.createdAt))}</span>
+        <span className="status-time">
+          {formatDateTime(toDate(status.createdAt))}
+          {status.editedAt ? ' · editado' : ''}
+        </span>
       </div>
       <div className="status-header-actions">
         <ExpiryBadge status={status} now={now} />
         <ShareMenu status={status} showToast={showToast} />
+        {canEdit && (
+          <IconButton
+            icon={PencilIcon}
+            variant="invisible"
+            size="small"
+            aria-label="Editar publicação"
+            onClick={onEdit}
+          />
+        )}
         {canDelete && (
           <IconButton
             icon={TrashIcon}
@@ -470,6 +486,7 @@ function StatusCardView({
   myEconomyVote,
   onEconomyVoted,
   onPromoted,
+  onEdited,
   communityName,
   canModerate = false,
   anchorPrefix = '',
@@ -479,6 +496,12 @@ function StatusCardView({
   const [promoteOpen, setPromoteOpen] = useState(false)
   const [actionError, setActionError] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [editing, setEditing] = useState(false)
+  // Sobrepõe o que esta edição já confirmou no servidor por cima do `status` do pai: o card
+  // atualiza na hora, mesmo que o pai (lista do feed/Destaques) ainda não tenha repassado o
+  // mesmo patch via onEdited -- nunca um refetch do feed inteiro só para refletir 1 edição.
+  const [contentPatch, setContentPatch] = useState(null)
+  const effectiveStatus = contentPatch ? { ...status, ...contentPatch } : status
   const isAuthor = status.authorId === currentUserId
   // Relógio compartilhado por seletor: só re-renderiza quando a promoção acaba ou a janela de
   // interação fecha (e `now` explícito, usado em testes, tem prioridade).
@@ -492,6 +515,12 @@ function StatusCardView({
     (n) => isPublicationInteractionActive(status, n),
     toMillis
   )
+  // Primeira entrega: só texto e legenda de foto são editáveis (ver StatusEditForm); enquete,
+  // treino marcado e conquista continuam somente leitura. A janela de edição é a MESMA janela de
+  // interação do post (comentar/votar) -- some sozinha quando a publicação expira, sem exigir um
+  // clique que só terminaria em erro.
+  const canEdit =
+    isAuthor && (status.type === 'text' || status.type === 'photo') && interactionActive
   const handleCommentCount = useCallback(
     (delta) => onCommentCountChange?.(status.id, delta),
     [onCommentCountChange, status.id]
@@ -532,18 +561,26 @@ function StatusCardView({
     }
   }
 
+  function handleEditSaved(patch) {
+    setContentPatch((previous) => ({ ...previous, ...patch }))
+    setEditing(false)
+    onEdited?.(status.id, patch)
+  }
+
   return (
     <article
       className={`status-card${status.type === 'workout' ? ' workout-status-card' : ''}`}
       id={`${anchorPrefix}${status.type === 'workout' ? 'treino' : 'publicacao'}-${status.id}`}
     >
       <StatusHeader
-        status={status}
+        status={effectiveStatus}
         authorAvatarPath={authorAvatarPath}
         now={now}
         canDelete={canDelete}
         onDelete={handleDelete}
         deleting={deleting}
+        canEdit={canEdit && !editing}
+        onEdit={() => setEditing(true)}
         showToast={handleActionMessage}
       />
 
@@ -554,7 +591,16 @@ function StatusCardView({
       )}
 
       <div className="status-content">
-        {status.type === 'text' && <StatusText value={status.text} />}
+        {status.type === 'text' &&
+          (editing ? (
+            <StatusEditForm
+              status={effectiveStatus}
+              onCancel={() => setEditing(false)}
+              onSaved={handleEditSaved}
+            />
+          ) : (
+            <StatusText value={effectiveStatus.text} />
+          ))}
 
         {status.type === 'achievement' && <AchievementSummary achievement={status.achievement} />}
 
@@ -582,7 +628,20 @@ function StatusCardView({
         )}
 
         {status.type === 'photo' && (
-          <PhotoStatus status={status} preloadedBlob={status._localPhotoBlob} />
+          <>
+            <PhotoStatus
+              status={effectiveStatus}
+              preloadedBlob={status._localPhotoBlob}
+              hideCaption={editing}
+            />
+            {editing && (
+              <StatusEditForm
+                status={effectiveStatus}
+                onCancel={() => setEditing(false)}
+                onSaved={handleEditSaved}
+              />
+            )}
+          </>
         )}
       </div>
       {/* Enquete usa o voto gratuito das próprias opções; treino usa participação.
