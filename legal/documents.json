@@ -387,7 +387,7 @@
           "Supabase opera login, banco, arquivos e funções. Vercel hospeda o site e recebe métricas de navegação e desempenho. Resend envia e-mails transacionais de compras. InfinitePay processa pagamentos; não recebemos o número completo do cartão.",
           "Se você ativar push, o navegador e o sistema podem usar serviços de Google, Apple, Mozilla ou Microsoft para entregar notificações. Consultas públicas ao catálogo externo de exercícios não enviam os dados pessoais da conta.",
           "Autoridades podem receber dados por obrigação legal ou ordem judicial. Não vendemos dados pessoais.",
-          "O Supabase armazena dados em uma região dos Estados Unidos. Vercel e outros fornecedores também podem tratar dados fora do Brasil. Peça informações sobre destinos e mecanismos de proteção pelo canal de privacidade."
+          "O banco de dados principal e o Storage do Supabase ficam hospedados em São Paulo, Brasil; o Supabase também continua operando o login (Auth) e as funções (Edge Functions) do app. Vercel, Resend e outros fornecedores podem realizar tratamentos fora do Brasil. A hospedagem brasileira do banco não garante que todo o processamento ocorra exclusivamente no país. Peça informações sobre destinos e mecanismos de proteção pelo canal de privacidade."
         ]
       },
       {
