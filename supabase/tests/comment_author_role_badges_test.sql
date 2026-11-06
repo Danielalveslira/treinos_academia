@@ -190,10 +190,13 @@ select is(
 -- "preso" em quem publicou o comentário. Troca de dono é um evento independente do papel de
 -- superadmin (nunca toca public.users.role), então o selo de superadmin não deveria mudar só
 -- por isso -- mas (ver item 7b) ele NÃO é histórico: muda se o PAPEL em si mudar.
-reset role;
+-- Transferência LEGÍTIMA: sessão autenticada do Superadmin ('02'), sob a RLS real de
+-- communities (communities_update já libera is_superadmin() OU is_community_owner(id)) e sob o
+-- trigger real enforce_community_immutable_fields (que também só libera owner_id quando
+-- is_superadmin() é verdadeiro) -- nunca contorna nem enfraquece OWNER_ID_IMMUTABLE.
+select pg_temp.as_user('02');
 update public.communities set owner_id = '85000000-0000-0000-0000-000000000003'
 where id = '86000000-0000-0000-0000-000000000001';
-set local role authenticated;
 select pg_temp.as_user('03');
 select is(
   (select author_is_community_admin from public.comment_list_items

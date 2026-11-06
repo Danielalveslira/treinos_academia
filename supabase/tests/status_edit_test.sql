@@ -84,6 +84,13 @@ values ('8b000000-0000-0000-0000-000000000004', '8a000000-0000-0000-0000-0000000
 grant select on public.statuses to authenticated;
 set local role authenticated;
 
+-- _helpers/auth_session.sql só define pg_temp.set_test_user(); cada arquivo de teste roda em
+-- sua própria sessão/transação, então o atalho pg_temp.as_user(p) precisa ser (re)declarado
+-- aqui também -- não persiste de outro arquivo (mesmo padrão de comments_system_test.sql e
+-- comment_author_role_badges_test.sql).
+create or replace function pg_temp.as_user(p text) returns void language sql as
+  $$select pg_temp.set_test_user( '89000000-0000-0000-0000-0000000000' || p, true)$$;
+
 -- 1) Autor edita o próprio texto: conteúdo muda, edited_at passa a existir, timestamps/contadores
 -- protegidos permanecem intocados.
 select pg_temp.as_user('01');
@@ -156,11 +163,15 @@ select throws_ok(
 -- para author_id/community_id/type/created_at/expires_at/retention_mode/contadores/votos, então
 -- uma chamada com mais argumentos do que a função aceita falha na própria assinatura.
 select pg_temp.as_user('01');
+-- Forma de 4 argumentos (sql, errcode, errmsg, descrição) com errmsg = null: só confirma o
+-- SQLSTATE (42883 = função inexistente com essa assinatura), sem fixar a mensagem literal do
+-- Postgres ("function ... does not exist"), que não é nossa para travar no teste.
 select throws_ok(
   $$select public.update_own_status_content(
       '8b000000-0000-0000-0000-000000000001', 'x', null, null, '2099-01-01'::timestamptz
     )$$,
   '42883',
+  null,
   'RPC não tem parâmetro para campos protegidos (assinatura rejeita argumento extra)'
 );
 
@@ -194,14 +205,21 @@ select throws_ok(
   'texto vazio é rejeitado'
 );
 
--- 9) Concorrência: duas edições em paralelo -- a segunda a chegar (com o token antigo) recebe
--- EDIT_CONFLICT, nunca sobrescreve silenciosamente.
+-- 9) Concorrência: duas edições em paralelo -- a que chega com o token antigo recebe
+-- EDIT_CONFLICT, nunca sobrescreve silenciosamente. now() fica CONGELADO no início da
+-- transação (comportamento padrão do Postgres dentro de uma transação, e todo este arquivo
+-- roda em uma só) -- chamar a RPC duas vezes em sequência nunca produziria dois edited_at
+-- diferentes só por isso, então a "primeira edição concorrente" é simulada por um UPDATE direto
+-- (nunca pela RPC, que é justamente quem está sob teste) usando clock_timestamp() (esse sim
+-- avança a cada chamada) para gravar um edited_at genuinamente mais novo que o token capturado.
+-- authenticated não tem UPDATE em public.statuses (ver item 21) -- reset role só para este
+-- UPDATE de fixture, como o dono dos objetos.
 create temp table stale_token as
 select edited_at from public.statuses where id = '8b000000-0000-0000-0000-000000000001';
-select public.update_own_status_content(
-  '8b000000-0000-0000-0000-000000000001', 'Primeira edição concorrente', null,
-  (select edited_at from stale_token)
-);
+reset role;
+update public.statuses set text = 'Primeira edição concorrente', edited_at = clock_timestamp()
+where id = '8b000000-0000-0000-0000-000000000001';
+set local role authenticated;
 select throws_ok(
   format(
     'select public.update_own_status_content(%L, %L, null, %L)',
