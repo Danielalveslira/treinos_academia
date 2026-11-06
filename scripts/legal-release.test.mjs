@@ -69,11 +69,12 @@ test('minutas exigem 16+, usam a marca Evolutus e não prometem verificação de
     const draft = JSON.parse(text)
     if (draft.documentId) assert.equal(draft.date, 'AAAA-MM-DD', `${name}: data pendente`)
   }
-  // A versão ativa continua 2.0.0 até a promoção explícita de 2.1.0; os digests históricos
-  // (1.5.0 incluído) permanecem registrados sem alteração.
-  assert.equal(manifest.version, '2.0.0')
-  assert.equal(manifest.minimumAge, 18)
+  // 2.1.0 foi promovida: idade mínima de cadastro vigente agora é 16. Os digests históricos
+  // (1.5.0 e 2.0.0 incluídos) permanecem registrados sem alteração.
+  assert.equal(manifest.version, '2.1.0')
+  assert.equal(manifest.minimumAge, 16)
   assert.equal(approvedDigests['1.5.0'], '9f7f12926c8788ee4a8dbf03ab1074f330525b3207dac5a5ddc7138b8f5b2d95')
+  assert.equal(approvedDigests['2.0.0'], '00b31d68381231907b60daa58500f37c4d5821244863c421384b30b2717a9f89')
 })
 
 test('publicação de documento comercial aprovado exige confirmação nominal', () => {
