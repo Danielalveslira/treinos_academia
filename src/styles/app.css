@@ -6598,6 +6598,21 @@ div:has(> .ev-zoom-dialog) {
   gap: 8px 16px;
 }
 .profile-editor-avatar .profile-avatar { width: 64px; height: 64px; border-radius: 18px; }
+.profile-editor-avatar-picker { position: relative; flex: none; width: 76px; height: 76px; padding: 0; border: 0; border-radius: 22px; background: transparent; cursor: pointer; }
+.profile-editor-avatar-picker .profile-avatar { width: 76px; height: 76px; border-radius: 22px; font-size: 28px; }
+.profile-editor-camera { position: absolute; right: -3px; bottom: -3px; display: grid; place-items: center; width: 27px; height: 27px; border: 2px solid var(--bgColor-default); border-radius: 50%; background: var(--bgColor-accent-emphasis); color: var(--fgColor-onEmphasis); }
+.avatar-editor-sheet { width: min(100%, 520px); }
+.avatar-editor-crop { position: relative; width: min(100%, 350px, 45dvh); aspect-ratio: 1; margin: 0 auto 12px; background: var(--bgColor-muted); touch-action: none; }
+.avatar-editor-crop[aria-busy="true"] { pointer-events: none; }
+.avatar-editor-preview { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 8px 0 14px; color: var(--fgColor-muted); font-size: 13px; }
+.avatar-editor-preview canvas { width: 62px; height: 62px; border-radius: 20px; background: var(--bgColor-muted); }
+.avatar-editor-control, .avatar-editor-position label { display: grid; gap: 4px; color: var(--fgColor-default); font-size: 13px; }
+.avatar-editor-control input, .avatar-editor-position input { width: 100%; min-height: 44px; accent-color: var(--fgColor-accent); }
+.avatar-editor-position { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.avatar-editor-tools, .avatar-editor-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.avatar-editor-tools button, .avatar-editor-actions button { min-height: 44px; }
+.avatar-editor-actions { justify-content: flex-end; margin-top: 0; }
+.avatar-editor-note { margin: 8px 0 0; color: var(--fgColor-muted); font-size: 13px; }
 .profile-visually-hidden {
   position: absolute;
   width: 1px;

@@ -26,8 +26,19 @@ const AVATAR_COALESCE_MS = 40
 // autor. Autor sem foto fica registrado como null: nunca é consultado de novo. Uma foto trocada
 // aparece na próxima abertura da tela (não há mais um canal por autor só para isso).
 const avatarPaths = new Map()
+const avatarOverrides = new Map()
+const avatarListeners = new Set()
 // Trocou de conta/encerrou a sessão: nada da sessão anterior fica em memória.
-onPageCacheClear(() => avatarPaths.clear())
+onPageCacheClear(() => {
+  avatarPaths.clear()
+  avatarOverrides.clear()
+})
+
+export function setCommunityAuthorAvatar(userId, path) {
+  avatarOverrides.set(userId, path || null)
+  avatarPaths.set(userId, path || null)
+  for (const listener of avatarListeners) listener()
+}
 
 const avatarLoader = createBatchLoader(
   async (ids) => {
@@ -36,8 +47,17 @@ const avatarLoader = createBatchLoader(
       .select('user_id,avatar_path')
       .in('user_id', ids)
     if (error) throw error
-    ids.forEach((id) => avatarPaths.set(id, null))
-    data.forEach((row) => avatarPaths.set(row.user_id, row.avatar_path || null))
+    ids.forEach((id) =>
+      avatarPaths.set(id, avatarOverrides.has(id) ? avatarOverrides.get(id) : null)
+    )
+    data.forEach((row) =>
+      avatarPaths.set(
+        row.user_id,
+        avatarOverrides.has(row.user_id)
+          ? avatarOverrides.get(row.user_id)
+          : row.avatar_path || null
+      )
+    )
     return new Map(ids.map((id) => [id, avatarPaths.get(id)]))
   },
   { maxBatch: AVATAR_BATCH_SIZE, delayMs: AVATAR_COALESCE_MS }
@@ -50,6 +70,12 @@ function fetchMissingAvatars(ids) {
 export function useCommunityAuthorAvatars(enabled, ...groups) {
   const idsKey = enabled ? JSON.stringify(uniqueCommunityAuthorIds(...groups)) : ''
   const [version, setVersion] = useState(0)
+
+  useEffect(() => {
+    const listener = () => setVersion((value) => value + 1)
+    avatarListeners.add(listener)
+    return () => avatarListeners.delete(listener)
+  }, [])
 
   useEffect(() => {
     if (!idsKey) return undefined
@@ -77,4 +103,5 @@ export function useCommunityAuthorAvatars(enabled, ...groups) {
 // Só para testes.
 export function resetAuthorAvatarCache() {
   avatarPaths.clear()
+  avatarOverrides.clear()
 }

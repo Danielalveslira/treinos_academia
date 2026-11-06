@@ -117,6 +117,11 @@ test('metadata: tamanho de chunk que estoura o arquivo é MALFORMED; arquivo cur
   assert.equal(findForbiddenWebpChunk(bad), 'MALFORMED')
   assert.equal(findForbiddenWebpChunk(new Uint8Array(10)), 'MALFORMED')
   assert.equal(findForbiddenWebpChunk(webpWith([['VP8 ', 30]]).subarray(0, 26)), 'MALFORMED', 'cortado no meio do chunk')
+  const dangling = webpWith([['VP8 ', 30]])
+  const withTrailing = new Uint8Array(dangling.length + 3)
+  withTrailing.set(dangling)
+  new DataView(withTrailing.buffer).setUint32(4, withTrailing.length - 8, true)
+  assert.equal(findForbiddenWebpChunk(withTrailing), 'MALFORMED', 'bytes incompletos dentro do RIFF')
 })
 
 test('metadata: o varredor só lê a lista de chunks (uma "EXIF" dentro do payload não conta)', () => {

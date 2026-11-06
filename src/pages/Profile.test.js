@@ -21,7 +21,19 @@ before(async () => {
     ],
     [
       '../services/profileAvatarService',
-      'export const uploadProfileAvatar = (...args) => globalThis.__profileApi.upload(...args); export const removeProfileAvatar = () => globalThis.__profileApi.remove()',
+      'export const removeProfileAvatar = () => globalThis.__profileApi.remove()',
+    ],
+    [
+      '../utils/photoBlobCache',
+      'export const invalidatePhotoPath = (path) => globalThis.__profileApi.invalidate(path); export const setCachedPhotoUrl = (path, url) => globalThis.__profileApi.cache(path, url)',
+    ],
+    [
+      '../hooks/useCommunityAuthorAvatars',
+      'export const setCommunityAuthorAvatar = (id, path) => globalThis.__profileApi.community(id, path)',
+    ],
+    [
+      '../components/ProfileAvatarEditor',
+      "export const ProfileAvatarEditor = ({ onSaved, onCancel }) => <div data-editor='true'><button onClick={() => onSaved({path: 'new.webp', mediaId: 'media-2'}, new Blob(['webp'], {type: 'image/webp'}))}>Salvar foto</button><button onClick={onCancel}>Cancelar</button></div>",
     ],
     [
       '../services/usageProfileService',
@@ -144,6 +156,9 @@ function setup(overrides = {}, saveImpl = null) {
     remove: async () => {
       calls.push('remove')
     },
+    invalidate: (path) => calls.push(['invalidate', path]),
+    cache: (path) => calls.push(['cache', path]),
+    community: (id, path) => calls.push(['community', id, path]),
     usage: async (value) => {
       calls.push(['usage', value])
     },
@@ -160,6 +175,10 @@ function setup(overrides = {}, saveImpl = null) {
       }),
     refreshProfile: async () => {
       calls.push('refreshProfile')
+    },
+    patchProfile: (id, patch) => {
+      calls.push(['patchProfile', id, patch])
+      Object.assign(profile, patch)
     },
   }
   let renderer
@@ -227,21 +246,46 @@ test('privacidade salva apenas sua preferência e mantém rascunho do nome', asy
 
 test('foto e configurações permanecem independentes', async () => {
   const view = setup()
-  const file = { name: 'foto.png' }
+  const file = { name: 'foto.png', type: 'image/png', size: 1000 }
   await act(async () => {
     view.renderer.root
       .findAllByType('input')
       .find((node) => node.props.type === 'file')
       .props.onChange({ target: { files: [file] } })
   })
+  assert.equal(view.calls.length, 0, 'seleção não envia')
+  await act(async () => {})
   await view.click('Salvar foto')
-  assert.deepEqual(view.calls.slice(0, 2), [['upload', file], 'refreshProfile'])
+  assert.deepEqual(view.calls.slice(0, 3), [
+    ['invalidate', 'avatar.webp'],
+    ['cache', 'new.webp'],
+    ['patchProfile', 'user-1', { avatarPath: 'new.webp', avatarMediaId: 'media-2' }],
+  ])
   await view.click('Perfil de usoUsuário comum›')
   assert.equal(view.renderer.root.findAllByProps({ 'data-usage': 'true' }).length, 1)
   await view.click('NotificaçõesConfigurar›')
   assert.equal(view.renderer.root.findAllByProps({ 'data-push': 'true' }).length, 1)
   await view.click('Mensagens da HomeAutomático›')
   assert.equal(view.renderer.root.findAllByProps({ 'data-greeting': 'true' }).length, 1)
+})
+
+test('arquivo inválido é recusado; cancelar o editor preserva foto anterior', async () => {
+  const view = setup()
+  const input = view.renderer.root.findAllByType('input').find((node) => node.props.type === 'file')
+  await act(async () =>
+    input.props.onChange({
+      target: { files: [{ name: 'texto.txt', type: 'text/plain', size: 100 }] },
+    })
+  )
+  assert.match(JSON.stringify(view.renderer.toJSON()), /Formato não suportado/)
+  assert.equal(view.renderer.root.findAllByProps({ 'data-editor': 'true' }).length, 0)
+  await act(async () =>
+    input.props.onChange({ target: { files: [{ name: 'ok.png', type: 'image/png', size: 100 }] } })
+  )
+  await act(async () => {})
+  await view.click('Cancelar')
+  assert.equal(view.calls.length, 0)
+  assert.equal(view.profile.avatarPath, 'avatar.webp')
 })
 
 test('nome inválido bloqueia salvamento; envio duplo faz uma chamada', async () => {
@@ -275,7 +319,12 @@ test('remoção de foto exige confirmação e preserva dados pessoais', async ()
   assert.equal(view.calls.length, 0)
   globalThis.window.confirm = () => true
   await view.click('Remover foto')
-  assert.deepEqual(view.calls, ['remove', 'refreshProfile'])
+  assert.deepEqual(view.calls, [
+    'remove',
+    ['invalidate', 'avatar.webp'],
+    ['patchProfile', 'user-1', { avatarPath: null, avatarMediaId: null }],
+    ['community', 'user-1', null],
+  ])
   delete globalThis.window
 })
 

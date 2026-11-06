@@ -1,20 +1,19 @@
 // Equivalente a confirm(uid, mediaId) (functions/profile-avatar-service.js). Chamada
 // pelo cliente (JWT do próprio dono) depois de subir os bytes direto pro Storage (RLS já
 // travou o insert num caminho pré-alocado por allocate_profile_avatar). Só esta função
-// decodifica a imagem pra validar dimensões -- Postgres não faz isso, e o navegador que
-// fez o upload não é confiável pra "declarar" as próprias dimensões (é exatamente essa
-// checagem servidor que o original tinha via sharp().metadata()).
+// valida o contêiner WebP e as dimensões declaradas no cabeçalho -- Postgres não faz
+// isso, e o navegador que fez o upload não é confiável pra declarar metadados.
+// Esta verificação não substitui uma decodificação completa da imagem.
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
-import { readWebpDimensions } from '../_shared/webp.ts'
+import { readWebpDimensions, isWebpComplete, findForbiddenWebpChunk } from '../_shared/webp.ts'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 const MAX_BYTES = 1024 * 1024
-const MAX_DIMENSION = 1600
-const MAX_PIXELS = 2560000
+const AVATAR_DIMENSION = 320
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -34,6 +33,8 @@ Deno.serve(async (req) => {
     const { data: userData, error: userErr } = await userClient.auth.getUser()
     if (userErr || !userData?.user) return jsonError('NOT_AUTHENTICATED', 401)
     const uid = userData.user.id
+    const { data: hasAccess, error: accessErr } = await userClient.rpc('has_app_access')
+    if (accessErr || hasAccess !== true) return jsonError('APP_ACCESS_DENIED', 403)
 
     const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
@@ -42,9 +43,24 @@ Deno.serve(async (req) => {
       .select('id, owner_id, storage_path, state')
       .eq('id', mediaId)
       .maybeSingle()
-    if (mediaErr || !media || media.owner_id !== uid || media.state !== 'allocated') {
+    if (mediaErr || !media || media.owner_id !== uid) {
       return jsonError('UPLOAD_NOT_AUTHORIZED', 403)
     }
+
+    // The first confirmation may commit while its HTTP response is lost. Repeating
+    // that same media ID is safe only while it is still the owner's active avatar.
+    if (media.state === 'active') {
+      const { data: owner, error: ownerErr } = await adminClient
+        .from('users')
+        .select('avatar_media_id')
+        .eq('id', uid)
+        .maybeSingle()
+      if (!ownerErr && owner?.avatar_media_id === mediaId) {
+        return jsonOk({ mediaId, path: media.storage_path })
+      }
+      return jsonError('UPLOAD_NOT_AUTHORIZED', 403)
+    }
+    if (media.state !== 'allocated') return jsonError('UPLOAD_NOT_AUTHORIZED', 403)
 
     const { data: blob, error: downloadErr } = await adminClient.storage
       .from('profile-avatars')
@@ -57,14 +73,12 @@ Deno.serve(async (req) => {
     }
 
     const bytes = new Uint8Array(await blob.arrayBuffer())
-    const dimensions = readWebpDimensions(bytes)
+    const dimensions = isWebpComplete(bytes) && !findForbiddenWebpChunk(bytes)
+      ? readWebpDimensions(bytes) : null
     if (
       !dimensions ||
-      dimensions.width <= 0 ||
-      dimensions.height <= 0 ||
-      dimensions.width > MAX_DIMENSION ||
-      dimensions.height > MAX_DIMENSION ||
-      dimensions.width * dimensions.height > MAX_PIXELS
+      dimensions.width !== AVATAR_DIMENSION ||
+      dimensions.height !== AVATAR_DIMENSION
     ) {
       return jsonError('INVALID_IMAGE', 400)
     }
