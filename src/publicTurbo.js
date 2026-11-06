@@ -42,6 +42,22 @@ document.addEventListener('turbo:visit', (event) => {
   visitAction = event.detail.action
 })
 
+document.addEventListener('turbo:before-render', (event) => {
+  if (
+    event.detail.newBody?.querySelector('#content .home-hero') &&
+    document.querySelector('script[data-auth-ref]')
+  ) {
+    // Applied before Turbo swaps the body, including history restoration.
+    try {
+      const ref = document.querySelector('script[data-auth-ref]').dataset.authRef
+      if (localStorage.getItem(`sb-${ref}-auth-token`) && navigator.onLine !== false)
+        document.documentElement.classList.add('home-auth-pending')
+    } catch {
+      /* Storage may be unavailable. */
+    }
+  }
+})
+
 document.addEventListener('turbo:load', () => {
   if (visitAction === 'advance' && !location.hash)
     document.getElementById('content')?.focus({ preventScroll: true })
@@ -67,19 +83,7 @@ document.addEventListener('turbo:load', () => {
       module.mountCommercialLeadForm()
     )
 
-  // The head bootstrap runs on a direct Home load. Turbo may keep that script in
-  // the merged head, so repeat the session check when navigating back to Home.
-  if (location.pathname === '/') {
-    const bootstrap = document.querySelector('script[data-auth-ref]')
-    try {
-      if (
-        bootstrap?.dataset.authRef &&
-        localStorage.getItem(`sb-${bootstrap.dataset.authRef}-auth-token`)
-      ) {
-        import(/* @vite-ignore */ bootstrap.dataset.redirectSrc)
-      }
-    } catch {
-      /* Storage may be unavailable. */
-    }
-  }
+  // The head script can survive Turbo navigation. Reuse its session gate on Home.
+  if (location.pathname === '/') window.evolutusCheckHomeAuth?.()
+  else window.evolutusReleaseHomeAuth?.()
 })

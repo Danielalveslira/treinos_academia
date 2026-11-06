@@ -14,6 +14,30 @@
 html.home-auth-pending body {
   visibility: hidden;
 }
+html.home-auth-pending #home-auth-wait {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: #0d1117;
+  color: #f0f6fc;
+  text-align: center;
+  visibility: visible;
+  z-index: 1000;
+}
+#home-auth-wait a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  color: #f0f6fc;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+}
 * {
   box-sizing: border-box;
 }

@@ -98,14 +98,18 @@ test('registerUser: com Confirm email desligado (autoconfirm), devolve hasSessio
     })
   }
   const result = await mod.registerUser('a@a.com', 'senha1234')
-  assert.deepEqual(result, { user: { uid: 'u1', email: 'a@a.com' }, hasSession: true })
+  assert.deepEqual(result, {
+    user: { uid: 'u1', email: 'a@a.com' },
+    hasSession: true,
+    outcome: 'authenticated',
+  })
 })
 
 test('registerUser: sem sessão não usa o UID como identidade confirmada', async () => {
   globalThis.__signUp = () =>
     Promise.resolve({ data: { user: { id: 'u1', email: 'a@a.com' }, session: null }, error: null })
   const result = await mod.registerUser('a@a.com', 'senha1234')
-  assert.deepEqual(result, { user: null, hasSession: false })
+  assert.deepEqual(result, { user: null, hasSession: false, outcome: 'ambiguous' })
 })
 
 // Confirmado nos logs de Auth de PRODUÇÃO (evento "User repeated signup"): signUp num
@@ -124,7 +128,7 @@ test('registerUser: signUp ofuscado (e-mail já confirmado, hospedado) também d
       error: null,
     })
   const result = await mod.registerUser('a@a.com', 'outraSenhaQualquer')
-  assert.deepEqual(result, { user: null, hasSession: false })
+  assert.deepEqual(result, { user: null, hasSession: false, outcome: 'ambiguous' })
 })
 
 test('registerUser: erro explícito de e-mail existente tem o mesmo resultado sem sessão', async () => {
@@ -134,6 +138,7 @@ test('registerUser: erro explícito de e-mail existente tem o mesmo resultado se
   assert.deepEqual(await mod.registerUser('a@a.com', 'senha1234'), {
     user: null,
     hasSession: false,
+    outcome: 'duplicate',
   })
 })
 
