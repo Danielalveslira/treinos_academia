@@ -1,34 +1,42 @@
 -- Selo de autoridade (Superadmin / Admin da comunidade) nos comentários e respostas: hoje só
 -- aparece no post (author_is_superadmin em statuses, ver 20260926000018_status_author_badge.sql).
 -- Nunca confia no que o cliente manda; resolvido na MESMA query que já lista/pagina os
--- comentários (join, não 1 consulta por comentário).
+-- comentários (join/função, nunca 1 consulta por comentário).
 --
--- Superadmin: histórico (mesma semântica de statuses.author_is_superadmin -- grafado no momento
--- da publicação do comentário, nunca recalculado depois, para não reabrir a regressão descrita
--- naquela migration). Admin de comunidade: ao vivo (dono ATUAL da comunidade) -- perder a posse
--- não pode deixar o selo "preso" num comentário antigo, e um dono de outra comunidade nunca pode
--- herdar o selo aqui.
+-- Os dois selos são AO VIVO (papel/posse ATUAL), e não por acaso: ao contrário do post, que
+-- sempre teve author_is_superadmin gravado no momento da publicação (desde
+-- 20260926000018_status_author_badge.sql), um COMENTÁRIO nunca teve nenhum registro de papel
+-- histórico antes desta migration. Não existe, em lugar nenhum do schema, um log de quando um
+-- usuário ganhou/perdeu o papel de superadmin -- só o papel ATUAL (public.users.role). Gravar
+-- author_is_superadmin em post_comments com uma coluna + trigger (como statuses faz) resolveria
+-- bem os comentários NOVOS, mas deixaria todo o histórico já existente preso em `false` por
+-- padrão -- ou, se fosse "corrigido" com um UPDATE em massa usando o papel atual dos autores,
+-- fabricaria uma afirmação histórica que os dados não sustentam (um usuário promovido a
+-- superadmin DEPOIS de comentar pareceria tê-lo sido desde sempre). As duas alternativas violam
+-- a mesma regra: nunca confundir papel atual com papel histórico. Resolver ao vivo evita o
+-- dilema por completo -- corrige TODO o histórico (sem migrar nenhuma linha) e nunca mantém um
+-- selo depois de alguém perder o cargo, exatamente como já é obrigatório para o selo de
+-- administrador da comunidade.
+--
+-- Esta escolha é deliberadamente diferente do selo do POST: lá a semântica histórica já existe
+-- desde a primeira versão do produto e trocá-la agora seria uma regressão real (gente que via o
+-- selo passaria a não ver, ou vice-versa); aqui o selo em comentários nunca existiu, então não há
+-- nenhuma regressão possível ao escolher o desenho mais simples e mais correto.
 
-alter table public.post_comments
-  add column if not exists author_is_superadmin boolean not null default false;
-
-create or replace function private.enforce_comment_author_badge() returns trigger
-  language plpgsql security definer set search_path = public as $$
-begin
-  new.author_is_superadmin := public.is_superadmin();
-  return new;
-end;
+create function private.is_user_superadmin(p_user_id uuid) returns boolean
+  language sql stable security definer set search_path = '' as $$
+    select exists (select 1 from public.users where id = p_user_id and role = 'superadmin')
 $$;
-
-drop trigger if exists post_comments_enforce_author_badge on public.post_comments;
-create trigger post_comments_enforce_author_badge
-  before insert on public.post_comments
-  for each row execute function private.enforce_comment_author_badge();
+revoke all on function private.is_user_superadmin(uuid) from public, anon;
+grant execute on function private.is_user_superadmin(uuid) to authenticated, service_role;
 
 -- security_invoker=true (já era assim): o join novo com statuses/communities fica sujeito à
 -- MESMA RLS que o viewer já teria para ler esses dois status/comunidade (statuses_select e
 -- communities_select) -- quem já pode ler os comentários de um post também pode ler o status e a
 -- comunidade dele, então o join nunca nega nem vaza nada que can_view_status já não garantisse.
+-- is_user_superadmin() é security definer só para contornar a RLS de public.users (que só libera
+-- a própria linha ou um viewer que já é superadmin) -- devolve apenas um booleano, nunca o papel
+-- em si nem qualquer outro dado do autor.
 create or replace view public.comment_list_items
 with (security_invoker = true) as
 select
@@ -49,7 +57,7 @@ select
   c.edited_at,
   p.username as author_username,
   p.avatar_path as author_avatar_path,
-  c.author_is_superadmin,
+  private.is_user_superadmin(c.author_id) as author_is_superadmin,
   (cm.owner_id is not null and cm.owner_id = c.author_id) as author_is_community_admin
 from public.post_comments c
 left join public.public_profiles p on p.user_id = c.author_id
@@ -82,7 +90,7 @@ language sql stable security invoker set search_path = '' as $$
         'authorId', c.author_id,
         'authorUsername', p.username,
         'authorAvatarPath', p.avatar_path,
-        'authorIsSuperAdmin', c.author_is_superadmin,
+        'authorIsSuperAdmin', private.is_user_superadmin(c.author_id),
         'authorIsCommunityAdmin', coalesce(
           (select sc.community_owner_id is not null and sc.community_owner_id = c.author_id
            from status_ctx sc),

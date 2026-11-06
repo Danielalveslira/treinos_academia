@@ -4,6 +4,21 @@ create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 select no_plan();
 
+-- Regressão: comment_list_items já existia (20261002000005_comments_read_rls.sql) com uma lista
+-- explícita de colunas -- CREATE OR REPLACE VIEW só aceita acrescentar ao FINAL, nunca reordenar
+-- as já existentes. author_is_superadmin/author_is_community_admin precisam continuar entrando
+-- só depois de author_avatar_path, nunca antes.
+select is(
+  (select string_agg(column_name, ',' order by ordinal_position)
+   from information_schema.columns
+   where table_schema = 'public' and table_name = 'comment_list_items'),
+  'id,status_id,author_id,parent_comment_id,root_comment_id,ancestor_ids,depth,body,status,' ||
+  'reply_count,like_count,score,created_at,updated_at,edited_at,author_username,' ||
+  'author_avatar_path,author_is_superadmin,author_is_community_admin',
+  'comment_list_items preserva nome/tipo/ORDEM de toda coluna pré-existente; os dois selos só ' ||
+  'entram ao final'
+);
+
 -- '01' = dono da comunidade A (nao superadmin); '02' = superadmin (nao dono);
 -- '03' = membro comum da comunidade A; '04' = dono da comunidade B (outra comunidade).
 insert into auth.users (
@@ -172,7 +187,9 @@ select is(
 );
 
 -- 7) Mudança de proprietário da comunidade: o selo de admin segue o dono ATUAL, nunca fica
--- "preso" em quem publicou o comentário, e o selo de superadmin (histórico) não se altera.
+-- "preso" em quem publicou o comentário. Troca de dono é um evento independente do papel de
+-- superadmin (nunca toca public.users.role), então o selo de superadmin não deveria mudar só
+-- por isso -- mas (ver item 7b) ele NÃO é histórico: muda se o PAPEL em si mudar.
 reset role;
 update public.communities set owner_id = '85000000-0000-0000-0000-000000000003'
 where id = '86000000-0000-0000-0000-000000000001';
@@ -194,7 +211,35 @@ select is(
   (select author_is_superadmin from public.comment_list_items
    where id = (select (row).id from superadmin_reply)),
   true,
-  'troca de posse da comunidade não altera o selo histórico de superadmin'
+  'troca de posse da comunidade (evento independente) não altera o selo de superadmin'
+);
+
+-- 7b) Selo de Superadmin em comentário é AO VIVO, de propósito -- diferente do selo do POST
+-- (statuses.author_is_superadmin, histórico desde sempre). Comentários nunca tiveram nenhum
+-- registro de papel histórico antes desta migration: não há dado confiável para reconstruir
+-- "era superadmin quando comentou" para o que já existia, e fabricar isso a partir do papel
+-- ATUAL confundiria papel atual com histórico. Resolver ao vivo corrige o selo em QUALQUER
+-- comentário (antigo ou novo) sem nenhuma migração/backfill de dados, e nunca mantém o selo
+-- depois de alguém perder o cargo.
+reset role;
+update public.users set role = 'user' where id = '85000000-0000-0000-0000-000000000002';
+set local role authenticated;
+select pg_temp.as_user('03');
+select is(
+  (select author_is_superadmin from public.comment_list_items
+   where id = (select (row).id from superadmin_reply)),
+  false,
+  'demover o superadmin remove o selo do comentário já existente, na hora, sem backfill'
+);
+reset role;
+update public.users set role = 'superadmin' where id = '85000000-0000-0000-0000-000000000002';
+set local role authenticated;
+select pg_temp.as_user('03');
+select is(
+  (select author_is_superadmin from public.comment_list_items
+   where id = (select (row).id from superadmin_reply)),
+  true,
+  'repromover devolve o selo ao mesmo comentário pré-existente, sem nenhuma migração de dados'
 );
 
 -- 8) Sem consulta por linha: comment_list_items é 1 view (join único), nunca 1 chamada por

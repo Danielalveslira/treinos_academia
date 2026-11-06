@@ -4,6 +4,29 @@ create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
 select no_plan();
 
+-- Regressão: CREATE OR REPLACE VIEW só aceita acrescentar colunas ao FINAL -- nomes, tipos e
+-- ORDEM das colunas já existentes têm que ficar exatamente como estavam
+-- (20261028000001_status_expiration.sql criou esta view antes de edited_at/
+-- author_is_community_admin existirem). Um `select s.*` nesta migration faria edited_at
+-- (recém-criada em public.statuses) entrar NO MEIO da lista, antes de verified_promoted_until/
+-- publication_expires_at/interaction_expires_at, e o CREATE OR REPLACE VIEW falharia
+-- ("cannot change name of view column..."). Esta asserção prova que a ordem das 34 colunas
+-- originais nunca foi perturbada, e que as 2 novas só entram ao final.
+select is(
+  (select string_agg(column_name, ',' order by ordinal_position)
+   from information_schema.columns
+   where table_schema = 'public' and table_name = 'status_publications'),
+  'id,community_id,author_id,author_username,author_is_superadmin,type,created_at,expires_at,' ||
+  'text,poll_question,poll_options,workout_title,workout_date,workout_location,achievement_day,' ||
+  'achievement_text,achievement_entries,achievement_sets,photo_path,photo_caption,' ||
+  'positive_vote_count,negative_vote_count,promoted,promoted_until,active_promotion_id,' ||
+  'comment_count,progress_kind,progress_period_start,progress_period_end,retention_mode,' ||
+  'comments_close_at,verified_promoted_until,publication_expires_at,interaction_expires_at,' ||
+  'edited_at,author_is_community_admin',
+  'status_publications preserva nome/tipo/ORDEM de toda coluna pré-existente; edited_at e ' ||
+  'author_is_community_admin só entram ao final'
+);
+
 -- '01' = autor/dono da comunidade; '02' = superadmin; '03' = membro comum da mesma comunidade.
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at,

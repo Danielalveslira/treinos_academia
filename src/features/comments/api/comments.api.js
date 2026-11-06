@@ -29,11 +29,11 @@ export function mapCommentRow(row) {
   }
   if ('author_username' in row) comment.authorUsername = row.author_username
   if ('author_avatar_path' in row) comment.authorAvatarPath = row.author_avatar_path
-  // author_is_superadmin existe tanto na view (comment_list_items) quanto na tabela crua
-  // (post_comments, devolvida por comment_create/comment_edit/comment_delete) -- sempre presente.
-  // author_is_community_admin é ao vivo e só existe na view: ausente numa linha crua (ex.: depois
-  // de editar/apagar um comentário) não deveria virar `false` por omissão e apagar o selo que a
-  // tela já mostrava -- o merge no CommentCard (`{...current, ...next}`) preserva o valor anterior.
+  // Os dois selos são ao vivo e só existem na VIEW (comment_list_items/comment_context) -- nunca
+  // na tabela crua post_comments devolvida por comment_create/comment_edit/comment_delete.
+  // Ausentes numa linha crua (ex.: depois de editar/apagar um comentário) não deveriam virar
+  // `false` por omissão e apagar o selo que a tela já mostrava -- o merge no CommentCard
+  // (`{...current, ...next}`) preserva o valor anterior.
   if ('author_is_superadmin' in row) comment.authorIsSuperAdmin = row.author_is_superadmin
   if ('author_is_community_admin' in row) comment.authorIsCommunityAdmin = row.author_is_community_admin
   return comment

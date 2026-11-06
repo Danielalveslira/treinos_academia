@@ -22,11 +22,32 @@ revoke all on function private.status_author_is_community_admin(public.statuses)
 grant execute on function private.status_author_is_community_admin(public.statuses)
   to authenticated, service_role;
 
+-- CREATE OR REPLACE VIEW só aceita acrescentar colunas ao FINAL da lista -- nomes, tipos e
+-- ORDEM das colunas já existentes têm que ficar exatamente como estavam. `select s.*` quebraria
+-- isso: como edited_at acabou de entrar em public.statuses (acima), s.* passaria a terminar em
+-- edited_at, empurrando verified_promoted_until/publication_expires_at/interaction_expires_at
+-- (que são colunas FIXAS desta view desde 20261028000001_status_expiration.sql) uma posição
+-- adiante -- erro "cannot change name of view column ... to edited_at" (confirmado reproduzindo
+-- a migration 20261028000001 antes desta e tentando o replace com s.*). A lista abaixo é
+-- exatamente a ordem real de public.statuses ANTES desta migration (id .. comments_close_at,
+-- 31 colunas -- ver histórico de ALTER TABLE em 20260926000005/20260927000002/
+-- 20260927000003/20261002000003/20261007000001/20261008000002), seguida das 3 colunas
+-- calculadas originais na mesma ordem/nome, com edited_at e author_is_community_admin
+-- acrescentadas só ao final.
 create or replace view public.status_publications with (security_invoker = true) as
-select s.*, private.status_promotion_until(s) as verified_promoted_until,
+select
+  s.id, s.community_id, s.author_id, s.author_username, s.author_is_superadmin, s.type,
+  s.created_at, s.expires_at, s.text, s.poll_question, s.poll_options, s.workout_title,
+  s.workout_date, s.workout_location, s.achievement_day, s.achievement_text,
+  s.achievement_entries, s.achievement_sets, s.photo_path, s.photo_caption,
+  s.positive_vote_count, s.negative_vote_count, s.promoted, s.promoted_until,
+  s.active_promotion_id, s.comment_count, s.progress_kind, s.progress_period_start,
+  s.progress_period_end, s.retention_mode, s.comments_close_at,
+  private.status_promotion_until(s) as verified_promoted_until,
   case when s.expires_at is null or s.retention_mode = 'no_auto_expiration' then null
     else greatest(s.expires_at, private.status_promotion_until(s)) end as publication_expires_at,
   private.status_interaction_expiry(s) as interaction_expires_at,
+  s.edited_at,
   private.status_author_is_community_admin(s) as author_is_community_admin
 from public.statuses s;
 
