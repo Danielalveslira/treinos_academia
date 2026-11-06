@@ -1,13 +1,14 @@
 \ir _helpers/auth_session.sql
--- 20261212000004 (+ regra 18+ de accept_legal_documents em 20261212000001): cadastro exclusivo
--- para 18 anos completos no dia civil de America/Sao_Paulo, por API direta e retomada de perfil.
+-- 20261213000002 (+ regra 16+ de accept_legal_documents em 20261212000001, atualizada pela mesma
+-- migration): cadastro exclusivo para 16 anos completos no dia civil de America/Sao_Paulo, por API
+-- direta e retomada de perfil. Compras continuam exigindo 18 (private.is_known_minor, inalterado).
 begin;
 select no_plan();
 
 create temp table d as select
   (now() at time zone 'America/Sao_Paulo')::date as today,
-  ((now() at time zone 'America/Sao_Paulo')::date - interval '18 years')::date as adult18,
-  (((now() at time zone 'America/Sao_Paulo')::date - interval '18 years')::date + 1) as minor_by_one_day;
+  ((now() at time zone 'America/Sao_Paulo')::date - interval '16 years')::date as adult16,
+  (((now() at time zone 'America/Sao_Paulo')::date - interval '16 years')::date + 1) as minor_by_one_day;
 grant select on d to authenticated;
 
 -- Política histórica ainda declarando 12 anos (como a 1.5.0 publicada).
@@ -21,11 +22,11 @@ from generate_series(1,5) i;
 create function pg_temp.err(p_sql text) returns text language plpgsql as $$
 begin execute p_sql; return null; exception when others then return sqlerrm; end $$;
 
--- 1) Fronteira exata dos 18 anos ----------------------------------------------------------
+-- 1) Fronteira exata dos 16 anos ----------------------------------------------------------
 set local role authenticated;
 select pg_temp.set_test_user('72a00000-0000-0000-0000-000000000001',true);
 select is(pg_temp.err(format($$select public.set_birth_info(jsonb_build_object('dataNascimento',%L))$$,(select minor_by_one_day from d))),
-  'MINIMUM_AGE','um dia antes do 18º aniversário: recusado');
+  'MINIMUM_AGE','um dia antes do 16º aniversário: recusado');
 select is(pg_temp.err(format($$select public.set_birth_info(jsonb_build_object('dataNascimento',%L))$$,(select today+1 from d))),
   'MINIMUM_AGE','data futura: recusada');
 select is(pg_temp.err($$select public.set_birth_info('{"dataNascimento":"2004-02-30"}'::jsonb)$$),'INVALID_BIRTHDATE','data inexistente (30/02)');
@@ -39,17 +40,19 @@ reset role;
 select is((select data_nascimento from public.users where id='72a00000-0000-0000-0000-000000000001'),null,'nenhuma tentativa recusada gravou data');
 set local role authenticated;
 select pg_temp.set_test_user('72a00000-0000-0000-0000-000000000001',true);
-select is(pg_temp.err(format($$select public.set_birth_info(jsonb_build_object('dataNascimento',%L,'sexo','nao_informar'))$$,(select adult18 from d))),
-  null,'exatamente no 18º aniversário: aceito');
+select is(pg_temp.err(format($$select public.set_birth_info(jsonb_build_object('dataNascimento',%L,'sexo','nao_informar'))$$,(select adult16 from d))),
+  null,'exatamente no 16º aniversário: aceito');
 reset role;
-select is((select data_nascimento from public.users where id='72a00000-0000-0000-0000-000000000001'),(select adult18 from d),'data adulta persistida');
+select is((select data_nascimento from public.users where id='72a00000-0000-0000-0000-000000000001'),(select adult16 from d),'data adulta persistida');
 select is((select sexo from public.users where id='72a00000-0000-0000-0000-000000000001'),'nao_informar','sexo persistido junto');
 
--- 29/02: mesma aritmética no servidor (age()) e na regra de bloqueio.
-select is(extract(year from age(date '2026-02-28', date '2008-02-29'))::int,17,'29/02: 17 anos em 28/02 de ano comum');
-select ok(date '2008-02-29' > (date '2026-02-28' - interval '18 years')::date,'29/02: regra de bloqueio coincide com age() em 28/02');
-select is(extract(year from age(date '2026-03-01', date '2008-02-29'))::int,18,'29/02: 18 anos em 01/03');
-select ok(not (date '2008-02-29' > (date '2026-03-01' - interval '18 years')::date),'29/02: liberado em 01/03');
+-- 29/02: mesma aritmética no servidor (age()) e na regra de bloqueio. Precisa de um par 16 anos
+-- bissexto->comum; como +16 preserva o alinhamento de bissexto exceto em virada de século, usa-se
+-- 1884 (bissexto) -> 1900 (comum, divisível por 100 e não por 400).
+select is(extract(year from age(date '1900-02-28', date '1884-02-29'))::int,15,'29/02: 15 anos em 28/02 de ano comum');
+select ok(date '1884-02-29' > (date '1900-02-28' - interval '16 years')::date,'29/02: regra de bloqueio coincide com age() em 28/02');
+select is(extract(year from age(date '1900-03-01', date '1884-02-29'))::int,16,'29/02: 16 anos em 01/03');
+select ok(not (date '1884-02-29' > (date '1900-03-01' - interval '16 years')::date),'29/02: liberado em 01/03');
 
 -- 2) Retomada de perfil e troca posterior da data ------------------------------------------
 set local role authenticated;
@@ -82,17 +85,17 @@ select is(pg_temp.err($$select public.set_birth_info('{"dataNascimento":"1990-01
 reset role;
 select is((select data_nascimento from public.users where id='72a00000-0000-0000-0000-000000000003'),null,'sessão revogada não gravou nada');
 
--- 4) Aceite com política histórica de 12 anos: servidor exige 18 ---------------------------
+-- 4) Aceite com política histórica de 12 anos: servidor exige 16 ---------------------------
 update public.users set data_nascimento=(select minor_by_one_day from d) where id='72a00000-0000-0000-0000-000000000004';
-update public.users set data_nascimento=(select adult18 from d) where id='72a00000-0000-0000-0000-000000000005';
+update public.users set data_nascimento=(select adult16 from d) where id='72a00000-0000-0000-0000-000000000005';
 set local role authenticated;
 select pg_temp.set_test_user('72a00000-0000-0000-0000-000000000004',true);
 select is(pg_temp.err(format($$select public.accept_legal_documents(jsonb_build_object('version','72.0.0','digest',%L,'accepted',true))$$,repeat('e',64))),
-  'MINIMUM_AGE','17 anos não aceita mesmo com manifesto histórico de 12');
-select ok(not coalesce(public.has_app_access(),false),'conta de 17 anos não fica utilizável');
+  'MINIMUM_AGE','15 anos não aceita mesmo com manifesto histórico de 12');
+select ok(not coalesce(public.has_app_access(),false),'conta de 15 anos não fica utilizável');
 select pg_temp.set_test_user('72a00000-0000-0000-0000-000000000005',true);
 select is(pg_temp.err(format($$select public.accept_legal_documents(jsonb_build_object('version','72.0.0','digest',%L,'accepted',true))$$,repeat('e',64))),
-  null,'exatamente 18 anos aceita');
+  null,'exatamente 16 anos aceita');
 select ok(public.has_app_access(),'adulto obtém acesso');
 reset role;
 update public.users set data_nascimento=null where id='72a00000-0000-0000-0000-000000000003';

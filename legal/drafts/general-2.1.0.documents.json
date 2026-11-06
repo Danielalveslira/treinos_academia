@@ -1,0 +1,460 @@
+[
+  {
+    "id": "community",
+    "path": "/regras-da-comunidade",
+    "title": "Regras da Comunidade",
+    "description": "Respeito é obrigatório. Recorde no supino, não.",
+    "summary": [
+      "Trate as pessoas com respeito. Assédio, discriminação e ameaças não têm espaço aqui.",
+      "Não publique golpes, dados de terceiros, conteúdo sexual ou instruções perigosas.",
+      "Você pode denunciar, saber o motivo de uma decisão e pedir revisão pelo atendimento."
+    ],
+    "sections": [
+      {
+        "id": "condutas",
+        "title": "O que não cabe na comunidade",
+        "items": [
+          "Assediar, discriminar, ameaçar ou incentivar ódio contra alguém.",
+          "Publicar conteúdo sexual ou qualquer material de exploração de crianças e adolescentes. Também é proibido contatar menores para pedir fotos, dados ou encontros impróprios.",
+          "Aplicar golpes, fingir ser outra pessoa, espalhar links maliciosos ou manipular engajamento.",
+          "Divulgar dados, fotos, marcas ou textos de terceiros sem autorização.",
+          "Incentivar substâncias ilegais, anabolizantes sem prescrição ou treinos perigosos.",
+          "Fazer spam ou publicidade disfarçada. Divulgação paga usa os formatos oficiais e aparece como patrocinada.",
+          "Fazer denúncia sabendo que ela é falsa."
+        ]
+      },
+      {
+        "id": "penalidades",
+        "title": "O que pode acontecer",
+        "table": {
+          "headers": [
+            "Gravidade",
+            "Exemplo",
+            "Medida possível"
+          ],
+          "rows": [
+            {
+              "cells": [
+                "Leve",
+                "Spam isolado",
+                "Remoção ou aviso"
+              ]
+            },
+            {
+              "cells": [
+                "Moderada",
+                "Reincidência",
+                "Suspensão por prazo definido"
+              ]
+            },
+            {
+              "cells": [
+                "Grave",
+                "Assédio, discriminação ou fraude",
+                "Banimento da comunidade"
+              ]
+            },
+            {
+              "cells": [
+                "Crítica",
+                "Ameaça, exploração de menores ou ataque ao sistema",
+                "Suspensão ou encerramento da conta; comunicação às autoridades quando exigida"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "id": "moderacao",
+        "title": "Denúncias e recursos",
+        "items": [
+          "Use “Denunciar violação” para explicar o fato e enviar evidências. Uma denúncia isolada não gera punição automática.",
+          "Registramos o motivo e a regra aplicada. Você pode pedir revisão pelo atendimento.",
+          "Em risco imediato, o acesso pode ser suspenso enquanto apuramos os fatos."
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "label": "Marco Civil da Internet — Lei nº 12.965/2014",
+        "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2014/lei/l12965.htm"
+      },
+      {
+        "label": "Estatuto da Criança e do Adolescente — Lei nº 8.069/1990",
+        "href": "https://www.planalto.gov.br/ccivil_03/leis/l8069.htm"
+      },
+      {
+        "label": "ECA Digital — Lei nº 15.211/2025",
+        "href": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15211.htm"
+      }
+    ]
+  },
+  {
+    "id": "terms",
+    "path": "/termos-de-uso",
+    "title": "Termos de Uso",
+    "description": "O que você pode fazer no Evolutus e as regras da sua conta.",
+    "summary": [
+      "Cadastro a partir de 16 anos. Comprar EvoCash ou contratar anúncios e vitrines exige 18 anos. Conta pessoal, não compartilhe.",
+      "Seus treinos são seus registros; indicadores fitness não substituem orientação profissional.",
+      "EvoCash paga serviços disponíveis. EvoCoins reconhecem participação e não são vendidos.",
+      "Compras, cancelamentos e uso de dados têm regras próprias. Seus direitos legais continuam valendo."
+    ],
+    "sections": [
+      {
+        "id": "quem-somos",
+        "title": "1. O que é o Evolutus",
+        "paragraphs": [
+          "O Evolutus ajuda você a montar fichas, registrar séries, cargas e evolução. Também reúne catálogo de exercícios, comunidades, perfis profissionais, vitrines, anúncios e créditos para serviços disponíveis.",
+          "A plataforma é operada por pessoa física, sem CNPJ. A identificação completa fica em /informacoes-do-fornecedor. Contato: dnllira1@gmail.com ou atendimento no aplicativo."
+        ]
+      },
+      {
+        "id": "conta",
+        "title": "2. Quem pode ter conta",
+        "items": [
+          "Cadastro a partir de 16 anos completos. Pedimos e-mail, senha, nome de usuário, data de nascimento, município, perfil de uso e sexo (ou “não informar”). Sem CPF, documento, selfie ou biometria.",
+          "Comprar EvoCash, contratar anúncios, impulsionamentos ou vitrines exige 18 anos completos, mesmo com conta já ativa — ver a seção 6 e a Política de Cancelamento, Arrependimento e Reembolsos.",
+          "A idade é calculada pela data informada; não há conferência por documento. Mantenha seus dados corretos, proteja sua senha e não empreste a conta.",
+          "Você pode pedir exclusão pelo Perfil. Alguns comprovantes e registros exigidos por lei, ou necessários para defesa de direitos, podem continuar guardados — ver a Política de Privacidade."
+        ]
+      },
+      {
+        "id": "aceite",
+        "title": "3. Aceite e mudanças destes Termos",
+        "items": [
+          "Registramos a versão, a data e a hora do seu aceite destes Termos e das Regras da Comunidade. A Política de Privacidade explica o uso de dados; ela não é um pedido de consentimento.",
+          "Autorizações opcionais, como a de medidas corporais, são pedidas à parte e podem ser retiradas.",
+          "Mudanças relevantes podem exigir novo aceite para continuar usando funções gerais. Sem aceitar, você ainda lê os documentos, acessa comprovantes, pede reembolso, fala com o atendimento e exerce seus direitos de privacidade.",
+          "Versões anteriores continuam disponíveis para consulta."
+        ]
+      },
+      {
+        "id": "conteudo",
+        "title": "4. O que você publica",
+        "items": [
+          "Você mantém os direitos sobre seu conteúdo. Autoriza o Evolutus a guardá-lo, ajustá-lo tecnicamente e mostrá-lo só para operar os recursos que você usa.",
+          "Status saem do feed após 24 horas. Respeite autoria, imagem e privacidade de terceiros."
+        ]
+      },
+      {
+        "id": "saude",
+        "title": "5. Treino não é consulta médica",
+        "items": [
+          "Fichas, séries, cargas, medidas e indicadores como IMC ajudam a acompanhar o treino. Não são diagnóstico nem prescrição médica, nutricional ou de treinamento.",
+          "Tem lesão ou condição de saúde? Procure um profissional antes de iniciar ou mudar a atividade. Medidas corporais são opcionais — ver a Política de Privacidade."
+        ]
+      },
+      {
+        "id": "servicos-pagos",
+        "title": "6. Créditos e serviços pagos",
+        "items": [
+          "Exigem 18 anos completos (ver seção 2). EvoCash é comprado na quantidade escolhida, ao preço mostrado em reais antes do checkout da InfinitePay. Paga recursos disponíveis no Evolutus; não rende juros, não pode ser sacado e tem condições próprias.",
+          "EvoCoins são pontos de participação e reputação. Não são EvoCash, não são comprados e não valem dinheiro.",
+          "Anúncios e impulsionamentos têm preço por período, passam por análise e aparecem como patrocinados. Não prometemos alcance, cliques ou vendas.",
+          "Vitrines de profissionais, espaços e produtos exigem aprovação e período ativo. Ao vencer, saem do ar; uma nova contratação pode renovar a publicação.",
+          "Se fichas de treino forem vendidas, a venda é feita pelo Evolutus — não por profissionais dentro da plataforma.",
+          "Antes de contratar, mostramos preço, duração ou quantidade, regras de cancelamento e o documento aplicável. O comprovante guarda as condições aceitas. Um recurso desativado não pode ser comprado; publicar estes Termos não libera vendas."
+        ]
+      },
+      {
+        "id": "cancelamento",
+        "title": "7. Cancelamentos e reembolsos",
+        "items": [
+          "Em contratações fora de estabelecimento, você pode se arrepender em até 7 dias corridos quando o art. 49 do Código de Defesa do Consumidor se aplicar. O início do prazo depende do produto ou serviço; começar a usar não tira esse direito automaticamente.",
+          "Cobrança indevida, falha ou oferta não cumprida também podem gerar pedido depois desse prazo, conforme a lei.",
+          "Peça e acompanhe pelo aplicativo. A Política de Cancelamento, Arrependimento e Reembolsos explica a análise e a devolução."
+        ]
+      },
+      {
+        "id": "menores",
+        "title": "8. Idade mínima",
+        "items": [
+          "Cadastro: 16 anos completos. Compras, contratações, EvoCash, anúncios e vitrines: 18 anos completos — mesmo para quem já tem conta.",
+          "Novos cadastros de menores de 16 anos não são permitidos. Se identificarmos uma conta assim, ou uma conta antiga de menor de 18 anos tentando comprar ou contratar, aplicamos as restrições cabíveis sem retirar atendimento nem direitos legais.",
+          "O Evolutus não é direcionado a menores e não usa perfil comportamental para lhes dirigir anúncios."
+        ]
+      },
+      {
+        "id": "conduta",
+        "title": "9. Convivência e moderação",
+        "items": [
+          "As Regras da Comunidade valem em todos os espaços de interação. Violações podem levar a aviso, remoção de conteúdo, suspensão ou encerramento da conta.",
+          "Registramos o motivo e oferecemos recurso pelo atendimento. Uma medida de moderação não tira comprovantes nem direitos de reembolso devidos."
+        ]
+      },
+      {
+        "id": "responsabilidades",
+        "title": "10. Responsabilidades",
+        "items": [
+          "O Evolutus responde pelos serviços que presta, conforme a lei; estes Termos não afastam direitos do consumidor.",
+          "Negociou por um link externo de uma vitrine? O contato e o pagamento acontecem entre as partes, fora do Evolutus. A plataforma não intermedeia essa venda.",
+          "Serviços de terceiros, como o checkout da InfinitePay, seguem seus próprios termos."
+        ]
+      },
+      {
+        "id": "lei",
+        "title": "11. Lei e contato",
+        "items": [
+          "Aplicam-se as leis brasileiras. O consumidor pode buscar seus direitos no foro do próprio domicílio.",
+          "Dúvidas, denúncias e pedidos: use /atendimento ou dnllira1@gmail.com."
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "label": "Código de Defesa do Consumidor — Lei nº 8.078/1990",
+        "href": "https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm"
+      },
+      {
+        "label": "Decreto nº 7.962/2013 (comércio eletrônico)",
+        "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm"
+      },
+      {
+        "label": "Marco Civil da Internet — Lei nº 12.965/2014",
+        "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2014/lei/l12965.htm"
+      },
+      {
+        "label": "Estatuto da Criança e do Adolescente — Lei nº 8.069/1990",
+        "href": "https://www.planalto.gov.br/ccivil_03/leis/l8069.htm"
+      },
+      {
+        "label": "ECA Digital — Lei nº 15.211/2025",
+        "href": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15211.htm"
+      }
+    ]
+  },
+  {
+    "id": "privacy",
+    "path": "/politica-de-privacidade",
+    "title": "Política de Privacidade",
+    "description": "Quais dados usamos, por quê, por quanto tempo e como você decide sobre eles.",
+    "summary": [
+      "Seu diário de treino e suas medidas são privados. Medidas corporais são opcionais e podem revelar dados de saúde.",
+      "Mudou de ideia? Retire a autorização no Perfil. As medidas já registradas sob ela são apagadas automaticamente.",
+      "Não usamos dados de saúde para publicidade nem os entregamos a anunciantes.",
+      "Peça acesso, correção ou exclusão pelo atendimento ou por dnllira1@gmail.com."
+    ],
+    "sections": [
+      {
+        "id": "controlador",
+        "title": "1. Quem cuida dos dados",
+        "paragraphs": [
+          "O responsável pelo Evolutus é pessoa física, sem CNPJ. A identificação completa fica em /informacoes-do-fornecedor. Para privacidade, escreva a dnllira1@gmail.com ou use /atendimento, opção “Privacidade ou exclusão da conta”."
+        ]
+      },
+      {
+        "id": "dados",
+        "title": "2. Dados, uso e fundamento legal",
+        "table": {
+          "headers": [
+            "Dados",
+            "Para quê",
+            "Fundamento"
+          ],
+          "rows": [
+            {
+              "cells": [
+                "E-mail, senha no provedor de autenticação e nome de usuário",
+                "Criar conta, entrar e identificar você",
+                "Execução do contrato — art. 7º, V"
+              ]
+            },
+            {
+              "cells": [
+                "Data de nascimento",
+                "Liberar cadastro a partir de 16 anos, confirmar os 18 anos exigidos para compras e contratações, e cuidar de contas de menores não permitidos",
+                "Execução do contrato e obrigação legal — art. 7º, II e V"
+              ]
+            },
+            {
+              "cells": [
+                "Município e perfil de uso",
+                "Mostrar recursos e conteúdos pertinentes",
+                "Execução do contrato — art. 7º, V"
+              ]
+            },
+            {
+              "cells": [
+                "Sexo escolhido no cadastro (inclusive “não informar”) e altura opcional",
+                "Personalizar mensagens e, com medidas autorizadas, calcular indicadores",
+                "Sexo: execução do contrato — art. 7º, V. Altura e indicadores que possam revelar saúde: consentimento específico — art. 11, I."
+              ]
+            },
+            {
+              "cells": [
+                "Fichas, exercícios, séries, cargas e observações de treino",
+                "Manter seu diário e histórico de treino",
+                "Execução do contrato — art. 7º, V. Os campos de observação servem ao treino; não peça nem informe diagnósticos ou dados médicos."
+              ]
+            },
+            {
+              "cells": [
+                "Peso, gordura, circunferências e outras medidas corporais",
+                "Mostrar histórico e indicadores fitness",
+                "Consentimento específico, opcional e revogável — art. 11, I"
+              ]
+            },
+            {
+              "cells": [
+                "Foto, descrição, publicações, comentários, votos e comunidades",
+                "Operar perfil e convivência",
+                "Execução do contrato — art. 7º, V"
+              ]
+            },
+            {
+              "cells": [
+                "Vitrines: apresentação, cidade, contatos, imagens e produtos",
+                "Exibir vitrine aprovada",
+                "Execução do contrato — art. 7º, V"
+              ]
+            },
+            {
+              "cells": [
+                "Compras, contratações, aceites e comprovantes",
+                "Entregar serviços, prevenir fraude e atender direitos",
+                "Contrato, obrigação legal e defesa de direitos — art. 7º, II, V e VI"
+              ]
+            },
+            {
+              "cells": [
+                "Atendimento, denúncias e decisões de moderação",
+                "Responder pedidos e apurar violações",
+                "Contrato e defesa de direitos — art. 7º, V e VI"
+              ]
+            },
+            {
+              "cells": [
+                "Endereço e dados técnicos de push, se ativado",
+                "Enviar notificações ao aparelho",
+                "Consentimento — art. 7º, I; desativável no Perfil"
+              ]
+            },
+            {
+              "cells": [
+                "Último uso, sincronização offline e registros de segurança",
+                "Manter o serviço seguro e funcional",
+                "Legítimo interesse — art. 7º, IX, sujeito a necessidade e proporcionalidade"
+              ]
+            },
+            {
+              "cells": [
+                "Visualizações e cliques em anúncios",
+                "Medir campanhas e evitar contagem duplicada",
+                "Legítimo interesse — art. 7º, IX, com minimização, descarte dos marcadores e oposição pelo atendimento."
+              ]
+            },
+            {
+              "cells": [
+                "Navegação e desempenho no Vercel Analytics e Speed Insights",
+                "Entender uso das páginas e desempenho do site",
+                "Legítimo interesse — art. 7º, IX, para dados técnicos não sensíveis. Se a navegação revelar saúde, esse fundamento não basta."
+              ]
+            },
+            {
+              "cells": [
+                "Propostas enviadas em Para Empresas",
+                "Responder ao contato e possível contratação",
+                "Procedimentos preliminares de contrato — art. 7º, V"
+              ]
+            }
+          ]
+        },
+        "paragraphs": [
+          "Pedimos só o necessário para as funções usadas. A tabela separa dados obrigatórios, opcionais e os fundamentos da LGPD. “Execução do contrato” é fazer funcionar o serviço solicitado; “obrigação legal” é cumprir uma exigência da lei."
+        ]
+      },
+      {
+        "id": "saude",
+        "title": "3. Medidas corporais e saúde",
+        "items": [
+          "Peso, gordura, circunferências, altura e indicadores derivados, como IMC, podem revelar dados de saúde. Pedimos autorização específica para registrar medidas e usar a altura em indicadores. Criar conta não depende disso.",
+          "Você pode retirar a autorização em Perfil → “Dados de saúde e direitos”. A retirada bloqueia novos registros e apaga as medidas guardadas e a altura do perfil.",
+          "Guardamos só a prova de que a autorização foi dada e retirada, com datas e versão do texto — nunca o conteúdo das medidas. Hoje não há outra base para guardar essas medidas.",
+          "Não usamos dados de saúde em anúncios nem os compartilhamos com anunciantes."
+        ]
+      },
+      {
+        "id": "visibilidade",
+        "title": "4. O que outras pessoas veem",
+        "items": [
+          "Diário de treino e medidas ficam privados. Nome de usuário, foto e descrição aparecem a usuários logados.",
+          "Estatísticas do perfil só aparecem se você ativar o compartilhamento. Uma vitrine aprovada fica pública durante o período contratado, inclusive para visitantes sem conta; links externos levam a terceiros."
+        ]
+      },
+      {
+        "id": "compartilhamento",
+        "title": "5. Quem recebe dados",
+        "items": [
+          "Supabase opera login, banco, arquivos e funções. Vercel hospeda o site e recebe métricas de navegação e desempenho. Resend envia e-mails transacionais de compras. InfinitePay processa pagamentos; não recebemos o número completo do cartão.",
+          "Ativou push? O navegador e o sistema podem usar serviços de Google, Apple, Mozilla ou Microsoft para entregar notificações. Consultas públicas ao catálogo externo de exercícios não enviam os dados pessoais da conta.",
+          "Autoridades podem receber dados por obrigação legal ou ordem judicial. Não vendemos dados pessoais.",
+          "O banco de dados principal e o Storage do Supabase ficam hospedados em São Paulo, Brasil; o Supabase também continua operando o login (Auth) e as funções (Edge Functions) do app. Vercel, Resend e outros fornecedores podem tratar dados fora do Brasil. A hospedagem brasileira do banco não garante que todo o processamento ocorra exclusivamente no país. Peça informações sobre destinos e mecanismos de proteção pelo canal de privacidade."
+        ]
+      },
+      {
+        "id": "anuncios",
+        "title": "6. Anúncios e métricas",
+        "items": [
+          "Anúncios aparecem como “Patrocinado” e rodam sem usar seu histórico ou perfil de saúde.",
+          "Contamos visualizações e cliques por anúncio, posição, comunidade e dia. Um identificador ligado à conta evita duplicações e vale por 48 horas; os totais agregados têm descarte programado após 24 meses.",
+          "Contas sem idade confirmada, ou identificadas como de menores de 18 anos, não entram nessa medição. Você pode se opor às métricas próprias de anúncios pelo atendimento.",
+          "Vercel Analytics e Speed Insights medem navegação e desempenho no app e nas páginas públicas. Removemos parâmetros e fragmentos da URL antes do envio; caminho, referenciador, horário, dispositivo e desempenho ainda podem ser tratados. Isso não garante anonimato."
+        ]
+      },
+      {
+        "id": "retencao",
+        "title": "7. Quanto tempo guardamos",
+        "items": [
+          "Dados operacionais da conta ficam enquanto ela existir e são removidos pelo fluxo de exclusão. Medidas corporais são apagadas quando você retira a autorização, mesmo sem excluir a conta.",
+          "Aceites, compras, contratações, reembolsos, atendimentos, moderação e segurança podem continuar pelo tempo necessário a deveres legais ou defesa de direitos, com acesso restrito. Pedidos de exclusão são analisados pelo canal de privacidade.",
+          "Marcadores de anúncios valem 48 horas e os totais agregados têm descarte programado após 24 meses; dados de sincronização offline duram até 30 dias. Registros de acesso seguem as exigências legais aplicáveis, incluindo o mínimo de seis meses do Marco Civil quando cabível."
+        ]
+      },
+      {
+        "id": "direitos",
+        "title": "8. Suas escolhas e direitos",
+        "items": [
+          "Você pode pedir confirmação de uso, acesso, correção, portabilidade quando aplicável, informação sobre compartilhamento e revisão de dados desnecessários ou tratados irregularmente.",
+          "Também pode revogar consentimentos e se opor a tratamentos por legítimo interesse. Use /atendimento ou dnllira1@gmail.com; a autorização de medidas pode ser retirada no Perfil.",
+          "Se a resposta não resolver, você pode reclamar à ANPD."
+        ]
+      },
+      {
+        "id": "menores",
+        "title": "9. Idade e contas antigas",
+        "items": [
+          "Pedimos sua data de nascimento no cadastro por dois motivos: liberar o cadastro a partir de 16 anos e confirmar os 18 anos exigidos para comprar ou contratar.",
+          "Identificamos uma conta de menor de 16 anos, ou uma tentativa de compra/contratação por menor de 18? Aplicamos as proteções e restrições cabíveis sem retirar seus direitos.",
+          "Não direcionamos publicidade por perfil comportamental a menores; contas identificadas como de menores de 18 anos não entram na medição de anúncios."
+        ]
+      },
+      {
+        "id": "seguranca",
+        "title": "10. Como protegemos os dados",
+        "items": [
+          "Usamos controle de acesso por usuário, conexões criptografadas e registros de operações administrativas e financeiras. Nenhum sistema oferece segurança absoluta.",
+          "Incidentes relevantes serão comunicados conforme a LGPD. Para dúvidas ou pedidos, use o canal de privacidade indicado acima."
+        ]
+      }
+    ],
+    "sources": [
+      {
+        "label": "LGPD — Lei nº 13.709/2018",
+        "href": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm"
+      },
+      {
+        "label": "Marco Civil da Internet — Lei nº 12.965/2014",
+        "href": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2014/lei/l12965.htm"
+      },
+      {
+        "label": "ECA Digital — Lei nº 15.211/2025",
+        "href": "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15211.htm"
+      },
+      {
+        "label": "ANPD — ECA Digital",
+        "href": "https://www.gov.br/anpd/pt-br/assuntos/eca-digital"
+      }
+    ]
+  }
+]

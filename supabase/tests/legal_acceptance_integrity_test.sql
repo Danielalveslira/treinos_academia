@@ -8,7 +8,8 @@ update public.economy_config set config = config || jsonb_build_object('supplier
 select no_plan();
 
 -- Fixtures: duas versões registradas (uma publicada, uma minuta), usuários adulto,
--- adolescente (16) e um terceiro, todos com e-mail confirmado.
+-- adolescente (14, acima do minimumAge=12 do manifesto mas abaixo do piso de 16) e um
+-- terceiro, todos com e-mail confirmado.
 insert into public.legal_versions(version,manifest,documents,digest) values
  ('71.0.0','{"version":"71.0.0","published":true,"minimumAge":12,"date":"2026-11-02","changes":[]}','[{"id":"terms","title":"Termos A"}]',repeat('a',64)),
  ('71.1.0','{"version":"71.1.0","published":false,"minimumAge":12,"date":"2026-11-02","changes":[]}','[{"id":"terms","title":"Minuta"}]',repeat('b',64));
@@ -17,7 +18,7 @@ insert into auth.users(id,aud,role,email,email_confirmed_at,raw_app_meta_data,ra
  ('71000000-0000-0000-0000-000000000002','authenticated','authenticated','legal-teen@example.invalid',now(),'{}','{}',now(),now()),
  ('71000000-0000-0000-0000-000000000003','authenticated','authenticated','legal-other@example.invalid',now(),'{}','{}',now(),now());
 update public.users set data_nascimento=(now()-interval '30 years')::date where id='71000000-0000-0000-0000-000000000001';
-update public.users set data_nascimento=(now()-interval '16 years')::date where id='71000000-0000-0000-0000-000000000002';
+update public.users set data_nascimento=(now()-interval '14 years')::date where id='71000000-0000-0000-0000-000000000002';
 update public.users set data_nascimento=(now()-interval '40 years')::date where id='71000000-0000-0000-0000-000000000003';
 
 -- 1) Histórico imutável e publicação controlada -------------------------------------
@@ -97,13 +98,13 @@ select pg_temp.set_test_user('71000000-0000-0000-0000-000000000002',true);
 select throws_ok(format($$select public.accept_legal_documents(jsonb_build_object('version','71.0.0','digest',%L,'accepted',true))$$,repeat('a',64)),
   'MINIMUM_AGE','idade mínima calculada no servidor');
 reset role;
-update public.users set data_nascimento=(now()-interval '16 years')::date where id='71000000-0000-0000-0000-000000000002';
+update public.users set data_nascimento=(now()-interval '14 years')::date where id='71000000-0000-0000-0000-000000000002';
 set local role authenticated;
 select pg_temp.set_test_user('71000000-0000-0000-0000-000000000002',true);
 select throws_ok(format($$select public.accept_legal_documents(jsonb_build_object('version','71.0.0','digest',%L,'accepted',true))$$,repeat('a',64)),
-  'MINIMUM_AGE','política antiga com 12 anos não permite novo aceite de menor de 18');
+  'MINIMUM_AGE','piso de 16 anos vence o manifesto histórico de 12: 14 anos não aceita');
 reset role;
-select ok(private.is_known_minor('71000000-0000-0000-0000-000000000002'),'16 anos é menor');
+select ok(private.is_known_minor('71000000-0000-0000-0000-000000000002'),'14 anos é menor');
 select ok(not private.is_known_minor('71000000-0000-0000-0000-000000000001'),'30 anos não é menor');
 select throws_ok($$select pg_temp.cash_purchase_fixture('71000000-0000-0000-0000-000000000002')$$,'MINOR_PURCHASE_BLOCKED','menor não inicia compra de EvoCash, nem por API direta');
 select lives_ok($$select pg_temp.cash_purchase_fixture('71000000-0000-0000-0000-000000000001')$$,'adulto segue o fluxo existente');

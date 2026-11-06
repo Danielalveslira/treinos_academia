@@ -4,16 +4,19 @@ import documents from '../../legal/documents.json' with { type: 'json' }
 import approvedDigests from '../../legal/approved-digests.json' with { type: 'json' }
 import archive13 from '../../legal/test-fixtures/1.3.0.json' with { type: 'json' }
 import archive14 from '../../legal/test-fixtures/1.4.0.json' with { type: 'json' }
+import archive20 from '../../legal/test-fixtures/2.0.0.json' with { type: 'json' }
 
 export const LEGAL_MANIFEST = manifest
 export const LEGAL_DOCUMENTS = documents
 export const APPROVED_LEGAL_DIGESTS = approvedDigests
 export const SUPPORTED_LEGAL_VERSIONS = Object.keys(approvedDigests)
 const approvedArchives = {
-  // Versões anteriores continuam aceitas: a 1.4.0 nunca é editada (fixture imutável) e quem tem a 1.4.0 vigente no
-  // banco segue funcionando até a 1.5.0 ser publicada em legal_policy.
+  // Versões anteriores continuam aceitas: 1.3.0/1.4.0/2.0.0 nunca são editadas (fixtures imutáveis)
+  // e quem tem uma delas vigente no banco segue funcionando até a versão seguinte ser publicada em
+  // legal_policy. 2.0.0 ganhou fixture própria ao deixar de ser a versão corrente (2.1.0).
   '1.3.0': archive13,
   '1.4.0': archive14,
+  '2.0.0': archive20,
   ...(manifest.version === '1.5.0' ? {} : { [manifest.version]: { manifest, documents } }),
 }
 // A 1.5.0 já publicada contém a identificação civil do responsável. Guardamos

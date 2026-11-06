@@ -1,15 +1,15 @@
 {
-  "version": "2.0.0",
-  "date": "2026-11-05",
+  "version": "2.1.0",
+  "date": "2026-11-06",
   "published": true,
   "controllerName": "Evolutus — identificação do responsável em /informacoes-do-fornecedor",
   "contactEmail": "dnllira1@gmail.com",
-  "minimumAge": 18,
+  "minimumAge": 16,
   "changes": [
-    "Termos de Uso e Regras da Comunidade em linguagem direta, com idade mínima de 18 anos, moderação e recursos claros.",
-    "Política de Privacidade com dados, finalidades, bases legais, visibilidade, direitos, retenção e provedores em linguagem simples.",
+    "Idade mínima de cadastro passa de 18 para 16 anos. Compras, contratações, EvoCash, anúncios e vitrines comerciais continuam exigindo 18 anos completos.",
+    "Termos de Uso, Regras da Comunidade e Política de Privacidade reescritos em linguagem mais curta e direta, sem perder nenhuma informação obrigatória.",
     "Medidas corporais continuam opcionais; a revogação apaga as medidas registradas e a altura.",
     "EvoCash, EvoCoins, publicidade, vitrines e reembolsos remetem às condições específicas; nenhuma venda é ativada por estes textos.",
-    "Política de Privacidade corrigida para refletir a hospedagem do banco e do Storage em São Paulo, Brasil, sem declarar que todo o processamento ocorre exclusivamente no país."
+    "Hospedagem do banco e do Storage em São Paulo, Brasil permanece declarada como na versão 2.0.0."
   ]
 }

@@ -8,7 +8,7 @@ import React from 'react'
 import TestRenderer, { act } from 'react-test-renderer'
 import { build } from 'esbuild'
 
-// Retomada de cadastro (ProfileCompletionGate): a mesma regra 18+ do cadastro vale aqui, inclusive
+// Retomada de cadastro (ProfileCompletionGate): a mesma regra 16+ do cadastro vale aqui, inclusive
 // quando a data vem preenchida de uma tentativa anterior. Validadores e o formulário são reais.
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const require = createRequire(import.meta.url)
@@ -136,12 +136,12 @@ const resumedProfile = (dataNascimento) => ({
   usageProfile: 'professional',
 })
 
-test('retomada com data de menor (gravada antes da regra 18+) é bloqueada no campo', async () => {
-  const minor = new Date(Date.now() - 16 * 365.25 * 86_400_000).toISOString().slice(0, 10)
+test('retomada com data de menor (gravada antes da regra 16+) é bloqueada no campo', async () => {
+  const minor = new Date(Date.now() - 15 * 365.25 * 86_400_000).toISOString().slice(0, 10)
   const view = await mount(resumedProfile(minor))
   await view.username('maria_fit')
   await view.submit()
-  assert.ok(view.errors().includes('É necessário ter pelo menos 18 anos para se cadastrar.'))
+  assert.ok(view.errors().includes('É necessário ter pelo menos 16 anos para se cadastrar.'))
   assert.equal(calls.length, 0, 'nada é enviado ao servidor')
   view.renderer.unmount()
 })
@@ -159,7 +159,7 @@ test('adulto com dados válidos conclui o perfil normalmente', async () => {
 
 test('recusa do servidor (MINIMUM_AGE/BIRTHDATE_LOCKED) aparece no campo de nascimento', async () => {
   for (const [code, message] of [
-    ['MINIMUM_AGE', 'É necessário ter pelo menos 18 anos para se cadastrar.'],
+    ['MINIMUM_AGE', 'É necessário ter pelo menos 16 anos para se cadastrar.'],
     [
       'BIRTHDATE_LOCKED',
       'A data de nascimento já está registrada. Para corrigi-la, use o atendimento.',

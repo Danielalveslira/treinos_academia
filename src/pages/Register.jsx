@@ -400,7 +400,8 @@ export default function Register() {
     }
 
     // Revalida TUDO (inclusive etapas anteriores): um erro leva de volta à etapa dele. A idade
-    // mínima de 18 anos é exigida antes de criar a identidade. O backend valida novamente.
+    // mínima (16 anos, ou mais se o manifesto jurídico vigente exigir) é checada antes de criar
+    // a identidade. O backend valida novamente.
     const validationErrors = { ...stepErrors(1), ...stepErrors(2), ...stepErrors(3) }
     if (hasErrors(validationErrors)) {
       showFieldErrors(validationErrors)
@@ -824,7 +825,7 @@ export default function Register() {
                   block
                 />
                 <FormControl.Caption>
-                  Cadastro disponível somente para pessoas com 18 anos completos ou mais.
+                  Cadastro disponível somente para pessoas com {birthDateRules().minimumAge} anos completos ou mais.
                 </FormControl.Caption>
                 {fieldErrors.birthDate && (
                   <FormControl.Validation variant="error">

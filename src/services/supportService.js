@@ -49,6 +49,7 @@ function toAdminDoc(item) {
     createdAt: item.createdAt,
     response: item.response,
     decidedAt: item.decidedAt,
+    isProtectedTeen: item.isProtectedTeen,
   }
 }
 

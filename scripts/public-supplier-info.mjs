@@ -60,7 +60,7 @@ export function buildSupplierInfoBody(env = process.env) {
       `${primerHeading('h2', '', 'Pagamentos')}${primerText(
         'p',
         '',
-        'Os pagamentos realizados no Evolutus são processados por InfinitePay, instituição de pagamento responsável pelo processamento das transações financeiras em nome do fornecedor.'
+        'Quando a contratação de serviços pagos estiver disponível, os pagamentos no Evolutus serão processados por InfinitePay, instituição de pagamento responsável pelo processamento das transações financeiras em nome do fornecedor, conforme disponibilidade e condições de contratação.'
       )}`
     )}
     ${primerBox(

@@ -202,6 +202,9 @@ export default function AdminModeration() {
                 {STATE_LABELS[item.state]?.text || item.state}
               </Label>
             </Box>
+            {item.isProtectedTeen && (
+              <Label variant="attention">Conta de adolescente (16-17 anos) · atenção redobrada</Label>
+            )}
             {/* A conta do solicitante pode já ter sido excluída -- run_deletion_job nunca
                 apaga a denúncia, só zera user_id (ver 20260930000002_deletion_worker.sql).
                 Sem link quebrado apontando pra "null". */}
