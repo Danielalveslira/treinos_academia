@@ -3,10 +3,30 @@ import assert from 'node:assert/strict'
 import {
   clearPhotoCache,
   getCachedPhotoUrl,
+  invalidatePhotoPath,
   loadPhotoOnce,
   setCachedPhotoUrl,
   subscribePhotoCache,
 } from './photoBlobCache.js'
+
+test('invalidação do avatar antigo preserva outras fotos e descarta download tardio', async () => {
+  clearPhotoCache()
+  setCachedPhotoUrl('other.webp', 'blob:other')
+  let resolveOld
+  const pending = loadPhotoOnce(
+    'old.webp',
+    () =>
+      new Promise((resolve) => {
+        resolveOld = resolve
+      })
+  )
+  await Promise.resolve()
+  invalidatePhotoPath('old.webp')
+  resolveOld('blob:old')
+  assert.equal(await pending, '')
+  assert.equal(getCachedPhotoUrl('old.webp'), undefined)
+  assert.equal(getCachedPhotoUrl('other.webp'), 'blob:other')
+})
 
 test('substituição no mesmo caminho avisa os cards e invalida download antigo', async () => {
   clearPhotoCache()

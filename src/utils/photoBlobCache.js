@@ -25,6 +25,15 @@ export function getCachedPhotoUrl(photoPath) {
   return cache.get(photoPath)
 }
 
+export function invalidatePhotoPath(photoPath) {
+  if (!photoPath) return
+  revisions.set(photoPath, (revisions.get(photoPath) || 0) + 1)
+  const url = cache.get(photoPath)
+  if (url) URL.revokeObjectURL(url)
+  cache.delete(photoPath)
+  for (const listener of listeners) listener(photoPath)
+}
+
 export function setCachedPhotoUrl(photoPath, url) {
   const previous = cache.get(photoPath)
   if (previous && previous !== url) URL.revokeObjectURL(previous)

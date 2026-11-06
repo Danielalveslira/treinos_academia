@@ -1,6 +1,7 @@
-import { useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, FormControl, TextInput, Textarea, Flash } from '@primer/react'
+import { DeviceCameraIcon } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
 import { refreshPublicStatistics } from '../services/publicProfilesService'
 import { LegalLinks } from '../components/LegalLinks'
@@ -10,7 +11,10 @@ import { validateUsername, hasErrors } from '../utils/validators'
 import { BIO_MAX_LENGTH } from '../services/usersService'
 import { setUsageProfile } from '../services/usageProfileService'
 import { ProfileAvatar } from '../components/ProfileAvatar'
-import { removeProfileAvatar, uploadProfileAvatar } from '../services/profileAvatarService'
+import { removeProfileAvatar } from '../services/profileAvatarService'
+import { validateImageFile } from '../utils/imageCompression'
+import { invalidatePhotoPath, setCachedPhotoUrl } from '../utils/photoBlobCache'
+import { setCommunityAuthorAvatar } from '../hooks/useCommunityAuthorAvatars'
 import { describeAccountAccessError } from '../utils/accountAccessErrors'
 import { PushNotificationSettings } from '../features/notifications/components/PushNotificationSettings'
 import { GREETING_V2_ENABLED } from '../features/greetings/config'
@@ -19,6 +23,12 @@ import { RestPreferenceSettings } from '../components/RestPreferenceSettings'
 import { ResidenceCitySettings } from '../components/ResidenceCitySettings'
 import { restPreferenceSummary } from '../utils/restPreference'
 import { HealthConsentSettings } from '../components/HealthConsentSettings'
+
+const ProfileAvatarEditor = lazy(() =>
+  import('../components/ProfileAvatarEditor').then((module) => ({
+    default: module.ProfileAvatarEditor,
+  }))
+)
 
 function Setting({ id, title, summary, open, onToggle, children }) {
   return (
@@ -54,7 +64,7 @@ function ProfileContent({
   profile: loadedProfile,
   isSuperAdmin,
   saveProfile,
-  refreshProfile,
+  patchProfile,
 }) {
   const profile = loadedProfile?.id === user?.uid ? loadedProfile : null
   const [draft, setDraft] = useState({})
@@ -76,7 +86,16 @@ function ProfileContent({
   const [privacyError, setPrivacyError] = useState('')
   const [refreshingStats, setRefreshingStats] = useState(false)
   const [avatarFile, setAvatarFile] = useState(null)
+  const [avatarSelection, setAvatarSelection] = useState(0)
   const [avatarBusy, setAvatarBusy] = useState(false)
+  const avatarBusyRef = useRef(false)
+  const mountedRef = useRef(true)
+  useEffect(
+    () => () => {
+      mountedRef.current = false
+    },
+    []
+  )
   const [avatarError, setAvatarError] = useState('')
   const fileInput = useRef(null)
   const [usageProfileDraft, setUsageProfileDraft] = useState('')
@@ -167,39 +186,45 @@ function ProfileContent({
     }
   }
 
-  async function saveAvatar() {
-    if (!avatarFile || avatarBusy || !profile) return
-    setAvatarBusy(true)
-    setAvatarError('')
-    try {
-      await uploadProfileAvatar(avatarFile)
-      await refreshProfile(user.uid)
-      setAvatarFile(null)
-      if (fileInput.current) fileInput.current.value = ''
-      setSuccess('Foto atualizada.')
-    } catch (error) {
-      setAvatarError(
-        error?.message === 'AVATAR_TOO_LARGE'
-          ? 'A imagem compactada ultrapassou 1 MB. Escolha outra foto.'
-          : describeAccountAccessError(error?.message) || 'Não foi possível atualizar a foto.'
-      )
-    } finally {
-      setAvatarBusy(false)
+  function selectAvatar(file) {
+    if (!file) return
+    const invalid = validateImageFile(file)
+    setAvatarError(invalid || '')
+    if (!invalid) {
+      setAvatarSelection((value) => value + 1)
+      setAvatarFile(file)
     }
+    if (fileInput.current) fileInput.current.value = ''
+  }
+
+  function avatarSaved(result, blob) {
+    if (!mountedRef.current || !result?.path) return
+    invalidatePhotoPath(profile?.avatarPath)
+    setCachedPhotoUrl(result.path, URL.createObjectURL(blob))
+    patchProfile(user.uid, { avatarPath: result.path, avatarMediaId: result.mediaId })
+    setCommunityAuthorAvatar(user.uid, result.path)
+    setAvatarFile(null)
+    setSuccess('Foto atualizada.')
   }
 
   async function removeAvatar() {
-    if (avatarBusy || !profile || !window.confirm('Remover sua foto de perfil?')) return
+    if (avatarBusyRef.current || !profile || !window.confirm('Remover sua foto de perfil?')) return
+    avatarBusyRef.current = true
     setAvatarBusy(true)
     setAvatarError('')
     try {
       await removeProfileAvatar()
-      await refreshProfile(user.uid)
-      setSuccess('Foto removida.')
+      if (mountedRef.current) {
+        invalidatePhotoPath(profile.avatarPath)
+        patchProfile(user.uid, { avatarPath: null, avatarMediaId: null })
+        setCommunityAuthorAvatar(user.uid, null)
+        setSuccess('Foto removida.')
+      }
     } catch {
-      setAvatarError('Não foi possível remover a foto.')
+      if (mountedRef.current) setAvatarError('Não foi possível remover a foto.')
     } finally {
-      setAvatarBusy(false)
+      avatarBusyRef.current = false
+      if (mountedRef.current) setAvatarBusy(false)
     }
   }
 
@@ -234,7 +259,18 @@ function ProfileContent({
         </Flash>
       )}
       <div className="profile-editor-avatar">
-        <ProfileAvatar path={profile?.avatarPath} name={initial} className="profile-avatar" />
+        <button
+          type="button"
+          className="profile-editor-avatar-picker"
+          aria-label={profile?.avatarPath ? 'Alterar foto de perfil' : 'Adicionar foto de perfil'}
+          disabled={avatarBusy || !profile}
+          onClick={() => fileInput.current?.click()}
+        >
+          <ProfileAvatar path={profile?.avatarPath} name={initial} className="profile-avatar" />
+          <span className="profile-editor-camera" aria-hidden="true">
+            <DeviceCameraIcon size={16} />
+          </span>
+        </button>
         <div className="profile-editor-avatar-actions">
           <input
             ref={fileInput}
@@ -243,30 +279,19 @@ function ProfileContent({
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
             disabled={avatarBusy || !profile}
-            onChange={(event) => {
-              setAvatarFile(event.target.files?.[0] || null)
-              setAvatarError('')
-            }}
+            onChange={(event) => selectAvatar(event.target.files?.[0])}
           />
           <Button
             type="button"
             disabled={avatarBusy || !profile}
             onClick={() => fileInput.current?.click()}
           >
-            Alterar foto
+            {profile?.avatarPath ? 'Alterar foto' : 'Adicionar foto'}
           </Button>
           {profile?.avatarPath && (
             <Button type="button" variant="danger" disabled={avatarBusy} onClick={removeAvatar}>
               Remover foto
             </Button>
-          )}
-          {avatarFile && (
-            <>
-              <span className="profile-file-name">{avatarFile.name}</span>
-              <Button type="button" loading={avatarBusy} disabled={avatarBusy} onClick={saveAvatar}>
-                Salvar foto
-              </Button>
-            </>
           )}
         </div>
       </div>
@@ -274,6 +299,17 @@ function ProfileContent({
         <Flash variant="danger" role="alert">
           {avatarError}
         </Flash>
+      )}
+      {avatarFile && (
+        <Suspense fallback={<span role="status">Abrindo editor…</span>}>
+          <ProfileAvatarEditor
+            key={avatarSelection}
+            file={avatarFile}
+            onCancel={() => setAvatarFile(null)}
+            onChooseAnother={() => fileInput.current?.click()}
+            onSaved={avatarSaved}
+          />
+        </Suspense>
       )}
       <form className="profile-editor-form" onSubmit={handleSubmit}>
         {success && (

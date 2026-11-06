@@ -23,9 +23,10 @@ before(async () => {
       contents: `
         import { createElement } from 'react'
         import TestRenderer, { act } from 'react-test-renderer'
-        import { useCommunityAuthorAvatars, uniqueCommunityAuthorIds, resetAuthorAvatarCache } from './useCommunityAuthorAvatars.js'
+        import { useCommunityAuthorAvatars, uniqueCommunityAuthorIds, resetAuthorAvatarCache, setCommunityAuthorAvatar } from './useCommunityAuthorAvatars.js'
         import { clearPageCache } from '../utils/pageCache'
         export { uniqueCommunityAuthorIds, resetAuthorAvatarCache, clearPageCache }
+        export const updateAvatar = (...args) => act(() => setCommunityAuthorAvatar(...args))
         globalThis.IS_REACT_ACT_ENVIRONMENT = false
         export function mount(props) {
           const box = { current: null }
@@ -126,6 +127,16 @@ test('a cache vale para a sessão: outra montagem com os mesmos autores não con
   assert.equal(queries.length, 1)
   assert.equal(second.avatars.a1, 'p/a1', 'já disponível na primeira renderização')
   second.unmount()
+})
+
+test('avatar confirmado atualiza autores montados sem nova consulta', async () => {
+  profiles.a1 = 'old.webp'
+  const view = api.mount({ enabled: true, statuses: authors('a1') })
+  await tick()
+  api.updateAvatar('a1', 'new.webp')
+  assert.equal(view.avatars.a1, 'new.webp')
+  assert.equal(queries.length, 1)
+  view.unmount()
 })
 
 test('mais de 40 autores viram lotes de até 40', async () => {

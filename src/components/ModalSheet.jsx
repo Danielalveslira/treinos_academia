@@ -21,6 +21,7 @@ export function ModalSheetFrame({
   title,
   subtitle,
   onClose,
+  closeDisabled = false,
   footer,
   children,
   className = '',
@@ -41,7 +42,13 @@ export function ModalSheetFrame({
           </h2>
           {subtitle && <p className="modal-sheet-subtitle">{subtitle}</p>}
         </div>
-        <button type="button" className="modal-sheet-close" aria-label="Fechar" onClick={onClose}>
+        <button
+          type="button"
+          className="modal-sheet-close"
+          aria-label="Fechar"
+          disabled={closeDisabled}
+          onClick={onClose}
+        >
           <XIcon size={20} />
         </button>
       </header>
