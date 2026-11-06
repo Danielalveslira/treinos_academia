@@ -136,6 +136,15 @@ test('logout global revoga todos os dispositivos mesmo sem subscription local', 
   assert.deepEqual(rpcCalls, [['unregister_push_subscription', { p_endpoint: null }]])
 })
 
+test('botão geral desliga a preferência da conta mesmo sem inscrição local', async () => {
+  browser({ registration: fakeRegistration(null) })
+  await mod.disablePushNotifications({ explicit: true, userId: 'u1' })
+  assert.deepEqual(rpcCalls, [['disable_my_push', {}]])
+  assert.equal(mod.isPushOptedOut('u1'), true)
+  await mod.syncPushSubscription({ userId: 'u1' })
+  assert.deepEqual(rpcCalls, [['disable_my_push', {}]])
+})
+
 test('falha ao revogar no servidor ainda encerra a subscription local e propaga o erro', async () => {
   const registration = fakeRegistration('https://fcm.googleapis.com/fcm/send/local')
   browser({ registration })
@@ -173,6 +182,93 @@ test('sync verifica subscription confirmada sem registro redundante', async () =
   await mod.syncPushSubscription()
   assert.equal(rpcCalls[0][0], 'get_my_push_status')
   assert.equal(rpcCalls[0][1].p_endpoint, 'https://fcm.googleapis.com/fcm/send/local')
+})
+
+function rotatedRegistration() {
+  const oldEndpoint = 'https://fcm.googleapis.com/fcm/send/old'
+  const newEndpoint = 'https://fcm.googleapis.com/fcm/send/new'
+  const calls = { unsubscribe: 0, subscribe: 0 }
+  const fresh = {
+    endpoint: newEndpoint,
+    options: { applicationServerKey: mod.decodeVapidPublicKey('BAQAAQ') },
+    toJSON: () => ({
+      endpoint: newEndpoint,
+      keys: { p256dh: 'p'.repeat(32), auth: 'a'.repeat(16) },
+    }),
+  }
+  let current = {
+    endpoint: oldEndpoint,
+    options: { applicationServerKey: mod.decodeVapidPublicKey('AQAB') },
+    unsubscribe: async () => {
+      calls.unsubscribe++
+      current = null
+      return true
+    },
+  }
+  const registration = {
+    pushManager: {
+      getSubscription: async () => current,
+      subscribe: async () => {
+        calls.subscribe++
+        current = fresh
+        return fresh
+      },
+    },
+  }
+  browser({ registration, ready: Promise.resolve(registration) })
+  globalThis.__vapidKey = 'BAQAAQ'
+  return { calls, oldEndpoint, newEndpoint }
+}
+
+test('VAPID brasileiro renova sem prompt, confirma novo endpoint e só depois revoga o antigo', async () => {
+  const { calls, oldEndpoint, newEndpoint } = rotatedRegistration()
+  globalThis.__rpc = async (name, args) => {
+    rpcCalls.push([name, args])
+    if (name === 'get_my_push_status')
+      return {
+        data: args.p_endpoint
+          ? { enabled: true, thisDevice: args.p_endpoint === newEndpoint }
+          : { enabled: true, registrationAllowed: true, thisDevice: false },
+        error: null,
+      }
+    return { data: 1, error: null }
+  }
+  const result = await mod.syncPushSubscription({ userId: 'u1' })
+  assert.equal(result.endpoint, newEndpoint)
+  assert.equal(result.status.thisDevice, true)
+  assert.deepEqual(calls, { unsubscribe: 1, subscribe: 1 })
+  assert.deepEqual(
+    rpcCalls.map(([name]) => name),
+    [
+      'get_my_push_status',
+      'register_push_subscription',
+      'get_my_push_status',
+      'unregister_push_subscription',
+    ]
+  )
+  assert.equal(rpcCalls.at(-1)[1].p_endpoint, oldEndpoint)
+  assert.equal(globalThis.__prompted, false)
+})
+
+test('rotação VAPID não religa preferência desligada nem ignora ativação explícita', async () => {
+  for (const status of [
+    { enabled: false, registrationAllowed: true, thisDevice: false },
+    { enabled: true, registrationAllowed: false, thisDevice: false },
+  ]) {
+    mod.invalidatePushOperations()
+    rpcCalls.length = 0
+    const { calls } = rotatedRegistration()
+    globalThis.__rpc = async (name, args) => {
+      rpcCalls.push([name, args])
+      return { data: status, error: null }
+    }
+    await mod.syncPushSubscription({ userId: 'u1' })
+    assert.deepEqual(calls, { unsubscribe: 0, subscribe: 0 })
+    assert.deepEqual(
+      rpcCalls.map(([name]) => name),
+      ['get_my_push_status']
+    )
+  }
 })
 
 test('ativar não pede permissão sem VAPID configurado nem sem Service Worker', async () => {
@@ -722,16 +818,31 @@ test('erros de ativação distinguem bloqueio, incompatível, rede e servidor', 
   const at = (stage, extra) => Object.assign(new Error(extra.message || 'x'), { stage, ...extra })
   assert.equal(mod.classifyPushError(at('permission', { name: 'NotAllowedError' })), 'blocked')
   assert.equal(mod.classifyPushError(at('support', { code: 'unsupported' })), 'unsupported')
-  assert.equal(mod.classifyPushError(at('support', { code: 'ios-install-required' })), 'ios-install-required')
+  assert.equal(
+    mod.classifyPushError(at('support', { code: 'ios-install-required' })),
+    'ios-install-required'
+  )
   assert.equal(mod.classifyPushError(at('network', { code: 'offline' })), 'network')
   assert.equal(mod.classifyPushError(at('register', { code: 'push-network-timeout' })), 'network')
-  assert.equal(mod.classifyPushError(at('register', { message: 'TypeError: Failed to fetch' })), 'network')
-  assert.equal(mod.classifyPushError(at('register', { code: 'P0001', message: 'INVALID_SUBSCRIPTION' })), 'server')
+  assert.equal(
+    mod.classifyPushError(at('register', { message: 'TypeError: Failed to fetch' })),
+    'network'
+  )
+  assert.equal(
+    mod.classifyPushError(at('register', { code: 'P0001', message: 'INVALID_SUBSCRIPTION' })),
+    'server'
+  )
   assert.equal(mod.classifyPushError(at('confirm', { code: 'push-not-confirmed' })), 'server')
-  assert.equal(mod.classifyPushError(at('service-worker', { code: 'service-worker-unavailable' })), 'service-worker')
+  assert.equal(
+    mod.classifyPushError(at('service-worker', { code: 'service-worker-unavailable' })),
+    'service-worker'
+  )
   assert.match(mod.pushErrorMessage(at('register', { code: 'offline' })), /internet/)
   assert.match(mod.pushErrorMessage(at('permission', { name: 'NotAllowedError' })), /bloqueadas/)
-  assert.match(mod.pushErrorMessage(at('support', { code: 'ios-install-required' })), /Tela de Início/)
+  assert.match(
+    mod.pushErrorMessage(at('support', { code: 'ios-install-required' })),
+    /Tela de Início/
+  )
   assert.match(mod.pushErrorMessage(at('confirm', { code: 'push-not-confirmed' })), /servidor/)
   assert.match(mod.pushErrorMessage(new Error('PUSH_ENDPOINT_IN_USE')), /outra conta/)
 })
