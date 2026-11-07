@@ -130,6 +130,7 @@ function CommunityDetail({ id }) {
     updateEconomyVoteCounts,
     updateCommentCount,
     updatePostPromotion,
+    applyStatusEdit,
   } = useCommunityFeed(id, member, user.uid)
 
   const {
@@ -298,6 +299,19 @@ function CommunityDetail({ id }) {
     },
     [updateCommentCount, setFeaturedStatuses]
   )
+  // Edição confirmada pelo servidor: mantém o feed e a aba Destaques (quando o post também está lá)
+  // consistentes com o texto/legenda editados, sem refetch do feed inteiro (o card em si já se
+  // atualizou por conta própria, ver StatusCard).
+  const handleStatusEdited = useCallback(
+    (statusId, patch) => {
+      applyStatusEdit(statusId, patch)
+      setFeaturedStatuses((previous) =>
+        previous.map((status) => (status.id === statusId ? { ...status, ...patch } : status))
+      )
+    },
+    [applyStatusEdit, setFeaturedStatuses]
+  )
+
   // Quem acabou de pagar a promoção precisa ver o post em Destaques na hora (e não só depois que a cache de 5 min
   // vencer): atualiza o card na lista e rebusca os destaques no servidor.
   const handlePromoted = useCallback(
@@ -622,6 +636,9 @@ function CommunityDetail({ id }) {
   async function handleCreateStatus(values) {
     const author = { id: user.uid, username: profile?.username || null, role: profile?.role }
     const authorIsSuperAdmin = author.role === 'superadmin'
+    // Só para o post otimista (mesmo raciocínio de authorIsSuperAdmin acima): o selo de admin
+    // já aparece na hora, sem esperar o próximo refresh do feed buscar a view no servidor.
+    const authorIsCommunityAdmin = community?.ownerId === author.id
     // Só para o post otimista: o prazo real (e a regra guardada no post) vêm do banco.
     const retentionMode = community?.postRetentionMode || '24h'
     const expiresAt = expiresAtForRetention(retentionMode)
@@ -640,6 +657,7 @@ function CommunityDetail({ id }) {
           authorId: author.id,
           authorUsername: author.username,
           authorIsSuperAdmin,
+          authorIsCommunityAdmin,
           type: 'photo',
           photoPath: `statusPhotos/${id}/${ref.id}.webp`,
           caption: values.caption ? values.caption.trim() : '',
@@ -657,6 +675,7 @@ function CommunityDetail({ id }) {
           authorId: author.id,
           authorUsername: author.username,
           authorIsSuperAdmin,
+          authorIsCommunityAdmin,
           type: 'text',
           text: values.text.trim(),
           createdAt: new Date(),
@@ -671,6 +690,7 @@ function CommunityDetail({ id }) {
           authorId: author.id,
           authorUsername: author.username,
           authorIsSuperAdmin,
+          authorIsCommunityAdmin,
           type: 'poll',
           poll: {
             question: values.question.trim(),
@@ -688,6 +708,7 @@ function CommunityDetail({ id }) {
           authorId: author.id,
           authorUsername: author.username,
           authorIsSuperAdmin,
+          authorIsCommunityAdmin,
           type: 'workout',
           workout: {
             title: values.title.trim(),
@@ -719,6 +740,7 @@ function CommunityDetail({ id }) {
           authorId: author.id,
           authorUsername: author.username,
           authorIsSuperAdmin,
+          authorIsCommunityAdmin,
           type: 'photo',
           photoPath: `statusPhotos/${id}/${values.ref.id}.webp`,
           caption: values.caption ? values.caption.trim() : '',
@@ -942,6 +964,7 @@ function CommunityDetail({ id }) {
               onDeleteStatus={handleDeleteStatus}
               onCreateStatus={handleCreateStatus}
               onPromoted={handlePromoted}
+              onEdited={handleStatusEdited}
               onCommentCountChange={handleCommentCountChange}
               refreshEpoch={refreshEpoch}
             />

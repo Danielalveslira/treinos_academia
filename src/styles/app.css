@@ -2607,11 +2607,31 @@ body:has(.pwa-offline) .app-shell {
   align-items: baseline;
   gap: 2px 8px;
 }
+.comment-author-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
 .comment-author {
   color: var(--fgColor-default);
   font-size: 14px;
   font-weight: 650;
   overflow-wrap: anywhere;
+}
+/* Selo de Superadmin/Admin da comunidade -- compartilhado com o cabeçalho da publicação
+   (community-feed.css) e o resumo de publicação do deep link de comentário. */
+.author-role-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+.author-role-badge--superadmin {
+  color: var(--fgColor-attention);
+}
+.author-role-badge--admin {
+  color: var(--fgColor-accent);
 }
 .comment-date,
 .comment-replying-to,
@@ -2831,6 +2851,13 @@ body:has(.pwa-offline) .app-shell {
   display: grid;
   min-width: 0;
   flex: 1;
+}
+.comment-publication-author-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
 }
 .comment-publication-header strong {
   overflow-wrap: anywhere;

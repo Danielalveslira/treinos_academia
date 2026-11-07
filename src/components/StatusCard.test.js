@@ -271,6 +271,48 @@ test('treino concluído bloqueia nova participação, mas mantém calendário di
   assert.match(html, /Adicionar ao calendário/)
 })
 
+test('selo de autoridade: superadmin tem prioridade sobre admin da comunidade, e usuário comum não recebe nenhum', () => {
+  const superadmin = render({
+    status: makeTextStatus({ authorIsSuperAdmin: true, authorIsCommunityAdmin: true }),
+  })
+  assert.match(superadmin, /aria-label="Superadmin"/)
+  assert.doesNotMatch(superadmin, /aria-label="Administrador da comunidade"/)
+
+  const admin = render({
+    status: makeTextStatus({ authorIsSuperAdmin: false, authorIsCommunityAdmin: true }),
+  })
+  assert.match(admin, /aria-label="Administrador da comunidade"/)
+  assert.doesNotMatch(admin, /aria-label="Superadmin"/)
+
+  const plain = render({ status: makeTextStatus() })
+  assert.doesNotMatch(plain, /aria-label="Superadmin"|aria-label="Administrador da comunidade"/)
+})
+
+test('editar publicação: só aparece para o autor, em texto/foto, enquanto a publicação ainda aceita interação', () => {
+  const ownText = render({
+    status: makeTextStatus({ authorId: 'viewer-1' }),
+    currentUserId: 'viewer-1',
+  })
+  assert.match(ownText, /Editar publicação/)
+
+  const othersText = render({
+    status: makeTextStatus({ authorId: 'author-1' }),
+    currentUserId: 'viewer-1',
+  })
+  assert.doesNotMatch(othersText, /Editar publicação/)
+
+  const pollStatus = makePollStatus({ authorId: 'viewer-1' })
+  setPollCache(pollStatus.id, 'viewer-1', { a: 0, b: 0 }, null)
+  const ownPoll = render({ status: pollStatus, currentUserId: 'viewer-1' })
+  assert.doesNotMatch(ownPoll, /Editar publicação/)
+
+  const expired = render({
+    status: makeTextStatus({ authorId: 'viewer-1', expiresAt: new Date(Date.now() - 60000) }),
+    currentUserId: 'viewer-1',
+  })
+  assert.doesNotMatch(expired, /Editar publicação/)
+})
+
 test('participante confirmado pode cancelar mesmo depois do início do treino', () => {
   const status = makeWorkoutStatus({
     workout: {

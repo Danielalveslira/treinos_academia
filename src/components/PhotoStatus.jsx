@@ -3,7 +3,7 @@ import { AlertIcon, GraphIcon, ImageIcon } from '@primer/octicons-react'
 import { useStatusPhoto } from '../hooks/useStatusPhoto'
 import { useInView } from '../hooks/useInView'
 
-export function PhotoStatus({ status, preloadedBlob }) {
+export function PhotoStatus({ status, preloadedBlob, hideCaption = false }) {
   // A foto só é baixada quando chega perto da tela: num feed longo, as de baixo não custam rede nem memória
   // até o usuário se aproximar delas.
   const [photoRef, nearScreen] = useInView({
@@ -51,7 +51,7 @@ export function PhotoStatus({ status, preloadedBlob }) {
           </Box>
         )}
       </Box>
-      {status.caption?.trim() && (
+      {!hideCaption && status.caption?.trim() && (
         <Text as="p" className="status-caption">
           {status.caption}
         </Text>

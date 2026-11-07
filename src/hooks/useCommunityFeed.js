@@ -327,6 +327,23 @@ export function useCommunityFeed(communityId, enabled = true, uid = 'anon') {
     [commit]
   )
 
+  // Chamado só DEPOIS de updateStatusContent (statusesService) já ter confirmado sucesso --
+  // mesmo raciocínio de updateEconomyVoteCounts: sem isso, editar um post só refletiria na
+  // lista (e na cache de 30 min) depois de um refresh(). O card já se atualiza por conta própria
+  // (StatusEditForm/StatusCard têm seu próprio patch local); isto é só para a LISTA e a cache
+  // ficarem consistentes com o texto/legenda editados, sem refetch do feed inteiro.
+  const applyStatusEdit = useCallback(
+    (statusId, patch) => {
+      const { items, hasMore } = stateRef.current
+      if (!items.some((s) => s.id === statusId)) return
+      commit(
+        items.map((s) => (s.id === statusId ? { ...s, ...patch } : s)),
+        hasMore
+      )
+    },
+    [commit]
+  )
+
   // Chamado só depois de o motor comercial confirmar a contratação (mesmo raciocínio de
   // updateEconomyVoteCounts) -- sem isso o post promovido só ganharia o selo "Em
   // destaque" depois de um refresh(), já que promoted/promotedUntil só existem no
@@ -376,5 +393,6 @@ export function useCommunityFeed(communityId, enabled = true, uid = 'anon') {
     updateEconomyVoteCounts,
     updateCommentCount,
     updatePostPromotion,
+    applyStatusEdit,
   }
 }

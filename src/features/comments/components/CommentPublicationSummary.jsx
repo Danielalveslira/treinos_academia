@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { CalendarIcon, ClockIcon, LocationIcon, TrophyIcon } from '@primer/octicons-react'
 import { ProfileAvatar } from '../../../components/ProfileAvatar'
+import { AuthorRoleBadge } from '../../../components/AuthorRoleBadge'
 import { formatDateTime } from '../../../utils/format'
 import { toDate } from '../../../utils/date'
 import { StatusText } from '../../../components/StatusText'
@@ -64,7 +65,13 @@ export function CommentPublicationSummary({ status, communityName, authorAvatarP
           className="comment-publication-avatar"
         />
         <div>
-          <strong>{authorName}</strong>
+          <span className="comment-publication-author-row">
+            <strong>{authorName}</strong>
+            <AuthorRoleBadge
+              isSuperAdmin={status.authorIsSuperAdmin}
+              isCommunityAdmin={status.authorIsCommunityAdmin}
+            />
+          </span>
           <span>{formatDateTime(toDate(status.createdAt))}</span>
         </div>
         <span className="comment-publication-type">
