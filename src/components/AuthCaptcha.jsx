@@ -1,7 +1,12 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { Button, Flash, useTheme } from '@primer/react'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
-import { authCaptchaError, authCaptchaRequired, authCaptchaSiteKey } from '../utils/authCaptcha'
+import {
+  authCaptchaConfigurationError,
+  authCaptchaError,
+  authCaptchaRequired,
+  authCaptchaSiteKey,
+} from '../utils/authCaptcha'
 
 const TOKEN_MAX_AGE_MS = 100_000
 const LOAD_TIMEOUT_MS = 15_000
@@ -31,7 +36,7 @@ export const AuthCaptcha = forwardRef(function AuthCaptcha({ onVerifiedChange },
   useImperativeHandle(ref, () => ({
     takeToken() {
       if (!authCaptchaRequired) return undefined
-      if (!authCaptchaSiteKey) throw authCaptchaError('CAPTCHA_CONFIGURATION_MISSING')
+      if (authCaptchaConfigurationError) throw authCaptchaError(authCaptchaConfigurationError)
       const current = token.current
       if (!current || current.expiresAt <= Date.now()) {
         invalidate(current ? 'expired' : status)
@@ -50,7 +55,7 @@ export const AuthCaptcha = forwardRef(function AuthCaptcha({ onVerifiedChange },
   }))
 
   useEffect(() => {
-    if (!authCaptchaRequired || !authCaptchaSiteKey) return undefined
+    if (!authCaptchaRequired || authCaptchaConfigurationError) return undefined
     loadTimer.current = setTimeout(
       () => setStatus((value) => (value === 'loading' ? 'error' : value)),
       LOAD_TIMEOUT_MS
@@ -63,7 +68,7 @@ export const AuthCaptcha = forwardRef(function AuthCaptcha({ onVerifiedChange },
   }, [instance])
 
   if (!authCaptchaRequired) return null
-  if (!authCaptchaSiteKey)
+  if (authCaptchaConfigurationError)
     return (
       <Flash variant="danger" role="alert">
         A verificação de segurança não está configurada neste ambiente. Tente novamente mais tarde.

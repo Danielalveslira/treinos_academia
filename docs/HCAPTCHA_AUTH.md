@@ -1,34 +1,80 @@
 # hCaptcha no Supabase Auth
 
-Configure `VITE_HCAPTCHA_SITE_KEY` com a chave **pública** do site no build da Vercel. A chave secreta fica somente na configuração de CAPTCHA do Supabase Auth. Não a coloque em variáveis `VITE_*`, arquivos do repositório ou logs.
+## Política do frontend
 
-Todo build de produção do Vite, inclusive previews da Vercel, exige CAPTCHA e uma Site Key pública válida para o respectivo domínio. Sem a Site Key, as telas mostram uma mensagem de indisponibilidade e as funções de autenticação não chamam o Supabase. A flag `VITE_HCAPTCHA_ENABLED=true` serve para habilitar o widget durante `vite dev`; ela não desliga a exigência em builds de produção. O servidor continua sendo o responsável pela validação. Se uma preview apontar para o Supabase de produção, configure uma Site Key autorizada também para o domínio dessa preview.
+O Supabase Auth valida o token no servidor. O frontend apenas mostra o widget e
+impede chamadas sem token quando ele é exigido. A política usa
+`VITE_SUPABASE_URL`, independentemente de `vite dev`, preview ou produção:
 
-Para desenvolvimento local com CAPTCHA habilitado, use as [chaves oficiais de teste do hCaptcha](https://docs.hcaptcha.com/#integration-testing-test-keys) e configure a chave secreta correspondente apenas na instância **local** do Supabase. Não configure a chave de teste no Supabase hospedado.
+| Destino da API | `VITE_HCAPTCHA_ENABLED` | Resultado |
+| --- | --- | --- |
+| `localhost`, `127.0.0.1` ou `[::1]` | ausente/`false` | Sem widget; use somente se o Auth local não exigir CAPTCHA. |
+| API local | `true` | Widget obrigatório; configure a Site Key pública e a Secret Key no Auth local. |
+| API hospedada | ausente/`true` | Widget e token obrigatórios. |
+| API hospedada | `false` | Erro de configuração; nenhuma requisição protegida é enviada. |
 
-Antes de publicar:
+Valores diferentes de `true`/`false` também bloqueiam o fluxo. Quando o widget é
+obrigatório, `VITE_HCAPTCHA_SITE_KEY` precisa estar preenchida. O erro aparece
+sem detalhes sensíveis na interface e com o código técnico no console de
+desenvolvimento. Tokens são mantidos só em memória, consumidos uma vez e
+descartados após cada tentativa, inclusive quando o Supabase os rejeita.
 
-1. Confirme que os domínios de produção e preview necessários estão autorizados no hCaptcha e que cada build usa a Site Key correspondente.
-2. Confirme que o Supabase Auth do mesmo ambiente está configurado para hCaptcha com a Secret Key correspondente.
-3. Teste cadastro, login, recuperação, reenvio de OTP e reautenticação administrativa em preview, incluindo expiração, erro de rede e nova tentativa. Não use contas reais de produção para esses testes.
-4. Verifique que o bundle da Home não contém o widget e que a chave secreta não aparece nos artefatos ou logs.
+## Desenvolvimento local com Supabase hospedado protegido
 
-A CSP de `vercel.json` autoriza os domínios do hCaptcha apenas em `script-src`, `style-src`, `connect-src` e `frame-src`, conforme a [orientação oficial](https://docs.hcaptcha.com/#content-security-policy-settings). Preserve essas entradas ao alterar os headers: sem elas, o widget é bloqueado pelo navegador antes de gerar qualquer token.
+1. No [painel hCaptcha](https://dashboard.hcaptcha.com/sites), use uma Site Key
+   pública cujo site aceite um hostname de desenvolvimento sob um domínio que
+   você controla. Se Domain allowlisting estiver ativo, adicione esse hostname
+   (somente o nome, sem protocolo ou porta). A Secret Key associada deve estar
+   configurada em **Supabase Dashboard → Authentication → Bot and Abuse
+   Protection → CAPTCHA** do projeto hospedado. Nunca coloque a Secret Key em
+   `VITE_*` ou no repositório.
+2. Mapeie o hostname de desenvolvimento para `127.0.0.1` em `/etc/hosts`, por
+   exemplo `127.0.0.1 dev.seu-dominio.com`. O hCaptcha não aceita `localhost` ou
+   `127.0.0.1` como hostname do widget. Se o site exigir HTTPS, use um proxy/TLS
+   local ou túnel HTTPS com hostname autorizado.
+3. No `.env` local, configure `VITE_SUPABASE_URL` para a API hospedada,
+   `VITE_SUPABASE_ANON_KEY` para a chave pública desse projeto,
+   `VITE_HCAPTCHA_ENABLED=true` e `VITE_HCAPTCHA_SITE_KEY` para a chave pública
+   do site hCaptcha associado ao mesmo projeto. A configuração atual que usa
+   `VITE_HCAPTCHA_ENABLED=false` com Supabase hospedado precisa ser corrigida.
+4. Inicie o Vite autorizando **somente** esse hostname:
 
-O token é mantido apenas em memória, consumido uma vez e descartado após cada tentativa. A aplicação não valida o token por conta própria.
+   ```bash
+   __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=dev.seu-dominio.com npm run dev -- --host 127.0.0.1
+   ```
 
-## Ativação controlada em produção
+   Abra `http://dev.seu-dominio.com:5173/login`. Reinicie o Vite após editar
+   `.env`. Caso o hCaptcha ou o navegador exija HTTPS neste contexto, use o
+   endereço HTTPS do proxy/túnel e autorize o hostname correspondente.
 
-1. Confirme que a validação CAPTCHA do Supabase está **desativada**. Revogue a Secret Key exposta em captura de tela, gere outra no hCaptcha e configure-a somente no Supabase Auth. Não copie o valor para o repositório, Vercel, navegador ou logs. Mantenha a validação desativada até a etapa 5.
-2. Configure `VITE_HCAPTCHA_SITE_KEY` na Vercel Production e autorize o domínio de produção no site correspondente do hCaptcha. Confira a associação entre essa Site Key e a nova Secret Key sem divulgar os valores. Configure separadamente os domínios e as chaves de Preview que serão usados para testes.
-3. Após aprovação, faça merge do PR de hCaptcha e publique o frontend. O build de produção **já exige** o widget mesmo com a validação desativada no Supabase; portanto, a Site Key e os domínios precisam estar corretos **antes** do deploy. Sem Site Key, cadastro, login, recuperação e reenvio ficam bloqueados pelo cliente.
-4. Com a validação do Supabase ainda desativada, confirme no frontend publicado que o widget carrega e permite concluir cada formulário, inclusive em celular. Use contas de teste no ambiente apropriado; não dispare cadastros ou e-mails reais desnecessários.
-5. Somente então, mediante autorização específica, habilite a validação CAPTCHA no Supabase Auth. Valide novamente cadastro, login, recuperação, reenvio de OTP e reautenticação administrativa. Confirme também o tratamento de token expirado e de nova tentativa.
+Para Supabase **local sem CAPTCHA**, use a URL local da CLI e
+`VITE_HCAPTCHA_ENABLED=false`; a seção `[auth.captcha]` de
+`supabase/config.toml` está comentada. Não use essa configuração para um
+projeto hospedado protegido. Se habilitar CAPTCHA no Auth local, use
+`VITE_HCAPTCHA_ENABLED=true`, uma Site Key apropriada e a Secret Key somente
+na configuração local do Supabase. Chaves oficiais de teste hCaptcha só podem
+ser usadas com a Secret Key de teste correspondente em uma instância local.
 
-### Reversão em caso de falha
+## Preview e produção
 
-1. Desative a validação CAPTCHA no Supabase Auth para restaurar a compatibilidade do servidor com o frontend anterior.
-2. Se o problema for carregamento do widget, domínio ou Site Key, reverta o frontend na Vercel para um deployment anterior ao hCaptcha. **Desativar somente o Supabase não basta**: este frontend continua exigindo o widget em todos os builds de produção.
-3. Confirme login e recuperação no frontend restaurado. Corrija a configuração e repita a ativação controlada antes de habilitar novamente a validação no Supabase.
+Em **Vercel → Project → Settings → Environment Variables**, configure a
+`VITE_HCAPTCHA_SITE_KEY` pública e a URL/chave pública do Supabase para cada
+ambiente (Preview e Production). Use `VITE_HCAPTCHA_ENABLED=true` ou remova a
+variável. Autorize os hostnames reais de preview e produção no site hCaptcha e
+confirme que a Secret Key correspondente está no Supabase Auth desse ambiente.
+O build da Vercel precisa ser refeito após mudar variáveis `VITE_*`.
 
-Merge, deploy, mudança no Supabase e reversão em produção exigem autorização operacional; este procedimento não os executa.
+A CSP em `vercel.json` já permite os domínios de script, frame, estilo e rede
+do hCaptcha. Os componentes de autenticação são carregados por rota; o script
+do hCaptcha não é carregado nas páginas que não usam o widget.
+
+## Verificação
+
+Teste login, cadastro, reenvio de confirmação, recuperação de senha e
+reautenticação administrativa no ambiente correspondente. Verifique token
+expirado, erro de rede e nova tentativa. Não envie tokens ou senhas para logs.
+A proteção do Supabase deve continuar ativa em projetos hospedados protegidos.
+
+Referências: [Supabase CAPTCHA](https://supabase.com/docs/guides/auth/auth-captcha),
+[hCaptcha Local Development](https://docs.hcaptcha.com/#local-development) e
+[Vite allowedHosts](https://vite.dev/config/server-options#server-allowedhosts).
