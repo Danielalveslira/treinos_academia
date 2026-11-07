@@ -27,6 +27,8 @@ const MESSAGES = {
   CAPTCHA_EXPIRED: 'A verificação expirou. Conclua-a novamente.',
   CAPTCHA_CONFIGURATION_MISSING:
     'A verificação de segurança não está disponível neste ambiente. Tente novamente mais tarde.',
+  CAPTCHA_CONFIGURATION_CONFLICT:
+    'A verificação de segurança não está configurada corretamente neste ambiente. Tente novamente mais tarde.',
 }
 
 export function translateAuthError(error) {

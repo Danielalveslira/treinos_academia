@@ -10,10 +10,30 @@ let directory
 let auth
 let pricing
 let missingConfig
+let localAuth
+let conflictAuth
 const calls = []
 
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'auth-captcha-flow-'))
+  const supabaseStub = {
+    name: 'supabase-stub',
+    setup(context) {
+      context.onResolve({ filter: /supabase\/config$/ }, () => ({
+        path: 'supabase',
+        namespace: 'stub',
+      }))
+      context.onLoad({ filter: /^supabase$/, namespace: 'stub' }, () => ({
+        contents: `export const supabase = { auth: {
+          signUp: (arg) => globalThis.__captchaCall('signUp', arg),
+          signInWithPassword: (arg) => globalThis.__captchaCall('signInWithPassword', arg),
+          resend: (arg) => globalThis.__captchaCall('resend', arg),
+          resetPasswordForEmail: (...arg) => globalThis.__captchaCall('resetPasswordForEmail', ...arg),
+          getUser: () => Promise.resolve({ data: { user: { id: 'u1', email: 'a@example.com' } }, error: null }),
+        } }`,
+      }))
+    },
+  }
   const outfile = join(directory, 'flow.cjs')
   await build({
     stdin: {
@@ -25,32 +45,34 @@ before(async () => {
     platform: 'node',
     format: 'cjs',
     define: {
-      'import.meta.env.PROD': 'true',
+      'import.meta.env.VITE_SUPABASE_URL': '"https://project.supabase.co"',
       'import.meta.env.VITE_HCAPTCHA_ENABLED': '"true"',
       'import.meta.env.VITE_HCAPTCHA_SITE_KEY': '"public-test-key"',
     },
-    plugins: [
-      {
-        name: 'supabase-stub',
-        setup(context) {
-          context.onResolve({ filter: /supabase\/config$/ }, () => ({
-            path: 'supabase',
-            namespace: 'stub',
-          }))
-          context.onLoad({ filter: /^supabase$/, namespace: 'stub' }, () => ({
-            contents: `export const supabase = { auth: {
-            signUp: (arg) => globalThis.__captchaCall('signUp', arg),
-            signInWithPassword: (arg) => globalThis.__captchaCall('signInWithPassword', arg),
-            resend: (arg) => globalThis.__captchaCall('resend', arg),
-            resetPasswordForEmail: (...arg) => globalThis.__captchaCall('resetPasswordForEmail', ...arg),
-            getUser: () => Promise.resolve({ data: { user: { id: 'u1', email: 'a@example.com' } }, error: null }),
-          } }`,
-          }))
-        },
-      },
-    ],
+    plugins: [supabaseStub],
   })
   ;({ auth, pricing } = createRequire(import.meta.url)(outfile))
+  for (const [name, url, enabled] of [
+    ['local', 'http://127.0.0.1:54321', 'false'],
+    ['conflict', 'https://project.supabase.co', 'false'],
+  ]) {
+    const file = join(directory, `${name}.cjs`)
+    await build({
+      entryPoints: [new URL('./authService.js', import.meta.url).pathname],
+      outfile: file,
+      bundle: true,
+      platform: 'node',
+      format: 'cjs',
+      define: {
+        'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(url),
+        'import.meta.env.VITE_HCAPTCHA_ENABLED': JSON.stringify(enabled),
+        'import.meta.env.VITE_HCAPTCHA_SITE_KEY': '""',
+      },
+      plugins: [supabaseStub],
+    })
+    if (name === 'local') localAuth = createRequire(import.meta.url)(file)
+    else conflictAuth = createRequire(import.meta.url)(file)
+  }
   const missingFile = join(directory, 'missing.cjs')
   await build({
     entryPoints: [new URL('../utils/authCaptcha.js', import.meta.url).pathname],
@@ -59,7 +81,7 @@ before(async () => {
     platform: 'node',
     format: 'cjs',
     define: {
-      'import.meta.env.PROD': 'true',
+      'import.meta.env.VITE_SUPABASE_URL': '"https://project.supabase.co"',
       'import.meta.env.VITE_HCAPTCHA_ENABLED': 'undefined',
       'import.meta.env.VITE_HCAPTCHA_SITE_KEY': '""',
     },
@@ -131,4 +153,53 @@ test('produção sem chave pública falha fechada', () => {
   assert.throws(() => missingConfig.captchaOptions('any-token'), {
     code: 'CAPTCHA_CONFIGURATION_MISSING',
   })
+})
+
+test('Supabase local sem proteção permite login sem token; hospedado com false bloqueia', async () => {
+  calls.length = 0
+  globalThis.__captchaCall = (name, ...args) => {
+    calls.push([name, ...args])
+    return Promise.resolve({ data: { user: { id: 'u1' } }, error: null })
+  }
+  await localAuth.loginUser('a@example.com', 'password')
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0][1].options, undefined)
+  calls.length = 0
+  await assert.rejects(conflictAuth.loginUser('a@example.com', 'password'), {
+    code: 'CAPTCHA_CONFIGURATION_CONFLICT',
+  })
+  assert.equal(calls.length, 0)
+})
+
+test('política exige CAPTCHA em dev hospedado, preview e produção sem depender de PROD', () => {
+  const resolve = missingConfig.resolveAuthCaptchaConfig
+  const hosted = { VITE_SUPABASE_URL: 'https://project.supabase.co' }
+  assert.deepEqual(resolve({ ...hosted, VITE_HCAPTCHA_SITE_KEY: 'public-key' }), {
+    required: true,
+    siteKey: 'public-key',
+    error: null,
+  })
+  assert.deepEqual(resolve({ ...hosted, VITE_HCAPTCHA_ENABLED: 'false' }), {
+    required: true,
+    siteKey: '',
+    error: 'CAPTCHA_CONFIGURATION_CONFLICT',
+  })
+  assert.equal(
+    resolve({ ...hosted, VITE_HCAPTCHA_ENABLED: 'perhaps' }).error,
+    'CAPTCHA_CONFIGURATION_CONFLICT'
+  )
+  assert.equal(resolve({ ...hosted }).error, 'CAPTCHA_CONFIGURATION_MISSING')
+  assert.equal(resolve({ VITE_HCAPTCHA_ENABLED: 'false' }).required, true)
+  assert.deepEqual(
+    resolve({ VITE_SUPABASE_URL: 'http://localhost:54321', VITE_HCAPTCHA_ENABLED: 'false' }),
+    {
+      required: false,
+      siteKey: '',
+      error: null,
+    }
+  )
+  assert.equal(
+    resolve({ VITE_SUPABASE_URL: 'http://127.0.0.1:54321', VITE_HCAPTCHA_ENABLED: 'true' }).error,
+    'CAPTCHA_CONFIGURATION_MISSING'
+  )
 })

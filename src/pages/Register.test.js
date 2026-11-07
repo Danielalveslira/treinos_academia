@@ -102,6 +102,10 @@ before(async () => {
     format: 'cjs',
     jsx: 'automatic',
     logLevel: 'silent',
+    define: {
+      'import.meta.env.VITE_SUPABASE_URL': '"http://127.0.0.1:54321"',
+      'import.meta.env.VITE_HCAPTCHA_ENABLED': '"false"',
+    },
     plugins: [
       {
         name: 'register-stubs',
