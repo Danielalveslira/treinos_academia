@@ -91,6 +91,7 @@ test('sheet create + update compact, preserve binding, synchronize and ACK', asy
   assert.equal(queued.length, 1)
   assert.equal(queued[0].payload.sheet_id, scope.id)
   const server = makeServer()
+  server.seedSheet(scope.id) // a ficha existe no servidor: este teste cobre o caminho feliz, não SHEET_NOT_FOUND
   await syncOutbox({ deps: makeDeps({ server, getUser: () => 'a' }) })
   assert.deepEqual(await listMutations('a'), [])
   assert.equal(server.rowsOf('a')[0].sheet_id, scope.id)

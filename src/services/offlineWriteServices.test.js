@@ -687,6 +687,36 @@ test('CRÍTICO (conflito): "Usar o do servidor" restaura a versão do servidor l
   assert.deepEqual(server.rows.get(`${A}|${state.id}`).set_details, [{ weight: 100, reps: 3 }])
 })
 
+test('CRÍTICO: treino criado offline referencia uma ficha já excluída (SHEET_NOT_FOUND); "Salvar treino sem ficha" remove só o vínculo, preserva o resto e nunca duplica', async () => {
+  setNavigator(false)
+  const SHEET = 'f0000000-0000-0000-0000-000000000001'
+  const result = await on.workouts.createWorkout(A, { ...form('70'), sheetId: SHEET })
+  await settle() // o sync de segundo plano da escrita local resolve como "offline"
+  setNavigator(true)
+  const sync = await on.scheduler.requestSync('online', { force: true })
+  assert.equal(sync.failed, 1)
+  const [m] = await on.outbox.listMutations(A)
+  assert.equal(m.status, 'failed')
+  assert.equal(m.last_error.code, 'SHEET_NOT_FOUND')
+  assert.equal(m.payload.sheet_id, SHEET)
+  assert.equal(server.rowsOf(A).length, 0) // rejeitado, nada inserido com vínculo quebrado
+
+  await on.actions.resolveFailedMutation(A, m, 'recover-without-sheet')
+  const [recovered] = await on.outbox.listMutations(A)
+  assert.equal(recovered.mutation_id, m.mutation_id) // mesma mutação reenviada, nunca uma nova
+  assert.equal(recovered.status, 'pending')
+  assert.equal('sheet_id' in recovered.payload, false)
+  assert.deepEqual(recovered.payload.set_details, [{ weight: 70, reps: 10 }])
+
+  await settle()
+  assert.deepEqual(await on.outbox.listMutations(A), [])
+  const row = server.rows.get(`${A}|${result.workout.id}`)
+  assert.equal(row.sheet_id, undefined) // nunca inventa uma ficha
+  assert.deepEqual(row.set_details, [{ weight: 70, reps: 10 }]) // exercício/série/data preservados
+  assert.equal(row.date, today)
+  assert.equal(server.rowsOf(A).length, 1) // reenvio não duplica
+})
+
 // ====================================================== FINALIZAR TREINO: só as mutações DESTE treino
 
 const yesterday = '2026-10-04'

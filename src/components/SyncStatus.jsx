@@ -8,6 +8,7 @@ import { refreshSyncStatus, setSyncUser } from '../services/offline/syncStatusSt
 import {
   failureReason,
   isConflict,
+  isRecoverableSheetGap,
   listFailedMutations,
   resolveFailedMutation,
 } from '../services/offline/syncActions'
@@ -22,6 +23,7 @@ export function SyncStatus({ criticalOnly = false }) {
   const { view } = useSyncStatus()
   const [open, setOpen] = useState(false)
   const [failed, setFailed] = useState([])
+  const [confirmDiscardId, setConfirmDiscardId] = useState(null)
   const userId = user?.uid
 
   useEffect(() => {
@@ -90,6 +92,47 @@ export function SyncStatus({ criticalOnly = false }) {
                     >
                       Usar o do servidor
                     </Button>
+                  </>
+                ) : isRecoverableSheetGap(mutation) ? (
+                  <>
+                    <Button
+                      size="small"
+                      onClick={() => resolveFailedMutation(userId, mutation, 'recover-without-sheet')}
+                    >
+                      Salvar treino sem ficha
+                    </Button>
+                    {confirmDiscardId === mutation.mutation_id ? (
+                      <>
+                        <span className="sync-status-discard-warning">
+                          O registro local pode ser perdido.
+                        </span>
+                        <Button
+                          size="small"
+                          variant="danger"
+                          onClick={() => {
+                            setConfirmDiscardId(null)
+                            resolveFailedMutation(userId, mutation, 'discard')
+                          }}
+                        >
+                          Confirmar exclusão
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="invisible"
+                          onClick={() => setConfirmDiscardId(null)}
+                        >
+                          Cancelar
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="small"
+                        variant="danger"
+                        onClick={() => setConfirmDiscardId(mutation.mutation_id)}
+                      >
+                        Descartar
+                      </Button>
+                    )}
                   </>
                 ) : (
                   <>
