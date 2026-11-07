@@ -717,6 +717,41 @@ test('CRÍTICO: treino criado offline referencia uma ficha já excluída (SHEET_
   assert.equal(server.rowsOf(A).length, 1) // reenvio não duplica
 })
 
+// isRecoverableSheetGap é exatamente a condição que o SyncStatus usa para decidir se mostra "Salvar
+// treino sem ficha" -- testá-la isoladamente já prova que a UI nunca oferece a ação fora do caso
+// comprovado, sem precisar renderizar o componente.
+test('isRecoverableSheetGap: só autoriza "Salvar treino sem ficha" quando TODAS as condições se confirmam', () => {
+  const base = {
+    status: 'failed',
+    operation: 'workout.create',
+    last_error: { code: 'SHEET_NOT_FOUND' },
+    payload: { sheet_id: 'sheet-1' },
+  }
+  assert.equal(on.actions.isRecoverableSheetGap(base), true)
+
+  // update/delete nunca recuperam (sheet_id só existe no payload de create)
+  assert.equal(on.actions.isRecoverableSheetGap({ ...base, operation: 'workout.update' }), false)
+  assert.equal(on.actions.isRecoverableSheetGap({ ...base, operation: 'workout.delete' }), false)
+
+  // pendente/em andamento: ainda não há nada a recuperar
+  assert.equal(on.actions.isRecoverableSheetGap({ ...base, status: 'pending' }), false)
+  assert.equal(on.actions.isRecoverableSheetGap({ ...base, status: 'syncing' }), false)
+
+  // SHEET_NOT_FOUND sem sheet_id no payload (não deveria acontecer, mas não recupera às cegas)
+  assert.equal(on.actions.isRecoverableSheetGap({ ...base, payload: {} }), false)
+  assert.equal(on.actions.isRecoverableSheetGap({ ...base, payload: { sheet_id: null } }), false)
+
+  // outro código de erro tem resolução própria (SHEET_NOT_READY, CONFLICT etc.)
+  assert.equal(
+    on.actions.isRecoverableSheetGap({ ...base, last_error: { code: 'SHEET_NOT_READY' } }),
+    false
+  )
+  assert.equal(
+    on.actions.isRecoverableSheetGap({ ...base, last_error: { code: 'CONFLICT' } }),
+    false
+  )
+})
+
 // ====================================================== FINALIZAR TREINO: só as mutações DESTE treino
 
 const yesterday = '2026-10-04'

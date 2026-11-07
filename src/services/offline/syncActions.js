@@ -3,6 +3,7 @@ import {
   discardMutation,
   keepLocalAfterConflict,
   listMutations,
+  OPERATIONS,
   recoverMutationWithoutSheet,
   retryFailed,
   STATUS,
@@ -46,8 +47,14 @@ export const failureReason = (mutation) =>
 export const isConflict = (mutation) => mutation.last_error?.code === 'CONFLICT'
 
 // Ficha excluída em outro aparelho: "Tentar de novo" só repetiria o mesmo erro; a saída é remover o
-// vínculo inválido e reenviar (ver recoverMutationWithoutSheet).
-export const isRecoverableSheetGap = (mutation) => mutation.last_error?.code === 'SHEET_NOT_FOUND'
+// vínculo inválido e reenviar (ver recoverMutationWithoutSheet). Espelha exatamente as condições que
+// recoverMutationWithoutSheet exige -- a UI nunca deve oferecer a ação para um caso que a função
+// recusaria (pendente/em andamento, update/delete, outro código, sem sheet_id no payload).
+export const isRecoverableSheetGap = (mutation) =>
+  mutation?.status === STATUS.failed &&
+  mutation?.operation === OPERATIONS.create &&
+  mutation?.last_error?.code === 'SHEET_NOT_FOUND' &&
+  Boolean(mutation?.payload?.sheet_id)
 
 // 'keep' = manter o meu (só conflito) | 'retry' = tentar de novo |
 // 'recover-without-sheet' = salvar treino sem ficha (só SHEET_NOT_FOUND) | 'discard' = descartar a mudança local
