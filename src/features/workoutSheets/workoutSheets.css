@@ -93,6 +93,22 @@
 .exercise-area-nav a {
   min-height: 44px;
 }
+/* Em telas estreitas, os rótulos dos SegmentedControl (Biblioteca/Catálogo, descanso)
+   podem quebrar em duas linhas dentro da altura fixa de 44px e ficar desproporcionais
+   -- reduzir só a fonte do rótulo (não a área de toque) resolve sem encurtar o texto. */
+@media (max-width: 380px) {
+  .workout-sheets .segmentedControl-text {
+    font-size: 12px;
+  }
+}
+@media (max-width: 340px) {
+  .workout-sheets .segmentedControl-text {
+    font-size: 11px;
+  }
+  .workout-sheets .segmentedControl-content {
+    padding-inline: 4px;
+  }
+}
 .exercise-area-nav {
   display: flex;
   flex-wrap: wrap;
