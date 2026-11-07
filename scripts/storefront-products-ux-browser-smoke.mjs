@@ -142,7 +142,14 @@ await build({
   format: 'esm',
   outfile: join(dir, 'app.js'),
   jsx: 'automatic',
-  define: { 'import.meta.env': '{}' },
+  // Esta página usa somente fixtures locais: o Auth real é substituído acima.
+  // Declare explicitamente o cenário local sem CAPTCHA para testar a ação administrativa.
+  define: {
+    'import.meta.env': JSON.stringify({
+      VITE_SUPABASE_URL: 'http://127.0.0.1:54321',
+      VITE_HCAPTCHA_ENABLED: 'false',
+    }),
+  },
   loader: { '.css': 'css' },
   plugins: [
     {
