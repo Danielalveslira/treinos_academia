@@ -1,12 +1,13 @@
 import { useCallback, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Button, Flash, Heading, Spinner } from '@primer/react'
+import { Box, Button, Flash, Heading, Spinner } from '@primer/react'
 import { ChevronRightIcon } from '@primer/octicons-react'
 import { WorkoutExerciseGuide } from '../../components/WorkoutExerciseGuide'
 import { useWorkoutSheets } from './useWorkoutSheets.js'
-import { sheetError } from './workoutSheetsService.js'
+import { deleteWorkoutSheet, sheetError } from './workoutSheetsService.js'
 import { prescription, SHEET_GOALS, WEEKDAYS } from './workoutSheetValidation.js'
 import { originState } from '../../utils/navigation.js'
+import { DeleteSheetDialog } from './DeleteSheetDialog.jsx'
 import './workoutSheets.css'
 export default function WorkoutSheetDetailPage() {
   const { id } = useParams()
@@ -14,8 +15,18 @@ export default function WorkoutSheetDetailPage() {
   const location = useLocation()
   const { data: sheet, loading, error, refresh, online } = useWorkoutSheets(id)
   const [guide, setGuide] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const triggerRef = useRef(null)
   const close = useCallback(() => setGuide(null), [])
+  async function confirmDelete() {
+    try {
+      await deleteWorkoutSheet(sheet)
+    } catch (err) {
+      if (!String(err?.message).includes('SHEET_NOT_FOUND')) return sheetError(err)
+    }
+    navigate('/exercicios', { replace: true })
+    return ''
+  }
   const ready =
     sheet && !sheet.archived_at && sheet.items.length > 0 && sheet.items.every((i) => i.available)
   const metaLine = sheet
@@ -40,9 +51,14 @@ export default function WorkoutSheetDetailPage() {
         <>
           <header className="sheet-heading">
             <Heading as="h1">{sheet.name}</Heading>
-            <Button as={Link} to={`/fichas/${id}/editar`}>
-              Editar ficha
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Button as={Link} to={`/fichas/${id}/editar`}>
+                Editar ficha
+              </Button>
+              <Button variant="danger" onClick={() => setDeleting(true)}>
+                Excluir definitivamente
+              </Button>
+            </Box>
           </header>
           {metaLine && <p className="sheet-meta-line">{metaLine}</p>}
           {sheet.archived_at && (
@@ -104,6 +120,13 @@ export default function WorkoutSheetDetailPage() {
           exercise={guide}
           onClose={close}
           triggerRef={triggerRef}
+        />
+      )}
+      {deleting && sheet && (
+        <DeleteSheetDialog
+          sheet={sheet}
+          onClose={() => setDeleting(false)}
+          onConfirm={confirmDelete}
         />
       )}
     </section>

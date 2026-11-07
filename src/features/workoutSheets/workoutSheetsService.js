@@ -33,6 +33,8 @@ export const archiveWorkoutSheet = (sheet, archived) =>
     p_archived: archived,
     p_expected_revision: sheet.revision,
   })
+export const deleteWorkoutSheet = (sheet) =>
+  rpc('delete_workout_sheet', { p_sheet_id: sheet.id, p_expected_revision: sheet.revision })
 export const reorderWorkoutSheets = (ids) => rpc('reorder_workout_sheets', { p_ids: ids })
 export async function saveWorkoutSheet(sheet, requestId, expectedUser = null) {
   const { items, ...metadata } = normalizeSheet(sheet)
