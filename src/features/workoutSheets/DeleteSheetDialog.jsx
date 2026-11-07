@@ -16,8 +16,15 @@ export function DeleteSheetDialog({ sheet, onClose, onConfirm }) {
           disabled: busy,
           onClick: async () => {
             setBusy(true)
-            setError((await onConfirm()) || '')
-            setBusy(false)
+            try {
+              setError((await onConfirm()) || '')
+            } catch {
+              // onConfirm nunca deveria rejeitar (sempre resolve com '' ou a mensagem de erro),
+              // mas uma falha inesperada aqui não pode travar o modal em "Excluindo…" para sempre.
+              setError('Não foi possível concluir. Tente novamente.')
+            } finally {
+              setBusy(false)
+            }
           },
         },
       ]}

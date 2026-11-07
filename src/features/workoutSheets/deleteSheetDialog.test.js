@@ -145,3 +145,20 @@ test('a rejected/error confirm keeps the dialog open and shows the mapped messag
   assert.match(html, /Esta ficha foi alterada em outra aba\./)
   assert.ok(button(tree, 'Excluir definitivamente'))
 })
+
+test('onConfirm throwing (contract violation) never leaves the dialog stuck on "Excluindo…"', async () => {
+  const tree = ui.mount({
+    sheet,
+    onClose: () => {},
+    onConfirm: async () => {
+      throw new Error('unexpected')
+    },
+  })
+  await ui.act(async () => {
+    await button(tree, 'Excluir definitivamente').props.onClick()
+  })
+  const confirmButton = button(tree, 'Excluir definitivamente')
+  assert.ok(confirmButton, 'button recovers from "Excluindo…" back to its normal label')
+  assert.equal(confirmButton.props.disabled, false)
+  assert.match(JSON.stringify(tree.toJSON()), /Não foi possível concluir\. Tente novamente\./)
+})

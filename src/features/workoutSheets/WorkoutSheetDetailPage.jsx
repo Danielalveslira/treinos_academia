@@ -55,7 +55,7 @@ export default function WorkoutSheetDetailPage() {
               <Button as={Link} to={`/fichas/${id}/editar`}>
                 Editar ficha
               </Button>
-              <Button variant="danger" onClick={() => setDeleting(true)}>
+              <Button variant="danger" disabled={!online} onClick={() => setDeleting(true)}>
                 Excluir definitivamente
               </Button>
             </Box>

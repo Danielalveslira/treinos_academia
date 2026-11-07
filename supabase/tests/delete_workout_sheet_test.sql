@@ -83,6 +83,40 @@ select throws_ok(
   'P0001','SHEET_NOT_FOUND','segunda exclusão da mesma ficha é idempotente, sem efeito colateral'
 );
 select throws_ok($$delete from public.workout_sheets$$,'42501',null,'exclusão direta continua bloqueada; só a RPC exclui');
+
+-- Revisão pedida (4.3): um treino criado OFFLINE (ainda na fila, nunca chegou ao servidor)
+-- aponta para esta ficha, já excluída. Sincronizar depois precisa REJEITAR com SHEET_NOT_FOUND
+-- (o trigger workouts_00_validate_sheet_membership corre no INSERT de
+-- private.apply_workout_mutation, chamado por public.sync_workout_mutations) -- nunca inserir
+-- com o vínculo quebrado, nunca remover sheet_id do payload por conta própria do servidor.
+create or replace function pg_temp.offline_create(p_mid text,p_eid text,p_exercise text,p_sheet text default null) returns jsonb
+language sql as $$
+  select jsonb_build_array(jsonb_strip_nulls(jsonb_build_object(
+    'mutation_id',p_mid,'operation','workout.create','entity_id',p_eid,
+    'payload',jsonb_strip_nulls(jsonb_build_object('exercise_id',p_exercise,'date','2026-10-05','type','strength',
+      'set_details',jsonb_build_array(jsonb_build_object('weight',20,'reps',10)),'sets',1,'note','offline','sheet_id',p_sheet))
+  )))
+$$;
+select is(
+  public.sync_workout_mutations(pg_temp.offline_create(
+    '99d00000-0000-0000-0000-000000000001','99f00000-0000-0000-0000-000000000002',
+    '99e00000-0000-0000-0000-000000000001',(select (result->>'id')::uuid from sheet_a)::text
+  ))->'results'->0->>'code',
+  'SHEET_NOT_FOUND',
+  'treino offline para ficha já excluída é rejeitado, não inserido com vínculo quebrado'
+);
+select is((select count(*)::int from public.workouts where id='99f00000-0000-0000-0000-000000000002'),0,'rejeição não deixa linha parcial/órfã');
+-- Reenviar o MESMO mutation_id sem sheet_id (recuperação correta: o cliente larga só o vínculo
+-- inválido -- o servidor nunca faz isso sozinho) aplica e preserva a atividade real do usuário.
+select is(
+  public.sync_workout_mutations(pg_temp.offline_create(
+    '99d00000-0000-0000-0000-000000000001','99f00000-0000-0000-0000-000000000002',
+    '99e00000-0000-0000-0000-000000000001'
+  ))->'results'->0->>'status',
+  'applied',
+  'o mesmo registro, reenviado sem o vínculo quebrado, é aceito e preserva a atividade real'
+);
+select is((select sheet_id from public.workouts where id='99f00000-0000-0000-0000-000000000002'),null,'treino recuperado fica sem ficha, nunca com uma inventada');
 reset role;
 
 select ok(not has_function_privilege('anon','public.delete_workout_sheet(uuid,bigint)','EXECUTE'),'anônimo sem execução');
