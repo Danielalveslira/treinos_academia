@@ -1,5 +1,5 @@
 import {
-  prescription,
+  prescriptionSummary,
   sheetScopeExercises,
 } from '../features/workoutSheets/workoutSheetValidation.js'
 import { canStartExercise } from '../utils/personalExercises.js'
@@ -313,9 +313,11 @@ export function WorkoutForm({
         availableExercises.findIndex((exercise) => exercise.id === values.exerciseId)
       ) + 1
     : 0
-  const sheetGoal = sheetScope
-    ? prescription(sheetScope.items.find((item) => item.exercise_id === values.exerciseId))
-    : ''
+  const sheetItem = sheetScope
+    ? sheetScope.items.find((item) => item.exercise_id === values.exerciseId)
+    : null
+  const exerciseGoalSummary = sheetItem ? prescriptionSummary(sheetItem) : ''
+  const exerciseGoalNote = sheetItem?.note || ''
   // A sequência da ficha é preservada; a busca só filtra a lista exibida.
   const orderedExercises = availableExercises
   const selectedGroup = selectedExercise?.muscleGroup || 'Outros'
@@ -819,7 +821,6 @@ export function WorkoutForm({
         </section>
       )}
 
-      {sheetScope && sheetGoal && <p className="sheet-reference">Meta da ficha: {sheetGoal}</p>}
       {step === 'register' && selectedExercise && (
         <div className="workout-step workout-register-step">
           <section className="exercise-context-bar" aria-label="Exercício selecionado">
@@ -836,6 +837,14 @@ export function WorkoutForm({
               </div>
             )}
           </section>
+          {(exerciseGoalSummary || exerciseGoalNote) && (
+            <div className="exercise-goal">
+              {exerciseGoalSummary && (
+                <p className="exercise-goal-summary">{exerciseGoalSummary}</p>
+              )}
+              {exerciseGoalNote && <p className="exercise-goal-note">"{exerciseGoalNote}"</p>}
+            </div>
+          )}
 
           {showComplete && (
             <ExerciseComplete

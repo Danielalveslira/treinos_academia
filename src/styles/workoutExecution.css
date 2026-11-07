@@ -74,6 +74,24 @@
 .exercise-context-visual .exercise-context-name {
   flex-basis: auto;
 }
+.exercise-goal {
+  display: grid;
+  gap: 4px;
+  margin: 2px 0 10px;
+}
+.exercise-goal-summary {
+  margin: 0;
+  color: var(--fgColor-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.exercise-goal-note {
+  margin: 0;
+  color: var(--fgColor-default);
+  font-size: 13px;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
 .workout-exercise-thumbnail {
   flex: 0 0 80px;
   width: 80px;
