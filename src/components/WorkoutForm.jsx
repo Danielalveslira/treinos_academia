@@ -1,5 +1,5 @@
 import {
-  prescription,
+  prescriptionSummary,
   sheetScopeExercises,
 } from '../features/workoutSheets/workoutSheetValidation.js'
 import { canStartExercise } from '../utils/personalExercises.js'
@@ -313,9 +313,25 @@ export function WorkoutForm({
         availableExercises.findIndex((exercise) => exercise.id === values.exerciseId)
       ) + 1
     : 0
-  const sheetGoal = sheetScope
-    ? prescription(sheetScope.items.find((item) => item.exercise_id === values.exerciseId))
+  const sheetItem = sheetScope
+    ? sheetScope.items.find((item) => item.exercise_id === values.exerciseId)
+    : null
+  // O descanso herdado do perfil só entra quando já existe outra meta configurada no item --
+  // nunca inventamos uma linha de "descanso (seu padrão)" sozinha para um item sem nenhuma
+  // meta própria (ver teste "no reference line ... has no goals").
+  const hasConfiguredGoal = Boolean(
+    sheetItem &&
+      (sheetItem.target_sets ||
+        sheetItem.reps_min ||
+        sheetItem.reps_max ||
+        sheetItem.rest_seconds != null ||
+        sheetItem.target_duration_minutes ||
+        sheetItem.target_distance_km)
+  )
+  const exerciseGoalSummary = hasConfiguredGoal
+    ? prescriptionSummary(sheetItem, cardio ? {} : { defaultRestSeconds })
     : ''
+  const exerciseGoalNote = sheetItem?.note || ''
   // A sequência da ficha é preservada; a busca só filtra a lista exibida.
   const orderedExercises = availableExercises
   const selectedGroup = selectedExercise?.muscleGroup || 'Outros'
@@ -819,7 +835,6 @@ export function WorkoutForm({
         </section>
       )}
 
-      {sheetScope && sheetGoal && <p className="sheet-reference">Meta da ficha: {sheetGoal}</p>}
       {step === 'register' && selectedExercise && (
         <div className="workout-step workout-register-step">
           <section className="exercise-context-bar" aria-label="Exercício selecionado">
@@ -836,6 +851,19 @@ export function WorkoutForm({
               </div>
             )}
           </section>
+          {(exerciseGoalSummary || exerciseGoalNote) && (
+            <div className="exercise-goal">
+              <span className="eyebrow">Meta do exercício</span>
+              {exerciseGoalSummary && (
+                <p className="exercise-goal-summary">{exerciseGoalSummary}</p>
+              )}
+              {exerciseGoalNote && (
+                <p className="exercise-goal-note">
+                  <b>Observação:</b> {exerciseGoalNote}
+                </p>
+              )}
+            </div>
+          )}
 
           {showComplete && (
             <ExerciseComplete

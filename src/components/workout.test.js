@@ -369,8 +369,12 @@ test('sheet scope: opens straight on the first eligible exercise, with a concise
   assert.doesNotMatch(html, />1 Grupo</)
   assert.doesNotMatch(html, />2 Exercício</)
   assert.doesNotMatch(html, />3 Séries</)
-  // Meta da ficha em uma linha, sem o aviso longo repetido nem o rótulo "Sem metas definidas".
-  assert.match(html, /Meta da ficha: 3 séries · 8–12 repetições · 1min30s de descanso/)
+  // Meta do exercício atual em uma linha, sem o rótulo "Meta da ficha" (era do exercício,
+  // não da ficha) nem o rótulo "Sem metas definidas".
+  assert.doesNotMatch(html, /Meta da ficha/)
+  assert.match(html, /Meta do exercício/)
+  assert.match(html, /3 séries · 8–12 repetições · 1min30s de descanso/)
+  assert.match(html, /exercise-goal-summary/)
   assert.doesNotMatch(html, /Sem metas definidas/)
   assert.doesNotMatch(html, /Sobre as metas da ficha/)
   assert.doesNotMatch(html, /Selecione um exercício para ver as metas/)
@@ -402,6 +406,46 @@ test('sheet scope: no reference line at all when the current exercise has no goa
     sheetScope,
     defaultExerciseId: 'squat',
   })
-  assert.doesNotMatch(html, /sheet-reference/)
+  assert.doesNotMatch(html, /exercise-goal/)
   assert.match(html, />Exercício 1 de 1</)
+})
+
+test('sheet scope: exercise note shows separated from the structured goal summary', () => {
+  const sheetScope = {
+    id: 'sheet-1',
+    name: 'Treino A',
+    items: [
+      {
+        id: 'item-1',
+        exercise_id: 'squat',
+        exercise: { id: 'squat', name: 'Agachamento' },
+        target_sets: 3,
+        reps_min: 8,
+        reps_max: 12,
+        note: 'Conseguir chegar no tanquinho 😜',
+        available: true,
+      },
+    ],
+  }
+  const html = render({
+    exercises: [
+      {
+        id: 'squat',
+        name: 'Agachamento',
+        source: 'catalog',
+        provider: 'evolutus_dataset',
+        active: true,
+      },
+    ],
+    sheetScope,
+    defaultExerciseId: 'squat',
+  })
+  // Sem rest_seconds próprio: o resumo herda o padrão do usuário (90s, sem perfil carregado
+  // neste teste) marcado como "(seu padrão)" -- mesma regra de WorkoutSheetItemEditor.
+  assert.match(
+    html,
+    /exercise-goal-summary">3 séries · 8–12 repetições · 1min30s de descanso \(seu padrão\)</
+  )
+  assert.match(html, /exercise-goal-note"><b>Observação:<\/b> Conseguir chegar no tanquinho/)
+  assert.doesNotMatch(html, /exercise-goal-note">&quot;/, 'sem aspas decorativas')
 })

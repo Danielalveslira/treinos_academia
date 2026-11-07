@@ -475,6 +475,29 @@ export function keepLocalAfterConflict(userId, mutationId, { now = Date.now() } 
   })
 }
 
+// "Salvar treino sem ficha": a ficha que esta criação referenciava foi excluída definitivamente em
+// outro aparelho (SHEET_NOT_FOUND na sincronização). Só o caso comprovado é recuperado -- create,
+// falha ATUAL exatamente esse código, payload ainda com um sheet_id -- e só essa chave some do
+// payload; mutation_id, entity_id e todo o resto do registro (exercício, data, séries, nota) seguem
+// intocados. Nunca usado para outro código (SHEET_NOT_READY, SHEET_EXERCISE_MISMATCH, CONFLICT etc.
+// têm tratamento próprio e não devem perder o vínculo). Duas abas chamando isto para a mesma mutação:
+// a primeira tira a mutação de `failed` dentro da transação, então a segunda não encontra mais as
+// condições e devolve false sem reenviar nada (idempotente, sem corrida).
+export function recoverMutationWithoutSheet(userId, mutationId, { now = Date.now() } = {}) {
+  return withTransaction([STORES.outbox], 'readwrite', async ({ outbox }) => {
+    const mutation = await request(outbox.get(mutationId))
+    if (!mutation || mutation.user_id !== userId) return false
+    if (mutation.status !== STATUS.failed || mutation.last_error?.code !== 'SHEET_NOT_FOUND')
+      return false
+    if (mutation.operation !== OPERATIONS.create || !mutation.payload?.sheet_id) return false
+    const { sheet_id: _droppedSheetId, ...payload } = mutation.payload
+    mutation.payload = payload
+    reset(mutation, now)
+    outbox.put(mutation)
+    return true
+  })
+}
+
 // "Descartar": o usuário abre mão da mudança local. Se o servidor mandou a versão dele, ela volta a ser
 // a local; registro criado só aqui (nunca chegou ao servidor) ou apagado lá deixa de existir.
 export function discardMutation(userId, mutationId) {

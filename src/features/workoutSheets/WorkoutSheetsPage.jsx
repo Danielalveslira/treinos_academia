@@ -6,12 +6,14 @@ import { useWorkoutSheets } from './useWorkoutSheets.js'
 import { originState } from '../../utils/navigation.js'
 import {
   archiveWorkoutSheet,
+  deleteWorkoutSheet,
   duplicateWorkoutSheet,
   listWorkoutSheets,
   reorderWorkoutSheets,
   sheetError,
 } from './workoutSheetsService.js'
 import { SHEET_GOALS, WEEKDAYS } from './workoutSheetValidation.js'
+import { DeleteSheetDialog } from './DeleteSheetDialog.jsx'
 import './workoutSheets.css'
 export default function WorkoutSheetsPage() {
   const [archived, setArchived] = useState(false)
@@ -22,6 +24,7 @@ export default function WorkoutSheetsPage() {
   const location = useLocation()
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
   const lock = useRef(false)
   const requests = useRef(new Map())
   async function action(fn) {
@@ -73,6 +76,17 @@ export default function WorkoutSheetsPage() {
       i = ids.indexOf(id)
     ;[ids[i], ids[i + delta]] = [ids[i + delta], ids[i]]
     return reorderWorkoutSheets(ids)
+  }
+  async function confirmDelete() {
+    try {
+      await deleteWorkoutSheet(deleteTarget)
+    } catch (err) {
+      // Já foi excluída (ex.: segunda confirmação de um duplo clique): trata como sucesso.
+      if (!String(err?.message).includes('SHEET_NOT_FOUND')) return sheetError(err)
+    }
+    setDeleteTarget(null)
+    refresh()
+    return ''
   }
   return (
     <section className="workout-sheets">
@@ -180,6 +194,13 @@ export default function WorkoutSheetsPage() {
                   >
                     {archived ? 'Restaurar' : 'Arquivar'}
                   </Button>
+                  <Button
+                    variant="danger"
+                    disabled={busy || !online}
+                    onClick={() => setDeleteTarget(sheet)}
+                  >
+                    Excluir definitivamente
+                  </Button>
                   {!archived && (
                     <>
                       <Button
@@ -204,6 +225,13 @@ export default function WorkoutSheetsPage() {
           </article>
         ))}
       </div>
+      {deleteTarget && (
+        <DeleteSheetDialog
+          sheet={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
+        />
+      )}
     </section>
   )
 }

@@ -20,15 +20,20 @@ export function sameContent(row, payload) {
 export function makeServer() {
   const rows = new Map() // `${uid}|${id}` -> linha
   const receipts = new Map() // `${uid}|${mid}` -> { operation, entity_id, server_updated_at }
+  const sheets = new Set() // ids de ficha que existem (simula a membership check do INSERT real)
   let clock = 0
   const stamp = () => `2026-10-05T13:00:${String(++clock).padStart(2, '0')}.000000+00:00`
   const server = {
     rows,
     receipts,
+    sheets,
     batches: [],
     stamp,
     seed(row) {
       rows.set(`${row.user_id}|${row.id}`, { ...row })
+    },
+    seedSheet(id) {
+      sheets.add(id)
     },
     rowsOf: (uid) => [...rows.values()].filter((r) => r.user_id === uid),
     apply(uid, wire) {
@@ -74,6 +79,11 @@ export function makeServer() {
         server_updated_at: at,
       })
     if (item.operation === 'workout.create') {
+      // Mesma semântica do trigger real: só valida a ficha no INSERT de fato, nunca num reenvio
+      // idempotente de uma linha que já existe.
+      if (!row && payload?.sheet_id && !sheets.has(payload.sheet_id)) {
+        return { status: 'rejected', code: 'SHEET_NOT_FOUND' }
+      }
       if (row) {
         // Mesma política da RPC: a linha já existe (INSERT online confirmado, resposta perdida), sem recibo.
         if (sameContent(row, payload)) {

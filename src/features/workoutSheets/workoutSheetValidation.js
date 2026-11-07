@@ -105,7 +105,9 @@ function restLabel(item, options) {
     ? 'sem descanso (seu padrão)'
     : `${formatRestDuration(effective)} de descanso (seu padrão)`
 }
-export function prescription(item, options = {}) {
+// Só os dados estruturados (séries/reps/descanso/duração/distância), sem a observação
+// pessoal — usada onde a nota precisa aparecer separada do resumo (ver WorkoutForm.jsx).
+export function prescriptionSummary(item, options = {}) {
   if (!item) return ''
   return [
     item.target_sets && `${item.target_sets} séries`,
@@ -114,8 +116,11 @@ export function prescription(item, options = {}) {
     restLabel(item, options),
     item.target_duration_minutes && `${item.target_duration_minutes} min`,
     item.target_distance_km && `${item.target_distance_km} km`,
-    item.note,
   ]
     .filter(Boolean)
     .join(' · ')
+}
+export function prescription(item, options = {}) {
+  if (!item) return ''
+  return [prescriptionSummary(item, options), item.note].filter(Boolean).join(' · ')
 }

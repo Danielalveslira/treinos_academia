@@ -80,6 +80,7 @@ before(async () => {
             contents: `
               export const getWorkoutSheet = async () => ({ items: [] })
               export const archiveWorkoutSheet = async () => {}
+              export const deleteWorkoutSheet = async () => ({ deleted: true })
               export const duplicateWorkoutSheet = async () => ({ id: 'dup' })
               export const listWorkoutSheets = async () => []
               export const reorderWorkoutSheets = async () => {}

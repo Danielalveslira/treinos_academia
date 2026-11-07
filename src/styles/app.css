@@ -6519,7 +6519,13 @@ body.modal-sheet-open { overflow: hidden; }
 }
 .sync-status-actions {
   display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+.sync-status-discard-warning {
+  color: var(--fgColor-danger);
+  font-size: 12px;
 }
 .workout-finish-hint {
   margin: 8px 0 0;

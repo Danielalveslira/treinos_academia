@@ -18,6 +18,7 @@ import {
   isRelevantToDate,
   keepLocalAfterConflict,
   listMutations,
+  recoverMutationWithoutSheet,
   recoverStaleSyncing,
   releaseMutations,
   retryFailed,
@@ -31,6 +32,7 @@ const A = 'user-a'
 const B = 'user-b'
 const E1 = 'e0000000-0000-0000-0000-000000000001'
 const E2 = 'e0000000-0000-0000-0000-000000000002'
+const E3 = 'e0000000-0000-0000-0000-000000000003'
 const NOW = Date.UTC(2026, 9, 5, 12)
 
 const strength = (weight = 80, overrides = {}) => ({
@@ -503,6 +505,53 @@ test('descartar um create que nunca chegou ao servidor remove o registro local; 
   assert.equal((await mutationsOf(A)).length, 1)
   assert.equal(await discardMutation(A, m.mutation_id), true)
   assert.deepEqual(await rawAll('workouts'), [])
+})
+
+// ------------------------------------------------------- "salvar treino sem ficha" (SHEET_NOT_FOUND)
+
+test('"salvar treino sem ficha": remove só o sheet_id do payload e recoloca a mutação na fila, preservando o resto', async () => {
+  await enqueue(A, OPERATIONS.create, E1, strength(80, { sheet_id: E2 }))
+  const [claimed] = await claimNextBatch(A, { now: NOW })
+  await failMutation(A, claimed.mutation_id, { code: 'SHEET_NOT_FOUND' }, NOW)
+  assert.equal(await recoverMutationWithoutSheet(A, claimed.mutation_id, { now: NOW }), true)
+  const [recovered] = await mutationsOf(A)
+  assert.equal(recovered.mutation_id, claimed.mutation_id) // mesma mutação, nunca duplicada
+  assert.equal(recovered.entity_id, E1)
+  assert.equal(recovered.status, STATUS.pending)
+  assert.equal(recovered.attempts, 0)
+  assert.equal(recovered.last_error, null)
+  assert.equal('sheet_id' in recovered.payload, false)
+  assert.deepEqual(recovered.payload.set_details, [{ weight: 80, reps: 10 }])
+  assert.equal(recovered.payload.exercise_id, 'ex-1')
+})
+
+test('"salvar treino sem ficha" não age em outro código de erro (SHEET_NOT_READY etc. têm resolução própria)', async () => {
+  await enqueue(A, OPERATIONS.create, E1, strength(80, { sheet_id: E2 }))
+  const [m] = await claimNextBatch(A, { now: NOW })
+  await failMutation(A, m.mutation_id, { code: 'SHEET_NOT_READY' }, NOW)
+  assert.equal(await recoverMutationWithoutSheet(A, m.mutation_id, { now: NOW }), false)
+  const [after] = await mutationsOf(A)
+  assert.equal(after.status, STATUS.failed)
+  assert.equal(after.payload.sheet_id, E2) // nada mudou
+})
+
+test('"salvar treino sem ficha" não age numa mutação que não seja create (update nunca carrega sheet_id)', async () => {
+  await recordWorkoutsPage(A, [workoutRow({ id: E3, updated_at: 'v1' })], { now: NOW })
+  await enqueue(A, OPERATIONS.update, E3, strength(90), { baseUpdatedAt: 'v1' })
+  const [m] = await claimNextBatch(A, { now: NOW })
+  await failMutation(A, m.mutation_id, { code: 'SHEET_NOT_FOUND' }, NOW)
+  assert.equal(await recoverMutationWithoutSheet(A, m.mutation_id, { now: NOW }), false)
+  assert.equal((await mutationsOf(A))[0].status, STATUS.failed)
+})
+
+test('"salvar treino sem ficha": outro usuário não pode recuperar, e uma segunda tentativa (duas abas) sobre a mesma mutação já recuperada é um no-op idempotente', async () => {
+  await enqueue(A, OPERATIONS.create, E1, strength(80, { sheet_id: E2 }))
+  const [m] = await claimNextBatch(A, { now: NOW })
+  await failMutation(A, m.mutation_id, { code: 'SHEET_NOT_FOUND' }, NOW)
+  assert.equal(await recoverMutationWithoutSheet(B, m.mutation_id, { now: NOW }), false)
+  assert.equal(await recoverMutationWithoutSheet(A, m.mutation_id, { now: NOW }), true)
+  assert.equal(await recoverMutationWithoutSheet(A, m.mutation_id, { now: NOW }), false)
+  assert.equal(await recoverMutationWithoutSheet(A, 'mutation-inexistente', { now: NOW }), false)
 })
 
 test('failMutation/releaseMutations/keepLocal de outro usuário não têm efeito', async () => {
