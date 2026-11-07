@@ -470,7 +470,26 @@ try {
         [],
         'starting creates no workout rows'
       )
-      await page.getByText('Meta da ficha:', { exact: false }).waitFor()
+      // Meta do EXERCÍCIO atual (Puxada oficial: 3 séries, 8-12 reps, sem rest_seconds próprio
+      // -- o resumo herda e rotula o padrão do perfil), integrada ao formulário, sem o antigo
+      // rótulo "Meta da ficha" nem o banner fora de .workout-register-step.
+      await page.getByText('Meta do exercício', { exact: true }).waitFor()
+      assert.equal(
+        await page.locator('.exercise-goal-summary').innerText(),
+        '3 séries · 8–12 repetições · 1min30s de descanso (seu padrão)'
+      )
+      assert.equal(
+        await page.locator('.exercise-goal-note').count(),
+        0,
+        'item sem observação própria não mostra bloco de observação'
+      )
+      assert.equal(await page.getByText('Meta da ficha', { exact: false }).count(), 0)
+      const goalInsideForm = await page.evaluate(() => {
+        const goal = document.querySelector('.exercise-goal')?.getBoundingClientRect()
+        const form = document.querySelector('.workout-register-step')?.getBoundingClientRect()
+        return Boolean(goal && form && goal.right <= form.right + 1 && goal.left >= form.left - 1)
+      })
+      assert.equal(goalInsideForm, true, 'meta do exercício respeita a largura do formulário')
       assert.deepEqual(
         await page.evaluate(() => window.__workoutWrites),
         [],

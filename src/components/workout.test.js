@@ -372,6 +372,7 @@ test('sheet scope: opens straight on the first eligible exercise, with a concise
   // Meta do exercício atual em uma linha, sem o rótulo "Meta da ficha" (era do exercício,
   // não da ficha) nem o rótulo "Sem metas definidas".
   assert.doesNotMatch(html, /Meta da ficha/)
+  assert.match(html, /Meta do exercício/)
   assert.match(html, /3 séries · 8–12 repetições · 1min30s de descanso/)
   assert.match(html, /exercise-goal-summary/)
   assert.doesNotMatch(html, /Sem metas definidas/)
@@ -439,6 +440,12 @@ test('sheet scope: exercise note shows separated from the structured goal summar
     sheetScope,
     defaultExerciseId: 'squat',
   })
-  assert.match(html, /exercise-goal-summary">3 séries · 8–12 repetições</)
-  assert.match(html, /exercise-goal-note">&quot;Conseguir chegar no tanquinho/)
+  // Sem rest_seconds próprio: o resumo herda o padrão do usuário (90s, sem perfil carregado
+  // neste teste) marcado como "(seu padrão)" -- mesma regra de WorkoutSheetItemEditor.
+  assert.match(
+    html,
+    /exercise-goal-summary">3 séries · 8–12 repetições · 1min30s de descanso \(seu padrão\)</
+  )
+  assert.match(html, /exercise-goal-note"><b>Observação:<\/b> Conseguir chegar no tanquinho/)
+  assert.doesNotMatch(html, /exercise-goal-note">&quot;/, 'sem aspas decorativas')
 })

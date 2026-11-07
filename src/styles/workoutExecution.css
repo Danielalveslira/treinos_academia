@@ -79,6 +79,9 @@
   gap: 4px;
   margin: 2px 0 10px;
 }
+.exercise-goal .eyebrow {
+  margin-bottom: 0;
+}
 .exercise-goal-summary {
   margin: 0;
   color: var(--fgColor-muted);
@@ -89,7 +92,6 @@
   margin: 0;
   color: var(--fgColor-default);
   font-size: 13px;
-  font-style: italic;
   overflow-wrap: anywhere;
 }
 .workout-exercise-thumbnail {
