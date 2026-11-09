@@ -133,11 +133,17 @@ export async function pullImage(key, { run = docker, sleep = ms => new Promise(r
   throw new Error('STACK_IMAGE_UNAVAILABLE: ' + ref)
 }
 
-// The CLI names a versioned official image; our isolated harness executes the
-// verified immutable config ID. An OCI index digest is not that config ID.
+// The CLI names a versioned official image; our isolated harness executes the stable
+// verified tag (see pullImage) or, for an older/different harness that still runs
+// containers by bare config ID, the legacy immutable config ID path below. An OCI index
+// digest is not that config ID.
 export function verifyLocalPostgresImage(info, { run = docker } = {}) {
   const requested = info?.Config?.Image || ''
   if (/^(?:(?:ghcr\.io|public\.ecr\.aws)\/)?supabase\/postgres:[0-9.]+(?:@sha256:[a-f0-9]{64})?$/.test(requested)) return
+  if (requested === verifiedTag('postgres')) {
+    if (verifyTaggedImage('postgres', run)) return
+    throw new Error('IMAGE_INTEGRITY_FAILED: verified tag no longer matches the pinned PostgreSQL digest')
+  }
   if (!/^sha256:[a-f0-9]{64}$/.test(requested) || requested !== info?.Image)
     throw new Error('IMAGE_INTEGRITY_FAILED: unrecognized PostgreSQL image')
   const raw = run('image', 'inspect', info.Image)

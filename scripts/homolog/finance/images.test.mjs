@@ -189,6 +189,21 @@ test('PostgreSQL harness accepts only the verified cached config ID when cache i
 test('PostgreSQL CLI keeps supporting official versioned images', () => {
   verifyLocalPostgresImage({ Config: { Image: 'ghcr.io/supabase/postgres:17.11.0.002' } }, { run: () => assert.fail('named CLI image needs no harness pull') })
 })
+// Regression: stack.mjs now runs postgres via pullImage's stable verified tag (never a bare
+// image.Id, see verifiedTag), so a container inspected mid-harness reports that tag as
+// Config.Image -- caught for real in CI (advertising-concurrency.mjs, run against the same
+// disposable container) the first time something other than pullImage's own tests inspected it.
+test('PostgreSQL harness recognizes its own stable verified tag, re-checked against the pinned digest', () => {
+  const calls = []
+  verifyLocalPostgresImage({ Config: { Image: verifiedTag('postgres') } }, { run: (...args) => {
+    calls.push(args); return image(ghcr)
+  } })
+  assert.deepEqual(calls, [['image', 'inspect', verifiedTag('postgres')]])
+  assert.throws(
+    () => verifyLocalPostgresImage({ Config: { Image: verifiedTag('postgres') } }, { run: () => image(ghcr, { RepoDigests: [] }) }),
+    /IMAGE_INTEGRITY_FAILED/
+  )
+})
 test('PostgreSQL image validation rejects wrong indexes, mismatched config IDs and unofficial names', () => {
   const info = { Image: id, Config: { Image: id } }
   assert.throws(() => verifyLocalPostgresImage(info, { run: () => image(ghcr, { RepoDigests: [ghcr + 'postgres@sha256:' + 'b'.repeat(64)] }) }), /IMAGE_INTEGRITY_FAILED/)
