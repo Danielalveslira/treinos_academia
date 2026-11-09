@@ -198,10 +198,14 @@ select throws_ok($$insert into public.community_creation_activity_days (user_id,
 select throws_ok($$select * from public.community_creation_products$$, '42501', null, 'preços só pelo RPC (tabela fechada)');
 select throws_ok($$update public.community_creation_rules set required_account_days = 0$$, '42501', null, 'cliente não altera as regras');
 select throws_ok($$update public.wallets set coin_balance = 99999, cash_balance = 99999 where user_id = 'c1000000-0000-0000-0000-00000000000a'$$, '42501', null, 'cliente não escreve na carteira (REVOKE explícito, independente de RLS)');
-select ok(has_function_privilege('authenticated', 'public.create_community(text,text,text,text,text,text)', 'execute'), 'authenticated executa create_community');
-select ok(not has_function_privilege('anon', 'public.create_community(text,text,text,text,text,text)', 'execute'), 'anon não executa create_community');
+-- has_function_privilege com a função como texto faz cast para regprocedure, que exige a
+-- assinatura EXATA (não resolve default argument como uma chamada SQL normal faria) --
+-- create_community ganhou p_post_access (7 args) e upgrade_community_tier ganhou
+-- p_expected_amount (5 args), ver 20261214000006/20261214000007.
+select ok(has_function_privilege('authenticated', 'public.create_community(text,text,text,text,text,text,text)', 'execute'), 'authenticated executa create_community');
+select ok(not has_function_privilege('anon', 'public.create_community(text,text,text,text,text,text,text)', 'execute'), 'anon não executa create_community');
 select ok(not has_function_privilege('anon', 'public.get_my_community_creation_eligibility()', 'execute'), 'anon não executa a elegibilidade');
-select ok(not has_function_privilege('anon', 'public.upgrade_community_tier(uuid,text,text,text)', 'execute'), 'anon não executa o upgrade');
+select ok(not has_function_privilege('anon', 'public.upgrade_community_tier(uuid,text,text,text,integer)', 'execute'), 'anon não executa o upgrade');
 reset role;
 set local role authenticated;
 select pg_temp.as_user('0b');
@@ -268,19 +272,23 @@ select is((select count(*)::int from public.statuses where community_id in (sele
 -- ============================================================ UPGRADE
 update public.statuses set expires_at = now() + interval '5 hours' where id = 'c3000000-0000-0000-0000-000000000001';
 select pg_temp.as_user('01');
-select is((select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'plus', 'evocoins', 'upg-00000001') ->> 'amountCharged')::int, 300, 'upgrade cobra a diferença do que já foi pago (600 - 300) em EvoCoins');
+-- upgrade_community_tier ganhou p_expected_amount (20261214000007): o chamador sempre manda o
+-- valor da cotação (quote_community_tier_upgrade) de volta -- aqui, o valor já conhecido do
+-- fixture. Para os cenários que recusam ANTES de chegar na comparação de valor (NOT_AN_UPGRADE,
+-- NOT_OWNER), qualquer inteiro positivo serve, só precisa passar a validação de formato.
+select is((select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'plus', 'evocoins', 'upg-00000001', 300) ->> 'amountCharged')::int, 300, 'upgrade cobra a diferença do que já foi pago (600 - 300) em EvoCoins');
 select is(pg_temp.coins('01'), 4100, 'saldo após o upgrade');
 select is((select tier || '|' || post_retention_mode from public.communities where id = (select (result ->> 'id')::uuid from created where label = 'essential-coins')), 'plus|30d', 'comunidade atualizada');
 select is((select reason || '|' || amount::int from public.economy_transactions where user_id = pg_temp.uid('01') and reason = 'community_upgrade'), 'community_upgrade|300', 'ledger do upgrade');
-select is((select (public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'plus', 'evocoins', 'upg-00000001') ->> 'replay')::boolean), true, 'retry do upgrade é replay');
+select is((select (public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'plus', 'evocoins', 'upg-00000001', 300) ->> 'replay')::boolean), true, 'retry do upgrade (mesmo expectedAmount) é replay');
 select is(pg_temp.coins('01'), 4100, 'retry do upgrade não cobra de novo');
-select throws_ok($$select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'essential', 'evocoins', 'upg-00000002')$$, 'NOT_AN_UPGRADE', 'sem downgrade');
-select throws_ok($$select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'plus', 'evocoins', 'upg-00000003')$$, 'NOT_AN_UPGRADE', 'mesmo tier não é upgrade');
+select throws_ok($$select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'essential', 'evocoins', 'upg-00000002', 1)$$, 'NOT_AN_UPGRADE', 'sem downgrade');
+select throws_ok($$select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'plus', 'evocoins', 'upg-00000003', 1)$$, 'NOT_AN_UPGRADE', 'mesmo tier não é upgrade');
 select pg_temp.as_user('0a');
-select throws_ok($$select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'archive', 'evocash', 'upg-00000004')$$, 'NOT_OWNER', 'só o dono faz upgrade');
+select throws_ok($$select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'archive', 'evocash', 'upg-00000004', 1)$$, 'NOT_OWNER', 'só o dono faz upgrade');
 select pg_temp.as_user('01');
 -- Plus (pago em EvoCoins no upgrade, EvoCash na criação) -> Arquivo em EvoCash: crédito só do que foi pago em EvoCash naquela comunidade (0)
-select is((select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'archive', 'evocash', 'upg-00000005') ->> 'amountCharged')::int, 500, 'upgrade para Arquivo em EvoCash (sem crédito na moeda)');
+select is((select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'archive', 'evocash', 'upg-00000005', 500) ->> 'amountCharged')::int, 500, 'upgrade para Arquivo em EvoCash (sem crédito na moeda)');
 -- posts antigos NÃO mudam; novos usam a nova regra
 select is((select expires_at between now() + interval '4 hours' and now() + interval '6 hours' and retention_mode = '24h' from public.statuses where id = 'c3000000-0000-0000-0000-000000000001'), true, 'post antigo mantém prazo e regra');
 set local role authenticated;
@@ -322,7 +330,7 @@ select throws_ok(
   'SESSION_REVOKED', 'create_community nega sessão revogada antes de qualquer débito/criação'
 );
 select throws_ok(
-  format($$select public.upgrade_community_tier(%L, 'archive', 'evocoins', 'sess-revoked-upgrade')$$,
+  format($$select public.upgrade_community_tier(%L, 'archive', 'evocoins', 'sess-revoked-upgrade', 1)$$,
     (select (result ->> 'id')::uuid from created where label = 'essential-coins')),
   'SESSION_REVOKED', 'upgrade_community_tier nega sessão revogada antes de qualquer débito'
 );
