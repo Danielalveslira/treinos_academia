@@ -1,9 +1,14 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { IMAGES, VERIFIED_AMD64_IDS } from './images.mjs'
+import { IMAGES, verifiedTag } from './images.mjs'
 import { restoreCache, saveCache } from './cache.mjs'
 
 const keys = Object.keys(IMAGES)
+const registry = 'ghcr.io/supabase/'
+const repoDigest = key => {
+  const [name, digest] = IMAGES[key].split('@')
+  return registry + name.split(':')[0] + '@' + digest
+}
 function fixture(loaded = keys) {
   const available = new Set(loaded)
   const calls = []
@@ -11,9 +16,11 @@ function fixture(loaded = keys) {
     calls.push(args)
     if (args[0] === 'load') return 'Loaded image(s)'
     if (args[0] === 'image' && args[1] === 'inspect') {
-      const key = keys.find(item => VERIFIED_AMD64_IDS[item] === args[2])
+      const key = keys.find(item => verifiedTag(item) === args[2])
       if (!available.has(key)) throw new Error('No such image')
-      return JSON.stringify([{ Id: args[2], Os: 'linux', Architecture: 'amd64' }])
+      return JSON.stringify([{
+        Id: 'sha256:' + 'a'.repeat(64), Os: 'linux', Architecture: 'amd64', RepoDigests: [repoDigest(key)],
+      }])
     }
     return ''
   }
@@ -34,7 +41,7 @@ test('incomplete cache pulls only missing pinned images and marks cache verified
   const records = []
   await restoreCache({
     run: state.run,
-    acquire: async key => { acquired.push(key); state.available.add(key); return VERIFIED_AMD64_IDS[key] },
+    acquire: async key => { acquired.push(key); state.available.add(key); return verifiedTag(key) },
     record: line => records.push(line), log: () => {},
   })
   assert.deepEqual(acquired, [keys[0]])
@@ -50,26 +57,26 @@ test('unreadable archive recovers only from pinned images', async () => {
   }
   await restoreCache({
     run,
-    acquire: async key => { acquired.push(key); state.available.add(key); return VERIFIED_AMD64_IDS[key] },
+    acquire: async key => { acquired.push(key); state.available.add(key); return verifiedTag(key) },
     record: () => {}, log: () => {},
   })
   assert.deepEqual(acquired, keys)
 })
 
-test('recovery rejects wrong config ID without trusting an incomplete cache', async () => {
+test('recovery rejects a tag that does not match the key it was acquired for, without trusting an incomplete cache', async () => {
   const state = fixture(keys.slice(1))
   const records = []
   await assert.rejects(
-    restoreCache({ run: state.run, acquire: async () => VERIFIED_AMD64_IDS[keys[1]], record: line => records.push(line), log: () => {} }),
+    restoreCache({ run: state.run, acquire: async () => verifiedTag(keys[1]), record: line => records.push(line), log: () => {} }),
     /IMAGE_INTEGRITY_FAILED/
   )
   assert.deepEqual(records, [])
 })
 
-test('save uses verified named references so docker load restores the IDs', async () => {
+test('save uses verified named references so docker load restores the same tags', async () => {
   const state = fixture()
-  await saveCache({ run: state.run, acquire: async key => VERIFIED_AMD64_IDS[key], log: () => {} })
+  await saveCache({ run: state.run, acquire: async key => { state.available.add(key); return verifiedTag(key) }, log: () => {} })
   const saved = state.calls.find(([command]) => command === 'save')
   assert.equal(saved.length, keys.length + 3)
-  assert.ok(saved.slice(3).every(tag => tag.startsWith('finance-verified/')))
+  assert.deepEqual(saved.slice(3), keys.map(verifiedTag))
 })
