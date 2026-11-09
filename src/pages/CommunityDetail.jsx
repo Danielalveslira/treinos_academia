@@ -1,7 +1,7 @@
 import { useAdvertisingValidity } from '../hooks/useAdvertisingValidity'
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Box, Heading, Button, Spinner } from '@primer/react'
+import { Box, Heading, Button, Flash, Spinner } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { PeopleIcon } from '@primer/octicons-react'
 import { useAuth } from '../hooks/useAuth'
@@ -26,6 +26,7 @@ import {
   leaveCommunity,
 } from '../services/communityMembersService'
 import { canModerateCommunity } from '../utils/communityOwnership'
+import { TIER_LABELS } from '../utils/communityCreation'
 import {
   accessAfterJoin,
   communityContentCachePrefixes,
@@ -85,6 +86,11 @@ const CommunityMembersModeration = lazy(() =>
 const PromoteDialog = lazy(() =>
   import('../components/PromoteDialog').then((module) => ({ default: module.PromoteDialog }))
 )
+const CommunityTierUpgradeDialog = lazy(() =>
+  import('../components/CommunityTierUpgradeDialog').then((module) => ({
+    default: module.CommunityTierUpgradeDialog,
+  }))
+)
 
 function CommunityDetail({ id }) {
   const navigate = useNavigate()
@@ -107,7 +113,8 @@ function CommunityDetail({ id }) {
   const [membershipPending, setMembershipPending] = useState(false)
   const [loadingCommunity, setLoadingCommunity] = useState(!cachedPage)
   const [communityError, setCommunityError] = useState(null)
-  const { hash } = useLocation()
+  const { hash, state: locationState } = useLocation()
+  const [coverUploadFailed, setCoverUploadFailed] = useState(Boolean(locationState?.coverUploadFailed))
   const [sharedStatus, setSharedStatus] = useState(null)
   const sharedStatusRequested = useRef('')
   const sharedAnchorScrolled = useRef('')
@@ -214,6 +221,7 @@ function CommunityDetail({ id }) {
   // servidor por promotedUntil > agora (nunca limit() antes de tirar os expirados, ver
   // promotionsService.js) -- nunca lê promotions/{id} pra isto.
   const [promoteCommunityOpen, setPromoteCommunityOpen] = useState(false)
+  const [upgradeTierOpen, setUpgradeTierOpen] = useState(false)
   // Todo ajuste local dos destaques (voto, exclusão) grava também na cache, para o retorno não repintar
   // contadores antigos.
   const setFeaturedStatuses = useCallback(
@@ -841,6 +849,15 @@ function CommunityDetail({ id }) {
 
       {!loadingCommunity && !communityError && community && (
         <>
+          {coverUploadFailed && (
+            <Flash variant="warning" role="alert" sx={{ mb: 3 }}>
+              Sua comunidade foi criada, mas o envio da capa falhou. Você pode tentar de novo em
+              "Gerenciar comunidade".{' '}
+              <Button variant="invisible" onClick={() => setCoverUploadFailed(false)}>
+                Entendi
+              </Button>
+            </Flash>
+          )}
           {/* Fase 5: visível para isSuperAdmin || dono (ownerId) -- as MESMAS
               funções de communitiesService.js que o painel admin global já usa, só que
               aqui restritas (pelas Rules, não só pela UI) a esta comunidade. */}
@@ -884,6 +901,14 @@ function CommunityDetail({ id }) {
                   <Button onClick={() => setPromoteCommunityOpen(true)}>Promover comunidade</Button>
                 </Box>
               )}
+              {/* upgrade_community_tier exige dono estrito (NOT_OWNER), igual à promoção --
+                  nunca oferecido a superadmin agindo como moderador. Sem upgrade após archive
+                  (já é o tier mais alto). */}
+              {community.ownerId === user.uid && community.tier !== 'archive' && (
+                <Box sx={{ mt: 3, borderTop: '1px solid', borderColor: 'border.default', pt: 3 }}>
+                  <Button onClick={() => setUpgradeTierOpen(true)}>Melhorar comunidade</Button>
+                </Box>
+              )}
               <Box sx={{ mt: 3, borderTop: '1px solid', borderColor: 'border.default', pt: 3 }}>
                 <Heading as="h3" sx={{ fontSize: 0, mb: 2 }}>
                   Membros e banimentos
@@ -908,6 +933,21 @@ function CommunityDetail({ id }) {
                 onClose={() => setPromoteCommunityOpen(false)}
                 onPromoted={() => {
                   setPromoteCommunityOpen(false)
+                  loadCommunity(true)
+                }}
+              />
+            </LazyDialogBoundary>
+          )}
+          {upgradeTierOpen && (
+            <LazyDialogBoundary onFail={() => setUpgradeTierOpen(false)}>
+              <CommunityTierUpgradeDialog
+                communityId={id}
+                currentTier={community.tier}
+                onClose={() => setUpgradeTierOpen(false)}
+                onUpgraded={(result) => {
+                  setUpgradeTierOpen(false)
+                  setCommunity((current) => ({ ...current, tier: result.tier }))
+                  showToast(`Comunidade atualizada para ${TIER_LABELS[result.tier] ?? result.tier}.`)
                   loadCommunity(true)
                 }}
               />

@@ -6394,64 +6394,8 @@ body.modal-sheet-open { overflow: hidden; }
 .status-progress-tag svg { color: var(--fitness-accent); }
 
 /* Editor pessoal compacto; estilos de cartões antigos continuam nas páginas públicas. */
-.community-wizard { max-width: 560px; }
-.community-wizard-card {
-  padding: 16px;
-  border: 1px solid var(--borderColor-default);
-  border-radius: 12px;
-  background: var(--bgColor-default);
-}
-.community-wizard-title { margin: 0 0 16px; font-size: 18px; letter-spacing: -0.02em; }
-.community-wizard-fields { display: grid; gap: 16px; margin-bottom: 16px; }
-.community-wizard-note { margin: 0 0 16px; color: var(--fgColor-muted); font-size: 13px; }
-.community-wizard-actions { display: flex; flex-direction: column-reverse; gap: 8px; margin-top: 16px; }
-.community-wizard-actions > button { width: 100%; min-height: 44px; }
-@media (min-width: 480px) {
-  .community-wizard-card { padding: 24px; }
-  .community-wizard-actions { flex-direction: row; justify-content: flex-end; }
-  .community-wizard-actions > button { width: auto; }
-}
-
-.community-eligibility-list { margin: 0 0 16px; padding: 0; list-style: none; display: grid; gap: 14px; }
-.community-eligibility-item { display: flex; gap: 12px; align-items: flex-start; color: var(--fgColor-muted); }
-.community-eligibility-item.is-done .community-eligibility-mark { color: var(--fgColor-success); }
-.community-eligibility-mark { flex-shrink: 0; margin-top: 1px; }
-.community-eligibility-body { display: grid; gap: 4px; flex: 1; min-width: 0; }
-.community-eligibility-label { color: var(--fgColor-default); font-weight: 600; font-size: 14px; }
-.community-eligibility-detail { font-size: 13px; }
-.community-eligibility-item.is-info { padding-top: 12px; border-top: 1px solid var(--borderColor-muted); }
-.community-eligibility-today { margin: 0 0 12px; color: var(--fgColor-success); font-size: 13px; }
-
-.community-choice-list { display: grid; gap: 10px; margin-bottom: 4px; }
-.community-choice {
-  display: grid;
-  gap: 4px;
-  width: 100%;
-  min-height: 44px;
-  padding: 14px;
-  text-align: left;
-  border: 1px solid var(--borderColor-default);
-  border-radius: 12px;
-  background: transparent;
-  color: var(--fgColor-default);
-  cursor: pointer;
-}
-.community-choice:disabled { opacity: 0.6; cursor: not-allowed; }
-.community-choice.is-selected {
-  border-color: var(--fitness-accent);
-  background: var(--fitness-accent-soft);
-}
-.community-choice-title { font-weight: 600; font-size: 15px; }
-.community-choice-text,
-.community-choice-meta {
-  color: var(--fgColor-muted);
-  font-size: 13px;
-}
-
-.community-review { display: grid; gap: 12px; margin: 0 0 16px; }
-.community-review > div { display: flex; justify-content: space-between; gap: 16px; }
-.community-review dt { color: var(--fgColor-muted); font-size: 14px; }
-.community-review dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+/* Wizard de criação de comunidades: movido para src/styles/community-creation.css
+   (.community-wizard*, .community-choice*, .community-eligibility*, .community-review*). */
 /* Finalizar treino: marcador server-side de conclusão (ver NewWorkout.jsx). */
 .workout-finish {
   display: flex;

@@ -1,0 +1,89 @@
+/* Criação/gestão de comunidades: wizard de 3 etapas, modalidade/pagamento, elegibilidade
+   inline, revisão, capa (seleção + recorte) e upgrade de tier. Extraído de app.css
+   (monolítico) para ficar isolado, igual a community-feed.css/community-access.css. */
+
+.community-wizard { max-width: 560px; }
+.community-wizard-card {
+  padding: 16px;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 12px;
+  background: var(--bgColor-default);
+}
+.community-wizard-title { margin: 0 0 16px; font-size: 18px; letter-spacing: -0.02em; }
+.community-wizard-subtitle { margin: 20px 0 10px; font-size: 15px; letter-spacing: -0.01em; }
+.community-wizard-fields { display: grid; gap: 16px; margin-bottom: 16px; }
+.community-wizard-note { margin: 0 0 16px; color: var(--fgColor-muted); font-size: 13px; }
+.community-wizard-actions { display: flex; flex-direction: column-reverse; gap: 8px; margin-top: 16px; }
+.community-wizard-actions > button { width: 100%; min-height: 44px; }
+.community-wizard-cover-preview {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 2 / 1;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+@media (min-width: 480px) {
+  .community-wizard-card { padding: 24px; }
+  .community-wizard-actions { flex-direction: row; justify-content: flex-end; }
+  .community-wizard-actions > button { width: auto; }
+}
+
+.community-eligibility-list { margin: 0 0 16px; padding: 0; list-style: none; display: grid; gap: 14px; }
+.community-eligibility-item { display: flex; gap: 12px; align-items: flex-start; color: var(--fgColor-muted); }
+.community-eligibility-item.is-done .community-eligibility-mark { color: var(--fgColor-success); }
+.community-eligibility-mark { flex-shrink: 0; margin-top: 1px; }
+.community-eligibility-body { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.community-eligibility-label { color: var(--fgColor-default); font-weight: 600; font-size: 14px; }
+.community-eligibility-detail { font-size: 13px; }
+.community-eligibility-item.is-info { padding-top: 12px; border-top: 1px solid var(--borderColor-muted); }
+.community-eligibility-today { margin: 0 0 12px; color: var(--fgColor-success); font-size: 13px; }
+
+.community-choice-list { display: grid; gap: 10px; margin-bottom: 4px; }
+.community-choice {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 44px;
+  padding: 14px;
+  text-align: left;
+  border: 1px solid var(--borderColor-default);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--fgColor-default);
+  cursor: pointer;
+}
+.community-choice:disabled { opacity: 0.6; cursor: not-allowed; }
+.community-choice.is-selected {
+  border-color: var(--fitness-accent);
+  background: var(--fitness-accent-soft);
+}
+.community-choice-title { font-weight: 600; font-size: 15px; }
+.community-choice-text,
+.community-choice-meta {
+  color: var(--fgColor-muted);
+  font-size: 13px;
+}
+/* Modalidade grátis em destaque -- mesmo tom de "sucesso" usado em EligibilityPanel, para o
+   benefício gratuito se diferenciar visualmente das modalidades pagas sem precisar de texto
+   extra. */
+.community-choice-free:not(:disabled) {
+  border-color: var(--fgColor-success);
+}
+.community-choice-free:not(:disabled) .community-choice-title {
+  color: var(--fgColor-success);
+}
+
+.community-review { display: grid; gap: 12px; margin: 0 0 16px; }
+.community-review > div { display: flex; justify-content: space-between; gap: 16px; }
+.community-review dt { color: var(--fgColor-muted); font-size: 14px; }
+.community-review dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+
+/* Capa (seleção, recorte, zoom, diálogo) já tem CSS completo em app.css (.community-cover*,
+   .community-cover-picker*, .community-cover-dialog*) -- CoverCropField/CommunityCoverPicker
+   reaproveitam esses nomes de classe sem precisar de nada novo aqui, exceto a prévia do blob
+   pendente dentro do wizard (.community-wizard-cover-preview, acima), que não existia antes. */
+
+/* Upgrade de tier (Gerenciar comunidade). */
+.community-upgrade-dialog { display: grid; gap: 4px; }

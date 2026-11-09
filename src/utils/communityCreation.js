@@ -5,9 +5,10 @@
 // verdadeiro nesta tela nunca autoriza nada, e nenhum valor calculado aqui é enviado como
 // verdade -- só o tier escolhido, a forma de pagamento e a chave de idempotência.
 
-export const WIZARD_STEPS = ['eligibility', 'info', 'retention', 'payment', 'review']
+export const WIZARD_STEPS = ['info', 'config', 'review']
 
 export const TIER_LABELS = {
+  starter: 'Grátis',
   essential: 'Essencial',
   plus: 'Plus',
   archive: 'Arquivo',
@@ -24,19 +25,17 @@ export const RETENTION_COPY = {
 
 export const PAYMENT_LABELS = { evocoins: 'EvoCoins', evocash: 'EvoCash' }
 
-const plural = (count, singular, pluralForm) => `${count} ${count === 1 ? singular : pluralForm}`
+// Mesmo rank usado no servidor (upgrade_community_tier/community_tier_upgrade_quote): só para
+// decidir, na UI, quais modalidades aparecem como "melhoria" possível -- o servidor recalcula
+// e recusa (NOT_AN_UPGRADE) de qualquer forma, isto é só para não oferecer um botão inútil.
+export const TIER_RANK = { legacy: 1, essential: 1, starter: 1, plus: 2, archive: 3 }
 
-function progressOf(done, required) {
-  if (!(required > 0)) return 1
-  return Math.min(Math.max(done / required, 0), 1)
-}
-
-// Itens da seção "Sua elegibilidade". Os rótulos mostram só requisitos públicos (dias de
-// conta, dias ativos, situação, limite, custo) -- nada de regra interna de segurança.
+// Itens do aviso de elegibilidade (inline, sem etapa própria). Dias de conta/dias ativos NÃO
+// são mais requisito -- deixaram de bloquear a criação (paga ou grátis), ver migration
+// 20261214000003_community_creation_eligibility_simplify.sql. Mostrados aqui só como
+// informação de progresso (ex.: "conta há X dias"), nunca como pendência que trava o botão.
 export function buildEligibilityChecklist(eligibility) {
   if (!eligibility) return []
-  const accountDone = eligibility.accountDays >= eligibility.requiredAccountDays
-  const activeDone = eligibility.qualifiedDays >= eligibility.requiredQualifiedDays
   const regular = eligibility.accountStanding === 'regular'
   const underLimit = eligibility.activeOwnedCommunities < eligibility.communityLimit
   return [
@@ -53,20 +52,6 @@ export function buildEligibilityChecklist(eligibility) {
       detail: regular ? 'Tudo certo' : 'Indisponível no momento',
     },
     {
-      key: 'accountAge',
-      label: 'Conta no Evolutus',
-      done: accountDone,
-      detail: `${Math.min(eligibility.accountDays, eligibility.requiredAccountDays)} / ${eligibility.requiredAccountDays} dias`,
-      progress: progressOf(eligibility.accountDays, eligibility.requiredAccountDays),
-    },
-    {
-      key: 'activeDays',
-      label: 'Atividade',
-      done: activeDone,
-      detail: `${Math.min(eligibility.qualifiedDays, eligibility.requiredQualifiedDays)} / ${eligibility.requiredQualifiedDays} dias ativos`,
-      progress: progressOf(eligibility.qualifiedDays, eligibility.requiredQualifiedDays),
-    },
-    {
       key: 'limit',
       label: 'Comunidades próprias',
       done: underLimit,
@@ -75,8 +60,9 @@ export function buildEligibilityChecklist(eligibility) {
   ]
 }
 
-// O que ainda falta, só com requisitos públicos. Restrição/moderação NUNCA detalha o motivo:
-// `restricted` vira uma mensagem genérica (com acesso ao atendimento na tela).
+// O que ainda falta, só com requisitos públicos (e-mail, situação da conta, limite).
+// Restrição/moderação NUNCA detalha o motivo: `restricted` vira uma mensagem genérica (com
+// acesso ao atendimento na tela).
 export function describeEligibilityGap(eligibility) {
   if (!eligibility) return { eligible: false, restricted: false, missing: [], message: '' }
   if (eligibility.eligible) return { eligible: true, restricted: false, missing: [], message: '' }
@@ -91,23 +77,12 @@ export function describeEligibilityGap(eligibility) {
   }
 
   const missing = []
-  const accountGap = Math.max(eligibility.requiredAccountDays - eligibility.accountDays, 0)
-  const activeGap = Math.max(eligibility.requiredQualifiedDays - eligibility.qualifiedDays, 0)
   if (eligibility.emailVerified !== true) missing.push('confirmar seu e-mail')
-  if (accountGap > 0) missing.push(plural(accountGap, 'dia de conta', 'dias de conta'))
-  if (activeGap > 0) missing.push(plural(activeGap, 'dia ativo', 'dias ativos'))
   const limitReached = eligibility.activeOwnedCommunities >= eligibility.communityLimit
 
   let message = 'Você ainda não pode criar uma comunidade.'
   if (missing.length > 0) {
-    const joined =
-      missing.length === 1
-        ? missing[0]
-        : `${missing.slice(0, -1).join(', ')} e ${missing[missing.length - 1]}`
-    message = `Faltam ${joined} para liberar a criação.`
-    if (missing[0] === 'confirmar seu e-mail' && missing.length === 1) {
-      message = 'Falta confirmar seu e-mail para liberar a criação.'
-    }
+    message = 'Falta confirmar seu e-mail para liberar a criação.'
   } else if (limitReached) {
     message = `Você já tem ${eligibility.communityLimit} comunidades ativas. Encerre uma para criar outra.`
   }
@@ -146,7 +121,13 @@ export function paymentOptionsFor(product, eligibility) {
   return options
 }
 
+// Grátis é um sinal explícito do catálogo (product.free === true), nunca inferido por preço
+// nulo/zero -- preço NULL em essential/plus/archive significa "forma de pagamento
+// indisponível", não "grátis". Um produto pago sem nenhum preço configurado continua
+// indisponível (ex.: archive hoje).
 export function productIsAvailable(product) {
+  if (!product) return false
+  if (product.free === true) return true
   return paymentOptionsFor(product, null).length > 0
 }
 
@@ -154,26 +135,37 @@ export function formatPrice(option) {
   return `${option.price} ${option.label}`
 }
 
-// Códigos levantados por create_community (ver 20261008000003_community_creation_rpcs.sql).
-// Restrição/moderação (ACCOUNT_NOT_ELIGIBLE, ACCOUNT_DELETING) usa texto genérico de propósito.
+// Códigos levantados por create_community/create_free_community/upgrade_community_tier/
+// quote_community_tier_upgrade/set_community_post_access (ver migrations 20261214000002 a
+// 20261214000007). Restrição/moderação (ACCOUNT_NOT_ELIGIBLE, ACCOUNT_DELETING) usa texto
+// genérico de propósito. ACCOUNT_TOO_NEW/NOT_ACTIVE_ENOUGH não existem mais em nenhum caminho
+// (requisitos de dias removidos -- ver eligibility_simplify) e não aparecem aqui.
 const CREATE_ERRORS = {
   ACCOUNT_NOT_ELIGIBLE: 'Sua conta não está elegível para criar comunidades neste momento.',
   ACCOUNT_DELETING: 'Sua conta não está elegível para criar comunidades neste momento.',
+  SESSION_REVOKED: 'Sua sessão foi encerrada. Entre novamente.',
   EMAIL_NOT_VERIFIED: 'Confirme seu e-mail para criar uma comunidade.',
-  ACCOUNT_TOO_NEW: 'Sua conta ainda não atingiu o tempo mínimo para criar comunidades.',
-  NOT_ACTIVE_ENOUGH: 'Você ainda não tem dias ativos suficientes para criar uma comunidade.',
   COMMUNITY_LIMIT_REACHED: 'Você já atingiu o limite de comunidades ativas.',
+  FREE_BENEFIT_ALREADY_USED: 'Você já usou sua comunidade gratuita.',
   INSUFFICIENT_COINS: 'Você não tem EvoCoins suficientes.',
   INSUFFICIENT_CASH: 'Você não tem EvoCash suficiente.',
   PAYMENT_METHOD_UNAVAILABLE:
     'Esta forma de pagamento não está disponível para este tipo de comunidade.',
   INVALID_TIER: 'Este tipo de comunidade não está disponível.',
   INVALID_PAYMENT_METHOD: 'Escolha uma forma de pagamento válida.',
+  INVALID_POST_ACCESS: 'Escolha quem pode publicar antes de continuar.',
   INVALID_NAME: 'Informe um nome de até 60 caracteres.',
   INVALID_DESCRIPTION: 'A descrição pode ter até 300 caracteres.',
   REQUEST_ID_CONFLICT:
     'Este pedido já foi usado para criar uma comunidade diferente. Revise e tente de novo.',
   CREATION_RULES_UNAVAILABLE: 'A criação de comunidades está indisponível no momento.',
+  // Upgrade de tier (quote_community_tier_upgrade/upgrade_community_tier).
+  NOT_OWNER: 'Só o dono da comunidade pode fazer isso.',
+  COMMUNITY_UNAVAILABLE: 'Esta comunidade não está disponível.',
+  NOT_AN_UPGRADE: 'Essa modalidade não é uma melhoria em relação à atual.',
+  UPGRADE_NOT_CHARGEABLE: 'Não há valor a cobrar para essa mudança.',
+  PRICE_CHANGED: 'O preço mudou desde a última cotação. Confira o novo valor e confirme de novo.',
+  INVALID_EXPECTED_AMOUNT: 'Cotação inválida. Peça uma nova cotação antes de confirmar.',
 }
 
 export function creationErrorMessage(error) {
@@ -194,13 +186,16 @@ export function newIdempotencyKey() {
 }
 
 // Chave da "tentativa" para reaproveitar a chave de idempotência: mesma intenção = mesma
-// chave, mesmo após duplo clique ou retry por conexão ruim.
-export function attemptKeyOf({ name, description, iconName, tier, paymentMethod }) {
+// chave, mesmo após duplo clique ou retry por conexão ruim. postAccess entra aqui porque
+// também faz parte do hash de idempotência no servidor (ver create_community/
+// create_free_community) -- mudar só o post_access precisa contar como tentativa nova.
+export function attemptKeyOf({ name, description, iconName, tier, paymentMethod, postAccess }) {
   return JSON.stringify([
     name?.trim() ?? '',
     description?.trim() ?? '',
     iconName ?? '',
     tier,
-    paymentMethod,
+    paymentMethod ?? null,
+    postAccess ?? 'everyone',
   ])
 }
