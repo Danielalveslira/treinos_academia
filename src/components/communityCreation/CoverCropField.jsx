@@ -34,7 +34,6 @@ export function CoverCropField({ triggerLabel, hasExisting = false, disabled = f
     return () => {
       if (dialog?.open) dialog.close()
       source.bitmap.close?.()
-      URL.revokeObjectURL(source.url)
     }
   }, [source])
 
@@ -61,7 +60,7 @@ export function CoverCropField({ triggerLabel, hasExisting = false, disabled = f
       const bitmap = await createImageBitmap(file)
       setZoom(1)
       setPosition({ x: 0.5, y: 0.5 })
-      setSource({ bitmap, url: URL.createObjectURL(file) })
+      setSource({ bitmap })
     } catch {
       setError('Não foi possível ler essa imagem. Escolha outro arquivo.')
     } finally {
@@ -159,11 +158,6 @@ export function CoverCropField({ triggerLabel, hasExisting = false, disabled = f
           <p>
             Arraste para posicionar o recorte. A área abaixo mostra como a capa aparecerá nos cards.
           </p>
-          <img
-            src={source.url}
-            alt="Imagem original selecionada"
-            className="community-cover-original"
-          />
           <canvas
             ref={canvasRef}
             className="community-cover-editor-canvas"

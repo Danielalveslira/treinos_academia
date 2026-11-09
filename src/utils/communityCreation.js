@@ -179,6 +179,15 @@ export function shouldRenewRequestId(error) {
   return error?.message === 'REQUEST_ID_CONFLICT'
 }
 
+// Estes 3 códigos já aparecem com mensagem própria dentro de EligibilityPanel (etapa
+// "info"), a partir do `eligibility` recarregado -- mostrar o Flash genérico de erro JUNTO
+// duplicaria a mesma informação na tela (bug real: "ainda não pode criar uma comunidade"
+// aparecendo duas vezes). FREE_BENEFIT_ALREADY_USED não tem equivalente ali (EligibilityPanel
+// não sabe sobre o benefício gratuito), então esse continua no Flash genérico.
+export function eligibilityPanelCoversError(code) {
+  return code === 'ACCOUNT_NOT_ELIGIBLE' || code === 'EMAIL_NOT_VERIFIED' || code === 'COMMUNITY_LIMIT_REACHED'
+}
+
 export function newIdempotencyKey() {
   return typeof crypto?.randomUUID === 'function'
     ? crypto.randomUUID()

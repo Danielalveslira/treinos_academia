@@ -42,7 +42,7 @@ export function EligibilityPanel({ eligibility }) {
         <Text as="p" sx={{ m: 0, fontWeight: 'bold' }}>
           {gap.restricted ? gap.message : 'Você ainda não pode criar uma comunidade.'}
         </Text>
-        {!gap.restricted && (
+        {!gap.restricted && gap.message !== 'Você ainda não pode criar uma comunidade.' && (
           <Text as="p" sx={{ m: 0, mt: 1 }}>
             {gap.message}
           </Text>

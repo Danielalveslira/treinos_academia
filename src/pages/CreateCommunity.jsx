@@ -16,6 +16,7 @@ import {
   WIZARD_STEPS,
   attemptKeyOf,
   creationErrorMessage,
+  eligibilityPanelCoversError,
   newIdempotencyKey,
   paymentOptionsFor,
   shouldRenewRequestId,
@@ -56,6 +57,7 @@ export default function CreateCommunity() {
   const [paymentMethod, setPaymentMethod] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [errorCode, setErrorCode] = useState('')
   const pendingAttemptRef = useRef(null)
   const submittingRef = useRef(false)
   const autoSelectedRef = useRef(false)
@@ -118,6 +120,7 @@ export default function CreateCommunity() {
     submittingRef.current = true
     setSubmitting(true)
     setError('')
+    setErrorCode('')
     const attemptKey = attemptKeyOf({
       name: values.name,
       description: values.description,
@@ -177,6 +180,7 @@ export default function CreateCommunity() {
       // conflito de chave não se resolve repetindo.
       if (shouldRenewRequestId(err)) pendingAttemptRef.current = null
       setError(creationErrorMessage(err))
+      setErrorCode(err?.message ?? '')
       if (REFRESH_ERRORS.has(err?.message)) {
         await load()
         // FREE_BENEFIT_ALREADY_USED: a modalidade grátis que estava selecionada deixou de
@@ -225,7 +229,7 @@ export default function CreateCommunity() {
 
       {!loading && !loadError && eligibility && (
         <>
-          {error && step !== 'review' && (
+          {error && step !== 'review' && !(step === 'info' && !eligibility.eligible && eligibilityPanelCoversError(errorCode)) && (
             <Flash variant="danger" role="alert" sx={{ mb: 3 }}>
               {error}
             </Flash>

@@ -2,8 +2,9 @@
    inline, revisão, capa (seleção + recorte) e upgrade de tier. Extraído de app.css
    (monolítico) para ficar isolado, igual a community-feed.css/community-access.css. */
 
-.community-wizard { max-width: 560px; }
+.community-wizard { max-width: 560px; min-width: 0; }
 .community-wizard-card {
+  min-width: 0;
   padding: 16px;
   border: 1px solid var(--borderColor-default);
   border-radius: 12px;
@@ -11,19 +12,27 @@
 }
 .community-wizard-title { margin: 0 0 16px; font-size: 18px; letter-spacing: -0.02em; }
 .community-wizard-subtitle { margin: 20px 0 10px; font-size: 15px; letter-spacing: -0.01em; }
-.community-wizard-fields { display: grid; gap: 16px; margin-bottom: 16px; }
+.community-wizard-fields { display: grid; gap: 16px; min-width: 0; margin-bottom: 16px; }
+.community-wizard-fields > * { min-width: 0; }
 .community-wizard-note { margin: 0 0 16px; color: var(--fgColor-muted); font-size: 13px; }
 .community-wizard-actions { display: flex; flex-direction: column-reverse; gap: 8px; margin-top: 16px; }
 .community-wizard-actions > button { width: 100%; min-height: 44px; }
+/* A imagem absoluta do card precisa de um bloco posicionado e recortado. */
 .community-wizard-cover-preview {
-  display: block;
+  position: relative;
   width: 100%;
   max-width: 320px;
   aspect-ratio: 2 / 1;
-  object-fit: cover;
+  overflow: hidden;
   border-radius: 8px;
   margin-bottom: 8px;
 }
+.community-wizard-cover-preview .community-cover-image {
+  display: block;
+  max-width: 100%;
+}
+.community-wizard-cover-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.community-wizard-cover-actions button { min-height: 44px; }
 @media (min-width: 480px) {
   .community-wizard-card { padding: 24px; }
   .community-wizard-actions { flex-direction: row; justify-content: flex-end; }
@@ -80,10 +89,7 @@
 .community-review dt { color: var(--fgColor-muted); font-size: 14px; }
 .community-review dd { margin: 0; font-weight: 600; text-align: right; overflow-wrap: anywhere; }
 
-/* Capa (seleção, recorte, zoom, diálogo) já tem CSS completo em app.css (.community-cover*,
-   .community-cover-picker*, .community-cover-dialog*) -- CoverCropField/CommunityCoverPicker
-   reaproveitam esses nomes de classe sem precisar de nada novo aqui, exceto a prévia do blob
-   pendente dentro do wizard (.community-wizard-cover-preview, acima), que não existia antes. */
+/* Editor compartilhado com o gerenciamento, onde os estilos base vivem em app.css. */
 
 /* Upgrade de tier (Gerenciar comunidade). */
 .community-upgrade-dialog { display: grid; gap: 4px; }

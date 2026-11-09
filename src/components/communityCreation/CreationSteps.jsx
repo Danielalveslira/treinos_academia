@@ -64,11 +64,9 @@ function CoverPreview({ blob }) {
   }, [blob])
   if (!url) return null
   return (
-    <img
-      src={url}
-      alt="Prévia da capa selecionada"
-      className="community-cover-image community-wizard-cover-preview"
-    />
+    <div className="community-cover community-wizard-cover-preview">
+      <img src={url} alt="Prévia da capa selecionada" className="community-cover-image" />
+    </div>
   )
 }
 
@@ -123,12 +121,17 @@ export function InfoStep({ values, onChange, eligibility, onBack, onNext }) {
         <FormControl>
           <FormControl.Label>Capa (opcional)</FormControl.Label>
           <CoverPreview blob={values.coverBlob} />
-          <Box sx={{ mt: 2 }}>
+          <div className="community-wizard-cover-actions">
             <CoverCropField
               triggerLabel={values.coverBlob ? 'Trocar capa' : 'Adicionar capa'}
               onCropped={(blob) => onChange('coverBlob', blob)}
             />
-          </Box>
+            {values.coverBlob && (
+              <Button type="button" onClick={() => onChange('coverBlob', null)}>
+                Remover capa
+              </Button>
+            )}
+          </div>
           <Text as="p" className="community-wizard-note">
             Recomendado: 1200 × 600 px. Enviada depois que a comunidade for criada -- se o envio
             falhar, a comunidade já existe e você pode tentar de novo em "Gerenciar comunidade".

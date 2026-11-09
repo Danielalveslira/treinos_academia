@@ -1,6 +1,6 @@
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
@@ -82,6 +82,11 @@ test('restrição: texto genérico, atendimento, e nenhum motivo sensível', () 
   assert.doesNotMatch(html, /suspens|banimento|moderaç|fraude|automa/i)
 })
 
+test('pendência genérica aparece uma única vez', () => {
+  const html = render.renderPanel({ eligibility: { ...base, eligible: false } })
+  assert.equal((html.match(/Você ainda não pode criar uma comunidade\./g) || []).length, 1)
+})
+
 const products = [
   { tier: 'starter', postRetentionMode: '24h', evoCoinsPrice: null, evoCashPrice: null, free: true },
   { tier: 'essential', postRetentionMode: '24h', evoCoinsPrice: 300, evoCashPrice: null, free: false },
@@ -156,4 +161,32 @@ test('modalidade paga: forma de pagamento aparece, só opções com preço váli
   assert.match(html, /50 EvoCash/)
   assert.match(html, /Faltam 40 EvoCash/)
   assert.match(html, /href="\/evocash"/)
+})
+
+// Regressão de bug real: a prévia da capa (CoverPreview) tinha className="community-cover-image
+// community-wizard-cover-preview" direto no <img>. .community-cover-image é
+// "position: absolute; inset: 0" (app.css) -- sem um ancestral "position: relative" (que só
+// .community-cover fornece), o navegador posiciona a imagem em relação ao viewport inteiro,
+// cobrindo toda a tela/formulário. A correção embrulha o <img> (só com community-cover-image)
+// dentro de uma div com community-cover + community-wizard-cover-preview. renderToStaticMarkup
+// não executa o useEffect que troca o Blob por uma URL (SSR nunca roda efeitos), então este
+// teste lê o código-fonte diretamente em vez de renderizar -- é exatamente o jeito certo de
+// travar esta classe específica de bug sem jsdom (que o projeto não usa).
+test('capa: community-cover-image nunca aparece sem o wrapper community-cover (position:absolute sem ancestral relative vazaria pela tela)', async () => {
+  const source = await readFile(new URL('./communityCreation/CreationSteps.jsx', import.meta.url), 'utf8')
+  assert.doesNotMatch(
+    source,
+    /className="[^"]*community-cover-image[^"]*community-wizard-cover-preview/,
+    'community-cover-image não deve estar no mesmo elemento que community-wizard-cover-preview'
+  )
+  assert.doesNotMatch(
+    source,
+    /className="[^"]*community-wizard-cover-preview[^"]*community-cover-image/,
+    'nem na ordem inversa'
+  )
+  assert.match(
+    source,
+    /className="community-cover community-wizard-cover-preview"/,
+    'o wrapper com position:relative (community-cover) precisa envolver a prévia'
+  )
 })

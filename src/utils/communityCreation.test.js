@@ -5,6 +5,7 @@ import {
   buildEligibilityChecklist,
   creationErrorMessage,
   describeEligibilityGap,
+  eligibilityPanelCoversError,
   paymentOptionsFor,
   productIsAvailable,
   shouldRenewRequestId,
@@ -165,4 +166,18 @@ test('a chave da tentativa para o caminho grátis não depende de paymentMethod'
   const a = attemptKeyOf({ name: 'X', description: '', iconName: 'users', tier: 'starter', paymentMethod: null, postAccess: 'everyone' })
   const b = attemptKeyOf({ name: 'X', description: '', iconName: 'users', tier: 'starter', postAccess: 'everyone' })
   assert.equal(a, b)
+})
+
+// Regressão: CreateCommunity.jsx mostrava o Flash genérico de erro JUNTO com a mensagem
+// própria de EligibilityPanel na etapa "info", duplicando a mesma informação na tela para
+// ACCOUNT_NOT_ELIGIBLE/EMAIL_NOT_VERIFIED/COMMUNITY_LIMIT_REACHED. FREE_BENEFIT_ALREADY_USED
+// (e qualquer outro código) não tem equivalente em EligibilityPanel -- precisa continuar
+// aparecendo no Flash, senão o usuário não vê nada.
+test('eligibilityPanelCoversError identifica exatamente os 3 códigos já mostrados por EligibilityPanel', () => {
+  assert.equal(eligibilityPanelCoversError('ACCOUNT_NOT_ELIGIBLE'), true)
+  assert.equal(eligibilityPanelCoversError('EMAIL_NOT_VERIFIED'), true)
+  assert.equal(eligibilityPanelCoversError('COMMUNITY_LIMIT_REACHED'), true)
+  assert.equal(eligibilityPanelCoversError('FREE_BENEFIT_ALREADY_USED'), false)
+  assert.equal(eligibilityPanelCoversError('INSUFFICIENT_COINS'), false)
+  assert.equal(eligibilityPanelCoversError(undefined), false)
 })
