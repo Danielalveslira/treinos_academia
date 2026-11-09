@@ -40,6 +40,16 @@ test('VERIFIED_AMD64_IDS still names exactly the five pinned images, for verifyL
   assert.equal(Object.keys(VERIFIED_AMD64_IDS).length, Object.keys(IMAGES).length)
 })
 
+// Regression: IMAGES keys are camelCase (storageApi, edgeRuntime) to match normal JS naming,
+// but `docker tag`/`docker run` reject an uppercase repository name outright -- caught for
+// real in CI ("repository name ... must be lowercase") the first time this ran against a
+// camelCase key, since the local unit tests here only ever exercised 'postgres'.
+test('verifiedTag is always a valid, lowercase Docker reference for every pinned key', () => {
+  for (const key of Object.keys(IMAGES)) {
+    assert.match(verifiedTag(key), /^finance-verified\/[a-z0-9._-]+:verified$/, key)
+  }
+})
+
 test('all five original versions and OCI digests are fixed, with no mutable override', () => {
   assert.equal(Object.keys(IMAGES).length, 5)
   for (const ref of Object.values(IMAGES)) assert.match(ref, /^[\w-]+:[\d.v]+@sha256:[a-f0-9]{64}$/)

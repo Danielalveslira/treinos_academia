@@ -50,7 +50,9 @@ const unavailableReason = error => {
 // silently went stale. A `docker tag`-assigned name, in contrast, is always resolvable by
 // `docker run`/`docker save`/`docker load` on the SAME daemon that created it, independent of
 // that internal bookkeeping -- so pullImage always returns this tag, never a bare image.Id.
-export const verifiedTag = key => `finance-verified/${key}:verified`
+// Docker repository names must be lowercase; IMAGES keys are camelCase (storageApi,
+// edgeRuntime) to match normal JS naming -- lowercase only the tag, never IMAGES itself.
+export const verifiedTag = key => `finance-verified/${key.toLowerCase()}:verified`
 
 function matchesPinnedDigest(image, ref) {
   const [name, digest] = ref.split('@')
