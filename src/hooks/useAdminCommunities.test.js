@@ -68,7 +68,7 @@ before(async () => {
           buildContext.onLoad({ filter: /^communities-service$/, namespace: 'stub' }, () => ({
             contents: `
               export const listCommunitiesPage = async () => ({ items: [], nextCursor: null })
-              export const createCommunity = async () => {}
+              export const createOfficialCommunity = async () => {}
               export const updateCommunity = async () => {}
               export const setCommunityActive = async () => {}
               export const setMemberCount = async () => {}

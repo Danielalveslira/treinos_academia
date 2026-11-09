@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   listCommunitiesPage,
-  createCommunity,
+  createOfficialCommunity,
   updateCommunity,
   setCommunityActive,
   deleteCommunity,
@@ -68,7 +68,7 @@ export function useAdminCommunities(enabled = true) {
   // superadmin que também navega em /comunidades continua vendo a versão antiga por até
   // 5min depois de mexer aqui (ver invalidateCommunitiesCache em utils/pageCache.js).
   async function add(community) {
-    const id = await createCommunity(user.uid, community)
+    const id = await createOfficialCommunity(user.uid, community)
     invalidateCommunitiesCache(user.uid)
     await refresh()
     return id
