@@ -24,6 +24,7 @@ const RETRY_DELAYS_MS = [2000, 8000]
 const docker = (...args) => execFileSync('docker', args, {
   encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 180000,
 }).trim()
+const inspectPlatform = (run, ref) => run('image', 'inspect', '--platform', 'linux/amd64', ref)
 const message = error => String(error.stderr || error.message || error)
 const unavailable = error => /toomanyrequests|too many requests|rate exceeded|data limit exceeded|\b429\b|\b50[234]\b|timed?\s*out|ETIMEDOUT|ECONNRESET|EAI_AGAIN|connection reset|connection refused|temporary failure|no such host|manifest unknown/i.test(message(error))
 const integrityFailure = error => /digest mismatch|checksum mismatch|verification failed|unexpected digest|certificate|unauthorized|authentication required|denied|forbidden/i.test(message(error))
@@ -69,13 +70,13 @@ export async function pullImage(key, { run = docker, sleep = ms => new Promise(r
   for (const registry of REGISTRIES) {
     const full = registry + ref
     let cached
-    try { cached = run('image', 'inspect', full) }
+    try { cached = inspectPlatform(run, full) }
     catch (error) {
       if (!/no such image|not found/i.test(message(error)) || integrityFailure(error)) throw error
     }
     if (cached !== undefined) return verify(cached, ref, registry, log)
     for (let attempt = 1; attempt <= RETRY_DELAYS_MS.length + 1; attempt++) {
-      try { run('pull', full) }
+      try { run('pull', '--platform', 'linux/amd64', full) }
       catch (error) {
         // Only availability failures may retry/fall back. Security, auth, and unknown
         // failures remain fatal, even if their text also contains a transient marker.
@@ -87,7 +88,7 @@ export async function pullImage(key, { run = docker, sleep = ms => new Promise(r
         continue
       }
       // A successful pull with a bad/missing digest must never try another registry.
-      return verify(run('image', 'inspect', full), ref, registry, log)
+      return verify(inspectPlatform(run, full), ref, registry, log)
     }
   }
   throw new Error('STACK_IMAGE_UNAVAILABLE: ' + ref)

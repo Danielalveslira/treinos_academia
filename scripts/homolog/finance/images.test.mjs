@@ -44,7 +44,7 @@ test('verified GHCR cache executes the immutable config ID without a pull', asyn
     calls.push(args); return image(ghcr)
   } })
   assert.equal(result, id)
-  assert.deepEqual(calls, [['image', 'inspect', ref(ghcr)]])
+  assert.deepEqual(calls, [['image', 'inspect', '--platform', 'linux/amd64', ref(ghcr)]])
 })
 test('GHCR pull is pinned and must pass post-pull digest verification', async () => {
   const calls = []; let pulled = false; const logs = []
@@ -55,7 +55,7 @@ test('GHCR pull is pinned and must pass post-pull digest verification', async ()
     return image(ghcr)
   } })
   assert.equal(result, id)
-  assert.deepEqual(calls, [['image', 'inspect', ref(ghcr)], ['pull', ref(ghcr)], ['image', 'inspect', ref(ghcr)]])
+  assert.deepEqual(calls, [['image', 'inspect', '--platform', 'linux/amd64', ref(ghcr)], ['pull', '--platform', 'linux/amd64', ref(ghcr)], ['image', 'inspect', '--platform', 'linux/amd64', ref(ghcr)]])
   assert.equal(logs[0].verifiedDigest, IMAGES.postgres.split('@')[1])
 })
 test('transient GHCR limit falls back to ECR with the exact same version and digest', async () => {
