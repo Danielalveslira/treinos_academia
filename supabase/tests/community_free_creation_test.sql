@@ -168,6 +168,30 @@ select throws_ok(
   'NOT_AN_UPGRADE', 'essential (rank 1) não é upgrade a partir de plus (rank 2)'
 );
 
+-- Um débito de outra operação com a mesma referência não vira crédito de upgrade.
+update public.community_creation_products set evocash_price = 500 where tier = 'archive';
+insert into public.economy_transactions (user_id, natural_key, asset, direction, amount, reason, reference_type, reference_id)
+select pg_temp.uid('05'), 'test-unrelated-community-debit', 'cash', 'debit', 200,
+       'advertising_purchase', 'community', id::text
+from public.communities where owner_id = pg_temp.uid('05');
+select is((public.quote_community_tier_upgrade((select id from public.communities where owner_id = 'c3000000-0000-0000-0000-000000000005'::uuid), 'archive', 'evocash') ->> 'amountDue')::int,
+  500, 'débito não relacionado não reduz o preço do upgrade');
+-- Crédito legítimo que cobre o preço inteiro permite melhorar sem débito fictício de zero.
+insert into public.economy_transactions (user_id, natural_key, asset, direction, amount, reason, reference_type, reference_id)
+select pg_temp.uid('05'), 'test-legitimate-community-payment', 'cash', 'debit', 500,
+       'community_creation', 'community', id::text
+from public.communities where owner_id = pg_temp.uid('05');
+select is((public.quote_community_tier_upgrade((select id from public.communities where owner_id = 'c3000000-0000-0000-0000-000000000005'::uuid), 'archive', 'evocash') ->> 'amountDue')::int,
+  0, 'crédito legítimo integral gera cotação zero');
+select is((public.upgrade_community_tier((select id from public.communities where owner_id = 'c3000000-0000-0000-0000-000000000005'::uuid), 'archive', 'evocash', 'free-upgrade-zero-01', 0) ->> 'amountCharged')::int,
+  0, 'upgrade integralmente creditado é confirmado sem cobrança');
+select is((select tier || '/' || post_retention_mode from public.communities where owner_id = pg_temp.uid('05')),
+  'archive/no_auto_expiration', 'tier e retenção avançam mesmo sem novo débito');
+select is((select count(*)::int from public.economy_transactions where natural_key like 'community-upgrade:%' and user_id = pg_temp.uid('05') and asset = 'cash'),
+  0, 'upgrade integralmente creditado não grava débito fictício');
+select is((public.upgrade_community_tier((select id from public.communities where owner_id = 'c3000000-0000-0000-0000-000000000005'::uuid), 'archive', 'evocash', 'free-upgrade-zero-01', 0) ->> 'replay')::boolean,
+  true, 'retry do upgrade sem cobrança é idempotente');
+
 -- ============================================================ BACKFILL: SINAIS CONFIRMADOS CONTRA A LÓGICA REAL DA MIGRATION
 -- 06: já era dono/criador de uma comunidade ANTES desta suíte rodar (simulado aqui como se a
 -- migration de backfill estivesse rodando agora) -- nunca deveria poder criar a gratuita.

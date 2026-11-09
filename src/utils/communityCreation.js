@@ -163,7 +163,6 @@ const CREATE_ERRORS = {
   NOT_OWNER: 'Só o dono da comunidade pode fazer isso.',
   COMMUNITY_UNAVAILABLE: 'Esta comunidade não está disponível.',
   NOT_AN_UPGRADE: 'Essa modalidade não é uma melhoria em relação à atual.',
-  UPGRADE_NOT_CHARGEABLE: 'Não há valor a cobrar para essa mudança.',
   PRICE_CHANGED: 'O preço mudou desde a última cotação. Confira o novo valor e confirme de novo.',
   INVALID_EXPECTED_AMOUNT: 'Cotação inválida. Peça uma nova cotação antes de confirmar.',
 }

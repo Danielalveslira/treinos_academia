@@ -33,6 +33,7 @@ export function CommunityTierUpgradeDialog({ communityId, currentTier, onClose, 
   const [error, setError] = useState('')
   const pendingAttemptRef = useRef(null)
   const confirmingRef = useRef(false)
+  const quoteSequenceRef = useRef(0)
 
   useEffect(() => {
     let active = true
@@ -50,6 +51,7 @@ export function CommunityTierUpgradeDialog({ communityId, currentTier, onClose, 
 
   const fetchQuote = useCallback(
     async (nextTier, nextMethod) => {
+      const sequence = ++quoteSequenceRef.current
       setQuoting(true)
       setError('')
       setQuote(null)
@@ -59,21 +61,23 @@ export function CommunityTierUpgradeDialog({ communityId, currentTier, onClose, 
           tier: nextTier,
           paymentMethod: nextMethod,
         })
-        setQuote(result)
+        if (sequence === quoteSequenceRef.current) setQuote(result)
       } catch (err) {
         console.error('[CommunityTierUpgradeDialog] quoteCommunityTierUpgrade:', err)
-        setError(creationErrorMessage(err))
+        if (sequence === quoteSequenceRef.current) setError(creationErrorMessage(err))
       } finally {
-        setQuoting(false)
+        if (sequence === quoteSequenceRef.current) setQuoting(false)
       }
     },
     [communityId]
   )
 
   function selectTier(nextTier) {
+    quoteSequenceRef.current += 1
     setTier(nextTier)
     setPaymentMethod(null)
     setQuote(null)
+    setQuoting(false)
   }
 
   function selectPayment(method) {
@@ -82,7 +86,7 @@ export function CommunityTierUpgradeDialog({ communityId, currentTier, onClose, 
   }
 
   async function confirm() {
-    if (confirmingRef.current || !quote?.chargeable) return
+    if (confirmingRef.current || !quote) return
     confirmingRef.current = true
     setConfirming(true)
     setError('')
@@ -210,9 +214,9 @@ export function CommunityTierUpgradeDialog({ communityId, currentTier, onClose, 
             variant="primary"
             onClick={confirm}
             loading={confirming}
-            disabled={!quote?.chargeable || confirming}
+            disabled={!quote || confirming}
           >
-            Confirmar e pagar
+            {quote?.chargeable ? 'Confirmar e pagar' : 'Confirmar melhoria sem cobrança'}
           </Button>
         </Box>
       </Box>
