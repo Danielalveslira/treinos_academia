@@ -54,7 +54,7 @@ select public._wallet_credit_cash(pg_temp.uid(n), 5000) from unnest(array['01','
 select public._wallet_credit_coins(pg_temp.uid('08'), 100);
 select public._wallet_credit_coins(pg_temp.uid('0a'), 10);
 -- EvoCash ainda sem valor definido na migration: o teste fixa preços só para exercitar o caminho
-update public.community_creation_products set evocash_price = case tier when 'essential' then 50 when 'plus' then 120 else 500 end;
+update public.community_creation_products set evocash_price = case tier when 'essential' then 50 when 'plus' then 120 when 'archive' then 500 else evocash_price end;
 
 -- limite: 07 já tem 3 ativas; 09 tem 3 ativas + 1 inativa
 insert into public.communities (id, name, created_by, owner_id, is_active)

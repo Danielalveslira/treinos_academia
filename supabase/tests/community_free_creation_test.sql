@@ -89,7 +89,7 @@ select throws_ok(
 -- ============================================================ LIMITE DE COMUNIDADES TAMBÉM VALE PARA O GRÁTIS
 select pg_temp.as_user('04');
 insert into public.communities (id, name, created_by, owner_id, is_active)
-select ('c3900000-0000-0000-0000-0000000000' || i)::uuid, 'Existente ' || i, pg_temp.uid('04'), pg_temp.uid('04'), true
+select ('c3900000-0000-0000-0000-' || lpad(i, 12, '0'))::uuid, 'Existente ' || i, pg_temp.uid('04'), pg_temp.uid('04'), true
 from unnest(array['1', '2', '3']) as i;
 select throws_ok(
   $$select public.create_free_community('Quarta', 'x', 'dumbbell', 'everyone', 'free-key-0000006')$$,
