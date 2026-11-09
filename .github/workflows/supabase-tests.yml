@@ -68,6 +68,8 @@ jobs:
         run: node scripts/public-auth-header-smoke.mjs
       - name: Workout sheets mobile, execution and conflict smoke
         run: node scripts/workout-sheets-browser-smoke.mjs
+      - name: Community cover crop and responsive layout smoke
+        run: node scripts/community-cover-layout-smoke.mjs
       - name: Sheet entry redirects and exercise selection intent
         run: node scripts/workout-sheets-browser-smoke.mjs --entries
       - name: Home V4 recommendation, completion, cache, photos and responsive themes
@@ -159,6 +161,10 @@ jobs:
         run: node scripts/refunds-concurrency.mjs
         env:
           PG_TEST_CONTAINER: supabase_db_treinos_academia
+      - name: Free community benefit and tier upgrade price-change concurrency
+        run: node scripts/community-free-creation-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
       # Limpeza roda sempre (sucesso ou falha do passo acima), mas sem alterar o motivo da falha:
       # se o passo anterior falhou, o job já está marcado como falho antes deste rodar.
       - if: always()
@@ -200,23 +206,22 @@ jobs:
       # GHCR oficial primeiro; ECR oficial somente em falha transitória, com o mesmo
       # digest OCI fixado e verificação da imagem antes de iniciar qualquer container.
       - name: Verify pinned image acquisition and secure fallback
-        run: node --test scripts/homolog/finance/images.test.mjs
+        run: node --test scripts/homolog/finance/images.test.mjs scripts/homolog/finance/cache.test.mjs
       - name: Restore verified official OCI images
         id: oci-cache
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: /tmp/finance-oci-cache/images.tar
-          key: finance-oci-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/homolog/finance/images.mjs') }}
-      - name: Verify restored OCI image configurations
-        if: steps.oci-cache.outputs.cache-hit == 'true'
-        run: node scripts/homolog/finance/cache.mjs restore
+          key: finance-oci-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/homolog/finance/images.mjs', 'scripts/homolog/finance/cache.mjs') }}
       - name: Authenticate GHCR image reads
-        if: steps.oci-cache.outputs.cache-hit != 'true'
         env:
           GHCR_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+      - name: Verify restored OCI image configurations
+        if: steps.oci-cache.outputs.cache-hit == 'true'
+        run: node scripts/homolog/finance/cache.mjs restore
       - name: Start disposable local stack (db + auth + storage + rest + edge)
         run: node scripts/homolog/finance/stack.mjs start
       - name: Save verified official OCI images on cache miss

@@ -9,9 +9,13 @@ export const IMAGES = Object.freeze({
   postgrest: 'postgrest:v14.5@sha256:b574528fe109c8343c1247155734d03df8c34b462f342dca0ccc20244fc36ef9',
   edgeRuntime: 'edge-runtime:v1.77.1@sha256:645d0e45446181f3e9d87efeef637b494615f32365befff00e2d2b0fe8535fef',
 })
-// linux/amd64 config IDs observed after Docker verified the fixed official OCI
-// index digests. An Actions cache may restore these exact content-addressed
-// images without a registry request; changing a digest requires reviewing its ID.
+// linux/amd64 config IDs observed, on a past run, after Docker verified the fixed official
+// OCI index digests above. Used only by verifyLocalPostgresImage's own best-effort fast path
+// (a bare-ID container Image, e.g. from a different harness) -- never by pullImage/cache.mjs,
+// since a locally-assigned image.Id is NOT guaranteed to stay the same across daemon/
+// containerd versions between runner images (that mismatch is exactly what caused "No such
+// image" failures here before); verifiedTag()/verifyTaggedImage() are the reusable source of
+// truth now, content-addressed against IMAGES itself rather than a frozen ID snapshot.
 export const VERIFIED_AMD64_IDS = Object.freeze({
   postgres: 'sha256:f55775729ea7a38743f61e2bb4f9bb1e17eaaeaccb39879ae9d9d3cb1c4cb456',
   gotrue: 'sha256:1181bff5ba4ce440013a63cef9f4cf13024c432d705c9b1fbc9e5b949e852f48',
@@ -24,6 +28,7 @@ const RETRY_DELAYS_MS = [2000, 8000]
 const docker = (...args) => execFileSync('docker', args, {
   encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 180000,
 }).trim()
+const inspectPlatform = (run, ref) => run('image', 'inspect', '--platform', 'linux/amd64', ref)
 const message = error => String(error.stderr || error.message || error)
 const unavailable = error => /toomanyrequests|too many requests|rate exceeded|data limit exceeded|\b429\b|\b50[234]\b|timed?\s*out|ETIMEDOUT|ECONNRESET|EAI_AGAIN|connection reset|connection refused|temporary failure|no such host|manifest unknown/i.test(message(error))
 const integrityFailure = error => /digest mismatch|checksum mismatch|verification failed|unexpected digest|certificate|unauthorized|authentication required|denied|forbidden/i.test(message(error))
@@ -34,6 +39,24 @@ const unavailableReason = error => {
   if (/\b50[234]\b/i.test(detail)) return 'server_unavailable'
   if (/timed?\s*out|ETIMEDOUT/i.test(detail)) return 'timeout'
   return 'network_unavailable'
+}
+
+// `docker image inspect --platform <p> <ref>` can report a config ID for a manifest-list
+// entry that is NOT directly runnable via `docker run <that id>` on every Docker/containerd
+// storage backend -- observed for real in CI: the inspect above succeeds and logs an ID, then
+// `docker run --pull=never <that id>` immediately reports "No such image". Docker's locally
+// assigned image.Id is also not guaranteed stable across daemon/containerd versions between
+// runner images, which is why VERIFIED_AMD64_IDS (a hardcoded snapshot of a past run's IDs)
+// silently went stale. A `docker tag`-assigned name, in contrast, is always resolvable by
+// `docker run`/`docker save`/`docker load` on the SAME daemon that created it, independent of
+// that internal bookkeeping -- so pullImage always returns this tag, never a bare image.Id.
+// Docker repository names must be lowercase; IMAGES keys are camelCase (storageApi,
+// edgeRuntime) to match normal JS naming -- lowercase only the tag, never IMAGES itself.
+export const verifiedTag = key => `finance-verified/${key.toLowerCase()}:verified`
+
+function matchesPinnedDigest(image, ref) {
+  const [name, digest] = ref.split('@')
+  return REGISTRIES.some((registry) => image?.RepoDigests?.includes(registry + name.split(':')[0] + '@' + digest))
 }
 
 function verify(raw, ref, registry, log) {
@@ -48,34 +71,49 @@ function verify(raw, ref, registry, log) {
     throw new Error('IMAGE_INTEGRITY_FAILED: ' + expected)
   }
   // Docker verifies the pinned index, platform manifest, config and layer hashes on pull.
-  // Execute the inspected immutable image ID, avoiding a subsequent tag lookup/pull.
+  // Still returns the inspected image.Id: verifyLocalPostgresImage (a separate, unrelated
+  // bare-ID fast path for a different harness) compares against it directly. pullImage below
+  // never uses this return value for execution -- it always runs the stable tag instead (see
+  // verifiedTag's comment for why the bare ID itself is not safe to run by).
   log(JSON.stringify({ image: ref, registry, verifiedDigest: digest, imageId: image.Id, platform: image.Os + '/' + image.Architecture }))
   return image.Id
+}
+
+// True only if the stable tag already exists locally and still matches the pinned digest for
+// some trusted registry (content-addressed, so it is irrelevant which registry originally
+// supplied it). Used both to recognize a complete OCI cache restore and, internally, right
+// after a fresh pull/tag, to confirm the tag really points at the verified content.
+export function verifyTaggedImage(key, run) {
+  let raw
+  try { raw = run('image', 'inspect', verifiedTag(key)) } catch { return false }
+  let image
+  try { image = JSON.parse(raw)?.[0] } catch { return false }
+  return matchesPinnedDigest(image, IMAGES[key]) && image?.Os === 'linux' && image?.Architecture === 'amd64'
 }
 
 export async function pullImage(key, { run = docker, sleep = ms => new Promise(r => setTimeout(r, ms)), log = console.log } = {}) {
   if (!Object.hasOwn(IMAGES, key)) throw new Error('UNKNOWN_STACK_IMAGE')
   const ref = IMAGES[key]
+  const tag = verifiedTag(key)
   if (process.env.FINANCE_OCI_CACHE_LOADED === '1') {
-    const expectedId = VERIFIED_AMD64_IDS[key]
-    let cached
-    try { cached = JSON.parse(run('image', 'inspect', expectedId))?.[0] }
-    catch { throw new Error('IMAGE_INTEGRITY_FAILED: verified OCI cache image missing') }
-    if (cached?.Id !== expectedId || cached?.Os !== 'linux' || cached?.Architecture !== 'amd64')
-      throw new Error('IMAGE_INTEGRITY_FAILED: verified OCI cache image mismatch')
-    log(JSON.stringify({ image: ref, verifiedConfigId: expectedId, source: 'verified-actions-cache', platform: 'linux/amd64' }))
-    return expectedId
+    if (!verifyTaggedImage(key, run)) throw new Error('IMAGE_INTEGRITY_FAILED: verified OCI cache image missing')
+    log(JSON.stringify({ image: ref, verifiedTag: tag, source: 'verified-actions-cache', platform: 'linux/amd64' }))
+    return tag
   }
   for (const registry of REGISTRIES) {
     const full = registry + ref
     let cached
-    try { cached = run('image', 'inspect', full) }
+    try { cached = inspectPlatform(run, full) }
     catch (error) {
       if (!/no such image|not found/i.test(message(error)) || integrityFailure(error)) throw error
     }
-    if (cached !== undefined) return verify(cached, ref, registry, log)
+    if (cached !== undefined) {
+      verify(cached, ref, registry, log)
+      run('tag', full, tag)
+      return tag
+    }
     for (let attempt = 1; attempt <= RETRY_DELAYS_MS.length + 1; attempt++) {
-      try { run('pull', full) }
+      try { run('pull', '--platform', 'linux/amd64', full) }
       catch (error) {
         // Only availability failures may retry/fall back. Security, auth, and unknown
         // failures remain fatal, even if their text also contains a transient marker.
@@ -87,17 +125,25 @@ export async function pullImage(key, { run = docker, sleep = ms => new Promise(r
         continue
       }
       // A successful pull with a bad/missing digest must never try another registry.
-      return verify(run('image', 'inspect', full), ref, registry, log)
+      verify(inspectPlatform(run, full), ref, registry, log)
+      run('tag', full, tag)
+      return tag
     }
   }
   throw new Error('STACK_IMAGE_UNAVAILABLE: ' + ref)
 }
 
-// The CLI names a versioned official image; our isolated harness executes the
-// verified immutable config ID. An OCI index digest is not that config ID.
+// The CLI names a versioned official image; our isolated harness executes the stable
+// verified tag (see pullImage) or, for an older/different harness that still runs
+// containers by bare config ID, the legacy immutable config ID path below. An OCI index
+// digest is not that config ID.
 export function verifyLocalPostgresImage(info, { run = docker } = {}) {
   const requested = info?.Config?.Image || ''
   if (/^(?:(?:ghcr\.io|public\.ecr\.aws)\/)?supabase\/postgres:[0-9.]+(?:@sha256:[a-f0-9]{64})?$/.test(requested)) return
+  if (requested === verifiedTag('postgres')) {
+    if (verifyTaggedImage('postgres', run)) return
+    throw new Error('IMAGE_INTEGRITY_FAILED: verified tag no longer matches the pinned PostgreSQL digest')
+  }
   if (!/^sha256:[a-f0-9]{64}$/.test(requested) || requested !== info?.Image)
     throw new Error('IMAGE_INTEGRITY_FAILED: unrecognized PostgreSQL image')
   const raw = run('image', 'inspect', info.Image)

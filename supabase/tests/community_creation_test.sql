@@ -54,7 +54,7 @@ select public._wallet_credit_cash(pg_temp.uid(n), 5000) from unnest(array['01','
 select public._wallet_credit_coins(pg_temp.uid('08'), 100);
 select public._wallet_credit_coins(pg_temp.uid('0a'), 10);
 -- EvoCash ainda sem valor definido na migration: o teste fixa preços só para exercitar o caminho
-update public.community_creation_products set evocash_price = case tier when 'essential' then 50 when 'plus' then 120 else 500 end;
+update public.community_creation_products set evocash_price = case tier when 'essential' then 50 when 'plus' then 120 when 'archive' then 500 else evocash_price end;
 
 -- limite: 07 já tem 3 ativas; 09 tem 3 ativas + 1 inativa
 insert into public.communities (id, name, created_by, owner_id, is_active)
@@ -68,17 +68,19 @@ select is((public.get_my_community_creation_eligibility() ->> 'evoCoinsBalance')
 select is(
   (select array_agg(k order by k) from jsonb_object_keys(public.get_my_community_creation_eligibility()) k),
   array['accountDays','accountStanding','activeOwnedCommunities','activeWindowDays','communityLimit','eligible','emailVerified',
-        'evoCashBalance','evoCoinsBalance','qualifiedDays','qualifiedToday','requiredAccountDays','requiredQualifiedDays'],
+        'evoCashBalance','evoCoinsBalance','freeCommunityAvailable','qualifiedDays','qualifiedToday','requiredAccountDays','requiredQualifiedDays'],
   'a RPC devolve apenas os campos públicos (nenhum sinal interno)');
+-- Dias de conta/dias ativos NÃO bloqueiam mais (20261214000003_community_creation_eligibility_simplify.sql)
+-- -- continuam calculados e devolvidos (progresso informativo), só não decidem `eligible`.
 select pg_temp.as_user('02');
 select is((public.get_my_community_creation_eligibility() ->> 'accountDays')::int, 29, '02: 29 dias de conta');
-select is((public.get_my_community_creation_eligibility() ->> 'eligible')::boolean, false, '29 dias -> bloqueado');
+select is((public.get_my_community_creation_eligibility() ->> 'eligible')::boolean, true, '29 dias -> elegível (não é mais requisito)');
 select pg_temp.as_user('03');
 select is((public.get_my_community_creation_eligibility() ->> 'accountDays')::int, 30, '03: 30 dias de conta');
-select is((public.get_my_community_creation_eligibility() ->> 'eligible')::boolean, true, '30 dias -> requisito de idade passa');
+select is((public.get_my_community_creation_eligibility() ->> 'eligible')::boolean, true, '30 dias -> elegível');
 select pg_temp.as_user('04');
 select is((public.get_my_community_creation_eligibility() ->> 'qualifiedDays')::int, 19, '04: 19 dias ativos');
-select is((public.get_my_community_creation_eligibility() ->> 'eligible')::boolean, false, 'dias ativos insuficientes -> bloqueado');
+select is((public.get_my_community_creation_eligibility() ->> 'eligible')::boolean, true, '19 dias ativos -> elegível (não é mais requisito)');
 -- dia fora da janela de 30 dias e dia não qualificado não contam
 insert into public.community_creation_activity_days (user_id, activity_date, qualified_seconds, qualified) values
   (pg_temp.uid('04'), (now() at time zone 'America/Sao_Paulo')::date - 45, 900, true),
@@ -102,10 +104,13 @@ select pg_temp.as_user('09');
 select is((public.get_my_community_creation_eligibility() ->> 'activeOwnedCommunities')::int, 3, '09: comunidade inativa não consome limite');
 
 -- ============================================================ CRIAÇÃO: ELEGIBILIDADE VEM ANTES DO PAGAMENTO
+-- 02 (29 dias de conta) e 04 (19 dias ativos) agora criam normalmente -- dias de conta/dias
+-- ativos deixaram de bloquear tanto a via paga quanto a gratuita (eligibility_simplify).
+-- standing/e-mail/limite continuam bloqueando os dois caminhos igualmente.
 select pg_temp.as_user('02');
-select throws_ok($$select public.create_community('Nova', 'x', 'dumbbell', 'essential', 'evocoins', 'key-0000000a')$$, 'ACCOUNT_TOO_NEW', 'pagar com EvoCoins não pula o gate de idade');
-select throws_ok($$select public.create_community('Nova', 'x', 'dumbbell', 'essential', 'evocash', 'key-0000000b')$$, 'ACCOUNT_TOO_NEW', 'pagar com EvoCash não pula o gate de idade');
-select is(pg_temp.coins('02') || '/' || pg_temp.cash('02') || '/' || pg_temp.owned('02'), '5000/5000/0', 'gate recusado: nada cobrado, nada criado');
+select is(public.create_community('Nova A', 'x', 'dumbbell', 'essential', 'evocoins', 'key-0000000a') ->> 'tier', 'essential', '02: 29 dias de conta cria normalmente com EvoCoins');
+select is(public.create_community('Nova B', 'x', 'dumbbell', 'essential', 'evocash', 'key-0000000b') ->> 'tier', 'essential', '02: e com EvoCash também');
+select is(pg_temp.coins('02') || '/' || pg_temp.cash('02') || '/' || pg_temp.owned('02'), '4700/4950/2', 'cobrou corretamente (300 coins + 50 cash) e criou as duas comunidades');
 select pg_temp.as_user('05');
 select throws_ok($$select public.create_community('Nova', 'x', 'dumbbell', 'essential', 'evocoins', 'key-0000000c')$$, 'EMAIL_NOT_VERIFIED', 'e-mail não confirmado');
 select pg_temp.as_user('06');
@@ -114,7 +119,7 @@ select pg_temp.as_user('07');
 select throws_ok($$select public.create_community('Nova', 'x', 'dumbbell', 'essential', 'evocoins', 'key-0000000e')$$, 'COMMUNITY_LIMIT_REACHED', 'limite de 3 comunidades próprias');
 select pg_temp.as_user('04');
 delete from public.community_creation_activity_days where user_id = pg_temp.uid('04') and activity_date = (now() at time zone 'America/Sao_Paulo')::date;
-select throws_ok($$select public.create_community('Nova', 'x', 'dumbbell', 'essential', 'evocoins', 'key-0000000f')$$, 'NOT_ACTIVE_ENOUGH', 'dias ativos insuficientes');
+select is(public.create_community('Nova', 'x', 'dumbbell', 'essential', 'evocoins', 'key-0000000f') ->> 'tier', 'essential', '04: 19 dias ativos cria normalmente');
 
 -- ============================================================ CRIAÇÃO: ECONOMIA
 select pg_temp.as_user('08');
@@ -193,10 +198,14 @@ select throws_ok($$insert into public.community_creation_activity_days (user_id,
 select throws_ok($$select * from public.community_creation_products$$, '42501', null, 'preços só pelo RPC (tabela fechada)');
 select throws_ok($$update public.community_creation_rules set required_account_days = 0$$, '42501', null, 'cliente não altera as regras');
 select throws_ok($$update public.wallets set coin_balance = 99999, cash_balance = 99999 where user_id = 'c1000000-0000-0000-0000-00000000000a'$$, '42501', null, 'cliente não escreve na carteira (REVOKE explícito, independente de RLS)');
-select ok(has_function_privilege('authenticated', 'public.create_community(text,text,text,text,text,text)', 'execute'), 'authenticated executa create_community');
-select ok(not has_function_privilege('anon', 'public.create_community(text,text,text,text,text,text)', 'execute'), 'anon não executa create_community');
+-- has_function_privilege com a função como texto faz cast para regprocedure, que exige a
+-- assinatura EXATA (não resolve default argument como uma chamada SQL normal faria) --
+-- create_community ganhou p_post_access (7 args) e upgrade_community_tier ganhou
+-- p_expected_amount (5 args), ver 20261214000006/20261214000007.
+select ok(has_function_privilege('authenticated', 'public.create_community(text,text,text,text,text,text,text)', 'execute'), 'authenticated executa create_community');
+select ok(not has_function_privilege('anon', 'public.create_community(text,text,text,text,text,text,text)', 'execute'), 'anon não executa create_community');
 select ok(not has_function_privilege('anon', 'public.get_my_community_creation_eligibility()', 'execute'), 'anon não executa a elegibilidade');
-select ok(not has_function_privilege('anon', 'public.upgrade_community_tier(uuid,text,text,text)', 'execute'), 'anon não executa o upgrade');
+select ok(not has_function_privilege('anon', 'public.upgrade_community_tier(uuid,text,text,text,integer)', 'execute'), 'anon não executa o upgrade');
 reset role;
 set local role authenticated;
 select pg_temp.as_user('0b');
@@ -263,19 +272,23 @@ select is((select count(*)::int from public.statuses where community_id in (sele
 -- ============================================================ UPGRADE
 update public.statuses set expires_at = now() + interval '5 hours' where id = 'c3000000-0000-0000-0000-000000000001';
 select pg_temp.as_user('01');
-select is((select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'plus', 'evocoins', 'upg-00000001') ->> 'amountCharged')::int, 300, 'upgrade cobra a diferença do que já foi pago (600 - 300) em EvoCoins');
+-- upgrade_community_tier ganhou p_expected_amount (20261214000007): o chamador sempre manda o
+-- valor da cotação (quote_community_tier_upgrade) de volta -- aqui, o valor já conhecido do
+-- fixture. Para os cenários que recusam ANTES de chegar na comparação de valor (NOT_AN_UPGRADE,
+-- NOT_OWNER), qualquer inteiro positivo serve, só precisa passar a validação de formato.
+select is((select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'plus', 'evocoins', 'upg-00000001', 300) ->> 'amountCharged')::int, 300, 'upgrade cobra a diferença do que já foi pago (600 - 300) em EvoCoins');
 select is(pg_temp.coins('01'), 4100, 'saldo após o upgrade');
 select is((select tier || '|' || post_retention_mode from public.communities where id = (select (result ->> 'id')::uuid from created where label = 'essential-coins')), 'plus|30d', 'comunidade atualizada');
 select is((select reason || '|' || amount::int from public.economy_transactions where user_id = pg_temp.uid('01') and reason = 'community_upgrade'), 'community_upgrade|300', 'ledger do upgrade');
-select is((select (public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'plus', 'evocoins', 'upg-00000001') ->> 'replay')::boolean), true, 'retry do upgrade é replay');
+select is((select (public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'plus', 'evocoins', 'upg-00000001', 300) ->> 'replay')::boolean), true, 'retry do upgrade (mesmo expectedAmount) é replay');
 select is(pg_temp.coins('01'), 4100, 'retry do upgrade não cobra de novo');
-select throws_ok($$select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'essential', 'evocoins', 'upg-00000002')$$, 'NOT_AN_UPGRADE', 'sem downgrade');
-select throws_ok($$select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'plus', 'evocoins', 'upg-00000003')$$, 'NOT_AN_UPGRADE', 'mesmo tier não é upgrade');
+select throws_ok($$select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'essential', 'evocoins', 'upg-00000002', 1)$$, 'NOT_AN_UPGRADE', 'sem downgrade');
+select throws_ok($$select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'plus', 'evocoins', 'upg-00000003', 1)$$, 'NOT_AN_UPGRADE', 'mesmo tier não é upgrade');
 select pg_temp.as_user('0a');
-select throws_ok($$select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'archive', 'evocash', 'upg-00000004')$$, 'NOT_OWNER', 'só o dono faz upgrade');
+select throws_ok($$select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'archive', 'evocash', 'upg-00000004', 1)$$, 'NOT_OWNER', 'só o dono faz upgrade');
 select pg_temp.as_user('01');
 -- Plus (pago em EvoCoins no upgrade, EvoCash na criação) -> Arquivo em EvoCash: crédito só do que foi pago em EvoCash naquela comunidade (0)
-select is((select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'archive', 'evocash', 'upg-00000005') ->> 'amountCharged')::int, 500, 'upgrade para Arquivo em EvoCash (sem crédito na moeda)');
+select is((select public.upgrade_community_tier((select (result ->> 'id')::uuid from created where label = 'essential-coins'), 'archive', 'evocash', 'upg-00000005', 500) ->> 'amountCharged')::int, 500, 'upgrade para Arquivo em EvoCash (sem crédito na moeda)');
 -- posts antigos NÃO mudam; novos usam a nova regra
 select is((select expires_at between now() + interval '4 hours' and now() + interval '6 hours' and retention_mode = '24h' from public.statuses where id = 'c3000000-0000-0000-0000-000000000001'), true, 'post antigo mantém prazo e regra');
 set local role authenticated;
@@ -317,7 +330,7 @@ select throws_ok(
   'SESSION_REVOKED', 'create_community nega sessão revogada antes de qualquer débito/criação'
 );
 select throws_ok(
-  format($$select public.upgrade_community_tier(%L, 'archive', 'evocoins', 'sess-revoked-upgrade')$$,
+  format($$select public.upgrade_community_tier(%L, 'archive', 'evocoins', 'sess-revoked-upgrade', 1)$$,
     (select (result ->> 'id')::uuid from created where label = 'essential-coins')),
   'SESSION_REVOKED', 'upgrade_community_tier nega sessão revogada antes de qualquer débito'
 );

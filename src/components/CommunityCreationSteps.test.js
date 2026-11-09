@@ -1,6 +1,6 @@
 import { after, before, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
@@ -20,13 +20,12 @@ before(async () => {
         import { StaticRouter } from 'react-router'
         import { ThemeProvider, BaseStyles } from '@primer/react'
         import { EligibilityPanel } from './communityCreation/EligibilityPanel.jsx'
-        import { PaymentStep, RetentionStep } from './communityCreation/CreationSteps.jsx'
+        import { ConfigStep } from './communityCreation/CreationSteps.jsx'
 
         const wrap = (child) => renderToStaticMarkup(createElement(StaticRouter, { location: '/' },
           createElement(ThemeProvider, null, createElement(BaseStyles, null, child))))
         export const renderPanel = (props) => wrap(createElement(EligibilityPanel, props))
-        export const renderRetention = (props) => wrap(createElement(RetentionStep, props))
-        export const renderPayment = (props) => wrap(createElement(PaymentStep, props))
+        export const renderConfig = (props) => wrap(createElement(ConfigStep, props))
       `,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
@@ -42,11 +41,13 @@ before(async () => {
 })
 after(() => rm(directory, { recursive: true, force: true }))
 
+// Dias de conta/dias ativos não são mais requisito (eligibility_simplify) -- base já reflete
+// isso: eligible=true por padrão.
 const base = {
-  eligible: false,
-  accountDays: 24,
+  eligible: true,
+  accountDays: 2,
   requiredAccountDays: 30,
-  qualifiedDays: 16,
+  qualifiedDays: 0,
   requiredQualifiedDays: 20,
   emailVerified: true,
   accountStanding: 'regular',
@@ -54,87 +55,138 @@ const base = {
   communityLimit: 3,
   evoCoinsBalance: 420,
   evoCashBalance: 0,
-  qualifiedToday: false,
+  freeCommunityAvailable: true,
 }
 
-test('mostra o progresso mesmo sem elegibilidade, com o que falta e o botão bloqueado', () => {
-  const html = render.renderPanel({ eligibility: base, onContinue() {} })
-  assert.match(html, /Sua elegibilidade/)
-  assert.match(html, /24 \/ 30 dias/)
-  assert.match(html, /16 \/ 20 dias ativos/)
-  assert.match(html, /1 \/ 3/)
-  assert.match(html, /420/)
-  assert.match(html, /Você ainda não pode criar uma comunidade\./)
-  assert.match(html, /Faltam 6 dias de conta e 4 dias ativos para liberar a criação\./)
-  assert.match(html, /role="progressbar"|aria-valuenow="80"/)
-  assert.match(html, /<button[^>]*disabled=""[^>]*>(?:<[^>]+>)*Continuar/)
+test('elegível: só a mensagem de sucesso, sem checklist nem botão (o botão vive na etapa Informações)', () => {
+  const html = render.renderPanel({ eligibility: base })
+  assert.match(html, /Tudo certo! Você já pode criar uma comunidade\./)
+  assert.doesNotMatch(html, /community-eligibility-item/)
+  assert.doesNotMatch(html, /<button/)
 })
 
-test('elegível: botão liberado e sem mensagem de pendência', () => {
-  const html = render.renderPanel({
-    eligibility: {
-      ...base,
-      eligible: true,
-      accountDays: 31,
-      qualifiedDays: 22,
-      qualifiedToday: true,
-    },
-    onContinue() {},
-  })
-  assert.match(html, /Você já pode criar uma comunidade/)
-  assert.match(html, /Você usou o Evolutus o suficiente hoje\./)
-  assert.doesNotMatch(html, /Faltam/)
-  assert.doesNotMatch(html, /<button[^>]*disabled=""[^>]*>(?:<[^>]+>)*Continuar/)
-  assert.match(html, /<button[^>]*>(?:<[^>]+>)*Continuar/)
+test('não elegível por e-mail: mostra só a pendência de e-mail (sem dias, que não são mais requisito)', () => {
+  const html = render.renderPanel({ eligibility: { ...base, eligible: false, emailVerified: false } })
+  assert.match(html, /E-mail confirmado/)
+  assert.match(html, /Confirme seu e-mail/)
+  assert.doesNotMatch(html, /dias de conta|dias ativos/)
+  assert.match(html, /Falta confirmar seu e-mail para liberar a criação\./)
 })
 
 test('restrição: texto genérico, atendimento, e nenhum motivo sensível', () => {
   const html = render.renderPanel({
-    eligibility: { ...base, accountStanding: 'unavailable' },
-    onContinue() {},
+    eligibility: { ...base, eligible: false, accountStanding: 'unavailable' },
   })
   assert.match(html, /Sua conta não está elegível para criar comunidades neste momento\./)
   assert.match(html, /href="\/atendimento"/)
   assert.doesNotMatch(html, /suspens|banimento|moderaç|fraude|automa/i)
 })
 
-test('retenção: três cartões; Arquivo sem preço aparece como "em breve" e desabilitado', () => {
-  const html = render.renderRetention({
-    tier: 'essential',
-    products: [
-      { tier: 'essential', postRetentionMode: '24h', evoCoinsPrice: 300, evoCashPrice: null },
-      { tier: 'plus', postRetentionMode: '30d', evoCoinsPrice: 600, evoCashPrice: null },
-      {
-        tier: 'archive',
-        postRetentionMode: 'no_auto_expiration',
-        evoCoinsPrice: null,
-        evoCashPrice: null,
-      },
-    ],
-    onSelect() {},
-    onBack() {},
-    onNext() {},
-  })
-  assert.match(html, /24 horas/)
-  assert.match(html, /30 dias/)
-  assert.match(html, /Sem expiração automática/)
-  assert.match(html, /em breve/)
-  assert.match(html, /aria-checked="true"/)
-  assert.match(html, /<button[^>]*role="radio"[^>]*disabled[^>]*>.*?Sem expiração automática/s)
+test('pendência genérica aparece uma única vez', () => {
+  const html = render.renderPanel({ eligibility: { ...base, eligible: false } })
+  assert.equal((html.match(/Você ainda não pode criar uma comunidade\./g) || []).length, 1)
 })
 
-test('pagamento: só opções válidas, saldo exibido, insuficiente desabilitado', () => {
-  const html = render.renderPayment({
-    product: { tier: 'essential', postRetentionMode: '24h', evoCoinsPrice: 300, evoCashPrice: 50 },
-    eligibility: { ...base, evoCoinsBalance: 420, evoCashBalance: 10 },
-    method: 'evocoins',
-    onSelect() {},
+const products = [
+  { tier: 'starter', postRetentionMode: '24h', evoCoinsPrice: null, evoCashPrice: null, free: true },
+  { tier: 'essential', postRetentionMode: '24h', evoCoinsPrice: 300, evoCashPrice: null, free: false },
+  { tier: 'plus', postRetentionMode: '30d', evoCoinsPrice: 600, evoCashPrice: null, free: false },
+  {
+    tier: 'archive',
+    postRetentionMode: 'no_auto_expiration',
+    evoCoinsPrice: null,
+    evoCashPrice: null,
+    free: false,
+  },
+]
+
+test('modalidade: grátis em destaque, Arquivo sem preço "em breve" e desabilitado, post_access sempre visível', () => {
+  const html = render.renderConfig({
+    products,
+    eligibility: base,
+    tier: 'starter',
+    postAccess: 'everyone',
+    paymentMethod: null,
+    onSelectTier() {},
+    onSelectPostAccess() {},
+    onSelectPayment() {},
     onBack() {},
     onNext() {},
   })
+  assert.match(html, /Grátis/)
+  assert.match(html, /em breve/)
+  assert.match(html, /community-choice-free/)
+  assert.match(html, /<button[^>]*role="radio"[^>]*disabled[^>]*>.*?Sem expiração automática/s)
+  assert.match(html, /Quem pode publicar\?/)
+  assert.match(html, /Somente moderadores/)
+  // tier grátis selecionado: nenhuma seção de forma de pagamento é exibida.
+  assert.doesNotMatch(html, /Forma de pagamento/)
+})
+
+test('modalidade grátis fica desabilitada quando o benefício já foi usado (mesmo com preço free)', () => {
+  const html = render.renderConfig({
+    products,
+    eligibility: { ...base, freeCommunityAvailable: false },
+    tier: null,
+    postAccess: 'everyone',
+    paymentMethod: null,
+    onSelectTier() {},
+    onSelectPostAccess() {},
+    onSelectPayment() {},
+    onBack() {},
+    onNext() {},
+  })
+  assert.match(html, /benefício já usado/)
+  assert.match(html, /<button[^>]*role="radio"[^>]*disabled[^>]*>(?:<[^>]+>)*Grátis/s)
+})
+
+test('modalidade paga: forma de pagamento aparece, só opções com preço válido, saldo insuficiente marcado', () => {
+  const html = render.renderConfig({
+    products: [
+      { tier: 'essential', postRetentionMode: '24h', evoCoinsPrice: 300, evoCashPrice: 50, free: false },
+    ],
+    eligibility: { ...base, evoCoinsBalance: 420, evoCashBalance: 10 },
+    tier: 'essential',
+    postAccess: 'everyone',
+    paymentMethod: 'evocoins',
+    onSelectTier() {},
+    onSelectPostAccess() {},
+    onSelectPayment() {},
+    onBack() {},
+    onNext() {},
+  })
+  assert.match(html, /Forma de pagamento/)
   assert.match(html, /300 EvoCoins/)
   assert.match(html, /Saldo: 420 EvoCoins/)
   assert.match(html, /50 EvoCash/)
-  assert.match(html, /Saldo insuficiente/)
+  assert.match(html, /Faltam 40 EvoCash/)
   assert.match(html, /href="\/evocash"/)
+})
+
+// Regressão de bug real: a prévia da capa (CoverPreview) tinha className="community-cover-image
+// community-wizard-cover-preview" direto no <img>. .community-cover-image é
+// "position: absolute; inset: 0" (app.css) -- sem um ancestral "position: relative" (que só
+// .community-cover fornece), o navegador posiciona a imagem em relação ao viewport inteiro,
+// cobrindo toda a tela/formulário. A correção embrulha o <img> (só com community-cover-image)
+// dentro de uma div com community-cover + community-wizard-cover-preview. renderToStaticMarkup
+// não executa o useEffect que troca o Blob por uma URL (SSR nunca roda efeitos), então este
+// teste lê o código-fonte diretamente em vez de renderizar -- é exatamente o jeito certo de
+// travar esta classe específica de bug sem jsdom (que o projeto não usa).
+test('capa: community-cover-image nunca aparece sem o wrapper community-cover (position:absolute sem ancestral relative vazaria pela tela)', async () => {
+  const source = await readFile(new URL('./communityCreation/CreationSteps.jsx', import.meta.url), 'utf8')
+  assert.doesNotMatch(
+    source,
+    /className="[^"]*community-cover-image[^"]*community-wizard-cover-preview/,
+    'community-cover-image não deve estar no mesmo elemento que community-wizard-cover-preview'
+  )
+  assert.doesNotMatch(
+    source,
+    /className="[^"]*community-wizard-cover-preview[^"]*community-cover-image/,
+    'nem na ordem inversa'
+  )
+  assert.match(
+    source,
+    /className="community-cover community-wizard-cover-preview"/,
+    'o wrapper com position:relative (community-cover) precisa envolver a prévia'
+  )
 })

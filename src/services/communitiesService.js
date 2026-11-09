@@ -90,9 +90,12 @@ export async function getCommunitySummary(communityId) {
 }
 
 // Fase 5: comunidade OFICIAL criada pelo painel admin nasce DE PROPÓSITO sem owner_id
-// — continua administrada globalmente por is_superadmin(), nunca por um uid
-// específico. Só o privilégio pago (economia, ainda não portado) grava owner_id.
-export async function createCommunity(userId, community) {
+// — continua administrada globalmente por is_superadmin(), nunca por um uid específico.
+// Comunidade pessoal (paga ou grátis) é outro fluxo, communityCreationService.js
+// (create_community/create_free_community via RPC), que grava owner_id. Nome diferente
+// (createOfficialCommunity, não createCommunity) de propósito: evitar confundir os dois
+// módulos, que têm assinaturas totalmente diferentes.
+export async function createOfficialCommunity(userId, community) {
   const { data, error } = await supabase
     .from('communities')
     .insert({

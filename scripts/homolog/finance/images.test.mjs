@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { IMAGES, VERIFIED_AMD64_IDS, pullImage, verifyLocalPostgresImage } from './images.mjs'
+import { IMAGES, VERIFIED_AMD64_IDS, pullImage, verifiedTag, verifyLocalPostgresImage } from './images.mjs'
 
 const id = 'sha256:' + 'a'.repeat(64)
 const ghcr = 'ghcr.io/supabase/'
@@ -13,22 +13,40 @@ const image = (registry, overrides = {}) => JSON.stringify([{
 const missing = () => { throw new Error('No such image') }
 const quiet = { log() {}, sleep: async () => {} }
 
-test('trusted OCI cache uses only the pinned linux/amd64 config ID without registry access', async () => {
+test('trusted OCI cache uses only the stable verified tag without registry access', async () => {
   const previous = process.env.FINANCE_OCI_CACHE_LOADED
   process.env.FINANCE_OCI_CACHE_LOADED = '1'
   try {
-    assert.equal(Object.keys(VERIFIED_AMD64_IDS).length, Object.keys(IMAGES).length)
-    const id = VERIFIED_AMD64_IDS.postgres
     const result = await pullImage('postgres', { ...quiet, run: (...args) => {
-      assert.deepEqual(args, ['image', 'inspect', id])
-      return JSON.stringify([{ Id: id, Os: 'linux', Architecture: 'amd64' }])
+      assert.deepEqual(args, ['image', 'inspect', verifiedTag('postgres')])
+      return image(ghcr)
     } })
-    assert.equal(result, id)
-    await assert.rejects(pullImage('postgres', { ...quiet, run: () => JSON.stringify([{ Id: id, Os: 'linux', Architecture: 'arm64' }]) }), /IMAGE_INTEGRITY_FAILED/)
+    assert.equal(result, verifiedTag('postgres'))
+    // Right registry digest, wrong platform -- still rejected even though the tag exists.
+    await assert.rejects(pullImage('postgres', { ...quiet, run: () => image(ghcr, { Architecture: 'arm64' }) }), /IMAGE_INTEGRITY_FAILED/)
+    // Tag missing entirely (cache restore did not actually load it).
     await assert.rejects(pullImage('postgres', { ...quiet, run: () => { throw new Error('No such image') } }), /IMAGE_INTEGRITY_FAILED/)
+    // Tag exists but points at content that never matched any pinned registry digest.
+    await assert.rejects(pullImage('postgres', { ...quiet, run: () => image(ghcr, { RepoDigests: [] }) }), /IMAGE_INTEGRITY_FAILED/)
   } finally {
     if (previous === undefined) delete process.env.FINANCE_OCI_CACHE_LOADED
     else process.env.FINANCE_OCI_CACHE_LOADED = previous
+  }
+})
+
+// VERIFIED_AMD64_IDS is legacy: only verifyLocalPostgresImage's own bare-ID fast path still
+// reads it (see images.mjs) -- pullImage/cache.mjs no longer compare against it.
+test('VERIFIED_AMD64_IDS still names exactly the five pinned images, for verifyLocalPostgresImage', () => {
+  assert.equal(Object.keys(VERIFIED_AMD64_IDS).length, Object.keys(IMAGES).length)
+})
+
+// Regression: IMAGES keys are camelCase (storageApi, edgeRuntime) to match normal JS naming,
+// but `docker tag`/`docker run` reject an uppercase repository name outright -- caught for
+// real in CI ("repository name ... must be lowercase") the first time this ran against a
+// camelCase key, since the local unit tests here only ever exercised 'postgres'.
+test('verifiedTag is always a valid, lowercase Docker reference for every pinned key', () => {
+  for (const key of Object.keys(IMAGES)) {
+    assert.match(verifiedTag(key), /^finance-verified\/[a-z0-9._-]+:verified$/, key)
   }
 })
 
@@ -38,24 +56,33 @@ test('all five original versions and OCI digests are fixed, with no mutable over
   assert.equal(IMAGES.postgres, 'postgres:17.6.1.166@sha256:b3bfedb107413abb3b8cb0d0874b0414a1dceb3d55bc0c778de6ad22d1f7dc86')
   assert.ok(Object.isFrozen(IMAGES))
 })
-test('verified GHCR cache executes the immutable config ID without a pull', async () => {
+test('a cached registry image is tagged under the stable name and run without a pull', async () => {
   const calls = []
   const result = await pullImage('postgres', { ...quiet, run: (...args) => {
     calls.push(args); return image(ghcr)
   } })
-  assert.equal(result, id)
-  assert.deepEqual(calls, [['image', 'inspect', ref(ghcr)]])
+  assert.equal(result, verifiedTag('postgres'))
+  assert.deepEqual(calls, [
+    ['image', 'inspect', '--platform', 'linux/amd64', ref(ghcr)],
+    ['tag', ref(ghcr), verifiedTag('postgres')],
+  ])
 })
-test('GHCR pull is pinned and must pass post-pull digest verification', async () => {
+test('GHCR pull is pinned, must pass post-pull digest verification, and is tagged under the stable name', async () => {
   const calls = []; let pulled = false; const logs = []
   const result = await pullImage('postgres', { ...quiet, log: x => logs.push(JSON.parse(x)), run: (...args) => {
     calls.push(args)
     if (args[0] === 'pull') { pulled = true; return '' }
+    if (args[0] === 'tag') return ''
     if (!pulled) return missing()
     return image(ghcr)
   } })
-  assert.equal(result, id)
-  assert.deepEqual(calls, [['image', 'inspect', ref(ghcr)], ['pull', ref(ghcr)], ['image', 'inspect', ref(ghcr)]])
+  assert.equal(result, verifiedTag('postgres'))
+  assert.deepEqual(calls, [
+    ['image', 'inspect', '--platform', 'linux/amd64', ref(ghcr)],
+    ['pull', '--platform', 'linux/amd64', ref(ghcr)],
+    ['image', 'inspect', '--platform', 'linux/amd64', ref(ghcr)],
+    ['tag', ref(ghcr), verifiedTag('postgres')],
+  ])
   assert.equal(logs[0].verifiedDigest, IMAGES.postgres.split('@')[1])
 })
 test('transient GHCR limit falls back to ECR with the exact same version and digest', async () => {
@@ -70,7 +97,7 @@ test('transient GHCR limit falls back to ECR with the exact same version and dig
     if (!pulled) return missing()
     return image(ecr)
   } })
-  assert.equal(result, id)
+  assert.equal(result, verifiedTag('postgres'))
   assert.deepEqual(pulls, [ref(ghcr), ref(ghcr), ref(ghcr), ref(ecr)])
   assert.deepEqual(waits, [2000, 8000])
 })
@@ -83,7 +110,7 @@ test('a transient retry can recover without switching registries', async () => {
     }
     return attempts === 2 ? image(ghcr) : missing()
   } })
-  assert.equal(result, id)
+  assert.equal(result, verifiedTag('postgres'))
   assert.equal(attempts, 2)
 })
 test('both registries unavailable fails after bounded attempts', async () => {
@@ -161,6 +188,21 @@ test('PostgreSQL harness accepts only the verified cached config ID when cache i
 })
 test('PostgreSQL CLI keeps supporting official versioned images', () => {
   verifyLocalPostgresImage({ Config: { Image: 'ghcr.io/supabase/postgres:17.11.0.002' } }, { run: () => assert.fail('named CLI image needs no harness pull') })
+})
+// Regression: stack.mjs now runs postgres via pullImage's stable verified tag (never a bare
+// image.Id, see verifiedTag), so a container inspected mid-harness reports that tag as
+// Config.Image -- caught for real in CI (advertising-concurrency.mjs, run against the same
+// disposable container) the first time something other than pullImage's own tests inspected it.
+test('PostgreSQL harness recognizes its own stable verified tag, re-checked against the pinned digest', () => {
+  const calls = []
+  verifyLocalPostgresImage({ Config: { Image: verifiedTag('postgres') } }, { run: (...args) => {
+    calls.push(args); return image(ghcr)
+  } })
+  assert.deepEqual(calls, [['image', 'inspect', verifiedTag('postgres')]])
+  assert.throws(
+    () => verifyLocalPostgresImage({ Config: { Image: verifiedTag('postgres') } }, { run: () => image(ghcr, { RepoDigests: [] }) }),
+    /IMAGE_INTEGRITY_FAILED/
+  )
 })
 test('PostgreSQL image validation rejects wrong indexes, mismatched config IDs and unofficial names', () => {
   const info = { Image: id, Config: { Image: id } }

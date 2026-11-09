@@ -5,13 +5,16 @@ import {
   buildEligibilityChecklist,
   creationErrorMessage,
   describeEligibilityGap,
+  eligibilityPanelCoversError,
   paymentOptionsFor,
   productIsAvailable,
   shouldRenewRequestId,
 } from './communityCreation.js'
 
+// Dias de conta/dias ativos não são mais requisito (eligibility_simplify) -- base já reflete
+// isso: eligible=true mesmo com accountDays/qualifiedDays abaixo dos antigos mínimos.
 const base = {
-  eligible: false,
+  eligible: true,
   accountDays: 24,
   requiredAccountDays: 30,
   qualifiedDays: 16,
@@ -22,60 +25,36 @@ const base = {
   communityLimit: 3,
   evoCoinsBalance: 420,
   evoCashBalance: 10,
+  freeCommunityAvailable: true,
 }
 
-test('checklist mostra o progresso exato (24/30 dias, 16/20 dias ativos, 1/3 comunidades)', () => {
+test('checklist mostra só e-mail, situação da conta e limite (sem dias)', () => {
   const byKey = Object.fromEntries(buildEligibilityChecklist(base).map((item) => [item.key, item]))
-  assert.equal(byKey.accountAge.detail, '24 / 30 dias')
-  assert.equal(byKey.accountAge.done, false)
-  assert.equal(byKey.activeDays.detail, '16 / 20 dias ativos')
-  assert.equal(byKey.activeDays.done, false)
+  assert.deepEqual(Object.keys(byKey).sort(), ['email', 'limit', 'standing'])
   assert.equal(byKey.limit.detail, '1 / 3')
   assert.equal(byKey.limit.done, true)
   assert.equal(byKey.email.done, true)
   assert.equal(byKey.standing.done, true)
-  assert.ok(Math.abs(byKey.accountAge.progress - 0.8) < 1e-9)
 })
 
-test('checklist nunca passa de 100% e limita o texto ao requisito', () => {
-  const byKey = Object.fromEntries(
-    buildEligibilityChecklist({ ...base, accountDays: 400, qualifiedDays: 30 }).map((item) => [
-      item.key,
-      item,
-    ])
-  )
-  assert.equal(byKey.accountAge.detail, '30 / 30 dias')
-  assert.equal(byKey.accountAge.progress, 1)
-  assert.equal(byKey.activeDays.done, true)
-})
-
-test('mensagem lista exatamente o que falta, só requisitos públicos', () => {
+test('mensagem: elegível não tem pendência mesmo com poucos dias de conta/atividade', () => {
   const gap = describeEligibilityGap(base)
-  assert.equal(gap.eligible, false)
-  assert.equal(gap.message, 'Faltam 6 dias de conta e 4 dias ativos para liberar a criação.')
+  assert.equal(gap.eligible, true)
+  assert.equal(gap.message, '')
+  assert.deepEqual(gap.missing, [])
 })
 
-test('singular, e-mail e três itens', () => {
+test('e-mail não confirmado é a única pendência possível hoje', () => {
   assert.equal(
-    describeEligibilityGap({ ...base, accountDays: 29, qualifiedDays: 20 }).message,
-    'Faltam 1 dia de conta para liberar a criação.'
-  )
-  assert.equal(
-    describeEligibilityGap({ ...base, accountDays: 30, qualifiedDays: 20, emailVerified: false })
-      .message,
+    describeEligibilityGap({ ...base, eligible: false, emailVerified: false }).message,
     'Falta confirmar seu e-mail para liberar a criação.'
   )
-  assert.equal(
-    describeEligibilityGap({ ...base, emailVerified: false }).message,
-    'Faltam confirmar seu e-mail, 6 dias de conta e 4 dias ativos para liberar a criação.'
-  )
 })
 
-test('limite atingido explica o limite sem culpar dias', () => {
+test('limite atingido explica o limite', () => {
   const gap = describeEligibilityGap({
     ...base,
-    accountDays: 30,
-    qualifiedDays: 20,
+    eligible: false,
     activeOwnedCommunities: 3,
   })
   assert.equal(gap.limitReached, true)
@@ -83,16 +62,10 @@ test('limite atingido explica o limite sem culpar dias', () => {
 })
 
 test('restrição/moderação vira mensagem genérica, sem detalhe sensível', () => {
-  const gap = describeEligibilityGap({ ...base, accountStanding: 'unavailable' })
+  const gap = describeEligibilityGap({ ...base, eligible: false, accountStanding: 'unavailable' })
   assert.equal(gap.restricted, true)
   assert.equal(gap.message, 'Sua conta não está elegível para criar comunidades neste momento.')
   assert.deepEqual(gap.missing, [])
-})
-
-test('elegível: nenhuma pendência', () => {
-  const gap = describeEligibilityGap({ ...base, eligible: true })
-  assert.equal(gap.eligible, true)
-  assert.equal(gap.message, '')
 })
 
 test('pagamento: só formas com preço válido; Arquivo sem EvoCoins; saldo insuficiente marcado', () => {
@@ -116,6 +89,16 @@ test('pagamento: só formas com preço válido; Arquivo sem EvoCoins; saldo insu
   assert.equal(paymentOptionsFor(null, base).length, 0)
 })
 
+test('grátis é um sinal explícito (product.free), nunca inferido por preço nulo', () => {
+  const starter = { tier: 'starter', free: true, evoCoinsPrice: null, evoCashPrice: null }
+  assert.equal(productIsAvailable(starter), true)
+  assert.deepEqual(paymentOptionsFor(starter, base), [])
+  // Um produto PAGO sem nenhum preço configurado continua indisponível -- "free" nunca é
+  // inferido, só o campo explícito decide.
+  const essentialSemPreco = { tier: 'essential', free: false, evoCoinsPrice: null, evoCashPrice: null }
+  assert.equal(productIsAvailable(essentialSemPreco), false)
+})
+
 test('erros do servidor viram mensagens amigáveis; restrição é genérica', () => {
   assert.equal(
     creationErrorMessage({ message: 'INSUFFICIENT_COINS' }),
@@ -125,6 +108,14 @@ test('erros do servidor viram mensagens amigáveis; restrição é genérica', (
     creationErrorMessage({ message: 'ACCOUNT_NOT_ELIGIBLE' }),
     'Sua conta não está elegível para criar comunidades neste momento.'
   )
+  assert.equal(
+    creationErrorMessage({ message: 'FREE_BENEFIT_ALREADY_USED' }),
+    'Você já usou sua comunidade gratuita.'
+  )
+  assert.equal(
+    creationErrorMessage({ message: 'PRICE_CHANGED' }),
+    'O preço mudou desde a última cotação. Confira o novo valor e confirme de novo.'
+  )
   assert.match(creationErrorMessage(new Error('boom')), /Não foi possível criar/)
 })
 
@@ -133,13 +124,14 @@ test('idempotência: só conflito de chave renova; falha de rede mantém a chave
   assert.equal(shouldRenewRequestId({ message: 'Failed to fetch' }), false)
 })
 
-test('a chave da tentativa ignora espaços e muda com tier/pagamento', () => {
+test('a chave da tentativa ignora espaços e muda com tier/pagamento/post_access', () => {
   const a = attemptKeyOf({
     name: ' X ',
     description: '',
     iconName: 'users',
     tier: 'essential',
     paymentMethod: 'evocoins',
+    postAccess: 'everyone',
   })
   const b = attemptKeyOf({
     name: 'X',
@@ -147,6 +139,7 @@ test('a chave da tentativa ignora espaços e muda com tier/pagamento', () => {
     iconName: 'users',
     tier: 'essential',
     paymentMethod: 'evocoins',
+    postAccess: 'everyone',
   })
   const c = attemptKeyOf({
     name: 'X',
@@ -154,7 +147,37 @@ test('a chave da tentativa ignora espaços e muda com tier/pagamento', () => {
     iconName: 'users',
     tier: 'plus',
     paymentMethod: 'evocoins',
+    postAccess: 'everyone',
+  })
+  const d = attemptKeyOf({
+    name: 'X',
+    description: '',
+    iconName: 'users',
+    tier: 'essential',
+    paymentMethod: 'evocoins',
+    postAccess: 'admins',
   })
   assert.equal(a, b)
   assert.notEqual(a, c)
+  assert.notEqual(a, d)
+})
+
+test('a chave da tentativa para o caminho grátis não depende de paymentMethod', () => {
+  const a = attemptKeyOf({ name: 'X', description: '', iconName: 'users', tier: 'starter', paymentMethod: null, postAccess: 'everyone' })
+  const b = attemptKeyOf({ name: 'X', description: '', iconName: 'users', tier: 'starter', postAccess: 'everyone' })
+  assert.equal(a, b)
+})
+
+// Regressão: CreateCommunity.jsx mostrava o Flash genérico de erro JUNTO com a mensagem
+// própria de EligibilityPanel na etapa "info", duplicando a mesma informação na tela para
+// ACCOUNT_NOT_ELIGIBLE/EMAIL_NOT_VERIFIED/COMMUNITY_LIMIT_REACHED. FREE_BENEFIT_ALREADY_USED
+// (e qualquer outro código) não tem equivalente em EligibilityPanel -- precisa continuar
+// aparecendo no Flash, senão o usuário não vê nada.
+test('eligibilityPanelCoversError identifica exatamente os 3 códigos já mostrados por EligibilityPanel', () => {
+  assert.equal(eligibilityPanelCoversError('ACCOUNT_NOT_ELIGIBLE'), true)
+  assert.equal(eligibilityPanelCoversError('EMAIL_NOT_VERIFIED'), true)
+  assert.equal(eligibilityPanelCoversError('COMMUNITY_LIMIT_REACHED'), true)
+  assert.equal(eligibilityPanelCoversError('FREE_BENEFIT_ALREADY_USED'), false)
+  assert.equal(eligibilityPanelCoversError('INSUFFICIENT_COINS'), false)
+  assert.equal(eligibilityPanelCoversError(undefined), false)
 })
