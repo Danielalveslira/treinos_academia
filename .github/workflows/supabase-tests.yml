@@ -159,6 +159,10 @@ jobs:
         run: node scripts/refunds-concurrency.mjs
         env:
           PG_TEST_CONTAINER: supabase_db_treinos_academia
+      - name: Free community benefit and tier upgrade price-change concurrency
+        run: node scripts/community-free-creation-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
       # Limpeza roda sempre (sucesso ou falha do passo acima), mas sem alterar o motivo da falha:
       # se o passo anterior falhou, o job já está marcado como falho antes deste rodar.
       - if: always()

@@ -68,17 +68,19 @@ select is((public.get_my_community_creation_eligibility() ->> 'evoCoinsBalance')
 select is(
   (select array_agg(k order by k) from jsonb_object_keys(public.get_my_community_creation_eligibility()) k),
   array['accountDays','accountStanding','activeOwnedCommunities','activeWindowDays','communityLimit','eligible','emailVerified',
-        'evoCashBalance','evoCoinsBalance','qualifiedDays','qualifiedToday','requiredAccountDays','requiredQualifiedDays'],
+        'evoCashBalance','evoCoinsBalance','freeCommunityAvailable','qualifiedDays','qualifiedToday','requiredAccountDays','requiredQualifiedDays'],
   'a RPC devolve apenas os campos públicos (nenhum sinal interno)');
+-- Dias de conta/dias ativos NÃO bloqueiam mais (20261214000003_community_creation_eligibility_simplify.sql)
+-- -- continuam calculados e devolvidos (progresso informativo), só não decidem `eligible`.
 select pg_temp.as_user('02');
 select is((public.get_my_community_creation_eligibility() ->> 'accountDays')::int, 29, '02: 29 dias de conta');
-select is((public.get_my_community_creation_eligibility() ->> 'eligible')::boolean, false, '29 dias -> bloqueado');
+select is((public.get_my_community_creation_eligibility() ->> 'eligible')::boolean, true, '29 dias -> elegível (não é mais requisito)');
 select pg_temp.as_user('03');
 select is((public.get_my_community_creation_eligibility() ->> 'accountDays')::int, 30, '03: 30 dias de conta');
-select is((public.get_my_community_creation_eligibility() ->> 'eligible')::boolean, true, '30 dias -> requisito de idade passa');
+select is((public.get_my_community_creation_eligibility() ->> 'eligible')::boolean, true, '30 dias -> elegível');
 select pg_temp.as_user('04');
 select is((public.get_my_community_creation_eligibility() ->> 'qualifiedDays')::int, 19, '04: 19 dias ativos');
-select is((public.get_my_community_creation_eligibility() ->> 'eligible')::boolean, false, 'dias ativos insuficientes -> bloqueado');
+select is((public.get_my_community_creation_eligibility() ->> 'eligible')::boolean, true, '19 dias ativos -> elegível (não é mais requisito)');
 -- dia fora da janela de 30 dias e dia não qualificado não contam
 insert into public.community_creation_activity_days (user_id, activity_date, qualified_seconds, qualified) values
   (pg_temp.uid('04'), (now() at time zone 'America/Sao_Paulo')::date - 45, 900, true),
@@ -102,10 +104,13 @@ select pg_temp.as_user('09');
 select is((public.get_my_community_creation_eligibility() ->> 'activeOwnedCommunities')::int, 3, '09: comunidade inativa não consome limite');
 
 -- ============================================================ CRIAÇÃO: ELEGIBILIDADE VEM ANTES DO PAGAMENTO
+-- 02 (29 dias de conta) e 04 (19 dias ativos) agora criam normalmente -- dias de conta/dias
+-- ativos deixaram de bloquear tanto a via paga quanto a gratuita (eligibility_simplify).
+-- standing/e-mail/limite continuam bloqueando os dois caminhos igualmente.
 select pg_temp.as_user('02');
-select throws_ok($$select public.create_community('Nova', 'x', 'dumbbell', 'essential', 'evocoins', 'key-0000000a')$$, 'ACCOUNT_TOO_NEW', 'pagar com EvoCoins não pula o gate de idade');
-select throws_ok($$select public.create_community('Nova', 'x', 'dumbbell', 'essential', 'evocash', 'key-0000000b')$$, 'ACCOUNT_TOO_NEW', 'pagar com EvoCash não pula o gate de idade');
-select is(pg_temp.coins('02') || '/' || pg_temp.cash('02') || '/' || pg_temp.owned('02'), '5000/5000/0', 'gate recusado: nada cobrado, nada criado');
+select is(public.create_community('Nova A', 'x', 'dumbbell', 'essential', 'evocoins', 'key-0000000a') ->> 'tier', 'essential', '02: 29 dias de conta cria normalmente com EvoCoins');
+select is(public.create_community('Nova B', 'x', 'dumbbell', 'essential', 'evocash', 'key-0000000b') ->> 'tier', 'essential', '02: e com EvoCash também');
+select is(pg_temp.coins('02') || '/' || pg_temp.cash('02') || '/' || pg_temp.owned('02'), '4700/4950/2', 'cobrou corretamente (300 coins + 50 cash) e criou as duas comunidades');
 select pg_temp.as_user('05');
 select throws_ok($$select public.create_community('Nova', 'x', 'dumbbell', 'essential', 'evocoins', 'key-0000000c')$$, 'EMAIL_NOT_VERIFIED', 'e-mail não confirmado');
 select pg_temp.as_user('06');
@@ -114,7 +119,7 @@ select pg_temp.as_user('07');
 select throws_ok($$select public.create_community('Nova', 'x', 'dumbbell', 'essential', 'evocoins', 'key-0000000e')$$, 'COMMUNITY_LIMIT_REACHED', 'limite de 3 comunidades próprias');
 select pg_temp.as_user('04');
 delete from public.community_creation_activity_days where user_id = pg_temp.uid('04') and activity_date = (now() at time zone 'America/Sao_Paulo')::date;
-select throws_ok($$select public.create_community('Nova', 'x', 'dumbbell', 'essential', 'evocoins', 'key-0000000f')$$, 'NOT_ACTIVE_ENOUGH', 'dias ativos insuficientes');
+select is(public.create_community('Nova', 'x', 'dumbbell', 'essential', 'evocoins', 'key-0000000f') ->> 'tier', 'essential', '04: 19 dias ativos cria normalmente');
 
 -- ============================================================ CRIAÇÃO: ECONOMIA
 select pg_temp.as_user('08');
