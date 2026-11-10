@@ -33,33 +33,15 @@ import {
   sheetFingerprint,
   validateSheet,
 } from './workoutSheetValidation.js'
+import {
+  readPendingCreateRequestId,
+  resolvePendingCreate,
+  writePendingCreateRequestId,
+} from './pendingCreate.js'
 import { WorkoutSheetItemEditor } from './WorkoutSheetItemEditor'
 import { WorkoutSheetExercisePicker } from './WorkoutSheetExercisePicker'
 import { useSheetDiscardGuard } from './useSheetDiscardGuard.js'
 import './workoutSheets.css'
-// Reload-sem-duplicar (P0, auditoria 2026-11-10): se o usuário confirmar "saída sem salvar" do
-// aviso do navegador enquanto uma criação está em voo, o requestId.current em memória se perde e
-// um reload ingênuo mintaria um novo request_id -- duplicando a ficha quando a 1ª tentativa, na
-// verdade, já tinha sido aceita no servidor. Guardamos o request_id pendente da ficha NOVA (nunca
-// de uma edição existente, que não usa idempotency key) só para o MESMO uid+aba retomar a MESMA
-// tentativa; create_workout_sheet() agora reconcilia o retry com o conteúdo atual do formulário
-// em vez de descartá-lo (20261215000002), então retomar é seguro mesmo que o conteúdo tenha mudado.
-const pendingCreateKey = (uid) => `evolutus:sheet:pendingCreate:${uid}`
-function readPendingCreateRequestId(uid) {
-  try {
-    return sessionStorage.getItem(pendingCreateKey(uid)) || null
-  } catch {
-    return null
-  }
-}
-function writePendingCreateRequestId(uid, value) {
-  try {
-    if (value) sessionStorage.setItem(pendingCreateKey(uid), value)
-    else sessionStorage.removeItem(pendingCreateKey(uid))
-  } catch {
-    /* Best-effort only: losing this never duplicates a save, it only loses reload resumption. */
-  }
-}
 function EditorSection({
   id,
   title,
@@ -494,40 +476,63 @@ export default function WorkoutSheetEditorPage() {
 function NewEditor() {
   const { user, offlineLocal } = useAuth()
   const online = useOnline()
-  // Retomada segura após reload (P0, continuação da auditoria 2026-11-10): o sessionStorage só
-  // guarda o request_id, nunca o conteúdo do formulário (nada sensível e nada que fique
-  // desatualizado) -- a retomada reconcilia explicitamente com o servidor em vez de confiar cegamente
-  // no id. Se a tentativa pendente já existe de verdade, carrega a ficha real (vira edição normal,
-  // nunca mais tenta criar); se não existe (nunca confirmou, ou o id era de outra sessão/conta),
-  // descarta o marcador e começa um rascunho limpo -- nunca reaproveita um id antigo para uma
-  // criação nova e independente.
-  const [state, setState] = useState(null)
+  // Retomada segura após reload: o sessionStorage só guarda o request_id, nunca o conteúdo do
+  // formulário -- a retomada sempre reconcilia explicitamente com o servidor em vez de confiar
+  // cegamente no id ou em um EMPTY_SHEET silencioso.
+  //   - encontrada: vira edição normal da ficha real (nunca mais tenta criar);
+  //   - ausência CONFIRMADA (SHEET_NOT_FOUND mesmo após a tolerância): só agora é seguro soltar o
+  //     identificador antigo e abrir um rascunho novo e independente;
+  //   - qualquer outra falha (rede, sessão): preserva o identificador e mostra erro com Tentar
+  //     novamente -- nunca expõe um formulário em branco escrevendo por baixo dos panos sobre um
+  //     id que pode pertencer a uma ficha já real, o que modificaria a ficha errada no próximo
+  //     salvar em vez de criar uma de verdade.
+  const [state, setState] = useState({ status: 'checking' })
+  const mounted = useRef(true)
+  const checking = useRef(false)
   useEffect(() => {
-    let active = true
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const check = useCallback(() => {
+    if (checking.current) return
     const pending = readPendingCreateRequestId(user.uid)
     if (!pending) {
-      setState({ initial: EMPTY_SHEET })
-      return undefined
+      setState({ status: 'ready', initial: EMPTY_SHEET })
+      return
     }
-    getWorkoutSheetByRequestId(pending).then(
-      (sheet) => {
+    checking.current = true
+    setState({ status: 'checking' })
+    resolvePendingCreate(pending).then((result) => {
+      checking.current = false
+      if (!mounted.current) return
+      if (result.status === 'found') {
         writePendingCreateRequestId(user.uid, null)
-        if (active) setState({ initial: sheet })
-      },
-      (error) => {
-        if (String(error?.message || '').includes('SHEET_NOT_FOUND')) {
-          writePendingCreateRequestId(user.uid, null)
-        }
-        // Qualquer outra falha (rede, sessão) preserva o marcador -- só uma falha de rede
-        // momentânea não pode apagar a chance de retomar na próxima tentativa.
-        if (active) setState({ initial: EMPTY_SHEET })
+        setState({ status: 'ready', initial: result.sheet })
+      } else if (result.status === 'confirmed-missing') {
+        writePendingCreateRequestId(user.uid, null)
+        setState({ status: 'ready', initial: EMPTY_SHEET })
+      } else {
+        setState({ status: 'error' })
       }
-    )
-    return () => {
-      active = false
-    }
+    })
   }, [user.uid])
-  if (!state) return <Spinner aria-label="Carregando editor" />
+  useEffect(() => {
+    check()
+  }, [check])
+  if (state.status === 'checking') return <Spinner aria-label="Carregando editor" />
+  if (state.status === 'error') {
+    return (
+      <section className="workout-sheets">
+        <Link to="/exercicios">Voltar</Link>
+        <Flash role="alert" variant="danger">
+          Não foi possível confirmar uma tentativa de criação pendente. Verifique a conexão antes
+          de continuar. <Button onClick={check}>Tentar novamente</Button>
+        </Flash>
+      </section>
+    )
+  }
   return <Editor initial={state.initial} online={online && !offlineLocal} />
 }
 function ExistingEditor({ id }) {
