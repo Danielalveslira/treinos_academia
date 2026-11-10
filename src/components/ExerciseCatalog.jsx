@@ -12,10 +12,7 @@ import {
 } from '@primer/octicons-react'
 import { useExerciseCatalogSearch } from '../hooks/useExerciseCatalogSearch.js'
 import { useExerciseCatalogTaxonomy } from '../hooks/useExerciseCatalogTaxonomy.js'
-import {
-  formatCatalogLabel as displayValue,
-  isProviderExerciseAdded,
-} from '../utils/exerciseCatalog.js'
+import { formatCatalogLabel as displayValue, findProviderExercise } from '../utils/exerciseCatalog.js'
 import { getMuscleIcon } from '../constants/muscleGroupIcons.js'
 import { MuscleIconBadge } from './MuscleIconBadge.jsx'
 import { ExerciseCatalogImage } from './ExerciseCatalogImage.jsx'
@@ -77,7 +74,7 @@ function FilterSelect({ label, value, options, onChange }) {
 // elemento de origem e safe-area já vêm de lá, sem reimplementar nada aqui. Como a folha é
 // uma camada POR CIMA da listagem (nunca a substitui), fechar a ficha nunca perde busca,
 // filtros, página carregada nem posição de rolagem.
-function ExerciseCatalogDetailBody({ exercise, added, adding, onAdd, onClose }) {
+function ExerciseCatalogDetailBody({ exercise, inSheet, libraryOnly, adding, error, onAdd, onClose }) {
   const titleId = useSheetTitleId()
   const images = exercise.images?.length
     ? exercise.images.slice(0, 2)
@@ -86,16 +83,29 @@ function ExerciseCatalogDetailBody({ exercise, added, adding, onAdd, onClose }) 
       : []
 
   const footer = (
-    <Button
-      variant="primary"
-      block
-      size="large"
-      disabled={added || adding}
-      loading={adding}
-      onClick={() => onAdd(exercise)}
-    >
-      {added ? 'Já adicionado' : adding ? 'Adicionando...' : 'Adicionar aos meus exercícios'}
-    </Button>
+    <Box sx={{ display: 'grid', gap: 2 }}>
+      {error && (
+        <Text as="p" role="alert" sx={{ color: 'danger.fg', fontSize: 0, m: 0 }}>
+          {error}
+        </Text>
+      )}
+      <Button
+        variant="primary"
+        block
+        size="large"
+        disabled={inSheet || adding}
+        loading={adding}
+        onClick={() => onAdd(exercise)}
+      >
+        {inSheet
+          ? 'Na ficha'
+          : adding
+            ? 'Adicionando...'
+            : libraryOnly
+              ? 'Adicionar à ficha'
+              : 'Adicionar aos meus exercícios'}
+      </Button>
+    </Box>
   )
 
   return (
@@ -172,18 +182,37 @@ function ExerciseCatalogDetailBody({ exercise, added, adding, onAdd, onClose }) 
   )
 }
 
+// Falha ao adicionar (5.2, auditoria 2026-11-10): handleAdd() não tinha catch -- um erro de rede,
+// permissão ou item retirado ficava sem tratamento na UI (promise rejeitada sem feedback, ou um
+// `unhandledrejection`). Mensagem curta e específica quando possível; nunca promete sucesso falso.
+function catalogAddErrorMessage(error) {
+  if (globalThis.navigator?.onLine === false) {
+    return 'Sem conexão. Verifique a internet e tente novamente.'
+  }
+  // Erro próprio e já curado (ex.: limite de itens/seleção indisponível, marcado por
+  // addOfficial() com userMessage) -- nunca um erro inesperado/cru, que cai no fallback genérico.
+  if (typeof error?.userMessage === 'string' && error.userMessage) {
+    return error.userMessage
+  }
+  if (error?.code === '42501' || error?.code === 'PGRST301') {
+    return 'Sem permissão para adicionar este exercício agora.'
+  }
+  return 'Não foi possível adicionar. Tente novamente.'
+}
+
 function cacheNoticeText(isPartialCache) {
   return isPartialCache
     ? 'Mostrando resultados salvos neste aparelho (sem conexão agora) -- podem ser só parte do catálogo.'
     : 'Mostrando o catálogo completo salvo neste aparelho (sem conexão agora).'
 }
 
-export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
+export function ExerciseCatalog({ personalExercises, sheetExerciseIds, onAdd, onClose }) {
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState({ muscle: '', equipment: '', category: '', level: '' })
   const [selected, setSelected] = useState(null)
   const [addingId, setAddingId] = useState(null)
   const [addedIds, setAddedIds] = useState(() => new Set())
+  const [addErrors, setAddErrors] = useState(() => new Map())
   const { muscles, equipment, categories, levels } = useExerciseCatalogTaxonomy()
   const {
     items,
@@ -225,25 +254,43 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
     setFilters({ muscle: '', equipment: '', category: '', level: '' })
   }
 
-  function isAdded(exercise) {
-    return (
-      addedIds.has(exercise.id) ||
-      isProviderExerciseAdded(
-        personalExercises,
-        exercise.providerExerciseId,
-        exercise.provider || 'evolutus_dataset'
-      )
+// Na biblioteca ≠ na ficha (auditoria 2026-11-10, seção 5.1): o Catálogo mostrava "Já adicionado"
+// com base só na biblioteca pessoal, bloqueando o clique mesmo quando o exercício não estava na
+// ficha que o usuário está editando agora. libraryExercise() resolve o item pessoal (se existir);
+// inSheet() checa se ELE está entre os IDs da ficha atual; libraryOnly() é o terceiro estado --
+// "reutilizável sem nova gravação na biblioteca, mas ainda não nesta ficha".
+  function libraryExercise(exercise) {
+    return findProviderExercise(
+      personalExercises,
+      exercise.providerExerciseId,
+      exercise.provider || 'evolutus_dataset'
     )
+  }
+  function isInSheet(exercise) {
+    if (addedIds.has(exercise.id)) return true
+    const personal = libraryExercise(exercise)
+    return Boolean(personal && sheetExerciseIds?.has(personal.id))
+  }
+  function isLibraryOnly(exercise) {
+    return !isInSheet(exercise) && Boolean(libraryExercise(exercise))
   }
 
   async function handleAdd(exercise) {
-    if (isAdded(exercise) || addingId) return
+    if (isInSheet(exercise) || addingId) return
     setAddingId(exercise.providerExerciseId)
+    setAddErrors((current) => {
+      if (!current.has(exercise.providerExerciseId)) return current
+      const next = new Map(current)
+      next.delete(exercise.providerExerciseId)
+      return next
+    })
     try {
-      const result = await onAdd(exercise)
-      if (result?.added !== false) {
-        setAddedIds((current) => new Set(current).add(exercise.id))
-      }
+      await onAdd(exercise)
+      // Qualquer resultado sem exceção significa que o exercício chegou à ficha -- mesmo quando
+      // `added:false` (já existia na biblioteca): esse flag descreve a biblioteca, não a ficha.
+      setAddedIds((current) => new Set(current).add(exercise.id))
+    } catch (error) {
+      setAddErrors((current) => new Map(current).set(exercise.providerExerciseId, catalogAddErrorMessage(error)))
     } finally {
       setAddingId(null)
     }
@@ -402,11 +449,13 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
           ) : (
             <div className="catalog-grid">
               {items.map((exercise) => {
-                const added = isAdded(exercise)
+                const inSheet = isInSheet(exercise)
+                const libraryOnly = isLibraryOnly(exercise)
                 const adding = addingId === exercise.providerExerciseId
+                const addError = addErrors.get(exercise.providerExerciseId)
                 const hasDemo = (exercise.images?.length || 0) >= 2
                 return (
-                  <article className={`catalog-card${added ? ' is-added' : ''}`} key={exercise.id}>
+                  <article className={`catalog-card${inSheet ? ' is-added' : ''}`} key={exercise.id}>
                     <button
                       type="button"
                       className="catalog-card-details"
@@ -421,7 +470,12 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
                           fallbackLabel=""
                           icon={getMuscleIcon(exercise.primaryMuscles?.[0])}
                         />
-                        {added && (
+                        {inSheet && (
+                          <span className="catalog-card-added-mark" aria-label="Já está na ficha">
+                            <CheckIcon size={12} />
+                          </span>
+                        )}
+                        {!inSheet && libraryOnly && (
                           <span
                             className="catalog-card-added-mark"
                             aria-label="Já está na sua biblioteca"
@@ -452,12 +506,23 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
                     <Button
                       block
                       size="small"
-                      disabled={added || adding}
+                      disabled={inSheet || adding}
                       loading={adding}
                       onClick={() => handleAdd(exercise)}
                     >
-                      {added ? 'Já adicionado' : adding ? 'Adicionando...' : 'Adicionar'}
+                      {inSheet
+                        ? 'Na ficha'
+                        : adding
+                          ? 'Adicionando...'
+                          : libraryOnly
+                            ? 'Adicionar à ficha'
+                            : 'Adicionar'}
                     </Button>
+                    {addError && (
+                      <Text as="p" role="alert" sx={{ color: 'danger.fg', fontSize: 0, m: 0 }}>
+                        {addError}
+                      </Text>
+                    )}
                   </article>
                 )
               })}
@@ -475,8 +540,10 @@ export function ExerciseCatalog({ personalExercises, onAdd, onClose }) {
         <ModalSheet onClose={() => setSelected(null)}>
           <ExerciseCatalogDetailBody
             exercise={selected}
-            added={isAdded(selected)}
+            inSheet={isInSheet(selected)}
+            libraryOnly={isLibraryOnly(selected)}
             adding={addingId === selected.providerExerciseId}
+            error={addErrors.get(selected.providerExerciseId)}
             onAdd={handleAdd}
             onClose={() => setSelected(null)}
           />

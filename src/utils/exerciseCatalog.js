@@ -106,6 +106,18 @@ export function isProviderExerciseAdded(personalExercises, providerExerciseId, p
   )
 }
 
+// Mesmo casamento de isProviderExerciseAdded, mas devolve o exercício pessoal em si (não só um
+// booleano) -- usado para distinguir "na biblioteca" de "na ficha atual" (auditoria 2026-11-10,
+// seção 5.1): o ID pessoal aqui é o mesmo que entra em workout_sheet_exercises.exercise_id.
+export function findProviderExercise(personalExercises, providerExerciseId, provider) {
+  return personalExercises.find(
+    (exercise) =>
+      exercise.source === 'catalog' &&
+      exercise.providerExerciseId === providerExerciseId &&
+      (!provider || exercise.provider === provider)
+  )
+}
+
 export function getExerciseSource(exercise) {
   return exercise?.source === 'catalog' ? 'catalog' : 'custom'
 }

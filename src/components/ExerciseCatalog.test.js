@@ -287,17 +287,74 @@ test('card mostra "Com demonstração" só quando START e END estão publicados 
   view.unmount()
 })
 
-test('exercício já na biblioteca aparece como "Já adicionado" e o botão fica desabilitado', () => {
+// 5.1 (auditoria 2026-11-10): "na biblioteca" e "na ficha atual" são estados distintos -- o
+// Catálogo não pode mais bloquear um exercício só porque ele já existe na biblioteca pessoal se
+// ele ainda não está na ficha que o usuário está editando agora.
+test('exercício já na ficha atual aparece como "Na ficha" e o botão fica desabilitado', () => {
   globalThis.__searchResult = {
     ...BASE_RESULT,
     items: [exercise({ id: 'c1', name: 'Supino Reto', providerExerciseId: 'Bench_Press' })],
   }
   const view = mount({
-    personalExercises: [{ source: 'catalog', provider: 'evolutus_dataset', providerExerciseId: 'Bench_Press' }],
+    personalExercises: [
+      { id: 'lib-1', source: 'catalog', provider: 'evolutus_dataset', providerExerciseId: 'Bench_Press' },
+    ],
+    sheetExerciseIds: new Set(['lib-1']),
   })
-  const addButton = buttonWithText(view, /Já adicionado/)[0]
+  const addButton = buttonWithText(view, /Na ficha/)[0]
   assert.ok(addButton)
   assert.equal(addButton.props.disabled, true)
+  view.unmount()
+})
+
+test('exercício já na biblioteca mas FORA da ficha atual aparece como "Adicionar à ficha", habilitado', () => {
+  globalThis.__searchResult = {
+    ...BASE_RESULT,
+    items: [exercise({ id: 'c1', name: 'Supino Reto', providerExerciseId: 'Bench_Press' })],
+  }
+  let received
+  const onAdd = async (item) => {
+    received = item
+    return { added: false }
+  }
+  const view = mount({
+    personalExercises: [
+      { id: 'lib-1', source: 'catalog', provider: 'evolutus_dataset', providerExerciseId: 'Bench_Press' },
+    ],
+    sheetExerciseIds: new Set(), // na biblioteca, mas ainda não nesta ficha
+    onAdd,
+  })
+  const addButton = buttonWithText(view, /Adicionar à ficha/)[0]
+  assert.ok(addButton)
+  assert.equal(addButton.props.disabled, false)
+  api.act(() => addButton.props.onClick())
+  assert.equal(received.providerExerciseId, 'Bench_Press')
+  view.unmount()
+})
+
+test('falha ao adicionar mostra mensagem curta e deixa o botão disponível para repetir (5.2)', async () => {
+  globalThis.__searchResult = {
+    ...BASE_RESULT,
+    items: [exercise({ id: 'c1', name: 'Supino Reto', providerExerciseId: 'Bench_Press' })],
+  }
+  let reject
+  const onAdd = () =>
+    new Promise((_resolve, _reject) => {
+      reject = _reject
+    })
+  const view = mount({ personalExercises: [], onAdd })
+  const addButton = buttonWithText(view, /^Adicionar$/)[0]
+  let completion
+  api.act(() => {
+    completion = addButton.props.onClick()
+  })
+  reject(new Error('boom'))
+  await completion
+  await settle()
+  const text = pageText(view)
+  assert.match(text, /Não foi possível adicionar\. Tente novamente\./)
+  const retryButton = buttonWithText(view, /^Adicionar$/)[0]
+  assert.equal(retryButton.props.disabled, false, 'botão continua clicável para repetir, nunca trava em "Adicionando..."')
   view.unmount()
 })
 
@@ -337,7 +394,7 @@ test('clique duplicado em "Adicionar" nunca dispara uma segunda chamada concorre
   resolveAdd({ added: true })
   await completion
   await settle()
-  assert.ok(buttonWithText(view, /Já adicionado/)[0])
+  assert.ok(buttonWithText(view, /Na ficha/)[0])
   view.unmount()
 })
 
