@@ -18,7 +18,12 @@ import { ChevronDownIcon, ChevronUpIcon } from '@primer/octicons-react'
 import { useOnlineStatus as useOnline } from '../../hooks/useOnlineStatus'
 import { useAuth } from '../../hooks/useAuth'
 import { useWorkoutSheets } from './useWorkoutSheets.js'
-import { getWorkoutSheet, saveWorkoutSheet, sheetError } from './workoutSheetsService.js'
+import {
+  getWorkoutSheet,
+  getWorkoutSheetByRequestId,
+  saveWorkoutSheet,
+  sheetError,
+} from './workoutSheetsService.js'
 import {
   EMPTY_SHEET,
   prescription,
@@ -211,7 +216,11 @@ function Editor({ initial, online }) {
       setMessage(sheetError(error))
       if (String(error.message).includes('SHEET_VERSION_CONFLICT')) {
         try {
-          setServer(await getWorkoutSheet(sheet.id))
+          // Em criação, sheet.id ainda não existe localmente -- a mesma ficha só é resolvível
+          // pelo create_request_id desta tentativa (P0, continuação da auditoria 2026-11-10).
+          setServer(
+            isNew ? await getWorkoutSheetByRequestId(requestId.current) : await getWorkoutSheet(sheet.id)
+          )
         } catch {
           /* Original edits remain visible. */
         }
@@ -235,7 +244,13 @@ function Editor({ initial, online }) {
     setMessage('')
   }
   function keepMine() {
-    setSheet((s) => ({ ...s, revision: server.revision }))
+    // Adota também o id do servidor (nunca só a revisão): numa criação, sheet.id ainda era
+    // undefined -- sem o id, o próximo Salvar voltaria a tentar create_workout_sheet() com o
+    // recibo antigo e conflitaria de novo, em loop, mesmo com o usuário já ciente da versão atual.
+    // Com o id, o próximo Salvar segue o caminho normal de edição (save_workout_sheet), comparando
+    // contra a revisão real que acabou de ser buscada -- sem reaproveitar essa revisão às cegas
+    // para forçar o salvamento: o usuário ainda precisa revisar e clicar Salvar de novo.
+    setSheet((s) => ({ ...s, id: server.id, revision: server.revision }))
     setBaseline(sheetFingerprint(server))
     setServer(null)
     setMessage('Versão atual carregada para comparação. Revise sua edição e salve novamente.')
@@ -477,9 +492,43 @@ export default function WorkoutSheetEditorPage() {
   return id ? <ExistingEditor key={`${user.uid}:${id}`} id={id} /> : <NewEditor key={user.uid} />
 }
 function NewEditor() {
-  const { offlineLocal } = useAuth()
+  const { user, offlineLocal } = useAuth()
   const online = useOnline()
-  return <Editor initial={EMPTY_SHEET} online={online && !offlineLocal} />
+  // Retomada segura após reload (P0, continuação da auditoria 2026-11-10): o sessionStorage só
+  // guarda o request_id, nunca o conteúdo do formulário (nada sensível e nada que fique
+  // desatualizado) -- a retomada reconcilia explicitamente com o servidor em vez de confiar cegamente
+  // no id. Se a tentativa pendente já existe de verdade, carrega a ficha real (vira edição normal,
+  // nunca mais tenta criar); se não existe (nunca confirmou, ou o id era de outra sessão/conta),
+  // descarta o marcador e começa um rascunho limpo -- nunca reaproveita um id antigo para uma
+  // criação nova e independente.
+  const [state, setState] = useState(null)
+  useEffect(() => {
+    let active = true
+    const pending = readPendingCreateRequestId(user.uid)
+    if (!pending) {
+      setState({ initial: EMPTY_SHEET })
+      return undefined
+    }
+    getWorkoutSheetByRequestId(pending).then(
+      (sheet) => {
+        writePendingCreateRequestId(user.uid, null)
+        if (active) setState({ initial: sheet })
+      },
+      (error) => {
+        if (String(error?.message || '').includes('SHEET_NOT_FOUND')) {
+          writePendingCreateRequestId(user.uid, null)
+        }
+        // Qualquer outra falha (rede, sessão) preserva o marcador -- só uma falha de rede
+        // momentânea não pode apagar a chance de retomar na próxima tentativa.
+        if (active) setState({ initial: EMPTY_SHEET })
+      }
+    )
+    return () => {
+      active = false
+    }
+  }, [user.uid])
+  if (!state) return <Spinner aria-label="Carregando editor" />
+  return <Editor initial={state.initial} online={online && !offlineLocal} />
 }
 function ExistingEditor({ id }) {
   const { data, loading, error, refresh, online } = useWorkoutSheets(id)

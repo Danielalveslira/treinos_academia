@@ -46,6 +46,28 @@ select throws_ok(
 );
 select is((select name from public.workout_sheets),(select name from after_foreign_edit),'conteúdo da outra aba permanece intacto após o conflito');
 select is((select revision from public.workout_sheets),(select revision from after_foreign_edit),'revisão da outra aba permanece intacta após o conflito');
+-- P0 (continuação da auditoria, 2026-11-10): o editor recupera o conflito acima via
+-- get_my_workout_sheet_by_request_id() -- sheet.id ainda não existe localmente numa criação, só
+-- o create_request_id da tentativa. Prova que resolve exatamente a mesma ficha/estado.
+select is(
+  public.get_my_workout_sheet_by_request_id('98000000-0000-0000-0000-000000000001'),
+  public.get_my_workout_sheet((select (result->>'id')::uuid from saved)),
+  'recuperação por create_request_id devolve exatamente o mesmo estado que por id'
+);
+select throws_ok($$select public.get_my_workout_sheet_by_request_id(null)$$,'P0001','SHEET_INVALID_PAYLOAD','request_id nulo rejeitado');
+select throws_ok($$select public.get_my_workout_sheet_by_request_id(gen_random_uuid())$$,'P0001','SHEET_NOT_FOUND','request_id desconhecido não vaza nada');
+reset role;
+select pg_temp.set_test_user('98a00000-0000-0000-0000-000000000002',true);
+set local role authenticated;
+select throws_ok(
+  $$select public.get_my_workout_sheet_by_request_id('98000000-0000-0000-0000-000000000001')$$,
+  'P0001','SHEET_NOT_FOUND','B não recupera a ficha de A pelo create_request_id dela'
+);
+select ok(not has_function_privilege('anon','public.get_my_workout_sheet_by_request_id(uuid)','EXECUTE'),'anônimo sem execução da recuperação por request_id');
+select ok(has_function_privilege('authenticated','public.get_my_workout_sheet_by_request_id(uuid)','EXECUTE'),'autenticado com execução da recuperação por request_id');
+reset role;
+select pg_temp.set_test_user('98a00000-0000-0000-0000-000000000001',true);
+set local role authenticated;
 select throws_ok($$select public.get_my_workout_sheet((select (result->>'id')::uuid from saved),true)$$,'P0001','SHEET_NOT_READY','rascunho não inicia');
 -- Restaura o conteúdo esperado pelo restante do arquivo (metadados usados pelos testes 8+ abaixo),
 -- agora pela via normal de edição -- a aba de criação original já não tem mais uso depois disto.

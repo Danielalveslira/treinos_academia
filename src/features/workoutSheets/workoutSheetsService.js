@@ -8,6 +8,7 @@ async function rpc(name, args) {
   const mutation = ![
     'list_my_workout_sheets',
     'get_my_workout_sheet',
+    'get_my_workout_sheet_by_request_id',
     'get_my_sheet_insights_for_exercise',
   ].includes(name)
   const uid = mutation ? (await supabase.auth.getSession()).data?.session?.user?.id : null
@@ -25,6 +26,10 @@ export const listWorkoutSheets = (archived = false, page = 0) =>
   rpc('list_my_workout_sheets', { p_archived: archived, p_offset: page * 40 })
 export const getWorkoutSheet = (id, execution = false) =>
   rpc('get_my_workout_sheet', { p_sheet_id: id, p_for_execution: execution })
+// Recuperação de conflito durante a CRIAÇÃO (P0, continuação da auditoria): sheet.id ainda não
+// existe no formulário local -- resolve a mesma ficha pelo create_request_id já usado na tentativa.
+export const getWorkoutSheetByRequestId = (requestId) =>
+  rpc('get_my_workout_sheet_by_request_id', { p_request_id: requestId })
 export const duplicateWorkoutSheet = (id, requestId) =>
   rpc('duplicate_workout_sheet', { p_source_id: id, p_request_id: requestId })
 export const archiveWorkoutSheet = (sheet, archived) =>
