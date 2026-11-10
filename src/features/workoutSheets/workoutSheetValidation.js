@@ -49,20 +49,37 @@ export function normalizeSheet(sheet) {
   }
 }
 export const sheetFingerprint = (sheet) => JSON.stringify(normalizeSheet(sheet))
+// Nome do campo para a mensagem de erro e para WorkoutSheetItemEditor saber qual meta abrir/focar.
+const FIELD_LABELS = {
+  target_sets: 'séries-alvo',
+  reps_min: 'repetições mínimas',
+  reps_max: 'repetições máximas',
+  rest_seconds: 'descanso',
+  target_duration_minutes: 'duração',
+  target_distance_km: 'distância',
+  note: 'observação',
+}
+// Estrutura do erro (5.3, auditoria 2026-11-10): antes devolvia uma string genérica ("valor fora
+// do intervalo permitido") sem dizer qual exercício nem qual campo -- o editor não tinha como
+// abrir a meta certa nem focar o campo. Agora devolve { message, exerciseId, field } (ou null se
+// válido); exerciseId/field ficam de fora para erros que não são de um exercício específico
+// (nome, objetivo, dias, duplicidade, limite de itens).
 export function validateSheet(sheet) {
   const value = normalizeSheet(sheet)
-  if (!value.name || value.name.length > 80) return 'Informe um nome de 1 a 80 caracteres.'
-  if (value.goal && !SHEET_GOALS[value.goal]) return 'Objetivo inválido.'
-  if (value.goal_description.length > 500) return 'A descrição deve ter até 500 caracteres.'
+  if (!value.name || value.name.length > 80) return { message: 'Informe um nome de 1 a 80 caracteres.' }
+  if (value.goal && !SHEET_GOALS[value.goal]) return { message: 'Objetivo inválido.' }
+  if (value.goal_description.length > 500)
+    return { message: 'A descrição deve ter até 500 caracteres.' }
   if (
     new Set(value.weekdays).size !== value.weekdays.length ||
     value.weekdays.some((d) => !Number.isInteger(d) || d < 0 || d > 6)
   )
-    return 'Dias inválidos.'
-  if (value.items.length > SHEET_LIMITS.items) return 'Use até 40 exercícios por ficha.'
+    return { message: 'Dias inválidos.' }
+  if (value.items.length > SHEET_LIMITS.items) return { message: 'Use até 40 exercícios por ficha.' }
   if (new Set(value.items.map((item) => item.exercise_id)).size !== value.items.length)
-    return 'Exercício repetido na ficha.'
-  for (const item of value.items) {
+    return { message: 'Exercício repetido na ficha.' }
+  for (const [index, item] of value.items.entries()) {
+    const name = sheet.items[index]?.exercise?.name || `exercício ${index + 1}`
     for (const [key, min, max] of [
       ['target_sets', 1, SHEET_LIMITS.sets],
       ['reps_min', 1, 1000],
@@ -79,11 +96,24 @@ export function validateSheet(sheet) {
           n > max ||
           (key !== 'target_distance_km' && !Number.isInteger(n)))
       )
-        return 'Revise as metas: valor fora do intervalo permitido.'
+        return {
+          message: `Revise "${FIELD_LABELS[key]}" em ${name}: valor fora do intervalo permitido.`,
+          exerciseId: item.exercise_id,
+          field: key,
+        }
     }
     if (item.reps_min != null && item.reps_max != null && item.reps_min > item.reps_max)
-      return 'Repetições mínimas devem ser menores ou iguais às máximas.'
-    if (item.note.length > 300) return 'A observação deve ter até 300 caracteres.'
+      return {
+        message: `Em ${name}, repetições mínimas devem ser menores ou iguais às máximas.`,
+        exerciseId: item.exercise_id,
+        field: 'reps_min',
+      }
+    if (item.note.length > 300)
+      return {
+        message: `A observação de ${name} deve ter até 300 caracteres.`,
+        exerciseId: item.exercise_id,
+        field: 'note',
+      }
   }
   return null
 }

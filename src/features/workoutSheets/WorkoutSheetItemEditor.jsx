@@ -1,4 +1,4 @@
-import { memo, useId, useState } from 'react'
+import { memo, useEffect, useId, useRef, useState } from 'react'
 import {
   Box,
   Button,
@@ -30,7 +30,7 @@ const fields = [
 ]
 // Descanso de um exercício de força: herda o padrão do usuário (rest_seconds nulo) ou tem tempo próprio
 // (qualquer número, inclusive 0 = sem descanso). Vazio no modo específico volta a herdar ao salvar.
-function RestField({ item, name, disabled, defaultRestSeconds, onPatch }) {
+function RestField({ item, name, disabled, defaultRestSeconds, invalid, onPatch }) {
   const inputId = useId()
   const usesDefault = item.rest_seconds == null
   const effectiveDefault = resolveRestSeconds(null, defaultRestSeconds)
@@ -78,6 +78,11 @@ function RestField({ item, name, disabled, defaultRestSeconds, onPatch }) {
           <FormControl.Caption>
             0 desativa o descanso. Vazio volta para o seu padrão.
           </FormControl.Caption>
+          {invalid && (
+            <FormControl.Validation variant="error">
+              Valor fora do intervalo permitido (0 a 900 segundos).
+            </FormControl.Validation>
+          )}
         </FormControl>
       )}
     </Box>
@@ -89,19 +94,37 @@ export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
   total,
   disabled,
   defaultRestSeconds = null,
+  focusField = null,
   onPatch,
   onMove,
   onRemove,
 }) {
   const [expanded, setExpanded] = useState(false)
   const panelId = useId()
+  const containerRef = useRef(null)
   const name = item.exercise?.name || 'Exercício indisponível'
   const cardio = item.exercise?.type === 'cardio'
   // O cronômetro de descanso só existe entre séries: cardio mantém o campo numérico de antes.
   const summary = prescription(item, cardio ? {} : { defaultRestSeconds })
+  // 5.3 (auditoria 2026-11-10): ao salvar com uma meta inválida, abre a seção automaticamente e
+  // foca/rola o campo certo -- em duas renderizações (abrir primeiro, só então o campo existe no
+  // DOM pra focar), por isso dois efeitos nesta MESMA ficha: o 2º reage à própria mudança de
+  // `expanded` desta ficha, nunca corre antes do campo existir.
+  useEffect(() => {
+    if (focusField) setExpanded(true)
+  }, [focusField])
+  useEffect(() => {
+    if (!focusField || !expanded) return
+    const invalid = containerRef.current?.querySelector('[aria-invalid="true"]')
+    if (invalid) {
+      invalid.focus({ preventScroll: true })
+      invalid.scrollIntoView?.({ block: 'center' })
+    }
+  }, [focusField, expanded])
   return (
     <Box
       as="li"
+      ref={containerRef}
       data-sheet-item
       sx={{
         border: '1px solid',
@@ -213,6 +236,11 @@ export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
                   value={item[key] ?? ''}
                   onChange={(event) => onPatch(item.exercise_id, key, event.target.value)}
                 />
+                {focusField === key && (
+                  <FormControl.Validation variant="error">
+                    Valor fora do intervalo permitido.
+                  </FormControl.Validation>
+                )}
               </FormControl>
             ))}
           {!cardio && (
@@ -221,6 +249,7 @@ export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
               name={name}
               disabled={disabled}
               defaultRestSeconds={defaultRestSeconds}
+              invalid={focusField === 'rest_seconds'}
               onPatch={onPatch}
             />
           )}
@@ -234,6 +263,11 @@ export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
               value={item.note || ''}
               onChange={(event) => onPatch(item.exercise_id, 'note', event.target.value)}
             />
+            {focusField === 'note' && (
+              <FormControl.Validation variant="error">
+                A observação deve ter até 300 caracteres.
+              </FormControl.Validation>
+            )}
           </FormControl>
         </Box>
       )}

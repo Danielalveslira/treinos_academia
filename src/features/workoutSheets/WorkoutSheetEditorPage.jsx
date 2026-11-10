@@ -32,6 +32,29 @@ import { WorkoutSheetItemEditor } from './WorkoutSheetItemEditor'
 import { WorkoutSheetExercisePicker } from './WorkoutSheetExercisePicker'
 import { useSheetDiscardGuard } from './useSheetDiscardGuard.js'
 import './workoutSheets.css'
+// Reload-sem-duplicar (P0, auditoria 2026-11-10): se o usuário confirmar "saída sem salvar" do
+// aviso do navegador enquanto uma criação está em voo, o requestId.current em memória se perde e
+// um reload ingênuo mintaria um novo request_id -- duplicando a ficha quando a 1ª tentativa, na
+// verdade, já tinha sido aceita no servidor. Guardamos o request_id pendente da ficha NOVA (nunca
+// de uma edição existente, que não usa idempotency key) só para o MESMO uid+aba retomar a MESMA
+// tentativa; create_workout_sheet() agora reconcilia o retry com o conteúdo atual do formulário
+// em vez de descartá-lo (20261215000002), então retomar é seguro mesmo que o conteúdo tenha mudado.
+const pendingCreateKey = (uid) => `evolutus:sheet:pendingCreate:${uid}`
+function readPendingCreateRequestId(uid) {
+  try {
+    return sessionStorage.getItem(pendingCreateKey(uid)) || null
+  } catch {
+    return null
+  }
+}
+function writePendingCreateRequestId(uid, value) {
+  try {
+    if (value) sessionStorage.setItem(pendingCreateKey(uid), value)
+    else sessionStorage.removeItem(pendingCreateKey(uid))
+  } catch {
+    /* Best-effort only: losing this never duplicates a save, it only loses reload resumption. */
+  }
+}
 function EditorSection({
   id,
   title,
@@ -101,6 +124,7 @@ function EditorSection({
 function Editor({ initial, online }) {
   const { user, profile } = useAuth()
   const defaultRestSeconds = profile?.defaultRestSeconds ?? null
+  const isNew = !initial.id
   const active = useRef(true)
   useEffect(() => {
     active.current = true
@@ -113,7 +137,13 @@ function Editor({ initial, online }) {
   const [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
     [server, setServer] = useState(null)
-  const requestId = useRef(null),
+  // Meta inválida: identifica o exercício/campo (5.3) para WorkoutSheetItemEditor abrir a seção
+  // certa e focar/rolar até o campo -- a própria WorkoutSheetItemEditor expande e foca em
+  // sequência (duas renderizações: abre a seção, só então o campo existe no DOM para focar),
+  // nunca aqui: um efeito aqui correria na mesma passagem da expansão do filho, antes do campo
+  // existir, e nunca rodaria de novo (não depende de nenhum estado que muda depois).
+  const [invalidField, setInvalidField] = useState(null)
+  const requestId = useRef(isNew ? readPendingCreateRequestId(user.uid) : null),
     lock = useRef(false)
   const navigate = useNavigate()
   const dirty = sheetFingerprint(sheet) !== baseline
@@ -126,6 +156,11 @@ function Editor({ initial, online }) {
         item.exercise_id === exerciseId ? { ...item, [key]: value } : item
       ),
     }))
+    // Corrigir o campo apontado como inválido limpa o estado de erro -- nunca deixa aria-invalid
+    // preso num valor que o usuário já mudou.
+    setInvalidField((current) =>
+      current?.exerciseId === exerciseId && current.field === key ? null : current
+    )
   }, [])
   const move = useCallback((index, delta) => {
     setSheet((s) => {
@@ -154,16 +189,20 @@ function Editor({ initial, online }) {
     if (lock.current || !dirty || !online || server) return
     const invalid = validateSheet(sheet)
     if (invalid) {
-      setMessage(invalid)
+      setMessage(invalid.message)
+      setInvalidField(invalid.exerciseId ? { exerciseId: invalid.exerciseId, field: invalid.field } : null)
       return
     }
+    setInvalidField(null)
     lock.current = true
     setBusy(true)
     setMessage('')
-    requestId.current ||= crypto.randomUUID()
+    if (isNew && !requestId.current) requestId.current = crypto.randomUUID()
+    if (isNew) writePendingCreateRequestId(user.uid, requestId.current)
     try {
       const result = await saveWorkoutSheet(sheet, requestId.current, user.uid)
       if (!active.current) return
+      if (isNew) writePendingCreateRequestId(user.uid, null)
       setBaseline(sheetFingerprint(sheet))
       permitNavigation()
       navigate(`/fichas/${result.id}`, { replace: true })
@@ -184,6 +223,7 @@ function Editor({ initial, online }) {
   }
   function cancel() {
     if (!dirty || window.confirm('Descartar as alterações não salvas desta ficha?')) {
+      if (isNew) writePendingCreateRequestId(user.uid, null)
       permitNavigation()
       navigate(initial.id ? `/fichas/${initial.id}` : '/exercicios')
     }
@@ -389,6 +429,7 @@ function Editor({ initial, online }) {
                   total={sheet.items.length}
                   disabled={disabled}
                   defaultRestSeconds={defaultRestSeconds}
+                  focusField={invalidField?.exerciseId === item.exercise_id ? invalidField.field : null}
                   onPatch={patchItem}
                   onMove={move}
                   onRemove={removeItem}
@@ -421,7 +462,7 @@ function Editor({ initial, online }) {
             disabled={!dirty || disabled || Boolean(server)}
             sx={{ flex: ['1', 'initial'] }}
           >
-            {busy ? 'Salvando…' : 'Salvar ficha'}
+            {busy ? 'Salvando…' : sheet.items.length ? 'Salvar ficha' : 'Salvar rascunho'}
           </Button>
         </Box>
       </Box>
