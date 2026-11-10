@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Box, Button, Heading, Spinner, Text } from '@primer/react'
 import {
   ArrowLeftIcon,
@@ -211,8 +211,17 @@ export function ExerciseCatalog({ personalExercises, sheetExerciseIds, onAdd, on
   const [filters, setFilters] = useState({ muscle: '', equipment: '', category: '', level: '' })
   const [selected, setSelected] = useState(null)
   const [addingId, setAddingId] = useState(null)
-  const [addedIds, setAddedIds] = useState(() => new Set())
   const [addErrors, setAddErrors] = useState(() => new Map())
+  // Guarda contra setState após o usuário fechar a ficha/seletor com um "Adicionar" ainda em voo
+  // (continuação da auditoria 2026-11-10, seção 4): sem isso, a resposta tardia tentaria atualizar
+  // addingId/addErrors de um componente já desmontado.
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
   const { muscles, equipment, categories, levels } = useExerciseCatalogTaxonomy()
   const {
     items,
@@ -254,11 +263,14 @@ export function ExerciseCatalog({ personalExercises, sheetExerciseIds, onAdd, on
     setFilters({ muscle: '', equipment: '', category: '', level: '' })
   }
 
-// Na biblioteca ≠ na ficha (auditoria 2026-11-10, seção 5.1): o Catálogo mostrava "Já adicionado"
-// com base só na biblioteca pessoal, bloqueando o clique mesmo quando o exercício não estava na
-// ficha que o usuário está editando agora. libraryExercise() resolve o item pessoal (se existir);
-// inSheet() checa se ELE está entre os IDs da ficha atual; libraryOnly() é o terceiro estado --
-// "reutilizável sem nova gravação na biblioteca, mas ainda não nesta ficha".
+// Na biblioteca ≠ na ficha (auditoria 2026-11-10, seção 5.1); fonte única de verdade (continuação
+// da auditoria, seção 4): "na ficha" deriva SÓ de sheetExerciseIds (prop, a mesma lista de items
+// do editor) -- nunca um estado local paralelo. Um estado local que só cresce (ex.: um Set de
+// "já adicionados" marcado uma vez e nunca revisto) ficaria desatualizado assim que o exercício
+// fosse removido da ficha: o Catálogo continuaria mostrando "Na ficha" para algo que já não está
+// mais lá. addItem()/removeItem() no editor já atualizam sheet.items de forma síncrona antes de
+// onAdd(exercise) devolver, então sheetExerciseIds chega atualizado a tempo do próximo render --
+// nenhum cache local é necessário para refletir isso a tempo.
   function libraryExercise(exercise) {
     return findProviderExercise(
       personalExercises,
@@ -267,7 +279,6 @@ export function ExerciseCatalog({ personalExercises, sheetExerciseIds, onAdd, on
     )
   }
   function isInSheet(exercise) {
-    if (addedIds.has(exercise.id)) return true
     const personal = libraryExercise(exercise)
     return Boolean(personal && sheetExerciseIds?.has(personal.id))
   }
@@ -286,13 +297,14 @@ export function ExerciseCatalog({ personalExercises, sheetExerciseIds, onAdd, on
     })
     try {
       await onAdd(exercise)
-      // Qualquer resultado sem exceção significa que o exercício chegou à ficha -- mesmo quando
-      // `added:false` (já existia na biblioteca): esse flag descreve a biblioteca, não a ficha.
-      setAddedIds((current) => new Set(current).add(exercise.id))
     } catch (error) {
-      setAddErrors((current) => new Map(current).set(exercise.providerExerciseId, catalogAddErrorMessage(error)))
+      if (mounted.current) {
+        setAddErrors((current) =>
+          new Map(current).set(exercise.providerExerciseId, catalogAddErrorMessage(error))
+        )
+      }
     } finally {
-      setAddingId(null)
+      if (mounted.current) setAddingId(null)
     }
   }
 

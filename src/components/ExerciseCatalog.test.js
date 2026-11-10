@@ -42,6 +42,13 @@ before(async () => {
           })
           return tree
         }
+        export function update(tree, props) {
+          act(() => {
+            tree.update(
+              createElement(ThemeProvider, null, createElement(BaseStyles, null, createElement(ExerciseCatalog, props)))
+            )
+          })
+        }
         export { act }
       `,
       resolveDir: componentsDir,
@@ -394,7 +401,33 @@ test('clique duplicado em "Adicionar" nunca dispara uma segunda chamada concorre
   resolveAdd({ added: true })
   await completion
   await settle()
-  assert.ok(buttonWithText(view, /Na ficha/)[0])
+  // "Na ficha" é responsabilidade exclusiva de sheetExerciseIds (prop) -- sem cache local que
+  // marque sozinho (continuação da auditoria, seção 4), o botão volta a "Adicionar" disponível
+  // até o pai confirmar via prop, nunca fica travado em "Adicionando...".
+  assert.ok(buttonWithText(view, /^Adicionar$/)[0], 'volta a clicável, nunca travado em "Adicionando..."')
+  view.unmount()
+})
+
+// Continuação da auditoria (2026-11-10, seção 4): "na ficha" não pode ser um estado local que só
+// cresce -- precisa refletir a remoção também, não só a adição.
+test('fonte única de verdade: "Na ficha" segue sheetExerciseIds (prop), inclusive após remoção', () => {
+  globalThis.__searchResult = {
+    ...BASE_RESULT,
+    items: [exercise({ id: 'c1', name: 'Supino Reto', providerExerciseId: 'Bench_Press' })],
+  }
+  const personalExercises = [
+    { id: 'lib-1', source: 'catalog', provider: 'evolutus_dataset', providerExerciseId: 'Bench_Press' },
+  ]
+  const props = { personalExercises, sheetExerciseIds: new Set(['lib-1']), onAdd: async () => ({ added: false }) }
+  const view = api.mount(props)
+  assert.ok(buttonWithText(view, /Na ficha/)[0], 'presente na ficha atual')
+
+  // O editor removeu o exercício: sheetExerciseIds não tem mais 'lib-1'. O Catálogo precisa
+  // refletir isso IMEDIATAMENTE -- nunca ficar preso em "Na ficha" por causa de um estado local.
+  api.update(view, { ...props, sheetExerciseIds: new Set() })
+  const afterRemoval = buttonWithText(view, /Adicionar à ficha/)[0]
+  assert.ok(afterRemoval, 'removido da ficha volta a "Adicionar à ficha" (continua na biblioteca)')
+  assert.equal(afterRemoval.props.disabled, false)
   view.unmount()
 })
 
