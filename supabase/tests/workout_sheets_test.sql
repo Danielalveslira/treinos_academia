@@ -18,10 +18,19 @@ select throws_ok($$select public.create_workout_sheet(gen_random_uuid(),'Outra c
 create temp table saved as select public.create_workout_sheet('98000000-0000-0000-0000-000000000001',' A ','forca','Meta',array[1,3]::smallint[]) result;
 select is((select count(*)::int from public.workout_sheets),1,'cria ficha própria');
 select is((select name from public.workout_sheets),'A','normaliza nome');
-select lives_ok($$select public.create_workout_sheet('98000000-0000-0000-0000-000000000001','A')$$,'retry de criação');
+select lives_ok($$select public.create_workout_sheet('98000000-0000-0000-0000-000000000001',' A ','forca','Meta',array[1,3]::smallint[])$$,'retry de criação com o mesmo conteúdo');
 select is((select count(*)::int from public.workout_sheets),1,'retry não duplica');
+select is((select revision from public.workout_sheets),(select (result->>'revision')::bigint from saved),'retry idêntico não grava nem incrementa revisão');
+-- P0 (auditoria 2026-11-10): um retry com o MESMO request_id mas conteúdo DIFERENTE do que foi
+-- persistido na 1ª tentativa (edição feita entre o timeout da confirmação e a retentativa) precisa
+-- reconciliar para o conteúdo atual -- nunca descartá-lo silenciosamente a favor do snapshot antigo.
+select lives_ok($$select public.create_workout_sheet('98000000-0000-0000-0000-000000000001','A editada',null,'',array[]::smallint[])$$,'retry com conteúdo diferente reconcilia em vez de descartar a edição');
+select is((select name from public.workout_sheets),'A editada','reconciliação aplica o nome mais recente, não o da 1ª tentativa');
+select is((select goal from public.workout_sheets),null,'reconciliação aplica o objetivo mais recente (removido)');
+select is((select weekdays from public.workout_sheets),'{}'::smallint[],'reconciliação aplica os dias mais recentes (removidos)');
+select isnt((select revision from public.workout_sheets),(select (result->>'revision')::bigint from saved),'conteúdo reconciliado grava e incrementa a revisão, não é tratado como retry idêntico');
 select throws_ok($$select public.get_my_workout_sheet((select (result->>'id')::uuid from saved),true)$$,'P0001','SHEET_NOT_READY','rascunho não inicia');
-select lives_ok($$select public.save_workout_sheet((select (result->>'id')::uuid from saved),(select (result->>'revision')::bigint from saved),'{"name":"A","goal":"forca","goal_description":"Meta","weekdays":[1,3]}','[{"exercise_id":"98e00000-0000-0000-0000-000000000001","target_sets":3,"reps_min":8,"reps_max":12}]')$$,'salva itens transacionalmente');
+select lives_ok($$select public.save_workout_sheet((select (result->>'id')::uuid from saved),(select revision from public.workout_sheets),'{"name":"A","goal":"forca","goal_description":"Meta","weekdays":[1,3]}','[{"exercise_id":"98e00000-0000-0000-0000-000000000001","target_sets":3,"reps_min":8,"reps_max":12}]')$$,'salva itens transacionalmente');
 create temp table current_sheet as select id,revision from public.workout_sheets;
 create temp table item_before as select id from public.workout_sheet_exercises;
 select lives_ok($$select public.get_my_workout_sheet((select id from current_sheet),true)$$,'servidor confirma execução');
