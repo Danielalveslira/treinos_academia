@@ -91,6 +91,31 @@ select is(
 select throws_ok($$select public.get_my_workout_sheet((select (result->>'id')::uuid from sheet_a))$$,'P0001','SHEET_NOT_FOUND','ficha excluída não é mais consultável/editável, mesmo pelo dono');
 select is(jsonb_array_length(public.list_my_workout_sheets(true)),0,'ficha excluída não aparece na lista de arquivadas, mesmo tendo archived_at preenchido');
 select is((public.get_my_sheet_insights()->'sheets'),'[]'::jsonb,'ficha excluída não aparece no painel da Home');
+-- Continuação (2026-11-10): cada RPC de MUTAÇÃO testada individualmente contra a ficha já
+-- excluída -- não basta a leitura falhar, nenhuma delas pode editar/arquivar/duplicar a partir
+-- dela, mesmo que a linha-mãe continue existindo como tombstone.
+-- SHEET_NOT_FOUND dispara antes de qualquer checagem de revisão (ver a 1ª query de cada RPC):
+-- o valor de revisão usado abaixo é irrelevante de propósito, nunca lido pelas RPCs neste caminho.
+select throws_ok(
+  format($$select public.save_workout_sheet('%s',999,'{"name":"Reviver","weekdays":[]}','[]')$$,
+    (select (result->>'id')::uuid from sheet_a)),
+  'P0001','SHEET_NOT_FOUND','não é possível salvar/editar planejamento de uma ficha excluída'
+);
+select throws_ok(
+  format($$select public.set_workout_sheet_archived('%s',false,999)$$,
+    (select (result->>'id')::uuid from sheet_a)),
+  'P0001','SHEET_NOT_FOUND','não é possível (des)arquivar uma ficha excluída'
+);
+select throws_ok(
+  format($$select public.duplicate_workout_sheet('%s',gen_random_uuid())$$,
+    (select (result->>'id')::uuid from sheet_a)),
+  'P0001','SHEET_NOT_FOUND','não é possível duplicar a partir de uma ficha excluída'
+);
+reset role;
+select is((select count(*)::int from public.workout_sheets where deleted_at is not null),1,'nenhuma das tentativas acima criou, reviveu ou alterou outra linha (visão sem RLS)');
+select is((select count(*)::int from public.workout_sheets),1,'nenhuma ficha nova foi criada (a duplicação falhou antes de inserir)');
+set local role authenticated;
+select pg_temp.set_test_user('99a00000-0000-0000-0000-000000000001',true);
 
 select throws_ok(
   format($$select public.delete_workout_sheet('%s',1)$$,(select (result->>'id')::uuid from sheet_a)),

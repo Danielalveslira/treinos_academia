@@ -29,7 +29,31 @@ select is((select name from public.workout_sheets),'A editada','reconciliação 
 select is((select goal from public.workout_sheets),null,'reconciliação aplica o objetivo mais recente (removido)');
 select is((select weekdays from public.workout_sheets),'{}'::smallint[],'reconciliação aplica os dias mais recentes (removidos)');
 select isnt((select revision from public.workout_sheets),(select (result->>'revision')::bigint from saved),'conteúdo reconciliado grava e incrementa a revisão, não é tratado como retry idêntico');
+-- Continuação da auditoria (2026-11-10): se OUTRA aba editou a mesma ficha pela via normal
+-- (save_workout_sheet, usando a revisão real que ela buscou) ENTRE duas retentativas desta MESMA
+-- aba de criação, a retentativa seguinte não pode sobrescrever essa edição às cegas -- precisa
+-- virar SHEET_VERSION_CONFLICT, igual a qualquer outro conflito de revisão.
+select lives_ok(
+  format($$select public.save_workout_sheet('%s',(select revision from public.workout_sheets),'{"name":"Editado por outra aba","weekdays":[]}','[]')$$,
+    (select (result->>'id')::uuid from saved)),
+  'outra aba edita normalmente, com a revisão real que buscou'
+);
+create temp table after_foreign_edit as select name,revision from public.workout_sheets;
+select throws_ok(
+  $$select public.create_workout_sheet('98000000-0000-0000-0000-000000000001','Minha aba tenta de novo',null,'',array[]::smallint[])$$,
+  'P0001','SHEET_VERSION_CONFLICT',
+  'retentativa da aba de criação original, alheia à edição de outra aba, vira conflito -- nunca sobrescreve'
+);
+select is((select name from public.workout_sheets),(select name from after_foreign_edit),'conteúdo da outra aba permanece intacto após o conflito');
+select is((select revision from public.workout_sheets),(select revision from after_foreign_edit),'revisão da outra aba permanece intacta após o conflito');
 select throws_ok($$select public.get_my_workout_sheet((select (result->>'id')::uuid from saved),true)$$,'P0001','SHEET_NOT_READY','rascunho não inicia');
+-- Restaura o conteúdo esperado pelo restante do arquivo (metadados usados pelos testes 8+ abaixo),
+-- agora pela via normal de edição -- a aba de criação original já não tem mais uso depois disto.
+select lives_ok(
+  format($$select public.save_workout_sheet('%s',(select revision from public.workout_sheets),'{"name":"A","goal":"forca","goal_description":"Meta","weekdays":[1,3]}','[]')$$,
+    (select (result->>'id')::uuid from saved)),
+  'conteúdo restaurado pela via normal de edição, com a revisão real atual'
+);
 select lives_ok($$select public.save_workout_sheet((select (result->>'id')::uuid from saved),(select revision from public.workout_sheets),'{"name":"A","goal":"forca","goal_description":"Meta","weekdays":[1,3]}','[{"exercise_id":"98e00000-0000-0000-0000-000000000001","target_sets":3,"reps_min":8,"reps_max":12}]')$$,'salva itens transacionalmente');
 create temp table current_sheet as select id,revision from public.workout_sheets;
 create temp table item_before as select id from public.workout_sheet_exercises;
