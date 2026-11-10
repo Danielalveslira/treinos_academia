@@ -1,53 +1,61 @@
-import { getWorkoutSheetByRequestId } from './workoutSheetsService.js'
-
-// Reload-sem-duplicar (P0, auditoria 2026-11-10): se o usuário confirmar "saída sem salvar" do
-// aviso do navegador enquanto uma criação está em voo, o requestId.current em memória se perde e
-// um reload ingênuo mintaria um novo request_id -- duplicando a ficha quando a 1ª tentativa, na
-// verdade, já tinha sido aceita no servidor. Guardamos o request_id pendente da ficha NOVA (nunca
-// de uma edição existente, que não usa idempotency key) só para o MESMO uid+aba retomar a MESMA
-// tentativa; create_workout_sheet() agora reconcilia o retry com o conteúdo atual do formulário
-// em vez de descartá-lo (20261215000002), então retomar é seguro mesmo que o conteúdo tenha mudado.
+// Retomada de criação pendente -- P0, continuação da auditoria 2026-11-10.
+//
+// Uma tentativa anterior de criação (lost ACK, reload, duplo clique) NUNCA pode ser resolvida
+// adivinhando pelo tempo: nenhum intervalo fixo prova que uma transação em outro lugar terminou.
+// A versão anterior desta correção consultava o servidor ("existe?") com algumas retentativas
+// distribuídas em ~1,3s antes de desistir -- uma mitigação por estimativa de tempo, não uma
+// garantia. Substituída por uma abordagem determinística: o cliente nunca tenta adivinhar se a
+// tentativa original já comitou; ele guarda o PRÓPRIO payload validado (o mesmo que enviaria de
+// novo) sob a MESMA identidade (create_request_id) e, na próxima ação do usuário (salvar ou
+// cancelar), reenvia por essa identidade através de create_workout_sheet -- cuja serialização
+// (lock por conta, já existente desde 20261122000001) resolve a ordem de qualquer concorrência
+// no próprio Postgres, não no cliente:
+//   - se a tentativa original ainda estiver em execução, a nova chamada espera o MESMO lock que
+//     ela já segura e só prossegue depois que a transação dela terminar;
+//   - se ela já comitou, create_workout_sheet encontra a linha pelo request_id e reconcilia
+//     (20261215000002) -- nunca cria uma segunda;
+//   - se ela nunca chegou ao banco, esta chamada cria a ficha pela primeira (e única) vez.
+// Nenhuma pergunta "existe?" precisa de resposta antes disso -- por isso não há mais janela de
+// corrida nenhuma para adivinhar.
 const pendingCreateKey = (uid) => `evolutus:sheet:pendingCreate:${uid}`
-export function readPendingCreateRequestId(uid) {
+const SNAPSHOT_VERSION = 1
+
+// Estrutura mínima pra identificar e refazer a tentativa: a identidade (request_id) e o payload
+// validado da ficha (nome/objetivo/dias/itens -- os mesmos campos que create_workout_sheet já
+// recebe). Nunca um token, nunca uma credencial. Validação de formato/versão/integridade na
+// leitura: um valor corrompido ou de um formato antigo nunca é interpretado -- é tratado como
+// "nada pendente", nunca como prova de qualquer coisa sobre o servidor.
+export function readPendingCreateSnapshot(uid) {
   try {
-    return sessionStorage.getItem(pendingCreateKey(uid)) || null
+    const raw = sessionStorage.getItem(pendingCreateKey(uid))
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (
+      parsed?.version !== SNAPSHOT_VERSION ||
+      typeof parsed.requestId !== 'string' ||
+      !parsed.requestId ||
+      typeof parsed.sheet !== 'object' ||
+      parsed.sheet === null ||
+      typeof parsed.sheet.name !== 'string' ||
+      !Array.isArray(parsed.sheet.items)
+    )
+      return null
+    return { requestId: parsed.requestId, sheet: parsed.sheet }
   } catch {
     return null
   }
 }
-export function writePendingCreateRequestId(uid, value) {
+export function writePendingCreateSnapshot(uid, requestId, sheet) {
   try {
-    if (value) sessionStorage.setItem(pendingCreateKey(uid), value)
-    else sessionStorage.removeItem(pendingCreateKey(uid))
-  } catch {
-    /* Best-effort only: losing this never duplicates a save, it only loses reload resumption. */
-  }
-}
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-// Confirma SHEET_NOT_FOUND com uma pequena tolerância -- nunca polling contínuo: um número fixo e
-// pequeno de tentativas extras (~1,3s no total, por padrão). Um reload pode acontecer entre o
-// servidor confirmar a criação original (INSERT já comitado) e o cliente sequer receber a
-// resposta; uma única consulta imediata depois do reload não prova que a tentativa nunca
-// aconteceu, só que ainda não tinha comitado NAQUELE instante (P0, continuação da auditoria
-// 2026-11-10). Qualquer outro erro (rede, sessão) nunca é tratado como prova de inexistência --
-// devolve 'check-failed' imediatamente, sem repetir. `fetchSheet`/`delays` são parâmetros só para
-// o teste injetar um dublê e tempos zerados; produção sempre usa os padrões.
-export async function resolvePendingCreate(
-  requestId,
-  { fetchSheet = getWorkoutSheetByRequestId, delays = [400, 900] } = {},
-  attempt = 0
-) {
-  try {
-    return { status: 'found', sheet: await fetchSheet(requestId) }
-  } catch (error) {
-    if (String(error?.message || '').includes('SHEET_NOT_FOUND')) {
-      if (attempt < delays.length) {
-        await sleep(delays[attempt])
-        return resolvePendingCreate(requestId, { fetchSheet, delays }, attempt + 1)
-      }
-      return { status: 'confirmed-missing' }
+    if (requestId && sheet) {
+      sessionStorage.setItem(
+        pendingCreateKey(uid),
+        JSON.stringify({ version: SNAPSHOT_VERSION, requestId, sheet })
+      )
+    } else {
+      sessionStorage.removeItem(pendingCreateKey(uid))
     }
-    return { status: 'check-failed', error }
+  } catch {
+    /* Best-effort only: perder isto nunca duplica nem sobrescreve -- só perde a retomada. */
   }
 }

@@ -19,6 +19,7 @@ import { useOnlineStatus as useOnline } from '../../hooks/useOnlineStatus'
 import { useAuth } from '../../hooks/useAuth'
 import { useWorkoutSheets } from './useWorkoutSheets.js'
 import {
+  deleteWorkoutSheet,
   getWorkoutSheet,
   getWorkoutSheetByRequestId,
   saveWorkoutSheet,
@@ -33,11 +34,7 @@ import {
   sheetFingerprint,
   validateSheet,
 } from './workoutSheetValidation.js'
-import {
-  readPendingCreateRequestId,
-  resolvePendingCreate,
-  writePendingCreateRequestId,
-} from './pendingCreate.js'
+import { readPendingCreateSnapshot, writePendingCreateSnapshot } from './pendingCreate.js'
 import { WorkoutSheetItemEditor } from './WorkoutSheetItemEditor'
 import { WorkoutSheetExercisePicker } from './WorkoutSheetExercisePicker'
 import { useSheetDiscardGuard } from './useSheetDiscardGuard.js'
@@ -108,7 +105,7 @@ function EditorSection({
     </Box>
   )
 }
-function Editor({ initial, online }) {
+function Editor({ initial, online, resumedRequestId = null }) {
   const { user, profile } = useAuth()
   const defaultRestSeconds = profile?.defaultRestSeconds ?? null
   const isNew = !initial.id
@@ -120,8 +117,12 @@ function Editor({ initial, online }) {
     }
   }, [])
   const [sheet, setSheet] = useState(initial)
-  const [baseline, setBaseline] = useState(() => sheetFingerprint(initial))
+  // Retomando uma tentativa de criação não confirmada: a linha de base nunca é a ficha retomada
+  // em si (sheetFingerprint('') nunca bate com nada real) -- Salvar precisa ficar disponível de
+  // imediato para o usuário poder confirmar/reconciliar a tentativa, mesmo sem alterar nada.
+  const [baseline, setBaseline] = useState(() => (resumedRequestId ? '' : sheetFingerprint(initial)))
   const [busy, setBusy] = useState(false),
+    [cancelling, setCancelling] = useState(false),
     [message, setMessage] = useState(''),
     [server, setServer] = useState(null)
   // Meta inválida: identifica o exercício/campo (5.3) para WorkoutSheetItemEditor abrir a seção
@@ -130,7 +131,7 @@ function Editor({ initial, online }) {
   // nunca aqui: um efeito aqui correria na mesma passagem da expansão do filho, antes do campo
   // existir, e nunca rodaria de novo (não depende de nenhum estado que muda depois).
   const [invalidField, setInvalidField] = useState(null)
-  const requestId = useRef(isNew ? readPendingCreateRequestId(user.uid) : null),
+  const requestId = useRef(resumedRequestId),
     lock = useRef(false)
   const navigate = useNavigate()
   const dirty = sheetFingerprint(sheet) !== baseline
@@ -185,11 +186,15 @@ function Editor({ initial, online }) {
     setBusy(true)
     setMessage('')
     if (isNew && !requestId.current) requestId.current = crypto.randomUUID()
-    if (isNew) writePendingCreateRequestId(user.uid, requestId.current)
+    // Guarda o payload validado sob a MESMA identidade antes de enviar (não só o id): se a
+    // resposta se perder e a página recarregar, a próxima visita retoma exatamente este payload
+    // -- nunca precisa adivinhar se o servidor já confirmou (P0, continuação da auditoria
+    // 2026-11-10). create_workout_sheet() resolve a identidade de forma determinística por si só.
+    if (isNew) writePendingCreateSnapshot(user.uid, requestId.current, sheet)
     try {
       const result = await saveWorkoutSheet(sheet, requestId.current, user.uid)
       if (!active.current) return
-      if (isNew) writePendingCreateRequestId(user.uid, null)
+      if (isNew) writePendingCreateSnapshot(user.uid, null, null)
       setBaseline(sheetFingerprint(sheet))
       permitNavigation()
       navigate(`/fichas/${result.id}`, { replace: true })
@@ -212,12 +217,44 @@ function Editor({ initial, online }) {
       if (active.current) setBusy(false)
     }
   }
-  function cancel() {
-    if (!dirty || window.confirm('Descartar as alterações não salvas desta ficha?')) {
-      if (isNew) writePendingCreateRequestId(user.uid, null)
-      permitNavigation()
-      navigate(initial.id ? `/fichas/${initial.id}` : '/exercicios')
+  async function cancel() {
+    if (dirty && !window.confirm('Descartar as alterações não salvas desta ficha?')) return
+    // Uma identidade de criação já foi usada (agora ou numa tentativa anterior retomada): só
+    // limpar o marcador local não basta -- a tentativa original pode comitar depois, deixando uma
+    // ficha "fantasma" que o usuário nunca pediu. Resolve pela MESMA identidade (determinístico,
+    // via o lock por conta de create_workout_sheet) e desfaz com o tombstone já existente de
+    // delete_workout_sheet -- nenhuma tabela nova, mesma ordem de locks da criação (P0,
+    // continuação da auditoria 2026-11-10).
+    const snapshot = isNew ? readPendingCreateSnapshot(user.uid) : null
+    if (snapshot) {
+      if (!online) {
+        window.alert(
+          'Cancelar esta ficha exige conexão: é preciso confirmar no servidor que a tentativa anterior não ficará pendente. Tente novamente ao reconectar.'
+        )
+        return
+      }
+      setCancelling(true)
+      try {
+        const resolved = await saveWorkoutSheet(snapshot.sheet, snapshot.requestId, user.uid)
+        await deleteWorkoutSheet({ id: resolved.id, revision: resolved.revision })
+        writePendingCreateSnapshot(user.uid, null, null)
+      } catch (error) {
+        if (!String(error?.message || '').includes('SHEET_VERSION_CONFLICT')) {
+          if (active.current) {
+            setCancelling(false)
+            window.alert('Não foi possível confirmar o cancelamento agora. Tente novamente.')
+          }
+          return
+        }
+        // Outra aba já assumiu esta identidade com edições reais: cancelar aqui nunca apaga o
+        // trabalho dela -- só solta o marcador local, a ficha dela permanece intacta.
+        writePendingCreateSnapshot(user.uid, null, null)
+      }
+      if (!active.current) return
+      setCancelling(false)
     }
+    permitNavigation()
+    navigate(initial.id ? `/fichas/${initial.id}` : '/exercicios')
   }
   function acceptServer() {
     setSheet(server)
@@ -237,12 +274,18 @@ function Editor({ initial, online }) {
     setServer(null)
     setMessage('Versão atual carregada para comparação. Revise sua edição e salve novamente.')
   }
-  const disabled = busy || !online
+  const disabled = busy || cancelling || !online
   return (
     <Box as="section" className="workout-sheets">
       <Box sx={{ display: 'grid', gap: 2, mb: 3 }}>
-        <Button type="button" variant="invisible" onClick={cancel} sx={{ justifySelf: 'start' }}>
-          Voltar
+        <Button
+          type="button"
+          variant="invisible"
+          disabled={cancelling}
+          onClick={cancel}
+          sx={{ justifySelf: 'start' }}
+        >
+          {cancelling ? 'Cancelando…' : 'Voltar'}
         </Button>
         <Heading as="h1" sx={{ m: 0 }}>
           {initial.id ? 'Editar ficha' : 'Criar ficha'}
@@ -251,6 +294,12 @@ function Editor({ initial, online }) {
           Organize sua rotina. Objetivo, dias e metas são opcionais.
         </Text>
       </Box>
+      {resumedRequestId && !server && (
+        <Flash variant="warning" sx={{ mb: 3 }}>
+          Uma tentativa de criação anterior não foi confirmada. Revise os dados abaixo e salve
+          para concluir, ou cancele.
+        </Flash>
+      )}
       {!online && (
         <Flash variant="warning" sx={{ mb: 3 }}>
           Fichas exigem conexão. Sua edição permanece nesta tela; reconecte para salvar.
@@ -450,8 +499,13 @@ function Editor({ initial, online }) {
             gap: 2,
           }}
         >
-          <Button type="button" disabled={busy} onClick={cancel} sx={{ flex: ['1', 'initial'] }}>
-            Cancelar
+          <Button
+            type="button"
+            disabled={busy || cancelling}
+            onClick={cancel}
+            sx={{ flex: ['1', 'initial'] }}
+          >
+            {cancelling ? 'Cancelando…' : 'Cancelar'}
           </Button>
           <Button
             type="submit"
@@ -476,64 +530,21 @@ export default function WorkoutSheetEditorPage() {
 function NewEditor() {
   const { user, offlineLocal } = useAuth()
   const online = useOnline()
-  // Retomada segura após reload: o sessionStorage só guarda o request_id, nunca o conteúdo do
-  // formulário -- a retomada sempre reconcilia explicitamente com o servidor em vez de confiar
-  // cegamente no id ou em um EMPTY_SHEET silencioso.
-  //   - encontrada: vira edição normal da ficha real (nunca mais tenta criar);
-  //   - ausência CONFIRMADA (SHEET_NOT_FOUND mesmo após a tolerância): só agora é seguro soltar o
-  //     identificador antigo e abrir um rascunho novo e independente;
-  //   - qualquer outra falha (rede, sessão): preserva o identificador e mostra erro com Tentar
-  //     novamente -- nunca expõe um formulário em branco escrevendo por baixo dos panos sobre um
-  //     id que pode pertencer a uma ficha já real, o que modificaria a ficha errada no próximo
-  //     salvar em vez de criar uma de verdade.
-  const [state, setState] = useState({ status: 'checking' })
-  const mounted = useRef(true)
-  const checking = useRef(false)
-  useEffect(() => {
-    mounted.current = true
-    return () => {
-      mounted.current = false
-    }
-  }, [])
-  const check = useCallback(() => {
-    if (checking.current) return
-    const pending = readPendingCreateRequestId(user.uid)
-    if (!pending) {
-      setState({ status: 'ready', initial: EMPTY_SHEET })
-      return
-    }
-    checking.current = true
-    setState({ status: 'checking' })
-    resolvePendingCreate(pending).then((result) => {
-      checking.current = false
-      if (!mounted.current) return
-      if (result.status === 'found') {
-        writePendingCreateRequestId(user.uid, null)
-        setState({ status: 'ready', initial: result.sheet })
-      } else if (result.status === 'confirmed-missing') {
-        writePendingCreateRequestId(user.uid, null)
-        setState({ status: 'ready', initial: EMPTY_SHEET })
-      } else {
-        setState({ status: 'error' })
-      }
-    })
-  }, [user.uid])
-  useEffect(() => {
-    check()
-  }, [check])
-  if (state.status === 'checking') return <Spinner aria-label="Carregando editor" />
-  if (state.status === 'error') {
-    return (
-      <section className="workout-sheets">
-        <Link to="/exercicios">Voltar</Link>
-        <Flash role="alert" variant="danger">
-          Não foi possível confirmar uma tentativa de criação pendente. Verifique a conexão antes
-          de continuar. <Button onClick={check}>Tentar novamente</Button>
-        </Flash>
-      </section>
-    )
-  }
-  return <Editor initial={state.initial} online={online && !offlineLocal} />
+  // Retomada determinística (P0, continuação da auditoria 2026-11-10): nenhuma consulta ao
+  // servidor decide o que mostrar aqui -- leitura síncrona e local do snapshot validado da
+  // última tentativa (se houver). O formulário é restaurado tal como estava; a identidade
+  // (create_request_id) e a resolução (existe/está em execução/nunca chegou) ficam inteiramente
+  // a cargo de create_workout_sheet() na próxima vez que o usuário salvar ou cancelar -- nunca
+  // de uma estimativa de tempo no cliente.
+  const snapshot = useRef(undefined)
+  if (snapshot.current === undefined) snapshot.current = readPendingCreateSnapshot(user.uid)
+  return (
+    <Editor
+      initial={snapshot.current?.sheet || EMPTY_SHEET}
+      resumedRequestId={snapshot.current?.requestId || null}
+      online={online && !offlineLocal}
+    />
+  )
 }
 function ExistingEditor({ id }) {
   const { data, loading, error, refresh, online } = useWorkoutSheets(id)
