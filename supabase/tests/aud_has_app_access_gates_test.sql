@@ -334,8 +334,10 @@ select throws_ok($$select public.create_promotion('post','9c000000-0000-0000-000
 reset role;
 
 -- ===== 14) sponsored_ads_select (leitura; braco global e braco de comunidade) =====
+-- Os dois espaços precisam estar liberados; a regra administrativa agora vale para legados.
+update public.advertising_placements set delivery_enabled=true where code in ('home_banner','community_feed');
 insert into public.sponsored_ads(id,created_by,partner_name,title,is_global,community_ids,display_mode) values
-  ('9d000000-0000-0000-0000-000000000001','9a000000-0000-0000-0000-000000000006','Parceiro Gate','Anuncio global',true,'{}',array['feed']),
+  ('9d000000-0000-0000-0000-000000000001','9a000000-0000-0000-0000-000000000006','Parceiro Gate','Anuncio global',true,'{}',array['banner']),
   ('9d000000-0000-0000-0000-000000000002','9a000000-0000-0000-0000-000000000006','Parceiro Gate','Anuncio C1',false,array['9b000000-0000-0000-0000-000000000001']::uuid[],array['feed']);
 set local role authenticated;
 select pg_temp.as_user('1');
