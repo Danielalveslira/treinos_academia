@@ -91,6 +91,11 @@ select ok(not exists(select 1 from jsonb_array_elements(public.select_advertisin
   where x->>'id'='76950000-0000-0000-0000-000000000001'),'contrato de Progresso não ganha direito à Home');
 reset role;
 select is((select cash_balance from public.wallets where user_id='76930000-0000-0000-0000-000000000003'),86,'um débito de 14 EvoCash');
+select is((select status from public.commercial_orders where resource_id='76950000-0000-0000-0000-000000000001'),'fulfilled','pedido de Progresso foi contratado');
+select is((select count(*)::integer from public.commercial_orders where resource_id='76950000-0000-0000-0000-000000000001' and status='fulfilled'),1,'confirmação repetida não gera segundo contrato');
+select ok(exists(select 1 from public.visibility_entitlements e join public.commercial_orders o on o.id=e.origin_order_id
+  where e.resource_id='76950000-0000-0000-0000-000000000001' and o.offering_code='ad_progress'
+    and e.administrative_state='enabled' and e.starts_at<=clock_timestamp() and e.expires_at>clock_timestamp()),'contrato autoriza a janela vigente do Progresso');
 select is((select count(*)::integer from private.advertising_reservations r join public.commercial_orders o on o.id=r.order_id
   where o.resource_id='76950000-0000-0000-0000-000000000001' and r.placement_code='progress_banner'),1,'uma reserva exclusiva no Progresso');
 
@@ -117,6 +122,8 @@ select pg_temp.set_test_user('76930000-0000-0000-0000-000000000003',true);
 set local role authenticated;
 select is(public.get_advertiser_metrics((select (value#>>'{}')::uuid from progress_results where name='account'),30,null,null,
   '76950000-0000-0000-0000-000000000001',null,'progress_banner')#>>'{summary,visible_impressions}','1','relatório do anunciante mostra a impressão no Progresso');
+select is(public.get_advertiser_metrics((select (value#>>'{}')::uuid from progress_results where name='account'),30,null,null,
+  '76950000-0000-0000-0000-000000000001',null,'progress_banner')#>>'{summary,clicks}','1','relatório do anunciante mostra o clique no Progresso');
 reset role;
 update public.advertising_placements set sales_enabled=false where code='progress_banner';
 set local role authenticated;
