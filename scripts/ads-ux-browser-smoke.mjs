@@ -51,10 +51,19 @@ async function getAdvertisingCampaigns(accountId, after = null) {
   track('get_advertising_campaigns', { accountId, after })
   return [...store.values()].sort((a, b) => (a.ad_id < b.ad_id ? 1 : -1))
 }
+async function getAdvertisingSalesStatus() {
+  track('advertising_sales_status', {})
+  return [
+    { code: 'home_banner', salesEnabled: true },
+    { code: 'progress_banner', salesEnabled: false },
+    { code: 'community_banner', salesEnabled: true },
+    { code: 'community_feed', salesEnabled: true },
+  ]
+}
 async function createAdvertisingCampaign(accountId, values, requestId) {
   track('create_advertising_campaign', { accountId, values, requestId })
   const id = 'new-ad-' + ++seq
-  seed({ ad_id: id, state: 'draft', moderation_state: 'draft', title: values.title, description: values.description, destination: values.destination, delivery_state: 'private', placements: [{ code: values.placement === 'home_banner' ? 'home_banner' : values.placement === 'network' ? 'home_banner' : values.placement, context: values.communityId || '00000000-0000-0000-0000-000000000000' }] })
+  seed({ ad_id: id, state: 'draft', moderation_state: 'draft', title: values.title, description: values.description, destination: values.destination, delivery_state: 'private', placements: [{ code: values.placement, context: values.communityId || '00000000-0000-0000-0000-000000000000' }] })
   return id
 }
 async function editAdvertisingCampaign(campaign, values, submit, desiredDays = null) {
@@ -105,8 +114,14 @@ await build({
     {
       name: 'synthetic-fixtures',
       setup(b) {
-        b.onResolve({ filter: /hooks\/useAuth$/ }, () => ({ path: 'fx', namespace: 'fixture-auth' }))
-        b.onResolve({ filter: /advertisers\.api(?:\.js)?$/ }, () => ({ path: 'fx', namespace: 'fixture-catalog' }))
+        b.onResolve({ filter: /hooks\/useAuth$/ }, () => ({
+          path: 'fx',
+          namespace: 'fixture-auth',
+        }))
+        b.onResolve({ filter: /advertisers\.api(?:\.js)?$/ }, () => ({
+          path: 'fx',
+          namespace: 'fixture-catalog',
+        }))
         b.onResolve({ filter: /services\/advertisingService(?:\.js)?$/ }, () => ({
           path: 'fx',
           namespace: 'fixture-ads',
@@ -119,7 +134,10 @@ await build({
           path: 'fx',
           namespace: 'fixture-storefront',
         }))
-        b.onResolve({ filter: /\/supabase\/config(?:\.js)?$/ }, () => ({ path: 'fx', namespace: 'fixture-backend' }))
+        b.onResolve({ filter: /\/supabase\/config(?:\.js)?$/ }, () => ({
+          path: 'fx',
+          namespace: 'fixture-backend',
+        }))
         const shared = fixture
         b.onLoad({ filter: /.*/, namespace: 'fixture-auth' }, () => ({
           contents: shared + '\nexport { useAuth }',
@@ -132,7 +150,7 @@ await build({
         b.onLoad({ filter: /.*/, namespace: 'fixture-ads' }, () => ({
           contents:
             shared +
-            '\nexport { createAdvertisingAccount, getAdvertisingCampaigns, createAdvertisingCampaign, editAdvertisingCampaign, interruptAdvertisingCampaign, archiveAdvertisingCampaign, getAdvertisingRevisions, getAdvertisingOrders, getCommunityAdvertisingPermissions, configureCommunityAdvertising }',
+            '\nexport { createAdvertisingAccount, getAdvertisingCampaigns, getAdvertisingSalesStatus, createAdvertisingCampaign, editAdvertisingCampaign, interruptAdvertisingCampaign, archiveAdvertisingCampaign, getAdvertisingRevisions, getAdvertisingOrders, getCommunityAdvertisingPermissions, configureCommunityAdvertising }',
           loader: 'js',
         }))
         b.onLoad({ filter: /.*/, namespace: 'fixture-communities' }, () => ({
@@ -202,8 +220,14 @@ try {
 
       // Sales disabled never shows a misleading contracting CTA (review item 5): exactly
       // the one campaign with sales open offers it, the one with sales closed never does.
-      assert.equal(await page.getByRole('button', { name: 'Contratar publicação', exact: true }).count(), 1)
-      await page.getByRole('button', { name: 'Contratações ainda indisponíveis', exact: true }).first().waitFor()
+      assert.equal(
+        await page.getByRole('button', { name: 'Contratar publicação', exact: true }).count(),
+        1
+      )
+      await page
+        .getByRole('button', { name: 'Contratações ainda indisponíveis', exact: true })
+        .first()
+        .waitFor()
 
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
@@ -211,7 +235,10 @@ try {
         'no horizontal overflow at width ' + width
       )
       assert.equal(await page.evaluate(() => document.documentElement.dataset.colorMode), theme)
-      await page.screenshot({ path: join(tmpdir(), `ads-ux-${width}-${theme}.png`), fullPage: true })
+      await page.screenshot({
+        path: join(tmpdir(), `ads-ux-${width}-${theme}.png`),
+        fullPage: true,
+      })
       assert.deepEqual(errors, [])
       await context.close()
       results.push({ width, theme, passed: true })
@@ -227,6 +254,10 @@ try {
     // Exactly one campaign is genuinely live, so the button is unambiguous without scoping
     // to its card.
     await page.getByRole('button', { name: 'Ver anúncio', exact: true }).click()
+    const bannerPreview = page.getByLabel('Prévia do anúncio')
+    await bannerPreview.locator('.sponsored-ad-banner').waitFor()
+    assert.equal(await bannerPreview.locator('.sponsored-ad-media, img').count(), 0)
+    assert.equal(await bannerPreview.getByText('Promoção de lançamento').count(), 0)
     const destino = page.getByRole('link', { name: 'Abrir destino do anúncio', exact: true })
     await destino.waitFor()
     assert.equal(await destino.getAttribute('href'), 'https://example.invalid/whey')
@@ -235,7 +266,24 @@ try {
     await context.close()
   }
 
-  // Full creation wizard: "network" never forces a community (review item 4), the draft is
+  // Banner only previews the fields it actually displays.
+  {
+    const context = await browser.newContext({ viewport: { width: 390, height: 900 } })
+    const page = await context.newPage()
+    await page.goto(origin + '/')
+    await page.getByRole('button', { name: 'Criar anúncio', exact: true }).click()
+    await page.getByText('Página inicial', { exact: true }).click()
+    await page.getByRole('button', { name: 'Avançar', exact: true }).click()
+    assert.equal(await page.getByLabel('Descrição curta').count(), 0)
+    assert.equal(await page.locator('input[type=file]').count(), 0)
+    await page.getByLabel('Nome e título do anúncio').fill('Título do banner')
+    const preview = page.getByLabel('Prévia do anúncio')
+    await preview.locator('.sponsored-ad-banner').waitFor()
+    assert.equal(await preview.locator('.sponsored-ad-card, .sponsored-ad-media').count(), 0)
+    await context.close()
+  }
+
+  // Full creation wizard: only sellable locations appear; the draft is
   // created before the image can be attached, duration is a stored intention only, and the
   // final submission shows the real state returned by the fixture (never an assumed one).
   {
@@ -243,14 +291,27 @@ try {
     const page = await context.newPage()
     await page.goto(origin + '/')
     await page.getByRole('button', { name: 'Criar anúncio', exact: true }).click()
-    await page.getByText('Vários espaços do Evolutus', { exact: true }).click()
+    await page.getByText('Feed da comunidade', { exact: true }).click()
+    assert.equal(await page.getByText('Vários espaços do Evolutus', { exact: true }).count(), 0)
+    assert.equal(await page.getByText('Progresso', { exact: true }).count(), 0)
+    await page.getByLabel('Comunidade que você administra').selectOption('c1')
     const advance1 = page.getByRole('button', { name: 'Avançar', exact: true })
-    assert.equal(await advance1.isDisabled(), false, 'network must not require a community up front')
+    assert.equal(await advance1.isDisabled(), false, 'feed com comunidade autorizada pode avançar')
     await advance1.click()
 
     await page.getByLabel('Nome e título do anúncio').fill('Novo anúncio E2E')
+    await page.getByLabel('Descrição curta').fill('Descrição exibida no feed')
     await page.getByLabel('Link de destino (HTTPS)').fill('https://example.invalid/novo')
-    assert.equal(await page.getByText('Salve os dados para habilitar o envio de imagem.', { exact: true }).count(), 1)
+    const feedPreview = page.getByLabel('Prévia do anúncio')
+    await feedPreview.locator('.sponsored-ad-card').waitFor()
+    assert.equal(await feedPreview.locator('.sponsored-ad-banner').count(), 0)
+    await feedPreview.getByText('Descrição exibida no feed').waitFor()
+    assert.equal(
+      await page
+        .getByText('Salve os dados para habilitar o envio de imagem.', { exact: true })
+        .count(),
+      1
+    )
     await page.getByRole('button', { name: 'Salvar dados', exact: true }).click()
     await page
       .getByText('Salve os dados para habilitar o envio de imagem.', { exact: true })
@@ -266,7 +327,9 @@ try {
     await page.getByText('Status atual: Em análise.', { exact: false }).waitFor()
     assert.equal(
       await page.evaluate(() =>
-        window.__adsCalls.some((c) => c.name === 'edit_advertising_campaign' && c.args.submit === true)
+        window.__adsCalls.some(
+          (c) => c.name === 'edit_advertising_campaign' && c.args.submit === true
+        )
       ),
       true
     )
@@ -295,7 +358,9 @@ try {
 } catch (error) {
   for (const context of browser?.contexts() || [])
     for (const page of context.pages()) {
-      await page.screenshot({ path: join(tmpdir(), 'ads-ux-failure.png'), fullPage: true }).catch(() => {})
+      await page
+        .screenshot({ path: join(tmpdir(), 'ads-ux-failure.png'), fullPage: true })
+        .catch(() => {})
       console.error(
         'BROWSER_DIAGNOSTIC',
         await page

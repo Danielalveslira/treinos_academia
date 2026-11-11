@@ -6,6 +6,7 @@ export const PLACEMENT_LABELS = {
   home_banner: 'Banner na página inicial',
   community_banner: 'Banner da comunidade',
   community_feed: 'Feed da comunidade',
+  progress_banner: 'Banner no Progresso',
   network: 'Vários espaços do Evolutus',
 }
 

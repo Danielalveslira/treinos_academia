@@ -1,6 +1,7 @@
 \ir _helpers/auth_session.sql
 begin;
 select no_plan();
+update public.advertising_placements set delivery_enabled=true where code='community_feed';
 
 -- ..01 dono da comunidade A | ..02 membro que será banido | ..03 membro de controle | ..04 sem vínculo | ..05 superadmin
 insert into auth.users (

@@ -22,6 +22,7 @@ before(async () => {
         import { MemoryRouter } from 'react-router-dom'
         import { SponsoredAdBanner } from './SponsoredAdBanner.jsx'
         import { SponsoredAdCard } from './SponsoredAdCard.jsx'
+        import AdvertisingCreativePreview from './advertising/AdvertisingCreativePreview.jsx'
 
         const textOf = (node) =>
           typeof node === 'string' ? node : (node.children || []).map(textOf).join('')
@@ -52,7 +53,7 @@ before(async () => {
         }
 
         export function render(kind, props) {
-          const Component = kind === 'banner' ? SponsoredAdBanner : SponsoredAdCard
+          const Component = kind === 'banner' ? SponsoredAdBanner : kind === 'preview' ? AdvertisingCreativePreview : SponsoredAdCard
           return renderToStaticMarkup(
             React.createElement(MemoryRouter, null, React.createElement(Component, props))
           )
@@ -68,6 +69,21 @@ before(async () => {
     logLevel: 'silent',
     jsx: 'automatic',
     loader: { '.js': 'jsx' },
+    plugins: [
+      {
+        name: 'stub-storefront-image',
+        setup(bundle) {
+          bundle.onResolve({ filter: /StorefrontImage$/ }, () => ({
+            path: 'image',
+            namespace: 'test-stub',
+          }))
+          bundle.onLoad({ filter: /.*/, namespace: 'test-stub' }, () => ({
+            contents: 'export default function StorefrontImage() { return null }',
+            loader: 'js',
+          }))
+        },
+      },
+    ],
   })
   ;({ render, mountBanner } = createRequire(import.meta.url)(outfile))
 })
@@ -122,6 +138,43 @@ test('banner: CTA interno é link do roteador; sem CTA não há link; rodízio m
     /<button[^>]*sponsored-ad-banner-next[^>]*aria-label="Próximo patrocínio \(1 de 2\)"/
   )
   assert.doesNotMatch(multi, /sponsored-ad-banner-dot/)
+})
+
+test('banner do Progresso usa apenas um bloco compacto e não renderiza espaço vazio', () => {
+  assert.equal(render('banner', { ads: [], placement: 'progress_banner' }), '')
+  const html = render('banner', { ads: [ad()], placement: 'progress_banner' })
+  assert.match(html, /sponsored-ad-banner--progress/)
+  assert.equal((html.match(/<aside/g) || []).length, 1)
+  assert.match(html, /Patrocinado/)
+})
+
+test('prévia mostra imagem e descrição somente no card do feed', () => {
+  const props = {
+    partnerName: 'Marca X',
+    title: 'Oferta de teste',
+    description: 'Descrição exclusiva do feed',
+    mediaId: 'media-test',
+  }
+  for (const placement of ['home_banner', 'progress_banner', 'community_banner']) {
+    const html = render('preview', { ...props, placements: [placement] })
+    assert.match(html, /sponsored-ad-banner/)
+    assert.doesNotMatch(
+      html,
+      /sponsored-ad-media|sponsored-ad-description|Descrição exclusiva do feed/
+    )
+    assert.doesNotMatch(html, /<a\b/)
+  }
+  const feed = render('preview', { ...props, placements: ['community_feed'] })
+  assert.match(feed, /sponsored-ad-media/)
+  assert.match(feed, /Descrição exclusiva do feed/)
+  assert.doesNotMatch(feed, /<a\b/)
+  const optional = render('preview', {
+    ...props,
+    description: '',
+    mediaId: null,
+    placements: ['community_feed'],
+  })
+  assert.doesNotMatch(optional, /sponsored-ad-media|sponsored-ad-description/)
 })
 
 test('banner: amostra de 1 com eligibleTotal maior mostra "+N" (nunca uma posição falsa como "1/4")', () => {

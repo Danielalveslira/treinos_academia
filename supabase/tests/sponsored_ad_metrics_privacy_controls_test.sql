@@ -4,6 +4,7 @@
 -- 05 adulto membro (oposição) | 06 adolescente que vira 18 amanhã.
 begin;
 select no_plan();
+update public.advertising_placements set delivery_enabled=true where code='community_banner';
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 select ('b6000000-0000-0000-0000-00000000000' || n)::uuid, 'authenticated', 'authenticated', 'priv' || n || '@example.invalid', 'x', now(), '{}', '{}', now(), now() from generate_series(1, 6) n;

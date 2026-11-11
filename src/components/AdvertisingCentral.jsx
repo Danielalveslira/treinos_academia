@@ -5,7 +5,7 @@ import { commercialError } from '../utils/commercial'
 import AdStatusCard from './advertising/AdStatusCard'
 import CreateAdWizard from './advertising/CreateAdWizard'
 
-export default function AdvertisingCentral({ accountId }) {
+export default function AdvertisingCentral({ accountId, accountName }) {
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [wizard, setWizard] = useState(null) // null | { editing: campaign|null }
@@ -34,6 +34,7 @@ export default function AdvertisingCentral({ accountId }) {
     return (
       <CreateAdWizard
         accountId={accountId}
+        accountName={accountName}
         existingDraft={wizard.editing}
         onCancel={() => setWizard(null)}
         onDone={async () => {
@@ -46,7 +47,15 @@ export default function AdvertisingCentral({ accountId }) {
 
   return (
     <Box sx={{ mt: 3, minWidth: 0 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 2,
+        }}
+      >
         <Heading as="h2" sx={{ fontSize: 2 }}>
           Meus anúncios
         </Heading>

@@ -25,8 +25,9 @@ from generate_series(1,5)i;
 -- Uma campanha já vencida: nunca deve aparecer na amostra, mesmo sendo global.
 insert into public.sponsored_ads(id,partner_name,title,is_global,display_mode,expires_at,created_by)
 values('76920000-0000-0000-0000-000000000001','Marca vencida','Campanha vencida',true,array['banner'],statement_timestamp()-interval '1 hour','76900000-0000-0000-0000-000000000002');
+-- A entrega legada agora respeita explicitamente o gate administrativo.
 reset role;
-
+update public.advertising_placements set delivery_enabled=true where code='home_banner';
 select pg_temp.rot_viewer();
 
 -- Configuração interna não é legível pelo papel authenticated; conferir como

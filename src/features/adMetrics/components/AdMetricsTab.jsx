@@ -120,7 +120,9 @@ function ContextList({ rows, total, truncated }) {
             <Text sx={{ display: 'block', fontWeight: 'bold', overflowWrap: 'anywhere' }}>
               {row.placement === 'home_banner'
                 ? 'Home'
-                : row.community_name || 'Comunidade removida'}
+                : row.placement === 'progress_banner'
+                  ? 'Progresso'
+                  : row.community_name || 'Comunidade removida'}
             </Text>
             <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted' }}>
               {placementLabel(row.placement)}
@@ -287,7 +289,7 @@ export default function AdMetricsTab({
   const scopedCommunities = useMemo(() => {
     const rows = new Map((communities || []).map((row) => [row.id, row]))
     for (const row of snapshot?.by_context || [])
-      if (row.placement !== 'home_banner')
+      if (!['home_banner', 'progress_banner'].includes(row.placement))
         rows.set(row.context_id, {
           id: row.context_id,
           name: row.community_name || 'Comunidade removida',

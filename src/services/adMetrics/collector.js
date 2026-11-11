@@ -26,21 +26,26 @@ export const MAX_CLICKS_PER_SESSION_KEY = 3
 // Se o timer de qualificação dispara muito depois do prazo, a aba foi congelada/dormiu: o período é descartado.
 const MAX_LATE_MS = 2000
 
-export const PLACEMENTS = ['home_banner', 'community_banner', 'community_feed']
+export const PLACEMENTS = ['home_banner', 'community_banner', 'community_feed', 'progress_banner']
+// Home e Progresso são posicionamentos globais, sem comunidade -- mesma regra que o servidor
+// aplica em record_ad_events (campo `community` ausente/null para os dois).
+const NO_COMMUNITY_PLACEMENTS = ['home_banner', 'progress_banner']
 
 const contextOf = (placement, communityId) =>
-  placement === 'home_banner' ? 'home' : String(communityId)
+  NO_COMMUNITY_PLACEMENTS.includes(placement) ? 'home' : String(communityId)
 const sessionKey = (meta) =>
   `${contextOf(meta.placement, meta.communityId)}|${meta.placement}|${meta.adId}`
 
 function validMeta(meta) {
   if (!meta || typeof meta.adId !== 'string' || !PLACEMENTS.includes(meta.placement)) return false
-  return meta.placement === 'home_banner' ? !meta.communityId : typeof meta.communityId === 'string'
+  return NO_COMMUNITY_PLACEMENTS.includes(meta.placement)
+    ? !meta.communityId
+    : typeof meta.communityId === 'string'
 }
 
 function toEvent(id, type, meta) {
   const event = { id, type, ad: meta.adId, placement: meta.placement }
-  if (meta.placement !== 'home_banner') event.community = meta.communityId
+  if (!NO_COMMUNITY_PLACEMENTS.includes(meta.placement)) event.community = meta.communityId
   return event
 }
 

@@ -2003,6 +2003,16 @@ body:has(.pwa-offline) .app-shell {
   border-radius: var(--fitness-radius-md);
   background: var(--fitness-surface);
 }
+.sponsored-ad-banner--progress {
+  min-height: 0;
+  margin: 12px 0;
+  padding: 10px 12px;
+  row-gap: 3px;
+}
+.sponsored-ad-banner--progress .sponsored-ad-banner-cta {
+  min-height: 36px;
+  margin-top: 2px;
+}
 /* CTA em linha própria: largura total, texto centralizado e com respiro de 16px nas laterais */
 .sponsored-ad-banner-content,
 .sponsored-ad-banner-meta,

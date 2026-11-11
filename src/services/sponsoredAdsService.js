@@ -86,6 +86,19 @@ export async function listGlobalSponsoredAds() {
   return data.map((row) => toDoc(row, requestStartedAt))
 }
 
+// Mesmo padrão de listGlobalSponsoredAds, pro banner compacto de /progresso: posicionamento
+// independente (progress_banner nunca herda campanhas do home_banner -- ver migration
+// 20261216000001_advertising_legacy_delivery_scope_fix.sql).
+export async function listProgressSponsoredAds() {
+  const requestStartedAt = performance.now()
+  const { data, error } = await supabase.rpc('select_advertising', {
+    p_placement: 'progress_banner',
+    p_context: null,
+  })
+  if (error) throw error
+  return data.map((row) => toDoc(row, requestStartedAt))
+}
+
 function sponsoredAdFields(ad) {
   const hasCta = Boolean(ad.ctaLabel?.trim())
   return {
@@ -110,10 +123,24 @@ function sponsoredAdFields(ad) {
 // usado pra destacar o seletor certo).
 import { SponsoredAdCapError, SponsoredAdGlobalCapError } from '../utils/validators'
 
+// A criação de anúncio legado novo está bloqueada por design desde que o fluxo de campanhas
+// existe (trigger enforce_sponsored_ad_caps, ver 20261205000002_advertising_campaigns.sql) --
+// a UI não oferece mais essa ação, mas a mensagem clara fica aqui como rede de segurança.
+// Editar isGlobal/comunidades/displayMode/expiresAt de um legado já publicado também é
+// bloqueado (congelado após a publicação) -- SponsoredAdForm.jsx já trava esses campos na
+// tela, então chegar aqui também seria só uma rede de segurança.
+const LEGACY_AD_ERRORS = {
+  USE_ADVERTISING_CAMPAIGN_FLOW:
+    'Novos anúncios usam o fluxo de campanhas do anunciante (Central comercial → Anunciantes).',
+  LEGACY_AD_SCOPE_FROZEN:
+    'Local de exibição, comunidades, formato e validade ficam fixos depois que o anúncio é publicado.',
+}
+
 function translateCapError(error) {
   if (error?.message === 'GLOBAL_AD_CAP_REACHED') return new SponsoredAdGlobalCapError()
   const match = /^COMMUNITY_AD_CAP_REACHED:(.+)$/.exec(error?.message || '')
   if (match) return new SponsoredAdCapError(match[1])
+  if (LEGACY_AD_ERRORS[error?.message]) return new Error(LEGACY_AD_ERRORS[error.message])
   return error
 }
 

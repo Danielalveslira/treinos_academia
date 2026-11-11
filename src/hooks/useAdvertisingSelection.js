@@ -18,6 +18,10 @@ export function useAdvertisingSelection(placementScope, enabled, fetchAds) {
     let generation = 0
     const recovery = createAdvertisingRecovery()
     let expiryTimer
+    let inFlight = false
+    let queued = false
+    let subscribedOnce = false
+    let lastForegroundAt = -Infinity
     function publish(data, current) {
       if (!live || current !== generation) return
       const active = authorizedAds(data, performance.now())
@@ -32,6 +36,13 @@ export function useAdvertisingSelection(placementScope, enabled, fetchAds) {
     }
     async function load() {
       if (document.hidden || !live) return
+      if (inFlight) {
+        queued = true
+        generation++
+        setState({ scope, data: [], loading: true, error: null })
+        return
+      }
+      inFlight = true
       clearTimeout(expiryTimer)
       const current = ++generation
       setState({ scope, data: [], loading: true, error: null })
@@ -39,6 +50,7 @@ export function useAdvertisingSelection(placementScope, enabled, fetchAds) {
       if (lease === null) {
         setState({ scope, data: [], loading: false, error: null })
         advertisingOperationalEvent(scope, 'recovery_exhausted')
+        inFlight = false
         return
       }
       try {
@@ -72,11 +84,25 @@ export function useAdvertisingSelection(placementScope, enabled, fetchAds) {
           setState({ scope, data: [], loading: false, error })
           advertisingOperationalEvent(scope, advertisingFailureType(error))
         }
+      } finally {
+        inFlight = false
+        if (queued && live && !document.hidden) {
+          queued = false
+          load()
+        }
       }
     }
     const foreground = () => {
-      if (!document.hidden) load()
+      if (!document.hidden) {
+        const now = performance.now()
+        if (now - lastForegroundAt < 120) return
+        lastForegroundAt = now
+        load()
+      }
       else {
+        clearTimeout(expiryTimer)
+        queued = false
+        lastForegroundAt = -Infinity
         generation++
         setState({ scope, data: [], loading: false, error: null })
       }
@@ -96,7 +122,12 @@ export function useAdvertisingSelection(placementScope, enabled, fetchAds) {
         recovery.status(status)
         if (status === 'SUBSCRIBED') {
           advertisingOperationalEvent(scope, 'channel_recovered')
-          load()
+          // A primeira inscrição acompanha a consulta inicial; não precisa repetí-la.
+          if (subscribedOnce) {
+            lastForegroundAt = -Infinity
+            load()
+          }
+          subscribedOnce = true
         } else if (['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED'].includes(status)) {
           advertisingOperationalEvent(scope, 'channel_unavailable')
           load()

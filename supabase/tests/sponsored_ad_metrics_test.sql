@@ -10,6 +10,7 @@
 -- A concorrência real (várias conexões) fica em sponsored_ad_metrics_concurrency.sh.
 begin;
 select no_plan();
+update public.advertising_placements set delivery_enabled=true where code in ('home_banner','community_banner','community_feed');
 
 -- ---------------------------------------------------------------------------------------------------
 -- Fixtures

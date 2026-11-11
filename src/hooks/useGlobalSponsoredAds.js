@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react'
-import { listGlobalSponsoredAds } from '../services/sponsoredAdsService'
+import { listGlobalSponsoredAds, listProgressSponsoredAds } from '../services/sponsoredAdsService'
 import { selectBannerAds } from '../utils/sponsoredAds'
 import { useAdExpiryTick } from './useAdExpiryTick'
 import { useAdvertisingSelection } from './useAdvertisingSelection'
@@ -12,13 +12,16 @@ const NO_ADS = []
 // `enabled` só precisa ser "usuário autenticado" (não uma checagem de participação em
 // comunidade, como em useSponsoredAds.js): a policy de leitura de um anúncio is_global
 // só exige auth.uid() is not null, sem depender de community_members.
-export function useGlobalSponsoredAds(enabled) {
-  const fetchAds = useCallback(() => listGlobalSponsoredAds(), [])
+export function useGlobalSponsoredAds(enabled, placement = 'home_banner') {
+  const fetchAds = useCallback(
+    () => (placement === 'progress_banner' ? listProgressSponsoredAds() : listGlobalSponsoredAds()),
+    [placement]
+  )
   const {
     data: ads = NO_ADS,
     loading,
     error,
-  } = useAdvertisingSelection(CACHE_KEY, enabled, fetchAds)
+  } = useAdvertisingSelection(`${CACHE_KEY}:${placement}`, enabled, fetchAds)
 
   // Só o modo "banner" importa aqui: a Home nunca renderiza card de feed, então um anúncio isGlobal com
   // displayMode apenas ['feed'] não deveria aparecer nela.

@@ -25,10 +25,11 @@ test('formatação: pt-BR, CTR nulo vira traço (nunca 0% inventado)', () => {
   assert.equal(formatDay('2026-10-09'), '09/10')
 })
 
-test('rótulos de posicionamento são legíveis e cobrem os três valores', () => {
+test('rótulos de posicionamento são legíveis e cobrem os quatro valores', () => {
   assert.equal(placementLabel('home_banner'), 'Banner da Home')
   assert.equal(placementLabel('community_banner'), 'Banner da comunidade')
   assert.equal(placementLabel('community_feed'), 'Card no feed da comunidade')
+  assert.equal(placementLabel('progress_banner'), 'Banner no Progresso')
   assert.equal(placementLabel('x'), 'Posição desconhecida')
 })
 

@@ -141,7 +141,11 @@ function AdvertiserPortal({ userId }) {
           <Box hidden={tab !== 'campaigns'}>
             <Suspense fallback={<Spinner aria-label="Carregando anúncios" />}>
               {account.can_manage ? (
-                <AdvertisingCentral key={accountId} accountId={accountId} />
+                <AdvertisingCentral
+                  key={accountId}
+                  accountId={accountId}
+                  accountName={account.name}
+                />
               ) : (
                 <Text as="p">Sua conta não tem permissão para gerenciar campanhas.</Text>
               )}
