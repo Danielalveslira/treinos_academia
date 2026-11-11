@@ -20,6 +20,7 @@ import {
 import { listActiveCommunities } from '../../services/communitiesService'
 import { uploadStorefrontImage } from '../../services/storefrontService'
 import StorefrontImage from '../StorefrontImage'
+import AdvertisingCreativePreview from './AdvertisingCreativePreview'
 import CommunityAdvertisingPermissions from '../CommunityAdvertisingPermissions'
 import { useAuth } from '../../hooks/useAuth'
 import { commercialError } from '../../utils/commercial'
@@ -75,7 +76,13 @@ function clearProgress(accountId) {
   }
 }
 
-export default function CreateAdWizard({ accountId, existingDraft, onDone, onCancel }) {
+export default function CreateAdWizard({
+  accountId,
+  accountName,
+  existingDraft,
+  onDone,
+  onCancel,
+}) {
   const { user } = useAuth()
   const resuming = loadSaved(accountId)
   const [step, setStep] = useState(existingDraft ? 2 : resuming?.step || 1)
@@ -145,6 +152,10 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
     : PLACEMENT_LABELS[placement] || placement
   const communityRequired = placement === 'community_banner' || placement === 'community_feed'
   const communityOffered = communityRequired
+  const previewPlacements = existingDraft?.placements || [placement]
+  const hasFeed = previewPlacements.some(
+    (item) => (typeof item === 'string' ? item : item.code) === 'community_feed'
+  )
   const availableOptions = PLACEMENT_OPTIONS.filter(
     (opt) =>
       salesStatus?.some((row) => row.code === opt.code && row.salesEnabled) &&
@@ -326,15 +337,17 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
               onChange={(e) => setValues({ ...values, title: e.target.value })}
             />
           </FormControl>
-          <FormControl>
-            <FormControl.Label>Descrição curta</FormControl.Label>
-            <Textarea
-              block
-              maxLength={500}
-              value={values.description}
-              onChange={(e) => setValues({ ...values, description: e.target.value })}
-            />
-          </FormControl>
+          {hasFeed && (
+            <FormControl>
+              <FormControl.Label>Descrição curta</FormControl.Label>
+              <Textarea
+                block
+                maxLength={500}
+                value={values.description}
+                onChange={(e) => setValues({ ...values, description: e.target.value })}
+              />
+            </FormControl>
+          )}
           <FormControl required>
             <FormControl.Label>Link de destino (HTTPS)</FormControl.Label>
             <TextInput
@@ -346,12 +359,12 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
               onChange={(e) => setValues({ ...values, destination: e.target.value })}
             />
           </FormControl>
-          {!draft && (
+          {hasFeed && !draft && (
             <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', mb: 2 }}>
               Salve os dados para habilitar o envio de imagem.
             </Text>
           )}
-          {draft && (
+          {hasFeed && draft && (
             <FormControl disabled={busy}>
               <FormControl.Label>Imagem do anúncio (opcional)</FormControl.Label>
               <input
@@ -366,15 +379,14 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
               {values.media_id && <StorefrontImage id={values.media_id} size={160} />}
             </FormControl>
           )}
-          <Box
-            sx={{ my: 3, p: 2, bg: 'canvas.subtle', borderRadius: 2 }}
-            aria-label="Prévia do anúncio"
-          >
-            {values.media_id && <StorefrontImage id={values.media_id} size={160} />}
-            <Text as="p" sx={{ fontWeight: 'bold' }}>
-              {values.title || 'Seu anúncio'}
-            </Text>
-            <Text as="p">{values.description}</Text>
+          <Box sx={{ my: 3 }}>
+            <AdvertisingCreativePreview
+              placements={previewPlacements}
+              partnerName={accountName}
+              title={values.title}
+              description={values.description}
+              mediaId={values.media_id}
+            />
           </Box>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             {/* Placement is immutable once the draft exists (edit_advertising_campaign has
@@ -436,15 +448,17 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
       {step === 4 && (
         <Box>
           <Box sx={{ p: 2, bg: 'canvas.subtle', borderRadius: 2, mb: 3 }}>
-            {values.media_id && <StorefrontImage id={values.media_id} size={160} />}
-            <Text as="p" sx={{ fontWeight: 'bold' }}>
-              {values.title}
-            </Text>
-            <Text as="p">{values.description}</Text>
             <Text as="p">Destino: {values.destination}</Text>
             <Text as="p">Local: {placementDisplay}</Text>
             <Text as="p">Duração desejada: {desiredDays} dia(s)</Text>
           </Box>
+          <AdvertisingCreativePreview
+            placements={previewPlacements}
+            partnerName={accountName}
+            title={values.title}
+            description={values.description}
+            mediaId={values.media_id}
+          />
           <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', mb: 2 }}>
             Enviar para aprovação é gratuito. Você só autoriza o uso de EvoCash na contratação.
           </Text>

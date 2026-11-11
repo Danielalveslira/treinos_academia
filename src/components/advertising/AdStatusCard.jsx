@@ -9,6 +9,7 @@ import {
 import CommercialLeasePurchase from '../CommercialLeasePurchase'
 import CommercialOrderHistory from '../CommercialOrderHistory'
 import StorefrontImage from '../StorefrontImage'
+import AdvertisingCreativePreview from './AdvertisingCreativePreview'
 import { deriveAdStatus } from '../../utils/advertisingStatus'
 import { placementsSummary } from '../../utils/placementLabels'
 import { commercialDate, commercialError } from '../../utils/commercial'
@@ -28,6 +29,7 @@ const BADGE_VARIANT = {
 
 export default function AdStatusCard({ campaign, onChange, onEdit }) {
   const status = deriveAdStatus(campaign)
+  const hasFeed = campaign.placements?.some((item) => item.code === 'community_feed')
   const [expanded, setExpanded] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [revisions, setRevisions] = useState(null)
@@ -62,10 +64,7 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
           {action.label}
         </Button>
       )
-    if (action.type === 'wait')
-      return (
-        <Button disabled>{action.label}</Button>
-      )
+    if (action.type === 'wait') return <Button disabled>{action.label}</Button>
     if (action.type === 'contract' || action.type === 'view_schedule' || action.type === 'view') {
       return (
         <Button variant="primary" onClick={() => setExpanded(true)}>
@@ -91,7 +90,7 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
       }}
     >
       <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', minWidth: 0 }}>
-        {campaign.media_id ? (
+        {hasFeed && campaign.media_id ? (
           <StorefrontImage id={campaign.media_id} size={64} />
         ) : (
           <Box
@@ -107,7 +106,7 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
             }}
             aria-hidden="true"
           >
-            <Text sx={{ fontSize: 0, color: 'fg.muted' }}>sem imagem</Text>
+            <Text sx={{ fontSize: 0, color: 'fg.muted' }}>{hasFeed ? 'sem imagem' : 'Banner'}</Text>
           </Box>
         )}
         <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -159,15 +158,17 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
           )}
 
           {status.key === 'live' && (
-            <Box sx={{ mt: 2, p: 2, bg: 'canvas.subtle', borderRadius: 2 }} aria-label="Prévia do anúncio">
+            <Box sx={{ mt: 2 }}>
               <Text sx={{ display: 'block', fontSize: 0, color: 'fg.muted', mb: 1 }}>
                 Prévia — a posição e a rotação reais no app variam.
               </Text>
-              {campaign.media_id && <StorefrontImage id={campaign.media_id} size={160} />}
-              <Text as="p" sx={{ fontWeight: 'bold' }}>
-                {campaign.title}
-              </Text>
-              {campaign.description && <Text as="p">{campaign.description}</Text>}
+              <AdvertisingCreativePreview
+                placements={campaign.placements}
+                partnerName={campaign.partner_name}
+                title={campaign.title}
+                description={campaign.description}
+                mediaId={campaign.media_id}
+              />
               {campaign.destination && (
                 <Button
                   as="a"
