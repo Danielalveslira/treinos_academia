@@ -585,20 +585,25 @@ begin
 end;
 $$;
 
--- RLS de `sponsored_ads` (policy sponsored_ads_select) hardcodava 'home_banner' no ramo de
--- linha gerida -- sem isso, uma campanha gerida só de progress_banner nunca passaria RLS em
--- leitura direta da tabela (hoje nenhum caminho de cliente faz essa leitura direta fora do
--- admin, mas é a fronteira de segurança declarada: não deve ficar incompleta). Corpo idêntico
--- ao de 20261205000013_advertising_rls_gate.sql, só somando a checagem de progress_banner.
+-- A policy roda com privilégios do usuário; a tabela administrativa de posicionamentos
+-- permanece privada. Este helper faz apenas a checagem booleana, sem expor inventário.
+create function private.legacy_ad_readable(p_global boolean,p_modes text[],p_communities uuid[]) returns boolean
+language sql stable security definer set search_path='' as $$
+ select coalesce((p_global and 'banner'=any(p_modes) and auth.uid() is not null and exists(
+   select 1 from public.advertising_placements p where p.code='home_banner' and p.delivery_enabled))
+  or exists(select 1 from public.community_members cm join public.advertising_placements p
+    on p.surface='community' and p.delivery_enabled and p.content_type=any(p_modes)
+    where cm.user_id=auth.uid() and cm.community_id=any(p_communities)),false)
+$$;
+revoke all on function private.legacy_ad_readable(boolean,text[],uuid[]) from public,anon,service_role;
+grant execute on function private.legacy_ad_readable(boolean,text[],uuid[]) to authenticated;
+
+-- RLS de `sponsored_ads` também precisa reconhecer campanhas próprias do Progresso.
 drop policy sponsored_ads_select on public.sponsored_ads;
 create policy sponsored_ads_select on public.sponsored_ads for select using(coalesce(public.has_app_access(),false) and (
  public.is_superadmin() or
  (commercial_resource_id is null and (expires_at is null or expires_at>statement_timestamp()) and
- ((is_global and auth.uid() is not null and 'banner'=any(display_mode) and exists(
-   select 1 from public.advertising_placements p where p.code='home_banner' and p.delivery_enabled))
-  or exists(select 1 from public.community_members cm join public.advertising_placements p
-    on p.surface='community' and p.delivery_enabled and p.content_type=any(display_mode)
-    where cm.user_id=auth.uid() and cm.community_id=any(community_ids))))
+ private.legacy_ad_readable(is_global,display_mode,community_ids))
  or (commercial_resource_id is not null and coalesce(public.has_app_access(),false) and
  (private.advertising_eligible(id,'home_banner',null) or private.advertising_eligible(id,'progress_banner',null) or exists(select 1 from unnest(community_ids) c where public.is_community_member(c) and (private.advertising_eligible(id,'community_banner',c) or private.advertising_eligible(id,'community_feed',c)))))));
 
