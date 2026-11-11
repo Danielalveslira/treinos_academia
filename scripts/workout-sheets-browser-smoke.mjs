@@ -767,7 +767,9 @@ try {
           true
         )
 
-        await page.getByRole('button', { name: 'Salvar ficha', exact: true }).click()
+        // Still no exercises at this point: the button reads "Salvar rascunho", not "Salvar
+        // ficha" (continuation of the audit, 2026-11-10, section 5.4/11).
+        await page.getByRole('button', { name: 'Salvar rascunho', exact: true }).click()
         await page.getByRole('heading', { name: 'Rascunho novo', exact: true }).waitFor()
         assert.equal(
           await page.getByRole('button', { name: 'Iniciar treino', exact: true }).isDisabled(),

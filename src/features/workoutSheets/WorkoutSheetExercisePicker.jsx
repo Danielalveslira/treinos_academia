@@ -72,8 +72,11 @@ export const WorkoutSheetExercisePicker = memo(function WorkoutSheetExercisePick
   }
   const addOfficial = useCallback(
     async (item) => {
-      if (disabled)
-        throw new Error('Seleção indisponível. Verifique a conexão e o limite de exercícios.')
+      if (disabled) {
+        const error = new Error('Seleção indisponível. Verifique a conexão e o limite de exercícios.')
+        error.userMessage = error.message
+        throw error
+      }
       const result = await addFromCatalog(item)
       const exercise =
         result.exercise ||
@@ -235,6 +238,7 @@ export const WorkoutSheetExercisePicker = memo(function WorkoutSheetExercisePick
                 <Suspense fallback={<Spinner aria-label="Carregando catálogo" />}>
                   <Catalog
                     personalExercises={exercises}
+                    sheetExerciseIds={selected}
                     onAdd={addOfficial}
                     onClose={returnToLibrary}
                   />

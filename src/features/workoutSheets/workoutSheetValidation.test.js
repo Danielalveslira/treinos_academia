@@ -53,6 +53,42 @@ test('rascunho permitido, limites e números rejeitados antes do envio', () => {
   )
   assert.deepEqual(normalizeSheet({ ...sheet, weekdays: [6, 0] }).weekdays, [0, 6])
 })
+// 5.3 (auditoria 2026-11-10): o erro aponta exercício e campo, não só uma mensagem genérica --
+// o editor usa exerciseId/field pra abrir a seção certa e focar o campo específico.
+test('meta inválida identifica o exercício e o campo (5.3), não só uma mensagem genérica', () => {
+  const twoItems = {
+    ...sheet,
+    items: [
+      { exercise_id: 'one', exercise: { name: 'Supino' }, target_sets: 3 },
+      { exercise_id: 'two', exercise: { name: 'Remada' }, target_sets: 11 },
+    ],
+  }
+  const result = validateSheet(twoItems)
+  assert.equal(result.exerciseId, 'two')
+  assert.equal(result.field, 'target_sets')
+  assert.match(result.message, /Remada/)
+  assert.match(result.message, /séries-alvo/)
+
+  const repsOrder = validateSheet({
+    ...sheet,
+    items: [{ exercise_id: 'one', exercise: { name: 'Supino' }, reps_min: 12, reps_max: 8 }],
+  })
+  assert.equal(repsOrder.exerciseId, 'one')
+  assert.equal(repsOrder.field, 'reps_min')
+
+  const longNote = validateSheet({
+    ...sheet,
+    items: [{ exercise_id: 'one', exercise: { name: 'Supino' }, note: 'n'.repeat(301) }],
+  })
+  assert.equal(longNote.exerciseId, 'one')
+  assert.equal(longNote.field, 'note')
+
+  // Erros que não são de um exercício específico (nome/objetivo/dias/duplicidade) não têm
+  // exerciseId/field -- nada pra abrir ou focar numa meta.
+  const nameError = validateSheet({ ...EMPTY_SHEET })
+  assert.equal(nameError.exerciseId, undefined)
+  assert.equal(nameError.field, undefined)
+})
 test('escopo mantém ordem própria, bloqueia indisponíveis e não modifica biblioteca', () => {
   const library = [{ id: 'one' }, { id: 'two' }, { id: 'three' }]
   const scope = {

@@ -116,6 +116,7 @@ test('sheets list: eligible sheet shows a direct "Iniciar" action besides detail
         revision: 1,
         exercise_count: 3,
         muscle_groups: ['Peito'],
+        available: true,
       },
     ],
     loading: false,
@@ -126,6 +127,31 @@ test('sheets list: eligible sheet shows a direct "Iniciar" action besides detail
   assert.match(html, />Iniciar</)
   assert.match(html, />Detalhes</)
   assert.doesNotMatch(html, />Abrir</)
+})
+
+test('sheets list: sheet with exercises but an unavailable item shows "Revisar ficha" instead of "Iniciar" (P1, auditoria 2026-11-10)', () => {
+  setFixture({
+    data: [
+      {
+        id: 's1',
+        name: 'Treino A',
+        goal: 'hipertrofia',
+        weekdays: [1, 3],
+        archived_at: null,
+        revision: 1,
+        exercise_count: 3,
+        muscle_groups: ['Peito'],
+        available: false,
+      },
+    ],
+    loading: false,
+    error: null,
+    online: true,
+  })
+  const html = renderSheets()
+  assert.doesNotMatch(html, />Iniciar</)
+  assert.match(html, />Revisar ficha</)
+  assert.match(html, /Indisponível: revise os exercícios antes de iniciar\./)
 })
 
 test('sheets list: draft (no exercises) shows no "Iniciar", only "Abrir" and the draft hint', () => {

@@ -165,8 +165,11 @@ export default function WorkoutSheetsPage() {
               <p>{sheet.weekdays.map((day) => WEEKDAYS[day]).join(' · ')}</p>
             )}
             {!sheet.exercise_count && <p>Rascunho — adicione um exercício para iniciar.</p>}
+            {Boolean(sheet.exercise_count) && !sheet.available && (
+              <p>Indisponível: revise os exercícios antes de iniciar.</p>
+            )}
             <div className="sheet-actions">
-              {!archived && sheet.exercise_count > 0 && (
+              {!archived && sheet.exercise_count > 0 && sheet.available && (
                 <Button
                   variant="primary"
                   leadingVisual={PlayIcon}
@@ -179,7 +182,11 @@ export default function WorkoutSheetsPage() {
                 </Button>
               )}
               <Button as={Link} to={`/fichas/${sheet.id}`}>
-                {!archived && sheet.exercise_count > 0 ? 'Detalhes' : 'Abrir'}
+                {!archived && sheet.exercise_count > 0
+                  ? sheet.available
+                    ? 'Detalhes'
+                    : 'Revisar ficha'
+                  : 'Abrir'}
               </Button>
               <details>
                 <summary>Ações de {sheet.name}</summary>

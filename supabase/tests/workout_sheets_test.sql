@@ -18,10 +18,65 @@ select throws_ok($$select public.create_workout_sheet(gen_random_uuid(),'Outra c
 create temp table saved as select public.create_workout_sheet('98000000-0000-0000-0000-000000000001',' A ','forca','Meta',array[1,3]::smallint[]) result;
 select is((select count(*)::int from public.workout_sheets),1,'cria ficha própria');
 select is((select name from public.workout_sheets),'A','normaliza nome');
-select lives_ok($$select public.create_workout_sheet('98000000-0000-0000-0000-000000000001','A')$$,'retry de criação');
+select lives_ok($$select public.create_workout_sheet('98000000-0000-0000-0000-000000000001',' A ','forca','Meta',array[1,3]::smallint[])$$,'retry de criação com o mesmo conteúdo');
 select is((select count(*)::int from public.workout_sheets),1,'retry não duplica');
+select is((select revision from public.workout_sheets),(select (result->>'revision')::bigint from saved),'retry idêntico não grava nem incrementa revisão');
+-- P0 (auditoria 2026-11-10): um retry com o MESMO request_id mas conteúdo DIFERENTE do que foi
+-- persistido na 1ª tentativa (edição feita entre o timeout da confirmação e a retentativa) precisa
+-- reconciliar para o conteúdo atual -- nunca descartá-lo silenciosamente a favor do snapshot antigo.
+select lives_ok($$select public.create_workout_sheet('98000000-0000-0000-0000-000000000001','A editada',null,'',array[]::smallint[])$$,'retry com conteúdo diferente reconcilia em vez de descartar a edição');
+select is((select name from public.workout_sheets),'A editada','reconciliação aplica o nome mais recente, não o da 1ª tentativa');
+select is((select goal from public.workout_sheets),null,'reconciliação aplica o objetivo mais recente (removido)');
+select is((select weekdays from public.workout_sheets),'{}'::smallint[],'reconciliação aplica os dias mais recentes (removidos)');
+select isnt((select revision from public.workout_sheets),(select (result->>'revision')::bigint from saved),'conteúdo reconciliado grava e incrementa a revisão, não é tratado como retry idêntico');
+-- Continuação da auditoria (2026-11-10): se OUTRA aba editou a mesma ficha pela via normal
+-- (save_workout_sheet, usando a revisão real que ela buscou) ENTRE duas retentativas desta MESMA
+-- aba de criação, a retentativa seguinte não pode sobrescrever essa edição às cegas -- precisa
+-- virar SHEET_VERSION_CONFLICT, igual a qualquer outro conflito de revisão.
+select lives_ok(
+  format($$select public.save_workout_sheet('%s',(select revision from public.workout_sheets),'{"name":"Editado por outra aba","weekdays":[]}','[]')$$,
+    (select (result->>'id')::uuid from saved)),
+  'outra aba edita normalmente, com a revisão real que buscou'
+);
+create temp table after_foreign_edit as select name,revision from public.workout_sheets;
+select throws_ok(
+  $$select public.create_workout_sheet('98000000-0000-0000-0000-000000000001','Minha aba tenta de novo',null,'',array[]::smallint[])$$,
+  'P0001','SHEET_VERSION_CONFLICT',
+  'retentativa da aba de criação original, alheia à edição de outra aba, vira conflito -- nunca sobrescreve'
+);
+select is((select name from public.workout_sheets),(select name from after_foreign_edit),'conteúdo da outra aba permanece intacto após o conflito');
+select is((select revision from public.workout_sheets),(select revision from after_foreign_edit),'revisão da outra aba permanece intacta após o conflito');
+-- P0 (continuação da auditoria, 2026-11-10): o editor recupera o conflito acima via
+-- get_my_workout_sheet_by_request_id() -- sheet.id ainda não existe localmente numa criação, só
+-- o create_request_id da tentativa. Prova que resolve exatamente a mesma ficha/estado.
+select is(
+  public.get_my_workout_sheet_by_request_id('98000000-0000-0000-0000-000000000001'),
+  public.get_my_workout_sheet((select (result->>'id')::uuid from saved)),
+  'recuperação por create_request_id devolve exatamente o mesmo estado que por id'
+);
+select throws_ok($$select public.get_my_workout_sheet_by_request_id(null)$$,'P0001','SHEET_INVALID_PAYLOAD','request_id nulo rejeitado');
+select throws_ok($$select public.get_my_workout_sheet_by_request_id(gen_random_uuid())$$,'P0001','SHEET_NOT_FOUND','request_id desconhecido não vaza nada');
+reset role;
+select pg_temp.set_test_user('98a00000-0000-0000-0000-000000000002',true);
+set local role authenticated;
+select throws_ok(
+  $$select public.get_my_workout_sheet_by_request_id('98000000-0000-0000-0000-000000000001')$$,
+  'P0001','SHEET_NOT_FOUND','B não recupera a ficha de A pelo create_request_id dela'
+);
+select ok(not has_function_privilege('anon','public.get_my_workout_sheet_by_request_id(uuid)','EXECUTE'),'anônimo sem execução da recuperação por request_id');
+select ok(has_function_privilege('authenticated','public.get_my_workout_sheet_by_request_id(uuid)','EXECUTE'),'autenticado com execução da recuperação por request_id');
+reset role;
+select pg_temp.set_test_user('98a00000-0000-0000-0000-000000000001',true);
+set local role authenticated;
 select throws_ok($$select public.get_my_workout_sheet((select (result->>'id')::uuid from saved),true)$$,'P0001','SHEET_NOT_READY','rascunho não inicia');
-select lives_ok($$select public.save_workout_sheet((select (result->>'id')::uuid from saved),(select (result->>'revision')::bigint from saved),'{"name":"A","goal":"forca","goal_description":"Meta","weekdays":[1,3]}','[{"exercise_id":"98e00000-0000-0000-0000-000000000001","target_sets":3,"reps_min":8,"reps_max":12}]')$$,'salva itens transacionalmente');
+-- Restaura o conteúdo esperado pelo restante do arquivo (metadados usados pelos testes 8+ abaixo),
+-- agora pela via normal de edição -- a aba de criação original já não tem mais uso depois disto.
+select lives_ok(
+  format($$select public.save_workout_sheet('%s',(select revision from public.workout_sheets),'{"name":"A","goal":"forca","goal_description":"Meta","weekdays":[1,3]}','[]')$$,
+    (select (result->>'id')::uuid from saved)),
+  'conteúdo restaurado pela via normal de edição, com a revisão real atual'
+);
+select lives_ok($$select public.save_workout_sheet((select (result->>'id')::uuid from saved),(select revision from public.workout_sheets),'{"name":"A","goal":"forca","goal_description":"Meta","weekdays":[1,3]}','[{"exercise_id":"98e00000-0000-0000-0000-000000000001","target_sets":3,"reps_min":8,"reps_max":12}]')$$,'salva itens transacionalmente');
 create temp table current_sheet as select id,revision from public.workout_sheets;
 create temp table item_before as select id from public.workout_sheet_exercises;
 select lives_ok($$select public.get_my_workout_sheet((select id from current_sheet),true)$$,'servidor confirma execução');

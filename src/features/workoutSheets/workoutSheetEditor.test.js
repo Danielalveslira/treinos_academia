@@ -59,7 +59,7 @@ before(async () => {
       export const Box=element('div'),Text=element('span'),Button=element('button'),Heading=({children,...props})=>{globalThis.__itemRenders=(globalThis.__itemRenders||0)+1;return React.createElement('h3',props,children)};
       export const IconButton=({icon,...props})=>React.createElement('button',props);
       export const Flash=element('div'),Spinner=element('span'),TextInput=element('input'),Textarea=element('textarea');
-      export const FormControl=element('div');FormControl.Label=element('label');FormControl.Caption=element('span');
+      export const FormControl=element('div');FormControl.Label=element('label');FormControl.Caption=element('span');FormControl.Validation=element('div');
       export function SegmentedControl({children,onChange,...props}){return React.createElement('div',props,React.Children.map(children,(child,i)=>React.cloneElement(child,{onClick:()=>onChange(i)})))}
       SegmentedControl.Button=element('button');
     `
@@ -122,6 +122,16 @@ test('metas colapsadas não montam campos; abrir preserva valores e alterações
   assert.deepEqual(removals, ['one'])
   ui.act(() => button(tree, 'Editar metas de Supino').props.onClick())
   assert.equal(tree.root.findAllByType('input').length, 0)
+  ui.act(() => tree.unmount())
+})
+// 5.3 (auditoria 2026-11-10): meta inválida precisa abrir a seção sozinha -- sem isso, o usuário
+// nunca veria o campo (metas ficam recolhidas por padrão).
+test('focusField abre a seção de metas automaticamente mesmo começando colapsada', () => {
+  const props = { item, index: 0, total: 1, disabled: false, onPatch: () => {}, onMove: () => {}, onRemove: () => {} }
+  const tree = ui.mountItem(props)
+  assert.equal(tree.root.findAllByType('input').length, 0, 'começa colapsada')
+  ui.updateItem(tree, { ...props, focusField: 'target_sets' })
+  assert.ok(tree.root.findAllByType('input').length > 0, 'focusField expande a seção sem clique')
   ui.act(() => tree.unmount())
 })
 test('catálogo carrega somente na primeira abertura e mantém busca ao voltar pela biblioteca', async () => {

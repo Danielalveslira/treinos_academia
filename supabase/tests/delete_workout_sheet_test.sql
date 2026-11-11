@@ -61,20 +61,59 @@ select throws_ok(
 -- Nada do acima alterou a ficha: a revisão real continua a mesma devolvida pela criação.
 create temp table counts_before_delete as select
   (select count(*) from public.workouts) workouts,
-  (select count(*) from public.economy_transactions) coins;
+  (select count(*) from public.economy_transactions) coins,
+  public.get_my_progress_sheet_summary((now() at time zone 'America/Sao_Paulo')::date,(now() at time zone 'America/Sao_Paulo')::date) progress;
 select lives_ok(
   format($$select public.delete_workout_sheet('%s',(select (result->>'revision')::bigint from sheet_a))$$,
     (select (result->>'id')::uuid from sheet_a)),
   'exclui ficha própria com a revisão correta'
 );
-select is((select count(*)::int from public.workout_sheets where id=(select (result->>'id')::uuid from sheet_a)),0,'ficha removida fisicamente');
+-- P0 (auditoria 2026-11-10): excluir deixou de ser um DELETE físico de workout_sheets -- a linha
+-- agora é um tombstone (deleted_at preenchido). workouts/workout_sheet_completions continuam
+-- apontando para uma linha-mãe real para sempre, e o resumo de Progresso nunca precisa "esquecer"
+-- o nome/fatos de uma ficha excluída (ver asserção dedicada depois de 'reset role' abaixo).
+select is((select count(*)::int from public.workout_sheets where id=(select (result->>'id')::uuid from sheet_a)),0,'ficha some para leitura direta via RLS (authenticated), mesmo sem ter sido apagada');
 reset role;
-select is((select count(*)::int from public.workout_sheet_exercises where sheet_id=(select (result->>'id')::uuid from sheet_a)),0,'itens removidos via cascade');
-select is((select count(*)::int from public.workout_sheet_completions where sheet_id=(select (result->>'id')::uuid from sheet_a)),0,'conclusões removidas via cascade');
-select is((select sheet_id from public.workouts where id='99f00000-0000-0000-0000-000000000001'),null,'treino preservado com sheet_id zerado');
+select is((select count(*)::int from public.workout_sheets where id=(select (result->>'id')::uuid from sheet_a) and deleted_at is not null),1,'linha-mãe sobrevive como tombstone -- nunca mais um DELETE físico');
+select is((select count(*)::int from public.workout_sheet_exercises where sheet_id=(select (result->>'id')::uuid from sheet_a)),0,'planejamento atual (não é fato histórico) é removido de verdade');
+select is((select count(*)::int from public.workout_sheet_completions where sheet_id=(select (result->>'id')::uuid from sheet_a)),1,'conclusão histórica sobrevive -- não é mais cascade-deletada junto com a ficha');
+select is((select sheet_id from public.workouts where id='99f00000-0000-0000-0000-000000000001'),(select (result->>'id')::uuid from sheet_a),'treino preserva o vínculo histórico EXATO com a ficha excluída (nunca mais zerado pela FK)');
 select is((select user_id from public.workouts where id='99f00000-0000-0000-0000-000000000001'),'99a00000-0000-0000-0000-000000000001'::uuid,'dono do treino nunca é tocado');
 select is((select count(*) from public.workouts),(select workouts from counts_before_delete),'exclusão da ficha não apaga nenhum treino');
 select is((select count(*) from public.economy_transactions),(select coins from counts_before_delete),'exclusão da ficha não altera recompensas');
+set local role authenticated;
+select pg_temp.set_test_user('99a00000-0000-0000-0000-000000000001',true);
+select is(
+  public.get_my_progress_sheet_summary((now() at time zone 'America/Sao_Paulo')::date,(now() at time zone 'America/Sao_Paulo')::date),
+  (select progress from counts_before_delete),
+  'Progresso devolve exatamente os mesmos fatos (trainedOccurrences/completedOccurrences/distinctSheets/nomes) antes e depois da exclusão'
+);
+select throws_ok($$select public.get_my_workout_sheet((select (result->>'id')::uuid from sheet_a))$$,'P0001','SHEET_NOT_FOUND','ficha excluída não é mais consultável/editável, mesmo pelo dono');
+select is(jsonb_array_length(public.list_my_workout_sheets(true)),0,'ficha excluída não aparece na lista de arquivadas, mesmo tendo archived_at preenchido');
+select is((public.get_my_sheet_insights()->'sheets'),'[]'::jsonb,'ficha excluída não aparece no painel da Home');
+-- Continuação (2026-11-10): cada RPC de MUTAÇÃO testada individualmente contra a ficha já
+-- excluída -- não basta a leitura falhar, nenhuma delas pode editar/arquivar/duplicar a partir
+-- dela, mesmo que a linha-mãe continue existindo como tombstone.
+-- SHEET_NOT_FOUND dispara antes de qualquer checagem de revisão (ver a 1ª query de cada RPC):
+-- o valor de revisão usado abaixo é irrelevante de propósito, nunca lido pelas RPCs neste caminho.
+select throws_ok(
+  format($$select public.save_workout_sheet('%s',999,'{"name":"Reviver","weekdays":[]}','[]')$$,
+    (select (result->>'id')::uuid from sheet_a)),
+  'P0001','SHEET_NOT_FOUND','não é possível salvar/editar planejamento de uma ficha excluída'
+);
+select throws_ok(
+  format($$select public.set_workout_sheet_archived('%s',false,999)$$,
+    (select (result->>'id')::uuid from sheet_a)),
+  'P0001','SHEET_NOT_FOUND','não é possível (des)arquivar uma ficha excluída'
+);
+select throws_ok(
+  format($$select public.duplicate_workout_sheet('%s',gen_random_uuid())$$,
+    (select (result->>'id')::uuid from sheet_a)),
+  'P0001','SHEET_NOT_FOUND','não é possível duplicar a partir de uma ficha excluída'
+);
+reset role;
+select is((select count(*)::int from public.workout_sheets where deleted_at is not null),1,'nenhuma das tentativas acima criou, reviveu ou alterou outra linha (visão sem RLS)');
+select is((select count(*)::int from public.workout_sheets),1,'nenhuma ficha nova foi criada (a duplicação falhou antes de inserir)');
 set local role authenticated;
 select pg_temp.set_test_user('99a00000-0000-0000-0000-000000000001',true);
 
