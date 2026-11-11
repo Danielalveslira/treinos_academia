@@ -1,5 +1,5 @@
 import { AuthLayout } from '../components/PublicLayout'
-import { useRef, useState } from 'react'
+import { lazy, Suspense, useRef, useState } from 'react'
 import { Link as RouterLink, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/react'
 import { loginUser } from '../services/authService'
@@ -8,8 +8,13 @@ import { consumeLogoutReason } from '../utils/logoutReason'
 import { useAuth } from '../hooks/useAuth'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { OFFLINE_ENTRY_REQUIRES_INTERNET } from '../contexts/AuthContext'
-import { AuthCaptcha } from '../components/AuthCaptcha'
 import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
+
+// Carregado só a partir do 1º foco no formulário: evita baixar o script/iframes do
+// hCaptcha (ver medição de performance de /login) antes de o visitante começar a entrar.
+const AuthCaptcha = lazy(() =>
+  import('../components/AuthCaptcha').then((m) => ({ default: m.AuthCaptcha }))
+)
 
 export default function Login() {
   const navigate = useNavigate()
@@ -23,6 +28,7 @@ export default function Login() {
   const inFlight = useRef(false)
   const captcha = useRef(null)
   const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
+  const [formTouched, setFormTouched] = useState(false)
   // Lazy: lê e já limpa na primeira renderização -- uma sessão encerrada por
   // handlePossibleGhostSession (ver AuthContext.jsx) cai direto aqui.
   const [sessionNotice] = useState(consumeLogoutReason)
@@ -79,7 +85,11 @@ export default function Login() {
         </>
       }
     >
-      <form onSubmit={handleSubmit} className="public-form">
+      <form
+        onSubmit={handleSubmit}
+        onFocus={() => setFormTouched(true)}
+        className="public-form"
+      >
         <Stack gap="normal">
           {!online && (
             // Entrar (e criar conta) exige o servidor; só quem já entrou online neste aparelho abre offline.
@@ -131,7 +141,16 @@ export default function Login() {
             />
           </FormControl>
 
-          <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
+          {authCaptchaRequired && !formTouched && (
+            <div className="auth-captcha-placeholder" role="group" aria-label="Verificação de segurança">
+              <p>A verificação de segurança aparece ao preencher o formulário.</p>
+            </div>
+          )}
+          {(formTouched || !authCaptchaRequired) && (
+            <Suspense fallback={null}>
+              <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
+            </Suspense>
+          )}
 
           <Button
             type="submit"
