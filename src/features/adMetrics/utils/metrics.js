@@ -6,6 +6,7 @@ export const PLACEMENT_LABELS = {
   home_banner: 'Banner da Home',
   community_banner: 'Banner da comunidade',
   community_feed: 'Card no feed da comunidade',
+  progress_banner: 'Banner no Progresso',
 }
 export const PLACEMENTS = Object.keys(PLACEMENT_LABELS)
 export const PERIOD_PRESETS = [7, 30, 90]

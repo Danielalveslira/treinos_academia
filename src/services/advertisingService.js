@@ -39,6 +39,10 @@ export const reviewAdvertisingCampaign = (campaign, approve, reason) =>
 export const interruptAdvertisingCampaign = (id, reason) =>
   rpc('interrupt_advertising_campaign', { p_id: id, p_reason: reason })
 export const getAdvertisingInventory = () => rpc('admin_advertising_inventory')
+// Leitura fina pro anunciante: só {code, salesEnabled}, sem capacidade/preço/revisão (isso é
+// informação administrativa). Usada pelo assistente pra só oferecer posições que de fato
+// completariam uma contratação agora.
+export const getAdvertisingSalesStatus = () => rpc('advertising_sales_status')
 export const configureAdvertisingPlacement = (placement, values) =>
   rpc('admin_configure_advertising_placement', {
     p_code: placement.code,

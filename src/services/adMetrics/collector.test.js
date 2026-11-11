@@ -355,10 +355,23 @@ test('Home e comunidade são contextos independentes; Home não envia community'
   assert.equal(comm.community, 'c1')
 })
 
+test('Progresso registra exposição global sem comunidade', async () => {
+  const h = harness()
+  const element = h.el('progress')
+  h.collector.observe(element, { adId: 'ad-progress', placement: 'progress_banner', communityId: null })
+  h.see(element, 1)
+  await h.advance(1000)
+  await h.collector.flush()
+  const event = h.sentEvents()[0]
+  assert.equal(event.placement, 'progress_banner')
+  assert.equal('community' in event, false)
+})
+
 test('metadados inválidos são ignorados (Home com comunidade, comunidade sem id, posição desconhecida)', async () => {
   const h = harness()
   for (const meta of [
     { adId: 'x', placement: 'home_banner', communityId: 'c1' },
+    { adId: 'x', placement: 'progress_banner', communityId: 'c1' },
     { adId: 'x', placement: 'community_banner', communityId: null },
     { adId: 'x', placement: 'sidebar', communityId: 'c1' },
     { placement: 'community_feed', communityId: 'c1' },

@@ -124,6 +124,14 @@ test('banner: CTA interno é link do roteador; sem CTA não há link; rodízio m
   assert.doesNotMatch(multi, /sponsored-ad-banner-dot/)
 })
 
+test('banner do Progresso usa apenas um bloco compacto e não renderiza espaço vazio', () => {
+  assert.equal(render('banner', { ads: [], placement: 'progress_banner' }), '')
+  const html = render('banner', { ads: [ad()], placement: 'progress_banner' })
+  assert.match(html, /sponsored-ad-banner--progress/)
+  assert.equal((html.match(/<aside/g) || []).length, 1)
+  assert.match(html, /Patrocinado/)
+})
+
 test('banner: amostra de 1 com eligibleTotal maior mostra "+N" (nunca uma posição falsa como "1/4")', () => {
   // select_advertising devolveu só 1 campanha nesta amostra (display_limit), mas 4 passaram a
   // elegibilidade naquele instante. O contador numérico é SEMPRE a posição dentro da amostra

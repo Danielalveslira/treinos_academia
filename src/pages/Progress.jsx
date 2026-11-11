@@ -18,6 +18,9 @@ import { BodyCompositionCard } from '../components/BodyCompositionCard'
 import { ErrorState } from '../components/ErrorState'
 import { useExercises } from '../contexts/ExercisesContext'
 import { StrengthProgress } from '../components/StrengthProgress'
+import { SponsoredAdBanner } from '../components/SponsoredAdBanner'
+import { useGlobalSponsoredAds } from '../hooks/useGlobalSponsoredAds'
+import { useAuth } from '../hooks/useAuth'
 
 const PERIODS = [
   ['today', 'Hoje'],
@@ -59,6 +62,8 @@ function Variation({ current, previous }) {
 }
 
 export default function Progress() {
+  const { user, offlineLocal } = useAuth()
+  const { bannerAds } = useGlobalSponsoredAds(Boolean(user) && !offlineLocal, 'progress_banner')
   const [period, setPeriod] = useState('month')
   const [metric, setMetric] = useState('strengthVolumeKg')
   const [now, setNow] = useState(() => new Date())
@@ -228,6 +233,10 @@ export default function Progress() {
               <Text sx={{ color: 'fg.muted' }}>Sem registros neste período.</Text>
             )}
           </section>
+
+          {!offline && bannerAds.length > 0 && (
+            <SponsoredAdBanner ads={bannerAds} placement="progress_banner" />
+          )}
 
           <section className="progress-section" aria-labelledby="sheets-title">
             <div className="section-heading">

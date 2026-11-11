@@ -169,6 +169,7 @@ export const invalidateCache = () => {}
               let calls = 0
               export const listSponsoredAdsForCommunity = () => { calls += 1; return [] }
               export const listGlobalSponsoredAds = () => { calls += 1; return [] }
+              export const listProgressSponsoredAds = () => { calls += 1; return [] }
               export const getCalls = () => calls
               export const resetCalls = () => { calls = 0 }
             `,

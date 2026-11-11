@@ -126,6 +126,7 @@ export default function AdvertisingAdmin() {
           </Text>
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', my: 2 }}>
             <Label>Limite: {p.capacity} simultâneos</Label>
+            <Label>{p.activeContracts || 0} campanhas com contrato vigente</Label>
             <Label variant={p.sales_enabled ? 'success' : 'default'}>
               {p.sales_enabled ? 'Aceitando contratações' : 'Contratações pausadas'}
             </Label>
@@ -155,8 +156,7 @@ export default function AdvertisingAdmin() {
             Posicionamentos do pacote global
           </Heading>
           <Text as="p" sx={{ color: 'fg.muted' }}>
-            Mudanças valem só para novas campanhas; contratos já preparados preservam seu
-            conjunto.
+            Mudanças valem só para novas campanhas; contratos já preparados preservam seu conjunto.
           </Text>
           <Text as="p">
             {data.inventory.networkPlacements
@@ -176,10 +176,12 @@ export default function AdvertisingAdmin() {
         Campanhas ativas
       </Heading>
       <Text as="p" sx={{ color: 'fg.muted' }}>
-        Aprovação e reprovação de novas campanhas ficam na fila de Aprovações. Aqui só a
-        veiculação do que já foi aprovado.
+        Aprovação e reprovação de novas campanhas ficam na fila de Aprovações. Aqui só a veiculação
+        do que já foi aprovado.
       </Text>
-      {data && activeCampaigns.length === 0 && <Text as="p">Nenhuma campanha ativa ou suspensa.</Text>}
+      {data && activeCampaigns.length === 0 && (
+        <Text as="p">Nenhuma campanha ativa ou suspensa.</Text>
+      )}
       {activeCampaigns.map((c) => (
         <Box
           key={c.ad_id}
@@ -314,6 +316,23 @@ export default function AdvertisingAdmin() {
                     Controla a entrega dos anúncios já aprovados neste espaço.
                   </FormControl.Caption>
                 </FormControl>
+                {!form.deliveryEnabled && dialog.target.activeContracts > 0 && (
+                  <Flash variant="warning" sx={{ mb: 2 }}>
+                    <Text as="p">
+                      Desligar a exibição interrompe {dialog.target.activeContracts} campanha(s) com
+                      contrato vigente. Nenhum estorno ou prazo adicional é automático.
+                    </Text>
+                    {dialog.target.affectedCampaigns?.map((campaign) => (
+                      <Text as="p" key={campaign.id}>
+                        {campaign.title} · {campaign.id}
+                      </Text>
+                    ))}
+                    {dialog.target.activeContracts >
+                      (dialog.target.affectedCampaigns?.length || 0) && (
+                      <Text as="p">A lista mostra apenas as primeiras 20 campanhas afetadas.</Text>
+                    )}
+                  </Flash>
+                )}
               </>
             )}
             {dialog.kind === 'network' && (
@@ -386,7 +405,11 @@ export default function AdvertisingAdmin() {
                     if (dialog.kind === 'placement')
                       return configureAdvertisingPlacement(dialog.target, { ...form, reason })
                     if (dialog.kind === 'network')
-                      return setAdvertisingNetwork(form.codes || [], data.inventory.networkRevision, reason)
+                      return setAdvertisingNetwork(
+                        form.codes || [],
+                        data.inventory.networkRevision,
+                        reason
+                      )
                     if (dialog.kind === 'suspend')
                       return interruptAdvertisingCampaign(dialog.target.ad_id, reason)
                     return resumeAdvertisingCampaign(

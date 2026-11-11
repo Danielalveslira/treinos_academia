@@ -36,6 +36,7 @@ export function SponsoredAdBanner({ ads, placement = 'community_banner', communi
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
   const [hidden, setHidden] = useState(() => typeof document !== 'undefined' && document.hidden)
+  const [inViewport, setInViewport] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion)
   const [overflow, setOverflow] = useState(0)
   const resumeTimeoutRef = useRef(null)
@@ -59,6 +60,19 @@ export function SponsoredAdBanner({ ads, placement = 'community_banner', communi
     return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
+  useEffect(() => {
+    if (!ads.length || !rootRef.current) return
+    if (typeof IntersectionObserver === 'undefined') {
+      setInViewport(true)
+      return
+    }
+    const observer = new IntersectionObserver(([entry]) => setInViewport(entry.isIntersecting), {
+      threshold: 0.5,
+    })
+    observer.observe(rootRef.current)
+    return () => observer.disconnect()
+  }, [ads.length])
+
   // Evita apontar pra um índice fora do array se a lista encolher num refresh de cache.
   useEffect(() => {
     setIndex((i) => (i >= ads.length ? 0 : i))
@@ -80,7 +94,7 @@ export function SponsoredAdBanner({ ads, placement = 'community_banner', communi
   const eligibleTotal = Math.max(ad?.eligibleTotal ?? sampleSize, sampleSize)
   const extraEligible = eligibleTotal - sampleSize
   const autoScroll = !reducedMotion && canAnimate()
-  const holding = paused || hidden
+  const holding = paused || hidden || !inViewport
   const timing = useMemo(() => marqueeTiming(autoScroll ? overflow : 0), [autoScroll, overflow])
 
   // Métricas (desligadas por padrão): o <aside> é o elemento observado e a campanha atual é a que está sendo medida.
@@ -164,7 +178,7 @@ export function SponsoredAdBanner({ ads, placement = 'community_banner', communi
   return (
     <aside
       ref={rootRef}
-      className={`sponsored-ad-banner${placement === 'home_banner' ? ' sponsored-ad-banner--home' : ''}`}
+      className={`sponsored-ad-banner${placement === 'home_banner' ? ' sponsored-ad-banner--home' : ''}${placement === 'progress_banner' ? ' sponsored-ad-banner--progress' : ''}`}
       onMouseEnter={pause}
       onMouseLeave={scheduleResume}
       onTouchStart={pause}
@@ -231,7 +245,13 @@ export function SponsoredAdBanner({ ads, placement = 'community_banner', communi
                 onClick={showNext}
                 aria-label={`Próximo patrocínio (${current + 1} de ${sampleSize})`}
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  aria-hidden="true"
+                  focusable="false"
+                >
                   <path
                     d="M6 3l5 5-5 5"
                     fill="none"

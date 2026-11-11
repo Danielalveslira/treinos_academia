@@ -15,6 +15,7 @@ import {
 import {
   createAdvertisingCampaign,
   editAdvertisingCampaign,
+  getAdvertisingSalesStatus,
 } from '../../services/advertisingService'
 import { listActiveCommunities } from '../../services/communitiesService'
 import { uploadStorefrontImage } from '../../services/storefrontService'
@@ -31,6 +32,11 @@ const PLACEMENT_OPTIONS = [
     description: 'Destaque na Home do Evolutus, visível para todos os usuários do app.',
   },
   {
+    code: 'progress_banner',
+    title: 'Progresso',
+    description: 'Banner discreto na página de Progresso.',
+  },
+  {
     code: 'community_banner',
     title: 'Comunidade',
     description: 'Banner exibido no contexto de uma comunidade que você administra.',
@@ -39,12 +45,6 @@ const PLACEMENT_OPTIONS = [
     code: 'community_feed',
     title: 'Feed da comunidade',
     description: 'Anúncio exibido junto às publicações de uma comunidade que você administra.',
-  },
-  {
-    code: 'network',
-    title: PLACEMENT_LABELS.network,
-    description:
-      'Conjunto de posicionamentos configurado pelo Evolutus. A disponibilidade depende do que a administração liberou.',
   },
 ]
 
@@ -102,6 +102,8 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
       : resuming?.draft || null
   )
   const [communities, setCommunities] = useState([])
+  const [salesStatus, setSalesStatus] = useState(null)
+  const [salesError, setSalesError] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [submitted, setSubmitted] = useState(null)
@@ -119,6 +121,21 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
   }, [user?.uid])
 
   useEffect(() => {
+    if (existingDraft) return
+    let live = true
+    getAdvertisingSalesStatus()
+      .then((rows) => {
+        if (live) setSalesStatus(rows)
+      })
+      .catch(() => {
+        if (live) setSalesError(true)
+      })
+    return () => {
+      live = false
+    }
+  }, [existingDraft])
+
+  useEffect(() => {
     if (submitted) return
     saveProgress(accountId, { step, placement, communityId, values, desiredDays, draft })
   }, [accountId, step, placement, communityId, values, desiredDays, draft, submitted])
@@ -126,14 +143,15 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
   const placementDisplay = existingDraft?.placements
     ? placementsSummary(existingDraft.placements)
     : PLACEMENT_LABELS[placement] || placement
-  // community_banner/community_feed are unambiguously community placements. 'network'
-  // expands to an admin-configured bundle whose composition isn't readable from here
-  // (no advertiser-facing RPC exposes it) — offer the choice without forcing it; if the
-  // configured bundle does include a community surface, the server enforces
-  // AD_COMMUNITY_NOT_AUTHORIZED and the error is shown back on this same step.
   const communityRequired = placement === 'community_banner' || placement === 'community_feed'
-  const communityOffered = communityRequired || placement === 'network'
-  const minimumContentValid = values.title.trim().length > 0 && values.destination.startsWith('https://')
+  const communityOffered = communityRequired
+  const availableOptions = PLACEMENT_OPTIONS.filter(
+    (opt) =>
+      salesStatus?.some((row) => row.code === opt.code && row.salesEnabled) &&
+      (!['community_banner', 'community_feed'].includes(opt.code) || communities.length > 0)
+  )
+  const minimumContentValid =
+    values.title.trim().length > 0 && values.destination.startsWith('https://')
 
   async function saveDraft(submit) {
     if (lock.current) return null
@@ -149,12 +167,7 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
           { placement, communityId, ...values },
           intent.current
         )
-        result = await editAdvertisingCampaign(
-          { ad_id, version: 1 },
-          values,
-          submit,
-          desiredDays
-        )
+        result = await editAdvertisingCampaign({ ad_id, version: 1 }, values, submit, desiredDays)
         setDraft({ ad_id, version: result.version })
       } else {
         result = await editAdvertisingCampaign(draft, values, submit, desiredDays)
@@ -186,7 +199,12 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
     setError('')
     try {
       const media_id = await uploadStorefrontImage(draft.ad_id, file)
-      const result = await editAdvertisingCampaign({ ...draft }, { ...values, media_id }, false, desiredDays)
+      const result = await editAdvertisingCampaign(
+        { ...draft },
+        { ...values, media_id },
+        false,
+        desiredDays
+      )
       setValues((v) => ({ ...v, media_id }))
       setDraft({ ad_id: draft.ad_id, version: result.version })
     } catch (e) {
@@ -230,7 +248,17 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
 
       {step === 1 && (
         <Box>
-          {PLACEMENT_OPTIONS.map((opt) => (
+          {!salesStatus && !salesError && <Spinner size="small" />}
+          {salesError && (
+            <Flash variant="danger">
+              Não foi possível consultar os espaços disponíveis. Reabra o assistente para tentar
+              novamente.
+            </Flash>
+          )}
+          {salesStatus && availableOptions.length === 0 && (
+            <Text>Nenhum espaço disponível para contratação agora.</Text>
+          )}
+          {availableOptions.map((opt) => (
             <Box
               key={opt.code}
               as="button"
@@ -261,23 +289,13 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
             <FormControl required={communityRequired} sx={{ mt: 2 }}>
               <FormControl.Label>Comunidade que você administra</FormControl.Label>
               <Select block value={communityId} onChange={(e) => setCommunityId(e.target.value)}>
-                <Select.Option value="">
-                  {placement === 'network'
-                    ? 'Nenhuma (se o pacote usar só posições gerais)'
-                    : 'Selecione sua comunidade'}
-                </Select.Option>
+                <Select.Option value="">Selecione sua comunidade</Select.Option>
                 {communities.map((c) => (
                   <Select.Option key={c.id} value={c.id}>
                     {c.name}
                   </Select.Option>
                 ))}
               </Select>
-              {placement === 'network' && (
-                <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', mt: 1 }}>
-                  Deixe em branco se o pacote configurado não usar posições de comunidade. Se usar,
-                  o Evolutus pedirá a comunidade ao enviar.
-                </Text>
-              )}
               {communityId && <CommunityAdvertisingPermissions communityId={communityId} />}
             </FormControl>
           )}
@@ -285,7 +303,10 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
             {onCancel && <Button onClick={onCancel}>Cancelar</Button>}
             <Button
               variant="primary"
-              disabled={!placement || (communityRequired && !communityId)}
+              disabled={
+                !availableOptions.some((opt) => opt.code === placement) ||
+                (communityRequired && !communityId)
+              }
               onClick={() => setStep(2)}
             >
               Avançar
@@ -345,7 +366,10 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
               {values.media_id && <StorefrontImage id={values.media_id} size={160} />}
             </FormControl>
           )}
-          <Box sx={{ my: 3, p: 2, bg: 'canvas.subtle', borderRadius: 2 }} aria-label="Prévia do anúncio">
+          <Box
+            sx={{ my: 3, p: 2, bg: 'canvas.subtle', borderRadius: 2 }}
+            aria-label="Prévia do anúncio"
+          >
             {values.media_id && <StorefrontImage id={values.media_id} size={160} />}
             <Text as="p" sx={{ fontWeight: 'bold' }}>
               {values.title || 'Seu anúncio'}
@@ -384,7 +408,9 @@ export default function CreateAdWizard({ accountId, existingDraft, onDone, onCan
               min={1}
               max={3650}
               value={desiredDays}
-              onChange={(e) => setDesiredDays(Math.max(1, Math.min(3650, Number(e.target.value) || 1)))}
+              onChange={(e) =>
+                setDesiredDays(Math.max(1, Math.min(3650, Number(e.target.value) || 1)))
+              }
             />
           </FormControl>
           <Text as="p" sx={{ fontSize: 0, color: 'fg.muted' }}>
