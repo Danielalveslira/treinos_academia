@@ -51,10 +51,19 @@ async function getAdvertisingCampaigns(accountId, after = null) {
   track('get_advertising_campaigns', { accountId, after })
   return [...store.values()].sort((a, b) => (a.ad_id < b.ad_id ? 1 : -1))
 }
+async function getAdvertisingSalesStatus() {
+  track('advertising_sales_status', {})
+  return [
+    { code: 'home_banner', salesEnabled: true },
+    { code: 'progress_banner', salesEnabled: false },
+    { code: 'community_banner', salesEnabled: true },
+    { code: 'community_feed', salesEnabled: true },
+  ]
+}
 async function createAdvertisingCampaign(accountId, values, requestId) {
   track('create_advertising_campaign', { accountId, values, requestId })
   const id = 'new-ad-' + ++seq
-  seed({ ad_id: id, state: 'draft', moderation_state: 'draft', title: values.title, description: values.description, destination: values.destination, delivery_state: 'private', placements: [{ code: values.placement === 'home_banner' ? 'home_banner' : values.placement === 'network' ? 'home_banner' : values.placement, context: values.communityId || '00000000-0000-0000-0000-000000000000' }] })
+  seed({ ad_id: id, state: 'draft', moderation_state: 'draft', title: values.title, description: values.description, destination: values.destination, delivery_state: 'private', placements: [{ code: values.placement, context: values.communityId || '00000000-0000-0000-0000-000000000000' }] })
   return id
 }
 async function editAdvertisingCampaign(campaign, values, submit, desiredDays = null) {
@@ -132,7 +141,7 @@ await build({
         b.onLoad({ filter: /.*/, namespace: 'fixture-ads' }, () => ({
           contents:
             shared +
-            '\nexport { createAdvertisingAccount, getAdvertisingCampaigns, createAdvertisingCampaign, editAdvertisingCampaign, interruptAdvertisingCampaign, archiveAdvertisingCampaign, getAdvertisingRevisions, getAdvertisingOrders, getCommunityAdvertisingPermissions, configureCommunityAdvertising }',
+            '\nexport { createAdvertisingAccount, getAdvertisingCampaigns, getAdvertisingSalesStatus, createAdvertisingCampaign, editAdvertisingCampaign, interruptAdvertisingCampaign, archiveAdvertisingCampaign, getAdvertisingRevisions, getAdvertisingOrders, getCommunityAdvertisingPermissions, configureCommunityAdvertising }',
           loader: 'js',
         }))
         b.onLoad({ filter: /.*/, namespace: 'fixture-communities' }, () => ({
@@ -235,7 +244,7 @@ try {
     await context.close()
   }
 
-  // Full creation wizard: "network" never forces a community (review item 4), the draft is
+  // Full creation wizard: only sellable locations appear; the draft is
   // created before the image can be attached, duration is a stored intention only, and the
   // final submission shows the real state returned by the fixture (never an assumed one).
   {
@@ -243,9 +252,11 @@ try {
     const page = await context.newPage()
     await page.goto(origin + '/')
     await page.getByRole('button', { name: 'Criar anúncio', exact: true }).click()
-    await page.getByText('Vários espaços do Evolutus', { exact: true }).click()
+    await page.getByText('Página inicial', { exact: true }).click()
+    assert.equal(await page.getByText('Vários espaços do Evolutus', { exact: true }).count(), 0)
+    assert.equal(await page.getByText('Progresso', { exact: true }).count(), 0)
     const advance1 = page.getByRole('button', { name: 'Avançar', exact: true })
-    assert.equal(await advance1.isDisabled(), false, 'network must not require a community up front')
+    assert.equal(await advance1.isDisabled(), false, 'Home não exige comunidade')
     await advance1.click()
 
     await page.getByLabel('Nome e título do anúncio').fill('Novo anúncio E2E')
