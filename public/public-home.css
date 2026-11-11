@@ -160,6 +160,8 @@
 .public-home #content .home-catalog-description { color: var(--fgColor-muted); line-height: 1.5; }
 .home-catalog-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; margin-top: 16px; font-size: .875rem; }
 .home-catalog-footer p { color: var(--fgColor-muted); }
+/* var(--green) só atinge 4.32:1 neste fundo (--bgColor-muted); 4.5:1 exigido para texto normal. */
+.home-catalog-footer a { color: #1f6b2e; }
 @media (min-width: 768px) {
   .home-feature-list { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
   .home-catalog { padding-block: 28px; }

@@ -461,6 +461,7 @@ button:focus-visible {
 }
 .auth-switch a {
   margin-left: 4px;
+  text-decoration: underline;
 }
 .auth-session-notice {
   padding: 8px 12px;
@@ -1024,6 +1025,10 @@ body:has(.pwa-offline) .app-shell {
 .auth-captcha { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: 100%; min-width: 0; }
 .auth-captcha p { margin: 0; color: var(--fgColor-muted, #656d76); font-size: 0.875rem; }
 .auth-captcha iframe { max-width: 100%; }
+/* Reserva a altura aproximada do widget compacto do hCaptcha antes de ele ser montado,
+   para o 1º foco no formulário não causar layout shift quando o widget real aparece. */
+.auth-captcha-placeholder { display: flex; align-items: center; min-height: 78px; }
+.auth-captcha-placeholder p { margin: 0; color: var(--fgColor-muted, #656d76); font-size: 0.875rem; }
 .signup-actions.has-back { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
 .signup-actions button { min-height: 44px; }
 /* Consentimentos: sem moldura extra, área de toque confortável (linha inteira clicável, ≥44px). */
