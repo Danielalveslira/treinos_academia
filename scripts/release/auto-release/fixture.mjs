@@ -156,6 +156,7 @@ export function fixture({ initialized = true } = {}) {
         const sha = route.split('/').at(-1) === 'main' ? state.mainSha : route.split('/').at(-1)
         return { sha, commit: { tree: { sha: sha === SHA_A ? state.treeA : state.treeB } } }
       }
+      if (route.startsWith(`${base}/pulls/`)) throw new ApiError(404)
       if (route.startsWith(`${base}/compare/`)) {
         const [from, to] = route.split('/').at(-1).split('...')
         const commits = from === to ? [] : state.commits

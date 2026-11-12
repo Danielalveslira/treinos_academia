@@ -113,10 +113,13 @@ export async function prepareRelease(config, services, options = {}) {
         new RegExp(`https://github\\.com/${config.repository}/pull/(\\d+)`, 'g')
       ),
     ].map((m) => Number(m[1]))
-    requireFact(
-      references.every((n) => changes.some((c) => c.number === n)),
-      'OFFICIAL_NOTES_RANGE_MISMATCH'
-    )
+    const directPulls = new Set(changes.map((c) => c.number).filter(Boolean))
+    for (const number of new Set(references))
+      if (!directPulls.has(number))
+        requireFact(
+          await github.pullMergedInRange(number, previous.sha, plan.sha),
+          'OFFICIAL_NOTES_RANGE_MISMATCH'
+        )
     plan.officialNotesHash = digest(generated.body)
     plan.officialNotesStatus = 'verified'
   }

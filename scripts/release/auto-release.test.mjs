@@ -2,7 +2,7 @@ import { test, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process'
-import { fixture, SHA_A, SHA_B, DEFAULT_DEPLOYMENT } from './auto-release/fixture.mjs'
+import { fixture, SHA_A, SHA_B, SHA_C, DEFAULT_DEPLOYMENT } from './auto-release/fixture.mjs'
 import { publishRelease } from './auto-release/publish.mjs'
 import { prepareRelease } from './auto-release/plan.mjs'
 import {
@@ -693,6 +693,32 @@ test('tag sem prova, notes fora do intervalo e associações truncadas bloqueiam
   f.state.notesBody = ''
   f.state.prs[0].labels.pageInfo.hasNextPage = true
   await assert.rejects(prepareRelease(f.config, f.services), code('INCOMPLETE_PR_METADATA'))
+  assert.equal(f.state.writes.length, 0)
+})
+test('notas oficiais aceitam PR aninhado somente quando seu merge está no intervalo publicado', async () => {
+  const f = fixture()
+  f.state.notesBody += `\n- PR aninhado https://github.com/${f.config.repository}/pull/98`
+  f.state.intercept = (path) => path.endsWith('/pulls/98')
+    ? {
+        number: 98,
+        merged_at: '2026-10-26T11:00:00Z',
+        merge_commit_sha: SHA_C,
+        base: { repo: { full_name: f.config.repository }, ref: 'integration' },
+      }
+    : undefined
+  const plan = await prepareRelease(f.config, f.services, apply)
+  assert.equal(plan.officialNotesStatus, 'verified')
+  assert.equal(f.state.writes.length, 0)
+
+  f.state.intercept = (path) => path.endsWith('/pulls/98')
+    ? {
+        number: 98,
+        merged_at: '2026-10-26T11:00:00Z',
+        merge_commit_sha: SHA_A,
+        base: { repo: { full_name: f.config.repository }, ref: 'integration' },
+      }
+    : undefined
+  await assert.rejects(prepareRelease(f.config, f.services, apply), code('OFFICIAL_NOTES_RANGE_MISMATCH'))
   assert.equal(f.state.writes.length, 0)
 })
 test('negação da proteção de tags não é contornada', async () => {
