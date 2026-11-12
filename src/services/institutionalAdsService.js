@@ -2,6 +2,13 @@ import { supabase } from '../supabase/config'
 
 const MESSAGES = {
   ADMIN_REQUIRED: 'Apenas superadmins podem administrar anúncios institucionais.',
+  SESSION_REVOKED: 'Sua sessão expirou. Entre novamente antes de continuar.',
+  INVALID_AD: 'Revise os campos do anúncio e tente novamente.',
+  INVALID_AD_TEXT: 'Confira o nome da marca, o título e a descrição.',
+  INVALID_AD_IMAGE: 'Use um endereço HTTPS válido para a imagem.',
+  INVALID_AD_LINK: 'Confira o texto e o destino do botão.',
+  INVALID_AD_EXPIRY: 'Escolha uma data de expiração futura.',
+  DUPLICATE_AD_PLACEMENT: 'Um local de exibição foi selecionado mais de uma vez.',
   AD_REVISION_CONFLICT:
     'O anúncio foi alterado em outra sessão. Atualize a lista e tente novamente.',
   AD_EXPIRED: 'A data de expiração já passou.',
@@ -14,7 +21,7 @@ const MESSAGES = {
 }
 
 function explain(error) {
-  const key = Object.keys(MESSAGES).find((code) => error?.message?.startsWith(code))
+  const key = Object.keys(MESSAGES).find((code) => error?.message === code)
   if (key) return new Error(MESSAGES[key])
   if (error?.message?.startsWith('AD_CAPACITY_REACHED:')) {
     return new Error('Não há capacidade livre para ativar este anúncio no local selecionado.')
@@ -46,7 +53,7 @@ export async function listInstitutionalAds() {
     displayMode: row.display_mode,
     commercial: Boolean(row.commercial_resource_id),
     active: row.active,
-    delivering: row.delivering,
+    deliveryStatus: row.delivery_status,
     deletable: row.deletable,
     revision: row.revision,
     createdAt: row.created_at,

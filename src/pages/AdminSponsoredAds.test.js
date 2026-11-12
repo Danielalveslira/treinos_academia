@@ -13,7 +13,7 @@ let mount
 
 const STUBS = {
   useAdminSponsoredAds: `export function useAdminSponsoredAds() {
-    return { ads: [{ id: 'a1', title: 'Oferta', partnerName: 'Marca', communityIds: [], isGlobal: true, displayMode: ['banner'], expiresAt: null }],
+    return { ads: globalThis.__adminAdsOverride ?? [{ id: 'a1', title: 'Oferta', partnerName: 'Marca', communityIds: [], isGlobal: true, displayMode: ['banner'], expiresAt: null, deliveryStatus: 'delivering' }],
       loading: false, error: null, refresh() {}, add() {}, edit() {}, remove() {} } }`,
   useAdminCommunities: `export function useAdminCommunities() { return { communities: [{ id: 'c1', name: 'Com' }] } }`,
   useAuth: `export function useAuth() { return { user: { uid: 'admin-1' } } }`,
@@ -165,4 +165,42 @@ test('link de relatório abre Resultados diretamente sem montar a lista visual d
   assert.equal(page.hasNovo(), false)
   assert.equal(page.wrapperHidden('metrics-tab'), false)
   page.unmount()
+})
+
+test('estados de entrega vêm do servidor e validade não ganha selo duplicado', async () => {
+  globalThis.__adminAdsOverride = ['delivering', 'partial', 'paused', 'suspended', 'expired'].map(
+    (deliveryStatus, index) => ({
+      id: `ad-${index}`,
+      title: `Anúncio ${index}`,
+      partnerName: 'Marca',
+      placements: [],
+      deliveryStatus,
+      active: index < 3,
+      expiresAt: deliveryStatus === 'expired' ? '2020-01-01T00:00:00Z' : null,
+    })
+  )
+  const page = mount('/admin/parcerias?tab=campaigns')
+  await tick()
+  for (const label of [
+    'Em exibição',
+    'Exibição parcial',
+    'Exibição pausada',
+    'Suspenso',
+    'Expirado',
+  ]) {
+    assert.match(page.text(), new RegExp(label))
+  }
+  assert.equal((page.text().match(/Expirado/g) || []).length, 1)
+  page.unmount()
+  delete globalThis.__adminAdsOverride
+})
+
+test('lista vazia oferece um único caminho de criação', async () => {
+  globalThis.__adminAdsOverride = []
+  const page = mount('/admin/parcerias?tab=campaigns')
+  await tick()
+  assert.equal(page.hasNovo(), false)
+  assert.match(page.text(), /Criar anúncio/)
+  page.unmount()
+  delete globalThis.__adminAdsOverride
 })

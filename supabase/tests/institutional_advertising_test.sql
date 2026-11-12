@@ -34,6 +34,10 @@ end$$;
 create function pg_temp.as_viewer() returns void language plpgsql as $$begin
  perform pg_temp.set_test_user('77010000-0000-0000-0000-000000000002',true);
 end$$;
+create function pg_temp.ad_status(p_ad uuid) returns text language sql as $$
+ select x->>'delivery_status' from jsonb_array_elements(public.admin_list_institutional_ads()) x
+ where x->>'id'=p_ad::text
+$$;
 
 select pg_temp.as_viewer();
 set local role authenticated;
@@ -78,6 +82,7 @@ select is((select commercial_resource_id from public.sponsored_ads where id='770
 select is((select jsonb_array_length(x->'placements') from jsonb_array_elements(public.admin_list_institutional_ads()) x
  where x->>'id'='77030000-0000-0000-0000-000000000001'),3,
  'listagem administrativa mostra os três locais de exibição');
+select is(pg_temp.ad_status('77030000-0000-0000-0000-000000000001'),'suspended','rascunho é suspenso');
 reset role;
 
 select pg_temp.as_viewer();
@@ -89,6 +94,10 @@ select pg_temp.as_admin();
 set local role authenticated;
 select is(public.admin_set_institutional_ad_active('77030000-0000-0000-0000-000000000001',1,true),2::bigint,
  'ativação usa capacidade existente');
+select is(pg_temp.ad_status('77030000-0000-0000-0000-000000000001'),'delivering',
+ 'ativo e disponível em todos os três locais é elegível para entrega');
+select is((select count(*)::integer from public.sponsored_ad_daily_stats where ad_id='77030000-0000-0000-0000-000000000001'),0,
+ 'status de entrega não pressupõe impressão registrada');
 select is(public.admin_save_institutional_ad('77030000-0000-0000-0000-000000000002',0,
  pg_temp.ad_payload('[{"code":"progress_banner","contextId":null}]')),1::bigint,
  'outro anúncio pode ser salvo como rascunho');
@@ -134,18 +143,32 @@ reset role;
 select is((select visible_impressions from public.sponsored_ad_daily_stats where ad_id='77030000-0000-0000-0000-000000000001' and placement='progress_banner'),1::bigint,
  'métrica institucional reutiliza agregado existente');
 update public.advertising_placements set delivery_enabled=false where code='progress_banner';
+select pg_temp.as_admin();
+set local role authenticated;
+select is(pg_temp.ad_status('77030000-0000-0000-0000-000000000001'),'partial',
+ 'um posicionamento desativado não pausa anúncio que continua na Home e comunidade');
+reset role;
 select pg_temp.as_viewer();
 set local role authenticated;
 select is(public.select_advertising('progress_banner',null),'[]'::jsonb,'gate de exibição bloqueia anúncio institucional');
 select is((public.record_ad_events('[{"id":"77040000-0000-0000-0000-000000000003","type":"impression","ad":"77030000-0000-0000-0000-000000000001","placement":"progress_banner"}]')) ->> 'accepted','0',
  'gate de exibição bloqueia métrica institucional');
 reset role;
+update public.advertising_placements set delivery_enabled=false where code in('home_banner','community_banner');
+select pg_temp.as_admin();
+set local role authenticated;
+select is(pg_temp.ad_status('77030000-0000-0000-0000-000000000001'),'paused',
+ 'todos os posicionamentos indisponíveis pausam a entrega');
+reset role;
+update public.advertising_placements set delivery_enabled=true where code in('home_banner','community_banner');
 update public.advertising_placements set delivery_enabled=true where code='progress_banner';
 
 select pg_temp.as_admin();
 set local role authenticated;
 select is(public.admin_set_institutional_ad_active('77030000-0000-0000-0000-000000000001',2,false),3::bigint,
  'suspensão interrompe entrega');
+select is(pg_temp.ad_status('77030000-0000-0000-0000-000000000001'),'suspended',
+ 'estado suspenso prevalece sobre posicionamentos disponíveis');
 reset role;
 select pg_temp.as_viewer();
 set local role authenticated;
@@ -156,6 +179,64 @@ select pg_temp.as_admin();
 set local role authenticated;
 select throws_ok($$select public.admin_set_institutional_ad_active('77030000-0000-0000-0000-000000000001',3,true)$$,
  'AD_EXPIRED','anúncio expirado não é reativado');
+select is(pg_temp.ad_status('77030000-0000-0000-0000-000000000001'),'expired',
+ 'expiração tem prioridade na classificação administrativa');
+reset role;
+
+-- Cada combinação preserva os escopos autorizados sem herdar outras rotas.
+select pg_temp.as_admin();
+set local role authenticated;
+select is(public.admin_save_institutional_ad('77030000-0000-0000-0000-000000000004',0,
+ pg_temp.ad_payload('[{"code":"progress_banner","contextId":null},{"code":"community_feed","contextId":"77020000-0000-0000-0000-000000000001"}]')),1::bigint,
+ 'Progresso + Feed da comunidade criado');
+select is(public.admin_set_institutional_ad_active('77030000-0000-0000-0000-000000000004',1,true),2::bigint,
+ 'Progresso + Feed ativo');
+reset role;
+select pg_temp.as_viewer();
+set local role authenticated;
+select ok(exists(select 1 from jsonb_array_elements(public.select_advertising('progress_banner',null)) x where x->>'id'='77030000-0000-0000-0000-000000000004'),
+ 'Progresso autorizado aparece');
+select ok(exists(select 1 from jsonb_array_elements(public.select_advertising('community_feed','77020000-0000-0000-0000-000000000001')) x where x->>'id'='77030000-0000-0000-0000-000000000004'),
+ 'Feed autorizado aparece');
+select is(public.select_advertising('community_banner','77020000-0000-0000-0000-000000000001'),'[]'::jsonb,
+ 'Feed não herda Banner da comunidade');
+reset role;
+select pg_temp.as_admin();
+set local role authenticated;
+select is(public.admin_set_institutional_ad_active('77030000-0000-0000-0000-000000000004',2,false),3::bigint,'primeira combinação suspensa');
+select is(public.admin_save_institutional_ad('77030000-0000-0000-0000-000000000005',0,
+ pg_temp.ad_payload('[{"code":"community_banner","contextId":"77020000-0000-0000-0000-000000000001"},{"code":"community_feed","contextId":"77020000-0000-0000-0000-000000000001"}]')),1::bigint,
+ 'Banner + Feed da comunidade criado');
+select is(public.admin_set_institutional_ad_active('77030000-0000-0000-0000-000000000005',1,true),2::bigint,
+ 'Banner + Feed ativo');
+reset role;
+select pg_temp.as_viewer();
+set local role authenticated;
+select ok(exists(select 1 from jsonb_array_elements(public.select_advertising('community_banner','77020000-0000-0000-0000-000000000001')) x where x->>'id'='77030000-0000-0000-0000-000000000005'),
+ 'Banner da comunidade autorizado aparece');
+select ok(exists(select 1 from jsonb_array_elements(public.select_advertising('community_feed','77020000-0000-0000-0000-000000000001')) x where x->>'id'='77030000-0000-0000-0000-000000000005'),
+ 'Feed da mesma comunidade autorizado aparece');
+select is(public.select_advertising('progress_banner',null),'[]'::jsonb,
+ 'Banner + Feed da comunidade não ganha Progresso');
+reset role;
+select pg_temp.as_admin();
+set local role authenticated;
+select is(public.admin_set_institutional_ad_active('77030000-0000-0000-0000-000000000005',2,false),3::bigint,'segunda combinação suspensa');
+select is(public.admin_save_institutional_ad('77030000-0000-0000-0000-000000000006',0,
+ pg_temp.ad_payload('[{"code":"home_banner","contextId":null},{"code":"progress_banner","contextId":null},{"code":"community_banner","contextId":"77020000-0000-0000-0000-000000000001"},{"code":"community_feed","contextId":"77020000-0000-0000-0000-000000000001"}]')),1::bigint,
+ 'quatro posicionamentos explícitos criados');
+select is(public.admin_set_institutional_ad_active('77030000-0000-0000-0000-000000000006',1,true),2::bigint,
+ 'quatro posicionamentos ativados sem exceder capacidade');
+select is(pg_temp.ad_status('77030000-0000-0000-0000-000000000006'),'delivering',
+ 'todos os quatro posicionamentos elegíveis');
+reset role;
+select pg_temp.as_viewer();
+set local role authenticated;
+select is((select count(*)::integer from jsonb_array_elements(public.select_advertising('home_banner',null)) x where x->>'id'='77030000-0000-0000-0000-000000000006')+
+ (select count(*)::integer from jsonb_array_elements(public.select_advertising('progress_banner',null)) x where x->>'id'='77030000-0000-0000-0000-000000000006')+
+ (select count(*)::integer from jsonb_array_elements(public.select_advertising('community_banner','77020000-0000-0000-0000-000000000001')) x where x->>'id'='77030000-0000-0000-0000-000000000006')+
+ (select count(*)::integer from jsonb_array_elements(public.select_advertising('community_feed','77020000-0000-0000-0000-000000000001')) x where x->>'id'='77030000-0000-0000-0000-000000000006'),4,
+ 'anúncio em quatro rotas aparece exatamente nas quatro autorizações');
 reset role;
 select ok(exists(select 1 from public.admin_audit_log where action='institutional_ad_activate' and metadata->>'adId'='77030000-0000-0000-0000-000000000001'),
  'ativação tem registro administrativo');

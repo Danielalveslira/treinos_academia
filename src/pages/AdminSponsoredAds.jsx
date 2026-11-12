@@ -13,7 +13,6 @@ import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { RowActionsMenu } from '../components/RowActionsMenu'
 import AdminNav from '../components/AdminNav'
-import { toMillis } from '../utils/expiry'
 
 // Aba Métricas: módulo (e o gráfico) só são baixados quando o superadmin abre a aba; nada de leitura antes disso.
 const AdMetricsTab = lazy(() => import('../features/adMetrics/components/AdMetricsTab'))
@@ -76,8 +75,12 @@ function TaskLinks({ items }) {
   )
 }
 
-function isExpired(ad, now) {
-  return Boolean(ad.expiresAt) && toMillis(ad.expiresAt) < now
+const DELIVERY_STATUS = {
+  delivering: { label: 'Em exibição', variant: 'success' },
+  partial: { label: 'Exibição parcial', variant: 'attention' },
+  paused: { label: 'Exibição pausada', variant: 'attention' },
+  suspended: { label: 'Suspenso', variant: 'secondary' },
+  expired: { label: 'Expirado', variant: 'danger' },
 }
 
 function expiryLabel(value) {
@@ -173,8 +176,6 @@ export default function AdminSponsoredAds() {
     }
   }
 
-  const now = Date.now()
-
   return (
     <Box>
       <AdminNav current="/admin/parcerias" currentLabel="Central comercial" />
@@ -183,11 +184,15 @@ export default function AdminSponsoredAds() {
         <Heading as="h1" sx={{ fontSize: 3 }}>
           Central comercial
         </Heading>
-        {section === 'advertising' && tab === 'campaigns' && !formOpen && !editingAd && (
-          <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
-            Novo
-          </Button>
-        )}
+        {section === 'advertising' &&
+          tab === 'campaigns' &&
+          !formOpen &&
+          !editingAd &&
+          (loading || error || ads.length > 0) && (
+            <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
+              Novo
+            </Button>
+          )}
       </Box>
 
       <Box
@@ -364,6 +369,10 @@ export default function AdminSponsoredAds() {
 
       {section === 'advertising' && tab === 'campaigns' && (
         <Box>
+          <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mb: 3 }}>
+            A situação indica disponibilidade para entrega; impressões registradas aparecem em
+            Resultados.
+          </Text>
           {formOpen && (
             <InstitutionalAdForm
               communities={communities}
@@ -387,7 +396,7 @@ export default function AdminSponsoredAds() {
           {loading && <Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}
           <ErrorState error={error} onRetry={refresh} />
 
-          {!loading && !error && ads.length === 0 && (
+          {!loading && !error && ads.length === 0 && !formOpen && !editingAd && (
             <Blankslate>
               <Blankslate.Visual>
                 <MegaphoneIcon size={24} />
@@ -428,21 +437,12 @@ export default function AdminSponsoredAds() {
                         {ad.commercial ? 'Comercial' : 'Institucional'}
                       </Label>
                       {!ad.commercial && (
-                        <Label
-                          variant={
-                            ad.delivering ? 'success' : ad.active ? 'attention' : 'secondary'
-                          }
-                        >
-                          {ad.delivering
-                            ? 'Em exibição'
-                            : ad.active
-                              ? 'Exibição pausada'
-                              : 'Suspenso'}
+                        <Label variant={DELIVERY_STATUS[ad.deliveryStatus]?.variant || 'secondary'}>
+                          {DELIVERY_STATUS[ad.deliveryStatus]?.label || 'Situação indisponível'}
                         </Label>
                       )}
-                      {isExpired(ad, now) && <Label variant="danger">Expirado</Label>}
                     </Box>
-                    <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+                    <Text sx={{ fontSize: 0, color: 'fg.muted', overflowWrap: 'anywhere' }}>
                       {ad.partnerName}
                       {!ad.commercial &&
                         (ad.placements || [])

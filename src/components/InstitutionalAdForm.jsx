@@ -21,7 +21,7 @@ const PLACEMENTS = [
   ['community_feed', 'Feed da comunidade — card'],
 ]
 
-function initialValues(ad) {
+export function initialInstitutionalAdValues(ad) {
   const expiry = ad?.expiresAt ? new Date(ad.expiresAt) : null
   const expiryDay =
     expiry &&
@@ -40,10 +40,31 @@ function initialValues(ad) {
     ctaTarget: ad?.ctaTarget || '',
     expiresAt: expiryDay ? expiryDay.toISOString().slice(0, 10) : '',
     codes: [...new Set((ad?.placements || []).map((item) => item.code))],
-    communityIds: [
-      ...new Set((ad?.placements || []).map((item) => item.contextId).filter(Boolean)),
-    ],
+    communityIdsByCode: Object.fromEntries(
+      ['community_banner', 'community_feed'].map((code) => [
+        code,
+        [
+          ...new Set(
+            (ad?.placements || [])
+              .filter((item) => item.code === code)
+              .map((item) => item.contextId)
+              .filter(Boolean)
+          ),
+        ],
+      ])
+    ),
   }
+}
+
+export function institutionalPlacementsFromValues(values) {
+  return [
+    ...values.codes
+      .filter((code) => !code.startsWith('community_'))
+      .map((code) => ({ code, contextId: null })),
+    ...values.codes
+      .filter((code) => code.startsWith('community_'))
+      .flatMap((code) => values.communityIdsByCode[code].map((contextId) => ({ code, contextId }))),
+  ]
 }
 
 function validate(values) {
@@ -53,8 +74,11 @@ function validate(values) {
   if (!values.title.trim() || values.title.trim().length > 100)
     errors.title = 'Informe um título com até 100 caracteres.'
   if (!values.codes.length) errors.codes = 'Escolha onde o anúncio será exibido.'
-  if (values.codes.some((code) => code.startsWith('community_')) && !values.communityIds.length)
-    errors.communityIds = 'Selecione ao menos uma comunidade.'
+  for (const code of values.codes.filter((item) => item.startsWith('community_'))) {
+    if (!values.communityIdsByCode[code].length) errors[code] = 'Selecione ao menos uma comunidade.'
+  }
+  if (institutionalPlacementsFromValues(values).length > 50)
+    errors.codes = 'Use no máximo 50 combinações de local e comunidade.'
   if (values.codes.includes('community_feed')) {
     if (values.description.length > 500) errors.description = 'Use até 500 caracteres.'
     if (
@@ -92,19 +116,11 @@ export function InstitutionalAdForm({
   const [serverError, setServerError] = useState('')
   const requestId = useRef(initialValue?.id || crypto.randomUUID())
   const { values, setField, setValues, errors, submitting, handleSubmit } = useFormState({
-    initialValues: () => initialValues(initialValue),
+    initialValues: () => initialInstitutionalAdValues(initialValue),
     validate,
     onSubmit: async (values) => {
       setServerError('')
-      const communityCodes = values.codes.filter((code) => code.startsWith('community_'))
-      const placements = [
-        ...values.codes
-          .filter((code) => !code.startsWith('community_'))
-          .map((code) => ({ code, contextId: null })),
-        ...communityCodes.flatMap((code) =>
-          values.communityIds.map((contextId) => ({ code, contextId }))
-        ),
-      ]
+      const placements = institutionalPlacementsFromValues(values)
       try {
         await onSubmit(
           {
@@ -116,7 +132,8 @@ export function InstitutionalAdForm({
             ctaType: values.ctaType,
             ctaTarget: values.ctaLabel.trim() ? values.ctaTarget.trim() : '',
             expiresAt:
-              initialValue?.expiresAt && values.expiresAt === initialValues(initialValue).expiresAt
+              initialValue?.expiresAt &&
+              values.expiresAt === initialInstitutionalAdValues(initialValue).expiresAt
                 ? initialValue.expiresAt
                 : values.expiresAt,
             placements,
@@ -140,6 +157,16 @@ export function InstitutionalAdForm({
       [field]: prev[field].includes(value)
         ? prev[field].filter((item) => item !== value)
         : [...prev[field], value],
+    }))
+  const toggleCommunity = (code, id) =>
+    setValues((prev) => ({
+      ...prev,
+      communityIdsByCode: {
+        ...prev.communityIdsByCode,
+        [code]: prev.communityIdsByCode[code].includes(id)
+          ? prev.communityIdsByCode[code].filter((item) => item !== id)
+          : [...prev.communityIdsByCode[code], id],
+      },
     }))
 
   return (
@@ -189,40 +216,57 @@ export function InstitutionalAdForm({
           <FormControl.Validation variant="error">{errors.codes}</FormControl.Validation>
         )}
       </FormControl>
-      {hasCommunity && (
-        <FormControl required>
-          <FormControl.Label>Comunidades</FormControl.Label>
-          <Box
-            sx={{
-              maxHeight: 220,
-              overflowY: 'auto',
-              border: '1px solid',
-              borderColor: 'border.default',
-              borderRadius: 2,
-              p: 2,
-            }}
-          >
-            {communities
-              .filter((community) => community.isActive !== false)
-              .map((community) => (
-                <FormControl key={community.id}>
-                  <Checkbox
-                    checked={values.communityIds.includes(community.id)}
-                    onChange={() => toggle('communityIds', community.id)}
-                  />
-                  <FormControl.Label>{community.name}</FormControl.Label>
-                </FormControl>
-              ))}
-          </Box>
-          {hasMoreCommunities && (
-            <Button type="button" onClick={loadMoreCommunities}>
-              Carregar mais comunidades
-            </Button>
-          )}
-          {errors.communityIds && (
-            <FormControl.Validation variant="error">{errors.communityIds}</FormControl.Validation>
-          )}
-        </FormControl>
+      {hasCommunity &&
+        values.codes
+          .filter((code) => code.startsWith('community_'))
+          .map((code) => (
+            <FormControl required key={code}>
+              <FormControl.Label>
+                {values.codes.includes('community_banner') &&
+                values.codes.includes('community_feed')
+                  ? code === 'community_banner'
+                    ? 'Comunidades do banner'
+                    : 'Comunidades do feed'
+                  : 'Comunidades'}
+              </FormControl.Label>
+              <Box
+                sx={{
+                  maxHeight: 220,
+                  overflowY: 'auto',
+                  border: '1px solid',
+                  borderColor: 'border.default',
+                  borderRadius: 2,
+                  p: 2,
+                }}
+              >
+                {communities
+                  .filter((community) => community.isActive !== false)
+                  .map((community) => (
+                    <FormControl key={community.id}>
+                      <Checkbox
+                        checked={values.communityIdsByCode[code].includes(community.id)}
+                        onChange={() => toggleCommunity(code, community.id)}
+                      />
+                      <FormControl.Label>{community.name}</FormControl.Label>
+                    </FormControl>
+                  ))}
+              </Box>
+              {values.communityIdsByCode[code].some(
+                (id) => !communities.some((community) => community.id === id)
+              ) && (
+                <FormControl.Caption>
+                  Há comunidades selecionadas fora desta página. Carregue mais para conferi-las.
+                </FormControl.Caption>
+              )}
+              {errors[code] && (
+                <FormControl.Validation variant="error">{errors[code]}</FormControl.Validation>
+              )}
+            </FormControl>
+          ))}
+      {hasCommunity && hasMoreCommunities && (
+        <Button type="button" onClick={loadMoreCommunities}>
+          Carregar mais comunidades
+        </Button>
       )}
       {hasFeed && (
         <>

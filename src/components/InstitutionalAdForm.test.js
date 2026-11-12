@@ -8,6 +8,7 @@ import { build } from 'esbuild'
 
 let directory
 let render
+let roundTripPlacements
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'institutional-ad-form-'))
   const outfile = join(directory, 'form.cjs')
@@ -16,12 +17,15 @@ before(async () => {
       contents: `
         import React from 'react'
         import { renderToStaticMarkup } from 'react-dom/server'
-        import { InstitutionalAdForm } from './InstitutionalAdForm.jsx'
+        import { InstitutionalAdForm, initialInstitutionalAdValues, institutionalPlacementsFromValues } from './InstitutionalAdForm.jsx'
         export function render(initialValue) {
           return renderToStaticMarkup(React.createElement(InstitutionalAdForm, {
             initialValue, communities: [{ id: 'c1', name: 'Corrida', isActive: true }],
             onSubmit() {}, onCancel() {},
           }))
+        }
+        export function roundTripPlacements(initialValue) {
+          return institutionalPlacementsFromValues(initialInstitutionalAdValues(initialValue))
         }
       `,
       resolveDir: new URL('.', import.meta.url).pathname,
@@ -39,7 +43,7 @@ before(async () => {
         '{"VITE_SUPABASE_URL":"https://t.supabase.co","VITE_SUPABASE_ANON_KEY":"k"}',
     },
   })
-  ;({ render } = createRequire(import.meta.url)(outfile))
+  ;({ render, roundTripPlacements } = createRequire(import.meta.url)(outfile))
 })
 after(async () => {
   if (directory) await rm(directory, { recursive: true, force: true })
@@ -77,4 +81,17 @@ test('card de comunidade mostra seleção de contexto, imagem, descrição e bot
   assert.match(html, /Corrida|Descrição do card|Imagem do card|sponsored-ad-media/)
   assert.match(html, /Descrição do feed|Participar/)
   assert.doesNotMatch(html, /sponsored-ad-banner--progress/)
+})
+
+test('edição preserva associações diferentes para banner e feed da comunidade', () => {
+  const placements = [
+    { code: 'home_banner', contextId: null },
+    { code: 'progress_banner', contextId: null },
+    { code: 'community_banner', contextId: 'c1' },
+    { code: 'community_feed', contextId: 'c2' },
+  ]
+  assert.deepEqual(roundTripPlacements({ ...ad, placements }), placements)
+  const html = render({ ...ad, placements })
+  assert.match(html, /Comunidades do banner/)
+  assert.match(html, /Comunidades do feed/)
 })
