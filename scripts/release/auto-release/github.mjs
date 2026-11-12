@@ -177,6 +177,21 @@ export function githubRepository(config, api) {
       configuration_file_path: '.github/release.yml',
     })
   }
+  async function pullMergedInRange(number, from, to) {
+    const pull = await optional(() => api(`${base}/pulls/${number}`))
+    if (
+      !pull ||
+      pull.number !== number ||
+      !pull.merged_at ||
+      pull.base?.repo?.full_name !== config.repository ||
+      !validSha(pull.merge_commit_sha)
+    ) return false
+    const [before, after] = await Promise.all([
+      compare(from, pull.merge_commit_sha),
+      compare(pull.merge_commit_sha, to),
+    ])
+    return before.status === 'ahead' && ['ahead', 'identical'].includes(after.status)
+  }
   return {
     base,
     api,
@@ -188,5 +203,6 @@ export function githubRepository(config, api) {
     officialReleases,
     changes,
     officialNotes,
+    pullMergedInRange,
   }
 }
