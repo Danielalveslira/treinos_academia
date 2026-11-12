@@ -9,6 +9,8 @@ export default function AdvertisingCreativePreview({
   title,
   description,
   mediaId,
+  imageUrl,
+  ctaLabel = 'Saiba mais',
 }) {
   const codes = (placements || []).map((item) => (typeof item === 'string' ? item : item.code))
   const showFeed = codes.includes('community_feed')
@@ -42,7 +44,7 @@ export default function AdvertisingCreativePreview({
               </div>
             </div>
             <div className="sponsored-ad-banner-side">
-              <span className="sponsored-ad-banner-cta">Saiba mais</span>
+              {ctaLabel && <span className="sponsored-ad-banner-cta">{ctaLabel}</span>}
             </div>
           </div>
         </div>
@@ -62,9 +64,14 @@ export default function AdvertisingCreativePreview({
                 <StorefrontImage id={mediaId} size="100%" />
               </div>
             )}
+            {imageUrl && !mediaId && (
+              <div className="sponsored-ad-media">
+                <img src={imageUrl} alt="" className="sponsored-ad-image" width="640" height="360" loading="lazy" referrerPolicy="no-referrer" />
+              </div>
+            )}
             <h3 className="sponsored-ad-title">{title || 'Seu anúncio'}</h3>
             {description && <p className="sponsored-ad-description">{description}</p>}
-            <span className="sponsored-ad-cta">Saiba mais</span>
+            {ctaLabel && <span className="sponsored-ad-cta">{ctaLabel}</span>}
           </article>
         </>
       )}

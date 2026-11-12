@@ -68,7 +68,11 @@ select pg_temp.as_ad_user(2);
 select is(pg_temp.aderr('select pg_temp.report(1)'),'PERMISSION_DENIED','conta inativa nega leitura');
 select pg_temp.as_ad_user(1);
 select public.admin_manage_advertiser('update','a9200000-0000-0000-0000-000000000001','Empresa A',true);
+-- Simula remoção histórica por operação privilegiada; a UI institucional agora exige
+-- RPC e preserva campanhas com métricas.
+reset role;
 delete from public.sponsored_ads where id='a9300000-0000-0000-0000-000000000001';
+set local role authenticated;
 select pg_temp.as_ad_user(2);
 select is(pg_temp.report(1)#>>'{summary,visible_impressions}','10','exclusão mantém histórico e autorização');
 select is(pg_temp.report(1)#>>'{by_campaign,0,deleted}','true','campanha marcada removida');
