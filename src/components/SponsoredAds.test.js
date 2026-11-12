@@ -175,6 +175,17 @@ test('prévia mostra imagem e descrição somente no card do feed', () => {
     placements: ['community_feed'],
   })
   assert.doesNotMatch(optional, /sponsored-ad-media|sponsored-ad-description/)
+  const institutional = render('preview', {
+    ...props,
+    mediaId: null,
+    imageUrl: 'https://example.invalid/creative.png',
+    ctaLabel: 'Participar',
+    placements: ['home_banner', 'community_feed'],
+  })
+  assert.equal((institutional.match(/sponsored-ad-media/g) || []).length, 1)
+  assert.match(institutional, /Participar/)
+  assert.match(institutional, /referrerPolicy="no-referrer"|referrerpolicy="no-referrer"/i)
+  assert.doesNotMatch(render('preview', { ...props, ctaLabel: '', placements: ['progress_banner'] }), /sponsored-ad-banner-cta/)
 })
 
 test('banner: amostra de 1 com eligibleTotal maior mostra "+N" (nunca uma posição falsa como "1/4")', () => {

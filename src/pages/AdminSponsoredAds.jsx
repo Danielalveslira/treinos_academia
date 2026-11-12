@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { Suspense, lazy, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useRef, useState } from 'react'
 import { Box, Heading, Text, Button, Spinner, Label, UnderlineNav } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { MegaphoneIcon, PlusIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
@@ -8,13 +8,12 @@ import { useAdminCommunities } from '../hooks/useAdminCommunities'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
 import { useConfirmDelete } from '../hooks/useConfirmDelete'
-import { SponsoredAdForm } from '../components/SponsoredAdForm'
+import { InstitutionalAdForm } from '../components/InstitutionalAdForm'
 import { ErrorState } from '../components/ErrorState'
 import { ToastFlash } from '../components/ToastFlash'
 import { RowActionsMenu } from '../components/RowActionsMenu'
 import AdminNav from '../components/AdminNav'
 import { toMillis } from '../utils/expiry'
-import { SponsoredAdCapError, SponsoredAdGlobalCapError } from '../utils/validators'
 
 // Aba Métricas: módulo (e o gráfico) só são baixados quando o superadmin abre a aba; nada de leitura antes disso.
 const AdMetricsTab = lazy(() => import('../features/adMetrics/components/AdMetricsTab'))
@@ -81,6 +80,22 @@ function isExpired(ad, now) {
   return Boolean(ad.expiresAt) && toMillis(ad.expiresAt) < now
 }
 
+function expiryLabel(value) {
+  const date = new Date(value)
+  if (date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0) {
+    date.setUTCDate(date.getUTCDate() - 1)
+  }
+  return date.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+}
+
+function placeLabel(place, communities) {
+  if (place.code === 'home_banner') return 'Home'
+  if (place.code === 'progress_banner') return 'Progresso'
+  const community =
+    communities.find((item) => item.id === place.contextId)?.name || 'comunidade selecionada'
+  return `${place.code === 'community_banner' ? 'Banner' : 'Feed'} · ${community}`
+}
+
 export default function AdminSponsoredAds() {
   const [params, setParams] = useSearchParams()
   const reportRequested = params.get('report') === 'metrics'
@@ -94,8 +109,13 @@ export default function AdminSponsoredAds() {
       ? 'metrics'
       : 'campaigns'
   const needsCampaigns = section === 'advertising' && (tab === 'campaigns' || tab === 'metrics')
-  const { ads, loading, error, refresh, add, edit, remove } = useAdminSponsoredAds(needsCampaigns)
-  const { communities } = useAdminCommunities(needsCampaigns)
+  const { ads, loading, error, refresh, add, edit, remove, setActive } =
+    useAdminSponsoredAds(needsCampaigns)
+  const {
+    communities,
+    hasMore: hasMoreCommunities,
+    loadMore: loadMoreCommunities,
+  } = useAdminCommunities(needsCampaigns)
   const { user } = useAuth()
   const [metricsOpened, setMetricsOpened] = useState(reportRequested || requestedTab === 'metrics')
   const { toasts, showToast } = useToast()
@@ -105,72 +125,48 @@ export default function AdminSponsoredAds() {
   const actionLock = useRef(false)
   const [busyAdId, setBusyAdId] = useState(null)
 
-  // Deriva a contagem por comunidade da mesma lista já carregada pra exibir a lista de
-  // anúncios abaixo -- evita uma leitura por comunidade (N+1) só pra mostrar o badge
-  // "X/6 anúncios" no seletor do formulário. Exclui o próprio anúncio em edição do
-  // total, senão editar um anúncio que já ocupa uma vaga mostraria erroneamente "no
-  // limite" para comunidades que ele mesmo já integra.
-  const adCountByCommunityId = useMemo(() => {
-    const counts = {}
-    for (const ad of ads) {
-      if (ad.id === editingAd?.id) continue
-      for (const communityId of ad.communityIds) {
-        counts[communityId] = (counts[communityId] || 0) + 1
-      }
-    }
-    return counts
-  }, [ads, editingAd])
-
-  // Mesmo raciocínio de adCountByCommunityId, mas para o teto global (isGlobal) — uma
-  // única contagem, não um mapa por comunidade.
-  const globalAdCount = useMemo(
-    () => ads.filter((ad) => ad.isGlobal && ad.id !== editingAd?.id).length,
-    [ads, editingAd]
-  )
-
-  // SponsoredAdCapError/SponsoredAdGlobalCapError são relançados de propósito, sem toast:
-  // SponsoredAdForm já captura esses erros específicos e marca o campo correspondente em
-  // vez de mostrar um toast genérico (ver a resposta dos tetos de anúncios ativos).
-  // Qualquer outro erro é tratado aqui mesmo, igual ao restante do painel admin.
-  async function handleCreate(values) {
-    try {
-      await add(values)
-      setFormOpen(false)
-      showToast('Anúncio criado.')
-    } catch (err) {
-      if (err instanceof SponsoredAdCapError || err instanceof SponsoredAdGlobalCapError) throw err
-      console.error('[AdminSponsoredAds] create:', err)
-      showToast('Erro ao criar anúncio.', 'danger')
-    }
+  async function handleCreate(values, requestId) {
+    await add(values, requestId)
+    setFormOpen(false)
+    showToast('Anúncio salvo. Ative-o quando o posicionamento estiver pronto.')
   }
 
   async function handleUpdate(values) {
-    try {
-      await edit(editingAd.id, values)
-      setEditingAd(null)
-      showToast('Anúncio atualizado.')
-    } catch (err) {
-      if (err instanceof SponsoredAdCapError || err instanceof SponsoredAdGlobalCapError) throw err
-      console.error('[AdminSponsoredAds] update:', err)
-      showToast('Erro ao atualizar anúncio.', 'danger')
-    }
+    await edit(editingAd, values)
+    setEditingAd(null)
+    showToast('Anúncio atualizado.')
   }
 
   async function handleDelete(ad) {
     const confirmed = await confirmDelete({
       title: `Excluir "${ad.title}"?`,
-      content: 'O anúncio deixa de aparecer imediatamente em todas as comunidades listadas.',
+      content: 'A exclusão só é permitida para anúncios suspensos e sem histórico de métricas.',
     })
     if (!confirmed) return
     if (actionLock.current) return
     actionLock.current = true
     setBusyAdId(ad.id)
     try {
-      await remove(ad.id)
+      await remove(ad)
       showToast('Anúncio excluído.')
     } catch (err) {
       console.error('[AdminSponsoredAds] delete:', err)
-      showToast('Erro ao excluir anúncio.', 'danger')
+      showToast(err.message || 'Erro ao excluir anúncio.', 'danger')
+    } finally {
+      actionLock.current = false
+      setBusyAdId(null)
+    }
+  }
+
+  async function handleActive(ad, active) {
+    if (actionLock.current) return
+    actionLock.current = true
+    setBusyAdId(ad.id)
+    try {
+      await setActive(ad, active)
+      showToast(active ? 'Anúncio ativado.' : 'Anúncio suspenso.')
+    } catch (err) {
+      showToast(err.message || 'Não foi possível alterar a publicação.', 'danger')
     } finally {
       actionLock.current = false
       setBusyAdId(null)
@@ -187,15 +183,11 @@ export default function AdminSponsoredAds() {
         <Heading as="h1" sx={{ fontSize: 3 }}>
           Central comercial
         </Heading>
-        {section === 'advertising' &&
-          tab === 'campaigns' &&
-          !formOpen &&
-          !editingAd &&
-          (loading || error || ads.length > 0) && (
-            <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
-              Novo
-            </Button>
-          )}
+        {section === 'advertising' && tab === 'campaigns' && !formOpen && !editingAd && (
+          <Button leadingVisual={PlusIcon} variant="primary" onClick={() => setFormOpen(true)}>
+            Novo
+          </Button>
+        )}
       </Box>
 
       <Box
@@ -281,7 +273,8 @@ export default function AdminSponsoredAds() {
               {
                 to: '/admin/parcerias?tab=commercial&sub=legacy',
                 title: 'Produtos legados',
-                description: 'Cadastros administrativos anteriores, preservados por compatibilidade.',
+                description:
+                  'Cadastros administrativos anteriores, preservados por compatibilidade.',
               },
             ]}
           />
@@ -372,20 +365,20 @@ export default function AdminSponsoredAds() {
       {section === 'advertising' && tab === 'campaigns' && (
         <Box>
           {formOpen && (
-            <SponsoredAdForm
+            <InstitutionalAdForm
               communities={communities}
-              adCountByCommunityId={adCountByCommunityId}
-              globalAdCount={globalAdCount}
+              hasMoreCommunities={hasMoreCommunities}
+              loadMoreCommunities={loadMoreCommunities}
               onSubmit={handleCreate}
               onCancel={() => setFormOpen(false)}
             />
           )}
           {editingAd && (
-            <SponsoredAdForm
+            <InstitutionalAdForm
               initialValue={editingAd}
               communities={communities}
-              adCountByCommunityId={adCountByCommunityId}
-              globalAdCount={globalAdCount}
+              hasMoreCommunities={hasMoreCommunities}
+              loadMoreCommunities={loadMoreCommunities}
               onSubmit={handleUpdate}
               onCancel={() => setEditingAd(null)}
             />
@@ -431,33 +424,72 @@ export default function AdminSponsoredAds() {
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                       <Text sx={{ fontWeight: 'bold' }}>{ad.title}</Text>
-                      {ad.isGlobal && <Label variant="accent">Home</Label>}
+                      <Label variant={ad.commercial ? 'attention' : 'accent'}>
+                        {ad.commercial ? 'Comercial' : 'Institucional'}
+                      </Label>
+                      {!ad.commercial && (
+                        <Label
+                          variant={
+                            ad.delivering ? 'success' : ad.active ? 'attention' : 'secondary'
+                          }
+                        >
+                          {ad.delivering
+                            ? 'Em exibição'
+                            : ad.active
+                              ? 'Exibição pausada'
+                              : 'Suspenso'}
+                        </Label>
+                      )}
                       {isExpired(ad, now) && <Label variant="danger">Expirado</Label>}
                     </Box>
                     <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
                       {ad.partnerName}
-                      {ad.communityIds.length > 0 &&
-                        ` · ${ad.communityIds.length} ${ad.communityIds.length === 1 ? 'comunidade' : 'comunidades'}`}
+                      {!ad.commercial &&
+                        (ad.placements || [])
+                          .map((place) => placeLabel(place, communities))
+                          .join(' · ')}
+                      {ad.expiresAt && ` · Expira em ${expiryLabel(ad.expiresAt)}`}
                     </Text>
                   </Box>
-                  <RowActionsMenu
-                    disabled={busyAdId !== null}
-                    actions={[
-                      {
-                        key: 'edit',
-                        label: 'Editar',
-                        icon: PencilIcon,
-                        onSelect: () => setEditingAd(ad),
-                      },
-                      {
-                        key: 'delete',
-                        label: 'Excluir',
-                        icon: TrashIcon,
-                        variant: 'danger',
-                        onSelect: () => handleDelete(ad),
-                      },
-                    ]}
-                  />
+                  {ad.commercial && (
+                    <Button
+                      as={Link}
+                      to="/admin/parcerias?section=advertising&tab=advertisers"
+                      size="small"
+                    >
+                      Ver campanha
+                    </Button>
+                  )}
+                  {!ad.commercial && (
+                    <RowActionsMenu
+                      disabled={busyAdId !== null}
+                      actions={[
+                        {
+                          key: 'edit',
+                          label: 'Visualizar e editar',
+                          icon: PencilIcon,
+                          onSelect: () => setEditingAd(ad),
+                        },
+                        {
+                          key: 'active',
+                          label: ad.active ? 'Suspender' : 'Ativar',
+                          icon: MegaphoneIcon,
+                          onSelect: () => handleActive(ad, !ad.active),
+                        },
+                        ...(ad.deletable
+                          ? [
+                              {
+                                key: 'delete',
+                                label: 'Excluir',
+                                icon: TrashIcon,
+                                variant: 'danger',
+                                onSelect: () => handleDelete(ad),
+                              },
+                            ]
+                          : []),
+                      ]}
+                    />
+                  )}
                 </Box>
               ))}
             </Box>

@@ -19,8 +19,8 @@ const STUBS = {
   useAuth: `export function useAuth() { return { user: { uid: 'admin-1' } } }`,
   useToast: `export function useToast() { return { toasts: [], showToast() {} } }`,
   useConfirmDelete: `export function useConfirmDelete() { return async () => true }`,
-  SponsoredAdForm: `import { createElement } from 'react'
-    export function SponsoredAdForm({ initialValue }) { return createElement('form', { 'data-testid': 'ad-form' }, initialValue ? 'editar' : 'novo') }`,
+  InstitutionalAdForm: `import { createElement } from 'react'
+    export function InstitutionalAdForm({ initialValue }) { return createElement('form', { 'data-testid': 'ad-form' }, initialValue ? 'editar' : 'novo') }`,
   ErrorState: `export function ErrorState() { return null }`,
   ToastFlash: `export function ToastFlash() { return null }`,
   RowActionsMenu: `export function RowActionsMenu() { return null }`,

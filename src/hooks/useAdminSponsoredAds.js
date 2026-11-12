@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  listAllSponsoredAds,
-  createSponsoredAd,
-  updateSponsoredAd,
-  deleteSponsoredAd,
-} from '../services/sponsoredAdsService'
+  listInstitutionalAds,
+  saveInstitutionalAd,
+  setInstitutionalAdActive,
+  deleteInstitutionalAd,
+} from '../services/institutionalAdsService'
 import { describeQueryError } from '../utils/queryError'
-import { useAuth } from './useAuth'
 
 export function useAdminSponsoredAds(enabled = true) {
-  const { user } = useAuth()
   const [ads, setAds] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -18,7 +16,7 @@ export function useAdminSponsoredAds(enabled = true) {
     setLoading(true)
     setError(null)
     try {
-      setAds(await listAllSponsoredAds())
+      setAds(await listInstitutionalAds())
     } catch (err) {
       setError(describeQueryError(err, 'useAdminSponsoredAds'))
     } finally {
@@ -30,23 +28,25 @@ export function useAdminSponsoredAds(enabled = true) {
     if (enabled) refresh()
   }, [refresh, enabled])
 
-  // Recarrega a lista inteira em vez de atualizar localmente: o formulário admin deriva
-  // o badge "X/6 anúncios" por comunidade a partir desta mesma lista (ver
-  // AdminSponsoredAds.jsx), então precisa refletir o total real logo após salvar.
-  async function add(ad) {
-    await createSponsoredAd(user.uid, ad)
+  async function add(ad, requestId) {
+    await saveInstitutionalAd(null, ad, requestId)
     await refresh()
   }
 
-  async function edit(adId, ad) {
-    await updateSponsoredAd(adId, ad)
+  async function edit(existing, ad) {
+    await saveInstitutionalAd(existing, ad)
     await refresh()
   }
 
-  async function remove(adId) {
-    await deleteSponsoredAd(adId)
-    setAds((prev) => prev.filter((a) => a.id !== adId))
+  async function remove(ad) {
+    await deleteInstitutionalAd(ad)
+    await refresh()
   }
 
-  return { ads, loading, error, refresh, add, edit, remove }
+  async function setActive(ad, active) {
+    await setInstitutionalAdActive(ad, active)
+    await refresh()
+  }
+
+  return { ads, loading, error, refresh, add, edit, remove, setActive }
 }
