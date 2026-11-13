@@ -88,7 +88,7 @@ export default function CommercialOverview() {
       >
         <OverviewCard
           title="Anúncios aguardando análise"
-          to="/admin/parcerias?section=approvals"
+          to="/admin/parcerias?area=aprovacoes"
           action="Revisar anúncios"
           state={campaigns.state}
           entries={pendingCampaigns.map((row) => ({ id: row.ad_id, title: row.title }))}
@@ -96,7 +96,7 @@ export default function CommercialOverview() {
         />
         <OverviewCard
           title="Campanhas aptas para exibição"
-          to="/admin/parcerias?section=advertising"
+          to="/admin/parcerias?area=publicidade&tab=campanhas"
           action="Ver campanhas"
           state={campaigns.state}
           entries={eligibleCampaigns.map((row) => ({ id: row.ad_id, title: row.title }))}
@@ -104,7 +104,7 @@ export default function CommercialOverview() {
         />
         <OverviewCard
           title="Vitrines aguardando análise"
-          to="/admin/parcerias?section=approvals"
+          to="/admin/parcerias?area=aprovacoes"
           action="Analisar vitrines"
           state={storefronts.state}
           entries={pendingStorefronts.map((row) => ({ id: row.id, title: row.name }))}
