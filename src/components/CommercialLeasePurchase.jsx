@@ -61,6 +61,11 @@ export default function CommercialLeasePurchase({
         setConfirmed(false)
       }
     } catch (e) {
+      if (e?.message === 'QUOTE_EXPIRED') {
+        intent.current = null
+        setQuote(null)
+        setConfirmed(false)
+      }
       setError(commercialError(e))
     } finally {
       lock.current = false

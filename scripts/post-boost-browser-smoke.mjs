@@ -104,6 +104,25 @@ try {
     evidence.push({ width, ...metrics })
     await page.close()
   }
+  const expiredPage = await browser.newPage({ viewport: { width: 390, height: 800 } })
+  await expiredPage.goto(`${origin}/tests/fixtures/post-boost-preview.html?expired=1`)
+  await expiredPage.getByText('7 EvoCash/dia').waitFor()
+  await expiredPage.getByRole('spinbutton', { name: 'Duração em dias' }).fill('3')
+  await expiredPage.getByRole('button', { name: 'Revisar valor' }).click()
+  await expiredPage.getByRole('button', { name: 'Confirmar promoção' }).waitFor()
+  await expiredPage.getByRole('checkbox').check()
+  await expiredPage.getByRole('button', { name: 'Confirmar promoção' }).click()
+  await expiredPage.getByText('A cotação venceu.').waitFor()
+  await expiredPage.getByRole('button', { name: 'Revisar valor' }).click()
+  await expiredPage.getByRole('button', { name: 'Confirmar promoção' }).waitFor()
+  assert.equal(
+    (await expiredPage.evaluate(() => window.__boostCalls)).filter(
+      (name) => name === 'quote_commercial_order'
+    ).length,
+    2,
+    'expired quote can be requested again'
+  )
+  await expiredPage.close()
   console.log(JSON.stringify({ passed: true, widths: evidence }, null, 2))
 } finally {
   await browser?.close()

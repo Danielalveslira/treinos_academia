@@ -13,6 +13,16 @@ window.fetch = async (input, init) => {
   const name = new URL(String(input)).pathname.split('/').pop()
   const args = JSON.parse(init?.body || '{}')
   window.__boostCalls.push(name)
+  if (
+    name === 'confirm_commercial_order_with_terms' &&
+    window.location.search.includes('expired=1') &&
+    window.__boostCalls.filter((call) => call === name).length === 1
+  ) {
+    return new Response(JSON.stringify({ message: 'QUOTE_EXPIRED' }), {
+      status: 400,
+      headers: { 'content-type': 'application/json' },
+    })
+  }
   const payload =
     name === 'get_direct_post_boost_offer'
       ? {
