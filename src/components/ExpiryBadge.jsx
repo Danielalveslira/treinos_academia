@@ -23,7 +23,8 @@ export function ExpiryBadge({ status, now }) {
   const titleId = useId()
   const nowOverride = validMillis(now) ?? undefined
   const createdAtMs = validMillis(status.createdAt)
-  const expiresAtMs = validMillis(status.expiresAt)
+  const expiresAtMs = validMillis(status.publicationExpiresAt ?? status.expiresAt)
+  const normalExpiresAtMs = validMillis(status.expiresAt)
   const promotedUntilMs = validMillis(status.promotedUntil)
   // Relógio compartilhado por seletor: com o popover fechado nada aqui re-renderiza a cada tick (só
   // quando a promoção acaba); com ele aberto, o "tempo restante" acompanha o relógio.
@@ -47,7 +48,10 @@ export function ExpiryBadge({ status, now }) {
     ? formatRemainingTime(expiresAtMs - nowMs, 'Expirado')
     : null
   const showDistinctFeedExpiry =
-    promotionActive && status.type !== 'workout' && expiresAtMs && expiresAtMs !== promotedUntilMs
+    promotionActive &&
+    status.type !== 'workout' &&
+    normalExpiresAtMs &&
+    normalExpiresAtMs !== promotedUntilMs
 
   // Ambos os ramos são só o ícone -- o texto extenso ("74h28min restantes") nunca
   // fica visível no card: ele empurrava o cabeçalho (StatusHeader é flex, este botão
@@ -110,7 +114,7 @@ export function ExpiryBadge({ status, now }) {
             {showDistinctFeedExpiry && (
               <DetailRow
                 label="Janela original do feed"
-                value={`${formatPublicationDateTime(expiresAtMs)} · ${publicationRemaining}`}
+                value={formatPublicationDateTime(normalExpiresAtMs)}
               />
             )}
           </>

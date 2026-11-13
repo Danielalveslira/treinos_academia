@@ -11,11 +11,10 @@ const errors = {
   AD_COMMUNITY_NOT_AUTHORIZED: 'A comunidade ou conteúdo não está autorizado para esta campanha.',
   LEGACY_PROMOTION_ACTIVE:
     'Aguarde o término do destaque atual antes de contratar pelo novo modelo.',
-  PROMOTION_SOURCE_EXPIRES:
-    'A publicação original vence antes do período solicitado. Reduza os dias ou ajuste a validade antes da análise.',
+  PROMOTION_SOURCE_EXPIRES: 'A publicação não está mais disponível para uma nova contratação.',
   INVALID_AD_MEDIA: 'Escolha uma imagem enviada para esta campanha.',
   PROMOTION_SOURCE_CHANGED:
-    'O conteúdo original mudou ou deixou de ser elegível. Solicite nova análise.',
+    'A publicação mudou ou deixou de ser elegível. Atualize e tente novamente.',
   PROMOTION_REVISION_CONFLICT:
     'Esta solicitação foi decidida, alterada ou reenviada por outra sessão. A lista foi atualizada; revise novamente.',
   PROMOTION_NOT_FOUND: 'Esta solicitação não foi encontrada. Atualize a lista.',
@@ -53,10 +52,9 @@ export function commercialError(error) {
 // A desired duration chosen earlier (e.g. the ad wizard's draft) is only ever a
 // suggestion: the current tariff's minDays/maxDays always win.
 export function clampInitialDays(initialDays, tariff) {
-  if (!initialDays) return '1'
   const min = Number(tariff?.minDays) || 1
   const max = Number(tariff?.maxDays) || 3650
-  return String(Math.min(Math.max(Number(initialDays) || 1, min), max))
+  return String(Math.min(Math.max(Number(initialDays) || min, min), max))
 }
 export function commercialDate(value) {
   return value

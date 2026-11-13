@@ -64,6 +64,8 @@ jobs:
           key: playwright-browsers-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install isolated browser
         run: node node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell
+      - name: Direct post boost modal and responsive contract review
+        run: node scripts/post-boost-browser-smoke.mjs
       - name: Public and auth headers at mobile and desktop widths
         run: node scripts/public-auth-header-smoke.mjs
       - name: Workout sheets mobile, execution and conflict smoke
