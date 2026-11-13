@@ -146,6 +146,10 @@ jobs:
         run: node scripts/commercial-engine-concurrency.mjs
         env:
           PG_TEST_CONTAINER: supabase_db_treinos_academia
+      - name: Commercial promotion review concurrency (PR0 revision/state guard)
+        run: node scripts/commercial-promotion-review-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
       - name: Concrete storefront purchase, renewal and moderation concurrency
         run: node scripts/storefront-revisions-concurrency.mjs
         env:

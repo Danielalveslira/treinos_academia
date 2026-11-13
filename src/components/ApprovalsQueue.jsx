@@ -25,7 +25,12 @@ import { AuthCaptcha } from './AuthCaptcha'
 import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 import { commercialError } from '../utils/commercial'
 import { storefrontError } from '../utils/storefront'
-import { TYPE_LABELS, STATUS_LABELS, buildApprovalItems, filterApprovalItems } from '../utils/approvalsQueue'
+import {
+  TYPE_LABELS,
+  STATUS_LABELS,
+  buildApprovalItems,
+  filterApprovalItems,
+} from '../utils/approvalsQueue'
 import StorefrontImage from './StorefrontImage'
 
 const STATUS_FILTERS = [
@@ -98,7 +103,8 @@ export default function ApprovalsQueue() {
 
   const anyLoading =
     ads.state === 'loading' || storefronts.state === 'loading' || boosts.state === 'loading'
-  const anyError = ads.state === 'error' || storefronts.state === 'error' || boosts.state === 'error'
+  const anyError =
+    ads.state === 'error' || storefronts.state === 'error' || boosts.state === 'error'
 
   function openReview(item) {
     setReviewing(item)
@@ -123,12 +129,17 @@ export default function ApprovalsQueue() {
         await setStorefrontEditorial(reviewing.raw, approve ? 'approved' : 'rejected', reason)
         loadStorefronts()
       } else {
-        await reviewCommercialPromotion(reviewing.raw.id, approve, reason)
+        await reviewCommercialPromotion(reviewing.raw, approve, reason)
         loadBoosts()
       }
       setReviewing(null)
       setPassword('')
     } catch (e) {
+      // Conflito de revisão: a solicitação mudou (foi decidida, reenviada ou alterada)
+      // desde que a fila foi carregada. Recarrega a fonte em segundo plano para que o
+      // card reflita o estado atual quando o admin fechar o diálogo, em vez de deixá-lo
+      // reenviar a mesma decisão obsoleta.
+      if (e?.message === 'PROMOTION_REVISION_CONFLICT' && reviewing.type === 'boost') loadBoosts()
       setDialogError(reviewing.type === 'storefront' ? storefrontError(e) : commercialError(e))
     } finally {
       captcha.current?.reset()
@@ -189,7 +200,12 @@ export default function ApprovalsQueue() {
       )}
       {items.length > 0 && (
         <Box
-          sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, overflow: 'hidden' }}
+          sx={{
+            border: '1px solid',
+            borderColor: 'border.default',
+            borderRadius: 2,
+            overflow: 'hidden',
+          }}
         >
           {items.map((item, index) => (
             <Box
@@ -241,10 +257,14 @@ export default function ApprovalsQueue() {
             {reviewing.type === 'ad' && (
               <>
                 <Text as="p">{reviewing.raw.description}</Text>
-                {reviewing.raw.media_id && <StorefrontImage id={reviewing.raw.media_id} size={160} />}
+                {reviewing.raw.media_id && (
+                  <StorefrontImage id={reviewing.raw.media_id} size={160} />
+                )}
                 <Text as="p">Destino: {reviewing.raw.destination}</Text>
                 {reviewing.raw.placements?.length > 0 && (
-                  <Text as="p">Posições: {reviewing.raw.placements.map((p) => p.code).join(' · ')}</Text>
+                  <Text as="p">
+                    Posições: {reviewing.raw.placements.map((p) => p.code).join(' · ')}
+                  </Text>
                 )}
               </>
             )}

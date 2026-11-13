@@ -16,6 +16,9 @@ const errors = {
   INVALID_AD_MEDIA: 'Escolha uma imagem enviada para esta campanha.',
   PROMOTION_SOURCE_CHANGED:
     'O conteúdo original mudou ou deixou de ser elegível. Solicite nova análise.',
+  PROMOTION_REVISION_CONFLICT:
+    'Esta solicitação foi decidida, alterada ou reenviada por outra sessão. A lista foi atualizada; revise novamente.',
+  PROMOTION_NOT_FOUND: 'Esta solicitação não foi encontrada. Atualize a lista.',
   AD_NETWORK_UNCONFIGURED: 'O pacote global ainda não foi configurado pela administração.',
   AD_ACCOUNT_NOT_ELIGIBLE: 'Esta conta de anunciante não está disponível para contratação.',
 

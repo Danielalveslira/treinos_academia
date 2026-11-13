@@ -57,8 +57,13 @@ export const getAdvertisingOrders = (id, before = null) =>
   rpc('get_my_advertising_orders', { p_id: id, p_before: before })
 export const getCommercialPromotions = (after = null) =>
   rpc('admin_commercial_promotions', { p_after: after })
-export const reviewCommercialPromotion = (id, approve, reason) =>
-  rpc('admin_review_commercial_promotion', { p_id: id, p_approve: approve, p_reason: reason })
+export const reviewCommercialPromotion = (promotion, approve, reason) =>
+  rpc('admin_review_commercial_promotion', {
+    p_id: promotion.id,
+    p_expected_revision: promotion.revision,
+    p_approve: approve,
+    p_reason: reason,
+  })
 export const resumeAdvertisingCampaign = (id, revision, reason) =>
   rpc('admin_resume_advertising_campaign', { p_id: id, p_revision: revision, p_reason: reason })
 export const setAdvertisingNetwork = (codes, revision, reason) =>
