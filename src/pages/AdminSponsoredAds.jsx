@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom'
-import { Suspense, lazy, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Box, Heading, Text, Button, Spinner, Label, UnderlineNav } from '@primer/react'
 import { Blankslate } from '@primer/react/experimental'
 import { MegaphoneIcon, PlusIcon, PencilIcon, TrashIcon } from '@primer/octicons-react'
@@ -24,28 +24,70 @@ const CommercialOverview = lazy(() => import('../components/CommercialOverview')
 const ApprovalsQueue = lazy(() => import('../components/ApprovalsQueue'))
 const SupplierInfoGateAdmin = lazy(() => import('../components/SupplierInfoGateAdmin'))
 
-const TABS = [
-  { key: 'campaigns', label: 'Campanhas' },
-  { key: 'advertisers', label: 'Anunciantes' },
-  { key: 'metrics', label: 'Resultados' },
+// Quatro áreas (não seis): o restante da reestruturação está documentado em
+// docs/prompts/PROMPT_REESTRUTURACAO_CENTRAL_COMERCIAL_EVOLUTUS.md (PR1). Cada área
+// abre seu conteúdo direto -- nenhuma delas é só uma tela de cartões "Abrir".
+const AREAS = [
+  { key: 'inicio', label: 'Início' },
+  { key: 'aprovacoes', label: 'Aprovações' },
+  { key: 'publicidade', label: 'Publicidade' },
+  { key: 'financeiro', label: 'Financeiro' },
 ]
-
-const SECTIONS = [
-  { key: 'overview', label: 'Visão geral' },
-  { key: 'approvals', label: 'Aprovações' },
-  { key: 'advertising', label: 'Publicidade' },
-  { key: 'storefronts', label: 'Vitrines e parceiros' },
-  { key: 'finance', label: 'Financeiro' },
-  { key: 'settings', label: 'Configurações' },
-]
-const LEGACY_SECTIONS = {
-  campaigns: 'advertising',
-  metrics: 'advertising',
-  advertisers: 'advertising',
-  autonomous: 'settings',
-  commercial: 'storefronts',
-  engine: 'finance',
+// `?section=` antigo -> área nova. "settings" misturava canais de publicidade
+// (AdvertisingAdmin) e o gate financeiro do fornecedor (SupplierInfoGateAdmin) sem
+// nenhuma distinção própria; não há correspondência única, então o alias cai em
+// Publicidade > Canais, que era a parte maior daquela tela.
+const LEGACY_SECTION_TO_AREA = {
+  overview: 'inicio',
+  approvals: 'aprovacoes',
+  advertising: 'publicidade',
+  storefronts: 'publicidade',
+  finance: 'financeiro',
+  settings: 'publicidade',
 }
+// Aba padrão quando o link antigo só tinha `?section=`, sem `?tab=` (a seção em si
+// já indicava o assunto -- sem isto, cairia sempre em "campanhas", perdendo o
+// destino que `storefronts`/`settings` realmente pediam).
+const LEGACY_SECTION_DEFAULT_TAB = {
+  advertising: 'campanhas',
+  storefronts: 'vitrines',
+  settings: 'canais',
+  finance: 'motor',
+}
+// Favoritos antigos que só guardavam `?tab=`, sem `?section=` (ver LEGACY_SECTIONS
+// da versão anterior) -> área nova.
+const LEGACY_BARE_TAB_TO_AREA = {
+  campaigns: 'publicidade',
+  metrics: 'publicidade',
+  advertisers: 'publicidade',
+  autonomous: 'publicidade',
+  commercial: 'publicidade',
+  engine: 'financeiro',
+}
+
+const PUBLICIDADE_TABS = [
+  { key: 'campanhas', label: 'Campanhas' },
+  { key: 'anunciantes', label: 'Anunciantes' },
+  { key: 'metricas', label: 'Resultados' },
+  { key: 'canais', label: 'Canais' },
+  { key: 'vitrines', label: 'Vitrines e parceiros' },
+]
+const LEGACY_PUBLICIDADE_TAB = {
+  campaigns: 'campanhas',
+  advertisers: 'anunciantes',
+  metrics: 'metricas',
+  commercial: 'vitrines',
+  autonomous: 'canais',
+}
+
+// O rótulo da aba não repete o título "Preços e contratações" que CommercialEngineAdmin
+// já renderiza como <h2> -- evita o "Central comercial → Financeiro → Preços e
+// contratações → Preços e contratações" que o prompt pediu para eliminar.
+const FINANCEIRO_TABS = [
+  { key: 'motor', label: 'Motor comercial' },
+  { key: 'avancado', label: 'Avançado' },
+]
+const LEGACY_FINANCEIRO_TAB = { engine: 'motor' }
 
 function TaskLinks({ items }) {
   return (
@@ -104,15 +146,30 @@ export default function AdminSponsoredAds() {
   const [params, setParams] = useSearchParams()
   const reportRequested = params.get('report') === 'metrics'
   const requestedTab = params.get('tab')
-  const section = SECTIONS.some((item) => item.key === params.get('section'))
-    ? params.get('section')
-    : LEGACY_SECTIONS[requestedTab] || (reportRequested ? 'advertising' : 'overview')
-  const tab = TABS.some((item) => item.key === requestedTab)
-    ? requestedTab
-    : reportRequested
-      ? 'metrics'
-      : 'campaigns'
-  const needsCampaigns = section === 'advertising' && (tab === 'campaigns' || tab === 'metrics')
+  const requestedSection = params.get('section')
+  const area = AREAS.some((item) => item.key === params.get('area'))
+    ? params.get('area')
+    : LEGACY_SECTION_TO_AREA[requestedSection] ||
+      LEGACY_BARE_TAB_TO_AREA[requestedTab] ||
+      (reportRequested ? 'publicidade' : 'inicio')
+  // Prioridade ao resolver a aba legada: parâmetro canônico > alias de `tab` > pedido
+  // explícito de relatório > aba padrão da `section` antiga > padrão genérico da área.
+  const tab =
+    area === 'publicidade'
+      ? PUBLICIDADE_TABS.some((item) => item.key === requestedTab)
+        ? requestedTab
+        : LEGACY_PUBLICIDADE_TAB[requestedTab] ||
+          (reportRequested ? 'metricas' : null) ||
+          LEGACY_SECTION_DEFAULT_TAB[requestedSection] ||
+          'campanhas'
+      : area === 'financeiro'
+        ? FINANCEIRO_TABS.some((item) => item.key === requestedTab)
+          ? requestedTab
+          : LEGACY_FINANCEIRO_TAB[requestedTab] ||
+            LEGACY_SECTION_DEFAULT_TAB[requestedSection] ||
+            'motor'
+        : null
+  const needsCampaigns = area === 'publicidade' && (tab === 'campanhas' || tab === 'metricas')
   const { ads, loading, error, refresh, add, edit, remove, setActive } =
     useAdminSponsoredAds(needsCampaigns)
   const {
@@ -121,13 +178,19 @@ export default function AdminSponsoredAds() {
     loadMore: loadMoreCommunities,
   } = useAdminCommunities(needsCampaigns)
   const { user } = useAuth()
-  const [metricsOpened, setMetricsOpened] = useState(reportRequested || requestedTab === 'metrics')
+  const [metricsOpened, setMetricsOpened] = useState(reportRequested || tab === 'metricas')
   const { toasts, showToast } = useToast()
   const confirmDelete = useConfirmDelete()
   const [formOpen, setFormOpen] = useState(false)
   const [editingAd, setEditingAd] = useState(null)
   const actionLock = useRef(false)
   const [busyAdId, setBusyAdId] = useState(null)
+
+  // Trocar de área deve posicionar o conteúdo novo logo abaixo do header fixo, nunca
+  // deixar o scroll residual de uma lista longa da área anterior.
+  useEffect(() => {
+    if (typeof window.scrollTo === 'function') window.scrollTo(0, 0)
+  }, [area])
 
   async function handleCreate(values, requestId) {
     await add(values, requestId)
@@ -185,8 +248,8 @@ export default function AdminSponsoredAds() {
         <Heading as="h1" sx={{ fontSize: 3 }}>
           Central comercial
         </Heading>
-        {section === 'advertising' &&
-          tab === 'campaigns' &&
+        {area === 'publicidade' &&
+          tab === 'campanhas' &&
           !formOpen &&
           !editingAd &&
           (loading || error || ads.length > 0) && (
@@ -198,28 +261,28 @@ export default function AdminSponsoredAds() {
 
       <Box
         role="navigation"
-        aria-label="Seções da central comercial"
+        aria-label="Áreas da central comercial"
         sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}
       >
-        {SECTIONS.map((item) => (
+        {AREAS.map((item) => (
           <Button
             key={item.key}
-            aria-current={section === item.key ? 'page' : undefined}
-            variant={section === item.key ? 'primary' : 'default'}
-            onClick={() => setParams({ section: item.key })}
+            aria-current={area === item.key ? 'page' : undefined}
+            variant={area === item.key ? 'primary' : 'default'}
+            onClick={() => setParams({ area: item.key })}
           >
             {item.label}
           </Button>
         ))}
       </Box>
 
-      {section === 'overview' && (
-        <Suspense fallback={<Spinner aria-label="Carregando visão geral" />}>
+      {area === 'inicio' && (
+        <Suspense fallback={<Spinner aria-label="Carregando início" />}>
           <CommercialOverview />
         </Suspense>
       )}
 
-      {section === 'approvals' && (
+      {area === 'aprovacoes' && (
         <>
           <Suspense fallback={<Spinner aria-label="Carregando aprovações" />}>
             <ApprovalsQueue />
@@ -239,16 +302,16 @@ export default function AdminSponsoredAds() {
         </>
       )}
 
-      {section === 'advertising' && (
+      {area === 'publicidade' && (
         <UnderlineNav aria-label="Publicidade" sx={{ mb: 3, maxWidth: '100%', overflowX: 'auto' }}>
-          {TABS.map((item) => (
+          {PUBLICIDADE_TABS.map((item) => (
             <UnderlineNav.Item
               key={item.key}
               as="button"
               aria-current={tab === item.key ? 'page' : undefined}
               onSelect={() => {
-                setParams({ section: 'advertising', tab: item.key })
-                if (item.key === 'metrics') setMetricsOpened(true)
+                setParams({ area: 'publicidade', tab: item.key })
+                if (item.key === 'metricas') setMetricsOpened(true)
               }}
             >
               {item.label}
@@ -257,43 +320,45 @@ export default function AdminSponsoredAds() {
         </UnderlineNav>
       )}
 
-      {section === 'storefronts' && (
-        <>
-          <TaskLinks
-            items={[
-              {
-                to: '/admin/vitrines',
-                title: 'Profissionais e estabelecimentos',
-                description: 'Cadastros, moderação e publicação.',
-              },
-              {
-                to: '/admin/parcerias?tab=commercial&sub=leads',
-                title: 'Propostas comerciais',
-                description: 'Contatos e solicitações de empresas.',
-              },
-              {
-                to: '/admin/parcerias?tab=commercial&sub=storefronts',
-                title: 'Vitrines de produtos',
-                description: 'Gerenciar lojas comerciais (aprovação fica em Aprovações).',
-              },
-              {
-                to: '/admin/parcerias?tab=commercial&sub=legacy',
-                title: 'Produtos legados',
-                description:
-                  'Cadastros administrativos anteriores, preservados por compatibilidade.',
-              },
-            ]}
-          />
-          {requestedTab === 'commercial' && (
-            <Suspense fallback={<Spinner />}>
-              <CommercialAdmin />
-            </Suspense>
-          )}
-        </>
+      {area === 'publicidade' && tab === 'canais' && (
+        <Suspense fallback={<Spinner />}>
+          <AdvertisingAdmin />
+        </Suspense>
       )}
 
-      {section === 'finance' && (
+      {area === 'publicidade' && tab === 'vitrines' && (
+        <Suspense fallback={<Spinner />}>
+          <CommercialAdmin />
+        </Suspense>
+      )}
+
+      {area === 'financeiro' && (
         <>
+          <UnderlineNav aria-label="Financeiro" sx={{ mb: 3, maxWidth: '100%', overflowX: 'auto' }}>
+            {FINANCEIRO_TABS.map((item) => (
+              <UnderlineNav.Item
+                key={item.key}
+                as="button"
+                aria-current={tab === item.key ? 'page' : undefined}
+                onSelect={() => setParams({ area: 'financeiro', tab: item.key })}
+              >
+                {item.label}
+              </UnderlineNav.Item>
+            ))}
+          </UnderlineNav>
+          {tab === 'motor' && (
+            <Suspense fallback={<Spinner />}>
+              <CommercialEngineAdmin />
+            </Suspense>
+          )}
+          {tab === 'avancado' && (
+            <Suspense fallback={<Spinner />}>
+              <SupplierInfoGateAdmin />
+            </Suspense>
+          )}
+          <Heading as="h2" sx={{ fontSize: 2, mt: 4 }}>
+            Compras e histórico de EvoCash
+          </Heading>
           <TaskLinks
             items={[
               {
@@ -312,38 +377,17 @@ export default function AdminSponsoredAds() {
                 description: 'Solicitações e comprovações.',
               },
               {
-                to: '/admin/parcerias?tab=engine',
-                title: 'Preços e contratações',
-                description: 'Serviços cobrados em EvoCash, publicações contratadas e histórico.',
-              },
-              {
                 to: '/admin/compras-evocash?tab=prices',
                 title: 'Histórico de preços do EvoCash',
                 description: 'Versões publicadas, autor e justificativa.',
               },
             ]}
           />
-          {requestedTab === 'engine' && (
-            <Suspense fallback={<Spinner />}>
-              <CommercialEngineAdmin />
-            </Suspense>
-          )}
-        </>
-      )}
-
-      {section === 'settings' && (
-        <>
-          <Suspense fallback={<Spinner />}>
-            <SupplierInfoGateAdmin />
-          </Suspense>
-          <Suspense fallback={<Spinner />}>
-            <AdvertisingAdmin />
-          </Suspense>
         </>
       )}
 
       {metricsOpened && (
-        <Box hidden={section !== 'advertising' || tab !== 'metrics'}>
+        <Box hidden={area !== 'publicidade' || tab !== 'metricas'}>
           <Suspense fallback={<Spinner sx={{ display: 'block', mx: 'auto', my: 5 }} />}>
             <AdMetricsTab
               userId={user?.uid}
@@ -367,13 +411,13 @@ export default function AdminSponsoredAds() {
         </Box>
       )}
 
-      {section === 'advertising' && tab === 'advertisers' && (
+      {area === 'publicidade' && tab === 'anunciantes' && (
         <Suspense fallback={<Spinner />}>
           <AdvertiserAdmin />
         </Suspense>
       )}
 
-      {section === 'advertising' && tab === 'campaigns' && (
+      {area === 'publicidade' && tab === 'campanhas' && (
         <Box>
           <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mb: 3 }}>
             A situação indica disponibilidade para entrega; impressões registradas aparecem em
@@ -460,7 +504,7 @@ export default function AdminSponsoredAds() {
                   {ad.commercial && (
                     <Button
                       as={Link}
-                      to="/admin/parcerias?section=advertising&tab=advertisers"
+                      to="/admin/parcerias?area=publicidade&tab=anunciantes"
                       size="small"
                     >
                       Ver campanha

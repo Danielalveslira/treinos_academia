@@ -29,12 +29,28 @@ const STUBS = {
   // RowActionsMenu. Cobertura própria em AdminNav.test.js e AdminAccounts.test.js.
   AdminNav: `export default function AdminNav() { return null }`,
   AdMetricsTab: `import { useEffect, createElement } from 'react'
-    export default function AdMetricsTab({ userId, ads }) {
+    export default function AdMetricsTab({ userId, ads, initialFilters }) {
       useEffect(() => { globalThis.__metricsMounts = (globalThis.__metricsMounts || 0) + 1 }, [])
-      return createElement('div', { 'data-testid': 'metrics-tab' }, 'métricas de ' + userId + ' / ' + ads.length + ' campanhas')
+      return createElement('div', { 'data-testid': 'metrics-tab' },
+        'métricas de ' + userId + ' / ' + ads.length + ' campanhas',
+        initialFilters ? ' / filtros:' + JSON.stringify(initialFilters) : '')
     }`,
+  ApprovalsQueue: `import { createElement } from 'react'
+    export default function ApprovalsQueue() { return createElement('div', { 'data-testid': 'approvals-queue' }, 'Fila de aprovações (real)') }`,
   CommercialOverview: `import { createElement } from 'react'
     export default function CommercialOverview() { return createElement('div', { 'data-testid': 'commercial-overview' }, 'Visão geral comercial') }`,
+  // PR1: as 4 áreas abrem o conteúdo real na primeira renderização, sem cartão
+  // "Abrir" intermediário -- estes stubs só provam que o componente real monta.
+  CommercialAdmin: `import { createElement } from 'react'
+    export default function CommercialAdmin() { return createElement('div', { 'data-testid': 'commercial-admin' }, 'Vitrines e parceiros (CommercialAdmin real)') }`,
+  CommercialEngineAdmin: `import { createElement } from 'react'
+    export default function CommercialEngineAdmin() { return createElement('div', { 'data-testid': 'commercial-engine-admin' }, 'Preços e contratações (motor real)') }`,
+  AdvertisingAdmin: `import { createElement } from 'react'
+    export default function AdvertisingAdmin() { return createElement('div', { 'data-testid': 'advertising-admin' }, 'Canais de publicidade (real)') }`,
+  SupplierInfoGateAdmin: `import { createElement } from 'react'
+    export default function SupplierInfoGateAdmin() { return createElement('div', { 'data-testid': 'supplier-info-gate-admin' }, 'Avançado: identificação do fornecedor (real)') }`,
+  AdvertiserAdmin: `import { createElement } from 'react'
+    export default function AdvertiserAdmin() { return createElement('div', { 'data-testid': 'advertiser-admin' }, 'Anunciantes (real)') }`,
 }
 
 before(async () => {
@@ -68,6 +84,13 @@ before(async () => {
             selectTab: (label) => {
               const item = root.findAll((n) => typeof n.props.onSelect === 'function' && textOf(n).includes(label))[0]
               act(() => item.props.onSelect({ preventDefault() {} }))
+            },
+            // Botões de área usam onClick (não onSelect) e carregam aria-current -- simula o
+            // clique real no nav principal, no mesmo componente montado (equivalente a navegar
+            // sem recarregar a página, como o navegador faz ao avançar/voltar no histórico).
+            selectArea: (label) => {
+              const item = root.findAll((n) => typeof n.props.onClick === 'function' && textOf(n).trim() === label)[0]
+              act(() => item.props.onClick())
             },
             wrapperHidden: (testid) => {
               const el = root.findAll((n) => n.props && n.props['data-testid'] === testid)[0]
@@ -203,4 +226,193 @@ test('lista vazia oferece um único caminho de criação', async () => {
   assert.match(page.text(), /Criar anúncio/)
   page.unmount()
   delete globalThis.__adminAdsOverride
+})
+
+// PR1: Publicidade > Vitrines e Financeiro (motor/avançado) renderizam o conteúdo real
+// na primeira renderização -- nenhuma das quatro áreas é mais um cartão "Abrir".
+test('Publicidade > Vitrines e parceiros abre o CommercialAdmin direto, sem cartão intermediário', async () => {
+  const page = mount('/admin/parcerias?area=publicidade&tab=vitrines')
+  await tick()
+  assert.match(page.text(), /Vitrines e parceiros \(CommercialAdmin real\)/)
+  assert.doesNotMatch(page.text(), /Abrir/)
+  page.unmount()
+})
+
+test('Publicidade > Canais abre o AdvertisingAdmin direto', async () => {
+  const page = mount('/admin/parcerias?area=publicidade&tab=canais')
+  await tick()
+  assert.match(page.text(), /Canais de publicidade \(real\)/)
+  page.unmount()
+})
+
+test('Financeiro abre o motor comercial direto (aba padrão), com link claro para compras-evocash', async () => {
+  const page = mount('/admin/parcerias?area=financeiro')
+  await tick()
+  assert.match(page.text(), /Preços e contratações \(motor real\)/)
+  assert.match(page.text(), /Compras de EvoCash/)
+  assert.doesNotMatch(page.text(), /identificação do fornecedor/)
+  page.unmount()
+})
+
+test('Financeiro > Avançado abre o gate de fornecedor sob demanda', async () => {
+  const page = mount('/admin/parcerias?area=financeiro&tab=avancado')
+  await tick()
+  assert.match(page.text(), /identificação do fornecedor \(real\)/)
+  assert.doesNotMatch(page.text(), /motor real/, 'o motor comercial não é montado sem necessidade')
+  page.unmount()
+})
+
+// Compatibilidade com links antigos: favoritos/relatórios salvos antes do PR1 continuam
+// abrindo a área/aba equivalente, sem precisar de um segundo clique para ver conteúdo.
+test('alias legado ?section=storefronts&tab=commercial abre Vitrines e parceiros direto', async () => {
+  const page = mount('/admin/parcerias?section=storefronts&tab=commercial')
+  await tick()
+  assert.match(page.text(), /Vitrines e parceiros \(CommercialAdmin real\)/)
+  page.unmount()
+})
+
+test('alias legado ?section=finance&tab=engine abre o motor comercial direto', async () => {
+  const page = mount('/admin/parcerias?section=finance&tab=engine')
+  await tick()
+  assert.match(page.text(), /Preços e contratações \(motor real\)/)
+  page.unmount()
+})
+
+test('alias legado bare ?tab=commercial (sem section) resolve para Publicidade > Vitrines', async () => {
+  const page = mount('/admin/parcerias?tab=commercial')
+  await tick()
+  assert.match(page.text(), /Vitrines e parceiros \(CommercialAdmin real\)/)
+  page.unmount()
+})
+
+test('alias legado bare ?tab=engine (sem section) resolve para Financeiro', async () => {
+  const page = mount('/admin/parcerias?tab=engine')
+  await tick()
+  assert.match(page.text(), /Preços e contratações \(motor real\)/)
+  page.unmount()
+})
+
+// Tabela completa de compatibilidade exigida na revisão do PR1: cada `?section=`
+// antigo, mesmo SEM `?tab=`, precisa cair na aba que ele representava -- não só na
+// área certa. (Bug real corrigido por LEGACY_SECTION_DEFAULT_TAB: antes, section=
+// storefronts/settings sem tab caía sempre em "campanhas".)
+test('?section=storefronts sem tab abre Publicidade > Vitrines e parceiros direto', async () => {
+  const page = mount('/admin/parcerias?section=storefronts')
+  await tick()
+  assert.match(page.text(), /Vitrines e parceiros \(CommercialAdmin real\)/)
+  assert.doesNotMatch(page.text(), /Oferta/, 'não cai em Campanhas por engano')
+  page.unmount()
+})
+
+test('?section=settings sem tab abre Publicidade > Canais direto', async () => {
+  const page = mount('/admin/parcerias?section=settings')
+  await tick()
+  assert.match(page.text(), /Canais de publicidade \(real\)/)
+  assert.doesNotMatch(
+    page.text(),
+    /identificação do fornecedor/,
+    'settings não ressuscita o gate financeiro junto'
+  )
+  page.unmount()
+})
+
+test('?section=overview abre Início e não monta nenhuma outra área', async () => {
+  const page = mount('/admin/parcerias?section=overview')
+  await tick()
+  assert.match(page.text(), /Visão geral comercial/)
+  assert.doesNotMatch(page.text(), /Fila de aprovações|CommercialAdmin real|motor real/)
+  page.unmount()
+})
+
+test('?section=approvals abre Aprovações direto', async () => {
+  const page = mount('/admin/parcerias?section=approvals')
+  await tick()
+  assert.match(page.text(), /Fila de aprovações \(real\)/)
+  assert.match(page.text(), /Outras moderações/)
+  page.unmount()
+})
+
+test('?section=advertising sem tab abre Publicidade > Campanhas (comportamento já correto)', async () => {
+  const page = mount('/admin/parcerias?section=advertising')
+  await tick()
+  assert.match(page.text(), /Oferta/)
+  assert.equal(page.hasNovo(), true)
+  page.unmount()
+})
+
+test('?section=finance sem tab abre Financeiro > Motor comercial (comportamento já correto)', async () => {
+  const page = mount('/admin/parcerias?section=finance')
+  await tick()
+  assert.match(page.text(), /Preços e contratações \(motor real\)/)
+  page.unmount()
+})
+
+// Combinações: parâmetro canônico `area` sempre vence um `section`/`tab` legado
+// presente ao mesmo tempo, e uma combinação de área/aba incompatível nunca quebra
+// nem mostra conteúdo da aba errada -- cai no padrão seguro da própria área.
+test('?area= canônico vence ?section= legado quando os dois aparecem juntos', async () => {
+  const page = mount('/admin/parcerias?area=inicio&section=finance')
+  await tick()
+  assert.match(page.text(), /Visão geral comercial/)
+  assert.doesNotMatch(page.text(), /motor real/)
+  page.unmount()
+})
+
+test('combinação de área/aba incompatível (aba de outra área) não quebra e cai no padrão seguro', async () => {
+  const page = mount('/admin/parcerias?area=publicidade&tab=avancado')
+  await tick()
+  assert.match(page.text(), /Oferta/, 'tab=avancado não existe em Publicidade -- cai em Campanhas')
+  assert.doesNotMatch(page.text(), /identificação do fornecedor/)
+  page.unmount()
+})
+
+// Relatório: todos os filtros da URL devem chegar intactos ao módulo de métricas,
+// não só adId.
+test('link de relatório preserva todos os filtros (days/from/to/adId/communityId/placement)', async () => {
+  const page = mount(
+    '/admin/parcerias?report=metrics&days=7&from=2026-01-01&to=2026-01-31&adId=ad-9&communityId=com-9&placement=home_banner'
+  )
+  await tick()
+  const text = page.text()
+  for (const fragment of [
+    '"days":7',
+    '"from":"2026-01-01"',
+    '"to":"2026-01-31"',
+    '"adId":"ad-9"',
+    '"communityId":"com-9"',
+    '"placement":"home_banner"',
+  ]) {
+    assert.match(text, new RegExp(fragment.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+  }
+  page.unmount()
+})
+
+// Navegação interativa entre as 4 áreas no mesmo componente montado (equivalente ao
+// usuário clicando no nav principal, ou ao navegador restaurando uma entrada do
+// histórico): cada área mostra só o seu próprio conteúdo, nunca sobra nada da anterior.
+test('alternar entre as 4 áreas nunca deixa conteúdo de uma área montado sob a outra', async () => {
+  const page = mount('/admin/parcerias?area=inicio')
+  await tick()
+  assert.match(page.text(), /Visão geral comercial/)
+
+  page.selectArea('Aprovações')
+  await tick()
+  assert.match(page.text(), /Fila de aprovações \(real\)/)
+  assert.doesNotMatch(page.text(), /Visão geral comercial/)
+
+  page.selectArea('Publicidade')
+  await tick()
+  assert.match(page.text(), /Oferta/, 'Publicidade abre direto em Campanhas')
+  assert.doesNotMatch(page.text(), /Fila de aprovações/)
+
+  page.selectArea('Financeiro')
+  await tick()
+  assert.match(page.text(), /Preços e contratações \(motor real\)/)
+  assert.doesNotMatch(page.text(), /Oferta|Fila de aprovações/)
+
+  page.selectArea('Início')
+  await tick()
+  assert.match(page.text(), /Visão geral comercial/)
+  assert.doesNotMatch(page.text(), /motor real|Oferta|Fila de aprovações/)
+  page.unmount()
 })
