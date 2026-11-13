@@ -121,5 +121,22 @@ select 'e1000000-0000-0000-0000-000000000001','publish',(select latest_version_i
 set local role authenticated;
 select throws_ok($$select public.admin_publish_evocash_price((select value from cfg),clock_timestamp()+interval '2 days',4,'e2000000-0000-0000-0000-000000000096','Rate limited test price',true)$$,'PRICE_RATE_LIMIT','publication rate limit is enforced in backend');
 reset role;
+
+-- PR4: admin_get_evocash_pricing() now also exposes checkoutEnabled (independent from
+-- quotingEnabled) -- the EvoCashPricing.jsx panel needs this to stop showing a static
+-- claim about checkout disconnected from the real gate.
+select pg_temp.set_test_user('e1000000-0000-0000-0000-000000000001',true);
+select set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb||jsonb_build_object('amr',jsonb_build_array(jsonb_build_object('method','password','timestamp',extract(epoch from now())::bigint))))::text,true);
+set local role authenticated;
+select is(public.admin_get_evocash_pricing()->>'checkoutEnabled','false','checkout starts paused, now exposed by the same RPC as quoting');
+reset role;
+update public.evocash_pricing_state set checkout_enabled=true where id;
+select pg_temp.set_test_user('e1000000-0000-0000-0000-000000000001',true);
+select set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb||jsonb_build_object('amr',jsonb_build_array(jsonb_build_object('method','password','timestamp',extract(epoch from now())::bigint))))::text,true);
+set local role authenticated;
+select is(public.admin_get_evocash_pricing()->>'checkoutEnabled','true','checkout state reflects the real column, independent of quotingEnabled');
+select is(public.admin_get_evocash_pricing()->>'quotingEnabled','false','enabling checkout alone never implies quoting is enabled');
+reset role;
+
 select * from finish();
 rollback;

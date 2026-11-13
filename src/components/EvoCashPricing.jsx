@@ -290,10 +290,6 @@ export function EvoCashPricingPanel() {
           realizado.
         </Flash>
       )}
-      <Flash variant="attention">
-        Novas cobranças desativadas nesta fase. Publicar um preço não abre pagamentos nem altera
-        saldos.
-      </Flash>
       {notice && (
         <Flash variant="success" role="status">
           {notice}
@@ -310,9 +306,15 @@ export function EvoCashPricingPanel() {
       {loading && <Spinner aria-label="Carregando precificação" />}
       {!loading && state && (
         <>
+          {/* Estado real do servidor, não um texto fixo: cotação (vitrine de preço) e
+              checkout (pagamento de verdade) são guardas independentes -- ver
+              require_evocash_admin + checkout_enabled em evocash_pricing_state. */}
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
             <Label variant={state.quotingEnabled ? 'success' : 'secondary'}>
               {state.quotingEnabled ? 'Cotações habilitadas' : 'Cotações pausadas'}
+            </Label>
+            <Label variant={state.checkoutEnabled ? 'success' : 'secondary'}>
+              {state.checkoutEnabled ? 'Checkout habilitado' : 'Checkout pausado'}
             </Label>
             <Button onClick={reload}>Atualizar dados</Button>
             {state.quotingEnabled && (
@@ -321,6 +323,12 @@ export function EvoCashPricingPanel() {
               </Button>
             )}
           </Box>
+          {!state.checkoutEnabled && (
+            <Flash variant="attention">
+              Checkout de compra está pausado -- publicar ou simular um preço aqui não abre
+              pagamento nem altera saldos enquanto isso.
+            </Flash>
+          )}
           <PriceSummary version={state.current} title="Preço vigente" />
           {state.latest && state.latest.id !== state.current?.id && (
             <PriceSummary version={state.latest} title="Último preço programado" />
