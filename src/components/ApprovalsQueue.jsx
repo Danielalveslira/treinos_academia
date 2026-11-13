@@ -46,7 +46,13 @@ const TYPE_FILTERS = [
   { key: 'boost', label: 'Impulsionamentos' },
 ]
 
-const emptySource = { state: 'loading', rows: [] }
+// `hasMore` é uma estimativa honesta (a página veio cheia), não uma contagem exata --
+// as RPCs de listagem não devolvem total, só a página pedida. `cursor` é o ponto de
+// corte para pedir a próxima: o id da vitrine mais antiga retornada (storefronts já
+// devolve isso pronto em `nextCursor`) ou o id/ad_id da última linha (ads/boosts,
+// ordenadas desc, então a última linha da página é o cursor para a próxima).
+const PAGE_SIZE = { ads: 20, storefronts: 10, boosts: 20 }
+const emptySource = { state: 'loading', rows: [], cursor: null, hasMore: false, loadingMore: false }
 
 export default function ApprovalsQueue() {
   const [ads, setAds] = useState(emptySource)
@@ -66,23 +72,95 @@ export default function ApprovalsQueue() {
   function loadAds() {
     setAds(emptySource)
     getAdvertisingCampaigns(null).then(
-      (rows) => setAds({ state: 'ready', rows }),
-      () => setAds({ state: 'error', rows: [] })
+      (rows) =>
+        setAds({
+          state: 'ready',
+          rows,
+          cursor: rows.at(-1)?.ad_id ?? null,
+          hasMore: rows.length >= PAGE_SIZE.ads,
+          loadingMore: false,
+        }),
+      () => setAds({ ...emptySource, state: 'error' })
     )
+  }
+  function loadMoreAds() {
+    setAds((prev) => {
+      if (!prev.hasMore || prev.loadingMore || prev.state !== 'ready') return prev
+      getAdvertisingCampaigns(null, prev.cursor).then(
+        (rows) =>
+          setAds((current) => ({
+            state: 'ready',
+            rows: [...current.rows, ...rows],
+            cursor: rows.at(-1)?.ad_id ?? current.cursor,
+            hasMore: rows.length >= PAGE_SIZE.ads,
+            loadingMore: false,
+          })),
+        () => setAds((current) => ({ ...current, loadingMore: false, loadMoreError: true }))
+      )
+      return { ...prev, loadingMore: true, loadMoreError: false }
+    })
   }
   function loadStorefronts() {
     setStorefronts(emptySource)
     listStorefronts(true).then(
-      (page) => setStorefronts({ state: 'ready', rows: page.items }),
-      () => setStorefronts({ state: 'error', rows: [] })
+      (page) =>
+        setStorefronts({
+          state: 'ready',
+          rows: page.items,
+          cursor: page.nextCursor,
+          hasMore: Boolean(page.nextCursor),
+          loadingMore: false,
+        }),
+      () => setStorefronts({ ...emptySource, state: 'error' })
     )
+  }
+  function loadMoreStorefronts() {
+    setStorefronts((prev) => {
+      if (!prev.hasMore || prev.loadingMore || prev.state !== 'ready') return prev
+      listStorefronts(true, prev.cursor).then(
+        (page) =>
+          setStorefronts((current) => ({
+            state: 'ready',
+            rows: [...current.rows, ...page.items],
+            cursor: page.nextCursor,
+            hasMore: Boolean(page.nextCursor),
+            loadingMore: false,
+          })),
+        () => setStorefronts((current) => ({ ...current, loadingMore: false, loadMoreError: true }))
+      )
+      return { ...prev, loadingMore: true, loadMoreError: false }
+    })
   }
   function loadBoosts() {
     setBoosts(emptySource)
     getCommercialPromotions().then(
-      (rows) => setBoosts({ state: 'ready', rows }),
-      () => setBoosts({ state: 'error', rows: [] })
+      (rows) =>
+        setBoosts({
+          state: 'ready',
+          rows,
+          cursor: rows.at(-1)?.id ?? null,
+          hasMore: rows.length >= PAGE_SIZE.boosts,
+          loadingMore: false,
+        }),
+      () => setBoosts({ ...emptySource, state: 'error' })
     )
+  }
+  function loadMoreBoosts() {
+    setBoosts((prev) => {
+      if (!prev.hasMore || prev.loadingMore || prev.state !== 'ready') return prev
+      getCommercialPromotions(prev.cursor).then(
+        (rows) =>
+          setBoosts((current) => ({
+            state: 'ready',
+            rows: [...current.rows, ...rows],
+            cursor: rows.at(-1)?.id ?? current.cursor,
+            hasMore: rows.length >= PAGE_SIZE.boosts,
+            loadingMore: false,
+          })),
+        () => setBoosts((current) => ({ ...current, loadingMore: false, loadMoreError: true }))
+      )
+      return { ...prev, loadingMore: true, loadMoreError: false }
+    })
   }
   // Cada categoria carrega e falha de forma independente -- a central nunca trava por
   // uma consulta lenta ou indisponível em outro domínio.
@@ -103,8 +181,23 @@ export default function ApprovalsQueue() {
 
   const anyLoading =
     ads.state === 'loading' || storefronts.state === 'loading' || boosts.state === 'loading'
-  const anyError =
-    ads.state === 'error' || storefronts.state === 'error' || boosts.state === 'error'
+  const erroredCategories = [
+    ads.state === 'error' && 'anúncios',
+    storefronts.state === 'error' && 'vitrines',
+    boosts.state === 'error' && 'impulsionamentos',
+  ].filter(Boolean)
+  const anyError = erroredCategories.length > 0
+  const anyLoadMoreError = ads.loadMoreError || storefronts.loadMoreError || boosts.loadMoreError
+  const anyLoadingMore = ads.loadingMore || storefronts.loadingMore || boosts.loadingMore
+  const anyHasMore =
+    (ads.state === 'ready' && ads.hasMore) ||
+    (storefronts.state === 'ready' && storefronts.hasMore) ||
+    (boosts.state === 'ready' && boosts.hasMore)
+  function loadMoreAllPending() {
+    if (ads.state === 'ready' && ads.hasMore) loadMoreAds()
+    if (storefronts.state === 'ready' && storefronts.hasMore) loadMoreStorefronts()
+    if (boosts.state === 'ready' && boosts.hasMore) loadMoreBoosts()
+  }
 
   function openReview(item) {
     setReviewing(item)
@@ -187,12 +280,16 @@ export default function ApprovalsQueue() {
         ))}
       </Box>
       {anyError && (
-        <Flash variant="danger" sx={{ mb: 3 }}>
-          Não foi possível consultar uma ou mais categorias. As demais continuam disponíveis.
+        <Flash variant="danger" sx={{ mb: 3 }} role="alert">
+          Não foi possível consultar: {erroredCategories.join(', ')}. As demais categorias continuam
+          disponíveis, mas esta lista está incompleta -- nunca trate isto como "fila vazia".
         </Flash>
       )}
       {anyLoading && items.length === 0 && <Spinner aria-label="Carregando aprovações" />}
-      {!anyLoading && items.length === 0 && (
+      {/* Nunca mostrar "nenhuma solicitação" quando uma categoria falhou: o blankslate
+          abaixo só aparece se todas as fontes consultadas de fato não têm nada,
+          nunca como consequência de um erro parcial silencioso. */}
+      {!anyLoading && !anyError && items.length === 0 && (
         <Blankslate>
           <Blankslate.Heading>Nenhuma solicitação nesta visão</Blankslate.Heading>
           <Blankslate.Description>Ajuste os filtros ou volte depois.</Blankslate.Description>
@@ -236,6 +333,20 @@ export default function ApprovalsQueue() {
               </Button>
             </Box>
           ))}
+        </Box>
+      )}
+      {anyHasMore && (
+        <Box
+          sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, mt: 3 }}
+        >
+          {anyLoadMoreError && (
+            <Flash variant="danger" role="alert">
+              Não foi possível carregar mais itens de uma ou mais categorias. Tente novamente.
+            </Flash>
+          )}
+          <Button onClick={loadMoreAllPending} disabled={anyLoadingMore}>
+            {anyLoadingMore ? 'Carregando…' : 'Carregar mais'}
+          </Button>
         </Box>
       )}
       {reviewing && (
