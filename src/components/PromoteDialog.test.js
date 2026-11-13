@@ -53,7 +53,7 @@ before(async () => {
                   : path === '@primer/react'
                     ? `export const Box='box',Button='button',Dialog='dialog',Flash='flash',Spinner='spinner',Text='text'`
                     : path.includes('promotionsService')
-                      ? `let response,error;export const calls=[];export function configure(r,e){response=r;error=e;calls.length=0}export async function resubmitCommercialPromotion(){};export async function prepareCommercialPromotion(type,id){calls.push([type,id]);if(error)throw Error(error);return response}`
+                      ? `let response,error;export const calls=[];export function configure(r,e){response=r;error=e;calls.length=0}export async function resubmitCommercialPromotion(){};export async function prepareCommercialPromotion(type,id){calls.push(['prepare',type,id]);if(error)throw Error(error);return response};export async function getDirectPostBoostOffer(id){calls.push(['offer',id]);if(error)throw Error(error);return response};export async function prepareDirectPostBoost(id){calls.push(['direct',id]);return response}`
                       : path.includes('advertisingService')
                         ? `export const getAdvertisingOrders=()=>[]`
                         : path.includes('CommercialLeasePurchase')
@@ -77,19 +77,21 @@ function nodes(tree, type) {
     ...(Array.isArray(children) ? children : [children]).flatMap((n) => nodes(n, type)),
   ]
 }
-test('preparing a promotion uses its original target and does not expose payment before approval', async () => {
-  const { tree, calls } = await exercise({ resourceId: 'promotion', state: 'submitted' })
-  assert.deepEqual(calls, [['post', 'original-post']])
-  assert.equal(nodes(tree, 'purchase').length, 0)
-  assert.match(JSON.stringify(tree), /Nenhum EvoCash foi debitado/)
-})
-test('approved promotion delegates to the existing lease and order history', async () => {
+test('opening a post promotion only reads its offer and mounts no history', async () => {
   const tariff = { salesEnabled: true, price: '7', minDays: 1, maxDays: 30 }
-  const { tree } = await exercise({ resourceId: 'promotion', state: 'approved', tariff })
+  const { tree, calls } = await exercise({ resourceId: null, tariff })
+  assert.deepEqual(calls, [['offer', 'original-post']])
+  assert.equal(nodes(tree, 'purchase').length, 1)
+  assert.equal(nodes(tree, 'purchase')[0].props.compact, true)
+  assert.equal(nodes(tree, 'history').length, 0)
+})
+test('post promotion delegates quoting to the existing lease', async () => {
+  const tariff = { salesEnabled: true, price: '7', minDays: 1, maxDays: 30 }
+  const { tree } = await exercise({ resourceId: 'promotion', tariff })
   const payment = nodes(tree, 'purchase')[0]
   assert.equal(payment.props.resourceId, 'promotion')
   assert.deepEqual(payment.props.tariff, tariff)
-  assert.equal(nodes(tree, 'history')[0].props.resourceId, 'promotion')
+  assert.equal(typeof payment.props.prepareResource, 'function')
 })
 test('permission failure cannot display payment controls', async () => {
   const { tree } = await exercise(null, 'AD_COMMUNITY_PERMISSION_REQUIRED')

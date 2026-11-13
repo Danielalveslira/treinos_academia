@@ -115,6 +115,22 @@ export async function prepareCommercialPromotion(targetType, targetId) {
   return data
 }
 
+export async function getDirectPostBoostOffer(statusId) {
+  const { data, error } = await supabase.rpc('get_direct_post_boost_offer', {
+    p_status_id: statusId,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function prepareDirectPostBoost(statusId) {
+  const { data, error } = await supabase.rpc('prepare_direct_post_boost', {
+    p_status_id: statusId,
+  })
+  if (error) throw error
+  return data
+}
+
 export async function resubmitCommercialPromotion(id) {
   const { error } = await supabase.rpc('resubmit_commercial_promotion', { p_id: id })
   if (error) throw error

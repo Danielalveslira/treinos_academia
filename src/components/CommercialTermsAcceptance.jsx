@@ -9,7 +9,14 @@ import {
 // Resumo das condições congeladas na cotação + aceite explícito da versão exata do
 // documento comercial. A caixa nunca vem marcada e é desmarcada a cada nova cotação
 // (o componente pai controla `checked`). O servidor recusa qualquer divergência.
-export function CommercialTermsAcceptance({ terms, summary, checked, onChange, disabled }) {
+export function CommercialTermsAcceptance({
+  terms,
+  summary,
+  checked,
+  onChange,
+  disabled,
+  compact = false,
+}) {
   const state = commercialTermsState(terms)
   if (state === 'unavailable') {
     return (
@@ -29,6 +36,26 @@ export function CommercialTermsAcceptance({ terms, summary, checked, onChange, d
   }
   const label = commercialTermsLabel(terms)
   const link = commercialDocumentLink(terms.documentId, terms.version)
+  if (compact) {
+    return (
+      <div className="commercial-terms-box">
+        <FormControl disabled={disabled}>
+          <Checkbox checked={checked} onChange={(e) => onChange(e.target.checked)} />
+          <FormControl.Label>
+            Aceito os{' '}
+            {link ? (
+              <Link to={link} target="_blank" rel="noopener">
+                {label}
+              </Link>
+            ) : (
+              label
+            )}{' '}
+            (versão {terms.version}). Sem renovação automática.
+          </FormControl.Label>
+        </FormControl>
+      </div>
+    )
+  }
   return (
     <div className="commercial-terms-box">
       <Text as="p" sx={{ m: 0, fontWeight: 'bold' }}>
