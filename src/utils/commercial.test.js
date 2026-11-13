@@ -23,6 +23,7 @@ test('pending approval, expired quotes and suspension have safe actionable error
 })
 test('a desired duration chosen in the ad wizard pre-fills the contract step, clamped to the live tariff', () => {
   assert.equal(clampInitialDays(null, { minDays: 1, maxDays: 30 }), '1')
+  assert.equal(clampInitialDays(null, { minDays: 5, maxDays: 30 }), '5')
   assert.equal(clampInitialDays(7, { minDays: 1, maxDays: 30 }), '7')
   assert.equal(clampInitialDays(90, { minDays: 1, maxDays: 30 }), '30', 'above maxDays is clamped down, never rejected')
   assert.equal(clampInitialDays(1, { minDays: 5, maxDays: 30 }), '5', 'below minDays is clamped up')

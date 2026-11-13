@@ -681,9 +681,9 @@ function StatusCardView({
           Denunciar violação
         </Link>
       )}
-      {isAuthor && !isCurrentlyPromoted && (
+      {isAuthor && (
         <Button size="small" variant="invisible" onClick={() => setPromoteOpen(true)}>
-          Promover publicação
+          {isCurrentlyPromoted ? 'Renovar promoção' : 'Promover publicação'}
         </Button>
       )}
       {promoteOpen && (
@@ -695,7 +695,6 @@ function StatusCardView({
             title="Promover publicação"
             onClose={() => setPromoteOpen(false)}
             onPromoted={(result) => {
-              setPromoteOpen(false)
               onPromoted?.(status.id, result)
             }}
           />
