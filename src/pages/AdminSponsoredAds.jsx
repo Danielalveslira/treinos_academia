@@ -45,6 +45,15 @@ const LEGACY_SECTION_TO_AREA = {
   finance: 'financeiro',
   settings: 'publicidade',
 }
+// Aba padrão quando o link antigo só tinha `?section=`, sem `?tab=` (a seção em si
+// já indicava o assunto -- sem isto, cairia sempre em "campanhas", perdendo o
+// destino que `storefronts`/`settings` realmente pediam).
+const LEGACY_SECTION_DEFAULT_TAB = {
+  advertising: 'campanhas',
+  storefronts: 'vitrines',
+  settings: 'canais',
+  finance: 'motor',
+}
 // Favoritos antigos que só guardavam `?tab=`, sem `?section=` (ver LEGACY_SECTIONS
 // da versão anterior) -> área nova.
 const LEGACY_BARE_TAB_TO_AREA = {
@@ -143,15 +152,22 @@ export default function AdminSponsoredAds() {
     : LEGACY_SECTION_TO_AREA[requestedSection] ||
       LEGACY_BARE_TAB_TO_AREA[requestedTab] ||
       (reportRequested ? 'publicidade' : 'inicio')
+  // Prioridade ao resolver a aba legada: parâmetro canônico > alias de `tab` > pedido
+  // explícito de relatório > aba padrão da `section` antiga > padrão genérico da área.
   const tab =
     area === 'publicidade'
       ? PUBLICIDADE_TABS.some((item) => item.key === requestedTab)
         ? requestedTab
-        : LEGACY_PUBLICIDADE_TAB[requestedTab] || (reportRequested ? 'metricas' : 'campanhas')
+        : LEGACY_PUBLICIDADE_TAB[requestedTab] ||
+          (reportRequested ? 'metricas' : null) ||
+          LEGACY_SECTION_DEFAULT_TAB[requestedSection] ||
+          'campanhas'
       : area === 'financeiro'
         ? FINANCEIRO_TABS.some((item) => item.key === requestedTab)
           ? requestedTab
-          : LEGACY_FINANCEIRO_TAB[requestedTab] || 'motor'
+          : LEGACY_FINANCEIRO_TAB[requestedTab] ||
+            LEGACY_SECTION_DEFAULT_TAB[requestedSection] ||
+            'motor'
         : null
   const needsCampaigns = area === 'publicidade' && (tab === 'campanhas' || tab === 'metricas')
   const { ads, loading, error, refresh, add, edit, remove, setActive } =
