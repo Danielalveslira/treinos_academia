@@ -49,7 +49,7 @@ try {
     )
     await page.getByRole('spinbutton', { name: 'Duração em dias' }).fill('3')
     await page.getByRole('button', { name: 'Revisar valor' }).click()
-    await page.getByText('21 EvoCash', { exact: false }).first().waitFor()
+    await page.getByRole('button', { name: 'Confirmar promoção' }).waitFor()
     const metrics = await page.evaluate(() => {
       const dialog = document.querySelector('[role="dialog"]').getBoundingClientRect()
       const confirm = [...document.querySelectorAll('button')]
