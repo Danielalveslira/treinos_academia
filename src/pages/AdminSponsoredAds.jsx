@@ -22,6 +22,7 @@ const CommercialAdmin = lazy(() => import('../components/CommercialAdmin'))
 const CommercialEngineAdmin = lazy(() => import('../components/CommercialEngineAdmin'))
 const CommercialOverview = lazy(() => import('../components/CommercialOverview'))
 const ApprovalsQueue = lazy(() => import('../components/ApprovalsQueue'))
+const SupplierInfoGateAdmin = lazy(() => import('../components/SupplierInfoGateAdmin'))
 
 const TABS = [
   { key: 'campaigns', label: 'Campanhas' },
@@ -331,9 +332,14 @@ export default function AdminSponsoredAds() {
       )}
 
       {section === 'settings' && (
-        <Suspense fallback={<Spinner />}>
-          <AdvertisingAdmin />
-        </Suspense>
+        <>
+          <Suspense fallback={<Spinner />}>
+            <SupplierInfoGateAdmin />
+          </Suspense>
+          <Suspense fallback={<Spinner />}>
+            <AdvertisingAdmin />
+          </Suspense>
+        </>
       )}
 
       {metricsOpened && (
