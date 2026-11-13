@@ -129,10 +129,11 @@ export default function CommercialAdmin() {
 
   async function saveProduct(event) {
     event.preventDefault()
-    // Imagem é obrigatória para todo cadastro novo e para qualquer publicação (approved),
-    // mesmo editando um produto legado sem imagem -- espelha o trigger
-    // enforce_partner_product_image (autoridade final no servidor).
-    const requireImage = !editing || form.approved
+    // Só existe edição: a criação de novo produto legado foi removida (PR3). Imagem
+    // é obrigatória para qualquer publicação (approved), mesmo editando um produto
+    // legado sem imagem -- espelha o trigger enforce_partner_product_image
+    // (autoridade final no servidor).
+    const requireImage = form.approved
     const validationErrors = validatePartnerProduct({
       name: form.name,
       brand: form.brand,
@@ -147,14 +148,13 @@ export default function CommercialAdmin() {
     setProductErrors(validationErrors)
     if (Object.keys(validationErrors).length > 0) return
 
+    if (!editing) return
     setBusy(true)
     const payload = Object.fromEntries(Object.keys(empty).map((key) => [key, form[key]]))
     payload.image_url = form.image_url || null
     payload.starts_at = form.starts_at || null
     payload.ends_at = form.ends_at || null
-    const { error } = editing
-      ? await supabase.from('partner_products').update(payload).eq('id', editing)
-      : await supabase.from('partner_products').insert(payload)
+    const { error } = await supabase.from('partner_products').update(payload).eq('id', editing)
     setBusy(false)
     if (error) {
       showToast(
@@ -163,7 +163,7 @@ export default function CommercialAdmin() {
       )
       return
     }
-    showToast(editing ? 'Produto atualizado.' : 'Produto cadastrado.')
+    showToast('Produto atualizado.')
     setForm(empty)
     setEditing(null)
     setProductErrors({})
@@ -273,21 +273,23 @@ export default function CommercialAdmin() {
           </Heading>
           <Text as="p" sx={{ color: 'fg.muted' }}>
             Registros administrativos anteriores ao modelo atual de vitrines, preservados por
-            compatibilidade. Novos cadastros comerciais usam Vitrines de produtos.
+            compatibilidade. Não é mais possível cadastrar produtos por este fluxo -- novos
+            cadastros comerciais usam Vitrines de produtos.
           </Text>
 
           <ToastFlash toasts={toasts} />
 
-          <PartnerProductForm
-            form={form}
-            errors={productErrors}
-            editing={Boolean(editing)}
-            requireImage={!editing || form.approved}
-            busy={busy}
-            onFieldChange={onFieldChange}
-            onSubmit={saveProduct}
-            onCancel={cancelEdit}
-          />
+          {editing && (
+            <PartnerProductForm
+              form={form}
+              errors={productErrors}
+              requireImage={form.approved}
+              busy={busy}
+              onFieldChange={onFieldChange}
+              onSubmit={saveProduct}
+              onCancel={cancelEdit}
+            />
+          )}
 
           {productsLoading ? (
             <Spinner sx={{ display: 'block', mx: 'auto', my: 4 }} />

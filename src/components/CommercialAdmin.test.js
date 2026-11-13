@@ -63,6 +63,7 @@ before(async () => {
           }
           return {
             text: () => textOf(renderer.toJSON()),
+            hasForm: () => findForm() !== undefined,
             editButtons: () => root.findAll((n) => n.type === 'button' && textOf(n).trim() === 'Editar'),
             clickEdit: (index = 0) => act(() => { root.findAll((n) => n.type === 'button' && textOf(n).trim() === 'Editar')[index].props.onClick() }),
             clickCancelEdit: () => act(() => { findButton('Cancelar edição').props.onClick() }),
@@ -245,39 +246,31 @@ test('"Editar" seguido de "Cancelar edição" não grava nada (nenhuma chamada d
   page.clickEdit(0)
   page.clickCancelEdit()
   assert.equal(globalThis.__supaCalls.length, 0)
-  assert.equal(page.nameValue(), '', 'formulário volta ao estado vazio de novo cadastro')
   page.unmount()
 })
 
-test('cadastrar um produto novo sem imagem é rejeitado: nenhum insert ocorre e o erro aparece junto ao campo', async () => {
-  resetFixtures({ products: [] })
+// PR3: a criação de produto legado foi removida -- não existe mais caminho para
+// cadastrar sem antes clicar "Editar" num produto já existente.
+test('sem nenhum "Editar" clicado, o formulário de produto não é renderizado (nenhum caminho de criação)', async () => {
+  resetFixtures({ products: [DRAFT_WITHOUT_IMAGE] })
   const page = mount()
   await tick()
-  page.setField('Nome do produto', 'Produto novo')
-  page.setField('Marca', 'Marca nova')
-  page.setField('Categoria', 'Categoria')
-  page.setField('Descrição', 'Descrição suficientemente longa para passar na validação.')
-  page.setField('URL da loja', 'https://loja.example.com/produto-novo')
-  page.submit()
-  assert.equal(globalThis.__supaCalls.filter((c) => c.op === 'insert').length, 0)
-  assert.match(page.text(), /[Ii]magem.*obrigat/)
+  assert.equal(page.hasForm(), false)
   page.unmount()
 })
 
-test('cadastrar um produto novo com imagem válida grava normalmente', async () => {
-  resetFixtures({ products: [] })
+test('"Cancelar edição" fecha o formulário por completo, não só o limpa (sem caminho de criação restante)', async () => {
+  resetFixtures({ products: [DRAFT_WITHOUT_IMAGE] })
   const page = mount()
   await tick()
-  page.setField('Nome do produto', 'Produto novo')
-  page.setField('Marca', 'Marca nova')
-  page.setField('Categoria', 'Categoria')
-  page.setField('Descrição', 'Descrição suficientemente longa para passar na validação.')
-  page.setField('URL da loja', 'https://loja.example.com/produto-novo')
-  page.setField('URL da imagem', 'https://cdn.example.com/produto-novo.jpg')
-  page.submit()
-  const inserts = globalThis.__supaCalls.filter((c) => c.op === 'insert')
-  assert.equal(inserts.length, 1)
-  assert.equal(inserts[0].payload.image_url, 'https://cdn.example.com/produto-novo.jpg')
+  page.clickEdit(0)
+  assert.equal(page.hasForm(), true)
+  page.clickCancelEdit()
+  assert.equal(
+    page.hasForm(),
+    false,
+    'fechar a edição não deixa um formulário de criação para trás'
+  )
   page.unmount()
 })
 
