@@ -92,5 +92,26 @@ set local role authenticated;
 select throws_ok($q$select public.get_direct_post_boost_offer('7d300000-0000-0000-0000-000000000001')$q$,'PROMOTION_SOURCE_CHANGED','other user cannot access the offer');
 reset role;
 select ok(not has_function_privilege('anon','public.prepare_direct_post_boost(uuid)','execute'),'anonymous cannot prepare direct boost');
+
+-- Fix (direct post boost, parallel investigation): an approved-but-unpaid direct boost
+-- whose source simply outlived its normal 24h-style retention window, with no content
+-- edit at all, must raise PROMOTION_SOURCE_EXPIRED -- not the generic
+-- PROMOTION_SOURCE_CHANGED used for an actually-edited/ineligible source (already
+-- covered above, lines 88/92). Same guard, same lock order; only the exception name
+-- for this specific, previously-indistinguishable condition.
+insert into public.statuses(id,community_id,author_id,type,expires_at,text) values
+('7d300000-0000-0000-0000-000000000004','7d200000-0000-0000-0000-000000000001','7d000000-0000-0000-0000-000000000001','text',now()+interval '1 day','Expires before payment');
+select pg_temp.set_test_user('7d000000-0000-0000-0000-000000000001',true);
+set local role authenticated;
+insert into boost_results values('expiring',public.prepare_direct_post_boost('7d300000-0000-0000-0000-000000000004'));
+select is((select status from public.promotions where id=(select (value->>'resourceId')::uuid from boost_results where name='expiring')),'approved','approved but not yet paid');
+reset role;
+update public.statuses set expires_at=now()-interval '1 hour' where id='7d300000-0000-0000-0000-000000000004';
+select pg_temp.set_test_user('7d000000-0000-0000-0000-000000000001',true);
+set local role authenticated;
+select throws_ok($q$select public.get_direct_post_boost_offer('7d300000-0000-0000-0000-000000000004')$q$,'PROMOTION_SOURCE_EXPIRED','expired-before-payment source is distinguished from a changed one');
+select throws_ok($q$select public.quote_commercial_order((select (value->>'resourceId')::uuid from boost_results where name='expiring'),'1',gen_random_uuid())$q$,'PROMOTION_SOURCE_EXPIRED','the order guard trigger raises the same specific error, not the generic one');
+reset role;
+
 select * from finish();
 rollback;

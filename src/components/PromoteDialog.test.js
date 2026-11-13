@@ -5,7 +5,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
-let directory, exercise
+let directory, exercise, exerciseRetry
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'commercial-promotion-ui-'))
   const outfile = join(directory, 'test.cjs')
@@ -20,6 +20,28 @@ before(async () => {
  const props={targetType:'post',targetId:'original-post'}
  let tree=render(()=>PromoteDialogBody(props))
  if(late)cleanup()
+ await flush()
+ tree=render(()=>PromoteDialogBody(props))
+ cleanup()
+ return {tree,calls:[...calls]}
+ }
+ function findButton(tree,label){
+ if(!tree||typeof tree!=='object')return null
+ if(tree.type==='button'&&tree.props?.children===label)return tree
+ const children=tree.props?.children
+ for(const n of (Array.isArray(children)?children:[children]))
+ {const found=findButton(n,label);if(found)return found}
+ return null
+ }
+ export async function exerciseRetry(firstError,retryResponse){
+ reset();configure(null,firstError)
+ const props={targetType:'post',targetId:'original-post'}
+ let tree=render(()=>PromoteDialogBody(props))
+ await flush()
+ tree=render(()=>PromoteDialogBody(props))
+ const retry=findButton(tree,'Tentar novamente')
+ retry.props.onClick()
+ configure(retryResponse,null)
  await flush()
  tree=render(()=>PromoteDialogBody(props))
  cleanup()
@@ -64,7 +86,7 @@ before(async () => {
       },
     ],
   })
-  ;({ exercise } = createRequire(import.meta.url)(outfile))
+  ;({ exercise, exerciseRetry } = createRequire(import.meta.url)(outfile))
 })
 after(async () => {
   if (directory) await rm(directory, { recursive: true, force: true })
@@ -97,4 +119,33 @@ test('permission failure cannot display payment controls', async () => {
   const { tree } = await exercise(null, 'AD_COMMUNITY_PERMISSION_REQUIRED')
   assert.equal(nodes(tree, 'purchase').length, 0)
   assert.match(JSON.stringify(tree), /proprietário precisa permitir/)
+})
+// Fix (direct post boost): the post branch had no recovery path at all when
+// get_direct_post_boost_offer failed -- the user was stuck with only an error Flash.
+test('expired source shows a specific message, distinct from "content changed"', async () => {
+  const { tree } = await exercise(null, 'PROMOTION_SOURCE_EXPIRED')
+  assert.match(JSON.stringify(tree), /passou do prazo normal de exibição/)
+  assert.doesNotMatch(JSON.stringify(tree), /mudou ou deixou de ser elegível/)
+})
+test('error state always offers a "Tentar novamente" retry button', async () => {
+  const { tree } = await exercise(null, 'PROMOTION_SOURCE_CHANGED')
+  assert.match(JSON.stringify(tree), /Tentar novamente/)
+})
+test('clicking "Tentar novamente" re-queries the offer and recovers on success', async () => {
+  const tariff = { salesEnabled: true, price: '7', minDays: 1, maxDays: 30 }
+  const { tree, calls } = await exerciseRetry('PROMOTION_SOURCE_EXPIRED', {
+    resourceId: 'promotion',
+    tariff,
+  })
+  // configure() resets the call log each time it's invoked (retry reconfigures the
+  // mock to succeed) -- what matters is that the retry genuinely re-queried the
+  // offer, not that it reused the first (failed) result.
+  assert.deepEqual(calls, [['offer', 'original-post']])
+  assert.doesNotMatch(JSON.stringify(tree), /passou do prazo normal de exibição/)
+  assert.equal(nodes(tree, 'purchase').length, 1, 'successful retry shows payment controls')
+  assert.equal(
+    nodes(tree, 'flash').length,
+    0,
+    'no stale error Flash lingers after a successful retry'
+  )
 })
