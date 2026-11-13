@@ -184,7 +184,10 @@ export default function SupplierInfoGateAdmin() {
           {configured === true ? 'confirmado' : configured === false ? 'pendente' : 'indisponível'}
         </Text>
       )}
-      {safe === false && (
+      {/* Este aviso é sobre a próxima confirmação pendente -- não faz sentido pedir pra
+          "resolver condições antes de confirmar" quando já está confirmado (configured
+          === true). O bloqueio real de qualquer alteração futura continua em save(). */}
+      {configured === false && safe === false && (
         <Flash variant="attention" role="status">
           Há vendas ou cotações abertas, ou compras pendentes. Resolva essas condições antes de
           confirmar a identificação do fornecedor.
