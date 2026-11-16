@@ -318,6 +318,10 @@ test('cada cartão expõe um título semântico (acessibilidade básica)', async
   configure({ pendingAds: 1, pendingStorefronts: 0, pendingBoosts: 0, openRefunds: 2 })
   const page = mount()
   await tick()
-  assert.deepEqual(page.headings().sort(), ['Aprovações pendentes', 'Reembolsos em andamento'])
+  assert.deepEqual(page.headings().sort(), [
+    'Aprovações pendentes',
+    'Preparar publicidade',
+    'Reembolsos em andamento',
+  ])
   page.unmount()
 })

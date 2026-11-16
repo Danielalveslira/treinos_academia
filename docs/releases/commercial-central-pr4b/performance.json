@@ -1,0 +1,25 @@
+{
+  "methodology": "Chromium headless local (Playwright), mesma técnica dos benchmarks anteriores (ver scripts/launch-assistant-performance.mjs). Serviços stubados -- não é rede/Supabase real. 1 execução de aquecimento descartada + 5 amostras, mediana reportada para o tempo. Contagem de consultas é por chamada ao serviço do frontend (getLaunchVerification), não por RPC individual -- em produção essa única chamada do frontend dispara 4 RPCs reais em paralelo (fornecedor, EvoCash, catálogo comercial, inventário de publicidade).",
+  "queries": {
+    "closed": 1,
+    "afterOpen": 1,
+    "afterValidate": 1,
+    "afterEdit": "mesmo valor de afterOpen -- reabrir/remontar sempre busca de novo, não há cache a invalidar",
+    "note": "Cada valor é incremental sobre o anterior. 'closed' é a única consulta que a Etapa A já media (admin_commercial_pending_counts). 'afterOpen'/'afterValidate' são, cada uma, 1 chamada de serviço do frontend equivalente a 4 RPCs reais em paralelo (supplier+evocash+catalog+inventory) -- nunca sequenciais, nunca repetidas automaticamente."
+  },
+  "openToContentSamplesMs": [60.71, 68.97, 61.24, 75.23, 90.28],
+  "medianOpenToContentMs": 68.97,
+  "openToContentDisclaimer": "Tempo de render em Chromium headless local, serviços stubados -- não é latência de rede/Supabase de produção. É um proxy do custo de abrir o assistente (import do chunk + render), não uma medição de produção.",
+  "bundle": {
+    "commercialOverviewChunkBeforePR4bBytesGzip": 1188,
+    "commercialOverviewChunkAfterPR4bBytesGzip": 1719,
+    "commercialOverviewChunkDeltaBytesGzip": 531,
+    "commercialOverviewChunkDeltaNote": "Custo do cartão fechado do assistente (lazy() + Suspense + CTA), sempre carregado com o Início -- pequeno e aceito, já que é a única parte visível quando o assistente não está em uso.",
+    "launchAssistantPanelChunkBytesGzip": 3204,
+    "launchAssistantPanelChunkNote": "Só é baixado quando o administrador clica em 'Abrir assistente' -- nunca no carregamento do Início, confirmado por teste (CommercialOverview.test.js: 'monta com exatamente uma consulta de resumo') e pelo browser-smoke (nenhuma chamada extra com o cartão fechado em nenhuma das 6 larguras)."
+  },
+  "bootBudget": {
+    "affected": false,
+    "note": "Nenhum chunk deste PR entra no precache de boot (service worker) -- ambos são lazy, confirmado por `npm run budget` permanecendo OK sem alteração do baseline."
+  }
+}
