@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Box, Button, Flash, Heading, Spinner, Text } from '@primer/react'
+import { Box, Button, Flash, Spinner, Text } from '@primer/react'
 import { getAdvertisingCampaigns } from '../services/advertisingService'
 import { commercialError } from '../utils/commercial'
 import AdStatusCard from './advertising/AdStatusCard'
@@ -46,19 +46,16 @@ export default function AdvertisingCentral({ accountId, accountName }) {
   }
 
   return (
-    <Box sx={{ mt: 3, minWidth: 0 }}>
+    <Box sx={{ mt: 3, minWidth: 0, maxWidth: 800, mx: 'auto' }}>
       <Box
         sx={{
           display: 'flex',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-end',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: 2,
         }}
       >
-        <Heading as="h2" sx={{ fontSize: 2 }}>
-          Meus anúncios
-        </Heading>
         <Button variant="primary" onClick={() => setWizard({ editing: null })}>
           Criar anúncio
         </Button>
