@@ -1,0 +1,102 @@
+.evocash-page {
+  max-width: 760px;
+  margin-inline: auto;
+  padding-bottom: 5rem;
+}
+
+.evocash-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--borderColor-default);
+}
+
+.evocash-tabs button {
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  color: var(--fgColor-muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.evocash-tabs button[aria-selected='true'] {
+  color: var(--fgColor-default);
+  border-bottom-color: var(--borderColor-accent-emphasis);
+  font-weight: 600;
+}
+
+.evocash-tabs button:focus-visible,
+.evocash-page summary:focus-visible {
+  outline: 2px solid var(--borderColor-accent-emphasis);
+  outline-offset: 2px;
+}
+
+.evocash-page summary {
+  cursor: pointer;
+  min-height: 36px;
+  padding-block: 0.4rem;
+}
+
+.evocash-page article,
+.evocash-page section {
+  min-width: 0;
+}
+
+.evocash-purchase-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.evocash-purchase-card h2 {
+  margin: 0;
+}
+
+.evocash-actions {
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.evocash-actions button,
+.evocash-single-action button {
+  min-height: 44px;
+}
+
+.evocash-page .commercial-terms-box {
+  gap: 16px;
+  padding: 16px;
+}
+
+.evocash-page .commercial-terms-box dl {
+  gap: 8px 16px;
+}
+
+@media (max-width: 480px) {
+  .evocash-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .evocash-actions button,
+  .evocash-single-action button {
+    width: 100%;
+  }
+
+  .evocash-page .commercial-terms-box dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .evocash-page .commercial-terms-box dl > div {
+    display: block;
+  }
+
+  .evocash-page .commercial-terms-box dd {
+    margin-top: 4px;
+  }
+}

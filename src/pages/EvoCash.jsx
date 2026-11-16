@@ -1,23 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Box, Button, Flash, Heading, Label, Spinner, Text } from '@primer/react'
+import { Box, Button, Flash, Heading, Text } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
 import { useCashPurchases } from '../hooks/useCashPurchases'
-import { cancelMyCashPurchase, checkInfinitepayPurchase } from '../services/cashPurchaseService'
-import { RefundRequestsPanel, RefundSourceButton } from '../components/Refunds'
-import { EvoCashQuantityPurchase } from '../components/EvoCashQuantityPurchase'
 import { useWallet } from '../hooks/useWallet'
-import { serverNow } from '../utils/serverClock'
-import { CopyButton } from '../components/CopyButton'
-import { formatCentavosBRL, formatDateTime } from '../utils/format'
-import {
-  hasPendingCashPurchase,
-  cashPurchaseStatusLabel,
-  abbreviateProtocol,
-  USER_CASH_PURCHASE_STATUS_LABELS as STATUS_LABELS,
-} from '../utils/cashPurchaseFlow'
+import { cancelMyCashPurchase, checkInfinitepayPurchase } from '../services/cashPurchaseService'
+import { RefundPolicyNotice, RefundRequestsPanel } from '../components/Refunds'
+import { EvoCashQuantityPurchase } from '../components/EvoCashQuantityPurchase'
+import { EvoCashPurchaseHistory } from '../components/EvoCashPurchaseHistory'
+import { hasPendingCashPurchase } from '../utils/cashPurchaseFlow'
+import './EvoCash.css'
 
-// O crédito é confirmado no backend após payment_check; esta página apenas abre o checkout.
+// O crédito é confirmado no backend; esta página somente consulta o retorno do checkout.
 export default function EvoCash() {
   const { user } = useAuth()
   const {
@@ -27,18 +21,52 @@ export default function EvoCash() {
     refresh: refreshWallet,
   } = useWallet()
   const [searchParams, setSearchParams] = useSearchParams()
+  const [tab, setTab] = useState(
+    searchParams.has('request') || searchParams.get('checkout_return') === '1' ? 'history' : 'buy'
+  )
+  const [section, setSection] = useState(searchParams.has('request') ? 'requests' : 'purchases')
+  const [focusedPurchaseId, setFocusedPurchaseId] = useState(searchParams.get('purchase_id'))
   const [cancellingPurchaseId, setCancellingPurchaseId] = useState(null)
   const [error, setError] = useState('')
   const [refundRevision, setRefundRevision] = useState(0)
+  const [policySnapshot, setPolicySnapshot] = useState(null)
   const [checkoutReturn, setCheckoutReturn] = useState(null)
   const {
     purchases,
+    pendingPurchase,
+    lastRealtimeCredit,
     loading,
     hasMore,
     loadMore,
     error: listError,
     refresh,
   } = useCashPurchases(user?.uid)
+  const refreshedCreditId = useRef(null)
+  const refreshConfirmedCredit = useCallback(
+    (purchaseId) => {
+      if (!purchaseId || refreshedCreditId.current === purchaseId) return
+      refreshedCreditId.current = purchaseId
+      refreshWallet()
+    },
+    [refreshWallet]
+  )
+
+  useEffect(() => {
+    setPolicySnapshot(null)
+    refreshedCreditId.current = null
+  }, [user?.uid])
+
+  useEffect(() => {
+    if (lastRealtimeCredit?.userId === user?.uid)
+      refreshConfirmedCredit(lastRealtimeCredit.purchaseId)
+  }, [lastRealtimeCredit, user?.uid, refreshConfirmedCredit])
+
+  useEffect(() => {
+    if (searchParams.has('request')) {
+      setTab('history')
+      setSection('requests')
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (searchParams.get('checkout_return') !== '1') return
@@ -50,6 +78,9 @@ export default function EvoCash() {
       slug: searchParams.get('slug'),
     }
     let active = true
+    setTab('history')
+    setSection('purchases')
+    setFocusedPurchaseId(purchaseId)
     setCheckoutReturn('checking')
     checkInfinitepayPurchase(purchaseId, hints)
       .then((result) => {
@@ -63,7 +94,7 @@ export default function EvoCash() {
         )
         refresh()
         if (result.status === 'credited') {
-          refreshWallet()
+          refreshConfirmedCredit(purchaseId)
           setSearchParams({}, { replace: true })
         }
       })
@@ -73,7 +104,7 @@ export default function EvoCash() {
     return () => {
       active = false
     }
-  }, [searchParams, setSearchParams, refresh, refreshWallet])
+  }, [searchParams, setSearchParams, refresh, refreshConfirmedCredit])
 
   useEffect(() => {
     if (checkoutReturn !== 'pending') return
@@ -81,13 +112,11 @@ export default function EvoCash() {
     if (
       purchases.some((purchase) => purchase.id === purchaseId && purchase.status === 'credited')
     ) {
-      refreshWallet()
+      refreshConfirmedCredit(purchaseId)
       setCheckoutReturn('credited')
       setSearchParams({}, { replace: true })
     }
-  }, [checkoutReturn, purchases, searchParams, setSearchParams, refreshWallet])
-
-  const hasPendingPurchase = hasPendingCashPurchase(purchases)
+  }, [checkoutReturn, purchases, searchParams, setSearchParams, refreshConfirmedCredit])
 
   async function cancelPurchase(purchaseId) {
     if (cancellingPurchaseId) return
@@ -103,242 +132,189 @@ export default function EvoCash() {
     }
   }
 
+  function showPending() {
+    setTab('history')
+    setSection('purchases')
+    setFocusedPurchaseId(pendingPurchase?.id)
+  }
+
+  function selectTab(next) {
+    setTab(next)
+    setSection('purchases')
+  }
+
+  function handleTabKeys(event) {
+    const tabs = [...event.currentTarget.querySelectorAll('[role="tab"]')]
+    const selected = tabs.indexOf(document.activeElement)
+    let next = selected
+    if (event.key === 'ArrowRight') next = (selected + 1) % tabs.length
+    else if (event.key === 'ArrowLeft') next = (selected - 1 + tabs.length) % tabs.length
+    else if (event.key === 'Home') next = 0
+    else if (event.key === 'End') next = tabs.length - 1
+    else return
+    event.preventDefault()
+    tabs[next]?.focus()
+    tabs[next]?.click()
+  }
+
   return (
-    <div className="profile-page">
+    <div className="profile-page evocash-page">
       <header className="profile-page-heading">
         <span className="profile-eyebrow">EVOCASH</span>
         <h1>Comprar EvoCash</h1>
-        <p>
-          Compre créditos para promover suas publicações ou comunidades. O saldo é liberado após a
-          confirmação do pagamento.
-        </p>
+        <p>Créditos para contratar serviços no Evolutus</p>
         <Link to="/entenda-suas-moedas">Entenda EvoCash e EvoCoins</Link>
       </header>
-
+      <Box sx={{ p: 3, bg: 'canvas.subtle', borderRadius: 2, mb: 3 }} aria-live="polite">
+        <Text as="p" sx={{ m: 0, color: 'fg.muted' }}>
+          Saldo disponível
+        </Text>
+        <Text as="p" sx={{ m: 0, fontSize: 4, fontWeight: 'bold' }}>
+          {walletLoading || walletError || !display || display.source !== 'server'
+            ? 'Atualizando saldo'
+            : `${display.cashBalance} EvoCash`}
+        </Text>
+      </Box>
       {error && (
         <Flash variant="danger" role="alert" sx={{ mb: 3 }}>
           {error}
         </Flash>
       )}
-
       {checkoutReturn && (
         <Flash sx={{ mb: 3 }} role="status">
           {checkoutReturn === 'checking'
-            ? 'Confirmando seu pagamento…'
+            ? 'Conferindo seu pagamento…'
             : checkoutReturn === 'credited'
               ? 'Pagamento confirmado. Consulte seu saldo atualizado.'
               : checkoutReturn === 'review'
                 ? 'Pagamento recebido e em análise financeira. O saldo ainda não foi liberado.'
-                : 'Pagamento ainda não confirmado. Acompanhe em Minhas compras.'}
+                : 'Pagamento ainda não confirmado. Acompanhe no Histórico.'}
         </Flash>
       )}
-
-      <Box sx={{ mb: 3 }}>
-        <Text as="p" sx={{ fontWeight: 'bold' }}>
-          Seu saldo:{' '}
-          {walletLoading || walletError || !display || display.source !== 'server'
-            ? 'Em atualização'
-            : `${display.cashBalance} EvoCash`}
-        </Text>
-        <EvoCashQuantityPurchase
-          key={user.uid}
-          userId={user.uid}
-          hasPendingPurchase={hasPendingPurchase}
-          onPurchaseChanged={refresh}
-        />
-      </Box>
-
-      <section aria-labelledby="my-purchases-heading">
-        <Heading as="h2" id="my-purchases-heading" sx={{ fontSize: 2, mb: 2 }}>
-          Minhas compras
-        </Heading>
-        <Button
-          onClick={() => {
-            refresh()
-            refreshWallet()
-          }}
-          disabled={loading}
-          sx={{ mb: 3 }}
+      <div className="evocash-tabs" role="tablist" aria-label="EvoCash" onKeyDown={handleTabKeys}>
+        <button
+          role="tab"
+          id="evocash-buy-tab"
+          aria-selected={tab === 'buy'}
+          aria-controls="evocash-buy-panel"
+          tabIndex={tab === 'buy' ? 0 : -1}
+          onClick={() => selectTab('buy')}
         >
-          Atualizar histórico e saldo
-        </Button>
-        {listError && (
-          <Flash variant="danger" sx={{ mb: 3 }}>
-            {listError} <Button onClick={refresh}>Tentar novamente</Button>
-          </Flash>
-        )}
-        {loading && purchases.length === 0 && <Spinner aria-label="Carregando compras" />}
-        {!loading && purchases.length === 0 && (
-          <Text as="p" sx={{ color: 'fg.muted' }}>
-            Você ainda não comprou EvoCash.
-          </Text>
-        )}
-        <RefundRequestsPanel initialId={searchParams.get('request')} revision={refundRevision} />
-        {purchases.map((purchase) => (
-          <Box
-            as="article"
-            key={purchase.id}
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 2,
-              minWidth: 0,
-              border: '1px solid',
-              borderColor: 'border.default',
-              borderRadius: 2,
-              p: 3,
-              mb: 2,
-            }}
+          Comprar
+        </button>
+        <button
+          role="tab"
+          id="evocash-history-tab"
+          aria-selected={tab === 'history'}
+          aria-controls="evocash-history-panel"
+          tabIndex={tab === 'history' ? 0 : -1}
+          onClick={() => selectTab('history')}
+        >
+          Histórico
+        </button>
+      </div>
+      {tab === 'buy' ? (
+        <section id="evocash-buy-panel" role="tabpanel" aria-labelledby="evocash-buy-tab">
+          {listError && (
+            <Flash variant="danger" role="alert" sx={{ mb: 3 }}>
+              Não foi possível conferir suas compras em andamento.{' '}
+              <Button onClick={refresh}>Tentar novamente</Button>
+            </Flash>
+          )}
+          {pendingPurchase && (
+            <Flash variant="attention" sx={{ mb: 3 }}>
+              {pendingPurchase.checkoutUncertain
+                ? 'Sua compra está em conciliação.'
+                : pendingPurchase.checkoutUrl
+                  ? 'Você tem uma compra aguardando pagamento ou confirmação.'
+                  : 'Seu pagamento está sendo preparado.'}{' '}
+              <Button onClick={showPending}>Ver compra em andamento</Button>
+            </Flash>
+          )}
+          <EvoCashQuantityPurchase
+            key={user?.uid}
+            userId={user?.uid}
+            hasPendingPurchase={
+              loading || !!listError || !!pendingPurchase || hasPendingCashPurchase(purchases)
+            }
+            onPurchaseChanged={refresh}
+            onPolicySnapshot={setPolicySnapshot}
+          />
+          <RefundPolicyNotice snapshot={policySnapshot} purchase />
+        </section>
+      ) : (
+        <section id="evocash-history-panel" role="tabpanel" aria-labelledby="evocash-history-tab">
+          <Heading as="h2" sx={{ fontSize: 2, mb: 2 }}>
+            Histórico
+          </Heading>
+          <div
+            className="evocash-tabs evocash-subtabs"
+            role="tablist"
+            aria-label="Tipo de histórico"
+            onKeyDown={handleTabKeys}
           >
-            <RefundSourceButton
-              type="purchase"
-              id={purchase.id}
-              onCreated={() => setRefundRevision((value) => value + 1)}
-            />
-            <Box
-              sx={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                gap: 2,
-                minWidth: 0,
-              }}
+            <button
+              role="tab"
+              id="evocash-purchases-tab"
+              aria-selected={section === 'purchases'}
+              aria-controls="evocash-purchases-panel"
+              tabIndex={section === 'purchases' ? 0 : -1}
+              onClick={() => setSection('purchases')}
             >
-              <Text as="p" sx={{ fontWeight: 'bold', m: 0, minWidth: 0, wordBreak: 'break-word' }}>
-                {purchase.purchaseLabel}
-              </Text>
-              <Label variant={cashPurchaseStatusLabel(purchase, STATUS_LABELS).variant}>
-                {cashPurchaseStatusLabel(purchase, STATUS_LABELS).text}
-              </Label>
-            </Box>
-
-            <Text as="p" sx={{ fontSize: 0, m: 0 }}>
-              {formatCentavosBRL(purchase.amountCentavos)} — {purchase.cashAmount} EvoCash
-            </Text>
-
-            <Box sx={{ minWidth: 0 }}>
-              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-                Protocolo
-              </Text>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                  gap: 2,
-                  minWidth: 0,
+              Compras
+            </button>
+            <button
+              role="tab"
+              id="evocash-requests-tab"
+              aria-selected={section === 'requests'}
+              aria-controls="evocash-requests-panel"
+              tabIndex={section === 'requests' ? 0 : -1}
+              onClick={() => setSection('requests')}
+            >
+              Solicitações
+            </button>
+          </div>
+          {section === 'purchases' ? (
+            <div
+              id="evocash-purchases-panel"
+              role="tabpanel"
+              aria-labelledby="evocash-purchases-tab"
+            >
+              <EvoCashPurchaseHistory
+                purchases={purchases}
+                pendingPurchase={pendingPurchase}
+                loading={loading}
+                error={listError}
+                hasMore={hasMore}
+                loadMore={loadMore}
+                refresh={refresh}
+                cancellingPurchaseId={cancellingPurchaseId}
+                cancelPurchase={cancelPurchase}
+                focusedPurchaseId={focusedPurchaseId}
+                onRefundCreated={(created) => {
+                  setRefundRevision((value) => value + 1)
+                  setSection('requests')
+                  if (created?.id) {
+                    setSearchParams((current) => {
+                      const next = new URLSearchParams(current)
+                      next.set('request', created.id)
+                      return next
+                    })
+                  }
                 }}
-              >
-                <Text
-                  as="span"
-                  title={purchase.id}
-                  sx={{
-                    fontSize: 0,
-                    fontFamily: 'mono',
-                    wordBreak: 'break-word',
-                    overflowWrap: 'anywhere',
-                    minWidth: 0,
-                  }}
-                >
-                  {abbreviateProtocol(purchase.id)}
-                </Text>
-                <CopyButton
-                  value={purchase.id}
-                  label="Copiar"
-                  successMessage="Protocolo copiado"
-                  testId={`copy-protocol-${purchase.id}`}
-                />
-              </Box>
-            </Box>
-
-            <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-              Data: {formatDateTime(purchase.createdAt ? new Date(purchase.createdAt) : null)}
-            </Text>
-
-            {purchase.status === 'pending' && purchase.paymentProvider === 'infinitepay' && (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                {purchase.checkoutUrl &&
-                  !purchase.checkoutUncertain &&
-                  (!purchase.checkoutValidUntil ||
-                    Date.parse(purchase.checkoutValidUntil) > serverNow()) && (
-                    <Button as="a" href={purchase.checkoutUrl}>
-                      Continuar pagamento
-                    </Button>
-                  )}
-                <Button
-                  variant="danger"
-                  disabled={!!cancellingPurchaseId}
-                  onClick={() => cancelPurchase(purchase.id)}
-                >
-                  {cancellingPurchaseId === purchase.id ? 'Cancelando…' : 'Cancelar'}
-                </Button>
-              </Box>
-            )}
-
-            {purchase.status === 'pending' &&
-              purchase.paymentProvider === 'infinitepay' &&
-              !purchase.checkoutUrl &&
-              !purchase.checkoutUncertain &&
-              (!purchase.checkoutValidUntil ||
-                Date.parse(purchase.checkoutValidUntil) > serverNow()) && (
-                <Text as="p" sx={{ fontSize: 0, color: 'attention.fg', m: 0 }}>
-                  {purchase.checkoutUncertain
-                    ? 'O checkout não abriu. Este pedido precisa de conciliação antes de pagar.'
-                    : 'O checkout está sendo preparado. Aguarde a atualização deste pedido antes de tentar novamente.'}
-                </Text>
-              )}
-
-            {purchase.status === 'credited' && !purchase.reversedCentavos && (
-              <Box>
-                <Text as="p" sx={{ fontWeight: 'bold', color: 'success.fg', m: 0 }}>
-                  Pagamento confirmado
-                </Text>
-                <Text as="p" sx={{ m: 0 }}>
-                  EvoCash creditado
-                </Text>
-              </Box>
-            )}
-
-            {purchase.reversedCentavos > 0 && (
-              <Text as="p" sx={{ fontSize: 0, m: 0 }}>
-                Estorno registrado: {formatCentavosBRL(purchase.reversedCentavos)}. Consulte o
-                atendimento para detalhes.
-              </Text>
-            )}
-            {purchase.status === 'needs_review' && (
-              <Text as="p" sx={{ fontSize: 0, m: 0 }}>
-                Pagamento recebido e em análise financeira. O saldo ainda não foi liberado.
-              </Text>
-            )}
-            {purchase.paidAfterCancelAt && (
-              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', m: 0 }}>
-                Pagamento recebido após o cancelamento e conciliado automaticamente.
-              </Text>
-            )}
-
-            {purchase.status === 'cancelled' && purchase.cancelReason && (
-              <Text
-                as="p"
-                sx={{
-                  fontSize: 0,
-                  color: 'fg.muted',
-                  m: 0,
-                  wordBreak: 'break-word',
-                  overflowWrap: 'anywhere',
-                }}
-              >
-                Motivo: {purchase.cancelReason}
-              </Text>
-            )}
-          </Box>
-        ))}
-        {hasMore && (
-          <Button onClick={loadMore} disabled={loading}>
-            Carregar mais compras
-          </Button>
-        )}
-      </section>
+              />
+            </div>
+          ) : (
+            <div id="evocash-requests-panel" role="tabpanel" aria-labelledby="evocash-requests-tab">
+              <RefundRequestsPanel
+                compact
+                initialId={searchParams.get('request')}
+                revision={refundRevision}
+              />
+            </div>
+          )}
+        </section>
+      )}
     </div>
   )
 }
