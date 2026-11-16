@@ -14,6 +14,16 @@ export function hasPendingCashPurchase(purchases) {
   return purchases.some((purchase) => purchase.status === 'pending')
 }
 
+// A página pode conter a mesma compra que chegou por Realtime. A versão mais recente
+// fornecida por `incoming` substitui a antiga sem mudar o cursor da consulta.
+export function mergeCashPurchases(existing, incoming) {
+  const byId = new Map(existing.map((purchase) => [purchase.id, purchase]))
+  for (const purchase of incoming) byId.set(purchase.id, purchase)
+  return [...byId.values()].sort(
+    (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt) || a.id.localeCompare(b.id)
+  )
+}
+
 export function cashPurchaseStatusLabel(purchase, labels) {
   if (
     purchase.paymentProvider === 'infinitepay' &&

@@ -22,6 +22,7 @@ export function EvoCashQuantityPurchase({
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [expired, setExpired] = useState(false)
   const [checkoutUncertain, setCheckoutUncertain] = useState(false)
   const generation = useRef(0)
@@ -57,9 +58,6 @@ export function EvoCashQuantityPurchase({
     )
     return () => clearTimeout(timer)
   }, [quote])
-  useEffect(() => {
-    if (checkoutUncertain && !hasPendingPurchase) setCheckoutUncertain(false)
-  }, [checkoutUncertain, hasPendingPurchase])
   const validInteger = /^[1-9][0-9]{0,6}$/.test(quantity)
   const valid =
     validInteger &&
@@ -78,6 +76,7 @@ export function EvoCashQuantityPurchase({
     setConfirmed(false)
     setExpired(false)
     setError('')
+    setNotice('')
     onPolicySnapshot?.(null)
   }
   const shortcuts = [10, 25, 50, 100, 250].filter(
@@ -91,8 +90,13 @@ export function EvoCashQuantityPurchase({
     locked.current = true
     setBusy(true)
     setError('')
+    setNotice('')
     setConfirmed(false)
+    // A cotação anterior já representa uma intenção concluída. Um erro de rede, por
+    // outro lado, pode ser repetido com o mesmo ID sem criar outra cotação.
+    if (quote || expired) intent.current = null
     setQuote(null)
+    onPolicySnapshot?.(null)
     setExpired(false)
     const current = ++generation.current
     const started = performance.now()
@@ -107,7 +111,8 @@ export function EvoCashQuantityPurchase({
     } catch (err) {
       if (mounted.current && current === generation.current) {
         setError(purchaseError(err))
-        intent.current = null
+        if (err.message === 'QUOTE_EXPIRED' || err.message === 'IDEMPOTENCY_CONFLICT')
+          intent.current = null
       }
     } finally {
       locked.current = false
@@ -125,6 +130,7 @@ export function EvoCashQuantityPurchase({
     locked.current = true
     setBusy(true)
     setError('')
+    setNotice('')
     let checkoutRequested = false
     try {
       // Aceite das Condições do EvoCash vinculado a esta cotação (idempotente). O servidor
@@ -136,7 +142,11 @@ export function EvoCashQuantityPurchase({
       openInfinitepayCheckout(result.checkoutUrl)
     } catch (err) {
       if (mounted.current) {
-        setError(purchaseError(err))
+        setError(
+          checkoutRequested
+            ? 'Não foi possível confirmar o início do pagamento. Confira o pedido antes de tentar outra compra.'
+            : purchaseError(err)
+        )
         if (err.message === 'QUOTE_EXPIRED') {
           setExpired(true)
           setConfirmed(false)
@@ -147,6 +157,39 @@ export function EvoCashQuantityPurchase({
           await onPurchaseChanged()
         }
       }
+    } finally {
+      locked.current = false
+      if (mounted.current) setBusy(false)
+    }
+  }
+  async function reconcileCheckout() {
+    if (locked.current) return
+    locked.current = true
+    setBusy(true)
+    try {
+      const result = await onPurchaseChanged()
+      if (!mounted.current) return
+      if (result?.ok && !result.pendingPurchase) {
+        setCheckoutUncertain(false)
+        setQuote(null)
+        setConfirmed(false)
+        setExpired(false)
+        intent.current = null
+        onPolicySnapshot?.(null)
+        setError('')
+        setNotice('Nenhuma compra em andamento foi encontrada. Você pode revisar uma nova compra.')
+      } else if (result?.ok) {
+        setError('Sua compra ainda está em andamento. Acompanhe o pedido no Histórico.')
+      } else {
+        setError(
+          'Não foi possível conferir o pedido. Tente novamente antes de iniciar outra compra.'
+        )
+      }
+    } catch {
+      if (mounted.current)
+        setError(
+          'Não foi possível conferir o pedido. Tente novamente antes de iniciar outra compra.'
+        )
     } finally {
       locked.current = false
       if (mounted.current) setBusy(false)
@@ -176,10 +219,14 @@ export function EvoCashQuantityPurchase({
           {error}
         </Flash>
       )}
+      {notice && <Flash role="status">{notice}</Flash>}
       {checkoutUncertain && (
         <Flash variant="attention" role="status">
           O pedido pode estar sendo preparado ou conciliado. Confira o Histórico antes de tentar
-          comprar novamente.
+          comprar novamente.{' '}
+          <Button onClick={reconcileCheckout} disabled={busy}>
+            Conferir pedido
+          </Button>
         </Flash>
       )}
       {loading && <Spinner aria-label="Carregando preço do EvoCash" />}

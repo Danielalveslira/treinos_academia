@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Box, Button, Flash, Heading, Text } from '@primer/react'
 import { useAuth } from '../hooks/useAuth'
@@ -34,14 +34,32 @@ export default function EvoCash() {
   const {
     purchases,
     pendingPurchase,
+    lastRealtimeCredit,
     loading,
     hasMore,
     loadMore,
     error: listError,
     refresh,
   } = useCashPurchases(user?.uid)
+  const refreshedCreditId = useRef(null)
+  const refreshConfirmedCredit = useCallback(
+    (purchaseId) => {
+      if (!purchaseId || refreshedCreditId.current === purchaseId) return
+      refreshedCreditId.current = purchaseId
+      refreshWallet()
+    },
+    [refreshWallet]
+  )
 
-  useEffect(() => setPolicySnapshot(null), [user?.uid])
+  useEffect(() => {
+    setPolicySnapshot(null)
+    refreshedCreditId.current = null
+  }, [user?.uid])
+
+  useEffect(() => {
+    if (lastRealtimeCredit?.userId === user?.uid)
+      refreshConfirmedCredit(lastRealtimeCredit.purchaseId)
+  }, [lastRealtimeCredit, user?.uid, refreshConfirmedCredit])
 
   useEffect(() => {
     if (searchParams.has('request')) {
@@ -76,7 +94,7 @@ export default function EvoCash() {
         )
         refresh()
         if (result.status === 'credited') {
-          refreshWallet()
+          refreshConfirmedCredit(purchaseId)
           setSearchParams({}, { replace: true })
         }
       })
@@ -86,7 +104,7 @@ export default function EvoCash() {
     return () => {
       active = false
     }
-  }, [searchParams, setSearchParams, refresh, refreshWallet])
+  }, [searchParams, setSearchParams, refresh, refreshConfirmedCredit])
 
   useEffect(() => {
     if (checkoutReturn !== 'pending') return
@@ -94,11 +112,11 @@ export default function EvoCash() {
     if (
       purchases.some((purchase) => purchase.id === purchaseId && purchase.status === 'credited')
     ) {
-      refreshWallet()
+      refreshConfirmedCredit(purchaseId)
       setCheckoutReturn('credited')
       setSearchParams({}, { replace: true })
     }
-  }, [checkoutReturn, purchases, searchParams, setSearchParams, refreshWallet])
+  }, [checkoutReturn, purchases, searchParams, setSearchParams, refreshConfirmedCredit])
 
   async function cancelPurchase(purchaseId) {
     if (cancellingPurchaseId) return
