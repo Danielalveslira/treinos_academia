@@ -1,0 +1,34 @@
+{
+  "component": "src/components/CommercialOverview.jsx",
+  "methodology": "Playwright (chromium headless) montando o componente real isoladamente, com os serviços de dados stubados (não é rede real) para contar chamadas. Cada versão: 1 execução de aquecimento descartada + 5 amostras válidas, novo contexto de navegador por amostra, mesmo navegador/máquina/dados simulados. A condição de conclusão espera o rótulo numérico real de algum cartão (regex /\\d+\\s*pendente/), nunca o título estático do cartão -- revisão de uma versão anterior deste documento que esperava o título e por isso media tempo-até-primeiro-paint, não tempo-até-dados. Chunk medido via build real do Vite (npm run build).",
+  "localBrowserTimeToDataMs_disclaimer": "Tempo de render em Chromium headless local, com serviços stubados -- não é latência de rede/Supabase de produção. Serve só como comparação relativa entre as duas versões do mesmo componente, sob as mesmas condições.",
+  "before": {
+    "label": "Antes da Etapa A (commit d28a7f4, 4 cartões)",
+    "rpcCalls": [
+      "getAdvertisingCampaigns",
+      "listStorefronts",
+      "listRefundRequests",
+      "getCommercialPendingCounts"
+    ],
+    "rpcCallCount": 4,
+    "samplesMs": [203.15, 190.91, 295.53, 203.94, 202.80],
+    "medianLocalBrowserTimeToDataMs": 203.15,
+    "chunkRawBytes": 3881,
+    "chunkGzipBytes": 1708
+  },
+  "after": {
+    "label": "Depois da Etapa A (2 cartões)",
+    "rpcCalls": ["getCommercialPendingCounts"],
+    "rpcCallCount": 1,
+    "samplesMs": [255.61, 198.48, 217.36, 188.12, 172.32],
+    "medianLocalBrowserTimeToDataMs": 198.48,
+    "chunkRawBytes": 2343,
+    "chunkGzipBytes": 1188
+  },
+  "timeToDataConclusion": "Diferença de mediana (~5ms, ~2%) está dentro da variação observada entre as próprias amostras de cada versão (190-296ms antes, 172-256ms depois) -- não há ganho de velocidade comprovado de forma confiável nesta medição local. A redução de chamadas de rede (4->1) e de tamanho de chunk é estrutural e não depende desta medição de tempo.",
+  "clicksToReachApprovalsAdvertisingFinance": {
+    "before": 1,
+    "after": 1,
+    "note": "Inalterado -- a Etapa A não mexeu em navegação/roteamento, só no conteúdo do Início."
+  }
+}
