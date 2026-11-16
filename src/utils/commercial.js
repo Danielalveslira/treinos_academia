@@ -15,6 +15,11 @@ const errors = {
   INVALID_AD_MEDIA: 'Escolha uma imagem enviada para esta campanha.',
   PROMOTION_SOURCE_CHANGED:
     'A publicação mudou ou deixou de ser elegível. Atualize e tente novamente.',
+  // Distinto de PROMOTION_SOURCE_CHANGED: o conteúdo não mudou, só passou do prazo
+  // normal da publicação (ex.: 24h) antes do pagamento ser concluído -- promover de
+  // novo exige uma publicação ainda dentro do prazo.
+  PROMOTION_SOURCE_EXPIRED:
+    'Esta publicação já passou do prazo normal de exibição e não pode mais ser promovida.',
   PROMOTION_REVISION_CONFLICT:
     'Esta solicitação foi decidida, alterada ou reenviada por outra sessão. A lista foi atualizada; revise novamente.',
   PROMOTION_NOT_FOUND: 'Esta solicitação não foi encontrada. Atualize a lista.',

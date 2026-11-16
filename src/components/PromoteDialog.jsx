@@ -19,6 +19,7 @@ export function PromoteDialogBody({ targetType, targetId, onPromoted }) {
   useEffect(() => {
     let live = true
     setPromotion(null)
+    setError('')
     const load =
       targetType === 'post'
         ? getDirectPostBoostOffer(targetId)
@@ -38,7 +39,18 @@ export function PromoteDialogBody({ targetType, targetId, onPromoted }) {
     <Box sx={{ maxWidth: '100%', minWidth: 0 }}>
       {targetType === 'post' ? (
         <>
-          {error && <Flash variant="danger">{error}</Flash>}
+          {error && (
+            <Flash variant="danger" sx={{ display: 'grid', gap: 2 }}>
+              <Text as="p" sx={{ m: 0 }}>
+                {error}
+              </Text>
+              <Box>
+                <Button size="small" onClick={() => setRevision((n) => n + 1)}>
+                  Tentar novamente
+                </Button>
+              </Box>
+            </Flash>
+          )}
           {!promotion && !error && <Spinner aria-label="Consultando promoção" />}
           {success ? (
             <Box role="status" sx={{ display: 'grid', gap: 2, py: 3 }}>
