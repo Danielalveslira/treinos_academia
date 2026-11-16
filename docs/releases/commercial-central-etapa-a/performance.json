@@ -1,0 +1,30 @@
+{
+  "component": "src/components/CommercialOverview.jsx",
+  "methodology": "Playwright (chromium headless) montando o componente real isoladamente, com os serviços de dados stubados para contar chamadas; mesma técnica de build-stub-servir-localmente já usada por scripts/*-browser-smoke.mjs. Chunk medido via build real do Vite (npm run build), mesma config de produção. Execução única, mesma máquina, mesmo navegador, para as duas versões, nesta ordem: antes, depois.",
+  "before": {
+    "label": "Antes da Etapa A (commit d28a7f4, 4 cartões)",
+    "rpcCalls": [
+      "getAdvertisingCampaigns",
+      "listStorefronts",
+      "listRefundRequests",
+      "getCommercialPendingCounts"
+    ],
+    "rpcCallCount": 4,
+    "timeToContentMs": 310,
+    "chunkRawBytes": 3881,
+    "chunkGzipBytes": 1708
+  },
+  "after": {
+    "label": "Depois da Etapa A (2 cartões)",
+    "rpcCalls": ["getCommercialPendingCounts"],
+    "rpcCallCount": 1,
+    "timeToContentMs": 250,
+    "chunkRawBytes": 2252,
+    "chunkGzipBytes": 1159
+  },
+  "clicksToReachApprovalsAdvertisingFinance": {
+    "before": 1,
+    "after": 1,
+    "note": "Inalterado -- a Etapa A não mexeu em navegação/roteamento, só no conteúdo do Início."
+  }
+}

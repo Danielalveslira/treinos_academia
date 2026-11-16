@@ -40,9 +40,11 @@ function AdvertiserAdmin() { return createElement('div', { 'data-testid': 'adver
 function AdvertisingAdmin() { return createElement('div', { 'data-testid': 'advertising-admin' }, 'Canais de publicidade reais') }
 function CommercialAdmin() { return createElement('div', { 'data-testid': 'commercial-admin' }, 'Vitrines e parceiros reais') }
 function CommercialEngineAdmin() { return createElement('div', { 'data-testid': 'commercial-engine-admin' }, 'Motor comercial real') }
-function CommercialOverview() { return createElement('div', { 'data-testid': 'commercial-overview' }, 'Visão geral comercial real') }
 function ApprovalsQueue() { return createElement('div', { 'data-testid': 'approvals-queue' }, 'Fila de aprovações real') }
 function SupplierInfoGateAdmin() { return createElement('div', { 'data-testid': 'supplier-info-gate-admin' }, 'Identificação do fornecedor real') }
+// CommercialOverview (Etapa A) runs for real here, not as a trivial div fixture --
+// its own 2-card summary layout is what the width/overflow assertions below cover.
+const getCommercialPendingCounts = () => Promise.resolve({ pendingAds: 3, pendingStorefronts: 1, pendingBoosts: 2, openRefunds: 4 })
 `
 
 await build({
@@ -76,7 +78,7 @@ await build({
           [/components\/AdvertisingAdmin$/, 'AdvertisingAdmin', true],
           [/components\/CommercialAdmin$/, 'CommercialAdmin', true],
           [/components\/CommercialEngineAdmin$/, 'CommercialEngineAdmin', true],
-          [/components\/CommercialOverview$/, 'CommercialOverview', true],
+          [/services\/commercialOverviewService$/, 'getCommercialPendingCounts'],
           [/components\/ApprovalsQueue$/, 'ApprovalsQueue', true],
           [/components\/SupplierInfoGateAdmin$/, 'SupplierInfoGateAdmin', true],
         ]
@@ -166,7 +168,7 @@ try {
     const errors = []
     page.on('pageerror', (e) => errors.push(e.message))
     await page.goto(origin + '/')
-    await page.getByText('Visão geral comercial real').waitFor()
+    await page.getByText('Aprovações pendentes').waitFor()
 
     for (const label of ['Início', 'Aprovações', 'Publicidade', 'Financeiro'])
       await page.getByRole('button', { name: label, exact: true }).waitFor()
@@ -179,7 +181,7 @@ try {
 
     await page.getByRole('button', { name: 'Aprovações', exact: true }).click()
     await page.getByText('Fila de aprovações real').waitFor()
-    assert.equal(await page.getByText('Visão geral comercial real').count(), 0)
+    assert.equal(await page.getByText('Aprovações pendentes').count(), 0)
 
     await page.getByRole('button', { name: 'Publicidade', exact: true }).click()
     await page.getByText('Oferta institucional').waitFor()
@@ -251,7 +253,7 @@ try {
     const context = await browser.newContext({ viewport: { width: 1024, height: 900 } })
     const page = await context.newPage()
     await page.goto(origin + '/')
-    await page.getByText('Visão geral comercial real').waitFor()
+    await page.getByText('Aprovações pendentes').waitFor()
     const inicioBtn = page.getByRole('button', { name: 'Início', exact: true })
     assert.equal(await inicioBtn.getAttribute('aria-current'), 'page')
     const aprovacoesBtn = page.getByRole('button', { name: 'Aprovações', exact: true })
