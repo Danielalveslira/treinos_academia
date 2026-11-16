@@ -20,9 +20,21 @@ const STUBS = {
     const call = (name, args, value) => { globalThis.__catalogSvc.calls.push([name, ...args]); return value() }
     export const listCatalogExercises = (...a) => call('listCatalogExercises', a, () => Promise.resolve(globalThis.__catalogSvc.listFor ? globalThis.__catalogSvc.listFor(a[0]) : globalThis.__catalogSvc.list))
     export const createCatalogDraft = (...a) => call('createCatalogDraft', a, () => globalThis.__catalogSvc.createDraft(a[0]))
-    export const updateCatalogContent = (...a) => call('updateCatalogContent', a, () => globalThis.__catalogSvc.update(a[0], a[1]))
-    export const submitCatalogForReview = (...a) => call('submitCatalogForReview', a, () => Promise.resolve({ ...globalThis.__catalogSvc.list.data[0], status: 'in_review' }))
-    export const publishCatalogExercise = (...a) => call('publishCatalogExercise', a, () => Promise.resolve({ ...globalThis.__catalogSvc.list.data[0], status: 'published' }))
+    export const updateCatalogContent = (...a) => call('updateCatalogContent', a, () => globalThis.__catalogSvc.update(a[0], a[2]))
+    const applyToRow = (id, updater) => {
+      const data = globalThis.__catalogSvc.list.data
+      const index = data.findIndex((item) => item.id === id)
+      const row = index >= 0 ? data[index] : globalThis.__catalogSvc.list.data[0]
+      const result = updater(row)
+      if (index >= 0) data[index] = result
+      return result
+    }
+    export const publishCatalogExercise = (...a) => call('publishCatalogExercise', a, () => Promise.resolve(
+      applyToRow(a[0], (row) => ({ ...row, name: row.pending_content?.name ?? row.name, pending_content: null, status: 'published' }))
+    ))
+    export const discardCatalogPending = (...a) => call('discardCatalogPending', a, () => Promise.resolve(
+      applyToRow(a[0], (row) => ({ ...row, pending_content: null }))
+    ))
     export const withdrawCatalogExercise = (...a) => call('withdrawCatalogExercise', a, () => Promise.resolve({ ...globalThis.__catalogSvc.list.data[0], status: 'withdrawn' }))
     export const restoreCatalogExercise = (...a) => call('restoreCatalogExercise', a, () => Promise.resolve({ ...globalThis.__catalogSvc.list.data[0], status: 'in_review' }))
     export const listCatalogAuditLog = (...a) => call('listCatalogAuditLog', a, () => Promise.resolve([]))
@@ -69,6 +81,11 @@ before(async () => {
           // Primer IconButton (usado no "remover" das listas dinâmicas) lê window.navigator.platform
           // para decidir o atalho de teclado a mostrar no tooltip (mesmo stub de AdminAccounts.test.js).
           global.window.navigator = global.window.navigator || { platform: 'Linux', userAgent: 'node' }
+          // useAdminExerciseCatalog avisa antes de fechar a aba com edição não salva (beforeunload).
+          global.window.addEventListener = global.window.addEventListener || (() => {})
+          global.window.removeEventListener = global.window.removeEventListener || (() => {})
+          // discardPending/withdraw pedem confirmação antes de agir; os testes assumem aceite.
+          global.window.confirm = global.window.confirm || (() => true)
           let renderer
           act(() => {
             renderer = TestRenderer.create(React.createElement(ThemeProvider, null, React.createElement(BaseStyles, null, React.createElement(AdminExerciseCatalog))))
@@ -173,7 +190,19 @@ beforeEach(() => {
     calls: [],
     list: { data: [EXERCISE], total: 1 },
     createDraft: () => Promise.resolve({ ...EXERCISE, id: 'cat-new', status: 'draft' }),
-    update: (id, fields) => Promise.resolve({ ...EXERCISE, ...fields, id }),
+    // Espelha admin_patch_catalog_exercise: publicado guarda a proposta em pending_content,
+    // sem tocar o conteúdo ao vivo; outros status aplicam direto (sem publicação a proteger).
+    // Também atualiza a lista em memória, como o servidor faria, pra um reload refletir o save.
+    update: (id, patch) => {
+      const data = globalThis.__catalogSvc.list.data
+      const index = data.findIndex((item) => item.id === id)
+      const row = index >= 0 ? data[index] : EXERCISE
+      const result = row.status === 'published'
+        ? { ...row, pending_content: { ...(row.pending_content || {}), ...patch } }
+        : { ...row, ...patch }
+      if (index >= 0) data[index] = result
+      return Promise.resolve(result)
+    },
   }
   globalThis.__visualsSvc = {
     calls: [],
@@ -205,7 +234,7 @@ test('Salvar fica desabilitado sem alterações; habilita ao editar e desabilita
   page.click(page.rowButtons()[0])
   await tick()
 
-  const saveButton = () => page.button('Salvar')
+  const saveButton = () => page.button('Salvar alterações')
   assert.equal(saveButton().props.disabled, true, 'sem edição nenhuma, começa desabilitado')
 
   const nameInput = page.nameInput()
@@ -225,17 +254,54 @@ test('salvar sem alteração nenhuma não chama o serviço; salvar com alteraç�
   page.click(page.rowButtons()[0])
   await tick()
 
-  page.click(page.button('Salvar'))
+  page.click(page.button('Salvar alterações'))
   await tick()
   assert.equal(called('__catalogSvc', 'updateCatalogContent').length, 0, 'sem isDirty, nenhuma requisição é feita')
 
   const nameInput = page.nameInput()
   page.setField(nameInput, 'Supino reto inclinado')
   await tick()
-  page.click(page.button('Salvar'))
+  page.click(page.button('Salvar alterações'))
   await tick()
   assert.equal(called('__catalogSvc', 'updateCatalogContent').length, 1, 'edição real dispara exatamente uma chamada')
-  assert.equal(page.button('Salvar').props.disabled, true, 'depois de salvar, volta a ficar desabilitado')
+  assert.equal(page.button('Salvar alterações').props.disabled, true, 'depois de salvar, volta a ficar desabilitado')
+  page.unmount()
+})
+
+// Reproduz o bug original (Cadeira Flexora Sentada -> Mesa Flexora Deitada): editar só o nome de
+// um exercício publicado nunca pode tirá-lo do ar antes da publicação, nem depois de um erro.
+test('editar um exercício publicado fica pendente sem desativá-lo; publicar aplica, descartar reverte', async () => {
+  const page = mount()
+  await tick()
+  page.click(page.rowButtons()[0])
+  await tick()
+
+  page.setField(page.nameInput(), 'Mesa Flexora Deitada')
+  page.click(page.button('Salvar alterações'))
+  await tick()
+
+  assert.deepEqual(called('__catalogSvc', 'updateCatalogContent').at(-1).slice(1), ['cat-1', 3, { name: 'Mesa Flexora Deitada' }],
+    'salva só o campo alterado, com a revisão esperada, sem precisar reenviar o formulário inteiro')
+  assert.match(page.text(), /Supino reto/, 'nome publicado continua visível na lista enquanto a edição está pendente')
+  assert.match(page.text(), /Atualização pendente/, 'indicador discreto de edição pendente aparece')
+  assert.ok(page.button('Publicar atualização'), 'ação de publicar a atualização fica disponível')
+  assert.ok(page.button('Descartar alterações pendentes'), 'descarte da proposta pendente fica disponível')
+
+  page.click(page.button('Descartar alterações pendentes'))
+  await tick()
+  assert.equal(called('__catalogSvc', 'discardCatalogPending').length, 1)
+  assert.doesNotMatch(page.text(), /Atualização pendente/, 'descartar remove a proposta sem afetar a versão pública')
+  assert.match(page.text(), /Supino reto/, 'versão publicada permanece intacta após o descarte')
+
+  page.setField(page.nameInput(), 'Mesa Flexora Deitada')
+  page.click(page.button('Salvar alterações'))
+  await tick()
+  page.click(page.button('Publicar atualização'))
+  await tick()
+
+  assert.equal(called('__catalogSvc', 'publishCatalogExercise').length, 1)
+  assert.match(page.text(), /Mesa Flexora Deitada/, 'publicar aplica o novo nome ao conteúdo ao vivo')
+  assert.doesNotMatch(page.text(), /Atualização pendente/, 'sem proposta pendente depois de publicar')
   page.unmount()
 })
 
