@@ -21,7 +21,12 @@ import {
 import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
 import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
 import { AuthCaptcha } from './AuthCaptcha'
-import { buildRequirements, pendingCount, STATUS } from '../utils/launchAssistant'
+import {
+  buildRequirements,
+  operationalSummary,
+  findCurrentActivation,
+  STATUS,
+} from '../utils/launchAssistant'
 import { commercialError } from '../utils/commercial'
 
 const STATUS_LABEL = {
@@ -30,6 +35,13 @@ const STATUS_LABEL = {
   [STATUS.PAUSED]: { text: 'pausado', variant: 'secondary' },
   [STATUS.BLOCKED]: { text: 'bloqueado', variant: 'danger' },
   [STATUS.UNAVAILABLE]: { text: 'indisponível', variant: 'secondary' },
+}
+
+const SUMMARY_VARIANT = {
+  done: 'success',
+  pending: 'attention',
+  paused: 'secondary',
+  unavailable: 'danger',
 }
 
 const ACTIVATION_JUSTIFICATION = 'Ativado via assistente de lançamento comercial.'
@@ -63,11 +75,16 @@ function RequirementRow({ row, onActivate }) {
           {row.action.label}
         </Button>
       )}
-      {row.activation && (
-        <Button size="small" variant="primary" onClick={() => onActivate(row)}>
-          Ativar
+      {row.activation.map((activation) => (
+        <Button
+          key={activation.id}
+          size="small"
+          variant="primary"
+          onClick={() => onActivate(activation)}
+        >
+          {activation.label}
         </Button>
-      )}
+      ))}
     </Box>
   )
 }
@@ -85,7 +102,12 @@ function groupByCategory(rows) {
   return order.map((category) => ({ category, rows: byCategory.get(category) }))
 }
 
-function ActivationDialog({ row, onClose, onActivated }) {
+// `activation` é a descrição clicada (ver launchAssistant.js) -- id, kind, código e os
+// parâmetros já calculados daquele momento. Antes de escrever de verdade, este diálogo
+// busca o estado atual de novo e confirma que a MESMA ação específica ainda existe e
+// ainda é elegível; se não, nunca escreve com dados antigos -- devolve a lista
+// atualizada para o painel e avisa que a configuração mudou.
+function ActivationDialog({ activation, onClose, onActivated, onStale }) {
   const [password, setPassword] = useState('')
   const [confirmed, setConfirmed] = useState(false)
   const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
@@ -102,18 +124,30 @@ function ActivationDialog({ row, onClose, onActivated }) {
     setError('')
     try {
       await reauthenticatePricingAdmin(password, takeCaptchaToken(captcha))
-      if (row.activation.kind === 'offering') {
+      // Revalidação imediatamente antes da escrita: o controle de revisão do servidor já
+      // impede uma escrita sobre dado obsoleto, mas aqui também confirmamos que a ação
+      // ainda existe e segue elegível, para nunca tentar com uma revisão que já sabemos
+      // estar errada e para dar um aviso claro em vez de só um erro de conflito.
+      const freshRequirements = buildRequirements(await getLaunchVerification())
+      const current = findCurrentActivation(freshRequirements, activation.id)
+      if (!current) {
+        onStale(freshRequirements)
+        return
+      }
+      if (current.kind === 'offering') {
         await activateOffering({
-          code: row.activation.code,
-          revision: row.activation.revision,
+          code: current.code,
+          revision: current.revision,
           requestId: requestId.current,
           reason: ACTIVATION_JUSTIFICATION,
         })
       } else {
         await activatePlacement({
-          code: row.activation.code,
-          capacity: row.activation.capacity,
-          revision: row.activation.revision,
+          code: current.code,
+          capacity: current.capacity,
+          revision: current.revision,
+          salesEnabled: current.salesEnabled,
+          deliveryEnabled: current.deliveryEnabled,
           reason: ACTIVATION_JUSTIFICATION,
         })
       }
@@ -132,7 +166,7 @@ function ActivationDialog({ row, onClose, onActivated }) {
 
   return (
     <Dialog
-      title={`Ativar "${row.label}"`}
+      title={activation.confirmTitle}
       onClose={busy ? () => {} : onClose}
       footerButtons={[
         { content: 'Cancelar', onClick: onClose, disabled: busy },
@@ -151,7 +185,7 @@ function ActivationDialog({ row, onClose, onActivated }) {
           </Flash>
         )}
         <Text as="p" sx={{ m: 0 }}>
-          Vendas e exibição serão habilitadas para "{row.label}". Justificativa registrada:{' '}
+          {activation.confirmText} Justificativa registrada:{' '}
           <Text as="span" sx={{ fontStyle: 'italic' }}>
             {ACTIVATION_JUSTIFICATION}
           </Text>
@@ -182,6 +216,7 @@ function ActivationDialog({ row, onClose, onActivated }) {
 export default function LaunchAssistantPanel({ onClose }) {
   const [state, setState] = useState({ status: 'loading', requirements: [] })
   const [activating, setActivating] = useState(null)
+  const [notice, setNotice] = useState('')
   const active = useRef(true)
 
   async function load() {
@@ -198,7 +233,7 @@ export default function LaunchAssistantPanel({ onClose }) {
     }
   }, [])
 
-  const pending = state.status === 'ready' ? pendingCount(state.requirements) : null
+  const summary = state.status === 'ready' ? operationalSummary(state.requirements) : null
 
   return (
     <Box
@@ -209,15 +244,16 @@ export default function LaunchAssistantPanel({ onClose }) {
         <Heading as="h2" sx={{ fontSize: 2, m: 0 }}>
           Preparar publicidade
         </Heading>
-        {pending !== null && (
-          <Label variant={pending > 0 ? 'attention' : 'success'}>
-            {pending > 0
-              ? `${pending} ${pending === 1 ? 'pendência' : 'pendências'}`
-              : 'tudo pronto'}
-          </Label>
-        )}
+        {summary && <Label variant={SUMMARY_VARIANT[summary.tone]}>{summary.text}</Label>}
         <Box sx={{ display: 'flex', gap: 2, ml: 'auto' }}>
-          <Button size="small" onClick={load} disabled={state.status === 'loading'}>
+          <Button
+            size="small"
+            onClick={() => {
+              setNotice('')
+              load()
+            }}
+            disabled={state.status === 'loading'}
+          >
             Verificar novamente
           </Button>
           <Button size="small" onClick={onClose}>
@@ -225,6 +261,11 @@ export default function LaunchAssistantPanel({ onClose }) {
           </Button>
         </Box>
       </Box>
+      {notice && (
+        <Flash variant="attention" role="status" sx={{ mb: 2 }}>
+          {notice}
+        </Flash>
+      )}
       {state.status === 'loading' && <Spinner aria-label="Verificando requisitos" />}
       {state.status === 'ready' && (
         <Box>
@@ -244,11 +285,19 @@ export default function LaunchAssistantPanel({ onClose }) {
       )}
       {activating && (
         <ActivationDialog
-          row={activating}
+          activation={activating}
           onClose={() => setActivating(null)}
           onActivated={() => {
             setActivating(null)
+            setNotice('')
             load()
+          }}
+          onStale={(freshRequirements) => {
+            setActivating(null)
+            setState({ status: 'ready', requirements: freshRequirements })
+            setNotice(
+              'A configuração mudou desde a última verificação. A lista foi atualizada -- revise antes de tentar novamente.'
+            )
           }}
         />
       )}

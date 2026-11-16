@@ -44,6 +44,7 @@ const getLaunchVerification = () => Promise.resolve({
   inventory: { state: 'ready', value: { placements: [
     { code: 'home_banner', name: 'Banner da Home', capacity: 10, sales_enabled: true, delivery_enabled: true, revision: 2 },
     { code: 'community_feed', name: 'Publicidade no feed', capacity: 0, sales_enabled: false, delivery_enabled: false, revision: 1 },
+    { code: 'community_banner', name: 'Banner de comunidade', capacity: 8, sales_enabled: false, delivery_enabled: true, revision: 3 },
   ] } },
 })
 globalThis.__activateCalls = []
@@ -178,7 +179,7 @@ try {
     await openBtn.focus()
     await page.keyboard.press('Enter')
     await page.getByText('Impulsionar publicação').waitFor()
-    await page.getByRole('button', { name: 'Ativar' }).first().click()
+    await page.getByRole('button', { name: 'Ativar', exact: true }).first().click()
     await page.getByText('Confirme sua senha').waitFor()
     assert.equal(
       await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),
@@ -199,7 +200,7 @@ try {
     await page.goto(origin + '/')
     await page.getByRole('button', { name: 'Abrir assistente' }).click()
     await page.getByText('Impulsionar publicação').waitFor()
-    await page.getByRole('button', { name: 'Ativar' }).first().click()
+    await page.getByRole('button', { name: 'Ativar', exact: true }).first().click()
     await page.getByLabel('Confirme sua senha').fill('senha-correta')
     await page.getByLabel('Confirmo a ativação desta modalidade.').check()
     await page.getByRole('button', { name: 'Confirmar ativação' }).click()
@@ -212,6 +213,39 @@ try {
     assert.equal(calls[0][1].reason, 'Ativado via assistente de lançamento comercial.')
     await context.close()
     results.push({ endToEndActivation: true, passed: true })
+  }
+
+  // 4) Espaço publicitário com só contratações pausadas: só o botão correspondente
+  // aparece, e a ativação preserva exibição/capacidade atuais (nunca envia o outro
+  // controle como desligado).
+  {
+    const context = await browser.newContext({ viewport: { width: 1024, height: 900 } })
+    const page = await context.newPage()
+    await page.goto(origin + '/')
+    await page.getByRole('button', { name: 'Abrir assistente' }).click()
+    await page.getByText('Banner de comunidade').waitFor()
+    assert.equal(
+      await page.getByRole('button', { name: 'Ativar exibição' }).count(),
+      0,
+      'exibição já está ligada -- nenhum botão de ativá-la deve aparecer'
+    )
+    await page.getByRole('button', { name: 'Ativar novas contratações' }).click()
+    await page.getByLabel('Confirme sua senha').fill('senha-correta')
+    await page.getByLabel('Confirmo a ativação desta modalidade.').check()
+    await page.getByRole('button', { name: 'Confirmar ativação' }).click()
+    await page.getByText('Confirme sua senha').waitFor({ state: 'detached' })
+    const calls = await page.evaluate(() => globalThis.__activateCalls)
+    const placementCall = calls.find((c) => c[0] === 'placement')
+    assert.equal(placementCall[1].code, 'community_banner')
+    assert.equal(placementCall[1].capacity, 8, 'capacidade não é alterada pela ativação')
+    assert.equal(placementCall[1].salesEnabled, true)
+    assert.equal(
+      placementCall[1].deliveryEnabled,
+      true,
+      'exibição já ligada é preservada, não desligada'
+    )
+    await context.close()
+    results.push({ placementSeparateActivation: true, passed: true })
   }
 
   console.log(JSON.stringify(results))

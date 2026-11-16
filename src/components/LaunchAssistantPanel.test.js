@@ -163,38 +163,54 @@ after(async () => {
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 30))
 
-const PAUSED_OFFERING = {
+function offeringItem(overrides = {}) {
+  return {
+    code: 'post_boost',
+    name: 'Impulsionar publicação',
+    integrationReady: true,
+    salesEnabled: false,
+    revision: '5',
+    currentPrice: { unitPriceCash: '7', minDays: 1, maxDays: 5 },
+    ...overrides,
+  }
+}
+
+function placementItem(overrides = {}) {
+  return {
+    code: 'home_banner',
+    name: 'Banner da Home',
+    capacity: 10,
+    sales_enabled: false,
+    delivery_enabled: false,
+    revision: 2,
+    ...overrides,
+  }
+}
+
+const BASE_READY = {
   supplier: { state: 'ready', value: true },
   evocash: { state: 'ready', value: { quotingEnabled: true, checkoutEnabled: true } },
-  catalog: {
-    state: 'ready',
-    value: {
-      items: [
-        {
-          code: 'post_boost',
-          name: 'Impulsionar publicação',
-          integrationReady: true,
-          salesEnabled: false,
-          revision: '5',
-          currentPrice: { unitPriceCash: '7', minDays: 1, maxDays: 5 },
-        },
-      ],
-    },
-  },
+  catalog: { state: 'ready', value: { items: [] } },
   inventory: { state: 'ready', value: { placements: [] } },
+}
+
+const PAUSED_OFFERING = {
+  ...BASE_READY,
+  catalog: { state: 'ready', value: { items: [offeringItem()] } },
 }
 
 function configure({
   verify = () => Promise.resolve(PAUSED_OFFERING),
   reauth = () => Promise.resolve(),
   activateOffering = () => Promise.resolve({}),
+  activatePlacement = () => Promise.resolve({}),
 } = {}) {
   calls = []
   globalThis.__laCalls = calls
   globalThis.__laVerify = verify
   globalThis.__laReauth = reauth
   globalThis.__laActivateOffering = activateOffering
-  globalThis.__laActivatePlacement = () => Promise.resolve({})
+  globalThis.__laActivatePlacement = activatePlacement
 }
 
 test('carrega automaticamente ao montar, sem clique nenhum', async () => {
@@ -271,24 +287,21 @@ test('Ativar abre o diálogo e exige senha + confirmação explícita antes de h
   page.unmount()
 })
 
-test('ativação bem-sucedida: reautentica, chama a RPC com revisão e justificativa, depois recarrega', async () => {
+function offeringDone() {
+  return {
+    ...PAUSED_OFFERING,
+    catalog: { state: 'ready', value: { items: [offeringItem({ salesEnabled: true })] } },
+  }
+}
+
+test('ativação bem-sucedida: revalida (dado inalterado), escreve com revisão e justificativa, depois recarrega', async () => {
   let offeringCalls = 0
   configure({
     verify: () => {
       offeringCalls++
-      return Promise.resolve(
-        offeringCalls === 1
-          ? PAUSED_OFFERING
-          : {
-              ...PAUSED_OFFERING,
-              catalog: {
-                state: 'ready',
-                value: {
-                  items: [{ ...PAUSED_OFFERING.catalog.value.items[0], salesEnabled: true }],
-                },
-              },
-            }
-      )
+      // 1ª chamada: carregar ao montar. 2ª: revalidação imediatamente antes da escrita
+      // (ainda pausado, nada mudou). 3ª: recarregar depois do sucesso.
+      return Promise.resolve(offeringCalls <= 2 ? PAUSED_OFFERING : offeringDone())
     },
   })
   const page = mount(() => {})
@@ -303,8 +316,76 @@ test('ativação bem-sucedida: reautentica, chama a RPC com revisão e justifica
   assert.equal(activateArgs.revision, 5)
   assert.equal(activateArgs.reason, 'Ativado via assistente de lançamento comercial.')
   assert.ok(activateArgs.requestId, 'idempotency key enviada')
-  assert.equal(offeringCalls, 2, 'recarrega os requisitos depois de ativar')
+  assert.equal(
+    offeringCalls,
+    3,
+    'carrega, revalida antes de escrever, e recarrega depois de ativar'
+  )
   assert.doesNotMatch(page.text(), /Confirme sua senha/, 'diálogo fechou após sucesso')
+  page.unmount()
+})
+
+test('revalidação detecta mudança concorrente: não escreve com dado obsoleto, avisa e atualiza a lista', async () => {
+  let offeringCalls = 0
+  configure({
+    verify: () => {
+      offeringCalls++
+      // O administrador abriu o diálogo vendo "pausado" (1ª chamada), mas entre abrir e
+      // confirmar outra sessão já ativou o serviço -- a revalidação (2ª chamada) precisa
+      // enxergar isso antes de qualquer escrita.
+      return Promise.resolve(offeringCalls === 1 ? PAUSED_OFFERING : offeringDone())
+    },
+  })
+  const page = mount(() => {})
+  await tick()
+  page.click('Ativar')
+  page.setPassword('senha-correta')
+  page.checkConfirm()
+  page.click('Confirmar ativação')
+  await tick()
+  assert.equal(
+    calls.some((c) => Array.isArray(c) && c[0] === 'activateOffering'),
+    false,
+    'nunca escreve com a elegibilidade antiga'
+  )
+  assert.doesNotMatch(
+    page.text(),
+    /Confirme sua senha/,
+    'diálogo fechou -- não insiste com dado obsoleto'
+  )
+  assert.match(page.text(), /configuração mudou desde a última verificação/i)
+  assert.match(
+    page.text(),
+    /concluído/,
+    'a lista exibida já reflete o estado novo (serviço concluído)'
+  )
+  page.unmount()
+})
+
+test('serviço removido entre a consulta e a ativação também é tratado como mudança, não como ativação', async () => {
+  let offeringCalls = 0
+  configure({
+    verify: () => {
+      offeringCalls++
+      return Promise.resolve(
+        offeringCalls === 1
+          ? PAUSED_OFFERING
+          : { ...PAUSED_OFFERING, catalog: { state: 'ready', value: { items: [] } } }
+      )
+    },
+  })
+  const page = mount(() => {})
+  await tick()
+  page.click('Ativar')
+  page.setPassword('senha-correta')
+  page.checkConfirm()
+  page.click('Confirmar ativação')
+  await tick()
+  assert.equal(
+    calls.some((c) => Array.isArray(c) && c[0] === 'activateOffering'),
+    false
+  )
+  assert.match(page.text(), /configuração mudou desde a última verificação/i)
   page.unmount()
 })
 
@@ -347,7 +428,11 @@ test('falha na ativação mostra erro, mantém o diálogo aberto e não derruba 
     /Confirme sua senha/,
     'diálogo continua aberto -- não houve sucesso geral falso'
   )
-  assert.equal(offeringCalls, 1, 'não recarrega automaticamente depois de uma falha')
+  assert.equal(
+    offeringCalls,
+    2,
+    'carrega e revalida antes de escrever, mas não recarrega automaticamente depois de uma falha'
+  )
   page.unmount()
 })
 
@@ -367,5 +452,158 @@ test('clique duplo no confirmar não dispara duas ativações', async () => {
   page.clickTwice('Confirmar ativação')
   await tick()
   assert.equal(activations, 1)
+  page.unmount()
+})
+
+function placementPaused(overrides = {}) {
+  return {
+    ...BASE_READY,
+    inventory: { state: 'ready', value: { placements: [placementItem(overrides)] } },
+  }
+}
+
+test('espaço com só contratações pausadas: um único botão "Ativar novas contratações"', async () => {
+  configure({
+    verify: () =>
+      Promise.resolve(placementPaused({ sales_enabled: false, delivery_enabled: true })),
+  })
+  const page = mount(() => {})
+  await tick()
+  assert.match(page.text(), /Ativar novas contratações/)
+  assert.doesNotMatch(page.text(), /Ativar exibição/)
+  page.unmount()
+})
+
+test('espaço com só exibição pausada: um único botão "Ativar exibição"', async () => {
+  configure({
+    verify: () =>
+      Promise.resolve(placementPaused({ sales_enabled: true, delivery_enabled: false })),
+  })
+  const page = mount(() => {})
+  await tick()
+  assert.match(page.text(), /Ativar exibição/)
+  assert.doesNotMatch(page.text(), /Ativar novas contratações/)
+  page.unmount()
+})
+
+test('espaço com os dois controles pausados: dois botões independentes', async () => {
+  configure({
+    verify: () =>
+      Promise.resolve(placementPaused({ sales_enabled: false, delivery_enabled: false })),
+  })
+  const page = mount(() => {})
+  await tick()
+  assert.match(page.text(), /Ativar novas contratações/)
+  assert.match(page.text(), /Ativar exibição/)
+  page.unmount()
+})
+
+test('ativar só "novas contratações" preserva o valor atual de exibição e da capacidade', async () => {
+  let placementCalls = 0
+  let sentArgs
+  configure({
+    verify: () => {
+      placementCalls++
+      return Promise.resolve(
+        placementPaused({ sales_enabled: false, delivery_enabled: true, capacity: 37 })
+      )
+    },
+    activatePlacement: (args) => {
+      sentArgs = args
+      return Promise.resolve({})
+    },
+  })
+  const page = mount(() => {})
+  await tick()
+  page.click('Ativar novas contratações')
+  page.setPassword('senha-correta')
+  page.checkConfirm()
+  page.click('Confirmar ativação')
+  await tick()
+  assert.equal(sentArgs.code, 'home_banner')
+  assert.equal(sentArgs.capacity, 37, 'capacidade nunca é alterada pela ativação')
+  assert.equal(sentArgs.salesEnabled, true)
+  assert.equal(
+    sentArgs.deliveryEnabled,
+    true,
+    'exibição já estava ligada e permanece ligada -- não é desligada por engano'
+  )
+  assert.equal(placementCalls, 3, 'carrega, revalida antes de escrever, recarrega depois de ativar')
+  page.unmount()
+})
+
+test('ativar só "exibição" preserva o valor atual de contratações', async () => {
+  let sentArgs
+  configure({
+    verify: () =>
+      Promise.resolve(
+        placementPaused({ sales_enabled: true, delivery_enabled: false, capacity: 5 })
+      ),
+    activatePlacement: (args) => {
+      sentArgs = args
+      return Promise.resolve({})
+    },
+  })
+  const page = mount(() => {})
+  await tick()
+  page.click('Ativar exibição')
+  page.setPassword('senha-correta')
+  page.checkConfirm()
+  page.click('Confirmar ativação')
+  await tick()
+  assert.equal(sentArgs.deliveryEnabled, true)
+  assert.equal(
+    sentArgs.salesEnabled,
+    true,
+    'contratações já estavam ligadas e permanecem ligadas -- não são desligadas por engano'
+  )
+  page.unmount()
+})
+
+test('ativar um controle do espaço não chama a RPC de ofertas comerciais', async () => {
+  configure({
+    verify: () =>
+      Promise.resolve(placementPaused({ sales_enabled: false, delivery_enabled: true })),
+  })
+  const page = mount(() => {})
+  await tick()
+  page.click('Ativar novas contratações')
+  page.setPassword('senha-correta')
+  page.checkConfirm()
+  page.click('Confirmar ativação')
+  await tick()
+  assert.equal(
+    calls.some((c) => Array.isArray(c) && c[0] === 'activateOffering'),
+    false
+  )
+  page.unmount()
+})
+
+// --- resumo operacional exibido no painel -----------------------------------
+
+test('painel mostra "Tudo pronto" só quando nada está pendente, pausado ou indisponível', async () => {
+  configure({ verify: () => Promise.resolve(BASE_READY) })
+  const page = mount(() => {})
+  await tick()
+  assert.match(page.text(), /Tudo pronto/)
+  page.unmount()
+})
+
+test('painel nunca mostra "Tudo pronto" quando um serviço está pausado', async () => {
+  configure()
+  const page = mount(() => {})
+  await tick()
+  assert.doesNotMatch(page.text(), /Tudo pronto/)
+  assert.match(page.text(), /pausado/)
+  page.unmount()
+})
+
+test('painel mostra aviso de indisponibilidade quando uma fonte administrativa falha', async () => {
+  configure({
+    verify: () => Promise.resolve({ ...BASE_READY, inventory: { state: 'error', value: null } }),
+  })
+  const page = mount(() => {})
+  await tick()
+  assert.match(page.text(), /Não foi possível verificar todos os requisitos/)
   page.unmount()
 })

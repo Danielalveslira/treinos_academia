@@ -26,15 +26,26 @@ export async function getLaunchVerification() {
   return { supplier, evocash, catalog, inventory }
 }
 
-// As duas únicas escritas que o assistente executa: ligar vendas de um serviço já
-// configurado, ou ligar vendas+exibição de um espaço já com capacidade -- nunca criar
-// preço, capacidade ou espaço novo (isso continua nas telas administrativas existentes,
-// via o link de "Configurar" de cada requisito pendente).
+// As duas únicas escritas que o assistente executa: ligar vendas de um serviço comercial
+// já configurado, ou ligar especificamente contratações OU exibição (nunca as duas de
+// uma vez só por decisão do frontend) de um espaço publicitário já com capacidade --
+// nunca criar preço, capacidade ou espaço novo (isso continua nas telas administrativas
+// existentes, via o link de "Configurar" de cada requisito pendente).
 export const activateOffering = ({ code, revision, requestId, reason }) =>
   setCommercialSales({ code, enabled: true, revision, requestId, reason, confirm: true })
 
-export const activatePlacement = ({ code, capacity, revision, reason }) =>
+// salesEnabled/deliveryEnabled vêm sempre de launchAssistant.js (preservando o valor
+// atual do controle que não está sendo ativado) -- nunca hardcoded aqui, para não
+// reativar um controle que o administrador pausou intencionalmente.
+export const activatePlacement = ({
+  code,
+  capacity,
+  revision,
+  reason,
+  salesEnabled,
+  deliveryEnabled,
+}) =>
   configureAdvertisingPlacement(
     { code, revision },
-    { capacity, salesEnabled: true, deliveryEnabled: true, reason }
+    { capacity, salesEnabled, deliveryEnabled, reason }
   )
