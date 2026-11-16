@@ -108,8 +108,8 @@ export default function AdvertisingAdmin() {
     }
   }
 
-  const activeCampaigns = (data?.campaigns || []).filter((c) =>
-    ['approved', 'suspended'].includes(c.moderation_state)
+  const activeCampaigns = (data?.campaigns || []).filter(
+    (c) => c.expires_at && ['approved', 'suspended'].includes(c.moderation_state)
   )
 
   return (
@@ -228,7 +228,7 @@ export default function AdvertisingAdmin() {
           veiculação do que já foi aprovado.
         </Text>
         {data && activeCampaigns.length === 0 && (
-          <Text as="p">Nenhuma campanha ativa ou suspensa.</Text>
+          <Text as="p">Nenhum anúncio contratado nesta página.</Text>
         )}
         {activeCampaigns.map((c) => (
           <Box
