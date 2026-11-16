@@ -91,7 +91,7 @@ select is((select (r).provider from d1), 'evolutus_original', 'conteúdo autoral
 -- 3) Publicar incompleto falha; publicar sem mídia real falha (não só checar a chave jsonb).
 -- ----------------------------------------------------------------------------------------------
 select throws_ok(format($f$ select public.admin_publish_catalog_exercise(%L) $f$, (select (r).id from d1)),
-  '22023', 'INCOMPLETE_CONTENT', 'draft sem músculos/categoria/instruções não publica');
+  '22023', 'PRIMARY_MUSCLE_REQUIRED', 'draft sem músculos/categoria/instruções não publica');
 
 select public.admin_update_catalog_exercise_content((select (r).id from d1), 'Agachamento livre',
   'pernas', array['pernas','gluteos'], 'barra', 'força', 'intermediario', 'empurrar', 'composto',
@@ -264,13 +264,15 @@ select lives_ok(
 -- ----------------------------------------------------------------------------------------------
 select pg_temp.as_user('95000000-0000-0000-0000-000000000001');
 select is((select name from public.exercise_catalog where id = (select (r).id from d3)), 'Supino reto', 'nome ao vivo antes da edição');
-select public.admin_update_catalog_exercise_content((select (r).id from d3), 'Supino reto inclinado',
-  'peito', array['peito','triceps','ombros'], 'barra', 'força', 'avancado', 'empurrar', 'composto',
-  array['Ajuste o banco.', 'Desça.', 'Empurre.'], array['Use apoio para os pés.']);
+select public.admin_patch_catalog_exercise((select (r).id from d3),
+  (select revision from public.exercise_catalog where id = (select (r).id from d3)),
+  '{"name":"Supino reto inclinado","muscles":["peito","triceps","ombros"]}'::jsonb);
 select is((select name from public.exercise_catalog where id = (select (r).id from d3)), 'Supino reto', 'nome AO VIVO não muda enquanto a edição está pendente de republicação');
-select is((select status from public.exercise_catalog where id = (select (r).id from d3)), 'in_review', 'editar um published move para in_review');
+select is((select status from public.exercise_catalog where id = (select (r).id from d3)), 'published', 'editar um published mantém status published');
+select is((select is_active from public.exercise_catalog where id = (select (r).id from d3)), true, 'editar um published mantém exercício disponível');
 select is((select pending_content->>'name' from public.exercise_catalog where id = (select (r).id from d3)), 'Supino reto inclinado', 'pending_content guarda o nome proposto');
-select public.admin_publish_catalog_exercise((select (r).id from d3));
+select public.admin_publish_catalog_exercise((select (r).id from d3),
+  (select revision from public.exercise_catalog where id = (select (r).id from d3)));
 select is((select name from public.exercise_catalog where id = (select (r).id from d3)), 'Supino reto inclinado', 'republicar aplica o pending_content no conteúdo ao vivo');
 select is((select pending_content from public.exercise_catalog where id = (select (r).id from d3)), null, 'pending_content é limpo após republicar');
 
