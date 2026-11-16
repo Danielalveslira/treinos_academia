@@ -5,12 +5,18 @@
 // *-browser-smoke.mjs (ver commercial-central-nav-browser-smoke.mjs); nenhuma
 // infraestrutura nova, nenhum serviço de rede real, nenhum ambiente de CI novo.
 //
-//   node scripts/commercial-overview-performance.mjs <arquivo.jsx> <rótulo>
+// IMPORTANTE: os serviços são stubs locais (globalThis.__perfCalls), não chamadas reais
+// à rede/Supabase -- este script mede tempo de render em navegador local (Chromium
+// headless na mesma máquina), não latência de produção. "localBrowserTimeToDataMs" é um
+// proxy comparável ENTRE as duas versões do mesmo componente, não uma medição de rede.
 //
-// Compara dois estados reproduzindo o componente de cada arquivo isoladamente: as
-// chamadas de rede (RPC) feitas ao montar, e o tempo até o conteúdo útil (texto real)
-// aparecer na tela, sob as mesmas condições (mesmo navegador, mesma rede local, sem
-// variação de usuário/máquina entre as duas medições de uma mesma execução).
+//   node scripts/commercial-overview-performance.mjs <antes.jsx> <rotuloAntes> <depois.jsx> <rotuloDepois>
+//
+// Cada versão é medida com 1 execução de aquecimento (descartada) + 5 amostras válidas,
+// mesma máquina/navegador/dados simulados, reportando a mediana. A condição de conclusão
+// espera o rótulo numérico real (ex. "3 pendentes"), que só existe depois que o estado
+// vira "ready" -- nunca o título estático do cartão, que aparece antes da consulta
+// resolver nas duas versões.
 import { build } from 'esbuild'
 import { createServer } from 'node:http'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
@@ -19,6 +25,15 @@ import { join, resolve } from 'node:path'
 import { chromium } from 'playwright-core'
 
 const root = resolve(import.meta.dirname, '..')
+
+const WARMUP_RUNS = 1
+const SAMPLE_RUNS = 5
+
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
+}
 
 async function measure(componentPath, label) {
   const dir = await mkdtemp(join(tmpdir(), 'commercial-overview-perf-'))
@@ -79,23 +94,55 @@ async function measure(componentPath, label) {
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
     ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
   })
-  const page = await browser.newPage()
-  const requests = []
-  page.on('request', (r) => requests.push(r.url()))
-  const startedAt = Date.now()
-  await page.goto(origin + '/')
-  // "Conteúdo útil": o primeiro texto real de dados (não o spinner de carregamento).
-  await page
-    .getByText(/pendente/)
-    .first()
-    .waitFor()
-  const timeToContentMs = Date.now() - startedAt
-  const rpcCalls = await page.evaluate(() => globalThis.__perfCalls || [])
+
+  // Uma amostra: carrega a página do zero (novo contexto, sem cache entre amostras) e
+  // espera o rótulo NUMÉRICO real de algum cartão (ex. "3 pendentes") -- esse texto só
+  // existe depois que o estado de pendências virou "ready", nunca antes (diferente do
+  // título estático "Aprovações pendentes"/"Reembolsos em andamento", que é renderizado
+  // incondicionalmente e não prova que os dados chegaram). Falha explicitamente, sem
+  // declarar sucesso, se em vez disso aparecer a mensagem de erro de consulta.
+  async function sampleOnce() {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+    const errorText = page.getByText('Não foi possível consultar estes dados.')
+    const dataLabel = page.getByText(/\d+\s*pendente/)
+    const startedAt = performance.now()
+    await page.goto(origin + '/')
+    const dataWait = dataLabel
+      .first()
+      .waitFor()
+      .then(() => 'data')
+    const errorWait = errorText.waitFor().then(() => 'error')
+    const winner = await Promise.race([dataWait, errorWait])
+    // A promessa perdedora segue pendente até seu próprio timeout; nada a tratar além de
+    // evitar um "unhandled rejection" quando ela expirar sem que ninguém mais a observe.
+    dataWait.catch(() => {})
+    errorWait.catch(() => {})
+    if (winner === 'error') {
+      throw new Error(`${label}: estado de erro apareceu em vez dos contadores reais`)
+    }
+    const localBrowserTimeToDataMs = performance.now() - startedAt
+    const rpcCalls = await page.evaluate(() => globalThis.__perfCalls || [])
+    await context.close()
+    return { localBrowserTimeToDataMs, rpcCalls }
+  }
+
+  for (let i = 0; i < WARMUP_RUNS; i++) await sampleOnce()
+  const samples = []
+  for (let i = 0; i < SAMPLE_RUNS; i++) samples.push(await sampleOnce())
+
   await browser.close()
   await new Promise((r) => server.close(r))
   await rm(dir, { recursive: true, force: true })
 
-  return { label, rpcCalls, rpcCallCount: rpcCalls.length, timeToContentMs }
+  const timings = samples.map((s) => s.localBrowserTimeToDataMs)
+  return {
+    label,
+    rpcCalls: samples[0].rpcCalls,
+    rpcCallCount: samples[0].rpcCalls.length,
+    samplesMs: timings,
+    medianLocalBrowserTimeToDataMs: median(timings),
+  }
 }
 
 const [, , fileA, labelA, fileB, labelB] = process.argv

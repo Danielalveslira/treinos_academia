@@ -184,6 +184,70 @@ test('resposta inválida (tipo errado) é tratada como falha, não como zero', a
   page.unmount()
 })
 
+// Cada caso abaixo substitui só pendingAds por um valor inválido de um jeito diferente;
+// um count(*) do servidor nunca produz nenhum desses valores -- qualquer um deve colapsar
+// no mesmo estado de erro, nunca em "0 pendentes" nem em texto com NaN/Infinity.
+const INVALID_PENDING_ADS = {
+  negativo: -1,
+  decimal: 1.5,
+  'string numérica': '3',
+  'campo ausente': undefined,
+  nulo: null,
+  NaN: NaN,
+  Infinity: Infinity,
+  'acima de Number.MAX_SAFE_INTEGER': Number.MAX_SAFE_INTEGER + 2,
+}
+for (const [case_, badValue] of Object.entries(INVALID_PENDING_ADS)) {
+  test(`pendingAds ${case_} é rejeitado, nunca tratado como zero`, async () => {
+    const base = { pendingAds: 2, pendingStorefronts: 1, pendingBoosts: 1, openRefunds: 0 }
+    configure(
+      badValue === undefined
+        ? {
+            pendingStorefronts: base.pendingStorefronts,
+            pendingBoosts: base.pendingBoosts,
+            openRefunds: base.openRefunds,
+          }
+        : { ...base, pendingAds: badValue }
+    )
+    const page = mount()
+    await tick()
+    assert.match(page.text(), /Não foi possível consultar estes dados\./)
+    assert.doesNotMatch(page.text(), /\d+ pendentes/)
+    assert.doesNotMatch(page.text(), /NaN|Infinity/)
+    page.unmount()
+  })
+}
+
+test('contadores inteiros positivos válidos são aceitos e somados corretamente', async () => {
+  configure({ pendingAds: 5, pendingStorefronts: 3, pendingBoosts: 2, openRefunds: 7 })
+  const page = mount()
+  await tick()
+  assert.match(page.text(), /10 pendentes/, '5+3+2=10 aprovações')
+  assert.match(page.text(), /7 pendentes/, 'reembolsos ficam à parte, não entram nessa soma')
+  page.unmount()
+})
+
+test('soma das três categorias de aprovação acima do limite seguro é rejeitada', async () => {
+  const third = Math.floor(Number.MAX_SAFE_INTEGER / 3) + 10
+  configure({ pendingAds: third, pendingStorefronts: third, pendingBoosts: third, openRefunds: 0 })
+  const page = mount()
+  await tick()
+  assert.match(
+    page.text(),
+    /Não foi possível consultar estes dados\./,
+    'cada campo é um inteiro seguro isolado, mas a soma das aprovações não é -- ainda deve falhar, não exibir um total estourado'
+  )
+  page.unmount()
+})
+
+test('resposta completamente inválida (não é objeto) é tratada como falha', async () => {
+  configure('isso não é um objeto de contagem')
+  const page = mount()
+  await tick()
+  assert.match(page.text(), /Não foi possível consultar estes dados\./)
+  page.unmount()
+})
+
 test('estado de carregamento aparece antes da resposta chegar', async () => {
   calls = []
   globalThis.__coCalls = calls

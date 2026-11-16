@@ -6,11 +6,21 @@ import { getCommercialPendingCounts } from '../services/commercialOverviewServic
 // Etapa A: o Início consulta só esta RPC (nenhuma lista completa de anúncios,
 // vitrines ou reembolsos) -- os quatro contadores que ela já retornava sempre
 // existiram; só não eram todos exibidos aqui. Uma resposta sem os quatro campos
-// numéricos é tratada como falha de consulta, nunca como "zero pendências".
+// numéricos, ou com um valor fora do que um `count(*)` do servidor pode produzir
+// (negativo, decimal, string, NaN/Infinity, maior que Number.MAX_SAFE_INTEGER), é
+// tratada como falha de consulta, nunca silenciosamente convertida em zero.
 const PENDING_KEYS = ['pendingAds', 'pendingStorefronts', 'pendingBoosts', 'openRefunds']
 
+function isCount(n) {
+  return Number.isSafeInteger(n) && n >= 0
+}
+
 function isValidCounts(value) {
-  return !!value && PENDING_KEYS.every((key) => Number.isFinite(value[key]))
+  return (
+    !!value &&
+    PENDING_KEYS.every((key) => isCount(value[key])) &&
+    isCount(value.pendingAds + value.pendingStorefronts + value.pendingBoosts)
+  )
 }
 
 function approvalsBreakdown(value) {
