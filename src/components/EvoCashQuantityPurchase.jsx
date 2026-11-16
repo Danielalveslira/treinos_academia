@@ -9,7 +9,12 @@ import { formatPriceBRL, priceDate } from '../utils/evocashPricing'
 import { openInfinitepayCheckout } from '../utils/cashPurchaseFlow'
 import { checkoutRequestId, purchaseError } from '../utils/quantityPurchase'
 
-export function EvoCashQuantityPurchase({ userId, hasPendingPurchase, onPurchaseChanged }) {
+export function EvoCashQuantityPurchase({
+  userId,
+  hasPendingPurchase,
+  onPurchaseChanged,
+  onPolicySnapshot,
+}) {
   const [settings, setSettings] = useState(null)
   const [quantity, setQuantity] = useState('')
   const [quote, setQuote] = useState(null)
@@ -73,6 +78,7 @@ export function EvoCashQuantityPurchase({ userId, hasPendingPurchase, onPurchase
     setConfirmed(false)
     setExpired(false)
     setError('')
+    onPolicySnapshot?.(null)
   }
   const shortcuts = [10, 25, 50, 100, 250].filter(
     (value) =>
@@ -96,6 +102,7 @@ export function EvoCashQuantityPurchase({ userId, hasPendingPurchase, onPurchase
       if (mounted.current && current === generation.current) {
         const ttl = Date.parse(data.expiresAt) - Date.parse(data.createdAt)
         setQuote({ ...data, deadline: started + ttl })
+        onPolicySnapshot?.(data.refundPolicy || null)
       }
     } catch (err) {
       if (mounted.current && current === generation.current) {

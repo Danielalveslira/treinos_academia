@@ -29,6 +29,7 @@ export default function EvoCash() {
   const [cancellingPurchaseId, setCancellingPurchaseId] = useState(null)
   const [error, setError] = useState('')
   const [refundRevision, setRefundRevision] = useState(0)
+  const [policySnapshot, setPolicySnapshot] = useState(null)
   const [checkoutReturn, setCheckoutReturn] = useState(null)
   const {
     purchases,
@@ -39,6 +40,8 @@ export default function EvoCash() {
     error: listError,
     refresh,
   } = useCashPurchases(user?.uid)
+
+  useEffect(() => setPolicySnapshot(null), [user?.uid])
 
   useEffect(() => {
     if (searchParams.has('request')) {
@@ -217,8 +220,9 @@ export default function EvoCash() {
               loading || !!listError || !!pendingPurchase || hasPendingCashPurchase(purchases)
             }
             onPurchaseChanged={refresh}
+            onPolicySnapshot={setPolicySnapshot}
           />
-          <RefundPolicyNotice purchase />
+          <RefundPolicyNotice snapshot={policySnapshot} purchase />
         </section>
       ) : (
         <section id="evocash-history-panel" role="tabpanel" aria-labelledby="evocash-history-tab">
