@@ -1,0 +1,28 @@
+{
+  "methodology": "Chromium headless local (Playwright), mesma técnica dos benchmarks anteriores (ver scripts/launch-assistant-performance.mjs). Serviços stubados -- não é rede/Supabase real. 1 execução de aquecimento descartada + 5 amostras, mediana reportada para o tempo. Contagem de consultas é por chamada ao serviço do frontend (getLaunchVerification), não por RPC individual -- em produção essa única chamada do frontend dispara 4 RPCs reais em paralelo (fornecedor, EvoCash, catálogo comercial, inventário de publicidade).",
+  "queries": {
+    "closed": 1,
+    "afterOpen": 1,
+    "afterValidate": 1,
+    "afterActivationAttempt": 2,
+    "afterActivationAttemptNote": "Correção da revisão: 1 revalidação completa imediatamente antes da escrita (confirma que a ação ainda existe e segue elegível, usando a revisão atual) + 1 recarga depois da escrita (ou da revalidação detectar mudança, sem escrever). Nenhuma chamada adicional em caso de reautenticação recusada -- a revalidação só ocorre depois da senha/captcha serem aceitos.",
+    "afterEdit": "mesmo valor de afterOpen -- reabrir/remontar sempre busca de novo, não há cache a invalidar",
+    "note": "Cada valor é incremental sobre o anterior. 'closed' é a única consulta que a Etapa A já media (admin_commercial_pending_counts). 'afterOpen'/'afterValidate' são, cada uma, 1 chamada de serviço do frontend equivalente a 4 RPCs reais em paralelo (supplier+evocash+catalog+inventory) -- nunca sequenciais, nunca repetidas automaticamente."
+  },
+  "openToContentSamplesMs": [115.78, 134.23, 116.11, 155.43, 95.69],
+  "medianOpenToContentMs": 116.11,
+  "openToContentDisclaimer": "Tempo de render em Chromium headless local, serviços stubados -- não é latência de rede/Supabase de produção. É um proxy do custo de abrir o assistente (import do chunk + render), não uma medição de produção. Reportado de novo após a correção da revisão (lógica de revalidação/ativação separada não afeta o caminho de abertura em si; a variação frente à medição anterior está dentro do ruído esperado deste ambiente compartilhado).",
+  "bundle": {
+    "commercialOverviewChunkBeforePR4bBytesGzip": 1188,
+    "commercialOverviewChunkAfterPR4bBytesGzip": 1718,
+    "commercialOverviewChunkDeltaBytesGzip": 530,
+    "commercialOverviewChunkDeltaNote": "Custo do cartão fechado do assistente (lazy() + Suspense + CTA), sempre carregado com o Início -- pequeno e aceito, já que é a única parte visível quando o assistente não está em uso.",
+    "launchAssistantPanelChunkBytesGzip": 4121,
+    "launchAssistantPanelChunkDeltaFromReviewFixBytesGzip": 917,
+    "launchAssistantPanelChunkNote": "Só é baixado quando o administrador clica em 'Abrir assistente' -- nunca no carregamento do Início, confirmado por teste (CommercialOverview.test.js: 'monta com exatamente uma consulta de resumo') e pelo browser-smoke (nenhuma chamada extra com o cartão fechado em nenhuma das 6 larguras). O crescimento de +917 bytes gzip vem da revalidação pré-ativação e da separação de contratações/exibição."
+  },
+  "bootBudget": {
+    "affected": false,
+    "note": "Nenhum chunk deste PR entra no precache de boot (service worker) -- ambos são lazy, confirmado por `npm run budget` permanecendo OK sem alteração do baseline."
+  }
+}

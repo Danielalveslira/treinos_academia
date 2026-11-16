@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Box, Button, Heading, Label, Spinner, Text } from '@primer/react'
 import { getCommercialPendingCounts } from '../services/commercialOverviewService'
+import LaunchAssistant from './LaunchAssistant'
 
 // Etapa A: o Início consulta só esta RPC (nenhuma lista completa de anúncios,
 // vitrines ou reembolsos) -- os quatro contadores que ela já retornava sempre
@@ -102,25 +103,32 @@ export default function CommercialOverview() {
       : undefined
 
   return (
-    // Grade de 2 colunas no desktop: já comporta um terceiro cartão (o futuro
-    // assistente de lançamento, PR4b) sem mudança de layout. Nenhum cartão vazio
-    // é renderizado antes de existir funcionalidade real para ele.
-    <Box sx={{ display: 'grid', gridTemplateColumns: ['1fr', 'repeat(2,minmax(0,1fr))'], gap: 2 }}>
-      <SummaryCard
-        title="Aprovações pendentes"
-        to="/admin/parcerias?area=aprovacoes"
-        action="Ver aprovações"
-        state={state}
-        count={approvalsTotal}
-        detail={state === 'ready' ? approvalsBreakdown(value) : null}
-      />
-      <SummaryCard
-        title="Reembolsos em andamento"
-        to="/admin/compras-evocash?tab=refunds"
-        action="Consultar reembolsos"
-        state={state}
-        count={state === 'ready' ? value.openRefunds : undefined}
-      />
+    <Box>
+      <Box
+        sx={{ display: 'grid', gridTemplateColumns: ['1fr', 'repeat(2,minmax(0,1fr))'], gap: 2 }}
+      >
+        <SummaryCard
+          title="Aprovações pendentes"
+          to="/admin/parcerias?area=aprovacoes"
+          action="Ver aprovações"
+          state={state}
+          count={approvalsTotal}
+          detail={state === 'ready' ? approvalsBreakdown(value) : null}
+        />
+        <SummaryCard
+          title="Reembolsos em andamento"
+          to="/admin/compras-evocash?tab=refunds"
+          action="Consultar reembolsos"
+          state={state}
+          count={state === 'ready' ? value.openRefunds : undefined}
+        />
+      </Box>
+      {/* PR4b: nem bundle nem consulta deste cartão carregam até o clique em "Abrir
+          assistente" (ver LaunchAssistant.jsx) -- a única consulta acima permanece a
+          única consulta do Início enquanto o assistente está fechado. */}
+      <Box sx={{ mt: 2 }}>
+        <LaunchAssistant />
+      </Box>
     </Box>
   )
 }
