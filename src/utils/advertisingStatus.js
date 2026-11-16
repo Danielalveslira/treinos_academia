@@ -17,7 +17,8 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
   const hasEntitlement = expiresAt != null
   const expired = hasEntitlement && expiresAt <= nowMs
   const notStartedYet = hasEntitlement && startsAt != null && startsAt > nowMs
-  const remainingDays = hasEntitlement && !expired ? Math.ceil((expiresAt - nowMs) / 86400000) : null
+  const remainingDays =
+    hasEntitlement && !expired ? Math.ceil((expiresAt - nowMs) / 86400000) : null
 
   if (c.moderation_state === 'archived' || c.state === 'archived') {
     return {
@@ -32,13 +33,27 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
   }
   if (c.moderation_state === 'suspended') {
     return {
-      key: 'paused',
-      label: 'Pausado',
-      detail: c.review_reason || 'Veiculação interrompida. Consulte o histórico para o motivo.',
+      key: 'suspended',
+      label: 'Suspenso pelo Evolutus',
+      detail: 'Este anúncio precisa de liberação do Evolutus para voltar a aparecer.',
       pendingRevision: false,
       pendingRevisionNote: null,
       remainingDays: null,
       primaryAction: { type: 'view_reason', label: 'Ver motivo' },
+    }
+  }
+  if (c.advertiser_paused && !expired) {
+    return {
+      key: 'paused',
+      label: 'Pausado por você',
+      detail: 'Os dias contratados continuam contando durante a pausa.',
+      pendingRevision: false,
+      pendingRevisionNote: null,
+      remainingDays: hasEntitlement && !expired ? remainingDays : null,
+      primaryAction:
+        hasEntitlement && !expired
+          ? { type: 'resume', label: 'Retomar anúncio' }
+          : { type: 'view_schedule', label: 'Ver período' },
     }
   }
 
@@ -47,7 +62,7 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
     if (c.state === 'rejected') {
       return {
         key: 'rejected',
-        label: 'Reprovado',
+        label: 'Precisa de correção',
         detail: c.review_reason || null,
         pendingRevision: false,
         pendingRevisionNote: null,
@@ -87,27 +102,27 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
   if (!hasEntitlement) {
     base = {
       key: 'approved_unpaid',
-      label: 'Aprovado — aguardando contratação',
+      label: 'Pronto para publicar',
       detail: salesOff ? 'Contratações ainda indisponíveis.' : null,
       remainingDays: null,
       primaryAction: salesOff
         ? { type: 'wait', label: 'Contratações ainda indisponíveis' }
-        : { type: 'contract', label: 'Contratar publicação' },
+        : { type: 'contract', label: 'Publicar anúncio' },
     }
   } else if (expired) {
     base = {
       key: 'ended',
-      label: `Encerrado em ${new Date(expiresAt).toLocaleDateString('pt-BR')}`,
+      label: 'Encerrado',
       detail: salesOff ? 'Contratações ainda indisponíveis.' : null,
       remainingDays: null,
       primaryAction: salesOff
         ? { type: 'wait', label: 'Contratações ainda indisponíveis' }
-        : { type: 'contract', label: 'Renovar' },
+        : { type: 'contract', label: 'Renovar anúncio' },
     }
   } else if (notStartedYet) {
     base = {
       key: 'contracted_pending_start',
-      label: 'Contratado — aguardando início',
+      label: 'Programado',
       detail: null,
       remainingDays,
       primaryAction: { type: 'view_schedule', label: 'Consultar período' },
@@ -115,7 +130,7 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
   } else if (c.delivery_state === 'active' && c.placement_delivery_active) {
     base = {
       key: 'live',
-      label: 'Apto para exibição',
+      label: 'Ativo',
       detail: null,
       remainingDays,
       primaryAction: { type: 'view', label: 'Ver anúncio' },
@@ -123,7 +138,7 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
   } else if (c.delivery_state === 'active' && c.placement_delivery_active === false) {
     base = {
       key: 'blocked',
-      label: 'Contratado — veiculação pausada pela plataforma',
+      label: 'Exibição indisponível',
       detail: 'O posicionamento contratado está temporariamente indisponível para entrega.',
       remainingDays,
       primaryAction: { type: 'view_schedule', label: 'Consultar período' },
@@ -131,7 +146,7 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
   } else {
     base = {
       key: 'blocked',
-      label: 'Não disponível para exibição',
+      label: 'Exibição indisponível',
       detail: 'A contratação é válida, mas a exibição está bloqueada administrativamente.',
       remainingDays,
       primaryAction: { type: 'view_schedule', label: 'Consultar período' },
@@ -146,7 +161,7 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
       : 'Uma atualização enviada está em análise. O material em exibição não muda até a aprovação.'
   return {
     ...base,
-    label: `${base.label} — ${c.state === 'rejected' ? 'revisão reprovada' : 'atualização em análise'}`,
+    label: base.label,
     pendingRevision: true,
     pendingRevisionNote,
     primaryAction:

@@ -47,7 +47,13 @@ test('creating a campaign sends exactly the wizard fields and the idempotency ke
   globalThis.__adsCalls = []
   await service.createAdvertisingCampaign(
     'account-1',
-    { placement: 'home_banner', communityId: '', title: 'T', description: 'D', destination: 'https://x' },
+    {
+      placement: 'home_banner',
+      communityId: '',
+      title: 'T',
+      description: 'D',
+      destination: 'https://x',
+    },
     'request-1'
   )
   assert.deepEqual(globalThis.__adsCalls, [
@@ -110,5 +116,13 @@ test('reading campaigns forwards only the account and cursor, matching the card 
   assert.deepEqual(globalThis.__adsCalls, [
     { name: 'get_advertising_campaigns', args: { p_account: 'account-1', p_after: null } },
     { name: 'get_advertising_campaigns', args: { p_account: 'account-1', p_after: 'ad-20' } },
+  ])
+})
+
+test('advertiser resume calls its own RPC without an admin revision or reason', async () => {
+  globalThis.__adsCalls = []
+  await service.resumeMyAdvertisingCampaign('ad-1')
+  assert.deepEqual(globalThis.__adsCalls, [
+    { name: 'resume_my_advertising_campaign', args: { p_id: 'ad-1' } },
   ])
 })

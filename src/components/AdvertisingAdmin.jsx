@@ -25,15 +25,26 @@ import {
 import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
 import { AuthCaptcha } from './AuthCaptcha'
 import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
-import { commercialError } from '../utils/commercial'
+import { commercialDate, commercialError } from '../utils/commercial'
+import { deriveAdStatus } from '../utils/advertisingStatus'
+import { placementsSummary } from '../utils/placementLabels'
+
+const OPERATION_LABELS = {
+  advertiser_pause: 'Pausado pelo anunciante',
+  advertiser_resume: 'Retomado pelo anunciante',
+  suspend: 'Suspenso pela administração',
+  resume: 'Liberado pela administração',
+  approve: 'Aprovado',
+  reject: 'Reprovado',
+  archive: 'Arquivado',
+}
 
 // Aprovar/reprovar campanhas e impulsionamentos vive na fila unificada (ApprovalsQueue.jsx,
 // seção Aprovações) -- aqui ficam só os espaços publicitários (capacidade, vendas,
 // veiculação, pacote global) e a gestão do que já está aprovado (suspender/retomar
 // veiculação), nunca a revisão editorial em si.
-const STATUS_LABELS = { approved: 'Ativa', suspended: 'Suspensa' }
-
 export default function AdvertisingAdmin() {
+  const [section, setSection] = useState('campaigns')
   const [data, setData] = useState(null)
   const [operations, setOperations] = useState(null)
   const [error, setError] = useState('')
@@ -104,169 +115,226 @@ export default function AdvertisingAdmin() {
   return (
     <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
       <Heading as="h2" sx={{ fontSize: 2 }}>
-        Espaços de anúncio
+        Publicidade
       </Heading>
-      <Text as="p">
-        Reduzir o limite de anúncios simultâneos não cancela contratos vigentes. Pausar novas
-        contratações preserva a veiculação já contratada; desligar a veiculação gera registro
-        operacional.
-      </Text>
-      {error && <Flash variant="danger">{error}</Flash>}
-      {!data && !error && <Spinner />}
-      {data?.inventory.placements.map((p) => (
-        <Box
-          key={`${p.code}:${p.revision}`}
-          sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, my: 2 }}
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, my: 3 }}>
+        <Button
+          variant={section === 'campaigns' ? 'primary' : 'default'}
+          onClick={() => setSection('campaigns')}
         >
-          <Heading as="h3" sx={{ fontSize: 2 }}>
-            {p.name}
-          </Heading>
-          <Text as="p" sx={{ color: 'fg.muted' }}>
-            {p.description}
-          </Text>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', my: 2 }}>
-            <Label>Limite: {p.capacity} simultâneos</Label>
-            <Label>{p.activeContracts || 0} campanhas com contrato vigente</Label>
-            <Label variant={p.sales_enabled ? 'success' : 'default'}>
-              {p.sales_enabled ? 'Aceitando contratações' : 'Contratações pausadas'}
-            </Label>
-            <Label variant={p.delivery_enabled ? 'success' : 'danger'}>
-              {p.delivery_enabled ? 'Exibição permitida' : 'Exibição desligada'}
-            </Label>
-          </Box>
-          <Button
-            disabled={busy}
-            onClick={() =>
-              openDialog('placement', p, {
-                capacity: String(p.capacity),
-                salesEnabled: p.sales_enabled,
-                deliveryEnabled: p.delivery_enabled,
-              })
-            }
+          Anúncios publicados
+        </Button>
+        <Button
+          variant={section === 'settings' ? 'primary' : 'default'}
+          onClick={() => setSection('settings')}
+        >
+          Configurações
+        </Button>
+      </Box>
+      <Box hidden={section !== 'settings'}>
+        <Heading as="h2" sx={{ fontSize: 2 }}>
+          Espaços de anúncio
+        </Heading>
+        <Text as="p">
+          Reduzir o limite de anúncios simultâneos não cancela contratos vigentes. Pausar novas
+          contratações preserva a veiculação já contratada; desligar a veiculação gera registro
+          operacional.
+        </Text>
+        {error && <Flash variant="danger">{error}</Flash>}
+        {!data && !error && <Spinner />}
+        {data?.inventory.placements.map((p) => (
+          <Box
+            key={`${p.code}:${p.revision}`}
+            sx={{
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2,
+              p: 3,
+              my: 2,
+            }}
           >
-            Configurar
-          </Button>
-        </Box>
-      ))}
-      {data && (
-        <Box
-          sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, my: 2 }}
-        >
-          <Heading as="h3" sx={{ fontSize: 2 }}>
-            Posicionamentos do pacote global
-          </Heading>
-          <Text as="p" sx={{ color: 'fg.muted' }}>
-            Mudanças valem só para novas campanhas; contratos já preparados preservam seu conjunto.
-          </Text>
-          <Text as="p">
-            {data.inventory.networkPlacements
-              .map((code) => data.inventory.placements.find((p) => p.code === code)?.name || code)
-              .join(' · ') || 'Nenhum posicionamento selecionado.'}
-          </Text>
-          <Button
-            disabled={busy}
-            onClick={() => openDialog('network', null, { codes: data.inventory.networkPlacements })}
-          >
-            Configurar pacote global
-          </Button>
-        </Box>
-      )}
-
-      <Heading as="h2" sx={{ fontSize: 2, mt: 4 }}>
-        Campanhas ativas
-      </Heading>
-      <Text as="p" sx={{ color: 'fg.muted' }}>
-        Aprovação e reprovação de novas campanhas ficam na fila de Aprovações. Aqui só a veiculação
-        do que já foi aprovado.
-      </Text>
-      {data && activeCampaigns.length === 0 && (
-        <Text as="p">Nenhuma campanha ativa ou suspensa.</Text>
-      )}
-      {activeCampaigns.map((c) => (
-        <Box
-          key={c.ad_id}
-          sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, my: 2 }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-            <Heading as="h3" sx={{ fontSize: 2, m: 0 }}>
-              {c.title}
+            <Heading as="h3" sx={{ fontSize: 2 }}>
+              {p.name}
             </Heading>
-            <Label variant={c.moderation_state === 'suspended' ? 'danger' : 'success'}>
-              {STATUS_LABELS[c.moderation_state] || c.moderation_state}
-            </Label>
+            <Text as="p" sx={{ color: 'fg.muted' }}>
+              {p.description}
+            </Text>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', my: 2 }}>
+              <Label>Limite: {p.capacity} simultâneos</Label>
+              <Label>{p.activeContracts || 0} campanhas com contrato vigente</Label>
+              <Label variant={p.sales_enabled ? 'success' : 'default'}>
+                {p.sales_enabled ? 'Aceitando novas compras' : 'Novas compras desativadas'}
+              </Label>
+              <Label variant={p.delivery_enabled ? 'success' : 'danger'}>
+                {p.delivery_enabled
+                  ? 'Exibição dos contratos permitida'
+                  : 'Exibição dos contratos desligada'}
+              </Label>
+            </Box>
+            <Button
+              disabled={busy}
+              onClick={() =>
+                openDialog('placement', p, {
+                  capacity: String(p.capacity),
+                  salesEnabled: p.sales_enabled,
+                  deliveryEnabled: p.delivery_enabled,
+                })
+              }
+            >
+              Configurar
+            </Button>
           </Box>
-          <Text as="p" sx={{ color: 'fg.muted' }}>
-            {c.partner_name}
-            {c.placements?.length > 0 && ` · ${c.placements.map((p) => p.code).join(' · ')}`}
-          </Text>
-          {c.media_id && <StorefrontImage id={c.media_id} size={120} />}
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>
-            {c.moderation_state === 'suspended' ? (
-              <Button disabled={busy} onClick={() => openDialog('resume', c)}>
-                Retomar veiculação
-              </Button>
-            ) : (
-              <Button disabled={busy} onClick={() => openDialog('suspend', c)}>
-                Suspender veiculação
-              </Button>
-            )}
+        ))}
+        {data && (
+          <Box
+            sx={{
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2,
+              p: 3,
+              my: 2,
+            }}
+          >
+            <Heading as="h3" sx={{ fontSize: 2 }}>
+              Posicionamentos do pacote global
+            </Heading>
+            <Text as="p" sx={{ color: 'fg.muted' }}>
+              Mudanças valem só para novas campanhas; contratos já preparados preservam seu
+              conjunto.
+            </Text>
+            <Text as="p">
+              {data.inventory.networkPlacements
+                .map((code) => data.inventory.placements.find((p) => p.code === code)?.name || code)
+                .join(' · ') || 'Nenhum posicionamento selecionado.'}
+            </Text>
+            <Button
+              disabled={busy}
+              onClick={() =>
+                openDialog('network', null, { codes: data.inventory.networkPlacements })
+              }
+            >
+              Configurar pacote global
+            </Button>
           </Box>
-        </Box>
-      ))}
-      {data?.campaigns.length > 0 && data.campaigns.length % 20 === 0 && (
-        <Button
-          onClick={async () => {
-            try {
-              const more = await getAdvertisingCampaigns(null, data.campaigns.at(-1).ad_id)
-              setData({ ...data, campaigns: [...data.campaigns, ...more] })
-            } catch (e) {
-              setError(commercialError(e))
-            }
-          }}
-        >
-          Carregar mais campanhas
-        </Button>
-      )}
+        )}
+      </Box>
 
-      <Heading as="h2" sx={{ fontSize: 2, mt: 4 }}>
-        Histórico de operações
-      </Heading>
-      <Button
-        sx={{ my: 3 }}
-        onClick={async () => {
-          try {
-            setOperations(operations ? null : await getAdvertisingOperations())
-          } catch (e) {
-            setError(commercialError(e))
-          }
-        }}
-      >
-        {operations ? 'Ocultar histórico' : 'Ver histórico'}
-      </Button>
-      {operations?.map((o) => (
-        <Box key={o.id} sx={{ p: 2, borderBottom: '1px solid', borderColor: 'border.default' }}>
-          <Text as="p">
-            {o.action} · {o.reason}
-          </Text>
-          <Text as="p">{o.occurred_at}</Text>
-        </Box>
-      ))}
-      {operations?.length > 0 && operations.length % 30 === 0 && (
+      <Box hidden={section !== 'campaigns'}>
+        <Heading as="h2" sx={{ fontSize: 2, mt: 4 }}>
+          Anúncios publicados
+        </Heading>
+        <Text as="p" sx={{ color: 'fg.muted' }}>
+          Aprovação e reprovação de novas campanhas ficam na fila de Aprovações. Aqui só a
+          veiculação do que já foi aprovado.
+        </Text>
+        {data && activeCampaigns.length === 0 && (
+          <Text as="p">Nenhuma campanha ativa ou suspensa.</Text>
+        )}
+        {activeCampaigns.map((c) => (
+          <Box
+            key={c.ad_id}
+            sx={{
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2,
+              p: 3,
+              my: 2,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <Heading as="h3" sx={{ fontSize: 2, m: 0 }}>
+                {c.title}
+              </Heading>
+              <Label
+                variant={
+                  c.moderation_state === 'suspended'
+                    ? 'danger'
+                    : c.advertiser_paused
+                      ? 'attention'
+                      : 'success'
+                }
+              >
+                {deriveAdStatus(c).label}
+              </Label>
+            </Box>
+            <Text as="p" sx={{ color: 'fg.muted' }}>
+              {c.partner_name}
+              {c.placements?.length > 0 && ` · ${placementsSummary(c.placements)}`}
+            </Text>
+            {c.expires_at && (
+              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted' }}>
+                {commercialDate(c.starts_at)} até {commercialDate(c.expires_at)}
+              </Text>
+            )}
+            {c.media_id && <StorefrontImage id={c.media_id} size={120} />}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>
+              {c.moderation_state === 'suspended' ? (
+                <Button disabled={busy} onClick={() => openDialog('resume', c)}>
+                  Liberar anúncio
+                </Button>
+              ) : (
+                <Button disabled={busy} onClick={() => openDialog('suspend', c)}>
+                  Suspender anúncio
+                </Button>
+              )}
+            </Box>
+          </Box>
+        ))}
+        {data?.campaigns.length > 0 && data.campaigns.length % 20 === 0 && (
+          <Button
+            onClick={async () => {
+              try {
+                const more = await getAdvertisingCampaigns(null, data.campaigns.at(-1).ad_id)
+                setData({ ...data, campaigns: [...data.campaigns, ...more] })
+              } catch (e) {
+                setError(commercialError(e))
+              }
+            }}
+          >
+            Carregar mais campanhas
+          </Button>
+        )}
+
+        <Heading as="h2" sx={{ fontSize: 2, mt: 4 }}>
+          Histórico de operações
+        </Heading>
         <Button
+          sx={{ my: 3 }}
           onClick={async () => {
             try {
-              setOperations([
-                ...operations,
-                ...(await getAdvertisingOperations(operations.at(-1).id)),
-              ])
+              setOperations(operations ? null : await getAdvertisingOperations())
             } catch (e) {
               setError(commercialError(e))
             }
           }}
         >
-          Carregar mais operações
+          {operations ? 'Ocultar histórico' : 'Ver histórico'}
         </Button>
-      )}
+        {operations?.map((o) => (
+          <Box key={o.id} sx={{ p: 2, borderBottom: '1px solid', borderColor: 'border.default' }}>
+            <Text as="p">
+              {OPERATION_LABELS[o.action] || o.action} · {o.reason}
+            </Text>
+            <Text as="p">{o.occurred_at}</Text>
+          </Box>
+        ))}
+        {operations?.length > 0 && operations.length % 30 === 0 && (
+          <Button
+            onClick={async () => {
+              try {
+                setOperations([
+                  ...operations,
+                  ...(await getAdvertisingOperations(operations.at(-1).id)),
+                ])
+              } catch (e) {
+                setError(commercialError(e))
+              }
+            }}
+          >
+            Carregar mais operações
+          </Button>
+        )}
+      </Box>
 
       {dialog && (
         <Dialog
@@ -276,8 +344,8 @@ export default function AdvertisingAdmin() {
               : dialog.kind === 'network'
                 ? 'Pacote global'
                 : dialog.kind === 'suspend'
-                  ? 'Suspender veiculação'
-                  : 'Retomar veiculação'
+                  ? 'Suspender anúncio'
+                  : 'Liberar anúncio'
           }
           onClose={() => {
             if (!busy) setDialog(null)

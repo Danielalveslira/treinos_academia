@@ -27,25 +27,62 @@ test('submitted never approved shows Em análise', () => {
   assert.equal(s.label, 'Em análise')
 })
 
-test('rejected never approved shows Reprovado with the review reason', () => {
+test('rejected never approved asks for correction with the review reason', () => {
   const s = deriveAdStatus(
     { ...base, state: 'rejected', review_reason: 'Imagem não condiz com o destino' },
     { now: NOW }
   )
   assert.equal(s.key, 'rejected')
+  assert.equal(s.label, 'Precisa de correção')
   assert.equal(s.detail, 'Imagem não condiz com o destino')
 })
 
 test('suspended always wins regardless of delivery or contract state', () => {
   const s = deriveAdStatus(
-    { ...base, moderation_state: 'suspended', state: 'approved', expires_at: '2027-01-01T00:00:00Z' },
+    {
+      ...base,
+      moderation_state: 'suspended',
+      state: 'approved',
+      expires_at: '2027-01-01T00:00:00Z',
+    },
     { now: NOW }
   )
-  assert.equal(s.key, 'paused')
+  assert.equal(s.key, 'suspended')
+  assert.equal(s.label, 'Suspenso pelo Evolutus')
+  assert.notEqual(s.primaryAction.type, 'resume')
+})
+
+test('only a server-projected voluntary pause offers resume during an active contract', () => {
+  const s = deriveAdStatus(
+    {
+      ...base,
+      moderation_state: 'approved',
+      advertiser_paused: true,
+      starts_at: '2026-12-01T00:00:00Z',
+      expires_at: '2026-12-20T00:00:00Z',
+    },
+    { now: NOW }
+  )
+  assert.equal(s.label, 'Pausado por você')
+  assert.equal(s.primaryAction.type, 'resume')
+  const ended = deriveAdStatus(
+    {
+      ...base,
+      moderation_state: 'approved',
+      advertiser_paused: true,
+      expires_at: '2026-12-01T00:00:00Z',
+    },
+    { now: NOW }
+  )
+  assert.equal(ended.key, 'ended')
+  assert.notEqual(ended.primaryAction.type, 'resume')
 })
 
 test('archived always wins even if moderation_state is still approved', () => {
-  const s = deriveAdStatus({ ...base, moderation_state: 'archived', state: 'archived' }, { now: NOW })
+  const s = deriveAdStatus(
+    { ...base, moderation_state: 'archived', state: 'archived' },
+    { now: NOW }
+  )
   assert.equal(s.key, 'archived')
 })
 
@@ -55,12 +92,18 @@ test('approved without any entitlement never implies a contract exists (can_pay 
     { now: NOW }
   )
   assert.equal(s.key, 'approved_unpaid')
-  assert.equal(s.label, 'Aprovado — aguardando contratação')
+  assert.equal(s.label, 'Pronto para publicar')
 })
 
 test('sales disabled never shows a contracting CTA, even to the account owner (can_pay=true)', () => {
   const unpaid = deriveAdStatus(
-    { ...base, moderation_state: 'approved', state: 'approved', can_pay: true, tariff: { salesEnabled: false } },
+    {
+      ...base,
+      moderation_state: 'approved',
+      state: 'approved',
+      can_pay: true,
+      tariff: { salesEnabled: false },
+    },
     { now: NOW }
   )
   assert.equal(unpaid.primaryAction.type, 'wait')
@@ -80,7 +123,11 @@ test('sales disabled never shows a contracting CTA, even to the account owner (c
     { now: NOW }
   )
   assert.equal(ended.key, 'ended')
-  assert.equal(ended.primaryAction.type, 'wait', '"Renovar" must not be offered while sales are off')
+  assert.equal(
+    ended.primaryAction.type,
+    'wait',
+    '"Renovar" must not be offered while sales are off'
+  )
 })
 
 test('approved with an entitlement that has not started yet is "aguardando início", not "No ar"', () => {
@@ -112,7 +159,7 @@ test('"No ar" (live) requires delivery_state active AND the consolidated placeme
     { now: NOW }
   )
   assert.equal(live.key, 'live')
-  assert.equal(live.label, 'Apto para exibição')
+  assert.equal(live.label, 'Ativo')
 
   const notReallyLive = deriveAdStatus(
     {
@@ -127,7 +174,7 @@ test('"No ar" (live) requires delivery_state active AND the consolidated placeme
     { now: NOW }
   )
   assert.notEqual(notReallyLive.key, 'live')
-  assert.doesNotMatch(notReallyLive.label, /No ar|Apto para exibição/)
+  assert.doesNotMatch(notReallyLive.label, /Ativo/)
 })
 
 test('expired entitlement is "Encerrado em [data]", never "No ar"', () => {
@@ -143,7 +190,7 @@ test('expired entitlement is "Encerrado em [data]", never "No ar"', () => {
     { now: NOW }
   )
   assert.equal(s.key, 'ended')
-  assert.match(s.label, /^Encerrado em /)
+  assert.equal(s.label, 'Encerrado')
 })
 
 test('administratively blocked entitlement never claims "No ar"', () => {
@@ -160,7 +207,7 @@ test('administratively blocked entitlement never claims "No ar"', () => {
     { now: NOW }
   )
   assert.equal(s.key, 'blocked')
-  assert.notEqual(s.label, 'Apto para exibição')
+  assert.notEqual(s.label, 'Ativo')
 })
 
 test('a live, fully paid campaign with a newer revision in review keeps its live status and surfaces a secondary note', () => {
@@ -178,7 +225,7 @@ test('a live, fully paid campaign with a newer revision in review keeps its live
   )
   assert.equal(s.key, 'live')
   assert.equal(s.pendingRevision, true)
-  assert.match(s.label, /Apto para exibição — atualização em análise/)
+  assert.equal(s.label, 'Ativo')
   assert.equal(s.primaryAction.type, 'track_review')
 })
 
