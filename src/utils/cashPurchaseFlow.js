@@ -9,15 +9,9 @@ export function resolveRequestId(pendingAttempt, key, generateId) {
   return pendingAttempt?.key === key ? pendingAttempt.requestId : generateId()
 }
 
-// Usado para desabilitar o botão "Comprar" -- puramente uma conveniência de UX (o
-// backend já impede uma segunda compra pending via cashPurchaseLock, ver
-// cash-purchase-service.js); esta checagem só evita o clique que sabidamente falharia.
+// Conveniência de UX; o backend continua sendo a autoridade da trava financeira.
 export function hasPendingCashPurchase(purchases) {
-  return purchases.some(
-    (purchase) =>
-      purchase.status === 'pending' &&
-      (purchase.paymentProvider !== 'infinitepay' || !!purchase.checkoutUrl)
-  )
+  return purchases.some((purchase) => purchase.status === 'pending')
 }
 
 export function cashPurchaseStatusLabel(purchase, labels) {
@@ -43,21 +37,25 @@ export function cashPurchaseStatusLabel(purchase, labels) {
   return labels[purchase.status] || { text: purchase.status, variant: 'default' }
 }
 
-export function openInfinitepayCheckout(value, navigate = (url) => window.location.assign(url)) {
+export function allowedInfinitepayCheckout(value) {
   let url
   try {
     url = new URL(value)
   } catch {
-    throw new Error('INVALID_CHECKOUT_URL')
+    return false
   }
-  if (
+  return !(
     url.protocol !== 'https:' ||
     !['checkout.infinitepay.io', 'checkout.infinitepay.com.br'].includes(url.hostname) ||
     url.username ||
     url.password ||
     url.port
   )
-    throw new Error('INVALID_CHECKOUT_URL')
+}
+
+export function openInfinitepayCheckout(value, navigate = (url) => window.location.assign(url)) {
+  if (!allowedInfinitepayCheckout(value)) throw new Error('INVALID_CHECKOUT_URL')
+  const url = new URL(value)
   navigate(url.toString())
 }
 

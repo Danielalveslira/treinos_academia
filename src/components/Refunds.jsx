@@ -59,19 +59,25 @@ export function RefundPolicyNotice({ snapshot, purchase = false }) {
           : 'Arrependimento e reembolso: quando aplicável, até 7 dias conforme o marco legal e a data-limite da aquisição. Outros direitos continuam disponíveis após esse prazo. A duração comercial por dias é independente.'}
       </Text>
       <details>
-        <summary>{purchase ? 'Como funciona o reembolso?' : 'Arrependimento e reembolso'}</summary>
+        <summary>{purchase ? 'Ver política de reembolso' : 'Arrependimento e reembolso'}</summary>
         {purchase && (
           <Text as="p">
             Solicite o reembolso pelo aplicativo e acompanhe o andamento. O prazo de arrependimento
             é de até 7 dias, conforme a legislação aplicável.
           </Text>
         )}
-        <details>
-          <summary>Política completa</summary>
+        {purchase ? (
           <Text as="p" sx={{ whiteSpace: 'pre-line' }}>
             {publicRefundPolicy(policy)}
           </Text>
-        </details>
+        ) : (
+          <details>
+            <summary>Política completa</summary>
+            <Text as="p" sx={{ whiteSpace: 'pre-line' }}>
+              {publicRefundPolicy(policy)}
+            </Text>
+          </details>
+        )}
       </details>
     </Box>
   )
@@ -300,7 +306,7 @@ const actionLabels = {
   comment: 'Enviar comunicação',
 }
 
-export function RefundRequestsPanel({ admin = false, initialId, revision = 0 }) {
+export function RefundRequestsPanel({ admin = false, initialId, revision = 0, compact = false }) {
   const [balance, setBalance] = useState(null)
   const [rows, setRows] = useState([]),
     [error, setError] = useState(''),
@@ -368,7 +374,7 @@ export function RefundRequestsPanel({ admin = false, initialId, revision = 0 }) 
   return (
     <Box sx={{ my: 3, minWidth: 0 }}>
       <Text as="h2">{admin ? 'Reembolsos' : 'Minhas solicitações'}</Text>
-      {balance && (
+      {balance && !compact && (
         <Text as="p">
           Disponível para uso: {balance.available} EvoCash · Reservado para análise:{' '}
           {balance.reserved} EvoCash
@@ -406,10 +412,11 @@ export function RefundRequestsPanel({ admin = false, initialId, revision = 0 }) 
             overflowWrap: 'anywhere',
           }}
         >
-          <Text as="p">
-            {r.protocol} · {refundStates[r.status]}
+          <Text as="p" sx={{ m: 0, fontWeight: 'bold' }}>
+            {compact ? `${r.protocol.slice(0, 8)}…${r.protocol.slice(-7)}` : r.protocol} ·{' '}
+            {refundStates[r.status]}
           </Text>
-          <Text as="p">
+          <Text as="p" sx={{ my: 1 }}>
             {refundCategories[r.category]} · Recebida {refundDate(r.createdAt)}
           </Text>
           {admin && (

@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase/config'
-import { listCashPurchasesForAdminPage, listMyCashPurchasesPage, mapPurchaseRow } from '../services/cashPurchaseService'
+import {
+  getMyPendingCashPurchase,
+  listCashPurchasesForAdminPage,
+  listMyCashPurchasesPage,
+  mapPurchaseRow,
+} from '../services/cashPurchaseService'
 
 // Mesmo padrão de useSupport.js: paginação por cursor, uma "revision" pra descartar
 // respostas atrasadas de uma consulta anterior (troca de filtro/usuário antes da
@@ -12,6 +17,7 @@ export function useCashPurchases(userId, admin = false, status = '') {
   }, [])
   const [cursor, setCursor] = useState(null)
   const [purchases, setPurchases] = useState([])
+  const [pendingPurchase, setPendingPurchase] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -24,8 +30,13 @@ export function useCashPurchases(userId, admin = false, status = '') {
       const page = admin
         ? await listCashPurchasesForAdminPage({ status })
         : await listMyCashPurchasesPage(userId)
+      const pending = admin
+        ? null
+        : page.items.find((purchase) => purchase.status === 'pending') ||
+          (await getMyPendingCashPurchase(userId))
       if (current !== revision.current) return
       setPurchases(page.items)
+      setPendingPurchase(pending)
       setCursor(page.nextCursor)
     } catch {
       if (current === revision.current)
@@ -40,6 +51,7 @@ export function useCashPurchases(userId, admin = false, status = '') {
     // lista antiga (e, junto com ela, um pendingId de outro usuário) visível até a nova
     // consulta responder -- ver o listener de pending logo abaixo.
     setPurchases([])
+    setPendingPurchase(null)
     setCursor(null)
     refresh()
     return () => {
@@ -56,7 +68,10 @@ export function useCashPurchases(userId, admin = false, status = '') {
         ? await listCashPurchasesForAdminPage({ status, cursor })
         : await listMyCashPurchasesPage(userId, { cursor })
       if (current !== revision.current) return
-      setPurchases((previous) => [...previous, ...page.items])
+      setPurchases((previous) => {
+        const seen = new Set(previous.map((purchase) => purchase.id))
+        return [...previous, ...page.items.filter((purchase) => !seen.has(purchase.id))]
+      })
       setCursor(page.nextCursor)
     } catch {
       if (current === revision.current) setError('Não foi possível carregar mais compras.')
@@ -77,22 +92,38 @@ export function useCashPurchases(userId, admin = false, status = '') {
   // acompanha checkout, cancelamento e confirmação sem polling.
   // Fica sem listener nenhum sempre que não há pending (inclusive admin=true, que já tem
   // sua própria tela com refresh() próprio -- ver AdminCashPurchases.jsx).
-  const pendingId = !admin ? purchases.find((p) => p.status === 'pending')?.id ?? null : null
+  const pendingId = !admin ? (pendingPurchase?.id ?? null) : null
   useEffect(() => {
     if (!pendingId) return undefined
     const channel = supabase
       .channel(`cash-purchase-${pendingId}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'cash_purchases', filter: `id=eq.${pendingId}` },
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'cash_purchases',
+          filter: `id=eq.${pendingId}`,
+        },
         (payload) => {
           // Atualiza checkout_url e status em outros dispositivos.
-          setPurchases((prev) => prev.map((p) => (p.id === pendingId ? mapPurchaseRow(payload.new) : p)))
+          const updated = mapPurchaseRow(payload.new)
+          setPendingPurchase(updated.status === 'pending' ? updated : null)
+          setPurchases((prev) => prev.map((p) => (p.id === pendingId ? updated : p)))
         }
       )
       .subscribe()
     return () => channel.unsubscribe()
   }, [pendingId])
 
-  return { hasMore: !!cursor, loadMore, purchases, loading, error, refresh, addPurchaseLocally }
+  return {
+    hasMore: !!cursor,
+    loadMore,
+    purchases,
+    pendingPurchase,
+    loading,
+    error,
+    refresh,
+    addPurchaseLocally,
+  }
 }

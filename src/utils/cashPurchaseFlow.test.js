@@ -5,6 +5,7 @@ import {
   hasPendingCashPurchase,
   cashPurchaseStatusLabel,
   openInfinitepayCheckout,
+  allowedInfinitepayCheckout,
   USER_CASH_PURCHASE_STATUS_LABELS,
   ADMIN_CASH_PURCHASE_STATUS_LABELS,
   abbreviateProtocol,
@@ -59,7 +60,7 @@ test('hasPendingCashPurchase is true only when some purchase is still pending', 
     hasPendingCashPurchase([
       { status: 'pending', paymentProvider: 'infinitepay', checkoutUrl: null },
     ]),
-    false
+    true
   )
   assert.equal(
     hasPendingCashPurchase([
@@ -148,6 +149,9 @@ test('checkout success navigates to the InfinitePay page and refuses other hosts
     /INVALID_CHECKOUT_URL/
   )
   assert.equal(opened.length, 1)
+  assert.equal(allowedInfinitepayCheckout('https://checkout.infinitepay.io/order'), true)
+  assert.equal(allowedInfinitepayCheckout('http://checkout.infinitepay.io/order'), false)
+  assert.equal(allowedInfinitepayCheckout('https://checkout.infinitepay.io.evil.test/order'), false)
 })
 
 test('abbreviateProtocol shortens a real 64-char sha256 protocol to prefix…suffix', () => {

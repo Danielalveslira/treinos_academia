@@ -173,6 +173,19 @@ export async function listMyCashPurchasesPage(userId, { cursor = null } = {}) {
   }
 }
 
+// A compra pendente pode estar além da primeira página do histórico.
+export async function getMyPendingCashPurchase(userId) {
+  const { data, error } = await supabase
+    .from('cash_purchases')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+  if (error) throw error
+  return data[0] ? mapPurchaseRow(data[0]) : null
+}
+
 export async function listCashPurchasesForAdminPage({ status = '', cursor = null } = {}) {
   let q = supabase
     .from('cash_purchases')
