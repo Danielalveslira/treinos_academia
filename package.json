@@ -10,11 +10,13 @@
     "lint": "eslint .",
     "test": "node --test --test-concurrency=1 \"src/**/*.test.js\"",
     "test:backfill": "node --test scripts/*.test.mjs",
+    "test:ci": "node --test scripts/ci/*.test.mjs",
     "test:functions": "node --test --test-concurrency=1 supabase/functions/*/*.test.js",
     "release:offline-check": "node scripts/release-offline-check.mjs",
     "release:offline-config": "node scripts/check-offline-release-config.mjs",
     "test:offline-browser": "node scripts/offline-browser-smoke.mjs",
     "budget": "node scripts/bundle-budget.mjs",
+    "validate:local": "node scripts/check-migration-integrity.mjs && node --test scripts/check-migration-integrity.test.mjs && npm run lint && npm run test:backfill && npm run test:ci && npm test && npm run build && npm run budget",
     "format": "prettier --write \"src/**/*.{js,jsx}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx}\""
   },
