@@ -1,20 +1,24 @@
 # Publicidade: auditoria da reformulação
 
-Estado desta entrega: pausa voluntária implementada e validada em banco local descartável; exclusão definitiva **bloqueada** até separar evidência imutável de conteúdo editorial. Nenhuma migration foi aplicada em produção.
+Estado desta entrega: pausa voluntária implementada e validada em banco local descartável, com retomada liberada para qualquer editor autorizado da conta (proprietário ou gerente ativo), não apenas quem originou a pausa. **Exclusão física de anúncios foi retirada definitivamente do planejamento** (decisão de produto, não limitação técnica temporária): arquivar continua sendo a única forma de remover um anúncio da listagem principal. A matriz de dependências abaixo é mantida só como registro histórico de por que uma exclusão física seria arriscada, não como trabalho pendente. Nenhuma migration foi aplicada em produção.
 
 ## Estados e permissões
 
 | Situação | Antes | Com a migration proposta |
 |---|---|---|
-| Proprietário pausa anúncio pago | `moderation_state=suspended`, igual a sanção administrativa; não pode retomar | `advertiser_paused_at/by` identificam a pausa; a entrega para imediatamente; só o autor ainda autorizado pode retomar durante o período vigente |
-| Administrador suspende | `moderation_state=suspended` | Continua `suspended`, exige permissão administrativa e justificativa; retomada do proprietário é negada |
+| Proprietário ou gerente autorizado pausa anúncio pago | `moderation_state=suspended`, igual a sanção administrativa; não pode retomar | `advertiser_paused_at/by` identificam a pausa e quem a originou; a entrega para imediatamente; **qualquer** editor ainda autorizado da mesma conta (proprietário ou gerente ativo) pode retomar durante o período vigente -- a pausa é uma ação da conta, não uma trava pessoal de quem clicou primeiro |
+| Administrador suspende | `moderation_state=suspended` | Continua `suspended`, exige permissão administrativa e justificativa; retomada do proprietário/gerente é negada |
 | Suspensão antiga sem origem comprovada | Indistinta na tela | Continua administrativa/desconhecida; nunca ganha `advertiser_paused_by` por inferência |
 | Contrato vencido | Não elegível para entrega | Retomada voluntária negada; renovação permanece condicionada ao motor comercial |
 | Arquivamento legado | Oculta entrega sem apagar conteúdo | Continua reconhecido, mas a ação saiu da interface principal; não é apresentado como exclusão |
 
 A consulta `get_advertising_campaigns` entrega o sinal autorizado `advertiser_paused` na mesma página de 20 itens. A projeção de status privilegia suspensão administrativa, depois pausa voluntária, depois validade e entrega. O fluxo usa a trava já compartilhada de `commercial_resources`; pausa e retomada só acrescentam operações de auditoria, sem alterar ordens ou reservas.
 
-## Matriz de dependências para exclusão física
+## Matriz de dependências para exclusão física (descartada do planejamento)
+
+A exclusão física de anúncios **não será implementada**. A tabela abaixo documenta por que essa
+ação seria arriscada -- registro histórico da investigação, para não reabrir a discussão sem essa
+base -- e não um roteiro de próximo PR.
 
 | Tabela / objeto | Papel e vínculo | Destino exigido para exclusão segura |
 |---|---|---|
@@ -38,8 +42,8 @@ A consulta `get_advertising_campaigns` entrega o sinal autorizado `advertiser_pa
 3. Mídias prontas usam `storefront_media` e Storage com referências em revisões, rascunho e projeção. A manutenção genérica existente depende de habilitação e prazo de tolerância; ainda não há integração para garantir a limpeza de uma campanha excluída.
 4. A Política de Privacidade vigente (`legal/documents.json`) admite retenção restrita de compras, reembolsos, atendimentos, moderação e segurança pelo tempo necessário a deveres legais ou defesa de direitos. Ela não fixa uma regra operacional para separar metadados de decisão do conteúdo criativo de cada revisão; não se pode decidir essa purga por suposição.
 
-Antes de habilitar “Excluir anúncio”, é necessária uma migration que separe evidência mínima de conteúdo criativo, preserve referências comerciais e autorize a purga editorial com um procedimento transacional estrito. A API deve devolver sucesso só depois do `DELETE` efetivo de `sponsored_ads` e `advertising_drafts`; uma fila persistente deve finalizar a mídia após o commit. Até isso estar implementado e testado, a ação de exclusão permanece indisponível para usuários e administradores.
+A ação **“Excluir anúncio”** não existe e não será adicionada à interface. Arquivar (`archive_advertising_campaign`) permanece a única forma de um anúncio sair da listagem principal sem apagar conteúdo criativo, contratos, comprovantes ou auditoria. Se o produto reconsiderar exclusão física no futuro, esta auditoria deve ser refeita do zero contra o esquema vigente naquele momento, não retomada a partir deste documento.
 
 ## Validação local
 
-Todas as migrations foram aplicadas na stack Supabase descartável. `advertising_campaigns_test.sql` passou 61 asserções, incluindo pausa, retomada, ausência de débito e autorização cruzada. `advertising_desired_duration_delivery_test.sql` passou 13, `commercial_engine_test.sql` passou 65 e `advertising_progress_banner_test.sql` passou 34. Cada fixture SQL foi revertida ao final da transação. Essa validação não demonstra a exclusão física, que segue indisponível.
+Todas as migrations foram aplicadas na stack Supabase descartável. `advertising_campaigns_test.sql` passou 66 asserções (61 originais + 5 cobrindo retomada por um gerente autorizado diferente de quem pausou), incluindo pausa, retomada, ausência de débito e autorização cruzada. `advertising_desired_duration_delivery_test.sql` passou 13, `commercial_engine_test.sql` passou 65, `advertising_progress_banner_test.sql` passou 34, `advertising_home_banner_rotation_test.sql` passou 16 e `product_storefronts_test.sql` passou 75. Cada fixture SQL foi revertida ao final da transação. Exclusão física não foi implementada e não há plano para implementá-la.
