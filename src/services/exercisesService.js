@@ -14,7 +14,7 @@ import {
 const MAX_EXERCISES = 300
 const CATALOG_BATCH_SIZE = 40
 const EXERCISE_COLUMNS =
-  '*, catalog:exercise_catalog!exercises_catalog_id_fkey(id, provider, provider_exercise_id, status)'
+  '*, catalog:exercise_catalog!exercises_catalog_id_fkey(id, provider, provider_exercise_id, status, name, primary_muscle, equipment, category)'
 const officialProvider = (provider) => ['evolutus_dataset', 'evolutus_original'].includes(provider)
 const referenceKey = (row) => JSON.stringify([row.provider, row.provider_exercise_id])
 
@@ -54,7 +54,7 @@ async function resolveLegacyCatalog(rows) {
     const batch = references.slice(offset, offset + CATALOG_BATCH_SIZE)
     const { data, error } = await supabase
       .from('exercise_catalog')
-      .select('id, provider, provider_exercise_id, status')
+      .select('id, provider, provider_exercise_id, status, name, primary_muscle, equipment, category')
       .in('provider', [...new Set(batch.map((row) => row.provider))])
       .in('provider_exercise_id', [...new Set(batch.map((row) => row.provider_exercise_id))])
       .eq('status', 'published')
@@ -70,22 +70,27 @@ async function resolveLegacyCatalog(rows) {
 }
 
 function toDoc(row) {
+  const synced = Object.hasOwn(row, 'catalog') ? matchesPublishedCatalog(row, row.catalog) : row.catalogAvailable
+  // The personal row's own name/muscle_group/equipment are a snapshot taken when the exercise
+  // was added, never touched again -- an official catalog update must not need remove+re-add to
+  // show here. Only override while the reference still resolves to a published catalog row;
+  // otherwise this exercise is custom or its catalog link is gone, and the stored snapshot is
+  // the only truth left, exactly as before this field existed.
+  const official = synced ? row.catalog : null
   return {
     id: row.id,
-    name: row.name,
-    muscleGroup: row.muscle_group,
-    type: row.type,
+    name: official?.name ?? row.name,
+    muscleGroup: official?.primary_muscle ?? row.muscle_group,
+    type: official ? (official.category === 'cardio' ? 'cardio' : 'strength') : row.type,
     note: row.note,
     active: row.active,
     source: row.source,
     provider: row.provider,
     providerExerciseId: row.provider_exercise_id,
     catalogId: row.catalog_id,
-    equipment: row.equipment,
+    equipment: official ? official.equipment ?? null : row.equipment,
     order: row.order,
-    catalogAvailable: Object.hasOwn(row, 'catalog')
-      ? matchesPublishedCatalog(row, row.catalog)
-      : row.catalogAvailable,
+    catalogAvailable: synced,
   }
 }
 

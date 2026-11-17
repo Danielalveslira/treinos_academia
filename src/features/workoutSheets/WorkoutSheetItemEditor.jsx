@@ -151,6 +151,12 @@ export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
           Indisponível: substitua antes de iniciar novos treinos.
         </Flash>
       )}
+      {item.exercise?.typeMismatch && (
+        <Flash variant="warning" sx={{ my: 2 }}>
+          A categoria oficial deste exercício mudou. As metas salvas abaixo são do tipo anterior e
+          continuam aqui; ajuste-as antes de salvar esta ficha novamente.
+        </Flash>
+      )}
       <Box
         sx={{
           display: 'flex',
