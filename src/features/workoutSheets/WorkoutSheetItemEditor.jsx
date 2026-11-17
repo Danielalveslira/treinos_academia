@@ -18,7 +18,7 @@ import {
   ChevronUpIcon,
   TrashIcon,
 } from '@primer/octicons-react'
-import { prescription, SHEET_LIMITS } from './workoutSheetValidation.js'
+import { incompatibleTargetFields, prescription, SHEET_LIMITS } from './workoutSheetValidation.js'
 import { formatRestDuration, resolveRestSeconds } from '../../utils/restTimer.js'
 const fields = [
   ['target_sets', 'Séries-alvo', 1, SHEET_LIMITS.sets],
@@ -96,6 +96,7 @@ export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
   defaultRestSeconds = null,
   focusField = null,
   onPatch,
+  onClearIncompatible,
   onMove,
   onRemove,
 }) {
@@ -104,6 +105,8 @@ export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
   const containerRef = useRef(null)
   const name = item.exercise?.name || 'Exercício indisponível'
   const cardio = item.exercise?.type === 'cardio'
+  const incompatible = incompatibleTargetFields(item)
+  const [confirmClear, setConfirmClear] = useState(false)
   // O cronômetro de descanso só existe entre séries: cardio mantém o campo numérico de antes.
   const summary = prescription(item, cardio ? {} : { defaultRestSeconds })
   // 5.3 (auditoria 2026-11-10): ao salvar com uma meta inválida, abre a seção automaticamente e
@@ -151,10 +154,33 @@ export const WorkoutSheetItemEditor = memo(function WorkoutSheetItemEditor({
           Indisponível: substitua antes de iniciar novos treinos.
         </Flash>
       )}
-      {item.exercise?.typeMismatch && (
+      {incompatible.length > 0 && (
         <Flash variant="warning" sx={{ my: 2 }}>
-          A categoria oficial deste exercício mudou. As metas salvas abaixo são do tipo anterior e
-          continuam aqui; ajuste-as antes de salvar esta ficha novamente.
+          A categoria deste exercício foi atualizada. Revise suas metas para continuar utilizando
+          esta ficha.
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
+            {confirmClear ? (
+              <>
+                <Button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => {
+                    onClearIncompatible(item.exercise_id)
+                    setConfirmClear(false)
+                  }}
+                >
+                  Confirmar remoção
+                </Button>
+                <Button type="button" onClick={() => setConfirmClear(false)}>
+                  Cancelar
+                </Button>
+              </>
+            ) : (
+              <Button type="button" disabled={disabled} onClick={() => setConfirmClear(true)}>
+                Remover metas incompatíveis
+              </Button>
+            )}
+          </Box>
         </Flash>
       )}
       <Box

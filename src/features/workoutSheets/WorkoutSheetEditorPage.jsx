@@ -27,6 +27,7 @@ import {
 } from './workoutSheetsService.js'
 import {
   EMPTY_SHEET,
+  incompatibleTargetFields,
   prescription,
   SHEET_GOALS,
   SHEET_LIMITS,
@@ -120,7 +121,9 @@ function Editor({ initial, online, resumedRequestId = null }) {
   // Retomando uma tentativa de criação não confirmada: a linha de base nunca é a ficha retomada
   // em si (sheetFingerprint('') nunca bate com nada real) -- Salvar precisa ficar disponível de
   // imediato para o usuário poder confirmar/reconciliar a tentativa, mesmo sem alterar nada.
-  const [baseline, setBaseline] = useState(() => (resumedRequestId ? '' : sheetFingerprint(initial)))
+  const [baseline, setBaseline] = useState(() =>
+    resumedRequestId ? '' : sheetFingerprint(initial)
+  )
   const [busy, setBusy] = useState(false),
     [cancelling, setCancelling] = useState(false),
     [message, setMessage] = useState(''),
@@ -150,6 +153,21 @@ function Editor({ initial, online, resumedRequestId = null }) {
       current?.exerciseId === exerciseId && current.field === key ? null : current
     )
   }, [])
+  const clearIncompatibleTargets = useCallback((exerciseId) => {
+    setSheet((s) => ({
+      ...s,
+      items: s.items.map((item) => {
+        if (item.exercise_id !== exerciseId) return item
+        const fields = incompatibleTargetFields(item)
+        return {
+          ...item,
+          ...Object.fromEntries(fields.map((key) => [key, null])),
+          exercise: { ...item.exercise, typeMismatch: false },
+        }
+      }),
+    }))
+    setInvalidField(null)
+  }, [])
   const move = useCallback((index, delta) => {
     setSheet((s) => {
       const items = [...s.items]
@@ -178,7 +196,9 @@ function Editor({ initial, online, resumedRequestId = null }) {
     const invalid = validateSheet(sheet)
     if (invalid) {
       setMessage(invalid.message)
-      setInvalidField(invalid.exerciseId ? { exerciseId: invalid.exerciseId, field: invalid.field } : null)
+      setInvalidField(
+        invalid.exerciseId ? { exerciseId: invalid.exerciseId, field: invalid.field } : null
+      )
       return
     }
     setInvalidField(null)
@@ -206,7 +226,9 @@ function Editor({ initial, online, resumedRequestId = null }) {
           // Em criação, sheet.id ainda não existe localmente -- a mesma ficha só é resolvível
           // pelo create_request_id desta tentativa (P0, continuação da auditoria 2026-11-10).
           setServer(
-            isNew ? await getWorkoutSheetByRequestId(requestId.current) : await getWorkoutSheet(sheet.id)
+            isNew
+              ? await getWorkoutSheetByRequestId(requestId.current)
+              : await getWorkoutSheet(sheet.id)
           )
         } catch {
           /* Original edits remain visible. */
@@ -296,8 +318,8 @@ function Editor({ initial, online, resumedRequestId = null }) {
       </Box>
       {resumedRequestId && !server && (
         <Flash variant="warning" sx={{ mb: 3 }}>
-          Uma tentativa de criação anterior não foi confirmada. Revise os dados abaixo e salve
-          para concluir, ou cancele.
+          Uma tentativa de criação anterior não foi confirmada. Revise os dados abaixo e salve para
+          concluir, ou cancele.
         </Flash>
       )}
       {!online && (
@@ -475,8 +497,11 @@ function Editor({ initial, online, resumedRequestId = null }) {
                   total={sheet.items.length}
                   disabled={disabled}
                   defaultRestSeconds={defaultRestSeconds}
-                  focusField={invalidField?.exerciseId === item.exercise_id ? invalidField.field : null}
+                  focusField={
+                    invalidField?.exerciseId === item.exercise_id ? invalidField.field : null
+                  }
                   onPatch={patchItem}
+                  onClearIncompatible={clearIncompatibleTargets}
                   onMove={move}
                   onRemove={removeItem}
                 />

@@ -7,7 +7,7 @@ const key = (uid) => userMetaKey(uid, 'sheet-snapshots')
 
 export function validSheetSnapshot(row, uid, now = Date.now()) {
   return Boolean(
-    row?.schema_version === 1 &&
+    row?.schema_version === 2 &&
     row.user_id === uid &&
     row.validated_at <= now &&
     now - row.validated_at < SHEET_SNAPSHOT_TTL &&
@@ -16,7 +16,10 @@ export function validSheetSnapshot(row, uid, now = Date.now()) {
     row.sheet.items?.length > 0 &&
     row.sheet.items.length <= 40 &&
     row.sheet.items.every(
-      (item) => item.available === true && item.exercise?.id === item.exercise_id
+      (item) =>
+        item.available === true &&
+        item.exercise?.id === item.exercise_id &&
+        typeof item.exercise.typeMismatch === 'boolean'
     )
   )
 }
@@ -25,7 +28,7 @@ export function validSheetSnapshot(row, uid, now = Date.now()) {
 // no images, no new store, and never any mutation/outbox deletion.
 export function saveSheetSnapshot(uid, sheet, at = Date.now()) {
   const value = {
-    schema_version: 1,
+    schema_version: 2,
     user_id: uid,
     validated_at: at,
     sheet: {
@@ -58,6 +61,7 @@ export function saveSheetSnapshot(uid, sheet, at = Date.now()) {
               'provider',
               'providerExerciseId',
               'catalogId',
+              'typeMismatch',
             ].map((field) => [field, item.exercise[field]])
           ),
       })),

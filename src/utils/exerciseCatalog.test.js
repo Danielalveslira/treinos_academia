@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { MUSCLE_GROUPS } from '../constants/muscleGroups.js'
 import { EXERCISE_TYPES } from './exerciseType.js'
 import {
@@ -40,6 +41,17 @@ test('mapCatalogMuscleToLibraryGroup cobre os 17 primary_muscle reais do catálo
   for (const [muscle, expectedGroup] of Object.entries(REAL_PRIMARY_MUSCLES_TO_GROUP)) {
     assert.equal(mapCatalogMuscleToLibraryGroup(muscle), expectedGroup, `músculo "${muscle}"`)
   }
+})
+
+test('projeção SQL dos grupos equivale ao mapeamento JavaScript para todos os músculos conhecidos', () => {
+  const sql = readFileSync(new URL('../../supabase/migrations/20261222000008_catalog_personal_group_projection.sql', import.meta.url), 'utf8')
+  const mapping = [...sql.matchAll(/^\s+when '([^']+)' then '([^']+)'$/gm)]
+  assert.ok(mapping.length >= 17)
+  for (const [, muscle, group] of mapping) {
+    assert.equal(mapCatalogMuscleToPersonalGroup({ category: 'forca', primaryMuscles: [muscle] }), group, muscle)
+  }
+  assert.match(sql, /when p_category = 'cardio' then 'Cardio'/)
+  assert.equal(mapCatalogMuscleToPersonalGroup({ category: 'cardio', primaryMuscles: ['quadriceps'] }), 'Cardio')
 })
 
 test('mapCatalogMuscleToLibraryGroup tem um fallback explícito (nunca lança) pra músculo desconhecido', () => {

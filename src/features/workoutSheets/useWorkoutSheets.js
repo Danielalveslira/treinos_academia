@@ -37,6 +37,8 @@ export function useWorkoutSheets(
             if (id) {
               const sheet = sheets.find((sheet) => sheet.id === id)
               if (!sheet) throw new Error('SHEET_NETWORK_REQUIRED')
+              if (execution && sheet.items.some((item) => item.exercise.typeMismatch))
+                throw new Error('SHEET_NOT_READY')
               return sheet
             }
             return sheets
@@ -48,7 +50,9 @@ export function useWorkoutSheets(
               .map((sheet) => ({
                 ...sheet,
                 exercise_count: sheet.items.length,
-                available: true,
+                available: sheet.items.every(
+                  (item) => item.available && !item.exercise.typeMismatch
+                ),
               }))
           })
         : id
@@ -66,8 +70,10 @@ export function useWorkoutSheets(
             : listWorkoutSheets(archived, page)
     request.then(
       async (data) => {
-        if (active && online && !offlineLocal && id && execution)
-          await saveSheetSnapshot(user.uid, data, startedAt)
+        if (active && online && !offlineLocal && id) {
+          const saved = await saveSheetSnapshot(user.uid, data, startedAt)
+          if (!saved) await invalidateSheetSnapshots(user.uid, id)
+        }
         if (active) setState({ key, data, loading: false })
       },
       async (error) => {

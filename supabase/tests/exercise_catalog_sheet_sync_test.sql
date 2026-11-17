@@ -54,7 +54,7 @@ values ((select id from sheet_id),'98f00000-0000-0000-0000-000000000001','98e100
 -- The superadmin publishes a correction directly on the catalog row (the RPC path is already
 -- covered by exercise_catalog_safe_pending_test.sql; this test is about propagation to
 -- consumers, not about the publish RPC itself).
-update public.exercise_catalog set name='Mesa Flexora Deitada',primary_muscle='posterior-coxa' where id='98c10000-0000-0000-0000-000000000001';
+update public.exercise_catalog set name='Mesa Flexora Deitada',primary_muscle='isquiotibiais' where id='98c10000-0000-0000-0000-000000000001';
 
 select pg_temp.set_test_user('98f00000-0000-0000-0000-000000000001',true);
 set local role authenticated;
@@ -67,8 +67,8 @@ select is(
 );
 select is(
   (select result->'items'->0->'exercise'->>'muscleGroup' from sheet_view),
-  'posterior-coxa',
-  'ficha mostra o músculo oficial atualizado'
+  'Pernas',
+  'ficha mostra o grupo operacional correspondente ao músculo oficial atualizado'
 );
 select is(
   (select result->'items'->0->'exercise'->>'id' from sheet_view)::uuid,
@@ -101,7 +101,7 @@ select is(
 
 -- list_my_workout_sheets: mesma resolução ao nível do card (chip de grupo muscular).
 select is(
-  (select (public.list_my_workout_sheets()->0->'muscle_groups') ? 'posterior-coxa'),
+  (select (public.list_my_workout_sheets()->0->'muscle_groups') ? 'Pernas'),
   true,
   'lista de fichas mostra o músculo oficial atualizado no chip do card'
 );
