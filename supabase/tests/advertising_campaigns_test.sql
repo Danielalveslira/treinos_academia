@@ -133,6 +133,8 @@ select is((select advertiser_paused_by from private.commercial_resources where i
 select is((select action from public.advertising_operations where resource_id='76100000-0000-0000-0000-000000000001' order by id desc limit 1),'advertiser_resume','resume by another manager is still audited');
 select is((select actor_user_id from public.advertising_operations where resource_id='76100000-0000-0000-0000-000000000001' order by id desc limit 1),'76000000-0000-0000-0000-000000000004'::uuid,'the audit trail attributes the resume to whoever actually performed it');
 update public.advertiser_members set revoked_at=now() where user_id='76000000-0000-0000-0000-000000000004';
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000004',true);
+select throws_ok($$select public.resume_my_advertising_campaign('76100000-0000-0000-0000-000000000001')$$,'42501','PERMISSION_DENIED','manager with revoked permission cannot resume, even with no active pause');
 select pg_temp.ads_admin();
 select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic administrative suspension');
 select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
