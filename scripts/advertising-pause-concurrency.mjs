@@ -6,7 +6,8 @@ import { promisify } from 'node:util'
 import { verifyLocalPostgresImage } from './homolog/finance/images.mjs'
 
 const container = process.env.PG_TEST_CONTAINER || 'hdb'
-if (container !== 'hdb') throw new Error('LOCAL_DATABASE_REQUIRED')
+if (!['hdb', 'evolutus_pr152_db', 'supabase_db_treinos_academia', 'evolutus_integrated_db'].includes(container))
+  throw new Error('LOCAL_DATABASE_REQUIRED')
 verifyLocalPostgresImage(
   JSON.parse(execFileSync('docker', ['inspect', container], { encoding: 'utf8' }))[0]
 )
@@ -60,6 +61,7 @@ await sql(`insert into auth.users(id,aud,role,email,encrypted_password,email_con
     values(${q(ad)},'Synthetic','Concurrent pause',${q(user)},array['banner'],true);
   insert into private.commercial_resources(id,offering_code,owner_user_id,content_revision,
     approved_revision,moderation_state) values(${q(ad)},'ad_home',${q(user)},1,1,'approved');
+  update public.sponsored_ads set commercial_resource_id=${q(ad)} where id=${q(ad)};
   insert into private.advertising_drafts(ad_id,account_id,version,state,title,destination,
     creation_request,approved_version) values(${q(ad)},${q(account)},1,'approved',
     'Concurrent pause','https://example.invalid/pause-race','{}',1);
@@ -110,9 +112,35 @@ await sql(`update private.commercial_resources set advertiser_pause_count=3,
   advertiser_pause_period_start=(select starts_at from public.visibility_entitlements where resource_id=${q(ad)})
   where id=${q(ad)}`)
 await Promise.all([
-  asOwner(`select public.interrupt_advertising_campaign(${q(ad)},'Concurrent fourth pause A')`),
-  asOwner(`select public.interrupt_advertising_campaign(${q(ad)},'Concurrent fourth pause B')`),
+  asOwner(
+    `select public.interrupt_advertising_campaign(${q(ad)},'Concurrent fourth pause A')`
+  ).then(
+    () => assert.fail('unconfirmed suspension'),
+    (error) => assert.match(error.message, /AD_PAUSE_LIMIT_CONFIRM_REQUIRED/)
+  ),
+  asOwner(
+    `select public.interrupt_advertising_campaign(${q(ad)},'Concurrent fourth pause B')`
+  ).then(
+    () => assert.fail('unconfirmed suspension'),
+    (error) => assert.match(error.message, /AD_PAUSE_LIMIT_CONFIRM_REQUIRED/)
+  ),
 ])
+assert.equal(
+  await sql(`select moderation_state from private.commercial_resources where id=${q(ad)}`),
+  'approved'
+)
+const period = await sql(
+  `select starts_at::text from public.visibility_entitlements where resource_id=${q(ad)}`
+)
+const revision = await sql(
+  `select approved_revision from private.commercial_resources where id=${q(ad)}`
+)
+const operation = await sql(
+  `select id from public.advertising_operations where resource_id=${q(ad)} order by id desc limit 1`
+)
+await asOwner(
+  `select public.confirm_advertising_pause_limit(${q(ad)},${q(period)},${revision},${operation},'Confirmed fourth pause')`
+)
 assert.equal(
   await sql(`select moderation_state from private.commercial_resources where id=${q(ad)}`),
   'suspended'

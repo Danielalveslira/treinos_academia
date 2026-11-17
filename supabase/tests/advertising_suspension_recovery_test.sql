@@ -32,6 +32,7 @@ insert into public.sponsored_ads(id,partner_name,title,created_by,display_mode,i
 values ('97200000-0000-0000-0000-000000000001','Parceiro','Anúncio recuperável','97000000-0000-0000-0000-000000000001',array['banner'],true);
 insert into private.commercial_resources(id,offering_code,owner_user_id,content_revision,approved_revision,moderation_state)
 values ('97200000-0000-0000-0000-000000000001','ad_home','97000000-0000-0000-0000-000000000001',2,2,'suspended');
+update public.sponsored_ads set commercial_resource_id='97200000-0000-0000-0000-000000000001' where id='97200000-0000-0000-0000-000000000001';
 insert into private.advertising_drafts(ad_id,account_id,version,state,title,destination,creation_request,approved_version)
 values ('97200000-0000-0000-0000-000000000001','97100000-0000-0000-0000-000000000001',2,'approved','Anúncio recuperável','https://example.invalid/recover','{}',2);
 insert into public.commercial_orders(id,payer_user_id,request_id,resource_id,offering_code,price_version_id,content_revision,duration_days,unit_price_cash,total_cash,status,quote_expires_at,fulfilled_at,period_start,period_end)
@@ -46,6 +47,7 @@ insert into public.sponsored_ads(id,partner_name,title,created_by,display_mode,i
 values ('97200000-0000-0000-0000-000000000002','Parceiro','Anúncio moderado de verdade','97000000-0000-0000-0000-000000000001',array['banner'],true);
 insert into private.commercial_resources(id,offering_code,owner_user_id,content_revision,approved_revision,moderation_state)
 values ('97200000-0000-0000-0000-000000000002','ad_home','97000000-0000-0000-0000-000000000001',1,1,'suspended');
+update public.sponsored_ads set commercial_resource_id='97200000-0000-0000-0000-000000000002' where id='97200000-0000-0000-0000-000000000002';
 insert into private.advertising_drafts(ad_id,account_id,version,state,title,destination,creation_request,approved_version)
 values ('97200000-0000-0000-0000-000000000002','97100000-0000-0000-0000-000000000001',1,'approved','Anúncio moderado de verdade','https://example.invalid/moderated','{}',1);
 insert into public.commercial_orders(id,payer_user_id,request_id,resource_id,offering_code,price_version_id,content_revision,duration_days,unit_price_cash,total_cash,status,quote_expires_at,fulfilled_at,period_start,period_end)
@@ -60,6 +62,7 @@ insert into public.sponsored_ads(id,partner_name,title,created_by,display_mode,i
 values ('97200000-0000-0000-0000-000000000003','Parceiro','Anúncio vencido','97000000-0000-0000-0000-000000000001',array['banner'],true);
 insert into private.commercial_resources(id,offering_code,owner_user_id,content_revision,approved_revision,moderation_state)
 values ('97200000-0000-0000-0000-000000000003','ad_home','97000000-0000-0000-0000-000000000001',1,1,'suspended');
+update public.sponsored_ads set commercial_resource_id='97200000-0000-0000-0000-000000000003' where id='97200000-0000-0000-0000-000000000003';
 insert into private.advertising_drafts(ad_id,account_id,version,state,title,destination,creation_request,approved_version)
 values ('97200000-0000-0000-0000-000000000003','97100000-0000-0000-0000-000000000001',1,'approved','Anúncio vencido','https://example.invalid/expired','{}',1);
 insert into public.commercial_orders(id,payer_user_id,request_id,resource_id,offering_code,price_version_id,content_revision,duration_days,unit_price_cash,total_cash,status,quote_expires_at,fulfilled_at,period_start,period_end)

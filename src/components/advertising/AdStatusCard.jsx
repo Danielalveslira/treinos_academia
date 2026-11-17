@@ -4,6 +4,7 @@ import { Box, Button, Dialog, Flash, Label, Text } from '@primer/react'
 import {
   getAdvertisingOrders,
   getAdvertisingRevisions,
+  confirmAdvertisingPauseLimit,
   interruptAdvertisingCampaign,
   resumeMyAdvertisingCampaign,
 } from '../../services/advertisingService'
@@ -48,11 +49,37 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
     try {
       if (action === 'interrupt')
         await interruptAdvertisingCampaign(campaign.ad_id, 'Interrupção solicitada pelo anunciante')
+      if (action === 'confirm-limit')
+        await confirmAdvertisingPauseLimit(
+          campaign,
+          'Suspensão confirmada pelo anunciante após três pausas'
+        )
       if (action === 'resume') await resumeMyAdvertisingCampaign(campaign.ad_id)
       await onChange?.()
-      if (action === 'interrupt') setConfirmPause(false)
+      if (action === 'interrupt' || action === 'confirm-limit') setConfirmPause(false)
     } catch (e) {
-      setError(commercialError(e))
+      if (String(e?.message).includes('AD_PAUSE_LIMIT_CONFIRM_REQUIRED')) {
+        try {
+          const fresh = (await onChange?.())?.find((row) => row.ad_id === campaign.ad_id)
+          setConfirmPause(fresh?.pauses_available === 0 && deriveAdStatus(fresh).key === 'live')
+          setError(
+            'O limite de pausas foi atingido. Confira a situação atualizada antes de confirmar a suspensão.'
+          )
+        } catch (refreshError) {
+          setConfirmPause(false)
+          setError(commercialError(refreshError))
+        }
+      } else {
+        setError(commercialError(e))
+        if (action === 'confirm-limit') {
+          setConfirmPause(false)
+          try {
+            await onChange?.()
+          } catch (refreshError) {
+            setError(commercialError(refreshError))
+          }
+        }
+      }
     } finally {
       lock.current = false
       setBusy(false)
@@ -316,7 +343,11 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
               <Button disabled={busy} onClick={() => setConfirmPause(false)}>
                 Cancelar
               </Button>
-              <Button variant="danger" disabled={busy} onClick={() => run('interrupt')}>
+              <Button
+                variant="danger"
+                disabled={busy}
+                onClick={() => run(status.pausesAvailable === 0 ? 'confirm-limit' : 'interrupt')}
+              >
                 {status.pausesAvailable === 0 ? 'Confirmar suspensão' : 'Pausar anúncio'}
               </Button>
             </Box>

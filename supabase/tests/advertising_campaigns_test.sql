@@ -175,7 +175,24 @@ rollback to savepoint period_projection;
 -- return), and clicking pause without confirming never reaches the server at all (frontend-only
 -- dialog state) -- both already guaranteed by the existing advertiser_paused_at is not null
 -- early return, reused unchanged by this migration.
-select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic pause number 4, confirmed');
+select throws_ok($$select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic pause number 4 without confirmation')$$,'AD_PAUSE_LIMIT_CONFIRM_REQUIRED','fourth ordinary pause does not suspend');
+select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'approved','the unconfirmed fourth pause leaves delivery active');
+select throws_ok($$select public.confirm_advertising_pause_limit('76100000-0000-0000-0000-000000000001',now()-interval '1 day',1,0,'Stale confirmation')$$,'AD_PAUSE_CONFIRM_STALE','stale confirmation is rejected');
+create temporary table pause_confirmation_token as select
+ (select starts_at from public.visibility_entitlements where resource_id='76100000-0000-0000-0000-000000000001') period_start,
+ (select approved_revision from private.commercial_resources where id='76100000-0000-0000-0000-000000000001') revision,
+ (select id from public.advertising_operations where resource_id='76100000-0000-0000-0000-000000000001' order by id desc limit 1) operation_id;
+select public.confirm_advertising_pause_limit('76100000-0000-0000-0000-000000000001',
+ (select period_start from pause_confirmation_token),
+ (select revision from pause_confirmation_token),
+ (select operation_id from pause_confirmation_token),
+ 'Suspensão confirmada após três pausas');
+select public.confirm_advertising_pause_limit('76100000-0000-0000-0000-000000000001',
+ (select period_start from pause_confirmation_token),
+ (select revision from pause_confirmation_token),
+ (select operation_id from pause_confirmation_token),
+ 'Suspensão confirmada após três pausas');
+select is((select count(*) from public.advertising_operations where resource_id='76100000-0000-0000-0000-000000000001' and action='suspend_pause_limit'),1::bigint,'retry after a lost confirmation response does not create another suspension operation');
 select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Duplicate call, same pause');
 select is((select advertiser_pause_count from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),3::smallint,'a duplicated call while already suspended by the limit does not increment further');
 select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'suspended','a 4th confirmed pause becomes an Evolutus-side suspension, not a 4th resumable pause');
@@ -197,18 +214,20 @@ select public.admin_resume_advertising_campaign('76100000-0000-0000-0000-0000000
 select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
 select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'approved','administrative release restores delivery');
 select is((select advertiser_pause_count from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),3::smallint,'administrative release does not reset or grant additional pauses');
-select lives_ok($$select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic pause attempt right after release')$$,'pausing right after release still runs (the exhausted limit suspends again; it does not block the call itself)');
-select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'suspended','pausing again right after release immediately re-suspends by the still-exhausted limit');
-select pg_temp.ads_admin();
-select public.admin_resume_advertising_campaign('76100000-0000-0000-0000-000000000001',
-  (select approved_revision from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),
-  'Segunda liberação administrativa, para continuar os testes de suspensão real');
+select throws_ok($$select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic pause attempt right after release')$$,'AD_PAUSE_LIMIT_CONFIRM_REQUIRED','administrative release does not allow an unconfirmed fourth pause');
+select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'approved','unconfirmed pause after release does not re-suspend');
 
 select pg_temp.ads_admin();
 -- interrupt_advertising_campaign is advertiser-only now (see 20261222000001): a superadmin
 -- acting outside the admin console follows the advertiser's own rules just like anyone else.
 -- Real administrative suspension has its own dedicated, explicitly-authorized RPC.
 select throws_ok($$select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic administrative suspension attempt')$$,'42501','AD_EDITOR_REQUIRED','admin acting outside the console cannot use the advertiser pause path on someone else''s ad');
+insert into private.commercial_resources(id,offering_code,owner_user_id,content_revision,approved_revision,moderation_state)
+  select '76100000-0000-0000-0000-000000000099',code,'76000000-0000-0000-0000-000000000001',1,1,'approved'
+  from public.commercial_offerings where code not like 'ad_%' order by code limit 1;
+select throws_ok($$select public.admin_suspend_advertising_campaign('76100000-0000-0000-0000-000000000099','Tentativa fora do domínio de anúncios')$$,
+  'AD_NOT_FOUND','a RPC administrativa não suspende outro tipo de recurso comercial');
+select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000099'),'approved','recurso externo permanece intocado');
 select public.admin_suspend_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic administrative suspension');
 savepoint suspended_renewal;
 update public.visibility_entitlements set expires_at=expires_at+interval '1 day'

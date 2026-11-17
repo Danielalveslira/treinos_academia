@@ -1,7 +1,7 @@
 {
   "localOnly": true,
-  "container": "evolutus_price_phase1_db",
-  "offering": "synthetic_e0a024ede86f4627a8078c265515909a",
+  "container": "supabase_db_treinos_academia",
+  "offering": "synthetic_9c24ddae687442a091056f42b39b512e",
   "lastSlotRace": true,
   "sixReplays": true,
   "simultaneousRenewals": true,

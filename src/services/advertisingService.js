@@ -38,6 +38,14 @@ export const reviewAdvertisingCampaign = (campaign, approve, reason) =>
   })
 export const interruptAdvertisingCampaign = (id, reason) =>
   rpc('interrupt_advertising_campaign', { p_id: id, p_reason: reason })
+export const confirmAdvertisingPauseLimit = (campaign, reason) =>
+  rpc('confirm_advertising_pause_limit', {
+    p_id: campaign.ad_id,
+    p_period_start: campaign.starts_at,
+    p_expected_revision: campaign.approved_version,
+    p_expected_operation_id: campaign.pause_operation_id,
+    p_reason: reason,
+  })
 export const resumeMyAdvertisingCampaign = (id) =>
   rpc('resume_my_advertising_campaign', { p_id: id })
 export const getAdvertisingInventory = () => rpc('admin_advertising_inventory')
