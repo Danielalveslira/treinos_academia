@@ -39,7 +39,7 @@ before(async () => {
           const stubs = {
             '/hooks/useAuth': `export const useAuth=()=>({user:{uid:globalThis.__sheetReview.uid},offlineLocal:false})`,
             '/hooks/useOnlineStatus': `export const useOnlineStatus=()=>globalThis.__sheetReview.online`,
-            '/services/offline/sheetSnapshot.js': `export const readSheetSnapshots=async()=>globalThis.__sheetReview.snapshots;export const saveSheetSnapshot=async()=>{};export const invalidateSheetSnapshots=async(...args)=>globalThis.__sheetReview.invalidations.push(args)`,
+            '/services/offline/sheetSnapshot.js': `export const readSheetSnapshots=async()=>globalThis.__sheetReview.snapshots;export const saveSheetSnapshot=async()=>true;export const invalidateSheetSnapshots=async(...args)=>globalThis.__sheetReview.invalidations.push(args)`,
             './workoutSheetsService.js': `export const getWorkoutSheet=(id)=>globalThis.__sheetReview.read(id);export const getSheetInsightsForExercise=(id)=>{globalThis.__sheetReview.aggregateCalls.push(id);return globalThis.__sheetReview.aggregate(id)};export const listWorkoutSheets=async()=>[]`,
             '/services/workoutsService.js': `export const getSheetInsights=async()=>({sheets:[]})`,
             '/utils/pageCache.js': `export const fetchCached=(key,read)=>read()`,
@@ -157,8 +157,8 @@ test('offline exercise filtering uses only previously validated snapshots', asyn
   const f = fixture()
   f.online = false
   f.snapshots = [
-    { id: 'yes', items: [{ exercise_id: 'exercise-1', available: true }] },
-    { id: 'no', items: [{ exercise_id: 'other', available: true }] },
+    { id: 'yes', items: [{ exercise_id: 'exercise-1', available: true, exercise: { typeMismatch: false } }] },
+    { id: 'no', items: [{ exercise_id: 'other', available: true, exercise: { typeMismatch: false } }] },
   ]
   let root
   await api.act(async () => {

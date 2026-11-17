@@ -28,7 +28,10 @@ export default function WorkoutSheetDetailPage() {
     return ''
   }
   const ready =
-    sheet && !sheet.archived_at && sheet.items.length > 0 && sheet.items.every((i) => i.available)
+    sheet &&
+    !sheet.archived_at &&
+    sheet.items.length > 0 &&
+    sheet.items.every((i) => i.available && !i.exercise?.typeMismatch)
   const metaLine = sheet
     ? [
         SHEET_GOALS[sheet.goal],
@@ -96,6 +99,12 @@ export default function WorkoutSheetDetailPage() {
                     publicado e ativo.
                   </Flash>
                 )}
+                {item.exercise?.typeMismatch && (
+                  <Flash variant="warning" className="sheet-row-warning">
+                    A categoria oficial mudou. Ajuste as metas deste exercício na ficha antes de
+                    iniciar um novo treino.
+                  </Flash>
+                )}
               </li>
             ))}
           </ol>
@@ -105,9 +114,7 @@ export default function WorkoutSheetDetailPage() {
           </p>
           <Button
             variant="primary"
-            onClick={() =>
-              navigate(`/novo-treino?ficha=${id}`, { state: originState(location) })
-            }
+            onClick={() => navigate(`/novo-treino?ficha=${id}`, { state: originState(location) })}
             disabled={!ready || !online}
           >
             Iniciar treino

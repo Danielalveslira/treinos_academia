@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useRef } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import {
   listExercises,
@@ -29,6 +29,32 @@ export function ExercisesProvider({ children, enabled = true }) {
     fetchValue,
     { keepPreviousScope: user.uid, enabled }
   )
+  useEffect(() => {
+    if (!enabled || offlineLocal || typeof document === 'undefined') return undefined
+    let lastCheck = Date.now()
+    let reconnectPending = false
+    const revalidate = () => {
+      if (globalThis.navigator?.onLine === false || document.visibilityState === 'hidden') return
+      if (!reconnectPending && Date.now() - lastCheck < 5 * 60 * 1000) return
+      reconnectPending = false
+      lastCheck = Date.now()
+      refresh()
+    }
+    const reconnect = () => {
+      if (document.visibilityState === 'hidden') {
+        reconnectPending = true
+        return
+      }
+      lastCheck = Date.now()
+      refresh()
+    }
+    document.addEventListener('visibilitychange', revalidate)
+    globalThis.addEventListener?.('online', reconnect)
+    return () => {
+      document.removeEventListener('visibilitychange', revalidate)
+      globalThis.removeEventListener?.('online', reconnect)
+    }
+  }, [enabled, offlineLocal, refresh])
   const exercises = data || EMPTY
   const exercisesRef = useRef({ userId: user.uid, data: exercises })
   exercisesRef.current = { userId: user.uid, data: exercises }

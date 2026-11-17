@@ -18,6 +18,7 @@ window.__adsCalls = []
 const track = (name, args) => window.__adsCalls.push({ name, args })
 let seq = 0
 const store = new Map()
+window.__adsStore = store
 const ACCOUNT = { id: 'A', name: 'Empresa A', active: true, can_manage: true }
 const COMMUNITIES = [{ id: 'c1', name: 'Comunidade de Teste' }]
 const ISO = (daysFromNow) => new Date(Date.now() + daysFromNow * 86400000).toISOString()
@@ -35,6 +36,10 @@ function seed(row) {
     can_pay: true, placements: row.placements || [{ code: 'home_banner', context: '00000000-0000-0000-0000-000000000000' }],
     placement_delivery_active: row.placement_delivery_active ?? null,
     advertiser_paused: row.advertiser_paused ?? false,
+    pauses_available: row.pauses_available ?? null,
+    pauses_used: row.pauses_used ?? null,
+    pause_operation_id: row.pause_operation_id ?? 17,
+    suspension_origin: row.suspension_origin ?? null,
     tariff: row.tariff || { salesEnabled: true, price: '7', minDays: 1, maxDays: 30 },
   })
 }
@@ -42,15 +47,18 @@ seed({ ad_id: 'ad-draft', state: 'draft', moderation_state: 'draft', title: 'Ras
 seed({ ad_id: 'ad-submitted', state: 'submitted', moderation_state: 'draft', title: 'Em análise agora', destination: 'https://example.invalid/review', delivery_state: 'private' })
 seed({ ad_id: 'ad-salesoff', state: 'approved', moderation_state: 'approved', title: 'Aprovado sem vendas', destination: 'https://example.invalid/salesoff', delivery_state: 'private', tariff: { salesEnabled: false, price: '7', minDays: 1, maxDays: 30 } })
 seed({ ad_id: 'ad-approved-ok', state: 'approved', moderation_state: 'approved', title: 'Aprovado com vendas abertas', destination: 'https://example.invalid/ok', delivery_state: 'private' })
-seed({ ad_id: 'ad-live', state: 'approved', moderation_state: 'approved', title: 'Whey para quem quer fazer mais!', destination: 'https://example.invalid/whey', description: 'Promoção de lançamento', media_id: 'media-live', starts_at: ISO(-2), expires_at: ISO(5), delivery_state: 'active', placement_delivery_active: true })
-seed({ ad_id: 'ad-paused', state: 'approved', moderation_state: 'approved', advertiser_paused: true, title: 'Pausado manualmente', destination: 'https://example.invalid/paused', starts_at: ISO(-10), expires_at: ISO(10), delivery_state: 'private', placement_delivery_active: false })
+seed({ ad_id: 'ad-live', state: 'approved', moderation_state: 'approved', title: 'Whey para quem quer fazer mais!', destination: 'https://example.invalid/whey', description: 'Promoção de lançamento', media_id: 'media-live', starts_at: ISO(-2), expires_at: ISO(5), delivery_state: 'active', placement_delivery_active: true, pauses_available: 3, pauses_used: 0 })
+seed({ ad_id: 'ad-paused', state: 'approved', moderation_state: 'approved', advertiser_paused: true, title: 'Pausado manualmente', destination: 'https://example.invalid/paused', starts_at: ISO(-10), expires_at: ISO(10), delivery_state: 'private', placement_delivery_active: false, pauses_available: 2, pauses_used: 1 })
+seed({ ad_id: 'ad-limit', state: 'approved', moderation_state: 'approved', title: 'Anúncio no limite', destination: 'https://example.invalid/limit', starts_at: ISO(-2), expires_at: ISO(5), delivery_state: 'active', placement_delivery_active: true, pauses_available: 0, pauses_used: 3 })
+seed({ ad_id: 'ad-stale', state: 'approved', moderation_state: 'approved', title: 'Anúncio em outra aba', destination: 'https://example.invalid/stale', starts_at: ISO(-2), expires_at: ISO(5), delivery_state: 'active', placement_delivery_active: true, pauses_available: 1, pauses_used: 2 })
 seed({ ad_id: 'ad-rejected', state: 'rejected', moderation_state: 'draft', title: 'Reprovado', destination: 'https://example.invalid/rejected', review_reason: 'Imagem não condiz com o destino', delivery_state: 'private' })
 seed({ ad_id: 'ad-archived', state: 'archived', moderation_state: 'archived', title: 'Arquivado antigo', destination: 'https://example.invalid/archived', delivery_state: 'private' })
 
 async function createAdvertisingAccount(name) { track('create_advertising_account', { name }); return 'A' }
 async function getAdvertisingCampaigns(accountId, after = null) {
+  window.__adsStore = store
   track('get_advertising_campaigns', { accountId, after })
-  return [...store.values()].sort((a, b) => (a.ad_id < b.ad_id ? 1 : -1))
+  return [...store.values()].sort((a, b) => (a.ad_id < b.ad_id ? 1 : -1)).map((row) => ({ ...row }))
 }
 async function getAdvertisingSalesStatus() {
   track('advertising_sales_status', {})
@@ -78,8 +86,9 @@ async function editAdvertisingCampaign(campaign, values, submit, desiredDays = n
   if (desiredDays != null) d.desired_duration_days = desiredDays
   return { ...d }
 }
-async function interruptAdvertisingCampaign(id, reason) { track('interrupt_advertising_campaign', { id, reason }); const d = store.get(id); if (d) { d.advertiser_paused = true; d.delivery_state = 'private' } }
-async function resumeMyAdvertisingCampaign(id) { track('resume_my_advertising_campaign', { id }); const d = store.get(id); if (d) { d.advertiser_paused = false; d.delivery_state = 'active' } }
+async function interruptAdvertisingCampaign(campaign, reason, requestId) { const id = campaign.ad_id; track('interrupt_advertising_campaign', { id, reason, requestId }); const d = store.get(id); if (d) { if (d.pause_operation_id !== campaign.pause_operation_id || d.starts_at !== campaign.starts_at) throw new Error('AD_PAUSE_STALE'); if (d.pauses_available === 0) throw new Error('AD_PAUSE_LIMIT_CONFIRM_REQUIRED'); d.advertiser_paused = true; if (d.pauses_available != null) { d.pauses_available -= 1; d.pauses_used += 1 } d.delivery_state = 'private' } }
+async function confirmAdvertisingPauseLimit(campaign, reason) { track('confirm_advertising_pause_limit', { id: campaign.ad_id, period: campaign.starts_at, revision: campaign.approved_version, operation: campaign.pause_operation_id, reason }); const d = store.get(campaign.ad_id); if (d.pauses_available !== 0 || d.pause_operation_id !== campaign.pause_operation_id) throw new Error('AD_PAUSE_CONFIRM_STALE'); d.moderation_state = 'suspended'; d.suspension_origin = 'pause_limit'; d.delivery_state = 'private' }
+async function resumeMyAdvertisingCampaign(campaign, requestId) { const id = campaign.ad_id; track('resume_my_advertising_campaign', { id, requestId }); const d = store.get(id); if (d) { d.advertiser_paused = false; d.delivery_state = 'active' } }
 async function archiveAdvertisingCampaign(id) { track('archive_advertising_campaign', { id }); const d = store.get(id); if (d) { d.moderation_state = 'archived'; d.state = 'archived' } }
 async function getAdvertisingRevisions() { return [] }
 async function getAdvertisingOrders() { return [] }
@@ -152,7 +161,7 @@ await build({
         b.onLoad({ filter: /.*/, namespace: 'fixture-ads' }, () => ({
           contents:
             shared +
-            '\nexport { createAdvertisingAccount, getAdvertisingCampaigns, getAdvertisingSalesStatus, createAdvertisingCampaign, editAdvertisingCampaign, interruptAdvertisingCampaign, resumeMyAdvertisingCampaign, archiveAdvertisingCampaign, getAdvertisingRevisions, getAdvertisingOrders, getCommunityAdvertisingPermissions, configureCommunityAdvertising }',
+            '\nexport { createAdvertisingAccount, getAdvertisingCampaigns, getAdvertisingSalesStatus, createAdvertisingCampaign, editAdvertisingCampaign, interruptAdvertisingCampaign, confirmAdvertisingPauseLimit, resumeMyAdvertisingCampaign, archiveAdvertisingCampaign, getAdvertisingRevisions, getAdvertisingOrders, getCommunityAdvertisingPermissions, configureCommunityAdvertising }',
           loader: 'js',
         }))
         b.onLoad({ filter: /.*/, namespace: 'fixture-communities' }, () => ({
@@ -265,6 +274,51 @@ try {
     assert.equal(await destino.getAttribute('href'), 'https://example.invalid/whey')
     assert.equal(await destino.getAttribute('target'), '_blank')
     results.push({ verAnuncioOpensRealDestination: true, passed: true })
+    await context.close()
+  }
+
+  // A second tab consumes the third pause after this card renders. The ordinary pause RPC
+  // rejects without suspending; the card refreshes and requires a second, explicit action.
+  {
+    const context = await browser.newContext({ viewport: { width: 390, height: 900 } })
+    const page = await context.newPage()
+    await page.goto(origin + '/')
+    const card = page.getByTestId('ad-ad-stale')
+    await card.getByRole('button', { name: 'Pausar anúncio', exact: true }).click()
+    await page.evaluate(() => { const row = window.__adsStore.get('ad-stale'); row.pauses_available = 0; row.pauses_used = 3; row.pause_operation_id = 18 })
+    await page.getByRole('button', { name: 'Pausar anúncio', exact: true }).last().click()
+    await card.getByText('A situação deste anúncio mudou enquanto a tela estava aberta. Atualize antes de pausar.', { exact: true }).waitFor()
+    await page.getByText('Limite de pausas atingido', { exact: true }).waitFor()
+    assert.equal(await card.getByText('Suspenso pelo Evolutus', { exact: true }).count(), 0)
+    await page.getByRole('button', { name: 'Confirmar suspensão', exact: true }).click()
+    await card.getByText('Suspenso pelo Evolutus', { exact: true }).waitFor()
+    results.push({ staleCounterRequiresFreshConfirmation: true, passed: true })
+    await context.close()
+  }
+
+  // Opening/canceling the fourth-pause dialog never calls the RPC. Confirmation suspends
+  // through the common advertiser action and offers the existing support channel.
+  {
+    const context = await browser.newContext({ viewport: { width: 390, height: 900 } })
+    const page = await context.newPage()
+    await page.goto(origin + '/')
+    const card = page.getByTestId('ad-ad-limit')
+    await card.getByRole('button', { name: 'Pausar anúncio', exact: true }).click()
+    await page.getByText('Limite de pausas atingido', { exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Cancelar', exact: true }).click()
+    assert.equal(
+      await page.evaluate(() => window.__adsCalls.filter((c) => c.name === 'interrupt_advertising_campaign').length),
+      0
+    )
+    assert.equal(await page.evaluate(() => window.__adsCalls.filter((c) => c.name === 'confirm_advertising_pause_limit').length), 0)
+    await card.getByRole('button', { name: 'Pausar anúncio', exact: true }).click()
+    await page.getByRole('button', { name: 'Confirmar suspensão', exact: true }).click()
+    await card.getByText('Suspenso pelo Evolutus', { exact: true }).waitFor()
+    assert.equal(await page.evaluate(() => window.__adsCalls.filter((c) => c.name === 'interrupt_advertising_campaign').length), 0)
+    assert.equal(await page.evaluate(() => window.__adsCalls.filter((c) => c.name === 'confirm_advertising_pause_limit').length), 1)
+    const support = card.getByRole('link', { name: 'Solicitar liberação' })
+    assert.equal(await support.getAttribute('href'), '/atendimento?tipo=appeal')
+    results.push({ fourthPauseConfirmation: true, cancelDoesNotSuspend: true, passed: true })
     await context.close()
   }
 

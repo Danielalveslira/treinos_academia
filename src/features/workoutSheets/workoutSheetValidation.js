@@ -49,6 +49,15 @@ export function normalizeSheet(sheet) {
   }
 }
 export const sheetFingerprint = (sheet) => JSON.stringify(normalizeSheet(sheet))
+export function incompatibleTargetFields(item) {
+  if (item.exercise?.type === 'cardio')
+    return ['target_sets', 'reps_min', 'reps_max'].filter(
+      (key) => item[key] !== '' && item[key] != null
+    )
+  return ['target_duration_minutes', 'target_distance_km'].filter(
+    (key) => item[key] !== '' && item[key] != null
+  )
+}
 // Nome do campo para a mensagem de erro e para WorkoutSheetItemEditor saber qual meta abrir/focar.
 const FIELD_LABELS = {
   target_sets: 'séries-alvo',
@@ -66,7 +75,8 @@ const FIELD_LABELS = {
 // (nome, objetivo, dias, duplicidade, limite de itens).
 export function validateSheet(sheet) {
   const value = normalizeSheet(sheet)
-  if (!value.name || value.name.length > 80) return { message: 'Informe um nome de 1 a 80 caracteres.' }
+  if (!value.name || value.name.length > 80)
+    return { message: 'Informe um nome de 1 a 80 caracteres.' }
   if (value.goal && !SHEET_GOALS[value.goal]) return { message: 'Objetivo inválido.' }
   if (value.goal_description.length > 500)
     return { message: 'A descrição deve ter até 500 caracteres.' }
@@ -75,11 +85,19 @@ export function validateSheet(sheet) {
     value.weekdays.some((d) => !Number.isInteger(d) || d < 0 || d > 6)
   )
     return { message: 'Dias inválidos.' }
-  if (value.items.length > SHEET_LIMITS.items) return { message: 'Use até 40 exercícios por ficha.' }
+  if (value.items.length > SHEET_LIMITS.items)
+    return { message: 'Use até 40 exercícios por ficha.' }
   if (new Set(value.items.map((item) => item.exercise_id)).size !== value.items.length)
     return { message: 'Exercício repetido na ficha.' }
   for (const [index, item] of value.items.entries()) {
     const name = sheet.items[index]?.exercise?.name || `exercício ${index + 1}`
+    const incompatible = incompatibleTargetFields(sheet.items[index])
+    if (incompatible.length)
+      return {
+        message: `A categoria de ${name} foi atualizada. Remova as metas incompatíveis antes de salvar.`,
+        exerciseId: item.exercise_id,
+        field: incompatible[0],
+      }
     for (const [key, min, max] of [
       ['target_sets', 1, SHEET_LIMITS.sets],
       ['reps_min', 1, 1000],

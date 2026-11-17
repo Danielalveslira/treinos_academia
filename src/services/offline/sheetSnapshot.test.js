@@ -20,7 +20,7 @@ const sheet = (id = 's') => ({
     {
       exercise_id: 'e',
       available: true,
-      exercise: { id: 'e', name: 'Exercise', type: 'strength' },
+      exercise: { id: 'e', name: 'Exercise', type: 'strength', typeMismatch: false },
     },
   ],
 })
@@ -43,10 +43,35 @@ test('cold read keeps validated owner, revision and exercise order; expires safe
   assert.deepEqual(await readSheetSnapshots('b'), [])
   assert.deepEqual(await readSheetSnapshots('a', at + SHEET_SNAPSHOT_TTL), [])
 })
+test('old snapshots without a category signal are never executable', async () => {
+  const old = { schema_version: 1, user_id: 'a', validated_at: Date.now(), sheet: sheet() }
+  delete old.sheet.items[0].exercise.typeMismatch
+  await withTransaction([STORES.syncMeta], 'readwrite', ({ syncMeta }) =>
+    request(syncMeta.put({ key: 'user:a:sheet-snapshots', value: [old] }))
+  )
+  assert.deepEqual(await readSheetSnapshots('a'), [])
+})
 test('unavailable/foreign scopes never become executable snapshots', async () => {
   assert.equal(await saveSheetSnapshot('b', sheet()), false)
   assert.equal(await saveSheetSnapshot('a', { ...sheet(), archived_at: 'today' }), false)
   assert.equal(await saveSheetSnapshot('a', { ...sheet(), items: [] }), false)
+  assert.equal(
+    await saveSheetSnapshot('a', {
+      ...sheet(),
+      items: [
+        { ...sheet().items[0], exercise: { ...sheet().items[0].exercise, typeMismatch: true } },
+      ],
+    }),
+    true
+  )
+  assert.equal((await readSheetSnapshots('a'))[0].items[0].exercise.typeMismatch, true)
+  assert.equal(
+    await saveSheetSnapshot('a', {
+      ...sheet(),
+      items: [{ ...sheet().items[0], exercise: { id: 'e', type: 'strength' } }],
+    }),
+    false
+  )
 })
 test('logout/account switch purges private scopes and blocks late writes', async () => {
   await saveSheetSnapshot('a', sheet())

@@ -12,9 +12,13 @@ export default function AdvertisingCentral({ accountId, accountName }) {
 
   const refresh = useCallback(async () => {
     try {
-      setRows(await getAdvertisingCampaigns(accountId))
+      const current = await getAdvertisingCampaigns(accountId)
+      setRows(current)
+      setError('')
+      return current
     } catch (e) {
       setError(commercialError(e))
+      throw e
     }
   }, [accountId])
 

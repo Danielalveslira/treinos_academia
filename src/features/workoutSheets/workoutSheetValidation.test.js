@@ -2,12 +2,29 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   EMPTY_SHEET,
+  incompatibleTargetFields,
   normalizeSheet,
   sheetFingerprint,
   sheetScopeExercises,
   validateSheet,
   prescription,
 } from './workoutSheetValidation.js'
+test('category changes expose only incompatible targets and preserve personal fields', () => {
+  const strengthToCardio = {
+    exercise_id: 'one', exercise: { name: 'Mesa Flexora', type: 'cardio', typeMismatch: true },
+    target_sets: 3, reps_min: 8, reps_max: 12, rest_seconds: 90, target_duration_minutes: 20,
+    note: 'Ajuste pessoal',
+  }
+  assert.deepEqual(incompatibleTargetFields(strengthToCardio), ['target_sets', 'reps_min', 'reps_max'])
+  assert.equal(validateSheet({ ...sheet, items: [strengthToCardio] }).field, 'target_sets')
+  const resolved = { ...strengthToCardio, target_sets: null, reps_min: null, reps_max: null }
+  assert.deepEqual(incompatibleTargetFields(resolved), [])
+  assert.equal(validateSheet({ ...sheet, items: [resolved] }), null)
+  assert.equal(resolved.rest_seconds, 90)
+  assert.equal(resolved.note, 'Ajuste pessoal')
+  const cardioToStrength = { ...resolved, exercise: { ...resolved.exercise, type: 'strength' }, target_distance_km: 2 }
+  assert.deepEqual(incompatibleTargetFields(cardioToStrength), ['target_duration_minutes', 'target_distance_km'])
+})
 const sheet = {
   ...EMPTY_SHEET,
   name: 'Treino A',

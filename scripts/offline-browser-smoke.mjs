@@ -84,7 +84,7 @@ async function seed(page, { snapshot = false } = {}) {
           offline_access: { enabled: true, blocked_reason: null, revoked_locally_at: null }, updated_at: now,
         })
         tx.objectStore('syncMeta').put({ key: 'bootstrap:active-user', value: userId })
-        tx.objectStore('syncMeta').put({ key: `user:${userId}:sheet-snapshots`, value: [{ schema_version: 1, user_id: userId, validated_at: now, sheet: { id: sheetId, user_id: userId, name: 'Ficha offline', revision: 1, items: [{ exercise_id: exerciseId, available: true, exercise: { id: exerciseId, name: 'Agachamento', muscleGroup: 'Pernas', type: 'strength', active: true, source: 'catalog', provider: 'evolutus_dataset' } }] } }] })
+        tx.objectStore('syncMeta').put({ key: `user:${userId}:sheet-snapshots`, value: [{ schema_version: 2, user_id: userId, validated_at: now, sheet: { id: sheetId, user_id: userId, name: 'Ficha offline', revision: 1, items: [{ exercise_id: exerciseId, available: true, exercise: { id: exerciseId, name: 'Agachamento', muscleGroup: 'Pernas', type: 'strength', typeMismatch: false, active: true, source: 'catalog', provider: 'evolutus_dataset' } }] } }] })
         tx.objectStore('syncMeta').put({ key: `user:${userId}:offline-rollout`, value: {
           offline_write: { enabled: true, rollout_percentage: 100 },
           offline_cold_start: { enabled: true, rollout_percentage: 100 },

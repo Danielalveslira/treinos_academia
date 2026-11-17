@@ -21,6 +21,16 @@ test('pending approval, expired quotes and suspension have safe actionable error
   assert.match(commercialError({ message: 'QUOTE_EXPIRED' }), /nova/)
   assert.doesNotMatch(commercialError({ message: 'secret raw backend error' }), /secret/)
 })
+test('an old client calling the deprecated pause/resume signatures is told to update the app, not given a raw error code', () => {
+  assert.match(commercialError({ message: 'AD_APP_UPDATE_REQUIRED' }), /atualize o aplicativo/i)
+  assert.match(
+    commercialError({ message: 'AD_APP_UPDATE_REQUIRED: atualize o aplicativo para pausar ou retomar anuncios' }),
+    /atualize o aplicativo/i
+  )
+})
+test('a stale resume (bound to a pause already undone by something else) gets an actionable, non-technical message', () => {
+  assert.match(commercialError({ message: 'AD_RESUME_STALE' }), /mudou|atualize/i)
+})
 test('a desired duration chosen in the ad wizard pre-fills the contract step, clamped to the live tariff', () => {
   assert.equal(clampInitialDays(null, { minDays: 1, maxDays: 30 }), '1')
   assert.equal(clampInitialDays(null, { minDays: 5, maxDays: 30 }), '5')

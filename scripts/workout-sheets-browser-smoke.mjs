@@ -882,7 +882,7 @@ try {
   const combos = entryOnly
     ? []
     : (quick ? ['light'] : ['light', 'dark']).flatMap((theme) =>
-        (quick ? [390] : [320, 360, 375, 390, 768, 1280]).map((width) => ({ theme, width }))
+        (quick ? [390] : [320, 360, 375, 390, 430, 768, 1280]).map((width) => ({ theme, width }))
       )
   // Pre-sized (not pushed into) so each iteration can write its own `results[index]` regardless
   // of finishing order; entries stay `undefined` only if `runIteration` throws for that index.

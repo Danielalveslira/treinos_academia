@@ -119,10 +119,25 @@ after(async () => {
 })
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 30))
+async function waitForText(page, marker) {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    if (page.text().includes(marker)) return
+    await tick()
+  }
+  assert.match(page.text(), new RegExp(marker))
+}
+async function waitForMount(page, readCount) {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    if (readCount() === 1) return
+    await tick()
+  }
+  assert.equal(readCount(), 1)
+}
 
 test('default load shows Meus anúncios and never requests Resultados data', async () => {
   const page = mount('/meus-anuncios')
-  await tick()
+  await waitForText(page, 'CAMPAIGNS_TAB_MARKER')
+  await waitForMount(page, page.campaignsMounts)
   assert.match(page.text(), /CAMPAIGNS_TAB_MARKER/)
   assert.doesNotMatch(page.text(), /RESULTS_TAB_MARKER/)
   assert.equal(page.campaignsMounts(), 1)
@@ -133,7 +148,8 @@ test('default load shows Meus anúncios and never requests Resultados data', asy
 
 test('opening Resultados mounts it once and never remounts Campanhas data on return', async () => {
   const page = mount('/meus-anuncios')
-  await tick()
+  await waitForText(page, 'CAMPAIGNS_TAB_MARKER')
+  await waitForMount(page, page.campaignsMounts)
   page.selectTab('Resultados')
   await tick()
   assert.match(page.text(), /RESULTS_TAB_MARKER/)

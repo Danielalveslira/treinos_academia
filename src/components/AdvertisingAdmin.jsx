@@ -20,7 +20,7 @@ import {
   getAdvertisingInventory,
   resumeAdvertisingCampaign,
   setAdvertisingNetwork,
-  interruptAdvertisingCampaign,
+  adminSuspendAdvertisingCampaign,
 } from '../services/advertisingService'
 import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
 import { AuthCaptcha } from './AuthCaptcha'
@@ -32,6 +32,9 @@ import { placementsSummary } from '../utils/placementLabels'
 const OPERATION_LABELS = {
   advertiser_pause: 'Pausado pelo anunciante',
   advertiser_resume: 'Retomado pelo anunciante',
+  suspend_pause_limit: 'Suspenso pelo limite de pausas',
+  admin_suspend: 'Suspenso pela administração',
+  advertising_suspension_recovered: 'Pausa antiga recuperada',
   suspend: 'Suspenso pela administração',
   resume: 'Liberado pela administração',
   approve: 'Aprovado',
@@ -266,6 +269,22 @@ export default function AdvertisingAdmin() {
                 {commercialDate(c.starts_at)} até {commercialDate(c.expires_at)}
               </Text>
             )}
+            <Text as="p" sx={{ fontSize: 0, color: 'fg.muted' }}>
+              Pausas utilizadas: {c.pauses_used ?? 0} de 3
+              {c.remaining_seconds != null &&
+                ` · ${Math.ceil(c.remaining_seconds / 86400)} dia(s) restante(s)`}
+            </Text>
+            {c.moderation_state === 'suspended' && (
+              <Text as="p" sx={{ fontSize: 0, color: 'fg.muted' }}>
+                Origem:{' '}
+                {c.suspension_origin === 'pause_limit'
+                  ? 'limite de pausas'
+                  : c.suspension_origin === 'admin'
+                    ? 'administração'
+                    : 'revisão administrativa necessária'}
+                {c.suspension_reason && ` · ${c.suspension_reason}`}
+              </Text>
+            )}
             {c.media_id && <StorefrontImage id={c.media_id} size={120} />}
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>
               {c.moderation_state === 'suspended' ? (
@@ -479,7 +498,7 @@ export default function AdvertisingAdmin() {
                         reason
                       )
                     if (dialog.kind === 'suspend')
-                      return interruptAdvertisingCampaign(dialog.target.ad_id, reason)
+                      return adminSuspendAdvertisingCampaign(dialog.target.ad_id, reason)
                     return resumeAdvertisingCampaign(
                       dialog.target.ad_id,
                       dialog.target.approved_version,

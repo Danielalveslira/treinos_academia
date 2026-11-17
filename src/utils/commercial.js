@@ -5,6 +5,14 @@ const errors = {
   AD_PLACEMENT_UNAVAILABLE: 'Este posicionamento está indisponível para novas contratações.',
   AD_RESUME_BLOCKED: 'Não é possível retomar este anúncio agora. Confira o prazo e os bloqueios no gerenciamento.',
   AD_RESUME_PLACEMENT_BLOCKED: 'O local deste anúncio está indisponível para exibição. Tente novamente mais tarde.',
+  AD_RESUME_STALE:
+    'A situação deste anúncio mudou enquanto a tela estava aberta. Atualize antes de retomar.',
+  AD_PAUSE_STALE:
+    'A situação deste anúncio mudou enquanto a tela estava aberta. Atualize antes de pausar.',
+  AD_REQUEST_ID_REUSED: 'Esta ação já foi iniciada de outra forma. Atualize a página e tente de novo.',
+  AD_REQUEST_ID_REQUIRED: 'Não foi possível identificar esta solicitação. Atualize a página e tente de novo.',
+  AD_APP_UPDATE_REQUIRED:
+    'Esta versão do aplicativo está desatualizada para pausar ou retomar anúncios. Atualize o aplicativo e tente novamente.',
   AD_CAPACITY_COMMITTED:
     'A capacidade já está comprometida por contratos. Preserve as reservas existentes.',
   AD_CONFIGURATION_CONFLICT: 'A configuração mudou. Atualize antes de confirmar.',
@@ -48,8 +56,9 @@ const errors = {
   COMMERCIAL_RATE_LIMIT: 'Aguarde antes de solicitar outra cotação.',
 }
 export function commercialError(error) {
+  const code = String(error?.message || '').split(':', 1)[0]
   return (
-    errors[error?.message] ||
+    errors[code] ||
     commercialTermsError(error) ||
     (error?.message === 'Saldo de EvoCash insuficiente.'
       ? error.message

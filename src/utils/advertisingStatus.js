@@ -35,11 +35,16 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
     return {
       key: 'suspended',
       label: 'Suspenso pelo Evolutus',
-      detail: 'Este anúncio precisa de liberação do Evolutus para voltar a aparecer.',
+      detail:
+        c.suspension_origin === 'pause_limit'
+          ? 'Você atingiu o limite de pausas deste anúncio.'
+          : 'Este anúncio precisa de liberação do Evolutus para voltar a aparecer.',
       pendingRevision: false,
       pendingRevisionNote: null,
       remainingDays: null,
-      primaryAction: { type: 'view_reason', label: 'Ver motivo' },
+      pausesUsed: c.pauses_used ?? null,
+      pausesAvailable: null,
+      primaryAction: { type: 'view_reason', label: 'Solicitar liberação' },
     }
   }
   if (c.advertiser_paused && !expired) {
@@ -50,6 +55,8 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
       pendingRevision: false,
       pendingRevisionNote: null,
       remainingDays: hasEntitlement && !expired ? remainingDays : null,
+      pausesUsed: c.pauses_used ?? null,
+      pausesAvailable: c.pauses_available ?? null,
       primaryAction:
         hasEntitlement && !expired
           ? { type: 'resume', label: 'Retomar anúncio' }
@@ -133,6 +140,8 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
       label: 'Ativo',
       detail: null,
       remainingDays,
+      pausesUsed: c.pauses_used ?? null,
+      pausesAvailable: c.pauses_available ?? null,
       primaryAction: { type: 'view', label: 'Ver anúncio' },
     }
   } else if (c.delivery_state === 'active' && c.placement_delivery_active === false) {

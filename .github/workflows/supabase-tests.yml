@@ -12,6 +12,7 @@ name: Supabase & app tests
 on:
   workflow_dispatch:
   pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review, converted_to_draft]
   push:
     branches: [main]
 
@@ -32,7 +33,51 @@ defaults:
     shell: bash
 
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      plan: ${{ steps.plan.outputs.plan }}
+      run_js: ${{ steps.plan.outputs.run_js }}
+      run_sql: ${{ steps.plan.outputs.run_sql }}
+      run_finance: ${{ steps.plan.outputs.run_finance }}
+      browser_base: ${{ steps.plan.outputs.browser_base }}
+      browser_catalog: ${{ steps.plan.outputs.browser_catalog }}
+      browser_full: ${{ steps.plan.outputs.browser_full }}
+      draft: ${{ steps.plan.outputs.draft }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+      - id: plan
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          CI_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+          CI_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          CI_PR_NUMBER: ${{ github.event.pull_request.number }}
+          CI_DRAFT: ${{ github.event.pull_request.draft || false }}
+        run: |
+          set -euo pipefail
+          if [ "$CI_EVENT" = pull_request ]; then
+            git fetch --no-tags origin "refs/pull/${CI_PR_NUMBER}/head"
+            test "$(git rev-parse FETCH_HEAD)" = "$CI_HEAD_SHA"
+            if git cat-file -e "$CI_BASE_SHA:scripts/ci/plan.mjs"; then
+              git show "$CI_BASE_SHA:scripts/ci/plan.mjs" > /tmp/plan.mjs
+              node /tmp/plan.mjs --base "$CI_BASE_SHA" --head "$CI_HEAD_SHA" --draft "$CI_DRAFT" > /tmp/ci-plan.json
+            else
+              printf '{"run_js":true,"run_sql":true,"run_finance":true,"browser_base":true,"browser_catalog":true,"browser_full":true,"draft":%s,"base_sha":"%s","head_sha":"%s"}' "$CI_DRAFT" "$CI_BASE_SHA" "$CI_HEAD_SHA" > /tmp/ci-plan.json
+            fi
+          else
+            printf '{"run_js":true,"run_sql":true,"run_finance":true,"browser_base":true,"browser_catalog":true,"browser_full":true,"draft":false,"base_sha":"%s","head_sha":"%s"}' "$CI_BASE_SHA" "$CI_HEAD_SHA" > /tmp/ci-plan.json
+          fi
+          node -e 'const fs=require("node:fs"); const p=JSON.parse(fs.readFileSync("/tmp/ci-plan.json","utf8")); if(p.head_sha!==process.env.CI_HEAD_SHA) throw Error("CI_PLAN_HEAD_MISMATCH"); fs.appendFileSync(process.env.GITHUB_OUTPUT, `plan=${JSON.stringify(p)}\nrun_js=${p.run_js}\nrun_sql=${p.run_sql}\nrun_finance=${p.run_finance}\nbrowser_base=${p.browser_base}\nbrowser_catalog=${p.browser_catalog}\nbrowser_full=${p.browser_full}\ndraft=${p.draft}\n`)'
+
   js:
+    needs: scope
+    if: needs.scope.outputs.run_js == 'true' && needs.scope.outputs.draft != 'true'
+
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -48,7 +93,7 @@ jobs:
         run: node scripts/check-migration-integrity.mjs
       - run: node --test scripts/check-migration-integrity.test.mjs
       - run: npm run lint
-      - run: node --test scripts/release/*.test.mjs
+      - run: node --test scripts/release/*.test.mjs scripts/ci/*.test.mjs
       - run: npm test
       - name: Public catalogue snapshot and lazy counter regression
         run: node --test tests/public-catalog-snapshot.test.mjs tests/storefront-public-handler.test.mjs tests/storefront-seo.test.mjs tests/professional-public-handler.test.mjs
@@ -58,37 +103,53 @@ jobs:
           VITE_SUPABASE_ANON_KEY: header-smoke-public-key
       - run: npm run budget
       - name: Cache Playwright browser binary
+        if: needs.scope.outputs.browser_base == 'true'
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-browsers-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install isolated browser
+        if: needs.scope.outputs.browser_base == 'true'
         run: node node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell
       - name: Direct post boost modal and responsive contract review
+        if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/post-boost-browser-smoke.mjs
       - name: Public and auth headers at mobile and desktop widths
+        if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/public-auth-header-smoke.mjs
       - name: Workout sheets mobile, execution and conflict smoke
+        if: needs.scope.outputs.browser_base == 'true'
         run: node scripts/workout-sheets-browser-smoke.mjs
       - name: Community cover crop and responsive layout smoke
+        if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/community-cover-layout-smoke.mjs
       - name: Sheet entry redirects and exercise selection intent
+        if: needs.scope.outputs.browser_base == 'true'
         run: node scripts/workout-sheets-browser-smoke.mjs --entries
       - name: Home V4 recommendation, completion, cache, photos and responsive themes
+        if: needs.scope.outputs.browser_base == 'true'
         run: node scripts/home-v2-browser-smoke.mjs
-      - run: node scripts/ad-metrics-browser-smoke.mjs
+      - if: needs.scope.outputs.browser_full == 'true'
+        run: node scripts/ad-metrics-browser-smoke.mjs
       - name: Ads UX card list and 4-step creation wizard, mobile/desktop and themes
+        if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/ads-ux-browser-smoke.mjs
       - name: Storefront/products UX card list, BRL price form and Meu negócio navigation
+        if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/storefront-products-ux-browser-smoke.mjs
       - name: Central comercial 4-area navigation, overflow menu and scroll reset across widths
+        if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/commercial-central-nav-browser-smoke.mjs
-      - run: node scripts/phase3-exercises-browser-smoke.mjs
+      - if: needs.scope.outputs.browser_catalog == 'true'
+        run: node scripts/phase3-exercises-browser-smoke.mjs
       - name: Offline cold start and synchronization regression
+        if: needs.scope.outputs.browser_base == 'true'
         run: node scripts/offline-browser-smoke.mjs
       - run: node scripts/release/scan-secrets.mjs --dist
 
   sql:
+    needs: scope
+    if: needs.scope.outputs.run_sql == 'true' && needs.scope.outputs.draft != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -170,6 +231,10 @@ jobs:
         run: node scripts/advertising-concurrency.mjs
         env:
           PG_TEST_CONTAINER: supabase_db_treinos_academia
+      - name: Advertiser pause confirmation and concurrency
+        run: node scripts/advertising-pause-concurrency.mjs
+        env:
+          PG_TEST_CONTAINER: supabase_db_treinos_academia
       - name: Institutional advertising activation capacity concurrency
         run: node scripts/institutional-advertising-concurrency.mjs
         env:
@@ -188,6 +253,8 @@ jobs:
         run: node_modules/.bin/supabase stop
 
   finance-e2e:
+    needs: scope
+    if: needs.scope.outputs.run_finance == 'true' && needs.scope.outputs.draft != 'true'
     name: finance-e2e
     runs-on: ubuntu-latest
     permissions:
@@ -249,10 +316,6 @@ jobs:
       # Sessão real do GoTrue, RPC real via PostgREST, PostgreSQL real -- ver o cabeçalho do script.
       - name: Real activity-reward E2E (browser -> RPC -> Postgres -> ledger -> wallet -> UI)
         run: node scripts/evocoins-activity-e2e-smoke.mjs
-      - name: Advertising capacity, shared balance, global slots and replay concurrency
-        run: node scripts/advertising-concurrency.mjs
-        env:
-          PG_TEST_CONTAINER: evolutus_integrated_db
       # Limpeza roda sempre, sem mascarar o motivo de uma falha anterior (mesmo padrão do job sql).
       - if: always()
         name: Stop disposable local stack
@@ -273,19 +336,36 @@ jobs:
   quality:
     name: finance-quality
     if: always()
-    needs: [js, sql, finance-e2e, secrets]
+    needs: [scope, js, sql, finance-e2e, secrets]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Require every mandatory job to succeed
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
+          persist-credentials: false
+      - name: Check required results against the trusted plan
         env:
-          JS_RESULT: ${{ needs.js.result }}
-          SQL_RESULT: ${{ needs.sql.result }}
-          FINANCE_E2E_RESULT: ${{ needs.finance-e2e.result }}
-          SECRETS_RESULT: ${{ needs.secrets.result }}
+          CI_EVENT: ${{ github.event_name }}
+          CI_DRAFT: ${{ github.event.pull_request.draft || false }}
+          CI_HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          CI_PLAN_JSON: ${{ needs.scope.outputs.plan }}
+          CI_SCOPE_RESULT: ${{ needs.scope.result }}
+          CI_JS_RESULT: ${{ needs.js.result }}
+          CI_SQL_RESULT: ${{ needs.sql.result }}
+          CI_FINANCE_RESULT: ${{ needs.finance-e2e.result }}
+          CI_SECRETS_RESULT: ${{ needs.secrets.result }}
+          CI_BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.sha }}
         run: |
           set -euo pipefail
-          test "$JS_RESULT" = success
-          test "$SQL_RESULT" = success
-          test "$FINANCE_E2E_RESULT" = success
-          test "$SECRETS_RESULT" = success
+          if git cat-file -e "$CI_BASE_SHA:scripts/ci/quality-gate.mjs"; then
+            git show "$CI_BASE_SHA:scripts/ci/quality-gate.mjs" > /tmp/quality-gate.mjs
+            node /tmp/quality-gate.mjs
+          else
+            test "$CI_SCOPE_RESULT" = success
+            test "$CI_JS_RESULT" = success
+            test "$CI_SQL_RESULT" = success
+            test "$CI_FINANCE_RESULT" = success
+            test "$CI_SECRETS_RESULT" = success
+            test "$CI_DRAFT" = false
+          fi
