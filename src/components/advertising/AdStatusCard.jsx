@@ -138,6 +138,11 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
               {status.remainingDays} dia(s) restante(s)
             </Text>
           )}
+          {status.pausesAvailable != null && (
+            <Text as="p" sx={{ fontSize: 0, mt: 1, color: 'fg.muted' }}>
+              Pausas disponíveis: {status.pausesAvailable} de 3
+            </Text>
+          )}
         </Box>
       </Box>
 
@@ -256,15 +261,30 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
       )}
       {confirmPause && (
         <Dialog
-          title="Pausar este anúncio?"
+          title={status.pausesAvailable === 0 ? 'Limite de pausas atingido' : 'Pausar este anúncio?'}
           onClose={() => !busy && setConfirmPause(false)}
           width="medium"
         >
           <Box sx={{ p: 3 }}>
-            <Text as="p">
-              Ele deixará de aparecer no Evolutus. Os dias já contratados continuarão contando
-              durante a pausa. Nenhum crédito será devolvido automaticamente.
-            </Text>
+            {status.pausesAvailable === 0 ? (
+              <Text as="p">
+                Você já utilizou as três pausas permitidas. Se continuar, seu anúncio ficará
+                suspenso e precisará de liberação do Evolutus para voltar a aparecer. O período
+                contratado continuará contando.
+              </Text>
+            ) : (
+              <>
+                <Text as="p">
+                  Seu anúncio deixará de aparecer temporariamente. Os dias contratados continuarão
+                  contando.
+                </Text>
+                {status.pausesAvailable != null && (
+                  <Text as="p" sx={{ color: 'fg.muted' }}>
+                    Pausas disponíveis após esta ação: {status.pausesAvailable - 1} de 3.
+                  </Text>
+                )}
+              </>
+            )}
             {error && (
               <Flash variant="danger" role="alert">
                 {error}
@@ -272,10 +292,10 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
             )}
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 3 }}>
               <Button disabled={busy} onClick={() => setConfirmPause(false)}>
-                Voltar
+                Cancelar
               </Button>
               <Button variant="danger" disabled={busy} onClick={() => run('interrupt')}>
-                Pausar anúncio
+                {status.pausesAvailable === 0 ? 'Confirmar suspensão' : 'Pausar anúncio'}
               </Button>
             </Box>
           </Box>

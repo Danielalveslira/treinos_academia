@@ -68,6 +68,8 @@ export const reviewCommercialPromotion = (promotion, approve, reason) =>
   })
 export const resumeAdvertisingCampaign = (id, revision, reason) =>
   rpc('admin_resume_advertising_campaign', { p_id: id, p_revision: revision, p_reason: reason })
+export const adminSuspendAdvertisingCampaign = (id, reason) =>
+  rpc('admin_suspend_advertising_campaign', { p_id: id, p_reason: reason })
 export const setAdvertisingNetwork = (codes, revision, reason) =>
   rpc('admin_set_advertising_network', {
     p_codes: codes,

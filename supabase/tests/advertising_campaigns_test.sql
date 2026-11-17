@@ -135,8 +135,58 @@ select is((select actor_user_id from public.advertising_operations where resourc
 update public.advertiser_members set revoked_at=now() where user_id='76000000-0000-0000-0000-000000000004';
 select pg_temp.set_test_user('76000000-0000-0000-0000-000000000004',true);
 select throws_ok($$select public.resume_my_advertising_campaign('76100000-0000-0000-0000-000000000001')$$,'42501','PERMISSION_DENIED','manager with revoked permission cannot resume, even with no active pause');
+
+-- Pause limit (20261222000001): up to 3 completed voluntary pause/resume cycles per continuous
+-- contracted period; two are already done above (owner, then a different manager). A 3rd is
+-- still an ordinary resumable pause; a 4th CONFIRMED pause becomes an Evolutus-side suspension,
+-- not a 5th resumable pause.
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
+select is((select advertiser_pause_count from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),2::smallint,'two completed cycles counted so far');
+select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic pause number 3');
+select is((select advertiser_pause_count from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),3::smallint,'third pause increments the shared counter');
+select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'approved','third pause is still a resumable voluntary pause, not a suspension');
+select public.resume_my_advertising_campaign('76100000-0000-0000-0000-000000000001');
+select is(jsonb_array_length(public.select_advertising('home_banner',null)),1,'third resume is still permitted, exactly like the first two');
+select is((select advertiser_pause_count from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),3::smallint,'resuming never changes the pause count');
+-- A duplicate/retried call on an already-paused ad must not double count (idempotent early
+-- return), and clicking pause without confirming never reaches the server at all (frontend-only
+-- dialog state) -- both already guaranteed by the existing advertiser_paused_at is not null
+-- early return, reused unchanged by this migration.
+select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic pause number 4, confirmed');
+select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Duplicate call, same pause');
+select is((select advertiser_pause_count from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),3::smallint,'a duplicated call while already suspended by the limit does not increment further');
+select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'suspended','a 4th confirmed pause becomes an Evolutus-side suspension, not a 4th resumable pause');
+select is((select advertiser_paused_at from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),null,'suspension by limit is not also recorded as an open voluntary pause');
+select is((select action from public.advertising_operations where resource_id='76100000-0000-0000-0000-000000000001' order by id desc limit 1),'suspend_pause_limit','the 4th pause is audited with its own distinct action, not the generic voluntary pause');
+select is(public.select_advertising('home_banner',null),'[]'::jsonb,'suspension by limit blocks delivery exactly like any other suspension');
+select throws_ok($$select public.resume_my_advertising_campaign('76100000-0000-0000-0000-000000000001')$$,'AD_RESUME_BLOCKED','the owner cannot lift a suspension caused by the pause limit, same as an administrative one');
+select is((select cash_balance from public.wallets where user_id='76000000-0000-0000-0000-000000000001'),86,'reaching the pause limit never debits or credits EvoCash');
+select is((select x->>'pauses_used' from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))) x where x->>'ad_id'='76100000-0000-0000-0000-000000000001'),'3','the summary exposes the pause count the advertiser has used');
+select is((select x->>'pauses_available' from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))) x where x->>'ad_id'='76100000-0000-0000-0000-000000000001'),'0','and how many remain (zero, already at the limit)');
+select is((select x->>'suspension_origin' from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))) x where x->>'ad_id'='76100000-0000-0000-0000-000000000001'),'pause_limit','the admin-facing summary distinguishes a pause-limit suspension from a real moderation suspension');
+
+-- Administrative release does not grant new pauses, and does not require the pause-limit
+-- suspension to be treated any differently from any other suspended state it already handles.
 select pg_temp.ads_admin();
-select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic administrative suspension');
+select public.admin_resume_advertising_campaign('76100000-0000-0000-0000-000000000001',
+  (select approved_revision from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),
+  'Liberação administrativa após limite de pausas');
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
+select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'approved','administrative release restores delivery');
+select is((select advertiser_pause_count from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),3::smallint,'administrative release does not reset or grant additional pauses');
+select lives_ok($$select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic pause attempt right after release')$$,'pausing right after release still runs (the exhausted limit suspends again; it does not block the call itself)');
+select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'suspended','pausing again right after release immediately re-suspends by the still-exhausted limit');
+select pg_temp.ads_admin();
+select public.admin_resume_advertising_campaign('76100000-0000-0000-0000-000000000001',
+  (select approved_revision from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),
+  'Segunda liberação administrativa, para continuar os testes de suspensão real');
+
+select pg_temp.ads_admin();
+-- interrupt_advertising_campaign is advertiser-only now (see 20261222000001): a superadmin
+-- acting outside the admin console follows the advertiser's own rules just like anyone else.
+-- Real administrative suspension has its own dedicated, explicitly-authorized RPC.
+select throws_ok($$select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic administrative suspension attempt')$$,'42501','AD_EDITOR_REQUIRED','admin acting outside the console cannot use the advertiser pause path on someone else''s ad');
+select public.admin_suspend_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic administrative suspension');
 select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
 select throws_ok($$select public.resume_my_advertising_campaign('76100000-0000-0000-0000-000000000001')$$,'AD_RESUME_BLOCKED','owner cannot lift administrative suspension');
 select is(public.select_advertising('home_banner',null),'[]'::jsonb,'administrative suspension blocks delivery');

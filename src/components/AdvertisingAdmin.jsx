@@ -20,7 +20,7 @@ import {
   getAdvertisingInventory,
   resumeAdvertisingCampaign,
   setAdvertisingNetwork,
-  interruptAdvertisingCampaign,
+  adminSuspendAdvertisingCampaign,
 } from '../services/advertisingService'
 import { reauthenticatePricingAdmin } from '../services/evocashPricingService'
 import { AuthCaptcha } from './AuthCaptcha'
@@ -479,7 +479,7 @@ export default function AdvertisingAdmin() {
                         reason
                       )
                     if (dialog.kind === 'suspend')
-                      return interruptAdvertisingCampaign(dialog.target.ad_id, reason)
+                      return adminSuspendAdvertisingCampaign(dialog.target.ad_id, reason)
                     return resumeAdvertisingCampaign(
                       dialog.target.ad_id,
                       dialog.target.approved_version,
