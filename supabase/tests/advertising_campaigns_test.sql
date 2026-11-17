@@ -12,7 +12,7 @@ update public.commercial_offerings set sales_enabled=false where code='ad_home';
 delete from private.advertising_network_bundle;
 
 insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
-select ('76000000-0000-0000-0000-'||lpad(i::text,12,'0'))::uuid,'authenticated','authenticated','ads-phase6-'||i||'@example.invalid','x',now(),'{}','{}',now(),now() from generate_series(1,3)i;
+select ('76000000-0000-0000-0000-'||lpad(i::text,12,'0'))::uuid,'authenticated','authenticated','ads-phase6-'||i||'@example.invalid','x',now(),'{}','{}',now(),now() from generate_series(1,4)i;
 update public.users set role='superadmin' where id='76000000-0000-0000-0000-000000000003';
 create function pg_temp.ads_admin() returns void language plpgsql as $$begin
  perform pg_temp.set_test_user('76000000-0000-0000-0000-000000000003',true);
@@ -120,6 +120,19 @@ select is((select x->>'advertiser_paused' from jsonb_array_elements(public.get_a
 select public.resume_my_advertising_campaign('76100000-0000-0000-0000-000000000001');
 select is(jsonb_array_length(public.select_advertising('home_banner',null)),1,'owner resumes without a new order');
 select is((select cash_balance from public.wallets where user_id='76000000-0000-0000-0000-000000000001'),86,'resume does not debit or credit');
+-- A pause is an account-level action: any authorized editor (owner or active manager) of the
+-- same account can resume it, not only whoever personally clicked "Pausar". Locking resume to
+-- the exact pausing identity would strand the ad whenever that one person is unavailable.
+insert into public.advertiser_members(account_id,user_id,permission,granted_by) values((select(value#>>'{}')::uuid from ads_results where name='account'),'76000000-0000-0000-0000-000000000004','manager','76000000-0000-0000-0000-000000000003');
+select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic voluntary interruption by owner');
+select is((select advertiser_paused_by from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'76000000-0000-0000-0000-000000000001'::uuid,'second pause is also attributed to the owner who triggered it');
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000004',true);
+select public.resume_my_advertising_campaign('76100000-0000-0000-0000-000000000001');
+select is(jsonb_array_length(public.select_advertising('home_banner',null)),1,'a different authorized manager can resume a pause started by the owner');
+select is((select advertiser_paused_by from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),null,'pause attribution is cleared once resumed');
+select is((select action from public.advertising_operations where resource_id='76100000-0000-0000-0000-000000000001' order by id desc limit 1),'advertiser_resume','resume by another manager is still audited');
+select is((select actor_user_id from public.advertising_operations where resource_id='76100000-0000-0000-0000-000000000001' order by id desc limit 1),'76000000-0000-0000-0000-000000000004'::uuid,'the audit trail attributes the resume to whoever actually performed it');
+update public.advertiser_members set revoked_at=now() where user_id='76000000-0000-0000-0000-000000000004';
 select pg_temp.ads_admin();
 select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic administrative suspension');
 select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
