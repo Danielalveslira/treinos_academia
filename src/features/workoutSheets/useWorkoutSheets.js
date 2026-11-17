@@ -82,6 +82,18 @@ export function useWorkoutSheets(
     }
   }, [key, id, execution, attempt, online, offlineLocal, archived, page, user.uid, exerciseId])
   const refresh = useCallback(() => setAttempt((n) => n + 1), [])
+  useEffect(() => {
+    if (!online || offlineLocal || typeof document === 'undefined') return undefined
+    let lastCheck = Date.now()
+    const revalidate = () => {
+      if (globalThis.navigator?.onLine === false || document.visibilityState === 'hidden') return
+      if (Date.now() - lastCheck < 5 * 60 * 1000) return
+      lastCheck = Date.now()
+      refresh()
+    }
+    document.addEventListener('visibilitychange', revalidate)
+    return () => document.removeEventListener('visibilitychange', revalidate)
+  }, [online, offlineLocal, refresh])
   return {
     ...(state.key === key ? state : { loading: true }),
     refresh,

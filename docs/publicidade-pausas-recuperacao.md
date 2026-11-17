@@ -30,7 +30,8 @@ order by o.occurred_at desc;
 ```
 
 Um registro é candidato quando `origem = 'legacy_voluntary'` (o ator do último `suspend` é dono
-ou gerente, atual ou histórico, da própria conta do anúncio — nunca alguém de fora) **e** o
+ou gerente, atual ou histórico, da própria conta do anúncio **e** a justificativa é exatamente a
+enviada pelo botão comum de pausa: `Interrupção solicitada pelo anunciante`) **e** o
 contrato ainda está vigente (`e.expires_at > now()`). Contratos já vencidos não devem ser
 recuperados: oriente renovação, condicionada à elegibilidade real.
 
@@ -47,7 +48,8 @@ administrativas sensíveis). A RPC:
 - Rejeita quando a origem não é `legacy_voluntary` (`AD_RECOVERY_NOT_ELIGIBLE`) — nunca libera
   suspensão administrativa real ou registro sem evidência suficiente.
 - Rejeita contrato não vigente (`AD_RECOVERY_NOT_ELIGIBLE`).
-- Restaura `moderation_state='approved'`, devolvendo a entrega normalmente.
+- Restaura `moderation_state='approved'` e registra `advertiser_paused_at` com a data original.
+  O anúncio continua oculto até o anunciante optar por retomá-lo.
 - **Credita a pausa recuperada no contador de 3 ciclos** (`advertiser_pause_count`) em vez de
   conceder um reset gratuito — o anunciante pausou de fato uma vez, mesmo que o código antigo
   tenha registrado isso errado.
@@ -56,3 +58,8 @@ administrativas sensíveis). A RPC:
 
 **Não execute recuperação em massa.** Cada candidato exige confirmação individual da evidência
 antes da chamada. Não execute esta recuperação em produção sem autorização explícita.
+
+Na implantação da regra de três pausas, a migration
+`20261222000006_advertising_pause_count_backfill.sql` contabiliza uma única vez as operações
+auditadas `advertiser_pause` dentro do período contratado vigente. Operações de períodos
+anteriores não entram no contador. O backfill não altera contratos, pagamentos ou vencimentos.

@@ -5,24 +5,24 @@
       "theme": "light",
       "width": 320,
       "height": 568,
-      "listMs": 4948,
+      "listMs": 5754,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 16211876,
+      "usedHeapBytes": 15951140,
       "inputPaintMs": [
-        18.699999999254942,
-        32.59999999962747,
-        24.5
+        28.700000001117587,
+        39.90000000037253,
+        49.100000001490116
       ],
       "pickerLayout": {
         "before": {
           "height": 339,
           "scrollHeight": 3752,
-          "pageHeight": 2188
+          "pageHeight": 2224
         },
         "after": {
           "height": 339,
-          "pageHeight": 2188
+          "pageHeight": 2224
         }
       },
       "volume": null,
@@ -33,24 +33,24 @@
       "theme": "light",
       "width": 360,
       "height": 740,
-      "listMs": 4480,
+      "listMs": 5284,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 16218340,
+      "usedHeapBytes": 16442076,
       "inputPaintMs": [
-        26.40000000037253,
-        5.599999999627471,
-        9
+        23.799999998882413,
+        46.59999999962747,
+        33.5
       ],
       "pickerLayout": {
         "before": {
           "height": 414,
           "scrollHeight": 3992,
-          "pageHeight": 2227
+          "pageHeight": 2263
         },
         "after": {
           "height": 414,
-          "pageHeight": 2227
+          "pageHeight": 2263
         }
       },
       "volume": null,
@@ -61,24 +61,24 @@
       "theme": "light",
       "width": 375,
       "height": 900,
-      "listMs": 5034,
+      "listMs": 4917,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 16184632,
+      "usedHeapBytes": 16421496,
       "inputPaintMs": [
-        16.199999999254942,
-        14.5,
-        38.20000000111759
+        70.09999999962747,
+        24.799999998882413,
+        21
       ],
       "pickerLayout": {
         "before": {
           "height": 414,
           "scrollHeight": 4105,
-          "pageHeight": 2113
+          "pageHeight": 2149
         },
         "after": {
           "height": 414,
-          "pageHeight": 2113
+          "pageHeight": 2149
         }
       },
       "volume": null,
@@ -89,55 +89,83 @@
       "theme": "light",
       "width": 390,
       "height": 900,
-      "listMs": 4787,
+      "listMs": 5501,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 16663352,
+      "usedHeapBytes": 32462052,
       "inputPaintMs": [
-        20.59999999962747,
-        6.099999999627471,
-        14.699999999254942
+        24.200000001117587,
+        19.5,
+        20.09999999962747
       ],
       "pickerLayout": {
         "before": {
           "height": 414,
           "scrollHeight": 4217,
-          "pageHeight": 2113
+          "pageHeight": 2149
         },
         "after": {
           "height": 414,
-          "pageHeight": 2113
+          "pageHeight": 2149
         }
       },
       "volume": {
-        "list40Ms": 4453,
-        "editor40Ms": 4816,
+        "list40Ms": 4452,
+        "editor40Ms": 5889,
         "mountedTargetFields": 0,
         "inputPaintMs": [
-          17,
-          3.900000000372529,
-          8.400000000372529,
-          4.099999999627471,
-          0.8000000007450581
+          16.600000001490116,
+          17.699999999254942,
+          9.099999999627471,
+          1.199999999254942,
+          2.099999999627471
         ],
         "overflow": false,
-        "heap": 16663352
+        "heap": 22598284
       },
       "readRequests": 32,
       "writeRequests": 6
     },
     {
       "theme": "light",
-      "width": 768,
+      "width": 430,
       "height": 900,
-      "listMs": 4882,
+      "listMs": 5069,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 24226660,
+      "usedHeapBytes": 24623944,
       "inputPaintMs": [
-        21.40000000037253,
-        21,
-        14.599999999627471
+        29.90000000037253,
+        10.100000001490116,
+        14.5
+      ],
+      "pickerLayout": {
+        "before": {
+          "height": 414,
+          "scrollHeight": 4469,
+          "pageHeight": 2131
+        },
+        "after": {
+          "height": 414,
+          "pageHeight": 2131
+        }
+      },
+      "volume": null,
+      "readRequests": 15,
+      "writeRequests": 1
+    },
+    {
+      "theme": "light",
+      "width": 768,
+      "height": 900,
+      "listMs": 5139,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 24654380,
+      "inputPaintMs": [
+        29.800000000745058,
+        31.5,
+        13.099999999627471
       ],
       "pickerLayout": {
         "before": {
@@ -158,14 +186,14 @@
       "theme": "light",
       "width": 1280,
       "height": 900,
-      "listMs": 4782,
+      "listMs": 4145,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 23403236,
+      "usedHeapBytes": 24780308,
       "inputPaintMs": [
-        37.30000000074506,
-        13.900000000372529,
-        35.40000000037253
+        25.90000000037253,
+        11.099999999627471,
+        37.40000000037253
       ],
       "pickerLayout": {
         "before": {
@@ -186,24 +214,24 @@
       "theme": "dark",
       "width": 320,
       "height": 568,
-      "listMs": 3965,
+      "listMs": 4971,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 16189936,
+      "usedHeapBytes": 16408436,
       "inputPaintMs": [
-        7.099999999627471,
-        30.09999999962747,
-        6.5
+        5.199999999254942,
+        10.400000000372529,
+        10.099999999627471
       ],
       "pickerLayout": {
         "before": {
           "height": 339,
           "scrollHeight": 3752,
-          "pageHeight": 2188
+          "pageHeight": 2224
         },
         "after": {
           "height": 339,
-          "pageHeight": 2188
+          "pageHeight": 2224
         }
       },
       "volume": null,
@@ -214,24 +242,24 @@
       "theme": "dark",
       "width": 360,
       "height": 740,
-      "listMs": 5073,
+      "listMs": 5144,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 16693508,
+      "usedHeapBytes": 16436580,
       "inputPaintMs": [
-        81,
-        15.900000000372529,
-        31.40000000037253
+        17.899999998509884,
+        16,
+        16
       ],
       "pickerLayout": {
         "before": {
           "height": 414,
           "scrollHeight": 3992,
-          "pageHeight": 2227
+          "pageHeight": 2263
         },
         "after": {
           "height": 414,
-          "pageHeight": 2227
+          "pageHeight": 2263
         }
       },
       "volume": null,
@@ -242,24 +270,24 @@
       "theme": "dark",
       "width": 375,
       "height": 900,
-      "listMs": 4953,
+      "listMs": 4770,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 16050836,
+      "usedHeapBytes": 16433956,
       "inputPaintMs": [
-        46.5,
-        22.700000001117587,
-        56.30000000074506
+        31.199999999254942,
+        18,
+        24.5
       ],
       "pickerLayout": {
         "before": {
           "height": 414,
           "scrollHeight": 4105,
-          "pageHeight": 2113
+          "pageHeight": 2149
         },
         "after": {
           "height": 414,
-          "pageHeight": 2113
+          "pageHeight": 2149
         }
       },
       "volume": null,
@@ -270,24 +298,52 @@
       "theme": "dark",
       "width": 390,
       "height": 900,
-      "listMs": 5343,
+      "listMs": 4495,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 13380136,
+      "usedHeapBytes": 15968244,
       "inputPaintMs": [
-        27.90000000037253,
-        23.800000000745058,
-        51.69999999925494
+        24.300000000745058,
+        30,
+        22
       ],
       "pickerLayout": {
         "before": {
           "height": 414,
           "scrollHeight": 4217,
-          "pageHeight": 2113
+          "pageHeight": 2149
         },
         "after": {
           "height": 414,
-          "pageHeight": 2113
+          "pageHeight": 2149
+        }
+      },
+      "volume": null,
+      "readRequests": 15,
+      "writeRequests": 1
+    },
+    {
+      "theme": "dark",
+      "width": 430,
+      "height": 900,
+      "listMs": 4677,
+      "images": 0,
+      "overflow": false,
+      "usedHeapBytes": 16354884,
+      "inputPaintMs": [
+        38.59999999962747,
+        8.400000000372529,
+        12.099999999627471
+      ],
+      "pickerLayout": {
+        "before": {
+          "height": 414,
+          "scrollHeight": 4469,
+          "pageHeight": 2131
+        },
+        "after": {
+          "height": 414,
+          "pageHeight": 2131
         }
       },
       "volume": null,
@@ -298,14 +354,14 @@
       "theme": "dark",
       "width": 768,
       "height": 900,
-      "listMs": 4784,
+      "listMs": 5075,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 10225244,
+      "usedHeapBytes": 18823492,
       "inputPaintMs": [
-        9,
-        5.100000001490116,
-        26.59999999962747
+        50.80000000074506,
+        47,
+        16.59999999962747
       ],
       "pickerLayout": {
         "before": {
@@ -326,14 +382,14 @@
       "theme": "dark",
       "width": 1280,
       "height": 900,
-      "listMs": 5264,
+      "listMs": 5045,
       "images": 0,
       "overflow": false,
-      "usedHeapBytes": 10219648,
+      "usedHeapBytes": 10336908,
       "inputPaintMs": [
-        10.400000000372529,
-        7.5,
-        6.699999999254942
+        14.099999999627471,
+        11.799999998882413,
+        22.40000000037253
       ],
       "pickerLayout": {
         "before": {

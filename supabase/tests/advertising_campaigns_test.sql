@@ -120,6 +120,19 @@ select is((select x->>'advertiser_paused' from jsonb_array_elements(public.get_a
 select public.resume_my_advertising_campaign('76100000-0000-0000-0000-000000000001');
 select is(jsonb_array_length(public.select_advertising('home_banner',null)),1,'owner resumes without a new order');
 select is((select cash_balance from public.wallets where user_id='76000000-0000-0000-0000-000000000001'),86,'resume does not debit or credit');
+-- In a savepoint, make this contracted campaign the superadmin's personal ad. The common
+-- advertiser RPC must record a voluntary pause even though the caller also has admin powers.
+savepoint superadmin_personal_ad;
+update public.advertiser_accounts set owner_user_id='76000000-0000-0000-0000-000000000003'
+  where id=(select(value#>>'{}')::uuid from ads_results where name='account');
+update private.commercial_resources set owner_user_id='76000000-0000-0000-0000-000000000003'
+  where id='76100000-0000-0000-0000-000000000001';
+select pg_temp.ads_admin();
+select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Pausa do anúncio pessoal do superadmin');
+select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'approved','superadmin na interface comum não suspende administrativamente o anúncio pessoal');
+select is((select advertiser_paused_by from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'76000000-0000-0000-0000-000000000003'::uuid,'pausa pessoal do superadmin é auditada como ação do anunciante');
+rollback to savepoint superadmin_personal_ad;
+select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
 -- A pause is an account-level action: any authorized editor (owner or active manager) of the
 -- same account can resume it, not only whoever personally clicked "Pausar". Locking resume to
 -- the exact pausing identity would strand the ad whenever that one person is unavailable.
@@ -148,6 +161,16 @@ select is((select moderation_state from private.commercial_resources where id='7
 select public.resume_my_advertising_campaign('76100000-0000-0000-0000-000000000001');
 select is(jsonb_array_length(public.select_advertising('home_banner',null)),1,'third resume is still permitted, exactly like the first two');
 select is((select advertiser_pause_count from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),3::smallint,'resuming never changes the pause count');
+savepoint period_projection;
+update public.visibility_entitlements set expires_at=expires_at+interval '1 day'
+  where resource_id='76100000-0000-0000-0000-000000000001';
+select is((select x->>'pauses_available' from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))) x where x->>'ad_id'='76100000-0000-0000-0000-000000000001'),'0','renovação antecipada que preserva o início não concede pausas extras');
+update public.visibility_entitlements set starts_at=statement_timestamp()-interval '1 minute'
+  where resource_id='76100000-0000-0000-0000-000000000001';
+select is((select x->>'pauses_available' from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from ads_results where name='account'))) x where x->>'ad_id'='76100000-0000-0000-0000-000000000001'),'3','novo período contratual mostra três pausas antes da primeira ação');
+select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Primeira pausa de um novo período');
+select is((select advertiser_pause_count from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),1::smallint,'primeira pausa no novo período reinicia o contador autoritativo');
+rollback to savepoint period_projection;
 -- A duplicate/retried call on an already-paused ad must not double count (idempotent early
 -- return), and clicking pause without confirming never reaches the server at all (frontend-only
 -- dialog state) -- both already guaranteed by the existing advertiser_paused_at is not null
@@ -187,6 +210,12 @@ select pg_temp.ads_admin();
 -- Real administrative suspension has its own dedicated, explicitly-authorized RPC.
 select throws_ok($$select public.interrupt_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic administrative suspension attempt')$$,'42501','AD_EDITOR_REQUIRED','admin acting outside the console cannot use the advertiser pause path on someone else''s ad');
 select public.admin_suspend_advertising_campaign('76100000-0000-0000-0000-000000000001','Synthetic administrative suspension');
+savepoint suspended_renewal;
+update public.visibility_entitlements set expires_at=expires_at+interval '1 day'
+  where resource_id='76100000-0000-0000-0000-000000000001';
+select is((select moderation_state from private.commercial_resources where id='76100000-0000-0000-0000-000000000001'),'suspended','renovar prazo não remove suspensão administrativa');
+select is(private.commercial_resource_visible('76100000-0000-0000-0000-000000000001'),false,'contrato renovado continua inelegível enquanto suspenso');
+rollback to savepoint suspended_renewal;
 select pg_temp.set_test_user('76000000-0000-0000-0000-000000000001',true);
 select throws_ok($$select public.resume_my_advertising_campaign('76100000-0000-0000-0000-000000000001')$$,'AD_RESUME_BLOCKED','owner cannot lift administrative suspension');
 select is(public.select_advertising('home_banner',null),'[]'::jsonb,'administrative suspension blocks delivery');

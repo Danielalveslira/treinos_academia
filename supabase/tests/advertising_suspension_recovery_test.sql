@@ -3,9 +3,9 @@ begin;
 select no_plan();
 
 -- Simulates exactly what the pre-PR151 interrupt_advertising_campaign left behind: a resource
--- suspended, with the account's own owner recorded as the actor of the 'suspend' operation --
--- indistinguishable, in the old data, from a real moderation suspension except by that actor
--- identity. Built with direct inserts (fixture, not the creation flow, already covered
+-- suspended, with the account's own owner and the exact common-button reason recorded in
+-- the 'suspend' operation. Both are required to identify a candidate. Built with direct inserts
+-- (fixture, not the creation flow, already covered
 -- elsewhere) to isolate the recovery RPC's own guards.
 insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select ('97000000-0000-0000-0000-'||lpad(n::text,12,'0'))::uuid,'authenticated','authenticated','advrecover-'||n||'@example.invalid','x',now(),'{}','{}',now(),now() from generate_series(1,4) n;
@@ -70,6 +70,15 @@ insert into public.advertising_operations(actor_user_id,resource_id,action,reaso
 values ('97000000-0000-0000-0000-000000000001','97200000-0000-0000-0000-000000000003','suspend','Interrupção solicitada pelo anunciante');
 
 select pg_temp.ads_admin();
+savepoint ambiguous_legacy_action;
+insert into public.advertising_operations(actor_user_id,resource_id,action,reason)
+values ('97000000-0000-0000-0000-000000000001','97200000-0000-0000-0000-000000000001','suspend','Moderação administrativa');
+select is(private.advertising_suspension_origin('97200000-0000-0000-0000-000000000001','97100000-0000-0000-0000-000000000001'),'unknown','ator da própria conta com justificativa administrativa continua ambíguo');
+select throws_ok(
+  $$select public.admin_recover_advertising_voluntary_suspension('97200000-0000-0000-0000-000000000001',2)$$,
+  'P0001','AD_RECOVERY_NOT_ELIGIBLE','ator da própria conta sem evidência do botão comum não é recuperado'
+);
+rollback to savepoint ambiguous_legacy_action;
 select throws_ok(
   $$select public.admin_recover_advertising_voluntary_suspension('97200000-0000-0000-0000-000000000002',1)$$,
   'P0001','AD_RECOVERY_NOT_ELIGIBLE','suspensão real de moderação (ator de fora da conta) não é recuperada'
@@ -86,7 +95,9 @@ select lives_ok(
   $$select public.admin_recover_advertising_voluntary_suspension('97200000-0000-0000-0000-000000000001',2)$$,
   'candidato elegível é recuperado'
 );
-select is((select moderation_state from private.commercial_resources where id='97200000-0000-0000-0000-000000000001'),'approved','recuperação restaura a entrega');
+select is((select moderation_state from private.commercial_resources where id='97200000-0000-0000-0000-000000000001'),'approved','recuperação restaura a elegibilidade editorial');
+select ok((select advertiser_paused_at is not null from private.commercial_resources where id='97200000-0000-0000-0000-000000000001'),'recuperação preserva a pausa até uma retomada explícita');
+select is((select private.commercial_resource_visible('97200000-0000-0000-0000-000000000001')),false,'recuperação não volta a exibir o anúncio automaticamente');
 select is((select advertiser_pause_count from private.commercial_resources where id='97200000-0000-0000-0000-000000000001'),1::smallint,'a pausa recuperada é contabilizada no limite de 3, não é um reset gratuito');
 select is((select count(*)::int from public.advertising_operations where resource_id='97200000-0000-0000-0000-000000000001' and action='advertising_suspension_recovered'),1,'recuperação deixa auditoria');
 select throws_ok(

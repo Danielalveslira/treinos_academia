@@ -127,10 +127,19 @@ select is(
   true,
   'meta de força antiga fica marcada como incompatível com a categoria nova, sem ser apagada'
 );
+select is((public.list_my_workout_sheets()->0->>'available')::boolean,false,
+  'lista de fichas não oferece início direto para metas incompatíveis');
+select is((public.get_my_sheet_insights()->'sheets'->0->>'available')::boolean,false,
+  'indicador da Home não oferece início para ficha com meta incompatível');
 select is(
   (select (result->'items'->0->>'target_sets')::int from sheet_view2),
   3,
   'a meta antiga (séries) continua salva intacta mesmo com a incompatibilidade sinalizada'
+);
+select throws_ok(
+  $$select public.get_my_workout_sheet((select id from sheet_id), true)$$,
+  'P0001','SHEET_NOT_READY',
+  'execução é bloqueada até a meta incompatível ser revisada, sem reinterpretar o histórico'
 );
 select throws_ok(
   $$select public.save_workout_sheet((select id from sheet_id),(select revision from public.workout_sheets where id=(select id from sheet_id)),'{"name":"Ficha","weekdays":[]}','[{"exercise_id":"98e10000-0000-0000-0000-000000000001","target_sets":3,"reps_min":8,"reps_max":12}]')$$,

@@ -54,7 +54,9 @@ async function resolveLegacyCatalog(rows) {
     const batch = references.slice(offset, offset + CATALOG_BATCH_SIZE)
     const { data, error } = await supabase
       .from('exercise_catalog')
-      .select('id, provider, provider_exercise_id, status, name, primary_muscle, equipment, category')
+      .select(
+        'id, provider, provider_exercise_id, status, name, primary_muscle, equipment, category'
+      )
       .in('provider', [...new Set(batch.map((row) => row.provider))])
       .in('provider_exercise_id', [...new Set(batch.map((row) => row.provider_exercise_id))])
       .eq('status', 'published')
@@ -70,7 +72,9 @@ async function resolveLegacyCatalog(rows) {
 }
 
 function toDoc(row) {
-  const synced = Object.hasOwn(row, 'catalog') ? matchesPublishedCatalog(row, row.catalog) : row.catalogAvailable
+  const synced = Object.hasOwn(row, 'catalog')
+    ? matchesPublishedCatalog(row, row.catalog)
+    : row.catalogAvailable
   // The personal row's own name/muscle_group/equipment are a snapshot taken when the exercise
   // was added, never touched again -- an official catalog update must not need remove+re-add to
   // show here. Only override while the reference still resolves to a published catalog row;
@@ -88,7 +92,7 @@ function toDoc(row) {
     provider: row.provider,
     providerExerciseId: row.provider_exercise_id,
     catalogId: row.catalog_id,
-    equipment: official ? official.equipment ?? null : row.equipment,
+    equipment: official ? (official.equipment ?? null) : row.equipment,
     order: row.order,
     catalogAvailable: synced,
   }
@@ -110,7 +114,7 @@ export function listExercises(userId, { localOnly = false } = {}) {
         .limit(MAX_EXERCISES)
       if (error) throw error
       rows = await resolveLegacyCatalog(data)
-      return rows.map(toDoc)
+      return rows.map(toDoc).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
     },
     persist: () => replaceCachedUserExercises(userId, rows),
     local: async () => {

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Box, Button, Dialog, Flash, Label, Text } from '@primer/react'
 import {
   getAdvertisingOrders,
@@ -81,7 +82,13 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
         </Button>
       )
     }
-    if (action.type === 'track_review' || action.type === 'view_reason')
+    if (action.type === 'view_reason')
+      return (
+        <Button as={Link} to="/atendimento?tipo=appeal">
+          {action.label}
+        </Button>
+      )
+    if (action.type === 'track_review')
       return <Button onClick={() => setExpanded(true)}>{action.label}</Button>
     return null
   }
@@ -152,8 +159,19 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
         </Flash>
       )}
 
+      {(status.key === 'paused' || status.key === 'suspended') && status.detail && (
+        <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: 2 }}>
+          {status.detail}
+        </Text>
+      )}
+
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 3 }}>
         {primaryButton()}
+        {status.key === 'live' && (
+          <Button disabled={busy} onClick={() => setConfirmPause(true)}>
+            Pausar anúncio
+          </Button>
+        )}
         <Button onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
           {expanded ? 'Fechar' : 'Gerenciar'}
         </Button>
@@ -161,7 +179,14 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
 
       {expanded && (
         <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'border.default' }}>
-          {status.detail && <Text as="p">{status.detail}</Text>}
+          {status.detail && status.key !== 'paused' && status.key !== 'suspended' && (
+            <Text as="p">{status.detail}</Text>
+          )}
+          {status.key === 'suspended' && (
+            <Text as="p" sx={{ color: 'fg.muted', fontSize: 0 }}>
+              Informe o identificador do anúncio ao atendimento: {campaign.ad_id}
+            </Text>
+          )}
           {status.pendingRevisionNote && (
             <Text as="p" sx={{ color: 'attention.fg' }}>
               {status.pendingRevisionNote}
@@ -221,11 +246,6 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
             <Button disabled={busy} onClick={() => onEdit?.(campaign)}>
               Editar anúncio
             </Button>
-            {status.key === 'live' && (
-              <Button disabled={busy} onClick={() => setConfirmPause(true)}>
-                Pausar anúncio
-              </Button>
-            )}
             {campaign.can_pay && (
               <Button onClick={() => setShowHistory((v) => !v)}>Histórico de pagamentos</Button>
             )}
@@ -261,7 +281,9 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
       )}
       {confirmPause && (
         <Dialog
-          title={status.pausesAvailable === 0 ? 'Limite de pausas atingido' : 'Pausar este anúncio?'}
+          title={
+            status.pausesAvailable === 0 ? 'Limite de pausas atingido' : 'Pausar este anúncio?'
+          }
           onClose={() => !busy && setConfirmPause(false)}
           width="medium"
         >
