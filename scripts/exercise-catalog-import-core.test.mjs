@@ -115,20 +115,24 @@ test('buildImportPlan rejeita fonte que não é um array', () => {
   assert.throws(() => buildImportPlan({ not: 'an array' }), /INVALID_SOURCE_FORMAT/)
 })
 
-// Reimportar o catálogo nunca pode apagar uma imagem aprovada pelo Evolutus: o plano só carrega
-// source_media_refs; published_media_refs (mídia oficial, escrita pelo fluxo de publicação) nunca
-// aparece no que o importador faz upsert -- e um upsert sem a coluna não a altera.
-test('o plano de importação atualiza source_media_refs e NUNCA inclui published_media_refs', () => {
+// Divergências ficam no relatório, inclusive imagens de origem, sem reescrever a edição oficial.
+test('a importação preserva todo registro existente e relata divergências', () => {
   const published = { version: 3, images: [{ role: 'start', path: 'x/v3/start.webp' }, { role: 'end', path: 'x/v3/end.webp' }] }
   const existing = { ...normalizeExercise(complete), published_media_refs: published }
   const changedImages = { ...complete, images: ['Bench_Press/9.jpg'] }
 
   const { toUpsert, report } = buildImportPlan([changedImages], new Map([['Bench_Press', existing]]))
   assert.equal(report.updates, 1)
-  assert.deepEqual(toUpsert[0].source_media_refs, { images: ['Bench_Press/9.jpg'] })
-  assert.equal('published_media_refs' in toUpsert[0], false)
-  assert.equal('media_refs' in toUpsert[0], false)
+  assert.deepEqual(toUpsert, [])
+  assert.deepEqual(report.drift, [{ id: 'Bench_Press', fields: ['source_media_refs'] }])
   assert.deepEqual(existing.published_media_refs, published)
+})
+
+test('nome corrigido pelo superadmin não é sobrescrito em nova importação', () => {
+  const existing = { ...normalizeExercise(complete), name: 'Supino atualizado' }
+  const { toUpsert, report } = buildImportPlan([complete], new Map([['Bench_Press', existing]]))
+  assert.deepEqual(toUpsert, [])
+  assert.deepEqual(report.drift, [{ id: 'Bench_Press', fields: ['name'] }])
 })
 
 test('mudança só na mídia publicada não faz o importador reescrever a linha', () => {

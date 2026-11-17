@@ -89,9 +89,12 @@ export function buildImportPlan(rawExercises, existingByProviderExerciseId = new
   const nameCounts = new Map()
   const discarded = []
   const toUpsert = []
+  const drift = []
   let inserts = 0
   let updates = 0
   let unchanged = 0
+  let withEquipment = 0
+  let withMedia = 0
 
   for (const raw of rawExercises) {
     const name = hasText(raw?.name) ? raw.name.trim() : null
@@ -113,40 +116,42 @@ export function buildImportPlan(rawExercises, existingByProviderExerciseId = new
     }
 
     const normalized = normalizeExercise(raw)
+    if (normalized.equipment !== null) withEquipment += 1
+    if (normalized.source_media_refs.images.length > 0) withMedia += 1
     const existing = existingByProviderExerciseId.get(normalized.provider_exercise_id)
     if (!existing) {
       inserts += 1
+      toUpsert.push(normalized)
     } else if (isUnchanged(normalized, existing)) {
       unchanged += 1
     } else {
       updates += 1
+      drift.push({ id: normalized.provider_exercise_id, fields: COMPARABLE_FIELDS.filter((field) => !sameValue(normalized[field], existing[field])) })
     }
-    toUpsert.push(normalized)
   }
 
   const duplicateNames = [...nameCounts.entries()]
     .filter(([, ids]) => ids.length > 1)
     .map(([value, ids]) => ({ value, ids }))
 
-  const withEquipment = toUpsert.filter((row) => row.equipment !== null).length
-  const withMedia = toUpsert.filter((row) => row.source_media_refs.images.length > 0).length
-
+  const valid = inserts + updates + unchanged
   return {
     toUpsert,
     report: {
       found: rawExercises.length,
-      valid: toUpsert.length,
+      valid,
       discardedCount: discarded.length,
       discarded,
       duplicateIds,
       duplicateNames,
       withEquipment,
-      withoutEquipment: toUpsert.length - withEquipment,
+      withoutEquipment: valid - withEquipment,
       withMedia,
-      withoutMedia: toUpsert.length - withMedia,
+      withoutMedia: valid - withMedia,
       inserts,
       updates,
       unchanged,
+      drift,
     },
   }
 }

@@ -38,6 +38,8 @@ export const reviewAdvertisingCampaign = (campaign, approve, reason) =>
   })
 export const interruptAdvertisingCampaign = (id, reason) =>
   rpc('interrupt_advertising_campaign', { p_id: id, p_reason: reason })
+export const resumeMyAdvertisingCampaign = (id) =>
+  rpc('resume_my_advertising_campaign', { p_id: id })
 export const getAdvertisingInventory = () => rpc('admin_advertising_inventory')
 // Leitura fina pro anunciante: só {code, salesEnabled}, sem capacidade/preço/revisão (isso é
 // informação administrativa). Usada pelo assistente pra só oferecer posições que de fato

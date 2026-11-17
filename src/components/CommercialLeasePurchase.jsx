@@ -114,7 +114,9 @@ export default function CommercialLeasePurchase({
           </Text>
         )}
       <FormControl disabled={busy}>
-        <FormControl.Label>Duração em dias</FormControl.Label>
+        <FormControl.Label>
+          {subjectLabel === 'anúncio' ? 'Por quantos dias?' : 'Duração em dias'}
+        </FormControl.Label>
         <TextInput
           block
           inputMode="numeric"
@@ -143,7 +145,11 @@ export default function CommercialLeasePurchase({
           }
           onClick={() => run(false)}
         >
-          {compact ? 'Revisar valor' : 'Revisar contratação'}
+          {subjectLabel === 'anúncio'
+            ? 'Revisar publicação'
+            : compact
+              ? 'Revisar valor'
+              : 'Revisar contratação'}
         </Button>
       )}
       {error && (
@@ -232,7 +238,11 @@ export default function CommercialLeasePurchase({
             }
             onClick={() => run(true)}
           >
-            {compact ? 'Confirmar promoção' : 'Confirmar contratação'}
+            {subjectLabel === 'anúncio'
+              ? 'Confirmar e pagar com EvoCash'
+              : compact
+                ? 'Confirmar promoção'
+                : 'Confirmar contratação'}
           </Button>
         </Box>
       )}

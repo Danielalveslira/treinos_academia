@@ -3,6 +3,8 @@ const errors = {
   AD_CAPACITY_UNAVAILABLE:
     'Não há disponibilidade para todo o período. Nenhum EvoCash foi debitado.',
   AD_PLACEMENT_UNAVAILABLE: 'Este posicionamento está indisponível para novas contratações.',
+  AD_RESUME_BLOCKED: 'Não é possível retomar este anúncio agora. Confira o prazo e os bloqueios no gerenciamento.',
+  AD_RESUME_PLACEMENT_BLOCKED: 'O local deste anúncio está indisponível para exibição. Tente novamente mais tarde.',
   AD_CAPACITY_COMMITTED:
     'A capacidade já está comprometida por contratos. Preserve as reservas existentes.',
   AD_CONFIGURATION_CONFLICT: 'A configuração mudou. Atualize antes de confirmar.',

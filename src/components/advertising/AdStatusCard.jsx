@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
-import { Box, Button, Flash, Label, Text } from '@primer/react'
+import { Box, Button, Dialog, Flash, Label, Text } from '@primer/react'
 import {
-  archiveAdvertisingCampaign,
   getAdvertisingOrders,
   getAdvertisingRevisions,
   interruptAdvertisingCampaign,
+  resumeMyAdvertisingCampaign,
 } from '../../services/advertisingService'
 import CommercialLeasePurchase from '../CommercialLeasePurchase'
 import CommercialOrderHistory from '../CommercialOrderHistory'
@@ -23,6 +23,7 @@ const BADGE_VARIANT = {
   live: 'success',
   blocked: 'severe',
   paused: 'severe',
+  suspended: 'danger',
   ended: 'secondary',
   archived: 'secondary',
 }
@@ -35,6 +36,7 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
   const [revisions, setRevisions] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [confirmPause, setConfirmPause] = useState(false)
   const lock = useRef(false)
 
   async function run(action) {
@@ -43,10 +45,11 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
     setBusy(true)
     setError('')
     try {
-      if (action === 'archive') await archiveAdvertisingCampaign(campaign.ad_id)
       if (action === 'interrupt')
         await interruptAdvertisingCampaign(campaign.ad_id, 'Interrupção solicitada pelo anunciante')
+      if (action === 'resume') await resumeMyAdvertisingCampaign(campaign.ad_id)
       await onChange?.()
+      if (action === 'interrupt') setConfirmPause(false)
     } catch (e) {
       setError(commercialError(e))
     } finally {
@@ -64,7 +67,13 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
           {action.label}
         </Button>
       )
-    if (action.type === 'wait') return <Button disabled>{action.label}</Button>
+    if (action.type === 'wait') return null
+    if (action.type === 'resume')
+      return (
+        <Button variant="primary" disabled={busy} onClick={() => run('resume')}>
+          {action.label}
+        </Button>
+      )
     if (action.type === 'contract' || action.type === 'view_schedule' || action.type === 'view') {
       return (
         <Button variant="primary" onClick={() => setExpanded(true)}>
@@ -79,6 +88,7 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
 
   return (
     <Box
+      data-testid={`ad-${campaign.ad_id}`}
       sx={{
         border: '1px solid',
         borderColor: 'border.default',
@@ -87,6 +97,7 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
         my: 3,
         minWidth: 0,
         overflowWrap: 'anywhere',
+        '& button': { minHeight: 44 },
       }}
     >
       <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start', minWidth: 0 }}>
@@ -138,8 +149,8 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
 
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 3 }}>
         {primaryButton()}
-        <Button onClick={() => setExpanded((v) => !v)}>
-          {expanded ? 'Ver menos' : 'Ver detalhes'}
+        <Button onClick={() => setExpanded((v) => !v)} aria-expanded={expanded}>
+          {expanded ? 'Fechar' : 'Gerenciar'}
         </Button>
       </Box>
 
@@ -192,6 +203,7 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
               expiresAt={campaign.expires_at}
               initialDays={campaign.desired_duration_days}
               onComplete={onChange}
+              compact
             />
           )}
           {status.primaryAction?.type === 'contract' && !campaign.can_pay && (
@@ -202,19 +214,15 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
 
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 3 }}>
             <Button disabled={busy} onClick={() => onEdit?.(campaign)}>
-              Preparar revisão
+              Editar anúncio
             </Button>
-            <Button
-              disabled={busy || campaign.moderation_state === 'suspended'}
-              onClick={() => run('interrupt')}
-            >
-              Interromper veiculação
-            </Button>
-            <Button disabled={busy || campaign.state === 'archived'} onClick={() => run('archive')}>
-              Arquivar campanha
-            </Button>
+            {status.key === 'live' && (
+              <Button disabled={busy} onClick={() => setConfirmPause(true)}>
+                Pausar anúncio
+              </Button>
+            )}
             {campaign.can_pay && (
-              <Button onClick={() => setShowHistory((v) => !v)}>Histórico de contratações</Button>
+              <Button onClick={() => setShowHistory((v) => !v)}>Histórico de pagamentos</Button>
             )}
             <Button
               onClick={async () => {
@@ -225,9 +233,14 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
                 }
               }}
             >
-              Histórico do material
+              Histórico de alterações
             </Button>
           </Box>
+          {campaign.moderation_state === 'approved' && (
+            <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: 2 }}>
+              Alterações no anúncio podem exigir nova aprovação antes de aparecerem.
+            </Text>
+          )}
           {showHistory && (
             <CommercialOrderHistory resourceId={campaign.ad_id} load={getAdvertisingOrders} />
           )}
@@ -240,6 +253,33 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
             </Box>
           ))}
         </Box>
+      )}
+      {confirmPause && (
+        <Dialog
+          title="Pausar este anúncio?"
+          onClose={() => !busy && setConfirmPause(false)}
+          width="medium"
+        >
+          <Box sx={{ p: 3 }}>
+            <Text as="p">
+              Ele deixará de aparecer no Evolutus. Os dias já contratados continuarão contando
+              durante a pausa. Nenhum crédito será devolvido automaticamente.
+            </Text>
+            {error && (
+              <Flash variant="danger" role="alert">
+                {error}
+              </Flash>
+            )}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 3 }}>
+              <Button disabled={busy} onClick={() => setConfirmPause(false)}>
+                Voltar
+              </Button>
+              <Button variant="danger" disabled={busy} onClick={() => run('interrupt')}>
+                Pausar anúncio
+              </Button>
+            </Box>
+          </Box>
+        </Dialog>
       )}
     </Box>
   )

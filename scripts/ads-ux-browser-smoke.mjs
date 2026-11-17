@@ -34,6 +34,7 @@ function seed(row) {
     delivery_state: row.delivery_state, remaining_seconds: row.expires_at ? 5 * 86400 : 0,
     can_pay: true, placements: row.placements || [{ code: 'home_banner', context: '00000000-0000-0000-0000-000000000000' }],
     placement_delivery_active: row.placement_delivery_active ?? null,
+    advertiser_paused: row.advertiser_paused ?? false,
     tariff: row.tariff || { salesEnabled: true, price: '7', minDays: 1, maxDays: 30 },
   })
 }
@@ -42,7 +43,7 @@ seed({ ad_id: 'ad-submitted', state: 'submitted', moderation_state: 'draft', tit
 seed({ ad_id: 'ad-salesoff', state: 'approved', moderation_state: 'approved', title: 'Aprovado sem vendas', destination: 'https://example.invalid/salesoff', delivery_state: 'private', tariff: { salesEnabled: false, price: '7', minDays: 1, maxDays: 30 } })
 seed({ ad_id: 'ad-approved-ok', state: 'approved', moderation_state: 'approved', title: 'Aprovado com vendas abertas', destination: 'https://example.invalid/ok', delivery_state: 'private' })
 seed({ ad_id: 'ad-live', state: 'approved', moderation_state: 'approved', title: 'Whey para quem quer fazer mais!', destination: 'https://example.invalid/whey', description: 'Promoção de lançamento', media_id: 'media-live', starts_at: ISO(-2), expires_at: ISO(5), delivery_state: 'active', placement_delivery_active: true })
-seed({ ad_id: 'ad-paused', state: 'approved', moderation_state: 'suspended', title: 'Pausado manualmente', destination: 'https://example.invalid/paused', review_reason: 'Interrupção solicitada pelo anunciante', starts_at: ISO(-10), expires_at: ISO(10), delivery_state: 'active', placement_delivery_active: true })
+seed({ ad_id: 'ad-paused', state: 'approved', moderation_state: 'approved', advertiser_paused: true, title: 'Pausado manualmente', destination: 'https://example.invalid/paused', starts_at: ISO(-10), expires_at: ISO(10), delivery_state: 'private', placement_delivery_active: false })
 seed({ ad_id: 'ad-rejected', state: 'rejected', moderation_state: 'draft', title: 'Reprovado', destination: 'https://example.invalid/rejected', review_reason: 'Imagem não condiz com o destino', delivery_state: 'private' })
 seed({ ad_id: 'ad-archived', state: 'archived', moderation_state: 'archived', title: 'Arquivado antigo', destination: 'https://example.invalid/archived', delivery_state: 'private' })
 
@@ -77,7 +78,8 @@ async function editAdvertisingCampaign(campaign, values, submit, desiredDays = n
   if (desiredDays != null) d.desired_duration_days = desiredDays
   return { ...d }
 }
-async function interruptAdvertisingCampaign(id, reason) { track('interrupt_advertising_campaign', { id, reason }); const d = store.get(id); if (d) d.moderation_state = 'suspended' }
+async function interruptAdvertisingCampaign(id, reason) { track('interrupt_advertising_campaign', { id, reason }); const d = store.get(id); if (d) { d.advertiser_paused = true; d.delivery_state = 'private' } }
+async function resumeMyAdvertisingCampaign(id) { track('resume_my_advertising_campaign', { id }); const d = store.get(id); if (d) { d.advertiser_paused = false; d.delivery_state = 'active' } }
 async function archiveAdvertisingCampaign(id) { track('archive_advertising_campaign', { id }); const d = store.get(id); if (d) { d.moderation_state = 'archived'; d.state = 'archived' } }
 async function getAdvertisingRevisions() { return [] }
 async function getAdvertisingOrders() { return [] }
@@ -150,7 +152,7 @@ await build({
         b.onLoad({ filter: /.*/, namespace: 'fixture-ads' }, () => ({
           contents:
             shared +
-            '\nexport { createAdvertisingAccount, getAdvertisingCampaigns, getAdvertisingSalesStatus, createAdvertisingCampaign, editAdvertisingCampaign, interruptAdvertisingCampaign, archiveAdvertisingCampaign, getAdvertisingRevisions, getAdvertisingOrders, getCommunityAdvertisingPermissions, configureCommunityAdvertising }',
+            '\nexport { createAdvertisingAccount, getAdvertisingCampaigns, getAdvertisingSalesStatus, createAdvertisingCampaign, editAdvertisingCampaign, interruptAdvertisingCampaign, resumeMyAdvertisingCampaign, archiveAdvertisingCampaign, getAdvertisingRevisions, getAdvertisingOrders, getCommunityAdvertisingPermissions, configureCommunityAdvertising }',
           loader: 'js',
         }))
         b.onLoad({ filter: /.*/, namespace: 'fixture-communities' }, () => ({
@@ -196,7 +198,7 @@ try {
   })
   const results = []
 
-  for (const width of [320, 390, 768, 1440])
+  for (const width of [320, 360, 390, 430, 768, 1280])
     for (const theme of ['light', 'dark']) {
       const context = await browser.newContext({ viewport: { width, height: 900 } })
       const page = await context.newPage()
@@ -209,10 +211,10 @@ try {
       for (const label of [
         'Rascunho',
         'Em análise',
-        'Aprovado — aguardando contratação',
-        'Apto para exibição',
-        'Pausado',
-        'Reprovado',
+        'Pronto para publicar',
+        'Ativo',
+        'Pausado por você',
+        'Precisa de correção',
         'Arquivado',
       ])
         await page.getByText(label, { exact: true }).first().waitFor()
@@ -221,13 +223,13 @@ try {
       // Sales disabled never shows a misleading contracting CTA (review item 5): exactly
       // the one campaign with sales open offers it, the one with sales closed never does.
       assert.equal(
-        await page.getByRole('button', { name: 'Contratar publicação', exact: true }).count(),
+        await page.getByRole('button', { name: 'Publicar anúncio', exact: true }).count(),
         1
       )
-      await page
-        .getByRole('button', { name: 'Contratações ainda indisponíveis', exact: true })
-        .first()
-        .waitFor()
+      assert.equal(
+        await page.getByRole('button', { name: 'Contratações ainda indisponíveis', exact: true }).count(),
+        0
+      )
 
       assert.equal(
         await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
@@ -253,7 +255,7 @@ try {
     await page.getByText('Whey para quem quer fazer mais!', { exact: true }).waitFor()
     // Exactly one campaign is genuinely live, so the button is unambiguous without scoping
     // to its card.
-    await page.getByRole('button', { name: 'Ver anúncio', exact: true }).click()
+    await page.getByTestId('ad-ad-live').getByRole('button', { name: 'Ver anúncio', exact: true }).click()
     const bannerPreview = page.getByLabel('Prévia do anúncio')
     await bannerPreview.locator('.sponsored-ad-banner').waitFor()
     assert.equal(await bannerPreview.locator('.sponsored-ad-media, img').count(), 0)

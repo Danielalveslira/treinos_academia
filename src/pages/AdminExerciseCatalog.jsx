@@ -73,7 +73,7 @@ const SECTIONS = [
 // Lista dinâmica de textos (músculos secundários, instruções, orientações de segurança): cada
 // linha é um TextInput com remover; "Adicionar" acrescenta uma linha vazia. Reaproveita Primer
 // puro (TextInput/IconButton/Button), sem componente novo de biblioteca.
-function DynamicList({ label, values, onChange, placeholder, addLabel, multiline = false }) {
+function DynamicList({ label, values, onChange, placeholder, addLabel, multiline = false, error }) {
   function setAt(index, value) {
     const next = [...values]
     next[index] = value
@@ -108,6 +108,7 @@ function DynamicList({ label, values, onChange, placeholder, addLabel, multiline
           {addLabel}
         </Button>
       </Box>
+      {error && <FormControl.Validation variant="error">{error}</FormControl.Validation>}
     </FormControl>
   )
 }
@@ -134,6 +135,7 @@ function ExerciseRow({ exercise, active, onSelect }) {
             )}
           </span>
           <span className="ev-muted">{meta}</span>
+          {exercise.pending_content && <span className="ev-muted">Atualização pendente</span>}
         </span>
       </button>
     </li>
@@ -142,17 +144,20 @@ function ExerciseRow({ exercise, active, onSelect }) {
 
 function ContentForm({ catalog }) {
   const { formState, updateFormField } = catalog
+  const errorFor = (field) => catalog.fieldError?.field === field ? catalog.fieldError.message : null
   const disabled = catalog.busy === 'save'
   return (
     <Box as="form" sx={{ display: 'flex', flexDirection: 'column', gap: 3 }} onSubmit={(e) => e.preventDefault()}>
       <FormControl required disabled={disabled}>
         <FormControl.Label>Nome</FormControl.Label>
         <TextInput block value={formState.name} onChange={(e) => updateFormField('name', e.target.value)} />
+        {errorFor('name') && <FormControl.Validation variant="error">{errorFor('name')}</FormControl.Validation>}
       </FormControl>
       <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
         <FormControl disabled={disabled}>
           <FormControl.Label>Músculo primário</FormControl.Label>
           <TextInput value={formState.primaryMuscle} onChange={(e) => updateFormField('primaryMuscle', e.target.value)} />
+          {errorFor('primaryMuscle') && <FormControl.Validation variant="error">{errorFor('primaryMuscle')}</FormControl.Validation>}
         </FormControl>
         <FormControl disabled={disabled}>
           <FormControl.Label>Equipamento</FormControl.Label>
@@ -161,6 +166,7 @@ function ContentForm({ catalog }) {
         <FormControl disabled={disabled}>
           <FormControl.Label>Categoria</FormControl.Label>
           <TextInput value={formState.category} onChange={(e) => updateFormField('category', e.target.value)} />
+          {errorFor('category') && <FormControl.Validation variant="error">{errorFor('category')}</FormControl.Validation>}
         </FormControl>
       </Box>
       <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
@@ -197,6 +203,7 @@ function ContentForm({ catalog }) {
         onChange={(v) => updateFormField('muscles', v)}
         placeholder="ex.: peito"
         addLabel="Adicionar músculo"
+        error={errorFor('muscles')}
       />
       <DynamicList
         label="Instruções (passo a passo)"
@@ -205,6 +212,7 @@ function ContentForm({ catalog }) {
         placeholder="ex.: Desça a barra até o peito."
         addLabel="Adicionar etapa"
         multiline
+        error={errorFor('instructions')}
       />
       <DynamicList
         label="Orientações de segurança (opcional)"
@@ -225,21 +233,20 @@ function LifecycleActions({ catalog }) {
     <Box className="ev-actions" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
         <Button
+          variant={isDirty || !selected ? 'primary' : 'default'}
           disabled={!!busy || !isDirty}
           onClick={catalog.saveContent}
           title={!isDirty ? 'Nenhuma alteração para salvar' : undefined}
         >
-          {busy === 'save' ? <Spinner size="small" /> : selected ? 'Salvar' : 'Criar rascunho'}
+          {busy === 'save' ? <Spinner size="small" /> : selected ? 'Salvar alterações' : 'Criar rascunho'}
         </Button>
-        {selected && status === 'draft' && (
-          <Button disabled={!!busy} onClick={catalog.submitForReview}>
-            Enviar para revisão
+        {selected && (status === 'draft' || status === 'in_review' || (status === 'published' && selected.pending_content)) && (
+          <Button variant={!isDirty ? 'primary' : 'default'} disabled={!!busy || isDirty} onClick={catalog.publish}>
+            {status === 'published' ? 'Publicar atualização' : 'Publicar exercício'}
           </Button>
         )}
-        {selected && (status === 'draft' || status === 'in_review') && (
-          <Button variant="primary" disabled={!!busy} onClick={catalog.publish}>
-            Publicar
-          </Button>
+        {selected?.pending_content && status === 'published' && (
+          <Button disabled={!!busy || isDirty} onClick={catalog.discardPending}>Descartar alterações pendentes</Button>
         )}
         {selected && status === 'withdrawn' && (
           <Button disabled={!!busy} onClick={catalog.restore}>
@@ -247,6 +254,8 @@ function LifecycleActions({ catalog }) {
           </Button>
         )}
       </Box>
+      {isDirty && <Text className="ev-muted" role="status">Alterações não salvas</Text>}
+      {selected?.pending_content && status === 'published' && <Text className="ev-muted">Atualização pendente · versão publicada disponível</Text>}
       {selected && status === 'published' && (
         <FormControl>
           <FormControl.Label>Motivo da retirada</FormControl.Label>

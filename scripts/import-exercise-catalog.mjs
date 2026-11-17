@@ -53,7 +53,9 @@ function chunk(array, size) {
 
 async function applyUpsert(client, rows) {
   for (const batch of chunk(rows, UPSERT_CHUNK_SIZE)) {
-    const { error } = await client.from('exercise_catalog').upsert(batch, { onConflict: 'provider,provider_exercise_id' })
+    const { error } = await client.from('exercise_catalog').upsert(batch, {
+      onConflict: 'provider,provider_exercise_id', ignoreDuplicates: true,
+    })
     if (error) throw new Error(`UPSERT_FAILED: ${error.message}`)
   }
 }
@@ -76,7 +78,7 @@ export async function main(argv = process.argv.slice(2)) {
 
   if (apply) {
     await applyUpsert(client, toUpsert)
-    console.log(`Gravação concluída: ${report.inserts} inseridos, ${report.updates} atualizados, ${report.unchanged} sem alteração.`)
+    console.log(`Gravação concluída: até ${report.inserts} novos registros; ${report.updates} divergências preservadas para revisão editorial.`)
   } else {
     console.log('Dry-run: nenhuma gravação foi feita. Rode novamente com --apply para gravar.')
   }

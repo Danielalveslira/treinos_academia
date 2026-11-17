@@ -3,11 +3,11 @@ import {
   PAGE_SIZE,
   createCatalogDraft,
   describeCatalogAdminError,
+  discardCatalogPending,
   listCatalogAuditLog,
   listCatalogExercises,
   publishCatalogExercise,
   restoreCatalogExercise,
-  submitCatalogForReview,
   updateCatalogContent,
   withdrawCatalogExercise,
 } from '../services/exerciseCatalogAdminService'
@@ -46,22 +46,20 @@ function serializeFormState(form) {
 }
 
 function toFormState(row) {
-  // Se há edição pendente de republicação (pending_content), o formulário edita a PROPOSTA,
-  // nunca o conteúdo ao vivo (ver admin_update_catalog_exercise_content, seção 1.9 da migration).
-  const source = row?.pending_content || row
-  if (!source) return EMPTY_FORM
-  return {
-    name: source.name ?? row?.name ?? '',
-    primaryMuscle: source.primaryMuscle ?? source.primary_muscle ?? '',
-    muscles: source.muscles ?? [],
-    equipment: source.equipment ?? '',
-    category: source.category ?? '',
-    difficulty: source.difficulty ?? '',
-    force: source.force ?? '',
-    mechanic: source.mechanic ?? '',
-    instructions: source.instructions ?? [],
-    safetyNotes: source.safetyNotes ?? source.safety_notes ?? [],
+  if (!row) return EMPTY_FORM
+  const base = {
+    name: row.name ?? '', primaryMuscle: row.primary_muscle ?? '',
+    muscles: row.muscles ?? [], equipment: row.equipment ?? '',
+    category: row.category ?? '', difficulty: row.difficulty ?? '',
+    force: row.force ?? '', mechanic: row.mechanic ?? '',
+    instructions: row.instructions ?? [], safetyNotes: row.safety_notes ?? [],
   }
+  const pending = row.pending_content
+  if (!pending || typeof pending !== 'object' || Array.isArray(pending)) return base
+  // Chave ausente preserva a versão pública. JSON null limpa somente o campo presente.
+  return Object.fromEntries(Object.entries(base).map(([key, value]) => [
+    key, Object.hasOwn(pending, key) ? (pending[key] ?? (Array.isArray(value) ? [] : '')) : value,
+  ]))
 }
 
 // Estado da página /admin/exercicios: conteúdo e ciclo de vida do catálogo oficial (criar,
@@ -88,6 +86,7 @@ export function useAdminExerciseCatalog() {
   const [busy, setBusy] = useState(null) // 'save' | 'submit' | 'publish' | 'withdraw' | 'restore'
   const [actionError, setActionError] = useState('')
   const [actionMessage, setActionMessage] = useState('')
+  const [fieldError, setFieldError] = useState(null)
   const busyRef = useRef(null)
   const listRequest = useRef(0)
 
@@ -129,13 +128,19 @@ export function useAdminExerciseCatalog() {
     }
   }, [])
 
-  function selectSection(next) {
-    setSection(next)
-    setPage(0)
-    select(next === 'draft' && !selected ? null : selected)
+  function confirmLeave() {
+    return !isDirty || window.confirm('Há alterações não salvas. Deseja descartá-las?')
   }
 
-  function select(row) {
+  function selectSection(next) {
+    if (!confirmLeave()) return
+    setSection(next)
+    setPage(0)
+    select(next === 'draft' && !selected ? null : selected, true)
+  }
+
+  function select(row, skipConfirmation = false) {
+    if (!skipConfirmation && !confirmLeave()) return
     const next = toFormState(row)
     setSelected(row)
     setFormState(next)
@@ -143,17 +148,20 @@ export function useAdminExerciseCatalog() {
     setWithdrawReason('')
     setActionError('')
     setActionMessage('')
+    setFieldError(null)
     setAuditLog([])
     if (row) loadAuditLog(row.id)
   }
 
   function startNewDraft() {
-    select(null)
+    if (!confirmLeave()) return
+    select(null, true)
     setFormState(EMPTY_FORM)
   }
 
   function updateFormField(field, value) {
     setFormState((current) => ({ ...current, [field]: value }))
+    if (fieldError?.field === field) setFieldError(null)
   }
 
   function search(term) {
@@ -177,18 +185,19 @@ export function useAdminExerciseCatalog() {
     setBusy(name)
     setActionError('')
     setActionMessage('')
+    setFieldError(null)
     try {
       const result = await action()
       setActionMessage(
         name === 'save'
-          ? 'Rascunho salvo.'
-          : name === 'submit'
-            ? 'Enviado para revisão.'
-            : name === 'publish'
-              ? 'Publicado no Catálogo Evolutus.'
+          ? selected?.status === 'published'
+            ? 'Alterações salvas. O exercício continua disponível com a versão anterior.'
+            : 'Rascunho salvo.'
+          : name === 'publish'
+              ? selected?.status === 'published' ? 'Exercício atualizado com sucesso.' : 'Exercício publicado com sucesso.'
               : name === 'withdraw'
                 ? 'Exercício retirado do catálogo.'
-                : 'Restaurado; publique novamente para voltar ao ar.'
+                : name === 'discard' ? 'Alterações pendentes descartadas.' : 'Restaurado; publique novamente para voltar ao ar.'
       )
       setSelected(result)
       // Depois de qualquer ação bem-sucedida o formulário passa a refletir o que o servidor
@@ -202,7 +211,15 @@ export function useAdminExerciseCatalog() {
       return true
     } catch (error) {
       console.error(`[useAdminExerciseCatalog] ${name}:`, error)
-      setActionError(describeCatalogAdminError(error))
+      const message = describeCatalogAdminError(error)
+      const field = {
+        NAME_REQUIRED: 'name', PRIMARY_MUSCLE_REQUIRED: 'primaryMuscle',
+        MUSCLES_REQUIRED: 'muscles', CATEGORY_REQUIRED: 'category',
+        INSTRUCTIONS_REQUIRED: 'instructions',
+      }[error?.message]
+      if (field) setFieldError({ field, message })
+      setActionError(name === 'publish' && message === 'Não foi possível concluir a operação. Tente novamente.'
+        ? 'Não foi possível publicar a alteração. A versão anterior continua disponível.' : message)
       return false
     } finally {
       busyRef.current = null
@@ -214,16 +231,36 @@ export function useAdminExerciseCatalog() {
   // porque o usuário clicou em algum campo sem mudar o valor.
   const isDirty = serializeFormState(formState) !== serializeFormState(formBaseline)
 
+  useEffect(() => {
+    if (!isDirty) return undefined
+    const warn = (event) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [isDirty])
+
+  const patch = Object.fromEntries(Object.keys(formState)
+    .filter((key) => JSON.stringify(formState[key]) !== JSON.stringify(formBaseline[key]))
+    .map((key) => [key, Array.isArray(formState[key]) ? formState[key].filter((value) => value.trim()) : formState[key].trim() || null]))
+
   const saveContent = () => {
     // Nada mudou: não gasta requisição, não incrementa revisão, não grava auditoria.
     if (!isDirty) return Promise.resolve(false)
     return run('save', () =>
-      selected ? updateCatalogContent(selected.id, formState) : createCatalogDraft(formState)
+      selected ? updateCatalogContent(selected.id, selected.revision, patch) : createCatalogDraft(formState)
     )
   }
-  const submitForReview = () => run('submit', () => submitCatalogForReview(selected.id))
-  const publish = () => run('publish', () => publishCatalogExercise(selected.id))
-  const withdraw = () => run('withdraw', () => withdrawCatalogExercise(selected.id, withdrawReason))
+  const publish = () => run('publish', () => publishCatalogExercise(selected.id, selected.revision))
+  const discardPending = () => {
+    if (!window.confirm('Descartar as alterações ainda não publicadas?')) return Promise.resolve(false)
+    return run('discard', () => discardCatalogPending(selected.id, selected.revision))
+  }
+  const withdraw = () => {
+    if (!window.confirm('Retirar este exercício do catálogo? Ele ficará indisponível para novos treinos.')) return Promise.resolve(false)
+    return run('withdraw', () => withdrawCatalogExercise(selected.id, withdrawReason))
+  }
   const restore = () => run('restore', () => restoreCatalogExercise(selected.id))
 
   return {
@@ -245,6 +282,7 @@ export function useAdminExerciseCatalog() {
     busy,
     actionError,
     actionMessage,
+    fieldError,
     selectSection,
     select,
     startNewDraft,
@@ -253,8 +291,8 @@ export function useAdminExerciseCatalog() {
     setMuscleFilter,
     toggleOnlyMissingImages,
     saveContent,
-    submitForReview,
     publish,
+    discardPending,
     withdraw,
     restore,
   }

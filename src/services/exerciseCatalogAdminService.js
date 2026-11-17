@@ -17,9 +17,19 @@ const ERROR_MESSAGES = {
   INCOMPLETE_CONTENT: 'Preencha músculo, categoria e pelo menos uma instrução antes de publicar.',
   INCOMPLETE_VISUAL_SET: 'As imagens de início e fim precisam estar publicadas antes de publicar o exercício.',
   REASON_REQUIRED: 'Informe o motivo da retirada.',
+  NAME_REQUIRED: 'Informe o nome do exercício.',
+  PRIMARY_MUSCLE_REQUIRED: 'Informe o músculo principal.',
+  MUSCLES_REQUIRED: 'Informe pelo menos um músculo.',
+  CATEGORY_REQUIRED: 'Informe a categoria.',
+  INSTRUCTIONS_REQUIRED: 'Adicione uma instrução para publicar este exercício.',
+  CATALOG_REVISION_CONFLICT: 'Este exercício foi alterado em outra sessão. Atualize os dados antes de continuar.',
+  CATALOG_CLIENT_UPDATE_REQUIRED: 'Atualize a página antes de editar este exercício.',
+  INVALID_CONTENT: 'Revise os dados do exercício antes de salvar.',
 }
 
 export function describeCatalogAdminError(error) {
+  if (error?.message?.startsWith('INVALID_ARRAY_')) return 'Revise a lista de músculos, instruções ou orientações.'
+  if (error?.message?.startsWith('INVALID_FIELD_')) return 'Revise o campo informado antes de salvar.'
   return (
     ERROR_MESSAGES[error?.message] ||
     ERROR_MESSAGES[error?.code] ||
@@ -65,19 +75,11 @@ export async function createCatalogDraft(fields) {
   return data
 }
 
-export async function updateCatalogContent(id, fields) {
-  const { data, error } = await supabase.rpc('admin_update_catalog_exercise_content', {
+export async function updateCatalogContent(id, expectedRevision, patch) {
+  const { data, error } = await supabase.rpc('admin_patch_catalog_exercise', {
     p_id: id,
-    p_name: fields.name,
-    p_primary_muscle: fields.primaryMuscle || null,
-    p_muscles: fields.muscles?.length ? fields.muscles : null,
-    p_equipment: fields.equipment || null,
-    p_category: fields.category || null,
-    p_difficulty: fields.difficulty || null,
-    p_force: fields.force || null,
-    p_mechanic: fields.mechanic || null,
-    p_instructions: fields.instructions?.length ? fields.instructions : null,
-    p_safety_notes: fields.safetyNotes?.length ? fields.safetyNotes : null,
+    p_expected_revision: expectedRevision,
+    p_patch: patch,
   })
   if (error) throw error
   return data
@@ -89,8 +91,20 @@ export async function submitCatalogForReview(id) {
   return data
 }
 
-export async function publishCatalogExercise(id) {
-  const { data, error } = await supabase.rpc('admin_publish_catalog_exercise', { p_id: id })
+export async function publishCatalogExercise(id, expectedRevision) {
+  const { data, error } = await supabase.rpc('admin_publish_catalog_exercise', {
+    p_id: id,
+    p_expected_revision: expectedRevision,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function discardCatalogPending(id, expectedRevision) {
+  const { data, error } = await supabase.rpc('admin_discard_catalog_exercise_pending', {
+    p_id: id,
+    p_expected_revision: expectedRevision,
+  })
   if (error) throw error
   return data
 }
