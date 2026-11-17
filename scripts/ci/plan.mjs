@@ -1,12 +1,14 @@
 // Run from the trusted base revision, never from a PR checkout. Unknown paths run all jobs.
 import { execFileSync } from 'node:child_process'
 
-const full = { run_js: true, run_sql: true, run_finance: true, browser_mode: 'full' }
-const docs = { run_js: false, run_sql: false, run_finance: false, browser_mode: 'none' }
-const css = { run_js: true, run_sql: false, run_finance: false, browser_mode: 'full' }
-const catalog = { run_js: true, run_sql: false, run_finance: false, browser_mode: 'catalog' }
-const sheets = { run_js: true, run_sql: true, run_finance: false, browser_mode: 'sheets' }
-const browserOrder = ['none', 'catalog', 'sheets', 'full']
+// Each path contributes an independent set of required browser suites (never a single
+// "highest priority" mode) so a PR touching both catalog and sheets runs the union of both,
+// not whichever profile happened to sort last.
+const full = { run_js: true, run_sql: true, run_finance: true, browser: { base: true, catalog: true, full: true } }
+const docs = { run_js: false, run_sql: false, run_finance: false, browser: {} }
+const css = { run_js: true, run_sql: false, run_finance: false, browser: { base: true, catalog: true, full: true } }
+const catalog = { run_js: true, run_sql: false, run_finance: false, browser: { base: true, catalog: true, full: false } }
+const sheets = { run_js: true, run_sql: true, run_finance: false, browser: { base: true, catalog: false, full: false } }
 
 export function parseNameStatus(buffer) {
   const parts = buffer.toString('utf8').split('\0')
@@ -51,7 +53,9 @@ export function classify(changes, { draft = false } = {}) {
     run_js: profiles.some((p) => p.run_js),
     run_sql: profiles.some((p) => p.run_sql),
     run_finance: profiles.some((p) => p.run_finance),
-    browser_mode: profiles.reduce((mode, p) => browserOrder[Math.max(browserOrder.indexOf(mode), browserOrder.indexOf(p.browser_mode))], 'none'),
+    browser_base: profiles.some((p) => p.browser.base),
+    browser_catalog: profiles.some((p) => p.browser.catalog),
+    browser_full: profiles.some((p) => p.browser.full),
     draft: Boolean(draft),
   }
   return result

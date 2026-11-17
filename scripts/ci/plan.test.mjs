@@ -9,15 +9,20 @@ const pass = (p, overrides = {}) => ({ event: 'pull_request', draft: p.draft, sc
   plan: p, eventHead: sha, eventBase: sha, jobs: { js: p.run_js ? 'success' : 'skipped',
     sql: p.run_sql ? 'success' : 'skipped', 'finance-e2e': p.run_finance ? 'success' : 'skipped',
     secrets: 'success' }, ...overrides })
+const browserSuites = (p) => ({
+  workoutSheetsAndHomeAndOffline: p.browser_base,
+  phase3Exercises: p.browser_catalog,
+  fullOnlySmokes: p.browser_full,
+})
 
 test('documentation only legitimately dispenses heavy jobs', () => {
   const p = plan(['docs/ci/ESTRATEGIA_CI_ECONOMICO.md'])
   assert.equal(p.run_js, false)
   assert.equal(evaluateGate(pass(p)), true)
 })
-test('isolated sheet CSS runs JS and visual tests only', () => {
+test('isolated sheet CSS runs JS and the full visual matrix, no SQL', () => {
   const p = plan(['src/features/workoutSheets/workoutSheets.css'])
-  assert.equal(p.browser_mode, 'full')
+  assert.deepEqual(browserSuites(p), { workoutSheetsAndHomeAndOffline: true, phase3Exercises: true, fullOnlySmokes: true })
   assert.equal(p.run_sql, false)
 })
 test('shared component, finance, advertising, security, migration, dependencies and CI all run full', () => {
@@ -29,10 +34,27 @@ test('shared component, finance, advertising, security, migration, dependencies 
     assert.deepEqual([p.run_js, p.run_sql, p.run_finance], [true, true, true], path)
   }
 })
-test('catalog and sheets use their scoped matrix; a mixed scope takes the union', () => {
-  assert.equal(plan(['src/utils/exerciseCatalog.js']).browser_mode, 'catalog')
-  assert.equal(plan(['src/features/workoutSheets/WorkoutSheetEditorPage.jsx']).run_sql, true)
-  assert.equal(plan(['src/utils/exerciseCatalog.js','src/features/workoutSheets/WorkoutSheetEditorPage.jsx']).run_sql, true)
+test('catalog and sheets use their own scoped matrix in isolation', () => {
+  const catalogOnly = plan(['src/utils/exerciseCatalog.js'])
+  assert.deepEqual(browserSuites(catalogOnly), { workoutSheetsAndHomeAndOffline: true, phase3Exercises: true, fullOnlySmokes: false })
+  assert.equal(catalogOnly.run_sql, false)
+  const sheetsOnly = plan(['src/features/workoutSheets/WorkoutSheetEditorPage.jsx'])
+  assert.deepEqual(browserSuites(sheetsOnly), { workoutSheetsAndHomeAndOffline: true, phase3Exercises: false, fullOnlySmokes: false })
+  assert.equal(sheetsOnly.run_sql, true)
+})
+test('a PR touching both catalog and sheets runs the true union of both matrices, not just the higher-priority one', () => {
+  // Regression: an earlier implementation picked a single "highest priority" browser mode
+  // (sheets over catalog), silently dropping phase3-exercises-browser-smoke.mjs for any PR
+  // that also touched workoutSheets files -- exactly the catalog+sheets case here.
+  const mixed = plan(['src/utils/exerciseCatalog.js', 'src/features/workoutSheets/WorkoutSheetEditorPage.jsx'])
+  assert.deepEqual(browserSuites(mixed), { workoutSheetsAndHomeAndOffline: true, phase3Exercises: true, fullOnlySmokes: false })
+  assert.equal(mixed.run_js, true)
+  assert.equal(mixed.run_sql, true)
+  assert.equal(mixed.run_finance, false)
+})
+test('a fully unrelated scope never turns on any browser suite', () => {
+  const p = plan(['docs/ci/ESTRATEGIA_CI_ECONOMICO.md'])
+  assert.deepEqual(browserSuites(p), { workoutSheetsAndHomeAndOffline: false, phase3Exercises: false, fullOnlySmokes: false })
 })
 test('unknown, removed and renamed paths fail safely to full', () => {
   assert.equal(plan(['new-unknown-file']).run_finance, true)

@@ -41,7 +41,9 @@ jobs:
       run_js: ${{ steps.plan.outputs.run_js }}
       run_sql: ${{ steps.plan.outputs.run_sql }}
       run_finance: ${{ steps.plan.outputs.run_finance }}
-      browser_mode: ${{ steps.plan.outputs.browser_mode }}
+      browser_base: ${{ steps.plan.outputs.browser_base }}
+      browser_catalog: ${{ steps.plan.outputs.browser_catalog }}
+      browser_full: ${{ steps.plan.outputs.browser_full }}
       draft: ${{ steps.plan.outputs.draft }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -65,12 +67,12 @@ jobs:
               git show "$CI_BASE_SHA:scripts/ci/plan.mjs" > /tmp/plan.mjs
               node /tmp/plan.mjs --base "$CI_BASE_SHA" --head "$CI_HEAD_SHA" --draft "$CI_DRAFT" > /tmp/ci-plan.json
             else
-              printf '{"run_js":true,"run_sql":true,"run_finance":true,"browser_mode":"full","draft":%s,"base_sha":"%s","head_sha":"%s"}' "$CI_DRAFT" "$CI_BASE_SHA" "$CI_HEAD_SHA" > /tmp/ci-plan.json
+              printf '{"run_js":true,"run_sql":true,"run_finance":true,"browser_base":true,"browser_catalog":true,"browser_full":true,"draft":%s,"base_sha":"%s","head_sha":"%s"}' "$CI_DRAFT" "$CI_BASE_SHA" "$CI_HEAD_SHA" > /tmp/ci-plan.json
             fi
           else
-            printf '{"run_js":true,"run_sql":true,"run_finance":true,"browser_mode":"full","draft":false,"base_sha":"%s","head_sha":"%s"}' "$CI_BASE_SHA" "$CI_HEAD_SHA" > /tmp/ci-plan.json
+            printf '{"run_js":true,"run_sql":true,"run_finance":true,"browser_base":true,"browser_catalog":true,"browser_full":true,"draft":false,"base_sha":"%s","head_sha":"%s"}' "$CI_BASE_SHA" "$CI_HEAD_SHA" > /tmp/ci-plan.json
           fi
-          node -e 'const fs=require("node:fs"); const p=JSON.parse(fs.readFileSync("/tmp/ci-plan.json","utf8")); if(p.head_sha!==process.env.CI_HEAD_SHA) throw Error("CI_PLAN_HEAD_MISMATCH"); fs.appendFileSync(process.env.GITHUB_OUTPUT, `plan=${JSON.stringify(p)}\nrun_js=${p.run_js}\nrun_sql=${p.run_sql}\nrun_finance=${p.run_finance}\nbrowser_mode=${p.browser_mode}\ndraft=${p.draft}\n`)'
+          node -e 'const fs=require("node:fs"); const p=JSON.parse(fs.readFileSync("/tmp/ci-plan.json","utf8")); if(p.head_sha!==process.env.CI_HEAD_SHA) throw Error("CI_PLAN_HEAD_MISMATCH"); fs.appendFileSync(process.env.GITHUB_OUTPUT, `plan=${JSON.stringify(p)}\nrun_js=${p.run_js}\nrun_sql=${p.run_sql}\nrun_finance=${p.run_finance}\nbrowser_base=${p.browser_base}\nbrowser_catalog=${p.browser_catalog}\nbrowser_full=${p.browser_full}\ndraft=${p.draft}\n`)'
 
   js:
     needs: scope
@@ -101,47 +103,47 @@ jobs:
           VITE_SUPABASE_ANON_KEY: header-smoke-public-key
       - run: npm run budget
       - name: Cache Playwright browser binary
-        if: needs.scope.outputs.browser_mode != 'none'
+        if: needs.scope.outputs.browser_base == 'true'
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: ~/.cache/ms-playwright
           key: playwright-browsers-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Install isolated browser
-        if: needs.scope.outputs.browser_mode != 'none'
+        if: needs.scope.outputs.browser_base == 'true'
         run: node node_modules/playwright-core/cli.js install --with-deps chromium-headless-shell
       - name: Direct post boost modal and responsive contract review
-        if: needs.scope.outputs.browser_mode == 'full'
+        if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/post-boost-browser-smoke.mjs
       - name: Public and auth headers at mobile and desktop widths
-        if: needs.scope.outputs.browser_mode == 'full'
+        if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/public-auth-header-smoke.mjs
       - name: Workout sheets mobile, execution and conflict smoke
-        if: needs.scope.outputs.browser_mode != 'none'
+        if: needs.scope.outputs.browser_base == 'true'
         run: node scripts/workout-sheets-browser-smoke.mjs
       - name: Community cover crop and responsive layout smoke
-        if: needs.scope.outputs.browser_mode == 'full'
+        if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/community-cover-layout-smoke.mjs
       - name: Sheet entry redirects and exercise selection intent
-        if: needs.scope.outputs.browser_mode != 'none'
+        if: needs.scope.outputs.browser_base == 'true'
         run: node scripts/workout-sheets-browser-smoke.mjs --entries
       - name: Home V4 recommendation, completion, cache, photos and responsive themes
-        if: needs.scope.outputs.browser_mode != 'none'
+        if: needs.scope.outputs.browser_base == 'true'
         run: node scripts/home-v2-browser-smoke.mjs
-      - if: needs.scope.outputs.browser_mode == 'full'
+      - if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/ad-metrics-browser-smoke.mjs
       - name: Ads UX card list and 4-step creation wizard, mobile/desktop and themes
-        if: needs.scope.outputs.browser_mode == 'full'
+        if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/ads-ux-browser-smoke.mjs
       - name: Storefront/products UX card list, BRL price form and Meu negócio navigation
-        if: needs.scope.outputs.browser_mode == 'full'
+        if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/storefront-products-ux-browser-smoke.mjs
       - name: Central comercial 4-area navigation, overflow menu and scroll reset across widths
-        if: needs.scope.outputs.browser_mode == 'full'
+        if: needs.scope.outputs.browser_full == 'true'
         run: node scripts/commercial-central-nav-browser-smoke.mjs
-      - if: needs.scope.outputs.browser_mode == 'full' || needs.scope.outputs.browser_mode == 'catalog'
+      - if: needs.scope.outputs.browser_catalog == 'true'
         run: node scripts/phase3-exercises-browser-smoke.mjs
       - name: Offline cold start and synchronization regression
-        if: needs.scope.outputs.browser_mode != 'none'
+        if: needs.scope.outputs.browser_base == 'true'
         run: node scripts/offline-browser-smoke.mjs
       - run: node scripts/release/scan-secrets.mjs --dist
 

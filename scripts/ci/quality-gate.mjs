@@ -6,7 +6,8 @@ export function evaluateGate({ event, draft, scope, plan, jobs, eventHead, event
   if (!/^[a-f0-9]{40}$/.test(plan.base_sha) || plan.base_sha !== eventBase)
     throw new Error('CI_PLAN_BASE_MISMATCH')
   if (typeof plan.run_js !== 'boolean' || typeof plan.run_sql !== 'boolean' ||
-      typeof plan.run_finance !== 'boolean' || !['none', 'catalog', 'sheets', 'full'].includes(plan.browser_mode))
+      typeof plan.run_finance !== 'boolean' || typeof plan.browser_base !== 'boolean' ||
+      typeof plan.browser_catalog !== 'boolean' || typeof plan.browser_full !== 'boolean')
     throw new Error('CI_PLAN_INVALID')
   if (plan.draft !== Boolean(draft)) throw new Error('CI_DRAFT_MISMATCH')
   if (draft) throw new Error('DRAFT_REQUIRES_READY_REVIEW')
