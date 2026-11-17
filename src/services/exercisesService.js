@@ -1,4 +1,8 @@
 import { supabase } from '../supabase/config'
+import {
+  mapCatalogCategoryToExerciseType,
+  mapCatalogMuscleToPersonalGroup,
+} from '../utils/exerciseCatalog.js'
 import { readThrough } from './offline/readThrough.js'
 import {
   patchCachedUserExercise,
@@ -84,8 +88,13 @@ function toDoc(row) {
   return {
     id: row.id,
     name: official?.name ?? row.name,
-    muscleGroup: official?.primary_muscle ?? row.muscle_group,
-    type: official ? (official.category === 'cardio' ? 'cardio' : 'strength') : row.type,
+    muscleGroup: official
+      ? mapCatalogMuscleToPersonalGroup({
+          category: official.category,
+          primaryMuscles: [official.primary_muscle],
+        })
+      : row.muscle_group,
+    type: official ? mapCatalogCategoryToExerciseType(official.category) : row.type,
     note: row.note,
     active: row.active,
     source: row.source,
