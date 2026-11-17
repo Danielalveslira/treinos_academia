@@ -40,6 +40,12 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
   const [error, setError] = useState('')
   const [confirmPause, setConfirmPause] = useState(false)
   const lock = useRef(false)
+  // Uma intenção de pausa/retomada mantém o mesmo requestId entre tentativas (ex.: o usuário
+  // repete o clique depois de um erro de rede) até ser concluída com sucesso -- é o que permite
+  // ao backend reconhecer uma requisição atrasada/duplicada da MESMA intenção e não aplicá-la
+  // de novo, mesmo que o anúncio já tenha sido retomado e pausado outra vez nesse meio-tempo.
+  const pauseRequestId = useRef(null)
+  const resumeRequestId = useRef(null)
 
   async function run(action) {
     if (lock.current) return
@@ -47,14 +53,25 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
     setBusy(true)
     setError('')
     try {
-      if (action === 'interrupt')
-        await interruptAdvertisingCampaign(campaign.ad_id, 'Interrupção solicitada pelo anunciante')
+      if (action === 'interrupt') {
+        pauseRequestId.current ||= crypto.randomUUID()
+        await interruptAdvertisingCampaign(
+          campaign.ad_id,
+          'Interrupção solicitada pelo anunciante',
+          pauseRequestId.current
+        )
+        pauseRequestId.current = null
+      }
       if (action === 'confirm-limit')
         await confirmAdvertisingPauseLimit(
           campaign,
           'Suspensão confirmada pelo anunciante após três pausas'
         )
-      if (action === 'resume') await resumeMyAdvertisingCampaign(campaign.ad_id)
+      if (action === 'resume') {
+        resumeRequestId.current ||= crypto.randomUUID()
+        await resumeMyAdvertisingCampaign(campaign.ad_id, resumeRequestId.current)
+        resumeRequestId.current = null
+      }
       await onChange?.()
       if (action === 'interrupt' || action === 'confirm-limit') setConfirmPause(false)
     } catch (e) {
