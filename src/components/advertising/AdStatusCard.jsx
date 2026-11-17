@@ -56,7 +56,7 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
       if (action === 'interrupt') {
         pauseRequestId.current ||= crypto.randomUUID()
         await interruptAdvertisingCampaign(
-          campaign.ad_id,
+          campaign,
           'Interrupção solicitada pelo anunciante',
           pauseRequestId.current
         )
@@ -69,7 +69,7 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
         )
       if (action === 'resume') {
         resumeRequestId.current ||= crypto.randomUUID()
-        await resumeMyAdvertisingCampaign(campaign.ad_id, resumeRequestId.current)
+        await resumeMyAdvertisingCampaign(campaign, resumeRequestId.current)
         resumeRequestId.current = null
       }
       await onChange?.()
@@ -90,6 +90,16 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
         setError(commercialError(e))
         if (action === 'confirm-limit') {
           setConfirmPause(false)
+          try {
+            await onChange?.()
+          } catch (refreshError) {
+            setError(commercialError(refreshError))
+          }
+        } else if (/AD_(?:RESUME|PAUSE)_STALE/.test(String(e?.message))) {
+          if (action === 'interrupt') pauseRequestId.current = null
+          if (action === 'resume') resumeRequestId.current = null
+          // A situação mudou enquanto a tela estava aberta (ex.: outra ação já pausou/retomou
+          // de novo); atualiza para que o próximo clique carregue o pause_operation_id correto.
           try {
             await onChange?.()
           } catch (refreshError) {

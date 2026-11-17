@@ -4,11 +4,15 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path=public,extensions;
 select no_plan();
-delete from public.legal_policy;
 insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 values('fa000000-0000-0000-0000-000000000001','authenticated','authenticated','refund-owner@example.invalid','x',now(),'{}','{}',now(),now()),
 ('fa000000-0000-0000-0000-000000000002','authenticated','authenticated','refund-admin@example.invalid','x',now(),'{}','{}',now(),now()),
 ('fa000000-0000-0000-0000-000000000003','authenticated','authenticated','refund-other@example.invalid','x',now(),'{}','{}',now(),now());
+-- Preserve the shared legal policy row: deleting it holds a row lock throughout this
+-- transaction and interferes with commercial_terms_evidence_test in pg_prove.
+update public.users u set legal_acceptance_version=p.version,
+  legal_acceptance_digest=p.digest,legal_acceptance_accepted_at=now()
+  from public.legal_policy p where p.id and u.id::text like 'fa000000-%';
 update public.users set role='superadmin' where id='fa000000-0000-0000-0000-000000000002';
 create function pg_temp.refund_admin() returns void language plpgsql as $$begin
  perform pg_temp.set_test_user('fa000000-0000-0000-0000-000000000002',true);
@@ -19,7 +23,11 @@ select public.confirm_infinitepay_cash_purchase((select (p->>'id')::uuid from pu
 select pg_temp.set_test_user('fa000000-0000-0000-0000-000000000001',true);
 select is(public.get_refund_policy()->>'approved','false','policy is unapproved draft');
 select is(public.get_refund_policy()->>'requestsEnabled','false','financial requests default closed');
-select is((select count(*)::integer from public.refund_contract_terms),1,'receipt freezes exactly one policy');
+-- Scoped to this test's own purchase, never a global count: refund_contract_terms has no
+-- per-test fixture prefix to isolate on (unlike the 76xxx/fa0xxx synthetic ids used elsewhere),
+-- so counting the whole table coupled this assertion to whatever else writes to it, in this
+-- file or any other run before it, instead of to the one fact this test actually verifies.
+select is((select count(*)::integer from public.refund_contract_terms where purchase_id=(select (p->>'id')::uuid from purchases)),1,'receipt freezes exactly one policy for this purchase');
 select throws_ok($$select public.create_refund_request('purchase',(select (p->>'id')::uuid from purchases),'withdrawal','','fa000000-0000-0000-0000-000000000010')$$,'REFUND_REQUESTS_NOT_ENABLED','withdrawal behind safe rollout');
 create temp table requests as select public.create_refund_request('purchase',(select (p->>'id')::uuid from purchases),'service_failure','Compra não recebida corretamente','fa000000-0000-0000-0000-000000000011') r;
 select ok((select r->>'protocol' from requests) like 'EVR-%','immediate protocol');

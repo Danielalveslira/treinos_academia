@@ -119,21 +119,24 @@ test('reading campaigns forwards only the account and cursor, matching the card 
   ])
 })
 
-test('advertiser resume calls its own RPC without an admin revision or reason, carrying the request id', async () => {
+test('advertiser resume calls its own RPC without an admin revision or reason, carrying the request id and the pause operation it observed', async () => {
   globalThis.__adsCalls = []
-  await service.resumeMyAdvertisingCampaign('ad-1', 'request-1')
+  await service.resumeMyAdvertisingCampaign({ ad_id: 'ad-1', pause_operation_id: 42, starts_at: 'period-1' }, 'request-1')
   assert.deepEqual(globalThis.__adsCalls, [
-    { name: 'resume_my_advertising_campaign', args: { p_id: 'ad-1', p_request_id: 'request-1' } },
+    {
+      name: 'resume_my_advertising_campaign',
+      args: { p_id: 'ad-1', p_request_id: 'request-1', p_expected_operation_id: 42, p_period_start: 'period-1' },
+    },
   ])
 })
 
 test('advertiser pause forwards the reason and the request id used for retry idempotency', async () => {
   globalThis.__adsCalls = []
-  await service.interruptAdvertisingCampaign('ad-1', 'Pausa solicitada', 'request-2')
+  await service.interruptAdvertisingCampaign({ ad_id: 'ad-1', pause_operation_id: 42, starts_at: 'period-1' }, 'Pausa solicitada', 'request-2')
   assert.deepEqual(globalThis.__adsCalls, [
     {
       name: 'interrupt_advertising_campaign',
-      args: { p_id: 'ad-1', p_reason: 'Pausa solicitada', p_request_id: 'request-2' },
+      args: { p_id: 'ad-1', p_reason: 'Pausa solicitada', p_request_id: 'request-2', p_expected_operation_id: 42, p_period_start: 'period-1' },
     },
   ])
 })

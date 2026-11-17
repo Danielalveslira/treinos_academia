@@ -58,7 +58,7 @@ async function createAdvertisingAccount(name) { track('create_advertising_accoun
 async function getAdvertisingCampaigns(accountId, after = null) {
   window.__adsStore = store
   track('get_advertising_campaigns', { accountId, after })
-  return [...store.values()].sort((a, b) => (a.ad_id < b.ad_id ? 1 : -1))
+  return [...store.values()].sort((a, b) => (a.ad_id < b.ad_id ? 1 : -1)).map((row) => ({ ...row }))
 }
 async function getAdvertisingSalesStatus() {
   track('advertising_sales_status', {})
@@ -86,9 +86,9 @@ async function editAdvertisingCampaign(campaign, values, submit, desiredDays = n
   if (desiredDays != null) d.desired_duration_days = desiredDays
   return { ...d }
 }
-async function interruptAdvertisingCampaign(id, reason) { track('interrupt_advertising_campaign', { id, reason }); const d = store.get(id); if (d) { if (d.pauses_available === 0) throw new Error('AD_PAUSE_LIMIT_CONFIRM_REQUIRED'); d.advertiser_paused = true; if (d.pauses_available != null) { d.pauses_available -= 1; d.pauses_used += 1 } d.delivery_state = 'private' } }
+async function interruptAdvertisingCampaign(campaign, reason, requestId) { const id = campaign.ad_id; track('interrupt_advertising_campaign', { id, reason, requestId }); const d = store.get(id); if (d) { if (d.pause_operation_id !== campaign.pause_operation_id || d.starts_at !== campaign.starts_at) throw new Error('AD_PAUSE_STALE'); if (d.pauses_available === 0) throw new Error('AD_PAUSE_LIMIT_CONFIRM_REQUIRED'); d.advertiser_paused = true; if (d.pauses_available != null) { d.pauses_available -= 1; d.pauses_used += 1 } d.delivery_state = 'private' } }
 async function confirmAdvertisingPauseLimit(campaign, reason) { track('confirm_advertising_pause_limit', { id: campaign.ad_id, period: campaign.starts_at, revision: campaign.approved_version, operation: campaign.pause_operation_id, reason }); const d = store.get(campaign.ad_id); if (d.pauses_available !== 0 || d.pause_operation_id !== campaign.pause_operation_id) throw new Error('AD_PAUSE_CONFIRM_STALE'); d.moderation_state = 'suspended'; d.suspension_origin = 'pause_limit'; d.delivery_state = 'private' }
-async function resumeMyAdvertisingCampaign(id) { track('resume_my_advertising_campaign', { id }); const d = store.get(id); if (d) { d.advertiser_paused = false; d.delivery_state = 'active' } }
+async function resumeMyAdvertisingCampaign(campaign, requestId) { const id = campaign.ad_id; track('resume_my_advertising_campaign', { id, requestId }); const d = store.get(id); if (d) { d.advertiser_paused = false; d.delivery_state = 'active' } }
 async function archiveAdvertisingCampaign(id) { track('archive_advertising_campaign', { id }); const d = store.get(id); if (d) { d.moderation_state = 'archived'; d.state = 'archived' } }
 async function getAdvertisingRevisions() { return [] }
 async function getAdvertisingOrders() { return [] }
@@ -287,6 +287,7 @@ try {
     await card.getByRole('button', { name: 'Pausar anúncio', exact: true }).click()
     await page.evaluate(() => { const row = window.__adsStore.get('ad-stale'); row.pauses_available = 0; row.pauses_used = 3; row.pause_operation_id = 18 })
     await page.getByRole('button', { name: 'Pausar anúncio', exact: true }).last().click()
+    await card.getByText('A situação deste anúncio mudou enquanto a tela estava aberta. Atualize antes de pausar.', { exact: true }).waitFor()
     await page.getByText('Limite de pausas atingido', { exact: true }).waitFor()
     assert.equal(await card.getByText('Suspenso pelo Evolutus', { exact: true }).count(), 0)
     await page.getByRole('button', { name: 'Confirmar suspensão', exact: true }).click()
