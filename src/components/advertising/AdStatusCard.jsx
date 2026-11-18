@@ -162,7 +162,7 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
         borderColor: 'border.default',
         borderRadius: 2,
         p: 3,
-        my: 3,
+        mb: 2,
         minWidth: 0,
         overflowWrap: 'anywhere',
         '& button': { minHeight: 44 },

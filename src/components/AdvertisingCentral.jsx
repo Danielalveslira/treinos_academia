@@ -81,29 +81,32 @@ export default function AdvertisingCentral({ accountId, accountName }) {
   }
 
   return (
-    <Box sx={{ mt: 3, minWidth: 0, maxWidth: 800, mx: 'auto' }}>
+    <Box sx={{ minWidth: 0, maxWidth: 800, mx: 'auto' }}>
       <Box
         sx={{
           display: 'flex',
-          justifyContent: 'flex-end',
+          justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: 2,
         }}
       >
+        {summary ? (
+          <Text as="p" sx={{ fontSize: 0, color: 'fg.muted' }}>
+            Total: {summary.total} · Ativos: {summary.live} · Em análise: {summary.submitted}
+          </Text>
+        ) : (
+          <Box />
+        )}
         <Button variant="primary" onClick={() => setWizard({ editing: null })}>
           Criar anúncio
         </Button>
       </Box>
-      {summary && (
-        <Text as="p" sx={{ fontSize: 0, color: 'fg.muted', mt: 2 }}>
-          Total: {summary.total} · Ativos: {summary.live} · Em análise: {summary.submitted}
-        </Text>
-      )}
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 3, alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2, alignItems: 'center' }}>
         {PRIMARY_FILTERS.map((item) => (
           <Button
             key={item.label}
+            size="small"
             aria-pressed={statusFilter === item.value}
             variant={statusFilter === item.value ? 'primary' : 'default'}
             onClick={() => setStatusFilter(item.value)}
@@ -113,6 +116,8 @@ export default function AdvertisingCentral({ accountId, accountName }) {
         ))}
         <Select
           aria-label="Outras situações"
+          size="small"
+          sx={{ width: 'auto', flexShrink: 0 }}
           value={COMPLEMENTARY_FILTERS.includes(statusFilter) ? statusFilter : ''}
           onChange={(e) => setStatusFilter(e.target.value || null)}
         >
@@ -125,31 +130,40 @@ export default function AdvertisingCentral({ accountId, accountName }) {
         </Select>
       </Box>
       {error && (
-        <Flash variant="danger" sx={{ mt: 3 }}>
+        <Flash variant="danger" sx={{ mt: 2 }}>
           {error}
         </Flash>
       )}
-      {!rows && !error && <Spinner aria-label="Carregando seus anúncios" sx={{ mt: 3 }} />}
+      {!rows && !error && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <Spinner aria-label="Carregando seus anúncios" />
+        </Box>
+      )}
       {rows?.length === 0 && !statusFilter && (
-        <Text as="p" sx={{ mt: 3 }}>
+        <Text as="p" sx={{ mt: 4, color: 'fg.muted', textAlign: 'center' }}>
           Você ainda não criou nenhum anúncio. Toque em "Criar anúncio" para começar.
         </Text>
       )}
       {rows?.length === 0 && statusFilter && (
-        <Text as="p" sx={{ mt: 3 }}>
+        <Text as="p" sx={{ mt: 4, color: 'fg.muted', textAlign: 'center' }}>
           Nenhum anúncio nessa situação agora.
         </Text>
       )}
-      {rows?.map((row) => (
-        <AdStatusCard
-          key={`${row.ad_id}:${row.version}:${row.moderation_state}`}
-          campaign={row}
-          onChange={refresh}
-          onEdit={(campaign) => setWizard({ editing: campaign })}
-        />
-      ))}
+      {rows?.length > 0 && (
+        <Box sx={{ mt: 2 }}>
+          {rows.map((row) => (
+            <AdStatusCard
+              key={`${row.ad_id}:${row.version}:${row.moderation_state}`}
+              campaign={row}
+              onChange={refresh}
+              onEdit={(campaign) => setWizard({ editing: campaign })}
+            />
+          ))}
+        </Box>
+      )}
       {rows?.length > 0 && rows.length % 20 === 0 && (
         <Button
+          block
           onClick={async () => {
             try {
               const more = await getAdvertisingCampaigns(accountId, rows.at(-1).ad_id, statusFilter)

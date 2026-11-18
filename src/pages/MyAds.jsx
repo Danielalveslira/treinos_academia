@@ -9,8 +9,10 @@ import { commercialError } from '../utils/commercial'
 const AdvertisingCentral = lazy(() => import('../components/AdvertisingCentral'))
 const AdResultsPanel = lazy(() => import('../features/adMetrics/components/AdResultsPanel'))
 
+// "Campanhas" (não "Meus anúncios" de novo) para não repetir o próprio título da página
+// logo abaixo do H1 -- a mesma informação duas vezes só ocupa espaço na tela pequena.
 const TABS = [
-  { key: 'campaigns', label: 'Meus anúncios' },
+  { key: 'campaigns', label: 'Campanhas' },
   { key: 'results', label: 'Resultados' },
 ]
 
@@ -51,17 +53,17 @@ function AdvertiserPortal({ userId }) {
   }, [accounts, accountId, setParams])
   return (
     <Box>
-      <Heading as="h1" sx={{ fontSize: 3, mb: 3 }}>
+      <Heading as="h1" sx={{ fontSize: 3, mb: 2 }}>
         Meus anúncios
       </Heading>
       {import.meta.env.DEV && import.meta.env.VITE_FINANCE_LOCAL_PREVIEW === 'true' && (
-        <Flash sx={{ my: 3 }}>
+        <Flash sx={{ mb: 2 }}>
           Ambiente local de homologação. Campanhas, preços e métricas são sintéticos; não
           representam cobranças ou audiência reais.
         </Flash>
       )}
       {error && (
-        <Flash variant="danger" sx={{ mb: 3 }}>
+        <Flash variant="danger" sx={{ mb: 2 }}>
           {error}
         </Flash>
       )}
@@ -120,8 +122,8 @@ function AdvertiserPortal({ userId }) {
         </Flash>
       )}
       {account && (
-        <Box sx={{ mt: 3 }}>
-          <UnderlineNav aria-label="Seções de Meus anúncios" sx={{ mb: 3 }}>
+        <Box sx={{ mt: 2 }}>
+          <UnderlineNav aria-label="Seções de Meus anúncios" sx={{ mb: 2 }}>
             {TABS.map((item) => (
               <UnderlineNav.Item
                 key={item.key}
