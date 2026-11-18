@@ -52,6 +52,22 @@ const SECONDARY_ACTIONS = [
   { action: 'table', icon: TableIcon, label: 'Tabela simples' },
 ]
 
+// Perfil de publicidade (seção 5 do prompt de reestruturação): só o CTA oficial pode
+// navegar, e o espaço do anúncio não comporta blocos complexos -- sem link, tabela,
+// código ou checklist na barra de ferramentas. A sanitização em MarkdownViewer já
+// neutraliza esse conteúdo mesmo se vier colado, mas nem oferecer o botão evita a
+// surpresa de formatar algo que não vai aparecer como formatado no anúncio real.
+const ADS_PRIMARY_ACTIONS = PRIMARY_ACTIONS.filter((item) => item.action !== 'link')
+const ADS_SECONDARY_ACTION_NAMES = new Set([
+  'quote',
+  'unorderedList',
+  'orderedList',
+  'horizontalRule',
+])
+const ADS_SECONDARY_ACTIONS = SECONDARY_ACTIONS.filter((item) =>
+  ADS_SECONDARY_ACTION_NAMES.has(item.action)
+)
+
 const CONTENT_MIN_HEIGHT = ['128px', '144px']
 
 function LinkDialog({ draft, setDraft, onCancel, onInsert, inputRef, returnFocusRef }) {
@@ -110,8 +126,11 @@ export function MarkdownField({
   caption,
   maxLength = STATUS_TEXT_MAX_LENGTH,
   rows = 5,
+  profile = 'default',
 }) {
   const id = useId()
+  const primaryActions = profile === 'ads' ? ADS_PRIMARY_ACTIONS : PRIMARY_ACTIONS
+  const secondaryActions = profile === 'ads' ? ADS_SECONDARY_ACTIONS : SECONDARY_ACTIONS
   const [mode, setMode] = useState('edit')
   const [toolbarError, setToolbarError] = useState('')
   const [linkDraft, setLinkDraft] = useState(null)
@@ -214,6 +233,7 @@ export function MarkdownField({
     if (!(event.ctrlKey || event.metaKey) || event.altKey) return
     const action = { b: 'bold', i: 'italic', k: 'link' }[event.key.toLowerCase()]
     if (!action) return
+    if (action === 'link' && profile === 'ads') return
     event.preventDefault()
     runAction(action)
   }
@@ -248,7 +268,7 @@ export function MarkdownField({
             aria-label="Formatação do texto"
             sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}
           >
-            {PRIMARY_ACTIONS.map(({ action, icon, label: actionLabel }) => (
+            {primaryActions.map(({ action, icon, label: actionLabel }) => (
               <IconButton
                 key={action}
                 type="button"
@@ -273,7 +293,7 @@ export function MarkdownField({
               </ActionMenu.Anchor>
               <ActionMenu.Overlay align="start">
                 <ActionList>
-                  {SECONDARY_ACTIONS.map(({ action, icon, label: actionLabel }) => (
+                  {secondaryActions.map(({ action, icon, label: actionLabel }) => (
                     <ActionList.Item key={action} onSelect={() => runAction(action)}>
                       <ActionList.LeadingVisual>{createElement(icon)}</ActionList.LeadingVisual>
                       {actionLabel}
@@ -347,7 +367,7 @@ export function MarkdownField({
             sx={{ p: 2, minHeight: CONTENT_MIN_HEIGHT }}
           >
             {text.trim() ? (
-              <MarkdownViewer value={text} />
+              <MarkdownViewer value={text} profile={profile} />
             ) : (
               <Text sx={{ color: 'fg.muted', fontSize: 1 }}>Nada para pré-visualizar ainda.</Text>
             )}
@@ -360,7 +380,12 @@ export function MarkdownField({
           as="span"
           sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 2 }}
         >
-          <span>{caption || 'Aceita **negrito**, _itálico_, listas, links e tabelas.'}</span>
+          <span>
+            {caption ||
+              (profile === 'ads'
+                ? 'Aceita **negrito**, _itálico_, títulos, listas e citações. Links não são permitidos aqui; use o campo de destino do anúncio.'
+                : 'Aceita **negrito**, _itálico_, listas, links e tabelas.')}
+          </span>
           <Text
             aria-live="polite"
             sx={{

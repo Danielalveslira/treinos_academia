@@ -30,8 +30,8 @@ before(async () => {
             onError: reject,
           })
         })
-        export const renderAsync = (value, viaStatusText = false) =>
-          run(createElement(viaStatusText ? StatusText : MarkdownViewer, { value }))
+        export const renderAsync = (value, viaStatusText = false, profile = undefined) =>
+          run(createElement(viaStatusText ? StatusText : MarkdownViewer, { value, profile }))
       `,
       resolveDir: new URL('.', import.meta.url).pathname.replace(/^\/(.:)/, '$1'),
     },
@@ -121,3 +121,57 @@ test('ids e nomes vindos do usuário não conseguem sobrescrever objetos globais
   const html = await renderAsync('texto[^1]\n\n[^1]: nota')
   assert.doesNotMatch(html, /\bid="(?!user-content-)/)
 })
+
+// Perfil `ads` (seção 5 do prompt de reestruturação): nenhum link sobrevive -- nem
+// markdown explícito, nem autolink do GFM, nem link de referência -- e nenhuma tabela ou
+// imagem aparece. Só o CTA oficial do anúncio pode navegar.
+const ADS_LINK_SOURCES = {
+  explicitLink: '[clique aqui](https://evolutus.app)',
+  autolink: 'veja https://evolutus.app agora',
+  referenceLink: '[clique aqui][1]\n\n[1]: https://evolutus.app',
+  pastedHtmlLink: '<a href="https://evolutus.app">clique aqui</a>',
+}
+
+for (const [name, source] of Object.entries(ADS_LINK_SOURCES)) {
+  test(`MarkdownViewer (perfil ads): ${name} nunca é clicável, só sobra o texto`, async () => {
+    const html = await renderAsync(source, false, 'ads')
+    assert.doesNotMatch(html, /<a\b/i, 'nenhuma tag de link sobrevive no perfil de publicidade')
+    assert.match(html, /evolutus\.app|clique aqui/)
+  })
+}
+
+test('MarkdownViewer (perfil ads): imagem em markdown não aparece, nem como texto', async () => {
+  const html = await renderAsync('![foto do treino](https://evil.example/pixel.png)', false, 'ads')
+  assert.doesNotMatch(html, /<img|evil\.example|foto do treino/)
+})
+
+test('MarkdownViewer (perfil ads): tabela colapsa para texto simples, sem estrutura de tabela', async () => {
+  const html = await renderAsync('| A | B |\n| - | - |\n| 1 | 2 |', false, 'ads')
+  assert.doesNotMatch(html, /<table|<tr|<td|<th/i)
+})
+
+test('MarkdownViewer (perfil ads): negrito, itálico, título, lista e citação continuam permitidos', async () => {
+  const html = await renderAsync('# Título\n\n**forte** e _itálico_\n\n- item\n\n> citação', false, 'ads')
+  assert.match(html, /<h1[^>]*>Título<\/h1>/)
+  assert.match(html, /<strong>forte<\/strong>/)
+  assert.match(html, /<em>itálico<\/em>/)
+  assert.match(html, /<li>item<\/li>/)
+  assert.match(html, /<blockquote>/)
+})
+
+for (const [name, source] of Object.entries(ATTACKS)) {
+  test(`MarkdownViewer (perfil ads): ${name} também não executa nada nem carrega recurso externo`, async () => {
+    const html = await renderAsync(source, false, 'ads')
+    assert.doesNotMatch(
+      html,
+      /<script|<iframe|<svg|<style|<form|<meta|<base|<object|<embed|<link/i
+    )
+    assert.doesNotMatch(html, /\son[a-z]+\s*=/i, 'nenhum manipulador de evento')
+    assert.doesNotMatch(html, /\sstyle\s*=/i, 'nenhum style inline vindo do usuário')
+    assert.doesNotMatch(
+      html,
+      /(?:href|src|action|formaction|xlink:href)\s*=\s*["']?\s*(?:javascript|vbscript|data|file):/i
+    )
+    assert.doesNotMatch(html, /<a\b|<img\b/i, 'perfil ads não tem link nem imagem algum')
+  })
+}
