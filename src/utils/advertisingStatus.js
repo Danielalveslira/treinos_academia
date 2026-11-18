@@ -32,13 +32,43 @@ export function deriveAdStatus(campaign, { now = Date.now() } = {}) {
     }
   }
   if (c.moderation_state === 'suspended') {
+    // Mesmo moderation_state cobre três origens bem diferentes (ver
+    // private.advertising_suspension_origin no backend): nunca apresentá-las como se o
+    // Evolutus tivesse agido nos três casos. `suspension_reason`, quando o backend o
+    // fornece, é sempre preferido ao texto genérico de fallback.
+    const reason = c.suspension_reason || null
+    if (c.suspension_origin === 'pause_limit') {
+      return {
+        key: 'pause_limit_suspended',
+        label: 'Limite de pausas atingido',
+        detail: reason || 'Você atingiu o limite de pausas permitidas neste período contratado.',
+        pendingRevision: false,
+        pendingRevisionNote: null,
+        remainingDays: null,
+        pausesUsed: c.pauses_used ?? null,
+        pausesAvailable: 0,
+        primaryAction: { type: 'view_reason', label: 'Solicitar liberação' },
+      }
+    }
+    if (c.suspension_origin === 'legacy_voluntary') {
+      return {
+        key: 'legacy_suspended',
+        label: 'Suspensão de uma pausa anterior',
+        detail:
+          reason ||
+          'Esta suspensão veio de uma versão anterior do sistema de pausas, não de uma decisão do Evolutus agora.',
+        pendingRevision: false,
+        pendingRevisionNote: null,
+        remainingDays: null,
+        pausesUsed: c.pauses_used ?? null,
+        pausesAvailable: null,
+        primaryAction: { type: 'view_reason', label: 'Solicitar verificação' },
+      }
+    }
     return {
       key: 'suspended',
       label: 'Suspenso pelo Evolutus',
-      detail:
-        c.suspension_origin === 'pause_limit'
-          ? 'Você atingiu o limite de pausas deste anúncio.'
-          : 'Este anúncio precisa de liberação do Evolutus para voltar a aparecer.',
+      detail: reason || 'Este anúncio precisa de liberação do Evolutus para voltar a aparecer.',
       pendingRevision: false,
       pendingRevisionNote: null,
       remainingDays: null,

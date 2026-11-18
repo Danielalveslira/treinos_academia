@@ -26,9 +26,16 @@ const BADGE_VARIANT = {
   blocked: 'severe',
   paused: 'severe',
   suspended: 'danger',
+  pause_limit_suspended: 'danger',
+  legacy_suspended: 'danger',
   ended: 'secondary',
   archived: 'secondary',
 }
+
+// As três origens de moderation_state === 'suspended' (ver advertisingStatus.js): sempre
+// tratadas da mesma forma quanto a exibir detail/instrução de suporte, mesmo com labels e
+// motivos diferentes entre si.
+const SUSPENDED_KEYS = new Set(['suspended', 'pause_limit_suspended', 'legacy_suspended'])
 
 export default function AdStatusCard({ campaign, onChange, onEdit }) {
   const status = deriveAdStatus(campaign)
@@ -213,7 +220,7 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
         </Flash>
       )}
 
-      {(status.key === 'paused' || status.key === 'suspended') && status.detail && (
+      {(status.key === 'paused' || SUSPENDED_KEYS.has(status.key)) && status.detail && (
         <Text as="p" sx={{ color: 'fg.muted', fontSize: 0, mt: 2 }}>
           {status.detail}
         </Text>
@@ -233,10 +240,10 @@ export default function AdStatusCard({ campaign, onChange, onEdit }) {
 
       {expanded && (
         <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'border.default' }}>
-          {status.detail && status.key !== 'paused' && status.key !== 'suspended' && (
+          {status.detail && status.key !== 'paused' && !SUSPENDED_KEYS.has(status.key) && (
             <Text as="p">{status.detail}</Text>
           )}
-          {status.key === 'suspended' && (
+          {SUSPENDED_KEYS.has(status.key) && (
             <Text as="p" sx={{ color: 'fg.muted', fontSize: 0 }}>
               Informe o identificador do anúncio ao atendimento: {campaign.ad_id}
             </Text>

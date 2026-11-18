@@ -52,6 +52,48 @@ test('suspended always wins regardless of delivery or contract state', () => {
   assert.notEqual(s.primaryAction.type, 'resume')
 })
 
+test('a pause-limit suspension gets its own key and label, distinct from an admin suspension', () => {
+  const s = deriveAdStatus(
+    {
+      ...base,
+      moderation_state: 'suspended',
+      state: 'approved',
+      suspension_origin: 'pause_limit',
+      pauses_used: 3,
+    },
+    { now: NOW }
+  )
+  assert.equal(s.key, 'pause_limit_suspended')
+  assert.equal(s.label, 'Limite de pausas atingido')
+  assert.equal(s.pausesUsed, 3)
+  assert.equal(s.pausesAvailable, 0)
+})
+
+test('a legacy voluntary suspension is never presented as an Evolutus decision', () => {
+  const s = deriveAdStatus(
+    { ...base, moderation_state: 'suspended', state: 'approved', suspension_origin: 'legacy_voluntary' },
+    { now: NOW }
+  )
+  assert.equal(s.key, 'legacy_suspended')
+  assert.notEqual(s.label, 'Suspenso pelo Evolutus')
+  assert.match(s.detail, /versão anterior/)
+})
+
+test('a real suspension_reason from the backend always overrides the generic fallback text', () => {
+  const s = deriveAdStatus(
+    {
+      ...base,
+      moderation_state: 'suspended',
+      state: 'approved',
+      suspension_origin: 'admin',
+      suspension_reason: 'Conteúdo denunciado por terceiros',
+    },
+    { now: NOW }
+  )
+  assert.equal(s.key, 'suspended')
+  assert.equal(s.detail, 'Conteúdo denunciado por terceiros')
+})
+
 test('only a server-projected voluntary pause offers resume during an active contract', () => {
   const s = deriveAdStatus(
     {

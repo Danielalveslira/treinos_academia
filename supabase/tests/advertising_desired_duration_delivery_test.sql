@@ -50,6 +50,14 @@ select public._ledger_record('76500000-0000-0000-0000-000000000001','synthetic-a
 -- per-placement signal must be true.
 select pg_temp.set_test_user('76500000-0000-0000-0000-000000000001',true);
 set local role authenticated;
+
+-- 20261222000010: desired_duration_days agora valida contra a faixa real da oferta vigente
+-- (min_days/max_days de commercial_price_versions), não só o limite genérico de 1-3650.
+select public.create_advertising_campaign((select(value#>>'{}')::uuid from d_results where name='account'),'home_banner',null,'Whey synthetic range','','https://example.invalid/duration-range','76510000-0000-0000-0000-000000000002');
+select throws_ok($$select public.edit_advertising_campaign('76510000-0000-0000-0000-000000000002',1,'Whey synthetic range','','https://example.invalid/duration-range',false,null,31)$$,'AD_DURATION_OUT_OF_OFFER_RANGE','above the offer''s real max_days (30) is rejected even though it is inside the generic 3650 sanity bound');
+select public.edit_advertising_campaign('76510000-0000-0000-0000-000000000002',1,'Whey synthetic range','','https://example.invalid/duration-range',false,null,30);
+select is((select (x->>'desired_duration_days')::integer from jsonb_array_elements(public.get_advertising_campaigns((select(value#>>'{}')::uuid from d_results where name='account'))) x where x->>'ad_id'='76510000-0000-0000-0000-000000000002'),30,'exactly the offer''s real max_days is accepted');
+
 select pg_temp.publish_test_commercial_terms(); -- 20261212000002: termos comerciais sintéticos publicados
 insert into d_results values('quote',public.quote_commercial_order('76510000-0000-0000-0000-000000000001','2',gen_random_uuid()));
 insert into d_results values('paid',pg_temp.confirm_with_terms((select(value->>'id')::uuid from d_results where name='quote'),true));
