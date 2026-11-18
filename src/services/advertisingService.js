@@ -18,7 +18,16 @@ export const createAdvertisingCampaign = (accountId, values, requestId) =>
     p_destination: values.destination,
     p_request_id: requestId,
   })
-export const editAdvertisingCampaign = (campaign, values, submit, desiredDays = null) =>
+// `clearMedia` é mutuamente exclusivo com values.media_id (o servidor rejeita os dois juntos
+// com AD_MEDIA_CONFLICT): omitir media_id nunca limpa uma imagem já anexada, só `clearMedia`
+// o faz (ver 20261222000011_advertising_media_removal.sql).
+export const editAdvertisingCampaign = (
+  campaign,
+  values,
+  submit,
+  desiredDays = null,
+  clearMedia = false
+) =>
   rpc('edit_advertising_campaign', {
     p_id: campaign.ad_id,
     p_version: campaign.version,
@@ -26,8 +35,9 @@ export const editAdvertisingCampaign = (campaign, values, submit, desiredDays = 
     p_description: values.description,
     p_destination: values.destination,
     p_submit: submit,
-    p_media_id: values.media_id || null,
+    p_media_id: clearMedia ? null : values.media_id || null,
     p_desired_days: desiredDays,
+    p_clear_media: clearMedia,
   })
 export const reviewAdvertisingCampaign = (campaign, approve, reason) =>
   rpc('admin_review_advertising_campaign', {

@@ -91,9 +91,23 @@ test('editing a campaign without a desired duration leaves the stored preference
         p_submit: false,
         p_media_id: null,
         p_desired_days: null,
+        p_clear_media: false,
       },
     },
   ])
+})
+
+test('removing the image sends p_clear_media without p_media_id, even if a stale media_id lingers in values', async () => {
+  globalThis.__adsCalls = []
+  await service.editAdvertisingCampaign(
+    { ad_id: 'ad-1', version: 4 },
+    { title: 'T', description: 'D', destination: 'https://x', media_id: 'stale-media' },
+    false,
+    null,
+    true
+  )
+  assert.equal(globalThis.__adsCalls[0].args.p_media_id, null)
+  assert.equal(globalThis.__adsCalls[0].args.p_clear_media, true)
 })
 
 test('editing a campaign with a chosen duration forwards it as an integer, and media stays separate from duration', async () => {
