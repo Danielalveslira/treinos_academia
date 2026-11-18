@@ -123,13 +123,23 @@ test('editing a campaign with a chosen duration forwards it as an integer, and m
   assert.equal(globalThis.__adsCalls[0].args.p_submit, true)
 })
 
-test('reading campaigns forwards only the account and cursor, matching the card list and the wizard continuation flow', async () => {
+test('reading campaigns forwards the account, cursor and status filter, matching the card list and the wizard continuation flow', async () => {
   globalThis.__adsCalls = []
   await service.getAdvertisingCampaigns('account-1')
   await service.getAdvertisingCampaigns('account-1', 'ad-20')
+  await service.getAdvertisingCampaigns('account-1', null, 'live')
   assert.deepEqual(globalThis.__adsCalls, [
-    { name: 'get_advertising_campaigns', args: { p_account: 'account-1', p_after: null } },
-    { name: 'get_advertising_campaigns', args: { p_account: 'account-1', p_after: 'ad-20' } },
+    { name: 'get_advertising_campaigns', args: { p_account: 'account-1', p_after: null, p_status: null } },
+    { name: 'get_advertising_campaigns', args: { p_account: 'account-1', p_after: 'ad-20', p_status: null } },
+    { name: 'get_advertising_campaigns', args: { p_account: 'account-1', p_after: null, p_status: 'live' } },
+  ])
+})
+
+test('reading the campaigns summary forwards only the account', async () => {
+  globalThis.__adsCalls = []
+  await service.getAdvertisingCampaignsSummary('account-1')
+  assert.deepEqual(globalThis.__adsCalls, [
+    { name: 'advertising_campaigns_summary', args: { p_account: 'account-1' } },
   ])
 })
 

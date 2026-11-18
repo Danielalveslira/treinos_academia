@@ -6,8 +6,12 @@ async function rpc(name, args) {
 }
 export const createAdvertisingAccount = (name) =>
   rpc('create_advertising_account', { p_name: name })
-export const getAdvertisingCampaigns = (accountId, after = null) =>
-  rpc('get_advertising_campaigns', { p_account: accountId, p_after: after })
+export const getAdvertisingCampaigns = (accountId, after = null, status = null) =>
+  rpc('get_advertising_campaigns', { p_account: accountId, p_after: after, p_status: status })
+// Contagem exata da própria conta (nunca soma de uma página parcial) -- ver
+// 20261222000012_advertising_campaigns_status_filter.sql.
+export const getAdvertisingCampaignsSummary = (accountId) =>
+  rpc('advertising_campaigns_summary', { p_account: accountId })
 export const createAdvertisingCampaign = (accountId, values, requestId) =>
   rpc('create_advertising_campaign', {
     p_account: accountId,
