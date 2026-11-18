@@ -154,7 +154,7 @@ test('opening Resultados mounts it once and never remounts Campanhas data on ret
   await tick()
   assert.match(page.text(), /RESULTS_TAB_MARKER/)
   assert.equal(page.resultsMounts(), 1)
-  page.selectTab('Meus anúncios')
+  page.selectTab('Campanhas')
   await tick()
   assert.equal(page.campaignsMounts(), 1, 'returning to Campanhas never remounts it')
   page.selectTab('Resultados')

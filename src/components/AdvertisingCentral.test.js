@@ -19,8 +19,17 @@ const STUBS = {
       globalThis.__acGetCampaigns(accountId, after, status)
     export const getAdvertisingCampaignsSummary = (accountId) => globalThis.__acGetSummary(accountId)
   `,
-  AdStatusCard: `export default function AdStatusCard({ campaign }) { return <div>{campaign.title}</div> }`,
+  AdStatusCard: `export default function AdStatusCard({ campaign, onManage }) {
+    return <div>{campaign.title}<button onClick={() => onManage(campaign)}>Gerenciar {campaign.title}</button></div>
+  }`,
   CreateAdWizard: `export default function CreateAdWizard() { return null }`,
+  AdManagePage: `export default function AdManagePage({ campaign, onBack, onViewResults }) {
+    return <div>
+      Gerenciando {campaign.title}
+      <button onClick={onBack}>Voltar</button>
+      <button onClick={() => onViewResults(campaign)}>Ver resultados</button>
+    </div>
+  }`,
 }
 
 before(async () => {
@@ -32,22 +41,39 @@ before(async () => {
       contents: `
         import React from 'react'
         import TestRenderer, { act } from 'react-test-renderer'
+        import { MemoryRouter, useLocation } from 'react-router-dom'
         import { ThemeProvider, BaseStyles } from '@primer/react'
         import AdvertisingCentral from './AdvertisingCentral.jsx'
-        const textOf = (n) => (typeof n === 'string' ? n : (n.children || []).map(textOf).join(''))
-        export function mountPage(props) {
+        const textOf = (n) => {
+          if (typeof n === 'string') return n
+          if (Array.isArray(n)) return n.map(textOf).join('')
+          return (n?.children || []).map(textOf).join('')
+        }
+        function DebugLocation() {
+          const location = useLocation()
+          return React.createElement('span', { 'data-debug-search': 'yes' }, location.search)
+        }
+        export function mountPage(props, initialPath = '/meus-anuncios') {
           globalThis.IS_REACT_ACT_ENVIRONMENT = false
           global.window = global.window || {}
           global.window.matchMedia = global.window.matchMedia || (() => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} }))
           global.document = global.document || { addEventListener() {}, removeEventListener() {} }
           let renderer
           act(() => {
-            renderer = TestRenderer.create(React.createElement(ThemeProvider, null, React.createElement(BaseStyles, null, React.createElement(AdvertisingCentral, props))))
+            renderer = TestRenderer.create(
+              React.createElement(
+                MemoryRouter,
+                { initialEntries: [initialPath] },
+                React.createElement(DebugLocation),
+                React.createElement(ThemeProvider, null, React.createElement(BaseStyles, null, React.createElement(AdvertisingCentral, props)))
+              )
+            )
           })
           const root = renderer.root
           const findAllButtons = () => root.findAll((n) => n.type === 'button')
           return {
             text: () => textOf(renderer.toJSON()),
+            search: () => root.findAll((n) => n.props && n.props['data-debug-search'])[0].props.children,
             clickButton: (label) => {
               const item = findAllButtons().find((n) => textOf(n).trim() === label || n.props['aria-label'] === label)
               act(() => item.props.onClick())
@@ -178,6 +204,64 @@ test('um resumo indisponível nunca impede ver a listagem real', async () => {
   await tick()
   assert.match(page.text(), /Campanha 1/)
   assert.doesNotMatch(page.text(), /Total:/)
+  page.unmount()
+})
+
+test('clicar em "Gerenciar" abre a página de gerenciamento do anúncio certo, sem perder a conta na URL', async () => {
+  globalThis.__acGetCampaigns = () =>
+    Promise.resolve([ad('ad-1', 'Campanha 1'), ad('ad-2', 'Campanha 2')])
+  globalThis.__acGetSummary = () => Promise.resolve({ total: 2, live: 0, submitted: 0 })
+  const page = mount({ accountId: 'acc-7', accountName: 'Marca' }, '/meus-anuncios?accountId=acc-7')
+  await tick()
+  page.clickButton('Gerenciar Campanha 2')
+  await tick()
+  assert.match(page.text(), /Gerenciando Campanha 2/)
+  assert.match(page.search(), /adId=ad-2/)
+  assert.match(page.search(), /accountId=acc-7/)
+  page.unmount()
+})
+
+test('abrir diretamente com ?adId= na URL já mostra a página de gerenciamento (link direto/retomar)', async () => {
+  globalThis.__acGetCampaigns = () =>
+    Promise.resolve([ad('ad-1', 'Campanha 1'), ad('ad-2', 'Campanha 2')])
+  globalThis.__acGetSummary = () => Promise.resolve({ total: 2, live: 0, submitted: 0 })
+  const page = mount({ accountId: 'acc-8', accountName: 'Marca' }, '/meus-anuncios?accountId=acc-8&adId=ad-2')
+  await tick()
+  assert.match(page.text(), /Gerenciando Campanha 2/)
+  page.unmount()
+})
+
+test('"Voltar" na página de gerenciamento limpa adId e volta pra listagem', async () => {
+  globalThis.__acGetCampaigns = () => Promise.resolve([ad('ad-1', 'Campanha 1')])
+  globalThis.__acGetSummary = () => Promise.resolve({ total: 1, live: 0, submitted: 0 })
+  const page = mount({ accountId: 'acc-9', accountName: 'Marca' }, '/meus-anuncios?accountId=acc-9&adId=ad-1')
+  await tick()
+  assert.match(page.text(), /Gerenciando/)
+  page.clickButton('Voltar')
+  await tick()
+  assert.doesNotMatch(page.text(), /Gerenciando/)
+  assert.doesNotMatch(page.search(), /adId/)
+  page.unmount()
+})
+
+test('"Ver resultados" dentro do gerenciamento muda para a aba de resultados mantendo o adId', async () => {
+  globalThis.__acGetCampaigns = () => Promise.resolve([ad('ad-1', 'Campanha 1')])
+  globalThis.__acGetSummary = () => Promise.resolve({ total: 1, live: 0, submitted: 0 })
+  const page = mount({ accountId: 'acc-10', accountName: 'Marca' }, '/meus-anuncios?accountId=acc-10&adId=ad-1')
+  await tick()
+  page.clickButton('Ver resultados')
+  await tick()
+  assert.match(page.search(), /tab=results/)
+  assert.match(page.search(), /adId=ad-1/)
+  page.unmount()
+})
+
+test('um adId sem acesso/inexistente mostra erro, não a tela em branco ou a listagem errada', async () => {
+  globalThis.__acGetCampaigns = () => Promise.resolve([ad('ad-1', 'Campanha 1')])
+  globalThis.__acGetSummary = () => Promise.resolve({ total: 1, live: 0, submitted: 0 })
+  const page = mount({ accountId: 'acc-11', accountName: 'Marca' }, '/meus-anuncios?accountId=acc-11&adId=ad-nao-existe')
+  await tick()
+  assert.match(page.text(), /não encontrado/)
   page.unmount()
 })
 

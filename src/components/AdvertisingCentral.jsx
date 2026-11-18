@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Box, Button, Flash, Select, Spinner, Text } from '@primer/react'
 import {
   getAdvertisingCampaigns,
@@ -8,6 +9,7 @@ import { commercialError } from '../utils/commercial'
 import { STATUS_LABELS } from '../utils/advertisingStatus'
 import AdStatusCard from './advertising/AdStatusCard'
 import CreateAdWizard from './advertising/CreateAdWizard'
+import AdManagePage from './advertising/AdManagePage'
 
 // As quatro situações primárias (seção 4.1 do prompt de reestruturação); as demais keys de
 // STATUS_LABELS ficam no filtro complementar, para não transformar a listagem num painel
@@ -23,11 +25,55 @@ const COMPLEMENTARY_FILTERS = Object.keys(STATUS_LABELS).filter(
 )
 
 export default function AdvertisingCentral({ accountId, accountName }) {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const managingId = searchParams.get('adId') || null
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [wizard, setWizard] = useState(null) // null | { editing: campaign|null }
   const [statusFilter, setStatusFilter] = useState(null)
   const [summary, setSummary] = useState(null)
+  const [managedCampaign, setManagedCampaign] = useState(null)
+  const [managedError, setManagedError] = useState('')
+
+  function openManage(campaign) {
+    const next = new URLSearchParams(searchParams)
+    next.set('adId', campaign.ad_id)
+    setSearchParams(next)
+  }
+  function closeManage() {
+    const next = new URLSearchParams(searchParams)
+    next.delete('adId')
+    setSearchParams(next)
+  }
+  function viewResults(campaign) {
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', 'results')
+    next.set('adId', campaign.ad_id)
+    setSearchParams(next)
+  }
+
+  useEffect(() => {
+    if (!managingId) {
+      setManagedCampaign(null)
+      setManagedError('')
+      return
+    }
+    let live = true
+    setManagedError('')
+    // Até 100 rascunhos por conta (ver AD_DRAFT_LIMIT): uma leitura completa e sem filtro
+    // é sempre barata, e garante achar o anúncio mesmo que um filtro de status esteja ativo.
+    getAdvertisingCampaigns(accountId)
+      .then((all) => {
+        if (!live) return
+        const found = all.find((row) => row.ad_id === managingId)
+        setManagedCampaign(found || null)
+        if (!found) setManagedError('Anúncio não encontrado ou sem acesso.')
+      })
+      .catch((e) => live && setManagedError(commercialError(e)))
+    return () => {
+      live = false
+    }
+  }, [accountId, managingId])
 
   const refresh = useCallback(async () => {
     try {
@@ -76,6 +122,20 @@ export default function AdvertisingCentral({ accountId, accountName }) {
           setWizard(null)
           await refresh()
         }}
+      />
+    )
+  }
+
+  if (managingId) {
+    if (managedError) return <Flash variant="danger">{managedError}</Flash>
+    if (!managedCampaign) return <Spinner aria-label="Carregando anúncio" />
+    return (
+      <AdManagePage
+        campaign={managedCampaign}
+        onBack={closeManage}
+        onEdit={(campaign) => setWizard({ editing: campaign })}
+        onChange={refresh}
+        onViewResults={viewResults}
       />
     )
   }
@@ -155,8 +215,8 @@ export default function AdvertisingCentral({ accountId, accountName }) {
             <AdStatusCard
               key={`${row.ad_id}:${row.version}:${row.moderation_state}`}
               campaign={row}
-              onChange={refresh}
               onEdit={(campaign) => setWizard({ editing: campaign })}
+              onManage={openManage}
             />
           ))}
         </Box>
