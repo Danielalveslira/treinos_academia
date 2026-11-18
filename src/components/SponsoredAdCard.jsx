@@ -2,6 +2,7 @@ import { lazy, Suspense, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 const StorefrontImage = lazy(() => import('./StorefrontImage'))
 import { useAdClick, useAdImpression } from '../hooks/useAdMetrics'
+import { StatusText } from './StatusText'
 
 // Publicação patrocinada no feed: mesma superfície/raio dos cards do feed, mas com selo "Patrocinado"
 // sempre visível (nunca condicional — transparência com o usuário sobre conteúdo pago, independente de
@@ -53,7 +54,11 @@ export function SponsoredAdCard({ ad, communityId = null }) {
         </div>
       )}
       <h3 className="sponsored-ad-title">{ad.title}</h3>
-      {ad.description && <p className="sponsored-ad-description">{ad.description}</p>}
+      {ad.description && (
+        <div className="sponsored-ad-description">
+          <StatusText value={ad.description} profile="ads" />
+        </div>
+      )}
       {hasCta &&
         (ad.ctaType === 'internal' ? (
           <RouterLink to={ad.ctaTarget} className="sponsored-ad-cta" onClick={onCtaClick}>

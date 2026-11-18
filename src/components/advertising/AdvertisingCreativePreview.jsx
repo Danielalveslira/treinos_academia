@@ -1,5 +1,6 @@
 import { Text } from '@primer/react'
 import StorefrontImage from '../StorefrontImage'
+import { MarkdownViewer } from '../MarkdownViewer'
 
 // Prévia estática: usa as classes dos formatos publicados, sem registrar métricas,
 // iniciar rotação ou criar um link clicável antes da aprovação.
@@ -70,7 +71,11 @@ export default function AdvertisingCreativePreview({
               </div>
             )}
             <h3 className="sponsored-ad-title">{title || 'Seu anúncio'}</h3>
-            {description && <p className="sponsored-ad-description">{description}</p>}
+            {description && (
+              <div className="sponsored-ad-description">
+                <MarkdownViewer value={description} profile="ads" />
+              </div>
+            )}
             {ctaLabel && <span className="sponsored-ad-cta">{ctaLabel}</span>}
           </article>
         </>
