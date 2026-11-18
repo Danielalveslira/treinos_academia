@@ -1,6 +1,6 @@
 import { lazy, Suspense, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Box, Button, Dialog, Flash, IconButton, Label, Spinner, Text, UnderlineNav } from '@primer/react'
+import { Box, Button, Dialog, Flash, Label, Spinner, Text } from '@primer/react'
 import { ArrowLeftIcon } from '@primer/octicons-react'
 import {
   getAdvertisingOrders,
@@ -150,12 +150,14 @@ export default function AdManagePage({ campaign, onBack, onEdit, onChange, onVie
   return (
     <Box sx={{ minWidth: 0 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-        <IconButton
-          icon={ArrowLeftIcon}
+        <Button
+          leadingVisual={ArrowLeftIcon}
           aria-label="Voltar para Meus anúncios"
           onClick={onBack}
           sx={{ flexShrink: 0 }}
-        />
+        >
+          Voltar
+        </Button>
         <Text as="p" sx={{ fontWeight: 'bold', fontSize: 2, minWidth: 0, overflowWrap: 'anywhere' }}>
           {campaign.title}
         </Text>
@@ -169,13 +171,32 @@ export default function AdManagePage({ campaign, onBack, onEdit, onChange, onVie
         </Text>
       </Box>
 
-      <UnderlineNav aria-label="Seções do anúncio" sx={{ mb: 3, overflowX: 'auto' }}>
+      {/* Botões simples e roláveis, não UnderlineNav: com 4 abas o componente colapsa as que
+         não cabem num menu "More" cujo overlay quebra o z-index nesta tela (visto em
+         produção) -- o mesmo problema que o filtro "Outras situações" da listagem evita ao
+         não usar um menu flutuante. */}
+      <Box
+        role="tablist"
+        aria-label="Seções do anúncio"
+        sx={{
+          display: 'flex',
+          gap: 2,
+          mb: 3,
+          overflowX: 'auto',
+          pb: 1,
+          borderBottom: '1px solid',
+          borderColor: 'border.default',
+        }}
+      >
         {TABS.map((item) => (
-          <UnderlineNav.Item
+          <Button
             key={item.key}
-            as="button"
-            aria-current={tab === item.key ? 'page' : undefined}
-            onSelect={() => {
+            role="tab"
+            aria-selected={tab === item.key}
+            size="small"
+            variant={tab === item.key ? 'primary' : 'default'}
+            sx={{ flexShrink: 0 }}
+            onClick={() => {
               if (item.key === 'results') {
                 onViewResults?.(campaign)
                 return
@@ -189,9 +210,9 @@ export default function AdManagePage({ campaign, onBack, onEdit, onChange, onVie
             }}
           >
             {item.label}
-          </UnderlineNav.Item>
+          </Button>
         ))}
-      </UnderlineNav>
+      </Box>
 
       {error && (
         <Flash variant="danger" sx={{ mb: 2 }}>
@@ -364,6 +385,7 @@ export default function AdManagePage({ campaign, onBack, onEdit, onChange, onVie
               <Button
                 variant="danger"
                 disabled={busy}
+                aria-label={status.pausesAvailable === 0 ? 'Confirmar suspensão' : 'Confirmar pausa'}
                 onClick={() => run(status.pausesAvailable === 0 ? 'confirm-limit' : 'interrupt')}
               >
                 {status.pausesAvailable === 0 ? 'Confirmar suspensão' : 'Pausar anúncio'}
