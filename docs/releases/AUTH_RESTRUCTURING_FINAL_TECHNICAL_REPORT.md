@@ -1,5 +1,34 @@
 # Evolutus — relatório técnico final da autenticação
 
+## Segunda atualização de 19/11/2026
+
+Reexecutei a homologação visual de navegador real (`verify-register-email-first-browser.mjs`,
+modo e-mail primeiro) do zero, de forma independente da rodada anterior. Na primeira tentativa,
+a etapa 7 (recuperação) falhou: o driver reenviava o pedido de recuperação sem a interceptação de
+rede e esperava a mensagem neutra de sucesso, mas esta stack isolada não tem SMTP configurado --
+a chamada real sempre falha com "Error sending recovery email", disparando corretamente o
+fallback documentado de `ForgotPassword.jsx` (erro técnico, não a mensagem neutra, só numa falha
+real de rede/servidor -- comportamento certo, não regressão). Corrigi a expectativa do driver
+(`scripts/homolog/_e2e-driver.mjs`), removendo a reexecução sem interceptação -- validar a
+mensagem neutra sobre um envio real exige SMTP de verdade, em staging. Reexecutada do zero após a
+correção: **12 verificações, todas PASS**, console sem erros, screenshots reais em `/tmp/e2e-shots`
+(`01-email-step.png` a `06-login-handoff.png`). O log de chamadas por endpoint confirma exatamente
+uma `complete_user_onboarding` e uma `signup-password-sync` por cadastro -- a RPC transacional do
+P3 na prática, não só em SQL isolado. Também corrigi um bug real e pequeno encontrado por essa
+mesma rodada de trabalho em `AuthCaptcha.jsx`: `reset()` invalidava o estado mesmo quando a
+verificação não é exigida, podendo derrubar `captchaVerified` de um componente pai de volta para
+`false` para um captcha que nunca foi renderizado. Ambas as correções (commit `5d09f8a`) têm
+testes verdes (`AuthCaptcha.test.js` 3/3) e não tocam nenhuma asserção de segurança. Repeti também
+a suíte JavaScript completa do zero nesta branch: **2.785/2.785**, 0 falhas.
+
+Conferi por amostragem, lendo o conteúdo de verdade (não só nomes de arquivo), que os commits já
+presentes em `feat/auth-restructuring` antes desta sessão incorporam as correções da suíte pgTAP
+descritas na seção "Regressão pgTAP" abaixo -- inclusive uma variante mais limpa da minha própria
+correção em `evocash_pricing_test.sql` (omite a chave `timestamp` do `amr` em vez de usar um
+valor antigo) e a melhoria do isolamento de cron para `cron.launch_active_jobs = off` antes das
+migrations, em vez de `cron.unschedule` depois -- o que preserva as definições de job para as
+asserções que contam jobs, fechando os 6 arquivos antes classificados como falso-alarme.
+
 ## Atualização de 19/11/2026 — esta seção substitui as contagens históricas abaixo
 
 O trabalho segue **local**. Nenhum push, merge, deploy, migration remota ou mudança de configuração hospedada foi executado. O mantenedor informou login no terminal Supabase; ele não foi usado para alterar o projeto. A branch local `feat/auth-restructuring` foi criada a partir do HEAD de `feat/advertiser-portal-ux`. Os commits de autenticação foram separados em fundação SQL (`d496a70`), correção independente do cron (`b896299`), Edge Functions (`2e89473`), frontend (`8ecceb8`), MFA (`95ee847`) e harnesses/documentação (HEAD desta branch). A branch de publicidade preserva o restante em `294b436` e a correção de sobrecarga em `fffb3f0`. Ambas estão limpas; um stash duplicado de publicidade foi mantido como recuperação local.
