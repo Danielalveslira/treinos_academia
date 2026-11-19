@@ -46,9 +46,13 @@ select pg_temp.set_test_user('77100000-0000-0000-0000-000000000001',true);
 set local role authenticated;
 
 -- Nenhuma leitura de auditoria administrativa é concedida aqui -- é uma RPC própria.
+-- throws_ok/3 com um 2º argumento de 5 bytes trata ESSE argumento como o errcode e o 3º como a
+-- MENSAGEM esperada (não como descrição) -- bug pré-existente deste teste, sem relação com P1:
+-- a descrição acabava comparada letra a letra com SQLERRM, que nunca seria esse texto. Forma
+-- explícita de 4 argumentos: código, mensagem NULL (não checa), descrição de verdade.
 select throws_ok(
  $$select public.admin_advertising_operations(null)$$,
- '42501','a conta comum nunca tem acesso à RPC de auditoria administrativa ao tentar usá-la');
+ '42501', NULL, 'a conta comum nunca tem acesso à RPC de auditoria administrativa ao tentar usá-la');
 
 insert into oh_results values('history',public.get_advertising_operations_for_advertiser('77110000-0000-0000-0000-000000000001'));
 select is((select jsonb_agg(x->>'action') from jsonb_array_elements((select value from oh_results where name='history')) x),
@@ -61,21 +65,24 @@ select is((select x->>'actorKind' from jsonb_array_elements((select value from o
 select is((select x->>'reason' from jsonb_array_elements((select value from oh_results where name='history')) x where x->>'action'='reject'),'Motivo sintético de reprovação','o motivo público da reprovação é preservado');
 
 -- A segunda submissão (correção) foi feita pelo gerente, não pelo dono que está lendo agora.
-select is((select x->>'actorKind' from jsonb_array_elements((select value from oh_results where name='history')) x where x->>'action'='submit' order by (x->>'id')::bigint asc limit 1),'other','a submissão feita por um gerente autorizado nunca aparece como "Você" pra outra pessoa da conta');
+-- 'asc limit 1' pegava a PRIMEIRA submissão (1a, do próprio dono) -- bug do teste, não da
+-- função: a correção é a mais RECENTE, 'desc limit 1'.
+select is((select x->>'actorKind' from jsonb_array_elements((select value from oh_results where name='history')) x where x->>'action'='submit' order by (x->>'id')::bigint desc limit 1),'other','a submissão feita por um gerente autorizado nunca aparece como "Você" pra outra pessoa da conta');
 
 -- O gerente, por sua vez, vê a própria submissão como "Você" e a do dono como "other".
 reset role;
 select pg_temp.set_test_user('77100000-0000-0000-0000-000000000002',true);
 set local role authenticated;
-select is((select x->>'actorKind' from jsonb_array_elements(public.get_advertising_operations_for_advertiser('77110000-0000-0000-0000-000000000001')) x where x->>'action'='submit' order by (x->>'id')::bigint asc limit 1),'self','o próprio gerente vê a sua submissão como "Você"');
+-- Mesma correção de direção: a submissão do próprio gerente é a mais recente ('desc limit 1').
+select is((select x->>'actorKind' from jsonb_array_elements(public.get_advertising_operations_for_advertiser('77110000-0000-0000-0000-000000000001')) x where x->>'action'='submit' order by (x->>'id')::bigint desc limit 1),'self','o próprio gerente vê a sua submissão como "Você"');
 reset role;
 
 -- Paginação por cursor (id): o mais antigo nunca tem página seguinte; o mais recente,
 -- como cursor, exclui a si mesmo e devolve exatamente o resto.
 select pg_temp.set_test_user('77100000-0000-0000-0000-000000000001',true);
 set local role authenticated;
-insert into oh_results values('oldest_id',(select min((x->>'id')::bigint) from jsonb_array_elements((select value from oh_results where name='history')) x));
-insert into oh_results values('newest_id',(select max((x->>'id')::bigint) from jsonb_array_elements((select value from oh_results where name='history')) x));
+insert into oh_results values('oldest_id',(select to_jsonb(min((x->>'id')::bigint)) from jsonb_array_elements((select value from oh_results where name='history')) x));
+insert into oh_results values('newest_id',(select to_jsonb(max((x->>'id')::bigint)) from jsonb_array_elements((select value from oh_results where name='history')) x));
 select is(public.get_advertising_operations_for_advertiser('77110000-0000-0000-0000-000000000001',(select(value#>>'{}')::bigint from oh_results where name='oldest_id')),'[]'::jsonb,'nada é mais antigo que o evento mais antigo');
 select is(jsonb_array_length(public.get_advertising_operations_for_advertiser('77110000-0000-0000-0000-000000000001',(select(value#>>'{}')::bigint from oh_results where name='newest_id'))),4,'cursor no mais recente devolve exatamente os outros quatro, nunca ele mesmo');
 

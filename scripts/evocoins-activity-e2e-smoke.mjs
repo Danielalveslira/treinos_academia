@@ -39,6 +39,14 @@ async function createRealUser() {
   const password = 'Local-e2e-activity-2026!'
   const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true })
   assert.ifError(error)
+  // admin.createUser() nunca passa pela RPC transacional de onboarding (20261223000002) nem
+  // pelo backfill histórico da migration 01 (que só roda uma vez, sobre linhas já existentes
+  // -- este usuário nasce depois). Sem o marcador, o hook de claims emitiria 'auth_setup' no
+  // login abaixo (amr=password, mas onboarding incompleto) e has_app_access()/
+  // register_qualified_activity recusariam com APP_ACCESS_DENIED -- correto para uma conta de
+  // verdade ainda não onboarded, mas este teste não é sobre onboarding, é sobre a recompensa de
+  // atividade. Mesma gravação que o backfill 'legacy' faz para contas pré-existentes.
+  sql(`insert into private.auth_onboarding_completed(user_id, completed_at, source) values ('${data.user.id}', now(), 'legacy')`)
   const anon = createClient(config.url, config.anon, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } })
   const login = await anon.auth.signInWithPassword({ email, password })
   assert.ifError(login.error)
