@@ -8,7 +8,7 @@ const MESSAGES = {
   email_exists:
     'Não foi possível concluir esta tentativa. Você pode entrar, recuperar o acesso ou conferir o e-mail informado.',
   email_address_invalid: 'E-mail inválido.',
-  weak_password: 'A senha deve ter pelo menos 8 caracteres, com letras e números.',
+  weak_password: 'A senha não atende à política de segurança. Use pelo menos 15 caracteres.',
   // GoTrue nunca distingue "não existe" de "senha errada" num login (só invalid_credentials),
   // ao contrário do Firebase Auth que tinha um código pra cada caso.
   invalid_credentials: 'E-mail ou senha incorretos.',

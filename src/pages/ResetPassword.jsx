@@ -2,11 +2,12 @@ import { AuthLayout } from '../components/PublicLayout'
 import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Button, Link, Flash, Stack, Spinner, Box } from '@primer/react'
-import { updatePassword, endOtherSessions, logoutUser } from '../services/authService'
+import { updatePassword, revokeOtherSessionsRequired, logoutUser } from '../services/authService'
 import { useRecoveryTokenExchange } from '../hooks/useRecoveryTokenExchange'
 import { translateAuthError } from '../utils/authErrors'
 import { validatePasswordConfirmation } from '../utils/validators'
 import { NewPasswordFields } from '../components/NewPasswordFields'
+import { trackAuthEvent, reportAuthOutcome } from '../utils/authAnalytics'
 
 export default function ResetPassword() {
   const navigate = useNavigate()
@@ -18,6 +19,8 @@ export default function ResetPassword() {
   const [submitting, setSubmitting] = useState(false)
   const mounted = useRef(true)
   const inFlight = useRef(false)
+  const passwordUpdated = useRef(false)
+  const othersRevoked = useRef(false)
 
   useEffect(() => {
     mounted.current = true
@@ -30,27 +33,46 @@ export default function ResetPassword() {
     e.preventDefault()
     if (inFlight.current) return
     setError('')
-    const validationErrors = validatePasswordConfirmation(password, confirmPassword)
-    setFieldErrors(validationErrors)
-    if (Object.keys(validationErrors).length) return
+    if (!passwordUpdated.current) {
+      const validationErrors = validatePasswordConfirmation(password, confirmPassword)
+      setFieldErrors(validationErrors)
+      if (Object.keys(validationErrors).length) return
+    }
 
     inFlight.current = true
     setSubmitting(true)
     try {
-      await updatePassword(password)
-      // Best-effort: a senha já foi trocada mesmo se isto falhar (ver endOtherSessions).
-      await endOtherSessions()
+      if (!passwordUpdated.current) {
+        await updatePassword(password)
+        trackAuthEvent('password_changed', { flow: 'recovery' })
+        passwordUpdated.current = true
+        setPassword('')
+        setConfirmPassword('')
+      }
+      if (!othersRevoked.current) {
+        await revokeOtherSessionsRequired()
+        othersRevoked.current = true
+      }
       // A sessão criada por verifyRecoveryToken (useRecoveryTokenExchange) é de RECUPERAÇÃO, não um
       // login explícito -- sem encerrá-la aqui, Login.jsx:28 (`if (!loading && user) return <Navigate
       // to="/app" />`) redirecionaria quem chegou nesta tela direto para dentro do app, pulando o
-      // "entre com sua nova senha" que a própria mensagem de sucesso promete (mesmo padrão de
-      // setPasswordAfterConfirmation para o ConfirmEmail). Best-effort: a troca de senha já aconteceu
-      // e não pode ser desfeita por uma falha ao encerrar esta sessão.
-      await logoutUser().catch(() => {})
-      navigate('/login', { replace: true, state: { passwordResetSuccess: true } })
+      // "entre com sua nova senha" que a própria mensagem de sucesso promete. A troca de senha
+      // já aconteceu e não pode ser desfeita por uma falha ao encerrar esta sessão.
+      const { revoked } = await logoutUser()
+      navigate('/login', {
+        replace: true,
+        state: revoked
+          ? { passwordResetSuccess: true }
+          : { passwordResetRevocationPending: true },
+      })
     } catch (err) {
-      console.error('[Auth] updatePassword:', err)
-      setError(translateAuthError(err))
+      reportAuthOutcome(err)
+      if (passwordUpdated.current && !othersRevoked.current) trackAuthEvent('session_revocation_pending')
+      setError(passwordUpdated.current
+        ? othersRevoked.current
+          ? 'A senha foi alterada, mas a saída desta sessão não foi confirmada. Tente concluir novamente.'
+          : 'A senha foi alterada, mas ainda não foi possível encerrar as outras sessões. Tente concluir novamente.'
+        : translateAuthError(err))
     } finally {
       inFlight.current = false
       if (mounted.current) setSubmitting(false)
@@ -105,13 +127,13 @@ export default function ResetPassword() {
             </Flash>
           )}
 
-          <NewPasswordFields
+          {passwordUpdated.current ? <Flash role="status">Senha alterada. Conclua a proteção das sessões.</Flash> : <NewPasswordFields
             password={password}
             onPasswordChange={setPassword}
             confirmPassword={confirmPassword}
             onConfirmPasswordChange={setConfirmPassword}
             fieldErrors={fieldErrors}
-          />
+          />}
 
           <Button
             type="submit"
@@ -121,7 +143,7 @@ export default function ResetPassword() {
             loading={submitting}
             disabled={submitting}
           >
-            Redefinir senha
+            {passwordUpdated.current ? 'Concluir proteção da conta' : 'Redefinir senha'}
           </Button>
         </Stack>
       </form>

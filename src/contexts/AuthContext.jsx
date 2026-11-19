@@ -11,7 +11,7 @@ import { getLegalAccess } from '../services/legalService'
 import { clearCachedLegalAccess } from '../utils/legal'
 import { clearCachedWallet } from '../services/economyService'
 import { clearStoredRest } from '../utils/restTimer'
-import { isSameSessionIdentity } from '../utils/authSession'
+import { isSameSessionIdentity, restrictedAuthScope } from '../utils/authSession'
 import { clearActivityPingThrottle } from '../utils/activityPing'
 import { clearAllCommentDrafts } from '../features/comments/utils/drafts'
 import { purgePrivateData } from '../services/offline/userScope'
@@ -29,6 +29,7 @@ import { classifyReadError } from '../services/offline/readError'
 import { createProbe } from '../services/offline/connectivity'
 import {
   buildBootstrapRecord,
+  disableOfflineAccess,
   dropBootstrapsExcept,
   saveBootstrap,
 } from '../services/offline/bootstrap'
@@ -110,6 +111,7 @@ export function AuthProvider({ children }) {
   const [authMode, setAuthMode] = useState('online')
   const [offlineVerifiedAt, setOfflineVerifiedAt] = useState(null)
   const [serverAccessAllowed, setServerAccessAllowed] = useState(null)
+  const [restrictedScope, setRestrictedScope] = useState(null)
   const [rolloutRevision, setRolloutRevision] = useState(0)
   // Snapshot agregado da Home restaurado do IndexedDB no cold start (saldo, EvoCoins do dia, atividade).
   // SOMENTE EXIBIÇÃO do último valor conhecido: nada aqui autoriza operação alguma.
@@ -129,6 +131,7 @@ export function AuthProvider({ children }) {
   // carregado. Usada para NÃO recarregar tudo quando o Supabase reemite eventos da MESMA
   // sessão (ver onAuthStateChange abaixo).
   const loadedUserIdRef = useRef(undefined)
+  const loadedScopeRef = useRef(null)
   const lastSessionUserIdRef = useRef(null)
 
   useEffect(() => {
@@ -307,11 +310,13 @@ export function AuthProvider({ children }) {
       recordOfflineDiagnostic('cold_start_opened')
       setOfflineRolloutUser(identity.user.id)
       loadedUserIdRef.current = identity.user.id
+      loadedScopeRef.current = null
       authModeRef.current = 'offline-local'
       setAuthMode('offline-local')
       setOfflineHome(home)
       setLocalDenied(false)
       setServerAccessAllowed(null)
+      setRestrictedScope(null)
       setOfflineVerifiedAt(record.last_online_verified_at)
       setUser(identity.user)
       setProfile(identity.profile)
@@ -324,10 +329,11 @@ export function AuthProvider({ children }) {
       setLoading(false)
     }
 
-    async function loadSession(supabaseUser) {
+    async function loadSession(supabaseUser, scope = null) {
       clearAdMetricsCache()
       const coldStart = isOfflineColdStartEnabled()
       const current = ++sessionRevisionRef.current
+      if (scope) await disableOfflineAccess()
       if (supabaseUser) lastSessionUserIdRef.current = supabaseUser.id
       setOfflineRolloutUser(supabaseUser?.id ?? null)
       setOfflineTelemetryContext(supabaseUser?.id ?? null, false)
@@ -336,7 +342,7 @@ export function AuthProvider({ children }) {
       // A leitura começa ANTES da limpeza abaixo (que abre transações de escrita no mesmo banco e a
       // seguraria). Sem snapshot válido (ou feature não autorizada) cai no caminho normal, como antes.
       const earlyEntry =
-        coldStart && supabaseUser && globalThis.navigator?.onLine === false
+        coldStart && supabaseUser && !scope && globalThis.navigator?.onLine === false
           ? localEntryFor(supabaseUser.id)
           : null
       // Uma troca real de identidade invalida imediatamente o acesso offline da conta anterior,
@@ -359,10 +365,12 @@ export function AuthProvider({ children }) {
         if (!active || current !== sessionRevisionRef.current) return
       }
       loadedUserIdRef.current = supabaseUser?.id ?? null
+      loadedScopeRef.current = scope
       authModeRef.current = 'online'
       setAuthMode('online')
       setOfflineHome(null)
       setServerAccessAllowed(null)
+      setRestrictedScope(scope)
       setOfflineVerifiedAt(null)
       profileChannel?.unsubscribe()
       profileChannel = null
@@ -391,6 +399,15 @@ export function AuthProvider({ children }) {
           setLegalLoading(false)
           setLoading(false)
         }
+        return
+      }
+
+      if (scope) {
+        // Roles transitórias só podem chamar as RPCs estreitas previstas no banco.
+        // Não tentamos carregar perfil, termos, Realtime nem salvar bootstrap offline.
+        setServerAccessAllowed(false)
+        setLegalLoading(false)
+        setLoading(false)
         return
       }
 
@@ -455,7 +472,11 @@ export function AuthProvider({ children }) {
           return
         }
         if (userData.user.id !== loadedUserIdRef.current) {
-          await loadSession(userData.user) // identidade diferente: caminho completo (limpa o resto)
+          await loadSession(userData.user, restrictedAuthScope(session)) // identidade diferente: caminho completo
+          return
+        }
+        if (restrictedAuthScope(session)) {
+          await loadSession(userData.user, restrictedAuthScope(session))
           return
         }
         const current = sessionRevisionRef.current
@@ -495,6 +516,7 @@ export function AuthProvider({ children }) {
 
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       const nextUser = session?.user ?? null
+      const nextScope = restrictedAuthScope(session)
       if (event === 'SIGNED_OUT') {
         clearAllCommentDrafts()
         // Um novo login (outra sessão) deve registrar o uso logo, sem esperar os 10 min.
@@ -506,7 +528,7 @@ export function AuthProvider({ children }) {
       // inicial vazia depois de tentar renovar por dezenas de segundos. Isso NÃO é logout: o app continua
       // aberto e a revalidação, ao reconectar, decide o que fazer com a sessão.
       if (event === 'INITIAL_SESSION' && !nextUser && authModeRef.current === 'offline-local') return
-      if (isSameSessionIdentity(loadedUserIdRef.current, nextUser)) {
+      if (isSameSessionIdentity(loadedUserIdRef.current, nextUser) && loadedScopeRef.current === nextScope) {
         // Em modo offline local o usuário exposto é o RECONHECIDO LOCALMENTE; só a revalidação (que confirma
         // sessão, perfil e termos) o promove a sessão confirmada pelo servidor.
         if (nextUser && authModeRef.current !== 'offline-local') {
@@ -521,7 +543,7 @@ export function AuthProvider({ children }) {
         }
         return
       }
-      loadSession(nextUser)
+      loadSession(nextUser, nextScope)
     })
 
     return () => {
@@ -753,6 +775,7 @@ export function AuthProvider({ children }) {
         offlineLocal: authMode === 'offline-local',
         offlineHome,
         serverAccessAllowed,
+        restrictedScope,
         offlineVerifiedAt,
         deletionStatus,
         deletionReview,

@@ -1,4 +1,4 @@
-import { after, before, beforeEach, test } from 'node:test'
+import { after, afterEach, before, beforeEach, test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -15,6 +15,8 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 const require = createRequire(import.meta.url)
 let directory
 let WorkoutForm
+const mounted = []
+const originalDateNow = Date.now
 
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'workout-session-tests-'))
@@ -115,6 +117,13 @@ beforeEach(() => {
   Date.now = () => clock
 })
 
+afterEach(async () => {
+  await act(async () => {
+    while (mounted.length) mounted.pop().unmount()
+  })
+  Date.now = originalDateNow
+})
+
 const textOf = (node) =>
   typeof node === 'string' ? node : (node.children || []).map((child) => textOf(child)).join('')
 
@@ -172,6 +181,7 @@ async function mount(props = {}) {
       })
     )
   })
+  mounted.push(renderer)
   const root = renderer.root
   const api = {
     calls,

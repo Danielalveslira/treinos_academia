@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import { OFFLINE_ENTRY_REQUIRES_INTERNET } from '../contexts/AuthContext'
 import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
+import { reportAuthOutcome } from '../utils/authAnalytics'
 
 // Carregado só a partir do 1º foco no formulário: evita baixar o script/iframes do
 // hCaptcha (ver medição de performance de /login) antes de o visitante começar a entrar.
@@ -19,9 +20,9 @@ const AuthCaptcha = lazy(() =>
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, loading } = useAuth()
+  const { user, loading, serverAccessAllowed } = useAuth()
   const online = useOnlineStatus()
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(typeof location.state?.email === 'string' ? location.state.email : '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -35,13 +36,15 @@ export default function Login() {
   // Vem de ResetPassword.jsx (navigate state, não sessionStorage: é só esta
   // navegação, não "a próxima tela de login" como consumeLogoutReason).
   const passwordResetSuccess = Boolean(location.state?.passwordResetSuccess)
+  const passwordResetRevocationPending = Boolean(location.state?.passwordResetRevocationPending)
+  const registrationComplete = Boolean(location.state?.registrationComplete)
 
   const advertiserReturn = location.state?.advertiserReturnTo
   const returnTo =
     typeof advertiserReturn === 'string' && /^\/meus-anuncios(?:\?|$)/.test(advertiserReturn)
       ? advertiserReturn
       : '/app'
-  if (!loading && user) return <Navigate to={returnTo} replace />
+  if (!loading && user && serverAccessAllowed === true) return <Navigate to={returnTo} replace />
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -56,6 +59,7 @@ export default function Login() {
       // acima), exigindo dois toques do voltar para sair de fato da tela de login.
       navigate(returnTo, { replace: true })
     } catch (err) {
+      reportAuthOutcome(err)
       console.error('[Auth] login:', err)
       if (err?.code === 'email_not_confirmed') {
         // Conta criada mas nunca confirmada (ex.: fechou a aba antes de digitar o
@@ -109,6 +113,16 @@ export default function Login() {
           {passwordResetSuccess && !error && (
             <Flash role="status" variant="success">
               Senha redefinida. Entre com sua nova senha.
+            </Flash>
+          )}
+          {passwordResetRevocationPending && !error && (
+            <Flash role="alert" variant="warning">
+              Senha alterada, mas não foi possível confirmar a saída desta sessão no servidor. Entre com a nova senha e use “Sair de todos os dispositivos” no menu da conta.
+            </Flash>
+          )}
+          {registrationComplete && !error && (
+            <Flash role="status" variant="success">
+              Cadastro concluído. Entre com a senha que você definiu.
             </Flash>
           )}
           {error && (

@@ -71,7 +71,8 @@ test('completeUserProfile: chama todas as RPCs com os dados do formulário', asy
   const names = calls.map((c) => c.fn)
   assert.ok(names.includes('ensure_user_profile'))
   assert.ok(names.includes('set_birth_info'))
-  assert.ok(names.includes('updateUser'))
+  // display_name em user_metadata foi removido: concluir perfil só usa RPCs do banco.
+  assert.ok(!names.includes('updateUser'))
   assert.ok(names.includes('set_usage_profile'))
   assert.ok(names.includes('set_username'))
   assert.deepEqual(calls.find((c) => c.fn === 'set_residence_municipality')?.args, {
@@ -97,7 +98,7 @@ test('completeUserProfile: set_username é a ÚLTIMA chamada (prova que o resto 
   const usernameIndex = names.indexOf('set_username')
   assert.ok(names.indexOf('ensure_user_profile') < usernameIndex)
   assert.ok(names.indexOf('set_birth_info') < usernameIndex)
-  assert.ok(names.indexOf('updateUser') < usernameIndex)
+  assert.ok(!names.includes('updateUser'))
   assert.ok(names.indexOf('set_residence_municipality') < usernameIndex)
   assert.ok(names.indexOf('set_usage_profile') < usernameIndex)
 })

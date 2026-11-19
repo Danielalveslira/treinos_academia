@@ -17,6 +17,10 @@ before(async () => {
       contents: `
         export {
           registerUser,
+          emailFirstSignupReady,
+          requestEmailFirstSignup,
+          confirmEmailFirstOtp,
+          syncEmailFirstPassword,
           confirmSignupOtp,
           confirmSignupAndSyncPassword,
           sendVerificationEmail,
@@ -24,8 +28,7 @@ before(async () => {
           verifyRecoveryToken,
           updatePassword,
           syncSignupPassword,
-          setPasswordAfterConfirmation,
-          endOtherSessions,
+          revokeOtherSessionsRequired,
         } from './authService.js'
       `,
       resolveDir: new URL('.', import.meta.url).pathname,
@@ -51,6 +54,7 @@ before(async () => {
             contents: `export const supabase = {
               auth: {
                 signUp: (...a) => globalThis.__signUp(...a),
+                signInWithOtp: (...a) => globalThis.__signInWithOtp(...a),
                 verifyOtp: (...a) => globalThis.__verifyOtp(...a),
                 resend: (...a) => globalThis.__resend(...a),
                 resetPasswordForEmail: (...a) => globalThis.__resetPasswordForEmail(...a),
@@ -58,6 +62,8 @@ before(async () => {
                 signOut: (...a) => globalThis.__signOut(...a),
                 getSession: () => globalThis.__getSession(),
               },
+              rpc: (...a) => globalThis.__rpc(...a),
+              functions: { invoke: (...a) => globalThis.__invoke(...a) },
             }`,
           }))
         },
@@ -78,6 +84,8 @@ beforeEach(() => {
   // precisam simular uma sessão ainda ativa após uma falha de signOut sobrescrevem isto.
   globalThis.__signOut = () => Promise.resolve({ error: null })
   globalThis.__getSession = () => Promise.resolve({ data: { session: null } })
+  globalThis.__rpc = () => Promise.resolve({ data: false, error: null })
+  globalThis.__invoke = () => Promise.resolve({ data: { code: 'PASSWORD_READY' }, error: null })
 })
 
 const quiet = async (fn) => {
@@ -93,7 +101,21 @@ const quiet = async (fn) => {
   }
 }
 
-test('registerUser: com Confirm email desligado (autoconfirm), devolve hasSession:true', async () => {
+test('emailFirstSignupReady: migration ausente mantém o cadastro convencional', async () => {
+  globalThis.__rpc = () => Promise.resolve({ data: null, error: { code: 'PGRST202' } })
+  assert.equal(await mod.emailFirstSignupReady(), false)
+})
+
+test('emailFirstSignupReady: falha de rede não ativa o novo fluxo', async () => {
+  globalThis.__rpc = () => Promise.resolve({ data: null, error: new Error('network') })
+  await assert.rejects(mod.emailFirstSignupReady(), /network/)
+})
+
+test('registerUser: sessão inesperada é encerrada e não cria perfil', async () => {
+  globalThis.__signOut = (...args) => {
+    calls.push(['signOut', ...args])
+    return Promise.resolve({ error: null })
+  }
   globalThis.__signUp = (args) => {
     calls.push(args)
     return Promise.resolve({
@@ -103,9 +125,22 @@ test('registerUser: com Confirm email desligado (autoconfirm), devolve hasSessio
   }
   const result = await mod.registerUser('a@a.com', 'senha1234')
   assert.deepEqual(result, {
-    user: { uid: 'u1', email: 'a@a.com' },
-    hasSession: true,
-    outcome: 'authenticated',
+    user: null,
+    hasSession: false,
+    outcome: 'unexpected_session',
+  })
+  assert.deepEqual(calls.at(-1), ['signOut', { scope: 'local' }])
+})
+
+test('registerUser: falha ao encerrar sessão inesperada bloqueia o cadastro', async () => {
+  globalThis.__signUp = () => Promise.resolve({
+    data: { user: { id: 'u1', email: 'a@a.com' }, session: { access_token: 'x' } },
+    error: null,
+  })
+  globalThis.__signOut = () => Promise.resolve({ error: new Error('network') })
+  globalThis.__getSession = () => Promise.resolve({ data: { session: { access_token: 'x' } } })
+  await assert.rejects(mod.registerUser('a@a.com', 'senha1234'), {
+    code: 'SIGNUP_UNEXPECTED_SESSION',
   })
 })
 
@@ -113,7 +148,7 @@ test('registerUser: sem sessão não usa o UID como identidade confirmada', asyn
   globalThis.__signUp = () =>
     Promise.resolve({ data: { user: { id: 'u1', email: 'a@a.com' }, session: null }, error: null })
   const result = await mod.registerUser('a@a.com', 'senha1234')
-  assert.deepEqual(result, { user: null, hasSession: false, outcome: 'ambiguous' })
+  assert.deepEqual(result, { user: null, hasSession: false, outcome: 'verification_required' })
 })
 
 // Confirmado nos logs de Auth de PRODUÇÃO (evento "User repeated signup"): signUp num
@@ -132,7 +167,7 @@ test('registerUser: signUp ofuscado (e-mail já confirmado, hospedado) também d
       error: null,
     })
   const result = await mod.registerUser('a@a.com', 'outraSenhaQualquer')
-  assert.deepEqual(result, { user: null, hasSession: false, outcome: 'ambiguous' })
+  assert.deepEqual(result, { user: null, hasSession: false, outcome: 'verification_required' })
 })
 
 test('registerUser: erro explícito de e-mail existente tem o mesmo resultado sem sessão', async () => {
@@ -142,7 +177,27 @@ test('registerUser: erro explícito de e-mail existente tem o mesmo resultado se
   assert.deepEqual(await mod.registerUser('a@a.com', 'senha1234'), {
     user: null,
     hasSession: false,
-    outcome: 'duplicate',
+    outcome: 'verification_required',
+  })
+})
+
+test('registerUser: resposta de transporte perdida permite OTP sem repetir signUp', async () => {
+  globalThis.__signUp = () => Promise.reject(new TypeError('Failed to fetch'))
+  assert.deepEqual(await mod.registerUser('a@a.com', 'senha1234'), {
+    user: null,
+    hasSession: false,
+    outcome: 'request_uncertain',
+  })
+})
+
+test('registerUser: erro de transporte retornado pelo SDK também é incerto', async () => {
+  const error = new Error('Failed to fetch')
+  error.name = 'AuthRetryableFetchError'
+  globalThis.__signUp = () => Promise.resolve({ data: null, error })
+  assert.deepEqual(await mod.registerUser('a@a.com', 'senha1234'), {
+    user: null,
+    hasSession: false,
+    outcome: 'request_uncertain',
   })
 })
 
@@ -332,57 +387,11 @@ test('confirmSignupAndSyncPassword: FALHA FECHADA -- código certo mas senha nã
   assert.deepEqual(signOutCalls, [{ scope: 'local' }])
 })
 
-// --- setPasswordAfterConfirmation: usada por ConfirmEmail.jsx, onde NENHUMA senha é
-// conhecida de antemão -- sempre define uma senha nova e encerra outras sessões (ex.: a
-// de um possível atacante já logado com a senha antiga). ---
-
-test('setPasswordAfterConfirmation: define a senha, encerra outras sessões e esta também', async () => {
-  const signOutCalls = []
-  globalThis.__updateUser = (args) => {
-    calls.push(args)
-    return Promise.resolve({ error: null })
-  }
-  globalThis.__signOut = (args) => {
-    signOutCalls.push(args)
-    return Promise.resolve({ error: null })
-  }
-  await mod.setPasswordAfterConfirmation('senhaNovaDaVitima1')
-  assert.deepEqual(calls, [{ password: 'senhaNovaDaVitima1' }])
-  // 'others' primeiro (revoga quem mais estiver logado com a senha antiga), 'local' depois
-  // (exige login explícito com a senha nova a seguir) -- nunca a ordem inversa.
-  assert.deepEqual(signOutCalls, [{ scope: 'others' }, { scope: 'local' }])
-})
-
-test('setPasswordAfterConfirmation: falha ao definir a senha propaga, sem encerrar sessão nenhuma', async () => {
-  const signOutCalls = []
-  globalThis.__updateUser = () => Promise.resolve({ error: new Error('network') })
-  globalThis.__signOut = (args) => {
-    signOutCalls.push(args)
-    return Promise.resolve({ error: null })
-  }
-  await assert.rejects(mod.setPasswordAfterConfirmation('senhaNovaDaVitima1'), /network/)
-  assert.deepEqual(signOutCalls, [])
-})
-
-test('setPasswordAfterConfirmation: senha definida com sucesso nunca é desfeita por uma falha ao encerrar sessões', async () => {
-  globalThis.__updateUser = () => Promise.resolve({ error: null })
-  // 'others' falha (best-effort, só warn) e 'local' também falha de verdade (sessão
-  // ainda existente, ver signOutLocal) -- mesmo assim a função resolve.
-  globalThis.__signOut = () => Promise.resolve({ error: new Error('network') })
-  globalThis.__getSession = () => Promise.resolve({ data: { session: { access_token: 'x' } } })
-  await quiet(() => mod.setPasswordAfterConfirmation('senhaNovaDaVitima1'))
-})
-
-test('endOtherSessions: encerra só as outras sessões (scope others), nunca esta', async () => {
+test('revokeOtherSessionsRequired: falha de revogação é propagada para retentativa', async () => {
   globalThis.__signOut = (args) => {
     calls.push(args)
-    return Promise.resolve({ error: null })
+    return Promise.resolve({ error: new Error('network') })
   }
-  await mod.endOtherSessions()
+  await assert.rejects(mod.revokeOtherSessionsRequired(), /network/)
   assert.deepEqual(calls, [{ scope: 'others' }])
-})
-
-test('endOtherSessions: best-effort -- uma falha não lança (a senha já foi trocada)', async () => {
-  globalThis.__signOut = () => Promise.resolve({ error: new Error('network') })
-  await quiet(() => mod.endOtherSessions())
 })

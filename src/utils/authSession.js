@@ -5,3 +5,17 @@
 export function isSameSessionIdentity(loadedUserId, nextUser) {
   return loadedUserId !== undefined && (nextUser?.id ?? null) === loadedUserId
 }
+
+// Apenas orientação de UI. O JWT é validado pelo GoTrue/PostgREST; esta leitura local
+// nunca autoriza dados ou operações. Roles transitórias não devem carregar perfil,
+// Realtime ou bootstrap offline enquanto o backend decide o acesso.
+export function restrictedAuthScope(session) {
+  try {
+    const payload = JSON.parse(atob(session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return ['auth_signup', 'auth_recovery', 'auth_setup'].includes(payload.role)
+      ? payload.role
+      : null
+  } catch {
+    return null
+  }
+}

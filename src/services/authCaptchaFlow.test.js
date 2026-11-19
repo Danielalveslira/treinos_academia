@@ -29,6 +29,8 @@ before(async () => {
           signInWithPassword: (arg) => globalThis.__captchaCall('signInWithPassword', arg),
           resend: (arg) => globalThis.__captchaCall('resend', arg),
           resetPasswordForEmail: (...arg) => globalThis.__captchaCall('resetPasswordForEmail', ...arg),
+          verifyOtp: (arg) => globalThis.__captchaCall('verifyOtp', arg),
+          updateUser: (arg) => globalThis.__captchaCall('updateUser', arg),
           getUser: () => Promise.resolve({ data: { user: { id: 'u1', email: 'a@example.com' } }, error: null }),
         } }`,
       }))
@@ -91,7 +93,7 @@ before(async () => {
     calls.push([name, ...args])
     if (name === 'signUp')
       return Promise.resolve({
-        data: { user: { id: 'u1', email: 'a@example.com' }, session: {} },
+        data: { user: { id: 'u1', email: 'a@example.com' }, session: null },
         error: null,
       })
     return Promise.resolve({ data: { user: { id: 'u1' } }, error: null })
@@ -132,6 +134,21 @@ test('token ausente bloqueia todas as operações antes de chamar Supabase', asy
   ])
     await assert.rejects(action(), { code: 'CAPTCHA_REQUIRED' })
   assert.equal(calls.length, 0)
+})
+
+test('verifyOtp e updateUser nunca enviam nem exigem CAPTCHA, mesmo com CAPTCHA exigido globalmente', async () => {
+  // GoTrue depreciou captchaToken em verifyOtp (@supabase/auth-js marca o campo como
+  // @deprecated) e nunca ofereceu esse campo em updateUser -- são chamadas de sessão
+  // já autenticada/comprovada por outro meio (código de 6 dígitos, sessão de recuperação),
+  // não endpoints anônimos de alto volume. Builder `auth` tem HCAPTCHA_ENABLED=true e uma
+  // site key válida -- CAPTCHA genuinamente exigido para as outras 5 operações -- então
+  // este teste prova que a exclusão é por desenho, não por falta de configuração.
+  calls.length = 0
+  await auth.confirmSignupOtp('a@example.com', '123456')
+  await auth.updatePassword('new-password')
+  assert.deepEqual(calls.map(([name]) => name), ['verifyOtp', 'updateUser'])
+  assert.equal('options' in calls[0][1], false)
+  assert.equal('captchaToken' in calls[1][1], false)
 })
 
 test('rejeição do servidor é propagada para permitir novo desafio', async () => {

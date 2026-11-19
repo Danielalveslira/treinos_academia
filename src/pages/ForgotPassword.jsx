@@ -6,6 +6,7 @@ import { resetPassword } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
 import { AuthCaptcha } from '../components/AuthCaptcha'
 import { authCaptchaRequired, takeCaptchaToken } from '../utils/authCaptcha'
+import { trackAuthEvent, reportAuthOutcome } from '../utils/authAnalytics'
 
 const RESEND_COOLDOWN_S = 60
 
@@ -40,9 +41,11 @@ export default function ForgotPassword() {
     setSubmitting(true)
     try {
       await resetPassword(email, takeCaptchaToken(captcha))
+      trackAuthEvent('recovery_requested')
       setSent(true)
       setCooldown(RESEND_COOLDOWN_S)
     } catch (err) {
+      reportAuthOutcome(err)
       console.error('[Auth] resetPassword:', err)
       setError(translateAuthError(err))
     } finally {

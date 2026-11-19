@@ -137,7 +137,7 @@ export function AuthLayout({ children, title, description, footer, variant, titl
             <p className="auth-description">{description}</p>
             {children}
           </div>
-          <div className="auth-switch">{footer}</div>
+          {footer && <div className="auth-switch">{footer}</div>}
         </section>
       </div>
     </PublicLayout>

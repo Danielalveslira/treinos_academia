@@ -112,6 +112,19 @@ test('an active account never sees the disabled-account gate', () => {
   assert.match(html, /CONTEUDO_PROTEGIDO/)
 })
 
+test('sessão auth_setup não monta conteúdo protegido nem depende de leitura de perfil', () => {
+  const html = render({ ...baseAuth, restrictedScope: 'auth_setup', profile: null, serverAccessAllowed: false })
+  assert.match(html, /Conclua seu cadastro/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+  assert.doesNotMatch(html, /Não foi possível carregar sua conta/)
+})
+
+test('sessão de recuperação não monta perfil, termos ou conteúdo protegido', () => {
+  const html = render({ ...baseAuth, restrictedScope: 'auth_recovery', profile: null, serverAccessAllowed: false })
+  assert.match(html, /Continue a verificação da conta/)
+  assert.doesNotMatch(html, /CONTEUDO_PROTEGIDO/)
+})
+
 // ProfileCompletionGate (ver ProtectedRoute.jsx): dispara por !profile.username, depois
 // das guardas de bloqueio/exclusão e antes do LegalGate.
 test('a loaded profile without username shows ProfileCompletionGate, never LegalGate nor protected content', () => {

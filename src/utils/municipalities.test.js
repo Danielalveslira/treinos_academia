@@ -115,7 +115,7 @@ test('erros do cadastro apontam o campo e a mensagem específica', () => {
   )
   const retryable = Object.assign(new Error('x'), { name: 'AuthRetryableFetchError' })
   assert.equal(describeRegistrationError(retryable).message, NETWORK_ERROR_MESSAGE)
-  assert.match(describeRegistrationError({ code: 'weak_password' }).message, /8 caracteres/)
+  assert.match(describeRegistrationError({ code: 'weak_password' }).message, /15 caracteres/)
   assert.match(describeRegistrationError(new Error('PERMISSION_DENIED')).message, /acesso/)
   assert.match(residenceCitySaveErrorText(new Error('boom')), /anterior foi mantida/)
   assert.match(residenceCitySaveErrorText(new Error('INVALID_MUNICIPALITY')), /lista/)

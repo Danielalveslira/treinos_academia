@@ -5,9 +5,13 @@ import { Button, FormControl, TextInput, Link, Flash, Stack } from '@primer/reac
 import {
   confirmSignupOtp,
   sendVerificationEmail,
-  setPasswordAfterConfirmation,
+  updatePassword,
+  revokeOtherSessionsRequired,
+  logoutUser,
+  emailFirstSignupReady,
 } from '../services/authService'
 import { translateAuthError } from '../utils/authErrors'
+import { trackAuthEvent, reportAuthOutcome } from '../utils/authAnalytics'
 import { validatePasswordConfirmation } from '../utils/validators'
 import { NewPasswordFields } from '../components/NewPasswordFields'
 import { AuthCaptcha } from '../components/AuthCaptcha'
@@ -27,6 +31,7 @@ export default function ConfirmEmail() {
   const navigate = useNavigate()
   const location = useLocation()
   const [step, setStep] = useState('otp')
+  const [emailFirstReady, setEmailFirstReady] = useState(null)
   const [email, setEmail] = useState(location.state?.email || '')
   const [otpCode, setOtpCode] = useState('')
   const [password, setPassword] = useState('')
@@ -40,6 +45,8 @@ export default function ConfirmEmail() {
   const mounted = useRef(true)
   const submitInFlight = useRef(false)
   const resendInFlight = useRef(false)
+  const passwordUpdated = useRef(false)
+  const othersRevoked = useRef(false)
   const captcha = useRef(null)
   const [captchaVerified, setCaptchaVerified] = useState(!authCaptchaRequired)
 
@@ -51,6 +58,14 @@ export default function ConfirmEmail() {
   }, [])
 
   useEffect(() => {
+    let active = true
+    emailFirstSignupReady()
+      .then((ready) => { if (active) setEmailFirstReady(ready) })
+      .catch(() => { if (active) setEmailFirstReady('unavailable') })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
     if (cooldown <= 0) return undefined
     const timer = setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000)
     return () => clearInterval(timer)
@@ -58,6 +73,7 @@ export default function ConfirmEmail() {
 
   async function handleOtpSubmit(e) {
     e.preventDefault()
+    if (emailFirstReady !== false) return
     if (
       submitInFlight.current ||
       resendInFlight.current ||
@@ -70,8 +86,10 @@ export default function ConfirmEmail() {
     setSubmitting(true)
     try {
       await confirmSignupOtp(email.trim(), otpCode.trim())
+      trackAuthEvent('otp_verified', { flow: 'standalone' })
       if (mounted.current) setStep('password')
     } catch (err) {
+      reportAuthOutcome(err)
       console.error('[Auth] confirmSignupOtp:', err)
       setError(translateAuthError(err))
     } finally {
@@ -84,18 +102,45 @@ export default function ConfirmEmail() {
     e.preventDefault()
     if (submitInFlight.current) return
     setError('')
-    const validationErrors = validatePasswordConfirmation(password, confirmPassword)
-    setFieldErrors(validationErrors)
-    if (Object.keys(validationErrors).length) return
+    if (!passwordUpdated.current) {
+      const validationErrors = validatePasswordConfirmation(password, confirmPassword)
+      setFieldErrors(validationErrors)
+      if (Object.keys(validationErrors).length) return
+    }
 
     submitInFlight.current = true
     setSubmitting(true)
     try {
-      await setPasswordAfterConfirmation(password)
-      navigate('/login', { replace: true, state: { passwordResetSuccess: true } })
+      if (!passwordUpdated.current) {
+        await updatePassword(password)
+        passwordUpdated.current = true
+        setPassword('')
+        setConfirmPassword('')
+        trackAuthEvent('password_changed', { flow: 'standalone' })
+      }
+      if (!othersRevoked.current) {
+        await revokeOtherSessionsRequired()
+        othersRevoked.current = true
+      }
+      const { revoked } = await logoutUser()
+      navigate('/login', {
+        replace: true,
+        state: revoked
+          ? { passwordResetSuccess: true }
+          : { passwordResetRevocationPending: true },
+      })
     } catch (err) {
-      console.error('[Auth] setPasswordAfterConfirmation:', err)
-      if (mounted.current) setError(translateAuthError(err))
+      reportAuthOutcome(err)
+      if (passwordUpdated.current && !othersRevoked.current)
+        trackAuthEvent('session_revocation_pending')
+      if (mounted.current)
+        setError(
+          passwordUpdated.current
+            ? othersRevoked.current
+              ? 'A senha foi alterada, mas a saída desta sessão não foi confirmada. Tente concluir novamente.'
+              : 'A senha foi alterada, mas ainda não foi possível encerrar as outras sessões. Tente concluir novamente.'
+            : translateAuthError(err)
+        )
     } finally {
       submitInFlight.current = false
       if (mounted.current) setSubmitting(false)
@@ -103,6 +148,7 @@ export default function ConfirmEmail() {
   }
 
   async function handleResend() {
+    if (emailFirstReady !== false) return
     if (submitInFlight.current || resendInFlight.current || cooldown > 0 || !email.trim()) return
     resendInFlight.current = true
     setResending(true)
@@ -115,6 +161,7 @@ export default function ConfirmEmail() {
         setCooldown(RESEND_COOLDOWN_S)
       }
     } catch (err) {
+      reportAuthOutcome(err)
       console.error('[Auth] sendVerificationEmail:', err)
       if (mounted.current) setError(translateAuthError(err))
     } finally {
@@ -122,6 +169,24 @@ export default function ConfirmEmail() {
       resendInFlight.current = false
       if (mounted.current) setResending(false)
     }
+  }
+
+  if (emailFirstReady === true) {
+    return (
+      <AuthLayout title="Continue seu cadastro" description="Solicite um código novo para concluir o cadastro com segurança.">
+        <Button as={RouterLink} to="/cadastro" state={{ email }} variant="primary" size="large" block>
+          Continuar cadastro
+        </Button>
+      </AuthLayout>
+    )
+  }
+
+  if (emailFirstReady === 'unavailable') {
+    return <AuthLayout title="Confirmação indisponível" description="Não foi possível confirmar a configuração do cadastro. Tente novamente mais tarde." />
+  }
+
+  if (emailFirstReady !== false) {
+    return <AuthLayout title="Preparando confirmação" description="Aguarde um instante." />
   }
 
   if (step === 'password') {
@@ -143,13 +208,17 @@ export default function ConfirmEmail() {
               </Flash>
             )}
 
-            <NewPasswordFields
-              password={password}
-              onPasswordChange={setPassword}
-              confirmPassword={confirmPassword}
-              onConfirmPasswordChange={setConfirmPassword}
-              fieldErrors={fieldErrors}
-            />
+            {passwordUpdated.current ? (
+              <Flash role="status">Senha alterada. Conclua a proteção das sessões.</Flash>
+            ) : (
+              <NewPasswordFields
+                password={password}
+                onPasswordChange={setPassword}
+                confirmPassword={confirmPassword}
+                onConfirmPasswordChange={setConfirmPassword}
+                fieldErrors={fieldErrors}
+              />
+            )}
 
             <Button
               type="submit"
@@ -159,7 +228,7 @@ export default function ConfirmEmail() {
               loading={submitting}
               disabled={submitting}
             >
-              Definir senha
+              {passwordUpdated.current ? 'Concluir proteção da conta' : 'Definir senha'}
             </Button>
           </Stack>
         </form>
@@ -236,6 +305,11 @@ export default function ConfirmEmail() {
           >
             Confirmar
           </Button>
+          {/* O GoTrue não aceita CAPTCHA em verifyOtp (campo depreciado no SDK); a defesa
+              dessa chamada é o rate limit nativo de tentativas de verificação, não o widget
+              abaixo. O CAPTCHA aqui protege só o reenvio -- por isso fica preso a ele, não ao
+              Confirmar acima. */}
+          <p>Verificação de segurança necessária para reenviar o código:</p>
           <AuthCaptcha ref={captcha} onVerifiedChange={setCaptchaVerified} />
           <Button
             type="button"
